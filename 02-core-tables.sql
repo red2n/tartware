@@ -901,17 +901,17 @@ CREATE TABLE channel_mappings (
 -- =====================================================
 
 -- Tenants and Users relationships
-ALTER TABLE user_tenant_associations 
+ALTER TABLE user_tenant_associations
     ADD CONSTRAINT fk_uta_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
     ADD CONSTRAINT fk_uta_tenant FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE,
     ADD CONSTRAINT fk_uta_assigned_by FOREIGN KEY (assigned_by) REFERENCES users(id) ON DELETE SET NULL;
 
 -- Properties relationships
-ALTER TABLE properties 
+ALTER TABLE properties
     ADD CONSTRAINT fk_properties_tenant FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE;
 
 -- Guests relationships
-ALTER TABLE guests 
+ALTER TABLE guests
     ADD CONSTRAINT fk_guests_tenant FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE;
 
 -- Room Types relationships
