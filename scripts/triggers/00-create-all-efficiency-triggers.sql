@@ -124,6 +124,26 @@
 \i 10_optimize_join_parallelism.sql
 
 -- =====================================================
+-- PHASE 11: Performance Extensions Installation
+-- =====================================================
+\echo ''
+\echo '======================================================'
+\echo '  Phase 11: Installing Performance Extensions'
+\echo '======================================================'
+\echo ''
+\i 11_install_performance_extensions.sql
+
+-- =====================================================
+-- PHASE 12: Performance Monitoring & Alerting
+-- =====================================================
+\echo ''
+\echo '======================================================'
+\echo '  Phase 12: Installing Performance Monitoring Suite'
+\echo '======================================================'
+\echo ''
+\i 12_install_all_performance_monitoring.sql
+
+-- =====================================================
 -- Summary Report
 -- =====================================================
 \echo ''
@@ -168,7 +188,18 @@ BEGIN
             'recommend_distinct_indexes', 'optimize_distinct_query',
             -- JOIN parallelism (4)
             'check_parallel_settings', 'analyze_join_parallelism',
-            'explain_parallel_plan', 'recommend_parallel_tuning'
+            'explain_parallel_plan', 'recommend_parallel_tuning',
+            -- Performance extensions (4)
+            'check_performance_extensions', 'analyze_missing_indexes_qualstats',
+            'test_hypothetical_index', 'recommend_indexes_auto',
+            -- Performance reporting (5)
+            'generate_daily_performance_report', 'generate_health_check_report',
+            'check_performance_thresholds', 'get_latest_report', 'init_report_schedules',
+            -- Performance alerting (8)
+            'update_performance_baselines', 'detect_query_degradation',
+            'detect_connection_spike', 'detect_cache_degradation',
+            'monitor_performance_degradation', 'get_active_alerts',
+            'acknowledge_alert', 'acknowledge_alerts_by_type'
         );
 
     -- Count installed views (expanded list)
@@ -187,7 +218,13 @@ BEGIN
             -- Connection pooling (2)
             'v_connection_dashboard', 'v_application_connections',
             -- Advanced optimization (3)
-            'v_sort_performance', 'v_distinct_performance', 'v_parallel_query_performance'
+            'v_sort_performance', 'v_distinct_performance', 'v_parallel_query_performance',
+            -- Performance extensions (2)
+            'v_index_recommendations', 'v_extension_status',
+            -- Performance reporting (2)
+            'v_current_alerts', 'v_recent_reports',
+            -- Performance alerting (3)
+            'v_active_performance_alerts', 'v_performance_trends', 'v_alert_summary'
         );
 
     -- Check audit table
@@ -202,11 +239,12 @@ BEGIN
     RAISE NOTICE '│  INSTALLATION SUMMARY                                │';
     RAISE NOTICE '├──────────────────────────────────────────────────────┤';
     RAISE NOTICE '│                                                      │';
-    RAISE NOTICE '│  Functions:           % / 39                       │', LPAD(v_function_count::TEXT, 3, ' ');
-    RAISE NOTICE '│  Views:               % / 12                       │', LPAD(v_view_count::TEXT, 3, ' ');
+    RAISE NOTICE '│  Functions:           % / 56                       │', LPAD(v_function_count::TEXT, 3, ' ');
+    RAISE NOTICE '│  Views:               % / 19                       │', LPAD(v_view_count::TEXT, 3, ' ');
     RAISE NOTICE '│  Audit Table:         %                            │',
         CASE WHEN v_audit_table_exists THEN '✅' ELSE '❌' END;
-    RAISE NOTICE '│  Extension:           pg_stat_statements             │';
+    RAISE NOTICE '│  Extensions:          pg_stat_statements, pg_qualstats│';
+    RAISE NOTICE '│                       hypopg, pg_cron                │';
     RAISE NOTICE '│                                                      │';
     RAISE NOTICE '│  Basic Monitoring:                                   │';
     RAISE NOTICE '│  • Query Efficiency       ✅                         │';
@@ -220,10 +258,15 @@ BEGIN
     RAISE NOTICE '│  • DISTINCT Operations    ✅                         │';
     RAISE NOTICE '│  • JOIN Parallelism       ✅                         │';
     RAISE NOTICE '│                                                      │';
+    RAISE NOTICE '│  Performance Monitoring:                             │';
+    RAISE NOTICE '│  • Index Recommendations  ✅                         │';
+    RAISE NOTICE '│  • Automated Reporting    ✅                         │';
+    RAISE NOTICE '│  • Real-time Alerting     ✅                         │';
+    RAISE NOTICE '│                                                      │';
     RAISE NOTICE '└──────────────────────────────────────────────────────┘';
     RAISE NOTICE '';
 
-    IF v_function_count = 39 AND v_view_count = 12 AND v_audit_table_exists THEN
+    IF v_function_count = 56 AND v_view_count = 19 AND v_audit_table_exists THEN
         RAISE NOTICE '✅ All components installed successfully!';
         RAISE NOTICE '';
         RAISE NOTICE '🔍 Quick Start - Basic Monitoring:';
@@ -237,9 +280,16 @@ BEGIN
         RAISE NOTICE '  • Sort optimization:   SELECT * FROM analyze_sort_operations();';
         RAISE NOTICE '  • DISTINCT analysis:   SELECT * FROM analyze_distinct_queries();';
         RAISE NOTICE '  • JOIN parallelism:    SELECT * FROM check_parallel_settings();';
+        RAISE NOTICE '';
+        RAISE NOTICE '📊 Performance Monitoring:';
+        RAISE NOTICE '  • Extension status:    SELECT * FROM v_extension_status;';
+        RAISE NOTICE '  • Index recommendations: SELECT * FROM v_index_recommendations LIMIT 5;';
+        RAISE NOTICE '  • Health check:        SELECT generate_health_check_report();';
+        RAISE NOTICE '  • Active alerts:       SELECT * FROM v_active_performance_alerts;';
+        RAISE NOTICE '  • Performance trends:  SELECT * FROM v_performance_trends;';
     ELSE
         RAISE WARNING '⚠️  Some components may not have installed correctly.';
-        RAISE WARNING 'Expected: 39 functions, 12 views, 1 audit table';
+        RAISE WARNING 'Expected: 56 functions, 19 views, 1 audit table';
         RAISE WARNING 'Found: % functions, % views, % audit table',
             v_function_count, v_view_count,
             CASE WHEN v_audit_table_exists THEN 1 ELSE 0 END;

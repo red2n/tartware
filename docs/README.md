@@ -10,6 +10,13 @@ This folder contains comprehensive documentation for the Tartware Property Manag
 2. **[industry-standards.md](industry-standards.md)** - Detailed compliance with global PMS standards
 3. **[database-architecture.md](database-architecture.md)** - Complete database design and schema
 4. **[multi-tenancy.md](multi-tenancy.md)** - Multi-tenant architecture patterns
+5. **[quick-reference.md](quick-reference.md)** - Quick lookup guide for developers
+
+### Key Features
+
+6. **[soft-delete-policy.md](soft-delete-policy.md)** - Data retention and soft delete implementation
+7. **[verification-guide.md](verification-guide.md)** - Database verification and testing procedures
+8. **[performance-monitoring.md](performance-monitoring.md)** - Performance monitoring and optimization guide
 
 ### Industry Standards Coverage
 

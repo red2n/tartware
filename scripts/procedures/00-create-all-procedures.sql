@@ -49,8 +49,16 @@ END $$;
 \i 03_rate_management_merge.sql
 \echo ''
 
-\echo '4/4 Creating analytics aggregation procedures...'
+\echo '4/6 Creating analytics aggregation procedures...'
 \i 04_analytics_aggregation_merge.sql
+\echo ''
+
+\echo '5/6 Creating performance reporting procedures...'
+\i 05_performance_reporting_procedures.sql
+\echo ''
+
+\echo '6/6 Creating performance alerting procedures...'
+\i 06_performance_alerting_procedures.sql
 \echo ''
 
 -- =====================================================
@@ -86,7 +94,20 @@ WHERE n.nspname = 'public'
     'aggregate_daily_metrics',
     'aggregate_monthly_metrics',
     'calculate_revenue_metrics',
-    'sync_metric_dimensions'
+    'sync_metric_dimensions',
+    'generate_daily_performance_report',
+    'generate_health_check_report',
+    'check_performance_thresholds',
+    'get_latest_report',
+    'init_report_schedules',
+    'update_performance_baselines',
+    'detect_query_degradation',
+    'detect_connection_spike',
+    'detect_cache_degradation',
+    'monitor_performance_degradation',
+    'get_active_alerts',
+    'acknowledge_alert',
+    'acknowledge_alerts_by_type'
   )
 ORDER BY p.proname;
 
@@ -114,11 +135,27 @@ WHERE n.nspname = 'public'
     'aggregate_daily_metrics',
     'aggregate_monthly_metrics',
     'calculate_revenue_metrics',
-    'sync_metric_dimensions'
+    'sync_metric_dimensions',
+    'generate_daily_performance_report',
+    'generate_health_check_report',
+    'check_performance_thresholds',
+    'get_latest_report',
+    'init_report_schedules',
+    'update_performance_baselines',
+    'detect_query_degradation',
+    'detect_connection_spike',
+    'detect_cache_degradation',
+    'monitor_performance_degradation',
+    'get_active_alerts',
+    'acknowledge_alert',
+    'acknowledge_alerts_by_type'
   );
 
 \echo ''
 \echo '✓ All stored procedures created successfully!'
+\echo '  - 14 Core business procedures'
+\echo '  - 13 Performance monitoring procedures'
+\echo '  - Total: 27 procedures/functions'
 \echo ''
 \echo 'USAGE EXAMPLES:'
 \echo '---------------'
@@ -134,4 +171,8 @@ WHERE n.nspname = 'public'
 \echo ''
 \echo '-- Analytics:'
 \echo "SELECT * FROM aggregate_daily_metrics('tenant-id', 'property-id', CURRENT_DATE - 1);"
+\echo ''
+\echo '-- Performance Monitoring:'
+\echo "SELECT generate_daily_performance_report();"
+\echo "SELECT * FROM monitor_performance_degradation();"
 \echo ''
