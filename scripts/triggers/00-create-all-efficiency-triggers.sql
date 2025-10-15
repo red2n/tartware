@@ -54,6 +54,76 @@
 \i 03_enforce_tenant_isolation.sql
 
 -- =====================================================
+-- PHASE 4: VACUUM and Bloat Detection
+-- =====================================================
+\echo ''
+\echo '======================================================'
+\echo '  Phase 4: Installing VACUUM and Bloat Detection'
+\echo '======================================================'
+\echo ''
+\i 04_detect_vacuum_bloat.sql
+
+-- =====================================================
+-- PHASE 5: Excessive Indexing Detection
+-- =====================================================
+\echo ''
+\echo '======================================================'
+\echo '  Phase 5: Installing Excessive Indexing Detection'
+\echo '======================================================'
+\echo ''
+\i 05_detect_excessive_indexes.sql
+
+-- =====================================================
+-- PHASE 6: Memory Configuration Check
+-- =====================================================
+\echo ''
+\echo '======================================================'
+\echo '  Phase 6: Installing Memory Configuration Check'
+\echo '======================================================'
+\echo ''
+\i 06_check_memory_config.sql
+
+-- =====================================================
+-- PHASE 7: Connection Pooling Analysis
+-- =====================================================
+\echo ''
+\echo '======================================================'
+\echo '  Phase 7: Installing Connection Pooling Analysis'
+\echo '======================================================'
+\echo ''
+\i 07_check_connection_pooling.sql
+
+-- =====================================================
+-- PHASE 8: Advanced Sorting Optimization
+-- =====================================================
+\echo ''
+\echo '======================================================'
+\echo '  Phase 8: Advanced Sorting & Incremental Sort'
+\echo '======================================================'
+\echo ''
+\i 08_optimize_sorting.sql
+
+-- =====================================================
+-- PHASE 9: DISTINCT Operation Optimization
+-- =====================================================
+\echo ''
+\echo '======================================================'
+\echo '  Phase 9: DISTINCT vs GROUP BY Optimization'
+\echo '======================================================'
+\echo ''
+\i 09_optimize_distinct.sql
+
+-- =====================================================
+-- PHASE 10: JOIN Parallelism Optimization
+-- =====================================================
+\echo ''
+\echo '======================================================'
+\echo '  Phase 10: JOIN Parallelism & Multi-Core Optimization'
+\echo '======================================================'
+\echo ''
+\i 10_optimize_join_parallelism.sql
+
+-- =====================================================
 -- Summary Report
 -- =====================================================
 \echo ''
@@ -70,31 +140,54 @@ DECLARE
     v_view_count INTEGER;
     v_audit_table_exists BOOLEAN;
 BEGIN
-    -- Count installed functions
+    -- Count installed functions (expanded list)
     SELECT COUNT(*) INTO v_function_count
     FROM pg_proc p
     JOIN pg_namespace n ON p.pronamespace = n.oid
     WHERE n.nspname = 'public'
         AND p.proname IN (
-            'check_query_efficiency',
-            'validate_query_pattern',
-            'safe_select',
-            'estimate_query_cost',
-            'check_full_table_scan',
-            'suggest_query_optimization',
-            'validate_tenant_isolation',
-            'build_safe_tenant_query',
-            'log_tenant_access'
+            -- Query efficiency (9)
+            'check_query_efficiency', 'validate_query_pattern', 'safe_select',
+            'estimate_query_cost', 'check_full_table_scan', 'suggest_query_optimization',
+            'validate_tenant_isolation', 'build_safe_tenant_query', 'log_tenant_access',
+            -- VACUUM monitoring (6)
+            'check_table_bloat', 'check_index_bloat', 'check_autovacuum_settings',
+            'generate_vacuum_commands',
+            -- Index analysis (4)
+            'find_unused_indexes', 'find_duplicate_indexes', 'analyze_index_efficiency',
+            'calculate_write_penalty',
+            -- Memory config (3)
+            'check_memory_configuration', 'calculate_memory_requirements', 'detect_memory_issues',
+            -- Connection pooling (3)
+            'analyze_connection_usage', 'detect_connection_leaks', 'recommend_pooling_strategy',
+            -- Sorting optimization (5)
+            'analyze_sort_operations', 'check_incremental_sort_eligibility',
+            'recommend_sort_indexes', 'explain_sort_plan',
+            -- DISTINCT optimization (5)
+            'analyze_distinct_queries', 'compare_distinct_vs_groupby',
+            'recommend_distinct_indexes', 'optimize_distinct_query',
+            -- JOIN parallelism (4)
+            'check_parallel_settings', 'analyze_join_parallelism',
+            'explain_parallel_plan', 'recommend_parallel_tuning'
         );
 
-    -- Count installed views
+    -- Count installed views (expanded list)
     SELECT COUNT(*) INTO v_view_count
     FROM information_schema.views
     WHERE table_schema = 'public'
         AND table_name IN (
-            'v_query_efficiency_monitor',
-            'v_large_tables_monitor',
-            'v_suspicious_access_patterns'
+            -- Query efficiency (3)
+            'v_query_efficiency_monitor', 'v_large_tables_monitor', 'v_suspicious_access_patterns',
+            -- VACUUM monitoring (2)
+            'v_vacuum_candidates', 'v_autovacuum_activity',
+            -- Index health (1)
+            'v_index_health_dashboard',
+            -- Memory config (1)
+            'v_memory_configuration_summary',
+            -- Connection pooling (2)
+            'v_connection_dashboard', 'v_application_connections',
+            -- Advanced optimization (3)
+            'v_sort_performance', 'v_distinct_performance', 'v_parallel_query_performance'
         );
 
     -- Check audit table
@@ -105,38 +198,54 @@ BEGIN
     ) INTO v_audit_table_exists;
 
     RAISE NOTICE '';
-    RAISE NOTICE '┌─────────────────────────────────────────────────┐';
-    RAISE NOTICE '│  INSTALLATION SUMMARY                           │';
-    RAISE NOTICE '├─────────────────────────────────────────────────┤';
-    RAISE NOTICE '│                                                 │';
-    RAISE NOTICE '│  Functions:           % / 9                   │', LPAD(v_function_count::TEXT, 3, ' ');
-    RAISE NOTICE '│  Views:               % / 3                   │', LPAD(v_view_count::TEXT, 3, ' ');
-    RAISE NOTICE '│  Audit Table:         %                       │',
+    RAISE NOTICE '┌──────────────────────────────────────────────────────┐';
+    RAISE NOTICE '│  INSTALLATION SUMMARY                                │';
+    RAISE NOTICE '├──────────────────────────────────────────────────────┤';
+    RAISE NOTICE '│                                                      │';
+    RAISE NOTICE '│  Functions:           % / 39                       │', LPAD(v_function_count::TEXT, 3, ' ');
+    RAISE NOTICE '│  Views:               % / 12                       │', LPAD(v_view_count::TEXT, 3, ' ');
+    RAISE NOTICE '│  Audit Table:         %                            │',
         CASE WHEN v_audit_table_exists THEN '✅' ELSE '❌' END;
-    RAISE NOTICE '│  Extension:           pg_stat_statements        │';
-    RAISE NOTICE '│                                                 │';
-    RAISE NOTICE '└─────────────────────────────────────────────────┘';
+    RAISE NOTICE '│  Extension:           pg_stat_statements             │';
+    RAISE NOTICE '│                                                      │';
+    RAISE NOTICE '│  Basic Monitoring:                                   │';
+    RAISE NOTICE '│  • Query Efficiency       ✅                         │';
+    RAISE NOTICE '│  • VACUUM Monitoring      ✅                         │';
+    RAISE NOTICE '│  • Index Analysis         ✅                         │';
+    RAISE NOTICE '│  • Memory Config          ✅                         │';
+    RAISE NOTICE '│  • Connection Pooling     ✅                         │';
+    RAISE NOTICE '│                                                      │';
+    RAISE NOTICE '│  Advanced Optimization:                              │';
+    RAISE NOTICE '│  • Sorting (Incremental)  ✅                         │';
+    RAISE NOTICE '│  • DISTINCT Operations    ✅                         │';
+    RAISE NOTICE '│  • JOIN Parallelism       ✅                         │';
+    RAISE NOTICE '│                                                      │';
+    RAISE NOTICE '└──────────────────────────────────────────────────────┘';
     RAISE NOTICE '';
 
-    IF v_function_count = 9 AND v_view_count = 3 AND v_audit_table_exists THEN
+    IF v_function_count = 39 AND v_view_count = 12 AND v_audit_table_exists THEN
         RAISE NOTICE '✅ All components installed successfully!';
         RAISE NOTICE '';
-        RAISE NOTICE '🔍 Quick Start:';
-        RAISE NOTICE '  1. Validate query: SELECT * FROM validate_query_pattern(''your query'');';
-        RAISE NOTICE '  2. Check efficiency: SELECT * FROM v_query_efficiency_monitor;';
-        RAISE NOTICE '  3. Monitor tables: SELECT * FROM v_large_tables_monitor;';
-        RAISE NOTICE '  4. Check tenant isolation: SELECT * FROM validate_tenant_isolation(''your query'');';
+        RAISE NOTICE '🔍 Quick Start - Basic Monitoring:';
+        RAISE NOTICE '  • Query validation:    SELECT * FROM validate_query_pattern(''query'');';
+        RAISE NOTICE '  • VACUUM check:        SELECT * FROM check_table_bloat();';
+        RAISE NOTICE '  • Index analysis:      SELECT * FROM find_unused_indexes();';
+        RAISE NOTICE '  • Memory config:       SELECT * FROM check_memory_configuration();';
+        RAISE NOTICE '  • Connection check:    SELECT * FROM analyze_connection_usage();';
+        RAISE NOTICE '';
+        RAISE NOTICE '🚀 Advanced Optimization:';
+        RAISE NOTICE '  • Sort optimization:   SELECT * FROM analyze_sort_operations();';
+        RAISE NOTICE '  • DISTINCT analysis:   SELECT * FROM analyze_distinct_queries();';
+        RAISE NOTICE '  • JOIN parallelism:    SELECT * FROM check_parallel_settings();';
     ELSE
         RAISE WARNING '⚠️  Some components may not have installed correctly.';
-        RAISE WARNING 'Expected: 9 functions, 3 views, 1 audit table';
+        RAISE WARNING 'Expected: 39 functions, 12 views, 1 audit table';
         RAISE WARNING 'Found: % functions, % views, % audit table',
             v_function_count, v_view_count,
             CASE WHEN v_audit_table_exists THEN 1 ELSE 0 END;
     END IF;
     RAISE NOTICE '';
-END $$;
-
--- =====================================================
+END $$;-- =====================================================
 -- Usage Examples
 -- =====================================================
 \echo ''

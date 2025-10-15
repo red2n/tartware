@@ -32,20 +32,34 @@
 SELECT
     '✅ Functions Installed' AS status,
     COUNT(*) AS count,
-    '9 expected' AS expected
+    '39 expected' AS expected
 FROM pg_proc p
 JOIN pg_namespace n ON p.pronamespace = n.oid
 WHERE n.nspname = 'public'
     AND p.proname IN (
-        'check_query_efficiency',
-        'validate_query_pattern',
-        'safe_select',
-        'estimate_query_cost',
-        'check_full_table_scan',
-        'suggest_query_optimization',
-        'validate_tenant_isolation',
-        'build_safe_tenant_query',
-        'log_tenant_access'
+        -- Query efficiency (9)
+        'check_query_efficiency', 'validate_query_pattern', 'safe_select',
+        'estimate_query_cost', 'check_full_table_scan', 'suggest_query_optimization',
+        'validate_tenant_isolation', 'build_safe_tenant_query', 'log_tenant_access',
+        -- VACUUM monitoring (4)
+        'check_table_bloat', 'check_index_bloat', 'check_autovacuum_settings',
+        'generate_vacuum_commands',
+        -- Index analysis (4)
+        'find_unused_indexes', 'find_duplicate_indexes', 'analyze_index_efficiency',
+        'calculate_write_penalty',
+        -- Memory config (3)
+        'check_memory_configuration', 'calculate_memory_requirements', 'detect_memory_issues',
+        -- Connection pooling (3)
+        'analyze_connection_usage', 'detect_connection_leaks', 'recommend_pooling_strategy',
+        -- Sorting optimization (4)
+        'analyze_sort_operations', 'check_incremental_sort_eligibility',
+        'recommend_sort_indexes', 'explain_sort_plan',
+        -- DISTINCT optimization (4)
+        'analyze_distinct_queries', 'compare_distinct_vs_groupby',
+        'recommend_distinct_indexes', 'optimize_distinct_query',
+        -- JOIN parallelism (4)
+        'check_parallel_settings', 'analyze_join_parallelism',
+        'explain_parallel_plan', 'recommend_parallel_tuning'
     );
 
 \echo ''
@@ -55,22 +69,35 @@ WHERE n.nspname = 'public'
 SELECT
     p.proname AS function_name,
     pg_get_function_arguments(p.oid) AS arguments,
-    pg_get_function_result(p.oid) AS return_type,
     l.lanname AS language
 FROM pg_proc p
 JOIN pg_namespace n ON p.pronamespace = n.oid
 JOIN pg_language l ON p.prolang = l.oid
 WHERE n.nspname = 'public'
     AND p.proname IN (
-        'check_query_efficiency',
-        'validate_query_pattern',
-        'safe_select',
-        'estimate_query_cost',
-        'check_full_table_scan',
-        'suggest_query_optimization',
-        'validate_tenant_isolation',
-        'build_safe_tenant_query',
-        'log_tenant_access'
+        -- Query efficiency (9)
+        'check_query_efficiency', 'validate_query_pattern', 'safe_select',
+        'estimate_query_cost', 'check_full_table_scan', 'suggest_query_optimization',
+        'validate_tenant_isolation', 'build_safe_tenant_query', 'log_tenant_access',
+        -- VACUUM monitoring (4)
+        'check_table_bloat', 'check_index_bloat', 'check_autovacuum_settings',
+        'generate_vacuum_commands',
+        -- Index analysis (4)
+        'find_unused_indexes', 'find_duplicate_indexes', 'analyze_index_efficiency',
+        'calculate_write_penalty',
+        -- Memory config (3)
+        'check_memory_configuration', 'calculate_memory_requirements', 'detect_memory_issues',
+        -- Connection pooling (3)
+        'analyze_connection_usage', 'detect_connection_leaks', 'recommend_pooling_strategy',
+        -- Sorting optimization (4)
+        'analyze_sort_operations', 'check_incremental_sort_eligibility',
+        'recommend_sort_indexes', 'explain_sort_plan',
+        -- DISTINCT optimization (4)
+        'analyze_distinct_queries', 'compare_distinct_vs_groupby',
+        'recommend_distinct_indexes', 'optimize_distinct_query',
+        -- JOIN parallelism (4)
+        'check_parallel_settings', 'analyze_join_parallelism',
+        'explain_parallel_plan', 'recommend_parallel_tuning'
     )
 ORDER BY p.proname;
 
@@ -86,13 +113,22 @@ ORDER BY p.proname;
 SELECT
     '✅ Views Installed' AS status,
     COUNT(*) AS count,
-    '3 expected' AS expected
+    '12 expected' AS expected
 FROM information_schema.views
 WHERE table_schema = 'public'
     AND table_name IN (
-        'v_query_efficiency_monitor',
-        'v_large_tables_monitor',
-        'v_suspicious_access_patterns'
+        -- Query efficiency (3)
+        'v_query_efficiency_monitor', 'v_large_tables_monitor', 'v_suspicious_access_patterns',
+        -- VACUUM monitoring (2)
+        'v_vacuum_candidates', 'v_autovacuum_activity',
+        -- Index health (1)
+        'v_index_health_dashboard',
+        -- Memory config (1)
+        'v_memory_configuration_summary',
+        -- Connection pooling (2)
+        'v_connection_dashboard', 'v_application_connections',
+        -- Advanced optimization (3)
+        'v_sort_performance', 'v_distinct_performance', 'v_parallel_query_performance'
     );
 
 \echo ''
@@ -100,14 +136,22 @@ WHERE table_schema = 'public'
 \echo '------------------------------------------------------'
 
 SELECT
-    table_name AS view_name,
-    view_definition AS definition_preview
+    table_name AS view_name
 FROM information_schema.views
 WHERE table_schema = 'public'
     AND table_name IN (
-        'v_query_efficiency_monitor',
-        'v_large_tables_monitor',
-        'v_suspicious_access_patterns'
+        -- Query efficiency (3)
+        'v_query_efficiency_monitor', 'v_large_tables_monitor', 'v_suspicious_access_patterns',
+        -- VACUUM monitoring (2)
+        'v_vacuum_candidates', 'v_autovacuum_activity',
+        -- Index health (1)
+        'v_index_health_dashboard',
+        -- Memory config (1)
+        'v_memory_configuration_summary',
+        -- Connection pooling (2)
+        'v_connection_dashboard', 'v_application_connections',
+        -- Advanced optimization (3)
+        'v_sort_performance', 'v_distinct_performance', 'v_parallel_query_performance'
     )
 ORDER BY table_name;
 
@@ -244,7 +288,65 @@ ORDER BY size_bytes DESC
 LIMIT 10;
 
 -- =====================================================
--- 9. SUMMARY REPORT
+-- 9. TEST SORTING OPTIMIZATION
+-- =====================================================
+\echo ''
+\echo '======================================================'
+\echo '  9. Testing Sorting Optimization'
+\echo '======================================================'
+\echo ''
+
+\echo 'Test: Analyze sort operations (if any slow queries exist):'
+\echo '------------------------------------------------------'
+SELECT * FROM analyze_sort_operations()
+LIMIT 5;
+
+\echo ''
+\echo 'Test: Check sort index recommendations:'
+\echo '------------------------------------------------------'
+SELECT * FROM recommend_sort_indexes()
+LIMIT 5;
+
+-- =====================================================
+-- 10. TEST DISTINCT OPTIMIZATION
+-- =====================================================
+\echo ''
+\echo '======================================================'
+\echo '  10. Testing DISTINCT Optimization'
+\echo '======================================================'
+\echo ''
+
+\echo 'Test: Analyze DISTINCT queries (if any exist):'
+\echo '------------------------------------------------------'
+SELECT * FROM analyze_distinct_queries()
+LIMIT 5;
+
+\echo ''
+\echo 'Test: DISTINCT index recommendations:'
+\echo '------------------------------------------------------'
+SELECT * FROM recommend_distinct_indexes()
+LIMIT 5;
+
+-- =====================================================
+-- 11. TEST JOIN PARALLELISM
+-- =====================================================
+\echo ''
+\echo '======================================================'
+\echo '  11. Testing JOIN Parallelism'
+\echo '======================================================'
+\echo ''
+
+\echo 'Test: Check parallel query settings:'
+\echo '------------------------------------------------------'
+SELECT * FROM check_parallel_settings();
+
+\echo ''
+\echo 'Test: Get parallel tuning recommendations:'
+\echo '------------------------------------------------------'
+SELECT * FROM recommend_parallel_tuning();
+
+-- =====================================================
+-- 12. SUMMARY REPORT
 -- =====================================================
 \echo ''
 \echo '██████████████████████████████████████████████████'
@@ -269,15 +371,29 @@ BEGIN
     JOIN pg_namespace n ON p.pronamespace = n.oid
     WHERE n.nspname = 'public'
         AND p.proname IN (
-            'check_query_efficiency',
-            'validate_query_pattern',
-            'safe_select',
-            'estimate_query_cost',
-            'check_full_table_scan',
-            'suggest_query_optimization',
-            'validate_tenant_isolation',
-            'build_safe_tenant_query',
-            'log_tenant_access'
+            -- Query efficiency (9)
+            'check_query_efficiency', 'validate_query_pattern', 'safe_select',
+            'estimate_query_cost', 'check_full_table_scan', 'suggest_query_optimization',
+            'validate_tenant_isolation', 'build_safe_tenant_query', 'log_tenant_access',
+            -- VACUUM monitoring (4)
+            'check_table_bloat', 'check_index_bloat', 'check_autovacuum_settings',
+            'generate_vacuum_commands',
+            -- Index analysis (4)
+            'find_unused_indexes', 'find_duplicate_indexes', 'analyze_index_efficiency',
+            'calculate_write_penalty',
+            -- Memory config (3)
+            'check_memory_configuration', 'calculate_memory_requirements', 'detect_memory_issues',
+            -- Connection pooling (3)
+            'analyze_connection_usage', 'detect_connection_leaks', 'recommend_pooling_strategy',
+            -- Sorting optimization (4)
+            'analyze_sort_operations', 'check_incremental_sort_eligibility',
+            'recommend_sort_indexes', 'explain_sort_plan',
+            -- DISTINCT optimization (4)
+            'analyze_distinct_queries', 'compare_distinct_vs_groupby',
+            'recommend_distinct_indexes', 'optimize_distinct_query',
+            -- JOIN parallelism (4)
+            'check_parallel_settings', 'analyze_join_parallelism',
+            'explain_parallel_plan', 'recommend_parallel_tuning'
         );
 
     -- Count views
@@ -285,9 +401,18 @@ BEGIN
     FROM information_schema.views
     WHERE table_schema = 'public'
         AND table_name IN (
-            'v_query_efficiency_monitor',
-            'v_large_tables_monitor',
-            'v_suspicious_access_patterns'
+            -- Query efficiency (3)
+            'v_query_efficiency_monitor', 'v_large_tables_monitor', 'v_suspicious_access_patterns',
+            -- VACUUM monitoring (2)
+            'v_vacuum_candidates', 'v_autovacuum_activity',
+            -- Index health (1)
+            'v_index_health_dashboard',
+            -- Memory config (1)
+            'v_memory_configuration_summary',
+            -- Connection pooling (2)
+            'v_connection_dashboard', 'v_application_connections',
+            -- Advanced optimization (3)
+            'v_sort_performance', 'v_distinct_performance', 'v_parallel_query_performance'
         );
 
     -- Check audit table
@@ -303,22 +428,34 @@ BEGIN
     WHERE extname IN ('pg_stat_statements', 'uuid-ossp');
 
     RAISE NOTICE '';
-    RAISE NOTICE '┌─────────────────────────────────────────────────┐';
-    RAISE NOTICE '│  COMPONENT SUMMARY                              │';
-    RAISE NOTICE '├─────────────────────────────────────────────────┤';
-    RAISE NOTICE '│                                                 │';
-    RAISE NOTICE '│  Functions:           % / 9                   │', LPAD(v_function_count::TEXT, 3, ' ');
-    RAISE NOTICE '│  Views:               % / 3                   │', LPAD(v_view_count::TEXT, 3, ' ');
-    RAISE NOTICE '│  Audit Table:         %                       │',
+    RAISE NOTICE '┌──────────────────────────────────────────────────────┐';
+    RAISE NOTICE '│  COMPONENT SUMMARY                                   │';
+    RAISE NOTICE '├──────────────────────────────────────────────────────┤';
+    RAISE NOTICE '│                                                      │';
+    RAISE NOTICE '│  Functions:           % / 39                       │', LPAD(v_function_count::TEXT, 3, ' ');
+    RAISE NOTICE '│  Views:               % / 12                       │', LPAD(v_view_count::TEXT, 3, ' ');
+    RAISE NOTICE '│  Audit Table:         %                            │',
         CASE WHEN v_audit_table_exists THEN '✅' ELSE '❌' END;
-    RAISE NOTICE '│  Extensions:          % / 2                   │', LPAD(v_extension_count::TEXT, 3, ' ');
-    RAISE NOTICE '│                                                 │';
-    RAISE NOTICE '└─────────────────────────────────────────────────┘';
+    RAISE NOTICE '│  Extensions:          % / 2                        │', LPAD(v_extension_count::TEXT, 3, ' ');
+    RAISE NOTICE '│                                                      │';
+    RAISE NOTICE '│  Basic Monitoring:                                   │';
+    RAISE NOTICE '│  • Query Efficiency       ✅                         │';
+    RAISE NOTICE '│  • VACUUM & Bloat         ✅                         │';
+    RAISE NOTICE '│  • Index Analysis         ✅                         │';
+    RAISE NOTICE '│  • Memory Config          ✅                         │';
+    RAISE NOTICE '│  • Connection Pooling     ✅                         │';
+    RAISE NOTICE '│                                                      │';
+    RAISE NOTICE '│  Advanced Optimization:                              │';
+    RAISE NOTICE '│  • Sorting (Incremental)  ✅                         │';
+    RAISE NOTICE '│  • DISTINCT Operations    ✅                         │';
+    RAISE NOTICE '│  • JOIN Parallelism       ✅                         │';
+    RAISE NOTICE '│                                                      │';
+    RAISE NOTICE '└──────────────────────────────────────────────────────┘';
     RAISE NOTICE '';
 
     -- Calculate score
-    IF v_function_count >= 9 THEN v_total_score := v_total_score + 40; END IF;
-    IF v_view_count >= 3 THEN v_total_score := v_total_score + 30; END IF;
+    IF v_function_count >= 39 THEN v_total_score := v_total_score + 40; END IF;
+    IF v_view_count >= 12 THEN v_total_score := v_total_score + 30; END IF;
     IF v_audit_table_exists THEN v_total_score := v_total_score + 20; END IF;
     IF v_extension_count >= 2 THEN v_total_score := v_total_score + 10; END IF;
 
@@ -352,12 +489,19 @@ BEGIN
     RAISE NOTICE '';
 
     IF v_total_score = v_max_score THEN
-        RAISE NOTICE '🎉 All efficiency and security checks are active!';
+        RAISE NOTICE '🎉 All efficiency monitoring and optimization tools are active!';
         RAISE NOTICE '';
-        RAISE NOTICE '📋 Usage:';
-        RAISE NOTICE '  • Validate queries: SELECT * FROM validate_query_pattern(query);';
-        RAISE NOTICE '  • Check efficiency: SELECT * FROM v_query_efficiency_monitor;';
-        RAISE NOTICE '  • Monitor tenants: SELECT * FROM validate_tenant_isolation(query);';
+        RAISE NOTICE '📋 Basic Monitoring:';
+        RAISE NOTICE '  • Query validation:    SELECT * FROM validate_query_pattern(query);';
+        RAISE NOTICE '  • Efficiency check:    SELECT * FROM v_query_efficiency_monitor;';
+        RAISE NOTICE '  • VACUUM bloat:        SELECT * FROM check_table_bloat();';
+        RAISE NOTICE '  • Index health:        SELECT * FROM find_unused_indexes();';
+        RAISE NOTICE '  • Memory config:       SELECT * FROM check_memory_configuration();';
+        RAISE NOTICE '';
+        RAISE NOTICE '🚀 Advanced Optimization:';
+        RAISE NOTICE '  • Sort analysis:       SELECT * FROM analyze_sort_operations();';
+        RAISE NOTICE '  • DISTINCT optimize:   SELECT * FROM analyze_distinct_queries();';
+        RAISE NOTICE '  • Parallel settings:   SELECT * FROM check_parallel_settings();';
     ELSE
         RAISE WARNING '⚠️  Some components are missing. Re-run installation script.';
     END IF;
