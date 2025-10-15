@@ -2,7 +2,7 @@
 # =====================================================
 # run-all-scripts.sh
 # Execute All Tartware SQL Scripts in Correct Order
-# 
+#
 # This script orchestrates the complete database setup:
 # 1. Database setup (extensions, schemas)
 # 2. ENUM types
@@ -134,7 +134,7 @@ TABLES_TOTAL=${#TABLE_FILES[@]}
 
 for table_file in "${TABLE_FILES[@]}"; do
     TABLE_PATH="$SCRIPTS_DIR/tables/$table_file"
-    
+
     if [ -f "$TABLE_PATH" ]; then
         log "Creating table: $table_file"
         if psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -f "$TABLE_PATH" -q >> "$LOG_FILE" 2>&1; then
@@ -181,11 +181,11 @@ fi
 # =====================================================
 if [ "${TARTWARE_RUN_VERIFICATION:-true}" = "true" ]; then
     log_section "PHASE 6: VERIFICATION"
-    
+
     log "Running comprehensive verification..."
     if psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -f "$SCRIPTS_DIR/verify-all.sql" -q >> "$LOG_FILE" 2>&1; then
         log "✓ Verification complete"
-        
+
         # Extract verification results
         log ""
         log "Verification Results:"

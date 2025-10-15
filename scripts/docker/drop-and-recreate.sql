@@ -1,10 +1,10 @@
 -- =====================================================
 -- drop-and-recreate.sql
 -- Safely Drop and Recreate Tartware Database
--- 
+--
 -- WARNING: This will DELETE ALL DATA in the tartware database!
 -- Only use in development/testing environments.
--- 
+--
 -- Date: October 15, 2025
 -- =====================================================
 
@@ -54,7 +54,7 @@ DROP DATABASE IF EXISTS tartware;
 
 -- Create new database with proper settings
 CREATE DATABASE tartware
-    WITH 
+    WITH
     OWNER = postgres
     ENCODING = 'UTF8'
     LC_COLLATE = 'en_US.utf8'
@@ -77,12 +77,12 @@ COMMENT ON DATABASE tartware IS 'Tartware Property Management System - Multi-ten
 \echo '--------------------------------------------'
 
 -- Verify database exists
-SELECT 
+SELECT
     datname as "Database",
     pg_encoding_to_char(encoding) as "Encoding",
     datcollate as "Collation",
     pg_size_pretty(pg_database_size(datname)) as "Size"
-FROM pg_database 
+FROM pg_database
 WHERE datname = 'tartware';
 
 \echo ''

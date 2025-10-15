@@ -2,7 +2,7 @@
 # =====================================================
 # init-database.sh
 # Main Database Initialization Orchestrator
-# 
+#
 # This is the entry point for Docker database initialization.
 # It handles:
 # - Checking if database exists
@@ -84,13 +84,13 @@ check_database_exists() {
 # =====================================================
 backup_database() {
     echo -e "${YELLOW}[$(date +'%Y-%m-%d %H:%M:%S')]${NC} Creating backup..."
-    
+
     # Create backup directory if it doesn't exist
     mkdir -p "$BACKUP_DIR"
-    
+
     # Backup filename with timestamp
     BACKUP_FILE="$BACKUP_DIR/tartware_backup_$(date +%Y%m%d_%H%M%S).sql"
-    
+
     if pg_dump -U "$POSTGRES_USER" "$POSTGRES_DB" > "$BACKUP_FILE" 2>&1; then
         echo -e "${GREEN}[$(date +'%Y-%m-%d %H:%M:%S')]${NC} ✓ Backup created: $BACKUP_FILE"
         echo -e "  Size: $(du -h "$BACKUP_FILE" | cut -f1)"
@@ -109,16 +109,16 @@ echo -e "${BLUE}[$(date +'%Y-%m-%d %H:%M:%S')]${NC} Checking if database exists.
 
 if check_database_exists; then
     echo -e "${YELLOW}[$(date +'%Y-%m-%d %H:%M:%S')]${NC} Database '$POSTGRES_DB' already exists"
-    
+
     if [ "$DROP_EXISTING" = "true" ]; then
         echo -e "${YELLOW}[$(date +'%Y-%m-%d %H:%M:%S')]${NC} DROP_EXISTING=true, will recreate database"
         echo ""
-        
+
         # Optional: Backup before drop
         if [ "$BACKUP_BEFORE_DROP" = "true" ]; then
             backup_database
         fi
-        
+
         # Drop and recreate
         echo -e "${BLUE}[$(date +'%Y-%m-%d %H:%M:%S')]${NC} Executing drop-and-recreate.sql..."
         if psql -U "$POSTGRES_USER" -d postgres -f "$SCRIPTS_DIR/docker/drop-and-recreate.sql" 2>&1; then
@@ -138,7 +138,7 @@ if check_database_exists; then
 else
     echo -e "${GREEN}[$(date +'%Y-%m-%d %H:%M:%S')]${NC} Database does not exist, will create fresh"
     echo ""
-    
+
     # Create database
     echo -e "${BLUE}[$(date +'%Y-%m-%d %H:%M:%S')]${NC} Creating database '$POSTGRES_DB'..."
     if psql -U "$POSTGRES_USER" -d postgres -c "CREATE DATABASE $POSTGRES_DB;" 2>&1; then
