@@ -4,6 +4,7 @@ services:
   postgres:
     image: postgres:16
     container_name: tartware-postgres
+    restart: always
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
@@ -23,6 +24,7 @@ services:
   pgadmin:
     image: dpage/pgadmin4:latest
     container_name: tartware-pgadmin
+    restart: always
     environment:
       PGADMIN_DEFAULT_EMAIL: admin@admin.com
       PGADMIN_DEFAULT_PASSWORD: admin
