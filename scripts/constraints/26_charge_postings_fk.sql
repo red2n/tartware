@@ -46,7 +46,7 @@ COMMENT ON CONSTRAINT fk_charge_postings_property ON charge_postings IS 'Charge 
 ALTER TABLE charge_postings
     ADD CONSTRAINT fk_charge_postings_folio
     FOREIGN KEY (folio_id)
-    REFERENCES folios(id)
+    REFERENCES folios(folio_id)
     ON DELETE RESTRICT
     ON UPDATE CASCADE;
 
@@ -95,7 +95,7 @@ COMMENT ON CONSTRAINT fk_charge_postings_void_posting ON charge_postings IS 'Voi
 ALTER TABLE charge_postings
     ADD CONSTRAINT fk_charge_postings_transfer_from
     FOREIGN KEY (transfer_from_folio_id)
-    REFERENCES folios(id)
+    REFERENCES folios(folio_id)
     ON DELETE SET NULL
     ON UPDATE CASCADE;
 
@@ -104,7 +104,7 @@ COMMENT ON CONSTRAINT fk_charge_postings_transfer_from ON charge_postings IS 'So
 ALTER TABLE charge_postings
     ADD CONSTRAINT fk_charge_postings_transfer_to
     FOREIGN KEY (transfer_to_folio_id)
-    REFERENCES folios(id)
+    REFERENCES folios(folio_id)
     ON DELETE SET NULL
     ON UPDATE CASCADE;
 

@@ -70,7 +70,7 @@ COMMENT ON CONSTRAINT fk_refunds_guest ON refunds IS 'Guest receiving refund';
 ALTER TABLE refunds
     ADD CONSTRAINT fk_refunds_folio
     FOREIGN KEY (folio_id)
-    REFERENCES folios(id)
+    REFERENCES folios(folio_id)
     ON DELETE SET NULL
     ON UPDATE CASCADE;
 

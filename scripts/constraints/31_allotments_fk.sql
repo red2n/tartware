@@ -77,7 +77,7 @@ COMMENT ON CONSTRAINT fk_allotments_market_segment ON allotments IS 'Market segm
 ALTER TABLE allotments
     ADD CONSTRAINT fk_allotments_master_folio
     FOREIGN KEY (master_folio_id)
-    REFERENCES folios(id)
+    REFERENCES folios(folio_id)
     ON DELETE SET NULL
     ON UPDATE CASCADE;
 

@@ -63,7 +63,7 @@ COMMENT ON CONSTRAINT fk_folios_guest ON folios IS 'Folio belongs to guest';
 ALTER TABLE folios
     ADD CONSTRAINT fk_folios_transferred_from
     FOREIGN KEY (transferred_from_folio_id)
-    REFERENCES folios(id)
+    REFERENCES folios(folio_id)
     ON DELETE SET NULL
     ON UPDATE CASCADE;
 
@@ -72,7 +72,7 @@ COMMENT ON CONSTRAINT fk_folios_transferred_from ON folios IS 'Source folio for 
 ALTER TABLE folios
     ADD CONSTRAINT fk_folios_transferred_to
     FOREIGN KEY (transferred_to_folio_id)
-    REFERENCES folios(id)
+    REFERENCES folios(folio_id)
     ON DELETE SET NULL
     ON UPDATE CASCADE;
 

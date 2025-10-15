@@ -67,7 +67,7 @@ COMMENT ON CONSTRAINT fk_deposit_schedules_guest ON deposit_schedules IS 'Guest 
 ALTER TABLE deposit_schedules
     ADD CONSTRAINT fk_deposit_schedules_folio
     FOREIGN KEY (folio_id)
-    REFERENCES folios(id)
+    REFERENCES folios(folio_id)
     ON DELETE SET NULL
     ON UPDATE CASCADE;
 
