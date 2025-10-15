@@ -32,7 +32,12 @@ BEGIN
             'reservation_status_history', 'payments', 'invoices', 'invoice_items',
             'services', 'reservation_services', 'housekeeping_tasks',
             'channel_mappings', 'analytics_metrics', 'analytics_metric_dimensions',
-            'analytics_reports', 'report_property_ids'
+            'analytics_reports', 'report_property_ids', 'performance_reports',
+            'report_schedules', 'performance_thresholds', 'performance_baselines',
+            'performance_alerts', 'alert_rules', 'folios', 'charge_postings',
+            'audit_logs', 'business_dates', 'night_audit_log', 'deposit_schedules',
+            'allotments', 'booking_sources', 'market_segments', 'guest_preferences',
+            'refunds', 'rate_overrides', 'maintenance_requests'
         ]) AS required_table
     ) t
     WHERE NOT EXISTS (
@@ -134,8 +139,76 @@ END $$;
 \i 19_analytics_reports_fk.sql
 \echo ''
 
-\echo '20/20 Creating report_property_ids constraints...'
+\echo '20/37 Creating report_property_ids constraints...'
 \i 20_report_property_ids_fk.sql
+\echo ''
+
+\echo '21/37 Creating analytics_metrics constraints (updated)...'
+\i 21_analytics_metrics_fk.sql
+\echo ''
+
+\echo '22/37 Creating analytics_metric_dimensions constraints (updated)...'
+\i 22_analytics_metric_dimensions_fk.sql
+\echo ''
+
+\echo '23/37 Creating performance_reporting constraints...'
+\i 23_performance_reporting_fk.sql
+\echo ''
+
+\echo '24/37 Creating performance_alerting constraints...'
+\i 24_performance_alerting_fk.sql
+\echo ''
+
+\echo '25/37 Creating folios constraints...'
+\i 25_folios_fk.sql
+\echo ''
+
+\echo '26/37 Creating charge_postings constraints...'
+\i 26_charge_postings_fk.sql
+\echo ''
+
+\echo '27/37 Creating audit_logs constraints...'
+\i 27_audit_logs_fk.sql
+\echo ''
+
+\echo '28/37 Creating business_dates constraints...'
+\i 28_business_dates_fk.sql
+\echo ''
+
+\echo '29/37 Creating night_audit_log constraints...'
+\i 29_night_audit_log_fk.sql
+\echo ''
+
+\echo '30/37 Creating deposit_schedules constraints...'
+\i 30_deposit_schedules_fk.sql
+\echo ''
+
+\echo '31/37 Creating allotments constraints...'
+\i 31_allotments_fk.sql
+\echo ''
+
+\echo '32/37 Creating booking_sources constraints...'
+\i 32_booking_sources_fk.sql
+\echo ''
+
+\echo '33/37 Creating market_segments constraints...'
+\i 33_market_segments_fk.sql
+\echo ''
+
+\echo '34/37 Creating guest_preferences constraints...'
+\i 34_guest_preferences_fk.sql
+\echo ''
+
+\echo '35/37 Creating refunds constraints...'
+\i 35_refunds_fk.sql
+\echo ''
+
+\echo '36/37 Creating rate_overrides constraints...'
+\i 36_rate_overrides_fk.sql
+\echo ''
+
+\echo '37/37 Creating maintenance_requests constraints...'
+\i 37_maintenance_requests_fk.sql
 \echo ''
 
 -- =====================================================

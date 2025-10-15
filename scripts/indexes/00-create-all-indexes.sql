@@ -37,6 +37,21 @@
 \i indexes/20_analytics_metric_dimensions_indexes.sql
 \i indexes/21_analytics_reports_indexes.sql
 \i indexes/22_report_property_ids_indexes.sql
+\i indexes/23_performance_reporting_indexes.sql
+\i indexes/24_performance_alerting_indexes.sql
+\i indexes/25_folios_indexes.sql
+\i indexes/26_charge_postings_indexes.sql
+\i indexes/27_audit_logs_indexes.sql
+\i indexes/28_business_dates_indexes.sql
+\i indexes/29_night_audit_log_indexes.sql
+\i indexes/30_deposit_schedules_indexes.sql
+\i indexes/31_allotments_indexes.sql
+\i indexes/32_booking_sources_indexes.sql
+\i indexes/33_market_segments_indexes.sql
+\i indexes/34_guest_preferences_indexes.sql
+\i indexes/35_refunds_indexes.sql
+\i indexes/36_rate_overrides_indexes.sql
+\i indexes/37_maintenance_requests_indexes.sql
 
 \echo ''
 \echo '============================================='
@@ -44,8 +59,8 @@
 \echo '============================================='
 \echo ''
 \echo 'Index Summary:'
-\echo '  - Total index files: 22'
-\echo '  - Estimated total indexes: 250+'
+\echo '  - Total index files: 37'
+\echo '  - Estimated total indexes: 350+'
 \echo '  - Index types:'
 \echo '    • B-tree (standard indexes)'
 \echo '    • GIN (JSONB indexes)'

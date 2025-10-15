@@ -131,25 +131,25 @@ BEGIN
     RAISE NOTICE '│  DATABASE COMPONENT SUMMARY                     │';
     RAISE NOTICE '├─────────────────────────────────────────────────┤';
     RAISE NOTICE '│                                                 │';
-    RAISE NOTICE '│  Tables:              % / 22                  │', LPAD(v_table_count::TEXT, 3, ' ');
-    RAISE NOTICE '│  Indexes:             % / 250+                │', LPAD(v_index_count::TEXT, 4, ' ');
-    RAISE NOTICE '│  Foreign Keys:        % / 60+                 │', LPAD(v_constraint_count::TEXT, 3, ' ');
+    RAISE NOTICE '│  Tables:              % / 37                  │', LPAD(v_table_count::TEXT, 3, ' ');
+    RAISE NOTICE '│  Indexes:             % / 350+                │', LPAD(v_index_count::TEXT, 4, ' ');
+    RAISE NOTICE '│  Foreign Keys:        % / 150+                │', LPAD(v_constraint_count::TEXT, 3, ' ');
     RAISE NOTICE '│  Procedures:          % / 14                  │', LPAD(v_procedure_count::TEXT, 3, ' ');
     RAISE NOTICE '│                                                 │';
-    RAISE NOTICE '│  Soft Delete:         % / 18                  │', LPAD(v_soft_delete_count::TEXT, 3, ' ');
-    RAISE NOTICE '│  Multi-tenancy:       % / 20                  │', LPAD(v_tenant_id_count::TEXT, 3, ' ');
+    RAISE NOTICE '│  Soft Delete:         % / 30+                 │', LPAD(v_soft_delete_count::TEXT, 3, ' ');
+    RAISE NOTICE '│  Multi-tenancy:       % / 33+                 │', LPAD(v_tenant_id_count::TEXT, 3, ' ');
     RAISE NOTICE '│                                                 │';
     RAISE NOTICE '└─────────────────────────────────────────────────┘';
     RAISE NOTICE '';
 
     -- Calculate score
-    IF v_table_count >= 22 THEN v_total_score := v_total_score + 20; END IF;
-    IF v_index_count >= 250 THEN v_total_score := v_total_score + 25;
-    ELSIF v_index_count >= 200 THEN v_total_score := v_total_score + 15; END IF;
-    IF v_constraint_count >= 60 THEN v_total_score := v_total_score + 20; END IF;
+    IF v_table_count >= 37 THEN v_total_score := v_total_score + 20; END IF;
+    IF v_index_count >= 350 THEN v_total_score := v_total_score + 25;
+    ELSIF v_index_count >= 300 THEN v_total_score := v_total_score + 15; END IF;
+    IF v_constraint_count >= 150 THEN v_total_score := v_total_score + 20; END IF;
     IF v_procedure_count >= 14 THEN v_total_score := v_total_score + 15; END IF;
-    IF v_soft_delete_count >= 18 THEN v_total_score := v_total_score + 10; END IF;
-    IF v_tenant_id_count >= 20 THEN v_total_score := v_total_score + 10; END IF;
+    IF v_soft_delete_count >= 30 THEN v_total_score := v_total_score + 10; END IF;
+    IF v_tenant_id_count >= 33 THEN v_total_score := v_total_score + 10; END IF;
 
     RAISE NOTICE '┌─────────────────────────────────────────────────┐';
     RAISE NOTICE '│  QUALITY SCORE                                  │';
@@ -185,13 +185,13 @@ BEGIN
     RAISE NOTICE '';
 
     -- Specific recommendations
-    IF v_table_count < 22 THEN
+    IF v_table_count < 37 THEN
         RAISE WARNING '⚠ Missing tables detected. Run tables scripts.';
     END IF;
-    IF v_index_count < 250 THEN
+    IF v_index_count < 350 THEN
         RAISE WARNING '⚠ Index count below target. Run index scripts.';
     END IF;
-    IF v_constraint_count < 60 THEN
+    IF v_constraint_count < 150 THEN
         RAISE WARNING '⚠ Missing constraints. Run constraint scripts.';
     END IF;
     IF v_procedure_count < 14 THEN
