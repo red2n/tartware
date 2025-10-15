@@ -1,7 +1,7 @@
 -- =====================================================
 -- 23_performance_reporting_fk.sql
 -- Foreign Key Constraints for performance reporting tables
--- 
+--
 -- Note: These are system-level tables with no tenant/property
 -- relationships. Minimal constraints.
 -- =====================================================
@@ -14,8 +14,8 @@
 -- ALTER TABLE performance_thresholds DROP CONSTRAINT IF EXISTS fk_performance_thresholds_xxx;
 
 -- Note: performance_reports, report_schedules, and performance_thresholds
--- are system-level monitoring tables that do not have foreign key 
--- relationships to other tables. They operate independently for 
+-- are system-level monitoring tables that do not have foreign key
+-- relationships to other tables. They operate independently for
 -- database performance monitoring.
 
 -- Success message
