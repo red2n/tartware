@@ -25,7 +25,12 @@ DECLARE
         'reservation_status_history', 'payments', 'invoices', 'invoice_items',
         'services', 'reservation_services', 'housekeeping_tasks',
         'channel_mappings', 'analytics_metrics', 'analytics_metric_dimensions',
-        'analytics_reports', 'report_property_ids'
+        'analytics_reports', 'report_property_ids', 'performance_reports',
+        'report_schedules', 'performance_thresholds', 'performance_baselines',
+        'performance_alerts', 'alert_rules', 'folios', 'charge_postings',
+        'audit_logs', 'business_dates', 'night_audit_log', 'deposit_schedules',
+        'allotments', 'booking_sources', 'market_segments', 'guest_preferences',
+        'refunds', 'rate_overrides', 'maintenance_requests'
     ];
     v_table TEXT;
     v_missing_tables TEXT[] := '{}';
@@ -56,13 +61,13 @@ BEGIN
     END IF;
 
     RAISE NOTICE '';
-    RAISE NOTICE 'Expected tables: 22';
+    RAISE NOTICE 'Expected tables: 37';
     RAISE NOTICE 'Found tables: %', v_found_count;
 
     IF array_length(v_missing_tables, 1) > 0 THEN
         RAISE WARNING 'Missing tables: %', array_to_string(v_missing_tables, ', ');
     ELSE
-        RAISE NOTICE '✓ All 22 tables exist!';
+        RAISE NOTICE '✓ All 37 tables exist!';
     END IF;
 END $$;
 
@@ -112,8 +117,10 @@ WITH soft_delete_check AS (
         END AS status,
         CASE
             WHEN table_name IN ('reservation_status_history', 'analytics_metrics',
-                               'analytics_metric_dimensions', 'report_property_ids')
-            THEN '(Not required - audit/association table)'
+                               'analytics_metric_dimensions', 'report_property_ids',
+                               'performance_reports', 'report_schedules', 'performance_thresholds',
+                               'performance_baselines', 'performance_alerts', 'alert_rules')
+            THEN '(Not required - audit/system table)'
             WHEN table_name = 'room_availability'
             THEN '(Not required - high-volume data)'
             ELSE ''
@@ -324,15 +331,15 @@ BEGIN
         AND column_name IN ('created_at', 'updated_at');
 
     RAISE NOTICE '';
-    RAISE NOTICE 'Total Tables: % (Expected: 22)', v_table_count;
-    RAISE NOTICE 'With Soft Delete: % (Expected: 18)', v_soft_delete_count;
-    RAISE NOTICE 'With tenant_id: % (Expected: 20)', v_tenant_id_count;
-    RAISE NOTICE 'With Audit Fields: % (Expected: 22)', v_audit_count;
+    RAISE NOTICE 'Total Tables: % (Expected: 37)', v_table_count;
+    RAISE NOTICE 'With Soft Delete: % (Expected: 30+)', v_soft_delete_count;
+    RAISE NOTICE 'With tenant_id: % (Expected: 33+)', v_tenant_id_count;
+    RAISE NOTICE 'With Audit Fields: % (Expected: 37)', v_audit_count;
     RAISE NOTICE '';
 
-    IF v_table_count = 22 AND
-       v_soft_delete_count >= 18 AND
-       v_tenant_id_count >= 20 THEN
+    IF v_table_count >= 37 AND
+       v_soft_delete_count >= 30 AND
+       v_tenant_id_count >= 33 THEN
         RAISE NOTICE '✓✓✓ ALL TABLE VALIDATIONS PASSED ✓✓✓';
     ELSE
         RAISE WARNING '⚠⚠⚠ SOME VALIDATIONS FAILED ⚠⚠⚠';

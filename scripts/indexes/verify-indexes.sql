@@ -370,18 +370,18 @@ BEGIN
         AND indexname NOT LIKE '%_pkey';
 
     RAISE NOTICE '';
-    RAISE NOTICE 'Total Indexes: % (Expected: 250+)', v_total_indexes;
+    RAISE NOTICE 'Total Indexes: % (Expected: 350+)', v_total_indexes;
     RAISE NOTICE 'Secondary Indexes: %', v_secondary_indexes;
     RAISE NOTICE 'Partial Indexes: %', v_partial_indexes;
     RAISE NOTICE 'Foreign Keys Without Index: %', v_fk_without_index;
     RAISE NOTICE 'Unused Indexes: % (Normal for new installation)', v_unused_indexes;
     RAISE NOTICE '';
 
-    IF v_total_indexes >= 250 AND v_fk_without_index = 0 THEN
+    IF v_total_indexes >= 350 AND v_fk_without_index = 0 THEN
         RAISE NOTICE '✓✓✓ ALL INDEX VALIDATIONS PASSED ✓✓✓';
-    ELSIF v_total_indexes >= 200 THEN
+    ELSIF v_total_indexes >= 300 THEN
         RAISE WARNING '⚠⚠⚠ INDEX COUNT LOWER THAN EXPECTED ⚠⚠⚠';
-        RAISE WARNING 'Expected: 250+, Found: %', v_total_indexes;
+        RAISE WARNING 'Expected: 350+, Found: %', v_total_indexes;
     ELSE
         RAISE WARNING '✗✗✗ INSUFFICIENT INDEXES ✗✗✗';
         RAISE WARNING 'Please review the index creation scripts.';

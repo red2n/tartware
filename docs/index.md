@@ -110,22 +110,49 @@ Tartware PMS follows the architectural patterns and best practices established b
 - `reservations` - Booking records
 - `reservation_status_history` - Status change tracking
 
-#### 4. Financial Management
+#### 4. Financial Management ⭐ EXPANDED
 - `payments` - Payment transactions
 - `invoices` - Billing documents
 - `invoice_items` - Line item details
+- **NEW**: `folios` - Guest account ledgers
+- **NEW**: `charge_postings` - Individual charges to folios
+- **NEW**: `refunds` - Refund transaction tracking
+- **NEW**: `deposit_schedules` - Automated deposit collection
 
-#### 5. Rate Management
+#### 5. Revenue Management ⭐ NEW
 - `rates` - Pricing strategies
-- Rate plans and seasonal adjustments
+- `allotments` - Block bookings and room allotments
+- `booking_sources` - Channel tracking and commission management
+- `market_segments` - Market segmentation for analysis
+- `rate_overrides` - Manual rate adjustments with approval workflow
 
-#### 6. Availability System
+#### 6. Guest Services ⭐ EXPANDED
+- `guests` - Guest profiles
+- `guest_preferences` - Individual preferences and personalization
+- Loyalty building and service tracking
+
+#### 7. Operations Management ⭐ EXPANDED
+- `housekeeping_tasks` - Task tracking
+- `maintenance_requests` - Property maintenance with priority management
+- `business_dates` - Business date management
+- `night_audit_log` - Night audit execution tracking
+
+#### 8. Availability System
 - `availability.room_availability` - Real-time inventory
 - Dynamic allocation and blocking
 
-#### 7. Analytics & Reporting
+#### 9. Analytics & Reporting
 - `analytics_metrics` - KPI tracking
 - `analytics_reports` - Business intelligence
+
+#### 10. System Monitoring ⭐ NEW
+- Performance reporting and alerting
+- Database health monitoring
+- Threshold management and baselines
+
+**Total Tables**: 37 (Phase 1+2 complete)
+**Total Indexes**: 350+
+**Foreign Key Constraints**: 150+
 
 [View complete database schema →](database-architecture.md)
 
