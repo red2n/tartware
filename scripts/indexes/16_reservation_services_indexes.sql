@@ -46,7 +46,7 @@ CREATE INDEX IF NOT EXISTS idx_res_services_metadata_gin ON reservation_services
 
 -- Composite for pending services by staff
 CREATE INDEX IF NOT EXISTS idx_res_services_staff_pending ON reservation_services(assigned_to, status, scheduled_time)
-    WHERE status IN ('pending', 'confirmed') AND deleted_at IS NULL;
+    WHERE status IN ('PENDING', 'CONFIRMED') AND deleted_at IS NULL;
 
 -- Audit trail indexes
 CREATE INDEX IF NOT EXISTS idx_res_services_created_at ON reservation_services(created_at);

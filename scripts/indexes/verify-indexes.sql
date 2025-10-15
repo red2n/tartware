@@ -75,14 +75,14 @@ indexed_columns AS (
     SELECT
         schemaname,
         tablename,
-        string_to_array(
+        (string_to_array(
             regexp_replace(
                 indexdef,
                 '.*\((.*)\)',
                 '\1'
             ),
             ', '
-        )[1] AS column_name
+        ))[1] AS column_name
     FROM pg_indexes
     WHERE schemaname IN ('public', 'availability')
 )

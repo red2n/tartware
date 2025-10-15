@@ -29,7 +29,7 @@ CREATE INDEX IF NOT EXISTS idx_payments_payment_method ON payments(payment_metho
 -- Status queries (critical for payment processing)
 CREATE INDEX IF NOT EXISTS idx_payments_status ON payments(status) WHERE deleted_at IS NULL;
 CREATE INDEX IF NOT EXISTS idx_payments_pending ON payments(status, created_at)
-    WHERE status = 'pending' AND deleted_at IS NULL;
+    WHERE status = 'PENDING' AND deleted_at IS NULL;
 
 -- Composite for property payments
 CREATE INDEX IF NOT EXISTS idx_payments_property_date ON payments(property_id, processed_at, deleted_at) WHERE deleted_at IS NULL;
@@ -62,7 +62,7 @@ CREATE INDEX IF NOT EXISTS idx_payments_reservation_status ON payments(reservati
 
 -- Failed payments tracking
 CREATE INDEX IF NOT EXISTS idx_payments_failed ON payments(status, created_at)
-    WHERE status = 'failed' AND deleted_at IS NULL;
+    WHERE status = 'FAILED' AND deleted_at IS NULL;
 
 -- Audit trail indexes
 CREATE INDEX IF NOT EXISTS idx_payments_updated_at ON payments(updated_at);

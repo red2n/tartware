@@ -64,7 +64,7 @@ echo "✓ All 37 tables created"
 # Create all indexes
 echo ""
 echo "[$(date '+%Y-%m-%d %H:%M:%S')] ═══ Phase 4: Creating Indexes ═══"
-for INDEX_FILE in $(ls $SCRIPTS_DIR/indexes/*.sql | sort); do
+for INDEX_FILE in $(ls $SCRIPTS_DIR/indexes/*.sql | grep -v "00-create-all" | sort); do
     INDEX_NAME=$(basename "$INDEX_FILE")
     echo "  → Creating indexes: $INDEX_NAME"
     psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "tartware" -f "$INDEX_FILE"
@@ -74,7 +74,7 @@ echo "✓ All indexes created"
 # Create all constraints
 echo ""
 echo "[$(date '+%Y-%m-%d %H:%M:%S')] ═══ Phase 5: Creating Constraints ═══"
-for CONSTRAINT_FILE in $(ls $SCRIPTS_DIR/constraints/*.sql | grep -E '^[0-9]' | sort); do
+for CONSTRAINT_FILE in $(ls $SCRIPTS_DIR/constraints/*.sql | grep -v "00-create-all" | grep -E '[0-9].*_fk\.sql$' | sort); do
     CONSTRAINT_NAME=$(basename "$CONSTRAINT_FILE")
     echo "  → Creating constraints: $CONSTRAINT_NAME"
     psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "tartware" -f "$CONSTRAINT_FILE"

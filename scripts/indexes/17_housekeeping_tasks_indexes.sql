@@ -64,7 +64,7 @@ CREATE INDEX IF NOT EXISTS idx_hk_tasks_metadata_gin ON housekeeping_tasks USING
 
 -- Composite for pending tasks by property
 CREATE INDEX IF NOT EXISTS idx_hk_tasks_pending ON housekeeping_tasks(property_id, status, scheduled_date, priority)
-    WHERE status IN ('dirty', 'in_progress') AND deleted_at IS NULL;
+    WHERE status IN ('DIRTY', 'IN_PROGRESS') AND deleted_at IS NULL;
 
 -- Audit trail indexes
 CREATE INDEX IF NOT EXISTS idx_hk_tasks_created_at ON housekeeping_tasks(created_at);

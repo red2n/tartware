@@ -46,7 +46,7 @@ CREATE INDEX IF NOT EXISTS idx_channel_mappings_sync_status ON channel_mappings(
 
 -- Failed syncs (for monitoring)
 CREATE INDEX IF NOT EXISTS idx_channel_mappings_sync_error ON channel_mappings(last_sync_status, last_sync_at)
-    WHERE last_sync_status = 'error' AND deleted_at IS NULL;
+    WHERE last_sync_status = 'ERROR' AND deleted_at IS NULL;
 
 -- JSONB index
 CREATE INDEX IF NOT EXISTS idx_channel_mappings_config_gin ON channel_mappings USING GIN(mapping_config);

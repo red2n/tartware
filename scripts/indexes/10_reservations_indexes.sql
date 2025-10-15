@@ -36,15 +36,15 @@ CREATE INDEX IF NOT EXISTS idx_reservations_property_status ON reservations(prop
 
 -- Composite index for arrivals (today's check-ins)
 CREATE INDEX IF NOT EXISTS idx_reservations_arrivals ON reservations(property_id, check_in_date, status)
-    WHERE deleted_at IS NULL AND status IN ('confirmed', 'pending');
+    WHERE deleted_at IS NULL AND status IN ('CONFIRMED', 'PENDING');
 
 -- Composite index for departures (today's check-outs)
 CREATE INDEX IF NOT EXISTS idx_reservations_departures ON reservations(property_id, check_out_date, status)
-    WHERE deleted_at IS NULL AND status = 'checked_in';
+    WHERE deleted_at IS NULL AND status = 'CHECKED_IN';
 
 -- In-house guests (currently checked in)
 CREATE INDEX IF NOT EXISTS idx_reservations_in_house ON reservations(property_id, status, check_in_date, check_out_date)
-    WHERE deleted_at IS NULL AND status = 'checked_in';
+    WHERE deleted_at IS NULL AND status = 'CHECKED_IN';
 
 -- Source and channel
 CREATE INDEX IF NOT EXISTS idx_reservations_source ON reservations(source) WHERE deleted_at IS NULL;

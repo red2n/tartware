@@ -28,7 +28,7 @@ CREATE INDEX IF NOT EXISTS idx_rates_status ON rates(status) WHERE deleted_at IS
 -- Date range queries (critical for rate lookup)
 CREATE INDEX IF NOT EXISTS idx_rates_valid_from ON rates(valid_from);
 CREATE INDEX IF NOT EXISTS idx_rates_valid_until ON rates(valid_until);
-CREATE INDEX IF NOT EXISTS idx_rates_date_range ON rates(valid_from, valid_until) WHERE deleted_at IS NULL AND status = 'active';
+CREATE INDEX IF NOT EXISTS idx_rates_date_range ON rates(valid_from, valid_until) WHERE deleted_at IS NULL AND status = 'ACTIVE';
 
 -- Composite index for rate search (most common query)
 CREATE INDEX IF NOT EXISTS idx_rates_property_type_dates ON rates(property_id, room_type_id, valid_from, valid_until, status)

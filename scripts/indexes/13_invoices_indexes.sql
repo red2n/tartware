@@ -35,7 +35,7 @@ CREATE INDEX IF NOT EXISTS idx_invoices_property_status ON invoices(property_id,
 
 -- Overdue invoices (critical for collections)
 CREATE INDEX IF NOT EXISTS idx_invoices_overdue ON invoices(due_date, status)
-    WHERE status IN ('issued', 'partially_paid') AND deleted_at IS NULL;
+    WHERE status IN ('SENT', 'PARTIALLY_PAID') AND deleted_at IS NULL;
 
 -- Financial queries
 CREATE INDEX IF NOT EXISTS idx_invoices_total_amount ON invoices(total_amount) WHERE deleted_at IS NULL;
@@ -65,7 +65,7 @@ CREATE INDEX IF NOT EXISTS idx_invoices_guest_date ON invoices(guest_id, invoice
 
 -- Unpaid invoices alert
 CREATE INDEX IF NOT EXISTS idx_invoices_unpaid ON invoices(property_id, status, balance_due)
-    WHERE status IN ('issued', 'partially_paid') AND balance_due > 0 AND deleted_at IS NULL;
+    WHERE status IN ('SENT', 'PARTIALLY_PAID') AND balance_due > 0 AND deleted_at IS NULL;
 
 -- Audit trail indexes
 CREATE INDEX IF NOT EXISTS idx_invoices_created_at ON invoices(created_at);

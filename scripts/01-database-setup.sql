@@ -19,6 +19,9 @@
 -- UUID generation (Industry Standard)
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
+-- Full-text search (for property/guest name search)
+CREATE EXTENSION IF NOT EXISTS "pg_trgm";
+
 -- Optional: PostGIS for geolocation (if needed)
 -- CREATE EXTENSION IF NOT EXISTS postgis;
 
