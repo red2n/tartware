@@ -27,7 +27,7 @@ ALTER TABLE allotments DROP CONSTRAINT IF EXISTS fk_allotments_deleted_by;
 ALTER TABLE allotments
     ADD CONSTRAINT fk_allotments_tenant
     FOREIGN KEY (tenant_id)
-    REFERENCES tenants(tenant_id)
+    REFERENCES tenants(id)
     ON DELETE RESTRICT
     ON UPDATE CASCADE;
 
@@ -37,7 +37,7 @@ COMMENT ON CONSTRAINT fk_allotments_tenant ON allotments IS 'Allotments belong t
 ALTER TABLE allotments
     ADD CONSTRAINT fk_allotments_property
     FOREIGN KEY (property_id)
-    REFERENCES properties(property_id)
+    REFERENCES properties(id)
     ON DELETE RESTRICT
     ON UPDATE CASCADE;
 
@@ -47,7 +47,7 @@ COMMENT ON CONSTRAINT fk_allotments_property ON allotments IS 'Allotments belong
 ALTER TABLE allotments
     ADD CONSTRAINT fk_allotments_room_type
     FOREIGN KEY (room_type_id)
-    REFERENCES room_types(room_type_id)
+    REFERENCES room_types(id)
     ON DELETE SET NULL
     ON UPDATE CASCADE;
 
@@ -77,7 +77,7 @@ COMMENT ON CONSTRAINT fk_allotments_market_segment ON allotments IS 'Market segm
 ALTER TABLE allotments
     ADD CONSTRAINT fk_allotments_master_folio
     FOREIGN KEY (master_folio_id)
-    REFERENCES folios(folio_id)
+    REFERENCES folios(id)
     ON DELETE SET NULL
     ON UPDATE CASCADE;
 
@@ -87,7 +87,7 @@ COMMENT ON CONSTRAINT fk_allotments_master_folio ON allotments IS 'Master billin
 ALTER TABLE allotments
     ADD CONSTRAINT fk_allotments_account_manager
     FOREIGN KEY (account_manager_id)
-    REFERENCES users(user_id)
+    REFERENCES users(id)
     ON DELETE SET NULL
     ON UPDATE CASCADE;
 
@@ -97,7 +97,7 @@ COMMENT ON CONSTRAINT fk_allotments_account_manager ON allotments IS 'Sales pers
 ALTER TABLE allotments
     ADD CONSTRAINT fk_allotments_operations_manager
     FOREIGN KEY (operations_manager_id)
-    REFERENCES users(user_id)
+    REFERENCES users(id)
     ON DELETE SET NULL
     ON UPDATE CASCADE;
 
@@ -107,7 +107,7 @@ COMMENT ON CONSTRAINT fk_allotments_operations_manager ON allotments IS 'Operati
 ALTER TABLE allotments
     ADD CONSTRAINT fk_allotments_created_by
     FOREIGN KEY (created_by)
-    REFERENCES users(user_id)
+    REFERENCES users(id)
     ON DELETE SET NULL
     ON UPDATE CASCADE;
 
@@ -115,7 +115,7 @@ ALTER TABLE allotments
 ALTER TABLE allotments
     ADD CONSTRAINT fk_allotments_updated_by
     FOREIGN KEY (updated_by)
-    REFERENCES users(user_id)
+    REFERENCES users(id)
     ON DELETE SET NULL
     ON UPDATE CASCADE;
 
@@ -123,7 +123,7 @@ ALTER TABLE allotments
 ALTER TABLE allotments
     ADD CONSTRAINT fk_allotments_confirmed_by
     FOREIGN KEY (confirmed_by)
-    REFERENCES users(user_id)
+    REFERENCES users(id)
     ON DELETE SET NULL
     ON UPDATE CASCADE;
 
@@ -133,7 +133,7 @@ COMMENT ON CONSTRAINT fk_allotments_confirmed_by ON allotments IS 'User who conf
 ALTER TABLE allotments
     ADD CONSTRAINT fk_allotments_cancelled_by
     FOREIGN KEY (cancelled_by)
-    REFERENCES users(user_id)
+    REFERENCES users(id)
     ON DELETE SET NULL
     ON UPDATE CASCADE;
 
@@ -143,7 +143,7 @@ COMMENT ON CONSTRAINT fk_allotments_cancelled_by ON allotments IS 'User who canc
 ALTER TABLE allotments
     ADD CONSTRAINT fk_allotments_deleted_by
     FOREIGN KEY (deleted_by)
-    REFERENCES users(user_id)
+    REFERENCES users(id)
     ON DELETE SET NULL
     ON UPDATE CASCADE;
 

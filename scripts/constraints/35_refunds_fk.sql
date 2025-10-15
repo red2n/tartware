@@ -30,7 +30,7 @@ ALTER TABLE refunds DROP CONSTRAINT IF EXISTS fk_refunds_deleted_by;
 ALTER TABLE refunds
     ADD CONSTRAINT fk_refunds_tenant
     FOREIGN KEY (tenant_id)
-    REFERENCES tenants(tenant_id)
+    REFERENCES tenants(id)
     ON DELETE RESTRICT
     ON UPDATE CASCADE;
 
@@ -40,7 +40,7 @@ COMMENT ON CONSTRAINT fk_refunds_tenant ON refunds IS 'Refunds belong to a tenan
 ALTER TABLE refunds
     ADD CONSTRAINT fk_refunds_property
     FOREIGN KEY (property_id)
-    REFERENCES properties(property_id)
+    REFERENCES properties(id)
     ON DELETE RESTRICT
     ON UPDATE CASCADE;
 
@@ -50,7 +50,7 @@ COMMENT ON CONSTRAINT fk_refunds_property ON refunds IS 'Refunds belong to a pro
 ALTER TABLE refunds
     ADD CONSTRAINT fk_refunds_reservation
     FOREIGN KEY (reservation_id)
-    REFERENCES reservations(reservation_id)
+    REFERENCES reservations(id)
     ON DELETE SET NULL
     ON UPDATE CASCADE;
 
@@ -60,7 +60,7 @@ COMMENT ON CONSTRAINT fk_refunds_reservation ON refunds IS 'Refund for reservati
 ALTER TABLE refunds
     ADD CONSTRAINT fk_refunds_guest
     FOREIGN KEY (guest_id)
-    REFERENCES guests(guest_id)
+    REFERENCES guests(id)
     ON DELETE RESTRICT
     ON UPDATE CASCADE;
 
@@ -70,7 +70,7 @@ COMMENT ON CONSTRAINT fk_refunds_guest ON refunds IS 'Guest receiving refund';
 ALTER TABLE refunds
     ADD CONSTRAINT fk_refunds_folio
     FOREIGN KEY (folio_id)
-    REFERENCES folios(folio_id)
+    REFERENCES folios(id)
     ON DELETE SET NULL
     ON UPDATE CASCADE;
 
@@ -80,7 +80,7 @@ COMMENT ON CONSTRAINT fk_refunds_folio ON refunds IS 'Folio this refund is poste
 ALTER TABLE refunds
     ADD CONSTRAINT fk_refunds_original_payment
     FOREIGN KEY (original_payment_id)
-    REFERENCES payments(payment_id)
+    REFERENCES payments(id)
     ON DELETE SET NULL
     ON UPDATE CASCADE;
 
@@ -110,7 +110,7 @@ COMMENT ON CONSTRAINT fk_refunds_parent ON refunds IS 'Parent refund for partial
 ALTER TABLE refunds
     ADD CONSTRAINT fk_refunds_created_by
     FOREIGN KEY (created_by)
-    REFERENCES users(user_id)
+    REFERENCES users(id)
     ON DELETE SET NULL
     ON UPDATE CASCADE;
 
@@ -118,7 +118,7 @@ ALTER TABLE refunds
 ALTER TABLE refunds
     ADD CONSTRAINT fk_refunds_updated_by
     FOREIGN KEY (updated_by)
-    REFERENCES users(user_id)
+    REFERENCES users(id)
     ON DELETE SET NULL
     ON UPDATE CASCADE;
 
@@ -126,7 +126,7 @@ ALTER TABLE refunds
 ALTER TABLE refunds
     ADD CONSTRAINT fk_refunds_requested_by
     FOREIGN KEY (requested_by)
-    REFERENCES users(user_id)
+    REFERENCES users(id)
     ON DELETE SET NULL
     ON UPDATE CASCADE;
 
@@ -136,7 +136,7 @@ COMMENT ON CONSTRAINT fk_refunds_requested_by ON refunds IS 'User who initiated 
 ALTER TABLE refunds
     ADD CONSTRAINT fk_refunds_approved_by
     FOREIGN KEY (approved_by)
-    REFERENCES users(user_id)
+    REFERENCES users(id)
     ON DELETE SET NULL
     ON UPDATE CASCADE;
 
@@ -146,7 +146,7 @@ COMMENT ON CONSTRAINT fk_refunds_approved_by ON refunds IS 'Manager who approved
 ALTER TABLE refunds
     ADD CONSTRAINT fk_refunds_rejected_by
     FOREIGN KEY (rejected_by)
-    REFERENCES users(user_id)
+    REFERENCES users(id)
     ON DELETE SET NULL
     ON UPDATE CASCADE;
 
@@ -156,7 +156,7 @@ COMMENT ON CONSTRAINT fk_refunds_rejected_by ON refunds IS 'User who rejected re
 ALTER TABLE refunds
     ADD CONSTRAINT fk_refunds_processing_started_by
     FOREIGN KEY (processing_started_by)
-    REFERENCES users(user_id)
+    REFERENCES users(id)
     ON DELETE SET NULL
     ON UPDATE CASCADE;
 
@@ -166,7 +166,7 @@ COMMENT ON CONSTRAINT fk_refunds_processing_started_by ON refunds IS 'User who s
 ALTER TABLE refunds
     ADD CONSTRAINT fk_refunds_processed_by
     FOREIGN KEY (processed_by)
-    REFERENCES users(user_id)
+    REFERENCES users(id)
     ON DELETE SET NULL
     ON UPDATE CASCADE;
 
@@ -176,7 +176,7 @@ COMMENT ON CONSTRAINT fk_refunds_processed_by ON refunds IS 'User who completed 
 ALTER TABLE refunds
     ADD CONSTRAINT fk_refunds_deleted_by
     FOREIGN KEY (deleted_by)
-    REFERENCES users(user_id)
+    REFERENCES users(id)
     ON DELETE SET NULL
     ON UPDATE CASCADE;
 

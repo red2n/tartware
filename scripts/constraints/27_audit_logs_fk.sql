@@ -17,7 +17,7 @@ ALTER TABLE audit_logs DROP CONSTRAINT IF EXISTS fk_audit_logs_user;
 ALTER TABLE audit_logs
     ADD CONSTRAINT fk_audit_logs_tenant
     FOREIGN KEY (tenant_id)
-    REFERENCES tenants(tenant_id)
+    REFERENCES tenants(id)
     ON DELETE RESTRICT
     ON UPDATE CASCADE;
 
@@ -27,7 +27,7 @@ COMMENT ON CONSTRAINT fk_audit_logs_tenant ON audit_logs IS 'Audit logs belong t
 ALTER TABLE audit_logs
     ADD CONSTRAINT fk_audit_logs_property
     FOREIGN KEY (property_id)
-    REFERENCES properties(property_id)
+    REFERENCES properties(id)
     ON DELETE RESTRICT
     ON UPDATE CASCADE;
 
@@ -38,7 +38,7 @@ COMMENT ON CONSTRAINT fk_audit_logs_property ON audit_logs IS 'Audit logs may be
 ALTER TABLE audit_logs
     ADD CONSTRAINT fk_audit_logs_user
     FOREIGN KEY (user_id)
-    REFERENCES users(user_id)
+    REFERENCES users(id)
     ON DELETE SET NULL
     ON UPDATE CASCADE;
 

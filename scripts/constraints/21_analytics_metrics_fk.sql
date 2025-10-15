@@ -17,7 +17,7 @@ ALTER TABLE analytics_metrics DROP CONSTRAINT IF EXISTS fk_analytics_metrics_upd
 ALTER TABLE analytics_metrics
     ADD CONSTRAINT fk_analytics_metrics_tenant
     FOREIGN KEY (tenant_id)
-    REFERENCES tenants(tenant_id)
+    REFERENCES tenants(id)
     ON DELETE RESTRICT
     ON UPDATE CASCADE;
 
@@ -27,31 +27,33 @@ COMMENT ON CONSTRAINT fk_analytics_metrics_tenant ON analytics_metrics IS 'Analy
 ALTER TABLE analytics_metrics
     ADD CONSTRAINT fk_analytics_metrics_property
     FOREIGN KEY (property_id)
-    REFERENCES properties(property_id)
+    REFERENCES properties(id)
     ON DELETE RESTRICT
     ON UPDATE CASCADE;
 
 COMMENT ON CONSTRAINT fk_analytics_metrics_property ON analytics_metrics IS 'Analytics metrics may be property-specific';
 
--- Created by user
+-- Room type reference (optional)
 ALTER TABLE analytics_metrics
-    ADD CONSTRAINT fk_analytics_metrics_created_by
-    FOREIGN KEY (created_by)
-    REFERENCES users(user_id)
+    ADD CONSTRAINT fk_analytics_metrics_room_type
+    FOREIGN KEY (room_type_id)
+    REFERENCES room_types(id)
     ON DELETE SET NULL
     ON UPDATE CASCADE;
 
-COMMENT ON CONSTRAINT fk_analytics_metrics_created_by ON analytics_metrics IS 'User who created the metric';
+COMMENT ON CONSTRAINT fk_analytics_metrics_room_type ON analytics_metrics IS 'Analytics metrics may be room-type-specific';
 
--- Updated by user
+-- Rate reference (optional)
 ALTER TABLE analytics_metrics
-    ADD CONSTRAINT fk_analytics_metrics_updated_by
-    FOREIGN KEY (updated_by)
-    REFERENCES users(user_id)
+    ADD CONSTRAINT fk_analytics_metrics_rate
+    FOREIGN KEY (rate_id)
+    REFERENCES rates(id)
     ON DELETE SET NULL
     ON UPDATE CASCADE;
 
-COMMENT ON CONSTRAINT fk_analytics_metrics_updated_by ON analytics_metrics IS 'User who last updated the metric';
+COMMENT ON CONSTRAINT fk_analytics_metrics_rate ON analytics_metrics IS 'Analytics metrics may be rate-specific';
+
+-- Note: analytics_metrics table does not have created_by/updated_by columns
 
 -- Success message
 \echo '✓ Constraints created: analytics_metrics (21/37)'

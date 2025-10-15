@@ -64,7 +64,7 @@ echo "✓ All 37 tables created"
 # Create all indexes
 echo ""
 echo "[$(date '+%Y-%m-%d %H:%M:%S')] ═══ Phase 4: Creating Indexes ═══"
-for INDEX_FILE in $(ls $SCRIPTS_DIR/indexes/*.sql | grep -v "00-create-all" | sort); do
+for INDEX_FILE in $(ls $SCRIPTS_DIR/indexes/*.sql | grep -v "00-create-all" | grep -v "verify-indexes" | sort); do
     INDEX_NAME=$(basename "$INDEX_FILE")
     echo "  → Creating indexes: $INDEX_NAME"
     psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "tartware" -f "$INDEX_FILE"

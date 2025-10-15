@@ -25,7 +25,7 @@ ALTER TABLE business_dates DROP CONSTRAINT IF EXISTS fk_business_dates_deleted_b
 ALTER TABLE business_dates
     ADD CONSTRAINT fk_business_dates_tenant
     FOREIGN KEY (tenant_id)
-    REFERENCES tenants(tenant_id)
+    REFERENCES tenants(id)
     ON DELETE RESTRICT
     ON UPDATE CASCADE;
 
@@ -35,7 +35,7 @@ COMMENT ON CONSTRAINT fk_business_dates_tenant ON business_dates IS 'Business da
 ALTER TABLE business_dates
     ADD CONSTRAINT fk_business_dates_property
     FOREIGN KEY (property_id)
-    REFERENCES properties(property_id)
+    REFERENCES properties(id)
     ON DELETE RESTRICT
     ON UPDATE CASCADE;
 
@@ -45,7 +45,7 @@ COMMENT ON CONSTRAINT fk_business_dates_property ON business_dates IS 'Each prop
 ALTER TABLE business_dates
     ADD CONSTRAINT fk_business_dates_created_by
     FOREIGN KEY (created_by)
-    REFERENCES users(user_id)
+    REFERENCES users(id)
     ON DELETE SET NULL
     ON UPDATE CASCADE;
 
@@ -53,7 +53,7 @@ ALTER TABLE business_dates
 ALTER TABLE business_dates
     ADD CONSTRAINT fk_business_dates_updated_by
     FOREIGN KEY (updated_by)
-    REFERENCES users(user_id)
+    REFERENCES users(id)
     ON DELETE SET NULL
     ON UPDATE CASCADE;
 
@@ -61,7 +61,7 @@ ALTER TABLE business_dates
 ALTER TABLE business_dates
     ADD CONSTRAINT fk_business_dates_opened_by
     FOREIGN KEY (date_opened_by)
-    REFERENCES users(user_id)
+    REFERENCES users(id)
     ON DELETE SET NULL
     ON UPDATE CASCADE;
 
@@ -71,7 +71,7 @@ COMMENT ON CONSTRAINT fk_business_dates_opened_by ON business_dates IS 'User who
 ALTER TABLE business_dates
     ADD CONSTRAINT fk_business_dates_closed_by
     FOREIGN KEY (date_closed_by)
-    REFERENCES users(user_id)
+    REFERENCES users(id)
     ON DELETE SET NULL
     ON UPDATE CASCADE;
 
@@ -81,7 +81,7 @@ COMMENT ON CONSTRAINT fk_business_dates_closed_by ON business_dates IS 'User who
 ALTER TABLE business_dates
     ADD CONSTRAINT fk_business_dates_rolled_by
     FOREIGN KEY (date_rolled_by)
-    REFERENCES users(user_id)
+    REFERENCES users(id)
     ON DELETE SET NULL
     ON UPDATE CASCADE;
 
@@ -91,7 +91,7 @@ COMMENT ON CONSTRAINT fk_business_dates_rolled_by ON business_dates IS 'User who
 ALTER TABLE business_dates
     ADD CONSTRAINT fk_business_dates_locked_by
     FOREIGN KEY (locked_by)
-    REFERENCES users(user_id)
+    REFERENCES users(id)
     ON DELETE SET NULL
     ON UPDATE CASCADE;
 
@@ -101,7 +101,7 @@ COMMENT ON CONSTRAINT fk_business_dates_locked_by ON business_dates IS 'User who
 ALTER TABLE business_dates
     ADD CONSTRAINT fk_business_dates_reconciled_by
     FOREIGN KEY (reconciled_by)
-    REFERENCES users(user_id)
+    REFERENCES users(id)
     ON DELETE SET NULL
     ON UPDATE CASCADE;
 
@@ -111,7 +111,7 @@ COMMENT ON CONSTRAINT fk_business_dates_reconciled_by ON business_dates IS 'User
 ALTER TABLE business_dates
     ADD CONSTRAINT fk_business_dates_audit_started_by
     FOREIGN KEY (night_audit_started_by)
-    REFERENCES users(user_id)
+    REFERENCES users(id)
     ON DELETE SET NULL
     ON UPDATE CASCADE;
 
@@ -121,7 +121,7 @@ COMMENT ON CONSTRAINT fk_business_dates_audit_started_by ON business_dates IS 'U
 ALTER TABLE business_dates
     ADD CONSTRAINT fk_business_dates_audit_completed_by
     FOREIGN KEY (night_audit_completed_by)
-    REFERENCES users(user_id)
+    REFERENCES users(id)
     ON DELETE SET NULL
     ON UPDATE CASCADE;
 
@@ -131,7 +131,7 @@ COMMENT ON CONSTRAINT fk_business_dates_audit_completed_by ON business_dates IS 
 ALTER TABLE business_dates
     ADD CONSTRAINT fk_business_dates_deleted_by
     FOREIGN KEY (deleted_by)
-    REFERENCES users(user_id)
+    REFERENCES users(id)
     ON DELETE SET NULL
     ON UPDATE CASCADE;
 

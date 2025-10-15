@@ -24,21 +24,13 @@ REFERENCES properties(id)
 ON DELETE RESTRICT
 ON UPDATE CASCADE;
 
--- Foreign key to room_types table (nullable)
-ALTER TABLE channel_mappings
-ADD CONSTRAINT fk_channel_mappings_room_type_id
-FOREIGN KEY (room_type_id)
-REFERENCES room_types(id)
-ON DELETE RESTRICT
-ON UPDATE CASCADE;
+-- Note: entity_id is a polymorphic foreign key (can reference rooms, room_types, rates, etc.)
+-- based on entity_type column. Cannot add a single foreign key constraint for polymorphic relationships.
 
 COMMENT ON CONSTRAINT fk_channel_mappings_tenant_id ON channel_mappings IS
 'Ensures tenant exists. RESTRICT prevents deleting tenants with channel mappings.';
 
 COMMENT ON CONSTRAINT fk_channel_mappings_property_id ON channel_mappings IS
 'Ensures property exists. RESTRICT prevents deleting properties with channel mappings.';
-
-COMMENT ON CONSTRAINT fk_channel_mappings_room_type_id ON channel_mappings IS
-'Ensures room type exists if specified. RESTRICT prevents deleting room types with channel mappings.';
 
 \echo '✓ Channel_mappings foreign keys created successfully!'

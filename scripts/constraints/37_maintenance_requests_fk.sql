@@ -29,7 +29,7 @@ ALTER TABLE maintenance_requests DROP CONSTRAINT IF EXISTS fk_maintenance_reques
 ALTER TABLE maintenance_requests
     ADD CONSTRAINT fk_maintenance_requests_tenant
     FOREIGN KEY (tenant_id)
-    REFERENCES tenants(tenant_id)
+    REFERENCES tenants(id)
     ON DELETE RESTRICT
     ON UPDATE CASCADE;
 
@@ -39,7 +39,7 @@ COMMENT ON CONSTRAINT fk_maintenance_requests_tenant ON maintenance_requests IS 
 ALTER TABLE maintenance_requests
     ADD CONSTRAINT fk_maintenance_requests_property
     FOREIGN KEY (property_id)
-    REFERENCES properties(property_id)
+    REFERENCES properties(id)
     ON DELETE RESTRICT
     ON UPDATE CASCADE;
 
@@ -49,7 +49,7 @@ COMMENT ON CONSTRAINT fk_maintenance_requests_property ON maintenance_requests I
 ALTER TABLE maintenance_requests
     ADD CONSTRAINT fk_maintenance_requests_room
     FOREIGN KEY (room_id)
-    REFERENCES rooms(room_id)
+    REFERENCES rooms(id)
     ON DELETE SET NULL
     ON UPDATE CASCADE;
 
@@ -59,7 +59,7 @@ COMMENT ON CONSTRAINT fk_maintenance_requests_room ON maintenance_requests IS 'R
 ALTER TABLE maintenance_requests
     ADD CONSTRAINT fk_maintenance_requests_reservation
     FOREIGN KEY (reservation_id)
-    REFERENCES reservations(reservation_id)
+    REFERENCES reservations(id)
     ON DELETE SET NULL
     ON UPDATE CASCADE;
 
@@ -69,7 +69,7 @@ COMMENT ON CONSTRAINT fk_maintenance_requests_reservation ON maintenance_request
 ALTER TABLE maintenance_requests
     ADD CONSTRAINT fk_maintenance_requests_guest
     FOREIGN KEY (guest_id)
-    REFERENCES guests(guest_id)
+    REFERENCES guests(id)
     ON DELETE SET NULL
     ON UPDATE CASCADE;
 
@@ -89,7 +89,7 @@ COMMENT ON CONSTRAINT fk_maintenance_requests_previous ON maintenance_requests I
 ALTER TABLE maintenance_requests
     ADD CONSTRAINT fk_maintenance_requests_created_by
     FOREIGN KEY (created_by)
-    REFERENCES users(user_id)
+    REFERENCES users(id)
     ON DELETE SET NULL
     ON UPDATE CASCADE;
 
@@ -97,7 +97,7 @@ ALTER TABLE maintenance_requests
 ALTER TABLE maintenance_requests
     ADD CONSTRAINT fk_maintenance_requests_updated_by
     FOREIGN KEY (updated_by)
-    REFERENCES users(user_id)
+    REFERENCES users(id)
     ON DELETE SET NULL
     ON UPDATE CASCADE;
 
@@ -105,7 +105,7 @@ ALTER TABLE maintenance_requests
 ALTER TABLE maintenance_requests
     ADD CONSTRAINT fk_maintenance_requests_reported_by
     FOREIGN KEY (reported_by)
-    REFERENCES users(user_id)
+    REFERENCES users(id)
     ON DELETE SET NULL
     ON UPDATE CASCADE;
 
@@ -115,7 +115,7 @@ COMMENT ON CONSTRAINT fk_maintenance_requests_reported_by ON maintenance_request
 ALTER TABLE maintenance_requests
     ADD CONSTRAINT fk_maintenance_requests_assigned_to
     FOREIGN KEY (assigned_to)
-    REFERENCES users(user_id)
+    REFERENCES users(id)
     ON DELETE SET NULL
     ON UPDATE CASCADE;
 
@@ -125,7 +125,7 @@ COMMENT ON CONSTRAINT fk_maintenance_requests_assigned_to ON maintenance_request
 ALTER TABLE maintenance_requests
     ADD CONSTRAINT fk_maintenance_requests_assigned_by
     FOREIGN KEY (assigned_by)
-    REFERENCES users(user_id)
+    REFERENCES users(id)
     ON DELETE SET NULL
     ON UPDATE CASCADE;
 
@@ -135,7 +135,7 @@ COMMENT ON CONSTRAINT fk_maintenance_requests_assigned_by ON maintenance_request
 ALTER TABLE maintenance_requests
     ADD CONSTRAINT fk_maintenance_requests_verified_by
     FOREIGN KEY (verified_by)
-    REFERENCES users(user_id)
+    REFERENCES users(id)
     ON DELETE SET NULL
     ON UPDATE CASCADE;
 
@@ -145,7 +145,7 @@ COMMENT ON CONSTRAINT fk_maintenance_requests_verified_by ON maintenance_request
 ALTER TABLE maintenance_requests
     ADD CONSTRAINT fk_maintenance_requests_completed_by
     FOREIGN KEY (completed_by)
-    REFERENCES users(user_id)
+    REFERENCES users(id)
     ON DELETE SET NULL
     ON UPDATE CASCADE;
 
@@ -155,7 +155,7 @@ COMMENT ON CONSTRAINT fk_maintenance_requests_completed_by ON maintenance_reques
 ALTER TABLE maintenance_requests
     ADD CONSTRAINT fk_maintenance_requests_cancelled_by
     FOREIGN KEY (cancelled_by)
-    REFERENCES users(user_id)
+    REFERENCES users(id)
     ON DELETE SET NULL
     ON UPDATE CASCADE;
 
@@ -165,7 +165,7 @@ COMMENT ON CONSTRAINT fk_maintenance_requests_cancelled_by ON maintenance_reques
 ALTER TABLE maintenance_requests
     ADD CONSTRAINT fk_maintenance_requests_escalated_to
     FOREIGN KEY (escalated_to)
-    REFERENCES users(user_id)
+    REFERENCES users(id)
     ON DELETE SET NULL
     ON UPDATE CASCADE;
 
@@ -175,7 +175,7 @@ COMMENT ON CONSTRAINT fk_maintenance_requests_escalated_to ON maintenance_reques
 ALTER TABLE maintenance_requests
     ADD CONSTRAINT fk_maintenance_requests_deleted_by
     FOREIGN KEY (deleted_by)
-    REFERENCES users(user_id)
+    REFERENCES users(id)
     ON DELETE SET NULL
     ON UPDATE CASCADE;
 

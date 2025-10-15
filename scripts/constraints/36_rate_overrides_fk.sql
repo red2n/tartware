@@ -31,7 +31,7 @@ ALTER TABLE rate_overrides DROP CONSTRAINT IF EXISTS fk_rate_overrides_deleted_b
 ALTER TABLE rate_overrides
     ADD CONSTRAINT fk_rate_overrides_tenant
     FOREIGN KEY (tenant_id)
-    REFERENCES tenants(tenant_id)
+    REFERENCES tenants(id)
     ON DELETE RESTRICT
     ON UPDATE CASCADE;
 
@@ -41,7 +41,7 @@ COMMENT ON CONSTRAINT fk_rate_overrides_tenant ON rate_overrides IS 'Rate overri
 ALTER TABLE rate_overrides
     ADD CONSTRAINT fk_rate_overrides_property
     FOREIGN KEY (property_id)
-    REFERENCES properties(property_id)
+    REFERENCES properties(id)
     ON DELETE RESTRICT
     ON UPDATE CASCADE;
 
@@ -51,7 +51,7 @@ COMMENT ON CONSTRAINT fk_rate_overrides_property ON rate_overrides IS 'Rate over
 ALTER TABLE rate_overrides
     ADD CONSTRAINT fk_rate_overrides_reservation
     FOREIGN KEY (reservation_id)
-    REFERENCES reservations(reservation_id)
+    REFERENCES reservations(id)
     ON DELETE CASCADE
     ON UPDATE CASCADE;
 
@@ -61,7 +61,7 @@ COMMENT ON CONSTRAINT fk_rate_overrides_reservation ON rate_overrides IS 'Rate o
 ALTER TABLE rate_overrides
     ADD CONSTRAINT fk_rate_overrides_room_type
     FOREIGN KEY (room_type_id)
-    REFERENCES room_types(room_type_id)
+    REFERENCES room_types(id)
     ON DELETE SET NULL
     ON UPDATE CASCADE;
 
@@ -71,7 +71,7 @@ COMMENT ON CONSTRAINT fk_rate_overrides_room_type ON rate_overrides IS 'Room typ
 ALTER TABLE rate_overrides
     ADD CONSTRAINT fk_rate_overrides_rate_plan
     FOREIGN KEY (rate_plan_id)
-    REFERENCES rates(rate_id)
+    REFERENCES rates(id)
     ON DELETE SET NULL
     ON UPDATE CASCADE;
 
@@ -81,7 +81,7 @@ COMMENT ON CONSTRAINT fk_rate_overrides_rate_plan ON rate_overrides IS 'Original
 ALTER TABLE rate_overrides
     ADD CONSTRAINT fk_rate_overrides_guest
     FOREIGN KEY (guest_id)
-    REFERENCES guests(guest_id)
+    REFERENCES guests(id)
     ON DELETE SET NULL
     ON UPDATE CASCADE;
 
@@ -111,7 +111,7 @@ COMMENT ON CONSTRAINT fk_rate_overrides_market_segment ON rate_overrides IS 'Mar
 ALTER TABLE rate_overrides
     ADD CONSTRAINT fk_rate_overrides_created_by
     FOREIGN KEY (created_by)
-    REFERENCES users(user_id)
+    REFERENCES users(id)
     ON DELETE SET NULL
     ON UPDATE CASCADE;
 
@@ -119,7 +119,7 @@ ALTER TABLE rate_overrides
 ALTER TABLE rate_overrides
     ADD CONSTRAINT fk_rate_overrides_updated_by
     FOREIGN KEY (updated_by)
-    REFERENCES users(user_id)
+    REFERENCES users(id)
     ON DELETE SET NULL
     ON UPDATE CASCADE;
 
@@ -127,7 +127,7 @@ ALTER TABLE rate_overrides
 ALTER TABLE rate_overrides
     ADD CONSTRAINT fk_rate_overrides_requested_by
     FOREIGN KEY (requested_by)
-    REFERENCES users(user_id)
+    REFERENCES users(id)
     ON DELETE SET NULL
     ON UPDATE CASCADE;
 
@@ -137,7 +137,7 @@ COMMENT ON CONSTRAINT fk_rate_overrides_requested_by ON rate_overrides IS 'User 
 ALTER TABLE rate_overrides
     ADD CONSTRAINT fk_rate_overrides_approved_by
     FOREIGN KEY (approved_by)
-    REFERENCES users(user_id)
+    REFERENCES users(id)
     ON DELETE SET NULL
     ON UPDATE CASCADE;
 
@@ -147,7 +147,7 @@ COMMENT ON CONSTRAINT fk_rate_overrides_approved_by ON rate_overrides IS 'Manage
 ALTER TABLE rate_overrides
     ADD CONSTRAINT fk_rate_overrides_rejected_by
     FOREIGN KEY (rejected_by)
-    REFERENCES users(user_id)
+    REFERENCES users(id)
     ON DELETE SET NULL
     ON UPDATE CASCADE;
 
@@ -157,7 +157,7 @@ COMMENT ON CONSTRAINT fk_rate_overrides_rejected_by ON rate_overrides IS 'User w
 ALTER TABLE rate_overrides
     ADD CONSTRAINT fk_rate_overrides_applied_by
     FOREIGN KEY (applied_by)
-    REFERENCES users(user_id)
+    REFERENCES users(id)
     ON DELETE SET NULL
     ON UPDATE CASCADE;
 
@@ -167,7 +167,7 @@ COMMENT ON CONSTRAINT fk_rate_overrides_applied_by ON rate_overrides IS 'User wh
 ALTER TABLE rate_overrides
     ADD CONSTRAINT fk_rate_overrides_reviewed_by
     FOREIGN KEY (reviewed_by)
-    REFERENCES users(user_id)
+    REFERENCES users(id)
     ON DELETE SET NULL
     ON UPDATE CASCADE;
 
@@ -177,7 +177,7 @@ COMMENT ON CONSTRAINT fk_rate_overrides_reviewed_by ON rate_overrides IS 'User w
 ALTER TABLE rate_overrides
     ADD CONSTRAINT fk_rate_overrides_verified_by
     FOREIGN KEY (verified_by)
-    REFERENCES users(user_id)
+    REFERENCES users(id)
     ON DELETE SET NULL
     ON UPDATE CASCADE;
 
@@ -187,7 +187,7 @@ COMMENT ON CONSTRAINT fk_rate_overrides_verified_by ON rate_overrides IS 'User w
 ALTER TABLE rate_overrides
     ADD CONSTRAINT fk_rate_overrides_deleted_by
     FOREIGN KEY (deleted_by)
-    REFERENCES users(user_id)
+    REFERENCES users(id)
     ON DELETE SET NULL
     ON UPDATE CASCADE;
 

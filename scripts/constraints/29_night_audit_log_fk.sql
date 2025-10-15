@@ -23,7 +23,7 @@ ALTER TABLE night_audit_log DROP CONSTRAINT IF EXISTS fk_night_audit_log_deleted
 ALTER TABLE night_audit_log
     ADD CONSTRAINT fk_night_audit_log_tenant
     FOREIGN KEY (tenant_id)
-    REFERENCES tenants(tenant_id)
+    REFERENCES tenants(id)
     ON DELETE RESTRICT
     ON UPDATE CASCADE;
 
@@ -33,7 +33,7 @@ COMMENT ON CONSTRAINT fk_night_audit_log_tenant ON night_audit_log IS 'Audit log
 ALTER TABLE night_audit_log
     ADD CONSTRAINT fk_night_audit_log_property
     FOREIGN KEY (property_id)
-    REFERENCES properties(property_id)
+    REFERENCES properties(id)
     ON DELETE RESTRICT
     ON UPDATE CASCADE;
 
@@ -53,7 +53,7 @@ COMMENT ON CONSTRAINT fk_night_audit_log_business_date ON night_audit_log IS 'Li
 ALTER TABLE night_audit_log
     ADD CONSTRAINT fk_night_audit_log_initiated_by
     FOREIGN KEY (initiated_by)
-    REFERENCES users(user_id)
+    REFERENCES users(id)
     ON DELETE SET NULL
     ON UPDATE CASCADE;
 
@@ -63,7 +63,7 @@ COMMENT ON CONSTRAINT fk_night_audit_log_initiated_by ON night_audit_log IS 'Use
 ALTER TABLE night_audit_log
     ADD CONSTRAINT fk_night_audit_log_completed_by
     FOREIGN KEY (completed_by)
-    REFERENCES users(user_id)
+    REFERENCES users(id)
     ON DELETE SET NULL
     ON UPDATE CASCADE;
 
@@ -73,7 +73,7 @@ COMMENT ON CONSTRAINT fk_night_audit_log_completed_by ON night_audit_log IS 'Use
 ALTER TABLE night_audit_log
     ADD CONSTRAINT fk_night_audit_log_acknowledged_by
     FOREIGN KEY (acknowledged_by)
-    REFERENCES users(user_id)
+    REFERENCES users(id)
     ON DELETE SET NULL
     ON UPDATE CASCADE;
 
@@ -93,7 +93,7 @@ COMMENT ON CONSTRAINT fk_night_audit_log_previous_attempt ON night_audit_log IS 
 ALTER TABLE night_audit_log
     ADD CONSTRAINT fk_night_audit_log_created_by
     FOREIGN KEY (created_by)
-    REFERENCES users(user_id)
+    REFERENCES users(id)
     ON DELETE SET NULL
     ON UPDATE CASCADE;
 
@@ -101,7 +101,7 @@ ALTER TABLE night_audit_log
 ALTER TABLE night_audit_log
     ADD CONSTRAINT fk_night_audit_log_updated_by
     FOREIGN KEY (updated_by)
-    REFERENCES users(user_id)
+    REFERENCES users(id)
     ON DELETE SET NULL
     ON UPDATE CASCADE;
 
@@ -109,7 +109,7 @@ ALTER TABLE night_audit_log
 ALTER TABLE night_audit_log
     ADD CONSTRAINT fk_night_audit_log_deleted_by
     FOREIGN KEY (deleted_by)
-    REFERENCES users(user_id)
+    REFERENCES users(id)
     ON DELETE SET NULL
     ON UPDATE CASCADE;
 

@@ -27,7 +27,7 @@ ALTER TABLE deposit_schedules DROP CONSTRAINT IF EXISTS fk_deposit_schedules_del
 ALTER TABLE deposit_schedules
     ADD CONSTRAINT fk_deposit_schedules_tenant
     FOREIGN KEY (tenant_id)
-    REFERENCES tenants(tenant_id)
+    REFERENCES tenants(id)
     ON DELETE RESTRICT
     ON UPDATE CASCADE;
 
@@ -37,7 +37,7 @@ COMMENT ON CONSTRAINT fk_deposit_schedules_tenant ON deposit_schedules IS 'Depos
 ALTER TABLE deposit_schedules
     ADD CONSTRAINT fk_deposit_schedules_property
     FOREIGN KEY (property_id)
-    REFERENCES properties(property_id)
+    REFERENCES properties(id)
     ON DELETE RESTRICT
     ON UPDATE CASCADE;
 
@@ -47,7 +47,7 @@ COMMENT ON CONSTRAINT fk_deposit_schedules_property ON deposit_schedules IS 'Dep
 ALTER TABLE deposit_schedules
     ADD CONSTRAINT fk_deposit_schedules_reservation
     FOREIGN KEY (reservation_id)
-    REFERENCES reservations(reservation_id)
+    REFERENCES reservations(id)
     ON DELETE CASCADE
     ON UPDATE CASCADE;
 
@@ -57,7 +57,7 @@ COMMENT ON CONSTRAINT fk_deposit_schedules_reservation ON deposit_schedules IS '
 ALTER TABLE deposit_schedules
     ADD CONSTRAINT fk_deposit_schedules_guest
     FOREIGN KEY (guest_id)
-    REFERENCES guests(guest_id)
+    REFERENCES guests(id)
     ON DELETE SET NULL
     ON UPDATE CASCADE;
 
@@ -67,7 +67,7 @@ COMMENT ON CONSTRAINT fk_deposit_schedules_guest ON deposit_schedules IS 'Guest 
 ALTER TABLE deposit_schedules
     ADD CONSTRAINT fk_deposit_schedules_folio
     FOREIGN KEY (folio_id)
-    REFERENCES folios(folio_id)
+    REFERENCES folios(id)
     ON DELETE SET NULL
     ON UPDATE CASCADE;
 
@@ -97,7 +97,7 @@ COMMENT ON CONSTRAINT fk_deposit_schedules_posting ON deposit_schedules IS 'Char
 ALTER TABLE deposit_schedules
     ADD CONSTRAINT fk_deposit_schedules_created_by
     FOREIGN KEY (created_by)
-    REFERENCES users(user_id)
+    REFERENCES users(id)
     ON DELETE SET NULL
     ON UPDATE CASCADE;
 
@@ -105,7 +105,7 @@ ALTER TABLE deposit_schedules
 ALTER TABLE deposit_schedules
     ADD CONSTRAINT fk_deposit_schedules_updated_by
     FOREIGN KEY (updated_by)
-    REFERENCES users(user_id)
+    REFERENCES users(id)
     ON DELETE SET NULL
     ON UPDATE CASCADE;
 
@@ -113,7 +113,7 @@ ALTER TABLE deposit_schedules
 ALTER TABLE deposit_schedules
     ADD CONSTRAINT fk_deposit_schedules_paid_by
     FOREIGN KEY (paid_by)
-    REFERENCES users(user_id)
+    REFERENCES users(id)
     ON DELETE SET NULL
     ON UPDATE CASCADE;
 
@@ -123,7 +123,7 @@ COMMENT ON CONSTRAINT fk_deposit_schedules_paid_by ON deposit_schedules IS 'User
 ALTER TABLE deposit_schedules
     ADD CONSTRAINT fk_deposit_schedules_waived_by
     FOREIGN KEY (waived_by)
-    REFERENCES users(user_id)
+    REFERENCES users(id)
     ON DELETE SET NULL
     ON UPDATE CASCADE;
 
@@ -133,7 +133,7 @@ COMMENT ON CONSTRAINT fk_deposit_schedules_waived_by ON deposit_schedules IS 'Us
 ALTER TABLE deposit_schedules
     ADD CONSTRAINT fk_deposit_schedules_waiver_approved_by
     FOREIGN KEY (waiver_approved_by)
-    REFERENCES users(user_id)
+    REFERENCES users(id)
     ON DELETE SET NULL
     ON UPDATE CASCADE;
 
@@ -143,7 +143,7 @@ COMMENT ON CONSTRAINT fk_deposit_schedules_waiver_approved_by ON deposit_schedul
 ALTER TABLE deposit_schedules
     ADD CONSTRAINT fk_deposit_schedules_posted_by
     FOREIGN KEY (posted_by)
-    REFERENCES users(user_id)
+    REFERENCES users(id)
     ON DELETE SET NULL
     ON UPDATE CASCADE;
 
@@ -153,7 +153,7 @@ COMMENT ON CONSTRAINT fk_deposit_schedules_posted_by ON deposit_schedules IS 'Us
 ALTER TABLE deposit_schedules
     ADD CONSTRAINT fk_deposit_schedules_deleted_by
     FOREIGN KEY (deleted_by)
-    REFERENCES users(user_id)
+    REFERENCES users(id)
     ON DELETE SET NULL
     ON UPDATE CASCADE;
 

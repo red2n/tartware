@@ -18,7 +18,7 @@ ALTER TABLE booking_sources DROP CONSTRAINT IF EXISTS fk_booking_sources_deleted
 ALTER TABLE booking_sources
     ADD CONSTRAINT fk_booking_sources_tenant
     FOREIGN KEY (tenant_id)
-    REFERENCES tenants(tenant_id)
+    REFERENCES tenants(id)
     ON DELETE RESTRICT
     ON UPDATE CASCADE;
 
@@ -28,7 +28,7 @@ COMMENT ON CONSTRAINT fk_booking_sources_tenant ON booking_sources IS 'Booking s
 ALTER TABLE booking_sources
     ADD CONSTRAINT fk_booking_sources_property
     FOREIGN KEY (property_id)
-    REFERENCES properties(property_id)
+    REFERENCES properties(id)
     ON DELETE RESTRICT
     ON UPDATE CASCADE;
 
@@ -38,7 +38,7 @@ COMMENT ON CONSTRAINT fk_booking_sources_property ON booking_sources IS 'Booking
 ALTER TABLE booking_sources
     ADD CONSTRAINT fk_booking_sources_created_by
     FOREIGN KEY (created_by)
-    REFERENCES users(user_id)
+    REFERENCES users(id)
     ON DELETE SET NULL
     ON UPDATE CASCADE;
 
@@ -46,7 +46,7 @@ ALTER TABLE booking_sources
 ALTER TABLE booking_sources
     ADD CONSTRAINT fk_booking_sources_updated_by
     FOREIGN KEY (updated_by)
-    REFERENCES users(user_id)
+    REFERENCES users(id)
     ON DELETE SET NULL
     ON UPDATE CASCADE;
 
@@ -54,7 +54,7 @@ ALTER TABLE booking_sources
 ALTER TABLE booking_sources
     ADD CONSTRAINT fk_booking_sources_deleted_by
     FOREIGN KEY (deleted_by)
-    REFERENCES users(user_id)
+    REFERENCES users(id)
     ON DELETE SET NULL
     ON UPDATE CASCADE;
 

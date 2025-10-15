@@ -23,7 +23,7 @@ ALTER TABLE folios DROP CONSTRAINT IF EXISTS fk_folios_deleted_by;
 ALTER TABLE folios
     ADD CONSTRAINT fk_folios_tenant
     FOREIGN KEY (tenant_id)
-    REFERENCES tenants(tenant_id)
+    REFERENCES tenants(id)
     ON DELETE RESTRICT
     ON UPDATE CASCADE;
 
@@ -33,7 +33,7 @@ COMMENT ON CONSTRAINT fk_folios_tenant ON folios IS 'Folios belong to a tenant';
 ALTER TABLE folios
     ADD CONSTRAINT fk_folios_property
     FOREIGN KEY (property_id)
-    REFERENCES properties(property_id)
+    REFERENCES properties(id)
     ON DELETE RESTRICT
     ON UPDATE CASCADE;
 
@@ -43,7 +43,7 @@ COMMENT ON CONSTRAINT fk_folios_property ON folios IS 'Folios belong to a proper
 ALTER TABLE folios
     ADD CONSTRAINT fk_folios_reservation
     FOREIGN KEY (reservation_id)
-    REFERENCES reservations(reservation_id)
+    REFERENCES reservations(id)
     ON DELETE SET NULL
     ON UPDATE CASCADE;
 
@@ -53,7 +53,7 @@ COMMENT ON CONSTRAINT fk_folios_reservation ON folios IS 'Folio associated with 
 ALTER TABLE folios
     ADD CONSTRAINT fk_folios_guest
     FOREIGN KEY (guest_id)
-    REFERENCES guests(guest_id)
+    REFERENCES guests(id)
     ON DELETE SET NULL
     ON UPDATE CASCADE;
 
@@ -63,7 +63,7 @@ COMMENT ON CONSTRAINT fk_folios_guest ON folios IS 'Folio belongs to guest';
 ALTER TABLE folios
     ADD CONSTRAINT fk_folios_transferred_from
     FOREIGN KEY (transferred_from_folio_id)
-    REFERENCES folios(folio_id)
+    REFERENCES folios(id)
     ON DELETE SET NULL
     ON UPDATE CASCADE;
 
@@ -72,7 +72,7 @@ COMMENT ON CONSTRAINT fk_folios_transferred_from ON folios IS 'Source folio for 
 ALTER TABLE folios
     ADD CONSTRAINT fk_folios_transferred_to
     FOREIGN KEY (transferred_to_folio_id)
-    REFERENCES folios(folio_id)
+    REFERENCES folios(id)
     ON DELETE SET NULL
     ON UPDATE CASCADE;
 
@@ -82,7 +82,7 @@ COMMENT ON CONSTRAINT fk_folios_transferred_to ON folios IS 'Destination folio f
 ALTER TABLE folios
     ADD CONSTRAINT fk_folios_created_by
     FOREIGN KEY (created_by)
-    REFERENCES users(user_id)
+    REFERENCES users(id)
     ON DELETE SET NULL
     ON UPDATE CASCADE;
 
@@ -90,7 +90,7 @@ ALTER TABLE folios
 ALTER TABLE folios
     ADD CONSTRAINT fk_folios_updated_by
     FOREIGN KEY (updated_by)
-    REFERENCES users(user_id)
+    REFERENCES users(id)
     ON DELETE SET NULL
     ON UPDATE CASCADE;
 
@@ -98,7 +98,7 @@ ALTER TABLE folios
 ALTER TABLE folios
     ADD CONSTRAINT fk_folios_settled_by
     FOREIGN KEY (settled_by)
-    REFERENCES users(user_id)
+    REFERENCES users(id)
     ON DELETE SET NULL
     ON UPDATE CASCADE;
 
@@ -108,7 +108,7 @@ COMMENT ON CONSTRAINT fk_folios_settled_by ON folios IS 'User who settled the fo
 ALTER TABLE folios
     ADD CONSTRAINT fk_folios_deleted_by
     FOREIGN KEY (deleted_by)
-    REFERENCES users(user_id)
+    REFERENCES users(id)
     ON DELETE SET NULL
     ON UPDATE CASCADE;
 
