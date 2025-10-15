@@ -26,7 +26,7 @@ CREATE TABLE IF NOT EXISTS user_tenant_associations (
     tenant_id UUID NOT NULL,
 
     -- Role-Based Access Control
-    role tenant_role NOT NULL DEFAULT 'staff',
+    role tenant_role NOT NULL DEFAULT 'STAFF',
 
     -- Status
     is_active BOOLEAN NOT NULL DEFAULT true,

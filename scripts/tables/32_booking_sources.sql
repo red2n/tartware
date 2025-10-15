@@ -144,8 +144,7 @@ CREATE TABLE booking_sources (
 
     -- Constraints
     CONSTRAINT uk_booking_sources_code
-        UNIQUE (tenant_id, property_id, source_code)
-        WHERE deleted_at IS NULL,
+        UNIQUE (tenant_id, property_id, source_code),
 
     -- Commission percentage validation
     CONSTRAINT chk_booking_sources_commission
@@ -183,6 +182,11 @@ COMMENT ON COLUMN booking_sources.utm_source IS 'Google Analytics UTM parameter 
 
 -- Create indexes (will be created via indexes file)
 -- CREATE INDEX idx_booking_sources_tenant ON booking_sources(tenant_id, property_id, source_code);
+-- Create partial unique index for active source codes
+CREATE UNIQUE INDEX idx_uk_booking_sources_code_active
+    ON booking_sources(tenant_id, property_id, source_code)
+    WHERE deleted_at IS NULL;
+
 -- CREATE INDEX idx_booking_sources_type ON booking_sources(source_type, is_active) WHERE deleted_at IS NULL;
 -- CREATE INDEX idx_booking_sources_active ON booking_sources(property_id, is_active, ranking) WHERE is_active = TRUE;
 

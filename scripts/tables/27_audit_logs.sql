@@ -88,7 +88,7 @@ CREATE TABLE audit_logs (
     metadata JSONB, -- Additional context-specific data
 
     -- Performance Tracking
-    response_time_ms INTEGER, -- How long the operation took
+    response_time_ms INTEGER -- How long the operation took
 
     -- Never soft-deleted for compliance
     -- No deleted_at column - audit logs are permanent

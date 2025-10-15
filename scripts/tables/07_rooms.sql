@@ -35,9 +35,9 @@ CREATE TABLE IF NOT EXISTS rooms (
     wing VARCHAR(100),
 
     -- Status
-    status room_status NOT NULL DEFAULT 'available',
-    housekeeping_status housekeeping_status NOT NULL DEFAULT 'clean',
-    maintenance_status maintenance_status NOT NULL DEFAULT 'operational',
+    status room_status NOT NULL DEFAULT 'AVAILABLE',
+    housekeeping_status housekeeping_status NOT NULL DEFAULT 'CLEAN',
+    maintenance_status maintenance_status NOT NULL DEFAULT 'OPERATIONAL',
 
     -- Features (can override room type defaults)
     features JSONB DEFAULT '{

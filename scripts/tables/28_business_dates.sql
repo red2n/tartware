@@ -104,11 +104,6 @@ CREATE TABLE business_dates (
     CONSTRAINT uk_business_dates_property_date
         UNIQUE (tenant_id, property_id, business_date),
 
-    -- Only one OPEN date per property
-    CONSTRAINT uk_business_dates_open_per_property
-        UNIQUE (tenant_id, property_id, date_status)
-        WHERE (date_status = 'OPEN' AND deleted_at IS NULL),
-
     -- Night audit completion requires start time
     CONSTRAINT chk_business_dates_audit_times
         CHECK (
@@ -138,6 +133,11 @@ COMMENT ON COLUMN business_dates.is_locked IS 'TRUE during night audit to preven
 COMMENT ON COLUMN business_dates.arrivals_count IS 'Number of check-ins for this business date';
 COMMENT ON COLUMN business_dates.departures_count IS 'Number of check-outs for this business date';
 COMMENT ON COLUMN business_dates.stayovers_count IS 'Number of guests staying over (not checking in/out)';
+
+-- Create partial unique index for one OPEN date per property
+CREATE UNIQUE INDEX idx_uk_business_dates_open_per_property
+    ON business_dates(tenant_id, property_id, date_status)
+    WHERE (date_status = 'OPEN' AND deleted_at IS NULL);
 
 -- Create indexes (will be created via indexes file)
 -- CREATE INDEX idx_business_dates_tenant ON business_dates(tenant_id, property_id, business_date DESC);

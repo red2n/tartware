@@ -153,10 +153,6 @@ CREATE TABLE allotments (
     updated_by UUID,
 
     -- Constraints
-    CONSTRAINT uk_allotments_code
-        UNIQUE (tenant_id, property_id, allotment_code)
-        WHERE deleted_at IS NULL,
-
     -- End date must be after start date
     CONSTRAINT chk_allotments_dates
         CHECK (end_date >= start_date),
@@ -196,6 +192,11 @@ COMMENT ON COLUMN allotments.billing_type IS 'INDIVIDUAL (each guest pays), MAST
 COMMENT ON COLUMN allotments.attrition_clause IS 'If TRUE, penalty applies if pickup falls below attrition_percentage';
 COMMENT ON COLUMN allotments.guaranteed_rooms IS 'Rooms the group is committed to paying for regardless of pickup';
 COMMENT ON COLUMN allotments.elastic_limit IS 'Additional rooms that can be added beyond initial block';
+
+-- Create partial unique index for active allotment codes
+CREATE UNIQUE INDEX idx_uk_allotments_code
+    ON allotments(tenant_id, property_id, allotment_code)
+    WHERE deleted_at IS NULL;
 
 -- Create indexes (will be created via indexes file)
 -- CREATE INDEX idx_allotments_tenant ON allotments(tenant_id, property_id, start_date);

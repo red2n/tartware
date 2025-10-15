@@ -33,7 +33,7 @@ CREATE TABLE IF NOT EXISTS rates (
     description TEXT,
 
     -- Rate Strategy
-    strategy rate_strategy NOT NULL DEFAULT 'standard',
+    strategy rate_strategy NOT NULL DEFAULT 'FIXED',
 
     -- Pricing
     base_rate DECIMAL(15,2) NOT NULL,
@@ -88,7 +88,7 @@ CREATE TABLE IF NOT EXISTS rates (
     tax_rate DECIMAL(5,2) DEFAULT 0.00,
 
     -- Status
-    status rate_status NOT NULL DEFAULT 'active',
+    status rate_status NOT NULL DEFAULT 'ACTIVE',
 
     -- Display Order
     display_order INTEGER DEFAULT 0,

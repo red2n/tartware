@@ -33,7 +33,7 @@ CREATE TABLE IF NOT EXISTS room_types (
     short_description VARCHAR(500),
 
     -- Room Category
-    category room_category NOT NULL DEFAULT 'standard',
+    category room_category NOT NULL DEFAULT 'STANDARD',
 
     -- Capacity
     base_occupancy INTEGER NOT NULL DEFAULT 2,

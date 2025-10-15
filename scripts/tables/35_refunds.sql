@@ -167,8 +167,7 @@ CREATE TABLE refunds (
 
     -- Constraints
     CONSTRAINT uk_refunds_number
-        UNIQUE (tenant_id, property_id, refund_number)
-        WHERE deleted_at IS NULL,
+        UNIQUE (tenant_id, property_id, refund_number),
 
     -- Net amount calculation
     CONSTRAINT chk_refunds_net_amount
@@ -227,6 +226,11 @@ COMMENT ON COLUMN refunds.is_full_refund IS 'TRUE if refunding 100% of original 
 -- CREATE INDEX idx_refunds_tenant ON refunds(tenant_id, property_id, requested_at DESC);
 -- CREATE INDEX idx_refunds_reservation ON refunds(reservation_id, refund_status);
 -- CREATE INDEX idx_refunds_guest ON refunds(guest_id, requested_at DESC);
+-- Create partial unique index for active refund numbers
+CREATE UNIQUE INDEX idx_uk_refunds_number
+    ON refunds(tenant_id, property_id, refund_number)
+    WHERE deleted_at IS NULL;
+
 -- CREATE INDEX idx_refunds_status ON refunds(property_id, refund_status, requested_at DESC);
 -- CREATE INDEX idx_refunds_approval ON refunds(property_id, requires_approval) WHERE requires_approval = TRUE AND refund_status = 'PENDING_APPROVAL';
 

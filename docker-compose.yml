@@ -9,17 +9,26 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
       POSTGRES_DB: postgres
+      # Tartware initialization settings
+      TARTWARE_DROP_EXISTING: ${TARTWARE_DROP_EXISTING:-true}
+      TARTWARE_RUN_VERIFICATION: ${TARTWARE_RUN_VERIFICATION:-true}
+      TARTWARE_BACKUP_BEFORE_DROP: ${TARTWARE_BACKUP_BEFORE_DROP:-false}
     ports:
       - "5432:5432"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - tartware_postgres_data:/var/lib/postgresql/data
+      # Mount all scripts for initialization (read-write for chmod)
+      - ./scripts:/docker-entrypoint-initdb.d/scripts
+      # Mount custom entrypoint
+      - ./scripts/docker/docker-entrypoint-custom.sh:/usr/local/bin/docker-entrypoint-custom.sh
+    entrypoint: ["/bin/bash", "/usr/local/bin/docker-entrypoint-custom.sh"]
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 5s
       timeout: 5s
       retries: 5
     networks:
-      - tartware-network
+      - tartware_network
 
   pgadmin:
     image: dpage/pgadmin4:latest
@@ -33,18 +42,23 @@ services:
     ports:
       - "5050:80"
     volumes:
-      - pgadmin_data:/var/lib/pgadmin
+      - tartware_pgadmin_data:/var/lib/pgadmin
       - ./servers.json:/pgadmin4/servers.json:ro
     depends_on:
       postgres:
         condition: service_healthy
     networks:
-      - tartware-network
+      - tartware_network
 
 volumes:
-  postgres_data:
-  pgadmin_data:
+  tartware_postgres_data:
+    name: tartware_postgres_data
+    driver: local
+  tartware_pgadmin_data:
+    name: tartware_pgadmin_data
+    driver: local
 
 networks:
-  tartware-network:
+  tartware_network:
+    name: tartware_network
     driver: bridge

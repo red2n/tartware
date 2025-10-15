@@ -59,10 +59,10 @@ CREATE TABLE IF NOT EXISTS reservations (
     currency VARCHAR(3) DEFAULT 'USD',
 
     -- Status
-    status reservation_status NOT NULL DEFAULT 'pending',
+    status reservation_status NOT NULL DEFAULT 'PENDING',
 
     -- Booking Source
-    source reservation_source NOT NULL DEFAULT 'direct',
+    source reservation_source NOT NULL DEFAULT 'DIRECT',
     channel_reference VARCHAR(100),
 
     -- Guest Details (snapshot at booking time)

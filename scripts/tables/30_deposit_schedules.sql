@@ -135,10 +135,6 @@ CREATE TABLE deposit_schedules (
     updated_by UUID,
 
     -- Constraints
-    CONSTRAINT uk_deposit_schedules_number
-        UNIQUE (tenant_id, property_id, schedule_number)
-        WHERE deleted_at IS NULL,
-
     -- Amount remaining should match
     CONSTRAINT chk_deposit_schedules_amounts
         CHECK (amount_remaining = amount_due - amount_paid),
@@ -181,6 +177,11 @@ COMMENT ON COLUMN deposit_schedules.parent_schedule_id IS 'Links child installme
 -- Create indexes (will be created via indexes file)
 -- CREATE INDEX idx_deposit_schedules_tenant ON deposit_schedules(tenant_id, property_id, due_date);
 -- CREATE INDEX idx_deposit_schedules_reservation ON deposit_schedules(reservation_id, sequence_number);
+-- Create partial unique index for active schedule numbers
+CREATE UNIQUE INDEX idx_uk_deposit_schedules_number
+    ON deposit_schedules(tenant_id, property_id, schedule_number)
+    WHERE deleted_at IS NULL;
+
 -- CREATE INDEX idx_deposit_schedules_status ON deposit_schedules(property_id, schedule_status, due_date);
 -- CREATE INDEX idx_deposit_schedules_overdue ON deposit_schedules(property_id, is_overdue, due_date) WHERE is_overdue = TRUE;
 

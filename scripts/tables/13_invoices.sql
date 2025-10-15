@@ -55,7 +55,7 @@ CREATE TABLE IF NOT EXISTS invoices (
     tax_breakdown JSONB DEFAULT '[]'::jsonb,
 
     -- Status
-    status invoice_status NOT NULL DEFAULT 'draft',
+    status invoice_status NOT NULL DEFAULT 'DRAFT',
 
     -- Payment Terms
     payment_terms VARCHAR(255),

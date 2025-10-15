@@ -167,8 +167,7 @@ CREATE TABLE rate_overrides (
 
     -- Constraints
     CONSTRAINT uk_rate_overrides_code
-        UNIQUE (tenant_id, property_id, override_code)
-        WHERE deleted_at IS NULL AND override_code IS NOT NULL,
+        UNIQUE (tenant_id, property_id, override_code),
 
     -- Adjustment amount calculation
     CONSTRAINT chk_rate_overrides_adjustment
@@ -224,6 +223,11 @@ COMMENT ON COLUMN rate_overrides.is_recurring IS 'If TRUE, applies to all future
 -- CREATE INDEX idx_rate_overrides_tenant ON rate_overrides(tenant_id, property_id, requested_at DESC);
 -- CREATE INDEX idx_rate_overrides_reservation ON rate_overrides(reservation_id, stay_date);
 -- CREATE INDEX idx_rate_overrides_status ON rate_overrides(property_id, override_status, requested_at DESC);
+-- Create partial unique index for active override codes
+CREATE UNIQUE INDEX idx_uk_rate_overrides_code_active
+    ON rate_overrides(tenant_id, property_id, override_code)
+    WHERE deleted_at IS NULL AND override_code IS NOT NULL;
+
 -- CREATE INDEX idx_rate_overrides_approval ON rate_overrides(property_id, approval_required) WHERE approval_required = TRUE AND override_status = 'PENDING';
 -- CREATE INDEX idx_rate_overrides_reason ON rate_overrides(reason_category, requested_at DESC);
 

@@ -154,8 +154,7 @@ CREATE TABLE market_segments (
 
     -- Constraints
     CONSTRAINT uk_market_segments_code
-        UNIQUE (tenant_id, property_id, segment_code)
-        WHERE deleted_at IS NULL,
+        UNIQUE (tenant_id, property_id, segment_code),
 
     -- Rate multiplier validation
     CONSTRAINT chk_market_segments_multiplier
@@ -191,6 +190,11 @@ COMMENT ON COLUMN market_segments.segment_path IS 'Hierarchical path for nested 
 -- Create indexes (will be created via indexes file)
 -- CREATE INDEX idx_market_segments_tenant ON market_segments(tenant_id, property_id, segment_code);
 -- CREATE INDEX idx_market_segments_type ON market_segments(segment_type, is_active) WHERE deleted_at IS NULL;
+-- Create partial unique index for active segment codes
+CREATE UNIQUE INDEX idx_uk_market_segments_code
+    ON market_segments(tenant_id, property_id, segment_code)
+    WHERE deleted_at IS NULL;
+
 -- CREATE INDEX idx_market_segments_active ON market_segments(property_id, is_active, ranking) WHERE is_active = TRUE;
 -- CREATE INDEX idx_market_segments_parent ON market_segments(parent_segment_id) WHERE parent_segment_id IS NOT NULL;
 

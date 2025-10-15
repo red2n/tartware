@@ -32,7 +32,7 @@ CREATE TABLE IF NOT EXISTS housekeeping_tasks (
     priority VARCHAR(20) DEFAULT 'normal',
 
     -- Status
-    status housekeeping_status NOT NULL DEFAULT 'dirty',
+    status housekeeping_status NOT NULL DEFAULT 'DIRTY',
 
     -- Assignment
     assigned_to UUID,

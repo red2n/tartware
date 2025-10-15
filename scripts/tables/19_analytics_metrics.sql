@@ -31,7 +31,7 @@ CREATE TABLE IF NOT EXISTS analytics_metrics (
 
     -- Time Dimension
     metric_date DATE NOT NULL,
-    time_granularity time_granularity NOT NULL DEFAULT 'daily',
+    time_granularity time_granularity NOT NULL DEFAULT 'DAILY',
 
     -- Metric Value
     metric_value DECIMAL(15,4) NOT NULL,
@@ -54,7 +54,7 @@ CREATE TABLE IF NOT EXISTS analytics_metrics (
     year_variance DECIMAL(15,4),
 
     -- Status
-    status analytics_status NOT NULL DEFAULT 'calculated',
+    status analytics_status NOT NULL DEFAULT 'COMPLETED',
 
     -- Calculation Details
     calculation_method VARCHAR(100),
@@ -65,20 +65,7 @@ CREATE TABLE IF NOT EXISTS analytics_metrics (
 
     -- Audit Fields
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP,
-
-    -- Constraints
-    CONSTRAINT analytics_metrics_unique UNIQUE (
-        tenant_id,
-        property_id,
-        metric_code,
-        metric_date,
-        time_granularity,
-        COALESCE(room_type_id::text, ''),
-        COALESCE(rate_id::text, ''),
-        COALESCE(source, ''),
-        COALESCE(segment, '')
-    )
+    updated_at TIMESTAMP
 );
 
 -- =====================================================

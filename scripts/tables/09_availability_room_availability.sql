@@ -49,7 +49,7 @@ CREATE TABLE IF NOT EXISTS availability.room_availability (
     stop_sell BOOLEAN DEFAULT false,
 
     -- Status
-    status availability_status NOT NULL DEFAULT 'available',
+    status availability_status NOT NULL DEFAULT 'AVAILABLE',
 
     -- Custom Metadata
     metadata JSONB DEFAULT '{}'::jsonb,

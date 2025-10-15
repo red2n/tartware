@@ -193,8 +193,7 @@ CREATE TABLE maintenance_requests (
 
     -- Constraints
     CONSTRAINT uk_maintenance_requests_number
-        UNIQUE (tenant_id, property_id, request_number)
-        WHERE deleted_at IS NULL,
+        UNIQUE (tenant_id, property_id, request_number),
 
     -- Completed status requires completion timestamp
     CONSTRAINT chk_maintenance_completed
@@ -255,6 +254,11 @@ COMMENT ON COLUMN maintenance_requests.resolution_time_hours IS 'Hours from repo
 -- CREATE INDEX idx_maintenance_tenant ON maintenance_requests(tenant_id, property_id, reported_at DESC);
 -- CREATE INDEX idx_maintenance_room ON maintenance_requests(room_id, request_status) WHERE deleted_at IS NULL;
 -- CREATE INDEX idx_maintenance_status ON maintenance_requests(property_id, request_status, priority) WHERE deleted_at IS NULL;
+-- Create partial unique index for active request numbers
+CREATE UNIQUE INDEX idx_uk_maintenance_requests_number
+    ON maintenance_requests(tenant_id, property_id, request_number)
+    WHERE deleted_at IS NULL;
+
 -- CREATE INDEX idx_maintenance_assigned ON maintenance_requests(assigned_to, request_status) WHERE deleted_at IS NULL;
 -- CREATE INDEX idx_maintenance_oos ON maintenance_requests(property_id, room_out_of_service) WHERE room_out_of_service = TRUE;
 

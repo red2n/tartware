@@ -34,7 +34,7 @@ CREATE TABLE IF NOT EXISTS performance_reports (
 );
 
 CREATE INDEX idx_performance_reports_type_date ON performance_reports(report_type, generated_at DESC);
-CREATE INDEX idx_performance_reports_severity ON performance_reports(severity) WHERE acknowledged = false;
+CREATE INDEX idx_performance_reports_severity ON performance_reports(severity);
 
 COMMENT ON TABLE performance_reports IS
 'Stores generated performance reports with JSON data';

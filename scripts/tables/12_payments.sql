@@ -46,7 +46,7 @@ CREATE TABLE IF NOT EXISTS payments (
     base_currency VARCHAR(3) DEFAULT 'USD',
 
     -- Payment Status
-    status payment_status NOT NULL DEFAULT 'pending',
+    status payment_status NOT NULL DEFAULT 'PENDING',
 
     -- Payment Gateway Details
     gateway_name VARCHAR(100),

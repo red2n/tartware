@@ -23,6 +23,19 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 -- CREATE EXTENSION IF NOT EXISTS postgis;
 
 -- =====================================================
+-- ROLES
+-- =====================================================
+
+-- Create application role for permissions
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'tartware_app') THEN
+        CREATE ROLE tartware_app;
+    END IF;
+END
+$$;
+
+-- =====================================================
 -- SCHEMAS
 -- =====================================================
 
