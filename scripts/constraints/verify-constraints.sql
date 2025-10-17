@@ -1,9 +1,10 @@
 -- =====================================================
 -- verify-constraints.sql
 -- Verify Foreign Key Constraints
--- Date: 2025-10-15
+-- Date: 2025-10-17
 --
 -- Purpose: Validate all foreign key constraints are created correctly
+-- Updated: Now supports 89 tables (up from 37)
 -- =====================================================
 
 \c tartware

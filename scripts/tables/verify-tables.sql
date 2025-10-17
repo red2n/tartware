@@ -1,7 +1,9 @@
 -- =====================================================
 -- verify-tables.sql
 -- Verify All Tables Are Created Correctly
--- Date: 2025-10-15
+-- Date: 2025-10-17
+--
+-- Updated: Now supports 89 tables (up from 37)
 -- =====================================================
 
 \c tartware
@@ -30,7 +32,22 @@ DECLARE
         'performance_alerts', 'alert_rules', 'folios', 'charge_postings',
         'audit_logs', 'business_dates', 'night_audit_log', 'deposit_schedules',
         'allotments', 'booking_sources', 'market_segments', 'guest_preferences',
-        'refunds', 'rate_overrides', 'maintenance_requests'
+        'refunds', 'rate_overrides', 'maintenance_requests', 'ota_configurations',
+        'ota_rate_plans', 'ota_reservations_queue', 'guest_communications',
+        'communication_templates', 'guest_feedback', 'ota_inventory_sync',
+        'channel_rate_parity', 'channel_commission_rules', 'guest_loyalty_programs',
+        'guest_documents', 'guest_notes', 'automated_messages', 'revenue_forecasts',
+        'competitor_rates', 'demand_calendar', 'pricing_rules', 'rate_recommendations',
+        'revenue_goals', 'staff_schedules', 'staff_tasks', 'shift_handovers',
+        'lost_and_found', 'incident_reports', 'vendor_contracts', 'tax_configurations',
+        'financial_closures', 'commission_tracking', 'cashier_sessions',
+        'accounts_receivable', 'credit_limits', 'marketing_campaigns',
+        'campaign_segments', 'promotional_codes', 'referral_tracking',
+        'social_media_mentions', 'gdpr_consent_logs', 'police_reports',
+        'contract_agreements', 'insurance_claims', 'guest_journey_tracking',
+        'revenue_attribution', 'forecasting_models', 'ab_test_results',
+        'mobile_keys', 'qr_codes', 'push_notifications', 'app_usage_analytics',
+        'integration_mappings', 'api_logs', 'webhook_subscriptions', 'data_sync_status'
     ];
     v_table TEXT;
     v_missing_tables TEXT[] := '{}';
@@ -61,13 +78,13 @@ BEGIN
     END IF;
 
     RAISE NOTICE '';
-    RAISE NOTICE 'Expected tables: 37';
+    RAISE NOTICE 'Expected tables: 89';
     RAISE NOTICE 'Found tables: %', v_found_count;
 
     IF array_length(v_missing_tables, 1) > 0 THEN
         RAISE WARNING 'Missing tables: %', array_to_string(v_missing_tables, ', ');
     ELSE
-        RAISE NOTICE '✓ All 37 tables exist!';
+        RAISE NOTICE '✓ All 89 tables exist!';
     END IF;
 END $$;
 
@@ -331,15 +348,15 @@ BEGIN
         AND column_name IN ('created_at', 'updated_at');
 
     RAISE NOTICE '';
-    RAISE NOTICE 'Total Tables: % (Expected: 37)', v_table_count;
-    RAISE NOTICE 'With Soft Delete: % (Expected: 30+)', v_soft_delete_count;
-    RAISE NOTICE 'With tenant_id: % (Expected: 33+)', v_tenant_id_count;
-    RAISE NOTICE 'With Audit Fields: % (Expected: 37)', v_audit_count;
+    RAISE NOTICE 'Total Tables: % (Expected: 89)', v_table_count;
+    RAISE NOTICE 'With Soft Delete: % (Expected: 80+)', v_soft_delete_count;
+    RAISE NOTICE 'With tenant_id: % (Expected: 85+)', v_tenant_id_count;
+    RAISE NOTICE 'With Audit Fields: % (Expected: 89)', v_audit_count;
     RAISE NOTICE '';
 
-    IF v_table_count >= 37 AND
-       v_soft_delete_count >= 30 AND
-       v_tenant_id_count >= 33 THEN
+    IF v_table_count >= 89 AND
+       v_soft_delete_count >= 80 AND
+       v_tenant_id_count >= 85 THEN
         RAISE NOTICE '✓✓✓ ALL TABLE VALIDATIONS PASSED ✓✓✓';
     ELSE
         RAISE WARNING '⚠⚠⚠ SOME VALIDATIONS FAILED ⚠⚠⚠';

@@ -1,7 +1,9 @@
 -- =====================================================
 -- verify-indexes.sql
 -- Verify All Indexes Are Created Correctly
--- Date: 2025-10-15
+-- Date: 2025-10-17
+--
+-- Updated: Now supports 89 tables with 650+ indexes (up from 37 tables/350+ indexes)
 -- =====================================================
 
 \c tartware
@@ -370,18 +372,18 @@ BEGIN
         AND indexname NOT LIKE '%_pkey';
 
     RAISE NOTICE '';
-    RAISE NOTICE 'Total Indexes: % (Expected: 350+)', v_total_indexes;
+    RAISE NOTICE 'Total Indexes: % (Expected: 650+)', v_total_indexes;
     RAISE NOTICE 'Secondary Indexes: %', v_secondary_indexes;
     RAISE NOTICE 'Partial Indexes: %', v_partial_indexes;
     RAISE NOTICE 'Foreign Keys Without Index: %', v_fk_without_index;
     RAISE NOTICE 'Unused Indexes: % (Normal for new installation)', v_unused_indexes;
     RAISE NOTICE '';
 
-    IF v_total_indexes >= 350 AND v_fk_without_index = 0 THEN
+    IF v_total_indexes >= 650 AND v_fk_without_index = 0 THEN
         RAISE NOTICE '✓✓✓ ALL INDEX VALIDATIONS PASSED ✓✓✓';
-    ELSIF v_total_indexes >= 300 THEN
+    ELSIF v_total_indexes >= 550 THEN
         RAISE WARNING '⚠⚠⚠ INDEX COUNT LOWER THAN EXPECTED ⚠⚠⚠';
-        RAISE WARNING 'Expected: 350+, Found: %', v_total_indexes;
+        RAISE WARNING 'Expected: 650+, Found: %', v_total_indexes;
     ELSE
         RAISE WARNING '✗✗✗ INSUFFICIENT INDEXES ✗✗✗';
         RAISE WARNING 'Please review the index creation scripts.';
