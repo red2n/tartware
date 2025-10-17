@@ -1,38 +1,34 @@
 -- =====================================================
+-- revenue_attribution.sql
 -- Revenue Attribution Table
+-- Industry Standard: Marketing attribution analytics
+-- Pattern: Track revenue attribution to marketing channels and campaigns
+-- Date: 2025-10-17
+-- =====================================================
+-- Purpose: Track revenue attribution to marketing channels and campaigns
+-- Key Features:
+--   - Multi-touch attribution
+--   - Channel effectiveness
+--   - Campaign ROI
+--   - Marketing analytics
+-- =====================================================
+
+-- =====================================================
+-- REVENUE_ATTRIBUTION TABLE
+-- Tracks revenue attribution to marketing channels and campaigns
 -- =====================================================
 
 CREATE TABLE IF NOT EXISTS revenue_attribution (
+    -- Primary Key
     attribution_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+
+    -- Multi-Tenancy
     tenant_id UUID NOT NULL,
-    property_id UUID,
+    property_id UUID NOT NULL,
 
+    -- Foreign Keys
     reservation_id UUID NOT NULL,
-    revenue_amount DECIMAL(12,2) NOT NULL,
+    guest_id UUID NOT NULL,
 
-    attribution_model VARCHAR(100) CHECK (attribution_model IN ('first_touch', 'last_touch', 'linear', 'time_decay', 'position_based')),
-
-    touchpoints JSONB,
-    attribution_weights JSONB,
-
-    primary_channel VARCHAR(100),
-    primary_campaign_id UUID,
-
-    metadata JSONB,
-
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    created_by UUID,
-    updated_by UUID,
-
-    is_deleted BOOLEAN DEFAULT FALSE,
-    deleted_at TIMESTAMP WITH TIME ZONE,
-    deleted_by UUID
-);
-
-CREATE INDEX idx_revenue_attribution_tenant ON revenue_attribution(tenant_id) WHERE is_deleted = FALSE;
-CREATE INDEX idx_revenue_attribution_property ON revenue_attribution(property_id) WHERE is_deleted = FALSE;
-CREATE INDEX idx_revenue_attribution_reservation ON revenue_attribution(reservation_id) WHERE is_deleted = FALSE;
-CREATE INDEX idx_revenue_attribution_campaign ON revenue_attribution(primary_campaign_id) WHERE is_deleted = FALSE;
 
 COMMENT ON TABLE revenue_attribution IS 'Tracks revenue attribution across marketing touchpoints';

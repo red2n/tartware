@@ -1,15 +1,29 @@
 -- =====================================================
+-- webhook_subscriptions.sql
 -- Webhook Subscriptions Table
+-- Industry Standard: Event-driven webhook notifications
+-- Pattern: Subscribe to system events and receive webhook notifications
+-- Date: 2025-10-17
+-- =====================================================
+
+-- =====================================================
+-- WEBHOOK_SUBSCRIPTIONS TABLE
+-- Webhook subscriptions for event notifications
 -- =====================================================
 
 CREATE TABLE IF NOT EXISTS webhook_subscriptions (
+    -- Primary Key
     subscription_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+
+    -- Multi-Tenancy
     tenant_id UUID NOT NULL,
     property_id UUID,
 
-    webhook_name VARCHAR(255) NOT NULL,
-    webhook_url TEXT NOT NULL,
+    -- Webhook Configuration
+    webhook_name VARCHAR(200) NOT NULL,
+    webhook_url VARCHAR(500) NOT NULL,
 
+    -- Event Filtering
     event_types VARCHAR(100)[] NOT NULL,
 
     is_active BOOLEAN DEFAULT TRUE,
@@ -42,9 +56,5 @@ CREATE TABLE IF NOT EXISTS webhook_subscriptions (
     deleted_by UUID
 );
 
-CREATE INDEX idx_webhook_subscriptions_tenant ON webhook_subscriptions(tenant_id) WHERE is_deleted = FALSE;
-CREATE INDEX idx_webhook_subscriptions_property ON webhook_subscriptions(property_id) WHERE is_deleted = FALSE;
-CREATE INDEX idx_webhook_subscriptions_active ON webhook_subscriptions(is_active) WHERE is_active = TRUE AND is_deleted = FALSE;
-CREATE INDEX idx_webhook_subscriptions_events ON webhook_subscriptions USING gin(event_types) WHERE is_deleted = FALSE;
 
 COMMENT ON TABLE webhook_subscriptions IS 'Manages webhook subscriptions for event notifications';

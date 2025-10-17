@@ -1,19 +1,30 @@
 -- =====================================================
+-- data_sync_status.sql
 -- Data Sync Status Table
+-- Industry Standard: Data synchronization tracking and monitoring
+-- Pattern: Track data sync operations between systems
+-- Date: 2025-10-17
+-- =====================================================
+
+-- =====================================================
+-- DATA_SYNC_STATUS TABLE
+-- Data synchronization status and tracking
 -- =====================================================
 
 CREATE TABLE IF NOT EXISTS data_sync_status (
+    -- Primary Key
     sync_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+
+    -- Multi-Tenancy
     tenant_id UUID NOT NULL,
     property_id UUID,
 
-    sync_name VARCHAR(255) NOT NULL,
-    integration_name VARCHAR(255) NOT NULL,
+    -- Sync Configuration
+    sync_name VARCHAR(200) NOT NULL,
+    sync_type VARCHAR(100) CHECK (sync_type IN ('full', 'incremental', 'delta', 'realtime')) NOT NULL,
 
-    sync_type VARCHAR(100) CHECK (sync_type IN ('full', 'incremental', 'delta')),
-    sync_direction VARCHAR(50) CHECK (sync_direction IN ('inbound', 'outbound', 'bidirectional')),
-
-    entity_type VARCHAR(255) NOT NULL,
+    -- Entity Information
+    entity_type VARCHAR(100) NOT NULL,
 
     status VARCHAR(50) CHECK (status IN ('pending', 'running', 'completed', 'failed', 'partial')) DEFAULT 'pending',
 
@@ -47,12 +58,5 @@ CREATE TABLE IF NOT EXISTS data_sync_status (
     deleted_by UUID
 );
 
-CREATE INDEX idx_data_sync_status_tenant ON data_sync_status(tenant_id) WHERE is_deleted = FALSE;
-CREATE INDEX idx_data_sync_status_property ON data_sync_status(property_id) WHERE is_deleted = FALSE;
-CREATE INDEX idx_data_sync_status_integration ON data_sync_status(integration_name) WHERE is_deleted = FALSE;
-CREATE INDEX idx_data_sync_status_entity ON data_sync_status(entity_type) WHERE is_deleted = FALSE;
-CREATE INDEX idx_data_sync_status_status ON data_sync_status(status) WHERE is_deleted = FALSE;
-CREATE INDEX idx_data_sync_status_started ON data_sync_status(started_at DESC) WHERE is_deleted = FALSE;
-CREATE INDEX idx_data_sync_status_next_sync ON data_sync_status(next_sync_at) WHERE status = 'completed' AND is_deleted = FALSE;
 
 COMMENT ON TABLE data_sync_status IS 'Tracks data synchronization status between integrated systems';

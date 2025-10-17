@@ -1,5 +1,9 @@
 -- =====================================================
+-- guest_journey_tracking.sql
 -- Guest Journey Tracking Table
+-- Industry Standard: Guest experience analytics & journey mapping
+-- Pattern: Track complete guest journey and touchpoints across all channels
+-- Date: 2025-10-17
 -- =====================================================
 -- Purpose: Track complete guest journey and touchpoints
 -- Key Features:
@@ -7,6 +11,11 @@
 --   - Touchpoint tracking
 --   - Experience analytics
 --   - Personalization insights
+-- =====================================================
+
+-- =====================================================
+-- GUEST_JOURNEY_TRACKING TABLE
+-- Tracks complete guest journey from discovery to post-stay
 -- =====================================================
 
 CREATE TABLE IF NOT EXISTS guest_journey_tracking (
@@ -17,29 +26,31 @@ CREATE TABLE IF NOT EXISTS guest_journey_tracking (
     tenant_id UUID NOT NULL,
     property_id UUID,
 
-    -- Guest
+    -- Guest Identification
     guest_id UUID NOT NULL,
     guest_segment VARCHAR(100),
 
-    -- Journey Details
+    -- Journey Classification
     journey_type VARCHAR(100) CHECK (journey_type IN (
         'discovery', 'booking', 'pre_arrival', 'arrival', 'stay',
         'departure', 'post_stay', 'complete_cycle'
     )),
 
+    -- Journey Status
     journey_status VARCHAR(50) CHECK (journey_status IN (
         'started', 'in_progress', 'completed', 'abandoned'
     )),
 
+    -- Journey Timeline
     journey_start_date TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
     journey_end_date TIMESTAMP WITH TIME ZONE,
     journey_duration_minutes INTEGER,
 
-    -- Touchpoints
+    -- Touchpoint Tracking
     touchpoint_count INTEGER DEFAULT 0,
     touchpoints JSONB, -- [{type, channel, timestamp, action, outcome}]
 
-    -- Channels Used
+    -- Channel Analytics
     channels_used VARCHAR(100)[] DEFAULT ARRAY[]::VARCHAR[],
     primary_channel VARCHAR(100),
 
@@ -85,13 +96,5 @@ CREATE TABLE IF NOT EXISTS guest_journey_tracking (
     deleted_by UUID
 );
 
-CREATE INDEX idx_guest_journey_tracking_tenant ON guest_journey_tracking(tenant_id) WHERE is_deleted = FALSE;
-CREATE INDEX idx_guest_journey_tracking_property ON guest_journey_tracking(property_id) WHERE is_deleted = FALSE;
-CREATE INDEX idx_guest_journey_tracking_guest ON guest_journey_tracking(guest_id) WHERE is_deleted = FALSE;
-CREATE INDEX idx_guest_journey_tracking_type ON guest_journey_tracking(journey_type) WHERE is_deleted = FALSE;
-CREATE INDEX idx_guest_journey_tracking_status ON guest_journey_tracking(journey_status) WHERE is_deleted = FALSE;
-CREATE INDEX idx_guest_journey_tracking_converted ON guest_journey_tracking(converted) WHERE is_deleted = FALSE;
-CREATE INDEX idx_guest_journey_tracking_touchpoints ON guest_journey_tracking USING gin(touchpoints) WHERE is_deleted = FALSE;
-CREATE INDEX idx_guest_journey_tracking_metadata ON guest_journey_tracking USING gin(metadata) WHERE is_deleted = FALSE;
 
 COMMENT ON TABLE guest_journey_tracking IS 'Tracks complete guest journey with touchpoints and experience analytics';

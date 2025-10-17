@@ -1,16 +1,30 @@
 -- =====================================================
+-- push_notifications.sql
 -- Push Notifications Table
+-- Industry Standard: Mobile app engagement via push notifications
+-- Pattern: Store and track push notification delivery to mobile devices
+-- Date: 2025-10-17
+-- =====================================================
+
+-- =====================================================
+-- PUSH_NOTIFICATIONS TABLE
+-- Mobile push notifications for guest engagement
 -- =====================================================
 
 CREATE TABLE IF NOT EXISTS push_notifications (
+    -- Primary Key
     notification_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+
+    -- Multi-Tenancy
     tenant_id UUID NOT NULL,
     property_id UUID,
 
+    -- Recipient Configuration
     recipient_type VARCHAR(50) CHECK (recipient_type IN ('guest', 'staff', 'segment', 'broadcast')),
     recipient_id UUID,
     guest_id UUID,
 
+    -- Notification Classification
     notification_type VARCHAR(100) CHECK (notification_type IN ('booking', 'checkin', 'checkout', 'promotion', 'alert', 'reminder', 'info')),
 
     title VARCHAR(255) NOT NULL,
@@ -43,11 +57,5 @@ CREATE TABLE IF NOT EXISTS push_notifications (
     deleted_by UUID
 );
 
-CREATE INDEX idx_push_notifications_tenant ON push_notifications(tenant_id) WHERE is_deleted = FALSE;
-CREATE INDEX idx_push_notifications_property ON push_notifications(property_id) WHERE is_deleted = FALSE;
-CREATE INDEX idx_push_notifications_recipient ON push_notifications(recipient_type, recipient_id) WHERE is_deleted = FALSE;
-CREATE INDEX idx_push_notifications_guest ON push_notifications(guest_id) WHERE guest_id IS NOT NULL AND is_deleted = FALSE;
-CREATE INDEX idx_push_notifications_status ON push_notifications(status) WHERE is_deleted = FALSE;
-CREATE INDEX idx_push_notifications_scheduled ON push_notifications(scheduled_at) WHERE status = 'scheduled' AND is_deleted = FALSE;
 
 COMMENT ON TABLE push_notifications IS 'Manages push notifications for mobile apps';

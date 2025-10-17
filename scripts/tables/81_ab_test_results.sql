@@ -1,14 +1,27 @@
 -- =====================================================
+-- ab_test_results.sql
 -- A/B Test Results Table
+-- Industry Standard: Experimentation and optimization tracking
+-- Pattern: Store A/B test results for pricing, marketing, and UX experiments
+-- Date: 2025-10-17
+-- =====================================================
+
+-- =====================================================
+-- AB_TEST_RESULTS TABLE
+-- A/B testing results for optimization experiments
 -- =====================================================
 
 CREATE TABLE IF NOT EXISTS ab_test_results (
-    test_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    -- Primary Key
+    result_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+
+    -- Multi-Tenancy
     tenant_id UUID NOT NULL,
     property_id UUID,
 
-    test_name VARCHAR(255) NOT NULL,
-    test_type VARCHAR(100) CHECK (test_type IN ('pricing', 'marketing', 'ui_ux', 'email', 'features')),
+    -- Test Identification
+    test_name VARCHAR(200) NOT NULL,
+    test_category VARCHAR(100),
 
     test_status VARCHAR(50) CHECK (test_status IN ('draft', 'running', 'completed', 'cancelled')) DEFAULT 'draft',
 
@@ -44,9 +57,5 @@ CREATE TABLE IF NOT EXISTS ab_test_results (
     deleted_by UUID
 );
 
-CREATE INDEX idx_ab_test_results_tenant ON ab_test_results(tenant_id) WHERE is_deleted = FALSE;
-CREATE INDEX idx_ab_test_results_property ON ab_test_results(property_id) WHERE is_deleted = FALSE;
-CREATE INDEX idx_ab_test_results_type ON ab_test_results(test_type) WHERE is_deleted = FALSE;
-CREATE INDEX idx_ab_test_results_status ON ab_test_results(test_status) WHERE is_deleted = FALSE;
 
 COMMENT ON TABLE ab_test_results IS 'Tracks A/B testing experiments and results';

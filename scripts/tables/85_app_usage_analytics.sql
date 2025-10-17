@@ -1,14 +1,27 @@
 -- =====================================================
+-- app_usage_analytics.sql
 -- App Usage Analytics Table
+-- Industry Standard: Mobile app analytics and user behavior tracking
+-- Pattern: Track mobile app usage, features, sessions for UX optimization
+-- Date: 2025-10-17
+-- =====================================================
+
+-- =====================================================
+-- APP_USAGE_ANALYTICS TABLE
+-- Mobile app usage tracking and analytics
 -- =====================================================
 
 CREATE TABLE IF NOT EXISTS app_usage_analytics (
-    usage_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    -- Primary Key
+    event_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+
+    -- Multi-Tenancy
     tenant_id UUID NOT NULL,
     property_id UUID,
 
+    -- User Identification
     guest_id UUID,
-    user_id UUID,
+    session_id UUID,
 
     session_id VARCHAR(255),
     device_id VARCHAR(255),
@@ -33,11 +46,5 @@ CREATE TABLE IF NOT EXISTS app_usage_analytics (
     is_deleted BOOLEAN DEFAULT FALSE
 );
 
-CREATE INDEX idx_app_usage_analytics_tenant ON app_usage_analytics(tenant_id) WHERE is_deleted = FALSE;
-CREATE INDEX idx_app_usage_analytics_property ON app_usage_analytics(property_id) WHERE is_deleted = FALSE;
-CREATE INDEX idx_app_usage_analytics_guest ON app_usage_analytics(guest_id) WHERE guest_id IS NOT NULL AND is_deleted = FALSE;
-CREATE INDEX idx_app_usage_analytics_session ON app_usage_analytics(session_id) WHERE is_deleted = FALSE;
-CREATE INDEX idx_app_usage_analytics_event_type ON app_usage_analytics(event_type) WHERE is_deleted = FALSE;
-CREATE INDEX idx_app_usage_analytics_timestamp ON app_usage_analytics(event_timestamp DESC) WHERE is_deleted = FALSE;
 
 COMMENT ON TABLE app_usage_analytics IS 'Tracks mobile app usage and user behavior analytics';
