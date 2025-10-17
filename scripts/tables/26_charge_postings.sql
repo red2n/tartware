@@ -110,16 +110,16 @@ CREATE TABLE charge_postings (
     reconciled_at TIMESTAMP,
     reconciliation_batch VARCHAR(50),
 
-    -- Soft Delete Support
+    created_by VARCHAR(100),
+    updated_by VARCHAR(100),
+
+    -- Soft Delete
+    is_deleted BOOLEAN DEFAULT FALSE,
     deleted_at TIMESTAMP,
-    deleted_by UUID,
+    deleted_by VARCHAR(100),
 
-    -- Audit Trail
-    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    created_by UUID NOT NULL,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_by UUID,
-
+    -- Optimistic Locking
+    version BIGINT DEFAULT 0,
     -- Foreign Keys (will be added via constraints file)
     -- FOREIGN KEY (tenant_id) REFERENCES tenants(tenant_id),
     -- FOREIGN KEY (property_id) REFERENCES properties(property_id),

@@ -60,6 +60,11 @@ CREATE TABLE IF NOT EXISTS availability.room_availability (
     created_by VARCHAR(100),
     updated_by VARCHAR(100),
 
+    -- Soft Delete
+    is_deleted BOOLEAN DEFAULT FALSE,
+    deleted_at TIMESTAMP,
+    deleted_by VARCHAR(100),
+
     -- Optimistic Locking
     version BIGINT DEFAULT 0,
 

@@ -156,6 +156,7 @@ CREATE TABLE refunds (
     guest_facing_notes TEXT,
 
     -- Soft delete
+    is_deleted BOOLEAN DEFAULT FALSE,
     deleted_at TIMESTAMP,
     deleted_by UUID,
 

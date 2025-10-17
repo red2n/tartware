@@ -91,6 +91,7 @@ CREATE TABLE business_dates (
     notes TEXT,
 
     -- Soft delete
+    is_deleted BOOLEAN DEFAULT FALSE,
     deleted_at TIMESTAMP,
     deleted_by UUID,
 

@@ -156,6 +156,7 @@ CREATE TABLE rate_overrides (
     internal_notes TEXT,
 
     -- Soft delete
+    is_deleted BOOLEAN DEFAULT FALSE,
     deleted_at TIMESTAMP,
     deleted_by UUID,
 

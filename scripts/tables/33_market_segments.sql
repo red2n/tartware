@@ -143,6 +143,7 @@ CREATE TABLE market_segments (
     metadata JSONB,
 
     -- Soft delete
+    is_deleted BOOLEAN DEFAULT FALSE,
     deleted_at TIMESTAMP,
     deleted_by UUID,
 

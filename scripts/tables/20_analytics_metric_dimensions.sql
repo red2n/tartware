@@ -40,10 +40,16 @@ CREATE TABLE IF NOT EXISTS analytics_metric_dimensions (
     metadata JSONB DEFAULT '{}'::jsonb,
 
     -- Audit Fields
-    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_by VARCHAR(100),
+    updated_by VARCHAR(100),
 
-    -- Constraints
-    CONSTRAINT analytics_dimensions_unique UNIQUE (metric_id, dimension_type, dimension_key)
+    -- Soft Delete
+    is_deleted BOOLEAN DEFAULT FALSE,
+    deleted_at TIMESTAMP,
+    deleted_by VARCHAR(100),
+
+    -- Optimistic Locking
+    version BIGINT DEFAULT 0,
 );
 
 -- =====================================================

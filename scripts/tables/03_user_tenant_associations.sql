@@ -52,6 +52,7 @@ CREATE TABLE IF NOT EXISTS user_tenant_associations (
     updated_by VARCHAR(100),
 
     -- Soft Delete
+    is_deleted BOOLEAN DEFAULT FALSE,
     deleted_at TIMESTAMP,
     deleted_by VARCHAR(100),
 

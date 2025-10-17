@@ -65,7 +65,12 @@ CREATE TABLE IF NOT EXISTS analytics_metrics (
 
     -- Audit Fields
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP
+    updated_at TIMESTAMP,
+
+    -- Soft Delete
+    is_deleted BOOLEAN DEFAULT FALSE,
+    deleted_at TIMESTAMP,
+    deleted_by VARCHAR(100)
 );
 
 -- =====================================================

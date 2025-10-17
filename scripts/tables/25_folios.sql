@@ -86,6 +86,7 @@ CREATE TABLE folios (
     closed_at TIMESTAMP,
 
     -- Soft Delete Support
+    is_deleted BOOLEAN DEFAULT FALSE,
     deleted_at TIMESTAMP,
     deleted_by UUID,
 

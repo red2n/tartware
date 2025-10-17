@@ -67,6 +67,7 @@ CREATE TABLE IF NOT EXISTS users (
     updated_by VARCHAR(100),
 
     -- Soft Delete
+    is_deleted BOOLEAN DEFAULT FALSE,
     deleted_at TIMESTAMP,
     deleted_by VARCHAR(100),
 

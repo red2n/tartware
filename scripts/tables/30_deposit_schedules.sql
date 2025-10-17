@@ -124,9 +124,16 @@ CREATE TABLE deposit_schedules (
     -- Metadata
     metadata JSONB,
 
-    -- Soft delete
+    created_by VARCHAR(100),
+    updated_by VARCHAR(100),
+
+    -- Soft Delete
+    is_deleted BOOLEAN DEFAULT FALSE,
     deleted_at TIMESTAMP,
-    deleted_by UUID,
+    deleted_by VARCHAR(100),
+
+    -- Optimistic Locking
+    version BIGINT DEFAULT 0,
 
     -- Audit trail
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,

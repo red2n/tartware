@@ -132,15 +132,16 @@ CREATE TABLE booking_sources (
     -- Metadata
     metadata JSONB,
 
-    -- Soft delete
-    deleted_at TIMESTAMP,
-    deleted_by UUID,
+        created_by VARCHAR(100),
+    updated_by VARCHAR(100),
 
-    -- Audit trail
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    created_by UUID,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_by UUID,
+    -- Soft Delete
+    is_deleted BOOLEAN DEFAULT FALSE,
+    deleted_at TIMESTAMP,
+    deleted_by VARCHAR(100),
+
+    -- Optimistic Locking
+    version BIGINT DEFAULT 0,
 
     -- Constraints
     CONSTRAINT uk_booking_sources_code

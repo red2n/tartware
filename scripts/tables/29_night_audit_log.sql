@@ -121,6 +121,7 @@ CREATE TABLE night_audit_log (
     previous_attempt_id UUID, -- Reference to previous failed attempt
 
     -- Soft delete (audit logs typically not deleted)
+    is_deleted BOOLEAN DEFAULT FALSE,
     deleted_at TIMESTAMP,
     deleted_by UUID,
 

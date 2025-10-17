@@ -73,6 +73,7 @@ CREATE TABLE IF NOT EXISTS analytics_reports (
     updated_by VARCHAR(100),
 
     -- Soft Delete
+    is_deleted BOOLEAN DEFAULT FALSE,
     deleted_at TIMESTAMP,
     deleted_by VARCHAR(100),
 
