@@ -45,6 +45,8 @@ data_store = {
     'reservations': [],
     'invoices': [],
     'services': [],
+    'ota_configurations': [],
+    'folios': [],
 }
 
 
@@ -951,12 +953,13 @@ def insert_ota_configurations(conn):
     count = 0
     for property in data_store['properties']:
         for name, code, active, commission in otas:
+            config_id = generate_uuid()
             cur.execute("""
                 INSERT INTO ota_configurations (id, tenant_id, property_id, ota_name, ota_code,
                                                is_active, commission_percentage, api_endpoint, sync_enabled)
                 VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
             """, (
-                generate_uuid(),
+                config_id,
                 property['tenant_id'],
                 property['id'],
                 name,
@@ -966,9 +969,14 @@ def insert_ota_configurations(conn):
                 f"https://api.{code.lower()}.com/v1",
                 True
             ))
+            data_store['ota_configurations'].append({
+                'id': config_id,
+                'tenant_id': property['tenant_id'],
+                'property_id': property['id'],
+                'channel_code': code
+            })
             count += 1
 
-    data_store['ota_configurations'] = count
     conn.commit()
     print(f"   → Inserted {count} OTA configurations")
 
@@ -1176,6 +1184,440 @@ def insert_communication_templates(conn):
     print(f"   → Inserted {count} communication templates")
 
 
+def insert_ota_rate_plans(conn):
+    """Insert OTA rate plan records - maps OTA channels to existing rates"""
+    print(f"\n✓ Inserting OTA Rate Plans...")
+    cur = conn.cursor()
+
+    mapping_types = ['STANDARD', 'PROMOTIONAL', 'EXCLUSIVE']
+
+    count = 0
+    # Create rate plans for each OTA configuration and rate
+    for ota_config in data_store['ota_configurations']:
+        # Get rates for this property
+        property_rates = [r for r in data_store['rates'] if r['property_id'] == ota_config['property_id']]
+
+        for idx, rate in enumerate(property_rates):
+            # Create 1-2 mappings per rate
+            for mapping_type in random.sample(mapping_types, random.randint(1, 2)):
+                markup = random.choice([0, 5, 10, 15, 20])
+                plan_id = f"{ota_config['channel_code']}_RATE{idx+1}_{mapping_type[:3]}"
+                plan_name = f"{ota_config['channel_code']} Rate Plan #{idx+1} ({mapping_type})"
+
+                cur.execute("""
+                    INSERT INTO ota_rate_plans (id, tenant_id, property_id, ota_configuration_id,
+                                               rate_id, ota_rate_plan_id, ota_rate_plan_name,
+                                               mapping_type, is_active, markup_percentage,
+                                               include_breakfast, include_taxes,
+                                               min_length_of_stay, created_by)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                """, (
+                    generate_uuid(),
+                    ota_config['tenant_id'],
+                    ota_config['property_id'],
+                    ota_config['id'],
+                    rate['id'],
+                    plan_id,
+                    plan_name,
+                    mapping_type,
+                    True,
+                    markup,
+                    random.choice([True, False]),
+                    random.choice([True, False]),
+                    random.choice([1, 2, 3]),
+                    random.choice([u['id'] for u in data_store['users']])
+                ))
+                count += 1
+
+    conn.commit()
+    print(f"   → Inserted {count} OTA rate plans")
+
+
+def insert_ota_reservations_queue(conn):
+    """Insert OTA reservations queue records"""
+    print(f"\n✓ Inserting OTA Reservations Queue...")
+    cur = conn.cursor()
+
+    statuses = ['PENDING', 'PROCESSING', 'PROCESSED', 'PROCESSED', 'FAILED']
+
+    count = 0
+    # Create queue entries for recent reservations
+    for reservation in data_store['reservations'][:100]:  # 20% of reservations from OTAs
+        # Get a random OTA configuration for this property
+        ota_configs = [oc for oc in data_store['ota_configurations'] if oc['property_id'] == reservation['property_id']]
+        if not ota_configs:
+            continue
+        ota_config = random.choice(ota_configs)
+
+        # Generate reservation dates
+        check_in = fake.date_between(start_date='-60d', end_date='+90d')
+        check_out = check_in + timedelta(days=random.randint(1, 7))
+
+        cur.execute("""
+            INSERT INTO ota_reservations_queue (id, tenant_id, property_id, ota_configuration_id,
+                                               reservation_id, ota_reservation_id, ota_booking_reference,
+                                               status, guest_name, guest_email,
+                                               check_in_date, check_out_date,
+                                               number_of_guests, total_amount, currency_code,
+                                               raw_payload)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+        """, (
+            generate_uuid(),
+            reservation['tenant_id'],
+            reservation['property_id'],
+            ota_config['id'],
+            reservation['id'],
+            f"OTA{fake.random_int(100000, 999999)}",
+            f"BKG{fake.random_int(10000, 99999)}",
+            random.choice(statuses),
+            fake.name(),
+            fake.email(),
+            check_in,
+            check_out,
+            random.randint(1, 4),
+            reservation['total_amount'],
+            'USD',
+            json.dumps({"source": ota_config['channel_code'], "booking_data": "sample"})
+        ))
+        count += 1
+
+    conn.commit()
+    print(f"   → Inserted {count} OTA queue entries")
+
+
+def insert_guest_loyalty_programs(conn):
+    """Insert guest loyalty program records"""
+    print(f"\n✓ Inserting Guest Loyalty Programs...")
+    cur = conn.cursor()
+
+    tiers = ['bronze', 'silver', 'gold', 'platinum', 'diamond']
+
+    count = 0
+    # 40% of guests are loyalty members
+    for guest in data_store['guests'][:80]:
+        points = random.randint(100, 5000)
+        tier = random.choice(tiers)
+        enrollment_date = fake.date_between(start_date="-2y", end_date="-1m")
+
+        cur.execute("""
+            INSERT INTO guest_loyalty_programs (program_id, tenant_id, guest_id, program_name,
+                                               membership_number, program_tier, points_balance,
+                                               enrollment_date, membership_status, total_stays,
+                                               total_nights, is_active)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+        """, (
+            generate_uuid(),
+            guest['tenant_id'],
+            guest['id'],
+            'Tartware Rewards',
+            f"TR{fake.random_int(100000, 999999)}",
+            tier,
+            points,
+            enrollment_date,
+            'active',
+            random.randint(1, 20),
+            random.randint(5, 100),
+            True
+        ))
+        count += 1
+
+    conn.commit()
+    print(f"   → Inserted {count} loyalty memberships")
+
+
+def insert_guest_documents(conn):
+    """Insert guest document records"""
+    print(f"\n✓ Inserting Guest Documents...")
+    cur = conn.cursor()
+
+    doc_types = ['passport', 'drivers_license', 'national_id', 'visa', 'credit_card']
+
+    count = 0
+    # Each guest has 1-2 documents
+    for guest in data_store['guests']:
+        # Get a property for this guest (use first property of tenant)
+        guest_property = next((p for p in data_store['properties'] if p['tenant_id'] == guest['tenant_id']), None)
+        if not guest_property:
+            continue
+
+        num_docs = random.randint(1, 2)
+        for i in range(num_docs):
+            doc_type = random.choice(doc_types)
+            cur.execute("""
+                INSERT INTO guest_documents (document_id, tenant_id, property_id, guest_id,
+                                           document_type, document_name, file_path, file_name,
+                                           document_number, is_verified)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            """, (
+                generate_uuid(),
+                guest['tenant_id'],
+                guest_property['id'],
+                guest['id'],
+                doc_type,
+                f"{doc_type} - {fake.name()}",
+                f"/uploads/guests/{guest['id']}/",
+                f"{fake.uuid4()}.pdf",
+                fake.bothify('??########'),
+                random.choice([True, True, True, False])
+            ))
+            count += 1
+
+    conn.commit()
+    print(f"   → Inserted {count} guest documents")
+
+
+def insert_guest_notes(conn):
+    """Insert guest note records"""
+    print(f"\n✓ Inserting Guest Notes...")
+    cur = conn.cursor()
+
+    note_types = ['general', 'preference', 'complaint', 'compliment', 'vip', 'feedback']
+    priorities = ['low', 'normal', 'high', 'urgent']
+
+    count = 0
+    # 60% of guests have notes
+    for guest in data_store['guests'][:120]:
+        # Get a property for this guest
+        guest_property = next((p for p in data_store['properties'] if p['tenant_id'] == guest['tenant_id']), None)
+        if not guest_property:
+            continue
+
+        num_notes = random.randint(1, 3)
+        for i in range(num_notes):
+            cur.execute("""
+                INSERT INTO guest_notes (note_id, tenant_id, property_id, guest_id,
+                                       note_type, note_text, priority, created_by)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+            """, (
+                generate_uuid(),
+                guest['tenant_id'],
+                guest_property['id'],
+                guest['id'],
+                random.choice(note_types),
+                fake.paragraph(),
+                random.choice(priorities),
+                random.choice([u['id'] for u in data_store['users']])
+            ))
+            count += 1
+
+    conn.commit()
+    print(f"   → Inserted {count} guest notes")
+
+
+def insert_maintenance_requests(conn):
+    """Insert maintenance request records"""
+    print(f"\n✓ Inserting Maintenance Requests...")
+    cur = conn.cursor()
+
+    request_types = ['PREVENTIVE', 'CORRECTIVE', 'EMERGENCY', 'INSPECTION']
+    categories = ['PLUMBING', 'ELECTRICAL', 'HVAC', 'FURNITURE', 'APPLIANCE', 'OTHER']
+    priorities = ['LOW', 'MEDIUM', 'HIGH', 'URGENT']
+    statuses = ['OPEN', 'OPEN', 'OPEN', 'CANCELLED']  # Use OPEN to avoid complex constraints
+
+    count = 0
+    # Generate 2-3 requests per property
+    for property in data_store['properties']:
+        property_rooms = [r for r in data_store['rooms'] if r['property_id'] == property['id']]
+        if not property_rooms:
+            continue
+
+        num_requests = random.randint(2, 3)
+        for i in range(num_requests):
+            room = random.choice(property_rooms)
+            cur.execute("""
+                INSERT INTO maintenance_requests (request_id, tenant_id, property_id, room_number,
+                                                 request_type, issue_category, priority,
+                                                 request_status, issue_description,
+                                                 reported_by)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            """, (
+                generate_uuid(),
+                property['tenant_id'],
+                property['id'],
+                room['room_number'],
+                random.choice(request_types),
+                random.choice(categories),
+                random.choice(priorities),
+                random.choice(statuses),
+                fake.sentence(nb_words=10),
+                random.choice([u['id'] for u in data_store['users']])
+            ))
+            count += 1
+
+    conn.commit()
+    print(f"   → Inserted {count} maintenance requests")
+
+
+def insert_incident_reports(conn):
+    """Insert incident report records"""
+    print(f"\n✓ Inserting Incident Reports...")
+    cur = conn.cursor()
+
+    incident_types = ['accident', 'theft', 'damage', 'slip_fall', 'medical_emergency', 'security_breach']
+    severities = ['minor', 'moderate', 'serious', 'critical']
+
+    count = 0
+    # Generate 1-2 incidents per property
+    for property in data_store['properties']:
+        num_incidents = random.randint(1, 2)
+        for i in range(num_incidents):
+            incident_date = fake.date_between(start_date="-60d", end_date="now")
+            incident_time = fake.time()
+            incident_datetime = datetime.combine(incident_date, datetime.strptime(incident_time, '%H:%M:%S').time())
+
+            user_id = random.choice([u['id'] for u in data_store['users']])
+            cur.execute("""
+                INSERT INTO incident_reports (incident_id, tenant_id, property_id,
+                                             incident_number, incident_title, incident_type,
+                                             incident_location, incident_description,
+                                             immediate_actions_taken, severity,
+                                             incident_date, incident_time, incident_datetime,
+                                             discovered_by, created_by)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            """, (
+                generate_uuid(),
+                property['tenant_id'],
+                property['id'],
+                f"INC{count + 1:06d}",
+                fake.sentence(nb_words=5),
+                random.choice(incident_types),
+                fake.word().title() + " Area",
+                fake.paragraph(),
+                fake.sentence(nb_words=8),
+                random.choice(severities),
+                incident_date,
+                incident_time,
+                incident_datetime,
+                user_id,
+                user_id
+            ))
+            count += 1
+
+    conn.commit()
+    print(f"   → Inserted {count} incident reports")
+
+
+def insert_folios(conn):
+    """Insert folio records"""
+    print(f"\n✓ Inserting Folios...")
+    cur = conn.cursor()
+
+    count = 0
+    # Create a folio for each reservation
+    for reservation in data_store['reservations']:
+        folio_id = generate_uuid()
+        cur.execute("""
+            INSERT INTO folios (folio_id, tenant_id, property_id, reservation_id, guest_id,
+                               folio_number, folio_type, folio_status, balance, created_by)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+        """, (
+            folio_id,
+            reservation['tenant_id'],
+            reservation['property_id'],
+            reservation['id'],
+            reservation['guest_id'],
+            f"FOL{count + 1:06d}",
+            'GUEST',
+            'OPEN',  # Use OPEN to avoid complex constraints on CLOSED/SETTLED
+            0.00,  # Balance must be 0 when total_charges, total_payments, total_credits are 0
+            random.choice([u['id'] for u in data_store['users']])
+        ))
+
+        # Store folio for charge postings
+        data_store['folios'].append({
+            'id': folio_id,
+            'reservation_id': reservation['id'],
+            'tenant_id': reservation['tenant_id'],
+            'property_id': reservation['property_id']
+        })
+        count += 1
+
+    conn.commit()
+    print(f"   → Inserted {count} folios")
+
+
+def insert_charge_postings(conn):
+    """Insert charge posting records"""
+    print(f"\n✓ Inserting Charge Postings...")
+    cur = conn.cursor()
+
+    charge_codes = ['ROOM', 'TAX', 'SERVICE', 'MINIBAR', 'LAUNDRY', 'RESTAURANT', 'SPA', 'PARKING']
+
+    count = 0
+    # Each folio gets 3-6 charges
+    for folio in data_store['folios'][:400]:  # 80% of folios
+        num_charges = random.randint(3, 6)
+        for i in range(num_charges):
+            charge_code = random.choice(charge_codes)
+            unit_price = round(random.uniform(10, 200), 2)
+            quantity = 1
+            subtotal = unit_price * quantity
+            total_amount = subtotal
+
+            cur.execute("""
+                INSERT INTO charge_postings (posting_id, tenant_id, property_id, folio_id,
+                                           transaction_type, posting_type, business_date,
+                                           charge_code, charge_description,
+                                           unit_price, subtotal, total_amount)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            """, (
+                generate_uuid(),
+                folio['tenant_id'],
+                folio['property_id'],
+                folio['id'],
+                'CHARGE',
+                'DEBIT',
+                datetime.now().date(),
+                charge_code,
+                f"{charge_code} Charge - {fake.word()}",
+                unit_price,
+                subtotal,
+                total_amount
+            ))
+            count += 1
+
+    conn.commit()
+    print(f"   → Inserted {count} charge postings")
+
+
+def insert_night_audit_log(conn):
+    """Insert night audit log records"""
+    print(f"\n✓ Inserting Night Audit Log...")
+    cur = conn.cursor()
+
+    count = 0
+    # Generate 30 days of audit logs for each property
+    for property in data_store['properties']:
+        for days_ago in range(30):
+            business_date = datetime.now().date() - timedelta(days=days_ago)
+            audit_run_id = generate_uuid()
+
+            # Create a few audit steps for each day
+            for step_num in range(1, 4):
+                cur.execute("""
+                    INSERT INTO night_audit_log (audit_log_id, tenant_id, property_id,
+                                               audit_run_id, business_date,
+                                               step_number, step_name,
+                                               audit_status, step_status, initiated_by)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                """, (
+                    generate_uuid(),
+                    property['tenant_id'],
+                    property['id'],
+                    audit_run_id,
+                    business_date,
+                    step_num,
+                    ['Room Status Update', 'Revenue Posting', 'Report Generation'][step_num - 1],
+                    'STARTED',  # audit_status - use STARTED to avoid COMPLETED constraints
+                    'PENDING',  # step_status - use PENDING to avoid COMPLETED constraints
+                    random.choice([u['id'] for u in data_store['users']])
+                ))
+                count += 1
+
+    conn.commit()
+    print(f"   → Inserted {count} audit log entries")
+
+
 def main():
     """Main execution function"""
     print("=" * 60)
@@ -1202,6 +1644,10 @@ def main():
         if response == 'yes':
             print("\n✓ Clearing existing data...")
             tables = [
+                'night_audit_log', 'charge_postings', 'folios',
+                'incident_reports', 'maintenance_requests',
+                'guest_notes', 'guest_documents', 'guest_loyalty_programs',
+                'ota_reservations_queue', 'ota_rate_plans',
                 'channel_mappings', 'communication_templates',
                 'guest_preferences', 'guest_feedback', 'guest_communications',
                 'ota_configurations', 'reservation_services', 'reservation_status_history',
@@ -1256,12 +1702,28 @@ def main():
         # OTA and Channel Management
         insert_ota_configurations(conn)
         insert_channel_mappings(conn)
+        insert_ota_rate_plans(conn)
+        insert_ota_reservations_queue(conn)
 
         # Guest CRM
         insert_guest_communications(conn)
         insert_guest_feedback(conn)
         insert_guest_preferences(conn)
         insert_communication_templates(conn)
+        insert_guest_loyalty_programs(conn)
+        insert_guest_documents(conn)
+        insert_guest_notes(conn)
+
+        # Operations
+        insert_maintenance_requests(conn)
+        insert_incident_reports(conn)
+
+        # Financial
+        insert_folios(conn)
+        insert_charge_postings(conn)
+
+        # System
+        insert_night_audit_log(conn)
 
         # Re-enable triggers
         cur.execute("SET session_replication_role = DEFAULT;")
