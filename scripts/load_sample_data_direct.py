@@ -937,6 +937,245 @@ def insert_audit_logs(conn):
     print(f"   → Inserted {count} audit logs")
 
 
+def insert_ota_configurations(conn):
+    """Insert OTA configuration records"""
+    print(f"\n✓ Inserting OTA Configurations...")
+    cur = conn.cursor()
+
+    otas = [
+        ('Booking.com', 'BOOKING', True, '15.0'),
+        ('Expedia', 'EXPEDIA', True, '18.0'),
+        ('Airbnb', 'AIRBNB', True, '14.0'),
+    ]
+
+    count = 0
+    for property in data_store['properties']:
+        for name, code, active, commission in otas:
+            cur.execute("""
+                INSERT INTO ota_configurations (id, tenant_id, property_id, ota_name, ota_code,
+                                               is_active, commission_percentage, api_endpoint, sync_enabled)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+            """, (
+                generate_uuid(),
+                property['tenant_id'],
+                property['id'],
+                name,
+                code,
+                active,
+                commission,
+                f"https://api.{code.lower()}.com/v1",
+                True
+            ))
+            count += 1
+
+    data_store['ota_configurations'] = count
+    conn.commit()
+    print(f"   → Inserted {count} OTA configurations")
+
+
+def insert_guest_communications(conn):
+    """Insert guest communication records"""
+    print(f"\n✓ Inserting Guest Communications...")
+    cur = conn.cursor()
+
+    comm_types = ['EMAIL', 'SMS', 'PHONE', 'CHAT']
+    statuses = ['SENT', 'DELIVERED', 'READ', 'FAILED']
+
+    count = 0
+    # Send 1-2 communications per reservation
+    for reservation in data_store['reservations'][:300]:
+        num_comms = random.randint(1, 2)
+        for i in range(num_comms):
+            cur.execute("""
+                INSERT INTO guest_communications (id, tenant_id, property_id, reservation_id, guest_id,
+                                                 communication_type, direction, subject, message,
+                                                 status, sent_at)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            """, (
+                generate_uuid(),
+                reservation['tenant_id'],
+                reservation['property_id'],
+                reservation['id'],
+                reservation['guest_id'],
+                random.choice(comm_types),
+                'OUTBOUND',
+                fake.sentence(nb_words=6),
+                fake.paragraph(),
+                random.choice(statuses),
+                fake.date_time_between(start_date="-3m", end_date="now")
+            ))
+            count += 1
+
+    conn.commit()
+    print(f"   → Inserted {count} guest communications")
+
+
+def insert_guest_feedback(conn):
+    """Insert guest feedback records"""
+    print(f"\n✓ Inserting Guest Feedback...")
+    cur = conn.cursor()
+
+    feedback_sources = ['DIRECT', 'EMAIL', 'SURVEY', 'BOOKING_COM', 'TRIPADVISOR', 'GOOGLE']
+
+    count = 0
+    # 40% of reservations get feedback
+    for reservation in data_store['reservations'][:200]:
+        rating = round(random.uniform(3.0, 5.0), 2)
+        cur.execute("""
+            INSERT INTO guest_feedback (id, tenant_id, property_id, reservation_id, guest_id,
+                                       feedback_source, overall_rating, cleanliness_rating,
+                                       staff_rating, location_rating, amenities_rating,
+                                       value_rating, review_text)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+        """, (
+            generate_uuid(),
+            reservation['tenant_id'],
+            reservation['property_id'],
+            reservation['id'],
+            reservation['guest_id'],
+            random.choice(feedback_sources),
+            rating,
+            round(random.uniform(max(1.0, rating-1), min(5.0, rating+1)), 2),
+            round(random.uniform(max(1.0, rating-1), min(5.0, rating+1)), 2),
+            round(random.uniform(max(1.0, rating-1), min(5.0, rating+1)), 2),
+            round(random.uniform(max(1.0, rating-1), min(5.0, rating+1)), 2),
+            round(random.uniform(max(1.0, rating-1), min(5.0, rating+1)), 2),
+            fake.paragraph()
+        ))
+        count += 1
+
+    conn.commit()
+    print(f"   → Inserted {count} guest feedback records")
+
+
+def insert_guest_preferences(conn):
+    """Insert guest preference records"""
+    print(f"\n✓ Inserting Guest Preferences...")
+    cur = conn.cursor()
+
+    preferences = [
+        ('ROOM', 'BED_TYPE', ['King Bed', 'Queen Bed', 'Twin Beds', 'Double Bed']),
+        ('ROOM', 'PILLOW_TYPE', ['Soft Pillow', 'Firm Pillow', 'Memory Foam', 'Feather Pillow']),
+        ('ROOM', 'FLOOR_LEVEL', ['Low Floor', 'High Floor', 'Ground Floor']),
+        ('SERVICE', 'TURNDOWN_SERVICE', ['Yes', 'No']),
+        ('ROOM', 'VIEW', ['Ocean View', 'City View', 'Garden View', 'No Preference']),
+        ('DIETARY', 'BREAKFAST_PREFERENCE', ['Continental', 'American', 'Vegan', 'Gluten-Free']),
+        ('COMMUNICATION', 'CONTACT_METHOD', ['Email', 'Phone', 'SMS'])
+    ]
+
+    count = 0
+    # Each guest gets 2-4 preferences
+    for guest in data_store['guests'][:150]:
+        num_prefs = random.randint(2, 4)
+        selected_prefs = random.sample(preferences, min(num_prefs, len(preferences)))
+
+        for pref_category, pref_type, pref_values in selected_prefs:
+            cur.execute("""
+                INSERT INTO guest_preferences (preference_id, tenant_id, guest_id, preference_category,
+                                              preference_type, preference_value, priority)
+                VALUES (%s, %s, %s, %s, %s, %s, %s)
+            """, (
+                generate_uuid(),
+                guest['tenant_id'],
+                guest['id'],
+                pref_category,
+                pref_type,
+                random.choice(pref_values),
+                random.choice([1, 2, 3])  # 1=HIGH, 2=MEDIUM, 3=LOW
+            ))
+            count += 1
+
+    conn.commit()
+    print(f"   → Inserted {count} guest preferences")
+
+
+def insert_channel_mappings(conn):
+    """Insert channel mapping records"""
+    print(f"\n✓ Inserting Channel Mappings...")
+    cur = conn.cursor()
+
+    channels = ['BOOKING', 'EXPEDIA', 'AIRBNB']
+
+    count = 0
+    # Map room types to OTA channels
+    for room_type in data_store['room_types']:
+        for channel in channels:
+            cur.execute("""
+                INSERT INTO channel_mappings (id, tenant_id, property_id, channel_name,
+                                             channel_code, entity_type, entity_id,
+                                             external_id, is_active)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+            """, (
+                generate_uuid(),
+                room_type['tenant_id'],
+                room_type['property_id'],
+                channel,
+                channel,
+                'ROOM_TYPE',
+                room_type['id'],
+                f"{channel}_{room_type['code']}",
+                True
+            ))
+            count += 1
+
+    conn.commit()
+    print(f"   → Inserted {count} channel mappings")
+
+
+# def insert_availability(conn):
+#     """Insert room availability records - TABLE DOES NOT EXIST"""
+#     # Availability table not found in schema - skipping
+#     pass
+
+
+def insert_communication_templates(conn):
+    """Insert communication template records"""
+    print(f"\n✓ Inserting Communication Templates...")
+    cur = conn.cursor()
+
+    templates = [
+        ('Booking Confirmation', 'BOOKING_CONFIRMATION', 'EMAIL',
+         'Your Reservation is Confirmed',
+         'Thank you for your booking. Your confirmation number is {{confirmation_number}}.'),
+        ('Check-in Reminder', 'CHECKIN_REMINDER', 'EMAIL',
+         'Check-in Tomorrow',
+         'We look forward to welcoming you tomorrow at {{property_name}}.'),
+        ('Pre-Arrival', 'PRE_ARRIVAL', 'SMS',
+         'Arrival Information',
+         'Your room will be ready at {{checkin_time}}. See you soon!'),
+        ('Post-Checkout', 'POST_CHECKOUT', 'EMAIL',
+         'Thank You for Staying',
+         'Thank you for choosing {{property_name}}. We hope to see you again.'),
+        ('Payment Receipt', 'PAYMENT_RECEIPT', 'EMAIL',
+         'Payment Confirmation',
+         'Your payment of {{amount}} has been received. Transaction ID: {{transaction_id}}.'),
+    ]
+
+    count = 0
+    for property in data_store['properties']:
+        for name, code, channel, subject, body in templates:
+            cur.execute("""
+                INSERT INTO communication_templates (id, tenant_id, property_id, template_name,
+                                                    template_code, communication_type, subject, body,
+                                                    is_active)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+            """, (
+                generate_uuid(),
+                property['tenant_id'],
+                property['id'],
+                name,
+                code,
+                channel,
+                subject,
+                body,
+                True
+            ))
+            count += 1
+
+    conn.commit()
+    print(f"   → Inserted {count} communication templates")
+
+
 def main():
     """Main execution function"""
     print("=" * 60)
@@ -963,18 +1202,22 @@ def main():
         if response == 'yes':
             print("\n✓ Clearing existing data...")
             tables = [
-                'reservation_services', 'reservation_status_history', 'invoice_items', 'invoices',
-                'payments', 'reservations', 'housekeeping_tasks', 'rates', 'rooms',
-                'room_types', 'services', 'guests', 'properties',
-                'user_tenant_associations', 'users', 'tenants'
+                'channel_mappings', 'communication_templates',
+                'guest_preferences', 'guest_feedback', 'guest_communications',
+                'ota_configurations', 'reservation_services', 'reservation_status_history',
+                'invoice_items', 'invoices', 'payments', 'reservations',
+                'housekeeping_tasks', 'rates', 'rooms', 'room_types', 'services',
+                'guests', 'properties', 'booking_sources', 'market_segments',
+                'user_tenant_associations', 'users', 'tenants', 'audit_logs'
             ]
             for table in tables:
                 try:
                     cur.execute(f"TRUNCATE TABLE {table} CASCADE;")
+                    conn.commit()  # Commit each truncate
                     print(f"   → Cleared {table}")
                 except Exception as e:
-                    print(f"   → Skipped {table}: {e}")
-            conn.commit()
+                    conn.rollback()  # Rollback on error
+                    print(f"   → Skipped {table}: {str(e)[:50]}")
             print("   → All data cleared!")
         else:
             print("\n❌ Aborted. Existing data preserved.")
@@ -1009,6 +1252,16 @@ def main():
         insert_market_segments(conn)
         insert_reservation_status_history(conn)
         insert_audit_logs(conn)
+
+        # OTA and Channel Management
+        insert_ota_configurations(conn)
+        insert_channel_mappings(conn)
+
+        # Guest CRM
+        insert_guest_communications(conn)
+        insert_guest_feedback(conn)
+        insert_guest_preferences(conn)
+        insert_communication_templates(conn)
 
         # Re-enable triggers
         cur.execute("SET session_replication_role = DEFAULT;")
