@@ -524,6 +524,7 @@ def insert_reservations(conn, count=500):
 
         data_store['reservations'].append({
             'id': reservation_id,
+            'tenant_id': property['tenant_id'],
             'property_id': property['id'],
             'guest_id': guest['id'],
             'total_amount': total_amount,
@@ -532,6 +533,408 @@ def insert_reservations(conn, count=500):
 
     conn.commit()
     print(f"   → Inserted {count} reservations")
+
+
+def insert_payments(conn):
+    """Insert payment records"""
+    print(f"\n✓ Inserting Payments...")
+    cur = conn.cursor()
+
+    methods = ['CASH', 'CREDIT_CARD', 'DEBIT_CARD', 'BANK_TRANSFER']
+    statuses = ['COMPLETED', 'COMPLETED', 'COMPLETED', 'PENDING', 'FAILED']
+    types = ['CHARGE', 'AUTHORIZATION', 'CAPTURE']
+    count = 0
+
+    for reservation in data_store['reservations'][:400]:  # 400 payments
+        payment_id = generate_uuid()
+        property = next((p for p in data_store['properties'] if p['id'] == reservation['property_id']), None)
+
+        cur.execute("""
+            INSERT INTO payments (id, tenant_id, property_id, reservation_id, guest_id, amount,
+                                 payment_method, status, transaction_type, payment_reference,
+                                 processed_at, created_at)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+        """, (
+            generate_uuid(),
+            property['tenant_id'],
+            property['id'],
+            reservation['id'],
+            reservation['guest_id'],
+            round(reservation['total_amount'] * random.uniform(0.3, 1.0), 2),
+            random.choice(methods),
+            random.choice(statuses),
+            random.choice(types),
+            f"PAY{count + 1:010d}",
+            fake.date_time_between(start_date="-6m", end_date="now"),
+            fake.date_time_between(start_date="-6m", end_date="now")
+        ))
+        count += 1
+
+    conn.commit()
+    print(f"   → Inserted {count} payments")
+
+
+def insert_invoices(conn):
+    """Insert invoice records"""
+    print(f"\n✓ Inserting Invoices...")
+    cur = conn.cursor()
+
+    statuses = ['PAID', 'PAID', 'SENT', 'PARTIALLY_PAID', 'OVERDUE']
+    count = 0
+
+    for reservation in data_store['reservations']:
+        invoice_id = generate_uuid()
+        property = next((p for p in data_store['properties'] if p['id'] == reservation['property_id']), None)
+
+        invoice_date = fake.date_between(start_date="-6m", end_date="today")
+        due_date = invoice_date + timedelta(days=30)
+
+        subtotal = reservation['total_amount']
+        tax = subtotal * 0.1
+        total = subtotal + tax
+
+        cur.execute("""
+            INSERT INTO invoices (id, tenant_id, property_id, reservation_id, guest_id,
+                                 invoice_number, invoice_date, due_date, subtotal, tax_amount,
+                                 total_amount, status, created_at)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+        """, (
+            invoice_id,
+            property['tenant_id'],
+            property['id'],
+            reservation['id'],
+            reservation['guest_id'],
+            f"INV{count + 1:06d}",
+            invoice_date,
+            due_date,
+            subtotal,
+            tax,
+            total,
+            random.choice(statuses),
+            fake.date_time_between(start_date="-6m", end_date="now")
+        ))
+
+        data_store['invoices'].append({
+            'id': invoice_id,
+            'tenant_id': property['tenant_id'],
+            'reservation_id': reservation['id'],
+            'total': total
+        })
+        count += 1
+
+    conn.commit()
+    print(f"   → Inserted {count} invoices")
+
+
+def insert_invoice_items(conn):
+    """Insert invoice item records"""
+    print(f"\n✓ Inserting Invoice Items...")
+    cur = conn.cursor()
+
+    item_types = ['Room Charge', 'Breakfast', 'Minibar', 'Spa Service', 'Laundry', 'Parking', 'Room Service']
+    count = 0
+
+    for invoice in data_store['invoices']:
+        # Each invoice gets 2-5 line items
+        num_items = random.randint(2, 5)
+        for i in range(num_items):
+            quantity = random.randint(1, 5)
+            unit_price = round(random.uniform(10, 200), 2)
+            subtotal = quantity * unit_price
+            total_amount = subtotal
+
+            cur.execute("""
+                INSERT INTO invoice_items (id, tenant_id, invoice_id, item_type, description, quantity, unit_price, subtotal, total_amount, created_at)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            """, (
+                generate_uuid(),
+                invoice['tenant_id'],
+                invoice['id'],
+                'service',
+                random.choice(item_types),
+                quantity,
+                unit_price,
+                subtotal,
+                total_amount,
+                fake.date_time_between(start_date="-6m", end_date="now")
+            ))
+            count += 1
+
+    conn.commit()
+    print(f"   → Inserted {count} invoice items")
+
+
+def insert_services(conn):
+    """Insert service records"""
+    print(f"\n✓ Inserting Services...")
+    cur = conn.cursor()
+
+    service_data = [
+        ('Airport Transfer', 'AIRPORT', 'Airport pickup and drop-off', 50.00, 'TRANSPORTATION'),
+        ('Breakfast Buffet', 'BRKFST', 'Full breakfast buffet', 25.00, 'DINING'),
+        ('Spa Massage', 'SPA001', '60-minute relaxation massage', 120.00, 'SPA'),
+        ('Laundry Service', 'LNDRY', 'Same-day laundry service', 30.00, 'HOUSEKEEPING'),
+        ('Room Service', 'RMSERV', '24/7 room service', 15.00, 'DINING'),
+        ('Parking', 'PARK', 'Valet parking service', 20.00, 'PARKING'),
+        ('Late Checkout', 'LTCHK', 'Late checkout until 3 PM', 40.00, 'ACCOMMODATION'),
+        ('Early Checkin', 'ERLYCHK', 'Early check-in from 10 AM', 35.00, 'ACCOMMODATION'),
+    ]
+
+    count = 0
+    for property in data_store['properties']:
+        for name, code, desc, price, category in service_data:
+            service_id = generate_uuid()
+
+            cur.execute("""
+                INSERT INTO services (id, tenant_id, property_id, service_name, service_code,
+                                     description, price, category, is_active, created_at)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            """, (
+                service_id,
+                property['tenant_id'],
+                property['id'],
+                name,
+                code,
+                desc,
+                price,
+                category,
+                True,
+                fake.date_time_between(start_date="-2y", end_date="now")
+            ))
+
+            data_store['services'].append({
+                'id': service_id,
+                'property_id': property['id'],
+                'service_name': name,
+                'service_code': code
+            })
+            count += 1
+
+    conn.commit()
+    print(f"   → Inserted {count} services")
+
+
+def insert_reservation_services(conn):
+    """Insert reservation service records"""
+    print(f"\n✓ Inserting Reservation Services...")
+    cur = conn.cursor()
+
+    count = 0
+    for reservation in data_store['reservations'][:250]:  # 250 reservations get services
+        num_services = random.randint(1, 3)
+        reservation_services = [s for s in data_store['services'] if s['property_id'] == reservation['property_id']]
+
+        if reservation_services:
+            selected_services = random.sample(reservation_services, min(num_services, len(reservation_services)))
+
+            for service in selected_services:
+                quantity = random.randint(1, 3)
+                unit_price = round(random.uniform(20, 150), 2)
+                total_price = quantity * unit_price
+
+                cur.execute("""
+                    INSERT INTO reservation_services (id, tenant_id, reservation_id, service_id,
+                                                     service_name, service_code, quantity,
+                                                     unit_price, total_price, service_date, created_at)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                """, (
+                    generate_uuid(),
+                    reservation['tenant_id'],
+                    reservation['id'],
+                    service['id'],
+                    service['service_name'],
+                    service['service_code'],
+                    quantity,
+                    unit_price,
+                    total_price,
+                    fake.date_between(start_date="-3m", end_date="today"),
+                    fake.date_time_between(start_date="-3m", end_date="now")
+                ))
+                count += 1
+
+    conn.commit()
+    print(f"   → Inserted {count} reservation services")
+
+
+def insert_housekeeping_tasks(conn):
+    """Insert housekeeping task records"""
+    print(f"\n✓ Inserting Housekeeping Tasks...")
+    cur = conn.cursor()
+
+    task_types = ['CLEANING', 'INSPECTION', 'TURNDOWN', 'DEEP_CLEAN', 'MAINTENANCE']
+    statuses = ['CLEAN', 'DIRTY', 'INSPECTED', 'IN_PROGRESS']
+    priorities = ['LOW', 'MEDIUM', 'HIGH', 'URGENT']
+    count = 0
+
+    # Generate 2-3 tasks per room (about 600-900 tasks)
+    for room in data_store['rooms'][:300]:
+        num_tasks = random.randint(2, 3)
+        for i in range(num_tasks):
+            assigned_user = random.choice(data_store['users'])
+
+            cur.execute("""
+                INSERT INTO housekeeping_tasks (id, tenant_id, property_id, room_number, task_type,
+                                               status, priority, assigned_to, scheduled_date, created_at)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            """, (
+                generate_uuid(),
+                room['tenant_id'],
+                room['property_id'],
+                room['room_number'],
+                random.choice(task_types),
+                random.choice(statuses),
+                random.choice(priorities),
+                assigned_user['id'],
+                fake.date_between(start_date="-30d", end_date="+7d"),
+                fake.date_time_between(start_date="-30d", end_date="now")
+            ))
+            count += 1
+
+    conn.commit()
+    print(f"   → Inserted {count} housekeeping tasks")
+
+
+def insert_booking_sources(conn):
+    """Insert booking source records"""
+    print(f"\n✓ Inserting Booking Sources...")
+    cur = conn.cursor()
+
+    sources = [
+        ('Direct Website', 'DIRECT', 'DIRECT', 0.00),
+        ('Booking.com', 'BOOKING', 'OTA', 15.00),
+        ('Expedia', 'EXPEDIA', 'OTA', 18.00),
+        ('Airbnb', 'AIRBNB', 'OTA', 14.00),
+        ('Phone', 'PHONE', 'PHONE', 0.00),
+        ('Walk-in', 'WALKIN', 'WALK_IN', 0.00),
+    ]
+
+    count = 0
+    for property in data_store['properties']:
+        for name, code, channel_type, commission in sources:
+            cur.execute("""
+                INSERT INTO booking_sources (source_id, tenant_id, property_id, source_name,
+                                            source_code, source_type, commission_percentage, is_active)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+            """, (
+                generate_uuid(),
+                property['tenant_id'],
+                property['id'],
+                name,
+                code,
+                channel_type,
+                commission,
+                True
+            ))
+            count += 1
+
+    conn.commit()
+    print(f"   → Inserted {count} booking sources")
+
+
+def insert_market_segments(conn):
+    """Insert market segment records"""
+    print(f"\n✓ Inserting Market Segments...")
+    cur = conn.cursor()
+
+    segments = [
+        ('Corporate', 'CORP', 'CORPORATE', 'Business travelers'),
+        ('Leisure', 'LEISURE', 'LEISURE', 'Vacation guests'),
+        ('Group', 'GROUP', 'GROUP', 'Group bookings'),
+        ('Government', 'GOV', 'GOVERNMENT', 'Government employees'),
+        ('Airline Crew', 'CREW', 'NEGOTIATED', 'Airline crew members'),
+    ]
+
+    count = 0
+    for property in data_store['properties']:
+        for name, code, seg_type, desc in segments:
+            cur.execute("""
+                INSERT INTO market_segments (segment_id, tenant_id, property_id, segment_name,
+                                            segment_code, segment_type, description, is_active, created_at)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+            """, (
+                generate_uuid(),
+                property['tenant_id'],
+                property['id'],
+                name,
+                code,
+                seg_type,
+                desc,
+                True,
+                fake.date_time_between(start_date="-2y", end_date="now")
+            ))
+            count += 1
+
+    conn.commit()
+    print(f"   → Inserted {count} market segments")
+
+
+def insert_reservation_status_history(conn):
+    """Insert reservation status history"""
+    print(f"\n✓ Inserting Reservation Status History...")
+    cur = conn.cursor()
+
+    count = 0
+    for reservation in data_store['reservations']:
+        # Each reservation gets 1-3 status changes
+        num_changes = random.randint(1, 3)
+        for i in range(num_changes):
+            cur.execute("""
+                INSERT INTO reservation_status_history (id, tenant_id, reservation_id, previous_status, new_status,
+                                                        changed_at, changed_by, change_notes)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+            """, (
+                generate_uuid(),
+                reservation['tenant_id'],
+                reservation['id'],
+                'PENDING' if i == 0 else random.choice(['PENDING', 'CONFIRMED']),
+                reservation['status'],
+                fake.date_time_between(start_date="-6m", end_date="now"),
+                random.choice(data_store['users'])['username'],
+                fake.sentence() if random.random() > 0.5 else None
+            ))
+            count += 1
+
+    conn.commit()
+    print(f"   → Inserted {count} status history records")
+
+
+def insert_audit_logs(conn):
+    """Insert audit log records"""
+    print(f"\n✓ Inserting Audit Logs...")
+    cur = conn.cursor()
+
+    event_types = ['CREATE', 'UPDATE', 'DELETE', 'LOGIN', 'LOGOUT']
+    entities = ['reservation', 'guest', 'payment', 'user', 'room', 'rate']
+    count = 0
+
+    for i in range(200):  # 200 audit logs
+        property = random.choice(data_store['properties'])
+        user = random.choice(data_store['users'])
+
+        cur.execute("""
+            INSERT INTO audit_logs (audit_id, tenant_id, property_id, user_id, event_type, action,
+                                   entity_type, entity_id, old_values, new_values, ip_address,
+                                   user_agent, audit_timestamp)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+        """, (
+            generate_uuid(),
+            property['tenant_id'],
+            property['id'],
+            user['id'],
+            random.choice(event_types),
+            random.choice(event_types),
+            random.choice(entities),
+            generate_uuid(),
+            json.dumps({"status": "old"}),
+            json.dumps({"status": "new"}),
+            fake.ipv4(),
+            fake.user_agent(),
+            fake.date_time_between(start_date="-3m", end_date="now")
+        ))
+        count += 1
+
+    conn.commit()
+    print(f"   → Inserted {count} audit logs")
 
 
 def main():
@@ -595,6 +998,18 @@ def main():
         insert_rates(conn, 6)
         insert_reservations(conn, 500)
 
+        # Additional tables
+        insert_payments(conn)
+        insert_invoices(conn)
+        insert_invoice_items(conn)
+        insert_services(conn)
+        insert_reservation_services(conn)
+        insert_housekeeping_tasks(conn)
+        insert_booking_sources(conn)
+        insert_market_segments(conn)
+        insert_reservation_status_history(conn)
+        insert_audit_logs(conn)
+
         # Re-enable triggers
         cur.execute("SET session_replication_role = DEFAULT;")
         conn.commit()
@@ -604,14 +1019,17 @@ def main():
         print("\n" + "=" * 60)
         print("✅ Sample Data Loading Complete!")
         print("=" * 60)
-        print(f"  Tenants:      {len(data_store['tenants'])}")
-        print(f"  Users:        {len(data_store['users'])}")
-        print(f"  Properties:   {len(data_store['properties'])}")
-        print(f"  Guests:       {len(data_store['guests'])}")
-        print(f"  Room Types:   {len(data_store['room_types'])}")
-        print(f"  Rooms:        {len(data_store['rooms'])}")
-        print(f"  Rates:        {len(data_store['rates'])}")
-        print(f"  Reservations: {len(data_store['reservations'])} ★")
+        print(f"  Tenants:           {len(data_store['tenants'])}")
+        print(f"  Users:             {len(data_store['users'])}")
+        print(f"  Properties:        {len(data_store['properties'])}")
+        print(f"  Guests:            {len(data_store['guests'])}")
+        print(f"  Room Types:        {len(data_store['room_types'])}")
+        print(f"  Rooms:             {len(data_store['rooms'])}")
+        print(f"  Rates:             {len(data_store['rates'])}")
+        print(f"  Reservations:      {len(data_store['reservations'])} ★")
+        print(f"  Invoices:          {len(data_store['invoices'])}")
+        print(f"  Services:          {len(data_store['services'])}")
+        print(f"  + Payments, Invoice Items, Housekeeping, etc.")
         print("=" * 60)
 
         # Verification
@@ -619,6 +1037,14 @@ def main():
         cur.execute("SELECT COUNT(*) FROM reservations;")
         res_count = cur.fetchone()[0]
         print(f"   → Database shows {res_count} reservations")
+
+        cur.execute("SELECT COUNT(*) FROM payments;")
+        pay_count = cur.fetchone()[0]
+        print(f"   → Database shows {pay_count} payments")
+
+        cur.execute("SELECT COUNT(*) FROM housekeeping_tasks;")
+        task_count = cur.fetchone()[0]
+        print(f"   → Database shows {task_count} housekeeping tasks")
 
     except Exception as e:
         print(f"\n❌ Error: {e}")
