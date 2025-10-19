@@ -198,28 +198,73 @@ psql -U postgres -d tartware -f verify-all.sql
 ```
 
 This master script validates:
-- ✅ All 22 tables created correctly
-- ✅ ~250+ indexes in place
-- ✅ ~60+ foreign key constraints
-- ✅ 14 stored procedures/functions
+- ✅ All 89 tables created correctly
+- ✅ 650+ indexes in place
+- ✅ All foreign key constraints
+- ✅ Stored procedures/functions
 - ✅ Soft delete implementation
 - ✅ Multi-tenancy setup
 - ✅ Quality score (0-100)
 
 **Output:** Comprehensive report with pass/fail status and grade (A+ to F)
 
+### Category-Level Verification (NEW! ⭐)
+
+Run verification for ALL 15 functional categories:
+
+```bash
+psql -U postgres -d tartware -f verify-all-categories.sql
+```
+
+This validates all 15 functional categories:
+1. Core Foundation (tenants, users, properties, guests)
+2. Room & Inventory Management
+3. Reservations & Booking
+4. Financial Management
+5. Services & Housekeeping
+6. Channel Management & OTA
+7. Guest Relations & CRM
+8. Revenue Management
+9. Staff & Operations
+10. Marketing & Campaigns
+11. Compliance & Legal
+12. Analytics & Reporting
+13. Mobile & Digital
+14. System & Audit
+15. Integration Hub
+
+**Run individual category verification:**
+
+```bash
+# Example: Verify just Core Foundation
+psql -U postgres -d tartware -f tables/01-core-foundation/verify-01-core-foundation.sql
+psql -U postgres -d tartware -f indexes/01-core-foundation/verify-01-core-foundation-indexes.sql
+psql -U postgres -d tartware -f constraints/01-core-foundation/verify-01-core-foundation-constraints.sql
+
+# Example: Verify just Financial Management
+psql -U postgres -d tartware -f tables/04-financial-management/verify-04-financial-management.sql
+psql -U postgres -d tartware -f indexes/04-financial-management/verify-04-financial-management-indexes.sql
+psql -U postgres -d tartware -f constraints/04-financial-management/verify-04-financial-management-constraints.sql
+```
+
+**Benefits of category-level verification:**
+- ✅ **Faster debugging** - narrow issues to specific functional areas
+- ✅ **Independent testing** - test one business domain at a time
+- ✅ **Team collaboration** - different developers can own different categories
+- ✅ **Incremental development** - verify as you build each category
+
 ### Component-Level Verification
 
 For detailed validation of specific components:
 
 ```bash
-# Verify tables only
+# Verify tables only (all 89 tables)
 psql -U postgres -d tartware -f tables/verify-tables.sql
 
-# Verify indexes only
+# Verify indexes only (650+ indexes)
 psql -U postgres -d tartware -f indexes/verify-indexes.sql
 
-# Verify constraints only
+# Verify constraints only (all FKs)
 psql -U postgres -d tartware -f constraints/verify-constraints.sql
 
 # Verify procedures only
