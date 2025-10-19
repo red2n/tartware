@@ -144,3 +144,26 @@ CREATE TABLE IF NOT EXISTS gdpr_consent_logs (
     deleted_at TIMESTAMP WITH TIME ZONE,
     deleted_by UUID
 );
+
+-- =====================================================
+-- TABLE COMMENTS
+-- =====================================================
+
+COMMENT ON TABLE gdpr_consent_logs IS 'Tracks GDPR and privacy consent management with complete audit trail for data protection compliance';
+COMMENT ON COLUMN gdpr_consent_logs.consent_id IS 'Unique consent record identifier (UUID)';
+COMMENT ON COLUMN gdpr_consent_logs.tenant_id IS 'Reference to tenant (multi-tenancy)';
+COMMENT ON COLUMN gdpr_consent_logs.property_id IS 'Reference to property (NULL for tenant-wide consents)';
+COMMENT ON COLUMN gdpr_consent_logs.subject_type IS 'Type of data subject (guest, employee, visitor, contact)';
+COMMENT ON COLUMN gdpr_consent_logs.subject_id IS 'Reference to the data subject';
+COMMENT ON COLUMN gdpr_consent_logs.consent_type IS 'Type of consent (marketing_email, data_processing, cookies, etc.)';
+COMMENT ON COLUMN gdpr_consent_logs.consent_status IS 'Current consent status (given, withdrawn, expired, pending)';
+COMMENT ON COLUMN gdpr_consent_logs.consent_date IS 'Timestamp when consent was given';
+COMMENT ON COLUMN gdpr_consent_logs.withdrawal_date IS 'Timestamp when consent was withdrawn';
+COMMENT ON COLUMN gdpr_consent_logs.consent_method IS 'How consent was obtained (web_form, email, verbal, written, etc.)';
+COMMENT ON COLUMN gdpr_consent_logs.ip_address IS 'IP address from which consent was given';
+COMMENT ON COLUMN gdpr_consent_logs.user_agent IS 'Browser user agent string';
+COMMENT ON COLUMN gdpr_consent_logs.legal_basis IS 'Legal basis for processing (consent, contract, legal_obligation, etc.)';
+COMMENT ON COLUMN gdpr_consent_logs.purpose_description IS 'Description of data processing purpose';
+COMMENT ON COLUMN gdpr_consent_logs.withdrawal_reason IS 'Reason for consent withdrawal';
+
+\echo 'GDPR Consent Logs table created successfully!'

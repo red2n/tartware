@@ -36,7 +36,10 @@ CREATE INDEX idx_staff_tasks_tags ON staff_tasks USING gin(tags) WHERE is_delete
 CREATE INDEX idx_staff_tasks_property_status ON staff_tasks(property_id, task_status, priority DESC) WHERE is_deleted = FALSE;
 CREATE INDEX idx_staff_tasks_assigned_status ON staff_tasks(assigned_to, task_status, due_date) WHERE is_deleted = FALSE;
 CREATE INDEX idx_staff_tasks_department_status ON staff_tasks(assigned_department, task_status, priority DESC) WHERE is_deleted = FALSE;
-CREATE INDEX idx_staff_tasks_due_today ON staff_tasks(property_id, due_date, task_status) WHERE due_date = CURRENT_DATE AND task_status NOT IN ('completed', 'cancelled') AND is_deleted = FALSE;
+-- Simplified index without CURRENT_DATE (not immutable)
+-- Applications can filter by due_date = CURRENT_DATE at query time using this index
+CREATE INDEX idx_staff_tasks_due_date_status ON staff_tasks(property_id, due_date, task_status)
+WHERE due_date IS NOT NULL AND task_status NOT IN ('completed', 'cancelled') AND is_deleted = FALSE;
 CREATE INDEX idx_staff_tasks_in_progress ON staff_tasks(property_id, assigned_to, task_status) WHERE task_status = 'in_progress' AND is_deleted = FALSE;
 
 \echo 'Staff Tasks indexes created successfully!'

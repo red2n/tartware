@@ -18,6 +18,6 @@ CREATE INDEX idx_revenue_attribution_property ON revenue_attribution(property_id
 
 -- Foreign key indexes
 CREATE INDEX idx_revenue_attribution_reservation ON revenue_attribution(reservation_id) WHERE is_deleted = FALSE;
-CREATE INDEX idx_revenue_attribution_campaign ON revenue_attribution(primary_campaign_id) WHERE is_deleted = FALSE;
+CREATE INDEX idx_revenue_attribution_campaign ON revenue_attribution(campaign_id) WHERE is_deleted = FALSE;
 
 \echo 'Revenue Attribution indexes created successfully!'

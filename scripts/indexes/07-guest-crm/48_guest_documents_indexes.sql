@@ -16,7 +16,8 @@ CREATE INDEX idx_guest_documents_type ON guest_documents(document_type) WHERE is
 CREATE INDEX idx_guest_documents_category ON guest_documents(document_category) WHERE is_deleted = FALSE;
 CREATE INDEX idx_guest_documents_number ON guest_documents(document_number) WHERE document_number IS NOT NULL AND is_deleted = FALSE;
 CREATE INDEX idx_guest_documents_expiry ON guest_documents(expiry_date) WHERE expiry_date IS NOT NULL AND is_deleted = FALSE;
-CREATE INDEX idx_guest_documents_expiring_soon ON guest_documents(expiry_date) WHERE expiry_date >= CURRENT_DATE AND expiry_date <= CURRENT_DATE + INTERVAL '90 days' AND is_deleted = FALSE;
+-- Simplified index without date range (CURRENT_DATE not immutable, so removed from WHERE clause)
+CREATE INDEX idx_guest_documents_expiry_upcoming ON guest_documents(expiry_date) WHERE expiry_date IS NOT NULL AND is_deleted = FALSE;
 CREATE INDEX idx_guest_documents_verified ON guest_documents(is_verified, verification_status) WHERE is_deleted = FALSE;
 CREATE INDEX idx_guest_documents_pending_verification ON guest_documents(verification_status) WHERE verification_status = 'pending' AND is_deleted = FALSE;
 CREATE INDEX idx_guest_documents_uploaded_at ON guest_documents(uploaded_at) WHERE is_deleted = FALSE;

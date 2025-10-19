@@ -14,7 +14,10 @@ CREATE INDEX idx_promotional_codes_code ON promotional_codes(promo_code) WHERE i
 CREATE INDEX idx_promotional_codes_status ON promotional_codes(promo_status) WHERE is_deleted = FALSE;
 CREATE INDEX idx_promotional_codes_active ON promotional_codes(is_active) WHERE is_active = TRUE AND is_deleted = FALSE;
 CREATE INDEX idx_promotional_codes_valid ON promotional_codes(valid_from, valid_to) WHERE is_deleted = FALSE;
-CREATE INDEX idx_promotional_codes_current ON promotional_codes(valid_from, valid_to) WHERE valid_from <= CURRENT_DATE AND valid_to >= CURRENT_DATE AND is_active = TRUE AND is_deleted = FALSE;
+-- Simplified index without CURRENT_DATE (not immutable)
+-- Applications can filter by valid_from <= CURRENT_DATE AND valid_to >= CURRENT_DATE at query time
+CREATE INDEX idx_promotional_codes_validity_period ON promotional_codes(valid_from, valid_to)
+WHERE valid_from IS NOT NULL AND valid_to IS NOT NULL AND is_active = TRUE AND is_deleted = FALSE;
 CREATE INDEX idx_promotional_codes_campaign ON promotional_codes(campaign_id) WHERE campaign_id IS NOT NULL AND is_deleted = FALSE;
 CREATE INDEX idx_promotional_codes_usage ON promotional_codes(has_usage_limit, remaining_uses) WHERE has_usage_limit = TRUE AND is_deleted = FALSE;
 CREATE INDEX idx_promotional_codes_owner ON promotional_codes(owner_id) WHERE is_deleted = FALSE;

@@ -31,6 +31,9 @@ CREATE INDEX idx_revenue_goals_tags ON revenue_goals USING gin(tags) WHERE is_de
 CREATE INDEX idx_revenue_goals_property_period ON revenue_goals(property_id, goal_period, period_start_date DESC) WHERE is_deleted = FALSE;
 CREATE INDEX idx_revenue_goals_property_active ON revenue_goals(property_id, status, period_end_date DESC) WHERE status = 'active' AND is_deleted = FALSE;
 CREATE INDEX idx_revenue_goals_property_type_period ON revenue_goals(property_id, goal_type, period_start_date DESC) WHERE is_deleted = FALSE;
-CREATE INDEX idx_revenue_goals_current_period ON revenue_goals(property_id, period_start_date, period_end_date) WHERE status = 'active' AND CURRENT_DATE BETWEEN period_start_date AND period_end_date AND is_deleted = FALSE;
+-- Simplified index without CURRENT_DATE (not immutable)
+-- Applications can filter by period date range at query time using this index
+CREATE INDEX idx_revenue_goals_active_period ON revenue_goals(property_id, period_start_date, period_end_date)
+WHERE status = 'active' AND period_start_date IS NOT NULL AND period_end_date IS NOT NULL AND is_deleted = FALSE;
 
 \echo 'Revenue Goals indexes created successfully!'

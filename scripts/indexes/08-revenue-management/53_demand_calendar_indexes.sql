@@ -29,7 +29,10 @@ CREATE INDEX idx_demand_calendar_metadata ON demand_calendar USING gin(metadata)
 CREATE INDEX idx_demand_calendar_tags ON demand_calendar USING gin(tags) WHERE is_deleted = FALSE;
 CREATE INDEX idx_demand_calendar_property_date_range ON demand_calendar(property_id, calendar_date) WHERE is_deleted = FALSE;
 CREATE INDEX idx_demand_calendar_property_demand ON demand_calendar(property_id, demand_level, calendar_date) WHERE is_deleted = FALSE;
-CREATE INDEX idx_demand_calendar_future_dates ON demand_calendar(property_id, calendar_date) WHERE calendar_date >= CURRENT_DATE AND is_deleted = FALSE;
+-- Simplified index without CURRENT_DATE (not immutable)
+-- Applications can filter by calendar_date >= CURRENT_DATE at query time using this index
+CREATE INDEX idx_demand_calendar_future_dates ON demand_calendar(property_id, calendar_date)
+WHERE calendar_date IS NOT NULL AND is_deleted = FALSE;
 CREATE INDEX idx_demand_calendar_season_analysis ON demand_calendar(property_id, season, calendar_date) WHERE is_deleted = FALSE;
 
 \echo 'Demand Calendar indexes created successfully!'

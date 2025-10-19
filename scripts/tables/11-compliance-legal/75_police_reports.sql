@@ -184,3 +184,22 @@ CREATE TABLE IF NOT EXISTS police_reports (
     deleted_at TIMESTAMP WITH TIME ZONE,
     deleted_by UUID
 );
+
+-- =====================================================
+-- TABLE COMMENTS
+-- =====================================================
+
+COMMENT ON TABLE police_reports IS 'Tracks police and law enforcement incident reports with case management and evidence tracking';
+COMMENT ON COLUMN police_reports.report_id IS 'Unique report identifier (UUID)';
+COMMENT ON COLUMN police_reports.tenant_id IS 'Reference to tenant (multi-tenancy)';
+COMMENT ON COLUMN police_reports.property_id IS 'Reference to property where incident occurred';
+COMMENT ON COLUMN police_reports.report_number IS 'Internal report tracking number';
+COMMENT ON COLUMN police_reports.police_case_number IS 'Official police department case number';
+COMMENT ON COLUMN police_reports.incident_date IS 'Date when incident occurred';
+COMMENT ON COLUMN police_reports.incident_type IS 'Type/category of incident (theft, assault, vandalism, etc.)';
+COMMENT ON COLUMN police_reports.responding_officer_name IS 'Name of the responding police officer';
+COMMENT ON COLUMN police_reports.report_status IS 'Current status of the report (filed, under_investigation, closed, etc.)';
+COMMENT ON COLUMN police_reports.evidence_collected IS 'Whether evidence was collected at scene';
+COMMENT ON COLUMN police_reports.follow_up_required IS 'Whether follow-up action is required';
+
+\echo 'Police Reports table created successfully!'

@@ -35,7 +35,6 @@ CREATE INDEX IF NOT EXISTS idx_analytics_dimensions_metadata_gin ON analytics_me
 -- Composite for dimension breakdown
 CREATE INDEX IF NOT EXISTS idx_analytics_dimensions_breakdown ON analytics_metric_dimensions(metric_id, dimension_type, metric_value DESC);
 
--- Audit trail index
-CREATE INDEX IF NOT EXISTS idx_analytics_dimensions_created_at ON analytics_metric_dimensions(created_at);
+-- Note: Table doesn't have created_at column, so audit index omitted
 
 \echo '✓ Analytics_metric_dimensions indexes created successfully!'

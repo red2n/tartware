@@ -16,7 +16,8 @@ CREATE INDEX idx_tax_configs_active ON tax_configurations(is_active) WHERE is_ac
 CREATE INDEX idx_tax_configs_country ON tax_configurations(country_code) WHERE is_deleted = FALSE;
 CREATE INDEX idx_tax_configs_jurisdiction ON tax_configurations(country_code, state_province, city) WHERE is_deleted = FALSE;
 CREATE INDEX idx_tax_configs_effective ON tax_configurations(effective_from, effective_to) WHERE is_deleted = FALSE;
-CREATE INDEX idx_tax_configs_current ON tax_configurations(effective_from, effective_to) WHERE effective_from <= CURRENT_DATE AND (effective_to IS NULL OR effective_to >= CURRENT_DATE) AND is_deleted = FALSE;
+-- Note: Cannot create partial index with CURRENT_DATE as it's not IMMUTABLE
+-- CREATE INDEX idx_tax_configs_current ON tax_configurations(effective_from, effective_to) WHERE effective_from <= CURRENT_DATE AND (effective_to IS NULL OR effective_to >= CURRENT_DATE) AND is_deleted = FALSE;
 CREATE INDEX idx_tax_configs_composite ON tax_configurations(is_part_of_composite, composite_tax_id) WHERE is_part_of_composite = TRUE AND is_deleted = FALSE;
 CREATE INDEX idx_tax_configs_remittance ON tax_configurations(remittance_frequency, next_remittance_date) WHERE is_deleted = FALSE;
 CREATE INDEX idx_tax_configs_filing ON tax_configurations(filing_required, next_filing_date) WHERE filing_required = TRUE AND is_deleted = FALSE;

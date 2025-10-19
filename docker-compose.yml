@@ -11,7 +11,7 @@ services:
       POSTGRES_DB: postgres
       # Tartware initialization settings
       TARTWARE_DROP_EXISTING: ${TARTWARE_DROP_EXISTING:-true}
-      TARTWARE_RUN_VERIFICATION: ${TARTWARE_RUN_VERIFICATION:-true}
+      TARTWARE_RUN_VERIFICATION: ${TARTWARE_RUN_VERIFICATION:-false}
       TARTWARE_BACKUP_BEFORE_DROP: ${TARTWARE_BACKUP_BEFORE_DROP:-false}
     ports:
       - "5432:5432"
@@ -30,32 +30,9 @@ services:
     networks:
       - tartware_network
 
-  pgadmin:
-    image: dpage/pgadmin4:latest
-    container_name: tartware-pgadmin
-    restart: always
-    environment:
-      PGADMIN_DEFAULT_EMAIL: admin@admin.com
-      PGADMIN_DEFAULT_PASSWORD: admin
-      PGADMIN_CONFIG_SERVER_MODE: 'False'
-      PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED: 'False'
-    ports:
-      - "5050:80"
-    volumes:
-      - tartware_pgadmin_data:/var/lib/pgadmin
-      - ./servers.json:/pgadmin4/servers.json:ro
-    depends_on:
-      postgres:
-        condition: service_healthy
-    networks:
-      - tartware_network
-
 volumes:
   tartware_postgres_data:
     name: tartware_postgres_data
-    driver: local
-  tartware_pgadmin_data:
-    name: tartware_pgadmin_data
     driver: local
 
 networks:

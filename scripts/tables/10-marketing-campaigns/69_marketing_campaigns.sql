@@ -202,3 +202,28 @@ CREATE TABLE IF NOT EXISTS marketing_campaigns (
     deleted_at TIMESTAMP WITH TIME ZONE,
     deleted_by UUID
 );
+
+-- =====================================================
+-- TABLE COMMENTS
+-- =====================================================
+
+COMMENT ON TABLE marketing_campaigns IS 'Manages multi-channel marketing campaigns with performance tracking, budget management, and ROI analysis';
+COMMENT ON COLUMN marketing_campaigns.campaign_id IS 'Unique campaign identifier (UUID)';
+COMMENT ON COLUMN marketing_campaigns.tenant_id IS 'Reference to tenant (multi-tenancy)';
+COMMENT ON COLUMN marketing_campaigns.property_id IS 'Reference to property (NULL for tenant-wide campaigns)';
+COMMENT ON COLUMN marketing_campaigns.campaign_code IS 'Unique campaign code for tracking';
+COMMENT ON COLUMN marketing_campaigns.campaign_name IS 'Name of the marketing campaign';
+COMMENT ON COLUMN marketing_campaigns.campaign_type IS 'Type of campaign (email, sms, social_media, display_ads, etc.)';
+COMMENT ON COLUMN marketing_campaigns.campaign_status IS 'Current status (draft, scheduled, active, paused, completed, cancelled)';
+COMMENT ON COLUMN marketing_campaigns.start_date IS 'Campaign start date';
+COMMENT ON COLUMN marketing_campaigns.end_date IS 'Campaign end date';
+COMMENT ON COLUMN marketing_campaigns.budget_amount IS 'Total budget allocated for campaign';
+COMMENT ON COLUMN marketing_campaigns.actual_spend IS 'Actual amount spent on campaign';
+COMMENT ON COLUMN marketing_campaigns.target_audience_type IS 'Type of target audience';
+COMMENT ON COLUMN marketing_campaigns.total_impressions IS 'Number of times campaign was displayed';
+COMMENT ON COLUMN marketing_campaigns.total_clicks IS 'Number of clicks on campaign';
+COMMENT ON COLUMN marketing_campaigns.total_conversions IS 'Number of conversions from campaign';
+COMMENT ON COLUMN marketing_campaigns.total_revenue IS 'Revenue attributed to this campaign';
+COMMENT ON COLUMN marketing_campaigns.roi_percent IS 'Return on Investment percentage';
+
+\echo 'Marketing Campaigns table created successfully!'

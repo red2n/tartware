@@ -18,7 +18,10 @@ CREATE INDEX idx_vendor_contracts_status ON vendor_contracts(contract_status) WH
 CREATE INDEX idx_vendor_contracts_active ON vendor_contracts(is_active) WHERE is_active = TRUE AND is_deleted = FALSE;
 CREATE INDEX idx_vendor_contracts_start_date ON vendor_contracts(start_date) WHERE is_deleted = FALSE;
 CREATE INDEX idx_vendor_contracts_end_date ON vendor_contracts(end_date) WHERE end_date IS NOT NULL AND is_deleted = FALSE;
-CREATE INDEX idx_vendor_contracts_expiring_soon ON vendor_contracts(end_date) WHERE end_date BETWEEN CURRENT_DATE AND CURRENT_DATE + INTERVAL '90 days' AND is_deleted = FALSE;
+-- Simplified index without date range (CURRENT_DATE not immutable, so removed from WHERE clause)
+-- Applications can filter by date range at query time using this index
+CREATE INDEX idx_vendor_contracts_end_date_upcoming ON vendor_contracts(end_date)
+WHERE end_date IS NOT NULL AND is_deleted = FALSE;
 CREATE INDEX idx_vendor_contracts_renewal_date ON vendor_contracts(renewal_date) WHERE renewal_date IS NOT NULL AND is_deleted = FALSE;
 CREATE INDEX idx_vendor_contracts_auto_renewal ON vendor_contracts(auto_renewal, renewal_date) WHERE auto_renewal = TRUE AND is_deleted = FALSE;
 CREATE INDEX idx_vendor_contracts_insurance_expiry ON vendor_contracts(insurance_required, insurance_expiry_date) WHERE insurance_required = TRUE AND is_deleted = FALSE;

@@ -212,3 +212,28 @@ CREATE TABLE IF NOT EXISTS contract_agreements (
     deleted_at TIMESTAMP WITH TIME ZONE,
     deleted_by UUID
 );
+
+-- =====================================================
+-- TABLE COMMENTS
+-- =====================================================
+
+COMMENT ON TABLE contract_agreements IS 'Manages legal contracts and agreements with lifecycle tracking, renewal management, and compliance monitoring';
+COMMENT ON COLUMN contract_agreements.agreement_id IS 'Unique agreement identifier (UUID)';
+COMMENT ON COLUMN contract_agreements.tenant_id IS 'Reference to tenant (multi-tenancy)';
+COMMENT ON COLUMN contract_agreements.property_id IS 'Reference to property (NULL for tenant-wide agreements)';
+COMMENT ON COLUMN contract_agreements.agreement_number IS 'Unique agreement reference number';
+COMMENT ON COLUMN contract_agreements.agreement_title IS 'Title of the agreement';
+COMMENT ON COLUMN contract_agreements.agreement_type IS 'Type of agreement (vendor, service, lease, employment, nda, etc.)';
+COMMENT ON COLUMN contract_agreements.agreement_status IS 'Current status (draft, pending_review, active, expired, terminated, etc.)';
+COMMENT ON COLUMN contract_agreements.effective_date IS 'Contract effective date';
+COMMENT ON COLUMN contract_agreements.expiry_date IS 'Contract expiry date';
+COMMENT ON COLUMN contract_agreements.contract_value IS 'Total contract value';
+COMMENT ON COLUMN contract_agreements.payment_terms IS 'Payment terms and conditions';
+COMMENT ON COLUMN contract_agreements.auto_renewal IS 'Whether contract auto-renews';
+COMMENT ON COLUMN contract_agreements.renewal_notice_days IS 'Days before expiry to send renewal notice';
+COMMENT ON COLUMN contract_agreements.party_a_name IS 'Name of party A in agreement';
+COMMENT ON COLUMN contract_agreements.party_b_name IS 'Name of party B in agreement';
+COMMENT ON COLUMN contract_agreements.party_a_signed IS 'Whether agreement has been signed by party A';
+COMMENT ON COLUMN contract_agreements.party_b_signed IS 'Whether agreement has been signed by party B';
+
+\echo 'Contract Agreements table created successfully!'

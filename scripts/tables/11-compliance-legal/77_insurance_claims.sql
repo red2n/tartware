@@ -236,3 +236,26 @@ CREATE TABLE IF NOT EXISTS insurance_claims (
     deleted_at TIMESTAMP WITH TIME ZONE,
     deleted_by UUID
 );
+
+-- =====================================================
+-- TABLE COMMENTS
+-- =====================================================
+
+COMMENT ON TABLE insurance_claims IS 'Tracks insurance claims processing, documentation, settlement, and recovery for property and liability incidents';
+COMMENT ON COLUMN insurance_claims.claim_id IS 'Unique claim identifier (UUID)';
+COMMENT ON COLUMN insurance_claims.tenant_id IS 'Reference to tenant (multi-tenancy)';
+COMMENT ON COLUMN insurance_claims.property_id IS 'Reference to property where incident occurred';
+COMMENT ON COLUMN insurance_claims.claim_number IS 'Internal claim tracking number';
+COMMENT ON COLUMN insurance_claims.insurance_claim_number IS 'Insurance company claim number';
+COMMENT ON COLUMN insurance_claims.policy_number IS 'Insurance policy number';
+COMMENT ON COLUMN insurance_claims.claim_type IS 'Type of claim (property_damage, liability, workers_comp, etc.)';
+COMMENT ON COLUMN insurance_claims.claim_status IS 'Current claim status (draft, submitted, under_review, approved, etc.)';
+COMMENT ON COLUMN insurance_claims.incident_date IS 'Date when incident occurred';
+COMMENT ON COLUMN insurance_claims.claim_amount IS 'Total amount claimed';
+COMMENT ON COLUMN insurance_claims.settlement_amount IS 'Amount approved/settled by insurance';
+COMMENT ON COLUMN insurance_claims.deductible_amount IS 'Insurance deductible amount';
+COMMENT ON COLUMN insurance_claims.insurance_company IS 'Name of insurance company';
+COMMENT ON COLUMN insurance_claims.adjuster_name IS 'Name of insurance adjuster handling claim';
+COMMENT ON COLUMN insurance_claims.submitted_documents IS 'Array of submitted document references';
+
+\echo 'Insurance Claims table created successfully!'

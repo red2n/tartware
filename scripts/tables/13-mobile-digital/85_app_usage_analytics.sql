@@ -21,8 +21,6 @@ CREATE TABLE IF NOT EXISTS app_usage_analytics (
 
     -- User Identification
     guest_id UUID,
-    session_id UUID,
-
     session_id VARCHAR(255),
     device_id VARCHAR(255),
 

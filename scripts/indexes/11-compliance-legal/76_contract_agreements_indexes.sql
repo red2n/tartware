@@ -15,7 +15,10 @@ CREATE INDEX idx_contract_agreements_type ON contract_agreements(agreement_type)
 CREATE INDEX idx_contract_agreements_status ON contract_agreements(agreement_status) WHERE is_deleted = FALSE;
 CREATE INDEX idx_contract_agreements_active ON contract_agreements(is_active) WHERE is_active = TRUE AND is_deleted = FALSE;
 CREATE INDEX idx_contract_agreements_effective ON contract_agreements(effective_date, expiry_date) WHERE is_deleted = FALSE;
-CREATE INDEX idx_contract_agreements_expiring ON contract_agreements(expiry_date) WHERE expiry_date BETWEEN CURRENT_DATE AND CURRENT_DATE + INTERVAL '90 days' AND is_active = TRUE AND is_deleted = FALSE;
+-- Simplified index without date range (CURRENT_DATE not immutable, so removed from WHERE clause)
+-- Applications can filter by expiry_date range at query time using this index
+CREATE INDEX idx_contract_agreements_expiry_upcoming ON contract_agreements(expiry_date)
+WHERE expiry_date IS NOT NULL AND is_active = TRUE AND is_deleted = FALSE;
 CREATE INDEX idx_contract_agreements_renewal ON contract_agreements(auto_renewal, renewal_date) WHERE is_deleted = FALSE;
 CREATE INDEX idx_contract_agreements_terminated ON contract_agreements(terminated, termination_date) WHERE terminated = TRUE AND is_deleted = FALSE;
 CREATE INDEX idx_contract_agreements_breach ON contract_agreements(breach_reported) WHERE breach_reported = TRUE AND is_deleted = FALSE;

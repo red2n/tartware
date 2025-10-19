@@ -30,5 +30,33 @@ CREATE TABLE IF NOT EXISTS revenue_attribution (
     reservation_id UUID NOT NULL,
     guest_id UUID NOT NULL,
 
+    -- Attribution Details
+    touchpoint_sequence INTEGER NOT NULL,
+    channel_type VARCHAR(100) NOT NULL,
+    campaign_id UUID,
+    attribution_weight DECIMAL(5,4) DEFAULT 1.0,
+    attributed_revenue DECIMAL(12, 2) NOT NULL DEFAULT 0.00,
+
+    -- Timestamps
+    touchpoint_date TIMESTAMP NOT NULL,
+    conversion_date TIMESTAMP,
+
+    -- Metadata
+    metadata JSONB DEFAULT '{}'::jsonb,
+
+    -- Soft Delete
+    is_deleted BOOLEAN DEFAULT FALSE,
+    deleted_at TIMESTAMP,
+    deleted_by UUID,
+
+    -- Optimistic Locking
+    version BIGINT DEFAULT 0,
+
+    -- Audit trail
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    created_by UUID,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_by UUID
+);
 
 COMMENT ON TABLE revenue_attribution IS 'Tracks revenue attribution across marketing touchpoints';
