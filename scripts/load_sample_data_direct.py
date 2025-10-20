@@ -2,11 +2,13 @@
 """
 Direct Database Sample Data Loader for Tartware PMS
 Connects to PostgreSQL and inserts data directly
-Date: 2025-10-19
+Date: 2025-10-20
+Enhanced with UUID v7 (time-ordered) for optimal performance
 """
 
 import random
 import uuid
+import time
 from datetime import datetime, timedelta
 import json
 import psycopg2
@@ -32,6 +34,13 @@ DB_CONFIG = {
     'user': 'postgres',
     'password': 'postgres'
 }
+
+# UUID Generation Strategy
+UUID_VERSION = "v7"  # v7 = time-ordered (recommended), v4 = random
+
+# Counter for UUID v7 generation to ensure uniqueness within same millisecond
+_uuid_v7_counter = 0
+_uuid_v7_last_timestamp = 0
 
 # Storage for generated IDs
 data_store = {
@@ -64,9 +73,64 @@ def get_db_connection():
         exit(1)
 
 
-def generate_uuid():
-    """Generate UUID string"""
+def generate_uuid_v7():
+    """
+    Generate UUID v7 (time-ordered UUID)
+
+    Format: xxxxxxxx-xxxx-7xxx-yxxx-xxxxxxxxxxxx
+    - First 48 bits: Unix timestamp in milliseconds
+    - Version bits: 0111 (version 7)
+    - Variant bits: 10xx
+    - Remaining 74 bits: Random data
+
+    Benefits:
+    - Time-ordered for better B-tree index performance
+    - Better database cache locality
+    - Suitable for time-range queries
+    - Reduces index fragmentation
+    """
+    global _uuid_v7_counter, _uuid_v7_last_timestamp
+
+    # Get current time in milliseconds
+    timestamp_ms = int(time.time() * 1000)
+
+    # Handle multiple UUIDs in same millisecond
+    if timestamp_ms == _uuid_v7_last_timestamp:
+        _uuid_v7_counter += 1
+        # Add counter to randomness to maintain uniqueness
+        rand_a = _uuid_v7_counter
+    else:
+        _uuid_v7_counter = 0
+        _uuid_v7_last_timestamp = timestamp_ms
+        rand_a = random.getrandbits(12)
+
+    # Generate random bits for the rest
+    rand_b = random.getrandbits(62)
+
+    # Construct UUID v7
+    # timestamp_ms: 48 bits
+    # version: 4 bits (0111 for v7)
+    # rand_a: 12 bits
+    # variant: 2 bits (10)
+    # rand_b: 62 bits
+
+    uuid_int = (timestamp_ms << 80) | (7 << 76) | (rand_a << 64) | (2 << 62) | rand_b
+
+    # Convert to UUID format
+    return str(uuid.UUID(int=uuid_int))
+
+
+def generate_uuid_v4():
+    """Generate UUID v4 (random UUID) - legacy fallback"""
     return str(uuid.uuid4())
+
+
+def generate_uuid():
+    """Generate UUID based on configured strategy"""
+    if UUID_VERSION == "v7":
+        return generate_uuid_v7()
+    else:
+        return generate_uuid_v4()
 
 
 def insert_tenants(conn, count=5):
@@ -1618,14 +1682,68 @@ def insert_night_audit_log(conn):
     print(f"   → Inserted {count} audit log entries")
 
 
+def validate_uuid_v7():
+    """Validate UUID v7 implementation before data load"""
+    print("\n" + "=" * 60)
+    print("UUID v7 Validation")
+    print("=" * 60)
+
+    # Test 1: Generate and verify version
+    test_uuid = generate_uuid_v7()
+    version_char = test_uuid[14]
+
+    if version_char != '7':
+        print(f"❌ FAILED: UUID version is {version_char}, expected 7")
+        return False
+
+    print(f"✓ UUID v7 Format: {test_uuid}")
+
+    # Test 2: Time ordering
+    uuid1 = generate_uuid_v7()
+    time.sleep(0.002)  # 2ms delay
+    uuid2 = generate_uuid_v7()
+
+    if uuid1 >= uuid2:
+        print(f"❌ FAILED: UUIDs not time-ordered")
+        return False
+
+    print(f"✓ Time-ordered: UUIDs sort chronologically")
+
+    # Test 3: Rapid generation (uniqueness)
+    rapid_uuids = [generate_uuid_v7() for _ in range(100)]
+    if len(set(rapid_uuids)) != 100:
+        print(f"❌ FAILED: UUID collision detected")
+        return False
+
+    print(f"✓ Uniqueness: 100 UUIDs generated with no collisions")
+
+    # Test 4: Performance
+    start = time.time()
+    for _ in range(1000):
+        generate_uuid_v7()
+    v7_time = time.time() - start
+
+    print(f"✓ Performance: 1000 UUIDs in {v7_time:.4f}s ({1000/v7_time:.0f} UUID/sec)")
+    print("\n✅ All UUID v7 validations passed!")
+    print("=" * 60)
+
+    return True
+
+
 def main():
     """Main execution function"""
     print("=" * 60)
     print("Tartware PMS - Direct Database Sample Data Loader")
+    print("UUID Strategy: v7 (Time-Ordered) for Better Performance")
     print("=" * 60)
     print(f"Generated on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     print(f"Target: 500+ records across all tables")
     print("=" * 60)
+
+    # Validate UUID v7 implementation
+    if not validate_uuid_v7():
+        print("\n❌ UUID v7 validation failed. Exiting.")
+        return
 
     # Connect to database
     print("\n✓ Connecting to database...")
@@ -1643,27 +1761,30 @@ def main():
 
         if response == 'yes':
             print("\n✓ Clearing existing data...")
-            tables = [
-                'night_audit_log', 'charge_postings', 'folios',
-                'incident_reports', 'maintenance_requests',
-                'guest_notes', 'guest_documents', 'guest_loyalty_programs',
-                'ota_reservations_queue', 'ota_rate_plans',
-                'channel_mappings', 'communication_templates',
-                'guest_preferences', 'guest_feedback', 'guest_communications',
-                'ota_configurations', 'reservation_services', 'reservation_status_history',
-                'invoice_items', 'invoices', 'payments', 'reservations',
-                'housekeeping_tasks', 'rates', 'rooms', 'room_types', 'services',
-                'guests', 'properties', 'booking_sources', 'market_segments',
-                'user_tenant_associations', 'users', 'tenants', 'audit_logs'
-            ]
-            for table in tables:
-                try:
-                    cur.execute(f"TRUNCATE TABLE {table} CASCADE;")
-                    conn.commit()  # Commit each truncate
-                    print(f"   → Cleared {table}")
-                except Exception as e:
-                    conn.rollback()  # Rollback on error
-                    print(f"   → Skipped {table}: {str(e)[:50]}")
+            # Use CASCADE to handle foreign keys automatically
+            try:
+                cur.execute("""
+                    TRUNCATE TABLE
+                        night_audit_log, charge_postings, folios,
+                        incident_reports, maintenance_requests,
+                        guest_notes, guest_documents, guest_loyalty_programs,
+                        ota_reservations_queue, ota_rate_plans,
+                        channel_mappings, communication_templates,
+                        guest_preferences, guest_feedback, guest_communications,
+                        ota_configurations, reservation_services, reservation_status_history,
+                        invoice_items, invoices, payments, reservations,
+                        housekeeping_tasks, rates, rooms, room_types, services,
+                        guests, properties, booking_sources, market_segments,
+                        user_tenant_associations, users, tenants, audit_logs
+                    CASCADE;
+                """)
+                conn.commit()
+                print("   → All sample data cleared successfully!")
+            except Exception as e:
+                conn.rollback()
+                print(f"   → Error clearing data: {e}")
+                print("   → Please clear data manually or continue with existing data")
+                return
             print("   → All data cleared!")
         else:
             print("\n❌ Aborted. Existing data preserved.")
