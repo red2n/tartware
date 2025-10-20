@@ -2678,7 +2678,8 @@ def insert_marketing_campaigns(conn):
     print(f"\n✓ Inserting Marketing Campaigns...")
     cur = conn.cursor()
 
-    campaign_types = ['email', 'social_media', 'paid_search', 'display_ads', 'referral']
+    campaign_types = ['email', 'sms', 'social_media', 'display_ads', 'search_ads', 'direct_mail',
+                      'event', 'referral', 'loyalty', 'seasonal', 'promotional']
     statuses = ['active', 'active', 'paused', 'completed', 'draft']
     count = 0
 
@@ -2719,34 +2720,51 @@ def insert_vendor_contracts(conn):
     print(f"\n✓ Inserting Vendor Contracts...")
     cur = conn.cursor()
 
-    contract_types = ['SUPPLIES', 'SERVICES', 'MAINTENANCE', 'FOOD_BEVERAGE', 'TECHNOLOGY', 'UTILITIES']
-    statuses = ['active', 'active', 'active', 'expired', 'pending_renewal']
+    contract_types = ['service', 'supply', 'maintenance', 'lease', 'license', 'consulting', 'subscription']
+    statuses = ['active', 'active', 'active', 'approved', 'expired', 'renewed']
     count = 0
 
     for property in data_store['properties']:
         for i in range(random.randint(5, 10)):
             start_date = fake.date_between(start_date="-2y", end_date="-6m")
             end_date = start_date + timedelta(days=random.randint(180, 730))
+            contract_type = random.choice(contract_types)
+            vendor_name = fake.company()
+
+            # Generate service description based on contract type
+            service_descriptions = {
+                'supply': f"Supply of {vendor_name} products and materials",
+                'service': f"Professional services provided by {vendor_name}",
+                'maintenance': f"Ongoing maintenance services by {vendor_name}",
+                'lease': f"Lease agreement with {vendor_name}",
+                'license': f"Software/licensing agreement with {vendor_name}",
+                'consulting': f"Consulting services provided by {vendor_name}",
+                'subscription': f"Subscription services from {vendor_name}"
+            }
+            service_description = service_descriptions.get(contract_type, f"Services provided by {vendor_name}")
 
             cur.execute("""
                 INSERT INTO vendor_contracts (
                     contract_id, tenant_id, property_id,
-                    vendor_name, contract_type, contract_number,
+                    contract_number, contract_name, vendor_name, contract_type,
                     start_date, end_date, contract_status,
-                    contract_value, payment_terms, created_at
-                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    contract_value, currency, payment_terms, service_description, created_at
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             """, (
                 generate_uuid(),
                 property['tenant_id'],
                 property['id'],
-                fake.company(),
-                random.choice(contract_types),
                 f"VND{count + 1:06d}",
+                f"{contract_type.replace('_', ' ').title()} Contract - {vendor_name[:30]}",
+                vendor_name,
+                contract_type,
                 start_date,
                 end_date,
                 random.choice(statuses),
                 round(random.uniform(5000, 100000), 2),
-                random.choice(['NET30', 'NET60', 'PREPAID', 'MONTHLY', 'QUARTERLY']),
+                'USD',
+                random.choice(['net_30', 'net_60', 'net_90', 'monthly', 'quarterly', 'annual']),
+                service_description,
                 fake.date_time_between(start_date="-2y", end_date="-6m")
             ))
             count += 1
@@ -2760,35 +2778,35 @@ def insert_revenue_goals(conn):
     print(f"\n✓ Inserting Revenue Goals...")
     cur = conn.cursor()
 
+    goal_types = ['total_revenue', 'room_revenue', 'fb_revenue', 'occupancy', 'adr', 'revpar', 'rooms_sold']
     count = 0
 
     for property in data_store['properties']:
         for months_ahead in range(12):
-            goal_date = datetime.now().date() + timedelta(days=months_ahead * 30)
+            start_date = datetime.now().date() + timedelta(days=months_ahead * 30)
+            end_date = start_date + timedelta(days=29)
 
             cur.execute("""
                 INSERT INTO revenue_goals (
                     goal_id, tenant_id, property_id,
-                    goal_period, goal_date,
-                    revenue_target, occupancy_target, adr_target,
-                    actual_revenue, actual_occupancy, actual_adr,
-                    variance_percent, created_at, created_by
-                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    goal_period, period_start_date, period_end_date,
+                    goal_type, goal_amount, occupancy_goal_percent,
+                    adr_goal, revpar_goal, actual_amount, created_at
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             """, (
                 generate_uuid(),
                 property['tenant_id'],
                 property['id'],
                 'monthly',
-                goal_date,
+                start_date,
+                end_date,
+                random.choice(goal_types),
                 round(random.uniform(50000, 200000), 2),
                 round(random.uniform(70, 95), 2),
                 round(random.uniform(150, 350), 2),
-                round(random.uniform(45000, 195000), 2) if months_ahead < 2 else None,
-                round(random.uniform(65, 92), 2) if months_ahead < 2 else None,
-                round(random.uniform(145, 345), 2) if months_ahead < 2 else None,
-                round(random.uniform(-10, 15), 2) if months_ahead < 2 else None,
-                fake.date_time_between(start_date="-90d", end_date="-30d"),
-                random.choice(data_store['users'])['id']
+                round(random.uniform(100, 300), 2),
+                round(random.uniform(45000, 195000), 2) if months_ahead < 2 else 0.00,
+                fake.date_time_between(start_date="-90d", end_date="-30d")
             ))
             count += 1
 
@@ -2801,8 +2819,8 @@ def insert_lost_and_found(conn):
     print(f"\n✓ Inserting Lost and Found...")
     cur = conn.cursor()
 
-    item_categories = ['ELECTRONICS', 'CLOTHING', 'JEWELRY', 'DOCUMENTS', 'ACCESSORIES', 'OTHER']
-    statuses = ['logged', 'claimed', 'logged', 'disposed', 'returned']
+    item_categories = ['electronics', 'clothing', 'jewelry', 'documents', 'accessories', 'bags', 'wallets', 'phones', 'watches', 'glasses', 'other']
+    statuses = ['registered', 'stored', 'claimed', 'returned', 'pending_claim', 'donated', 'disposed']
     count = 0
 
     for property in data_store['properties']:
@@ -2810,21 +2828,39 @@ def insert_lost_and_found(conn):
 
         for i in range(random.randint(10, 20)):
             found_date = fake.date_between(start_date="-60d", end_date="now")
+            category = random.choice(item_categories)
+
+            # Generate item name based on category
+            item_names = {
+                'electronics': ['Phone', 'Laptop', 'Tablet', 'Charger', 'Headphones', 'Camera'],
+                'clothing': ['Jacket', 'Shirt', 'Pants', 'Shoes', 'Hat', 'Scarf'],
+                'jewelry': ['Ring', 'Necklace', 'Bracelet', 'Watch', 'Earrings'],
+                'documents': ['Passport', 'ID Card', 'Wallet', 'Credit Card', 'Driver License'],
+                'accessories': ['Bag', 'Sunglasses', 'Umbrella', 'Keys', 'Book'],
+                'bags': ['Backpack', 'Handbag', 'Suitcase', 'Briefcase'],
+                'wallets': ['Wallet', 'Purse', 'Card Holder'],
+                'phones': ['iPhone', 'Samsung Phone', 'Mobile Phone'],
+                'watches': ['Watch', 'Smart Watch'],
+                'glasses': ['Sunglasses', 'Reading Glasses', 'Prescription Glasses'],
+                'other': ['Item', 'Belonging', 'Object', 'Article']
+            }
+            item_name = random.choice(item_names.get(category, ['Item']))
 
             cur.execute("""
                 INSERT INTO lost_and_found (
                     item_id, tenant_id, property_id,
-                    room_id, item_description, item_category,
+                    room_id, item_name, item_description, item_category,
                     found_date, found_location, item_status,
                     found_by, created_at
-                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             """, (
                 generate_uuid(),
                 property['tenant_id'],
                 property['id'],
                 random.choice(property_rooms)['id'] if property_rooms else None,
+                item_name,
                 fake.sentence()[:200],
-                random.choice(item_categories),
+                category,
                 found_date,
                 random.choice(['Room', 'Lobby', 'Restaurant', 'Pool', 'Gym', 'Parking']),
                 random.choice(statuses),
@@ -3061,6 +3097,7 @@ def main():
     try:
         cur.execute("""
             TRUNCATE TABLE
+                analytics_metrics, marketing_campaigns, vendor_contracts,
                 cashier_sessions, deposit_schedules, tax_configurations, promotional_codes,
                 pricing_rules, demand_calendar, competitor_rates, revenue_forecasts,
                 automated_messages, channel_commission_rules, channel_rate_parity,
