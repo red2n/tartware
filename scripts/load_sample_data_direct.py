@@ -2172,6 +2172,387 @@ def insert_automated_messages(conn):
     print(f"   → Inserted {count} automated message configs")
 
 
+# ============================================================================
+# BATCH 5: Revenue Management & Pricing (8 new tables)
+# ============================================================================
+
+def insert_revenue_forecasts(conn):
+    """Insert revenue forecast records"""
+    print(f"\n✓ Inserting Revenue Forecasts...")
+    cur = conn.cursor()
+
+    forecast_periods = ['daily', 'weekly', 'monthly', 'quarterly']
+    forecast_types = ['revenue', 'occupancy', 'adr', 'revpar']
+
+    count = 0
+    # Generate forecasts for each property (90 days forward)
+    for property in data_store['properties']:
+        for days_ahead in range(0, 90, 7):  # Weekly forecasts
+            forecast_date = datetime.now().date() + timedelta(days=days_ahead)
+            period_start = forecast_date
+            period_end = forecast_date + timedelta(days=6)
+
+            forecasted_revenue = round(random.uniform(10000, 50000), 2)
+
+            cur.execute("""
+                INSERT INTO revenue_forecasts (
+                    forecast_id, tenant_id, property_id,
+                    forecast_date, forecast_period, period_start_date, period_end_date,
+                    forecast_type, forecasted_value,
+                    forecasted_rooms_sold, forecasted_adr, forecasted_occupancy_percent,
+                    total_revenue_forecast, confidence_level,
+                    created_at
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            """, (
+                generate_uuid(),
+                property['tenant_id'],
+                property['id'],
+                forecast_date,
+                random.choice(forecast_periods),
+                period_start,
+                period_end,
+                random.choice(forecast_types),
+                forecasted_revenue,
+                random.randint(15, 30),
+                round(random.uniform(100, 300), 2),
+                round(random.uniform(60, 95), 2),
+                forecasted_revenue,
+                round(random.uniform(70, 95), 2),
+                fake.date_time_between(start_date="-30d", end_date="now")
+            ))
+            count += 1
+
+    conn.commit()
+    print(f"   → Inserted {count} revenue forecasts")
+
+
+def insert_competitor_rates(conn):
+    """Insert competitor rate monitoring records"""
+    print(f"\n✓ Inserting Competitor Rates...")
+    cur = conn.cursor()
+
+    competitors = ['Hilton Downtown', 'Marriott Center', 'Holiday Inn Express', 'Best Western']
+    source_channels = ['booking.com', 'expedia.com', 'direct_website', 'google_hotels']
+
+    count = 0
+    # Monitor competitor rates for each property (last 30 days)
+    for property in data_store['properties']:
+        property_room_types = [rt for rt in data_store['room_types'] if rt['property_id'] == property['id']]
+
+        for days_ago in range(30):
+            check_date = datetime.now().date() - timedelta(days=days_ago)
+            stay_date = check_date + timedelta(days=random.randint(0, 7))
+
+            for competitor in competitors[:2]:  # 2 competitors per property
+                for room_type in property_room_types[:2]:  # 2 room types
+                    our_rate = round(random.uniform(100, 300), 2)
+                    comp_rate = round(our_rate * random.uniform(0.85, 1.15), 2)
+
+                    cur.execute("""
+                        INSERT INTO competitor_rates (
+                            rate_id, tenant_id, property_id,
+                            competitor_property_name, check_date, stay_date,
+                            competitor_rate, currency, source_channel,
+                            our_property_rate, our_property_room_type_id,
+                            rate_difference, rate_difference_percent,
+                            scrape_timestamp
+                        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    """, (
+                        generate_uuid(),
+                        property['tenant_id'],
+                        property['id'],
+                        competitor,
+                        check_date,
+                        stay_date,
+                        comp_rate,
+                        'USD',
+                        random.choice(source_channels),
+                        our_rate,
+                        room_type['id'],
+                        comp_rate - our_rate,
+                        round(((comp_rate - our_rate) / our_rate) * 100, 2),
+                        datetime.now() - timedelta(days=days_ago, hours=random.randint(0, 23))
+                    ))
+                    count += 1
+
+    conn.commit()
+    print(f"   → Inserted {count} competitor rate records")
+
+
+def insert_demand_calendar(conn):
+    """Insert demand calendar records"""
+    print(f"\n✓ Inserting Demand Calendar...")
+    cur = conn.cursor()
+
+    demand_levels = ['very_low', 'low', 'moderate', 'high', 'very_high']
+    days_of_week = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+
+    count = 0
+    # Create demand calendar for each property (90 days forward)
+    for property in data_store['properties']:
+        # Get total rooms for this property
+        total_rooms = sum(1 for r in data_store['rooms'] if r['property_id'] == property['id'])
+
+        for days_ahead in range(90):
+            calendar_date = datetime.now().date() + timedelta(days=days_ahead)
+
+            # Higher demand on weekends
+            is_weekend = calendar_date.weekday() >= 5
+            demand = random.choice(['high', 'very_high']) if is_weekend else random.choice(demand_levels)
+            day_name = days_of_week[calendar_date.weekday()]
+
+            cur.execute("""
+                INSERT INTO demand_calendar (
+                    demand_id, tenant_id, property_id,
+                    calendar_date, day_of_week, demand_level,
+                    rooms_available, is_weekend, is_special_period,
+                    special_period_name
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            """, (
+                generate_uuid(),
+                property['tenant_id'],
+                property['id'],
+                calendar_date,
+                day_name,
+                demand,
+                total_rooms,
+                is_weekend,
+                random.random() < 0.1,  # 10% are special periods
+                fake.catch_phrase() if random.random() < 0.1 else None
+            ))
+            count += 1
+
+    conn.commit()
+    print(f"   → Inserted {count} demand calendar entries")
+
+
+def insert_pricing_rules(conn):
+    """Insert pricing rule records"""
+    print(f"\n✓ Inserting Pricing Rules...")
+    cur = conn.cursor()
+
+    rule_types = ['occupancy_based', 'demand_based', 'day_of_week', 'seasonal',
+                  'length_of_stay', 'advance_purchase', 'last_minute']
+    adjustment_types = ['percentage_increase', 'percentage_decrease',
+                        'fixed_amount_increase', 'fixed_amount_decrease']
+
+    count = 0
+    # Create 3-5 pricing rules per property
+    for property in data_store['properties']:
+        property_room_types = [rt for rt in data_store['room_types'] if rt['property_id'] == property['id']]
+
+        for i in range(random.randint(3, 5)):
+            rule_type = random.choice(rule_types)
+            adj_type = random.choice(adjustment_types)
+
+            # Adjustment value depends on type
+            if 'percentage' in adj_type:
+                adj_value = round(random.uniform(5, 25), 2)  # 5-25%
+            else:
+                adj_value = round(random.uniform(10, 50), 2)  # $10-50
+
+            cur.execute("""
+                INSERT INTO pricing_rules (
+                    rule_id, tenant_id, property_id,
+                    rule_name, rule_type, is_active,
+                    effective_from, effective_until,
+                    conditions, adjustment_type, adjustment_value
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            """, (
+                generate_uuid(),
+                property['tenant_id'],
+                property['id'],
+                f"{rule_type.replace('_', ' ').title()} Rule #{i+1}",
+                rule_type,
+                True,
+                fake.date_between(start_date="-30d", end_date="now"),
+                fake.date_between(start_date="+30d", end_date="+365d"),
+                json.dumps({"created": "sample_data"}),
+                adj_type,
+                adj_value
+            ))
+            count += 1
+
+    conn.commit()
+    print(f"   → Inserted {count} pricing rules")
+
+
+def insert_promotional_codes(conn):
+    """Insert promotional code records"""
+    print(f"\n✓ Inserting Promotional Codes...")
+    cur = conn.cursor()
+
+    discount_types = ['percentage', 'fixed_amount', 'free_night']
+    statuses = ['active', 'active', 'active', 'expired', 'paused']
+
+    count = 0
+    # Create 5-8 promo codes per property
+    for property in data_store['properties']:
+        for i in range(random.randint(5, 8)):
+            # Create unique promo code using counter
+            code = f"PROMO{count+1:04d}"
+            discount_type = random.choice(discount_types)
+
+            cur.execute("""
+                INSERT INTO promotional_codes (
+                    promo_id, tenant_id, property_id,
+                    promo_code, promo_name, discount_type,
+                    discount_percent, discount_amount,
+                    valid_from, valid_to, promo_status,
+                    minimum_stay_nights, max_discount_amount
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            """, (
+                generate_uuid(),
+                property['tenant_id'],
+                property['id'],
+                code,
+                f"{fake.word().title()} Promotion",
+                discount_type,
+                round(random.uniform(10, 30), 2) if discount_type == 'percentage' else None,
+                round(random.uniform(20, 100), 2) if discount_type == 'fixed_amount' else None,
+                fake.date_between(start_date="-60d", end_date="now"),
+                fake.date_between(start_date="+30d", end_date="+180d"),
+                random.choice(statuses),
+                random.randint(1, 3),
+                round(random.uniform(50, 200), 2)
+            ))
+            count += 1
+
+    conn.commit()
+    print(f"   → Inserted {count} promotional codes")
+
+
+def insert_tax_configurations(conn):
+    """Insert tax configuration records"""
+    print(f"\n✓ Inserting Tax Configurations...")
+    cur = conn.cursor()
+
+    tax_types = ['sales_tax', 'occupancy_tax', 'city_tax', 'tourism_tax', 'vat']
+
+    count = 0
+    # Create 3-5 tax configs per property
+    for property in data_store['properties']:
+        for tax_type in random.sample(tax_types, random.randint(3, 5)):
+            # Make tax_code unique by including property prefix
+            tax_code = f"{property['name'][:3].upper()}_{tax_type[:5].upper()}_{random.randint(1000,9999)}"
+
+            cur.execute("""
+                INSERT INTO tax_configurations (
+                    tax_config_id, tenant_id, property_id,
+                    tax_name, tax_code, tax_type,
+                    tax_rate, country_code, effective_from
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+            """, (
+                generate_uuid(),
+                property['tenant_id'],
+                property['id'],
+                f"{tax_type.replace('_', ' ').title()}",
+                tax_code,
+                tax_type,
+                round(random.uniform(5, 15), 6),  # 6 decimal places
+                'USA',
+                fake.date_between(start_date="-1y", end_date="-6m")
+            ))
+            count += 1
+
+    conn.commit()
+    print(f"   → Inserted {count} tax configurations")
+
+
+def insert_deposit_schedules(conn):
+    """Insert deposit schedule records"""
+    print(f"\n✓ Inserting Deposit Schedules...")
+    cur = conn.cursor()
+
+    schedule_types = ['DEPOSIT', 'INSTALLMENT', 'PREPAYMENT', 'SECURITY_DEPOSIT']
+    statuses = ['PENDING', 'PAID', 'PAID', 'OVERDUE']
+
+    count = 0
+    # Create deposit schedules for 20% of reservations
+    for reservation in random.sample(data_store['reservations'], min(100, len(data_store['reservations']))):
+        property = next((p for p in data_store['properties'] if p['id'] == reservation['property_id']), None)
+        if not property:
+            continue
+
+        schedule_type = random.choice(schedule_types)
+        total_amount = reservation['total_amount']
+        amount_due = round(total_amount * random.uniform(0.2, 0.5), 2)
+        amount_paid = amount_due if random.random() < 0.6 else 0
+        status = 'PAID' if amount_paid >= amount_due else random.choice(statuses)
+
+        cur.execute("""
+            INSERT INTO deposit_schedules (
+                schedule_id, tenant_id, property_id,
+                reservation_id, schedule_type,
+                amount_due, amount_paid, amount_remaining,
+                due_date, schedule_status, paid_at
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+        """, (
+            generate_uuid(),
+            property['tenant_id'],
+            property['id'],
+            reservation['id'],
+            schedule_type,
+            amount_due,
+            amount_paid,
+            amount_due - amount_paid,
+            fake.date_between(start_date="-30d", end_date="+30d"),
+            status,
+            fake.date_time_between(start_date="-30d", end_date="now") if status == 'PAID' else None
+        ))
+        count += 1
+
+    conn.commit()
+    print(f"   → Inserted {count} deposit schedules")
+
+
+def insert_cashier_sessions(conn):
+    """Insert cashier session records"""
+    print(f"\n✓ Inserting Cashier Sessions...")
+    cur = conn.cursor()
+
+    count = 0
+    # Create 2 sessions per property (morning and evening shifts)
+    for property in data_store['properties']:
+        for shift_type in ['morning', 'evening']:
+            business_date = datetime.now().date() - timedelta(days=random.randint(0, 7))
+            opened_at = datetime.combine(business_date, datetime.strptime('08:00' if shift_type == 'morning' else '16:00', '%H:%M').time())
+            closed_at = opened_at + timedelta(hours=8)
+
+            opening_float = 500.00
+            total_cash = round(random.uniform(200, 1500), 2)
+
+            cur.execute("""
+                INSERT INTO cashier_sessions (
+                    session_id, tenant_id, property_id,
+                    session_number, cashier_id,
+                    business_date, shift_type,
+                    opened_at, closed_at, session_status,
+                    opening_float_declared, total_cash_received,
+                    total_card_received, total_revenue
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            """, (
+                generate_uuid(),
+                property['tenant_id'],
+                property['id'],
+                f"CS{count+1:06d}",  # Use global counter for unique session numbers
+                random.choice(data_store['users'])['id'],
+                business_date,
+                shift_type,
+                opened_at,
+                closed_at,
+                'closed',
+                opening_float,
+                total_cash,
+                round(random.uniform(300, 1200), 2),
+                total_cash + round(random.uniform(300, 1200), 2)
+            ))
+            count += 1
+
+    conn.commit()
+    print(f"   → Inserted {count} cashier sessions")
+
+
 def validate_uuid_v7():
     """Validate UUID v7 implementation before data load"""
     print("\n" + "=" * 60)
@@ -2255,6 +2636,8 @@ def main():
     try:
         cur.execute("""
             TRUNCATE TABLE
+                cashier_sessions, deposit_schedules, tax_configurations, promotional_codes,
+                pricing_rules, demand_calendar, competitor_rates, revenue_forecasts,
                 automated_messages, channel_commission_rules, channel_rate_parity,
                 ota_inventory_sync, allotments, rate_overrides, refunds, business_dates,
                 night_audit_log, charge_postings, folios,
@@ -2341,6 +2724,16 @@ def main():
         insert_channel_rate_parity(conn)
         insert_channel_commission_rules(conn)
         insert_automated_messages(conn)
+
+        # Batch 5: Revenue Management & Pricing
+        insert_revenue_forecasts(conn)
+        insert_competitor_rates(conn)
+        insert_demand_calendar(conn)
+        insert_pricing_rules(conn)
+        insert_promotional_codes(conn)
+        insert_tax_configurations(conn)
+        insert_deposit_schedules(conn)
+        insert_cashier_sessions(conn)
 
         # Re-enable triggers
         cur.execute("SET session_replication_role = DEFAULT;")
