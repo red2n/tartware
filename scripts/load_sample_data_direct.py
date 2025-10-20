@@ -1682,6 +1682,496 @@ def insert_night_audit_log(conn):
     print(f"   → Inserted {count} audit log entries")
 
 
+# ============================================================================
+# BATCH 4: Revenue Management & Operations (8 new tables)
+# ============================================================================
+
+def insert_business_dates(conn):
+    """Insert business date records - one OPEN date per property"""
+    print(f"\n✓ Inserting Business Dates...")
+    cur = conn.cursor()
+
+    count = 0
+    # Each property has current business date + 30 days of history
+    for property in data_store['properties']:
+        # Current business date (OPEN)
+        current_date = datetime.now().date()
+
+        cur.execute("""
+            INSERT INTO business_dates (
+                business_date_id, tenant_id, property_id,
+                business_date, system_date, date_status,
+                night_audit_status, date_opened_at, date_opened_by,
+                arrivals_count, departures_count, stayovers_count,
+                total_revenue, allow_new_reservations, allow_check_ins,
+                allow_check_outs, allow_postings, is_locked,
+                created_at, created_by
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+        """, (
+            generate_uuid(),
+            property['tenant_id'],
+            property['id'],
+            current_date,
+            current_date,
+            'OPEN',
+            'PENDING',
+            datetime.now() - timedelta(hours=8),
+            random.choice(data_store['users'])['id'],
+            random.randint(5, 25),
+            random.randint(3, 20),
+            random.randint(10, 50),
+            round(random.uniform(5000, 25000), 2),
+            True,
+            True,
+            True,
+            True,
+            False,
+            datetime.now() - timedelta(hours=8),
+            random.choice(data_store['users'])['id']
+        ))
+        count += 1
+
+        # Historical closed dates (last 30 days)
+        for days_ago in range(1, 31):
+            hist_date = current_date - timedelta(days=days_ago)
+            opened_time = datetime.now() - timedelta(days=days_ago+1, hours=6)
+            closed_time = datetime.now() - timedelta(days=days_ago, hours=3)
+
+            cur.execute("""
+                INSERT INTO business_dates (
+                    business_date_id, tenant_id, property_id,
+                    business_date, system_date, date_status,
+                    night_audit_status, date_opened_at, date_opened_by,
+                    date_closed_at, date_closed_by,
+                    night_audit_started_at, night_audit_completed_at,
+                    night_audit_started_by, night_audit_completed_by,
+                    arrivals_count, departures_count, stayovers_count,
+                    total_revenue, total_payments,
+                    is_locked, is_reconciled, reconciled_at,
+                    created_at, created_by
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            """, (
+                generate_uuid(),
+                property['tenant_id'],
+                property['id'],
+                hist_date,
+                hist_date,
+                'CLOSED',
+                'COMPLETED',
+                opened_time,
+                random.choice(data_store['users'])['id'],
+                closed_time,
+                random.choice(data_store['users'])['id'],
+                closed_time - timedelta(minutes=30),
+                closed_time,
+                random.choice(data_store['users'])['id'],
+                random.choice(data_store['users'])['id'],
+                random.randint(3, 20),
+                random.randint(5, 25),
+                random.randint(10, 60),
+                round(random.uniform(3000, 20000), 2),
+                round(random.uniform(2500, 18000), 2),
+                False,
+                True,
+                closed_time + timedelta(hours=1),
+                opened_time,
+                random.choice(data_store['users'])['id']
+            ))
+            count += 1
+
+    conn.commit()
+    print(f"   → Inserted {count} business dates")
+
+
+def insert_refunds(conn):
+    """Insert refund records"""
+    print(f"\n✓ Inserting Refunds...")
+    cur = conn.cursor()
+
+    refund_types = ['CANCELLATION', 'OVERPAYMENT', 'SERVICE_FAILURE', 'DAMAGE_DEPOSIT']
+    statuses = ['COMPLETED', 'COMPLETED', 'COMPLETED', 'PROCESSING', 'APPROVED']
+    methods = ['ORIGINAL_PAYMENT_METHOD', 'CREDIT_CARD', 'BANK_TRANSFER']
+    reason_categories = ['CANCELLATION', 'NO_SHOW', 'SERVICE_ISSUE', 'OVERCHARGE']
+
+    count = 0
+    # Create refunds for ~5% of reservations (25 refunds)
+    for payment in random.sample(data_store['reservations'], min(25, len(data_store['reservations']))):
+        property = next((p for p in data_store['properties'] if p['id'] == payment['property_id']), None)
+        if not property:
+            continue
+
+        refund_amount = round(payment['total_amount'] * random.uniform(0.3, 1.0), 2)
+        processing_fee = round(refund_amount * 0.03, 2)
+
+        status = random.choice(statuses)
+        requested_time = fake.date_time_between(start_date="-60d", end_date="now")
+        approved_time = requested_time + timedelta(hours=random.randint(1, 48))
+        processed_time = approved_time + timedelta(hours=random.randint(1, 24))
+        # COMPLETED status requires completed_at
+        completed_time = processed_time + timedelta(hours=random.randint(1, 6)) if status == 'COMPLETED' else None
+
+        cur.execute("""
+            INSERT INTO refunds (
+                refund_id, tenant_id, property_id,
+                refund_number, refund_type, refund_status,
+                reservation_id, guest_id,
+                refund_amount, processing_fee, net_refund_amount,
+                refund_method, reason_category, reason_description,
+                requested_at, requested_by,
+                approved_at, approved_by,
+                processed_at, processed_by,
+                completed_at,
+                created_at, created_by
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+        """, (
+            generate_uuid(),
+            property['tenant_id'],
+            property['id'],
+            f"REF{count + 1:06d}",
+            random.choice(refund_types),
+            status,
+            payment['id'],
+            payment['guest_id'],
+            refund_amount,
+            processing_fee,
+            refund_amount - processing_fee,
+            random.choice(methods),
+            random.choice(reason_categories),
+            fake.sentence()[:200],
+            requested_time,
+            random.choice(data_store['users'])['id'],
+            approved_time if status in ['APPROVED', 'PROCESSING', 'COMPLETED'] else None,
+            random.choice(data_store['users'])['id'] if status in ['APPROVED', 'PROCESSING', 'COMPLETED'] else None,
+            processed_time if status in ['PROCESSING', 'COMPLETED'] else None,
+            random.choice(data_store['users'])['id'] if status in ['PROCESSING', 'COMPLETED'] else None,
+            completed_time,
+            requested_time,
+            random.choice(data_store['users'])['id']
+        ))
+        count += 1
+
+    conn.commit()
+    print(f"   → Inserted {count} refunds")
+
+
+def insert_rate_overrides(conn):
+    """Insert rate override records"""
+    print(f"\n✓ Inserting Rate Overrides...")
+    cur = conn.cursor()
+
+    # Valid reason_category values from schema constraint
+    reason_categories = ['VIP', 'MANAGER_DISCRETION', 'SERVICE_RECOVERY', 'LOYALTY_REWARD', 'REPEAT_GUEST', 'NEGOTIATED']
+    override_types = ['DISCOUNT', 'PREMIUM', 'FIXED_RATE', 'NEGOTIATED']
+
+    count = 0
+    # Create overrides for 10% of reservations (50 overrides)
+    for reservation in random.sample(data_store['reservations'], min(50, len(data_store['reservations']))):
+        property = next((p for p in data_store['properties'] if p['id'] == reservation['property_id']), None)
+        if not property:
+            continue
+
+        original_rate = round(random.uniform(100, 400), 2)
+        override_rate = round(original_rate * random.uniform(0.6, 0.9), 2)
+
+        property_room_types = [rt['id'] for rt in data_store['room_types'] if rt['property_id'] == property['id']]
+        if not property_room_types:
+            continue
+
+        reason_cat = random.choice(reason_categories)
+
+        cur.execute("""
+            INSERT INTO rate_overrides (
+                override_id, tenant_id, property_id,
+                reservation_id, room_type_id,
+                override_type, original_rate, override_rate,
+                adjustment_amount, adjustment_percentage,
+                reason_category, reason_description,
+                start_date, end_date,
+                requested_at, requested_by,
+                created_at, created_by,
+                approved_by, approved_at
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+        """, (
+            generate_uuid(),
+            property['tenant_id'],
+            property['id'],
+            reservation['id'],
+            random.choice(property_room_types),
+            random.choice(override_types),  # override_type
+            original_rate,
+            override_rate,
+            override_rate - original_rate,  # adjustment_amount (negative for discount)
+            round(((override_rate - original_rate) / original_rate) * 100, 2),  # adjustment_percentage
+            reason_cat,  # reason_category (valid value)
+            f"Override for {reason_cat.replace('_', ' ').lower()}",  # reason_description
+            fake.date_between(start_date="-60d", end_date="now"),
+            fake.date_between(start_date="now", end_date="+60d"),
+            fake.date_time_between(start_date="-60d", end_date="now"),
+            random.choice(data_store['users'])['id'],
+            fake.date_time_between(start_date="-60d", end_date="now"),
+            random.choice(data_store['users'])['id'],
+            random.choice(data_store['users'])['id'],
+            fake.date_time_between(start_date="-60d", end_date="now")
+        ))
+        count += 1
+
+    conn.commit()
+    print(f"   → Inserted {count} rate overrides")
+
+
+def insert_allotments(conn):
+    """Insert allotment (room blocks) records"""
+    print(f"\n✓ Inserting Allotments...")
+    cur = conn.cursor()
+
+    allotment_types = ['GROUP', 'CORPORATE', 'EVENT', 'TOUR']
+    statuses = ['DEFINITE', 'DEFINITE', 'TENTATIVE', 'ACTIVE']
+
+    count = 0
+    # Create 2-3 allotments per property
+    for property in data_store['properties']:
+        property_room_types = [rt for rt in data_store['room_types'] if rt['property_id'] == property['id']]
+        if not property_room_types:
+            continue
+
+        for i in range(random.randint(2, 3)):
+            start_date = fake.date_between(start_date="-30d", end_date="+60d")
+            end_date = start_date + timedelta(days=random.randint(1, 7))
+            room_type = random.choice(property_room_types)
+
+            total_rooms_blocked = random.randint(5, 20)
+            rooms_picked_up = random.randint(0, total_rooms_blocked)
+
+            cur.execute("""
+                INSERT INTO allotments (
+                    allotment_id, tenant_id, property_id,
+                    allotment_code, allotment_name, allotment_type,
+                    room_type_id, start_date, end_date,
+                    total_rooms_blocked, rooms_picked_up, rooms_available,
+                    contracted_rate, currency_code,
+                    allotment_status, cutoff_date,
+                    created_at, created_by
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            """, (
+                generate_uuid(),
+                property['tenant_id'],
+                property['id'],
+                f"ALOT{count + 1:05d}",
+                f"{fake.company()} Block",
+                random.choice(allotment_types),
+                room_type['id'],
+                start_date,
+                end_date,
+                total_rooms_blocked,
+                rooms_picked_up,
+                total_rooms_blocked - rooms_picked_up,
+                round(random.uniform(80, 200), 2),
+                'USD',
+                random.choice(statuses),
+                start_date - timedelta(days=7),
+                fake.date_time_between(start_date="-90d", end_date="now"),
+                random.choice(data_store['users'])['id']
+            ))
+            count += 1
+
+    conn.commit()
+    print(f"   → Inserted {count} allotments")
+
+
+def insert_ota_inventory_sync(conn):
+    """Insert OTA inventory synchronization logs"""
+    print(f"\n✓ Inserting OTA Inventory Sync...")
+    cur = conn.cursor()
+
+    sync_types = ['full', 'incremental', 'on_demand', 'scheduled', 'real_time']
+    sync_directions = ['push', 'push', 'push', 'pull', 'bidirectional']
+    statuses = ['completed', 'completed', 'completed', 'failed', 'partial']
+
+    count = 0
+    # Create sync logs for each OTA configuration (daily for last 30 days)
+    for ota_config in data_store.get('ota_configurations', []):
+        for days_ago in range(30):
+            sync_time = datetime.now() - timedelta(days=days_ago, hours=random.randint(0, 23))
+
+            cur.execute("""
+                INSERT INTO ota_inventory_sync (
+                    sync_id, tenant_id, property_id,
+                    ota_config_id, channel_name, sync_type, sync_direction, sync_status,
+                    rooms_synced, rates_synced,
+                    sync_started_at, sync_completed_at,
+                    created_at
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            """, (
+                generate_uuid(),
+                ota_config['tenant_id'],
+                ota_config['property_id'],
+                ota_config['id'],
+                ota_config.get('channel_name', 'BOOKING.COM'),
+                random.choice(sync_types),
+                random.choice(sync_directions),
+                random.choice(statuses),
+                random.randint(10, 50),
+                random.randint(20, 100),
+                sync_time,
+                sync_time + timedelta(seconds=random.randint(5, 120)),
+                sync_time
+            ))
+            count += 1
+
+    conn.commit()
+    print(f"   → Inserted {count} OTA sync logs")
+
+
+def insert_channel_rate_parity(conn):
+    """Insert channel rate parity monitoring records"""
+    print(f"\n✓ Inserting Channel Rate Parity...")
+    cur = conn.cursor()
+
+    parity_statuses = ['compliant', 'compliant', 'compliant', 'minor_variance', 'major_variance']
+
+    count = 0
+    # Monitor rate parity for each room type across channels (daily for last 7 days)
+    for property in data_store['properties']:
+        property_room_types = [rt for rt in data_store['room_types'] if rt['property_id'] == property['id']]
+
+        for days_ago in range(7):
+            check_date = datetime.now().date() - timedelta(days=days_ago)
+
+            for room_type in property_room_types:
+                base_rate = round(random.uniform(100, 300), 2)
+
+                # Create channel rates JSONB
+                channel_rates = {
+                    "booking.com": round(base_rate * random.uniform(0.95, 1.05), 2),
+                    "expedia": round(base_rate * random.uniform(0.95, 1.05), 2),
+                    "airbnb": round(base_rate * random.uniform(0.95, 1.05), 2)
+                }
+
+                parity_status = random.choice(parity_statuses)
+                is_compliant = parity_status == 'compliant'
+
+                cur.execute("""
+                    INSERT INTO channel_rate_parity (
+                        parity_id, tenant_id, property_id,
+                        room_type_id, check_date,
+                        pms_rate, pms_currency, channel_rates,
+                        parity_status, is_parity_maintained,
+                        check_initiated_at
+                    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                """, (
+                    generate_uuid(),
+                    property['tenant_id'],
+                    property['id'],
+                    room_type['id'],
+                    check_date,
+                    base_rate,
+                    'USD',
+                    json.dumps(channel_rates),
+                    parity_status,
+                    is_compliant,
+                    datetime.now() - timedelta(days=days_ago, hours=random.randint(0, 23))
+                ))
+                count += 1
+
+    conn.commit()
+    print(f"   → Inserted {count} rate parity checks")
+
+
+def insert_channel_commission_rules(conn):
+    """Insert channel commission rules"""
+    print(f"\n✓ Inserting Channel Commission Rules...")
+    cur = conn.cursor()
+
+    rule_types = ['standard', 'tiered', 'promotional', 'performance_based']
+    commission_models = ['percentage', 'flat_fee', 'per_room_night', 'hybrid']
+
+    count = 0
+    # Create commission rules for each OTA configuration
+    for ota_config in data_store.get('ota_configurations', []):
+        cur.execute("""
+            INSERT INTO channel_commission_rules (
+                rule_id, tenant_id, property_id,
+                channel_name, ota_config_id, rule_name,
+                rule_type, commission_model, base_commission_percent,
+                is_active, effective_from,
+                created_at
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+        """, (
+            generate_uuid(),
+            ota_config['tenant_id'],
+            ota_config['property_id'],
+            ota_config.get('channel_name', 'BOOKING.COM'),
+            ota_config['id'],
+            f"{ota_config.get('channel_name', 'OTA')} Standard Commission",
+            random.choice(rule_types),
+            random.choice(commission_models),
+            round(random.uniform(12, 20), 2),
+            True,
+            fake.date_between(start_date="-1y", end_date="-30d"),
+            fake.date_time_between(start_date="-1y", end_date="-30d")
+        ))
+        count += 1
+
+    conn.commit()
+    print(f"   → Inserted {count} commission rules")
+
+
+def insert_automated_messages(conn):
+    """Insert automated message configurations"""
+    print(f"\n✓ Inserting Automated Messages...")
+    cur = conn.cursor()
+
+    count = 0
+    # Create automated message configurations for each property
+    for property in data_store['properties']:
+        # Pre-arrival message
+        cur.execute("""
+            INSERT INTO automated_messages (
+                message_id, tenant_id, property_id,
+                message_name, trigger_type, message_channel,
+                is_active, send_timing, delay_hours,
+                created_at
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+        """, (
+            generate_uuid(),
+            property['tenant_id'],
+            property['id'],
+            "Pre-Arrival Welcome",
+            'pre_arrival',
+            'email',
+            True,
+            'delayed',
+            48,
+            fake.date_time_between(start_date="-90d", end_date="-30d")
+        ))
+        count += 1
+
+        # Check-in reminder
+        cur.execute("""
+            INSERT INTO automated_messages (
+                message_id, tenant_id, property_id,
+                message_name, trigger_type, message_channel,
+                is_active, send_timing, send_before_event_hours,
+                created_at
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+        """, (
+            generate_uuid(),
+            property['tenant_id'],
+            property['id'],
+            "Check-In Reminder",
+            'checkin_reminder',
+            'sms',
+            True,
+            'scheduled',
+            4,
+            fake.date_time_between(start_date="-90d", end_date="-30d")
+        ))
+        count += 1
+
+    conn.commit()
+    print(f"   → Inserted {count} automated message configs")
+
+
 def validate_uuid_v7():
     """Validate UUID v7 implementation before data load"""
     print("\n" + "=" * 60)
@@ -1750,46 +2240,42 @@ def main():
     conn = get_db_connection()
     print("   → Connected successfully!")
 
-    # Check if data already exists
+    # Always do a clean install - clear existing data automatically
     cur = conn.cursor()
     cur.execute("SELECT COUNT(*) FROM reservations;")
     existing_count = cur.fetchone()[0]
 
     if existing_count > 0:
-        print(f"\n⚠️  Warning: Database already contains {existing_count} reservations!")
-        response = input("Do you want to clear all data and start fresh? (yes/no): ").lower()
+        print(f"\n⚠️  Found {existing_count} existing reservations - performing clean install...")
+    else:
+        print("\n✓ Database is empty - starting fresh...")
 
-        if response == 'yes':
-            print("\n✓ Clearing existing data...")
-            # Use CASCADE to handle foreign keys automatically
-            try:
-                cur.execute("""
-                    TRUNCATE TABLE
-                        night_audit_log, charge_postings, folios,
-                        incident_reports, maintenance_requests,
-                        guest_notes, guest_documents, guest_loyalty_programs,
-                        ota_reservations_queue, ota_rate_plans,
-                        channel_mappings, communication_templates,
-                        guest_preferences, guest_feedback, guest_communications,
-                        ota_configurations, reservation_services, reservation_status_history,
-                        invoice_items, invoices, payments, reservations,
-                        housekeeping_tasks, rates, rooms, room_types, services,
-                        guests, properties, booking_sources, market_segments,
-                        user_tenant_associations, users, tenants, audit_logs
-                    CASCADE;
-                """)
-                conn.commit()
-                print("   → All sample data cleared successfully!")
-            except Exception as e:
-                conn.rollback()
-                print(f"   → Error clearing data: {e}")
-                print("   → Please clear data manually or continue with existing data")
-                return
-            print("   → All data cleared!")
-        else:
-            print("\n❌ Aborted. Existing data preserved.")
-            conn.close()
-            return
+    print("\n✓ Clearing all data...")
+    # Use CASCADE to handle foreign keys automatically
+    try:
+        cur.execute("""
+            TRUNCATE TABLE
+                automated_messages, channel_commission_rules, channel_rate_parity,
+                ota_inventory_sync, allotments, rate_overrides, refunds, business_dates,
+                night_audit_log, charge_postings, folios,
+                incident_reports, maintenance_requests,
+                guest_notes, guest_documents, guest_loyalty_programs,
+                ota_reservations_queue, ota_rate_plans,
+                channel_mappings, communication_templates,
+                guest_preferences, guest_feedback, guest_communications,
+                ota_configurations, reservation_services, reservation_status_history,
+                invoice_items, invoices, payments, reservations,
+                housekeeping_tasks, rates, rooms, room_types, services,
+                guests, properties, booking_sources, market_segments,
+                user_tenant_associations, users, tenants, audit_logs
+            CASCADE;
+        """)
+        conn.commit()
+        print("   → All data cleared successfully!")
+    except Exception as e:
+        conn.rollback()
+        print(f"   ⚠️  Some tables don't exist yet: {e}")
+        print("   → Continuing with clean install...")
 
     # Disable triggers for performance
     cur.execute("SET session_replication_role = replica;")
@@ -1845,6 +2331,16 @@ def main():
 
         # System
         insert_night_audit_log(conn)
+
+        # Batch 4: Revenue Management & Operations
+        insert_business_dates(conn)
+        insert_refunds(conn)
+        insert_rate_overrides(conn)
+        insert_allotments(conn)
+        insert_ota_inventory_sync(conn)
+        insert_channel_rate_parity(conn)
+        insert_channel_commission_rules(conn)
+        insert_automated_messages(conn)
 
         # Re-enable triggers
         cur.execute("SET session_replication_role = DEFAULT;")
