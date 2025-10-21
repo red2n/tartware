@@ -217,12 +217,13 @@ echo ""
 # STEP 10: Load Sample Data
 # ============================================================================
 
-echo -e "${BLUE}[10/10]${NC} Loading sample data..."
+echo -e "${BLUE}[10/10]${NC} Loading sample data with category tracking..."
+echo ""
 
 # Check if Python 3 is available
 if ! command -v python3 &> /dev/null; then
     echo -e "${YELLOW}⚠  Python 3 not found, skipping sample data load${NC}"
-    echo -e "${YELLOW}⚠  You can load data manually later with: python3 scripts/load_sample_data_direct.py${NC}"
+    echo -e "${YELLOW}⚠  You can load data manually later with: cd scripts/data && python3 load_all.py${NC}"
 else
     # Set environment variables for the Python script
     export DB_HOST="$DB_HOST"
@@ -231,10 +232,70 @@ else
     export DB_USER="$DB_USER"
     export DB_PASSWORD="$DB_PASSWORD"
 
-    # Run the sample data script
-    python3 "$SCRIPTS_DIR/load_sample_data_direct.py" 2>&1 | tail -50
+    # Run the sample data script (new modular structure) with live output
+    cd "$SCRIPTS_DIR/data" && python3 load_all.py 2>&1 | while IFS= read -r line; do
+        echo "$line"
 
-    if [ $? -eq 0 ]; then
+        # Detect category completion and add visual flags
+        if [[ "$line" == *"CORE BUSINESS DATA"* ]]; then
+            echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        elif [[ "$line" == *"housekeeping tasks"* ]]; then
+            echo -e "${GREEN}✓✓✓ CORE BUSINESS DATA - COMPLETED${NC}"
+            echo ""
+        elif [[ "$line" == *"FINANCIAL OPERATIONS"* ]]; then
+            echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        elif [[ "$line" == *"financial closures"* ]]; then
+            echo -e "${GREEN}✓✓✓ FINANCIAL OPERATIONS - COMPLETED${NC}"
+            echo ""
+        elif [[ "$line" == *"CHANNEL MANAGEMENT"* ]]; then
+            echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        elif [[ "$line" == *"commission rules"* ]]; then
+            echo -e "${GREEN}✓✓✓ CHANNEL MANAGEMENT & OTA - COMPLETED${NC}"
+            echo ""
+        elif [[ "$line" == *"GUEST MANAGEMENT"* ]]; then
+            echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        elif [[ "$line" == *"GDPR consent logs"* ]]; then
+            echo -e "${GREEN}✓✓✓ GUEST MANAGEMENT - COMPLETED${NC}"
+            echo ""
+        elif [[ "$line" == *"REVENUE MANAGEMENT"* ]]; then
+            echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        elif [[ "$line" == *"revenue goals"* ]]; then
+            echo -e "${GREEN}✓✓✓ REVENUE MANAGEMENT & PRICING - COMPLETED${NC}"
+            echo ""
+        elif [[ "$line" == *"ANALYTICS & REPORTING"* ]]; then
+            echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        elif [[ "$line" == *"audit logs"* ]]; then
+            echo -e "${GREEN}✓✓✓ ANALYTICS & REPORTING - COMPLETED${NC}"
+            echo ""
+        elif [[ "$line" == *"STAFF & OPERATIONS"* ]]; then
+            echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        elif [[ "$line" == *"reservation status history"* ]]; then
+            echo -e "${GREEN}✓✓✓ STAFF & OPERATIONS - COMPLETED${NC}"
+            echo ""
+        elif [[ "$line" == *"MARKETING & SALES"* ]]; then
+            echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        elif [[ "$line" == *"commission tracking"* ]]; then
+            echo -e "${GREEN}✓✓✓ MARKETING & SALES - COMPLETED${NC}"
+            echo ""
+        elif [[ "$line" == *"MOBILE & DIGITAL"* ]]; then
+            echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        elif [[ "$line" == *"push notifications"* ]]; then
+            echo -e "${GREEN}✓✓✓ MOBILE & DIGITAL - COMPLETED${NC}"
+            echo ""
+        elif [[ "$line" == *"COMPLIANCE & LEGAL"* ]]; then
+            echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        elif [[ "$line" == *"lost and found"* ]]; then
+            echo -e "${GREEN}✓✓✓ COMPLIANCE & LEGAL - COMPLETED${NC}"
+            echo ""
+        elif [[ "$line" == *"INTEGRATIONS & TECHNICAL"* ]]; then
+            echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        elif [[ "$line" == *"vendor contracts"* ]]; then
+            echo -e "${GREEN}✓✓✓ INTEGRATIONS & TECHNICAL - COMPLETED${NC}"
+            echo ""
+        fi
+    done
+
+    if [ ${PIPESTATUS[0]} -eq 0 ]; then
         RECORD_COUNT=$(psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -tAc "
             SELECT
                 (SELECT COUNT(*) FROM tenants) +
@@ -246,6 +307,10 @@ else
             AS total_records;
         " 2>/dev/null)
 
+        echo ""
+        echo -e "${GREEN}╔════════════════════════════════════════════════════════════╗${NC}"
+        echo -e "${GREEN}║  ✓✓✓ ALL DATA LOADING COMPLETE ✓✓✓                       ║${NC}"
+        echo -e "${GREEN}╚════════════════════════════════════════════════════════════╝${NC}"
         echo -e "${GREEN}✓ Sample data loaded successfully (~${RECORD_COUNT}+ records)${NC}"
     else
         echo -e "${YELLOW}⚠  Sample data load encountered issues${NC}"
