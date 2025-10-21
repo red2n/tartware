@@ -18,7 +18,7 @@ def insert_guest_loyalty_programs(conn):
 
     count = 0
     # 40% of guests are loyalty members
-    for guest in data_store['guests'][:80]:
+    for idx, guest in enumerate(data_store['guests'][:80], start=100001):
         points = random.randint(100, 5000)
         tier = random.choice(tiers)
         enrollment_date = fake.date_between(start_date="-2y", end_date="-1m")
@@ -34,7 +34,7 @@ def insert_guest_loyalty_programs(conn):
             guest['tenant_id'],
             guest['id'],
             'Tartware Rewards',
-            f"TR{fake.random_int(100000, 999999)}",
+            f"TR{idx}",  # Use sequential counter for unique membership numbers
             tier,
             points,
             enrollment_date,

@@ -25,7 +25,8 @@ from financial import (
     insert_folios, insert_charge_postings, insert_refunds, insert_rate_overrides,
     insert_deposit_schedules, insert_cashier_sessions, insert_credit_limits,
     insert_accounts_receivable, insert_financial_closures, insert_tax_configurations,
-    insert_night_audit_log, insert_business_dates
+    insert_night_audit_log, insert_business_dates,
+    insert_commission_rules, insert_commission_statements, insert_travel_agent_commissions
 )
 
 from channel_management import (
@@ -45,7 +46,8 @@ from revenue_pricing import (
     insert_allotments, insert_revenue_forecasts, insert_competitor_rates,
     insert_demand_calendar, insert_pricing_rules, insert_promotional_codes,
     insert_rate_recommendations, insert_forecasting_models, insert_revenue_attribution,
-    insert_revenue_goals
+    insert_revenue_goals, insert_companies, insert_group_bookings, insert_group_room_blocks,
+    insert_packages, insert_package_bookings, insert_package_components
 )
 
 from analytics_reporting import (
@@ -204,7 +206,16 @@ def main():
         print("\n" + "=" * 60)
         print("REVENUE MANAGEMENT & PRICING")
         print("=" * 60)
+        insert_companies(conn, count=50)  # NEW: Corporate clients & partners
+        insert_commission_rules(conn)  # Needs companies
+        insert_commission_statements(conn)  # Needs companies
+        insert_travel_agent_commissions(conn)  # Needs companies & reservations
         insert_allotments(conn)
+        insert_packages(conn, count=40)  # NEW: Room & service packages
+        insert_package_bookings(conn, count=60)  # NEW: Package sales
+        insert_package_components(conn)  # NEW: Package items
+        insert_group_bookings(conn, count=30)  # NEW: Group reservations
+        insert_group_room_blocks(conn)  # NEW: Room blocks for groups
         insert_revenue_forecasts(conn)
         insert_competitor_rates(conn)
         insert_demand_calendar(conn)
@@ -234,7 +245,7 @@ def main():
         print("\n" + "=" * 60)
         print("STAFF & OPERATIONS")
         print("=" * 60)
-        # insert_staff_schedules(conn)  # Currently commented out in original
+        insert_staff_schedules(conn)  # NEW: Staff scheduling
         insert_staff_tasks(conn)
         insert_shift_handovers(conn)
         insert_maintenance_requests(conn)

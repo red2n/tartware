@@ -17,7 +17,7 @@ def insert_staff_schedules(conn):
     cur = conn.cursor()
 
     shifts = ['morning', 'afternoon', 'evening', 'night']
-    departments = ['Front Desk', 'Housekeeping', 'Maintenance', 'Restaurant', 'Management']
+    departments = ['front_desk', 'housekeeping', 'maintenance', 'food_beverage', 'management', 'sales', 'security', 'spa', 'concierge']
     days_of_week = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
     count = 0
 

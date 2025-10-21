@@ -12,6 +12,9 @@ from .insert_financial_closures import insert_financial_closures
 from .insert_tax_configurations import insert_tax_configurations
 from .insert_night_audit_log import insert_night_audit_log
 from .insert_business_dates import insert_business_dates
+from .insert_commission_rules import insert_commission_rules
+from .insert_commission_statements import insert_commission_statements
+from .insert_travel_agent_commissions import insert_travel_agent_commissions
 
 
 __all__ = [
@@ -27,4 +30,7 @@ __all__ = [
     "insert_tax_configurations",
     "insert_night_audit_log",
     "insert_business_dates",
+    "insert_commission_rules",
+    "insert_commission_statements",
+    "insert_travel_agent_commissions",
 ]

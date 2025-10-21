@@ -17,4 +17,7 @@ data_store = {
     'services': [],
     'ota_configurations': [],
     'folios': [],
+    'companies': [],
+    'packages': [],
+    'group_bookings': [],
 }

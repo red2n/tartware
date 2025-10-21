@@ -594,6 +594,20 @@ if [ "$DATA_TABLES_POPULATED" -eq "$TOTAL_TABLE_COUNT" ]; then
 elif [ "$DATA_TABLES_POPULATED" -gt 0 ]; then
     echo -e "  Total Records:       ${GREEN}${TOTAL_DATA_RECORDS}${NC}"
     echo -e "  Tables Populated:    ${YELLOW}${DATA_TABLES_POPULATED}${NC} / ${CYAN}${TOTAL_TABLE_COUNT}${NC} ${YELLOW}(${DATA_COVERAGE}%)${NC}"
+
+    # Show list of empty tables using the Python script
+    EMPTY_COUNT=$((TOTAL_TABLE_COUNT - DATA_TABLES_POPULATED))
+    echo ""
+    echo -e "  ${YELLOW}⚠  ${EMPTY_COUNT} tables without data:${NC}"
+
+    # Run the Python script and format output
+    python3 scripts/data/list_empty_tables.py 2>/dev/null | rg "^ *[0-9]+\." | head -20 | while IFS= read -r line; do
+        echo -e "     ${CYAN}${line}${NC}"
+    done
+
+    if [ "$EMPTY_COUNT" -gt 20 ]; then
+        echo -e "     ${CYAN}... and $((EMPTY_COUNT - 20)) more${NC}"
+    fi
 else
     echo -e "  Total Records:       ${YELLOW}${TOTAL_DATA_RECORDS}${NC}"
     echo -e "  Tables Populated:    ${YELLOW}${DATA_TABLES_POPULATED}${NC} / ${CYAN}${TOTAL_TABLE_COUNT}${NC} ${YELLOW}(${DATA_COVERAGE}%)${NC}"
