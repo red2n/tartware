@@ -89,28 +89,63 @@ SCRIPTS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/scripts" && pwd)"
 # Set password for psql commands
 export PGPASSWORD="$DB_PASSWORD"
 
-# Auto-confirm fresh install (no prompts)
-AUTO_CONFIRM=true
-
 # Start time
 START_TIME=$(date +%s)
 
 # Banner
 echo ""
-echo -e "${CYAN}╔════════════════════════════════════════════════════════════════╗${NC}"
-echo -e "${CYAN}║                                                                ║${NC}"
-echo -e "${CYAN}║  ${MAGENTA}████████╗ █████╗ ██████╗ ████████╗██╗    ██╗ █████╗ ██████╗ ███████╗${NC} ${CYAN}║${NC}"
-echo -e "${CYAN}║  ${MAGENTA}╚══██╔══╝██╔══██╗██╔══██╗╚══██╔══╝██║    ██║██╔══██╗██╔══██╗██╔════╝${NC} ${CYAN}║${NC}"
-echo -e "${CYAN}║     ${MAGENTA}██║   ███████║██████╔╝   ██║   ██║ █╗ ██║███████║██████╔╝█████╗${NC}   ${CYAN}║${NC}"
-echo -e "${CYAN}║     ${MAGENTA}██║   ██╔══██║██╔══██╗   ██║   ██║███╗██║██╔══██║██╔══██╗██╔══╝${NC}   ${CYAN}║${NC}"
-echo -e "${CYAN}║     ${MAGENTA}██║   ██║  ██║██║  ██║   ██║   ╚███╔███╔╝██║  ██║██║  ██║███████╗${NC} ${CYAN}║${NC}"
-echo -e "${CYAN}║     ${MAGENTA}╚═╝   ╚═╝  ╚═╝╚═╝  ╚═╝   ╚═╝    ╚══╝╚══╝ ╚═╝  ╚═╝╚═╝  ╚═╝╚══════╝${NC} ${CYAN}║${NC}"
-echo -e "${CYAN}║                                                                ║${NC}"
-echo -e "${CYAN}║               Property Management System - Database Setup      ║${NC}"
-echo -e "${CYAN}║                                                                ║${NC}"
-echo -e "${CYAN}╚════════════════════════════════════════════════════════════════╝${NC}"
+echo -e "${CYAN}╔═══════════════════════════════════════════════════════════════════════════════════════╗${NC}"
+echo -e "${CYAN}║                                                                                       ║${NC}"
+echo -e "${CYAN}║  ${MAGENTA}████████╗ █████╗ ██████╗ ████████╗██╗    ██╗ █████╗ ██████╗ ███████╗${NC}    ${CYAN}║${NC}"
+echo -e "${CYAN}║  ${MAGENTA}╚══██╔══╝██╔══██╗██╔══██╗╚══██╔══╝██║    ██║██╔══██╗██╔══██╗██╔════╝${NC}    ${CYAN}║${NC}"
+echo -e "${CYAN}║     ${MAGENTA}██║   ███████║██████╔╝   ██║   ██║ █╗ ██║███████║██████╔╝█████╗${NC}      ${CYAN}║${NC}"
+echo -e "${CYAN}║     ${MAGENTA}██║   ██╔══██║██╔══██╗   ██║   ██║███╗██║██╔══██║██╔══██╗██╔══╝${NC}      ${CYAN}║${NC}"
+echo -e "${CYAN}║     ${MAGENTA}██║   ██║  ██║██║  ██║   ██║   ╚███╔███╔╝██║  ██║██║  ██║███████╗${NC}    ${CYAN}║${NC}"
+echo -e "${CYAN}║     ${MAGENTA}╚═╝   ╚═╝  ╚═╝╚═╝  ╚═╝   ╚═╝    ╚══╝╚══╝ ╚═╝  ╚═╝╚═╝  ╚═╝╚══════╝${NC}    ${CYAN}║${NC}"
+echo -e "${CYAN}║                                                                                       ║${NC}"
+echo -e "${CYAN}║                 Property Management System - Database Setup                        ║${NC}"
+echo -e "${CYAN}║                                                                                       ║${NC}"
+echo -e "${CYAN}╚═══════════════════════════════════════════════════════════════════════════════════════╝${NC}"
 echo ""
 echo -e "${GREEN}Initializing Tartware PMS Database...${NC}"
+echo ""
+
+# ============================================================================
+# Installation Mode Selection
+# ============================================================================
+
+echo -e "${CYAN}Select Installation Mode:${NC}"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo -e "  ${GREEN}1)${NC} Fresh Install (Drop existing DB, create everything, load sample data) ${YELLOW}[DEFAULT]${NC}"
+echo -e "  ${GREEN}2)${NC} Load Sample Data Only (Keep existing DB structure, reload data)"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo ""
+echo -ne "${CYAN}Enter your choice [1-2] (press Enter for default):${NC} "
+read -r INSTALL_MODE
+
+# Default to fresh install if no input
+if [ -z "$INSTALL_MODE" ]; then
+    INSTALL_MODE=1
+fi
+
+# Validate input
+if [[ ! "$INSTALL_MODE" =~ ^[1-2]$ ]]; then
+    echo -e "${RED}✗ Invalid option. Defaulting to Fresh Install.${NC}"
+    INSTALL_MODE=1
+fi
+
+echo ""
+
+if [ "$INSTALL_MODE" -eq 1 ]; then
+    echo -e "${GREEN}✓ Selected: Fresh Install${NC}"
+    DO_FRESH_INSTALL=true
+    LOAD_SAMPLE_DATA=true
+else
+    echo -e "${GREEN}✓ Selected: Load Sample Data Only${NC}"
+    DO_FRESH_INSTALL=false
+    LOAD_SAMPLE_DATA=true
+fi
+
 echo ""
 
 # ============================================================================
@@ -146,6 +181,31 @@ echo ""
 # ============================================================================
 # STEP 1: Check PostgreSQL Connection
 # ============================================================================
+
+# Skip structure creation if only loading data
+if [ "$DO_FRESH_INSTALL" = false ]; then
+    echo -e "${BLUE}Skipping database structure creation - loading data only${NC}"
+    echo ""
+
+    # Check if database exists
+    DB_EXISTS=$(psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d postgres -tAc "SELECT 1 FROM pg_database WHERE datname='$DB_NAME'" 2>/dev/null || echo "")
+
+    if [ "$DB_EXISTS" != "1" ]; then
+        echo -e "${RED}✗ Database '$DB_NAME' does not exist!${NC}"
+        echo -e "${YELLOW}⚠  Please run Fresh Install first to create the database structure.${NC}"
+        exit 1
+    fi
+
+    echo -e "${GREEN}✓ Database '$DB_NAME' exists${NC}"
+    echo ""
+
+    # Jump to sample data loading
+    jump_to_sample_data=true
+else
+    jump_to_sample_data=false
+fi
+
+if [ "$jump_to_sample_data" = false ]; then
 
 echo -e "${BLUE}[1/10]${NC} Checking PostgreSQL connection..."
 
@@ -297,21 +357,31 @@ psql -q -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -f "$SCRIPTS_DIR
 echo -e "${GREEN}✓ Friendly constraint messages added${NC}"
 echo ""
 
+fi  # End of structure creation block (DO_FRESH_INSTALL)
+
 # ============================================================================
 # STEP 10: Verification
 # ============================================================================
 
-echo -e "${BLUE}[10/11]${NC} Running verification..."
+if [ "$DO_FRESH_INSTALL" = true ]; then
+    echo -e "${BLUE}[10/11]${NC} Running verification..."
 
-psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -f "$SCRIPTS_DIR/verify-all.sql" 2>&1 | tail -30
+    psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -f "$SCRIPTS_DIR/verify-all.sql" 2>&1 | tail -30
 
-echo ""
+    echo ""
+fi
 
 # ============================================================================
 # STEP 11: Load Sample Data
 # ============================================================================
 
-echo -e "${BLUE}[11/11]${NC} Loading sample data with category tracking..."
+if [ "$LOAD_SAMPLE_DATA" = true ]; then
+
+if [ "$DO_FRESH_INSTALL" = true ]; then
+    echo -e "${BLUE}[11/11]${NC} Loading sample data with category tracking..."
+else
+    echo -e "${BLUE}Loading sample data with category tracking...${NC}"
+fi
 echo ""
 
 # Check if Python 3 is available
@@ -423,7 +493,9 @@ else
         echo -e "${YELLOW}⚠  Sample data load encountered issues${NC}"
         echo -e "${YELLOW}⚠  Database structure is complete, data can be loaded manually${NC}"
     fi
-fi
+fi  # End of Python check
+
+fi  # End of LOAD_SAMPLE_DATA block
 
 echo ""
 
@@ -439,7 +511,11 @@ SECONDS=$((DURATION % 60))
 echo ""
 echo -e "${GREEN}╔════════════════════════════════════════════════════════════════╗${NC}"
 echo -e "${GREEN}║                                                                ║${NC}"
-echo -e "${GREEN}║  ✓✓✓ TARTWARE PMS DATABASE SETUP COMPLETE ✓✓✓                ║${NC}"
+if [ "$DO_FRESH_INSTALL" = true ]; then
+    echo -e "${GREEN}║  ✓✓✓ TARTWARE PMS DATABASE SETUP COMPLETE ✓✓✓                ║${NC}"
+else
+    echo -e "${GREEN}║  ✓✓✓ TARTWARE PMS SAMPLE DATA LOADED ✓✓✓                     ║${NC}"
+fi
 echo -e "${GREEN}║                                                                ║${NC}"
 echo -e "${GREEN}╚════════════════════════════════════════════════════════════════╝${NC}"
 echo ""
@@ -447,6 +523,8 @@ echo ""
 echo -e "${CYAN}Database Statistics:${NC}"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo -e "  Database:            ${GREEN}$DB_NAME${NC}"
+
+if [ "$DO_FRESH_INSTALL" = true ]; then
 
 # Tables - should match exactly
 if [ "$TABLE_COUNT" -eq "$EXPECTED_TABLES" ]; then
@@ -467,6 +545,8 @@ echo -e "  Indexes:             ${GREEN}$INDEX_COUNT${NC} ${CYAN}(includes auto-
 
 # Foreign Keys - actual count (includes inline definitions)
 echo -e "  Foreign Keys:        ${GREEN}$FK_COUNT${NC} ${CYAN}(from constraints + inline table definitions)${NC}"
+
+fi  # End of DO_FRESH_INSTALL stats
 
 echo ""
 echo -e "  ${CYAN}Sample Data:${NC}"
@@ -489,23 +569,34 @@ DATA_TABLES_POPULATED=$(PGPASSWORD="$DB_PASSWORD" psql -h "$DB_HOST" -p "$DB_POR
     AND n_tup_ins > 0;
 " 2>/dev/null)
 
+# Get total table count
+if [ "$DO_FRESH_INSTALL" = true ]; then
+    TOTAL_TABLE_COUNT=$TABLE_COUNT
+else
+    TOTAL_TABLE_COUNT=$(PGPASSWORD="$DB_PASSWORD" psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -tAc "
+        SELECT COUNT(*)
+        FROM information_schema.tables
+        WHERE table_schema IN ('public', 'availability');
+    " 2>/dev/null)
+fi
+
 # Calculate coverage percentage
-if [ "$TABLE_COUNT" -gt 0 ]; then
-    DATA_COVERAGE=$((DATA_TABLES_POPULATED * 100 / TABLE_COUNT))
+if [ "$TOTAL_TABLE_COUNT" -gt 0 ]; then
+    DATA_COVERAGE=$((DATA_TABLES_POPULATED * 100 / TOTAL_TABLE_COUNT))
 else
     DATA_COVERAGE=0
 fi
 
 # Show data statistics with color coding
-if [ "$DATA_TABLES_POPULATED" -eq "$TABLE_COUNT" ]; then
+if [ "$DATA_TABLES_POPULATED" -eq "$TOTAL_TABLE_COUNT" ]; then
     echo -e "  Total Records:       ${GREEN}${TOTAL_DATA_RECORDS}${NC}"
-    echo -e "  Tables Populated:    ${GREEN}${DATA_TABLES_POPULATED}${NC} / ${CYAN}${TABLE_COUNT}${NC} ${GREEN}(${DATA_COVERAGE}%) ✓${NC}"
+    echo -e "  Tables Populated:    ${GREEN}${DATA_TABLES_POPULATED}${NC} / ${CYAN}${TOTAL_TABLE_COUNT}${NC} ${GREEN}(${DATA_COVERAGE}%) ✓${NC}"
 elif [ "$DATA_TABLES_POPULATED" -gt 0 ]; then
     echo -e "  Total Records:       ${GREEN}${TOTAL_DATA_RECORDS}${NC}"
-    echo -e "  Tables Populated:    ${YELLOW}${DATA_TABLES_POPULATED}${NC} / ${CYAN}${TABLE_COUNT}${NC} ${YELLOW}(${DATA_COVERAGE}%)${NC}"
+    echo -e "  Tables Populated:    ${YELLOW}${DATA_TABLES_POPULATED}${NC} / ${CYAN}${TOTAL_TABLE_COUNT}${NC} ${YELLOW}(${DATA_COVERAGE}%)${NC}"
 else
     echo -e "  Total Records:       ${YELLOW}${TOTAL_DATA_RECORDS}${NC}"
-    echo -e "  Tables Populated:    ${YELLOW}${DATA_TABLES_POPULATED}${NC} / ${CYAN}${TABLE_COUNT}${NC} ${YELLOW}(${DATA_COVERAGE}%)${NC}"
+    echo -e "  Tables Populated:    ${YELLOW}${DATA_TABLES_POPULATED}${NC} / ${CYAN}${TOTAL_TABLE_COUNT}${NC} ${YELLOW}(${DATA_COVERAGE}%)${NC}"
 fi
 
 echo ""

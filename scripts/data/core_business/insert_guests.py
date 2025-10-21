@@ -20,6 +20,16 @@ def insert_guests(conn, count=200):
         first_name = fake.first_name()
         last_name = fake.last_name()
 
+        # Generate clean phone number without extensions (matches validation pattern)
+        # Pattern: ^\+?[\d\s\(\)\-]{10,20}$
+        phone_formats = [
+            f"+1{fake.numerify('##########')}",  # +12345678901
+            fake.numerify('###-###-####'),        # 123-456-7890
+            f"({fake.numerify('###')}) {fake.numerify('###-####')}",  # (123) 456-7890
+            fake.numerify('##########'),          # 1234567890
+        ]
+        clean_phone = random.choice(phone_formats)
+
         cur.execute("""
             INSERT INTO guests (id, tenant_id, first_name, last_name, email, phone, nationality,
                                loyalty_points, vip_status, total_bookings, total_nights, total_revenue, created_at)
@@ -30,7 +40,7 @@ def insert_guests(conn, count=200):
             first_name,
             last_name,
             fake.email(),
-            fake.phone_number()[:20],
+            clean_phone,
             fake.country_code(),
             random.randint(0, 10000),
             random.choice([True, False, False, False]),
