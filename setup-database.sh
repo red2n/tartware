@@ -78,7 +78,7 @@ if [ "$DEPLOY_MODE" == "docker" ]; then
     echo "║                     TARTWARE PMS - Docker Mode                 ║"
     echo "╚════════════════════════════════════════════════════════════════╝"
     echo ""
-    
+
     # Check Docker prerequisites
     if ! command -v docker &> /dev/null; then
         echo -e "${RED}✗ Docker is not installed${NC}"
@@ -101,7 +101,7 @@ if [ "$DEPLOY_MODE" == "docker" ]; then
     fi
     echo -e "${GREEN}✓ Docker daemon: running${NC}"
     echo ""
-    
+
     # Start containers
     echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
     echo "  Starting Docker containers..."
@@ -110,7 +110,7 @@ if [ "$DEPLOY_MODE" == "docker" ]; then
     echo ""
     echo -e "${GREEN}✓ Containers started${NC}"
     echo ""
-    
+
     # Wait for PostgreSQL
     echo "Waiting for PostgreSQL to be ready..."
     RETRIES=30
@@ -132,11 +132,11 @@ if [ "$DEPLOY_MODE" == "docker" ]; then
         exit 1
     fi
     echo ""
-    
+
     # Wait for initialization
     echo "Database initialization in progress..."
     sleep 10
-    
+
     echo "Monitoring initialization..."
     for i in {1..60}; do
         TABLE_COUNT=$(docker exec tartware-postgres psql -U postgres -d tartware -t -c "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = 'public';" 2>/dev/null | xargs || echo "0")
@@ -150,7 +150,7 @@ if [ "$DEPLOY_MODE" == "docker" ]; then
         sleep 1
     done
     echo ""
-    
+
     # Verification
     echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
     echo "  Database Verification"
@@ -158,12 +158,12 @@ if [ "$DEPLOY_MODE" == "docker" ]; then
     TABLE_COUNT=$(docker exec tartware-postgres psql -U postgres -d tartware -t -c "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = 'public';" 2>/dev/null | xargs)
     INDEX_COUNT=$(docker exec tartware-postgres psql -U postgres -d tartware -t -c "SELECT COUNT(*) FROM pg_indexes WHERE schemaname = 'public';" 2>/dev/null | xargs)
     FK_COUNT=$(docker exec tartware-postgres psql -U postgres -d tartware -t -c "SELECT COUNT(*) FROM information_schema.table_constraints WHERE constraint_type = 'FOREIGN KEY';" 2>/dev/null | xargs)
-    
+
     echo "  Tables:       $TABLE_COUNT / 128"
     echo "  Indexes:      $INDEX_COUNT"
     echo "  Foreign Keys: $FK_COUNT"
     echo ""
-    
+
     # Success
     echo "╔════════════════════════════════════════════════════════════════╗"
     echo "║           TARTWARE PMS DOCKER DEPLOYMENT COMPLETE              ║"
