@@ -1,11 +1,63 @@
 #!/bin/bash
 # ============================================================================
 # Tartware PMS - Database Setup Script
-# Direct PostgreSQL setup (without Docker)
+# Supports Direct PostgreSQL and Docker deployments
 # Uses modern tools: ripgrep (rg) and fd for better performance
 # ============================================================================
 
 set -e
+
+# ============================================================================
+# Parse Command Line Arguments
+# ============================================================================
+
+DEPLOY_MODE="direct"
+
+for arg in "$@"; do
+    case $arg in
+        --mode=*)
+            DEPLOY_MODE="${arg#*=}"
+            shift
+            ;;
+        --mode)
+            DEPLOY_MODE="$2"
+            shift
+            shift
+            ;;
+        --help|-h)
+            echo "Tartware PMS Database Setup Script"
+            echo ""
+            echo "Usage: $0 [OPTIONS]"
+            echo ""
+            echo "Options:"
+            echo "  --mode=MODE    Deployment mode: direct or docker (default: direct)"
+            echo "  --help, -h     Show this help message"
+            echo ""
+            echo "Modes:"
+            echo "  direct         Direct PostgreSQL installation (requires psql)"
+            echo "  docker         Docker-based deployment (requires docker-compose)"
+            echo ""
+            echo "Examples:"
+            echo "  $0                      # Direct mode (default)"
+            echo "  $0 --mode=direct       # Direct mode (explicit)"
+            echo "  $0 --mode=docker       # Docker mode"
+            echo ""
+            exit 0
+            ;;
+        *)
+            echo "Unknown option: $arg"
+            echo "Use --help for usage information"
+            exit 1
+            ;;
+    esac
+done
+
+# Validate mode
+if [[ ! "$DEPLOY_MODE" =~ ^(direct|docker)$ ]]; then
+    echo "Invalid mode: $DEPLOY_MODE"
+    echo "Must be 'direct' or 'docker'"
+    exit 1
+fi
 
 # Colors
 RED='\033[0;31m'
@@ -15,6 +67,125 @@ BLUE='\033[0;34m'
 CYAN='\033[0;36m'
 MAGENTA='\033[0;35m'
 NC='\033[0m' # No Color
+
+# ============================================================================
+# Docker Mode Handler
+# ============================================================================
+
+if [ "$DEPLOY_MODE" == "docker" ]; then
+    echo ""
+    echo "╔════════════════════════════════════════════════════════════════╗"
+    echo "║                     TARTWARE PMS - Docker Mode                 ║"
+    echo "╚════════════════════════════════════════════════════════════════╝"
+    echo ""
+    
+    # Check Docker prerequisites
+    if ! command -v docker &> /dev/null; then
+        echo -e "${RED}✗ Docker is not installed${NC}"
+        echo "   Install: https://docs.docker.com/get-docker/"
+        exit 1
+    fi
+    echo -e "${GREEN}✓ Docker: $(docker --version)${NC}"
+
+    if ! command -v docker-compose &> /dev/null; then
+        echo -e "${RED}✗ Docker Compose is not installed${NC}"
+        echo "   Install: https://docs.docker.com/compose/install/"
+        exit 1
+    fi
+    echo -e "${GREEN}✓ Docker Compose: $(docker-compose --version)${NC}"
+
+    if ! docker info &> /dev/null; then
+        echo -e "${RED}✗ Docker daemon is not running${NC}"
+        echo "   Start: sudo systemctl start docker"
+        exit 1
+    fi
+    echo -e "${GREEN}✓ Docker daemon: running${NC}"
+    echo ""
+    
+    # Start containers
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo "  Starting Docker containers..."
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    docker-compose up -d
+    echo ""
+    echo -e "${GREEN}✓ Containers started${NC}"
+    echo ""
+    
+    # Wait for PostgreSQL
+    echo "Waiting for PostgreSQL to be ready..."
+    RETRIES=30
+    COUNT=0
+    while [ $COUNT -lt $RETRIES ]; do
+        if docker exec tartware-postgres pg_isready -U postgres &> /dev/null; then
+            echo -e "${GREEN}✓ PostgreSQL is ready${NC}"
+            break
+        fi
+        COUNT=$((COUNT + 1))
+        echo -n "."
+        sleep 1
+    done
+
+    if [ $COUNT -eq $RETRIES ]; then
+        echo ""
+        echo -e "${RED}✗ PostgreSQL failed to start within 30 seconds${NC}"
+        echo "   Check logs: docker-compose logs postgres"
+        exit 1
+    fi
+    echo ""
+    
+    # Wait for initialization
+    echo "Database initialization in progress..."
+    sleep 10
+    
+    echo "Monitoring initialization..."
+    for i in {1..60}; do
+        TABLE_COUNT=$(docker exec tartware-postgres psql -U postgres -d tartware -t -c "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = 'public';" 2>/dev/null | xargs || echo "0")
+        if [ "$TABLE_COUNT" -ge "128" ]; then
+            echo -e "${GREEN}✓ Initialization complete!${NC}"
+            break
+        fi
+        if [ $i -eq 60 ]; then
+            echo -e "${YELLOW}⚠  Initialization taking longer than expected${NC}"
+        fi
+        sleep 1
+    done
+    echo ""
+    
+    # Verification
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo "  Database Verification"
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    TABLE_COUNT=$(docker exec tartware-postgres psql -U postgres -d tartware -t -c "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = 'public';" 2>/dev/null | xargs)
+    INDEX_COUNT=$(docker exec tartware-postgres psql -U postgres -d tartware -t -c "SELECT COUNT(*) FROM pg_indexes WHERE schemaname = 'public';" 2>/dev/null | xargs)
+    FK_COUNT=$(docker exec tartware-postgres psql -U postgres -d tartware -t -c "SELECT COUNT(*) FROM information_schema.table_constraints WHERE constraint_type = 'FOREIGN KEY';" 2>/dev/null | xargs)
+    
+    echo "  Tables:       $TABLE_COUNT / 128"
+    echo "  Indexes:      $INDEX_COUNT"
+    echo "  Foreign Keys: $FK_COUNT"
+    echo ""
+    
+    # Success
+    echo "╔════════════════════════════════════════════════════════════════╗"
+    echo "║           TARTWARE PMS DOCKER DEPLOYMENT COMPLETE              ║"
+    echo "╚════════════════════════════════════════════════════════════════╝"
+    echo ""
+    echo "Quick Access:"
+    echo "  Connect:      docker exec -it tartware-postgres psql -U postgres -d tartware"
+    echo "  Logs:         docker-compose logs -f postgres"
+    echo "  Stop:         docker-compose down"
+    echo ""
+    exit 0
+fi
+
+# ============================================================================
+# Direct Mode - Continue with regular setup
+# ============================================================================
+
+echo ""
+echo "╔════════════════════════════════════════════════════════════════╗"
+echo "║                  TARTWARE PMS - Direct Mode                    ║"
+echo "╚════════════════════════════════════════════════════════════════╝"
+echo ""
 
 # ============================================================================
 # Automatic Tool Installation
