@@ -250,10 +250,10 @@ WITH fk_no_index AS (
     EXCEPT
     SELECT
         tablename,
-        string_to_array(
+        (string_to_array(
             regexp_replace(indexdef, '.*\((.*)\)', '\1'),
             ', '
-        )[1]
+        ))[1]
     FROM pg_indexes
     WHERE schemaname = 'public'
 )

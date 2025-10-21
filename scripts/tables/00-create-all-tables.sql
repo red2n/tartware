@@ -7,10 +7,15 @@
 
 \c tartware
 
+-- Ensure extensions are created
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+CREATE EXTENSION IF NOT EXISTS pg_trgm;
+
 \echo ''
 \echo '============================================='
-\echo 'CREATING ALL 132 TABLES'
+\echo 'CREATING ALL 128 TABLES'
 \echo 'Enterprise PMS Database - Organized Structure'
+\echo '(101 files, some create multiple tables)'
 \echo '============================================='
 \echo ''
 
@@ -257,13 +262,12 @@
 
 \echo ''
 \echo '============================================='
-\echo 'ALL 132 TABLES CREATED SUCCESSFULLY!'
+\echo 'ALL 128 TABLES CREATED SUCCESSFULLY!'
 \echo '============================================='
 \echo ''
 \echo 'Table Summary:'
-\echo '  - 89 Core/Standard Tables'
-\echo '  - 43 Advanced/Innovation Tables'
-\echo '  - Total: 132 Tables'
+\echo '  - 101 SQL files executed'
+\echo '  - 128 Tables created (some files create multiple tables)'
 \echo ''
 \echo 'Next steps:'
 \echo '  1. Run indexes/00-create-all-indexes.sql'

@@ -49,7 +49,7 @@ CREATE TABLE IF NOT EXISTS analytics_metric_dimensions (
     deleted_by VARCHAR(100),
 
     -- Optimistic Locking
-    version BIGINT DEFAULT 0,
+    version BIGINT DEFAULT 0
 );
 
 -- =====================================================

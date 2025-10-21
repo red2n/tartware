@@ -158,12 +158,19 @@ echo ""
 # STEP 6: Create Tables
 # ============================================================================
 
-echo -e "${BLUE}[6/10]${NC} Creating 132 tables (89 core + 43 advanced)..."
+echo -e "${BLUE}[6/10]${NC} Creating 128 tables (101 files, some create multiple tables)..."
 
 cd "$SCRIPTS_DIR"
-psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -f "$SCRIPTS_DIR/tables/00-create-all-tables.sql" 2>&1 | grep -v "^NOTICE:" | grep -v "^psql:" | head -20
+psql -q -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -f "$SCRIPTS_DIR/tables/00-create-all-tables.sql" > /dev/null 2>&1
 
-TABLE_COUNT=$(psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -tAc "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = 'public';" 2>/dev/null)
+TABLE_COUNT=$(psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -tAc "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema IN ('public', 'availability');" 2>/dev/null)
+
+if [ "$TABLE_COUNT" -ne 128 ]; then
+    echo -e "${RED}✗ Table count mismatch! Expected 128, got $TABLE_COUNT${NC}"
+    echo -e "${RED}✗ Database setup failed - not all tables were created${NC}"
+    echo -e "${YELLOW}Check the logs above for errors${NC}"
+    exit 1
+fi
 
 echo -e "${GREEN}✓ Created $TABLE_COUNT tables${NC}"
 echo ""
@@ -174,9 +181,9 @@ echo ""
 
 echo -e "${BLUE}[7/10]${NC} Creating 800+ indexes..."
 
-psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -f "$SCRIPTS_DIR/indexes/00-create-all-indexes.sql" 2>&1 | grep -v "^NOTICE:" | grep -v "^psql:" | head -20
+psql -q -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -f "$SCRIPTS_DIR/indexes/00-create-all-indexes.sql" > /dev/null 2>&1
 
-INDEX_COUNT=$(psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -tAc "SELECT COUNT(*) FROM pg_indexes WHERE schemaname = 'public';" 2>/dev/null)
+INDEX_COUNT=$(psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -tAc "SELECT COUNT(*) FROM pg_indexes WHERE schemaname IN ('public', 'availability');" 2>/dev/null)
 
 echo -e "${GREEN}✓ Created $INDEX_COUNT indexes${NC}"
 echo ""
@@ -185,9 +192,11 @@ echo ""
 # STEP 8: Create Constraints
 # ============================================================================
 
-echo -e "${BLUE}[8/10]${NC} Creating 500+ foreign key constraints..."
+echo -e "${BLUE}[8/10]${NC} Creating 600+ foreign key constraints..."
 
-psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -f "$SCRIPTS_DIR/constraints/00-create-all-constraints.sql" 2>&1 | grep -v "^NOTICE:" | grep -v "^psql:" | head -20
+cd "$SCRIPTS_DIR/constraints"
+psql -q -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -f "00-create-all-constraints.sql" > /dev/null 2>&1
+cd "$SCRIPTS_DIR"
 
 FK_COUNT=$(psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -tAc "SELECT COUNT(*) FROM information_schema.table_constraints WHERE constraint_type = 'FOREIGN KEY';" 2>/dev/null)
 
@@ -223,8 +232,7 @@ else
     export DB_PASSWORD="$DB_PASSWORD"
 
     # Run the sample data script
-    cd "$(dirname "${BASH_SOURCE[0]}")"
-    python3 scripts/load_sample_data_direct.py 2>&1 | tail -50
+    python3 "$SCRIPTS_DIR/load_sample_data_direct.py" 2>&1 | tail -50
 
     if [ $? -eq 0 ]; then
         RECORD_COUNT=$(psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -tAc "
@@ -266,9 +274,9 @@ echo ""
 echo -e "${CYAN}Database Statistics:${NC}"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo -e "  Database:            ${GREEN}$DB_NAME${NC}"
-echo -e "  Tables:              ${GREEN}$TABLE_COUNT${NC} (132 expected)"
+echo -e "  Tables:              ${GREEN}$TABLE_COUNT${NC} (128 expected)"
 echo -e "  Indexes:             ${GREEN}$INDEX_COUNT${NC} (800+ expected)"
-echo -e "  Foreign Keys:        ${GREEN}$FK_COUNT${NC} (500+ expected)"
+echo -e "  Foreign Keys:        ${GREEN}$FK_COUNT${NC} (600+ expected)"
 echo -e "  ENUM Types:          ${GREEN}$ENUM_COUNT${NC} (61 expected)"
 echo -e "  Duration:            ${GREEN}${MINUTES}m ${SECONDS}s${NC}"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
