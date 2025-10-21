@@ -1,3 +1,4 @@
+
 -- =====================================================
 -- push_notifications.sql
 -- Push Notifications Table

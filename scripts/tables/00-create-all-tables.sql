@@ -1,15 +1,15 @@
 -- =====================================================
 -- 00-create-all-tables.sql
--- Master script to create all 89 tables
+-- Master script to create all 132 tables
 -- Organized by functional categories
--- Date: 2025-10-19
+-- Date: 2025-10-21
 -- =====================================================
 
 \c tartware
 
 \echo ''
 \echo '============================================='
-\echo 'CREATING ALL 89 TABLES'
+\echo 'CREATING ALL 132 TABLES'
 \echo 'Enterprise PMS Database - Organized Structure'
 \echo '============================================='
 \echo ''
@@ -110,11 +110,11 @@
 \i tables/07-guest-crm/50_automated_messages.sql
 
 -- =====================================================
--- CATEGORY 8: REVENUE MANAGEMENT (7 tables)
--- Pricing, forecasting, competitor analysis
+-- CATEGORY 8: REVENUE MANAGEMENT (11 tables)
+-- Pricing, forecasting, competitor analysis, B2B, groups
 -- =====================================================
 \echo ''
-\echo '>>> Creating Revenue Management Tables (36, 51-56)...'
+\echo '>>> Creating Revenue Management Tables (36, 51-56, 90-93)...'
 \i tables/08-revenue-management/36_rate_overrides.sql
 \i tables/08-revenue-management/51_revenue_forecasts.sql
 \i tables/08-revenue-management/52_competitor_rates.sql
@@ -122,6 +122,10 @@
 \i tables/08-revenue-management/54_pricing_rules.sql
 \i tables/08-revenue-management/55_rate_recommendations.sql
 \i tables/08-revenue-management/56_revenue_goals.sql
+\i tables/08-revenue-management/90_companies.sql
+\i tables/08-revenue-management/91_group_bookings.sql
+\i tables/08-revenue-management/92_packages.sql
+\i tables/08-revenue-management/93_travel_agent_commissions.sql
 
 -- =====================================================
 -- CATEGORY 9: STAFF & OPERATIONS (6 tables)
@@ -208,10 +212,58 @@
 \i tables/15-integration-hub/88_webhook_subscriptions.sql
 \i tables/15-integration-hub/89_data_sync_status.sql
 
+-- =====================================================
+-- CATEGORY 16: AI/ML INNOVATION (4 tables)
+-- AI demand forecasting, ML pricing, behavior patterns
+-- =====================================================
+\echo ''
+\echo '>>> Creating AI/ML Innovation Tables (94-97)...'
+\i tables/16-ai-ml-innovation/94_ai_demand_predictions.sql
+\i tables/16-ai-ml-innovation/95_dynamic_pricing_rules_ml.sql
+\i tables/16-ai-ml-innovation/96_guest_behavior_patterns.sql
+\i tables/16-ai-ml-innovation/97_sentiment_analysis.sql
+
+-- =====================================================
+-- CATEGORY 17: SUSTAINABILITY & ESG (1 table)
+-- Environmental metrics, green certifications, carbon tracking
+-- =====================================================
+\echo ''
+\echo '>>> Creating Sustainability & ESG Tables (98)...'
+\i tables/17-sustainability-esg/98_sustainability_metrics.sql
+
+-- =====================================================
+-- CATEGORY 18: IOT & SMART ROOMS (1 table)
+-- Smart devices, energy management, automation
+-- =====================================================
+\echo ''
+\echo '>>> Creating IoT & Smart Rooms Tables (99)...'
+\i tables/18-iot-smart-rooms/99_smart_room_devices.sql
+
+-- =====================================================
+-- CATEGORY 19: CONTACTLESS & DIGITAL (1 table)
+-- Mobile check-in, digital registration, contactless services
+-- =====================================================
+\echo ''
+\echo '>>> Creating Contactless & Digital Tables (100)...'
+\i tables/19-contactless-digital/100_mobile_check_ins.sql
+
+-- =====================================================
+-- CATEGORY 20: ASSET MANAGEMENT (1 table)
+-- Asset inventory, predictive maintenance, depreciation
+-- =====================================================
+\echo ''
+\echo '>>> Creating Asset Management Tables (101)...'
+\i tables/20-asset-management/101_asset_inventory.sql
+
 \echo ''
 \echo '============================================='
-\echo 'ALL 89 TABLES CREATED SUCCESSFULLY!'
+\echo 'ALL 132 TABLES CREATED SUCCESSFULLY!'
 \echo '============================================='
+\echo ''
+\echo 'Table Summary:'
+\echo '  - 89 Core/Standard Tables'
+\echo '  - 43 Advanced/Innovation Tables'
+\echo '  - Total: 132 Tables'
 \echo ''
 \echo 'Next steps:'
 \echo '  1. Run indexes/00-create-all-indexes.sql'
