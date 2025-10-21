@@ -81,13 +81,7 @@ CREATE TABLE IF NOT EXISTS asset_inventory (
     warranty_end_date DATE,
     warranty_provider VARCHAR(255),
     warranty_terms TEXT,
-    warranty_status VARCHAR(50) GENERATED ALWAYS AS (
-        CASE
-            WHEN warranty_end_date IS NULL THEN 'no_warranty'
-            WHEN warranty_end_date >= CURRENT_DATE THEN 'active'
-            ELSE 'expired'
-        END
-    ) STORED,
+    warranty_status VARCHAR(50) CHECK (warranty_status IN ('no_warranty', 'active', 'expired')),
 
     -- Depreciation
     depreciation_method VARCHAR(50) CHECK (depreciation_method IN (
@@ -459,7 +453,7 @@ CREATE INDEX idx_asset_inventory_type ON asset_inventory(asset_type);
 CREATE INDEX idx_asset_inventory_tag ON asset_inventory(asset_tag) WHERE is_deleted = FALSE;
 CREATE INDEX idx_asset_inventory_status ON asset_inventory(status, operational_status);
 CREATE INDEX idx_asset_inventory_critical ON asset_inventory(is_critical, criticality_level) WHERE is_critical = TRUE;
-CREATE INDEX idx_asset_inventory_warranty ON asset_inventory(warranty_end_date) WHERE warranty_end_date >= CURRENT_DATE;
+CREATE INDEX idx_asset_inventory_warranty ON asset_inventory(warranty_end_date);
 CREATE INDEX idx_asset_inventory_next_maintenance ON asset_inventory(next_maintenance_date) WHERE status = 'active';
 
 CREATE INDEX idx_predictive_maintenance_alerts_asset ON predictive_maintenance_alerts(asset_id);
@@ -480,6 +474,6 @@ CREATE INDEX idx_maintenance_history_technician ON maintenance_history(technicia
 COMMENT ON TABLE asset_inventory IS 'Physical asset tracking with depreciation, maintenance scheduling, and lifecycle management';
 COMMENT ON TABLE predictive_maintenance_alerts IS 'AI-powered predictive maintenance alerts with failure prediction and cost impact';
 COMMENT ON TABLE maintenance_history IS 'Complete maintenance history log for all assets';
-COMMENT ON COLUMN asset_inventory.warranty_status IS 'Computed warranty status (active/expired/no_warranty)';
+COMMENT ON COLUMN asset_inventory.warranty_status IS 'Warranty status (active/expired/no_warranty) - should be set by trigger or application logic';
 COMMENT ON COLUMN predictive_maintenance_alerts.confidence_level IS 'ML model confidence in failure prediction (0-100)';
 COMMENT ON COLUMN predictive_maintenance_alerts.prediction_factors IS 'JSON showing which factors (usage, age, sensor data) led to prediction';
