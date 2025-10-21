@@ -287,20 +287,31 @@ echo -e "${GREEN}✓ Created $FK_COUNT foreign key constraints${NC}"
 echo ""
 
 # ============================================================================
-# STEP 9: Verification
+# STEP 9: Add User-Friendly Constraint Messages
 # ============================================================================
 
-echo -e "${BLUE}[9/10]${NC} Running verification..."
+echo -e "${BLUE}[9/11]${NC} Adding user-friendly constraint error messages..."
+
+psql -q -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -f "$SCRIPTS_DIR/add_friendly_constraint_messages.sql" > /dev/null 2>&1
+
+echo -e "${GREEN}✓ Friendly constraint messages added${NC}"
+echo ""
+
+# ============================================================================
+# STEP 10: Verification
+# ============================================================================
+
+echo -e "${BLUE}[10/11]${NC} Running verification..."
 
 psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -f "$SCRIPTS_DIR/verify-all.sql" 2>&1 | tail -30
 
 echo ""
 
 # ============================================================================
-# STEP 10: Load Sample Data
+# STEP 11: Load Sample Data
 # ============================================================================
 
-echo -e "${BLUE}[10/10]${NC} Loading sample data with category tracking..."
+echo -e "${BLUE}[11/11]${NC} Loading sample data with category tracking..."
 echo ""
 
 # Check if Python 3 is available
