@@ -53,24 +53,24 @@ echo "✓ ENUM types created"
 
 # Create all tables
 echo ""
-echo "[$(date '+%Y-%m-%d %H:%M:%S')] ═══ Phase 3: Creating 89 Tables ═══"
+echo "[$(date '+%Y-%m-%d %H:%M:%S')] ═══ Phase 3: Creating 132 Tables ═══"
 cd "$SCRIPTS_DIR"
 psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "tartware" -f "tables/00-create-all-tables.sql"
-echo "✓ All 89 tables created"
+echo "✓ All 132 tables created (89 core + 43 advanced)"
 
 # Create all indexes
 echo ""
-echo "[$(date '+%Y-%m-%d %H:%M:%S')] ═══ Phase 4: Creating Indexes ═══"
+echo "[$(date '+%Y-%m-%d %H:%M:%S')] ═══ Phase 4: Creating 800+ Indexes ═══"
 cd "$SCRIPTS_DIR/indexes"
 psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "tartware" -f "00-create-all-indexes.sql"
-echo "✓ All indexes created"
+echo "✓ All 800+ indexes created"
 
 # Create all constraints
 echo ""
-echo "[$(date '+%Y-%m-%d %H:%M:%S')] ═══ Phase 5: Creating Constraints ═══"
+echo "[$(date '+%Y-%m-%d %H:%M:%S')] ═══ Phase 5: Creating 500+ Constraints ═══"
 cd "$SCRIPTS_DIR/constraints"
 psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "tartware" -f "00-create-all-constraints.sql"
-echo "✓ All constraints created"
+echo "✓ All 500+ foreign key constraints created"
 
 # Run verification if enabled
 if [ "${TARTWARE_RUN_VERIFICATION:-true}" = "true" ]; then

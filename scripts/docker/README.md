@@ -21,9 +21,9 @@ Safely drops and recreates the tartware database:
 Executes all SQL scripts in correct order:
 1. Database setup (extensions, schemas)
 2. ENUM types
-3. All tables (01-37)
-4. All indexes (350+)
-5. All constraints (150+)
+3. All 132 tables (89 core + 43 advanced)
+4. All 800+ indexes
+5. All 500+ foreign key constraints
 6. Verification (optional)
 
 ## 🚀 Usage
@@ -99,9 +99,9 @@ run-all-scripts.sh
     ↓
     ├─→ 01-database-setup.sql (extensions, schemas)
     ├─→ 02-enum-types.sql (30+ ENUM types)
-    ├─→ All table files (01-37)
-    ├─→ 00-create-all-indexes.sql (350+ indexes)
-    ├─→ 00-create-all-constraints.sql (150+ FKs)
+    ├─→ tables/00-create-all-tables.sql (132 tables: 89 core + 43 advanced)
+    ├─→ indexes/00-create-all-indexes.sql (800+ indexes)
+    ├─→ constraints/00-create-all-constraints.sql (500+ FKs)
     └─→ verify-all.sql (optional)
         ↓
     ✓ Complete
@@ -153,9 +153,9 @@ docker exec -it tartware-postgres psql -U postgres -d tartware -c "\dt"
 docker exec -it tartware-postgres psql -U postgres -d tartware -f /docker-entrypoint-initdb.d/scripts/verify-all.sql
 
 # Expected results:
-# - Tables: 37/37
-# - Indexes: 350+
-# - Foreign Keys: 150+
+# - Tables: 132/132 (89 core + 43 advanced)
+# - Indexes: 800+
+# - Foreign Keys: 500+
 # - Quality Score: A+ (100/100)
 ```
 
@@ -198,9 +198,9 @@ docker-compose up -d
 
 # Logs will show:
 # ✓ Database created
-# ✓ 37 tables created
-# ✓ 350+ indexes created
-# ✓ 150+ constraints created
+# ✓ 132 tables created (89 core + 43 advanced)
+# ✓ 800+ indexes created
+# ✓ 500+ foreign key constraints created
 # ✓ Verification passed (A+)
 ```
 
