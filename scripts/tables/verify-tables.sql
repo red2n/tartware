@@ -1,9 +1,9 @@
 -- =====================================================
 -- verify-tables.sql
 -- Verify All Tables Are Created Correctly
--- Date: 2025-10-17
+-- Date: 2025-10-21
 --
--- Updated: Now supports 89 tables (up from 37)
+-- Updated: Now supports 132 tables (89 core + 43 advanced)
 -- =====================================================
 
 \c tartware
@@ -22,32 +22,61 @@
 DO $$
 DECLARE
     v_expected_tables TEXT[] := ARRAY[
-        'tenants', 'users', 'user_tenant_associations', 'properties',
-        'guests', 'room_types', 'rooms', 'rates', 'reservations',
-        'reservation_status_history', 'payments', 'invoices', 'invoice_items',
-        'services', 'reservation_services', 'housekeeping_tasks',
-        'channel_mappings', 'analytics_metrics', 'analytics_metric_dimensions',
-        'analytics_reports', 'report_property_ids', 'performance_reports',
-        'report_schedules', 'performance_thresholds', 'performance_baselines',
-        'performance_alerts', 'alert_rules', 'folios', 'charge_postings',
-        'audit_logs', 'business_dates', 'night_audit_log', 'deposit_schedules',
+        -- Core Foundation (5)
+        'tenants', 'users', 'user_tenant_associations', 'properties', 'guests',
+        -- Room & Inventory (4)
+        'room_types', 'rooms', 'rates',
+        -- Reservations & Booking (7)
+        'reservations', 'reservation_status_history', 'deposit_schedules',
         'allotments', 'booking_sources', 'market_segments', 'guest_preferences',
-        'refunds', 'rate_overrides', 'maintenance_requests', 'ota_configurations',
-        'ota_rate_plans', 'ota_reservations_queue', 'guest_communications',
-        'communication_templates', 'guest_feedback', 'ota_inventory_sync',
-        'channel_rate_parity', 'channel_commission_rules', 'guest_loyalty_programs',
-        'guest_documents', 'guest_notes', 'automated_messages', 'revenue_forecasts',
-        'competitor_rates', 'demand_calendar', 'pricing_rules', 'rate_recommendations',
-        'revenue_goals', 'staff_schedules', 'staff_tasks', 'shift_handovers',
-        'lost_and_found', 'incident_reports', 'vendor_contracts', 'tax_configurations',
-        'financial_closures', 'commission_tracking', 'cashier_sessions',
-        'accounts_receivable', 'credit_limits', 'marketing_campaigns',
-        'campaign_segments', 'promotional_codes', 'referral_tracking',
-        'social_media_mentions', 'gdpr_consent_logs', 'police_reports',
-        'contract_agreements', 'insurance_claims', 'guest_journey_tracking',
-        'revenue_attribution', 'forecasting_models', 'ab_test_results',
+        -- Financial Management (12)
+        'payments', 'invoices', 'invoice_items', 'folios', 'charge_postings',
+        'refunds', 'tax_configurations', 'financial_closures', 'commission_tracking',
+        'cashier_sessions', 'accounts_receivable', 'credit_limits',
+        -- Services & Housekeeping (4)
+        'services', 'reservation_services', 'housekeeping_tasks', 'maintenance_requests',
+        -- Channel & OTA (7)
+        'channel_mappings', 'ota_configurations', 'ota_rate_plans', 'ota_reservations_queue',
+        'ota_inventory_sync', 'channel_rate_parity', 'channel_commission_rules',
+        -- Guest CRM (7)
+        'guest_communications', 'communication_templates', 'guest_feedback',
+        'guest_loyalty_programs', 'guest_documents', 'guest_notes', 'automated_messages',
+        -- Revenue Management (11)
+        'rate_overrides', 'revenue_forecasts', 'competitor_rates', 'demand_calendar',
+        'pricing_rules', 'rate_recommendations', 'revenue_goals',
+        'companies', 'group_bookings', 'packages', 'travel_agent_commissions',
+        -- Staff & Operations (6)
+        'staff_schedules', 'staff_tasks', 'shift_handovers', 'lost_and_found',
+        'incident_reports', 'vendor_contracts',
+        -- Marketing & Campaigns (5)
+        'marketing_campaigns', 'campaign_segments', 'promotional_codes',
+        'referral_tracking', 'social_media_mentions',
+        -- Compliance & Legal (4)
+        'gdpr_consent_logs', 'police_reports', 'contract_agreements', 'insurance_claims',
+        -- Analytics & Reporting (14)
+        'analytics_metrics', 'analytics_metric_dimensions', 'analytics_reports',
+        'report_property_ids', 'performance_reports', 'report_schedules',
+        'performance_thresholds', 'performance_baselines', 'performance_alerts', 'alert_rules',
+        'guest_journey_tracking', 'revenue_attribution', 'forecasting_models', 'ab_test_results',
+        -- Mobile & Digital (4)
         'mobile_keys', 'qr_codes', 'push_notifications', 'app_usage_analytics',
-        'integration_mappings', 'api_logs', 'webhook_subscriptions', 'data_sync_status'
+        -- System & Audit (3)
+        'audit_logs', 'business_dates', 'night_audit_log',
+        -- Integration Hub (4)
+        'integration_mappings', 'api_logs', 'webhook_subscriptions', 'data_sync_status',
+        -- AI/ML Innovation (12 tables from 4 files)
+        'ai_demand_predictions', 'demand_scenarios', 'ai_model_performance',
+        'dynamic_pricing_rules_ml', 'price_adjustments_history', 'pricing_experiments',
+        'guest_behavior_patterns', 'personalized_recommendations', 'guest_interaction_events',
+        'sentiment_analysis', 'sentiment_trends', 'review_response_templates',
+        -- Sustainability & ESG (4 tables from 1 file)
+        'sustainability_metrics', 'green_certifications', 'carbon_offset_programs', 'sustainability_initiatives',
+        -- IoT & Smart Rooms (4 tables from 1 file)
+        'smart_room_devices', 'room_energy_usage', 'guest_room_preferences', 'device_events_log',
+        -- Contactless & Digital (3 tables from 1 file)
+        'mobile_check_ins', 'digital_registration_cards', 'contactless_requests',
+        -- Asset Management (3 tables from 1 file)
+        'asset_inventory', 'predictive_maintenance_alerts', 'maintenance_history'
     ];
     v_table TEXT;
     v_missing_tables TEXT[] := '{}';
@@ -78,13 +107,13 @@ BEGIN
     END IF;
 
     RAISE NOTICE '';
-    RAISE NOTICE 'Expected tables: 89';
+    RAISE NOTICE 'Expected tables: 132';
     RAISE NOTICE 'Found tables: %', v_found_count;
 
     IF array_length(v_missing_tables, 1) > 0 THEN
         RAISE WARNING 'Missing tables: %', array_to_string(v_missing_tables, ', ');
     ELSE
-        RAISE NOTICE '✓ All 89 tables exist!';
+        RAISE NOTICE '✓ All 132 tables exist!';
     END IF;
 END $$;
 
@@ -348,15 +377,15 @@ BEGIN
         AND column_name IN ('created_at', 'updated_at');
 
     RAISE NOTICE '';
-    RAISE NOTICE 'Total Tables: % (Expected: 89)', v_table_count;
-    RAISE NOTICE 'With Soft Delete: % (Expected: 80+)', v_soft_delete_count;
-    RAISE NOTICE 'With tenant_id: % (Expected: 85+)', v_tenant_id_count;
-    RAISE NOTICE 'With Audit Fields: % (Expected: 89)', v_audit_count;
+    RAISE NOTICE 'Total Tables: % (Expected: 132)', v_table_count;
+    RAISE NOTICE 'With Soft Delete: % (Expected: 125+)', v_soft_delete_count;
+    RAISE NOTICE 'With tenant_id: % (Expected: 128+)', v_tenant_id_count;
+    RAISE NOTICE 'With Audit Fields: % (Expected: 132)', v_audit_count;
     RAISE NOTICE '';
 
-    IF v_table_count >= 89 AND
-       v_soft_delete_count >= 80 AND
-       v_tenant_id_count >= 85 THEN
+    IF v_table_count >= 132 AND
+       v_soft_delete_count >= 125 AND
+       v_tenant_id_count >= 128 THEN
         RAISE NOTICE '✓✓✓ ALL TABLE VALIDATIONS PASSED ✓✓✓';
     ELSE
         RAISE WARNING '⚠⚠⚠ SOME VALIDATIONS FAILED ⚠⚠⚠';

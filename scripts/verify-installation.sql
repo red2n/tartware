@@ -2,7 +2,7 @@
 -- verify-installation.sql
 -- Verification script for database setup
 -- Run this after executing 00-master-install.sh
--- Date: 2025-10-15
+-- Date: 2025-10-21
 -- =====================================================
 
 \c tartware
@@ -117,12 +117,17 @@ END $$;
 \echo '  - Extensions: 1 (uuid-ossp)'
 \echo '  - Schemas: 2 (public, availability)'
 \echo '  - ENUM Types: 20+'
-\echo '  - Tables: 37+ (36+ in public, 1 in availability)'
+\echo '  - Tables: 132 (131 in public, 1 in availability)'
 \echo '  - Row Counts: 0 (fresh install, no sample data)'
+\echo ''
+\echo 'Table Breakdown:'
+\echo '  - 89 Core/Standard Tables'
+\echo '  - 43 Advanced/Innovation Tables'
+\echo '  - Total: 132 Tables'
 \echo ''
 \echo 'Next Steps:'
 \echo '  1. Create indexes (scripts/indexes/)'
 \echo '  2. Add foreign keys (scripts/constraints/)'
 \echo '  3. Load sample data'
-\echo '============================================='
+\echo '=============================================='
 \echo ''

@@ -1,9 +1,9 @@
 -- =====================================================
 -- verify-indexes.sql
 -- Verify All Indexes Are Created Correctly
--- Date: 2025-10-17
+-- Date: 2025-10-21
 --
--- Updated: Now supports 89 tables with 650+ indexes (up from 37 tables/350+ indexes)
+-- Updated: Now supports 132 tables with 800+ indexes (89 core + 43 advanced)
 -- =====================================================
 
 \c tartware
