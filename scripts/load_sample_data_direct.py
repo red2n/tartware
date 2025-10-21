@@ -2878,28 +2878,42 @@ def insert_gdpr_consent_logs(conn):
     print(f"\n✓ Inserting GDPR Consent Logs...")
     cur = conn.cursor()
 
-    consent_types = ['marketing', 'data_processing', 'third_party_sharing', 'profiling']
+    consent_types = ['marketing_email', 'marketing_sms', 'data_processing', 'third_party_sharing', 'profiling', 'analytics']
+    consent_methods = ['online_form', 'email_link', 'checkbox', 'verbal', 'written', 'opt_in', 'explicit']
+
+    purpose_descriptions = {
+        'marketing_email': 'To send promotional emails and newsletters about special offers and updates',
+        'marketing_sms': 'To send promotional text messages about exclusive deals and events',
+        'data_processing': 'To process personal data for booking and service delivery purposes',
+        'third_party_sharing': 'To share data with trusted partners for service fulfillment',
+        'profiling': 'To analyze preferences and provide personalized recommendations',
+        'analytics': 'To analyze usage patterns and improve our services'
+    }
+
     count = 0
 
     for guest in data_store['guests']:
-        for consent_type in random.sample(consent_types, random.randint(1, 3)):
-            consented = random.choice([True, True, False])
+        for consent_type in random.sample(consent_types, random.randint(2, 4)):
+            consented = random.choice([True, True, True, False])
 
             cur.execute("""
                 INSERT INTO gdpr_consent_logs (
-                    consent_id, tenant_id, guest_id,
-                    consent_type, consent_given, consent_date,
-                    ip_address, user_agent, created_at
-                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    consent_id, tenant_id, subject_type, subject_id,
+                    subject_email, consent_type, purpose_description, consent_given, consent_date,
+                    consent_method, ip_address, created_at
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             """, (
                 generate_uuid(),
                 guest['tenant_id'],
+                'guest',
                 guest['id'],
+                guest['email'],
                 consent_type,
+                purpose_descriptions.get(consent_type, 'General data processing consent'),
                 consented,
                 fake.date_time_between(start_date="-2y", end_date="now"),
+                random.choice(consent_methods),
                 fake.ipv4(),
-                fake.user_agent(),
                 fake.date_time_between(start_date="-2y", end_date="now")
             ))
             count += 1
@@ -2908,43 +2922,326 @@ def insert_gdpr_consent_logs(conn):
     print(f"   → Inserted {count} GDPR consent logs")
 
 
+def insert_police_reports(conn):
+    """Insert police report records"""
+    print(f"\n✓ Inserting Police Reports...")
+    cur = conn.cursor()
+
+    incident_types = ['theft', 'vandalism', 'assault', 'trespassing', 'noise_complaint', 'vehicle_incident', 'suspicious_activity', 'fraud']
+    count = 0
+
+    for property in data_store['properties']:
+        for i in range(random.randint(1, 5)):
+            incident_date = fake.date_between(start_date="-1y", end_date="now")
+            reported_date = incident_date + timedelta(days=random.randint(0, 2))
+
+            cur.execute("""
+                INSERT INTO police_reports (
+                    report_id, tenant_id, property_id,
+                    report_number, incident_type, incident_date, reported_date,
+                    incident_description, agency_name, responding_officer_name,
+                    responding_officer_badge, report_status, created_at
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            """, (
+                generate_uuid(),
+                property['tenant_id'],
+                property['id'],
+                f"POL{fake.random_number(digits=8)}",
+                random.choice(incident_types),
+                incident_date,
+                reported_date,
+                fake.text(max_nb_chars=500),
+                f"{fake.city()} Police Department",
+                fake.name(),
+                f"#{fake.random_number(digits=5)}",
+                random.choice(['filed', 'under_investigation', 'closed', 'pending']),
+                fake.date_time_between(start_date=reported_date, end_date="now")
+            ))
+            count += 1
+
+    conn.commit()
+    print(f"   → Inserted {count} police reports")
+
+
+def insert_contract_agreements(conn):
+    """Insert contract agreement records"""
+    print(f"\n✓ Inserting Contract Agreements...")
+    cur = conn.cursor()
+
+    agreement_types = ['service', 'lease', 'employment', 'vendor', 'partnership', 'license', 'nda', 'corporate', 'management']
+    count = 0
+
+    for property in data_store['properties']:
+        for i in range(random.randint(3, 8)):
+            start_date = fake.date_between(start_date="-1y", end_date="now")
+            end_date = start_date + timedelta(days=random.randint(180, 730))
+            agreement_type = random.choice(agreement_types)
+            party_b = fake.company()
+
+            cur.execute("""
+                INSERT INTO contract_agreements (
+                    agreement_id, tenant_id, property_id,
+                    agreement_number, agreement_title, agreement_type,
+                    party_a_name, party_b_name,
+                    effective_date, expiry_date, agreement_status,
+                    contract_value, agreement_description, created_at
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            """, (
+                generate_uuid(),
+                property['tenant_id'],
+                property['id'],
+                f"AGR{fake.random_number(digits=6)}",
+                f"{agreement_type.replace('_', ' ').title()} with {party_b}",
+                agreement_type,
+                property['name'],
+                party_b,
+                start_date,
+                end_date,
+                random.choice(['active', 'pending_review', 'pending_signature', 'expired', 'terminated', 'renewed']),
+                round(random.uniform(10000, 500000), 2),
+                fake.text(max_nb_chars=300),
+                fake.date_time_between(start_date="-1y", end_date="now")
+            ))
+            count += 1
+
+    conn.commit()
+    print(f"   → Inserted {count} contract agreements")
+
+
+def insert_insurance_claims(conn):
+    """Insert insurance claim records"""
+    print(f"\n✓ Inserting Insurance Claims...")
+    cur = conn.cursor()
+
+    claim_types = ['property_damage', 'liability', 'workers_comp', 'business_interruption', 'theft', 'fire', 'flood', 'equipment_breakdown', 'cyber', 'guest_injury', 'employee_injury', 'vehicle', 'other']
+    count = 0
+
+    for property in data_store['properties']:
+        for i in range(random.randint(1, 4)):
+            incident_date = fake.date_between(start_date="-1y", end_date="now")
+            claim_filed_date = incident_date + timedelta(days=random.randint(1, 7))
+
+            cur.execute("""
+                INSERT INTO insurance_claims (
+                    claim_id, tenant_id, property_id,
+                    claim_number, claim_type, incident_date, incident_description,
+                    claim_amount, claim_filed_date, claim_status,
+                    insurance_company, policy_number, created_at
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            """, (
+                generate_uuid(),
+                property['tenant_id'],
+                property['id'],
+                f"CLM{fake.random_number(digits=8)}",
+                random.choice(claim_types),
+                incident_date,
+                fake.text(max_nb_chars=500),
+                round(random.uniform(1000, 100000), 2),
+                claim_filed_date,
+                random.choice(['draft', 'submitted', 'under_review', 'investigating', 'approved', 'denied', 'settled', 'closed']),
+                fake.company(),
+                f"POL{fake.random_number(digits=10)}",
+                fake.date_time_between(start_date=claim_filed_date, end_date="now")
+            ))
+            count += 1
+
+    conn.commit()
+    print(f"   → Inserted {count} insurance claims")
+
+
+def insert_campaign_segments(conn):
+    """Insert campaign segment records"""
+    print(f"\n✓ Inserting Campaign Segments...")
+    cur = conn.cursor()
+
+    segment_types = ['demographic', 'behavioral', 'psychographic', 'geographic', 'transactional', 'loyalty', 'engagement', 'lifecycle', 'predictive', 'custom']
+    booking_frequencies = ['first_time', 'occasional', 'regular', 'frequent', 'vip']
+    engagement_levels = ['not_engaged', 'low', 'medium', 'high', 'very_high']
+    lifecycle_stages = ['prospect', 'new_customer', 'active', 'at_risk', 'dormant', 'lost', 'won_back']
+    count = 0
+
+    # Get properties
+    for property in data_store['properties']:
+        for i in range(random.randint(2, 5)):
+            segment_code = f"SEG-{property['name'][:3].upper()}-{random.randint(1000, 9999)}"
+            segment_name = f"{random.choice(['High Value', 'Frequent', 'New', 'VIP', 'Returning', 'Business', 'Leisure'])} {random.choice(['Guests', 'Customers', 'Visitors', 'Travelers'])}"
+
+            cur.execute("""
+                INSERT INTO campaign_segments (
+                    segment_id, tenant_id, property_id,
+                    segment_code, segment_name, segment_type,
+                    criteria_definition, booking_frequency, engagement_level,
+                    lifecycle_stage, member_count, is_active,
+                    created_at
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s::jsonb, %s, %s, %s, %s, %s, %s)
+            """, (
+                generate_uuid(),
+                property['tenant_id'],
+                property['id'],
+                segment_code,
+                segment_name,
+                random.choice(segment_types),
+                json.dumps({
+                    'age_range': f"{random.randint(20, 50)}-{random.randint(51, 70)}",
+                    'location': fake.city(),
+                    'min_bookings': random.randint(1, 10)
+                }),
+                random.choice(booking_frequencies),
+                random.choice(engagement_levels),
+                random.choice(lifecycle_stages),
+                random.randint(50, 5000),
+                random.choice([True, False]),
+                fake.date_time_between(start_date="-6m", end_date="now")
+            ))
+            count += 1
+
+    conn.commit()
+    print(f"   → Inserted {count} campaign segments")
+
+
+def insert_referral_tracking(conn):
+    """Insert referral tracking records"""
+    print(f"\n✓ Inserting Referral Tracking...")
+    cur = conn.cursor()
+
+    referral_statuses = ['pending', 'clicked', 'registered', 'qualified', 'converted', 'rewarded', 'expired']
+    referrer_types = ['guest', 'staff', 'affiliate', 'influencer', 'partner', 'other']
+    count = 0
+
+    for property in data_store['properties']:
+        property_guests = [g for g in data_store['guests'] if g['tenant_id'] == property['tenant_id']][:30]
+
+        for i in range(random.randint(10, 25)):
+            if len(property_guests) < 2:
+                continue
+
+            referrer = random.choice(property_guests)
+            status = random.choice(referral_statuses)
+            referred_at = fake.date_time_between(start_date="-6m", end_date="now")
+
+            cur.execute("""
+                INSERT INTO referral_tracking (
+                    referral_id, tenant_id, property_id,
+                    referral_code, referrer_type, referrer_id,
+                    referrer_name, referrer_email,
+                    referral_status, converted,
+                    referrer_reward_amount, referee_reward_amount,
+                    referred_at
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            """, (
+                generate_uuid(),
+                property['tenant_id'],
+                property['id'],
+                f"REF-{fake.random_number(digits=8)}",
+                random.choice(referrer_types),
+                referrer['id'],
+                referrer['name'],
+                referrer['email'],
+                status,
+                status == 'converted',
+                round(random.uniform(10, 100), 2) if status in ['converted', 'rewarded'] else None,
+                round(random.uniform(10, 50), 2) if status in ['converted', 'rewarded'] else None,
+                referred_at
+            ))
+            count += 1
+
+    conn.commit()
+    print(f"   → Inserted {count} referral tracking records")
+
+
+def insert_social_media_mentions(conn):
+    """Insert social media mention records"""
+    print(f"\n✓ Inserting Social Media Mentions...")
+    cur = conn.cursor()
+
+    platforms = ['twitter', 'facebook', 'instagram', 'linkedin', 'tiktok', 'youtube']
+    sentiments = ['positive', 'neutral', 'negative', 'mixed']
+    post_types = ['post', 'comment', 'review', 'story', 'video', 'photo', 'reel', 'tweet', 'share', 'mention', 'tag']
+    count = 0
+
+    for property in data_store['properties']:
+        for i in range(random.randint(20, 50)):
+            posted_at = fake.date_time_between(start_date="-3m", end_date="now")
+
+            cur.execute("""
+                INSERT INTO social_media_mentions (
+                    mention_id, tenant_id, property_id,
+                    platform, post_type, post_url,
+                    author_username, author_display_name,
+                    content_text, sentiment, sentiment_score,
+                    likes_count, comments_count, shares_count,
+                    posted_at
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            """, (
+                generate_uuid(),
+                property['tenant_id'],
+                property['id'],
+                random.choice(platforms),
+                random.choice(post_types),
+                fake.url(),
+                fake.user_name(),
+                fake.name(),
+                fake.text(max_nb_chars=280),
+                random.choice(sentiments),
+                round(random.uniform(-1.0, 1.0), 2),
+                random.randint(0, 1000),
+                random.randint(0, 100),
+                random.randint(0, 50),
+                posted_at
+            ))
+            count += 1
+
+    conn.commit()
+    print(f"   → Inserted {count} social media mentions")
+
+
 def insert_mobile_keys(conn):
     """Insert mobile key records"""
     print(f"\n✓ Inserting Mobile Keys...")
     cur = conn.cursor()
 
     count = 0
-    for reservation in data_store['reservations'][:150]:
-        property_rooms = [r for r in data_store['rooms'] if r['property_id'] == reservation['property_id']]
-        if not property_rooms:
-            continue
 
-        room = random.choice(property_rooms)
-        issued_at = fake.date_time_between(start_date="-30d", end_date="now")
-        expires_at = issued_at + timedelta(days=random.randint(1, 7))
+    # Get recent reservations
+    cur.execute("SELECT id, guest_id, tenant_id, property_id FROM reservations WHERE check_in_date >= CURRENT_DATE - INTERVAL '30 days' LIMIT 200")
+    recent_reservations = cur.fetchall()
 
-        cur.execute("""
-            INSERT INTO mobile_keys (
-                key_id, tenant_id, property_id,
-                reservation_id, guest_id, room_id,
-                key_code, issued_at, expires_at,
-                is_active, device_id, created_at
-            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-        """, (
-            generate_uuid(),
-            reservation['tenant_id'],
-            reservation['property_id'],
-            reservation['id'],
-            reservation['guest_id'],
-            room['id'],
-            f"MK{fake.random_int(100000, 999999)}",
-            issued_at,
-            expires_at,
-            random.choice([True, True, False]),
-            fake.uuid4(),
-            fake.date_time_between(start_date="-30d", end_date="now")
-        ))
-        count += 1
+    for reservation_id, guest_id, tenant_id, property_id in recent_reservations:
+        if random.random() < 0.6:  # 60% of recent reservations get mobile keys
+            # Get a room for this property
+            cur2 = conn.cursor()
+            cur2.execute("SELECT id FROM rooms WHERE property_id = %s LIMIT 1", (property_id,))
+            room_result = cur2.fetchone()
+            if not room_result:
+                continue
+            room_id = room_result[0]
+            cur2.close()
+
+            valid_from = fake.date_time_between(start_date="-30d", end_date="now")
+            valid_to = valid_from + timedelta(days=random.randint(1, 7))
+            key_types = ['bluetooth', 'nfc', 'qr_code', 'pin']
+            statuses = ['pending', 'active', 'expired', 'revoked', 'used']
+
+            cur.execute("""
+                INSERT INTO mobile_keys (
+                    key_id, tenant_id, property_id, reservation_id,
+                    guest_id, room_id, key_code, key_type,
+                    status, valid_from, valid_to
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            """, (
+                generate_uuid(),
+                tenant_id,
+                property_id,
+                reservation_id,
+                guest_id,
+                room_id,
+                f"KEY-{fake.uuid4()[:12].upper()}",
+                random.choice(key_types),
+                random.choice(statuses),
+                valid_from,
+                valid_to
+            ))
+            count += 1
 
     conn.commit()
     print(f"   → Inserted {count} mobile keys")
@@ -2955,63 +3252,1085 @@ def insert_qr_codes(conn):
     print(f"\n✓ Inserting QR Codes...")
     cur = conn.cursor()
 
-    code_types = ['checkin', 'menu', 'wifi', 'feedback', 'payment', 'room_service', 'concierge']
+    code_types = ['menu', 'feedback', 'wifi', 'checkin', 'room_service', 'payment']
     count = 0
 
     for property in data_store['properties']:
-        property_rooms = [r for r in data_store['rooms'] if r['property_id'] == property['id']][:20]
-
-        # Property-wide QR codes
-        for code_type in ['wifi', 'menu', 'feedback', 'concierge']:
-            cur.execute("""
-                INSERT INTO qr_codes (
-                    qr_code_id, tenant_id, property_id,
-                    code_value, code_type, target_url,
-                    is_active, scan_count, location,
-                    created_at
-                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-            """, (
-                generate_uuid(),
-                property['tenant_id'],
-                property['id'],
-                f"QR{fake.uuid4()[:8].upper()}",
-                code_type,
-                f"https://{property['code'].lower()}.tartware.com/{code_type}",
-                True,
-                random.randint(0, 500),
-                'Lobby' if code_type != 'menu' else 'Restaurant',
-                fake.date_time_between(start_date="-90d", end_date="-30d")
-            ))
-            count += 1
-
-        # Room-specific QR codes
-        for room in property_rooms:
-            if random.random() < 0.5:
+        for code_type in code_types:
+            for i in range(random.randint(2, 8)):
                 cur.execute("""
                     INSERT INTO qr_codes (
                         qr_code_id, tenant_id, property_id,
-                        room_id, code_value, code_type, target_url,
-                        is_active, scan_count, location,
-                        created_at
-                    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                        code_value, code_type, location,
+                        target_url, scan_count, is_active
+                    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
                 """, (
                     generate_uuid(),
                     property['tenant_id'],
                     property['id'],
-                    room['id'],
-                    f"QR{fake.uuid4()[:8].upper()}",
-                    'room_service',
-                    f"https://{property['code'].lower()}.tartware.com/room/{room['room_number']}",
-                    True,
-                    random.randint(0, 50),
-                    f"Room {room['room_number']}",
-                    fake.date_time_between(start_date="-90d", end_date="-30d")
+                    f"QR-{fake.uuid4()[:16].upper()}",
+                    code_type,
+                    f"{property['name']} - {code_type.title()} #{i+1}",
+                    fake.url(),
+                    random.randint(0, 500),
+                    random.choice([True, True, True, False])
                 ))
                 count += 1
 
     conn.commit()
     print(f"   → Inserted {count} QR codes")
 
+
+def insert_push_notifications(conn):
+    """Insert push notification records"""
+    print(f"\n✓ Inserting Push Notifications...")
+    cur = conn.cursor()
+
+    notification_types = ['booking_confirmation', 'check_in_reminder', 'promotion', 'service_update', 'feedback_request']
+    count = 0
+
+    for property in data_store['properties']:
+        property_guests = [g for g in data_store['guests'] if g['tenant_id'] == property['tenant_id']][:50]
+
+        for i in range(random.randint(20, 50)):
+            if not property_guests:
+                continue
+
+            guest = random.choice(property_guests)
+            notification_types_valid = ['booking', 'checkin', 'checkout', 'promotion', 'alert', 'reminder', 'info']
+            statuses = ['draft', 'scheduled', 'sent', 'delivered', 'opened', 'failed', 'cancelled']
+            platforms = ['ios', 'android', 'web']
+            priorities = ['low', 'medium', 'high', 'urgent']
+
+            cur.execute("""
+                INSERT INTO push_notifications (
+                    notification_id, tenant_id, property_id,
+                    recipient_type, recipient_id, guest_id,
+                    notification_type, title, message,
+                    status, platform, priority,
+                    sent_at
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            """, (
+                generate_uuid(),
+                property['tenant_id'],
+                property['id'],
+                'guest',
+                guest['id'],
+                guest['id'],
+                random.choice(notification_types_valid),
+                fake.sentence(nb_words=6)[:100],
+                fake.text(max_nb_chars=200),
+                random.choice(statuses),
+                random.choice(platforms),
+                random.choice(priorities),
+                fake.date_time_between(start_date="-3m", end_date="now")
+            ))
+            count += 1
+
+    conn.commit()
+    print(f"   → Inserted {count} push notifications")
+
+
+def insert_ab_test_results(conn):
+    """Insert A/B test result records"""
+    print(f"\n✓ Inserting A/B Test Results...")
+    cur = conn.cursor()
+
+    test_categories = ['pricing', 'ui_design', 'marketing_message', 'booking_flow', 'email_subject']
+    count = 0
+
+    for property in data_store['properties']:
+        for i in range(random.randint(3, 8)):
+            test_start = fake.date_between(start_date="-6m", end_date="-1m")
+            test_end = test_start + timedelta(days=random.randint(7, 30))
+
+            variant_a_size = random.randint(500, 2000)
+            variant_b_size = random.randint(500, 2000)
+            variant_a_conv = random.randint(50, 500)
+            variant_b_conv = random.randint(50, 500)
+
+            cur.execute("""
+                INSERT INTO ab_test_results (
+                    result_id, tenant_id, property_id,
+                    test_name, test_category, test_status,
+                    variant_a_config, variant_b_config,
+                    start_date, end_date,
+                    variant_a_sample_size, variant_b_sample_size,
+                    variant_a_conversions, variant_b_conversions,
+                    variant_a_conversion_rate, variant_b_conversion_rate,
+                    statistical_significance
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s::jsonb, %s::jsonb, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            """, (
+                generate_uuid(),
+                property['tenant_id'],
+                property['id'],
+                f"Test: {fake.bs().title()}",
+                random.choice(test_categories),
+                random.choice(['draft', 'running', 'completed', 'cancelled']),
+                json.dumps({'name': 'Control', 'description': 'Original version'}),
+                json.dumps({'name': 'Variant', 'description': 'New version'}),
+                test_start,
+                test_end,
+                variant_a_size,
+                variant_b_size,
+                variant_a_conv,
+                variant_b_conv,
+                round((variant_a_conv / variant_a_size) * 100, 2),
+                round((variant_b_conv / variant_b_size) * 100, 2),
+                random.choice([True, False])
+            ))
+            count += 1
+
+    conn.commit()
+    print(f"   → Inserted {count} A/B test results")
+
+
+def insert_analytics_reports(conn):
+    """Insert analytics report records"""
+    print(f"\n✓ Inserting Analytics Reports...")
+    cur = conn.cursor()
+
+    report_types = ['occupancy', 'revenue', 'adr', 'revpar', 'guest_satisfaction', 'operational', 'financial']
+    count = 0
+
+    for property in data_store['properties']:
+        for i in range(random.randint(10, 20)):
+            report_code = f"RPT-{fake.random_number(digits=6)}"
+            report_name = f"{random.choice(report_types).upper()} Report - {fake.month_name()} {fake.year()}"
+
+            cur.execute("""
+                INSERT INTO analytics_reports (
+                    id, tenant_id, report_name, report_code,
+                    report_type, description, definition,
+                    created_by_user_id, is_active
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s::jsonb, %s, %s)
+            """, (
+                generate_uuid(),
+                property['tenant_id'],
+                report_name,
+                report_code,
+                random.choice(report_types),
+                f"Analytics report for {property['name']}",
+                json.dumps({
+                    'metrics': ['revenue', 'occupancy'],
+                    'dimensions': ['date', 'property'],
+                    'dateRange': {'start': '-30d', 'end': 'now'},
+                    'filters': {},
+                    'groupBy': ['property'],
+                    'sortBy': []
+                }),
+                random.choice(data_store['users'])['id'],
+                random.choice([True, False])
+            ))
+            count += 1
+
+    conn.commit()
+    print(f"   → Inserted {count} analytics reports")
+
+
+def insert_shift_handovers(conn):
+    """Insert shift handover records"""
+    print(f"\n✓ Inserting Shift Handovers...")
+    cur = conn.cursor()
+
+    shifts = ['morning', 'afternoon', 'evening', 'night']
+    departments = ['front_desk', 'housekeeping', 'maintenance', 'food_beverage', 'management', 'sales', 'security', 'spa', 'concierge', 'other']
+    statuses = ['pending', 'in_progress', 'completed', 'acknowledged', 'escalated']
+    count = 0
+
+    for property in data_store['properties']:
+        for i in range(random.randint(30, 60)):
+            shift_date = fake.date_between(start_date="-30d", end_date="now")
+            outgoing_shift_idx = random.randint(0, len(shifts)-2)
+            incoming_shift_idx = outgoing_shift_idx + 1
+
+            cur.execute("""
+                INSERT INTO shift_handovers (
+                    handover_id, tenant_id, property_id,
+                    shift_date, outgoing_shift, incoming_shift,
+                    outgoing_user_id, incoming_user_id,
+                    department, handover_status, key_points,
+                    current_occupancy_count, rooms_occupied
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            """, (
+                generate_uuid(),
+                property['tenant_id'],
+                property['id'],
+                shift_date,
+                shifts[outgoing_shift_idx],
+                shifts[incoming_shift_idx],
+                random.choice(data_store['users'])['id'],
+                random.choice(data_store['users'])['id'],
+                random.choice(departments),
+                random.choice(statuses),
+                fake.text(max_nb_chars=500),
+                random.randint(50, 200),
+                random.randint(50, 200)
+            ))
+            count += 1
+
+    conn.commit()
+    print(f"   → Inserted {count} shift handovers")
+
+
+def insert_api_logs(conn):
+    """Insert API log records"""
+    print(f"\n✓ Inserting API Logs...")
+    cur = conn.cursor()
+
+    endpoints = ['/api/reservations', '/api/guests', '/api/availability', '/api/rates', '/api/payments']
+    methods = ['GET', 'POST', 'PUT', 'DELETE', 'PATCH']
+    status_codes = [200, 200, 200, 201, 400, 404, 500]
+    count = 0
+
+    for i in range(random.randint(500, 1000)):
+        status_code = random.choice(status_codes)
+        success = status_code < 400
+
+        cur.execute("""
+            INSERT INTO api_logs (
+                log_id, tenant_id, endpoint, http_method,
+                status_code, duration_ms, success,
+                ip_address, user_agent
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+        """, (
+            generate_uuid(),
+            random.choice(data_store['tenants'])['id'],
+            random.choice(endpoints),
+            random.choice(methods),
+            status_code,
+            random.randint(50, 2000),
+            success,
+            fake.ipv4(),
+            fake.user_agent()
+        ))
+        count += 1
+
+    conn.commit()
+    print(f"   → Inserted {count} API logs")
+
+
+# Additional functions for remaining tables
+def insert_webhook_subscriptions(conn):
+    """Insert webhook subscription records"""
+    print(f"\n✓ Inserting Webhook Subscriptions...")
+    cur = conn.cursor()
+
+    events = ['reservation.created', 'reservation.updated', 'payment.received', 'guest.checked_in', 'guest.checked_out']
+    count = 0
+
+    for property in data_store['properties']:
+        for i in range(random.randint(2, 5)):
+            webhook_name = f"{property['name']} - {random.choice(['Reservation', 'Payment', 'Guest', 'Channel'])} Webhook"
+
+            cur.execute("""
+                INSERT INTO webhook_subscriptions (
+                    subscription_id, tenant_id, property_id,
+                    webhook_name, webhook_url, event_types, is_active
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s)
+            """, (
+                generate_uuid(),
+                property['tenant_id'],
+                property['id'],
+                webhook_name,
+                fake.url(),
+                random.sample(events, random.randint(1, 3)),
+                random.choice([True, True, False])
+            ))
+            count += 1
+
+    conn.commit()
+    print(f"   → Inserted {count} webhook subscriptions")
+
+
+def insert_integration_mappings(conn):
+    """Insert integration mapping records"""
+    print(f"\n✓ Inserting Integration Mappings...")
+    cur = conn.cursor()
+
+    integration_types = ['pms', 'channel_manager', 'payment', 'accounting', 'crm', 'analytics', 'other']
+    count = 0
+
+    for property in data_store['properties']:
+        for integration_type in random.sample(integration_types, random.randint(2, 4)):
+            integration_name = f"{integration_type.title().replace('_', ' ')} - {fake.company()}"
+            external_system = fake.company()
+
+            cur.execute("""
+                INSERT INTO integration_mappings (
+                    mapping_id, tenant_id, property_id,
+                    integration_name, integration_type, external_system,
+                    target_system, source_entity, target_entity,
+                    field_mappings, is_active
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s::jsonb, %s)
+            """, (
+                generate_uuid(),
+                property['tenant_id'],
+                property['id'],
+                integration_name,
+                integration_type,
+                external_system,
+                'tartware_pms',
+                random.choice(['guest', 'reservation', 'payment', 'room']),
+                random.choice(['customer', 'booking', 'transaction', 'inventory']),
+                json.dumps({
+                    'guest_id': 'external_guest_id',
+                    'reservation_id': 'booking_ref',
+                    'email': 'customer_email'
+                }),
+                random.choice([True, True, False])
+            ))
+            count += 1
+
+    conn.commit()
+    print(f"   → Inserted {count} integration mappings")
+
+
+def insert_data_sync_status(conn):
+    """Insert data sync status records"""
+    print(f"\n✓ Inserting Data Sync Status...")
+    cur = conn.cursor()
+
+    sync_types = ['full', 'incremental', 'delta', 'realtime']
+    count = 0
+
+    for property in data_store['properties']:
+        for sync_type_val in sync_types:
+            for i in range(random.randint(5, 15)):
+                sync_time = fake.date_time_between(start_date="-7d", end_date="now")
+                completed_time = sync_time + timedelta(seconds=random.randint(10, 300))
+                records_processed = random.randint(10, 1000)
+                status_val = random.choice(['completed', 'completed', 'failed', 'partial'])
+
+                cur.execute("""
+                    INSERT INTO data_sync_status (
+                        sync_id, tenant_id, property_id,
+                        sync_name, sync_type, entity_type,
+                        status, started_at, completed_at,
+                        records_total, records_processed, records_succeeded
+                    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                """, (
+                    generate_uuid(),
+                    property['tenant_id'],
+                    property['id'],
+                    f"{sync_type_val.title()} Sync - {property['name']}",
+                    sync_type_val,
+                    random.choice(['reservation', 'guest', 'rate', 'availability', 'inventory']),
+                    status_val,
+                    sync_time,
+                    completed_time if status_val != 'running' else None,
+                    records_processed,
+                    records_processed,
+                    records_processed if status_val == 'completed' else random.randint(0, records_processed)
+                ))
+                count += 1
+
+    conn.commit()
+    print(f"   → Inserted {count} data sync status records")
+
+
+def insert_performance_alerts(conn):
+    """Insert performance alert records"""
+    print(f"\n✓ Inserting Performance Alerts...")
+    cur = conn.cursor()
+
+    alert_types = ['occupancy', 'rate', 'cancellation', 'system', 'payment', 'response_time', 'error_rate']
+    severities = ['INFO', 'WARNING', 'CRITICAL']
+    count = 0
+
+    for i in range(random.randint(50, 150)):
+        current_val = random.uniform(0, 100)
+        baseline_val = random.uniform(0, 100)
+
+        cur.execute("""
+            INSERT INTO performance_alerts (
+                alert_id, alert_type, severity, metric_name,
+                current_value, baseline_value, deviation_percent,
+                alert_message, acknowledged
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+        """, (
+            generate_uuid(),
+            random.choice(alert_types),
+            random.choice(severities),
+            f"{random.choice(['occupancy_rate', 'adr', 'revpar', 'response_time', 'error_rate'])}",
+            round(current_val, 2),
+            round(baseline_val, 2),
+            round(abs(current_val - baseline_val) / baseline_val * 100, 2) if baseline_val > 0 else 0,
+            fake.sentence(),
+            random.choice([True, True, False])
+        ))
+        count += 1
+
+    conn.commit()
+    print(f"   → Inserted {count} performance alerts")
+
+
+def insert_performance_baselines(conn):
+    """Insert performance baseline records"""
+    print(f"\n✓ Inserting Performance Baselines...")
+    cur = conn.cursor()
+
+    metric_names = ['occupancy_rate', 'average_daily_rate', 'revenue_per_available_room', 'booking_lead_time', 'response_time', 'error_rate']
+    time_windows = ['hourly', 'daily', 'weekly', 'monthly']
+    count = 0
+
+    for metric in metric_names:
+        for time_window in time_windows:
+            baseline_val = round(random.uniform(50, 95), 2)
+            cur.execute("""
+                INSERT INTO performance_baselines (
+                    baseline_id, metric_name, time_window,
+                    baseline_value, stddev_value, min_value, max_value,
+                    sample_count
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+            """, (
+                generate_uuid(),
+                metric,
+                time_window,
+                baseline_val,
+                round(random.uniform(5, 15), 2),
+                round(baseline_val * 0.8, 2),
+                round(baseline_val * 1.2, 2),
+                random.randint(100, 10000)
+            ))
+            count += 1
+
+    conn.commit()
+    print(f"   → Inserted {count} performance baselines")
+
+
+def insert_performance_thresholds(conn):
+    """Insert performance threshold records"""
+    print(f"\n✓ Inserting Performance Thresholds...")
+    cur = conn.cursor()
+
+    metric_names = ['occupancy_rate', 'cancellation_rate', 'no_show_rate', 'average_daily_rate', 'response_time', 'error_rate']
+    count = 0
+
+    for metric in metric_names:
+        cur.execute("""
+            INSERT INTO performance_thresholds (
+                threshold_id, metric_name, warning_threshold, critical_threshold,
+                is_active
+            ) VALUES (%s, %s, %s, %s, %s)
+        """, (
+            generate_uuid(),
+            metric,
+            round(random.uniform(60, 80), 2),
+            round(random.uniform(40, 60), 2),
+            random.choice([True, True, False])
+        ))
+        count += 1
+
+    conn.commit()
+    print(f"   → Inserted {count} performance thresholds")
+
+
+def insert_performance_reports(conn):
+    """Insert performance report records"""
+    print(f"\n✓ Inserting Performance Reports...")
+    cur = conn.cursor()
+
+    report_types = ['daily_summary', 'weekly_analysis', 'monthly_review', 'quarterly_report']
+    severities = ['INFO', 'WARNING', 'CRITICAL']
+    statuses = ['PENDING', 'SENT', 'FAILED']
+    count = 0
+
+    for i in range(random.randint(50, 150)):
+        cur.execute("""
+            INSERT INTO performance_reports (
+                report_id, report_type, report_name, report_data,
+                severity, status
+            ) VALUES (%s, %s, %s, %s::jsonb, %s, %s)
+        """, (
+            generate_uuid(),
+            random.choice(report_types),
+            f"Performance Report - {fake.date()}",
+            json.dumps({
+                'occupancy': random.randint(50, 100),
+                'adr': random.randint(100, 300),
+                'revpar': random.randint(50, 250)
+            }),
+            random.choice(severities),
+            random.choice(statuses)
+        ))
+        count += 1
+
+    conn.commit()
+    print(f"   → Inserted {count} performance reports")
+
+
+def insert_alert_rules(conn):
+    """Insert alert rule records"""
+    print(f"\n✓ Inserting Alert Rules...")
+    cur = conn.cursor()
+
+    metrics = ['occupancy_rate', 'adr', 'revpar', 'response_time', 'error_rate', 'cpu_usage']
+    condition_types = ['threshold', 'deviation', 'trend', 'spike']
+    severities = ['INFO', 'WARNING', 'CRITICAL']
+    channels = ['email', 'sms', 'slack', 'webhook']
+    count = 0
+
+    for metric in metrics:
+        for condition in condition_types[:2]:  # 2 rules per metric
+            rule_name = f"{metric}_{condition}_{random.randint(1000, 9999)}"
+            cur.execute("""
+                INSERT INTO alert_rules (
+                    rule_id, rule_name, metric_query, condition_type,
+                    threshold_value, deviation_percent, time_window,
+                    severity, is_active, notification_channels
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            """, (
+                generate_uuid(),
+                rule_name,
+                f"SELECT AVG({metric}) FROM metrics WHERE time > NOW() - INTERVAL '5 minutes'",
+                condition,
+                round(random.uniform(50, 100), 2) if condition == 'threshold' else None,
+                round(random.uniform(10, 30), 2) if condition == 'deviation' else None,
+                f"{random.choice([5, 10, 15, 30])} minutes",
+                random.choice(severities),
+                random.choice([True, True, True, False]),
+                random.sample(channels, k=random.randint(1, 3))
+            ))
+            count += 1
+
+    conn.commit()
+    print(f"   → Inserted {count} alert rules")
+
+
+def insert_report_schedules(conn):
+    """Insert report schedule records"""
+    print(f"\n✓ Inserting Report Schedules...")
+    cur = conn.cursor()
+
+    report_types = ['occupancy_report', 'revenue_report', 'financial_summary', 'operational_metrics',
+                    'guest_satisfaction', 'performance_dashboard']
+    cron_expressions = ['0 0 * * *', '0 0 * * 0', '0 0 1 * *', '0 0 1 1,4,7,10 *']  # daily, weekly, monthly, quarterly
+    count = 0
+
+    for report_type in report_types:
+        cron = random.choice(cron_expressions)
+        now = datetime.now()
+        last_run = now - timedelta(days=random.randint(1, 7))
+        next_run = now + timedelta(days=random.randint(1, 7))
+
+        cur.execute("""
+            INSERT INTO report_schedules (
+                schedule_id, report_type, schedule_expression,
+                is_active, last_run, next_run, recipients, config
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s::jsonb)
+        """, (
+            generate_uuid(),
+            report_type,
+            cron,
+            random.choice([True, True, True, False]),
+            last_run,
+            next_run,
+            [fake.email() for _ in range(random.randint(1, 4))],
+            json.dumps({'format': random.choice(['pdf', 'excel', 'csv']), 'include_charts': True})
+        ))
+        count += 1
+
+    conn.commit()
+    print(f"   → Inserted {count} report schedules")
+
+
+def insert_guest_journey_tracking(conn):
+    """Insert guest journey tracking records"""
+    print(f"\n✓ Inserting Guest Journey Tracking...")
+    cur = conn.cursor()
+
+    journey_types = ['discovery', 'booking', 'pre_arrival', 'arrival', 'stay', 'departure', 'post_stay', 'complete_cycle']
+    journey_statuses = ['started', 'in_progress', 'completed', 'abandoned']
+    channels = ['web', 'mobile_app', 'email', 'phone', 'in_person']
+    stages = ['awareness', 'consideration', 'booking', 'pre_arrival', 'check_in', 'stay', 'check_out', 'post_stay']
+    count = 0
+
+    for guest in data_store['guests'][:150]:
+        journey_start = fake.date_time_between(start_date="-6m", end_date="-1d")
+        journey_end = journey_start + timedelta(days=random.randint(1, 30))
+        duration_mins = int((journey_end - journey_start).total_seconds() / 60)
+        is_converted = random.choice([True, True, False])
+
+        touchpoints = [
+            {
+                'timestamp': (journey_start + timedelta(hours=i*4)).isoformat(),
+                'type': random.choice(['website_visit', 'email_click', 'phone_call', 'booking']),
+                'channel': random.choice(channels)
+            }
+            for i in range(random.randint(3, 8))
+        ]
+
+        cur.execute("""
+            INSERT INTO guest_journey_tracking (
+                journey_id, tenant_id, property_id, guest_id,
+                guest_segment, journey_type, journey_status,
+                journey_start_date, journey_end_date, journey_duration_minutes,
+                touchpoint_count, touchpoints, channels_used, primary_channel,
+                stages_completed, current_stage, converted, conversion_date,
+                conversion_value, total_interactions, website_visits,
+                email_opens, email_clicks, app_sessions, phone_calls,
+                in_person_visits, engagement_score
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s::jsonb, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+        """, (
+            generate_uuid(),
+            guest['tenant_id'],
+            guest.get('property_id'),
+            guest['id'],
+            random.choice(['budget', 'mid_range', 'luxury', 'business', 'leisure']),
+            random.choice(journey_types),
+            random.choice(journey_statuses),
+            journey_start,
+            journey_end if is_converted else None,
+            duration_mins,
+            len(touchpoints),
+            json.dumps(touchpoints),
+            random.sample(channels, k=random.randint(2, 4)),
+            random.choice(channels),
+            random.sample(stages, k=random.randint(3, 6)),
+            random.choice(stages),
+            is_converted,
+            journey_end if is_converted else None,
+            round(random.uniform(100, 2000), 2) if is_converted else None,
+            random.randint(5, 30),
+            random.randint(1, 10),
+            random.randint(0, 5),
+            random.randint(0, 3),
+            random.randint(0, 8),
+            random.randint(0, 2),
+            random.randint(0, 1),
+            round(random.uniform(0, 100), 2)
+        ))
+        count += 1
+
+    conn.commit()
+    print(f"   → Inserted {count} guest journey tracking records")
+
+
+def insert_app_usage_analytics(conn):
+    """Insert app usage analytics records"""
+    print(f"\n✓ Inserting App Usage Analytics...")
+    cur = conn.cursor()
+
+    platforms = ['ios', 'android', 'web']
+    event_types = ['app_open', 'app_close', 'screen_view', 'button_click', 'search', 'booking', 'feature_use']
+    event_names = ['booking_search', 'room_details', 'check_in', 'mobile_key', 'room_service', 'concierge', 'feedback']
+    screens = ['home', 'search', 'booking', 'reservations', 'check_in', 'room_controls', 'services', 'profile']
+    count = 0
+
+    for property in data_store['properties']:
+        for i in range(random.randint(50, 120)):
+            session_id = f"session_{random.randint(10000, 99999)}"
+            event_timestamp = fake.date_time_between(start_date="-30d", end_date="now")
+
+            cur.execute("""
+                INSERT INTO app_usage_analytics (
+                    event_id, tenant_id, property_id, guest_id,
+                    session_id, device_id, platform, app_version, os_version,
+                    event_type, event_name, screen_name, event_timestamp,
+                    duration_seconds, event_data, metadata
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s::jsonb, %s::jsonb)
+            """, (
+                generate_uuid(),
+                property['tenant_id'],
+                property['id'],
+                random.choice(data_store['guests'])['id'] if random.random() > 0.2 else None,
+                session_id,
+                f"device_{random.randint(1000, 9999)}",
+                random.choice(platforms),
+                f"{random.randint(1, 3)}.{random.randint(0, 9)}.{random.randint(0, 9)}",
+                f"{random.randint(12, 17)}.{random.randint(0, 5)}",
+                random.choice(event_types),
+                random.choice(event_names),
+                random.choice(screens),
+                event_timestamp,
+                random.randint(5, 300),
+                json.dumps({'action': random.choice(['tap', 'swipe', 'scroll']), 'value': random.randint(1, 100)}),
+                json.dumps({'country': fake.country_code(), 'language': random.choice(['en', 'es', 'fr', 'de'])})
+            ))
+            count += 1
+
+    conn.commit()
+    print(f"   → Inserted {count} app usage analytics records")
+
+
+def insert_commission_tracking(conn):
+    """Insert commission tracking records"""
+    print(f"\n✓ Inserting Commission Tracking...")
+    cur = conn.cursor()
+
+    commission_types = ['sales', 'booking', 'ota', 'travel_agent', 'corporate', 'referral', 'staff', 'manager']
+    beneficiary_types = ['staff', 'user', 'agent', 'ota', 'channel', 'affiliate']
+    source_types = ['reservation', 'booking', 'payment', 'invoice', 'service', 'package']
+    calculation_methods = ['percentage', 'flat_rate', 'tiered', 'performance_based', 'volume_based']
+    count = 0
+
+    # Get reservations
+    cur.execute("SELECT id, tenant_id, property_id, guest_id, check_in_date, check_out_date, total_amount FROM reservations LIMIT 200")
+    reservations = cur.fetchall()
+
+    commission_counter = 0
+    for res_id, tenant_id, property_id, guest_id, check_in, check_out, total_amount in reservations:
+        commission_counter += 1
+        commission_rate = round(random.uniform(5, 25), 4)
+        commission_amount = round(float(total_amount) * commission_rate / 100, 2)
+        transaction_date = check_in - timedelta(days=random.randint(1, 30))
+
+        cur.execute("""
+            INSERT INTO commission_tracking (
+                commission_id, tenant_id, property_id,
+                commission_number, commission_type, beneficiary_type,
+                beneficiary_name, source_type, source_id, source_reference,
+                reservation_id, transaction_date, check_in_date, check_out_date,
+                guest_id, base_amount, base_currency, calculation_method,
+                commission_rate, commission_amount, commission_currency,
+                commission_status, payment_status
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+        """, (
+            generate_uuid(),
+            tenant_id,
+            property_id,
+            f"COM-{commission_counter:05d}-{random.randint(100, 999)}",
+            random.choice(commission_types),
+            random.choice(beneficiary_types),
+            fake.company(),
+            random.choice(source_types),
+            res_id,
+            f"REF-{random.randint(1000, 9999)}",
+            res_id,
+            transaction_date,
+            check_in,
+            check_out,
+            guest_id,
+            round(float(total_amount), 2),
+            'USD',
+            random.choice(calculation_methods),
+            commission_rate,
+            commission_amount,
+            'USD',
+            random.choice(['pending', 'calculated', 'approved', 'paid', 'disputed']),
+            random.choice(['unpaid', 'scheduled', 'processing', 'paid', 'partially_paid'])
+        ))
+        count += 1
+
+    conn.commit()
+    print(f"   → Inserted {count} commission tracking records")
+
+
+def insert_credit_limits(conn):
+    """Insert credit limit records"""
+    print(f"\n✓ Inserting Credit Limits...")
+    cur = conn.cursor()
+
+    account_types = ['guest', 'company', 'corporate', 'group']
+    credit_statuses = ['active', 'pending', 'suspended', 'blocked', 'expired']
+    count = 0
+
+    for guest in data_store['guests'][:100]:
+        if random.random() < 0.3:  # 30% of guests have credit limits
+            effective_from = fake.date_between(start_date="-1y", end_date="-30d")
+            effective_to = fake.date_between(start_date="now", end_date="+1y") if random.random() > 0.2 else None
+            credit_limit = round(random.uniform(1000, 10000), 2)
+            current_balance = round(random.uniform(0, credit_limit * 0.8), 2)
+
+            cur.execute("""
+                INSERT INTO credit_limits (
+                    credit_limit_id, tenant_id, property_id,
+                    account_type, account_id, account_name,
+                    guest_id, credit_limit_amount, currency,
+                    credit_status, is_active, effective_from, effective_to,
+                    current_balance, available_credit
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            """, (
+                generate_uuid(),
+                guest['tenant_id'],
+                guest.get('property_id'),
+                'guest',
+                guest['id'],
+                f"{guest.get('first_name', 'Guest')} {guest.get('last_name', 'Account')}",
+                guest['id'],
+                credit_limit,
+                'USD',
+                random.choice(credit_statuses),
+                random.choice([True, True, True, False]),
+                effective_from,
+                effective_to,
+                current_balance,
+                credit_limit - current_balance
+            ))
+            count += 1
+
+    conn.commit()
+    print(f"   → Inserted {count} credit limits")
+
+
+def insert_accounts_receivable(conn):
+    """Insert accounts receivable records"""
+    print(f"\n✓ Inserting Accounts Receivable...")
+    cur = conn.cursor()
+
+    source_types = ['invoice', 'reservation', 'service', 'package']
+    ar_statuses = ['open', 'partial', 'paid', 'overdue', 'in_collection', 'written_off', 'disputed']
+    count = 0
+    ar_counter = 0
+
+    # Get invoices
+    cur.execute("SELECT id, tenant_id, property_id, guest_id, total_amount, invoice_date FROM invoices LIMIT 100")
+    invoices = cur.fetchall()
+
+    for invoice_id, tenant_id, property_id, guest_id, total_amount, invoice_date in invoices:
+        ar_counter += 1
+        due_date = invoice_date + timedelta(days=30)
+        paid_amount = round(float(total_amount) * random.uniform(0, 0.7), 2)
+        outstanding_balance = round(float(total_amount) - paid_amount, 2)
+
+        cur.execute("""
+            INSERT INTO accounts_receivable (
+                ar_id, tenant_id, property_id,
+                ar_number, account_name, guest_id,
+                source_type, source_id, invoice_id,
+                original_amount, currency, paid_amount, outstanding_balance,
+                due_date, transaction_date,
+                payment_terms, aging_days, aging_bucket,
+                ar_status
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+        """, (
+            generate_uuid(),
+            tenant_id,
+            property_id,
+            f"AR-{ar_counter:06d}-{random.randint(100, 999)}",
+            fake.company(),
+            guest_id,
+            'invoice',
+            invoice_id,
+            invoice_id,
+            round(float(total_amount), 2),
+            'USD',
+            paid_amount,
+            outstanding_balance,
+            due_date,
+            invoice_date,
+            random.choice(['due_on_receipt', 'net_15', 'net_30', 'net_45', 'net_60', 'net_90']),
+            (datetime.now().date() - invoice_date).days,
+            random.choice(['current', '1_30_days', '31_60_days', '61_90_days', '91_120_days']),
+            random.choice(ar_statuses)
+        ))
+        count += 1
+
+    conn.commit()
+    print(f"   → Inserted {count} accounts receivable records")
+
+
+def insert_financial_closures(conn):
+    """Insert financial closure records"""
+    print(f"\n✓ Inserting Financial Closures...")
+    cur = conn.cursor()
+
+    closure_types = ['daily', 'weekly', 'monthly', 'quarterly', 'annual']
+    closure_statuses = ['not_started', 'in_progress', 'pending_review', 'under_review', 'approved', 'closed', 'reopened']
+    count = 0
+
+    for property in data_store['properties']:
+        for i in range(random.randint(6, 12)):
+            period_start = fake.date_between(start_date="-1y", end_date="-30d")
+            period_end = period_start + timedelta(days=random.choice([1, 7, 30, 90]))
+            business_date = period_end
+
+            gross_revenue = round(random.uniform(50000, 200000), 2)
+            net_revenue = round(gross_revenue * 0.85, 2)
+
+            cur.execute("""
+                INSERT INTO financial_closures (
+                    closure_id, tenant_id, property_id,
+                    closure_number, closure_name, closure_type,
+                    period_start_date, period_end_date,
+                    fiscal_year, fiscal_month, fiscal_quarter,
+                    business_date, closure_status, is_closed, is_final,
+                    total_gross_revenue, total_net_revenue
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            """, (
+                generate_uuid(),
+                property['tenant_id'],
+                property['id'],
+                f"FIN-{period_start.strftime('%Y%m%d')}-{random.randint(100, 999)}",
+                f"{random.choice(closure_types).title()} Closure {period_start.strftime('%Y-%m-%d')}",
+                random.choice(closure_types),
+                period_start,
+                period_end,
+                period_start.year,
+                period_start.month,
+                (period_start.month - 1) // 3 + 1,
+                business_date,
+                random.choice(closure_statuses),
+                random.choice([True, True, False]),
+                random.choice([True, False, False]),
+                gross_revenue,
+                net_revenue
+            ))
+            count += 1
+
+    conn.commit()
+    print(f"   → Inserted {count} financial closures")
+
+
+def insert_staff_tasks(conn):
+    """Insert staff task records"""
+    print(f"\n✓ Inserting Staff Tasks...")
+    cur = conn.cursor()
+
+    task_types = ['housekeeping', 'maintenance', 'inspection', 'delivery', 'guest_request', 'administrative', 'setup', 'breakdown', 'inventory']
+    count = 0
+
+    for property in data_store['properties']:
+        for i in range(random.randint(30, 80)):
+            due_date = fake.date_between(start_date="-7d", end_date="+14d")
+
+            cur.execute("""
+                INSERT INTO staff_tasks (
+                    task_id, tenant_id, property_id,
+                    task_title, task_description, task_type,
+                    assigned_to, priority, task_status, due_date
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            """, (
+                generate_uuid(),
+                property['tenant_id'],
+                property['id'],
+                f"{random.choice(task_types).replace('_', ' ').title()} Task",
+                fake.sentence(),
+                random.choice(task_types),
+                random.choice(data_store['users'])['id'],
+                random.choice(['low', 'normal', 'high', 'urgent']),
+                random.choice(['pending', 'assigned', 'in_progress', 'completed', 'cancelled']),
+                due_date
+            ))
+            count += 1
+
+    conn.commit()
+    print(f"   → Inserted {count} staff tasks")
+
+
+def insert_rate_recommendations(conn):
+    """Insert rate recommendation records"""
+    print(f"\n✓ Inserting Rate Recommendations...")
+    cur = conn.cursor()
+
+    recommendation_actions = ['increase', 'decrease', 'hold']
+    reasons = ['High demand period', 'Competitor pricing', 'Historical trends', 'Event in area', 'Low occupancy', 'Seasonal pattern']
+    count = 0
+
+    for property in data_store['properties']:
+        property_room_types = [rt for rt in data_store['room_types'] if rt['property_id'] == property['id']]
+
+        for room_type in property_room_types:
+            for i in range(random.randint(10, 30)):
+                recommendation_date = fake.date_between(start_date="-30d", end_date="+60d")
+                recommended_rate = round(random.uniform(100, 400), 2)
+                current_rate = round(random.uniform(100, 400), 2)
+                rate_difference = round(recommended_rate - current_rate, 2)
+                rate_difference_percent = round((rate_difference / current_rate * 100) if current_rate > 0 else 0, 2)
+
+                cur.execute("""
+                    INSERT INTO rate_recommendations (
+                        recommendation_id, tenant_id, property_id,
+                        room_type_id, recommendation_date, recommended_rate,
+                        current_rate, rate_difference, rate_difference_percent,
+                        confidence_score, recommendation_action, primary_reason
+                    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                """, (
+                    generate_uuid(),
+                    property['tenant_id'],
+                    property['id'],
+                    room_type['id'],
+                    recommendation_date,
+                    recommended_rate,
+                    current_rate,
+                    rate_difference,
+                    rate_difference_percent,
+                    round(random.uniform(0.6, 0.95), 2),
+                    'increase' if recommended_rate > current_rate else ('decrease' if recommended_rate < current_rate else 'hold'),
+                    random.choice(reasons)
+                ))
+                count += 1
+
+    conn.commit()
+    print(f"   → Inserted {count} rate recommendations")
+
+
+def insert_forecasting_models(conn):
+    """Insert forecasting model records"""
+    print(f"\n✓ Inserting Forecasting Models...")
+    cur = conn.cursor()
+
+    model_types = ['occupancy', 'revenue', 'demand', 'pricing']
+    count = 0
+
+    for property in data_store['properties']:
+        for model_type in model_types:
+            cur.execute("""
+                INSERT INTO forecasting_models (
+                    model_id, tenant_id, property_id,
+                    model_name, model_type, parameters,
+                    accuracy_score, is_active
+                ) VALUES (%s, %s, %s, %s, %s, %s::jsonb, %s, %s)
+            """, (
+                generate_uuid(),
+                property['tenant_id'],
+                property['id'],
+                f"{model_type.title()} Forecast Model - {property.get('name', 'Property')}",
+                model_type,
+                json.dumps({'algorithm': 'random_forest', 'features': ['historical_data', 'seasonality', 'events']}),
+                round(random.uniform(0.75, 0.95), 2),
+                random.choice([True, True, False])
+            ))
+            count += 1
+
+    conn.commit()
+    print(f"   → Inserted {count} forecasting models")
+
+
+def insert_revenue_attribution(conn):
+    """Insert revenue attribution records"""
+    print(f"\n✓ Inserting Revenue Attribution...")
+    cur = conn.cursor()
+
+    channel_types = ['direct', 'ota', 'corporate', 'travel_agent', 'social_media', 'email', 'organic_search', 'paid_search']
+    count = 0
+
+    # Get reservations with guests
+    cur.execute("SELECT id, tenant_id, property_id, guest_id, total_amount FROM reservations LIMIT 300")
+    reservations = cur.fetchall()
+
+    for reservation_id, tenant_id, property_id, guest_id, total_amount in reservations:
+        # Create 1-3 touchpoints per reservation
+        num_touchpoints = random.randint(1, 3)
+        for seq in range(1, num_touchpoints + 1):
+            touchpoint_date = fake.date_time_between(start_date="-90d", end_date="-1d")
+            conversion_date = fake.date_time_between(start_date=touchpoint_date, end_date="now")
+
+            cur.execute("""
+                INSERT INTO revenue_attribution (
+                    attribution_id, tenant_id, property_id,
+                    reservation_id, guest_id, touchpoint_sequence,
+                    channel_type, attribution_weight, attributed_revenue,
+                    touchpoint_date, conversion_date
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            """, (
+                generate_uuid(),
+                tenant_id,
+                property_id,
+                reservation_id,
+                guest_id,
+                seq,
+                random.choice(channel_types),
+                round(1.0 / num_touchpoints, 4),
+                round(float(total_amount) / num_touchpoints, 2),
+                touchpoint_date,
+                conversion_date
+            ))
+            count += 1
+
+    conn.commit()
+    print(f"   → Inserted {count} revenue attribution records")
 
 
 def validate_uuid_v7():
@@ -3097,6 +4416,15 @@ def main():
     try:
         cur.execute("""
             TRUNCATE TABLE
+                revenue_attribution, forecasting_models, rate_recommendations, staff_tasks,
+                financial_closures, accounts_receivable, credit_limits, commission_tracking,
+                app_usage_analytics, guest_journey_tracking, report_schedules, alert_rules,
+                performance_reports, performance_thresholds, performance_baselines, performance_alerts,
+                data_sync_status, integration_mappings, webhook_subscriptions,
+                api_logs, shift_handovers, analytics_reports, ab_test_results,
+                push_notifications, qr_codes, mobile_keys, social_media_mentions,
+                referral_tracking, campaign_segments, insurance_claims, contract_agreements,
+                police_reports, gdpr_consent_logs, lost_and_found, revenue_goals,
                 analytics_metrics, marketing_campaigns, vendor_contracts,
                 cashier_sessions, deposit_schedules, tax_configurations, promotional_codes,
                 pricing_rules, demand_calendar, competitor_rates, revenue_forecasts,
@@ -3208,8 +4536,43 @@ def main():
         insert_revenue_goals(conn)
         insert_lost_and_found(conn)
         insert_gdpr_consent_logs(conn)
+        insert_police_reports(conn)
+        insert_contract_agreements(conn)
+        insert_insurance_claims(conn)
+        insert_campaign_segments(conn)
+        insert_referral_tracking(conn)
+        insert_social_media_mentions(conn)
         insert_mobile_keys(conn)
         insert_qr_codes(conn)
+        insert_push_notifications(conn)
+        insert_ab_test_results(conn)
+        insert_analytics_reports(conn)
+        insert_shift_handovers(conn)
+        insert_api_logs(conn)
+
+        # BATCH 7: Advanced Features & Integrations
+        print("\n" + "=" * 60)
+        print("BATCH 7: Advanced Features & Integrations")
+        print("=" * 60)
+        insert_webhook_subscriptions(conn)
+        insert_integration_mappings(conn)
+        insert_data_sync_status(conn)
+        insert_performance_alerts(conn)
+        insert_performance_baselines(conn)
+        insert_performance_thresholds(conn)
+        insert_performance_reports(conn)
+        insert_alert_rules(conn)
+        insert_report_schedules(conn)
+        insert_guest_journey_tracking(conn)
+        insert_app_usage_analytics(conn)
+        insert_commission_tracking(conn)
+        insert_credit_limits(conn)
+        insert_accounts_receivable(conn)
+        insert_financial_closures(conn)
+        insert_staff_tasks(conn)
+        insert_rate_recommendations(conn)
+        insert_forecasting_models(conn)
+        insert_revenue_attribution(conn)
 
         # Re-enable triggers
         cur.execute("SET session_replication_role = DEFAULT;")
