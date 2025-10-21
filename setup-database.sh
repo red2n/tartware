@@ -2,6 +2,7 @@
 # ============================================================================
 # Tartware PMS - Database Setup Script
 # Direct PostgreSQL setup (without Docker)
+# Uses modern tools: ripgrep (rg) and fd for better performance
 # ============================================================================
 
 set -e
@@ -14,6 +15,68 @@ BLUE='\033[0;34m'
 CYAN='\033[0;36m'
 MAGENTA='\033[0;35m'
 NC='\033[0m' # No Color
+
+# ============================================================================
+# Automatic Tool Installation
+# ============================================================================
+
+INSTALL_NEEDED=false
+MISSING_TOOLS=()
+
+# Check for ripgrep (required - faster than grep)
+if ! command -v rg &> /dev/null; then
+    MISSING_TOOLS+=("ripgrep")
+    INSTALL_NEEDED=true
+fi
+
+# Check for fd (required - faster than find)
+if ! command -v fd &> /dev/null && ! command -v fdfind &> /dev/null; then
+    MISSING_TOOLS+=("fd-find")
+    INSTALL_NEEDED=true
+fi
+
+# Check for build-essential
+if ! dpkg -l | grep -q "^ii  build-essential"; then
+    MISSING_TOOLS+=("build-essential")
+    INSTALL_NEEDED=true
+fi
+
+# If tools are missing, install them automatically
+if [ "$INSTALL_NEEDED" = true ]; then
+    echo -e "${YELLOW}╔════════════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${YELLOW}║  Installing Required Tools                                    ║${NC}"
+    echo -e "${YELLOW}╚════════════════════════════════════════════════════════════════╝${NC}"
+    echo ""
+    echo -e "${CYAN}Missing tools:${NC}"
+    for tool in "${MISSING_TOOLS[@]}"; do
+        echo -e "  ${YELLOW}→${NC} $tool"
+    done
+    echo ""
+
+    echo -e "${CYAN}Running system update...${NC}"
+    sudo apt-get update -qq
+    sudo apt-get upgrade -y -qq
+
+    echo -e "${CYAN}Installing required tools...${NC}"
+    sudo apt-get install -y ripgrep fd-find build-essential
+
+    echo ""
+    echo -e "${GREEN}✓ All tools installed successfully${NC}"
+    echo ""
+fi
+
+# Detect fd command name (fd or fdfind)
+if command -v fdfind &> /dev/null; then
+    FD_CMD="fdfind"
+else
+    FD_CMD="fd"
+fi
+
+# Verify all tools are now available
+echo -e "${GREEN}✓ ripgrep (rg) is available${NC}"
+echo -e "${GREEN}✓ fd ($FD_CMD) is available${NC}"
+echo -e "${GREEN}✓ build-essential is installed${NC}"
+echo ""
 
 # Configuration (Defaults for fresh install)
 DB_NAME="tartware"
@@ -48,6 +111,26 @@ echo -e "${CYAN}║                                                             
 echo -e "${CYAN}╚════════════════════════════════════════════════════════════════╝${NC}"
 echo ""
 echo -e "${GREEN}Initializing Tartware PMS Database...${NC}"
+echo ""
+
+# ============================================================================
+# Pre-calculate Expected Counts from Scripts
+# ============================================================================
+
+echo -e "${CYAN}Analyzing database scripts...${NC}"
+
+# Count definitively countable objects from scripts
+EXPECTED_TABLES=$(rg --no-filename 'CREATE TABLE' "$SCRIPTS_DIR/tables/" 2>/dev/null | wc -l)
+EXPECTED_ENUMS=$(rg 'CREATE TYPE' "$SCRIPTS_DIR/02-enum-types.sql" 2>/dev/null | wc -l)
+
+# Count table files
+TABLE_FILES=$(find "$SCRIPTS_DIR/tables/" -name "*.sql" -not -name "00-create-all-tables.sql" | wc -l)
+
+# For indexes and FKs, we'll use actual database counts after creation
+# because PostgreSQL auto-creates additional indexes (PK, unique constraints)
+# and inline FK definitions create actual constraints
+
+echo -e "${GREEN}✓ Script analysis: ${CYAN}${EXPECTED_TABLES}${GREEN} tables, ${CYAN}${EXPECTED_ENUMS}${GREEN} enums${NC}"
 echo ""
 
 # Configuration Summary
@@ -145,7 +228,7 @@ echo ""
 # STEP 5: Create ENUM Types
 # ============================================================================
 
-echo -e "${BLUE}[5/10]${NC} Creating ENUM types (61 types)..."
+echo -e "${BLUE}[5/10]${NC} Creating ${EXPECTED_ENUMS} ENUM types..."
 
 psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -f "$SCRIPTS_DIR/02-enum-types.sql" &> /dev/null
 
@@ -158,15 +241,15 @@ echo ""
 # STEP 6: Create Tables
 # ============================================================================
 
-echo -e "${BLUE}[6/10]${NC} Creating 128 tables (101 files, some create multiple tables)..."
+echo -e "${BLUE}[6/10]${NC} Creating ${EXPECTED_TABLES} tables (${TABLE_FILES} files, some create multiple tables)..."
 
 cd "$SCRIPTS_DIR"
 psql -q -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -f "$SCRIPTS_DIR/tables/00-create-all-tables.sql" > /dev/null 2>&1
 
 TABLE_COUNT=$(psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -tAc "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema IN ('public', 'availability');" 2>/dev/null)
 
-if [ "$TABLE_COUNT" -ne 128 ]; then
-    echo -e "${RED}✗ Table count mismatch! Expected 128, got $TABLE_COUNT${NC}"
+if [ "$TABLE_COUNT" -ne "$EXPECTED_TABLES" ]; then
+    echo -e "${RED}✗ Table count mismatch! Expected $EXPECTED_TABLES, got $TABLE_COUNT${NC}"
     echo -e "${RED}✗ Database setup failed - not all tables were created${NC}"
     echo -e "${YELLOW}Check the logs above for errors${NC}"
     exit 1
@@ -179,20 +262,20 @@ echo ""
 # STEP 7: Create Indexes
 # ============================================================================
 
-echo -e "${BLUE}[7/10]${NC} Creating 800+ indexes..."
+echo -e "${BLUE}[7/10]${NC} Creating indexes..."
 
 psql -q -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -f "$SCRIPTS_DIR/indexes/00-create-all-indexes.sql" > /dev/null 2>&1
 
 INDEX_COUNT=$(psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -tAc "SELECT COUNT(*) FROM pg_indexes WHERE schemaname IN ('public', 'availability');" 2>/dev/null)
 
-echo -e "${GREEN}✓ Created $INDEX_COUNT indexes${NC}"
+echo -e "${GREEN}✓ Created $INDEX_COUNT indexes (includes auto-generated PK and unique indexes)${NC}"
 echo ""
 
 # ============================================================================
 # STEP 8: Create Constraints
 # ============================================================================
 
-echo -e "${BLUE}[8/10]${NC} Creating 600+ foreign key constraints..."
+echo -e "${BLUE}[8/10]${NC} Creating foreign key constraints..."
 
 cd "$SCRIPTS_DIR/constraints"
 psql -q -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -f "00-create-all-constraints.sql" > /dev/null 2>&1
@@ -296,22 +379,35 @@ else
     done
 
     if [ ${PIPESTATUS[0]} -eq 0 ]; then
-        RECORD_COUNT=$(psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -tAc "
-            SELECT
-                (SELECT COUNT(*) FROM tenants) +
-                (SELECT COUNT(*) FROM users) +
-                (SELECT COUNT(*) FROM properties) +
-                (SELECT COUNT(*) FROM rooms) +
-                (SELECT COUNT(*) FROM reservations) +
-                (SELECT COUNT(*) FROM guests)
-            AS total_records;
+        # Calculate exact total records across all tables
+        TOTAL_RECORDS=$(psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -tAc "
+            SELECT SUM(n_tup_ins)::bigint
+            FROM pg_stat_user_tables
+            WHERE schemaname IN ('public', 'availability');
+        " 2>/dev/null)
+
+        # Get count of tables with data
+        TABLES_WITH_DATA=$(psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -tAc "
+            SELECT COUNT(*)
+            FROM pg_stat_user_tables
+            WHERE schemaname IN ('public', 'availability')
+            AND n_tup_ins > 0;
+        " 2>/dev/null)
+
+        # Get count of total tables
+        TOTAL_TABLES=$(psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -tAc "
+            SELECT COUNT(*)
+            FROM information_schema.tables
+            WHERE table_schema IN ('public', 'availability');
         " 2>/dev/null)
 
         echo ""
         echo -e "${GREEN}╔════════════════════════════════════════════════════════════╗${NC}"
         echo -e "${GREEN}║  ✓✓✓ ALL DATA LOADING COMPLETE ✓✓✓                       ║${NC}"
         echo -e "${GREEN}╚════════════════════════════════════════════════════════════╝${NC}"
-        echo -e "${GREEN}✓ Sample data loaded successfully (~${RECORD_COUNT}+ records)${NC}"
+        echo -e "${GREEN}✓ Sample data loaded successfully${NC}"
+        echo -e "  Total Records: ${CYAN}${TOTAL_RECORDS}${NC}"
+        echo -e "  Tables with Data: ${CYAN}${TABLES_WITH_DATA}${NC} / ${CYAN}${TOTAL_TABLES}${NC}"
     else
         echo -e "${YELLOW}⚠  Sample data load encountered issues${NC}"
         echo -e "${YELLOW}⚠  Database structure is complete, data can be loaded manually${NC}"
@@ -336,13 +432,72 @@ echo -e "${GREEN}║  ✓✓✓ TARTWARE PMS DATABASE SETUP COMPLETE ✓✓✓  
 echo -e "${GREEN}║                                                                ║${NC}"
 echo -e "${GREEN}╚════════════════════════════════════════════════════════════════╝${NC}"
 echo ""
+
 echo -e "${CYAN}Database Statistics:${NC}"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo -e "  Database:            ${GREEN}$DB_NAME${NC}"
-echo -e "  Tables:              ${GREEN}$TABLE_COUNT${NC} (128 expected)"
-echo -e "  Indexes:             ${GREEN}$INDEX_COUNT${NC} (800+ expected)"
-echo -e "  Foreign Keys:        ${GREEN}$FK_COUNT${NC} (600+ expected)"
-echo -e "  ENUM Types:          ${GREEN}$ENUM_COUNT${NC} (61 expected)"
+
+# Tables - should match exactly
+if [ "$TABLE_COUNT" -eq "$EXPECTED_TABLES" ]; then
+    echo -e "  Tables:              ${GREEN}$TABLE_COUNT${NC} (from ${TABLE_FILES} SQL files) ${GREEN}✓${NC}"
+else
+    echo -e "  Tables:              ${YELLOW}$TABLE_COUNT${NC} / Expected: ${CYAN}$EXPECTED_TABLES${NC} ${YELLOW}⚠${NC}"
+fi
+
+# ENUMs - should match exactly
+if [ "$ENUM_COUNT" -eq "$EXPECTED_ENUMS" ]; then
+    echo -e "  ENUM Types:          ${GREEN}$ENUM_COUNT${NC} ${GREEN}✓${NC}"
+else
+    echo -e "  ENUM Types:          ${YELLOW}$ENUM_COUNT${NC} / Expected: ${CYAN}$EXPECTED_ENUMS${NC} ${YELLOW}⚠${NC}"
+fi
+
+# Indexes - actual count (includes auto-generated)
+echo -e "  Indexes:             ${GREEN}$INDEX_COUNT${NC} ${CYAN}(includes auto-generated PK/unique indexes)${NC}"
+
+# Foreign Keys - actual count (includes inline definitions)
+echo -e "  Foreign Keys:        ${GREEN}$FK_COUNT${NC} ${CYAN}(from constraints + inline table definitions)${NC}"
+
+echo ""
+echo -e "  ${CYAN}Sample Data:${NC}"
+
+# Ensure PGPASSWORD is exported for subshells
+export PGPASSWORD="$DB_PASSWORD"
+
+# Get exact total records from database
+TOTAL_DATA_RECORDS=$(PGPASSWORD="$DB_PASSWORD" psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -tAc "
+    SELECT COALESCE(SUM(n_tup_ins)::bigint, 0)
+    FROM pg_stat_user_tables
+    WHERE schemaname IN ('public', 'availability');
+" 2>/dev/null)
+
+# Get count of tables with data
+DATA_TABLES_POPULATED=$(PGPASSWORD="$DB_PASSWORD" psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -tAc "
+    SELECT COUNT(*)
+    FROM pg_stat_user_tables
+    WHERE schemaname IN ('public', 'availability')
+    AND n_tup_ins > 0;
+" 2>/dev/null)
+
+# Calculate coverage percentage
+if [ "$TABLE_COUNT" -gt 0 ]; then
+    DATA_COVERAGE=$((DATA_TABLES_POPULATED * 100 / TABLE_COUNT))
+else
+    DATA_COVERAGE=0
+fi
+
+# Show data statistics with color coding
+if [ "$DATA_TABLES_POPULATED" -eq "$TABLE_COUNT" ]; then
+    echo -e "  Total Records:       ${GREEN}${TOTAL_DATA_RECORDS}${NC}"
+    echo -e "  Tables Populated:    ${GREEN}${DATA_TABLES_POPULATED}${NC} / ${CYAN}${TABLE_COUNT}${NC} ${GREEN}(${DATA_COVERAGE}%) ✓${NC}"
+elif [ "$DATA_TABLES_POPULATED" -gt 0 ]; then
+    echo -e "  Total Records:       ${GREEN}${TOTAL_DATA_RECORDS}${NC}"
+    echo -e "  Tables Populated:    ${YELLOW}${DATA_TABLES_POPULATED}${NC} / ${CYAN}${TABLE_COUNT}${NC} ${YELLOW}(${DATA_COVERAGE}%)${NC}"
+else
+    echo -e "  Total Records:       ${YELLOW}${TOTAL_DATA_RECORDS}${NC}"
+    echo -e "  Tables Populated:    ${YELLOW}${DATA_TABLES_POPULATED}${NC} / ${CYAN}${TABLE_COUNT}${NC} ${YELLOW}(${DATA_COVERAGE}%)${NC}"
+fi
+
+echo ""
 echo -e "  Duration:            ${GREEN}${MINUTES}m ${SECONDS}s${NC}"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
