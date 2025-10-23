@@ -13,8 +13,9 @@ Follow these focused, repository-specific rules when editing, refactoring or add
    - Changes to the schema must preserve multi-tenant isolation (always consider `tenant_id`) and soft-delete semantics (`deleted_at`). See `docs/multi-tenancy.md` and `scripts/README.md` for design rationale.
 
 2. Where to make changes
-   - Add/modify tables in `scripts/tables/` using the existing numbered filename pattern (NN_name.sql). Do NOT change execution order numbers unless you also update the master script.
-   - Add/modify indexes in `scripts/indexes/` and foreign keys in `scripts/constraints/`. Index/constraint files are applied after tables by `00-master-install.sh`.
+   - Add/modify tables in `scripts/tables/` under 7 consolidated categories: `01-core`, `02-inventory`, `03-bookings`, `04-financial`, `05-operations`, `06-integrations`, `07-analytics`.
+   - Add indexes to the consolidated `scripts/indexes/00-create-all-indexes.sql` file (grouped by category, not per-table).
+   - Add foreign keys to the consolidated `scripts/constraints/00-create-all-constraints.sql` file (one master file).
    - Stored procedures go in `scripts/procedures/`, triggers in `scripts/triggers/`.
 
 3. Execution and developer workflows (exact commands)
@@ -31,6 +32,9 @@ Follow these focused, repository-specific rules when editing, refactoring or add
 4. Conventions and patterns (must follow)
    - File naming: numeric prefixes control execution order. Preserve them (e.g., `01_...`, `02_...`).
    - Schema lifecycle: run `01-database-setup.sql` → `02-enum-types.sql` → `scripts/tables/...` → `scripts/indexes/...` → `scripts/constraints/...` → `scripts/procedures/...` → `scripts/triggers/...`.
+   - Category organization: The repo uses 7 logical categories (was 20, now consolidated). New tables must fit into: core, inventory, bookings, financial, operations, integrations, or analytics.
+   - Indexes: Add to the consolidated `00-create-all-indexes.sql` under the appropriate category section. Do NOT create separate per-table index files.
+   - Constraints: Add to the consolidated `00-create-all-constraints.sql` under the appropriate category section. Do NOT create separate FK files.
    - Avoid `SELECT *`; the repo enforces `SELECT`-column discipline via triggers (`scripts/triggers/01_prevent_select_star.sql`). When adding queries, list explicit columns.
    - Use JSONB fields where existing tables do; follow examples in `scripts/tables/*` to match naming and indexing patterns (e.g., GIN indexes for JSONB).
    - Soft deletes: prefer `deleted_at` over hard deletes. New DDL must include audit columns (`created_at`, `updated_at`, `created_by`, `updated_by`) when appropriate.

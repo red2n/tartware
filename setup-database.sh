@@ -87,12 +87,18 @@ if [ "$DEPLOY_MODE" == "docker" ]; then
     fi
     echo -e "${GREEN}✓ Docker: $(docker --version)${NC}"
 
-    if ! command -v docker-compose &> /dev/null; then
+    # Check for docker compose (new) or docker-compose (old)
+    if docker compose version &> /dev/null; then
+        DOCKER_COMPOSE_CMD="docker compose"
+        echo -e "${GREEN}✓ Docker Compose: $(docker compose version --short)${NC}"
+    elif command -v docker-compose &> /dev/null; then
+        DOCKER_COMPOSE_CMD="docker-compose"
+        echo -e "${GREEN}✓ Docker Compose: $(docker-compose --version)${NC}"
+    else
         echo -e "${RED}✗ Docker Compose is not installed${NC}"
         echo "   Install: https://docs.docker.com/compose/install/"
         exit 1
     fi
-    echo -e "${GREEN}✓ Docker Compose: $(docker-compose --version)${NC}"
 
     if ! docker info &> /dev/null; then
         echo -e "${RED}✗ Docker daemon is not running${NC}"
@@ -106,7 +112,7 @@ if [ "$DEPLOY_MODE" == "docker" ]; then
     echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
     echo "  Starting Docker containers..."
     echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-    docker-compose up -d
+    $DOCKER_COMPOSE_CMD up -d
     echo ""
     echo -e "${GREEN}✓ Containers started${NC}"
     echo ""
@@ -138,9 +144,13 @@ if [ "$DEPLOY_MODE" == "docker" ]; then
     sleep 10
 
     echo "Monitoring initialization..."
+    # Count expected tables from scripts
+    SCRIPTS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/scripts" && pwd)"
+    EXPECTED_TABLES=$(grep -r "CREATE TABLE" "$SCRIPTS_DIR/tables/" --include="*.sql" 2>/dev/null | grep -v "00-create-all-tables.sql" | wc -l)
+
     for i in {1..60}; do
         TABLE_COUNT=$(docker exec tartware-postgres psql -U postgres -d tartware -t -c "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = 'public';" 2>/dev/null | xargs || echo "0")
-        if [ "$TABLE_COUNT" -ge "128" ]; then
+        if [ "$TABLE_COUNT" -ge "$EXPECTED_TABLES" ]; then
             echo -e "${GREEN}✓ Initialization complete!${NC}"
             break
         fi
@@ -159,7 +169,7 @@ if [ "$DEPLOY_MODE" == "docker" ]; then
     INDEX_COUNT=$(docker exec tartware-postgres psql -U postgres -d tartware -t -c "SELECT COUNT(*) FROM pg_indexes WHERE schemaname = 'public';" 2>/dev/null | xargs)
     FK_COUNT=$(docker exec tartware-postgres psql -U postgres -d tartware -t -c "SELECT COUNT(*) FROM information_schema.table_constraints WHERE constraint_type = 'FOREIGN KEY';" 2>/dev/null | xargs)
 
-    echo "  Tables:       $TABLE_COUNT / 128"
+    echo "  Tables:       $TABLE_COUNT / $EXPECTED_TABLES"
     echo "  Indexes:      $INDEX_COUNT"
     echo "  Foreign Keys: $FK_COUNT"
     echo ""
