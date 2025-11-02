@@ -27,7 +27,7 @@
 \echo '  Phase 1: Installing Performance Extensions'
 \echo '======================================================'
 \echo ''
-\i 11_install_performance_extensions.sql
+\ir 11_install_performance_extensions.sql
 
 -- =====================================================
 -- PHASE 2: Tables
@@ -37,8 +37,8 @@
 \echo '  Phase 2: Creating Reporting & Alerting Tables'
 \echo '======================================================'
 \echo ''
-\i ../tables/23_performance_reporting_tables.sql
-\i ../tables/24_performance_alerting_tables.sql
+\ir ../tables/07-analytics/23_performance_reporting_tables.sql
+\ir ../tables/07-analytics/24_performance_alerting_tables.sql
 
 -- =====================================================
 -- PHASE 3: Reporting Procedures
@@ -48,7 +48,7 @@
 \echo '  Phase 3: Creating Reporting Procedures'
 \echo '======================================================'
 \echo ''
-\i ../procedures/15_performance_reporting_procedures.sql
+\ir ../procedures/05_performance_reporting_procedures.sql
 
 -- =====================================================
 -- PHASE 4: Alerting Procedures
@@ -58,7 +58,7 @@
 \echo '  Phase 4: Creating Alerting Procedures'
 \echo '======================================================'
 \echo ''
-\i ../procedures/16_performance_alerting_procedures.sql
+\ir ../procedures/06_performance_alerting_procedures.sql
 
 -- =====================================================
 -- VERIFICATION & SUMMARY
@@ -171,14 +171,14 @@ BEGIN
         RAISE NOTICE '';
         IF v_extensions >= 4 THEN
             RAISE NOTICE 'Option 2 - pg_cron (Installed):';
-            RAISE NOTICE '  SELECT cron.schedule(''update-baselines'', ''0 * * * *'',';
-            RAISE NOTICE '    $$SELECT update_performance_baselines();$$);';
+            RAISE NOTICE '  SELECT cron.schedule(''update-baselines'', ''0 * * * *'', %);',
+                CHR(36) || CHR(36) || 'SELECT update_performance_baselines();' || CHR(36) || CHR(36);
             RAISE NOTICE '';
-            RAISE NOTICE '  SELECT cron.schedule(''monitor-performance'', ''*/5 * * * *'',';
-            RAISE NOTICE '    $$SELECT monitor_performance_degradation();$$);';
+            RAISE NOTICE '  SELECT cron.schedule(''monitor-performance'', ''*/5 * * * *'', %);',
+                CHR(36) || CHR(36) || 'SELECT monitor_performance_degradation();' || CHR(36) || CHR(36);
             RAISE NOTICE '';
-            RAISE NOTICE '  SELECT cron.schedule(''daily-report'', ''0 2 * * *'',';
-            RAISE NOTICE '    $$SELECT generate_daily_performance_report();$$);';
+            RAISE NOTICE '  SELECT cron.schedule(''daily-report'', ''0 2 * * *'', %);',
+                CHR(36) || CHR(36) || 'SELECT generate_daily_performance_report();' || CHR(36) || CHR(36);
             RAISE NOTICE '';
         END IF;
         RAISE NOTICE '📚 Documentation:';

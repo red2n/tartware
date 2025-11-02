@@ -31,7 +31,7 @@
 \echo '  Phase 1: Installing Query Efficiency Monitoring'
 \echo '======================================================'
 \echo ''
-\i 01_prevent_select_star.sql
+\ir 01_prevent_select_star.sql
 
 -- =====================================================
 -- PHASE 2: Full Table Scan Prevention
@@ -41,7 +41,7 @@
 \echo '  Phase 2: Installing Full Table Scan Prevention'
 \echo '======================================================'
 \echo ''
-\i 02_prevent_full_table_scans.sql
+\ir 02_prevent_full_table_scans.sql
 
 -- =====================================================
 -- PHASE 3: Tenant Isolation Enforcement
@@ -51,7 +51,7 @@
 \echo '  Phase 3: Installing Tenant Isolation Enforcement'
 \echo '======================================================'
 \echo ''
-\i 03_enforce_tenant_isolation.sql
+\ir 03_enforce_tenant_isolation.sql
 
 -- =====================================================
 -- PHASE 4: VACUUM and Bloat Detection
@@ -61,7 +61,7 @@
 \echo '  Phase 4: Installing VACUUM and Bloat Detection'
 \echo '======================================================'
 \echo ''
-\i 04_detect_vacuum_bloat.sql
+\ir 04_detect_vacuum_bloat.sql
 
 -- =====================================================
 -- PHASE 5: Excessive Indexing Detection
@@ -71,7 +71,7 @@
 \echo '  Phase 5: Installing Excessive Indexing Detection'
 \echo '======================================================'
 \echo ''
-\i 05_detect_excessive_indexes.sql
+\ir 05_detect_excessive_indexes.sql
 
 -- =====================================================
 -- PHASE 6: Memory Configuration Check
@@ -81,7 +81,7 @@
 \echo '  Phase 6: Installing Memory Configuration Check'
 \echo '======================================================'
 \echo ''
-\i 06_check_memory_config.sql
+\ir 06_check_memory_config.sql
 
 -- =====================================================
 -- PHASE 7: Connection Pooling Analysis
@@ -91,7 +91,7 @@
 \echo '  Phase 7: Installing Connection Pooling Analysis'
 \echo '======================================================'
 \echo ''
-\i 07_check_connection_pooling.sql
+\ir 07_check_connection_pooling.sql
 
 -- =====================================================
 -- PHASE 8: Advanced Sorting Optimization
@@ -101,7 +101,7 @@
 \echo '  Phase 8: Advanced Sorting & Incremental Sort'
 \echo '======================================================'
 \echo ''
-\i 08_optimize_sorting.sql
+\ir 08_optimize_sorting.sql
 
 -- =====================================================
 -- PHASE 9: DISTINCT Operation Optimization
@@ -111,7 +111,7 @@
 \echo '  Phase 9: DISTINCT vs GROUP BY Optimization'
 \echo '======================================================'
 \echo ''
-\i 09_optimize_distinct.sql
+\ir 09_optimize_distinct.sql
 
 -- =====================================================
 -- PHASE 10: JOIN Parallelism Optimization
@@ -121,7 +121,7 @@
 \echo '  Phase 10: JOIN Parallelism & Multi-Core Optimization'
 \echo '======================================================'
 \echo ''
-\i 10_optimize_join_parallelism.sql
+\ir 10_optimize_join_parallelism.sql
 
 -- =====================================================
 -- PHASE 11: Performance Extensions Installation
@@ -131,7 +131,7 @@
 \echo '  Phase 11: Installing Performance Extensions'
 \echo '======================================================'
 \echo ''
-\i 11_install_performance_extensions.sql
+\ir 11_install_performance_extensions.sql
 
 -- =====================================================
 -- PHASE 12: Performance Monitoring & Alerting
@@ -141,7 +141,7 @@
 \echo '  Phase 12: Installing Performance Monitoring Suite'
 \echo '======================================================'
 \echo ''
-\i 12_install_all_performance_monitoring.sql
+\ir 12_install_all_performance_monitoring.sql
 
 -- =====================================================
 -- PHASE 13: Optimistic Lock Enforcement
@@ -151,7 +151,7 @@
 \echo '  Phase 13: Enforcing Optimistic Locking'
 \echo '======================================================'
 \echo ''
-\i 13_enforce_optimistic_locking.sql
+\ir 13_enforce_optimistic_locking.sql
 
 -- =====================================================
 -- Summary Report

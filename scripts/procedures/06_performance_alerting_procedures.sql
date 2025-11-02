@@ -24,33 +24,38 @@ LANGUAGE plpgsql
 AS $$
 BEGIN
     -- Query execution time baseline
-    INSERT INTO performance_baselines (
-        metric_name,
-        time_window,
-        baseline_value,
-        stddev_value,
-        min_value,
-        max_value,
-        sample_count
-    )
-    SELECT
-        'query_execution_time',
-        'hourly',
-        AVG(mean_exec_time),
-        STDDEV(mean_exec_time),
-        MIN(mean_exec_time),
-        MAX(mean_exec_time),
-        COUNT(*)::INTEGER
-    FROM pg_stat_statements
-    WHERE calls > 10
-    ON CONFLICT (metric_name, time_window)
-    DO UPDATE SET
-        baseline_value = EXCLUDED.baseline_value,
-        stddev_value = EXCLUDED.stddev_value,
-        min_value = EXCLUDED.min_value,
-        max_value = EXCLUDED.max_value,
-        sample_count = EXCLUDED.sample_count,
-        last_updated = CURRENT_TIMESTAMP;
+    BEGIN
+        INSERT INTO performance_baselines (
+            metric_name,
+            time_window,
+            baseline_value,
+            stddev_value,
+            min_value,
+            max_value,
+            sample_count
+        )
+        SELECT
+            'query_execution_time',
+            'hourly',
+            AVG(mean_exec_time),
+            STDDEV(mean_exec_time),
+            MIN(mean_exec_time),
+            MAX(mean_exec_time),
+            COUNT(*)::INTEGER
+        FROM pg_stat_statements
+        WHERE calls > 10
+        ON CONFLICT (metric_name, time_window)
+        DO UPDATE SET
+            baseline_value = EXCLUDED.baseline_value,
+            stddev_value = EXCLUDED.stddev_value,
+            min_value = EXCLUDED.min_value,
+            max_value = EXCLUDED.max_value,
+            sample_count = EXCLUDED.sample_count,
+            last_updated = CURRENT_TIMESTAMP;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE NOTICE 'Skipping query execution baseline: %', SQLERRM;
+    END;
 
     -- Connection count baseline
     INSERT INTO performance_baselines (
@@ -109,6 +114,31 @@ COMMENT ON FUNCTION update_performance_baselines() IS
 'Updates performance baselines for anomaly detection.
 Run periodically via cron: SELECT update_performance_baselines();';
 
+-- Helper: safely fetch current mean execution time from pg_stat_statements
+CREATE OR REPLACE FUNCTION current_query_execution_time(min_calls INTEGER DEFAULT 5)
+RETURNS NUMERIC
+LANGUAGE plpgsql
+AS $$
+DECLARE
+    v_result NUMERIC;
+BEGIN
+    BEGIN
+        SELECT AVG(mean_exec_time)::NUMERIC
+        INTO v_result
+        FROM pg_stat_statements
+        WHERE calls > min_calls;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RETURN NULL;
+    END;
+
+    RETURN v_result;
+END;
+$$;
+
+COMMENT ON FUNCTION current_query_execution_time(INTEGER) IS
+'Returns the average query execution time when pg_stat_statements is available; otherwise NULL.';
+
 -- =====================================================
 -- ANOMALY DETECTION FUNCTIONS
 -- =====================================================
@@ -150,24 +180,30 @@ BEGIN
         END IF;
     END IF;
 
-    RETURN QUERY
-    SELECT
-        LEFT(query, 50) AS query_fingerprint,
-        ROUND(mean_exec_time::NUMERIC, 2) AS current_mean_time,
-        ROUND(v_baseline, 2) AS baseline_mean_time,
-        ROUND((mean_exec_time - v_baseline) / NULLIF(v_baseline, 0) * 100, 2) AS degradation_percent,
-        calls,
-        CASE
-            WHEN mean_exec_time > v_baseline + (3 * COALESCE(v_stddev, v_baseline * 0.1)) THEN 'CRITICAL'
-            WHEN mean_exec_time > v_baseline + (2 * COALESCE(v_stddev, v_baseline * 0.1)) THEN 'WARNING'
-            ELSE 'INFO'
-        END AS alert_level
-    FROM pg_stat_statements
-    WHERE mean_exec_time > v_baseline * 1.5  -- At least 50% degradation
-    AND calls > 10  -- Minimum calls to be significant
-    AND query NOT LIKE '%pg_%'
-    ORDER BY degradation_percent DESC
-    LIMIT 10;
+    BEGIN
+        RETURN QUERY
+        SELECT
+            LEFT(query, 50) AS query_fingerprint,
+            ROUND(mean_exec_time::NUMERIC, 2) AS current_mean_time,
+            ROUND(v_baseline, 2) AS baseline_mean_time,
+            ROUND((mean_exec_time - v_baseline) / NULLIF(v_baseline, 0) * 100, 2) AS degradation_percent,
+            calls,
+            CASE
+                WHEN mean_exec_time > v_baseline + (3 * COALESCE(v_stddev, v_baseline * 0.1)) THEN 'CRITICAL'
+                WHEN mean_exec_time > v_baseline + (2 * COALESCE(v_stddev, v_baseline * 0.1)) THEN 'WARNING'
+                ELSE 'INFO'
+            END AS alert_level
+        FROM pg_stat_statements
+        WHERE mean_exec_time > v_baseline * 1.5  -- At least 50% degradation
+        AND calls > 10  -- Minimum calls to be significant
+        AND query NOT LIKE '%pg_%'
+        ORDER BY degradation_percent DESC
+        LIMIT 10;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE NOTICE 'pg_stat_statements unavailable for degradation detection: %', SQLERRM;
+            RETURN;
+    END;
 END $$;
 
 COMMENT ON FUNCTION detect_query_degradation() IS
@@ -546,18 +582,18 @@ SELECT
     baseline_value,
     CASE
         WHEN metric_name = 'query_execution_time' THEN
-            (SELECT ROUND(AVG(mean_exec_time), 2) FROM pg_stat_statements WHERE calls > 5)
+            ROUND(current_query_execution_time(5), 2)
         WHEN metric_name = 'connection_count' THEN
             (SELECT COUNT(*)::NUMERIC FROM pg_stat_activity)
         WHEN metric_name = 'cache_hit_rate' THEN
-            (SELECT ROUND(100.0 * SUM(heap_blks_hit) / NULLIF(SUM(heap_blks_hit) + SUM(heap_blks_read), 0), 2)
+            (SELECT ROUND((100.0 * SUM(heap_blks_hit) / NULLIF(SUM(heap_blks_hit) + SUM(heap_blks_read), 0))::NUMERIC, 2)
              FROM pg_statio_user_tables)
         ELSE NULL
     END AS current_value,
     last_updated,
     CASE
-        WHEN metric_name = 'query_execution_time' AND
-             (SELECT AVG(mean_exec_time) FROM pg_stat_statements WHERE calls > 5) > baseline_value * 1.5
+           WHEN metric_name = 'query_execution_time' AND
+               COALESCE(current_query_execution_time(5), 0) > baseline_value * 1.5
         THEN '⚠️ Degraded'
         WHEN metric_name = 'connection_count' AND
              (SELECT COUNT(*) FROM pg_stat_activity) > baseline_value * 1.5

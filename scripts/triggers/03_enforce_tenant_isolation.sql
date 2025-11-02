@@ -253,20 +253,40 @@ COMMENT ON FUNCTION log_tenant_access IS
 -- =====================================================
 
 CREATE OR REPLACE VIEW v_suspicious_access_patterns AS
+WITH suspicious AS (
+    SELECT *
+    FROM tenant_access_audit
+    WHERE was_suspicious = TRUE
+      AND access_timestamp > CURRENT_TIMESTAMP - INTERVAL '7 days'
+), grouped AS (
+    SELECT
+        tenant_id,
+        accessed_by,
+        COUNT(*) AS suspicious_access_count,
+        array_agg(DISTINCT query_pattern) AS query_patterns,
+        MIN(access_timestamp) AS first_suspicious_access,
+        MAX(access_timestamp) AS last_suspicious_access
+    FROM suspicious
+    GROUP BY tenant_id, accessed_by
+    HAVING COUNT(*) > 5
+)
 SELECT
-    tenant_id,
-    accessed_by,
-    COUNT(*) as suspicious_access_count,
-    array_agg(DISTINCT query_pattern) as query_patterns,
-    array_agg(DISTINCT unnest(accessed_tables)) as all_tables_accessed,
-    MIN(access_timestamp) as first_suspicious_access,
-    MAX(access_timestamp) as last_suspicious_access
-FROM tenant_access_audit
-WHERE was_suspicious = TRUE
-    AND access_timestamp > CURRENT_TIMESTAMP - INTERVAL '7 days'
-GROUP BY tenant_id, accessed_by
-HAVING COUNT(*) > 5
-ORDER BY COUNT(*) DESC;
+    g.tenant_id,
+    g.accessed_by,
+    g.suspicious_access_count,
+    g.query_patterns,
+    ARRAY(
+        SELECT DISTINCT t.table_name
+        FROM suspicious s2
+        CROSS JOIN LATERAL unnest(s2.accessed_tables) AS t(table_name)
+        WHERE s2.tenant_id = g.tenant_id
+          AND s2.accessed_by = g.accessed_by
+        ORDER BY t.table_name
+    ) AS all_tables_accessed,
+    g.first_suspicious_access,
+    g.last_suspicious_access
+FROM grouped g
+ORDER BY g.suspicious_access_count DESC;
 
 COMMENT ON VIEW v_suspicious_access_patterns IS
 'Monitor users with multiple suspicious access patterns in the last 7 days';

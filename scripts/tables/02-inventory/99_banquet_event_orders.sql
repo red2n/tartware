@@ -57,7 +57,7 @@ CREATE TABLE banquet_event_orders (
     tables_count INTEGER,
     chairs_count INTEGER,
     table_configuration TEXT, -- Detailed table arrangement
-    seating_chart_url VARCHAR(500),
+    seating_chart_layout_url VARCHAR(500),
 
     -- Expected Numbers
     guaranteed_count INTEGER NOT NULL, -- For billing
@@ -254,6 +254,7 @@ COMMENT ON COLUMN banquet_event_orders.menu_items IS 'Detailed menu items with d
 COMMENT ON COLUMN banquet_event_orders.service_charge_percent IS 'Service charge percentage (typically 18-22%)';
 COMMENT ON COLUMN banquet_event_orders.kitchen_instructions IS 'Special instructions for kitchen staff';
 COMMENT ON COLUMN banquet_event_orders.distribution_list IS 'Email addresses to receive BEO copies';
+COMMENT ON COLUMN banquet_event_orders.seating_chart_layout_url IS 'Layout preview for seating arrangements';
 COMMENT ON COLUMN banquet_event_orders.metadata IS 'Custom fields and additional event specifications';
 
 \echo 'Banquet event orders table created successfully!'

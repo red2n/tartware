@@ -208,8 +208,8 @@ COMMENT ON FUNCTION check_autovacuum_settings() IS
 CREATE OR REPLACE VIEW v_vacuum_candidates AS
 SELECT
     schemaname,
-    tablename,
-    pg_size_pretty(pg_total_relation_size(schemaname||'.'||tablename)) AS table_size,
+    relname AS tablename,
+    pg_size_pretty(pg_total_relation_size(format('%I.%I', schemaname, relname))) AS table_size,
     n_dead_tup AS dead_tuples,
     n_live_tup AS live_tuples,
     ROUND((n_dead_tup::NUMERIC / NULLIF(n_live_tup, 0)::NUMERIC) * 100, 2) AS dead_tuple_percent,
@@ -221,7 +221,7 @@ SELECT
         WHEN n_dead_tup > 10000 THEN 'MEDIUM'
         ELSE 'LOW'
     END AS priority,
-    format('VACUUM ANALYZE %I.%I;', schemaname, tablename) AS vacuum_command
+    format('VACUUM ANALYZE %I.%I;', schemaname, relname) AS vacuum_command
 FROM pg_stat_user_tables
 WHERE schemaname IN ('public', 'availability')
     AND n_dead_tup > 1000
@@ -237,7 +237,7 @@ COMMENT ON VIEW v_vacuum_candidates IS
 CREATE OR REPLACE VIEW v_autovacuum_activity AS
 SELECT
     schemaname,
-    tablename,
+    relname AS tablename,
     last_vacuum,
     last_autovacuum,
     vacuum_count,
@@ -280,10 +280,10 @@ BEGIN
             WHEN n_dead_tup > 10000 THEN '3-MEDIUM'
             ELSE '4-LOW'
         END::TEXT AS priority,
-        format('VACUUM (ANALYZE, VERBOSE) %I.%I;', schemaname, tablename)::TEXT AS command,
+        format('VACUUM (ANALYZE, VERBOSE) %I.%I;', schemaname, relname)::TEXT AS command,
         format('%s dead tuples, %s total size',
             n_dead_tup,
-            pg_size_pretty(pg_total_relation_size(schemaname||'.'||tablename))
+            pg_size_pretty(pg_total_relation_size(format('%I.%I', schemaname, relname)))
         )::TEXT AS table_info
     FROM pg_stat_user_tables
     WHERE schemaname IN ('public', 'availability')

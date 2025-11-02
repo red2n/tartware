@@ -188,29 +188,32 @@ COMMENT ON FUNCTION recommend_sort_indexes() IS
 
 CREATE OR REPLACE VIEW v_sort_performance AS
 SELECT
-    schemaname,
-    tablename,
-    indexname,
-    idx_scan,
-    idx_tup_read,
-    idx_tup_fetch,
-    pg_size_pretty(pg_relation_size(indexrelid)) AS index_size,
+    psi.schemaname,
+    psi.relname AS tablename,
+    psi.indexrelname AS indexname,
+    psi.idx_scan,
+    psi.idx_tup_read,
+    psi.idx_tup_fetch,
+    pg_size_pretty(pg_relation_size(psi.indexrelid)) AS index_size,
     CASE
-        WHEN idx_scan > 1000 THEN '✅ FREQUENTLY USED'
-        WHEN idx_scan > 100 THEN '✅ REGULARLY USED'
-        WHEN idx_scan > 0 THEN '⚠️ RARELY USED'
+        WHEN psi.idx_scan > 1000 THEN '✅ FREQUENTLY USED'
+        WHEN psi.idx_scan > 100 THEN '✅ REGULARLY USED'
+        WHEN psi.idx_scan > 0 THEN '⚠️ RARELY USED'
         ELSE '❌ NEVER USED'
     END AS usage_status,
     CASE
-        WHEN indexdef LIKE '%DESC%' THEN 'DESC ordering (good for recent data)'
-        WHEN indexdef LIKE '%INCLUDE%' THEN 'Covering index (excellent)'
+        WHEN pi.indexdef LIKE '%DESC%' THEN 'DESC ordering (good for recent data)'
+        WHEN pi.indexdef LIKE '%INCLUDE%' THEN 'Covering index (excellent)'
         ELSE 'Standard ascending index'
     END AS index_type
-FROM pg_stat_user_indexes
-JOIN pg_indexes ON pg_indexes.indexname = pg_stat_user_indexes.indexrelname
-WHERE schemaname IN ('public', 'availability')
-    AND indexdef LIKE '%ORDER BY%' OR indexdef LIKE '%DESC%'
-ORDER BY idx_scan DESC;
+FROM pg_stat_user_indexes psi
+JOIN pg_indexes pi
+    ON pi.schemaname = psi.schemaname
+    AND pi.tablename = psi.relname
+    AND pi.indexname = psi.indexrelname
+WHERE psi.schemaname IN ('public', 'availability')
+    AND (pi.indexdef LIKE '%ORDER BY%' OR pi.indexdef LIKE '%DESC%')
+ORDER BY psi.idx_scan DESC;
 
 COMMENT ON VIEW v_sort_performance IS
 'Monitor index usage for ORDER BY operations';

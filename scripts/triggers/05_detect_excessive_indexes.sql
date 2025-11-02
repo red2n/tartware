@@ -33,7 +33,7 @@ BEGIN
     RETURN QUERY
     SELECT
         schemaname::TEXT,
-        tablename::TEXT,
+        relname::TEXT,
         indexrelname::TEXT,
         pg_size_pretty(pg_relation_size(indexrelid))::TEXT AS index_size,
         idx_scan AS index_scans,
@@ -170,7 +170,7 @@ BEGIN
     RETURN QUERY
     WITH table_stats AS (
         SELECT
-            tablename,
+            relname,
             COUNT(*) AS total_idx,
             COUNT(*) FILTER (WHERE idx_scan = 0) AS unused_idx,
             SUM(pg_relation_size(indexrelid)) AS total_size,
@@ -178,10 +178,10 @@ BEGIN
         FROM pg_stat_user_indexes
         WHERE schemaname IN ('public', 'availability')
             AND indexrelname NOT LIKE '%_pkey'
-        GROUP BY tablename
+        GROUP BY relname
     )
     SELECT
-        tablename::TEXT,
+        relname::TEXT,
         total_idx::INTEGER,
         unused_idx::INTEGER,
         pg_size_pretty(total_size)::TEXT,
@@ -221,7 +221,7 @@ COMMENT ON FUNCTION analyze_index_efficiency() IS
 CREATE OR REPLACE VIEW v_index_health_dashboard AS
 SELECT
     schemaname,
-    tablename,
+    relname AS tablename,
     COUNT(*) AS total_indexes,
     COUNT(*) FILTER (WHERE idx_scan = 0) AS never_used,
     COUNT(*) FILTER (WHERE idx_scan < 10) AS rarely_used,
@@ -237,7 +237,7 @@ SELECT
 FROM pg_stat_user_indexes
 WHERE schemaname IN ('public', 'availability')
     AND indexrelname NOT LIKE '%_pkey'
-GROUP BY schemaname, tablename
+GROUP BY schemaname, relname
 ORDER BY
     COUNT(*) FILTER (WHERE idx_scan = 0) DESC,
     SUM(pg_relation_size(indexrelid)) DESC;
@@ -265,15 +265,15 @@ BEGIN
     RETURN QUERY
     WITH table_indexes AS (
         SELECT
-            tablename,
+            relname,
             COUNT(*) AS idx_count,
             SUM(pg_relation_size(indexrelid)) AS idx_size
         FROM pg_stat_user_indexes
         WHERE schemaname IN ('public', 'availability')
-        GROUP BY tablename
+        GROUP BY relname
     )
     SELECT
-        tablename::TEXT,
+        relname::TEXT,
         idx_count::INTEGER,
         pg_size_pretty(idx_size)::TEXT,
         ROUND(idx_count * 5.0, 2) AS estimated_write_overhead,  -- ~5% per index
