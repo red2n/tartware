@@ -17,18 +17,16 @@ CREATE INDEX idx_meeting_rooms_theater_capacity ON meeting_rooms(property_id, th
 CREATE INDEX idx_meeting_rooms_banquet_capacity ON meeting_rooms(property_id, banquet_capacity) WHERE is_deleted = FALSE AND banquet_capacity > 0;
 
 -- Availability indexes
-CREATE INDEX idx_meeting_rooms_available ON meeting_rooms(property_id, room_status) WHERE is_deleted = FALSE AND room_status IN ('AVAILABLE', 'MAINTENANCE_SCHEDULED');
+CREATE INDEX idx_meeting_rooms_available ON meeting_rooms(property_id, room_status) WHERE is_deleted = FALSE AND room_status IN ('AVAILABLE', 'MAINTENANCE');
 
--- Floor/location indexes
-CREATE INDEX idx_meeting_rooms_floor ON meeting_rooms(property_id, floor_number) WHERE is_deleted = FALSE;
+CREATE INDEX idx_meeting_rooms_floor ON meeting_rooms(property_id, floor) WHERE is_deleted = FALSE;
 CREATE INDEX idx_meeting_rooms_building ON meeting_rooms(property_id, building) WHERE is_deleted = FALSE;
 
--- Features/amenities (GIN index for JSONB)
-CREATE INDEX idx_meeting_rooms_equipment_gin ON meeting_rooms USING GIN (equipment_included) WHERE is_deleted = FALSE;
-CREATE INDEX idx_meeting_rooms_features_gin ON meeting_rooms USING GIN (features) WHERE is_deleted = FALSE;
+CREATE INDEX idx_meeting_rooms_included_equipment_gin ON meeting_rooms USING GIN (included_equipment) WHERE is_deleted = FALSE;
+CREATE INDEX idx_meeting_rooms_available_equipment_gin ON meeting_rooms USING GIN (available_equipment) WHERE is_deleted = FALSE;
 
 -- Pricing indexes
-CREATE INDEX idx_meeting_rooms_pricing ON meeting_rooms(property_id, base_rate_halfday, base_rate_fullday) WHERE is_deleted = FALSE AND room_status = 'AVAILABLE';
+CREATE INDEX idx_meeting_rooms_pricing ON meeting_rooms(property_id, half_day_rate, full_day_rate) WHERE is_deleted = FALSE AND room_status = 'AVAILABLE';
 
 -- Audit indexes
 CREATE INDEX idx_meeting_rooms_created ON meeting_rooms(created_at);

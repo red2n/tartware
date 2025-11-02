@@ -46,9 +46,6 @@ CREATE TABLE IF NOT EXISTS performance_baselines (
     UNIQUE(metric_name, time_window)
 );
 
-CREATE INDEX idx_performance_baselines_metric ON performance_baselines(metric_name, time_window);
-CREATE INDEX idx_performance_baselines_updated ON performance_baselines(last_updated DESC);
-
 COMMENT ON TABLE performance_baselines IS
 'Stores baseline values for performance metrics';
 
@@ -86,11 +83,6 @@ CREATE TABLE IF NOT EXISTS performance_alerts (
     -- Constraints
     CONSTRAINT chk_alert_severity CHECK (severity IN ('INFO', 'WARNING', 'CRITICAL'))
 );
-
-CREATE INDEX idx_performance_alerts_type ON performance_alerts(alert_type, created_at DESC);
-CREATE INDEX idx_performance_alerts_severity ON performance_alerts(severity, acknowledged)
-WHERE acknowledged = false;
-CREATE INDEX idx_performance_alerts_created ON performance_alerts(created_at DESC);
 
 COMMENT ON TABLE performance_alerts IS
 'Stores performance degradation alerts';
@@ -131,8 +123,6 @@ CREATE TABLE IF NOT EXISTS alert_rules (
     CONSTRAINT chk_condition_type CHECK (condition_type IN ('threshold', 'deviation', 'trend', 'spike')),
     CONSTRAINT chk_rule_severity CHECK (severity IN ('INFO', 'WARNING', 'CRITICAL'))
 );
-
-CREATE INDEX idx_alert_rules_active ON alert_rules(is_active) WHERE is_active = true;
 
 COMMENT ON TABLE alert_rules IS
 'Defines rules for automatic alert generation';

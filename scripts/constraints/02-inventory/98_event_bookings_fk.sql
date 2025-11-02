@@ -9,13 +9,13 @@
 -- Tenant reference
 ALTER TABLE event_bookings
     ADD CONSTRAINT fk_event_bookings_tenant
-    FOREIGN KEY (tenant_id) REFERENCES tenants(tenant_id)
+    FOREIGN KEY (tenant_id) REFERENCES tenants(id)
     ON DELETE CASCADE;
 
 -- Property reference
 ALTER TABLE event_bookings
     ADD CONSTRAINT fk_event_bookings_property
-    FOREIGN KEY (property_id) REFERENCES properties(property_id)
+    FOREIGN KEY (property_id) REFERENCES properties(id)
     ON DELETE CASCADE;
 
 -- Meeting room reference
@@ -27,13 +27,13 @@ ALTER TABLE event_bookings
 -- Guest reference
 ALTER TABLE event_bookings
     ADD CONSTRAINT fk_event_bookings_guest
-    FOREIGN KEY (guest_id) REFERENCES guests(guest_id)
+    FOREIGN KEY (guest_id) REFERENCES guests(id)
     ON DELETE SET NULL;
 
 -- Reservation reference
 ALTER TABLE event_bookings
     ADD CONSTRAINT fk_event_bookings_reservation
-    FOREIGN KEY (reservation_id) REFERENCES reservations(reservation_id)
+    FOREIGN KEY (reservation_id) REFERENCES reservations(id)
     ON DELETE SET NULL;
 
 -- Company reference

@@ -29,8 +29,8 @@ CREATE INDEX idx_vehicles_ownership ON vehicles(property_id, ownership_type) WHE
 
 -- Maintenance tracking
 CREATE INDEX idx_vehicles_next_service ON vehicles(property_id, next_service_due_date) WHERE is_deleted = FALSE AND operational = TRUE;
-CREATE INDEX idx_vehicles_service_overdue ON vehicles(property_id, next_service_due_date) WHERE is_deleted = FALSE AND next_service_due_date < CURRENT_DATE AND operational = TRUE;
-CREATE INDEX idx_vehicles_service_due_km ON vehicles(property_id, next_service_due_km, odometer_reading_km) WHERE is_deleted = FALSE AND track_inventory = TRUE;
+CREATE INDEX idx_vehicles_service_overdue ON vehicles(property_id, next_service_due_date) WHERE is_deleted = FALSE AND operational = TRUE AND next_service_due_date IS NOT NULL;
+CREATE INDEX idx_vehicles_service_due_km ON vehicles(property_id, next_service_due_km, odometer_reading_km) WHERE is_deleted = FALSE AND next_service_due_km IS NOT NULL;
 
 -- Compliance/expiration indexes
 CREATE INDEX idx_vehicles_insurance_expiry ON vehicles(property_id, insurance_expiration_date) WHERE is_deleted = FALSE AND insurance_expiration_date IS NOT NULL;
@@ -39,9 +39,9 @@ CREATE INDEX idx_vehicles_inspection_due ON vehicles(property_id, inspection_due
 
 -- Expiring soon (alerts)
 CREATE INDEX idx_vehicles_expiring_soon ON vehicles(property_id) WHERE is_deleted = FALSE AND (
-    insurance_expiration_date <= CURRENT_DATE + INTERVAL '30 days' OR
-    registration_expiration_date <= CURRENT_DATE + INTERVAL '30 days' OR
-    inspection_due_date <= CURRENT_DATE + INTERVAL '30 days'
+    insurance_expiration_date IS NOT NULL OR
+    registration_expiration_date IS NOT NULL OR
+    inspection_due_date IS NOT NULL
 );
 
 -- Driver assignment

@@ -63,13 +63,6 @@ CREATE TABLE IF NOT EXISTS ota_rate_plans (
     is_deleted BOOLEAN DEFAULT FALSE,
     deleted_at TIMESTAMP WITH TIME ZONE,
 
-    -- Foreign Keys
-    CONSTRAINT fk_ota_rate_plan_tenant FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE,
-    CONSTRAINT fk_ota_rate_plan_property FOREIGN KEY (property_id) REFERENCES properties(id) ON DELETE CASCADE,
-    CONSTRAINT fk_ota_rate_plan_ota_config FOREIGN KEY (ota_configuration_id) REFERENCES ota_configurations(id) ON DELETE CASCADE,
-    CONSTRAINT fk_ota_rate_plan_rate FOREIGN KEY (rate_id) REFERENCES rates(id) ON DELETE CASCADE,
-    CONSTRAINT fk_ota_rate_plan_created_by FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL,
-    CONSTRAINT fk_ota_rate_plan_updated_by FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL,
     CONSTRAINT chk_ota_rate_plan_markup CHECK (markup_percentage >= 0 AND markup_percentage <= 100),
     CONSTRAINT chk_ota_rate_plan_markdown CHECK (markdown_percentage >= 0 AND markdown_percentage <= 100),
     CONSTRAINT chk_ota_rate_plan_min_los CHECK (min_length_of_stay >= 1),

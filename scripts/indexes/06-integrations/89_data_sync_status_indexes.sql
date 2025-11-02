@@ -10,7 +10,7 @@
 
 CREATE INDEX idx_data_sync_status_tenant ON data_sync_status(tenant_id) WHERE is_deleted = FALSE;
 CREATE INDEX idx_data_sync_status_property ON data_sync_status(property_id) WHERE is_deleted = FALSE;
-CREATE INDEX idx_data_sync_status_integration ON data_sync_status(integration_name) WHERE is_deleted = FALSE;
+CREATE INDEX idx_data_sync_status_name ON data_sync_status(sync_name) WHERE is_deleted = FALSE;
 CREATE INDEX idx_data_sync_status_entity ON data_sync_status(entity_type) WHERE is_deleted = FALSE;
 CREATE INDEX idx_data_sync_status_status ON data_sync_status(status) WHERE is_deleted = FALSE;
 CREATE INDEX idx_data_sync_status_started ON data_sync_status(started_at DESC) WHERE is_deleted = FALSE;

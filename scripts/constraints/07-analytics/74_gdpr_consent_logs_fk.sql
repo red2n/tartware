@@ -2,12 +2,12 @@
 
 ALTER TABLE gdpr_consent_logs
     ADD CONSTRAINT fk_gdpr_consent_logs_tenant
-    FOREIGN KEY (tenant_id) REFERENCES tenants(tenant_id)
+    FOREIGN KEY (tenant_id) REFERENCES tenants(id)
     ON DELETE CASCADE;
 
 ALTER TABLE gdpr_consent_logs
     ADD CONSTRAINT fk_gdpr_consent_logs_property
-    FOREIGN KEY (property_id) REFERENCES properties(property_id)
+    FOREIGN KEY (property_id) REFERENCES properties(id)
     ON DELETE CASCADE;
 
 ALTER TABLE gdpr_consent_logs
@@ -22,30 +22,30 @@ ALTER TABLE gdpr_consent_logs
 
 ALTER TABLE gdpr_consent_logs
     ADD CONSTRAINT fk_gdpr_consent_logs_recorded_by
-    FOREIGN KEY (recorded_by) REFERENCES users(user_id)
+    FOREIGN KEY (recorded_by) REFERENCES users(id)
     ON DELETE SET NULL;
 
 ALTER TABLE gdpr_consent_logs
     ADD CONSTRAINT fk_gdpr_consent_logs_verified_by
-    FOREIGN KEY (verified_by) REFERENCES users(user_id)
+    FOREIGN KEY (verified_by) REFERENCES users(id)
     ON DELETE SET NULL;
 
 ALTER TABLE gdpr_consent_logs
     ADD CONSTRAINT fk_gdpr_consent_logs_dpo_reviewed_by
-    FOREIGN KEY (dpo_reviewed_by) REFERENCES users(user_id)
+    FOREIGN KEY (dpo_reviewed_by) REFERENCES users(id)
     ON DELETE SET NULL;
 
 ALTER TABLE gdpr_consent_logs
     ADD CONSTRAINT fk_gdpr_consent_logs_created_by
-    FOREIGN KEY (created_by) REFERENCES users(user_id)
+    FOREIGN KEY (created_by) REFERENCES users(id)
     ON DELETE SET NULL;
 
 ALTER TABLE gdpr_consent_logs
     ADD CONSTRAINT fk_gdpr_consent_logs_updated_by
-    FOREIGN KEY (updated_by) REFERENCES users(user_id)
+    FOREIGN KEY (updated_by) REFERENCES users(id)
     ON DELETE SET NULL;
 
 ALTER TABLE gdpr_consent_logs
     ADD CONSTRAINT fk_gdpr_consent_logs_deleted_by
-    FOREIGN KEY (deleted_by) REFERENCES users(user_id)
+    FOREIGN KEY (deleted_by) REFERENCES users(id)
     ON DELETE SET NULL;

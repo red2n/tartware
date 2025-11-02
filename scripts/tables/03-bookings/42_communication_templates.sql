@@ -69,11 +69,6 @@ CREATE TABLE IF NOT EXISTS communication_templates (
     is_deleted BOOLEAN DEFAULT FALSE,
     deleted_at TIMESTAMP WITH TIME ZONE,
 
-    -- Foreign Keys
-    CONSTRAINT fk_comm_template_tenant FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE,
-    CONSTRAINT fk_comm_template_property FOREIGN KEY (property_id) REFERENCES properties(id) ON DELETE CASCADE,
-    CONSTRAINT fk_comm_template_created_by FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL,
-    CONSTRAINT fk_comm_template_updated_by FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL,
     CONSTRAINT uq_comm_template_code UNIQUE (tenant_id, property_id, template_code, language_code)
 );
 

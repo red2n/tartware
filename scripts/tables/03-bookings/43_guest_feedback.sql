@@ -79,12 +79,6 @@ CREATE TABLE IF NOT EXISTS guest_feedback (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
 
-    -- Foreign Keys
-    CONSTRAINT fk_guest_feedback_tenant FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE,
-    CONSTRAINT fk_guest_feedback_property FOREIGN KEY (property_id) REFERENCES properties(id) ON DELETE CASCADE,
-    CONSTRAINT fk_guest_feedback_guest FOREIGN KEY (guest_id) REFERENCES guests(id) ON DELETE CASCADE,
-    CONSTRAINT fk_guest_feedback_reservation FOREIGN KEY (reservation_id) REFERENCES reservations(id) ON DELETE CASCADE,
-    CONSTRAINT fk_guest_feedback_responded_by FOREIGN KEY (responded_by) REFERENCES users(id) ON DELETE SET NULL,
     CONSTRAINT chk_guest_feedback_overall_rating CHECK (overall_rating >= 0 AND overall_rating <= rating_scale),
     CONSTRAINT chk_guest_feedback_sentiment CHECK (sentiment_score >= -1 AND sentiment_score <= 1)
 );

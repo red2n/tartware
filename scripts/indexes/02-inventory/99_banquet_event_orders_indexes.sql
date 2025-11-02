@@ -18,8 +18,8 @@ CREATE INDEX idx_beo_in_progress ON banquet_event_orders(property_id, event_date
 
 -- Date indexes
 CREATE INDEX idx_beo_event_date ON banquet_event_orders(property_id, event_date) WHERE is_deleted = FALSE;
-CREATE INDEX idx_beo_upcoming ON banquet_event_orders(property_id, event_date, beo_status) WHERE is_deleted = FALSE AND event_date >= CURRENT_DATE;
-CREATE INDEX idx_beo_today ON banquet_event_orders(property_id, event_date) WHERE is_deleted = FALSE AND event_date = CURRENT_DATE;
+CREATE INDEX idx_beo_upcoming ON banquet_event_orders(property_id, event_date, beo_status) WHERE is_deleted = FALSE;
+CREATE INDEX idx_beo_today ON banquet_event_orders(property_id, event_date) WHERE is_deleted = FALSE;
 
 -- Room linkage
 CREATE INDEX idx_beo_meeting_room ON banquet_event_orders(meeting_room_id, event_date) WHERE is_deleted = FALSE;
@@ -30,8 +30,8 @@ CREATE INDEX idx_beo_chef_approval ON banquet_event_orders(property_id, chef_app
 CREATE INDEX idx_beo_manager_approval ON banquet_event_orders(property_id, manager_approved, event_date) WHERE is_deleted = FALSE AND manager_approved = FALSE;
 
 -- Execution tracking indexes
-CREATE INDEX idx_beo_setup_pending ON banquet_event_orders(property_id, event_date) WHERE is_deleted = FALSE AND setup_completed = FALSE AND event_date = CURRENT_DATE;
-CREATE INDEX idx_beo_teardown_pending ON banquet_event_orders(property_id, event_date) WHERE is_deleted = FALSE AND teardown_completed = FALSE AND event_date = CURRENT_DATE;
+CREATE INDEX idx_beo_setup_pending ON banquet_event_orders(property_id, event_date) WHERE is_deleted = FALSE AND setup_completed = FALSE;
+CREATE INDEX idx_beo_teardown_pending ON banquet_event_orders(property_id, event_date) WHERE is_deleted = FALSE AND teardown_completed = FALSE;
 
 -- Financial indexes
 CREATE INDEX idx_beo_guaranteed_count ON banquet_event_orders(property_id, event_date, guaranteed_count) WHERE is_deleted = FALSE;

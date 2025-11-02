@@ -34,7 +34,7 @@ CREATE INDEX idx_shuttle_schedules_sunday ON shuttle_schedules(property_id, sche
 
 -- Seasonal schedules
 CREATE INDEX idx_shuttle_schedules_seasonal ON shuttle_schedules(property_id, seasonal, season_start_date, season_end_date) WHERE is_deleted = FALSE AND seasonal = TRUE;
-CREATE INDEX idx_shuttle_schedules_season_active ON shuttle_schedules(property_id, schedule_status) WHERE is_deleted = FALSE AND seasonal = TRUE AND CURRENT_DATE BETWEEN season_start_date AND season_end_date;
+CREATE INDEX idx_shuttle_schedules_season_active ON shuttle_schedules(property_id, schedule_status) WHERE is_deleted = FALSE AND seasonal = TRUE AND season_start_date IS NOT NULL AND season_end_date IS NOT NULL;
 
 -- Vehicle assignment
 CREATE INDEX idx_shuttle_schedules_vehicle ON shuttle_schedules(default_vehicle_id) WHERE is_deleted = FALSE;

@@ -205,7 +205,7 @@ CREATE TABLE banquet_event_orders (
     -- Documents
     signed_beo_url VARCHAR(500),
     floor_plan_url VARCHAR(500),
-    seating_chart_url VARCHAR(500),
+    seating_chart_document_url VARCHAR(500),
     menu_card_url VARCHAR(500),
 
     -- Notes

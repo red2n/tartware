@@ -3,51 +3,51 @@
 -- Multi-Tenancy
 ALTER TABLE financial_closures
     ADD CONSTRAINT fk_financial_closures_tenant
-    FOREIGN KEY (tenant_id) REFERENCES tenants(tenant_id)
+    FOREIGN KEY (tenant_id) REFERENCES tenants(id)
     ON DELETE CASCADE;
 
 ALTER TABLE financial_closures
     ADD CONSTRAINT fk_financial_closures_property
-    FOREIGN KEY (property_id) REFERENCES properties(property_id)
+    FOREIGN KEY (property_id) REFERENCES properties(id)
     ON DELETE CASCADE;
 
 -- GL Posting
 ALTER TABLE financial_closures
     ADD CONSTRAINT fk_financial_closures_gl_posted_by
-    FOREIGN KEY (gl_posted_by) REFERENCES users(user_id)
+    FOREIGN KEY (gl_posted_by) REFERENCES users(id)
     ON DELETE SET NULL;
 
 -- Approval & Review
 ALTER TABLE financial_closures
     ADD CONSTRAINT fk_financial_closures_approved_by
-    FOREIGN KEY (approved_by) REFERENCES users(user_id)
+    FOREIGN KEY (approved_by) REFERENCES users(id)
     ON DELETE SET NULL;
 
 ALTER TABLE financial_closures
     ADD CONSTRAINT fk_financial_closures_reviewed_by
-    FOREIGN KEY (reviewed_by) REFERENCES users(user_id)
+    FOREIGN KEY (reviewed_by) REFERENCES users(id)
     ON DELETE SET NULL;
 
 ALTER TABLE financial_closures
     ADD CONSTRAINT fk_financial_closures_verified_by
-    FOREIGN KEY (verified_by) REFERENCES users(user_id)
+    FOREIGN KEY (verified_by) REFERENCES users(id)
     ON DELETE SET NULL;
 
 ALTER TABLE financial_closures
     ADD CONSTRAINT fk_financial_closures_audited_by
-    FOREIGN KEY (audited_by) REFERENCES users(user_id)
+    FOREIGN KEY (audited_by) REFERENCES users(id)
     ON DELETE SET NULL;
 
 -- Reopening
 ALTER TABLE financial_closures
     ADD CONSTRAINT fk_financial_closures_reopened_by
-    FOREIGN KEY (reopened_by) REFERENCES users(user_id)
+    FOREIGN KEY (reopened_by) REFERENCES users(id)
     ON DELETE SET NULL;
 
 -- Lock Period
 ALTER TABLE financial_closures
     ADD CONSTRAINT fk_financial_closures_locked_by
-    FOREIGN KEY (locked_by) REFERENCES users(user_id)
+    FOREIGN KEY (locked_by) REFERENCES users(id)
     ON DELETE SET NULL;
 
 -- Previous Period
@@ -59,16 +59,16 @@ ALTER TABLE financial_closures
 -- Audit Fields
 ALTER TABLE financial_closures
     ADD CONSTRAINT fk_financial_closures_created_by
-    FOREIGN KEY (created_by) REFERENCES users(user_id)
+    FOREIGN KEY (created_by) REFERENCES users(id)
     ON DELETE SET NULL;
 
 ALTER TABLE financial_closures
     ADD CONSTRAINT fk_financial_closures_updated_by
-    FOREIGN KEY (updated_by) REFERENCES users(user_id)
+    FOREIGN KEY (updated_by) REFERENCES users(id)
     ON DELETE SET NULL;
 
 -- Soft Delete
 ALTER TABLE financial_closures
     ADD CONSTRAINT fk_financial_closures_deleted_by
-    FOREIGN KEY (deleted_by) REFERENCES users(user_id)
+    FOREIGN KEY (deleted_by) REFERENCES users(id)
     ON DELETE SET NULL;

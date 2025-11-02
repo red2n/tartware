@@ -61,14 +61,7 @@ CREATE TABLE IF NOT EXISTS guest_communications (
     -- Audit Fields
     created_by UUID,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-
-    -- Foreign Keys
-    CONSTRAINT fk_guest_comm_tenant FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE,
-    CONSTRAINT fk_guest_comm_property FOREIGN KEY (property_id) REFERENCES properties(id) ON DELETE CASCADE,
-    CONSTRAINT fk_guest_comm_guest FOREIGN KEY (guest_id) REFERENCES guests(id) ON DELETE CASCADE,
-    CONSTRAINT fk_guest_comm_reservation FOREIGN KEY (reservation_id) REFERENCES reservations(id) ON DELETE SET NULL,
-    CONSTRAINT fk_guest_comm_created_by FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Add comments

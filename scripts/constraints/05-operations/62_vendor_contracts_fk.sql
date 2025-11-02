@@ -3,40 +3,40 @@
 -- Multi-Tenancy
 ALTER TABLE vendor_contracts
     ADD CONSTRAINT fk_vendor_contracts_tenant
-    FOREIGN KEY (tenant_id) REFERENCES tenants(tenant_id)
+    FOREIGN KEY (tenant_id) REFERENCES tenants(id)
     ON DELETE CASCADE;
 
 ALTER TABLE vendor_contracts
     ADD CONSTRAINT fk_vendor_contracts_property
-    FOREIGN KEY (property_id) REFERENCES properties(property_id)
+    FOREIGN KEY (property_id) REFERENCES properties(id)
     ON DELETE CASCADE;
 
 -- Contract Management
 ALTER TABLE vendor_contracts
     ADD CONSTRAINT fk_vendor_contracts_owner
-    FOREIGN KEY (contract_owner) REFERENCES users(user_id)
+    FOREIGN KEY (contract_owner) REFERENCES users(id)
     ON DELETE SET NULL;
 
 ALTER TABLE vendor_contracts
     ADD CONSTRAINT fk_vendor_contracts_approver
-    FOREIGN KEY (approver_id) REFERENCES users(user_id)
+    FOREIGN KEY (approver_id) REFERENCES users(id)
     ON DELETE SET NULL;
 
 ALTER TABLE vendor_contracts
     ADD CONSTRAINT fk_vendor_contracts_approved_by
-    FOREIGN KEY (approved_by) REFERENCES users(user_id)
+    FOREIGN KEY (approved_by) REFERENCES users(id)
     ON DELETE SET NULL;
 
 -- Legal Review
 ALTER TABLE vendor_contracts
     ADD CONSTRAINT fk_vendor_contracts_legal_reviewer
-    FOREIGN KEY (legal_reviewed_by) REFERENCES users(user_id)
+    FOREIGN KEY (legal_reviewed_by) REFERENCES users(id)
     ON DELETE SET NULL;
 
 -- Termination
 ALTER TABLE vendor_contracts
     ADD CONSTRAINT fk_vendor_contracts_terminated_by
-    FOREIGN KEY (terminated_by) REFERENCES users(user_id)
+    FOREIGN KEY (terminated_by) REFERENCES users(id)
     ON DELETE SET NULL;
 
 -- Related Contracts
@@ -58,16 +58,16 @@ ALTER TABLE vendor_contracts
 -- Audit Fields
 ALTER TABLE vendor_contracts
     ADD CONSTRAINT fk_vendor_contracts_created_by
-    FOREIGN KEY (created_by) REFERENCES users(user_id)
+    FOREIGN KEY (created_by) REFERENCES users(id)
     ON DELETE SET NULL;
 
 ALTER TABLE vendor_contracts
     ADD CONSTRAINT fk_vendor_contracts_updated_by
-    FOREIGN KEY (updated_by) REFERENCES users(user_id)
+    FOREIGN KEY (updated_by) REFERENCES users(id)
     ON DELETE SET NULL;
 
 -- Soft Delete
 ALTER TABLE vendor_contracts
     ADD CONSTRAINT fk_vendor_contracts_deleted_by
-    FOREIGN KEY (deleted_by) REFERENCES users(user_id)
+    FOREIGN KEY (deleted_by) REFERENCES users(id)
     ON DELETE SET NULL;

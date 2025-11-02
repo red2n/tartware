@@ -2,12 +2,12 @@
 
 ALTER TABLE police_reports
     ADD CONSTRAINT fk_police_reports_tenant
-    FOREIGN KEY (tenant_id) REFERENCES tenants(tenant_id)
+    FOREIGN KEY (tenant_id) REFERENCES tenants(id)
     ON DELETE CASCADE;
 
 ALTER TABLE police_reports
     ADD CONSTRAINT fk_police_reports_property
-    FOREIGN KEY (property_id) REFERENCES properties(property_id)
+    FOREIGN KEY (property_id) REFERENCES properties(id)
     ON DELETE CASCADE;
 
 ALTER TABLE police_reports
@@ -17,7 +17,7 @@ ALTER TABLE police_reports
 
 ALTER TABLE police_reports
     ADD CONSTRAINT fk_police_reports_room
-    FOREIGN KEY (room_id) REFERENCES rooms(room_id)
+    FOREIGN KEY (room_id) REFERENCES rooms(id)
     ON DELETE SET NULL;
 
 ALTER TABLE police_reports
@@ -27,15 +27,15 @@ ALTER TABLE police_reports
 
 ALTER TABLE police_reports
     ADD CONSTRAINT fk_police_reports_created_by
-    FOREIGN KEY (created_by) REFERENCES users(user_id)
+    FOREIGN KEY (created_by) REFERENCES users(id)
     ON DELETE SET NULL;
 
 ALTER TABLE police_reports
     ADD CONSTRAINT fk_police_reports_updated_by
-    FOREIGN KEY (updated_by) REFERENCES users(user_id)
+    FOREIGN KEY (updated_by) REFERENCES users(id)
     ON DELETE SET NULL;
 
 ALTER TABLE police_reports
     ADD CONSTRAINT fk_police_reports_deleted_by
-    FOREIGN KEY (deleted_by) REFERENCES users(user_id)
+    FOREIGN KEY (deleted_by) REFERENCES users(id)
     ON DELETE SET NULL;

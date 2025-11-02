@@ -24,8 +24,8 @@ CREATE INDEX idx_transport_requests_airport ON transportation_requests(property_
 
 -- Pickup date/time indexes
 CREATE INDEX idx_transport_requests_pickup_date ON transportation_requests(property_id, requested_pickup_datetime) WHERE is_deleted = FALSE;
-CREATE INDEX idx_transport_requests_today ON transportation_requests(property_id, requested_pickup_datetime) WHERE is_deleted = FALSE AND DATE(requested_pickup_datetime) = CURRENT_DATE;
-CREATE INDEX idx_transport_requests_upcoming ON transportation_requests(property_id, requested_pickup_datetime) WHERE is_deleted = FALSE AND requested_pickup_datetime >= CURRENT_TIMESTAMP;
+CREATE INDEX idx_transport_requests_today ON transportation_requests(property_id, requested_pickup_datetime) WHERE is_deleted = FALSE AND requested_pickup_datetime IS NOT NULL;
+CREATE INDEX idx_transport_requests_upcoming ON transportation_requests(property_id, requested_pickup_datetime) WHERE is_deleted = FALSE AND requested_pickup_datetime IS NOT NULL;
 
 -- Vehicle assignment
 CREATE INDEX idx_transport_requests_vehicle ON transportation_requests(vehicle_id, requested_pickup_datetime) WHERE is_deleted = FALSE;
@@ -33,7 +33,7 @@ CREATE INDEX idx_transport_requests_unassigned ON transportation_requests(proper
 
 -- Driver assignment
 CREATE INDEX idx_transport_requests_driver ON transportation_requests(driver_id, requested_pickup_datetime) WHERE is_deleted = FALSE;
-CREATE INDEX idx_transport_requests_driver_today ON transportation_requests(driver_id, requested_pickup_datetime) WHERE is_deleted = FALSE AND DATE(requested_pickup_datetime) = CURRENT_DATE;
+CREATE INDEX idx_transport_requests_driver_today ON transportation_requests(driver_id, requested_pickup_datetime) WHERE is_deleted = FALSE AND requested_pickup_datetime IS NOT NULL;
 
 -- Dispatch tracking
 CREATE INDEX idx_transport_requests_dispatched ON transportation_requests(property_id, dispatch_time) WHERE is_deleted = FALSE AND dispatched = TRUE;
@@ -48,7 +48,7 @@ CREATE INDEX idx_transport_requests_unconfirmed ON transportation_requests(prope
 
 -- Completion tracking
 CREATE INDEX idx_transport_requests_completed ON transportation_requests(property_id, completed_datetime) WHERE is_deleted = FALSE AND request_status = 'COMPLETED';
-CREATE INDEX idx_transport_requests_incomplete ON transportation_requests(property_id, requested_pickup_datetime) WHERE is_deleted = FALSE AND requested_pickup_datetime < CURRENT_TIMESTAMP AND request_status NOT IN ('COMPLETED', 'CANCELLED', 'NO_SHOW');
+CREATE INDEX idx_transport_requests_incomplete ON transportation_requests(property_id, requested_pickup_datetime) WHERE is_deleted = FALSE AND request_status NOT IN ('COMPLETED', 'CANCELLED', 'NO_SHOW');
 
 -- Special needs
 CREATE INDEX idx_transport_requests_wheelchair ON transportation_requests(property_id, requested_pickup_datetime) WHERE is_deleted = FALSE AND wheelchair_required = TRUE;
@@ -73,7 +73,7 @@ CREATE INDEX idx_transport_requests_third_party_provider ON transportation_reque
 
 -- Communication tracking
 CREATE INDEX idx_transport_requests_sms_pending ON transportation_requests(property_id, sms_sent, requested_pickup_datetime) WHERE is_deleted = FALSE AND sms_sent = FALSE;
-CREATE INDEX idx_transport_requests_reminder_pending ON transportation_requests(property_id, reminder_sent, requested_pickup_datetime) WHERE is_deleted = FALSE AND reminder_sent = FALSE AND requested_pickup_datetime > CURRENT_TIMESTAMP;
+CREATE INDEX idx_transport_requests_reminder_pending ON transportation_requests(property_id, reminder_sent, requested_pickup_datetime) WHERE is_deleted = FALSE AND reminder_sent = FALSE;
 
 -- Real-time tracking
 CREATE INDEX idx_transport_requests_tracking ON transportation_requests(property_id, real_time_tracking_enabled) WHERE is_deleted = FALSE AND real_time_tracking_enabled = TRUE;

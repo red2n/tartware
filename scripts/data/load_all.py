@@ -59,7 +59,8 @@ from analytics_reporting import (
 
 from staff_operations import (
     insert_staff_schedules, insert_staff_tasks, insert_shift_handovers,
-    insert_maintenance_requests, insert_incident_reports
+    insert_maintenance_requests, insert_incident_reports, insert_vehicles,
+    insert_shuttle_schedules, insert_transportation_requests
 )
 
 from marketing_sales import (
@@ -68,7 +69,9 @@ from marketing_sales import (
 )
 
 from mobile_digital import (
-    insert_mobile_keys, insert_qr_codes, insert_push_notifications
+    insert_mobile_keys, insert_qr_codes, insert_push_notifications,
+    insert_mobile_check_ins, insert_digital_registration_cards,
+    insert_contactless_requests
 )
 
 from compliance_legal import (
@@ -79,6 +82,11 @@ from compliance_legal import (
 from integrations import (
     insert_webhook_subscriptions, insert_integration_mappings, insert_data_sync_status,
     insert_api_logs, insert_vendor_contracts, insert_reservation_status_history
+)
+
+from smart_rooms import (
+    insert_smart_room_devices, insert_room_energy_usage,
+    insert_guest_room_preferences, insert_device_events_log
 )
 
 # Initialize Faker
@@ -250,7 +258,18 @@ def main():
         insert_shift_handovers(conn)
         insert_maintenance_requests(conn)
         insert_incident_reports(conn)
+        insert_vehicles(conn)
+        insert_shuttle_schedules(conn)
+        insert_transportation_requests(conn)
         insert_reservation_status_history(conn)
+
+        print("\n" + "=" * 60)
+        print("SMART ROOMS & IoT")
+        print("=" * 60)
+        insert_smart_room_devices(conn)
+        insert_room_energy_usage(conn)
+        insert_guest_room_preferences(conn)
+        insert_device_events_log(conn)
 
         print("\n" + "=" * 60)
         print("MARKETING & SALES")
@@ -267,6 +286,9 @@ def main():
         insert_mobile_keys(conn)
         insert_qr_codes(conn)
         insert_push_notifications(conn)
+        insert_mobile_check_ins(conn)
+        insert_digital_registration_cards(conn)
+        insert_contactless_requests(conn)
 
         print("\n" + "=" * 60)
         print("COMPLIANCE & LEGAL")

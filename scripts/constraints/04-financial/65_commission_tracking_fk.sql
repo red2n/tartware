@@ -3,52 +3,52 @@
 -- Multi-Tenancy
 ALTER TABLE commission_tracking
     ADD CONSTRAINT fk_commission_tracking_tenant
-    FOREIGN KEY (tenant_id) REFERENCES tenants(tenant_id)
+    FOREIGN KEY (tenant_id) REFERENCES tenants(id)
     ON DELETE CASCADE;
 
 ALTER TABLE commission_tracking
     ADD CONSTRAINT fk_commission_tracking_property
-    FOREIGN KEY (property_id) REFERENCES properties(property_id)
+    FOREIGN KEY (property_id) REFERENCES properties(id)
     ON DELETE CASCADE;
 
 -- Beneficiaries
 ALTER TABLE commission_tracking
     ADD CONSTRAINT fk_commission_tracking_staff
-    FOREIGN KEY (staff_id) REFERENCES users(user_id)
+    FOREIGN KEY (staff_id) REFERENCES users(id)
     ON DELETE SET NULL;
 
 -- Source Transactions
 ALTER TABLE commission_tracking
     ADD CONSTRAINT fk_commission_tracking_reservation
-    FOREIGN KEY (reservation_id) REFERENCES reservations(reservation_id)
+    FOREIGN KEY (reservation_id) REFERENCES reservations(id)
     ON DELETE SET NULL;
 
 ALTER TABLE commission_tracking
     ADD CONSTRAINT fk_commission_tracking_invoice
-    FOREIGN KEY (invoice_id) REFERENCES invoices(invoice_id)
+    FOREIGN KEY (invoice_id) REFERENCES invoices(id)
     ON DELETE SET NULL;
 
 ALTER TABLE commission_tracking
     ADD CONSTRAINT fk_commission_tracking_payment
-    FOREIGN KEY (payment_id) REFERENCES payments(payment_id)
+    FOREIGN KEY (payment_id) REFERENCES payments(id)
     ON DELETE SET NULL;
 
 -- Guest
 ALTER TABLE commission_tracking
     ADD CONSTRAINT fk_commission_tracking_guest
-    FOREIGN KEY (guest_id) REFERENCES guests(guest_id)
+    FOREIGN KEY (guest_id) REFERENCES guests(id)
     ON DELETE SET NULL;
 
 -- Approval
 ALTER TABLE commission_tracking
     ADD CONSTRAINT fk_commission_tracking_approved_by
-    FOREIGN KEY (approved_by) REFERENCES users(user_id)
+    FOREIGN KEY (approved_by) REFERENCES users(id)
     ON DELETE SET NULL;
 
 -- Payment
 ALTER TABLE commission_tracking
     ADD CONSTRAINT fk_commission_tracking_paid_by
-    FOREIGN KEY (paid_by) REFERENCES users(user_id)
+    FOREIGN KEY (paid_by) REFERENCES users(id)
     ON DELETE SET NULL;
 
 -- Split Commission
@@ -60,7 +60,7 @@ ALTER TABLE commission_tracking
 -- Reversal
 ALTER TABLE commission_tracking
     ADD CONSTRAINT fk_commission_tracking_reversed_by
-    FOREIGN KEY (reversed_by) REFERENCES users(user_id)
+    FOREIGN KEY (reversed_by) REFERENCES users(id)
     ON DELETE SET NULL;
 
 ALTER TABLE commission_tracking
@@ -71,13 +71,13 @@ ALTER TABLE commission_tracking
 -- Adjustment
 ALTER TABLE commission_tracking
     ADD CONSTRAINT fk_commission_tracking_adjusted_by
-    FOREIGN KEY (adjusted_by) REFERENCES users(user_id)
+    FOREIGN KEY (adjusted_by) REFERENCES users(id)
     ON DELETE SET NULL;
 
 -- Dispute
 ALTER TABLE commission_tracking
     ADD CONSTRAINT fk_commission_tracking_dispute_filed_by
-    FOREIGN KEY (dispute_filed_by) REFERENCES users(user_id)
+    FOREIGN KEY (dispute_filed_by) REFERENCES users(id)
     ON DELETE SET NULL;
 
 -- Contract/Agreement
@@ -89,7 +89,7 @@ ALTER TABLE commission_tracking
 -- Reconciliation
 ALTER TABLE commission_tracking
     ADD CONSTRAINT fk_commission_tracking_reconciled_by
-    FOREIGN KEY (reconciled_by) REFERENCES users(user_id)
+    FOREIGN KEY (reconciled_by) REFERENCES users(id)
     ON DELETE SET NULL;
 
 -- Related Commissions
@@ -101,16 +101,16 @@ ALTER TABLE commission_tracking
 -- Audit Fields
 ALTER TABLE commission_tracking
     ADD CONSTRAINT fk_commission_tracking_created_by
-    FOREIGN KEY (created_by) REFERENCES users(user_id)
+    FOREIGN KEY (created_by) REFERENCES users(id)
     ON DELETE SET NULL;
 
 ALTER TABLE commission_tracking
     ADD CONSTRAINT fk_commission_tracking_updated_by
-    FOREIGN KEY (updated_by) REFERENCES users(user_id)
+    FOREIGN KEY (updated_by) REFERENCES users(id)
     ON DELETE SET NULL;
 
 -- Soft Delete
 ALTER TABLE commission_tracking
     ADD CONSTRAINT fk_commission_tracking_deleted_by
-    FOREIGN KEY (deleted_by) REFERENCES users(user_id)
+    FOREIGN KEY (deleted_by) REFERENCES users(id)
     ON DELETE SET NULL;

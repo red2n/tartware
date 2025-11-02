@@ -127,7 +127,7 @@ CREATE TABLE deposit_schedules (
     -- Soft Delete
     is_deleted BOOLEAN DEFAULT FALSE,
     deleted_at TIMESTAMP,
-    deleted_by VARCHAR(100),
+    deleted_by UUID,
 
     -- Optimistic Locking
     version BIGINT DEFAULT 0,

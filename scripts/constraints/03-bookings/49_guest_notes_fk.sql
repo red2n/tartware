@@ -2,47 +2,47 @@
 
 ALTER TABLE guest_notes
     ADD CONSTRAINT fk_guest_notes_tenant
-    FOREIGN KEY (tenant_id) REFERENCES tenants(tenant_id)
+    FOREIGN KEY (tenant_id) REFERENCES tenants(id)
     ON DELETE CASCADE;
 
 ALTER TABLE guest_notes
     ADD CONSTRAINT fk_guest_notes_property
-    FOREIGN KEY (property_id) REFERENCES properties(property_id)
+    FOREIGN KEY (property_id) REFERENCES properties(id)
     ON DELETE CASCADE;
 
 ALTER TABLE guest_notes
     ADD CONSTRAINT fk_guest_notes_guest
-    FOREIGN KEY (guest_id) REFERENCES guests(guest_id)
+    FOREIGN KEY (guest_id) REFERENCES guests(id)
     ON DELETE CASCADE;
 
 ALTER TABLE guest_notes
     ADD CONSTRAINT fk_guest_notes_reservation
-    FOREIGN KEY (reservation_id) REFERENCES reservations(reservation_id)
+    FOREIGN KEY (reservation_id) REFERENCES reservations(id)
     ON DELETE SET NULL;
 
 ALTER TABLE guest_notes
     ADD CONSTRAINT fk_guest_notes_assigned_to
-    FOREIGN KEY (assigned_to) REFERENCES users(user_id)
+    FOREIGN KEY (assigned_to) REFERENCES users(id)
     ON DELETE SET NULL;
 
 ALTER TABLE guest_notes
     ADD CONSTRAINT fk_guest_notes_resolved_by
-    FOREIGN KEY (resolved_by) REFERENCES users(user_id)
+    FOREIGN KEY (resolved_by) REFERENCES users(id)
     ON DELETE SET NULL;
 
 ALTER TABLE guest_notes
     ADD CONSTRAINT fk_guest_notes_created_by
-    FOREIGN KEY (created_by) REFERENCES users(user_id)
+    FOREIGN KEY (created_by) REFERENCES users(id)
     ON DELETE SET NULL;
 
 ALTER TABLE guest_notes
     ADD CONSTRAINT fk_guest_notes_updated_by
-    FOREIGN KEY (updated_by) REFERENCES users(user_id)
+    FOREIGN KEY (updated_by) REFERENCES users(id)
     ON DELETE SET NULL;
 
 ALTER TABLE guest_notes
     ADD CONSTRAINT fk_guest_notes_acknowledged_by
-    FOREIGN KEY (acknowledged_by) REFERENCES users(user_id)
+    FOREIGN KEY (acknowledged_by) REFERENCES users(id)
     ON DELETE SET NULL;
 
 ALTER TABLE guest_notes
@@ -52,5 +52,5 @@ ALTER TABLE guest_notes
 
 ALTER TABLE guest_notes
     ADD CONSTRAINT fk_guest_notes_deleted_by
-    FOREIGN KEY (deleted_by) REFERENCES users(user_id)
+    FOREIGN KEY (deleted_by) REFERENCES users(id)
     ON DELETE SET NULL;

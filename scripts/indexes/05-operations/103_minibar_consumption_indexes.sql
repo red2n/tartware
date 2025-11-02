@@ -19,7 +19,7 @@ CREATE INDEX idx_minibar_consumption_item_code ON minibar_consumption(item_code,
 -- Date-based indexes
 CREATE INDEX idx_minibar_consumption_date ON minibar_consumption(property_id, consumption_date) WHERE is_deleted = FALSE;
 CREATE INDEX idx_minibar_consumption_timestamp ON minibar_consumption(property_id, consumption_timestamp) WHERE is_deleted = FALSE;
-CREATE INDEX idx_minibar_consumption_today ON minibar_consumption(property_id, room_number) WHERE is_deleted = FALSE AND consumption_date = CURRENT_DATE;
+CREATE INDEX idx_minibar_consumption_today ON minibar_consumption(property_id, room_number) WHERE is_deleted = FALSE AND consumption_date IS NOT NULL;
 
 -- Posting status indexes
 CREATE INDEX idx_minibar_consumption_pending ON minibar_consumption(property_id, posting_status) WHERE is_deleted = FALSE AND posting_status = 'PENDING';
@@ -40,7 +40,7 @@ CREATE INDEX idx_minibar_consumption_hk_report ON minibar_consumption(hk_report_
 
 -- Verification status
 CREATE INDEX idx_minibar_consumption_unverified ON minibar_consumption(property_id, verified, consumption_date) WHERE is_deleted = FALSE AND verified = FALSE;
-CREATE INDEX idx_minibar_consumption_verification_pending ON minibar_consumption(property_id, consumption_date) WHERE is_deleted = FALSE AND verified = FALSE AND consumption_date >= CURRENT_DATE - INTERVAL '7 days';
+CREATE INDEX idx_minibar_consumption_verification_pending ON minibar_consumption(property_id, consumption_date) WHERE is_deleted = FALSE AND verified = FALSE AND consumption_date IS NOT NULL;
 
 -- Dispute tracking
 CREATE INDEX idx_minibar_consumption_disputed ON minibar_consumption(property_id, disputed, dispute_resolved) WHERE is_deleted = FALSE AND disputed = TRUE;

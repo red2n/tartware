@@ -26,27 +26,27 @@ CREATE INDEX idx_event_bookings_reservation ON event_bookings(reservation_id) WH
 CREATE INDEX idx_event_bookings_group_booking ON event_bookings(group_booking_id) WHERE is_deleted = FALSE;
 
 -- Time-based indexes
-CREATE INDEX idx_event_bookings_upcoming ON event_bookings(property_id, event_date, start_time) WHERE is_deleted = FALSE AND event_date >= CURRENT_DATE;
-CREATE INDEX idx_event_bookings_today ON event_bookings(property_id, event_date) WHERE is_deleted = FALSE AND event_date = CURRENT_DATE;
+CREATE INDEX idx_event_bookings_upcoming ON event_bookings(property_id, event_date, start_time) WHERE is_deleted = FALSE;
+CREATE INDEX idx_event_bookings_today ON event_bookings(property_id, event_date) WHERE is_deleted = FALSE;
 
 -- Financial indexes
 CREATE INDEX idx_event_bookings_folio ON event_bookings(folio_id) WHERE is_deleted = FALSE;
-CREATE INDEX idx_event_bookings_deposit_status ON event_bookings(property_id, deposit_due_date, deposit_received) WHERE is_deleted = FALSE AND deposit_received = FALSE;
+CREATE INDEX idx_event_bookings_deposit_status ON event_bookings(property_id, deposit_due_date) WHERE is_deleted = FALSE AND (deposit_paid IS NULL OR deposit_paid < deposit_required);
 
 -- Event type indexes
 CREATE INDEX idx_event_bookings_type ON event_bookings(property_id, event_type, event_date) WHERE is_deleted = FALSE;
 
 -- Recurring events
-CREATE INDEX idx_event_bookings_recurring ON event_bookings(parent_event_id) WHERE is_deleted = FALSE AND recurring = TRUE;
+CREATE INDEX idx_event_bookings_recurring ON event_bookings(parent_event_id) WHERE is_deleted = FALSE AND is_recurring = TRUE;
 
 -- Catering indexes
 CREATE INDEX idx_event_bookings_catering ON event_bookings(property_id, event_date) WHERE is_deleted = FALSE AND catering_required = TRUE;
 
 -- Setup tracking
-CREATE INDEX idx_event_bookings_setup_pending ON event_bookings(property_id, event_date) WHERE is_deleted = FALSE AND setup_completed = FALSE AND event_date >= CURRENT_DATE;
+CREATE INDEX idx_event_bookings_setup_pending ON event_bookings(property_id, event_date) WHERE is_deleted = FALSE AND actual_start_time IS NULL;
 
 -- JSONB indexes (GIN)
-CREATE INDEX idx_event_bookings_equipment_gin ON event_bookings USING GIN (equipment_required) WHERE is_deleted = FALSE;
+CREATE INDEX idx_event_bookings_equipment_gin ON event_bookings USING GIN (required_equipment) WHERE is_deleted = FALSE;
 CREATE INDEX idx_event_bookings_metadata_gin ON event_bookings USING GIN (metadata) WHERE is_deleted = FALSE;
 
 -- Audit indexes

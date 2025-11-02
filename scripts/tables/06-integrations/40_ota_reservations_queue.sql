@@ -59,11 +59,6 @@ CREATE TABLE IF NOT EXISTS ota_reservations_queue (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
 
-    -- Foreign Keys
-    CONSTRAINT fk_ota_queue_tenant FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE,
-    CONSTRAINT fk_ota_queue_property FOREIGN KEY (property_id) REFERENCES properties(id) ON DELETE CASCADE,
-    CONSTRAINT fk_ota_queue_ota_config FOREIGN KEY (ota_configuration_id) REFERENCES ota_configurations(id) ON DELETE CASCADE,
-    CONSTRAINT fk_ota_queue_reservation FOREIGN KEY (reservation_id) REFERENCES reservations(id) ON DELETE SET NULL,
     CONSTRAINT chk_ota_queue_attempts CHECK (processing_attempts >= 0),
     CONSTRAINT chk_ota_queue_dates CHECK (check_out_date > check_in_date)
 );

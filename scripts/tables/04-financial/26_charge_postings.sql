@@ -110,13 +110,13 @@ CREATE TABLE charge_postings (
     reconciled_at TIMESTAMP,
     reconciliation_batch VARCHAR(50),
 
-    created_by VARCHAR(100),
-    updated_by VARCHAR(100),
+        created_by UUID,
+        updated_by UUID,
 
     -- Soft Delete
     is_deleted BOOLEAN DEFAULT FALSE,
     deleted_at TIMESTAMP,
-    deleted_by VARCHAR(100),
+        deleted_by UUID,
 
     -- Optimistic Locking
     version BIGINT DEFAULT 0,
@@ -143,10 +143,8 @@ CREATE TABLE charge_postings (
     )
 );
 
--- Add table comment
 COMMENT ON TABLE charge_postings IS 'All financial transactions (charges and payments) posted to guest folios';
 
--- Add column comments
 COMMENT ON COLUMN charge_postings.posting_id IS 'Unique identifier for posting';
 COMMENT ON COLUMN charge_postings.business_date IS 'Property business date (for night audit)';
 COMMENT ON COLUMN charge_postings.transaction_type IS 'CHARGE, PAYMENT, ADJUSTMENT, REFUND, TRANSFER, VOID';
@@ -158,16 +156,9 @@ COMMENT ON COLUMN charge_postings.is_voided IS 'Whether this transaction has bee
 COMMENT ON COLUMN charge_postings.void_posting_id IS 'Reference to the void transaction if this was voided';
 COMMENT ON COLUMN charge_postings.gl_account IS 'General ledger account code for accounting integration';
 
--- Create indexes (will be created via indexes file)
--- CREATE INDEX idx_postings_folio ON charge_postings(folio_id, posting_date DESC) WHERE deleted_at IS NULL;
--- CREATE INDEX idx_postings_reservation ON charge_postings(reservation_id, posting_date DESC) WHERE deleted_at IS NULL;
--- CREATE INDEX idx_postings_date ON charge_postings(tenant_id, posting_date, business_date) WHERE deleted_at IS NULL;
--- CREATE INDEX idx_postings_charge_code ON charge_postings(charge_code, posting_date DESC) WHERE deleted_at IS NULL;
 
--- Grant permissions
 GRANT SELECT, INSERT, UPDATE ON charge_postings TO tartware_app;
 
--- Success message
 \echo '✓ Table created: charge_postings (26/37)'
 \echo '  - All folio transactions'
 \echo '  - POS integration support'

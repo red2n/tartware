@@ -2,32 +2,32 @@
 
 ALTER TABLE shift_handovers
     ADD CONSTRAINT fk_shift_handovers_tenant
-    FOREIGN KEY (tenant_id) REFERENCES tenants(tenant_id)
+    FOREIGN KEY (tenant_id) REFERENCES tenants(id)
     ON DELETE CASCADE;
 
 ALTER TABLE shift_handovers
     ADD CONSTRAINT fk_shift_handovers_property
-    FOREIGN KEY (property_id) REFERENCES properties(property_id)
+    FOREIGN KEY (property_id) REFERENCES properties(id)
     ON DELETE CASCADE;
 
 ALTER TABLE shift_handovers
     ADD CONSTRAINT fk_shift_handovers_outgoing_user
-    FOREIGN KEY (outgoing_user_id) REFERENCES users(user_id)
+    FOREIGN KEY (outgoing_user_id) REFERENCES users(id)
     ON DELETE CASCADE;
 
 ALTER TABLE shift_handovers
     ADD CONSTRAINT fk_shift_handovers_incoming_user
-    FOREIGN KEY (incoming_user_id) REFERENCES users(user_id)
+    FOREIGN KEY (incoming_user_id) REFERENCES users(id)
     ON DELETE CASCADE;
 
 ALTER TABLE shift_handovers
     ADD CONSTRAINT fk_shift_handovers_acknowledged_by
-    FOREIGN KEY (acknowledged_by) REFERENCES users(user_id)
+    FOREIGN KEY (acknowledged_by) REFERENCES users(id)
     ON DELETE SET NULL;
 
 ALTER TABLE shift_handovers
     ADD CONSTRAINT fk_shift_handovers_manager
-    FOREIGN KEY (manager_id) REFERENCES users(user_id)
+    FOREIGN KEY (manager_id) REFERENCES users(id)
     ON DELETE SET NULL;
 
 ALTER TABLE shift_handovers
@@ -37,15 +37,15 @@ ALTER TABLE shift_handovers
 
 ALTER TABLE shift_handovers
     ADD CONSTRAINT fk_shift_handovers_created_by
-    FOREIGN KEY (created_by) REFERENCES users(user_id)
+    FOREIGN KEY (created_by) REFERENCES users(id)
     ON DELETE SET NULL;
 
 ALTER TABLE shift_handovers
     ADD CONSTRAINT fk_shift_handovers_updated_by
-    FOREIGN KEY (updated_by) REFERENCES users(user_id)
+    FOREIGN KEY (updated_by) REFERENCES users(id)
     ON DELETE SET NULL;
 
 ALTER TABLE shift_handovers
     ADD CONSTRAINT fk_shift_handovers_deleted_by
-    FOREIGN KEY (deleted_by) REFERENCES users(user_id)
+    FOREIGN KEY (deleted_by) REFERENCES users(id)
     ON DELETE SET NULL;

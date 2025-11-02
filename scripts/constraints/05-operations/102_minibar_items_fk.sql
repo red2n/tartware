@@ -9,13 +9,13 @@
 -- Tenant reference
 ALTER TABLE minibar_items
     ADD CONSTRAINT fk_minibar_items_tenant
-    FOREIGN KEY (tenant_id) REFERENCES tenants(tenant_id)
+    FOREIGN KEY (tenant_id) REFERENCES tenants(id)
     ON DELETE CASCADE;
 
 -- Property reference
 ALTER TABLE minibar_items
     ADD CONSTRAINT fk_minibar_items_property
-    FOREIGN KEY (property_id) REFERENCES properties(property_id)
+    FOREIGN KEY (property_id) REFERENCES properties(id)
     ON DELETE CASCADE;
 
 -- Note: supplier_id could reference a suppliers table if it exists

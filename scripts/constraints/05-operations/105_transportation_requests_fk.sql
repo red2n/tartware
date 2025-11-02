@@ -9,25 +9,25 @@
 -- Tenant reference
 ALTER TABLE transportation_requests
     ADD CONSTRAINT fk_transport_requests_tenant
-    FOREIGN KEY (tenant_id) REFERENCES tenants(tenant_id)
+    FOREIGN KEY (tenant_id) REFERENCES tenants(id)
     ON DELETE CASCADE;
 
 -- Property reference
 ALTER TABLE transportation_requests
     ADD CONSTRAINT fk_transport_requests_property
-    FOREIGN KEY (property_id) REFERENCES properties(property_id)
+    FOREIGN KEY (property_id) REFERENCES properties(id)
     ON DELETE CASCADE;
 
 -- Reservation reference
 ALTER TABLE transportation_requests
     ADD CONSTRAINT fk_transport_requests_reservation
-    FOREIGN KEY (reservation_id) REFERENCES reservations(reservation_id)
+    FOREIGN KEY (reservation_id) REFERENCES reservations(id)
     ON DELETE SET NULL;
 
 -- Guest reference
 ALTER TABLE transportation_requests
     ADD CONSTRAINT fk_transport_requests_guest
-    FOREIGN KEY (guest_id) REFERENCES guests(guest_id)
+    FOREIGN KEY (guest_id) REFERENCES guests(id)
     ON DELETE CASCADE;
 
 -- Vehicle reference
@@ -39,7 +39,7 @@ ALTER TABLE transportation_requests
 -- Driver reference
 ALTER TABLE transportation_requests
     ADD CONSTRAINT fk_transport_requests_driver
-    FOREIGN KEY (driver_id) REFERENCES users(user_id)
+    FOREIGN KEY (driver_id) REFERENCES users(id)
     ON DELETE SET NULL;
 
 -- Folio reference
@@ -57,13 +57,13 @@ ALTER TABLE transportation_requests
 -- Dispatched by user reference
 ALTER TABLE transportation_requests
     ADD CONSTRAINT fk_transport_requests_dispatched_by
-    FOREIGN KEY (dispatched_by) REFERENCES users(user_id)
+    FOREIGN KEY (dispatched_by) REFERENCES users(id)
     ON DELETE SET NULL;
 
 -- Completed by user reference
 ALTER TABLE transportation_requests
     ADD CONSTRAINT fk_transport_requests_completed_by
-    FOREIGN KEY (completed_by) REFERENCES users(user_id)
+    FOREIGN KEY (completed_by) REFERENCES users(id)
     ON DELETE SET NULL;
 
 -- Parent request reference (for recurring)

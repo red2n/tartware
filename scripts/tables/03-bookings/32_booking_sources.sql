@@ -132,13 +132,13 @@ CREATE TABLE booking_sources (
     -- Metadata
     metadata JSONB,
 
-        created_by VARCHAR(100),
-    updated_by VARCHAR(100),
+    created_by UUID,
+    updated_by UUID,
 
     -- Soft Delete
     is_deleted BOOLEAN DEFAULT FALSE,
     deleted_at TIMESTAMP,
-    deleted_by VARCHAR(100),
+    deleted_by UUID,
 
     -- Optimistic Locking
     version BIGINT DEFAULT 0,

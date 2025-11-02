@@ -62,11 +62,6 @@ CREATE TABLE IF NOT EXISTS ota_configurations (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     deleted_at TIMESTAMP WITH TIME ZONE,
 
-    -- Foreign Keys
-    CONSTRAINT fk_ota_config_tenant FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE,
-    CONSTRAINT fk_ota_config_property FOREIGN KEY (property_id) REFERENCES properties(id) ON DELETE CASCADE,
-    CONSTRAINT fk_ota_config_created_by FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL,
-    CONSTRAINT fk_ota_config_updated_by FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL,
     CONSTRAINT chk_ota_config_commission CHECK (commission_percentage >= 0 AND commission_percentage <= 100),
     CONSTRAINT chk_ota_config_sync_frequency CHECK (sync_frequency_minutes > 0)
 );

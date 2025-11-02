@@ -49,9 +49,6 @@ CREATE TABLE IF NOT EXISTS performance_reports (
     CONSTRAINT chk_status CHECK (status IN ('PENDING', 'SENT', 'FAILED'))
 );
 
-CREATE INDEX idx_performance_reports_type_date ON performance_reports(report_type, generated_at DESC);
-CREATE INDEX idx_performance_reports_severity ON performance_reports(severity);
-
 COMMENT ON TABLE performance_reports IS
 'Stores generated performance reports with JSON data';
 
@@ -86,9 +83,6 @@ CREATE TABLE IF NOT EXISTS report_schedules (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE INDEX idx_report_schedules_active ON report_schedules(is_active, next_run)
-WHERE is_active = true;
-
 COMMENT ON TABLE report_schedules IS
 'Configuration for scheduled performance reports';
 
@@ -105,9 +99,6 @@ CREATE TABLE IF NOT EXISTS performance_thresholds (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
-
-CREATE INDEX idx_performance_thresholds_active ON performance_thresholds(is_active)
-WHERE is_active = true;
 
 COMMENT ON TABLE performance_thresholds IS
 'Defines thresholds for performance metrics';
