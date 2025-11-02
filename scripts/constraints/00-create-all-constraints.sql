@@ -19,7 +19,7 @@
 \ir 01-core/03_guests_fk.sql
 
 -- ============================================================================
--- CATEGORY 2: INVENTORY & PRICING CONSTRAINTS (15 files)
+-- CATEGORY 2: INVENTORY & PRICING CONSTRAINTS (18 files)
 -- ============================================================================
 \echo '>>> Creating constraints for: INVENTORY & PRICING'
 
@@ -38,6 +38,9 @@
 \ir 02-inventory/91_group_bookings_fk.sql
 \ir 02-inventory/92_packages_fk.sql
 \ir 02-inventory/93_travel_agent_commissions_fk.sql
+\ir 02-inventory/97_meeting_rooms_fk.sql
+\ir 02-inventory/98_event_bookings_fk.sql
+\ir 02-inventory/99_banquet_event_orders_fk.sql
 
 -- ============================================================================
 -- CATEGORY 3: BOOKINGS & GUEST RELATIONS CONSTRAINTS (14 files)
@@ -78,7 +81,7 @@
 \ir 04-financial/68_credit_limits_fk.sql
 
 -- ============================================================================
--- CATEGORY 5: OPERATIONS CONSTRAINTS (17 files)
+-- CATEGORY 5: OPERATIONS CONSTRAINTS (22 files)
 -- ============================================================================
 \echo '>>> Creating constraints for: OPERATIONS & SERVICES'
 
@@ -99,6 +102,11 @@
 \ir 05-operations/99_smart_room_devices_fk.sql
 \ir 05-operations/100_mobile_check_ins_fk.sql
 \ir 05-operations/101_asset_inventory_fk.sql
+\ir 05-operations/102_minibar_items_fk.sql
+\ir 05-operations/103_minibar_consumption_fk.sql
+\ir 05-operations/104_vehicles_fk.sql
+\ir 05-operations/105_transportation_requests_fk.sql
+\ir 05-operations/106_shuttle_schedules_fk.sql
 
 -- ============================================================================
 -- CATEGORY 6: INTEGRATIONS & CHANNELS CONSTRAINTS (20 files)

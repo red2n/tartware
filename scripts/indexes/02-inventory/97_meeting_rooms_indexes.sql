@@ -1,0 +1,37 @@
+-- =====================================================
+-- Indexes for meeting_rooms table
+-- =====================================================
+
+\c tartware
+
+\echo 'Creating indexes for meeting_rooms...'
+
+-- Primary lookup indexes
+CREATE INDEX idx_meeting_rooms_tenant_property ON meeting_rooms(tenant_id, property_id) WHERE is_deleted = FALSE;
+CREATE INDEX idx_meeting_rooms_status ON meeting_rooms(property_id, room_status) WHERE is_deleted = FALSE;
+CREATE INDEX idx_meeting_rooms_name ON meeting_rooms(property_id, room_name) WHERE is_deleted = FALSE;
+
+-- Capacity search indexes
+CREATE INDEX idx_meeting_rooms_capacity ON meeting_rooms(property_id, max_capacity) WHERE is_deleted = FALSE AND room_status = 'AVAILABLE';
+CREATE INDEX idx_meeting_rooms_theater_capacity ON meeting_rooms(property_id, theater_capacity) WHERE is_deleted = FALSE AND theater_capacity > 0;
+CREATE INDEX idx_meeting_rooms_banquet_capacity ON meeting_rooms(property_id, banquet_capacity) WHERE is_deleted = FALSE AND banquet_capacity > 0;
+
+-- Availability indexes
+CREATE INDEX idx_meeting_rooms_available ON meeting_rooms(property_id, room_status) WHERE is_deleted = FALSE AND room_status IN ('AVAILABLE', 'MAINTENANCE_SCHEDULED');
+
+-- Floor/location indexes
+CREATE INDEX idx_meeting_rooms_floor ON meeting_rooms(property_id, floor_number) WHERE is_deleted = FALSE;
+CREATE INDEX idx_meeting_rooms_building ON meeting_rooms(property_id, building) WHERE is_deleted = FALSE;
+
+-- Features/amenities (GIN index for JSONB)
+CREATE INDEX idx_meeting_rooms_equipment_gin ON meeting_rooms USING GIN (equipment_included) WHERE is_deleted = FALSE;
+CREATE INDEX idx_meeting_rooms_features_gin ON meeting_rooms USING GIN (features) WHERE is_deleted = FALSE;
+
+-- Pricing indexes
+CREATE INDEX idx_meeting_rooms_pricing ON meeting_rooms(property_id, base_rate_halfday, base_rate_fullday) WHERE is_deleted = FALSE AND room_status = 'AVAILABLE';
+
+-- Audit indexes
+CREATE INDEX idx_meeting_rooms_created ON meeting_rooms(created_at);
+CREATE INDEX idx_meeting_rooms_updated ON meeting_rooms(updated_at);
+
+\echo 'Indexes for meeting_rooms created successfully!'

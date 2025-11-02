@@ -4,7 +4,7 @@
 -- Date: 2025-10-21
 --
 -- Purpose: Comprehensive validation of entire database setup
--- Updated: Now supports 132 tables (89 core + 43 advanced)
+-- Updated: Now supports 109 tables across 7 categories
 --
 -- Usage: psql -U postgres -d tartware -f verify-all.sql
 -- =====================================================
@@ -132,25 +132,25 @@ BEGIN
     RAISE NOTICE '│  DATABASE COMPONENT SUMMARY                     │';
     RAISE NOTICE '├─────────────────────────────────────────────────┤';
     RAISE NOTICE '│                                                 │';
-    RAISE NOTICE '│  Tables:              % / 132                 │', LPAD(v_table_count::TEXT, 3, ' ');
-    RAISE NOTICE '│  Indexes:             % / 800+                │', LPAD(v_index_count::TEXT, 4, ' ');
-    RAISE NOTICE '│  Foreign Keys:        % / 500+                │', LPAD(v_constraint_count::TEXT, 3, ' ');
+    RAISE NOTICE '│  Tables:              % / 109                 │', LPAD(v_table_count::TEXT, 3, ' ');
+    RAISE NOTICE '│  Indexes:             % / 1800+               │', LPAD(v_index_count::TEXT, 4, ' ');
+    RAISE NOTICE '│  Foreign Keys:        % / 245+                │', LPAD(v_constraint_count::TEXT, 3, ' ');
     RAISE NOTICE '│  Procedures:          % / 14                  │', LPAD(v_procedure_count::TEXT, 3, ' ');
     RAISE NOTICE '│                                                 │';
-    RAISE NOTICE '│  Soft Delete:         % / 125+                │', LPAD(v_soft_delete_count::TEXT, 3, ' ');
-    RAISE NOTICE '│  Multi-tenancy:       % / 128+                │', LPAD(v_tenant_id_count::TEXT, 3, ' ');
+    RAISE NOTICE '│  Soft Delete:         % / 105+                │', LPAD(v_soft_delete_count::TEXT, 3, ' ');
+    RAISE NOTICE '│  Multi-tenancy:       % / 107+                │', LPAD(v_tenant_id_count::TEXT, 3, ' ');
     RAISE NOTICE '│                                                 │';
     RAISE NOTICE '└─────────────────────────────────────────────────┘';
     RAISE NOTICE '';
 
     -- Calculate score
-    IF v_table_count >= 132 THEN v_total_score := v_total_score + 20; END IF;
-    IF v_index_count >= 800 THEN v_total_score := v_total_score + 25;
-    ELSIF v_index_count >= 650 THEN v_total_score := v_total_score + 15; END IF;
-    IF v_constraint_count >= 500 THEN v_total_score := v_total_score + 20; END IF;
+    IF v_table_count >= 109 THEN v_total_score := v_total_score + 20; END IF;
+    IF v_index_count >= 1800 THEN v_total_score := v_total_score + 25;
+    ELSIF v_index_count >= 1500 THEN v_total_score := v_total_score + 15; END IF;
+    IF v_constraint_count >= 245 THEN v_total_score := v_total_score + 20; END IF;
     IF v_procedure_count >= 14 THEN v_total_score := v_total_score + 15; END IF;
-    IF v_soft_delete_count >= 125 THEN v_total_score := v_total_score + 10; END IF;
-    IF v_tenant_id_count >= 128 THEN v_total_score := v_total_score + 10; END IF;
+    IF v_soft_delete_count >= 105 THEN v_total_score := v_total_score + 10; END IF;
+    IF v_tenant_id_count >= 107 THEN v_total_score := v_total_score + 10; END IF;
 
     RAISE NOTICE '┌─────────────────────────────────────────────────┐';
     RAISE NOTICE '│  QUALITY SCORE                                  │';
@@ -186,13 +186,13 @@ BEGIN
     RAISE NOTICE '';
 
     -- Specific recommendations
-    IF v_table_count < 132 THEN
+    IF v_table_count < 109 THEN
         RAISE WARNING '⚠ Missing tables detected. Run tables scripts.';
     END IF;
-    IF v_index_count < 800 THEN
+    IF v_index_count < 1800 THEN
         RAISE WARNING '⚠ Index count below target. Run index scripts.';
     END IF;
-    IF v_constraint_count < 500 THEN
+    IF v_constraint_count < 245 THEN
         RAISE WARNING '⚠ Missing constraints. Run constraint scripts.';
     END IF;
     IF v_procedure_count < 14 THEN

@@ -144,6 +144,16 @@
 \i 12_install_all_performance_monitoring.sql
 
 -- =====================================================
+-- PHASE 13: Optimistic Lock Enforcement
+-- =====================================================
+\echo ''
+\echo '======================================================'
+\echo '  Phase 13: Enforcing Optimistic Locking'
+\echo '======================================================'
+\echo ''
+\i 13_enforce_optimistic_locking.sql
+
+-- =====================================================
 -- Summary Report
 -- =====================================================
 \echo ''
@@ -199,7 +209,9 @@ BEGIN
             'update_performance_baselines', 'detect_query_degradation',
             'detect_connection_spike', 'detect_cache_degradation',
             'monitor_performance_degradation', 'get_active_alerts',
-            'acknowledge_alert', 'acknowledge_alerts_by_type'
+            'acknowledge_alert', 'acknowledge_alerts_by_type',
+            -- Optimistic locking (1)
+            'enforce_version_lock'
         );
 
     -- Count installed views (expanded list)
@@ -239,7 +251,7 @@ BEGIN
     RAISE NOTICE '│  INSTALLATION SUMMARY                                │';
     RAISE NOTICE '├──────────────────────────────────────────────────────┤';
     RAISE NOTICE '│                                                      │';
-    RAISE NOTICE '│  Functions:           % / 56                       │', LPAD(v_function_count::TEXT, 3, ' ');
+    RAISE NOTICE '│  Functions:           % / 57                       │', LPAD(v_function_count::TEXT, 3, ' ');
     RAISE NOTICE '│  Views:               % / 19                       │', LPAD(v_view_count::TEXT, 3, ' ');
     RAISE NOTICE '│  Audit Table:         %                            │',
         CASE WHEN v_audit_table_exists THEN '✅' ELSE '❌' END;
@@ -266,7 +278,7 @@ BEGIN
     RAISE NOTICE '└──────────────────────────────────────────────────────┘';
     RAISE NOTICE '';
 
-    IF v_function_count = 56 AND v_view_count = 19 AND v_audit_table_exists THEN
+    IF v_function_count = 57 AND v_view_count = 19 AND v_audit_table_exists THEN
         RAISE NOTICE '✅ All components installed successfully!';
         RAISE NOTICE '';
         RAISE NOTICE '🔍 Quick Start - Basic Monitoring:';
@@ -289,7 +301,7 @@ BEGIN
         RAISE NOTICE '  • Performance trends:  SELECT * FROM v_performance_trends;';
     ELSE
         RAISE WARNING '⚠️  Some components may not have installed correctly.';
-        RAISE WARNING 'Expected: 56 functions, 19 views, 1 audit table';
+        RAISE WARNING 'Expected: 57 functions, 19 views, 1 audit table';
         RAISE WARNING 'Found: % functions, % views, % audit table',
             v_function_count, v_view_count,
             CASE WHEN v_audit_table_exists THEN 1 ELSE 0 END;

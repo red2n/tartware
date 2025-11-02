@@ -32,7 +32,7 @@
 SELECT
     '✅ Functions Installed' AS status,
     COUNT(*) AS count,
-    '39 expected' AS expected
+    '40 expected' AS expected
 FROM pg_proc p
 JOIN pg_namespace n ON p.pronamespace = n.oid
 WHERE n.nspname = 'public'
@@ -59,7 +59,9 @@ WHERE n.nspname = 'public'
         'recommend_distinct_indexes', 'optimize_distinct_query',
         -- JOIN parallelism (4)
         'check_parallel_settings', 'analyze_join_parallelism',
-        'explain_parallel_plan', 'recommend_parallel_tuning'
+        'explain_parallel_plan', 'recommend_parallel_tuning',
+        -- Optimistic locking (1)
+        'enforce_version_lock'
     );
 
 \echo ''
@@ -97,7 +99,9 @@ WHERE n.nspname = 'public'
         'recommend_distinct_indexes', 'optimize_distinct_query',
         -- JOIN parallelism (4)
         'check_parallel_settings', 'analyze_join_parallelism',
-        'explain_parallel_plan', 'recommend_parallel_tuning'
+        'explain_parallel_plan', 'recommend_parallel_tuning',
+        -- Optimistic locking (1)
+        'enforce_version_lock'
     )
 ORDER BY p.proname;
 
@@ -218,9 +222,6 @@ WHERE extname IN ('pg_stat_statements', 'uuid-ossp');
 \echo 'Test 1: Validate good query (should pass):'
 \echo '------------------------------------------------------'
 SELECT * FROM validate_query_pattern(
-    'SELECT id, name, email FROM guests WHERE tenant_id = ''123'' AND deleted_at IS NULL LIMIT 100'
-);
-
 \echo ''
 \echo 'Test 2: Validate bad query with SELECT * (should fail):'
 \echo '------------------------------------------------------'
@@ -236,9 +237,6 @@ SELECT * FROM suggest_query_optimization(
 ) LIMIT 3;
 
 -- =====================================================
--- 6. TEST TENANT ISOLATION
--- =====================================================
-\echo ''
 \echo '======================================================'
 \echo '  6. Testing Tenant Isolation Validation'
 \echo '======================================================'
@@ -247,9 +245,6 @@ SELECT * FROM suggest_query_optimization(
 \echo 'Test 1: Query WITH tenant filter (should be safe):'
 \echo '------------------------------------------------------'
 SELECT * FROM validate_tenant_isolation(
-    'SELECT id FROM guests WHERE tenant_id = ''123e4567-e89b-12d3-a456-426614174000''::uuid'
-);
-
 \echo ''
 \echo 'Test 2: Query WITHOUT tenant filter (should be unsafe):'
 \echo '------------------------------------------------------'
@@ -321,7 +316,6 @@ LIMIT 5;
 SELECT * FROM analyze_distinct_queries()
 LIMIT 5;
 
-\echo ''
 \echo 'Test: DISTINCT index recommendations:'
 \echo '------------------------------------------------------'
 SELECT * FROM recommend_distinct_indexes()
@@ -346,8 +340,83 @@ SELECT * FROM check_parallel_settings();
 SELECT * FROM recommend_parallel_tuning();
 
 -- =====================================================
--- 12. SUMMARY REPORT
+-- 12. VERIFY OPTIMISTIC LOCK TRIGGERS
 -- =====================================================
+\echo ''
+\echo '======================================================'
+\echo '  12. Verifying Optimistic Lock Triggers'
+\echo '======================================================'
+\echo ''
+
+WITH version_tables AS (
+        SELECT c.table_schema,
+                     c.table_name
+        FROM information_schema.columns c
+        JOIN information_schema.tables t
+            ON t.table_schema = c.table_schema
+         AND t.table_name = c.table_name
+        WHERE c.column_name = 'version'
+            AND t.table_type = 'BASE TABLE'
+            AND c.table_schema IN ('public', 'availability')
+            AND c.table_name NOT LIKE 'pg_%'
+            AND c.table_name NOT LIKE 'sql_%'
+),
+missing AS (
+        SELECT vt.table_schema,
+                     vt.table_name
+        FROM version_tables vt
+        LEFT JOIN pg_trigger trg
+            ON trg.tgrelid = to_regclass(format('%I.%I', vt.table_schema, vt.table_name))
+         AND trg.tgname = format('trg_%s_version_lock', vt.table_name)
+         AND NOT trg.tgisinternal
+        WHERE trg.oid IS NULL
+)
+SELECT
+        CASE WHEN COUNT(*) = 0 THEN '✅ All optimistic lock triggers installed'
+                 ELSE '❌ Missing optimistic lock triggers'
+        END AS status,
+        COUNT(*) AS missing_trigger_count
+FROM missing;
+
+\echo ''
+\echo 'Tables missing version triggers (if any):'
+\echo '------------------------------------------------------'
+WITH version_tables AS (
+        SELECT c.table_schema,
+                     c.table_name
+        FROM information_schema.columns c
+        JOIN information_schema.tables t
+            ON t.table_schema = c.table_schema
+         AND t.table_name = c.table_name
+        WHERE c.column_name = 'version'
+            AND t.table_type = 'BASE TABLE'
+            AND c.table_schema IN ('public', 'availability')
+            AND c.table_name NOT LIKE 'pg_%'
+            AND c.table_name NOT LIKE 'sql_%'
+),
+missing AS (
+        SELECT vt.table_schema,
+                     vt.table_name
+        FROM version_tables vt
+        LEFT JOIN pg_trigger trg
+            ON trg.tgrelid = to_regclass(format('%I.%I', vt.table_schema, vt.table_name))
+         AND trg.tgname = format('trg_%s_version_lock', vt.table_name)
+         AND NOT trg.tgisinternal
+        WHERE trg.oid IS NULL
+)
+SELECT
+        table_schema,
+        table_name
+FROM missing
+ORDER BY table_schema, table_name;
+
+-- =====================================================
+-- 13. SUMMARY REPORT
+-- =====================================================
+\echo ''
+\echo '======================================================'
+\echo '  13. Summary Report'
+\echo '======================================================'
 \echo ''
 \echo '██████████████████████████████████████████████████'
 \echo '█                                                █'
@@ -393,7 +462,9 @@ BEGIN
             'recommend_distinct_indexes', 'optimize_distinct_query',
             -- JOIN parallelism (4)
             'check_parallel_settings', 'analyze_join_parallelism',
-            'explain_parallel_plan', 'recommend_parallel_tuning'
+            'explain_parallel_plan', 'recommend_parallel_tuning',
+            -- Optimistic locking (1)
+            'enforce_version_lock'
         );
 
     -- Count views
@@ -432,7 +503,7 @@ BEGIN
     RAISE NOTICE '│  COMPONENT SUMMARY                                   │';
     RAISE NOTICE '├──────────────────────────────────────────────────────┤';
     RAISE NOTICE '│                                                      │';
-    RAISE NOTICE '│  Functions:           % / 39                       │', LPAD(v_function_count::TEXT, 3, ' ');
+    RAISE NOTICE '│  Functions:           % / 40                       │', LPAD(v_function_count::TEXT, 3, ' ');
     RAISE NOTICE '│  Views:               % / 12                       │', LPAD(v_view_count::TEXT, 3, ' ');
     RAISE NOTICE '│  Audit Table:         %                            │',
         CASE WHEN v_audit_table_exists THEN '✅' ELSE '❌' END;
@@ -454,7 +525,7 @@ BEGIN
     RAISE NOTICE '';
 
     -- Calculate score
-    IF v_function_count >= 39 THEN v_total_score := v_total_score + 40; END IF;
+    IF v_function_count >= 40 THEN v_total_score := v_total_score + 40; END IF;
     IF v_view_count >= 12 THEN v_total_score := v_total_score + 30; END IF;
     IF v_audit_table_exists THEN v_total_score := v_total_score + 20; END IF;
     IF v_extension_count >= 2 THEN v_total_score := v_total_score + 10; END IF;

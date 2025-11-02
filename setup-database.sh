@@ -388,7 +388,7 @@ fi
 
 if [ "$jump_to_sample_data" = false ]; then
 
-echo -e "${BLUE}[1/10]${NC} Checking PostgreSQL connection..."
+echo -e "${BLUE}[1/12]${NC} Checking PostgreSQL connection..."
 
 if ! pg_isready -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" &> /dev/null; then
     echo -e "${RED}✗ PostgreSQL is not accessible${NC}"
@@ -403,7 +403,7 @@ echo ""
 # STEP 2: Drop Existing Database (Automatic Fresh Install)
 # ============================================================================
 
-echo -e "${BLUE}[2/10]${NC} Checking if database exists..."
+echo -e "${BLUE}[2/12]${NC} Checking if database exists..."
 
 DB_EXISTS=$(psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d postgres -tAc "SELECT 1 FROM pg_database WHERE datname='$DB_NAME'" 2>/dev/null || echo "")
 
@@ -436,7 +436,7 @@ echo ""
 # STEP 3: Create Database
 # ============================================================================
 
-echo -e "${BLUE}[3/10]${NC} Creating database '$DB_NAME'..."
+echo -e "${BLUE}[3/12]${NC} Creating database '$DB_NAME'..."
 
 psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d postgres -c "
     CREATE DATABASE $DB_NAME
@@ -457,7 +457,7 @@ echo ""
 # STEP 4: Create Extensions & Schemas
 # ============================================================================
 
-echo -e "${BLUE}[4/10]${NC} Creating extensions and schemas..."
+echo -e "${BLUE}[4/12]${NC} Creating extensions and schemas..."
 
 psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -f "$SCRIPTS_DIR/01-database-setup.sql" &> /dev/null
 
@@ -469,7 +469,7 @@ echo ""
 # STEP 5: Create ENUM Types
 # ============================================================================
 
-echo -e "${BLUE}[5/10]${NC} Creating ${EXPECTED_ENUMS} ENUM types..."
+echo -e "${BLUE}[5/12]${NC} Creating ${EXPECTED_ENUMS} ENUM types..."
 
 psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -f "$SCRIPTS_DIR/02-enum-types.sql" &> /dev/null
 
@@ -482,7 +482,7 @@ echo ""
 # STEP 6: Create Tables
 # ============================================================================
 
-echo -e "${BLUE}[6/10]${NC} Creating ${EXPECTED_TABLES} tables (${TABLE_FILES} files, some create multiple tables)..."
+echo -e "${BLUE}[6/12]${NC} Creating ${EXPECTED_TABLES} tables (${TABLE_FILES} files, some create multiple tables)..."
 
 cd "$SCRIPTS_DIR"
 psql -q -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -f "$SCRIPTS_DIR/tables/00-create-all-tables.sql" > /dev/null 2>&1
@@ -503,7 +503,7 @@ echo ""
 # STEP 7: Create Indexes
 # ============================================================================
 
-echo -e "${BLUE}[7/10]${NC} Creating indexes..."
+echo -e "${BLUE}[7/12]${NC} Creating indexes..."
 
 psql -q -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -f "$SCRIPTS_DIR/indexes/00-create-all-indexes.sql" > /dev/null 2>&1
 
@@ -516,7 +516,7 @@ echo ""
 # STEP 8: Create Constraints
 # ============================================================================
 
-echo -e "${BLUE}[8/10]${NC} Creating foreign key constraints..."
+echo -e "${BLUE}[8/12]${NC} Creating foreign key constraints..."
 
 cd "$SCRIPTS_DIR/constraints"
 psql -q -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -f "00-create-all-constraints.sql" > /dev/null 2>&1
@@ -528,10 +528,21 @@ echo -e "${GREEN}✓ Created $FK_COUNT foreign key constraints${NC}"
 echo ""
 
 # ============================================================================
-# STEP 9: Add User-Friendly Constraint Messages
+# STEP 9: Install Trigger & Monitoring Suite
 # ============================================================================
 
-echo -e "${BLUE}[9/11]${NC} Adding user-friendly constraint error messages..."
+echo -e "${BLUE}[9/12]${NC} Installing trigger suite (query safety & optimistic locking)..."
+
+psql -q -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -f "$SCRIPTS_DIR/triggers/00-create-all-efficiency-triggers.sql" > /dev/null 2>&1
+
+echo -e "${GREEN}✓ Trigger suite installed${NC}"
+echo ""
+
+# ============================================================================
+# STEP 10: Add User-Friendly Constraint Messages
+# ============================================================================
+
+echo -e "${BLUE}[10/12]${NC} Adding user-friendly constraint error messages..."
 
 psql -q -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -f "$SCRIPTS_DIR/add_friendly_constraint_messages.sql" > /dev/null 2>&1
 
@@ -541,11 +552,11 @@ echo ""
 fi  # End of structure creation block (DO_FRESH_INSTALL)
 
 # ============================================================================
-# STEP 10: Verification
+# STEP 11: Verification
 # ============================================================================
 
 if [ "$DO_FRESH_INSTALL" = true ]; then
-    echo -e "${BLUE}[10/11]${NC} Running verification..."
+    echo -e "${BLUE}[11/12]${NC} Running verification..."
 
     psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -f "$SCRIPTS_DIR/verify-all.sql" 2>&1 | tail -30
 
@@ -553,13 +564,13 @@ if [ "$DO_FRESH_INSTALL" = true ]; then
 fi
 
 # ============================================================================
-# STEP 11: Load Sample Data
+# STEP 12: Load Sample Data
 # ============================================================================
 
 if [ "$LOAD_SAMPLE_DATA" = true ]; then
 
 if [ "$DO_FRESH_INSTALL" = true ]; then
-    echo -e "${BLUE}[11/11]${NC} Loading sample data with category tracking..."
+    echo -e "${BLUE}[12/12]${NC} Loading sample data with category tracking..."
 else
     echo -e "${BLUE}Loading sample data with category tracking...${NC}"
 fi

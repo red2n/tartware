@@ -40,6 +40,9 @@
 \ir 02-inventory/91_group_bookings_indexes.sql
 \ir 02-inventory/92_packages_indexes.sql
 \ir 02-inventory/93_travel_agent_commissions_indexes.sql
+\ir 02-inventory/97_meeting_rooms_indexes.sql
+\ir 02-inventory/98_event_bookings_indexes.sql
+\ir 02-inventory/99_banquet_event_orders_indexes.sql
 
 -- ============================================================================
 -- CATEGORY 3: BOOKINGS & GUEST RELATIONS INDEXES (14 files)
@@ -101,6 +104,11 @@
 \ir 05-operations/99_smart_room_devices_indexes.sql
 \ir 05-operations/100_mobile_check_ins_indexes.sql
 \ir 05-operations/101_asset_inventory_indexes.sql
+\ir 05-operations/102_minibar_items_indexes.sql
+\ir 05-operations/103_minibar_consumption_indexes.sql
+\ir 05-operations/104_vehicles_indexes.sql
+\ir 05-operations/105_transportation_requests_indexes.sql
+\ir 05-operations/106_shuttle_schedules_indexes.sql
 
 -- ============================================================================
 -- CATEGORY 6: INTEGRATIONS & CHANNELS INDEXES (20 files)

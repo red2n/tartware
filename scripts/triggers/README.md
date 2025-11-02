@@ -10,6 +10,7 @@ Prevent inefficient queries and security vulnerabilities by:
 - 🔒 **Enforcing tenant isolation** in multi-tenant queries
 - 📊 **Monitoring query performance** patterns
 - 🔍 **Auditing data access** for compliance
+- 🔄 **Enforcing optimistic locking** with shared version triggers
 
 ## 📁 Contents
 
@@ -26,6 +27,7 @@ triggers/
 ├── 08_optimize_sorting.sql                # ⭐ Incremental sort optimization
 ├── 09_optimize_distinct.sql               # ⭐ DISTINCT operation optimization
 ├── 10_optimize_join_parallelism.sql       # ⭐ Multi-core JOIN optimization
+├── 13_enforce_optimistic_locking.sql      # Optimistic lock enforcement across tables
 ├── verify-triggers.sql                    # Verification script
 └── README.md                              # This file
 
@@ -64,7 +66,7 @@ psql -U postgres -d tartware -f verify-triggers.sql
 
 ## 📚 What Gets Installed
 
-### Functions (39 total)
+### Functions (40 total)
 
 #### Basic Query Efficiency (9 functions)
 | Function | Purpose |
@@ -112,6 +114,11 @@ psql -U postgres -d tartware -f verify-triggers.sql
 | `analyze_join_parallelism()` | Find JOINs needing parallelism |
 | `explain_parallel_plan()` | Check if query uses parallel workers |
 | `recommend_parallel_tuning()` | Generate tuning commands |
+
+#### Optimistic Locking (1 function)
+| Function | Purpose |
+|----------|---------|
+| `enforce_version_lock()` | Enforce version increments and prevent stale optimistic-lock writes |
 
 ### Views (12 total)
 

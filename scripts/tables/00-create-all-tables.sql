@@ -38,6 +38,9 @@
 \ir 02-inventory/91_group_bookings.sql
 \ir 02-inventory/92_packages.sql
 \ir 02-inventory/93_travel_agent_commissions.sql
+\ir 02-inventory/97_meeting_rooms.sql
+\ir 02-inventory/98_event_bookings.sql
+\ir 02-inventory/99_banquet_event_orders.sql
 
 -- ============================================================================
 -- CATEGORY 3: BOOKINGS (Reservations, guest relations, booking sources)
@@ -96,6 +99,11 @@
 \ir 05-operations/99_smart_room_devices.sql
 \ir 05-operations/100_mobile_check_ins.sql
 \ir 05-operations/101_asset_inventory.sql
+\ir 05-operations/102_minibar_items.sql
+\ir 05-operations/103_minibar_consumption.sql
+\ir 05-operations/104_vehicles.sql
+\ir 05-operations/105_transportation_requests.sql
+\ir 05-operations/106_shuttle_schedules.sql
 
 -- ============================================================================
 -- CATEGORY 6: INTEGRATIONS (Channels, OTA, marketing, external systems)

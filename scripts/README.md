@@ -31,7 +31,7 @@ scripts/
 ├── verify-all.sql                 # ✅ MASTER VERIFICATION SCRIPT
 ├── verify-installation.sql        # Legacy verification script
 ├── SOFT_DELETE_POLICY.md          # Soft delete documentation
-├── tables/                        # Individual table files (22 files)
+├── tables/                        # Individual table files (109 files across 7 categories)
 │   ├── 01_tenants.sql
 │   ├── 02_users.sql
 │   ├── 03_user_tenant_associations.sql
