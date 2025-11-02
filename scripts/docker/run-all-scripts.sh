@@ -84,15 +84,15 @@ else
 fi
 
 # =====================================================
-# PHASE 3: TABLES CREATION (132 tables)
+# PHASE 3: TABLES CREATION (109 tables)
 # =====================================================
-log_section "PHASE 3: TABLES CREATION (132 tables - 89 core + 43 advanced)"
+log_section "PHASE 3: TABLES CREATION (109 tables across 7 categories)"
 
 log "Using master file: tables/00-create-all-tables.sql"
 if psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -f "$SCRIPTS_DIR/tables/00-create-all-tables.sql" -q >> "$LOG_FILE" 2>&1; then
-    log "✓ All 132 tables created successfully"
-    TABLES_CREATED=132
-    TABLES_TOTAL=132
+    log "✓ All 109 tables created successfully"
+    TABLES_CREATED=109
+    TABLES_TOTAL=109
 else
     log_error "Failed to create tables from master file"
     exit 1
@@ -110,11 +110,11 @@ fi
 # =====================================================
 # PHASE 4: INDEXES CREATION
 # =====================================================
-log_section "PHASE 4: INDEXES CREATION (800+ indexes for 132 tables)"
+log_section "PHASE 4: INDEXES CREATION (1800+ indexes for 109 tables)"
 
 log "Executing: indexes/00-create-all-indexes.sql"
 if psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -f "$SCRIPTS_DIR/indexes/00-create-all-indexes.sql" -q >> "$LOG_FILE" 2>&1; then
-    log "✓ All 800+ indexes created successfully"
+    log "✓ All 1800+ indexes created successfully (includes auto-generated PK/unique)"
 else
     log_error "Failed to create indexes"
     exit 1
@@ -123,11 +123,11 @@ fi
 # =====================================================
 # PHASE 5: CONSTRAINTS CREATION
 # =====================================================
-log_section "PHASE 5: CONSTRAINTS CREATION (500+ foreign keys for 132 tables)"
+log_section "PHASE 5: CONSTRAINTS CREATION (245+ foreign keys for 109 tables)"
 
 log "Executing: constraints/00-create-all-constraints.sql"
 if psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -f "$SCRIPTS_DIR/constraints/00-create-all-constraints.sql" -q >> "$LOG_FILE" 2>&1; then
-    log "✓ All 500+ foreign key constraints created successfully"
+    log "✓ All 245+ foreign key constraints created successfully"
 else
     log_error "Failed to create constraints"
     exit 1
@@ -170,9 +170,9 @@ log "  TARTWARE PMS - DATABASE READY"
 log "════════════════════════════════════════════════════════════"
 log ""
 log "  Database:          tartware"
-log "  Tables Created:    132 (89 core + 43 advanced)"
-log "  Indexes:           800+ (comprehensive)"
-log "  Constraints:       500+ (foreign keys)"
+log "  Tables Created:    109 (across 7 categories)"
+log "  Indexes:           1800+ (includes auto-generated)"
+log "  Constraints:       245+ (foreign keys)"
 log "  Duration:          ${DURATION}s"
 log "  Status:            ✓ READY FOR USE"
 log ""
