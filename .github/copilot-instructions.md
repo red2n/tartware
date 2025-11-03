@@ -27,6 +27,9 @@ Follow these focused, repository-specific rules when editing, refactoring or add
    - Local/direct install:
      - Run setup script: `./setup-database.sh` (interactive) or `./setup-database.sh --mode=direct` for automation.
      - Alternative: Run master SQL installer manually: `cd scripts && ./00-master-install.sh` (only if setup-database.sh is unavailable)
+      - Runtime API development:
+            - Connect to the local PostgreSQL instance at `127.0.0.1:5432` using `postgres/postgres` credentials and database `tartware` (see `docker-compose.yml`).
+            - When implementing services, do **not** stub JSON responses if the required data exists in this database.
    - Verification: run `psql -U postgres -d tartware -f scripts/verify-all.sql` or use category-level verifiers in `scripts/` (e.g., `verify-all-categories.sql`).
 
 4. Conventions and patterns (must follow)
@@ -44,6 +47,7 @@ Follow these focused, repository-specific rules when editing, refactoring or add
    - Use `fd` (or `fdfind`) for file discovery instead of `find` where available.
    - Use environment variables for DB connection when running local scripts: `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`.
    - For Python code, prefer modern Python 3 with type hints where appropriate (follow existing style in `data/` loaders).
+   - All Node/TypeScript projects must include Knip in devDependencies and run `npm run knip` (or equivalent) during builds.
 
 6. Helpful references in the repo (cite examples when relevant)
    - Master setup and orchestration: `setup-database.sh`, `docker-compose.yml`, `scripts/docker/docker-entrypoint-custom.sh`
@@ -74,6 +78,11 @@ Follow these focused, repository-specific rules when editing, refactoring or add
      - Add column `rooms.view_type`: Update `scripts/tables/02-inventory/07_rooms.sql` → Add `view_type: RoomViewTypeEnum.optional()` to `src/schemas/02-inventory/rooms.ts`
      - Add table `vip_services`: Create `scripts/tables/05-operations/109_vip_services.sql` → Create `src/schemas/05-operations/vip-services.ts` with full schema
    - **Do NOT skip Zod updates** - they are as important as the database changes themselves. Schema drift causes runtime failures.
+
+7b. Schema folder preservation (CRITICAL)
+    - The `schema/` directory is the single source of truth for UI/API/DB contracts.
+    - **Never exclude, ignore, or remove** the `schema/` folder from builds, linting, packaging, CI/CD steps, or repository operations.
+    - Any tooling changes (lint configs, tsconfig, ignore files, build scripts, etc.) must keep `schema/` fully included and validated.
 
 8. Safety and non-goals
    - Do not modify production credentials or create new secrets in the repo.
