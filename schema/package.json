@@ -1,0 +1,123 @@
+{
+  "name": "@tartware/schemas",
+  "version": "0.1.0",
+  "description": "Type-safe Zod schemas for Tartware PMS database - PostgreSQL schema validation with runtime type checking",
+  "type": "module",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    },
+    "./enums": {
+      "import": "./dist/shared/enums.js",
+      "types": "./dist/shared/enums.d.ts"
+    },
+    "./base": {
+      "import": "./dist/shared/base-schemas.js",
+      "types": "./dist/shared/base-schemas.d.ts"
+    },
+    "./core/*": {
+      "import": "./dist/schemas/01-core/*.js",
+      "types": "./dist/schemas/01-core/*.d.ts"
+    },
+    "./inventory/*": {
+      "import": "./dist/schemas/02-inventory/*.js",
+      "types": "./dist/schemas/02-inventory/*.d.ts"
+    },
+    "./bookings/*": {
+      "import": "./dist/schemas/03-bookings/*.js",
+      "types": "./dist/schemas/03-bookings/*.d.ts"
+    },
+    "./financial/*": {
+      "import": "./dist/schemas/04-financial/*.js",
+      "types": "./dist/schemas/04-financial/*.d.ts"
+    },
+    "./operations/*": {
+      "import": "./dist/schemas/05-operations/*.js",
+      "types": "./dist/schemas/05-operations/*.d.ts"
+    },
+    "./integrations/*": {
+      "import": "./dist/schemas/06-integrations/*.js",
+      "types": "./dist/schemas/06-integrations/*.d.ts"
+    },
+    "./analytics/*": {
+      "import": "./dist/schemas/07-analytics/*.js",
+      "types": "./dist/schemas/07-analytics/*.d.ts"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "CHANGELOG.md"
+  ],
+  "scripts": {
+    "build": "npm run knip && tsc",
+    "dev": "tsc --watch",
+    "test": "vitest",
+    "test:ui": "vitest --ui",
+    "test:coverage": "vitest --coverage",
+    "knip": "knip",
+    "knip:fix": "knip --fix",
+    "lint": "eslint src/**/*.ts",
+    "lint:fix": "eslint src/**/*.ts --fix",
+    "format": "prettier --write \"src/**/*.ts\"",
+    "format:check": "prettier --check \"src/**/*.ts\"",
+    "typecheck": "tsc --noEmit",
+    "generate": "tsx src/utilities/schema-generator.ts",
+    "sync-check": "tsx src/utilities/sync-checker.ts",
+    "validate-db": "tsx src/utilities/db-validator.ts",
+    "clean": "rm -rf dist",
+    "prepublishOnly": "npm run clean && npm run build && npm test"
+  },
+  "keywords": [
+    "zod",
+    "schema",
+    "validation",
+    "typescript",
+    "pms",
+    "hotel",
+    "property-management",
+    "database",
+    "postgresql",
+    "type-safety",
+    "runtime-validation"
+  ],
+  "author": "Tartware Team",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/red2n/tartware.git",
+    "directory": "schema"
+  },
+  "bugs": {
+    "url": "https://github.com/red2n/tartware/issues"
+  },
+  "homepage": "https://github.com/red2n/tartware/tree/main/schema#readme",
+  "dependencies": {
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.19",
+    "@types/pg": "^8.11.0",
+    "@typescript-eslint/eslint-plugin": "^7.0.1",
+    "@typescript-eslint/parser": "^7.0.1",
+    "@vitest/coverage-v8": "^1.2.2",
+    "@vitest/ui": "^1.2.2",
+    "eslint": "^8.56.0",
+    "eslint-config-prettier": "^9.1.0",
+    "eslint-plugin-import": "^2.29.1",
+    "knip": "^5.67.0",
+    "pg": "^8.11.3",
+    "prettier": "^3.2.5",
+    "tsx": "^4.7.1",
+    "typescript": "^5.3.3",
+    "vitest": "^1.2.2"
+  },
+  "engines": {
+    "node": ">=20.0.0",
+    "npm": ">=10.0.0"
+  }
+}

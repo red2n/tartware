@@ -1,0 +1,173 @@
+/**
+ * VendorContracts Schema
+ * @table vendor_contracts
+ * @category 05-operations
+ * @synchronized 2025-11-03
+ */
+
+import { z } from 'zod';
+import { uuid, money } from '../../shared/base-schemas.js';
+
+/**
+ * Complete VendorContracts schema
+ */
+export const VendorContractsSchema = z.object({
+  contract_id: uuid,
+  tenant_id: uuid,
+  property_id: uuid.optional(),
+  contract_number: z.string(),
+  contract_name: z.string(),
+  contract_title: z.string().optional(),
+  vendor_name: z.string(),
+  vendor_id: z.string().optional(),
+  vendor_type: z.string().optional(),
+  vendor_contact_name: z.string().optional(),
+  vendor_contact_title: z.string().optional(),
+  vendor_email: z.string().optional(),
+  vendor_phone: z.string().optional(),
+  vendor_address: z.string().optional(),
+  vendor_website: z.string().optional(),
+  contract_type: z.string(),
+  contract_category: z.string().optional(),
+  service_description: z.string(),
+  scope_of_work: z.string().optional(),
+  deliverables: z.string().optional(),
+  start_date: z.coerce.date(),
+  end_date: z.coerce.date().optional(),
+  contract_duration_months: z.number().int().optional(),
+  effective_date: z.coerce.date().optional(),
+  execution_date: z.coerce.date().optional(),
+  signed_date: z.coerce.date().optional(),
+  contract_status: z.string().optional(),
+  is_active: z.boolean().optional(),
+  contract_value: money,
+  currency: z.string().optional(),
+  payment_terms: z.string().optional(),
+  payment_schedule: z.string().optional(),
+  billing_frequency: z.string().optional(),
+  pricing_model: z.string().optional(),
+  unit_price: money.optional(),
+  hourly_rate: money.optional(),
+  minimum_charge: money.optional(),
+  maximum_charge: money.optional(),
+  total_paid: money.optional(),
+  total_invoiced: money.optional(),
+  outstanding_balance: money.optional(),
+  last_payment_date: z.coerce.date().optional(),
+  next_payment_due_date: z.coerce.date().optional(),
+  performance_rating: z.number().int().optional(),
+  quality_score: z.number().int().optional(),
+  on_time_delivery_percent: money.optional(),
+  customer_satisfaction_score: money.optional(),
+  sla_compliance_percent: money.optional(),
+  has_sla: z.boolean().optional(),
+  sla_terms: z.string().optional(),
+  response_time_hours: z.number().int().optional(),
+  resolution_time_hours: z.number().int().optional(),
+  uptime_guarantee_percent: money.optional(),
+  sla_penalties: z.string().optional(),
+  auto_renewal: z.boolean().optional(),
+  renewal_notice_days: z.number().int().optional(),
+  renewal_date: z.coerce.date().optional(),
+  renewal_reminder_sent: z.boolean().optional(),
+  renewal_reminder_date: z.coerce.date().optional(),
+  termination_notice_days: z.number().int().optional(),
+  early_termination_allowed: z.boolean().optional(),
+  early_termination_penalty: money.optional(),
+  termination_for_convenience: z.boolean().optional(),
+  termination_reason: z.string().optional(),
+  terminated_by: uuid.optional(),
+  terminated_at: z.coerce.date().optional(),
+  insurance_required: z.boolean().optional(),
+  insurance_types: z.array(z.string()).optional(),
+  insurance_coverage_amount: money.optional(),
+  insurance_expiry_date: z.coerce.date().optional(),
+  insurance_certificate_received: z.boolean().optional(),
+  insurance_certificate_url: z.string().optional(),
+  compliance_requirements: z.string().optional(),
+  background_check_required: z.boolean().optional(),
+  background_check_completed: z.boolean().optional(),
+  licenses_required: z.array(z.string()).optional(),
+  licenses_verified: z.boolean().optional(),
+  certifications_required: z.array(z.string()).optional(),
+  certifications_verified: z.boolean().optional(),
+  nda_signed: z.boolean().optional(),
+  nda_signed_date: z.coerce.date().optional(),
+  confidentiality_terms: z.string().optional(),
+  indemnification_clause: z.string().optional(),
+  liability_cap: money.optional(),
+  account_manager_name: z.string().optional(),
+  account_manager_email: z.string().optional(),
+  account_manager_phone: z.string().optional(),
+  technical_contact_name: z.string().optional(),
+  technical_contact_email: z.string().optional(),
+  technical_contact_phone: z.string().optional(),
+  contract_owner: uuid.optional(),
+  contract_owner_department: z.string().optional(),
+  approver_id: uuid.optional(),
+  approver_name: z.string().optional(),
+  contract_document_url: z.string().optional(),
+  signed_contract_url: z.string().optional(),
+  amendments_urls: z.array(z.string()).optional(),
+  related_documents_urls: z.array(z.string()).optional(),
+  has_attachments: z.boolean().optional(),
+  attachment_count: z.number().int().optional(),
+  amendment_count: z.number().int().optional(),
+  last_amendment_date: z.coerce.date().optional(),
+  change_log: z.record(z.unknown()).optional(),
+  requires_approval: z.boolean().optional(),
+  approved: z.boolean().optional(),
+  approved_by: uuid.optional(),
+  approved_at: z.coerce.date().optional(),
+  approval_notes: z.string().optional(),
+  legal_review_required: z.boolean().optional(),
+  legal_reviewed: z.boolean().optional(),
+  legal_reviewed_by: uuid.optional(),
+  legal_review_date: z.coerce.date().optional(),
+  legal_review_notes: z.string().optional(),
+  alert_before_expiry_days: z.number().int().optional(),
+  expiry_alert_sent: z.boolean().optional(),
+  expiry_alert_date: z.coerce.date().optional(),
+  renewal_alert_sent: z.boolean().optional(),
+  insurance_expiry_alert_sent: z.boolean().optional(),
+  has_performance_issues: z.boolean().optional(),
+  performance_issues: z.record(z.unknown()).optional(),
+  dispute_count: z.number().int().optional(),
+  disputes: z.record(z.unknown()).optional(),
+  risk_level: z.string().optional(),
+  risk_factors: z.string().optional(),
+  mitigation_plan: z.string().optional(),
+  parent_contract_id: uuid.optional(),
+  related_contracts: z.array(uuid).optional(),
+  supersedes_contract_id: uuid.optional(),
+  superseded_by_contract_id: uuid.optional(),
+  metadata: z.record(z.unknown()).optional(),
+  tags: z.array(z.string()).optional(),
+  notes: z.string().optional(),
+  internal_notes: z.string().optional(),
+  created_at: z.coerce.date().optional(),
+  updated_at: z.coerce.date().optional(),
+  created_by: uuid.optional(),
+  updated_by: uuid.optional(),
+  is_deleted: z.boolean().optional(),
+  deleted_at: z.coerce.date().optional(),
+  deleted_by: uuid.optional(),
+});
+
+export type VendorContracts = z.infer<typeof VendorContractsSchema>;
+
+/**
+ * Schema for creating a new vendor contracts
+ */
+export const CreateVendorContractsSchema = VendorContractsSchema.omit({
+  // TODO: Add fields to omit for creation
+});
+
+export type CreateVendorContracts = z.infer<typeof CreateVendorContractsSchema>;
+
+/**
+ * Schema for updating a vendor contracts
+ */
+export const UpdateVendorContractsSchema = VendorContractsSchema.partial();
+
+export type UpdateVendorContracts = z.infer<typeof UpdateVendorContractsSchema>;

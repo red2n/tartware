@@ -1,0 +1,9 @@
+{
+  "$schema": "https://unpkg.com/knip@5/schema.json",
+  "project": ["src/**/*.ts"],
+  "ignore": ["dist/**", "node_modules/**", "coverage/**", "src/utilities/**"],
+  "ignoreExportsUsedInFile": true,
+  "vitest": {
+    "entry": ["tests/**/*.test.ts"]
+  }
+}
