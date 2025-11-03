@@ -435,8 +435,11 @@ CREATE TABLE payments (
     tenant_id UUID NOT NULL,
     reservation_id UUID NOT NULL,
 
+    -- Tokenization
+    payment_token_id UUID,
+
     -- Payment details
-    amount DECIMAL(10,2) NOT NULL,
+    amount DECIMAL(15,2) NOT NULL,
     currency CHAR(3) DEFAULT 'USD',
     method payment_method NOT NULL,
     status payment_status NOT NULL,
@@ -444,17 +447,62 @@ CREATE TABLE payments (
     -- Transaction tracking
     transaction_id VARCHAR(100) UNIQUE,
     transaction_type transaction_type NOT NULL,
+    gateway_reference VARCHAR(100),
+    authorization_code VARCHAR(50),
+    capture_reference VARCHAR(100),
 
     -- Gateway information
     gateway_name VARCHAR(100),
     gateway_response JSONB,
+    three_ds_version VARCHAR(10),
+    three_ds_result VARCHAR(20),
+
+    -- Card metadata (tokenized)
+    card_type VARCHAR(50),
+    card_last4 CHAR(4),
+    card_fingerprint VARCHAR(100),
+
+    -- Refund tracking
+    refund_amount DECIMAL(15,2) DEFAULT 0,
 
     -- Audit trail
-    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP
 );
 ```
 
+`payment_tokens` stores the vaulted card reference, network, and fingerprint to maintain PCI separation of duties.
+
 **✅ Compliance**: Supports Protel's European payment standards (PSD2, SEPA) and global processors.
+
+---
+
+## 🧘 Spa & Wellness Standards
+
+### Industry Standard: Treatment Catalog & Scheduling
+
+| Capability | Tartware Support | Reference |
+|------------|------------------|-----------|
+| Treatment catalog | ✅ Supports categories, pricing, availability windows | `spa_treatments` |
+| Therapist/resource assignment | ✅ Primary/secondary therapist, room, required resources | `spa_appointments` |
+| Appointment lifecycle | ✅ Pending → Confirmed → Completed with timestamps | `spa_appointments.status` |
+| Payment posting | ✅ Folio linkage + gratuity, discount tracking | `spa_appointments` ↔ `folios` |
+
+```sql
+CREATE TABLE spa_appointments (
+    appointment_id UUID PRIMARY KEY,
+    treatment_id UUID NOT NULL,
+    primary_therapist_id UUID,
+    appointment_date DATE NOT NULL,
+    start_time TIME NOT NULL,
+    end_time TIME NOT NULL,
+    status VARCHAR(20) DEFAULT 'PENDING',
+    total_amount DECIMAL(10,2),
+    folio_id UUID
+);
+```
+
+**✅ Compliance**: Mirrors OPERA Spa & Leisure scheduling with therapist assignment and folio posting.
 
 ---
 
@@ -525,6 +573,7 @@ Tartware Implementation:
 - ✅ **Encrypted Transit**: SSL/TLS for all connections
 - ✅ **Access Logging**: All payment access tracked
 - ✅ **Role-Based Access**: Limited payment data access
+- ✅ **Token Vault References**: `payment_tokens` table with provider & fingerprint metadata
 
 ### SOC 2 Type II (Cloud Standard)
 
@@ -546,7 +595,7 @@ Tartware Implementation:
 |--------------|----------|------------------|
 | **Global OTAs** | Booking.com, Expedia, Airbnb | ✅ Via channel_mappings |
 | **Regional OTAs** | Agoda, Trip.com, HRS | ✅ Via channel_mappings |
-| **GDS** | Amadeus, Sabre, Galileo | ✅ Via channel_mappings |
+| **GDS** | Amadeus, Sabre, Galileo | ✅ Via gds_connections + gds_reservation_queue |
 | **Direct Booking** | Hotel website | ✅ Native support |
 | **Corporate** | Corporate bookings | ✅ Native support |
 
@@ -572,6 +621,32 @@ CREATE TABLE channel_mappings (
         "maxRate": null,
         "commission": 15.0
     }'::jsonb
+);
+```
+
+**2025 Update:** Dedicated GDS schemas provide credential management, message auditing, and reservation staging.
+
+```sql
+CREATE TABLE gds_connections (
+    gds_connection_id UUID PRIMARY KEY,
+    gds_provider VARCHAR(50),
+    profile_code VARCHAR(100),
+    status VARCHAR(20)
+);
+
+CREATE TABLE gds_message_log (
+    gds_message_id UUID PRIMARY KEY,
+    gds_connection_id UUID,
+    message_direction VARCHAR(10),
+    message_type VARCHAR(100),
+    status VARCHAR(20)
+);
+
+CREATE TABLE gds_reservation_queue (
+    queue_id UUID PRIMARY KEY,
+    gds_message_id UUID,
+    reservation_action VARCHAR(20),
+    status VARCHAR(20)
 );
 ```
 

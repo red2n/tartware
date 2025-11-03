@@ -2,7 +2,7 @@
 -- 02-enum-types.sql
 -- ENUM Type Definitions
 -- Industry Standard: Based on Oracle OPERA, Cloudbeds, Protel, RMS Cloud
--- Updated: 2025-10-21 (Added ENUMs for 132 tables including AI/ML, IoT, Sustainability)
+-- Updated: 2025-10-23 (ENUM coverage aligned to 128 tables across 7 domains)
 -- =====================================================
 
 \c tartware
@@ -770,4 +770,4 @@ CREATE TYPE prediction_accuracy AS ENUM (
 
 \echo 'ENUM types created successfully!'
 \echo 'Total ENUM types: 20 (original) + 41 (new) = 61 types'
-\echo 'Coverage: 132 tables (89 core + 43 advanced features)'
+\echo 'Coverage: 128 tables across 7 business domains'

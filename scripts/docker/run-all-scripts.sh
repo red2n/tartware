@@ -6,9 +6,9 @@
 # This script orchestrates the complete database setup:
 # 1. Database setup (extensions, schemas)
 # 2. ENUM types
-# 3. All tables (01-37)
-# 4. All indexes
-# 5. All constraints
+# 3. All tables (7 domain bundles)
+# 4. All indexes (~1,900)
+# 5. All constraints (~1,050)
 # 6. Verification (optional)
 #
 # Date: October 15, 2025
@@ -77,22 +77,22 @@ log_section "PHASE 2: ENUM TYPES"
 
 log "Executing: 02-enum-types.sql"
 if psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -f "$SCRIPTS_DIR/02-enum-types.sql" -q >> "$LOG_FILE" 2>&1; then
-    log "✓ ENUM types created (30+ types)"
+    log "✓ ENUM types created (60+ types)"
 else
     log_error "Failed to create ENUM types"
     exit 1
 fi
 
 # =====================================================
-# PHASE 3: TABLES CREATION (109 tables)
+# PHASE 3: TABLES CREATION (119 tables)
 # =====================================================
-log_section "PHASE 3: TABLES CREATION (109 tables across 7 categories)"
+log_section "PHASE 3: TABLES CREATION (119 tables across 7 domains)"
 
 log "Using master file: tables/00-create-all-tables.sql"
 if psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -f "$SCRIPTS_DIR/tables/00-create-all-tables.sql" -q >> "$LOG_FILE" 2>&1; then
-    log "✓ All 109 tables created successfully"
-    TABLES_CREATED=109
-    TABLES_TOTAL=109
+    log "✓ All 119 tables created successfully"
+    TABLES_CREATED=119
+    TABLES_TOTAL=119
 else
     log_error "Failed to create tables from master file"
     exit 1
@@ -110,11 +110,11 @@ fi
 # =====================================================
 # PHASE 4: INDEXES CREATION
 # =====================================================
-log_section "PHASE 4: INDEXES CREATION (1800+ indexes for 109 tables)"
+log_section "PHASE 4: INDEXES CREATION (~1,900 indexes)"
 
 log "Executing: indexes/00-create-all-indexes.sql"
 if psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -f "$SCRIPTS_DIR/indexes/00-create-all-indexes.sql" -q >> "$LOG_FILE" 2>&1; then
-    log "✓ All 1800+ indexes created successfully (includes auto-generated PK/unique)"
+    log "✓ Comprehensive index pack created successfully (~1,900 indexes including PK/unique)"
 else
     log_error "Failed to create indexes"
     exit 1
@@ -123,11 +123,11 @@ fi
 # =====================================================
 # PHASE 5: CONSTRAINTS CREATION
 # =====================================================
-log_section "PHASE 5: CONSTRAINTS CREATION (245+ foreign keys for 109 tables)"
+log_section "PHASE 5: CONSTRAINTS CREATION (~1,050 foreign keys)"
 
 log "Executing: constraints/00-create-all-constraints.sql"
 if psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -f "$SCRIPTS_DIR/constraints/00-create-all-constraints.sql" -q >> "$LOG_FILE" 2>&1; then
-    log "✓ All 245+ foreign key constraints created successfully"
+    log "✓ All foreign key constraint packs applied successfully (~1,050 foreign keys)"
 else
     log_error "Failed to create constraints"
     exit 1
@@ -170,9 +170,9 @@ log "  TARTWARE PMS - DATABASE READY"
 log "════════════════════════════════════════════════════════════"
 log ""
 log "  Database:          tartware"
-log "  Tables Created:    109 (across 7 categories)"
-log "  Indexes:           1800+ (includes auto-generated)"
-log "  Constraints:       245+ (foreign keys)"
+log "  Tables Created:    119 (across 7 domains)"
+log "  Indexes:           ~1,900 (includes PK/unique)"
+log "  Constraints:       ~1,050 (foreign keys)"
 log "  Duration:          ${DURATION}s"
 log "  Status:            ✓ READY FOR USE"
 log ""

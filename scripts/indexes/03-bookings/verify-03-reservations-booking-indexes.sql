@@ -1,7 +1,7 @@
 -- =====================================================
 -- verify-03-reservations-booking-indexes.sql
 -- Index Verification Script for Reservations & Booking
--- Category: 03-reservations-booking (7 tables)
+-- Category: 03-reservations-booking (9 tables)
 -- Date: 2025-10-19
 -- =====================================================
 
@@ -10,7 +10,7 @@
 \echo ''
 \echo '=============================================='
 \echo '  RESERVATIONS & BOOKING - INDEX VERIFICATION'
-\echo '  Tables: 7'
+\echo '  Tables: 9'
 \echo '=============================================='
 \echo ''
 
@@ -25,7 +25,17 @@ SELECT
     COUNT(CASE WHEN indexname LIKE '%_pkey' THEN 1 END) AS primary_keys,
     COUNT(CASE WHEN indexname NOT LIKE '%_pkey' THEN 1 END) AS secondary_indexes
 FROM pg_indexes
-WHERE tablename IN ('reservations', 'reservation_status_history', 'deposit_schedules', 'allotments', 'booking_sources', 'market_segments', 'guest_preferences')
+WHERE tablename IN (
+    'reservations',
+    'reservation_status_history',
+    'deposit_schedules',
+    'allotments',
+    'booking_sources',
+    'market_segments',
+    'guest_preferences',
+    'reservation_traces',
+    'waitlist_entries'
+)
     AND schemaname = 'public'
 GROUP BY tablename
 ORDER BY tablename;
@@ -45,7 +55,17 @@ WITH fk_columns AS (
     JOIN information_schema.key_column_usage kcu
         ON tc.constraint_name = kcu.constraint_name
     WHERE tc.constraint_type = 'FOREIGN KEY'
-        AND tc.table_name IN ('reservations', 'reservation_status_history', 'deposit_schedules', 'allotments', 'booking_sources', 'market_segments', 'guest_preferences')
+        AND tc.table_name IN (
+            'reservations',
+            'reservation_status_history',
+            'deposit_schedules',
+            'allotments',
+            'booking_sources',
+            'market_segments',
+            'guest_preferences',
+            'reservation_traces',
+            'waitlist_entries'
+        )
 ),
 indexed_columns AS (
     SELECT
@@ -55,7 +75,17 @@ indexed_columns AS (
             ', '
         ))[1] AS column_name
     FROM pg_indexes
-    WHERE tablename IN ('reservations', 'reservation_status_history', 'deposit_schedules', 'allotments', 'booking_sources', 'market_segments', 'guest_preferences')
+    WHERE tablename IN (
+        'reservations',
+        'reservation_status_history',
+        'deposit_schedules',
+        'allotments',
+        'booking_sources',
+        'market_segments',
+        'guest_preferences',
+        'reservation_traces',
+        'waitlist_entries'
+    )
         AND schemaname = 'public'
 )
 SELECT
@@ -90,7 +120,17 @@ SELECT
         ELSE 'No partial index'
     END AS partial_index_status
 FROM pg_indexes
-WHERE tablename IN ('reservations', 'reservation_status_history', 'deposit_schedules', 'allotments', 'booking_sources', 'market_segments', 'guest_preferences')
+WHERE tablename IN (
+    'reservations',
+    'reservation_status_history',
+    'deposit_schedules',
+    'allotments',
+    'booking_sources',
+    'market_segments',
+    'guest_preferences',
+    'reservation_traces',
+    'waitlist_entries'
+)
     AND schemaname = 'public'
     AND indexdef LIKE '%WHERE%'
 ORDER BY tablename, indexname;
@@ -113,7 +153,17 @@ BEGIN
     -- Count total indexes (excluding primary keys)
     SELECT COUNT(*) INTO v_total_indexes
     FROM pg_indexes
-    WHERE tablename IN ('reservations', 'reservation_status_history', 'deposit_schedules', 'allotments', 'booking_sources', 'market_segments', 'guest_preferences')
+    WHERE tablename IN (
+        'reservations',
+        'reservation_status_history',
+        'deposit_schedules',
+        'allotments',
+        'booking_sources',
+        'market_segments',
+        'guest_preferences',
+        'reservation_traces',
+        'waitlist_entries'
+    )
         AND schemaname = 'public'
         AND indexname NOT LIKE '%_pkey';
 
@@ -132,7 +182,17 @@ BEGIN
         JOIN information_schema.key_column_usage kcu
             ON tc.constraint_name = kcu.constraint_name
         WHERE tc.constraint_type = 'FOREIGN KEY'
-            AND tc.table_name IN ('reservations', 'reservation_status_history', 'deposit_schedules', 'allotments', 'booking_sources', 'market_segments', 'guest_preferences')
+            AND tc.table_name IN (
+                'reservations',
+                'reservation_status_history',
+                'deposit_schedules',
+                'allotments',
+                'booking_sources',
+                'market_segments',
+                'guest_preferences',
+                'reservation_traces',
+                'waitlist_entries'
+            )
         EXCEPT
         SELECT
             tablename,
@@ -141,18 +201,28 @@ BEGIN
                 ', '
             ))[1]
         FROM pg_indexes
-        WHERE tablename IN ('reservations', 'reservation_status_history', 'deposit_schedules', 'allotments', 'booking_sources', 'market_segments', 'guest_preferences')
+        WHERE tablename IN (
+            'reservations',
+            'reservation_status_history',
+            'deposit_schedules',
+            'allotments',
+            'booking_sources',
+            'market_segments',
+            'guest_preferences',
+            'reservation_traces',
+            'waitlist_entries'
+        )
             AND schemaname = 'public'
     ) missing;
 
     RAISE NOTICE '';
     RAISE NOTICE 'Category: Reservations & Booking';
     RAISE NOTICE 'Total Secondary Indexes: %', v_total_indexes;
-    RAISE NOTICE 'Tables with Indexes: % / 7', v_tables_with_indexes;
+    RAISE NOTICE 'Tables with Indexes: % / 9', v_tables_with_indexes;
     RAISE NOTICE 'Foreign Keys Without Index: %', v_fk_without_index;
     RAISE NOTICE '';
 
-    IF v_fk_without_index = 0 AND v_tables_with_indexes = 7 THEN
+    IF v_fk_without_index = 0 AND v_tables_with_indexes = 9 THEN
         RAISE NOTICE '✓✓✓ RESERVATIONS & BOOKING INDEX VERIFICATION PASSED ✓✓✓';
     ELSE
         RAISE WARNING '⚠⚠⚠ RESERVATIONS & BOOKING INDEX VERIFICATION ISSUES FOUND ⚠⚠⚠';

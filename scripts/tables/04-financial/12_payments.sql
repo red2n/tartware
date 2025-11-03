@@ -35,6 +35,8 @@ CREATE TABLE IF NOT EXISTS payments (
     -- Transaction Details
     transaction_type transaction_type NOT NULL,
     payment_method payment_method NOT NULL,
+    payment_token_id UUID,
+    -- Foreign key constraint for payment_token_id will be added in 00-create-all-constraints.sql after payment_tokens table exists
 
     -- Amount
     amount DECIMAL(15,2) NOT NULL,
@@ -50,12 +52,18 @@ CREATE TABLE IF NOT EXISTS payments (
 
     -- Payment Gateway Details
     gateway_name VARCHAR(100),
+    gateway_reference VARCHAR(100),
     gateway_response JSONB DEFAULT '{}'::jsonb,
+    authorization_code VARCHAR(50),
+    capture_reference VARCHAR(100),
+    three_ds_version VARCHAR(10),
+    three_ds_result VARCHAR(20),
 
     -- Card Details (if applicable)
     card_type VARCHAR(50),
     card_last4 VARCHAR(4),
     card_holder_name VARCHAR(255),
+    card_fingerprint VARCHAR(100),
 
     -- Processing
     processed_at TIMESTAMP,
@@ -107,9 +115,15 @@ COMMENT ON COLUMN payments.payment_reference IS 'Unique payment reference number
 COMMENT ON COLUMN payments.external_transaction_id IS 'External payment gateway transaction ID';
 COMMENT ON COLUMN payments.transaction_type IS 'ENUM: charge, refund, adjustment, deposit, balance';
 COMMENT ON COLUMN payments.payment_method IS 'ENUM: cash, credit_card, debit_card, bank_transfer, mobile_payment, voucher, comp';
+COMMENT ON COLUMN payments.payment_token_id IS 'Reference to payment_tokens.payment_token_id (tokenized PAN)';
 COMMENT ON COLUMN payments.status IS 'ENUM: pending, authorized, captured, completed, failed, refunded, cancelled';
 COMMENT ON COLUMN payments.gateway_name IS 'Payment gateway used (Stripe, PayPal, Square, etc.)';
+COMMENT ON COLUMN payments.gateway_reference IS 'Gateway payment intent / transaction reference';
 COMMENT ON COLUMN payments.gateway_response IS 'Full gateway response (JSONB)';
+COMMENT ON COLUMN payments.authorization_code IS 'Gateway authorization code (if applicable)';
+COMMENT ON COLUMN payments.capture_reference IS 'Capture identifier for subsequent settlement';
+COMMENT ON COLUMN payments.three_ds_version IS '3-D Secure protocol version used (1.0, 2.1, 2.2)';
+COMMENT ON COLUMN payments.three_ds_result IS '3-D Secure result (SUCCESS, CHALLENGE, FAILED, BYPASSED)';
 COMMENT ON COLUMN payments.refund_amount IS 'Amount refunded (0 = no refund)';
 COMMENT ON COLUMN payments.deleted_at IS 'Soft delete timestamp (NULL = active)';
 

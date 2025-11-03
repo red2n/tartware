@@ -1,14 +1,14 @@
 # Tartware PMS: Industry Feature Comparison Matrix
 
 **Date:** January 2025
-**Tartware Version:** 1.0 (109 Tables)
+**Tartware Version:** 1.0 (119 Tables)
 **Database:** PostgreSQL 16 with Multi-Tenant Architecture
 
 ---
 
 ## Executive Summary
 
-Tartware PMS is a modern, PostgreSQL-first Property Management System with **109 tables** organized across 7 logical categories. This document compares Tartware's feature set against industry-leading PMS solutions:
+Tartware PMS is a modern, PostgreSQL-first Property Management System with **119 tables** organized across 7 logical categories. This document compares Tartware's feature set against industry-leading PMS solutions:
 
 - **Oracle OPERA Cloud** (Enterprise standard)
 - **Cloudbeds** (SMB/Independent hotels)
@@ -23,6 +23,7 @@ Tartware PMS is a modern, PostgreSQL-first Property Management System with **109
 - ✅ **Mobile-first design** with digital keys, mobile check-in
 - ✅ **Sustainability tracking** beyond standard PMS offerings
 - ✅ **JSONB flexibility** for custom fields without schema changes
+- ✅ **GDS-ready distribution stack** with connection profiles and message queues
 
 ---
 
@@ -32,7 +33,7 @@ Tartware PMS is a modern, PostgreSQL-first Property Management System with **109
 
 | Feature | Tartware | OPERA | Cloudbeds | Protel | RMS Cloud |
 |---------|----------|-------|-----------|--------|-----------|
-| **Multi-property management** | ✅ 109 tables | ✅ | ✅ | ✅ | ✅ |
+| **Multi-property management** | ✅ 119 tables | ✅ | ✅ | ✅ | ✅ |
 | **Multi-tenant SaaS** | ✅ Native | ⚠️ Cloud only | ✅ | ⚠️ Hybrid | ✅ |
 | **Reservation management** | ✅ Advanced | ✅ | ✅ | ✅ | ✅ |
 | **Group bookings** | ✅ | ✅ | ✅ | ✅ | ✅ |
@@ -62,7 +63,7 @@ Tartware PMS is a modern, PostgreSQL-first Property Management System with **109
 | **OTA integrations** | ✅ | ✅ | ✅ Strong | ✅ | ✅ |
 | **Channel manager** | ✅ | ✅ | ✅ Native | ✅ | ✅ |
 | **Rate parity monitoring** | ✅ | ✅ | ✅ | ⚠️ Add-on | ⚠️ Add-on |
-| **GDS connectivity** | ⚠️ Roadmap | ✅ Native | ⚠️ Via partners | ✅ | ⚠️ Via partners |
+| **GDS connectivity** | ✅ Schema-ready | ✅ Native | ⚠️ Via partners | ✅ | ⚠️ Via partners |
 | **Direct booking engine** | ⚠️ API-ready | ✅ | ✅ | ✅ | ✅ |
 
 ### Guest Experience & Loyalty
@@ -126,7 +127,7 @@ Tartware PMS is a modern, PostgreSQL-first Property Management System with **109
 |---------|----------|-------|-----------|--------|-----------|
 | **Vehicle fleet management** | ✅ **NEW (107)** | ✅ | ❌ | ⚠️ Basic | ❌ |
 | **Transportation requests** | ✅ **NEW (108)** | ✅ | ❌ | ⚠️ Basic | ⚠️ Notes only |
-| **Shuttle schedules** | ✅ **NEW (109)** | ✅ | ❌ | ⚠️ Basic | ❌ |
+| **Shuttle schedules** | ✅ Advanced | ✅ | ❌ | ⚠️ Basic | ❌ |
 | **Airport transfer tracking** | ✅ Flight-aware | ✅ | ❌ | ⚠️ Manual | ❌ |
 | **Driver assignment** | ✅ | ✅ | ❌ | ❌ | ❌ |
 | **GPS tracking** | ✅ Real-time | ⚠️ Via partners | ❌ | ❌ | ❌ |
@@ -218,7 +219,7 @@ Tartware PMS is a modern, PostgreSQL-first Property Management System with **109
 
 ### Features Tartware Now Matches (8 NEW Tables)
 
-With the addition of **8 new tables** (102-109), Tartware now provides enterprise-grade functionality previously missing:
+Earlier additions of **8 tables** (102-109) delivered enterprise-grade functionality previously missing:
 
 1. ✅ **Meeting room management** (102_meeting_rooms)
 2. ✅ **Event booking system** (103_event_bookings)
@@ -229,12 +230,20 @@ With the addition of **8 new tables** (102-109), Tartware now provides enterpris
 7. ✅ **Transportation requests** (108_transportation_requests)
 8. ✅ **Shuttle schedules** (109_shuttle_schedules)
 
+### Additional Enhancements (New Tables 41-43, 51-52, 69-71, 107-108)
+
+1. ✅ **GDS connections & message audit** (gds_connections, gds_message_log, gds_reservation_queue)
+2. ✅ **Reservation traces & waitlist workflow** (reservation_traces, waitlist_entries)
+3. ✅ **PCI tokenization & 3DS support** (payment_tokens, payments gateway extensions)
+4. ✅ **General ledger export batches & entries** (general_ledger_batches, general_ledger_entries)
+5. ✅ **Spa treatment catalog & appointments** (spa_treatments, spa_appointments)
+
 ### Remaining Gaps vs OPERA (Not Priorities)
 
-- ❌ **GDS connectivity** (Amadeus, Sabre, Worldspan) - Enterprise-only feature
+- ✅ **GDS connectivity** (Amadeus, Sabre, Worldspan) - Connection profiles & message queues
 - ❌ **Central reservations system (CRS)** - Multi-brand hotel groups only
 - ❌ **Labor management** - Separate HR system typically used
-- ❌ **Spa/golf management** - Usually third-party integrations (Booker, Jonas)
+- ⚠️ **Golf/course management** - Usually third-party integrations (Booker, Jonas)
 - ❌ **PBX/telephony integration** - Legacy feature, declining relevance
 
 ### Features Tartware Leads
@@ -254,7 +263,7 @@ With the addition of **8 new tables** (102-109), Tartware now provides enterpris
 
 | System | Total Tables/Entities | Public Documentation |
 |--------|----------------------|---------------------|
-| **Tartware** | **109** | ✅ Open (this doc) |
+| **Tartware** | **119** | ✅ Open (this doc) |
 | **OPERA** | ~400+ (estimated) | ❌ Proprietary |
 | **Cloudbeds** | ~80-100 (estimated) | ❌ Closed source |
 | **Protel** | ~200-250 (estimated) | ❌ Proprietary |
@@ -324,7 +333,7 @@ With the addition of **8 new tables** (102-109), Tartware now provides enterpris
 
 ## Conclusion
 
-Tartware PMS with **109 tables** provides feature parity with enterprise systems (OPERA, Protel) while maintaining deployment flexibility and cost-effectiveness of SMB solutions (Cloudbeds, RMS).
+Tartware PMS with **119 tables** provides feature parity with enterprise systems (OPERA, Protel) while maintaining deployment flexibility and cost-effectiveness of SMB solutions (Cloudbeds, RMS).
 
 ### Unique Advantages
 
@@ -337,18 +346,22 @@ Tartware PMS with **109 tables** provides feature parity with enterprise systems
 7. ✅ **Open source database** (PostgreSQL community edition)
 8. ✅ **Docker containerization** for easy deployment
 
-### Recent Enhancements (Tables 102-109)
+### Recent Enhancements (New Tables 41-43, 51-52, 69-71, 107-108)
 
+- GDS connection profiles, message audit, and reservation queue (enterprise distribution)
+- Reservation traces & waitlist workflow aligned with OPERA front desk traces
+- PCI token vault + 3DS metadata support, GL export batches/entries for USALI
+- Spa treatment catalog and appointment scheduling with therapist/resource tracking
 - Conference & events (MICE) management matching OPERA standards
 - Minibar inventory with auto-folio posting
 - Transportation fleet with GPS tracking and carbon offsetting
 
 ### Recommended Next Steps
 
-1. **GDS connectivity** for enterprise distribution
-2. **Spa/wellness module** for resort properties
-3. **HTNG 2.0 certification** for channel manager compatibility
-4. **Payment gateway integrations** (Stripe, Adyen, Shift4)
+1. **HTNG/OHIP certification** to productionize OTA/GDS message contracts
+2. **Payment gateway integrations** (Stripe, Adyen, Shift4) leveraging token vault
+3. **Automated GL export delivery** (SFTP/API) with reconciliation dashboards
+4. **Spa POS integration** for inventory sync and therapist rostering
 
 ---
 

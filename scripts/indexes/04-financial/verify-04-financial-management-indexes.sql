@@ -1,7 +1,7 @@
 -- =====================================================
 -- verify-04-financial-management-indexes.sql
 -- Index Verification Script for Financial Management
--- Category: 04-financial-management (12 tables)
+-- Category: 04-financial-management (15 tables)
 -- Date: 2025-10-19
 -- =====================================================
 
@@ -10,7 +10,7 @@
 \echo ''
 \echo '=============================================='
 \echo '  FINANCIAL MANAGEMENT - INDEX VERIFICATION'
-\echo '  Tables: 12'
+\echo '  Tables: 15'
 \echo '=============================================='
 \echo ''
 
@@ -25,7 +25,23 @@ SELECT
     COUNT(CASE WHEN indexname LIKE '%_pkey' THEN 1 END) AS primary_keys,
     COUNT(CASE WHEN indexname NOT LIKE '%_pkey' THEN 1 END) AS secondary_indexes
 FROM pg_indexes
-WHERE tablename IN ('payments', 'invoices', 'invoice_items', 'folios', 'charge_postings', 'refunds', 'tax_configurations', 'financial_closures', 'commission_tracking', 'cashier_sessions', 'accounts_receivable', 'credit_limits')
+WHERE tablename IN (
+    'payments',
+    'invoices',
+    'invoice_items',
+    'folios',
+    'charge_postings',
+    'refunds',
+    'tax_configurations',
+    'financial_closures',
+    'commission_tracking',
+    'cashier_sessions',
+    'accounts_receivable',
+    'credit_limits',
+    'payment_tokens',
+    'general_ledger_batches',
+    'general_ledger_entries'
+)
     AND schemaname = 'public'
 GROUP BY tablename
 ORDER BY tablename;
@@ -45,7 +61,23 @@ WITH fk_columns AS (
     JOIN information_schema.key_column_usage kcu
         ON tc.constraint_name = kcu.constraint_name
     WHERE tc.constraint_type = 'FOREIGN KEY'
-        AND tc.table_name IN ('payments', 'invoices', 'invoice_items', 'folios', 'charge_postings', 'refunds', 'tax_configurations', 'financial_closures', 'commission_tracking', 'cashier_sessions', 'accounts_receivable', 'credit_limits')
+        AND tc.table_name IN (
+            'payments',
+            'invoices',
+            'invoice_items',
+            'folios',
+            'charge_postings',
+            'refunds',
+            'tax_configurations',
+            'financial_closures',
+            'commission_tracking',
+            'cashier_sessions',
+            'accounts_receivable',
+            'credit_limits',
+            'payment_tokens',
+            'general_ledger_batches',
+            'general_ledger_entries'
+        )
 ),
 indexed_columns AS (
     SELECT
@@ -55,7 +87,23 @@ indexed_columns AS (
             ', '
         ))[1] AS column_name
     FROM pg_indexes
-    WHERE tablename IN ('payments', 'invoices', 'invoice_items', 'folios', 'charge_postings', 'refunds', 'tax_configurations', 'financial_closures', 'commission_tracking', 'cashier_sessions', 'accounts_receivable', 'credit_limits')
+    WHERE tablename IN (
+        'payments',
+        'invoices',
+        'invoice_items',
+        'folios',
+        'charge_postings',
+        'refunds',
+        'tax_configurations',
+        'financial_closures',
+        'commission_tracking',
+        'cashier_sessions',
+        'accounts_receivable',
+        'credit_limits',
+        'payment_tokens',
+        'general_ledger_batches',
+        'general_ledger_entries'
+    )
         AND schemaname = 'public'
 )
 SELECT
@@ -90,7 +138,23 @@ SELECT
         ELSE 'No partial index'
     END AS partial_index_status
 FROM pg_indexes
-WHERE tablename IN ('payments', 'invoices', 'invoice_items', 'folios', 'charge_postings', 'refunds', 'tax_configurations', 'financial_closures', 'commission_tracking', 'cashier_sessions', 'accounts_receivable', 'credit_limits')
+WHERE tablename IN (
+    'payments',
+    'invoices',
+    'invoice_items',
+    'folios',
+    'charge_postings',
+    'refunds',
+    'tax_configurations',
+    'financial_closures',
+    'commission_tracking',
+    'cashier_sessions',
+    'accounts_receivable',
+    'credit_limits',
+    'payment_tokens',
+    'general_ledger_batches',
+    'general_ledger_entries'
+)
     AND schemaname = 'public'
     AND indexdef LIKE '%WHERE%'
 ORDER BY tablename, indexname;
@@ -113,14 +177,46 @@ BEGIN
     -- Count total indexes (excluding primary keys)
     SELECT COUNT(*) INTO v_total_indexes
     FROM pg_indexes
-    WHERE tablename IN ('payments', 'invoices', 'invoice_items', 'folios', 'charge_postings', 'refunds', 'tax_configurations', 'financial_closures', 'commission_tracking', 'cashier_sessions', 'accounts_receivable', 'credit_limits')
+    WHERE tablename IN (
+        'payments',
+        'invoices',
+        'invoice_items',
+        'folios',
+        'charge_postings',
+        'refunds',
+        'tax_configurations',
+        'financial_closures',
+        'commission_tracking',
+        'cashier_sessions',
+        'accounts_receivable',
+        'credit_limits',
+        'payment_tokens',
+        'general_ledger_batches',
+        'general_ledger_entries'
+    )
         AND schemaname = 'public'
         AND indexname NOT LIKE '%_pkey';
 
     -- Count tables that have at least one secondary index
     SELECT COUNT(DISTINCT tablename) INTO v_tables_with_indexes
     FROM pg_indexes
-    WHERE tablename IN ('payments', 'invoices', 'invoice_items', 'folios', 'charge_postings', 'refunds', 'tax_configurations', 'financial_closures', 'commission_tracking', 'cashier_sessions', 'accounts_receivable', 'credit_limits')
+    WHERE tablename IN (
+            'payments',
+            'invoices',
+            'invoice_items',
+            'folios',
+            'charge_postings',
+            'refunds',
+            'tax_configurations',
+            'financial_closures',
+            'commission_tracking',
+            'cashier_sessions',
+            'accounts_receivable',
+            'credit_limits',
+            'payment_tokens',
+            'general_ledger_batches',
+            'general_ledger_entries'
+        )
         AND schemaname = 'public'
         AND indexname NOT LIKE '%_pkey';
 
@@ -132,7 +228,23 @@ BEGIN
         JOIN information_schema.key_column_usage kcu
             ON tc.constraint_name = kcu.constraint_name
         WHERE tc.constraint_type = 'FOREIGN KEY'
-            AND tc.table_name IN ('payments', 'invoices', 'invoice_items', 'folios', 'charge_postings', 'refunds', 'tax_configurations', 'financial_closures', 'commission_tracking', 'cashier_sessions', 'accounts_receivable', 'credit_limits')
+            AND tc.table_name IN (
+                'payments',
+                'invoices',
+                'invoice_items',
+                'folios',
+                'charge_postings',
+                'refunds',
+                'tax_configurations',
+                'financial_closures',
+                'commission_tracking',
+                'cashier_sessions',
+                'accounts_receivable',
+                'credit_limits',
+                'payment_tokens',
+                'general_ledger_batches',
+                'general_ledger_entries'
+            )
         EXCEPT
         SELECT
             tablename,
@@ -141,18 +253,34 @@ BEGIN
                 ', '
             ))[1]
         FROM pg_indexes
-        WHERE tablename IN ('payments', 'invoices', 'invoice_items', 'folios', 'charge_postings', 'refunds', 'tax_configurations', 'financial_closures', 'commission_tracking', 'cashier_sessions', 'accounts_receivable', 'credit_limits')
+        WHERE tablename IN (
+            'payments',
+            'invoices',
+            'invoice_items',
+            'folios',
+            'charge_postings',
+            'refunds',
+            'tax_configurations',
+            'financial_closures',
+            'commission_tracking',
+            'cashier_sessions',
+            'accounts_receivable',
+            'credit_limits',
+            'payment_tokens',
+            'general_ledger_batches',
+            'general_ledger_entries'
+        )
             AND schemaname = 'public'
     ) missing;
 
     RAISE NOTICE '';
     RAISE NOTICE 'Category: Financial Management';
     RAISE NOTICE 'Total Secondary Indexes: %', v_total_indexes;
-    RAISE NOTICE 'Tables with Indexes: % / 12', v_tables_with_indexes;
+    RAISE NOTICE 'Tables with Indexes: % / 15', v_tables_with_indexes;
     RAISE NOTICE 'Foreign Keys Without Index: %', v_fk_without_index;
     RAISE NOTICE '';
 
-    IF v_fk_without_index = 0 AND v_tables_with_indexes = 12 THEN
+    IF v_fk_without_index = 0 AND v_tables_with_indexes = 15 THEN
         RAISE NOTICE '✓✓✓ FINANCIAL MANAGEMENT INDEX VERIFICATION PASSED ✓✓✓';
     ELSE
         RAISE WARNING '⚠⚠⚠ FINANCIAL MANAGEMENT INDEX VERIFICATION ISSUES FOUND ⚠⚠⚠';

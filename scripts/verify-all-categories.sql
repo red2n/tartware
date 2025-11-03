@@ -1,16 +1,17 @@
 -- =====================================================
 -- verify-all-categories.sql
--- Master Script to Run All Category Verifications
--- Runs verification for all 20 categories
--- Date: 2025-10-21
+-- Master script to run all category verifications
+-- Runs verification for all 7 consolidated categories
+-- Date: 2025-10-23
 -- =====================================================
 
+\set ON_ERROR_STOP on
 \c tartware
 
 \echo ''
 \echo '======================================================'
 \echo '  TARTWARE PMS - CATEGORY-LEVEL VERIFICATION'
-\echo '  Running verification for all 20 functional categories'
+\echo '  Running verification for all 7 business domains'
 \echo '======================================================'
 \echo ''
 
@@ -18,201 +19,95 @@
 -- CATEGORY 1: CORE FOUNDATION
 -- =====================================================
 \echo '══════════════════════════════════════════════════════'
-\echo 'CATEGORY 1/20: Core Foundation'
+\echo 'CATEGORY 1/7: Core Foundation'
 \echo '══════════════════════════════════════════════════════'
-\i tables/01-core-foundation/verify-01-core-foundation.sql
-\i indexes/01-core-foundation/verify-01-core-foundation-indexes.sql
-\i constraints/01-core-foundation/verify-01-core-foundation-constraints.sql
+\i tables/01-core/verify-01-core-foundation.sql
+\i indexes/01-core/verify-01-core-foundation-indexes.sql
+\i constraints/01-core/verify-01-core-foundation-constraints.sql
 
 -- =====================================================
--- CATEGORY 2: ROOM & INVENTORY MANAGEMENT
+-- CATEGORY 2: INVENTORY & REVENUE MANAGEMENT
 -- =====================================================
 \echo '══════════════════════════════════════════════════════'
-\echo 'CATEGORY 2/20: Room & Inventory Management'
+\echo 'CATEGORY 2/7: Inventory & Revenue Management'
 \echo '══════════════════════════════════════════════════════'
-\i tables/02-room-inventory/verify-02-room-inventory.sql
-\i indexes/02-room-inventory/verify-02-room-inventory-indexes.sql
-\i constraints/02-room-inventory/verify-02-room-inventory-constraints.sql
+\i tables/02-inventory/verify-02-room-inventory.sql
+\i tables/02-inventory/verify-08-revenue-management.sql
+\i indexes/02-inventory/verify-02-room-inventory-indexes.sql
+\i indexes/02-inventory/verify-08-revenue-management-indexes.sql
+\i constraints/02-inventory/verify-02-room-inventory-constraints.sql
+\i constraints/02-inventory/verify-08-revenue-management-constraints.sql
 
 -- =====================================================
--- CATEGORY 3: RESERVATIONS & BOOKING
+-- CATEGORY 3: BOOKINGS & GUEST EXPERIENCE
 -- =====================================================
 \echo '══════════════════════════════════════════════════════'
-\echo 'CATEGORY 3/20: Reservations & Booking'
+\echo 'CATEGORY 3/7: Bookings & Guest Experience'
 \echo '══════════════════════════════════════════════════════'
-\i tables/03-reservations-booking/verify-03-reservations-booking.sql
-\i indexes/03-reservations-booking/verify-03-reservations-booking-indexes.sql
-\i constraints/03-reservations-booking/verify-03-reservations-booking-constraints.sql
+\i tables/03-bookings/verify-03-reservations-booking.sql
+\i tables/03-bookings/verify-07-guest-crm.sql
+\i indexes/03-bookings/verify-03-reservations-booking-indexes.sql
+\i indexes/03-bookings/verify-07-guest-crm-indexes.sql
+\i constraints/03-bookings/verify-03-reservations-booking-constraints.sql
+\i constraints/03-bookings/verify-07-guest-crm-constraints.sql
 
 -- =====================================================
 -- CATEGORY 4: FINANCIAL MANAGEMENT
 -- =====================================================
 \echo '══════════════════════════════════════════════════════'
-\echo 'CATEGORY 4/20: Financial Management'
+\echo 'CATEGORY 4/7: Financial Management'
 \echo '══════════════════════════════════════════════════════'
-\i tables/04-financial-management/verify-04-financial-management.sql
-\i indexes/04-financial-management/verify-04-financial-management-indexes.sql
-\i constraints/04-financial-management/verify-04-financial-management-constraints.sql
+\i tables/04-financial/verify-04-financial-management.sql
+\i indexes/04-financial/verify-04-financial-management-indexes.sql
+\i constraints/04-financial/verify-04-financial-management-constraints.sql
 
 -- =====================================================
--- CATEGORY 5: SERVICES & HOUSEKEEPING
+-- CATEGORY 5: OPERATIONS & GUEST SERVICES
 -- =====================================================
 \echo '══════════════════════════════════════════════════════'
-\echo 'CATEGORY 5/20: Services & Housekeeping'
+\echo 'CATEGORY 5/7: Operations & Guest Services'
 \echo '══════════════════════════════════════════════════════'
-\i tables/05-services-housekeeping/verify-05-services-housekeeping.sql
-\i indexes/05-services-housekeeping/verify-05-services-housekeeping-indexes.sql
-\i constraints/05-services-housekeeping/verify-05-services-housekeeping-constraints.sql
+\i tables/05-operations/verify-05-services-housekeeping.sql
+\i tables/05-operations/verify-09-staff-operations.sql
+\i tables/05-operations/verify-13-mobile-digital.sql
+\i indexes/05-operations/verify-05-services-housekeeping-indexes.sql
+\i indexes/05-operations/verify-09-staff-operations-indexes.sql
+\i indexes/05-operations/verify-13-mobile-digital-indexes.sql
+\i constraints/05-operations/verify-05-services-housekeeping-constraints.sql
+\i constraints/05-operations/verify-09-staff-operations-constraints.sql
+\i constraints/05-operations/verify-13-mobile-digital-constraints.sql
 
 -- =====================================================
--- CATEGORY 6: CHANNEL MANAGEMENT & OTA
+-- CATEGORY 6: INTEGRATIONS & DISTRIBUTION
 -- =====================================================
 \echo '══════════════════════════════════════════════════════'
-\echo 'CATEGORY 6/20: Channel Management & OTA'
+\echo 'CATEGORY 6/7: Integrations & Distribution'
 \echo '══════════════════════════════════════════════════════'
-\i tables/06-channel-ota/verify-06-channel-ota.sql
-\i indexes/06-channel-ota/verify-06-channel-ota-indexes.sql
-\i constraints/06-channel-ota/verify-06-channel-ota-constraints.sql
+\i tables/06-integrations/verify-06-channel-ota.sql
+\i tables/06-integrations/verify-10-marketing-campaigns.sql
+\i tables/06-integrations/verify-15-integration-hub.sql
+\i indexes/06-integrations/verify-06-channel-ota-indexes.sql
+\i indexes/06-integrations/verify-10-marketing-campaigns-indexes.sql
+\i indexes/06-integrations/verify-15-integration-hub-indexes.sql
+\i constraints/06-integrations/verify-06-channel-ota-constraints.sql
+\i constraints/06-integrations/verify-10-marketing-campaigns-constraints.sql
+\i constraints/06-integrations/verify-15-integration-hub-constraints.sql
 
 -- =====================================================
--- CATEGORY 7: GUEST RELATIONS & CRM
+-- CATEGORY 7: ANALYTICS, COMPLIANCE & AUDIT
 -- =====================================================
 \echo '══════════════════════════════════════════════════════'
-\echo 'CATEGORY 7/20: Guest Relations & CRM'
+\echo 'CATEGORY 7/7: Analytics, Compliance & Audit'
 \echo '══════════════════════════════════════════════════════'
-\i tables/07-guest-crm/verify-07-guest-crm.sql
-\i indexes/07-guest-crm/verify-07-guest-crm-indexes.sql
-\i constraints/07-guest-crm/verify-07-guest-crm-constraints.sql
-
--- =====================================================
--- CATEGORY 8: REVENUE MANAGEMENT
--- =====================================================
-\echo '══════════════════════════════════════════════════════'
-\echo 'CATEGORY 8/20: Revenue Management'
-\echo '══════════════════════════════════════════════════════'
-\i tables/08-revenue-management/verify-08-revenue-management.sql
-\i indexes/08-revenue-management/verify-08-revenue-management-indexes.sql
-\i constraints/08-revenue-management/verify-08-revenue-management-constraints.sql
-
--- =====================================================
--- CATEGORY 9: STAFF & OPERATIONS
--- =====================================================
-\echo '══════════════════════════════════════════════════════'
-\echo 'CATEGORY 9/20: Staff & Operations'
-\echo '══════════════════════════════════════════════════════'
-\i tables/09-staff-operations/verify-09-staff-operations.sql
-\i indexes/09-staff-operations/verify-09-staff-operations-indexes.sql
-\i constraints/09-staff-operations/verify-09-staff-operations-constraints.sql
-
--- =====================================================
--- CATEGORY 10: MARKETING & CAMPAIGNS
--- =====================================================
-\echo '══════════════════════════════════════════════════════'
-\echo 'CATEGORY 10/20: Marketing & Campaigns'
-\echo '══════════════════════════════════════════════════════'
-\i tables/10-marketing-campaigns/verify-10-marketing-campaigns.sql
-\i indexes/10-marketing-campaigns/verify-10-marketing-campaigns-indexes.sql
-\i constraints/10-marketing-campaigns/verify-10-marketing-campaigns-constraints.sql
-
--- =====================================================
--- CATEGORY 11: COMPLIANCE & LEGAL
--- =====================================================
-\echo '══════════════════════════════════════════════════════'
-\echo 'CATEGORY 11/20: Compliance & Legal'
-\echo '══════════════════════════════════════════════════════'
-\i tables/11-compliance-legal/verify-11-compliance-legal.sql
-\i indexes/11-compliance-legal/verify-11-compliance-legal-indexes.sql
-\i constraints/11-compliance-legal/verify-11-compliance-legal-constraints.sql
-
--- =====================================================
--- CATEGORY 12: ANALYTICS & REPORTING
--- =====================================================
-\echo '══════════════════════════════════════════════════════'
-\echo 'CATEGORY 12/20: Analytics & Reporting'
-\echo '══════════════════════════════════════════════════════'
-\i tables/12-analytics-reporting/verify-12-analytics-reporting.sql
-\i indexes/12-analytics-reporting/verify-12-analytics-reporting-indexes.sql
-\i constraints/12-analytics-reporting/verify-12-analytics-reporting-constraints.sql
-
--- =====================================================
--- CATEGORY 13: MOBILE & DIGITAL
--- =====================================================
-\echo '══════════════════════════════════════════════════════'
-\echo 'CATEGORY 13/20: Mobile & Digital'
-\echo '══════════════════════════════════════════════════════'
-\i tables/13-mobile-digital/verify-13-mobile-digital.sql
-\i indexes/13-mobile-digital/verify-13-mobile-digital-indexes.sql
-\i constraints/13-mobile-digital/verify-13-mobile-digital-constraints.sql
-
--- =====================================================
--- CATEGORY 14: SYSTEM & AUDIT
--- =====================================================
-\echo '══════════════════════════════════════════════════════'
-\echo 'CATEGORY 14/20: System & Audit'
-\echo '══════════════════════════════════════════════════════'
-\i tables/14-system-audit/verify-14-system-audit.sql
-\i indexes/14-system-audit/verify-14-system-audit-indexes.sql
-\i constraints/14-system-audit/verify-14-system-audit-constraints.sql
-
--- =====================================================
--- CATEGORY 15: INTEGRATION HUB
--- =====================================================
-\echo '══════════════════════════════════════════════════════'
-\echo 'CATEGORY 15/20: Integration Hub'
-\echo '══════════════════════════════════════════════════════'
-\i tables/15-integration-hub/verify-15-integration-hub.sql
-\i indexes/15-integration-hub/verify-15-integration-hub-indexes.sql
-\i constraints/15-integration-hub/verify-15-integration-hub-constraints.sql
-
--- =====================================================
--- CATEGORY 16: AI/ML INNOVATION
--- =====================================================
-\echo '══════════════════════════════════════════════════════'
-\echo 'CATEGORY 16/20: AI/ML Innovation'
-\echo '══════════════════════════════════════════════════════'
-\i tables/16-ai-ml-innovation/verify-16-ai-ml-innovation.sql
-\i indexes/16-ai-ml-innovation/verify-16-ai-ml-innovation-indexes.sql
-\i constraints/16-ai-ml-innovation/verify-16-ai-ml-innovation-constraints.sql
-
--- =====================================================
--- CATEGORY 17: SUSTAINABILITY & ESG
--- =====================================================
-\echo '══════════════════════════════════════════════════════'
-\echo 'CATEGORY 17/20: Sustainability & ESG'
-\echo '══════════════════════════════════════════════════════'
-\i tables/17-sustainability-esg/verify-17-sustainability-esg.sql
-\i indexes/17-sustainability-esg/verify-17-sustainability-esg-indexes.sql
-\i constraints/17-sustainability-esg/verify-17-sustainability-esg-constraints.sql
-
--- =====================================================
--- CATEGORY 18: IOT & SMART ROOMS
--- =====================================================
-\echo '══════════════════════════════════════════════════════'
-\echo 'CATEGORY 18/20: IoT & Smart Rooms'
-\echo '══════════════════════════════════════════════════════'
-\i tables/18-iot-smart-rooms/verify-18-iot-smart-rooms.sql
-\i indexes/18-iot-smart-rooms/verify-18-iot-smart-rooms-indexes.sql
-\i constraints/18-iot-smart-rooms/verify-18-iot-smart-rooms-constraints.sql
-
--- =====================================================
--- CATEGORY 19: CONTACTLESS & DIGITAL
--- =====================================================
-\echo '══════════════════════════════════════════════════════'
-\echo 'CATEGORY 19/20: Contactless & Digital'
-\echo '══════════════════════════════════════════════════════'
-\i tables/19-contactless-digital/verify-19-contactless-digital.sql
-\i indexes/19-contactless-digital/verify-19-contactless-digital-indexes.sql
-\i constraints/19-contactless-digital/verify-19-contactless-digital-constraints.sql
-
--- =====================================================
--- CATEGORY 20: ASSET MANAGEMENT
--- =====================================================
-\echo '══════════════════════════════════════════════════════'
-\echo 'CATEGORY 20/20: Asset Management'
-\echo '══════════════════════════════════════════════════════'
-\i tables/20-asset-management/verify-20-asset-management.sql
-\i indexes/20-asset-management/verify-20-asset-management-indexes.sql
-\i constraints/20-asset-management/verify-20-asset-management-constraints.sql
+\i tables/07-analytics/verify-11-compliance-legal.sql
+\i tables/07-analytics/verify-12-analytics-reporting.sql
+\i tables/07-analytics/verify-14-system-audit.sql
+\i indexes/07-analytics/verify-11-compliance-legal-indexes.sql
+\i indexes/07-analytics/verify-12-analytics-reporting-indexes.sql
+\i indexes/07-analytics/verify-14-system-audit-indexes.sql
+\i constraints/07-analytics/verify-11-compliance-legal-constraints.sql
+\i constraints/07-analytics/verify-12-analytics-reporting-constraints.sql
+\i constraints/07-analytics/verify-14-system-audit-constraints.sql
 
 -- =====================================================
 -- FINAL SUMMARY
@@ -223,14 +118,32 @@
 \echo '======================================================'
 \echo ''
 \echo 'Verified:'
-\echo '  • 20 functional categories'
-\echo '  • 132 tables (89 core + 43 advanced)'
-\echo '  • 800+ indexes'
-\echo '  • 500+ foreign key constraints'
+\echo '  • 7 business domains'
+
+SELECT COUNT(*) AS verified_table_count
+FROM information_schema.tables
+WHERE table_schema IN ('public', 'availability')
+  AND table_type = 'BASE TABLE';
+\gset
+
+SELECT COUNT(*) AS verified_index_count
+FROM pg_indexes
+WHERE schemaname IN ('public', 'availability');
+\gset
+
+SELECT COUNT(*) AS verified_fk_count
+FROM information_schema.table_constraints
+WHERE constraint_type = 'FOREIGN KEY'
+  AND table_schema IN ('public', 'availability');
+\gset
+
+\echo '  • Tables (public+availability): ' :verified_table_count
+\echo '  • Indexes (public+availability): ' :verified_index_count
+\echo '  • Foreign keys (public+availability): ' :verified_fk_count
 \echo ''
 \echo 'Review the output above for any warnings or failures.'
 \echo ''
-\echo 'Individual category verification scripts can be run separately:'
-\echo '  psql -U postgres -d tartware -f tables/01-core-foundation/verify-01-core-foundation.sql'
+\echo 'Individual category verification scripts can be run separately, e.g.:'
+\echo '  psql -U postgres -d tartware -f tables/01-core/verify-01-core-foundation.sql'
 \echo ''
 \echo '======================================================'

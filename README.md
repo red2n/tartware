@@ -23,6 +23,7 @@ Tartware PMS is a cloud-native property management system designed following glo
 - ✅ **Full Booking Lifecycle** - Pending → Confirmed → Checked-In → Checked-Out
 - ✅ **Guest Profiles** - CRM with preferences and loyalty tracking
 - ✅ **Multiple Reservation Sources** - Direct, OTA, Phone, Walk-in, Corporate
+- ✅ **Front Desk Traces & Waitlists** - OPERA-style follow-up and sold-out handling
 - ✅ **Confirmation Numbers** - Unique booking references
 
 ### Rate Management & Pricing
@@ -35,13 +36,14 @@ Tartware PMS is a cloud-native property management system designed following glo
 - ✅ **Real-Time Availability** - Date-based room inventory tracking
 - ✅ **Overbooking Prevention** - Check constraints and atomic updates
 - ✅ **Room Blocking** - Manual inventory control for maintenance
-- ✅ **Channel Integration** - OTA sync-ready architecture
+- ✅ **Channel & GDS Integration** - OTA sync plus GDS queues and message audit
 
 ### Financial Management
 - ✅ **Payment Processing** - Multiple methods (Cash, Card, Transfer, Crypto)
 - ✅ **Invoice Generation** - Professional billing documents
 - ✅ **Payment Tracking** - Transaction history and refunds
-- ✅ **PCI DSS Ready** - Tokenization support (no card storage)
+- ✅ **Tokenized Payments** - PCI DSS-ready vault references & 3-D Secure metadata
+- ✅ **General Ledger Exports** - USALI-compliant batch + entry staging
 
 ### Analytics & Reporting
 - ✅ **Standard KPIs** - Occupancy Rate, ADR, RevPAR
@@ -52,6 +54,7 @@ Tartware PMS is a cloud-native property management system designed following glo
 ### Operations
 - ✅ **Housekeeping Management** - Task tracking and room status
 - ✅ **Services & Amenities** - Hotel services catalog
+- ✅ **Spa & Wellness Scheduling** - Therapist assignment with appointment workflow
 - ✅ **Channel Manager Integration** - OTA mapping and sync
 - ✅ **Audit Trails** - Complete change tracking for compliance
 

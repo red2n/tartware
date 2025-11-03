@@ -1,7 +1,7 @@
 -- =====================================================
 -- verify-03-reservations-booking.sql
 -- Verification Script for Reservations & Booking Tables
--- Category: 03-reservations-booking (7 tables)
+-- Category: 03-reservations-booking (9 tables)
 -- Date: 2025-10-19
 -- =====================================================
 
@@ -10,18 +10,18 @@
 \echo ''
 \echo '=============================================='
 \echo '  CATEGORY: RESERVATIONS & BOOKING VERIFICATION'
-\echo '  Tables: 7 | Description: Reservation lifecycle, deposits, allotments'
+\echo '  Tables: 9 | Description: Reservation lifecycle, deposits, allotments, front-desk workflow'
 \echo '=============================================='
 \echo ''
 
 -- =====================================================
 -- 1. CHECK IF ALL TABLES EXIST
 -- =====================================================
-\echo '1. Checking if all 7 tables exist...'
+\echo '1. Checking if all 9 tables exist...'
 
 DO $$
 DECLARE
-    v_expected_tables TEXT[] := ARRAY['reservations', 'reservation_status_history', 'deposit_schedules', 'allotments', 'booking_sources', 'market_segments', 'guest_preferences'];
+    v_expected_tables TEXT[] := ARRAY['reservations', 'reservation_status_history', 'deposit_schedules', 'allotments', 'booking_sources', 'market_segments', 'guest_preferences', 'reservation_traces', 'waitlist_entries'];
     v_table TEXT;
     v_missing_tables TEXT[] := '{}'::TEXT[];
     v_found_count INTEGER := 0;
@@ -46,7 +46,7 @@ BEGIN
         RAISE WARNING 'Missing tables: %', array_to_string(v_missing_tables, ', ');
         RAISE EXCEPTION 'Reservations & Booking verification FAILED - missing tables!';
     ELSE
-        RAISE NOTICE '✓✓✓ All 7 Reservations & Booking tables exist!';
+        RAISE NOTICE '✓✓✓ All 9 Reservations & Booking tables exist!';
     END IF;
 END $$;
 
@@ -67,7 +67,7 @@ FROM information_schema.tables t
 LEFT JOIN information_schema.columns c
     ON t.table_schema = c.table_schema
     AND t.table_name = c.table_name
-WHERE t.table_name IN ('reservations', 'reservation_status_history', 'deposit_schedules', 'allotments', 'booking_sources', 'market_segments', 'guest_preferences')
+WHERE t.table_name IN ('reservations', 'reservation_status_history', 'deposit_schedules', 'allotments', 'booking_sources', 'market_segments', 'guest_preferences', 'reservation_traces', 'waitlist_entries')
     AND t.table_schema = 'public'
 GROUP BY t.table_schema, t.table_name
 ORDER BY t.table_name;
@@ -87,19 +87,19 @@ DECLARE
 BEGIN
     SELECT COUNT(*) INTO v_table_count
     FROM information_schema.tables t
-    WHERE t.table_name IN ('reservations', 'reservation_status_history', 'deposit_schedules', 'allotments', 'booking_sources', 'market_segments', 'guest_preferences')
+    WHERE t.table_name IN ('reservations', 'reservation_status_history', 'deposit_schedules', 'allotments', 'booking_sources', 'market_segments', 'guest_preferences', 'reservation_traces', 'waitlist_entries')
         AND t.table_schema = 'public';
 
     RAISE NOTICE '';
     RAISE NOTICE 'Category: Reservations & Booking';
-    RAISE NOTICE 'Tables Found: % / 7', v_table_count;
+    RAISE NOTICE 'Tables Found: % / 9', v_table_count;
     RAISE NOTICE '';
 
-    IF v_table_count = 7 THEN
+    IF v_table_count = 9 THEN
         RAISE NOTICE '✓✓✓ RESERVATIONS & BOOKING VERIFICATION PASSED ✓✓✓';
     ELSE
         RAISE WARNING '⚠⚠⚠ RESERVATIONS & BOOKING VERIFICATION FAILED ⚠⚠⚠';
-        RAISE WARNING 'Expected 7 tables, found %', v_table_count;
+        RAISE WARNING 'Expected 9 tables, found %', v_table_count;
     END IF;
 END $$;
 

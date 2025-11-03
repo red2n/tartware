@@ -60,6 +60,8 @@
 \ir 03-bookings/48_guest_documents.sql
 \ir 03-bookings/49_guest_notes.sql
 \ir 03-bookings/50_automated_messages.sql
+\ir 03-bookings/51_reservation_traces.sql
+\ir 03-bookings/52_waitlist_entries.sql
 
 -- ============================================================================
 -- CATEGORY 4: FINANCIAL (Payments, invoices, folios, accounting)
@@ -77,6 +79,9 @@
 \ir 04-financial/66_cashier_sessions.sql
 \ir 04-financial/67_accounts_receivable.sql
 \ir 04-financial/68_credit_limits.sql
+\ir 04-financial/69_payment_tokens.sql
+\ir 04-financial/70_general_ledger_batches.sql
+\ir 04-financial/71_general_ledger_entries.sql
 
 -- ============================================================================
 -- CATEGORY 5: OPERATIONS (Services, housekeeping, staff, mobile, assets)
@@ -104,6 +109,8 @@
 \ir 05-operations/104_vehicles.sql
 \ir 05-operations/105_transportation_requests.sql
 \ir 05-operations/106_shuttle_schedules.sql
+\ir 05-operations/107_spa_treatments.sql
+\ir 05-operations/108_spa_appointments.sql
 
 -- ============================================================================
 -- CATEGORY 6: INTEGRATIONS (Channels, OTA, marketing, external systems)
@@ -113,6 +120,9 @@
 \ir 06-integrations/38_ota_configurations.sql
 \ir 06-integrations/39_ota_rate_plans.sql
 \ir 06-integrations/40_ota_reservations_queue.sql
+\ir 06-integrations/41_gds_connections.sql
+\ir 06-integrations/42_gds_message_log.sql
+\ir 06-integrations/43_gds_reservation_queue.sql
 \ir 06-integrations/44_ota_inventory_sync.sql
 \ir 06-integrations/45_channel_rate_parity.sql
 \ir 06-integrations/46_channel_commission_rules.sql

@@ -109,13 +109,13 @@ docker compose down -v
 
 ### High Priority
 1. ⏳ Test direct mode installation
-2. ⏳ Update verification scripts (verify-all-categories.sql needs update for 7 categories)
-3. ⏳ Update verify-installation.sql (expected count: 128 not 132)
+2. ✅ Update verification scripts for 7-category structure (verify-all-categories.sql) — 2025-10-23
+3. ✅ Update verify-installation.sql with 128-table expectation — 2025-10-23
 
 ### Medium Priority
-4. ⏳ Create new verify-all-consolidated.sql for 7-category structure
+4. ✅ Consolidate category verification under verify-all-categories.sql — 2025-10-23
 5. ⏳ Create missing master verify files (tables/verify-tables.sql, etc.)
-6. ⏳ Update verify-complete-setup.sql if needed
+6. ✅ Update verify-complete-setup.sql counts/categories — 2025-10-23
 
 ### Low Priority
 7. ⏳ Test sample data loading
@@ -151,4 +151,4 @@ docker compose down -v
 
 **Reorganization Status:** ✅ COMPLETE & VERIFIED  
 **Production Ready:** ✅ YES  
-**Next Step:** Update verification scripts and test direct mode
+**Next Step:** Test direct mode and remaining documentation updates

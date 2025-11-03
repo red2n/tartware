@@ -1,7 +1,7 @@
 -- =====================================================
 -- verify-06-channel-ota-indexes.sql
 -- Index Verification Script for Channel Management & OTA
--- Category: 06-channel-ota (7 tables)
+-- Category: 06-channel-ota (10 tables)
 -- Date: 2025-10-19
 -- =====================================================
 
@@ -10,7 +10,7 @@
 \echo ''
 \echo '=============================================='
 \echo '  CHANNEL MANAGEMENT & OTA - INDEX VERIFICATION'
-\echo '  Tables: 7'
+\echo '  Tables: 10'
 \echo '=============================================='
 \echo ''
 
@@ -25,7 +25,18 @@ SELECT
     COUNT(CASE WHEN indexname LIKE '%_pkey' THEN 1 END) AS primary_keys,
     COUNT(CASE WHEN indexname NOT LIKE '%_pkey' THEN 1 END) AS secondary_indexes
 FROM pg_indexes
-WHERE tablename IN ('channel_mappings', 'ota_configurations', 'ota_rate_plans', 'ota_reservations_queue', 'ota_inventory_sync', 'channel_rate_parity', 'channel_commission_rules')
+WHERE tablename IN (
+    'channel_mappings',
+    'ota_configurations',
+    'ota_rate_plans',
+    'ota_reservations_queue',
+    'ota_inventory_sync',
+    'channel_rate_parity',
+    'channel_commission_rules',
+    'gds_connections',
+    'gds_message_log',
+    'gds_reservation_queue'
+)
     AND schemaname = 'public'
 GROUP BY tablename
 ORDER BY tablename;
@@ -45,7 +56,18 @@ WITH fk_columns AS (
     JOIN information_schema.key_column_usage kcu
         ON tc.constraint_name = kcu.constraint_name
     WHERE tc.constraint_type = 'FOREIGN KEY'
-        AND tc.table_name IN ('channel_mappings', 'ota_configurations', 'ota_rate_plans', 'ota_reservations_queue', 'ota_inventory_sync', 'channel_rate_parity', 'channel_commission_rules')
+        AND tc.table_name IN (
+            'channel_mappings',
+            'ota_configurations',
+            'ota_rate_plans',
+            'ota_reservations_queue',
+            'ota_inventory_sync',
+            'channel_rate_parity',
+            'channel_commission_rules',
+            'gds_connections',
+            'gds_message_log',
+            'gds_reservation_queue'
+        )
 ),
 indexed_columns AS (
     SELECT
@@ -55,7 +77,18 @@ indexed_columns AS (
             ', '
         ))[1] AS column_name
     FROM pg_indexes
-    WHERE tablename IN ('channel_mappings', 'ota_configurations', 'ota_rate_plans', 'ota_reservations_queue', 'ota_inventory_sync', 'channel_rate_parity', 'channel_commission_rules')
+    WHERE tablename IN (
+        'channel_mappings',
+        'ota_configurations',
+        'ota_rate_plans',
+        'ota_reservations_queue',
+        'ota_inventory_sync',
+        'channel_rate_parity',
+        'channel_commission_rules',
+        'gds_connections',
+        'gds_message_log',
+        'gds_reservation_queue'
+    )
         AND schemaname = 'public'
 )
 SELECT
@@ -90,7 +123,18 @@ SELECT
         ELSE 'No partial index'
     END AS partial_index_status
 FROM pg_indexes
-WHERE tablename IN ('channel_mappings', 'ota_configurations', 'ota_rate_plans', 'ota_reservations_queue', 'ota_inventory_sync', 'channel_rate_parity', 'channel_commission_rules')
+WHERE tablename IN (
+    'channel_mappings',
+    'ota_configurations',
+    'ota_rate_plans',
+    'ota_reservations_queue',
+    'ota_inventory_sync',
+    'channel_rate_parity',
+    'channel_commission_rules',
+    'gds_connections',
+    'gds_message_log',
+    'gds_reservation_queue'
+)
     AND schemaname = 'public'
     AND indexdef LIKE '%WHERE%'
 ORDER BY tablename, indexname;
@@ -113,14 +157,36 @@ BEGIN
     -- Count total indexes (excluding primary keys)
     SELECT COUNT(*) INTO v_total_indexes
     FROM pg_indexes
-    WHERE tablename IN ('channel_mappings', 'ota_configurations', 'ota_rate_plans', 'ota_reservations_queue', 'ota_inventory_sync', 'channel_rate_parity', 'channel_commission_rules')
+    WHERE tablename IN (
+        'channel_mappings',
+        'ota_configurations',
+        'ota_rate_plans',
+        'ota_reservations_queue',
+        'ota_inventory_sync',
+        'channel_rate_parity',
+        'channel_commission_rules',
+        'gds_connections',
+        'gds_message_log',
+        'gds_reservation_queue'
+    )
         AND schemaname = 'public'
         AND indexname NOT LIKE '%_pkey';
 
     -- Count tables that have at least one secondary index
     SELECT COUNT(DISTINCT tablename) INTO v_tables_with_indexes
     FROM pg_indexes
-    WHERE tablename IN ('channel_mappings', 'ota_configurations', 'ota_rate_plans', 'ota_reservations_queue', 'ota_inventory_sync', 'channel_rate_parity', 'channel_commission_rules')
+    WHERE tablename IN (
+            'channel_mappings',
+            'ota_configurations',
+            'ota_rate_plans',
+            'ota_reservations_queue',
+            'ota_inventory_sync',
+            'channel_rate_parity',
+            'channel_commission_rules',
+            'gds_connections',
+            'gds_message_log',
+            'gds_reservation_queue'
+        )
         AND schemaname = 'public'
         AND indexname NOT LIKE '%_pkey';
 
@@ -132,7 +198,18 @@ BEGIN
         JOIN information_schema.key_column_usage kcu
             ON tc.constraint_name = kcu.constraint_name
         WHERE tc.constraint_type = 'FOREIGN KEY'
-            AND tc.table_name IN ('channel_mappings', 'ota_configurations', 'ota_rate_plans', 'ota_reservations_queue', 'ota_inventory_sync', 'channel_rate_parity', 'channel_commission_rules')
+            AND tc.table_name IN (
+                'channel_mappings',
+                'ota_configurations',
+                'ota_rate_plans',
+                'ota_reservations_queue',
+                'ota_inventory_sync',
+                'channel_rate_parity',
+                'channel_commission_rules',
+                'gds_connections',
+                'gds_message_log',
+                'gds_reservation_queue'
+            )
         EXCEPT
         SELECT
             tablename,
@@ -141,18 +218,29 @@ BEGIN
                 ', '
             ))[1]
         FROM pg_indexes
-        WHERE tablename IN ('channel_mappings', 'ota_configurations', 'ota_rate_plans', 'ota_reservations_queue', 'ota_inventory_sync', 'channel_rate_parity', 'channel_commission_rules')
+        WHERE tablename IN (
+            'channel_mappings',
+            'ota_configurations',
+            'ota_rate_plans',
+            'ota_reservations_queue',
+            'ota_inventory_sync',
+            'channel_rate_parity',
+            'channel_commission_rules',
+            'gds_connections',
+            'gds_message_log',
+            'gds_reservation_queue'
+        )
             AND schemaname = 'public'
     ) missing;
 
     RAISE NOTICE '';
     RAISE NOTICE 'Category: Channel Management & OTA';
     RAISE NOTICE 'Total Secondary Indexes: %', v_total_indexes;
-    RAISE NOTICE 'Tables with Indexes: % / 7', v_tables_with_indexes;
+    RAISE NOTICE 'Tables with Indexes: % / 10', v_tables_with_indexes;
     RAISE NOTICE 'Foreign Keys Without Index: %', v_fk_without_index;
     RAISE NOTICE '';
 
-    IF v_fk_without_index = 0 AND v_tables_with_indexes = 7 THEN
+    IF v_fk_without_index = 0 AND v_tables_with_indexes = 10 THEN
         RAISE NOTICE '✓✓✓ CHANNEL MANAGEMENT & OTA INDEX VERIFICATION PASSED ✓✓✓';
     ELSE
         RAISE WARNING '⚠⚠⚠ CHANNEL MANAGEMENT & OTA INDEX VERIFICATION ISSUES FOUND ⚠⚠⚠';

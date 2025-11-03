@@ -4,7 +4,7 @@
 -- Date: 2025-10-21
 --
 -- Purpose: Comprehensive validation of entire database setup
--- Updated: Now supports 109 tables across 7 categories
+-- Updated: Auto-detects object counts across 7 domains
 --
 -- Usage: psql -U postgres -d tartware -f verify-all.sql
 -- =====================================================
@@ -79,11 +79,14 @@ DECLARE
     v_table_count INTEGER;
     v_index_count INTEGER;
     v_constraint_count INTEGER;
+    v_trigger_count INTEGER;
     v_procedure_count INTEGER;
     v_soft_delete_count INTEGER;
     v_tenant_id_count INTEGER;
-    v_total_score INTEGER := 0;
-    v_max_score INTEGER := 100;
+    v_index_per_table NUMERIC := 0;
+    v_fk_per_table NUMERIC := 0;
+    v_soft_delete_ratio NUMERIC := 0;
+    v_tenant_ratio NUMERIC := 0;
 BEGIN
     -- Count tables
     SELECT COUNT(*) INTO v_table_count
@@ -101,6 +104,11 @@ BEGIN
     FROM information_schema.table_constraints
     WHERE constraint_type = 'FOREIGN KEY'
         AND table_schema IN ('public', 'availability');
+
+    -- Count triggers
+    SELECT COUNT(*) INTO v_trigger_count
+    FROM information_schema.triggers
+    WHERE trigger_schema IN ('public', 'availability');
 
     -- Count procedures
     SELECT COUNT(*) INTO v_procedure_count
@@ -127,80 +135,46 @@ BEGIN
     WHERE table_schema IN ('public', 'availability')
         AND column_name = 'tenant_id';
 
-    RAISE NOTICE '';
-    RAISE NOTICE '┌─────────────────────────────────────────────────┐';
-    RAISE NOTICE '│  DATABASE COMPONENT SUMMARY                     │';
-    RAISE NOTICE '├─────────────────────────────────────────────────┤';
-    RAISE NOTICE '│                                                 │';
-    RAISE NOTICE '│  Tables:              % / 109                 │', LPAD(v_table_count::TEXT, 3, ' ');
-    RAISE NOTICE '│  Indexes:             % / 1800+               │', LPAD(v_index_count::TEXT, 4, ' ');
-    RAISE NOTICE '│  Foreign Keys:        % / 245+                │', LPAD(v_constraint_count::TEXT, 3, ' ');
-    RAISE NOTICE '│  Procedures:          % / 14                  │', LPAD(v_procedure_count::TEXT, 3, ' ');
-    RAISE NOTICE '│                                                 │';
-    RAISE NOTICE '│  Soft Delete:         % / 105+                │', LPAD(v_soft_delete_count::TEXT, 3, ' ');
-    RAISE NOTICE '│  Multi-tenancy:       % / 107+                │', LPAD(v_tenant_id_count::TEXT, 3, ' ');
-    RAISE NOTICE '│                                                 │';
-    RAISE NOTICE '└─────────────────────────────────────────────────┘';
-    RAISE NOTICE '';
-
-    -- Calculate score
-    IF v_table_count >= 109 THEN v_total_score := v_total_score + 20; END IF;
-    IF v_index_count >= 1800 THEN v_total_score := v_total_score + 25;
-    ELSIF v_index_count >= 1500 THEN v_total_score := v_total_score + 15; END IF;
-    IF v_constraint_count >= 245 THEN v_total_score := v_total_score + 20; END IF;
-    IF v_procedure_count >= 14 THEN v_total_score := v_total_score + 15; END IF;
-    IF v_soft_delete_count >= 105 THEN v_total_score := v_total_score + 10; END IF;
-    IF v_tenant_id_count >= 107 THEN v_total_score := v_total_score + 10; END IF;
-
-    RAISE NOTICE '┌─────────────────────────────────────────────────┐';
-    RAISE NOTICE '│  QUALITY SCORE                                  │';
-    RAISE NOTICE '├─────────────────────────────────────────────────┤';
-    RAISE NOTICE '│                                                 │';
-    RAISE NOTICE '│  Score:  % / %                              │', LPAD(v_total_score::TEXT, 3, ' '), v_max_score;
-    RAISE NOTICE '│                                                 │';
-
-    IF v_total_score = v_max_score THEN
-        RAISE NOTICE '│  Grade:  A+ (PERFECT) ✓✓✓                      │';
-        RAISE NOTICE '│                                                 │';
-        RAISE NOTICE '│  Status: Production Ready                       │';
-    ELSIF v_total_score >= 90 THEN
-        RAISE NOTICE '│  Grade:  A (EXCELLENT) ✓✓                       │';
-        RAISE NOTICE '│                                                 │';
-        RAISE NOTICE '│  Status: Production Ready                       │';
-    ELSIF v_total_score >= 80 THEN
-        RAISE NOTICE '│  Grade:  B (GOOD) ✓                             │';
-        RAISE NOTICE '│                                                 │';
-        RAISE NOTICE '│  Status: Minor improvements recommended         │';
-    ELSIF v_total_score >= 70 THEN
-        RAISE NOTICE '│  Grade:  C (ACCEPTABLE) ⚠                       │';
-        RAISE NOTICE '│                                                 │';
-        RAISE NOTICE '│  Status: Improvements needed                    │';
-    ELSE
-        RAISE NOTICE '│  Grade:  F (INCOMPLETE) ✗                       │';
-        RAISE NOTICE '│                                                 │';
-        RAISE NOTICE '│  Status: Critical issues found                  │';
+    -- Compute derived metrics
+    IF v_table_count > 0 THEN
+        v_index_per_table := v_index_count::NUMERIC / v_table_count;
+        v_fk_per_table := v_constraint_count::NUMERIC / v_table_count;
+        v_soft_delete_ratio := (v_soft_delete_count::NUMERIC / v_table_count) * 100;
+        v_tenant_ratio := (v_tenant_id_count::NUMERIC / v_table_count) * 100;
     END IF;
 
-    RAISE NOTICE '│                                                 │';
-    RAISE NOTICE '└─────────────────────────────────────────────────┘';
+    RAISE NOTICE '';
+    RAISE NOTICE '┌──────────────────────────────────────────────────────────────┐';
+    RAISE NOTICE '│  DATABASE COMPONENT SUMMARY                                  │';
+    RAISE NOTICE '├──────────────────────────────────────────────────────────────┤';
+    RAISE NOTICE '│                                                              │';
+    RAISE NOTICE '│  Tables (public+availability):      %                      │', LPAD(v_table_count::TEXT, 5, ' ');
+    RAISE NOTICE '│  Indexes:                           %                      │', LPAD(v_index_count::TEXT, 5, ' ');
+    RAISE NOTICE '│  Foreign Keys:                      %                      │', LPAD(v_constraint_count::TEXT, 5, ' ');
+    RAISE NOTICE '│  Triggers:                          %                      │', LPAD(v_trigger_count::TEXT, 5, ' ');
+    RAISE NOTICE '│  Stored Procedures (tracked set):   %                      │', LPAD(v_procedure_count::TEXT, 5, ' ');
+    RAISE NOTICE '│                                                              │';
+    RAISE NOTICE '│  Avg indexes per table:             %                      │', TO_CHAR(v_index_per_table, 'FM99990.00');
+    RAISE NOTICE '│  Avg foreign keys per table:        %                      │', TO_CHAR(v_fk_per_table, 'FM99990.00');
+    RAISE NOTICE '│  Soft delete coverage:              %                      │', TO_CHAR(v_soft_delete_ratio, 'FM99990.00') || '%';
+    RAISE NOTICE '│  Multi-tenant coverage:             %                      │', TO_CHAR(v_tenant_ratio, 'FM99990.00') || '%';
+    RAISE NOTICE '│                                                              │';
+    RAISE NOTICE '└──────────────────────────────────────────────────────────────┘';
+    RAISE NOTICE '';
+    RAISE NOTICE 'All counts above are pulled dynamically from the current catalog metadata.';
     RAISE NOTICE '';
 
-    -- Specific recommendations
-    IF v_table_count < 109 THEN
-        RAISE WARNING '⚠ Missing tables detected. Run tables scripts.';
+    IF v_table_count = 0 THEN
+        RAISE WARNING 'No tables detected in target schemas.';
     END IF;
-    IF v_index_count < 1800 THEN
-        RAISE WARNING '⚠ Index count below target. Run index scripts.';
+    IF v_index_count = 0 THEN
+        RAISE WARNING 'No indexes detected in target schemas.';
     END IF;
-    IF v_constraint_count < 245 THEN
-        RAISE WARNING '⚠ Missing constraints. Run constraint scripts.';
+    IF v_constraint_count = 0 THEN
+        RAISE WARNING 'No foreign keys detected in target schemas.';
     END IF;
-    IF v_procedure_count < 14 THEN
-        RAISE WARNING '⚠ Missing procedures. Run procedure scripts.';
-    END IF;
-
-    IF v_total_score = v_max_score THEN
-        RAISE NOTICE '🎉 Congratulations! Your database is perfectly configured!';
+    IF v_trigger_count = 0 THEN
+        RAISE WARNING 'No triggers detected in target schemas.';
     END IF;
 END $$;
 

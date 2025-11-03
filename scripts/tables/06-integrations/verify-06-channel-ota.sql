@@ -1,7 +1,7 @@
 -- =====================================================
 -- verify-06-channel-ota.sql
 -- Verification Script for Channel Management & OTA Tables
--- Category: 06-channel-ota (7 tables)
+-- Category: 06-channel-ota (10 tables)
 -- Date: 2025-10-19
 -- =====================================================
 
@@ -9,19 +9,19 @@
 
 \echo ''
 \echo '=============================================='
-\echo '  CATEGORY: CHANNEL MANAGEMENT & OTA VERIFICATION'
-\echo '  Tables: 7 | Description: Distribution channels, OTA integrations'
+\echo '  CATEGORY: CHANNEL MANAGEMENT & DISTRIBUTION VERIFICATION'
+\echo '  Tables: 10 | Description: OTA, GDS, and distribution channel integrations'
 \echo '=============================================='
 \echo ''
 
 -- =====================================================
 -- 1. CHECK IF ALL TABLES EXIST
 -- =====================================================
-\echo '1. Checking if all 7 tables exist...'
+\echo '1. Checking if all 10 tables exist...'
 
 DO $$
 DECLARE
-    v_expected_tables TEXT[] := ARRAY['channel_mappings', 'ota_configurations', 'ota_rate_plans', 'ota_reservations_queue', 'ota_inventory_sync', 'channel_rate_parity', 'channel_commission_rules'];
+    v_expected_tables TEXT[] := ARRAY['channel_mappings', 'ota_configurations', 'ota_rate_plans', 'ota_reservations_queue', 'ota_inventory_sync', 'channel_rate_parity', 'channel_commission_rules', 'gds_connections', 'gds_message_log', 'gds_reservation_queue'];
     v_table TEXT;
     v_missing_tables TEXT[] := '{}'::TEXT[];
     v_found_count INTEGER := 0;
@@ -46,7 +46,7 @@ BEGIN
         RAISE WARNING 'Missing tables: %', array_to_string(v_missing_tables, ', ');
         RAISE EXCEPTION 'Channel Management & OTA verification FAILED - missing tables!';
     ELSE
-        RAISE NOTICE '✓✓✓ All 7 Channel Management & OTA tables exist!';
+        RAISE NOTICE '✓✓✓ All 10 Channel Management & Distribution tables exist!';
     END IF;
 END $$;
 
@@ -67,7 +67,7 @@ FROM information_schema.tables t
 LEFT JOIN information_schema.columns c
     ON t.table_schema = c.table_schema
     AND t.table_name = c.table_name
-WHERE t.table_name IN ('channel_mappings', 'ota_configurations', 'ota_rate_plans', 'ota_reservations_queue', 'ota_inventory_sync', 'channel_rate_parity', 'channel_commission_rules')
+WHERE t.table_name IN ('channel_mappings', 'ota_configurations', 'ota_rate_plans', 'ota_reservations_queue', 'ota_inventory_sync', 'channel_rate_parity', 'channel_commission_rules', 'gds_connections', 'gds_message_log', 'gds_reservation_queue')
     AND t.table_schema = 'public'
 GROUP BY t.table_schema, t.table_name
 ORDER BY t.table_name;
@@ -87,23 +87,23 @@ DECLARE
 BEGIN
     SELECT COUNT(*) INTO v_table_count
     FROM information_schema.tables t
-    WHERE t.table_name IN ('channel_mappings', 'ota_configurations', 'ota_rate_plans', 'ota_reservations_queue', 'ota_inventory_sync', 'channel_rate_parity', 'channel_commission_rules')
+    WHERE t.table_name IN ('channel_mappings', 'ota_configurations', 'ota_rate_plans', 'ota_reservations_queue', 'ota_inventory_sync', 'channel_rate_parity', 'channel_commission_rules', 'gds_connections', 'gds_message_log', 'gds_reservation_queue')
         AND t.table_schema = 'public';
 
     RAISE NOTICE '';
-    RAISE NOTICE 'Category: Channel Management & OTA';
-    RAISE NOTICE 'Tables Found: % / 7', v_table_count;
+    RAISE NOTICE 'Category: Channel Management & Distribution';
+    RAISE NOTICE 'Tables Found: % / 10', v_table_count;
     RAISE NOTICE '';
 
-    IF v_table_count = 7 THEN
-        RAISE NOTICE '✓✓✓ CHANNEL MANAGEMENT & OTA VERIFICATION PASSED ✓✓✓';
+    IF v_table_count = 10 THEN
+        RAISE NOTICE '✓✓✓ CHANNEL MANAGEMENT & DISTRIBUTION VERIFICATION PASSED ✓✓✓';
     ELSE
-        RAISE WARNING '⚠⚠⚠ CHANNEL MANAGEMENT & OTA VERIFICATION FAILED ⚠⚠⚠';
-        RAISE WARNING 'Expected 7 tables, found %', v_table_count;
+        RAISE WARNING '⚠⚠⚠ CHANNEL MANAGEMENT & DISTRIBUTION VERIFICATION FAILED ⚠⚠⚠';
+        RAISE WARNING 'Expected 10 tables, found %', v_table_count;
     END IF;
 END $$;
 
 \echo ''
 \echo '=============================================='
-\echo 'Channel Management & OTA verification complete!'
+\echo 'Channel Management & Distribution verification complete!'
 \echo '=============================================='

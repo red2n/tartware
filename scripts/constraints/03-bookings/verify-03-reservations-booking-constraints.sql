@@ -1,7 +1,7 @@
 -- =====================================================
 -- verify-03-reservations-booking-constraints.sql
 -- Constraint Verification Script for Reservations & Booking
--- Category: 03-reservations-booking (7 tables)
+-- Category: 03-reservations-booking (9 tables)
 -- Date: 2025-10-19
 -- =====================================================
 
@@ -10,7 +10,7 @@
 \echo ''
 \echo '=============================================='
 \echo '  RESERVATIONS & BOOKING - CONSTRAINT VERIFICATION'
-\echo '  Tables: 7'
+\echo '  Tables: 9'
 \echo '=============================================='
 \echo ''
 
@@ -24,7 +24,17 @@ SELECT
     COUNT(*) AS fk_count
 FROM information_schema.table_constraints tc
 WHERE tc.constraint_type = 'FOREIGN KEY'
-    AND tc.table_name IN ('reservations', 'reservation_status_history', 'deposit_schedules', 'allotments', 'booking_sources', 'market_segments', 'guest_preferences')
+    AND tc.table_name IN (
+        'reservations',
+        'reservation_status_history',
+        'deposit_schedules',
+        'allotments',
+        'booking_sources',
+        'market_segments',
+        'guest_preferences',
+        'reservation_traces',
+        'waitlist_entries'
+    )
     AND tc.table_schema = 'public'
 GROUP BY tc.table_name
 ORDER BY tc.table_name;
@@ -49,7 +59,17 @@ JOIN information_schema.referential_constraints rc
     ON tc.constraint_name = rc.constraint_name
     AND tc.table_schema = rc.constraint_schema
 WHERE tc.constraint_type = 'FOREIGN KEY'
-    AND tc.table_name IN ('reservations', 'reservation_status_history', 'deposit_schedules', 'allotments', 'booking_sources', 'market_segments', 'guest_preferences')
+    AND tc.table_name IN (
+        'reservations',
+        'reservation_status_history',
+        'deposit_schedules',
+        'allotments',
+        'booking_sources',
+        'market_segments',
+        'guest_preferences',
+        'reservation_traces',
+        'waitlist_entries'
+    )
     AND tc.table_schema = 'public'
 ORDER BY tc.table_name, tc.constraint_name;
 
@@ -70,7 +90,17 @@ JOIN information_schema.referential_constraints rc
     ON tc.constraint_name = rc.constraint_name
     AND tc.table_schema = rc.constraint_schema
 WHERE tc.constraint_type = 'FOREIGN KEY'
-    AND tc.table_name IN ('reservations', 'reservation_status_history', 'deposit_schedules', 'allotments', 'booking_sources', 'market_segments', 'guest_preferences')
+    AND tc.table_name IN (
+        'reservations',
+        'reservation_status_history',
+        'deposit_schedules',
+        'allotments',
+        'booking_sources',
+        'market_segments',
+        'guest_preferences',
+        'reservation_traces',
+        'waitlist_entries'
+    )
     AND tc.table_schema = 'public'
 ORDER BY tc.table_name, tc.constraint_name;
 
@@ -91,7 +121,17 @@ JOIN information_schema.key_column_usage kcu
     AND tc.table_schema = kcu.table_schema
 WHERE tc.constraint_type = 'FOREIGN KEY'
     AND kcu.column_name = 'tenant_id'
-    AND tc.table_name IN ('reservations', 'reservation_status_history', 'deposit_schedules', 'allotments', 'booking_sources', 'market_segments', 'guest_preferences')
+    AND tc.table_name IN (
+        'reservations',
+        'reservation_status_history',
+        'deposit_schedules',
+        'allotments',
+        'booking_sources',
+        'market_segments',
+        'guest_preferences',
+        'reservation_traces',
+        'waitlist_entries'
+    )
     AND tc.table_schema = 'public'
 ORDER BY tc.table_name;
 
@@ -113,9 +153,19 @@ DECLARE
 BEGIN
     -- Total FKs
     SELECT COUNT(*) INTO v_total_fks
-    FROM information_schema.table_constraints
-    WHERE constraint_type = 'FOREIGN KEY'
-        AND table_name IN ('reservations', 'reservation_status_history', 'deposit_schedules', 'allotments', 'booking_sources', 'market_segments', 'guest_preferences')
+    FROM information_schema.table_constraints tc
+    WHERE tc.constraint_type = 'FOREIGN KEY'
+        AND tc.table_name IN (
+            'reservations',
+            'reservation_status_history',
+            'deposit_schedules',
+            'allotments',
+            'booking_sources',
+            'market_segments',
+            'guest_preferences',
+            'reservation_traces',
+            'waitlist_entries'
+        )
         AND tc.table_schema = 'public';
 
     -- RESTRICT deletes
@@ -126,7 +176,17 @@ BEGIN
         AND tc.table_schema = rc.constraint_schema
     WHERE tc.constraint_type = 'FOREIGN KEY'
         AND rc.delete_rule = 'RESTRICT'
-        AND tc.table_name IN ('reservations', 'reservation_status_history', 'deposit_schedules', 'allotments', 'booking_sources', 'market_segments', 'guest_preferences')
+        AND tc.table_name IN (
+            'reservations',
+            'reservation_status_history',
+            'deposit_schedules',
+            'allotments',
+            'booking_sources',
+            'market_segments',
+            'guest_preferences',
+            'reservation_traces',
+            'waitlist_entries'
+        )
         AND tc.table_schema = 'public';
 
     -- CASCADE updates
@@ -137,7 +197,17 @@ BEGIN
         AND tc.table_schema = rc.constraint_schema
     WHERE tc.constraint_type = 'FOREIGN KEY'
         AND rc.update_rule = 'CASCADE'
-        AND tc.table_name IN ('reservations', 'reservation_status_history', 'deposit_schedules', 'allotments', 'booking_sources', 'market_segments', 'guest_preferences')
+        AND tc.table_name IN (
+            'reservations',
+            'reservation_status_history',
+            'deposit_schedules',
+            'allotments',
+            'booking_sources',
+            'market_segments',
+            'guest_preferences',
+            'reservation_traces',
+            'waitlist_entries'
+        )
         AND tc.table_schema = 'public';
 
     -- Tenant FK count
@@ -147,7 +217,17 @@ BEGIN
         ON tc.constraint_name = kcu.constraint_name
     WHERE tc.constraint_type = 'FOREIGN KEY'
         AND kcu.column_name = 'tenant_id'
-        AND tc.table_name IN ('reservations', 'reservation_status_history', 'deposit_schedules', 'allotments', 'booking_sources', 'market_segments', 'guest_preferences')
+        AND tc.table_name IN (
+            'reservations',
+            'reservation_status_history',
+            'deposit_schedules',
+            'allotments',
+            'booking_sources',
+            'market_segments',
+            'guest_preferences',
+            'reservation_traces',
+            'waitlist_entries'
+        )
         AND tc.table_schema = 'public';
 
     RAISE NOTICE '';

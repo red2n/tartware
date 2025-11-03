@@ -238,4 +238,8 @@ grep -E "(9[7-9]_|10[2-6]_)" /home/navin/workspace/tartware/scripts/tables/00-cr
 ✅ **No conflicts with existing files**
 ✅ **Total table count: 109** (confirmed)
 
+> **Update (2025-11-03):** Subsequent schema expansion introduced 10 additional tables,
+> bringing the catalog to 119 objects across seven domains. The numbering reconciled in
+> this document remains intact; new additions continue the per-domain sequences.
+
 **Status:** Ready for deployment ✓

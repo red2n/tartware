@@ -21,7 +21,7 @@
 \ir 01-core/05_guests_indexes.sql
 
 -- ============================================================================
--- CATEGORY 2: INVENTORY & PRICING INDEXES (15 files)
+-- CATEGORY 2: INVENTORY & PRICING INDEXES (18 files)
 -- ============================================================================
 \echo '>>> Creating indexes for: INVENTORY & PRICING'
 
@@ -45,7 +45,7 @@
 \ir 02-inventory/99_banquet_event_orders_indexes.sql
 
 -- ============================================================================
--- CATEGORY 3: BOOKINGS & GUEST RELATIONS INDEXES (14 files)
+-- CATEGORY 3: BOOKINGS & GUEST RELATIONS INDEXES (16 files)
 -- ============================================================================
 \echo '>>> Creating indexes for: BOOKINGS & GUEST RELATIONS'
 
@@ -63,9 +63,11 @@
 \ir 03-bookings/48_guest_documents_indexes.sql
 \ir 03-bookings/49_guest_notes_indexes.sql
 \ir 03-bookings/50_automated_messages_indexes.sql
+\ir 03-bookings/51_reservation_traces_indexes.sql
+\ir 03-bookings/52_waitlist_entries_indexes.sql
 
 -- ============================================================================
--- CATEGORY 4: FINANCIAL INDEXES (12 files)
+-- CATEGORY 4: FINANCIAL INDEXES (15 files)
 -- ============================================================================
 \echo '>>> Creating indexes for: FINANCIAL MANAGEMENT'
 
@@ -81,9 +83,12 @@
 \ir 04-financial/66_cashier_sessions_indexes.sql
 \ir 04-financial/67_accounts_receivable_indexes.sql
 \ir 04-financial/68_credit_limits_indexes.sql
+\ir 04-financial/69_payment_tokens_indexes.sql
+\ir 04-financial/70_general_ledger_batches_indexes.sql
+\ir 04-financial/71_general_ledger_entries_indexes.sql
 
 -- ============================================================================
--- CATEGORY 5: OPERATIONS INDEXES (17 files)
+-- CATEGORY 5: OPERATIONS INDEXES (24 files)
 -- ============================================================================
 \echo '>>> Creating indexes for: OPERATIONS & SERVICES'
 
@@ -109,13 +114,18 @@
 \ir 05-operations/104_vehicles_indexes.sql
 \ir 05-operations/105_transportation_requests_indexes.sql
 \ir 05-operations/106_shuttle_schedules_indexes.sql
+\ir 05-operations/107_spa_treatments_indexes.sql
+\ir 05-operations/108_spa_appointments_indexes.sql
 
 -- ============================================================================
--- CATEGORY 6: INTEGRATIONS & CHANNELS INDEXES (20 files)
+-- CATEGORY 6: INTEGRATIONS & CHANNELS INDEXES (23 files)
 -- ============================================================================
 \echo '>>> Creating indexes for: INTEGRATIONS & CHANNELS'
 
 \ir 06-integrations/18_channel_mappings_indexes.sql
+\ir 06-integrations/41_gds_connections_indexes.sql
+\ir 06-integrations/42_gds_message_log_indexes.sql
+\ir 06-integrations/43_gds_reservation_queue_indexes.sql
 \ir 06-integrations/38_ota_configurations_indexes.sql
 \ir 06-integrations/39_ota_rate_plans_indexes.sql
 \ir 06-integrations/40_ota_reservations_queue_indexes.sql

@@ -149,7 +149,7 @@ if [ "$DEPLOY_MODE" == "docker" ]; then
     EXPECTED_TABLES=$(grep -r "CREATE TABLE" "$SCRIPTS_DIR/tables/" --include="*.sql" 2>/dev/null | grep -v "00-create-all-tables.sql" | wc -l)
 
     for i in {1..60}; do
-        TABLE_COUNT=$(docker exec tartware-postgres psql -U postgres -d tartware -t -c "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = 'public';" 2>/dev/null | xargs || echo "0")
+        TABLE_COUNT=$(docker exec tartware-postgres psql -U postgres -d tartware -t -c "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema IN ('public', 'availability');" 2>/dev/null | xargs || echo "0")
         if [ "$TABLE_COUNT" -ge "$EXPECTED_TABLES" ]; then
             echo -e "${GREEN}✓ Initialization complete!${NC}"
             break
@@ -165,9 +165,9 @@ if [ "$DEPLOY_MODE" == "docker" ]; then
     echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
     echo "  Database Verification"
     echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-    TABLE_COUNT=$(docker exec tartware-postgres psql -U postgres -d tartware -t -c "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = 'public';" 2>/dev/null | xargs)
-    INDEX_COUNT=$(docker exec tartware-postgres psql -U postgres -d tartware -t -c "SELECT COUNT(*) FROM pg_indexes WHERE schemaname = 'public';" 2>/dev/null | xargs)
-    FK_COUNT=$(docker exec tartware-postgres psql -U postgres -d tartware -t -c "SELECT COUNT(*) FROM information_schema.table_constraints WHERE constraint_type = 'FOREIGN KEY';" 2>/dev/null | xargs)
+    TABLE_COUNT=$(docker exec tartware-postgres psql -U postgres -d tartware -t -c "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema IN ('public', 'availability');" 2>/dev/null | xargs)
+    INDEX_COUNT=$(docker exec tartware-postgres psql -U postgres -d tartware -t -c "SELECT COUNT(*) FROM pg_indexes WHERE schemaname IN ('public', 'availability');" 2>/dev/null | xargs)
+    FK_COUNT=$(docker exec tartware-postgres psql -U postgres -d tartware -t -c "SELECT COUNT(*) FROM information_schema.table_constraints WHERE constraint_type = 'FOREIGN KEY' AND table_schema IN ('public', 'availability');" 2>/dev/null | xargs)
 
     echo "  Tables:       $TABLE_COUNT / $EXPECTED_TABLES"
     echo "  Indexes:      $INDEX_COUNT"
@@ -216,8 +216,8 @@ if ! command -v fd &> /dev/null && ! command -v fdfind &> /dev/null; then
     INSTALL_NEEDED=true
 fi
 
-# Check for build-essential
-if ! dpkg -l | grep -q "^ii  build-essential"; then
+# Check for compiler toolchain (gcc/make)
+if ! command -v gcc &> /dev/null || ! command -v make &> /dev/null; then
     MISSING_TOOLS+=("build-essential")
     INSTALL_NEEDED=true
 fi
@@ -234,16 +234,24 @@ if [ "$INSTALL_NEEDED" = true ]; then
     done
     echo ""
 
-    echo -e "${CYAN}Running system update...${NC}"
-    sudo apt-get update -qq
-    sudo apt-get upgrade -y -qq
+    if command -v apt-get &> /dev/null; then
+        echo -e "${CYAN}Running package update...${NC}"
+        sudo apt-get update -qq
 
-    echo -e "${CYAN}Installing required tools...${NC}"
-    sudo apt-get install -y ripgrep fd-find build-essential
+        echo -e "${CYAN}Installing required tools...${NC}"
+        sudo apt-get install -y --no-install-recommends "${MISSING_TOOLS[@]}"
 
-    echo ""
-    echo -e "${GREEN}✓ All tools installed successfully${NC}"
-    echo ""
+        echo ""
+        echo -e "${GREEN}✓ All tools installed successfully${NC}"
+        echo ""
+    else
+        echo -e "${RED}Automatic installation is not supported on this OS.${NC}"
+        echo "Please install the following tools manually and re-run this script:"
+        for tool in "${MISSING_TOOLS[@]}"; do
+            echo "  - $tool"
+        done
+        exit 1
+    fi
 fi
 
 # Detect fd command name (fd or fdfind)
@@ -254,9 +262,26 @@ else
 fi
 
 # Verify all tools are now available
-echo -e "${GREEN}✓ ripgrep (rg) is available${NC}"
-echo -e "${GREEN}✓ fd ($FD_CMD) is available${NC}"
-echo -e "${GREEN}✓ build-essential is installed${NC}"
+if command -v rg &> /dev/null; then
+    echo -e "${GREEN}✓ ripgrep (rg) is available${NC}"
+else
+    echo -e "${RED}✗ ripgrep (rg) is missing${NC}"
+    exit 1
+fi
+
+if command -v "$FD_CMD" &> /dev/null; then
+    echo -e "${GREEN}✓ fd ($FD_CMD) is available${NC}"
+else
+    echo -e "${RED}✗ fd command is missing${NC}"
+    exit 1
+fi
+
+if command -v gcc &> /dev/null && command -v make &> /dev/null; then
+    echo -e "${GREEN}✓ Compiler toolchain is available${NC}"
+else
+    echo -e "${RED}✗ gcc/make toolchain is missing${NC}"
+    exit 1
+fi
 echo ""
 
 # Configuration (Defaults for fresh install)

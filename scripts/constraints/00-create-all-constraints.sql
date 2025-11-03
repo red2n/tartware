@@ -43,7 +43,7 @@
 \ir 02-inventory/99_banquet_event_orders_fk.sql
 
 -- ============================================================================
--- CATEGORY 3: BOOKINGS & GUEST RELATIONS CONSTRAINTS (14 files)
+-- CATEGORY 3: BOOKINGS & GUEST RELATIONS CONSTRAINTS (16 files)
 -- ============================================================================
 \echo '>>> Creating constraints for: BOOKINGS & GUEST RELATIONS'
 
@@ -61,9 +61,11 @@
 \ir 03-bookings/48_guest_documents_fk.sql
 \ir 03-bookings/49_guest_notes_fk.sql
 \ir 03-bookings/50_automated_messages_fk.sql
+\ir 03-bookings/51_reservation_traces_fk.sql
+\ir 03-bookings/52_waitlist_entries_fk.sql
 
 -- ============================================================================
--- CATEGORY 4: FINANCIAL CONSTRAINTS (12 files)
+-- CATEGORY 4: FINANCIAL CONSTRAINTS (15 files)
 -- ============================================================================
 \echo '>>> Creating constraints for: FINANCIAL MANAGEMENT'
 
@@ -79,9 +81,12 @@
 \ir 04-financial/66_cashier_sessions_fk.sql
 \ir 04-financial/67_accounts_receivable_fk.sql
 \ir 04-financial/68_credit_limits_fk.sql
+\ir 04-financial/69_payment_tokens_fk.sql
+\ir 04-financial/70_general_ledger_batches_fk.sql
+\ir 04-financial/71_general_ledger_entries_fk.sql
 
 -- ============================================================================
--- CATEGORY 5: OPERATIONS CONSTRAINTS (22 files)
+-- CATEGORY 5: OPERATIONS CONSTRAINTS (24 files)
 -- ============================================================================
 \echo '>>> Creating constraints for: OPERATIONS & SERVICES'
 
@@ -107,9 +112,11 @@
 \ir 05-operations/104_vehicles_fk.sql
 \ir 05-operations/105_transportation_requests_fk.sql
 \ir 05-operations/106_shuttle_schedules_fk.sql
+\ir 05-operations/107_spa_treatments_fk.sql
+\ir 05-operations/108_spa_appointments_fk.sql
 
 -- ============================================================================
--- CATEGORY 6: INTEGRATIONS & CHANNELS CONSTRAINTS (20 files)
+-- CATEGORY 6: INTEGRATIONS & CHANNELS CONSTRAINTS (23 files)
 -- ============================================================================
 \echo '>>> Creating constraints for: INTEGRATIONS & CHANNELS'
 
@@ -117,6 +124,9 @@
 \ir 06-integrations/38_ota_configurations_fk.sql
 \ir 06-integrations/39_ota_rate_plans_fk.sql
 \ir 06-integrations/40_ota_reservations_queue_fk.sql
+\ir 06-integrations/41_gds_connections_fk.sql
+\ir 06-integrations/42_gds_message_log_fk.sql
+\ir 06-integrations/43_gds_reservation_queue_fk.sql
 \ir 06-integrations/44_ota_inventory_sync_fk.sql
 \ir 06-integrations/45_channel_rate_parity_fk.sql
 \ir 06-integrations/46_channel_commission_rules_fk.sql
@@ -164,5 +174,5 @@
 \echo ''
 \echo '========================================='
 \echo 'All Foreign Key Constraints Created!'
-\echo 'Total: 99 unique FK files across 7 categories'
+\echo 'Total: 109 unique FK files across 7 categories'
 \echo '========================================='

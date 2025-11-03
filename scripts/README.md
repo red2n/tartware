@@ -31,7 +31,7 @@ scripts/
 ├── verify-all.sql                 # ✅ MASTER VERIFICATION SCRIPT
 ├── verify-installation.sql        # Legacy verification script
 ├── SOFT_DELETE_POLICY.md          # Soft delete documentation
-├── tables/                        # Individual table files (109 files across 7 categories)
+├── tables/                        # Individual table files (119 files across 7 domains)
 │   ├── 01_tenants.sql
 │   ├── 02_users.sql
 │   ├── 03_user_tenant_associations.sql
@@ -198,8 +198,8 @@ psql -U postgres -d tartware -f verify-all.sql
 ```
 
 This master script validates:
-- ✅ All 89 tables created correctly
-- ✅ 650+ indexes in place
+- ✅ All 119 tables created correctly
+- ✅ ~1,900 indexes in place
 - ✅ All foreign key constraints
 - ✅ Stored procedures/functions
 - ✅ Soft delete implementation
@@ -210,41 +210,33 @@ This master script validates:
 
 ### Category-Level Verification (NEW! ⭐)
 
-Run verification for ALL 15 functional categories:
+Run verification for all 7 business domains:
 
 ```bash
 psql -U postgres -d tartware -f verify-all-categories.sql
 ```
 
-This validates all 15 functional categories:
+This validates all 7 functional categories:
 1. Core Foundation (tenants, users, properties, guests)
-2. Room & Inventory Management
-3. Reservations & Booking
+2. Inventory & Revenue Management
+3. Bookings & Guest Experience
 4. Financial Management
-5. Services & Housekeeping
-6. Channel Management & OTA
-7. Guest Relations & CRM
-8. Revenue Management
-9. Staff & Operations
-10. Marketing & Campaigns
-11. Compliance & Legal
-12. Analytics & Reporting
-13. Mobile & Digital
-14. System & Audit
-15. Integration Hub
+5. Operations & Guest Services
+6. Integrations & Distribution
+7. Analytics, Compliance & Audit
 
 **Run individual category verification:**
 
 ```bash
 # Example: Verify just Core Foundation
-psql -U postgres -d tartware -f tables/01-core-foundation/verify-01-core-foundation.sql
-psql -U postgres -d tartware -f indexes/01-core-foundation/verify-01-core-foundation-indexes.sql
-psql -U postgres -d tartware -f constraints/01-core-foundation/verify-01-core-foundation-constraints.sql
+psql -U postgres -d tartware -f tables/01-core/verify-01-core-foundation.sql
+psql -U postgres -d tartware -f indexes/01-core/verify-01-core-foundation-indexes.sql
+psql -U postgres -d tartware -f constraints/01-core/verify-01-core-foundation-constraints.sql
 
 # Example: Verify just Financial Management
-psql -U postgres -d tartware -f tables/04-financial-management/verify-04-financial-management.sql
-psql -U postgres -d tartware -f indexes/04-financial-management/verify-04-financial-management-indexes.sql
-psql -U postgres -d tartware -f constraints/04-financial-management/verify-04-financial-management-constraints.sql
+psql -U postgres -d tartware -f tables/04-financial/verify-04-financial-management.sql
+psql -U postgres -d tartware -f indexes/04-financial/verify-04-financial-management-indexes.sql
+psql -U postgres -d tartware -f constraints/04-financial/verify-04-financial-management-constraints.sql
 ```
 
 **Benefits of category-level verification:**
@@ -258,10 +250,10 @@ psql -U postgres -d tartware -f constraints/04-financial-management/verify-04-fi
 For detailed validation of specific components:
 
 ```bash
-# Verify tables only (all 89 tables)
+# Verify tables only (all 119 tables)
 psql -U postgres -d tartware -f tables/verify-tables.sql
 
-# Verify indexes only (650+ indexes)
+# Verify indexes only (~1,900 indexes)
 psql -U postgres -d tartware -f indexes/verify-indexes.sql
 
 # Verify constraints only (all FKs)

@@ -1,7 +1,7 @@
 -- =====================================================
 -- verify-04-financial-management-constraints.sql
 -- Constraint Verification Script for Financial Management
--- Category: 04-financial-management (12 tables)
+-- Category: 04-financial-management (15 tables)
 -- Date: 2025-10-19
 -- =====================================================
 
@@ -10,7 +10,7 @@
 \echo ''
 \echo '=============================================='
 \echo '  FINANCIAL MANAGEMENT - CONSTRAINT VERIFICATION'
-\echo '  Tables: 12'
+\echo '  Tables: 15'
 \echo '=============================================='
 \echo ''
 
@@ -24,7 +24,23 @@ SELECT
     COUNT(*) AS fk_count
 FROM information_schema.table_constraints tc
 WHERE tc.constraint_type = 'FOREIGN KEY'
-    AND tc.table_name IN ('payments', 'invoices', 'invoice_items', 'folios', 'charge_postings', 'refunds', 'tax_configurations', 'financial_closures', 'commission_tracking', 'cashier_sessions', 'accounts_receivable', 'credit_limits')
+    AND tc.table_name IN (
+        'payments',
+        'invoices',
+        'invoice_items',
+        'folios',
+        'charge_postings',
+        'refunds',
+        'tax_configurations',
+        'financial_closures',
+        'commission_tracking',
+        'cashier_sessions',
+        'accounts_receivable',
+        'credit_limits',
+        'payment_tokens',
+        'general_ledger_batches',
+        'general_ledger_entries'
+    )
     AND tc.table_schema = 'public'
 GROUP BY tc.table_name
 ORDER BY tc.table_name;
@@ -49,7 +65,23 @@ JOIN information_schema.referential_constraints rc
     ON tc.constraint_name = rc.constraint_name
     AND tc.table_schema = rc.constraint_schema
 WHERE tc.constraint_type = 'FOREIGN KEY'
-    AND tc.table_name IN ('payments', 'invoices', 'invoice_items', 'folios', 'charge_postings', 'refunds', 'tax_configurations', 'financial_closures', 'commission_tracking', 'cashier_sessions', 'accounts_receivable', 'credit_limits')
+    AND tc.table_name IN (
+        'payments',
+        'invoices',
+        'invoice_items',
+        'folios',
+        'charge_postings',
+        'refunds',
+        'tax_configurations',
+        'financial_closures',
+        'commission_tracking',
+        'cashier_sessions',
+        'accounts_receivable',
+        'credit_limits',
+        'payment_tokens',
+        'general_ledger_batches',
+        'general_ledger_entries'
+    )
     AND tc.table_schema = 'public'
 ORDER BY tc.table_name, tc.constraint_name;
 
@@ -70,7 +102,23 @@ JOIN information_schema.referential_constraints rc
     ON tc.constraint_name = rc.constraint_name
     AND tc.table_schema = rc.constraint_schema
 WHERE tc.constraint_type = 'FOREIGN KEY'
-    AND tc.table_name IN ('payments', 'invoices', 'invoice_items', 'folios', 'charge_postings', 'refunds', 'tax_configurations', 'financial_closures', 'commission_tracking', 'cashier_sessions', 'accounts_receivable', 'credit_limits')
+    AND tc.table_name IN (
+        'payments',
+        'invoices',
+        'invoice_items',
+        'folios',
+        'charge_postings',
+        'refunds',
+        'tax_configurations',
+        'financial_closures',
+        'commission_tracking',
+        'cashier_sessions',
+        'accounts_receivable',
+        'credit_limits',
+        'payment_tokens',
+        'general_ledger_batches',
+        'general_ledger_entries'
+    )
     AND tc.table_schema = 'public'
 ORDER BY tc.table_name, tc.constraint_name;
 
@@ -91,7 +139,23 @@ JOIN information_schema.key_column_usage kcu
     AND tc.table_schema = kcu.table_schema
 WHERE tc.constraint_type = 'FOREIGN KEY'
     AND kcu.column_name = 'tenant_id'
-    AND tc.table_name IN ('payments', 'invoices', 'invoice_items', 'folios', 'charge_postings', 'refunds', 'tax_configurations', 'financial_closures', 'commission_tracking', 'cashier_sessions', 'accounts_receivable', 'credit_limits')
+    AND tc.table_name IN (
+        'payments',
+        'invoices',
+        'invoice_items',
+        'folios',
+        'charge_postings',
+        'refunds',
+        'tax_configurations',
+        'financial_closures',
+        'commission_tracking',
+        'cashier_sessions',
+        'accounts_receivable',
+        'credit_limits',
+        'payment_tokens',
+        'general_ledger_batches',
+        'general_ledger_entries'
+    )
     AND tc.table_schema = 'public'
 ORDER BY tc.table_name;
 
@@ -113,9 +177,25 @@ DECLARE
 BEGIN
     -- Total FKs
     SELECT COUNT(*) INTO v_total_fks
-    FROM information_schema.table_constraints
-    WHERE constraint_type = 'FOREIGN KEY'
-        AND table_name IN ('payments', 'invoices', 'invoice_items', 'folios', 'charge_postings', 'refunds', 'tax_configurations', 'financial_closures', 'commission_tracking', 'cashier_sessions', 'accounts_receivable', 'credit_limits')
+    FROM information_schema.table_constraints tc
+    WHERE tc.constraint_type = 'FOREIGN KEY'
+        AND tc.table_name IN (
+            'payments',
+            'invoices',
+            'invoice_items',
+            'folios',
+            'charge_postings',
+            'refunds',
+            'tax_configurations',
+            'financial_closures',
+            'commission_tracking',
+            'cashier_sessions',
+            'accounts_receivable',
+            'credit_limits',
+            'payment_tokens',
+            'general_ledger_batches',
+            'general_ledger_entries'
+        )
         AND tc.table_schema = 'public';
 
     -- RESTRICT deletes
@@ -126,7 +206,23 @@ BEGIN
         AND tc.table_schema = rc.constraint_schema
     WHERE tc.constraint_type = 'FOREIGN KEY'
         AND rc.delete_rule = 'RESTRICT'
-        AND tc.table_name IN ('payments', 'invoices', 'invoice_items', 'folios', 'charge_postings', 'refunds', 'tax_configurations', 'financial_closures', 'commission_tracking', 'cashier_sessions', 'accounts_receivable', 'credit_limits')
+        AND tc.table_name IN (
+            'payments',
+            'invoices',
+            'invoice_items',
+            'folios',
+            'charge_postings',
+            'refunds',
+            'tax_configurations',
+            'financial_closures',
+            'commission_tracking',
+            'cashier_sessions',
+            'accounts_receivable',
+            'credit_limits',
+            'payment_tokens',
+            'general_ledger_batches',
+            'general_ledger_entries'
+        )
         AND tc.table_schema = 'public';
 
     -- CASCADE updates
@@ -137,7 +233,23 @@ BEGIN
         AND tc.table_schema = rc.constraint_schema
     WHERE tc.constraint_type = 'FOREIGN KEY'
         AND rc.update_rule = 'CASCADE'
-        AND tc.table_name IN ('payments', 'invoices', 'invoice_items', 'folios', 'charge_postings', 'refunds', 'tax_configurations', 'financial_closures', 'commission_tracking', 'cashier_sessions', 'accounts_receivable', 'credit_limits')
+        AND tc.table_name IN (
+            'payments',
+            'invoices',
+            'invoice_items',
+            'folios',
+            'charge_postings',
+            'refunds',
+            'tax_configurations',
+            'financial_closures',
+            'commission_tracking',
+            'cashier_sessions',
+            'accounts_receivable',
+            'credit_limits',
+            'payment_tokens',
+            'general_ledger_batches',
+            'general_ledger_entries'
+        )
         AND tc.table_schema = 'public';
 
     -- Tenant FK count
@@ -147,7 +259,23 @@ BEGIN
         ON tc.constraint_name = kcu.constraint_name
     WHERE tc.constraint_type = 'FOREIGN KEY'
         AND kcu.column_name = 'tenant_id'
-        AND tc.table_name IN ('payments', 'invoices', 'invoice_items', 'folios', 'charge_postings', 'refunds', 'tax_configurations', 'financial_closures', 'commission_tracking', 'cashier_sessions', 'accounts_receivable', 'credit_limits')
+        AND tc.table_name IN (
+            'payments',
+            'invoices',
+            'invoice_items',
+            'folios',
+            'charge_postings',
+            'refunds',
+            'tax_configurations',
+            'financial_closures',
+            'commission_tracking',
+            'cashier_sessions',
+            'accounts_receivable',
+            'credit_limits',
+            'payment_tokens',
+            'general_ledger_batches',
+            'general_ledger_entries'
+        )
         AND tc.table_schema = 'public';
 
     RAISE NOTICE '';

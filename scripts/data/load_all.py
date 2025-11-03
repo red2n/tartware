@@ -209,7 +209,6 @@ def main():
         insert_guest_notes(conn)
         insert_automated_messages(conn)
         insert_guest_journey_tracking(conn)
-        insert_gdpr_consent_logs(conn)
 
         print("\n" + "=" * 60)
         print("REVENUE MANAGEMENT & PRICING")
@@ -293,7 +292,6 @@ def main():
         print("\n" + "=" * 60)
         print("COMPLIANCE & LEGAL")
         print("=" * 60)
-        insert_gdpr_consent_logs(conn)
         insert_police_reports(conn)
         insert_contract_agreements(conn)
         insert_insurance_claims(conn)

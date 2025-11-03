@@ -27,26 +27,54 @@ WITH table_categories AS (
     SELECT
         tablename,
         CASE
-            WHEN tablename IN ('tenants', 'users', 'user_tenant_associations', 'properties', 'guests') THEN '01-Core Foundation'
-            WHEN tablename IN ('room_types', 'rooms', 'rates') THEN '02-Room Inventory'
-            WHEN tablename LIKE '%reservation%' OR tablename IN ('deposit_schedules', 'allotments', 'booking_sources', 'market_segments', 'guest_preferences') THEN '03-Reservations'
-            WHEN tablename IN ('payments', 'invoices', 'invoice_items', 'folios', 'charge_postings', 'refunds', 'tax_configurations', 'financial_closures', 'commission_tracking', 'cashier_sessions', 'accounts_receivable', 'credit_limits') THEN '04-Financial'
-            WHEN tablename IN ('services', 'housekeeping_tasks', 'maintenance_requests') THEN '05-Services/Housekeeping'
-            WHEN tablename LIKE '%channel%' OR tablename LIKE '%ota%' THEN '06-Channel/OTA'
-            WHEN tablename LIKE '%guest%' AND tablename NOT IN ('guests', 'guest_preferences') THEN '07-Guest CRM'
-            WHEN tablename LIKE '%revenue%' OR tablename LIKE '%rate%' OR tablename LIKE '%competitor%' OR tablename LIKE '%pricing%' OR tablename LIKE '%demand%' OR tablename IN ('companies', 'group_bookings', 'packages', 'travel_agent_commissions') THEN '08-Revenue/B2B'
-            WHEN tablename IN ('staff_schedules', 'staff_tasks', 'shift_handovers', 'lost_and_found', 'incident_reports', 'vendor_contracts') THEN '09-Staff Operations'
-            WHEN tablename LIKE '%campaign%' OR tablename LIKE '%marketing%' OR tablename LIKE '%promotional%' OR tablename LIKE '%referral%' OR tablename LIKE '%social_media%' THEN '10-Marketing'
-            WHEN tablename LIKE '%gdpr%' OR tablename LIKE '%police%' OR tablename LIKE '%contract%' OR tablename LIKE '%insurance%' THEN '11-Compliance/Legal'
-            WHEN tablename LIKE '%analytics%' OR tablename LIKE '%report%' OR tablename LIKE '%performance%' OR tablename LIKE '%alert%' OR tablename LIKE '%journey%' OR tablename LIKE '%attribution%' OR tablename LIKE '%forecast%' OR tablename LIKE '%ab_test%' THEN '12-Analytics/Reporting'
-            WHEN tablename LIKE '%mobile%' OR tablename LIKE '%qr%' OR tablename LIKE '%push%' OR tablename LIKE '%app%' THEN '13-Mobile/Digital'
-            WHEN tablename LIKE '%audit%' OR tablename IN ('business_dates', 'night_audit_log') THEN '14-System Audit'
-            WHEN tablename LIKE '%integration%' OR tablename LIKE '%api%' OR tablename LIKE '%webhook%' OR tablename LIKE '%sync%' THEN '15-Integration Hub'
-            WHEN tablename LIKE '%ai_%' OR tablename LIKE '%ml%' OR tablename LIKE '%behavior%' OR tablename LIKE '%sentiment%' THEN '16-AI/ML Innovation'
-            WHEN tablename LIKE '%sustainability%' OR tablename LIKE '%carbon%' OR tablename LIKE '%green%' THEN '17-Sustainability/ESG'
-            WHEN tablename LIKE '%smart%' OR tablename LIKE '%device%' OR tablename LIKE '%energy%' THEN '18-IoT/Smart Rooms'
-            WHEN tablename LIKE '%contactless%' OR tablename LIKE '%digital_registration%' THEN '19-Contactless/Digital'
-            WHEN tablename LIKE '%asset%' OR tablename LIKE '%predictive%' OR tablename LIKE '%maintenance_history%' THEN '20-Asset Management'
+            WHEN tablename IN (
+                'tenants', 'users', 'user_tenant_associations', 'properties', 'guests'
+            ) THEN '01-Core Foundation'
+            WHEN tablename IN (
+                'room_types', 'rooms', 'rates', 'rate_overrides', 'revenue_forecasts',
+                'competitor_rates', 'demand_calendar', 'pricing_rules', 'rate_recommendations',
+                'revenue_goals', 'companies', 'group_bookings', 'packages',
+                'travel_agent_commissions', 'meeting_rooms', 'event_bookings',
+                'banquet_event_orders', 'availability_room_availability'
+            ) THEN '02-Inventory & Revenue'
+            WHEN tablename IN (
+                'reservations', 'reservation_status_history', 'deposit_schedules', 'allotments',
+                'booking_sources', 'market_segments', 'guest_preferences',
+                'guest_communications', 'communication_templates', 'guest_feedback',
+                'guest_loyalty_programs', 'guest_documents', 'guest_notes',
+                'automated_messages', 'reservation_traces', 'waitlist_entries'
+            ) THEN '03-Bookings & Guest Experience'
+            WHEN tablename IN (
+                'payments', 'invoices', 'invoice_items', 'folios', 'charge_postings',
+                'refunds', 'tax_configurations', 'financial_closures', 'commission_tracking',
+                'cashier_sessions', 'accounts_receivable', 'credit_limits',
+                'payment_tokens', 'general_ledger_batches', 'general_ledger_entries'
+            ) THEN '04-Financial Management'
+            WHEN tablename IN (
+                'services', 'reservation_services', 'housekeeping_tasks', 'maintenance_requests',
+                'staff_schedules', 'staff_tasks', 'shift_handovers', 'lost_and_found',
+                'incident_reports', 'vendor_contracts', 'mobile_check_ins', 'asset_inventory',
+                'minibar_items', 'minibar_consumption', 'vehicles', 'transportation_requests',
+                'shuttle_schedules', 'spa_treatments', 'spa_appointments', 'mobile_keys',
+                'qr_codes', 'push_notifications', 'app_usage_analytics', 'smart_room_devices'
+            ) THEN '05-Operations & Guest Services'
+            WHEN tablename IN (
+                'channel_mappings', 'ota_configurations', 'ota_rate_plans', 'ota_reservations_queue',
+                'gds_connections', 'gds_message_log', 'gds_reservation_queue', 'ota_inventory_sync',
+                'channel_rate_parity', 'channel_commission_rules', 'marketing_campaigns',
+                'campaign_segments', 'promotional_codes', 'referral_tracking',
+                'social_media_mentions', 'integration_mappings', 'api_logs',
+                'webhook_subscriptions', 'data_sync_status', 'ai_demand_predictions',
+                'dynamic_pricing_rules_ml', 'guest_behavior_patterns', 'sentiment_analysis'
+            ) THEN '06-Integrations & Intelligence'
+            WHEN tablename IN (
+                'analytics_metrics', 'analytics_metric_dimensions', 'analytics_reports',
+                'report_property_ids', 'performance_reporting_tables', 'performance_alerting_tables',
+                'audit_logs', 'business_dates', 'night_audit_log', 'gdpr_consent_logs',
+                'police_reports', 'contract_agreements', 'insurance_claims',
+                'guest_journey_tracking', 'revenue_attribution', 'forecasting_models',
+                'ab_test_results', 'sustainability_metrics'
+            ) THEN '07-Analytics & Compliance'
             ELSE '99-Other'
         END as category
     FROM pg_tables
@@ -294,16 +322,24 @@ LIMIT 10;
 \echo '=========================================================='
 \echo ''
 
-SELECT
-    '✓ Tables:       ' || (SELECT COUNT(*)::text FROM information_schema.tables WHERE table_schema = 'public') || ' / 132' as status
-UNION ALL SELECT '✓ Indexes:      ' || (SELECT COUNT(*)::text FROM pg_indexes WHERE schemaname = 'public') || ' / 800+'
-UNION ALL SELECT '✓ Foreign Keys: ' || (SELECT COUNT(*)::text FROM information_schema.table_constraints WHERE constraint_type = 'FOREIGN KEY' AND table_schema = 'public') || ' / 500+'
-UNION ALL SELECT '✓ ENUM Types:   ' || (SELECT COUNT(*)::text FROM pg_type WHERE typtype = 'e') || ' / 61'
-UNION ALL SELECT '✓ Sample Data:  ' || (
-    (SELECT COUNT(*) FROM tenants) +
-    (SELECT COUNT(*) FROM users) +
-    (SELECT COUNT(*) FROM reservations)
-)::text || '+ records';
+WITH metrics AS (
+    SELECT
+        (SELECT COUNT(*) FROM information_schema.tables WHERE table_schema IN ('public', 'availability') AND table_type = 'BASE TABLE') AS table_count,
+        (SELECT COUNT(*) FROM pg_indexes WHERE schemaname IN ('public', 'availability')) AS index_count,
+        (SELECT COUNT(*) FROM information_schema.table_constraints WHERE constraint_type = 'FOREIGN KEY' AND table_schema IN ('public', 'availability')) AS fk_count,
+        (SELECT COUNT(*) FROM pg_type
+            JOIN pg_namespace ON pg_type.typnamespace = pg_namespace.oid
+            WHERE pg_type.typtype = 'e' AND pg_namespace.nspname IN ('public', 'availability')
+        ) AS enum_count,
+        (SELECT COUNT(*) FROM tenants) +
+        (SELECT COUNT(*) FROM users) +
+        (SELECT COUNT(*) FROM reservations) AS sample_rows
+)
+SELECT '✓ Tables (public+availability): ' || table_count::text AS status FROM metrics
+UNION ALL SELECT '✓ Indexes (public+availability): ' || index_count::text FROM metrics
+UNION ALL SELECT '✓ Foreign Keys (public+availability): ' || fk_count::text FROM metrics
+UNION ALL SELECT '✓ ENUM Types (tracked schemas): ' || enum_count::text FROM metrics
+UNION ALL SELECT '✓ Sample Data Rows (tenants+users+reservations): ' || sample_rows::text FROM metrics;
 
 \echo ''
 \echo '✅ Database is ready for use!'

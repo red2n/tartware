@@ -1,7 +1,7 @@
 -- =====================================================
 -- verify-05-services-housekeeping-indexes.sql
 -- Index Verification Script for Services & Housekeeping
--- Category: 05-services-housekeeping (4 tables)
+-- Category: 05-services-housekeeping (6 tables)
 -- Date: 2025-10-19
 -- =====================================================
 
@@ -10,7 +10,7 @@
 \echo ''
 \echo '=============================================='
 \echo '  SERVICES & HOUSEKEEPING - INDEX VERIFICATION'
-\echo '  Tables: 4'
+\echo '  Tables: 6'
 \echo '=============================================='
 \echo ''
 
@@ -25,7 +25,14 @@ SELECT
     COUNT(CASE WHEN indexname LIKE '%_pkey' THEN 1 END) AS primary_keys,
     COUNT(CASE WHEN indexname NOT LIKE '%_pkey' THEN 1 END) AS secondary_indexes
 FROM pg_indexes
-WHERE tablename IN ('services', 'reservation_services', 'housekeeping_tasks', 'maintenance_requests')
+WHERE tablename IN (
+    'services',
+    'reservation_services',
+    'housekeeping_tasks',
+    'maintenance_requests',
+    'spa_treatments',
+    'spa_appointments'
+)
     AND schemaname = 'public'
 GROUP BY tablename
 ORDER BY tablename;
@@ -45,7 +52,14 @@ WITH fk_columns AS (
     JOIN information_schema.key_column_usage kcu
         ON tc.constraint_name = kcu.constraint_name
     WHERE tc.constraint_type = 'FOREIGN KEY'
-        AND tc.table_name IN ('services', 'reservation_services', 'housekeeping_tasks', 'maintenance_requests')
+        AND tc.table_name IN (
+            'services',
+            'reservation_services',
+            'housekeeping_tasks',
+            'maintenance_requests',
+            'spa_treatments',
+            'spa_appointments'
+        )
 ),
 indexed_columns AS (
     SELECT
@@ -55,7 +69,14 @@ indexed_columns AS (
             ', '
         ))[1] AS column_name
     FROM pg_indexes
-    WHERE tablename IN ('services', 'reservation_services', 'housekeeping_tasks', 'maintenance_requests')
+    WHERE tablename IN (
+        'services',
+        'reservation_services',
+        'housekeeping_tasks',
+        'maintenance_requests',
+        'spa_treatments',
+        'spa_appointments'
+    )
         AND schemaname = 'public'
 )
 SELECT
@@ -90,7 +111,14 @@ SELECT
         ELSE 'No partial index'
     END AS partial_index_status
 FROM pg_indexes
-WHERE tablename IN ('services', 'reservation_services', 'housekeeping_tasks', 'maintenance_requests')
+WHERE tablename IN (
+    'services',
+    'reservation_services',
+    'housekeeping_tasks',
+    'maintenance_requests',
+    'spa_treatments',
+    'spa_appointments'
+)
     AND schemaname = 'public'
     AND indexdef LIKE '%WHERE%'
 ORDER BY tablename, indexname;
@@ -113,14 +141,28 @@ BEGIN
     -- Count total indexes (excluding primary keys)
     SELECT COUNT(*) INTO v_total_indexes
     FROM pg_indexes
-    WHERE tablename IN ('services', 'reservation_services', 'housekeeping_tasks', 'maintenance_requests')
+    WHERE tablename IN (
+        'services',
+        'reservation_services',
+        'housekeeping_tasks',
+        'maintenance_requests',
+        'spa_treatments',
+        'spa_appointments'
+    )
         AND schemaname = 'public'
         AND indexname NOT LIKE '%_pkey';
 
     -- Count tables that have at least one secondary index
     SELECT COUNT(DISTINCT tablename) INTO v_tables_with_indexes
     FROM pg_indexes
-    WHERE tablename IN ('services', 'reservation_services', 'housekeeping_tasks', 'maintenance_requests')
+    WHERE tablename IN (
+            'services',
+            'reservation_services',
+            'housekeeping_tasks',
+            'maintenance_requests',
+            'spa_treatments',
+            'spa_appointments'
+        )
         AND schemaname = 'public'
         AND indexname NOT LIKE '%_pkey';
 
@@ -132,7 +174,14 @@ BEGIN
         JOIN information_schema.key_column_usage kcu
             ON tc.constraint_name = kcu.constraint_name
         WHERE tc.constraint_type = 'FOREIGN KEY'
-            AND tc.table_name IN ('services', 'reservation_services', 'housekeeping_tasks', 'maintenance_requests')
+            AND tc.table_name IN (
+                'services',
+                'reservation_services',
+                'housekeeping_tasks',
+                'maintenance_requests',
+                'spa_treatments',
+                'spa_appointments'
+            )
         EXCEPT
         SELECT
             tablename,
@@ -141,18 +190,25 @@ BEGIN
                 ', '
             ))[1]
         FROM pg_indexes
-        WHERE tablename IN ('services', 'reservation_services', 'housekeeping_tasks', 'maintenance_requests')
+        WHERE tablename IN (
+            'services',
+            'reservation_services',
+            'housekeeping_tasks',
+            'maintenance_requests',
+            'spa_treatments',
+            'spa_appointments'
+        )
             AND schemaname = 'public'
     ) missing;
 
     RAISE NOTICE '';
     RAISE NOTICE 'Category: Services & Housekeeping';
     RAISE NOTICE 'Total Secondary Indexes: %', v_total_indexes;
-    RAISE NOTICE 'Tables with Indexes: % / 4', v_tables_with_indexes;
+    RAISE NOTICE 'Tables with Indexes: % / 6', v_tables_with_indexes;
     RAISE NOTICE 'Foreign Keys Without Index: %', v_fk_without_index;
     RAISE NOTICE '';
 
-    IF v_fk_without_index = 0 AND v_tables_with_indexes = 4 THEN
+    IF v_fk_without_index = 0 AND v_tables_with_indexes = 6 THEN
         RAISE NOTICE '✓✓✓ SERVICES & HOUSEKEEPING INDEX VERIFICATION PASSED ✓✓✓';
     ELSE
         RAISE WARNING '⚠⚠⚠ SERVICES & HOUSEKEEPING INDEX VERIFICATION ISSUES FOUND ⚠⚠⚠';
