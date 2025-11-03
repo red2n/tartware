@@ -1,0 +1,21 @@
+# kind multi-node cluster config for Tartware dev
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+name: tartware-dev
+nodes:
+  - role: control-plane
+    kubeadmConfigPatches:
+      - |
+        kind: ClusterConfiguration
+        metadata:
+          name: config
+        apiServer:
+          extraArgs:
+            "service-account-issuer": "https://kubernetes.default.svc"
+            "service-account-signing-key-file": "/etc/kubernetes/pki/sa.key"
+  - role: worker
+  - role: worker
+  - role: worker
+networking:
+  disableDefaultCNI: true
+  kubeProxyMode: ipvs

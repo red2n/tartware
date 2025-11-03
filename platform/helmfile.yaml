@@ -1,0 +1,151 @@
+environments:
+  dev:
+    values:
+      - values/dev/common.yaml
+
+repositories:
+  - name: argo
+    url: https://argoproj.github.io/argo-helm
+  - name: istio
+    url: https://istio-release.storage.googleapis.com/charts
+  - name: hashicorp
+    url: https://helm.releases.hashicorp.com
+  - name: jetstack
+    url: https://charts.jetstack.io
+  - name: external-secrets
+    url: https://charts.external-secrets.io
+  - name: grafana
+    url: https://grafana.github.io/helm-charts
+  - name: prometheus-community
+    url: https://prometheus-community.github.io/helm-charts
+  - name: open-telemetry
+    url: https://open-telemetry.github.io/opentelemetry-helm-charts
+  - name: bitnami
+    url: https://charts.bitnami.com/bitnami
+  - name: redpanda
+    url: https://charts.redpanda.com
+  - name: nats
+    url: https://nats-io.github.io/k8s/helm/charts/
+
+releases:
+  - name: cert-manager
+    namespace: security
+    chart: jetstack/cert-manager
+    version: 1.15.1
+    createNamespace: true
+    values:
+      - installCRDs: true
+
+  - name: external-secrets-operator
+    namespace: security
+    chart: external-secrets/external-secrets
+    version: 0.9.11
+    values:
+      - values/{{ .Environment.Name }}/external-secrets.yaml
+
+  - name: vault
+    namespace: security
+    chart: hashicorp/vault
+    version: 0.26.1
+    values:
+      - values/{{ .Environment.Name }}/vault.yaml
+
+  - name: argo-cd
+    namespace: argo
+    chart: argo/argo-cd
+    version: 7.3.6
+    createNamespace: true
+    values:
+      - values/{{ .Environment.Name }}/argo-cd.yaml
+
+  - name: istio-base
+    namespace: istio-system
+    chart: istio/base
+    version: 1.22.0
+    createNamespace: true
+
+  - name: istio-controlplane
+    namespace: istio-system
+    chart: istio/istiod
+    version: 1.22.0
+    values:
+      - values/{{ .Environment.Name }}/istiod.yaml
+
+  - name: istio-cni
+    namespace: istio-system
+    chart: istio/cni
+    version: 1.22.0
+
+  - name: consul
+    namespace: consul
+    chart: hashicorp/consul
+    version: 1.5.2
+    values:
+      - values/{{ .Environment.Name }}/consul.yaml
+
+  - name: opentelemetry-collector
+    namespace: observability
+    chart: open-telemetry/opentelemetry-collector
+    version: 0.88.0
+    createNamespace: true
+    values:
+      - values/{{ .Environment.Name }}/otel-collector.yaml
+
+  - name: kube-prometheus-stack
+    namespace: observability
+    chart: prometheus-community/kube-prometheus-stack
+    version: 67.4.0
+    values:
+      - values/{{ .Environment.Name }}/prometheus-stack.yaml
+
+  - name: loki-stack
+    namespace: observability
+    chart: grafana/loki-stack
+    version: 2.10.2
+    values:
+      - values/{{ .Environment.Name }}/loki-stack.yaml
+
+  - name: tempo
+    namespace: observability
+    chart: grafana/tempo
+    version: 1.8.1
+    values:
+      - values/{{ .Environment.Name }}/tempo.yaml
+
+  - name: redpanda
+    namespace: messaging
+    chart: redpanda/redpanda
+    version: 5.8.1
+    createNamespace: true
+    values:
+      - values/{{ .Environment.Name }}/redpanda.yaml
+
+  - name: schema-registry
+    namespace: messaging
+    chart: bitnami/schema-registry
+    version: 11.2.4
+    values:
+      - values/{{ .Environment.Name }}/schema-registry.yaml
+
+  - name: nats-jetstream
+    namespace: messaging
+    chart: nats/nats
+    version: 1.1.12
+    values:
+      - values/{{ .Environment.Name }}/nats.yaml
+
+  - name: clickhouse
+    namespace: analytics
+    chart: bitnami/clickhouse
+    version: 5.1.7
+    createNamespace: true
+    values:
+      - values/{{ .Environment.Name }}/clickhouse.yaml
+
+  - name: redis
+    namespace: cache
+    chart: bitnami/redis
+    version: 19.1.0
+    createNamespace: true
+    values:
+      - values/{{ .Environment.Name }}/redis.yaml

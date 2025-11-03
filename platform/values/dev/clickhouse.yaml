@@ -1,0 +1,8 @@
+# ClickHouse dev overrides
+shards: 1
+replicaCount: 1
+persistence:
+  size: 20Gi
+users:
+  admin:
+    password: clickhouse

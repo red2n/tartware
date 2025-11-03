@@ -1,10 +1,10 @@
 # Core Service
 
-Lightweight Fastify-based API that exposes Tartware core domain operations (tenants, properties, users). This first iteration keeps implementation simple and focuses on:
+Fastify-based API for Tartware's core domain (tenants, users, properties, guests). The service:
 
-- Using `@tartware/schemas` for every request/response contract
-- Establishing minimal project scaffolding (TypeScript, linting)
-- Providing health and tenant listing endpoints backed by an in-memory repository
+- Validates every payload with `@tartware/schemas`
+- Talks directly to PostgreSQL using the shared schema
+- Ships with TypeScript, ESLint, Knip, and Biome quality gates
 
 ## Getting Started
 
@@ -13,6 +13,7 @@ npm install
 npm run dev
 # optional quality gates
 npm run lint
+npm run biome
 npm run knip
 ```
 
@@ -28,11 +29,14 @@ The server listens on `http://localhost:3000` by default.
 ## Available Endpoints
 
 - `GET /health` — Basic service readiness probe.
-- `GET /v1/tenants` — Returns sample tenant records validated against the schema package.
+- `GET /v1/tenants` — Tenant catalogue with aggregate stats.
+- `GET /v1/properties` — Property inventory (optional `tenant_id` filter).
+- `GET /v1/users` — Users with tenant assignments (optional `tenant_id`).
+- `GET /v1/guests` — Guest directory with rich filters (`tenant_id`, `email`, `phone`, `loyalty_tier`, `vip_status`, `is_blacklisted`).
+- `GET /v1/user-tenant-associations` — RBAC links between users and tenants (filter by `tenant_id`, `user_id`, `role`, `is_active`).
 
 ## Next Steps
 
-1. Replace the in-memory repository with PostgreSQL access using `pg`.
-2. Add authentication middleware that enforces tenant scoping.
-3. Expand routes for properties, users, and tenant creation/update operations.
-4. Introduce contract tests to ensure schema alignment.
+1. Add authentication/authorization middleware to enforce tenant scoping.
+2. Implement create/update operations with optimistic locking.
+3. Introduce contract tests and load tests that exercise the PostgreSQL queries.

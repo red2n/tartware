@@ -1,6 +1,10 @@
-import { TenantWithRelationsSchema, type TenantWithRelations } from '@tartware/schemas/core/tenants';
+import {
+  type TenantWithRelations,
+  TenantWithRelationsSchema,
+} from "@tartware/schemas/core/tenants";
 
-import { query } from '../lib/db.js';
+import { query } from "../lib/db.js";
+import { normalizePhoneNumber } from "../utils/phone.js";
 
 const TENANT_LIST_SQL = `
   SELECT
@@ -89,42 +93,11 @@ type TenantRow = {
   active_properties: number | null;
 };
 
-export type TenantResponse = Omit<TenantWithRelations, 'version'> & {
+type TenantResponse = Omit<TenantWithRelations, "version"> & {
   version: string;
 };
 
 const mapRowToTenant = (row: TenantRow): TenantResponse => {
-  const normalizePhone = (value: string | null): string | undefined => {
-    if (!value) {
-      return undefined;
-    }
-
-    const withoutExtension = value.split(/(?:ext\.?|x)/i)[0] ?? value;
-    let digits = withoutExtension.replace(/[^\d+]/g, '');
-
-    if (digits.startsWith('+')) {
-      const normalized = `+${digits.replace(/[^\d]/g, '')}`;
-      return normalized.length > 1 ? normalized : undefined;
-    }
-
-    digits = digits.replace(/^00+/, '');
-    const numeric = digits.replace(/\D/g, '');
-
-    if (numeric.length === 0) {
-      return undefined;
-    }
-
-    if (numeric.length === 10) {
-      return `+1${numeric}`;
-    }
-
-    if (numeric.length >= 11 && numeric.length <= 15) {
-      return `+${numeric}`;
-    }
-
-    return undefined;
-  };
-
   const parsed = TenantWithRelationsSchema.parse({
     id: row.id,
     name: row.name,
@@ -132,7 +105,7 @@ const mapRowToTenant = (row: TenantRow): TenantResponse => {
     type: row.type,
     status: row.status,
     email: row.email,
-    phone: normalizePhone(row.phone),
+    phone: normalizePhoneNumber(row.phone),
     website: row.website ?? undefined,
     address_line1: row.address_line1 ?? undefined,
     address_line2: row.address_line2 ?? undefined,
@@ -158,7 +131,7 @@ const mapRowToTenant = (row: TenantRow): TenantResponse => {
   });
   return {
     ...parsed,
-    version: parsed.version?.toString() ?? '0',
+    version: parsed.version?.toString() ?? "0",
   };
 };
 

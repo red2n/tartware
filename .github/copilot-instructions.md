@@ -48,6 +48,7 @@ Follow these focused, repository-specific rules when editing, refactoring or add
    - Use environment variables for DB connection when running local scripts: `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`.
    - For Python code, prefer modern Python 3 with type hints where appropriate (follow existing style in `data/` loaders).
    - All Node/TypeScript projects must include Knip in devDependencies and run `npm run knip` (or equivalent) during builds.
+   - All Node/TypeScript projects must ship with Biome (`@biomejs/biome`) for lint/format checks and expose `npm run biome` (or equivalent) in package scripts.
 
 6. Helpful references in the repo (cite examples when relevant)
    - Master setup and orchestration: `setup-database.sh`, `docker-compose.yml`, `scripts/docker/docker-entrypoint-custom.sh`

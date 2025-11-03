@@ -1,0 +1,6 @@
+# Schema Registry dev overrides
+kafka:
+  enabled: false
+configurationOverrides:
+  kafkastore.bootstrap.servers: PLAINTEXT://redpanda.messaging.svc.cluster.local:9092
+  kafkastore.topic: _schemas

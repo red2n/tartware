@@ -1,0 +1,220 @@
+import { type GuestWithStats, GuestWithStatsSchema } from "@tartware/schemas/core/guests";
+
+import { query } from "../lib/db.js";
+import { normalizePhoneNumber } from "../utils/phone.js";
+
+const DEFAULT_ADDRESS = {
+  street: "",
+  city: "",
+  state: "",
+  postalCode: "",
+  country: "",
+};
+
+const DEFAULT_PREFERENCES = {
+  roomType: null,
+  floor: null,
+  bedType: null,
+  smoking: false,
+  language: "en",
+  dietaryRestrictions: [] as string[],
+  specialRequests: [] as string[],
+};
+
+const DEFAULT_COMMUNICATION_PREFERENCES = {
+  email: true,
+  sms: false,
+  phone: true,
+  post: false,
+};
+
+const GUEST_LIST_SQL = `
+  SELECT
+    g.id,
+    g.tenant_id,
+    g.first_name,
+    g.last_name,
+    g.middle_name,
+    g.title,
+    g.date_of_birth,
+    g.gender,
+    g.nationality,
+    g.email,
+    g.phone,
+    g.secondary_phone,
+    g.address,
+    g.id_type,
+    g.id_number,
+    g.passport_number,
+    g.passport_expiry,
+    g.company_name,
+    g.company_tax_id,
+    g.loyalty_tier,
+    g.loyalty_points,
+    g.vip_status,
+    g.preferences,
+    g.marketing_consent,
+    g.communication_preferences,
+    g.total_bookings,
+    g.total_nights,
+    g.total_revenue,
+    g.last_stay_date,
+    g.is_blacklisted,
+    g.blacklist_reason,
+    g.notes,
+    g.metadata,
+    g.created_at,
+    g.updated_at,
+    g.created_by,
+    g.updated_by,
+    g.deleted_at,
+    g.version
+  FROM public.guests g
+  WHERE COALESCE(g.is_deleted, false) = false
+    AND g.deleted_at IS NULL
+    AND ($2::uuid IS NULL OR g.tenant_id = $2::uuid)
+    AND ($3::text IS NULL OR g.email ILIKE $3)
+    AND ($4::text IS NULL OR g.phone ILIKE $4)
+    AND ($5::text IS NULL OR g.loyalty_tier = $5)
+    AND ($6::boolean IS NULL OR g.vip_status = $6)
+    AND ($7::boolean IS NULL OR g.is_blacklisted = $7)
+  ORDER BY g.created_at DESC
+  LIMIT $1
+`;
+
+type GuestRow = {
+  id: string;
+  tenant_id: string;
+  first_name: string;
+  last_name: string;
+  middle_name: string | null;
+  title: string | null;
+  date_of_birth: Date | null;
+  gender: string | null;
+  nationality: string | null;
+  email: string;
+  phone: string | null;
+  secondary_phone: string | null;
+  address: Record<string, unknown> | null;
+  id_type: string | null;
+  id_number: string | null;
+  passport_number: string | null;
+  passport_expiry: Date | null;
+  company_name: string | null;
+  company_tax_id: string | null;
+  loyalty_tier: string | null;
+  loyalty_points: number | null;
+  vip_status: boolean | null;
+  preferences: Record<string, unknown> | null;
+  marketing_consent: boolean | null;
+  communication_preferences: Record<string, unknown> | null;
+  total_bookings: number | null;
+  total_nights: number | null;
+  total_revenue: string | number | null;
+  last_stay_date: Date | null;
+  is_blacklisted: boolean | null;
+  blacklist_reason: string | null;
+  notes: string | null;
+  metadata: Record<string, unknown> | null;
+  created_at: Date;
+  updated_at: Date | null;
+  created_by: string | null;
+  updated_by: string | null;
+  deleted_at: Date | null;
+  version: bigint | null;
+};
+
+const toNumber = (value: string | number | null | undefined): number => {
+  if (value === null || value === undefined) {
+    return 0;
+  }
+  if (typeof value === "number") {
+    return value;
+  }
+  const parsed = Number.parseFloat(value);
+  return Number.isNaN(parsed) ? 0 : parsed;
+};
+
+const mapRowToGuest = (row: GuestRow): GuestWithStats => {
+  const parsed = GuestWithStatsSchema.parse({
+    id: row.id,
+    tenant_id: row.tenant_id,
+    first_name: row.first_name,
+    last_name: row.last_name,
+    middle_name: row.middle_name ?? undefined,
+    title: row.title ?? undefined,
+    date_of_birth: row.date_of_birth ?? undefined,
+    gender: row.gender ?? undefined,
+    nationality: row.nationality ?? undefined,
+    email: row.email,
+    phone: normalizePhoneNumber(row.phone),
+    secondary_phone: normalizePhoneNumber(row.secondary_phone),
+    address: (row.address ?? DEFAULT_ADDRESS) as Record<string, unknown>,
+    id_type: row.id_type ?? undefined,
+    id_number: row.id_number ?? undefined,
+    passport_number: row.passport_number ?? undefined,
+    passport_expiry: row.passport_expiry ?? undefined,
+    company_name: row.company_name ?? undefined,
+    company_tax_id: row.company_tax_id ?? undefined,
+    loyalty_tier: row.loyalty_tier ?? undefined,
+    loyalty_points: row.loyalty_points ?? 0,
+    vip_status: row.vip_status ?? false,
+    preferences: row.preferences ?? DEFAULT_PREFERENCES,
+    marketing_consent: row.marketing_consent ?? false,
+    communication_preferences: row.communication_preferences ?? DEFAULT_COMMUNICATION_PREFERENCES,
+    total_bookings: row.total_bookings ?? 0,
+    total_nights: row.total_nights ?? 0,
+    total_revenue: toNumber(row.total_revenue),
+    last_stay_date: row.last_stay_date ?? undefined,
+    is_blacklisted: row.is_blacklisted ?? false,
+    blacklist_reason: row.blacklist_reason ?? undefined,
+    notes: row.notes ?? undefined,
+    metadata: row.metadata ?? undefined,
+    created_at: row.created_at,
+    updated_at: row.updated_at ?? undefined,
+    created_by: row.created_by ?? undefined,
+    updated_by: row.updated_by ?? undefined,
+    deleted_at: row.deleted_at ?? null,
+    version: row.version ?? BigInt(0),
+    upcoming_reservations: undefined,
+    past_reservations: undefined,
+    cancelled_reservations: undefined,
+    average_stay_length: undefined,
+    preferred_room_types: undefined,
+    lifetime_value: toNumber(row.total_revenue),
+  });
+
+  return parsed;
+};
+
+export const listGuests = async (
+  options: {
+    limit?: number;
+    tenantId?: string;
+    email?: string;
+    phone?: string;
+    loyaltyTier?: string;
+    vipStatus?: boolean;
+    isBlacklisted?: boolean;
+  } = {},
+): Promise<GuestWithStats[]> => {
+  const limit = options.limit ?? 50;
+  const tenantId = options.tenantId ?? null;
+  const email = options.email ? `%${options.email}%` : null;
+  const phone = options.phone ? `%${options.phone}%` : null;
+  const loyaltyTier = options.loyaltyTier ?? null;
+  const vipStatus = options.vipStatus ?? null;
+  const isBlacklisted = options.isBlacklisted ?? null;
+
+  const { rows } = await query<GuestRow>(GUEST_LIST_SQL, [
+    limit,
+    tenantId,
+    email,
+    phone,
+    loyaltyTier,
+    vipStatus,
+    isBlacklisted,
+  ]);
+
+  return rows.map(mapRowToGuest);
+};

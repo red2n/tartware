@@ -20,6 +20,7 @@ module.exports = {
   rules: {
     '@typescript-eslint/explicit-module-boundary-types': 'off',
     '@typescript-eslint/no-misused-promises': ['error', { checksVoidReturn: false }],
+    'import/no-unresolved': 'off',
     'import/order': [
       'warn',
       {

@@ -1,0 +1,9 @@
+# Redis dev overrides
+architecture: standalone
+master:
+  persistence:
+    size: 10Gi
+  resources:
+    requests:
+      cpu: 200m
+      memory: 256Mi

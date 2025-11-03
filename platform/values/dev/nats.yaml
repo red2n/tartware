@@ -1,0 +1,13 @@
+# NATS dev overrides with JetStream
+global:
+  name: nats
+  image:
+    tag: 2.10.13
+jetstream:
+  enabled: true
+  fileStore:
+    enabled: true
+    pvc:
+      size: 10Gi
+ limits:
+  maxPayload: 4MB

@@ -28,7 +28,7 @@ This plan translates the Tartware PMS long-term architecture goals into executab
 - ✅ Create `Apps/` workspace for backend services (complete).
 - ✅ Document schema source-of-truth workflow (`schema/SCHEMA_REFERENCE.md`).
 - ✅ Establish architectural decision record (ADR) template in `docs/adr/`.
-- ☐ Baseline current infrastructure (Docker Compose + PostgreSQL) and capture gap analysis.
+- ✅ Baseline current infrastructure (Docker Compose + PostgreSQL) and capture gap analysis (`docs/phase-0-gap-analysis.md`).
 
 **Deliverables:** ADR template, inventory of existing services, gap assessment, go/no-go checkpoint.
 

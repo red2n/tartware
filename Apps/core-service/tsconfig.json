@@ -4,7 +4,7 @@
     "rootDir": "src",
     "outDir": "dist",
     "module": "esnext",
-    "moduleResolution": "node",
+    "moduleResolution": "bundler",
     "composite": false,
     "noEmit": false,
     "resolveJsonModule": true,

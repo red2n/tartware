@@ -1,0 +1,21 @@
+# Redpanda dev overrides
+statefulset:
+  replicas: 3
+resources:
+  requests:
+    cpu: 500m
+    memory: 1Gi
+listeners:
+  kafka:
+    port: 9092
+  pandaproxy:
+    port: 8082
+  schemaRegistry:
+    enabled: false
+config:
+  cluster_id: tartware-dev
+  auto_create_topics_enabled: false
+  kafka_api:
+    - address: 0.0.0.0
+      name: internal
+      port: 9092
