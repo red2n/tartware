@@ -1,6 +1,7 @@
 import { type PropertyWithStats, PropertyWithStatsSchema } from "@tartware/schemas/core/properties";
 
 import { query } from "../lib/db.js";
+import { toNonNegativeInt, toOptionalNumber } from "../utils/numbers.js";
 import { normalizePhoneNumber } from "../utils/phone.js";
 
 const PROPERTY_LIST_SQL = `
@@ -48,8 +49,8 @@ type PropertyRow = {
   email: string | null;
   website: string | null;
   property_type: string | null;
-  star_rating: number | null;
-  total_rooms: number | null;
+  star_rating: number | string | null;
+  total_rooms: number | string | null;
   tax_id: string | null;
   license_number: string | null;
   currency: string | null;
@@ -67,6 +68,8 @@ type PropertyRow = {
 };
 
 const mapRowToProperty = (row: PropertyRow): PropertyWithStats => {
+  const totalRooms = toNonNegativeInt(row.total_rooms, 0);
+
   const parsed = PropertyWithStatsSchema.parse({
     id: row.id,
     tenant_id: row.tenant_id,
@@ -77,8 +80,8 @@ const mapRowToProperty = (row: PropertyRow): PropertyWithStats => {
     email: row.email ?? undefined,
     website: row.website ?? undefined,
     property_type: row.property_type ?? undefined,
-    star_rating: row.star_rating ?? undefined,
-    total_rooms: row.total_rooms ?? 0,
+    star_rating: toOptionalNumber(row.star_rating),
+    total_rooms: totalRooms,
     tax_id: row.tax_id ?? undefined,
     license_number: row.license_number ?? undefined,
     currency: row.currency ?? "USD",
@@ -93,9 +96,9 @@ const mapRowToProperty = (row: PropertyRow): PropertyWithStats => {
     updated_by: row.updated_by ?? undefined,
     deleted_at: row.deleted_at ?? null,
     version: row.version ?? BigInt(0),
-    room_count: row.total_rooms ?? 0,
+    room_count: totalRooms,
     occupied_rooms: 0,
-    available_rooms: row.total_rooms ?? 0,
+    available_rooms: totalRooms,
     occupancy_rate: 0,
     current_guests: 0,
     todays_arrivals: 0,

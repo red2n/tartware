@@ -1,6 +1,7 @@
 import { type GuestWithStats, GuestWithStatsSchema } from "@tartware/schemas/core/guests";
 
 import { query } from "../lib/db.js";
+import { toNumberOrFallback } from "../utils/numbers.js";
 import { normalizePhoneNumber } from "../utils/phone.js";
 
 const DEFAULT_ADDRESS = {
@@ -12,14 +13,13 @@ const DEFAULT_ADDRESS = {
 };
 
 const DEFAULT_PREFERENCES = {
-  roomType: null,
-  floor: null,
-  bedType: null,
   smoking: false,
   language: "en",
   dietaryRestrictions: [] as string[],
   specialRequests: [] as string[],
 };
+
+const GUEST_BED_TYPES = new Set(["KING", "QUEEN", "TWIN", "DOUBLE"]);
 
 const DEFAULT_COMMUNICATION_PREFERENCES = {
   email: true,
@@ -27,6 +27,80 @@ const DEFAULT_COMMUNICATION_PREFERENCES = {
   phone: true,
   post: false,
 };
+
+const normalizeAddress = (address: Record<string, unknown> | null | undefined) => ({
+  street: typeof address?.street === "string" ? address.street : DEFAULT_ADDRESS.street,
+  city: typeof address?.city === "string" ? address.city : DEFAULT_ADDRESS.city,
+  state: typeof address?.state === "string" ? address.state : DEFAULT_ADDRESS.state,
+  postalCode:
+    typeof address?.postalCode === "string" ? address.postalCode : DEFAULT_ADDRESS.postalCode,
+  country: typeof address?.country === "string" ? address.country : DEFAULT_ADDRESS.country,
+});
+
+const normalizePreferences = (preferences: Record<string, unknown> | null | undefined) => {
+  const normalized = {
+    ...DEFAULT_PREFERENCES,
+  } as Record<string, unknown>;
+
+  const maybeString = (value: unknown): string | undefined =>
+    typeof value === "string" && value.trim().length > 0 ? value : undefined;
+
+  const maybeBoolean = (value: unknown, fallback: boolean) =>
+    typeof value === "boolean" ? value : fallback;
+
+  normalized.smoking = maybeBoolean(preferences?.smoking, DEFAULT_PREFERENCES.smoking);
+
+  const language = maybeString(preferences?.language);
+  normalized.language = language && language.length === 2 ? language : DEFAULT_PREFERENCES.language;
+
+  const rawDietary = (preferences as { dietaryRestrictions?: unknown })?.dietaryRestrictions;
+  const dietary = Array.isArray(rawDietary)
+    ? rawDietary.filter((item): item is string => typeof item === "string")
+    : DEFAULT_PREFERENCES.dietaryRestrictions;
+  normalized.dietaryRestrictions = dietary;
+
+  const rawSpecial = (preferences as { specialRequests?: unknown })?.specialRequests;
+  const special = Array.isArray(rawSpecial)
+    ? rawSpecial.filter((item): item is string => typeof item === "string")
+    : DEFAULT_PREFERENCES.specialRequests;
+  normalized.specialRequests = special;
+
+  const roomType = maybeString(preferences?.roomType);
+  if (roomType) {
+    normalized.roomType = roomType;
+  }
+
+  const floor = maybeString(preferences?.floor);
+  if (floor) {
+    normalized.floor = floor;
+  }
+
+  const bedType = maybeString(preferences?.bedType);
+  if (bedType && GUEST_BED_TYPES.has(bedType)) {
+    normalized.bedType = bedType;
+  }
+
+  return normalized;
+};
+
+const normalizeCommunicationPreferences = (
+  preferences: Record<string, unknown> | null | undefined,
+) => ({
+  email:
+    typeof preferences?.email === "boolean"
+      ? preferences.email
+      : DEFAULT_COMMUNICATION_PREFERENCES.email,
+  sms:
+    typeof preferences?.sms === "boolean" ? preferences.sms : DEFAULT_COMMUNICATION_PREFERENCES.sms,
+  phone:
+    typeof preferences?.phone === "boolean"
+      ? preferences.phone
+      : DEFAULT_COMMUNICATION_PREFERENCES.phone,
+  post:
+    typeof preferences?.post === "boolean"
+      ? preferences.post
+      : DEFAULT_COMMUNICATION_PREFERENCES.post,
+});
 
 const GUEST_LIST_SQL = `
   SELECT
@@ -124,17 +198,6 @@ type GuestRow = {
   version: bigint | null;
 };
 
-const toNumber = (value: string | number | null | undefined): number => {
-  if (value === null || value === undefined) {
-    return 0;
-  }
-  if (typeof value === "number") {
-    return value;
-  }
-  const parsed = Number.parseFloat(value);
-  return Number.isNaN(parsed) ? 0 : parsed;
-};
-
 const mapRowToGuest = (row: GuestRow): GuestWithStats => {
   const parsed = GuestWithStatsSchema.parse({
     id: row.id,
@@ -149,7 +212,7 @@ const mapRowToGuest = (row: GuestRow): GuestWithStats => {
     email: row.email,
     phone: normalizePhoneNumber(row.phone),
     secondary_phone: normalizePhoneNumber(row.secondary_phone),
-    address: (row.address ?? DEFAULT_ADDRESS) as Record<string, unknown>,
+    address: normalizeAddress(row.address),
     id_type: row.id_type ?? undefined,
     id_number: row.id_number ?? undefined,
     passport_number: row.passport_number ?? undefined,
@@ -159,12 +222,12 @@ const mapRowToGuest = (row: GuestRow): GuestWithStats => {
     loyalty_tier: row.loyalty_tier ?? undefined,
     loyalty_points: row.loyalty_points ?? 0,
     vip_status: row.vip_status ?? false,
-    preferences: row.preferences ?? DEFAULT_PREFERENCES,
+    preferences: normalizePreferences(row.preferences),
     marketing_consent: row.marketing_consent ?? false,
-    communication_preferences: row.communication_preferences ?? DEFAULT_COMMUNICATION_PREFERENCES,
+    communication_preferences: normalizeCommunicationPreferences(row.communication_preferences),
     total_bookings: row.total_bookings ?? 0,
     total_nights: row.total_nights ?? 0,
-    total_revenue: toNumber(row.total_revenue),
+    total_revenue: toNumberOrFallback(row.total_revenue),
     last_stay_date: row.last_stay_date ?? undefined,
     is_blacklisted: row.is_blacklisted ?? false,
     blacklist_reason: row.blacklist_reason ?? undefined,
@@ -181,7 +244,7 @@ const mapRowToGuest = (row: GuestRow): GuestWithStats => {
     cancelled_reservations: undefined,
     average_stay_length: undefined,
     preferred_room_types: undefined,
-    lifetime_value: toNumber(row.total_revenue),
+    lifetime_value: toNumberOrFallback(row.total_revenue),
   });
 
   return parsed;
