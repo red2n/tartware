@@ -55,6 +55,26 @@ Follow these focused, repository-specific rules when editing, refactoring or add
    - Update `scripts/00-master-install.sh` and `scripts/README.md` only when you add new files or change ordering.
    - Include verification commands in the PR description (example: `psql -U postgres -d tartware -f scripts/verify-all.sql`) and list the expected verification outputs if the change affects counts.
 
+7a. Zod schema synchronization (CRITICAL)
+   - **ANY change to `scripts/` folder MUST be reflected in Zod schemas.** This is a hard requirement for type safety.
+   - When you modify `scripts/02-enum-types.sql`: Update corresponding ENUMs in Zod schema repo (`src/shared/enums.ts`)
+   - When you add/modify table in `scripts/tables/`: Update corresponding schema in Zod repo (`src/schemas/{category}/{table}.ts`)
+   - When you add/modify column: Update the Zod schema object with matching type, constraints, and validation
+   - When you add/remove foreign key: Update Zod relationship validators and `.refine()` methods
+   - When you modify JSONB structure: Update corresponding JSONB schema validators
+   - **Verification checklist for database changes:**
+     1. ✅ SQL script updated in `scripts/`
+     2. ✅ Zod schema updated in corresponding category folder
+     3. ✅ ENUM added/updated in `src/shared/enums.ts` if applicable
+     4. ✅ Tests updated in `tests/schemas/`
+     5. ✅ Update `docs/ZOD_SCHEMA_IMPLEMENTATION_PLAN.md` if structural changes
+     6. ✅ Run schema validation tests to ensure no TypeScript errors
+   - **Examples:**
+     - Add ENUM `room_view_type`: Update `scripts/02-enum-types.sql` → Add `RoomViewTypeEnum` to `src/shared/enums.ts`
+     - Add column `rooms.view_type`: Update `scripts/tables/02-inventory/07_rooms.sql` → Add `view_type: RoomViewTypeEnum.optional()` to `src/schemas/02-inventory/rooms.ts`
+     - Add table `vip_services`: Create `scripts/tables/05-operations/109_vip_services.sql` → Create `src/schemas/05-operations/vip-services.ts` with full schema
+   - **Do NOT skip Zod updates** - they are as important as the database changes themselves. Schema drift causes runtime failures.
+
 8. Safety and non-goals
    - Do not modify production credentials or create new secrets in the repo.
    - Do not attempt network calls during code generation. Keep changes local to the repository structure.
