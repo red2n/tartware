@@ -113,9 +113,9 @@ DECLARE
 BEGIN
     -- Total FKs
     SELECT COUNT(*) INTO v_total_fks
-    FROM information_schema.table_constraints
-    WHERE constraint_type = 'FOREIGN KEY'
-        AND table_name IN ('integration_mappings', 'api_logs', 'webhook_subscriptions', 'data_sync_status')
+    FROM information_schema.table_constraints tc
+    WHERE tc.constraint_type = 'FOREIGN KEY'
+        AND tc.table_name IN ('integration_mappings', 'api_logs', 'webhook_subscriptions', 'data_sync_status')
         AND tc.table_schema = 'public';
 
     -- RESTRICT deletes

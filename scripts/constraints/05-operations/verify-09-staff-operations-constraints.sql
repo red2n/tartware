@@ -113,9 +113,9 @@ DECLARE
 BEGIN
     -- Total FKs
     SELECT COUNT(*) INTO v_total_fks
-    FROM information_schema.table_constraints
-    WHERE constraint_type = 'FOREIGN KEY'
-        AND table_name IN ('staff_schedules', 'staff_tasks', 'shift_handovers', 'lost_and_found', 'incident_reports', 'vendor_contracts')
+    FROM information_schema.table_constraints tc
+    WHERE tc.constraint_type = 'FOREIGN KEY'
+        AND tc.table_name IN ('staff_schedules', 'staff_tasks', 'shift_handovers', 'lost_and_found', 'incident_reports', 'vendor_contracts')
         AND tc.table_schema = 'public';
 
     -- RESTRICT deletes

@@ -113,9 +113,9 @@ DECLARE
 BEGIN
     -- Total FKs
     SELECT COUNT(*) INTO v_total_fks
-    FROM information_schema.table_constraints
-    WHERE constraint_type = 'FOREIGN KEY'
-        AND table_name IN ('guest_communications', 'communication_templates', 'guest_feedback', 'guest_loyalty_programs', 'guest_documents', 'guest_notes', 'automated_messages')
+    FROM information_schema.table_constraints tc
+    WHERE tc.constraint_type = 'FOREIGN KEY'
+        AND tc.table_name IN ('guest_communications', 'communication_templates', 'guest_feedback', 'guest_loyalty_programs', 'guest_documents', 'guest_notes', 'automated_messages')
         AND tc.table_schema = 'public';
 
     -- RESTRICT deletes

@@ -113,9 +113,9 @@ DECLARE
 BEGIN
     -- Total FKs
     SELECT COUNT(*) INTO v_total_fks
-    FROM information_schema.table_constraints
-    WHERE constraint_type = 'FOREIGN KEY'
-        AND table_name IN ('mobile_keys', 'qr_codes', 'push_notifications', 'app_usage_analytics')
+    FROM information_schema.table_constraints tc
+    WHERE tc.constraint_type = 'FOREIGN KEY'
+        AND tc.table_name IN ('mobile_keys', 'qr_codes', 'push_notifications', 'app_usage_analytics')
         AND tc.table_schema = 'public';
 
     -- RESTRICT deletes

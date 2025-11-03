@@ -140,6 +140,7 @@ def insert_smart_room_devices(conn, devices_per_property: int | None = None):
     cur = conn.cursor()
 
     count = 0
+    serial_counter = 0
     for property_rec in data_store["properties"]:
         property_rooms = [r for r in data_store["rooms"] if r["property_id"] == property_rec["id"]]
         cur.execute(
@@ -167,7 +168,8 @@ def insert_smart_room_devices(conn, devices_per_property: int | None = None):
 
             installed_by = random.choice(tenant_users) if tenant_users else None
             device_id = generate_uuid()
-            serial_token = generate_uuid().replace("-", "").upper()
+            serial_counter += 1
+            serial_token = f"{serial_counter:08d}{generate_uuid().replace('-', '')[:8]}".upper()
             mac_address = fake.unique.mac_address().upper()
             api_key_reference = f"device-key-{device_id.replace('-', '')[:12]}"
 
@@ -214,7 +216,7 @@ def insert_smart_room_devices(conn, devices_per_property: int | None = None):
                     %s, %s, %s,
                     %s, %s, %s,
                     %s, %s, %s,
-                    %s, %s, %s, %s
+                    %s, %s, %s, %s, %s
                 )
                 """,
                 (
@@ -228,7 +230,7 @@ def insert_smart_room_devices(conn, devices_per_property: int | None = None):
                     _DEVICE_CATEGORY_MAP.get(device_type, "convenience"),
                     random.choice(["Nest", "August", "Philips", "Samsung", "Honeywell", "Bosch", "Tartware IoT"]),
                     f"{device_type[:3].upper()}-{random.randint(100, 999)}",
-                    f"SRD-{serial_token[:12]}",
+                    f"SRD-{serial_token}",
                     f"{random.randint(1, 4)}.{random.randint(0, 9)}.{random.randint(0, 20)}",
                     f"HW-{random.randint(1, 3)}.0",
                     mac_address,

@@ -113,9 +113,9 @@ DECLARE
 BEGIN
     -- Total FKs
     SELECT COUNT(*) INTO v_total_fks
-    FROM information_schema.table_constraints
-    WHERE constraint_type = 'FOREIGN KEY'
-        AND table_name IN ('analytics_metrics', 'analytics_metric_dimensions', 'analytics_reports', 'report_property_ids', 'performance_reports', 'report_schedules', 'performance_thresholds', 'performance_baselines', 'performance_alerts', 'alert_rules', 'guest_journey_tracking', 'revenue_attribution', 'forecasting_models', 'ab_test_results')
+    FROM information_schema.table_constraints tc
+    WHERE tc.constraint_type = 'FOREIGN KEY'
+        AND tc.table_name IN ('analytics_metrics', 'analytics_metric_dimensions', 'analytics_reports', 'report_property_ids', 'performance_reports', 'report_schedules', 'performance_thresholds', 'performance_baselines', 'performance_alerts', 'alert_rules', 'guest_journey_tracking', 'revenue_attribution', 'forecasting_models', 'ab_test_results')
         AND tc.table_schema = 'public';
 
     -- RESTRICT deletes

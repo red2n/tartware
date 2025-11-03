@@ -113,9 +113,9 @@ DECLARE
 BEGIN
     -- Total FKs
     SELECT COUNT(*) INTO v_total_fks
-    FROM information_schema.table_constraints
-    WHERE constraint_type = 'FOREIGN KEY'
-        AND table_name IN ('marketing_campaigns', 'campaign_segments', 'promotional_codes', 'referral_tracking', 'social_media_mentions')
+    FROM information_schema.table_constraints tc
+    WHERE tc.constraint_type = 'FOREIGN KEY'
+        AND tc.table_name IN ('marketing_campaigns', 'campaign_segments', 'promotional_codes', 'referral_tracking', 'social_media_mentions')
         AND tc.table_schema = 'public';
 
     -- RESTRICT deletes

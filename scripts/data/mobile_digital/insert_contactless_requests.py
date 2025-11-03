@@ -171,6 +171,7 @@ def insert_contactless_requests(conn, requests_per_property: int = 25):
                     %s, %s, %s,
                     %s, %s,
                     %s, %s,
+                    %s, %s,
                     %s, %s, %s, %s
                 )
                 """,

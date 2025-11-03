@@ -128,6 +128,7 @@ def insert_room_energy_usage(conn, max_rooms_per_property: int = 8):
                         %s, %s,
                         %s, %s, %s,
                         %s, %s, %s,
+                        %s, %s, %s,
                         %s
                     )
                     """,

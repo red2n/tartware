@@ -553,10 +553,23 @@ echo -e "${GREEN}✓ Created $FK_COUNT foreign key constraints${NC}"
 echo ""
 
 # ============================================================================
-# STEP 9: Install Trigger & Monitoring Suite
+# STEP 9: Create Stored Procedures
 # ============================================================================
 
-echo -e "${BLUE}[9/12]${NC} Installing trigger suite (query safety & optimistic locking)..."
+echo -e "${BLUE}[9/13]${NC} Creating stored procedures..."
+
+psql -q -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -f "$SCRIPTS_DIR/procedures/00-create-all-procedures.sql" > /dev/null 2>&1
+
+PROCEDURE_COUNT=$(psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -tAc "SELECT COUNT(*) FROM pg_proc p JOIN pg_namespace n ON p.pronamespace = n.oid WHERE n.nspname = 'public' AND p.prokind IN ('f', 'p');" 2>/dev/null)
+
+echo -e "${GREEN}✓ Created $PROCEDURE_COUNT stored procedures${NC}"
+echo ""
+
+# ============================================================================
+# STEP 10: Install Trigger & Monitoring Suite
+# ============================================================================
+
+echo -e "${BLUE}[10/13]${NC} Installing trigger suite (query safety & optimistic locking)..."
 
 psql -q -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -f "$SCRIPTS_DIR/triggers/00-create-all-efficiency-triggers.sql" > /dev/null 2>&1
 
@@ -564,10 +577,10 @@ echo -e "${GREEN}✓ Trigger suite installed${NC}"
 echo ""
 
 # ============================================================================
-# STEP 10: Add User-Friendly Constraint Messages
+# STEP 11: Add User-Friendly Constraint Messages
 # ============================================================================
 
-echo -e "${BLUE}[10/12]${NC} Adding user-friendly constraint error messages..."
+echo -e "${BLUE}[11/13]${NC} Adding user-friendly constraint error messages..."
 
 psql -q -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -f "$SCRIPTS_DIR/add_friendly_constraint_messages.sql" > /dev/null 2>&1
 
@@ -577,11 +590,11 @@ echo ""
 fi  # End of structure creation block (DO_FRESH_INSTALL)
 
 # ============================================================================
-# STEP 11: Verification
+# STEP 12: Verification
 # ============================================================================
 
 if [ "$DO_FRESH_INSTALL" = true ]; then
-    echo -e "${BLUE}[11/12]${NC} Running verification..."
+    echo -e "${BLUE}[12/13]${NC} Running verification..."
 
     psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -f "$SCRIPTS_DIR/verify-all.sql" 2>&1 | tail -30
 
@@ -589,13 +602,13 @@ if [ "$DO_FRESH_INSTALL" = true ]; then
 fi
 
 # ============================================================================
-# STEP 12: Load Sample Data
+# STEP 13: Load Sample Data
 # ============================================================================
 
 if [ "$LOAD_SAMPLE_DATA" = true ]; then
 
 if [ "$DO_FRESH_INSTALL" = true ]; then
-    echo -e "${BLUE}[12/12]${NC} Loading sample data with category tracking..."
+    echo -e "${BLUE}[13/13]${NC} Loading sample data with category tracking..."
 else
     echo -e "${BLUE}Loading sample data with category tracking...${NC}"
 fi
