@@ -7,9 +7,27 @@ const toNumber = (value: string | undefined, fallback: number): number => {
   return Number.isFinite(parsed) ? parsed : fallback;
 };
 
+const toBoolean = (value: string | undefined, fallback: boolean): boolean => {
+  if (typeof value === "string") {
+    const normalized = value.trim().toLowerCase();
+    if (normalized === "true") {
+      return true;
+    }
+    if (normalized === "false") {
+      return false;
+    }
+  }
+  return fallback;
+};
+
 export const config = {
   port: toNumber(env.PORT, 3000),
   host: env.HOST ?? "0.0.0.0",
+  log: {
+    level: env.LOG_LEVEL ?? "info",
+    pretty: toBoolean(env.LOG_PRETTY, true),
+    requestLogging: toBoolean(env.LOG_REQUESTS, true),
+  },
   db: {
     host: env.DB_HOST ?? "127.0.0.1",
     port: toNumber(env.DB_PORT, 5432),

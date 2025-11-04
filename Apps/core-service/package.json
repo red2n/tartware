@@ -22,8 +22,11 @@
     "@fastify/cors": "^8.3.0",
     "@fastify/helmet": "^11.1.1",
     "@fastify/sensible": "^5.1.1",
+    "fastify-plugin": "^4.5.1",
     "@tartware/schemas": "file:../../schema",
     "fastify": "^4.26.2",
+    "pino": "^9.4.0",
+    "pino-pretty": "^11.2.2",
     "pg": "^8.11.3",
     "zod": "^3.23.8"
   },
