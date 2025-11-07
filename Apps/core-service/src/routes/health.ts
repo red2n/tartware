@@ -6,7 +6,11 @@ const HealthResponseSchema = z.object({ status: z.literal("ok") });
 type HealthResponse = z.infer<typeof HealthResponseSchema>;
 
 export const registerHealthRoutes = (app: FastifyInstance): void => {
-  app.get("/health", async () => {
+  app.get("/health", {
+    // Skip ALL hooks (including auth)
+    onRequest: [],
+    preValidation: [],
+  }, async () => {
     const payload: HealthResponse = { status: "ok" };
     return HealthResponseSchema.parse(payload);
   });

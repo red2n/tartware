@@ -1,7 +1,6 @@
 {
   "extends": "../../schema/tsconfig.json",
   "compilerOptions": {
-    "rootDir": "src",
     "outDir": "dist",
     "module": "esnext",
     "moduleResolution": "bundler",
@@ -17,6 +16,6 @@
       "@tartware/schemas/*": ["../../schema/src/*"]
     }
   },
-  "include": ["src/**/*"],
+  "include": ["src/**/*", "tests/**/*"],
   "exclude": ["dist", "node_modules"]
 }

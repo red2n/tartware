@@ -6,6 +6,7 @@ import Fastify, { type FastifyInstance } from "fastify";
 import { config } from "./config.js";
 import { fastifyLoggerOptions } from "./lib/logger.js";
 import authContextPlugin from "./plugins/auth-context.js";
+import errorHandlerPlugin from "./plugins/error-handler.js";
 import { registerGuestRoutes } from "./routes/guests.js";
 import { registerHealthRoutes } from "./routes/health.js";
 import { registerPropertyRoutes } from "./routes/properties.js";
@@ -48,6 +49,7 @@ export const buildServer = (): FastifyInstance => {
   app.register(fastifySensible);
   app.register(fastifyHelmet, { global: true });
   app.register(fastifyCors, { origin: true });
+  app.register(errorHandlerPlugin);
   app.register(authContextPlugin);
 
   if (config.log.requestLogging) {

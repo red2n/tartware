@@ -1,4 +1,4 @@
-import { type UserWithTenants, UserWithTenantsSchema } from "@tartware/schemas/core/users";
+import { type UserWithTenants, UserWithTenantsSchema } from "@tartware/schemas";
 
 import { query } from "../lib/db.js";
 import { normalizePhoneNumber } from "../utils/phone.js";

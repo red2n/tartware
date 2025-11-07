@@ -1,9 +1,7 @@
 import {
-  type TenantWithRelations,
-  TenantWithRelationsSchema,
-} from "@tartware/schemas/core/tenants";
-
-import { query } from "../lib/db.js";
+	type TenantWithRelations,
+	TenantWithRelationsSchema,
+} from "@tartware/schemas";import { query } from "../lib/db.js";
 import { normalizePhoneNumber } from "../utils/phone.js";
 import { TENANT_LIST_SQL } from "../sql/tenant-queries.js";
 

@@ -94,6 +94,13 @@ const buildTenantScopeGuard = (options: TenantScopeOptions = {}): preHandlerHook
       return reply;
     }
 
+    // Validate UUID format before checking access
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!uuidRegex.test(tenantId)) {
+      reply.badRequest("INVALID_TENANT_ID_FORMAT");
+      return reply;
+    }
+
     const membership = request.auth.getMembership(tenantId);
     if (!membership) {
       reply.forbidden("TENANT_ACCESS_DENIED");
@@ -123,6 +130,12 @@ const authContextPlugin: FastifyPluginAsync = async (fastify) => {
   fastify.decorate("withTenantScope", tenantScopeDecorator);
 
   fastify.addHook("onRequest", async (request) => {
+    // Skip auth for health endpoint
+    if (request.url === "/health") {
+      request.auth = createAuthContext(null, []);
+      return;
+    }
+
     const userIdHeader = request.headers[AUTH_USER_ID_HEADER];
     if (typeof userIdHeader !== "string" || userIdHeader.trim().length === 0) {
       request.auth = createAuthContext(null, []);

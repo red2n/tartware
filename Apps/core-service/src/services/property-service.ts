@@ -1,4 +1,4 @@
-import { type PropertyWithStats, PropertyWithStatsSchema } from "@tartware/schemas/core/properties";
+import { type PropertyWithStats, PropertyWithStatsSchema } from "@tartware/schemas";
 
 import { query } from "../lib/db.js";
 import { toNonNegativeInt, toOptionalNumber } from "../utils/numbers.js";

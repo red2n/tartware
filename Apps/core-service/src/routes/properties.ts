@@ -1,4 +1,4 @@
-import { PropertyWithStatsSchema } from "@tartware/schemas/core/properties";
+import { PropertyWithStatsSchema } from "@tartware/schemas";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 

@@ -1,4 +1,4 @@
-import { TenantRoleEnum } from "@tartware/schemas/enums";
+import { TenantRoleEnum } from "@tartware/schemas";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 

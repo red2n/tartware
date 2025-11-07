@@ -1,4 +1,4 @@
-import type { TenantRole } from "@tartware/schemas/enums";
+import type { TenantRole } from "@tartware/schemas";
 import type { FastifyRequest, preHandlerHookHandler } from "fastify";
 
 type TenantScopeResolver = (request: FastifyRequest) => string | null | undefined;

@@ -1,4 +1,4 @@
-import { GuestWithStatsSchema } from "@tartware/schemas/core/guests";
+import { GuestWithStatsSchema } from "@tartware/schemas";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 

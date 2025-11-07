@@ -1,4 +1,4 @@
-import { UserWithTenantsSchema } from "@tartware/schemas/core/users";
+import { UserWithTenantsSchema } from "@tartware/schemas";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 

@@ -1,4 +1,4 @@
-import { type GuestWithStats, GuestWithStatsSchema } from "@tartware/schemas/core/guests";
+import { type GuestWithStats, GuestWithStatsSchema } from "@tartware/schemas";
 
 import { query } from "../lib/db.js";
 import { toNumberOrFallback } from "../utils/numbers.js";

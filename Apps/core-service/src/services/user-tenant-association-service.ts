@@ -1,8 +1,8 @@
 import {
-  type UserTenantAssociationWithDetails,
-  UserTenantAssociationWithDetailsSchema,
-} from "@tartware/schemas/core/user-tenant-associations";
-import { TenantRoleEnum } from "@tartware/schemas/enums";
+	type UserTenantAssociationWithDetails,
+	UserTenantAssociationWithDetailsSchema,
+	TenantRoleEnum,
+} from "@tartware/schemas";
 
 import { query } from "../lib/db.js";
 import type { TenantMembership } from "../types/auth.js";

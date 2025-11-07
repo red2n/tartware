@@ -1,4 +1,4 @@
-import { TenantWithRelationsSchema } from "@tartware/schemas/core/tenants";
+import { TenantWithRelationsSchema } from "@tartware/schemas";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 
