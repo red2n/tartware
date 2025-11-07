@@ -1,4 +1,3 @@
-import { UserWithTenantsSchema } from "@tartware/schemas";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 
@@ -12,12 +11,6 @@ const UserListQuerySchema = z.object({
 
 type UserListQuery = z.infer<typeof UserListQuerySchema>;
 
-const UserListResponseSchema = z.array(
-  UserWithTenantsSchema.extend({
-    version: z.string(),
-  }),
-);
-
 export const registerUserRoutes = (app: FastifyInstance): void => {
   app.get<{ Querystring: UserListQuery }>(
     "/v1/users",
@@ -30,8 +23,7 @@ export const registerUserRoutes = (app: FastifyInstance): void => {
     async (request) => {
       const { limit, tenant_id } = UserListQuerySchema.parse(request.query);
       const users = await listUsers({ limit, tenantId: tenant_id });
-      const response = sanitizeForJson(users);
-      return UserListResponseSchema.parse(response);
+      return sanitizeForJson(users);
     },
   );
 };

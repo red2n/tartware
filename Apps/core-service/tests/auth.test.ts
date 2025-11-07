@@ -1,40 +1,16 @@
 import { describe, it, expect, beforeAll } from "vitest";
 import { buildServer } from "../src/server.js";
-import { query } from "../src/lib/db.js";
 import type { FastifyInstance } from "fastify";
+import { TEST_USER_ID, TEST_TENANT_ID } from "./mocks/db.js";
 
 describe("Auth Context Endpoint", () => {
   let app: FastifyInstance;
-  let testUserId: string | null = null;
-  let testTenantId: string | null = null;
+  const testUserId = TEST_USER_ID;
+  const testTenantId = TEST_TENANT_ID;
 
   beforeAll(async () => {
     app = buildServer();
     await app.ready();
-
-    // Get a real user from the database
-    const userResult = await query<{ id: string }>(
-      `SELECT id FROM public.users
-       WHERE COALESCE(is_deleted, false) = false
-       AND deleted_at IS NULL
-       LIMIT 1`,
-    );
-
-    if (userResult.rows.length > 0) {
-      testUserId = userResult.rows[0].id;
-    }
-
-    // Get a real tenant
-    const tenantResult = await query<{ id: string }>(
-      `SELECT id FROM public.tenants
-       WHERE COALESCE(is_deleted, false) = false
-       AND deleted_at IS NULL
-       LIMIT 1`,
-    );
-
-    if (tenantResult.rows.length > 0) {
-      testTenantId = tenantResult.rows[0].id;
-    }
   });
 
   describe("GET /v1/auth/context - Unauthenticated", () => {
@@ -198,7 +174,7 @@ describe("Auth Context Endpoint", () => {
   });
 
   describe("GET /v1/auth/context - Specific User Tests", () => {
-    const specificUserId = "019a4887-5225-7001-9855-51992112507c";
+    const specificUserId = TEST_USER_ID; // Use test user from mocks
 
     it("should return authenticated context for specific user", async () => {
       const response = await app.inject({

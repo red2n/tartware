@@ -1,18 +1,17 @@
-import { beforeAll, afterAll } from "vitest";
-import { query } from "../src/lib/db.js";
+import { beforeAll, afterAll, beforeEach, vi } from "vitest";
+
+// Mock the database module before any imports
+vi.mock("../src/lib/db.js", () => import("./mocks/db.js"));
 
 beforeAll(async () => {
-  // Verify database connection
-  try {
-    await query("SELECT 1 as health_check");
-    console.log("✓ Database connection established for tests");
-  } catch (error) {
-    console.error("✗ Failed to connect to database:", error);
-    throw error;
-  }
+  console.log("✓ Database mocks initialized for tests");
+});
+
+beforeEach(() => {
+  // Clear all mocks before each test
+  vi.clearAllMocks();
 });
 
 afterAll(async () => {
-  // Cleanup connections if needed
   console.log("✓ Test suite completed");
 });

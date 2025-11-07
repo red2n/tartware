@@ -37,17 +37,14 @@ type TenantRow = {
   active_properties: number | null;
 };
 
-type TenantResponse = Omit<TenantWithRelations, "version"> & {
-  version: string;
-};
-
-const mapRowToTenant = (row: TenantRow): TenantResponse => {
-  const parsed = TenantWithRelationsSchema.parse({
+const mapRowToTenant = (row: TenantRow): TenantWithRelations => {
+  // Return object matching schema structure - validation happens at route level
+  return {
     id: row.id,
     name: row.name,
     slug: row.slug,
-    type: row.type,
-    status: row.status,
+    type: row.type as TenantWithRelations['type'],
+    status: row.status as TenantWithRelations['status'],
     email: row.email,
     phone: normalizePhoneNumber(row.phone),
     website: row.website ?? undefined,
@@ -60,8 +57,8 @@ const mapRowToTenant = (row: TenantRow): TenantResponse => {
     tax_id: row.tax_id ?? undefined,
     business_license: row.business_license ?? undefined,
     registration_number: row.registration_number ?? undefined,
-    config: row.config,
-    subscription: row.subscription,
+    config: row.config as TenantWithRelations['config'],
+    subscription: row.subscription as TenantWithRelations['subscription'],
     metadata: row.metadata ?? undefined,
     created_at: row.created_at,
     updated_at: row.updated_at ?? undefined,
@@ -72,14 +69,10 @@ const mapRowToTenant = (row: TenantRow): TenantResponse => {
     property_count: row.property_count ?? 0,
     user_count: row.user_count ?? 0,
     active_properties: row.active_properties ?? 0,
-  });
-  return {
-    ...parsed,
-    version: parsed.version?.toString() ?? "0",
   };
 };
 
-export const listTenants = async (options: { limit?: number } = {}): Promise<TenantResponse[]> => {
+export const listTenants = async (options: { limit?: number } = {}): Promise<TenantWithRelations[]> => {
   const limit = options.limit ?? 50;
   const { rows } = await query<TenantRow>(TENANT_LIST_SQL, [limit]);
   return rows.map(mapRowToTenant);

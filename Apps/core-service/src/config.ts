@@ -1,3 +1,8 @@
+import { config as loadEnv } from "dotenv";
+
+// Load .env file
+loadEnv();
+
 type EnvRecord = Record<string, string | undefined>;
 
 const env = ((globalThis as { process?: { env?: EnvRecord } }).process?.env ?? {}) as EnvRecord;

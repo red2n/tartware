@@ -13,6 +13,7 @@ import { AuthService } from '../../core/services/auth.service';
 import { TenantService } from '../../core/services/tenant.service';
 import { Tenant } from '../../core/models/tenant.model';
 import { AuthContext } from '../../core/models/user.model';
+import type { TenantRole } from '@tartware/schemas';
 
 @Component({
   selector: 'app-tenant-list',
@@ -71,7 +72,16 @@ export class TenantListComponent implements OnInit {
         this.loading.set(false);
       },
       error: (err) => {
-        this.errorMessage.set(err.error?.message || 'Failed to load tenants');
+        // Extract user-friendly message from API error response
+        let errorMsg = 'Failed to load tenants';
+
+        if (err.error?.message) {
+          errorMsg = err.error.message;
+        } else if (err.message) {
+          errorMsg = err.message;
+        }
+
+        this.errorMessage.set(errorMsg);
         this.loading.set(false);
       }
     });
@@ -82,8 +92,8 @@ export class TenantListComponent implements OnInit {
     this.router.navigate(['/login']);
   }
 
-  getRoleBadgeColor(role: string): string {
-    const colors: Record<string, string> = {
+  getRoleBadgeColor(role: TenantRole): string {
+    const colors: Record<TenantRole, string> = {
       'OWNER': 'bg-purple-100 text-purple-800',
       'ADMIN': 'bg-blue-100 text-blue-800',
       'MANAGER': 'bg-green-100 text-green-800',

@@ -1,4 +1,4 @@
-import { TenantRoleEnum, PublicUserSchema, UserTenantAssociationSchema } from "@tartware/schemas";
+import { TenantRoleEnum, PublicUserSchema } from "@tartware/schemas";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 

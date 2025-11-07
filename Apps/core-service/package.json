@@ -27,6 +27,7 @@
     "@fastify/helmet": "^11.1.1",
     "@fastify/sensible": "^5.1.1",
     "@tartware/schemas": "file:../../schema",
+    "dotenv": "^17.2.3",
     "fastify": "^4.26.2",
     "fastify-plugin": "^4.5.1",
     "pg": "^8.11.3",

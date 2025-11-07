@@ -1,19 +1,9 @@
-export interface Tenant {
-  id: string;
-  name: string;
-  slug: string;
-  type: 'INDEPENDENT' | 'CHAIN' | 'FRANCHISE' | 'MANAGEMENT_COMPANY';
-  status: 'TRIAL' | 'ACTIVE' | 'SUSPENDED' | 'INACTIVE' | 'CANCELLED';
-  email?: string;
-  phone?: string;
-  country?: string;
-  config?: any;
-  subscription?: any;
-  metadata?: any;
-  created_at: string;
-  deleted_at?: string | null;
+import type { TenantWithRelations } from '@tartware/schemas';
+
+// Tenant type with version as string (for JSON serialization)
+export type Tenant = Omit<TenantWithRelations, 'version' | 'created_at' | 'updated_at' | 'deleted_at'> & {
   version: string;
-  property_count?: number;
-  user_count?: number;
-  active_properties?: number;
-}
+  created_at: string | Date;
+  updated_at?: string | Date;
+  deleted_at?: string | Date | null;
+};

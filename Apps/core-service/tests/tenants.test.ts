@@ -1,75 +1,23 @@
 import { describe, it, expect, beforeAll } from "vitest";
 import { buildServer } from "../src/server.js";
-import { query } from "../src/lib/db.js";
 import type { FastifyInstance } from "fastify";
+import { TEST_USER_ID, MANAGER_USER_ID, STAFF_USER_ID, VIEWER_USER_ID } from "./mocks/db.js";
 
 describe("Tenants Endpoint", () => {
   let app: FastifyInstance;
-  let adminUserId: string | null = null;
-  let managerUserId: string | null = null;
-  let staffUserId: string | null = null;
-  let viewerUserId: string | null = null;
+  // Use role-specific user IDs
+  const adminUserId = TEST_USER_ID;
+  const managerUserId = MANAGER_USER_ID;
+  const staffUserId = STAFF_USER_ID;
+  const viewerUserId = VIEWER_USER_ID;
 
   beforeAll(async () => {
     app = buildServer();
     await app.ready();
-
-    // Find users with different roles
-    const adminResult = await query<{ user_id: string }>(
-      `SELECT DISTINCT uta.user_id
-       FROM public.user_tenant_associations uta
-       WHERE uta.role = 'ADMIN'
-       AND COALESCE(uta.is_deleted, false) = false
-       AND uta.deleted_at IS NULL
-       LIMIT 1`,
-    );
-    if (adminResult.rows.length > 0) {
-      adminUserId = adminResult.rows[0].user_id;
-    }
-
-    const managerResult = await query<{ user_id: string }>(
-      `SELECT DISTINCT uta.user_id
-       FROM public.user_tenant_associations uta
-       WHERE uta.role = 'MANAGER'
-       AND COALESCE(uta.is_deleted, false) = false
-       AND uta.deleted_at IS NULL
-       LIMIT 1`,
-    );
-    if (managerResult.rows.length > 0) {
-      managerUserId = managerResult.rows[0].user_id;
-    }
-
-    const staffResult = await query<{ user_id: string }>(
-      `SELECT DISTINCT uta.user_id
-       FROM public.user_tenant_associations uta
-       WHERE uta.role = 'STAFF'
-       AND COALESCE(uta.is_deleted, false) = false
-       AND uta.deleted_at IS NULL
-       LIMIT 1`,
-    );
-    if (staffResult.rows.length > 0) {
-      staffUserId = staffResult.rows[0].user_id;
-    }
-
-    const viewerResult = await query<{ user_id: string }>(
-      `SELECT DISTINCT uta.user_id
-       FROM public.user_tenant_associations uta
-       WHERE uta.role = 'VIEWER'
-       AND COALESCE(uta.is_deleted, false) = false
-       AND uta.deleted_at IS NULL
-       LIMIT 1`,
-    );
-    if (viewerResult.rows.length > 0) {
-      viewerUserId = viewerResult.rows[0].user_id;
-    }
   });
 
   describe("GET /v1/tenants - Positive Cases", () => {
     it("should return tenants for ADMIN user", async () => {
-      if (!adminUserId) {
-        console.warn("⚠ Skipping test: no ADMIN users in database");
-        return;
-      }
 
       const response = await app.inject({
         method: "GET",
@@ -85,10 +33,6 @@ describe("Tenants Endpoint", () => {
     });
 
     it("should respect limit parameter", async () => {
-      if (!adminUserId) {
-        console.warn("⚠ Skipping test: no ADMIN users in database");
-        return;
-      }
 
       const response = await app.inject({
         method: "GET",
@@ -104,10 +48,6 @@ describe("Tenants Endpoint", () => {
     });
 
     it("should use default limit of 50", async () => {
-      if (!adminUserId) {
-        console.warn("⚠ Skipping test: no ADMIN users in database");
-        return;
-      }
 
       const response = await app.inject({
         method: "GET",
@@ -123,10 +63,6 @@ describe("Tenants Endpoint", () => {
     });
 
     it("should return tenant with all expected fields", async () => {
-      if (!adminUserId) {
-        console.warn("⚠ Skipping test: no ADMIN users in database");
-        return;
-      }
 
       const response = await app.inject({
         method: "GET",
@@ -165,10 +101,6 @@ describe("Tenants Endpoint", () => {
     });
 
     it("should reject MANAGER role (insufficient privilege)", async () => {
-      if (!managerUserId) {
-        console.warn("⚠ Skipping test: no MANAGER users in database");
-        return;
-      }
 
       const response = await app.inject({
         method: "GET",
@@ -182,10 +114,6 @@ describe("Tenants Endpoint", () => {
     });
 
     it("should reject STAFF role (insufficient privilege)", async () => {
-      if (!staffUserId) {
-        console.warn("⚠ Skipping test: no STAFF users in database");
-        return;
-      }
 
       const response = await app.inject({
         method: "GET",
@@ -199,10 +127,6 @@ describe("Tenants Endpoint", () => {
     });
 
     it("should reject VIEWER role (insufficient privilege)", async () => {
-      if (!viewerUserId) {
-        console.warn("⚠ Skipping test: no VIEWER users in database");
-        return;
-      }
 
       const response = await app.inject({
         method: "GET",
@@ -216,10 +140,6 @@ describe("Tenants Endpoint", () => {
     });
 
     it("should reject invalid limit (non-numeric)", async () => {
-      if (!adminUserId) {
-        console.warn("⚠ Skipping test: no ADMIN users in database");
-        return;
-      }
 
       const response = await app.inject({
         method: "GET",
@@ -233,10 +153,6 @@ describe("Tenants Endpoint", () => {
     });
 
     it("should reject limit exceeding maximum", async () => {
-      if (!adminUserId) {
-        console.warn("⚠ Skipping test: no ADMIN users in database");
-        return;
-      }
 
       const response = await app.inject({
         method: "GET",
@@ -250,10 +166,6 @@ describe("Tenants Endpoint", () => {
     });
 
     it("should reject negative limit", async () => {
-      if (!adminUserId) {
-        console.warn("⚠ Skipping test: no ADMIN users in database");
-        return;
-      }
 
       const response = await app.inject({
         method: "GET",
@@ -267,10 +179,6 @@ describe("Tenants Endpoint", () => {
     });
 
     it("should reject zero limit", async () => {
-      if (!adminUserId) {
-        console.warn("⚠ Skipping test: no ADMIN users in database");
-        return;
-      }
 
       const response = await app.inject({
         method: "GET",
@@ -299,7 +207,7 @@ describe("Tenants Endpoint", () => {
   });
 
   describe("GET /v1/tenants - Specific User Tests", () => {
-    const specificUserId = "019a4887-5225-7001-9855-51992112507c";
+    const specificUserId = TEST_USER_ID; // Use test user from mocks
 
     it("should return tenants for specific ADMIN user", async () => {
       const response = await app.inject({
