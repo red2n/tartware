@@ -94,12 +94,12 @@ export class TenantListComponent implements OnInit {
 
   getRoleBadgeColor(role: TenantRole): string {
     const colors: Record<TenantRole, string> = {
-      'OWNER': 'bg-purple-100 text-purple-800',
-      'ADMIN': 'bg-blue-100 text-blue-800',
-      'MANAGER': 'bg-green-100 text-green-800',
-      'STAFF': 'bg-yellow-100 text-yellow-800',
-      'VIEWER': 'bg-gray-100 text-gray-800'
+      'OWNER': 'bg-purple-50 text-purple-700 border-purple-200',
+      'ADMIN': 'bg-indigo-50 text-indigo-700 border-indigo-200',
+      'MANAGER': 'bg-blue-50 text-blue-700 border-blue-200',
+      'STAFF': 'bg-gray-50 text-gray-700 border-gray-200',
+      'VIEWER': 'bg-gray-50 text-gray-600 border-gray-200'
     };
-    return colors[role] || 'bg-gray-100 text-gray-800';
+    return colors[role] || 'bg-gray-50 text-gray-600 border-gray-200';
   }
 }
