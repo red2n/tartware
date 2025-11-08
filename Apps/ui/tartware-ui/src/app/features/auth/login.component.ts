@@ -1,41 +1,97 @@
-import { Component, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormsModule } from '@angular/forms';
-import { Router } from '@angular/router';
-import { MatCardModule } from '@angular/material/card';
-import { MatInputModule } from '@angular/material/input';
+import { ChangeDetectionStrategy, Component, inject, type OnDestroy, signal } from '@angular/core';
+import { FormBuilder, type FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
+import { MatCardModule } from '@angular/material/card';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
+import { MatInputModule } from '@angular/material/input';
+import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { ActivatedRoute, Router } from '@angular/router';
+import { Subject, takeUntil } from 'rxjs';
 import { AuthService } from '../../core/services/auth.service';
 
+/**
+ * Login Component
+ * Handles user authentication with reactive forms
+ * Implements best practices:
+ * - Reactive forms for better validation
+ * - Signal-based state management
+ * - Proper unsubscription with takeUntil
+ * - Error handling
+ * - Loading states
+ * - Return URL support
+ * - Modern inject() function for DI
+ * - OnPush change detection for performance
+ */
 @Component({
   selector: 'app-login',
   standalone: true,
+  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     CommonModule,
-    FormsModule,
+    ReactiveFormsModule,
     MatCardModule,
     MatInputModule,
     MatButtonModule,
     MatFormFieldModule,
-    MatIconModule
+    MatIconModule,
+    MatProgressSpinnerModule,
   ],
   templateUrl: './login.component.html',
-  styleUrl: './login.component.scss'
+  styleUrl: './login.component.scss',
 })
-export class LoginComponent {
-  userId = '';
+export class LoginComponent implements OnDestroy {
+  // Inject dependencies using modern inject() function
+  private fb = inject(FormBuilder);
+  private authService = inject(AuthService);
+  private router = inject(Router);
+  private route = inject(ActivatedRoute);
+
+  // Form group for reactive form management
+  loginForm: FormGroup;
+
+  // Signals for reactive state
   errorMessage = signal<string>('');
   loading = signal<boolean>(false);
 
-  constructor(
-    private authService: AuthService,
-    private router: Router
-  ) {}
+  // Subject for managing subscriptions
+  private destroy$ = new Subject<void>();
 
+  // Return URL for redirect after login
+  private returnUrl: string;
+
+  constructor() {
+    // Initialize reactive form with validators
+    this.loginForm = this.fb.group({
+      username: ['', [Validators.required, Validators.minLength(3)]],
+    });
+
+    // Get return URL from query params, default to /tenants
+    this.returnUrl = this.route.snapshot.queryParams['returnUrl'] || '/tenants';
+
+    // Check if there's a session expired message
+    const reason = this.route.snapshot.queryParams['reason'];
+    if (reason === 'session-expired') {
+      this.errorMessage.set('Your session has expired. Please login again.');
+    }
+  }
+
+  /**
+   * Handle form submission
+   * Validates form and calls authentication service
+   */
   onLogin(): void {
-    if (!this.userId.trim()) {
+    // Mark all fields as touched to show validation errors
+    if (this.loginForm.invalid) {
+      Object.keys(this.loginForm.controls).forEach((key) => {
+        this.loginForm.get(key)?.markAsTouched();
+      });
+      return;
+    }
+
+    const username = this.loginForm.get('username')?.value?.trim();
+    if (!username) {
       this.errorMessage.set('Please enter a valid username');
       return;
     }
@@ -43,19 +99,53 @@ export class LoginComponent {
     this.loading.set(true);
     this.errorMessage.set('');
 
-    this.authService.login(this.userId.trim()).subscribe({
-      next: (response) => {
-        this.loading.set(false);
-        if (response.memberships && response.memberships.length > 0) {
-          this.router.navigate(['/tenants']);
-        } else {
-          this.errorMessage.set('No tenant memberships found for this user');
-        }
-      },
-      error: (err) => {
-        this.loading.set(false);
-        this.errorMessage.set(err.error?.message || 'Login failed. Please check your username.');
-      }
-    });
+    this.authService
+      .login(username)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (response) => {
+          this.loading.set(false);
+          if (response.memberships && response.memberships.length > 0) {
+            this.router.navigate([this.returnUrl]);
+          } else {
+            this.errorMessage.set('No tenant memberships found for this user');
+          }
+        },
+        error: (err) => {
+          this.loading.set(false);
+          this.errorMessage.set(err.message || 'Login failed. Please check your username.');
+        },
+      });
+  }
+
+  /**
+   * Get error message for username field
+   * @returns Error message string or null
+   */
+  getUsernameError(): string | null {
+    const control = this.loginForm.get('username');
+    if (control?.hasError('required') && control.touched) {
+      return 'Username is required';
+    }
+    if (control?.hasError('minlength') && control.touched) {
+      return 'Username must be at least 3 characters';
+    }
+    return null;
+  }
+
+  /**
+   * Check if submit button should be disabled
+   * @returns True if form is invalid or loading
+   */
+  isSubmitDisabled(): boolean {
+    return this.loginForm.invalid || this.loading();
+  }
+
+  /**
+   * Clean up subscriptions on component destroy
+   */
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
   }
 }

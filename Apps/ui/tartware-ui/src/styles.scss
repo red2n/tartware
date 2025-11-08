@@ -1,6 +1,7 @@
 /* Tartware Professional Theme - Global Styles */
 
-@import '@angular/material/prebuilt-themes/indigo-pink.css';
+// Material Design 3 Theme (replaces prebuilt theme)
+@import './styles/m3-theme';
 
 @tailwind base;
 @tailwind components;

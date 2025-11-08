@@ -1,17 +1,18 @@
-import { Injectable } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
-import { Observable } from 'rxjs';
-import { Tenant } from '../models/tenant.model';
+import { Injectable, inject } from '@angular/core';
+import type { Observable } from 'rxjs';
+import type { Tenant } from '../models/tenant.model';
 
 @Injectable({
-  providedIn: 'root'
+  providedIn: 'root',
 })
 export class TenantService {
+  // Inject dependencies using modern inject() function
+  private http = inject(HttpClient);
+
   private readonly API_URL = 'http://localhost:3000/v1';
 
-  constructor(private http: HttpClient) {}
-
-  getTenants(limit: number = 50): Observable<Tenant[]> {
+  getTenants(limit = 50): Observable<Tenant[]> {
     const params = new HttpParams().set('limit', limit.toString());
     return this.http.get<Tenant[]>(`${this.API_URL}/tenants`, { params });
   }

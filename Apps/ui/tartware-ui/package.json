@@ -4,9 +4,24 @@
   "scripts": {
     "ng": "ng",
     "start": "ng serve",
+    "prebuild": "npm run lint && npm run biome",
     "build": "ng build",
+    "prebuild:prod": "npm run lint && npm run biome",
+    "build:prod": "ng build --configuration production",
+    "build:stats": "ng build --configuration production --stats-json",
+    "analyze": "npm run build:stats && npx webpack-bundle-analyzer dist/tartware-ui/stats.json",
     "watch": "ng build --watch --configuration development",
-    "test": "ng test"
+    "test": "ng test",
+    "test:coverage": "ng test --no-watch --code-coverage",
+    "lint": "ng lint",
+    "lint:fix": "ng lint --fix",
+    "biome": "biome check .",
+    "biome:fix": "biome check --write .",
+    "biome:format": "biome format --write .",
+    "biome:ci": "biome ci .",
+    "format": "prettier --write \"src/**/*.{ts,html,scss,json}\" && biome format --write .",
+    "format:check": "prettier --check \"src/**/*.{ts,html,scss,json}\" && biome check .",
+    "validate": "npm run lint && npm run biome && npm run build"
   },
   "private": true,
   "dependencies": {
@@ -35,13 +50,18 @@
     "@angular-devkit/build-angular": "^18.2.21",
     "@angular/cli": "^18.2.21",
     "@angular/compiler-cli": "^18.2.0",
+    "@biomejs/biome": "2.3.4",
     "@types/jasmine": "~5.1.0",
+    "angular-eslint": "20.5.1",
+    "eslint": "^9.38.0",
     "jasmine-core": "~5.2.0",
     "karma": "~6.4.0",
     "karma-chrome-launcher": "~3.2.0",
     "karma-coverage": "~2.2.0",
     "karma-jasmine": "~5.1.0",
     "karma-jasmine-html-reporter": "~2.1.0",
-    "typescript": "~5.5.2"
+    "prettier": "^3.6.2",
+    "typescript": "~5.5.2",
+    "typescript-eslint": "8.46.2"
   }
 }

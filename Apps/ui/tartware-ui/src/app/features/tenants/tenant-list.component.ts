@@ -1,23 +1,31 @@
-import { Component, OnInit, signal, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { Router } from '@angular/router';
-import { MatToolbarModule } from '@angular/material/toolbar';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  inject,
+  type OnInit,
+  signal,
+  ViewChild,
+} from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
-import { MatIconModule } from '@angular/material/icon';
 import { MatCardModule } from '@angular/material/card';
 import { MatChipsModule } from '@angular/material/chips';
-import { MatTableModule, MatTableDataSource } from '@angular/material/table';
-import { MatPaginatorModule, MatPaginator } from '@angular/material/paginator';
+import { MatIconModule } from '@angular/material/icon';
+import { MatPaginator, MatPaginatorModule } from '@angular/material/paginator';
 import { MatSortModule } from '@angular/material/sort';
+import { MatTableDataSource, MatTableModule } from '@angular/material/table';
+import { MatToolbarModule } from '@angular/material/toolbar';
+import { Router } from '@angular/router';
+import type { TenantRole } from '@tartware/schemas';
+import type { Tenant } from '../../core/models/tenant.model';
+import type { AuthContext } from '../../core/models/user.model';
 import { AuthService } from '../../core/services/auth.service';
 import { TenantService } from '../../core/services/tenant.service';
-import { Tenant } from '../../core/models/tenant.model';
-import { AuthContext } from '../../core/models/user.model';
-import type { TenantRole } from '@tartware/schemas';
 
 @Component({
   selector: 'app-tenant-list',
   standalone: true,
+  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     CommonModule,
     MatToolbarModule,
@@ -27,12 +35,17 @@ import type { TenantRole } from '@tartware/schemas';
     MatChipsModule,
     MatTableModule,
     MatPaginatorModule,
-    MatSortModule
+    MatSortModule,
   ],
   templateUrl: './tenant-list.component.html',
-  styleUrl: './tenant-list.component.scss'
+  styleUrl: './tenant-list.component.scss',
 })
 export class TenantListComponent implements OnInit {
+  // Inject dependencies using modern inject() function
+  private authService = inject(AuthService);
+  private tenantService = inject(TenantService);
+  private router = inject(Router);
+
   authContext = signal<AuthContext | null>(null);
   tenants = signal<Tenant[]>([]);
   loading = signal<boolean>(true);
@@ -42,12 +55,6 @@ export class TenantListComponent implements OnInit {
   @ViewChild(MatPaginator) paginator!: MatPaginator;
 
   displayedColumns: string[] = ['name', 'type', 'status', 'email', 'stats'];
-
-  constructor(
-    private authService: AuthService,
-    private tenantService: TenantService,
-    private router: Router
-  ) {}
 
   ngOnInit(): void {
     const context = this.authService.authContext();
@@ -83,7 +90,7 @@ export class TenantListComponent implements OnInit {
 
         this.errorMessage.set(errorMsg);
         this.loading.set(false);
-      }
+      },
     });
   }
 
@@ -94,11 +101,11 @@ export class TenantListComponent implements OnInit {
 
   getRoleBadgeColor(role: TenantRole): string {
     const colors: Record<TenantRole, string> = {
-      'OWNER': 'bg-purple-50 text-purple-700 border-purple-200',
-      'ADMIN': 'bg-indigo-50 text-indigo-700 border-indigo-200',
-      'MANAGER': 'bg-blue-50 text-blue-700 border-blue-200',
-      'STAFF': 'bg-gray-50 text-gray-700 border-gray-200',
-      'VIEWER': 'bg-gray-50 text-gray-600 border-gray-200'
+      OWNER: 'bg-purple-50 text-purple-700 border-purple-200',
+      ADMIN: 'bg-indigo-50 text-indigo-700 border-indigo-200',
+      MANAGER: 'bg-blue-50 text-blue-700 border-blue-200',
+      STAFF: 'bg-gray-50 text-gray-700 border-gray-200',
+      VIEWER: 'bg-gray-50 text-gray-600 border-gray-200',
     };
     return colors[role] || 'bg-gray-50 text-gray-600 border-gray-200';
   }
