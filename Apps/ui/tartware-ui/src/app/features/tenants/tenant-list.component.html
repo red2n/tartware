@@ -19,6 +19,13 @@
               <p class="text-sm font-medium text-gray-900">{{ authContext()?.first_name }} {{ authContext()?.last_name }}</p>
               <p class="text-xs text-gray-500">{{ authContext()?.email }}</p>
             </div>
+            <button mat-icon-button
+                    (click)="toggleTheme()"
+                    [attr.aria-label]="(themeService.isDark() ? 'Switch to light' : 'Switch to dark') + ' theme'"
+                    matTooltip="{{ themeService.isDark() ? 'Light mode' : 'Dark mode' }}"
+                    class="text-gray-600 hover:text-gray-900">
+              <mat-icon>{{ themeService.isDark() ? 'light_mode' : 'dark_mode' }}</mat-icon>
+            </button>
             <button mat-icon-button (click)="logout()" class="text-gray-600 hover:text-gray-900">
               <mat-icon>logout</mat-icon>
             </button>

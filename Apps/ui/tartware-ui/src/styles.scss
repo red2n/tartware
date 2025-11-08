@@ -13,8 +13,17 @@
 @import './styles/utilities';
 @import './styles/material-overrides';
 
+// Centralized dark theme styles (imported after all base styles)
+@import './styles/dark-theme';
+
 // Base styles
-html, body {
+html {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+body {
   height: 100%;
   margin: 0;
   padding: 0;

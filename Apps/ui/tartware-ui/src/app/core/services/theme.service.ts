@@ -103,18 +103,21 @@ export class ThemeService {
   }
 
   /**
-   * Apply theme to document body
+   * Apply theme to document body and html
    * @private
    * @param isDark - Whether dark theme should be applied
    */
   private applyTheme(isDark: boolean): void {
     if (isPlatformBrowser(this.platformId)) {
       const body = document.body;
+      const html = document.documentElement;
 
       if (isDark) {
         body.classList.add('dark-theme');
+        html.classList.add('dark-theme');
       } else {
         body.classList.remove('dark-theme');
+        html.classList.remove('dark-theme');
       }
     }
   }

@@ -1,0 +1,629 @@
+/**
+ * Centralized Dark Theme Styles
+ * GitHub Soft Dark inspired theme
+ * Reference: https://github.com/settings/appearance
+ *
+ * This file contains ALL dark theme overrides for the entire application.
+ * DO NOT add dark theme styles in component files - keep them here for maintainability.
+ */
+
+// Apply dark theme when body has dark-theme class
+body.dark-theme,
+body.dark-theme ~ *,
+html:has(body.dark-theme) {
+  background-color: #0d1117 !important;
+  color: #c9d1d9 !important;
+}
+
+.dark-theme {
+  // Self background
+  background-color: #0d1117 !important;
+  color: #c9d1d9 !important;
+
+  // ============================================================================
+  // GLOBAL UTILITY CLASS OVERRIDES (Tailwind)
+  // ============================================================================
+
+  // Backgrounds
+  .bg-white {
+    background-color: #161b22 !important;
+  }
+
+  .bg-gray-50 {
+    background-color: #0d1117 !important;
+  }
+
+  .bg-gray-100 {
+    background-color: #21262d !important;
+  }
+
+  .min-h-screen {
+    background-color: #0d1117;
+  }
+
+  // Borders
+  .border-gray-200 {
+    border-color: #30363d !important;
+  }
+
+  // Text colors
+  .text-gray-900 {
+    color: #c9d1d9 !important;
+  }
+
+  .text-gray-700 {
+    color: #c9d1d9 !important;
+  }
+
+  .text-gray-600 {
+    color: #8b949e !important;
+  }
+
+  .text-gray-500 {
+    color: #8b949e !important;
+  }
+
+  .text-gray-400 {
+    color: #6e7681 !important;
+  }
+
+  // Primary colors
+  .bg-indigo-600 {
+    background-color: #58a6ff !important;
+
+    &:hover {
+      background-color: #388bfd !important;
+    }
+  }
+
+  .text-indigo-700 {
+    color: #58a6ff !important;
+  }
+
+  // Status badges - Success (Green)
+  .bg-green-50 {
+    background-color: rgba(63, 185, 80, 0.1) !important;
+  }
+
+  .text-green-700 {
+    color: #3fb950 !important;
+  }
+
+  .border-green-200 {
+    border-color: rgba(63, 185, 80, 0.3) !important;
+  }
+
+  .bg-green-500 {
+    background-color: #3fb950 !important;
+  }
+
+  // Status badges - Info (Blue)
+  .bg-blue-50 {
+    background-color: rgba(88, 166, 255, 0.1) !important;
+  }
+
+  .text-blue-700 {
+    color: #58a6ff !important;
+  }
+
+  .border-blue-200 {
+    border-color: rgba(88, 166, 255, 0.3) !important;
+  }
+
+  .bg-blue-500 {
+    background-color: #58a6ff !important;
+  }
+
+  // Status badges - Error (Red)
+  .bg-red-50 {
+    background-color: rgba(248, 81, 73, 0.1) !important;
+  }
+
+  .text-red-600,
+  .text-red-700,
+  .text-red-900 {
+    color: #f85149 !important;
+  }
+
+  .border-red-200 {
+    border-color: rgba(248, 81, 73, 0.3) !important;
+  }
+
+  .bg-red-100 {
+    background-color: rgba(248, 81, 73, 0.15) !important;
+  }
+
+  .bg-red-500 {
+    background-color: #f85149 !important;
+  }
+
+  // Status badges - Warning (Yellow)
+  .bg-yellow-50 {
+    background-color: rgba(210, 153, 34, 0.1) !important;
+  }
+
+  .text-yellow-700 {
+    color: #d29922 !important;
+  }
+
+  .border-yellow-200 {
+    border-color: rgba(210, 153, 34, 0.3) !important;
+  }
+
+  // Status badges - Purple
+  .bg-purple-50 {
+    background-color: rgba(163, 113, 247, 0.1) !important;
+  }
+
+  .text-purple-700 {
+    color: #a371f7 !important;
+  }
+
+  .border-purple-200 {
+    border-color: rgba(163, 113, 247, 0.3) !important;
+  }
+
+  // Status badges - Indigo
+  .bg-indigo-50 {
+    background-color: rgba(88, 166, 255, 0.1) !important;
+  }
+
+  .border-indigo-200 {
+    border-color: rgba(88, 166, 255, 0.3) !important;
+  }
+
+  // ============================================================================
+  // SEMANTIC HTML ELEMENTS
+  // ============================================================================
+
+  body {
+    background: #0d1117;
+    color: #c9d1d9;
+  }
+
+  // Headers
+  header {
+    background-color: #161b22;
+    border-bottom-color: #30363d;
+  }
+
+  // Links
+  a {
+    color: #58a6ff;
+
+    &:hover {
+      color: #388bfd;
+    }
+  }
+
+  // Headings
+  h1, h2, h3, h4, h5, h6 {
+    color: #c9d1d9;
+  }
+
+  // Paragraphs
+  p {
+    color: #8b949e;
+  }
+
+  // Code blocks
+  code {
+    background: #21262d;
+    color: #58a6ff;
+  }
+
+  pre {
+    background: #161b22;
+    color: #c9d1d9;
+    border: 1px solid #30363d;
+  }
+
+  // ============================================================================
+  // SCROLLBAR (WebKit browsers)
+  // ============================================================================
+
+  ::-webkit-scrollbar-track {
+    background: #0d1117;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: #30363d;
+
+    &:hover {
+      background: #6e7681;
+    }
+  }
+
+  // ============================================================================
+  // SELECTION
+  // ============================================================================
+
+  ::selection {
+    background: rgba(88, 166, 255, 0.2);
+    color: #c9d1d9;
+  }
+
+  // ============================================================================
+  // FOCUS INDICATORS
+  // ============================================================================
+
+  *:focus-visible {
+    outline-color: #58a6ff;
+  }
+
+  // ============================================================================
+  // MATERIAL TABLE COMPONENTS
+  // ============================================================================
+
+  ::ng-deep {
+    // Table hover effects
+    .mat-mdc-row:hover {
+      background-color: #21262d !important;
+    }
+
+    // Table headers
+    .mat-mdc-header-cell {
+      background-color: #0d1117 !important;
+      color: #c9d1d9 !important;
+      border-bottom-color: #30363d !important;
+    }
+
+    // Table cells
+    .mat-mdc-cell {
+      color: #c9d1d9 !important;
+      border-bottom-color: #21262d !important;
+    }
+
+    // Paginator
+    .mat-mdc-paginator {
+      background-color: #161b22 !important;
+      color: #8b949e !important;
+
+      .mat-mdc-paginator-range-label {
+        color: #8b949e !important;
+      }
+    }
+  }
+
+  // ============================================================================
+  // STATUS BAR (Footer)
+  // ============================================================================
+
+  .status-bar {
+    background-color: #161b22 !important;
+    border-top-color: #30363d !important;
+    color: #8b949e !important;
+    box-shadow: 0 -1px 2px rgba(0, 0, 0, 0.5) !important;
+  }
+
+  .status-item {
+    color: #8b949e !important;
+
+    mat-icon {
+      color: #8b949e !important;
+    }
+
+    span {
+      color: #8b949e !important;
+    }
+
+    &.clickable:hover {
+      background-color: #21262d !important;
+    }
+
+    &.clickable:focus {
+      outline-color: #58a6ff !important;
+    }
+
+    // Environment indicators
+    &.dev {
+      color: #58a6ff !important;
+
+      mat-icon {
+        color: #58a6ff !important;
+      }
+
+      span {
+        color: #58a6ff !important;
+      }
+    }
+
+    &.prod {
+      color: #3fb950 !important;
+
+      mat-icon {
+        color: #3fb950 !important;
+      }
+
+      span {
+        color: #3fb950 !important;
+      }
+    }
+
+    // Connection status
+    &.online mat-icon {
+      color: #3fb950 !important;
+    }
+
+    &.offline mat-icon {
+      color: #f85149 !important;
+    }
+  }
+
+  // ============================================================================
+  // LOGIN PAGE
+  // ============================================================================
+
+  .login-container {
+    background: #0d1117;
+  }
+
+  .login-card {
+    background: #161b22;
+    border-color: #30363d;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+  }
+
+  .logo-section {
+    .logo-circle {
+      background: #58a6ff;
+    }
+
+    h1 {
+      color: #c9d1d9;
+    }
+
+    p {
+      color: #8b949e;
+    }
+  }
+
+  .login-form {
+    h2 {
+      color: #c9d1d9;
+    }
+
+    .form-group {
+      label {
+        color: #c9d1d9;
+      }
+
+      input {
+        background: #0d1117;
+        border-color: #30363d;
+        color: #c9d1d9;
+
+        &:focus {
+          border-color: #58a6ff;
+          box-shadow: 0 0 0 3px rgba(88, 166, 255, 0.15);
+        }
+
+        &::placeholder {
+          color: #6e7681;
+        }
+
+        &:disabled {
+          background: #21262d;
+        }
+
+        &.input-error {
+          border-color: #f85149;
+
+          &:focus {
+            border-color: #f85149;
+            box-shadow: 0 0 0 3px rgba(248, 81, 73, 0.15);
+          }
+        }
+      }
+
+      .field-error {
+        color: #f85149;
+      }
+    }
+
+    .error-message {
+      background: rgba(248, 81, 73, 0.1);
+      border-color: rgba(248, 81, 73, 0.3);
+      border-left-color: #f85149;
+
+      mat-icon {
+        color: #f85149;
+      }
+
+      span {
+        color: #f85149;
+      }
+    }
+
+    .login-btn {
+      background: #58a6ff;
+
+      &:hover:not(:disabled) {
+        background: #388bfd;
+        box-shadow: 0 4px 6px rgba(88, 166, 255, 0.3);
+      }
+    }
+  }
+
+  .footer {
+    border-top-color: #30363d;
+
+    p {
+      color: #8b949e;
+    }
+  }
+
+  // ============================================================================
+  // TENANT LIST PAGE
+  // ============================================================================
+
+  // User info card
+  .bg-white.rounded-lg {
+    background-color: #161b22 !important;
+    border-color: #30363d !important;
+  }
+
+  // Loading state
+  .animate-spin {
+    color: #8b949e;
+  }
+
+  // Table container and cells
+  table {
+    background-color: #161b22;
+  }
+
+  .mat-mdc-table {
+    background-color: #161b22 !important;
+  }
+
+  // Table header cells with !bg-gray-50 class
+  th.mat-mdc-header-cell {
+    background-color: #0d1117 !important;
+    color: #c9d1d9 !important;
+    border-bottom-color: #30363d !important;
+  }
+
+  // Table rows
+  tr.mat-mdc-row {
+    background-color: #161b22 !important;
+    border-bottom-color: #21262d !important;
+
+    &:hover {
+      background-color: #21262d !important;
+    }
+  }
+
+  // Table data cells
+  td.mat-mdc-cell {
+    color: #c9d1d9 !important;
+    border-bottom-color: #21262d !important;
+  }
+
+  // Avatar circles and icon containers
+  .bg-gray-100 {
+    background-color: #21262d !important;
+
+    mat-icon, span {
+      color: #8b949e !important;
+    }
+  }
+
+  // Status indicators (gray state)
+  .bg-gray-50 {
+    background-color: rgba(139, 148, 158, 0.1) !important;
+  }
+
+  .text-gray-700 {
+    color: #c9d1d9 !important;
+  }
+
+  .border-gray-200 {
+    border-color: rgba(139, 148, 158, 0.3) !important;
+  }
+
+  .bg-gray-500 {
+    background-color: #8b949e !important;
+  }
+
+  // Card shadows - reduce brightness in dark theme
+  .shadow-sm {
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.5) !important;
+  }
+
+  // Buttons and interactive elements
+  button mat-icon {
+    color: inherit;
+  }
+
+  .hover\:bg-gray-50:hover {
+    background-color: #21262d !important;
+  }
+
+  // Refresh button in header
+  .bg-indigo-600 {
+    background-color: #58a6ff !important;
+
+    &:hover {
+      background-color: #388bfd !important;
+    }
+  }
+
+  // Paginator
+  .mat-mdc-paginator {
+    background-color: #161b22 !important;
+    color: #8b949e !important;
+    border-top-color: #30363d !important;
+
+    .mat-mdc-icon-button {
+      color: #8b949e !important;
+
+      &:disabled {
+        color: #6e7681 !important;
+      }
+    }
+
+    .mat-mdc-select {
+      color: #c9d1d9 !important;
+    }
+
+    .mat-mdc-paginator-page-size-label,
+    .mat-mdc-paginator-range-label {
+      color: #8b949e !important;
+    }
+  }
+
+  // Material dropdown overlays (for paginator select)
+  .mat-mdc-select-panel {
+    background-color: #161b22 !important;
+
+    .mat-mdc-option {
+      color: #c9d1d9 !important;
+
+      &:hover {
+        background-color: #21262d !important;
+      }
+
+      &.mat-mdc-option-active {
+        background-color: rgba(88, 166, 255, 0.1) !important;
+      }
+    }
+  }
+
+  // ============================================================================
+  // MATERIAL COMPONENTS (Global)
+  // ============================================================================
+
+  // Tooltips
+  .mat-mdc-tooltip {
+    background-color: #21262d !important;
+    color: #c9d1d9 !important;
+  }
+
+  // Dialogs and overlays
+  .cdk-overlay-pane {
+    .mat-mdc-dialog-container {
+      background-color: #161b22 !important;
+      color: #c9d1d9 !important;
+    }
+  }
+
+  // Snackbar
+  .mat-mdc-snack-bar-container {
+    background-color: #21262d !important;
+    color: #c9d1d9 !important;
+  }
+
+  // Menu
+  .mat-mdc-menu-panel {
+    background-color: #161b22 !important;
+
+    .mat-mdc-menu-item {
+      color: #c9d1d9 !important;
+
+      &:hover {
+        background-color: #21262d !important;
+      }
+    }
+  }
+}

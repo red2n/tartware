@@ -38,20 +38,143 @@ $tartware-dark-theme: mat.m2-define-dark-theme((
   ),
 ));
 
-// Dark theme class
+// Dark theme class (GitHub Soft Dark inspired)
 .dark-theme {
   @include mat.all-component-colors($tartware-dark-theme);
 
-  // Custom dark theme variables
-  --surface: #1c1b1f;
-  --on-surface: #e6e1e5;
-  --surface-variant: #49454f;
-  --on-surface-variant: #cac4d0;
-  --background: #1c1b1f;
-  --on-background: #e6e1e5;
+  // GitHub Soft Dark palette
+  // Reference: https://github.com/settings/appearance
+  --background: #0d1117;           // Canvas background
+  --surface: #161b22;              // Elevated surfaces (cards, panels)
+  --surface-overlay: #21262d;      // Hover/overlay state
+  --border: #30363d;               // Border color
+  --border-muted: #21262d;         // Subtle borders
 
-  background-color: var(--surface);
-  color: var(--on-surface);
+  --text-primary: #c9d1d9;         // Primary text
+  --text-secondary: #8b949e;       // Secondary text
+  --text-tertiary: #6e7681;        // Tertiary/disabled text
+  --text-link: #58a6ff;            // Links
+
+  --accent-blue: #58a6ff;          // Primary actions
+  --accent-blue-hover: #388bfd;    // Hover state
+  --success-green: #3fb950;        // Success state
+  --danger-red: #f85149;           // Error/danger state
+  --warning-yellow: #d29922;       // Warning state
+  --attention-orange: #db6d28;     // Attention/info state
+
+  // Dark theme elevation shadows (softer)
+  --md-sys-elevation-0: none;
+  --md-sys-elevation-1: 0 0 0 1px var(--border-muted), 0 1px 3px rgba(0, 0, 0, 0.4);
+  --md-sys-elevation-2: 0 0 0 1px var(--border-muted), 0 3px 6px rgba(0, 0, 0, 0.4);
+  --md-sys-elevation-3: 0 0 0 1px var(--border), 0 8px 16px rgba(0, 0, 0, 0.4);
+  --md-sys-elevation-4: 0 0 0 1px var(--border), 0 12px 24px rgba(0, 0, 0, 0.4);
+  --md-sys-elevation-5: 0 0 0 1px var(--border), 0 16px 32px rgba(0, 0, 0, 0.4);
+
+  // Apply dark theme to document
+  background-color: var(--background);
+  color: var(--text-primary);
+
+  // Material component overrides for dark theme
+  .mat-mdc-card {
+    background-color: var(--surface);
+    color: var(--text-primary);
+    border: 1px solid var(--border);
+    box-shadow: var(--md-sys-elevation-1);
+  }
+
+  .mat-mdc-form-field {
+    .mat-mdc-text-field-wrapper {
+      background-color: var(--background);
+
+      .mat-mdc-form-field-flex {
+        background-color: var(--background);
+      }
+    }
+
+    .mat-mdc-input-element {
+      color: var(--text-primary);
+      caret-color: var(--accent-blue);
+    }
+
+    .mat-mdc-form-field-label {
+      color: var(--text-secondary);
+    }
+
+    &.mat-focused {
+      .mat-mdc-form-field-label {
+        color: var(--accent-blue);
+      }
+    }
+  }
+
+  .mat-mdc-button, .mat-mdc-raised-button, .mat-mdc-flat-button {
+    &.mat-primary {
+      --mdc-text-button-label-text-color: var(--accent-blue);
+      --mdc-protected-button-container-color: var(--accent-blue);
+      --mdc-protected-button-label-text-color: #ffffff;
+    }
+
+    &.mat-accent {
+      --mdc-text-button-label-text-color: var(--success-green);
+    }
+
+    &.mat-warn {
+      --mdc-text-button-label-text-color: var(--danger-red);
+    }
+  }
+
+  .mat-mdc-table {
+    background-color: var(--surface);
+    color: var(--text-primary);
+
+    th {
+      color: var(--text-primary);
+      border-bottom-color: var(--border);
+    }
+
+    td {
+      color: var(--text-primary);
+      border-bottom-color: var(--border-muted);
+    }
+
+    tr:hover {
+      background-color: var(--surface-overlay);
+    }
+  }
+
+  // Material progress bar
+  .mat-mdc-progress-bar {
+    --mdc-linear-progress-active-indicator-color: var(--accent-blue);
+    --mdc-linear-progress-track-color: var(--border);
+  }
+
+  // Links
+  a {
+    color: var(--text-link);
+
+    &:hover {
+      color: var(--accent-blue-hover);
+    }
+  }
+
+  // Scrollbar (WebKit browsers)
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: var(--background);
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: var(--border);
+    border-radius: 5px;
+
+    &:hover {
+      background: var(--text-tertiary);
+    }
+  }
 }
 
 // M3 Design Tokens

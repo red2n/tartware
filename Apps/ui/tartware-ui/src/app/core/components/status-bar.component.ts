@@ -198,23 +198,7 @@ import { environment } from '../../../environments/environment';
       }
     }
 
-    // Dark theme support
-    .dark-theme .status-bar {
-      background-color: #1f2937;
-      border-top-color: #374151;
-      color: #9ca3af;
-      box-shadow: 0 -1px 2px rgba(0, 0, 0, 0.2);
-    }
-
-    .dark-theme .status-item {
-      &.clickable:hover {
-        background-color: #374151;
-      }
-
-      &.clickable:focus {
-        outline-color: #6366f1;
-      }
-    }
+    // Dark theme styles are centralized in src/styles/_dark-theme.scss
 
     // Mobile responsiveness
     @media (max-width: 768px) {

@@ -15,12 +15,14 @@ import { MatPaginator, MatPaginatorModule } from '@angular/material/paginator';
 import { MatSortModule } from '@angular/material/sort';
 import { MatTableDataSource, MatTableModule } from '@angular/material/table';
 import { MatToolbarModule } from '@angular/material/toolbar';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import { Router } from '@angular/router';
 import type { TenantRole } from '@tartware/schemas';
 import type { Tenant } from '../../core/models/tenant.model';
 import type { AuthContext } from '../../core/models/user.model';
 import { AuthService } from '../../core/services/auth.service';
 import { TenantService } from '../../core/services/tenant.service';
+import { ThemeService } from '../../core/services/theme.service';
 
 @Component({
   selector: 'app-tenant-list',
@@ -36,6 +38,7 @@ import { TenantService } from '../../core/services/tenant.service';
     MatTableModule,
     MatPaginatorModule,
     MatSortModule,
+    MatTooltipModule,
   ],
   templateUrl: './tenant-list.component.html',
   styleUrl: './tenant-list.component.scss',
@@ -45,6 +48,7 @@ export class TenantListComponent implements OnInit {
   private authService = inject(AuthService);
   private tenantService = inject(TenantService);
   private router = inject(Router);
+  readonly themeService = inject(ThemeService);
 
   authContext = signal<AuthContext | null>(null);
   tenants = signal<Tenant[]>([]);
@@ -97,6 +101,10 @@ export class TenantListComponent implements OnInit {
   logout(): void {
     this.authService.logout();
     this.router.navigate(['/login']);
+  }
+
+  toggleTheme(): void {
+    this.themeService.toggleTheme();
   }
 
   getRoleBadgeColor(role: TenantRole): string {
