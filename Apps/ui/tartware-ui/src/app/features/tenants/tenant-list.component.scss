@@ -1,3 +1,5 @@
+// All styles centralized in src/styles/_pms-components.scss
+
 :host {
   display: block;
 }
@@ -15,54 +17,3 @@
   }
 }
 
-// Modern table styles
-::ng-deep .modern-table {
-  .mat-mdc-header-cell {
-    font-weight: 700;
-    font-size: 0.75rem;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    color: #6b7280;
-    background: #f9fafb;
-    padding: 1rem 1.5rem;
-    border-bottom: 2px solid #e5e7eb;
-  }
-
-  .mat-mdc-cell {
-    padding: 1.25rem 1.5rem;
-    border-bottom: 1px solid #f3f4f6;
-  }
-
-  .mat-mdc-row {
-    transition: all 0.15s ease;
-
-    &:hover {
-      background-color: #f9fafb;
-    }
-  }
-}
-
-// Button overrides
-::ng-deep .mat-mdc-raised-button {
-  &.mat-primary {
-    background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
-    box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3);
-
-    &:hover:not([disabled]) {
-      box-shadow: 0 6px 16px rgba(79, 70, 229, 0.4);
-      transform: translateY(-1px);
-    }
-  }
-}
-
-// Paginator styling
-::ng-deep .mat-mdc-paginator {
-  background: transparent;
-
-  .mat-mdc-paginator-range-label {
-    color: #6b7280;
-    font-size: 0.875rem;
-  }
-}
-
-// Dark theme styles are centralized in src/styles/_dark-theme.scss

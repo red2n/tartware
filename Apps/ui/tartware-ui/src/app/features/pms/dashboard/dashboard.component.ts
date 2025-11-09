@@ -4,10 +4,10 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { environment } from '../../../../environments/environment';
 import { DashboardService } from '../../../core/services/dashboard.service';
 import { PropertyContextService } from '../../../core/services/property-context.service';
 import { TenantContextService } from '../../../core/services/tenant-context.service';
-import { environment } from '../../../../environments/environment';
 
 /**
  * Dashboard Component
@@ -68,23 +68,26 @@ export class DashboardComponent {
 
   constructor() {
     // Load data when tenant or property changes
-    effect(() => {
-      const tenant = this.activeTenant();
-      const propertyId = this.selectedPropertyId();
+    effect(
+      () => {
+        const tenant = this.activeTenant();
+        const propertyId = this.selectedPropertyId();
 
-      // Always log in dev mode to debug
-      console.log('[Dashboard Effect] Tenant:', tenant?.id, 'Property:', propertyId);
+        // Always log in dev mode to debug
+        console.log('[Dashboard Effect] Tenant:', tenant?.id, 'Property:', propertyId);
 
-      if (tenant) {
-        if (environment.enableDebugLogs) {
-          console.log('Dashboard loading data for tenant:', tenant.id, 'property:', propertyId);
+        if (tenant) {
+          if (environment.enableDebugLogs) {
+            console.log('Dashboard loading data for tenant:', tenant.id, 'property:', propertyId);
+          }
+          this.loadDashboardData();
+        } else {
+          console.warn('[Dashboard Effect] No active tenant found');
         }
-        this.loadDashboardData();
-      } else {
-        console.warn('[Dashboard Effect] No active tenant found');
-      }
-    }, { allowSignalWrites: true });
-  }  /**
+      },
+      { allowSignalWrites: true }
+    );
+  } /**
    * Load all dashboard data
    */
   loadDashboardData(): void {

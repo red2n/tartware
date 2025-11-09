@@ -1,22 +1,40 @@
 /* Tartware Professional Theme - Global Styles */
 
-// Material Design 3 Theme (replaces prebuilt theme)
-@import './styles/m3-theme';
+@use '@angular/material' as mat;
 
+// Include Material core
+@include mat.core();
+
+// Define Material palettes
+$tartware-primary: mat.m2-define-palette(mat.$m2-indigo-palette, 500);
+$tartware-accent: mat.m2-define-palette(mat.$m2-blue-palette, 600);
+$tartware-warn: mat.m2-define-palette(mat.$m2-red-palette, 500);
+
+// Create light theme
+$tartware-light-theme: mat.m2-define-light-theme((
+  color: (
+    primary: $tartware-primary,
+    accent: $tartware-accent,
+    warn: $tartware-warn,
+  ),
+  typography: mat.m2-define-typography-config(
+    $font-family: 'Roboto, "Helvetica Neue", sans-serif',
+  ),
+  density: 0,
+));
+
+// Apply theme to all components
+@include mat.all-component-themes($tartware-light-theme);
+
+// Tailwind CSS
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-// Import theme system
+// Import custom styles
 @import './styles/variables';
-@import './styles/mixins';
-@import './styles/utilities';
 @import './styles/material-overrides';
-
-// Centralized PMS component styles (light theme)
 @import './styles/pms-components';
-
-// Centralized dark theme styles (imported after all base styles)
 @import './styles/dark-theme';
 
 // Base styles

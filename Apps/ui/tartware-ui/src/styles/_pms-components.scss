@@ -2,6 +2,209 @@
 // All PMS component styles in one place for maintainability
 // Dark theme styles are in _dark-theme.scss
 
+@import './variables';
+
+// ============================================================================
+// MIXINS - Reusable style patterns
+// ============================================================================
+
+// Card Styles
+@mixin card-base {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.07);
+  border: 1px solid #e5e7eb;
+  padding: 2rem;
+}
+
+@mixin card-hover {
+  transition: all 0.2s ease;
+  &:hover {
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+    border-color: #d1d5db;
+  }
+}
+
+// Responsive breakpoints
+@mixin mobile {
+  @media (max-width: 768px) {
+    @content;
+  }
+}
+
+@mixin tablet {
+  @media (min-width: 769px) and (max-width: 1024px) {
+    @content;
+  }
+}
+
+@mixin desktop {
+  @media (min-width: 1025px) {
+    @content;
+  }
+}
+
+// ============================================================================
+// 0. COMMON CARDS & FORMS (Used across all pages)
+// ============================================================================
+
+.login-card,
+.auth-card {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.07);
+  padding: 2.5rem 2rem;
+  width: 100%;
+  max-width: 420px;
+  border: 1px solid #e5e7eb;
+}
+
+.login-form,
+.auth-form {
+  h2 {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: #111827;
+    margin: 0 0 1.5rem 0;
+    text-align: center;
+  }
+
+  .form-group {
+    margin-bottom: 1.5rem;
+
+    label {
+      display: block;
+      font-size: 0.875rem;
+      font-weight: 500;
+      color: #374151;
+      margin-bottom: 0.5rem;
+    }
+
+    input {
+      width: 100%;
+      padding: 0.75rem 1rem;
+      font-size: 1rem;
+      border: 1px solid #d1d5db;
+      border-radius: 8px;
+      transition: all 0.2s;
+      background: white;
+      color: #111827;
+
+      &:focus {
+        outline: none;
+        border-color: #4f46e5;
+        box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+      }
+
+      &::placeholder {
+        color: #9ca3af;
+      }
+
+      &:disabled {
+        background: #f9fafb;
+        cursor: not-allowed;
+      }
+
+      &.input-error {
+        border-color: #ef4444;
+
+        &:focus {
+          border-color: #ef4444;
+          box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
+        }
+      }
+    }
+
+    .field-error {
+      display: flex;
+      align-items: center;
+      gap: 0.375rem;
+      margin-top: 0.5rem;
+      font-size: 0.813rem;
+      color: #ef4444;
+
+      mat-icon {
+        font-size: 16px;
+        width: 16px;
+        height: 16px;
+      }
+    }
+  }
+
+  .error-message {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1rem;
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+    border-left: 3px solid #ef4444;
+    border-radius: 8px;
+    margin-bottom: 1.5rem;
+
+    mat-icon {
+      font-size: 20px;
+      width: 20px;
+      height: 20px;
+      color: #ef4444;
+      flex-shrink: 0;
+    }
+
+    span {
+      font-size: 0.875rem;
+      color: #991b1b;
+      flex: 1;
+    }
+  }
+
+  .login-btn,
+  .auth-btn {
+    width: 100%;
+    padding: 0.875rem 1.5rem;
+    font-size: 1rem;
+    font-weight: 600;
+    color: white;
+    background: #4f46e5;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+
+    &:hover:not(:disabled) {
+      background: #4338ca;
+      box-shadow: 0 4px 6px rgba(79, 70, 229, 0.25);
+    }
+
+    &:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    mat-icon {
+      font-size: 20px;
+      width: 20px;
+      height: 20px;
+    }
+  }
+}
+
+.footer {
+  text-align: center;
+  margin-top: 2rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid #e5e7eb;
+
+  p {
+    font-size: 0.875rem;
+    color: #6b7280;
+    margin: 0;
+  }
+}
+
 // ============================================================================
 // 1. PMS LAYOUT (Sidebar + Top Bar)
 // ============================================================================
@@ -906,6 +1109,51 @@
   border-top: 1px solid #e5e7eb;
   background: #f9fafb;
   border-radius: 0 0 12px 12px;
+
+  .mat-mdc-paginator-range-label {
+    color: #6b7280;
+    font-size: 0.875rem;
+  }
+}
+
+// Modern Material Table Overrides (All Tables)
+::ng-deep .modern-table {
+  .mat-mdc-header-cell {
+    font-weight: 700;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #6b7280;
+    background: #f9fafb;
+    padding: 1rem 1.5rem;
+    border-bottom: 2px solid #e5e7eb;
+  }
+
+  .mat-mdc-cell {
+    padding: 1.25rem 1.5rem;
+    border-bottom: 1px solid #f3f4f6;
+  }
+
+  .mat-mdc-row {
+    transition: all 0.15s ease;
+
+    &:hover {
+      background-color: #f9fafb;
+    }
+  }
+}
+
+// Primary Button Gradient Override
+::ng-deep .mat-mdc-raised-button {
+  &.mat-primary {
+    background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+    box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3);
+
+    &:hover:not([disabled]) {
+      box-shadow: 0 6px 16px rgba(79, 70, 229, 0.4);
+      transform: translateY(-1px);
+    }
+  }
 }
 
 // ============================================================================

@@ -18,12 +18,12 @@ import { MatSidenavModule } from '@angular/material/sidenav';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { Router, RouterModule } from '@angular/router';
+import { environment } from '../../../environments/environment';
 import { AuthService } from '../../core/services/auth.service';
-import { PropertyContextService } from '../../core/services/property-context.service';
 import { PropertyService } from '../../core/services/property.service';
+import { PropertyContextService } from '../../core/services/property-context.service';
 import { TenantContextService } from '../../core/services/tenant-context.service';
 import { ThemeService } from '../../core/services/theme.service';
-import { environment } from '../../../environments/environment';
 
 /**
  * PMS Layout Component

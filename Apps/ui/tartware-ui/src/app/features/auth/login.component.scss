@@ -1,4 +1,5 @@
-@import '../../../styles/variables';
+// Login Component - Uses shared styles from _pms-components.scss
+// Minimal component-specific overrides only
 
 :host {
   display: block;
@@ -11,20 +12,10 @@
   align-items: center;
   justify-content: center;
   min-height: 100vh;
-  background: $gray-50;
   padding: 1.5rem;
 }
 
-.login-card {
-  background: white;
-  border-radius: 12px;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.07);
-  padding: 2.5rem 2rem;
-  width: 100%;
-  max-width: 420px;
-  border: 1px solid $gray-200;
-}
-
+// Component-specific logo styling
 .logo-section {
   text-align: center;
   margin-bottom: 2rem;
@@ -33,7 +24,6 @@
     width: 64px;
     height: 64px;
     margin: 0 auto 1rem;
-    background: $primary-600;
     border-radius: 12px;
     display: flex;
     align-items: center;
@@ -43,206 +33,20 @@
       font-size: 36px;
       width: 36px;
       height: 36px;
-      color: white;
     }
   }
-
-  h1 {
-    font-size: 1.75rem;
-    font-weight: 600;
-    color: $gray-900;
-    margin: 0 0 0.25rem 0;
-  }
-
-  p {
-    font-size: 0.95rem;
-    color: $gray-600;
-    margin: 0;
-  }
-}
-
-.login-form {
-  h2 {
-    font-size: 1.5rem;
-    font-weight: 600;
-    color: $gray-900;
-    margin: 0 0 1.5rem 0;
-    text-align: center;
-  }
-
-  .form-group {
-    margin-bottom: 1.5rem;
-
-    label {
-      display: block;
-      font-size: 0.875rem;
-      font-weight: 500;
-      color: $gray-700;
-      margin-bottom: 0.5rem;
-    }
-
-    input {
-      width: 100%;
-      padding: 0.75rem 1rem;
-      font-size: 1rem;
-      border: 1px solid $gray-300;
-      border-radius: 8px;
-      transition: all 0.2s;
-      background: white;
-      color: $gray-900;
-
-      &:focus {
-        outline: none;
-        border-color: $primary-600;
-        box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
-      }
-
-      &::placeholder {
-        color: $gray-400;
-      }
-
-      &:disabled {
-        background: $gray-50;
-        cursor: not-allowed;
-      }
-
-      &.input-error {
-        border-color: $error-600;
-
-        &:focus {
-          border-color: $error-600;
-          box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
-        }
-      }
-    }
-
-    .field-error {
-      display: flex;
-      align-items: center;
-      gap: 0.375rem;
-      margin-top: 0.5rem;
-      font-size: 0.813rem;
-      color: $error-600;
-
-      mat-icon {
-        font-size: 16px;
-        width: 16px;
-        height: 16px;
-      }
-    }
-  }
-
-  .error-message {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.75rem 1rem;
-    background: $error-50;
-    border: 1px solid $error-200;
-    border-left: 3px solid $error-600;
-    border-radius: 8px;
-    margin-bottom: 1.5rem;
-
-    mat-icon {
-      font-size: 20px;
-      width: 20px;
-      height: 20px;
-      color: $error-600;
-      flex-shrink: 0;
-    }
-
-    span {
-      font-size: 0.875rem;
-      color: $error-700;
-      flex: 1;
-    }
-  }
-
-  .login-btn {
-    width: 100%;
-    padding: 0.875rem 1.5rem;
-    font-size: 1rem;
-    font-weight: 600;
-    color: white;
-    background: $primary-600;
-    border: none;
-    border-radius: 8px;
-    cursor: pointer;
-    transition: all 0.2s;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 0.5rem;
-
-    &:hover:not(:disabled) {
-      background: $primary-700;
-      box-shadow: 0 4px 6px rgba(79, 70, 229, 0.25);
-    }
-
-    &:disabled {
-      opacity: 0.6;
-      cursor: not-allowed;
-    }
-
-    .button-spinner {
-      display: inline-block;
-
-      ::ng-deep circle {
-        stroke: white;
-      }
-    }
-
-    mat-icon {
-      font-size: 20px;
-      width: 20px;
-      height: 20px;
-
-      &.spinner {
-        animation: spin 1s linear infinite;
-      }
-    }
-  }
-}
-
-.footer {
-  text-align: center;
-  margin-top: 2rem;
-  padding-top: 1.5rem;
-  border-top: 1px solid $gray-200;
-
-  p {
-    font-size: 0.875rem;
-    color: $gray-500;
-    margin: 0;
-  }
-}
-
-@keyframes spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
 }
 
 @media (max-width: 640px) {
-  .login-card {
-    padding: 2rem 1.5rem;
-  }
+  .logo-section .logo-circle {
+    width: 56px;
+    height: 56px;
 
-  .logo-section {
-    .logo-circle {
-      width: 56px;
-      height: 56px;
-
-      mat-icon {
-        font-size: 32px;
-        width: 32px;
-        height: 32px;
-      }
-    }
-
-    h1 {
-      font-size: 1.5rem;
+    mat-icon {
+      font-size: 32px;
+      width: 32px;
+      height: 32px;
     }
   }
 }
 
-// Dark theme styles are centralized in src/styles/_dark-theme.scss

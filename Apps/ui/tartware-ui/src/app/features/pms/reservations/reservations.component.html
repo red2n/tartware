@@ -12,23 +12,22 @@
   </div>
 
   <!-- Filters -->
-  <mat-card class="filters-card">
-    <mat-card-content>
-      <div class="filters-row">
-        <!-- Search -->
-        <mat-form-field class="search-field" appearance="outline">
-          <mat-label>Search reservations</mat-label>
-          <input
-            matInput
-            (keyup)="applyFilter($event)"
-            placeholder="Confirmation code, guest name, room..."
-          />
-          <mat-icon matPrefix>search</mat-icon>
-        </mat-form-field>
+  <div class="bg-white rounded-lg shadow-sm px-6 py-4 mb-6">
+    <div class="flex gap-4 items-start">
+      <!-- Search -->
+      <mat-form-field appearance="outline" class="flex-1" style="min-width: 300px;">
+        <mat-icon matPrefix class="text-gray-500">search</mat-icon>
+        <input
+          matInput
+          (keyup)="applyFilter($event)"
+          placeholder="Search reservations"
+        />
+      </mat-form-field>
 
-        <!-- Status Filter -->
-        <mat-form-field appearance="outline">
-          <mat-label>Status</mat-label>
+      <!-- Status Filter -->
+      <div class="relative" style="min-width: 240px;">
+        <label class="absolute -top-2.5 left-3 bg-white px-1 text-xs text-gray-600 z-10">Status</label>
+        <mat-form-field appearance="outline" class="w-full">
           <mat-select
             [value]="statusFilter()"
             (selectionChange)="filterByStatus($event.value)"
@@ -38,14 +37,14 @@
             }
           </mat-select>
         </mat-form-field>
-
-        <button mat-stroked-button (click)="loadReservations()">
-          <mat-icon>refresh</mat-icon>
-          Refresh
-        </button>
       </div>
-    </mat-card-content>
-  </mat-card>
+
+      <button mat-stroked-button (click)="loadReservations()" style="height: 56px;">
+        <mat-icon>refresh</mat-icon>
+        Refresh
+      </button>
+    </div>
+  </div>
 
   <!-- Table -->
   <mat-card class="table-card">

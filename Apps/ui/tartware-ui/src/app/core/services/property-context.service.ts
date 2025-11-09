@@ -1,4 +1,4 @@
-import { Injectable, signal, computed } from '@angular/core';
+import { computed, Injectable, signal } from '@angular/core';
 import type { PropertyWithStats } from '@tartware/schemas';
 
 /**
