@@ -62,12 +62,7 @@
         </mat-card-title>
       </mat-card-header>
       <mat-card-content>
-        @if (loadingActivity()) {
-          <div class="loading-state">
-            <mat-spinner diameter="32"></mat-spinner>
-            <p>Loading activity...</p>
-          </div>
-        } @else {
+        @if (activities().length > 0) {
           <div class="activity-list">
             @for (activity of activities(); track $index) {
               <div class="activity-item">
@@ -80,6 +75,11 @@
                 </div>
               </div>
             }
+          </div>
+        } @else {
+          <div class="empty-state">
+            <mat-icon>inbox</mat-icon>
+            <p>No recent activity</p>
           </div>
         }
       </mat-card-content>
@@ -94,12 +94,7 @@
         </mat-card-title>
       </mat-card-header>
       <mat-card-content>
-        @if (loadingTasks()) {
-          <div class="loading-state">
-            <mat-spinner diameter="32"></mat-spinner>
-            <p>Loading tasks...</p>
-          </div>
-        } @else {
+        @if (tasks().length > 0) {
           <div class="task-list">
             @for (task of tasks(); track $index) {
               <div class="task-item">
@@ -112,6 +107,11 @@
                 </div>
               </div>
             }
+          </div>
+        } @else {
+          <div class="empty-state">
+            <mat-icon>task_alt</mat-icon>
+            <p>No upcoming tasks</p>
           </div>
         }
       </mat-card-content>

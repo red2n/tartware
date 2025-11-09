@@ -159,22 +159,19 @@
     }
 
     .property-selector {
-      min-width: 180px;
-      font-size: 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-left: 16px;
 
-      ::ng-deep {
-        .mat-mdc-text-field-wrapper {
-          padding: 0;
-        }
+      mat-icon {
+        color: #6c757d;
+        font-size: 20px;
+      }
 
-        .mat-mdc-form-field-infix {
-          padding: 6px 0;
-          min-height: 36px;
-        }
-
-        .mat-mdc-form-field-flex {
-          align-items: center;
-        }
+      .property-select {
+        min-width: 180px;
+        font-weight: 500;
       }
     }
   }
@@ -520,6 +517,130 @@
     margin: 0;
     color: #6b7280;
     font-size: 14px;
+  }
+}
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+  gap: 8px;
+  color: #9ca3af;
+
+  mat-icon {
+    font-size: 48px;
+    width: 48px;
+    height: 48px;
+    opacity: 0.5;
+  }
+
+  p {
+    margin: 0;
+    font-size: 14px;
+    font-weight: 500;
+  }
+}
+
+.error-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+  gap: 12px;
+
+  mat-icon {
+    font-size: 48px;
+    width: 48px;
+    height: 48px;
+    color: #ef4444;
+  }
+
+  p {
+    margin: 0;
+    color: #6b7280;
+    font-size: 14px;
+  }
+
+  button {
+    margin-top: 8px;
+  }
+}
+
+// Skeleton Loading States
+.skeleton-card {
+  .skeleton-list {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    padding: 20px 0;
+  }
+
+  .skeleton-item {
+    display: flex;
+    gap: 12px;
+    padding: 12px;
+  }
+
+  .skeleton-text {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+}
+
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    #f3f4f6 0%,
+    #e5e7eb 50%,
+    #f3f4f6 100%
+  );
+  background-size: 200% 100%;
+  animation: skeleton-loading 1.5s ease-in-out infinite;
+  border-radius: 4px;
+}
+
+.skeleton-icon {
+  width: 20px;
+  height: 20px;
+  border-radius: 4px;
+}
+
+.skeleton-icon-sm {
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  flex-shrink: 0;
+}
+
+.skeleton-title {
+  width: 140px;
+  height: 20px;
+  border-radius: 4px;
+}
+
+.skeleton-line {
+  width: 100%;
+  height: 14px;
+  border-radius: 4px;
+}
+
+.skeleton-line-sm {
+  width: 60%;
+  height: 12px;
+  border-radius: 4px;
+}
+
+@keyframes skeleton-loading {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
   }
 }
 

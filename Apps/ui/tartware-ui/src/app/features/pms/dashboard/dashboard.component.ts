@@ -87,7 +87,7 @@ export class DashboardComponent {
   }  /**
    * Load all dashboard data
    */
-  private loadDashboardData(): void {
+  loadDashboardData(): void {
     const tenant = this.activeTenant();
     if (!tenant) return;
 
@@ -153,7 +153,7 @@ export class DashboardComponent {
 
     // Load activity
     this.loadingActivity.set(true);
-    this.dashboardService.getRecentActivity(tenant.id).subscribe({
+    this.dashboardService.getRecentActivity(tenant.id, propertyId).subscribe({
       next: (data) => {
         if (environment.enableDebugLogs) {
           console.log('Dashboard activity loaded:', data);
@@ -177,7 +177,7 @@ export class DashboardComponent {
 
     // Load tasks
     this.loadingTasks.set(true);
-    this.dashboardService.getUpcomingTasks(tenant.id).subscribe({
+    this.dashboardService.getUpcomingTasks(tenant.id, propertyId).subscribe({
       next: (data) => {
         if (environment.enableDebugLogs) {
           console.log('Dashboard tasks loaded:', data);

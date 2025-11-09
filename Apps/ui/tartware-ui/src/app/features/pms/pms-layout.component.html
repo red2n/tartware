@@ -72,14 +72,17 @@
 
         <!-- Property Selector (for multi-property tenants) -->
         @if (hasMultipleProperties()) {
-          <mat-form-field appearance="outline" class="property-selector">
-            <mat-label>Property</mat-label>
-            <mat-select [value]="selectedPropertyId()" (selectionChange)="switchProperty($event.value)">
+          <div class="property-selector">
+            <mat-icon>domain</mat-icon>
+            <mat-select [value]="selectedPropertyId()" (selectionChange)="switchProperty($event.value)" class="property-select">
               @for (property of properties(); track property.id) {
-                <mat-option [value]="property.id">{{ property.name }}</mat-option>
+                <mat-option [value]="property.id">
+                  <mat-icon>apartment</mat-icon>
+                  <span>{{ property.name }}</span>
+                </mat-option>
               }
             </mat-select>
-          </mat-form-field>
+          </div>
         }
       </div>
 

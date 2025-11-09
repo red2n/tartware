@@ -93,7 +93,7 @@ export class PmsLayoutComponent implements OnInit {
 
   // Property management (for multi-property tenants)
   selectedPropertyId = this.propertyContext.selectedPropertyId;
-  properties = signal<PropertyOption[]>([{ id: 'all', name: 'All Properties' }]);
+  properties = signal<PropertyOption[]>([]);
   loadingProperties = signal(false);
 
   // Computed: Check if tenant has multiple properties
@@ -197,13 +197,10 @@ export class PmsLayoutComponent implements OnInit {
         this.propertyContext.setProperties(properties);
 
         // Update dropdown options
-        const options: PropertyOption[] = [
-          { id: 'all', name: 'All Properties' },
-          ...properties.map((p) => ({
-            id: p.id,
-            name: p.property_name,
-          })),
-        ];
+        const options: PropertyOption[] = properties.map((p) => ({
+          id: p.id,
+          name: p.property_name,
+        }));
         this.properties.set(options);
         this.loadingProperties.set(false);
 

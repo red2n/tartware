@@ -28,9 +28,10 @@ export class DashboardService {
   /**
    * Get recent activity
    */
-  getRecentActivity(tenantId: string, limit = 10): Observable<Activity[]> {
+  getRecentActivity(tenantId: string, propertyId?: string, limit = 10): Observable<Activity[]> {
     const params = new HttpParams()
       .set('tenant_id', tenantId)
+      .set('property_id', propertyId || 'all')
       .set('limit', limit.toString());
 
     return this.http.get<Activity[]>(`${this.apiUrl}/dashboard/activity`, { params });
@@ -39,9 +40,10 @@ export class DashboardService {
   /**
    * Get upcoming tasks
    */
-  getUpcomingTasks(tenantId: string, limit = 10): Observable<Task[]> {
+  getUpcomingTasks(tenantId: string, propertyId?: string, limit = 10): Observable<Task[]> {
     const params = new HttpParams()
       .set('tenant_id', tenantId)
+      .set('property_id', propertyId || 'all')
       .set('limit', limit.toString());
 
     return this.http.get<Task[]>(`${this.apiUrl}/dashboard/tasks`, { params });
