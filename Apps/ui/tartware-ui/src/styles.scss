@@ -13,6 +13,9 @@
 @import './styles/utilities';
 @import './styles/material-overrides';
 
+// Centralized PMS component styles (light theme)
+@import './styles/pms-components';
+
 // Centralized dark theme styles (imported after all base styles)
 @import './styles/dark-theme';
 

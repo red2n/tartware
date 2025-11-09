@@ -187,8 +187,23 @@
                 </td>
               </ng-container>
 
+              <!-- Actions Column -->
+              <ng-container matColumnDef="actions">
+                <th mat-header-cell *matHeaderCellDef class="!bg-gray-50 !text-gray-700 !font-semibold">Actions</th>
+                <td mat-cell *matCellDef="let tenant">
+                  <button
+                    mat-flat-button
+                    (click)="openTenant(tenant)"
+                    class="!bg-indigo-600 !text-white !rounded-lg !px-4 !py-2 !shadow-sm hover:!bg-indigo-700"
+                  >
+                    <mat-icon class="!text-base !w-4 !h-4 mr-1">login</mat-icon>
+                    Open
+                  </button>
+                </td>
+              </ng-container>
+
               <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
-              <tr mat-row *matRowDef="let row; columns: displayedColumns;" class="hover:bg-gray-50 transition-colors cursor-pointer"></tr>
+              <tr mat-row *matRowDef="let row; columns: displayedColumns;" class="hover:bg-gray-50 transition-colors"></tr>
             </table>
 
             <mat-paginator

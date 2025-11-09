@@ -22,6 +22,7 @@ import type { Tenant } from '../../core/models/tenant.model';
 import type { AuthContext } from '../../core/models/user.model';
 import { AuthService } from '../../core/services/auth.service';
 import { TenantService } from '../../core/services/tenant.service';
+import { TenantContextService } from '../../core/services/tenant-context.service';
 import { ThemeService } from '../../core/services/theme.service';
 
 @Component({
@@ -49,6 +50,7 @@ export class TenantListComponent implements OnInit {
   private tenantService = inject(TenantService);
   private router = inject(Router);
   readonly themeService = inject(ThemeService);
+  private tenantContext = inject(TenantContextService);
 
   authContext = signal<AuthContext | null>(null);
   tenants = signal<Tenant[]>([]);
@@ -58,7 +60,7 @@ export class TenantListComponent implements OnInit {
   dataSource = new MatTableDataSource<Tenant>([]);
   @ViewChild(MatPaginator) paginator!: MatPaginator;
 
-  displayedColumns: string[] = ['name', 'type', 'status', 'email', 'stats'];
+  displayedColumns: string[] = ['name', 'type', 'status', 'email', 'stats', 'actions'];
 
   ngOnInit(): void {
     const context = this.authService.authContext();
@@ -105,6 +107,13 @@ export class TenantListComponent implements OnInit {
 
   toggleTheme(): void {
     this.themeService.toggleTheme();
+  }
+
+  /**
+   * Open tenant and navigate to PMS dashboard
+   */
+  openTenant(tenant: Tenant): void {
+    this.tenantContext.setActiveTenant(tenant, true);
   }
 
   getRoleBadgeColor(role: TenantRole): string {

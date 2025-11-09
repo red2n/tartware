@@ -16,12 +16,14 @@ export const registerTenantRoutes = (app: FastifyInstance): void => {
     {
       preHandler: app.withTenantScope({
         allowMissingTenantId: true,
-        requireAnyTenantWithRole: "ADMIN",
+        requireAnyTenantWithRole: "STAFF",
       }),
     },
     async (request) => {
       const { limit } = TenantListQuerySchema.parse(request.query);
-      const tenants = await listTenants({ limit });
+      // Only return tenants the user has access to
+      const tenantIds = Array.from(request.auth.membershipMap.keys());
+      const tenants = await listTenants({ limit, tenantIds });
       return sanitizeForJson(tenants);
     },
   );

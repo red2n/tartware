@@ -7,13 +7,14 @@ import { config } from "./config.js";
 import { fastifyLoggerOptions } from "./lib/logger.js";
 import authContextPlugin from "./plugins/auth-context.js";
 import errorHandlerPlugin from "./plugins/error-handler.js";
+import { registerAuthRoutes } from "./routes/auth.js";
+import { registerDashboardRoutes } from "./routes/dashboard.js";
 import { registerGuestRoutes } from "./routes/guests.js";
 import { registerHealthRoutes } from "./routes/health.js";
 import { registerPropertyRoutes } from "./routes/properties.js";
 import { registerTenantRoutes } from "./routes/tenants.js";
 import { registerUserTenantAssociationRoutes } from "./routes/user-tenant-associations.js";
 import { registerUserRoutes } from "./routes/users.js";
-import { registerAuthRoutes } from "./routes/auth.js";
 
 export const buildServer = (): FastifyInstance => {
   const app = Fastify({
@@ -87,6 +88,7 @@ export const buildServer = (): FastifyInstance => {
     registerUserRoutes(app);
     registerGuestRoutes(app);
     registerUserTenantAssociationRoutes(app);
+    registerDashboardRoutes(app);
   });
 
   app.addHook("onReady", async () => {

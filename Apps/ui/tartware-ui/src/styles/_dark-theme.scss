@@ -626,4 +626,347 @@ html:has(body.dark-theme) {
       }
     }
   }
+
+  // ============================================================================
+  // PMS LAYOUT (Sidebar Navigation)
+  // ============================================================================
+
+  .pms-container {
+    background-color: #0d1117 !important;
+  }
+
+  .pms-sidebar {
+    background-color: #161b22 !important;
+    border-right-color: #30363d !important;
+
+    .sidebar-header {
+      border-bottom-color: #30363d !important;
+
+      .logo-section {
+        .logo-text {
+          h3 {
+            color: #c9d1d9 !important;
+          }
+
+          p {
+            color: #8b949e !important;
+          }
+        }
+      }
+    }
+
+    .nav-list {
+      .nav-item {
+        &:hover {
+          background-color: #21262d !important;
+        }
+
+        &.active {
+          background-color: rgba(88, 166, 255, 0.15) !important;
+          color: #58a6ff !important;
+
+          mat-icon {
+            color: #58a6ff !important;
+          }
+        }
+
+        mat-icon {
+          color: #8b949e !important;
+        }
+
+        span {
+          color: #c9d1d9 !important;
+        }
+      }
+    }
+
+    .sidebar-footer {
+      border-top-color: #30363d !important;
+
+      .switch-tenant-btn {
+        border-color: #30363d !important;
+        color: #c9d1d9 !important;
+
+        &:hover {
+          background-color: #21262d !important;
+        }
+      }
+    }
+  }
+
+  .pms-content {
+    background-color: #0d1117 !important;
+  }
+
+  .top-bar {
+    background-color: #161b22 !important;
+    border-bottom-color: #30363d !important;
+
+    .breadcrumb {
+      mat-icon {
+        color: #8b949e !important;
+      }
+
+      .tenant-name {
+        color: #c9d1d9 !important;
+      }
+    }
+
+    .property-selector {
+      ::ng-deep {
+        .mat-mdc-text-field-wrapper {
+          background-color: #0d1117 !important;
+        }
+
+        .mat-mdc-form-field-label,
+        .mat-mdc-select-value {
+          color: #c9d1d9 !important;
+        }
+
+        .mat-mdc-form-field-outline {
+          color: #30363d !important;
+        }
+      }
+    }
+  }
+
+  .user-menu-header {
+    mat-icon {
+      color: #8b949e !important;
+    }
+
+    .user-name {
+      color: #c9d1d9 !important;
+    }
+
+    .user-email {
+      color: #8b949e !important;
+    }
+  }
+
+  // ============================================================================
+  // DASHBOARD
+  // ============================================================================
+
+  .dashboard-container {
+    .title {
+      color: #c9d1d9 !important;
+    }
+
+    .subtitle {
+      color: #8b949e !important;
+    }
+  }
+
+  .stat-card {
+    background-color: #161b22 !important;
+    border-color: #30363d !important;
+
+    .stat-label {
+      color: #8b949e !important;
+    }
+
+    .stat-value {
+      color: #c9d1d9 !important;
+    }
+  }
+
+  .section-title {
+    color: #c9d1d9 !important;
+  }
+
+  .action-card {
+    background-color: #161b22 !important;
+    border-color: #30363d !important;
+
+    .action-button {
+      background-color: #161b22 !important;
+      color: #c9d1d9 !important;
+
+      &:hover {
+        background-color: #21262d !important;
+      }
+
+      mat-icon {
+        color: #58a6ff !important;
+      }
+    }
+  }
+
+  .activity-card,
+  .tasks-card {
+    background-color: #161b22 !important;
+    border-color: #30363d !important;
+
+    mat-card-title {
+      color: #c9d1d9 !important;
+
+      mat-icon {
+        color: #8b949e !important;
+      }
+    }
+  }
+
+  .activity-item,
+  .task-item {
+    background-color: #0d1117 !important;
+
+    &:hover {
+      background-color: #21262d !important;
+    }
+
+    .activity-title,
+    .task-title {
+      color: #c9d1d9 !important;
+    }
+
+    .activity-meta,
+    .task-meta {
+      color: #8b949e !important;
+    }
+  }
+
+  .activity-icon,
+  .task-icon {
+    background-color: #161b22 !important;
+
+    mat-icon {
+      color: #8b949e !important;
+    }
+
+    &.urgent {
+      background-color: rgba(248, 81, 73, 0.1) !important;
+
+      mat-icon {
+        color: #f85149 !important;
+      }
+    }
+  }
+
+  // ============================================================================
+  // RESERVATIONS
+  // ============================================================================
+
+  .reservations-container {
+    .title {
+      color: #c9d1d9 !important;
+    }
+
+    .subtitle {
+      color: #8b949e !important;
+    }
+
+    .primary-button {
+      background-color: #58a6ff !important;
+
+      &:hover {
+        background-color: #388bfd !important;
+      }
+    }
+  }
+
+  .filters-card,
+  .table-card {
+    background-color: #161b22 !important;
+    border-color: #30363d !important;
+  }
+
+  .loading-state {
+    .loading-icon {
+      color: #58a6ff !important;
+    }
+
+    p {
+      color: #8b949e !important;
+    }
+  }
+
+  .reservations-table {
+    background-color: #161b22 !important;
+
+    th {
+      background-color: #0d1117 !important;
+      color: #c9d1d9 !important;
+    }
+
+    td {
+      color: #c9d1d9 !important;
+      border-bottom-color: #21262d !important;
+    }
+
+    .table-row {
+      &:hover {
+        background-color: #21262d !important;
+      }
+    }
+
+    .confirmation-code {
+      color: #58a6ff !important;
+    }
+
+    .guest-avatar {
+      background-color: #0d1117 !important;
+
+      mat-icon {
+        color: #8b949e !important;
+      }
+    }
+
+    .guest-name {
+      color: #c9d1d9 !important;
+    }
+
+    .guest-email {
+      color: #8b949e !important;
+    }
+
+    .room-number {
+      color: #c9d1d9 !important;
+    }
+
+    .room-type {
+      color: #8b949e !important;
+    }
+
+    mat-chip {
+      &.status-confirmed {
+        background-color: rgba(88, 166, 255, 0.15) !important;
+        color: #58a6ff !important;
+      }
+
+      &.status-checked-in {
+        background-color: rgba(63, 185, 80, 0.15) !important;
+        color: #3fb950 !important;
+      }
+
+      &.status-checked-out {
+        background-color: #21262d !important;
+        color: #8b949e !important;
+      }
+
+      &.status-cancelled {
+        background-color: rgba(248, 81, 73, 0.15) !important;
+        color: #f85149 !important;
+      }
+
+      &.status-no-show {
+        background-color: rgba(210, 153, 34, 0.15) !important;
+        color: #d29922 !important;
+      }
+    }
+
+    .total-amount {
+      color: #c9d1d9 !important;
+    }
+
+    .cancel-btn mat-icon {
+      color: #f85149 !important;
+    }
+  }
+
+  .mat-mdc-paginator {
+    background-color: #0d1117 !important;
+    border-top-color: #30363d !important;
+  }
 }
+

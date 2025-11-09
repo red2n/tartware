@@ -1,0 +1,189 @@
+<div class="reservations-container">
+  <!-- Header -->
+  <div class="page-header">
+    <div>
+      <h1 class="title">Reservations</h1>
+      <p class="subtitle">Manage bookings and guest reservations</p>
+    </div>
+    <button mat-flat-button class="primary-button">
+      <mat-icon>add</mat-icon>
+      New Reservation
+    </button>
+  </div>
+
+  <!-- Filters -->
+  <mat-card class="filters-card">
+    <mat-card-content>
+      <div class="filters-row">
+        <!-- Search -->
+        <mat-form-field class="search-field" appearance="outline">
+          <mat-label>Search reservations</mat-label>
+          <input
+            matInput
+            (keyup)="applyFilter($event)"
+            placeholder="Confirmation code, guest name, room..."
+          />
+          <mat-icon matPrefix>search</mat-icon>
+        </mat-form-field>
+
+        <!-- Status Filter -->
+        <mat-form-field appearance="outline">
+          <mat-label>Status</mat-label>
+          <mat-select
+            [value]="statusFilter()"
+            (selectionChange)="filterByStatus($event.value)"
+          >
+            @for (option of statusOptions; track option.value) {
+              <mat-option [value]="option.value">{{ option.label }}</mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
+
+        <button mat-stroked-button (click)="loadReservations()">
+          <mat-icon>refresh</mat-icon>
+          Refresh
+        </button>
+      </div>
+    </mat-card-content>
+  </mat-card>
+
+  <!-- Table -->
+  <mat-card class="table-card">
+    <mat-card-content>
+      @if (isLoading()) {
+        <div class="loading-state">
+          <mat-icon class="loading-icon">refresh</mat-icon>
+          <p>Loading reservations...</p>
+        </div>
+      } @else {
+        <div class="table-container">
+          <table mat-table [dataSource]="dataSource" matSort class="reservations-table">
+            <!-- Confirmation Column -->
+            <ng-container matColumnDef="confirmation">
+              <th mat-header-cell *matHeaderCellDef mat-sort-header>Confirmation</th>
+              <td mat-cell *matCellDef="let reservation">
+                <div class="confirmation-cell">
+                  <span class="confirmation-code">{{ reservation.confirmation_code }}</span>
+                </div>
+              </td>
+            </ng-container>
+
+            <!-- Guest Column -->
+            <ng-container matColumnDef="guest">
+              <th mat-header-cell *matHeaderCellDef mat-sort-header>Guest</th>
+              <td mat-cell *matCellDef="let reservation">
+                <div class="guest-cell">
+                  <div class="guest-avatar">
+                    <mat-icon>person</mat-icon>
+                  </div>
+                  <div class="guest-info">
+                    <p class="guest-name">{{ reservation.guest_name }}</p>
+                    <p class="guest-email">{{ reservation.guest_email }}</p>
+                  </div>
+                </div>
+              </td>
+            </ng-container>
+
+            <!-- Room Column -->
+            <ng-container matColumnDef="room">
+              <th mat-header-cell *matHeaderCellDef mat-sort-header>Room</th>
+              <td mat-cell *matCellDef="let reservation">
+                <div class="room-cell">
+                  <span class="room-number">{{ reservation.room_number }}</span>
+                  <span class="room-type">{{ reservation.room_type }}</span>
+                </div>
+              </td>
+            </ng-container>
+
+            <!-- Check-in Column -->
+            <ng-container matColumnDef="checkIn">
+              <th mat-header-cell *matHeaderCellDef mat-sort-header>Check-in</th>
+              <td mat-cell *matCellDef="let reservation">
+                {{ reservation.check_in_date | date: 'MMM d, y' }}
+              </td>
+            </ng-container>
+
+            <!-- Check-out Column -->
+            <ng-container matColumnDef="checkOut">
+              <th mat-header-cell *matHeaderCellDef mat-sort-header>Check-out</th>
+              <td mat-cell *matCellDef="let reservation">
+                {{ reservation.check_out_date | date: 'MMM d, y' }}
+              </td>
+            </ng-container>
+
+            <!-- Nights Column -->
+            <ng-container matColumnDef="nights">
+              <th mat-header-cell *matHeaderCellDef mat-sort-header>Nights</th>
+              <td mat-cell *matCellDef="let reservation">
+                {{ reservation.nights }}
+              </td>
+            </ng-container>
+
+            <!-- Status Column -->
+            <ng-container matColumnDef="status">
+              <th mat-header-cell *matHeaderCellDef mat-sort-header>Status</th>
+              <td mat-cell *matCellDef="let reservation">
+                <mat-chip [class]="getStatusClass(reservation.status)">
+                  {{ getStatusLabel(reservation.status) }}
+                </mat-chip>
+              </td>
+            </ng-container>
+
+            <!-- Total Column -->
+            <ng-container matColumnDef="total">
+              <th mat-header-cell *matHeaderCellDef mat-sort-header>Total</th>
+              <td mat-cell *matCellDef="let reservation">
+                <span class="total-amount">
+                  {{ reservation.currency }} {{ reservation.total_amount | number: '1.2-2' }}
+                </span>
+              </td>
+            </ng-container>
+
+            <!-- Actions Column -->
+            <ng-container matColumnDef="actions">
+              <th mat-header-cell *matHeaderCellDef>Actions</th>
+              <td mat-cell *matCellDef="let reservation">
+                <div class="actions-cell">
+                  <button
+                    mat-icon-button
+                    (click)="viewReservation(reservation)"
+                    matTooltip="View details"
+                  >
+                    <mat-icon>visibility</mat-icon>
+                  </button>
+                  <button
+                    mat-icon-button
+                    (click)="editReservation(reservation)"
+                    matTooltip="Edit"
+                    [disabled]="reservation.status === 'cancelled' || reservation.status === 'checked_out'"
+                  >
+                    <mat-icon>edit</mat-icon>
+                  </button>
+                  <button
+                    mat-icon-button
+                    (click)="cancelReservation(reservation)"
+                    matTooltip="Cancel"
+                    [disabled]="reservation.status === 'cancelled' || reservation.status === 'checked_out'"
+                    class="cancel-btn"
+                  >
+                    <mat-icon>cancel</mat-icon>
+                  </button>
+                </div>
+              </td>
+            </ng-container>
+
+            <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+            <tr mat-row *matRowDef="let row; columns: displayedColumns;" class="table-row"></tr>
+          </table>
+
+          <mat-paginator
+            [pageSizeOptions]="[10, 25, 50, 100]"
+            [pageSize]="25"
+            showFirstLastButtons
+            aria-label="Select page of reservations"
+          ></mat-paginator>
+        </div>
+      }
+    </mat-card-content>
+  </mat-card>
+</div>

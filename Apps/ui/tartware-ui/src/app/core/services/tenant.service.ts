@@ -1,6 +1,7 @@
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import type { Observable } from 'rxjs';
+import { environment } from '../../../environments/environment';
 import type { Tenant } from '../models/tenant.model';
 
 @Injectable({
@@ -10,14 +11,14 @@ export class TenantService {
   // Inject dependencies using modern inject() function
   private http = inject(HttpClient);
 
-  private readonly API_URL = 'http://localhost:3000/v1';
+  private readonly apiUrl = environment.apiUrl;
 
   getTenants(limit = 50): Observable<Tenant[]> {
     const params = new HttpParams().set('limit', limit.toString());
-    return this.http.get<Tenant[]>(`${this.API_URL}/tenants`, { params });
+    return this.http.get<Tenant[]>(`${this.apiUrl}/tenants`, { params });
   }
 
   getTenantById(tenantId: string): Observable<Tenant> {
-    return this.http.get<Tenant>(`${this.API_URL}/tenants/${tenantId}`);
+    return this.http.get<Tenant>(`${this.apiUrl}/tenants/${tenantId}`);
   }
 }

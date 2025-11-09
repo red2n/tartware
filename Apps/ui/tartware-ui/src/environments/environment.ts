@@ -8,4 +8,5 @@ export const environment = {
   apiTimeout: 30000,
   logLevel: 'debug',
   enableDevTools: true,
+  enableDebugLogs: true,
 };

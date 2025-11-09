@@ -1,0 +1,143 @@
+<mat-sidenav-container class="pms-container">
+  <!-- Sidebar -->
+  <mat-sidenav
+    #sidenav
+    [mode]="isMobile() ? 'over' : 'side'"
+    [opened]="sidebarOpen()"
+    class="pms-sidebar"
+  >
+    <!-- Sidebar Header -->
+    <div class="sidebar-header">
+      <div class="logo-section">
+        <div class="logo-icon">
+          <mat-icon>business</mat-icon>
+        </div>
+        <div class="logo-text">
+          <h3>Tartware PMS</h3>
+          <p>{{ tenantName() }}</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Navigation Menu -->
+    <mat-nav-list class="nav-list">
+      @for (item of menuItems; track item.id) {
+        <a
+          mat-list-item
+          [routerLink]="['/pms', activeTenant()?.id, item.route]"
+          routerLinkActive="active"
+          [routerLinkActiveOptions]="{ exact: item.id === 'dashboard' }"
+          class="nav-item"
+        >
+          <mat-icon matListItemIcon [matBadge]="item.badge || undefined" matBadgeColor="warn">
+            {{ item.icon }}
+          </mat-icon>
+          <span matListItemTitle>{{ item.label }}</span>
+        </a>
+      }
+    </mat-nav-list>
+
+    <!-- Sidebar Footer -->
+    <div class="sidebar-footer">
+      <button
+        mat-stroked-button
+        (click)="switchTenant()"
+        class="switch-tenant-btn"
+      >
+        <mat-icon>swap_horiz</mat-icon>
+        <span>Switch Tenant</span>
+      </button>
+    </div>
+  </mat-sidenav>
+
+  <!-- Main Content -->
+  <mat-sidenav-content class="pms-content">
+    <!-- Top Bar -->
+    <mat-toolbar class="top-bar">
+      <!-- Left section -->
+      <div class="top-bar-left">
+        <button
+          mat-icon-button
+          (click)="toggleSidebar()"
+          [attr.aria-label]="sidebarOpen() ? 'Close sidebar' : 'Open sidebar'"
+          matTooltip="{{ sidebarOpen() ? 'Close' : 'Open' }} sidebar"
+        >
+          <mat-icon>{{ sidebarOpen() ? 'menu_open' : 'menu' }}</mat-icon>
+        </button>
+
+        <div class="breadcrumb">
+          <mat-icon>apartment</mat-icon>
+          <span class="tenant-name">{{ tenantName() }}</span>
+        </div>
+
+        <!-- Property Selector (for multi-property tenants) -->
+        @if (hasMultipleProperties()) {
+          <mat-form-field appearance="outline" class="property-selector">
+            <mat-label>Property</mat-label>
+            <mat-select [value]="selectedPropertyId()" (selectionChange)="switchProperty($event.value)">
+              @for (property of properties(); track property.id) {
+                <mat-option [value]="property.id">{{ property.name }}</mat-option>
+              }
+            </mat-select>
+          </mat-form-field>
+        }
+      </div>
+
+      <!-- Right section -->
+      <div class="top-bar-right">
+        <!-- Theme toggle -->
+        <button
+          mat-icon-button
+          (click)="toggleTheme()"
+          [attr.aria-label]="(themeService.isDark() ? 'Switch to light' : 'Switch to dark') + ' theme'"
+          matTooltip="{{ themeService.isDark() ? 'Light mode' : 'Dark mode' }}"
+        >
+          <mat-icon>{{ themeService.isDark() ? 'light_mode' : 'dark_mode' }}</mat-icon>
+        </button>
+
+        <!-- Notifications -->
+        <button mat-icon-button matTooltip="Notifications" [matBadge]="5" matBadgeColor="warn">
+          <mat-icon>notifications</mat-icon>
+        </button>
+
+        <!-- User menu -->
+        <button
+          mat-icon-button
+          [matMenuTriggerFor]="userMenu"
+          matTooltip="User menu"
+        >
+          <mat-icon>account_circle</mat-icon>
+        </button>
+
+        <mat-menu #userMenu="matMenu">
+          <div class="user-menu-header">
+            <mat-icon>account_circle</mat-icon>
+            <div>
+              <p class="user-name">{{ userName() }}</p>
+              <p class="user-email">{{ authContext()?.email }}</p>
+            </div>
+          </div>
+          <mat-divider></mat-divider>
+          <button mat-menu-item>
+            <mat-icon>person</mat-icon>
+            <span>Profile</span>
+          </button>
+          <button mat-menu-item>
+            <mat-icon>settings</mat-icon>
+            <span>Settings</span>
+          </button>
+          <mat-divider></mat-divider>
+          <button mat-menu-item (click)="logout()">
+            <mat-icon>logout</mat-icon>
+            <span>Logout</span>
+          </button>
+        </mat-menu>
+      </div>
+    </mat-toolbar>
+
+    <!-- Page Content -->
+    <div class="page-content">
+      <router-outlet></router-outlet>
+    </div>
+  </mat-sidenav-content>
+</mat-sidenav-container>

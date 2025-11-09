@@ -12,8 +12,9 @@ const PropertyListQuerySchema = z.object({
 
 type PropertyListQuery = z.infer<typeof PropertyListQuerySchema>;
 
+// Response schema with version as string (BigInt serialized for JSON)
 const PropertyListResponseSchema = z.array(
-  PropertyWithStatsSchema.extend({
+  PropertyWithStatsSchema.omit({ version: true }).extend({
     version: z.string(),
   }),
 );
@@ -30,8 +31,8 @@ export const registerPropertyRoutes = (app: FastifyInstance): void => {
     async (request) => {
       const { limit, tenant_id } = PropertyListQuerySchema.parse(request.query);
       const properties = await listProperties({ limit, tenantId: tenant_id });
-      const response = sanitizeForJson(properties);
-      return PropertyListResponseSchema.parse(response);
+      // Properties already have version as string from the service
+      return PropertyListResponseSchema.parse(properties);
     },
   );
 };
