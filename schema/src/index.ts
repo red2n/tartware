@@ -23,7 +23,7 @@ export * from './schemas/01-core/index.js';
 // export * from './schemas/04-financial/index.js';
 // export * from './schemas/05-operations/index.js';
 // export * from './schemas/06-integrations/index.js';
-// export * from './schemas/07-analytics/index.js';
+export * from './schemas/07-analytics/index.js';
 
 /**
  * Package metadata

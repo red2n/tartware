@@ -5,4 +5,7 @@
  * Tables: 19
  */
 
-// Export schemas as they are created
+// Dashboard schemas
+export * from './dashboard-stats.js';
+
+// Export other schemas as they are created

@@ -1,3 +1,4 @@
+import { TenantWithRelationsSchema } from "@tartware/schemas";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 
@@ -10,13 +11,19 @@ const TenantListQuerySchema = z.object({
 
 type TenantListQuery = z.infer<typeof TenantListQuerySchema>;
 
+const TenantListResponseSchema = z.array(
+  TenantWithRelationsSchema.extend({
+    version: z.string(), // BigInt serialized as string
+  }),
+);
+
 export const registerTenantRoutes = (app: FastifyInstance): void => {
   app.get<{ Querystring: TenantListQuery }>(
     "/v1/tenants",
     {
       preHandler: app.withTenantScope({
         allowMissingTenantId: true,
-        requireAnyTenantWithRole: "STAFF",
+        requireAnyTenantWithRole: "ADMIN",
       }),
     },
     async (request) => {
@@ -24,7 +31,8 @@ export const registerTenantRoutes = (app: FastifyInstance): void => {
       // Only return tenants the user has access to
       const tenantIds = Array.from(request.auth.membershipMap.keys());
       const tenants = await listTenants({ limit, tenantIds });
-      return sanitizeForJson(tenants);
+      const response = sanitizeForJson(tenants);
+      return TenantListResponseSchema.parse(response);
     },
   );
 };

@@ -5,7 +5,7 @@ import { pool } from "../lib/db.js";
 import { AUTH_USER_ID_HEADER } from "../plugins/auth-context.js";
 import { sanitizeForJson } from "../utils/sanitize.js";
 
-// Use the schema from @tartware/schemas for tenant associations
+// Use schemas from @tartware/schemas
 const AuthMembershipSchema = z.object({
   tenant_id: z.string().uuid(),
   role: TenantRoleEnum,
@@ -24,12 +24,12 @@ const AuthContextResponseSchema = z.object({
   }),
 });
 
-// Login request accepts username (from @tartware/schemas UserLoginSchema inspiration)
+// Login request - simplified for dev (username only)
 const LoginRequestSchema = z.object({
   username: z.string().min(1, "Username is required"),
 });
 
-// Login response using PublicUserSchema fields
+// Login response using PublicUserSchema from @tartware/schemas
 const LoginResponseSchema = PublicUserSchema.pick({
   id: true,
   username: true,

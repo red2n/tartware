@@ -1,26 +1,16 @@
+import {
+  type ActivityItem,
+  type DashboardStats,
+  type DashboardStatsQuery,
+  DashboardStatsQuerySchema,
+  type TaskItem,
+} from "@tartware/schemas";
 import type { FastifyInstance } from "fastify";
-import { z } from "zod";
 import { query } from "../lib/db.js";
-
-const DashboardStatsQuerySchema = z.object({
-  tenant_id: z.string().uuid(),
-  property_id: z
-    .string()
-    .optional()
-    .refine(
-      (val) =>
-        !val ||
-        val === "all" ||
-        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val),
-      { message: "property_id must be a valid UUID or 'all'" },
-    ),
-});
-
-type DashboardStatsQuery = z.infer<typeof DashboardStatsQuerySchema>;
 
 export const registerDashboardRoutes = (app: FastifyInstance): void => {
   // Dashboard stats endpoint
-  app.get<{ Querystring: DashboardStatsQuery }>(
+  app.get<{ Querystring: DashboardStatsQuery; Reply: DashboardStats }>(
     "/v1/dashboard/stats",
     {
       preHandler: app.withTenantScope({
@@ -28,7 +18,7 @@ export const registerDashboardRoutes = (app: FastifyInstance): void => {
         minRole: "STAFF",
       }),
     },
-    async (request) => {
+    async (request): Promise<DashboardStats> => {
       const { tenant_id, property_id } = DashboardStatsQuerySchema.parse(request.query);
 
       // Treat "all" as undefined (no property filter)
@@ -147,7 +137,7 @@ export const registerDashboardRoutes = (app: FastifyInstance): void => {
   );
 
   // Recent activity endpoint
-  app.get<{ Querystring: DashboardStatsQuery }>(
+  app.get<{ Querystring: DashboardStatsQuery; Reply: ActivityItem[] }>(
     "/v1/dashboard/activity",
     {
       preHandler: app.withTenantScope({
@@ -155,7 +145,7 @@ export const registerDashboardRoutes = (app: FastifyInstance): void => {
         minRole: "STAFF",
       }),
     },
-    async (request) => {
+    async (request): Promise<ActivityItem[]> => {
       const { tenant_id, property_id } = DashboardStatsQuerySchema.parse(request.query);
 
       // Treat "all" as undefined (no property filter)
@@ -193,12 +183,12 @@ export const registerDashboardRoutes = (app: FastifyInstance): void => {
       const activityParams = effectivePropertyId ? [tenant_id, effectivePropertyId] : [tenant_id];
       const activityResult = await query(activityQuery, activityParams);
 
-      return activityResult.rows;
+      return activityResult.rows as ActivityItem[];
     },
   );
 
   // Upcoming tasks endpoint
-  app.get<{ Querystring: DashboardStatsQuery }>(
+  app.get<{ Querystring: DashboardStatsQuery; Reply: TaskItem[] }>(
     "/v1/dashboard/tasks",
     {
       preHandler: app.withTenantScope({
@@ -206,7 +196,7 @@ export const registerDashboardRoutes = (app: FastifyInstance): void => {
         minRole: "STAFF",
       }),
     },
-    async (request) => {
+    async (request): Promise<TaskItem[]> => {
       const { tenant_id, property_id } = DashboardStatsQuerySchema.parse(request.query);
 
       // Treat "all" as undefined (no property filter)
@@ -278,7 +268,7 @@ export const registerDashboardRoutes = (app: FastifyInstance): void => {
       const tasksParams = effectivePropertyId ? [tenant_id, effectivePropertyId] : [tenant_id];
       const tasksResult = await query(tasksQuery, tasksParams);
 
-      return tasksResult.rows;
+      return tasksResult.rows as TaskItem[];
     },
   );
 };
