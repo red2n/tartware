@@ -1,10 +1,9 @@
-import { TenantRoleEnum, PublicUserSchema } from "@tartware/schemas";
+import { PublicUserSchema, TenantRoleEnum } from "@tartware/schemas";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
-
+import { pool } from "../lib/db.js";
 import { AUTH_USER_ID_HEADER } from "../plugins/auth-context.js";
 import { sanitizeForJson } from "../utils/sanitize.js";
-import { pool } from "../lib/db.js";
 
 // Use the schema from @tartware/schemas for tenant associations
 const AuthMembershipSchema = z.object({
@@ -51,7 +50,7 @@ export const registerAuthRoutes = (app: FastifyInstance): void => {
       `SELECT id, email, first_name, last_name, username, is_active
        FROM users
        WHERE username = $1`,
-      [username]
+      [username],
     );
 
     if (userResult.rows.length === 0) {
@@ -75,7 +74,7 @@ export const registerAuthRoutes = (app: FastifyInstance): void => {
       `SELECT uta.tenant_id, uta.role, uta.is_active, uta.permissions
        FROM user_tenant_associations uta
        WHERE uta.user_id = $1 AND uta.deleted_at IS NULL`,
-      [user.id]
+      [user.id],
     );
 
     const memberships = membershipsResult.rows.map((row) => ({

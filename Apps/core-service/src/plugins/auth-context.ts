@@ -1,19 +1,18 @@
-import fp from "fastify-plugin";
 import type {
   FastifyPluginAsync,
   FastifyReply,
   FastifyRequest,
   preHandlerHookHandler,
 } from "fastify";
-
-import {
-  type AuthContext,
-  type RolePriorityMap,
-  type TenantMembership,
-  type TenantScopeDecorator,
-  type TenantScopeOptions,
-} from "../types/auth.js";
+import fp from "fastify-plugin";
 import { getActiveUserTenantMemberships } from "../services/user-tenant-association-service.js";
+import type {
+  AuthContext,
+  RolePriorityMap,
+  TenantMembership,
+  TenantScopeDecorator,
+  TenantScopeOptions,
+} from "../types/auth.js";
 
 export const AUTH_USER_ID_HEADER = "x-user-id";
 
@@ -38,7 +37,8 @@ const createAuthContext = (userId: string | null, memberships: TenantMembership[
     return currentPriority >= requiredPriority;
   };
 
-  const getMembership = (tenantId: string): TenantMembership | undefined => membershipMap.get(tenantId);
+  const getMembership = (tenantId: string): TenantMembership | undefined =>
+    membershipMap.get(tenantId);
 
   return {
     userId,

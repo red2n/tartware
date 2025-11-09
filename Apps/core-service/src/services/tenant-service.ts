@@ -1,9 +1,7 @@
-import {
-	type TenantWithRelations,
-	TenantWithRelationsSchema,
-} from "@tartware/schemas";import { query } from "../lib/db.js";
-import { normalizePhoneNumber } from "../utils/phone.js";
+import type { TenantWithRelations } from "@tartware/schemas";
+import { query } from "../lib/db.js";
 import { TENANT_LIST_SQL } from "../sql/tenant-queries.js";
+import { normalizePhoneNumber } from "../utils/phone.js";
 
 type TenantRow = {
   id: string;
@@ -43,8 +41,8 @@ const mapRowToTenant = (row: TenantRow): TenantWithRelations => {
     id: row.id,
     name: row.name,
     slug: row.slug,
-    type: row.type as TenantWithRelations['type'],
-    status: row.status as TenantWithRelations['status'],
+    type: row.type as TenantWithRelations["type"],
+    status: row.status as TenantWithRelations["status"],
     email: row.email,
     phone: normalizePhoneNumber(row.phone),
     website: row.website ?? undefined,
@@ -57,8 +55,8 @@ const mapRowToTenant = (row: TenantRow): TenantWithRelations => {
     tax_id: row.tax_id ?? undefined,
     business_license: row.business_license ?? undefined,
     registration_number: row.registration_number ?? undefined,
-    config: row.config as TenantWithRelations['config'],
-    subscription: row.subscription as TenantWithRelations['subscription'],
+    config: row.config as TenantWithRelations["config"],
+    subscription: row.subscription as TenantWithRelations["subscription"],
     metadata: row.metadata ?? undefined,
     created_at: row.created_at,
     updated_at: row.updated_at ?? undefined,
@@ -72,16 +70,18 @@ const mapRowToTenant = (row: TenantRow): TenantWithRelations => {
   };
 };
 
-export const listTenants = async (options: { limit?: number; tenantIds?: string[] } = {}): Promise<TenantWithRelations[]> => {
+export const listTenants = async (
+  options: { limit?: number; tenantIds?: string[] } = {},
+): Promise<TenantWithRelations[]> => {
   const limit = options.limit ?? 50;
   const tenantIds = options.tenantIds ?? [];
 
   // If tenantIds filter is provided, use it
   if (tenantIds.length > 0) {
-    const placeholders = tenantIds.map((_, i) => `$${i + 2}`).join(', ');
+    const placeholders = tenantIds.map((_, i) => `$${i + 2}`).join(", ");
     const filteredQuery = TENANT_LIST_SQL.replace(
-      'WHERE COALESCE(t.is_deleted, false) = false AND t.deleted_at IS NULL',
-      `WHERE COALESCE(t.is_deleted, false) = false AND t.deleted_at IS NULL AND t.id IN (${placeholders})`
+      "WHERE COALESCE(t.is_deleted, false) = false AND t.deleted_at IS NULL",
+      `WHERE COALESCE(t.is_deleted, false) = false AND t.deleted_at IS NULL AND t.id IN (${placeholders})`,
     );
     const { rows } = await query<TenantRow>(filteredQuery, [limit, ...tenantIds]);
     return rows.map(mapRowToTenant);

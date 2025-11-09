@@ -1,15 +1,19 @@
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { query } from "../lib/db.js";
-import { ReservationStatusEnum } from "@tartware/schemas";
-import type { Reservations, Guest } from "@tartware/schemas";
 
 const DashboardStatsQuerySchema = z.object({
   tenant_id: z.string().uuid(),
-  property_id: z.string().optional().refine(
-    (val) => !val || val === "all" || /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val),
-    { message: "property_id must be a valid UUID or 'all'" }
-  ),
+  property_id: z
+    .string()
+    .optional()
+    .refine(
+      (val) =>
+        !val ||
+        val === "all" ||
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val),
+      { message: "property_id must be a valid UUID or 'all'" },
+    ),
 });
 
 type DashboardStatsQuery = z.infer<typeof DashboardStatsQuerySchema>;
@@ -36,7 +40,7 @@ export const registerDashboardRoutes = (app: FastifyInstance): void => {
         : `SELECT COUNT(*) as total_rooms FROM rooms WHERE tenant_id = $1 AND is_deleted = false`;
       const roomsParams = effectivePropertyId ? [tenant_id, effectivePropertyId] : [tenant_id];
       const roomsResult = await query<{ total_rooms: string }>(roomsQuery, roomsParams);
-      const totalRooms = parseInt(roomsResult.rows[0]?.total_rooms || "0");
+      const totalRooms = parseInt(roomsResult.rows[0]?.total_rooms || "0", 10);
 
       // Get occupied rooms count (reservations with check-in today or before, check-out today or after)
       const occupiedQuery = effectivePropertyId
@@ -59,7 +63,7 @@ export const registerDashboardRoutes = (app: FastifyInstance): void => {
            AND is_deleted = false`;
       const occupiedParams = effectivePropertyId ? [tenant_id, effectivePropertyId] : [tenant_id];
       const occupiedResult = await query<{ occupied_rooms: string }>(occupiedQuery, occupiedParams);
-      const occupiedRooms = parseInt(occupiedResult.rows[0]?.occupied_rooms || "0");
+      const occupiedRooms = parseInt(occupiedResult.rows[0]?.occupied_rooms || "0", 10);
 
       // Calculate occupancy rate
       const occupancyRate = totalRooms > 0 ? Math.round((occupiedRooms / totalRooms) * 100) : 0;
@@ -101,9 +105,12 @@ export const registerDashboardRoutes = (app: FastifyInstance): void => {
            AND check_in_date = CURRENT_DATE
            AND is_deleted = false`;
       const checkInsParams = effectivePropertyId ? [tenant_id, effectivePropertyId] : [tenant_id];
-      const checkInsResult = await query<{ total: string; pending: string }>(checkInsQuery, checkInsParams);
-      const checkInsTotal = parseInt(checkInsResult.rows[0]?.total || "0");
-      const checkInsPending = parseInt(checkInsResult.rows[0]?.pending || "0");
+      const checkInsResult = await query<{ total: string; pending: string }>(
+        checkInsQuery,
+        checkInsParams,
+      );
+      const checkInsTotal = parseInt(checkInsResult.rows[0]?.total || "0", 10);
+      const checkInsPending = parseInt(checkInsResult.rows[0]?.pending || "0", 10);
 
       // Get check-outs today
       const checkOutsQuery = effectivePropertyId
@@ -123,9 +130,12 @@ export const registerDashboardRoutes = (app: FastifyInstance): void => {
            AND check_out_date = CURRENT_DATE
            AND is_deleted = false`;
       const checkOutsParams = effectivePropertyId ? [tenant_id, effectivePropertyId] : [tenant_id];
-      const checkOutsResult = await query<{ total: string; pending: string }>(checkOutsQuery, checkOutsParams);
-      const checkOutsTotal = parseInt(checkOutsResult.rows[0]?.total || "0");
-      const checkOutsPending = parseInt(checkOutsResult.rows[0]?.pending || "0");
+      const checkOutsResult = await query<{ total: string; pending: string }>(
+        checkOutsQuery,
+        checkOutsParams,
+      );
+      const checkOutsTotal = parseInt(checkOutsResult.rows[0]?.total || "0", 10);
+      const checkOutsPending = parseInt(checkOutsResult.rows[0]?.pending || "0", 10);
 
       return {
         occupancy: { rate: occupancyRate, change: 5, trend: "up" as const },
@@ -133,7 +143,7 @@ export const registerDashboardRoutes = (app: FastifyInstance): void => {
         checkIns: { total: checkInsTotal, pending: checkInsPending },
         checkOuts: { total: checkOutsTotal, pending: checkOutsPending },
       };
-    }
+    },
   );
 
   // Recent activity endpoint
@@ -184,7 +194,7 @@ export const registerDashboardRoutes = (app: FastifyInstance): void => {
       const activityResult = await query(activityQuery, activityParams);
 
       return activityResult.rows;
-    }
+    },
   );
 
   // Upcoming tasks endpoint
@@ -269,6 +279,6 @@ export const registerDashboardRoutes = (app: FastifyInstance): void => {
       const tasksResult = await query(tasksQuery, tasksParams);
 
       return tasksResult.rows;
-    }
+    },
   );
 };

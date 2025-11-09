@@ -3,7 +3,6 @@ import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 
 import { listProperties } from "../services/property-service.js";
-import { sanitizeForJson } from "../utils/sanitize.js";
 
 const PropertyListQuerySchema = z.object({
   limit: z.coerce.number().int().positive().max(100).default(50),

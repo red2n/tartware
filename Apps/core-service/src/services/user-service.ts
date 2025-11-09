@@ -1,8 +1,8 @@
 import { type UserWithTenants, UserWithTenantsSchema } from "@tartware/schemas";
 
 import { query } from "../lib/db.js";
-import { normalizePhoneNumber } from "../utils/phone.js";
 import { USER_LIST_SQL } from "../sql/user-queries.js";
+import { normalizePhoneNumber } from "../utils/phone.js";
 
 type RawTenantEntry = {
   tenant_id: string;

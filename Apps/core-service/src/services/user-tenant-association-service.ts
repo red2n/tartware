@@ -1,15 +1,15 @@
 import {
-	type UserTenantAssociationWithDetails,
-	UserTenantAssociationWithDetailsSchema,
-	TenantRoleEnum,
+  TenantRoleEnum,
+  type UserTenantAssociationWithDetails,
+  UserTenantAssociationWithDetailsSchema,
 } from "@tartware/schemas";
 
 import { query } from "../lib/db.js";
-import type { TenantMembership } from "../types/auth.js";
 import {
   ACTIVE_MEMBERSHIPS_SQL,
   ASSOCIATION_LIST_SQL,
 } from "../sql/user-tenant-association-queries.js";
+import type { TenantMembership } from "../types/auth.js";
 
 type AssociationRow = {
   id: string;
@@ -101,7 +101,9 @@ export const listUserTenantAssociations = async (
   return rows.map(mapRowToAssociation);
 };
 
-export const getActiveUserTenantMemberships = async (userId: string): Promise<TenantMembership[]> => {
+export const getActiveUserTenantMemberships = async (
+  userId: string,
+): Promise<TenantMembership[]> => {
   const { rows } = await query<{
     tenant_id: string;
     role: string;

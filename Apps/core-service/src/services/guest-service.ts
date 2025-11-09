@@ -1,9 +1,9 @@
 import { type GuestWithStats, GuestWithStatsSchema } from "@tartware/schemas";
 
 import { query } from "../lib/db.js";
+import { GUEST_LIST_SQL } from "../sql/guest-queries.js";
 import { toNumberOrFallback } from "../utils/numbers.js";
 import { normalizePhoneNumber } from "../utils/phone.js";
-import { GUEST_LIST_SQL } from "../sql/guest-queries.js";
 
 const DEFAULT_ADDRESS = {
   street: "",
@@ -102,7 +102,6 @@ const normalizeCommunicationPreferences = (
       ? preferences.post
       : DEFAULT_COMMUNICATION_PREFERENCES.post,
 });
-
 
 type GuestRow = {
   id: string;
