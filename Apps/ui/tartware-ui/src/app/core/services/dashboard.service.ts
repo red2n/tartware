@@ -1,6 +1,7 @@
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
-import { type Observable } from 'rxjs';
+import type { ActivityItem, DashboardStats, TaskItem } from '@tartware/schemas';
+import type { Observable } from 'rxjs';
 import { environment } from '../../../environments/environment';
 
 /**
@@ -28,73 +29,27 @@ export class DashboardService {
   /**
    * Get recent activity
    */
-  getRecentActivity(tenantId: string, propertyId?: string, limit = 10): Observable<Activity[]> {
+  getRecentActivity(tenantId: string, propertyId?: string, limit = 10): Observable<ActivityItem[]> {
     const params = new HttpParams()
       .set('tenant_id', tenantId)
       .set('property_id', propertyId || 'all')
       .set('limit', limit.toString());
 
-    return this.http.get<Activity[]>(`${this.apiUrl}/dashboard/activity`, { params });
+    return this.http.get<ActivityItem[]>(`${this.apiUrl}/dashboard/activity`, { params });
   }
 
   /**
    * Get upcoming tasks
    */
-  getUpcomingTasks(tenantId: string, propertyId?: string, limit = 10): Observable<Task[]> {
+  getUpcomingTasks(tenantId: string, propertyId?: string, limit = 10): Observable<TaskItem[]> {
     const params = new HttpParams()
       .set('tenant_id', tenantId)
       .set('property_id', propertyId || 'all')
       .set('limit', limit.toString());
 
-    return this.http.get<Task[]>(`${this.apiUrl}/dashboard/tasks`, { params });
+    return this.http.get<TaskItem[]>(`${this.apiUrl}/dashboard/tasks`, { params });
   }
 }
 
-/**
- * Dashboard statistics interface
- */
-export interface DashboardStats {
-  occupancy: {
-    rate: number;
-    change: number;
-    trend: 'up' | 'down' | 'neutral';
-  };
-  revenue: {
-    today: number;
-    change: number;
-    trend: 'up' | 'down' | 'neutral';
-    currency: string;
-  };
-  checkIns: {
-    total: number;
-    pending: number;
-  };
-  checkOuts: {
-    total: number;
-    pending: number;
-  };
-}
-
-/**
- * Activity item interface
- */
-export interface Activity {
-  id: string;
-  type: string;
-  title: string;
-  description: string;
-  timestamp: string;
-  icon: string;
-}
-
-/**
- * Task item interface
- */
-export interface Task {
-  id: string;
-  title: string;
-  description: string;
-  due_time: string;
-  priority: 'low' | 'medium' | 'high' | 'urgent';
-  icon: string;
-}
+// Re-export types from @tartware/schemas for convenience
+export type { ActivityItem, DashboardStats, TaskItem } from '@tartware/schemas';
