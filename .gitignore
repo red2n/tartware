@@ -266,7 +266,6 @@ data/postgres/
 
 # Node modules (if any frontend tools are added)
 node_modules/
-package-lock.json
 
 # ============================================================================
 # Documentation Build
