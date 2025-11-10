@@ -1,5 +1,9 @@
 # Tartware PMS - Property Management System
 
+![Core Service CI](https://github.com/tartware/tartware/actions/workflows/build-core.yml/badge.svg?branch=main)
+![UI CI](https://github.com/tartware/tartware/actions/workflows/build-ui.yml/badge.svg?branch=main)
+![Schema CI](https://github.com/tartware/tartware/actions/workflows/build-schema.yml/badge.svg?branch=main)
+
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-336791.svg)](https://www.postgresql.org/)
 [![Docker](https://img.shields.io/badge/Docker-Ready-2496ED.svg)](https://www.docker.com/)
