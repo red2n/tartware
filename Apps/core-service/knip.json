@@ -1,5 +1,7 @@
 {
   "$schema": "https://unpkg.com/knip@5/schema.json",
   "project": ["src/**/*.ts"],
-  "ignoreDependencies": ["@tartware/schemas", "pg", "@types/pg", "pino", "pino-pretty", "vitest", "@vitest/coverage-v8", "vite-tsconfig-paths", "dotenv"]
+  "ignore": ["src/services/tenant-cache-service.ts", "src/services/property-cache-service.ts"],
+  "ignoreDependencies": ["@tartware/schemas", "pg", "@types/pg", "pino", "pino-pretty", "redis", "ioredis", "@types/ioredis"],
+  "ignoreExportsUsedInFile": true
 }

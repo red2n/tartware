@@ -30,9 +30,29 @@ services:
     networks:
       - tartware_network
 
+  redis:
+    image: redis:7-alpine
+    container_name: tartware-redis
+    restart: always
+    command: redis-server --requirepass redis_password --maxmemory 256mb --maxmemory-policy allkeys-lru
+    ports:
+      - "6379:6379"
+    volumes:
+      - tartware_redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks:
+      - tartware_network
+
 volumes:
   tartware_postgres_data:
     name: tartware_postgres_data
+    driver: local
+  tartware_redis_data:
+    name: tartware_redis_data
     driver: local
 
 networks:

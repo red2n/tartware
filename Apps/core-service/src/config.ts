@@ -43,4 +43,18 @@ export const config = {
     max: toNumber(env.DB_POOL_MAX, 10),
     idleTimeoutMillis: toNumber(env.DB_POOL_IDLE_TIMEOUT_MS, 30000),
   },
+  redis: {
+    host: env.REDIS_HOST ?? "127.0.0.1",
+    port: toNumber(env.REDIS_PORT, 6379),
+    password: env.REDIS_PASSWORD,
+    db: toNumber(env.REDIS_DB, 0),
+    keyPrefix: env.REDIS_KEY_PREFIX ?? "tartware:",
+    enabled: toBoolean(env.REDIS_ENABLED, true),
+    ttl: {
+      default: toNumber(env.REDIS_TTL_DEFAULT, 3600), // 1 hour
+      user: toNumber(env.REDIS_TTL_USER, 1800), // 30 minutes
+      tenant: toNumber(env.REDIS_TTL_TENANT, 3600), // 1 hour
+      bloom: toNumber(env.REDIS_TTL_BLOOM, 86400), // 24 hours
+    },
+  },
 };

@@ -1,8 +1,8 @@
 import { PublicUserSchema, TenantRoleEnum } from "@tartware/schemas";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
-import { pool } from "../lib/db.js";
 import { AUTH_USER_ID_HEADER } from "../plugins/auth-context.js";
+import { userCacheService } from "../services/user-cache-service.js";
 import { sanitizeForJson } from "../utils/sanitize.js";
 
 // Use schemas from @tartware/schemas
@@ -45,53 +45,31 @@ export const registerAuthRoutes = (app: FastifyInstance): void => {
   app.post("/v1/auth/login", async (request, reply) => {
     const { username } = LoginRequestSchema.parse(request.body);
 
-    // Look up user by username
-    const userResult = await pool.query(
-      `SELECT id, email, first_name, last_name, username, is_active
-       FROM users
-       WHERE username = $1`,
-      [username],
-    );
+    // Use cache service with Bloom filter and cache layers
+    const userWithMemberships = await userCacheService.getUserWithMemberships(username);
 
-    if (userResult.rows.length === 0) {
+    if (!userWithMemberships) {
       return reply.status(404).send({
         error: "User not found",
         message: `No user found with username: ${username}`,
       });
     }
 
-    const user = userResult.rows[0];
-
-    if (!user.is_active) {
+    if (!userWithMemberships.is_active) {
       return reply.status(403).send({
         error: "Account inactive",
         message: "This account is not active",
       });
     }
 
-    // Get user's tenant memberships
-    const membershipsResult = await pool.query(
-      `SELECT uta.tenant_id, uta.role, uta.is_active, uta.permissions
-       FROM user_tenant_associations uta
-       WHERE uta.user_id = $1 AND uta.deleted_at IS NULL`,
-      [user.id],
-    );
-
-    const memberships = membershipsResult.rows.map((row) => ({
-      tenant_id: row.tenant_id,
-      role: row.role,
-      is_active: row.is_active,
-      permissions: row.permissions ?? {},
-    }));
-
     const responsePayload = sanitizeForJson({
-      id: user.id,
-      email: user.email,
-      first_name: user.first_name,
-      last_name: user.last_name,
-      username: user.username,
-      is_active: user.is_active,
-      memberships,
+      id: userWithMemberships.id,
+      email: userWithMemberships.email,
+      first_name: userWithMemberships.first_name,
+      last_name: userWithMemberships.last_name,
+      username: userWithMemberships.username,
+      is_active: userWithMemberships.is_active,
+      memberships: userWithMemberships.memberships,
     });
 
     return LoginResponseSchema.parse(responsePayload);
