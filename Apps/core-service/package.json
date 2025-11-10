@@ -21,7 +21,8 @@
     "biome:fix": "biome format src --write",
     "knip": "knip --tsConfig tsconfig.json",
     "knip:fix": "knip --tsConfig tsconfig.json --fix",
-    "clean": "rm -rf dist coverage vitest-report *.tsbuildinfo"
+    "clean": "rm -rf dist coverage vitest-report *.tsbuildinfo",
+    "reset:passwords": "tsx scripts/reset-default-password.ts"
   },
   "dependencies": {
     "@fastify/cors": "^8.3.0",

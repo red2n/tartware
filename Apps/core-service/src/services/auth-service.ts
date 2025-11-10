@@ -153,7 +153,8 @@ export const changeUserPassword = async (
     await pool.query(
       `UPDATE public.users
          SET password_hash = $1,
-             updated_at = NOW()
+             updated_at = NOW(),
+             version = COALESCE(version, 0) + 1
        WHERE id = $2`,
       [newHash, userId],
     );

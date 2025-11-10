@@ -4,6 +4,20 @@
 ![UI CI](https://github.com/tartware/tartware/actions/workflows/build-ui.yml/badge.svg?branch=main)
 ![Schema CI](https://github.com/tartware/tartware/actions/workflows/build-schema.yml/badge.svg?branch=main)
 
+---
+
+## 🔐 Development Password Reset
+
+If you are working in a development environment and need to reset every active user's password back to the default value (`AUTH_DEFAULT_PASSWORD`, defaulting to `ChangeMe123!`), run:
+
+```bash
+cd Apps/core-service
+npm run reset:passwords
+```
+
+This is blocked when `NODE_ENV=production`. After resetting, users will be prompted to change their password on next login.
+
+---
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-336791.svg)](https://www.postgresql.org/)
 [![Docker](https://img.shields.io/badge/Docker-Ready-2496ED.svg)](https://www.docker.com/)
