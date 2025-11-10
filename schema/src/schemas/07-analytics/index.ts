@@ -6,6 +6,6 @@
  */
 
 // Dashboard schemas
-export * from './dashboard-stats.js';
+export * from "./dashboard-stats.js";
 
 // Export other schemas as they are created

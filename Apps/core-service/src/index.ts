@@ -1,5 +1,5 @@
 import { config } from "./config.js";
-import { initRedis, closeRedis } from "./lib/redis.js";
+import { closeRedis, initRedis } from "./lib/redis.js";
 import { buildServer } from "./server.js";
 import { userCacheService } from "./services/user-cache-service.js";
 

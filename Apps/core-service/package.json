@@ -8,7 +8,7 @@
   "types": "dist/index.d.ts",
   "scripts": {
     "dev": "tsx src/index.ts",
-    "build": "npm run knip && tsc --project tsconfig.json",
+    "build": "npm run lint && npm run biome && npm run knip && tsc --project tsconfig.json",
     "start": "node dist/index.js",
     "test": "vitest run",
     "test:watch": "vitest",
@@ -20,7 +20,8 @@
     "biome": "biome check src",
     "biome:fix": "biome format src --write",
     "knip": "knip --tsConfig tsconfig.json",
-    "knip:fix": "knip --tsConfig tsconfig.json --fix"
+    "knip:fix": "knip --tsConfig tsconfig.json --fix",
+    "clean": "rm -rf dist coverage vitest-report *.tsbuildinfo"
   },
   "dependencies": {
     "@fastify/cors": "^8.3.0",
@@ -44,6 +45,7 @@
     "@biomejs/biome": "^2.2.5",
     "@types/node": "^20.11.19",
     "@types/pg": "^8.11.0",
+    "@types/bcryptjs": "^2.4.6",
     "@typescript-eslint/eslint-plugin": "^7.0.1",
     "@typescript-eslint/parser": "^7.0.1",
     "@vitest/coverage-v8": "^2.1.8",

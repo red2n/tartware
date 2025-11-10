@@ -8,7 +8,7 @@
     "schema"
   ],
   "scripts": {
-    "build": "lerna run build --stream",
+    "build": "npm run lint && npm run biome && npm run knip && lerna run build --stream",
     "build:core": "lerna run build --scope=@tartware/core-service --stream",
     "build:ui": "lerna run build --scope=tartware-ui --stream",
     "build:schema": "lerna run build --scope=@tartware/schemas --stream",
@@ -18,8 +18,10 @@
     "test:schema": "lerna run test --scope=@tartware/schemas --stream",
     "lint": "lerna run lint --stream",
     "lint:fix": "lerna run lint:fix --stream --no-bail",
+    "biome": "lerna run biome --stream",
+    "knip": "lerna run knip --stream",
     "clean": "lerna run clean --stream --no-bail",
-    "clean:all": "lerna clean -y && rm -rf node_modules package-lock.json docs/.buildinfo docs/_build",
+    "clean:all": "npm run clean && lerna clean -y && rm -rf node_modules package-lock.json dist coverage playwright-report docs/.buildinfo docs/_build",
     "dev:core": "lerna run dev --scope=@tartware/core-service --stream",
     "dev:ui": "npm start --workspace=Apps/tartware-ui",
     "validate": "npm run lint && npm run build && npm test",

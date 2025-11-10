@@ -10,8 +10,8 @@
  * - guests
  */
 
-export * from './tenants.js';
-export * from './users.js';
-export * from './user-tenant-associations.js';
-export * from './properties.js';
-export * from './guests.js';
+export * from "./tenants.js";
+export * from "./users.js";
+export * from "./user-tenant-associations.js";
+export * from "./properties.js";
+export * from "./guests.js";

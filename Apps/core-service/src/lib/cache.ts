@@ -388,9 +388,7 @@ export class CacheService {
       }
 
       // Remove prefix from keys as Redis client adds it automatically
-      const keysWithoutPrefix = keys.map((key) =>
-        key.replace(config.redis.keyPrefix, ""),
-      );
+      const keysWithoutPrefix = keys.map((key) => key.replace(config.redis.keyPrefix, ""));
 
       await redis.del(...keysWithoutPrefix);
       return keys.length;

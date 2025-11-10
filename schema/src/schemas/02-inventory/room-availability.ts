@@ -5,7 +5,7 @@
  * @synchronized 2025-11-03
  */
 
-import { z } from 'zod';
+import { z } from "zod";
 
 /**
  * Complete RoomAvailability schema
@@ -18,14 +18,18 @@ export type RoomAvailability = z.infer<typeof RoomAvailabilitySchema>;
  * Schema for creating a new room availability
  */
 export const CreateRoomAvailabilitySchema = RoomAvailabilitySchema.omit({
-  // TODO: Add fields to omit for creation
+	// TODO: Add fields to omit for creation
 });
 
-export type CreateRoomAvailability = z.infer<typeof CreateRoomAvailabilitySchema>;
+export type CreateRoomAvailability = z.infer<
+	typeof CreateRoomAvailabilitySchema
+>;
 
 /**
  * Schema for updating a room availability
  */
 export const UpdateRoomAvailabilitySchema = RoomAvailabilitySchema.partial();
 
-export type UpdateRoomAvailability = z.infer<typeof UpdateRoomAvailabilitySchema>;
+export type UpdateRoomAvailability = z.infer<
+	typeof UpdateRoomAvailabilitySchema
+>;

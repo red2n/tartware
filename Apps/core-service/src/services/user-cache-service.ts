@@ -650,7 +650,7 @@ export class UserCacheService {
           role: row.role,
           is_active: row.is_active,
           permissions: row.permissions ?? {},
-        })
+        }),
       );
     } catch (error) {
       console.error(`Error fetching memberships for user ${userId}:`, error);

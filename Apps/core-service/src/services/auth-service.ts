@@ -4,6 +4,7 @@ import bcrypt from "bcryptjs";
 import { config } from "../config.js";
 import { pool } from "../lib/db.js";
 import { signAccessToken } from "../lib/jwt.js";
+
 import { userCacheService } from "./user-cache-service.js";
 
 const AuthUserSchema = UserSchema.pick({

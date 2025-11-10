@@ -6,8 +6,8 @@ import type {
 } from "fastify";
 import fp from "fastify-plugin";
 
-import { getActiveUserTenantMemberships } from "../services/user-tenant-association-service.js";
 import { extractBearerToken, verifyAccessToken } from "../lib/jwt.js";
+import { getActiveUserTenantMemberships } from "../services/user-tenant-association-service.js";
 import type {
   AuthContext,
   RolePriorityMap,

@@ -54,11 +54,13 @@
     "CHANGELOG.md"
   ],
   "scripts": {
-    "build": "npm run knip && tsc",
+    "build": "npm run lint && npm run biome && npm run knip && tsc",
     "dev": "tsc --watch",
     "test": "vitest",
     "test:ui": "vitest --ui",
     "test:coverage": "vitest --coverage",
+    "biome": "biome lint src",
+    "biome:fix": "biome lint src --write",
     "knip": "knip",
     "knip:fix": "knip --fix",
     "lint": "eslint src/**/*.ts",
@@ -69,7 +71,7 @@
     "generate": "tsx src/utilities/schema-generator.ts",
     "sync-check": "tsx src/utilities/sync-checker.ts",
     "validate-db": "tsx src/utilities/db-validator.ts",
-    "clean": "rm -rf dist",
+    "clean": "rm -rf dist *.tsbuildinfo",
     "prepublishOnly": "npm run clean && npm run build && npm test"
   },
   "keywords": [
@@ -109,6 +111,7 @@
     "eslint": "^8.56.0",
     "eslint-config-prettier": "^9.1.0",
     "eslint-plugin-import": "^2.29.1",
+    "@biomejs/biome": "^2.3.4",
     "knip": "^5.67.0",
     "pg": "^8.11.3",
     "prettier": "^3.2.5",
