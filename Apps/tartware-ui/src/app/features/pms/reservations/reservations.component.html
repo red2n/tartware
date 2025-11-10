@@ -26,8 +26,8 @@
 
       <!-- Status Filter -->
       <div class="relative" style="min-width: 240px;">
-        <label class="absolute -top-2.5 left-3 bg-white px-1 text-xs text-gray-600 z-10">Status</label>
         <mat-form-field appearance="outline" class="w-full">
+          <mat-label>Status</mat-label>
           <mat-select
             [value]="statusFilter()"
             (selectionChange)="filterByStatus($event.value)"

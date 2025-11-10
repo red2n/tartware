@@ -1,5 +1,6 @@
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
+
 import { isRedisHealthy } from "../lib/redis.js";
 
 const HealthResponseSchema = z.object({

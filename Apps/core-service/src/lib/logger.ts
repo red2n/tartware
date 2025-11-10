@@ -23,7 +23,7 @@ const sharedLoggerOptions: LoggerOptions = {
   transport: transportOptions,
 };
 
-export const logger = pino(sharedLoggerOptions);
+// export const logger = pino(sharedLoggerOptions); // Reserved for future use
 export const fastifyLoggerOptions: LoggerOptions = {
   ...sharedLoggerOptions,
   transport: transportOptions,

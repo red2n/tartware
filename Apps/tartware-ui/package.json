@@ -36,7 +36,7 @@
     "@angular/platform-browser-dynamic": "^18.2.0",
     "@angular/router": "^18.2.0",
     "@angular/service-worker": "^18.2.14",
-    "@tartware/schemas": "file:../../../schema",
+    "@tartware/schemas": "file:../../schema",
     "ag-grid-angular": "^34.3.1",
     "ag-grid-community": "^34.3.1",
     "autoprefixer": "^10.4.21",

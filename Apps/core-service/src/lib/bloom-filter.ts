@@ -83,7 +83,9 @@
  */
 
 import type { Redis } from "ioredis";
+
 import { config } from "../config.js";
+
 import { getRedis } from "./redis.js";
 
 /**
@@ -280,26 +282,22 @@ export class BloomFilter {
  * Username Bloom Filter - specialized for username existence checks
  */
 export class UsernameBloomFilter extends BloomFilter {
-  constructor() {
+  private static instance: UsernameBloomFilter;
+
+  private constructor() {
     super("usernames", {
       hashFunctions: 4,
       bitArraySize: 100000, // Support ~10k usernames with <1% false positive rate
     });
   }
-}
 
-/**
- * Tenant Bloom Filter - specialized for tenant existence checks
- */
-export class TenantBloomFilter extends BloomFilter {
-  constructor() {
-    super("tenants", {
-      hashFunctions: 3,
-      bitArraySize: 10000, // Support ~1k tenants
-    });
+  public static getInstance(): UsernameBloomFilter {
+    if (!UsernameBloomFilter.instance) {
+      UsernameBloomFilter.instance = new UsernameBloomFilter();
+    }
+    return UsernameBloomFilter.instance;
   }
 }
 
-// Singleton instances
-export const usernameBloomFilter = new UsernameBloomFilter();
-export const tenantBloomFilter = new TenantBloomFilter();
+// Singleton instance
+export const usernameBloomFilter = UsernameBloomFilter.getInstance();

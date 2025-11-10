@@ -1,6 +1,7 @@
 import { PublicUserSchema, TenantRoleEnum } from "@tartware/schemas";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
+
 import { AUTH_USER_ID_HEADER } from "../plugins/auth-context.js";
 import { userCacheService } from "../services/user-cache-service.js";
 import { sanitizeForJson } from "../utils/sanitize.js";

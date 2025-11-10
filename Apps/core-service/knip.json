@@ -1,7 +1,7 @@
 {
   "$schema": "https://unpkg.com/knip@5/schema.json",
   "project": ["src/**/*.ts"],
-  "ignore": ["src/services/tenant-cache-service.ts", "src/services/property-cache-service.ts"],
-  "ignoreDependencies": ["@tartware/schemas", "pg", "@types/pg", "pino", "pino-pretty", "redis", "ioredis", "@types/ioredis"],
+  "ignoreDependencies": ["@tartware/schemas", "@biomejs/biome", "tsx", "pino-pretty", "redis"],
+  "ignoreBinaries": ["tsx", "tsc", "vitest", "biome", "knip"],
   "ignoreExportsUsedInFile": true
 }

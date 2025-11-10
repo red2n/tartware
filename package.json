@@ -1,0 +1,43 @@
+{
+  "name": "tartware-monorepo",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Tartware Property Management System - Monorepo",
+  "workspaces": [
+    "Apps/*",
+    "schema"
+  ],
+  "scripts": {
+    "build": "lerna run build --stream",
+    "build:core": "lerna run build --scope=@tartware/core-service --stream",
+    "build:ui": "lerna run build --scope=tartware-ui --stream",
+    "build:schema": "lerna run build --scope=@tartware/schemas --stream",
+    "test": "lerna run test --stream",
+    "test:core": "lerna run test --scope=@tartware/core-service --stream",
+    "test:ui": "lerna run test --scope=tartware-ui --stream",
+    "test:schema": "lerna run test --scope=@tartware/schemas --stream",
+    "lint": "lerna run lint --stream",
+    "lint:fix": "lerna run lint:fix --stream --no-bail",
+    "clean": "lerna run clean --stream --no-bail",
+    "clean:all": "lerna clean -y && rm -rf node_modules package-lock.json docs/.buildinfo docs/_build",
+    "dev:core": "lerna run dev --scope=@tartware/core-service --stream",
+    "dev:ui": "npm start --workspace=Apps/tartware-ui",
+    "validate": "npm run lint && npm run build && npm test",
+    "postinstall": "echo 'Monorepo dependencies installed successfully'"
+  },
+  "devDependencies": {
+    "lerna": "^8.1.9"
+  },
+  "keywords": [
+    "property-management",
+    "pms",
+    "hospitality",
+    "monorepo"
+  ],
+  "author": "Tartware Team",
+  "license": "UNLICENSED",
+  "engines": {
+    "node": ">=20.0.0",
+    "npm": ">=10.0.0"
+  }
+}

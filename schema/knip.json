@@ -3,6 +3,8 @@
   "project": ["src/**/*.ts"],
   "ignore": ["dist/**", "node_modules/**", "coverage/**", "src/utilities/**"],
   "ignoreExportsUsedInFile": true,
+  "ignoreDependencies": ["prettier", "tsx"],
+  "ignoreBinaries": ["tsc", "knip", "prettier", "tsx"],
   "vitest": {
     "entry": ["tests/**/*.test.ts"]
   }

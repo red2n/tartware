@@ -6,6 +6,7 @@ import {
   type TaskItem,
 } from "@tartware/schemas";
 import type { FastifyInstance } from "fastify";
+
 import { query } from "../lib/db.js";
 
 export const registerDashboardRoutes = (app: FastifyInstance): void => {

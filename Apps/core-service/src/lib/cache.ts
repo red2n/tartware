@@ -54,7 +54,9 @@
  */
 
 import type { Redis } from "ioredis";
+
 import { config } from "../config.js";
+
 import { getRedis } from "./redis.js";
 
 /**

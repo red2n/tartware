@@ -100,8 +100,9 @@
  * ```
  */
 
-import { z } from "zod";
 import { UserSchema } from "@tartware/schemas";
+import { z } from "zod";
+
 import { config } from "../config.js";
 import { usernameBloomFilter } from "../lib/bloom-filter.js";
 import { cacheService } from "../lib/cache.js";

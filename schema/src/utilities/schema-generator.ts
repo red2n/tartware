@@ -6,11 +6,12 @@
  * Usage: tsx src/utilities/schema-generator.ts [category]
  */
 
-import { Client } from 'pg';
 import * as fs from 'fs/promises';
 import * as path from 'path';
-import { fileURLToPath } from 'url';
 import { dirname } from 'path';
+import { fileURLToPath } from 'url';
+
+import { Client } from 'pg';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -281,7 +282,7 @@ async function generateSchema(tableName: string, category: string): Promise<void
   const baseSchemaImports = new Set();
   const enumImports = new Set();
 
-  let schemaFields: string[] = [];
+  const schemaFields: string[] = [];
 
   for (const col of columns) {
     const { column_name, data_type, udt_name, is_nullable } = col;
