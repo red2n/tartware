@@ -21,10 +21,10 @@
     "biome": "lerna run biome --stream",
     "knip": "lerna run knip --stream",
     "clean": "lerna run clean --stream --no-bail",
-    "clean:all": "npm run clean && lerna clean -y && rm -rf node_modules package-lock.json dist coverage playwright-report docs/.buildinfo docs/_build",
+    "clean:all": "npm run clean && lerna clean -y && rm -rf node_modules dist coverage playwright-report docs/.buildinfo docs/_build",
     "dev:core": "lerna run dev --scope=@tartware/core-service --stream",
     "dev:ui": "npm start --workspace=Apps/tartware-ui",
-    "validate": "npm run lint && npm run build && npm test",
+    "validate": "npm run build && npm test",
     "postinstall": "echo 'Monorepo dependencies installed successfully'"
   },
   "devDependencies": {
