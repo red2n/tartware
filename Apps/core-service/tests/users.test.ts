@@ -28,8 +28,8 @@ describe("Users Endpoint", () => {
        LIMIT 1`,
     );
     if (managerResult.rows.length > 0) {
-      managerUserId = managerResult.rows[0].user_id;
-      managerTenantId = managerResult.rows[0].tenant_id;
+      managerUserId = managerResult.rows[0]?.user_id ?? null;
+      managerTenantId = managerResult.rows[0]?.tenant_id ?? null;
     }
 
     // Get ADMIN user with tenant
@@ -43,8 +43,8 @@ describe("Users Endpoint", () => {
        LIMIT 1`,
     );
     if (adminResult.rows.length > 0) {
-      adminUserId = adminResult.rows[0].user_id;
-      adminTenantId = adminResult.rows[0].tenant_id;
+      adminUserId = adminResult.rows[0]?.user_id ?? null;
+      adminTenantId = adminResult.rows[0]?.tenant_id ?? null;
     }
 
     // Get STAFF user with tenant
@@ -58,8 +58,8 @@ describe("Users Endpoint", () => {
        LIMIT 1`,
     );
     if (staffResult.rows.length > 0) {
-      staffUserId = staffResult.rows[0].user_id;
-      staffTenantId = staffResult.rows[0].tenant_id;
+      staffUserId = staffResult.rows[0]?.user_id ?? null;
+      staffTenantId = staffResult.rows[0]?.tenant_id ?? null;
     }
 
     // Get different tenant for unauthorized tests
@@ -73,7 +73,7 @@ describe("Users Endpoint", () => {
       [managerTenantId ?? "00000000-0000-0000-0000-000000000000"],
     );
     if (otherTenantResult.rows.length > 0) {
-      otherTenantId = otherTenantResult.rows[0].id;
+      otherTenantId = otherTenantResult.rows[0]?.id ?? null;
     }
   });
 

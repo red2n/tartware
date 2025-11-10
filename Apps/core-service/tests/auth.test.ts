@@ -1,12 +1,11 @@
 import { describe, it, expect, beforeAll } from "vitest";
 import { buildServer } from "../src/server.js";
 import type { FastifyInstance } from "fastify";
-import { TEST_USER_ID, TEST_TENANT_ID } from "./mocks/db.js";
+import { TEST_USER_ID } from "./mocks/db.js";
 
 describe("Auth Context Endpoint", () => {
   let app: FastifyInstance;
   const testUserId = TEST_USER_ID;
-  const testTenantId = TEST_TENANT_ID;
 
   beforeAll(async () => {
     app = buildServer();

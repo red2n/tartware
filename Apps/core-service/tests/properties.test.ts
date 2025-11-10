@@ -27,8 +27,8 @@ describe("Properties Endpoint", () => {
        LIMIT 1`,
     );
     if (staffResult.rows.length > 0) {
-      staffUserId = staffResult.rows[0].user_id;
-      staffTenantId = staffResult.rows[0].tenant_id;
+      staffUserId = staffResult.rows[0]?.user_id ?? null;
+      staffTenantId = staffResult.rows[0]?.tenant_id ?? null;
     }
 
     // Get MANAGER user with tenant
@@ -42,8 +42,8 @@ describe("Properties Endpoint", () => {
        LIMIT 1`,
     );
     if (managerResult.rows.length > 0) {
-      managerUserId = managerResult.rows[0].user_id;
-      managerTenantId = managerResult.rows[0].tenant_id;
+      managerUserId = managerResult.rows[0]?.user_id ?? null;
+      managerTenantId = managerResult.rows[0]?.tenant_id ?? null;
     }
 
     // Get VIEWER user
@@ -56,7 +56,7 @@ describe("Properties Endpoint", () => {
        LIMIT 1`,
     );
     if (viewerResult.rows.length > 0) {
-      viewerUserId = viewerResult.rows[0].user_id;
+      viewerUserId = viewerResult.rows[0]?.user_id ?? null;
     }
 
     // Get a different tenant for unauthorized tests
@@ -70,7 +70,7 @@ describe("Properties Endpoint", () => {
       [staffTenantId ?? "00000000-0000-0000-0000-000000000000"],
     );
     if (otherTenantResult.rows.length > 0) {
-      otherTenantId = otherTenantResult.rows[0].id;
+      otherTenantId = otherTenantResult.rows[0]?.id ?? null;
     }
   });
 

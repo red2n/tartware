@@ -27,8 +27,8 @@ describe("User-Tenant Associations Endpoint", () => {
        LIMIT 1`,
     );
     if (adminResult.rows.length > 0) {
-      adminUserId = adminResult.rows[0].user_id;
-      adminTenantId = adminResult.rows[0].tenant_id;
+      adminUserId = adminResult.rows[0]?.user_id ?? null;
+      adminTenantId = adminResult.rows[0]?.tenant_id ?? null;
     }
 
     // Get OWNER user with tenant
@@ -42,8 +42,8 @@ describe("User-Tenant Associations Endpoint", () => {
        LIMIT 1`,
     );
     if (ownerResult.rows.length > 0) {
-      ownerUserId = ownerResult.rows[0].user_id;
-      ownerTenantId = ownerResult.rows[0].tenant_id;
+      ownerUserId = ownerResult.rows[0]?.user_id ?? null;
+      ownerTenantId = ownerResult.rows[0]?.tenant_id ?? null;
     }
 
     // Get MANAGER user
@@ -56,7 +56,7 @@ describe("User-Tenant Associations Endpoint", () => {
        LIMIT 1`,
     );
     if (managerResult.rows.length > 0) {
-      managerUserId = managerResult.rows[0].user_id;
+      managerUserId = managerResult.rows[0]?.user_id ?? null;
     }
 
     // Get different tenant
@@ -70,7 +70,7 @@ describe("User-Tenant Associations Endpoint", () => {
       [adminTenantId ?? "00000000-0000-0000-0000-000000000000"],
     );
     if (otherTenantResult.rows.length > 0) {
-      otherTenantId = otherTenantResult.rows[0].id;
+      otherTenantId = otherTenantResult.rows[0]?.id ?? null;
     }
   });
 

@@ -29,8 +29,8 @@ describe("Guests Endpoint", () => {
        LIMIT 1`,
     );
     if (staffResult.rows.length > 0) {
-      staffUserId = staffResult.rows[0].user_id;
-      staffTenantId = staffResult.rows[0].tenant_id;
+      staffUserId = staffResult.rows[0]?.user_id ?? null;
+      staffTenantId = staffResult.rows[0]?.tenant_id ?? null;
     }
 
     // Get MANAGER user
@@ -44,8 +44,8 @@ describe("Guests Endpoint", () => {
        LIMIT 1`,
     );
     if (managerResult.rows.length > 0) {
-      managerUserId = managerResult.rows[0].user_id;
-      managerTenantId = managerResult.rows[0].tenant_id;
+      managerUserId = managerResult.rows[0]?.user_id ?? null;
+      managerTenantId = managerResult.rows[0]?.tenant_id ?? null;
     }
 
     // Get VIEWER user
@@ -58,7 +58,7 @@ describe("Guests Endpoint", () => {
        LIMIT 1`,
     );
     if (viewerResult.rows.length > 0) {
-      viewerUserId = viewerResult.rows[0].user_id;
+      viewerUserId = viewerResult.rows[0]?.user_id ?? null;
     }
 
     // Get different tenant
@@ -72,7 +72,7 @@ describe("Guests Endpoint", () => {
       [staffTenantId ?? "00000000-0000-0000-0000-000000000000"],
     );
     if (otherTenantResult.rows.length > 0) {
-      otherTenantId = otherTenantResult.rows[0].id;
+      otherTenantId = otherTenantResult.rows[0]?.id ?? null;
     }
 
     // Get a guest for filter tests
@@ -87,8 +87,8 @@ describe("Guests Endpoint", () => {
         [staffTenantId],
       );
       if (guestResult.rows.length > 0) {
-        testGuestEmail = guestResult.rows[0].email;
-        testGuestPhone = guestResult.rows[0].phone;
+        testGuestEmail = guestResult.rows[0]?.email ?? null;
+        testGuestPhone = guestResult.rows[0]?.phone ?? null;
       }
     }
   });
