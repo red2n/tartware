@@ -241,7 +241,7 @@ export class PropertyCacheService {
       );
 
       if (result.rows.length === 0) return null;
-      
+
       // Validate with Zod schema from @tartware/schemas
       return CachedPropertySchema.parse(result.rows[0]);
     } catch (error) {
@@ -258,7 +258,7 @@ export class PropertyCacheService {
   private async fetchPropertyIdsByTenant(tenantId: string): Promise<string[]> {
     try {
       const result = await pool.query<{ id: string }>(
-        `SELECT id FROM properties 
+        `SELECT id FROM properties
          WHERE tenant_id = $1 AND deleted_at IS NULL
          ORDER BY property_name`,
         [tenantId]

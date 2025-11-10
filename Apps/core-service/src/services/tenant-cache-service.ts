@@ -221,7 +221,7 @@ export class TenantCacheService {
       );
 
       if (result.rows.length === 0) return null;
-      
+
       // Validate with Zod schema from @tartware/schemas
       return CachedTenantSchema.parse(result.rows[0]);
     } catch (error) {
@@ -245,7 +245,7 @@ export class TenantCacheService {
       );
 
       if (result.rows.length === 0) return null;
-      
+
       // Validate with Zod schema from @tartware/schemas
       return CachedTenantSchema.parse(result.rows[0]);
     } catch (error) {

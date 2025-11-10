@@ -51,19 +51,19 @@ export class ReservationCacheService {
 
   async getReservation(id: string): Promise<CachedReservation | null> {
     // 1. Check cache first
-    const cached = await cacheService.get<CachedReservation>(id, { 
-      prefix: this.PREFIX 
+    const cached = await cacheService.get<CachedReservation>(id, {
+      prefix: this.PREFIX
     });
     if (cached) return cached;
 
     // 2. Cache miss - query database
     const reservation = await this.fetchFromDb(id);
-    
+
     // 3. Populate cache for next request
     if (reservation) {
-      await cacheService.set(id, reservation, { 
-        prefix: this.PREFIX, 
-        ttl: this.TTL 
+      await cacheService.set(id, reservation, {
+        prefix: this.PREFIX,
+        ttl: this.TTL
       });
     }
 
@@ -75,9 +75,9 @@ export class ReservationCacheService {
       'SELECT id, guest_id, property_id, check_in, check_out, status, total_amount FROM reservations WHERE id = $1',
       [id]
     );
-    
+
     if (result.rows.length === 0) return null;
-    
+
     // Validate with Zod schema from @tartware/schemas
     return CachedReservationSchema.parse(result.rows[0]);
   }
@@ -109,8 +109,8 @@ export class TenantMappingCache {
 
   async getBySlug(slug: string): Promise<CachedTenant | null> {
     // 1. Check slug→ID mapping cache
-    const tenantId = await cacheService.get<string>(slug, { 
-      prefix: this.MAPPING_PREFIX 
+    const tenantId = await cacheService.get<string>(slug, {
+      prefix: this.MAPPING_PREFIX
     });
 
     if (tenantId) {
@@ -124,13 +124,13 @@ export class TenantMappingCache {
     // 4. Populate both caches
     if (tenant) {
       await Promise.all([
-        cacheService.set(tenant.id, tenant, { 
-          prefix: this.ENTITY_PREFIX, 
-          ttl: this.TTL 
+        cacheService.set(tenant.id, tenant, {
+          prefix: this.ENTITY_PREFIX,
+          ttl: this.TTL
         }),
-        cacheService.set(slug, tenant.id, { 
-          prefix: this.MAPPING_PREFIX, 
-          ttl: this.TTL 
+        cacheService.set(slug, tenant.id, {
+          prefix: this.MAPPING_PREFIX,
+          ttl: this.TTL
         })
       ]);
     }
@@ -144,7 +144,7 @@ export class TenantMappingCache {
       [slug]
     );
     if (result.rows.length === 0) return null;
-    
+
     // Validate with Zod schema
     return CachedTenantSchema.parse(result.rows[0]);
   }
@@ -159,8 +159,8 @@ Use for: Loading multiple entities at once (e.g., all properties for a tenant)
 export class BatchCacheService {
   async getMultiple(ids: string[]): Promise<Map<string, Entity>> {
     // 1. Try to get all from cache
-    const cached = await cacheService.mget<Entity>(ids, { 
-      prefix: "entity" 
+    const cached = await cacheService.mget<Entity>(ids, {
+      prefix: "entity"
     });
 
     // 2. Find cache misses
@@ -172,9 +172,9 @@ export class BatchCacheService {
 
       // 4. Cache them for next time
       if (dbResults.size > 0) {
-        await cacheService.mset(dbResults, { 
-          prefix: "entity", 
-          ttl: 3600 
+        await cacheService.mset(dbResults, {
+          prefix: "entity",
+          ttl: 3600
         });
 
         // 5. Merge with cached results
@@ -195,8 +195,8 @@ Use for: List of property IDs for a tenant, list of rooms for a property, etc.
 export class CollectionCacheService {
   async getItemsForParent(parentId: string): Promise<string[]> {
     // 1. Check if list is cached
-    const cached = await cacheService.get<string[]>(parentId, { 
-      prefix: "parent_items" 
+    const cached = await cacheService.get<string[]>(parentId, {
+      prefix: "parent_items"
     });
     if (cached) return cached;
 
@@ -205,9 +205,9 @@ export class CollectionCacheService {
 
     // 3. Cache the list
     if (itemIds.length > 0) {
-      await cacheService.set(parentId, itemIds, { 
-        prefix: "parent_items", 
-        ttl: 3600 
+      await cacheService.set(parentId, itemIds, {
+        prefix: "parent_items",
+        ttl: 3600
       });
     }
 
@@ -248,8 +248,8 @@ Use for: JWT tokens, session data, temporary codes, etc.
 ```typescript
 export class SessionCacheService {
   async storeSession(token: string, data: SessionData): Promise<void> {
-    await cacheService.set(token, data, { 
-      prefix: "session", 
+    await cacheService.set(token, data, {
+      prefix: "session",
       ttl: 1800 // 30 minutes
     });
   }

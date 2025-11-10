@@ -577,7 +577,7 @@ export class UserCacheService {
       );
 
       if (result.rows.length === 0) return null;
-      
+
       // Validate with Zod schema from @tartware/schemas
       return CachedUserSchema.parse(result.rows[0]);
     } catch (error) {
@@ -605,7 +605,7 @@ export class UserCacheService {
       );
 
       if (result.rows.length === 0) return null;
-      
+
       // Validate with Zod schema from @tartware/schemas
       return CachedUserSchema.parse(result.rows[0]);
     } catch (error) {
@@ -633,7 +633,7 @@ export class UserCacheService {
       );
 
       // Validate each row with Zod schema
-      return result.rows.map((row) => 
+      return result.rows.map((row) =>
         CachedMembershipSchema.parse({
           tenant_id: row.tenant_id,
           role: row.role,
