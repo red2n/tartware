@@ -92,7 +92,7 @@ export class LoginComponent implements OnDestroy {
     }
 
     const username = this.loginForm.get('username')?.value?.trim();
-    const password = this.loginForm.get('password')?.value?.toString().trim() ?? '';
+    const password = (this.loginForm.get('password')?.value ?? '').toString().trim();
     if (!username || password.length === 0) {
       this.errorMessage.set('Please provide both username and password');
       return;
@@ -107,11 +107,15 @@ export class LoginComponent implements OnDestroy {
       .subscribe({
         next: (response) => {
           this.loading.set(false);
-          if (response.memberships && response.memberships.length > 0) {
-            this.router.navigate([this.returnUrl]);
-          } else {
-            this.errorMessage.set('No tenant memberships found for this user');
+          if (response.must_change_password) {
+            this.router.navigate(['/change-password']);
+            return;
           }
+          if (!response.memberships || response.memberships.length === 0) {
+            this.errorMessage.set('No tenant memberships found for this user');
+            return;
+          }
+          this.router.navigate([this.returnUrl]);
         },
         error: (err) => {
           this.loading.set(false);

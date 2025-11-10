@@ -25,4 +25,5 @@ export interface AuthContext {
   phone?: string;
   memberships: TenantMembership[];
   authorized_tenants: string[];
+  must_change_password?: boolean;
 }

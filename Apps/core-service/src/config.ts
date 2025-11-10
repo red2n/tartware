@@ -67,5 +67,9 @@ export const config = {
       audience: env.AUTH_JWT_AUDIENCE,
       expiresInSeconds: toNumber(env.AUTH_JWT_EXPIRES_IN_SECONDS, 900),
     },
+    defaultPassword:
+      typeof env.AUTH_DEFAULT_PASSWORD === "string" && env.AUTH_DEFAULT_PASSWORD.trim().length >= 8
+        ? env.AUTH_DEFAULT_PASSWORD
+        : "ChangeMe123!",
   },
 };

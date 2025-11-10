@@ -9,6 +9,7 @@ export const TEST_PROPERTY_ID = "880e8400-e29b-41d4-a716-446655440000";
 export const TEST_USER_USERNAME = "testuser";
 export const TEST_USER_PASSWORD_HASH =
   "$2a$10$U8wfbip4Pk1ReP6u.sHcuu/mV7Xz2xvkjGF1mR5lBeRHyW/t4qxza"; // hash for Password123!
+let currentTestUserPasswordHash = TEST_USER_PASSWORD_HASH;
 
 // Role-specific test users for negative testing
 export const MANAGER_USER_ID = "550e8400-e29b-41d4-a716-446655440001";
@@ -297,12 +298,23 @@ export const query = vi.fn(async <T extends pg.QueryResultRow = pg.QueryResultRo
           email: "test@example.com",
           first_name: "Test",
           last_name: "User",
-          password_hash: TEST_USER_PASSWORD_HASH,
+          password_hash: currentTestUserPasswordHash,
           is_active: true,
         },
       ] as unknown as T[],
       rowCount: 1,
       command: "SELECT",
+      oid: 0,
+      fields: [],
+    };
+  }
+
+  if (sql.startsWith("update public.users set password_hash")) {
+    currentTestUserPasswordHash = params?.[0] as string;
+    return {
+      rows: [] as T[],
+      rowCount: 1,
+      command: "UPDATE",
       oid: 0,
       fields: [],
     };

@@ -4,8 +4,8 @@ import {
   Component,
   computed,
   inject,
-  type OnInit,
   type OnDestroy,
+  type OnInit,
   signal,
 } from '@angular/core';
 import { MatBadgeModule } from '@angular/material/badge';

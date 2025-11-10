@@ -17,6 +17,13 @@ export const routes: Routes = [
     title: 'Login - Tartware PMS',
   },
   {
+    path: 'change-password',
+    loadComponent: () =>
+      import('./features/auth/change-password.component').then((m) => m.ChangePasswordComponent),
+    canActivate: [authGuard],
+    title: 'Change Password - Tartware PMS',
+  },
+  {
     path: 'tenants',
     loadComponent: () =>
       import('./features/tenants/tenant-list.component').then((m) => m.TenantListComponent),

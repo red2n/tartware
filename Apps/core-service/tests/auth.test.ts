@@ -52,6 +52,7 @@ describe("Authentication Routes", () => {
       expect(payload.expires_in).toBeGreaterThan(0);
       expect(payload.id).toBe(TEST_USER_ID);
       expect(payload.memberships).toBeInstanceOf(Array);
+      expect(payload.must_change_password).toBe(false);
     });
 
     it("returns 401 for invalid credentials", async () => {
@@ -206,6 +207,59 @@ describe("Authentication Routes", () => {
       expect(payload.message).toBe(
         "You don't have permission to access this resource. Admin role is required.",
       );
+    });
+  });
+
+  describe("POST /v1/auth/change-password", () => {
+    const NEW_PASSWORD = "Password456!";
+
+    afterAll(async () => {
+      const revertResponse = await app.inject({
+        method: "POST",
+        url: "/v1/auth/change-password",
+        headers: buildAuthHeader(TEST_USER_ID),
+        payload: {
+          current_password: NEW_PASSWORD,
+          new_password: VALID_PASSWORD,
+        },
+      });
+
+      if (revertResponse.statusCode !== 200) {
+        console.warn("⚠ Password revert after tests did not succeed");
+      }
+    });
+
+    it("updates password and returns new token", async () => {
+      const response = await app.inject({
+        method: "POST",
+        url: "/v1/auth/change-password",
+        headers: buildAuthHeader(TEST_USER_ID),
+        payload: {
+          current_password: VALID_PASSWORD,
+          new_password: NEW_PASSWORD,
+        },
+      });
+
+      expect(response.statusCode).toBe(200);
+      const payload = JSON.parse(response.payload);
+      expect(payload.access_token).toBeDefined();
+      expect(payload.must_change_password).toBe(false);
+    });
+
+    it("rejects invalid current password", async () => {
+      const response = await app.inject({
+        method: "POST",
+        url: "/v1/auth/change-password",
+        headers: buildAuthHeader(TEST_USER_ID),
+        payload: {
+          current_password: "IncorrectPassword!",
+          new_password: NEW_PASSWORD,
+        },
+      });
+
+      expect(response.statusCode).toBe(400);
+      const payload = JSON.parse(response.payload);
+      expect(payload.error).toBe("Invalid credentials");
     });
   });
 });

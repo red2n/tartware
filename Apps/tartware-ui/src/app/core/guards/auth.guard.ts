@@ -28,6 +28,9 @@ export const authGuard: CanActivateFn = (
 
   // Check if user is authenticated using computed signal
   if (authService.isAuthenticated()) {
+    if (authService.needsPasswordChange() && state.url !== '/change-password') {
+      return router.createUrlTree(['/change-password']);
+    }
     return true;
   }
 

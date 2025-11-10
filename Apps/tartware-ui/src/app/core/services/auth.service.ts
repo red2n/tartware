@@ -21,6 +21,7 @@ export interface LoginResponse {
   access_token: string;
   token_type: string;
   expires_in: number;
+  must_change_password: boolean;
 }
 
 /**
@@ -68,6 +69,7 @@ export class AuthService {
   currentUserId = this.currentUserIdSignal.asReadonly();
   authContext = this.authContextSignal.asReadonly();
   accessToken = this.accessTokenSignal.asReadonly();
+  mustChangePassword = computed(() => Boolean(this.authContextSignal()?.must_change_password));
 
   // Computed signal for authentication status
   isAuthenticated = computed(
@@ -145,6 +147,7 @@ export class AuthService {
       last_name: response.last_name,
       memberships: response.memberships,
       authorized_tenants: [],
+      must_change_password: response.must_change_password,
     };
 
     this.authContextSignal.set(authContext);
@@ -209,6 +212,32 @@ export class AuthService {
    */
   getAccessToken(): string | null {
     return this.accessTokenSignal();
+  }
+
+  /**
+   * Whether the current session requires a password change
+   */
+  needsPasswordChange(): boolean {
+    return Boolean(this.authContextSignal()?.must_change_password);
+  }
+
+  /**
+   * Update password for the authenticated user
+   */
+  changePassword(currentPassword: string, newPassword: string): Observable<LoginResponse> {
+    if (!currentPassword?.trim() || !newPassword?.trim()) {
+      throw new Error('Both current and new passwords are required');
+    }
+
+    return this.http
+      .post<LoginResponse>(`${this.apiUrl}/auth/change-password`, {
+        current_password: currentPassword,
+        new_password: newPassword,
+      })
+      .pipe(
+        tap((response) => this.handleLoginSuccess(response)),
+        catchError((error) => this.errorHandler.handleHttpError(error))
+      );
   }
 
   /**
