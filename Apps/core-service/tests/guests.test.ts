@@ -2,6 +2,7 @@ import { describe, it, expect, beforeAll } from "vitest";
 import { buildServer } from "../src/server.js";
 import { query } from "../src/lib/db.js";
 import type { FastifyInstance } from "fastify";
+import { buildAuthHeader } from "./utils/auth.js";
 
 describe("Guests Endpoint", () => {
   let app: FastifyInstance;
@@ -103,9 +104,7 @@ describe("Guests Endpoint", () => {
       const response = await app.inject({
         method: "GET",
         url: `/v1/guests?tenant_id=${staffTenantId}&limit=10`,
-        headers: {
-          "x-user-id": staffUserId,
-        },
+        headers: buildAuthHeader(staffUserId),
       });
 
       expect(response.statusCode).toBe(200);
@@ -122,9 +121,7 @@ describe("Guests Endpoint", () => {
       const response = await app.inject({
         method: "GET",
         url: `/v1/guests?tenant_id=${managerTenantId}&limit=10`,
-        headers: {
-          "x-user-id": managerUserId,
-        },
+        headers: buildAuthHeader(managerUserId),
       });
 
       expect(response.statusCode).toBe(200);
@@ -141,9 +138,7 @@ describe("Guests Endpoint", () => {
       const response = await app.inject({
         method: "GET",
         url: `/v1/guests?tenant_id=${staffTenantId}&email=${encodeURIComponent(testGuestEmail.substring(0, 5))}`,
-        headers: {
-          "x-user-id": staffUserId,
-        },
+        headers: buildAuthHeader(staffUserId),
       });
 
       expect(response.statusCode).toBe(200);
@@ -160,9 +155,7 @@ describe("Guests Endpoint", () => {
       const response = await app.inject({
         method: "GET",
         url: `/v1/guests?tenant_id=${staffTenantId}&phone=${encodeURIComponent(testGuestPhone.substring(0, 5))}`,
-        headers: {
-          "x-user-id": staffUserId,
-        },
+        headers: buildAuthHeader(staffUserId),
       });
 
       expect(response.statusCode).toBe(200);
@@ -177,9 +170,7 @@ describe("Guests Endpoint", () => {
       const response = await app.inject({
         method: "GET",
         url: `/v1/guests?tenant_id=${staffTenantId}&vip_status=true`,
-        headers: {
-          "x-user-id": staffUserId,
-        },
+        headers: buildAuthHeader(staffUserId),
       });
 
       expect(response.statusCode).toBe(200);
@@ -196,9 +187,7 @@ describe("Guests Endpoint", () => {
       const response = await app.inject({
         method: "GET",
         url: `/v1/guests?tenant_id=${staffTenantId}&is_blacklisted=false`,
-        headers: {
-          "x-user-id": staffUserId,
-        },
+        headers: buildAuthHeader(staffUserId),
       });
 
       expect(response.statusCode).toBe(200);
@@ -213,9 +202,7 @@ describe("Guests Endpoint", () => {
       const response = await app.inject({
         method: "GET",
         url: `/v1/guests?tenant_id=${staffTenantId}&loyalty_tier=GOLD`,
-        headers: {
-          "x-user-id": staffUserId,
-        },
+        headers: buildAuthHeader(staffUserId),
       });
 
       expect(response.statusCode).toBe(200);
@@ -230,9 +217,7 @@ describe("Guests Endpoint", () => {
       const response = await app.inject({
         method: "GET",
         url: `/v1/guests?tenant_id=${staffTenantId}&limit=1`,
-        headers: {
-          "x-user-id": staffUserId,
-        },
+        headers: buildAuthHeader(staffUserId),
       });
 
       expect(response.statusCode).toBe(200);
@@ -259,9 +244,7 @@ describe("Guests Endpoint", () => {
       const response = await app.inject({
         method: "GET",
         url: `/v1/guests?tenant_id=${staffTenantId}&limit=3`,
-        headers: {
-          "x-user-id": staffUserId,
-        },
+        headers: buildAuthHeader(staffUserId),
       });
 
       expect(response.statusCode).toBe(200);
@@ -289,9 +272,7 @@ describe("Guests Endpoint", () => {
       const response = await app.inject({
         method: "GET",
         url: "/v1/guests",
-        headers: {
-          "x-user-id": staffUserId,
-        },
+        headers: buildAuthHeader(staffUserId),
       });
 
       expect(response.statusCode).toBe(400);
@@ -306,9 +287,7 @@ describe("Guests Endpoint", () => {
       const response = await app.inject({
         method: "GET",
         url: "/v1/guests?tenant_id=not-a-valid-uuid",
-        headers: {
-          "x-user-id": staffUserId,
-        },
+        headers: buildAuthHeader(staffUserId),
       });
 
       expect(response.statusCode).toBe(400);
@@ -323,9 +302,7 @@ describe("Guests Endpoint", () => {
       const response = await app.inject({
         method: "GET",
         url: `/v1/guests?tenant_id=${staffTenantId}`,
-        headers: {
-          "x-user-id": viewerUserId,
-        },
+        headers: buildAuthHeader(viewerUserId),
       });
 
       expect(response.statusCode).toBe(403);
@@ -340,9 +317,7 @@ describe("Guests Endpoint", () => {
       const response = await app.inject({
         method: "GET",
         url: `/v1/guests?tenant_id=${otherTenantId}`,
-        headers: {
-          "x-user-id": staffUserId,
-        },
+        headers: buildAuthHeader(staffUserId),
       });
 
       expect(response.statusCode).toBe(403);
@@ -357,9 +332,7 @@ describe("Guests Endpoint", () => {
       const response = await app.inject({
         method: "GET",
         url: `/v1/guests?tenant_id=${staffTenantId}&limit=-10`,
-        headers: {
-          "x-user-id": staffUserId,
-        },
+        headers: buildAuthHeader(staffUserId),
       });
 
       expect(response.statusCode).toBe(400);
@@ -374,9 +347,7 @@ describe("Guests Endpoint", () => {
       const response = await app.inject({
         method: "GET",
         url: `/v1/guests?tenant_id=${staffTenantId}&limit=0`,
-        headers: {
-          "x-user-id": staffUserId,
-        },
+        headers: buildAuthHeader(staffUserId),
       });
 
       expect(response.statusCode).toBe(400);
@@ -391,9 +362,7 @@ describe("Guests Endpoint", () => {
       const response = await app.inject({
         method: "GET",
         url: `/v1/guests?tenant_id=${staffTenantId}&limit=200`,
-        headers: {
-          "x-user-id": staffUserId,
-        },
+        headers: buildAuthHeader(staffUserId),
       });
 
       expect(response.statusCode).toBe(400);
@@ -408,9 +377,7 @@ describe("Guests Endpoint", () => {
       const response = await app.inject({
         method: "GET",
         url: `/v1/guests?tenant_id=${staffTenantId}&email=ab`,
-        headers: {
-          "x-user-id": staffUserId,
-        },
+        headers: buildAuthHeader(staffUserId),
       });
 
       expect(response.statusCode).toBe(400);
@@ -425,9 +392,7 @@ describe("Guests Endpoint", () => {
       const response = await app.inject({
         method: "GET",
         url: `/v1/guests?tenant_id=${staffTenantId}&phone=12`,
-        headers: {
-          "x-user-id": staffUserId,
-        },
+        headers: buildAuthHeader(staffUserId),
       });
 
       expect(response.statusCode).toBe(400);

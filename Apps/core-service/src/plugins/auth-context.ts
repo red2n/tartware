@@ -7,6 +7,7 @@ import type {
 import fp from "fastify-plugin";
 
 import { getActiveUserTenantMemberships } from "../services/user-tenant-association-service.js";
+import { extractBearerToken, verifyAccessToken } from "../lib/jwt.js";
 import type {
   AuthContext,
   RolePriorityMap,
@@ -14,8 +15,6 @@ import type {
   TenantScopeDecorator,
   TenantScopeOptions,
 } from "../types/auth.js";
-
-export const AUTH_USER_ID_HEADER = "x-user-id";
 
 const ROLE_PRIORITY: RolePriorityMap = {
   OWNER: 500,
@@ -137,15 +136,25 @@ const authContextPlugin: FastifyPluginAsync = async (fastify) => {
       return;
     }
 
-    const userIdHeader = request.headers[AUTH_USER_ID_HEADER];
-    if (typeof userIdHeader !== "string" || userIdHeader.trim().length === 0) {
+    const token = extractBearerToken(request.headers.authorization);
+    if (!token) {
       request.auth = createAuthContext(null, []);
       return;
     }
 
-    const userId = userIdHeader.trim();
-    const memberships = await getActiveUserTenantMemberships(userId);
-    request.auth = createAuthContext(userId, memberships);
+    const payload = verifyAccessToken(token);
+    if (!payload || !payload.sub) {
+      request.auth = createAuthContext(null, []);
+      return;
+    }
+
+    try {
+      const memberships = await getActiveUserTenantMemberships(payload.sub);
+      request.auth = createAuthContext(payload.sub, memberships);
+    } catch (error) {
+      request.log.error(error, "Failed to load tenant memberships for authenticated user");
+      request.auth = createAuthContext(payload.sub, []);
+    }
   });
 };
 

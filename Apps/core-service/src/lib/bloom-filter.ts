@@ -114,23 +114,43 @@ import { getRedis } from "./redis.js";
  * ```
  */
 export class BloomFilter {
-  private redis: Redis | null;
   private readonly filterKey: string;
   private readonly hashFunctions: number;
   private readonly bitArraySize: number;
+  private initialized = false;
 
   constructor(filterKey: string, options?: { hashFunctions?: number; bitArraySize?: number }) {
-    this.redis = getRedis();
     this.filterKey = `bloom:${filterKey}`;
     this.hashFunctions = options?.hashFunctions ?? 3;
     this.bitArraySize = options?.bitArraySize ?? 10000;
+  }
+
+  private getRedisClient(): Redis | null {
+    if (!config.redis.enabled) {
+      return null;
+    }
+    return getRedis();
+  }
+
+  private async ensureInitialized(redis: Redis): Promise<boolean> {
+    if (this.initialized) {
+      return true;
+    }
+    try {
+      const exists = await redis.exists(this.filterKey);
+      this.initialized = exists === 1;
+      return this.initialized;
+    } catch (error) {
+      console.error("Bloom filter exists check failed:", error);
+      return false;
+    }
   }
 
   /**
    * Check if Bloom filter is available
    */
   isAvailable(): boolean {
-    return this.redis !== null && config.redis.enabled;
+    return this.getRedisClient() !== null;
   }
 
   /**
@@ -149,12 +169,13 @@ export class BloomFilter {
    * Add item to Bloom filter
    */
   async add(value: string): Promise<boolean> {
-    if (!this.isAvailable() || !this.redis) {
+    const redis = this.getRedisClient();
+    if (!redis) {
       return false;
     }
 
     try {
-      const pipeline = this.redis.pipeline();
+      const pipeline = redis.pipeline();
 
       for (let i = 0; i < this.hashFunctions; i++) {
         const bitPosition = this.hash(value, i);
@@ -162,6 +183,7 @@ export class BloomFilter {
       }
 
       await pipeline.exec();
+      this.initialized = true;
       return true;
     } catch (error) {
       console.error(`Bloom filter add error for ${value}:`, error);
@@ -174,12 +196,17 @@ export class BloomFilter {
    * Returns: true = might exist (check database), false = definitely doesn't exist
    */
   async mightExist(value: string): Promise<boolean> {
-    if (!this.isAvailable() || !this.redis) {
+    const redis = this.getRedisClient();
+    if (!redis) {
       return true; // Fail open - check database if Redis unavailable
     }
 
     try {
-      const pipeline = this.redis.pipeline();
+      if (!(await this.ensureInitialized(redis))) {
+        return true;
+      }
+
+      const pipeline = redis.pipeline();
 
       for (let i = 0; i < this.hashFunctions; i++) {
         const bitPosition = this.hash(value, i);
@@ -204,12 +231,13 @@ export class BloomFilter {
    * Add multiple items to Bloom filter
    */
   async addBatch(values: string[]): Promise<boolean> {
-    if (!this.isAvailable() || !this.redis || values.length === 0) {
+    const redis = this.getRedisClient();
+    if (!redis || values.length === 0) {
       return false;
     }
 
     try {
-      const pipeline = this.redis.pipeline();
+      const pipeline = redis.pipeline();
 
       for (const value of values) {
         for (let i = 0; i < this.hashFunctions; i++) {
@@ -219,6 +247,7 @@ export class BloomFilter {
       }
 
       await pipeline.exec();
+      this.initialized = true;
       return true;
     } catch (error) {
       console.error("Bloom filter batch add error:", error);
@@ -230,12 +259,14 @@ export class BloomFilter {
    * Clear Bloom filter
    */
   async clear(): Promise<boolean> {
-    if (!this.isAvailable() || !this.redis) {
+    const redis = this.getRedisClient();
+    if (!redis) {
       return false;
     }
 
     try {
-      await this.redis.del(this.filterKey);
+      await redis.del(this.filterKey);
+      this.initialized = false;
       return true;
     } catch (error) {
       console.error("Bloom filter clear error:", error);
@@ -247,12 +278,13 @@ export class BloomFilter {
    * Check if filter exists
    */
   async exists(): Promise<boolean> {
-    if (!this.isAvailable() || !this.redis) {
+    const redis = this.getRedisClient();
+    if (!redis) {
       return false;
     }
 
     try {
-      const result = await this.redis.exists(this.filterKey);
+      const result = await redis.exists(this.filterKey);
       return result === 1;
     } catch (error) {
       console.error("Bloom filter exists error:", error);
@@ -264,12 +296,13 @@ export class BloomFilter {
    * Set expiration on filter
    */
   async expire(ttl: number): Promise<boolean> {
-    if (!this.isAvailable() || !this.redis) {
+    const redis = this.getRedisClient();
+    if (!redis) {
       return false;
     }
 
     try {
-      const result = await this.redis.expire(this.filterKey, ttl);
+      const result = await redis.expire(this.filterKey, ttl);
       return result === 1;
     } catch (error) {
       console.error("Bloom filter expire error:", error);

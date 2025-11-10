@@ -6,6 +6,9 @@ export const TEST_USER_ID = "550e8400-e29b-41d4-a716-446655440000";
 export const TEST_TENANT_ID = "660e8400-e29b-41d4-a716-446655440000";
 export const TEST_GUEST_ID = "770e8400-e29b-41d4-a716-446655440000";
 export const TEST_PROPERTY_ID = "880e8400-e29b-41d4-a716-446655440000";
+export const TEST_USER_USERNAME = "testuser";
+export const TEST_USER_PASSWORD_HASH =
+  "$2a$10$U8wfbip4Pk1ReP6u.sHcuu/mV7Xz2xvkjGF1mR5lBeRHyW/t4qxza"; // hash for Password123!
 
 // Role-specific test users for negative testing
 export const MANAGER_USER_ID = "550e8400-e29b-41d4-a716-446655440001";
@@ -96,6 +99,7 @@ export const query = vi.fn(async <T extends pg.QueryResultRow = pg.QueryResultRo
             role: "ADMIN",
             is_active: true,
             permissions: {},
+            tenant_name: "Test Tenant",
           },
         ] as unknown as T[],
         rowCount: 1,
@@ -113,6 +117,7 @@ export const query = vi.fn(async <T extends pg.QueryResultRow = pg.QueryResultRo
             role: "MANAGER",
             is_active: true,
             permissions: {},
+            tenant_name: "Test Tenant",
           },
         ] as unknown as T[],
         rowCount: 1,
@@ -130,6 +135,7 @@ export const query = vi.fn(async <T extends pg.QueryResultRow = pg.QueryResultRo
             role: "STAFF",
             is_active: true,
             permissions: {},
+            tenant_name: "Test Tenant",
           },
         ] as unknown as T[],
         rowCount: 1,
@@ -147,6 +153,7 @@ export const query = vi.fn(async <T extends pg.QueryResultRow = pg.QueryResultRo
             role: "VIEWER",
             is_active: true,
             permissions: {},
+            tenant_name: "Test Tenant",
           },
         ] as unknown as T[],
         rowCount: 1,
@@ -176,6 +183,7 @@ export const query = vi.fn(async <T extends pg.QueryResultRow = pg.QueryResultRo
             role: "ADMIN",
             is_active: true,
             permissions: {},
+            tenant_name: "Test Tenant",
             user_id: TEST_USER_ID,
           },
         ] as unknown as T[],
@@ -279,13 +287,34 @@ export const query = vi.fn(async <T extends pg.QueryResultRow = pg.QueryResultRo
     };
   }
 
+  // Authentication user lookup
+  if (sql.includes("password_hash") && sql.includes("from public.users")) {
+    return {
+      rows: [
+        {
+          id: TEST_USER_ID,
+          username: TEST_USER_USERNAME,
+          email: "test@example.com",
+          first_name: "Test",
+          last_name: "User",
+          password_hash: TEST_USER_PASSWORD_HASH,
+          is_active: true,
+        },
+      ] as unknown as T[],
+      rowCount: 1,
+      command: "SELECT",
+      oid: 0,
+      fields: [],
+    };
+  }
+
   // Mock users query
   if (sql.includes("from public.users") || sql.includes("from users")) {
     return {
       rows: [
         {
           id: TEST_USER_ID,
-          username: "testuser",
+          username: TEST_USER_USERNAME,
           email: "test@example.com",
           first_name: "Test",
           last_name: "User",

@@ -3,6 +3,7 @@ import { inject } from '@angular/core';
 import { Router } from '@angular/router';
 import { throwError } from 'rxjs';
 import { catchError } from 'rxjs/operators';
+import { AuthService } from '../services/auth.service';
 
 /**
  * List of endpoints that don't require authentication
@@ -22,23 +23,25 @@ const PUBLIC_ENDPOINTS = ['/auth/login', '/auth/register', '/auth/forgot-passwor
  */
 export const authInterceptor: HttpInterceptorFn = (req, next) => {
   const router = inject(Router);
+  const authService = inject(AuthService);
 
   // Skip authentication for public endpoints
   if (PUBLIC_ENDPOINTS.some((endpoint) => req.url.includes(endpoint))) {
     return next(req);
   }
 
-  // Get user ID from localStorage
-  const userId = localStorage.getItem('user_id');
+  // Get bearer token from auth service
+  const accessToken = authService.getAccessToken();
 
   // Clone request and add authentication header if user is logged in
-  const authReq = userId
-    ? req.clone({
-        setHeaders: {
-          'x-user-id': userId,
-        },
-      })
-    : req;
+  const authReq =
+    accessToken && accessToken.trim().length > 0
+      ? req.clone({
+          setHeaders: {
+            Authorization: `Bearer ${accessToken}`,
+          },
+        })
+      : req;
 
   // Handle the request and catch authentication errors
   return next(authReq).pipe(
@@ -46,12 +49,7 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
       // Handle 401 Unauthorized - session expired or invalid
       if (error.status === 401) {
         console.warn('Authentication failed. Redirecting to login.');
-
-        // Clear stored authentication data
-        localStorage.removeItem('user_id');
-        localStorage.removeItem('auth_context');
-
-        // Redirect to login page
+        authService.clearSession();
         router.navigate(['/login'], {
           queryParams: { returnUrl: router.url, reason: 'session-expired' },
         });

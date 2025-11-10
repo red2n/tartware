@@ -7,6 +7,7 @@ export type RolePriorityMap = Record<TenantRole, number>;
 
 export interface TenantMembership {
   tenantId: string;
+  tenantName?: string;
   role: TenantRole;
   isActive: boolean;
   permissions: Record<string, unknown>;

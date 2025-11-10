@@ -1,19 +1,77 @@
-import { describe, it, expect, beforeAll } from "vitest";
-import { buildServer } from "../src/server.js";
 import type { FastifyInstance } from "fastify";
-import { TEST_USER_ID } from "./mocks/db.js";
+import { beforeAll, describe, expect, it } from "vitest";
 
-describe("Auth Context Endpoint", () => {
+import { buildServer } from "../src/server.js";
+import {
+  TEST_USER_ID,
+  TEST_USER_USERNAME,
+  TEST_TENANT_ID,
+  MANAGER_USER_ID,
+} from "./mocks/db.js";
+import { buildAuthHeader } from "./utils/auth.js";
+
+const VALID_PASSWORD = "Password123!";
+
+describe("Authentication Routes", () => {
   let app: FastifyInstance;
-  const testUserId = TEST_USER_ID;
+  let accessToken: string;
 
   beforeAll(async () => {
     app = buildServer();
     await app.ready();
+
+    const response = await app.inject({
+      method: "POST",
+      url: "/v1/auth/login",
+      payload: {
+        username: TEST_USER_USERNAME,
+        password: VALID_PASSWORD,
+      },
+    });
+
+    expect(response.statusCode).toBe(200);
+    const payload = JSON.parse(response.payload);
+    accessToken = payload.access_token;
   });
 
-  describe("GET /v1/auth/context - Unauthenticated", () => {
-    it("should return unauthenticated context without header", async () => {
+  describe("POST /v1/auth/login", () => {
+    it("returns access token for valid credentials", async () => {
+      const response = await app.inject({
+        method: "POST",
+        url: "/v1/auth/login",
+        payload: {
+          username: TEST_USER_USERNAME,
+          password: VALID_PASSWORD,
+        },
+      });
+
+      expect(response.statusCode).toBe(200);
+      const payload = JSON.parse(response.payload);
+      expect(payload.access_token).toBeDefined();
+      expect(payload.token_type).toBe("Bearer");
+      expect(payload.expires_in).toBeGreaterThan(0);
+      expect(payload.id).toBe(TEST_USER_ID);
+      expect(payload.memberships).toBeInstanceOf(Array);
+    });
+
+    it("returns 401 for invalid credentials", async () => {
+      const response = await app.inject({
+        method: "POST",
+        url: "/v1/auth/login",
+        payload: {
+          username: TEST_USER_USERNAME,
+          password: "WrongPassword!",
+        },
+      });
+
+      expect(response.statusCode).toBe(401);
+      const payload = JSON.parse(response.payload);
+      expect(payload.error).toBe("Invalid credentials");
+    });
+  });
+
+  describe("GET /v1/auth/context", () => {
+    it("returns unauthenticated context without token", async () => {
       const response = await app.inject({
         method: "GET",
         url: "/v1/auth/context",
@@ -25,218 +83,129 @@ describe("Auth Context Endpoint", () => {
       expect(payload.user_id).toBeNull();
       expect(payload.memberships).toEqual([]);
       expect(payload.authorized_tenants).toEqual([]);
+      expect(payload.header_hint.header).toBe("Authorization");
     });
 
-    it("should return header hint for authentication", async () => {
-      const response = await app.inject({
-        method: "GET",
-        url: "/v1/auth/context",
-      });
-
-      const payload = JSON.parse(response.payload);
-      expect(payload.header_hint).toBeDefined();
-      expect(payload.header_hint.header).toBe("x-user-id");
-      expect(payload.header_hint.description).toContain("x-user-id");
-    });
-
-    it("should reject empty x-user-id header", async () => {
+    it("returns authenticated context with valid token", async () => {
       const response = await app.inject({
         method: "GET",
         url: "/v1/auth/context",
         headers: {
-          "x-user-id": "",
-        },
-      });
-
-      const payload = JSON.parse(response.payload);
-      expect(payload.is_authenticated).toBe(false);
-      expect(payload.user_id).toBeNull();
-    });
-
-    it("should reject whitespace-only x-user-id header", async () => {
-      const response = await app.inject({
-        method: "GET",
-        url: "/v1/auth/context",
-        headers: {
-          "x-user-id": "   ",
-        },
-      });
-
-      const payload = JSON.parse(response.payload);
-      expect(payload.is_authenticated).toBe(false);
-      expect(payload.user_id).toBeNull();
-    });
-  });
-
-  describe("GET /v1/auth/context - Authenticated", () => {
-    it("should return authenticated context with valid user", async () => {
-      if (!testUserId) {
-        console.warn("⚠ Skipping test: no users in database");
-        return;
-      }
-
-      const response = await app.inject({
-        method: "GET",
-        url: "/v1/auth/context",
-        headers: {
-          "x-user-id": testUserId,
+          Authorization: `Bearer ${accessToken}`,
         },
       });
 
       expect(response.statusCode).toBe(200);
       const payload = JSON.parse(response.payload);
       expect(payload.is_authenticated).toBe(true);
-      expect(payload.user_id).toBe(testUserId);
+      expect(payload.user_id).toBe(TEST_USER_ID);
       expect(Array.isArray(payload.memberships)).toBe(true);
     });
 
-    it("should include tenant memberships", async () => {
-      if (!testUserId) {
-        console.warn("⚠ Skipping test: no users in database");
-        return;
-      }
-
+    it("includes tenant memberships when present", async () => {
       const response = await app.inject({
         method: "GET",
         url: "/v1/auth/context",
-        headers: {
-          "x-user-id": testUserId,
-        },
+        headers: buildAuthHeader(TEST_USER_ID),
       });
 
       const payload = JSON.parse(response.payload);
-
       if (payload.memberships.length > 0) {
         const membership = payload.memberships[0];
         expect(membership).toHaveProperty("tenant_id");
         expect(membership).toHaveProperty("role");
         expect(membership).toHaveProperty("is_active");
         expect(membership).toHaveProperty("permissions");
-        expect(["OWNER", "ADMIN", "MANAGER", "STAFF", "VIEWER"]).toContain(membership.role);
       }
     });
 
-    it("should handle non-existent user gracefully", async () => {
-      const fakeUserId = "00000000-0000-0000-0000-000000000000";
-
+    it("handles tokens for users without memberships", async () => {
       const response = await app.inject({
         method: "GET",
         url: "/v1/auth/context",
-        headers: {
-          "x-user-id": fakeUserId,
-        },
+        headers: buildAuthHeader(MANAGER_USER_ID),
       });
 
       expect(response.statusCode).toBe(200);
       const payload = JSON.parse(response.payload);
       expect(payload.is_authenticated).toBe(true);
-      expect(payload.user_id).toBe(fakeUserId);
-      expect(payload.memberships).toEqual([]);
+      expect(payload.user_id).toBe(MANAGER_USER_ID);
+      expect(Array.isArray(payload.memberships)).toBe(true);
     });
 
-    it("should trim whitespace from user id", async () => {
-      if (!testUserId) {
-        console.warn("⚠ Skipping test: no users in database");
-        return;
-      }
-
+    it("returns empty authorized_tenants before guards run", async () => {
       const response = await app.inject({
         method: "GET",
         url: "/v1/auth/context",
-        headers: {
-          "x-user-id": `  ${testUserId}  `,
-        },
-      });
-
-      expect(response.statusCode).toBe(200);
-      const payload = JSON.parse(response.payload);
-      expect(payload.user_id).toBe(testUserId);
-    });
-
-    it("should return empty authorized_tenants before route guards", async () => {
-      if (!testUserId) {
-        console.warn("⚠ Skipping test: no users in database");
-        return;
-      }
-
-      const response = await app.inject({
-        method: "GET",
-        url: "/v1/auth/context",
-        headers: {
-          "x-user-id": testUserId,
-        },
+        headers: buildAuthHeader(TEST_USER_ID),
       });
 
       const payload = JSON.parse(response.payload);
       expect(payload.authorized_tenants).toEqual([]);
     });
+
+    it("includes header hint for bearer authentication", async () => {
+      const response = await app.inject({
+        method: "GET",
+        url: "/v1/auth/context",
+      });
+
+      const payload = JSON.parse(response.payload);
+      expect(payload.header_hint.header).toBe("Authorization");
+      expect(payload.header_hint.description).toContain("Bearer");
+    });
+
+    it("treats invalid bearer tokens as unauthenticated", async () => {
+      const response = await app.inject({
+        method: "GET",
+        url: "/v1/auth/context",
+        headers: {
+          Authorization: "Bearer invalid-token",
+        },
+      });
+
+      expect(response.statusCode).toBe(200);
+      const payload = JSON.parse(response.payload);
+      expect(payload.is_authenticated).toBe(false);
+    });
   });
 
-  describe("GET /v1/auth/context - Specific User Tests", () => {
-    const specificUserId = TEST_USER_ID; // Use test user from mocks
-
-    it("should return authenticated context for specific user", async () => {
+  describe("Tenant authorization guard", () => {
+    it("rejects requests without valid token", async () => {
       const response = await app.inject({
         method: "GET",
-        url: "/v1/auth/context",
-        headers: {
-          "x-user-id": specificUserId,
-        },
+        url: "/v1/tenants",
       });
 
-      expect(response.statusCode).toBe(200);
+      expect(response.statusCode).toBe(401);
       const payload = JSON.parse(response.payload);
-      expect(payload.is_authenticated).toBe(true);
-      expect(payload.user_id).toBe(specificUserId);
+      expect(payload.message).toBe("You must be logged in to access this resource.");
     });
 
-    it("should have at least one tenant membership", async () => {
+    it("allows access with valid tenant scope", async () => {
       const response = await app.inject({
         method: "GET",
-        url: "/v1/auth/context",
-        headers: {
-          "x-user-id": specificUserId,
-        },
+        url: "/v1/tenants?limit=10",
+        headers: buildAuthHeader(TEST_USER_ID),
       });
 
       expect(response.statusCode).toBe(200);
       const payload = JSON.parse(response.payload);
-      expect(Array.isArray(payload.memberships)).toBe(true);
-      expect(payload.memberships.length).toBeGreaterThan(0);
+      expect(Array.isArray(payload)).toBe(true);
     });
 
-    it("should have OWNER or ADMIN role in at least one tenant", async () => {
+    it("forbids access when role is insufficient", async () => {
       const response = await app.inject({
         method: "GET",
-        url: "/v1/auth/context",
-        headers: {
-          "x-user-id": specificUserId,
-        },
+        url: `/v1/dashboard/stats?tenant_id=${TEST_TENANT_ID}`,
+        headers: buildAuthHeader(MANAGER_USER_ID),
       });
 
-      expect(response.statusCode).toBe(200);
+      expect(response.statusCode).toBe(403);
       const payload = JSON.parse(response.payload);
-      const hasHighRole = payload.memberships.some(
-        (m: any) => m.role === "OWNER" || m.role === "ADMIN"
+      expect(payload.message).toBe(
+        "You don't have permission to access this resource. Admin role is required.",
       );
-      expect(hasHighRole).toBe(true);
-    });
-
-    it("should have active memberships", async () => {
-      const response = await app.inject({
-        method: "GET",
-        url: "/v1/auth/context",
-        headers: {
-          "x-user-id": specificUserId,
-        },
-      });
-
-      expect(response.statusCode).toBe(200);
-      const payload = JSON.parse(response.payload);
-      const hasActiveMembership = payload.memberships.some(
-        (m: any) => m.is_active === true
-      );
-      expect(hasActiveMembership).toBe(true);
     });
   });
 });

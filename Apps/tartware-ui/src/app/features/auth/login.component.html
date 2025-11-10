@@ -22,11 +22,31 @@
           placeholder="Enter your username"
           [disabled]="loading()"
           [class.input-error]="getUsernameError()"
+          autocomplete="username"
         >
         @if (getUsernameError()) {
           <div class="field-error">
             <mat-icon>error_outline</mat-icon>
             <span>{{ getUsernameError() }}</span>
+          </div>
+        }
+      </div>
+
+      <div class="form-group">
+        <label for="password">Password</label>
+        <input
+          id="password"
+          type="password"
+          formControlName="password"
+          placeholder="Enter your password"
+          [disabled]="loading()"
+          [class.input-error]="getPasswordError()"
+          autocomplete="current-password"
+        >
+        @if (getPasswordError()) {
+          <div class="field-error">
+            <mat-icon>error_outline</mat-icon>
+            <span>{{ getPasswordError() }}</span>
           </div>
         }
       </div>

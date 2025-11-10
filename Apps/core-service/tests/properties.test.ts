@@ -2,6 +2,7 @@ import { describe, it, expect, beforeAll } from "vitest";
 import { buildServer } from "../src/server.js";
 import { query } from "../src/lib/db.js";
 import type { FastifyInstance } from "fastify";
+import { buildAuthHeader } from "./utils/auth.js";
 
 describe("Properties Endpoint", () => {
   let app: FastifyInstance;
@@ -84,9 +85,7 @@ describe("Properties Endpoint", () => {
       const response = await app.inject({
         method: "GET",
         url: `/v1/properties?tenant_id=${staffTenantId}&limit=10`,
-        headers: {
-          "x-user-id": staffUserId,
-        },
+        headers: buildAuthHeader(staffUserId),
       });
 
       expect(response.statusCode).toBe(200);
@@ -103,9 +102,7 @@ describe("Properties Endpoint", () => {
       const response = await app.inject({
         method: "GET",
         url: `/v1/properties?tenant_id=${managerTenantId}&limit=10`,
-        headers: {
-          "x-user-id": managerUserId,
-        },
+        headers: buildAuthHeader(managerUserId),
       });
 
       expect(response.statusCode).toBe(200);
@@ -120,9 +117,7 @@ describe("Properties Endpoint", () => {
       const response = await app.inject({
         method: "GET",
         url: `/v1/properties?tenant_id=${staffTenantId}&limit=3`,
-        headers: {
-          "x-user-id": staffUserId,
-        },
+        headers: buildAuthHeader(staffUserId),
       });
 
       expect(response.statusCode).toBe(200);
@@ -139,9 +134,7 @@ describe("Properties Endpoint", () => {
       const response = await app.inject({
         method: "GET",
         url: `/v1/properties?tenant_id=${staffTenantId}&limit=1`,
-        headers: {
-          "x-user-id": staffUserId,
-        },
+        headers: buildAuthHeader(staffUserId),
       });
 
       expect(response.statusCode).toBe(200);
@@ -178,9 +171,7 @@ describe("Properties Endpoint", () => {
       const response = await app.inject({
         method: "GET",
         url: "/v1/properties",
-        headers: {
-          "x-user-id": staffUserId,
-        },
+        headers: buildAuthHeader(staffUserId),
       });
 
       expect(response.statusCode).toBe(400);
@@ -195,9 +186,7 @@ describe("Properties Endpoint", () => {
       const response = await app.inject({
         method: "GET",
         url: "/v1/properties?tenant_id=invalid-uuid",
-        headers: {
-          "x-user-id": staffUserId,
-        },
+        headers: buildAuthHeader(staffUserId),
       });
 
       expect(response.statusCode).toBe(400);
@@ -212,9 +201,7 @@ describe("Properties Endpoint", () => {
       const response = await app.inject({
         method: "GET",
         url: `/v1/properties?tenant_id=${staffTenantId}`,
-        headers: {
-          "x-user-id": viewerUserId,
-        },
+        headers: buildAuthHeader(viewerUserId),
       });
 
       expect(response.statusCode).toBe(403);
@@ -229,9 +216,7 @@ describe("Properties Endpoint", () => {
       const response = await app.inject({
         method: "GET",
         url: `/v1/properties?tenant_id=${otherTenantId}`,
-        headers: {
-          "x-user-id": staffUserId,
-        },
+        headers: buildAuthHeader(staffUserId),
       });
 
       expect(response.statusCode).toBe(403);
@@ -246,9 +231,7 @@ describe("Properties Endpoint", () => {
       const response = await app.inject({
         method: "GET",
         url: `/v1/properties?tenant_id=${staffTenantId}&limit=-1`,
-        headers: {
-          "x-user-id": staffUserId,
-        },
+        headers: buildAuthHeader(staffUserId),
       });
 
       expect(response.statusCode).toBe(400);
@@ -263,9 +246,7 @@ describe("Properties Endpoint", () => {
       const response = await app.inject({
         method: "GET",
         url: `/v1/properties?tenant_id=${staffTenantId}&limit=101`,
-        headers: {
-          "x-user-id": staffUserId,
-        },
+        headers: buildAuthHeader(staffUserId),
       });
 
       expect(response.statusCode).toBe(400);
@@ -282,9 +263,7 @@ describe("Properties Endpoint", () => {
       const response = await app.inject({
         method: "GET",
         url: `/v1/properties?tenant_id=${nonExistentTenant}`,
-        headers: {
-          "x-user-id": staffUserId,
-        },
+        headers: buildAuthHeader(staffUserId),
       });
 
       expect(response.statusCode).toBe(403);

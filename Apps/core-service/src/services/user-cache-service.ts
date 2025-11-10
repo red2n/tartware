@@ -129,6 +129,7 @@ export type CachedUser = z.infer<typeof CachedUserSchema>;
  */
 export const CachedMembershipSchema = z.object({
   tenant_id: z.string().uuid(),
+  tenant_name: z.string().min(1).optional(),
   role: z.string(),
   is_active: z.boolean(),
   permissions: z.record(z.unknown()),
@@ -627,9 +628,17 @@ export class UserCacheService {
   private async fetchMembershipsFromDb(userId: string): Promise<CachedMembership[]> {
     try {
       const result = await pool.query(
-        `SELECT tenant_id, role, is_active, permissions
-         FROM user_tenant_associations
-         WHERE user_id = $1 AND deleted_at IS NULL`,
+        `SELECT
+           uta.tenant_id,
+           uta.role,
+           uta.is_active,
+           uta.permissions,
+           t.name AS tenant_name
+         FROM user_tenant_associations uta
+         LEFT JOIN tenants t ON t.id = uta.tenant_id
+         WHERE uta.user_id = $1
+           AND COALESCE(uta.is_deleted, false) = false
+           AND uta.deleted_at IS NULL`,
         [userId],
       );
 
@@ -637,6 +646,7 @@ export class UserCacheService {
       return result.rows.map((row) =>
         CachedMembershipSchema.parse({
           tenant_id: row.tenant_id,
+          tenant_name: row.tenant_name ?? undefined,
           role: row.role,
           is_active: row.is_active,
           permissions: row.permissions ?? {},

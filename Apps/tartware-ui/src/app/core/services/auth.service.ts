@@ -18,6 +18,9 @@ export interface LoginResponse {
   username: string;
   is_active: boolean;
   memberships: TenantMembership[];
+  access_token: string;
+  token_type: string;
+  expires_in: number;
 }
 
 /**
@@ -25,9 +28,10 @@ export interface LoginResponse {
  */
 export interface TenantMembership {
   tenant_id: string;
-  tenant_name: string;
+  tenant_name?: string;
   role: TenantRole;
   is_active: boolean;
+  permissions?: Record<string, unknown>;
 }
 
 /**
@@ -36,6 +40,7 @@ export interface TenantMembership {
 const STORAGE_KEYS = {
   USER_ID: 'user_id',
   AUTH_CONTEXT: 'auth_context',
+  ACCESS_TOKEN: 'access_token',
 } as const;
 
 /**
@@ -57,13 +62,17 @@ export class AuthService {
   // Private signals for internal state management
   private currentUserIdSignal = signal<string | null>(null);
   private authContextSignal = signal<AuthContext | null>(null);
+  private accessTokenSignal = signal<string | null>(null);
 
   // Public readonly signals for external consumption
   currentUserId = this.currentUserIdSignal.asReadonly();
   authContext = this.authContextSignal.asReadonly();
+  accessToken = this.accessTokenSignal.asReadonly();
 
   // Computed signal for authentication status
-  isAuthenticated = computed(() => this.currentUserIdSignal() !== null);
+  isAuthenticated = computed(
+    () => this.currentUserIdSignal() !== null && this.accessTokenSignal() !== null
+  );
 
   // Computed signal for user display name
   userDisplayName = computed(() => {
@@ -84,10 +93,14 @@ export class AuthService {
     try {
       const storedUserId = localStorage.getItem(STORAGE_KEYS.USER_ID);
       const storedContext = localStorage.getItem(STORAGE_KEYS.AUTH_CONTEXT);
+      const storedToken = localStorage.getItem(STORAGE_KEYS.ACCESS_TOKEN);
 
-      if (storedUserId && storedContext) {
+      if (storedUserId && storedContext && storedToken) {
         this.currentUserIdSignal.set(storedUserId);
         this.authContextSignal.set(JSON.parse(storedContext));
+        this.accessTokenSignal.set(storedToken);
+      } else {
+        this.clearStorage();
       }
     } catch (error) {
       // If stored data is corrupted, clear it
@@ -101,12 +114,16 @@ export class AuthService {
    * @param username - User's username
    * @returns Observable of login response
    */
-  login(username: string): Observable<LoginResponse> {
+  login(username: string, password: string): Observable<LoginResponse> {
     if (!username?.trim()) {
       throw new Error('Username is required');
     }
 
-    return this.http.post<LoginResponse>(`${this.apiUrl}/auth/login`, { username }).pipe(
+    if (!password?.trim()) {
+      throw new Error('Password is required');
+    }
+
+    return this.http.post<LoginResponse>(`${this.apiUrl}/auth/login`, { username, password }).pipe(
       tap((response) => this.handleLoginSuccess(response)),
       catchError((error) => this.errorHandler.handleHttpError(error))
     );
@@ -119,6 +136,7 @@ export class AuthService {
    */
   private handleLoginSuccess(response: LoginResponse): void {
     this.currentUserIdSignal.set(response.id);
+    this.accessTokenSignal.set(response.access_token);
 
     const authContext: AuthContext = {
       user_id: response.id,
@@ -130,7 +148,7 @@ export class AuthService {
     };
 
     this.authContextSignal.set(authContext);
-    this.saveToStorage(response.id, authContext);
+    this.saveToStorage(response.id, authContext, response.access_token);
   }
 
   /**
@@ -139,10 +157,11 @@ export class AuthService {
    * @param context - Authentication context
    * @private
    */
-  private saveToStorage(userId: string, context: AuthContext): void {
+  private saveToStorage(userId: string, context: AuthContext, accessToken: string): void {
     try {
       localStorage.setItem(STORAGE_KEYS.USER_ID, userId);
       localStorage.setItem(STORAGE_KEYS.AUTH_CONTEXT, JSON.stringify(context));
+      localStorage.setItem(STORAGE_KEYS.ACCESS_TOKEN, accessToken);
     } catch (error) {
       console.error('Failed to save auth state to storage:', error);
     }
@@ -155,15 +174,24 @@ export class AuthService {
   private clearStorage(): void {
     localStorage.removeItem(STORAGE_KEYS.USER_ID);
     localStorage.removeItem(STORAGE_KEYS.AUTH_CONTEXT);
+    localStorage.removeItem(STORAGE_KEYS.ACCESS_TOKEN);
+  }
+
+  /**
+   * Log out current user and redirect to login
+   */
+  clearSession(): void {
+    this.currentUserIdSignal.set(null);
+    this.authContextSignal.set(null);
+    this.accessTokenSignal.set(null);
+    this.clearStorage();
   }
 
   /**
    * Log out current user and redirect to login
    */
   logout(): void {
-    this.currentUserIdSignal.set(null);
-    this.authContextSignal.set(null);
-    this.clearStorage();
+    this.clearSession();
     this.router.navigate(['/login']);
   }
 
@@ -173,6 +201,14 @@ export class AuthService {
    */
   getUserId(): string | null {
     return this.currentUserIdSignal();
+  }
+
+  /**
+   * Get the current access token
+   * @returns Bearer token or null
+   */
+  getAccessToken(): string | null {
+    return this.accessTokenSignal();
   }
 
   /**

@@ -2,6 +2,7 @@ import { describe, it, expect, beforeAll } from "vitest";
 import { buildServer } from "../src/server.js";
 import type { FastifyInstance } from "fastify";
 import { TEST_USER_ID, MANAGER_USER_ID, STAFF_USER_ID, VIEWER_USER_ID } from "./mocks/db.js";
+import { buildAuthHeader } from "./utils/auth.js";
 
 describe("Tenants Endpoint", () => {
   let app: FastifyInstance;
@@ -22,9 +23,7 @@ describe("Tenants Endpoint", () => {
       const response = await app.inject({
         method: "GET",
         url: "/v1/tenants?limit=10",
-        headers: {
-          "x-user-id": adminUserId,
-        },
+        headers: buildAuthHeader(adminUserId),
       });
 
       expect(response.statusCode).toBe(200);
@@ -37,9 +36,7 @@ describe("Tenants Endpoint", () => {
       const response = await app.inject({
         method: "GET",
         url: "/v1/tenants?limit=5",
-        headers: {
-          "x-user-id": adminUserId,
-        },
+        headers: buildAuthHeader(adminUserId),
       });
 
       expect(response.statusCode).toBe(200);
@@ -52,9 +49,7 @@ describe("Tenants Endpoint", () => {
       const response = await app.inject({
         method: "GET",
         url: "/v1/tenants",
-        headers: {
-          "x-user-id": adminUserId,
-        },
+        headers: buildAuthHeader(adminUserId),
       });
 
       expect(response.statusCode).toBe(200);
@@ -67,9 +62,7 @@ describe("Tenants Endpoint", () => {
       const response = await app.inject({
         method: "GET",
         url: "/v1/tenants?limit=1",
-        headers: {
-          "x-user-id": adminUserId,
-        },
+        headers: buildAuthHeader(adminUserId),
       });
 
       expect(response.statusCode).toBe(200);
@@ -105,9 +98,7 @@ describe("Tenants Endpoint", () => {
       const response = await app.inject({
         method: "GET",
         url: "/v1/tenants",
-        headers: {
-          "x-user-id": managerUserId,
-        },
+        headers: buildAuthHeader(managerUserId),
       });
 
       expect(response.statusCode).toBe(403);
@@ -118,9 +109,7 @@ describe("Tenants Endpoint", () => {
       const response = await app.inject({
         method: "GET",
         url: "/v1/tenants",
-        headers: {
-          "x-user-id": staffUserId,
-        },
+        headers: buildAuthHeader(staffUserId),
       });
 
       expect(response.statusCode).toBe(403);
@@ -131,9 +120,7 @@ describe("Tenants Endpoint", () => {
       const response = await app.inject({
         method: "GET",
         url: "/v1/tenants",
-        headers: {
-          "x-user-id": viewerUserId,
-        },
+        headers: buildAuthHeader(viewerUserId),
       });
 
       expect(response.statusCode).toBe(403);
@@ -144,9 +131,7 @@ describe("Tenants Endpoint", () => {
       const response = await app.inject({
         method: "GET",
         url: "/v1/tenants?limit=abc",
-        headers: {
-          "x-user-id": adminUserId,
-        },
+        headers: buildAuthHeader(adminUserId),
       });
 
       expect(response.statusCode).toBe(400);
@@ -157,9 +142,7 @@ describe("Tenants Endpoint", () => {
       const response = await app.inject({
         method: "GET",
         url: "/v1/tenants?limit=101",
-        headers: {
-          "x-user-id": adminUserId,
-        },
+        headers: buildAuthHeader(adminUserId),
       });
 
       expect(response.statusCode).toBe(400);
@@ -170,9 +153,7 @@ describe("Tenants Endpoint", () => {
       const response = await app.inject({
         method: "GET",
         url: "/v1/tenants?limit=-5",
-        headers: {
-          "x-user-id": adminUserId,
-        },
+        headers: buildAuthHeader(adminUserId),
       });
 
       expect(response.statusCode).toBe(400);
@@ -183,9 +164,7 @@ describe("Tenants Endpoint", () => {
       const response = await app.inject({
         method: "GET",
         url: "/v1/tenants?limit=0",
-        headers: {
-          "x-user-id": adminUserId,
-        },
+        headers: buildAuthHeader(adminUserId),
       });
 
       expect(response.statusCode).toBe(400);
@@ -197,9 +176,7 @@ describe("Tenants Endpoint", () => {
       const response = await app.inject({
         method: "GET",
         url: "/v1/tenants",
-        headers: {
-          "x-user-id": fakeUserId,
-        },
+        headers: buildAuthHeader(fakeUserId),
       });
 
       expect(response.statusCode).toBe(403);
@@ -213,9 +190,7 @@ describe("Tenants Endpoint", () => {
       const response = await app.inject({
         method: "GET",
         url: "/v1/tenants",
-        headers: {
-          "x-user-id": specificUserId,
-        },
+        headers: buildAuthHeader(specificUserId),
       });
 
       expect(response.statusCode).toBe(200);
@@ -228,9 +203,7 @@ describe("Tenants Endpoint", () => {
       const response = await app.inject({
         method: "GET",
         url: "/v1/tenants?limit=25",
-        headers: {
-          "x-user-id": specificUserId,
-        },
+        headers: buildAuthHeader(specificUserId),
       });
 
       expect(response.statusCode).toBe(200);
@@ -243,9 +216,7 @@ describe("Tenants Endpoint", () => {
       const response = await app.inject({
         method: "GET",
         url: "/v1/tenants?limit=1",
-        headers: {
-          "x-user-id": specificUserId,
-        },
+        headers: buildAuthHeader(specificUserId),
       });
 
       expect(response.statusCode).toBe(200);
@@ -266,9 +237,7 @@ describe("Tenants Endpoint", () => {
       const response = await app.inject({
         method: "GET",
         url: "/v1/tenants?limit=5",
-        headers: {
-          "x-user-id": specificUserId,
-        },
+        headers: buildAuthHeader(specificUserId),
       });
 
       expect(response.statusCode).toBe(200);

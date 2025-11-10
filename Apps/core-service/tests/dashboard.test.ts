@@ -10,6 +10,7 @@ import {
   MANAGER_USER_ID,
   VIEWER_USER_ID,
 } from "./mocks/db.js";
+import { buildAuthHeader } from "./utils/auth.js";
 
 describe("Dashboard Routes", () => {
   let app: FastifyInstance;
@@ -260,7 +261,7 @@ describe("Dashboard Routes", () => {
             property_id: TEST_PROPERTY_ID,
           },
           headers: {
-            "x-user-id": STAFF_USER_ID,
+            ...buildAuthHeader(STAFF_USER_ID),
             "x-tenant-id": TEST_TENANT_ID,
           },
         });
@@ -306,7 +307,7 @@ describe("Dashboard Routes", () => {
             property_id: "all",
           },
           headers: {
-            "x-user-id": STAFF_USER_ID,
+            ...buildAuthHeader(STAFF_USER_ID),
             "x-tenant-id": TEST_TENANT_ID,
           },
         });
@@ -328,7 +329,7 @@ describe("Dashboard Routes", () => {
             property_id: TEST_PROPERTY_ID,
           },
           headers: {
-            "x-user-id": MANAGER_USER_ID,
+            ...buildAuthHeader(MANAGER_USER_ID),
             "x-tenant-id": TEST_TENANT_ID,
           },
         });
@@ -347,7 +348,7 @@ describe("Dashboard Routes", () => {
             tenant_id: TEST_TENANT_ID,
           },
           headers: {
-            "x-user-id": STAFF_USER_ID,
+            ...buildAuthHeader(STAFF_USER_ID),
             "x-tenant-id": TEST_TENANT_ID,
           },
         });
@@ -368,7 +369,7 @@ describe("Dashboard Routes", () => {
             property_id: TEST_PROPERTY_ID,
           },
           headers: {
-            "x-user-id": STAFF_USER_ID,
+            ...buildAuthHeader(STAFF_USER_ID),
             "x-tenant-id": TEST_TENANT_ID,
           },
         });
@@ -385,7 +386,7 @@ describe("Dashboard Routes", () => {
             property_id: "invalid-uuid",
           },
           headers: {
-            "x-user-id": STAFF_USER_ID,
+            ...buildAuthHeader(STAFF_USER_ID),
             "x-tenant-id": TEST_TENANT_ID,
           },
         });
@@ -401,7 +402,7 @@ describe("Dashboard Routes", () => {
             property_id: TEST_PROPERTY_ID,
           },
           headers: {
-            "x-user-id": STAFF_USER_ID,
+            ...buildAuthHeader(STAFF_USER_ID),
             "x-tenant-id": TEST_TENANT_ID,
           },
         });
@@ -431,7 +432,7 @@ describe("Dashboard Routes", () => {
             property_id: TEST_PROPERTY_ID,
           },
           headers: {
-            "x-user-id": VIEWER_USER_ID,
+            ...buildAuthHeader(VIEWER_USER_ID),
             "x-tenant-id": TEST_TENANT_ID,
           },
         });
@@ -448,7 +449,7 @@ describe("Dashboard Routes", () => {
             property_id: "other-property-id",
           },
           headers: {
-            "x-user-id": STAFF_USER_ID,
+            ...buildAuthHeader(STAFF_USER_ID),
             "x-tenant-id": TEST_TENANT_ID,
           },
         });
@@ -469,7 +470,7 @@ describe("Dashboard Routes", () => {
             property_id: TEST_PROPERTY_ID,
           },
           headers: {
-            "x-user-id": STAFF_USER_ID,
+            ...buildAuthHeader(STAFF_USER_ID),
             "x-tenant-id": TEST_TENANT_ID,
           },
         });
@@ -497,7 +498,7 @@ describe("Dashboard Routes", () => {
             property_id: "all",
           },
           headers: {
-            "x-user-id": STAFF_USER_ID,
+            ...buildAuthHeader(STAFF_USER_ID),
             "x-tenant-id": TEST_TENANT_ID,
           },
         });
@@ -516,7 +517,7 @@ describe("Dashboard Routes", () => {
             property_id: TEST_PROPERTY_ID,
           },
           headers: {
-            "x-user-id": STAFF_USER_ID,
+            ...buildAuthHeader(STAFF_USER_ID),
             "x-tenant-id": TEST_TENANT_ID,
           },
         });
@@ -537,7 +538,7 @@ describe("Dashboard Routes", () => {
             property_id: TEST_PROPERTY_ID,
           },
           headers: {
-            "x-user-id": STAFF_USER_ID,
+            ...buildAuthHeader(STAFF_USER_ID),
             "x-tenant-id": TEST_TENANT_ID,
           },
         });
@@ -567,7 +568,7 @@ describe("Dashboard Routes", () => {
             property_id: "other-property-id",
           },
           headers: {
-            "x-user-id": STAFF_USER_ID,
+            ...buildAuthHeader(STAFF_USER_ID),
             "x-tenant-id": TEST_TENANT_ID,
           },
         });
@@ -588,7 +589,7 @@ describe("Dashboard Routes", () => {
             property_id: TEST_PROPERTY_ID,
           },
           headers: {
-            "x-user-id": STAFF_USER_ID,
+            ...buildAuthHeader(STAFF_USER_ID),
             "x-tenant-id": TEST_TENANT_ID,
           },
         });
@@ -617,7 +618,7 @@ describe("Dashboard Routes", () => {
             property_id: "all",
           },
           headers: {
-            "x-user-id": STAFF_USER_ID,
+            ...buildAuthHeader(STAFF_USER_ID),
             "x-tenant-id": TEST_TENANT_ID,
           },
         });
@@ -636,7 +637,7 @@ describe("Dashboard Routes", () => {
             property_id: TEST_PROPERTY_ID,
           },
           headers: {
-            "x-user-id": STAFF_USER_ID,
+            ...buildAuthHeader(STAFF_USER_ID),
             "x-tenant-id": TEST_TENANT_ID,
           },
         });
@@ -655,7 +656,7 @@ describe("Dashboard Routes", () => {
             property_id: TEST_PROPERTY_ID,
           },
           headers: {
-            "x-user-id": STAFF_USER_ID,
+            ...buildAuthHeader(STAFF_USER_ID),
             "x-tenant-id": TEST_TENANT_ID,
           },
         });
@@ -681,7 +682,7 @@ describe("Dashboard Routes", () => {
             property_id: "invalid",
           },
           headers: {
-            "x-user-id": STAFF_USER_ID,
+            ...buildAuthHeader(STAFF_USER_ID),
             "x-tenant-id": TEST_TENANT_ID,
           },
         });
@@ -697,7 +698,7 @@ describe("Dashboard Routes", () => {
             property_id: TEST_PROPERTY_ID,
           },
           headers: {
-            "x-user-id": STAFF_USER_ID,
+            ...buildAuthHeader(STAFF_USER_ID),
             "x-tenant-id": TEST_TENANT_ID,
           },
         });
@@ -727,7 +728,7 @@ describe("Dashboard Routes", () => {
             property_id: TEST_PROPERTY_ID,
           },
           headers: {
-            "x-user-id": VIEWER_USER_ID,
+            ...buildAuthHeader(VIEWER_USER_ID),
             "x-tenant-id": TEST_TENANT_ID,
           },
         });
@@ -744,7 +745,7 @@ describe("Dashboard Routes", () => {
             property_id: "other-property-id",
           },
           headers: {
-            "x-user-id": STAFF_USER_ID,
+            ...buildAuthHeader(STAFF_USER_ID),
             "x-tenant-id": TEST_TENANT_ID,
           },
         });
@@ -764,7 +765,7 @@ describe("Dashboard Routes", () => {
           property_id: TEST_PROPERTY_ID,
         },
         headers: {
-          "x-user-id": MANAGER_USER_ID,
+          ...buildAuthHeader(MANAGER_USER_ID),
           "x-tenant-id": TEST_TENANT_ID,
         },
       });
@@ -787,7 +788,7 @@ describe("Dashboard Routes", () => {
           property_id: TEST_PROPERTY_ID,
         },
         headers: {
-          "x-user-id": STAFF_USER_ID,
+          ...buildAuthHeader(STAFF_USER_ID),
           "x-tenant-id": TEST_TENANT_ID,
         },
       });
@@ -800,7 +801,7 @@ describe("Dashboard Routes", () => {
           property_id: "all",
         },
         headers: {
-          "x-user-id": STAFF_USER_ID,
+          ...buildAuthHeader(STAFF_USER_ID),
           "x-tenant-id": TEST_TENANT_ID,
         },
       });
@@ -818,7 +819,7 @@ describe("Dashboard Routes", () => {
           property_id: TEST_PROPERTY_ID,
         },
         headers: {
-          "x-user-id": MANAGER_USER_ID,
+          ...buildAuthHeader(MANAGER_USER_ID),
           "x-tenant-id": TEST_TENANT_ID,
         },
       });

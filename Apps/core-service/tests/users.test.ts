@@ -2,6 +2,7 @@ import { describe, it, expect, beforeAll } from "vitest";
 import { buildServer } from "../src/server.js";
 import { query } from "../src/lib/db.js";
 import type { FastifyInstance } from "fastify";
+import { buildAuthHeader } from "./utils/auth.js";
 
 describe("Users Endpoint", () => {
   let app: FastifyInstance;
@@ -87,9 +88,7 @@ describe("Users Endpoint", () => {
       const response = await app.inject({
         method: "GET",
         url: `/v1/users?tenant_id=${managerTenantId}&limit=10`,
-        headers: {
-          "x-user-id": managerUserId,
-        },
+        headers: buildAuthHeader(managerUserId),
       });
 
       expect(response.statusCode).toBe(200);
@@ -106,9 +105,7 @@ describe("Users Endpoint", () => {
       const response = await app.inject({
         method: "GET",
         url: `/v1/users?tenant_id=${adminTenantId}&limit=10`,
-        headers: {
-          "x-user-id": adminUserId,
-        },
+        headers: buildAuthHeader(adminUserId),
       });
 
       expect(response.statusCode).toBe(200);
@@ -125,9 +122,7 @@ describe("Users Endpoint", () => {
       const response = await app.inject({
         method: "GET",
         url: `/v1/users?tenant_id=${managerTenantId}&limit=2`,
-        headers: {
-          "x-user-id": managerUserId,
-        },
+        headers: buildAuthHeader(managerUserId),
       });
 
       expect(response.statusCode).toBe(200);
@@ -144,9 +139,7 @@ describe("Users Endpoint", () => {
       const response = await app.inject({
         method: "GET",
         url: `/v1/users?tenant_id=${managerTenantId}&limit=1`,
-        headers: {
-          "x-user-id": managerUserId,
-        },
+        headers: buildAuthHeader(managerUserId),
       });
 
       expect(response.statusCode).toBe(200);
@@ -173,9 +166,7 @@ describe("Users Endpoint", () => {
       const response = await app.inject({
         method: "GET",
         url: `/v1/users?tenant_id=${managerTenantId}&limit=1`,
-        headers: {
-          "x-user-id": managerUserId,
-        },
+        headers: buildAuthHeader(managerUserId),
       });
 
       expect(response.statusCode).toBe(200);
@@ -210,9 +201,7 @@ describe("Users Endpoint", () => {
       const response = await app.inject({
         method: "GET",
         url: "/v1/users",
-        headers: {
-          "x-user-id": managerUserId,
-        },
+        headers: buildAuthHeader(managerUserId),
       });
 
       expect(response.statusCode).toBe(400);
@@ -227,9 +216,7 @@ describe("Users Endpoint", () => {
       const response = await app.inject({
         method: "GET",
         url: "/v1/users?tenant_id=not-a-uuid",
-        headers: {
-          "x-user-id": managerUserId,
-        },
+        headers: buildAuthHeader(managerUserId),
       });
 
       expect(response.statusCode).toBe(400);
@@ -244,9 +231,7 @@ describe("Users Endpoint", () => {
       const response = await app.inject({
         method: "GET",
         url: `/v1/users?tenant_id=${staffTenantId}`,
-        headers: {
-          "x-user-id": staffUserId,
-        },
+        headers: buildAuthHeader(staffUserId),
       });
 
       expect(response.statusCode).toBe(403);
@@ -261,9 +246,7 @@ describe("Users Endpoint", () => {
       const response = await app.inject({
         method: "GET",
         url: `/v1/users?tenant_id=${otherTenantId}`,
-        headers: {
-          "x-user-id": managerUserId,
-        },
+        headers: buildAuthHeader(managerUserId),
       });
 
       expect(response.statusCode).toBe(403);
@@ -278,9 +261,7 @@ describe("Users Endpoint", () => {
       const response = await app.inject({
         method: "GET",
         url: `/v1/users?tenant_id=${managerTenantId}&limit=-5`,
-        headers: {
-          "x-user-id": managerUserId,
-        },
+        headers: buildAuthHeader(managerUserId),
       });
 
       expect(response.statusCode).toBe(400);
@@ -295,9 +276,7 @@ describe("Users Endpoint", () => {
       const response = await app.inject({
         method: "GET",
         url: `/v1/users?tenant_id=${managerTenantId}&limit=0`,
-        headers: {
-          "x-user-id": managerUserId,
-        },
+        headers: buildAuthHeader(managerUserId),
       });
 
       expect(response.statusCode).toBe(400);
@@ -312,9 +291,7 @@ describe("Users Endpoint", () => {
       const response = await app.inject({
         method: "GET",
         url: `/v1/users?tenant_id=${managerTenantId}&limit=150`,
-        headers: {
-          "x-user-id": managerUserId,
-        },
+        headers: buildAuthHeader(managerUserId),
       });
 
       expect(response.statusCode).toBe(400);

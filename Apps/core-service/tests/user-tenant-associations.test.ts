@@ -2,6 +2,7 @@ import { describe, it, expect, beforeAll } from "vitest";
 import { buildServer } from "../src/server.js";
 import { query } from "../src/lib/db.js";
 import type { FastifyInstance } from "fastify";
+import { buildAuthHeader } from "./utils/auth.js";
 
 describe("User-Tenant Associations Endpoint", () => {
   let app: FastifyInstance;
@@ -84,9 +85,7 @@ describe("User-Tenant Associations Endpoint", () => {
       const response = await app.inject({
         method: "GET",
         url: `/v1/user-tenant-associations?tenant_id=${adminTenantId}&limit=10`,
-        headers: {
-          "x-user-id": adminUserId,
-        },
+        headers: buildAuthHeader(adminUserId),
       });
 
       expect(response.statusCode).toBe(200);
@@ -103,9 +102,7 @@ describe("User-Tenant Associations Endpoint", () => {
       const response = await app.inject({
         method: "GET",
         url: `/v1/user-tenant-associations?tenant_id=${ownerTenantId}&limit=10`,
-        headers: {
-          "x-user-id": ownerUserId,
-        },
+        headers: buildAuthHeader(ownerUserId),
       });
 
       expect(response.statusCode).toBe(200);
@@ -122,9 +119,7 @@ describe("User-Tenant Associations Endpoint", () => {
       const response = await app.inject({
         method: "GET",
         url: `/v1/user-tenant-associations?tenant_id=${adminTenantId}&user_id=${adminUserId}`,
-        headers: {
-          "x-user-id": adminUserId,
-        },
+        headers: buildAuthHeader(adminUserId),
       });
 
       expect(response.statusCode).toBe(200);
@@ -145,9 +140,7 @@ describe("User-Tenant Associations Endpoint", () => {
       const response = await app.inject({
         method: "GET",
         url: `/v1/user-tenant-associations?tenant_id=${adminTenantId}&role=STAFF`,
-        headers: {
-          "x-user-id": adminUserId,
-        },
+        headers: buildAuthHeader(adminUserId),
       });
 
       expect(response.statusCode).toBe(200);
@@ -168,9 +161,7 @@ describe("User-Tenant Associations Endpoint", () => {
       const response = await app.inject({
         method: "GET",
         url: `/v1/user-tenant-associations?tenant_id=${adminTenantId}&is_active=true`,
-        headers: {
-          "x-user-id": adminUserId,
-        },
+        headers: buildAuthHeader(adminUserId),
       });
 
       expect(response.statusCode).toBe(200);
@@ -187,9 +178,7 @@ describe("User-Tenant Associations Endpoint", () => {
       const response = await app.inject({
         method: "GET",
         url: `/v1/user-tenant-associations?tenant_id=${adminTenantId}&limit=1`,
-        headers: {
-          "x-user-id": adminUserId,
-        },
+        headers: buildAuthHeader(adminUserId),
       });
 
       expect(response.statusCode).toBe(200);
@@ -216,9 +205,7 @@ describe("User-Tenant Associations Endpoint", () => {
       const response = await app.inject({
         method: "GET",
         url: `/v1/user-tenant-associations?tenant_id=${adminTenantId}&limit=1`,
-        headers: {
-          "x-user-id": adminUserId,
-        },
+        headers: buildAuthHeader(adminUserId),
       });
 
       expect(response.statusCode).toBe(200);
@@ -240,9 +227,7 @@ describe("User-Tenant Associations Endpoint", () => {
       const response = await app.inject({
         method: "GET",
         url: `/v1/user-tenant-associations?tenant_id=${adminTenantId}&limit=2`,
-        headers: {
-          "x-user-id": adminUserId,
-        },
+        headers: buildAuthHeader(adminUserId),
       });
 
       expect(response.statusCode).toBe(200);
@@ -270,9 +255,7 @@ describe("User-Tenant Associations Endpoint", () => {
       const response = await app.inject({
         method: "GET",
         url: "/v1/user-tenant-associations",
-        headers: {
-          "x-user-id": adminUserId,
-        },
+        headers: buildAuthHeader(adminUserId),
       });
 
       expect(response.statusCode).toBe(400);
@@ -287,9 +270,7 @@ describe("User-Tenant Associations Endpoint", () => {
       const response = await app.inject({
         method: "GET",
         url: "/v1/user-tenant-associations?tenant_id=invalid-format",
-        headers: {
-          "x-user-id": adminUserId,
-        },
+        headers: buildAuthHeader(adminUserId),
       });
 
       expect(response.statusCode).toBe(400);
@@ -304,9 +285,7 @@ describe("User-Tenant Associations Endpoint", () => {
       const response = await app.inject({
         method: "GET",
         url: `/v1/user-tenant-associations?tenant_id=${adminTenantId}`,
-        headers: {
-          "x-user-id": managerUserId,
-        },
+        headers: buildAuthHeader(managerUserId),
       });
 
       expect(response.statusCode).toBe(403);
@@ -321,9 +300,7 @@ describe("User-Tenant Associations Endpoint", () => {
       const response = await app.inject({
         method: "GET",
         url: `/v1/user-tenant-associations?tenant_id=${otherTenantId}`,
-        headers: {
-          "x-user-id": adminUserId,
-        },
+        headers: buildAuthHeader(adminUserId),
       });
 
       expect(response.statusCode).toBe(403);
@@ -338,9 +315,7 @@ describe("User-Tenant Associations Endpoint", () => {
       const response = await app.inject({
         method: "GET",
         url: `/v1/user-tenant-associations?tenant_id=${adminTenantId}&role=INVALID_ROLE`,
-        headers: {
-          "x-user-id": adminUserId,
-        },
+        headers: buildAuthHeader(adminUserId),
       });
 
       expect(response.statusCode).toBe(400);
@@ -355,9 +330,7 @@ describe("User-Tenant Associations Endpoint", () => {
       const response = await app.inject({
         method: "GET",
         url: `/v1/user-tenant-associations?tenant_id=${adminTenantId}&user_id=not-a-uuid`,
-        headers: {
-          "x-user-id": adminUserId,
-        },
+        headers: buildAuthHeader(adminUserId),
       });
 
       expect(response.statusCode).toBe(400);
@@ -372,9 +345,7 @@ describe("User-Tenant Associations Endpoint", () => {
       const response = await app.inject({
         method: "GET",
         url: `/v1/user-tenant-associations?tenant_id=${adminTenantId}&limit=-5`,
-        headers: {
-          "x-user-id": adminUserId,
-        },
+        headers: buildAuthHeader(adminUserId),
       });
 
       expect(response.statusCode).toBe(400);
@@ -389,9 +360,7 @@ describe("User-Tenant Associations Endpoint", () => {
       const response = await app.inject({
         method: "GET",
         url: `/v1/user-tenant-associations?tenant_id=${adminTenantId}&limit=0`,
-        headers: {
-          "x-user-id": adminUserId,
-        },
+        headers: buildAuthHeader(adminUserId),
       });
 
       expect(response.statusCode).toBe(400);
@@ -406,9 +375,7 @@ describe("User-Tenant Associations Endpoint", () => {
       const response = await app.inject({
         method: "GET",
         url: `/v1/user-tenant-associations?tenant_id=${adminTenantId}&limit=150`,
-        headers: {
-          "x-user-id": adminUserId,
-        },
+        headers: buildAuthHeader(adminUserId),
       });
 
       expect(response.statusCode).toBe(400);

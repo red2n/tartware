@@ -57,4 +57,15 @@ export const config = {
       bloom: toNumber(env.REDIS_TTL_BLOOM, 86400), // 24 hours
     },
   },
+  auth: {
+    jwt: {
+      secret:
+        typeof env.AUTH_JWT_SECRET === "string" && env.AUTH_JWT_SECRET.trim().length > 0
+          ? env.AUTH_JWT_SECRET
+          : "change-me-in-production",
+      issuer: env.AUTH_JWT_ISSUER ?? "tartware-core-service",
+      audience: env.AUTH_JWT_AUDIENCE,
+      expiresInSeconds: toNumber(env.AUTH_JWT_EXPIRES_IN_SECONDS, 900),
+    },
+  },
 };

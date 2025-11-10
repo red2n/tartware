@@ -11,9 +11,10 @@ export interface User {
 
 export interface TenantMembership {
   tenant_id: string;
-  tenant_name: string;
+  tenant_name?: string;
   role: TenantRole;
   is_active: boolean;
+  permissions?: Record<string, unknown>;
 }
 
 export interface AuthContext {

@@ -5,6 +5,7 @@ import {
   computed,
   inject,
   type OnInit,
+  type OnDestroy,
   signal,
 } from '@angular/core';
 import { MatBadgeModule } from '@angular/material/badge';
@@ -68,7 +69,7 @@ import { ThemeService } from '../../core/services/theme.service';
   styleUrl: './pms-layout.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class PmsLayoutComponent implements OnInit {
+export class PmsLayoutComponent implements OnInit, OnDestroy {
   tenantContext = inject(TenantContextService);
   propertyContext = inject(PropertyContextService);
   themeService = inject(ThemeService);
@@ -159,15 +160,21 @@ export class PmsLayoutComponent implements OnInit {
     },
   ];
 
+  private readonly resizeHandler = () => this.checkScreenSize();
+
   constructor() {
     // Check screen size on init and resize
     this.checkScreenSize();
-    window.addEventListener('resize', () => this.checkScreenSize());
+    window.addEventListener('resize', this.resizeHandler);
   }
 
   ngOnInit(): void {
     // Load properties when component initializes
     this.loadProperties();
+  }
+
+  ngOnDestroy(): void {
+    window.removeEventListener('resize', this.resizeHandler);
   }
 
   /**

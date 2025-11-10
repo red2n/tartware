@@ -109,12 +109,14 @@ export const getActiveUserTenantMemberships = async (
     role: string;
     is_active: boolean;
     permissions: Record<string, unknown> | null;
+    tenant_name: string | null;
   }>(ACTIVE_MEMBERSHIPS_SQL, [userId]);
 
   return rows.map((row) => {
     const role = TenantRoleEnum.parse(row.role);
     return {
       tenantId: row.tenant_id,
+      tenantName: row.tenant_name ?? undefined,
       role,
       isActive: row.is_active,
       permissions: row.permissions ?? {},

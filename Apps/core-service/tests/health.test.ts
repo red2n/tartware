@@ -37,7 +37,7 @@ describe("Health Endpoint", () => {
         method: "GET",
         url: "/health",
         headers: {
-          "x-user-id": "invalid-uuid",
+          Authorization: "Bearer invalid-token",
           "x-tenant-id": "some-tenant",
         },
       });

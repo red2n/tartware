@@ -7,7 +7,8 @@
 
 ## Test User
 
-**Username**: `michael.jenkins774`
+**Username**: `michael.jenkins774`  
+**Password**: `Password123!`
 
 ### Login Response
 ```json
@@ -22,14 +23,17 @@
     "tenant_id": "019a44e8-232b-7001-8474-166c6699cd99",
     "role": "ADMIN",
     "is_active": true
-  }]
+  }],
+  "access_token": "<jwt-token>",
+  "token_type": "Bearer",
+  "expires_in": 900
 }
 ```
 
 ## Testing Steps
 
 1. **Open application**: http://localhost:4200
-2. **Login**: Enter username `michael.jenkins774`
+2. **Login**: Enter username `michael.jenkins774` and password `Password123!`
 3. **Select tenant**: Click on tenant from the list
 4. **Check browser console**: Open DevTools (F12) and look for:
    - ✅ `Loading properties for tenant: <tenant-id>`
@@ -42,7 +46,7 @@
 ```bash
 GET http://localhost:3000/v1/properties?tenant_id=019a44e8-232b-7001-8474-166c6699cd99&limit=10
 Headers:
-  x-user-id: 019a44e8-2333-7001-8dcb-e1c645ee432d
+  Authorization: Bearer <access_token>
 ```
 
 ## What Was Fixed
@@ -50,7 +54,7 @@ Headers:
 1. **Property Dropdown Visibility**: Changed from checking `activeTenant()?.property_count` to `hasMultipleProperties()` computed signal
 2. **API Integration**: PropertyService now uses `PropertyWithStats` from `@tartware/schemas`
 3. **Error Logging**: Added detailed console logging for debugging API calls
-4. **Auth Interceptor**: Automatically adds `x-user-id` header from localStorage
+4. **Auth Interceptor**: Automatically adds `Authorization: Bearer <token>` header managed by the AuthService
 5. **Loading States**: Added loading signals for better UX
 
 ## Expected Behavior

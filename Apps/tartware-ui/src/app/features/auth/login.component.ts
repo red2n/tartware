@@ -65,6 +65,7 @@ export class LoginComponent implements OnDestroy {
     // Initialize reactive form with validators
     this.loginForm = this.fb.group({
       username: ['', [Validators.required, Validators.minLength(3)]],
+      password: ['', [Validators.required, Validators.minLength(8)]],
     });
 
     // Get return URL from query params, default to /tenants
@@ -91,8 +92,9 @@ export class LoginComponent implements OnDestroy {
     }
 
     const username = this.loginForm.get('username')?.value?.trim();
-    if (!username) {
-      this.errorMessage.set('Please enter a valid username');
+    const password = this.loginForm.get('password')?.value?.toString().trim() ?? '';
+    if (!username || password.length === 0) {
+      this.errorMessage.set('Please provide both username and password');
       return;
     }
 
@@ -100,7 +102,7 @@ export class LoginComponent implements OnDestroy {
     this.errorMessage.set('');
 
     this.authService
-      .login(username)
+      .login(username, password)
       .pipe(takeUntil(this.destroy$))
       .subscribe({
         next: (response) => {
@@ -113,7 +115,7 @@ export class LoginComponent implements OnDestroy {
         },
         error: (err) => {
           this.loading.set(false);
-          this.errorMessage.set(err.message || 'Login failed. Please check your username.');
+          this.errorMessage.set(err.message || 'Login failed. Please verify your credentials.');
         },
       });
   }
@@ -129,6 +131,21 @@ export class LoginComponent implements OnDestroy {
     }
     if (control?.hasError('minlength') && control.touched) {
       return 'Username must be at least 3 characters';
+    }
+    return null;
+  }
+
+  /**
+   * Get error message for password field
+   * @returns Error message string or null
+   */
+  getPasswordError(): string | null {
+    const control = this.loginForm.get('password');
+    if (control?.hasError('required') && control.touched) {
+      return 'Password is required';
+    }
+    if (control?.hasError('minlength') && control.touched) {
+      return 'Password must be at least 8 characters';
     }
     return null;
   }
