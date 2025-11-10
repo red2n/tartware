@@ -54,6 +54,20 @@ npm run analyze          # Analyze bundle composition
 ```bash
 npm run test             # Run tests in watch mode
 npm run test:coverage    # Run tests with coverage report
+npm run e2e              # Run Playwright end-to-end tests
+```
+
+### End-to-End (Playwright)
+```bash
+# Install Playwright browsers once
+npx playwright install
+
+# Ensure backend API is running locally (see core-service docs)
+# Provide DB credentials via .env (DB_HOST, DB_PORT, DB_NAME, DB_USER, DB_PASSWORD)
+# Optional overrides:
+#   AUTH_DEFAULT_PASSWORD, E2E_USERNAME, E2E_NEW_PASSWORD, E2E_PORT
+
+npm run e2e              # Executes the full login → password change flow
 ```
 
 ---
