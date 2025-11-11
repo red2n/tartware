@@ -7,7 +7,6 @@ import {
   MANAGER_USER_ID,
   STAFF_USER_ID,
   TEST_TENANT_ID,
-  TEST_USER_ID,
   VIEWER_USER_ID,
 } from "./mocks/db.js";
 

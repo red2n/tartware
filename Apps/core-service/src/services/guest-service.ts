@@ -197,18 +197,16 @@ const mapRowToGuest = (row: GuestRow): GuestWithStats => {
   return parsed;
 };
 
-export const listGuests = async (
-  options: {
-    limit?: number;
-    tenantId: string;
-    propertyId?: string;
-    email?: string;
-    phone?: string;
-    loyaltyTier?: string;
-    vipStatus?: boolean;
-    isBlacklisted?: boolean;
-  },
-): Promise<GuestWithStats[]> => {
+export const listGuests = async (options: {
+  limit?: number;
+  tenantId: string;
+  propertyId?: string;
+  email?: string;
+  phone?: string;
+  loyaltyTier?: string;
+  vipStatus?: boolean;
+  isBlacklisted?: boolean;
+}): Promise<GuestWithStats[]> => {
   const limit = options.limit ?? 50;
   const tenantId = options.tenantId;
   const propertyId = options.propertyId ?? null;

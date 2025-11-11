@@ -1,10 +1,31 @@
+import process from "node:process";
+
+import { initTelemetry } from "@tartware/telemetry";
+
 import { config } from "./config.js";
 import { closeRedis, initRedis } from "./lib/redis.js";
 import { buildServer } from "./server.js";
 import { userCacheService } from "./services/user-cache-service.js";
 
+const telemetry = await initTelemetry({
+  serviceName: "core-service",
+  instrumentationOptions: {
+    "@opentelemetry/instrumentation-fastify": {
+      enabled: true,
+    },
+    "@opentelemetry/instrumentation-http": {
+      enabled: true,
+    },
+    "@opentelemetry/instrumentation-pg": {
+      enabled: true,
+    },
+    "@opentelemetry/instrumentation-ioredis": {
+      enabled: true,
+    },
+  },
+});
 const app = buildServer();
-const proc = (globalThis as { process?: { exit(code?: number): void } }).process;
+const proc: typeof process | undefined = process;
 let isShuttingDown = false;
 
 // Initialize Redis
@@ -29,6 +50,11 @@ app
     app.log.error(error, "failed to start core-service");
     await closeRedis();
     await app.close();
+    await telemetry
+      ?.shutdown()
+      .catch((telemetryError) =>
+        app.log.error(telemetryError, "Failed to shutdown telemetry after startup failure"),
+      );
     proc?.exit(1);
   });
 
@@ -42,6 +68,9 @@ const shutdown = async (signal: string) => {
   app.log.info({ signal }, "Received shutdown signal");
   try {
     await closeRedis();
+    await telemetry
+      ?.shutdown()
+      .catch((telemetryError) => app.log.error(telemetryError, "Failed to shutdown telemetry"));
     await app.close();
     proc?.exit(0);
   } catch (error) {

@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnDestroy, computed, signal } from '@angular/core';
+import { Component, computed, type OnDestroy, signal } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 import { environment } from '../../../environments/environment';
 
@@ -38,7 +38,17 @@ import { environment } from '../../../environments/environment';
       </div>
 
       <div class="status-bar-right">
-        <div class="connection-pill" [class.online]="isOnline()" [class.offline]="isOffline()" role="status" (click)="checkConnection()">
+        <div
+          class="connection-pill"
+          [class.online]="isOnline()"
+          [class.offline]="isOffline()"
+          role="button"
+          tabindex="0"
+          (click)="checkConnection()"
+          (keyup.enter)="checkConnection()"
+          (keyup.space)="checkConnection()"
+          [attr.aria-label]="connectionAriaLabel()"
+        >
           <mat-icon aria-hidden="true">{{ connectionIcon() }}</mat-icon>
           <span class="connection-text">{{ connectionStatus() }}</span>
           @if (isChecking()) {
@@ -221,6 +231,16 @@ export class StatusBarComponent implements OnDestroy {
     return this.isOnline() ? 'Online' : 'Offline';
   });
   readonly connectionIcon = computed(() => (this.isOnline() ? 'wifi' : 'wifi_off'));
+  readonly connectionAriaLabel = computed(() => {
+    const status = this.connectionStatus();
+    if (this.isChecking()) {
+      return `Connection status ${status}. Checking connectivity.`;
+    }
+    if (this.isOnline()) {
+      return `Connection status ${status}. Click or press Enter to re-check.`;
+    }
+    return `Connection status ${status}. ${this.offlineMessage()}`;
+  });
 
   private connectionCheckTimer: number | null = null;
   private readonly handleBrowserOnline = () => {
@@ -296,9 +316,7 @@ export class StatusBarComponent implements OnDestroy {
 
   private setOffline(reason: string): void {
     this.connectionState.set('offline');
-    const normalized = reason.trim().endsWith('.')
-      ? reason.trim()
-      : `${reason.trim()}.`;
+    const normalized = reason.trim().endsWith('.') ? reason.trim() : `${reason.trim()}.`;
     this.offlineReason.set(`${normalized} Tap to retry.`);
   }
 
@@ -309,7 +327,7 @@ export class StatusBarComponent implements OnDestroy {
       api.search = '';
       return api.toString();
     } catch {
-      return apiUrl.replace(/\/v1\/?$/, '') + '/health';
+      return `${apiUrl.replace(/\/v1\/?$/, '')}/health`;
     }
   }
 

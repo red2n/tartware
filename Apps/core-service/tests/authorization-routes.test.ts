@@ -176,7 +176,10 @@ describe("Route authorization policies", () => {
   });
 
   it("requires admin role to view tenant module assignments", async () => {
-    vi.spyOn(moduleService, "getTenantModules").mockResolvedValue([]);
+    vi.spyOn(moduleService, "getTenantModules").mockResolvedValue({
+      tenantId: TEST_TENANT_ID,
+      modules: [],
+    });
 
     const adminResponse = await app.inject({
       method: "GET",
