@@ -85,11 +85,39 @@ export class PmsLayoutComponent implements OnInit, OnDestroy {
     STAFF: 200,
     VIEWER: 100,
   };
-  private sidebarToggledManually = false;
 
   // Sidebar state
   sidebarOpen = signal(true);
+  sidebarCollapsed = signal(false);
   isMobile = signal(false);
+  private readonly SIDEBAR_FULL_WIDTH = 260;
+  private readonly SIDEBAR_COMPACT_WIDTH = 80;
+
+  drawerWidth = computed(() => {
+    if (this.isMobile()) {
+      return this.SIDEBAR_FULL_WIDTH;
+    }
+    return this.sidebarCollapsed() ? this.SIDEBAR_COMPACT_WIDTH : this.SIDEBAR_FULL_WIDTH;
+  });
+  sidebarCompact = computed(() => !this.isMobile() && this.sidebarCollapsed());
+  sidebarToggleIcon = computed(() => {
+    if (this.isMobile()) {
+      return this.sidebarOpen() ? 'menu_open' : 'menu';
+    }
+    return this.sidebarCollapsed() ? 'chevron_right' : 'chevron_left';
+  });
+  sidebarToggleLabel = computed(() => {
+    if (this.isMobile()) {
+      return this.sidebarOpen() ? 'Close sidebar' : 'Open sidebar';
+    }
+    return this.sidebarCollapsed() ? 'Expand sidebar' : 'Collapse sidebar';
+  });
+  sidebarToggleTooltip = computed(() => {
+    if (this.isMobile()) {
+      return this.sidebarOpen() ? 'Close sidebar' : 'Open sidebar';
+    }
+    return this.sidebarCollapsed() ? 'Show labels' : 'Show icons only';
+  });
 
   // Current tenant
   activeTenant = this.tenantContext.activeTenant;
@@ -272,7 +300,7 @@ export class PmsLayoutComponent implements OnInit, OnDestroy {
     this.isMobile.set(mobile);
     if (mobile) {
       this.sidebarOpen.set(false);
-    } else if (!this.sidebarToggledManually) {
+    } else {
       this.sidebarOpen.set(true);
     }
   }
@@ -281,8 +309,11 @@ export class PmsLayoutComponent implements OnInit, OnDestroy {
    * Toggle sidebar
    */
   toggleSidebar(): void {
-    this.sidebarToggledManually = true;
-    this.sidebarOpen.update((open) => !open);
+    if (this.isMobile()) {
+      this.sidebarOpen.update((open) => !open);
+      return;
+    }
+    this.sidebarCollapsed.update((collapsed) => !collapsed);
   }
 
   /**

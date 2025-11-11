@@ -9,6 +9,7 @@ import { buildServer } from "./server.js";
 const app = buildServer();
 
 const proc = globalThis.process;
+let isShuttingDown = false;
 
 const start = async () => {
   try {
@@ -30,6 +31,11 @@ const start = async () => {
 };
 
 const shutdown = async () => {
+  if (isShuttingDown) {
+    app.log.info("Shutdown already in progress");
+    return;
+  }
+  isShuttingDown = true;
   try {
     await shutdownReservationConsumer();
     await shutdownProducer();

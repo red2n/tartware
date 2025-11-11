@@ -729,10 +729,105 @@ html:has(body.dark-theme) {
       &:hover {
           border-color: #484f58 !important;
           background-color: rgba(79, 70, 229, 0.15) !important;
-        }
       }
     }
   }
+
+  // ============================================================================
+  // Material components & shared surfaces
+  // ============================================================================
+
+  .mat-mdc-card,
+  .settings-card,
+  .filter-card,
+  .search-card,
+  .stats-card {
+    background-color: #161b22 !important;
+    border: 1px solid #30363d !important;
+    color: #c9d1d9 !important;
+
+    mat-card-title,
+    mat-card-subtitle {
+      color: #e6edf3 !important;
+    }
+  }
+
+  .mat-mdc-raised-button,
+  .mat-mdc-stroked-button {
+    color: #c9d1d9 !important;
+  }
+
+  .mat-mdc-table,
+  .mat-mdc-table .mdc-data-table__content {
+    background-color: #161b22 !important;
+    color: #c9d1d9 !important;
+  }
+
+  .mat-mdc-table .mdc-data-table__header-row {
+    background-color: #1f262f !important;
+    color: #e6edf3 !important;
+  }
+
+  .mat-mdc-table .mdc-data-table__row {
+    background-color: #161b22 !important;
+    border-bottom: 1px solid #30363d !important;
+
+    &:hover {
+      background-color: #1f2a33 !important;
+    }
+  }
+
+  .mat-mdc-form-field-flex {
+    background-color: #161b22 !important;
+    border: 1px solid #30363d !important;
+    border-radius: 8px !important;
+  }
+
+  .mat-mdc-text-field-wrapper {
+    background-color: transparent !important;
+  }
+
+  .mat-mdc-form-field-infix,
+  .mat-mdc-input-element,
+  .mat-mdc-select-value,
+  .mat-mdc-select-placeholder {
+    color: #e6edf3 !important;
+  }
+
+  .settings-card {
+    box-shadow: none !important;
+
+    mat-card-title {
+      color: #e6edf3 !important;
+    }
+
+    mat-card-subtitle {
+      color: #8b949e !important;
+    }
+  }
+
+  .settings-list {
+    dt {
+      color: #e6edf3 !important;
+    }
+
+    dd {
+      color: #8b949e !important;
+    }
+  }
+
+  .module-chip {
+    background-color: rgba(88, 166, 255, 0.15) !important;
+    color: #58a6ff !important;
+    border: 1px solid rgba(88, 166, 255, 0.25) !important;
+  }
+}
+
+body.dark-theme .cdk-overlay-container .mat-mdc-select-panel {
+  background-color: #161b22 !important;
+  color: #c9d1d9 !important;
+  border: 1px solid #30363d !important;
+}
 
   .user-menu-header {
     mat-icon {

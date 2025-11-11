@@ -84,12 +84,13 @@ export class GuestsComponent {
     effect(
       () => {
         const tenant = this.tenantContext.activeTenant();
+        const propertyId = this.propertyContext.selectedPropertyId();
 
         if (!tenant) {
           return;
         }
 
-        this.fetchGuests(tenant.id);
+        this.fetchGuests(tenant.id, propertyId ?? undefined);
       },
       { allowSignalWrites: true }
     );
@@ -97,19 +98,20 @@ export class GuestsComponent {
 
   loadGuests(): void {
     const tenant = this.tenantContext.activeTenant();
+    const propertyId = this.propertyContext.selectedPropertyId();
     if (!tenant) {
       return;
     }
 
-    this.fetchGuests(tenant.id);
+    this.fetchGuests(tenant.id, propertyId ?? undefined);
   }
 
-  private fetchGuests(tenantId: string): void {
+  private fetchGuests(tenantId: string, propertyId?: string): void {
     this.isLoading.set(true);
     this.errorMessage.set('');
 
     this.guestService
-      .getGuests(tenantId, 100)
+      .getGuests(tenantId, propertyId, 100)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (guests) => {

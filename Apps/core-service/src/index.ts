@@ -5,6 +5,7 @@ import { userCacheService } from "./services/user-cache-service.js";
 
 const app = buildServer();
 const proc = (globalThis as { process?: { exit(code?: number): void } }).process;
+let isShuttingDown = false;
 
 // Initialize Redis
 const redis = initRedis();
@@ -33,6 +34,11 @@ app
 
 // Graceful shutdown
 const shutdown = async (signal: string) => {
+  if (isShuttingDown) {
+    app.log.info({ signal }, "Shutdown already in progress");
+    return;
+  }
+  isShuttingDown = true;
   app.log.info({ signal }, "Received shutdown signal");
   try {
     await closeRedis();

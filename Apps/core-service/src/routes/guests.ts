@@ -8,6 +8,7 @@ import { sanitizeForJson } from "../utils/sanitize.js";
 const GuestListQuerySchema = z.object({
   limit: z.coerce.number().int().positive().max(100).default(50),
   tenant_id: z.string().uuid(),
+  property_id: z.string().uuid().optional(),
   email: z.string().min(3).max(255).optional(),
   phone: z.string().min(3).max(20).optional(),
   loyalty_tier: z.string().min(1).max(50).optional(),
@@ -34,12 +35,21 @@ export const registerGuestRoutes = (app: FastifyInstance): void => {
       }),
     },
     async (request) => {
-      const { limit, tenant_id, email, phone, loyalty_tier, vip_status, is_blacklisted } =
-        GuestListQuerySchema.parse(request.query);
+      const {
+        limit,
+        tenant_id,
+        property_id,
+        email,
+        phone,
+        loyalty_tier,
+        vip_status,
+        is_blacklisted,
+      } = GuestListQuerySchema.parse(request.query);
 
       const guests = await listGuests({
         limit,
         tenantId: tenant_id,
+        propertyId: property_id,
         email,
         phone,
         loyaltyTier: loyalty_tier,

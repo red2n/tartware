@@ -15,8 +15,11 @@ export class GuestService {
   private readonly http = inject(HttpClient);
   private readonly apiUrl = environment.apiUrl;
 
-  getGuests(tenantId: string, limit = 100): Observable<Guest[]> {
-    const params = new HttpParams().set('tenant_id', tenantId).set('limit', limit.toString());
+  getGuests(tenantId: string, propertyId?: string, limit = 100): Observable<Guest[]> {
+    let params = new HttpParams().set('tenant_id', tenantId).set('limit', limit.toString());
+    if (propertyId && propertyId !== 'all') {
+      params = params.set('property_id', propertyId);
+    }
 
     return this.http
       .get<GuestApiResponse[]>(`${this.apiUrl}/guests`, { params })

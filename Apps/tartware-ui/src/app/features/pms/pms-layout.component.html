@@ -3,8 +3,13 @@
   <mat-sidenav
     #sidenav
     [mode]="isMobile() ? 'over' : 'side'"
-    [opened]="sidebarOpen()"
+    [opened]="isMobile() ? sidebarOpen() : true"
     class="pms-sidebar"
+    [class.compact]="sidebarCompact()"
+    [style.width.px]="drawerWidth()"
+    [style.minWidth.px]="drawerWidth()"
+    [style.maxWidth.px]="drawerWidth()"
+    [disableClose]="!isMobile()"
   >
     <!-- Sidebar Header -->
     <div class="sidebar-header">
@@ -12,10 +17,12 @@
         <div class="logo-icon">
           <mat-icon>business</mat-icon>
         </div>
-        <div class="logo-text">
-          <h3>Tartware PMS</h3>
-          <p>{{ tenantName() }}</p>
-        </div>
+        @if (!sidebarCompact()) {
+          <div class="logo-text">
+            <h3>Tartware PMS</h3>
+            <p>{{ tenantName() }}</p>
+          </div>
+        }
       </div>
     </div>
 
@@ -28,30 +35,41 @@
           routerLinkActive="active"
           [routerLinkActiveOptions]="{ exact: item.id === 'dashboard' }"
           class="nav-item"
+          [matTooltip]="sidebarCompact() ? item.label : ''"
+          matTooltipPosition="right"
+          [matTooltipDisabled]="!sidebarCompact()"
         >
           <mat-icon matListItemIcon [matBadge]="item.badge || undefined" matBadgeColor="warn">
             {{ item.icon }}
           </mat-icon>
-          <span matListItemTitle>{{ item.label }}</span>
+          @if (!sidebarCompact()) {
+            <span matListItemTitle>{{ item.label }}</span>
+          }
         </a>
       }
     </mat-nav-list>
 
     <!-- Sidebar Footer -->
-    <div class="sidebar-footer">
+    <div class="sidebar-footer" [class.compact]="sidebarCompact()">
       <button
         mat-stroked-button
         (click)="switchTenant()"
         class="switch-tenant-btn"
       >
         <mat-icon>swap_horiz</mat-icon>
-        <span>Switch Tenant</span>
+        @if (!sidebarCompact()) {
+          <span>Switch Tenant</span>
+        }
       </button>
     </div>
   </mat-sidenav>
 
   <!-- Main Content -->
-  <mat-sidenav-content class="pms-content">
+  <mat-sidenav-content
+    class="pms-content"
+    [class.compact]="sidebarCompact()"
+    [style.marginLeft.px]="!isMobile() ? drawerWidth() : 0"
+  >
     <!-- Top Bar -->
     <mat-toolbar class="top-bar">
       <!-- Left section -->
@@ -59,10 +77,11 @@
         <button
           mat-icon-button
           (click)="toggleSidebar()"
-          [attr.aria-label]="sidebarOpen() ? 'Close sidebar' : 'Open sidebar'"
-          matTooltip="{{ sidebarOpen() ? 'Close' : 'Open' }} sidebar"
+          [attr.aria-label]="sidebarToggleLabel()"
+          [matTooltip]="sidebarToggleTooltip()"
+          class="sidebar-toggle-btn"
         >
-          <mat-icon>{{ sidebarOpen() ? 'menu_open' : 'menu' }}</mat-icon>
+          <mat-icon>{{ sidebarToggleIcon() }}</mat-icon>
         </button>
 
         <div class="breadcrumb">

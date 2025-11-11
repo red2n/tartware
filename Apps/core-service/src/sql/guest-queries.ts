@@ -43,11 +43,23 @@ export const GUEST_LIST_SQL = `
   WHERE COALESCE(g.is_deleted, false) = false
     AND g.deleted_at IS NULL
     AND ($2::uuid IS NULL OR g.tenant_id = $2::uuid)
-    AND ($3::text IS NULL OR g.email ILIKE $3)
-    AND ($4::text IS NULL OR g.phone ILIKE $4)
-    AND ($5::text IS NULL OR g.loyalty_tier = $5)
-    AND ($6::boolean IS NULL OR g.vip_status = $6)
-    AND ($7::boolean IS NULL OR g.is_blacklisted = $7)
+    AND (
+      $3::uuid IS NULL
+      OR EXISTS (
+        SELECT 1
+        FROM public.reservations r
+        WHERE r.tenant_id = g.tenant_id
+          AND r.guest_id = g.id
+          AND r.property_id = $3::uuid
+          AND COALESCE(r.is_deleted, false) = false
+          AND r.deleted_at IS NULL
+      )
+    )
+    AND ($4::text IS NULL OR g.email ILIKE $4)
+    AND ($5::text IS NULL OR g.phone ILIKE $5)
+    AND ($6::text IS NULL OR g.loyalty_tier = $6)
+    AND ($7::boolean IS NULL OR g.vip_status = $7)
+    AND ($8::boolean IS NULL OR g.is_blacklisted = $8)
   ORDER BY g.created_at DESC
   LIMIT $1
 `;

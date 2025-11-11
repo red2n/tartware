@@ -3,6 +3,7 @@ import { buildServer } from "./server.js";
 
 const app = buildServer();
 const proc = globalThis.process;
+let isShuttingDown = false;
 
 const start = async () => {
 	try {
@@ -24,10 +25,20 @@ const start = async () => {
 
 if (proc && "on" in proc && typeof proc.on === "function") {
 	proc.on("SIGTERM", () => {
+		if (isShuttingDown) {
+			app.log.info("Shutdown already in progress (SIGTERM)");
+			return;
+		}
+		isShuttingDown = true;
 		app.log.info("SIGTERM received, shutting down");
 		app.close().finally(() => proc.exit(0));
 	});
 	proc.on("SIGINT", () => {
+		if (isShuttingDown) {
+			app.log.info("Shutdown already in progress (SIGINT)");
+			return;
+		}
+		isShuttingDown = true;
 		app.log.info("SIGINT received, shutting down");
 		app.close().finally(() => proc.exit(0));
 	});

@@ -200,16 +200,18 @@ const mapRowToGuest = (row: GuestRow): GuestWithStats => {
 export const listGuests = async (
   options: {
     limit?: number;
-    tenantId?: string;
+    tenantId: string;
+    propertyId?: string;
     email?: string;
     phone?: string;
     loyaltyTier?: string;
     vipStatus?: boolean;
     isBlacklisted?: boolean;
-  } = {},
+  },
 ): Promise<GuestWithStats[]> => {
   const limit = options.limit ?? 50;
-  const tenantId = options.tenantId ?? null;
+  const tenantId = options.tenantId;
+  const propertyId = options.propertyId ?? null;
   const email = options.email ? `%${options.email}%` : null;
   const phone = options.phone ? `%${options.phone}%` : null;
   const loyaltyTier = options.loyaltyTier ?? null;
@@ -219,6 +221,7 @@ export const listGuests = async (
   const { rows } = await query<GuestRow>(GUEST_LIST_SQL, [
     limit,
     tenantId,
+    propertyId,
     email,
     phone,
     loyaltyTier,
