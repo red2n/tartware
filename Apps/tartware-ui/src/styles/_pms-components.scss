@@ -927,6 +927,7 @@
 .reservations-container {
   width: 100%;
   height: 100%;
+  background: linear-gradient(180deg, #f8fafc 0%, #ffffff 28%);
 }
 
 .page-header {
@@ -963,34 +964,11 @@
   }
 }
 
-.filters-card {
-  margin-bottom: 24px;
-  border-radius: 12px;
-  border: 1px solid #e5e7eb;
-
-  mat-card-content {
-    padding: 20px !important;
-  }
-
-  .filters-row {
-    display: flex;
-    gap: 16px;
-    align-items: center;
-
-    .search-field {
-      flex: 1;
-      max-width: 400px;
-    }
-
-    mat-form-field {
-      margin: 0;
-    }
-  }
-}
-
 .table-card {
-  border-radius: 12px;
-  border: 1px solid #e5e7eb;
+  border-radius: 18px;
+  border: 1px solid #dbeafe;
+  background: #f8fbff;
+  box-shadow: 0 14px 28px -26px rgba(30, 64, 175, 0.6);
 
   mat-card-content {
     padding: 0 !important;
@@ -1034,37 +1012,45 @@
 
 .reservations-table {
   width: 100%;
-  background: white;
+  background: transparent;
 
   th {
-    background: #f9fafb;
-    color: #374151;
+    background: #eff6ff;
+    color: #1d4ed8;
     font-weight: 600;
     font-size: 13px;
-    padding: 16px;
+    padding: 18px 16px;
+    border-bottom: 1px solid #dbeafe;
   }
 
   td {
-    padding: 16px;
-    color: #111827;
+    padding: 18px 16px;
+    color: #0f172a;
     font-size: 14px;
-    border-bottom: 1px solid #f3f4f6;
+    border-bottom: 1px solid #e2e8f0;
+    background-color: #ffffff;
   }
 
   .table-row {
-    transition: background 0.15s ease;
+    transition: background 0.15s ease, transform 0.15s ease;
 
     &:hover {
-      background: #f9fafb;
+      background: #eef2ff;
+      transform: translateY(-1px);
     }
+  }
+
+  tr:nth-child(even) td {
+    background-color: #f8fafc;
   }
 
   .confirmation-cell {
     .confirmation-code {
-      font-family: 'Courier New', monospace;
+      font-family: 'JetBrains Mono', 'Courier New', monospace;
       font-weight: 600;
-      color: #4f46e5;
+      color: #1d4ed8;
       font-size: 13px;
+      letter-spacing: 0.04em;
     }
   }
 
@@ -1077,7 +1063,7 @@
       width: 36px;
       height: 36px;
       border-radius: 50%;
-      background: #f3f4f6;
+      background: #e0f2fe;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -1087,7 +1073,7 @@
         font-size: 20px;
         width: 20px;
         height: 20px;
-        color: #6b7280;
+        color: #0369a1;
       }
     }
 
@@ -1095,14 +1081,14 @@
       .guest-name {
         margin: 0;
         font-weight: 500;
-        color: #111827;
+        color: #0f172a;
         font-size: 14px;
       }
 
       .guest-email {
         margin: 2px 0 0;
         font-size: 12px;
-        color: #6b7280;
+        color: #475569;
       }
     }
   }
@@ -1114,13 +1100,13 @@
 
     .room-number {
       font-weight: 600;
-      color: #111827;
+      color: #0f172a;
       font-size: 14px;
     }
 
     .room-type {
       font-size: 12px;
-      color: #6b7280;
+      color: #475569;
     }
   }
 
@@ -1132,32 +1118,33 @@
 
     &.status-confirmed {
       background: #dbeafe;
-      color: #1e40af;
+      color: #1d4ed8;
     }
 
     &.status-pending {
-      background: #ede9fe;
-      color: #5b21b6;
+      background: #f1f5f9;
+      color: #0f172a;
+      border: 1px solid #e2e8f0;
     }
 
     &.status-checked-in {
-      background: #d1fae5;
-      color: #065f46;
+      background: #dcfce7;
+      color: #047857;
     }
 
     &.status-checked-out {
-      background: #f3f4f6;
-      color: #374151;
+      background: #e2e8f0;
+      color: #334155;
     }
 
     &.status-cancelled {
       background: #fee2e2;
-      color: #991b1b;
+      color: #b91c1c;
     }
 
     &.status-no-show {
-      background: #fef3c7;
-      color: #92400e;
+      background: #fef9c3;
+      color: #b45309;
     }
 
     &.status-default {
@@ -1168,7 +1155,7 @@
 
   .total-amount {
     font-weight: 600;
-    color: #111827;
+    color: #0f172a;
   }
 
   .actions-cell {
@@ -1201,21 +1188,23 @@
 
 .rooms-table {
   width: 100%;
-  background: white;
+  background: transparent;
 
   th {
-    background: #f9fafb;
-    color: #374151;
+    background: #f8fafc;
+    color: #1d4ed8;
     font-weight: 600;
     font-size: 13px;
-    padding: 16px;
+    padding: 18px;
+    border-bottom: 1px solid #dbeafe;
   }
 
   td {
-    padding: 16px;
-    color: #111827;
+    padding: 18px;
+    color: #0f172a;
     font-size: 14px;
-    border-bottom: 1px solid #f3f4f6;
+    border-bottom: 1px solid #e2e8f0;
+    background-color: #ffffff;
   }
 
   .mat-chip {
@@ -1227,11 +1216,13 @@
     &.status-available {
       background: #dcfce7;
       color: #166534;
+      box-shadow: inset 0 0 0 1px rgba(22, 101, 52, 0.15);
     }
 
     &.status-occupied {
-      background: #fef3c7;
+      background: #fef9c3;
       color: #92400e;
+      box-shadow: inset 0 0 0 1px rgba(146, 64, 14, 0.15);
     }
 
     &.status-dirty {
@@ -1240,28 +1231,31 @@
     }
 
     &.status-clean {
-      background: #d1fae5;
+      background: #bbf7d0;
       color: #047857;
+      box-shadow: inset 0 0 0 1px rgba(4, 120, 87, 0.12);
     }
 
     &.status-inspected {
       background: #ede9fe;
       color: #5b21b6;
+      box-shadow: inset 0 0 0 1px rgba(91, 33, 182, 0.12);
     }
 
     &.status-out {
-      background: #f3f4f6;
-      color: #374151;
+      background: #f1f5f9;
+      color: #334155;
     }
 
     &.status-default {
-      background: #e5e7eb;
-      color: #374151;
+      background: #e2e8f0;
+      color: #475569;
     }
 
     &.hk-clean {
-      background: #e0f2fe;
+      background: #dbeafe;
       color: #0369a1;
+      box-shadow: inset 0 0 0 1px rgba(3, 105, 161, 0.15);
     }
 
     &.hk-dirty {
@@ -1290,7 +1284,7 @@
     }
 
     &.mt-operational {
-      background: #d1fae5;
+      background: #dcfce7;
       color: #047857;
     }
 
