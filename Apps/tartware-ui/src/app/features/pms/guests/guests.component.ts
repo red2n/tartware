@@ -109,7 +109,7 @@ export class GuestsComponent {
     this.errorMessage.set('');
 
     this.guestService
-      .getGuests(tenantId, 200)
+      .getGuests(tenantId, 100)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (guests) => {
