@@ -1,0 +1,163 @@
+<div class="housekeeping-container">
+  <div class="page-header">
+    <div>
+      <h1 class="title">Housekeeping</h1>
+      <p class="subtitle">Coordinate cleaning schedules, inspections, and special requests</p>
+    </div>
+    <button mat-flat-button class="primary-button">
+      <mat-icon>playlist_add_check</mat-icon>
+      Create Task
+    </button>
+  </div>
+
+  <div class="bg-white rounded-lg shadow-sm px-6 py-4 mb-6">
+    <div class="flex flex-wrap gap-4 items-start">
+      <mat-form-field appearance="outline" class="flex-1 min-w-[260px]">
+        <mat-icon matPrefix class="text-gray-500">search</mat-icon>
+        <input
+          matInput
+          (input)="applySearch($event)"
+          placeholder="Search tasks by room or notes"
+        />
+      </mat-form-field>
+
+      <mat-form-field appearance="outline" class="min-w-[200px]">
+        <mat-label>Status</mat-label>
+        <mat-select [value]="statusFilter()" (selectionChange)="setStatusFilter($event.value)">
+          @for (option of statusOptions; track option.value) {
+            <mat-option [value]="option.value">{{ option.label }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline" class="min-w-[200px]">
+        <mat-label>Scheduled Date</mat-label>
+        <input
+          matInput
+          type="date"
+          [value]="scheduledDate()"
+          (change)="onScheduledDateChange($event)"
+        />
+      </mat-form-field>
+
+      <button mat-stroked-button class="h-[56px]" (click)="clearScheduledDate()">
+        Clear Date
+      </button>
+
+      <button mat-stroked-button class="h-[56px]" (click)="loadTasks()">
+        <mat-icon>refresh</mat-icon>
+        Refresh
+      </button>
+    </div>
+  </div>
+
+  <mat-card class="table-card">
+    <mat-card-content>
+      @if (isLoading()) {
+        <div class="loading-state">
+          <mat-icon class="loading-icon">refresh</mat-icon>
+          <p>Loading housekeeping tasks...</p>
+        </div>
+      } @else if (errorMessage()) {
+        <div class="loading-state">
+          <mat-icon class="loading-icon text-red-500">error</mat-icon>
+          <p>{{ errorMessage() }}</p>
+        </div>
+      } @else if (!dataSource.data.length) {
+        <div class="loading-state">
+          <mat-icon class="loading-icon text-blue-500">cleaning_services</mat-icon>
+          <p>No tasks scheduled for the selected filters.</p>
+        </div>
+      } @else {
+        <div class="table-container">
+          <table mat-table [dataSource]="dataSource" matSort class="housekeeping-table">
+            <ng-container matColumnDef="room">
+              <th mat-header-cell *matHeaderCellDef mat-sort-header>Room</th>
+              <td mat-cell *matCellDef="let task">
+                <div class="flex flex-col gap-1">
+                  <span class="font-semibold">{{ task.room_number }}</span>
+                  @if (task.property_name) {
+                    <span class="text-xs text-gray-500">{{ task.property_name }}</span>
+                  }
+                </div>
+              </td>
+            </ng-container>
+
+            <ng-container matColumnDef="task">
+              <th mat-header-cell *matHeaderCellDef mat-sort-header>Task</th>
+              <td mat-cell *matCellDef="let task">
+                <div class="flex flex-col gap-1">
+                  <span class="font-semibold capitalize">{{ task.task_type }}</span>
+                  @if (task.special_instructions) {
+                    <span class="text-xs text-gray-500">{{ task.special_instructions }}</span>
+                  }
+                </div>
+              </td>
+            </ng-container>
+
+            <ng-container matColumnDef="priority">
+              <th mat-header-cell *matHeaderCellDef>Priority</th>
+              <td mat-cell *matCellDef="let task">
+                <mat-chip [class]="getPriorityChip(task.priority)">
+                  {{ task.priority || 'Normal' }}
+                </mat-chip>
+              </td>
+            </ng-container>
+
+            <ng-container matColumnDef="status">
+              <th mat-header-cell *matHeaderCellDef mat-sort-header>Status</th>
+              <td mat-cell *matCellDef="let task">
+                <mat-chip [class]="getStatusChip(task.status)">
+                  {{ task.status_display }}
+                </mat-chip>
+              </td>
+            </ng-container>
+
+            <ng-container matColumnDef="schedule">
+              <th mat-header-cell *matHeaderCellDef mat-sort-header>Schedule</th>
+              <td mat-cell *matCellDef="let task">
+                <div class="flex flex-col text-sm text-gray-600">
+                  <span>{{ task.scheduled_date | date: 'MMM d, y' }} {{ task.scheduled_time || '' }}</span>
+                  @if (task.started_at) {
+                    <span>Started: {{ task.started_at | date: 'MMM d, y, h:mm a' }}</span>
+                  }
+                  @if (task.completed_at) {
+                    <span>Completed: {{ task.completed_at | date: 'MMM d, y, h:mm a' }}</span>
+                  }
+                </div>
+              </td>
+            </ng-container>
+
+            <ng-container matColumnDef="assigned">
+              <th mat-header-cell *matHeaderCellDef>Assigned</th>
+              <td mat-cell *matCellDef="let task">
+                <div class="flex flex-col text-sm text-gray-600">
+                  <span>{{ task.assigned_to || 'Unassigned' }}</span>
+                  @if (task.assigned_at) {
+                    <span>Since {{ task.assigned_at | date: 'MMM d, y, h:mm a' }}</span>
+                  }
+                </div>
+              </td>
+            </ng-container>
+
+            <ng-container matColumnDef="notes">
+              <th mat-header-cell *matHeaderCellDef>Notes</th>
+              <td mat-cell *matCellDef="let task">
+                {{ task.notes || task.issues_found || '—' }}
+              </td>
+            </ng-container>
+
+            <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+            <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
+          </table>
+
+          <mat-paginator
+            [pageSizeOptions]="[10, 25, 50, 100]"
+            [pageSize]="25"
+            showFirstLastButtons
+          ></mat-paginator>
+        </div>
+      }
+    </mat-card-content>
+  </mat-card>
+</div>

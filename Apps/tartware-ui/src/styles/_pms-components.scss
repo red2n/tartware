@@ -1062,6 +1062,11 @@
       color: #1e40af;
     }
 
+    &.status-pending {
+      background: #ede9fe;
+      color: #5b21b6;
+    }
+
     &.status-checked-in {
       background: #d1fae5;
       color: #065f46;
@@ -1080,6 +1085,11 @@
     &.status-no-show {
       background: #fef3c7;
       color: #92400e;
+    }
+
+    &.status-default {
+      background: #e5e7eb;
+      color: #374151;
     }
   }
 
@@ -1113,6 +1123,500 @@
   .mat-mdc-paginator-range-label {
     color: #6b7280;
     font-size: 0.875rem;
+  }
+}
+
+.rooms-table {
+  width: 100%;
+  background: white;
+
+  th {
+    background: #f9fafb;
+    color: #374151;
+    font-weight: 600;
+    font-size: 13px;
+    padding: 16px;
+  }
+
+  td {
+    padding: 16px;
+    color: #111827;
+    font-size: 14px;
+    border-bottom: 1px solid #f3f4f6;
+  }
+
+  .mat-chip {
+    font-weight: 600;
+    text-transform: capitalize;
+    border-radius: 16px;
+    padding: 0 12px;
+
+    &.status-available {
+      background: #dcfce7;
+      color: #166534;
+    }
+
+    &.status-occupied {
+      background: #fef3c7;
+      color: #92400e;
+    }
+
+    &.status-dirty {
+      background: #fee2e2;
+      color: #991b1b;
+    }
+
+    &.status-clean {
+      background: #d1fae5;
+      color: #047857;
+    }
+
+    &.status-inspected {
+      background: #ede9fe;
+      color: #5b21b6;
+    }
+
+    &.status-out {
+      background: #f3f4f6;
+      color: #374151;
+    }
+
+    &.status-default {
+      background: #e5e7eb;
+      color: #374151;
+    }
+
+    &.hk-clean {
+      background: #e0f2fe;
+      color: #0369a1;
+    }
+
+    &.hk-dirty {
+      background: #fee2e2;
+      color: #b91c1c;
+    }
+
+    &.hk-inspected {
+      background: #ede9fe;
+      color: #6d28d9;
+    }
+
+    &.hk-progress {
+      background: #fef3c7;
+      color: #b45309;
+    }
+
+    &.hk-dnd {
+      background: #e0f2fe;
+      color: #0c4a6e;
+    }
+
+    &.hk-default {
+      background: #e5e7eb;
+      color: #374151;
+    }
+
+    &.mt-operational {
+      background: #d1fae5;
+      color: #047857;
+    }
+
+    &.mt-repair {
+      background: #fef3c7;
+      color: #b45309;
+    }
+
+    &.mt-maintenance {
+      background: #ede9fe;
+      color: #5b21b6;
+    }
+
+    &.mt-out {
+      background: #fee2e2;
+      color: #991b1b;
+    }
+
+    &.mt-default {
+      background: #e5e7eb;
+      color: #374151;
+    }
+  }
+}
+
+.guests-table {
+  width: 100%;
+  background: white;
+
+  th {
+    background: #f9fafb;
+    color: #374151;
+    font-weight: 600;
+    font-size: 13px;
+    padding: 16px;
+  }
+
+  td {
+    padding: 16px;
+    color: #111827;
+    font-size: 14px;
+    border-bottom: 1px solid #f3f4f6;
+  }
+
+  .guest-cell {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+
+    .guest-avatar {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: #eef2ff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+
+      mat-icon {
+        color: #4338ca;
+      }
+    }
+
+    .guest-info {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+
+      .guest-name {
+        font-weight: 600;
+        color: #111827;
+      }
+
+      .guest-email {
+        font-size: 0.875rem;
+        color: #6b7280;
+      }
+    }
+  }
+
+  .mat-chip {
+    font-weight: 600;
+    border-radius: 999px;
+
+    &.vip-chip {
+      background: #f3e8ff;
+      color: #6d28d9;
+    }
+
+    &.status-active {
+      background: #dcfce7;
+      color: #166534;
+    }
+
+    &.status-blacklisted {
+      background: #fee2e2;
+      color: #b91c1c;
+    }
+  }
+
+  .actions-cell {
+    display: flex;
+    gap: 4px;
+
+    button {
+      &:hover mat-icon {
+        color: #4338ca;
+      }
+    }
+  }
+}
+
+.housekeeping-table {
+  width: 100%;
+  background: white;
+
+  th {
+    background: #f9fafb;
+    color: #374151;
+    font-weight: 600;
+    font-size: 13px;
+    padding: 16px;
+  }
+
+  td {
+    padding: 16px;
+    color: #111827;
+    font-size: 14px;
+    border-bottom: 1px solid #f3f4f6;
+  }
+
+  .mat-chip {
+    font-weight: 600;
+    border-radius: 999px;
+    text-transform: capitalize;
+
+    &.hk-clean {
+      background: #d1fae5;
+      color: #047857;
+    }
+
+    &.hk-dirty {
+      background: #fee2e2;
+      color: #b91c1c;
+    }
+
+    &.hk-inspected {
+      background: #ede9fe;
+      color: #6d28d9;
+    }
+
+    &.hk-progress {
+      background: #fef3c7;
+      color: #b45309;
+    }
+
+    &.hk-dnd {
+      background: #e0f2fe;
+      color: #0c4a6e;
+    }
+
+    &.hk-default {
+      background: #e5e7eb;
+      color: #374151;
+    }
+
+    &.priority-high {
+      background: #fee2e2;
+      color: #b91c1c;
+    }
+
+    &.priority-medium {
+      background: #fef3c7;
+      color: #b45309;
+    }
+
+    &.priority-low {
+      background: #dbeafe;
+      color: #1d4ed8;
+    }
+
+    &.priority-normal {
+      background: #e5e7eb;
+      color: #374151;
+    }
+  }
+}
+
+.billing-table {
+  width: 100%;
+  background: white;
+
+  th {
+    background: #f9fafb;
+    color: #374151;
+    font-weight: 600;
+    font-size: 13px;
+    padding: 16px;
+  }
+
+  td {
+    padding: 16px;
+    color: #111827;
+    font-size: 14px;
+    border-bottom: 1px solid #f3f4f6;
+  }
+
+  .mat-chip {
+    font-weight: 600;
+    border-radius: 999px;
+    text-transform: capitalize;
+
+    &.status-completed {
+      background: #d1fae5;
+      color: #047857;
+    }
+
+    &.status-pending,
+    &.status-processing {
+      background: #fef3c7;
+      color: #b45309;
+    }
+
+    &.status-failed {
+      background: #fee2e2;
+      color: #b91c1c;
+    }
+
+    &.status-cancelled {
+      background: #fef2f2;
+      color: #991b1b;
+    }
+
+    &.status-refunded {
+      background: #e0f2fe;
+      color: #0369a1;
+    }
+
+    &.status-partial {
+      background: #ede9fe;
+      color: #5b21b6;
+    }
+
+    &.status-default {
+      background: #e5e7eb;
+      color: #374151;
+    }
+  }
+}
+
+.reports-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 1.5rem;
+}
+
+.stat-card {
+  background: white;
+  border-radius: 16px;
+  box-shadow: 0 10px 30px -15px rgba(15, 23, 42, 0.35);
+  position: relative;
+  overflow: hidden;
+
+  .icon-wrapper {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, rgba(79, 70, 229, 0.12), rgba(124, 58, 237, 0.12));
+
+    &.revenue {
+      background: linear-gradient(135deg, rgba(16, 185, 129, 0.15), rgba(56, 189, 248, 0.15));
+    }
+
+    mat-icon {
+      color: #4f46e5;
+    }
+  }
+
+  mat-card-title {
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: #111827;
+  }
+
+  mat-card-subtitle {
+    color: #6b7280;
+    font-weight: 500;
+  }
+}
+
+.revenue-card {
+  grid-column: span 2;
+
+  @media (max-width: 768px) {
+    grid-column: span 1;
+  }
+}
+
+.revenue-breakdown {
+  display: flex;
+  gap: 2rem;
+  margin-top: 1rem;
+
+  .label {
+    font-size: 0.875rem;
+    color: #6b7280;
+    margin-bottom: 0.25rem;
+  }
+
+  .value {
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: #111827;
+  }
+}
+
+.reports-table {
+  width: 100%;
+  margin-top: 1rem;
+
+  th {
+    background: #f9fafb;
+    color: #374151;
+    font-weight: 600;
+    padding: 12px 16px;
+    font-size: 0.875rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  td {
+    padding: 16px;
+    border-bottom: 1px solid #f3f4f6;
+    font-size: 0.95rem;
+  }
+}
+
+.settings-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 1.5rem;
+}
+
+.settings-card {
+  border-radius: 16px;
+  box-shadow: 0 15px 45px -25px rgba(15, 23, 42, 0.4);
+
+  mat-card-title {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: #111827;
+  }
+
+  mat-card-subtitle {
+    color: #6b7280;
+    font-weight: 500;
+  }
+}
+
+.settings-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+  font-size: 0.95rem;
+
+  dt {
+    font-weight: 600;
+    color: #374151;
+  }
+
+  dd {
+    margin: 0.25rem 0 0;
+    color: #4b5563;
+  }
+}
+
+.modules-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.module-chip {
+  border-radius: 999px;
+  background: #eef2ff;
+  color: #4338ca;
+  font-weight: 600;
+  text-transform: capitalize;
+}
+
+.properties-card {
+  grid-column: span 2;
+
+  @media (max-width: 768px) {
+    grid-column: span 1;
   }
 }
 

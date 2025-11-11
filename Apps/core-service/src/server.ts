@@ -8,10 +8,15 @@ import { fastifyLoggerOptions } from "./lib/logger.js";
 import authContextPlugin from "./plugins/auth-context.js";
 import errorHandlerPlugin from "./plugins/error-handler.js";
 import { registerAuthRoutes } from "./routes/auth.js";
+import { registerBillingRoutes } from "./routes/billing.js";
 import { registerDashboardRoutes } from "./routes/dashboard.js";
 import { registerGuestRoutes } from "./routes/guests.js";
 import { registerHealthRoutes } from "./routes/health.js";
+import { registerHousekeepingRoutes } from "./routes/housekeeping.js";
 import { registerPropertyRoutes } from "./routes/properties.js";
+import { registerReportRoutes } from "./routes/reports.js";
+import { registerReservationRoutes } from "./routes/reservations.js";
+import { registerRoomRoutes } from "./routes/rooms.js";
 import { registerTenantRoutes } from "./routes/tenants.js";
 import { registerUserTenantAssociationRoutes } from "./routes/user-tenant-associations.js";
 import { registerUserRoutes } from "./routes/users.js";
@@ -89,6 +94,11 @@ export const buildServer = (): FastifyInstance => {
     registerGuestRoutes(app);
     registerUserTenantAssociationRoutes(app);
     registerDashboardRoutes(app);
+    registerReservationRoutes(app);
+    registerRoomRoutes(app);
+    registerHousekeepingRoutes(app);
+    registerBillingRoutes(app);
+    registerReportRoutes(app);
   });
 
   app.addHook("onReady", async () => {

@@ -59,37 +59,39 @@ export const routes: Routes = [
       {
         path: 'rooms',
         loadComponent: () =>
-          import('./features/pms/dashboard/dashboard.component').then((m) => m.DashboardComponent),
+          import('./features/pms/rooms/rooms.component').then((m) => m.RoomsComponent),
         title: 'Rooms - Tartware PMS',
       },
       {
         path: 'guests',
         loadComponent: () =>
-          import('./features/pms/dashboard/dashboard.component').then((m) => m.DashboardComponent),
+          import('./features/pms/guests/guests.component').then((m) => m.GuestsComponent),
         title: 'Guests - Tartware PMS',
       },
       {
         path: 'housekeeping',
         loadComponent: () =>
-          import('./features/pms/dashboard/dashboard.component').then((m) => m.DashboardComponent),
+          import('./features/pms/housekeeping/housekeeping.component').then(
+            (m) => m.HousekeepingComponent
+          ),
         title: 'Housekeeping - Tartware PMS',
       },
       {
         path: 'billing',
         loadComponent: () =>
-          import('./features/pms/dashboard/dashboard.component').then((m) => m.DashboardComponent),
+          import('./features/pms/billing/billing.component').then((m) => m.BillingComponent),
         title: 'Billing - Tartware PMS',
       },
       {
         path: 'reports',
         loadComponent: () =>
-          import('./features/pms/dashboard/dashboard.component').then((m) => m.DashboardComponent),
+          import('./features/pms/reports/reports.component').then((m) => m.ReportsComponent),
         title: 'Reports - Tartware PMS',
       },
       {
         path: 'settings',
         loadComponent: () =>
-          import('./features/pms/dashboard/dashboard.component').then((m) => m.DashboardComponent),
+          import('./features/pms/settings/settings.component').then((m) => m.SettingsComponent),
         title: 'Settings - Tartware PMS',
       },
     ],

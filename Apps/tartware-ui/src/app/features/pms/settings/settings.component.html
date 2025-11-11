@@ -1,0 +1,139 @@
+<div class="settings-container" *ngIf="tenant() as tenant; else noTenant">
+  <div class="page-header">
+    <div>
+      <h1 class="title">Workspace Settings</h1>
+      <p class="subtitle">Manage tenant configuration, modules, and integrations</p>
+    </div>
+    <div class="flex gap-2">
+      <button mat-stroked-button (click)="toggleTheme()">
+        <mat-icon>brightness_6</mat-icon>
+        Toggle Theme
+      </button>
+      <button mat-flat-button class="primary-button" (click)="updateTenantProfile(tenant)">
+        <mat-icon>edit</mat-icon>
+        Edit Profile
+      </button>
+    </div>
+  </div>
+
+  <div class="settings-grid">
+    <mat-card class="settings-card">
+      <mat-card-header>
+        <mat-icon mat-card-avatar>business</mat-icon>
+        <mat-card-title>{{ tenant.name }}</mat-card-title>
+        <mat-card-subtitle>{{ tenant.type }} • {{ tenant.status }}</mat-card-subtitle>
+      </mat-card-header>
+      <mat-card-content>
+        <dl class="settings-list">
+          <div>
+            <dt>Email</dt>
+            <dd>{{ tenant.email }}</dd>
+          </div>
+          <div>
+            <dt>Phone</dt>
+            <dd>{{ tenant.phone || '—' }}</dd>
+          </div>
+          <div>
+            <dt>Website</dt>
+            <dd>{{ tenant.website || '—' }}</dd>
+          </div>
+          <div>
+            <dt>Address</dt>
+            <dd>{{ tenantAddress() }}</dd>
+          </div>
+        </dl>
+      </mat-card-content>
+    </mat-card>
+
+    <mat-card class="settings-card">
+      <mat-card-header>
+        <mat-icon mat-card-avatar>subscriptions</mat-icon>
+        <mat-card-title>Subscription</mat-card-title>
+        <mat-card-subtitle>Plan & usage</mat-card-subtitle>
+      </mat-card-header>
+      <mat-card-content>
+        @if (subscriptionPlan(); as subscription) {
+          <dl class="settings-list">
+            <div>
+              <dt>Plan</dt>
+              <dd>{{ subscription.plan || 'Enterprise' }}</dd>
+            </div>
+            <div>
+              <dt>Status</dt>
+              <dd>{{ subscription.status || 'Active' }}</dd>
+            </div>
+            <div>
+              <dt>Seats</dt>
+              <dd>{{ subscription.seats || tenant.user_count }}</dd>
+            </div>
+            <div>
+              <dt>Properties</dt>
+              <dd>{{ tenant.property_count }} total ({{ tenant.active_properties }} active)</dd>
+            </div>
+          </dl>
+        } @else {
+          <p class="text-sm text-gray-600">
+            Subscription details are not available. Contact Tartware support for assistance.
+          </p>
+        }
+      </mat-card-content>
+      <mat-card-actions>
+        <button mat-stroked-button (click)="manageIntegrations()">Manage Billing</button>
+      </mat-card-actions>
+    </mat-card>
+
+    <mat-card class="settings-card">
+      <mat-card-header>
+        <mat-icon mat-card-avatar>extension</mat-icon>
+        <mat-card-title>Enabled Modules</mat-card-title>
+        <mat-card-subtitle>Current system capabilities</mat-card-subtitle>
+      </mat-card-header>
+      <mat-card-content>
+        <div class="modules-grid">
+          @for (module of enabledModules(); track trackModule($index, module)) {
+            <mat-chip class="module-chip">
+              {{ module | titlecase }}
+            </mat-chip>
+          }
+        </div>
+      </mat-card-content>
+    </mat-card>
+
+    <mat-card class="settings-card properties-card">
+      <mat-card-header>
+        <mat-icon mat-card-avatar>location_city</mat-icon>
+        <mat-card-title>Properties</mat-card-title>
+        <mat-card-subtitle>{{ properties().length }} active properties</mat-card-subtitle>
+      </mat-card-header>
+      <mat-card-content>
+        <mat-list>
+          @for (property of properties(); track trackProperty($index, property)) {
+            <mat-list-item>
+              <mat-icon matListItemIcon>location_on</mat-icon>
+              <div matListItemTitle>{{ property.property_name }}</div>
+              <div matListItemLine class="text-sm text-gray-600">
+                Rooms: {{ property.total_rooms }} • Occupancy: {{ property.occupancy_rate || 0 }}%
+              </div>
+            </mat-list-item>
+          }
+        </mat-list>
+      </mat-card-content>
+      <mat-card-actions>
+        <button mat-stroked-button [routerLink]="['/pms', tenant.id, 'settings']">
+          Manage Properties
+        </button>
+      </mat-card-actions>
+    </mat-card>
+  </div>
+</div>
+
+<ng-template #noTenant>
+  <mat-card class="table-card">
+    <mat-card-content>
+      <div class="loading-state">
+        <mat-icon class="loading-icon text-blue-500">domain_disabled</mat-icon>
+        <p>Select a tenant to configure settings.</p>
+      </div>
+    </mat-card-content>
+  </mat-card>
+</ng-template>

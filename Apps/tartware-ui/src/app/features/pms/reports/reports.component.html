@@ -1,0 +1,142 @@
+<div class="reports-container">
+  <div class="page-header">
+    <div>
+      <h1 class="title">Performance Reports</h1>
+      <p class="subtitle">Revenue, occupancy, and booking trends at a glance</p>
+    </div>
+    <button mat-flat-button class="primary-button" (click)="loadReport()">
+      <mat-icon>refresh</mat-icon>
+      Refresh
+    </button>
+  </div>
+
+  <div class="bg-white rounded-lg shadow-sm px-6 py-4 mb-6">
+    <div class="flex flex-wrap gap-4 items-end">
+      <mat-form-field appearance="outline" class="min-w-[220px]">
+        <mat-label>Start Date</mat-label>
+        <input
+          matInput
+          type="date"
+          [value]="startDate()"
+          (change)="onStartDateChange($event)"
+        />
+      </mat-form-field>
+
+      <mat-form-field appearance="outline" class="min-w-[220px]">
+        <mat-label>End Date</mat-label>
+        <input
+          matInput
+          type="date"
+          [value]="endDate()"
+          (change)="onEndDateChange($event)"
+        />
+      </mat-form-field>
+
+      <button mat-stroked-button class="h-[56px]" (click)="loadReport()">Apply</button>
+      <button mat-stroked-button class="h-[56px]" (click)="clearDates()">Clear</button>
+    </div>
+  </div>
+
+  @if (isLoading()) {
+    <mat-card class="table-card">
+      <mat-card-content>
+        <div class="loading-state">
+          <mat-icon class="loading-icon">refresh</mat-icon>
+          <p>Generating report...</p>
+        </div>
+      </mat-card-content>
+    </mat-card>
+  } @else if (errorMessage()) {
+    <mat-card class="table-card">
+      <mat-card-content>
+        <div class="loading-state">
+          <mat-icon class="loading-icon text-red-500">error</mat-icon>
+          <p>{{ errorMessage() }}</p>
+        </div>
+      </mat-card-content>
+    </mat-card>
+  } @else if (!report()) {
+    <mat-card class="table-card">
+      <mat-card-content>
+        <div class="loading-state">
+          <mat-icon class="loading-icon text-blue-500">insights</mat-icon>
+          <p>Report data unavailable. Try adjusting filters.</p>
+        </div>
+      </mat-card-content>
+    </mat-card>
+  } @else {
+    <div class="reports-grid">
+      <mat-card class="stat-card" *ngFor="let stat of statusEntries(report())">
+        <mat-card-header>
+          <div mat-card-avatar class="icon-wrapper">
+            <mat-icon>event</mat-icon>
+          </div>
+          <div>
+            <mat-card-title>{{ stat.value | number }}</mat-card-title>
+            <mat-card-subtitle>{{ stat.label }}</mat-card-subtitle>
+          </div>
+        </mat-card-header>
+      </mat-card>
+
+      <mat-card class="stat-card revenue-card">
+        <mat-card-header>
+          <div mat-card-avatar class="icon-wrapper revenue">
+            <mat-icon>attach_money</mat-icon>
+          </div>
+          <div>
+            <mat-card-title>
+              {{ report()?.revenueSummary.today | currency: report()?.revenueSummary.currency }}
+            </mat-card-title>
+            <mat-card-subtitle>Revenue Today</mat-card-subtitle>
+          </div>
+        </mat-card-header>
+        <mat-card-content>
+          <div class="revenue-breakdown">
+            <div>
+              <p class="label">Month-to-date</p>
+              <p class="value">
+                {{ report()?.revenueSummary.monthToDate | currency: report()?.revenueSummary.currency }}
+              </p>
+            </div>
+            <div>
+              <p class="label">Year-to-date</p>
+              <p class="value">
+                {{ report()?.revenueSummary.yearToDate | currency: report()?.revenueSummary.currency }}
+              </p>
+            </div>
+          </div>
+        </mat-card-content>
+      </mat-card>
+    </div>
+
+    <mat-card class="table-card mt-6">
+      <mat-card-header>
+        <mat-card-title>Top Booking Sources</mat-card-title>
+        <mat-card-subtitle>Channels generating the most reservations and revenue</mat-card-subtitle>
+      </mat-card-header>
+      <mat-card-content>
+        <table mat-table [dataSource]="report()?.topSources || []" class="reports-table">
+          <ng-container matColumnDef="source">
+            <th mat-header-cell *matHeaderCellDef>Source</th>
+            <td mat-cell *matCellDef="let row">{{ row.source }}</td>
+          </ng-container>
+
+          <ng-container matColumnDef="reservations">
+            <th mat-header-cell *matHeaderCellDef>Reservations</th>
+            <td mat-cell *matCellDef="let row">{{ row.reservations | number }}</td>
+          </ng-container>
+
+          <ng-container matColumnDef="revenue">
+            <th mat-header-cell *matHeaderCellDef>Revenue</th>
+            <td mat-cell *matCellDef="let row">
+              {{ row.total_amount | currency: report()?.revenueSummary.currency }}
+            </td>
+          </ng-container>
+
+          <tr mat-header-row *matHeaderRowDef="displayedSourceColumns"></tr>
+          <tr mat-row *matRowDef="let row; columns: displayedSourceColumns;"></tr>
+        </table>
+      </mat-card-content>
+    </mat-card>
+  }
+</div>

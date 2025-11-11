@@ -19,13 +19,13 @@ import { MatPaginator, MatPaginatorModule } from '@angular/material/paginator';
 import { MatSelectModule } from '@angular/material/select';
 import { MatSort, MatSortModule } from '@angular/material/sort';
 import { MatTableDataSource, MatTableModule } from '@angular/material/table';
-import type { Reservation } from '../../../core/models/reservation.model';
+import type { HousekeepingTask } from '../../../core/models/housekeeping.model';
+import { HousekeepingService } from '../../../core/services/housekeeping.service';
 import { PropertyContextService } from '../../../core/services/property-context.service';
-import { ReservationService } from '../../../core/services/reservation.service';
 import { TenantContextService } from '../../../core/services/tenant-context.service';
 
 @Component({
-  selector: 'app-reservations',
+  selector: 'app-housekeeping',
   standalone: true,
   imports: [
     CommonModule,
@@ -40,47 +40,45 @@ import { TenantContextService } from '../../../core/services/tenant-context.serv
     MatInputModule,
     MatSelectModule,
   ],
-  templateUrl: './reservations.component.html',
-  styleUrl: './reservations.component.scss',
+  templateUrl: './housekeeping.component.html',
+  styleUrl: './housekeeping.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class ReservationsComponent {
+export class HousekeepingComponent {
   tenantContext = inject(TenantContextService);
   propertyContext = inject(PropertyContextService);
-  private reservationService = inject(ReservationService);
+  private housekeepingService = inject(HousekeepingService);
   private destroyRef = inject(DestroyRef);
 
   @ViewChild(MatPaginator) paginator!: MatPaginator;
   @ViewChild(MatSort) sort!: MatSort;
 
   displayedColumns: string[] = [
-    'confirmation',
-    'guest',
     'room',
-    'checkIn',
-    'checkOut',
-    'nights',
+    'task',
+    'priority',
     'status',
-    'total',
-    'actions',
+    'schedule',
+    'assigned',
+    'notes',
   ];
 
-  dataSource = new MatTableDataSource<Reservation>([]);
+  dataSource = new MatTableDataSource<HousekeepingTask>([]);
   isLoading = signal(false);
   errorMessage = signal<string>('');
 
-  private reservations = signal<Reservation[]>([]);
-  private searchTerm = signal<string>('');
+  private tasks = signal<HousekeepingTask[]>([]);
+  private scheduledDate = signal<string>('');
   statusFilter = signal<string>('all');
+  searchTerm = signal<string>('');
 
   statusOptions = [
-    { value: 'all', label: 'All Reservations' },
-    { value: 'confirmed', label: 'Confirmed' },
-    { value: 'pending', label: 'Pending' },
-    { value: 'checked_in', label: 'Checked In' },
-    { value: 'checked_out', label: 'Checked Out' },
-    { value: 'cancelled', label: 'Cancelled' },
-    { value: 'no_show', label: 'No Show' },
+    { value: 'all', label: 'All Tasks' },
+    { value: 'clean', label: 'Clean' },
+    { value: 'dirty', label: 'Dirty' },
+    { value: 'inspected', label: 'Inspected' },
+    { value: 'in_progress', label: 'In Progress' },
+    { value: 'do_not_disturb', label: 'Do Not Disturb' },
   ];
 
   constructor() {
@@ -90,17 +88,16 @@ export class ReservationsComponent {
       if (!matchesStatus) {
         return false;
       }
+
       if (!term) {
         return true;
       }
 
       const normalized = term.toLowerCase();
       return (
-        data.confirmation_number.toLowerCase().includes(normalized) ||
-        data.guest_name.toLowerCase().includes(normalized) ||
-        data.guest_email.toLowerCase().includes(normalized) ||
-        (data.room_number ?? '').toLowerCase().includes(normalized) ||
-        (data.property_name ?? '').toLowerCase().includes(normalized)
+        data.room_number.toLowerCase().includes(normalized) ||
+        data.task_type.toLowerCase().includes(normalized) ||
+        (data.notes ?? '').toLowerCase().includes(normalized)
       );
     };
 
@@ -113,40 +110,45 @@ export class ReservationsComponent {
           return;
         }
 
-        this.fetchReservations(tenant.id, propertyId);
+        this.fetchTasks(tenant.id, propertyId);
       },
       { allowSignalWrites: true },
     );
   }
 
-  loadReservations(): void {
+  loadTasks(): void {
     const tenant = this.tenantContext.activeTenant();
     if (!tenant) {
       return;
     }
 
     const propertyId = this.propertyContext.selectedPropertyId();
-    this.fetchReservations(tenant.id, propertyId);
+    this.fetchTasks(tenant.id, propertyId);
   }
 
-  private fetchReservations(tenantId: string, propertyId: string): void {
+  private fetchTasks(tenantId: string, propertyId: string): void {
     this.isLoading.set(true);
     this.errorMessage.set('');
 
-    this.reservationService
-      .getReservations(tenantId, { propertyId, limit: 200 })
+    this.housekeepingService
+      .getTasks(tenantId, {
+        propertyId,
+        status: this.statusFilter(),
+        scheduledDate: this.scheduledDate() || undefined,
+        limit: 200,
+      })
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
-        next: (reservations) => {
-          this.reservations.set(reservations);
+        next: (tasks) => {
+          this.tasks.set(tasks);
           this.updateTableData();
           this.isLoading.set(false);
         },
         error: (error) => {
           const message =
-            error?.error?.message ?? error?.message ?? 'Failed to load reservations. Please retry.';
+            error?.error?.message ?? error?.message ?? 'Failed to load housekeeping tasks.';
           this.errorMessage.set(message);
-          this.reservations.set([]);
+          this.tasks.set([]);
           this.updateTableData();
           this.isLoading.set(false);
         },
@@ -154,12 +156,12 @@ export class ReservationsComponent {
   }
 
   private updateTableData(): void {
-    const status = this.statusFilter();
-    const term = this.searchTerm().trim().toLowerCase();
+    const filterPayload = JSON.stringify({
+      status: this.statusFilter(),
+      term: this.searchTerm().trim().toLowerCase(),
+    });
 
-    this.dataSource.data = this.reservations();
-
-    const filterPayload = JSON.stringify({ status, term });
+    this.dataSource.data = this.tasks();
     this.dataSource.filter = filterPayload;
 
     if (this.paginator) {
@@ -170,50 +172,55 @@ export class ReservationsComponent {
     }
   }
 
-  applyFilter(event: Event): void {
-    const filterValue = (event.target as HTMLInputElement).value;
-    this.searchTerm.set(filterValue);
+  applySearch(event: Event): void {
+    const value = (event.target as HTMLInputElement).value || '';
+    this.searchTerm.set(value);
     this.updateTableData();
-
-    if (this.dataSource.paginator) {
-      this.dataSource.paginator.firstPage();
-    }
+    this.paginator?.firstPage();
   }
 
-  filterByStatus(status: string): void {
+  setStatusFilter(status: string): void {
     this.statusFilter.set(status);
     this.updateTableData();
-
-    if (this.dataSource.paginator) {
-      this.dataSource.paginator.firstPage();
-    }
+    this.paginator?.firstPage();
   }
 
-  getStatusClass(status: string): string {
+  onScheduledDateChange(event: Event): void {
+    const value = (event.target as HTMLInputElement).value || '';
+    this.setScheduledDate(value);
+  }
+
+  private setScheduledDate(date: string): void {
+    this.scheduledDate.set(date);
+    this.loadTasks();
+  }
+
+  clearScheduledDate(): void {
+    this.scheduledDate.set('');
+    this.loadTasks();
+  }
+
+  getStatusChip(status: string): string {
     const classes: Record<string, string> = {
-      confirmed: 'status-confirmed',
-      pending: 'status-pending',
-      checked_in: 'status-checked-in',
-      checked_out: 'status-checked-out',
-      cancelled: 'status-cancelled',
-      no_show: 'status-no-show',
+      clean: 'hk-clean',
+      dirty: 'hk-dirty',
+      inspected: 'hk-inspected',
+      in_progress: 'hk-progress',
+      do_not_disturb: 'hk-dnd',
     };
-    return classes[status] || 'status-default';
+    return classes[status] || 'hk-default';
   }
 
-  getStatusLabel(reservation: Reservation): string {
-    return reservation.status_display ?? reservation.status;
-  }
-
-  viewReservation(reservation: Reservation): void {
-    console.log('View reservation:', reservation);
-  }
-
-  editReservation(reservation: Reservation): void {
-    console.log('Edit reservation:', reservation);
-  }
-
-  cancelReservation(reservation: Reservation): void {
-    console.log('Cancel reservation:', reservation);
+  getPriorityChip(priority?: string): string {
+    if (!priority) {
+      return 'priority-normal';
+    }
+    const normalized = priority.toLowerCase();
+    const classes: Record<string, string> = {
+      high: 'priority-high',
+      medium: 'priority-medium',
+      low: 'priority-low',
+    };
+    return classes[normalized] || 'priority-normal';
   }
 }

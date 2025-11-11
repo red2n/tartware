@@ -1,0 +1,137 @@
+<div class="billing-container">
+  <div class="page-header">
+    <div>
+      <h1 class="title">Billing & Payments</h1>
+      <p class="subtitle">Monitor payment activity, transaction statuses, and revenue streams</p>
+    </div>
+    <button mat-flat-button class="primary-button">
+      <mat-icon>receipt_long</mat-icon>
+      Create Invoice
+    </button>
+  </div>
+
+  <div class="bg-white rounded-lg shadow-sm px-6 py-4 mb-6">
+    <div class="flex flex-wrap gap-4 items-start">
+      <mat-form-field appearance="outline" class="flex-1 min-w-[260px]">
+        <mat-icon matPrefix class="text-gray-500">search</mat-icon>
+        <input matInput (input)="applySearch($event)" placeholder="Search by reference, reservation, or guest" />
+      </mat-form-field>
+
+      <mat-form-field appearance="outline" class="min-w-[200px]">
+        <mat-label>Status</mat-label>
+        <mat-select [value]="statusFilter()" (selectionChange)="setStatusFilter($event.value)">
+          @for (option of statusOptions; track option.value) {
+            <mat-option [value]="option.value">{{ option.label }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline" class="min-w-[200px]">
+        <mat-label>Payment Method</mat-label>
+        <mat-select [value]="methodFilter()" (selectionChange)="setMethodFilter($event.value)">
+          @for (option of methodOptions; track option.value) {
+            <mat-option [value]="option.value">{{ option.label }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+
+      <button mat-stroked-button class="h-[56px]" (click)="loadPayments()">
+        <mat-icon>refresh</mat-icon>
+        Refresh
+      </button>
+    </div>
+  </div>
+
+  <mat-card class="table-card">
+    <mat-card-content>
+      @if (isLoading()) {
+        <div class="loading-state">
+          <mat-icon class="loading-icon">refresh</mat-icon>
+          <p>Loading payments...</p>
+        </div>
+      } @else if (errorMessage()) {
+        <div class="loading-state">
+          <mat-icon class="loading-icon text-red-500">error</mat-icon>
+          <p>{{ errorMessage() }}</p>
+        </div>
+      } @else if (!dataSource.data.length) {
+        <div class="loading-state">
+          <mat-icon class="loading-icon text-blue-500">account_balance_wallet</mat-icon>
+          <p>No payments found for the selected filters.</p>
+        </div>
+      } @else {
+        <div class="table-container">
+          <table mat-table [dataSource]="dataSource" matSort class="billing-table">
+            <ng-container matColumnDef="reference">
+              <th mat-header-cell *matHeaderCellDef mat-sort-header>Reference</th>
+              <td mat-cell *matCellDef="let payment">
+                <div class="flex flex-col">
+                  <span class="font-semibold">{{ payment.payment_reference }}</span>
+                  @if (payment.gateway_reference) {
+                    <span class="text-xs text-gray-400">{{ payment.gateway_reference }}</span>
+                  }
+                </div>
+              </td>
+            </ng-container>
+
+            <ng-container matColumnDef="reservation">
+              <th mat-header-cell *matHeaderCellDef mat-sort-header>Reservation</th>
+              <td mat-cell *matCellDef="let payment">
+                {{ payment.confirmation_number || '—' }}
+              </td>
+            </ng-container>
+
+            <ng-container matColumnDef="guest">
+              <th mat-header-cell *matHeaderCellDef mat-sort-header>Guest</th>
+              <td mat-cell *matCellDef="let payment">
+                {{ payment.guest_name || '—' }}
+              </td>
+            </ng-container>
+
+            <ng-container matColumnDef="transaction">
+              <th mat-header-cell *matHeaderCellDef>Transaction</th>
+              <td mat-cell *matCellDef="let payment">
+                <div class="flex flex-col text-sm text-gray-600">
+                  <span>Type: {{ payment.transaction_type_display }}</span>
+                  <span>Method: {{ payment.payment_method_display }}</span>
+                </div>
+              </td>
+            </ng-container>
+
+            <ng-container matColumnDef="status">
+              <th mat-header-cell *matHeaderCellDef mat-sort-header>Status</th>
+              <td mat-cell *matCellDef="let payment">
+                <mat-chip [class]="getStatusChip(payment.status)">
+                  {{ payment.status_display }}
+                </mat-chip>
+              </td>
+            </ng-container>
+
+            <ng-container matColumnDef="amount">
+              <th mat-header-cell *matHeaderCellDef mat-sort-header>Amount</th>
+              <td mat-cell *matCellDef="let payment">
+                {{ payment.amount | currency: payment.currency || 'USD':'symbol':'1.2-2' }}
+              </td>
+            </ng-container>
+
+            <ng-container matColumnDef="processed">
+              <th mat-header-cell *matHeaderCellDef mat-sort-header>Processed</th>
+              <td mat-cell *matCellDef="let payment">
+                {{ payment.processed_at ? (payment.processed_at | date: 'MMM d, y, h:mm a') : 'Pending' }}
+              </td>
+            </ng-container>
+
+            <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+            <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
+          </table>
+
+          <mat-paginator
+            [pageSizeOptions]="[10, 25, 50, 100]"
+            [pageSize]="25"
+            showFirstLastButtons
+          ></mat-paginator>
+        </div>
+      }
+    </mat-card-content>
+  </mat-card>
+</div>
