@@ -1,5 +1,5 @@
 {
   "$schema": "https://unpkg.com/knip@latest/schema.json",
   "ignoreDependencies": ["@biomejs/biome", "prettier", "tsx"],
-  "ignoreBinaries": ["biome", "knip", "prettier", "tsc", "tsx"]
+  "ignoreBinaries": ["biome", "eslint", "knip", "prettier", "tsc", "tsx"]
 }

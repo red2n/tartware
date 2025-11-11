@@ -59,6 +59,7 @@ const buildTenantScopeGuard = (options: TenantScopeOptions = {}): preHandlerHook
     allowUnauthenticated = false,
     requireActiveMembership = true,
     requireAnyTenantWithRole,
+    requiredModules,
   } = options;
 
   const resolver = resolveTenantId ?? (() => undefined);
@@ -115,6 +116,21 @@ const buildTenantScopeGuard = (options: TenantScopeOptions = {}): preHandlerHook
     if (!request.auth.hasRole(tenantId, minRole)) {
       reply.forbidden("TENANT_ROLE_INSUFFICIENT");
       return reply;
+    }
+
+    const moduleRequirements = Array.isArray(requiredModules)
+      ? requiredModules
+      : requiredModules
+        ? [requiredModules]
+        : [];
+
+    if (moduleRequirements.length > 0) {
+      const enabledModules = new Set(membership.modules);
+      const missing = moduleRequirements.filter((moduleId) => !enabledModules.has(moduleId));
+      if (missing.length > 0) {
+        reply.forbidden("TENANT_MODULE_NOT_ENABLED");
+        return reply;
+      }
     }
 
     request.auth.authorizedTenantIds.add(tenantId);

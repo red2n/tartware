@@ -46,7 +46,6 @@ type ReservationListRow = {
   guest_id: string | null;
   room_type_id: string | null;
   room_type_name: string | null;
-  room_type_name: string | null;
   confirmation_number: string;
   check_in_date: string | Date | null;
   check_out_date: string | Date | null;

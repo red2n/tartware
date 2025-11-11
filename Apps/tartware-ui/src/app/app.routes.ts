@@ -1,5 +1,6 @@
 import type { Routes } from '@angular/router';
 import { authGuard } from './core/guards/auth.guard';
+import { moduleGuard } from './core/guards/module.guard';
 
 /**
  * Application routes with lazy loading
@@ -45,6 +46,7 @@ export const routes: Routes = [
         path: 'dashboard',
         loadComponent: () =>
           import('./features/pms/dashboard/dashboard.component').then((m) => m.DashboardComponent),
+        canActivate: [moduleGuard('core')],
         title: 'Dashboard - Tartware PMS',
       },
       {
@@ -53,6 +55,7 @@ export const routes: Routes = [
           import('./features/pms/reservations/reservations.component').then(
             (m) => m.ReservationsComponent
           ),
+        canActivate: [moduleGuard('core')],
         title: 'Reservations - Tartware PMS',
       },
       // Placeholder routes for other PMS features
@@ -60,12 +63,14 @@ export const routes: Routes = [
         path: 'rooms',
         loadComponent: () =>
           import('./features/pms/rooms/rooms.component').then((m) => m.RoomsComponent),
+        canActivate: [moduleGuard('core')],
         title: 'Rooms - Tartware PMS',
       },
       {
         path: 'guests',
         loadComponent: () =>
           import('./features/pms/guests/guests.component').then((m) => m.GuestsComponent),
+        canActivate: [moduleGuard('core')],
         title: 'Guests - Tartware PMS',
       },
       {
@@ -74,24 +79,28 @@ export const routes: Routes = [
           import('./features/pms/housekeeping/housekeeping.component').then(
             (m) => m.HousekeepingComponent
           ),
+        canActivate: [moduleGuard('facility-maintenance')],
         title: 'Housekeeping - Tartware PMS',
       },
       {
         path: 'billing',
         loadComponent: () =>
           import('./features/pms/billing/billing.component').then((m) => m.BillingComponent),
+        canActivate: [moduleGuard('finance-automation')],
         title: 'Billing - Tartware PMS',
       },
       {
         path: 'reports',
         loadComponent: () =>
           import('./features/pms/reports/reports.component').then((m) => m.ReportsComponent),
+        canActivate: [moduleGuard('analytics-bi')],
         title: 'Reports - Tartware PMS',
       },
       {
         path: 'settings',
         loadComponent: () =>
           import('./features/pms/settings/settings.component').then((m) => m.SettingsComponent),
+        canActivate: [moduleGuard('core')],
         title: 'Settings - Tartware PMS',
       },
     ],

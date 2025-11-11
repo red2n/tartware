@@ -1,6 +1,9 @@
 import { computed, Injectable, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
+import { take } from 'rxjs';
+import type { ModuleId } from '../models/module.model';
 import type { Tenant } from '../models/tenant.model';
+import { ModuleService } from './module.service';
 
 /**
  * Tenant Context Service
@@ -30,12 +33,14 @@ import type { Tenant } from '../models/tenant.model';
 })
 export class TenantContextService {
   private router = inject(Router);
+  private moduleService = inject(ModuleService);
 
   // Storage key for active tenant
   private readonly ACTIVE_TENANT_KEY = 'tartware-active-tenant';
 
   // Active tenant signal
   private activeTenantSignal = signal<Tenant | null>(null);
+  private enabledModulesSignal = signal<ModuleId[]>([]);
 
   // Public readonly signals
   readonly activeTenant = this.activeTenantSignal.asReadonly();
@@ -43,6 +48,7 @@ export class TenantContextService {
   readonly tenantId = computed(() => this.activeTenant()?.id || null);
   readonly tenantName = computed(() => this.activeTenant()?.name || '');
   readonly tenantSlug = computed(() => this.activeTenant()?.slug || '');
+  readonly enabledModules = this.enabledModulesSignal.asReadonly();
 
   constructor() {
     this.loadActiveTenant();
@@ -58,6 +64,7 @@ export class TenantContextService {
       if (saved) {
         const tenant = JSON.parse(saved) as Tenant;
         this.activeTenantSignal.set(tenant);
+        this.loadModulesForTenant(tenant.id);
       }
     } catch (error) {
       console.warn('Failed to load active tenant:', error);
@@ -85,6 +92,8 @@ export class TenantContextService {
   setActiveTenant(tenant: Tenant, navigate = true): void {
     this.activeTenantSignal.set(tenant);
     this.saveActiveTenant(tenant);
+    this.moduleService.clearTenantModules(tenant.id);
+    this.loadModulesForTenant(tenant.id);
 
     if (navigate) {
       this.router.navigate(['/pms', tenant.id, 'dashboard']);
@@ -95,8 +104,13 @@ export class TenantContextService {
    * Clear active tenant and return to tenant list
    */
   clearActiveTenant(): void {
+    const currentTenantId = this.tenantId();
     this.activeTenantSignal.set(null);
     localStorage.removeItem(this.ACTIVE_TENANT_KEY);
+    this.enabledModulesSignal.set([]);
+    if (currentTenantId) {
+      this.moduleService.clearTenantModules(currentTenantId);
+    }
     this.router.navigate(['/tenants']);
   }
 
@@ -128,5 +142,19 @@ export class TenantContextService {
       throw new Error('No active tenant. Please select a tenant first.');
     }
     return tenant;
+  }
+
+  isModuleEnabled(moduleId: ModuleId): boolean {
+    return this.enabledModulesSignal().includes(moduleId);
+  }
+
+  private loadModulesForTenant(tenantId: string): void {
+    this.moduleService
+      .getTenantModules(tenantId, true)
+      .pipe(take(1))
+      .subscribe({
+        next: (modules) => this.enabledModulesSignal.set(modules),
+        error: () => this.enabledModulesSignal.set(['core'] as ModuleId[]),
+      });
   }
 }

@@ -41,7 +41,8 @@ export const ACTIVE_MEMBERSHIPS_SQL = `
     uta.role,
     uta.is_active,
     COALESCE(uta.permissions, '{}'::jsonb) AS permissions,
-    t.name AS tenant_name
+    t.name AS tenant_name,
+    COALESCE(t.config -> 'modules', '["core"]'::jsonb) AS modules
   FROM public.user_tenant_associations uta
   LEFT JOIN public.tenants t ON t.id = uta.tenant_id
   WHERE uta.user_id = $1::uuid

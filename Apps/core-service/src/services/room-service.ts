@@ -65,7 +65,10 @@ const toTitleCase = (value: string): string =>
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
     .join(" ");
 
-const normalizeEnum = (value: string | null, fallback: string): { value: string; display: string } => {
+const normalizeEnum = (
+  value: string | null,
+  fallback: string,
+): { value: string; display: string } => {
   if (!value) {
     return { value: fallback, display: toTitleCase(fallback) };
   }

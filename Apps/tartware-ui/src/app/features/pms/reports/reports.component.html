@@ -85,7 +85,10 @@
           </div>
           <div>
             <mat-card-title>
-              {{ report()?.revenueSummary.today | currency: report()?.revenueSummary.currency }}
+              {{
+                report()?.revenueSummary?.today
+                  | currency: report()?.revenueSummary?.currency
+              }}
             </mat-card-title>
             <mat-card-subtitle>Revenue Today</mat-card-subtitle>
           </div>
@@ -95,13 +98,19 @@
             <div>
               <p class="label">Month-to-date</p>
               <p class="value">
-                {{ report()?.revenueSummary.monthToDate | currency: report()?.revenueSummary.currency }}
+                {{
+                  report()?.revenueSummary?.monthToDate
+                    | currency: report()?.revenueSummary?.currency
+                }}
               </p>
             </div>
             <div>
               <p class="label">Year-to-date</p>
               <p class="value">
-                {{ report()?.revenueSummary.yearToDate | currency: report()?.revenueSummary.currency }}
+                {{
+                  report()?.revenueSummary?.yearToDate
+                    | currency: report()?.revenueSummary?.currency
+                }}
               </p>
             </div>
           </div>
@@ -129,7 +138,7 @@
           <ng-container matColumnDef="revenue">
             <th mat-header-cell *matHeaderCellDef>Revenue</th>
             <td mat-cell *matCellDef="let row">
-              {{ row.total_amount | currency: report()?.revenueSummary.currency }}
+              {{ row.total_amount | currency: report()?.revenueSummary?.currency }}
             </td>
           </ng-container>
 

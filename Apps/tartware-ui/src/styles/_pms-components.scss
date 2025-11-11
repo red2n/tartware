@@ -1610,6 +1610,26 @@
   color: #4338ca;
   font-weight: 600;
   text-transform: capitalize;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+
+  mat-icon {
+    font-size: 18px;
+    width: 18px;
+    height: 18px;
+  }
+
+  &.module-enabled {
+    background: #dcfce7;
+    color: #047857;
+  }
+
+  &.module-disabled {
+    background: #f3f4f6;
+    color: #6b7280;
+    opacity: 0.8;
+  }
 }
 
 .properties-card {

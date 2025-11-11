@@ -2,6 +2,6 @@
   "$schema": "https://unpkg.com/knip@5/schema.json",
   "project": ["src/**/*.ts"],
   "ignoreDependencies": ["@tartware/schemas", "@biomejs/biome", "tsx", "pino-pretty", "redis"],
-  "ignoreBinaries": ["tsx", "tsc", "vitest", "biome", "knip"],
+  "ignoreBinaries": ["tsx", "tsc", "vitest", "biome", "eslint", "knip"],
   "ignoreExportsUsedInFile": true
 }

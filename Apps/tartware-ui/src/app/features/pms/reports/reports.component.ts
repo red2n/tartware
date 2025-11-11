@@ -21,7 +21,14 @@ import { TenantContextService } from '../../../core/services/tenant-context.serv
 @Component({
   selector: 'app-reports',
   standalone: true,
-  imports: [CommonModule, MatCardModule, MatButtonModule, MatIconModule, MatInputModule, MatTableModule],
+  imports: [
+    CommonModule,
+    MatCardModule,
+    MatButtonModule,
+    MatIconModule,
+    MatInputModule,
+    MatTableModule,
+  ],
   templateUrl: './reports.component.html',
   styleUrl: './reports.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -53,7 +60,7 @@ export class ReportsComponent {
 
         this.fetchReport(tenant.id, propertyId);
       },
-      { allowSignalWrites: true },
+      { allowSignalWrites: true }
     );
   }
 

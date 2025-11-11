@@ -49,6 +49,7 @@ export const registerBillingRoutes = (app: FastifyInstance): void => {
       preHandler: app.withTenantScope({
         resolveTenantId: (request) => (request.query as BillingListQuery).tenant_id,
         minRole: "STAFF",
+        requiredModules: "finance-automation",
       }),
     },
     async (request) => {

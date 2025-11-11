@@ -13,6 +13,7 @@ import { registerDashboardRoutes } from "./routes/dashboard.js";
 import { registerGuestRoutes } from "./routes/guests.js";
 import { registerHealthRoutes } from "./routes/health.js";
 import { registerHousekeepingRoutes } from "./routes/housekeeping.js";
+import { registerModuleRoutes } from "./routes/modules.js";
 import { registerPropertyRoutes } from "./routes/properties.js";
 import { registerReportRoutes } from "./routes/reports.js";
 import { registerReservationRoutes } from "./routes/reservations.js";
@@ -99,6 +100,7 @@ export const buildServer = (): FastifyInstance => {
     registerHousekeepingRoutes(app);
     registerBillingRoutes(app);
     registerReportRoutes(app);
+    registerModuleRoutes(app);
   });
 
   app.addHook("onReady", async () => {

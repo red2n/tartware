@@ -6,16 +6,14 @@ import { listReservations, ReservationListItemSchema } from "../services/reserva
 
 const ReservationListQuerySchema = z.object({
   tenant_id: z.string().uuid(),
-  property_id: z
-    .string()
-    .uuid()
-    .optional(),
+  property_id: z.string().uuid().optional(),
   status: z
     .string()
     .toLowerCase()
     .optional()
     .refine(
-      (value) => !value || ReservationStatusEnum.options.map((s) => s.toLowerCase()).includes(value),
+      (value) =>
+        !value || ReservationStatusEnum.options.map((s) => s.toLowerCase()).includes(value),
       { message: "Invalid reservation status" },
     ),
   search: z.string().min(2).max(100).optional(),
@@ -33,6 +31,7 @@ export const registerReservationRoutes = (app: FastifyInstance): void => {
       preHandler: app.withTenantScope({
         resolveTenantId: (request) => (request.query as ReservationListQuery).tenant_id,
         minRole: "STAFF",
+        requiredModules: "core",
       }),
     },
     async (request) => {

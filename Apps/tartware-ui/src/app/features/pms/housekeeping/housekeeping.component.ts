@@ -68,7 +68,7 @@ export class HousekeepingComponent {
   errorMessage = signal<string>('');
 
   private tasks = signal<HousekeepingTask[]>([]);
-  private scheduledDate = signal<string>('');
+  scheduledDate = signal<string>('');
   statusFilter = signal<string>('all');
   searchTerm = signal<string>('');
 
@@ -112,7 +112,7 @@ export class HousekeepingComponent {
 
         this.fetchTasks(tenant.id, propertyId);
       },
-      { allowSignalWrites: true },
+      { allowSignalWrites: true }
     );
   }
 

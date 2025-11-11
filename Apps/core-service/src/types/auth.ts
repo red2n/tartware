@@ -1,6 +1,8 @@
 import type { TenantRole } from "@tartware/schemas";
 import type { FastifyRequest, preHandlerHookHandler } from "fastify";
 
+import type { ModuleId } from "../modules/module-registry.js";
+
 type TenantScopeResolver = (request: FastifyRequest) => string | null | undefined;
 
 export type RolePriorityMap = Record<TenantRole, number>;
@@ -11,6 +13,7 @@ export interface TenantMembership {
   role: TenantRole;
   isActive: boolean;
   permissions: Record<string, unknown>;
+  modules: ModuleId[];
 }
 
 export interface AuthContext {
@@ -46,6 +49,8 @@ export interface TenantScopeOptions {
   requireActiveMembership?: boolean;
   /** Require the user to hold at least this role across any tenant membership. */
   requireAnyTenantWithRole?: TenantRole;
+  /** Require one or more modules to be enabled for the tenant. */
+  requiredModules?: ModuleId | ModuleId[];
 }
 
 export type TenantScopeDecorator = (options?: TenantScopeOptions) => preHandlerHookHandler;

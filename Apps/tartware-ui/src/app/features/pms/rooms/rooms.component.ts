@@ -145,7 +145,7 @@ export class RoomsComponent {
 
         this.fetchRooms(tenant.id, propertyId);
       },
-      { allowSignalWrites: true },
+      { allowSignalWrites: true }
     );
   }
 

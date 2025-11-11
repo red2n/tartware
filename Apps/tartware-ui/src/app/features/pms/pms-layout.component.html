@@ -21,7 +21,7 @@
 
     <!-- Navigation Menu -->
     <mat-nav-list class="nav-list">
-      @for (item of menuItems; track item.id) {
+      @for (item of visibleMenuItems(); track item.id) {
         <a
           mat-list-item
           [routerLink]="['/pms', activeTenant()?.id, item.route]"

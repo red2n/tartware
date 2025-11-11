@@ -47,12 +47,53 @@ services:
     networks:
       - tartware_network
 
+  zookeeper:
+    image: bitnami/zookeeper:3.9
+    container_name: tartware-zookeeper
+    restart: always
+    environment:
+      - ZOOKEEPER_CLIENT_PORT=2181
+      - ZOOKEEPER_TICK_TIME=2000
+    ports:
+      - "2181:2181"
+    networks:
+      - tartware_network
+    volumes:
+      - tartware_zookeeper_data:/bitnami/zookeeper
+
+  kafka:
+    image: bitnami/kafka:3.6
+    container_name: tartware-kafka
+    restart: always
+    environment:
+      - KAFKA_CFG_ZOOKEEPER_CONNECT=zookeeper:2181
+      - KAFKA_CFG_LISTENERS=PLAINTEXT://:9092
+      - KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://kafka:9092
+      - KAFKA_CFG_AUTO_CREATE_TOPICS_ENABLE=true
+      - KAFKA_CFG_NUM_PARTITIONS=12
+      - KAFKA_CFG_DEFAULT_REPLICATION_FACTOR=1
+      - ALLOW_PLAINTEXT_LISTENER=yes
+    depends_on:
+      - zookeeper
+    ports:
+      - "9092:9092"
+    networks:
+      - tartware_network
+    volumes:
+      - tartware_kafka_data:/bitnami/kafka
+
 volumes:
   tartware_postgres_data:
     name: tartware_postgres_data
     driver: local
   tartware_redis_data:
     name: tartware_redis_data
+    driver: local
+  tartware_zookeeper_data:
+    name: tartware_zookeeper_data
+    driver: local
+  tartware_kafka_data:
+    name: tartware_kafka_data
     driver: local
 
 networks:

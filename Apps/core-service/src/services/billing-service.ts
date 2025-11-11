@@ -60,7 +60,10 @@ type BillingPaymentRow = {
   version: bigint | null;
 };
 
-const formatEnumDisplay = (value: string | null, fallback: string): { value: string; display: string } => {
+const formatEnumDisplay = (
+  value: string | null,
+  fallback: string,
+): { value: string; display: string } => {
   if (!value) {
     const formatted = fallback.toLowerCase();
     return { value: formatted, display: fallback };
@@ -144,7 +147,9 @@ export const listBillingPayments = async (options: {
   const tenantId = options.tenantId;
   const propertyId = options.propertyId ?? null;
   const status = options.status ? options.status.trim().toUpperCase() : null;
-  const transactionType = options.transactionType ? options.transactionType.trim().toUpperCase() : null;
+  const transactionType = options.transactionType
+    ? options.transactionType.trim().toUpperCase()
+    : null;
   const paymentMethod = options.paymentMethod ? options.paymentMethod.trim().toUpperCase() : null;
 
   const { rows } = await query<BillingPaymentRow>(BILLING_PAYMENT_LIST_SQL, [

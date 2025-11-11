@@ -5,6 +5,7 @@ import {
 } from "@tartware/schemas";
 
 import { query } from "../lib/db.js";
+import { normalizeModuleList } from "../modules/module-registry.js";
 import {
   ACTIVE_MEMBERSHIPS_SQL,
   ASSOCIATION_LIST_SQL,
@@ -110,16 +111,19 @@ export const getActiveUserTenantMemberships = async (
     is_active: boolean;
     permissions: Record<string, unknown> | null;
     tenant_name: string | null;
+    modules: unknown;
   }>(ACTIVE_MEMBERSHIPS_SQL, [userId]);
 
   return rows.map((row) => {
     const role = TenantRoleEnum.parse(row.role);
+    const modules = normalizeModuleList(row.modules);
     return {
       tenantId: row.tenant_id,
       tenantName: row.tenant_name ?? undefined,
       role,
       isActive: row.is_active,
       permissions: row.permissions ?? {},
+      modules,
     } satisfies TenantMembership;
   });
 };

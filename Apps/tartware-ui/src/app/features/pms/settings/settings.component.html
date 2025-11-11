@@ -85,14 +85,21 @@
     <mat-card class="settings-card">
       <mat-card-header>
         <mat-icon mat-card-avatar>extension</mat-icon>
-        <mat-card-title>Enabled Modules</mat-card-title>
-        <mat-card-subtitle>Current system capabilities</mat-card-subtitle>
+        <mat-card-title>Modules & Add-ons</mat-card-title>
+        <mat-card-subtitle>Licensed capabilities for this tenant</mat-card-subtitle>
       </mat-card-header>
       <mat-card-content>
         <div class="modules-grid">
-          @for (module of enabledModules(); track trackModule($index, module)) {
-            <mat-chip class="module-chip">
-              {{ module | titlecase }}
+          @for (module of moduleCatalog(); track trackModule($index, module)) {
+            <mat-chip
+              class="module-chip"
+              [class.module-enabled]="isModuleEnabled(module.id)"
+              [class.module-disabled]="!isModuleEnabled(module.id)"
+            >
+              <mat-icon>
+                {{ isModuleEnabled(module.id) ? 'check_circle' : 'lock' }}
+              </mat-icon>
+              <span>{{ module.name }}</span>
             </mat-chip>
           }
         </div>

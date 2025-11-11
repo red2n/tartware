@@ -91,7 +91,7 @@ export class GuestsComponent {
 
         this.fetchGuests(tenant.id);
       },
-      { allowSignalWrites: true },
+      { allowSignalWrites: true }
     );
   }
 

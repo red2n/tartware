@@ -1,6 +1,6 @@
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
-import { Observable } from 'rxjs';
+import type { Observable } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import type { PerformanceReport } from '../models/report.model';
 
@@ -17,7 +17,10 @@ export class ReportService {
   private readonly http = inject(HttpClient);
   private readonly apiUrl = environment.apiUrl;
 
-  getPerformanceReport(tenantId: string, filters: ReportFilters = {}): Observable<PerformanceReport> {
+  getPerformanceReport(
+    tenantId: string,
+    filters: ReportFilters = {}
+  ): Observable<PerformanceReport> {
     let params = new HttpParams().set('tenant_id', tenantId);
 
     if (filters.propertyId && filters.propertyId !== 'all') {

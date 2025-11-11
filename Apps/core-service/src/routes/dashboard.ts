@@ -17,6 +17,7 @@ export const registerDashboardRoutes = (app: FastifyInstance): void => {
       preHandler: app.withTenantScope({
         resolveTenantId: (request) => (request.query as DashboardStatsQuery).tenant_id,
         minRole: "STAFF",
+        requiredModules: "core",
       }),
     },
     async (request): Promise<DashboardStats> => {
@@ -144,6 +145,7 @@ export const registerDashboardRoutes = (app: FastifyInstance): void => {
       preHandler: app.withTenantScope({
         resolveTenantId: (request) => (request.query as DashboardStatsQuery).tenant_id,
         minRole: "STAFF",
+        requiredModules: "core",
       }),
     },
     async (request): Promise<ActivityItem[]> => {
@@ -195,6 +197,7 @@ export const registerDashboardRoutes = (app: FastifyInstance): void => {
       preHandler: app.withTenantScope({
         resolveTenantId: (request) => (request.query as DashboardStatsQuery).tenant_id,
         minRole: "STAFF",
+        requiredModules: "core",
       }),
     },
     async (request): Promise<TaskItem[]> => {

@@ -20,6 +20,7 @@ import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { Router, RouterModule } from '@angular/router';
 import { environment } from '../../../environments/environment';
+import type { ModuleId } from '../../core/models/module.model';
 import { AuthService } from '../../core/services/auth.service';
 import { PropertyService } from '../../core/services/property.service';
 import { PropertyContextService } from '../../core/services/property-context.service';
@@ -84,6 +85,7 @@ export class PmsLayoutComponent implements OnInit, OnDestroy {
   // Current tenant
   activeTenant = this.tenantContext.activeTenant;
   tenantName = this.tenantContext.tenantName;
+  enabledModules = this.tenantContext.enabledModules;
 
   // Auth context
   authContext = this.authService.authContext;
@@ -108,6 +110,7 @@ export class PmsLayoutComponent implements OnInit, OnDestroy {
       label: 'Dashboard',
       route: 'dashboard',
       badge: null,
+      moduleId: 'core',
     },
     {
       id: 'reservations',
@@ -115,6 +118,7 @@ export class PmsLayoutComponent implements OnInit, OnDestroy {
       label: 'Reservations',
       route: 'reservations',
       badge: null,
+      moduleId: 'core',
     },
     {
       id: 'rooms',
@@ -122,6 +126,7 @@ export class PmsLayoutComponent implements OnInit, OnDestroy {
       label: 'Rooms & Inventory',
       route: 'rooms',
       badge: null,
+      moduleId: 'core',
     },
     {
       id: 'guests',
@@ -129,6 +134,7 @@ export class PmsLayoutComponent implements OnInit, OnDestroy {
       label: 'Guests',
       route: 'guests',
       badge: null,
+      moduleId: 'core',
     },
     {
       id: 'housekeeping',
@@ -136,6 +142,7 @@ export class PmsLayoutComponent implements OnInit, OnDestroy {
       label: 'Housekeeping',
       route: 'housekeeping',
       badge: 3,
+      moduleId: 'facility-maintenance',
     },
     {
       id: 'billing',
@@ -143,6 +150,7 @@ export class PmsLayoutComponent implements OnInit, OnDestroy {
       label: 'Billing',
       route: 'billing',
       badge: null,
+      moduleId: 'finance-automation',
     },
     {
       id: 'reports',
@@ -150,6 +158,7 @@ export class PmsLayoutComponent implements OnInit, OnDestroy {
       label: 'Reports',
       route: 'reports',
       badge: null,
+      moduleId: 'analytics-bi',
     },
     {
       id: 'settings',
@@ -157,8 +166,14 @@ export class PmsLayoutComponent implements OnInit, OnDestroy {
       label: 'Settings',
       route: 'settings',
       badge: null,
+      moduleId: 'core',
     },
   ];
+
+  readonly visibleMenuItems = computed(() => {
+    const moduleSet = new Set(this.enabledModules());
+    return this.menuItems.filter((item) => !item.moduleId || moduleSet.has(item.moduleId));
+  });
 
   private readonly resizeHandler = () => this.checkScreenSize();
 
@@ -296,6 +311,7 @@ interface MenuItem {
   label: string;
   route: string;
   badge: number | null;
+  moduleId?: ModuleId | null;
 }
 
 /**

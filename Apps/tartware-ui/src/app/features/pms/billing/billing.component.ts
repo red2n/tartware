@@ -130,7 +130,7 @@ export class BillingComponent {
 
         this.fetchPayments(tenant.id, propertyId);
       },
-      { allowSignalWrites: true },
+      { allowSignalWrites: true }
     );
   }
 

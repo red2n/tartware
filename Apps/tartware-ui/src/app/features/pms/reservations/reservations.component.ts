@@ -115,7 +115,7 @@ export class ReservationsComponent {
 
         this.fetchReservations(tenant.id, propertyId);
       },
-      { allowSignalWrites: true },
+      { allowSignalWrites: true }
     );
   }
 

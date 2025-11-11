@@ -20,7 +20,8 @@ const RoomListQuerySchema = z.object({
     .toLowerCase()
     .optional()
     .refine(
-      (value) => !value || HousekeepingStatusEnum.options.map((s) => s.toLowerCase()).includes(value),
+      (value) =>
+        !value || HousekeepingStatusEnum.options.map((s) => s.toLowerCase()).includes(value),
       { message: "Invalid housekeeping status" },
     ),
   search: z.string().min(1).max(50).optional(),
@@ -38,6 +39,7 @@ export const registerRoomRoutes = (app: FastifyInstance): void => {
       preHandler: app.withTenantScope({
         resolveTenantId: (request) => (request.query as RoomListQuery).tenant_id,
         minRole: "STAFF",
+        requiredModules: "core",
       }),
     },
     async (request) => {
