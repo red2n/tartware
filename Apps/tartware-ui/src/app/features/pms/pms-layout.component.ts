@@ -85,6 +85,7 @@ export class PmsLayoutComponent implements OnInit, OnDestroy {
     STAFF: 200,
     VIEWER: 100,
   };
+  private sidebarToggledManually = false;
 
   // Sidebar state
   sidebarOpen = signal(true);
@@ -271,6 +272,8 @@ export class PmsLayoutComponent implements OnInit, OnDestroy {
     this.isMobile.set(mobile);
     if (mobile) {
       this.sidebarOpen.set(false);
+    } else if (!this.sidebarToggledManually) {
+      this.sidebarOpen.set(true);
     }
   }
 
@@ -278,6 +281,7 @@ export class PmsLayoutComponent implements OnInit, OnDestroy {
    * Toggle sidebar
    */
   toggleSidebar(): void {
+    this.sidebarToggledManually = true;
     this.sidebarOpen.update((open) => !open);
   }
 

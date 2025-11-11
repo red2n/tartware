@@ -130,11 +130,17 @@
             <span>Settings</span>
           </button>
           <mat-divider></mat-divider>
-          <button mat-menu-item (click)="logout()">
-            <mat-icon>logout</mat-icon>
-            <span>Logout</span>
-          </button>
         </mat-menu>
+
+        <button
+          mat-stroked-button
+          class="logout-btn"
+          (click)="logout()"
+          matTooltip="Logout"
+        >
+          <mat-icon>logout</mat-icon>
+          <span>Logout</span>
+        </button>
       </div>
     </mat-toolbar>
 

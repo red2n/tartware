@@ -211,7 +211,7 @@
 
 .pms-container {
   height: 100vh;
-  display: flex;
+  display: block;
 }
 
 .pms-sidebar {
@@ -383,6 +383,24 @@
     display: flex;
     align-items: center;
     gap: 8px;
+
+    .logout-btn {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      text-transform: none;
+      font-weight: 500;
+      border-color: #d1d5db;
+
+      mat-icon {
+        margin: 0;
+      }
+
+      &:hover {
+        border-color: #9ca3af;
+        background-color: rgba(79, 70, 229, 0.05);
+      }
+    }
   }
 }
 
