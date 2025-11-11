@@ -16,7 +16,7 @@ export const registerDashboardRoutes = (app: FastifyInstance): void => {
     {
       preHandler: app.withTenantScope({
         resolveTenantId: (request) => (request.query as DashboardStatsQuery).tenant_id,
-        minRole: "STAFF",
+        minRole: "ADMIN",
         requiredModules: "core",
       }),
     },
@@ -144,7 +144,7 @@ export const registerDashboardRoutes = (app: FastifyInstance): void => {
     {
       preHandler: app.withTenantScope({
         resolveTenantId: (request) => (request.query as DashboardStatsQuery).tenant_id,
-        minRole: "STAFF",
+        minRole: "MANAGER",
         requiredModules: "core",
       }),
     },
@@ -196,7 +196,7 @@ export const registerDashboardRoutes = (app: FastifyInstance): void => {
     {
       preHandler: app.withTenantScope({
         resolveTenantId: (request) => (request.query as DashboardStatsQuery).tenant_id,
-        minRole: "STAFF",
+        minRole: "MANAGER",
         requiredModules: "core",
       }),
     },

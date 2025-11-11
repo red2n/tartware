@@ -1,20 +1,29 @@
 import { inject } from '@angular/core';
 import type { CanActivateFn } from '@angular/router';
 import { Router } from '@angular/router';
+import type { TenantRole } from '@tartware/schemas';
 import { catchError, map, of } from 'rxjs';
 import type { ModuleId } from '../models/module.model';
+import { AuthService } from '../services/auth.service';
 import { ModuleService } from '../services/module.service';
 import { TenantContextService } from '../services/tenant-context.service';
 
 export const moduleGuard =
-  (moduleId: ModuleId): CanActivateFn =>
+  (moduleId: ModuleId, options: { minRole?: TenantRole } = {}): CanActivateFn =>
   () => {
     const tenantContext = inject(TenantContextService);
     const moduleService = inject(ModuleService);
     const router = inject(Router);
+    const authService = inject(AuthService);
 
     const tenantId = tenantContext.tenantId();
     if (!tenantId) {
+      router.navigate(['/tenants'], { replaceUrl: true });
+      return false;
+    }
+
+    const requiredRole = options.minRole;
+    if (requiredRole && !authService.hasMinimumRole(tenantId, requiredRole)) {
       router.navigate(['/tenants'], { replaceUrl: true });
       return false;
     }

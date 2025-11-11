@@ -38,7 +38,7 @@ export const registerRoomRoutes = (app: FastifyInstance): void => {
     {
       preHandler: app.withTenantScope({
         resolveTenantId: (request) => (request.query as RoomListQuery).tenant_id,
-        minRole: "STAFF",
+        minRole: "MANAGER",
         requiredModules: "core",
       }),
     },

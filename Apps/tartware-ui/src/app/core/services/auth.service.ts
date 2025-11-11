@@ -59,6 +59,13 @@ export class AuthService {
   private errorHandler = inject(ErrorHandlerService);
 
   private readonly apiUrl = environment.apiUrl;
+  private readonly rolePriority: Record<TenantRole, number> = {
+    OWNER: 500,
+    ADMIN: 400,
+    MANAGER: 300,
+    STAFF: 200,
+    VIEWER: 100,
+  };
 
   // Private signals for internal state management
   private currentUserIdSignal = signal<string | null>(null);
@@ -254,12 +261,41 @@ export class AuthService {
    * @param role - Required role
    * @returns True if user has the role
    */
-  hasRole(tenantId: string, role: string): boolean {
+  hasRole(tenantId: string, role: TenantRole): boolean {
     const context = this.authContextSignal();
     if (!context) return false;
 
     return context.memberships.some(
       (membership) => membership.tenant_id === tenantId && membership.role === role
+    );
+  }
+
+  /**
+   * Check if user meets minimum role requirement for a tenant
+   * @param tenantId - Tenant ID to check
+   * @param requiredRole - Minimum role required
+   * @returns True if membership role priority >= required role
+   */
+  hasMinimumRole(tenantId: string, requiredRole: TenantRole): boolean {
+    const context = this.authContextSignal();
+    if (!context) return false;
+    const membership = context.memberships.find((m) => m.tenant_id === tenantId);
+    if (!membership) {
+      return false;
+    }
+    return this.rolePriority[membership.role] >= this.rolePriority[requiredRole];
+  }
+
+  /**
+   * Get the user's role for a tenant (if any)
+   * @param tenantId - Tenant to check
+   * @returns The role or null if no membership
+   */
+  getTenantRole(tenantId: string): TenantRole | null {
+    const context = this.authContextSignal();
+    if (!context) return null;
+    return (
+      context.memberships.find((membership) => membership.tenant_id === tenantId)?.role ?? null
     );
   }
 

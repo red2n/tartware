@@ -9,6 +9,7 @@ import {
   STAFF_USER_ID,
   MANAGER_USER_ID,
   VIEWER_USER_ID,
+  MODULE_DISABLED_USER_ID,
 } from "./mocks/db.js";
 import { buildAuthHeader } from "./utils/auth.js";
 
@@ -252,7 +253,7 @@ describe("Dashboard Routes", () => {
 
   describe("GET /v1/dashboard/stats", () => {
     describe("Positive Cases", () => {
-      it("should return dashboard stats for staff user with specific property", async () => {
+      it("should return dashboard stats for admin user with specific property", async () => {
         const response = await app.inject({
           method: "GET",
           url: "/v1/dashboard/stats",
@@ -261,7 +262,7 @@ describe("Dashboard Routes", () => {
             property_id: TEST_PROPERTY_ID,
           },
           headers: {
-            ...buildAuthHeader(STAFF_USER_ID),
+            ...buildAuthHeader(TEST_USER_ID),
             "x-tenant-id": TEST_TENANT_ID,
           },
         });
@@ -307,7 +308,7 @@ describe("Dashboard Routes", () => {
             property_id: "all",
           },
           headers: {
-            ...buildAuthHeader(STAFF_USER_ID),
+            ...buildAuthHeader(TEST_USER_ID),
             "x-tenant-id": TEST_TENANT_ID,
           },
         });
@@ -320,7 +321,25 @@ describe("Dashboard Routes", () => {
         expect(data).toHaveProperty("checkOuts");
       });
 
-      it("should return stats for manager user", async () => {
+      it("should return stats when property_id is omitted (defaults to all)", async () => {
+        const response = await app.inject({
+          method: "GET",
+          url: "/v1/dashboard/stats",
+          query: {
+            tenant_id: TEST_TENANT_ID,
+          },
+          headers: {
+            ...buildAuthHeader(TEST_USER_ID),
+            "x-tenant-id": TEST_TENANT_ID,
+          },
+        });
+
+        expect(response.statusCode).toBe(200);
+        const data = response.json();
+        expect(data).toHaveProperty("occupancy");
+      });
+
+      it("should forbid stats for manager user", async () => {
         const response = await app.inject({
           method: "GET",
           url: "/v1/dashboard/stats",
@@ -334,18 +353,16 @@ describe("Dashboard Routes", () => {
           },
         });
 
-        expect(response.statusCode).toBe(200);
-        const data = response.json();
-        expect(data).toHaveProperty("occupancy");
-        expect(data).toHaveProperty("revenue");
+        expect(response.statusCode).toBe(403);
       });
 
-      it("should return stats when property_id is omitted (defaults to all)", async () => {
+      it("should forbid stats for staff user", async () => {
         const response = await app.inject({
           method: "GET",
           url: "/v1/dashboard/stats",
           query: {
             tenant_id: TEST_TENANT_ID,
+            property_id: TEST_PROPERTY_ID,
           },
           headers: {
             ...buildAuthHeader(STAFF_USER_ID),
@@ -353,9 +370,7 @@ describe("Dashboard Routes", () => {
           },
         });
 
-        expect(response.statusCode).toBe(200);
-        const data = response.json();
-        expect(data).toHaveProperty("occupancy");
+        expect(response.statusCode).toBe(403);
       });
     });
 
@@ -369,7 +384,7 @@ describe("Dashboard Routes", () => {
             property_id: TEST_PROPERTY_ID,
           },
           headers: {
-            ...buildAuthHeader(STAFF_USER_ID),
+            ...buildAuthHeader(TEST_USER_ID),
             "x-tenant-id": TEST_TENANT_ID,
           },
         });
@@ -386,7 +401,7 @@ describe("Dashboard Routes", () => {
             property_id: "invalid-uuid",
           },
           headers: {
-            ...buildAuthHeader(STAFF_USER_ID),
+            ...buildAuthHeader(TEST_USER_ID),
             "x-tenant-id": TEST_TENANT_ID,
           },
         });
@@ -402,7 +417,7 @@ describe("Dashboard Routes", () => {
             property_id: TEST_PROPERTY_ID,
           },
           headers: {
-            ...buildAuthHeader(STAFF_USER_ID),
+            ...buildAuthHeader(TEST_USER_ID),
             "x-tenant-id": TEST_TENANT_ID,
           },
         });
@@ -440,6 +455,23 @@ describe("Dashboard Routes", () => {
         expect(response.statusCode).toBe(403);
       });
 
+      it("should return 403 when required module is not enabled", async () => {
+        const response = await app.inject({
+          method: "GET",
+          url: "/v1/dashboard/stats",
+          query: {
+            tenant_id: TEST_TENANT_ID,
+            property_id: TEST_PROPERTY_ID,
+          },
+          headers: {
+            ...buildAuthHeader(MODULE_DISABLED_USER_ID),
+            "x-tenant-id": TEST_TENANT_ID,
+          },
+        });
+
+        expect(response.statusCode).toBe(403);
+      });
+
       it("should return 403 for cross-tenant access attempt", async () => {
         const response = await app.inject({
           method: "GET",
@@ -449,7 +481,7 @@ describe("Dashboard Routes", () => {
             property_id: "other-property-id",
           },
           headers: {
-            ...buildAuthHeader(STAFF_USER_ID),
+            ...buildAuthHeader(TEST_USER_ID),
             "x-tenant-id": TEST_TENANT_ID,
           },
         });
@@ -470,7 +502,7 @@ describe("Dashboard Routes", () => {
             property_id: TEST_PROPERTY_ID,
           },
           headers: {
-            ...buildAuthHeader(STAFF_USER_ID),
+            ...buildAuthHeader(MANAGER_USER_ID),
             "x-tenant-id": TEST_TENANT_ID,
           },
         });
@@ -498,7 +530,7 @@ describe("Dashboard Routes", () => {
             property_id: "all",
           },
           headers: {
-            ...buildAuthHeader(STAFF_USER_ID),
+            ...buildAuthHeader(MANAGER_USER_ID),
             "x-tenant-id": TEST_TENANT_ID,
           },
         });
@@ -517,7 +549,7 @@ describe("Dashboard Routes", () => {
             property_id: TEST_PROPERTY_ID,
           },
           headers: {
-            ...buildAuthHeader(STAFF_USER_ID),
+            ...buildAuthHeader(MANAGER_USER_ID),
             "x-tenant-id": TEST_TENANT_ID,
           },
         });
@@ -538,7 +570,7 @@ describe("Dashboard Routes", () => {
             property_id: TEST_PROPERTY_ID,
           },
           headers: {
-            ...buildAuthHeader(STAFF_USER_ID),
+            ...buildAuthHeader(MANAGER_USER_ID),
             "x-tenant-id": TEST_TENANT_ID,
           },
         });
@@ -568,7 +600,7 @@ describe("Dashboard Routes", () => {
             property_id: "other-property-id",
           },
           headers: {
-            ...buildAuthHeader(STAFF_USER_ID),
+            ...buildAuthHeader(MANAGER_USER_ID),
             "x-tenant-id": TEST_TENANT_ID,
           },
         });
@@ -580,7 +612,7 @@ describe("Dashboard Routes", () => {
 
   describe("GET /v1/dashboard/tasks", () => {
     describe("Positive Cases", () => {
-      it("should return upcoming tasks for staff user", async () => {
+      it("should return upcoming tasks for manager user", async () => {
         const response = await app.inject({
           method: "GET",
           url: "/v1/dashboard/tasks",
@@ -589,7 +621,7 @@ describe("Dashboard Routes", () => {
             property_id: TEST_PROPERTY_ID,
           },
           headers: {
-            ...buildAuthHeader(STAFF_USER_ID),
+            ...buildAuthHeader(MANAGER_USER_ID),
             "x-tenant-id": TEST_TENANT_ID,
           },
         });
@@ -618,7 +650,7 @@ describe("Dashboard Routes", () => {
             property_id: "all",
           },
           headers: {
-            ...buildAuthHeader(STAFF_USER_ID),
+            ...buildAuthHeader(MANAGER_USER_ID),
             "x-tenant-id": TEST_TENANT_ID,
           },
         });
@@ -637,7 +669,7 @@ describe("Dashboard Routes", () => {
             property_id: TEST_PROPERTY_ID,
           },
           headers: {
-            ...buildAuthHeader(STAFF_USER_ID),
+            ...buildAuthHeader(MANAGER_USER_ID),
             "x-tenant-id": TEST_TENANT_ID,
           },
         });
@@ -656,7 +688,7 @@ describe("Dashboard Routes", () => {
             property_id: TEST_PROPERTY_ID,
           },
           headers: {
-            ...buildAuthHeader(STAFF_USER_ID),
+            ...buildAuthHeader(MANAGER_USER_ID),
             "x-tenant-id": TEST_TENANT_ID,
           },
         });
@@ -682,7 +714,7 @@ describe("Dashboard Routes", () => {
             property_id: "invalid",
           },
           headers: {
-            ...buildAuthHeader(STAFF_USER_ID),
+            ...buildAuthHeader(MANAGER_USER_ID),
             "x-tenant-id": TEST_TENANT_ID,
           },
         });
@@ -698,7 +730,7 @@ describe("Dashboard Routes", () => {
             property_id: TEST_PROPERTY_ID,
           },
           headers: {
-            ...buildAuthHeader(STAFF_USER_ID),
+            ...buildAuthHeader(MANAGER_USER_ID),
             "x-tenant-id": TEST_TENANT_ID,
           },
         });
@@ -745,7 +777,7 @@ describe("Dashboard Routes", () => {
             property_id: "other-property-id",
           },
           headers: {
-            ...buildAuthHeader(STAFF_USER_ID),
+            ...buildAuthHeader(MANAGER_USER_ID),
             "x-tenant-id": TEST_TENANT_ID,
           },
         });
@@ -765,7 +797,7 @@ describe("Dashboard Routes", () => {
           property_id: TEST_PROPERTY_ID,
         },
         headers: {
-          ...buildAuthHeader(MANAGER_USER_ID),
+          ...buildAuthHeader(TEST_USER_ID),
           "x-tenant-id": TEST_TENANT_ID,
         },
       });
@@ -788,7 +820,7 @@ describe("Dashboard Routes", () => {
           property_id: TEST_PROPERTY_ID,
         },
         headers: {
-          ...buildAuthHeader(STAFF_USER_ID),
+          ...buildAuthHeader(TEST_USER_ID),
           "x-tenant-id": TEST_TENANT_ID,
         },
       });
@@ -801,7 +833,7 @@ describe("Dashboard Routes", () => {
           property_id: "all",
         },
         headers: {
-          ...buildAuthHeader(STAFF_USER_ID),
+          ...buildAuthHeader(TEST_USER_ID),
           "x-tenant-id": TEST_TENANT_ID,
         },
       });

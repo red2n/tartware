@@ -76,7 +76,7 @@ describe("Properties Endpoint", () => {
   });
 
   describe("GET /v1/properties - Positive Cases", () => {
-    it("should return properties for STAFF user with valid tenant_id", async () => {
+    it("should reject STAFF user with valid tenant_id due to insufficient role", async () => {
       if (!staffUserId || !staffTenantId) {
         console.warn("⚠ Skipping test: no STAFF users with tenants");
         return;
@@ -88,9 +88,7 @@ describe("Properties Endpoint", () => {
         headers: buildAuthHeader(staffUserId),
       });
 
-      expect(response.statusCode).toBe(200);
-      const payload = JSON.parse(response.payload);
-      expect(Array.isArray(payload)).toBe(true);
+      expect(response.statusCode).toBe(403);
     });
 
     it("should return properties for MANAGER user", async () => {
@@ -109,15 +107,15 @@ describe("Properties Endpoint", () => {
     });
 
     it("should respect limit parameter", async () => {
-      if (!staffUserId || !staffTenantId) {
-        console.warn("⚠ Skipping test: no STAFF users with tenants");
+      if (!managerUserId || !managerTenantId) {
+        console.warn("⚠ Skipping test: no MANAGER users with tenants");
         return;
       }
 
       const response = await app.inject({
         method: "GET",
-        url: `/v1/properties?tenant_id=${staffTenantId}&limit=3`,
-        headers: buildAuthHeader(staffUserId),
+        url: `/v1/properties?tenant_id=${managerTenantId}&limit=3`,
+        headers: buildAuthHeader(managerUserId),
       });
 
       expect(response.statusCode).toBe(200);
@@ -126,15 +124,15 @@ describe("Properties Endpoint", () => {
     });
 
     it("should return property with expected fields", async () => {
-      if (!staffUserId || !staffTenantId) {
-        console.warn("⚠ Skipping test: no STAFF users with tenants");
+      if (!managerUserId || !managerTenantId) {
+        console.warn("⚠ Skipping test: no MANAGER users with tenants");
         return;
       }
 
       const response = await app.inject({
         method: "GET",
-        url: `/v1/properties?tenant_id=${staffTenantId}&limit=1`,
-        headers: buildAuthHeader(staffUserId),
+        url: `/v1/properties?tenant_id=${managerTenantId}&limit=1`,
+        headers: buildAuthHeader(managerUserId),
       });
 
       expect(response.statusCode).toBe(200);
@@ -163,30 +161,30 @@ describe("Properties Endpoint", () => {
     });
 
     it("should reject request without tenant_id", async () => {
-      if (!staffUserId) {
-        console.warn("⚠ Skipping test: no STAFF users");
+      if (!managerUserId) {
+        console.warn("⚠ Skipping test: no MANAGER users");
         return;
       }
 
       const response = await app.inject({
         method: "GET",
         url: "/v1/properties",
-        headers: buildAuthHeader(staffUserId),
+        headers: buildAuthHeader(managerUserId),
       });
 
       expect(response.statusCode).toBe(400);
     });
 
     it("should reject invalid tenant_id format", async () => {
-      if (!staffUserId) {
-        console.warn("⚠ Skipping test: no STAFF users");
+      if (!managerUserId) {
+        console.warn("⚠ Skipping test: no MANAGER users");
         return;
       }
 
       const response = await app.inject({
         method: "GET",
         url: "/v1/properties?tenant_id=invalid-uuid",
-        headers: buildAuthHeader(staffUserId),
+        headers: buildAuthHeader(managerUserId),
       });
 
       expect(response.statusCode).toBe(400);
@@ -208,7 +206,7 @@ describe("Properties Endpoint", () => {
     });
 
     it("should reject access to unauthorized tenant", async () => {
-      if (!staffUserId || !otherTenantId) {
+      if (!managerUserId || !otherTenantId) {
         console.warn("⚠ Skipping test: missing test data");
         return;
       }
@@ -216,45 +214,45 @@ describe("Properties Endpoint", () => {
       const response = await app.inject({
         method: "GET",
         url: `/v1/properties?tenant_id=${otherTenantId}`,
-        headers: buildAuthHeader(staffUserId),
+        headers: buildAuthHeader(managerUserId),
       });
 
       expect(response.statusCode).toBe(403);
     });
 
     it("should reject negative limit", async () => {
-      if (!staffUserId || !staffTenantId) {
-        console.warn("⚠ Skipping test: no STAFF users with tenants");
+      if (!managerUserId || !managerTenantId) {
+        console.warn("⚠ Skipping test: no MANAGER users with tenants");
         return;
       }
 
       const response = await app.inject({
         method: "GET",
-        url: `/v1/properties?tenant_id=${staffTenantId}&limit=-1`,
-        headers: buildAuthHeader(staffUserId),
+        url: `/v1/properties?tenant_id=${managerTenantId}&limit=-1`,
+        headers: buildAuthHeader(managerUserId),
       });
 
       expect(response.statusCode).toBe(400);
     });
 
     it("should reject limit exceeding maximum", async () => {
-      if (!staffUserId || !staffTenantId) {
-        console.warn("⚠ Skipping test: no STAFF users with tenants");
+      if (!managerUserId || !managerTenantId) {
+        console.warn("⚠ Skipping test: no MANAGER users with tenants");
         return;
       }
 
       const response = await app.inject({
         method: "GET",
-        url: `/v1/properties?tenant_id=${staffTenantId}&limit=101`,
-        headers: buildAuthHeader(staffUserId),
+        url: `/v1/properties?tenant_id=${managerTenantId}&limit=101`,
+        headers: buildAuthHeader(managerUserId),
       });
 
       expect(response.statusCode).toBe(400);
     });
 
     it("should reject non-existent tenant for user", async () => {
-      if (!staffUserId) {
-        console.warn("⚠ Skipping test: no STAFF users");
+      if (!managerUserId) {
+        console.warn("⚠ Skipping test: no MANAGER users");
         return;
       }
 
@@ -263,7 +261,7 @@ describe("Properties Endpoint", () => {
       const response = await app.inject({
         method: "GET",
         url: `/v1/properties?tenant_id=${nonExistentTenant}`,
-        headers: buildAuthHeader(staffUserId),
+        headers: buildAuthHeader(managerUserId),
       });
 
       expect(response.statusCode).toBe(403);

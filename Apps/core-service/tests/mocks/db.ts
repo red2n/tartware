@@ -15,6 +15,7 @@ let currentTestUserPasswordHash = TEST_USER_PASSWORD_HASH;
 export const MANAGER_USER_ID = "550e8400-e29b-41d4-a716-446655440001";
 export const STAFF_USER_ID = "550e8400-e29b-41d4-a716-446655440002";
 export const VIEWER_USER_ID = "550e8400-e29b-41d4-a716-446655440003";
+export const MODULE_DISABLED_USER_ID = "550e8400-e29b-41d4-a716-446655440004";
 
 // Mock query function
 export const query = vi.fn(async <T extends pg.QueryResultRow = pg.QueryResultRow>(
@@ -25,6 +26,20 @@ export const query = vi.fn(async <T extends pg.QueryResultRow = pg.QueryResultRo
 
   // Mock tenants list query (must come before user-tenant-associations)
   if (sql.includes("from public.tenants t") || (sql.includes("select") && sql.includes("t.name") && sql.includes("t.slug"))) {
+    if (sql.includes("where t.id !=")) {
+      return {
+        rows: [
+          {
+            id: "aa0e8400-e29b-41d4-a716-446655440000",
+          },
+        ] as unknown as T[],
+        rowCount: 1,
+        command: "SELECT",
+        oid: 0,
+        fields: [],
+      };
+    }
+
     return {
       rows: [
         {
@@ -87,6 +102,52 @@ export const query = vi.fn(async <T extends pg.QueryResultRow = pg.QueryResultRo
     };
   }
 
+  if (sql.includes("from public.user_tenant_associations uta") && sql.includes("distinct uta.user_id")) {
+    if (sql.includes("uta.role = 'staff'")) {
+      return {
+        rows: [
+          {
+            user_id: STAFF_USER_ID,
+            tenant_id: TEST_TENANT_ID,
+          },
+        ] as unknown as T[],
+        rowCount: 1,
+        command: "SELECT",
+        oid: 0,
+        fields: [],
+      };
+    }
+
+    if (sql.includes("uta.role = 'manager'")) {
+      return {
+        rows: [
+          {
+            user_id: MANAGER_USER_ID,
+            tenant_id: TEST_TENANT_ID,
+          },
+        ] as unknown as T[],
+        rowCount: 1,
+        command: "SELECT",
+        oid: 0,
+        fields: [],
+      };
+    }
+
+    if (sql.includes("uta.role = 'viewer'")) {
+      return {
+        rows: [
+          {
+            user_id: VIEWER_USER_ID,
+          },
+        ] as unknown as T[],
+        rowCount: 1,
+        command: "SELECT",
+        oid: 0,
+        fields: [],
+      };
+    }
+  }
+
   // Mock active memberships query (used by auth plugin)
   if (sql.includes("user_tenant_associations") && sql.includes("where uta.user_id")) {
     const userId = params?.[0];
@@ -101,6 +162,15 @@ export const query = vi.fn(async <T extends pg.QueryResultRow = pg.QueryResultRo
             is_active: true,
             permissions: {},
             tenant_name: "Test Tenant",
+            modules: [
+              "core",
+              "finance-automation",
+              "tenant-owner-portal",
+              "facility-maintenance",
+              "analytics-bi",
+              "marketing-channel",
+              "enterprise-api",
+            ],
           },
         ] as unknown as T[],
         rowCount: 1,
@@ -119,6 +189,7 @@ export const query = vi.fn(async <T extends pg.QueryResultRow = pg.QueryResultRo
             is_active: true,
             permissions: {},
             tenant_name: "Test Tenant",
+            modules: ["core", "facility-maintenance"],
           },
         ] as unknown as T[],
         rowCount: 1,
@@ -137,6 +208,7 @@ export const query = vi.fn(async <T extends pg.QueryResultRow = pg.QueryResultRo
             is_active: true,
             permissions: {},
             tenant_name: "Test Tenant",
+            modules: ["core"],
           },
         ] as unknown as T[],
         rowCount: 1,
@@ -155,6 +227,26 @@ export const query = vi.fn(async <T extends pg.QueryResultRow = pg.QueryResultRo
             is_active: true,
             permissions: {},
             tenant_name: "Test Tenant",
+            modules: ["core"],
+          },
+        ] as unknown as T[],
+        rowCount: 1,
+        command: "SELECT",
+        oid: 0,
+        fields: [],
+      };
+    }
+
+    if (userId === MODULE_DISABLED_USER_ID) {
+      return {
+        rows: [
+          {
+            tenant_id: TEST_TENANT_ID,
+            role: "ADMIN",
+            is_active: true,
+            permissions: {},
+            tenant_name: "Test Tenant",
+            modules: ["finance-automation"],
           },
         ] as unknown as T[],
         rowCount: 1,
@@ -209,18 +301,18 @@ export const query = vi.fn(async <T extends pg.QueryResultRow = pg.QueryResultRo
           title: "Mr",
           date_of_birth: new Date("1990-01-01"),
           gender: "Male",
-          nationality: "USA",
+          nationality: "US",
           email: "john.doe@example.com",
           phone: "+1234567890",
           secondary_phone: null,
           address: { street: "123 Main St", city: "New York", state: "NY", postalCode: "10001", country: "USA" },
-          id_type: "PASSPORT",
+          id_type: "passport",
           id_number: "AB123456",
           passport_number: "AB123456",
           passport_expiry: new Date("2030-01-01"),
           company_name: null,
           company_tax_id: null,
-          loyalty_tier: "GOLD",
+          loyalty_tier: "Gold",
           loyalty_points: 1000,
           vip_status: false,
           preferences: { smoking: false, language: "en", dietaryRestrictions: [], specialRequests: [] },
@@ -258,9 +350,9 @@ export const query = vi.fn(async <T extends pg.QueryResultRow = pg.QueryResultRo
           tenant_id: TEST_TENANT_ID,
           property_code: "PROP001",
           property_name: "Test Property",
-          property_type: "HOTEL",
+          property_type: "hotel",
           description: "A test property",
-          address: { street: "456 Hotel Ave", city: "Miami", state: "FL", postalCode: "33101", country: "USA" },
+          address: { street: "456 Hotel Ave", city: "Miami", state: "FL", postalCode: "33101", country: "US" },
           timezone: "America/New_York",
           currency_code: "USD",
           phone: "+1234567890",
@@ -272,6 +364,8 @@ export const query = vi.fn(async <T extends pg.QueryResultRow = pg.QueryResultRo
           total_revenue: "100000.00",
           average_daily_rate: "150.00",
           occupancy_rate: "50.00",
+          config: { defaultCurrency: "USD", allowOnlineBooking: true },
+          integrations: { channelManager: { enabled: false } },
           metadata: {},
           created_at: new Date(),
           updated_at: new Date(),

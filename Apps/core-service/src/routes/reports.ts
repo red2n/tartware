@@ -28,7 +28,7 @@ export const registerReportRoutes = (app: FastifyInstance): void => {
     {
       preHandler: app.withTenantScope({
         resolveTenantId: (request) => (request.query as PerformanceReportQuery).tenant_id,
-        minRole: "STAFF",
+        minRole: "ADMIN",
         requiredModules: "analytics-bi",
       }),
     },

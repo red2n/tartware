@@ -21,7 +21,7 @@ export const registerModuleRoutes = (app: FastifyInstance): void => {
     {
       preHandler: app.withTenantScope({
         resolveTenantId: (request) => (request.params as { tenantId: string }).tenantId,
-        minRole: "STAFF",
+        minRole: "ADMIN",
       }),
     },
     async (request) => {

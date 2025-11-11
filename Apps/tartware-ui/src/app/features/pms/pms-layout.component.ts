@@ -19,6 +19,7 @@ import { MatSidenavModule } from '@angular/material/sidenav';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { Router, RouterModule } from '@angular/router';
+import type { TenantRole } from '@tartware/schemas';
 import { environment } from '../../../environments/environment';
 import type { ModuleId } from '../../core/models/module.model';
 import { AuthService } from '../../core/services/auth.service';
@@ -77,6 +78,13 @@ export class PmsLayoutComponent implements OnInit, OnDestroy {
   authService = inject(AuthService);
   propertyService = inject(PropertyService);
   router = inject(Router);
+  private readonly rolePriority: Record<TenantRole, number> = {
+    OWNER: 500,
+    ADMIN: 400,
+    MANAGER: 300,
+    STAFF: 200,
+    VIEWER: 100,
+  };
 
   // Sidebar state
   sidebarOpen = signal(true);
@@ -111,6 +119,7 @@ export class PmsLayoutComponent implements OnInit, OnDestroy {
       route: 'dashboard',
       badge: null,
       moduleId: 'core',
+      minRole: 'ADMIN',
     },
     {
       id: 'reservations',
@@ -119,6 +128,7 @@ export class PmsLayoutComponent implements OnInit, OnDestroy {
       route: 'reservations',
       badge: null,
       moduleId: 'core',
+      minRole: 'MANAGER',
     },
     {
       id: 'rooms',
@@ -127,6 +137,7 @@ export class PmsLayoutComponent implements OnInit, OnDestroy {
       route: 'rooms',
       badge: null,
       moduleId: 'core',
+      minRole: 'MANAGER',
     },
     {
       id: 'guests',
@@ -135,6 +146,7 @@ export class PmsLayoutComponent implements OnInit, OnDestroy {
       route: 'guests',
       badge: null,
       moduleId: 'core',
+      minRole: 'MANAGER',
     },
     {
       id: 'housekeeping',
@@ -143,6 +155,7 @@ export class PmsLayoutComponent implements OnInit, OnDestroy {
       route: 'housekeeping',
       badge: 3,
       moduleId: 'facility-maintenance',
+      minRole: 'MANAGER',
     },
     {
       id: 'billing',
@@ -151,6 +164,7 @@ export class PmsLayoutComponent implements OnInit, OnDestroy {
       route: 'billing',
       badge: null,
       moduleId: 'finance-automation',
+      minRole: 'ADMIN',
     },
     {
       id: 'reports',
@@ -159,6 +173,7 @@ export class PmsLayoutComponent implements OnInit, OnDestroy {
       route: 'reports',
       badge: null,
       moduleId: 'analytics-bi',
+      minRole: 'ADMIN',
     },
     {
       id: 'settings',
@@ -167,12 +182,16 @@ export class PmsLayoutComponent implements OnInit, OnDestroy {
       route: 'settings',
       badge: null,
       moduleId: 'core',
+      minRole: 'ADMIN',
     },
   ];
 
   readonly visibleMenuItems = computed(() => {
     const moduleSet = new Set(this.enabledModules());
-    return this.menuItems.filter((item) => !item.moduleId || moduleSet.has(item.moduleId));
+    return this.menuItems.filter(
+      (item) =>
+        (!item.moduleId || moduleSet.has(item.moduleId)) && this.hasRoleAccess(item.minRole ?? null)
+    );
   });
 
   private readonly resizeHandler = () => this.checkScreenSize();
@@ -300,6 +319,23 @@ export class PmsLayoutComponent implements OnInit, OnDestroy {
   isActiveRoute(route: string): boolean {
     return this.router.url.includes(route);
   }
+
+  private hasRoleAccess(requiredRole: TenantRole | null): boolean {
+    if (!requiredRole) {
+      return true;
+    }
+    const tenantId = this.tenantContext.tenantId();
+    const context = this.authContext();
+    if (!tenantId || !context) {
+      return false;
+    }
+    const membership = context.memberships.find((member) => member.tenant_id === tenantId);
+    if (!membership) {
+      return false;
+    }
+
+    return this.rolePriority[membership.role] >= this.rolePriority[requiredRole];
+  }
 }
 
 /**
@@ -312,6 +348,7 @@ interface MenuItem {
   route: string;
   badge: number | null;
   moduleId?: ModuleId | null;
+  minRole?: TenantRole | null;
 }
 
 /**

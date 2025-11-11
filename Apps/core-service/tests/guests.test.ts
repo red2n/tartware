@@ -3,6 +3,13 @@ import { buildServer } from "../src/server.js";
 import { query } from "../src/lib/db.js";
 import type { FastifyInstance } from "fastify";
 import { buildAuthHeader } from "./utils/auth.js";
+import {
+  MANAGER_USER_ID,
+  STAFF_USER_ID,
+  TEST_TENANT_ID,
+  TEST_USER_ID,
+  VIEWER_USER_ID,
+} from "./mocks/db.js";
 
 describe("Guests Endpoint", () => {
   let app: FastifyInstance;
@@ -92,10 +99,16 @@ describe("Guests Endpoint", () => {
         testGuestPhone = guestResult.rows[0]?.phone ?? null;
       }
     }
+
+    staffUserId = staffUserId ?? STAFF_USER_ID;
+    staffTenantId = staffTenantId ?? TEST_TENANT_ID;
+    managerUserId = managerUserId ?? MANAGER_USER_ID;
+    managerTenantId = managerTenantId ?? TEST_TENANT_ID;
+    viewerUserId = viewerUserId ?? VIEWER_USER_ID;
   });
 
   describe("GET /v1/guests - Positive Cases", () => {
-    it("should return guests for STAFF user with valid tenant_id", async () => {
+    it("should reject STAFF user with valid tenant_id due to insufficient role", async () => {
       if (!staffUserId || !staffTenantId) {
         console.warn("⚠ Skipping test: no STAFF users with tenants");
         return;
@@ -107,9 +120,7 @@ describe("Guests Endpoint", () => {
         headers: buildAuthHeader(staffUserId),
       });
 
-      expect(response.statusCode).toBe(200);
-      const payload = JSON.parse(response.payload);
-      expect(Array.isArray(payload)).toBe(true);
+      expect(response.statusCode).toBe(403);
     });
 
     it("should return guests for MANAGER user", async () => {
@@ -130,15 +141,15 @@ describe("Guests Endpoint", () => {
     });
 
     it("should filter by email", async () => {
-      if (!staffUserId || !staffTenantId || !testGuestEmail) {
+      if (!managerUserId || !managerTenantId || !testGuestEmail) {
         console.warn("⚠ Skipping test: missing test data");
         return;
       }
 
       const response = await app.inject({
         method: "GET",
-        url: `/v1/guests?tenant_id=${staffTenantId}&email=${encodeURIComponent(testGuestEmail.substring(0, 5))}`,
-        headers: buildAuthHeader(staffUserId),
+        url: `/v1/guests?tenant_id=${managerTenantId}&email=${encodeURIComponent(testGuestEmail.substring(0, 5))}`,
+        headers: buildAuthHeader(managerUserId),
       });
 
       expect(response.statusCode).toBe(200);
@@ -147,30 +158,30 @@ describe("Guests Endpoint", () => {
     });
 
     it("should filter by phone", async () => {
-      if (!staffUserId || !staffTenantId || !testGuestPhone) {
+      if (!managerUserId || !managerTenantId || !testGuestPhone) {
         console.warn("⚠ Skipping test: missing test data");
         return;
       }
 
       const response = await app.inject({
         method: "GET",
-        url: `/v1/guests?tenant_id=${staffTenantId}&phone=${encodeURIComponent(testGuestPhone.substring(0, 5))}`,
-        headers: buildAuthHeader(staffUserId),
+        url: `/v1/guests?tenant_id=${managerTenantId}&phone=${encodeURIComponent(testGuestPhone.substring(0, 5))}`,
+        headers: buildAuthHeader(managerUserId),
       });
 
       expect(response.statusCode).toBe(200);
     });
 
     it("should filter by vip_status", async () => {
-      if (!staffUserId || !staffTenantId) {
-        console.warn("⚠ Skipping test: no STAFF users with tenants");
+      if (!managerUserId || !managerTenantId) {
+        console.warn("⚠ Skipping test: no MANAGER users with tenants");
         return;
       }
 
       const response = await app.inject({
         method: "GET",
-        url: `/v1/guests?tenant_id=${staffTenantId}&vip_status=true`,
-        headers: buildAuthHeader(staffUserId),
+        url: `/v1/guests?tenant_id=${managerTenantId}&vip_status=true`,
+        headers: buildAuthHeader(managerUserId),
       });
 
       expect(response.statusCode).toBe(200);
@@ -179,45 +190,45 @@ describe("Guests Endpoint", () => {
     });
 
     it("should filter by is_blacklisted", async () => {
-      if (!staffUserId || !staffTenantId) {
-        console.warn("⚠ Skipping test: no STAFF users with tenants");
+      if (!managerUserId || !managerTenantId) {
+        console.warn("⚠ Skipping test: no MANAGER users with tenants");
         return;
       }
 
       const response = await app.inject({
         method: "GET",
-        url: `/v1/guests?tenant_id=${staffTenantId}&is_blacklisted=false`,
-        headers: buildAuthHeader(staffUserId),
+        url: `/v1/guests?tenant_id=${managerTenantId}&is_blacklisted=false`,
+        headers: buildAuthHeader(managerUserId),
       });
 
       expect(response.statusCode).toBe(200);
     });
 
     it("should filter by loyalty_tier", async () => {
-      if (!staffUserId || !staffTenantId) {
-        console.warn("⚠ Skipping test: no STAFF users with tenants");
+      if (!managerUserId || !managerTenantId) {
+        console.warn("⚠ Skipping test: no MANAGER users with tenants");
         return;
       }
 
       const response = await app.inject({
         method: "GET",
-        url: `/v1/guests?tenant_id=${staffTenantId}&loyalty_tier=GOLD`,
-        headers: buildAuthHeader(staffUserId),
+        url: `/v1/guests?tenant_id=${managerTenantId}&loyalty_tier=GOLD`,
+        headers: buildAuthHeader(managerUserId),
       });
 
       expect(response.statusCode).toBe(200);
     });
 
     it("should return guest with expected fields", async () => {
-      if (!staffUserId || !staffTenantId) {
-        console.warn("⚠ Skipping test: no STAFF users with tenants");
+      if (!managerUserId || !managerTenantId) {
+        console.warn("⚠ Skipping test: no MANAGER users with tenants");
         return;
       }
 
       const response = await app.inject({
         method: "GET",
-        url: `/v1/guests?tenant_id=${staffTenantId}&limit=1`,
-        headers: buildAuthHeader(staffUserId),
+        url: `/v1/guests?tenant_id=${managerTenantId}&limit=1`,
+        headers: buildAuthHeader(managerUserId),
       });
 
       expect(response.statusCode).toBe(200);
@@ -236,15 +247,15 @@ describe("Guests Endpoint", () => {
     });
 
     it("should respect limit parameter", async () => {
-      if (!staffUserId || !staffTenantId) {
-        console.warn("⚠ Skipping test: no STAFF users with tenants");
+      if (!managerUserId || !managerTenantId) {
+        console.warn("⚠ Skipping test: no MANAGER users with tenants");
         return;
       }
 
       const response = await app.inject({
         method: "GET",
-        url: `/v1/guests?tenant_id=${staffTenantId}&limit=3`,
-        headers: buildAuthHeader(staffUserId),
+        url: `/v1/guests?tenant_id=${managerTenantId}&limit=3`,
+        headers: buildAuthHeader(managerUserId),
       });
 
       expect(response.statusCode).toBe(200);
@@ -264,30 +275,30 @@ describe("Guests Endpoint", () => {
     });
 
     it("should reject request without tenant_id", async () => {
-      if (!staffUserId) {
-        console.warn("⚠ Skipping test: no STAFF users");
+      if (!managerUserId) {
+        console.warn("⚠ Skipping test: no MANAGER users");
         return;
       }
 
       const response = await app.inject({
         method: "GET",
         url: "/v1/guests",
-        headers: buildAuthHeader(staffUserId),
+        headers: buildAuthHeader(managerUserId),
       });
 
       expect(response.statusCode).toBe(400);
     });
 
     it("should reject invalid tenant_id format", async () => {
-      if (!staffUserId) {
-        console.warn("⚠ Skipping test: no STAFF users");
+      if (!managerUserId) {
+        console.warn("⚠ Skipping test: no MANAGER users");
         return;
       }
 
       const response = await app.inject({
         method: "GET",
         url: "/v1/guests?tenant_id=not-a-valid-uuid",
-        headers: buildAuthHeader(staffUserId),
+        headers: buildAuthHeader(managerUserId),
       });
 
       expect(response.statusCode).toBe(400);
@@ -309,7 +320,7 @@ describe("Guests Endpoint", () => {
     });
 
     it("should reject access to unauthorized tenant", async () => {
-      if (!staffUserId || !otherTenantId) {
+      if (!managerUserId || !otherTenantId) {
         console.warn("⚠ Skipping test: missing test data");
         return;
       }
@@ -317,82 +328,82 @@ describe("Guests Endpoint", () => {
       const response = await app.inject({
         method: "GET",
         url: `/v1/guests?tenant_id=${otherTenantId}`,
-        headers: buildAuthHeader(staffUserId),
+        headers: buildAuthHeader(managerUserId),
       });
 
       expect(response.statusCode).toBe(403);
     });
 
     it("should reject negative limit", async () => {
-      if (!staffUserId || !staffTenantId) {
-        console.warn("⚠ Skipping test: no STAFF users with tenants");
+      if (!managerUserId || !managerTenantId) {
+        console.warn("⚠ Skipping test: no MANAGER users with tenants");
         return;
       }
 
       const response = await app.inject({
         method: "GET",
-        url: `/v1/guests?tenant_id=${staffTenantId}&limit=-10`,
-        headers: buildAuthHeader(staffUserId),
+        url: `/v1/guests?tenant_id=${managerTenantId}&limit=-10`,
+        headers: buildAuthHeader(managerUserId),
       });
 
       expect(response.statusCode).toBe(400);
     });
 
     it("should reject zero limit", async () => {
-      if (!staffUserId || !staffTenantId) {
-        console.warn("⚠ Skipping test: no STAFF users with tenants");
+      if (!managerUserId || !managerTenantId) {
+        console.warn("⚠ Skipping test: no MANAGER users with tenants");
         return;
       }
 
       const response = await app.inject({
         method: "GET",
-        url: `/v1/guests?tenant_id=${staffTenantId}&limit=0`,
-        headers: buildAuthHeader(staffUserId),
+        url: `/v1/guests?tenant_id=${managerTenantId}&limit=0`,
+        headers: buildAuthHeader(managerUserId),
       });
 
       expect(response.statusCode).toBe(400);
     });
 
     it("should reject limit exceeding maximum", async () => {
-      if (!staffUserId || !staffTenantId) {
-        console.warn("⚠ Skipping test: no STAFF users with tenants");
+      if (!managerUserId || !managerTenantId) {
+        console.warn("⚠ Skipping test: no MANAGER users with tenants");
         return;
       }
 
       const response = await app.inject({
         method: "GET",
-        url: `/v1/guests?tenant_id=${staffTenantId}&limit=200`,
-        headers: buildAuthHeader(staffUserId),
+        url: `/v1/guests?tenant_id=${managerTenantId}&limit=200`,
+        headers: buildAuthHeader(managerUserId),
       });
 
       expect(response.statusCode).toBe(400);
     });
 
     it("should reject invalid email filter (too short)", async () => {
-      if (!staffUserId || !staffTenantId) {
-        console.warn("⚠ Skipping test: no STAFF users with tenants");
+      if (!managerUserId || !managerTenantId) {
+        console.warn("⚠ Skipping test: no MANAGER users with tenants");
         return;
       }
 
       const response = await app.inject({
         method: "GET",
-        url: `/v1/guests?tenant_id=${staffTenantId}&email=ab`,
-        headers: buildAuthHeader(staffUserId),
+        url: `/v1/guests?tenant_id=${managerTenantId}&email=ab`,
+        headers: buildAuthHeader(managerUserId),
       });
 
       expect(response.statusCode).toBe(400);
     });
 
     it("should reject invalid phone filter (too short)", async () => {
-      if (!staffUserId || !staffTenantId) {
-        console.warn("⚠ Skipping test: no STAFF users with tenants");
+      if (!managerUserId || !managerTenantId) {
+        console.warn("⚠ Skipping test: no MANAGER users with tenants");
         return;
       }
 
       const response = await app.inject({
         method: "GET",
-        url: `/v1/guests?tenant_id=${staffTenantId}&phone=12`,
-        headers: buildAuthHeader(staffUserId),
+        url: `/v1/guests?tenant_id=${managerTenantId}&phone=12`,
+        headers: buildAuthHeader(managerUserId),
       });
 
       expect(response.statusCode).toBe(400);

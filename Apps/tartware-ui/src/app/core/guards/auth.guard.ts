@@ -5,6 +5,7 @@ import {
   Router,
   type RouterStateSnapshot,
 } from '@angular/router';
+import type { TenantRole } from '@tartware/schemas';
 import { AuthService } from '../services/auth.service';
 
 /**
@@ -61,7 +62,7 @@ export const authGuard: CanActivateFn = (
  * ];
  * ```
  */
-export function roleGuard(requiredRole: string): CanActivateFn {
+export function roleGuard(requiredRole: TenantRole): CanActivateFn {
   return (route: ActivatedRouteSnapshot, state: RouterStateSnapshot) => {
     const authService = inject(AuthService);
     const router = inject(Router);

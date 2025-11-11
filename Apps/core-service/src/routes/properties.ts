@@ -24,7 +24,7 @@ export const registerPropertyRoutes = (app: FastifyInstance): void => {
     {
       preHandler: app.withTenantScope({
         resolveTenantId: (request) => (request.query as PropertyListQuery).tenant_id,
-        minRole: "STAFF",
+        minRole: "MANAGER",
         requiredModules: "core",
       }),
     },
