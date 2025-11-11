@@ -45,7 +45,7 @@ const serializeBody = (
 	}
 
 	if (Buffer.isBuffer(body)) {
-		return body;
+		return new Uint8Array(body);
 	}
 
 	if (typeof body === "string") {
@@ -53,7 +53,7 @@ const serializeBody = (
 	}
 
 	if (body instanceof Uint8Array) {
-		return body;
+		return new Uint8Array(body);
 	}
 
 	headers.set(
