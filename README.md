@@ -1,8 +1,6 @@
 # Tartware PMS - Property Management System
 
-![Core Service CI](https://github.com/tartware/tartware/actions/workflows/build-core.yml/badge.svg?branch=main)
-![UI CI](https://github.com/tartware/tartware/actions/workflows/build-ui.yml/badge.svg?branch=main)
-![Schema CI](https://github.com/tartware/tartware/actions/workflows/build-schema.yml/badge.svg?branch=main)
+[![Build](https://github.com/red2n/tartware/actions/workflows/build.yml/badge.svg)](https://github.com/red2n/tartware/actions/workflows/build.yml)
 
 ---
 
