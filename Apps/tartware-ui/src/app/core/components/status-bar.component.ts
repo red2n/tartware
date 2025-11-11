@@ -1,19 +1,16 @@
 import { CommonModule } from '@angular/common';
-import { Component, computed, signal } from '@angular/core';
+import { Component, OnDestroy, computed, signal } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
-import { MatTooltipModule } from '@angular/material/tooltip';
 import { environment } from '../../../environments/environment';
 
 /**
  * Status Bar Component
- * VSCode-inspired footer bar showing system information
+ * Simplified footer bar with environment and connectivity indicators.
  *
  * Features:
  * - Environment indicator (dev/staging/prod)
  * - Version information
- * - Connection status
- * - Last sync time
- * - Quick actions
+ * - API connectivity pill with retry
  *
  * Reference: VSCode Status Bar - https://code.visualstudio.com/docs/getstarted/userinterface
  *
@@ -26,80 +23,29 @@ import { environment } from '../../../environments/environment';
 @Component({
   selector: 'app-status-bar',
   standalone: true,
-  imports: [CommonModule, MatIconModule, MatTooltipModule],
+  imports: [CommonModule, MatIconModule],
   template: `
     <footer class="status-bar">
-      <!-- Left section -->
       <div class="status-bar-left">
-        <!-- Environment indicator -->
-        <div
-          class="status-item clickable"
-          role="button"
-          tabindex="0"
-          [class.dev]="isDevelopment()"
-          [class.prod]="isProduction()"
-          [matTooltip]="'Environment: ' + environmentName()"
-          (click)="onEnvironmentClick()"
-          (keyup.enter)="onEnvironmentClick()"
-          (keyup.space)="onEnvironmentClick()"
-        >
+        <div class="status-item environment" [class.dev]="isDevelopment()" [class.prod]="isProduction()">
           <mat-icon>{{ environmentIcon() }}</mat-icon>
           <span>{{ environmentName() }}</span>
         </div>
-
-        <!-- Version -->
-        <div class="status-item" [matTooltip]="'Application Version'">
+        <div class="status-item version">
           <mat-icon>label</mat-icon>
           <span>v{{ version }}</span>
         </div>
-
-        <!-- Connection status -->
-        <div
-          class="status-item clickable"
-          role="button"
-          tabindex="0"
-          [class.online]="isOnline()"
-          [class.offline]="!isOnline()"
-          [matTooltip]="connectionTooltip()"
-          (click)="checkConnection()"
-          (keyup.enter)="checkConnection()"
-          (keyup.space)="checkConnection()"
-        >
-          <mat-icon>{{ connectionIcon() }}</mat-icon>
-          <span>{{ connectionStatus() }}</span>
-        </div>
       </div>
 
-      <!-- Right section -->
       <div class="status-bar-right">
-        <!-- Last sync time -->
-        @if (lastSyncTime()) {
-          <div class="status-item" [matTooltip]="'Last synchronized at ' + formatTime(lastSyncTime()!)">
-            <mat-icon>sync</mat-icon>
-            <span>{{ timeSinceSync() }}</span>
-          </div>
-        }
-
-        <!-- Build info (dev only) -->
-        @if (isDevelopment()) {
-          <div class="status-item" [matTooltip]="'Build: ' + buildDate">
-            <mat-icon>info_outline</mat-icon>
-            <span>Build: {{ buildDate }}</span>
-          </div>
-        }
-
-        <!-- Support link -->
-        <div
-          class="status-item clickable"
-          role="button"
-          tabindex="0"
-          [matTooltip]="'Get Help & Support'"
-          (click)="openSupport()"
-          (keyup.enter)="openSupport()"
-          (keyup.space)="openSupport()"
-        >
-          <mat-icon>help_outline</mat-icon>
-          <span>Support</span>
+        <div class="connection-pill" [class.online]="isOnline()" [class.offline]="isOffline()" role="status" (click)="checkConnection()">
+          <mat-icon aria-hidden="true">{{ connectionIcon() }}</mat-icon>
+          <span class="connection-text">{{ connectionStatus() }}</span>
+          @if (isChecking()) {
+            <mat-icon class="connection-spinner" aria-hidden="true">autorenew</mat-icon>
+          } @else if (isOffline()) {
+            <span class="connection-reason">{{ offlineMessage() }}</span>
+          }
         </div>
       </div>
     </footer>
@@ -117,7 +63,7 @@ import { environment } from '../../../environments/environment';
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: 0 12px;
+      padding: 0 16px;
       font-size: 12px;
       color: #6b7280;
       z-index: 1000;
@@ -130,16 +76,17 @@ import { environment } from '../../../environments/environment';
     .status-bar-right {
       display: flex;
       align-items: center;
-      gap: 4px;
+      gap: 8px;
     }
 
     .status-item {
       display: flex;
       align-items: center;
-      gap: 4px;
-      padding: 2px 8px;
-      border-radius: 4px;
-      transition: all 0.15s ease;
+      gap: 6px;
+      padding: 4px 10px;
+      border-radius: 6px;
+      background-color: transparent;
+      transition: background-color 0.15s ease;
 
       mat-icon {
         font-size: 16px;
@@ -150,51 +97,82 @@ import { environment } from '../../../environments/environment';
 
       span {
         font-size: 12px;
-        font-weight: 400;
+        font-weight: 500;
+        line-height: 16px;
+      }
+    }
+
+    .status-item.environment {
+      border: 1px solid rgba(107, 114, 128, 0.3);
+    }
+
+    .status-item.version {
+      border: 1px solid transparent;
+    }
+
+    .connection-pill {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 6px;
+      padding: 4px 12px;
+      border-radius: 999px;
+      cursor: pointer;
+      background-color: #e5e7eb;
+      color: #1f2937;
+      transition: background-color 0.2s ease, color 0.2s ease, transform 0.2s ease;
+
+      mat-icon {
+        font-size: 16px;
+        width: 16px;
+        height: 16px;
         line-height: 16px;
       }
 
-      &.clickable {
-        cursor: pointer;
-
-        &:hover {
-          background-color: #f3f4f6;
-        }
-
-        &:focus {
-          outline: 2px solid #4f46e5;
-          outline-offset: 2px;
-        }
+      .connection-text {
+        font-weight: 600;
       }
 
-      // Environment colors
-      &.dev {
-        color: #2563eb;
-
-        mat-icon {
-          color: #2563eb;
-        }
+      .connection-spinner {
+        animation: spin 1.2s linear infinite;
       }
 
-      &.prod {
-        color: #16a34a;
-
-        mat-icon {
-          color: #16a34a;
-        }
+      .connection-reason {
+        font-size: 11px;
+        font-weight: 500;
+        opacity: 0.9;
       }
+    }
 
-      // Connection status colors
-      &.online {
-        mat-icon {
-          color: #16a34a;
-        }
+    .connection-pill:hover {
+      transform: translateY(-1px);
+      background-color: #d1d5db;
+    }
+
+    .connection-pill.online {
+      background-color: #16a34a;
+      color: #ffffff;
+
+      &:hover {
+        background-color: #15803d;
       }
+    }
 
-      &.offline {
-        mat-icon {
-          color: #dc2626;
-        }
+    .connection-pill.offline {
+      background-color: #dc2626;
+      color: #ffffff;
+
+      &:hover {
+        background-color: #b91c1c;
+      }
+    }
+
+    @keyframes spin {
+      0% {
+        transform: rotate(0deg);
+      }
+      100% {
+        transform: rotate(360deg);
       }
     }
 
@@ -218,10 +196,9 @@ import { environment } from '../../../environments/environment';
   `,
   ],
 })
-export class StatusBarComponent {
+export class StatusBarComponent implements OnDestroy {
   // Environment info
   readonly version = '1.0.0'; // TODO: Read from package.json
-  readonly buildDate = new Date().toISOString().split('T')[0];
   readonly environmentName = computed(() =>
     environment.production ? 'Production' : 'Development'
   );
@@ -230,93 +207,135 @@ export class StatusBarComponent {
   readonly environmentIcon = computed(() => (environment.production ? 'cloud_done' : 'code'));
 
   // Connection status
-  private online = signal<boolean>(navigator.onLine);
-  readonly isOnline = this.online.asReadonly();
-  readonly connectionStatus = computed(() => (this.online() ? 'Online' : 'Offline'));
-  readonly connectionIcon = computed(() => (this.online() ? 'wifi' : 'wifi_off'));
-  readonly connectionTooltip = computed(() =>
-    this.online()
-      ? 'Connected to server. Click to check connection.'
-      : 'No internet connection. Click to retry.'
-  );
+  private readonly healthEndpoint = this.resolveHealthEndpoint(environment.apiUrl);
+  private readonly connectionTimeoutMs = 5000;
+  private readonly connectionState = signal<'online' | 'offline'>('offline');
+  private readonly checkingState = signal<boolean>(false);
+  private readonly offlineReason = signal('Unable to reach Tartware API.');
+  readonly offlineMessage = this.offlineReason.asReadonly();
+  readonly isOnline = computed(() => this.connectionState() === 'online');
+  readonly isOffline = computed(() => this.connectionState() === 'offline');
+  readonly isChecking = this.checkingState.asReadonly();
+  readonly connectionStatus = computed(() => {
+    if (this.isChecking()) return 'Checking...';
+    return this.isOnline() ? 'Online' : 'Offline';
+  });
+  readonly connectionIcon = computed(() => (this.isOnline() ? 'wifi' : 'wifi_off'));
 
-  // Last sync time
-  private lastSync = signal<Date | null>(null);
-  readonly lastSyncTime = this.lastSync.asReadonly();
+  private connectionCheckTimer: number | null = null;
+  private readonly handleBrowserOnline = () => {
+    void this.checkConnection();
+  };
+  private readonly handleBrowserOffline = () => {
+    void this.checkConnection();
+  };
 
   constructor() {
     // Listen to online/offline events
-    window.addEventListener('online', () => this.online.set(true));
-    window.addEventListener('offline', () => this.online.set(false));
+    window.addEventListener('online', this.handleBrowserOnline);
+    window.addEventListener('offline', this.handleBrowserOffline);
 
-    // Initialize last sync time
-    this.updateSyncTime();
-
-    // Update sync time every minute
-    setInterval(() => this.updateSyncTime(), 60000);
+    // Perform initial connection check and keep it fresh
+    void this.checkConnection();
+    this.connectionCheckTimer = window.setInterval(() => {
+      void this.checkConnection();
+    }, 60000);
   }
 
   /**
    * Check connection status
    */
-  checkConnection(): void {
-    this.online.set(navigator.onLine);
-    if (navigator.onLine) {
-      console.log('Connection check: Online');
-    } else {
-      console.log('Connection check: Offline');
+  async checkConnection(): Promise<void> {
+    if (this.checkingState()) {
+      return;
+    }
+
+    const assumedOfflineReason = navigator.onLine
+      ? 'Unable to reach Tartware API.'
+      : 'No internet connection detected.';
+    this.checkingState.set(true);
+
+    try {
+      await this.performHealthCheck('cors');
+      this.setOnline();
+    } catch (error) {
+      console.warn('Primary health check failed, attempting CORS-tolerant fallback', error);
+
+      try {
+        await this.performHealthCheck('no-cors');
+        this.setOnline();
+      } catch (secondaryError) {
+        const reason =
+          secondaryError instanceof Error && secondaryError.message
+            ? secondaryError.message
+            : assumedOfflineReason;
+        this.setOffline(reason);
+      }
+    } finally {
+      this.checkingState.set(false);
     }
   }
 
   /**
-   * Handle environment indicator click
+   * Cleanup listeners and timers
    */
-  onEnvironmentClick(): void {
-    console.log(`Environment: ${this.environmentName()}`);
+  ngOnDestroy(): void {
+    window.removeEventListener('online', this.handleBrowserOnline);
+    window.removeEventListener('offline', this.handleBrowserOffline);
+
+    if (this.connectionCheckTimer !== null) {
+      window.clearInterval(this.connectionCheckTimer);
+      this.connectionCheckTimer = null;
+    }
   }
 
-  /**
-   * Update last sync time
-   */
-  updateSyncTime(): void {
-    this.lastSync.set(new Date());
+  private setOnline(): void {
+    this.connectionState.set('online');
+    this.offlineReason.set('Unable to reach Tartware API.');
   }
 
-  /**
-   * Format time for display
-   */
-  formatTime(date: Date): string {
-    return date.toLocaleTimeString('en-US', {
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit',
-    });
+  private setOffline(reason: string): void {
+    this.connectionState.set('offline');
+    const normalized = reason.trim().endsWith('.')
+      ? reason.trim()
+      : `${reason.trim()}.`;
+    this.offlineReason.set(`${normalized} Tap to retry.`);
   }
 
-  /**
-   * Calculate time since last sync
-   */
-  timeSinceSync(): string {
-    if (!this.lastSync()) return '';
-
-    const now = new Date();
-    const diff = now.getTime() - this.lastSync()!.getTime();
-    const minutes = Math.floor(diff / 60000);
-
-    if (minutes < 1) return 'Just now';
-    if (minutes === 1) return '1 min ago';
-    if (minutes < 60) return `${minutes} mins ago`;
-
-    const hours = Math.floor(minutes / 60);
-    if (hours === 1) return '1 hour ago';
-    return `${hours} hours ago`;
+  private resolveHealthEndpoint(apiUrl: string): string {
+    try {
+      const api = new URL(apiUrl);
+      api.pathname = '/health';
+      api.search = '';
+      return api.toString();
+    } catch {
+      return apiUrl.replace(/\/v1\/?$/, '') + '/health';
+    }
   }
 
-  /**
-   * Open support page
-   */
-  openSupport(): void {
-    // TODO: Link to actual support page
-    window.open('https://support.tartware.com', '_blank');
+  private async performHealthCheck(mode: RequestMode): Promise<void> {
+    const controller = new AbortController();
+    const timeoutId = window.setTimeout(() => controller.abort(), this.connectionTimeoutMs);
+
+    try {
+      const response = await fetch(this.healthEndpoint, {
+        method: 'GET',
+        mode,
+        cache: 'no-store',
+        credentials: 'omit',
+        signal: controller.signal,
+      });
+
+      if (mode === 'cors' && !response.ok) {
+        throw new Error(`Health check failed with status ${response.status}`);
+      }
+    } catch (error) {
+      if (error instanceof DOMException && error.name === 'AbortError') {
+        throw new Error('Health check timed out.');
+      }
+      throw error instanceof Error ? error : new Error('Health check request failed.');
+    } finally {
+      window.clearTimeout(timeoutId);
+    }
   }
 }

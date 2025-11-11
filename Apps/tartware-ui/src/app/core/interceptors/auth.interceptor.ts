@@ -8,7 +8,7 @@ import { AuthService } from '../services/auth.service';
 /**
  * List of endpoints that don't require authentication
  */
-const PUBLIC_ENDPOINTS = ['/auth/login', '/auth/register', '/auth/forgot-password'];
+const PUBLIC_ENDPOINTS = ['/auth/login', '/auth/register', '/auth/forgot-password', '/health'];
 
 /**
  * Authentication HTTP Interceptor

@@ -32,10 +32,28 @@ export const buildServer = () => {
 		ban: 0,
 	});
 
-	app.get("/health", async () => ({
-		status: "ok",
-		service: gatewayConfig.serviceId,
-	}));
+	const allowCorsHeaders = (reply: FastifyReply): FastifyReply =>
+		reply
+			.header("Access-Control-Allow-Origin", "*")
+			.header("Access-Control-Allow-Methods", "GET,OPTIONS")
+			.header(
+				"Access-Control-Allow-Headers",
+				"Accept, Authorization, Content-Type, X-Requested-With",
+			)
+			.header("Access-Control-Max-Age", "600");
+
+	app.options("/health", async (_request, reply) => {
+		allowCorsHeaders(reply);
+		return reply.status(204).send();
+	});
+
+	app.get("/health", async (_request, reply) => {
+		allowCorsHeaders(reply);
+		return reply.send({
+			status: "ok",
+			service: gatewayConfig.serviceId,
+		});
+	});
 
 	const reservationHandler = async (
 		request: FastifyRequest,
