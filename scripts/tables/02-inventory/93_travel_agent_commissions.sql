@@ -8,14 +8,14 @@
 
 CREATE TABLE IF NOT EXISTS travel_agent_commissions (
     -- Primary Key
-    commission_id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+    commission_id UUID DEFAULT uuid_generate_v4() PRIMARY KEY, -- Unique commission record
 
     -- Multi-tenancy
-    tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
-    property_id UUID REFERENCES properties(id) ON DELETE CASCADE,
+    tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE, -- Tenant ownership
+    property_id UUID REFERENCES properties(id) ON DELETE CASCADE, -- Optional property scope
 
     -- Agent & Reservation
-    company_id UUID NOT NULL REFERENCES companies(company_id) ON DELETE RESTRICT,
+    company_id UUID NOT NULL REFERENCES companies(company_id) ON DELETE RESTRICT, -- Agency/company earning commission
     reservation_id UUID NOT NULL, -- FK to reservations(id) ON DELETE RESTRICT - constraint added in constraints phase
 
     -- Commission Period
@@ -31,12 +31,12 @@ CREATE TABLE IF NOT EXISTS travel_agent_commissions (
     period_end_date DATE,
 
     -- Revenue Breakdown
-    room_revenue DECIMAL(12,2) DEFAULT 0.00,
+    room_revenue DECIMAL(12,2) DEFAULT 0.00, -- Eligible room revenue
     food_revenue DECIMAL(12,2) DEFAULT 0.00,
     beverage_revenue DECIMAL(12,2) DEFAULT 0.00,
     spa_revenue DECIMAL(12,2) DEFAULT 0.00,
     other_revenue DECIMAL(12,2) DEFAULT 0.00,
-    total_revenue DECIMAL(12,2) NOT NULL,
+    total_revenue DECIMAL(12,2) NOT NULL, -- Combined commissionable revenue
 
     -- Commission Calculation
     commission_type VARCHAR(50) NOT NULL CHECK (commission_type IN (
@@ -59,19 +59,19 @@ CREATE TABLE IF NOT EXISTS travel_agent_commissions (
     flat_commission_amount DECIMAL(10,2),
 
     -- Calculated Commission
-    room_commission DECIMAL(12,2) DEFAULT 0.00,
+    room_commission DECIMAL(12,2) DEFAULT 0.00, -- Calculated payout by category
     food_beverage_commission DECIMAL(12,2) DEFAULT 0.00,
     spa_commission DECIMAL(12,2) DEFAULT 0.00,
     other_commission DECIMAL(12,2) DEFAULT 0.00,
-    gross_commission DECIMAL(12,2) NOT NULL,
+    gross_commission DECIMAL(12,2) NOT NULL, -- Sum of component commissions
 
     -- Adjustments & Deductions
-    adjustment_amount DECIMAL(12,2) DEFAULT 0.00,
+    adjustment_amount DECIMAL(12,2) DEFAULT 0.00, -- Manual adjustments
     adjustment_reason TEXT,
-    tax_deducted DECIMAL(12,2) DEFAULT 0.00,
+    tax_deducted DECIMAL(12,2) DEFAULT 0.00, -- Withholding or other taxes
     withholding_tax_rate DECIMAL(5,2),
-    cancellation_deduction DECIMAL(12,2) DEFAULT 0.00,
-    chargeback_amount DECIMAL(12,2) DEFAULT 0.00,
+    cancellation_deduction DECIMAL(12,2) DEFAULT 0.00, -- No-show/cancel penalties
+    chargeback_amount DECIMAL(12,2) DEFAULT 0.00, -- Chargebacks reducing payout
 
     -- Net Commission
     net_commission DECIMAL(12,2) GENERATED ALWAYS AS (
@@ -96,8 +96,8 @@ CREATE TABLE IF NOT EXISTS travel_agent_commissions (
         'credit_note',
         'offset'
     )),
-    payment_date DATE,
-    payment_reference VARCHAR(100),
+    payment_date DATE, -- Actual pay date
+    payment_reference VARCHAR(100), -- Remittance reference/cheque #
     payment_id UUID, -- FK to payments(id) - constraint added in constraints phase
 
     -- Invoice
@@ -107,8 +107,8 @@ CREATE TABLE IF NOT EXISTS travel_agent_commissions (
     invoice_url TEXT,
 
     -- Currency
-    currency_code VARCHAR(3) DEFAULT 'USD',
-    exchange_rate DECIMAL(10,4) DEFAULT 1.0000,
+    currency_code VARCHAR(3) DEFAULT 'USD', -- Payout currency
+    exchange_rate DECIMAL(10,4) DEFAULT 1.0000, -- Applied FX rate
 
     -- Performance Tiers (for tiered/graduated commission)
     tier_level INTEGER,
@@ -116,7 +116,7 @@ CREATE TABLE IF NOT EXISTS travel_agent_commissions (
     bonus_commission DECIMAL(12,2) DEFAULT 0.00,
 
     -- Booking Details
-    booking_date DATE,
+    booking_date DATE, -- Date of original booking
     checkin_date DATE,
     checkout_date DATE,
     number_of_nights INTEGER,
@@ -125,14 +125,14 @@ CREATE TABLE IF NOT EXISTS travel_agent_commissions (
     confirmation_number VARCHAR(50),
 
     -- Agency Details (snapshot at time of commission)
-    agency_name VARCHAR(255),
-    agency_code VARCHAR(50),
+    agency_name VARCHAR(255), -- Snapshot of agency name at payout
+    agency_code VARCHAR(50), -- Agency code (IATA/ARC)
     agent_name VARCHAR(255),
     agent_email VARCHAR(255),
     agent_phone VARCHAR(50),
 
     -- Tax Documentation
-    tax_id_number VARCHAR(50),
+    tax_id_number VARCHAR(50), -- Agency tax identifier
     tax_form_type VARCHAR(50), -- '1099', 'W9', etc.
     tax_form_submitted BOOLEAN DEFAULT FALSE,
 
@@ -153,11 +153,11 @@ CREATE TABLE IF NOT EXISTS travel_agent_commissions (
     reconciled_by UUID REFERENCES users(id),
 
     -- Notes
-    notes TEXT,
-    internal_notes TEXT,
+    notes TEXT, -- External notes
+    internal_notes TEXT, -- Internal audit notes
 
     -- Audit Fields
-    created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP, -- Creation timestamp
     created_by UUID REFERENCES users(id),
     updated_at TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_by UUID REFERENCES users(id),

@@ -23,15 +23,15 @@
 
 CREATE TABLE event_bookings (
     -- Primary Key
-    event_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    event_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(), -- Unique event identifier
 
     -- Multi-tenancy
-    tenant_id UUID NOT NULL,
-    property_id UUID NOT NULL,
+    tenant_id UUID NOT NULL, -- FK tenants.id
+    property_id UUID NOT NULL, -- FK properties.id
 
     -- Event Information
     event_number VARCHAR(50), -- Human-readable event number
-    event_name VARCHAR(200) NOT NULL,
+    event_name VARCHAR(200) NOT NULL, -- Event title
     event_type VARCHAR(50) NOT NULL
         CHECK (event_type IN ('MEETING', 'CONFERENCE', 'WEDDING', 'BANQUET', 'TRAINING', 'WORKSHOP', 'RECEPTION', 'SEMINAR', 'TRADE_SHOW', 'PARTY', 'FUNDRAISER', 'EXHIBITION', 'OTHER')),
 
@@ -39,20 +39,20 @@ CREATE TABLE event_bookings (
     meeting_room_id UUID NOT NULL, -- Reference to meeting_rooms
 
     -- Date & Time
-    event_date DATE NOT NULL,
-    start_time TIME NOT NULL,
-    end_time TIME NOT NULL,
+    event_date DATE NOT NULL, -- Calendar date for event
+    start_time TIME NOT NULL, -- Scheduled start time
+    end_time TIME NOT NULL, -- Scheduled end time
     setup_start_time TIME, -- When setup crew can start
-    actual_start_time TIME,
-    actual_end_time TIME,
+    actual_start_time TIME, -- Actual start time
+    actual_end_time TIME, -- Actual end time
     teardown_end_time TIME, -- When room must be clear
 
     -- Guest/Organizer Information
-    organizer_name VARCHAR(200) NOT NULL,
-    organizer_company VARCHAR(200),
+    organizer_name VARCHAR(200) NOT NULL, -- Primary organizer
+    organizer_company VARCHAR(200), -- Company hosting event
     organizer_email VARCHAR(255),
     organizer_phone VARCHAR(20),
-    contact_person VARCHAR(200),
+    contact_person VARCHAR(200), -- Onsite contact
     contact_email VARCHAR(255),
     contact_phone VARCHAR(20),
 
@@ -63,9 +63,9 @@ CREATE TABLE event_bookings (
     group_booking_id UUID, -- If part of group block
 
     -- Expected Attendance
-    expected_attendees INTEGER NOT NULL,
-    confirmed_attendees INTEGER,
-    actual_attendees INTEGER,
+    expected_attendees INTEGER NOT NULL, -- Forecast headcount
+    confirmed_attendees INTEGER, -- Confirmed headcount
+    actual_attendees INTEGER, -- Actual turnout
     guarantee_number INTEGER, -- Minimum number for billing
 
     -- Room Setup
@@ -76,8 +76,8 @@ CREATE TABLE event_bookings (
     setup_diagram_url VARCHAR(500),
 
     -- Equipment & AV Requirements
-    required_equipment JSONB DEFAULT '[]'::jsonb,
-    av_requirements JSONB DEFAULT '[]'::jsonb,
+    required_equipment JSONB DEFAULT '[]'::jsonb, -- Non-AV equipment needs
+    av_requirements JSONB DEFAULT '[]'::jsonb, -- AV specifics
     technical_contact_name VARCHAR(200),
     technical_contact_phone VARCHAR(20),
 
@@ -90,36 +90,36 @@ CREATE TABLE event_bookings (
     bar_service_required BOOLEAN DEFAULT FALSE,
 
     -- Status
-    booking_status VARCHAR(20) NOT NULL DEFAULT 'TENTATIVE'
+    booking_status VARCHAR(20) NOT NULL DEFAULT 'TENTATIVE' -- Overall status
         CHECK (booking_status IN ('INQUIRY', 'TENTATIVE', 'DEFINITE', 'CONFIRMED', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED', 'NO_SHOW')),
     confirmation_status VARCHAR(20),
     payment_status VARCHAR(20) DEFAULT 'PENDING'
         CHECK (payment_status IN ('PENDING', 'DEPOSIT_PAID', 'PARTIALLY_PAID', 'PAID', 'REFUNDED', 'WAIVED')),
 
     -- Dates & Deadlines
-    booked_date DATE NOT NULL DEFAULT CURRENT_DATE,
-    confirmed_date DATE,
+    booked_date DATE NOT NULL DEFAULT CURRENT_DATE, -- Date booking created
+    confirmed_date DATE, -- Date moved to definite status
     beo_due_date DATE, -- Banquet Event Order deadline
     final_count_due_date DATE,
     cancellation_deadline DATE,
     decision_date DATE, -- Convert from tentative to definite
 
     -- Financial Information
-    rental_rate DECIMAL(10, 2),
-    setup_fee DECIMAL(10, 2),
+    rental_rate DECIMAL(10, 2), -- Space rental fee
+    setup_fee DECIMAL(10, 2), -- Setup labor fee
     equipment_rental_fee DECIMAL(10, 2),
     av_equipment_fee DECIMAL(10, 2),
     labor_charges DECIMAL(10, 2),
-    service_charge_percent DECIMAL(5, 2),
-    tax_rate DECIMAL(5, 2),
+    service_charge_percent DECIMAL(5, 2), -- Service charge %
+    tax_rate DECIMAL(5, 2), -- Tax rate applied
     estimated_food_beverage DECIMAL(10, 2),
     estimated_total DECIMAL(12, 2),
     actual_total DECIMAL(12, 2),
     currency_code CHAR(3) DEFAULT 'USD',
 
     -- Deposit & Payment
-    deposit_required DECIMAL(10, 2),
-    deposit_paid DECIMAL(10, 2),
+    deposit_required DECIMAL(10, 2), -- Deposit amount
+    deposit_paid DECIMAL(10, 2), -- Amount received
     deposit_due_date DATE,
     final_payment_due DATE,
 
@@ -144,8 +144,8 @@ CREATE TABLE event_bookings (
     commission_rate DECIMAL(5, 2),
 
     -- Post-Event
-    post_event_feedback TEXT,
-    post_event_rating INTEGER CHECK (post_event_rating BETWEEN 1 AND 5),
+    post_event_feedback TEXT, -- Feedback notes
+    post_event_rating INTEGER CHECK (post_event_rating BETWEEN 1 AND 5), -- Post-event rating
     issues_reported TEXT,
     followup_required BOOLEAN DEFAULT FALSE,
 
@@ -168,22 +168,22 @@ CREATE TABLE event_bookings (
     billing_notes TEXT,
 
     -- Custom Metadata
-    metadata JSONB DEFAULT '{}'::jsonb,
+    metadata JSONB DEFAULT '{}'::jsonb, -- Extensibility payload
 
     -- Audit Fields
-    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP,
-    created_by UUID,
-    updated_by UUID,
-    confirmed_by UUID,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, -- Creation timestamp
+    updated_at TIMESTAMP, -- Last update timestamp
+    created_by UUID, -- Creator
+    updated_by UUID, -- Modifier
+    confirmed_by UUID, -- User who confirmed event
 
     -- Soft Delete
-    is_deleted BOOLEAN DEFAULT FALSE,
+    is_deleted BOOLEAN DEFAULT FALSE, -- Soft delete flag
     deleted_at TIMESTAMP,
     deleted_by UUID,
 
     -- Optimistic Locking
-    version BIGINT DEFAULT 0,
+    version BIGINT DEFAULT 0, -- Concurrency version
 
     -- Constraints
     CONSTRAINT event_bookings_time_check CHECK (end_time > start_time),

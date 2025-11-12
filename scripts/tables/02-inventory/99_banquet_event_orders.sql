@@ -23,11 +23,11 @@
 
 CREATE TABLE banquet_event_orders (
     -- Primary Key
-    beo_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    beo_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(), -- Unique BEO identifier
 
     -- Multi-tenancy
-    tenant_id UUID NOT NULL,
-    property_id UUID NOT NULL,
+    tenant_id UUID NOT NULL, -- FK tenants.id
+    property_id UUID NOT NULL, -- FK properties.id
 
     -- Linked Event
     event_booking_id UUID NOT NULL, -- Reference to event_bookings
@@ -39,25 +39,25 @@ CREATE TABLE banquet_event_orders (
         CHECK (beo_status IN ('DRAFT', 'PENDING_APPROVAL', 'APPROVED', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED')),
 
     -- Revision Tracking
-    revision_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    revision_reason TEXT,
+    revision_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP, -- Timestamp of latest revision
+    revision_reason TEXT, -- Reason for change
     previous_beo_id UUID, -- Reference to previous version
 
     -- Timeline
-    event_date DATE NOT NULL,
-    setup_start_time TIME NOT NULL,
-    event_start_time TIME NOT NULL,
-    event_end_time TIME NOT NULL,
-    teardown_end_time TIME,
-    room_release_time TIME,
+    event_date DATE NOT NULL, -- Event date
+    setup_start_time TIME NOT NULL, -- Setup crew start
+    event_start_time TIME NOT NULL, -- Scheduled start time
+    event_end_time TIME NOT NULL, -- Scheduled end time
+    teardown_end_time TIME, -- Teardown completion
+    room_release_time TIME, -- Room release time
 
     -- Room & Setup
-    meeting_room_id UUID NOT NULL,
+    meeting_room_id UUID NOT NULL, -- Linked meeting room
     room_setup VARCHAR(50) NOT NULL, -- THEATER, CLASSROOM, BANQUET, etc.
-    tables_count INTEGER,
-    chairs_count INTEGER,
+    tables_count INTEGER, -- Quantity of tables
+    chairs_count INTEGER, -- Quantity of chairs
     table_configuration TEXT, -- Detailed table arrangement
-    seating_chart_layout_url VARCHAR(500),
+    seating_chart_layout_url VARCHAR(500), -- Layout document
 
     -- Expected Numbers
     guaranteed_count INTEGER NOT NULL, -- For billing
@@ -217,18 +217,18 @@ CREATE TABLE banquet_event_orders (
     metadata JSONB DEFAULT '{}'::jsonb,
 
     -- Audit Fields
-    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP,
-    created_by UUID,
-    updated_by UUID,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, -- Creation timestamp
+    updated_at TIMESTAMP, -- Last update timestamp
+    created_by UUID, -- Creator identifier
+    updated_by UUID, -- Modifier identifier
 
     -- Soft Delete
-    is_deleted BOOLEAN DEFAULT FALSE,
+    is_deleted BOOLEAN DEFAULT FALSE, -- Soft delete flag
     deleted_at TIMESTAMP,
     deleted_by UUID,
 
     -- Optimistic Locking
-    version BIGINT DEFAULT 0,
+    version BIGINT DEFAULT 0, -- Concurrency version
 
     -- Constraints
     CONSTRAINT beo_number_unique UNIQUE (tenant_id, property_id, beo_number, beo_version),

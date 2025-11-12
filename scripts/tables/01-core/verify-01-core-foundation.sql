@@ -5,6 +5,7 @@
 -- Date: 2025-10-19
 -- =====================================================
 
+
 \c tartware
 
 \echo ''
@@ -60,16 +61,36 @@ END $$;
 SELECT
     t.table_name,
     COUNT(c.column_name) AS column_count,
-    COUNT(CASE WHEN c.column_name = 'tenant_id' THEN 1 END) AS has_tenant_id,
-    COUNT(CASE WHEN c.column_name = 'is_deleted' THEN 1 END) AS has_soft_delete,
-    COUNT(CASE WHEN c.column_name = 'created_at' THEN 1 END) AS has_audit
+    COUNT(
+        CASE
+            WHEN c.column_name = 'tenant_id' THEN 1
+        END
+    ) AS has_tenant_id,
+    COUNT(
+        CASE
+            WHEN c.column_name = 'is_deleted' THEN 1
+        END
+    ) AS has_soft_delete,
+    COUNT(
+        CASE
+            WHEN c.column_name = 'created_at' THEN 1
+        END
+    ) AS has_audit
 FROM information_schema.tables t
-LEFT JOIN information_schema.columns c
-    ON t.table_schema = c.table_schema
+    LEFT JOIN information_schema.columns c ON t.table_schema = c.table_schema
     AND t.table_name = c.table_name
-WHERE t.table_name IN ('tenants', 'users', 'user_tenant_associations', 'properties', 'guests')
+WHERE
+    t.table_name IN (
+        'tenants',
+        'users',
+        'user_tenant_associations',
+        'properties',
+        'guests'
+    )
     AND t.table_schema = 'public'
-GROUP BY t.table_schema, t.table_name
+GROUP BY
+    t.table_schema,
+    t.table_name
 ORDER BY t.table_name;
 
 \echo ''

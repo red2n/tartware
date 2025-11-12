@@ -23,15 +23,15 @@
 
 CREATE TABLE meeting_rooms (
     -- Primary Key
-    room_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    room_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(), -- Unique function space identifier
 
     -- Multi-tenancy
-    tenant_id UUID NOT NULL,
-    property_id UUID NOT NULL,
+    tenant_id UUID NOT NULL, -- FK tenants.id
+    property_id UUID NOT NULL, -- FK properties.id
 
     -- Room Information
-    room_code VARCHAR(50) NOT NULL,
-    room_name VARCHAR(200) NOT NULL,
+    room_code VARCHAR(50) NOT NULL, -- Short code used in schedules
+    room_name VARCHAR(200) NOT NULL, -- Display name for clients
     room_type VARCHAR(50) NOT NULL
         CHECK (room_type IN ('BALLROOM', 'CONFERENCE', 'BOARDROOM', 'MEETING', 'BANQUET', 'EXHIBITION', 'OUTDOOR', 'THEATER', 'CLASSROOM', 'FLEXIBLE')),
 
@@ -41,7 +41,7 @@ CREATE TABLE meeting_rooms (
     location_description VARCHAR(500),
 
     -- Capacity
-    max_capacity INTEGER NOT NULL,
+    max_capacity INTEGER NOT NULL, -- Maximum occupancy across setups
     theater_capacity INTEGER, -- Rows of chairs facing stage
     classroom_capacity INTEGER, -- Tables with chairs facing front
     banquet_capacity INTEGER, -- Round tables with 10 seats
@@ -51,8 +51,8 @@ CREATE TABLE meeting_rooms (
     boardroom_capacity INTEGER, -- Conference table setup
 
     -- Physical Dimensions
-    area_sqm DECIMAL(10, 2),
-    area_sqft DECIMAL(10, 2),
+    area_sqm DECIMAL(10, 2), -- Metric area
+    area_sqft DECIMAL(10, 2), -- Imperial area
     length_meters DECIMAL(8, 2),
     width_meters DECIMAL(8, 2),
     height_meters DECIMAL(8, 2),
@@ -80,7 +80,7 @@ CREATE TABLE meeting_rooms (
     has_loading_dock BOOLEAN DEFAULT FALSE,
     has_separate_entrance BOOLEAN DEFAULT FALSE,
     parking_spaces INTEGER,
-    elevator_access BOOLEAN DEFAULT FALSE,
+    elevator_access BOOLEAN DEFAULT FALSE, -- Elevator access availability
 
     -- Setup Information
     default_setup VARCHAR(50), -- THEATER, CLASSROOM, BANQUET, etc.
@@ -89,12 +89,12 @@ CREATE TABLE meeting_rooms (
     turnover_time_minutes INTEGER DEFAULT 30, -- Time between events
 
     -- Pricing
-    hourly_rate DECIMAL(10, 2),
-    half_day_rate DECIMAL(10, 2),
-    full_day_rate DECIMAL(10, 2),
-    minimum_rental_hours INTEGER DEFAULT 1,
-    overtime_rate_per_hour DECIMAL(10, 2),
-    currency_code CHAR(3) DEFAULT 'USD',
+    hourly_rate DECIMAL(10, 2), -- Standard hourly rental rate
+    half_day_rate DECIMAL(10, 2), -- Half-day bundle rate
+    full_day_rate DECIMAL(10, 2), -- Full-day bundle rate
+    minimum_rental_hours INTEGER DEFAULT 1, -- Minimum billable hours
+    overtime_rate_per_hour DECIMAL(10, 2), -- Overtime surcharge
+    currency_code CHAR(3) DEFAULT 'USD', -- Billing currency
 
     -- Operating Information
     operating_hours_start TIME,
@@ -145,10 +145,10 @@ CREATE TABLE meeting_rooms (
     amp_capacity INTEGER,
 
     -- Booking Configuration
-    min_advance_booking_hours INTEGER DEFAULT 24,
-    max_advance_booking_days INTEGER DEFAULT 365,
-    requires_approval BOOLEAN DEFAULT FALSE,
-    auto_confirm BOOLEAN DEFAULT FALSE,
+    min_advance_booking_hours INTEGER DEFAULT 24, -- Minimum lead-time
+    max_advance_booking_days INTEGER DEFAULT 365, -- Maximum lead-time
+    requires_approval BOOLEAN DEFAULT FALSE, -- Needs manual approval flag
+    auto_confirm BOOLEAN DEFAULT FALSE, -- Automatically confirm bookings
 
     -- Notes
     internal_notes TEXT,
@@ -159,18 +159,18 @@ CREATE TABLE meeting_rooms (
     metadata JSONB DEFAULT '{}'::jsonb,
 
     -- Audit Fields
-    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP,
-    created_by UUID,
-    updated_by UUID,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, -- Creation timestamp
+    updated_at TIMESTAMP, -- Last modification timestamp
+    created_by UUID, -- Creator identifier
+    updated_by UUID, -- Last modifier
 
     -- Soft Delete
-    is_deleted BOOLEAN DEFAULT FALSE,
+    is_deleted BOOLEAN DEFAULT FALSE, -- Soft delete flag
     deleted_at TIMESTAMP,
     deleted_by UUID,
 
     -- Optimistic Locking
-    version BIGINT DEFAULT 0,
+    version BIGINT DEFAULT 0, -- Row version for concurrency
 
     -- Constraints
     CONSTRAINT meeting_rooms_code_unique UNIQUE (tenant_id, property_id, room_code),
