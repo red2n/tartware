@@ -1,4 +1,7 @@
-"""Insert function for housekeeping_tasks table"""
+"""
+@package tartware.scripts.data.core_business.insert_housekeeping_tasks
+@summary Create housekeeping tasks to simulate operational workload.
+"""
 
 
 from data_store import data_store
@@ -10,7 +13,11 @@ import random
 
 
 def insert_housekeeping_tasks(conn):
-    """Insert housekeeping task records"""
+    """
+    @summary Insert housekeeping task assignments for generated rooms.
+    @param conn: psycopg2 connection for writing housekeeping tasks.
+    @returns None
+    """
     print(f"\n✓ Inserting Housekeeping Tasks...")
     cur = conn.cursor()
 

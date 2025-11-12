@@ -1,6 +1,9 @@
 """
-Shared Data Storage
-Stores generated IDs for cross-referencing between tables
+@package tartware.scripts.data.data_store
+@summary In-memory registry for synthetic IDs shared across loader modules.
+@details
+  Loader functions append primary keys here so related inserts can cross-reference
+  established entities (tenants, users, reservations, etc.) without additional queries.
 """
 
 # Storage for generated IDs - shared across all loaders

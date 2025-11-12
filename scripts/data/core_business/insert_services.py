@@ -1,4 +1,7 @@
-"""Insert function for services table"""
+"""
+@package tartware.scripts.data.core_business.insert_services
+@summary Provision ancillary services for each property (transportation, F&B, etc.).
+"""
 
 
 from data_store import data_store
@@ -9,7 +12,11 @@ fake = Faker()
 
 
 def insert_services(conn):
-    """Insert service records"""
+    """
+    @summary Insert catalog services that reservations can add as ancillary revenue.
+    @param conn: psycopg2 connection used for service inserts.
+    @returns None
+    """
     print(f"\n✓ Inserting Services...")
     cur = conn.cursor()
 

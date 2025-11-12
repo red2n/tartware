@@ -1,4 +1,7 @@
-"""Core Business Data Loaders"""
+"""
+@package tartware.scripts.data.core_business
+@summary Loader entry points for core business domain tables (tenants, rooms, reservations).
+"""
 
 from .insert_tenants import insert_tenants
 from .insert_users import insert_users

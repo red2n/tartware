@@ -1,4 +1,7 @@
-"""Insert function for users table"""
+"""
+@package tartware.scripts.data.core_business.insert_users
+@summary Seed application user accounts with realistic profile metadata.
+"""
 
 
 from data_store import data_store
@@ -10,7 +13,12 @@ import random
 
 
 def insert_users(conn, count=25):
-    """Insert user records"""
+    """
+    @summary Insert synthetic user records referenced throughout the platform.
+    @param conn: psycopg2 connection bound to the Tartware database.
+    @param count: Number of user rows to generate.
+    @returns None
+    """
     print(f"\n✓ Inserting {count} Users...")
     cur = conn.cursor()
 

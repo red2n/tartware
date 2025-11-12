@@ -1,7 +1,11 @@
 #!/usr/bin/env python3
 """
-Script to split load_sample_data_direct.py into modular files
-Extracts each insert_ function into its own file organized by category
+@package tartware.scripts.data.split_loaders
+@summary Developer utility that converts the legacy monolithic loader into modular inserts.
+@details
+  Scans the historical `load_sample_data_direct.py` file, extracts each `insert_*`
+  function, and writes it into the new category-based package layout. Running this
+  script is idempotent and helps keep the modular structure in sync with the source.
 """
 import os
 import re
@@ -66,12 +70,21 @@ CATEGORIES = {
 }
 
 def read_original_file():
-    """Read the original monolithic file"""
+    """
+    @summary Load the historical monolithic loader source into memory.
+    @returns str: Full source code of the legacy loader file.
+    @raises FileNotFoundError: When the source file cannot be located.
+    """
     with open('/home/navin/tartware/scripts/data/load_sample_data_direct.py', 'r') as f:
         return f.read()
 
 def extract_function(content, function_name):
-    """Extract a single function from the content"""
+    """
+    @summary Extract a named function definition from the monolithic loader source.
+    @param content: Raw source content to search.
+    @param function_name: Name of the insert function to isolate.
+    @returns str | None: The function block including the definition, or None if not found.
+    """
     # Find function definition
     pattern = rf'^def {function_name}\(.*?\):\s*\n(.*?)(?=^def\s|\Z)'
     match = re.search(pattern, content, re.MULTILINE | re.DOTALL)
@@ -85,7 +98,11 @@ def extract_function(content, function_name):
     return None
 
 def analyze_imports(function_text):
-    """Analyze what imports a function needs"""
+    """
+    @summary Infer import statements required by an extracted function.
+    @param function_text: Source text of the function body.
+    @returns list[str]: Ordered import lines plus helper initializers.
+    """
     imports = set()
 
     if 'json.' in function_text or 'json.dumps' in function_text:
@@ -107,7 +124,13 @@ def analyze_imports(function_text):
     return sorted(imports)
 
 def create_function_file(category, function_name, function_text):
-    """Create a file for a single function"""
+    """
+    @summary Persist an extracted function into the modular package structure.
+    @param category: Target category package name (e.g., `core_business`).
+    @param function_name: Name of the insert function being written.
+    @param function_text: Full function definition including body.
+    @returns None
+    """
     # Analyze required imports
     imports = analyze_imports(function_text)
 
@@ -125,7 +148,10 @@ def create_function_file(category, function_name, function_text):
     print(f"✓ Created {category}/{function_name}.py")
 
 def create_init_files():
-    """Create __init__.py files for each category"""
+    """
+    @summary Emit category-level `__init__.py` files that surface loader entry points.
+    @returns None
+    """
     for category, functions in CATEGORIES.items():
         init_content = f'"""{category.replace("_", " ").title()} Data Loaders"""\n\n'
 
@@ -146,6 +172,10 @@ def create_init_files():
         print(f"✓ Created {category}/__init__.py")
 
 def main():
+    """
+    @summary Execute the full extraction workflow from monolithic loader to modular files.
+    @returns None
+    """
     print("=" * 60)
     print("Splitting load_sample_data_direct.py into modular files")
     print("=" * 60)

@@ -1,4 +1,7 @@
-"""Insert function for rooms table"""
+"""
+@package tartware.scripts.data.core_business.insert_rooms
+@summary Instantiate physical rooms tied to room types for each property.
+"""
 
 
 from data_store import data_store
@@ -10,7 +13,12 @@ import random
 
 
 def insert_rooms(conn, count_per_property=20):
-    """Insert room records"""
+    """
+    @summary Insert room inventory with room numbers, floors, and status flags.
+    @param conn: psycopg2 connection for issuing insert statements.
+    @param count_per_property: Number of rooms to provision per property.
+    @returns None
+    """
     print(f"\n✓ Inserting Rooms ({count_per_property} per property)...")
     cur = conn.cursor()
 

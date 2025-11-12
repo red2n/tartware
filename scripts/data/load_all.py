@@ -1,8 +1,11 @@
 #!/usr/bin/env python3
 """
-Main Data Loader Orchestrator for Tartware PMS
-Coordinates all category-specific data loaders
-Date: 2025-10-21
+@package tartware.scripts.data.load_all
+@summary Entry point that orchestrates every category-specific sample data loader.
+@details
+  - Validates the UUID generator and wipes the target database for a clean slate.
+  - Sequentially executes modular loader functions grouped by business domains.
+  - Provides rich console telemetry so analysts can track progress and volume.
 """
 import random
 from datetime import datetime
@@ -96,7 +99,10 @@ random.seed(42)
 
 
 def main():
-    """Main execution function - orchestrates all data loading"""
+    """
+    @summary Execute the full synthetic data generation workflow for Tartware PMS.
+    @returns None
+    """
     print("=" * 60)
     print("Tartware PMS - Modular Sample Data Loader")
     print("UUID Strategy: v7 (Time-Ordered) for Better Performance")

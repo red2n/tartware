@@ -1,4 +1,7 @@
-"""Insert function for user_tenant_associations table"""
+"""
+@package tartware.scripts.data.core_business.insert_user_tenant_associations
+@summary Create role-aware links between users and tenants to model access control.
+"""
 
 
 from data_store import data_store
@@ -10,7 +13,11 @@ import random
 
 
 def insert_user_tenant_associations(conn):
-    """Insert user-tenant associations"""
+    """
+    @summary Generate role assignments connecting users to their tenant accounts.
+    @param conn: psycopg2 connection used for persistence.
+    @returns None
+    """
     print(f"\n✓ Inserting User-Tenant Associations...")
     cur = conn.cursor()
 

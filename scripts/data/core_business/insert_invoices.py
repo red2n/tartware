@@ -1,4 +1,7 @@
-"""Insert function for invoices table"""
+"""
+@package tartware.scripts.data.core_business.insert_invoices
+@summary Emit invoices that summarize reservation charges with tax computations.
+"""
 
 
 from data_store import data_store
@@ -11,7 +14,11 @@ import random
 
 
 def insert_invoices(conn):
-    """Insert invoice records"""
+    """
+    @summary Insert invoices linked to reservations, capturing totals and status.
+    @param conn: psycopg2 connection for invoice persistence.
+    @returns None
+    """
     print(f"\n✓ Inserting Invoices...")
     cur = conn.cursor()
 

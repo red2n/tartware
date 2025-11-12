@@ -1,4 +1,7 @@
-"""Insert function for guests table"""
+"""
+@package tartware.scripts.data.core_business.insert_guests
+@summary Generate guest profiles with loyalty and revenue metrics.
+"""
 
 
 from data_store import data_store
@@ -10,7 +13,12 @@ import random
 
 
 def insert_guests(conn, count=200):
-    """Insert guest records"""
+    """
+    @summary Insert guest records tied to existing tenants with realistic contact details.
+    @param conn: psycopg2 connection used for writing guest rows.
+    @param count: Number of guests to create.
+    @returns None
+    """
     print(f"\n✓ Inserting {count} Guests...")
     cur = conn.cursor()
 

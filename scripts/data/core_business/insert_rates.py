@@ -1,4 +1,7 @@
-"""Insert function for rates table"""
+"""
+@package tartware.scripts.data.core_business.insert_rates
+@summary Seed pricing strategies for each room type across all properties.
+"""
 
 
 from data_store import data_store
@@ -10,7 +13,12 @@ import random
 
 
 def insert_rates(conn, count_per_property=6):
-    """Insert rate records"""
+    """
+    @summary Insert rate plans that capture seasonal strategies and validity windows.
+    @param conn: psycopg2 connection used for rate inserts.
+    @param count_per_property: Target number of rate variations per property.
+    @returns None
+    """
     print(f"\n✓ Inserting Rates...")
     cur = conn.cursor()
 

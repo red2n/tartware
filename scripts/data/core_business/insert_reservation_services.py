@@ -1,4 +1,7 @@
-"""Insert function for reservation_services table"""
+"""
+@package tartware.scripts.data.core_business.insert_reservation_services
+@summary Map ancillary services onto reservations to model upsell revenue.
+"""
 
 
 from data_store import data_store
@@ -10,7 +13,11 @@ import random
 
 
 def insert_reservation_services(conn):
-    """Insert reservation service records"""
+    """
+    @summary Insert service consumption records tied to reservations.
+    @param conn: psycopg2 connection for persisting reservation service rows.
+    @returns None
+    """
     print(f"\n✓ Inserting Reservation Services...")
     cur = conn.cursor()
 

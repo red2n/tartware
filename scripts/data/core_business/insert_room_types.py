@@ -1,4 +1,7 @@
-"""Insert function for room_types table"""
+"""
+@package tartware.scripts.data.core_business.insert_room_types
+@summary Provision room type definitions for every property.
+"""
 
 
 from data_store import data_store
@@ -10,7 +13,12 @@ import random
 
 
 def insert_room_types(conn, count_per_property=3):
-    """Insert room type records"""
+    """
+    @summary Insert room type templates covering occupancy and pricing metadata.
+    @param conn: psycopg2 connection for executing inserts.
+    @param count_per_property: Number of room types to create for each property.
+    @returns None
+    """
     print(f"\n✓ Inserting Room Types ({count_per_property} per property)...")
     cur = conn.cursor()
 

@@ -1,64 +1,108 @@
 #!/usr/bin/env python3
-"""Find tables missing sample data"""
+"""
+@package tartware.scripts.data.list_empty_tables
+@summary Identify database tables that have not been populated by the sample loaders.
+"""
 
 import psycopg2
 
-# Connect to database
-conn = psycopg2.connect(
-    host="localhost",
-    port="5432",
-    dbname="tartware",
-    user="postgres",
-    password="postgres"
-)
+def fetch_table_stats(cursor):
+    """
+    @summary Retrieve row counts for every base table in public schemas.
+    @param cursor: psycopg2 cursor used to execute metadata queries.
+    @returns list[tuple[str, str, int]]: Table schema, table name, and record count.
+    """
+    cursor.execute(
+        """
+        SELECT
+            t.table_schema,
+            t.table_name,
+            COALESCE(s.n_tup_ins, 0) as records
+        FROM information_schema.tables t
+        LEFT JOIN pg_stat_user_tables s
+            ON s.relname = t.table_name
+            AND s.schemaname = t.table_schema
+        WHERE t.table_schema IN ('public', 'availability')
+        AND t.table_type = 'BASE TABLE'
+        ORDER BY
+            CASE WHEN COALESCE(s.n_tup_ins, 0) = 0 THEN 0 ELSE 1 END,
+            t.table_name
+        """
+    )
+    return cursor.fetchall()
 
-cur = conn.cursor()
 
-# Get all tables with their record counts
-cur.execute("""
-    SELECT
-        t.table_schema,
-        t.table_name,
-        COALESCE(s.n_tup_ins, 0) as records
-    FROM information_schema.tables t
-    LEFT JOIN pg_stat_user_tables s
-        ON s.relname = t.table_name
-        AND s.schemaname = t.table_schema
-    WHERE t.table_schema IN ('public', 'availability')
-    AND t.table_type = 'BASE TABLE'
-    ORDER BY
-        CASE WHEN COALESCE(s.n_tup_ins, 0) = 0 THEN 0 ELSE 1 END,
-        t.table_name
-""")
+def partition_tables(table_stats):
+    """
+    @summary Split table metadata into empty and populated collections.
+    @param table_stats: Iterable of (schema, table name, record count) tuples.
+    @returns tuple[list[tuple[str, str]], list[tuple[str, str, int]]]:
+        First list contains empty tables; second list contains populated tables with counts.
+    """
+    empty_tables = []
+    populated_tables = []
 
-results = cur.fetchall()
+    for schema, table, records in table_stats:
+        if records == 0:
+            empty_tables.append((schema, table))
+        else:
+            populated_tables.append((schema, table, records))
 
-# Separate empty and populated tables
-empty_tables = []
-populated_tables = []
+    return empty_tables, populated_tables
 
-for schema, table, records in results:
-    if records == 0:
-        empty_tables.append((schema, table))
+
+def render_report(empty_tables, populated_tables, total_tables):
+    """
+    @summary Print a human-readable report of table population status.
+    @param empty_tables: Tables with zero inserted rows.
+    @param populated_tables: Tables that contain at least one row.
+    @param total_tables: Total number of tables inspected.
+    @returns None
+    """
+    print("=" * 80)
+    print(f"TABLES WITHOUT SAMPLE DATA ({len(empty_tables)} tables)")
+    print("=" * 80)
+    print()
+
+    for i, (schema, table) in enumerate(empty_tables, 1):
+        schema_prefix = f"{schema}." if schema != "public" else ""
+        print(f"{i:2}. {schema_prefix}{table}")
+
+    print()
+    print("=" * 80)
+    print("SUMMARY")
+    print("=" * 80)
+    print(f"Total tables:      {total_tables}")
+
+    if total_tables:
+        with_data_pct = len(populated_tables) * 100 // total_tables
+        without_data_pct = len(empty_tables) * 100 // total_tables
     else:
-        populated_tables.append((schema, table, records))
+        with_data_pct = without_data_pct = 0
 
-print("="*80)
-print(f"TABLES WITHOUT SAMPLE DATA ({len(empty_tables)} tables)")
-print("="*80)
-print()
+    print(f"With data:         {len(populated_tables)} ({with_data_pct}%)")
+    print(f"Without data:      {len(empty_tables)} ({without_data_pct}%)")
+    print("=" * 80)
 
-for i, (schema, table) in enumerate(empty_tables, 1):
-    schema_prefix = f"{schema}." if schema != 'public' else ""
-    print(f"{i:2}. {schema_prefix}{table}")
 
-print()
-print("="*80)
-print("SUMMARY")
-print("="*80)
-print(f"Total tables:      {len(results)}")
-print(f"With data:         {len(populated_tables)} ({len(populated_tables)*100//len(results)}%)")
-print(f"Without data:      {len(empty_tables)} ({len(empty_tables)*100//len(results)}%)")
-print("="*80)
+def main():
+    """
+    @summary Generate a console report listing tables that lack seeded data.
+    @returns None
+    """
+    with psycopg2.connect(
+        host="localhost",
+        port="5432",
+        dbname="tartware",
+        user="postgres",
+        password="postgres",
+    ) as conn:
+        with conn.cursor() as cur:
+            results = fetch_table_stats(cur)
 
-conn.close()
+    empty_tables, populated_tables = partition_tables(results)
+    render_report(empty_tables, populated_tables, len(results))
+
+
+if __name__ == "__main__":
+    main()

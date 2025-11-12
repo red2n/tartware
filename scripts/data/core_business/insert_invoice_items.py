@@ -1,4 +1,7 @@
-"""Insert function for invoice_items table"""
+"""
+@package tartware.scripts.data.core_business.insert_invoice_items
+@summary Build invoice line items that itemize charges per reservation.
+"""
 
 
 from data_store import data_store
@@ -10,7 +13,11 @@ import random
 
 
 def insert_invoice_items(conn):
-    """Insert invoice item records"""
+    """
+    @summary Insert detailed invoice line items with quantities and pricing.
+    @param conn: psycopg2 connection for executing line-item inserts.
+    @returns None
+    """
     print(f"\n✓ Inserting Invoice Items...")
     cur = conn.cursor()
 
