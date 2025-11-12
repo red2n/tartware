@@ -10,7 +10,7 @@
 \echo ''
 
 -- ============================================================================
--- CATEGORY 1: CORE INDEXES (5 files)
+-- CATEGORY 1: CORE INDEXES (6 files)
 -- ============================================================================
 \echo '>>> Creating indexes for: CORE FOUNDATION'
 
@@ -19,6 +19,7 @@
 \ir 01-core/03_user_tenant_associations_indexes.sql
 \ir 01-core/04_properties_indexes.sql
 \ir 01-core/05_guests_indexes.sql
+\ir 01-core/06_settings_indexes.sql
 
 -- ============================================================================
 -- CATEGORY 2: INVENTORY & PRICING INDEXES (18 files)

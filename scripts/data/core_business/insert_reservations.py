@@ -52,6 +52,8 @@ def insert_reservations(conn, count=500):
         paid_amount = round(total_amount * random.uniform(0, 1.0), 2)
 
         status = random.choice(statuses)
+        adults = random.randint(1, 2)
+        children = random.randint(0, 2)
 
         cur.execute("""
             INSERT INTO reservations (id, tenant_id, property_id, guest_id, room_type_id, rate_id, confirmation_number,
@@ -70,8 +72,8 @@ def insert_reservations(conn, count=500):
             check_out_date,
             booking_date,
             room['room_number'] if room else None,
-            random.randint(1, 2),
-            random.randint(0, 2),
+            adults,
+            children,
             room_rate,
             total_amount,
             tax_amount,
@@ -89,7 +91,14 @@ def insert_reservations(conn, count=500):
             'property_id': property['id'],
             'guest_id': guest['id'],
             'total_amount': total_amount,
-            'status': status
+            'status': status,
+            'check_in_date': check_in_date,
+            'check_out_date': check_out_date,
+            'booking_date': booking_date,
+            'number_of_nights': nights,
+            'number_of_adults': adults,
+            'number_of_children': children,
+            'confirmation_number': f"CNF{i+1:06d}"
         })
 
     conn.commit()

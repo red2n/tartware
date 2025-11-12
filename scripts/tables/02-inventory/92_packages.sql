@@ -210,7 +210,7 @@ pricing_type VARCHAR(50) NOT NULL CHECK (
 unit_price DECIMAL(10, 2) DEFAULT 0.00, -- Standalone price
 is_included BOOLEAN DEFAULT TRUE, -- Included vs add-on
 is_optional BOOLEAN DEFAULT FALSE, -- Allow guest to opt-in
-additional_charge DECIMAL(10, 2),
+additional_charge DECIMAL(10, 2), -- Extra cost if not included
 
 -- Scheduling
 delivery_timing VARCHAR(50) CHECK (
@@ -223,14 +223,15 @@ delivery_timing VARCHAR(50) CHECK (
         'anytime'
     )
 ),
-delivery_location VARCHAR(255),
+delivery_location VARCHAR(255), -- Where component is delivered
 
 -- Display
-display_order INTEGER DEFAULT 0, highlight BOOLEAN DEFAULT FALSE,
+display_order INTEGER DEFAULT 0,
+highlight BOOLEAN DEFAULT FALSE, -- UI emphasis
 
 -- Status
-is_active BOOLEAN DEFAULT TRUE,
-is_mandatory BOOLEAN DEFAULT TRUE,
+is_active BOOLEAN DEFAULT TRUE, -- Component availability status
+is_mandatory BOOLEAN DEFAULT TRUE, -- Whether component is required
 
 -- Audit
 created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP,
@@ -245,18 +246,23 @@ created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP,
 
 CREATE TABLE IF NOT EXISTS package_bookings (
     -- Primary Key
-    package_booking_id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+    package_booking_id UUID DEFAULT uuid_generate_v4() PRIMARY KEY, -- Unique booking identifier
 
 -- Foreign Keys
 package_id UUID NOT NULL REFERENCES packages (package_id) ON DELETE RESTRICT,
 reservation_id UUID NOT NULL, -- FK to reservations(id) ON DELETE CASCADE - constraint added in constraints phase
 
 -- Booking Details
-package_price DECIMAL(10, 2) NOT NULL,
-number_of_nights INTEGER NOT NULL,
-number_of_adults INTEGER NOT NULL,
-number_of_children INTEGER DEFAULT 0,
-total_amount DECIMAL(12, 2) NOT NULL,
+package_price DECIMAL(10, 2) NOT NULL, -- Price at time of booking
+booking_date TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP, -- When booked
+check_in_date DATE NOT NULL, -- Start of stay
+check_out_date DATE NOT NULL, -- End of stay
+number_of_nights INTEGER NOT NULL, -- Length of stay
+number_of_adults INTEGER NOT NULL, -- Adults covered
+number_of_children INTEGER DEFAULT 0, -- Children covered
+total_amount DECIMAL(12, 2) NOT NULL, -- Total charged amount
+discount_applied DECIMAL(10, 2) DEFAULT 0.00, -- Any discounts applied
+tax_amount DECIMAL(10, 2) DEFAULT 0.00, -- Tax portion
 
 -- Component Selections
 selected_components JSONB, -- Optional components selected
@@ -264,7 +270,7 @@ component_modifications JSONB, -- Any changes to default components
 
 -- Redemption Tracking
 components_delivered JSONB, -- Track which components have been delivered
-fully_delivered BOOLEAN DEFAULT FALSE,
+fully_delivered BOOLEAN DEFAULT FALSE, -- All components delivered
 
 -- Status
 status VARCHAR(50) DEFAULT 'confirmed' CHECK (
@@ -278,7 +284,8 @@ status VARCHAR(50) DEFAULT 'confirmed' CHECK (
 ),
 
 -- Notes
-special_requests TEXT, notes TEXT,
+special_requests TEXT,
+notes TEXT, -- Guest requests and internal notes
 
 -- Audit
 created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP,

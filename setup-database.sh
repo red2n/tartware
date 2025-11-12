@@ -689,7 +689,12 @@ else
         fi
     done
 
-    if [ ${PIPESTATUS[0]} -eq 0 ]; then
+    PIPE_STATUS=${PIPESTATUS[0]}
+
+    # Re-seed system settings catalog (sample loader truncates via cascade)
+    psql -q -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -f "$SCRIPTS_DIR/tables/01-core/06_settings.sql" > /dev/null 2>&1
+
+    if [ $PIPE_STATUS -eq 0 ]; then
         # Calculate exact total records across all tables
         TOTAL_RECORDS=$(psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -tAc "
             SELECT SUM(n_tup_ins)::bigint

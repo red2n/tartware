@@ -10,16 +10,17 @@
 \echo ''
 
 -- ============================================================================
--- CATEGORY 1: CORE CONSTRAINTS (3 files)
+-- CATEGORY 1: CORE CONSTRAINTS (4 files)
 -- ============================================================================
 \echo '>>> Creating constraints for: CORE FOUNDATION'
 
 \ir 01-core/01_user_tenant_associations_fk.sql
 \ir 01-core/02_properties_fk.sql
 \ir 01-core/03_guests_fk.sql
+\ir 01-core/04_settings_fk.sql
 
 -- ============================================================================
--- CATEGORY 2: INVENTORY & PRICING CONSTRAINTS (18 files)
+-- CATEGORY 2: INVENTORY & PRICING CONSTRAINTS (19 files)
 -- ============================================================================
 \echo '>>> Creating constraints for: INVENTORY & PRICING'
 
@@ -41,6 +42,7 @@
 \ir 02-inventory/97_meeting_rooms_fk.sql
 \ir 02-inventory/98_event_bookings_fk.sql
 \ir 02-inventory/99_banquet_event_orders_fk.sql
+\ir 02-inventory/100_room_settings_fk.sql
 
 -- ============================================================================
 -- CATEGORY 3: BOOKINGS & GUEST RELATIONS CONSTRAINTS (16 files)

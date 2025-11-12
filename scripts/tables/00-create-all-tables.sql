@@ -18,6 +18,7 @@
 \ir 01-core/03_user_tenant_associations.sql
 \ir 01-core/04_properties.sql
 \ir 01-core/05_guests.sql
+\ir 01-core/06_settings.sql
 
 -- ============================================================================
 -- CATEGORY 2: INVENTORY (Rooms, rates, availability, revenue management)

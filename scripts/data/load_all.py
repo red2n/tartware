@@ -129,13 +129,22 @@ def main():
     print("\n✓ Clearing all data...")
     # Use CASCADE to handle foreign keys automatically
     try:
+        print("   → Preserving settings catalog (system categories & definitions)")
         cur.execute("""
             DO $$
             DECLARE
                 r RECORD;
             BEGIN
-                FOR r IN (SELECT tablename FROM pg_tables WHERE schemaname = 'public') LOOP
-                    EXECUTE 'TRUNCATE TABLE ' || quote_ident(r.tablename) || ' CASCADE';
+                FOR r IN (
+                    SELECT tablename
+                    FROM pg_tables
+                    WHERE schemaname = 'public'
+                ) LOOP
+                    IF r.tablename NOT IN ('setting_categories', 'setting_definitions') THEN
+                        EXECUTE 'TRUNCATE TABLE ' || quote_ident(r.tablename) || ' CASCADE';
+                    ELSE
+                        RAISE NOTICE 'Skipping truncate for %', r.tablename;
+                    END IF;
                 END LOOP;
             END $$;
         """)

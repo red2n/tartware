@@ -1,7 +1,7 @@
 -- =====================================================
 -- verify-01-core-foundation.sql
 -- Verification Script for Core Foundation Tables
--- Category: 01-core-foundation (5 tables)
+-- Category: 01-core-foundation (11 tables)
 -- Date: 2025-10-19
 -- =====================================================
 
@@ -11,18 +11,30 @@
 \echo ''
 \echo '=============================================='
 \echo '  CATEGORY: CORE FOUNDATION VERIFICATION'
-\echo '  Tables: 5 | Description: Multi-tenancy, users, properties, guest management'
+\echo '  Tables: 11 | Description: Multi-tenancy, users, properties, guest management, settings catalogue'
 \echo '=============================================='
 \echo ''
 
 -- =====================================================
 -- 1. CHECK IF ALL TABLES EXIST
 -- =====================================================
-\echo '1. Checking if all 5 tables exist...'
+\echo '1. Checking if all 11 tables exist...'
 
 DO $$
 DECLARE
-    v_expected_tables TEXT[] := ARRAY['tenants', 'users', 'user_tenant_associations', 'properties', 'guests'];
+    v_expected_tables TEXT[] := ARRAY[
+        'tenants',
+        'users',
+        'user_tenant_associations',
+        'properties',
+        'guests',
+        'setting_categories',
+        'setting_definitions',
+        'tenant_settings',
+        'property_settings',
+        'room_settings',
+        'user_settings'
+    ];
     v_table TEXT;
     v_missing_tables TEXT[] := '{}'::TEXT[];
     v_found_count INTEGER := 0;
@@ -47,7 +59,7 @@ BEGIN
         RAISE WARNING 'Missing tables: %', array_to_string(v_missing_tables, ', ');
         RAISE EXCEPTION 'Core Foundation verification FAILED - missing tables!';
     ELSE
-        RAISE NOTICE '✓✓✓ All 5 Core Foundation tables exist!';
+        RAISE NOTICE '✓✓✓ All 11 Core Foundation tables exist!';
     END IF;
 END $$;
 
@@ -85,7 +97,13 @@ WHERE
         'users',
         'user_tenant_associations',
         'properties',
-        'guests'
+        'guests',
+        'setting_categories',
+        'setting_definitions',
+        'tenant_settings',
+        'property_settings',
+        'room_settings',
+        'user_settings'
     )
     AND t.table_schema = 'public'
 GROUP BY
@@ -108,19 +126,31 @@ DECLARE
 BEGIN
     SELECT COUNT(*) INTO v_table_count
     FROM information_schema.tables t
-    WHERE t.table_name IN ('tenants', 'users', 'user_tenant_associations', 'properties', 'guests')
+    WHERE t.table_name IN (
+        'tenants',
+        'users',
+        'user_tenant_associations',
+        'properties',
+        'guests',
+        'setting_categories',
+        'setting_definitions',
+        'tenant_settings',
+        'property_settings',
+        'room_settings',
+        'user_settings'
+    )
         AND t.table_schema = 'public';
 
     RAISE NOTICE '';
     RAISE NOTICE 'Category: Core Foundation';
-    RAISE NOTICE 'Tables Found: % / 5', v_table_count;
+    RAISE NOTICE 'Tables Found: % / 11', v_table_count;
     RAISE NOTICE '';
 
-    IF v_table_count = 5 THEN
+    IF v_table_count = 11 THEN
         RAISE NOTICE '✓✓✓ CORE FOUNDATION VERIFICATION PASSED ✓✓✓';
     ELSE
         RAISE WARNING '⚠⚠⚠ CORE FOUNDATION VERIFICATION FAILED ⚠⚠⚠';
-        RAISE WARNING 'Expected 5 tables, found %', v_table_count;
+        RAISE WARNING 'Expected 11 tables, found %', v_table_count;
     END IF;
 END $$;
 
