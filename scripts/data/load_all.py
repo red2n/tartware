@@ -1,11 +1,9 @@
 #!/usr/bin/env python3
 """
-@package tartware.scripts.data.load_all
-@summary Entry point that orchestrates every category-specific sample data loader.
-@details
-  - Validates the UUID generator and wipes the target database for a clean slate.
-  - Sequentially executes modular loader functions grouped by business domains.
-  - Provides rich console telemetry so analysts can track progress and volume.
+Entry point that orchestrates every category-specific sample data loader.
+
+Validates the UUID generator, wipes the target database for a clean slate, then
+executes modular loader functions grouped by business domains with console telemetry.
 """
 import random
 from datetime import datetime
@@ -99,10 +97,7 @@ random.seed(42)
 
 
 def main():
-    """
-    @summary Execute the full synthetic data generation workflow for Tartware PMS.
-    @returns None
-    """
+    """Execute the full synthetic data generation workflow for Tartware PMS."""
     print("=" * 60)
     print("Tartware PMS - Modular Sample Data Loader")
     print("UUID Strategy: v7 (Time-Ordered) for Better Performance")

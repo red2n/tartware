@@ -1,16 +1,16 @@
 #!/usr/bin/env python3
-"""
-@package tartware.scripts.data.list_empty_tables
-@summary Identify database tables that have not been populated by the sample loaders.
-"""
+"""Identify database tables that have not been populated by the sample loaders."""
 
 import psycopg2
 
 def fetch_table_stats(cursor):
-    """
-    @summary Retrieve row counts for every base table in public schemas.
-    @param cursor: psycopg2 cursor used to execute metadata queries.
-    @returns list[tuple[str, str, int]]: Table schema, table name, and record count.
+    """Retrieve row counts for every base table in the public schemas.
+
+    Args:
+        cursor: psycopg2 cursor used to execute metadata queries.
+
+    Returns:
+        list[tuple[str, str, int]]: Table schema, table name, and record count.
     """
     cursor.execute(
         """
@@ -33,11 +33,14 @@ def fetch_table_stats(cursor):
 
 
 def partition_tables(table_stats):
-    """
-    @summary Split table metadata into empty and populated collections.
-    @param table_stats: Iterable of (schema, table name, record count) tuples.
-    @returns tuple[list[tuple[str, str]], list[tuple[str, str, int]]]:
-        First list contains empty tables; second list contains populated tables with counts.
+    """Split table metadata into empty and populated collections.
+
+    Args:
+        table_stats: Iterable of (schema, table name, record count) tuples.
+
+    Returns:
+        tuple[list[tuple[str, str]], list[tuple[str, str, int]]]: First list contains
+        empty tables; second list contains populated tables with counts.
     """
     empty_tables = []
     populated_tables = []
@@ -52,12 +55,12 @@ def partition_tables(table_stats):
 
 
 def render_report(empty_tables, populated_tables, total_tables):
-    """
-    @summary Print a human-readable report of table population status.
-    @param empty_tables: Tables with zero inserted rows.
-    @param populated_tables: Tables that contain at least one row.
-    @param total_tables: Total number of tables inspected.
-    @returns None
+    """Print a human-readable report of table population status.
+
+    Args:
+        empty_tables: Tables with zero inserted rows.
+        populated_tables: Tables that contain at least one row.
+        total_tables: Total number of tables inspected.
     """
     print("=" * 80)
     print(f"TABLES WITHOUT SAMPLE DATA ({len(empty_tables)} tables)")
@@ -86,10 +89,7 @@ def render_report(empty_tables, populated_tables, total_tables):
 
 
 def main():
-    """
-    @summary Generate a console report listing tables that lack seeded data.
-    @returns None
-    """
+    """Generate a console report listing tables that lack seeded data."""
     with psycopg2.connect(
         host="localhost",
         port="5432",

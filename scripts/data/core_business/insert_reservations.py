@@ -1,7 +1,4 @@
-"""
-@package tartware.scripts.data.core_business.insert_reservations
-@summary Generate the primary reservation dataset with stay details and financials.
-"""
+"""Generate the primary reservation dataset with stay details and financials."""
 
 
 from data_store import data_store
@@ -14,11 +11,11 @@ import random
 
 
 def insert_reservations(conn, count=500):
-    """
-    @summary Insert core reservation records including rate, room, and guest references.
-    @param conn: psycopg2 connection for reservation inserts.
-    @param count: Target number of reservations to generate.
-    @returns None
+    """Insert reservation records including rate, room, and guest references.
+
+    Args:
+        conn: psycopg2 connection for reservation inserts.
+        count: Target number of reservations to generate.
     """
     print(f"\n✓ Inserting {count} Reservations (Main Data Volume)...")
     cur = conn.cursor()

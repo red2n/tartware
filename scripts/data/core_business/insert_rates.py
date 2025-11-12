@@ -1,7 +1,4 @@
-"""
-@package tartware.scripts.data.core_business.insert_rates
-@summary Seed pricing strategies for each room type across all properties.
-"""
+"""Seed pricing strategies for each room type across all properties."""
 
 
 from data_store import data_store
@@ -13,11 +10,11 @@ import random
 
 
 def insert_rates(conn, count_per_property=6):
-    """
-    @summary Insert rate plans that capture seasonal strategies and validity windows.
-    @param conn: psycopg2 connection used for rate inserts.
-    @param count_per_property: Target number of rate variations per property.
-    @returns None
+    """Insert rate plans that capture seasonal strategies and validity windows.
+
+    Args:
+        conn: psycopg2 connection used for rate inserts.
+        count_per_property: Target number of rate variations per property.
     """
     print(f"\n✓ Inserting Rates...")
     cur = conn.cursor()

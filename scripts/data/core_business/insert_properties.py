@@ -1,7 +1,4 @@
-"""
-@package tartware.scripts.data.core_business.insert_properties
-@summary Populate properties per tenant with geo-coded address metadata.
-"""
+"""Populate properties per tenant with geo-coded address metadata."""
 
 
 from data_store import data_store
@@ -14,11 +11,11 @@ import random
 
 
 def insert_properties(conn, count_per_tenant=3):
-    """
-    @summary Insert properties for each tenant including address and inventory details.
-    @param conn: psycopg2 connection targeting the Tartware database.
-    @param count_per_tenant: Number of properties to generate for every tenant.
-    @returns None
+    """Insert properties for each tenant including address and inventory details.
+
+    Args:
+        conn: psycopg2 connection targeting the Tartware database.
+        count_per_tenant: Number of properties to generate for every tenant.
     """
     print(f"\n✓ Inserting Properties ({count_per_tenant} per tenant)...")
     cur = conn.cursor()

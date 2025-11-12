@@ -1,11 +1,10 @@
 #!/usr/bin/env python3
 """
-@package tartware.scripts.data.db_config
-@summary Centralizes PostgreSQL connectivity and UUID helpers for data loaders.
-@details
-  - Provides a single connection factory so every loader shares credentials.
-  - Hosts feature-flagged UUID helpers (v7 default, v4 fallback) for consistent IDs.
-  - Exposes validation utilities to benchmark UUID generation before bulk inserts.
+Centralizes PostgreSQL connectivity and UUID helpers for data loaders.
+
+Provides a single connection factory so every loader shares credentials,
+hosts feature-flagged UUID helpers (v7 default, v4 fallback) for consistent IDs,
+and exposes validation utilities to benchmark UUID generation before bulk inserts.
 """
 import psycopg2
 import uuid
@@ -30,10 +29,13 @@ _uuid_v7_last_timestamp = 0
 
 
 def get_db_connection():
-    """
-    @summary Create a PostgreSQL connection using the standard loader configuration.
-    @returns psycopg2.extensions.connection: Active database connection for loaders.
-    @raises psycopg2.OperationalError: Raised when credentials are invalid or server unavailable.
+    """Create a PostgreSQL connection using the shared loader configuration.
+
+    Returns:
+        psycopg2.extensions.connection: Active database connection ready for data loaders.
+
+    Raises:
+        psycopg2.OperationalError: If credentials are invalid or the server is unavailable.
     """
     try:
         conn = psycopg2.connect(**DB_CONFIG)
@@ -48,19 +50,16 @@ def get_db_connection():
 
 
 def generate_uuid_v7():
-    """
-    @summary Generate a time-ordered UUID v7 optimized for database indexing.
-    @details
-      Format: xxxxxxxx-xxxx-7xxx-yxxx-xxxxxxxxxxxx
+    """Generate a time-ordered UUID v7 optimized for database indexing.
+
+    Format (xxxxxxxx-xxxx-7xxx-yxxx-xxxxxxxxxxxx):
         * First 48 bits: Unix timestamp in milliseconds.
         * Version bits: 0111 (version 7).
         * Variant bits: 10xx.
         * Remaining 74 bits: Random payload plus a monotonic counter.
-      Benefits:
-        * Improves B-tree index locality compared to random UUIDs.
-        * Enables efficient time-range queries without sequence IDs.
-        * Avoids index fragmentation during burst inserts.
-    @returns str: Stringified UUID v7 value.
+
+    Returns:
+        str: Stringified UUID v7 value.
     """
     global _uuid_v7_counter, _uuid_v7_last_timestamp
 
@@ -94,17 +93,19 @@ def generate_uuid_v7():
 
 
 def generate_uuid_v4():
-    """
-    @summary Generate a random UUID v4 as a legacy fallback strategy.
-    @returns str: Stringified UUID v4 value.
+    """Generate a random UUID v4 as a legacy fallback strategy.
+
+    Returns:
+        str: Stringified UUID v4 value.
     """
     return str(uuid.uuid4())
 
 
 def generate_uuid():
-    """
-    @summary Dispatch UUID generation according to the configured version flag.
-    @returns str: UUID string consistent with the current strategy.
+    """Dispatch UUID generation according to the configured version flag.
+
+    Returns:
+        str: UUID string consistent with the current strategy.
     """
     if UUID_VERSION == "v7":
         return generate_uuid_v7()
@@ -113,9 +114,10 @@ def generate_uuid():
 
 
 def validate_uuid_v7():
-    """
-    @summary Smoke-test the UUID v7 generator for format, ordering, uniqueness, and throughput.
-    @returns bool: True when all validation checkpoints pass successfully.
+    """Smoke-test the UUID v7 generator for format, ordering, uniqueness, and throughput.
+
+    Returns:
+        bool: True when all validation checkpoints pass successfully.
     """
     print("\n" + "=" * 60)
     print("UUID v7 Validation")

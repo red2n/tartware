@@ -1,7 +1,4 @@
-"""
-@package tartware.scripts.data.core_business.insert_tenants
-@summary Seed foundational tenant records for integration and demo scenarios.
-"""
+"""Seed foundational tenant records for integration and demo scenarios."""
 
 
 from data_store import data_store
@@ -14,11 +11,11 @@ import random
 
 
 def insert_tenants(conn, count=5):
-    """
-    @summary Insert tenant records with realistic configuration payloads.
-    @param conn: psycopg2 connection bound to the target database.
-    @param count: Number of tenant entities to create.
-    @returns None
+    """Insert tenant records with realistic configuration payloads.
+
+    Args:
+        conn: psycopg2 connection bound to the target database.
+        count: Number of tenant entities to create.
     """
     print(f"\n✓ Inserting {count} Tenants...")
     cur = conn.cursor()

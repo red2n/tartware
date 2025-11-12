@@ -1,7 +1,4 @@
-"""
-@package tartware.scripts.data.core_business.insert_payments
-@summary Create payment transactions aligned with generated reservations.
-"""
+"""Create payment transactions aligned with generated reservations."""
 
 
 from data_store import data_store
@@ -13,10 +10,10 @@ import random
 
 
 def insert_payments(conn):
-    """
-    @summary Insert payment transactions referencing reservations and guests.
-    @param conn: psycopg2 connection for persisting payment rows.
-    @returns None
+    """Insert payment transactions referencing reservations and guests.
+
+    Args:
+        conn: psycopg2 connection for persisting payment rows.
     """
     print(f"\n✓ Inserting Payments...")
     cur = conn.cursor()
