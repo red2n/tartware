@@ -46,7 +46,7 @@ jobs:
         if: matrix.node-version == '20.x'
         run: |
           mkdir -p build/docs
-          PYTHONPATH="$(pwd)/scripts:$(pwd)/scripts/data" python -m pdoc -o build/docs scripts.data
+          PYTHONPATH="$(pwd)/scripts:$(pwd)/scripts/data" python -m pdoc --all-submodules -o build/docs scripts.data
 
       - name: Upload script documentation
         if: success() && matrix.node-version == '20.x'
