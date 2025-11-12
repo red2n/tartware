@@ -2,6 +2,10 @@ import { coreAuthSchema, databaseSchema, loadServiceConfig, redisSchema } from "
 
 process.env.SERVICE_NAME = process.env.SERVICE_NAME ?? "@tartware/core-service";
 process.env.SERVICE_VERSION = process.env.SERVICE_VERSION ?? "0.1.0";
+process.env.AUTH_JWT_SECRET = process.env.AUTH_JWT_SECRET ?? "local-dev-secret-change-me";
+process.env.AUTH_JWT_ISSUER = process.env.AUTH_JWT_ISSUER ?? "tartware-core-service";
+process.env.AUTH_JWT_AUDIENCE = process.env.AUTH_JWT_AUDIENCE ?? "tartware-core";
+process.env.AUTH_DEFAULT_PASSWORD = process.env.AUTH_DEFAULT_PASSWORD ?? "ChangeMe123!";
 
 const configValues = loadServiceConfig(databaseSchema.merge(redisSchema).merge(coreAuthSchema));
 
