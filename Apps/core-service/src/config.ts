@@ -1,75 +1,53 @@
-import { config as loadEnv } from "dotenv";
+import { coreAuthSchema, databaseSchema, loadServiceConfig, redisSchema } from "@tartware/config";
 
-// Load .env file
-loadEnv();
+process.env.SERVICE_NAME = process.env.SERVICE_NAME ?? "@tartware/core-service";
+process.env.SERVICE_VERSION = process.env.SERVICE_VERSION ?? "0.1.0";
 
-type EnvRecord = Record<string, string | undefined>;
-
-const env = ((globalThis as { process?: { env?: EnvRecord } }).process?.env ?? {}) as EnvRecord;
-
-const toNumber = (value: string | undefined, fallback: number): number => {
-  const parsed = Number(value);
-  return Number.isFinite(parsed) ? parsed : fallback;
-};
-
-const toBoolean = (value: string | undefined, fallback: boolean): boolean => {
-  if (typeof value === "string") {
-    const normalized = value.trim().toLowerCase();
-    if (normalized === "true") {
-      return true;
-    }
-    if (normalized === "false") {
-      return false;
-    }
-  }
-  return fallback;
-};
+const configValues = loadServiceConfig(databaseSchema.merge(redisSchema).merge(coreAuthSchema));
 
 export const config = {
-  port: toNumber(env.PORT, 3000),
-  host: env.HOST ?? "0.0.0.0",
+  service: {
+    name: configValues.SERVICE_NAME,
+    version: configValues.SERVICE_VERSION,
+  },
+  port: configValues.PORT,
+  host: configValues.HOST,
   log: {
-    level: env.LOG_LEVEL ?? "info",
-    pretty: toBoolean(env.LOG_PRETTY, true),
-    requestLogging: toBoolean(env.LOG_REQUESTS, true),
+    level: configValues.LOG_LEVEL,
+    pretty: configValues.LOG_PRETTY,
+    requestLogging: configValues.LOG_REQUESTS,
   },
   db: {
-    host: env.DB_HOST ?? "127.0.0.1",
-    port: toNumber(env.DB_PORT, 5432),
-    database: env.DB_NAME ?? "tartware",
-    user: env.DB_USER ?? "postgres",
-    password: env.DB_PASSWORD ?? "postgres",
-    ssl: (env.DB_SSL ?? "false").toLowerCase() === "true",
-    max: toNumber(env.DB_POOL_MAX, 10),
-    idleTimeoutMillis: toNumber(env.DB_POOL_IDLE_TIMEOUT_MS, 30000),
+    host: configValues.DB_HOST,
+    port: configValues.DB_PORT,
+    database: configValues.DB_NAME,
+    user: configValues.DB_USER,
+    password: configValues.DB_PASSWORD,
+    ssl: configValues.DB_SSL,
+    max: configValues.DB_POOL_MAX,
+    idleTimeoutMillis: configValues.DB_POOL_IDLE_TIMEOUT_MS,
   },
   redis: {
-    host: env.REDIS_HOST ?? "127.0.0.1",
-    port: toNumber(env.REDIS_PORT, 6379),
-    password: env.REDIS_PASSWORD,
-    db: toNumber(env.REDIS_DB, 0),
-    keyPrefix: env.REDIS_KEY_PREFIX ?? "tartware:",
-    enabled: toBoolean(env.REDIS_ENABLED, true),
+    host: configValues.REDIS_HOST,
+    port: configValues.REDIS_PORT,
+    password: configValues.REDIS_PASSWORD,
+    db: configValues.REDIS_DB,
+    keyPrefix: configValues.REDIS_KEY_PREFIX,
+    enabled: configValues.REDIS_ENABLED,
     ttl: {
-      default: toNumber(env.REDIS_TTL_DEFAULT, 3600), // 1 hour
-      user: toNumber(env.REDIS_TTL_USER, 1800), // 30 minutes
-      tenant: toNumber(env.REDIS_TTL_TENANT, 3600), // 1 hour
-      bloom: toNumber(env.REDIS_TTL_BLOOM, 86400), // 24 hours
+      default: configValues.REDIS_TTL_DEFAULT,
+      user: configValues.REDIS_TTL_USER,
+      tenant: configValues.REDIS_TTL_TENANT,
+      bloom: configValues.REDIS_TTL_BLOOM,
     },
   },
   auth: {
     jwt: {
-      secret:
-        typeof env.AUTH_JWT_SECRET === "string" && env.AUTH_JWT_SECRET.trim().length > 0
-          ? env.AUTH_JWT_SECRET
-          : "change-me-in-production",
-      issuer: env.AUTH_JWT_ISSUER ?? "tartware-core-service",
-      audience: env.AUTH_JWT_AUDIENCE,
-      expiresInSeconds: toNumber(env.AUTH_JWT_EXPIRES_IN_SECONDS, 900),
+      secret: configValues.AUTH_JWT_SECRET,
+      issuer: configValues.AUTH_JWT_ISSUER,
+      audience: configValues.AUTH_JWT_AUDIENCE,
+      expiresInSeconds: configValues.AUTH_JWT_EXPIRES_IN_SECONDS,
     },
-    defaultPassword:
-      typeof env.AUTH_DEFAULT_PASSWORD === "string" && env.AUTH_DEFAULT_PASSWORD.trim().length >= 8
-        ? env.AUTH_DEFAULT_PASSWORD
-        : "ChangeMe123!",
+    defaultPassword: configValues.AUTH_DEFAULT_PASSWORD,
   },
 };

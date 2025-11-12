@@ -6,9 +6,7 @@
     "@tartware/config",
     "@tartware/telemetry",
     "@biomejs/biome",
-    "tsx",
-    "pino-pretty",
-    "redis"
+    "tsx"
   ],
   "ignoreBinaries": ["tsx", "tsc", "vitest", "biome", "eslint", "knip"],
   "ignoreExportsUsedInFile": true

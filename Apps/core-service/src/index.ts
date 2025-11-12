@@ -8,7 +8,8 @@ import { buildServer } from "./server.js";
 import { userCacheService } from "./services/user-cache-service.js";
 
 const telemetry = await initTelemetry({
-  serviceName: "core-service",
+  serviceName: config.service.name,
+  serviceVersion: config.service.version,
   instrumentationOptions: {
     "@opentelemetry/instrumentation-fastify": {
       enabled: true,
@@ -34,7 +35,7 @@ const redis = initRedis();
 app
   .listen({ port: config.port, host: config.host })
   .then(async () => {
-    app.log.info({ port: config.port, host: config.host }, "core-service listening");
+    app.log.info({ port: config.port, host: config.host }, `${config.service.name} listening`);
 
     // Warm up Bloom filter with existing usernames
     if (redis) {
@@ -47,7 +48,7 @@ app
     }
   })
   .catch(async (error: unknown) => {
-    app.log.error(error, "failed to start core-service");
+    app.log.error(error, `failed to start ${config.service.name}`);
     await closeRedis();
     await app.close();
     await telemetry

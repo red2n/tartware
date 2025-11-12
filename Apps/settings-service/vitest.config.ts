@@ -15,7 +15,6 @@ export default defineConfig({
       exclude: ["node_modules/", "dist/", "tests/", "**/*.d.ts", "**/*.config.*"],
       all: true,
     },
-    // Disable logging during tests
     env: {
       LOG_LEVEL: "silent",
       LOG_REQUESTS: "false",

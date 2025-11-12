@@ -6,6 +6,10 @@ import { OTLPTraceExporter } from "@opentelemetry/exporter-trace-otlp-http";
 import { NodeSDK } from "@opentelemetry/sdk-node";
 import { Resource } from "@opentelemetry/resources";
 import { SemanticResourceAttributes } from "@opentelemetry/semantic-conventions";
+import pino, {
+	type Logger as PinoLogger,
+	type LoggerOptions as PinoLoggerOptions,
+} from "pino";
 
 type AutoInstrumentationOptions = Parameters<
 	typeof getNodeAutoInstrumentations
@@ -143,3 +147,56 @@ export const initTelemetry = async (
 };
 
 export type { NodeSDK } from "@opentelemetry/sdk-node";
+
+export interface LoggerOptions {
+	serviceName: string;
+	level?: string;
+	pretty?: boolean;
+	environment?: string;
+	base?: Record<string, unknown>;
+}
+
+const shouldPrettyPrint = (
+	requestedPretty: boolean | undefined,
+	environment: string | undefined,
+): boolean => {
+	if (typeof requestedPretty === "boolean") {
+		return requestedPretty;
+	}
+
+	const resolvedEnvironment = (
+		environment ?? process.env.NODE_ENV ?? "development"
+	).toLowerCase();
+
+	return resolvedEnvironment !== "production" && Boolean(process.stdout?.isTTY);
+};
+
+export const createPinoOptions = (options: LoggerOptions): PinoLoggerOptions => {
+	const transport = shouldPrettyPrint(options.pretty, options.environment)
+		? {
+				target: "pino-pretty",
+				options: {
+					colorize: true,
+					translateTime: "SYS:standard",
+					singleLine: true,
+				},
+			}
+		: undefined;
+
+	return {
+		name: options.serviceName,
+		level: options.level ?? "info",
+		base: {
+			service: options.serviceName,
+			...options.base,
+		},
+		timestamp: pino.stdTimeFunctions.isoTime,
+		transport,
+	};
+};
+
+export const createLogger = (options: LoggerOptions): PinoLogger => {
+	return pino(createPinoOptions(options));
+};
+
+export type { Logger as PinoLogger } from "pino";

@@ -32,8 +32,8 @@ const createAuthContext = (userId: string | null, memberships: TenantMembership[
     if (!membership) {
       return false;
     }
-    const currentPriority = ROLE_PRIORITY[membership.role];
-    const requiredPriority = ROLE_PRIORITY[minimumRole];
+    const currentPriority = ROLE_PRIORITY[membership.role] ?? 0;
+    const requiredPriority = ROLE_PRIORITY[minimumRole] ?? 0;
     return currentPriority >= requiredPriority;
   };
 
@@ -78,8 +78,8 @@ const buildTenantScopeGuard = (options: TenantScopeOptions = {}): preHandlerHook
           if (requireActiveMembership && !membership.isActive) {
             return false;
           }
-          const currentPriority = ROLE_PRIORITY[membership.role];
-          const requiredPriority = ROLE_PRIORITY[requireAnyTenantWithRole];
+          const currentPriority = ROLE_PRIORITY[membership.role] ?? 0;
+          const requiredPriority = ROLE_PRIORITY[requireAnyTenantWithRole] ?? 0;
           return currentPriority >= requiredPriority;
         });
         if (!hasRequiredRole) {
