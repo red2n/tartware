@@ -46,7 +46,7 @@ jobs:
         if: matrix.node-version == '20.x'
         run: |
           mkdir -p build/docs
-          PYTHONPATH="$(pwd)/scripts:$(pwd)/scripts/data" python -m pdoc --all-submodules -o build/docs scripts.data
+          PYTHONPATH="$(pwd)/scripts:$(pwd)/scripts/data" python -c "import pkgutil, pathlib, pdoc, sys; sys.path[:0]=['scripts','scripts/data']; modules={'scripts.data'}; [modules.add(mod.name) for mod in pkgutil.walk_packages(['scripts/data'], prefix='scripts.data.') if mod.ispkg]; pdoc.pdoc(*sorted(modules), output_directory=pathlib.Path('build/docs'))"
 
       - name: Upload script documentation
         if: success() && matrix.node-version == '20.x'
