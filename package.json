@@ -21,7 +21,7 @@
     "biome": "lerna run biome --stream",
     "knip": "lerna run knip --stream",
     "clean": "lerna run clean --stream --no-bail",
-    "clean:all": "npm run clean && lerna clean -y && rm -rf node_modules dist coverage playwright-report docs/.buildinfo docs/_build",
+    "clean:all": "node ./scripts/clean-all.mjs",
     "dev:core": "DB_NAME=tartware DB_PASSWORD=postgres REDIS_PASSWORD=redis_password npm run dev --workspace=Apps/core-service",
     "dev:gateway": "CORE_SERVICE_URL=http://localhost:3000 npm run dev --workspace=Apps/api-gateway",
     "dev:reservations": "DB_NAME=tartware DB_PASSWORD=postgres KAFKA_BROKERS=localhost:29092 npm run dev --workspace=Apps/reservations-command-service",

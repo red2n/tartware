@@ -5,7 +5,7 @@
  * ⚠️ CRITICAL: Any change to database ENUMs must be reflected here
  * See: docs/ZOD_SCHEMA_IMPLEMENTATION_PLAN.md#d-schema-synchronization-protocol
  *
- * Total ENUMs: 61 types
+ * Total ENUMs: 65 types
  * Last synced: 2025-11-03
  */
 
@@ -233,6 +233,80 @@ export const TransactionTypeEnum = z.enum([
 	"VOID",
 ]);
 export type TransactionType = z.infer<typeof TransactionTypeEnum>;
+
+// =====================================================
+// SETTINGS ENUMS
+// =====================================================
+
+/**
+ * Settings Scope Level - Determines where a setting is applied
+ * @database settings_scope
+ */
+export const SettingsScopeEnum = z.enum([
+	"GLOBAL",
+	"TENANT",
+	"TENANT_TEMPLATE",
+	"PROPERTY",
+	"UNIT",
+	"USER",
+]);
+export type SettingsScope = z.infer<typeof SettingsScopeEnum>;
+
+/**
+ * Settings Data Type - Underlying value type for a setting
+ * @database settings_data_type
+ */
+export const SettingsDataTypeEnum = z.enum([
+	"STRING",
+	"TEXT",
+	"INTEGER",
+	"DECIMAL",
+	"BOOLEAN",
+	"JSON",
+	"DATE",
+	"TIME",
+	"DATETIME",
+	"ENUM",
+	"MULTI_ENUM",
+	"PERCENTAGE",
+	"CURRENCY",
+	"DURATION",
+]);
+export type SettingsDataType = z.infer<typeof SettingsDataTypeEnum>;
+
+/**
+ * Settings Control Type - UI control used to edit a setting
+ * @database settings_control_type
+ */
+export const SettingsControlTypeEnum = z.enum([
+	"TOGGLE",
+	"TEXT_INPUT",
+	"TEXT_AREA",
+	"NUMBER_INPUT",
+	"SELECT",
+	"MULTI_SELECT",
+	"RADIO_GROUP",
+	"SLIDER",
+	"DATE_PICKER",
+	"TIME_PICKER",
+	"DATETIME_PICKER",
+	"JSON_EDITOR",
+	"TAGS",
+	"FILE_UPLOAD",
+]);
+export type SettingsControlType = z.infer<typeof SettingsControlTypeEnum>;
+
+/**
+ * Settings Sensitivity - Data classification for a setting
+ * @database settings_sensitivity
+ */
+export const SettingsSensitivityEnum = z.enum([
+	"PUBLIC",
+	"INTERNAL",
+	"SENSITIVE",
+	"CONFIDENTIAL",
+]);
+export type SettingsSensitivity = z.infer<typeof SettingsSensitivityEnum>;
 
 // =====================================================
 // AVAILABILITY ENUMS
@@ -972,6 +1046,10 @@ export const AllEnums = {
 	PaymentMethodEnum,
 	PaymentStatusEnum,
 	TransactionTypeEnum,
+	SettingsScopeEnum,
+	SettingsDataTypeEnum,
+	SettingsControlTypeEnum,
+	SettingsSensitivityEnum,
 	AvailabilityStatusEnum,
 	MetricTypeEnum,
 	TimeGranularityEnum,

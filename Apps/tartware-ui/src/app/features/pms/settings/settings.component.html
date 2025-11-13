@@ -1,30 +1,30 @@
-<div class="settings-container" *ngIf="tenant() as tenant; else noTenant">
+<div class="settings-page" *ngIf="tenant() as tenant; else noTenant">
   <div class="page-header">
     <div>
-      <h1 class="title">Workspace Settings</h1>
-      <p class="subtitle">Manage tenant configuration, modules, and integrations</p>
+      <h1 class="title">Settings Catalog</h1>
+      <p class="subtitle">Explore configuration categories, scopes, and defaults for {{ tenant.name }}</p>
     </div>
-    <div class="flex gap-2">
+    <div class="header-actions">
       <button mat-stroked-button (click)="toggleTheme()">
         <mat-icon>brightness_6</mat-icon>
         Toggle Theme
       </button>
-      <button mat-flat-button class="primary-button" (click)="updateTenantProfile(tenant)">
-        <mat-icon>edit</mat-icon>
-        Edit Profile
+      <button mat-flat-button color="primary" (click)="updateTenantProfile(tenant)">
+        <mat-icon>manage_accounts</mat-icon>
+        Tenant Profile
       </button>
     </div>
   </div>
 
-  <div class="settings-grid">
-    <mat-card class="settings-card">
+  <div class="tenant-summary">
+    <mat-card class="summary-card">
       <mat-card-header>
         <mat-icon mat-card-avatar>business</mat-icon>
         <mat-card-title>{{ tenant.name }}</mat-card-title>
         <mat-card-subtitle>{{ tenant.type }} • {{ tenant.status }}</mat-card-subtitle>
       </mat-card-header>
       <mat-card-content>
-        <dl class="settings-list">
+        <dl class="summary-list">
           <div>
             <dt>Email</dt>
             <dd>{{ tenant.email }}</dd>
@@ -34,10 +34,6 @@
             <dd>{{ tenant.phone || '—' }}</dd>
           </div>
           <div>
-            <dt>Website</dt>
-            <dd>{{ tenant.website || '—' }}</dd>
-          </div>
-          <div>
             <dt>Address</dt>
             <dd>{{ tenantAddress() }}</dd>
           </div>
@@ -45,7 +41,7 @@
       </mat-card-content>
     </mat-card>
 
-    <mat-card class="settings-card">
+    <mat-card class="summary-card">
       <mat-card-header>
         <mat-icon mat-card-avatar>subscriptions</mat-icon>
         <mat-card-title>Subscription</mat-card-title>
@@ -53,7 +49,7 @@
       </mat-card-header>
       <mat-card-content>
         @if (subscriptionPlan(); as subscription) {
-          <dl class="settings-list">
+          <dl class="summary-list">
             <div>
               <dt>Plan</dt>
               <dd>{{ subscription.plan || 'Enterprise' }}</dd>
@@ -68,71 +64,168 @@
             </div>
             <div>
               <dt>Properties</dt>
-              <dd>{{ tenant.property_count }} total ({{ tenant.active_properties }} active)</dd>
+              <dd>{{ tenant.property_count }} total • {{ tenant.active_properties }} active</dd>
             </div>
           </dl>
         } @else {
-          <p class="text-sm text-gray-600">
-            Subscription details are not available. Contact Tartware support for assistance.
-          </p>
+          <p class="empty-copy">Subscription details are not available for this tenant.</p>
         }
       </mat-card-content>
-      <mat-card-actions>
-        <button mat-stroked-button (click)="manageIntegrations()">Manage Billing</button>
-      </mat-card-actions>
-    </mat-card>
-
-    <mat-card class="settings-card">
-      <mat-card-header>
-        <mat-icon mat-card-avatar>extension</mat-icon>
-        <mat-card-title>Modules & Add-ons</mat-card-title>
-        <mat-card-subtitle>Licensed capabilities for this tenant</mat-card-subtitle>
-      </mat-card-header>
-      <mat-card-content>
-        <div class="modules-grid">
-          @for (module of moduleCatalog(); track trackModule($index, module)) {
-            <mat-chip
-              class="module-chip"
-              [class.module-enabled]="isModuleEnabled(module.id)"
-              [class.module-disabled]="!isModuleEnabled(module.id)"
-            >
-              <mat-icon>
-                {{ isModuleEnabled(module.id) ? 'check_circle' : 'lock' }}
-              </mat-icon>
-              <span>{{ module.name }}</span>
-            </mat-chip>
-          }
-        </div>
-      </mat-card-content>
-    </mat-card>
-
-    <mat-card class="settings-card properties-card">
-      <mat-card-header>
-        <mat-icon mat-card-avatar>location_city</mat-icon>
-        <mat-card-title>Properties</mat-card-title>
-        <mat-card-subtitle>{{ properties().length }} active properties</mat-card-subtitle>
-      </mat-card-header>
-      <mat-card-content>
-        <mat-list>
-          @for (property of properties(); track trackProperty($index, property)) {
-            <mat-list-item>
-              <mat-icon matListItemIcon>location_on</mat-icon>
-              <div matListItemTitle>{{ property.property_name }}</div>
-              <div matListItemLine class="text-sm text-gray-600">
-                Rooms: {{ property.total_rooms }} • Occupancy: {{ property.occupancy_rate || 0 }}%
-              </div>
-            </mat-list-item>
-          }
-        </mat-list>
-      </mat-card-content>
-      <mat-card-actions>
-        <button mat-stroked-button [routerLink]="['/pms', tenant.id, 'settings']">
-          Manage Properties
-        </button>
-      </mat-card-actions>
     </mat-card>
   </div>
+
+  <div class="catalog-layout">
+    <aside class="catalog-sidebar">
+      <div class="catalog-sidebar-header">
+        <h2>Categories</h2>
+        <span class="count-chip">{{ categories().length }}</span>
+      </div>
+      <div *ngIf="catalogLoading(); else categoryList" class="sidebar-loading">
+        <mat-progress-spinner diameter="32" mode="indeterminate"></mat-progress-spinner>
+      </div>
+      <ng-template #categoryList>
+        <div class="category-list">
+          <button
+            type="button"
+            class="category-item"
+            *ngFor="let item of categories(); track trackCategory($index, item)"
+            (click)="selectCategory(item.category.code)"
+            [class.active]="item.category.code === selectedCategoryCode()"
+          >
+            <div class="category-icon">
+              <mat-icon>{{ item.category.icon || 'settings' }}</mat-icon>
+            </div>
+            <div class="category-meta">
+              <span class="name">{{ item.category.name }}</span>
+              <span class="description">{{ item.category.description }}</span>
+            </div>
+            <span class="badge">{{ item.sections.length }}</span>
+          </button>
+        </div>
+      </ng-template>
+      <p class="error-message" *ngIf="catalogError()">{{ catalogError() }}</p>
+    </aside>
+
+    <section class="catalog-content">
+      <ng-container *ngIf="!catalogLoading(); else loadingContent">
+        <ng-container *ngIf="selectedCategory() as aggregate; else emptyState">
+          <header class="category-overview">
+            <div>
+              <h2>{{ aggregate.category.name }}</h2>
+              <p>{{ aggregate.category.description }}</p>
+            </div>
+            <div class="category-tags" *ngIf="aggregate.category.tags?.length">
+              <mat-chip appearance="outlined" *ngFor="let tag of aggregate.category.tags">
+                {{ tag }}
+              </mat-chip>
+            </div>
+          </header>
+
+          <div class="section-grid">
+            <mat-card
+              class="section-card"
+              *ngFor="let section of selectedSections(); track trackSection($index, section)"
+            >
+              <mat-card-header>
+                <mat-icon mat-card-avatar>{{ section.section.icon || 'tune' }}</mat-icon>
+                <mat-card-title>{{ section.section.name }}</mat-card-title>
+                <mat-card-subtitle>{{ section.section.description }}</mat-card-subtitle>
+              </mat-card-header>
+              <mat-card-content>
+                <div
+                  class="definition-card"
+                  *ngFor="let definition of section.definitions; track trackDefinition($index, definition)"
+                >
+                  <div class="definition-header">
+                    <div>
+                      <h3>{{ definition.name }}</h3>
+                      <p class="definition-description">{{ definition.description }}</p>
+                    </div>
+                    <span class="definition-code">{{ definition.code }}</span>
+                  </div>
+
+                  <div class="definition-meta">
+                    <mat-chip appearance="outlined" color="primary">
+                      {{ formatControlType(definition.control_type) }}
+                    </mat-chip>
+                    <mat-chip
+                      appearance="outlined"
+                      *ngFor="let scope of definition.allowed_scopes"
+                      matTooltip="Allowed scope"
+                    >
+                      {{ formatScope(scope) }}
+                    </mat-chip>
+                    <mat-chip
+                      appearance="outlined"
+                      class="sensitivity-chip"
+                      *ngIf="definition.sensitivity"
+                    >
+                      {{ definition.sensitivity }}
+                    </mat-chip>
+                  </div>
+
+                  <div class="definition-tags" *ngIf="definition.tags?.length">
+                    <mat-chip appearance="outlined" *ngFor="let tag of definition.tags">
+                      {{ tag }}
+                    </mat-chip>
+                  </div>
+
+                  <div class="definition-options" *ngIf="definition.options.length > 0">
+                    <h4>Options</h4>
+                    <div class="options-list">
+                      <div class="option-item" *ngFor="let option of definition.options">
+                        <span class="option-label">{{ option.label }}</span>
+                        <span class="option-value">{{ option.value }}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="definition-default" *ngIf="definition.default_value">
+                    <h4>Default Value</h4>
+                    <pre>{{ definition.default_value | json }}</pre>
+                  </div>
+
+                  <div class="definition-current" *ngIf="getCurrentValue(definition.id) as current">
+                    <h4>
+                      Current Value
+                      <span class="scope-label">{{ formatScope(current.scope) }}</span>
+                    </h4>
+                    <pre>{{ current.value | json }}</pre>
+                    <span class="value-source">Source: {{ current.source }}</span>
+                  </div>
+
+                  <div class="definition-links" *ngIf="definition.reference_docs?.length">
+                    <a
+                      *ngFor="let link of definition.reference_docs"
+                      [href]="link"
+                      target="_blank"
+                      rel="noopener"
+                    >
+                      Reference
+                    </a>
+                  </div>
+                </div>
+              </mat-card-content>
+            </mat-card>
+          </div>
+        </ng-container>
+      </ng-container>
+    </section>
+  </div>
 </div>
+
+<ng-template #loadingContent>
+  <div class="loading-content">
+    <mat-progress-spinner diameter="48" mode="indeterminate"></mat-progress-spinner>
+  </div>
+</ng-template>
+
+<ng-template #emptyState>
+  <div class="empty-state">
+    <mat-icon>settings</mat-icon>
+    <p>Select a category to view its configuration details.</p>
+  </div>
+</ng-template>
 
 <ng-template #noTenant>
   <mat-card class="table-card">

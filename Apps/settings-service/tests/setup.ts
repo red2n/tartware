@@ -1,3 +1,5 @@
+import { generateKeyPairSync } from "node:crypto";
+
 process.env.NODE_ENV = process.env.NODE_ENV ?? "test";
 process.env.PORT = process.env.PORT ?? "3100";
 process.env.HOST = process.env.HOST ?? "127.0.0.1";
@@ -8,19 +10,22 @@ process.env.SERVICE_NAME = process.env.SERVICE_NAME ?? "@tartware/settings-servi
 process.env.SERVICE_VERSION = process.env.SERVICE_VERSION ?? "test";
 process.env.JWT_AUDIENCE = process.env.JWT_AUDIENCE ?? "test-audience";
 process.env.JWT_ISSUER = process.env.JWT_ISSUER ?? "https://auth.tartware.test";
-process.env.JWT_PUBLIC_KEY =
-  process.env.JWT_PUBLIC_KEY ??
-  [
-    "-----BEGIN PUBLIC KEY-----",
-    "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAsbvKxEvhpFMMz9Yx8RJW",
-    "yt30YIOCQM7DDDeWGPAHDq6vH+xr3aMcMBXNIN1qNbfXDnpa9eKJeNEqXWiwxup6",
-    "JzpuG1HsfrN7kYMva9n32CuWHa3gwxObn2ymlk/wEYBLETymFcpnSUsctNkYheAQ",
-    "Ez+KJ0C5EvhczHxVh9Yx8RJW+dGf1/MEZh9rqx8pFazc2DSES0finBmMOPqlmkav",
-    "Ku0kUQeFkC6q/i323iDL49myIIZeF1P0uohsEiL41Z8nfdXbra+XUl3Bd6mV9Ezg",
-    "Q8VE3d2rYZRk5v0zzakDx4zY/boYYGr2susx1bwyodH4qzM7gc3KJ2YMBX1IzBgE",
-    "QwIDAQAB",
-    "-----END PUBLIC KEY-----",
-  ].join("\\n");
+if (!process.env.JWT_PUBLIC_KEY || !process.env.JWT_PRIVATE_KEY) {
+  const { publicKey, privateKey } = generateKeyPairSync("rsa", {
+    modulusLength: 2048,
+    publicKeyEncoding: {
+      type: "spki",
+      format: "pem",
+    },
+    privateKeyEncoding: {
+      type: "pkcs8",
+      format: "pem",
+    },
+  });
+
+  process.env.JWT_PUBLIC_KEY = publicKey;
+  process.env.JWT_PRIVATE_KEY = privateKey;
+}
 process.env.DB_HOST = process.env.DB_HOST ?? "127.0.0.1";
 process.env.DB_PORT = process.env.DB_PORT ?? "5432";
 process.env.DB_NAME = process.env.DB_NAME ?? "tartware";

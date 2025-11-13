@@ -6,6 +6,7 @@ import Fastify from "fastify";
 
 import { config } from "./config.js";
 import { authPlugin } from "./plugins/auth.js";
+import catalogRoutes from "./routes/catalog.js";
 
 type BuildServerOptions = {
   logger: PinoLogger;
@@ -43,6 +44,8 @@ export const buildServer = ({ logger }: BuildServerOptions) => {
 
   app.register(async (secureRoutes) => {
     secureRoutes.addHook("onRequest", secureRoutes.authenticate);
+
+    await secureRoutes.register(catalogRoutes);
 
     secureRoutes.get("/v1/settings/ping", async () => ({
       status: "ok",
