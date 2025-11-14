@@ -6,6 +6,7 @@
  * Usage: tsx src/utilities/schema-generator.ts [category]
  */
 
+import type { Dirent } from "node:fs";
 import * as fs from "node:fs/promises";
 import * as path from "node:path";
 import { dirname } from "node:path";
@@ -19,168 +20,78 @@ const __dirname = dirname(__filename);
 // Database connection from environment
 const client = new Client({
 	host: process.env.DB_HOST || "localhost",
-  port: parseInt(process.env.DB_PORT || "5432", 10),
+	port: parseInt(process.env.DB_PORT || "5432", 10),
 	database: process.env.DB_NAME || "tartware",
 	user: process.env.DB_USER || "postgres",
 	password: process.env.DB_PASSWORD || "postgres",
 });
 
-// Category to table mapping
-const CATEGORY_TABLES: Record<string, string[]> = {
-	"02-inventory": [
-		"room_types",
-		"rooms",
-		"rates",
-		"room_availability",
-		"rate_overrides",
-		"revenue_forecasts",
-		"competitor_rates",
-		"demand_calendar",
-		"pricing_rules",
-		"rate_recommendations",
-		"revenue_goals",
-		"companies",
-		"group_bookings",
-		"group_room_blocks",
-		"packages",
-		"package_components",
-		"package_bookings",
-		"travel_agent_commissions",
-		"commission_statements",
-		"commission_rules",
-		"meeting_rooms",
-		"event_bookings",
-		"banquet_event_orders",
-	],
-	"03-bookings": [
-		"reservations",
-		"reservation_status_history",
-		"deposit_schedules",
-		"allotments",
-		"booking_sources",
-		"market_segments",
-		"guest_preferences",
-		"guest_communications",
-		"communication_templates",
-		"guest_feedback",
-		"guest_loyalty_programs",
-		"guest_documents",
-		"guest_notes",
-		"automated_messages",
-		"reservation_traces",
-		"waitlist_entries",
-	],
-	"04-financial": [
-		"payments",
-		"invoices",
-		"invoice_items",
-		"folios",
-		"charge_postings",
-		"refunds",
-		"tax_configurations",
-		"financial_closures",
-		"commission_tracking",
-		"cashier_sessions",
-		"accounts_receivable",
-		"credit_limits",
-		"payment_tokens",
-		"general_ledger_batches",
-		"general_ledger_entries",
-	],
-	"05-operations": [
-		"services",
-		"reservation_services",
-		"housekeeping_tasks",
-		"maintenance_requests",
-		"staff_schedules",
-		"staff_tasks",
-		"shift_handovers",
-		"lost_and_found",
-		"incident_reports",
-		"vendor_contracts",
-		"mobile_keys",
-		"qr_codes",
-		"push_notifications",
-		"app_usage_analytics",
-		"smart_room_devices",
-		"room_energy_usage",
-		"guest_room_preferences",
-		"device_events_log",
-		"mobile_check_ins",
-		"digital_registration_cards",
-		"contactless_requests",
-		"asset_inventory",
-		"predictive_maintenance_alerts",
-		"maintenance_history",
-		"minibar_items",
-		"minibar_consumption",
-		"vehicles",
-		"transportation_requests",
-		"shuttle_schedules",
-		"spa_treatments",
-		"spa_appointments",
-	],
-	"06-integrations": [
-		"channel_mappings",
-		"ota_configurations",
-		"ota_rate_plans",
-		"ota_reservations_queue",
-		"gds_connections",
-		"gds_message_log",
-		"gds_reservation_queue",
-		"ota_inventory_sync",
-		"channel_rate_parity",
-		"channel_commission_rules",
-		"marketing_campaigns",
-		"campaign_segments",
-		"promotional_codes",
-		"referral_tracking",
-		"social_media_mentions",
-		"integration_mappings",
-		"api_logs",
-		"webhook_subscriptions",
-		"data_sync_status",
-		"ai_demand_predictions",
-		"demand_scenarios",
-		"ai_model_performance",
-		"dynamic_pricing_rules_ml",
-		"price_adjustments_history",
-		"pricing_experiments",
-		"guest_behavior_patterns",
-		"personalized_recommendations",
-		"guest_interaction_events",
-		"sentiment_analysis",
-		"sentiment_trends",
-		"review_response_templates",
-	],
-	"07-analytics": [
-		"analytics_metrics",
-		"analytics_metric_dimensions",
-		"analytics_reports",
-		"report_property_ids",
-		"performance_reports",
-		"report_schedules",
-		"performance_thresholds",
-		"performance_baselines",
-		"performance_alerts",
-		"alert_rules",
-		"audit_logs",
-		"business_dates",
-		"night_audit_log",
-		"gdpr_consent_logs",
-		"police_reports",
-		"contract_agreements",
-		"insurance_claims",
-		"guest_journey_tracking",
-		"revenue_attribution",
-		"forecasting_models",
-		"ab_test_results",
-		"sustainability_metrics",
-		"green_certifications",
-		"carbon_offset_programs",
-		"sustainability_initiatives",
-	],
+const schemaRoot = path.resolve(__dirname, "..", "..");
+const repoRoot = path.resolve(schemaRoot, "..");
+const tablesRoot = path.join(repoRoot, "scripts", "tables");
+
+type CategoryTables = Record<string, string[]>;
+
+const formatError = (error: unknown): string =>
+	error instanceof Error ? error.message : String(error);
+
+const getTablesForCategory = (
+	category: string,
+	tableMap: CategoryTables,
+): string[] => {
+	const tables = tableMap[category];
+	if (!tables) {
+		throw new Error(`Unknown category: ${category}`);
+	}
+	return tables;
 };
+
+async function discoverCategoryTables(): Promise<CategoryTables> {
+	let domainEntries: Dirent[];
+	try {
+		domainEntries = await fs.readdir(tablesRoot, { withFileTypes: true });
+	} catch (error) {
+		throw new Error(
+			`Unable to read tables directory at ${tablesRoot}: ${formatError(error)}`,
+		);
+	}
+
+	const result: CategoryTables = {};
+
+	for (const entry of domainEntries) {
+		if (!entry.isDirectory() || !/^\d{2}-/.test(entry.name)) continue;
+
+		const domainPath = path.join(tablesRoot, entry.name);
+		const files = await fs.readdir(domainPath);
+		const tables = new Set<string>();
+
+		for (const file of files) {
+			if (!/^\d+_[\w-]+\.sql$/i.test(file)) continue;
+			const filePath = path.join(domainPath, file);
+			const sql = await fs.readFile(filePath, "utf-8");
+			const tableRegex =
+				/CREATE\s+TABLE(?:\s+IF\s+NOT\s+EXISTS)?\s+([^\s(]+)/gi;
+			let match: RegExpExecArray | null;
+
+			while ((match = tableRegex.exec(sql)) !== null) {
+				const rawName = match[1].replace(/["`]/g, "").split(".").pop();
+				if (rawName) {
+					tables.add(rawName.toLowerCase());
+				}
+			}
+		}
+
+		if (tables.size > 0) {
+			result[entry.name] = Array.from(tables).sort();
+		}
+	}
+
+	if (Object.keys(result).length === 0) {
+		throw new Error(`No table categories discovered under ${tablesRoot}`);
+	}
+
+	return result;
+}
 
 // Map PostgreSQL types to Zod base schemas
 function mapPostgresToZod(
@@ -362,8 +273,8 @@ export const Update${schemaName}Schema = ${schemaName}Schema.partial();
 export type Update${schemaName} = z.infer<typeof Update${schemaName}Schema>;
 `;
 
-	// Write to file
-  const fileName = `${tableName.replace(/_/g, "-")}.ts`;
+		// Write to file
+		const fileName = `${tableName.replace(/_/g, "-")}.ts`;
 	const filePath = path.join(__dirname, "..", "schemas", category, fileName);
 
 	await fs.writeFile(filePath, content, "utf-8");
@@ -371,32 +282,51 @@ export type Update${schemaName} = z.infer<typeof Update${schemaName}Schema>;
 }
 
 async function main() {
-	const category = process.argv[2] || "02-inventory";
+	const categoryTables: CategoryTables | null =
+		await discoverCategoryTables().catch((error) => {
+			console.error(
+				"Failed to discover categories from scripts/tables:",
+				formatError(error),
+			);
+			process.exit(1);
+			return null;
+		});
 
-	if (!CATEGORY_TABLES[category]) {
-		console.error(`Unknown category: ${category}`);
-		console.error(
-			`Available categories: ${Object.keys(CATEGORY_TABLES).join(", ")}`,
-		);
+	if (!categoryTables) return;
+
+	const availableCategories = Object.keys(categoryTables).sort();
+	const preferredDefault = "02-inventory";
+	const categoryArg = process.argv[2];
+	const category =
+		categoryArg ??
+		(availableCategories.includes(preferredDefault)
+			? preferredDefault
+			: availableCategories[0]);
+
+	let tables: string[];
+	try {
+		tables = getTablesForCategory(category, categoryTables);
+	} catch (error) {
+		console.error(formatError(error));
+		console.error(`Available categories: ${availableCategories.join(", ")}`);
 		process.exit(1);
+		return;
 	}
 
 	console.log(`Generating schemas for category: ${category}`);
-	console.log(`Tables: ${CATEGORY_TABLES[category].length}`);
+	console.log(`Tables: ${tables.length}`);
 
 	try {
 		await client.connect();
 		console.log("✅ Connected to database");
 
-		for (const tableName of CATEGORY_TABLES[category]) {
+		for (const tableName of tables) {
 			await generateSchema(tableName, category);
 		}
 
-		console.log(
-			`\n✅ Generated ${CATEGORY_TABLES[category].length} schemas for ${category}`,
-		);
+		console.log(`\n✅ Generated ${tables.length} schemas for ${category}`);
 	} catch (error) {
-		console.error("❌ Error:", error);
+		console.error("❌ Error:", formatError(error));
 		process.exit(1);
 	} finally {
 		await client.end();

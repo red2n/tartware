@@ -1,155 +1,53 @@
 /**
- * User-Tenant Association Schema - RBAC relationship
+ * UserTenantAssociations Schema
  * @table user_tenant_associations
  * @category 01-core
- * @synchronized 2025-11-03
+ * @synchronized 2025-11-14
  */
 
-import { z } from "zod";
-
+import { z } from 'zod';
 import {
-	uuid,
-	tenantId as tenantIdBase,
-	auditTimestamps,
-	softDelete,
-	jsonbMetadata,
-} from "../../shared/base-schemas.js";
-import { TenantRoleEnum } from "../../shared/enums.js";
-import { validateDateRange } from "../../shared/validators.js";
+  uuid
+} from '../../shared/base-schemas.js';
+import { TenantRoleEnum } from '../../shared/enums.js';
 
 /**
- * Permissions JSONB schema
+ * Complete UserTenantAssociations schema
  */
-export const UserTenantPermissionsSchema = z.object({
-	canAccessAll: z
-		.boolean()
-		.default(false)
-		.describe("Can access all properties"),
-	properties: z.array(uuid).default([]).describe("Specific property access"),
-	restrictions: z
-		.record(z.unknown())
-		.default({})
-		.describe("Additional permission restrictions"),
+export const UserTenantAssociationsSchema = z.object({
+  id: uuid,
+  user_id: uuid,
+  tenant_id: uuid,
+  role: TenantRoleEnum,
+  is_active: z.boolean(),
+  permissions: z.record(z.unknown()).optional(),
+  valid_from: z.coerce.date().optional(),
+  valid_until: z.coerce.date().optional(),
+  metadata: z.record(z.unknown()).optional(),
+  created_at: z.coerce.date(),
+  updated_at: z.coerce.date().optional(),
+  created_by: z.string().optional(),
+  updated_by: z.string().optional(),
+  is_deleted: z.boolean().optional(),
+  deleted_at: z.coerce.date().optional(),
+  deleted_by: z.string().optional(),
+  version: z.bigint().optional(),
 });
 
+export type UserTenantAssociations = z.infer<typeof UserTenantAssociationsSchema>;
+
 /**
- * Base User-Tenant Association schema (without refinements)
+ * Schema for creating a new user tenant associations
  */
-const BaseUserTenantAssociationSchema = z.object({
-	id: uuid.describe("Primary key"),
-	user_id: uuid.describe("User reference"),
-	tenant_id: tenantIdBase.describe("Tenant reference"),
-	role: TenantRoleEnum.default("STAFF").describe("User role within tenant"),
-	is_active: z.boolean().default(true).describe("Association active status"),
-	permissions: UserTenantPermissionsSchema.describe(
-		"User permissions within tenant",
-	),
-	valid_from: z.coerce.date().optional().describe("Access start date"),
-	valid_until: z.coerce.date().optional().describe("Access end date"),
-	metadata: jsonbMetadata,
-	...auditTimestamps,
-	...softDelete,
-	version: z.bigint().default(BigInt(0)).describe("Optimistic locking version"),
+export const CreateUserTenantAssociationsSchema = UserTenantAssociationsSchema.omit({
+  // TODO: Add fields to omit for creation
 });
 
-/**
- * Complete User-Tenant Association schema (with validation)
- */
-export const UserTenantAssociationSchema =
-	BaseUserTenantAssociationSchema.refine(
-		(data) => {
-			// Validate date range if both dates are present
-			if (data.valid_from && data.valid_until) {
-				return validateDateRange(
-					{ start_date: data.valid_from, end_date: data.valid_until },
-					{ allowSameDay: true },
-				);
-			}
-			return true;
-		},
-		{
-			message: "valid_until must be after or equal to valid_from",
-			path: ["valid_until"],
-		},
-	);
-
-export type UserTenantAssociation = z.infer<typeof UserTenantAssociationSchema>;
+export type CreateUserTenantAssociations = z.infer<typeof CreateUserTenantAssociationsSchema>;
 
 /**
- * Schema for creating a new association
+ * Schema for updating a user tenant associations
  */
-export const CreateUserTenantAssociationSchema =
-	BaseUserTenantAssociationSchema.omit({
-		id: true,
-		created_at: true,
-		updated_at: true,
-		created_by: true,
-		updated_by: true,
-		deleted_at: true,
-		version: true,
-	}).refine(
-		(data) => {
-			if (data.valid_from && data.valid_until) {
-				return validateDateRange(
-					{ start_date: data.valid_from, end_date: data.valid_until },
-					{ allowSameDay: true },
-				);
-			}
-			return true;
-		},
-		{
-			message: "valid_until must be after or equal to valid_from",
-			path: ["valid_until"],
-		},
-	);
+export const UpdateUserTenantAssociationsSchema = UserTenantAssociationsSchema.partial();
 
-export type CreateUserTenantAssociation = z.infer<
-	typeof CreateUserTenantAssociationSchema
->;
-
-/**
- * Schema for updating an association
- */
-export const UpdateUserTenantAssociationSchema =
-	BaseUserTenantAssociationSchema.omit({
-		id: true,
-		user_id: true, // Cannot change user
-		tenant_id: true, // Cannot change tenant
-		created_at: true,
-		created_by: true,
-		deleted_at: true,
-	})
-		.partial()
-		.extend({
-			id: uuid,
-		});
-
-export type UpdateUserTenantAssociation = z.infer<
-	typeof UpdateUserTenantAssociationSchema
->;
-
-/**
- * Association with user and tenant details (for API responses)
- */
-export const UserTenantAssociationWithDetailsSchema =
-	BaseUserTenantAssociationSchema.extend({
-		user: z
-			.object({
-				username: z.string(),
-				email: z.string(),
-				first_name: z.string(),
-				last_name: z.string(),
-			})
-			.optional(),
-		tenant: z
-			.object({
-				name: z.string(),
-				slug: z.string(),
-				status: z.string(),
-			})
-			.optional(),
-	});
-
-export type UserTenantAssociationWithDetails = z.infer<
-	typeof UserTenantAssociationWithDetailsSchema
->;
+export type UpdateUserTenantAssociations = z.infer<typeof UpdateUserTenantAssociationsSchema>;
