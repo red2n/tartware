@@ -5,49 +5,68 @@
  * @synchronized 2025-11-14
  */
 
-import { z } from 'zod';
-import {
-  uuid
-} from '../../shared/base-schemas.js';
-import { TenantRoleEnum } from '../../shared/enums.js';
+import { z } from "zod";
+
+import { uuid, jsonbMetadata, auditTimestamps } from "../../shared/base-schemas.js";
+import { TenantRoleEnum, TenantStatusEnum } from "../../shared/enums.js";
 
 /**
- * Complete UserTenantAssociations schema
+ * Complete UserTenantAssociation schema
  */
-export const UserTenantAssociationsSchema = z.object({
-  id: uuid,
-  user_id: uuid,
-  tenant_id: uuid,
-  role: TenantRoleEnum,
-  is_active: z.boolean(),
-  permissions: z.record(z.unknown()).optional(),
-  valid_from: z.coerce.date().optional(),
-  valid_until: z.coerce.date().optional(),
-  metadata: z.record(z.unknown()).optional(),
-  created_at: z.coerce.date(),
-  updated_at: z.coerce.date().optional(),
-  created_by: z.string().optional(),
-  updated_by: z.string().optional(),
-  is_deleted: z.boolean().optional(),
-  deleted_at: z.coerce.date().optional(),
-  deleted_by: z.string().optional(),
-  version: z.bigint().optional(),
+export const UserTenantAssociationSchema = z.object({
+	id: uuid,
+	user_id: uuid,
+	tenant_id: uuid,
+	role: TenantRoleEnum,
+	is_active: z.boolean().default(true),
+	permissions: jsonbMetadata.describe("Role overrides / grants"),
+	valid_from: z.coerce.date().optional(),
+	valid_until: z.coerce.date().optional(),
+	metadata: jsonbMetadata,
+	...auditTimestamps,
+	version: z.bigint().default(BigInt(0)),
 });
 
-export type UserTenantAssociations = z.infer<typeof UserTenantAssociationsSchema>;
+export type UserTenantAssociation = z.infer<typeof UserTenantAssociationSchema>;
 
-/**
- * Schema for creating a new user tenant associations
- */
-export const CreateUserTenantAssociationsSchema = UserTenantAssociationsSchema.omit({
-  // TODO: Add fields to omit for creation
+export const CreateUserTenantAssociationSchema = UserTenantAssociationSchema.omit({
+	id: true,
+	created_at: true,
+	updated_at: true,
+	created_by: true,
+	updated_by: true,
+	version: true,
 });
 
-export type CreateUserTenantAssociations = z.infer<typeof CreateUserTenantAssociationsSchema>;
+export type CreateUserTenantAssociation = z.infer<typeof CreateUserTenantAssociationSchema>;
+
+export const UpdateUserTenantAssociationSchema = UserTenantAssociationSchema.partial().extend({
+	id: uuid,
+});
+
+export type UpdateUserTenantAssociation = z.infer<typeof UpdateUserTenantAssociationSchema>;
 
 /**
- * Schema for updating a user tenant associations
+ * Lightweight summaries for nested responses
  */
-export const UpdateUserTenantAssociationsSchema = UserTenantAssociationsSchema.partial();
+const UserSummarySchema = z.object({
+	username: z.string().min(1),
+	email: z.string().email(),
+	first_name: z.string().optional(),
+	last_name: z.string().optional(),
+});
 
-export type UpdateUserTenantAssociations = z.infer<typeof UpdateUserTenantAssociationsSchema>;
+const TenantSummarySchema = z.object({
+	name: z.string().min(1),
+	slug: z.string().min(1),
+	status: TenantStatusEnum,
+});
+
+export const UserTenantAssociationWithDetailsSchema = UserTenantAssociationSchema.extend({
+	user: UserSummarySchema.optional(),
+	tenant: TenantSummarySchema.optional(),
+});
+
+export type UserTenantAssociationWithDetails = z.infer<
+	typeof UserTenantAssociationWithDetailsSchema
+>;

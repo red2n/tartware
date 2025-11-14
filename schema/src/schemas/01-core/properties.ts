@@ -1,63 +1,82 @@
 /**
- * Properties Schema
+ * Property Schema - Core property metadata
  * @table properties
  * @category 01-core
  * @synchronized 2025-11-14
  */
 
-import { z } from 'zod';
+import { z } from "zod";
+
 import {
-  uuid,
-  money
-} from '../../shared/base-schemas.js';
+	uuid,
+	money,
+	jsonbMetadata,
+	auditTimestamps,
+	softDelete,
+	nonEmptyString,
+} from "../../shared/base-schemas.js";
+
+const JsonbObject = z.record(z.unknown()).default({});
 
 /**
- * Complete Properties schema
+ * Core property entity schema
  */
-export const PropertiesSchema = z.object({
-  id: uuid,
-  tenant_id: uuid,
-  property_name: z.string(),
-  property_code: z.string(),
-  address: z.record(z.unknown()),
-  phone: z.string().optional(),
-  email: z.string().optional(),
-  website: z.string().optional(),
-  property_type: z.string().optional(),
-  star_rating: money.optional(),
-  total_rooms: z.number().int(),
-  tax_id: z.string().optional(),
-  license_number: z.string().optional(),
-  currency: z.string().optional(),
-  timezone: z.string().optional(),
-  config: z.record(z.unknown()).optional(),
-  integrations: z.record(z.unknown()).optional(),
-  is_active: z.boolean(),
-  metadata: z.record(z.unknown()).optional(),
-  created_at: z.coerce.date(),
-  updated_at: z.coerce.date().optional(),
-  created_by: z.string().optional(),
-  updated_by: z.string().optional(),
-  is_deleted: z.boolean().optional(),
-  deleted_at: z.coerce.date().optional(),
-  deleted_by: z.string().optional(),
-  version: z.bigint().optional(),
+export const PropertySchema = z.object({
+	id: uuid,
+	tenant_id: uuid,
+	property_name: nonEmptyString.max(255),
+	property_code: nonEmptyString.max(50),
+	address: JsonbObject.describe("Structured address object"),
+	phone: z.string().optional(),
+	email: z.string().email().optional(),
+	website: z.string().url().optional(),
+	property_type: z.string().optional(),
+	star_rating: money.optional(),
+	total_rooms: z.number().int().nonnegative().default(0),
+	tax_id: z.string().optional(),
+	license_number: z.string().optional(),
+	currency: z.string().length(3).default("USD"),
+	timezone: z.string().default("UTC"),
+	config: JsonbObject.describe("Property-specific configuration"),
+	integrations: JsonbObject.describe("Integration settings"),
+	is_active: z.boolean().default(true),
+	metadata: jsonbMetadata,
+	...auditTimestamps,
+	...softDelete,
+	version: z.bigint().default(BigInt(0)),
 });
 
-export type Properties = z.infer<typeof PropertiesSchema>;
+export type Property = z.infer<typeof PropertySchema>;
 
-/**
- * Schema for creating a new properties
- */
-export const CreatePropertiesSchema = PropertiesSchema.omit({
-  // TODO: Add fields to omit for creation
+export const CreatePropertySchema = PropertySchema.omit({
+	id: true,
+	created_at: true,
+	updated_at: true,
+	created_by: true,
+	updated_by: true,
+	deleted_at: true,
+	version: true,
 });
 
-export type CreateProperties = z.infer<typeof CreatePropertiesSchema>;
+export type CreateProperty = z.infer<typeof CreatePropertySchema>;
+
+export const UpdatePropertySchema = PropertySchema.partial().extend({
+	id: uuid,
+});
+
+export type UpdateProperty = z.infer<typeof UpdatePropertySchema>;
 
 /**
- * Schema for updating a properties
+ * Property stats extension for dashboards/API responses
  */
-export const UpdatePropertiesSchema = PropertiesSchema.partial();
+export const PropertyWithStatsSchema = PropertySchema.extend({
+	room_count: z.number().int().nonnegative().default(0),
+	occupied_rooms: z.number().int().nonnegative().default(0),
+	available_rooms: z.number().int().nonnegative().default(0),
+	occupancy_rate: z.number().min(0).max(1).default(0),
+	current_guests: z.number().int().nonnegative().default(0),
+	todays_arrivals: z.number().int().nonnegative().default(0),
+	todays_departures: z.number().int().nonnegative().default(0),
+});
 
-export type UpdateProperties = z.infer<typeof UpdatePropertiesSchema>;
+export type PropertyWithStats = z.infer<typeof PropertyWithStatsSchema>;

@@ -31,6 +31,7 @@ const repoRoot = path.resolve(schemaRoot, "..");
 const tablesRoot = path.join(repoRoot, "scripts", "tables");
 
 type CategoryTables = Record<string, string[]>;
+type ManualOverrides = Record<string, Set<string>>;
 
 const formatError = (error: unknown): string =>
 	error instanceof Error ? error.message : String(error);
@@ -59,9 +60,10 @@ async function discoverCategoryTables(): Promise<CategoryTables> {
 	const result: CategoryTables = {};
 
 	for (const entry of domainEntries) {
-		if (!entry.isDirectory() || !/^\d{2}-/.test(entry.name)) continue;
+		const entryName = entry.name.toString();
+		if (!entry.isDirectory() || !/^\d{2}-/.test(entryName)) continue;
 
-		const domainPath = path.join(tablesRoot, entry.name);
+		const domainPath = path.join(tablesRoot, entryName);
 		const files = await fs.readdir(domainPath);
 		const tables = new Set<string>();
 
@@ -69,12 +71,11 @@ async function discoverCategoryTables(): Promise<CategoryTables> {
 			if (!/^\d+_[\w-]+\.sql$/i.test(file)) continue;
 			const filePath = path.join(domainPath, file);
 			const sql = await fs.readFile(filePath, "utf-8");
-			const tableRegex =
+			const regex =
 				/CREATE\s+TABLE(?:\s+IF\s+NOT\s+EXISTS)?\s+([^\s(]+)/gi;
-			let match: RegExpExecArray | null;
 
-			while ((match = tableRegex.exec(sql)) !== null) {
-				const rawName = match[1].replace(/["`]/g, "").split(".").pop();
+			for (const match of sql.matchAll(regex)) {
+				const rawName = match[1]?.replace(/["`]/g, "").split(".").pop();
 				if (rawName) {
 					tables.add(rawName.toLowerCase());
 				}
@@ -82,7 +83,7 @@ async function discoverCategoryTables(): Promise<CategoryTables> {
 		}
 
 		if (tables.size > 0) {
-			result[entry.name] = Array.from(tables).sort();
+			result[entryName] = Array.from(tables).sort();
 		}
 	}
 
@@ -165,10 +166,27 @@ function mapPostgresToZod(
 	return isNullable ? `${zodType}.optional()` : zodType;
 }
 
+const MANUAL_TABLE_OVERRIDES: ManualOverrides = {
+	"01-core": new Set([
+		"tenants",
+		"properties",
+		"users",
+		"guests",
+		"user_tenant_associations",
+	]),
+};
+
 async function generateSchema(
 	tableName: string,
 	category: string,
 ): Promise<void> {
+	const manualTables = MANUAL_TABLE_OVERRIDES[category];
+	if (manualTables?.has(tableName)) {
+		console.log(
+			`⏭️  Skipping ${category}/${tableName} (managed manually for custom logic)`,
+		);
+		return;
+	}
 	console.log(`Generating schema for ${tableName}...`);
 
 	// Get table columns
@@ -282,26 +300,33 @@ export type Update${schemaName} = z.infer<typeof Update${schemaName}Schema>;
 }
 
 async function main() {
-	const categoryTables: CategoryTables | null =
-		await discoverCategoryTables().catch((error) => {
-			console.error(
-				"Failed to discover categories from scripts/tables:",
-				formatError(error),
-			);
-			process.exit(1);
-			return null;
-		});
-
-	if (!categoryTables) return;
+	let categoryTables: CategoryTables;
+	try {
+		categoryTables = await discoverCategoryTables();
+	} catch (error) {
+		console.error(
+			"Failed to discover categories from scripts/tables:",
+			formatError(error),
+		);
+		throw error;
+	}
 
 	const availableCategories = Object.keys(categoryTables).sort();
+	if (availableCategories.length === 0) {
+		throw new Error("No schema categories detected in src/schemas");
+	}
+
 	const preferredDefault = "02-inventory";
 	const categoryArg = process.argv[2];
-	const category =
-		categoryArg ??
-		(availableCategories.includes(preferredDefault)
+	const fallbackCategory =
+		availableCategories.includes(preferredDefault)
 			? preferredDefault
-			: availableCategories[0]);
+			: availableCategories[0];
+
+	if (!fallbackCategory) {
+		throw new Error("Unable to determine fallback category");
+	}
+	const category: string = categoryArg ?? fallbackCategory;
 
 	let tables: string[];
 	try {
@@ -309,28 +334,32 @@ async function main() {
 	} catch (error) {
 		console.error(formatError(error));
 		console.error(`Available categories: ${availableCategories.join(", ")}`);
-		process.exit(1);
-		return;
+		throw error;
+	}
+
+	if (tables.length === 0) {
+		throw new Error(`No tables discovered for category ${category}`);
 	}
 
 	console.log(`Generating schemas for category: ${category}`);
 	console.log(`Tables: ${tables.length}`);
 
-	try {
-		await client.connect();
-		console.log("✅ Connected to database");
+	await client.connect();
+	console.log("✅ Connected to database");
 
+	try {
 		for (const tableName of tables) {
+			// eslint-disable-next-line no-await-in-loop -- sequential generation is intentional
 			await generateSchema(tableName, category);
 		}
 
 		console.log(`\n✅ Generated ${tables.length} schemas for ${category}`);
-	} catch (error) {
-		console.error("❌ Error:", formatError(error));
-		process.exit(1);
 	} finally {
 		await client.end();
 	}
 }
 
-void main();
+void main().catch((error) => {
+	console.error("Schema generation failed:", formatError(error));
+	process.exit(1);
+});
