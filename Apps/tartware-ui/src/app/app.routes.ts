@@ -97,6 +97,13 @@ export const routes: Routes = [
         title: 'Reports - Tartware PMS',
       },
       {
+        path: 'logs',
+        loadComponent: () =>
+          import('./features/pms/logs/logs.component').then((m) => m.LogsComponent),
+        canActivate: [moduleGuard('core', { minRole: 'ADMIN' })],
+        title: 'Logs - Tartware PMS',
+      },
+      {
         path: 'settings',
         loadComponent: () =>
           import('./features/pms/settings/settings.component').then((m) => m.SettingsComponent),

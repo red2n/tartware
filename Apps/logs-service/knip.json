@@ -1,0 +1,7 @@
+{
+  "$schema": "https://unpkg.com/knip@5/schema.json",
+  "project": ["src/**/*.ts"],
+  "ignoreDependencies": ["@biomejs/biome", "tsx"],
+  "ignoreBinaries": ["tsx", "tsc", "biome", "eslint", "knip", "vitest"],
+  "ignoreExportsUsedInFile": true
+}

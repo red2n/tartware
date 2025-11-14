@@ -310,6 +310,8 @@ site/
 # Keep README files
 !README.md
 !*/README.md
+!Apps/tartware-ui/src/app/features/pms/logs
+!Apps/tartware-ui/src/app/features/pms/logs/**
 
 # Keep .gitkeep files to preserve empty directories
 !.gitkeep

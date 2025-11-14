@@ -1,0 +1,299 @@
+<div class="logs-container">
+  <!-- Header -->
+  <div class="page-header">
+    <div>
+      <h1 class="title">System Logs</h1>
+      <p class="subtitle">Monitor application logs and trace distributed requests</p>
+    </div>
+    <div class="flex gap-2">
+      <button mat-stroked-button (click)="loadLogs(true)" [disabled]="isLoading()">
+        <mat-icon>refresh</mat-icon>
+        Refresh
+      </button>
+      <button mat-flat-button class="primary-button" (click)="exportLogs()">
+        <mat-icon>download</mat-icon>
+        Export
+      </button>
+    </div>
+  </div>
+
+  <!-- Filters -->
+  <div class="bg-white rounded-lg shadow-sm px-6 py-4 mb-6">
+    <form [formGroup]="filterForm" (ngSubmit)="applyFilters()">
+      <!-- Row 1: Service, Severity, and Query -->
+      <div class="flex flex-wrap gap-4 mb-4">
+        <mat-form-field appearance="outline" class="flex-1 min-w-[200px]">
+          <mat-label>Service Name</mat-label>
+          <mat-icon matPrefix class="text-gray-500">dns</mat-icon>
+          <input matInput formControlName="service" placeholder="api-gateway" />
+          @if (filterForm.value.service) {
+            <button mat-icon-button matSuffix type="button" (click)="filterForm.patchValue({ service: '' })">
+              <mat-icon>clear</mat-icon>
+            </button>
+          }
+        </mat-form-field>
+
+        <mat-form-field appearance="outline" class="min-w-[180px]">
+          <mat-label>Severity Level</mat-label>
+          <mat-select formControlName="severity">
+            <mat-option value="">All Levels</mat-option>
+            @for (level of severityOptions; track level) {
+              <mat-option [value]="level">{{ level }}</mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline" class="flex-1 min-w-[300px]">
+          <mat-label>Search Query</mat-label>
+          <mat-icon matPrefix class="text-gray-500">search</mat-icon>
+          <input
+            matInput
+            formControlName="query"
+            placeholder='http.status_code:500 AND tenant_id:"abc123"'
+          />
+          @if (filterForm.value.query) {
+            <button mat-icon-button matSuffix type="button" (click)="filterForm.patchValue({ query: '' })">
+              <mat-icon>clear</mat-icon>
+            </button>
+          }
+        </mat-form-field>
+      </div>
+
+      <!-- Row 2: Time Range -->
+      <div class="flex flex-wrap gap-4 items-end">
+        <mat-form-field appearance="outline" class="flex-1 min-w-[200px]">
+          <mat-label>From</mat-label>
+          <mat-icon matPrefix class="text-gray-500">event</mat-icon>
+          <input matInput type="datetime-local" formControlName="from" />
+        </mat-form-field>
+
+        <mat-form-field appearance="outline" class="flex-1 min-w-[200px]">
+          <mat-label>To</mat-label>
+          <mat-icon matPrefix class="text-gray-500">event</mat-icon>
+          <input matInput type="datetime-local" formControlName="to" />
+        </mat-form-field>
+
+        <div class="flex gap-2" style="height: 56px; align-items: center;">
+          @for (range of quickRanges; track range.label) {
+            <button
+              mat-stroked-button
+              type="button"
+              (click)="applyQuickRange(range.minutes)"
+              class="h-[40px]"
+            >
+              {{ range.label }}
+            </button>
+          }
+        </div>
+
+        <div class="flex gap-2 ml-auto" style="height: 56px; align-items: center;">
+          <button
+            mat-flat-button
+            color="primary"
+            type="submit"
+            [disabled]="isLoading()"
+            class="h-[40px]"
+          >
+            <mat-icon>filter_alt</mat-icon>
+            Apply Filters
+          </button>
+          <button
+            mat-stroked-button
+            type="button"
+            (click)="resetFilters()"
+            [disabled]="isLoading()"
+            class="h-[40px]"
+          >
+            <mat-icon>clear_all</mat-icon>
+            Reset
+          </button>
+        </div>
+      </div>
+    </form>
+  </div>
+
+  <!-- Stats Cards -->
+  <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+    <div class="bg-white rounded-lg shadow-sm p-4 border-l-4 border-blue-500">
+      <div class="flex items-center justify-between">
+        <div>
+          <p class="text-sm text-gray-600 mb-1">Total Logs</p>
+          <p class="text-2xl font-bold text-gray-900">{{ total() }}</p>
+        </div>
+        <mat-icon class="text-blue-500 text-4xl">receipt_long</mat-icon>
+      </div>
+    </div>
+
+    <div class="bg-white rounded-lg shadow-sm p-4 border-l-4 border-yellow-500">
+      <div class="flex items-center justify-between">
+        <div>
+          <p class="text-sm text-gray-600 mb-1">Warnings</p>
+          <p class="text-2xl font-bold text-gray-900">{{ getCountBySeverity('WARN') }}</p>
+        </div>
+        <mat-icon class="text-yellow-500 text-4xl">warning</mat-icon>
+      </div>
+    </div>
+
+    <div class="bg-white rounded-lg shadow-sm p-4 border-l-4 border-red-500">
+      <div class="flex items-center justify-between">
+        <div>
+          <p class="text-sm text-gray-600 mb-1">Errors</p>
+          <p class="text-2xl font-bold text-gray-900">{{ getCountBySeverity('ERROR') }}</p>
+        </div>
+        <mat-icon class="text-red-500 text-4xl">error</mat-icon>
+      </div>
+    </div>
+
+    <div class="bg-white rounded-lg shadow-sm p-4 border-l-4 border-green-500">
+      <div class="flex items-center justify-between">
+        <div>
+          <p class="text-sm text-gray-600 mb-1">Services</p>
+          <p class="text-2xl font-bold text-gray-900">{{ getUniqueServices() }}</p>
+        </div>
+        <mat-icon class="text-green-500 text-4xl">hub</mat-icon>
+      </div>
+    </div>
+  </div>
+
+  <!-- Logs Table -->
+  <mat-card class="table-card">
+    <mat-card-content>
+      @if (isLoading()) {
+        <div class="loading-state">
+          <mat-icon class="loading-icon">refresh</mat-icon>
+          <p>Loading logs...</p>
+        </div>
+      } @else if (errorMessage()) {
+        <div class="loading-state">
+          <mat-icon class="loading-icon text-red-500">error</mat-icon>
+          <p class="text-red-600">{{ errorMessage() }}</p>
+          <button mat-stroked-button (click)="loadLogs(true)" class="mt-4">
+            <mat-icon>refresh</mat-icon>
+            Try Again
+          </button>
+        </div>
+      } @else if (!hasResults()) {
+        <div class="loading-state">
+          <mat-icon class="loading-icon text-blue-500">search_off</mat-icon>
+          <p>No logs found matching your filters.</p>
+          <button mat-stroked-button (click)="resetFilters()" class="mt-4">
+            <mat-icon>clear_all</mat-icon>
+            Clear Filters
+          </button>
+        </div>
+      } @else {
+        <div class="table-container">
+          <table mat-table [dataSource]="entries()" class="logs-table">
+            <!-- Timestamp Column -->
+            <ng-container matColumnDef="timestamp">
+              <th mat-header-cell *matHeaderCellDef>Timestamp</th>
+              <td mat-cell *matCellDef="let log">
+                <div class="flex flex-col gap-1">
+                  <span class="text-sm font-semibold text-gray-900">{{ formatTimestamp(log.timestamp) }}</span>
+                  <span class="text-xs text-gray-500">{{ formatRelativeTime(log.timestamp) }}</span>
+                </div>
+              </td>
+            </ng-container>
+
+            <!-- Service Column -->
+            <ng-container matColumnDef="service">
+              <th mat-header-cell *matHeaderCellDef>Service</th>
+              <td mat-cell *matCellDef="let log">
+                <div class="flex items-center gap-2">
+                  <mat-icon class="text-gray-600 text-lg">dns</mat-icon>
+                  <span class="text-sm font-medium text-gray-900">{{ log.service || 'unknown' }}</span>
+                </div>
+              </td>
+            </ng-container>
+
+            <!-- Severity Column -->
+            <ng-container matColumnDef="severity">
+              <th mat-header-cell *matHeaderCellDef>Severity</th>
+              <td mat-cell *matCellDef="let log">
+                <mat-chip [class]="getSeverityClass(log.severity)">
+                  <mat-icon class="chip-icon">{{ getSeverityIcon(log.severity) }}</mat-icon>
+                  {{ log.severity || 'INFO' }}
+                </mat-chip>
+              </td>
+            </ng-container>
+
+            <!-- Message Column -->
+            <ng-container matColumnDef="message">
+              <th mat-header-cell *matHeaderCellDef>Message</th>
+              <td mat-cell *matCellDef="let log">
+                <div class="message-cell">
+                  <pre class="log-message">{{ formatLogBody(log.body) }}</pre>
+                  @if (log.traceId) {
+                    <div class="flex items-center gap-2 mt-2">
+                      <mat-chip class="trace-chip">
+                        <mat-icon class="chip-icon">route</mat-icon>
+                        Trace: {{ log.traceId | slice:0:8 }}...
+                      </mat-chip>
+                      @if (log.spanId) {
+                        <mat-chip class="span-chip">
+                          <mat-icon class="chip-icon">account_tree</mat-icon>
+                          Span: {{ log.spanId | slice:0:8 }}...
+                        </mat-chip>
+                      }
+                    </div>
+                  }
+                </div>
+              </td>
+            </ng-container>
+
+            <!-- Actions Column -->
+            <ng-container matColumnDef="actions">
+              <th mat-header-cell *matHeaderCellDef>Actions</th>
+              <td mat-cell *matCellDef="let log">
+                <div class="actions-cell">
+                  <button
+                    mat-icon-button
+                    matTooltip="View details"
+                    (click)="viewLogDetails(log)"
+                  >
+                    <mat-icon>visibility</mat-icon>
+                  </button>
+                  @if (log.traceId) {
+                    <button
+                      mat-icon-button
+                      matTooltip="View trace"
+                      (click)="viewTrace(log.traceId)"
+                    >
+                      <mat-icon>route</mat-icon>
+                    </button>
+                  }
+                  <button
+                    mat-icon-button
+                    matTooltip="Copy log"
+                    (click)="copyLog(log)"
+                  >
+                    <mat-icon>content_copy</mat-icon>
+                  </button>
+                </div>
+              </td>
+            </ng-container>
+
+            <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+            <tr mat-row *matRowDef="let row; columns: displayedColumns;" class="table-row"></tr>
+          </table>
+
+          <!-- Load More -->
+          @if (nextCursor()) {
+            <div class="flex justify-center py-6">
+              <button
+                mat-stroked-button
+                color="primary"
+                (click)="loadMore()"
+                [disabled]="isLoading()"
+                class="load-more-btn"
+              >
+                <mat-icon>expand_more</mat-icon>
+                Load More Logs ({{ total() - entries().length }} remaining)
+              </button>
+            </div>
+          }
+        </div>
+      }
+    </mat-card-content>
+  </mat-card>
+</div>

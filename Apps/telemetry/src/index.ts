@@ -2,7 +2,12 @@ import process from "node:process";
 
 import { diag, DiagConsoleLogger, DiagLogLevel } from "@opentelemetry/api";
 import { getNodeAutoInstrumentations } from "@opentelemetry/auto-instrumentations-node";
+import { OTLPLogExporter } from "@opentelemetry/exporter-logs-otlp-http";
 import { OTLPTraceExporter } from "@opentelemetry/exporter-trace-otlp-http";
+import {
+	BatchLogRecordProcessor,
+	LoggerProvider,
+} from "@opentelemetry/sdk-logs";
 import { NodeSDK } from "@opentelemetry/sdk-node";
 import { Resource } from "@opentelemetry/resources";
 import { SemanticResourceAttributes } from "@opentelemetry/semantic-conventions";
@@ -122,8 +127,45 @@ export const initTelemetry = async (
 		return undefined;
 	}
 
+	// Configure log exporter
+	const logEndpoint =
+		process.env.OTEL_EXPORTER_OTLP_LOGS_ENDPOINT ??
+		process.env.OTEL_EXPORTER_OTLP_ENDPOINT;
+
+	const loggerProvider = logEndpoint
+		? new LoggerProvider({ resource })
+		: undefined;
+
+	if (loggerProvider && logEndpoint) {
+		loggerProvider.addLogRecordProcessor(
+			new BatchLogRecordProcessor(
+				new OTLPLogExporter({
+					url: logEndpoint,
+					headers: parseHeaders(
+						process.env.OTEL_EXPORTER_OTLP_LOGS_HEADERS ??
+							process.env.OTEL_EXPORTER_OTLP_HEADERS,
+					),
+				}),
+			),
+		);
+		console.info("[telemetry] Log export enabled to", logEndpoint);
+	} else {
+		console.info("[telemetry] Log export disabled - no endpoint configured");
+	}
+
 	const sdk = new NodeSDK({
 		resource,
+		logRecordProcessor: loggerProvider
+			? new BatchLogRecordProcessor(
+					new OTLPLogExporter({
+						url: logEndpoint!,
+						headers: parseHeaders(
+							process.env.OTEL_EXPORTER_OTLP_LOGS_HEADERS ??
+								process.env.OTEL_EXPORTER_OTLP_HEADERS,
+						),
+					}),
+			  )
+			: undefined,
 		traceExporter: new OTLPTraceExporter({
 			url: traceEndpoint,
 			headers: parseHeaders(
@@ -181,18 +223,39 @@ const shouldPrettyPrint = (
 };
 
 export const createPinoOptions = (options: LoggerOptions): PinoLoggerOptions => {
-	const transport = shouldPrettyPrint(options.pretty, options.environment)
-		? {
-				target: "pino-pretty",
-				options: {
-					colorize: true,
-					translateTime: "SYS:standard",
-					singleLine: true,
-				},
-			}
-		: undefined;
+	const otlpEndpoint =
+		process.env.OTEL_EXPORTER_OTLP_LOGS_ENDPOINT ??
+		process.env.OTEL_EXPORTER_OTLP_ENDPOINT;
 
-	return {
+	const usePrettyPrint = shouldPrettyPrint(options.pretty, options.environment);
+
+	// If OTLP is configured and not in pretty print mode, use OTLP transport
+	const transport =
+		otlpEndpoint && !usePrettyPrint
+			? {
+					target: "pino-opentelemetry-transport",
+					options: {
+						url: otlpEndpoint,
+						resourceAttributes: {
+							"service.name": options.serviceName,
+							"service.version": options.base?.version,
+							"deployment.environment":
+								options.environment ??
+								process.env.NODE_ENV ??
+								"development",
+						},
+					},
+			  }
+			: usePrettyPrint
+			  ? {
+						target: "pino-pretty",
+						options: {
+							colorize: true,
+							translateTime: "SYS:standard",
+							singleLine: true,
+						},
+				  }
+			  : undefined;	return {
 		name: options.serviceName,
 		level: options.level ?? "info",
 		base: {
