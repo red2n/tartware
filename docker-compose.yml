@@ -100,6 +100,55 @@ services:
     networks:
       - tartware_network
 
+  opensearch-node:
+    image: opensearchproject/opensearch:2.13.0
+    container_name: tartware-opensearch
+    restart: unless-stopped
+    environment:
+      discovery.type: single-node
+      plugins.security.disabled: "true"
+      OPENSEARCH_JAVA_OPTS: "-Xms1g -Xmx1g"
+      OPENSEARCH_INITIAL_ADMIN_PASSWORD: "Admin123#ChangeMe"
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    ports:
+      - "9200:9200"
+      - "9600:9600"
+    volumes:
+      - tartware_opensearch_data:/usr/share/opensearch/data
+    networks:
+      - tartware_network
+
+  opensearch-dashboards:
+    image: opensearchproject/opensearch-dashboards:2.13.0
+    container_name: tartware-opensearch-dashboards
+    restart: unless-stopped
+    environment:
+      OPENSEARCH_HOSTS: '["http://opensearch-node:9200"]'
+    ports:
+      - "5601:5601"
+    depends_on:
+      - opensearch-node
+    networks:
+      - tartware_network
+
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.104.0
+    container_name: tartware-otel-collector
+    restart: unless-stopped
+    command: ["--config=/etc/otel-collector-config.yaml"]
+    ports:
+      - "4317:4317"
+      - "4318:4318"
+    volumes:
+      - ./docker/otel-collector-config.yaml:/etc/otel-collector-config.yaml:ro
+    depends_on:
+      - opensearch-node
+    networks:
+      - tartware_network
+
 volumes:
   tartware_postgres_data:
     name: tartware_postgres_data
@@ -112,6 +161,9 @@ volumes:
     driver: local
   tartware_kafka_data:
     name: tartware_kafka_data
+    driver: local
+  tartware_opensearch_data:
+    name: tartware_opensearch_data
     driver: local
 
 networks:

@@ -111,12 +111,21 @@ export const initTelemetry = async (
 		...options.resourceAttributes,
 	});
 
+	const traceEndpoint =
+		process.env.OTEL_EXPORTER_OTLP_TRACES_ENDPOINT ??
+		process.env.OTEL_EXPORTER_OTLP_ENDPOINT;
+
+	if (!traceEndpoint) {
+		console.info(
+			"[telemetry] No OTLP trace endpoint configured - telemetry disabled.",
+		);
+		return undefined;
+	}
+
 	const sdk = new NodeSDK({
 		resource,
 		traceExporter: new OTLPTraceExporter({
-			url:
-				process.env.OTEL_EXPORTER_OTLP_TRACES_ENDPOINT ??
-				process.env.OTEL_EXPORTER_OTLP_ENDPOINT,
+			url: traceEndpoint,
 			headers: parseHeaders(
 				process.env.OTEL_EXPORTER_OTLP_TRACES_HEADERS ??
 					process.env.OTEL_EXPORTER_OTLP_HEADERS,
