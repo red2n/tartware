@@ -1,11 +1,4 @@
-// Import shared PMS styles
-@import '../../../../styles/pms-components';
-
-.logs-container {
-  padding: 1.5rem;
-  min-height: 100vh;
-  background: #f5f5f5;
-}
+// Logs component styles - using shared component classes from global styles
 
 .table-container {
   overflow-x: auto;
@@ -43,7 +36,7 @@
 
   .log-message {
     margin: 0;
-    font-family: 'JetBrains Mono', 'Roboto Mono', monospace;
+    font-family: 'Courier New', monospace;
     font-size: 0.8rem;
     white-space: pre-wrap;
     word-break: break-word;
@@ -52,45 +45,10 @@
     max-height: 120px;
     overflow-y: auto;
   }
-
-  .trace-chip,
-  .span-chip {
-    height: 24px;
-    font-size: 0.7rem;
-    background: rgba(25, 118, 210, 0.08);
-    color: #1976d2;
-
-    .chip-icon {
-      font-size: 14px;
-      width: 14px;
-      height: 14px;
-      margin-right: 4px;
-    }
-  }
-}
-
-.load-more-btn {
-  min-width: 240px;
-  height: 44px;
 }
 
 // Severity chip styles
 mat-chip {
-  display: inline-flex;
-  align-items: center;
-  padding: 0 12px;
-  height: 28px;
-  font-size: 0.75rem;
-  font-weight: 600;
-  border-radius: 14px;
-
-  .chip-icon {
-    font-size: 16px;
-    width: 16px;
-    height: 16px;
-    margin-right: 4px;
-  }
-
   &.severity-trace {
     background: rgba(158, 158, 158, 0.1);
     color: #616161;
@@ -122,21 +80,4 @@ mat-chip {
   }
 }
 
-@media (max-width: 768px) {
-  .logs-container {
-    padding: 1rem;
-  }
-
-  .logs-table {
-    th,
-    td {
-      padding: 0.75rem 0.5rem;
-      font-size: 0.875rem;
-    }
-  }
-
-  .message-cell {
-    max-width: 300px;
-  }
-}
 

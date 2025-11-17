@@ -68,16 +68,40 @@ export const proxyRequest = async (
 	reply: FastifyReply,
 	targetBaseUrl: string,
 ): Promise<void> => {
+	if (request.method.toUpperCase() === "OPTIONS") {
+		reply.status(204).send();
+		return;
+	}
+
 	const url = request.raw.url ?? "/";
 	const targetUrl = new URL(url, targetBaseUrl).toString();
 	const headers = buildHeaders(request);
 	const body = serializeBody(request, headers);
 
-	const response = await fetch(targetUrl, {
-		method: request.method,
-		headers,
-		body,
-	});
+	let response: Response;
+	try {
+		response = await fetch(targetUrl, {
+			method: request.method,
+			headers,
+			body,
+		});
+	} catch (error) {
+		request.log.error(
+			{ err: error, targetUrl, method: request.method },
+			"proxy fetch failed",
+		);
+
+		reply
+			.header("Content-Type", "application/json")
+			.status(502)
+			.send({
+				error: "UPSTREAM_UNAVAILABLE",
+				message: "Unable to reach upstream service. Please try again shortly.",
+				details:
+					error instanceof Error ? error.message : "Unknown upstream error",
+			});
+		return;
+	}
 
 	reply.status(response.status);
 	response.headers.forEach((value, key) => {

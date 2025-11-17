@@ -35,12 +35,22 @@ export const buildServer = () => {
 	const allowCorsHeaders = (reply: FastifyReply): FastifyReply =>
 		reply
 			.header("Access-Control-Allow-Origin", "*")
-			.header("Access-Control-Allow-Methods", "GET,OPTIONS")
+			.header(
+				"Access-Control-Allow-Methods",
+				"GET,POST,PUT,PATCH,DELETE,OPTIONS",
+			)
 			.header(
 				"Access-Control-Allow-Headers",
-				"Accept, Authorization, Content-Type, X-Requested-With",
+				"Accept, Authorization, Content-Type, X-Requested-With, DNT, sec-ch-ua, sec-ch-ua-mobile, sec-ch-ua-platform",
 			)
 			.header("Access-Control-Max-Age", "600");
+
+	app.addHook("onRequest", async (request, reply) => {
+		allowCorsHeaders(reply);
+		if (request.method.toUpperCase() === "OPTIONS") {
+			return reply.status(204).send();
+		}
+	});
 
 	app.options("/health", async (_request, reply) => {
 		allowCorsHeaders(reply);

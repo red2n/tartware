@@ -1,4 +1,5 @@
 import process from "node:process";
+import { createRequire } from 'module';
 
 import { diag, DiagConsoleLogger, DiagLogLevel } from "@opentelemetry/api";
 import { getNodeAutoInstrumentations } from "@opentelemetry/auto-instrumentations-node";
@@ -157,13 +158,13 @@ export const initTelemetry = async (
 		resource,
 		logRecordProcessor: loggerProvider
 			? new BatchLogRecordProcessor(
-					new OTLPLogExporter({
-						url: logEndpoint!,
-						headers: parseHeaders(
-							process.env.OTEL_EXPORTER_OTLP_LOGS_HEADERS ??
-								process.env.OTEL_EXPORTER_OTLP_HEADERS,
-						),
-					}),
+				  new OTLPLogExporter({
+					  url: logEndpoint,
+					  headers: parseHeaders(
+						  process.env.OTEL_EXPORTER_OTLP_LOGS_HEADERS ??
+							  process.env.OTEL_EXPORTER_OTLP_HEADERS,
+					  ),
+				  }),
 			  )
 			: undefined,
 		traceExporter: new OTLPTraceExporter({
@@ -229,33 +230,51 @@ export const createPinoOptions = (options: LoggerOptions): PinoLoggerOptions => 
 
 	const usePrettyPrint = shouldPrettyPrint(options.pretty, options.environment);
 
-	// If OTLP is configured and not in pretty print mode, use OTLP transport
-	const transport =
-		otlpEndpoint && !usePrettyPrint
-			? {
-					target: "pino-opentelemetry-transport",
-					options: {
-						url: otlpEndpoint,
-						resourceAttributes: {
-							"service.name": options.serviceName,
-							"service.version": options.base?.version,
-							"deployment.environment":
-								options.environment ??
-								process.env.NODE_ENV ??
-								"development",
-						},
+	// Priority: OTLP transport > Pretty print > No transport
+	// If OTLP is configured, prefer it — but guard using createRequire to
+	// ensure the transport module exists and won't crash the worker thread.
+	let transport: any | undefined;
+	if (otlpEndpoint) {
+		try {
+			const _require = createRequire(import.meta.url);
+			_require.resolve("pino-opentelemetry-transport");
+			transport = {
+				target: "pino-opentelemetry-transport",
+				options: {
+					url: otlpEndpoint,
+					resourceAttributes: {
+						"service.name": options.serviceName,
+						"service.version": options.base?.version,
+						"deployment.environment":
+							options.environment ??
+							process.env.NODE_ENV ??
+							"development",
 					},
-			  }
-			: usePrettyPrint
-			  ? {
-						target: "pino-pretty",
-						options: {
-							colorize: true,
-							translateTime: "SYS:standard",
-							singleLine: true,
-						},
-				  }
-			  : undefined;	return {
+				},
+			};
+		} catch (err) {
+			if (usePrettyPrint) {
+				transport = {
+					target: "pino-pretty",
+					options: {
+						colorize: true,
+						translateTime: "SYS:standard",
+						singleLine: true,
+					},
+				};
+			}
+		}
+	} else if (usePrettyPrint) {
+		transport = {
+			target: "pino-pretty",
+			options: {
+				colorize: true,
+				translateTime: "SYS:standard",
+				singleLine: true,
+			},
+		};
+	}
+	return {
 		name: options.serviceName,
 		level: options.level ?? "info",
 		base: {

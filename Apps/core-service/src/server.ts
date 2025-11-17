@@ -4,7 +4,7 @@ import fastifySensible from "@fastify/sensible";
 import Fastify, { type FastifyInstance } from "fastify";
 
 import { config } from "./config.js";
-import { fastifyLoggerOptions } from "./lib/logger.js";
+import { attachLoggerTransportFallback, fastifyLoggerOptions } from "./lib/logger.js";
 import authContextPlugin from "./plugins/auth-context.js";
 import errorHandlerPlugin from "./plugins/error-handler.js";
 import { registerAuthRoutes } from "./routes/auth.js";
@@ -27,6 +27,8 @@ export const buildServer = (): FastifyInstance => {
     logger: fastifyLoggerOptions,
     disableRequestLogging: !config.log.requestLogging,
   });
+
+  attachLoggerTransportFallback(app.log);
 
   const registeredRoutes = new Map<string, { method: string; url: string }>();
 
