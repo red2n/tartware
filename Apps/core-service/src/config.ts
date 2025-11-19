@@ -21,7 +21,7 @@ const systemAdminJwtIssuer =
 const systemAdminJwtAudience =
   configValues.SYSTEM_ADMIN_JWT_AUDIENCE && configValues.SYSTEM_ADMIN_JWT_AUDIENCE.length > 0
     ? configValues.SYSTEM_ADMIN_JWT_AUDIENCE
-    : configValues.AUTH_JWT_AUDIENCE ?? "tartware-system";
+    : (configValues.AUTH_JWT_AUDIENCE ?? "tartware-system");
 
 export const config = {
   service: {

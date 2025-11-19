@@ -23,14 +23,16 @@ const hasRequiredRole = (current: SystemAdminRole, minimum: SystemAdminRole): bo
 };
 
 const unauthorized = (reply: FastifyReply) =>
-  reply
-    .status(401)
-    .send({ error: "SYSTEM_ADMIN_AUTH_REQUIRED", message: "Valid system admin credentials required." });
+  reply.status(401).send({
+    error: "SYSTEM_ADMIN_AUTH_REQUIRED",
+    message: "Valid system admin credentials required.",
+  });
 
 const forbidden = (reply: FastifyReply) =>
-  reply
-    .status(403)
-    .send({ error: "SYSTEM_ADMIN_ROLE_INSUFFICIENT", message: "System admin role is insufficient." });
+  reply.status(403).send({
+    error: "SYSTEM_ADMIN_ROLE_INSUFFICIENT",
+    message: "System admin role is insufficient.",
+  });
 
 const buildGuard =
   (options: SystemAdminScopeOptions = {}): preHandlerHookHandler =>
@@ -64,7 +66,8 @@ const buildGuard =
 const systemAdminAuthPlugin: FastifyPluginAsync = async (fastify) => {
   fastify.decorateRequest("systemAdmin", null);
 
-  const decorator: SystemAdminScopeDecorator = (options?: SystemAdminScopeOptions) => buildGuard(options);
+  const decorator: SystemAdminScopeDecorator = (options?: SystemAdminScopeOptions) =>
+    buildGuard(options);
 
   fastify.decorate("withSystemAdminScope", decorator);
 };

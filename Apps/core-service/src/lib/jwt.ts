@@ -24,15 +24,6 @@ export interface SystemAdminTokenPayload extends AccessTokenPayload {
   session_id: string;
 }
 
-export interface ImpersonationTokenPayload extends AccessTokenPayload {
-  scope: "TENANT_IMPERSONATION";
-  tenant_id: string;
-  impersonated_user_id: string;
-  impersonated_by: string;
-  reason?: string;
-  ticket_id?: string;
-}
-
 const getJwtSecret = (): string | null => {
   const secret = config.auth.jwt.secret;
   if (!secret || secret.trim().length === 0) {

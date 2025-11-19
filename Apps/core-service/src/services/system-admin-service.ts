@@ -1,27 +1,28 @@
+import { createHash, randomUUID } from "node:crypto";
+
 import {
+  type PublicSystemAdministrator,
   PublicSystemAdministratorSchema,
   SystemAdministratorSchema,
-  type PublicSystemAdministrator,
   type SystemAdminRole,
   type UserTenantAssociationWithDetails,
 } from "@tartware/schemas";
 import bcrypt from "bcryptjs";
-import { authenticator } from "otplib";
 import ipaddr from "ipaddr.js";
-import { createHash, randomUUID } from "node:crypto";
+import { authenticator } from "otplib";
 
 import { config } from "../config.js";
 import { query } from "../lib/db.js";
 import { signImpersonationToken, signSystemAdminToken } from "../lib/jwt.js";
 import { listUserTenantAssociations } from "../services/user-tenant-association-service.js";
-import { userCacheService } from "./user-cache-service.js";
-
 import {
   SYSTEM_ADMIN_AUDIT_INSERT_SQL,
   SYSTEM_ADMIN_INCREMENT_FAILED_LOGIN_SQL,
   SYSTEM_ADMIN_LOOKUP_SQL,
   SYSTEM_ADMIN_RESET_LOGIN_SQL,
 } from "../sql/system-admin-queries.js";
+
+import { userCacheService } from "./user-cache-service.js";
 
 type SystemAdministratorRow = {
   id: string;
@@ -80,8 +81,14 @@ const isIpAllowed = (allowList: string[], requestIp?: string): boolean => {
   return allowList.some((entry) => {
     try {
       if (entry.includes("/")) {
-        const cidr = ipaddr.parseCIDR(entry);
-        return parsedRequest.match(cidr);
+        const [network, prefixLength] = ipaddr.parseCIDR(entry);
+        if (parsedRequest.kind() !== network.kind()) {
+          return false;
+        }
+        if (parsedRequest.kind() === "ipv4") {
+          return (parsedRequest as ipaddr.IPv4).match([network as ipaddr.IPv4, prefixLength]);
+        }
+        return (parsedRequest as ipaddr.IPv6).match([network as ipaddr.IPv6, prefixLength]);
       }
       return parsedRequest.toNormalizedString() === parseIp(entry);
     } catch {
@@ -141,7 +148,10 @@ const isWithinAllowedHours = (range: string | undefined, now = new Date()): bool
   return true;
 };
 
-const hasTrustedDevice = (metadata: Record<string, unknown> | undefined, fingerprint?: string): boolean => {
+const hasTrustedDevice = (
+  metadata: Record<string, unknown> | undefined,
+  fingerprint?: string,
+): boolean => {
   const trusted = Array.isArray(metadata?.trusted_devices)
     ? metadata.trusted_devices.filter((value): value is string => typeof value === "string")
     : [];
@@ -285,10 +295,11 @@ export interface SystemAdminLoginInput {
 
 const findSystemAdministrator = async (username: string) => {
   const { rows } = await query<SystemAdministratorRow>(SYSTEM_ADMIN_LOOKUP_SQL, [username]);
-  if (rows.length === 0) {
+  const row = rows[0];
+  if (!row) {
     return null;
   }
-  return mapRowToAdministrator(rows[0]);
+  return mapRowToAdministrator(row);
 };
 
 export const authenticateSystemAdministrator = async (
@@ -375,15 +386,6 @@ export const authenticateSystemAdministrator = async (
     },
   };
 };
-
-export interface ImpersonationRequest {
-  adminId: string;
-  sessionId: string;
-  tenantId: string;
-  userId: string;
-  reason: string;
-  ticketId: string;
-}
 
 export type ImpersonationResult =
   | {

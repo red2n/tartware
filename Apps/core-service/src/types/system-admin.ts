@@ -13,4 +13,6 @@ export interface SystemAdminScopeOptions {
   minRole?: SystemAdminRole;
 }
 
-export type SystemAdminScopeDecorator = (options?: SystemAdminScopeOptions) => preHandlerHookHandler;
+export type SystemAdminScopeDecorator = (
+  options?: SystemAdminScopeOptions,
+) => preHandlerHookHandler;
