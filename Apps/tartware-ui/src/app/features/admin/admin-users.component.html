@@ -1,0 +1,84 @@
+<section class="admin-container">
+  <header class="admin-header">
+    <h1>Admin User Directory</h1>
+    <p>Authenticate with the admin credentials to review all platform users and their access.</p>
+  </header>
+
+  <form class="admin-form" [formGroup]="form" (ngSubmit)="onSubmit()">
+    <div class="form-row">
+      <label for="username">Username</label>
+      <input id="username" type="text" formControlName="username" autocomplete="username" />
+    </div>
+
+    <div class="form-row">
+      <label for="password">Password</label>
+      <input
+        id="password"
+        type="password"
+        formControlName="password"
+        autocomplete="current-password"
+      />
+    </div>
+
+    <div class="form-row">
+      <label for="limit">Record Limit</label>
+      <input id="limit" type="number" min="1" max="500" formControlName="limit" />
+      <small>Maximum 500 users per request</small>
+    </div>
+
+    <button type="submit" [disabled]="loading()" class="primary">
+      {{ loading() ? 'Loading…' : 'View Users' }}
+    </button>
+  </form>
+
+  <p class="error" *ngIf="error()">{{ error() }}</p>
+
+  <section *ngIf="users().length > 0" class="results">
+    <div class="summary">
+      <h2>Users ({{ users().length }})</h2>
+      <p>Showing the most recent {{ users().length }} user records.</p>
+    </div>
+
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr>
+            <th>User</th>
+            <th>Status</th>
+            <th>Last Login</th>
+            <th>Memberships</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let user of users(); trackBy: trackUser">
+            <td>
+              <div class="user-cell">
+                <span class="name">{{ user.first_name }} {{ user.last_name }}</span>
+                <span class="meta">{{ user.username }} · {{ user.email }}</span>
+              </div>
+            </td>
+            <td>
+              <span class="badge" [class.active]="user.is_active" [class.inactive]="!user.is_active">
+                {{ user.is_active ? 'Active' : 'Inactive' }}
+              </span>
+            </td>
+            <td>
+              {{ user.last_login_at ? (user.last_login_at | date : 'medium') : 'Never' }}
+            </td>
+            <td>
+              <ul class="tenants" *ngIf="user.tenants?.length; else noTenants">
+                <li *ngFor="let membership of user.tenants; trackBy: trackTenant">
+                  <strong>{{ membership.tenant_name }}</strong>
+                  <span>{{ membership.role }}</span>
+                </li>
+              </ul>
+              <ng-template #noTenants>
+                <span>No tenant assignments</span>
+              </ng-template>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+</section>

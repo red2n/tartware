@@ -18,6 +18,12 @@ export const routes: Routes = [
     title: 'Login - Tartware PMS',
   },
   {
+    path: 'admin',
+    loadComponent: () =>
+      import('./features/admin/admin-users.component').then((m) => m.AdminUsersComponent),
+    title: 'Admin Users - Tartware PMS',
+  },
+  {
     path: 'change-password',
     loadComponent: () =>
       import('./features/auth/change-password.component').then((m) => m.ChangePasswordComponent),

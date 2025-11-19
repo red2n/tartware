@@ -1,5 +1,7 @@
 import { beforeAll, afterAll, beforeEach, vi } from "vitest";
 
+import { resetSystemAdminState } from "./mocks/db.js";
+
 process.env.NODE_ENV = process.env.NODE_ENV ?? "test";
 process.env.SERVICE_NAME = process.env.SERVICE_NAME ?? "@tartware/core-service";
 process.env.SERVICE_VERSION = process.env.SERVICE_VERSION ?? "test";
@@ -40,6 +42,7 @@ beforeAll(async () => {
 beforeEach(() => {
   // Clear all mocks before each test
   vi.clearAllMocks();
+  resetSystemAdminState();
 });
 
 afterAll(async () => {

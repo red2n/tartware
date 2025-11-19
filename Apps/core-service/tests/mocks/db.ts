@@ -11,6 +11,51 @@ export const TEST_USER_PASSWORD_HASH =
   "$2a$10$U8wfbip4Pk1ReP6u.sHcuu/mV7Xz2xvkjGF1mR5lBeRHyW/t4qxza"; // hash for Password123!
 let currentTestUserPasswordHash = TEST_USER_PASSWORD_HASH;
 
+export const TEST_SYSTEM_ADMIN_ID = "990e8400-e29b-41d4-a716-446655440000";
+export const TEST_SYSTEM_ADMIN_USERNAME = "sysadmin";
+export const TEST_SYSTEM_ADMIN_PASSWORD = "SuperSecurePass123!";
+export const TEST_SYSTEM_ADMIN_PASSWORD_HASH =
+  "$2a$10$lVhoThJ5rSrAu9mz2kgXuew27BmgImztE2EXokYbtjgboPHgGwVKW";
+const TEST_SYSTEM_ADMIN_MFA_SECRET = "KVKFKRCPNZQUYMLXOVYDSQKJKZDTSRLD";
+
+const systemAdminState = {
+  failedAttempts: 0,
+  lockedUntil: null as Date | null,
+  allowedHours: null as string | null,
+  ipWhitelist: ["127.0.0.1/32", "::1/128"],
+  trustedDevices: ["trusted-device"],
+  mfaEnabled: true,
+};
+
+export const resetSystemAdminState = (): void => {
+  systemAdminState.failedAttempts = 0;
+  systemAdminState.lockedUntil = null;
+  systemAdminState.allowedHours = null;
+  systemAdminState.ipWhitelist = ["127.0.0.1/32", "::1/128"];
+  systemAdminState.trustedDevices = ["trusted-device"];
+  systemAdminState.mfaEnabled = true;
+};
+
+export const configureSystemAdminMock = (options: {
+  allowedHours?: string | null;
+  ipWhitelist?: string[];
+  trustedDevices?: string[];
+  mfaEnabled?: boolean;
+} = {}): void => {
+  if (options.allowedHours !== undefined) {
+    systemAdminState.allowedHours = options.allowedHours;
+  }
+  if (options.ipWhitelist) {
+    systemAdminState.ipWhitelist = options.ipWhitelist;
+  }
+  if (options.trustedDevices) {
+    systemAdminState.trustedDevices = options.trustedDevices;
+  }
+  if (options.mfaEnabled !== undefined) {
+    systemAdminState.mfaEnabled = options.mfaEnabled;
+  }
+};
+
 // Role-specific test users for negative testing
 export const MANAGER_USER_ID = "550e8400-e29b-41d4-a716-446655440001";
 export const STAFF_USER_ID = "550e8400-e29b-41d4-a716-446655440002";
@@ -23,6 +68,100 @@ export const query = vi.fn(async <T extends pg.QueryResultRow = pg.QueryResultRo
   params?: unknown[],
 ): Promise<pg.QueryResult<T>> => {
   const sql = text.trim().toLowerCase();
+
+  const buildSystemAdminRow = () => ({
+    id: TEST_SYSTEM_ADMIN_ID,
+    username: TEST_SYSTEM_ADMIN_USERNAME,
+    email: "sysadmin@example.com",
+    password_hash: TEST_SYSTEM_ADMIN_PASSWORD_HASH,
+    role: "SYSTEM_ADMIN",
+    mfa_secret: TEST_SYSTEM_ADMIN_MFA_SECRET,
+    mfa_enabled: systemAdminState.mfaEnabled,
+    ip_whitelist: systemAdminState.ipWhitelist,
+    allowed_hours: systemAdminState.allowedHours,
+    last_login_at: new Date("2024-01-01T00:00:00Z"),
+    failed_login_attempts: systemAdminState.failedAttempts,
+    account_locked_until: systemAdminState.lockedUntil,
+    is_active: true,
+    created_at: new Date(),
+    updated_at: new Date(),
+    created_by: null,
+    updated_by: null,
+    metadata: { trusted_devices: systemAdminState.trustedDevices },
+  });
+
+  if (sql.includes("from public.system_administrators")) {
+    const username = params?.[0];
+    if (username === TEST_SYSTEM_ADMIN_USERNAME) {
+      return {
+        rows: [buildSystemAdminRow()] as unknown as T[],
+        rowCount: 1,
+        command: "SELECT",
+        oid: 0,
+        fields: [],
+      };
+    }
+    return {
+      rows: [] as unknown as T[],
+      rowCount: 0,
+      command: "SELECT",
+      oid: 0,
+      fields: [],
+    };
+  }
+
+  if (
+    sql.startsWith("update public.system_administrators") &&
+    sql.includes("failed_login_attempts = failed_login_attempts + 1")
+  ) {
+    systemAdminState.failedAttempts += 1;
+    const maxAttempts = (params?.[1] as number) ?? 5;
+    const lockMinutes = (params?.[2] as number) ?? 15;
+    if (systemAdminState.failedAttempts >= maxAttempts) {
+      systemAdminState.lockedUntil = new Date(Date.now() + lockMinutes * 60 * 1000);
+    }
+    return {
+      rows: [
+        {
+          failed_login_attempts: systemAdminState.failedAttempts,
+          account_locked_until: systemAdminState.lockedUntil,
+        },
+      ] as unknown as T[],
+      rowCount: 1,
+      command: "UPDATE",
+      oid: 0,
+      fields: [],
+    };
+  }
+
+  if (
+    sql.startsWith("update public.system_administrators") &&
+    sql.includes("set failed_login_attempts = 0")
+  ) {
+    systemAdminState.failedAttempts = 0;
+    systemAdminState.lockedUntil = null;
+    return {
+      rows: [
+        {
+          last_login_at: new Date(),
+        },
+      ] as unknown as T[],
+      rowCount: 1,
+      command: "UPDATE",
+      oid: 0,
+      fields: [],
+    };
+  }
+
+  if (sql.startsWith("insert into public.system_admin_audit_log")) {
+    return {
+      rows: [] as unknown as T[],
+      rowCount: 1,
+      command: "INSERT",
+      oid: 0,
+      fields: [],
+    };
+  }
 
   // Mock tenants list query (must come before user-tenant-associations)
   if (sql.includes("from public.tenants t") || (sql.includes("select") && sql.includes("t.name") && sql.includes("t.slug"))) {
@@ -263,6 +402,49 @@ export const query = vi.fn(async <T extends pg.QueryResultRow = pg.QueryResultRo
       oid: 0,
       fields: [],
     };
+  }
+
+  if (
+    sql.includes("from public.user_tenant_associations uta") &&
+    sql.includes("coalesce(uta.is_deleted, false) = false") &&
+    sql.includes("limit $5")
+  ) {
+    const tenantId = params?.[0];
+    const userId = params?.[1];
+    if (tenantId === TEST_TENANT_ID && userId === TEST_USER_ID) {
+      return {
+        rows: [
+          {
+            id: "ba0e8400-e29b-41d4-a716-446655440010",
+            user_id: TEST_USER_ID,
+            tenant_id: TEST_TENANT_ID,
+            role: "ADMIN",
+            is_active: true,
+            permissions: {},
+            valid_from: new Date(),
+            valid_until: null,
+            metadata: {},
+            created_at: new Date(),
+            updated_at: new Date(),
+            created_by: null,
+            updated_by: null,
+            deleted_at: null,
+            version: BigInt(1),
+            user_username: "testuser",
+            user_email: "user@example.com",
+            user_first_name: "Test",
+            user_last_name: "User",
+            tenant_name: "Test Tenant",
+            tenant_slug: "test-tenant",
+            tenant_status: "ACTIVE",
+          },
+        ] as unknown as T[],
+        rowCount: 1,
+        command: "SELECT",
+        oid: 0,
+        fields: [],
+      };
+    }
   }
 
   // Mock user-tenant associations list query

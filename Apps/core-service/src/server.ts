@@ -21,6 +21,11 @@ import { registerRoomRoutes } from "./routes/rooms.js";
 import { registerTenantRoutes } from "./routes/tenants.js";
 import { registerUserTenantAssociationRoutes } from "./routes/user-tenant-associations.js";
 import { registerUserRoutes } from "./routes/users.js";
+import systemAdminAuthPlugin from "./plugins/system-admin-auth.js";
+import { registerSystemAuthRoutes } from "./routes/system-auth.js";
+import { registerSystemImpersonationRoutes } from "./routes/system-impersonation.js";
+import { registerSystemTenantRoutes } from "./routes/system-tenants.js";
+import { registerSystemUserRoutes } from "./routes/system-users.js";
 
 export const buildServer = (): FastifyInstance => {
   const app = Fastify({
@@ -60,6 +65,7 @@ export const buildServer = (): FastifyInstance => {
   app.register(fastifyCors, { origin: true });
   app.register(errorHandlerPlugin);
   app.register(authContextPlugin);
+  app.register(systemAdminAuthPlugin);
 
   if (config.log.requestLogging) {
     app.addHook("onRequest", async (request) => {
@@ -103,6 +109,10 @@ export const buildServer = (): FastifyInstance => {
     registerBillingRoutes(app);
     registerReportRoutes(app);
     registerModuleRoutes(app);
+    registerSystemAuthRoutes(app);
+    registerSystemTenantRoutes(app);
+    registerSystemUserRoutes(app);
+    registerSystemImpersonationRoutes(app);
   });
 
   app.addHook("onReady", async () => {

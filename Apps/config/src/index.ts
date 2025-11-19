@@ -60,6 +60,13 @@ export const coreAuthSchema = z.object({
   AUTH_JWT_AUDIENCE: z.string().optional(),
   AUTH_JWT_EXPIRES_IN_SECONDS: z.coerce.number().int().default(900),
   AUTH_DEFAULT_PASSWORD: z.string().min(8).default("ChangeMe123!"),
+  SYSTEM_ADMIN_JWT_SECRET: z.string().min(8).optional(),
+  SYSTEM_ADMIN_JWT_ISSUER: z.string().optional(),
+  SYSTEM_ADMIN_JWT_AUDIENCE: z.string().optional(),
+  SYSTEM_ADMIN_JWT_EXPIRES_IN_SECONDS: z.coerce.number().int().default(900),
+  SYSTEM_IMPERSONATION_JWT_EXPIRES_IN_SECONDS: z.coerce.number().int().default(300),
+  SYSTEM_ADMIN_MAX_FAILED_ATTEMPTS: z.coerce.number().int().min(1).default(5),
+  SYSTEM_ADMIN_LOCKOUT_MINUTES: z.coerce.number().int().min(1).default(15),
 });
 
 export type BaseConfig = z.infer<typeof baseConfigSchema>;
