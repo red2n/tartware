@@ -33,7 +33,11 @@ export const registerSystemImpersonationRoutes = (app: FastifyInstance): void =>
     async (request, reply) => {
       const adminContext = request.systemAdmin;
       if (!adminContext) {
-        throw new Error("System admin context is not available");
+        return reply.status(401).send({
+          error: "SYSTEM_ADMIN_CONTEXT_MISSING",
+          message:
+            "System admin authentication middleware failed to populate context. Ensure the plugin is registered and a valid system admin token is supplied.",
+        });
       }
 
       const body = SystemImpersonationRequestSchema.parse(request.body);

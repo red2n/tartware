@@ -57,7 +57,7 @@ const buildGuard =
 
     request.systemAdmin = context;
 
-    const minimumRole = options.minRole ?? "SYSTEM_SUPPORT";
+    const minimumRole = options.minRole ?? "SYSTEM_ADMIN";
     if (!hasRequiredRole(context.role, minimumRole)) {
       return forbidden(reply);
     }

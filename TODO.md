@@ -86,13 +86,21 @@ Industry-standard privileged access management for multi-tenant PMS platform fol
 
 #### 1.5 **Schema & Database Changes**
 ```sql
+-- Enum type for platform administrators (keeps application, schema, and docs in sync)
+CREATE TYPE system_admin_role AS ENUM (
+  'SYSTEM_ADMIN',
+  'SYSTEM_OPERATOR',
+  'SYSTEM_AUDITOR',
+  'SYSTEM_SUPPORT'
+);
+
 -- System administrators table (separate from multi-tenant users)
 CREATE TABLE system_administrators (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   username VARCHAR(150) UNIQUE NOT NULL,
   email VARCHAR(254) UNIQUE NOT NULL,
   password_hash VARCHAR(255) NOT NULL,
-  role VARCHAR(50) NOT NULL CHECK (role IN ('SYSTEM_ADMIN', 'SYSTEM_OPERATOR', 'SYSTEM_AUDITOR', 'SYSTEM_SUPPORT')),
+  role system_admin_role NOT NULL,
   mfa_secret VARCHAR(255), -- TOTP secret
   mfa_enabled BOOLEAN DEFAULT FALSE,
   ip_whitelist INET[],

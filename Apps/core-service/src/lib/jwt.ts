@@ -3,6 +3,8 @@ import jwt from "jsonwebtoken";
 
 import { config } from "../config.js";
 
+import { appLogger } from "./logger.js";
+
 interface BaseAccessTokenPayload {
   sub: string;
   username: string;
@@ -88,7 +90,7 @@ export const verifyAccessToken = (token: string): AccessTokenPayload | null => {
     }
     return decoded as AccessTokenPayload;
   } catch (error) {
-    console.error("Failed to verify access token:", error);
+    appLogger.error({ err: error }, "Failed to verify access token");
     return null;
   }
 };
@@ -142,7 +144,7 @@ export const verifySystemAdminToken = (token: string): SystemAdminTokenPayload |
     }
     return decoded as SystemAdminTokenPayload;
   } catch (error) {
-    console.error("Failed to verify system admin token:", error);
+    appLogger.error({ err: error }, "Failed to verify system admin token");
     return null;
   }
 };

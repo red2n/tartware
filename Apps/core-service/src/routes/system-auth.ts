@@ -7,7 +7,7 @@ import { sanitizeForJson } from "../utils/sanitize.js";
 
 const SystemAdminLoginRequestSchema = z.object({
   username: z.string().min(3),
-  password: z.string().min(16),
+  password: z.string(),
   mfa_code: z
     .string()
     .regex(/^\d{6}$/, "MFA code must be a 6-digit value")

@@ -28,7 +28,9 @@ export const registerSystemTenantRoutes = (app: FastifyInstance): void => {
     async (request) => {
       const adminContext = request.systemAdmin;
       if (!adminContext) {
-        throw new Error("System admin context is not available");
+        throw request.server.httpErrors.unauthorized(
+          "System admin authentication middleware failed to populate context. Ensure the system admin plugin is registered and the request carries a valid token.",
+        );
       }
 
       const { limit } = SystemTenantListQuerySchema.parse(request.query ?? {});

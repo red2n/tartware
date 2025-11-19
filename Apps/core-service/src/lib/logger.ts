@@ -13,6 +13,11 @@ export const fastifyLoggerOptions = createPinoOptions({
   environment: process.env.NODE_ENV,
 });
 
+export const appLogger = pino({
+  ...fastifyLoggerOptions,
+  name: config.service.name,
+});
+
 export const attachLoggerTransportFallback = (logger: FastifyBaseLogger): void => {
   const streamSym = pino.symbols.streamSym as symbol;
   const loggerSymbols = logger as unknown as Record<symbol, unknown>;

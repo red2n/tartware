@@ -22,6 +22,11 @@ const SystemAdministratorsBaseSchema = z.object({
 	email,
 	password_hash: z.string().min(20),
 	role: SystemAdminRoleEnum,
+	/**
+	 * TOTP secret used for MFA (Base32-encoded per RFC 3548).
+	 * Must be generated using a cryptographically secure PRNG
+	 * and stored encrypted at rest.
+	 */
 	mfa_secret: z.string().min(16).optional(),
 	mfa_enabled: z.boolean().default(false),
 	ip_whitelist: z.array(z.string()).default([]),

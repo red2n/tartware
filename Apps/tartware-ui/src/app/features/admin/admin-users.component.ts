@@ -26,7 +26,7 @@ export class AdminUsersComponent {
   private readonly adminApi = inject(AdminApiService);
 
   readonly loginForm = this.fb.nonNullable.group({
-    username: ['sysadmin', [Validators.required]],
+    username: ['', [Validators.required]],
     password: ['', [Validators.required, Validators.minLength(16)]],
     mfa_code: ['', [Validators.pattern(MFA_PATTERN)]],
   });

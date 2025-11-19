@@ -14,6 +14,7 @@ import { authenticator } from "otplib";
 import { config } from "../config.js";
 import { query } from "../lib/db.js";
 import { signImpersonationToken, signSystemAdminToken } from "../lib/jwt.js";
+import { appLogger } from "../lib/logger.js";
 import { listUserTenantAssociations } from "../services/user-tenant-association-service.js";
 import {
   SYSTEM_ADMIN_AUDIT_INSERT_SQL,
@@ -63,11 +64,11 @@ const parseIp = (value: string) => {
 };
 
 const isIpAllowed = (allowList: string[], requestIp?: string): boolean => {
-  if (allowList.length === 0) {
+  if (allowList.includes("*")) {
     return true;
   }
 
-  if (!requestIp) {
+  if (allowList.length === 0 || !requestIp) {
     return false;
   }
 
@@ -110,12 +111,12 @@ const parseRangeBoundary = (value: string | undefined) => {
 
 const isWithinAllowedHours = (range: string | undefined, now = new Date()): boolean => {
   if (!range || range.trim().length === 0 || range === "empty") {
-    return true;
+    return false;
   }
 
   const trimmed = range.trim();
   if (trimmed.length < 5) {
-    return true;
+    return false;
   }
 
   const startInclusive = trimmed.startsWith("[");
@@ -156,11 +157,11 @@ const hasTrustedDevice = (
     ? metadata.trusted_devices.filter((value): value is string => typeof value === "string")
     : [];
 
-  if (trusted.length === 0) {
+  if (trusted.includes("*")) {
     return true;
   }
 
-  if (!fingerprint) {
+  if (trusted.length === 0 || !fingerprint) {
     return false;
   }
 
@@ -179,7 +180,7 @@ const recordFailedAttempt = async (adminId: string) => {
     ]);
     return rows[0] ?? null;
   } catch (error) {
-    console.error("Failed to record system admin failed attempt:", error);
+    appLogger.error({ err: error, adminId }, "Failed to record system admin failed attempt");
     return null;
   }
 };
@@ -188,7 +189,7 @@ const resetLoginState = async (adminId: string) => {
   try {
     await query(SYSTEM_ADMIN_RESET_LOGIN_SQL, [adminId]);
   } catch (error) {
-    console.error("Failed to reset system admin login state:", error);
+    appLogger.error({ err: error, adminId }, "Failed to reset system admin login state");
   }
 };
 
@@ -254,7 +255,10 @@ export const logSystemAdminEvent = async (event: SystemAdminAuditEvent) => {
       checksum,
     ]);
   } catch (error) {
-    console.error("Failed to persist system admin audit event:", error);
+    appLogger.error(
+      { err: error, adminId: event.adminId, action: event.action },
+      "Failed to persist system admin audit event",
+    );
   }
 };
 
@@ -266,7 +270,8 @@ export type SystemAdminAuthFailureReason =
   | "OUTSIDE_ALLOWED_HOURS"
   | "DEVICE_NOT_TRUSTED"
   | "MFA_REQUIRED"
-  | "MFA_INVALID";
+  | "MFA_INVALID"
+  | "MFA_MISCONFIGURED";
 
 export type SystemAdminAuthResult =
   | {
@@ -323,17 +328,23 @@ export const authenticateSystemAdministrator = async (
   }
 
   if (!isIpAllowed(admin.ip_whitelist ?? [], input.ipAddress)) {
-    await recordFailedAttempt(admin.id);
+    appLogger.warn(
+      { adminId: admin.id, sourceIp: input.ipAddress },
+      "System admin login denied due to IP restriction",
+    );
     return { ok: false, reason: "IP_NOT_ALLOWED" };
   }
 
   if (!isWithinAllowedHours(admin.allowed_hours)) {
-    await recordFailedAttempt(admin.id);
+    appLogger.warn({ adminId: admin.id }, "System admin login denied outside allowed hours");
     return { ok: false, reason: "OUTSIDE_ALLOWED_HOURS" };
   }
 
   if (!hasTrustedDevice(admin.metadata ?? undefined, input.deviceFingerprint)) {
-    await recordFailedAttempt(admin.id);
+    appLogger.warn(
+      { adminId: admin.id, deviceFingerprint: input.deviceFingerprint },
+      "System admin login denied due to untrusted device",
+    );
     return { ok: false, reason: "DEVICE_NOT_TRUSTED" };
   }
 
@@ -345,10 +356,14 @@ export const authenticateSystemAdministrator = async (
   }
 
   if (admin.mfa_enabled) {
+    if (!admin.mfa_secret) {
+      appLogger.error({ adminId: admin.id }, "System admin MFA misconfigured (missing secret)");
+      return { ok: false, reason: "MFA_MISCONFIGURED" };
+    }
     if (!input.mfaCode) {
       return { ok: false, reason: "MFA_REQUIRED" };
     }
-    if (!admin.mfa_secret || !authenticator.check(input.mfaCode, admin.mfa_secret)) {
+    if (!authenticator.check(input.mfaCode, admin.mfa_secret)) {
       await recordFailedAttempt(admin.id);
       return { ok: false, reason: "MFA_INVALID" };
     }
