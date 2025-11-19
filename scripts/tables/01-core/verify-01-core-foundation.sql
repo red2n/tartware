@@ -1,7 +1,7 @@
 -- =====================================================
 -- verify-01-core-foundation.sql
 -- Verification Script for Core Foundation Tables
--- Category: 01-core-foundation (11 tables)
+-- Category: 01-core-foundation (13 tables)
 -- Date: 2025-10-19
 -- =====================================================
 
@@ -11,14 +11,14 @@
 \echo ''
 \echo '=============================================='
 \echo '  CATEGORY: CORE FOUNDATION VERIFICATION'
-\echo '  Tables: 11 | Description: Multi-tenancy, users, properties, guest management, settings catalogue'
+\echo '  Tables: 13 | Description: Multi-tenancy, users, properties, guest management, settings catalogue'
 \echo '=============================================='
 \echo ''
 
 -- =====================================================
 -- 1. CHECK IF ALL TABLES EXIST
 -- =====================================================
-\echo '1. Checking if all 11 tables exist...'
+\echo '1. Checking if all 13 tables exist...'
 
 DO $$
 DECLARE
@@ -33,7 +33,9 @@ DECLARE
         'tenant_settings',
         'property_settings',
         'room_settings',
-        'user_settings'
+        'user_settings',
+        'system_administrators',
+        'system_admin_audit_log'
     ];
     v_table TEXT;
     v_missing_tables TEXT[] := '{}'::TEXT[];
@@ -59,7 +61,7 @@ BEGIN
         RAISE WARNING 'Missing tables: %', array_to_string(v_missing_tables, ', ');
         RAISE EXCEPTION 'Core Foundation verification FAILED - missing tables!';
     ELSE
-        RAISE NOTICE '✓✓✓ All 11 Core Foundation tables exist!';
+        RAISE NOTICE '✓✓✓ All 13 Core Foundation tables exist!';
     END IF;
 END $$;
 
@@ -103,7 +105,9 @@ WHERE
         'tenant_settings',
         'property_settings',
         'room_settings',
-        'user_settings'
+        'user_settings',
+        'system_administrators',
+        'system_admin_audit_log'
     )
     AND t.table_schema = 'public'
 GROUP BY
@@ -137,16 +141,18 @@ BEGIN
         'tenant_settings',
         'property_settings',
         'room_settings',
-        'user_settings'
+        'user_settings',
+        'system_administrators',
+        'system_admin_audit_log'
     )
         AND t.table_schema = 'public';
 
     RAISE NOTICE '';
     RAISE NOTICE 'Category: Core Foundation';
-    RAISE NOTICE 'Tables Found: % / 11', v_table_count;
+    RAISE NOTICE 'Tables Found: % / 13', v_table_count;
     RAISE NOTICE '';
 
-    IF v_table_count = 11 THEN
+    IF v_table_count = 13 THEN
         RAISE NOTICE '✓✓✓ CORE FOUNDATION VERIFICATION PASSED ✓✓✓';
     ELSE
         RAISE WARNING '⚠⚠⚠ CORE FOUNDATION VERIFICATION FAILED ⚠⚠⚠';

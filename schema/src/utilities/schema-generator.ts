@@ -3,7 +3,7 @@
  * Schema Generator Utility
  * Auto-generates Zod schemas from PostgreSQL information_schema
  *
- * Usage: tsx src/utilities/schema-generator.ts [category]
+ * Usage: tsx src/utilities/schema-generator.ts [category] [table1,table2]
  */
 
 import type { Dirent } from "node:fs";
@@ -318,6 +318,7 @@ async function main() {
 
 	const preferredDefault = "02-inventory";
 	const categoryArg = process.argv[2];
+	const tableFilterArg = process.argv[3];
 	const fallbackCategory =
 		availableCategories.includes(preferredDefault)
 			? preferredDefault
@@ -335,6 +336,33 @@ async function main() {
 		console.error(formatError(error));
 		console.error(`Available categories: ${availableCategories.join(", ")}`);
 		throw error;
+	}
+
+	if (tableFilterArg) {
+		const requestedTables = tableFilterArg
+			.split(",")
+			.map((name) => name.trim().toLowerCase())
+			.filter(Boolean);
+
+		if (requestedTables.length === 0) {
+			throw new Error("Table filter argument provided but no valid names were found.");
+		}
+
+		const requestedSet = new Set(requestedTables);
+		const lowerCaseTables = new Set(tables.map((table) => table.toLowerCase()));
+		const missingTables = requestedTables.filter(
+			(tableName) => !lowerCaseTables.has(tableName),
+		);
+
+		if (missingTables.length > 0) {
+			throw new Error(
+				`Table(s) not found in category ${category}: ${missingTables.join(
+					", ",
+				)}. Available tables: ${tables.join(", ")}`,
+			);
+		}
+
+		tables = tables.filter((table) => requestedSet.has(table.toLowerCase()));
 	}
 
 	if (tables.length === 0) {

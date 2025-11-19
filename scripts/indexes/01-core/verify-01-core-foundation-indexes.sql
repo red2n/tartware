@@ -1,7 +1,7 @@
 -- =====================================================
 -- verify-01-core-foundation-indexes.sql
 -- Index Verification Script for Core Foundation
--- Category: 01-core-foundation (11 tables)
+-- Category: 01-core-foundation (13 tables)
 -- Date: 2025-11-12
 -- =====================================================
 
@@ -10,7 +10,7 @@
 \echo ''
 \echo '=============================================='
 \echo '  CORE FOUNDATION - INDEX VERIFICATION'
-\echo '  Tables: 11'
+\echo '  Tables: 13'
 \echo '=============================================='
 \echo ''
 
@@ -31,7 +31,9 @@ WITH core_tables AS (
         'tenant_settings',
         'property_settings',
         'room_settings',
-        'user_settings'
+        'user_settings',
+        'system_administrators',
+        'system_admin_audit_log'
     ]) AS table_name
 )
 SELECT
@@ -66,7 +68,9 @@ WITH core_tables AS (
         'tenant_settings',
         'property_settings',
         'room_settings',
-        'user_settings'
+        'user_settings',
+        'system_administrators',
+        'system_admin_audit_log'
     ]) AS table_name
 ),
 fk_columns AS (
@@ -137,7 +141,9 @@ WITH core_tables AS (
         'tenant_settings',
         'property_settings',
         'room_settings',
-        'user_settings'
+        'user_settings',
+        'system_administrators',
+        'system_admin_audit_log'
     ]) AS table_name
 )
 SELECT
@@ -177,7 +183,9 @@ DECLARE
         'tenant_settings',
         'property_settings',
         'room_settings',
-        'user_settings'
+        'user_settings',
+        'system_administrators',
+        'system_admin_audit_log'
     ];
     v_expected_tables INTEGER := array_length(v_tables, 1);
     v_total_indexes INTEGER;

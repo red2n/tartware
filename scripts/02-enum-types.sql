@@ -42,6 +42,14 @@ CREATE TYPE tenant_role AS ENUM (
     'VIEWER'        -- Read-only access
 );
 
+-- System Administrator Roles (Platform RBAC)
+CREATE TYPE system_admin_role AS ENUM (
+    'SYSTEM_ADMIN',      -- Full platform control
+    'SYSTEM_OPERATOR',   -- Operations & monitoring
+    'SYSTEM_AUDITOR',    -- Audit/log access
+    'SYSTEM_SUPPORT'     -- Support focused, limited write
+);
+
 -- =====================================================
 -- PROPERTY & ROOM ENUMS
 -- =====================================================

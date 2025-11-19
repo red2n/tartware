@@ -54,6 +54,22 @@ export const TenantRoleEnum = z.enum([
 export type TenantRole = z.infer<typeof TenantRoleEnum>;
 
 // =====================================================
+// PLATFORM ADMIN ENUMS
+// =====================================================
+
+/**
+ * System Administrator Roles - Platform-wide RBAC
+ * @database system_admin_role
+ */
+export const SystemAdminRoleEnum = z.enum([
+	"SYSTEM_ADMIN",
+	"SYSTEM_OPERATOR",
+	"SYSTEM_AUDITOR",
+	"SYSTEM_SUPPORT",
+]);
+export type SystemAdminRole = z.infer<typeof SystemAdminRoleEnum>;
+
+// =====================================================
 // PROPERTY & ROOM ENUMS
 // =====================================================
 

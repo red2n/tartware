@@ -7,6 +7,7 @@ import { config } from "./config.js";
 import { attachLoggerTransportFallback, fastifyLoggerOptions } from "./lib/logger.js";
 import authContextPlugin from "./plugins/auth-context.js";
 import errorHandlerPlugin from "./plugins/error-handler.js";
+import systemAdminAuthPlugin from "./plugins/system-admin-auth.js";
 import { registerAuthRoutes } from "./routes/auth.js";
 import { registerBillingRoutes } from "./routes/billing.js";
 import { registerDashboardRoutes } from "./routes/dashboard.js";
@@ -18,6 +19,10 @@ import { registerPropertyRoutes } from "./routes/properties.js";
 import { registerReportRoutes } from "./routes/reports.js";
 import { registerReservationRoutes } from "./routes/reservations.js";
 import { registerRoomRoutes } from "./routes/rooms.js";
+import { registerSystemAuthRoutes } from "./routes/system-auth.js";
+import { registerSystemImpersonationRoutes } from "./routes/system-impersonation.js";
+import { registerSystemTenantRoutes } from "./routes/system-tenants.js";
+import { registerSystemUserRoutes } from "./routes/system-users.js";
 import { registerTenantRoutes } from "./routes/tenants.js";
 import { registerUserTenantAssociationRoutes } from "./routes/user-tenant-associations.js";
 import { registerUserRoutes } from "./routes/users.js";
@@ -60,6 +65,7 @@ export const buildServer = (): FastifyInstance => {
   app.register(fastifyCors, { origin: true });
   app.register(errorHandlerPlugin);
   app.register(authContextPlugin);
+  app.register(systemAdminAuthPlugin);
 
   if (config.log.requestLogging) {
     app.addHook("onRequest", async (request) => {
@@ -103,6 +109,10 @@ export const buildServer = (): FastifyInstance => {
     registerBillingRoutes(app);
     registerReportRoutes(app);
     registerModuleRoutes(app);
+    registerSystemAuthRoutes(app);
+    registerSystemTenantRoutes(app);
+    registerSystemUserRoutes(app);
+    registerSystemImpersonationRoutes(app);
   });
 
   app.addHook("onReady", async () => {
