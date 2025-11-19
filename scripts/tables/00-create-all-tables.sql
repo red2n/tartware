@@ -19,6 +19,8 @@
 \ir 01-core/04_properties.sql
 \ir 01-core/05_guests.sql
 \ir 01-core/06_settings.sql
+\ir 01-core/07_system_administrators.sql
+\ir 01-core/08_system_admin_audit_log.sql
 
 -- ============================================================================
 -- CATEGORY 2: INVENTORY (Rooms, rates, availability, revenue management)

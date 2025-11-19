@@ -1,7 +1,7 @@
 -- =====================================================
 -- verify-01-core-foundation-constraints.sql
 -- Constraint Verification Script for Core Foundation
--- Category: 01-core-foundation (11 tables)
+-- Category: 01-core-foundation (13 tables)
 -- Date: 2025-10-19
 -- =====================================================
 
@@ -10,7 +10,7 @@
 \echo ''
 \echo '=============================================='
 \echo '  CORE FOUNDATION - CONSTRAINT VERIFICATION'
-\echo '  Tables: 11'
+\echo '  Tables: 13'
 \echo '=============================================='
 \echo ''
 
@@ -35,7 +35,9 @@ WHERE tc.constraint_type = 'FOREIGN KEY'
         'tenant_settings',
         'property_settings',
         'room_settings',
-        'user_settings'
+        'user_settings',
+        'system_administrators',
+        'system_admin_audit_log'
     )
     AND tc.table_schema = 'public'
 GROUP BY tc.table_name
@@ -72,7 +74,9 @@ WHERE tc.constraint_type = 'FOREIGN KEY'
         'tenant_settings',
         'property_settings',
         'room_settings',
-        'user_settings'
+        'user_settings',
+        'system_administrators',
+        'system_admin_audit_log'
     )
     AND tc.table_schema = 'public'
 ORDER BY tc.table_name, tc.constraint_name;
@@ -105,7 +109,9 @@ WHERE tc.constraint_type = 'FOREIGN KEY'
         'tenant_settings',
         'property_settings',
         'room_settings',
-        'user_settings'
+        'user_settings',
+        'system_administrators',
+        'system_admin_audit_log'
     )
     AND tc.table_schema = 'public'
 ORDER BY tc.table_name, tc.constraint_name;
@@ -133,7 +139,8 @@ WHERE tc.constraint_type = 'FOREIGN KEY'
         'user_tenant_associations',
         'properties',
         'guests',
-        'tenant_settings'
+        'tenant_settings',
+        'system_admin_audit_log'
     )
     AND tc.table_schema = 'public'
 ORDER BY tc.table_name;
@@ -169,7 +176,9 @@ BEGIN
             'tenant_settings',
             'property_settings',
             'room_settings',
-            'user_settings'
+            'user_settings',
+            'system_administrators',
+            'system_admin_audit_log'
         )
         AND tc.table_schema = 'public';
 
@@ -192,7 +201,9 @@ BEGIN
             'tenant_settings',
             'property_settings',
             'room_settings',
-            'user_settings'
+            'user_settings',
+            'system_administrators',
+            'system_admin_audit_log'
         )
         AND tc.table_schema = 'public';
 
@@ -215,7 +226,9 @@ BEGIN
             'tenant_settings',
             'property_settings',
             'room_settings',
-            'user_settings'
+            'user_settings',
+            'system_administrators',
+            'system_admin_audit_log'
         )
         AND tc.table_schema = 'public';
 
@@ -232,7 +245,8 @@ BEGIN
             'user_tenant_associations',
             'properties',
             'guests',
-            'tenant_settings'
+            'tenant_settings',
+            'system_admin_audit_log'
         )
         AND tc.table_schema = 'public';
 
