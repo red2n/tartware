@@ -4,6 +4,7 @@
   "scripts": {
     "ng": "ng",
     "start": "ng serve",
+    "postinstall": "rm -rf node_modules/rxjs",
     "prebuild": "npm run lint && npm run biome && npm run knip",
     "build": "ng build",
     "prebuild:prod": "npm run lint && npm run biome",
