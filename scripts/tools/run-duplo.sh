@@ -39,7 +39,7 @@ find "${TARGET_DIR}" -type f \( -name "*.html" -o -name "*.ts" -o -name "*.tsx" 
   -not -path '*/node_modules/*' -not -path '*/dist/*' -not -path '*/build/*' > "${FILE_LIST}"
 
 if [ ! -s "${FILE_LIST}" ]; then
-  echo "ℹ️  No Angular template files found under ${TARGET_DIR}"
+  echo "ℹ️  No TypeScript/HTML files found under ${TARGET_DIR}"
   exit 0
 fi
 
@@ -70,7 +70,7 @@ if [ -s "${REPORT_FILE}" ] && [ ${STATUS} -ne 0 ]; then
   if [ -n "${FILE_MATCHES}" ]; then
     # Build JSON summary
     DUPLICATES_COUNT=$(echo "${FILE_MATCHES}" | wc -l)
-    DUPS_JSON=$(echo "${FILE_MATCHES}" | sort | uniq -c | awk '{ printf "\"%s\": %s,", $2, $1 }' | sed 's/,$//')
+    DUPS_JSON=$(echo "${FILE_MATCHES}" | sort | uniq -c | awk '{ count=$1; $1=""; sub(/^ /, ""); printf "\"%s\": %s,", $0, count }' | sed 's/,$//')
     cat > "${SUMMARY_FILE}" <<EOF
 {
   "timestamp": "${TIMESTAMP}",
