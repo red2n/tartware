@@ -22,6 +22,7 @@
     "knip": "lerna run knip --stream",
     "clean": "lerna run clean --stream --no-bail",
     "clean:all": "node ./scripts/clean-all.mjs",
+    "duplo:templates": "bash ./scripts/tools/run-duplo.sh",
     "dev:core": "DB_NAME=tartware DB_PASSWORD=postgres REDIS_PASSWORD=redis_password OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318/v1 OTEL_EXPORTER_OTLP_LOGS_ENDPOINT=http://localhost:4318/v1/logs OTEL_EXPORTER_OTLP_TRACES_ENDPOINT=http://localhost:4318/v1/traces npm run dev --workspace=Apps/core-service",
     "dev:gateway": "CORE_SERVICE_URL=http://localhost:3000 OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318/v1 OTEL_EXPORTER_OTLP_LOGS_ENDPOINT=http://localhost:4318/v1/logs OTEL_EXPORTER_OTLP_TRACES_ENDPOINT=http://localhost:4318/v1/traces npm run dev --workspace=Apps/api-gateway",
     "dev:reservations": "DB_NAME=tartware DB_PASSWORD=postgres KAFKA_BROKERS=localhost:29092 OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318/v1 OTEL_EXPORTER_OTLP_LOGS_ENDPOINT=http://localhost:4318/v1/logs OTEL_EXPORTER_OTLP_TRACES_ENDPOINT=http://localhost:4318/v1/traces npm run dev --workspace=Apps/reservations-command-service",
