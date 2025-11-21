@@ -25,6 +25,7 @@ const systemAdminState = {
   ipWhitelist: ["127.0.0.1/32", "::1/128"],
   trustedDevices: ["trusted-device"],
   mfaEnabled: true,
+  passwordRotatedAt: new Date(),
 };
 
 export const resetSystemAdminState = (): void => {
@@ -34,6 +35,7 @@ export const resetSystemAdminState = (): void => {
   systemAdminState.ipWhitelist = ["127.0.0.1/32", "::1/128"];
   systemAdminState.trustedDevices = ["trusted-device"];
   systemAdminState.mfaEnabled = true;
+  systemAdminState.passwordRotatedAt = new Date();
 };
 
 export const configureSystemAdminMock = (options: {
@@ -41,6 +43,7 @@ export const configureSystemAdminMock = (options: {
   ipWhitelist?: string[];
   trustedDevices?: string[];
   mfaEnabled?: boolean;
+  passwordRotatedAt?: Date | string;
 } = {}): void => {
   if (options.allowedHours !== undefined) {
     systemAdminState.allowedHours = options.allowedHours;
@@ -53,6 +56,15 @@ export const configureSystemAdminMock = (options: {
   }
   if (options.mfaEnabled !== undefined) {
     systemAdminState.mfaEnabled = options.mfaEnabled;
+  }
+  if (options.passwordRotatedAt) {
+    const rotatedAt =
+      options.passwordRotatedAt instanceof Date
+        ? options.passwordRotatedAt
+        : new Date(options.passwordRotatedAt);
+    if (!Number.isNaN(rotatedAt.getTime())) {
+      systemAdminState.passwordRotatedAt = rotatedAt;
+    }
   }
 };
 
@@ -68,6 +80,88 @@ export const query = vi.fn(async <T extends pg.QueryResultRow = pg.QueryResultRo
   params?: unknown[],
 ): Promise<pg.QueryResult<T>> => {
   const sql = text.trim().toLowerCase();
+
+  if (sql.includes("with filtered_users as")) {
+    return {
+      rows: [
+        {
+          id: TEST_USER_ID,
+          username: TEST_USER_USERNAME,
+          email: "test@example.com",
+          first_name: "Test",
+          last_name: "User",
+          phone: "+1234567890",
+          avatar_url: null,
+          is_active: true,
+          is_verified: true,
+          email_verified_at: new Date(),
+          last_login_at: new Date(),
+          preferences: {},
+          metadata: {},
+          created_at: new Date(),
+          updated_at: new Date(),
+          created_by: null,
+          updated_by: null,
+          version: BigInt(1),
+          tenants: [
+            {
+              tenant_id: TEST_TENANT_ID,
+              tenant_name: "Test Tenant",
+              role: "ADMIN",
+              is_active: true,
+            },
+          ],
+        },
+      ] as unknown as T[],
+      rowCount: 1,
+      command: "SELECT",
+      oid: 0,
+      fields: [],
+    };
+  }
+
+  if (
+    sql.includes("from public.user_tenant_associations uta") &&
+    sql.includes("order by uta.created_at desc") &&
+    sql.includes("limit $5")
+  ) {
+    const tenantId = params?.[0];
+    const userId = params?.[1];
+    if (tenantId === TEST_TENANT_ID && userId === TEST_USER_ID) {
+      return {
+        rows: [
+          {
+            id: "ba0e8400-e29b-41d4-a716-446655440010",
+            user_id: TEST_USER_ID,
+            tenant_id: TEST_TENANT_ID,
+            role: "ADMIN",
+            is_active: true,
+            permissions: {},
+            valid_from: new Date(),
+            valid_until: null,
+            metadata: {},
+            created_at: new Date(),
+            updated_at: new Date(),
+            created_by: null,
+            updated_by: null,
+            deleted_at: null,
+            version: BigInt(1),
+            user_username: "testuser",
+            user_email: "user@example.com",
+            user_first_name: "Test",
+            user_last_name: "User",
+            tenant_name: "Test Tenant",
+            tenant_slug: "test-tenant",
+            tenant_status: "ACTIVE",
+          },
+        ] as unknown as T[],
+        rowCount: 1,
+        command: "SELECT",
+        oid: 0,
+        fields: [],
+      };
+    }
+  }
 
   const buildSystemAdminRow = () => ({
     id: TEST_SYSTEM_ADMIN_ID,
@@ -87,7 +181,10 @@ export const query = vi.fn(async <T extends pg.QueryResultRow = pg.QueryResultRo
     updated_at: new Date(),
     created_by: null,
     updated_by: null,
-    metadata: { trusted_devices: systemAdminState.trustedDevices },
+    metadata: {
+      trusted_devices: systemAdminState.trustedDevices,
+      password_rotated_at: systemAdminState.passwordRotatedAt.toISOString(),
+    },
   });
 
   if (sql.includes("from public.system_administrators")) {
@@ -404,51 +501,11 @@ export const query = vi.fn(async <T extends pg.QueryResultRow = pg.QueryResultRo
     };
   }
 
-  if (
-    sql.includes("from public.user_tenant_associations uta") &&
-    sql.includes("coalesce(uta.is_deleted, false) = false") &&
-    sql.includes("limit $5")
-  ) {
-    const tenantId = params?.[0];
-    const userId = params?.[1];
-    if (tenantId === TEST_TENANT_ID && userId === TEST_USER_ID) {
-      return {
-        rows: [
-          {
-            id: "ba0e8400-e29b-41d4-a716-446655440010",
-            user_id: TEST_USER_ID,
-            tenant_id: TEST_TENANT_ID,
-            role: "ADMIN",
-            is_active: true,
-            permissions: {},
-            valid_from: new Date(),
-            valid_until: null,
-            metadata: {},
-            created_at: new Date(),
-            updated_at: new Date(),
-            created_by: null,
-            updated_by: null,
-            deleted_at: null,
-            version: BigInt(1),
-            user_username: "testuser",
-            user_email: "user@example.com",
-            user_first_name: "Test",
-            user_last_name: "User",
-            tenant_name: "Test Tenant",
-            tenant_slug: "test-tenant",
-            tenant_status: "ACTIVE",
-          },
-        ] as unknown as T[],
-        rowCount: 1,
-        command: "SELECT",
-        oid: 0,
-        fields: [],
-      };
-    }
-  }
-
   // Mock user-tenant associations list query
-  if (sql.includes("user_tenant_associations") && sql.includes("select")) {
+  if (
+    sql.includes("from user_tenant_associations uta") &&
+    sql.includes("where uta.user_id = $1")
+  ) {
     const userId = params?.[0];
     if (userId === TEST_USER_ID) {
       return {

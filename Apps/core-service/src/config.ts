@@ -84,6 +84,7 @@ export const config = {
     security: {
       maxFailedAttempts: configValues.SYSTEM_ADMIN_MAX_FAILED_ATTEMPTS,
       lockoutMinutes: configValues.SYSTEM_ADMIN_LOCKOUT_MINUTES,
+      passwordRotationDays: configValues.SYSTEM_ADMIN_PASSWORD_ROTATION_DAYS,
     },
   },
 };

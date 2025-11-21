@@ -1,206 +1,53 @@
-## Implementation Plan
+## Delivery Status
 
-### 1. **Super Admin / Global Administrator Implementation (Priority: HIGH)**
-Industry-standard privileged access management for multi-tenant PMS platform following OWASP Authorization best practices.
+### Completed Work
 
-#### 1.1 **Authentication & Identity**
-- **Super Admin Account Bootstrap**
-  - Create initial super admin during database initialization with secure credential generation
-  - Store in separate `system_administrators` table isolated from tenant-scoped `users` table
-  - Require strong password policy (min 16 chars, complexity, rotation every 60 days)
-  - Enforce mandatory MFA (TOTP + backup codes) before any privileged action
-  - Implement device binding to prevent credential sharing across machines
+#### Super Admin / Global Administrator baseline
+- [x] Dedicated Postgres artifacts for `system_administrators` plus tamper-evident `system_admin_audit_log` with RLS to keep privileged accounts isolated from tenant users (scripts/tables/01-core/07_system_administrators.sql, scripts/tables/01-core/08_system_admin_audit_log.sql).
+- [x] Centralized config + JWT plumbing and a Fastify guard to require scoped `SYSTEM_ADMIN` tokens with role hierarchy across `/v1/system/**` routes (Apps/config/src/index.ts:63-86, Apps/core-service/src/config.ts:11-88, Apps/core-service/src/plugins/system-admin-auth.ts:1-86).
+- [x] `/v1/system/auth/login` and the backing service enforce MFA, IP allowlists, allowed-hours windows, trusted devices, lockout policy, and audit logging before minting platform tokens (Apps/core-service/src/routes/system-auth.ts:8-90, Apps/core-service/src/services/system-admin-service.ts:28-403).
+- [x] System-level tenants/users list endpoints plus impersonation issuance watermarked into the audit log, keeping platform operations visible (Apps/core-service/src/routes/system-tenants.ts:1-58, Apps/core-service/src/routes/system-users.ts:1-52, Apps/core-service/src/routes/system-impersonation.ts:1-76, Apps/core-service/src/services/system-admin-service.ts:405-487).
+- [x] JWT helpers mint scoped system-admin and impersonation tokens that honor the new config defaults (Apps/core-service/src/lib/jwt.ts:1-183).
+- [x] Vitest coverage exercises MFA/IP/device gating, admin-only routes, and impersonation happy-paths using realistic mocks (Apps/core-service/tests/system-admin.test.ts:1-184, Apps/core-service/tests/mocks/db.ts:4-244).
+- [x] Secure bootstrap CLI (`npm run bootstrap:system-admin`) generates initial admin credentials/MFA secrets and enforces 60-day password rotation via config + auth guards (Apps/core-service/scripts/bootstrap-system-admin.ts, Apps/core-service/src/config.ts:71-88, Apps/core-service/src/services/system-admin-service.ts:171-411, Apps/core-service/tests/system-admin.test.ts:18-204).
 
-- **Separate Authentication Flow**
-  - Super admin login via dedicated endpoint `/v1/system/auth/login` (not tenant-scoped)
-  - Issue short-lived JWT tokens (15 min) with `scope: SYSTEM_ADMIN` claim
-  - Require re-authentication for destructive operations (tenant deletion, billing changes)
-  - Implement break-glass emergency access with offline OTP mechanism
+### Remaining Backlog
 
-#### 1.2 **Authorization Model (ABAC + ReBAC)**
-- **Role Hierarchy**
-  ```
-  SYSTEM_ADMIN (Platform Owner)
-    ├─ SYSTEM_OPERATOR (Read-only platform monitoring)
-    ├─ SYSTEM_AUDITOR (Compliance reviews, log access)
-    └─ SYSTEM_SUPPORT (Tenant assistance, limited mutations)
-  ```
+#### Super Admin Hardening
+- [ ] Password policy enforcement: validate 16+ character complexity and rotation timestamps when creating/updating admins instead of relying solely on documentation.
+- [ ] Mandatory MFA + break-glass: ensure every admin has MFA enabled, add trusted-device enrollment flows, and implement the offline OTP/break-glass procedure tracked in metadata.
+- [ ] Geo/context constraints: extend `withSystemAdminScope` to honor geo-fencing (country/IP ASN) and per-tenant allowlists so SYSTEM_SUPPORT can only reach approved properties.
+- [ ] Step-up re-auth: require a recent password+MFA challenge before destructive actions (tenant deletion, billing mutations, migrations).
+- [ ] Rate limiting & fail closed: wire Fastify rate limiting (100 req/min, burst 200) with Redis backing so `/v1/system/**` denies requests whenever the limiter backend is unavailable.
+- [ ] Cross-tenant API surface: implement the remaining platform operators (`/v1/system/tenants/:id/modules`, `/subscription`, `/users`, `/analytics`, `/migrations`) so super admins stop relying on tenant-scoped workarounds.
+- [ ] Impersonation guardrails: auto-expire tokens after inactivity, block financial routes while `scope=TENANT_IMPERSONATION`, and push notifications to tenant owners when a session begins.
+- [ ] Monitoring & alerts: export Prometheus metrics such as `system_admin_actions_total{action,admin_id,result}` and raise alerts for repeated login failures, after-hours tenant access, and bulk mutations.
+- [ ] Access governance: automate quarterly/annual reviews, add just-in-time elevation workflows, and detect privilege creep when roles drift beyond the baseline.
+- [ ] Security & load tests: add coverage for break-glass mode, rate limiting, IDOR probes on `/v1/system/**`, MFA replay attempts, and impersonation misuse.
+- [ ] Migration follow-ups: ship the bootstrap script (plan step 2) and remove tenant-level stopgaps once every system route enforces `SYSTEM_ADMIN` scope (plan step 5).
 
-- **Attribute-Based Constraints**
-  - Time-based access: Limit super admin operations to business hours (configurable)
-  - IP whitelist: Restrict to corporate network ranges or VPN endpoints
-  - Geo-fencing: Block access from unauthorized countries
-  - Context-aware: Require justification ticket ID for production tenant access
-  - Resource-level: Define which tenants/properties a support admin can access
+#### Reservation Event Processor (JVM microservice)
+1. **Contract alignment** – Freeze the reservation event schemas currently emitted by `Apps/reservations-command-service/src/schemas` into Avro/Proto files, publish them to Schema Registry, and document partition/sharding rules.
+2. **Service scaffold** – Create a dedicated JVM module (Spring Boot or Quarkus) with Kafka Streams consumers, partition-aware concurrency, and async Postgres access for idempotent upserts mirroring `processReservationEvent` logic.
+3. **Resiliency & observability** – Implement DLQ/retry topics, exponential backoff, per-tenant idempotency keys, health/metrics endpoints, and distributed tracing so the service can sustain 20k ops/sec.
+4. **Proxy integration** – Keep the existing Node reservation/edge services (`Apps/api-gateway`, `Apps/reservations-command-service`) as the public API but forward hot read/write paths to the JVM tier over gRPC/REST, including circuit breakers and backpressure.
+5. **Rollout** – Run the Java consumer in shadow mode, compare throughput/latency to the Node worker, load-test at 20k ops/sec, then flip the gateway to make the JVM tier authoritative while leaving the Node service as a proxy.
 
-- **Least Privilege Enforcement**
-  - Super admins do NOT automatically have tenant-level permissions
-  - Require explicit "impersonation mode" to act as tenant user
-  - Log impersonation sessions with start/end timestamps and actions performed
-  - Auto-terminate impersonation after 30 minutes of inactivity
+#### Real-Time Metrics Pipeline (pending)
+- [ ] Stream reservation and payment events into a dedicated Kafka topic or CDC feed.
+- [ ] Build a Flink/Spark job that materializes per-tenant/property occupancy + revenue summaries into Redis or Pinot for <50 ms reads.
+- [ ] Refactor `Apps/core-service` dashboards to read from the materialized view and add cache invalidation hooks.
+- [ ] Schedule reconciliation jobs for month/year analytics to prevent drift.
 
-#### 1.3 **Secure Operations & Boundaries**
-- **Cross-Tenant Operations**
-  - `/v1/system/tenants` - List, create, suspend, archive tenants (pagination required)
-  - `/v1/system/tenants/:id/modules` - Enable/disable feature modules per tenant
-  - `/v1/system/tenants/:id/subscription` - Update billing plans, payment status
-  - `/v1/system/tenants/:id/users` - View tenant users, reset passwords (with audit)
-  - `/v1/system/analytics/platform` - Aggregate metrics across all tenants
-  - `/v1/system/migrations` - Trigger schema migrations, data backfill jobs
+#### Telemetry Fan-In Layer (pending)
+- [ ] Deploy an OTLP collector/Vector cluster that receives spans/logs from every Node process.
+- [ ] Configure batching, sampling, and exporters to OpenSearch/Jaeger so apps stop blocking on HTTP exporters.
+- [ ] Update `@tartware/telemetry` defaults to point at the collector with graceful fallbacks and alerting.
 
-- **Impersonation Controls**
-  - Endpoint: `POST /v1/system/impersonate` with `{tenantId, userId, reason, ticketId}`
-  - Return short-lived tenant-scoped JWT (5 min) with `impersonated_by: <admin_id>` claim
-  - Watermark all audit logs with `IMPERSONATED_SESSION` flag
-  - Prohibit financial transactions during impersonation (read-only for sensitive data)
-  - Send real-time notification to tenant owner when impersonation starts
+#### Bloom Filter & Cache Maintenance Job (pending)
+- [ ] Implement a JVM worker that pages through `users`, refreshes Redis Bloom filters, and exposes Prometheus freshness metrics.
+- [ ] Run the job on deploy + nightly and remove the synchronous warm-up from `Apps/core-service/src/index.ts` once validated.
 
-- **Deny-by-Default for Static Resources**
-  - System admin routes protected by dedicated middleware guard
-  - All requests without `scope: SYSTEM_ADMIN` JWT claim rejected with 403
-  - Rate limiting: 100 req/min per admin account (burst: 200)
-  - Fail closed on authorization errors (do not fall back to tenant permissions)
-
-#### 1.4 **Audit & Compliance**
-- **Comprehensive Logging (OWASP A09:2021)**
-  - Log every super admin action to dedicated `system_admin_audit_log` table
-  - Capture: admin_id, action, resource_type, resource_id, request_payload, IP, timestamp
-  - Separate log retention: 7 years (vs 1 year for tenant logs) per SOX compliance
-  - Tamper-proof: Use append-only table with row-level checksums
-  - Export to immutable S3 bucket with lifecycle policies
-
-- **Alert & Monitoring**
-  - Real-time alerts for:
-    - Failed super admin login attempts (>3 in 5 min)
-    - Tenant data access outside business hours
-    - Bulk operations (>10 tenants modified in 1 request)
-    - Authorization bypass attempts (401/403 responses)
-  - Daily digest report of all super admin activities sent to security team
-  - Prometheus metrics: `system_admin_actions_total{action, admin_id, result}`
-
-- **Periodic Access Review**
-  - Quarterly audit of super admin accounts (remove stale accounts after 90 days inactivity)
-  - Annual recertification: Each admin must justify continued access
-  - Implement "just-in-time" access: Grant temporary elevated privileges via approval workflow
-  - Track privilege creep: Alert when admin accumulates permissions beyond baseline
-
-#### 1.5 **Schema & Database Changes**
-```sql
--- Enum type for platform administrators (keeps application, schema, and docs in sync)
-CREATE TYPE system_admin_role AS ENUM (
-  'SYSTEM_ADMIN',
-  'SYSTEM_OPERATOR',
-  'SYSTEM_AUDITOR',
-  'SYSTEM_SUPPORT'
-);
-
--- System administrators table (separate from multi-tenant users)
-CREATE TABLE system_administrators (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  username VARCHAR(150) UNIQUE NOT NULL,
-  email VARCHAR(254) UNIQUE NOT NULL,
-  password_hash VARCHAR(255) NOT NULL,
-  role system_admin_role NOT NULL,
-  mfa_secret VARCHAR(255), -- TOTP secret
-  mfa_enabled BOOLEAN DEFAULT FALSE,
-  ip_whitelist INET[],
-  allowed_hours TSTZRANGE, -- Time-based access control
-  last_login_at TIMESTAMPTZ,
-  failed_login_attempts INT DEFAULT 0,
-  account_locked_until TIMESTAMPTZ,
-  is_active BOOLEAN DEFAULT TRUE,
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  created_by UUID REFERENCES system_administrators(id),
-  metadata JSONB
-);
-
--- System admin audit log (append-only)
-CREATE TABLE system_admin_audit_log (
-  id BIGSERIAL PRIMARY KEY,
-  admin_id UUID NOT NULL REFERENCES system_administrators(id),
-  action VARCHAR(100) NOT NULL, -- e.g., 'TENANT_CREATED', 'USER_PASSWORD_RESET'
-  resource_type VARCHAR(50), -- 'TENANT', 'USER', 'SUBSCRIPTION'
-  resource_id UUID,
-  tenant_id UUID REFERENCES tenants(id), -- If action was tenant-specific
-  request_method VARCHAR(10),
-  request_path VARCHAR(500),
-  request_payload JSONB,
-  response_status INT,
-  ip_address INET,
-  user_agent TEXT,
-  session_id VARCHAR(255),
-  impersonated_user_id UUID, -- If admin was impersonating a tenant user
-  ticket_id VARCHAR(100), -- Support ticket reference
-  timestamp TIMESTAMPTZ DEFAULT NOW() NOT NULL,
-  checksum VARCHAR(64) -- SHA256 hash for tamper detection
-);
-
--- Indexes for audit queries
-CREATE INDEX idx_sys_audit_admin ON system_admin_audit_log(admin_id, timestamp DESC);
-CREATE INDEX idx_sys_audit_tenant ON system_admin_audit_log(tenant_id, timestamp DESC);
-CREATE INDEX idx_sys_audit_action ON system_admin_audit_log(action, timestamp DESC);
-CREATE INDEX idx_sys_audit_impersonation ON system_admin_audit_log(impersonated_user_id) WHERE impersonated_user_id IS NOT NULL;
-
--- Row-level security: System admins cannot query each other's audit logs
-ALTER TABLE system_admin_audit_log ENABLE ROW LEVEL SECURITY;
-CREATE POLICY system_admin_audit_self_only ON system_admin_audit_log
-  FOR SELECT USING (admin_id = current_setting('app.current_admin_id')::UUID);
-```
-
-#### 1.6 **Testing Requirements**
-- **Unit Tests**
-  - Verify super admin cannot access tenant data without explicit impersonation
-  - Confirm time-based/IP-based restrictions block unauthorized access
-  - Validate MFA enforcement on all privileged routes
-  - Test authorization failures exit safely (no information leakage)
-
-- **Integration Tests**
-  - Simulate impersonation workflow and verify audit trail completeness
-  - Test rate limiting under load (should block after threshold)
-  - Verify JWT token expiration and refresh behavior
-  - Confirm break-glass access works without network connectivity
-
-- **Security Tests (Penetration Testing)**
-  - Attempt horizontal privilege escalation (admin A accessing admin B logs)
-  - Try to bypass MFA using replay attacks or session fixation
-  - Verify encrypted storage of MFA secrets (never in plaintext)
-  - Test for IDOR vulnerabilities in `/v1/system/tenants/:id` endpoints
-
-#### 1.7 **Migration from Current State**
-- Existing admin role in `user_tenant_associations` remains for tenant-level admins
-- Super admin is orthogonal: Controls platform, not individual tenant resources
-- Transition plan:
-  1. Deploy schema changes (system_administrators table)
-  2. Create bootstrap super admin via secure migration script
-  3. Implement auth middleware with backward compatibility
-  4. Gradually migrate system-level routes to require `SYSTEM_ADMIN` scope
-  5. Deprecate tenant-level workarounds for cross-tenant operations
-
----
-
-### 2. **Reservation Event Processor (JVM microservice)**
-   - Define shared Avro/protobuf schemas for reservation events emitted by Node services.
-   - Build a Spring Boot (or Quarkus) consumer using Kafka Streams to ingest, validate, and persist reservation mutations with partition-aware concurrency.
-   - Implement dead-letter topics, retry/backoff policies, and exposure of ingestion metrics/health endpoints.
-   - Benchmark throughput vs. the existing Node consumer and switch the API gateway write path once parity is reached.
-
-### 3. **Real-Time Metrics Pipeline**
-   - Stream reservation and payment events into a dedicated Kafka topic or CDC feed.
-   - Create a Flink/Spark job that maintains per-tenant/property occupancy + revenue summaries inside Redis or Pinot for <50 ms read latency.
-   - Refactor `Apps/core-service` dashboard/report routes to read from the materialized store and add cache invalidation hooks.
-   - Schedule periodic reconciliation jobs to refresh long-range analytics (month/year) for accuracy.
-
-### 4. **Telemetry Fan-In Layer**
-   - Deploy an OpenTelemetry Collector (or Vector) cluster that receives OTLP spans/logs from every Node process.
-   - Configure batching, sampling, and export pipelines to OpenSearch/Jaeger so applications no longer block on HTTP exporters.
-   - Update `@tartware/telemetry` defaults to point at the collector service with graceful fallbacks and alerting.
-
-### 5. **Bloom Filter & Cache Maintenance Job**
-   - Implement a JVM worker that pages through the `users` table, streams usernames into Redis Bloom filters, and refreshes TTLed caches incrementally.
-   - Run the job on deployment and nightly; publish Prometheus metrics so `core-service` can detect stale filters.
-   - Remove the synchronous warm-up step from `Apps/core-service/src/index.ts` after verifying the external job's reliability.
-
-### 6. **Billing & Settlement Service**
-   - Design a Java microservice that owns payment ingestion, gateway callbacks, FX conversions, and ledger reconciliation.
-   - Emit normalized payment events for analytics while writing authoritative ledger entries to Postgres.
-   - Expose audit/export endpoints (PCI/SOX ready) and have the Node billing API consume reconciled data for consistency.
+#### Billing & Settlement Service (pending)
+- [ ] Design a Java microservice for gateway callbacks, FX conversions, ledger reconciliation, and normalized payment events.
+- [ ] Expose PCI/SOX-ready audit/export endpoints and have the Node billing API read reconciled data for consistency.

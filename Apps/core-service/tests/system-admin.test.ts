@@ -116,6 +116,26 @@ describe("System Administrator Capabilities", () => {
     expect(payload.error).toBe("DEVICE_NOT_TRUSTED");
   });
 
+  it("requires password rotation when the policy window is exceeded", async () => {
+    const ninetyDaysAgo = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000);
+    configureSystemAdminMock({ passwordRotatedAt: ninetyDaysAgo });
+
+    const response = await app.inject({
+      method: "POST",
+      url: "/v1/system/auth/login",
+      payload: {
+        username: TEST_SYSTEM_ADMIN_USERNAME,
+        password: TEST_SYSTEM_ADMIN_PASSWORD,
+        mfa_code: "123456",
+        device_fingerprint: "trusted-device",
+      },
+    });
+
+    expect(response.statusCode).toBe(403);
+    const payload = response.json();
+    expect(payload.error).toBe("PASSWORD_ROTATION_REQUIRED");
+  });
+
   it("allows authorized system admins to list users across tenants", async () => {
     const { access_token } = await performSystemLogin(app);
 

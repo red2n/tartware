@@ -22,7 +22,8 @@
     "knip": "knip --tsConfig tsconfig.json",
     "knip:fix": "knip --tsConfig tsconfig.json --fix",
     "clean": "rm -rf dist coverage vitest-report *.tsbuildinfo",
-    "reset:passwords": "tsx scripts/reset-default-password.ts"
+    "reset:passwords": "tsx scripts/reset-default-password.ts",
+    "bootstrap:system-admin": "tsx scripts/bootstrap-system-admin.ts"
   },
   "dependencies": {
     "@fastify/cors": "^8.3.0",

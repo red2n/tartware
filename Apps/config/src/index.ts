@@ -67,6 +67,7 @@ export const coreAuthSchema = z.object({
   SYSTEM_IMPERSONATION_JWT_EXPIRES_IN_SECONDS: z.coerce.number().int().default(300),
   SYSTEM_ADMIN_MAX_FAILED_ATTEMPTS: z.coerce.number().int().min(1).default(5),
   SYSTEM_ADMIN_LOCKOUT_MINUTES: z.coerce.number().int().min(1).default(15),
+  SYSTEM_ADMIN_PASSWORD_ROTATION_DAYS: z.coerce.number().int().min(1).default(60),
 });
 
 export type BaseConfig = z.infer<typeof baseConfigSchema>;

@@ -111,7 +111,7 @@ const parseRangeBoundary = (value: string | undefined) => {
 
 const isWithinAllowedHours = (range: string | undefined, now = new Date()): boolean => {
   if (!range || range.trim().length === 0 || range === "empty") {
-    return false;
+    return true;
   }
 
   const trimmed = range.trim();
@@ -166,6 +166,45 @@ const hasTrustedDevice = (
   }
 
   return trusted.includes(fingerprint);
+};
+
+const getPasswordRotatedAt = (metadata: Record<string, unknown> | undefined): Date | null => {
+  const value = metadata?.password_rotated_at;
+  if (!value) {
+    return null;
+  }
+
+  if (value instanceof Date) {
+    return value;
+  }
+
+  if (typeof value === "string") {
+    const parsed = new Date(value);
+    if (!Number.isNaN(parsed.getTime())) {
+      return parsed;
+    }
+  }
+
+  return null;
+};
+
+const isPasswordRotationValid = (
+  metadata: Record<string, unknown> | undefined,
+  rotationDays: number,
+  now = Date.now(),
+): boolean => {
+  if (!Number.isFinite(rotationDays) || rotationDays <= 0) {
+    return true;
+  }
+
+  const rotatedAt = getPasswordRotatedAt(metadata);
+  if (!rotatedAt) {
+    return false;
+  }
+
+  const ageMs = now - rotatedAt.getTime();
+  const windowMs = rotationDays * 24 * 60 * 60 * 1000;
+  return ageMs <= windowMs;
 };
 
 const recordFailedAttempt = async (adminId: string) => {
@@ -271,7 +310,8 @@ export type SystemAdminAuthFailureReason =
   | "DEVICE_NOT_TRUSTED"
   | "MFA_REQUIRED"
   | "MFA_INVALID"
-  | "MFA_MISCONFIGURED";
+  | "MFA_MISCONFIGURED"
+  | "PASSWORD_ROTATION_REQUIRED";
 
 export type SystemAdminAuthResult =
   | {
@@ -367,6 +407,15 @@ export const authenticateSystemAdministrator = async (
       await recordFailedAttempt(admin.id);
       return { ok: false, reason: "MFA_INVALID" };
     }
+  }
+
+  const rotationValid = isPasswordRotationValid(
+    admin.metadata ?? undefined,
+    config.systemAdmin.security.passwordRotationDays,
+  );
+  if (!rotationValid) {
+    appLogger.warn({ adminId: admin.id }, "System admin password rotation window expired");
+    return { ok: false, reason: "PASSWORD_ROTATION_REQUIRED" };
   }
 
   await resetLoginState(admin.id);

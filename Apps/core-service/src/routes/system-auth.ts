@@ -42,6 +42,8 @@ const ERROR_MESSAGES: Record<string, string> = {
   DEVICE_NOT_TRUSTED: "Device not approved for this administrator.",
   MFA_REQUIRED: "Multi-factor authentication code required.",
   MFA_INVALID: "Invalid multi-factor authentication code.",
+  PASSWORD_ROTATION_REQUIRED:
+    "Password rotation required. Contact the security team to rotate credentials.",
 };
 
 const ERROR_STATUS: Record<string, number> = {
@@ -53,6 +55,7 @@ const ERROR_STATUS: Record<string, number> = {
   DEVICE_NOT_TRUSTED: 403,
   MFA_REQUIRED: 401,
   MFA_INVALID: 401,
+  PASSWORD_ROTATION_REQUIRED: 403,
 };
 
 export const registerSystemAuthRoutes = (app: FastifyInstance): void => {
