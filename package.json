@@ -34,7 +34,7 @@
     "postinstall": "echo 'Monorepo dependencies installed successfully'"
   },
   "devDependencies": {
-    "concurrently": "^9.0.1",
+    "concurrently": "^9.2.1",
     "eslint": "8.57.0",
     "lerna": "^9.0.1"
   },
@@ -51,6 +51,7 @@
     "npm": ">=10.0.0"
   },
   "overrides": {
-    "eslint": "8.57.0"
+    "eslint": "8.57.0",
+    "rxjs": "7.8.2"
   }
 }
