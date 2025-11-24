@@ -17,6 +17,7 @@ const run = async (): Promise<void> => {
       `
         UPDATE public.users
            SET password_hash = $1,
+               metadata = jsonb_set(COALESCE(metadata, '{}'::jsonb), '{must_change_password}', 'true', true),
                updated_at = NOW(),
                version = COALESCE(version, 0) + 1
          WHERE COALESCE(is_active, true) = true

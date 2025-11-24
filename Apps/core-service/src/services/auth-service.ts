@@ -15,6 +15,7 @@ const AuthUserSchema = UserSchema.pick({
   last_name: true,
   password_hash: true,
   is_active: true,
+  metadata: true,
 });
 
 type AuthUser = typeof AuthUserSchema._type;
@@ -38,7 +39,7 @@ type AuthResultError = {
 export type AuthResult = AuthResultSuccess | AuthResultError;
 
 const AUTH_USER_SQL = `
-  SELECT id, username, email, first_name, last_name, password_hash, is_active
+  SELECT id, username, email, first_name, last_name, password_hash, is_active, metadata
   FROM public.users
   WHERE username = $1
     AND deleted_at IS NULL
@@ -75,12 +76,23 @@ export const authenticateUser = async (username: string, password: string): Prom
   }
 
   const memberships = await userCacheService.getUserMemberships(user.id);
-  const mustChangePassword = password === config.auth.defaultPassword;
+  const metadata = (user.metadata ?? {}) as Record<string, unknown>;
+  let mustChangePassword = Boolean(metadata.must_change_password);
+
+  if (!mustChangePassword && config.auth.defaultPassword) {
+    try {
+      const matchesDefault = await bcrypt.compare(config.auth.defaultPassword, user.password_hash);
+      mustChangePassword = matchesDefault;
+    } catch {
+      mustChangePassword = false;
+    }
+  }
 
   const accessToken = signAccessToken({
     sub: user.id,
     username: user.username,
     type: "access",
+    must_change_password: mustChangePassword,
   });
 
   return {
@@ -105,7 +117,7 @@ export const authenticateUser = async (username: string, password: string): Prom
 const findUserById = async (userId: string): Promise<AuthUser | null> => {
   try {
     const result = await pool.query(
-      `SELECT id, username, email, first_name, last_name, password_hash, is_active
+      `SELECT id, username, email, first_name, last_name, password_hash, is_active, metadata
        FROM public.users
        WHERE id = $1
          AND deleted_at IS NULL
@@ -153,6 +165,7 @@ export const changeUserPassword = async (
     await pool.query(
       `UPDATE public.users
          SET password_hash = $1,
+             metadata = jsonb_set(COALESCE(metadata, '{}'::jsonb), '{must_change_password}', 'false', true),
              updated_at = NOW(),
              version = COALESCE(version, 0) + 1
        WHERE id = $2`,
@@ -172,6 +185,7 @@ export const changeUserPassword = async (
     sub: userId,
     username: user.username,
     type: "access",
+    must_change_password: false,
   });
 
   return {

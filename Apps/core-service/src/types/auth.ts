@@ -19,6 +19,7 @@ export interface TenantMembership {
 export interface AuthContext {
   userId: string | null;
   isAuthenticated: boolean;
+  mustChangePassword: boolean;
   memberships: TenantMembership[];
   /** Quick lookup table for tenant-based authorisation */
   membershipMap: Map<string, TenantMembership>;

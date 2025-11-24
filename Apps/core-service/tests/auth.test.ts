@@ -84,6 +84,7 @@ describe("Authentication Routes", () => {
       expect(payload.user_id).toBeNull();
       expect(payload.memberships).toEqual([]);
       expect(payload.authorized_tenants).toEqual([]);
+      expect(payload.must_change_password).toBe(false);
       expect(payload.header_hint.header).toBe("Authorization");
     });
 
@@ -101,6 +102,7 @@ describe("Authentication Routes", () => {
       expect(payload.is_authenticated).toBe(true);
       expect(payload.user_id).toBe(TEST_USER_ID);
       expect(Array.isArray(payload.memberships)).toBe(true);
+      expect(payload.must_change_password).toBe(false);
     });
 
     it("includes tenant memberships when present", async () => {
@@ -132,6 +134,7 @@ describe("Authentication Routes", () => {
       expect(payload.is_authenticated).toBe(true);
       expect(payload.user_id).toBe(MANAGER_USER_ID);
       expect(Array.isArray(payload.memberships)).toBe(true);
+      expect(payload.must_change_password).toBe(false);
     });
 
     it("returns empty authorized_tenants before guards run", async () => {
@@ -143,6 +146,7 @@ describe("Authentication Routes", () => {
 
       const payload = JSON.parse(response.payload);
       expect(payload.authorized_tenants).toEqual([]);
+      expect(payload.must_change_password).toBe(false);
     });
 
     it("includes header hint for bearer authentication", async () => {
@@ -207,6 +211,18 @@ describe("Authentication Routes", () => {
       expect(payload.message).toBe(
         "You don't have permission to access this resource. Admin role is required.",
       );
+    });
+
+    it("blocks access when password rotation is pending", async () => {
+      const response = await app.inject({
+        method: "GET",
+        url: "/v1/tenants?limit=5",
+        headers: buildAuthHeader(TEST_USER_ID, TEST_USER_USERNAME, { mustChangePassword: true }),
+      });
+
+      expect(response.statusCode).toBe(403);
+      const payload = JSON.parse(response.payload);
+      expect(payload.error).toBe("PASSWORD_ROTATION_REQUIRED");
     });
   });
 

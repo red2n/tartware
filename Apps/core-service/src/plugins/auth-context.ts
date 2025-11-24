@@ -24,7 +24,11 @@ const ROLE_PRIORITY: RolePriorityMap = {
   VIEWER: 100,
 };
 
-const createAuthContext = (userId: string | null, memberships: TenantMembership[]): AuthContext => {
+const createAuthContext = (
+  userId: string | null,
+  memberships: TenantMembership[],
+  mustChangePassword = false,
+): AuthContext => {
   const membershipMap = new Map(memberships.map((item) => [item.tenantId, item]));
 
   const hasRole = (tenantId: string, minimumRole: TenantMembership["role"]): boolean => {
@@ -43,6 +47,7 @@ const createAuthContext = (userId: string | null, memberships: TenantMembership[
   return {
     userId,
     isAuthenticated: Boolean(userId),
+    mustChangePassword,
     memberships,
     membershipMap,
     authorizedTenantIds: new Set<string>(),
@@ -148,29 +153,54 @@ const authContextPlugin: FastifyPluginAsync = async (fastify) => {
   fastify.addHook("onRequest", async (request) => {
     // Skip auth for health endpoint
     if (request.url === "/health") {
-      request.auth = createAuthContext(null, []);
+      request.auth = createAuthContext(null, [], false);
       return;
     }
 
     const token = extractBearerToken(request.headers.authorization);
     if (!token) {
-      request.auth = createAuthContext(null, []);
+      request.auth = createAuthContext(null, [], false);
       return;
     }
 
     const payload = verifyAccessToken(token);
     if (!payload || !payload.sub) {
-      request.auth = createAuthContext(null, []);
+      request.auth = createAuthContext(null, [], false);
       return;
     }
 
+    const mustChangePasswordClaim =
+      typeof (payload as { must_change_password?: unknown }).must_change_password === "boolean"
+        ? Boolean((payload as { must_change_password?: boolean }).must_change_password)
+        : false;
+
     try {
       const memberships = await getActiveUserTenantMemberships(payload.sub);
-      request.auth = createAuthContext(payload.sub, memberships);
+      request.auth = createAuthContext(payload.sub, memberships, mustChangePasswordClaim);
     } catch (error) {
       request.log.error(error, "Failed to load tenant memberships for authenticated user");
-      request.auth = createAuthContext(payload.sub, []);
+      request.auth = createAuthContext(payload.sub, [], mustChangePasswordClaim);
     }
+  });
+
+  fastify.addHook("preHandler", async (request, reply) => {
+    if (!request.auth?.isAuthenticated || !request.auth.mustChangePassword) {
+      return;
+    }
+
+    const allowBypass = Boolean(
+      (request.routeOptions?.config as { allowPasswordRotationBypass?: boolean } | undefined)
+        ?.allowPasswordRotationBypass,
+    );
+
+    if (allowBypass) {
+      return;
+    }
+
+    reply.status(403).send({
+      error: "PASSWORD_ROTATION_REQUIRED",
+      message: "You must change your password before accessing this resource.",
+    });
   });
 };
 

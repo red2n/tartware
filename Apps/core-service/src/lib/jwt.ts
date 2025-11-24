@@ -11,6 +11,8 @@ interface BaseAccessTokenPayload {
   type: "access";
 }
 
+type AccessTokenInput = BaseAccessTokenPayload & Record<string, unknown>;
+
 export interface AccessTokenPayload extends BaseAccessTokenPayload {
   iss?: string;
   aud?: string | string[];
@@ -60,7 +62,7 @@ export const extractBearerToken = (headerValue: string | undefined): string | nu
   return token.trim().length > 0 ? token.trim() : null;
 };
 
-export const signAccessToken = (payload: BaseAccessTokenPayload): string => {
+export const signAccessToken = (payload: AccessTokenInput): string => {
   const secret = getJwtSecret();
   if (!secret) {
     throw new Error("JWT secret is not configured");

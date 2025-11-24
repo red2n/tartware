@@ -20,6 +20,7 @@ const AuthContextResponseSchema = z.object({
   user_id: z.string().uuid().nullable(),
   memberships: z.array(AuthMembershipSchema),
   authorized_tenants: z.array(z.string().uuid()),
+  must_change_password: z.boolean(),
   header_hint: z.object({
     header: z.literal("Authorization"),
     description: z.string(),
@@ -102,74 +103,91 @@ export const registerAuthRoutes = (app: FastifyInstance): void => {
     return LoginResponseSchema.parse(responsePayload);
   });
 
-  app.get("/v1/auth/context", async (request) => {
-    const memberships = request.auth.memberships.map((membership) => ({
-      tenant_id: membership.tenantId,
-      tenant_name: membership.tenantName,
-      role: membership.role,
-      is_active: membership.isActive,
-      permissions: membership.permissions ?? {},
-    }));
-
-    const responsePayload = sanitizeForJson({
-      is_authenticated: request.auth.isAuthenticated,
-      user_id: request.auth.userId,
-      memberships,
-      authorized_tenants: Array.from(request.auth.authorizedTenantIds),
-      header_hint: {
-        header: "Authorization",
-        description:
-          "Include the Authorization header with a Bearer token obtained from POST /v1/auth/login",
+  app.get(
+    "/v1/auth/context",
+    {
+      config: {
+        allowPasswordRotationBypass: true,
       },
-    });
+    },
+    async (request) => {
+      const memberships = request.auth.memberships.map((membership) => ({
+        tenant_id: membership.tenantId,
+        tenant_name: membership.tenantName,
+        role: membership.role,
+        is_active: membership.isActive,
+        permissions: membership.permissions ?? {},
+      }));
 
-    return AuthContextResponseSchema.parse(responsePayload);
-  });
+      const responsePayload = sanitizeForJson({
+        is_authenticated: request.auth.isAuthenticated,
+        user_id: request.auth.userId,
+        memberships,
+        authorized_tenants: Array.from(request.auth.authorizedTenantIds),
+        must_change_password: request.auth.mustChangePassword,
+        header_hint: {
+          header: "Authorization",
+          description:
+            "Include the Authorization header with a Bearer token obtained from POST /v1/auth/login",
+        },
+      });
 
-  app.post("/v1/auth/change-password", async (request, reply) => {
-    if (!request.auth.isAuthenticated || !request.auth.userId) {
-      reply.unauthorized("AUTHENTICATION_REQUIRED");
-      return reply;
-    }
+      return AuthContextResponseSchema.parse(responsePayload);
+    },
+  );
 
-    const { current_password, new_password } = ChangePasswordRequestSchema.parse(request.body);
+  app.post(
+    "/v1/auth/change-password",
+    {
+      config: {
+        allowPasswordRotationBypass: true,
+      },
+    },
+    async (request, reply) => {
+      if (!request.auth.isAuthenticated || !request.auth.userId) {
+        reply.unauthorized("AUTHENTICATION_REQUIRED");
+        return reply;
+      }
 
-    const result = await changeUserPassword(request.auth.userId, current_password, new_password);
+      const { current_password, new_password } = ChangePasswordRequestSchema.parse(request.body);
 
-    if (!result.ok) {
-      if (result.reason === "ACCOUNT_INACTIVE") {
-        return reply.status(403).send({
-          error: "Account inactive",
-          message: "This account is not active",
+      const result = await changeUserPassword(request.auth.userId, current_password, new_password);
+
+      if (!result.ok) {
+        if (result.reason === "ACCOUNT_INACTIVE") {
+          return reply.status(403).send({
+            error: "Account inactive",
+            message: "This account is not active",
+          });
+        }
+
+        const message =
+          result.reason === "PASSWORD_REUSE_NOT_ALLOWED"
+            ? "New password cannot be the system default password."
+            : "Invalid credentials";
+
+        return reply.status(400).send({
+          error: "Invalid credentials",
+          message,
         });
       }
 
-      const message =
-        result.reason === "PASSWORD_REUSE_NOT_ALLOWED"
-          ? "New password cannot be the system default password."
-          : "Invalid credentials";
-
-      return reply.status(400).send({
-        error: "Invalid credentials",
-        message,
+      const { user, memberships, accessToken, expiresIn } = result.data;
+      const payload = sanitizeForJson({
+        id: user.id,
+        email: user.email,
+        first_name: user.first_name,
+        last_name: user.last_name,
+        username: user.username,
+        is_active: user.is_active,
+        memberships,
+        access_token: accessToken,
+        token_type: "Bearer",
+        expires_in: expiresIn,
+        must_change_password: false,
       });
-    }
 
-    const { user, memberships, accessToken, expiresIn } = result.data;
-    const payload = sanitizeForJson({
-      id: user.id,
-      email: user.email,
-      first_name: user.first_name,
-      last_name: user.last_name,
-      username: user.username,
-      is_active: user.is_active,
-      memberships,
-      access_token: accessToken,
-      token_type: "Bearer",
-      expires_in: expiresIn,
-      must_change_password: false,
-    });
-
-    return LoginResponseSchema.parse(payload);
-  });
+      return LoginResponseSchema.parse(payload);
+    },
+  );
 };
