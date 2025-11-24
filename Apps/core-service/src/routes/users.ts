@@ -1,4 +1,4 @@
-import { PublicUserSchema } from "@tartware/schemas";
+import { PublicUserSchema, UserTenantMembershipSchema } from "@tartware/schemas";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 
@@ -15,6 +15,7 @@ type UserListQuery = z.infer<typeof UserListQuerySchema>;
 const UserListResponseSchema = z.array(
   PublicUserSchema.extend({
     version: z.string(), // BigInt serialized as string
+    tenants: z.array(UserTenantMembershipSchema).default([]),
   }),
 );
 

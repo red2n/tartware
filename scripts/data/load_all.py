@@ -8,6 +8,7 @@ executes modular loader functions grouped by business domains with console telem
 import random
 from datetime import datetime
 from faker import Faker
+from psycopg2 import sql, InterfaceError
 
 # Import shared utilities
 from db_config import get_db_connection, validate_uuid_v7
@@ -95,6 +96,48 @@ fake = Faker()
 Faker.seed(42)
 random.seed(42)
 
+PRESERVED_TABLES = {"setting_categories", "setting_definitions"}
+
+
+def reconnect(conn):
+    """Close an existing connection (if open) and return a fresh one."""
+    try:
+        if conn and conn.closed == 0:
+            conn.close()
+    except Exception:
+        pass
+    print("   → Reconnecting to database...")
+    new_conn = get_db_connection()
+    print("   → Reconnected successfully!")
+    return new_conn
+
+
+def truncate_public_tables(conn):
+    """Truncate every public schema table except preserved catalogs."""
+    cur = conn.cursor()
+    cur.execute(
+        """
+        SELECT tablename
+        FROM pg_tables
+        WHERE schemaname = 'public'
+        ORDER BY tablename
+        """
+    )
+    tables = [row[0] for row in cur.fetchall() if row[0] not in PRESERVED_TABLES]
+
+    if not tables:
+        cur.close()
+        return
+
+    for table in tables:
+        cur.execute(
+            sql.SQL("TRUNCATE TABLE {} RESTART IDENTITY CASCADE;").format(
+                sql.Identifier(table)
+            )
+        )
+    conn.commit()
+    cur.close()
+
 
 def main():
     """Execute the full synthetic data generation workflow for Tartware PMS."""
@@ -127,34 +170,26 @@ def main():
         print("\n✓ Database is empty - starting fresh install")
 
     print("\n✓ Clearing all data...")
-    # Use CASCADE to handle foreign keys automatically
+    print("   → Preserving settings catalog (system categories & definitions)")
     try:
-        print("   → Preserving settings catalog (system categories & definitions)")
-        cur.execute("""
-            DO $$
-            DECLARE
-                r RECORD;
-            BEGIN
-                FOR r IN (
-                    SELECT tablename
-                    FROM pg_tables
-                    WHERE schemaname = 'public'
-                ) LOOP
-                    IF r.tablename NOT IN ('setting_categories', 'setting_definitions') THEN
-                        EXECUTE 'TRUNCATE TABLE ' || quote_ident(r.tablename) || ' CASCADE';
-                    ELSE
-                        RAISE NOTICE 'Skipping truncate for %', r.tablename;
-                    END IF;
-                END LOOP;
-            END $$;
-        """)
-        conn.commit()
+        truncate_public_tables(conn)
         print("   → All tables cleared")
     except Exception as e:
         print(f"   ⚠️  Error clearing data: {e}")
-        conn.rollback()
+        try:
+            if conn and conn.closed == 0:
+                conn.rollback()
+            else:
+                conn = reconnect(conn)
+        except InterfaceError:
+            conn = reconnect(conn)
+
+        # Retry once after reconnecting/rolling back
+        truncate_public_tables(conn)
+        print("   → All tables cleared after retry")
 
     # Disable triggers for performance
+    cur = conn.cursor()
     cur.execute("SET session_replication_role = replica;")
     conn.commit()
     print("\n✓ Disabled triggers for bulk insert performance")
