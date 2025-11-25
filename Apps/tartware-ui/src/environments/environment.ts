@@ -10,4 +10,8 @@ export const environment = {
   logLevel: 'debug',
   enableDevTools: true,
   enableDebugLogs: true,
+  prefillCredentials: {
+    username: 'bootstrap_admin',
+    password: 't2S=<dG3iq%)!Nb_ynHfKv9p!',
+  },
 };

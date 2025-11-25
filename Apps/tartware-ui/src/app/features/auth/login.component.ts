@@ -10,6 +10,7 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { ActivatedRoute, Router } from '@angular/router';
 import { Subject, takeUntil } from 'rxjs';
 import { AuthService } from '../../core/services/auth.service';
+import { environment } from '../../../environments/environment';
 
 /**
  * Login Component
@@ -60,12 +61,14 @@ export class LoginComponent implements OnDestroy {
 
   // Return URL for redirect after login
   private returnUrl: string;
+  readonly demoCredentials = environment.prefillCredentials;
 
   constructor() {
+    const defaults = this.demoCredentials ?? { username: '', password: '' };
     // Initialize reactive form with validators
     this.loginForm = this.fb.group({
-      username: ['', [Validators.required, Validators.minLength(3)]],
-      password: ['', [Validators.required, Validators.minLength(8)]],
+      username: [defaults.username, [Validators.required, Validators.minLength(3)]],
+      password: [defaults.password, [Validators.required, Validators.minLength(8)]],
     });
 
     // Get return URL from query params, default to /tenants

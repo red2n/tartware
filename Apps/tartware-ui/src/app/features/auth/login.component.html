@@ -72,6 +72,23 @@
       </button>
     </form>
 
+    @if (demoCredentials) {
+      <div class="demo-credentials" aria-live="polite">
+        <mat-icon>info</mat-icon>
+        <div>
+          <p class="demo-credentials__title">Development credentials</p>
+          <p>
+            <strong>Username:</strong>
+            <code>{{ demoCredentials.username }}</code>
+          </p>
+          <p>
+            <strong>Password:</strong>
+            <code>{{ demoCredentials.password }}</code>
+          </p>
+        </div>
+      </div>
+    }
+
     <!-- Footer -->
     <div class="footer">
       <p>© 2025 Tartware. All rights reserved.</p>

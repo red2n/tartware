@@ -10,4 +10,5 @@ export const environment = {
   logLevel: 'error',
   enableDevTools: false,
   enableDebugLogs: false,
+  prefillCredentials: null,
 };
