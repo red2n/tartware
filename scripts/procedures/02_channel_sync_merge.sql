@@ -25,39 +25,108 @@ CREATE OR REPLACE FUNCTION sync_channel_availability(
 RETURNS TABLE (
     availability_date DATE,
     room_type_id UUID,
+    rate_plan_id UUID,
     action VARCHAR(10),
     available_rooms INTEGER,
     booked_rooms INTEGER
 )
 LANGUAGE plpgsql
 AS $$
+DECLARE
+    v_missing_rows INTEGER;
 BEGIN
+    -- Validate that every payload row resolves to a rate plan
+    WITH channel_availability AS (
+        SELECT
+            (payload->>'room_type_id')::UUID AS room_type_id,
+            rate_lookup.rate_plan_id
+        FROM jsonb_array_elements(p_channel_data) AS payload
+        CROSS JOIN LATERAL (
+            SELECT COALESCE(
+                NULLIF(payload->>'rate_plan_id', '')::UUID,
+                (
+                    SELECT id
+                    FROM rates
+                    WHERE tenant_id = p_tenant_id
+                      AND property_id = p_property_id
+                      AND room_type_id = (payload->>'room_type_id')::UUID
+                      AND rate_code = NULLIF(payload->>'rate_code', '')
+                      AND deleted_at IS NULL
+                    ORDER BY valid_from DESC
+                    LIMIT 1
+                )
+            ) AS rate_plan_id
+        ) AS rate_lookup
+    )
+    SELECT COUNT(*) INTO v_missing_rows
+    FROM channel_availability
+    WHERE rate_plan_id IS NULL;
+
+    IF v_missing_rows > 0 THEN
+        RAISE EXCEPTION
+            'sync_channel_availability: % availability rows missing rate_plan_id (tenant %, property %). Provide rate_plan_id or rate_code in payload.',
+            v_missing_rows,
+            p_tenant_id,
+            p_property_id;
+    END IF;
+
     RETURN QUERY
     WITH channel_availability AS (
         SELECT
+            p_tenant_id AS tenant_id,
             p_property_id AS property_id,
-            (item->>'room_type_id')::UUID AS room_type_id,
-            (item->>'date')::DATE AS availability_date,
-            (item->>'available')::INTEGER AS available_rooms,
-            (item->>'booked')::INTEGER AS booked_rooms,
-            (item->>'rate')::NUMERIC(10,2) AS rate,
-            (item->>'min_stay')::INTEGER AS min_stay,
-            (item->>'max_stay')::INTEGER AS max_stay,
-            (item->>'closed')::BOOLEAN AS is_closed
-        FROM jsonb_array_elements(p_channel_data) AS item
+            (payload->>'room_type_id')::UUID AS room_type_id,
+            rate_lookup.rate_plan_id,
+            (payload->>'date')::DATE AS availability_date,
+            GREATEST(COALESCE(NULLIF(payload->>'available', '')::INTEGER, 0), 0) AS available_rooms,
+            GREATEST(COALESCE(NULLIF(payload->>'booked', '')::INTEGER, 0), 0) AS booked_rooms,
+            GREATEST(COALESCE(NULLIF(payload->>'blocked', '')::INTEGER, 0), 0) AS blocked_rooms,
+            GREATEST(COALESCE(NULLIF(payload->>'housekeeping_hold', '')::INTEGER, 0), 0) AS housekeeping_hold_rooms,
+            GREATEST(COALESCE(NULLIF(payload->>'out_of_order', '')::INTEGER, 0), 0) AS out_of_order_rooms,
+            GREATEST(COALESCE(NULLIF(payload->>'base_capacity', '')::INTEGER, 0), 0) AS base_capacity,
+            GREATEST(COALESCE(NULLIF(payload->>'oversell_limit', '')::INTEGER, 0), 0) AS oversell_limit,
+            (payload->>'rate')::NUMERIC(10,2) AS rate,
+            (payload->>'min_stay')::INTEGER AS min_stay,
+            (payload->>'max_stay')::INTEGER AS max_stay,
+            (payload->>'closed')::BOOLEAN AS is_closed,
+            COALESCE(payload->'channel_allocations', '{}'::JSONB) AS channel_allocations
+        FROM jsonb_array_elements(p_channel_data) AS payload
+        CROSS JOIN LATERAL (
+            SELECT COALESCE(
+                NULLIF(payload->>'rate_plan_id', '')::UUID,
+                (
+                    SELECT id
+                    FROM rates
+                    WHERE tenant_id = p_tenant_id
+                      AND property_id = p_property_id
+                      AND room_type_id = (payload->>'room_type_id')::UUID
+                      AND rate_code = NULLIF(payload->>'rate_code', '')
+                      AND deleted_at IS NULL
+                    ORDER BY valid_from DESC
+                    LIMIT 1
+                )
+            ) AS rate_plan_id
+        ) AS rate_lookup
     )
     MERGE INTO availability.room_availability AS target
     USING channel_availability AS source
     ON (
         target.property_id = source.property_id
         AND target.room_type_id = source.room_type_id
+        AND target.rate_plan_id = source.rate_plan_id
         AND target.availability_date = source.availability_date
-        AND target.tenant_id = p_tenant_id
+        AND target.tenant_id = source.tenant_id
     )
     WHEN MATCHED THEN
         UPDATE SET
+            base_capacity = COALESCE(NULLIF(source.base_capacity, 0), target.base_capacity),
+            oversell_limit = COALESCE(NULLIF(source.oversell_limit, 0), target.oversell_limit),
             available_rooms = source.available_rooms,
             booked_rooms = source.booked_rooms,
+            blocked_rooms = source.blocked_rooms,
+            housekeeping_hold_rooms = source.housekeeping_hold_rooms,
+            out_of_order_rooms = source.out_of_order_rooms,
+            channel_allocations = source.channel_allocations,
             rate_override = COALESCE(source.rate, target.rate_override),
             min_stay_override = COALESCE(source.min_stay, target.min_stay_override),
             max_stay_override = COALESCE(source.max_stay, target.max_stay_override),
@@ -69,9 +138,16 @@ BEGIN
             tenant_id,
             property_id,
             room_type_id,
+            rate_plan_id,
             availability_date,
+            base_capacity,
+            oversell_limit,
             available_rooms,
             booked_rooms,
+            blocked_rooms,
+            housekeeping_hold_rooms,
+            out_of_order_rooms,
+            channel_allocations,
             rate_override,
             min_stay_override,
             max_stay_override,
@@ -80,22 +156,30 @@ BEGIN
             updated_by
         )
         VALUES (
-            p_tenant_id,
+            source.tenant_id,
             source.property_id,
             source.room_type_id,
+            source.rate_plan_id,
             source.availability_date,
+            COALESCE(NULLIF(source.base_capacity, 0), source.available_rooms + source.booked_rooms + source.blocked_rooms + source.housekeeping_hold_rooms + source.out_of_order_rooms),
+            source.oversell_limit,
             source.available_rooms,
             source.booked_rooms,
+            source.blocked_rooms,
+            source.housekeeping_hold_rooms,
+            source.out_of_order_rooms,
+            source.channel_allocations,
             source.rate,
             source.min_stay,
             source.max_stay,
-            source.is_closed,
+            COALESCE(source.is_closed, FALSE),
             p_sync_by,
             p_sync_by
         )
     RETURNING
         target.availability_date,
         target.room_type_id,
+        target.rate_plan_id,
         CASE
             WHEN xmax = 0 THEN 'INSERTED'
             ELSE 'UPDATED'

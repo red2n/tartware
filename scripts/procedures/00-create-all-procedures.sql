@@ -90,6 +90,8 @@ WHERE n.nspname = 'public'
     'sync_rate_plans',
     'apply_seasonal_rate_adjustments',
     'sync_daily_rate_overrides',
+    'seed_room_availability',
+    'refresh_room_availability_window',
     'copy_rate_plan',
     'aggregate_daily_metrics',
     'aggregate_monthly_metrics',
@@ -131,6 +133,8 @@ WHERE n.nspname = 'public'
     'sync_rate_plans',
     'apply_seasonal_rate_adjustments',
     'sync_daily_rate_overrides',
+    'seed_room_availability',
+    'refresh_room_availability_window',
     'copy_rate_plan',
     'aggregate_daily_metrics',
     'aggregate_monthly_metrics',
@@ -153,9 +157,9 @@ WHERE n.nspname = 'public'
 
 \echo ''
 \echo '✓ All stored procedures created successfully!'
-\echo '  - 14 Core business procedures'
+\echo '  - 16 Core business procedures'
 \echo '  - 13 Performance monitoring procedures'
-\echo '  - Total: 27 procedures/functions'
+\echo '  - Total: 29 procedures/functions'
 \echo ''
 \echo 'USAGE EXAMPLES:'
 \echo '---------------'

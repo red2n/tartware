@@ -29,6 +29,8 @@ DECLARE
         'sync_rate_plans',
         'apply_seasonal_rate_adjustments',
         'sync_daily_rate_overrides',
+        'seed_room_availability',
+        'refresh_room_availability_window',
         'copy_rate_plan',
         'aggregate_daily_metrics',
         'aggregate_monthly_metrics',
@@ -54,13 +56,13 @@ BEGIN
     END LOOP;
 
     RAISE NOTICE '';
-    RAISE NOTICE 'Expected procedures: 14';
+    RAISE NOTICE 'Expected procedures: 16';
     RAISE NOTICE 'Found procedures: %', v_found_count;
 
     IF array_length(v_missing_procs, 1) > 0 THEN
         RAISE WARNING 'Missing procedures: %', array_to_string(v_missing_procs, ', ');
     ELSE
-        RAISE NOTICE '✓ All 14 procedures/functions exist!';
+        RAISE NOTICE '✓ All 16 procedures/functions exist!';
     END IF;
 END $$;
 
@@ -101,6 +103,8 @@ WHERE n.nspname = 'public'
         'sync_rate_plans',
         'apply_seasonal_rate_adjustments',
         'sync_daily_rate_overrides',
+        'seed_room_availability',
+        'refresh_room_availability_window',
         'copy_rate_plan',
         'aggregate_daily_metrics',
         'aggregate_monthly_metrics',
@@ -181,6 +185,8 @@ WHERE n.nspname = 'public'
         'sync_rate_plans',
         'apply_seasonal_rate_adjustments',
         'sync_daily_rate_overrides',
+        'seed_room_availability',
+        'refresh_room_availability_window',
         'copy_rate_plan',
         'aggregate_daily_metrics',
         'aggregate_monthly_metrics',
@@ -350,6 +356,7 @@ WHERE n.nspname = 'public'
         'sync_rate_plans',
         'apply_seasonal_rate_adjustments',
         'sync_daily_rate_overrides',
+        'seed_room_availability',
         'copy_rate_plan',
         'aggregate_daily_metrics',
         'aggregate_monthly_metrics',

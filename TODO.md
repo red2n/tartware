@@ -13,6 +13,14 @@
 
 ### Remaining Backlog
 
+#### Availability & Inventory Engine (critical priority)
+1. **Authoritative availability schema** – finalize the `availability.room_availability` structure to follow the industry “rate-plan × room-type × stay-date” grid (columns for base_capacity, channel_allocation, min/max LOS, CTA/CTD flags, optimistic-lock version).
+2. **Nightly seeding job** – ✅ `seed_room_availability` stored procedure + `npm run seed:availability` CLI now create the 365-day grid from property/room catalogs; next step is wiring this into a scheduled job with alerting to guarantee it runs nightly in every environment.
+3. **Event-driven adjustments** – reservations service now recalculates availability via `refresh_room_availability_window` after create/update/cancel events; next step is to move this logic into a dedicated Kafka worker (so other event sources like `RoomOutOfOrder` can reuse it) and add replayable ledgers for audit/idempotency.
+4. **Channel allocation sync** – implement HTNG/OTA push adapters that watch for thresholds (e.g., +/-2 rooms) and emit `AvailStatusMessages` to channel partners, with throttling and retry/DLQ handling.
+5. **Per-room locks & audits** – track physical room locks in a side table, reconcile them against the aggregate availability view nightly, and emit alerts when remaining_rooms < 0 or allocations exceed base inventory.
+6. **Monitoring & tests** – create unit/integration tests for the seeding proc and event processor, add Prometheus metrics (`availability_updates_total`, `availability_skips_total`), and define runbooks for replaying events to recover state.
+
 #### Super Admin Hardening
 - [ ] Password policy enforcement: validate 16+ character complexity and rotation timestamps when creating/updating admins instead of relying solely on documentation.
 - [ ] Mandatory MFA + break-glass: ensure every admin has MFA enabled, add trusted-device enrollment flows, and implement the offline OTP/break-glass procedure tracked in metadata.

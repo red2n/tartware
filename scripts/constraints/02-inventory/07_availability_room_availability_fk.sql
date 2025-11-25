@@ -32,6 +32,14 @@ REFERENCES room_types(id)
 ON DELETE RESTRICT
 ON UPDATE CASCADE;
 
+-- Foreign key to rates table
+ALTER TABLE availability.room_availability
+ADD CONSTRAINT fk_room_availability_rate_plan_id
+FOREIGN KEY (rate_plan_id)
+REFERENCES rates(id)
+ON DELETE RESTRICT
+ON UPDATE CASCADE;
+
 COMMENT ON CONSTRAINT fk_room_availability_tenant_id ON availability.room_availability IS
 'Ensures tenant exists. RESTRICT prevents deleting tenants with availability records.';
 
@@ -40,5 +48,8 @@ COMMENT ON CONSTRAINT fk_room_availability_property_id ON availability.room_avai
 
 COMMENT ON CONSTRAINT fk_room_availability_room_type_id ON availability.room_availability IS
 'Ensures room type exists. RESTRICT prevents deleting room types with availability records.';
+
+COMMENT ON CONSTRAINT fk_room_availability_rate_plan_id ON availability.room_availability IS
+'Ensures rate plan exists before tracking availability.';
 
 \echo '✓ Room_availability foreign keys created successfully!'

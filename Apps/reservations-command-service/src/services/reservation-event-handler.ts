@@ -7,6 +7,16 @@ import type {
 import { v4 as uuid } from "uuid";
 
 import { query } from "../lib/db.js";
+import { refreshAvailabilityWindow } from "./availability-sync.js";
+
+type ReservationSnapshot = {
+  id: string;
+  tenant_id: string;
+  property_id: string;
+  room_type_id: string;
+  check_in_date: string;
+  check_out_date: string;
+};
 
 export const processReservationEvent = async (
   event: ReservationEvent,
@@ -91,12 +101,22 @@ const handleReservationCreated = async (
       confirmation,
     ],
   );
+
+  await refreshAvailabilityWindow({
+    tenantId: event.metadata.tenantId,
+    propertyId: payload.property_id,
+    roomTypeId: payload.room_type_id,
+    checkInDate: payload.check_in_date,
+    checkOutDate: payload.check_out_date,
+    context: "reservation.created",
+  });
 };
 
 const handleReservationUpdated = async (
   event: ReservationUpdatedEvent,
 ): Promise<void> => {
   const payload = event.payload;
+  const previous = await fetchReservationSnapshot(payload.id);
   const fields: string[] = [];
   const values: unknown[] = [];
 
@@ -134,12 +154,23 @@ const handleReservationUpdated = async (
   `;
 
   await query(sql, [payload.id, ...values]);
+
+  const updated = await fetchReservationSnapshot(payload.id);
+  const ranges = dedupeSnapshots(
+    ["reservation.updated", previous],
+    ["reservation.updated", updated],
+  );
+
+  for (const range of ranges) {
+    await refreshAvailabilityWindow(range);
+  }
 };
 
 const handleReservationCancelled = async (
   event: ReservationCancelledEvent,
 ): Promise<void> => {
   const payload = event.payload;
+  const snapshot = await fetchReservationSnapshot(payload.id);
   await query(
     `
       UPDATE reservations
@@ -152,4 +183,71 @@ const handleReservationCancelled = async (
     `,
     [payload.id, payload.cancelled_at, payload.reason ?? null],
   );
+
+  if (snapshot) {
+    await refreshAvailabilityWindow({
+      tenantId: snapshot.tenant_id,
+      propertyId: snapshot.property_id,
+      roomTypeId: snapshot.room_type_id,
+      checkInDate: snapshot.check_in_date,
+      checkOutDate: snapshot.check_out_date,
+      context: "reservation.cancelled",
+    });
+  }
+};
+
+const fetchReservationSnapshot = async (
+  reservationId: string,
+): Promise<ReservationSnapshot | null> => {
+  const { rows } = await query<ReservationSnapshot>(
+    `
+      SELECT
+        id,
+        tenant_id,
+        property_id,
+        room_type_id,
+        check_in_date,
+        check_out_date
+      FROM reservations
+      WHERE id = $1
+    `,
+    [reservationId],
+  );
+  return rows[0] ?? null;
+};
+
+type SnapshotInput = [context: string, snapshot: ReservationSnapshot | null];
+
+const dedupeSnapshots = (
+  ...inputs: SnapshotInput[]
+): Array<{
+  tenantId: string;
+  propertyId: string;
+  roomTypeId: string;
+  checkInDate: string;
+  checkOutDate: string;
+  context: string;
+}> => {
+  const map = new Map<string, SnapshotInput>();
+
+  for (const [context, snapshot] of inputs) {
+    if (!snapshot) continue;
+    const key = [
+      snapshot.tenant_id,
+      snapshot.property_id,
+      snapshot.room_type_id,
+      snapshot.check_in_date,
+      snapshot.check_out_date,
+    ].join(":");
+    map.set(key, [context, snapshot]);
+  }
+
+  return Array.from(map.values()).map(([context, snapshot]) => ({
+    tenantId: snapshot!.tenant_id,
+    propertyId: snapshot!.property_id,
+    roomTypeId: snapshot!.room_type_id,
+    checkInDate: snapshot!.check_in_date,
+    checkOutDate: snapshot!.check_out_date,
+    context,
+  }));
 };
