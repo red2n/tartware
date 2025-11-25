@@ -9,7 +9,7 @@ type AvailabilityRange = {
   context: string;
 };
 
-const subtractOneDayUtc = (date: string): string => {
+export const subtractOneDayUtc = (date: string): string => {
   const base = new Date(`${date}T00:00:00Z`);
   base.setUTCDate(base.getUTCDate() - 1);
   return base.toISOString().slice(0, 10);

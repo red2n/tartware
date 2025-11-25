@@ -7,15 +7,26 @@ import type {
 import { v4 as uuid } from "uuid";
 
 import { query } from "../lib/db.js";
+
 import { refreshAvailabilityWindow } from "./availability-sync.js";
 
-type ReservationSnapshot = {
+export type ReservationSnapshot = {
   id: string;
   tenant_id: string;
   property_id: string;
   room_type_id: string;
   check_in_date: string;
   check_out_date: string;
+};
+
+const toDateOnly = (
+  value: string | Date | undefined | null,
+  field: string,
+): string => {
+  if (!value) {
+    throw new Error(`Reservation payload missing ${field}`);
+  }
+  return typeof value === "string" ? value : value.toISOString().slice(0, 10);
 };
 
 export const processReservationEvent = async (
@@ -106,8 +117,8 @@ const handleReservationCreated = async (
     tenantId: event.metadata.tenantId,
     propertyId: payload.property_id,
     roomTypeId: payload.room_type_id,
-    checkInDate: payload.check_in_date,
-    checkOutDate: payload.check_out_date,
+    checkInDate: toDateOnly(payload.check_in_date, "check_in_date"),
+    checkOutDate: toDateOnly(payload.check_out_date, "check_out_date"),
     context: "reservation.created",
   });
 };
@@ -218,7 +229,7 @@ const fetchReservationSnapshot = async (
 
 type SnapshotInput = [context: string, snapshot: ReservationSnapshot | null];
 
-const dedupeSnapshots = (
+export const dedupeSnapshots = (
   ...inputs: SnapshotInput[]
 ): Array<{
   tenantId: string;
@@ -228,7 +239,7 @@ const dedupeSnapshots = (
   checkOutDate: string;
   context: string;
 }> => {
-  const map = new Map<string, SnapshotInput>();
+  const map = new Map<string, [string, ReservationSnapshot]>();
 
   for (const [context, snapshot] of inputs) {
     if (!snapshot) continue;
@@ -243,11 +254,11 @@ const dedupeSnapshots = (
   }
 
   return Array.from(map.values()).map(([context, snapshot]) => ({
-    tenantId: snapshot!.tenant_id,
-    propertyId: snapshot!.property_id,
-    roomTypeId: snapshot!.room_type_id,
-    checkInDate: snapshot!.check_in_date,
-    checkOutDate: snapshot!.check_out_date,
+    tenantId: snapshot.tenant_id,
+    propertyId: snapshot.property_id,
+    roomTypeId: snapshot.room_type_id,
+    checkInDate: snapshot.check_in_date,
+    checkOutDate: snapshot.check_out_date,
     context,
   }));
 };

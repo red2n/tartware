@@ -3,5 +3,5 @@
   "entry": ["src/index.ts"],
   "project": ["src/**/*.ts"],
   "ignoreDependencies": ["@biomejs/biome", "@tartware/schemas", "tsx"],
-  "ignoreBinaries": ["biome", "eslint", "knip", "tsc", "tsx"]
+  "ignoreBinaries": ["biome", "eslint", "knip", "tsc", "tsx", "vitest"]
 }

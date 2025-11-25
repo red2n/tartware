@@ -59,3 +59,8 @@
 #### Billing & Settlement Service (pending)
 - [ ] Design a Java microservice for gateway callbacks, FX conversions, ledger reconciliation, and normalized payment events.
 - [ ] Expose PCI/SOX-ready audit/export endpoints and have the Node billing API read reconciled data for consistency.
+
+#### Tooling & Dependency Health (new)
+- [x] Vitest version sync: `npm i` now succeeds after aligning `Apps/reservations-command-service/package.json` (devDependencies.vitest) and `package-lock.json` with the repo-wide `^4.0.12`.
+- [ ] Install smoke test: add a CI step (e.g., `npm ci --ignore-scripts`) so dependency resolution issues are caught before merges.
+- [ ] Workspace dependency audit: run `npm outdated --workspaces --long` and document upgrade paths for shared tooling (Vitest, Fastify, Kafka clients) to keep constraints realistic.
