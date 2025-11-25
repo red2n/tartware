@@ -8,10 +8,10 @@
 set -e
 
 # ============================================================================
-# Parse Command Line Arguments
+# Parse Command Line Arguments & Auto-detect Docker
 # ============================================================================
 
-DEPLOY_MODE="direct"
+DEPLOY_MODE="auto"
 
 for arg in "$@"; do
     case $arg in
@@ -30,15 +30,17 @@ for arg in "$@"; do
             echo "Usage: $0 [OPTIONS]"
             echo ""
             echo "Options:"
-            echo "  --mode=MODE    Deployment mode: direct or docker (default: direct)"
+            echo "  --mode=MODE    Deployment mode: auto, direct, or docker (default: auto)"
             echo "  --help, -h     Show this help message"
             echo ""
             echo "Modes:"
+            echo "  auto           Auto-detect (checks for Docker container, falls back to direct)"
             echo "  direct         Direct PostgreSQL installation (requires psql)"
             echo "  docker         Docker-based deployment (requires docker-compose)"
             echo ""
             echo "Examples:"
-            echo "  $0                      # Direct mode (default)"
+            echo "  $0                      # Auto-detect mode (default)"
+            echo "  $0 --mode=auto         # Auto-detect mode (explicit)"
             echo "  $0 --mode=direct       # Direct mode (explicit)"
             echo "  $0 --mode=docker       # Docker mode"
             echo ""
@@ -53,10 +55,32 @@ for arg in "$@"; do
 done
 
 # Validate mode
-if [[ ! "$DEPLOY_MODE" =~ ^(direct|docker)$ ]]; then
+if [[ ! "$DEPLOY_MODE" =~ ^(auto|direct|docker)$ ]]; then
     echo "Invalid mode: $DEPLOY_MODE"
-    echo "Must be 'direct' or 'docker'"
+    echo "Must be 'auto', 'direct', or 'docker'"
     exit 1
+fi
+
+# Auto-detect Docker deployment
+if [ "$DEPLOY_MODE" == "auto" ]; then
+    DOCKER_FOUND=false
+
+    # Try without sudo first
+    if command -v docker &> /dev/null && docker ps --format '{{.Names}}' 2>/dev/null | grep -q "tartware-postgres"; then
+        DOCKER_FOUND=true
+    # Try with sudo if user docker fails
+    elif command -v docker &> /dev/null && sudo docker ps --format '{{.Names}}' 2>/dev/null | grep -q "tartware-postgres"; then
+        DOCKER_FOUND=true
+    fi
+
+    if [ "$DOCKER_FOUND" = true ]; then
+        DEPLOY_MODE="docker"
+        echo -e "${GREEN}✓ Auto-detected: Docker deployment (tartware-postgres container running)${NC}"
+    else
+        DEPLOY_MODE="direct"
+        echo -e "${CYAN}ℹ Auto-detected: Direct deployment (no Docker container found)${NC}"
+    fi
+    echo ""
 fi
 
 # Colors
@@ -87,24 +111,39 @@ if [ "$DEPLOY_MODE" == "docker" ]; then
     fi
     echo -e "${GREEN}✓ Docker: $(docker --version)${NC}"
 
-    # Check for docker compose (new) or docker-compose (old)
-    if docker compose version &> /dev/null; then
-        DOCKER_COMPOSE_CMD="docker compose"
-        echo -e "${GREEN}✓ Docker Compose: $(docker compose version --short)${NC}"
-    elif command -v docker-compose &> /dev/null; then
-        DOCKER_COMPOSE_CMD="docker-compose"
-        echo -e "${GREEN}✓ Docker Compose: $(docker-compose --version)${NC}"
-    else
-        echo -e "${RED}✗ Docker Compose is not installed${NC}"
-        echo "   Install: https://docs.docker.com/compose/install/"
-        exit 1
+    # Determine if sudo is needed for docker commands
+    DOCKER_NEEDS_SUDO=false
+    if ! docker info &> /dev/null; then
+        if sudo docker info &> /dev/null; then
+            DOCKER_NEEDS_SUDO=true
+        else
+            echo -e "${RED}✗ Docker daemon is not running${NC}"
+            echo "   Start: sudo systemctl start docker"
+            exit 1
+        fi
     fi
 
-    if ! docker info &> /dev/null; then
-        echo -e "${RED}✗ Docker daemon is not running${NC}"
-        echo "   Start: sudo systemctl start docker"
-        exit 1
+    # Check for docker compose (new) or docker-compose (old)
+    if [ "$DOCKER_NEEDS_SUDO" = true ]; then
+        DOCKER_COMPOSE_CMD="sudo docker compose"
+        DOCKER_CMD="sudo docker"
+        echo -e "${GREEN}✓ Docker Compose: $(sudo docker compose version --short)${NC}"
+    else
+        if docker compose version &> /dev/null; then
+            DOCKER_COMPOSE_CMD="docker compose"
+            DOCKER_CMD="docker"
+            echo -e "${GREEN}✓ Docker Compose: $(docker compose version --short)${NC}"
+        elif command -v docker-compose &> /dev/null; then
+            DOCKER_COMPOSE_CMD="docker-compose"
+            DOCKER_CMD="docker"
+            echo -e "${GREEN}✓ Docker Compose: $(docker-compose --version)${NC}"
+        else
+            echo -e "${RED}✗ Docker Compose is not installed${NC}"
+            echo "   Install: https://docs.docker.com/compose/install/"
+            exit 1
+        fi
     fi
+
     echo -e "${GREEN}✓ Docker daemon: running${NC}"
     echo ""
 
@@ -122,7 +161,7 @@ if [ "$DEPLOY_MODE" == "docker" ]; then
     RETRIES=30
     COUNT=0
     while [ $COUNT -lt $RETRIES ]; do
-        if docker exec tartware-postgres pg_isready -U postgres &> /dev/null; then
+        if $DOCKER_CMD exec tartware-postgres pg_isready -U postgres &> /dev/null; then
             echo -e "${GREEN}✓ PostgreSQL is ready${NC}"
             break
         fi
@@ -149,7 +188,7 @@ if [ "$DEPLOY_MODE" == "docker" ]; then
     EXPECTED_TABLES=$(grep -r "CREATE TABLE" "$SCRIPTS_DIR/tables/" --include="*.sql" 2>/dev/null | grep -v "00-create-all-tables.sql" | wc -l)
 
     for i in {1..60}; do
-        TABLE_COUNT=$(docker exec tartware-postgres psql -U postgres -d tartware -t -c "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema IN ('public', 'availability');" 2>/dev/null | xargs || echo "0")
+        TABLE_COUNT=$($DOCKER_CMD exec tartware-postgres psql -U postgres -d tartware -t -c "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema IN ('public', 'availability');" 2>/dev/null | xargs || echo "0")
         if [ "$TABLE_COUNT" -ge "$EXPECTED_TABLES" ]; then
             echo -e "${GREEN}✓ Initialization complete!${NC}"
             break
@@ -165,13 +204,290 @@ if [ "$DEPLOY_MODE" == "docker" ]; then
     echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
     echo "  Database Verification"
     echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-    TABLE_COUNT=$(docker exec tartware-postgres psql -U postgres -d tartware -t -c "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema IN ('public', 'availability');" 2>/dev/null | xargs)
-    INDEX_COUNT=$(docker exec tartware-postgres psql -U postgres -d tartware -t -c "SELECT COUNT(*) FROM pg_indexes WHERE schemaname IN ('public', 'availability');" 2>/dev/null | xargs)
-    FK_COUNT=$(docker exec tartware-postgres psql -U postgres -d tartware -t -c "SELECT COUNT(*) FROM information_schema.table_constraints WHERE constraint_type = 'FOREIGN KEY' AND table_schema IN ('public', 'availability');" 2>/dev/null | xargs)
+    TABLE_COUNT=$($DOCKER_CMD exec tartware-postgres psql -U postgres -d tartware -t -c "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema IN ('public', 'availability');" 2>/dev/null | xargs)
+    INDEX_COUNT=$($DOCKER_CMD exec tartware-postgres psql -U postgres -d tartware -t -c "SELECT COUNT(*) FROM pg_indexes WHERE schemaname IN ('public', 'availability');" 2>/dev/null | xargs)
+    FK_COUNT=$($DOCKER_CMD exec tartware-postgres psql -U postgres -d tartware -t -c "SELECT COUNT(*) FROM information_schema.table_constraints WHERE constraint_type = 'FOREIGN KEY' AND table_schema IN ('public', 'availability');" 2>/dev/null | xargs)
 
     echo "  Tables:       $TABLE_COUNT / $EXPECTED_TABLES"
     echo "  Indexes:      $INDEX_COUNT"
     echo "  Foreign Keys: $FK_COUNT"
+    echo ""
+
+    # ============================================================================
+    # Interactive Mode Selection for Docker
+    # ============================================================================
+
+    echo -e "${CYAN}Select Installation Mode:${NC}"
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo -e "  ${GREEN}1)${NC} Load Sample Data (recommended for development/testing) ${YELLOW}[DEFAULT]${NC}"
+    echo -e "  ${GREEN}2)${NC} Skip Sample Data (empty database structure only)"
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo ""
+    echo -ne "${CYAN}Enter your choice [1-2] (press Enter for default):${NC} "
+    read -r DOCKER_DATA_MODE
+
+    # Default to load sample data if no input
+    if [ -z "$DOCKER_DATA_MODE" ]; then
+        DOCKER_DATA_MODE=1
+    fi
+
+    # Validate input
+    if [[ ! "$DOCKER_DATA_MODE" =~ ^[1-2]$ ]]; then
+        echo -e "${RED}✗ Invalid option. Defaulting to Load Sample Data.${NC}"
+        DOCKER_DATA_MODE=1
+    fi
+
+    echo ""
+
+    if [ "$DOCKER_DATA_MODE" -eq 1 ]; then
+        echo -e "${GREEN}✓ Selected: Load Sample Data${NC}"
+        LOAD_SAMPLE_DATA=true
+    else
+        echo -e "${GREEN}✓ Selected: Skip Sample Data${NC}"
+        LOAD_SAMPLE_DATA=false
+    fi
+
+    echo ""
+
+    # ============================================================================
+    # Load Sample Data in Docker Mode
+    # ============================================================================
+
+    if [ "$LOAD_SAMPLE_DATA" = true ]; then
+        echo -e "${BLUE}Loading sample data with category tracking...${NC}"
+        echo ""
+
+        # Check if Python 3 is available
+        if ! command -v python3 &> /dev/null; then
+            echo -e "${YELLOW}⚠  Python 3 not found${NC}"
+
+            # Attempt to install Python if on supported OS
+            if command -v apt-get &> /dev/null; then
+                echo -e "${CYAN}Installing Python 3...${NC}"
+                sudo apt-get update -qq
+                sudo apt-get install -y python3 python3-pip
+
+                if command -v python3 &> /dev/null; then
+                    echo -e "${GREEN}✓ Python 3 installed successfully${NC}"
+                else
+                    echo -e "${RED}✗ Failed to install Python 3${NC}"
+                    echo -e "${YELLOW}⚠  You can load data manually later with: cd scripts/data && python3 load_all.py${NC}"
+                    LOAD_SAMPLE_DATA=false
+                fi
+            else
+                echo -e "${YELLOW}⚠  You can load data manually later with: cd scripts/data && python3 load_all.py${NC}"
+                LOAD_SAMPLE_DATA=false
+            fi
+        fi
+
+        # Check and install Python dependencies if Python is available
+        if [ "$LOAD_SAMPLE_DATA" = true ]; then
+            echo -e "${CYAN}Checking Python dependencies...${NC}"
+
+            # First check if pip is available
+            if ! python3 -m pip --version &> /dev/null; then
+                echo -e "${YELLOW}pip not found, installing...${NC}"
+
+                if command -v apt-get &> /dev/null; then
+                    sudo apt-get update -qq
+                    sudo apt-get install -y python3-pip
+
+                    if python3 -m pip --version &> /dev/null; then
+                        echo -e "${GREEN}✓ pip installed successfully${NC}"
+                    else
+                        echo -e "${RED}✗ Failed to install pip${NC}"
+                        echo -e "${YELLOW}⚠  Cannot install Python packages${NC}"
+                        LOAD_SAMPLE_DATA=false
+                    fi
+                else
+                    echo -e "${RED}✗ Cannot install pip automatically${NC}"
+                    LOAD_SAMPLE_DATA=false
+                fi
+            fi
+
+            if [ "$LOAD_SAMPLE_DATA" = true ]; then
+                PYTHON_PACKAGES_NEEDED=false
+                MISSING_PY_PACKAGES=()
+
+                # Check for required Python packages
+                if ! python3 -c "import faker" &> /dev/null; then
+                    MISSING_PY_PACKAGES+=("faker")
+                    PYTHON_PACKAGES_NEEDED=true
+                fi
+
+                if ! python3 -c "import psycopg2" &> /dev/null; then
+                    MISSING_PY_PACKAGES+=("psycopg2-binary")
+                    PYTHON_PACKAGES_NEEDED=true
+                fi
+
+                if [ "$PYTHON_PACKAGES_NEEDED" = true ]; then
+                    echo -e "${YELLOW}Installing missing Python packages: ${MISSING_PY_PACKAGES[*]}${NC}"
+
+                    # Try installing via apt first (Debian packages)
+                    APT_PACKAGES=()
+                    for pkg in "${MISSING_PY_PACKAGES[@]}"; do
+                        case "$pkg" in
+                            "faker")
+                                APT_PACKAGES+=("python3-faker")
+                                ;;
+                            "psycopg2-binary")
+                                APT_PACKAGES+=("python3-psycopg2")
+                                ;;
+                        esac
+                    done
+
+                    if [ ${#APT_PACKAGES[@]} -gt 0 ] && command -v apt-get &> /dev/null; then
+                        echo -e "${CYAN}Installing via apt: ${APT_PACKAGES[*]}${NC}"
+                        DEBIAN_FRONTEND=noninteractive sudo apt-get install -y -qq "${APT_PACKAGES[@]}" 2>&1 | grep -v "^debconf:" || true
+
+                        # Verify installation
+                        ALL_INSTALLED=true
+                        if ! python3 -c "import faker" &> /dev/null; then
+                            ALL_INSTALLED=false
+                        fi
+                        if ! python3 -c "import psycopg2" &> /dev/null; then
+                            ALL_INSTALLED=false
+                        fi
+
+                        if [ "$ALL_INSTALLED" = true ]; then
+                            echo -e "${GREEN}✓ Python packages installed successfully${NC}"
+                        else
+                            echo -e "${YELLOW}⚠  Some packages failed via apt, trying pip with --break-system-packages...${NC}"
+                            python3 -m pip install --break-system-packages "${MISSING_PY_PACKAGES[@]}" --quiet 2>&1 || true
+
+                            # Check again
+                            if python3 -c "import faker; import psycopg2" &> /dev/null; then
+                                echo -e "${GREEN}✓ Python packages installed successfully via pip${NC}"
+                            else
+                                echo -e "${RED}✗ Failed to install Python packages${NC}"
+                                echo -e "${YELLOW}⚠  Sample data loading may fail${NC}"
+                            fi
+                        fi
+                    else
+                        # Fallback to pip with --break-system-packages
+                        python3 -m pip install --break-system-packages "${MISSING_PY_PACKAGES[@]}" --quiet 2>&1 || true
+
+                        if python3 -c "import faker; import psycopg2" &> /dev/null; then
+                            echo -e "${GREEN}✓ Python packages installed successfully${NC}"
+                        else
+                            echo -e "${RED}✗ Failed to install Python packages${NC}"
+                            echo -e "${YELLOW}⚠  Sample data loading may fail${NC}"
+                        fi
+                    fi
+                else
+                    echo -e "${GREEN}✓ All required Python packages are installed${NC}"
+                fi
+            fi
+            echo ""
+        fi
+
+        # Load sample data if all checks passed
+        if [ "$LOAD_SAMPLE_DATA" = true ]; then
+            echo -e "${CYAN}Starting data import process...${NC}"
+            echo ""
+
+            # Set environment variables for Docker connection
+            export DB_HOST="localhost"
+            export DB_PORT="5432"
+            export DB_NAME="tartware"
+            export DB_USER="postgres"
+            export DB_PASSWORD="postgres"
+
+            # Run the sample data script with live output, using unbuffered mode and timeout
+            timeout 600 bash -c "cd '$SCRIPTS_DIR/data' && python3 -u load_all.py" 2>&1 | while IFS= read -r line; do
+                echo "$line"
+
+                # Detect category completion and add visual flags
+                if [[ "$line" == *"CORE BUSINESS DATA"* ]]; then
+                    echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+                elif [[ "$line" == *"housekeeping tasks"* ]]; then
+                    echo -e "${GREEN}✓✓✓ CORE BUSINESS DATA - COMPLETED${NC}"
+                    echo ""
+                elif [[ "$line" == *"FINANCIAL OPERATIONS"* ]]; then
+                    echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+                elif [[ "$line" == *"financial closures"* ]]; then
+                    echo -e "${GREEN}✓✓✓ FINANCIAL OPERATIONS - COMPLETED${NC}"
+                    echo ""
+                elif [[ "$line" == *"CHANNEL MANAGEMENT"* ]]; then
+                    echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+                elif [[ "$line" == *"commission rules"* ]]; then
+                    echo -e "${GREEN}✓✓✓ CHANNEL MANAGEMENT & OTA - COMPLETED${NC}"
+                    echo ""
+                elif [[ "$line" == *"GUEST MANAGEMENT"* ]]; then
+                    echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+                elif [[ "$line" == *"GDPR consent logs"* ]]; then
+                    echo -e "${GREEN}✓✓✓ GUEST MANAGEMENT - COMPLETED${NC}"
+                    echo ""
+                elif [[ "$line" == *"REVENUE MANAGEMENT"* ]]; then
+                    echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+                elif [[ "$line" == *"revenue goals"* ]]; then
+                    echo -e "${GREEN}✓✓✓ REVENUE MANAGEMENT & PRICING - COMPLETED${NC}"
+                    echo ""
+                elif [[ "$line" == *"ANALYTICS & REPORTING"* ]]; then
+                    echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+                elif [[ "$line" == *"audit logs"* ]]; then
+                    echo -e "${GREEN}✓✓✓ ANALYTICS & REPORTING - COMPLETED${NC}"
+                    echo ""
+                elif [[ "$line" == *"STAFF & OPERATIONS"* ]]; then
+                    echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+                elif [[ "$line" == *"reservation status history"* ]]; then
+                    echo -e "${GREEN}✓✓✓ STAFF & OPERATIONS - COMPLETED${NC}"
+                    echo ""
+                elif [[ "$line" == *"MARKETING & SALES"* ]]; then
+                    echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+                elif [[ "$line" == *"commission tracking"* ]]; then
+                    echo -e "${GREEN}✓✓✓ MARKETING & SALES - COMPLETED${NC}"
+                    echo ""
+                elif [[ "$line" == *"MOBILE & DIGITAL"* ]]; then
+                    echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+                elif [[ "$line" == *"push notifications"* ]]; then
+                    echo -e "${GREEN}✓✓✓ MOBILE & DIGITAL - COMPLETED${NC}"
+                    echo ""
+                elif [[ "$line" == *"COMPLIANCE & LEGAL"* ]]; then
+                    echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+                elif [[ "$line" == *"lost and found"* ]]; then
+                    echo -e "${GREEN}✓✓✓ COMPLIANCE & LEGAL - COMPLETED${NC}"
+                    echo ""
+                elif [[ "$line" == *"INTEGRATIONS & TECHNICAL"* ]]; then
+                    echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+                elif [[ "$line" == *"vendor contracts"* ]]; then
+                    echo -e "${GREEN}✓✓✓ INTEGRATIONS & TECHNICAL - COMPLETED${NC}"
+                    echo ""
+                fi
+            done
+
+            PIPE_STATUS=${PIPESTATUS[0]}
+
+            if [ $PIPE_STATUS -eq 0 ]; then
+                # Calculate exact total records across all tables
+                TOTAL_RECORDS=$($DOCKER_CMD exec tartware-postgres psql -U postgres -d tartware -tAc "
+                    SELECT SUM(n_tup_ins)::bigint
+                    FROM pg_stat_user_tables
+                    WHERE schemaname IN ('public', 'availability');
+                " 2>/dev/null)
+
+                # Get count of tables with data
+                TABLES_WITH_DATA=$($DOCKER_CMD exec tartware-postgres psql -U postgres -d tartware -tAc "
+                    SELECT COUNT(*)
+                    FROM pg_stat_user_tables
+                    WHERE schemaname IN ('public', 'availability')
+                    AND n_tup_ins > 0;
+                " 2>/dev/null)
+
+                echo ""
+                echo -e "${GREEN}╔════════════════════════════════════════════════════════════╗${NC}"
+                echo -e "${GREEN}║  ✓✓✓ ALL DATA LOADING COMPLETE ✓✓✓                       ║${NC}"
+                echo -e "${GREEN}╚════════════════════════════════════════════════════════════╝${NC}"
+                echo -e "${GREEN}✓ Sample data loaded successfully${NC}"
+                echo -e "  Total Records: ${CYAN}${TOTAL_RECORDS}${NC}"
+                echo -e "  Tables with Data: ${CYAN}${TABLES_WITH_DATA}${NC} / ${CYAN}${TABLE_COUNT}${NC}"
+            else
+                echo -e "${YELLOW}⚠  Sample data load encountered issues${NC}"
+                echo -e "${YELLOW}⚠  Database structure is complete, data can be loaded manually${NC}"
+            fi
+        fi
+    fi
+
     echo ""
 
     # Success
@@ -180,9 +496,9 @@ if [ "$DEPLOY_MODE" == "docker" ]; then
     echo "╚════════════════════════════════════════════════════════════════╝"
     echo ""
     echo "Quick Access:"
-    echo "  Connect:      docker exec -it tartware-postgres psql -U postgres -d tartware"
-    echo "  Logs:         docker-compose logs -f postgres"
-    echo "  Stop:         docker-compose down"
+    echo "  Connect:      $DOCKER_CMD exec -it tartware-postgres psql -U postgres -d tartware"
+    echo "  Logs:         $DOCKER_COMPOSE_CMD logs -f postgres"
+    echo "  Stop:         $DOCKER_COMPOSE_CMD down"
     echo ""
     exit 0
 fi
@@ -219,6 +535,17 @@ fi
 # Check for compiler toolchain (gcc/make)
 if ! command -v gcc &> /dev/null || ! command -v make &> /dev/null; then
     MISSING_TOOLS+=("build-essential")
+    INSTALL_NEEDED=true
+fi
+
+# Check for Python 3 and pip
+if ! command -v python3 &> /dev/null; then
+    MISSING_TOOLS+=("python3")
+    INSTALL_NEEDED=true
+fi
+
+if ! command -v pip3 &> /dev/null && ! python3 -m pip --version &> /dev/null 2>&1; then
+    MISSING_TOOLS+=("python3-pip")
     INSTALL_NEEDED=true
 fi
 
@@ -282,6 +609,102 @@ else
     echo -e "${RED}✗ gcc/make toolchain is missing${NC}"
     exit 1
 fi
+
+if command -v python3 &> /dev/null; then
+    echo -e "${GREEN}✓ Python 3 is available ($(python3 --version))${NC}"
+else
+    echo -e "${RED}✗ Python 3 is missing${NC}"
+    exit 1
+fi
+
+if command -v pip3 &> /dev/null || python3 -m pip --version &> /dev/null 2>&1; then
+    echo -e "${GREEN}✓ pip is available${NC}"
+else
+    echo -e "${RED}✗ pip is missing${NC}"
+    exit 1
+fi
+
+# Check and install Python packages for sample data loading
+echo ""
+echo -e "${CYAN}Checking Python dependencies for sample data loading...${NC}"
+
+PYTHON_PACKAGES_NEEDED=false
+MISSING_PACKAGES=()
+
+# Check for required Python packages
+if ! python3 -c "import faker" &> /dev/null; then
+    MISSING_PACKAGES+=("faker")
+    PYTHON_PACKAGES_NEEDED=true
+fi
+
+if ! python3 -c "import psycopg2" &> /dev/null; then
+    MISSING_PACKAGES+=("psycopg2-binary")
+    PYTHON_PACKAGES_NEEDED=true
+fi
+
+if [ "$PYTHON_PACKAGES_NEEDED" = true ]; then
+    echo -e "${YELLOW}Missing Python packages:${NC}"
+    for pkg in "${MISSING_PACKAGES[@]}"; do
+        echo -e "  ${YELLOW}→${NC} $pkg"
+    done
+    echo ""
+    echo -e "${CYAN}Installing Python packages...${NC}"
+
+    # Try installing via apt first (Debian packages)
+    APT_PACKAGES=()
+    for pkg in "${MISSING_PACKAGES[@]}"; do
+        case "$pkg" in
+            "faker")
+                APT_PACKAGES+=("python3-faker")
+                ;;
+            "psycopg2-binary")
+                APT_PACKAGES+=("python3-psycopg2")
+                ;;
+        esac
+    done
+
+    if [ ${#APT_PACKAGES[@]} -gt 0 ] && command -v apt-get &> /dev/null; then
+        echo -e "${CYAN}Installing via apt: ${APT_PACKAGES[*]}${NC}"
+        DEBIAN_FRONTEND=noninteractive sudo apt-get install -y -qq "${APT_PACKAGES[@]}" 2>&1 | grep -v "^debconf:" || true
+
+        # Verify installation
+        ALL_INSTALLED=true
+        if ! python3 -c "import faker" &> /dev/null; then
+            ALL_INSTALLED=false
+        fi
+        if ! python3 -c "import psycopg2" &> /dev/null; then
+            ALL_INSTALLED=false
+        fi
+
+        if [ "$ALL_INSTALLED" = true ]; then
+            echo -e "${GREEN}✓ Python packages installed successfully${NC}"
+        else
+            echo -e "${YELLOW}⚠  Some packages failed via apt, trying pip with --break-system-packages...${NC}"
+            python3 -m pip install --break-system-packages "${MISSING_PACKAGES[@]}" --quiet 2>&1 || true
+
+            # Check again
+            if python3 -c "import faker; import psycopg2" &> /dev/null; then
+                echo -e "${GREEN}✓ Python packages installed successfully via pip${NC}"
+            else
+                echo -e "${RED}✗ Failed to install Python packages${NC}"
+                echo -e "${YELLOW}⚠  Sample data loading may not work properly${NC}"
+            fi
+        fi
+    else
+        # Fallback to pip with --break-system-packages
+        python3 -m pip install --break-system-packages "${MISSING_PACKAGES[@]}" --quiet 2>&1 || true
+
+        if python3 -c "import faker; import psycopg2" &> /dev/null; then
+            echo -e "${GREEN}✓ Python packages installed successfully${NC}"
+        else
+            echo -e "${RED}✗ Failed to install Python packages${NC}"
+            echo -e "${YELLOW}⚠  Sample data loading may not work properly${NC}"
+        fi
+    fi
+else
+    echo -e "${GREEN}✓ All required Python packages are installed${NC}"
+fi
+
 echo ""
 
 # Configuration (Defaults for fresh install)
@@ -596,7 +1019,19 @@ fi  # End of structure creation block (DO_FRESH_INSTALL)
 if [ "$DO_FRESH_INSTALL" = true ]; then
     echo -e "${BLUE}[12/13]${NC} Running verification..."
 
-    psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -f "$SCRIPTS_DIR/verify-all.sql" 2>&1 | tail -30
+    VERIFY_LOG=$(mktemp -t tartware-verify-XXXX.log)
+    echo -e "${CYAN}Verification output will be written to:${NC} ${VERIFY_LOG}"
+
+    if psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -f "$SCRIPTS_DIR/verify-all.sql" &> "$VERIFY_LOG"; then
+        tail -30 "$VERIFY_LOG"
+        rm -f "$VERIFY_LOG"
+    else
+        tail -30 "$VERIFY_LOG"
+        echo ""
+        echo -e "${RED}✗ Verification failed. Full log:${NC} ${VERIFY_LOG}"
+        echo -e "${YELLOW}⚠  See log for detailed failure output.${NC}"
+        exit 1
+    fi
 
     echo ""
 fi
