@@ -89,6 +89,15 @@ export const routes: Routes = [
         title: 'Housekeeping - Tartware PMS',
       },
       {
+        path: 'portal',
+        loadComponent: () =>
+          import('./features/pms/tenant-owner-portal/tenant-owner-portal.component').then(
+            (m) => m.TenantOwnerPortalComponent
+          ),
+        canActivate: [moduleGuard('tenant-owner-portal', { minRole: 'ADMIN' })],
+        title: 'Tenant & Owner Portal - Tartware PMS',
+      },
+      {
         path: 'billing',
         loadComponent: () =>
           import('./features/pms/billing/billing.component').then((m) => m.BillingComponent),
@@ -96,11 +105,29 @@ export const routes: Routes = [
         title: 'Billing - Tartware PMS',
       },
       {
+        path: 'marketing',
+        loadComponent: () =>
+          import('./features/pms/marketing-channel/marketing-channel.component').then(
+            (m) => m.MarketingChannelComponent
+          ),
+        canActivate: [moduleGuard('marketing-channel', { minRole: 'ADMIN' })],
+        title: 'Marketing & Channels - Tartware PMS',
+      },
+      {
         path: 'reports',
         loadComponent: () =>
           import('./features/pms/reports/reports.component').then((m) => m.ReportsComponent),
         canActivate: [moduleGuard('analytics-bi', { minRole: 'ADMIN' })],
         title: 'Reports - Tartware PMS',
+      },
+      {
+        path: 'integrations',
+        loadComponent: () =>
+          import('./features/pms/enterprise-api/enterprise-api.component').then(
+            (m) => m.EnterpriseApiComponent
+          ),
+        canActivate: [moduleGuard('enterprise-api', { minRole: 'ADMIN' })],
+        title: 'Enterprise & API - Tartware PMS',
       },
       {
         path: 'logs',

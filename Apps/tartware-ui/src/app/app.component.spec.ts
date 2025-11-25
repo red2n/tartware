@@ -1,10 +1,31 @@
 import { TestBed } from '@angular/core/testing';
+import { SwUpdate } from '@angular/service-worker';
+import { NEVER } from 'rxjs';
 import { AppComponent } from './app.component';
+import { PwaService } from './core/services/pwa.service';
+
+class MockSwUpdate {
+  isEnabled = false;
+  versionUpdates = NEVER;
+  unrecoverable = NEVER;
+  checkForUpdate = jasmine.createSpy().and.resolveTo(false);
+  activateUpdate = jasmine.createSpy().and.resolveTo();
+}
+
+class MockPwaService {
+  initialize(): void {
+    return;
+  }
+}
 
 describe('AppComponent', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [AppComponent],
+      providers: [
+        { provide: SwUpdate, useClass: MockSwUpdate },
+        { provide: PwaService, useClass: MockPwaService },
+      ],
     }).compileComponents();
   });
 
@@ -20,10 +41,10 @@ describe('AppComponent', () => {
     expect(app.title).toEqual('tartware-ui');
   });
 
-  it('should render title', () => {
+  it('should render router outlet', () => {
     const fixture = TestBed.createComponent(AppComponent);
     fixture.detectChanges();
     const compiled = fixture.nativeElement as HTMLElement;
-    expect(compiled.querySelector('h1')?.textContent).toContain('Hello, tartware-ui');
+    expect(compiled.querySelector('router-outlet')).toBeTruthy();
   });
 });

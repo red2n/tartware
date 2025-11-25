@@ -56,6 +56,15 @@ export class ModuleService {
     return request$;
   }
 
+  getModuleDefinition(
+    moduleId: ModuleId,
+    options: { forceRefresh?: boolean } = {}
+  ): Observable<ModuleDefinition | null> {
+    return this.getModuleCatalog(options.forceRefresh).pipe(
+      map((catalog) => catalog.find((definition) => definition.id === moduleId) ?? null)
+    );
+  }
+
   clearTenantModules(tenantId: string): void {
     this.tenantModuleCache.delete(tenantId);
     this.lastKnownModules.set(['core']);

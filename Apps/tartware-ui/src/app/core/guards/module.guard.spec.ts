@@ -1,8 +1,8 @@
 import { TestBed } from '@angular/core/testing';
-import type { CanActivateFn } from '@angular/router';
+import type { ActivatedRouteSnapshot, CanActivateFn, RouterStateSnapshot } from '@angular/router';
 import { Router } from '@angular/router';
 import type { TenantRole } from '@tartware/schemas';
-import { firstValueFrom, of } from 'rxjs';
+import { firstValueFrom, type Observable, of } from 'rxjs';
 import type { ModuleId } from '../models/module.model';
 import { AuthService } from '../services/auth.service';
 import { ModuleService } from '../services/module.service';
@@ -47,9 +47,11 @@ describe('moduleGuard', () => {
     tenantContext.tenantId.and.returnValue('tenant-1');
     tenantContext.enabledModules.and.returnValue(['core']);
     authService.hasMinimumRole.and.returnValue(true);
+    const route = {} as ActivatedRouteSnapshot;
+    const state = {} as RouterStateSnapshot;
 
     const result = TestBed.runInInjectionContext(() =>
-      guardFactory('core', { minRole: 'MANAGER' })()
+      guardFactory('core', { minRole: 'MANAGER' })(route, state)
     );
 
     expect(result).toBe(true);
@@ -60,9 +62,11 @@ describe('moduleGuard', () => {
     tenantContext.tenantId.and.returnValue('tenant-1');
     tenantContext.enabledModules.and.returnValue(['core']);
     authService.hasMinimumRole.and.returnValue(false);
+    const route = {} as ActivatedRouteSnapshot;
+    const state = {} as RouterStateSnapshot;
 
     const result = TestBed.runInInjectionContext(() =>
-      guardFactory('core', { minRole: 'MANAGER' })()
+      guardFactory('core', { minRole: 'MANAGER' })(route, state)
     );
 
     expect(result).toBe(false);
@@ -74,11 +78,16 @@ describe('moduleGuard', () => {
     tenantContext.enabledModules.and.returnValue([]);
     authService.hasMinimumRole.and.returnValue(true);
     moduleService.getTenantModules.and.returnValue(of(['core']));
+    const route = {} as ActivatedRouteSnapshot;
+    const state = {} as RouterStateSnapshot;
 
-    const result = TestBed.runInInjectionContext(() => guardFactory('core')());
+    const activation = TestBed.runInInjectionContext(() => guardFactory('core')(route, state));
 
-    expect(result).not.toBe(true);
-    const resolved = await firstValueFrom(result as ReturnType<typeof of<boolean>>);
+    expect(activation).not.toBe(true);
+    const resolved =
+      typeof activation === 'boolean'
+        ? activation
+        : await firstValueFrom(activation as Observable<boolean>);
     expect(resolved).toBe(true);
     expect(moduleService.getTenantModules).toHaveBeenCalledWith('tenant-1');
   });

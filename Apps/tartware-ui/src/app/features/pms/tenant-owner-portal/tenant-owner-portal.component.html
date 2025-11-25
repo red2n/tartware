@@ -1,0 +1,149 @@
+<section class="module-page">
+  <div class="module-page__header">
+    <div>
+      <p class="eyebrow">Experience Module</p>
+      <h1>Tenant & Owner Portal</h1>
+      <p class="subtitle">
+        {{
+          moduleDefinition()?.description
+            || 'Streamlined self-service tools for tenants and owners with secure payments, documents, and maintenance routing.'
+        }}
+      </p>
+    </div>
+
+    <div class="header-actions">
+      <button mat-stroked-button color="primary">
+        <mat-icon>palette</mat-icon>
+        Branding & Themes
+      </button>
+      <button mat-stroked-button>
+        <mat-icon>settings</mat-icon>
+        Portal Settings
+      </button>
+    </div>
+  </div>
+
+  <mat-progress-bar *ngIf="isLoading()" mode="indeterminate"></mat-progress-bar>
+
+  <mat-card *ngIf="definitionError()" class="error-banner">
+    <mat-icon>warning</mat-icon>
+    <span>{{ definitionError() }}</span>
+  </mat-card>
+
+  <mat-card *ngIf="dataError()" class="error-banner">
+    <mat-icon>warning</mat-icon>
+    <span>{{ dataError() }}</span>
+  </mat-card>
+
+  <div class="module-page__grid">
+    <mat-card class="module-summary" *ngIf="moduleDefinition() as module">
+      <div class="module-summary__tier">
+        <span class="chip">{{ module.tier | titlecase }} tier</span>
+        <span class="chip chip--muted">{{ module.category }}</span>
+      </div>
+
+      <h2>{{ module.name }}</h2>
+      <p>{{ module.description }}</p>
+
+      <mat-divider></mat-divider>
+
+      <div class="module-features">
+        <h3>What&apos;s included</h3>
+        <ul>
+          <li *ngFor="let feature of module.features">
+            <mat-icon>check_circle</mat-icon>
+            <span>{{ feature }}</span>
+          </li>
+        </ul>
+      </div>
+    </mat-card>
+
+    <mat-card class="module-metrics">
+      <div class="card-header">
+        <div>
+          <p class="eyebrow">Engagement</p>
+          <h3>Portal usage across {{ tenantLabel() }}</h3>
+        </div>
+        <button mat-button>
+          <mat-icon>file_upload</mat-icon>
+          Export CSV
+        </button>
+      </div>
+
+      <div class="metrics-grid">
+        <div class="metric" *ngFor="let metric of engagementMetrics()">
+          <p class="metric__label">{{ metric.label }}</p>
+          <p class="metric__value">{{ metric.value }}</p>
+          <p
+            class="metric__helper"
+            [class.metric__helper--down]="metric.trend === 'down'"
+          >
+            <mat-icon>
+              {{ metric.trend === 'down' ? 'south' : 'north' }}
+            </mat-icon>
+            {{ metric.helper }}
+          </p>
+        </div>
+      </div>
+    </mat-card>
+  </div>
+
+  <div class="module-page__grid module-page__grid--two">
+    <mat-card>
+      <div class="card-header">
+        <div>
+          <p class="eyebrow">Service Workflows</p>
+          <h3>Request queues</h3>
+        </div>
+        <button mat-button>
+          <mat-icon>sync</mat-icon>
+          Sync automations
+        </button>
+      </div>
+
+      <div class="request-row" *ngFor="let queue of requestQueues()">
+        <div>
+          <p class="request-row__label">{{ queue.type }}</p>
+          <p class="request-row__pending">{{ queue.pending }} open items</p>
+        </div>
+        <div class="request-row__meta">
+          <span>
+            <mat-icon>schedule</mat-icon>
+            {{ queue.avgResponse }} avg response
+          </span>
+          <span>
+            <mat-icon>verified</mat-icon>
+            {{ queue.sla }}
+          </span>
+        </div>
+      </div>
+    </mat-card>
+
+    <mat-card>
+      <div class="card-header">
+        <div>
+          <p class="eyebrow">Communications</p>
+          <h3>Channel health</h3>
+        </div>
+        <button mat-button>
+          <mat-icon>notifications_active</mat-icon>
+          Notification rules
+        </button>
+      </div>
+
+      <mat-list>
+        <mat-list-item *ngFor="let channel of channelStatuses()">
+          <div matListItemTitle>{{ channel.channel }}</div>
+          <div matListItemLine>{{ channel.volume }} / adoption {{ channel.adoption }}</div>
+          <span
+            matListItemMeta
+            class="status-chip"
+            [class.status-chip--watch]="channel.status === 'watch'"
+          >
+            {{ channel.status === 'watch' ? 'Watch' : 'Healthy' }}
+          </span>
+        </mat-list-item>
+      </mat-list>
+    </mat-card>
+  </div>
+</section>

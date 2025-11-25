@@ -1,0 +1,175 @@
+<section class="module-page">
+  <div class="module-page__header">
+    <div>
+      <p class="eyebrow">Growth Module</p>
+      <h1>Marketing & Channel Management</h1>
+      <p class="subtitle">
+        {{
+          moduleDefinition()?.description
+            || 'Unify distribution, rate management, and CRM campaigns from a single command center.'
+        }}
+      </p>
+    </div>
+    <div class="header-actions">
+      <button mat-stroked-button color="primary">
+        <mat-icon>sync_alt</mat-icon>
+        Sync Channels
+      </button>
+      <button mat-stroked-button>
+        <mat-icon>campaign</mat-icon>
+        Create Campaign
+      </button>
+    </div>
+  </div>
+
+  <mat-progress-bar *ngIf="isLoading()" mode="indeterminate"></mat-progress-bar>
+
+  <mat-card *ngIf="definitionError()" class="error-banner">
+    <mat-icon>warning</mat-icon>
+    <span>{{ definitionError() }}</span>
+  </mat-card>
+
+  <mat-card *ngIf="dataError()" class="error-banner">
+    <mat-icon>warning</mat-icon>
+    <span>{{ dataError() }}</span>
+  </mat-card>
+
+  <div class="module-page__grid">
+    <mat-card class="module-summary" *ngIf="moduleDefinition() as module">
+      <div class="module-summary__tier">
+        <span class="chip">{{ module.tier | titlecase }} tier</span>
+        <span class="chip chip--muted">{{ module.category }}</span>
+      </div>
+
+      <h2>{{ module.name }}</h2>
+      <p>{{ module.description }}</p>
+
+      <mat-divider></mat-divider>
+
+      <div class="module-features">
+        <h3>Included tooling</h3>
+        <ul>
+          <li *ngFor="let feature of module.features">
+            <mat-icon>check_circle</mat-icon>
+            <span>{{ feature }}</span>
+          </li>
+        </ul>
+      </div>
+    </mat-card>
+
+    <mat-card class="module-table">
+      <div class="card-header">
+        <div>
+          <p class="eyebrow">Distribution</p>
+          <h3>Channel quality</h3>
+        </div>
+        <button mat-button>
+          <mat-icon>file_download</mat-icon>
+          Rate plan export
+        </button>
+      </div>
+
+      <table mat-table [dataSource]="channelPerformance()" class="channel-table">
+        <ng-container matColumnDef="channel">
+          <th mat-header-cell *matHeaderCellDef>Channel</th>
+          <td mat-cell *matCellDef="let row">
+            <div class="channel-cell">
+              <mat-icon>travel_explore</mat-icon>
+              <div>
+                <p>{{ row.channel }}</p>
+                <span>Next sync {{ row.nextSync }}</span>
+              </div>
+            </div>
+          </td>
+        </ng-container>
+
+        <ng-container matColumnDef="adr">
+          <th mat-header-cell *matHeaderCellDef>ADR</th>
+          <td mat-cell *matCellDef="let row">{{ row.adr }}</td>
+        </ng-container>
+
+        <ng-container matColumnDef="pickup">
+          <th mat-header-cell *matHeaderCellDef>Pickup</th>
+          <td mat-cell *matCellDef="let row">{{ row.pickup }}</td>
+        </ng-container>
+
+        <ng-container matColumnDef="nextSync">
+          <th mat-header-cell *matHeaderCellDef>Next sync</th>
+          <td mat-cell *matCellDef="let row">{{ row.nextSync }}</td>
+        </ng-container>
+
+        <ng-container matColumnDef="status">
+          <th mat-header-cell *matHeaderCellDef>Status</th>
+          <td mat-cell *matCellDef="let row">
+            <span class="status-chip" [class.status-chip--attention]="row.status === 'attention'">
+              {{ row.status === 'attention' ? 'Needs attention' : 'Synced' }}
+            </span>
+          </td>
+        </ng-container>
+
+        <tr mat-header-row *matHeaderRowDef="channelColumns"></tr>
+        <tr mat-row *matRowDef="let row; columns: channelColumns"></tr>
+      </table>
+    </mat-card>
+  </div>
+
+  <div class="module-page__grid module-page__grid--two">
+    <mat-card>
+      <div class="card-header">
+        <div>
+          <p class="eyebrow">Campaigns</p>
+          <h3>Live & scheduled</h3>
+        </div>
+        <button mat-button>
+          <mat-icon>auto_graph</mat-icon>
+          Performance
+        </button>
+      </div>
+
+      <div class="campaign-row" *ngFor="let campaign of campaignSummaries()">
+        <div>
+          <p class="campaign-row__name">{{ campaign.name }}</p>
+          <p class="campaign-row__audience">{{ campaign.audience }}</p>
+        </div>
+        <div class="campaign-row__meta">
+          <span class="status-chip" [class.status-chip--scheduled]="campaign.status !== 'running'">
+            {{ campaign.status | titlecase }}
+          </span>
+          <span class="campaign-row__metric">CTR {{ campaign.ctr }}</span>
+          <span class="campaign-row__metric">{{ campaign.budget }}</span>
+        </div>
+        <mat-progress-bar [value]="campaign.progress * 100"></mat-progress-bar>
+      </div>
+    </mat-card>
+
+    <mat-card>
+      <div class="card-header">
+        <div>
+          <p class="eyebrow">Demand</p>
+          <h3>Lead sources</h3>
+        </div>
+        <button mat-button>
+          <mat-icon>tune</mat-icon>
+          Routing rules
+        </button>
+      </div>
+
+      <mat-list>
+        <mat-list-item *ngFor="let lead of leadSources()">
+          <div matListItemTitle>
+            {{ lead.source }}
+            <small>{{ lead.leads }} leads</small>
+          </div>
+          <div matListItemLine>Conversion {{ lead.conversion }}</div>
+          <span
+            matListItemMeta
+            class="quality-chip"
+            [class.quality-chip--watch]="lead.quality === 'watch'"
+          >
+            {{ lead.quality === 'great' ? 'Healthy' : lead.quality === 'ok' ? 'Stable' : 'Watch' }}
+          </span>
+        </mat-list-item>
+      </mat-list>
+    </mat-card>
+  </div>
+</section>
