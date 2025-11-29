@@ -25,7 +25,6 @@ import { TenantContextService } from '../../../core/services/tenant-context.serv
 
 @Component({
   selector: 'app-guests',
-  standalone: true,
   imports: [
     CommonModule,
     MatTableModule,

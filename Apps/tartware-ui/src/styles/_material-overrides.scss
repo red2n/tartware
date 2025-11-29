@@ -1,7 +1,7 @@
 // Tartware Professional Theme - Material Design Overrides
 // Customizes Angular Material components to match our theme
 
-@import './variables';
+@use './variables' as *;
 
 // Card overrides
 .mat-mdc-card {

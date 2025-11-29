@@ -1,4 +1,4 @@
-import { CommonModule, JsonPipe } from '@angular/common';
+import { CommonModule } from '@angular/common';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -26,7 +26,6 @@ import { LogsService } from '../../../core/services/logs.service';
 
 @Component({
   selector: 'app-logs',
-  standalone: true,
   imports: [
     CommonModule,
     ReactiveFormsModule,
@@ -42,7 +41,6 @@ import { LogsService } from '../../../core/services/logs.service';
     MatChipsModule,
     MatExpansionModule,
     MatTooltipModule,
-    JsonPipe,
   ],
   templateUrl: './logs.component.html',
   styleUrl: './logs.component.scss',

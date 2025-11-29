@@ -20,7 +20,6 @@ import { TenantContextService } from '../../../core/services/tenant-context.serv
 
 @Component({
   selector: 'app-reports',
-  standalone: true,
   imports: [
     CommonModule,
     MatCardModule,

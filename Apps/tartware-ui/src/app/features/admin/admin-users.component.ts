@@ -16,7 +16,6 @@ const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{
 
 @Component({
   selector: 'app-admin-users',
-  standalone: true,
   imports: [CommonModule, ReactiveFormsModule, DatePipe, DecimalPipe],
   templateUrl: './admin-users.component.html',
   styleUrl: './admin-users.component.scss',

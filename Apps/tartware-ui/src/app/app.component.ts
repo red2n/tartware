@@ -8,7 +8,6 @@ import { PwaService } from './core/services/pwa.service';
 
 @Component({
   selector: 'app-root',
-  standalone: true,
   imports: [RouterOutlet, CommonModule, MatProgressBarModule, StatusBarComponent],
   templateUrl: './app.component.html',
   styleUrl: './app.component.scss',
