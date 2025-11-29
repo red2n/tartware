@@ -44,8 +44,9 @@ curl -s "https://api.github.com/repos/dlidstrom/Duplo/releases/latest" \
     | tr -d '"' \
     | xargs curl -L -o duplo.zip
 
-if [ ! -f duplo.zip ]; then
-    echo "❌ Failed to download Duplo"
+if [ ! -s duplo.zip ]; then
+    echo "❌ Downloaded file is empty or corrupted"
+    rm -f duplo.zip
     exit 1
 fi
 
