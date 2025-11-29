@@ -26,7 +26,6 @@ import { TenantContextService } from '../../../core/services/tenant-context.serv
 
 @Component({
   selector: 'app-billing',
-  standalone: true,
   imports: [
     CommonModule,
     MatTableModule,

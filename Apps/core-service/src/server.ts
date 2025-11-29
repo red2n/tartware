@@ -1,10 +1,10 @@
 import fastifyCors from "@fastify/cors";
 import fastifyHelmet from "@fastify/helmet";
 import fastifySensible from "@fastify/sensible";
-import Fastify, { type FastifyInstance } from "fastify";
+import Fastify, { type FastifyBaseLogger, type FastifyInstance } from "fastify";
 
 import { config } from "./config.js";
-import { attachLoggerTransportFallback, fastifyLoggerOptions } from "./lib/logger.js";
+import { appLogger } from "./lib/logger.js";
 import authContextPlugin from "./plugins/auth-context.js";
 import errorHandlerPlugin from "./plugins/error-handler.js";
 import systemAdminAuthPlugin from "./plugins/system-admin-auth.js";
@@ -29,11 +29,9 @@ import { registerUserRoutes } from "./routes/users.js";
 
 export const buildServer = (): FastifyInstance => {
   const app = Fastify({
-    logger: fastifyLoggerOptions,
+    logger: appLogger as FastifyBaseLogger,
     disableRequestLogging: !config.log.requestLogging,
   });
-
-  attachLoggerTransportFallback(app.log);
 
   const registeredRoutes = new Map<string, { method: string; url: string }>();
 

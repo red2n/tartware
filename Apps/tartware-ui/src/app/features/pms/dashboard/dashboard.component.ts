@@ -1,4 +1,3 @@
-import { CommonModule } from '@angular/common';
 import { ChangeDetectionStrategy, Component, effect, inject, signal } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
@@ -23,8 +22,7 @@ import { TenantContextService } from '../../../core/services/tenant-context.serv
  */
 @Component({
   selector: 'app-dashboard',
-  standalone: true,
-  imports: [CommonModule, MatCardModule, MatIconModule, MatButtonModule, MatProgressSpinnerModule],
+  imports: [MatCardModule, MatIconModule, MatButtonModule, MatProgressSpinnerModule],
   templateUrl: './dashboard.component.html',
   styleUrl: './dashboard.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,

@@ -181,4 +181,32 @@ describe("System Administrator Capabilities", () => {
     expect(payload.scope).toBe("TENANT_IMPERSONATION");
     expect(payload.access_token).toMatch(/^eyJ/);
   });
+
+  it("enforces per-admin rate limiting with a 200 request burst cap", async () => {
+    const { access_token } = await performSystemLogin(app);
+
+    for (let i = 0; i < 200; i += 1) {
+      const response = await app.inject({
+        method: "GET",
+        url: "/v1/system/users?limit=1",
+        headers: {
+          Authorization: `Bearer ${access_token}`,
+        },
+      });
+
+      expect(response.statusCode).toBe(200);
+    }
+
+    const limitedResponse = await app.inject({
+      method: "GET",
+      url: "/v1/system/users?limit=1",
+      headers: {
+        Authorization: `Bearer ${access_token}`,
+      },
+    });
+
+    expect(limitedResponse.statusCode).toBe(429);
+    const payload = limitedResponse.json();
+    expect(payload.error).toBe("SYSTEM_ADMIN_RATE_LIMITED");
+  });
 });

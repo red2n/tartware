@@ -21,7 +21,6 @@ import { ThemeService } from '../../../core/services/theme.service';
 
 @Component({
   selector: 'app-settings',
-  standalone: true,
   imports: [
     CommonModule,
     RouterModule,

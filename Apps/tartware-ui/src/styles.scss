@@ -1,9 +1,14 @@
 /* Tartware Professional Theme - Global Styles */
 
 @use '@angular/material' as mat;
+@use './styles/variables' as *;
+@use './styles/material-overrides';
+@use './styles/pms-components';
+@use './styles/dark-theme';
 
 // Include Material core
-@include mat.core();
+@include mat.elevation-classes();
+@include mat.app-background();
 
 // Define Material palettes
 $tartware-primary: mat.m2-define-palette(mat.$m2-indigo-palette, 500);
@@ -30,12 +35,6 @@ $tartware-light-theme: mat.m2-define-light-theme((
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-
-// Import custom styles
-@import './styles/variables';
-@import './styles/material-overrides';
-@import './styles/pms-components';
-@import './styles/dark-theme';
 
 // Base styles
 html {

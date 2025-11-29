@@ -1,4 +1,3 @@
-import { CommonModule } from '@angular/common';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -52,9 +51,7 @@ import { ThemeService } from '../../core/services/theme.service';
  */
 @Component({
   selector: 'app-pms-layout',
-  standalone: true,
   imports: [
-    CommonModule,
     RouterModule,
     MatSidenavModule,
     MatToolbarModule,

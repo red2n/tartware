@@ -19,7 +19,7 @@
           type="date"
           [value]="startDate()"
           (change)="onStartDateChange($event)"
-        />
+          />
       </mat-form-field>
 
       <mat-form-field appearance="outline" class="min-w-[220px]">
@@ -29,7 +29,7 @@
           type="date"
           [value]="endDate()"
           (change)="onEndDateChange($event)"
-        />
+          />
       </mat-form-field>
 
       <button mat-stroked-button class="h-[56px]" (click)="loadReport()">Apply</button>
@@ -66,17 +66,19 @@
     </mat-card>
   } @else {
     <div class="reports-grid">
-      <mat-card class="stat-card" *ngFor="let stat of statusEntries(report())">
-        <mat-card-header>
-          <div mat-card-avatar class="icon-wrapper">
-            <mat-icon>event</mat-icon>
-          </div>
-          <div>
-            <mat-card-title>{{ stat.value | number }}</mat-card-title>
-            <mat-card-subtitle>{{ stat.label }}</mat-card-subtitle>
-          </div>
-        </mat-card-header>
-      </mat-card>
+      @for (stat of statusEntries(report()); track stat) {
+        <mat-card class="stat-card">
+          <mat-card-header>
+            <div mat-card-avatar class="icon-wrapper">
+              <mat-icon>event</mat-icon>
+            </div>
+            <div>
+              <mat-card-title>{{ stat.value | number }}</mat-card-title>
+              <mat-card-subtitle>{{ stat.label }}</mat-card-subtitle>
+            </div>
+          </mat-card-header>
+        </mat-card>
+      }
 
       <mat-card class="stat-card revenue-card">
         <mat-card-header>
@@ -86,8 +88,8 @@
           <div>
             <mat-card-title>
               {{
-                report()?.revenueSummary?.today
-                  | currency: report()?.revenueSummary?.currency
+              report()?.revenueSummary?.today
+              | currency: report()?.revenueSummary?.currency
               }}
             </mat-card-title>
             <mat-card-subtitle>Revenue Today</mat-card-subtitle>
@@ -99,8 +101,8 @@
               <p class="label">Month-to-date</p>
               <p class="value">
                 {{
-                  report()?.revenueSummary?.monthToDate
-                    | currency: report()?.revenueSummary?.currency
+                report()?.revenueSummary?.monthToDate
+                | currency: report()?.revenueSummary?.currency
                 }}
               </p>
             </div>
@@ -108,8 +110,8 @@
               <p class="label">Year-to-date</p>
               <p class="value">
                 {{
-                  report()?.revenueSummary?.yearToDate
-                    | currency: report()?.revenueSummary?.currency
+                report()?.revenueSummary?.yearToDate
+                | currency: report()?.revenueSummary?.currency
                 }}
               </p>
             </div>

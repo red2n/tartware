@@ -1,7 +1,14 @@
 import process from "node:process";
-import { createRequire } from 'module';
+import { createRequire } from "node:module";
+import { Writable } from "node:stream";
 
-import { diag, DiagConsoleLogger, DiagLogLevel } from "@opentelemetry/api";
+import {
+	diag,
+	DiagConsoleLogger,
+	DiagLogLevel,
+	type Attributes,
+} from "@opentelemetry/api";
+import { logs, SeverityNumber } from "@opentelemetry/api-logs";
 import { getNodeAutoInstrumentations } from "@opentelemetry/auto-instrumentations-node";
 import { OTLPLogExporter } from "@opentelemetry/exporter-logs-otlp-http";
 import { OTLPTraceExporter } from "@opentelemetry/exporter-trace-otlp-http";
@@ -12,10 +19,7 @@ import {
 import { NodeSDK } from "@opentelemetry/sdk-node";
 import { Resource } from "@opentelemetry/resources";
 import { SemanticResourceAttributes } from "@opentelemetry/semantic-conventions";
-import pino, {
-	type Logger as PinoLogger,
-	type LoggerOptions as PinoLoggerOptions,
-} from "pino";
+import pino, { type Logger as PinoLogger } from "pino";
 
 type AutoInstrumentationOptions = Parameters<
 	typeof getNodeAutoInstrumentations
@@ -29,6 +33,13 @@ const parseBoolean = (
 ): boolean => {
 	if (value === undefined) {
 		return defaultValue;
+	}
+	return !FALSEY_ENV_VALUES.has(value.toLowerCase());
+};
+
+const parseOptionalBoolean = (value?: string): boolean | undefined => {
+	if (value === undefined) {
+		return undefined;
 	}
 	return !FALSEY_ENV_VALUES.has(value.toLowerCase());
 };
@@ -208,6 +219,16 @@ export interface LoggerOptions {
 	base?: Record<string, unknown>;
 }
 
+export interface ServiceLoggerOptions {
+	serviceName: string;
+	levelEnv?: string;
+	prettyEnv?: string;
+	level?: string;
+	pretty?: boolean;
+	environment?: string;
+	base?: Record<string, unknown>;
+}
+
 const shouldPrettyPrint = (
 	requestedPretty: boolean | undefined,
 	environment: string | undefined,
@@ -223,58 +244,130 @@ const shouldPrettyPrint = (
 	return resolvedEnvironment !== "production" && Boolean(process.stdout?.isTTY);
 };
 
-export const createPinoOptions = (options: LoggerOptions): PinoLoggerOptions => {
+type OtelLogStreamOptions = {
+	serviceName: string;
+};
+
+const mapSeverity = (
+	level: unknown,
+): { severityText: string; severityNumber: SeverityNumber } => {
+	const numeric =
+		typeof level === "number" ? level : Number.parseInt(String(level ?? ""), 10);
+	switch (numeric) {
+		case 10:
+			return { severityText: "TRACE", severityNumber: SeverityNumber.TRACE };
+		case 20:
+			return { severityText: "DEBUG", severityNumber: SeverityNumber.DEBUG };
+		case 40:
+			return { severityText: "WARN", severityNumber: SeverityNumber.WARN };
+		case 50:
+			return { severityText: "ERROR", severityNumber: SeverityNumber.ERROR };
+		case 60:
+			return { severityText: "FATAL", severityNumber: SeverityNumber.FATAL };
+		default:
+			return { severityText: "INFO", severityNumber: SeverityNumber.INFO };
+	}
+};
+
+class OtelLogStream extends Writable {
+	private readonly otelLogger;
+
+	constructor(private readonly options: OtelLogStreamOptions) {
+		super({ objectMode: false });
+		this.otelLogger = logs.getLogger(this.options.serviceName);
+	}
+
+	override _write(
+		chunk: unknown,
+		_encoding: BufferEncoding,
+		callback: (error?: Error | null) => void,
+	): void {
+		if (!chunk) {
+			callback();
+			return;
+		}
+		const payload =
+			typeof chunk === "string"
+				? chunk
+				: Buffer.isBuffer(chunk)
+					? chunk.toString("utf8")
+					: String(chunk);
+		if (!payload) {
+			callback();
+			return;
+		}
+
+		for (const line of payload.split(/\n+/)) {
+			if (!line) {
+				continue;
+			}
+			try {
+				const entry = JSON.parse(line) as Record<string, unknown>;
+				this.emitRecord(entry);
+			} catch {
+				// ignore malformed log lines
+			}
+		}
+
+		callback();
+	}
+
+	private emitRecord(entry: Record<string, unknown>): void {
+		const { severityNumber, severityText } = mapSeverity(entry.level);
+		const attributes: Attributes = {};
+		for (const [key, value] of Object.entries(entry)) {
+			if (key === "msg" || value === undefined) {
+				continue;
+			}
+			if (
+				typeof value === "string" ||
+				typeof value === "number" ||
+				typeof value === "boolean"
+			) {
+				attributes[key] = value;
+			} else {
+				attributes[key] = JSON.stringify(value);
+			}
+		}
+
+		const body =
+			typeof entry.msg === "string"
+				? entry.msg
+				: entry.msg !== undefined
+					? JSON.stringify(entry.msg)
+					: "";
+
+		this.otelLogger.emit({
+			body,
+			severityNumber,
+			severityText,
+			attributes,
+		});
+	}
+}
+
+const createPrettyStream = () => {
+	try {
+		const _require = createRequire(import.meta.url);
+		const pretty = _require("pino-pretty");
+		return pretty({
+			colorize: true,
+			translateTime: "SYS:standard",
+			singleLine: true,
+		});
+	} catch {
+		return pino.destination({ sync: false });
+	}
+};
+
+export const createLogger = (options: LoggerOptions): PinoLogger => {
 	const otlpEndpoint =
 		process.env.OTEL_EXPORTER_OTLP_LOGS_ENDPOINT ??
 		process.env.OTEL_EXPORTER_OTLP_ENDPOINT;
 
 	const usePrettyPrint = shouldPrettyPrint(options.pretty, options.environment);
 
-	// Priority: OTLP transport > Pretty print > No transport
-	// If OTLP is configured, prefer it — but guard using createRequire to
-	// ensure the transport module exists and won't crash the worker thread.
-	let transport: any | undefined;
-	if (otlpEndpoint) {
-		try {
-			const _require = createRequire(import.meta.url);
-			_require.resolve("pino-opentelemetry-transport");
-			transport = {
-				target: "pino-opentelemetry-transport",
-				options: {
-					url: otlpEndpoint,
-					resourceAttributes: {
-						"service.name": options.serviceName,
-						"service.version": options.base?.version,
-						"deployment.environment":
-							options.environment ??
-							process.env.NODE_ENV ??
-							"development",
-					},
-				},
-			};
-		} catch (err) {
-			if (usePrettyPrint) {
-				transport = {
-					target: "pino-pretty",
-					options: {
-						colorize: true,
-						translateTime: "SYS:standard",
-						singleLine: true,
-					},
-				};
-			}
-		}
-	} else if (usePrettyPrint) {
-		transport = {
-			target: "pino-pretty",
-			options: {
-				colorize: true,
-				translateTime: "SYS:standard",
-				singleLine: true,
-			},
-		};
-	}
-	return {
+	const baseOptions = {
 		name: options.serviceName,
 		level: options.level ?? "info",
 		base: {
@@ -282,12 +375,44 @@ export const createPinoOptions = (options: LoggerOptions): PinoLoggerOptions => 
 			...options.base,
 		},
 		timestamp: pino.stdTimeFunctions.isoTime,
-		transport,
 	};
+
+	const streams: pino.StreamEntry[] = [];
+
+	if (otlpEndpoint) {
+		streams.push({
+			level: baseOptions.level as pino.Level,
+			stream: new OtelLogStream({ serviceName: options.serviceName }),
+		});
+	}
+
+	if (usePrettyPrint) {
+		streams.push({ stream: createPrettyStream() });
+	} else {
+		streams.push({ stream: pino.destination({ sync: false }) });
+	}
+
+	const [primaryStream] = streams;
+	if (streams.length === 1 && primaryStream) {
+		return pino(baseOptions, primaryStream.stream);
+	}
+
+	return pino(baseOptions, pino.multistream(streams));
 };
 
-export const createLogger = (options: LoggerOptions): PinoLogger => {
-	return pino(createPinoOptions(options));
+export const createServiceLogger = (options: ServiceLoggerOptions): PinoLogger => {
+	const envLevel = options.levelEnv ? process.env[options.levelEnv] : undefined;
+	const envPretty = parseOptionalBoolean(
+		options.prettyEnv ? process.env[options.prettyEnv] : undefined,
+	);
+
+	return createLogger({
+		serviceName: options.serviceName,
+		level: envLevel ?? options.level,
+		pretty: envPretty ?? options.pretty,
+		environment: options.environment ?? process.env.NODE_ENV,
+		base: options.base,
+	});
 };
 
 export type { Logger as PinoLogger } from "pino";

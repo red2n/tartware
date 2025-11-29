@@ -85,5 +85,9 @@ export const config = {
       maxFailedAttempts: configValues.SYSTEM_ADMIN_MAX_FAILED_ATTEMPTS,
       lockoutMinutes: configValues.SYSTEM_ADMIN_LOCKOUT_MINUTES,
     },
+    rateLimit: {
+      perMinute: configValues.SYSTEM_ADMIN_RATE_LIMIT_PER_MINUTE,
+      burst: configValues.SYSTEM_ADMIN_RATE_LIMIT_BURST,
+    },
   },
 };

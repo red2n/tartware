@@ -14,11 +14,12 @@ processors:
 exporters:
   logging:
     verbosity: detailed
-  elasticsearch:
-    endpoints: ["http://opensearch-node:9200"]
-    logs_index: "otel-logs-%{+yyyy.MM.dd}"
-    tls:
-      insecure: true
+  opensearch/logs:
+    http:
+      endpoint: http://opensearch-node:9200
+      tls:
+        insecure: true
+    logs_index: "otel-logs-default"
 
 extensions:
   health_check:
@@ -38,4 +39,4 @@ service:
     logs:
       receivers: [otlp]
       processors: [batch]
-      exporters: [logging, elasticsearch]
+      exporters: [logging, opensearch/logs]

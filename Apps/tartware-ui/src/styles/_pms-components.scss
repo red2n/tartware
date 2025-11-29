@@ -2,7 +2,7 @@
 // All PMS component styles in one place for maintainability
 // Dark theme styles are in _dark-theme.scss
 
-@import './variables';
+@use './variables' as *;
 
 // ============================================================================
 // MIXINS - Reusable style patterns

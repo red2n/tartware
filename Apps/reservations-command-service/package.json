@@ -22,6 +22,7 @@
   "dependencies": {
     "@fastify/helmet": "^11.1.1",
     "@fastify/sensible": "^5.1.1",
+    "@tartware/telemetry": "file:../telemetry",
     "@tartware/schemas": "file:../../schema",
     "dotenv": "^17.2.3",
     "fastify": "^4.26.2",

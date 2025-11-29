@@ -26,7 +26,6 @@ import { TenantContextService } from '../../../core/services/tenant-context.serv
 
 @Component({
   selector: 'app-reservations',
-  standalone: true,
   imports: [
     CommonModule,
     MatTableModule,

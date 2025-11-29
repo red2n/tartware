@@ -1,22 +1,19 @@
 import fastifyHelmet from "@fastify/helmet";
 import rateLimit from "@fastify/rate-limit";
 import fastifySensible from "@fastify/sensible";
-import fastify, { type FastifyReply, type FastifyRequest } from "fastify";
+import fastify, {
+	type FastifyBaseLogger,
+	type FastifyReply,
+	type FastifyRequest,
+} from "fastify";
 
 import { gatewayConfig, serviceTargets } from "./config.js";
+import { gatewayLogger } from "./logger.js";
 import { proxyRequest } from "./utils/proxy.js";
 
 export const buildServer = () => {
 	const app = fastify({
-		logger: {
-			transport:
-				process.env.NODE_ENV === "production"
-					? undefined
-					: {
-							target: "pino-pretty",
-							options: { colorize: true },
-						},
-		},
+		logger: gatewayLogger as FastifyBaseLogger,
 	});
 
 	app.register(fastifyHelmet, { global: true });

@@ -1,4 +1,3 @@
-import { CommonModule } from '@angular/common';
 import { Component, computed, type OnDestroy, signal } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 import { environment } from '../../../environments/environment';
@@ -22,8 +21,7 @@ import { environment } from '../../../environments/environment';
  */
 @Component({
   selector: 'app-status-bar',
-  standalone: true,
-  imports: [CommonModule, MatIconModule],
+  imports: [MatIconModule],
   template: `
     <footer class="status-bar">
       <div class="status-bar-left">

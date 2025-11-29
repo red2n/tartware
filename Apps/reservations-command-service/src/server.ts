@@ -1,23 +1,14 @@
 import fastifyHelmet from "@fastify/helmet";
 import fastifySensible from "@fastify/sensible";
-import fastify from "fastify";
+import fastify, { type FastifyBaseLogger } from "fastify";
 
 import { serviceConfig } from "./config.js";
+import { reservationsLogger } from "./logger.js";
 import { registerReservationCommandRoutes } from "./routes/reservation-commands.js";
 
 export const buildServer = () => {
   const app = fastify({
-    logger: {
-      transport:
-        process.env.NODE_ENV === "production"
-          ? undefined
-          : {
-              target: "pino-pretty",
-              options: {
-                colorize: true,
-              },
-            },
-    },
+    logger: reservationsLogger as FastifyBaseLogger,
   });
 
   app.register(fastifyHelmet, { global: true });

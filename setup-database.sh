@@ -222,6 +222,12 @@ if ! command -v gcc &> /dev/null || ! command -v make &> /dev/null; then
     INSTALL_NEEDED=true
 fi
 
+# Check for PostgreSQL client tools (psql/pg_isready)
+if ! command -v psql &> /dev/null || ! command -v pg_isready &> /dev/null; then
+    MISSING_TOOLS+=("postgresql-client")
+    INSTALL_NEEDED=true
+fi
+
 # If tools are missing, install them automatically
 if [ "$INSTALL_NEEDED" = true ]; then
     echo -e "${YELLOW}╔════════════════════════════════════════════════════════════════╗${NC}"
@@ -280,6 +286,14 @@ if command -v gcc &> /dev/null && command -v make &> /dev/null; then
     echo -e "${GREEN}✓ Compiler toolchain is available${NC}"
 else
     echo -e "${RED}✗ gcc/make toolchain is missing${NC}"
+    exit 1
+fi
+
+if command -v psql &> /dev/null && command -v pg_isready &> /dev/null; then
+    echo -e "${GREEN}✓ PostgreSQL client tools (psql, pg_isready) are available${NC}"
+else
+    echo -e "${RED}✗ PostgreSQL client tools are missing${NC}"
+    echo -e "${YELLOW}Install package: postgresql-client${NC}"
     exit 1
 fi
 echo ""
