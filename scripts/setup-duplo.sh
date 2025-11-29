@@ -50,6 +50,11 @@ if [ ! -f duplo.zip ]; then
 fi
 
 echo "Extracting..."
+if ! command -v unzip &> /dev/null; then
+    echo "❌ unzip command not found. Please install unzip and try again."
+    rm duplo.zip
+    exit 1
+fi
 unzip -o duplo.zip
 chmod +x duplo
 rm duplo.zip
