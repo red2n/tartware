@@ -18,10 +18,19 @@ export const TEST_SYSTEM_ADMIN_PASSWORD_HASH =
   "$2a$10$lVhoThJ5rSrAu9mz2kgXuew27BmgImztE2EXokYbtjgboPHgGwVKW";
 const TEST_SYSTEM_ADMIN_MFA_SECRET = "KVKFKRCPNZQUYMLXOVYDSQKJKZDTSRLD";
 
-const systemAdminState = {
+const DEFAULT_ALLOWED_HOURS = "[2000-01-01T00:00:00Z,2100-01-01T00:00:00Z)";
+
+const systemAdminState: {
+  failedAttempts: number;
+  lockedUntil: Date | null;
+  allowedHours: string | null;
+  ipWhitelist: string[];
+  trustedDevices: string[];
+  mfaEnabled: boolean;
+} = {
   failedAttempts: 0,
   lockedUntil: null as Date | null,
-  allowedHours: null as string | null,
+  allowedHours: DEFAULT_ALLOWED_HOURS,
   ipWhitelist: ["127.0.0.1/32", "::1/128"],
   trustedDevices: ["trusted-device"],
   mfaEnabled: true,
@@ -30,7 +39,7 @@ const systemAdminState = {
 export const resetSystemAdminState = (): void => {
   systemAdminState.failedAttempts = 0;
   systemAdminState.lockedUntil = null;
-  systemAdminState.allowedHours = null;
+  systemAdminState.allowedHours = DEFAULT_ALLOWED_HOURS;
   systemAdminState.ipWhitelist = ["127.0.0.1/32", "::1/128"];
   systemAdminState.trustedDevices = ["trusted-device"];
   systemAdminState.mfaEnabled = true;
@@ -164,7 +173,7 @@ export const query = vi.fn(async <T extends pg.QueryResultRow = pg.QueryResultRo
   }
 
   // Mock tenants list query (must come before user-tenant-associations)
-  if (sql.includes("from public.tenants t") || (sql.includes("select") && sql.includes("t.name") && sql.includes("t.slug"))) {
+  if (sql.includes("from public.tenants t")) {
     if (sql.includes("where t.id !=")) {
       return {
         rows: [
@@ -291,117 +300,119 @@ export const query = vi.fn(async <T extends pg.QueryResultRow = pg.QueryResultRo
   if (sql.includes("user_tenant_associations") && sql.includes("where uta.user_id")) {
     const userId = params?.[0];
 
-    // Return role based on user ID
-    if (userId === TEST_USER_ID) {
+    if (typeof userId === "string") {
+      // Return role based on user ID
+      if (userId === TEST_USER_ID) {
+        return {
+          rows: [
+            {
+              tenant_id: TEST_TENANT_ID,
+              role: "ADMIN",
+              is_active: true,
+              permissions: {},
+              tenant_name: "Test Tenant",
+              modules: [
+                "core",
+                "finance-automation",
+                "tenant-owner-portal",
+                "facility-maintenance",
+                "analytics-bi",
+                "marketing-channel",
+                "enterprise-api",
+              ],
+            },
+          ] as unknown as T[],
+          rowCount: 1,
+          command: "SELECT",
+          oid: 0,
+          fields: [],
+        };
+      }
+
+      if (userId === MANAGER_USER_ID) {
+        return {
+          rows: [
+            {
+              tenant_id: TEST_TENANT_ID,
+              role: "MANAGER",
+              is_active: true,
+              permissions: {},
+              tenant_name: "Test Tenant",
+              modules: ["core", "facility-maintenance"],
+            },
+          ] as unknown as T[],
+          rowCount: 1,
+          command: "SELECT",
+          oid: 0,
+          fields: [],
+        };
+      }
+
+      if (userId === STAFF_USER_ID) {
+        return {
+          rows: [
+            {
+              tenant_id: TEST_TENANT_ID,
+              role: "STAFF",
+              is_active: true,
+              permissions: {},
+              tenant_name: "Test Tenant",
+              modules: ["core"],
+            },
+          ] as unknown as T[],
+          rowCount: 1,
+          command: "SELECT",
+          oid: 0,
+          fields: [],
+        };
+      }
+
+      if (userId === VIEWER_USER_ID) {
+        return {
+          rows: [
+            {
+              tenant_id: TEST_TENANT_ID,
+              role: "VIEWER",
+              is_active: true,
+              permissions: {},
+              tenant_name: "Test Tenant",
+              modules: ["core"],
+            },
+          ] as unknown as T[],
+          rowCount: 1,
+          command: "SELECT",
+          oid: 0,
+          fields: [],
+        };
+      }
+
+      if (userId === MODULE_DISABLED_USER_ID) {
+        return {
+          rows: [
+            {
+              tenant_id: TEST_TENANT_ID,
+              role: "ADMIN",
+              is_active: true,
+              permissions: {},
+              tenant_name: "Test Tenant",
+              modules: ["finance-automation"],
+            },
+          ] as unknown as T[],
+          rowCount: 1,
+          command: "SELECT",
+          oid: 0,
+          fields: [],
+        };
+      }
+
       return {
-        rows: [
-          {
-            tenant_id: TEST_TENANT_ID,
-            role: "ADMIN",
-            is_active: true,
-            permissions: {},
-            tenant_name: "Test Tenant",
-            modules: [
-              "core",
-              "finance-automation",
-              "tenant-owner-portal",
-              "facility-maintenance",
-              "analytics-bi",
-              "marketing-channel",
-              "enterprise-api",
-            ],
-          },
-        ] as unknown as T[],
-        rowCount: 1,
+        rows: [] as T[],
+        rowCount: 0,
         command: "SELECT",
         oid: 0,
         fields: [],
       };
     }
-
-    if (userId === MANAGER_USER_ID) {
-      return {
-        rows: [
-          {
-            tenant_id: TEST_TENANT_ID,
-            role: "MANAGER",
-            is_active: true,
-            permissions: {},
-            tenant_name: "Test Tenant",
-            modules: ["core", "facility-maintenance"],
-          },
-        ] as unknown as T[],
-        rowCount: 1,
-        command: "SELECT",
-        oid: 0,
-        fields: [],
-      };
-    }
-
-    if (userId === STAFF_USER_ID) {
-      return {
-        rows: [
-          {
-            tenant_id: TEST_TENANT_ID,
-            role: "STAFF",
-            is_active: true,
-            permissions: {},
-            tenant_name: "Test Tenant",
-            modules: ["core"],
-          },
-        ] as unknown as T[],
-        rowCount: 1,
-        command: "SELECT",
-        oid: 0,
-        fields: [],
-      };
-    }
-
-    if (userId === VIEWER_USER_ID) {
-      return {
-        rows: [
-          {
-            tenant_id: TEST_TENANT_ID,
-            role: "VIEWER",
-            is_active: true,
-            permissions: {},
-            tenant_name: "Test Tenant",
-            modules: ["core"],
-          },
-        ] as unknown as T[],
-        rowCount: 1,
-        command: "SELECT",
-        oid: 0,
-        fields: [],
-      };
-    }
-
-    if (userId === MODULE_DISABLED_USER_ID) {
-      return {
-        rows: [
-          {
-            tenant_id: TEST_TENANT_ID,
-            role: "ADMIN",
-            is_active: true,
-            permissions: {},
-            tenant_name: "Test Tenant",
-            modules: ["finance-automation"],
-          },
-        ] as unknown as T[],
-        rowCount: 1,
-        command: "SELECT",
-        oid: 0,
-        fields: [],
-      };
-    }
-
-    return {
-      rows: [] as T[],
-      rowCount: 0,
-      command: "SELECT",
-      oid: 0,
-      fields: [],
-    };
   }
 
   if (

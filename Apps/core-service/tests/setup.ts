@@ -35,14 +35,26 @@ process.env.AUTH_DEFAULT_PASSWORD = process.env.AUTH_DEFAULT_PASSWORD ?? "Change
 // Mock the database module before any imports
 vi.mock("../src/lib/db.js", () => import("./mocks/db.js"));
 
+let resetRateLimiter: (() => void) | null = null;
+const ensureRateLimiterResetter = async () => {
+  if (!resetRateLimiter) {
+    const module = await import("../src/lib/system-admin-rate-limiter.js");
+    resetRateLimiter = module.resetSystemAdminRateLimiter;
+  }
+
+  return resetRateLimiter;
+};
+
 beforeAll(async () => {
   console.log("✓ Database mocks initialized for tests");
 });
 
-beforeEach(() => {
+beforeEach(async () => {
   // Clear all mocks before each test
   vi.clearAllMocks();
   resetSystemAdminState();
+  const reset = await ensureRateLimiterResetter();
+  reset?.();
 });
 
 afterAll(async () => {

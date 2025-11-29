@@ -3,6 +3,10 @@ import type { FastifyPluginAsync, FastifyReply, preHandlerHookHandler } from "fa
 import fp from "fastify-plugin";
 
 import { extractBearerToken, verifySystemAdminToken } from "../lib/jwt.js";
+import {
+  consumeSystemAdminRateLimit,
+  getSystemAdminRateLimitSettings,
+} from "../lib/system-admin-rate-limiter.js";
 import type {
   SystemAdminContext,
   SystemAdminScopeDecorator,
@@ -34,6 +38,19 @@ const forbidden = (reply: FastifyReply) =>
     message: "System admin role is insufficient.",
   });
 
+const rateLimitSettings = getSystemAdminRateLimitSettings();
+
+const rateLimited = (reply: FastifyReply, retryAfterSeconds?: number) => {
+  if (retryAfterSeconds && Number.isFinite(retryAfterSeconds)) {
+    reply.header("Retry-After", Math.max(1, Math.ceil(retryAfterSeconds)));
+  }
+
+  return reply.status(429).send({
+    error: "SYSTEM_ADMIN_RATE_LIMITED",
+    message: `System administrator request limit exceeded (${rateLimitSettings.perMinute} req/min, burst up to ${rateLimitSettings.burst}).`,
+  });
+};
+
 const buildGuard =
   (options: SystemAdminScopeOptions = {}): preHandlerHookHandler =>
   async (request, reply) => {
@@ -60,6 +77,23 @@ const buildGuard =
     const minimumRole = options.minRole ?? "SYSTEM_ADMIN";
     if (!hasRequiredRole(context.role, minimumRole)) {
       return forbidden(reply);
+    }
+
+    const rateLimitResult = consumeSystemAdminRateLimit(context.adminId);
+    if (!rateLimitResult.allowed) {
+      const retryAfterSeconds =
+        rateLimitResult.retryAfterMs !== undefined
+          ? rateLimitResult.retryAfterMs / 1000
+          : undefined;
+      request.log.warn(
+        {
+          adminId: context.adminId,
+          username: context.username,
+          sessionId: context.sessionId,
+        },
+        "system admin rate limit exceeded",
+      );
+      return rateLimited(reply, retryAfterSeconds);
     }
   };
 
