@@ -7,7 +7,6 @@
     "@tartware/telemetry",
     "@biomejs/biome",
     "tsx",
-    "pino-pretty",
     "redis"
   ],
   "ignoreBinaries": ["tsx", "tsc", "vitest", "biome", "eslint", "knip"],

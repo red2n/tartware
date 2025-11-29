@@ -2,6 +2,7 @@ import { CommonModule } from '@angular/common';
 import {
   ChangeDetectionStrategy,
   Component,
+  DestroyRef,
   computed,
   inject,
   signal,
@@ -49,6 +50,7 @@ import { LogsService } from '../../../core/services/logs.service';
 export class LogsComponent {
   private readonly logsService = inject(LogsService);
   private readonly fb = inject(FormBuilder);
+  private readonly destroyRef = inject(DestroyRef);
 
   readonly filterForm = this.fb.group({
     service: [''],
@@ -242,12 +244,14 @@ export class LogsComponent {
 
   private buildQueryParams(reset: boolean) {
     const { service, severity, query, from, to } = this.filterForm.getRawValue();
+    const normalizedFrom = this.normalizeDateInput(from);
+    const normalizedTo = this.normalizeDateInput(to);
     return {
       service: service?.trim() || undefined,
       severity: severity || undefined,
       query: query?.trim() || undefined,
-      from: from || undefined,
-      to: to || undefined,
+      from: normalizedFrom,
+      to: normalizedTo,
       cursor: reset ? undefined : this.nextCursor(),
       size: 50,
     };
@@ -265,7 +269,7 @@ export class LogsComponent {
 
     this.logsService
       .searchLogs(params)
-      .pipe(takeUntilDestroyed())
+      .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (response) => {
           const existing = reset ? [] : this.entries();
@@ -283,5 +287,16 @@ export class LogsComponent {
           this.isLoading.set(false);
         },
       });
+  }
+
+  private normalizeDateInput(value?: string | null): string | undefined {
+    if (!value) {
+      return undefined;
+    }
+    const parsed = new Date(value);
+    if (Number.isNaN(parsed.getTime())) {
+      return undefined;
+    }
+    return parsed.toISOString();
   }
 }

@@ -10,10 +10,24 @@ export const opensearchClient = new Client({
 });
 
 export type OpenSearchSource = Record<string, unknown> & {
+  "@timestamp"?: string;
+  observedTimestamp?: string;
   time?: string;
   time_unix_nano?: number;
   severity_text?: string;
   severity_number?: number;
+  severity?: {
+    text?: string;
+    number?: number;
+  };
+  trace?: {
+    id?: string;
+    trace_id?: string;
+    span_id?: string;
+    span?: {
+      id?: string;
+    };
+  };
   resource?: Record<string, unknown>;
   body?: unknown;
   trace_id?: string;

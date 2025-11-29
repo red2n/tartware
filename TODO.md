@@ -204,3 +204,8 @@ CREATE POLICY system_admin_audit_self_only ON system_admin_audit_log
    - Design a Java microservice that owns payment ingestion, gateway callbacks, FX conversions, and ledger reconciliation.
    - Emit normalized payment events for analytics while writing authoritative ledger entries to Postgres.
    - Expose audit/export endpoints (PCI/SOX ready) and have the Node billing API consume reconciled data for consistency.
+
+### 7. **Documentation & Developer Experience**
+   - Introduce TSDoc coverage targets across all TypeScript packages (core-service, UI, shared libraries) so exported APIs are discoverable and lint-enforced.
+   - Add CI checks (e.g., `tsdoc`/`api-extractor` validation) to keep comments current with code.
+   - Expand contributor docs to describe workspace conventions (Angular 21 stack, Sass module usage, telemetry patterns) and guardrails for future feature work.

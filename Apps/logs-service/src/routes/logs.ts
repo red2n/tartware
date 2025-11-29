@@ -42,7 +42,84 @@ const encodeCursor = (sort?: Array<string | number>): string | null => {
   return Buffer.from(JSON.stringify(sort)).toString("base64");
 };
 
-type SortDefinition = Array<Record<string, { order: "asc" | "desc" }> | string>;
+type SortOrder = {
+  order: "asc" | "desc";
+  unmapped_type?: "date" | "long" | "keyword" | "text";
+  missing?: "_last" | "_first";
+};
+
+type SortDefinition = Array<Record<string, SortOrder> | string>;
+
+const toUnixNano = (date?: Date): number | undefined => {
+  if (!date) {
+    return undefined;
+  }
+  return date.getTime() * 1_000_000;
+};
+
+const buildTermFilter = (fields: string[], value: string): Record<string, unknown> => {
+  const clauses = fields.map((field) => ({
+    term: { [field]: value },
+  }));
+
+  if (clauses.length === 1) {
+    return clauses[0] as Record<string, unknown>;
+  }
+
+  return {
+    bool: {
+      should: clauses,
+      minimum_should_match: 1,
+    },
+  };
+};
+
+const buildTimestampFilter = (from?: Date, to?: Date): Record<string, unknown> | null => {
+  const isoRange: Record<string, string> = {};
+  const nanoRange: Record<string, number> = {};
+
+  if (from) {
+    isoRange.gte = from.toISOString();
+    const fromNano = toUnixNano(from);
+    if (typeof fromNano === "number") {
+      nanoRange.gte = fromNano;
+    }
+  }
+
+  if (to) {
+    isoRange.lte = to.toISOString();
+    const toNano = toUnixNano(to);
+    if (typeof toNano === "number") {
+      nanoRange.lte = toNano;
+    }
+  }
+
+  const rangeFilters: Record<string, unknown>[] = [];
+
+  if (Object.keys(isoRange).length > 0) {
+    rangeFilters.push({ range: { "@timestamp": isoRange } });
+    rangeFilters.push({ range: { observedTimestamp: isoRange } });
+  }
+
+  if (Object.keys(nanoRange).length > 0) {
+    rangeFilters.push({ range: { time_unix_nano: nanoRange } });
+  }
+
+  if (rangeFilters.length === 0) {
+    return null;
+  }
+
+  if (rangeFilters.length === 1) {
+    return rangeFilters[0] as Record<string, unknown>;
+  }
+
+  return {
+    bool: {
+      should: rangeFilters,
+      minimum_should_match: 1,
+    },
+  };
+};
 
 const logsRoute: FastifyPluginAsync = async (fastify: FastifyInstance) => {
   fastify.get(
@@ -86,7 +163,7 @@ const logsRoute: FastifyPluginAsync = async (fastify: FastifyInstance) => {
       }
 
       if (params.severity) {
-        must.push({ term: { severity_text: params.severity } });
+        must.push(buildTermFilter(["severity.text.keyword", "severity_text"], params.severity));
       }
 
       if (params.query) {
@@ -98,21 +175,17 @@ const logsRoute: FastifyPluginAsync = async (fastify: FastifyInstance) => {
         });
       }
 
-      if (params.from || params.to) {
-        filter.push({
-          range: {
-            time: {
-              gte: params.from?.toISOString(),
-              lte: params.to?.toISOString(),
-            },
-          },
-        });
+      const timestampFilter = buildTimestampFilter(params.from, params.to);
+      if (timestampFilter) {
+        filter.push(timestampFilter);
       }
 
       const sort: SortDefinition = [
-        { time: { order: "desc" as const } },
-        { "trace_id.keyword": { order: "desc" as const } },
-        { _id: { order: "desc" as const } },
+        { "@timestamp": { order: "desc", unmapped_type: "date" } },
+        { observedTimestamp: { order: "desc", unmapped_type: "date" } },
+        { time_unix_nano: { order: "desc", unmapped_type: "long" } },
+        { "trace_id.keyword": { order: "desc", unmapped_type: "keyword" } },
+        { _id: { order: "desc" } },
       ];
 
       const response = await searchLogs({
@@ -133,14 +206,52 @@ const logsRoute: FastifyPluginAsync = async (fastify: FastifyInstance) => {
       const hits = response.hits.hits ?? [];
       const entries = hits.map((hit) => {
         const source = hit._source ?? {};
+        const timeFromNanos =
+          typeof source.time_unix_nano === "number"
+            ? new Date(Math.floor(source.time_unix_nano / 1_000_000)).toISOString()
+            : null;
+        const timestamp =
+          (source["@timestamp"] as string | undefined) ??
+          (source.observedTimestamp as string | undefined) ??
+          (source.time as string | undefined) ??
+          timeFromNanos;
+
+        const resourceFields = source.resource ?? {};
+        const nestedService = resourceFields.service as Record<string, unknown> | undefined;
+        const nestedServiceName =
+          typeof nestedService?.name === "string" ? (nestedService.name as string) : undefined;
+        const serviceName =
+          (resourceFields["service.name" as keyof typeof resourceFields] as string | undefined) ??
+          nestedServiceName ??
+          null;
+
+        const severityField = source.severity;
+        const severity =
+          (source.severity_text as string | undefined) ??
+          (typeof severityField?.text === "string" ? severityField.text : undefined) ??
+          null;
+
+        const traceFields = source.trace;
+        const traceId =
+          (source.trace_id as string | undefined) ??
+          (traceFields?.trace_id as string | undefined) ??
+          (traceFields?.id as string | undefined) ??
+          null;
+        const spanField = traceFields?.span;
+        const spanId =
+          (source.span_id as string | undefined) ??
+          (traceFields?.span_id as string | undefined) ??
+          (typeof spanField?.id === "string" ? spanField.id : undefined) ??
+          null;
+
         return {
           id: hit._id,
-          timestamp: (source.time as string | undefined) ?? null,
-          service: (source.resource?.["service.name"] as string | undefined) ?? null,
-          severity: (source.severity_text as string | undefined) ?? null,
+          timestamp,
+          service: serviceName,
+          severity,
           body: source.body ?? null,
-          traceId: (source.trace_id as string | undefined) ?? null,
-          spanId: (source.span_id as string | undefined) ?? null,
+          traceId,
+          spanId,
           attributes: source.attributes ?? {},
           resource: source.resource ?? {},
         };
