@@ -37,10 +37,11 @@ export const consumeSystemAdminRateLimit = (
     return { allowed: true, remaining: burstCapacity };
   }
 
-  const bucket = buckets.get(key) ?? {
-    tokens: burstCapacity,
-    updatedAt: now,
-  };
+  let bucket = buckets.get(key);
+  if (!bucket) {
+    bucket = { tokens: burstCapacity, updatedAt: now };
+    buckets.set(key, bucket);
+  }
 
   refillBucket(bucket, now);
 
