@@ -173,7 +173,11 @@ export const query = vi.fn(async <T extends pg.QueryResultRow = pg.QueryResultRo
   }
 
   // Mock tenants list query (must come before user-tenant-associations)
-  if (sql.includes("from public.tenants t")) {
+  if (
+    sql.includes("select") &&
+    sql.includes("from public.tenants t") &&
+    sql.includes("t.name")
+  ) {
     if (sql.includes("where t.id !=")) {
       return {
         rows: [
