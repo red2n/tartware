@@ -1,0 +1,13 @@
+# Prometheus stack minimal overrides
+prometheus:
+  prometheusSpec:
+    retention: 2d
+    scrapeInterval: 15s
+    enableRemoteWriteReceiver: true
+    replicas: 1
+    resources:
+      requests:
+        cpu: 200m
+        memory: 512Mi
+alertmanager:
+  enabled: false

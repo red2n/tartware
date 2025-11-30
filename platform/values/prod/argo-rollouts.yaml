@@ -1,0 +1,31 @@
+controller:
+  replicas: 2
+  metrics:
+    enabled: true
+    serviceMonitor:
+      enabled: true
+      namespace: observability
+      interval: 30s
+  args:
+    # Requeue faster during high-traffic deploys
+    - --rollout-resync=15s
+    - --kubectl-qps=50
+    - --kubectl-burst=100
+
+dashboard:
+  enabled: true
+  service:
+    type: ClusterIP
+  ingress:
+    enabled: false
+
+notificationController:
+  enabled: true
+
+metrics:
+  enabled: true
+  serviceMonitor:
+    enabled: true
+    namespace: observability
+
+## Argo Rollouts comes with CRDs; Helmfile installs them automatically.

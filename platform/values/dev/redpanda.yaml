@@ -1,6 +1,6 @@
 # Redpanda dev overrides
 statefulset:
-  replicas: 3
+  replicas: 1
 resources:
   requests:
     cpu: 500m
@@ -9,7 +9,7 @@ listeners:
   kafka:
     port: 9092
   pandaproxy:
-    port: 8082
+    enabled: false
   schemaRegistry:
     enabled: false
 config:

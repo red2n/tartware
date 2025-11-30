@@ -1,0 +1,107 @@
+replicaCount: 2
+
+image:
+  repository: ghcr.io/tartware/reservations-command-service
+  tag: latest
+  pullPolicy: IfNotPresent
+
+serviceAccount:
+  create: true
+  annotations: {}
+  name: ""
+
+service:
+  type: ClusterIP
+  port: 3101
+  annotations: {}
+
+canaryService:
+  enabled: true
+  annotations: {}
+
+resources:
+  requests:
+    cpu: 500m
+    memory: 512Mi
+  limits:
+    cpu: 1000m
+    memory: 1Gi
+
+autoscaling:
+  enabled: true
+  minReplicas: 4
+  maxReplicas: 12
+  targetCPUUtilizationPercentage: 60
+
+env:
+  - name: NODE_ENV
+    value: production
+  - name: SERVICE_NAME
+    value: reservations-command-service
+  - name: PORT
+    value: "3101"
+  - name: HOST
+    value: "0.0.0.0"
+  - name: KAFKA_BROKERS
+    value: redpanda.messaging.svc.cluster.local:9092
+  - name: KAFKA_RESERVATION_TOPIC
+    value: reservations.events
+  - name: DB_HOST
+    value: postgres.database.svc.cluster.local
+  - name: DB_PORT
+    value: "5432"
+  - name: DB_NAME
+    value: tartware
+  - name: DB_USER
+    value: tartware
+  - name: DB_PASSWORD
+    value: tartware
+
+envFrom: []
+
+podAnnotations: {}
+podLabels: {}
+
+nodeSelector: {}
+tolerations: []
+affinity: {}
+
+rollout:
+  strategy:
+    canary:
+      maxUnavailable: 0
+      maxSurge: 1
+      stableMetadata:
+        labels:
+          version: v1
+      canaryMetadata:
+        labels:
+          version: v2
+      steps:
+        - setWeight: 20
+        - pause:
+            duration: 60
+        - setWeight: 50
+        - pause:
+            duration: 120
+        - setWeight: 100
+  stableService: reservations-command-service
+  canaryService: reservations-command-service-canary
+  trafficRouting:
+    istio:
+      virtualService:
+        name: reservations-command-service-vs
+        routes:
+          - http-reservations
+      destinationRule:
+        name: reservations-command-service-dr
+        host: reservations-command-service
+      destinations:
+        stable:
+          subset: v1
+        canary:
+          subset: v2
+
+podDisruptionBudget:
+  enabled: true
+  maxUnavailable: 1

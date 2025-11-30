@@ -1,0 +1,11 @@
+# Argo CD dev overrides
+configs:
+  params:
+    server.insecure: "true"
+  cm:
+    accounts.admin: apiKey,login
+    ui.bannercontent: "Tartware Dev"
+    ui.bannerpermanent: "true"
+server:
+  service:
+    type: NodePort

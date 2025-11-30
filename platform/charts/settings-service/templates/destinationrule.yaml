@@ -1,0 +1,26 @@
+{{- $istio := .Values.rollout.trafficRouting.istio | default dict -}}
+{{- if and $istio $istio.destinationRule }}
+{{- $stableSubset := "v1" -}}
+{{- if and $istio.destinations $istio.destinations.stable $istio.destinations.stable.subset }}
+  {{- $stableSubset = $istio.destinations.stable.subset }}
+{{- end }}
+{{- $canarySubset := "v2" -}}
+{{- if and $istio.destinations $istio.destinations.canary $istio.destinations.canary.subset }}
+  {{- $canarySubset = $istio.destinations.canary.subset }}
+{{- end }}
+apiVersion: networking.istio.io/v1beta1
+kind: DestinationRule
+metadata:
+  name: {{ $istio.destinationRule.name }}
+  labels:
+    {{- include "core-service.labels" . | nindent 4 }}
+spec:
+  host: {{ $istio.destinationRule.host | default .Values.rollout.stableService }}
+  subsets:
+    - name: {{ $stableSubset }}
+      labels:
+        version: {{ $stableSubset }}
+    - name: {{ $canarySubset }}
+      labels:
+        version: {{ $canarySubset }}
+{{- end }}

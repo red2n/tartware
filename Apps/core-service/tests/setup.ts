@@ -20,7 +20,8 @@ process.env.DB_POOL_MAX = process.env.DB_POOL_MAX ?? "5";
 process.env.DB_POOL_IDLE_TIMEOUT_MS = process.env.DB_POOL_IDLE_TIMEOUT_MS ?? "1000";
 process.env.REDIS_HOST = process.env.REDIS_HOST ?? "127.0.0.1";
 process.env.REDIS_PORT = process.env.REDIS_PORT ?? "6379";
-process.env.REDIS_ENABLED = process.env.REDIS_ENABLED ?? "false";
+process.env.REDIS_ENABLED =
+  process.env.REDIS_ENABLED ?? (process.env.CI === "true" ? "true" : "false");
 process.env.REDIS_KEY_PREFIX = process.env.REDIS_KEY_PREFIX ?? "tartware:test:";
 process.env.REDIS_TTL_DEFAULT = process.env.REDIS_TTL_DEFAULT ?? "3600";
 process.env.REDIS_TTL_USER = process.env.REDIS_TTL_USER ?? "1800";

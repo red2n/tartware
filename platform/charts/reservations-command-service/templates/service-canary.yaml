@@ -1,0 +1,27 @@
+{{- if .Values.canaryService.enabled }}
+{{- $canaryVersion := "v2" -}}
+{{- with .Values.rollout.strategy.canary.canaryMetadata.labels }}
+  {{- if hasKey . "version" }}
+    {{- $canaryVersion = index . "version" }}
+  {{- end }}
+{{- end }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Values.rollout.canaryService }}
+  labels:
+    {{- include "core-service.labels" . | nindent 4 }}
+  {{- with .Values.canaryService.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  type: {{ .Values.service.type }}
+  ports:
+    - name: http
+      port: {{ .Values.service.port }}
+      targetPort: http
+  selector:
+    {{- include "core-service.selectorLabels" . | nindent 4 }}
+    version: {{ $canaryVersion }}
+{{- end }}

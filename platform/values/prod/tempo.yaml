@@ -1,0 +1,14 @@
+# Tempo dev overrides
+tempo:
+  receivers:
+    otlp:
+      protocols:
+        http:
+        grpc:
+  storage:
+    trace:
+      backend: local
+      local:
+        path: /var/tempo/traces
+  metricsGenerator:
+    enabled: true

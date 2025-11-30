@@ -1,0 +1,7 @@
+# Istio control plane overrides for dev
+meshConfig:
+  accessLogFile: /dev/stdout
+  enableTracing: true
+pilot:
+  autoscaleEnabled: false
+  traceSampling: 50

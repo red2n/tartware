@@ -198,7 +198,19 @@ CREATE POLICY system_admin_audit_self_only ON system_admin_audit_log
 ### 5. **Bloom Filter & Cache Maintenance Job**
    - Implement a JVM worker that pages through the `users` table, streams usernames into Redis Bloom filters, and refreshes TTLed caches incrementally.
    - Run the job on deployment and nightly; publish Prometheus metrics so `core-service` can detect stale filters.
-   - Remove the synchronous warm-up step from `Apps/core-service/src/index.ts` after verifying the external job's reliability.
+
+### 6. **Kubernetes-Ready Tooling Branch**
+   - Create a long-lived `feature/k8s-ready-tooling` branch to house Dockerfiles, CI/CD flows, and Helm/Kustomize manifests.
+   - Keep day-to-day fixes on `saturday_29_nov`, merge frequently into the feature branch, and raise PRs once each tooling milestone (containerization, GH Actions, Helm, etc.) is ready.
+   - Open-source tooling roadmap (closed repo but OSS stack):
+     - **Build orchestration:** migrate remaining Lerna tasks to Nx for deterministic caching + affected builds.
+     - **Containerization:** multi-stage Dockerfiles per service (`node:22-alpine` backends, `node:22` builder + `nginx:alpine` runtime for Angular), Compose for local dev, Helm/Kustomize overlays for clusters.
+     - **CI/CD:** GitHub Actions pipeline (lint → biome → knip → tests → Docker build/push) plus Renovate Bot, CodeQL/Trivy scans.
+     - **Testing:** keep Vitest & Playwright/Cypress; add k6/artillery smoke-load suites hooked into CI.
+     - **Quality gates:** retain Biome/Knip/ESLint; add OpenAPI schema validation (Prism) and DB migration linting (Flyway/Sqitch dry runs).
+     - **Database migrations:** stay on Postgres but introduce Flyway/Sqitch-managed migrations for auditable rollouts.
+     - **Observability:** keep OpenTelemetry → OpenSearch, optionally add Grafana Tempo/Loki bundles; ship OTEL Collector Helm chart.
+     - **Secrets/config:** standardize on SOPS (or Mozilla SOPS + Git-crypt) and plan for sealed-secrets once K8s manifests land.
 
 ### 6. **Billing & Settlement Service**
    - Design a Java microservice that owns payment ingestion, gateway callbacks, FX conversions, and ledger reconciliation.

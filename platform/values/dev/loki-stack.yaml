@@ -13,4 +13,4 @@ loki:
           prefix: index_
           period: 24h
 promtail:
-  enabled: true
+  enabled: false
