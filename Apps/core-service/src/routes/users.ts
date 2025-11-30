@@ -1,4 +1,8 @@
-import { PublicUserSchema } from "@tartware/schemas";
+import {
+  PublicUserSchema,
+  UserTenantMembershipSchema,
+  UserWithTenantsSchema,
+} from "@tartware/schemas";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 
@@ -13,8 +17,9 @@ const UserListQuerySchema = z.object({
 type UserListQuery = z.infer<typeof UserListQuerySchema>;
 
 const UserListResponseSchema = z.array(
-  PublicUserSchema.extend({
+  UserWithTenantsSchema.omit({ version: true, tenants: true }).extend({
     version: z.string(), // BigInt serialized as string
+    tenants: z.array(UserTenantMembershipSchema).default([]),
   }),
 );
 
@@ -30,7 +35,11 @@ export const registerUserRoutes = (app: FastifyInstance): void => {
     async (request) => {
       const { limit, tenant_id } = UserListQuerySchema.parse(request.query);
       const users = await listUsers({ limit, tenantId: tenant_id });
-      const response = sanitizeForJson(users);
+      const response = (sanitizeForJson(users) as Array<Record<string, unknown>>).map((user) => ({
+        ...user,
+        version: String(user.version ?? "0"),
+        tenants: Array.isArray(user.tenants) ? user.tenants : [],
+      }));
       return UserListResponseSchema.parse(response);
     },
   );

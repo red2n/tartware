@@ -17,6 +17,10 @@ jobs:
   quality:
     name: Lint, Biome, Knip & Tests
     runs-on: ubuntu-latest
+    env:
+      REDIS_HOST: 127.0.0.1
+      REDIS_PORT: 6379
+      REDIS_ENABLED: "true"
     services:
       redis:
         image: redis:7.4-alpine
