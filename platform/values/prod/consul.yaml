@@ -1,0 +1,15 @@
+# Consul dev overrides
+global:
+  name: consul
+  datacenter: dev
+  tls:
+    enabled: false
+server:
+  replicas: 1
+client:
+  enabled: true
+  grpc: true
+  exposeGossipPorts: true
+connectInject:
+  enabled: true
+  logLevel: DEBUG

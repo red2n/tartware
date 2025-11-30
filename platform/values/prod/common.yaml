@@ -1,0 +1,7 @@
+# Shared values for prod environment
+clusterName: tartware-prod
+workloadIdentity: prod
+schemaRegistry:
+  enabled: true
+clickhouse:
+  enabled: false

@@ -1,15 +1,21 @@
-# Redis dev overrides
+# Redis prod overrides
 global:
   imageRegistry: public.ecr.aws
-architecture: standalone
+architecture: replication
 image:
   registry: ""
   repository: bitnami/redis
   tag: 7.2.4-debian-12-r9
 master:
   persistence:
-    size: 10Gi
+    size: 50Gi
   resources:
     requests:
-      cpu: 200m
+      cpu: 500m
+      memory: 512Mi
+replica:
+  replicaCount: 2
+  resources:
+    requests:
+      cpu: 250m
       memory: 256Mi

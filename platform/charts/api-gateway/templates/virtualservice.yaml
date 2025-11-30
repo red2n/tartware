@@ -1,0 +1,37 @@
+{{- $istio := .Values.rollout.trafficRouting.istio | default dict -}}
+{{- if and $istio $istio.virtualService }}
+{{- $stableSubset := "v1" -}}
+{{- if and $istio.destinations $istio.destinations.stable $istio.destinations.stable.subset }}
+  {{- $stableSubset = $istio.destinations.stable.subset }}
+{{- end }}
+{{- $canarySubset := "v2" -}}
+{{- if and $istio.destinations $istio.destinations.canary $istio.destinations.canary.subset }}
+  {{- $canarySubset = $istio.destinations.canary.subset }}
+{{- end }}
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: {{ $istio.virtualService.name }}
+  labels:
+    {{- include "core-service.labels" . | nindent 4 }}
+spec:
+  hosts:
+    {{- range $host := $istio.virtualService.hosts | default (list "core-service.local") }}
+    - {{ $host }}
+    {{- end }}
+  gateways:
+    {{- range $gateway := $istio.virtualService.gateways | default (list "mesh") }}
+    - {{ $gateway }}
+    {{- end }}
+  http:
+    - name: {{ (first ($istio.virtualService.routes | default (list "http-core"))) }}
+      route:
+        - destination:
+            host: {{ .Values.rollout.stableService }}
+            subset: {{ $stableSubset }}
+          weight: 100
+        - destination:
+            host: {{ .Values.rollout.stableService }}
+            subset: {{ $canarySubset }}
+          weight: 0
+{{- end }}

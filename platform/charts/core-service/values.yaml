@@ -1,0 +1,93 @@
+replicaCount: 4
+
+image:
+  repository: ghcr.io/tartware/core-service
+  tag: latest
+  pullPolicy: IfNotPresent
+
+serviceAccount:
+  create: true
+  annotations: {}
+  name: ""
+
+service:
+  type: ClusterIP
+  port: 3000
+  annotations: {}
+
+canaryService:
+  enabled: true
+  annotations: {}
+
+resources:
+  requests:
+    cpu: 500m
+    memory: 512Mi
+  limits:
+    cpu: 1000m
+    memory: 1Gi
+
+autoscaling:
+  enabled: true
+  minReplicas: 4
+  maxReplicas: 12
+  targetCPUUtilizationPercentage: 60
+
+env:
+  - name: NODE_ENV
+    value: production
+  - name: SERVICE_NAME
+    value: core-service
+  - name: PORT
+    value: "3000"
+  - name: HOST
+    value: "0.0.0.0"
+
+envFrom: []
+
+podAnnotations: {}
+podLabels: {}
+
+nodeSelector: {}
+tolerations: []
+affinity: {}
+
+rollout:
+  strategy:
+    canary:
+      maxUnavailable: 0
+      maxSurge: 1
+      stableMetadata:
+        labels:
+          version: v1
+      canaryMetadata:
+        labels:
+          version: v2
+      steps:
+        - setWeight: 20
+        - pause:
+            duration: 60
+        - setWeight: 50
+        - pause:
+            duration: 120
+        - setWeight: 100
+  stableService: core-service
+  canaryService: core-service-canary
+  trafficRouting:
+    istio:
+      virtualService:
+        name: core-service-vs
+        routes:
+          - http-core
+      destinationRule:
+        name: core-service-dr
+        host: core-service
+      destinations:
+        stable:
+          subset: v1
+        canary:
+          subset: v2
+
+podDisruptionBudget:
+  enabled: true
+  maxUnavailable: 1

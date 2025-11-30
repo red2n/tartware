@@ -2,6 +2,11 @@ environments:
   dev:
     values:
       - values/dev/common.yaml
+  prod:
+    values:
+      - values/prod/common.yaml
+
+---
 
 repositories:
   - name: argo
@@ -58,6 +63,14 @@ releases:
     values:
       - values/{{ .Environment.Name }}/argo-cd.yaml
 
+  - name: argo-rollouts
+    namespace: argo-rollouts
+    chart: argo/argo-rollouts
+    version: 2.40.5
+    createNamespace: true
+    values:
+      - values/{{ .Environment.Name }}/argo-rollouts.yaml
+
   - name: istio-base
     namespace: istio-system
     chart: istio/base
@@ -71,22 +84,17 @@ releases:
     values:
       - values/{{ .Environment.Name }}/istiod.yaml
 
-  - name: istio-cni
-    namespace: istio-system
-    chart: istio/cni
-    version: 1.22.0
-
   - name: consul
     namespace: consul
     chart: hashicorp/consul
-    version: 1.5.2
+    version: 1.9.0
     values:
       - values/{{ .Environment.Name }}/consul.yaml
 
   - name: opentelemetry-collector
     namespace: observability
     chart: open-telemetry/opentelemetry-collector
-    version: 0.88.0
+    version: 0.140.0
     createNamespace: true
     values:
       - values/{{ .Environment.Name }}/otel-collector.yaml
@@ -108,14 +116,14 @@ releases:
   - name: tempo
     namespace: observability
     chart: grafana/tempo
-    version: 1.8.1
+    version: 1.24.1
     values:
       - values/{{ .Environment.Name }}/tempo.yaml
 
   - name: redpanda
     namespace: messaging
     chart: redpanda/redpanda
-    version: 5.8.1
+    version: 5.10.6
     createNamespace: true
     values:
       - values/{{ .Environment.Name }}/redpanda.yaml
@@ -123,7 +131,8 @@ releases:
   - name: schema-registry
     namespace: messaging
     chart: bitnami/schema-registry
-    version: 11.2.4
+    version: 26.0.5
+    installed: {{ .Environment.Values.schemaRegistry.enabled }}
     values:
       - values/{{ .Environment.Name }}/schema-registry.yaml
 
@@ -137,8 +146,9 @@ releases:
   - name: clickhouse
     namespace: analytics
     chart: bitnami/clickhouse
-    version: 5.1.7
+    version: 9.4.4
     createNamespace: true
+    installed: {{ .Environment.Values.clickhouse.enabled }}
     values:
       - values/{{ .Environment.Name }}/clickhouse.yaml
 

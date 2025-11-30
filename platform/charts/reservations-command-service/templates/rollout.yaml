@@ -1,0 +1,89 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Rollout
+metadata:
+  name: {{ include "core-service.fullname" . }}
+  labels:
+    {{- include "core-service.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "core-service.selectorLabels" . | nindent 6 }}
+  strategy:
+    canary:
+      {{- with .Values.rollout.strategy.canary.maxSurge }}
+      maxSurge: {{ . }}
+      {{- end }}
+      {{- with .Values.rollout.strategy.canary.maxUnavailable }}
+      maxUnavailable: {{ . }}
+      {{- end }}
+      {{- with .Values.rollout.strategy.canary.stableMetadata }}
+      stableMetadata:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.rollout.strategy.canary.canaryMetadata }}
+      canaryMetadata:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      stableService: {{ .Values.rollout.stableService }}
+      canaryService: {{ .Values.rollout.canaryService }}
+      {{- with .Values.rollout.trafficRouting }}
+      trafficRouting:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.rollout.strategy.canary.steps }}
+      steps:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+  template:
+    metadata:
+      labels:
+        {{- include "core-service.selectorLabels" . | nindent 8 }}
+        {{- with .Values.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+    spec:
+      serviceAccountName: {{ include "core-service.serviceAccountName" . }}
+      containers:
+        - name: core-service
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - containerPort: {{ .Values.service.port }}
+              name: http
+          env:
+            {{- toYaml .Values.env | nindent 12 }}
+          {{- with .Values.envFrom }}
+          envFrom:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: http
+            initialDelaySeconds: 15
+            periodSeconds: 5
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

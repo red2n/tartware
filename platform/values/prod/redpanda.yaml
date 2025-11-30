@@ -1,19 +1,19 @@
-# Redpanda dev overrides
+# Redpanda prod overrides
 statefulset:
-  replicas: 1
+  replicas: 3
 resources:
   requests:
-    cpu: 500m
-    memory: 1Gi
+    cpu: 1
+    memory: 2Gi
 listeners:
   kafka:
     port: 9092
   pandaproxy:
-    enabled: false
+    enabled: true
   schemaRegistry:
-    enabled: false
+    enabled: true
 config:
-  cluster_id: tartware-dev
+  cluster_id: tartware-prod
   auto_create_topics_enabled: false
   kafka_api:
     - address: 0.0.0.0

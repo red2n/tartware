@@ -1,0 +1,50 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: tartware-services
+  namespace: argo
+spec:
+  generators:
+    - list:
+        elements:
+          - name: core-service
+            namespace: tartware-core
+            path: platform/charts/core-service
+            valueFile: platform/charts/core-service/values-prod.yaml
+          - name: api-gateway
+            namespace: tartware-gateway
+            path: platform/charts/api-gateway
+            valueFile: platform/charts/api-gateway/values-prod.yaml
+          - name: reservations-command-service
+            namespace: tartware-reservations
+            path: platform/charts/reservations-command-service
+            valueFile: platform/charts/reservations-command-service/values-prod.yaml
+          - name: logs-service
+            namespace: tartware-logs
+            path: platform/charts/logs-service
+            valueFile: platform/charts/logs-service/values-prod.yaml
+          - name: settings-service
+            namespace: tartware-settings
+            path: platform/charts/settings-service
+            valueFile: platform/charts/settings-service/values-prod.yaml
+  template:
+    metadata:
+      name: '{{name}}'
+    spec:
+      project: default
+      source:
+        repoURL: https://github.com/tartware/tartware.git
+        targetRevision: HEAD
+        path: '{{path}}'
+        helm:
+          valueFiles:
+            - '{{valueFile}}'
+      destination:
+        server: https://kubernetes.default.svc
+        namespace: '{{namespace}}'
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+        syncOptions:
+          - CreateNamespace=true

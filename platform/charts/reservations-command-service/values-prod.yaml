@@ -1,0 +1,26 @@
+replicaCount: 3
+autoscaling:
+  enabled: true
+  minReplicas: 3
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 60
+
+resources:
+  requests:
+    cpu: "750m"
+    memory: 768Mi
+  limits:
+    cpu: "1.5"
+    memory: 1.5Gi
+
+env:
+  - name: NODE_ENV
+    value: production
+  - name: SERVICE_NAME
+    value: reservations-command-service
+  - name: PORT
+    value: "3101"
+  - name: HOST
+    value: "0.0.0.0"
+  - name: LOG_LEVEL
+    value: info

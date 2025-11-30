@@ -30,3 +30,10 @@ up-to-date developer references.
 - We intentionally removed the standalone OpenSearch Dashboards container; the
   Tartware UI already exposes log search tooling, so only the storage node needs
   to run.
+
+## Kubernetes & GitOps
+
+- See `docs/kubernetes.md` for the Argo CD + Argo Rollouts deployment playbook,
+  including bootstrap steps for high-volume (20k ops/s) environments.
+- See `docs/kubernetes-setup.md` for a command-by-command guide to bootstrapping
+  Kind + Helmfile, installing Rancher/Argo, and customizing new environments.

@@ -1,3 +1,7 @@
 # Shared values for dev environment
 clusterName: tartware-dev
 workloadIdentity: dev
+schemaRegistry:
+  enabled: false
+clickhouse:
+  enabled: false
