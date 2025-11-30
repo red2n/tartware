@@ -1,8 +1,4 @@
-import {
-  PublicUserSchema,
-  UserTenantMembershipSchema,
-  UserWithTenantsSchema,
-} from "@tartware/schemas";
+import { UserTenantMembershipSchema, UserWithTenantsSchema } from "@tartware/schemas";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 
