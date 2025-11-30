@@ -43,7 +43,7 @@ const mapRowToUser = (row: UserRow): UserWithTenants => {
           role: tenant.role,
           is_active: tenant.is_active ?? true,
         }))
-    : undefined;
+    : [];
 
   const parsed = UserWithTenantsSchema.parse({
     id: row.id,
