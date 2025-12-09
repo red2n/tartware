@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import argparse
 import sys
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal, ROUND_HALF_UP
 from pathlib import Path
 
@@ -225,7 +225,7 @@ def inject_double_booking(conn) -> None:
                 "confirmation_number": confirmation_number,
                 "check_in": base_check_in,
                 "check_out": base_check_out,
-                "booking": datetime.utcnow(),
+                "booking": datetime.now(timezone.utc),
                 "room_number": conflict_room["room_number"],
                 "room_rate": nightly_rate,
                 "total_amount": total_amount,
@@ -280,7 +280,7 @@ def inject_long_stay_folio(conn) -> None:
     balance = money(total_amount - paid_amount)
 
     reservation_id = generate_uuid()
-    confirmation_number = f"LS{datetime.utcnow():%Y%m%d%H%M}"
+    confirmation_number = f"LS{datetime.now(timezone.utc):%Y%m%d%H%M}"
     metadata = Json({"scenario": "long_stay_pack", "nights": nights})
 
     cur = conn.cursor()
@@ -313,7 +313,7 @@ def inject_long_stay_folio(conn) -> None:
             "confirmation_number": confirmation_number,
             "check_in": check_in,
             "check_out": check_out,
-            "booking": datetime.utcnow(),
+            "booking": datetime.now(timezone.utc),
             "room_number": target_room["room_number"],
             "room_rate": nightly_rate,
             "total_amount": total_amount,
@@ -341,7 +341,7 @@ def inject_long_stay_folio(conn) -> None:
     )
 
     folio_id = generate_uuid()
-    folio_number = f"QA-LONG-STAY-{datetime.utcnow():%Y%m%d%H%M%S}"
+    folio_number = f"QA-LONG-STAY-{datetime.now(timezone.utc):%Y%m%d%H%M%S}"
     cur.execute(
         """
         INSERT INTO folios (
