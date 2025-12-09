@@ -4,7 +4,11 @@
 -- Location: scripts/tables/tools/
 --
 -- Usage:
---   psql -f scripts/tables/tools/table_lineage_report.sql
+--   psql -d <database_name> -f scripts/tables/tools/table_lineage_report.sql
+--
+-- Note:
+--   Connect to the target database before running this script.
+--   The script operates on the currently connected database.
 --
 -- Output Highlights:
 --   1. Outbound dependencies: which tables this table references
@@ -17,7 +21,6 @@
 -- =====================================================
 
 \set ON_ERROR_STOP on
-\c tartware
 
 \pset format aligned
 \pset border 2
