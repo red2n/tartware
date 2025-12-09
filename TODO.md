@@ -198,6 +198,13 @@ CREATE POLICY system_admin_audit_self_only ON system_admin_audit_log
 ### 5. **Bloom Filter & Cache Maintenance Job**
    - Implement a JVM worker that pages through the `users` table, streams usernames into Redis Bloom filters, and refreshes TTLed caches incrementally.
    - Run the job on deployment and nightly; publish Prometheus metrics so `core-service` can detect stale filters.
+
+### 6. **Premium Access Audit Platform**
+   - Stand up a dedicated audit datastore (separate Postgres schema or managed ClickHouse) that receives append-only access events; enforce WORM retention (7–10 years) and encryption at rest to meet SOX/GDPR requirements.
+   - Introduce an `@tartware/audit-service` workspace that exposes authenticated ingestion APIs (`POST /v1/audit/events`) plus search/report endpoints, backed by a Kafka topic to decouple producers and guarantee ordering.
+   - Add gateway/service middleware that, when the tenant’s subscription includes the `advanced_audit` entitlement, emits structured events for every API call (user id, route, verb, entity, request fingerprint, response code, latency, originating IP/device).
+   - Provision a subscription-key validator (per-tenant HMAC key or JWKS claim) so non-entitled tenants short-circuit the emit path while still recording minimal security logs.
+   - Ship a UI report module that queries the Audit API with RBAC + row-level filtering, highlighting “who accessed which entity/table” and supporting export to CSV/PDF; include alert hooks for anomalous access patterns.
    - Remove the synchronous warm-up step from `Apps/core-service/src/index.ts` after verifying the external job's reliability.
 
 ### 6. **Billing & Settlement Service**
