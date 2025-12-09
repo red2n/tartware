@@ -232,7 +232,7 @@ def inject_double_booking(conn) -> None:
                 "tax_amount": money(total_amount * Decimal("0.10")),
                 "guest_name": guest.get("name", "QA Guest"),
                 "guest_email": guest.get("email", "qa-bookings@example.com"),
-                "metadata": Json(metadata | {"booking_index": idx}),
+                "metadata": Json({**metadata, "booking_index": idx}),
             },
         )
         inserted = cur.fetchone()
