@@ -156,7 +156,7 @@ def seed_financial_pack(conn) -> None:
 
 def money(value: Decimal | float) -> Decimal:
     """Round monetary values to two decimals consistently."""
-    return (Decimal(value).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP))
+    return Decimal(value).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
 
 def pick_guest_for_tenant(tenant_id: str):
