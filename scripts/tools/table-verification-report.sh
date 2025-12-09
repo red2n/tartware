@@ -33,7 +33,13 @@ if [[ -n "${PSQL_FLAGS:-}" ]]; then
 fi
 
 db_name="$("${PSQL_CMD[@]}" -tAc "SELECT current_database();" 2>/dev/null | tr -d '[:space:]')"
-db_name="${db_name:-${PGDATABASE:-tartware}}"
+if [[ -z "${db_name}" ]]; then
+  db_name="${PGDATABASE:-}"
+fi
+if [[ -z "${db_name}" ]]; then
+  echo "❌ Unable to determine database name. Please set PGDATABASE or DATABASE_URL." >&2
+  exit 1
+fi
 
 declare -a CHECKS=(
   "scripts/tables/verify-tables.sql::Table Inventory"
