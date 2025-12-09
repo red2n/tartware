@@ -244,7 +244,7 @@ def inject_double_booking(conn) -> None:
                     "tenant_id": tenant_id,
                     "property_id": property_id,
                     "guest_id": guest["id"],
-                    "total_amount": float(total_amount),
+                    "total_amount": total_amount,
                     "status": "CONFIRMED",
                     "check_in_date": base_check_in,
                     "check_out_date": base_check_out,
