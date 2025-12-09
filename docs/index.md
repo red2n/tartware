@@ -24,9 +24,7 @@ up-to-date developer references.
 
 - All services send logs/traces to the collector via `OTEL_EXPORTER_OTLP_*`
   environment variables (see `run-with-otel.sh` for local defaults). The collector
-  fans logs straight into OpenSearch, so the built-in UI log viewer
-  (`Apps/tartware-ui` → Logs page) can query them via `Apps/logs-service`.
+  fans logs straight into OpenSearch for external tools to query.
 
-- We intentionally removed the standalone OpenSearch Dashboards container; the
-  Tartware UI already exposes log search tooling, so only the storage node needs
-  to run.
+- We intentionally removed the standalone OpenSearch Dashboards container; only
+  the storage node needs to run for telemetry fan-in.

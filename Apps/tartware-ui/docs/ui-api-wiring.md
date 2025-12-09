@@ -24,7 +24,6 @@ flowchart LR
         ReportsUI["ReportService\ncore/services/report.service.ts"]
         SettingsUI["SettingsComponent + CatalogService\nfeatures/pms/settings/*"]
         AdminUI["AdminUsersComponent + AdminApiService\nfeatures/admin/*"]
-        LogsUI["LogsService\ncore/services/logs.service.ts"]
         StatusUI["StatusBarComponent\ncore/components/status-bar.component.ts"]
         Backlog["(future UI wiring)"]
     end
@@ -43,7 +42,6 @@ flowchart LR
         ReportsAPI["/v1/reports/performance\ncore-service/routes/reports.ts"]
         SettingsAPI["/v1/settings/*\nsettings-service/routes/catalog.ts"]
         AdminAPI["/v1/system/*\ncore-service/routes/system-*.ts"]
-        LogsAPI["/v1/logs\nlogs-service/routes/logs.ts"]
         HealthAPI["/health\ncore-service/routes/health.ts"]
         UsersAPI["/v1/users\ncore-service/routes/users.ts"]
         AssocAPI["/v1/user-tenant-associations\ncore-service/routes/user-tenant-associations.ts"]
@@ -62,7 +60,6 @@ flowchart LR
     ReportsUI --> ReportsAPI
     SettingsUI -->|"read-only catalog"| SettingsAPI
     AdminUI --> AdminAPI
-    LogsUI --> LogsAPI
     StatusUI --> HealthAPI
     Backlog -. "awaiting UI" .-> UsersAPI
     Backlog -. "awaiting UI" .-> AssocAPI
@@ -71,7 +68,7 @@ flowchart LR
     classDef partial fill:#fefcbf,stroke:#b7791f,color:#744210,font-weight:bold;
     classDef missing fill:#fed7d7,stroke:#c53030,color:#742a2a,font-weight:bold;
 
-    class AuthAPI,TenantAPI,ModuleAPI,PropertyAPI,RoomAPI,HousekeepingAPI,BillingAPI,DashboardAPI,ReportsAPI,AdminAPI,LogsAPI,HealthAPI wired;
+    class AuthAPI,TenantAPI,ModuleAPI,PropertyAPI,RoomAPI,HousekeepingAPI,BillingAPI,DashboardAPI,ReportsAPI,AdminAPI,HealthAPI wired;
     class ReservationsAPI,GuestsAPI,SettingsAPI partial;
     class UsersAPI,AssocAPI,Backlog missing;
 ```
@@ -93,7 +90,6 @@ flowchart LR
 | Reports (`/v1/reports/performance`) | Wired | `ReportService` (`src/app/core/services/report.service.ts`). | Route `Apps/core-service/src/routes/reports.ts`. |
 | Settings catalog (`/v1/settings/*`) | **Partially wired** | `SettingsComponent` renders catalog/value data, but `updateTenantProfile` in `features/pms/settings/settings.component.ts:166-168` is a stub. | API served by `Apps/settings-service/src/routes/catalog.ts`. |
 | Platform admin (`/v1/system/*`) | Wired | `AdminUsersComponent` + `AdminApiService` (`src/app/core/services/admin-api.service.ts`, `features/admin/admin-users.component.ts`). | Routes under `Apps/core-service/src/routes/system-*.ts`. |
-| Logs (`/v1/logs`) | Wired | `LogsService` (`src/app/core/services/logs.service.ts`). | Fastify handler `Apps/logs-service/src/routes/logs.ts`. |
 | Health (`/health`) | Wired | `StatusBarComponent` polls health endpoint (`src/app/core/components/status-bar.component.ts:218-329`). | Route `Apps/core-service/src/routes/health.ts`. |
 | Users (`/v1/users`) | **Not wired** | No references to `/v1/users` under `Apps/tartware-ui/src` (`rg -n "/v1/users" Apps/tartware-ui/src` returns nothing). | API route exists in `Apps/core-service/src/routes/users.ts`. |
 | User ↔ Tenant associations (`/v1/user-tenant-associations`) | **Not wired** | No UI service hits this endpoint (`rg -n "user-tenant-associations" Apps/tartware-ui/src` yields no matches). | Route lives in `Apps/core-service/src/routes/user-tenant-associations.ts`. |

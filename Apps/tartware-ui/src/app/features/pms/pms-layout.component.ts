@@ -202,15 +202,6 @@ export class PmsLayoutComponent implements OnInit, OnDestroy {
       minRole: 'ADMIN',
     },
     {
-      id: 'logs',
-      icon: 'article',
-      label: 'Logs',
-      route: 'logs',
-      badge: null,
-      moduleId: 'core',
-      minRole: 'ADMIN',
-    },
-    {
       id: 'settings',
       icon: 'settings',
       label: 'Settings',
