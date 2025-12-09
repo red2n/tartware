@@ -332,7 +332,7 @@ def inject_long_stay_folio(conn) -> None:
             "tenant_id": tenant_id,
             "property_id": property_id,
             "guest_id": guest["id"],
-            "total_amount": float(total_amount),
+            "total_amount": total_amount,
             "status": "CHECKED_IN",
             "check_in_date": check_in,
             "check_out_date": check_out,
