@@ -5,7 +5,6 @@
 export const environment = {
   production: false,
   apiUrl: 'http://localhost:8080/v1',
-  logsApiUrl: 'http://localhost:3100/v1',
   apiTimeout: 30000,
   logLevel: 'debug',
   enableDevTools: true,

@@ -4,6 +4,7 @@
 -- Pattern: OWASP ASVS privileged account management
 -- Date: 2025-11-19
 -- =====================================================
+-- Compliance Mapping: docs/compliance-mapping.md#sox--platform-audit--access
 
 \c tartware \echo 'Creating system_administrators table...'
 
@@ -28,7 +29,7 @@ CREATE TABLE IF NOT EXISTS system_administrators (
     metadata JSONB NOT NULL DEFAULT '{}'::jsonb -- Additional structured metadata   (trusted devices, break-glass indicators, etc.)
 );
 
-COMMENT ON TABLE system_administrators IS 'Platform-level administrators for multi-tenant operations';
+COMMENT ON TABLE system_administrators IS 'Platform-level administrators for multi-tenant operations (see docs/compliance-mapping.md#sox--platform-audit--access)';
 
 COMMENT ON COLUMN system_administrators.ip_whitelist IS 'Allowed IPv4/IPv6 addresses or CIDR ranges';
 

@@ -8,6 +8,7 @@
 --   - Right to be forgotten
 --   - Data processing records
 -- =====================================================
+-- Compliance Mapping: docs/compliance-mapping.md#gdpr--privacy
 
 CREATE TABLE IF NOT EXISTS gdpr_consent_logs (
     -- Primary Key
@@ -149,7 +150,7 @@ CREATE TABLE IF NOT EXISTS gdpr_consent_logs (
 -- TABLE COMMENTS
 -- =====================================================
 
-COMMENT ON TABLE gdpr_consent_logs IS 'Tracks GDPR and privacy consent management with complete audit trail for data protection compliance';
+COMMENT ON TABLE gdpr_consent_logs IS 'Tracks GDPR and privacy consent management with complete audit trail (see docs/compliance-mapping.md#gdpr--privacy)';
 COMMENT ON COLUMN gdpr_consent_logs.consent_id IS 'Unique consent record identifier (UUID)';
 COMMENT ON COLUMN gdpr_consent_logs.tenant_id IS 'Reference to tenant (multi-tenancy)';
 COMMENT ON COLUMN gdpr_consent_logs.property_id IS 'Reference to property (NULL for tenant-wide consents)';

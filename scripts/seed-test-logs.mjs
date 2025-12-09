@@ -19,7 +19,6 @@ const SERVICES = [
   'core-service',
   'reservations-command-service',
   'settings-service',
-  'logs-service',
 ];
 
 const SEVERITIES = ['TRACE', 'DEBUG', 'INFO', 'WARN', 'ERROR', 'FATAL'];
