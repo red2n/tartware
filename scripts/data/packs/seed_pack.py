@@ -69,7 +69,7 @@ def parse_args() -> argparse.Namespace:
 
 def reset_data_store() -> None:
     """Clear in-memory ID caches so loaders only reference fresh records."""
-    for key in data_store.keys():
+    for key in list(data_store.keys()):
         data_store[key] = []
 
 
