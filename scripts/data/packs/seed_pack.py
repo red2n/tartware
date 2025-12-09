@@ -14,7 +14,7 @@ from datetime import date, datetime, timedelta
 from decimal import Decimal, ROUND_HALF_UP
 from pathlib import Path
 
-from typing import Iterable, List
+from typing import Iterable
 
 import random
 
