@@ -5,6 +5,7 @@
 -- Pattern: Oracle OPERA Cashiering, Payment Gateway Integration
 -- Date: 2025-10-15
 -- =====================================================
+-- Compliance Mapping: docs/compliance-mapping.md#pci-dss-payments--cardholder-data
 
 \c tartware
 
@@ -105,7 +106,7 @@ CREATE TABLE IF NOT EXISTS payments (
 -- TABLE COMMENTS
 -- =====================================================
 
-COMMENT ON TABLE payments IS 'Payment transactions for reservations';
+COMMENT ON TABLE payments IS 'Payment transactions for reservations (see docs/compliance-mapping.md#pci-dss-payments--cardholder-data)';
 COMMENT ON COLUMN payments.id IS 'Unique payment identifier (UUID)';
 COMMENT ON COLUMN payments.tenant_id IS 'Reference to tenants.id';
 COMMENT ON COLUMN payments.property_id IS 'Reference to properties.id';

@@ -89,6 +89,45 @@ CREATE TABLE ManagerDetails (
 - **Update**: Modify specialization once in ManagerDetails; all property references reflect the change
 - **Delete**: Remove a property without losing manager information
 
+### Tartware PMS Example: Reservations vs. Reservation Status History
+
+The production schema already follows the BCNF pattern by separating mutable status changes from the core reservation record. The tables in `scripts/tables/03-bookings/10_reservations.sql` and `scripts/tables/03-bookings/11_reservation_status_history.sql` look like this (abridged for clarity):
+
+```sql
+-- Core booking facts (determinant = reservation id)
+CREATE TABLE reservations (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    tenant_id UUID NOT NULL,
+    property_id UUID NOT NULL,
+    guest_id UUID NOT NULL,
+    room_type_id UUID NOT NULL,
+    confirmation_number VARCHAR(50) UNIQUE NOT NULL,
+    check_in_date DATE NOT NULL,
+    check_out_date DATE NOT NULL,
+    room_rate DECIMAL(15,2) NOT NULL,
+    total_amount DECIMAL(15,2) NOT NULL,
+    status reservation_status NOT NULL DEFAULT 'PENDING',
+    source reservation_source NOT NULL DEFAULT 'DIRECT',
+    guest_name VARCHAR(255) NOT NULL,
+    guest_email VARCHAR(255) NOT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Status timeline (determinant = history id; reservation_id is a strict FK)
+CREATE TABLE reservation_status_history (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    reservation_id UUID NOT NULL,
+    tenant_id UUID NOT NULL,
+    previous_status reservation_status,
+    new_status reservation_status NOT NULL,
+    change_reason VARCHAR(255),
+    changed_by VARCHAR(100),
+    changed_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+```
+
+Because `reservations.status` is just the current snapshot while the full state transition lives in `reservation_status_history`, determinants remain candidate keys in both tables. Reporting teams can analyze timelines without putting non-key determinants inside the booking record, satisfying BCNF.
+
 ***
 
 ## Understanding 4NF (Fourth Normal Form)
@@ -198,6 +237,43 @@ CREATE TABLE PropertyCertifications (
 - **Update**: Modify amenities independently from certifications
 - **Delete**: Remove "WiFi" without affecting certifications
 - **Storage**: Only 4 rows total instead of 4 for P001 and 1 for P002
+
+### Tartware PMS Example: Packages vs. Package Components
+
+The revenue platform stores package metadata separately from the included components so that meal plans, activities, and credits stay independent of the package header. This is a first-class 4NF decomposition (see `scripts/tables/02-inventory/92_packages.sql`):
+
+```sql
+-- Package header (one row per sellable bundle)
+CREATE TABLE packages (
+    package_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    tenant_id UUID NOT NULL REFERENCES tenants(id),
+    property_id UUID REFERENCES properties(id),
+    package_name VARCHAR(255) NOT NULL,
+    package_code VARCHAR(50) UNIQUE NOT NULL,
+    package_type VARCHAR(50) NOT NULL,
+    valid_from DATE NOT NULL,
+    valid_to DATE NOT NULL,
+    pricing_model VARCHAR(50) NOT NULL,
+    base_price DECIMAL(10,2) NOT NULL,
+    tags TEXT[],
+    categories TEXT[],
+    -- (marketing, availability, and governance attributes omitted)
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Components keep independent many-to-many relationships per package
+CREATE TABLE package_components (
+    component_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    package_id UUID NOT NULL REFERENCES packages(package_id) ON DELETE CASCADE,
+    component_type VARCHAR(50) NOT NULL, -- service, amenity, activity, etc.
+    component_name VARCHAR(255) NOT NULL,
+    quantity INTEGER DEFAULT 1,
+    pricing_type VARCHAR(50) NOT NULL,
+    metadata JSONB DEFAULT '{}'::jsonb
+);
+```
+
+Packages now control marketing, availability, and pricing, while `package_components` can express any combination of services or amenities without generating cartesian products. Each determinant (`package_id` and `component_id`) is a key in its respective table, so the multivalued dependencies for services, meals, and credits all comply with 4NF. Audit, pricing, and OTA export jobs simply join the tables when they need a flattened view.
 
 ***
 

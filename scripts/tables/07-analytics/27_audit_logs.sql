@@ -19,6 +19,7 @@
 -- - User agent tracking
 -- - Never deleted (compliance requirement)
 -- =====================================================
+-- Compliance Mapping: docs/compliance-mapping.md#sox--platform-audit--access
 
 \c tartware
 
@@ -101,7 +102,7 @@ CREATE TABLE audit_logs (
 );
 
 -- Add table comment
-COMMENT ON TABLE audit_logs IS 'Comprehensive audit trail for compliance (PCI DSS, SOC 2, GDPR). Never deleted.';
+COMMENT ON TABLE audit_logs IS 'Comprehensive audit trail for compliance (PCI DSS, SOC 2, GDPR) - see docs/compliance-mapping.md#sox--platform-audit--access. Never deleted.';
 
 -- Add column comments
 COMMENT ON COLUMN audit_logs.audit_id IS 'Unique identifier for audit entry';
