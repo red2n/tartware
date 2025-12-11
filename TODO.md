@@ -1,5 +1,38 @@
 ## Implementation Plan
 
+### Event-Driven CRUD & Scale Roadmap
+
+- [x] **Baseline Load & Observability**
+  - Add repeatable load tests (k6/Gatling) against key CRUD routes.
+  - Wire tracing/metrics to capture current throughput, latency, and DB contention.
+- [x] **Unified Domain Event Envelope**
+  - Extract the reservation event schema pattern into a shared `@tartware/domain-events` helper.
+  - Standardize topic naming, versioning, and producer utilities for every service.
+- [x] **Pilot Domain Streaming**
+  - Wrap all reservation mutations with the shared producer helper.
+  - Build a consumer that maintains reservation projections / side effects to prove the pattern.
+- [x] **Gradual Read Decoupling**
+  - Introduce a read model (materialized table/cache) fed by events.
+  - Switch GET endpoints to the projection with OLTP fallback until confidence is high.
+- [x] **Horizontal Scaling Hooks**
+  - Containerize services for multiple replicas, add health checks, and externalize state.
+  - Prepare Kafka/Postgres configs for clustering (env-driven broker lists, partition plans).
+- [x] **Infra Uplift Blueprint**
+  - Document the target multi-broker Kafka + partitioned datastore topology.
+  - Sequence infra upgrades so stream-ready services can scale to 20k ops/sec.
+
+### Phase 2 **Reliability Layer**
+
+- [x] **Ingress Idempotency Guardrails**
+  - Require `x-idempotency-key` for every mutation request and persist payloads + responses.
+  - Short-circuit duplicates with cached ACK/PENDING responses for replay safety.
+- [x] **Auto-Retry & Ack Orchestrator**
+  - Track attempt counts, next retry windows, and backoff metadata per command.
+  - Run a background sweep that republishes failed commands until acknowledged or max attempts reached.
+- [x] **Command Health Console**
+  - Expose aggregated counts (incoming/outgoing/acked/failed/retried/unauthorized/unknown) via JSON + HTML dashboard.
+  - Emit hooks so external monitors can scrape the same telemetry for the 20k ops/sec SLA.
+
 ### 1. **Super Admin / Global Administrator Implementation (Priority: HIGH)**
 Industry-standard privileged access management for multi-tenant PMS platform following OWASP Authorization best practices.
 

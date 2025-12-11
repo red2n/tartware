@@ -15,7 +15,9 @@ import { registerGuestRoutes } from "./routes/guests.js";
 import { registerHealthRoutes } from "./routes/health.js";
 import { registerHousekeepingRoutes } from "./routes/housekeeping.js";
 import { registerModuleRoutes } from "./routes/modules.js";
+import { registerProjectionMonitorRoutes } from "./routes/projection-monitor.js";
 import { registerPropertyRoutes } from "./routes/properties.js";
+import { registerReadyRoutes } from "./routes/ready.js";
 import { registerReportRoutes } from "./routes/reports.js";
 import { registerReservationRoutes } from "./routes/reservations.js";
 import { registerRoomRoutes } from "./routes/rooms.js";
@@ -94,6 +96,7 @@ export const buildServer = (): FastifyInstance => {
 
   app.after(() => {
     registerHealthRoutes(app);
+    registerReadyRoutes(app);
     registerAuthRoutes(app);
     registerTenantRoutes(app);
     registerPropertyRoutes(app);
@@ -107,6 +110,7 @@ export const buildServer = (): FastifyInstance => {
     registerBillingRoutes(app);
     registerReportRoutes(app);
     registerModuleRoutes(app);
+    registerProjectionMonitorRoutes(app);
     registerSystemAuthRoutes(app);
     registerSystemTenantRoutes(app);
     registerSystemUserRoutes(app);

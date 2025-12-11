@@ -16,6 +16,7 @@ const getProducer = async (): Promise<Producer> => {
 };
 
 type KafkaEventMessage = {
+  topic?: string;
   key: string;
   value: string;
   headers?: Record<string, string>;
@@ -25,8 +26,9 @@ export const publishEvent = async (
   message: KafkaEventMessage,
 ): Promise<RecordMetadata[]> => {
   const producerInstance = await getProducer();
+  const topic = message.topic ?? kafkaConfig.topic;
   return producerInstance.send({
-    topic: kafkaConfig.topic,
+    topic,
     messages: [
       {
         key: message.key,

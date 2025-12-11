@@ -31,3 +31,15 @@ export const databaseConfig = {
   max: Number(env.DB_POOL_MAX ?? 10),
   idleTimeoutMillis: Number(env.DB_POOL_IDLE_TIMEOUT_MS ?? 30000),
 };
+
+export const reliabilityConfig = {
+  retrySweepIntervalMs: Number(
+    env.RESERVATION_COMMAND_RETRY_SWEEP_MS ?? 5000,
+  ),
+  retryBatchSize: Number(env.RESERVATION_COMMAND_RETRY_BATCH_SIZE ?? 25),
+  retryBaseDelayMs: Number(env.RESERVATION_COMMAND_RETRY_BASE_DELAY_MS ?? 2000),
+  retryMaxBackoffMs: Number(
+    env.RESERVATION_COMMAND_RETRY_MAX_BACKOFF_MS ?? 60000,
+  ),
+  defaultMaxAttempts: Number(env.RESERVATION_COMMAND_MAX_ATTEMPTS ?? 6),
+};

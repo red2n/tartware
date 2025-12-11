@@ -62,6 +62,54 @@ export const buildServer = () => {
 		});
 	});
 
+	app.get("/ready", async (_request, reply) => {
+		allowCorsHeaders(reply);
+		const targets = [
+			{
+				name: "core-service",
+				url: `${serviceTargets.coreServiceUrl}/health`,
+			},
+			{
+				name: "reservations-command-service",
+				url: `${serviceTargets.reservationCommandServiceUrl}/health`,
+			},
+		];
+
+		const checks = await Promise.all(
+			targets.map(async (target) => {
+				try {
+					const controller = new AbortController();
+					const timeout = setTimeout(() => controller.abort(), 2000);
+					const response = await fetch(target.url, {
+						method: "GET",
+						signal: controller.signal,
+					});
+					clearTimeout(timeout);
+					return {
+						name: target.name,
+						healthy: response.ok,
+					};
+				} catch {
+					return { name: target.name, healthy: false };
+				}
+			}),
+		);
+
+		const unhealthy = checks.filter((check) => !check.healthy);
+		if (unhealthy.length > 0) {
+			return reply.status(503).send({
+				status: "degraded",
+				service: gatewayConfig.serviceId,
+				unhealthyTargets: unhealthy.map((item) => item.name),
+			});
+		}
+
+		return reply.send({
+			status: "ok",
+			service: gatewayConfig.serviceId,
+		});
+	});
+
 	const reservationHandler = async (
 		request: FastifyRequest,
 		reply: FastifyReply,

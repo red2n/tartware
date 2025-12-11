@@ -12,7 +12,16 @@
     "outDir": "dist",
     "declaration": true,
     "sourceMap": true,
-    "resolveJsonModule": true
+    "resolveJsonModule": true,
+    "baseUrl": ".",
+    "paths": {
+      "@tartware/schemas": ["../../schema/src/index.ts"],
+      "@tartware/schemas/*": ["../../schema/src/*"],
+      "@tartware/telemetry": ["../telemetry/src/index.ts"],
+      "@tartware/telemetry/*": ["../telemetry/src/*"],
+      "@tartware/domain-events": ["../domain-events/src/index.ts"],
+      "@tartware/domain-events/*": ["../domain-events/src/*"]
+    }
   },
   "include": ["src/**/*.ts"],
   "exclude": ["dist", "node_modules"]

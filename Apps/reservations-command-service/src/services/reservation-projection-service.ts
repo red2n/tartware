@@ -1,0 +1,172 @@
+import { query } from "../lib/db.js";
+
+const UPSERT_RESERVATION_PROJECTION_SQL = `
+WITH source AS (
+  SELECT
+    r.id,
+    r.tenant_id,
+    r.property_id,
+    p.property_name,
+    r.guest_id,
+    r.room_type_id,
+    rt.type_name AS room_type_name,
+    r.confirmation_number,
+    r.check_in_date,
+    r.check_out_date,
+    r.booking_date,
+    r.actual_check_in,
+    r.actual_check_out,
+    r.room_number,
+    r.number_of_adults,
+    r.number_of_children,
+    r.total_amount,
+    r.paid_amount,
+    r.balance_due,
+    r.currency,
+    r.status::text AS status,
+    INITCAP(REPLACE(r.status::text, '_', ' ')) AS status_display,
+    r.source::text AS source,
+    r.guest_name,
+    r.guest_email,
+    r.guest_phone,
+    COALESCE(r.internal_notes, r.special_requests) AS notes,
+    r.created_at,
+    r.updated_at,
+    r.version,
+    GREATEST(1, COALESCE(r.check_out_date::date - r.check_in_date::date, 1)) AS nights
+  FROM reservations r
+  LEFT JOIN properties p ON r.property_id = p.id
+  LEFT JOIN room_types rt ON r.room_type_id = rt.id
+  WHERE r.id = $1
+)
+INSERT INTO reservations_projection (
+  id,
+  tenant_id,
+  property_id,
+  property_name,
+  guest_id,
+  room_type_id,
+  room_type_name,
+  confirmation_number,
+  check_in_date,
+  check_out_date,
+  booking_date,
+  actual_check_in,
+  actual_check_out,
+  room_number,
+  number_of_adults,
+  number_of_children,
+  total_amount,
+  paid_amount,
+  balance_due,
+  currency,
+  status,
+  status_display,
+  source,
+  guest_name,
+  guest_email,
+  guest_phone,
+  notes,
+  created_at,
+  updated_at,
+  version,
+  nights,
+  last_refreshed_at,
+  last_event_id,
+  last_event_type,
+  last_event_timestamp,
+  lag_seconds
+)
+SELECT
+  s.id,
+  s.tenant_id,
+  s.property_id,
+  s.property_name,
+  s.guest_id,
+  s.room_type_id,
+  s.room_type_name,
+  s.confirmation_number,
+  s.check_in_date,
+  s.check_out_date,
+  s.booking_date,
+  s.actual_check_in,
+  s.actual_check_out,
+  s.room_number,
+  s.number_of_adults,
+  s.number_of_children,
+  s.total_amount,
+  s.paid_amount,
+  s.balance_due,
+  s.currency,
+  s.status,
+  s.status_display,
+  s.source,
+  s.guest_name,
+  s.guest_email,
+  s.guest_phone,
+  s.notes,
+  s.created_at,
+  s.updated_at,
+  s.version,
+  s.nights,
+  NOW(),
+  $2::uuid AS last_event_id,
+  $3::text AS last_event_type,
+  $4::timestamptz AS last_event_timestamp,
+  EXTRACT(EPOCH FROM (NOW() - $4::timestamptz))::double precision AS lag_seconds
+FROM source s
+ON CONFLICT (id) DO UPDATE SET
+  tenant_id = EXCLUDED.tenant_id,
+  property_id = EXCLUDED.property_id,
+  property_name = EXCLUDED.property_name,
+  guest_id = EXCLUDED.guest_id,
+  room_type_id = EXCLUDED.room_type_id,
+  room_type_name = EXCLUDED.room_type_name,
+  confirmation_number = EXCLUDED.confirmation_number,
+  check_in_date = EXCLUDED.check_in_date,
+  check_out_date = EXCLUDED.check_out_date,
+  booking_date = EXCLUDED.booking_date,
+  actual_check_in = EXCLUDED.actual_check_in,
+  actual_check_out = EXCLUDED.actual_check_out,
+  room_number = EXCLUDED.room_number,
+  number_of_adults = EXCLUDED.number_of_adults,
+  number_of_children = EXCLUDED.number_of_children,
+  total_amount = EXCLUDED.total_amount,
+  paid_amount = EXCLUDED.paid_amount,
+  balance_due = EXCLUDED.balance_due,
+  currency = EXCLUDED.currency,
+  status = EXCLUDED.status,
+  status_display = EXCLUDED.status_display,
+  source = EXCLUDED.source,
+  guest_name = EXCLUDED.guest_name,
+  guest_email = EXCLUDED.guest_email,
+  guest_phone = EXCLUDED.guest_phone,
+  notes = EXCLUDED.notes,
+  created_at = EXCLUDED.created_at,
+  updated_at = EXCLUDED.updated_at,
+  version = EXCLUDED.version,
+  nights = EXCLUDED.nights,
+  last_refreshed_at = NOW(),
+  last_event_id = EXCLUDED.last_event_id,
+  last_event_type = EXCLUDED.last_event_type,
+  last_event_timestamp = EXCLUDED.last_event_timestamp,
+  lag_seconds = EXCLUDED.lag_seconds;
+`;
+
+interface ProjectionRefreshContext {
+  reservationId: string;
+  eventId: string;
+  eventType: string;
+  eventTimestamp: string;
+}
+
+export const refreshReservationProjection = async (
+  context: ProjectionRefreshContext,
+): Promise<void> => {
+  await query(UPSERT_RESERVATION_PROJECTION_SQL, [
+    context.reservationId,
+    context.eventId,
+    context.eventType,
+    context.eventTimestamp,
+  ]);
+};

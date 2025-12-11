@@ -8,6 +8,8 @@ import { v4 as uuid } from "uuid";
 
 import { query } from "../lib/db.js";
 
+import { refreshReservationProjection } from "./reservation-projection-service.js";
+
 export const processReservationEvent = async (
   event: ReservationEvent,
 ): Promise<void> => {
@@ -91,6 +93,13 @@ const handleReservationCreated = async (
       confirmation,
     ],
   );
+
+  await refreshReservationProjection({
+    reservationId,
+    eventId: event.metadata.id,
+    eventType: event.metadata.type,
+    eventTimestamp: event.metadata.timestamp,
+  });
 };
 
 const handleReservationUpdated = async (
@@ -134,6 +143,13 @@ const handleReservationUpdated = async (
   `;
 
   await query(sql, [payload.id, ...values]);
+
+  await refreshReservationProjection({
+    reservationId: payload.id,
+    eventId: event.metadata.id,
+    eventType: event.metadata.type,
+    eventTimestamp: event.metadata.timestamp,
+  });
 };
 
 const handleReservationCancelled = async (
@@ -152,4 +168,11 @@ const handleReservationCancelled = async (
     `,
     [payload.id, payload.cancelled_at, payload.reason ?? null],
   );
+
+  await refreshReservationProjection({
+    reservationId: payload.id,
+    eventId: event.metadata.id,
+    eventType: event.metadata.type,
+    eventTimestamp: event.metadata.timestamp,
+  });
 };

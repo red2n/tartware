@@ -36,7 +36,8 @@
     "test:ui": "lerna run test --scope=tartware-ui --stream",
     "validate": "npm run build && npm test",
     "biome": "lerna run biome --stream",
-    "knip": "lerna run knip --stream"
+    "knip": "lerna run knip --stream",
+    "loadtest:crud": "k6 run load-testing/k6-crud-baseline.js"
   },
   "devDependencies": {
     "concurrently": "^9.2.1",

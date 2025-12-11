@@ -7,6 +7,7 @@ import { processReservationEvent } from "../services/reservation-event-handler.j
 import { kafka } from "./client.js";
 
 let consumer: Consumer | null = null;
+let consumerReady = false;
 
 export const startReservationConsumer = async (): Promise<void> => {
   if (consumer) {
@@ -39,11 +40,15 @@ export const startReservationConsumer = async (): Promise<void> => {
       }
     },
   });
+  consumerReady = true;
 };
 
 export const shutdownReservationConsumer = async (): Promise<void> => {
   if (consumer) {
     await consumer.disconnect();
     consumer = null;
+    consumerReady = false;
   }
 };
+
+export const isReservationConsumerReady = (): boolean => consumerReady;

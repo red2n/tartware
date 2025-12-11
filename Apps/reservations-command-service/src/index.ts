@@ -5,6 +5,10 @@ import {
 } from "./kafka/consumer.js";
 import { shutdownProducer } from "./kafka/producer.js";
 import { buildServer } from "./server.js";
+import {
+  startCommandRetryWorker,
+  stopCommandRetryWorker,
+} from "./services/command-retry-worker.js";
 
 const app = buildServer();
 
@@ -14,6 +18,7 @@ let isShuttingDown = false;
 const start = async () => {
   try {
     await startReservationConsumer();
+    startCommandRetryWorker();
     await app.listen({ port: serviceConfig.port, host: serviceConfig.host });
     app.log.info(
       {
@@ -39,6 +44,7 @@ const shutdown = async () => {
   try {
     await shutdownReservationConsumer();
     await shutdownProducer();
+    stopCommandRetryWorker();
     await app.close();
   } catch (error) {
     app.log.error(error, "error during graceful shutdown");

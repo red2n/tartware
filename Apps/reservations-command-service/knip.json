@@ -2,6 +2,12 @@
   "$schema": "https://unpkg.com/knip@5/schema.json",
   "entry": ["src/index.ts"],
   "project": ["src/**/*.ts"],
-  "ignoreDependencies": ["@biomejs/biome", "@tartware/schemas", "@tartware/telemetry", "tsx"],
+  "ignoreDependencies": [
+    "@biomejs/biome",
+    "@tartware/schemas",
+    "@tartware/telemetry",
+    "@tartware/domain-events",
+    "tsx"
+  ],
   "ignoreBinaries": ["biome", "eslint", "knip", "tsc", "tsx"]
 }

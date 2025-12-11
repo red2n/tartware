@@ -1,7 +1,10 @@
 import { z } from "zod";
 
 import { query } from "../lib/db.js";
-import { RESERVATION_LIST_SQL } from "../sql/reservation-queries.js";
+import {
+  RESERVATION_LIST_SQL,
+  RESERVATION_PROJECTION_LIST_SQL,
+} from "../sql/reservation-queries.js";
 import { toNonNegativeInt, toNumberOrFallback } from "../utils/numbers.js";
 
 export const ReservationListItemSchema = z.object({
@@ -152,7 +155,10 @@ export const listReservations = async (options: {
   const status = options.status ? options.status.trim().toUpperCase() : null;
   const search = options.search ? `%${options.search.trim()}%` : null;
 
-  const { rows } = await query<ReservationListRow>(RESERVATION_LIST_SQL, [
+  const useProjection = process.env.RESERVATIONS_USE_PROJECTION?.toLowerCase() === "true";
+  const sql = useProjection ? RESERVATION_PROJECTION_LIST_SQL : RESERVATION_LIST_SQL;
+
+  const { rows } = await query<ReservationListRow>(sql, [
     limit,
     tenantId,
     propertyId,

@@ -58,3 +58,53 @@ export const RESERVATION_LIST_SQL = `
   ORDER BY r.check_in_date DESC, r.created_at DESC
   LIMIT $1
 `;
+
+export const RESERVATION_PROJECTION_LIST_SQL = `
+  SELECT
+    id,
+    tenant_id,
+    property_id,
+    property_name,
+    guest_id,
+    room_type_id,
+    room_type_name,
+    confirmation_number,
+    check_in_date,
+    check_out_date,
+    booking_date,
+    actual_check_in,
+    actual_check_out,
+    room_number,
+    number_of_adults,
+    number_of_children,
+    total_amount,
+    paid_amount,
+    balance_due,
+    currency,
+    status,
+    status_display,
+    source,
+    guest_name,
+    guest_email,
+    guest_phone,
+    notes,
+    created_at,
+    updated_at,
+    version,
+    nights
+  FROM reservations_projection
+  WHERE ($2::uuid IS NULL OR tenant_id = $2::uuid)
+    AND ($3::uuid IS NULL OR property_id = $3::uuid)
+    AND (
+      $4::text IS NULL
+      OR status = UPPER($4::text)
+    )
+    AND (
+      $5::text IS NULL
+      OR guest_name ILIKE $5
+      OR guest_email ILIKE $5
+      OR confirmation_number ILIKE $5
+    )
+  ORDER BY check_in_date DESC, created_at DESC
+  LIMIT $1
+`;
