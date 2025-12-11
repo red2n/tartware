@@ -430,12 +430,66 @@ if [ "$jump_to_sample_data" = false ]; then
 echo -e "${BLUE}[1/12]${NC} Checking PostgreSQL connection..."
 
 if ! pg_isready -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" &> /dev/null; then
-    echo -e "${RED}✗ PostgreSQL is not accessible${NC}"
-    echo "  Please ensure PostgreSQL is running on $DB_HOST:$DB_PORT"
-    exit 1
+    echo -e "${YELLOW}⚠  PostgreSQL is not accessible on $DB_HOST:$DB_PORT${NC}"
+    echo ""
+
+    # Check if Docker is available
+    if command -v docker &> /dev/null && docker info &> /dev/null 2>&1; then
+        echo -e "${CYAN}Attempting to start PostgreSQL via Docker...${NC}"
+        echo ""
+
+        # Check for docker compose command
+        if docker compose version &> /dev/null; then
+            DOCKER_COMPOSE_CMD="docker compose"
+        elif command -v docker-compose &> /dev/null; then
+            DOCKER_COMPOSE_CMD="docker-compose"
+        else
+            echo -e "${RED}✗ Docker Compose is not installed${NC}"
+            echo "  Install: https://docs.docker.com/compose/install/"
+            exit 1
+        fi
+
+        # Start all Docker containers (will pull images if needed)
+        echo "Starting Docker services (this may take a moment if images need to be pulled)..."
+        $DOCKER_COMPOSE_CMD up -d 2>&1 | grep -v "^WARN"
+
+        # Wait for PostgreSQL to be ready
+        echo ""
+        echo "Waiting for PostgreSQL to be ready..."
+        RETRIES=30
+        COUNT=0
+        while [ $COUNT -lt $RETRIES ]; do
+            if pg_isready -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" &> /dev/null; then
+                echo -e "${GREEN}✓ PostgreSQL is ready${NC}"
+                break
+            fi
+            COUNT=$((COUNT + 1))
+            echo -n "."
+            sleep 1
+        done
+
+        if [ $COUNT -eq $RETRIES ]; then
+            echo ""
+            echo -e "${RED}✗ PostgreSQL failed to start within 30 seconds${NC}"
+            echo "  Check logs: $DOCKER_COMPOSE_CMD logs postgres"
+            exit 1
+        fi
+        echo ""
+
+        # Give it a moment to fully initialize
+        sleep 2
+    else
+        echo -e "${RED}✗ Docker is not available or not running${NC}"
+        echo "  Please either:"
+        echo "    1. Start PostgreSQL manually on $DB_HOST:$DB_PORT"
+        echo "    2. Install and start Docker to use containerized PostgreSQL"
+        echo "    3. Run with --mode=docker for full Docker deployment"
+        exit 1
+    fi
+else
+    echo -e "${GREEN}✓ PostgreSQL is ready${NC}"
 fi
 
-echo -e "${GREEN}✓ PostgreSQL is ready${NC}"
 echo ""
 
 # ============================================================================
