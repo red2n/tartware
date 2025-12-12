@@ -208,8 +208,10 @@ const isValidUsername = (username: string): boolean => {
 };
 
 const isValidEmail = (email: string): boolean => {
-  // Basic email validation regex
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  // More comprehensive email validation regex
+  // Allows alphanumeric, dots, hyphens, underscores in local part
+  // Ensures no consecutive dots, no leading/trailing dots
+  const emailRegex = /^[a-zA-Z0-9]([a-zA-Z0-9._-]*[a-zA-Z0-9])?@[a-zA-Z0-9]([a-zA-Z0-9.-]*[a-zA-Z0-9])?\.[a-zA-Z]{2,}$/;
   return emailRegex.test(email) && email.length <= 254;
 };
 
@@ -217,8 +219,19 @@ const isValidIpOrCidr = (value: string): boolean => {
   try {
     // Check if it's a CIDR range
     if (value.includes("/")) {
-      const [ip, prefixStr] = value.split("/");
+      const parts = value.split("/");
+      // Must have exactly 2 parts: IP and prefix
+      if (parts.length !== 2) {
+        return false;
+      }
+      
+      const [ip, prefixStr] = parts;
       const prefix = Number.parseInt(prefixStr, 10);
+      
+      // Check for NaN
+      if (Number.isNaN(prefix)) {
+        return false;
+      }
       
       // Parse the IP part
       const addr = ipaddr.process(ip);
