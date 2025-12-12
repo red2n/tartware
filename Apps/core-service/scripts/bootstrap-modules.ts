@@ -281,7 +281,22 @@ const bootstrapAdmin = async () => {
   console.log(`   • Username:  ${adminDetails.username}`);
   console.log(`   • Email:     ${adminDetails.email}`);
   console.log(`   • Role:      ${adminDetails.role}`);
-  console.log(`   • Temp Pass: ${adminDetails.plaintextPassword}`);
+  if (
+    !SUPPRESS_BOOTSTRAP_PASSWORD &&
+    (SHOW_BOOTSTRAP_PASSWORD || process.stdout.isTTY)
+  ) {
+    console.log(`   • Temp Pass: ${adminDetails.plaintextPassword}`);
+    console.log(
+      "   ⚠️  WARNING: The plaintext password is displayed above. " +
+      "If running in a CI/CD or logged environment, clear logs and rotate the password immediately."
+    );
+  } else {
+    console.log("   • Temp Pass: [hidden]");
+    console.log(
+      "   ⚠️  The plaintext password was not displayed for security reasons. " +
+      "Set SHOW_BOOTSTRAP_PASSWORD=1 or use --show-password to display it (not recommended in CI/CD)."
+    );
+  }
   console.log(`   • MFA Key:   ${adminDetails.mfaSecret}`);
   console.log(
     "   ⚠️  Store the MFA secret in a secure vault and rotate the password after first login.",
