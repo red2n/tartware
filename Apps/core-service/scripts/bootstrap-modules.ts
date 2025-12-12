@@ -3,6 +3,7 @@ import { stdin as input, stdout as output } from "node:process";
 import { createInterface } from "node:readline/promises";
 
 import bcrypt from "bcryptjs";
+import ipaddr from "ipaddr.js";
 import { authenticator } from "otplib";
 
 import { config } from "../src/config.js";
@@ -29,6 +30,10 @@ type SystemAdminRow = {
   role: string;
   created_at: Date;
 };
+
+// Environment variables for controlling password/secret display
+const SUPPRESS_BOOTSTRAP_PASSWORD = process.env.SUPPRESS_BOOTSTRAP_PASSWORD === "1";
+const SHOW_BOOTSTRAP_PASSWORD = process.env.SHOW_BOOTSTRAP_PASSWORD === "1";
 
 const rl = createInterface({ input, output, terminal: true });
 
@@ -174,15 +179,65 @@ const parseIpList = (value: string): string[] => {
   if (!value) {
     return ["127.0.0.1/32", "::1/128"];
   }
-  return value
+  const entries = value
     .split(",")
     .map((entry) => entry.trim())
     .filter((entry) => entry.length > 0);
+  
+  // Validate each IP/CIDR entry
+  const invalidEntries: string[] = [];
+  const validEntries = entries.filter((entry) => {
+    const valid = isValidIpOrCidr(entry);
+    if (!valid) {
+      invalidEntries.push(entry);
+    }
+    return valid;
+  });
+  
+  if (invalidEntries.length > 0) {
+    console.log(`⚠️  Invalid IP/CIDR entries ignored: ${invalidEntries.join(", ")}`);
+  }
+  
+  // Return defaults if no valid entries
+  return validEntries.length > 0 ? validEntries : ["127.0.0.1/32", "::1/128"];
 };
 
 const isValidUsername = (username: string): boolean => {
   // Alphanumeric, underscores, hyphens, 3-32 chars
   return /^[a-zA-Z0-9_-]{3,32}$/.test(username);
+};
+
+const isValidEmail = (email: string): boolean => {
+  // Basic email validation regex
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  return emailRegex.test(email) && email.length <= 254;
+};
+
+const isValidIpOrCidr = (value: string): boolean => {
+  try {
+    // Check if it's a CIDR range
+    if (value.includes("/")) {
+      const [ip, prefixStr] = value.split("/");
+      const prefix = Number.parseInt(prefixStr, 10);
+      
+      // Parse the IP part
+      const addr = ipaddr.process(ip);
+      
+      // Validate prefix length based on IP version
+      if (addr.kind() === "ipv4") {
+        return prefix >= 0 && prefix <= 32;
+      } else if (addr.kind() === "ipv6") {
+        return prefix >= 0 && prefix <= 128;
+      }
+      return false;
+    } else {
+      // Just validate it's a valid IP address
+      ipaddr.process(value);
+      return true;
+    }
+  } catch {
+    return false;
+  }
 };
 
 const promptAdminDetails = async () => {
@@ -197,7 +252,16 @@ const promptAdminDetails = async () => {
     }
   }
   const emailDefault = `${username}@example.com`;
-  const email = (await question(`Admin email [${emailDefault}]: `)) || emailDefault;
+  let email: string;
+  while (true) {
+    const inputEmail = (await question(`Admin email [${emailDefault}]: `)) || emailDefault;
+    if (isValidEmail(inputEmail)) {
+      email = inputEmail;
+      break;
+    } else {
+      console.log("❌ Invalid email format. Please enter a valid email address.");
+    }
+  }
 
   const roleChoices = ["SYSTEM_ADMIN", "SYSTEM_OPERATOR", "SYSTEM_AUDITOR", "SYSTEM_SUPPORT"] as const;
   console.log("\nRoles:");
@@ -312,7 +376,11 @@ const bootstrapAdmin = async () => {
   }
   console.log(`   • MFA Key:   ${adminDetails.mfaSecret}`);
   console.log(
-    "   ⚠️  Store the MFA secret in a secure vault and rotate the password after first login.",
+    "   ⚠️  WARNING: The MFA secret is displayed above. This sensitive secret should be:\n" +
+    "      - Stored immediately in a secure vault or password manager\n" +
+    "      - Never shared in logs, screenshots, or unsecured communication\n" +
+    "      - Protected from terminal history exposure\n" +
+    "      Store the MFA secret securely and rotate the password after first login.",
   );
 };
 
