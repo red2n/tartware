@@ -28,6 +28,7 @@
     "start:core": "npm run dev:core",
     "start:gateway": "npm run dev:gateway",
     "start:reservations": "npm run dev:reservations",
+    "bootstrap:modules": "npm run bootstrap:modules --workspace=Apps/core-service",
     "telemetry:start": "docker compose up -d opensearch-node otel-collector",
     "telemetry:stop": "docker compose stop otel-collector opensearch-node",
     "test": "lerna run test --stream",

@@ -26,5 +26,23 @@ up-to-date developer references.
   environment variables (see `run-with-otel.sh` for local defaults). The collector
   fans logs straight into OpenSearch for external tools to query.
 
-- We intentionally removed the standalone OpenSearch Dashboards container; only
-  the storage node needs to run for telemetry fan-in.
+- We intentionally removed the standalone OpenSearch Dashboards container; the
+  Tartware UI already exposes log search tooling, so only the storage node needs
+  to run.
+
+## Module & Admin Bootstrap CLI
+
+- Run `npm run bootstrap:modules` from the repo root to launch an interactive
+  helper that reads the canonical module catalog (`module-registry.ts`) and
+  connects to Postgres via the core-service config.
+- The script lets you:
+  - List all SaaS modules with their tiers/descriptions.
+  - Inspect the current module set for any tenant (slug or UUID) and enable/disable
+    modules by choosing their numeric indexes; the helper writes back to
+    `tenants.config -> 'modules'` with optimistic version bumps.
+  - View existing system administrators and bootstrap a new privileged account
+    (prompts for username/email/role/password, enforces bcrypt hashing, seeds an
+    MFA secret, and stores CIDR-based IP allow lists + allowed hours).
+- Use this tool when bringing up new environments: first pick the modules allowed
+  for that deployment, then create the initial system admin credentials that will
+  manage subscription keys and tenant provisioning.
