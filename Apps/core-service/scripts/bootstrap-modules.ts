@@ -209,10 +209,18 @@ const isValidUsername = (username: string): boolean => {
 
 const isValidEmail = (email: string): boolean => {
   // More comprehensive email validation regex
-  // Allows alphanumeric, dots, hyphens, underscores in local part
-  // Ensures no consecutive dots, no leading/trailing dots
-  const emailRegex = /^[a-zA-Z0-9]([a-zA-Z0-9._-]*[a-zA-Z0-9])?@[a-zA-Z0-9]([a-zA-Z0-9.-]*[a-zA-Z0-9])?\.[a-zA-Z]{2,}$/;
-  return emailRegex.test(email) && email.length <= 254;
+  // Prevents consecutive dots, leading/trailing dots in both local and domain parts
+  const emailRegex = /^[a-zA-Z0-9]([a-zA-Z0-9_-]*(\.[a-zA-Z0-9_-]+)*)?@[a-zA-Z0-9]([a-zA-Z0-9-]*(\.[a-zA-Z0-9-]+)*)?$/;
+  
+  // Additional check: ensure domain has at least one dot and ends with valid TLD
+  if (!emailRegex.test(email) || email.length > 254) {
+    return false;
+  }
+  
+  // Ensure domain part has valid TLD (at least 2 chars after last dot)
+  const domainPart = email.split('@')[1];
+  const tldMatch = domainPart?.match(/\.([a-zA-Z]{2,})$/);
+  return tldMatch !== null;
 };
 
 const isValidIpOrCidr = (value: string): boolean => {
