@@ -213,26 +213,57 @@ const isValidEmail = (email: string): boolean => {
     return false;
   }
   
-  // Email validation regex (RFC-compliant)
-  // Local part: alphanumeric start, can contain _, -, dots (no consecutive/leading/trailing dots)
-  // @ separator
-  // Domain: alphanumeric labels separated by dots, no trailing hyphens, no underscores
-  const localPart = /^[a-zA-Z0-9]([a-zA-Z0-9_-]*(\.[a-zA-Z0-9_-]+)*)?/;
-  const domainPart = /@[a-zA-Z0-9]+([a-zA-Z0-9-]*[a-zA-Z0-9])?(\.[a-zA-Z0-9]+([a-zA-Z0-9-]*[a-zA-Z0-9])?)*$/;
-  const emailRegex = new RegExp(localPart.source + domainPart.source);
-  
   // Check basic structure and length
-  if (!emailRegex.test(email) || email.length > 254) {
+  if (email.length > 254) {
     return false;
   }
   
-  // Ensure domain part has valid TLD (at least 2 chars after last dot)
+  // Split into local and domain parts
   const parts = email.split('@');
-  if (parts.length !== 2 || !parts[1]) {
+  if (parts.length !== 2) {
     return false;
   }
   
-  const tldMatch = parts[1].match(/\.([a-zA-Z]{2,})$/);
+  const [local, domain] = parts;
+  if (!local || !domain) {
+    return false;
+  }
+  
+  // Validate local part: alphanumeric start/end, can contain _, -, dots (no consecutive dots)
+  if (!/^[a-zA-Z0-9]/.test(local) || !/[a-zA-Z0-9]$/.test(local)) {
+    return false;
+  }
+  if (/\.\./.test(local)) {
+    return false;  // No consecutive dots
+  }
+  if (!/^[a-zA-Z0-9._-]+$/.test(local)) {
+    return false;  // Only allowed characters
+  }
+  
+  // Validate domain part: alphanumeric labels separated by dots, no underscores, no trailing hyphens
+  if (!/^[a-zA-Z0-9]/.test(domain) || !/[a-zA-Z0-9]$/.test(domain)) {
+    return false;
+  }
+  if (/\.\./.test(domain)) {
+    return false;  // No consecutive dots
+  }
+  if (/_/.test(domain)) {
+    return false;  // No underscores in domain
+  }
+  if (/^[a-zA-Z0-9.-]+$/.test(domain) === false) {
+    return false;  // Only allowed characters
+  }
+  
+  // Each domain label must not start or end with hyphen
+  const domainLabels = domain.split('.');
+  for (const label of domainLabels) {
+    if (!label || /^-/.test(label) || /-$/.test(label)) {
+      return false;
+    }
+  }
+  
+  // Ensure domain has valid TLD (at least 2 chars after last dot)
+  const tldMatch = domain.match(/\.([a-zA-Z]{2,})$/);
   return tldMatch !== null;
 };
 
