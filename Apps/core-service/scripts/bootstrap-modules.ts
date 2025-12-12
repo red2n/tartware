@@ -180,9 +180,22 @@ const parseIpList = (value: string): string[] => {
     .filter((entry) => entry.length > 0);
 };
 
+const isValidUsername = (username: string): boolean => {
+  // Alphanumeric, underscores, hyphens, 3-32 chars
+  return /^[a-zA-Z0-9_-]{3,32}$/.test(username);
+};
+
 const promptAdminDetails = async () => {
-  const username =
-    (await question("\nAdmin username [sysadmin]: ")) || "sysadmin";
+  let username: string;
+  while (true) {
+    const inputUsername = (await question("\nAdmin username [sysadmin]: ")) || "sysadmin";
+    if (isValidUsername(inputUsername)) {
+      username = inputUsername;
+      break;
+    } else {
+      console.log("❌ Invalid username. Usernames must be 3-32 characters and contain only letters, numbers, underscores, or hyphens.");
+    }
+  }
   const emailDefault = `${username}@example.com`;
   const email = (await question(`Admin email [${emailDefault}]: `)) || emailDefault;
 
