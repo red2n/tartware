@@ -3,6 +3,7 @@ import { stdin as input, stdout as output } from "node:process";
 import { createInterface } from "node:readline/promises";
 
 import bcrypt from "bcryptjs";
+import ipaddr from "ipaddr.js";
 import { authenticator } from "otplib";
 
 import { config } from "../src/config.js";
@@ -29,6 +30,11 @@ type SystemAdminRow = {
   role: string;
   created_at: Date;
 };
+
+// Environment variables for controlling password/secret display
+const SUPPRESS_BOOTSTRAP_PASSWORD = process.env.SUPPRESS_BOOTSTRAP_PASSWORD === "1";
+const SHOW_BOOTSTRAP_PASSWORD = process.env.SHOW_BOOTSTRAP_PASSWORD === "1";
+const SUPPRESS_BOOTSTRAP_MFA_SECRET = process.env.SUPPRESS_BOOTSTRAP_MFA_SECRET === "1";
 
 const rl = createInterface({ input, output, terminal: true });
 
@@ -174,15 +180,131 @@ const parseIpList = (value: string): string[] => {
   if (!value) {
     return ["127.0.0.1/32", "::1/128"];
   }
-  return value
+  const entries = value
     .split(",")
     .map((entry) => entry.trim())
     .filter((entry) => entry.length > 0);
+  
+  // Validate each IP/CIDR entry
+  const invalidEntries: string[] = [];
+  const validEntries = entries.filter((entry) => {
+    const valid = isValidIpOrCidr(entry);
+    if (!valid) {
+      invalidEntries.push(entry);
+    }
+    return valid;
+  });
+  
+  if (invalidEntries.length > 0) {
+    console.log(`⚠️  Invalid IP/CIDR entries ignored: ${invalidEntries.join(", ")}`);
+  }
+  
+  // Return defaults if no valid entries
+  return validEntries.length > 0 ? validEntries : ["127.0.0.1/32", "::1/128"];
 };
 
 const isValidUsername = (username: string): boolean => {
   // Alphanumeric, underscores, hyphens, 3-32 chars
   return /^[a-zA-Z0-9_-]{3,32}$/.test(username);
+};
+
+const isValidEmail = (email: string): boolean => {
+  // Validate input
+  if (!email) {
+    return false;
+  }
+  
+  // Check basic structure and length
+  if (email.length > 254) {
+    return false;
+  }
+  
+  // Split into local and domain parts
+  const parts = email.split('@');
+  if (parts.length !== 2) {
+    return false;
+  }
+  
+  const [local, domain] = parts;
+  if (!local || !domain) {
+    return false;
+  }
+  
+  // Validate local part: alphanumeric start/end, can contain _, -, dots (no consecutive dots)
+  if (!/^[a-zA-Z0-9]/.test(local) || !/[a-zA-Z0-9]$/.test(local)) {
+    return false;
+  }
+  if (/\.\./.test(local)) {
+    return false;  // No consecutive dots
+  }
+  if (!/^[a-zA-Z0-9._-]+$/.test(local)) {
+    return false;  // Only allowed characters
+  }
+  
+  // Validate domain part: alphanumeric labels separated by dots, no underscores, no trailing hyphens
+  if (!/^[a-zA-Z0-9]/.test(domain) || !/[a-zA-Z0-9]$/.test(domain)) {
+    return false;
+  }
+  if (/\.\./.test(domain)) {
+    return false;  // No consecutive dots
+  }
+  if (/_/.test(domain)) {
+    return false;  // No underscores in domain
+  }
+  if (!/^[a-zA-Z0-9.-]+$/.test(domain)) {
+    return false;  // Only allowed characters
+  }
+  
+  // Each domain label must not start or end with hyphen
+  const domainLabels = domain.split('.');
+  for (const label of domainLabels) {
+    if (!label || /^-/.test(label) || /-$/.test(label)) {
+      return false;
+    }
+  }
+  
+  // Ensure domain has valid TLD (at least 2 chars after last dot)
+  const tldMatch = domain.match(/\.([a-zA-Z0-9]{2,})$/);
+  return tldMatch !== null;
+};
+
+const isValidIpOrCidr = (value: string): boolean => {
+  try {
+    // Check if it's a CIDR range
+    if (value.includes("/")) {
+      const parts = value.split("/");
+      // Must have exactly 2 parts: IP and prefix
+      if (parts.length !== 2) {
+        return false;
+      }
+      
+      const [ip, prefixStr] = parts;
+      const prefix = Number.parseInt(prefixStr, 10);
+      
+      // Check for NaN
+      if (Number.isNaN(prefix)) {
+        return false;
+      }
+      
+      // Parse the IP part
+      const addr = ipaddr.process(ip);
+      
+      // Validate prefix length based on IP version
+      const kind = addr.kind();
+      if (kind === "ipv4") {
+        return prefix >= 0 && prefix <= 32;
+      } else if (kind === "ipv6" || kind === "ipv4-mapped") {
+        return prefix >= 0 && prefix <= 128;
+      }
+      return false;
+    } else {
+      // Just validate it's a valid IP address
+      ipaddr.process(value);
+      return true;
+    }
+  } catch {
+    return false;
+  }
 };
 
 const promptAdminDetails = async () => {
@@ -197,7 +319,16 @@ const promptAdminDetails = async () => {
     }
   }
   const emailDefault = `${username}@example.com`;
-  const email = (await question(`Admin email [${emailDefault}]: `)) || emailDefault;
+  let email: string;
+  while (true) {
+    const inputEmail = (await question(`Admin email [${emailDefault}]: `)) || emailDefault;
+    if (isValidEmail(inputEmail)) {
+      email = inputEmail;
+      break;
+    } else {
+      console.log("❌ Invalid email format. Please enter a valid email address.");
+    }
+  }
 
   const roleChoices = ["SYSTEM_ADMIN", "SYSTEM_OPERATOR", "SYSTEM_AUDITOR", "SYSTEM_SUPPORT"] as const;
   console.log("\nRoles:");
@@ -310,10 +441,22 @@ const bootstrapAdmin = async () => {
       "Set SHOW_BOOTSTRAP_PASSWORD=1 or use --show-password to display it (not recommended in CI/CD)."
     );
   }
-  console.log(`   • MFA Key:   ${adminDetails.mfaSecret}`);
-  console.log(
-    "   ⚠️  Store the MFA secret in a secure vault and rotate the password after first login.",
-  );
+  if (!SUPPRESS_BOOTSTRAP_MFA_SECRET) {
+    console.log(`   • MFA Key:   ${adminDetails.mfaSecret}`);
+    console.log(
+      "   ⚠️  WARNING: The MFA secret is displayed above. This sensitive secret should be:\n" +
+      "      - Stored immediately in a secure vault or password manager\n" +
+      "      - Never shared in logs, screenshots, or unsecured communication\n" +
+      "      - Protected from terminal history exposure\n" +
+      "      - Rotated along with the password after first login",
+    );
+  } else {
+    console.log("   • MFA Key:   [hidden]");
+    console.log(
+      "   ⚠️  The MFA secret was not displayed for security reasons. " +
+      "To display it, unset SUPPRESS_BOOTSTRAP_MFA_SECRET or set it to a value other than '1' (not recommended in CI/CD).",
+    );
+  }
 };
 
 const run = async () => {
