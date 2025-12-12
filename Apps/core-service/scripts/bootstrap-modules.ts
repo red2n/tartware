@@ -264,7 +264,7 @@ const isValidEmail = (email: string): boolean => {
   }
   
   // Ensure domain has valid TLD (at least 2 chars after last dot)
-  const tldMatch = domain.match(/\.([a-zA-Z]{2,})$/);
+  const tldMatch = domain.match(/\.([a-zA-Z0-9]{2,})$/);
   return tldMatch !== null;
 };
 
@@ -454,7 +454,7 @@ const bootstrapAdmin = async () => {
     console.log("   • MFA Key:   [hidden]");
     console.log(
       "   ⚠️  The MFA secret was not displayed for security reasons. " +
-      "Set SUPPRESS_BOOTSTRAP_MFA_SECRET=0 to display it (not recommended in CI/CD).",
+      "To display it, unset SUPPRESS_BOOTSTRAP_MFA_SECRET or set it to a value other than '1' (not recommended in CI/CD).",
     );
   }
 };
