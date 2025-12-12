@@ -26,8 +26,6 @@ up-to-date developer references.
   environment variables (see `run-with-otel.sh` for local defaults). The collector
   fans logs straight into OpenSearch for external tools to query.
 
-- We intentionally removed the standalone OpenSearch Dashboards container; only
-  the storage node needs to run for telemetry fan-in.
 - We intentionally removed the standalone OpenSearch Dashboards container; the
   Tartware UI already exposes log search tooling, so only the storage node needs
   to run.
