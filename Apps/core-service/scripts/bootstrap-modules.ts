@@ -208,12 +208,18 @@ const isValidUsername = (username: string): boolean => {
 };
 
 const isValidEmail = (email: string): boolean => {
+  // Validate input
+  if (!email || typeof email !== 'string') {
+    return false;
+  }
+  
   // More comprehensive email validation regex
   // Prevents consecutive dots, leading/trailing dots, trailing hyphens
   // Underscores allowed in local part only, not in domain
-  const emailRegex = /^[a-zA-Z0-9]([a-zA-Z0-9_-]*(\.[a-zA-Z0-9_-]+)*)?@[a-zA-Z0-9]([a-zA-Z0-9]*(-[a-zA-Z0-9]+)*(\.[a-zA-Z0-9]([a-zA-Z0-9]*(-[a-zA-Z0-9]+)*))*)?$/;
+  // Domain labels: must start and end with alphanumeric, can have hyphens in middle
+  const emailRegex = /^[a-zA-Z0-9]([a-zA-Z0-9_-]*(\.[a-zA-Z0-9_-]+)*)?@[a-zA-Z0-9]+([a-zA-Z0-9-]*[a-zA-Z0-9])?(\.[a-zA-Z0-9]+([a-zA-Z0-9-]*[a-zA-Z0-9])?)*$/;
   
-  // Additional check: ensure domain has at least one dot and ends with valid TLD
+  // Check basic structure and length
   if (!emailRegex.test(email) || email.length > 254) {
     return false;
   }
@@ -406,7 +412,7 @@ const bootstrapAdmin = async () => {
     "      - Stored immediately in a secure vault or password manager\n" +
     "      - Never shared in logs, screenshots, or unsecured communication\n" +
     "      - Protected from terminal history exposure\n" +
-    "      Store the MFA secret securely and rotate the password after first login.",
+    "      - Rotated along with the password after first login",
   );
 };
 
