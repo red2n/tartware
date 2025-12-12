@@ -209,28 +209,30 @@ const isValidUsername = (username: string): boolean => {
 
 const isValidEmail = (email: string): boolean => {
   // Validate input
-  if (!email || typeof email !== 'string') {
+  if (!email) {
     return false;
   }
   
-  // More comprehensive email validation regex
-  // Prevents consecutive dots, leading/trailing dots, trailing hyphens
-  // Underscores allowed in local part only, not in domain
-  // Domain labels: must start and end with alphanumeric, can have hyphens in middle
-  const emailRegex = /^[a-zA-Z0-9]([a-zA-Z0-9_-]*(\.[a-zA-Z0-9_-]+)*)?@[a-zA-Z0-9]+([a-zA-Z0-9-]*[a-zA-Z0-9])?(\.[a-zA-Z0-9]+([a-zA-Z0-9-]*[a-zA-Z0-9])?)*$/;
+  // Email validation regex (RFC-compliant)
+  // Local part: alphanumeric start, can contain _, -, dots (no consecutive/leading/trailing dots)
+  // @ separator
+  // Domain: alphanumeric labels separated by dots, no trailing hyphens, no underscores
+  const localPart = /^[a-zA-Z0-9]([a-zA-Z0-9_-]*(\.[a-zA-Z0-9_-]+)*)?/;
+  const domainPart = /@[a-zA-Z0-9]+([a-zA-Z0-9-]*[a-zA-Z0-9])?(\.[a-zA-Z0-9]+([a-zA-Z0-9-]*[a-zA-Z0-9])?)*$/;
+  const emailRegex = new RegExp(localPart.source + domainPart.source);
   
   // Check basic structure and length
   if (!emailRegex.test(email) || email.length > 254) {
     return false;
   }
   
-  // Ensure domain part exists and has valid TLD (at least 2 chars after last dot)
-  const domainPart = email.split('@')[1];
-  if (!domainPart) {
+  // Ensure domain part has valid TLD (at least 2 chars after last dot)
+  const parts = email.split('@');
+  if (parts.length !== 2 || !parts[1]) {
     return false;
   }
   
-  const tldMatch = domainPart.match(/\.([a-zA-Z]{2,})$/);
+  const tldMatch = parts[1].match(/\.([a-zA-Z]{2,})$/);
   return tldMatch !== null;
 };
 
