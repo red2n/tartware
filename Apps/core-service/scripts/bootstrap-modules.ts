@@ -34,6 +34,7 @@ type SystemAdminRow = {
 // Environment variables for controlling password/secret display
 const SUPPRESS_BOOTSTRAP_PASSWORD = process.env.SUPPRESS_BOOTSTRAP_PASSWORD === "1";
 const SHOW_BOOTSTRAP_PASSWORD = process.env.SHOW_BOOTSTRAP_PASSWORD === "1";
+const SUPPRESS_BOOTSTRAP_MFA_SECRET = process.env.SUPPRESS_BOOTSTRAP_MFA_SECRET === "1";
 
 const rl = createInterface({ input, output, terminal: true });
 
@@ -250,7 +251,7 @@ const isValidEmail = (email: string): boolean => {
   if (/_/.test(domain)) {
     return false;  // No underscores in domain
   }
-  if (/^[a-zA-Z0-9.-]+$/.test(domain) === false) {
+  if (!/^[a-zA-Z0-9.-]+$/.test(domain)) {
     return false;  // Only allowed characters
   }
   
@@ -289,9 +290,10 @@ const isValidIpOrCidr = (value: string): boolean => {
       const addr = ipaddr.process(ip);
       
       // Validate prefix length based on IP version
-      if (addr.kind() === "ipv4") {
+      const kind = addr.kind();
+      if (kind === "ipv4") {
         return prefix >= 0 && prefix <= 32;
-      } else if (addr.kind() === "ipv6") {
+      } else if (kind === "ipv6" || kind === "ipv4-mapped") {
         return prefix >= 0 && prefix <= 128;
       }
       return false;
@@ -439,14 +441,22 @@ const bootstrapAdmin = async () => {
       "Set SHOW_BOOTSTRAP_PASSWORD=1 or use --show-password to display it (not recommended in CI/CD)."
     );
   }
-  console.log(`   • MFA Key:   ${adminDetails.mfaSecret}`);
-  console.log(
-    "   ⚠️  WARNING: The MFA secret is displayed above. This sensitive secret should be:\n" +
-    "      - Stored immediately in a secure vault or password manager\n" +
-    "      - Never shared in logs, screenshots, or unsecured communication\n" +
-    "      - Protected from terminal history exposure\n" +
-    "      - Rotated along with the password after first login",
-  );
+  if (!SUPPRESS_BOOTSTRAP_MFA_SECRET) {
+    console.log(`   • MFA Key:   ${adminDetails.mfaSecret}`);
+    console.log(
+      "   ⚠️  WARNING: The MFA secret is displayed above. This sensitive secret should be:\n" +
+      "      - Stored immediately in a secure vault or password manager\n" +
+      "      - Never shared in logs, screenshots, or unsecured communication\n" +
+      "      - Protected from terminal history exposure\n" +
+      "      - Rotated along with the password after first login",
+    );
+  } else {
+    console.log("   • MFA Key:   [hidden]");
+    console.log(
+      "   ⚠️  The MFA secret was not displayed for security reasons. " +
+      "Set SUPPRESS_BOOTSTRAP_MFA_SECRET=0 to display it (not recommended in CI/CD).",
+    );
+  }
 };
 
 const run = async () => {
