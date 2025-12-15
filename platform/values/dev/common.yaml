@@ -1,3 +1,17 @@
 # Shared values for dev environment
 clusterName: tartware-dev
 workloadIdentity: dev
+
+reservationCommandService:
+  kafka:
+    topic: reservations.events
+    dlqTopic: reservations.events.dlq
+    maxRetries: 3
+    retryBackoffMs: 1000
+    maxBatchBytes: 1048576
+  outbox:
+    pollIntervalMs: 2000
+    batchSize: 25
+    lockTimeoutMs: 30000
+    maxRetries: 5
+    retryBackoffMs: 5000

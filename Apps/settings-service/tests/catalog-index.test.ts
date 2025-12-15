@@ -1,4 +1,4 @@
-import { readdirSync } from "node:fs";
+import { existsSync, readdirSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -8,11 +8,16 @@ import { catalogCategories } from "../src/data/catalog/index.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
-const catalogDir = join(__dirname, "../src/data/catalog");
+const cwdCatalogDir = join(process.cwd(), "src/data/catalog");
+const localCatalogDir = join(__dirname, "../src/data/catalog");
+const catalogDir = existsSync(cwdCatalogDir) ? cwdCatalogDir : localCatalogDir;
 
-const categoryModuleFiles = readdirSync(catalogDir).filter(
-  (file) => file.endsWith(".ts") && file !== "index.ts",
-);
+const categoryModuleFiles = readdirSync(catalogDir).filter((file) => {
+  if (!file.endsWith(".ts") || file.endsWith(".d.ts")) {
+    return false;
+  }
+  return file !== "index.ts";
+});
 
 describe("catalog index", () => {
   it("exports every category module", () => {

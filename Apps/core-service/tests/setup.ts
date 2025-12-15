@@ -1,6 +1,15 @@
 import { beforeAll, afterAll, beforeEach, vi } from "vitest";
 
-import { resetSystemAdminState } from "./mocks/db.js";
+import {
+  resetSystemAdminState,
+  TEST_TENANT_ID,
+  TEST_USER_ID,
+  MANAGER_USER_ID,
+  STAFF_USER_ID,
+  VIEWER_USER_ID,
+  MODULE_DISABLED_USER_ID,
+} from "./mocks/db.js";
+import type { TenantMembership } from "../src/types/auth.js";
 
 process.env.NODE_ENV = process.env.NODE_ENV ?? "test";
 process.env.SERVICE_NAME = process.env.SERVICE_NAME ?? "@tartware/core-service";
@@ -34,6 +43,76 @@ process.env.AUTH_DEFAULT_PASSWORD = process.env.AUTH_DEFAULT_PASSWORD ?? "Change
 
 // Mock the database module before any imports
 vi.mock("../src/lib/db.js", () => import("./mocks/db.js"));
+
+const membershipByUser: Record<string, TenantMembership[]> = {
+  [TEST_USER_ID]: [
+    {
+      tenantId: TEST_TENANT_ID,
+      tenantName: "Test Tenant",
+      role: "ADMIN",
+      isActive: true,
+      permissions: {},
+      modules: [
+        "core",
+        "finance-automation",
+        "tenant-owner-portal",
+        "facility-maintenance",
+        "analytics-bi",
+        "marketing-channel",
+        "enterprise-api",
+      ],
+    },
+  ],
+  [MANAGER_USER_ID]: [
+    {
+      tenantId: TEST_TENANT_ID,
+      tenantName: "Test Tenant",
+      role: "MANAGER",
+      isActive: true,
+      permissions: {},
+      modules: ["core", "facility-maintenance"],
+    },
+  ],
+  [STAFF_USER_ID]: [
+    {
+      tenantId: TEST_TENANT_ID,
+      tenantName: "Test Tenant",
+      role: "STAFF",
+      isActive: true,
+      permissions: {},
+      modules: ["core"],
+    },
+  ],
+  [VIEWER_USER_ID]: [
+    {
+      tenantId: TEST_TENANT_ID,
+      tenantName: "Test Tenant",
+      role: "VIEWER",
+      isActive: true,
+      permissions: {},
+      modules: ["core"],
+    },
+  ],
+  [MODULE_DISABLED_USER_ID]: [
+    {
+      tenantId: TEST_TENANT_ID,
+      tenantName: "Test Tenant",
+      role: "ADMIN",
+      isActive: true,
+      permissions: {},
+      modules: ["finance-automation"],
+    },
+  ],
+};
+
+vi.mock("../src/services/user-tenant-association-service.js", async () => {
+  const actual = await import("../src/services/user-tenant-association-service.js");
+
+  return {
+    ...actual,
+    getActiveUserTenantMemberships: vi.fn(async (userId: string) => membershipByUser[userId] ?? []),
+  };
+});
 
 let resetRateLimiter: (() => void) | null = null;
 const ensureRateLimiterResetter = async () => {

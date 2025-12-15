@@ -1,5 +1,5 @@
 import { inject } from '@angular/core';
-import type { CanActivateFn } from '@angular/router';
+import type { ActivatedRouteSnapshot, CanActivateFn, RouterStateSnapshot } from '@angular/router';
 import { Router } from '@angular/router';
 import type { TenantRole } from '@tartware/schemas';
 import { catchError, map, of } from 'rxjs';
@@ -8,9 +8,14 @@ import { AuthService } from '../services/auth.service';
 import { ModuleService } from '../services/module.service';
 import { TenantContextService } from '../services/tenant-context.service';
 
+/**
+ * Blocks navigation to module-specific routes unless the tenant context has
+ * the required role and feature flag enabled. Falls back to dashboard when
+ * prerequisites are missing.
+ */
 export const moduleGuard =
   (moduleId: ModuleId, options: { minRole?: TenantRole } = {}): CanActivateFn =>
-  () => {
+  (_route: ActivatedRouteSnapshot, _state: RouterStateSnapshot) => {
     const tenantContext = inject(TenantContextService);
     const moduleService = inject(ModuleService);
     const router = inject(Router);

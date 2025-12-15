@@ -8,28 +8,49 @@ import { v4 as uuid } from "uuid";
 
 import { query } from "../lib/db.js";
 
+/**
+ * Result shape returned by reservation event handlers so the caller
+ * can persist idempotency metadata (e.g., reservationId).
+ */
+type ReservationEventHandlerResult = {
+  reservationId?: string;
+};
+
+/**
+ * Routes reservation events to the appropriate handler.
+ */
 export const processReservationEvent = async (
   event: ReservationEvent,
-): Promise<void> => {
+): Promise<ReservationEventHandlerResult> => {
   const eventType = event.metadata.type;
   switch (eventType) {
     case "reservation.created":
-      await handleReservationCreated(event as ReservationCreatedEvent);
-      break;
+      return {
+        reservationId: await handleReservationCreated(
+          event as ReservationCreatedEvent,
+        ),
+      };
     case "reservation.updated":
-      await handleReservationUpdated(event as ReservationUpdatedEvent);
-      break;
+      return {
+        reservationId: await handleReservationUpdated(
+          event as ReservationUpdatedEvent,
+        ),
+      };
     case "reservation.cancelled":
-      await handleReservationCancelled(event as ReservationCancelledEvent);
-      break;
+      return {
+        reservationId: await handleReservationCancelled(
+          event as ReservationCancelledEvent,
+        ),
+      };
     default:
       console.warn("Unhandled reservation event type", eventType);
+      return {};
   }
 };
 
 const handleReservationCreated = async (
   event: ReservationCreatedEvent,
-): Promise<void> => {
+): Promise<string> => {
   const payload = event.payload;
   const reservationId = payload.id ?? uuid();
   const confirmation =
@@ -91,11 +112,12 @@ const handleReservationCreated = async (
       confirmation,
     ],
   );
+  return reservationId;
 };
 
 const handleReservationUpdated = async (
   event: ReservationUpdatedEvent,
-): Promise<void> => {
+): Promise<string> => {
   const payload = event.payload;
   const fields: string[] = [];
   const values: unknown[] = [];
@@ -124,7 +146,7 @@ const handleReservationUpdated = async (
   }
 
   if (fields.length === 0) {
-    return;
+    return payload.id;
   }
 
   const sql = `
@@ -134,11 +156,12 @@ const handleReservationUpdated = async (
   `;
 
   await query(sql, [payload.id, ...values]);
+  return payload.id;
 };
 
 const handleReservationCancelled = async (
   event: ReservationCancelledEvent,
-): Promise<void> => {
+): Promise<string> => {
   const payload = event.payload;
   await query(
     `
@@ -152,4 +175,5 @@ const handleReservationCancelled = async (
     `,
     [payload.id, payload.cancelled_at, payload.reason ?? null],
   );
+  return payload.id;
 };

@@ -50,6 +50,16 @@ CREATE TYPE system_admin_role AS ENUM (
     'SYSTEM_SUPPORT'     -- Support focused, limited write
 );
 
+-- Outbox Delivery Status (Event Reliability)
+-- Standard: Transactional outbox patterns (Uber, Airbnb data platforms)
+CREATE TYPE outbox_status AS ENUM (
+    'PENDING',       -- Newly recorded, not yet dispatched
+    'IN_PROGRESS',   -- Locked by a worker pod/Job
+    'DELIVERED',     -- Successfully published to Kafka
+    'FAILED',        -- Exhausted retries, awaiting operator action
+    'DLQ'            -- Moved to dead-letter workflow
+);
+
 -- =====================================================
 -- PROPERTY & ROOM ENUMS
 -- =====================================================

@@ -29,6 +29,8 @@ def insert_room_types(conn, count_per_property=3):
             name = random.choice(room_names)
             code = f"RT{count + 1:03d}"
 
+            base_price = round(random.uniform(100, 500), 2)
+
             cur.execute("""
                 INSERT INTO room_types (id, tenant_id, property_id, type_name, type_code, category, base_occupancy, max_occupancy, base_price, description, created_at)
                 VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
@@ -41,7 +43,7 @@ def insert_room_types(conn, count_per_property=3):
                 categories[i % len(categories)],
                 random.choice([1, 2, 2]),
                 random.choice([2, 3, 4]),
-                round(random.uniform(100, 500), 2),
+                base_price,
                 fake.text(100),
                 fake.date_time_between(start_date="-2y", end_date="now")
             ))
@@ -51,7 +53,8 @@ def insert_room_types(conn, count_per_property=3):
                 'property_id': property['id'],
                 'tenant_id': property['tenant_id'],
                 'name': name,
-                'code': code
+                'code': code,
+                'base_price': base_price
             })
             count += 1
 

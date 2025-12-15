@@ -36,6 +36,8 @@ def insert_reservations(conn, count=500):
         room_type = random.choice(property_room_types)
 
         property_rates = [r for r in data_store['rates'] if r['property_id'] == property['id'] and r['room_type_id'] == room_type['id']]
+        if not property_rates:
+            property_rates = [r for r in data_store['rates'] if r['property_id'] == property['id']]
         rate = random.choice(property_rates) if property_rates else None
 
         property_rooms = [r for r in data_store['rooms'] if r['property_id'] == property['id'] and r['room_type_id'] == room_type['id']]

@@ -5,7 +5,7 @@
  * ⚠️ CRITICAL: Any change to database ENUMs must be reflected here
  * See: docs/ZOD_SCHEMA_IMPLEMENTATION_PLAN.md#d-schema-synchronization-protocol
  *
- * Total ENUMs: 65 types
+ * Total ENUMs: 67 types
  * Last synced: 2025-11-03
  */
 
@@ -68,6 +68,19 @@ export const SystemAdminRoleEnum = z.enum([
 	"SYSTEM_SUPPORT",
 ]);
 export type SystemAdminRole = z.infer<typeof SystemAdminRoleEnum>;
+
+/**
+ * Outbox Status - Delivery lifecycle
+ * @database outbox_status
+ */
+export const OutboxStatusEnum = z.enum([
+	"PENDING",
+	"IN_PROGRESS",
+	"DELIVERED",
+	"FAILED",
+	"DLQ",
+]);
+export type OutboxStatus = z.infer<typeof OutboxStatusEnum>;
 
 // =====================================================
 // PROPERTY & ROOM ENUMS

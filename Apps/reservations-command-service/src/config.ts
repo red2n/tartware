@@ -19,6 +19,19 @@ export const kafkaConfig = {
   topic: env.KAFKA_RESERVATION_TOPIC ?? "reservations.events",
   consumerGroupId:
     env.KAFKA_RESERVATION_CONSUMER_GROUP ?? "reservations-event-consumers",
+  dlqTopic: env.RESERVATION_DLQ_TOPIC ?? "reservations.events.dlq",
+  maxRetries: Number(env.KAFKA_MAX_RETRIES ?? 3),
+  retryBackoffMs: Number(env.KAFKA_RETRY_BACKOFF_MS ?? 1000),
+  maxBatchBytes: Number(env.KAFKA_MAX_BATCH_BYTES ?? 1048576),
+};
+
+export const outboxConfig = {
+  workerId: env.OUTBOX_WORKER_ID ?? `${serviceConfig.serviceId}-outbox`,
+  pollIntervalMs: Number(env.OUTBOX_POLL_INTERVAL_MS ?? 2000),
+  batchSize: Number(env.OUTBOX_BATCH_SIZE ?? 25),
+  lockTimeoutMs: Number(env.OUTBOX_LOCK_TIMEOUT_MS ?? 30000),
+  maxRetries: Number(env.OUTBOX_MAX_RETRIES ?? 5),
+  retryBackoffMs: Number(env.OUTBOX_RETRY_BACKOFF_MS ?? 5000),
 };
 
 export const databaseConfig = {

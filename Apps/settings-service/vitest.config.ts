@@ -9,6 +9,7 @@ export default defineConfig({
     testTimeout: 30000,
     hookTimeout: 30000,
     reporters: ["verbose"],
+    exclude: ["dist/**", "node_modules/**"],
     coverage: {
       provider: "v8",
       reporter: ["text", "text-summary", "lcov", "html"],

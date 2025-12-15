@@ -1,0 +1,51 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: reservations-command-service
+  labels:
+    app: reservations-command-service
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: reservations-command-service
+  template:
+    metadata:
+      labels:
+        app: reservations-command-service
+    spec:
+      containers:
+        - name: reservations-command-service
+          image: ghcr.io/tartware/reservations-command-service:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 3101
+              name: http
+          envFrom:
+            - configMapRef:
+                name: reservations-command-config
+            - secretRef:
+                name: reservations-command-secrets
+          readinessProbe:
+            httpGet:
+              path: /health/readiness
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /health/liveness
+              port: http
+            initialDelaySeconds: 30
+            periodSeconds: 20
+            timeoutSeconds: 3
+            failureThreshold: 3
+          resources:
+            requests:
+              cpu: 200m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi

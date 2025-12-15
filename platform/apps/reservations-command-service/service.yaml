@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: reservations-command-service
+  labels:
+    app: reservations-command-service
+spec:
+  selector:
+    app: reservations-command-service
+  ports:
+    - name: http
+      port: 80
+      targetPort: http
+  type: ClusterIP
