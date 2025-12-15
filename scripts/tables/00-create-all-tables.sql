@@ -47,6 +47,7 @@
 \ir 02-inventory/98_event_bookings.sql
 \ir 02-inventory/99_banquet_event_orders.sql
 \ir 02-inventory/100_rate_plan_fallback_audit.sql
+\ir 02-inventory/101_room_amenity_catalog.sql
 
 -- ============================================================================
 -- CATEGORY 3: BOOKINGS (Reservations, guest relations, booking sources)

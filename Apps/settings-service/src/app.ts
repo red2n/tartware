@@ -6,6 +6,7 @@ import Fastify from "fastify";
 
 import { config } from "./config.js";
 import { authPlugin } from "./plugins/auth.js";
+import amenitiesRoutes from "./routes/amenities.js";
 import catalogRoutes from "./routes/catalog.js";
 
 type BuildServerOptions = {
@@ -46,6 +47,7 @@ export const buildServer = ({ logger }: BuildServerOptions) => {
     secureRoutes.addHook("onRequest", secureRoutes.authenticate);
 
     await secureRoutes.register(catalogRoutes);
+    await secureRoutes.register(amenitiesRoutes);
 
     secureRoutes.get("/v1/settings/ping", async () => ({
       status: "ok",

@@ -80,6 +80,19 @@ Platform-wide standardization for resilient CRUD handling at 20+ ops/sec with au
   - Document operational knobs in `platform/values/*` (enable/disable fallback, alert thresholds) and wire readiness/liveness for the fallback helper where applicable.
 - _2025-12-15T10:18:00Z Update_: Fallback guard shipped end-to-end — `setup-database.sh` now enforces deterministic BAR/RACK seeds per property, new `rate_plan_fallback_audit` table captures overrides, the reservation command service validates requested codes + auto-falls back via `ensureRatePlanAssignment`, transactional events carry applied/fallback metadata, audits bind to reservations post-consumption, and Prometheus counter `reservation_rate_plan_fallback_total` exposes ops telemetry.
 
+#### 0.8 **Amenity Catalog Templates**
+- Start Date: 2025-12-15T11:30:00Z
+- Finish Date: TBD
+- Provide a canonical amenity catalog (WiFi, smart TV, climate control, etc.) per property so room types can be cloned/derived without free-form JSON conflicts. Catalog entries must be open-source friendly, production ready, and safe to regenerate during installs.
+- Update setup automation to purge/normalize conflicting amenity payloads, seed the default catalog, and keep room types aligned so API consumers always start from the sanctioned list.
+- Expose catalog data to API/CLI later for tenant overrides while preserving `is_default` markers so operators understand which entries are Tartware-managed.
+- _2025-12-15T11:45:00Z Update_: Added `room_amenity_catalog` table + indexes, wired into `00-create-all-tables.sql`, and enhanced `setup-database.sh` to upsert the default amenity set (WiFi, Smart TV, Climate Control, etc.) for every property. The script now replaces any non-canonical `room_types.amenities` arrays with the curated list so downstream room creation flows derive from the same template without data conflicts.
+- _2025-12-15T12:15:00Z Update_: Settings-service now exposes `/v1/settings/properties/:propertyId/amenities` (list/create/update) backed by the new catalog, complete with JWT auth, zod validation, and conflict-safe repository logic. Tenants can toggle Tartware defaults via the `isActive` flag or register custom amenities, prepping us for UI enablement later.
+- **Follow-ups (not started):**
+  1. Add tenant-facing API surfaces (and eventual UI hooks) that allow cloning the catalog into new room types and surfacing amenity metadata in the room creation wizard.
+  2. Introduce policy controls per tenant/property for custom tags (max count, naming conventions) and emit Prometheus metrics for catalog drift.
+  3. Build a background reconciler that flags room types referencing non-catalog amenity codes and offers a repair endpoint/command.
+
 ### 1. **Super Admin / Global Administrator Implementation (Priority: HIGH)**
 Industry-standard privileged access management for multi-tenant PMS platform following OWASP Authorization best practices.
 

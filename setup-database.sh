@@ -866,6 +866,101 @@ SQL
 echo -e "${GREEN}✓ BAR/RACK fallback rates enforced${NC}"
 echo ""
 
+echo -e "${BLUE}>>> Seeding default amenity catalog...${NC}"
+
+psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" <<'SQL'
+WITH defaults AS (
+    SELECT *
+    FROM (VALUES
+        (1, 'WIFI', 'High-Speed Wi-Fi', 'CONNECTIVITY', 'Unlimited high-speed wireless internet access for guests.', 'wifi', ARRAY['CONNECTIVITY','CORE']),
+        (2, 'SMART_TV', 'Smart TV with Casting', 'ENTERTAINMENT', '4K smart television with streaming apps and casting support.', 'tv', ARRAY['ENTERTAINMENT','STREAMING']),
+        (3, 'CLIMATE_CONTROL', 'Individual Climate Control', 'COMFORT', 'In-room thermostat supporting heating and cooling modes.', 'ac_unit', ARRAY['COMFORT']),
+        (4, 'PREMIUM_BEDDING', 'Premium Bedding', 'COMFORT', 'High-thread-count linens, duvet, and pillow menu.', 'king_bed', ARRAY['COMFORT','SLEEP']),
+        (5, 'IN_ROOM_SAFE', 'In-Room Safe', 'SECURITY', 'Laptop-capable digital safe with programmable code.', 'lock', ARRAY['SECURITY']),
+        (6, 'MINIBAR', 'Curated Minibar', 'FOOD_BEVERAGE', 'Stocked snacks and beverages with consumption tracking.', 'local_bar', ARRAY['DINING']),
+        (7, 'COFFEE_STATION', 'Coffee & Tea Station', 'FOOD_BEVERAGE', 'Nespresso/tea service with complimentary pods and kettle.', 'coffee', ARRAY['DINING','WELLNESS']),
+        (8, 'WORK_DESK', 'Ergonomic Work Desk', 'BUSINESS', 'Dedicated workspace with task chair, lamp, and outlets.', 'desk', ARRAY['BUSINESS']),
+        (9, 'RAIN_SHOWER', 'Rainfall Shower', 'BATH', 'Oversized rainfall shower head with premium fixtures.', 'shower', ARRAY['BATH']),
+        (10, 'USB_CHARGING', 'Multi-Port USB Charging', 'CONNECTIVITY', 'Bedside USB-A/C charging array with surge protection.', 'power', ARRAY['CONNECTIVITY'])
+    ) AS d(rank, code, name, category, description, icon, tags)
+),
+upserted AS (
+    INSERT INTO room_amenity_catalog (
+        tenant_id,
+        property_id,
+        amenity_code,
+        amenity_name,
+        category,
+        description,
+        icon,
+        is_default,
+        is_active,
+        rank,
+        metadata,
+        created_at,
+        updated_at
+    )
+    SELECT
+        p.tenant_id,
+        p.id,
+        d.code,
+        d.name,
+        d.category,
+        d.description,
+        d.icon,
+        TRUE,
+        TRUE,
+        d.rank,
+        jsonb_build_object('tags', d.tags),
+        NOW(),
+        NOW()
+    FROM properties p
+    CROSS JOIN defaults d
+    ON CONFLICT (property_id, amenity_code)
+    DO UPDATE SET
+        tenant_id = EXCLUDED.tenant_id,
+        amenity_name = EXCLUDED.amenity_name,
+        category = EXCLUDED.category,
+        description = EXCLUDED.description,
+        icon = EXCLUDED.icon,
+        is_default = TRUE,
+        is_active = TRUE,
+        rank = EXCLUDED.rank,
+        metadata = EXCLUDED.metadata,
+        updated_at = NOW()
+    RETURNING property_id
+),
+default_codes AS (
+    SELECT
+        jsonb_agg(d.code ORDER BY d.rank) AS codes_json,
+        array_agg(d.code ORDER BY d.rank) AS codes_array
+    FROM defaults d
+),
+normalized_room_types AS (
+    UPDATE room_types rt
+    SET amenities = dc.codes_json,
+        updated_at = NOW()
+    FROM default_codes dc
+    WHERE
+        rt.amenities IS NULL
+        OR jsonb_typeof(rt.amenities) IS DISTINCT FROM 'array'
+        OR jsonb_array_length(rt.amenities) = 0
+        OR (
+            jsonb_typeof(rt.amenities) = 'array'
+            AND EXISTS (
+                SELECT 1
+                FROM jsonb_array_elements_text(rt.amenities) AS elem(value)
+                WHERE NOT (elem.value = ANY(dc.codes_array))
+            )
+        )
+    RETURNING rt.id
+)
+SELECT
+    (SELECT COUNT(*) FROM upserted) AS catalog_rows_upserted,
+    (SELECT COUNT(*) FROM normalized_room_types) AS room_types_normalized;
+SQL
+
+echo -e "${GREEN}✓ Default amenity catalog provisioned${NC}"
 echo ""
 
 # ============================================================================
