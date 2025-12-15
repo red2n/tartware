@@ -800,6 +800,72 @@ fi  # End of Python check
 
 fi  # End of LOAD_SAMPLE_DATA block
 
+echo -e "${BLUE}>>> Finalizing BAR/RACK fallback rate plans...${NC}"
+
+psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" <<'SQL'
+WITH cleared AS (
+    DELETE FROM rates RETURNING 1
+),
+seed_matrix AS (
+    SELECT *
+    FROM (VALUES
+        ('BAR', 'Best Available Rate', 'DYNAMIC', 1.00),
+        ('RACK', 'Rack Rate', 'FIXED', 1.15)
+    ) AS seeds(rate_code, rate_name, strategy, multiplier)
+),
+seeded AS (
+    INSERT INTO rates (
+        id,
+        tenant_id,
+        property_id,
+        room_type_id,
+        rate_name,
+        rate_code,
+        strategy,
+        base_rate,
+        currency,
+        status,
+        valid_from,
+        created_at
+    )
+    SELECT
+        uuid_generate_v4(),
+        p.tenant_id,
+        p.id,
+        rt.id,
+        seeds.rate_name,
+        seeds.rate_code,
+        seeds.strategy::rate_strategy,
+        ROUND(COALESCE(rt.base_price, 150) * seeds.multiplier, 2),
+        rt.currency,
+        'ACTIVE',
+        CURRENT_DATE,
+        NOW()
+    FROM properties p
+    JOIN LATERAL (
+        SELECT id, base_price, currency
+        FROM room_types
+        WHERE property_id = p.id
+        ORDER BY created_at ASC
+        LIMIT 1
+    ) rt ON TRUE
+    CROSS JOIN seed_matrix seeds
+    WHERE NOT EXISTS (
+        SELECT 1
+        FROM rates existing
+        WHERE existing.property_id = p.id
+          AND existing.rate_code = seeds.rate_code
+    )
+    RETURNING rate_code
+)
+SELECT
+    (SELECT COUNT(*) FROM cleared) AS removed_rates,
+    (SELECT COUNT(*) FROM seeded) AS inserted_rates;
+SQL
+
+echo -e "${GREEN}✓ BAR/RACK fallback rates enforced${NC}"
+echo ""
+
 echo ""
 
 # ============================================================================

@@ -1,4 +1,4 @@
-import type { PoolClient, QueryResultRow } from "pg";
+import type { PoolClient, QueryResult, QueryResultRow } from "pg";
 
 import { query, withTransaction } from "../lib/db.js";
 
@@ -13,8 +13,11 @@ import type {
  */
 export const enqueueOutboxRecord = async (
   input: EnqueueOutboxRecordInput,
+  client?: PoolClient,
 ): Promise<void> => {
-  await query(
+  const runner: QueryExecutor = client ? client.query.bind(client) : query;
+
+  await runner(
     `
       INSERT INTO transactional_outbox (
         event_id,
@@ -62,6 +65,11 @@ export const enqueueOutboxRecord = async (
     ],
   );
 };
+
+type QueryExecutor = <T extends QueryResultRow = QueryResultRow>(
+  text: string,
+  params?: unknown[],
+) => Promise<QueryResult<T>>;
 
 /**
  * Returns the approximate number of pending/failed outbox rows.

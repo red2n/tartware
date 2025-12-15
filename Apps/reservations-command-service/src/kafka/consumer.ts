@@ -4,7 +4,8 @@ import type { ReservationEvent } from "@tartware/schemas";
 import { ReservationEventSchema } from "@tartware/schemas";
 import type { Consumer, EachBatchPayload } from "kafkajs";
 
-import { kafkaConfig } from "../config.js";
+import { kafkaConfig, serviceConfig } from "../config.js";
+import { stampLifecycleCheckpoint } from "../lib/lifecycle-guard.js";
 import {
   observeProcessingDuration,
   recordDlqEvent,
@@ -14,6 +15,7 @@ import {
 import { upsertReservationEventOffset } from "../lib/reservation-event-offsets.js";
 import { processWithRetry, RetryExhaustedError } from "../lib/retry.js";
 import { reservationsLogger } from "../logger.js";
+import { attachReservationToFallbackAudit } from "../services/rate-plan-fallback-service.js";
 import { processReservationEvent } from "../services/reservation-event-handler.js";
 
 import { kafka } from "./client.js";
@@ -132,6 +134,22 @@ const handleBatch = async ({
     }
 
     try {
+      await stampLifecycleCheckpoint({
+        correlationId:
+          parsedEvent.metadata.correlationId ?? parsedEvent.metadata.id,
+        tenantId: parsedEvent.metadata.tenantId,
+        reservationId: getReservationIdFromEvent(parsedEvent),
+        state: "CONSUMED",
+        source: `${serviceConfig.serviceId}:consumer`,
+        actor: kafkaConfig.consumerGroupId,
+        reason: "Kafka consumer claimed event batch",
+        payload: {
+          topic: batch.topic,
+          partition: batch.partition,
+          offset,
+        },
+      });
+
       const { value: handlerResult, attempts } = await processWithRetry(
         () => processReservationEvent(parsedEvent),
         {
@@ -161,6 +179,25 @@ const handleBatch = async ({
           messageTimestamp: message.timestamp,
         },
       });
+      await stampLifecycleCheckpoint({
+        correlationId:
+          parsedEvent.metadata.correlationId ?? parsedEvent.metadata.id,
+        tenantId: parsedEvent.metadata.tenantId,
+        reservationId: handlerResult.reservationId
+          ? handlerResult.reservationId
+          : getReservationIdFromEvent(parsedEvent),
+        state: "APPLIED",
+        source: `${serviceConfig.serviceId}:consumer`,
+        actor: kafkaConfig.consumerGroupId,
+        reason: "Reservation event handler applied successfully",
+        payload: {
+          topic: batch.topic,
+          partition: batch.partition,
+          offset,
+          attempts,
+        },
+      });
+      await maybeAttachFallbackAudit(parsedEvent, handlerResult.reservationId);
       observeProcessingDuration(
         batch.topic,
         batch.partition,
@@ -191,6 +228,27 @@ const handleBatch = async ({
           "x-tartware-dlq": "reservations-command-service",
         },
       });
+      if (parsedEvent.metadata?.correlationId || parsedEvent.metadata?.id) {
+        await stampLifecycleCheckpoint({
+          correlationId:
+            parsedEvent.metadata.correlationId ?? parsedEvent.metadata.id,
+          tenantId: parsedEvent.metadata.tenantId,
+          reservationId: getReservationIdFromEvent(parsedEvent),
+          state: "DLQ",
+          source: `${serviceConfig.serviceId}:consumer`,
+          actor: kafkaConfig.consumerGroupId,
+          reason: "Reservation event routed to DLQ after handler exhaustion",
+          payload: {
+            topic: batch.topic,
+            partition: batch.partition,
+            offset,
+            attempts,
+          },
+          metadata: {
+            error: error instanceof Error ? error.message : String(error),
+          },
+        });
+      }
       recordDlqEvent("handler");
       observeProcessingDuration(
         batch.topic,
@@ -210,6 +268,39 @@ const handleBatch = async ({
   }
 
   await commitOffsetsIfNecessary();
+};
+
+const getReservationIdFromEvent = (
+  event: ReservationEvent,
+): string | undefined => {
+  const payload = event.payload as { id?: string } | undefined;
+  return payload?.id;
+};
+
+const maybeAttachFallbackAudit = async (
+  event: ReservationEvent,
+  reservationId?: string,
+): Promise<void> => {
+  const fallback = getFallbackDetails(event);
+  if (!fallback) {
+    return;
+  }
+  const resolvedReservationId =
+    reservationId ?? getReservationIdFromEvent(event);
+  if (!resolvedReservationId) {
+    return;
+  }
+  await attachReservationToFallbackAudit(
+    event.metadata.correlationId ?? event.metadata.id,
+    resolvedReservationId,
+  );
+};
+
+const getFallbackDetails = (
+  event: ReservationEvent,
+): Record<string, unknown> | null => {
+  const payload = event.payload as { fallback?: Record<string, unknown> };
+  return payload?.fallback ?? null;
 };
 
 const parseReservationEvent = (payload: string): ReservationEvent => {

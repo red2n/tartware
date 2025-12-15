@@ -4,6 +4,7 @@ export const ReservationCreateCommandSchema = z.object({
   property_id: z.string().uuid(),
   guest_id: z.string().uuid(),
   room_type_id: z.string().uuid(),
+  rate_plan_code: z.string().max(50).optional(),
   check_in_date: z.coerce.date(),
   check_out_date: z.coerce.date(),
   booking_date: z.coerce.date().optional(),

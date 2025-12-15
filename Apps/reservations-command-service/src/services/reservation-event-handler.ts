@@ -65,6 +65,7 @@ const handleReservationCreated = async (
         property_id,
         guest_id,
         room_type_id,
+        rate_id,
         check_in_date,
         check_out_date,
         booking_date,
@@ -77,15 +78,16 @@ const handleReservationCreated = async (
         updated_at
       ) VALUES (
         $1, $2, $3, $4, $5,
-        $6, $7, $8,
-        $9, $10, $11, $12,
-        $13, NOW(), NOW()
+        $6, $7, $8, $9,
+        $10, $11, $12,
+        $13, $14, NOW(), NOW()
       )
       ON CONFLICT (id) DO UPDATE
         SET
           property_id = EXCLUDED.property_id,
           guest_id = EXCLUDED.guest_id,
           room_type_id = EXCLUDED.room_type_id,
+          rate_id = EXCLUDED.rate_id,
           check_in_date = EXCLUDED.check_in_date,
           check_out_date = EXCLUDED.check_out_date,
           booking_date = EXCLUDED.booking_date,
@@ -102,6 +104,7 @@ const handleReservationCreated = async (
       payload.property_id,
       payload.guest_id,
       payload.room_type_id,
+      payload.rate_id ?? null,
       payload.check_in_date,
       payload.check_out_date,
       payload.booking_date ?? new Date().toISOString(),
@@ -130,6 +133,8 @@ const handleReservationUpdated = async (
   if (payload.property_id) addField("property_id", payload.property_id);
   if (payload.guest_id) addField("guest_id", payload.guest_id);
   if (payload.room_type_id) addField("room_type_id", payload.room_type_id);
+  if ((payload as { rate_id?: string }).rate_id)
+    addField("rate_id", (payload as { rate_id?: string }).rate_id);
   if (payload.check_in_date) addField("check_in_date", payload.check_in_date);
   if (payload.check_out_date)
     addField("check_out_date", payload.check_out_date);

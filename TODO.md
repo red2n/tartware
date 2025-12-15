@@ -50,19 +50,35 @@ Platform-wide standardization for resilient CRUD handling at 20+ ops/sec with au
 - Grafana alerts for `retryCount > 3` or DLQ growth; PagerDuty hook for DLQ > 50 events.
 
 #### 0.6 **Lifecycle Guard Rail System**
+- Start Date: 2025-12-15T09:05:00Z
+- Finish Date: TBD
 - Define canonical request lifecycle states (`RECEIVED`, `PERSISTED`, `PUBLISHED`, `CONSUMED`, `APPLIED`, `DLQ`) and enforce transitions through checkpoints (outbox row, Kafka offset ledger, DLQ record).
 - Build a guard service/library that stamps every reservation command with lifecycle metadata (correlation ID, state, timestamp, actor) and persists snapshots so operators can query “where is my request?”.
 - Introduce automated flow auditors that scan for stalled states (e.g., stuck in `PERSISTED` > 2 min) and trigger retries or alerting.
 - Expose lifecycle inspection APIs (`GET /v1/reservations/:id/lifecycle`) leveraging the guard data so support can resume workflows from the last safe checkpoint.
 - _2025-12-15 Update_: Documented lifecycle checkpoints + guard-rail expectations in code comments/TODO; next milestone is wiring guard metadata into reservation write path once transactional outbox + offset ledger stabilize.
+- _2025-12-15T09:12:00Z Update_: Verified transactional outbox + consumer already persist partial lifecycle metadata, but no authoritative ledger yet. Next concrete steps:
+  - Add `reservation_lifecycle_events` table + schema definition mirroring guard states with `state`, `checkpoint_payload`, `correlation_id`, `reservation_id`, `tenant_id`, `source`, `checkpointed_at`, `expires_at`.
+  - Implement shared `LifecycleGuard` module under `Apps/reservations-command-service/src/lib/lifecycle-guard.ts` that writes to the ledger + enriches outbox metadata for every transition, exposing `stampCheckpoint` + `getLatestState` helpers with TSDoc.
+  - Wire API handlers (`reservation-command` routes), outbox dispatcher, and Kafka consumer to call the guard at each state transition *before* acknowledging Kafka offsets.
+  - Surface guard health metrics (`reservation_lifecycle_checkpoint_total`, `reservation_lifecycle_stalled_gauge`) and readiness checks for both K8s and K3s deployments via Fastify `/health/lifecycle`.
+- _2025-12-15T10:05:00Z Update_: Lifecycle guard MVP landed — new `reservation_lifecycle_events` table + `LifecycleGuard` module stamp `RECEIVED→DLQ`, API/outbox/consumer call it on every transition, Prometheus counters/gauges instrumented, and `/health/lifecycle` readiness now enforces stalled-state SLOs for K8s/K3s probes.
 
 #### 0.7 **Rate Plan Fallback System**
+- Start Date: 2025-12-15T09:20:00Z
+- Finish Date: TBD
 - Enforce deterministic BAR/RACK seed data via setup scripts so every property has a known-good rate plan for emergency pricing (BAR = best available, RACK = published rack).
 - Partner ingestion flow validates requested rate code + stay dates; on mismatch/expired plans it should atomically switch to BAR (if inventory open) or RACK (if BAR unavailable) while logging the override reason/correlation.
 - Persist the fallback decision (original code, fallback code, actor, timestamp) in a dedicated audit table and attach to the reservation event so downstream analytics can track override frequency.
 - Add policy knobs per property/tenant (allow/deny fallback, max delta vs. requested rate, notification recipients) and expose operational dashboards showing fallback counts, top offending partners, and escalations.
 - Provide manual replay tooling so revenue managers can re-rate affected reservations once the partner corrects their data.
 - _2025-12-15 Update_: `setup-database.sh` now hard-resets rate plans to BAR/RACK defaults and the data loaders enforce those seeds. Fallback runbook + audit requirements captured above; implementation will plug into reservation ingestion after lifecycle guard wiring.
+- _2025-12-15T09:24:00Z Update_: Discovered no runtime enforcement today—API trusts inbound `rate_plan_code`. Upcoming work:
+  - Create `rate_plan_fallback_audit` table (schema + migration + TypeScript types) capturing `{reservation_id, tenant_id, requested_code, fallback_code, reason, actor, metadata, created_at}`.
+  - Add repository/service that validates requested plan, fetches BAR/RACK defaults per property, and deterministically selects fallback with pluggable policy (prefer BAR, else RACK). Service must be fully covered with unit tests and instrumented for metrics/logging.
+  - Invoke fallback service inside reservation command ingestion (pre DB write) and copy audit metadata into reservation payload + outbox event so downstream systems stay consistent.
+  - Document operational knobs in `platform/values/*` (enable/disable fallback, alert thresholds) and wire readiness/liveness for the fallback helper where applicable.
+- _2025-12-15T10:18:00Z Update_: Fallback guard shipped end-to-end — `setup-database.sh` now enforces deterministic BAR/RACK seeds per property, new `rate_plan_fallback_audit` table captures overrides, the reservation command service validates requested codes + auto-falls back via `ensureRatePlanAssignment`, transactional events carry applied/fallback metadata, audits bind to reservations post-consumption, and Prometheus counter `reservation_rate_plan_fallback_total` exposes ops telemetry.
 
 ### 1. **Super Admin / Global Administrator Implementation (Priority: HIGH)**
 Industry-standard privileged access management for multi-tenant PMS platform following OWASP Authorization best practices.

@@ -5,7 +5,7 @@
  * ⚠️ CRITICAL: Any change to database ENUMs must be reflected here
  * See: docs/ZOD_SCHEMA_IMPLEMENTATION_PLAN.md#d-schema-synchronization-protocol
  *
- * Total ENUMs: 67 types
+ * Total ENUMs: 68 types
  * Last synced: 2025-11-03
  */
 
@@ -81,6 +81,22 @@ export const OutboxStatusEnum = z.enum([
 	"DLQ",
 ]);
 export type OutboxStatus = z.infer<typeof OutboxStatusEnum>;
+
+/**
+ * Reservation Lifecycle State - Flow guard checkpoints
+ * @database reservation_lifecycle_state
+ */
+export const ReservationLifecycleStateEnum = z.enum([
+	"RECEIVED",
+	"PERSISTED",
+	"PUBLISHED",
+	"CONSUMED",
+	"APPLIED",
+	"DLQ",
+]);
+export type ReservationLifecycleState = z.infer<
+	typeof ReservationLifecycleStateEnum
+>;
 
 // =====================================================
 // PROPERTY & ROOM ENUMS

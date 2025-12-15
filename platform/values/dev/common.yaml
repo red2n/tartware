@@ -15,3 +15,14 @@ reservationCommandService:
     lockTimeoutMs: 30000
     maxRetries: 5
     retryBackoffMs: 5000
+  lifecycleGuard:
+    staleThresholdMs: 120000
+    stalledStates:
+      - PERSISTED
+      - PUBLISHED
+      - CONSUMED
+  ratePlanFallback:
+    codes:
+      - BAR
+      - RACK
+    auditActor: reservations-command-service
