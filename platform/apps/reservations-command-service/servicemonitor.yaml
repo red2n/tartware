@@ -1,0 +1,19 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: reservations-command-service
+  labels:
+    app: reservations-command-service
+    release: kube-prometheus-stack
+spec:
+  selector:
+    matchLabels:
+      app: reservations-command-service
+  namespaceSelector:
+    matchNames:
+      - pms
+  endpoints:
+    - port: http
+      path: /metrics
+      interval: 15s
+      scrapeTimeout: 10s

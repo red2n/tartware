@@ -4,6 +4,10 @@ import {
   startReservationConsumer,
 } from "./kafka/consumer.js";
 import { shutdownProducer } from "./kafka/producer.js";
+import {
+  shutdownOutboxDispatcher,
+  startOutboxDispatcher,
+} from "./outbox/dispatcher.js";
 import { buildServer } from "./server.js";
 
 const app = buildServer();
@@ -14,6 +18,7 @@ let isShuttingDown = false;
 const start = async () => {
   try {
     await startReservationConsumer();
+    startOutboxDispatcher();
     await app.listen({ port: serviceConfig.port, host: serviceConfig.host });
     app.log.info(
       {
@@ -38,6 +43,7 @@ const shutdown = async () => {
   isShuttingDown = true;
   try {
     await shutdownReservationConsumer();
+    await shutdownOutboxDispatcher();
     await shutdownProducer();
     await app.close();
   } catch (error) {

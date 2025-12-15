@@ -153,11 +153,11 @@ describe("Users Endpoint", () => {
         expect(user).toHaveProperty("first_name");
         expect(user).toHaveProperty("last_name");
         expect(user).toHaveProperty("is_active");
-        expect(user).toHaveProperty("tenants");
+        expect(typeof user.version === "string").toBe(true);
       }
     });
 
-    it("should include tenant relationships in user data", async () => {
+    it("should return sanitized payload without embedding tenant associations", async () => {
       if (!managerUserId || !managerTenantId) {
         console.warn("⚠ Skipping test: no MANAGER users with tenants");
         return;
@@ -172,12 +172,9 @@ describe("Users Endpoint", () => {
       expect(response.statusCode).toBe(200);
       const payload = JSON.parse(response.payload);
 
-      if (payload.length > 0 && payload[0].tenants && payload[0].tenants.length > 0) {
-        const tenantAssoc = payload[0].tenants[0];
-        expect(tenantAssoc).toHaveProperty("tenant_id");
-        expect(tenantAssoc).toHaveProperty("tenant_name");
-        expect(tenantAssoc).toHaveProperty("role");
-        expect(tenantAssoc).toHaveProperty("is_active");
+      if (payload.length > 0) {
+        const user = payload[0];
+        expect(user.tenants).toBeUndefined();
       }
     });
   });

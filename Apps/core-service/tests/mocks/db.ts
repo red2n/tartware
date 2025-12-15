@@ -172,134 +172,6 @@ export const query = vi.fn(async <T extends pg.QueryResultRow = pg.QueryResultRo
     };
   }
 
-  // Mock tenants list query (must come before user-tenant-associations)
-  if (
-    sql.includes("select") &&
-    sql.includes("from public.tenants t") &&
-    sql.includes("t.name")
-  ) {
-    if (sql.includes("where t.id !=")) {
-      return {
-        rows: [
-          {
-            id: "aa0e8400-e29b-41d4-a716-446655440000",
-          },
-        ] as unknown as T[],
-        rowCount: 1,
-        command: "SELECT",
-        oid: 0,
-        fields: [],
-      };
-    }
-
-    return {
-      rows: [
-        {
-          id: TEST_TENANT_ID,
-          name: "Test Tenant",
-          slug: "test-tenant",
-          type: "CHAIN", // Must match TenantTypeEnum
-          status: "ACTIVE", // Must match TenantStatusEnum
-          email: "tenant@example.com",
-          phone: "+1234567890",
-          website: "https://example.com",
-          address_line1: "789 Business St",
-          address_line2: null,
-          city: "Boston",
-          state: "MA",
-          postal_code: "02101",
-          country: "US",
-          tax_id: "12-3456789",
-          business_license: "BL123456",
-          registration_number: "REG123456",
-          // Match TenantConfigSchema
-          config: {
-            features: ['reservations', 'payments', 'housekeeping'],
-            maxUsers: 10,
-            maxProperties: 5,
-            brandingEnabled: true,
-            defaultCurrency: 'USD',
-            defaultLanguage: 'en',
-            defaultTimezone: 'UTC',
-            enableMultiProperty: true,
-            enableChannelManager: false,
-            enableLoyaltyProgram: false,
-            enableAdvancedReporting: false,
-            enablePaymentProcessing: true,
-          },
-          // Match TenantSubscriptionSchema
-          subscription: {
-            plan: 'ENTERPRISE',
-            amount: 999,
-            currency: 'USD',
-            billingCycle: 'MONTHLY',
-            startDate: new Date('2024-01-01'),
-          },
-          metadata: {},
-          created_at: new Date(),
-          updated_at: new Date(),
-          created_by: null,
-          updated_by: null,
-          deleted_at: null,
-          version: BigInt(1),
-          property_count: 1,
-          user_count: 5,
-          active_properties: 1,
-        },
-      ] as unknown as T[],
-      rowCount: 1,
-      command: "SELECT",
-      oid: 0,
-      fields: [],
-    };
-  }
-
-  if (sql.includes("from public.user_tenant_associations uta") && sql.includes("distinct uta.user_id")) {
-    if (sql.includes("uta.role = 'staff'")) {
-      return {
-        rows: [
-          {
-            user_id: STAFF_USER_ID,
-            tenant_id: TEST_TENANT_ID,
-          },
-        ] as unknown as T[],
-        rowCount: 1,
-        command: "SELECT",
-        oid: 0,
-        fields: [],
-      };
-    }
-
-    if (sql.includes("uta.role = 'manager'")) {
-      return {
-        rows: [
-          {
-            user_id: MANAGER_USER_ID,
-            tenant_id: TEST_TENANT_ID,
-          },
-        ] as unknown as T[],
-        rowCount: 1,
-        command: "SELECT",
-        oid: 0,
-        fields: [],
-      };
-    }
-
-    if (sql.includes("uta.role = 'viewer'")) {
-      return {
-        rows: [
-          {
-            user_id: VIEWER_USER_ID,
-          },
-        ] as unknown as T[],
-        rowCount: 1,
-        command: "SELECT",
-        oid: 0,
-        fields: [],
-      };
-    }
-  }
-
   // Mock active memberships query (used by auth plugin)
   if (sql.includes("user_tenant_associations") && sql.includes("where uta.user_id")) {
     const userId = params?.[0];
@@ -418,6 +290,135 @@ export const query = vi.fn(async <T extends pg.QueryResultRow = pg.QueryResultRo
       };
     }
   }
+
+  // Mock tenants list query (must come after membership queries)
+  if (
+    sql.includes("select") &&
+    sql.includes("from public.tenants t") &&
+    sql.includes("t.name")
+  ) {
+    if (sql.includes("where t.id !=")) {
+      return {
+        rows: [
+          {
+            id: "aa0e8400-e29b-41d4-a716-446655440000",
+          },
+        ] as unknown as T[],
+        rowCount: 1,
+        command: "SELECT",
+        oid: 0,
+        fields: [],
+      };
+    }
+
+    return {
+      rows: [
+        {
+          id: TEST_TENANT_ID,
+          name: "Test Tenant",
+          slug: "test-tenant",
+          type: "CHAIN", // Must match TenantTypeEnum
+          status: "ACTIVE", // Must match TenantStatusEnum
+          email: "tenant@example.com",
+          phone: "+1234567890",
+          website: "https://example.com",
+          address_line1: "789 Business St",
+          address_line2: null,
+          city: "Boston",
+          state: "MA",
+          postal_code: "02101",
+          country: "US",
+          tax_id: "12-3456789",
+          business_license: "BL123456",
+          registration_number: "REG123456",
+          // Match TenantConfigSchema
+          config: {
+            features: ["reservations", "payments", "housekeeping"],
+            maxUsers: 10,
+            maxProperties: 5,
+            brandingEnabled: true,
+            defaultCurrency: "USD",
+            defaultLanguage: "en",
+            defaultTimezone: "UTC",
+            enableMultiProperty: true,
+            enableChannelManager: false,
+            enableLoyaltyProgram: false,
+            enableAdvancedReporting: false,
+            enablePaymentProcessing: true,
+          },
+          // Match TenantSubscriptionSchema
+          subscription: {
+            plan: "ENTERPRISE",
+            amount: 999,
+            currency: "USD",
+            billingCycle: "MONTHLY",
+            startDate: new Date("2024-01-01"),
+          },
+          metadata: {},
+          created_at: new Date(),
+          updated_at: new Date(),
+          created_by: null,
+          updated_by: null,
+          deleted_at: null,
+          version: BigInt(1),
+          property_count: 1,
+          user_count: 5,
+          active_properties: 1,
+        },
+      ] as unknown as T[],
+      rowCount: 1,
+      command: "SELECT",
+      oid: 0,
+      fields: [],
+    };
+  }
+
+  if (sql.includes("from public.user_tenant_associations uta") && sql.includes("distinct uta.user_id")) {
+    if (sql.includes("uta.role = 'staff'")) {
+      return {
+        rows: [
+          {
+            user_id: STAFF_USER_ID,
+            tenant_id: TEST_TENANT_ID,
+          },
+        ] as unknown as T[],
+        rowCount: 1,
+        command: "SELECT",
+        oid: 0,
+        fields: [],
+      };
+    }
+
+    if (sql.includes("uta.role = 'manager'")) {
+      return {
+        rows: [
+          {
+            user_id: MANAGER_USER_ID,
+            tenant_id: TEST_TENANT_ID,
+          },
+        ] as unknown as T[],
+        rowCount: 1,
+        command: "SELECT",
+        oid: 0,
+        fields: [],
+      };
+    }
+
+    if (sql.includes("uta.role = 'viewer'")) {
+      return {
+        rows: [
+          {
+            user_id: VIEWER_USER_ID,
+          },
+        ] as unknown as T[],
+        rowCount: 1,
+        command: "SELECT",
+        oid: 0,
+        fields: [],
+      };
+    }
+  }
+
 
   if (
     sql.includes("from public.user_tenant_associations uta") &&
@@ -634,7 +635,14 @@ export const query = vi.fn(async <T extends pg.QueryResultRow = pg.QueryResultRo
           created_by: null,
           updated_by: null,
           version: BigInt(1),
-          tenants: [],
+          tenants: [
+            {
+              tenant_id: TEST_TENANT_ID,
+              tenant_name: "Test Tenant",
+              role: "ADMIN",
+              is_active: true,
+            },
+          ],
         },
       ] as unknown as T[],
       rowCount: 1,

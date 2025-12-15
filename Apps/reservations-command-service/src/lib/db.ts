@@ -1,4 +1,9 @@
-import { Pool, type QueryResult, type QueryResultRow } from "pg";
+import {
+  Pool,
+  type PoolClient,
+  type QueryResult,
+  type QueryResultRow,
+} from "pg";
 
 import { databaseConfig } from "../config.js";
 
@@ -22,4 +27,28 @@ export const query = async <T extends QueryResultRow = QueryResultRow>(
   params: unknown[] = [],
 ): Promise<QueryResult<T>> => {
   return pool.query<T>(text, params);
+};
+
+/**
+ * Executes the provided callback within a PostgreSQL transaction.
+ */
+export const withTransaction = async <T>(
+  handler: (client: PoolClient) => Promise<T>,
+): Promise<T> => {
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    const result = await handler(client);
+    await client.query("COMMIT");
+    return result;
+  } catch (error) {
+    try {
+      await client.query("ROLLBACK");
+    } catch {
+      // ignore rollback errors
+    }
+    throw error;
+  } finally {
+    client.release();
+  }
 };

@@ -1,5 +1,69 @@
 ## Implementation Plan
 
+### 0. **Reservation CRUD Reliability & Retry Architecture (Priority: BLOCKING)**
+- Start Date: 2025-12-15
+- Finish Date: TBD
+
+Platform-wide standardization for resilient CRUD handling at 20+ ops/sec with automatic retries, no data loss, and observability built on open-source components, deployable across Kubernetes distributions (K8s, K3s).
+
+#### 0.1 **Event-Driven Write Path**
+- All synchronous CRUD endpoints publish intent events to Kafka (`reservations.events`) via a transactional outbox table to keep Postgres + broker consistent (debounce double writes, no distributed txns).
+- Outbox processor batches unsent rows, publishes to Kafka, and marks rows delivered; failures stay in-table for retry with exponential backoff metadata. Deploy processor as a stateless pod/job suitable for both full K8s and lightweight K3s clusters.
+
+##### 0.1.a **Implementation Tasks**
+- Extend reservation command routes to wrap DB writes + outbox insert within one transaction, including lifecycle metadata (state = `PERSISTED`, correlation ID, partition key).
+- Build an outbox dispatcher worker (Node process + Fastify health endpoint) that:
+  - Locks `PENDING/FAILED` rows in priority order, stamps `IN_PROGRESS`, publishes to Kafka, updates status (`DELIVERED` or `FAILED`) with retry metadata.
+  - Respects per-tenant throttling + jitter to avoid flooding Kafka partitions.
+- Provide Helm/Kustomize manifests + K3s-compatible CronJob/Deployment spec with probes + metrics (outbox queue depth, publish latency).
+- Add CLI/script to manually requeue `FAILED/DLQ` rows after remediation with audit logging.
+
+#### 0.2 **Consumer Hardening**
+- Reservations command service switches to manual commit with KafkaJS `eachBatch`, wrapping handler execution in a retry policy (3 quick retries with jittered backoff, then DLQ).
+- Idempotency keys: use reservation `id` + `metadata.correlationId`; store processed offsets in Postgres to safely reprocess after crashes.
+- Poison events land in `reservations.events.dlq` with failure reason and timestamps for later replay; ensure Helm/Kustomize templates cover topic provisioning hooks for both K8s and K3s targets.
+
+##### 0.2.a **Implementation Tasks**
+- Config surfacing: add `RESERVATION_DLQ_TOPIC`, `KAFKA_MAX_RETRIES`, `KAFKA_RETRY_BACKOFF_MS`, `KAFKA_MAX_BATCH_BYTES` env vars with defaults wired through Helm values/dev docker-compose for both Kubernetes flavors.
+- Refactor consumer bootstrap to `eachBatch` with manual commits, wrapping handler execution in a reusable `processWithRetry` helper that tracks attempts, jittered delays, and contextual logging (Pino + OTEL spans).
+- Persist idempotency + offset checkpoints in Postgres (`reservation_event_offsets` table) so stateless K8s deployments can scale horizontally.
+- When attempts exceed policy, publish to DLQ topic (`reservations.events.dlq`) via shared Kafka producer; payload must include original event, attempt metadata, and failure reason for replay tooling.
+- Metrics: expose Prometheus counters/gauges via Fastify plugin (`/metrics` endpoint) for retry totals, DLQ count, batch duration, and consumer lag (scraped by K8s/K3s Prometheus operators).
+- Probes: add readiness/liveness endpoints that verify Kafka connectivity + DB health so Deployments/StatefulSets restart unhealthy pods automatically in both Kubernetes distributions.
+
+- _2025-12-15 Update_: Transactional outbox + reservation event offset tables defined, new Kafka reliability env toggles exposed (dev stack + future Helm/K3s wiring). Next step: implement retry helper + DLQ flow using these primitives.
+- _2025-12-15 Update_: Consumer now uses manual commits, bounded retries, DLQ publishing, Prometheus metrics, and readiness/liveness probes (Fastify `/metrics`, `/health/liveness`, `/health/readiness`) ready for K8s/K3s scraping.
+- _2025-12-15 Update_: Transactional outbox writer + dispatcher wired into reservations command API; Kustomize manifests under `platform/apps/reservations-command-service` ship readiness/liveness probes and ServiceMonitor to scrape `/metrics`.
+
+#### 0.3 **Retry & Visibility Controls**
+- Implement configurable retry schedule (e.g., 1s, 5s, 30s) and max attempts; publish metrics (`reservation_event_retries_total`, `reservation_event_dlq_total`).
+- Use Kafka consumer lag + DLQ depth alarms; expose `/health/reliability` endpoint reporting backlog stats, last successful commit, DLQ size.
+
+#### 0.4 **Schema & Config Updates**
+- Extend `@tartware/schemas` event definitions with `retryCount`, `attemptedAt`, and `failureCause` for DLQ reprocessing.
+- Update `docker-compose` and Helm values to provision the DLQ topic, retention, and Kafka UI dashboard panel.
+- Add per-environment config for retry thresholds, DLQ topic name, and outbox sweep interval.
+
+#### 0.5 **Operational Runbook & Tests**
+- Document replay procedure: inspect DLQ, patch payload if needed, re-publish to main topic with incremented correlation.
+- Add unit tests for retry helper + outbox publisher; integration tests that kill the consumer mid-flight and verify idempotent replay.
+- Grafana alerts for `retryCount > 3` or DLQ growth; PagerDuty hook for DLQ > 50 events.
+
+#### 0.6 **Lifecycle Guard Rail System**
+- Define canonical request lifecycle states (`RECEIVED`, `PERSISTED`, `PUBLISHED`, `CONSUMED`, `APPLIED`, `DLQ`) and enforce transitions through checkpoints (outbox row, Kafka offset ledger, DLQ record).
+- Build a guard service/library that stamps every reservation command with lifecycle metadata (correlation ID, state, timestamp, actor) and persists snapshots so operators can query “where is my request?”.
+- Introduce automated flow auditors that scan for stalled states (e.g., stuck in `PERSISTED` > 2 min) and trigger retries or alerting.
+- Expose lifecycle inspection APIs (`GET /v1/reservations/:id/lifecycle`) leveraging the guard data so support can resume workflows from the last safe checkpoint.
+- _2025-12-15 Update_: Documented lifecycle checkpoints + guard-rail expectations in code comments/TODO; next milestone is wiring guard metadata into reservation write path once transactional outbox + offset ledger stabilize.
+
+#### 0.7 **Rate Plan Fallback System**
+- Enforce deterministic BAR/RACK seed data via setup scripts so every property has a known-good rate plan for emergency pricing (BAR = best available, RACK = published rack).
+- Partner ingestion flow validates requested rate code + stay dates; on mismatch/expired plans it should atomically switch to BAR (if inventory open) or RACK (if BAR unavailable) while logging the override reason/correlation.
+- Persist the fallback decision (original code, fallback code, actor, timestamp) in a dedicated audit table and attach to the reservation event so downstream analytics can track override frequency.
+- Add policy knobs per property/tenant (allow/deny fallback, max delta vs. requested rate, notification recipients) and expose operational dashboards showing fallback counts, top offending partners, and escalations.
+- Provide manual replay tooling so revenue managers can re-rate affected reservations once the partner corrects their data.
+- _2025-12-15 Update_: `setup-database.sh` now hard-resets rate plans to BAR/RACK defaults and the data loaders enforce those seeds. Fallback runbook + audit requirements captured above; implementation will plug into reservation ingestion after lifecycle guard wiring.
+
 ### 1. **Super Admin / Global Administrator Implementation (Priority: HIGH)**
 Industry-standard privileged access management for multi-tenant PMS platform following OWASP Authorization best practices.
 

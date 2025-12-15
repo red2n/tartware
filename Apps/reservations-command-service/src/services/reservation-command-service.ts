@@ -3,7 +3,7 @@ import { ReservationCreatedEventSchema } from "@tartware/schemas";
 import { v4 as uuid } from "uuid";
 
 import { serviceConfig } from "../config.js";
-import { publishEvent } from "../kafka/producer.js";
+import { enqueueOutboxRecord } from "../outbox/repository.js";
 import type { ReservationCreateCommand } from "../schemas/reservation-command.js";
 
 interface CreateReservationResult {
@@ -12,6 +12,10 @@ interface CreateReservationResult {
   status: "accepted";
 }
 
+/**
+ * Accepts a reservation create command and enqueues its event payload
+ * in the transactional outbox for asynchronous processing.
+ */
 export const createReservation = async (
   tenantId: string,
   command: ReservationCreateCommand,
@@ -41,13 +45,27 @@ export const createReservation = async (
   };
 
   const validatedEvent = ReservationCreatedEventSchema.parse(payload);
+  const aggregateId = validatedEvent.payload.id ?? eventId;
+  const partitionKey = validatedEvent.payload.guest_id ?? tenantId;
 
-  await publishEvent({
-    key: validatedEvent.payload.guest_id ?? tenantId,
-    value: JSON.stringify(validatedEvent),
+  await enqueueOutboxRecord({
+    eventId,
+    tenantId,
+    aggregateId,
+    aggregateType: "reservation",
+    eventType: validatedEvent.metadata.type,
+    payload: validatedEvent,
     headers: {
       tenantId,
       eventId,
+      ...(options.correlationId
+        ? { correlationId: options.correlationId }
+        : {}),
+    },
+    correlationId: options.correlationId,
+    partitionKey,
+    metadata: {
+      source: serviceConfig.serviceId,
     },
   });
 

@@ -31,6 +31,6 @@ export * from "./shared/validators.js";
  * Package metadata
  */
 export const SCHEMA_VERSION = "0.1.0";
-export const SCHEMA_DATE = "2025-11-03";
-export const TABLE_COUNT = 154;
-export const ENUM_COUNT = 66;
+export const SCHEMA_DATE = "2025-12-15";
+export const TABLE_COUNT = 156;
+export const ENUM_COUNT = 67;

@@ -104,16 +104,28 @@ const buildTenantScopeGuard = (options: TenantScopeOptions = {}): preHandlerHook
 
     const membership = request.auth.getMembership(tenantId);
     if (!membership) {
+      request.log.warn(
+        { tenantId, userId: request.auth.userId },
+        "tenant access denied: membership missing",
+      );
       reply.forbidden("TENANT_ACCESS_DENIED");
       return reply;
     }
 
     if (requireActiveMembership && !membership.isActive) {
+      request.log.warn(
+        { tenantId, userId: request.auth.userId },
+        "tenant access denied: membership inactive",
+      );
       reply.forbidden("TENANT_ACCESS_INACTIVE");
       return reply;
     }
 
     if (!request.auth.hasRole(tenantId, minRole)) {
+      request.log.warn(
+        { tenantId, userId: request.auth.userId, minRole, role: membership.role },
+        "tenant access denied: role insufficient",
+      );
       reply.forbidden("TENANT_ROLE_INSUFFICIENT");
       return reply;
     }
@@ -128,6 +140,15 @@ const buildTenantScopeGuard = (options: TenantScopeOptions = {}): preHandlerHook
       const enabledModules = new Set(membership.modules);
       const missing = moduleRequirements.filter((moduleId) => !enabledModules.has(moduleId));
       if (missing.length > 0) {
+        request.log.warn(
+          {
+            tenantId,
+            userId: request.auth.userId,
+            missingModules: missing,
+            enabledModules: membership.modules,
+          },
+          "tenant access denied: required modules missing",
+        );
         reply.forbidden("TENANT_MODULE_NOT_ENABLED");
         return reply;
       }
