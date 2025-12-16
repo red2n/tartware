@@ -102,7 +102,7 @@ const ensureSettingsServiceEnv = () => {
       "MFwwDQYJKoZIhvcNAQEBBQADSwAwSAJBALiH8XTur2qxGn8pY/+bexdFv+I5jBq5",
       "x2VxYcy8KX2HFqRSbuuSSMzdg3NofM8JrIoVNewc19hXtOD87mpy4V8CAwEAAQ==",
       "-----END PUBLIC KEY-----",
-    ].join("\\n");
+    ].join("\n");
 };
 
 run().catch((error) => {
