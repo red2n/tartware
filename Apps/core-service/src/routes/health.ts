@@ -1,6 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 
+import { buildRouteSchema, schemaFromZod } from "../lib/openapi.js";
 import { isRedisHealthy } from "../lib/redis.js";
 
 const HealthResponseSchema = z.object({
@@ -12,6 +13,7 @@ const HealthResponseSchema = z.object({
 });
 
 type HealthResponse = z.infer<typeof HealthResponseSchema>;
+const HealthResponseJsonSchema = schemaFromZod(HealthResponseSchema, "CoreHealthResponse");
 
 export const registerHealthRoutes = (app: FastifyInstance): void => {
   app.get(
@@ -20,6 +22,13 @@ export const registerHealthRoutes = (app: FastifyInstance): void => {
       // Skip ALL hooks (including auth)
       onRequest: [],
       preValidation: [],
+      schema: buildRouteSchema({
+        tag: "Health",
+        summary: "Core service health probe",
+        response: {
+          200: HealthResponseJsonSchema,
+        },
+      }),
     },
     async () => {
       const redisHealthy = await isRedisHealthy();

@@ -2,6 +2,7 @@ import { GuestWithStatsSchema } from "@tartware/schemas";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 
+import { buildRouteSchema, schemaFromZod } from "../lib/openapi.js";
 import { listGuests } from "../services/guest-service.js";
 import { sanitizeForJson } from "../utils/sanitize.js";
 
@@ -23,6 +24,10 @@ const GuestListResponseSchema = z.array(
     version: z.string(),
   }),
 );
+const GuestListQueryJsonSchema = schemaFromZod(GuestListQuerySchema, "GuestListQuery");
+const GuestListResponseJsonSchema = schemaFromZod(GuestListResponseSchema, "GuestListResponse");
+
+const GUESTS_TAG = "Guests";
 
 export const registerGuestRoutes = (app: FastifyInstance): void => {
   app.get<{ Querystring: GuestListQuery }>(
@@ -32,6 +37,14 @@ export const registerGuestRoutes = (app: FastifyInstance): void => {
         resolveTenantId: (request) => (request.query as GuestListQuery).tenant_id,
         minRole: "MANAGER",
         requiredModules: "core",
+      }),
+      schema: buildRouteSchema({
+        tag: GUESTS_TAG,
+        summary: "List guests with optional filters",
+        querystring: GuestListQueryJsonSchema,
+        response: {
+          200: GuestListResponseJsonSchema,
+        },
       }),
     },
     async (request) => {

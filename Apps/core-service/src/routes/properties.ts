@@ -2,6 +2,7 @@ import { PropertyWithStatsSchema } from "@tartware/schemas";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 
+import { buildRouteSchema, schemaFromZod } from "../lib/openapi.js";
 import { listProperties } from "../services/property-service.js";
 
 const PropertyListQuerySchema = z.object({
@@ -17,6 +18,13 @@ const PropertyListResponseSchema = z.array(
     version: z.string(),
   }),
 );
+const PropertyListQueryJsonSchema = schemaFromZod(PropertyListQuerySchema, "PropertyListQuery");
+const PropertyListResponseJsonSchema = schemaFromZod(
+  PropertyListResponseSchema,
+  "PropertyListResponse",
+);
+
+const PROPERTIES_TAG = "Properties";
 
 export const registerPropertyRoutes = (app: FastifyInstance): void => {
   app.get<{ Querystring: PropertyListQuery }>(
@@ -26,6 +34,14 @@ export const registerPropertyRoutes = (app: FastifyInstance): void => {
         resolveTenantId: (request) => (request.query as PropertyListQuery).tenant_id,
         minRole: "MANAGER",
         requiredModules: "core",
+      }),
+      schema: buildRouteSchema({
+        tag: PROPERTIES_TAG,
+        summary: "List properties for a tenant",
+        querystring: PropertyListQueryJsonSchema,
+        response: {
+          200: PropertyListResponseJsonSchema,
+        },
       }),
     },
     async (request) => {

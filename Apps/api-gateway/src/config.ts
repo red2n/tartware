@@ -8,6 +8,7 @@ export const gatewayConfig = {
 	port: Number(env.API_GATEWAY_PORT ?? 8080),
 	host: env.API_GATEWAY_HOST ?? "0.0.0.0",
 	serviceId: env.API_GATEWAY_ID ?? "api-gateway",
+	version: env.API_GATEWAY_VERSION ?? "1.0.0",
 	rateLimit: {
 		max: Number(env.API_GATEWAY_RATE_MAX ?? 200),
 		timeWindow: env.API_GATEWAY_RATE_WINDOW ?? "1 minute",

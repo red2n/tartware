@@ -1,6 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 
+import { buildRouteSchema, errorResponseSchema, schemaFromZod } from "../lib/openapi.js";
 import { startImpersonationSession } from "../services/system-admin-service.js";
 import { sanitizeForJson } from "../utils/sanitize.js";
 
@@ -24,11 +25,31 @@ const IMPERSONATION_ERROR_MESSAGES: Record<string, string> = {
   MEMBERSHIP_INACTIVE: "User membership for this tenant is inactive.",
 };
 
+const SYSTEM_IMPERSONATION_TAG = "System Impersonation";
+const SystemImpersonationRequestJsonSchema = schemaFromZod(
+  SystemImpersonationRequestSchema,
+  "SystemImpersonationRequest",
+);
+const SystemImpersonationResponseJsonSchema = schemaFromZod(
+  SystemImpersonationResponseSchema,
+  "SystemImpersonationResponse",
+);
+
 export const registerSystemImpersonationRoutes = (app: FastifyInstance): void => {
   app.post(
     "/v1/system/impersonate",
     {
       preHandler: app.withSystemAdminScope({ minRole: "SYSTEM_SUPPORT" }),
+      schema: buildRouteSchema({
+        tag: SYSTEM_IMPERSONATION_TAG,
+        summary: "Start a tenant impersonation session",
+        body: SystemImpersonationRequestJsonSchema,
+        response: {
+          200: SystemImpersonationResponseJsonSchema,
+          400: errorResponseSchema,
+          401: errorResponseSchema,
+        },
+      }),
     },
     async (request, reply) => {
       const adminContext = request.systemAdmin;

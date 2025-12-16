@@ -2,6 +2,7 @@ import { UserWithTenantsSchema } from "@tartware/schemas";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 
+import { buildRouteSchema, errorResponseSchema, schemaFromZod } from "../lib/openapi.js";
 import { logSystemAdminEvent } from "../services/system-admin-service.js";
 import { listUsers } from "../services/user-service.js";
 import { sanitizeForJson } from "../utils/sanitize.js";
@@ -16,12 +17,31 @@ const SystemUserListResponseSchema = z.array(
     version: z.string(),
   }),
 );
+const SystemUserListQueryJsonSchema = schemaFromZod(
+  SystemUserListQuerySchema,
+  "SystemUserListQuery",
+);
+const SystemUserListResponseJsonSchema = schemaFromZod(
+  SystemUserListResponseSchema,
+  "SystemUserListResponse",
+);
+
+const SYSTEM_USERS_TAG = "System Users";
 
 export const registerSystemUserRoutes = (app: FastifyInstance): void => {
   app.get(
     "/v1/system/users",
     {
       preHandler: app.withSystemAdminScope({ minRole: "SYSTEM_OPERATOR" }),
+      schema: buildRouteSchema({
+        tag: SYSTEM_USERS_TAG,
+        summary: "List users across tenants (system admin)",
+        querystring: SystemUserListQueryJsonSchema,
+        response: {
+          200: SystemUserListResponseJsonSchema,
+          401: errorResponseSchema,
+        },
+      }),
     },
     async (request) => {
       const adminContext = request.systemAdmin;

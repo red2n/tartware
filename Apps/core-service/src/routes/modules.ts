@@ -1,6 +1,9 @@
 import type { FastifyInstance } from "fastify";
 
+import { buildRouteSchema, jsonArraySchema, jsonObjectSchema } from "../lib/openapi.js";
 import { getModuleCatalog, getTenantModules } from "../services/tenant-module-service.js";
+
+const MODULES_TAG = "Modules";
 
 export const registerModuleRoutes = (app: FastifyInstance): void => {
   app.get(
@@ -12,6 +15,13 @@ export const registerModuleRoutes = (app: FastifyInstance): void => {
           return reply;
         }
       },
+      schema: buildRouteSchema({
+        tag: MODULES_TAG,
+        summary: "List available platform modules",
+        response: {
+          200: jsonObjectSchema,
+        },
+      }),
     },
     async () => getModuleCatalog(),
   );
@@ -22,6 +32,20 @@ export const registerModuleRoutes = (app: FastifyInstance): void => {
       preHandler: app.withTenantScope({
         resolveTenantId: (request) => (request.params as { tenantId: string }).tenantId,
         minRole: "ADMIN",
+      }),
+      schema: buildRouteSchema({
+        tag: MODULES_TAG,
+        summary: "List modules enabled for a tenant",
+        params: {
+          type: "object",
+          properties: {
+            tenantId: { type: "string", format: "uuid" },
+          },
+          required: ["tenantId"],
+        },
+        response: {
+          200: jsonArraySchema,
+        },
       }),
     },
     async (request) => {

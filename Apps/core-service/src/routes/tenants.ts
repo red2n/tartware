@@ -2,6 +2,7 @@ import { TenantWithRelationsSchema } from "@tartware/schemas";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 
+import { buildRouteSchema, schemaFromZod } from "../lib/openapi.js";
 import { listTenants } from "../services/tenant-service.js";
 import { sanitizeForJson } from "../utils/sanitize.js";
 
@@ -16,6 +17,10 @@ const TenantListResponseSchema = z.array(
     version: z.string(), // BigInt serialized as string
   }),
 );
+const TenantListQueryJsonSchema = schemaFromZod(TenantListQuerySchema, "TenantListQuery");
+const TenantListResponseJsonSchema = schemaFromZod(TenantListResponseSchema, "TenantListResponse");
+
+const TENANTS_TAG = "Tenants";
 
 export const registerTenantRoutes = (app: FastifyInstance): void => {
   app.get<{ Querystring: TenantListQuery }>(
@@ -24,6 +29,14 @@ export const registerTenantRoutes = (app: FastifyInstance): void => {
       preHandler: app.withTenantScope({
         allowMissingTenantId: true,
         requireAnyTenantWithRole: "ADMIN",
+      }),
+      schema: buildRouteSchema({
+        tag: TENANTS_TAG,
+        summary: "List the tenants available to the authenticated user",
+        querystring: TenantListQueryJsonSchema,
+        response: {
+          200: TenantListResponseJsonSchema,
+        },
       }),
     },
     async (request) => {
