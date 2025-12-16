@@ -30,10 +30,10 @@ stop_and_remove_containers() {
   fi
 
   echo "Stopping containers..."
-  docker stop ${containers} >/dev/null || true
+  docker stop "${containers}" >/dev/null || true
 
   echo "Removing containers..."
-  docker rm -f ${containers} >/dev/null
+  docker rm -f "${containers}" >/dev/null
 }
 
 remove_images() {
@@ -46,7 +46,7 @@ remove_images() {
   fi
 
   echo "Removing images..."
-  docker rmi -f ${images} >/dev/null
+  docker rmi -f "${images}" >/dev/null
 }
 
 remove_volumes() {
@@ -59,7 +59,7 @@ remove_volumes() {
   fi
 
   echo "Removing volumes..."
-  docker volume rm ${volumes} >/dev/null
+  docker volume rm "${volumes}" >/dev/null
 }
 
 remove_networks() {
@@ -73,7 +73,7 @@ remove_networks() {
   fi
 
   echo "Removing custom networks..."
-  docker network rm ${networks} >/dev/null
+  docker network rm "${networks}" >/dev/null
 }
 
 stop_and_remove_containers
