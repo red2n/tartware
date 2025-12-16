@@ -1,7 +1,7 @@
 {
   "openapi": "3.0.3",
   "info": {
-    "title": "reservations-command-service API",
+    "title": "Reservations Command Service API",
     "description": "Reservation command ingestion surface that writes to the transactional outbox and lifecycle guard.",
     "version": "1.0.0"
   },
