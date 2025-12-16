@@ -1,7 +1,8 @@
 import { performance } from "node:perf_hooks";
 
-import { kafkaConfig, outboxConfig } from "../config.js";
+import { kafkaConfig, outboxConfig, serviceConfig } from "../config.js";
 import { publishDlqEvent, publishEvent } from "../kafka/producer.js";
+import { stampLifecycleCheckpoint } from "../lib/lifecycle-guard.js";
 import {
   observeOutboxPublishDuration,
   setOutboxQueueSize,
@@ -99,6 +100,21 @@ const handleOutboxRecord = async (record: OutboxRecord): Promise<void> => {
       value: JSON.stringify(record.payload),
       headers: normalizeHeaders(record.headers),
     });
+    await stampLifecycleCheckpoint({
+      correlationId: record.correlationId ?? record.eventId,
+      tenantId: record.tenantId,
+      reservationId: extractReservationId(record.payload),
+      state: "PUBLISHED",
+      source: `${serviceConfig.serviceId}:outbox`,
+      actor: outboxConfig.workerId,
+      reason: "Outbox event published to Kafka",
+      payload: {
+        outboxId: record.id,
+        eventType: record.eventType,
+        partitionKey: record.partitionKey ?? record.aggregateId,
+        topic: kafkaConfig.topic,
+      },
+    });
     await markOutboxDelivered(record.id);
     observeOutboxPublishDuration(secondsSince(startedAt));
   } catch (error) {
@@ -115,6 +131,23 @@ const handleOutboxRecord = async (record: OutboxRecord): Promise<void> => {
     );
 
     if (status === "DLQ") {
+      await stampLifecycleCheckpoint({
+        correlationId: record.correlationId ?? record.eventId,
+        tenantId: record.tenantId,
+        reservationId: extractReservationId(record.payload),
+        state: "DLQ",
+        source: `${serviceConfig.serviceId}:outbox`,
+        actor: outboxConfig.workerId,
+        reason: "Outbox dispatcher exhausted retries",
+        payload: {
+          outboxId: record.id,
+          eventType: record.eventType,
+          retryCount: record.retryCount,
+        },
+        metadata: {
+          lastError: error instanceof Error ? error.message : String(error),
+        },
+      });
       await publishDlqEvent({
         key: record.partitionKey ?? record.aggregateId,
         value: JSON.stringify({
@@ -153,4 +186,13 @@ const normalizeHeaders = (
 
 const secondsSince = (startedAt: number): number => {
   return (performance.now() - startedAt) / 1000;
+};
+
+const extractReservationId = (
+  payload: Record<string, unknown>,
+): string | undefined => {
+  const eventPayload = (payload?.payload ?? {}) as {
+    id?: string;
+  };
+  return eventPayload.id;
 };

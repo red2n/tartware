@@ -60,6 +60,17 @@ CREATE TYPE outbox_status AS ENUM (
     'DLQ'            -- Moved to dead-letter workflow
 );
 
+-- Reservation Lifecycle State (Flow Guard)
+-- Standard: Request checkpoints across API, outbox, Kafka consumer, DLQ
+CREATE TYPE reservation_lifecycle_state AS ENUM (
+    'RECEIVED',     -- API accepted the command
+    'PERSISTED',    -- Command + outbox persisted in Postgres
+    'PUBLISHED',    -- Event published to Kafka
+    'CONSUMED',     -- Consumer claimed the message
+    'APPLIED',      -- Domain side-effects applied in downstream service
+    'DLQ'           -- Routed to dead-letter flow for manual intervention
+);
+
 -- =====================================================
 -- PROPERTY & ROOM ENUMS
 -- =====================================================

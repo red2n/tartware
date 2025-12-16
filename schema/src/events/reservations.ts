@@ -25,6 +25,8 @@ const ReservationCreatePayloadSchema = z.object({
 	property_id: ReservationsSchema.shape.property_id,
 	guest_id: ReservationsSchema.shape.guest_id,
 	room_type_id: ReservationsSchema.shape.room_type_id,
+	rate_id: ReservationsSchema.shape.rate_id,
+	rate_plan_code: z.string().max(50).optional(),
 	check_in_date: z.coerce.date(),
 	check_out_date: z.coerce.date(),
 	booking_date: z.coerce.date().optional(),
@@ -33,6 +35,14 @@ const ReservationCreatePayloadSchema = z.object({
 	total_amount: z.coerce.number().nonnegative(),
 	currency: ReservationsSchema.shape.currency.optional(),
 	notes: ReservationsSchema.shape.internal_notes.optional(),
+	fallback: z
+		.object({
+			requested_rate_code: z.string().optional(),
+			applied_rate_code: z.string(),
+			reason: z.string().optional(),
+			actor: z.string(),
+		})
+		.optional(),
 });
 
 export const ReservationCreatedEventSchema = z.object({
@@ -53,6 +63,7 @@ export const ReservationUpdatedEventSchema = z.object({
 	}),
 	payload: ReservationsSchema.partial().extend({
 		id: ReservationsSchema.shape.id,
+		rate_plan_code: z.string().max(50).optional(),
 	}),
 });
 

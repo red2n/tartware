@@ -44,3 +44,40 @@ export const databaseConfig = {
   max: Number(env.DB_POOL_MAX ?? 10),
   idleTimeoutMillis: Number(env.DB_POOL_IDLE_TIMEOUT_MS ?? 30000),
 };
+
+const defaultLifecycleStates = ["PERSISTED", "PUBLISHED", "CONSUMED"];
+
+const parseLifecycleStates = (value: string | undefined): string[] => {
+  if (!value) {
+    return defaultLifecycleStates;
+  }
+  const normalized = value
+    .split(",")
+    .map((entry) => entry.trim().toUpperCase())
+    .filter((entry) => entry.length > 0);
+  return normalized.length > 0 ? normalized : defaultLifecycleStates;
+};
+
+export const lifecycleGuardConfig = {
+  staleThresholdMs: Number(env.LIFECYCLE_STALE_THRESHOLD_MS ?? 120000),
+  stalledStates: parseLifecycleStates(env.LIFECYCLE_STALLED_STATES),
+};
+
+const defaultFallbackCodes = ["BAR", "RACK"];
+
+const parseFallbackCodes = (value: string | undefined): string[] => {
+  if (!value) {
+    return defaultFallbackCodes;
+  }
+  const normalized = value
+    .split(",")
+    .map((entry) => entry.trim().toUpperCase())
+    .filter((entry) => entry.length > 0);
+  const unique = Array.from(new Set(normalized));
+  return unique.length > 0 ? unique : defaultFallbackCodes;
+};
+
+export const ratePlanFallbackConfig = {
+  codes: parseFallbackCodes(env.RATE_PLAN_FALLBACK_CODES),
+  auditActor: env.RATE_PLAN_FALLBACK_ACTOR ?? serviceConfig.serviceId,
+};

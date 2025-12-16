@@ -57,6 +57,27 @@ const outboxPublishDuration = new Histogram({
   registers: [metricsRegistry],
 });
 
+const lifecycleCheckpointCounter = new Counter({
+  name: "reservation_lifecycle_checkpoint_total",
+  help: "Total lifecycle guard checkpoints stamped by state/source",
+  labelNames: ["state", "source"] as const,
+  registers: [metricsRegistry],
+});
+
+const lifecycleStalledGauge = new Gauge({
+  name: "reservation_lifecycle_stalled_total",
+  help: "Count of lifecycle checkpoints older than the stale threshold, grouped by state",
+  labelNames: ["state"] as const,
+  registers: [metricsRegistry],
+});
+
+const ratePlanFallbackCounter = new Counter({
+  name: "reservation_rate_plan_fallback_total",
+  help: "Number of automatic BAR/RACK fallback decisions applied",
+  labelNames: ["code"] as const,
+  registers: [metricsRegistry],
+});
+
 /**
  * Records a retry attempt for observability dashboards.
  */
@@ -108,4 +129,31 @@ export const setOutboxQueueSize = (size: number): void => {
  */
 export const observeOutboxPublishDuration = (durationSeconds: number): void => {
   outboxPublishDuration.observe(durationSeconds);
+};
+
+/**
+ * Records a lifecycle guard checkpoint emission.
+ */
+export const recordLifecycleCheckpointMetric = (
+  state: string,
+  source: string,
+): void => {
+  lifecycleCheckpointCounter.labels(state, source).inc();
+};
+
+/**
+ * Updates the stalled lifecycle gauge for a given state.
+ */
+export const setLifecycleStalledCount = (
+  state: string,
+  count: number,
+): void => {
+  lifecycleStalledGauge.set({ state }, count);
+};
+
+/**
+ * Records that a rate plan fallback (BAR/RACK) was applied.
+ */
+export const recordRatePlanFallback = (code: string): void => {
+  ratePlanFallbackCounter.labels(code).inc();
 };

@@ -50,19 +50,55 @@ Platform-wide standardization for resilient CRUD handling at 20+ ops/sec with au
 - Grafana alerts for `retryCount > 3` or DLQ growth; PagerDuty hook for DLQ > 50 events.
 
 #### 0.6 **Lifecycle Guard Rail System**
+- Start Date: 2025-12-15T09:05:00Z
+- Finish Date: TBD
 - Define canonical request lifecycle states (`RECEIVED`, `PERSISTED`, `PUBLISHED`, `CONSUMED`, `APPLIED`, `DLQ`) and enforce transitions through checkpoints (outbox row, Kafka offset ledger, DLQ record).
 - Build a guard service/library that stamps every reservation command with lifecycle metadata (correlation ID, state, timestamp, actor) and persists snapshots so operators can query “where is my request?”.
 - Introduce automated flow auditors that scan for stalled states (e.g., stuck in `PERSISTED` > 2 min) and trigger retries or alerting.
 - Expose lifecycle inspection APIs (`GET /v1/reservations/:id/lifecycle`) leveraging the guard data so support can resume workflows from the last safe checkpoint.
 - _2025-12-15 Update_: Documented lifecycle checkpoints + guard-rail expectations in code comments/TODO; next milestone is wiring guard metadata into reservation write path once transactional outbox + offset ledger stabilize.
+- _2025-12-15T09:12:00Z Update_: Verified transactional outbox + consumer already persist partial lifecycle metadata, but no authoritative ledger yet. Next concrete steps:
+  - Add `reservation_lifecycle_events` table + schema definition mirroring guard states with `state`, `checkpoint_payload`, `correlation_id`, `reservation_id`, `tenant_id`, `source`, `checkpointed_at`, `expires_at`.
+  - Implement shared `LifecycleGuard` module under `Apps/reservations-command-service/src/lib/lifecycle-guard.ts` that writes to the ledger + enriches outbox metadata for every transition, exposing `stampCheckpoint` + `getLatestState` helpers with TSDoc.
+  - Wire API handlers (`reservation-command` routes), outbox dispatcher, and Kafka consumer to call the guard at each state transition *before* acknowledging Kafka offsets.
+  - Surface guard health metrics (`reservation_lifecycle_checkpoint_total`, `reservation_lifecycle_stalled_gauge`) and readiness checks for both K8s and K3s deployments via Fastify `/health/lifecycle`.
+- _2025-12-15T10:05:00Z Update_: Lifecycle guard MVP landed — new `reservation_lifecycle_events` table + `LifecycleGuard` module stamp `RECEIVED→DLQ`, API/outbox/consumer call it on every transition, Prometheus counters/gauges instrumented, and `/health/lifecycle` readiness now enforces stalled-state SLOs for K8s/K3s probes.
 
 #### 0.7 **Rate Plan Fallback System**
+- Start Date: 2025-12-15T09:20:00Z
+- Finish Date: TBD
 - Enforce deterministic BAR/RACK seed data via setup scripts so every property has a known-good rate plan for emergency pricing (BAR = best available, RACK = published rack).
 - Partner ingestion flow validates requested rate code + stay dates; on mismatch/expired plans it should atomically switch to BAR (if inventory open) or RACK (if BAR unavailable) while logging the override reason/correlation.
 - Persist the fallback decision (original code, fallback code, actor, timestamp) in a dedicated audit table and attach to the reservation event so downstream analytics can track override frequency.
 - Add policy knobs per property/tenant (allow/deny fallback, max delta vs. requested rate, notification recipients) and expose operational dashboards showing fallback counts, top offending partners, and escalations.
 - Provide manual replay tooling so revenue managers can re-rate affected reservations once the partner corrects their data.
 - _2025-12-15 Update_: `setup-database.sh` now hard-resets rate plans to BAR/RACK defaults and the data loaders enforce those seeds. Fallback runbook + audit requirements captured above; implementation will plug into reservation ingestion after lifecycle guard wiring.
+- _2025-12-15T09:24:00Z Update_: Discovered no runtime enforcement today—API trusts inbound `rate_plan_code`. Upcoming work:
+  - Create `rate_plan_fallback_audit` table (schema + migration + TypeScript types) capturing `{reservation_id, tenant_id, requested_code, fallback_code, reason, actor, metadata, created_at}`.
+  - Add repository/service that validates requested plan, fetches BAR/RACK defaults per property, and deterministically selects fallback with pluggable policy (prefer BAR, else RACK). Service must be fully covered with unit tests and instrumented for metrics/logging.
+  - Invoke fallback service inside reservation command ingestion (pre DB write) and copy audit metadata into reservation payload + outbox event so downstream systems stay consistent.
+  - Document operational knobs in `platform/values/*` (enable/disable fallback, alert thresholds) and wire readiness/liveness for the fallback helper where applicable.
+- _2025-12-15T10:18:00Z Update_: Fallback guard shipped end-to-end — `setup-database.sh` now enforces deterministic BAR/RACK seeds per property, new `rate_plan_fallback_audit` table captures overrides, the reservation command service validates requested codes + auto-falls back via `ensureRatePlanAssignment`, transactional events carry applied/fallback metadata, audits bind to reservations post-consumption, and Prometheus counter `reservation_rate_plan_fallback_total` exposes ops telemetry.
+
+#### 0.8 **Amenity Catalog Templates**
+- Start Date: 2025-12-15T11:30:00Z
+- Finish Date: TBD
+- Provide a canonical amenity catalog (WiFi, smart TV, climate control, etc.) per property so room types can be cloned/derived without free-form JSON conflicts. Catalog entries must be open-source friendly, production ready, and safe to regenerate during installs.
+- Update setup automation to purge/normalize conflicting amenity payloads, seed the default catalog, and keep room types aligned so API consumers always start from the sanctioned list.
+- Expose catalog data to API/CLI later for tenant overrides while preserving `is_default` markers so operators understand which entries are Tartware-managed.
+- _2025-12-15T11:45:00Z Update_: Added `room_amenity_catalog` table + indexes, wired into `00-create-all-tables.sql`, and enhanced `setup-database.sh` to upsert the default amenity set (WiFi, Smart TV, Climate Control, etc.) for every property. The script now replaces any non-canonical `room_types.amenities` arrays with the curated list so downstream room creation flows derive from the same template without data conflicts.
+- _2025-12-15T12:15:00Z Update_: Settings-service now exposes `/v1/settings/properties/:propertyId/amenities` (list/create/update) backed by the new catalog, complete with JWT auth, zod validation, and conflict-safe repository logic. Tenants can toggle Tartware defaults via the `isActive` flag or register custom amenities, prepping us for UI enablement later.
+- **Follow-ups (not started):**
+  1. Add tenant-facing API surfaces (and eventual UI hooks) that allow cloning the catalog into new room types and surfacing amenity metadata in the room creation wizard.
+  2. Introduce policy controls per tenant/property for custom tags (max count, naming conventions) and emit Prometheus metrics for catalog drift.
+  3. Build a background reconciler that flags room types referencing non-catalog amenity codes and offers a repair endpoint/command.
+
+#### 0.9 **API Discoverability / Swagger**
+- Start Date: 2025-12-15T12:40:00Z
+- Finish Date: TBD
+- Every Fastify edge (API Gateway, Core Service, Reservations Command Service, Settings Service) must expose OpenAPI 3.0 specs + Swagger UI at `/docs` so platform and partner teams can self-discover endpoints.
+- _2025-12-15T13:05:00Z Update_: Added `@fastify/swagger` + `@fastify/swagger-ui` dependencies to all Fastify services and registered route-independent plugins so `/docs` now renders live specs (Core, Reservations Command, Settings, API Gateway). Next steps: enrich route schemas (request/response bodies) to improve the generated docs and export static bundles for CI compliance reviews.
+- _2025-12-16T06:37:00Z Update_: API Gateway health + reservation proxy routes now include Fastify schemas so `/docs` lists the operations instead of an empty spec. Still need granular schemas for nested reservation resources and the remaining services, plus a script to export the OpenAPI bundle for CI.
 
 ### 1. **Super Admin / Global Administrator Implementation (Priority: HIGH)**
 Industry-standard privileged access management for multi-tenant PMS platform following OWASP Authorization best practices.

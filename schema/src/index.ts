@@ -11,7 +11,7 @@
 
 // Re-export all schema categories (will be added as we build them)
 export * from "./schemas/01-core/index.js";
-// export * from './schemas/02-inventory/index.js';
+export * from "./schemas/02-inventory/index.js";
 // export * from './schemas/03-bookings/index.js';
 // export * from './schemas/04-financial/index.js';
 // export * from './schemas/05-operations/index.js';
@@ -32,5 +32,5 @@ export * from "./shared/validators.js";
  */
 export const SCHEMA_VERSION = "0.1.0";
 export const SCHEMA_DATE = "2025-12-15";
-export const TABLE_COUNT = 156;
-export const ENUM_COUNT = 67;
+export const TABLE_COUNT = 158;
+export const ENUM_COUNT = 68;
