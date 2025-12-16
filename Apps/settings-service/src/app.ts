@@ -6,6 +6,7 @@ import Fastify from "fastify";
 
 import { config } from "./config.js";
 import { authPlugin } from "./plugins/auth.js";
+import swaggerPlugin from "./plugins/swagger.js";
 import catalogRoutes from "./routes/catalog.js";
 
 type BuildServerOptions = {
@@ -21,6 +22,7 @@ export const buildServer = ({ logger }: BuildServerOptions) => {
   void app.register(cors, { origin: false });
   void app.register(sensible);
   void app.register(authPlugin);
+  void app.register(swaggerPlugin);
 
   if (config.log.requestLogging) {
     app.addHook("onResponse", (request, reply, done) => {

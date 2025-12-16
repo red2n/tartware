@@ -2,6 +2,7 @@ import { TenantRoleEnum, UserTenantAssociationWithDetailsSchema } from "@tartwar
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 
+import { buildRouteSchema, schemaFromZod } from "../lib/openapi.js";
 import { listUserTenantAssociations } from "../services/user-tenant-association-service.js";
 import { sanitizeForJson } from "../utils/sanitize.js";
 
@@ -20,6 +21,16 @@ const AssociationListResponseSchema = z.array(
     version: z.string(),
   }),
 );
+const AssociationListQueryJsonSchema = schemaFromZod(
+  AssociationListQuerySchema,
+  "AssociationListQuery",
+);
+const AssociationListResponseJsonSchema = schemaFromZod(
+  AssociationListResponseSchema,
+  "AssociationListResponse",
+);
+
+const ASSOCIATIONS_TAG = "User Tenant Associations";
 
 export const registerUserTenantAssociationRoutes = (app: FastifyInstance): void => {
   app.get<{ Querystring: AssociationListQuery }>(
@@ -28,6 +39,14 @@ export const registerUserTenantAssociationRoutes = (app: FastifyInstance): void 
       preHandler: app.withTenantScope({
         resolveTenantId: (request) => (request.query as AssociationListQuery).tenant_id,
         minRole: "ADMIN",
+      }),
+      schema: buildRouteSchema({
+        tag: ASSOCIATIONS_TAG,
+        summary: "List user-tenant associations",
+        querystring: AssociationListQueryJsonSchema,
+        response: {
+          200: AssociationListResponseJsonSchema,
+        },
       }),
     },
     async (request) => {

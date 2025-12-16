@@ -64,6 +64,25 @@ Platform-wide standardization for resilient CRUD handling at 20+ ops/sec with au
 - Provide manual replay tooling so revenue managers can re-rate affected reservations once the partner corrects their data.
 - _2025-12-15 Update_: `setup-database.sh` now hard-resets rate plans to BAR/RACK defaults and the data loaders enforce those seeds. Fallback runbook + audit requirements captured above; implementation will plug into reservation ingestion after lifecycle guard wiring.
 
+#### 0.8 **Amenity Catalog Templates**
+- Provide a canonical amenity catalog (WiFi, smart TV, climate control, etc.) per property so room types can be cloned/derived without free-form JSON conflicts. Catalog entries must be open-source friendly, production ready, and safe to regenerate during installs.
+- Update setup automation to purge/normalize conflicting amenity payloads, seed the default catalog, and keep room types aligned so API consumers always start from the sanctioned list.
+- Expose catalog data to API/CLI later for tenant overrides while preserving `is_default` markers so operators understand which entries are Tartware-managed.
+- _2025-12-15T11:45:00Z Update_: Added `room_amenity_catalog` table + indexes, wired into `00-create-all-tables.sql`, and enhanced `setup-database.sh` to upsert the default amenity set (WiFi, Smart TV, Climate Control, etc.) for every property. The script now replaces any non-canonical `room_types.amenities` arrays with the curated list so downstream room creation flows derive from the same template without data conflicts.
+- _2025-12-15T12:15:00Z Update_: Settings-service now exposes `/v1/settings/properties/:propertyId/amenities` (list/create/update) backed by the new catalog, complete with JWT auth, zod validation, and conflict-safe repository logic. Tenants can toggle Tartware defaults via the `isActive` flag or register custom amenities, prepping us for UI enablement later.
+- **Follow-ups (not started):**
+  1. Add tenant-facing API surfaces (and eventual UI hooks) that allow cloning the catalog into new room types and surfacing amenity metadata in the room creation wizard.
+  2. Introduce policy controls per tenant/property for custom tags (max count, naming conventions) and emit Prometheus metrics for catalog drift.
+  3. Build a background reconciler that flags room types referencing non-catalog amenity codes and offers a repair endpoint/command.
+
+#### 0.9 **API Discoverability / Swagger**
+- Every Fastify edge (API Gateway, Core Service, Reservations Command Service, Settings Service) must expose OpenAPI 3.0 specs + Swagger UI at `/docs` so platform and partner teams can self-discover endpoints.
+- _2025-12-15T13:05:00Z Update_: Added `@fastify/swagger` + `@fastify/swagger-ui` dependencies to all Fastify services and registered route-independent plugins so `/docs` now renders live specs (Core, Reservations Command, Settings, API Gateway). Next steps: enrich route schemas (request/response bodies) to improve the generated docs and export static bundles for CI compliance reviews.
+- _2025-12-16T06:37:00Z Update_: API Gateway health + reservation proxy routes now include Fastify schemas so `/docs` lists the operations instead of an empty spec. Still need granular schemas for nested reservation resources and the remaining services, plus a script to export the OpenAPI bundle for CI.
+- _2025-12-16T08:10:00Z Update_: Core-service, reservations-command-service, and settings-service now ship baseline schemas on every exposed route (health probes, catalog endpoints, reservation commands, etc.), so their Swagger `/docs` endpoints enumerate the available APIs. Remaining work: replace the generic object/array schemas with precise shapes generated from our Zod definitions and add an automated `npm run export:openapi` target that writes the JSON bundle for CI/compliance.
+- _2025-12-16T09:45:00Z Update_: Core-service and reservations-command-service route schemas now emit OpenAPI responses generated from the Zod validators, and settings-service inherits the Swagger plugin so `/docs` reflects the typed contracts.
+- _2025-12-16T09:45:00Z Update_: Added `npm run export:openapi`, which boots the Fastify instances from their compiled artifacts and writes JSON bundles under `docs/openapi/*.json` for CI/compliance consumers.
+
 ### 1. **Super Admin / Global Administrator Implementation (Priority: HIGH)**
 Industry-standard privileged access management for multi-tenant PMS platform following OWASP Authorization best practices.
 

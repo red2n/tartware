@@ -2,6 +2,7 @@ import { PublicUserSchema } from "@tartware/schemas";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 
+import { buildRouteSchema, schemaFromZod } from "../lib/openapi.js";
 import { listUsers } from "../services/user-service.js";
 import { sanitizeForJson } from "../utils/sanitize.js";
 
@@ -17,6 +18,10 @@ const UserListResponseSchema = z.array(
     version: z.string(), // BigInt serialized as string
   }),
 );
+const UserListQueryJsonSchema = schemaFromZod(UserListQuerySchema, "UserListQuery");
+const UserListResponseJsonSchema = schemaFromZod(UserListResponseSchema, "UserListResponse");
+
+const USERS_TAG = "Users";
 
 export const registerUserRoutes = (app: FastifyInstance): void => {
   app.get<{ Querystring: UserListQuery }>(
@@ -25,6 +30,14 @@ export const registerUserRoutes = (app: FastifyInstance): void => {
       preHandler: app.withTenantScope({
         resolveTenantId: (request) => (request.query as UserListQuery).tenant_id,
         minRole: "MANAGER",
+      }),
+      schema: buildRouteSchema({
+        tag: USERS_TAG,
+        summary: "List tenant users",
+        querystring: UserListQueryJsonSchema,
+        response: {
+          200: UserListResponseJsonSchema,
+        },
       }),
     },
     async (request) => {

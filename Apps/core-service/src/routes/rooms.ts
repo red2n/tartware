@@ -2,6 +2,7 @@ import { HousekeepingStatusEnum, RoomStatusEnum } from "@tartware/schemas";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 
+import { buildRouteSchema, schemaFromZod } from "../lib/openapi.js";
 import { listRooms, RoomListItemSchema } from "../services/room-service.js";
 
 const RoomListQuerySchema = z.object({
@@ -31,6 +32,10 @@ const RoomListQuerySchema = z.object({
 type RoomListQuery = z.infer<typeof RoomListQuerySchema>;
 
 const RoomListResponseSchema = z.array(RoomListItemSchema);
+const RoomListQueryJsonSchema = schemaFromZod(RoomListQuerySchema, "RoomListQuery");
+const RoomListResponseJsonSchema = schemaFromZod(RoomListResponseSchema, "RoomListResponse");
+
+const ROOMS_TAG = "Rooms";
 
 export const registerRoomRoutes = (app: FastifyInstance): void => {
   app.get<{ Querystring: RoomListQuery }>(
@@ -40,6 +45,14 @@ export const registerRoomRoutes = (app: FastifyInstance): void => {
         resolveTenantId: (request) => (request.query as RoomListQuery).tenant_id,
         minRole: "MANAGER",
         requiredModules: "core",
+      }),
+      schema: buildRouteSchema({
+        tag: ROOMS_TAG,
+        summary: "List rooms with housekeeping filters",
+        querystring: RoomListQueryJsonSchema,
+        response: {
+          200: RoomListResponseJsonSchema,
+        },
       }),
     },
     async (request) => {

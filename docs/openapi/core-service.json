@@ -1,0 +1,3902 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "@tartware/core-service API",
+    "description": "Core platform APIs for tenants, reservations, rooms, billing, and super-admin operations.",
+    "version": "0.1.0"
+  },
+  "components": {
+    "schemas": {}
+  },
+  "paths": {
+    "/health": {
+      "get": {
+        "summary": "Core service health probe",
+        "tags": [
+          "Health"
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "ok"
+                      ]
+                    },
+                    "redis": {
+                      "type": "object",
+                      "properties": {
+                        "connected": {
+                          "type": "boolean"
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "healthy",
+                            "unavailable"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "connected",
+                        "status"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "status",
+                    "redis"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/auth/login": {
+      "post": {
+        "summary": "Authenticate a user and return a JWT",
+        "tags": [
+          "Auth"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "username": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "password": {
+                    "type": "string",
+                    "minLength": 8
+                  }
+                },
+                "required": [
+                  "username",
+                  "password"
+                ],
+                "additionalProperties": false
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "username": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 150,
+                      "description": "Non-empty string"
+                    },
+                    "email": {
+                      "type": "string",
+                      "format": "email",
+                      "description": "Email address"
+                    },
+                    "first_name": {
+                      "type": "string",
+                      "maxLength": 150
+                    },
+                    "last_name": {
+                      "type": "string",
+                      "maxLength": 150
+                    },
+                    "is_active": {
+                      "type": "boolean",
+                      "default": true
+                    },
+                    "memberships": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "tenant_id": {
+                            "type": "string",
+                            "format": "uuid"
+                          },
+                          "tenant_name": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "role": {
+                            "type": "string",
+                            "enum": [
+                              "OWNER",
+                              "ADMIN",
+                              "MANAGER",
+                              "STAFF",
+                              "VIEWER"
+                            ]
+                          },
+                          "is_active": {
+                            "type": "boolean"
+                          },
+                          "permissions": {
+                            "type": "object",
+                            "additionalProperties": {}
+                          }
+                        },
+                        "required": [
+                          "tenant_id",
+                          "role",
+                          "is_active",
+                          "permissions"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "access_token": {
+                      "type": "string"
+                    },
+                    "token_type": {
+                      "type": "string",
+                      "enum": [
+                        "Bearer"
+                      ]
+                    },
+                    "expires_in": {
+                      "type": "number",
+                      "exclusiveMinimum": 0
+                    },
+                    "must_change_password": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "username",
+                    "email",
+                    "first_name",
+                    "last_name",
+                    "memberships",
+                    "access_token",
+                    "token_type",
+                    "expires_in",
+                    "must_change_password"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error",
+                    "message"
+                  ],
+                  "additionalProperties": true
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error",
+                    "message"
+                  ],
+                  "additionalProperties": true
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/auth/context": {
+      "get": {
+        "summary": "Return the authenticated user's memberships",
+        "tags": [
+          "Auth"
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "is_authenticated": {
+                      "type": "boolean"
+                    },
+                    "user_id": {
+                      "type": "string",
+                      "format": "uuid",
+                      "nullable": true
+                    },
+                    "memberships": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "tenant_id": {
+                            "type": "string",
+                            "format": "uuid"
+                          },
+                          "tenant_name": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "role": {
+                            "type": "string",
+                            "enum": [
+                              "OWNER",
+                              "ADMIN",
+                              "MANAGER",
+                              "STAFF",
+                              "VIEWER"
+                            ]
+                          },
+                          "is_active": {
+                            "type": "boolean"
+                          },
+                          "permissions": {
+                            "type": "object",
+                            "additionalProperties": {}
+                          }
+                        },
+                        "required": [
+                          "tenant_id",
+                          "role",
+                          "is_active",
+                          "permissions"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "authorized_tenants": {
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "format": "uuid"
+                      }
+                    },
+                    "header_hint": {
+                      "type": "object",
+                      "properties": {
+                        "header": {
+                          "type": "string",
+                          "enum": [
+                            "Authorization"
+                          ]
+                        },
+                        "description": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "header",
+                        "description"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "is_authenticated",
+                    "user_id",
+                    "memberships",
+                    "authorized_tenants",
+                    "header_hint"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/auth/change-password": {
+      "post": {
+        "summary": "Change the authenticated user's password",
+        "tags": [
+          "Auth"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "current_password": {
+                    "type": "string",
+                    "minLength": 8
+                  },
+                  "new_password": {
+                    "type": "string",
+                    "minLength": 8
+                  }
+                },
+                "required": [
+                  "current_password",
+                  "new_password"
+                ],
+                "additionalProperties": false
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "username": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 150,
+                      "description": "Non-empty string"
+                    },
+                    "email": {
+                      "type": "string",
+                      "format": "email",
+                      "description": "Email address"
+                    },
+                    "first_name": {
+                      "type": "string",
+                      "maxLength": 150
+                    },
+                    "last_name": {
+                      "type": "string",
+                      "maxLength": 150
+                    },
+                    "is_active": {
+                      "type": "boolean",
+                      "default": true
+                    },
+                    "memberships": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "tenant_id": {
+                            "type": "string",
+                            "format": "uuid"
+                          },
+                          "tenant_name": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "role": {
+                            "type": "string",
+                            "enum": [
+                              "OWNER",
+                              "ADMIN",
+                              "MANAGER",
+                              "STAFF",
+                              "VIEWER"
+                            ]
+                          },
+                          "is_active": {
+                            "type": "boolean"
+                          },
+                          "permissions": {
+                            "type": "object",
+                            "additionalProperties": {}
+                          }
+                        },
+                        "required": [
+                          "tenant_id",
+                          "role",
+                          "is_active",
+                          "permissions"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "access_token": {
+                      "type": "string"
+                    },
+                    "token_type": {
+                      "type": "string",
+                      "enum": [
+                        "Bearer"
+                      ]
+                    },
+                    "expires_in": {
+                      "type": "number",
+                      "exclusiveMinimum": 0
+                    },
+                    "must_change_password": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "username",
+                    "email",
+                    "first_name",
+                    "last_name",
+                    "memberships",
+                    "access_token",
+                    "token_type",
+                    "expires_in",
+                    "must_change_password"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error",
+                    "message"
+                  ],
+                  "additionalProperties": true
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error",
+                    "message"
+                  ],
+                  "additionalProperties": true
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/tenants": {
+      "get": {
+        "summary": "List the tenants available to the authenticated user",
+        "tags": [
+          "Tenants"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "integer",
+              "exclusiveMinimum": 0,
+              "maximum": 100,
+              "default": 50
+            },
+            "in": "query",
+            "name": "limit",
+            "required": false
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "description": "Primary key"
+                      },
+                      "name": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 200,
+                        "description": "Tenant organization name"
+                      },
+                      "slug": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 200,
+                        "pattern": "^[a-z0-9-]+$",
+                        "description": "URL-friendly identifier"
+                      },
+                      "type": {
+                        "type": "string",
+                        "enum": [
+                          "INDEPENDENT",
+                          "CHAIN",
+                          "FRANCHISE",
+                          "MANAGEMENT_COMPANY"
+                        ],
+                        "description": "Organization type"
+                      },
+                      "status": {
+                        "type": "string",
+                        "enum": [
+                          "TRIAL",
+                          "ACTIVE",
+                          "SUSPENDED",
+                          "INACTIVE",
+                          "CANCELLED"
+                        ],
+                        "default": "TRIAL",
+                        "description": "Subscription status"
+                      },
+                      "email": {
+                        "type": "string",
+                        "format": "email",
+                        "description": "Primary contact email"
+                      },
+                      "phone": {
+                        "type": "string",
+                        "pattern": "^\\+?[1-9]\\d{1,14}$",
+                        "description": "Contact phone number"
+                      },
+                      "website": {
+                        "type": "string",
+                        "format": "uri",
+                        "description": "Organization website"
+                      },
+                      "address_line1": {
+                        "type": "string",
+                        "maxLength": 255
+                      },
+                      "address_line2": {
+                        "type": "string",
+                        "maxLength": 255
+                      },
+                      "city": {
+                        "type": "string",
+                        "maxLength": 100
+                      },
+                      "state": {
+                        "type": "string",
+                        "maxLength": 100
+                      },
+                      "postal_code": {
+                        "type": "string",
+                        "maxLength": 20
+                      },
+                      "country": {
+                        "type": "string",
+                        "minLength": 2,
+                        "maxLength": 2,
+                        "pattern": "^[A-Z]{2}$",
+                        "description": "ISO 3166-1 alpha-2 country code"
+                      },
+                      "tax_id": {
+                        "type": "string",
+                        "minLength": 5,
+                        "maxLength": 20,
+                        "pattern": "^[A-Z0-9-]+$",
+                        "description": "Tax identification number"
+                      },
+                      "business_license": {
+                        "type": "string",
+                        "maxLength": 100
+                      },
+                      "registration_number": {
+                        "type": "string",
+                        "maxLength": 100
+                      },
+                      "config": {
+                        "type": "object",
+                        "properties": {
+                          "features": {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            },
+                            "default": [
+                              "reservations",
+                              "payments"
+                            ]
+                          },
+                          "maxUsers": {
+                            "type": "integer",
+                            "exclusiveMinimum": 0,
+                            "default": 10
+                          },
+                          "maxProperties": {
+                            "type": "integer",
+                            "exclusiveMinimum": 0,
+                            "default": 5
+                          },
+                          "defaultCurrency": {
+                            "type": "string",
+                            "minLength": 3,
+                            "maxLength": 3,
+                            "default": "USD"
+                          },
+                          "defaultLanguage": {
+                            "type": "string",
+                            "minLength": 2,
+                            "maxLength": 2,
+                            "default": "en"
+                          },
+                          "defaultTimezone": {
+                            "type": "string",
+                            "default": "UTC"
+                          },
+                          "enableMultiProperty": {
+                            "type": "boolean",
+                            "default": true
+                          },
+                          "enableChannelManager": {
+                            "type": "boolean",
+                            "default": false
+                          },
+                          "enableLoyaltyProgram": {
+                            "type": "boolean",
+                            "default": false
+                          },
+                          "enableAdvancedReporting": {
+                            "type": "boolean",
+                            "default": false
+                          },
+                          "enablePaymentProcessing": {
+                            "type": "boolean",
+                            "default": true
+                          },
+                          "brandingEnabled": {
+                            "type": "boolean",
+                            "default": true
+                          }
+                        },
+                        "additionalProperties": true,
+                        "description": "Tenant configuration settings"
+                      },
+                      "subscription": {
+                        "type": "object",
+                        "properties": {
+                          "plan": {
+                            "type": "string",
+                            "enum": [
+                              "FREE",
+                              "BASIC",
+                              "PROFESSIONAL",
+                              "ENTERPRISE"
+                            ],
+                            "default": "FREE"
+                          },
+                          "amount": {
+                            "type": "number",
+                            "minimum": 0,
+                            "default": 0
+                          },
+                          "currency": {
+                            "type": "string",
+                            "minLength": 3,
+                            "maxLength": 3,
+                            "default": "USD"
+                          },
+                          "billingCycle": {
+                            "type": "string",
+                            "enum": [
+                              "MONTHLY",
+                              "YEARLY",
+                              "ONE_TIME"
+                            ],
+                            "default": "MONTHLY"
+                          },
+                          "startDate": {
+                            "type": "string",
+                            "format": "date-time"
+                          },
+                          "endDate": {
+                            "type": "string",
+                            "format": "date-time"
+                          },
+                          "trialEndDate": {
+                            "type": "string",
+                            "format": "date-time"
+                          }
+                        },
+                        "additionalProperties": true,
+                        "description": "Subscription details"
+                      },
+                      "metadata": {
+                        "type": "object",
+                        "additionalProperties": {},
+                        "description": "Flexible JSONB metadata object"
+                      },
+                      "created_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "default": {},
+                        "description": "Timestamp when record was created"
+                      },
+                      "updated_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "description": "Timestamp when record was last updated"
+                      },
+                      "created_by": {
+                        "type": "string",
+                        "format": "uuid",
+                        "description": "User ID who created the record"
+                      },
+                      "updated_by": {
+                        "type": "string",
+                        "format": "uuid",
+                        "description": "User ID who last updated the record"
+                      },
+                      "deleted_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "nullable": true,
+                        "description": "Timestamp when record was soft-deleted (NULL = active)"
+                      },
+                      "version": {
+                        "type": "string"
+                      },
+                      "property_count": {
+                        "type": "integer",
+                        "minimum": 0
+                      },
+                      "user_count": {
+                        "type": "integer",
+                        "minimum": 0
+                      },
+                      "active_properties": {
+                        "type": "integer",
+                        "minimum": 0
+                      }
+                    },
+                    "required": [
+                      "id",
+                      "name",
+                      "slug",
+                      "type",
+                      "email",
+                      "config",
+                      "subscription",
+                      "version"
+                    ],
+                    "additionalProperties": false
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/properties": {
+      "get": {
+        "summary": "List properties for a tenant",
+        "tags": [
+          "Properties"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "integer",
+              "exclusiveMinimum": 0,
+              "maximum": 100,
+              "default": 50
+            },
+            "in": "query",
+            "name": "limit",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "in": "query",
+            "name": "tenant_id",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "format": "uuid"
+                      },
+                      "tenant_id": {
+                        "type": "string",
+                        "format": "uuid"
+                      },
+                      "property_name": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 255,
+                        "description": "Non-empty string"
+                      },
+                      "property_code": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 50,
+                        "description": "Non-empty string"
+                      },
+                      "address": {
+                        "type": "object",
+                        "additionalProperties": {},
+                        "default": {},
+                        "description": "Structured address object"
+                      },
+                      "phone": {
+                        "type": "string"
+                      },
+                      "email": {
+                        "type": "string",
+                        "format": "email"
+                      },
+                      "website": {
+                        "type": "string",
+                        "format": "uri"
+                      },
+                      "property_type": {
+                        "type": "string"
+                      },
+                      "star_rating": {
+                        "type": "number",
+                        "multipleOf": 0.01,
+                        "minimum": 0,
+                        "description": "Monetary amount with 2 decimal precision"
+                      },
+                      "total_rooms": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "default": 0
+                      },
+                      "tax_id": {
+                        "type": "string"
+                      },
+                      "license_number": {
+                        "type": "string"
+                      },
+                      "currency": {
+                        "type": "string",
+                        "minLength": 3,
+                        "maxLength": 3,
+                        "default": "USD"
+                      },
+                      "timezone": {
+                        "type": "string",
+                        "default": "UTC"
+                      },
+                      "config": {
+                        "type": "object",
+                        "additionalProperties": {},
+                        "default": {},
+                        "description": "Property-specific configuration"
+                      },
+                      "integrations": {
+                        "type": "object",
+                        "additionalProperties": {},
+                        "default": {},
+                        "description": "Integration settings"
+                      },
+                      "is_active": {
+                        "type": "boolean",
+                        "default": true
+                      },
+                      "metadata": {
+                        "type": "object",
+                        "additionalProperties": {},
+                        "description": "Flexible JSONB metadata object"
+                      },
+                      "created_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "default": {},
+                        "description": "Timestamp when record was created"
+                      },
+                      "updated_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "description": "Timestamp when record was last updated"
+                      },
+                      "created_by": {
+                        "type": "string",
+                        "format": "uuid",
+                        "description": "User ID who created the record"
+                      },
+                      "updated_by": {
+                        "type": "string",
+                        "format": "uuid",
+                        "description": "User ID who last updated the record"
+                      },
+                      "deleted_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "nullable": true,
+                        "description": "Timestamp when record was soft-deleted (NULL = active)"
+                      },
+                      "room_count": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "default": 0
+                      },
+                      "occupied_rooms": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "default": 0
+                      },
+                      "available_rooms": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "default": 0
+                      },
+                      "occupancy_rate": {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 1,
+                        "default": 0
+                      },
+                      "current_guests": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "default": 0
+                      },
+                      "todays_arrivals": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "default": 0
+                      },
+                      "todays_departures": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "default": 0
+                      },
+                      "version": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "id",
+                      "tenant_id",
+                      "property_name",
+                      "property_code",
+                      "version"
+                    ],
+                    "additionalProperties": false
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/users": {
+      "get": {
+        "summary": "List tenant users",
+        "tags": [
+          "Users"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "integer",
+              "exclusiveMinimum": 0,
+              "maximum": 100,
+              "default": 50
+            },
+            "in": "query",
+            "name": "limit",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "in": "query",
+            "name": "tenant_id",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "format": "uuid"
+                      },
+                      "username": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 150,
+                        "description": "Non-empty string"
+                      },
+                      "email": {
+                        "type": "string",
+                        "format": "email",
+                        "description": "Email address"
+                      },
+                      "first_name": {
+                        "type": "string",
+                        "maxLength": 150
+                      },
+                      "last_name": {
+                        "type": "string",
+                        "maxLength": 150
+                      },
+                      "phone": {
+                        "type": "string",
+                        "pattern": "^\\+?[1-9]\\d{1,14}$",
+                        "description": "Phone number in international format"
+                      },
+                      "avatar_url": {
+                        "type": "string",
+                        "format": "uri",
+                        "description": "Valid URL"
+                      },
+                      "is_active": {
+                        "type": "boolean",
+                        "default": true
+                      },
+                      "is_verified": {
+                        "type": "boolean",
+                        "default": false
+                      },
+                      "email_verified_at": {
+                        "type": "string",
+                        "format": "date-time"
+                      },
+                      "last_login_at": {
+                        "type": "string",
+                        "format": "date-time"
+                      },
+                      "preferences": {
+                        "type": "object",
+                        "additionalProperties": {},
+                        "default": {},
+                        "description": "UI and notification preferences"
+                      },
+                      "metadata": {
+                        "type": "object",
+                        "additionalProperties": {},
+                        "description": "Flexible JSONB metadata object"
+                      },
+                      "created_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "default": {},
+                        "description": "Timestamp when record was created"
+                      },
+                      "updated_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "description": "Timestamp when record was last updated"
+                      },
+                      "version": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "id",
+                      "username",
+                      "email",
+                      "first_name",
+                      "last_name",
+                      "version"
+                    ],
+                    "additionalProperties": false
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/guests": {
+      "get": {
+        "summary": "List guests with optional filters",
+        "tags": [
+          "Guests"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "integer",
+              "exclusiveMinimum": 0,
+              "maximum": 100,
+              "default": 50
+            },
+            "in": "query",
+            "name": "limit",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "in": "query",
+            "name": "tenant_id",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "in": "query",
+            "name": "property_id",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 3,
+              "maxLength": 255
+            },
+            "in": "query",
+            "name": "email",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 3,
+              "maxLength": 20
+            },
+            "in": "query",
+            "name": "phone",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 50
+            },
+            "in": "query",
+            "name": "loyalty_tier",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "boolean"
+            },
+            "in": "query",
+            "name": "vip_status",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "boolean"
+            },
+            "in": "query",
+            "name": "is_blacklisted",
+            "required": false
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "format": "uuid"
+                      },
+                      "tenant_id": {
+                        "type": "string",
+                        "format": "uuid"
+                      },
+                      "first_name": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "last_name": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "middle_name": {
+                        "type": "string"
+                      },
+                      "title": {
+                        "type": "string"
+                      },
+                      "date_of_birth": {
+                        "type": "string",
+                        "format": "date-time"
+                      },
+                      "gender": {
+                        "type": "string"
+                      },
+                      "nationality": {
+                        "type": "string"
+                      },
+                      "email": {
+                        "type": "string",
+                        "format": "email",
+                        "description": "Email address"
+                      },
+                      "phone": {
+                        "type": "string",
+                        "pattern": "^\\+?[1-9]\\d{1,14}$",
+                        "description": "Phone number in international format"
+                      },
+                      "secondary_phone": {
+                        "type": "string",
+                        "pattern": "^\\+?[1-9]\\d{1,14}$",
+                        "description": "Phone number in international format"
+                      },
+                      "address": {
+                        "type": "object",
+                        "properties": {
+                          "street": {
+                            "type": "string"
+                          },
+                          "city": {
+                            "type": "string"
+                          },
+                          "state": {
+                            "type": "string"
+                          },
+                          "postalCode": {
+                            "type": "string"
+                          },
+                          "country": {
+                            "type": "string"
+                          }
+                        },
+                        "additionalProperties": false,
+                        "default": {}
+                      },
+                      "id_type": {
+                        "type": "string"
+                      },
+                      "id_number": {
+                        "type": "string"
+                      },
+                      "passport_number": {
+                        "type": "string"
+                      },
+                      "passport_expiry": {
+                        "type": "string",
+                        "format": "date-time"
+                      },
+                      "company_name": {
+                        "type": "string"
+                      },
+                      "company_tax_id": {
+                        "type": "string"
+                      },
+                      "loyalty_tier": {
+                        "type": "string"
+                      },
+                      "loyalty_points": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "default": 0
+                      },
+                      "vip_status": {
+                        "type": "boolean",
+                        "default": false
+                      },
+                      "preferences": {
+                        "type": "object",
+                        "properties": {
+                          "smoking": {
+                            "type": "boolean",
+                            "default": false
+                          },
+                          "language": {
+                            "type": "string",
+                            "minLength": 2,
+                            "maxLength": 2,
+                            "default": "en"
+                          },
+                          "dietaryRestrictions": {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            },
+                            "default": []
+                          },
+                          "specialRequests": {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            },
+                            "default": []
+                          },
+                          "roomType": {
+                            "type": "string"
+                          },
+                          "floor": {
+                            "type": "string"
+                          },
+                          "bedType": {
+                            "type": "string",
+                            "enum": [
+                              "KING",
+                              "QUEEN",
+                              "TWIN",
+                              "DOUBLE"
+                            ]
+                          }
+                        },
+                        "additionalProperties": true,
+                        "default": {}
+                      },
+                      "marketing_consent": {
+                        "type": "boolean",
+                        "default": false
+                      },
+                      "communication_preferences": {
+                        "type": "object",
+                        "properties": {
+                          "email": {
+                            "type": "boolean",
+                            "default": true
+                          },
+                          "sms": {
+                            "type": "boolean",
+                            "default": false
+                          },
+                          "phone": {
+                            "type": "boolean",
+                            "default": true
+                          },
+                          "post": {
+                            "type": "boolean",
+                            "default": false
+                          }
+                        },
+                        "additionalProperties": false,
+                        "default": {}
+                      },
+                      "total_bookings": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "default": 0
+                      },
+                      "total_nights": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "default": 0
+                      },
+                      "total_revenue": {
+                        "type": "number",
+                        "multipleOf": 0.01,
+                        "minimum": 0,
+                        "description": "Monetary amount with 2 decimal precision",
+                        "default": 0
+                      },
+                      "last_stay_date": {
+                        "type": "string",
+                        "format": "date-time"
+                      },
+                      "is_blacklisted": {
+                        "type": "boolean",
+                        "default": false
+                      },
+                      "blacklist_reason": {
+                        "type": "string"
+                      },
+                      "notes": {
+                        "type": "string"
+                      },
+                      "metadata": {
+                        "type": "object",
+                        "additionalProperties": {},
+                        "description": "Flexible JSONB metadata object"
+                      },
+                      "created_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "default": {},
+                        "description": "Timestamp when record was created"
+                      },
+                      "updated_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "description": "Timestamp when record was last updated"
+                      },
+                      "created_by": {
+                        "type": "string",
+                        "format": "uuid",
+                        "description": "User ID who created the record"
+                      },
+                      "updated_by": {
+                        "type": "string",
+                        "format": "uuid",
+                        "description": "User ID who last updated the record"
+                      },
+                      "deleted_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "nullable": true,
+                        "description": "Timestamp when record was soft-deleted (NULL = active)"
+                      },
+                      "version": {
+                        "type": "string"
+                      },
+                      "upcoming_reservations": {
+                        "type": "integer",
+                        "minimum": 0
+                      },
+                      "past_reservations": {
+                        "type": "integer",
+                        "minimum": 0
+                      },
+                      "cancelled_reservations": {
+                        "type": "integer",
+                        "minimum": 0
+                      },
+                      "average_stay_length": {
+                        "type": "number",
+                        "minimum": 0
+                      },
+                      "preferred_room_types": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      "lifetime_value": {
+                        "type": "number",
+                        "multipleOf": 0.01,
+                        "minimum": 0,
+                        "description": "Monetary amount with 2 decimal precision"
+                      }
+                    },
+                    "required": [
+                      "id",
+                      "tenant_id",
+                      "first_name",
+                      "last_name",
+                      "email",
+                      "version"
+                    ],
+                    "additionalProperties": false
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/user-tenant-associations": {
+      "get": {
+        "summary": "List user-tenant associations",
+        "tags": [
+          "User Tenant Associations"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "integer",
+              "exclusiveMinimum": 0,
+              "maximum": 100,
+              "default": 50
+            },
+            "in": "query",
+            "name": "limit",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "in": "query",
+            "name": "tenant_id",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "in": "query",
+            "name": "user_id",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "OWNER",
+                "ADMIN",
+                "MANAGER",
+                "STAFF",
+                "VIEWER"
+              ]
+            },
+            "in": "query",
+            "name": "role",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "boolean"
+            },
+            "in": "query",
+            "name": "is_active",
+            "required": false
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "format": "uuid"
+                      },
+                      "user_id": {
+                        "type": "string",
+                        "format": "uuid"
+                      },
+                      "tenant_id": {
+                        "type": "string",
+                        "format": "uuid"
+                      },
+                      "role": {
+                        "type": "string",
+                        "enum": [
+                          "OWNER",
+                          "ADMIN",
+                          "MANAGER",
+                          "STAFF",
+                          "VIEWER"
+                        ]
+                      },
+                      "is_active": {
+                        "type": "boolean",
+                        "default": true
+                      },
+                      "permissions": {
+                        "type": "object",
+                        "additionalProperties": {},
+                        "description": "Role overrides / grants"
+                      },
+                      "valid_from": {
+                        "type": "string",
+                        "format": "date-time"
+                      },
+                      "valid_until": {
+                        "type": "string",
+                        "format": "date-time"
+                      },
+                      "metadata": {
+                        "type": "object",
+                        "additionalProperties": {},
+                        "description": "Flexible JSONB metadata object"
+                      },
+                      "created_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "default": {},
+                        "description": "Timestamp when record was created"
+                      },
+                      "updated_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "description": "Timestamp when record was last updated"
+                      },
+                      "created_by": {
+                        "type": "string",
+                        "format": "uuid",
+                        "description": "User ID who created the record"
+                      },
+                      "updated_by": {
+                        "type": "string",
+                        "format": "uuid",
+                        "description": "User ID who last updated the record"
+                      },
+                      "version": {
+                        "type": "string"
+                      },
+                      "user": {
+                        "type": "object",
+                        "properties": {
+                          "username": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "email": {
+                            "type": "string",
+                            "format": "email"
+                          },
+                          "first_name": {
+                            "type": "string"
+                          },
+                          "last_name": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "username",
+                          "email"
+                        ],
+                        "additionalProperties": false
+                      },
+                      "tenant": {
+                        "type": "object",
+                        "properties": {
+                          "name": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "slug": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "status": {
+                            "type": "string",
+                            "enum": [
+                              "TRIAL",
+                              "ACTIVE",
+                              "SUSPENDED",
+                              "INACTIVE",
+                              "CANCELLED"
+                            ]
+                          }
+                        },
+                        "required": [
+                          "name",
+                          "slug",
+                          "status"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "required": [
+                      "id",
+                      "user_id",
+                      "tenant_id",
+                      "role",
+                      "version"
+                    ],
+                    "additionalProperties": false
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/dashboard/stats": {
+      "get": {
+        "summary": "Return aggregated dashboard KPIs",
+        "tags": [
+          "Dashboard"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "in": "query",
+            "name": "tenant_id",
+            "required": true,
+            "description": "Tenant ID"
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "property_id",
+            "required": false,
+            "description": "Property ID or \"all\" for aggregated stats"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "occupancy": {
+                      "type": "object",
+                      "properties": {
+                        "rate": {
+                          "type": "number",
+                          "minimum": 0,
+                          "maximum": 100,
+                          "description": "Occupancy rate as percentage"
+                        },
+                        "change": {
+                          "type": "number",
+                          "description": "Percentage change from previous period"
+                        },
+                        "trend": {
+                          "type": "string",
+                          "enum": [
+                            "up",
+                            "down",
+                            "neutral"
+                          ],
+                          "description": "Trend indicator"
+                        }
+                      },
+                      "required": [
+                        "rate",
+                        "change",
+                        "trend"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "revenue": {
+                      "type": "object",
+                      "properties": {
+                        "today": {
+                          "type": "number",
+                          "minimum": 0,
+                          "description": "Today's revenue"
+                        },
+                        "change": {
+                          "type": "number",
+                          "description": "Percentage change from yesterday"
+                        },
+                        "trend": {
+                          "type": "string",
+                          "enum": [
+                            "up",
+                            "down",
+                            "neutral"
+                          ],
+                          "description": "Trend indicator"
+                        },
+                        "currency": {
+                          "type": "string",
+                          "minLength": 3,
+                          "maxLength": 3,
+                          "default": "USD",
+                          "description": "Currency code"
+                        }
+                      },
+                      "required": [
+                        "today",
+                        "change",
+                        "trend"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "checkIns": {
+                      "type": "object",
+                      "properties": {
+                        "total": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "description": "Total check-ins today"
+                        },
+                        "pending": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "description": "Pending check-ins"
+                        },
+                        "completed": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "description": "Completed check-ins"
+                        }
+                      },
+                      "required": [
+                        "total",
+                        "pending"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "checkOuts": {
+                      "type": "object",
+                      "properties": {
+                        "total": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "description": "Total check-outs today"
+                        },
+                        "pending": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "description": "Pending check-outs"
+                        },
+                        "completed": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "description": "Completed check-outs"
+                        }
+                      },
+                      "required": [
+                        "total",
+                        "pending"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "occupancy",
+                    "revenue",
+                    "checkIns",
+                    "checkOuts"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/dashboard/activity": {
+      "get": {
+        "summary": "Recent reservations / activity feed",
+        "tags": [
+          "Dashboard"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "in": "query",
+            "name": "tenant_id",
+            "required": true,
+            "description": "Tenant ID"
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "property_id",
+            "required": false,
+            "description": "Property ID or \"all\" for aggregated stats"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "description": "Activity ID"
+                      },
+                      "type": {
+                        "type": "string",
+                        "description": "Activity type"
+                      },
+                      "title": {
+                        "type": "string",
+                        "description": "Activity title"
+                      },
+                      "description": {
+                        "type": "string",
+                        "description": "Activity description"
+                      },
+                      "timestamp": {
+                        "type": "string",
+                        "format": "date-time",
+                        "description": "Activity timestamp"
+                      },
+                      "icon": {
+                        "type": "string",
+                        "description": "Material icon name"
+                      },
+                      "urgent": {
+                        "type": "boolean",
+                        "description": "Urgent flag"
+                      }
+                    },
+                    "required": [
+                      "id",
+                      "type",
+                      "title",
+                      "description",
+                      "timestamp",
+                      "icon"
+                    ],
+                    "additionalProperties": false
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/dashboard/tasks": {
+      "get": {
+        "summary": "Upcoming stay-related tasks",
+        "tags": [
+          "Dashboard"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "in": "query",
+            "name": "tenant_id",
+            "required": true,
+            "description": "Tenant ID"
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "property_id",
+            "required": false,
+            "description": "Property ID or \"all\" for aggregated stats"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "description": "Task ID"
+                      },
+                      "title": {
+                        "type": "string",
+                        "description": "Task title"
+                      },
+                      "description": {
+                        "type": "string",
+                        "description": "Task description"
+                      },
+                      "due_time": {
+                        "type": "string",
+                        "format": "date-time",
+                        "description": "Due time"
+                      },
+                      "priority": {
+                        "type": "string",
+                        "enum": [
+                          "urgent",
+                          "high",
+                          "medium",
+                          "low"
+                        ],
+                        "description": "Priority level"
+                      },
+                      "icon": {
+                        "type": "string",
+                        "description": "Material icon name"
+                      },
+                      "urgent": {
+                        "type": "boolean",
+                        "description": "Urgent flag"
+                      }
+                    },
+                    "required": [
+                      "id",
+                      "title",
+                      "description",
+                      "due_time",
+                      "priority",
+                      "icon"
+                    ],
+                    "additionalProperties": false
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/reservations": {
+      "get": {
+        "summary": "List reservations with filtering",
+        "tags": [
+          "Reservations"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "in": "query",
+            "name": "tenant_id",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "in": "query",
+            "name": "property_id",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "status",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 2,
+              "maxLength": 100
+            },
+            "in": "query",
+            "name": "search",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "exclusiveMinimum": 0,
+              "maximum": 200,
+              "default": 100
+            },
+            "in": "query",
+            "name": "limit",
+            "required": false
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "format": "uuid"
+                      },
+                      "tenant_id": {
+                        "type": "string",
+                        "format": "uuid"
+                      },
+                      "property_id": {
+                        "type": "string",
+                        "format": "uuid"
+                      },
+                      "property_name": {
+                        "type": "string"
+                      },
+                      "guest_id": {
+                        "type": "string",
+                        "format": "uuid"
+                      },
+                      "room_type_id": {
+                        "type": "string",
+                        "format": "uuid"
+                      },
+                      "room_type_name": {
+                        "type": "string"
+                      },
+                      "confirmation_number": {
+                        "type": "string"
+                      },
+                      "check_in_date": {
+                        "type": "string"
+                      },
+                      "check_out_date": {
+                        "type": "string"
+                      },
+                      "nights": {
+                        "type": "integer",
+                        "exclusiveMinimum": 0
+                      },
+                      "status": {
+                        "type": "string"
+                      },
+                      "status_display": {
+                        "type": "string"
+                      },
+                      "source": {
+                        "type": "string"
+                      },
+                      "guest_name": {
+                        "type": "string"
+                      },
+                      "guest_email": {
+                        "type": "string"
+                      },
+                      "guest_phone": {
+                        "type": "string"
+                      },
+                      "room_number": {
+                        "type": "string"
+                      },
+                      "total_amount": {
+                        "type": "number"
+                      },
+                      "paid_amount": {
+                        "type": "number"
+                      },
+                      "balance_due": {
+                        "type": "number"
+                      },
+                      "currency": {
+                        "type": "string"
+                      },
+                      "booking_date": {
+                        "type": "string"
+                      },
+                      "actual_check_in": {
+                        "type": "string"
+                      },
+                      "actual_check_out": {
+                        "type": "string"
+                      },
+                      "created_at": {
+                        "type": "string"
+                      },
+                      "updated_at": {
+                        "type": "string"
+                      },
+                      "notes": {
+                        "type": "string"
+                      },
+                      "version": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "id",
+                      "tenant_id",
+                      "property_id",
+                      "confirmation_number",
+                      "check_in_date",
+                      "check_out_date",
+                      "nights",
+                      "status",
+                      "status_display",
+                      "guest_name",
+                      "guest_email",
+                      "total_amount",
+                      "currency",
+                      "created_at",
+                      "version"
+                    ],
+                    "additionalProperties": false
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/rooms": {
+      "get": {
+        "summary": "List rooms with housekeeping filters",
+        "tags": [
+          "Rooms"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "in": "query",
+            "name": "tenant_id",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "in": "query",
+            "name": "property_id",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "status",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "housekeeping_status",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 50
+            },
+            "in": "query",
+            "name": "search",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "exclusiveMinimum": 0,
+              "maximum": 500,
+              "default": 200
+            },
+            "in": "query",
+            "name": "limit",
+            "required": false
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "format": "uuid"
+                      },
+                      "tenant_id": {
+                        "type": "string",
+                        "format": "uuid"
+                      },
+                      "property_id": {
+                        "type": "string",
+                        "format": "uuid"
+                      },
+                      "property_name": {
+                        "type": "string"
+                      },
+                      "room_type_id": {
+                        "type": "string",
+                        "format": "uuid"
+                      },
+                      "room_type_name": {
+                        "type": "string"
+                      },
+                      "room_number": {
+                        "type": "string"
+                      },
+                      "room_name": {
+                        "type": "string"
+                      },
+                      "floor": {
+                        "type": "string"
+                      },
+                      "building": {
+                        "type": "string"
+                      },
+                      "wing": {
+                        "type": "string"
+                      },
+                      "status": {
+                        "type": "string"
+                      },
+                      "status_display": {
+                        "type": "string"
+                      },
+                      "housekeeping_status": {
+                        "type": "string"
+                      },
+                      "housekeeping_display": {
+                        "type": "string"
+                      },
+                      "maintenance_status": {
+                        "type": "string"
+                      },
+                      "maintenance_display": {
+                        "type": "string"
+                      },
+                      "is_blocked": {
+                        "type": "boolean"
+                      },
+                      "block_reason": {
+                        "type": "string"
+                      },
+                      "is_out_of_order": {
+                        "type": "boolean"
+                      },
+                      "out_of_order_reason": {
+                        "type": "string"
+                      },
+                      "expected_ready_date": {
+                        "type": "string"
+                      },
+                      "housekeeping_notes": {
+                        "type": "string"
+                      },
+                      "updated_at": {
+                        "type": "string"
+                      },
+                      "version": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "id",
+                      "tenant_id",
+                      "property_id",
+                      "room_number",
+                      "status",
+                      "status_display",
+                      "housekeeping_status",
+                      "housekeeping_display",
+                      "maintenance_status",
+                      "maintenance_display",
+                      "is_blocked",
+                      "is_out_of_order",
+                      "version"
+                    ],
+                    "additionalProperties": false
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/housekeeping/tasks": {
+      "get": {
+        "summary": "List housekeeping tasks",
+        "tags": [
+          "Housekeeping"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "in": "query",
+            "name": "tenant_id",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "in": "query",
+            "name": "property_id",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "status",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "scheduled_date",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "exclusiveMinimum": 0,
+              "maximum": 500,
+              "default": 200
+            },
+            "in": "query",
+            "name": "limit",
+            "required": false
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "format": "uuid"
+                      },
+                      "tenant_id": {
+                        "type": "string",
+                        "format": "uuid"
+                      },
+                      "property_id": {
+                        "type": "string",
+                        "format": "uuid"
+                      },
+                      "property_name": {
+                        "type": "string"
+                      },
+                      "room_number": {
+                        "type": "string"
+                      },
+                      "task_type": {
+                        "type": "string"
+                      },
+                      "priority": {
+                        "type": "string"
+                      },
+                      "status": {
+                        "type": "string"
+                      },
+                      "status_display": {
+                        "type": "string"
+                      },
+                      "assigned_to": {
+                        "type": "string",
+                        "format": "uuid"
+                      },
+                      "assigned_at": {
+                        "type": "string"
+                      },
+                      "scheduled_date": {
+                        "type": "string"
+                      },
+                      "scheduled_time": {
+                        "type": "string"
+                      },
+                      "started_at": {
+                        "type": "string"
+                      },
+                      "completed_at": {
+                        "type": "string"
+                      },
+                      "inspected_by": {
+                        "type": "string",
+                        "format": "uuid"
+                      },
+                      "inspected_at": {
+                        "type": "string"
+                      },
+                      "inspection_passed": {
+                        "type": "boolean"
+                      },
+                      "is_guest_request": {
+                        "type": "boolean"
+                      },
+                      "special_instructions": {
+                        "type": "string"
+                      },
+                      "notes": {
+                        "type": "string"
+                      },
+                      "issues_found": {
+                        "type": "string"
+                      },
+                      "credits": {
+                        "type": "number"
+                      },
+                      "metadata": {
+                        "type": "object",
+                        "additionalProperties": {}
+                      },
+                      "created_at": {
+                        "type": "string"
+                      },
+                      "updated_at": {
+                        "type": "string"
+                      },
+                      "version": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "id",
+                      "tenant_id",
+                      "property_id",
+                      "room_number",
+                      "task_type",
+                      "status",
+                      "status_display",
+                      "scheduled_date",
+                      "is_guest_request",
+                      "created_at",
+                      "version"
+                    ],
+                    "additionalProperties": false
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/billing/payments": {
+      "get": {
+        "summary": "List billing payments with optional filters",
+        "tags": [
+          "Billing"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "in": "query",
+            "name": "tenant_id",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "in": "query",
+            "name": "property_id",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "status",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "transaction_type",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "payment_method",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "exclusiveMinimum": 0,
+              "maximum": 200,
+              "default": 100
+            },
+            "in": "query",
+            "name": "limit",
+            "required": false
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "format": "uuid"
+                      },
+                      "tenant_id": {
+                        "type": "string",
+                        "format": "uuid"
+                      },
+                      "property_id": {
+                        "type": "string",
+                        "format": "uuid"
+                      },
+                      "property_name": {
+                        "type": "string"
+                      },
+                      "reservation_id": {
+                        "type": "string",
+                        "format": "uuid"
+                      },
+                      "confirmation_number": {
+                        "type": "string"
+                      },
+                      "guest_id": {
+                        "type": "string",
+                        "format": "uuid"
+                      },
+                      "guest_name": {
+                        "type": "string"
+                      },
+                      "payment_reference": {
+                        "type": "string"
+                      },
+                      "external_transaction_id": {
+                        "type": "string"
+                      },
+                      "transaction_type": {
+                        "type": "string"
+                      },
+                      "transaction_type_display": {
+                        "type": "string"
+                      },
+                      "payment_method": {
+                        "type": "string"
+                      },
+                      "payment_method_display": {
+                        "type": "string"
+                      },
+                      "status": {
+                        "type": "string"
+                      },
+                      "status_display": {
+                        "type": "string"
+                      },
+                      "amount": {
+                        "type": "number"
+                      },
+                      "currency": {
+                        "type": "string"
+                      },
+                      "processed_at": {
+                        "type": "string"
+                      },
+                      "created_at": {
+                        "type": "string"
+                      },
+                      "updated_at": {
+                        "type": "string"
+                      },
+                      "version": {
+                        "type": "string"
+                      },
+                      "gateway_name": {
+                        "type": "string"
+                      },
+                      "gateway_reference": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "id",
+                      "tenant_id",
+                      "property_id",
+                      "payment_reference",
+                      "transaction_type",
+                      "transaction_type_display",
+                      "payment_method",
+                      "payment_method_display",
+                      "status",
+                      "status_display",
+                      "amount",
+                      "currency",
+                      "created_at",
+                      "version"
+                    ],
+                    "additionalProperties": false
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/reports/performance": {
+      "get": {
+        "summary": "Generate a performance report",
+        "tags": [
+          "Reports"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "in": "query",
+            "name": "tenant_id",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "in": "query",
+            "name": "property_id",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "start_date",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "end_date",
+            "required": false
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusSummary": {
+                      "type": "object",
+                      "properties": {
+                        "confirmed": {
+                          "type": "number",
+                          "minimum": 0,
+                          "default": 0
+                        },
+                        "pending": {
+                          "type": "number",
+                          "minimum": 0,
+                          "default": 0
+                        },
+                        "checked_in": {
+                          "type": "number",
+                          "minimum": 0,
+                          "default": 0
+                        },
+                        "checked_out": {
+                          "type": "number",
+                          "minimum": 0,
+                          "default": 0
+                        },
+                        "cancelled": {
+                          "type": "number",
+                          "minimum": 0,
+                          "default": 0
+                        },
+                        "no_show": {
+                          "type": "number",
+                          "minimum": 0,
+                          "default": 0
+                        }
+                      },
+                      "additionalProperties": false
+                    },
+                    "revenueSummary": {
+                      "type": "object",
+                      "properties": {
+                        "today": {
+                          "type": "number",
+                          "minimum": 0
+                        },
+                        "monthToDate": {
+                          "type": "number",
+                          "minimum": 0
+                        },
+                        "yearToDate": {
+                          "type": "number",
+                          "minimum": 0
+                        },
+                        "currency": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "today",
+                        "monthToDate",
+                        "yearToDate",
+                        "currency"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "topSources": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "source": {
+                            "type": "string"
+                          },
+                          "reservations": {
+                            "type": "number",
+                            "minimum": 0
+                          },
+                          "total_amount": {
+                            "type": "number",
+                            "minimum": 0
+                          }
+                        },
+                        "required": [
+                          "source",
+                          "reservations",
+                          "total_amount"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "statusSummary",
+                    "revenueSummary",
+                    "topSources"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/modules/catalog": {
+      "get": {
+        "summary": "List available platform modules",
+        "tags": [
+          "Modules"
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/tenants/{tenantId}/modules": {
+      "get": {
+        "summary": "List modules enabled for a tenant",
+        "tags": [
+          "Modules"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "in": "path",
+            "name": "tenantId",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": true
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/system/auth/login": {
+      "post": {
+        "summary": "Authenticate a platform system administrator",
+        "tags": [
+          "System Auth"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "username": {
+                    "type": "string",
+                    "minLength": 3
+                  },
+                  "password": {
+                    "type": "string"
+                  },
+                  "mfa_code": {
+                    "type": "string",
+                    "pattern": "^\\d{6}$"
+                  },
+                  "device_fingerprint": {
+                    "type": "string",
+                    "minLength": 8
+                  }
+                },
+                "required": [
+                  "username",
+                  "password",
+                  "device_fingerprint"
+                ],
+                "additionalProperties": false
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "access_token": {
+                      "type": "string"
+                    },
+                    "token_type": {
+                      "type": "string",
+                      "enum": [
+                        "Bearer"
+                      ]
+                    },
+                    "expires_in": {
+                      "type": "number",
+                      "exclusiveMinimum": 0
+                    },
+                    "scope": {
+                      "type": "string",
+                      "enum": [
+                        "SYSTEM_ADMIN"
+                      ]
+                    },
+                    "session_id": {
+                      "type": "string"
+                    },
+                    "admin": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "username": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 150,
+                          "description": "Non-empty string"
+                        },
+                        "email": {
+                          "type": "string",
+                          "format": "email",
+                          "description": "Email address"
+                        },
+                        "role": {
+                          "type": "string",
+                          "enum": [
+                            "SYSTEM_ADMIN",
+                            "SYSTEM_OPERATOR",
+                            "SYSTEM_AUDITOR",
+                            "SYSTEM_SUPPORT"
+                          ]
+                        },
+                        "last_login_at": {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        "is_active": {
+                          "type": "boolean",
+                          "default": true
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "username",
+                        "email",
+                        "role"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "access_token",
+                    "token_type",
+                    "expires_in",
+                    "scope",
+                    "session_id",
+                    "admin"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error",
+                    "message"
+                  ],
+                  "additionalProperties": true
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error",
+                    "message"
+                  ],
+                  "additionalProperties": true
+                }
+              }
+            }
+          },
+          "423": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error",
+                    "message"
+                  ],
+                  "additionalProperties": true
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/system/tenants": {
+      "get": {
+        "summary": "List tenants for system administrators",
+        "tags": [
+          "System Tenants"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "integer",
+              "exclusiveMinimum": 0,
+              "maximum": 200,
+              "default": 50
+            },
+            "in": "query",
+            "name": "limit",
+            "required": false
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "tenants": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "format": "uuid",
+                            "description": "Primary key"
+                          },
+                          "name": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 200,
+                            "description": "Tenant organization name"
+                          },
+                          "slug": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 200,
+                            "pattern": "^[a-z0-9-]+$",
+                            "description": "URL-friendly identifier"
+                          },
+                          "type": {
+                            "type": "string",
+                            "enum": [
+                              "INDEPENDENT",
+                              "CHAIN",
+                              "FRANCHISE",
+                              "MANAGEMENT_COMPANY"
+                            ],
+                            "description": "Organization type"
+                          },
+                          "status": {
+                            "type": "string",
+                            "enum": [
+                              "TRIAL",
+                              "ACTIVE",
+                              "SUSPENDED",
+                              "INACTIVE",
+                              "CANCELLED"
+                            ],
+                            "default": "TRIAL",
+                            "description": "Subscription status"
+                          },
+                          "email": {
+                            "type": "string",
+                            "format": "email",
+                            "description": "Primary contact email"
+                          },
+                          "phone": {
+                            "type": "string",
+                            "pattern": "^\\+?[1-9]\\d{1,14}$",
+                            "description": "Contact phone number"
+                          },
+                          "website": {
+                            "type": "string",
+                            "format": "uri",
+                            "description": "Organization website"
+                          },
+                          "address_line1": {
+                            "type": "string",
+                            "maxLength": 255
+                          },
+                          "address_line2": {
+                            "type": "string",
+                            "maxLength": 255
+                          },
+                          "city": {
+                            "type": "string",
+                            "maxLength": 100
+                          },
+                          "state": {
+                            "type": "string",
+                            "maxLength": 100
+                          },
+                          "postal_code": {
+                            "type": "string",
+                            "maxLength": 20
+                          },
+                          "country": {
+                            "type": "string",
+                            "minLength": 2,
+                            "maxLength": 2,
+                            "pattern": "^[A-Z]{2}$",
+                            "description": "ISO 3166-1 alpha-2 country code"
+                          },
+                          "tax_id": {
+                            "type": "string",
+                            "minLength": 5,
+                            "maxLength": 20,
+                            "pattern": "^[A-Z0-9-]+$",
+                            "description": "Tax identification number"
+                          },
+                          "business_license": {
+                            "type": "string",
+                            "maxLength": 100
+                          },
+                          "registration_number": {
+                            "type": "string",
+                            "maxLength": 100
+                          },
+                          "config": {
+                            "type": "object",
+                            "properties": {
+                              "features": {
+                                "type": "array",
+                                "items": {
+                                  "type": "string"
+                                },
+                                "default": [
+                                  "reservations",
+                                  "payments"
+                                ]
+                              },
+                              "maxUsers": {
+                                "type": "integer",
+                                "exclusiveMinimum": 0,
+                                "default": 10
+                              },
+                              "maxProperties": {
+                                "type": "integer",
+                                "exclusiveMinimum": 0,
+                                "default": 5
+                              },
+                              "defaultCurrency": {
+                                "type": "string",
+                                "minLength": 3,
+                                "maxLength": 3,
+                                "default": "USD"
+                              },
+                              "defaultLanguage": {
+                                "type": "string",
+                                "minLength": 2,
+                                "maxLength": 2,
+                                "default": "en"
+                              },
+                              "defaultTimezone": {
+                                "type": "string",
+                                "default": "UTC"
+                              },
+                              "enableMultiProperty": {
+                                "type": "boolean",
+                                "default": true
+                              },
+                              "enableChannelManager": {
+                                "type": "boolean",
+                                "default": false
+                              },
+                              "enableLoyaltyProgram": {
+                                "type": "boolean",
+                                "default": false
+                              },
+                              "enableAdvancedReporting": {
+                                "type": "boolean",
+                                "default": false
+                              },
+                              "enablePaymentProcessing": {
+                                "type": "boolean",
+                                "default": true
+                              },
+                              "brandingEnabled": {
+                                "type": "boolean",
+                                "default": true
+                              }
+                            },
+                            "additionalProperties": true,
+                            "description": "Tenant configuration settings"
+                          },
+                          "subscription": {
+                            "type": "object",
+                            "properties": {
+                              "plan": {
+                                "type": "string",
+                                "enum": [
+                                  "FREE",
+                                  "BASIC",
+                                  "PROFESSIONAL",
+                                  "ENTERPRISE"
+                                ],
+                                "default": "FREE"
+                              },
+                              "amount": {
+                                "type": "number",
+                                "minimum": 0,
+                                "default": 0
+                              },
+                              "currency": {
+                                "type": "string",
+                                "minLength": 3,
+                                "maxLength": 3,
+                                "default": "USD"
+                              },
+                              "billingCycle": {
+                                "type": "string",
+                                "enum": [
+                                  "MONTHLY",
+                                  "YEARLY",
+                                  "ONE_TIME"
+                                ],
+                                "default": "MONTHLY"
+                              },
+                              "startDate": {
+                                "type": "string",
+                                "format": "date-time"
+                              },
+                              "endDate": {
+                                "type": "string",
+                                "format": "date-time"
+                              },
+                              "trialEndDate": {
+                                "type": "string",
+                                "format": "date-time"
+                              }
+                            },
+                            "additionalProperties": true,
+                            "description": "Subscription details"
+                          },
+                          "metadata": {
+                            "type": "object",
+                            "additionalProperties": {},
+                            "description": "Flexible JSONB metadata object"
+                          },
+                          "created_at": {
+                            "type": "string",
+                            "format": "date-time",
+                            "default": {},
+                            "description": "Timestamp when record was created"
+                          },
+                          "updated_at": {
+                            "type": "string",
+                            "format": "date-time",
+                            "description": "Timestamp when record was last updated"
+                          },
+                          "created_by": {
+                            "type": "string",
+                            "format": "uuid",
+                            "description": "User ID who created the record"
+                          },
+                          "updated_by": {
+                            "type": "string",
+                            "format": "uuid",
+                            "description": "User ID who last updated the record"
+                          },
+                          "deleted_at": {
+                            "type": "string",
+                            "format": "date-time",
+                            "nullable": true,
+                            "description": "Timestamp when record was soft-deleted (NULL = active)"
+                          },
+                          "version": {
+                            "type": "string"
+                          },
+                          "property_count": {
+                            "type": "integer",
+                            "minimum": 0
+                          },
+                          "user_count": {
+                            "type": "integer",
+                            "minimum": 0
+                          },
+                          "active_properties": {
+                            "type": "integer",
+                            "minimum": 0
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "name",
+                          "slug",
+                          "type",
+                          "email",
+                          "config",
+                          "subscription",
+                          "version"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "count": {
+                      "type": "integer",
+                      "minimum": 0
+                    }
+                  },
+                  "required": [
+                    "tenants",
+                    "count"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error",
+                    "message"
+                  ],
+                  "additionalProperties": true
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/system/users": {
+      "get": {
+        "summary": "List users across tenants (system admin)",
+        "tags": [
+          "System Users"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "integer",
+              "exclusiveMinimum": 0,
+              "maximum": 500,
+              "default": 100
+            },
+            "in": "query",
+            "name": "limit",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "in": "query",
+            "name": "tenant_id",
+            "required": false
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "format": "uuid"
+                      },
+                      "username": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 150,
+                        "description": "Non-empty string"
+                      },
+                      "email": {
+                        "type": "string",
+                        "format": "email",
+                        "description": "Email address"
+                      },
+                      "first_name": {
+                        "type": "string",
+                        "maxLength": 150
+                      },
+                      "last_name": {
+                        "type": "string",
+                        "maxLength": 150
+                      },
+                      "phone": {
+                        "type": "string",
+                        "pattern": "^\\+?[1-9]\\d{1,14}$",
+                        "description": "Phone number in international format"
+                      },
+                      "avatar_url": {
+                        "type": "string",
+                        "format": "uri",
+                        "description": "Valid URL"
+                      },
+                      "is_active": {
+                        "type": "boolean",
+                        "default": true
+                      },
+                      "is_verified": {
+                        "type": "boolean",
+                        "default": false
+                      },
+                      "email_verified_at": {
+                        "type": "string",
+                        "format": "date-time"
+                      },
+                      "last_login_at": {
+                        "type": "string",
+                        "format": "date-time"
+                      },
+                      "preferences": {
+                        "type": "object",
+                        "additionalProperties": {},
+                        "default": {},
+                        "description": "UI and notification preferences"
+                      },
+                      "metadata": {
+                        "type": "object",
+                        "additionalProperties": {},
+                        "description": "Flexible JSONB metadata object"
+                      },
+                      "created_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "default": {},
+                        "description": "Timestamp when record was created"
+                      },
+                      "updated_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "description": "Timestamp when record was last updated"
+                      },
+                      "version": {
+                        "type": "string"
+                      },
+                      "tenants": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "tenant_id": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "tenant_name": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 200,
+                              "description": "Non-empty string"
+                            },
+                            "role": {
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "is_active": {
+                              "type": "boolean",
+                              "default": true
+                            }
+                          },
+                          "required": [
+                            "tenant_id",
+                            "role"
+                          ],
+                          "additionalProperties": false
+                        }
+                      }
+                    },
+                    "required": [
+                      "id",
+                      "username",
+                      "email",
+                      "first_name",
+                      "last_name",
+                      "version"
+                    ],
+                    "additionalProperties": false
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error",
+                    "message"
+                  ],
+                  "additionalProperties": true
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/system/impersonate": {
+      "post": {
+        "summary": "Start a tenant impersonation session",
+        "tags": [
+          "System Impersonation"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "tenant_id": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "user_id": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "reason": {
+                    "type": "string",
+                    "minLength": 10
+                  },
+                  "ticket_id": {
+                    "type": "string",
+                    "minLength": 5
+                  }
+                },
+                "required": [
+                  "tenant_id",
+                  "user_id",
+                  "reason",
+                  "ticket_id"
+                ],
+                "additionalProperties": false
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "access_token": {
+                      "type": "string"
+                    },
+                    "token_type": {
+                      "type": "string",
+                      "enum": [
+                        "Bearer"
+                      ]
+                    },
+                    "scope": {
+                      "type": "string",
+                      "enum": [
+                        "TENANT_IMPERSONATION"
+                      ]
+                    },
+                    "expires_in": {
+                      "type": "number",
+                      "exclusiveMinimum": 0
+                    }
+                  },
+                  "required": [
+                    "access_token",
+                    "token_type",
+                    "scope",
+                    "expires_in"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error",
+                    "message"
+                  ],
+                  "additionalProperties": true
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error",
+                    "message"
+                  ],
+                  "additionalProperties": true
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "servers": [
+    {
+      "url": "/"
+    }
+  ]
+}

@@ -3,6 +3,7 @@ import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 
 import { config } from "../config.js";
+import { buildRouteSchema, errorResponseSchema, schemaFromZod } from "../lib/openapi.js";
 import { authenticateUser, changeUserPassword } from "../services/auth-service.js";
 import { sanitizeForJson } from "../utils/sanitize.js";
 
@@ -63,113 +64,168 @@ const ChangePasswordRequestSchema = z
     "New password must be different from current password",
   );
 
+const AUTH_TAG = "Auth";
+
+const LoginRequestJsonSchema = schemaFromZod(LoginRequestSchema, "AuthLoginRequest");
+const LoginResponseJsonSchema = schemaFromZod(LoginResponseSchema, "AuthLoginResponse");
+const AuthContextResponseJsonSchema = schemaFromZod(
+  AuthContextResponseSchema,
+  "AuthContextResponse",
+);
+const ChangePasswordRequestJsonSchema = schemaFromZod(
+  ChangePasswordRequestSchema,
+  "AuthChangePasswordRequest",
+);
+
 export const registerAuthRoutes = (app: FastifyInstance): void => {
-  app.post("/v1/auth/login", async (request, reply) => {
-    const { username, password } = LoginRequestSchema.parse(request.body);
+  app.post(
+    "/v1/auth/login",
+    {
+      schema: buildRouteSchema({
+        tag: AUTH_TAG,
+        summary: "Authenticate a user and return a JWT",
+        body: LoginRequestJsonSchema,
+        response: {
+          200: LoginResponseJsonSchema,
+          401: errorResponseSchema,
+          403: errorResponseSchema,
+        },
+      }),
+    },
+    async (request, reply) => {
+      const { username, password } = LoginRequestSchema.parse(request.body);
 
-    const result = await authenticateUser(username, password);
+      const result = await authenticateUser(username, password);
 
-    if (!result.ok) {
-      if (result.reason === "ACCOUNT_INACTIVE") {
-        return reply.status(403).send({
-          error: "Account inactive",
-          message: "This account is not active",
+      if (!result.ok) {
+        if (result.reason === "ACCOUNT_INACTIVE") {
+          return reply.status(403).send({
+            error: "Account inactive",
+            message: "This account is not active",
+          });
+        }
+
+        return reply.status(401).send({
+          error: "Invalid credentials",
+          message: "Invalid username or password",
         });
       }
 
-      return reply.status(401).send({
-        error: "Invalid credentials",
-        message: "Invalid username or password",
+      const { user, memberships, accessToken, expiresIn } = result.data;
+
+      const responsePayload = sanitizeForJson({
+        id: user.id,
+        email: user.email,
+        first_name: user.first_name,
+        last_name: user.last_name,
+        username: user.username,
+        is_active: user.is_active,
+        memberships,
+        access_token: accessToken,
+        token_type: "Bearer",
+        expires_in: expiresIn,
+        must_change_password: result.data.mustChangePassword,
       });
-    }
 
-    const { user, memberships, accessToken, expiresIn } = result.data;
+      return LoginResponseSchema.parse(responsePayload);
+    },
+  );
 
-    const responsePayload = sanitizeForJson({
-      id: user.id,
-      email: user.email,
-      first_name: user.first_name,
-      last_name: user.last_name,
-      username: user.username,
-      is_active: user.is_active,
-      memberships,
-      access_token: accessToken,
-      token_type: "Bearer",
-      expires_in: expiresIn,
-      must_change_password: result.data.mustChangePassword,
-    });
+  app.get(
+    "/v1/auth/context",
+    {
+      schema: buildRouteSchema({
+        tag: AUTH_TAG,
+        summary: "Return the authenticated user's memberships",
+        response: {
+          200: AuthContextResponseJsonSchema,
+        },
+      }),
+    },
+    async (request) => {
+      const memberships = request.auth.memberships.map((membership) => ({
+        tenant_id: membership.tenantId,
+        tenant_name: membership.tenantName,
+        role: membership.role,
+        is_active: membership.isActive,
+        permissions: membership.permissions ?? {},
+      }));
 
-    return LoginResponseSchema.parse(responsePayload);
-  });
+      const responsePayload = sanitizeForJson({
+        is_authenticated: request.auth.isAuthenticated,
+        user_id: request.auth.userId,
+        memberships,
+        authorized_tenants: Array.from(request.auth.authorizedTenantIds),
+        header_hint: {
+          header: "Authorization",
+          description:
+            "Include the Authorization header with a Bearer token obtained from POST /v1/auth/login",
+        },
+      });
 
-  app.get("/v1/auth/context", async (request) => {
-    const memberships = request.auth.memberships.map((membership) => ({
-      tenant_id: membership.tenantId,
-      tenant_name: membership.tenantName,
-      role: membership.role,
-      is_active: membership.isActive,
-      permissions: membership.permissions ?? {},
-    }));
+      return AuthContextResponseSchema.parse(responsePayload);
+    },
+  );
 
-    const responsePayload = sanitizeForJson({
-      is_authenticated: request.auth.isAuthenticated,
-      user_id: request.auth.userId,
-      memberships,
-      authorized_tenants: Array.from(request.auth.authorizedTenantIds),
-      header_hint: {
-        header: "Authorization",
-        description:
-          "Include the Authorization header with a Bearer token obtained from POST /v1/auth/login",
-      },
-    });
+  app.post(
+    "/v1/auth/change-password",
+    {
+      schema: buildRouteSchema({
+        tag: AUTH_TAG,
+        summary: "Change the authenticated user's password",
+        body: ChangePasswordRequestJsonSchema,
+        response: {
+          200: LoginResponseJsonSchema,
+          400: errorResponseSchema,
+          403: errorResponseSchema,
+        },
+      }),
+    },
+    async (request, reply) => {
+      if (!request.auth.isAuthenticated || !request.auth.userId) {
+        reply.unauthorized("AUTHENTICATION_REQUIRED");
+        return reply;
+      }
 
-    return AuthContextResponseSchema.parse(responsePayload);
-  });
+      const { current_password, new_password } = ChangePasswordRequestSchema.parse(request.body);
 
-  app.post("/v1/auth/change-password", async (request, reply) => {
-    if (!request.auth.isAuthenticated || !request.auth.userId) {
-      reply.unauthorized("AUTHENTICATION_REQUIRED");
-      return reply;
-    }
+      const result = await changeUserPassword(request.auth.userId, current_password, new_password);
 
-    const { current_password, new_password } = ChangePasswordRequestSchema.parse(request.body);
+      if (!result.ok) {
+        if (result.reason === "ACCOUNT_INACTIVE") {
+          return reply.status(403).send({
+            error: "Account inactive",
+            message: "This account is not active",
+          });
+        }
 
-    const result = await changeUserPassword(request.auth.userId, current_password, new_password);
+        const message =
+          result.reason === "PASSWORD_REUSE_NOT_ALLOWED"
+            ? "New password cannot be the system default password."
+            : "Invalid credentials";
 
-    if (!result.ok) {
-      if (result.reason === "ACCOUNT_INACTIVE") {
-        return reply.status(403).send({
-          error: "Account inactive",
-          message: "This account is not active",
+        return reply.status(400).send({
+          error: "Invalid credentials",
+          message,
         });
       }
 
-      const message =
-        result.reason === "PASSWORD_REUSE_NOT_ALLOWED"
-          ? "New password cannot be the system default password."
-          : "Invalid credentials";
-
-      return reply.status(400).send({
-        error: "Invalid credentials",
-        message,
+      const { user, memberships, accessToken, expiresIn } = result.data;
+      const payload = sanitizeForJson({
+        id: user.id,
+        email: user.email,
+        first_name: user.first_name,
+        last_name: user.last_name,
+        username: user.username,
+        is_active: user.is_active,
+        memberships,
+        access_token: accessToken,
+        token_type: "Bearer",
+        expires_in: expiresIn,
+        must_change_password: false,
       });
-    }
 
-    const { user, memberships, accessToken, expiresIn } = result.data;
-    const payload = sanitizeForJson({
-      id: user.id,
-      email: user.email,
-      first_name: user.first_name,
-      last_name: user.last_name,
-      username: user.username,
-      is_active: user.is_active,
-      memberships,
-      access_token: accessToken,
-      token_type: "Bearer",
-      expires_in: expiresIn,
-      must_change_password: false,
-    });
-
-    return LoginResponseSchema.parse(payload);
-  });
+      return LoginResponseSchema.parse(payload);
+    },
+  );
 };

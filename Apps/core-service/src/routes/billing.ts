@@ -2,6 +2,7 @@ import { PaymentMethodEnum, PaymentStatusEnum, TransactionTypeEnum } from "@tart
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 
+import { buildRouteSchema, schemaFromZod } from "../lib/openapi.js";
 import { BillingPaymentSchema, listBillingPayments } from "../services/billing-service.js";
 
 const BillingListQuerySchema = z.object({
@@ -41,6 +42,13 @@ const BillingListQuerySchema = z.object({
 type BillingListQuery = z.infer<typeof BillingListQuerySchema>;
 
 const BillingListResponseSchema = z.array(BillingPaymentSchema);
+const BillingListQueryJsonSchema = schemaFromZod(BillingListQuerySchema, "BillingPaymentsQuery");
+const BillingListResponseJsonSchema = schemaFromZod(
+  BillingListResponseSchema,
+  "BillingPaymentsResponse",
+);
+
+const BILLING_TAG = "Billing";
 
 export const registerBillingRoutes = (app: FastifyInstance): void => {
   app.get<{ Querystring: BillingListQuery }>(
@@ -50,6 +58,14 @@ export const registerBillingRoutes = (app: FastifyInstance): void => {
         resolveTenantId: (request) => (request.query as BillingListQuery).tenant_id,
         minRole: "ADMIN",
         requiredModules: "finance-automation",
+      }),
+      schema: buildRouteSchema({
+        tag: BILLING_TAG,
+        summary: "List billing payments with optional filters",
+        querystring: BillingListQueryJsonSchema,
+        response: {
+          200: BillingListResponseJsonSchema,
+        },
       }),
     },
     async (request) => {

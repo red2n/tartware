@@ -7,6 +7,7 @@ import { config } from "./config.js";
 import { appLogger } from "./lib/logger.js";
 import authContextPlugin from "./plugins/auth-context.js";
 import errorHandlerPlugin from "./plugins/error-handler.js";
+import swaggerPlugin from "./plugins/swagger.js";
 import systemAdminAuthPlugin from "./plugins/system-admin-auth.js";
 import { registerAuthRoutes } from "./routes/auth.js";
 import { registerBillingRoutes } from "./routes/billing.js";
@@ -61,6 +62,7 @@ export const buildServer = (): FastifyInstance => {
   app.register(fastifySensible);
   app.register(fastifyHelmet, { global: true });
   app.register(fastifyCors, { origin: true });
+  app.register(swaggerPlugin);
   app.register(errorHandlerPlugin);
   app.register(authContextPlugin);
   app.register(systemAdminAuthPlugin);

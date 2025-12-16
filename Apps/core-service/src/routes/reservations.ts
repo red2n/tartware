@@ -2,6 +2,7 @@ import { ReservationStatusEnum } from "@tartware/schemas";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 
+import { buildRouteSchema, schemaFromZod } from "../lib/openapi.js";
 import { listReservations, ReservationListItemSchema } from "../services/reservation-service.js";
 
 const ReservationListQuerySchema = z.object({
@@ -23,6 +24,16 @@ const ReservationListQuerySchema = z.object({
 type ReservationListQuery = z.infer<typeof ReservationListQuerySchema>;
 
 const ReservationListResponseSchema = z.array(ReservationListItemSchema);
+const ReservationListQueryJsonSchema = schemaFromZod(
+  ReservationListQuerySchema,
+  "ReservationListQuery",
+);
+const ReservationListResponseJsonSchema = schemaFromZod(
+  ReservationListResponseSchema,
+  "ReservationListResponse",
+);
+
+const RESERVATIONS_TAG = "Reservations";
 
 export const registerReservationRoutes = (app: FastifyInstance): void => {
   app.get<{ Querystring: ReservationListQuery }>(
@@ -32,6 +43,14 @@ export const registerReservationRoutes = (app: FastifyInstance): void => {
         resolveTenantId: (request) => (request.query as ReservationListQuery).tenant_id,
         minRole: "MANAGER",
         requiredModules: "core",
+      }),
+      schema: buildRouteSchema({
+        tag: RESERVATIONS_TAG,
+        summary: "List reservations with filtering",
+        querystring: ReservationListQueryJsonSchema,
+        response: {
+          200: ReservationListResponseJsonSchema,
+        },
       }),
     },
     async (request) => {

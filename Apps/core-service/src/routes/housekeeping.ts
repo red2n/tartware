@@ -2,6 +2,7 @@ import { HousekeepingStatusEnum } from "@tartware/schemas";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 
+import { buildRouteSchema, schemaFromZod } from "../lib/openapi.js";
 import { HousekeepingTaskSchema, listHousekeepingTasks } from "../services/housekeeping-service.js";
 
 const HousekeepingListQuerySchema = z.object({
@@ -28,6 +29,16 @@ const HousekeepingListQuerySchema = z.object({
 type HousekeepingListQuery = z.infer<typeof HousekeepingListQuerySchema>;
 
 const HousekeepingListResponseSchema = z.array(HousekeepingTaskSchema);
+const HousekeepingListQueryJsonSchema = schemaFromZod(
+  HousekeepingListQuerySchema,
+  "HousekeepingListQuery",
+);
+const HousekeepingListResponseJsonSchema = schemaFromZod(
+  HousekeepingListResponseSchema,
+  "HousekeepingListResponse",
+);
+
+const HOUSEKEEPING_TAG = "Housekeeping";
 
 export const registerHousekeepingRoutes = (app: FastifyInstance): void => {
   app.get<{ Querystring: HousekeepingListQuery }>(
@@ -37,6 +48,14 @@ export const registerHousekeepingRoutes = (app: FastifyInstance): void => {
         resolveTenantId: (request) => (request.query as HousekeepingListQuery).tenant_id,
         minRole: "MANAGER",
         requiredModules: "facility-maintenance",
+      }),
+      schema: buildRouteSchema({
+        tag: HOUSEKEEPING_TAG,
+        summary: "List housekeeping tasks",
+        querystring: HousekeepingListQueryJsonSchema,
+        response: {
+          200: HousekeepingListResponseJsonSchema,
+        },
       }),
     },
     async (request) => {

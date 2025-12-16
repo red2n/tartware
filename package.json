@@ -37,7 +37,8 @@
     "test:ui": "lerna run test --scope=tartware-ui --stream",
     "validate": "npm run build && npm test",
     "biome": "lerna run biome --stream",
-    "knip": "lerna run knip --stream"
+    "knip": "lerna run knip --stream",
+    "export:openapi": "node scripts/export-openapi.mjs"
   },
   "devDependencies": {
     "concurrently": "^9.2.1",

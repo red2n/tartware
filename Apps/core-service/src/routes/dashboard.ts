@@ -3,11 +3,24 @@ import {
   type DashboardStats,
   type DashboardStatsQuery,
   DashboardStatsQuerySchema,
+  DashboardStatsSchema,
+  RecentActivitySchema,
   type TaskItem,
+  UpcomingTasksSchema,
 } from "@tartware/schemas";
 import type { FastifyInstance } from "fastify";
 
 import { query } from "../lib/db.js";
+import { buildRouteSchema, schemaFromZod } from "../lib/openapi.js";
+
+const DASHBOARD_TAG = "Dashboard";
+const DashboardStatsQueryJsonSchema = schemaFromZod(
+  DashboardStatsQuerySchema,
+  "DashboardStatsQuery",
+);
+const DashboardStatsResponseJsonSchema = schemaFromZod(DashboardStatsSchema, "DashboardStats");
+const RecentActivityResponseJsonSchema = schemaFromZod(RecentActivitySchema, "DashboardActivity");
+const UpcomingTasksResponseJsonSchema = schemaFromZod(UpcomingTasksSchema, "DashboardTasks");
 
 export const registerDashboardRoutes = (app: FastifyInstance): void => {
   // Dashboard stats endpoint
@@ -18,6 +31,14 @@ export const registerDashboardRoutes = (app: FastifyInstance): void => {
         resolveTenantId: (request) => (request.query as DashboardStatsQuery).tenant_id,
         minRole: "ADMIN",
         requiredModules: "core",
+      }),
+      schema: buildRouteSchema({
+        tag: DASHBOARD_TAG,
+        summary: "Return aggregated dashboard KPIs",
+        querystring: DashboardStatsQueryJsonSchema,
+        response: {
+          200: DashboardStatsResponseJsonSchema,
+        },
       }),
     },
     async (request): Promise<DashboardStats> => {
@@ -147,6 +168,14 @@ export const registerDashboardRoutes = (app: FastifyInstance): void => {
         minRole: "MANAGER",
         requiredModules: "core",
       }),
+      schema: buildRouteSchema({
+        tag: DASHBOARD_TAG,
+        summary: "Recent reservations / activity feed",
+        querystring: DashboardStatsQueryJsonSchema,
+        response: {
+          200: RecentActivityResponseJsonSchema,
+        },
+      }),
     },
     async (request): Promise<ActivityItem[]> => {
       const { tenant_id, property_id } = DashboardStatsQuerySchema.parse(request.query);
@@ -198,6 +227,14 @@ export const registerDashboardRoutes = (app: FastifyInstance): void => {
         resolveTenantId: (request) => (request.query as DashboardStatsQuery).tenant_id,
         minRole: "MANAGER",
         requiredModules: "core",
+      }),
+      schema: buildRouteSchema({
+        tag: DASHBOARD_TAG,
+        summary: "Upcoming stay-related tasks",
+        querystring: DashboardStatsQueryJsonSchema,
+        response: {
+          200: UpcomingTasksResponseJsonSchema,
+        },
       }),
     },
     async (request): Promise<TaskItem[]> => {

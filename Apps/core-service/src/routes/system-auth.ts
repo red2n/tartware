@@ -2,6 +2,7 @@ import { PublicSystemAdministratorSchema } from "@tartware/schemas";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 
+import { buildRouteSchema, errorResponseSchema, schemaFromZod } from "../lib/openapi.js";
 import { authenticateSystemAdministrator } from "../services/system-admin-service.js";
 import { sanitizeForJson } from "../utils/sanitize.js";
 
@@ -55,37 +56,63 @@ const ERROR_STATUS: Record<string, number> = {
   MFA_INVALID: 401,
 };
 
+const SYSTEM_AUTH_TAG = "System Auth";
+const SystemAdminLoginRequestJsonSchema = schemaFromZod(
+  SystemAdminLoginRequestSchema,
+  "SystemAdminLoginRequest",
+);
+const SystemAdminLoginResponseJsonSchema = schemaFromZod(
+  SystemAdminLoginResponseSchema,
+  "SystemAdminLoginResponse",
+);
+
 export const registerSystemAuthRoutes = (app: FastifyInstance): void => {
-  app.post("/v1/system/auth/login", async (request, reply) => {
-    const body = SystemAdminLoginRequestSchema.parse(request.body);
-    const result = await authenticateSystemAdministrator({
-      username: body.username,
-      password: body.password,
-      mfaCode: body.mfa_code,
-      deviceFingerprint: body.device_fingerprint,
-      ipAddress: request.ip,
-      userAgent: request.headers["user-agent"],
-    });
+  app.post(
+    "/v1/system/auth/login",
+    {
+      schema: buildRouteSchema({
+        tag: SYSTEM_AUTH_TAG,
+        summary: "Authenticate a platform system administrator",
+        body: SystemAdminLoginRequestJsonSchema,
+        response: {
+          200: SystemAdminLoginResponseJsonSchema,
+          401: errorResponseSchema,
+          403: errorResponseSchema,
+          423: errorResponseSchema,
+        },
+      }),
+    },
+    async (request, reply) => {
+      const body = SystemAdminLoginRequestSchema.parse(request.body);
+      const result = await authenticateSystemAdministrator({
+        username: body.username,
+        password: body.password,
+        mfaCode: body.mfa_code,
+        deviceFingerprint: body.device_fingerprint,
+        ipAddress: request.ip,
+        userAgent: request.headers["user-agent"],
+      });
 
-    if (!result.ok) {
-      const statusCode = ERROR_STATUS[result.reason] ?? 401;
-      const payload = {
-        error: result.reason,
-        message: ERROR_MESSAGES[result.reason] ?? "Unable to complete login request.",
-        lock_expires_at: result.lockExpiresAt?.toISOString(),
-      };
-      return reply.status(statusCode).send(payload);
-    }
+      if (!result.ok) {
+        const statusCode = ERROR_STATUS[result.reason] ?? 401;
+        const payload = {
+          error: result.reason,
+          message: ERROR_MESSAGES[result.reason] ?? "Unable to complete login request.",
+          lock_expires_at: result.lockExpiresAt?.toISOString(),
+        };
+        return reply.status(statusCode).send(payload);
+      }
 
-    const responsePayload = sanitizeForJson({
-      access_token: result.data.token,
-      token_type: "Bearer",
-      expires_in: result.data.expiresIn,
-      scope: "SYSTEM_ADMIN" as const,
-      session_id: result.data.sessionId,
-      admin: result.data.admin,
-    });
+      const responsePayload = sanitizeForJson({
+        access_token: result.data.token,
+        token_type: "Bearer",
+        expires_in: result.data.expiresIn,
+        scope: "SYSTEM_ADMIN" as const,
+        session_id: result.data.sessionId,
+        admin: result.data.admin,
+      });
 
-    return SystemAdminLoginResponseSchema.parse(responsePayload);
-  });
+      return SystemAdminLoginResponseSchema.parse(responsePayload);
+    },
+  );
 };
