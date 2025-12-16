@@ -13,9 +13,9 @@ fi
 
 echo "This will STOP and DELETE all Docker containers, images, volumes, networks (non-default),"
 echo "and purge build caches on this machine. There is no undo."
-read -rp "Type 'purge' to continue: " confirmation
+read -rp "Proceed with purge? [y/N]: " confirmation
 
-if [[ "${confirmation:-}" != "purge" ]]; then
+if [[ ! "${confirmation:-}" =~ ^[Yy](es)?$ ]]; then
   echo "Aborted. Nothing was removed."
   exit 0
 fi
@@ -65,7 +65,7 @@ remove_volumes() {
 remove_networks() {
   local networks
   networks="$(docker network ls --format '{{.ID}} {{.Name}}' \
-    | awk '$2 != \"bridge\" && $2 != \"host\" && $2 != \"none\" {print $1}')"
+    | awk '$2 != "bridge" && $2 != "host" && $2 != "none" {print $1}')"
 
   if [[ -z "${networks}" ]]; then
     echo "No custom networks to remove."
