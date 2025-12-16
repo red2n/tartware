@@ -12,7 +12,7 @@ import { registerReservationCommandRoutes } from "./routes/reservation-commands.
 
 export const buildServer = () => {
   const app = fastify({
-    loggerInstance: reservationsLogger as FastifyBaseLogger,
+    logger: reservationsLogger as FastifyBaseLogger,
   });
 
   app.register(fastifyHelmet, { global: true });
