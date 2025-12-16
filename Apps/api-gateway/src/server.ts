@@ -9,15 +9,64 @@ import fastify, {
 
 import { gatewayConfig, serviceTargets } from "./config.js";
 import { gatewayLogger } from "./logger.js";
+import swaggerPlugin from "./plugins/swagger.js";
 import { proxyRequest } from "./utils/proxy.js";
+
+const healthResponseSchema = {
+	type: "object",
+	properties: {
+		status: { type: "string", enum: ["ok"] },
+		service: { type: "string" },
+	},
+	required: ["status", "service"],
+	additionalProperties: false,
+} as const;
+
+const proxyResponseSchema = {
+	description:
+		"Proxied response from downstream service. Shape mirrors upstream target.",
+	type: "object",
+	additionalProperties: true,
+} as const;
+
+const reservationProxySchema = {
+	tags: ["Reservations"],
+	summary:
+		"Proxy reservation traffic to the Core or Reservation Command service",
+	params: {
+		type: "object",
+		properties: {
+			tenantId: { type: "string", description: "Tenant identifier" },
+		},
+		required: ["tenantId"],
+	},
+	response: {
+		200: proxyResponseSchema,
+		"2xx": proxyResponseSchema,
+		"4xx": proxyResponseSchema,
+		"5xx": proxyResponseSchema,
+	},
+} as const;
+
+const catchAllProxySchema = {
+	tags: ["Gateway"],
+	summary: "Proxy any remaining /v1 requests to the Core Service",
+	response: {
+		200: proxyResponseSchema,
+		"2xx": proxyResponseSchema,
+		"4xx": proxyResponseSchema,
+		"5xx": proxyResponseSchema,
+	},
+} as const;
 
 export const buildServer = () => {
 	const app = fastify({
-		logger: gatewayLogger as FastifyBaseLogger,
+		loggerInstance: gatewayLogger as FastifyBaseLogger,
 	});
 
 	app.register(fastifyHelmet, { global: true });
 	app.register(fastifySensible);
+	app.register(swaggerPlugin);
 
 	app.register(rateLimit, {
 		max: gatewayConfig.rateLimit.max,
@@ -42,26 +91,6 @@ export const buildServer = () => {
 			)
 			.header("Access-Control-Max-Age", "600");
 
-	app.addHook("onRequest", async (request, reply) => {
-		allowCorsHeaders(reply);
-		if (request.method.toUpperCase() === "OPTIONS") {
-			return reply.status(204).send();
-		}
-	});
-
-	app.options("/health", async (_request, reply) => {
-		allowCorsHeaders(reply);
-		return reply.status(204).send();
-	});
-
-	app.get("/health", async (_request, reply) => {
-		allowCorsHeaders(reply);
-		return reply.send({
-			status: "ok",
-			service: gatewayConfig.serviceId,
-		});
-	});
-
 	const reservationHandler = async (
 		request: FastifyRequest,
 		reply: FastifyReply,
@@ -76,11 +105,57 @@ export const buildServer = () => {
 		);
 	};
 
-	app.all("/v1/tenants/:tenantId/reservations", reservationHandler);
-	app.all("/v1/tenants/:tenantId/reservations/*", reservationHandler);
+	app.after(() => {
+		app.addHook("onRequest", async (request, reply) => {
+			allowCorsHeaders(reply);
+			if (request.method.toUpperCase() === "OPTIONS") {
+				return reply.status(204).send();
+			}
+		});
 
-	app.all("/v1/*", async (request: FastifyRequest, reply: FastifyReply) => {
-		return proxyRequest(request, reply, serviceTargets.coreServiceUrl);
+		app.options("/health", async (_request, reply) => {
+			allowCorsHeaders(reply);
+			return reply.status(204).send();
+		});
+
+		app.get(
+			"/health",
+			{
+				schema: {
+					tags: ["Health"],
+					summary: "Simple health probe for the API gateway",
+					response: {
+						200: healthResponseSchema,
+					},
+				},
+			},
+			async (_request, reply) => {
+				allowCorsHeaders(reply);
+				return reply.send({
+					status: "ok",
+					service: gatewayConfig.serviceId,
+				});
+			},
+		);
+
+		app.all(
+			"/v1/tenants/:tenantId/reservations",
+			{ schema: reservationProxySchema },
+			reservationHandler,
+		);
+		app.all(
+			"/v1/tenants/:tenantId/reservations/*",
+			{ schema: reservationProxySchema },
+			reservationHandler,
+		);
+
+		app.all(
+			"/v1/*",
+			{ schema: catchAllProxySchema },
+			async (request: FastifyRequest, reply: FastifyReply) => {
+				return proxyRequest(request, reply, serviceTargets.coreServiceUrl);
+			},
+		);
 	});
 
 	return app;

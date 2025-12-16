@@ -12,15 +12,17 @@ import type { LifecycleHealthSummary } from "./lib/lifecycle-guard.js";
 import { getLifecycleHealthSummary } from "./lib/lifecycle-guard.js";
 import { metricsRegistry } from "./lib/metrics.js";
 import { reservationsLogger } from "./logger.js";
+import swaggerPlugin from "./plugins/swagger.js";
 import { registerReservationCommandRoutes } from "./routes/reservation-commands.js";
 
 export const buildServer = () => {
   const app = fastify({
-    logger: reservationsLogger as FastifyBaseLogger,
+    loggerInstance: reservationsLogger as FastifyBaseLogger,
   });
 
   app.register(fastifyHelmet, { global: true });
   app.register(fastifySensible);
+  app.register(swaggerPlugin);
 
   app.get("/health", async () => ({
     status: "ok",

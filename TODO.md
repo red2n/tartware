@@ -93,6 +93,13 @@ Platform-wide standardization for resilient CRUD handling at 20+ ops/sec with au
   2. Introduce policy controls per tenant/property for custom tags (max count, naming conventions) and emit Prometheus metrics for catalog drift.
   3. Build a background reconciler that flags room types referencing non-catalog amenity codes and offers a repair endpoint/command.
 
+#### 0.9 **API Discoverability / Swagger**
+- Start Date: 2025-12-15T12:40:00Z
+- Finish Date: TBD
+- Every Fastify edge (API Gateway, Core Service, Reservations Command Service, Settings Service) must expose OpenAPI 3.0 specs + Swagger UI at `/docs` so platform and partner teams can self-discover endpoints.
+- _2025-12-15T13:05:00Z Update_: Added `@fastify/swagger` + `@fastify/swagger-ui` dependencies to all Fastify services and registered route-independent plugins so `/docs` now renders live specs (Core, Reservations Command, Settings, API Gateway). Next steps: enrich route schemas (request/response bodies) to improve the generated docs and export static bundles for CI compliance reviews.
+- _2025-12-16T06:37:00Z Update_: API Gateway health + reservation proxy routes now include Fastify schemas so `/docs` lists the operations instead of an empty spec. Still need granular schemas for nested reservation resources and the remaining services, plus a script to export the OpenAPI bundle for CI.
+
 ### 1. **Super Admin / Global Administrator Implementation (Priority: HIGH)**
 Industry-standard privileged access management for multi-tenant PMS platform following OWASP Authorization best practices.
 
