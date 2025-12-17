@@ -21,6 +21,7 @@
 \ir 01-core/06_settings.sql
 \ir 01-core/07_system_administrators.sql
 \ir 01-core/08_system_admin_audit_log.sql
+\ir 01-core/09_transactional_outbox.sql
 
 -- ============================================================================
 -- CATEGORY 2: INVENTORY (Rooms, rates, availability, revenue management)
@@ -65,6 +66,7 @@
 \ir 03-bookings/50_automated_messages.sql
 \ir 03-bookings/51_reservation_traces.sql
 \ir 03-bookings/52_waitlist_entries.sql
+\ir 03-bookings/53_reservation_event_offsets.sql
 
 -- ============================================================================
 -- CATEGORY 4: FINANCIAL (Payments, invoices, folios, accounting)
