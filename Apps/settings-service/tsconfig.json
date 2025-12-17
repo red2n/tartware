@@ -17,7 +17,9 @@
       "@tartware/telemetry": ["../../telemetry/src/index.ts"],
       "@tartware/telemetry/*": ["../../telemetry/src/*"],
       "@tartware/config": ["../../config/src/index.ts"],
-      "@tartware/config/*": ["../../config/src/*"]
+      "@tartware/config/*": ["../../config/src/*"],
+      "@tartware/openapi": ["../../openapi-utils/src/index.ts"],
+      "@tartware/openapi/*": ["../../openapi-utils/src/*"]
     }
   },
   "include": ["src/**/*", "tests/**/*"],

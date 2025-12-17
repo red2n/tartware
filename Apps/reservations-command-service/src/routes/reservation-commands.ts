@@ -1,7 +1,7 @@
+import { buildRouteSchema, schemaFromZod } from "@tartware/openapi";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 
-import { buildRouteSchema, schemaFromZod } from "../lib/openapi.js";
 import { ReservationCreateCommandSchema } from "../schemas/reservation-command.js";
 import { createReservation } from "../services/reservation-command-service.js";
 

@@ -1,8 +1,8 @@
+import { buildRouteSchema, schemaFromZod } from "@tartware/openapi";
 import { PaymentMethodEnum, PaymentStatusEnum, TransactionTypeEnum } from "@tartware/schemas";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 
-import { buildRouteSchema, schemaFromZod } from "../lib/openapi.js";
 import { BillingPaymentSchema, listBillingPayments } from "../services/billing-service.js";
 
 const BillingListQuerySchema = z.object({

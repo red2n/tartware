@@ -1,3 +1,4 @@
+import { buildRouteSchema, schemaFromZod } from "@tartware/openapi";
 import {
   type ActivityItem,
   type DashboardStats,
@@ -11,7 +12,6 @@ import {
 import type { FastifyInstance } from "fastify";
 
 import { query } from "../lib/db.js";
-import { buildRouteSchema, schemaFromZod } from "../lib/openapi.js";
 
 const DASHBOARD_TAG = "Dashboard";
 const DashboardStatsQueryJsonSchema = schemaFromZod(

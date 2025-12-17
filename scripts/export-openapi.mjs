@@ -32,6 +32,15 @@ const services = [
     },
   },
   {
+    id: "api-gateway",
+    output: "docs/openapi/api-gateway.json",
+    modulePath: "Apps/api-gateway/dist/server.js",
+    build: async () => {
+      const { buildServer } = await import(resolveDistModule("Apps/api-gateway/dist/server.js"));
+      return buildServer();
+    },
+  },
+  {
     id: "settings-service",
     output: "docs/openapi/settings-service.json",
     modulePath: "Apps/settings-service/dist/Apps/settings-service/src/app.js",

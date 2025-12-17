@@ -1,8 +1,8 @@
+import { buildRouteSchema, schemaFromZod } from "@tartware/openapi";
 import { TenantRoleEnum, UserTenantAssociationWithDetailsSchema } from "@tartware/schemas";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 
-import { buildRouteSchema, schemaFromZod } from "../lib/openapi.js";
 import { listUserTenantAssociations } from "../services/user-tenant-association-service.js";
 import { sanitizeForJson } from "../utils/sanitize.js";
 

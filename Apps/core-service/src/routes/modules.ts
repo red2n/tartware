@@ -1,6 +1,6 @@
+import { buildRouteSchema, jsonArraySchema, jsonObjectSchema } from "@tartware/openapi";
 import type { FastifyInstance } from "fastify";
 
-import { buildRouteSchema, jsonArraySchema, jsonObjectSchema } from "../lib/openapi.js";
 import { getModuleCatalog, getTenantModules } from "../services/tenant-module-service.js";
 
 const MODULES_TAG = "Modules";

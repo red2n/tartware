@@ -1,9 +1,9 @@
+import { buildRouteSchema, errorResponseSchema, schemaFromZod } from "@tartware/openapi";
 import { PublicUserSchema, TenantRoleEnum } from "@tartware/schemas";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 
 import { config } from "../config.js";
-import { buildRouteSchema, errorResponseSchema, schemaFromZod } from "../lib/openapi.js";
 import { authenticateUser, changeUserPassword } from "../services/auth-service.js";
 import { sanitizeForJson } from "../utils/sanitize.js";
 
