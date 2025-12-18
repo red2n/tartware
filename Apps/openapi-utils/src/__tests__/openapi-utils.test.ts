@@ -1,7 +1,13 @@
 import { describe, expect, it } from "vitest";
 import { z } from "zod";
 
-import { buildRouteSchema, jsonObjectSchema, schemaFromZod } from "../index.js";
+import {
+  buildRouteSchema,
+  errorResponseSchema,
+  jsonArraySchema,
+  jsonObjectSchema,
+  schemaFromZod,
+} from "../index.js";
 
 describe("schemaFromZod", () => {
   it("normalizes exclusive numeric bounds", () => {
@@ -71,6 +77,61 @@ describe("buildRouteSchema", () => {
     expect(schema).toMatchObject({
       params: paramsSchema,
       response: responseSchema,
+    });
+  });
+
+  it("includes querystring when provided", () => {
+    const querystringSchema = {
+      type: "object",
+      properties: {
+        page: { type: "number" },
+        limit: { type: "number" },
+      },
+    };
+
+    const schema = buildRouteSchema({
+      tag: "Example",
+      summary: "Example route with querystring.",
+      querystring: querystringSchema,
+    });
+
+    expect(schema).toHaveProperty("querystring");
+    expect(schema.querystring).toEqual(querystringSchema);
+  });
+
+  it("includes security when provided", () => {
+    const securitySchema = [{ bearerAuth: [] }];
+
+    const schema = buildRouteSchema({
+      tag: "Example",
+      summary: "Example route with security.",
+      security: securitySchema,
+    });
+
+    expect(schema).toHaveProperty("security");
+    expect(schema.security).toEqual(securitySchema);
+  });
+});
+
+describe("jsonArraySchema", () => {
+  it("has correct structure for array of objects", () => {
+    expect(jsonArraySchema).toMatchObject({
+      type: "array",
+      items: jsonObjectSchema,
+    });
+  });
+});
+
+describe("errorResponseSchema", () => {
+  it("has correct structure for error responses", () => {
+    expect(errorResponseSchema).toMatchObject({
+      type: "object",
+      properties: {
+        error: { type: "string" },
+        message: { type: "string" },
+      },
+      required: ["error", "message"],
+      additionalProperties: true,
     });
   });
 });
