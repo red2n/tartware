@@ -1,6 +1,6 @@
+import { buildRouteSchema, jsonArraySchema, jsonObjectSchema } from "@tartware/openapi";
 import type { FastifyInstance } from "fastify";
 
-import { buildRouteSchema, jsonArraySchema, jsonObjectSchema } from "../lib/openapi.js";
 import { getModuleCatalog, getTenantModules } from "../services/tenant-module-service.js";
 
 const MODULES_TAG = "Modules";
@@ -19,7 +19,7 @@ export const registerModuleRoutes = (app: FastifyInstance): void => {
         tag: MODULES_TAG,
         summary: "List available platform modules",
         response: {
-          200: jsonObjectSchema,
+          200: jsonArraySchema,
         },
       }),
     },
@@ -44,7 +44,7 @@ export const registerModuleRoutes = (app: FastifyInstance): void => {
           required: ["tenantId"],
         },
         response: {
-          200: jsonArraySchema,
+          200: jsonObjectSchema,
         },
       }),
     },

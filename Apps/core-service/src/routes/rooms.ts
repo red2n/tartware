@@ -1,8 +1,8 @@
+import { buildRouteSchema, schemaFromZod } from "@tartware/openapi";
 import { HousekeepingStatusEnum, RoomStatusEnum } from "@tartware/schemas";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 
-import { buildRouteSchema, schemaFromZod } from "../lib/openapi.js";
 import { listRooms, RoomListItemSchema } from "../services/room-service.js";
 
 const RoomListQuerySchema = z.object({

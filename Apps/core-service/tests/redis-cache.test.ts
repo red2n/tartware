@@ -1,15 +1,37 @@
-import { describe, it, expect, beforeAll, afterAll, beforeEach } from "vitest";
+import { describe, it, expect, beforeAll, afterAll, beforeEach, vi } from "vitest";
+import { config } from "../src/config.js";
 import { cacheService } from "../src/lib/cache.js";
-import { userCacheService } from "../src/services/user-cache-service.js";
 import { usernameBloomFilter } from "../src/lib/bloom-filter.js";
 import { initRedis, closeRedis, getRedis } from "../src/lib/redis.js";
 import { pool } from "../src/lib/db.js";
+import {
+  consumeSystemAdminRateLimit,
+  getSystemAdminRateLimitSettings,
+  resetSystemAdminRateLimiter,
+} from "../src/lib/system-admin-rate-limiter.js";
+import { metricsRegistry } from "../src/lib/metrics.js";
 
-describe("Redis Cache Integration", () => {
+let userCacheService: typeof import("../src/services/user-cache-service.js")["userCacheService"];
+
+const redisEnabled = config.redis.enabled;
+const describeIfRedis = redisEnabled ? describe : describe.skip;
+
+if (!redisEnabled) {
+  console.warn(
+    "⚠ Redis disabled (REDIS_ENABLED=false) - skipping Redis Cache Integration tests. Enable Redis to run this suite.",
+  );
+}
+
+describeIfRedis("Redis Cache Integration", () => {
   beforeAll(async () => {
     // Initialize Redis connection
     initRedis();
     await new Promise((resolve) => setTimeout(resolve, 100)); // Wait for connection
+    const actualModule =
+      await vi.importActual<typeof import("../src/services/user-cache-service.js")>(
+        "../src/services/user-cache-service.js",
+      );
+    userCacheService = actualModule.userCacheService;
   });
 
   afterAll(async () => {
@@ -302,6 +324,66 @@ describe("Redis Cache Integration", () => {
         cacheService.exists(testUserId, { prefix: "memberships" }),
       ]);
       expect(exists2.every((e) => !e)).toBe(true);
+    });
+  });
+
+  describe("Membership cache metrics", () => {
+    const getCounterValue = async (name: string): Promise<number> => {
+      const metric = metricsRegistry.getSingleMetric(name);
+      if (!metric) {
+        return 0;
+      }
+      const snapshot = await metric.get();
+      const valueEntry = Array.isArray(snapshot.values) ? snapshot.values[0] : undefined;
+      return valueEntry?.value ?? 0;
+    };
+
+    beforeEach(() => {
+      metricsRegistry.resetMetrics();
+    });
+
+    it("records cache hits and misses for membership lookups", async () => {
+      const result = await pool.query(
+        "SELECT id, username FROM users WHERE is_active = true AND deleted_at IS NULL LIMIT 1"
+      );
+
+      if (result.rows.length === 0) {
+        console.warn("⚠ Skipping test: no users in database");
+        return;
+      }
+
+      const { id: userId, username } = result.rows[0];
+      await userCacheService.invalidateUser(userId, username);
+
+      await userCacheService.getUserMemberships(userId);
+      await userCacheService.getUserMemberships(userId);
+
+      const hits = await getCounterValue("core_membership_cache_hits_total");
+      const misses = await getCounterValue("core_membership_cache_misses_total");
+
+      expect(misses).toBeGreaterThanOrEqual(1);
+      expect(hits).toBeGreaterThanOrEqual(1);
+    });
+  });
+
+  describe("System admin rate limiter (Redis)", () => {
+    const settings = getSystemAdminRateLimitSettings();
+
+    beforeEach(async () => {
+      await resetSystemAdminRateLimiter();
+    });
+
+    it("enforces burst capacity using Redis-backed buckets", async () => {
+      const adminId = `test-admin-${Date.now()}-${Math.random()}`;
+
+      for (let i = 0; i < settings.burst; i += 1) {
+        const result = await consumeSystemAdminRateLimit(adminId);
+        expect(result.allowed).toBe(true);
+      }
+
+      const limited = await consumeSystemAdminRateLimit(adminId);
+      expect(limited.allowed).toBe(false);
+      expect(limited.retryAfterMs).toBeGreaterThan(0);
     });
   });
 

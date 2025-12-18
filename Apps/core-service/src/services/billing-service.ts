@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { applyBillingRetentionPolicy } from "../lib/compliance-policies.js";
 import { query } from "../lib/db.js";
 import { BILLING_PAYMENT_LIST_SQL } from "../sql/billing-queries.js";
 import { toNumberOrFallback } from "../utils/numbers.js";
@@ -161,5 +162,5 @@ export const listBillingPayments = async (options: {
     paymentMethod,
   ]);
 
-  return rows.map(mapRowToPayment);
+  return rows.map((row) => applyBillingRetentionPolicy(mapRowToPayment(row)));
 };

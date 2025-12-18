@@ -1,9 +1,9 @@
+import { buildRouteSchema, errorResponseSchema, schemaFromZod } from "@tartware/openapi";
 import { PublicUserSchema, TenantRoleEnum } from "@tartware/schemas";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 
 import { config } from "../config.js";
-import { buildRouteSchema, errorResponseSchema, schemaFromZod } from "../lib/openapi.js";
 import { authenticateUser, changeUserPassword } from "../services/auth-service.js";
 import { sanitizeForJson } from "../utils/sanitize.js";
 
@@ -31,6 +31,10 @@ const AuthContextResponseSchema = z.object({
 const LoginRequestSchema = z.object({
   username: z.string().min(1, "Username is required"),
   password: z.string().min(8, "Password is required"),
+  mfa_code: z
+    .string()
+    .regex(/^\d{6}$/, "MFA code must be a 6-digit value")
+    .optional(),
 });
 
 // Login response using PublicUserSchema from @tartware/schemas
@@ -65,6 +69,35 @@ const ChangePasswordRequestSchema = z
   );
 
 const AUTH_TAG = "Auth";
+const AUTH_ERROR_CODES: Record<string, string> = {
+  INVALID_CREDENTIALS: "Invalid credentials",
+  ACCOUNT_INACTIVE: "ACCOUNT_INACTIVE",
+  ACCOUNT_LOCKED: "ACCOUNT_LOCKED",
+  THROTTLED: "THROTTLED",
+  MFA_REQUIRED: "MFA_REQUIRED",
+  MFA_INVALID: "MFA_INVALID",
+  MFA_NOT_ENROLLED: "MFA_NOT_ENROLLED",
+};
+
+const AUTH_ERROR_MESSAGES: Record<string, string> = {
+  INVALID_CREDENTIALS: "Invalid username or password.",
+  ACCOUNT_INACTIVE: "This account is not active.",
+  ACCOUNT_LOCKED: "Account temporarily locked due to failed attempts.",
+  THROTTLED: "Too many attempts. Please retry later.",
+  MFA_REQUIRED: "Multi-factor authentication code required.",
+  MFA_INVALID: "Invalid multi-factor authentication code.",
+  MFA_NOT_ENROLLED: "MFA enrollment required before accessing tenant resources.",
+};
+
+const AUTH_ERROR_STATUS: Record<string, number> = {
+  INVALID_CREDENTIALS: 401,
+  ACCOUNT_INACTIVE: 403,
+  ACCOUNT_LOCKED: 423,
+  THROTTLED: 429,
+  MFA_REQUIRED: 401,
+  MFA_INVALID: 401,
+  MFA_NOT_ENROLLED: 403,
+};
 
 const LoginRequestJsonSchema = schemaFromZod(LoginRequestSchema, "AuthLoginRequest");
 const LoginResponseJsonSchema = schemaFromZod(LoginResponseSchema, "AuthLoginResponse");
@@ -89,25 +122,31 @@ export const registerAuthRoutes = (app: FastifyInstance): void => {
           200: LoginResponseJsonSchema,
           401: errorResponseSchema,
           403: errorResponseSchema,
+          423: errorResponseSchema,
+          429: errorResponseSchema,
         },
       }),
     },
     async (request, reply) => {
-      const { username, password } = LoginRequestSchema.parse(request.body);
+      const { username, password, mfa_code } = LoginRequestSchema.parse(request.body);
 
-      const result = await authenticateUser(username, password);
+      const result = await authenticateUser({ username, password, mfaCode: mfa_code });
 
       if (!result.ok) {
-        if (result.reason === "ACCOUNT_INACTIVE") {
-          return reply.status(403).send({
-            error: "Account inactive",
-            message: "This account is not active",
-          });
+        const statusCode = AUTH_ERROR_STATUS[result.reason] ?? 401;
+        if (result.reason === "THROTTLED" && result.retryAfterMs) {
+          reply.header("Retry-After", Math.ceil(result.retryAfterMs / 1000).toString());
         }
 
-        return reply.status(401).send({
-          error: "Invalid credentials",
-          message: "Invalid username or password",
+        const errorCode = result.reason;
+        const error = AUTH_ERROR_CODES[errorCode] ?? errorCode;
+        const errorMessage = AUTH_ERROR_MESSAGES[errorCode] ?? error;
+
+        return reply.status(statusCode).send({
+          error,
+          code: errorCode,
+          message: errorMessage,
+          lock_expires_at: result.lockExpiresAt?.toISOString(),
         });
       }
 

@@ -1,5 +1,6 @@
+import { authenticator } from "otplib";
 import type { FastifyInstance } from "fastify";
-import { beforeAll, describe, expect, it } from "vitest";
+import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 
 import { buildServer } from "../src/server.js";
 import {
@@ -9,6 +10,7 @@ import {
   MANAGER_USER_ID,
 } from "./mocks/db.js";
 import { buildAuthHeader } from "./utils/auth.js";
+import { configureTenantAuthMock } from "./mocks/db.js";
 
 const VALID_PASSWORD = "Password123!";
 
@@ -32,6 +34,10 @@ describe("Authentication Routes", () => {
     expect(response.statusCode).toBe(200);
     const payload = JSON.parse(response.payload);
     accessToken = payload.access_token;
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
   });
 
   describe("POST /v1/auth/login", () => {
@@ -68,6 +74,78 @@ describe("Authentication Routes", () => {
       expect(response.statusCode).toBe(401);
       const payload = JSON.parse(response.payload);
       expect(payload.error).toBe("Invalid credentials");
+    });
+
+    it("returns 423 when account is locked", async () => {
+      configureTenantAuthMock({ lockedUntil: new Date(Date.now() + 5 * 60 * 1000) });
+
+      const response = await app.inject({
+        method: "POST",
+        url: "/v1/auth/login",
+        payload: {
+          username: TEST_USER_USERNAME,
+          password: VALID_PASSWORD,
+        },
+      });
+
+      expect(response.statusCode).toBe(423);
+      const payload = JSON.parse(response.payload);
+      expect(payload.error).toBe("ACCOUNT_LOCKED");
+      expect(payload.lock_expires_at).toBeDefined();
+    });
+
+    it("requires MFA code when user has MFA enabled", async () => {
+      configureTenantAuthMock({ mfaEnabled: true });
+
+      const response = await app.inject({
+        method: "POST",
+        url: "/v1/auth/login",
+        payload: {
+          username: TEST_USER_USERNAME,
+          password: VALID_PASSWORD,
+        },
+      });
+
+      expect(response.statusCode).toBe(401);
+      const payload = JSON.parse(response.payload);
+      expect(payload.error).toBe("MFA_REQUIRED");
+    });
+
+    it("accepts valid MFA code when provided", async () => {
+      configureTenantAuthMock({ mfaEnabled: true });
+      vi.spyOn(authenticator, "check").mockReturnValue(true);
+
+      const response = await app.inject({
+        method: "POST",
+        url: "/v1/auth/login",
+        payload: {
+          username: TEST_USER_USERNAME,
+          password: VALID_PASSWORD,
+          mfa_code: "123456",
+        },
+      });
+
+      expect(response.statusCode).toBe(200);
+      const payload = JSON.parse(response.payload);
+      expect(payload.access_token).toBeDefined();
+    });
+
+    it("flags password rotation when password age exceeds policy", async () => {
+      const ninetyOneDaysAgo = new Date(Date.now() - 181 * 24 * 60 * 60 * 1000);
+      configureTenantAuthMock({ passwordRotatedAt: ninetyOneDaysAgo });
+
+      const response = await app.inject({
+        method: "POST",
+        url: "/v1/auth/login",
+        payload: {
+          username: TEST_USER_USERNAME,
+          password: VALID_PASSWORD,
+        },
+      });
+
+      expect(response.statusCode).toBe(200);
+      const payload = JSON.parse(response.payload);
+      expect(payload.must_change_password).toBe(true);
     });
   });
 

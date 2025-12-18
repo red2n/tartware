@@ -1,8 +1,9 @@
 import { type GuestWithStats, GuestWithStatsSchema } from "@tartware/schemas";
 
+import { applyGuestRetentionPolicy } from "../lib/compliance-policies.js";
 import { query } from "../lib/db.js";
-import { GUEST_LIST_SQL } from "../sql/guest-queries.js";
-import { toNumberOrFallback } from "../utils/numbers.js";
+import { GUEST_LIST_SQL, GUEST_RESERVATION_STATS_SQL } from "../sql/guest-queries.js";
+import { toNonNegativeInt, toNumberOrFallback } from "../utils/numbers.js";
 import { normalizePhoneNumber } from "../utils/phone.js";
 
 const DEFAULT_ADDRESS = {
@@ -145,7 +146,16 @@ type GuestRow = {
   version: bigint | null;
 };
 
-const mapRowToGuest = (row: GuestRow): GuestWithStats => {
+type GuestReservationStats = {
+  upcomingReservations: number;
+  pastReservations: number;
+  cancelledReservations: number;
+  averageStayLength?: number;
+  preferredRoomTypes?: string[];
+  lifetimeValue?: number;
+};
+
+const mapRowToGuest = (row: GuestRow, stats?: GuestReservationStats): GuestWithStats => {
   const parsed = GuestWithStatsSchema.parse({
     id: row.id,
     tenant_id: row.tenant_id,
@@ -186,15 +196,52 @@ const mapRowToGuest = (row: GuestRow): GuestWithStats => {
     updated_by: row.updated_by ?? undefined,
     deleted_at: row.deleted_at ?? null,
     version: row.version ?? BigInt(0),
-    upcoming_reservations: undefined,
-    past_reservations: undefined,
-    cancelled_reservations: undefined,
-    average_stay_length: undefined,
-    preferred_room_types: undefined,
-    lifetime_value: toNumberOrFallback(row.total_revenue),
+    upcoming_reservations: stats?.upcomingReservations ?? 0,
+    past_reservations: stats?.pastReservations ?? 0,
+    cancelled_reservations: stats?.cancelledReservations ?? 0,
+    average_stay_length: stats?.averageStayLength ?? undefined,
+    preferred_room_types: stats?.preferredRoomTypes ?? undefined,
+    lifetime_value: stats?.lifetimeValue ?? toNumberOrFallback(row.total_revenue),
   });
 
   return parsed;
+};
+
+const fetchGuestReservationStats = async (
+  tenantId: string,
+  guestIds: string[],
+  propertyId?: string,
+): Promise<Map<string, GuestReservationStats>> => {
+  if (guestIds.length === 0) {
+    return new Map();
+  }
+
+  const { rows } = await query<{
+    guest_id: string;
+    upcoming_reservations: string | number | null;
+    past_reservations: string | number | null;
+    cancelled_reservations: string | number | null;
+    average_stay_length: string | number | null;
+    lifetime_value: string | number | null;
+    preferred_room_types: string[] | null;
+  }>(GUEST_RESERVATION_STATS_SQL, [tenantId, guestIds, propertyId ?? null]);
+
+  return rows.reduce<Map<string, GuestReservationStats>>((acc, row) => {
+    acc.set(row.guest_id, {
+      upcomingReservations: toNonNegativeInt(row.upcoming_reservations, 0),
+      pastReservations: toNonNegativeInt(row.past_reservations, 0),
+      cancelledReservations: toNonNegativeInt(row.cancelled_reservations, 0),
+      averageStayLength:
+        typeof row.average_stay_length === "number"
+          ? Number(row.average_stay_length)
+          : row.average_stay_length
+            ? Number.parseFloat(row.average_stay_length)
+            : undefined,
+      lifetimeValue: toNumberOrFallback(row.lifetime_value),
+      preferredRoomTypes: row.preferred_room_types ?? undefined,
+    });
+    return acc;
+  }, new Map());
 };
 
 export const listGuests = async (options: {
@@ -227,5 +274,12 @@ export const listGuests = async (options: {
     isBlacklisted,
   ]);
 
-  return rows.map(mapRowToGuest);
+  if (rows.length === 0) {
+    return [];
+  }
+
+  const guestIds = rows.map((row) => row.id);
+  const statsMap = await fetchGuestReservationStats(tenantId, guestIds, propertyId ?? undefined);
+
+  return rows.map((row) => applyGuestRetentionPolicy(mapRowToGuest(row, statsMap.get(row.id))));
 };

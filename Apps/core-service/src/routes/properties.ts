@@ -1,8 +1,8 @@
+import { buildRouteSchema, schemaFromZod } from "@tartware/openapi";
 import { PropertyWithStatsSchema } from "@tartware/schemas";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 
-import { buildRouteSchema, schemaFromZod } from "../lib/openapi.js";
 import { listProperties } from "../services/property-service.js";
 
 const PropertyListQuerySchema = z.object({

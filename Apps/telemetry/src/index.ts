@@ -217,6 +217,7 @@ export interface LoggerOptions {
 	pretty?: boolean;
 	environment?: string;
 	base?: Record<string, unknown>;
+	redact?: pino.LoggerOptions["redact"];
 }
 
 export interface ServiceLoggerOptions {
@@ -227,6 +228,7 @@ export interface ServiceLoggerOptions {
 	pretty?: boolean;
 	environment?: string;
 	base?: Record<string, unknown>;
+	redact?: pino.LoggerOptions["redact"];
 }
 
 const shouldPrettyPrint = (
@@ -375,6 +377,7 @@ export const createLogger = (options: LoggerOptions): PinoLogger => {
 			...options.base,
 		},
 		timestamp: pino.stdTimeFunctions.isoTime,
+		redact: options.redact,
 	};
 
 	const streams: pino.StreamEntry[] = [];
@@ -412,6 +415,7 @@ export const createServiceLogger = (options: ServiceLoggerOptions): PinoLogger =
 		pretty: envPretty ?? options.pretty,
 		environment: options.environment ?? process.env.NODE_ENV,
 		base: options.base,
+		redact: options.redact,
 	});
 };
 

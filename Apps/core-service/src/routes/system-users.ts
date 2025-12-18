@@ -1,8 +1,8 @@
+import { buildRouteSchema, errorResponseSchema, schemaFromZod } from "@tartware/openapi";
 import { UserWithTenantsSchema } from "@tartware/schemas";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 
-import { buildRouteSchema, errorResponseSchema, schemaFromZod } from "../lib/openapi.js";
 import { logSystemAdminEvent } from "../services/system-admin-service.js";
 import { listUsers } from "../services/user-service.js";
 import { sanitizeForJson } from "../utils/sanitize.js";

@@ -4,8 +4,11 @@ import fastifySensible from "@fastify/sensible";
 import Fastify, { type FastifyBaseLogger, type FastifyInstance } from "fastify";
 
 import { config } from "./config.js";
+import { ensureEncryptionRequirementsMet } from "./lib/compliance-policies.js";
 import { appLogger } from "./lib/logger.js";
+import { metricsRegistry } from "./lib/metrics.js";
 import authContextPlugin from "./plugins/auth-context.js";
+import complianceMonitorPlugin from "./plugins/compliance-monitor.js";
 import errorHandlerPlugin from "./plugins/error-handler.js";
 import swaggerPlugin from "./plugins/swagger.js";
 import systemAdminAuthPlugin from "./plugins/system-admin-auth.js";
@@ -28,7 +31,51 @@ import { registerTenantRoutes } from "./routes/tenants.js";
 import { registerUserTenantAssociationRoutes } from "./routes/user-tenant-associations.js";
 import { registerUserRoutes } from "./routes/users.js";
 
+const REDACTED_VALUE = "[REDACTED]" as const;
+const SENSITIVE_LOG_KEYS = new Set(
+  [
+    "password",
+    "current_password",
+    "new_password",
+    "passcode",
+    "token",
+    "email",
+    "phone",
+    "id_number",
+    "passport_number",
+    "ssn",
+    "payment_reference",
+    "card_number",
+    "cvv",
+    "authorization",
+  ].map((key) => key.toLowerCase()),
+);
+
+const sanitizeLogValue = (value: unknown): unknown => {
+  if (value === null || value === undefined) {
+    return value;
+  }
+
+  if (Array.isArray(value)) {
+    return value.map((item) => sanitizeLogValue(item));
+  }
+
+  if (typeof value !== "object") {
+    return value;
+  }
+
+  const entries = Object.entries(value as Record<string, unknown>).map(([key, nestedValue]) => {
+    if (SENSITIVE_LOG_KEYS.has(key.toLowerCase())) {
+      return [key, REDACTED_VALUE] as const;
+    }
+    return [key, sanitizeLogValue(nestedValue)] as const;
+  });
+
+  return Object.fromEntries(entries);
+};
+
 export const buildServer = (): FastifyInstance => {
+  ensureEncryptionRequirementsMet();
   const app = Fastify({
     logger: appLogger as FastifyBaseLogger,
     disableRequestLogging: !config.log.requestLogging,
@@ -66,6 +113,17 @@ export const buildServer = (): FastifyInstance => {
   app.register(errorHandlerPlugin);
   app.register(authContextPlugin);
   app.register(systemAdminAuthPlugin);
+  app.register(complianceMonitorPlugin);
+
+  app.get("/metrics", async (request, reply) => {
+    try {
+      const body = await metricsRegistry.metrics();
+      reply.header("Content-Type", metricsRegistry.contentType).send(body);
+    } catch (error) {
+      request.log.error(error, "failed to collect core-service metrics");
+      reply.status(500).send("metrics_unavailable");
+    }
+  });
 
   if (config.log.requestLogging) {
     app.addHook("onRequest", async (request) => {
@@ -73,8 +131,8 @@ export const buildServer = (): FastifyInstance => {
         {
           method: request.method,
           url: request.url,
-          query: request.query,
-          params: request.params,
+          query: sanitizeLogValue(request.query),
+          params: sanitizeLogValue(request.params),
         },
         "request received",
       );

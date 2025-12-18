@@ -4,6 +4,7 @@
   "ignoreDependencies": [
     "@tartware/schemas",
     "@tartware/config",
+    "@tartware/openapi",
     "@tartware/telemetry",
     "@biomejs/biome",
     "tsx"

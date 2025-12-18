@@ -12,7 +12,12 @@
     "outDir": "dist",
     "declaration": true,
     "sourceMap": true,
-    "resolveJsonModule": true
+    "resolveJsonModule": true,
+    "baseUrl": ".",
+    "paths": {
+      "@tartware/openapi": ["../openapi-utils/src/index.ts"],
+      "@tartware/openapi/*": ["../openapi-utils/src/*"]
+    }
   },
   "include": ["src/**/*.ts"],
   "exclude": ["dist", "node_modules"]

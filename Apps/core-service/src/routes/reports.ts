@@ -1,7 +1,7 @@
+import { buildRouteSchema, schemaFromZod } from "@tartware/openapi";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 
-import { buildRouteSchema, schemaFromZod } from "../lib/openapi.js";
 import { getPerformanceReport, PerformanceReportSchema } from "../services/report-service.js";
 
 const PerformanceReportQuerySchema = z.object({

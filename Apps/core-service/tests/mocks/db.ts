@@ -36,6 +36,20 @@ const systemAdminState: {
   mfaEnabled: true,
 };
 
+const tenantAuthState: {
+  failedAttempts: number;
+  lockedUntil: Date | null;
+  passwordRotatedAt: Date | null;
+  mfaEnabled: boolean;
+  mfaSecret: string;
+} = {
+  failedAttempts: 0,
+  lockedUntil: null,
+  passwordRotatedAt: new Date(),
+  mfaEnabled: false,
+  mfaSecret: "JBSWY3DPEHPK3PXP",
+};
+
 export const resetSystemAdminState = (): void => {
   systemAdminState.failedAttempts = 0;
   systemAdminState.lockedUntil = null;
@@ -43,6 +57,14 @@ export const resetSystemAdminState = (): void => {
   systemAdminState.ipWhitelist = ["127.0.0.1/32", "::1/128"];
   systemAdminState.trustedDevices = ["trusted-device"];
   systemAdminState.mfaEnabled = true;
+};
+
+export const resetTenantAuthState = (): void => {
+  tenantAuthState.failedAttempts = 0;
+  tenantAuthState.lockedUntil = null;
+  tenantAuthState.passwordRotatedAt = new Date();
+  tenantAuthState.mfaEnabled = false;
+  tenantAuthState.mfaSecret = "JBSWY3DPEHPK3PXP";
 };
 
 export const configureSystemAdminMock = (options: {
@@ -62,6 +84,30 @@ export const configureSystemAdminMock = (options: {
   }
   if (options.mfaEnabled !== undefined) {
     systemAdminState.mfaEnabled = options.mfaEnabled;
+  }
+};
+
+export const configureTenantAuthMock = (options: {
+  failedAttempts?: number;
+  lockedUntil?: Date | null;
+  passwordRotatedAt?: Date | null;
+  mfaEnabled?: boolean;
+  mfaSecret?: string;
+} = {}): void => {
+  if (typeof options.failedAttempts === "number") {
+    tenantAuthState.failedAttempts = options.failedAttempts;
+  }
+  if (options.lockedUntil !== undefined) {
+    tenantAuthState.lockedUntil = options.lockedUntil;
+  }
+  if (options.passwordRotatedAt !== undefined) {
+    tenantAuthState.passwordRotatedAt = options.passwordRotatedAt;
+  }
+  if (typeof options.mfaEnabled === "boolean") {
+    tenantAuthState.mfaEnabled = options.mfaEnabled;
+  }
+  if (typeof options.mfaSecret === "string") {
+    tenantAuthState.mfaSecret = options.mfaSecret;
   }
 };
 
@@ -581,6 +627,47 @@ export const query = vi.fn(async <T extends pg.QueryResultRow = pg.QueryResultRo
   }
 
   // Authentication user lookup
+  if (
+    sql.startsWith("update public.users") &&
+    sql.includes("failed_login_attempts = failed_login_attempts + 1") &&
+    sql.includes("locked_until")
+  ) {
+    tenantAuthState.failedAttempts += 1;
+    const maxAttempts = Number(params?.[1]) || 5;
+    const lockMinutes = Number(params?.[2]) || 15;
+    if (tenantAuthState.failedAttempts >= maxAttempts) {
+      tenantAuthState.lockedUntil = new Date(Date.now() + lockMinutes * 60 * 1000);
+    }
+    return {
+      rows: [
+        {
+          failed_login_attempts: tenantAuthState.failedAttempts,
+          locked_until: tenantAuthState.lockedUntil,
+        },
+      ] as unknown as T[],
+      rowCount: 1,
+      command: "UPDATE",
+      oid: 0,
+      fields: [],
+    };
+  }
+
+  if (
+    sql.startsWith("update public.users") &&
+    sql.includes("failed_login_attempts = 0") &&
+    sql.includes("locked_until = null")
+  ) {
+    tenantAuthState.failedAttempts = 0;
+    tenantAuthState.lockedUntil = null;
+    return {
+      rows: [] as unknown as T[],
+      rowCount: 1,
+      command: "UPDATE",
+      oid: 0,
+      fields: [],
+    };
+  }
+
   if (sql.includes("password_hash") && sql.includes("from public.users")) {
     return {
       rows: [
@@ -592,6 +679,11 @@ export const query = vi.fn(async <T extends pg.QueryResultRow = pg.QueryResultRo
           last_name: "User",
           password_hash: currentTestUserPasswordHash,
           is_active: true,
+          failed_login_attempts: tenantAuthState.failedAttempts,
+          locked_until: tenantAuthState.lockedUntil,
+          mfa_secret: tenantAuthState.mfaSecret,
+          mfa_enabled: tenantAuthState.mfaEnabled,
+          password_rotated_at: tenantAuthState.passwordRotatedAt,
         },
       ] as unknown as T[],
       rowCount: 1,
@@ -601,8 +693,15 @@ export const query = vi.fn(async <T extends pg.QueryResultRow = pg.QueryResultRo
     };
   }
 
-  if (sql.startsWith("update public.users set password_hash")) {
+  if (
+    sql.startsWith("update public.users") &&
+    sql.includes("password_rotated_at = now()") &&
+    sql.includes("version = coalesce(version, 0) + 1")
+  ) {
     currentTestUserPasswordHash = params?.[0] as string;
+    tenantAuthState.passwordRotatedAt = new Date();
+    tenantAuthState.failedAttempts = 0;
+    tenantAuthState.lockedUntil = null;
     return {
       rows: [] as T[],
       rowCount: 1,

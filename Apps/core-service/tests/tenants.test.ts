@@ -26,7 +26,6 @@ describe("Tenants Endpoint", () => {
         url: "/v1/tenants?limit=10",
         headers: buildAuthHeader(adminUserId),
       });
-
       expect(response.statusCode).toBe(200);
       const body = response.json();
       expect(Array.isArray(body)).toBe(true);

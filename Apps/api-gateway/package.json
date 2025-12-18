@@ -26,6 +26,7 @@
     "@fastify/rate-limit": "^9.1.0",
     "@fastify/sensible": "^5.1.1",
     "fastify-plugin": "^4.5.1",
+    "@tartware/openapi": "file:../openapi-utils",
     "@tartware/telemetry": "file:../telemetry",
     "dotenv": "^17.2.3",
     "fastify": "^4.26.2"

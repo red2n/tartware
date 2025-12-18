@@ -1,6 +1,11 @@
 import fastifyHelmet from "@fastify/helmet";
 import rateLimit from "@fastify/rate-limit";
 import fastifySensible from "@fastify/sensible";
+import {
+	buildRouteSchema,
+	type JsonSchema,
+	jsonObjectSchema,
+} from "@tartware/openapi";
 import fastify, {
 	type FastifyBaseLogger,
 	type FastifyReply,
@@ -16,11 +21,6 @@ const HEALTH_TAG = "Gateway Health";
 const RESERVATION_PROXY_TAG = "Reservation Proxy";
 const CORE_PROXY_TAG = "Core Proxy";
 
-const jsonObjectSchema = {
-	type: "object",
-	additionalProperties: true,
-} as const;
-
 const healthResponseSchema = {
 	type: "object",
 	properties: {
@@ -29,7 +29,7 @@ const healthResponseSchema = {
 	},
 	required: ["status", "service"],
 	additionalProperties: false,
-} as const;
+} as const satisfies JsonSchema;
 
 const reservationParamsSchema = {
 	type: "object",
@@ -42,7 +42,7 @@ const reservationParamsSchema = {
 	},
 	required: ["tenantId"],
 	additionalProperties: false,
-} as const;
+} as const satisfies JsonSchema;
 
 export const buildServer = () => {
 	const app = fastify({
@@ -108,13 +108,13 @@ export const buildServer = () => {
 		app.get(
 			"/health",
 			{
-				schema: {
-					tags: [HEALTH_TAG],
+				schema: buildRouteSchema({
+					tag: HEALTH_TAG,
 					summary: "API gateway health status.",
 					response: {
 						200: healthResponseSchema,
 					},
-				},
+				}),
 			},
 			async (_request, reply) => {
 				allowCorsHeaders(reply);
@@ -142,8 +142,8 @@ export const buildServer = () => {
 		app.all(
 			"/v1/tenants/:tenantId/reservations",
 			{
-				schema: {
-					tags: [RESERVATION_PROXY_TAG],
+				schema: buildRouteSchema({
+					tag: RESERVATION_PROXY_TAG,
 					summary: "Proxy tenant reservation requests to the backing services.",
 					params: reservationParamsSchema,
 					response: {
@@ -151,7 +151,7 @@ export const buildServer = () => {
 						201: jsonObjectSchema,
 						202: jsonObjectSchema,
 					},
-				},
+				}),
 			},
 			reservationHandler,
 		);
@@ -159,14 +159,14 @@ export const buildServer = () => {
 		app.all(
 			"/v1/tenants/:tenantId/reservations/*",
 			{
-				schema: {
-					tags: [RESERVATION_PROXY_TAG],
+				schema: buildRouteSchema({
+					tag: RESERVATION_PROXY_TAG,
 					summary: "Proxy nested reservation resource calls.",
 					params: reservationParamsSchema,
 					response: {
 						200: jsonObjectSchema,
 					},
-				},
+				}),
 			},
 			reservationHandler,
 		);
@@ -174,13 +174,13 @@ export const buildServer = () => {
 		app.all(
 			"/v1/*",
 			{
-				schema: {
-					tags: [CORE_PROXY_TAG],
+				schema: buildRouteSchema({
+					tag: CORE_PROXY_TAG,
 					summary: "Proxy remaining v1 routes to the core-service.",
 					response: {
 						200: jsonObjectSchema,
 					},
-				},
+				}),
 			},
 			async (request: FastifyRequest, reply: FastifyReply) => {
 				return proxyRequest(request, reply, serviceTargets.coreServiceUrl);

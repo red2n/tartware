@@ -1,25 +1,41 @@
+import { buildRouteSchema, type JsonSchema, jsonObjectSchema } from "@tartware/openapi";
 import type { FastifyPluginAsync } from "fastify";
 import fp from "fastify-plugin";
 
 import { settingsCatalogData } from "../data/settings-catalog.js";
 import { settingsValues } from "../data/settings-values.js";
 
-const defaultSettingsResponseSchema = {
+const SETTINGS_CATALOG_TAG = "Settings Catalog";
+const defaultSettingsResponseSchema = jsonObjectSchema;
+const catalogParamsSchema = {
   type: "object",
+  properties: {
+    categoryCode: { type: "string" },
+  },
+  required: ["categoryCode"],
+  additionalProperties: false,
+} as const satisfies JsonSchema;
+
+const notFoundSchema = {
+  type: "object",
+  properties: {
+    message: { type: "string" },
+  },
+  required: ["message"],
   additionalProperties: true,
-} as const;
+} as const satisfies JsonSchema;
 
 const catalogRoutes: FastifyPluginAsync = async (app) => {
   app.get(
     "/v1/settings/catalog",
     {
-      schema: {
-        tags: ["Settings Catalog"],
+      schema: buildRouteSchema({
+        tag: SETTINGS_CATALOG_TAG,
         summary: "List the full settings catalog definitions",
         response: {
           200: defaultSettingsResponseSchema,
         },
-      },
+      }),
     },
     async () => ({
       data: settingsCatalogData,
@@ -38,28 +54,15 @@ const catalogRoutes: FastifyPluginAsync = async (app) => {
   app.get(
     "/v1/settings/catalog/:categoryCode",
     {
-      schema: {
-        tags: ["Settings Catalog"],
+      schema: buildRouteSchema({
+        tag: SETTINGS_CATALOG_TAG,
         summary: "Retrieve catalog metadata for a specific category",
-        params: {
-          type: "object",
-          properties: {
-            categoryCode: { type: "string" },
-          },
-          required: ["categoryCode"],
-        },
+        params: catalogParamsSchema,
         response: {
           200: defaultSettingsResponseSchema,
-          404: {
-            type: "object",
-            properties: {
-              message: { type: "string" },
-            },
-            required: ["message"],
-            additionalProperties: true,
-          },
+          404: notFoundSchema,
         },
-      },
+      }),
     },
     async (request, reply) => {
       const { categoryCode } = request.params as { categoryCode: string };
@@ -106,13 +109,13 @@ const catalogRoutes: FastifyPluginAsync = async (app) => {
   app.get(
     "/v1/settings/values",
     {
-      schema: {
-        tags: ["Settings Catalog"],
+      schema: buildRouteSchema({
+        tag: SETTINGS_CATALOG_TAG,
         summary: "Return snapshot of seeded settings values",
         response: {
           200: defaultSettingsResponseSchema,
         },
-      },
+      }),
     },
     async () => ({
       data: settingsValues,

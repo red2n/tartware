@@ -3,6 +3,7 @@ import type { FastifyPluginAsync, FastifyReply, preHandlerHookHandler } from "fa
 import fp from "fastify-plugin";
 
 import { extractBearerToken, verifySystemAdminToken } from "../lib/jwt.js";
+import { recordSystemAdminRateLimitDenied } from "../lib/metrics.js";
 import {
   consumeSystemAdminRateLimit,
   getSystemAdminRateLimitSettings,
@@ -79,17 +80,21 @@ const buildGuard =
       return forbidden(reply);
     }
 
-    const rateLimitResult = consumeSystemAdminRateLimit(context.adminId);
+    const rateLimitResult = await consumeSystemAdminRateLimit(context.adminId);
     if (!rateLimitResult.allowed) {
       const retryAfterSeconds =
         rateLimitResult.retryAfterMs !== undefined
           ? rateLimitResult.retryAfterMs / 1000
           : undefined;
+      recordSystemAdminRateLimitDenied(context.scope);
       request.log.warn(
         {
           adminId: context.adminId,
           username: context.username,
           sessionId: context.sessionId,
+          scope: context.scope,
+          remaining: rateLimitResult.remaining,
+          retryAfterMs: rateLimitResult.retryAfterMs,
         },
         "system admin rate limit exceeded",
       );

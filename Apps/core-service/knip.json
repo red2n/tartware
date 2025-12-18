@@ -5,6 +5,7 @@
     "@tartware/schemas",
     "@tartware/config",
     "@tartware/telemetry",
+    "@tartware/openapi",
     "@biomejs/biome",
     "tsx",
     "redis"

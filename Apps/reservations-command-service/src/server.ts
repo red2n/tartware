@@ -1,11 +1,11 @@
 import fastifyHelmet from "@fastify/helmet";
 import fastifySensible from "@fastify/sensible";
+import { buildRouteSchema, jsonObjectSchema } from "@tartware/openapi";
 import fastify, { type FastifyBaseLogger } from "fastify";
 
 import { serviceConfig } from "./config.js";
 import { checkDatabaseHealth, checkKafkaHealth } from "./lib/health-checks.js";
 import { metricsRegistry } from "./lib/metrics.js";
-import { buildRouteSchema, jsonObjectSchema } from "./lib/openapi.js";
 import { reservationsLogger } from "./logger.js";
 import swaggerPlugin from "./plugins/swagger.js";
 import { registerReservationCommandRoutes } from "./routes/reservation-commands.js";

@@ -6,6 +6,7 @@
     "@biomejs/biome",
     "@tartware/schemas",
     "@tartware/telemetry",
+    "@tartware/openapi",
     "tsx"
   ],
   "ignoreBinaries": ["biome", "eslint", "knip", "tsc", "tsx"]

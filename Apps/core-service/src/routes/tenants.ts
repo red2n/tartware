@@ -1,8 +1,8 @@
+import { buildRouteSchema, schemaFromZod } from "@tartware/openapi";
 import { TenantWithRelationsSchema } from "@tartware/schemas";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 
-import { buildRouteSchema, schemaFromZod } from "../lib/openapi.js";
 import { listTenants } from "../services/tenant-service.js";
 import { sanitizeForJson } from "../utils/sanitize.js";
 

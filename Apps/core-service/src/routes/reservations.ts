@@ -1,8 +1,8 @@
+import { buildRouteSchema, schemaFromZod } from "@tartware/openapi";
 import { ReservationStatusEnum } from "@tartware/schemas";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 
-import { buildRouteSchema, schemaFromZod } from "../lib/openapi.js";
 import { listReservations, ReservationListItemSchema } from "../services/reservation-service.js";
 
 const ReservationListQuerySchema = z.object({
