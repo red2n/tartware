@@ -30,6 +30,7 @@
     "@fastify/swagger": "^8.12.0",
     "@fastify/swagger-ui": "^1.7.0",
     "@tartware/config": "file:../config",
+    "@tartware/openapi": "file:../openapi-utils",
     "@tartware/schemas": "file:../../schema",
     "@tartware/telemetry": "file:../telemetry",
     "fastify": "^4.26.2",
