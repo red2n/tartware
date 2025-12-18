@@ -100,13 +100,24 @@
  * ```
  */
 
-import { UserSchema } from "@tartware/schemas";
+import { TenantRoleEnum, UserSchema } from "@tartware/schemas";
 import { z } from "zod";
 
 import { config } from "../config.js";
 import { usernameBloomFilter } from "../lib/bloom-filter.js";
 import { cacheService } from "../lib/cache.js";
 import { pool } from "../lib/db.js";
+import {
+  recordMembershipCacheError,
+  recordMembershipCacheHit,
+  recordMembershipCacheMiss,
+} from "../lib/metrics.js";
+import { trackMembershipCacheSample } from "../lib/monitoring.js";
+import {
+  DEFAULT_ENABLED_MODULES,
+  MODULE_IDS,
+  normalizeModuleList,
+} from "../modules/module-registry.js";
 
 /**
  * Cached user data structure - Uses Zod schema validation from @tartware/schemas.
@@ -127,12 +138,15 @@ export type CachedUser = z.infer<typeof CachedUserSchema>;
  * Cached membership data - manually defined to match database structure.
  * Can't use .pick() on UserTenantAssociationSchema because it has .refine()
  */
+const ModuleIdSchema = z.enum(MODULE_IDS);
+
 export const CachedMembershipSchema = z.object({
   tenant_id: z.string().uuid(),
   tenant_name: z.string().min(1).optional(),
-  role: z.string(),
+  role: TenantRoleEnum,
   is_active: z.boolean(),
   permissions: z.record(z.unknown()),
+  modules: z.array(ModuleIdSchema).default(DEFAULT_ENABLED_MODULES),
 });
 
 export type CachedMembership = z.infer<typeof CachedMembershipSchema>;
@@ -304,8 +318,13 @@ export class UserCacheService {
     });
 
     if (cached) {
+      recordMembershipCacheHit();
+      trackMembershipCacheSample("hit");
       return cached;
     }
+
+    recordMembershipCacheMiss();
+    trackMembershipCacheSample("miss");
 
     // Cache miss - fetch from database
     const memberships = await this.fetchMembershipsFromDb(userId);
@@ -626,14 +645,24 @@ export class UserCacheService {
    * @returns {Promise<CachedMembership[]>} Array of tenant associations (empty if none)
    */
   private async fetchMembershipsFromDb(userId: string): Promise<CachedMembership[]> {
+    type MembershipRow = {
+      tenant_id: string;
+      tenant_name: string | null;
+      role: string;
+      is_active: boolean;
+      permissions: Record<string, unknown> | null;
+      modules: unknown;
+    };
+
     try {
-      const result = await pool.query(
+      const result = await pool.query<MembershipRow>(
         `SELECT
            uta.tenant_id,
            uta.role,
            uta.is_active,
            uta.permissions,
-           t.name AS tenant_name
+           t.name AS tenant_name,
+           COALESCE(t.config -> 'modules', '["core"]'::jsonb) AS modules
          FROM user_tenant_associations uta
          LEFT JOIN tenants t ON t.id = uta.tenant_id
          WHERE uta.user_id = $1
@@ -642,7 +671,6 @@ export class UserCacheService {
         [userId],
       );
 
-      // Validate each row with Zod schema
       return result.rows.map((row) =>
         CachedMembershipSchema.parse({
           tenant_id: row.tenant_id,
@@ -650,9 +678,12 @@ export class UserCacheService {
           role: row.role,
           is_active: row.is_active,
           permissions: row.permissions ?? {},
+          modules: normalizeModuleList(row.modules),
         }),
       );
     } catch (error) {
+      recordMembershipCacheError();
+      trackMembershipCacheSample("miss");
       console.error(`Error fetching memberships for user ${userId}:`, error);
       return [];
     }

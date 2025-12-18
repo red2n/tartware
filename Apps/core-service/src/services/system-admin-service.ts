@@ -15,6 +15,7 @@ import { config } from "../config.js";
 import { query } from "../lib/db.js";
 import { signImpersonationToken, signSystemAdminToken } from "../lib/jwt.js";
 import { appLogger } from "../lib/logger.js";
+import { trackImpersonationSession } from "../lib/monitoring.js";
 import { listUserTenantAssociations } from "../services/user-tenant-association-service.js";
 import {
   SYSTEM_ADMIN_AUDIT_INSERT_SQL,
@@ -476,6 +477,8 @@ export const startImpersonationSession = async (
       ticket_id: input.ticketId,
     },
   });
+
+  trackImpersonationSession(admin.adminId);
 
   return {
     ok: true,

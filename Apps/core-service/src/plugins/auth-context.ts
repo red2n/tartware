@@ -1,3 +1,4 @@
+import { TenantRoleEnum } from "@tartware/schemas";
 import type {
   FastifyPluginAsync,
   FastifyReply,
@@ -7,7 +8,7 @@ import type {
 import fp from "fastify-plugin";
 
 import { extractBearerToken, verifyAccessToken } from "../lib/jwt.js";
-import { getActiveUserTenantMemberships } from "../services/user-tenant-association-service.js";
+import { type CachedMembership, userCacheService } from "../services/user-cache-service.js";
 import type {
   AuthContext,
   RolePriorityMap,
@@ -50,6 +51,15 @@ const createAuthContext = (userId: string | null, memberships: TenantMembership[
     hasRole,
   };
 };
+
+const toTenantMembership = (membership: CachedMembership): TenantMembership => ({
+  tenantId: membership.tenant_id,
+  tenantName: membership.tenant_name,
+  role: TenantRoleEnum.parse(membership.role),
+  isActive: membership.is_active,
+  permissions: membership.permissions ?? {},
+  modules: membership.modules,
+});
 
 const buildTenantScopeGuard = (options: TenantScopeOptions = {}): preHandlerHookHandler => {
   const {
@@ -186,7 +196,8 @@ const authContextPlugin: FastifyPluginAsync = async (fastify) => {
     }
 
     try {
-      const memberships = await getActiveUserTenantMemberships(payload.sub);
+      const cachedMemberships = await userCacheService.getUserMemberships(payload.sub);
+      const memberships = cachedMemberships.map(toTenantMembership);
       request.auth = createAuthContext(payload.sub, memberships);
     } catch (error) {
       request.log.error(error, "Failed to load tenant memberships for authenticated user");

@@ -261,6 +261,46 @@ CREATE POLICY system_admin_audit_self_only ON system_admin_audit_log
 
 ---
 
+### 2. **Core-Service Hardening & Compliance Gaps (Priority: HIGH)**
+Shore up urgent items uncovered during the latest core-service review so the platform satisfies security/compliance baselines (PCI/GDPR/OWASP) and future CI failures are avoided.
+
+1. **Auth Context & Caching**
+   - Update `auth-context` plugin to consume `userCacheService.getUserMemberships` (three-layer Bloom/Redis/Postgres) instead of live DB queries.
+   - Emit cache hit/miss metrics + logs for membership lookups; degrade gracefully when Redis is down.
+   - Ensure user/association mutations invalidate the cache via shared hooks.
+
+2. **System Admin Rate Limiting**
+   - Move the token bucket state from the in-process `Map` to Redis (or another distributed store) so rate limits hold across replicas.
+   - Add Prometheus counters and structured logs for denied requests (adminId, sessionId, scope) to support SOC reviews.
+
+3. **Redis Pattern Deletes**
+   - Replace `cacheService.delPattern`’s blocking `KEYS` call with a SCAN-based deleter or tag-based invalidation to avoid production stalls.
+   - Add regression tests preventing reintroduction of `KEYS` usage.
+
+4. **Operational Metrics Placeholders**
+  - ✅ 2025-12-16: Dashboard KPIs now use live SQL aggregates (occupancy deltas, revenue trends, check-in/out completion), property listings include real-time room/guest counts, and guest stats (upcoming/past/cancelled stays, average stay, preferred room types, lifetime value) are sourced from reservations.
+  - Document interim limits so API consumers know which KPIs are authoritative.
+
+5. **PII Redaction & Secure Logging**
+   - Configure Fastify/Pino redaction to strip emails, passport numbers, and payment metadata from request logs.
+   - Store hashed identifiers in audit logs when possible and keep raw values confined to encrypted tables.
+
+6. **Tenant Auth Security Controls**
+   - ✅ 2025-12-17: Tenant auth now enforces Redis-backed throttles, database lockouts, TOTP MFA, and password rotation policy. `/v1/auth/login` surfaces structured error codes + Retry-After headers, and auth tests cover MFA/lockout/password-age paths. Change-password resets lock state and rotation timestamp so policy compliance is verifiable via tests.
+
+7. **Compliance & Monitoring**
+   - ✅ 2025-12-16: Retention/encryption policies codified for guest/billing data with automated redaction plus startup validation and tests.
+   - ✅ 2025-12-16: Added compliance monitoring alerts (impersonation surge detection, off-hours tenant access, membership cache hit-rate drops) with Prometheus counters/logs.
+
+### 3. **Shared Logging & Fastify Bootstrap (Priority: HIGH)**
+Consolidate logger + Fastify instrumentation so every service inherits the same PII safeguards and request lifecycle hooks.
+
+- Extract the sanitized request logging hooks + redaction defaults we just added to core-service into `@tartware/telemetry` (or a dedicated `@tartware/logging` package). Export helpers like `createServiceLogger()` and `withRequestLogging(app)` so every Fastify service can adopt them with one import.
+- Include standard redact lists for PII/payment data and expose extension points (per-service additions, censor overrides, structured correlation fields).
+- Provide integration tests to guarantee headers/query/body redaction stays intact and add docs instructing each service to opt in.
+- Update all Fastify-based services (api-gateway, reservations-command-service, settings-service, etc.) to consume the shared helpers and remove duplicate logger setup.
+- Add CI guardrails (lint rule or unit test) ensuring no service registers raw `request.log.info` statements without going through the shared sanitizer.
+
 ### 2. **Reservation Event Processor (JVM microservice)**
    - Define shared Avro/protobuf schemas for reservation events emitted by Node services.
    - Build a Spring Boot (or Quarkus) consumer using Kafka Streams to ingest, validate, and persist reservation mutations with partition-aware concurrency.

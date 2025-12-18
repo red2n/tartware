@@ -2,6 +2,7 @@ import { beforeAll, afterAll, beforeEach, vi } from "vitest";
 
 import {
   resetSystemAdminState,
+  resetTenantAuthState,
   TEST_TENANT_ID,
   TEST_USER_ID,
   MANAGER_USER_ID,
@@ -9,6 +10,7 @@ import {
   VIEWER_USER_ID,
   MODULE_DISABLED_USER_ID,
 } from "./mocks/db.js";
+import type { CachedMembership } from "../src/services/user-cache-service.js";
 import type { TenantMembership } from "../src/types/auth.js";
 
 process.env.NODE_ENV = process.env.NODE_ENV ?? "test";
@@ -40,6 +42,17 @@ process.env.AUTH_JWT_ISSUER = process.env.AUTH_JWT_ISSUER ?? "core-service-test"
 process.env.AUTH_JWT_AUDIENCE = process.env.AUTH_JWT_AUDIENCE ?? "core-service";
 process.env.AUTH_JWT_EXPIRES_IN_SECONDS = process.env.AUTH_JWT_EXPIRES_IN_SECONDS ?? "900";
 process.env.AUTH_DEFAULT_PASSWORD = process.env.AUTH_DEFAULT_PASSWORD ?? "ChangeMe123!";
+process.env.TENANT_AUTH_MAX_FAILED_ATTEMPTS =
+  process.env.TENANT_AUTH_MAX_FAILED_ATTEMPTS ?? "3";
+process.env.TENANT_AUTH_LOCKOUT_MINUTES = process.env.TENANT_AUTH_LOCKOUT_MINUTES ?? "5";
+process.env.TENANT_AUTH_THROTTLE_MAX_ATTEMPTS =
+  process.env.TENANT_AUTH_THROTTLE_MAX_ATTEMPTS ?? "50";
+process.env.TENANT_AUTH_THROTTLE_WINDOW_SECONDS =
+  process.env.TENANT_AUTH_THROTTLE_WINDOW_SECONDS ?? "60";
+process.env.TENANT_AUTH_PASSWORD_MAX_AGE_DAYS =
+  process.env.TENANT_AUTH_PASSWORD_MAX_AGE_DAYS ?? "180";
+process.env.TENANT_AUTH_MFA_ISSUER = process.env.TENANT_AUTH_MFA_ISSUER ?? "Tartware";
+process.env.TENANT_AUTH_MFA_ENFORCED = process.env.TENANT_AUTH_MFA_ENFORCED ?? "false";
 
 // Mock the database module before any imports
 vi.mock("../src/lib/db.js", () => import("./mocks/db.js"));
@@ -105,16 +118,30 @@ const membershipByUser: Record<string, TenantMembership[]> = {
   ],
 };
 
-vi.mock("../src/services/user-tenant-association-service.js", async () => {
-  const actual = await import("../src/services/user-tenant-association-service.js");
+vi.mock("../src/services/user-cache-service.js", async () => {
+  const actual = await import("../src/services/user-cache-service.js");
+  const mockedService = Object.create(actual.userCacheService);
+  mockedService.getUserMemberships = vi.fn(
+    async (userId: string): Promise<CachedMembership[]> => {
+      const memberships = membershipByUser[userId] ?? [];
+      return memberships.map((membership) => ({
+        tenant_id: membership.tenantId,
+        tenant_name: membership.tenantName,
+        role: membership.role,
+        is_active: membership.isActive,
+        permissions: membership.permissions ?? {},
+        modules: membership.modules,
+      }));
+    },
+  );
 
   return {
     ...actual,
-    getActiveUserTenantMemberships: vi.fn(async (userId: string) => membershipByUser[userId] ?? []),
+    userCacheService: mockedService,
   };
 });
 
-let resetRateLimiter: (() => void) | null = null;
+let resetRateLimiter: (() => Promise<void>) | null = null;
 const ensureRateLimiterResetter = async () => {
   if (!resetRateLimiter) {
     const module = await import("../src/lib/system-admin-rate-limiter.js");
@@ -132,8 +159,9 @@ beforeEach(async () => {
   // Clear all mocks before each test
   vi.clearAllMocks();
   resetSystemAdminState();
+  resetTenantAuthState();
   const reset = await ensureRateLimiterResetter();
-  reset?.();
+  await reset?.();
 });
 
 afterAll(async () => {

@@ -34,18 +34,3 @@ export const ASSOCIATION_LIST_SQL = `
   ORDER BY uta.created_at DESC
   LIMIT $5
 `;
-
-export const ACTIVE_MEMBERSHIPS_SQL = `
-  SELECT
-    uta.tenant_id,
-    uta.role,
-    uta.is_active,
-    COALESCE(uta.permissions, '{}'::jsonb) AS permissions,
-    t.name AS tenant_name,
-    COALESCE(t.config -> 'modules', '["core"]'::jsonb) AS modules
-  FROM public.user_tenant_associations uta
-  LEFT JOIN public.tenants t ON t.id = uta.tenant_id
-  WHERE uta.user_id = $1::uuid
-    AND COALESCE(uta.is_deleted, false) = false
-    AND uta.deleted_at IS NULL
-`;

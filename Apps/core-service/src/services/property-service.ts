@@ -2,7 +2,7 @@ import { PropertyWithStatsSchema } from "@tartware/schemas";
 import { z } from "zod";
 
 import { query } from "../lib/db.js";
-import { PROPERTY_LIST_SQL } from "../sql/property-queries.js";
+import { PROPERTY_LIST_SQL, PROPERTY_OPERATIONAL_STATS_SQL } from "../sql/property-queries.js";
 import { toNonNegativeInt, toOptionalNumber } from "../utils/numbers.js";
 import { normalizePhoneNumber } from "../utils/phone.js";
 
@@ -41,8 +41,23 @@ type PropertyRow = {
   version: bigint | null;
 };
 
-const mapRowToProperty = (row: PropertyRow): PropertyWithStatsApi => {
+type PropertyOperationalStats = {
+  roomCount: number;
+  occupiedRooms: number;
+  currentGuests: number;
+  todaysArrivals: number;
+  todaysDepartures: number;
+};
+
+const mapRowToProperty = (
+  row: PropertyRow,
+  stats?: PropertyOperationalStats,
+): PropertyWithStatsApi => {
   const totalRooms = toNonNegativeInt(row.total_rooms, 0);
+  const roomCount = stats?.roomCount ?? totalRooms;
+  const occupiedRooms = stats?.occupiedRooms ?? 0;
+  const availableRooms = Math.max(roomCount - occupiedRooms, 0);
+  const occupancyRate = roomCount > 0 ? occupiedRooms / roomCount : 0;
 
   const parsed = PropertyWithStatsApiSchema.parse({
     id: row.id,
@@ -70,16 +85,45 @@ const mapRowToProperty = (row: PropertyRow): PropertyWithStatsApi => {
     updated_by: row.updated_by ?? undefined,
     deleted_at: row.deleted_at ?? null,
     version: row.version ? row.version.toString() : "0",
-    room_count: totalRooms,
-    occupied_rooms: 0,
-    available_rooms: totalRooms,
-    occupancy_rate: 0,
-    current_guests: 0,
-    todays_arrivals: 0,
-    todays_departures: 0,
+    room_count: roomCount,
+    occupied_rooms: occupiedRooms,
+    available_rooms: availableRooms,
+    occupancy_rate: occupancyRate,
+    current_guests: stats?.currentGuests ?? 0,
+    todays_arrivals: stats?.todaysArrivals ?? 0,
+    todays_departures: stats?.todaysDepartures ?? 0,
   });
 
   return parsed;
+};
+
+const fetchPropertyOperationalStats = async (
+  tenantId: string,
+  propertyIds: string[],
+): Promise<Map<string, PropertyOperationalStats>> => {
+  if (propertyIds.length === 0) {
+    return new Map();
+  }
+
+  const { rows } = await query<{
+    property_id: string;
+    room_count: string | number | null;
+    occupied_rooms: string | number | null;
+    current_guests: string | number | null;
+    todays_arrivals: string | number | null;
+    todays_departures: string | number | null;
+  }>(PROPERTY_OPERATIONAL_STATS_SQL, [propertyIds, tenantId]);
+
+  return rows.reduce<Map<string, PropertyOperationalStats>>((acc, row) => {
+    acc.set(row.property_id, {
+      roomCount: toNonNegativeInt(row.room_count, 0),
+      occupiedRooms: toNonNegativeInt(row.occupied_rooms, 0),
+      currentGuests: toNonNegativeInt(row.current_guests, 0),
+      todaysArrivals: toNonNegativeInt(row.todays_arrivals, 0),
+      todaysDepartures: toNonNegativeInt(row.todays_departures, 0),
+    });
+    return acc;
+  }, new Map());
 };
 
 export const listProperties = async (
@@ -88,5 +132,15 @@ export const listProperties = async (
   const limit = options.limit ?? 50;
   const tenantId = options.tenantId ?? null;
   const { rows } = await query<PropertyRow>(PROPERTY_LIST_SQL, [limit, tenantId]);
-  return rows.map(mapRowToProperty);
+  if (rows.length === 0) {
+    return [];
+  }
+
+  const propertyIds = rows.map((row) => row.id);
+  const statsMap =
+    tenantId && propertyIds.length > 0
+      ? await fetchPropertyOperationalStats(tenantId, propertyIds)
+      : new Map();
+
+  return rows.map((row) => mapRowToProperty(row, statsMap.get(row.id)));
 };

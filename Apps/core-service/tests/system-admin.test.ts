@@ -175,7 +175,6 @@ describe("System Administrator Capabilities", () => {
         ticket_id: "SEC-2025-0001",
       },
     });
-
     expect(response.statusCode).toBe(200);
     const payload = response.json();
     expect(payload.scope).toBe("TENANT_IMPERSONATION");

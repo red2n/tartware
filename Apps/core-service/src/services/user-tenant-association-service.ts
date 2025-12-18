@@ -1,16 +1,10 @@
 import {
-  TenantRoleEnum,
   type UserTenantAssociationWithDetails,
   UserTenantAssociationWithDetailsSchema,
 } from "@tartware/schemas";
 
 import { query } from "../lib/db.js";
-import { normalizeModuleList } from "../modules/module-registry.js";
-import {
-  ACTIVE_MEMBERSHIPS_SQL,
-  ASSOCIATION_LIST_SQL,
-} from "../sql/user-tenant-association-queries.js";
-import type { TenantMembership } from "../types/auth.js";
+import { ASSOCIATION_LIST_SQL } from "../sql/user-tenant-association-queries.js";
 
 type AssociationRow = {
   id: string;
@@ -100,30 +94,4 @@ export const listUserTenantAssociations = async (
   ]);
 
   return rows.map(mapRowToAssociation);
-};
-
-export const getActiveUserTenantMemberships = async (
-  userId: string,
-): Promise<TenantMembership[]> => {
-  const { rows } = await query<{
-    tenant_id: string;
-    role: string;
-    is_active: boolean;
-    permissions: Record<string, unknown> | null;
-    tenant_name: string | null;
-    modules: unknown;
-  }>(ACTIVE_MEMBERSHIPS_SQL, [userId]);
-
-  return rows.map((row) => {
-    const role = TenantRoleEnum.parse(row.role);
-    const modules = normalizeModuleList(row.modules);
-    return {
-      tenantId: row.tenant_id,
-      tenantName: row.tenant_name ?? undefined,
-      role,
-      isActive: row.is_active,
-      permissions: row.permissions ?? {},
-      modules,
-    } satisfies TenantMembership;
-  });
 };

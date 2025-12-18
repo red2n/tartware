@@ -69,6 +69,13 @@ export const coreAuthSchema = z.object({
   SYSTEM_ADMIN_LOCKOUT_MINUTES: z.coerce.number().int().min(1).default(15),
   SYSTEM_ADMIN_RATE_LIMIT_PER_MINUTE: z.coerce.number().int().min(1).default(100),
   SYSTEM_ADMIN_RATE_LIMIT_BURST: z.coerce.number().int().min(1).default(200),
+  TENANT_AUTH_MAX_FAILED_ATTEMPTS: z.coerce.number().int().min(1).default(5),
+  TENANT_AUTH_LOCKOUT_MINUTES: z.coerce.number().int().min(1).default(15),
+  TENANT_AUTH_THROTTLE_MAX_ATTEMPTS: z.coerce.number().int().min(1).default(20),
+  TENANT_AUTH_THROTTLE_WINDOW_SECONDS: z.coerce.number().int().min(5).default(60),
+  TENANT_AUTH_PASSWORD_MAX_AGE_DAYS: z.coerce.number().int().min(1).default(180),
+  TENANT_AUTH_MFA_ISSUER: z.string().default("Tartware"),
+  TENANT_AUTH_MFA_ENFORCED: booleanString.default(false),
 });
 
 export type BaseConfig = z.infer<typeof baseConfigSchema>;

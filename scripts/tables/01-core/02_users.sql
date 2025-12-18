@@ -38,6 +38,10 @@ email_verified_at TIMESTAMP, -- Timestamp of verification
 last_login_at TIMESTAMP, -- Most recent successful login
 failed_login_attempts INTEGER DEFAULT 0, -- Lockout counter
 locked_until TIMESTAMP, -- Temporary lock expiry timestamp
+mfa_secret VARCHAR(255), -- Secret for tenant MFA (TOTP)
+mfa_enabled BOOLEAN NOT NULL DEFAULT false, -- Flag indicating MFA requirement
+mfa_backup_codes JSONB DEFAULT '[]'::jsonb, -- Encrypted backup codes for recovery
+password_rotated_at TIMESTAMP, -- Last time password rotation completed
 password_reset_token VARCHAR(255), -- Single-use reset token hash
 password_reset_expires TIMESTAMP, -- Expiration of reset token
 
@@ -99,6 +103,10 @@ COMMENT ON COLUMN users.is_verified IS 'Email verification status';
 COMMENT ON COLUMN users.failed_login_attempts IS 'Failed login counter for security';
 
 COMMENT ON COLUMN users.locked_until IS 'Account lock timestamp (NULL = not locked)';
+COMMENT ON COLUMN users.mfa_enabled IS 'Indicates if tenant user must complete MFA';
+COMMENT ON COLUMN users.mfa_secret IS 'TOTP secret for tenant MFA';
+COMMENT ON COLUMN users.mfa_backup_codes IS 'JSON array of hashed MFA backup codes';
+COMMENT ON COLUMN users.password_rotated_at IS 'Timestamp of last successful password rotation';
 
 COMMENT ON COLUMN users.preferences IS 'User preferences (JSONB)';
 

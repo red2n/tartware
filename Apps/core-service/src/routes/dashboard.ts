@@ -13,6 +13,51 @@ import type { FastifyInstance } from "fastify";
 
 import { query } from "../lib/db.js";
 
+const CURRENT_DAY_SQL = "CURRENT_DATE";
+const PREVIOUS_DAY_SQL = "(CURRENT_DATE - INTERVAL '1 day')::date";
+
+const buildOccupiedRoomsQuery = (withPropertyFilter: boolean, dayExpression: string): string =>
+  withPropertyFilter
+    ? `SELECT COUNT(DISTINCT room_number) as occupied_rooms
+         FROM reservations
+         WHERE tenant_id = $1
+         AND property_id = $2
+         AND status IN ('CONFIRMED', 'CHECKED_IN')
+         AND check_in_date <= ${dayExpression}
+         AND check_out_date >= ${dayExpression}
+         AND room_number IS NOT NULL
+         AND is_deleted = false`
+    : `SELECT COUNT(DISTINCT room_number) as occupied_rooms
+         FROM reservations
+         WHERE tenant_id = $1
+         AND status IN ('CONFIRMED', 'CHECKED_IN')
+         AND check_in_date <= ${dayExpression}
+         AND check_out_date >= ${dayExpression}
+         AND room_number IS NOT NULL
+         AND is_deleted = false`;
+
+const buildRevenueQuery = (withPropertyFilter: boolean, dayExpression: string): string =>
+  withPropertyFilter
+    ? `SELECT COALESCE(SUM(amount), 0) as revenue_total
+         FROM payments
+         WHERE tenant_id = $1
+         AND property_id = $2
+         AND DATE(processed_at) = ${dayExpression}
+         AND status = 'COMPLETED'
+         AND is_deleted = false`
+    : `SELECT COALESCE(SUM(amount), 0) as revenue_total
+         FROM payments
+         WHERE tenant_id = $1
+         AND DATE(processed_at) = ${dayExpression}
+         AND status = 'COMPLETED'
+         AND is_deleted = false`;
+
+const resolveTrend = (change: number): "up" | "down" | "neutral" => {
+  if (change > 0) return "up";
+  if (change < 0) return "down";
+  return "neutral";
+};
+
 const DASHBOARD_TAG = "Dashboard";
 const DashboardStatsQueryJsonSchema = schemaFromZod(
   DashboardStatsQuerySchema,
@@ -56,49 +101,49 @@ export const registerDashboardRoutes = (app: FastifyInstance): void => {
       const totalRooms = parseInt(roomsResult.rows[0]?.total_rooms || "0", 10);
 
       // Get occupied rooms count (reservations with check-in today or before, check-out today or after)
-      const occupiedQuery = effectivePropertyId
-        ? `SELECT COUNT(DISTINCT room_number) as occupied_rooms
-           FROM reservations
-           WHERE tenant_id = $1
-           AND property_id = $2
-           AND status IN ('CONFIRMED', 'CHECKED_IN')
-           AND check_in_date <= CURRENT_DATE
-           AND check_out_date >= CURRENT_DATE
-           AND room_number IS NOT NULL
-           AND is_deleted = false`
-        : `SELECT COUNT(DISTINCT room_number) as occupied_rooms
-           FROM reservations
-           WHERE tenant_id = $1
-           AND status IN ('CONFIRMED', 'CHECKED_IN')
-           AND check_in_date <= CURRENT_DATE
-           AND check_out_date >= CURRENT_DATE
-           AND room_number IS NOT NULL
-           AND is_deleted = false`;
+      const occupiedQuery = buildOccupiedRoomsQuery(Boolean(effectivePropertyId), CURRENT_DAY_SQL);
       const occupiedParams = effectivePropertyId ? [tenant_id, effectivePropertyId] : [tenant_id];
       const occupiedResult = await query<{ occupied_rooms: string }>(occupiedQuery, occupiedParams);
       const occupiedRooms = parseInt(occupiedResult.rows[0]?.occupied_rooms || "0", 10);
+      const occupiedPrevQuery = buildOccupiedRoomsQuery(
+        Boolean(effectivePropertyId),
+        PREVIOUS_DAY_SQL,
+      );
+      const occupiedPrevResult = await query<{ occupied_rooms: string }>(
+        occupiedPrevQuery,
+        occupiedParams,
+      );
+      const occupiedRoomsPrevious = parseInt(occupiedPrevResult.rows[0]?.occupied_rooms || "0", 10);
 
       // Calculate occupancy rate
       const occupancyRate = totalRooms > 0 ? Math.round((occupiedRooms / totalRooms) * 100) : 0;
+      const occupancyRatePrevious =
+        totalRooms > 0 ? Math.round((occupiedRoomsPrevious / totalRooms) * 100) : 0;
+      const occupancyChange = Number((occupancyRate - occupancyRatePrevious).toFixed(2));
+      const occupancyTrend = resolveTrend(occupancyChange);
 
       // Get today's revenue from payments
-      const revenueQuery = effectivePropertyId
-        ? `SELECT COALESCE(SUM(amount), 0) as revenue_today
-           FROM payments
-           WHERE tenant_id = $1
-           AND property_id = $2
-           AND DATE(processed_at) = CURRENT_DATE
-           AND status = 'COMPLETED'
-           AND is_deleted = false`
-        : `SELECT COALESCE(SUM(amount), 0) as revenue_today
-           FROM payments
-           WHERE tenant_id = $1
-           AND DATE(processed_at) = CURRENT_DATE
-           AND status = 'COMPLETED'
-           AND is_deleted = false`;
+      const revenueQuery = buildRevenueQuery(Boolean(effectivePropertyId), CURRENT_DAY_SQL);
       const revenueParams = effectivePropertyId ? [tenant_id, effectivePropertyId] : [tenant_id];
-      const revenueResult = await query<{ revenue_today: string }>(revenueQuery, revenueParams);
-      const revenueToday = parseFloat(revenueResult.rows[0]?.revenue_today || "0");
+      const revenueResult = await query<{ revenue_total: string }>(revenueQuery, revenueParams);
+      const revenueToday = parseFloat(revenueResult.rows[0]?.revenue_total || "0");
+      const revenueYesterdayQuery = buildRevenueQuery(
+        Boolean(effectivePropertyId),
+        PREVIOUS_DAY_SQL,
+      );
+      const revenueYesterdayResult = await query<{ revenue_total: string }>(
+        revenueYesterdayQuery,
+        revenueParams,
+      );
+      const revenueYesterday = parseFloat(revenueYesterdayResult.rows[0]?.revenue_total || "0");
+      const revenueChangeRaw =
+        revenueYesterday > 0
+          ? ((revenueToday - revenueYesterday) / revenueYesterday) * 100
+          : revenueToday > 0
+            ? 100
+            : 0;
+      const revenueChange = Number(revenueChangeRaw.toFixed(2));
+      const revenueTrend = resolveTrend(revenueChange);
 
       // Get check-ins today
       const checkInsQuery = effectivePropertyId
@@ -124,6 +169,7 @@ export const registerDashboardRoutes = (app: FastifyInstance): void => {
       );
       const checkInsTotal = parseInt(checkInsResult.rows[0]?.total || "0", 10);
       const checkInsPending = parseInt(checkInsResult.rows[0]?.pending || "0", 10);
+      const checkInsCompleted = Math.max(0, checkInsTotal - checkInsPending);
 
       // Get check-outs today
       const checkOutsQuery = effectivePropertyId
@@ -149,12 +195,22 @@ export const registerDashboardRoutes = (app: FastifyInstance): void => {
       );
       const checkOutsTotal = parseInt(checkOutsResult.rows[0]?.total || "0", 10);
       const checkOutsPending = parseInt(checkOutsResult.rows[0]?.pending || "0", 10);
+      const checkOutsCompleted = Math.max(0, checkOutsTotal - checkOutsPending);
 
       return {
-        occupancy: { rate: occupancyRate, change: 5, trend: "up" as const },
-        revenue: { today: revenueToday, change: 12, trend: "up" as const, currency: "USD" },
-        checkIns: { total: checkInsTotal, pending: checkInsPending },
-        checkOuts: { total: checkOutsTotal, pending: checkOutsPending },
+        occupancy: { rate: occupancyRate, change: occupancyChange, trend: occupancyTrend },
+        revenue: {
+          today: revenueToday,
+          change: revenueChange,
+          trend: revenueTrend,
+          currency: "USD",
+        },
+        checkIns: { total: checkInsTotal, pending: checkInsPending, completed: checkInsCompleted },
+        checkOuts: {
+          total: checkOutsTotal,
+          pending: checkOutsPending,
+          completed: checkOutsCompleted,
+        },
       };
     },
   );

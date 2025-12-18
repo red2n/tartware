@@ -19,7 +19,7 @@ export const registerModuleRoutes = (app: FastifyInstance): void => {
         tag: MODULES_TAG,
         summary: "List available platform modules",
         response: {
-          200: jsonObjectSchema,
+          200: jsonArraySchema,
         },
       }),
     },
@@ -44,7 +44,7 @@ export const registerModuleRoutes = (app: FastifyInstance): void => {
           required: ["tenantId"],
         },
         response: {
-          200: jsonArraySchema,
+          200: jsonObjectSchema,
         },
       }),
     },

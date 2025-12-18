@@ -180,6 +180,8 @@ export interface CacheEntry<T> {
  * // 6. getRedisClient() evaluates getRedis() → returns initialized client ✓
  * ```
  */
+const SCAN_BATCH_SIZE = 500;
+
 export class CacheService {
   /**
    * Get Redis client using lazy evaluation pattern.
@@ -379,19 +381,38 @@ export class CacheService {
       return 0;
     }
 
+    const stripPrefix = (key: string): string => {
+      if (config.redis.keyPrefix && key.startsWith(config.redis.keyPrefix)) {
+        return key.slice(config.redis.keyPrefix.length);
+      }
+      return key;
+    };
+
     try {
       const fullPattern = this.buildKey(pattern, options?.prefix);
-      const keys = await redis.keys(fullPattern);
+      let cursor = "0";
+      let deletedTotal = 0;
 
-      if (keys.length === 0) {
-        return 0;
-      }
+      do {
+        const [nextCursor, keys] = await redis.scan(
+          cursor,
+          "MATCH",
+          fullPattern,
+          "COUNT",
+          SCAN_BATCH_SIZE,
+        );
+        cursor = nextCursor;
 
-      // Remove prefix from keys as Redis client adds it automatically
-      const keysWithoutPrefix = keys.map((key) => key.replace(config.redis.keyPrefix, ""));
+        if (keys.length === 0) {
+          continue;
+        }
 
-      await redis.del(...keysWithoutPrefix);
-      return keys.length;
+        const keysWithoutPrefix = keys.map(stripPrefix);
+        const deletedCount = await redis.del(...keysWithoutPrefix);
+        deletedTotal += deletedCount;
+      } while (cursor !== "0");
+
+      return deletedTotal;
     } catch (error) {
       console.error(`Cache delete pattern error for ${pattern}:`, error);
       return 0;
