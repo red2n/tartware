@@ -76,6 +76,17 @@ const services = [
     },
   },
   {
+    id: "command-center-service",
+    output: "docs/openapi/command-center-service.json",
+    modulePath: "Apps/command-center-service/dist/Apps/command-center-service/src/server.js",
+    build: async () => {
+      const { buildServer } = await import(
+        resolveDistModule("Apps/command-center-service/dist/Apps/command-center-service/src/server.js")
+      );
+      return buildServer();
+    },
+  },
+  {
     id: "api-gateway",
     output: "docs/openapi/api-gateway.json",
     modulePath: "Apps/api-gateway/dist/server.js",

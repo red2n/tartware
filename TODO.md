@@ -84,6 +84,7 @@ Platform-wide standardization for resilient CRUD handling at 20+ ops/sec with au
 - _2025-12-16T09:45:00Z Update_: Added `npm run export:openapi`, which boots the Fastify instances from their compiled artifacts and writes JSON bundles under `docs/openapi/*.json` for CI/compliance consumers.
 
 #### 0.10 **Core-Service Domain Decomposition & Microservice Readiness**
+
 - Inventory every major module currently hosted in `Apps/core-service` (billing, reservations, rates, housekeeping, guests, dashboard, etc.) and document their ownership boundaries (routes, services, SQL, cache usage, external dependencies).
 - Define extraction candidates with clear criteria: independent scaling need, isolated data models, latency/throughput requirements, compliance boundaries.
 - Produce migration playbooks per module that cover:
@@ -95,6 +96,7 @@ Platform-wide standardization for resilient CRUD handling at 20+ ops/sec with au
 - _2025-12-17 Update_: Guests domain extracted into `Apps/guests-service` with dedicated Fastify instance + auth context; API gateway now routes `/v1/guests*` there while core-service drops the legacy guest routes. Next steps: iterate on additional domain splits (rooms, housekeeping, billing) and harden inter-service contracts.
 - _2025-12-18 Update_: Rooms domain extracted into `Apps/rooms-service` (Fastify service with shared auth/logging/metrics + SQL under `src/sql`), API gateway proxies `/v1/rooms*` to it, and core-service shed the room routes/tests. Continue decomposing remaining core modules and align per-service env defaults/scripts.
 - _2025-12-18 Update_: Housekeeping tasks moved into `Apps/housekeeping-service`, including Fastify wiring, dedicated SQL, and API gateway proxying `/v1/housekeeping/*`; core-service no longer ships those routes. Next microservice targets: billing & reports.
+- _2025-12-19 Update_: Command Center service planned to centralize command ingress with configurable routing to downstream microservices. Implementation branch `feature/command-center` will introduce the shared outbox package, command registry, and command dispatcher; all future write APIs must funnel through it.
 - _2025-12-19 Update_: Billing payments now live under `Apps/billing-service` with dedicated Fastify app + compliance retention policy. API gateway proxies `/v1/billing/*`, `.env.example` exposes `BILLING_SERVICE_URL`, and core-service shed the billing routes/tests.
 
 ### 1. **Super Admin / Global Administrator Implementation (Priority: HIGH)**
