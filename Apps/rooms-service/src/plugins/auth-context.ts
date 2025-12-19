@@ -74,6 +74,16 @@ export type TenantScopeDecorator = (
   options?: TenantScopeOptions,
 ) => preHandlerHookHandler;
 
+declare module "fastify" {
+  interface FastifyRequest {
+    auth: AuthContext;
+  }
+
+  interface FastifyInstance {
+    withTenantScope: TenantScopeDecorator;
+  }
+}
+
 const buildTenantScopeGuard = (
   options: TenantScopeOptions = {},
 ): preHandlerHookHandler => {

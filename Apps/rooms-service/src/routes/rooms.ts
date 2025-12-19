@@ -13,7 +13,11 @@ const RoomListQuerySchema = z.object({
     .toLowerCase()
     .optional()
     .refine(
-      (value) => !value || RoomStatusEnum.options.map((s) => s.toLowerCase()).includes(value),
+      (value) =>
+        !value ||
+        RoomStatusEnum.options
+          .map((status) => status.toLowerCase())
+          .includes(value),
       { message: "Invalid room status" },
     ),
   housekeeping_status: z
@@ -22,7 +26,10 @@ const RoomListQuerySchema = z.object({
     .optional()
     .refine(
       (value) =>
-        !value || HousekeepingStatusEnum.options.map((s) => s.toLowerCase()).includes(value),
+        !value ||
+        HousekeepingStatusEnum.options
+          .map((status) => status.toLowerCase())
+          .includes(value),
       { message: "Invalid housekeeping status" },
     ),
   search: z.string().min(1).max(50).optional(),
@@ -32,8 +39,14 @@ const RoomListQuerySchema = z.object({
 type RoomListQuery = z.infer<typeof RoomListQuerySchema>;
 
 const RoomListResponseSchema = z.array(RoomListItemSchema);
-const RoomListQueryJsonSchema = schemaFromZod(RoomListQuerySchema, "RoomListQuery");
-const RoomListResponseJsonSchema = schemaFromZod(RoomListResponseSchema, "RoomListResponse");
+const RoomListQueryJsonSchema = schemaFromZod(
+  RoomListQuerySchema,
+  "RoomListQuery",
+);
+const RoomListResponseJsonSchema = schemaFromZod(
+  RoomListResponseSchema,
+  "RoomListResponse",
+);
 
 const ROOMS_TAG = "Rooms";
 
@@ -42,7 +55,8 @@ export const registerRoomRoutes = (app: FastifyInstance): void => {
     "/v1/rooms",
     {
       preHandler: app.withTenantScope({
-        resolveTenantId: (request) => (request.query as RoomListQuery).tenant_id,
+        resolveTenantId: (request) =>
+          (request.query as RoomListQuery).tenant_id,
         minRole: "MANAGER",
         requiredModules: "core",
       }),
@@ -56,8 +70,14 @@ export const registerRoomRoutes = (app: FastifyInstance): void => {
       }),
     },
     async (request) => {
-      const { tenant_id, property_id, status, housekeeping_status, search, limit } =
-        RoomListQuerySchema.parse(request.query);
+      const {
+        tenant_id,
+        property_id,
+        status,
+        housekeeping_status,
+        search,
+        limit,
+      } = RoomListQuerySchema.parse(request.query);
 
       const rooms = await listRooms({
         tenantId: tenant_id,

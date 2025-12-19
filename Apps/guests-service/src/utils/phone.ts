@@ -13,7 +13,7 @@ export const normalizePhoneNumber = (
     return normalized.length > 1 ? normalized : undefined;
   }
 
-  digits = digits.replace(/^00+/, "");
+  digits = digits.replace(/^00/, "");
   const numeric = digits.replace(/\D/g, "");
 
   if (numeric.length === 0) {

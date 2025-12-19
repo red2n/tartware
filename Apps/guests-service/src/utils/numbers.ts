@@ -26,8 +26,5 @@ export const toNonNegativeInt = (value: unknown, fallback = 0): number => {
   if (numeric === undefined) {
     return fallback;
   }
-  if (!Number.isFinite(numeric)) {
-    return fallback;
-  }
   return Math.max(0, Math.trunc(numeric));
 };

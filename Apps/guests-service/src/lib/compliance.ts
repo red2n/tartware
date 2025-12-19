@@ -29,15 +29,17 @@ const isOlderThanRetention = (
   return Date.now() - timestamp > retentionDays * MS_PER_DAY;
 };
 
-const sanitizeAddress = (
-  address: GuestWithStats["address"],
-): GuestWithStats["address"] => {
+const sanitizeAddress = <T extends GuestWithStats["address"]>(
+  address: T,
+): T => {
   if (!address) {
     return address;
   }
-  const sanitized: Record<string, string> = {};
-  for (const key of Object.keys(address)) {
-    sanitized[key] = REDACTED_VALUE;
+  const sanitized: T = { ...address };
+  for (const key in sanitized) {
+    if (Object.prototype.hasOwnProperty.call(sanitized, key)) {
+      (sanitized as Record<string, unknown>)[key] = REDACTED_VALUE;
+    }
   }
   return sanitized;
 };
@@ -58,6 +60,13 @@ export const ensureGuestEncryptionRequirementsMet = (): void => {
   }
 
   if (config.compliance.encryption.guestDataKey === "local-dev-guest-key") {
+    const nodeEnv = process.env.NODE_ENV?.toLowerCase();
+    if (nodeEnv === "production" || nodeEnv === "staging") {
+      appLogger.error(
+        "guest data encryption key cannot use development placeholder in production/staging",
+      );
+      throw new Error("Compliance encryption requirements not satisfied");
+    }
     appLogger.warn(
       "guest data encryption key is using a development placeholder",
     );
