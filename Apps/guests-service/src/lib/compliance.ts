@@ -37,7 +37,7 @@ const sanitizeAddress = <T extends GuestWithStats["address"]>(
   }
   const sanitized: T = { ...address };
   for (const key in sanitized) {
-    if (Object.prototype.hasOwnProperty.call(sanitized, key)) {
+    if (Object.hasOwn(sanitized, key)) {
       (sanitized as Record<string, unknown>)[key] = REDACTED_VALUE;
     }
   }
