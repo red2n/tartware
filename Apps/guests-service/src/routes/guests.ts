@@ -17,24 +17,30 @@ const GuestListQuerySchema = z.object({
   is_blacklisted: z.coerce.boolean().optional(),
 });
 
-type GuestListQuery = z.infer<typeof GuestListQuerySchema>;
-
 const GuestListResponseSchema = z.array(
   GuestWithStatsSchema.extend({
     version: z.string(),
   }),
 );
-const GuestListQueryJsonSchema = schemaFromZod(GuestListQuerySchema, "GuestListQuery");
-const GuestListResponseJsonSchema = schemaFromZod(GuestListResponseSchema, "GuestListResponse");
+
+const GuestListQueryJsonSchema = schemaFromZod(
+  GuestListQuerySchema,
+  "GuestListQuery",
+);
+const GuestListResponseJsonSchema = schemaFromZod(
+  GuestListResponseSchema,
+  "GuestListResponse",
+);
 
 const GUESTS_TAG = "Guests";
 
 export const registerGuestRoutes = (app: FastifyInstance): void => {
-  app.get<{ Querystring: GuestListQuery }>(
+  app.get(
     "/v1/guests",
     {
       preHandler: app.withTenantScope({
-        resolveTenantId: (request) => (request.query as GuestListQuery).tenant_id,
+        resolveTenantId: (request) =>
+          (request.query as z.infer<typeof GuestListQuerySchema>).tenant_id,
         minRole: "MANAGER",
         requiredModules: "core",
       }),

@@ -16,7 +16,6 @@ import systemAdminAuthPlugin from "./plugins/system-admin-auth.js";
 import { registerAuthRoutes } from "./routes/auth.js";
 import { registerBillingRoutes } from "./routes/billing.js";
 import { registerDashboardRoutes } from "./routes/dashboard.js";
-import { registerGuestRoutes } from "./routes/guests.js";
 import { registerHealthRoutes } from "./routes/health.js";
 import { registerHousekeepingRoutes } from "./routes/housekeeping.js";
 import { registerModuleRoutes } from "./routes/modules.js";
@@ -97,7 +96,6 @@ export const buildServer = (): FastifyInstance => {
     registerTenantRoutes(app);
     registerPropertyRoutes(app);
     registerUserRoutes(app);
-    registerGuestRoutes(app);
     registerUserTenantAssociationRoutes(app);
     registerDashboardRoutes(app);
     registerReservationRoutes(app);

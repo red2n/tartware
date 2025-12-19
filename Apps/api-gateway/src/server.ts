@@ -181,6 +181,37 @@ export const buildServer = () => {
 			reservationHandler,
 		);
 
+		const proxyGuests = async (request: FastifyRequest, reply: FastifyReply) =>
+			proxyRequest(request, reply, serviceTargets.guestsServiceUrl);
+
+		app.get(
+			"/v1/guests",
+			{
+				schema: buildRouteSchema({
+					tag: CORE_PROXY_TAG,
+					summary: "Proxy guest queries to the guests service.",
+					response: {
+						200: jsonObjectSchema,
+					},
+				}),
+			},
+			proxyGuests,
+		);
+
+		app.all(
+			"/v1/guests/*",
+			{
+				schema: buildRouteSchema({
+					tag: CORE_PROXY_TAG,
+					summary: "Proxy nested guest routes to the guests service.",
+					response: {
+						200: jsonObjectSchema,
+					},
+				}),
+			},
+			proxyGuests,
+		);
+
 		app.all(
 			"/v1/*",
 			{

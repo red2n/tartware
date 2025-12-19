@@ -92,6 +92,7 @@ Platform-wide standardization for resilient CRUD handling at 20+ ops/sec with au
   - Messaging contracts (events, cache invalidation) to keep existing flows working during cohabitation.
 - Introduce a "microservice-ready" checklist inside the repo (lint rule or docs) ensuring each module keeps its code, config, and tests under a cohesive folder tree so it can be lifted out with minimal coupling.
 - Add CI telemetry that surfaces module-level ownership metrics (files per domain, dependency graph) to spot regressions when boundaries blur.
+- _2025-12-17 Update_: Guests domain extracted into `Apps/guests-service` with dedicated Fastify instance + auth context; API gateway now routes `/v1/guests*` there while core-service drops the legacy guest routes. Next steps: iterate on additional domain splits (rooms, housekeeping, billing) and harden inter-service contracts.
 
 ### 1. **Super Admin / Global Administrator Implementation (Priority: HIGH)**
 Industry-standard privileged access management for multi-tenant PMS platform following OWASP Authorization best practices.

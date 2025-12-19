@@ -30,4 +30,5 @@ export const serviceTargets = {
 	coreServiceUrl: env.CORE_SERVICE_URL ?? "http://localhost:3000",
 	reservationCommandServiceUrl:
 		env.RESERVATION_COMMAND_SERVICE_URL ?? "http://localhost:3101",
+	guestsServiceUrl: env.GUESTS_SERVICE_URL ?? "http://localhost:3300",
 };
