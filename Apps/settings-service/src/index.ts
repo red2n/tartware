@@ -1,6 +1,6 @@
 import process from "node:process";
 
-import { createLogger, initTelemetry } from "@tartware/telemetry";
+import { createServiceLogger, initTelemetry } from "@tartware/telemetry";
 
 import { buildServer } from "./app.js";
 import { config } from "./config.js";
@@ -22,7 +22,7 @@ const telemetry = await initTelemetry({
   },
 });
 
-const logger = createLogger({
+const logger = createServiceLogger({
   serviceName: config.service.name,
   level: config.log.level,
   pretty: config.log.pretty,

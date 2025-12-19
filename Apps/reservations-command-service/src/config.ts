@@ -4,10 +4,21 @@ loadEnv();
 
 const env = process.env;
 
+const parseBoolean = (
+  value: string | undefined,
+  fallback: boolean,
+): boolean => {
+  if (value === undefined) {
+    return fallback;
+  }
+  return !["0", "false", "no", "off"].includes(value.toLowerCase());
+};
+
 export const serviceConfig = {
   port: Number(env.RESERVATION_COMMAND_PORT ?? 3101),
   host: env.RESERVATION_COMMAND_HOST ?? "0.0.0.0",
   serviceId: env.RESERVATION_COMMAND_ID ?? "reservations-command-service",
+  requestLogging: parseBoolean(env.RESERVATION_COMMAND_LOG_REQUESTS, false),
 };
 
 export const kafkaConfig = {

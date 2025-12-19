@@ -4,6 +4,16 @@ loadEnv();
 
 const env = process.env;
 
+const parseBoolean = (
+	value: string | undefined,
+	fallback: boolean,
+): boolean => {
+	if (value === undefined) {
+		return fallback;
+	}
+	return !["0", "false", "no", "off"].includes(value.toLowerCase());
+};
+
 export const gatewayConfig = {
 	port: Number(env.API_GATEWAY_PORT ?? 8080),
 	host: env.API_GATEWAY_HOST ?? "0.0.0.0",
@@ -13,6 +23,7 @@ export const gatewayConfig = {
 		max: Number(env.API_GATEWAY_RATE_MAX ?? 200),
 		timeWindow: env.API_GATEWAY_RATE_WINDOW ?? "1 minute",
 	},
+	logRequests: parseBoolean(env.API_GATEWAY_LOG_REQUESTS, false),
 };
 
 export const serviceTargets = {

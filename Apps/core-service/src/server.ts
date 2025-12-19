@@ -1,6 +1,7 @@
 import fastifyCors from "@fastify/cors";
 import fastifyHelmet from "@fastify/helmet";
 import fastifySensible from "@fastify/sensible";
+import { withRequestLogging } from "@tartware/telemetry";
 import Fastify, { type FastifyBaseLogger, type FastifyInstance } from "fastify";
 
 import { config } from "./config.js";
@@ -30,49 +31,6 @@ import { registerSystemUserRoutes } from "./routes/system-users.js";
 import { registerTenantRoutes } from "./routes/tenants.js";
 import { registerUserTenantAssociationRoutes } from "./routes/user-tenant-associations.js";
 import { registerUserRoutes } from "./routes/users.js";
-
-const REDACTED_VALUE = "[REDACTED]" as const;
-const SENSITIVE_LOG_KEYS = new Set(
-  [
-    "password",
-    "current_password",
-    "new_password",
-    "passcode",
-    "token",
-    "email",
-    "phone",
-    "id_number",
-    "passport_number",
-    "ssn",
-    "payment_reference",
-    "card_number",
-    "cvv",
-    "authorization",
-  ].map((key) => key.toLowerCase()),
-);
-
-const sanitizeLogValue = (value: unknown): unknown => {
-  if (value === null || value === undefined) {
-    return value;
-  }
-
-  if (Array.isArray(value)) {
-    return value.map((item) => sanitizeLogValue(item));
-  }
-
-  if (typeof value !== "object") {
-    return value;
-  }
-
-  const entries = Object.entries(value as Record<string, unknown>).map(([key, nestedValue]) => {
-    if (SENSITIVE_LOG_KEYS.has(key.toLowerCase())) {
-      return [key, REDACTED_VALUE] as const;
-    }
-    return [key, sanitizeLogValue(nestedValue)] as const;
-  });
-
-  return Object.fromEntries(entries);
-};
 
 export const buildServer = (): FastifyInstance => {
   ensureEncryptionRequirementsMet();
@@ -126,29 +84,10 @@ export const buildServer = (): FastifyInstance => {
   });
 
   if (config.log.requestLogging) {
-    app.addHook("onRequest", async (request) => {
-      request.log.info(
-        {
-          method: request.method,
-          url: request.url,
-          query: sanitizeLogValue(request.query),
-          params: sanitizeLogValue(request.params),
-        },
-        "request received",
-      );
-    });
-
-    app.addHook("onResponse", async (request, reply) => {
-      const durationMs = reply.elapsedTime ?? reply.getResponseTime();
-      request.log.info(
-        {
-          method: request.method,
-          url: request.url,
-          statusCode: reply.statusCode,
-          durationMs,
-        },
-        "request completed",
-      );
+    withRequestLogging(app, {
+      includeBody: false,
+      includeQuery: true,
+      includeParams: true,
     });
   }
 
