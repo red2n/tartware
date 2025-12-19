@@ -3,13 +3,10 @@ import type { FastifyInstance } from "fastify";
 
 import { buildServer } from "../src/server.js";
 import * as reservationService from "../src/services/reservation-service.js";
-import * as housekeepingService from "../src/services/housekeeping-service.js";
-import * as billingService from "../src/services/billing-service.js";
 import * as reportService from "../src/services/report-service.js";
 import * as moduleService from "../src/services/tenant-module-service.js";
 import {
   MANAGER_USER_ID,
-  MODULE_DISABLED_USER_ID,
   STAFF_USER_ID,
   TEST_TENANT_ID,
   TEST_USER_ID,
@@ -53,56 +50,6 @@ describe("Route authorization policies", () => {
       headers: buildAuthHeader(STAFF_USER_ID),
     });
     expect(staffResponse.statusCode).toBe(403);
-  });
-
-  it("enforces facility-maintenance module for housekeeping views", async () => {
-    vi.spyOn(housekeepingService, "listHousekeepingTasks").mockResolvedValue([]);
-
-    const managerResponse = await app.inject({
-      method: "GET",
-      url: `/v1/housekeeping/tasks?tenant_id=${TEST_TENANT_ID}`,
-      headers: buildAuthHeader(MANAGER_USER_ID),
-    });
-    expect(managerResponse.statusCode).toBe(200);
-
-    const staffResponse = await app.inject({
-      method: "GET",
-      url: `/v1/housekeeping/tasks?tenant_id=${TEST_TENANT_ID}`,
-      headers: buildAuthHeader(STAFF_USER_ID),
-    });
-    expect(staffResponse.statusCode).toBe(403);
-
-    const missingModuleResponse = await app.inject({
-      method: "GET",
-      url: `/v1/housekeeping/tasks?tenant_id=${TEST_TENANT_ID}`,
-      headers: buildAuthHeader(MODULE_DISABLED_USER_ID),
-    });
-    expect(missingModuleResponse.statusCode).toBe(403);
-  });
-
-  it("restricts billing exports to finance-enabled admins", async () => {
-    vi.spyOn(billingService, "listBillingPayments").mockResolvedValue([]);
-
-    const adminResponse = await app.inject({
-      method: "GET",
-      url: `/v1/billing/payments?tenant_id=${TEST_TENANT_ID}`,
-      headers: buildAuthHeader(TEST_USER_ID),
-    });
-    expect(adminResponse.statusCode).toBe(200);
-
-    const managerResponse = await app.inject({
-      method: "GET",
-      url: `/v1/billing/payments?tenant_id=${TEST_TENANT_ID}`,
-      headers: buildAuthHeader(MANAGER_USER_ID),
-    });
-    expect(managerResponse.statusCode).toBe(403);
-
-    const moduleDisabledResponse = await app.inject({
-      method: "GET",
-      url: `/v1/billing/payments?tenant_id=${TEST_TENANT_ID}`,
-      headers: buildAuthHeader(STAFF_USER_ID),
-    });
-    expect(moduleDisabledResponse.statusCode).toBe(403);
   });
 
   it("limits analytics reports to admins with the analytics module", async () => {

@@ -92,21 +92,23 @@ const resolveGuestName = (row: BillingPaymentRow): string | undefined => {
     return row.reservation_guest_name;
   }
   if (row.guest_first_name || row.guest_last_name) {
-    return `${row.guest_first_name ?? ""} ${row.guest_last_name ?? ""}`.trim() || undefined;
+    return (
+      `${row.guest_first_name ?? ""} ${row.guest_last_name ?? ""}`.trim() ||
+      undefined
+    );
   }
   return undefined;
 };
 
 const mapRowToPayment = (row: BillingPaymentRow): BillingPayment => {
-  const { value: transactionType, display: transactionTypeDisplay } = formatEnumDisplay(
-    row.transaction_type,
+  const { value: transactionType, display: transactionTypeDisplay } =
+    formatEnumDisplay(row.transaction_type, "Unknown");
+  const { value: paymentMethod, display: paymentMethodDisplay } =
+    formatEnumDisplay(row.payment_method, "Unknown");
+  const { value: status, display: statusDisplay } = formatEnumDisplay(
+    row.status,
     "Unknown",
   );
-  const { value: paymentMethod, display: paymentMethodDisplay } = formatEnumDisplay(
-    row.payment_method,
-    "Unknown",
-  );
-  const { value: status, display: statusDisplay } = formatEnumDisplay(row.status, "Unknown");
 
   return BillingPaymentSchema.parse({
     id: row.id,
@@ -151,7 +153,9 @@ export const listBillingPayments = async (options: {
   const transactionType = options.transactionType
     ? options.transactionType.trim().toUpperCase()
     : null;
-  const paymentMethod = options.paymentMethod ? options.paymentMethod.trim().toUpperCase() : null;
+  const paymentMethod = options.paymentMethod
+    ? options.paymentMethod.trim().toUpperCase()
+    : null;
 
   const { rows } = await query<BillingPaymentRow>(BILLING_PAYMENT_LIST_SQL, [
     limit,

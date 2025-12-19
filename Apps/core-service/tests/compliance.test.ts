@@ -1,25 +1,18 @@
-import { describe, expect, it, beforeEach } from "vitest";
+import { describe, expect, it, beforeEach, afterEach } from "vitest";
 
 import { config } from "../src/config.js";
-import {
-  applyBillingRetentionPolicy,
-  applyGuestRetentionPolicy,
-} from "../src/lib/compliance-policies.js";
+import { applyGuestRetentionPolicy } from "../src/lib/compliance-policies.js";
 import type { GuestWithStats } from "@tartware/schemas";
-import type { BillingPayment } from "../src/services/billing-service.js";
 
 const ORIGINAL_GUEST_RETENTION = config.compliance.retention.guestDataDays;
-const ORIGINAL_BILLING_RETENTION = config.compliance.retention.billingDataDays;
 
 describe("Compliance retention policies", () => {
   beforeEach(() => {
     config.compliance.retention.guestDataDays = 30;
-    config.compliance.retention.billingDataDays = 30;
   });
 
   afterEach(() => {
     config.compliance.retention.guestDataDays = ORIGINAL_GUEST_RETENTION;
-    config.compliance.retention.billingDataDays = ORIGINAL_BILLING_RETENTION;
   });
 
   it("redacts guest PII when record exceeds retention window", () => {
@@ -52,29 +45,5 @@ describe("Compliance retention policies", () => {
     expect(redacted.email).toBe("[REDACTED]");
     expect(redacted.phone).toBeUndefined();
     expect(redacted.communication_preferences.email).toBe(false);
-  });
-
-  it("masks billing payment references beyond retention window", () => {
-    const payment: BillingPayment = {
-      id: "33333333-3333-3333-3333-333333333333",
-      tenant_id: "44444444-4444-4444-4444-444444444444",
-      property_id: "55555555-5555-5555-5555-555555555555",
-      payment_reference: "PR-123",
-      transaction_type: "sale",
-      transaction_type_display: "Sale",
-      payment_method: "card",
-      payment_method_display: "Card",
-      status: "completed",
-      status_display: "Completed",
-      amount: 10,
-      currency: "USD",
-      created_at: "2020-01-01T00:00:00.000Z",
-      version: "1",
-      guest_name: "John Smith",
-    };
-
-    const sanitized = applyBillingRetentionPolicy(payment);
-    expect(sanitized.payment_reference).toBe("[REDACTED]");
-    expect(sanitized.guest_name).toBe("REDACTED");
   });
 });

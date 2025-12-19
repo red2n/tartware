@@ -32,4 +32,7 @@ export const serviceTargets = {
 		env.RESERVATION_COMMAND_SERVICE_URL ?? "http://localhost:3101",
 	guestsServiceUrl: env.GUESTS_SERVICE_URL ?? "http://localhost:3300",
 	roomsServiceUrl: env.ROOMS_SERVICE_URL ?? "http://localhost:3400",
+	housekeepingServiceUrl:
+		env.HOUSEKEEPING_SERVICE_URL ?? "http://localhost:3500",
+	billingServiceUrl: env.BILLING_SERVICE_URL ?? "http://localhost:3600",
 };

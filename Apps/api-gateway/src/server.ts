@@ -22,6 +22,7 @@ const HEALTH_TAG = "Gateway Health";
 const RESERVATION_PROXY_TAG = "Reservation Proxy";
 const CORE_PROXY_TAG = "Core Proxy";
 const GUESTS_PROXY_TAG = "Guests Proxy";
+const BILLING_PROXY_TAG = "Billing Proxy";
 
 const healthResponseSchema = {
 	type: "object",
@@ -188,6 +189,14 @@ export const buildServer = () => {
 		const proxyRooms = async (request: FastifyRequest, reply: FastifyReply) =>
 			proxyRequest(request, reply, serviceTargets.roomsServiceUrl);
 
+		const proxyHousekeeping = async (
+			request: FastifyRequest,
+			reply: FastifyReply,
+		) => proxyRequest(request, reply, serviceTargets.housekeepingServiceUrl);
+
+		const proxyBilling = async (request: FastifyRequest, reply: FastifyReply) =>
+			proxyRequest(request, reply, serviceTargets.billingServiceUrl);
+
 		app.get(
 			"/v1/guests",
 			{
@@ -242,6 +251,63 @@ export const buildServer = () => {
 				}),
 			},
 			proxyRooms,
+		);
+
+		app.get(
+			"/v1/housekeeping/tasks",
+			{
+				schema: buildRouteSchema({
+					tag: CORE_PROXY_TAG,
+					summary:
+						"Proxy housekeeping task queries to the housekeeping service.",
+					response: {
+						200: jsonObjectSchema,
+					},
+				}),
+			},
+			proxyHousekeeping,
+		);
+
+		app.get(
+			"/v1/billing/payments",
+			{
+				schema: buildRouteSchema({
+					tag: BILLING_PROXY_TAG,
+					summary: "Proxy billing payment requests to the billing service.",
+					response: {
+						200: jsonObjectSchema,
+					},
+				}),
+			},
+			proxyBilling,
+		);
+
+		app.all(
+			"/v1/billing/*",
+			{
+				schema: buildRouteSchema({
+					tag: BILLING_PROXY_TAG,
+					summary: "Proxy nested billing routes to the billing service.",
+					response: {
+						200: jsonObjectSchema,
+					},
+				}),
+			},
+			proxyBilling,
+		);
+
+		app.all(
+			"/v1/housekeeping/*",
+			{
+				schema: buildRouteSchema({
+					tag: CORE_PROXY_TAG,
+					summary: "Proxy nested housekeeping routes to the service.",
+					response: {
+						200: jsonObjectSchema,
+					},
+				}),
+			},
+			proxyHousekeeping,
 		);
 
 		app.all(
