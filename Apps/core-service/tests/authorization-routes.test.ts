@@ -2,7 +2,6 @@ import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest
 import type { FastifyInstance } from "fastify";
 
 import { buildServer } from "../src/server.js";
-import * as roomService from "../src/services/room-service.js";
 import * as reservationService from "../src/services/reservation-service.js";
 import * as housekeepingService from "../src/services/housekeeping-service.js";
 import * as billingService from "../src/services/billing-service.js";
@@ -36,38 +35,6 @@ describe("Route authorization policies", () => {
 
   afterAll(async () => {
     await app.close();
-  });
-
-  it("allows managers and admins to list rooms while blocking staff or module-disabled users", async () => {
-    vi.spyOn(roomService, "listRooms").mockResolvedValue([]);
-
-    const managerResponse = await app.inject({
-      method: "GET",
-      url: `/v1/rooms?tenant_id=${TEST_TENANT_ID}`,
-      headers: buildAuthHeader(MANAGER_USER_ID),
-    });
-    expect(managerResponse.statusCode).toBe(200);
-
-    const adminResponse = await app.inject({
-      method: "GET",
-      url: `/v1/rooms?tenant_id=${TEST_TENANT_ID}`,
-      headers: buildAuthHeader(TEST_USER_ID),
-    });
-    expect(adminResponse.statusCode).toBe(200);
-
-    const staffResponse = await app.inject({
-      method: "GET",
-      url: `/v1/rooms?tenant_id=${TEST_TENANT_ID}`,
-      headers: buildAuthHeader(STAFF_USER_ID),
-    });
-    expect(staffResponse.statusCode).toBe(403);
-
-    const missingModuleResponse = await app.inject({
-      method: "GET",
-      url: `/v1/rooms?tenant_id=${TEST_TENANT_ID}`,
-      headers: buildAuthHeader(MODULE_DISABLED_USER_ID),
-    });
-    expect(missingModuleResponse.statusCode).toBe(403);
   });
 
   it("requires manager role for reservation listings", async () => {

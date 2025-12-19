@@ -21,6 +21,7 @@ import { proxyRequest } from "./utils/proxy.js";
 const HEALTH_TAG = "Gateway Health";
 const RESERVATION_PROXY_TAG = "Reservation Proxy";
 const CORE_PROXY_TAG = "Core Proxy";
+const GUESTS_PROXY_TAG = "Guests Proxy";
 
 const healthResponseSchema = {
 	type: "object",
@@ -179,6 +180,68 @@ export const buildServer = () => {
 				}),
 			},
 			reservationHandler,
+		);
+
+		const proxyGuests = async (request: FastifyRequest, reply: FastifyReply) =>
+			proxyRequest(request, reply, serviceTargets.guestsServiceUrl);
+
+		const proxyRooms = async (request: FastifyRequest, reply: FastifyReply) =>
+			proxyRequest(request, reply, serviceTargets.roomsServiceUrl);
+
+		app.get(
+			"/v1/guests",
+			{
+				schema: buildRouteSchema({
+					tag: GUESTS_PROXY_TAG,
+					summary: "Proxy guest queries to the guests service.",
+					response: {
+						200: jsonObjectSchema,
+					},
+				}),
+			},
+			proxyGuests,
+		);
+
+		app.all(
+			"/v1/guests/*",
+			{
+				schema: buildRouteSchema({
+					tag: GUESTS_PROXY_TAG,
+					summary: "Proxy nested guest routes to the guests service.",
+					response: {
+						200: jsonObjectSchema,
+					},
+				}),
+			},
+			proxyGuests,
+		);
+
+		app.get(
+			"/v1/rooms",
+			{
+				schema: buildRouteSchema({
+					tag: CORE_PROXY_TAG,
+					summary: "Proxy room queries to the rooms service.",
+					response: {
+						200: jsonObjectSchema,
+					},
+				}),
+			},
+			proxyRooms,
+		);
+
+		app.all(
+			"/v1/rooms/*",
+			{
+				schema: buildRouteSchema({
+					tag: CORE_PROXY_TAG,
+					summary: "Proxy nested room routes to the rooms service.",
+					response: {
+						200: jsonObjectSchema,
+					},
+				}),
+			},
+			proxyRooms,
 		);
 
 		app.all(

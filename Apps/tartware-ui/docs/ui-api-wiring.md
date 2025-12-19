@@ -33,10 +33,10 @@ flowchart LR
         TenantAPI["/v1/tenants\ncore-service/routes/tenants.ts"]
         ModuleAPI["/v1/modules/*\ncore-service/routes/modules.ts"]
         PropertyAPI["/v1/properties\ncore-service/routes/properties.ts"]
-        RoomAPI["/v1/rooms\ncore-service/routes/rooms.ts"]
+        RoomAPI["/v1/rooms\nrooms-service/routes/rooms.ts"]
         HousekeepingAPI["/v1/housekeeping/tasks\ncore-service/routes/housekeeping.ts"]
         ReservationsAPI["/v1/reservations\ncore-service/routes/reservations.ts"]
-        GuestsAPI["/v1/guests\ncore-service/routes/guests.ts"]
+        GuestsAPI["/v1/guests\nguests-service/routes/guests.ts"]
         BillingAPI["/v1/billing/payments\ncore-service/routes/billing.ts"]
         DashboardAPI["/v1/dashboard/*\ncore-service/routes/dashboard.ts"]
         ReportsAPI["/v1/reports/performance\ncore-service/routes/reports.ts"]
@@ -81,10 +81,10 @@ flowchart LR
 | Tenants (`/v1/tenants`) | Wired | `TenantService` + `TenantContextService` fetch and cache tenants (`src/app/core/services/tenant*.ts`). | Fastify route `Apps/core-service/src/routes/tenants.ts`. |
 | Modules (`/v1/modules/catalog`, `/tenants/:id/modules`) | Wired | `ModuleService` (`src/app/core/services/module.service.ts`). | API routes `Apps/core-service/src/routes/modules.ts` and `routes/tenants.ts`. |
 | Properties (`/v1/properties`) | Wired | `PropertyService` + PMS layout property selector (`src/app/core/services/property.service.ts`, `features/pms/pms-layout.component.ts`). | API route `Apps/core-service/src/routes/properties.ts`. |
-| Rooms (`/v1/rooms`) | Wired | `RoomsComponent` + `RoomService` (`features/pms/rooms/*`, `core/services/room.service.ts`). | Route `Apps/core-service/src/routes/rooms.ts`. |
+| Rooms (`/v1/rooms`) | Wired | `RoomsComponent` + `RoomService` (`features/pms/rooms/*`, `core/services/room.service.ts`). | Route `Apps/rooms-service/src/routes/rooms.ts`. |
 | Housekeeping (`/v1/housekeeping/tasks`) | Wired | `HousekeepingComponent` + `HousekeepingService` (`features/pms/housekeeping/*`). | Route `Apps/core-service/src/routes/housekeeping.ts`. |
 | Reservations (`/v1/reservations`) | **Partially wired** | `ReservationService` feeds the grid, but `viewReservation`, `editReservation`, `cancelReservation` in `features/pms/reservations/reservations.component.ts:207-216` only log to console. | API list endpoint exists in `Apps/core-service/src/routes/reservations.ts`; mutation flows still TODO on UI. |
-| Guests (`/v1/guests`) | **Partially wired** | `GuestService` loads data, yet `viewGuest` / `messageGuest` in `features/pms/guests/guests.component.ts:153-166` are placeholders. | API list endpoint: `Apps/core-service/src/routes/guests.ts`. |
+| Guests (`/v1/guests`) | **Partially wired** | `GuestService` loads data, yet `viewGuest` / `messageGuest` in `features/pms/guests/guests.component.ts:153-166` are placeholders. | API list endpoint: `Apps/guests-service/src/routes/guests.ts`. |
 | Billing (`/v1/billing/payments`) | Wired | `BillingComponent` + `BillingService` (`features/pms/billing/*`, `core/services/billing.service.ts`). | Route file `Apps/core-service/src/routes/billing.ts`. |
 | Dashboard (`/v1/dashboard/*`) | Wired | `DashboardService` powering `DashboardComponent` (`features/pms/dashboard/dashboard.component.ts`). | API routes `Apps/core-service/src/routes/dashboard.ts`. |
 | Reports (`/v1/reports/performance`) | Wired | `ReportService` (`src/app/core/services/report.service.ts`). | Route `Apps/core-service/src/routes/reports.ts`. |

@@ -31,7 +31,7 @@ export const RoomListItemSchema = z.object({
   version: z.string(),
 });
 
-export type RoomListItem = z.infer<typeof RoomListItemSchema>;
+type RoomListItem = z.infer<typeof RoomListItemSchema>;
 
 type RoomListRow = {
   id: string;
@@ -87,15 +87,14 @@ const toStringDate = (value: string | Date | null): string | undefined => {
 };
 
 const mapRowToRoom = (row: RoomListRow): RoomListItem => {
-  const { value: status, display: statusDisplay } = normalizeEnum(row.status, "unknown");
-  const { value: housekeepingStatus, display: housekeepingDisplay } = normalizeEnum(
-    row.housekeeping_status,
-    "unspecified",
+  const { value: status, display: statusDisplay } = normalizeEnum(
+    row.status,
+    "unknown",
   );
-  const { value: maintenanceStatus, display: maintenanceDisplay } = normalizeEnum(
-    row.maintenance_status,
-    "normal",
-  );
+  const { value: housekeepingStatus, display: housekeepingDisplay } =
+    normalizeEnum(row.housekeeping_status, "unspecified");
+  const { value: maintenanceStatus, display: maintenanceDisplay } =
+    normalizeEnum(row.maintenance_status, "normal");
 
   return RoomListItemSchema.parse({
     id: row.id,
