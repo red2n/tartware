@@ -55,3 +55,12 @@ export const databaseConfig = {
   max: Number(env.DB_POOL_MAX ?? 10),
   idleTimeoutMillis: Number(env.DB_POOL_IDLE_TIMEOUT_MS ?? 30000),
 };
+
+export const commandCenterConfig = {
+  topic: env.COMMAND_CENTER_TOPIC ?? "commands.primary",
+  consumerGroupId:
+    env.COMMAND_CENTER_CONSUMER_GROUP ??
+    `${serviceConfig.serviceId}-command-consumer`,
+  targetServiceId:
+    env.COMMAND_CENTER_TARGET_SERVICE_ID ?? serviceConfig.serviceId,
+};

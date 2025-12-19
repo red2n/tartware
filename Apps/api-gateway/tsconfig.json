@@ -16,7 +16,9 @@
     "baseUrl": ".",
     "paths": {
       "@tartware/openapi": ["../openapi-utils/src/index.ts"],
-      "@tartware/openapi/*": ["../openapi-utils/src/*"]
+      "@tartware/openapi/*": ["../openapi-utils/src/*"],
+      "@tartware/telemetry": ["../telemetry/src/index.ts"],
+      "@tartware/telemetry/*": ["../telemetry/src/*"]
     }
   },
   "include": ["src/**/*.ts"],

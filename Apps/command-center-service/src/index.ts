@@ -3,7 +3,16 @@ import process from "node:process";
 import { initTelemetry } from "@tartware/telemetry";
 
 import { config } from "./config.js";
+import { shutdownProducer } from "./kafka/producer.js";
 import { buildServer } from "./server.js";
+import {
+  shutdownCommandRegistry,
+  startCommandRegistry,
+} from "./services/command-registry-service.js";
+import {
+  shutdownCommandOutboxDispatcher,
+  startCommandOutboxDispatcher,
+} from "./services/outbox-dispatcher.js";
 
 const telemetry = await initTelemetry({
   serviceName: config.service.name,
@@ -26,6 +35,8 @@ const app = buildServer();
 
 const start = async () => {
   try {
+    await startCommandRegistry();
+    startCommandOutboxDispatcher();
     await app.listen({ port: config.port, host: config.host });
     app.log.info(
       {
@@ -38,6 +49,15 @@ const start = async () => {
   } catch (error) {
     app.log.error(error, `Failed to start ${config.service.name}`);
     await app.close();
+    await shutdownCommandRegistry().catch((registryError) =>
+      app.log.error(registryError, "failed to shutdown command registry"),
+    );
+    await shutdownCommandOutboxDispatcher().catch((dispatcherError) =>
+      app.log.error(dispatcherError, "failed to stop outbox dispatcher"),
+    );
+    await shutdownProducer().catch((producerError) =>
+      app.log.error(producerError, "failed to shutdown Kafka producer"),
+    );
     await telemetry
       ?.shutdown()
       .catch((shutdownError) =>
@@ -50,6 +70,15 @@ const start = async () => {
 const shutdown = async (signal: NodeJS.Signals) => {
   app.log.info({ signal }, "shutdown signal received");
   try {
+    await shutdownCommandRegistry().catch((error) =>
+      app.log.error(error, "failed to shutdown command registry"),
+    );
+    await shutdownCommandOutboxDispatcher().catch((error) =>
+      app.log.error(error, "failed to stop outbox dispatcher"),
+    );
+    await shutdownProducer().catch((error) =>
+      app.log.error(error, "failed to shutdown Kafka producer"),
+    );
     await app.close();
     await telemetry
       ?.shutdown()

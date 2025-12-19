@@ -1,7 +1,7 @@
 -- =====================================================
 -- verify-01-core-foundation.sql
 -- Verification Script for Core Foundation Tables
--- Category: 01-core-foundation (13 tables)
+-- Category: 01-core-foundation (17 tables)
 -- Date: 2025-10-19
 -- =====================================================
 
@@ -11,14 +11,14 @@
 \echo ''
 \echo '=============================================='
 \echo '  CATEGORY: CORE FOUNDATION VERIFICATION'
-\echo '  Tables: 13 | Description: Multi-tenancy, users, properties, guest management, settings catalogue'
+\echo '  Tables: 17 | Description: Multi-tenancy, users, properties, guest management, settings catalogue, command routing'
 \echo '=============================================='
 \echo ''
 
 -- =====================================================
 -- 1. CHECK IF ALL TABLES EXIST
 -- =====================================================
-\echo '1. Checking if all 13 tables exist...'
+\echo '1. Checking if all 17 tables exist...'
 
 DO $$
 DECLARE
@@ -35,7 +35,11 @@ DECLARE
         'room_settings',
         'user_settings',
         'system_administrators',
-        'system_admin_audit_log'
+        'system_admin_audit_log',
+        'command_templates',
+        'command_routes',
+        'command_features',
+        'command_dispatches'
     ];
     v_table TEXT;
     v_missing_tables TEXT[] := '{}'::TEXT[];
@@ -61,7 +65,7 @@ BEGIN
         RAISE WARNING 'Missing tables: %', array_to_string(v_missing_tables, ', ');
         RAISE EXCEPTION 'Core Foundation verification FAILED - missing tables!';
     ELSE
-        RAISE NOTICE '✓✓✓ All 13 Core Foundation tables exist!';
+        RAISE NOTICE '✓✓✓ All 17 Core Foundation tables exist!';
     END IF;
 END $$;
 
@@ -107,7 +111,11 @@ WHERE
         'room_settings',
         'user_settings',
         'system_administrators',
-        'system_admin_audit_log'
+        'system_admin_audit_log',
+        'command_templates',
+        'command_routes',
+        'command_features',
+        'command_dispatches'
     )
     AND t.table_schema = 'public'
 GROUP BY
@@ -143,20 +151,24 @@ BEGIN
         'room_settings',
         'user_settings',
         'system_administrators',
-        'system_admin_audit_log'
+        'system_admin_audit_log',
+        'command_templates',
+        'command_routes',
+        'command_features',
+        'command_dispatches'
     )
         AND t.table_schema = 'public';
 
     RAISE NOTICE '';
     RAISE NOTICE 'Category: Core Foundation';
-    RAISE NOTICE 'Tables Found: % / 13', v_table_count;
+    RAISE NOTICE 'Tables Found: % / 17', v_table_count;
     RAISE NOTICE '';
 
-    IF v_table_count = 13 THEN
+    IF v_table_count = 17 THEN
         RAISE NOTICE '✓✓✓ CORE FOUNDATION VERIFICATION PASSED ✓✓✓';
     ELSE
         RAISE WARNING '⚠⚠⚠ CORE FOUNDATION VERIFICATION FAILED ⚠⚠⚠';
-        RAISE WARNING 'Expected 11 tables, found %', v_table_count;
+        RAISE WARNING 'Expected 17 tables, found %', v_table_count;
     END IF;
 END $$;
 

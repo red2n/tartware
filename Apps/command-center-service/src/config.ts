@@ -7,7 +7,52 @@ process.env.AUTH_JWT_SECRET = process.env.AUTH_JWT_SECRET ?? "local-dev-secret";
 process.env.AUTH_JWT_ISSUER = process.env.AUTH_JWT_ISSUER ?? "tartware-core";
 process.env.AUTH_JWT_AUDIENCE = process.env.AUTH_JWT_AUDIENCE ?? "tartware";
 
+const toNumber = (value: string | undefined, fallback: number): number => {
+  if (typeof value === "string" && value.trim().length > 0) {
+    const parsed = Number(value);
+    if (!Number.isNaN(parsed)) {
+      return parsed;
+    }
+  }
+  return fallback;
+};
+
 const configValues = loadServiceConfig(databaseSchema);
+
+const kafka = {
+  clientId:
+    process.env.COMMAND_CENTER_KAFKA_CLIENT_ID ?? "tartware-command-center",
+  brokers: (process.env.COMMAND_CENTER_KAFKA_BROKERS ?? "localhost:29092")
+    .split(",")
+    .map((broker) => broker.trim())
+    .filter((broker) => broker.length > 0),
+  topic: process.env.COMMAND_CENTER_KAFKA_TOPIC ?? "commands.primary",
+  dlqTopic: process.env.COMMAND_CENTER_DLQ_TOPIC ?? "commands.primary.dlq",
+};
+
+const outbox = {
+  workerId:
+    process.env.COMMAND_CENTER_OUTBOX_WORKER_ID ??
+    `${configValues.SERVICE_NAME}-outbox`,
+  pollIntervalMs: toNumber(
+    process.env.COMMAND_CENTER_OUTBOX_POLL_INTERVAL_MS,
+    2000,
+  ),
+  batchSize: toNumber(process.env.COMMAND_CENTER_OUTBOX_BATCH_SIZE, 25),
+  lockTimeoutMs: toNumber(
+    process.env.COMMAND_CENTER_OUTBOX_LOCK_TIMEOUT_MS,
+    30000,
+  ),
+  maxRetries: toNumber(process.env.COMMAND_CENTER_OUTBOX_MAX_RETRIES, 5),
+  retryBackoffMs: toNumber(
+    process.env.COMMAND_CENTER_OUTBOX_RETRY_BACKOFF_MS,
+    5000,
+  ),
+};
+
+const registry = {
+  refreshIntervalMs: toNumber(process.env.COMMAND_REGISTRY_REFRESH_MS, 30000),
+};
 
 export const config = {
   service: {
@@ -38,4 +83,7 @@ export const config = {
       audience: process.env.AUTH_JWT_AUDIENCE ?? "tartware",
     },
   },
+  kafka,
+  outbox,
+  registry,
 };

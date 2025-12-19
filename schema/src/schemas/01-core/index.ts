@@ -2,7 +2,7 @@
  * Core Foundation Schemas (Category 01)
  * Multi-tenancy, users, properties, and guests
  *
- * Tables: 8
+ * Tables: 12
  * - tenants
  * - users
  * - user_tenant_associations
@@ -11,6 +11,10 @@
  * - system_administrators
  * - system_admin_audit_log
  * - transactional_outbox
+ * - command_templates
+ * - command_routes
+ * - command_features
+ * - command_dispatches
  */
 
 export * from "./tenants.js";
@@ -21,3 +25,4 @@ export * from "./guests.js";
 export * from "./system-administrators.js";
 export * from "./system-admin-audit-log.js";
 export * from "./transactional-outbox.js";
+export * from "./command-center.js";

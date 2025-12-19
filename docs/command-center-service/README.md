@@ -78,6 +78,46 @@ All write requests respond immediately with `202` and include:
 
 The catalog is intentionally granular so future tenants can opt-in/out per command while retaining larger domain modules (`facility-maintenance`, `finance-automation`).
 
+## Current Implementation Snapshot (2025-12-19)
+
+- **Ingress API**: `/v1/commands/:commandName/execute` validates tenant scope, enforces per-command module requirements, and records every accepted command in `command_dispatches`.
+- **Command Registry**: `command_templates`, `command_routes`, and `command_features` tables are hydrated into an in-memory cache that refreshes every 30 seconds (tunable via `COMMAND_REGISTRY_REFRESH_MS`). This drives routing decisions and feature-flag enforcement.
+- **Dispatcher**: The service shares the new `@tartware/outbox` package with other producers. A dedicated dispatcher pumps rows from `transactional_outbox` to Kafka (`commands.primary`) and mirrors delivery state back into `command_dispatches`.
+- **Defaults & Seeds**: The initial catalog covers reservations, guests, billing, housekeeping, and rooms commands. Each ships with a default route + feature flag so the command center is usable immediately in dev environments.
+- **Downstream Consumers**: `guests-service` now runs a lightweight Kafka consumer that listens for `guest.register` commands and invokes the existing `upsert_guest` procedure, so guest onboarding is now fully event-driven via the Command Center pipeline.
+- **Observability**: `/metrics` now exports `command_center_outbox_pending_records` and `command_center_outbox_publish_duration_seconds` so we can alert on backlogs or stuck dispatchers.
+
+### Environment Variables
+
+| Variable | Description | Default |
+| --- | --- | --- |
+| `COMMAND_CENTER_KAFKA_BROKERS` | Comma-separated Kafka brokers for command publication. | `localhost:29092` |
+| `COMMAND_CENTER_KAFKA_TOPIC` | Primary topic for all command events. | `commands.primary` |
+| `COMMAND_CENTER_DLQ_TOPIC` | DLQ topic for unrecoverable dispatch failures. | `commands.primary.dlq` |
+| `COMMAND_CENTER_OUTBOX_*` | Standard knobs for poll interval, batch size, lock timeout, retries, and worker id. | See `.env.example`. |
+| `COMMAND_REGISTRY_REFRESH_MS` | Interval for refreshing the in-memory command registry snapshot. | `30000` |
+
+### Command Catalog Tables
+
+| Table | Purpose |
+| --- | --- |
+| `command_templates` | Canonical definition of a command ( name, default target, required modules, schema metadata ). |
+| `command_routes` | Per-environment + per-tenant routing directives. Routes can be weighted to support gradual migrations. |
+| `command_features` | Feature flags / throttles. A `disabled` entry at tenant or global scope blocks ingress for that command. |
+| `command_dispatches` | Audit log for each accepted command. Tracks payload hash, routing metadata, and dispatch lifecycle status (`ACCEPTED`, `PUBLISHED`, `FAILED`, `DLQ`). |
+
+Each table lives under `scripts/tables/01-core/10_command_center.sql` and is surfaced via `schema/src/schemas/01-core/command-center.ts` for downstream services.
+
+### Dispatcher Flow
+
+1. Ingress accepts the command, resolves routing via the registry, and writes two records within the same transaction scope:
+   - `transactional_outbox`: event envelope headed to Kafka.
+   - `command_dispatches`: audit + lifecycle tracking keyed by `outbox_event_id`.
+2. The dispatcher (`startCommandOutboxDispatcher`) continuously polls the outbox, publishes to Kafka, and updates both the outbox row and the corresponding dispatch status (`PUBLISHED`, `FAILED`, or `DLQ`).
+3. On DLQ, a secondary event is emitted with the serialized outbox record so replay tooling can reason about the failure.
+
+Future enhancements will add rate limits, tenant-scoped observation mode, and hooks for downstream services to acknowledge completion so we can surface `APPLIED/COMPLETED` states in the command timeline APIs.
+
 ## Routing & Feature Policy
 
 Routing decisions are stored as JSON policies:

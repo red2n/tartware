@@ -2,6 +2,10 @@ import process from "node:process";
 
 import { initTelemetry } from "@tartware/telemetry";
 
+import {
+  shutdownGuestsCommandCenterConsumer,
+  startGuestsCommandCenterConsumer,
+} from "./commands/command-center-consumer.js";
 import { config } from "./config.js";
 import { buildServer } from "./server.js";
 
@@ -26,6 +30,7 @@ const app = buildServer();
 
 const start = async () => {
   try {
+    await startGuestsCommandCenterConsumer();
     await app.listen({ port: config.port, host: config.host });
     app.log.info(
       {
@@ -40,7 +45,7 @@ const start = async () => {
     await app.close();
     await telemetry
       ?.shutdown()
-      .catch((shutdownError) =>
+      .catch((shutdownError: unknown) =>
         app.log.error(shutdownError, "failed to shutdown telemetry"),
       );
     process.exit(1);
@@ -50,10 +55,11 @@ const start = async () => {
 const shutdown = async (signal: NodeJS.Signals) => {
   app.log.info({ signal }, "shutdown signal received");
   try {
+    await shutdownGuestsCommandCenterConsumer();
     await app.close();
     await telemetry
       ?.shutdown()
-      .catch((shutdownError) =>
+      .catch((shutdownError: unknown) =>
         app.log.error(shutdownError, "failed to shutdown telemetry"),
       );
     process.exit(0);

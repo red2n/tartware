@@ -5,7 +5,7 @@
  * ⚠️ CRITICAL: Any change to database ENUMs must be reflected here
  * See: docs/ZOD_SCHEMA_IMPLEMENTATION_PLAN.md#d-schema-synchronization-protocol
  *
- * Total ENUMs: 67 types
+ * Total ENUMs: 70 types
  * Last synced: 2025-11-03
  */
 
@@ -81,6 +81,38 @@ export const OutboxStatusEnum = z.enum([
 	"DLQ",
 ]);
 export type OutboxStatus = z.infer<typeof OutboxStatusEnum>;
+
+/**
+ * Command Route Status - Routing policy lifecycle
+ * @database command_route_status
+ */
+export const CommandRouteStatusEnum = z.enum(["active", "disabled"]);
+export type CommandRouteStatus = z.infer<typeof CommandRouteStatusEnum>;
+
+/**
+ * Command Feature Status - Feature flags for commands
+ * @database command_feature_status
+ */
+export const CommandFeatureStatusEnum = z.enum([
+	"enabled",
+	"disabled",
+	"observation",
+]);
+export type CommandFeatureStatus = z.infer<typeof CommandFeatureStatusEnum>;
+
+/**
+ * Command Dispatch Status - Tracking ingress lifecycle
+ * @database command_dispatch_status
+ */
+export const CommandDispatchStatusEnum = z.enum([
+	"ACCEPTED",
+	"PUBLISHED",
+	"FAILED",
+	"DLQ",
+]);
+export type CommandDispatchStatus = z.infer<
+	typeof CommandDispatchStatusEnum
+>;
 
 // =====================================================
 // PROPERTY & ROOM ENUMS

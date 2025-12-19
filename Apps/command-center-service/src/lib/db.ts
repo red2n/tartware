@@ -1,4 +1,10 @@
-import { Pool, type QueryResult, type QueryResultRow, types } from "pg";
+import {
+  Pool,
+  type PoolClient,
+  type QueryResult,
+  type QueryResultRow,
+  types,
+} from "pg";
 
 import { config } from "../config.js";
 
@@ -40,4 +46,25 @@ export const query = async <T extends QueryResultRow = QueryResultRow>(
   params: unknown[] = [],
 ): Promise<QueryResult<T>> => {
   return pool.query<T>(text, params);
+};
+
+export const withTransaction = async <T>(
+  callback: (client: PoolClient) => Promise<T>,
+): Promise<T> => {
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    const result = await callback(client);
+    await client.query("COMMIT");
+    return result;
+  } catch (error) {
+    try {
+      await client.query("ROLLBACK");
+    } catch (rollbackError) {
+      console.error("Failed to rollback transaction", rollbackError);
+    }
+    throw error;
+  } finally {
+    client.release();
+  }
 };

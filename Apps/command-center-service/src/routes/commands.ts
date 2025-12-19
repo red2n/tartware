@@ -4,7 +4,10 @@ import { buildRouteSchema, schemaFromZod } from "@tartware/openapi";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 
-import { acceptCommand } from "../services/command-dispatch-service.js";
+import {
+  acceptCommand,
+  CommandDispatchError,
+} from "../services/command-dispatch-service.js";
 
 const CommandParamSchema = z.object({
   commandName: z.string().min(1),
@@ -32,7 +35,7 @@ const CommandExecuteResponseSchema = z.object({
   commandName: z.string(),
   tenantId: z.string().uuid(),
   correlationId: z.string().optional(),
-  targetService: z.string().nullable(),
+  targetService: z.string(),
   requestedAt: z.string(),
 });
 
@@ -73,18 +76,43 @@ export const registerCommandRoutes = (app: FastifyInstance): void => {
       const { commandName } = CommandParamSchema.parse(request.params);
       const body = CommandExecuteBodySchema.parse(request.body);
 
-      const result = await acceptCommand({
-        commandName,
-        tenantId: body.tenant_id,
-        payload: body.payload,
-        correlationId: body.correlation_id,
-        initiatedBy: body.metadata?.initiated_by ?? null,
-        requestId:
-          (request.headers["x-request-id"] as string | undefined) ??
-          randomUUID(),
-      });
+      const membership = request.auth.getMembership(body.tenant_id);
+      if (!membership) {
+        reply.forbidden("TENANT_ACCESS_DENIED");
+        return;
+      }
 
-      reply.status(202).send(result);
+      const initiatedByInput = body.metadata?.initiated_by;
+      const initiatedBy = initiatedByInput
+        ? {
+            userId: initiatedByInput.user_id,
+            role: initiatedByInput.role,
+          }
+        : null;
+
+      try {
+        const result = await acceptCommand({
+          commandName,
+          tenantId: body.tenant_id,
+          payload: body.payload,
+          correlationId: body.correlation_id,
+          initiatedBy,
+          membership,
+          requestId:
+            (request.headers["x-request-id"] as string | undefined) ??
+            randomUUID(),
+        });
+        reply.status(202).send(result);
+      } catch (error) {
+        if (error instanceof CommandDispatchError) {
+          reply.status(error.statusCode).send({
+            error: error.code,
+            message: error.message,
+          });
+          return;
+        }
+        throw error;
+      }
     },
   );
 };

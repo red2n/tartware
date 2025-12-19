@@ -1,5 +1,7 @@
 import { performance } from "node:perf_hooks";
 
+import type { OutboxRecord } from "@tartware/outbox";
+
 import { kafkaConfig, outboxConfig } from "../config.js";
 import { publishDlqEvent, publishEvent } from "../kafka/producer.js";
 import {
@@ -15,7 +17,6 @@ import {
   markOutboxFailed,
   releaseExpiredLocks,
 } from "./repository.js";
-import type { OutboxRecord } from "./types.js";
 
 let dispatcherTimer: NodeJS.Timeout | null = null;
 let isDispatcherRunning = false;
