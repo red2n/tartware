@@ -34,7 +34,7 @@ export const HousekeepingTaskSchema = z.object({
   version: z.string(),
 });
 
-export type HousekeepingTask = z.infer<typeof HousekeepingTaskSchema>;
+type HousekeepingTask = z.infer<typeof HousekeepingTaskSchema>;
 
 type HousekeepingTaskRow = {
   id: string;
@@ -75,7 +75,9 @@ const toIsoString = (value: string | Date | null): string | undefined => {
   return value;
 };
 
-const normalizeStatus = (value: string | null): { value: string; display: string } => {
+const normalizeStatus = (
+  value: string | null,
+): { value: string; display: string } => {
   if (!value) {
     return { value: "unknown", display: "Unknown" };
   }
@@ -137,13 +139,10 @@ export const listHousekeepingTasks = async (options: {
   const status = options.status ? options.status.trim().toUpperCase() : null;
   const scheduledDate = options.scheduledDate ?? null;
 
-  const { rows } = await query<HousekeepingTaskRow>(HOUSEKEEPING_TASK_LIST_SQL, [
-    limit,
-    tenantId,
-    propertyId,
-    status,
-    scheduledDate,
-  ]);
+  const { rows } = await query<HousekeepingTaskRow>(
+    HOUSEKEEPING_TASK_LIST_SQL,
+    [limit, tenantId, propertyId, status, scheduledDate],
+  );
 
   return rows.map(mapRowToTask);
 };

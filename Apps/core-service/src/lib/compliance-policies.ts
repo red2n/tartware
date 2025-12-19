@@ -1,8 +1,6 @@
 import type { GuestWithStats } from "@tartware/schemas";
 
 import { config } from "../config.js";
-import type { BillingPayment } from "../services/billing-service.js";
-
 import { appLogger } from "./logger.js";
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
@@ -97,23 +95,6 @@ export const applyGuestRetentionPolicy = (guest: GuestWithStats): GuestWithStats
     },
     notes: undefined,
     metadata: {},
-  };
-};
-
-export const applyBillingRetentionPolicy = (payment: BillingPayment): BillingPayment => {
-  const retentionDays = config.compliance.retention.billingDataDays;
-  const referenceDate = payment.processed_at ?? payment.created_at;
-  if (!isOlderThanRetention(referenceDate ? new Date(referenceDate) : undefined, retentionDays)) {
-    return payment;
-  }
-
-  return {
-    ...payment,
-    payment_reference: REDACTED_VALUE,
-    external_transaction_id: undefined,
-    gateway_name: undefined,
-    gateway_reference: undefined,
-    guest_name: "REDACTED",
   };
 };
 

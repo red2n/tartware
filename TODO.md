@@ -94,6 +94,8 @@ Platform-wide standardization for resilient CRUD handling at 20+ ops/sec with au
 - Add CI telemetry that surfaces module-level ownership metrics (files per domain, dependency graph) to spot regressions when boundaries blur.
 - _2025-12-17 Update_: Guests domain extracted into `Apps/guests-service` with dedicated Fastify instance + auth context; API gateway now routes `/v1/guests*` there while core-service drops the legacy guest routes. Next steps: iterate on additional domain splits (rooms, housekeeping, billing) and harden inter-service contracts.
 - _2025-12-18 Update_: Rooms domain extracted into `Apps/rooms-service` (Fastify service with shared auth/logging/metrics + SQL under `src/sql`), API gateway proxies `/v1/rooms*` to it, and core-service shed the room routes/tests. Continue decomposing remaining core modules and align per-service env defaults/scripts.
+- _2025-12-18 Update_: Housekeeping tasks moved into `Apps/housekeeping-service`, including Fastify wiring, dedicated SQL, and API gateway proxying `/v1/housekeeping/*`; core-service no longer ships those routes. Next microservice targets: billing & reports.
+- _2025-12-19 Update_: Billing payments now live under `Apps/billing-service` with dedicated Fastify app + compliance retention policy. API gateway proxies `/v1/billing/*`, `.env.example` exposes `BILLING_SERVICE_URL`, and core-service shed the billing routes/tests.
 
 ### 1. **Super Admin / Global Administrator Implementation (Priority: HIGH)**
 Industry-standard privileged access management for multi-tenant PMS platform following OWASP Authorization best practices.

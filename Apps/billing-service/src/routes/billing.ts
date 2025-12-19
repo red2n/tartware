@@ -1,9 +1,16 @@
 import { buildRouteSchema, schemaFromZod } from "@tartware/openapi";
-import { PaymentMethodEnum, PaymentStatusEnum, TransactionTypeEnum } from "@tartware/schemas";
+import {
+  PaymentMethodEnum,
+  PaymentStatusEnum,
+  TransactionTypeEnum,
+} from "@tartware/schemas";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 
-import { BillingPaymentSchema, listBillingPayments } from "../services/billing-service.js";
+import {
+  BillingPaymentSchema,
+  listBillingPayments,
+} from "../services/billing-service.js";
 
 const BillingListQuerySchema = z.object({
   tenant_id: z.string().uuid(),
@@ -14,7 +21,10 @@ const BillingListQuerySchema = z.object({
     .optional()
     .refine(
       (value) =>
-        !value || PaymentStatusEnum.options.map((status) => status.toLowerCase()).includes(value),
+        !value ||
+        PaymentStatusEnum.options
+          .map((status) => status.toLowerCase())
+          .includes(value),
       { message: "Invalid payment status" },
     ),
   transaction_type: z
@@ -24,7 +34,9 @@ const BillingListQuerySchema = z.object({
     .refine(
       (value) =>
         !value ||
-        TransactionTypeEnum.options.map((transaction) => transaction.toLowerCase()).includes(value),
+        TransactionTypeEnum.options
+          .map((transaction) => transaction.toLowerCase())
+          .includes(value),
       { message: "Invalid transaction type" },
     ),
   payment_method: z
@@ -33,7 +45,10 @@ const BillingListQuerySchema = z.object({
     .optional()
     .refine(
       (value) =>
-        !value || PaymentMethodEnum.options.map((method) => method.toLowerCase()).includes(value),
+        !value ||
+        PaymentMethodEnum.options
+          .map((method) => method.toLowerCase())
+          .includes(value),
       { message: "Invalid payment method" },
     ),
   limit: z.coerce.number().int().positive().max(200).default(100),
@@ -42,7 +57,10 @@ const BillingListQuerySchema = z.object({
 type BillingListQuery = z.infer<typeof BillingListQuerySchema>;
 
 const BillingListResponseSchema = z.array(BillingPaymentSchema);
-const BillingListQueryJsonSchema = schemaFromZod(BillingListQuerySchema, "BillingPaymentsQuery");
+const BillingListQueryJsonSchema = schemaFromZod(
+  BillingListQuerySchema,
+  "BillingPaymentsQuery",
+);
 const BillingListResponseJsonSchema = schemaFromZod(
   BillingListResponseSchema,
   "BillingPaymentsResponse",
@@ -55,7 +73,8 @@ export const registerBillingRoutes = (app: FastifyInstance): void => {
     "/v1/billing/payments",
     {
       preHandler: app.withTenantScope({
-        resolveTenantId: (request) => (request.query as BillingListQuery).tenant_id,
+        resolveTenantId: (request) =>
+          (request.query as BillingListQuery).tenant_id,
         minRole: "ADMIN",
         requiredModules: "finance-automation",
       }),
@@ -69,8 +88,14 @@ export const registerBillingRoutes = (app: FastifyInstance): void => {
       }),
     },
     async (request) => {
-      const { tenant_id, property_id, status, transaction_type, payment_method, limit } =
-        BillingListQuerySchema.parse(request.query);
+      const {
+        tenant_id,
+        property_id,
+        status,
+        transaction_type,
+        payment_method,
+        limit,
+      } = BillingListQuerySchema.parse(request.query);
 
       const payments = await listBillingPayments({
         tenantId: tenant_id,

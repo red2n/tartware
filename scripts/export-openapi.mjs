@@ -32,6 +32,50 @@ const services = [
     },
   },
   {
+    id: "guests-service",
+    output: "docs/openapi/guests-service.json",
+    modulePath: "Apps/guests-service/dist/Apps/guests-service/src/server.js",
+    build: async () => {
+      const { buildServer } = await import(
+        resolveDistModule("Apps/guests-service/dist/Apps/guests-service/src/server.js")
+      );
+      return buildServer();
+    },
+  },
+  {
+    id: "rooms-service",
+    output: "docs/openapi/rooms-service.json",
+    modulePath: "Apps/rooms-service/dist/Apps/rooms-service/src/server.js",
+    build: async () => {
+      const { buildServer } = await import(
+        resolveDistModule("Apps/rooms-service/dist/Apps/rooms-service/src/server.js")
+      );
+      return buildServer();
+    },
+  },
+  {
+    id: "housekeeping-service",
+    output: "docs/openapi/housekeeping-service.json",
+    modulePath: "Apps/housekeeping-service/dist/Apps/housekeeping-service/src/server.js",
+    build: async () => {
+      const { buildServer } = await import(
+        resolveDistModule("Apps/housekeeping-service/dist/Apps/housekeeping-service/src/server.js")
+      );
+      return buildServer();
+    },
+  },
+  {
+    id: "billing-service",
+    output: "docs/openapi/billing-service.json",
+    modulePath: "Apps/billing-service/dist/Apps/billing-service/src/server.js",
+    build: async () => {
+      const { buildServer } = await import(
+        resolveDistModule("Apps/billing-service/dist/Apps/billing-service/src/server.js")
+      );
+      return buildServer();
+    },
+  },
+  {
     id: "api-gateway",
     output: "docs/openapi/api-gateway.json",
     modulePath: "Apps/api-gateway/dist/server.js",
