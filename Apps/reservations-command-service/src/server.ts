@@ -1,6 +1,7 @@
 import fastifyHelmet from "@fastify/helmet";
 import fastifySensible from "@fastify/sensible";
 import { buildRouteSchema, jsonObjectSchema } from "@tartware/openapi";
+import { withRequestLogging } from "@tartware/telemetry";
 import fastify, { type FastifyBaseLogger } from "fastify";
 
 import { serviceConfig } from "./config.js";
@@ -14,6 +15,14 @@ export const buildServer = () => {
   const app = fastify({
     logger: reservationsLogger as FastifyBaseLogger,
   });
+
+  if (serviceConfig.requestLogging) {
+    withRequestLogging(app, {
+      includeBody: false,
+      includeRequestHeaders: false,
+      includeResponseHeaders: false,
+    });
+  }
 
   app.register(fastifyHelmet, { global: true });
   app.register(fastifySensible);

@@ -6,6 +6,7 @@ import {
 	type JsonSchema,
 	jsonObjectSchema,
 } from "@tartware/openapi";
+import { withRequestLogging } from "@tartware/telemetry";
 import fastify, {
 	type FastifyBaseLogger,
 	type FastifyReply,
@@ -48,6 +49,15 @@ export const buildServer = () => {
 	const app = fastify({
 		logger: gatewayLogger as FastifyBaseLogger,
 	});
+
+	if (gatewayConfig.logRequests) {
+		withRequestLogging(app, {
+			includeBody: false,
+			includeParams: true,
+			includeRequestHeaders: false,
+			includeResponseHeaders: false,
+		});
+	}
 
 	app.register(fastifyHelmet, { global: true });
 	app.register(fastifySensible);

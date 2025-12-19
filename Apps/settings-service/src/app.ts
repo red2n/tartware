@@ -1,7 +1,7 @@
 import cors from "@fastify/cors";
 import helmet from "@fastify/helmet";
 import sensible from "@fastify/sensible";
-import type { PinoLogger } from "@tartware/telemetry";
+import { type PinoLogger, withRequestLogging } from "@tartware/telemetry";
 import Fastify from "fastify";
 
 import { config } from "./config.js";
@@ -25,15 +25,12 @@ export const buildServer = ({ logger }: BuildServerOptions) => {
   void app.register(swaggerPlugin);
 
   if (config.log.requestLogging) {
-    app.addHook("onResponse", (request, reply, done) => {
-      request.log.info({
-        requestId: request.id,
-        method: request.method,
-        url: request.url,
-        statusCode: reply.statusCode,
-        responseTime: reply.getResponseTime(),
-      });
-      done();
+    withRequestLogging(app, {
+      includeBody: false,
+      includeRequestHeaders: false,
+      includeResponseHeaders: false,
+      logOnRequest: true,
+      logOnResponse: true,
     });
   }
 

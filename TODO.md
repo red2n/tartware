@@ -83,6 +83,16 @@ Platform-wide standardization for resilient CRUD handling at 20+ ops/sec with au
 - _2025-12-16T09:45:00Z Update_: Core-service and reservations-command-service route schemas now emit OpenAPI responses generated from the Zod validators, and settings-service inherits the Swagger plugin so `/docs` reflects the typed contracts.
 - _2025-12-16T09:45:00Z Update_: Added `npm run export:openapi`, which boots the Fastify instances from their compiled artifacts and writes JSON bundles under `docs/openapi/*.json` for CI/compliance consumers.
 
+#### 0.10 **Core-Service Domain Decomposition & Microservice Readiness**
+- Inventory every major module currently hosted in `Apps/core-service` (billing, reservations, rates, housekeeping, guests, dashboard, etc.) and document their ownership boundaries (routes, services, SQL, cache usage, external dependencies).
+- Define extraction candidates with clear criteria: independent scaling need, isolated data models, latency/throughput requirements, compliance boundaries.
+- Produce migration playbooks per module that cover:
+  - Service skeleton (Fastify + shared `@tartware/openapi` schemas + auth plugins)
+  - Database strategy (new schema vs. shared DB vs. replication)
+  - Messaging contracts (events, cache invalidation) to keep existing flows working during cohabitation.
+- Introduce a "microservice-ready" checklist inside the repo (lint rule or docs) ensuring each module keeps its code, config, and tests under a cohesive folder tree so it can be lifted out with minimal coupling.
+- Add CI telemetry that surfaces module-level ownership metrics (files per domain, dependency graph) to spot regressions when boundaries blur.
+
 ### 1. **Super Admin / Global Administrator Implementation (Priority: HIGH)**
 Industry-standard privileged access management for multi-tenant PMS platform following OWASP Authorization best practices.
 

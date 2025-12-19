@@ -19,7 +19,15 @@ import {
 import { NodeSDK } from "@opentelemetry/sdk-node";
 import { Resource } from "@opentelemetry/resources";
 import { SemanticResourceAttributes } from "@opentelemetry/semantic-conventions";
+import type { FastifyReply, FastifyRequest } from "fastify";
 import pino, { type Logger as PinoLogger } from "pino";
+
+type RedactObject = {
+	paths?: string[];
+	censor?: unknown;
+	remove?: boolean;
+	[key: string]: unknown;
+};
 
 type AutoInstrumentationOptions = Parameters<
 	typeof getNodeAutoInstrumentations
@@ -43,6 +51,123 @@ const parseOptionalBoolean = (value?: string): boolean | undefined => {
 	}
 	return !FALSEY_ENV_VALUES.has(value.toLowerCase());
 };
+
+export const DEFAULT_SENSITIVE_LOG_KEYS = Object.freeze([
+	"password",
+	"current_password",
+	"new_password",
+	"passcode",
+	"token",
+	"email",
+	"phone",
+	"id_number",
+	"passport_number",
+	"ssn",
+	"payment_reference",
+	"card_number",
+	"cvv",
+	"authorization",
+]);
+
+export const DEFAULT_LOG_REDACT_PATHS = Object.freeze([
+	"req.headers",
+	"request.headers",
+	"res.headers",
+	"response.headers",
+	"req.body",
+	"request.body",
+	"res.body",
+	"response.body",
+	...DEFAULT_SENSITIVE_LOG_KEYS.map((key) => `*.${key}`),
+]);
+
+export const DEFAULT_LOG_REDACT_CENSOR = "[REDACTED]" as const;
+
+export const DEFAULT_LOG_REDACT_CONFIG = Object.freeze({
+	paths: DEFAULT_LOG_REDACT_PATHS,
+	censor: DEFAULT_LOG_REDACT_CENSOR,
+});
+
+const buildSensitiveKeySet = (keys?: string[]): Set<string> => {
+	const merged = new Set(DEFAULT_SENSITIVE_LOG_KEYS.map((key) => key.toLowerCase()));
+	if (Array.isArray(keys)) {
+		for (const key of keys) {
+			if (typeof key === "string" && key.trim().length > 0) {
+				merged.add(key.toLowerCase());
+			}
+		}
+	}
+	return merged;
+};
+
+const isPlainObject = (value: unknown): value is Record<string, unknown> => {
+	if (value === null || typeof value !== "object") {
+		return false;
+	}
+	const proto = Object.getPrototypeOf(value);
+	return proto === Object.prototype || proto === null;
+};
+
+export interface LogSanitizerOptions {
+	sensitiveKeys?: string[];
+	censor?: string;
+	maxDepth?: number;
+}
+
+export const createLogSanitizer = (options?: LogSanitizerOptions) => {
+	const sensitiveKeys = buildSensitiveKeySet(options?.sensitiveKeys);
+	const censor = options?.censor ?? DEFAULT_LOG_REDACT_CENSOR;
+	const maxDepth = Math.max(1, options?.maxDepth ?? 6);
+
+	const sanitizeInternal = (
+		value: unknown,
+		depth: number,
+		visited: WeakSet<object>,
+	): unknown => {
+		if (value === null || typeof value !== "object") {
+			return value;
+		}
+
+		if (depth >= maxDepth) {
+			return "[TRUNCATED]";
+		}
+
+		if (visited.has(value as object)) {
+			return "[CIRCULAR]";
+		}
+
+		visited.add(value as object);
+		try {
+			if (Array.isArray(value)) {
+				return value.map((entry) =>
+					sanitizeInternal(entry, depth + 1, visited),
+				);
+			}
+
+			if (!isPlainObject(value)) {
+				return value;
+			}
+
+			const entries = Object.entries(value).map(([key, nestedValue]) => {
+				if (sensitiveKeys.has(key.toLowerCase())) {
+					return [key, censor] as const;
+				}
+				return [key, sanitizeInternal(nestedValue, depth + 1, visited)] as const;
+			});
+
+			return Object.fromEntries(entries);
+		} finally {
+			visited.delete(value as object);
+		}
+	};
+
+	return (value: unknown): unknown => sanitizeInternal(value, 0, new WeakSet());
+};
+
+export const sanitizeLogValue = (
+	value: unknown,
+	options?: LogSanitizerOptions,
+): unknown => createLogSanitizer(options)(value);
 
 const parseHeaders = (rawHeaders?: string): Record<string, string> => {
 	if (!rawHeaders) {
@@ -79,6 +204,156 @@ const resolveDiagLevel = (level?: string): DiagLogLevel => {
 			return DiagLogLevel.NONE;
 		default:
 			return DiagLogLevel.ERROR;
+	}
+};
+
+const hasEnumerableValues = (value: unknown): boolean => {
+	if (value === null || value === undefined) {
+		return false;
+	}
+	if (Array.isArray(value)) {
+		return value.length > 0;
+	}
+	if (typeof value === "object") {
+		return Object.keys(value as Record<string, unknown>).length > 0;
+	}
+	return true;
+};
+
+export interface RequestLoggingOptions extends LogSanitizerOptions {
+	enabled?: boolean;
+	logOnRequest?: boolean;
+	logOnResponse?: boolean;
+	includeQuery?: boolean;
+	includeParams?: boolean;
+	includeBody?: boolean;
+	includeRequestHeaders?: boolean;
+	includeResponseHeaders?: boolean;
+	requestMessage?: string;
+	responseMessage?: string;
+	skip?: (request: FastifyRequest) => boolean;
+	buildRequestContext?: (
+		request: FastifyRequest,
+	) => Record<string, unknown> | void;
+	buildResponseContext?: (
+		request: FastifyRequest,
+		reply: FastifyReply,
+	) => Record<string, unknown> | void;
+}
+
+type FastifyAppLike = {
+	addHook: (
+		name: "onRequest" | "onResponse",
+		hook: (...args: any[]) => unknown,
+	) => unknown;
+};
+
+export const withRequestLogging = (
+	app: FastifyAppLike,
+	options?: RequestLoggingOptions,
+): void => {
+	if (!app || options?.enabled === false) {
+		return;
+	}
+
+	const logOnRequest = options?.logOnRequest ?? true;
+	const logOnResponse = options?.logOnResponse ?? true;
+
+	if (!logOnRequest && !logOnResponse) {
+		return;
+	}
+
+	const includeQuery = options?.includeQuery ?? true;
+	const includeParams = options?.includeParams ?? true;
+	const includeBody = options?.includeBody ?? false;
+	const includeRequestHeaders = options?.includeRequestHeaders ?? false;
+	const includeResponseHeaders = options?.includeResponseHeaders ?? false;
+	const sanitize = createLogSanitizer(options);
+
+	const shouldSkip = (request: FastifyRequest) =>
+		Boolean(options?.skip?.(request));
+
+	if (logOnRequest) {
+		app.addHook("onRequest", async (request) => {
+			if (shouldSkip(request)) {
+				return;
+			}
+
+			const payload: Record<string, unknown> = {
+				requestId: request.id,
+				method: request.method,
+				url: request.url,
+			};
+
+			if (includeQuery && hasEnumerableValues(request.query)) {
+				payload.query = sanitize(request.query);
+			}
+
+			if (includeParams && hasEnumerableValues(request.params)) {
+				payload.params = sanitize(request.params);
+			}
+
+			if (includeBody && hasEnumerableValues(request.body)) {
+				payload.body = sanitize(request.body);
+			}
+
+			if (includeRequestHeaders && hasEnumerableValues(request.headers)) {
+				payload.headers = sanitize(request.headers);
+			}
+
+			const context = options?.buildRequestContext?.(request);
+			if (context && Object.keys(context).length > 0) {
+				Object.assign(payload, context);
+			}
+
+			request.log.info(payload, options?.requestMessage ?? "request received");
+		});
+	}
+
+	if (logOnResponse) {
+		app.addHook("onResponse", async (request, reply) => {
+			if (shouldSkip(request)) {
+				return;
+			}
+
+			const durationMs =
+				typeof reply.elapsedTime === "number"
+					? reply.elapsedTime
+					: typeof reply.getResponseTime === "function"
+						? reply.getResponseTime()
+						: undefined;
+
+			const payload: Record<string, unknown> = {
+				requestId: request.id,
+				method: request.method,
+				url: request.url,
+				statusCode: reply.statusCode,
+			};
+
+			if (typeof durationMs === "number" && Number.isFinite(durationMs)) {
+				payload.durationMs = durationMs;
+			}
+
+			if (includeResponseHeaders) {
+				const headers =
+					typeof reply.getHeaders === "function"
+						? reply.getHeaders()
+						: (reply as unknown as { headers?: unknown })?.headers;
+				if (hasEnumerableValues(headers)) {
+					payload.responseHeaders = sanitize(headers);
+				}
+			}
+
+			const context = options?.buildResponseContext?.(request, reply);
+			if (context && Object.keys(context).length > 0) {
+				Object.assign(payload, context);
+			}
+
+			request.log.info(
+				payload,
+				options?.responseMessage ?? "request completed",
+			);
+		});
 	}
 };
 
@@ -211,6 +486,67 @@ export const initTelemetry = async (
 
 export type { NodeSDK } from "@opentelemetry/sdk-node";
 
+const mergeRedactOptions = (
+	provided: pino.LoggerOptions["redact"],
+	additionalPaths: string[] | undefined,
+	useDefaults: boolean | undefined,
+	censorOverride: string | undefined,
+): pino.LoggerOptions["redact"] => {
+	const includeDefaults = useDefaults !== false;
+	const pathSet = new Set<string>();
+	let baseConfig: RedactObject | undefined;
+
+	if (includeDefaults) {
+		for (const path of DEFAULT_LOG_REDACT_PATHS) {
+			pathSet.add(path);
+		}
+	}
+
+	if (Array.isArray(provided)) {
+		for (const path of provided) {
+			if (path) {
+				pathSet.add(path);
+			}
+		}
+	} else if (provided && typeof provided === "object") {
+		baseConfig = { ...provided };
+		if (Array.isArray(baseConfig.paths)) {
+			for (const path of baseConfig.paths) {
+				if (path) {
+					pathSet.add(path);
+				}
+			}
+		}
+	} else if (typeof provided === "string") {
+		pathSet.add(provided);
+	}
+
+	if (Array.isArray(additionalPaths)) {
+		for (const path of additionalPaths) {
+			if (path) {
+				pathSet.add(path);
+			}
+		}
+	}
+
+	if (pathSet.size === 0) {
+		return provided;
+	}
+
+	const resolved: RedactObject = {
+		...(baseConfig ?? {}),
+		paths: Array.from(pathSet),
+	};
+
+	if (censorOverride !== undefined) {
+		resolved.censor = censorOverride;
+	} else if (resolved.censor === undefined) {
+		resolved.censor = baseConfig?.censor ?? DEFAULT_LOG_REDACT_CENSOR;
+	}
+
+	return resolved as pino.LoggerOptions["redact"];
+};
+
 export interface LoggerOptions {
 	serviceName: string;
 	level?: string;
@@ -218,6 +554,9 @@ export interface LoggerOptions {
 	environment?: string;
 	base?: Record<string, unknown>;
 	redact?: pino.LoggerOptions["redact"];
+	redactPaths?: string[];
+	useDefaultRedactions?: boolean;
+	redactCensor?: string;
 }
 
 export interface ServiceLoggerOptions {
@@ -229,6 +568,9 @@ export interface ServiceLoggerOptions {
 	environment?: string;
 	base?: Record<string, unknown>;
 	redact?: pino.LoggerOptions["redact"];
+	redactPaths?: string[];
+	useDefaultRedactions?: boolean;
+	redactCensor?: string;
 }
 
 const shouldPrettyPrint = (
@@ -368,6 +710,12 @@ export const createLogger = (options: LoggerOptions): PinoLogger => {
 		process.env.OTEL_EXPORTER_OTLP_ENDPOINT;
 
 	const usePrettyPrint = shouldPrettyPrint(options.pretty, options.environment);
+	const redact = mergeRedactOptions(
+		options.redact,
+		options.redactPaths,
+		options.useDefaultRedactions,
+		options.redactCensor,
+	);
 
 	const baseOptions = {
 		name: options.serviceName,
@@ -377,7 +725,7 @@ export const createLogger = (options: LoggerOptions): PinoLogger => {
 			...options.base,
 		},
 		timestamp: pino.stdTimeFunctions.isoTime,
-		redact: options.redact,
+		redact,
 	};
 
 	const streams: pino.StreamEntry[] = [];
@@ -416,6 +764,9 @@ export const createServiceLogger = (options: ServiceLoggerOptions): PinoLogger =
 		environment: options.environment ?? process.env.NODE_ENV,
 		base: options.base,
 		redact: options.redact,
+		redactPaths: options.redactPaths,
+		useDefaultRedactions: options.useDefaultRedactions,
+		redactCensor: options.redactCensor,
 	});
 };
 
