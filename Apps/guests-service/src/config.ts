@@ -25,6 +25,24 @@ const toNumber = (value: string | undefined, fallback: number): number => {
 
 const configValues = loadServiceConfig(databaseSchema);
 
+const kafka = {
+  clientId: process.env.KAFKA_CLIENT_ID ?? "tartware-guests-service",
+  brokers: (process.env.KAFKA_BROKERS ?? "localhost:29092")
+    .split(",")
+    .map((broker) => broker.trim())
+    .filter((broker) => broker.length > 0),
+};
+
+const commandCenter = {
+  topic: process.env.COMMAND_CENTER_TOPIC ?? "commands.primary",
+  consumerGroupId:
+    process.env.COMMAND_CENTER_CONSUMER_GROUP ??
+    "guests-command-center-consumer",
+  targetServiceId:
+    process.env.COMMAND_CENTER_TARGET_SERVICE_ID ?? "guests-service",
+  maxBatchBytes: toNumber(process.env.KAFKA_MAX_BATCH_BYTES, 1048576),
+};
+
 export const config = {
   service: {
     name: configValues.SERVICE_NAME,
@@ -70,4 +88,6 @@ export const config = {
         process.env.GUEST_DATA_ENCRYPTION_KEY ?? "local-dev-guest-key",
     },
   },
+  kafka,
+  commandCenter,
 };

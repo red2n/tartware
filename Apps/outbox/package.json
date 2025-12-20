@@ -1,0 +1,23 @@
+{
+  "name": "@tartware/outbox",
+  "version": "0.1.0",
+  "description": "Shared transactional outbox utilities for Tartware services",
+  "private": true,
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc --project tsconfig.json",
+    "lint": "eslint --ext .ts src",
+    "biome": "biome check src",
+    "knip": "knip --tsConfig tsconfig.json",
+    "clean": "rm -rf dist *.tsbuildinfo"
+  },
+  "dependencies": {
+    "pg": "^8.11.3"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.19",
+    "typescript": "^5.3.3"
+  }
+}

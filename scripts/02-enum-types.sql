@@ -60,6 +60,27 @@ CREATE TYPE outbox_status AS ENUM (
     'DLQ'            -- Moved to dead-letter workflow
 );
 
+-- Command Route Status (Routing policies)
+CREATE TYPE command_route_status AS ENUM (
+    'active',        -- Route is eligible for selection
+    'disabled'       -- Route is disabled or pending removal
+);
+
+-- Command Feature Flag Status
+CREATE TYPE command_feature_status AS ENUM (
+    'enabled',       -- Command is enabled
+    'disabled',      -- Command disabled for scope
+    'observation'    -- Accept command but downstream processors ignore
+);
+
+-- Command Dispatch Status (Ingress lifecycle)
+CREATE TYPE command_dispatch_status AS ENUM (
+    'ACCEPTED',      -- Persisted + routed into outbox
+    'PUBLISHED',     -- Outbox dispatched + Kafka published
+    'FAILED',        -- Failed prior to publishing, remediation needed
+    'DLQ'            -- Routed to DLQ after exhausting retries
+);
+
 -- =====================================================
 -- PROPERTY & ROOM ENUMS
 -- =====================================================

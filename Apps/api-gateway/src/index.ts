@@ -36,7 +36,7 @@ const start = async () => {
 		await app.close();
 		await telemetry
 			?.shutdown()
-			.catch((telemetryError) =>
+			.catch((telemetryError: unknown) =>
 				app.log.error(
 					telemetryError,
 					"Failed to shutdown telemetry after startup failure",
@@ -56,13 +56,13 @@ if (proc && "on" in proc && typeof proc.on === "function") {
 		app.log.info("SIGTERM received, shutting down");
 		app
 			.close()
-			.catch((error) =>
+			.catch((error: unknown) =>
 				app.log.error(error, "Error while shutting down server (SIGTERM)"),
 			)
 			.finally(() =>
 				telemetry
 					?.shutdown()
-					.catch((error) =>
+					.catch((error: unknown) =>
 						app.log.error(error, "Error while shutting down telemetry"),
 					)
 					.finally(() => proc.exit(0)),
@@ -77,13 +77,13 @@ if (proc && "on" in proc && typeof proc.on === "function") {
 		app.log.info("SIGINT received, shutting down");
 		app
 			.close()
-			.catch((error) =>
+			.catch((error: unknown) =>
 				app.log.error(error, "Error while shutting down server (SIGINT)"),
 			)
 			.finally(() =>
 				telemetry
 					?.shutdown()
-					.catch((error) =>
+					.catch((error: unknown) =>
 						app.log.error(error, "Error while shutting down telemetry"),
 					)
 					.finally(() => proc.exit(0)),
@@ -91,9 +91,9 @@ if (proc && "on" in proc && typeof proc.on === "function") {
 	});
 }
 
-start().catch((error) => {
+start().catch((error: unknown) => {
 	app.log.error(error, "Unhandled error during startup");
-	telemetry?.shutdown().catch((telemetryError) => {
+	telemetry?.shutdown().catch((telemetryError: unknown) => {
 		app.log.error(telemetryError, "Failed to shutdown telemetry after error");
 	});
 });

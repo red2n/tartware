@@ -20,7 +20,9 @@
       "@tartware/telemetry": ["../telemetry/src/index.ts"],
       "@tartware/telemetry/*": ["../telemetry/src/*"],
       "@tartware/openapi": ["../openapi-utils/src/index.ts"],
-      "@tartware/openapi/*": ["../openapi-utils/src/*"]
+      "@tartware/openapi/*": ["../openapi-utils/src/*"],
+      "@tartware/outbox": ["../outbox/src/index.ts"],
+      "@tartware/outbox/*": ["../outbox/src/*"]
     }
   },
   "include": ["src/**/*.ts"],

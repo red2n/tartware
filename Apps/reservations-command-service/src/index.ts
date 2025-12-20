@@ -1,3 +1,7 @@
+import {
+  shutdownCommandCenterConsumer,
+  startCommandCenterConsumer,
+} from "./commands/command-center-consumer.js";
 import { serviceConfig } from "./config.js";
 import {
   shutdownReservationConsumer,
@@ -18,6 +22,7 @@ let isShuttingDown = false;
 const start = async () => {
   try {
     await startReservationConsumer();
+    await startCommandCenterConsumer();
     startOutboxDispatcher();
     await app.listen({ port: serviceConfig.port, host: serviceConfig.host });
     app.log.info(
@@ -43,6 +48,7 @@ const shutdown = async () => {
   isShuttingDown = true;
   try {
     await shutdownReservationConsumer();
+    await shutdownCommandCenterConsumer();
     await shutdownOutboxDispatcher();
     await shutdownProducer();
     await app.close();

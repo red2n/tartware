@@ -22,6 +22,7 @@
 \ir 01-core/07_system_administrators.sql
 \ir 01-core/08_system_admin_audit_log.sql
 \ir 01-core/09_transactional_outbox.sql
+\ir 01-core/10_command_center.sql
 
 -- ============================================================================
 -- CATEGORY 2: INVENTORY (Rooms, rates, availability, revenue management)
