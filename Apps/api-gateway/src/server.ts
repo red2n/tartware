@@ -15,8 +15,9 @@ import fastify, {
 
 import { gatewayConfig, serviceTargets } from "./config.js";
 import { gatewayLogger } from "./logger.js";
+import authContextPlugin from "./plugins/auth-context.js";
 import swaggerPlugin from "./plugins/swagger.js";
-import { forwardCommandToCommandCenter } from "./utils/command-center-forwarder.js";
+import { submitCommand } from "./utils/command-publisher.js";
 import { proxyRequest } from "./utils/proxy.js";
 
 const HEALTH_TAG = "Gateway Health";
@@ -24,6 +25,9 @@ const RESERVATION_PROXY_TAG = "Reservation Proxy";
 const CORE_PROXY_TAG = "Core Proxy";
 const GUESTS_PROXY_TAG = "Guests Proxy";
 const BILLING_PROXY_TAG = "Billing Proxy";
+const HOUSEKEEPING_COMMAND_TAG = "Housekeeping Commands";
+const ROOM_COMMAND_TAG = "Room Commands";
+const BILLING_COMMAND_TAG = "Billing Commands";
 
 const healthResponseSchema = {
 	type: "object",
@@ -48,6 +52,60 @@ const reservationParamsSchema = {
 	additionalProperties: false,
 } as const satisfies JsonSchema;
 
+const tenantTaskParamsSchema = {
+	type: "object",
+	properties: {
+		tenantId: {
+			type: "string",
+			format: "uuid",
+			description: "Tenant identifier.",
+		},
+		taskId: {
+			type: "string",
+			format: "uuid",
+			description: "Housekeeping task identifier.",
+		},
+	},
+	required: ["tenantId", "taskId"],
+	additionalProperties: false,
+} as const satisfies JsonSchema;
+
+const tenantRoomParamsSchema = {
+	type: "object",
+	properties: {
+		tenantId: {
+			type: "string",
+			format: "uuid",
+			description: "Tenant identifier.",
+		},
+		roomId: {
+			type: "string",
+			format: "uuid",
+			description: "Room identifier.",
+		},
+	},
+	required: ["tenantId", "roomId"],
+	additionalProperties: false,
+} as const satisfies JsonSchema;
+
+const tenantPaymentParamsSchema = {
+	type: "object",
+	properties: {
+		tenantId: {
+			type: "string",
+			format: "uuid",
+			description: "Tenant identifier.",
+		},
+		paymentId: {
+			type: "string",
+			format: "uuid",
+			description: "Payment identifier.",
+		},
+	},
+	required: ["tenantId", "paymentId"],
+	additionalProperties: false,
+} as const satisfies JsonSchema;
+
 export const buildServer = () => {
 	const app = fastify({
 		logger: gatewayLogger as FastifyBaseLogger,
@@ -65,6 +123,7 @@ export const buildServer = () => {
 	app.register(fastifyHelmet, { global: true });
 	app.register(fastifySensible);
 	app.register(swaggerPlugin);
+	app.register(authContextPlugin);
 
 	app.register(rateLimit, {
 		max: gatewayConfig.rateLimit.max,
@@ -224,7 +283,22 @@ export const buildServer = () => {
 			forwardGuestRegisterCommand,
 		);
 
-		app.all(
+		app.post(
+			"/v1/guests/merge",
+			{
+				schema: buildRouteSchema({
+					tag: GUESTS_PROXY_TAG,
+					summary: "Merge duplicate guests via the Command Center pipeline.",
+					body: jsonObjectSchema,
+					response: {
+						202: jsonObjectSchema,
+					},
+				}),
+			},
+			forwardGuestMergeCommand,
+		);
+
+		app.get(
 			"/v1/guests/*",
 			{
 				schema: buildRouteSchema({
@@ -252,7 +326,49 @@ export const buildServer = () => {
 			proxyRooms,
 		);
 
-		app.all(
+		app.post(
+			"/v1/tenants/:tenantId/rooms/:roomId/block",
+			{
+				schema: buildRouteSchema({
+					tag: ROOM_COMMAND_TAG,
+					summary: "Block a room's inventory via the Command Center.",
+					params: tenantRoomParamsSchema,
+					body: jsonObjectSchema,
+					response: {
+						202: jsonObjectSchema,
+					},
+				}),
+			},
+			(request, reply) =>
+				forwardRoomInventoryCommand({
+					request,
+					reply,
+					action: "block",
+				}),
+		);
+
+		app.post(
+			"/v1/tenants/:tenantId/rooms/:roomId/release",
+			{
+				schema: buildRouteSchema({
+					tag: ROOM_COMMAND_TAG,
+					summary: "Release a manual room block via the Command Center.",
+					params: tenantRoomParamsSchema,
+					body: jsonObjectSchema,
+					response: {
+						202: jsonObjectSchema,
+					},
+				}),
+			},
+			(request, reply) =>
+				forwardRoomInventoryCommand({
+					request,
+					reply,
+					action: "release",
+				}),
+		);
+
+		app.get(
 			"/v1/rooms/*",
 			{
 				schema: buildRouteSchema({
@@ -281,6 +397,38 @@ export const buildServer = () => {
 			proxyHousekeeping,
 		);
 
+		app.post(
+			"/v1/tenants/:tenantId/housekeeping/tasks/:taskId/assign",
+			{
+				schema: buildRouteSchema({
+					tag: HOUSEKEEPING_COMMAND_TAG,
+					summary: "Assign a housekeeping task via the Command Center.",
+					params: tenantTaskParamsSchema,
+					body: jsonObjectSchema,
+					response: {
+						202: jsonObjectSchema,
+					},
+				}),
+			},
+			forwardHousekeepingAssignCommand,
+		);
+
+		app.post(
+			"/v1/tenants/:tenantId/housekeeping/tasks/:taskId/complete",
+			{
+				schema: buildRouteSchema({
+					tag: HOUSEKEEPING_COMMAND_TAG,
+					summary: "Complete a housekeeping task via the Command Center.",
+					params: tenantTaskParamsSchema,
+					body: jsonObjectSchema,
+					response: {
+						202: jsonObjectSchema,
+					},
+				}),
+			},
+			forwardHousekeepingCompleteCommand,
+		);
+
 		app.get(
 			"/v1/billing/payments",
 			{
@@ -295,7 +443,39 @@ export const buildServer = () => {
 			proxyBilling,
 		);
 
-		app.all(
+		app.post(
+			"/v1/tenants/:tenantId/billing/payments/capture",
+			{
+				schema: buildRouteSchema({
+					tag: BILLING_COMMAND_TAG,
+					summary: "Capture a payment via the Command Center.",
+					params: reservationParamsSchema,
+					body: jsonObjectSchema,
+					response: {
+						202: jsonObjectSchema,
+					},
+				}),
+			},
+			forwardBillingCaptureCommand,
+		);
+
+		app.post(
+			"/v1/tenants/:tenantId/billing/payments/:paymentId/refund",
+			{
+				schema: buildRouteSchema({
+					tag: BILLING_COMMAND_TAG,
+					summary: "Refund a payment via the Command Center.",
+					params: tenantPaymentParamsSchema,
+					body: jsonObjectSchema,
+					response: {
+						202: jsonObjectSchema,
+					},
+				}),
+			},
+			forwardBillingRefundCommand,
+		);
+
+		app.get(
 			"/v1/billing/*",
 			{
 				schema: buildRouteSchema({
@@ -309,7 +489,7 @@ export const buildServer = () => {
 			proxyBilling,
 		);
 
-		app.all(
+		app.get(
 			"/v1/housekeeping/*",
 			{
 				schema: buildRouteSchema({
@@ -321,22 +501,6 @@ export const buildServer = () => {
 				}),
 			},
 			proxyHousekeeping,
-		);
-
-		app.all(
-			"/v1/*",
-			{
-				schema: buildRouteSchema({
-					tag: CORE_PROXY_TAG,
-					summary: "Proxy remaining v1 routes to the core-service.",
-					response: {
-						200: jsonObjectSchema,
-					},
-				}),
-			},
-			async (request: FastifyRequest, reply: FastifyReply) => {
-				return proxyRequest(request, reply, serviceTargets.coreServiceUrl);
-			},
 		);
 	});
 
@@ -361,12 +525,49 @@ const forwardGuestRegisterCommand = async (
 	const payload = { ...body };
 	delete payload.tenant_id;
 
-	await forwardCommandToCommandCenter({
+	await submitCommand({
 		request,
 		reply,
 		commandName: "guest.register",
 		tenantId,
 		payload,
+		requiredRole: "MANAGER",
+		requiredModules: "core",
+	});
+};
+
+const forwardGuestMergeCommand = async (
+	request: FastifyRequest,
+	reply: FastifyReply,
+): Promise<void> => {
+	const body = toPlainObject(request.body);
+	if (!body) {
+		reply.badRequest("GUEST_MERGE_PAYLOAD_REQUIRED");
+		return;
+	}
+	const tenantId = typeof body.tenant_id === "string" ? body.tenant_id : null;
+	if (!tenantId) {
+		reply.badRequest("TENANT_ID_REQUIRED");
+		return;
+	}
+	if (
+		typeof body.primary_guest_id !== "string" ||
+		typeof body.duplicate_guest_id !== "string"
+	) {
+		reply.badRequest("PRIMARY_AND_DUPLICATE_GUEST_IDS_REQUIRED");
+		return;
+	}
+	const payload = { ...body };
+	delete payload.tenant_id;
+
+	await submitCommand({
+		request,
+		reply,
+		commandName: "guest.merge",
+		tenantId,
+		payload,
+		requiredRole: "MANAGER",
+		requiredModules: "core",
 	});
 };
 
@@ -384,11 +585,12 @@ const forwardReservationCommand = async (
 
 	const method = request.method.toUpperCase();
 	let commandName: string;
-	let payload: unknown = request.body ?? {};
+	let payload: Record<string, unknown> = normalizePayloadObject(request.body);
 
 	switch (method) {
 		case "POST":
 			commandName = "reservation.create";
+			payload = normalizePayloadObject(request.body);
 			break;
 		case "PUT":
 		case "PATCH":
@@ -420,12 +622,14 @@ const forwardReservationCommand = async (
 		payload = payloadObject;
 	}
 
-	await forwardCommandToCommandCenter({
+	await submitCommand({
 		request,
 		reply,
 		commandName,
 		tenantId,
 		payload,
+		requiredRole: "MANAGER",
+		requiredModules: "core",
 	});
 };
 
@@ -458,4 +662,140 @@ const extractReservationId = (
 		return wildcard.split("/")[0] ?? null;
 	}
 	return null;
+};
+
+const forwardHousekeepingAssignCommand = async (
+	request: FastifyRequest,
+	reply: FastifyReply,
+): Promise<void> => {
+	const params = (request.params ?? {}) as Record<string, unknown>;
+	const tenantId = typeof params.tenantId === "string" ? params.tenantId : null;
+	const taskId = typeof params.taskId === "string" ? params.taskId : null;
+	if (!tenantId || !taskId) {
+		reply.badRequest("TENANT_AND_TASK_ID_REQUIRED");
+		return;
+	}
+
+	const body = normalizePayloadObject(request.body);
+	if (typeof body.assigned_to !== "string" || body.assigned_to.length === 0) {
+		reply.badRequest("ASSIGNED_TO_REQUIRED");
+		return;
+	}
+
+	const payload = { ...body, task_id: taskId };
+	await submitCommand({
+		request,
+		reply,
+		commandName: "housekeeping.task.assign",
+		tenantId,
+		payload,
+		requiredRole: "MANAGER",
+		requiredModules: "core",
+	});
+};
+
+const forwardHousekeepingCompleteCommand = async (
+	request: FastifyRequest,
+	reply: FastifyReply,
+): Promise<void> => {
+	const params = (request.params ?? {}) as Record<string, unknown>;
+	const tenantId = typeof params.tenantId === "string" ? params.tenantId : null;
+	const taskId = typeof params.taskId === "string" ? params.taskId : null;
+	if (!tenantId || !taskId) {
+		reply.badRequest("TENANT_AND_TASK_ID_REQUIRED");
+		return;
+	}
+	const payload = { ...normalizePayloadObject(request.body), task_id: taskId };
+	await submitCommand({
+		request,
+		reply,
+		commandName: "housekeeping.task.complete",
+		tenantId,
+		payload,
+		requiredRole: "MANAGER",
+		requiredModules: "core",
+	});
+};
+
+const forwardRoomInventoryCommand = async ({
+	request,
+	reply,
+	action,
+}: {
+	request: FastifyRequest;
+	reply: FastifyReply;
+	action: "block" | "release";
+}): Promise<void> => {
+	const params = (request.params ?? {}) as Record<string, unknown>;
+	const tenantId = typeof params.tenantId === "string" ? params.tenantId : null;
+	const roomId = typeof params.roomId === "string" ? params.roomId : null;
+	if (!tenantId || !roomId) {
+		reply.badRequest("TENANT_AND_ROOM_ID_REQUIRED");
+		return;
+	}
+	const payload = {
+		...normalizePayloadObject(request.body),
+		room_id: roomId,
+		action,
+	};
+	await submitCommand({
+		request,
+		reply,
+		commandName: "rooms.inventory.block",
+		tenantId,
+		payload,
+		requiredRole: "MANAGER",
+		requiredModules: "core",
+	});
+};
+
+const forwardBillingCaptureCommand = async (
+	request: FastifyRequest,
+	reply: FastifyReply,
+): Promise<void> => {
+	const params = (request.params ?? {}) as Record<string, unknown>;
+	const tenantId = typeof params.tenantId === "string" ? params.tenantId : null;
+	if (!tenantId) {
+		reply.badRequest("TENANT_ID_REQUIRED");
+		return;
+	}
+	const payload = normalizePayloadObject(request.body);
+	if (!payload) {
+		reply.badRequest("BILLING_CAPTURE_PAYLOAD_REQUIRED");
+		return;
+	}
+	await submitCommand({
+		request,
+		reply,
+		commandName: "billing.payment.capture",
+		tenantId,
+		payload,
+		requiredRole: "MANAGER",
+		requiredModules: "core",
+	});
+};
+
+const forwardBillingRefundCommand = async (
+	request: FastifyRequest,
+	reply: FastifyReply,
+): Promise<void> => {
+	const params = (request.params ?? {}) as Record<string, unknown>;
+	const tenantId = typeof params.tenantId === "string" ? params.tenantId : null;
+	const paymentId =
+		typeof params.paymentId === "string" ? params.paymentId : null;
+	if (!tenantId || !paymentId) {
+		reply.badRequest("TENANT_AND_PAYMENT_ID_REQUIRED");
+		return;
+	}
+	const body = normalizePayloadObject(request.body);
+	const payload = { ...body, payment_id: paymentId };
+	await submitCommand({
+		request,
+		reply,
+		commandName: "billing.payment.refund",
+		tenantId,
+		payload,
+		requiredRole: "MANAGER",
+		requiredModules: "core",
+	});
 };

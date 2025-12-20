@@ -28,12 +28,19 @@
     "fastify-plugin": "^4.5.1",
     "@tartware/openapi": "file:../openapi-utils",
     "@tartware/telemetry": "file:../telemetry",
+    "@tartware/config": "file:../config",
+    "@tartware/outbox": "file:../outbox",
+    "@tartware/schemas": "file:../../schema",
     "dotenv": "^17.2.3",
-    "fastify": "^4.26.2"
+    "fastify": "^4.26.2",
+    "jsonwebtoken": "^9.0.2",
+    "kafkajs": "^2.2.4",
+    "pg": "^8.11.3"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.2.5",
     "@types/node": "^20.11.19",
+    "@types/jsonwebtoken": "^9.0.6",
     "@typescript-eslint/eslint-plugin": "^7.0.1",
     "@typescript-eslint/parser": "^7.0.1",
     "eslint": "8.57.0",

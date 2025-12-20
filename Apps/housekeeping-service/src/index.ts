@@ -2,6 +2,10 @@ import process from "node:process";
 
 import { initTelemetry } from "@tartware/telemetry";
 
+import {
+  shutdownHousekeepingCommandCenterConsumer,
+  startHousekeepingCommandCenterConsumer,
+} from "./commands/command-center-consumer.js";
 import { config } from "./config.js";
 import { buildServer } from "./server.js";
 
@@ -26,6 +30,7 @@ const app = buildServer();
 
 const start = async () => {
   try {
+    await startHousekeepingCommandCenterConsumer();
     await app.listen({ port: config.port, host: config.host });
     app.log.info(
       {
@@ -50,6 +55,7 @@ const start = async () => {
 const shutdown = async (signal: NodeJS.Signals) => {
   app.log.info({ signal }, "shutdown signal received");
   try {
+    await shutdownHousekeepingCommandCenterConsumer();
     await app.close();
     await telemetry
       ?.shutdown()

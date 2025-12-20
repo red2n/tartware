@@ -11,7 +11,6 @@ DEFAULT_PORTS=(
   3000 # core-service / settings-service (Fastify)
   8080 # api-gateway
   3101 # reservations-command-service
-  4200 # tartware-ui (Angular dev server)
   # Add more app-only ports here; docker-managed ports (5432,6379, etc.) are intentionally skipped
 )
 

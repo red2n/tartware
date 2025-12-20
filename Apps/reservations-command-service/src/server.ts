@@ -9,7 +9,6 @@ import { checkDatabaseHealth, checkKafkaHealth } from "./lib/health-checks.js";
 import { metricsRegistry } from "./lib/metrics.js";
 import { reservationsLogger } from "./logger.js";
 import swaggerPlugin from "./plugins/swagger.js";
-import { registerReservationCommandRoutes } from "./routes/reservation-commands.js";
 
 export const buildServer = () => {
   const app = fastify({
@@ -113,8 +112,6 @@ export const buildServer = () => {
         return metricsRegistry.metrics();
       },
     );
-
-    registerReservationCommandRoutes(app);
   });
 
   return app;

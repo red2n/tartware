@@ -3,8 +3,16 @@ import type { Consumer } from "kafkajs";
 import { commandCenterConfig, kafkaConfig, serviceConfig } from "../config.js";
 import { kafka } from "../kafka/client.js";
 import { reservationsLogger } from "../logger.js";
-import { ReservationCreateCommandSchema } from "../schemas/reservation-command.js";
-import { createReservation } from "../services/reservation-command-service.js";
+import {
+  ReservationCancelCommandSchema,
+  ReservationCreateCommandSchema,
+  ReservationModifyCommandSchema,
+} from "../schemas/reservation-command.js";
+import {
+  cancelReservation,
+  createReservation,
+  modifyReservation,
+} from "../services/reservation-command-service.js";
 
 type CommandEnvelope = {
   metadata?: {
@@ -71,16 +79,12 @@ export const startCommandCenterConsumer = async (): Promise<void> => {
         return;
       }
 
-      if (metadata.commandName === "reservation.create") {
-        await handleReservationCreateCommand(envelope, metadata).catch(
-          (error) => {
-            reservationsLogger.error(
-              { err: error, metadata },
-              "Failed to process reservation.create command",
-            );
-          },
+      await routeReservationCommand(envelope, metadata).catch((error) => {
+        reservationsLogger.error(
+          { err: error, metadata },
+          "Failed to process reservation command",
         );
-      }
+      });
     },
   });
 };
@@ -92,21 +96,50 @@ export const shutdownCommandCenterConsumer = async (): Promise<void> => {
   }
 };
 
-const handleReservationCreateCommand = async (
+const routeReservationCommand = async (
   envelope: CommandEnvelope,
   metadata: NonNullable<CommandEnvelope["metadata"]>,
 ): Promise<void> => {
-  const tenantId = metadata.tenantId;
-  const commandPayload = ReservationCreateCommandSchema.parse(envelope.payload);
-
-  await createReservation(tenantId as string, commandPayload, {
-    correlationId: metadata.correlationId ?? metadata.requestId,
-  });
+  switch (metadata.commandName) {
+    case "reservation.create": {
+      const commandPayload = ReservationCreateCommandSchema.parse(
+        envelope.payload,
+      );
+      await createReservation(metadata.tenantId as string, commandPayload, {
+        correlationId: metadata.correlationId ?? metadata.requestId,
+      });
+      break;
+    }
+    case "reservation.modify": {
+      const commandPayload = ReservationModifyCommandSchema.parse(
+        envelope.payload,
+      );
+      await modifyReservation(metadata.tenantId as string, commandPayload, {
+        correlationId: metadata.correlationId ?? metadata.requestId,
+      });
+      break;
+    }
+    case "reservation.cancel": {
+      const commandPayload = ReservationCancelCommandSchema.parse(
+        envelope.payload,
+      );
+      await cancelReservation(metadata.tenantId as string, commandPayload, {
+        correlationId: metadata.correlationId ?? metadata.requestId,
+      });
+      break;
+    }
+    default:
+      reservationsLogger.debug(
+        { commandName: metadata.commandName },
+        "no reservation handler registered for command",
+      );
+      return;
+  }
 
   reservationsLogger.info(
     {
       commandName: metadata.commandName,
-      tenantId,
+      tenantId: metadata.tenantId,
       serviceId: serviceConfig.serviceId,
     },
     "reservation command accepted from Command Center",
