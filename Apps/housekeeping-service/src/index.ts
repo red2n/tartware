@@ -27,10 +27,15 @@ const telemetry = await initTelemetry({
 });
 
 const app = buildServer();
+const kafkaEnabled = process.env.DISABLE_KAFKA !== "true";
 
 const start = async () => {
   try {
-    await startHousekeepingCommandCenterConsumer();
+    if (kafkaEnabled) {
+      await startHousekeepingCommandCenterConsumer();
+    } else {
+      app.log.warn("Kafka disabled via DISABLE_KAFKA; skipping consumer start");
+    }
     await app.listen({ port: config.port, host: config.host });
     app.log.info(
       {
@@ -55,7 +60,9 @@ const start = async () => {
 const shutdown = async (signal: NodeJS.Signals) => {
   app.log.info({ signal }, "shutdown signal received");
   try {
-    await shutdownHousekeepingCommandCenterConsumer();
+    if (kafkaEnabled) {
+      await shutdownHousekeepingCommandCenterConsumer();
+    }
     await app.close();
     await telemetry
       ?.shutdown()

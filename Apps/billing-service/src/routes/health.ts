@@ -8,4 +8,10 @@ export const registerHealthRoutes = (app: FastifyInstance): void => {
     service: config.service.name,
     version: config.service.version,
   }));
+
+  app.get("/ready", async () => ({
+    status: "ready",
+    service: config.service.name,
+    version: config.service.version,
+  }));
 };

@@ -15,15 +15,22 @@ import {
 import { buildServer } from "./server.js";
 
 const app = buildServer();
+const kafkaEnabled = process.env.DISABLE_KAFKA !== "true";
 
 const proc = globalThis.process;
 let isShuttingDown = false;
 
 const start = async () => {
   try {
-    await startReservationConsumer();
-    await startCommandCenterConsumer();
-    startOutboxDispatcher();
+    if (kafkaEnabled) {
+      await startReservationConsumer();
+      await startCommandCenterConsumer();
+      startOutboxDispatcher();
+    } else {
+      app.log.warn(
+        "Kafka disabled via DISABLE_KAFKA; skipping consumers and outbox",
+      );
+    }
     await app.listen({ port: serviceConfig.port, host: serviceConfig.host });
     app.log.info(
       {
@@ -47,10 +54,12 @@ const shutdown = async () => {
   }
   isShuttingDown = true;
   try {
-    await shutdownReservationConsumer();
-    await shutdownCommandCenterConsumer();
-    await shutdownOutboxDispatcher();
-    await shutdownProducer();
+    if (kafkaEnabled) {
+      await shutdownReservationConsumer();
+      await shutdownCommandCenterConsumer();
+      await shutdownOutboxDispatcher();
+      await shutdownProducer();
+    }
     await app.close();
   } catch (error) {
     app.log.error(error, "error during graceful shutdown");

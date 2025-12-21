@@ -1,4 +1,5 @@
 import fastifyHelmet from "@fastify/helmet";
+import type { RateLimitPluginOptions } from "@fastify/rate-limit";
 import rateLimit from "@fastify/rate-limit";
 import fastifySensible from "@fastify/sensible";
 import {
@@ -9,6 +10,7 @@ import {
 import { withRequestLogging } from "@tartware/telemetry";
 import fastify, {
 	type FastifyBaseLogger,
+	type FastifyPluginAsync,
 	type FastifyReply,
 	type FastifyRequest,
 } from "fastify";
@@ -108,7 +110,8 @@ const tenantPaymentParamsSchema = {
 
 export const buildServer = () => {
 	const app = fastify({
-		logger: gatewayLogger as FastifyBaseLogger,
+		logger: false,
+		loggerInstance: gatewayLogger as FastifyBaseLogger,
 	});
 
 	if (gatewayConfig.logRequests) {
@@ -125,15 +128,18 @@ export const buildServer = () => {
 	app.register(swaggerPlugin);
 	app.register(authContextPlugin);
 
-	app.register(rateLimit, {
-		max: gatewayConfig.rateLimit.max,
-		timeWindow: gatewayConfig.rateLimit.timeWindow,
-		keyGenerator: (request) =>
-			(request.headers["x-api-key"] as string | undefined) ??
-			request.ip ??
-			"anonymous",
-		ban: 0,
-	});
+	app.register(
+		rateLimit as unknown as FastifyPluginAsync,
+		{
+			max: gatewayConfig.rateLimit.max,
+			timeWindow: gatewayConfig.rateLimit.timeWindow,
+			keyGenerator: (request: FastifyRequest) =>
+				(request.headers["x-api-key"] as string | undefined) ??
+				request.ip ??
+				"anonymous",
+			ban: 0,
+		} as unknown as RateLimitPluginOptions,
+	);
 
 	app.after(() => {
 		const allowCorsHeaders = (reply: FastifyReply): FastifyReply =>
@@ -183,6 +189,26 @@ export const buildServer = () => {
 				schema: buildRouteSchema({
 					tag: HEALTH_TAG,
 					summary: "API gateway health status.",
+					response: {
+						200: healthResponseSchema,
+					},
+				}),
+			},
+			async (_request, reply) => {
+				allowCorsHeaders(reply);
+				return reply.send({
+					status: "ok",
+					service: gatewayConfig.serviceId,
+				});
+			},
+		);
+
+		app.get(
+			"/ready",
+			{
+				schema: buildRouteSchema({
+					tag: HEALTH_TAG,
+					summary: "API gateway readiness status.",
 					response: {
 						200: healthResponseSchema,
 					},

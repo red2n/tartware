@@ -2,17 +2,16 @@ import fastifyHelmet from "@fastify/helmet";
 import fastifySensible from "@fastify/sensible";
 import { buildRouteSchema, jsonObjectSchema } from "@tartware/openapi";
 import { withRequestLogging } from "@tartware/telemetry";
-import fastify, { type FastifyBaseLogger } from "fastify";
+import fastify from "fastify";
 
 import { serviceConfig } from "./config.js";
 import { checkDatabaseHealth, checkKafkaHealth } from "./lib/health-checks.js";
 import { metricsRegistry } from "./lib/metrics.js";
-import { reservationsLogger } from "./logger.js";
 import swaggerPlugin from "./plugins/swagger.js";
 
 export const buildServer = () => {
   const app = fastify({
-    logger: reservationsLogger as FastifyBaseLogger,
+    logger: true,
   });
 
   if (serviceConfig.requestLogging) {
@@ -44,6 +43,11 @@ export const buildServer = () => {
         service: serviceConfig.serviceId,
       }),
     );
+
+    app.get("/ready", async () => ({
+      status: "ready",
+      service: serviceConfig.serviceId,
+    }));
 
     app.get(
       "/health/liveness",

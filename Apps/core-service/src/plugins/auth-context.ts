@@ -174,7 +174,9 @@ const authContextPlugin: FastifyPluginAsync = async (fastify) => {
   const tenantScopeDecorator: TenantScopeDecorator = (decoratorOptions?: TenantScopeOptions) =>
     buildTenantScopeGuard(decoratorOptions);
 
-  fastify.decorate("withTenantScope", tenantScopeDecorator);
+  if (!fastify.hasDecorator("withTenantScope")) {
+    fastify.decorate("withTenantScope", tenantScopeDecorator);
+  }
 
   fastify.addHook("onRequest", async (request) => {
     // Skip auth for health endpoint

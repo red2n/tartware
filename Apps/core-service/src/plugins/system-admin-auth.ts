@@ -108,7 +108,9 @@ const systemAdminAuthPlugin: FastifyPluginAsync = async (fastify) => {
   const decorator: SystemAdminScopeDecorator = (options?: SystemAdminScopeOptions) =>
     buildGuard(options);
 
-  fastify.decorate("withSystemAdminScope", decorator);
+  if (!fastify.hasDecorator("withSystemAdminScope")) {
+    fastify.decorate("withSystemAdminScope", decorator);
+  }
 };
 
 declare module "fastify" {

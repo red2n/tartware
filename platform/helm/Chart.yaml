@@ -1,0 +1,56 @@
+apiVersion: v2
+name: tartware
+description: Tartware - Hotel Management Platform
+type: application
+version: 1.0.0
+appVersion: "1.0.0"
+
+dependencies:
+  - name: api-gateway
+    version: 1.0.0
+    repository: "file://./charts/api-gateway"
+    condition: api-gateway.enabled
+
+  - name: core-service
+    version: 1.0.0
+    repository: "file://./charts/core-service"
+    condition: core-service.enabled
+
+  - name: billing-service
+    version: 1.0.0
+    repository: "file://./charts/billing-service"
+    condition: billing-service.enabled
+
+  - name: guests-service
+    version: 1.0.0
+    repository: "file://./charts/guests-service"
+    condition: guests-service.enabled
+
+  - name: housekeeping-service
+    version: 1.0.0
+    repository: "file://./charts/housekeeping-service"
+    condition: housekeeping-service.enabled
+
+  - name: reservations-command-service
+    version: 1.0.0
+    repository: "file://./charts/reservations-command-service"
+    condition: reservations-command-service.enabled
+
+  - name: rooms-service
+    version: 1.0.0
+    repository: "file://./charts/rooms-service"
+    condition: rooms-service.enabled
+
+  - name: settings-service
+    version: 1.0.0
+    repository: "file://./charts/settings-service"
+    condition: settings-service.enabled
+
+  - name: command-center-service
+    version: 1.0.0
+    repository: "file://./charts/command-center-service"
+    condition: command-center-service.enabled
+
+maintainers:
+  - name: Tartware Team
+    email: devops@tartware.local

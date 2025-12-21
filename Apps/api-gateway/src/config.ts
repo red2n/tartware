@@ -31,10 +31,29 @@ const toNumber = (value: string | undefined, fallback: number): number => {
 	return fallback;
 };
 
+const toRetryCount = (value: string | undefined, fallback: number): number => {
+	if (value === undefined) {
+		return fallback;
+	}
+	const parsed = Number(value);
+	if (Number.isNaN(parsed)) {
+		return fallback;
+	}
+	if (parsed < 0) {
+		return -1;
+	}
+	return Math.floor(parsed);
+};
+
+const toDelay = (value: string | undefined, fallback: number): number => {
+	const parsed = toNumber(value, fallback);
+	return Math.max(250, parsed);
+};
+
 const baseConfig = loadServiceConfig(databaseSchema);
 
 export const gatewayConfig = {
-	port: Number(env.API_GATEWAY_PORT ?? baseConfig.PORT ?? 8080),
+	port: toNumber(env.API_GATEWAY_PORT, baseConfig.PORT ?? 8080),
 	host: env.API_GATEWAY_HOST ?? baseConfig.HOST ?? "0.0.0.0",
 	serviceId: env.API_GATEWAY_ID ?? baseConfig.SERVICE_NAME ?? "api-gateway",
 	version: env.API_GATEWAY_VERSION ?? baseConfig.SERVICE_VERSION ?? "1.0.0",
@@ -86,4 +105,9 @@ export const kafkaConfig = {
 
 export const commandRegistryConfig = {
 	refreshIntervalMs: toNumber(env.COMMAND_REGISTRY_REFRESH_MS, 30000),
+	startupMaxRetries: toRetryCount(env.COMMAND_REGISTRY_STARTUP_RETRIES, 12),
+	startupRetryDelayMs: toDelay(
+		env.COMMAND_REGISTRY_STARTUP_RETRY_DELAY_MS,
+		5000,
+	),
 };

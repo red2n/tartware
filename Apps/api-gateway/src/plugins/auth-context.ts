@@ -154,7 +154,16 @@ const buildTenantScopeGuard = (
 };
 
 const authContextPlugin = fp(async (fastify: FastifyInstance) => {
-	fastify.decorateRequest("auth", null);
+	const authContextKey = Symbol("authContext");
+
+	fastify.decorateRequest<AuthContext>("auth", {
+		getter() {
+			return (this as unknown as Record<symbol, AuthContext>)[authContextKey];
+		},
+		setter(value: AuthContext) {
+			(this as unknown as Record<symbol, AuthContext>)[authContextKey] = value;
+		},
+	});
 
 	const tenantScopeDecorator: TenantScopeDecorator = (
 		options?: TenantScopeOptions,
@@ -163,8 +172,8 @@ const authContextPlugin = fp(async (fastify: FastifyInstance) => {
 	fastify.decorate("withTenantScope", tenantScopeDecorator);
 
 	fastify.addHook("onRequest", async (request) => {
-		// Health endpoint should stay unauthenticated for infra probes.
-		if (request.url === "/health") {
+		// Health and readiness endpoints should stay unauthenticated for infra probes.
+		if (request.url === "/health" || request.url === "/ready") {
 			request.auth = createAuthContext(null, []);
 			return;
 		}

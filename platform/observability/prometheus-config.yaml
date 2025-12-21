@@ -1,0 +1,210 @@
+# Prometheus Custom Metrics and Alerting Rules for 20k ops/sec monitoring
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: prometheus-custom-rules
+  namespace: observability
+data:
+  tartware-alerts.yaml: |
+    groups:
+      - name: tartware_performance_alerts
+        interval: 15s
+        rules:
+          # High request rate alert
+          - alert: HighRequestRate
+            expr: sum(rate(http_requests_total[1m])) > 25000
+            for: 1m
+            labels:
+              severity: warning
+              component: api-gateway
+            annotations:
+              summary: "Request rate exceeding capacity"
+              description: "Current request rate: {{ $value }} req/s"
+
+          # API Gateway response time
+          - alert: HighAPILatency
+            expr: histogram_quantile(0.95, rate(http_request_duration_seconds_bucket{service="api-gateway"}[5m])) > 0.5
+            for: 2m
+            labels:
+              severity: warning
+              component: api-gateway
+            annotations:
+              summary: "API Gateway P95 latency is high"
+              description: "P95 latency is {{ $value }}s"
+
+          # Database connection pool saturation
+          - alert: DatabasePoolSaturation
+            expr: (database_connections_active / database_connections_max) > 0.8
+            for: 5m
+            labels:
+              severity: critical
+              component: database
+            annotations:
+              summary: "Database connection pool near capacity"
+              description: "Pool usage: {{ $value }}%"
+
+          # Memory pressure
+          - alert: HighMemoryUsage
+            expr: (container_memory_working_set_bytes / container_spec_memory_limit_bytes) > 0.85
+            for: 5m
+            labels:
+              severity: warning
+            annotations:
+              summary: "Container memory usage high"
+              description: "Memory usage: {{ $value }}%"
+
+          # Pod autoscaling lag
+          - alert: HPAMaxedOut
+            expr: kube_horizontalpodautoscaler_status_current_replicas == kube_horizontalpodautoscaler_spec_max_replicas
+            for: 10m
+            labels:
+              severity: critical
+            annotations:
+              summary: "HPA has reached maximum replicas"
+              description: "Service {{ $labels.horizontalpodautoscaler }} maxed out"
+
+          # Error rate
+          - alert: HighErrorRate
+            expr: (sum(rate(http_requests_total{status=~"5.."}[5m])) / sum(rate(http_requests_total[5m]))) > 0.05
+            for: 2m
+            labels:
+              severity: critical
+            annotations:
+              summary: "High error rate detected"
+              description: "Error rate: {{ $value }}%"
+
+          # Queue depth (Kafka lag)
+          - alert: KafkaConsumerLag
+            expr: kafka_consumer_lag > 10000
+            for: 5m
+            labels:
+              severity: warning
+              component: messaging
+            annotations:
+              summary: "Kafka consumer lag is high"
+              description: "Lag: {{ $value }} messages"
+
+          # Service unavailability
+          - alert: ServiceDown
+            expr: up{job=~"tartware-.*"} == 0
+            for: 1m
+            labels:
+              severity: critical
+            annotations:
+              summary: "Service is down"
+              description: "{{ $labels.job }} is unreachable"
+
+      - name: tartware_capacity_planning
+        interval: 30s
+        rules:
+          # Capacity metrics
+          - record: tartware:requests_per_second:sum
+            expr: sum(rate(http_requests_total[1m]))
+
+          - record: tartware:requests_per_second_by_service
+            expr: sum(rate(http_requests_total[1m])) by (service)
+
+          - record: tartware:api_latency_p95
+            expr: histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket[5m])) by (le, service))
+
+          - record: tartware:api_latency_p99
+            expr: histogram_quantile(0.99, sum(rate(http_request_duration_seconds_bucket[5m])) by (le, service))
+
+          - record: tartware:error_rate
+            expr: sum(rate(http_requests_total{status=~"5.."}[5m])) / sum(rate(http_requests_total[5m]))
+
+          - record: tartware:pod_count_by_service
+            expr: count(kube_pod_info{namespace="tartware-system"}) by (pod)
+
+---
+# ServiceMonitor for Prometheus to scrape services
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: tartware-services
+  namespace: observability
+  labels:
+    release: kube-prometheus-stack
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/part-of: tartware
+  namespaceSelector:
+    matchNames:
+      - tartware-system
+  endpoints:
+    - port: http
+      path: /metrics
+      interval: 15s
+      scrapeTimeout: 10s
+      relabelings:
+        - sourceLabels: [__meta_kubernetes_pod_name]
+          targetLabel: pod
+        - sourceLabels: [__meta_kubernetes_pod_node_name]
+          targetLabel: node
+        - sourceLabels: [__meta_kubernetes_namespace]
+          targetLabel: namespace
+
+---
+# Grafana Dashboard ConfigMap
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboard-tartware
+  namespace: observability
+  labels:
+    grafana_dashboard: "1"
+data:
+  tartware-overview.json: |
+    {
+      "dashboard": {
+        "title": "Tartware - High-Performance Overview",
+        "tags": ["tartware", "performance"],
+        "timezone": "browser",
+        "panels": [
+          {
+            "title": "Requests Per Second",
+            "targets": [{
+              "expr": "sum(rate(http_requests_total{namespace='tartware-system'}[1m]))"
+            }],
+            "type": "graph"
+          },
+          {
+            "title": "P95 Response Time",
+            "targets": [{
+              "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket[5m])) by (le, service))"
+            }],
+            "type": "graph"
+          },
+          {
+            "title": "Error Rate",
+            "targets": [{
+              "expr": "(sum(rate(http_requests_total{status=~'5..'}[5m])) / sum(rate(http_requests_total[5m]))) * 100"
+            }],
+            "type": "graph"
+          },
+          {
+            "title": "Active Pods by Service",
+            "targets": [{
+              "expr": "count(kube_pod_info{namespace='tartware-system'}) by (created_by_name)"
+            }],
+            "type": "graph"
+          },
+          {
+            "title": "CPU Usage by Service",
+            "targets": [{
+              "expr": "sum(rate(container_cpu_usage_seconds_total{namespace='tartware-system'}[5m])) by (pod)"
+            }],
+            "type": "graph"
+          },
+          {
+            "title": "Memory Usage by Service",
+            "targets": [{
+              "expr": "sum(container_memory_working_set_bytes{namespace='tartware-system'}) by (pod)"
+            }],
+            "type": "graph"
+          }
+        ]
+      }
+    }

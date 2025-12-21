@@ -68,6 +68,11 @@ CYAN='\033[0;36m'
 MAGENTA='\033[0;35m'
 NC='\033[0m' # No Color
 
+# Resolve repository paths (script now lives under executables/)
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
+SCRIPTS_DIR="${REPO_ROOT}/scripts"
+
 # ============================================================================
 # Docker Mode Handler
 # ============================================================================
@@ -145,7 +150,6 @@ if [ "$DEPLOY_MODE" == "docker" ]; then
 
     echo "Monitoring initialization..."
     # Count expected tables from scripts
-    SCRIPTS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/scripts" && pwd)"
     EXPECTED_TABLES=$(grep -r "CREATE TABLE" "$SCRIPTS_DIR/tables/" --include="*.sql" 2>/dev/null | grep -v "00-create-all-tables.sql" | wc -l)
 
     for i in {1..60}; do
@@ -304,7 +308,6 @@ DB_USER="postgres"
 DB_PASSWORD="postgres"
 DB_HOST="localhost"
 DB_PORT="5432"
-SCRIPTS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/scripts" && pwd)"
 
 # Set password for psql commands
 export PGPASSWORD="$DB_PASSWORD"

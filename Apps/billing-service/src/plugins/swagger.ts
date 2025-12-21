@@ -8,6 +8,11 @@ const serviceVersion =
   process.env.BILLING_SERVICE_VERSION ?? config.service.version;
 
 const swaggerPlugin = fp(async (app) => {
+  if (process.env.DISABLE_SWAGGER === "true") {
+    app.log.warn("Swagger UI disabled via DISABLE_SWAGGER");
+    return;
+  }
+
   await app.register(swagger as never, {
     openapi: {
       info: {

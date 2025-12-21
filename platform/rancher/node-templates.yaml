@@ -1,0 +1,112 @@
+# Node Templates for Rancher - VMware vSphere Example
+# Adjust based on your infrastructure provider (AWS, Azure, GCP, etc.)
+
+---
+apiVersion: rke-machine-config.cattle.io/v1
+kind: VmwarevsphereConfig
+metadata:
+  name: tartware-cp-config
+  namespace: fleet-default
+spec:
+  # Control Plane Nodes - High CPU and Memory
+  cpuCount: "8"
+  memorySize: "16384"
+  diskSize: "200000"
+
+  # vSphere configuration
+  vcenter: vcenter.tartware.local
+  datacenter: /Datacenter
+  datastore: /Datacenter/datastore/prod-storage
+  folder: /Datacenter/vm/kubernetes/tartware-prod
+  pool: /Datacenter/host/Cluster/Resources/kubernetes
+  network:
+    - /Datacenter/network/k8s-network
+
+  # Clone from template
+  cfgparam:
+    - disk.enableUUID=TRUE
+  cloneFrom: /Datacenter/vm/templates/ubuntu-22.04-k8s
+
+  # Cloud init
+  cloudConfig: |
+    #cloud-config
+    package_update: true
+    packages:
+      - qemu-guest-agent
+    runcmd:
+      - systemctl enable qemu-guest-agent
+      - systemctl start qemu-guest-agent
+
+---
+apiVersion: rke-machine-config.cattle.io/v1
+kind: VmwarevsphereConfig
+metadata:
+  name: tartware-worker-config
+  namespace: fleet-default
+spec:
+  # Worker Nodes - High CPU for compute workloads
+  cpuCount: "16"
+  memorySize: "32768"
+  diskSize: "500000"
+
+  vcenter: vcenter.tartware.local
+  datacenter: /Datacenter
+  datastore: /Datacenter/datastore/prod-storage
+  folder: /Datacenter/vm/kubernetes/tartware-prod
+  pool: /Datacenter/host/Cluster/Resources/kubernetes
+  network:
+    - /Datacenter/network/k8s-network
+
+  cfgparam:
+    - disk.enableUUID=TRUE
+  cloneFrom: /Datacenter/vm/templates/ubuntu-22.04-k8s
+
+  cloudConfig: |
+    #cloud-config
+    package_update: true
+    packages:
+      - qemu-guest-agent
+    runcmd:
+      - systemctl enable qemu-guest-agent
+      - systemctl start qemu-guest-agent
+      # Tune for high performance
+      - sysctl -w net.core.somaxconn=32768
+      - sysctl -w net.ipv4.ip_local_port_range="1024 65535"
+      - sysctl -w net.ipv4.tcp_tw_reuse=1
+      - sysctl -w fs.file-max=2097152
+
+---
+apiVersion: rke-machine-config.cattle.io/v1
+kind: VmwarevsphereConfig
+metadata:
+  name: tartware-worker-memory-config
+  namespace: fleet-default
+spec:
+  # Worker Nodes - High Memory for data-intensive workloads
+  cpuCount: "12"
+  memorySize: "65536"
+  diskSize: "500000"
+
+  vcenter: vcenter.tartware.local
+  datacenter: /Datacenter
+  datastore: /Datacenter/datastore/prod-storage
+  folder: /Datacenter/vm/kubernetes/tartware-prod
+  pool: /Datacenter/host/Cluster/Resources/kubernetes
+  network:
+    - /Datacenter/network/k8s-network
+
+  cfgparam:
+    - disk.enableUUID=TRUE
+  cloneFrom: /Datacenter/vm/templates/ubuntu-22.04-k8s
+
+  cloudConfig: |
+    #cloud-config
+    package_update: true
+    packages:
+      - qemu-guest-agent
+    runcmd:
+      - systemctl enable qemu-guest-agent
+      - systemctl start qemu-guest-agent
+      # Tune for memory-intensive workloads
+      - sysctl -w vm.swappiness=10
+      - sysctl -w vm.max_map_count=262144

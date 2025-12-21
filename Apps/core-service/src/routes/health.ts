@@ -42,4 +42,14 @@ export const registerHealthRoutes = (app: FastifyInstance): void => {
       return HealthResponseSchema.parse(payload);
     },
   );
+
+  app.get(
+    "/ready",
+    {
+      // Skip ALL hooks (including auth)
+      onRequest: [],
+      preValidation: [],
+    },
+    async () => ({ status: "ready" }),
+  );
 };

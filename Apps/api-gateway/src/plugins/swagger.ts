@@ -1,30 +1,42 @@
-import swagger from "@fastify/swagger";
-import swaggerUi from "@fastify/swagger-ui";
+import swagger, { type SwaggerOptions } from "@fastify/swagger";
+import swaggerUi, { type FastifySwaggerUiOptions } from "@fastify/swagger-ui";
+import type {
+	FastifyInstance,
+	FastifyPluginAsync,
+	FastifyRegisterOptions,
+} from "fastify";
 import fp from "fastify-plugin";
 
 import { gatewayConfig } from "../config.js";
 
-const swaggerPlugin = fp(async (app) => {
-	await app.register(swagger, {
-		openapi: {
-			info: {
-				title: `${gatewayConfig.serviceId} API`,
-				description: "Gateway routes for core, reservation, and settings APIs.",
-				version: gatewayConfig.version ?? "1.0.0",
+const swaggerPlugin: FastifyPluginAsync = async (app: FastifyInstance) => {
+	await app.register(
+		swagger as unknown as FastifyPluginAsync,
+		{
+			openapi: {
+				info: {
+					title: `${gatewayConfig.serviceId} API`,
+					description:
+						"Gateway routes for core, reservation, and settings APIs.",
+					version: gatewayConfig.version ?? "1.0.0",
+				},
+				servers: [{ url: "/" }],
 			},
-			servers: [{ url: "/" }],
-		},
-		mode: "dynamic",
-	});
+			mode: "dynamic",
+		} as unknown as FastifyRegisterOptions<SwaggerOptions>,
+	);
 
-	await app.register(swaggerUi, {
-		routePrefix: "/docs",
-		uiConfig: {
-			docExpansion: "list",
-			deepLinking: false,
-		},
-		staticCSP: true,
-	});
-});
+	await app.register(
+		swaggerUi as unknown as FastifyPluginAsync,
+		{
+			routePrefix: "/docs",
+			uiConfig: {
+				docExpansion: "list",
+				deepLinking: false,
+			},
+			staticCSP: true,
+		} as unknown as FastifyRegisterOptions<FastifySwaggerUiOptions>,
+	);
+};
 
-export default swaggerPlugin;
+export default fp(swaggerPlugin);

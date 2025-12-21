@@ -58,7 +58,7 @@ type CommandResolution =
 	| { status: "DISABLED"; reason: string };
 
 export const startCommandRegistry = async (): Promise<void> => {
-	await refreshRegistry();
+	await primeRegistryWithRetry();
 	if (commandRegistryConfig.refreshIntervalMs > 0) {
 		refreshTimer = setInterval(async () => {
 			try {
@@ -129,6 +129,49 @@ const refreshRegistry = async (): Promise<void> => {
 		},
 		"command registry snapshot refreshed",
 	);
+};
+
+const delay = (ms: number): Promise<void> =>
+	new Promise((resolve) => {
+		setTimeout(resolve, ms);
+	});
+
+const primeRegistryWithRetry = async (): Promise<void> => {
+	let attempt = 0;
+	const maxRetries = commandRegistryConfig.startupMaxRetries;
+	for (;;) {
+		try {
+			await refreshRegistry();
+			if (attempt > 0) {
+				registryLogger.info(
+					{ attempt },
+					"command registry refreshed after retries",
+				);
+			}
+			return;
+		} catch (error) {
+			attempt += 1;
+			if (maxRetries >= 0 && attempt > maxRetries) {
+				registryLogger.error(
+					{ attempt, maxRetries },
+					"exhausted command registry startup retries",
+				);
+				throw error;
+			}
+			const delayMs =
+				commandRegistryConfig.startupRetryDelayMs * Math.max(1, attempt);
+			registryLogger.warn(
+				{
+					attempt,
+					delayMs,
+					maxRetries,
+					error,
+				},
+				"failed to refresh command registry, retrying",
+			);
+			await delay(delayMs);
+		}
+	}
 };
 
 type ResolveCommandOptions = {

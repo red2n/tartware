@@ -1,0 +1,35 @@
+namespace: tartware-loadtest
+
+resources:
+  - k6-job.yaml
+
+generatorOptions:
+  disableNameSuffixHash: true
+
+configMapGenerator:
+  - name: tartware-k6-script
+    files:
+      - command-pipeline.js=../../../loadtest/k6/command-pipeline.js
+  - name: tartware-k6-env
+    literals:
+      - GATEWAY_BASE_URL=https://api-gateway.tartware.svc.cluster.local
+      - TENANT_IDS=
+      - PROPERTY_IDS=
+      - ROOM_TYPE_IDS=
+      - RESERVATION_IDS=
+      - GUEST_IDS=
+      - HOUSEKEEPING_TASK_IDS=
+      - HOUSEKEEPING_STAFF_IDS=
+      - COMMAND_START_RATE=500
+      - COMMAND_TARGET_RATE=20000
+      - COMMAND_PREALLOCATED_VUS=500
+      - COMMAND_MAX_VUS=5000
+      - READ_RATE=8000
+      - READ_PREALLOCATED_VUS=300
+      - READ_MAX_VUS=1500
+      - TEST_DURATION=20m
+
+secretGenerator:
+  - name: tartware-k6-secret
+    literals:
+      - api-token=REPLACE_ME

@@ -40,7 +40,10 @@
     "duplo:templates": "bash ./scripts/tools/run-duplo.sh",
     "telemetry:start": "docker compose up -d opensearch-node otel-collector",
     "telemetry:stop": "docker compose stop otel-collector opensearch-node",
-    "export:openapi": "node scripts/export-openapi.mjs"
+    "export:openapi": "node scripts/export-openapi.mjs",
+    "bootstrap:loadtest": "node scripts/bootstrap-loadtest-env.mjs",
+    "samples:fetch": "node scripts/fetch-sample-records.mjs",
+    "samples:api": "node scripts/fetch-sample-api-records.mjs"
   },
   "devDependencies": {
     "concurrently": "^9.2.1",
