@@ -2,6 +2,10 @@ import process from "node:process";
 
 import { initTelemetry } from "@tartware/telemetry";
 
+import {
+  shutdownRoomsCommandCenterConsumer,
+  startRoomsCommandCenterConsumer,
+} from "./commands/command-center-consumer.js";
 import { config } from "./config.js";
 import { buildServer } from "./server.js";
 
@@ -23,9 +27,15 @@ const telemetry = await initTelemetry({
 });
 
 const app = buildServer();
+const kafkaEnabled = process.env.DISABLE_KAFKA !== "true";
 
 const start = async () => {
   try {
+    if (kafkaEnabled) {
+      await startRoomsCommandCenterConsumer();
+    } else {
+      app.log.warn("Kafka disabled via DISABLE_KAFKA; skipping consumer start");
+    }
     await app.listen({ port: config.port, host: config.host });
     app.log.info(
       {
@@ -50,6 +60,9 @@ const start = async () => {
 const shutdown = async (signal: NodeJS.Signals) => {
   app.log.info({ signal }, "shutdown signal received");
   try {
+    if (kafkaEnabled) {
+      await shutdownRoomsCommandCenterConsumer();
+    }
     await app.close();
     await telemetry
       ?.shutdown()

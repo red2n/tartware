@@ -4,6 +4,7 @@
     "outDir": "dist",
     "module": "esnext",
     "moduleResolution": "bundler",
+    "types": ["vitest/globals", "node"],
     "composite": false,
     "noEmit": false,
     "resolveJsonModule": true,

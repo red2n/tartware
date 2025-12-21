@@ -41,6 +41,8 @@ export const buildServer = ({ logger }: BuildServerOptions) => {
     uptime: process.uptime(),
   }));
 
+  app.get("/ready", async () => ({ status: "ready" }));
+
   app.register(async (secureRoutes) => {
     secureRoutes.addHook("onRequest", secureRoutes.authenticate);
 

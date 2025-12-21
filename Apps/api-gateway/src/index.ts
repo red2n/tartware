@@ -2,7 +2,12 @@ import process from "node:process";
 
 import { initTelemetry } from "@tartware/telemetry";
 
+import {
+	shutdownCommandRegistry,
+	startCommandRegistry,
+} from "./command-center/index.js";
 import { gatewayConfig } from "./config.js";
+import { shutdownProducer, startProducer } from "./kafka/producer.js";
 import { buildServer } from "./server.js";
 
 const telemetry = await initTelemetry({
@@ -22,6 +27,8 @@ let isShuttingDown = false;
 
 const start = async () => {
 	try {
+		await startCommandRegistry();
+		await startProducer();
 		await app.listen({ port: gatewayConfig.port, host: gatewayConfig.host });
 		app.log.info(
 			{
@@ -34,6 +41,12 @@ const start = async () => {
 	} catch (error) {
 		app.log.error(error, "Failed to start API gateway");
 		await app.close();
+		await shutdownProducer().catch((producerError: unknown) =>
+			app.log.error(producerError, "Failed to shutdown Kafka producer"),
+		);
+		await shutdownCommandRegistry().catch((registryError: unknown) =>
+			app.log.error(registryError, "Failed to shutdown command registry"),
+		);
 		await telemetry
 			?.shutdown()
 			.catch((telemetryError: unknown) =>
@@ -59,14 +72,22 @@ if (proc && "on" in proc && typeof proc.on === "function") {
 			.catch((error: unknown) =>
 				app.log.error(error, "Error while shutting down server (SIGTERM)"),
 			)
-			.finally(() =>
-				telemetry
-					?.shutdown()
-					.catch((error: unknown) =>
-						app.log.error(error, "Error while shutting down telemetry"),
-					)
-					.finally(() => proc.exit(0)),
-			);
+			.finally(async () => {
+				await Promise.allSettled([
+					shutdownProducer().catch((error: unknown) =>
+						app.log.error(error, "Error while shutting down Kafka producer"),
+					),
+					shutdownCommandRegistry().catch((error: unknown) =>
+						app.log.error(error, "Error while shutting down command registry"),
+					),
+					telemetry
+						?.shutdown()
+						.catch((error: unknown) =>
+							app.log.error(error, "Error while shutting down telemetry"),
+						),
+				]);
+				proc.exit(0);
+			});
 	});
 	proc.on("SIGINT", () => {
 		if (isShuttingDown) {
@@ -80,20 +101,41 @@ if (proc && "on" in proc && typeof proc.on === "function") {
 			.catch((error: unknown) =>
 				app.log.error(error, "Error while shutting down server (SIGINT)"),
 			)
-			.finally(() =>
-				telemetry
-					?.shutdown()
-					.catch((error: unknown) =>
-						app.log.error(error, "Error while shutting down telemetry"),
-					)
-					.finally(() => proc.exit(0)),
-			);
+			.finally(async () => {
+				await Promise.allSettled([
+					shutdownProducer().catch((error: unknown) =>
+						app.log.error(error, "Error while shutting down Kafka producer"),
+					),
+					shutdownCommandRegistry().catch((error: unknown) =>
+						app.log.error(error, "Error while shutting down command registry"),
+					),
+					telemetry
+						?.shutdown()
+						.catch((error: unknown) =>
+							app.log.error(error, "Error while shutting down telemetry"),
+						),
+				]);
+				proc.exit(0);
+			});
 	});
 }
 
 start().catch((error: unknown) => {
 	app.log.error(error, "Unhandled error during startup");
-	telemetry?.shutdown().catch((telemetryError: unknown) => {
-		app.log.error(telemetryError, "Failed to shutdown telemetry after error");
-	});
+	void Promise.allSettled([
+		shutdownProducer().catch((producerError: unknown) =>
+			app.log.error(producerError, "Failed to shutdown Kafka producer"),
+		),
+		shutdownCommandRegistry().catch((registryError: unknown) =>
+			app.log.error(registryError, "Failed to shutdown command registry"),
+		),
+		telemetry
+			?.shutdown()
+			.catch((telemetryError: unknown) =>
+				app.log.error(
+					telemetryError,
+					"Failed to shutdown telemetry after error",
+				),
+			),
+	]);
 });

@@ -1,0 +1,71 @@
+env:
+  - name: NODE_ENV
+    value: production
+  - name: PORT
+    value: "3000"
+  - name: LOG_LEVEL
+    value: info
+
+  # Database
+  - name: DB_HOST
+    valueFrom:
+      configMapKeyRef:
+        name: database-config
+        key: host
+  - name: DB_PORT
+    valueFrom:
+      configMapKeyRef:
+        name: database-config
+        key: port
+  - name: DB_NAME
+    valueFrom:
+      configMapKeyRef:
+        name: database-config
+        key: database
+  - name: DB_USER
+    valueFrom:
+      secretKeyRef:
+        name: database-credentials
+        key: username
+  - name: DB_PASSWORD
+    valueFrom:
+      secretKeyRef:
+        name: database-credentials
+        key: password
+
+  # Redis
+  - name: REDIS_HOST
+    valueFrom:
+      configMapKeyRef:
+        name: redis-config
+        key: host
+  - name: REDIS_PORT
+    valueFrom:
+      configMapKeyRef:
+        name: redis-config
+        key: port
+  - name: REDIS_PASSWORD
+    valueFrom:
+      secretKeyRef:
+        name: redis-credentials
+        key: password
+
+  # Kafka
+  - name: KAFKA_BROKERS
+    valueFrom:
+      configMapKeyRef:
+        name: messaging-config
+        key: kafka-brokers
+
+  # NATS
+  - name: NATS_URL
+    valueFrom:
+      configMapKeyRef:
+        name: messaging-config
+        key: nats-url
+
+  # OpenTelemetry
+  - name: OTEL_EXPORTER_OTLP_ENDPOINT
+    value: http://tartware-otel-collector:4317
+  - name: OTEL_SERVICE_NAME
+    value: api-gateway

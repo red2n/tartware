@@ -1,0 +1,105 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: tartware-k6-loadtest
+  labels:
+    app: tartware-k6-loadtest
+spec:
+  ttlSecondsAfterFinished: 3600
+  backoffLimit: 0
+  template:
+    metadata:
+      labels:
+        app: tartware-k6-loadtest
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: k6
+          image: grafana/k6:0.48.0
+          imagePullPolicy: IfNotPresent
+          args:
+            - run
+            - /scripts/command-pipeline.js
+          env:
+            - name: GATEWAY_BASE_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: tartware-k6-env
+                  key: GATEWAY_BASE_URL
+            - name: API_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: tartware-k6-secret
+                  key: api-token
+            - name: TENANT_IDS
+              valueFrom:
+                configMapKeyRef:
+                  name: tartware-k6-env
+                  key: TENANT_IDS
+            - name: PROPERTY_IDS
+              valueFrom:
+                configMapKeyRef:
+                  name: tartware-k6-env
+                  key: PROPERTY_IDS
+            - name: ROOM_TYPE_IDS
+              valueFrom:
+                configMapKeyRef:
+                  name: tartware-k6-env
+                  key: ROOM_TYPE_IDS
+            - name: COMMAND_START_RATE
+              valueFrom:
+                configMapKeyRef:
+                  name: tartware-k6-env
+                  key: COMMAND_START_RATE
+            - name: COMMAND_TARGET_RATE
+              valueFrom:
+                configMapKeyRef:
+                  name: tartware-k6-env
+                  key: COMMAND_TARGET_RATE
+            - name: COMMAND_PREALLOCATED_VUS
+              valueFrom:
+                configMapKeyRef:
+                  name: tartware-k6-env
+                  key: COMMAND_PREALLOCATED_VUS
+            - name: COMMAND_MAX_VUS
+              valueFrom:
+                configMapKeyRef:
+                  name: tartware-k6-env
+                  key: COMMAND_MAX_VUS
+            - name: READ_RATE
+              valueFrom:
+                configMapKeyRef:
+                  name: tartware-k6-env
+                  key: READ_RATE
+            - name: READ_PREALLOCATED_VUS
+              valueFrom:
+                configMapKeyRef:
+                  name: tartware-k6-env
+                  key: READ_PREALLOCATED_VUS
+            - name: READ_MAX_VUS
+              valueFrom:
+                configMapKeyRef:
+                  name: tartware-k6-env
+                  key: READ_MAX_VUS
+            - name: TEST_DURATION
+              valueFrom:
+                configMapKeyRef:
+                  name: tartware-k6-env
+                  key: TEST_DURATION
+          volumeMounts:
+            - name: k6-script
+              mountPath: /scripts
+          resources:
+            requests:
+              cpu: 2000m
+              memory: 4Gi
+            limits:
+              cpu: 4000m
+              memory: 8Gi
+      volumes:
+        - name: k6-script
+          configMap:
+            name: tartware-k6-script
+            items:
+              - key: command-pipeline.js
+                path: command-pipeline.js

@@ -7,7 +7,33 @@ process.env.AUTH_JWT_SECRET = process.env.AUTH_JWT_SECRET ?? "local-dev-secret";
 process.env.AUTH_JWT_ISSUER = process.env.AUTH_JWT_ISSUER ?? "tartware-core";
 process.env.AUTH_JWT_AUDIENCE = process.env.AUTH_JWT_AUDIENCE ?? "tartware";
 
+const toNumber = (value: string | undefined, fallback: number): number => {
+  if (value === undefined) {
+    return fallback;
+  }
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : fallback;
+};
+
 const configValues = loadServiceConfig(databaseSchema);
+
+const kafka = {
+  clientId: process.env.KAFKA_CLIENT_ID ?? "tartware-housekeeping-service",
+  brokers: (process.env.KAFKA_BROKERS ?? "localhost:29092")
+    .split(",")
+    .map((broker) => broker.trim())
+    .filter((broker) => broker.length > 0),
+};
+
+const commandCenter = {
+  topic: process.env.COMMAND_CENTER_TOPIC ?? "commands.primary",
+  consumerGroupId:
+    process.env.COMMAND_CENTER_CONSUMER_GROUP ??
+    "housekeeping-command-center-consumer",
+  targetServiceId:
+    process.env.COMMAND_CENTER_TARGET_SERVICE_ID ?? "housekeeping-service",
+  maxBatchBytes: toNumber(process.env.KAFKA_MAX_BATCH_BYTES, 1048576),
+};
 
 export const config = {
   service: {
@@ -38,4 +64,6 @@ export const config = {
       audience: process.env.AUTH_JWT_AUDIENCE ?? "tartware",
     },
   },
+  kafka,
+  commandCenter,
 };

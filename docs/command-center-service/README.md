@@ -81,7 +81,7 @@ The catalog is intentionally granular so future tenants can opt-in/out per comma
 ## Current Implementation Snapshot (2025-12-19)
 
 - **Ingress API**: `/v1/commands/:commandName/execute` validates tenant scope, enforces per-command module requirements, and records every accepted command in `command_dispatches`.
-- **Command Registry**: `command_templates`, `command_routes`, and `command_features` tables are hydrated into an in-memory cache that refreshes every 30 seconds (tunable via `COMMAND_REGISTRY_REFRESH_MS`). This drives routing decisions and feature-flag enforcement.
+- **Command Registry**: `command_templates`, `command_routes`, and `command_features` tables are hydrated into an in-memory cache that refreshes every 30 seconds (tunable via `COMMAND_REGISTRY_REFRESH_MS`). Startup now includes bounded retries (`COMMAND_REGISTRY_STARTUP_RETRIES`/`COMMAND_REGISTRY_STARTUP_RETRY_DELAY_MS`) so dependent services can wait for Postgres to become available instead of crashing.
 - **Dispatcher**: The service shares the new `@tartware/outbox` package with other producers. A dedicated dispatcher pumps rows from `transactional_outbox` to Kafka (`commands.primary`) and mirrors delivery state back into `command_dispatches`.
 - **Defaults & Seeds**: The initial catalog covers reservations, guests, billing, housekeeping, and rooms commands. Each ships with a default route + feature flag so the command center is usable immediately in dev environments.
 - **Downstream Consumers**: `guests-service` now runs a lightweight Kafka consumer that listens for `guest.register` commands and invokes the existing `upsert_guest` procedure, so guest onboarding is now fully event-driven via the Command Center pipeline.
@@ -96,6 +96,8 @@ The catalog is intentionally granular so future tenants can opt-in/out per comma
 | `COMMAND_CENTER_DLQ_TOPIC` | DLQ topic for unrecoverable dispatch failures. | `commands.primary.dlq` |
 | `COMMAND_CENTER_OUTBOX_*` | Standard knobs for poll interval, batch size, lock timeout, retries, and worker id. | See `.env.example`. |
 | `COMMAND_REGISTRY_REFRESH_MS` | Interval for refreshing the in-memory command registry snapshot. | `30000` |
+| `COMMAND_REGISTRY_STARTUP_RETRIES` | Number of attempts before failing to boot the registry cache (`-1` = infinite). | `12` |
+| `COMMAND_REGISTRY_STARTUP_RETRY_DELAY_MS` | Delay (ms) between registry boot retries. | `5000` |
 
 ### Command Catalog Tables
 

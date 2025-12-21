@@ -17,6 +17,12 @@ declare module "fastify" {
 const normalizePublicKey = (key: string) => key.replace(/\\n/g, "\n").trim();
 
 export const authPlugin = fp(async (app) => {
+  if (process.env.DISABLE_AUTH === "true") {
+    app.log.warn("Auth disabled via DISABLE_AUTH");
+    app.decorate("authenticate", async () => undefined);
+    return;
+  }
+
   await app.register(fastifyJwt, {
     secret: {
       public: normalizePublicKey(config.auth.publicKey),

@@ -7,6 +7,9 @@ import { query } from "./db.js";
  * Executes a lightweight query to verify database availability.
  */
 export const checkDatabaseHealth = async (): Promise<void> => {
+  if (process.env.DISABLE_DB_HEALTH === "true") {
+    return;
+  }
   await query("SELECT 1");
 };
 
@@ -14,6 +17,11 @@ export const checkDatabaseHealth = async (): Promise<void> => {
  * Ensures Kafka connectivity by fetching metadata for the reservations topic.
  */
 export const checkKafkaHealth = async (): Promise<void> => {
+  const kafkaEnabled = process.env.DISABLE_KAFKA !== "true";
+  if (!kafkaEnabled) {
+    return;
+  }
+
   const admin = kafka.admin();
   try {
     await admin.connect();

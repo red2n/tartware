@@ -1,9 +1,0 @@
-<!-- Global loading bar at top of page -->
-@if (loadingService.loading$ | async) {
-  <mat-progress-bar mode="indeterminate" class="global-loading-bar"></mat-progress-bar>
-}
-
-<router-outlet />
-
-<!-- Status bar at bottom (VSCode-inspired) -->
-<app-status-bar />

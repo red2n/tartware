@@ -1,16 +1,30 @@
-import type { ReservationCreatedEvent } from "@tartware/schemas";
-import { ReservationCreatedEventSchema } from "@tartware/schemas";
+import type {
+  ReservationCancelledEvent,
+  ReservationCreatedEvent,
+  ReservationUpdatedEvent,
+} from "@tartware/schemas";
+import {
+  ReservationCancelledEventSchema,
+  ReservationCreatedEventSchema,
+  ReservationUpdatedEventSchema,
+} from "@tartware/schemas";
 import { v4 as uuid } from "uuid";
 
 import { serviceConfig } from "../config.js";
 import { enqueueOutboxRecord } from "../outbox/repository.js";
-import type { ReservationCreateCommand } from "../schemas/reservation-command.js";
+import type {
+  ReservationCancelCommand,
+  ReservationCreateCommand,
+  ReservationModifyCommand,
+} from "../schemas/reservation-command.js";
 
 interface CreateReservationResult {
   eventId: string;
   correlationId?: string;
   status: "accepted";
 }
+
+const DEFAULT_CURRENCY = "USD";
 
 /**
  * Accepts a reservation create command and enqueues its event payload
@@ -38,7 +52,7 @@ export const createReservation = async (
       check_out_date: command.check_out_date,
       booking_date: command.booking_date ?? new Date(),
       total_amount: command.total_amount,
-      currency: command.currency ?? "USD",
+      currency: command.currency ?? DEFAULT_CURRENCY,
       status: command.status ?? "PENDING",
       source: command.source ?? "DIRECT",
     },
@@ -74,4 +88,150 @@ export const createReservation = async (
     correlationId: options.correlationId,
     status: "accepted",
   };
+};
+
+export const modifyReservation = async (
+  tenantId: string,
+  command: ReservationModifyCommand,
+  options: { correlationId?: string } = {},
+): Promise<CreateReservationResult> => {
+  const eventId = uuid();
+  const updatePayload = buildReservationUpdatePayload(tenantId, command);
+  const payload: ReservationUpdatedEvent = {
+    metadata: {
+      id: eventId,
+      source: serviceConfig.serviceId,
+      type: "reservation.updated",
+      timestamp: new Date().toISOString(),
+      version: "1.0",
+      correlationId: options.correlationId,
+      tenantId,
+    },
+    payload: updatePayload,
+  };
+
+  const validatedEvent = ReservationUpdatedEventSchema.parse(payload);
+  await enqueueOutboxRecord({
+    eventId,
+    tenantId,
+    aggregateId: command.reservation_id,
+    aggregateType: "reservation",
+    eventType: validatedEvent.metadata.type,
+    payload: validatedEvent,
+    headers: {
+      tenantId,
+      eventId,
+      ...(options.correlationId
+        ? { correlationId: options.correlationId }
+        : {}),
+    },
+    correlationId: options.correlationId,
+    partitionKey: command.reservation_id,
+    metadata: {
+      source: serviceConfig.serviceId,
+    },
+  });
+
+  return {
+    eventId,
+    correlationId: options.correlationId,
+    status: "accepted",
+  };
+};
+
+export const cancelReservation = async (
+  tenantId: string,
+  command: ReservationCancelCommand,
+  options: { correlationId?: string } = {},
+): Promise<CreateReservationResult> => {
+  const eventId = uuid();
+  const payload: ReservationCancelledEvent = {
+    metadata: {
+      id: eventId,
+      source: serviceConfig.serviceId,
+      type: "reservation.cancelled",
+      timestamp: new Date().toISOString(),
+      version: "1.0",
+      correlationId: options.correlationId,
+      tenantId,
+    },
+    payload: {
+      id: command.reservation_id,
+      tenant_id: tenantId,
+      cancelled_at: new Date(),
+      cancelled_by: command.cancelled_by,
+      reason: command.reason,
+    },
+  };
+
+  const validatedEvent = ReservationCancelledEventSchema.parse(payload);
+  await enqueueOutboxRecord({
+    eventId,
+    tenantId,
+    aggregateId: command.reservation_id,
+    aggregateType: "reservation",
+    eventType: validatedEvent.metadata.type,
+    payload: validatedEvent,
+    headers: {
+      tenantId,
+      eventId,
+      ...(options.correlationId
+        ? { correlationId: options.correlationId }
+        : {}),
+    },
+    correlationId: options.correlationId,
+    partitionKey: command.reservation_id,
+    metadata: {
+      source: serviceConfig.serviceId,
+      action: "cancel",
+    },
+  });
+
+  return {
+    eventId,
+    correlationId: options.correlationId,
+    status: "accepted",
+  };
+};
+
+const buildReservationUpdatePayload = (
+  tenantId: string,
+  command: ReservationModifyCommand,
+): ReservationUpdatedEvent["payload"] => {
+  const payload: ReservationUpdatedEvent["payload"] = {
+    id: command.reservation_id,
+    tenant_id: tenantId,
+  };
+
+  if (command.property_id) {
+    payload.property_id = command.property_id;
+  }
+  if (command.guest_id) {
+    payload.guest_id = command.guest_id;
+  }
+  if (command.room_type_id) {
+    payload.room_type_id = command.room_type_id;
+  }
+  if (command.check_in_date) {
+    payload.check_in_date = command.check_in_date;
+  }
+  if (command.check_out_date) {
+    payload.check_out_date = command.check_out_date;
+  }
+  if (command.booking_date) {
+    payload.booking_date = command.booking_date;
+  }
+  if (command.status) {
+    payload.status = command.status;
+  }
+  if (command.total_amount !== undefined) {
+    payload.total_amount = command.total_amount;
+  }
+  if (command.currency) {
+    payload.currency = command.currency.toUpperCase();
+  }
+  if (command.notes) {
+    payload.internal_notes = command.notes;
+  }
+  return payload;
 };

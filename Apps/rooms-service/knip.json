@@ -5,9 +5,9 @@
   "ignoreDependencies": [
     "@biomejs/biome",
     "@tartware/schemas",
-    "@tartware/telemetry",
-    "@tartware/openapi",
     "@tartware/config",
+    "@tartware/openapi",
+    "@tartware/telemetry",
     "tsx"
   ],
   "ignoreBinaries": ["biome", "eslint", "knip", "tsc", "tsx"]

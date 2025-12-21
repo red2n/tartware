@@ -18,7 +18,13 @@
       "@tartware/openapi": ["../openapi-utils/src/index.ts"],
       "@tartware/openapi/*": ["../openapi-utils/src/*"],
       "@tartware/telemetry": ["../telemetry/src/index.ts"],
-      "@tartware/telemetry/*": ["../telemetry/src/*"]
+      "@tartware/telemetry/*": ["../telemetry/src/*"],
+      "@tartware/config": ["../config/src/index.ts"],
+      "@tartware/config/*": ["../config/src/*"],
+      "@tartware/schemas": ["../../schema/src/index.ts"],
+      "@tartware/schemas/*": ["../../schema/src/*"],
+      "@tartware/outbox": ["../outbox/src/index.ts"],
+      "@tartware/outbox/*": ["../outbox/src/*"]
     }
   },
   "include": ["src/**/*.ts"],

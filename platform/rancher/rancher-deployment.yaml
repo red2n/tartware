@@ -1,0 +1,66 @@
+Next up: I can help add any missing explicit read proxies or start wiring the 20k ops/sec load test when you’re ready.# Rancher Management Server Deployment
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: cattle-system
+
+---
+apiVersion: helm.cattle.io/v1
+kind: HelmChart
+metadata:
+  name: rancher
+  namespace: kube-system
+spec:
+  repo: https://releases.rancher.com/server-charts/stable
+  chart: rancher
+  version: 2.8.0
+  targetNamespace: cattle-system
+  valuesContent: |-
+    hostname: rancher.tartware.local
+    replicas: 3
+    ingress:
+      enabled: true
+      tls:
+        source: rancher
+
+    # Resource limits for production
+    resources:
+      limits:
+        cpu: 2000m
+        memory: 4Gi
+      requests:
+        cpu: 1000m
+        memory: 2Gi
+
+    # Enable features for high availability
+    antiAffinity: required
+
+    # Persistence for audit logs
+    auditLog:
+      level: 2
+      destination: hostPath
+      hostPath: /var/log/rancher/audit
+
+    # Bootstrap password - change this!
+    bootstrapPassword: "admin"
+
+    # Enable monitoring
+    monitoring:
+      enabled: true
+
+---
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: rancher-letsencrypt-prod
+spec:
+  acme:
+    server: https://acme-v02.api.letsencrypt.org/directory
+    email: admin@tartware.local
+    privateKeySecretRef:
+      name: letsencrypt-prod
+    solvers:
+      - http01:
+          ingress:
+            class: nginx

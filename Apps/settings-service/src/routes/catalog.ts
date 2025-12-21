@@ -129,5 +129,4 @@ const catalogRoutes: FastifyPluginAsync = async (app) => {
 
 export default fp(catalogRoutes, {
   name: "settings-catalog-routes",
-  dependencies: ["@fastify/jwt"],
 });

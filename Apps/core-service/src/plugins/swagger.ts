@@ -17,6 +17,10 @@ const swaggerPlugin = fp(async (app) => {
     },
     mode: "dynamic",
   });
+  if (process.env.DISABLE_SWAGGER === "true") {
+    app.log.warn("Swagger UI disabled via DISABLE_SWAGGER");
+    return;
+  }
 
   await app.register(swaggerUi, {
     routePrefix: "/docs",

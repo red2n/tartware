@@ -4,7 +4,10 @@ import { config } from "../config.js";
 import { kafka } from "../kafka/client.js";
 import { appLogger } from "../lib/logger.js";
 import { GuestRegisterCommandSchema } from "../schemas/guest-commands.js";
-import { registerGuestProfile } from "../services/guest-command-service.js";
+import {
+  mergeGuestProfiles,
+  registerGuestProfile,
+} from "../services/guest-command-service.js";
 
 type CommandEnvelope = {
   metadata?: {
@@ -134,6 +137,14 @@ const routeCommand = async (
   switch (metadata.commandName) {
     case "guest.register":
       await handleGuestRegisterCommand(envelope.payload, metadata);
+      break;
+    case "guest.merge":
+      await mergeGuestProfiles({
+        tenantId: metadata.tenantId,
+        payload: envelope.payload,
+        correlationId: metadata.correlationId ?? metadata.requestId,
+        initiatedBy: metadata.initiatedBy ?? null,
+      });
       break;
     default:
       consumerLogger.debug(

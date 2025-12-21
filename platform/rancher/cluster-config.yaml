@@ -1,0 +1,92 @@
+# Rancher Cluster Configuration for High-Performance Deployment
+# This is a template for creating a production-ready RKE2 cluster via Rancher
+
+apiVersion: provisioning.cattle.io/v1
+kind: Cluster
+metadata:
+  name: tartware-prod
+  namespace: fleet-default
+spec:
+  kubernetesVersion: v1.28.5+rke2r1
+
+  # Enable local authentication
+  localClusterAuthEndpoint:
+    enabled: true
+
+  # RKE2 Configuration
+  rkeConfig:
+    machineGlobalConfig:
+      # High-performance settings
+      kube-apiserver-arg:
+        - max-requests-inflight=3000
+        - max-mutating-requests-inflight=1000
+      kube-controller-manager-arg:
+        - node-cidr-mask-size=22
+      etcd-arg:
+        - quota-backend-bytes=8589934592  # 8GB
+        - auto-compaction-retention=1h
+
+    # Machine pools for different node roles
+    machinePools:
+      - name: control-plane
+        quantity: 3
+        etcdRole: true
+        controlPlaneRole: true
+        workerRole: false
+        machineConfigRef:
+          kind: VmwarevsphereConfig
+          name: tartware-cp-config
+        labels:
+          node-role.kubernetes.io/control-plane: "true"
+        taints:
+          - key: node-role.kubernetes.io/control-plane
+            effect: NoSchedule
+
+      - name: worker-compute
+        quantity: 5
+        workerRole: true
+        machineConfigRef:
+          kind: VmwarevsphereConfig
+          name: tartware-worker-config
+        labels:
+          workload-type: compute
+          node.kubernetes.io/instance-type: high-cpu
+
+      - name: worker-memory
+        quantity: 3
+        workerRole: true
+        machineConfigRef:
+          kind: VmwarevsphereConfig
+          name: tartware-worker-memory-config
+        labels:
+          workload-type: memory-intensive
+          node.kubernetes.io/instance-type: high-memory
+
+    # Upgrade strategy
+    upgradeStrategy:
+      controlPlaneConcurrency: "1"
+      workerConcurrency: "2"
+
+    # Additional manifest for system components
+    additionalManifest: |
+      apiVersion: v1
+      kind: Namespace
+      metadata:
+        name: tartware-system
+      ---
+      apiVersion: v1
+      kind: ResourceQuota
+      metadata:
+        name: tartware-quota
+        namespace: tartware-system
+      spec:
+        hard:
+          requests.cpu: "100"
+          requests.memory: 200Gi
+          persistentvolumeclaims: "50"
+
+  # Monitoring and alerting
+  enableNetworkPolicy: true
+
+  # Default Pod Security Policies
+  defaultPodSecurityPolicyTemplateName: restricted

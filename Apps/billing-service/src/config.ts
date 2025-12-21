@@ -37,6 +37,24 @@ const requireBillingEncryption = toBoolean(
 const billingEncryptionKey =
   process.env.BILLING_DATA_ENCRYPTION_KEY ?? "local-dev-billing-key";
 
+const kafka = {
+  clientId: process.env.KAFKA_CLIENT_ID ?? "tartware-billing-service",
+  brokers: (process.env.KAFKA_BROKERS ?? "localhost:29092")
+    .split(",")
+    .map((broker) => broker.trim())
+    .filter((broker) => broker.length > 0),
+};
+
+const commandCenter = {
+  topic: process.env.COMMAND_CENTER_TOPIC ?? "commands.primary",
+  consumerGroupId:
+    process.env.COMMAND_CENTER_CONSUMER_GROUP ??
+    "billing-command-center-consumer",
+  targetServiceId:
+    process.env.COMMAND_CENTER_TARGET_SERVICE_ID ?? "billing-service",
+  maxBatchBytes: toNumber(process.env.KAFKA_MAX_BATCH_BYTES, 1048576),
+};
+
 export const config = {
   service: {
     name: configValues.SERVICE_NAME,
@@ -75,4 +93,6 @@ export const config = {
       billingDataKey: billingEncryptionKey,
     },
   },
+  kafka,
+  commandCenter,
 };

@@ -46,6 +46,10 @@
     "./analytics/*": {
       "import": "./dist/schemas/07-analytics/*.js",
       "types": "./dist/schemas/07-analytics/*.d.ts"
+    },
+    "./events/*": {
+      "import": "./dist/events/*.js",
+      "types": "./dist/events/*.d.ts"
     }
   },
   "files": [

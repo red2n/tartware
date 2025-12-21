@@ -1,0 +1,214 @@
+# High-Performance Configuration for 20k ops/sec
+
+# This configuration provides:
+# - Aggressive autoscaling with rapid scale-up
+# - Resource quotas to prevent resource starvation
+# - Network policies for security
+# - Pod priority classes for critical services
+
+---
+# Priority Classes
+apiVersion: scheduling.k8s.io/v1
+kind: PriorityClass
+metadata:
+  name: tartware-critical
+value: 1000000
+globalDefault: false
+description: "Critical services that must run (API Gateway, Core Service)"
+
+---
+apiVersion: scheduling.k8s.io/v1
+kind: PriorityClass
+metadata:
+  name: tartware-high
+value: 100000
+globalDefault: false
+description: "High priority services (Reservations, Billing)"
+
+---
+apiVersion: scheduling.k8s.io/v1
+kind: PriorityClass
+metadata:
+  name: tartware-normal
+value: 10000
+globalDefault: true
+description: "Normal priority services"
+
+---
+# Namespace for application
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: tartware-system
+  labels:
+    istio-injection: enabled
+    monitoring: enabled
+
+---
+# Resource Quotas
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: tartware-quota
+  namespace: tartware-system
+spec:
+  hard:
+    requests.cpu: "200"
+    requests.memory: "400Gi"
+    limits.cpu: "400"
+    limits.memory: "800Gi"
+    persistentvolumeclaims: "50"
+    services.loadbalancers: "5"
+
+---
+# Limit Ranges
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: tartware-limits
+  namespace: tartware-system
+spec:
+  limits:
+    - max:
+        cpu: "4"
+        memory: "8Gi"
+      min:
+        cpu: "100m"
+        memory: "128Mi"
+      default:
+        cpu: "500m"
+        memory: "512Mi"
+      defaultRequest:
+        cpu: "200m"
+        memory: "256Mi"
+      type: Container
+    - max:
+        cpu: "16"
+        memory: "32Gi"
+      min:
+        cpu: "500m"
+        memory: "512Mi"
+      type: Pod
+
+---
+# Network Policy - Allow internal communication
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: tartware-allow-internal
+  namespace: tartware-system
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              name: tartware-system
+        - namespaceSelector:
+            matchLabels:
+              name: istio-system
+        - namespaceSelector:
+            matchLabels:
+              name: observability
+  egress:
+    - to:
+        - namespaceSelector: {}
+    - to:
+        - podSelector: {}
+    # Allow DNS
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              name: kube-system
+      ports:
+        - protocol: UDP
+          port: 53
+
+---
+# ConfigMap for Database Configuration
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: database-config
+  namespace: tartware-system
+data:
+  host: "postgres-postgresql.database.svc.cluster.local"
+  port: "5432"
+  database: "tartware"
+  # Connection pool settings for high throughput
+  pool-min: "10"
+  pool-max: "50"
+  connection-timeout: "5000"
+  idle-timeout: "30000"
+
+---
+# ConfigMap for Redis Configuration
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: redis-config
+  namespace: tartware-system
+data:
+  host: "redis-master.cache.svc.cluster.local"
+  port: "6379"
+  # Redis performance settings
+  max-connections: "1000"
+  connection-timeout: "5000"
+
+---
+# ConfigMap for Messaging Configuration
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: messaging-config
+  namespace: tartware-system
+data:
+  kafka-brokers: "redpanda.messaging.svc.cluster.local:9092"
+  nats-url: "nats://nats-jetstream.messaging.svc.cluster.local:4222"
+  # Performance settings
+  kafka-batch-size: "16384"
+  kafka-linger-ms: "10"
+  kafka-compression: "snappy"
+
+---
+# Vertical Pod Autoscaler for critical services
+apiVersion: autoscaling.k8s.io/v1
+kind: VerticalPodAutoscaler
+metadata:
+  name: api-gateway-vpa
+  namespace: tartware-system
+spec:
+  targetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: api-gateway
+  updatePolicy:
+    updateMode: "Auto"
+  resourcePolicy:
+    containerPolicies:
+      - containerName: "*"
+        minAllowed:
+          cpu: 500m
+          memory: 512Mi
+        maxAllowed:
+          cpu: 4000m
+          memory: 8Gi
+
+---
+# Pod Monitor for custom metrics
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: tartware-services
+  namespace: tartware-system
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/part-of: tartware
+  podMetricsEndpoints:
+    - port: http
+      path: /metrics
+      interval: 15s

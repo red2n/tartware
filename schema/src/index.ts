@@ -19,6 +19,7 @@ export * from "./schemas/01-core/index.js";
 export * from "./schemas/07-analytics/index.js";
 export * from "./schemas/08-settings/index.js";
 export * from "./events/reservations.js";
+export * from "./events/commands/index.js";
 
 // Re-export base schemas and validators
 export * from "./shared/base-schemas.js";
