@@ -54,10 +54,13 @@ const start = async () => {
       await telemetry
         ?.shutdown()
         .catch((shutdownError: unknown) =>
-          app.log.error(shutdownError, "failed to shutdown telemetry"),
+          app.log.error(shutdownError, "Failed to shutdown telemetry"),
         );
-      proc?.exit(0);
-      return;
+      if (proc) {
+        proc.exit(0);
+      } else {
+        return;
+      }
     }
 
     if (kafkaEnabled) {

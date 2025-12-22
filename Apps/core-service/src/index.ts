@@ -51,8 +51,10 @@ if (!dependenciesOk) {
   app.log.warn("Dependencies missing; exiting without starting service");
   await telemetry
     ?.shutdown()
-    .catch((telemetryError) => app.log.error(telemetryError, "Failed to shutdown telemetry"));
-  proc?.exit(0);
+    .catch((telemetryError: unknown) => app.log.error(telemetryError, "Failed to shutdown telemetry"));
+  if (proc) {
+    proc.exit(0);
+  }
 }
 
 // Initialize Redis
