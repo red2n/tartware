@@ -9,8 +9,9 @@
   "scripts": {
     "build": "tsc --project tsconfig.json",
     "typecheck": "tsc --noEmit",
-    "clean": "rm -rf dist *.tsbuildinfo",
-    "test": "vitest run"
+    "clean": "rm -rf dist dist-tests *.tsbuildinfo",
+    "build:tests": "tsc --project tsconfig.tests.json",
+    "test": "npm run build:tests && node --test dist-tests"
   },
   "dependencies": {
     "@opentelemetry/api": "^1.9.0",
@@ -28,8 +29,7 @@
   "devDependencies": {
     "@types/node": "^20.11.19",
     "fastify": "^4.27.0",
-    "typescript": "^5.3.3",
-    "vitest": "^1.1.3"
+    "typescript": "^5.3.3"
   },
   "engines": {
     "node": ">=20.0.0",
