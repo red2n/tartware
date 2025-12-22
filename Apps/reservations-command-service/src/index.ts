@@ -1,8 +1,10 @@
+import { ensureDependencies, parseHostPort } from "@tartware/config";
+
 import {
   shutdownCommandCenterConsumer,
   startCommandCenterConsumer,
 } from "./commands/command-center-consumer.js";
-import { serviceConfig } from "./config.js";
+import { databaseConfig, kafkaConfig, serviceConfig } from "./config.js";
 import {
   shutdownReservationConsumer,
   startReservationConsumer,
@@ -22,6 +24,26 @@ let isShuttingDown = false;
 
 const start = async () => {
   try {
+    const kafkaBroker = kafkaConfig.brokers[0];
+    const dependenciesOk = await ensureDependencies(
+      [
+        {
+          name: "PostgreSQL",
+          host: databaseConfig.host,
+          port: databaseConfig.port,
+        },
+        ...(kafkaEnabled && kafkaBroker
+          ? [{ name: "Kafka broker", ...parseHostPort(kafkaBroker, 9092) }]
+          : []),
+      ],
+      { logger: app.log },
+    );
+    if (!dependenciesOk) {
+      app.log.warn("Dependencies missing; exiting without starting service");
+      proc?.exit(0);
+      return;
+    }
+
     if (kafkaEnabled) {
       await startReservationConsumer();
       await startCommandCenterConsumer();

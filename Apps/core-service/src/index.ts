@@ -1,5 +1,6 @@
 import process from "node:process";
 
+import { ensureDependencies, resolveOtelDependency } from "@tartware/config";
 import { initTelemetry } from "@tartware/telemetry";
 
 import { config } from "./config.js";
@@ -28,6 +29,33 @@ const telemetry = await initTelemetry({
 const app = buildServer();
 const proc: typeof process | undefined = process;
 let isShuttingDown = false;
+
+const otelDependency = resolveOtelDependency(true);
+const dependenciesOk = await ensureDependencies(
+  [
+    { name: "PostgreSQL", host: config.db.host, port: config.db.port },
+    ...(config.redis.enabled
+      ? [
+          {
+            name: "Redis",
+            host: config.redis.host,
+            port: config.redis.port,
+          },
+        ]
+      : []),
+    ...(otelDependency ? [otelDependency] : []),
+  ],
+  { logger: app.log },
+);
+if (!dependenciesOk) {
+  app.log.warn("Dependencies missing; exiting without starting service");
+  await telemetry
+    ?.shutdown()
+    .catch((telemetryError) =>
+      app.log.error(telemetryError, "Failed to shutdown telemetry"),
+    );
+  proc?.exit(0);
+}
 
 // Initialize Redis
 const redis = initRedis();

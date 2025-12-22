@@ -1,5 +1,6 @@
 import process from "node:process";
 
+import { ensureDependencies, parseHostPort, resolveOtelDependency } from "@tartware/config";
 import { initTelemetry } from "@tartware/telemetry";
 
 import {
@@ -31,6 +32,29 @@ const kafkaEnabled = process.env.DISABLE_KAFKA !== "true";
 
 const start = async () => {
   try {
+    const kafkaBroker = config.kafka.brokers[0];
+    const telemetryDependency = resolveOtelDependency(true);
+    const dependenciesOk = await ensureDependencies(
+      [
+        { name: "PostgreSQL", host: config.db.host, port: config.db.port },
+        ...(kafkaEnabled && kafkaBroker
+          ? [{ name: "Kafka broker", ...parseHostPort(kafkaBroker, 9092) }]
+          : []),
+        ...(telemetryDependency ? [telemetryDependency] : []),
+      ],
+      { logger: app.log },
+    );
+    if (!dependenciesOk) {
+      app.log.warn("Dependencies missing; exiting without starting service");
+      await telemetry
+        ?.shutdown()
+        .catch((shutdownError) =>
+          app.log.error(shutdownError, "failed to shutdown telemetry"),
+        );
+      process.exit(0);
+      return;
+    }
+
     if (kafkaEnabled) {
       await startBillingCommandCenterConsumer();
     } else {

@@ -1,5 +1,6 @@
 import process from "node:process";
 
+import { ensureDependencies, resolveOtelDependency } from "@tartware/config";
 import { createServiceLogger, initTelemetry } from "@tartware/telemetry";
 
 import { buildServer } from "./app.js";
@@ -32,6 +33,23 @@ const logger = createServiceLogger({
 const server = buildServer({ logger });
 
 try {
+  const telemetryDependency = resolveOtelDependency(true);
+  const dependenciesOk = await ensureDependencies(
+    [
+      { name: "PostgreSQL", host: config.db.host, port: config.db.port },
+      ...(telemetryDependency ? [telemetryDependency] : []),
+    ],
+    { logger },
+  );
+  if (!dependenciesOk) {
+    logger.warn("Dependencies missing; exiting without starting service");
+    await telemetry
+      ?.shutdown()
+      .catch((shutdownError: unknown) =>
+        logger.error({ err: shutdownError }, "Failed to shutdown telemetry"),
+      );
+    process.exit(0);
+  }
   await server.listen({ port: config.port, host: config.host });
   logger.info(
     {

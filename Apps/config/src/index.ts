@@ -103,3 +103,154 @@ export function loadServiceConfig<TSchema extends z.ZodObject<any>>(
 
   return result.data as z.infer<typeof baseConfigSchema>;
 }
+
+export type DependencyTarget = {
+  name: string;
+  host: string;
+  port: number;
+  optional?: boolean;
+};
+
+type LoggerLike = {
+  info?: (obj: unknown, msg?: string) => void;
+  warn?: (obj: unknown, msg?: string) => void;
+  error?: (obj: unknown, msg?: string) => void;
+};
+
+const parsePort = (value: string | undefined, fallback: number): number => {
+  if (!value) return fallback;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : fallback;
+};
+
+export const parseHostPort = (
+  value: string,
+  defaultPort: number,
+): { host: string; port: number } => {
+  const safeValue = value.trim();
+  try {
+    const url = safeValue.includes("://")
+      ? new URL(safeValue)
+      : new URL(`tcp://${safeValue}`);
+    return {
+      host: url.hostname,
+      port: parsePort(url.port, url.protocol === "https:" ? 443 : defaultPort),
+    };
+  } catch {
+    const [hostPart, portPart] = safeValue.split(":");
+    const host = hostPart && hostPart.length > 0 ? hostPart : safeValue;
+    return { host, port: parsePort(portPart, defaultPort) };
+  }
+};
+
+const probePort = async (
+  target: DependencyTarget,
+  timeoutMs: number,
+): Promise<{ target: DependencyTarget; ok: boolean; reason?: string }> => {
+  const { host, port } = target;
+
+  const net = await import("node:net");
+
+  return new Promise((resolve) => {
+    const socket = new net.Socket();
+    const onError = (error: Error) => {
+      socket.destroy();
+      resolve({ target, ok: false, reason: error.message });
+    };
+
+    socket.setTimeout(timeoutMs, () => onError(new Error("timeout")));
+    socket.once("error", onError);
+    socket.connect(port, host, () => {
+      socket.end();
+      resolve({ target, ok: true });
+    });
+  });
+};
+
+export const ensureDependencies = async (
+  dependencies: DependencyTarget[],
+  options?: { timeoutMs?: number; logger?: LoggerLike },
+): Promise<boolean> => {
+  const timeoutMs = options?.timeoutMs ?? 1000;
+  const logger = options?.logger ?? console;
+
+  const skipDependencyCheck =
+    process.env.TARTWARE_SKIP_DEPENDENCY_CHECK === "true" ||
+    process.env.SKIP_DEPENDENCY_CHECK === "true";
+
+  if (skipDependencyCheck) {
+    logger.warn?.(
+      { dependencyCount: dependencies.length },
+      "Skipping dependency preflight because SKIP_DEPENDENCY_CHECK is set",
+    );
+    return true;
+  }
+
+  if (!dependencies.length) {
+    return true;
+  }
+
+  const results = await Promise.all(
+    dependencies.map((dep) => probePort(dep, timeoutMs)),
+  );
+
+  const failed = results.filter(
+    (result) => !result.ok && !result.target.optional,
+  );
+  const optionalFailed = results.filter(
+    (result) => !result.ok && result.target.optional,
+  );
+
+  if (failed.length > 0) {
+    logger.warn?.(
+      {
+        failed: failed.map(({ target, reason }) => ({
+          name: target.name,
+          host: target.host,
+          port: target.port,
+          reason,
+        })),
+        hint: "Ensure required services are running or set SKIP_DEPENDENCY_CHECK=true to bypass (not recommended for production).",
+      },
+      "Mandatory dependencies are unavailable",
+    );
+    return false;
+  }
+
+  if (optionalFailed.length > 0) {
+    logger.warn?.(
+      {
+        failed: optionalFailed.map(({ target, reason }) => ({
+          name: target.name,
+          host: target.host,
+          port: target.port,
+          reason,
+        })),
+      },
+      "Optional dependencies are unavailable; continuing startup",
+    );
+  }
+
+  return true;
+};
+
+export const resolveOtelDependency = (
+  optional = true,
+): DependencyTarget | null => {
+  const endpoint =
+    process.env.OTEL_EXPORTER_OTLP_ENDPOINT ??
+    process.env.OTEL_EXPORTER_OTLP_TRACES_ENDPOINT ??
+    process.env.OTEL_EXPORTER_OTLP_LOGS_ENDPOINT;
+
+  if (!endpoint) {
+    return null;
+  }
+
+  const { host, port } = parseHostPort(endpoint, 4318);
+  return {
+    name: "OpenTelemetry collector",
+    host,
+    port,
+    optional,
+  };
+};
