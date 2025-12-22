@@ -51,9 +51,7 @@ if (!dependenciesOk) {
   app.log.warn("Dependencies missing; exiting without starting service");
   await telemetry
     ?.shutdown()
-    .catch((telemetryError) =>
-      app.log.error(telemetryError, "Failed to shutdown telemetry"),
-    );
+    .catch((telemetryError) => app.log.error(telemetryError, "Failed to shutdown telemetry"));
   proc?.exit(0);
 }
 

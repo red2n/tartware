@@ -1,6 +1,10 @@
 import process from "node:process";
 
-import { ensureDependencies, parseHostPort, resolveOtelDependency } from "@tartware/config";
+import {
+	ensureDependencies,
+	parseHostPort,
+	resolveOtelDependency,
+} from "@tartware/config";
 import { initTelemetry } from "@tartware/telemetry";
 
 import {
