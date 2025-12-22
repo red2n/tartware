@@ -40,8 +40,11 @@ const start = async () => {
     );
     if (!dependenciesOk) {
       app.log.warn("Dependencies missing; exiting without starting service");
-      proc?.exit(0);
-      return;
+      if (proc) {
+        proc.exit(0);
+      } else {
+        return;
+      }
     }
 
     if (kafkaEnabled) {

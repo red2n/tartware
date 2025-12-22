@@ -53,11 +53,14 @@ const start = async () => {
       app.log.warn("Dependencies missing; exiting without starting service");
       await telemetry
         ?.shutdown()
-        .catch((shutdownError) =>
-          app.log.error(shutdownError, "failed to shutdown telemetry"),
+        .catch((shutdownError: unknown) =>
+          app.log.error(shutdownError, "Failed to shutdown telemetry"),
         );
-      proc?.exit(0);
-      return;
+      if (proc) {
+        proc.exit(0);
+      } else {
+        return;
+      }
     }
 
     if (kafkaEnabled) {

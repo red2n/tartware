@@ -137,8 +137,14 @@ export const parseHostPort = (
       port: parsePort(url.port, url.protocol === "https:" ? 443 : defaultPort),
     };
   } catch {
-    const [hostPart, portPart] = safeValue.split(":");
-    const host = hostPart && hostPart.length > 0 ? hostPart : safeValue;
+    let hostPart: string | undefined;
+    let portPart: string | undefined;
+
+    if (safeValue.includes(":")) {
+      [hostPart, portPart] = safeValue.split(":");
+    }
+
+    const host = hostPart || safeValue;
     return { host, port: parsePort(portPart, defaultPort) };
   }
 };

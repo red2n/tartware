@@ -54,8 +54,11 @@ const start = async () => {
 						"Failed to shutdown telemetry after dependency failure",
 					),
 				);
-			proc?.exit(0);
-			return;
+			if (proc) {
+				proc.exit(0);
+			} else {
+				return;
+			}
 		}
 		await startCommandRegistry();
 		await startProducer();
