@@ -28,7 +28,7 @@ global:
 
   # Messaging configuration
   kafka:
-    brokers: redpanda.messaging.svc.cluster.local:9092
+    brokers: redpanda-0.redpanda.messaging.svc.cluster.local:9092,redpanda-1.redpanda.messaging.svc.cluster.local:9092,redpanda-2.redpanda.messaging.svc.cluster.local:9092,redpanda-3.redpanda.messaging.svc.cluster.local:9092,redpanda-4.redpanda.messaging.svc.cluster.local:9092,redpanda-5.redpanda.messaging.svc.cluster.local:9092,redpanda-6.redpanda.messaging.svc.cluster.local:9092
 
   nats:
     url: nats://nats-jetstream.messaging.svc.cluster.local:4222
@@ -54,7 +54,7 @@ global:
 # Individual service configurations
 api-gateway:
   enabled: true
-  replicaCount: 5
+  replicaCount: 12
   image:
     repository: docker.io/tartware/api-gateway
     tag: "latest"
@@ -82,16 +82,16 @@ api-gateway:
 
   resources:
     requests:
-      cpu: 500m
-      memory: 512Mi
+      cpu: 1000m
+      memory: 1Gi
     limits:
-      cpu: 2000m
-      memory: 2Gi
+      cpu: 3500m
+      memory: 4Gi
 
   autoscaling:
     enabled: true
-    minReplicas: 5
-    maxReplicas: 50
+    minReplicas: 12
+    maxReplicas: 150
     targetCPUUtilizationPercentage: 70
     targetMemoryUtilizationPercentage: 80
     behavior:
@@ -110,31 +110,136 @@ api-gateway:
 
 core-service:
   enabled: true
-  replicaCount: 4
+  replicaCount: 8
   image:
     repository: docker.io/tartware/core-service
     tag: "latest"
 
   resources:
     requests:
-      cpu: 500m
-      memory: 1Gi
+      cpu: 750m
+      memory: 1536Mi
     limits:
-      cpu: 2000m
-      memory: 4Gi
+      cpu: 2500m
+      memory: 5Gi
 
   autoscaling:
     enabled: true
-    minReplicas: 4
-    maxReplicas: 40
+    minReplicas: 8
+    maxReplicas: 80
     targetCPUUtilizationPercentage: 70
     targetMemoryUtilizationPercentage: 75
 
 billing-service:
   enabled: true
-  replicaCount: 3
+  replicaCount: 5
   image:
     repository: docker.io/tartware/billing-service
+    tag: "latest"
+
+  resources:
+    requests:
+      cpu: 500m
+      memory: 768Mi
+    limits:
+      cpu: 2000m
+      memory: 3Gi
+
+  autoscaling:
+    enabled: true
+    minReplicas: 5
+    maxReplicas: 45
+    targetCPUUtilizationPercentage: 75
+
+guests-service:
+  enabled: true
+  replicaCount: 5
+  image:
+    repository: docker.io/tartware/guests-service
+    tag: "latest"
+
+  resources:
+    requests:
+      cpu: 500m
+      memory: 768Mi
+    limits:
+      cpu: 2000m
+      memory: 3Gi
+
+  autoscaling:
+    enabled: true
+    minReplicas: 5
+    maxReplicas: 45
+    targetCPUUtilizationPercentage: 70
+
+housekeeping-service:
+  enabled: true
+  replicaCount: 4
+  image:
+    repository: docker.io/tartware/housekeeping-service
+    tag: "latest"
+
+  resources:
+    requests:
+      cpu: 400m
+      memory: 512Mi
+    limits:
+      cpu: 1600m
+      memory: 2Gi
+
+  autoscaling:
+    enabled: true
+    minReplicas: 4
+    maxReplicas: 30
+    targetCPUUtilizationPercentage: 75
+
+reservations-command-service:
+  enabled: true
+  replicaCount: 8
+  image:
+    repository: docker.io/tartware/reservations-command-service
+    tag: "latest"
+
+  resources:
+    requests:
+      cpu: 900m
+      memory: 1536Mi
+    limits:
+      cpu: 2500m
+      memory: 5Gi
+
+  autoscaling:
+    enabled: true
+    minReplicas: 8
+    maxReplicas: 70
+    targetCPUUtilizationPercentage: 70
+
+rooms-service:
+  enabled: true
+  replicaCount: 5
+  image:
+    repository: docker.io/tartware/rooms-service
+    tag: "latest"
+
+  resources:
+    requests:
+      cpu: 500m
+      memory: 768Mi
+    limits:
+      cpu: 2000m
+      memory: 3Gi
+
+  autoscaling:
+    enabled: true
+    minReplicas: 5
+    maxReplicas: 45
+    targetCPUUtilizationPercentage: 70
+
+settings-service:
+  enabled: true
+  replicaCount: 3
+  image:
+    repository: docker.io/tartware/settings-service
     tag: "latest"
 
   resources:
@@ -142,7 +247,7 @@ billing-service:
       cpu: 300m
       memory: 512Mi
     limits:
-      cpu: 1500m
+      cpu: 1200m
       memory: 2Gi
 
   autoscaling:
@@ -151,128 +256,23 @@ billing-service:
     maxReplicas: 20
     targetCPUUtilizationPercentage: 75
 
-guests-service:
-  enabled: true
-  replicaCount: 3
-  image:
-    repository: docker.io/tartware/guests-service
-    tag: "latest"
-
-  resources:
-    requests:
-      cpu: 300m
-      memory: 512Mi
-    limits:
-      cpu: 1500m
-      memory: 2Gi
-
-  autoscaling:
-    enabled: true
-    minReplicas: 3
-    maxReplicas: 25
-    targetCPUUtilizationPercentage: 70
-
-housekeeping-service:
-  enabled: true
-  replicaCount: 2
-  image:
-    repository: docker.io/tartware/housekeeping-service
-    tag: "latest"
-
-  resources:
-    requests:
-      cpu: 200m
-      memory: 256Mi
-    limits:
-      cpu: 1000m
-      memory: 1Gi
-
-  autoscaling:
-    enabled: true
-    minReplicas: 2
-    maxReplicas: 15
-    targetCPUUtilizationPercentage: 75
-
-reservations-command-service:
-  enabled: true
-  replicaCount: 5
-  image:
-    repository: docker.io/tartware/reservations-command-service
-    tag: "latest"
-
-  resources:
-    requests:
-      cpu: 500m
-      memory: 1Gi
-    limits:
-      cpu: 2000m
-      memory: 4Gi
-
-  autoscaling:
-    enabled: true
-    minReplicas: 5
-    maxReplicas: 40
-    targetCPUUtilizationPercentage: 70
-
-rooms-service:
-  enabled: true
-  replicaCount: 3
-  image:
-    repository: docker.io/tartware/rooms-service
-    tag: "latest"
-
-  resources:
-    requests:
-      cpu: 300m
-      memory: 512Mi
-    limits:
-      cpu: 1500m
-      memory: 2Gi
-
-  autoscaling:
-    enabled: true
-    minReplicas: 3
-    maxReplicas: 25
-    targetCPUUtilizationPercentage: 70
-
-settings-service:
-  enabled: true
-  replicaCount: 2
-  image:
-    repository: docker.io/tartware/settings-service
-    tag: "latest"
-
-  resources:
-    requests:
-      cpu: 200m
-      memory: 256Mi
-    limits:
-      cpu: 1000m
-      memory: 1Gi
-
-  autoscaling:
-    enabled: true
-    minReplicas: 2
-    maxReplicas: 15
-    targetCPUUtilizationPercentage: 75
-
 command-center-service:
   enabled: true
-  replicaCount: 2
+  replicaCount: 3
   image:
     repository: docker.io/tartware/command-center-service
     tag: "latest"
 
   resources:
     requests:
-      cpu: 200m
-      memory: 256Mi
+      cpu: 400m
+      memory: 512Mi
     limits:
-      cpu: 1000m
-      memory: 1Gi
+      cpu: 1600m
+      memory: 2Gi
 
   autoscaling:
     enabled: true
-    minReplicas: 2
-    maxReplicas: 15
+    minReplicas: 3
+    maxReplicas: 25
     targetCPUUtilizationPercentage: 75

@@ -1,10 +1,13 @@
 # Redpanda dev overrides
 statefulset:
-  replicas: 3
+  replicas: 7
 resources:
   requests:
-    cpu: 500m
-    memory: 1Gi
+    cpu: 1500m
+    memory: 4Gi
+  limits:
+    cpu: 4000m
+    memory: 8Gi
 listeners:
   kafka:
     port: 9092
@@ -15,7 +18,24 @@ listeners:
 config:
   cluster_id: tartware-dev
   auto_create_topics_enabled: false
+  default_topic_partitions: 12
   kafka_api:
     - address: 0.0.0.0
       name: internal
       port: 9092
+topic:
+  autoCreate:
+    enabled: false
+  additionalTopics:
+    - name: commands.primary
+      partitions: 128
+      replicationFactor: 5
+      config:
+        cleanup.policy: compact
+        compression.type: zstd
+    - name: commands.primary.dlq
+      partitions: 64
+      replicationFactor: 5
+      config:
+        cleanup.policy: delete
+        retention.ms: "604800000"

@@ -1,4 +1,4 @@
-# High-Performance Configuration for 20k ops/sec
+# High-Performance Configuration for 30k ops/sec
 
 # This configuration provides:
 # - Aggressive autoscaling with rapid scale-up
@@ -166,12 +166,14 @@ metadata:
   name: messaging-config
   namespace: tartware-system
 data:
-  kafka-brokers: "redpanda.messaging.svc.cluster.local:9092"
+  kafka-brokers: "redpanda-0.redpanda.messaging.svc.cluster.local:9092,redpanda-1.redpanda.messaging.svc.cluster.local:9092,redpanda-2.redpanda.messaging.svc.cluster.local:9092,redpanda-3.redpanda.messaging.svc.cluster.local:9092,redpanda-4.redpanda.messaging.svc.cluster.local:9092,redpanda-5.redpanda.messaging.svc.cluster.local:9092,redpanda-6.redpanda.messaging.svc.cluster.local:9092"
   nats-url: "nats://nats-jetstream.messaging.svc.cluster.local:4222"
   # Performance settings
-  kafka-batch-size: "16384"
-  kafka-linger-ms: "10"
-  kafka-compression: "snappy"
+  kafka-batch-size: "65536"
+  kafka-linger-ms: "20"
+  kafka-compression: "zstd"
+  command-topic-partitions: "128"
+  command-dlq-partitions: "64"
 
 ---
 # Vertical Pod Autoscaler for critical services

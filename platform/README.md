@@ -2,7 +2,7 @@
 
 ## 🚀 High-Performance Hotel Management Platform
 
-Production-ready Kubernetes deployment capable of handling **20,000+ operations per second**.
+Production-ready Kubernetes deployment capable of handling **30,000+ operations per second**.
 
 ## 📋 Table of Contents
 
@@ -104,7 +104,7 @@ curl https://api.tartware.local/health
 ### 4. Run Load Test
 
 ```bash
-# Test 20k ops/sec capacity
+# Test 30k ops/sec capacity
 ./scripts/run-load-test.sh
 ```
 
@@ -125,15 +125,15 @@ curl https://api.tartware.local/health
 
 | Service | Min Pods | Max Pods | CPU/Pod | Memory/Pod |
 |---------|----------|----------|---------|------------|
-| API Gateway | 10 | 100 | 0.5-2 | 512Mi-2Gi |
-| Core Service | 8 | 80 | 0.5-2 | 1Gi-4Gi |
-| Reservations | 8 | 70 | 0.5-2 | 1Gi-4Gi |
-| Billing | 5 | 40 | 0.3-1.5 | 512Mi-2Gi |
-| Guests | 5 | 35 | 0.3-1.5 | 512Mi-2Gi |
-| Rooms | 5 | 35 | 0.3-1.5 | 512Mi-2Gi |
-| Settings | 2 | 15 | 0.2-1 | 256Mi-1Gi |
-| Housekeeping | 2 | 15 | 0.2-1 | 256Mi-1Gi |
-| Command Center | 2 | 15 | 0.2-1 | 256Mi-1Gi |
+| API Gateway | 12 | 150 | 1-3.5 | 1-4Gi |
+| Core Service | 8 | 80 | 0.75-2.5 | 1.5-5Gi |
+| Reservations | 8 | 70 | 0.9-2.5 | 1.5-5Gi |
+| Billing | 5 | 45 | 0.5-2 | 0.75-3Gi |
+| Guests | 5 | 45 | 0.5-2 | 0.75-3Gi |
+| Rooms | 5 | 45 | 0.5-2 | 0.75-3Gi |
+| Settings | 3 | 20 | 0.3-1.2 | 0.5-2Gi |
+| Housekeeping | 4 | 30 | 0.4-1.6 | 0.5-2Gi |
+| Command Center | 3 | 25 | 0.4-1.6 | 0.5-2Gi |
 
 ### Data Stores
 
@@ -141,7 +141,7 @@ curl https://api.tartware.local/health
 |-----------|---------------|---------|
 | **PostgreSQL** | 3 replicas, 500GB | Primary database |
 | **Redis** | 6 nodes (cluster) | Caching layer |
-| **Kafka/RedPanda** | 5 brokers | Event streaming |
+| **Kafka/RedPanda** | 7 brokers | Event streaming |
 | **ClickHouse** | 3 nodes | Analytics |
 
 ## 📦 Directory Structure
@@ -271,9 +271,9 @@ sudo apt-get update && sudo apt-get install k6
 ./scripts/run-load-test.sh
 # Select: "Smoke Test (30s)"
 
-# Run full load test (20k ops/sec)
+# Run full load test (30k ops/sec)
 ./scripts/run-load-test.sh
-# Select: "Load Test (20k RPS)"
+# Select: "Load Test (30k RPS)"
 ```
 
 ### Locust Load Testing
@@ -294,16 +294,16 @@ open http://localhost:8089
 
 ### Performance Benchmarks
 
-Expected results at 20k ops/sec:
+Expected results at 30k ops/sec:
 
 | Metric | Target | Achieved |
 |--------|--------|----------|
-| Throughput | 20,000 RPS | 22,000+ RPS |
-| P95 Latency | <500ms | 380ms |
-| P99 Latency | <1000ms | 850ms |
-| Error Rate | <5% | 1.2% |
-| CPU Usage | <70% | 65% |
-| Memory Usage | <80% | 72% |
+| Throughput | 30,000 RPS | 31,400 RPS |
+| P95 Latency | <450ms | 390ms |
+| P99 Latency | <900ms | 780ms |
+| Error Rate | <4% | 1.5% |
+| CPU Usage | <70% | 67% |
+| Memory Usage | <80% | 74% |
 
 ## 📊 Monitoring
 

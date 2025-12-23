@@ -1,4 +1,4 @@
-import type { Consumer } from "kafkajs";
+import type { Consumer, EachBatchPayload, KafkaMessage } from "kafkajs";
 
 import { config } from "../config.js";
 import { kafka } from "../kafka/client.js";
@@ -49,39 +49,9 @@ export const startGuestsCommandCenterConsumer = async (): Promise<void> => {
   });
 
   await consumer.run({
-    eachMessage: async ({ message, topic, partition }) => {
-      if (!message.value) {
-        return;
-      }
-
-      let envelope: CommandEnvelope;
-      try {
-        envelope = JSON.parse(message.value.toString()) as CommandEnvelope;
-      } catch (error) {
-        consumerLogger.error(
-          { err: error, topic, partition },
-          "failed to parse command envelope",
-        );
-        return;
-      }
-
-      const metadata = envelope.metadata ?? {};
-      if (!shouldProcessCommand(metadata)) {
-        return;
-      }
-
-      try {
-        await routeCommand(envelope, metadata);
-      } catch (error) {
-        consumerLogger.error(
-          {
-            err: error,
-            metadata,
-          },
-          "failed to process command from command center",
-        );
-      }
-    },
+    autoCommit: false,
+    eachBatchAutoResolve: false,
+    eachBatch: handleBatch,
   });
 
   consumerLogger.info(
@@ -125,6 +95,77 @@ const shouldProcessCommand = (
     return false;
   }
   return metadata.commandName.length > 0 && metadata.tenantId.length > 0;
+};
+
+const handleBatch = async ({
+  batch,
+  resolveOffset,
+  heartbeat,
+  commitOffsetsIfNecessary,
+  isRunning,
+  isStale,
+}: EachBatchPayload): Promise<void> => {
+  if (!isRunning() || isStale()) {
+    return;
+  }
+
+  try {
+    for (const message of batch.messages) {
+      if (!isRunning() || isStale()) {
+        break;
+      }
+      await processMessage(message, batch.topic, batch.partition);
+      resolveOffset(message.offset);
+      await heartbeat();
+    }
+  } finally {
+    await commitOffsetsIfNecessary();
+  }
+};
+
+const processMessage = async (
+  message: KafkaMessage,
+  topic: string,
+  partition: number,
+): Promise<void> => {
+  if (!message.value) {
+    consumerLogger.warn(
+      { topic, partition, offset: message.offset },
+      "skipping Kafka message with empty value",
+    );
+    return;
+  }
+
+  let envelope: CommandEnvelope;
+  try {
+    envelope = JSON.parse(message.value.toString()) as CommandEnvelope;
+  } catch (error) {
+    consumerLogger.error(
+      { err: error, topic, partition, offset: message.offset },
+      "failed to parse command envelope",
+    );
+    return;
+  }
+
+  const metadata = envelope.metadata ?? {};
+  if (!shouldProcessCommand(metadata)) {
+    return;
+  }
+
+  try {
+    await routeCommand(envelope, metadata);
+  } catch (error) {
+    consumerLogger.error(
+      {
+        err: error,
+        metadata,
+        topic,
+        partition,
+        offset: message.offset,
+      },
+      "failed to process command from command center",
+    );
+  }
 };
 
 const routeCommand = async (

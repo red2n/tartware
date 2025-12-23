@@ -2,7 +2,7 @@
 
 ## Overview
 
-This guide covers deploying Tartware to a production Kubernetes cluster capable of handling **20,000 operations per second** using Rancher for cluster management.
+This guide covers deploying Tartware to a production Kubernetes cluster capable of handling **30,000 operations per second** using Rancher for cluster management.
 
 ## Architecture
 
@@ -23,17 +23,17 @@ This guide covers deploying Tartware to a production Kubernetes cluster capable 
 
 ### Resource Allocation
 
-For 20k ops/sec capacity:
+For 30k ops/sec capacity:
 
 | Service | Min Replicas | Max Replicas | CPU (per pod) | Memory (per pod) |
 |---------|--------------|--------------|---------------|------------------|
-| API Gateway | 10 | 100 | 500m-2000m | 512Mi-2Gi |
-| Core Service | 8 | 80 | 500m-2000m | 1Gi-4Gi |
-| Reservations | 8 | 70 | 500m-2000m | 1Gi-4Gi |
-| Billing Service | 5 | 40 | 300m-1500m | 512Mi-2Gi |
-| Guests Service | 5 | 35 | 300m-1500m | 512Mi-2Gi |
-| Rooms Service | 5 | 35 | 300m-1500m | 512Mi-2Gi |
-| Others | 2 | 15 | 200m-1000m | 256Mi-1Gi |
+| API Gateway | 12 | 150 | 1000m-3500m | 1Gi-4Gi |
+| Core Service | 8 | 80 | 750m-2500m | 1.5Gi-5Gi |
+| Reservations | 8 | 70 | 900m-2500m | 1.5Gi-5Gi |
+| Billing Service | 5 | 45 | 500m-2000m | 768Mi-3Gi |
+| Guests Service | 5 | 45 | 500m-2000m | 768Mi-3Gi |
+| Rooms Service | 5 | 45 | 500m-2000m | 768Mi-3Gi |
+| Others | 3 | 20 | 300m-1600m | 512Mi-2Gi |
 
 **Total Capacity (Max)**:
 - CPU: ~600 cores
@@ -299,9 +299,9 @@ curl https://api.tartware.local/health
 ### Running Load Tests
 
 ```bash
-# Start load test for 20k ops/sec
+# Start load test for 30k ops/sec
 ./scripts/run-load-test.sh
-# Select: "Load Test (20k RPS)"
+# Select: "Load Test (30k RPS)"
 
 # Monitor during test
 kubectl top pods -n tartware-system
@@ -326,12 +326,12 @@ open http://localhost:8089
 
 ### Expected Performance
 
-Target metrics for 20k ops/sec:
+Target metrics for 30k ops/sec:
 
-- **Throughput**: 20,000+ requests/second
-- **P95 Latency**: < 500ms
-- **P99 Latency**: < 1000ms
-- **Error Rate**: < 5%
+- **Throughput**: 30,000+ requests/second
+- **P95 Latency**: < 450ms
+- **P99 Latency**: < 900ms
+- **Error Rate**: < 4%
 - **CPU Utilization**: 60-70%
 - **Memory Utilization**: 70-80%
 

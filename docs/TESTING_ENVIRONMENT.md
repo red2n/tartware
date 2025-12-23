@@ -1,7 +1,7 @@
 # Tartware Testing Environment
 
 ## Overview
-This guide explains how to run the Tartware API load tests locally (Docker/k6/Locust) and in a Kubernetes cluster so you can validate the command pipeline at 20k+ ops/sec.
+This guide explains how to run the Tartware API load tests locally (Docker/k6/Locust) and in a Kubernetes cluster so you can validate the command pipeline at 30k+ ops/sec.
 
 ## Prerequisites
 - Docker / Docker Compose v2.21+
@@ -21,8 +21,8 @@ This guide explains how to run the Tartware API load tests locally (Docker/k6/Lo
 | `GUEST_IDS` | Existing guests referenced by reservations/billing events | `33333333-3333-3333-3333-333333333333` |
 | `HOUSEKEEPING_TASK_IDS` | Task IDs used for assign/complete commands | `44444444-4444-4444-4444-444444444444` |
 | `HOUSEKEEPING_STAFF_IDS` | Staff UUIDs assigned to housekeeping tasks | `55555555-5555-5555-5555-555555555555` |
-| `COMMAND_TARGET_RATE` | Desired command arrival rate per second | `20000` |
-| `READ_RATE` | Arrival rate for read-only proxy calls | `8000` |
+| `COMMAND_TARGET_RATE` | Desired command arrival rate per second | `30000` |
+| `READ_RATE` | Arrival rate for read-only proxy calls | `12000` |
 | `TEST_DURATION` | Duration for the steady-state stage | `20m` |
 
 > Populate the UUID lists with **real** values from your seed tenant so that downstream services accept the commands (billing/housekeeping enforce FK constraints).
@@ -111,14 +111,14 @@ The script queries tenants/properties/reservations/guests/housekeeping tasks, wr
 
 ## Monitoring & Success Criteria
 - Watch auto-scaling/resource pressure: `kubectl get hpa,pods -n tartware-system` and `kubectl top pods -A | grep tartware`.
-- Grafana dashboards (local compose or cluster observability) should track: `command_duration_ms` (p95 < 500 ms), `http_req_failed` (<5%), Kafka consumer lag, and outbox queue depth.
+- Grafana dashboards (local compose or cluster observability) should track: `command_duration_ms` (p95 < 450 ms), `http_req_failed` (<4%), Kafka consumer lag, and outbox queue depth.
 - k6 exits non-zero when the gateway returns anything other than `202 Accepted`, giving immediate feedback about auth/tenant configuration.
 
 ## Recommended Profiles
 | Profile | Command Settings | Expected Outcome |
 | --- | --- | --- |
 | Smoke | `COMMAND_TARGET_RATE=1000`, `READ_RATE=1000`, `TEST_DURATION=2m` | Validates wiring/auth |
-| Peak | `COMMAND_TARGET_RATE=20000`, `READ_RATE=8000`, `TEST_DURATION=20m` | Exercises scaling plan |
-| Endurance | `COMMAND_TARGET_RATE=10000`, `READ_RATE=5000`, `TEST_DURATION=4h` | Detects leaks & backlog growth |
+| Peak | `COMMAND_TARGET_RATE=30000`, `READ_RATE=12000`, `TEST_DURATION=20m` | Exercises scaling plan |
+| Endurance | `COMMAND_TARGET_RATE=15000`, `READ_RATE=6000`, `TEST_DURATION=4h` | Detects leaks & backlog growth |
 
 Reference this guide from `DEPLOYMENT_CHECKLIST.md` when providing evidence for the "Validate Command Center throughput" gate.
