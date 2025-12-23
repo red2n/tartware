@@ -112,6 +112,24 @@ Platform-wide standardization for resilient CRUD handling at 20+ ops/sec with au
 - _2025-12-20T00:15:00Z Update_: Added a reusable k6 scenario (`loadtest/k6/command-pipeline.js`) plus Docker Compose + Kubernetes manifests (`platform/kubernetes/loadtest`) so we can exercise the event-driven gateway at 30k ops/sec. Updated `docs/TESTING_ENVIRONMENT.md` with the new workflow and ensured Locust shares the same routes/env wiring.
 - _2025-12-20T00:45:00Z Update_: Extended the load-test harness so both k6 and Locust fire billing capture plus housekeeping assign/complete commands, passed the required ID lists through Compose/k8s env wiring, and updated `docs/TESTING_ENVIRONMENT.md` with guidance on sourcing the reservation/guest/task/staff UUIDs.
 
+### 0.P0 **Roll Service & Availability Guard Refactor (Priority: P0)**
+End-state goal: decouple scheduled settlement and real-time inventory locking from the hot reservation write path so audit trails stay accurate even when the command service is idle or under duress.
+
+#### Roll / Schedule Service
+- Consume reservation lifecycle `APPLIED`/`COMPLETED` signals and emit deterministic roll events (EOD, checkout, cancel) without waiting for foreground API traffic.
+- Own ledger-style tables (room balance snapshots, rate overrides, charge accruals) to support idempotent replays/backfills.
+- Provide replay tooling so finance can regenerate rolls from lifecycle history without redeploying the reservations service.
+
+#### Availability Guard / Inventory Service
+- Maintain the single source of truth for room and room-type locks with explicit TTLs, manual releases, and bulk maintenance actions (blackouts, OOO rooms).
+- Expose a gRPC/HTTP API for lock/unlock so reservations-service no longer manages availability inside transactional writes.
+- Consume reservation & room commands, apply lock deltas, and publish `inventory.locked` / `inventory.released` events for analytics and downstream consumers.
+
+#### Integration & Migration Notes
+- API Gateway continues to emit the existing reservation/room commands; new services subscribe via Kafka to stay in sync.
+- Reservations-service becomes a client of the availability guard (lock before commit, release on cancel/fail) and emits lifecycle checkpoints the roll service consumes.
+- Migration plan: stand up services in shadow mode (read lifecycle + emit metrics), backfill historical lifecycle data into the roll service, then cut over the lock path to the guard once parity dashboards are green.
+
 ### 1. **Super Admin / Global Administrator Implementation (Priority: HIGH)**
 Industry-standard privileged access management for multi-tenant PMS platform following OWASP Authorization best practices.
 
