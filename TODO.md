@@ -11,12 +11,12 @@ Platform-wide standardization for resilient CRUD handling at 20+ ops/sec with au
 - Outbox processor batches unsent rows, publishes to Kafka, and marks rows delivered; failures stay in-table for retry with exponential backoff metadata. Deploy processor as a stateless pod/job suitable for both full K8s and lightweight K3s clusters.
 
 ##### 0.1.a **Implementation Tasks**
-- Extend reservation command routes to wrap DB writes + outbox insert within one transaction, including lifecycle metadata (state = `PERSISTED`, correlation ID, partition key).
 - Build an outbox dispatcher worker (Node process + Fastify health endpoint) that:
   - Locks `PENDING/FAILED` rows in priority order, stamps `IN_PROGRESS`, publishes to Kafka, updates status (`DELIVERED` or `FAILED`) with retry metadata.
   - Respects per-tenant throttling + jitter to avoid flooding Kafka partitions.
 - Provide Helm/Kustomize manifests + K3s-compatible CronJob/Deployment spec with probes + metrics (outbox queue depth, publish latency).
 - Add CLI/script to manually requeue `FAILED/DLQ` rows after remediation with audit logging.
+- _2025-12-23 Update_: Added `npm run requeue:outbox` (backed by `scripts/requeue-outbox.ts`) so ops can requeue filtered outbox rows with audit metadata (`requeuedAt`/`requeuedBy`) after remediation.
 
 #### 0.2 **Consumer Hardening**
 - Reservations command service switches to manual commit with KafkaJS `eachBatch`, wrapping handler execution in a retry policy (3 quick retries with jittered backoff, then DLQ).
@@ -55,6 +55,8 @@ Platform-wide standardization for resilient CRUD handling at 20+ ops/sec with au
 - Introduce automated flow auditors that scan for stalled states (e.g., stuck in `PERSISTED` > 2 min) and trigger retries or alerting.
 - Expose lifecycle inspection APIs (`GET /v1/reservations/:id/lifecycle`) leveraging the guard data so support can resume workflows from the last safe checkpoint.
 - _2025-12-15 Update_: Documented lifecycle checkpoints + guard-rail expectations in code comments/TODO; next milestone is wiring guard metadata into reservation write path once transactional outbox + offset ledger stabilize.
+- _2025-12-23 Update_: Added `/v1/reservations/:reservationId/lifecycle` (tenant-scoped) that surfaces the `reservation_command_lifecycle` rows so support can trace command states end-to-end. Next steps: layer alerting/auditing on top of the guard data.
+- _2025-12-23 Update_: Reservation command service now records `RECEIVED`/`PERSISTED` states alongside the transactional outbox write, dispatcher flushes update `IN_PROGRESS`/`PUBLISHED`/`FAILED`/`DLQ`, and the Kafka consumer stamps `CONSUMED`/`APPLIED` to close the loop. Lifecycle inspection APIs are live; next steps focus on building stalled-command detectors plus alerting/SLIs that watch the guard data.
 
 #### 0.7 **Rate Plan Fallback System**
 - Enforce deterministic BAR/RACK seed data via setup scripts so every property has a known-good rate plan for emergency pricing (BAR = best available, RACK = published rack).

@@ -9,6 +9,10 @@ import {
   setOutboxQueueSize,
 } from "../lib/metrics.js";
 import { reservationsLogger } from "../logger.js";
+import {
+  type ReservationCommandLifecycleState,
+  updateLifecycleState,
+} from "../repositories/lifecycle-repository.js";
 
 import {
   claimOutboxBatch,
@@ -94,6 +98,11 @@ const processOutboxBatch = async (): Promise<void> => {
 const handleOutboxRecord = async (record: OutboxRecord): Promise<void> => {
   const startedAt = performance.now();
 
+  await updateLifecycleStateSafe(record.eventId, "IN_PROGRESS", {
+    workerId: outboxConfig.workerId,
+    aggregateId: record.aggregateId,
+  });
+
   try {
     await publishEvent({
       key: record.partitionKey ?? record.aggregateId,
@@ -101,6 +110,10 @@ const handleOutboxRecord = async (record: OutboxRecord): Promise<void> => {
       headers: normalizeHeaders(record.headers),
     });
     await markOutboxDelivered(record.id);
+    await updateLifecycleStateSafe(record.eventId, "PUBLISHED", {
+      topic: kafkaConfig.topic,
+      partitionKey: record.partitionKey ?? record.aggregateId,
+    });
     observeOutboxPublishDuration(secondsSince(startedAt));
   } catch (error) {
     const status = await markOutboxFailed(
@@ -108,6 +121,17 @@ const handleOutboxRecord = async (record: OutboxRecord): Promise<void> => {
       error,
       outboxConfig.retryBackoffMs,
       outboxConfig.maxRetries,
+    );
+    await updateLifecycleStateSafe(
+      record.eventId,
+      status === "DLQ" ? "DLQ" : "FAILED",
+      {
+        error:
+          error instanceof Error
+            ? { name: error.name, message: error.message }
+            : String(error),
+        workerId: outboxConfig.workerId,
+      },
     );
     observeOutboxPublishDuration(secondsSince(startedAt));
     reservationsLogger.error(
@@ -154,4 +178,23 @@ const normalizeHeaders = (
 
 const secondsSince = (startedAt: number): number => {
   return (performance.now() - startedAt) / 1000;
+};
+
+const updateLifecycleStateSafe = async (
+  eventId: string,
+  state: ReservationCommandLifecycleState,
+  details: Record<string, unknown>,
+): Promise<void> => {
+  try {
+    await updateLifecycleState({
+      eventId,
+      state,
+      details,
+    });
+  } catch (error) {
+    reservationsLogger.warn(
+      { err: error, eventId, state },
+      "Failed to update lifecycle state",
+    );
+  }
 };

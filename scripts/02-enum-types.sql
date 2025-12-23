@@ -81,6 +81,18 @@ CREATE TYPE command_dispatch_status AS ENUM (
     'DLQ'            -- Routed to DLQ after exhausting retries
 );
 
+-- Reservation Command Lifecycle State
+CREATE TYPE reservation_command_lifecycle_state AS ENUM (
+    'RECEIVED',      -- Command accepted at ingress
+    'PERSISTED',     -- Transactional outbox row created
+    'IN_PROGRESS',   -- Dispatcher locked row for publishing
+    'PUBLISHED',     -- Successfully published to Kafka
+    'CONSUMED',      -- Downstream consumer acknowledged receipt
+    'APPLIED',       -- Domain mutation applied
+    'FAILED',        -- Failed during dispatch/processing
+    'DLQ'            -- Routed to dead-letter queue
+);
+
 -- =====================================================
 -- PROPERTY & ROOM ENUMS
 -- =====================================================

@@ -115,11 +115,18 @@ if [ "$DEPLOY_MODE" == "docker" ]; then
 
     # Start containers
     echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-    echo "  Starting Docker containers..."
+    echo "  Starting all Docker containers:"
+    echo "    • PostgreSQL (database)"
+    echo "    • Redis (cache)"
+    echo "    • Kafka + Zookeeper (message queue)"
+    echo "    • Redpanda (Kafka-compatible streaming)"
+    echo "    • Kafka UI (management interface)"
+    echo "    • OpenSearch (search and analytics)"
+    echo "    • OpenTelemetry Collector (observability)"
     echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
     $DOCKER_COMPOSE_CMD up -d
     echo ""
-    echo -e "${GREEN}✓ Containers started${NC}"
+    echo -e "${GREEN}✓ All containers started${NC}"
     echo ""
 
     # Wait for PostgreSQL
@@ -453,7 +460,16 @@ if ! pg_isready -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" &> /dev/null; then
         fi
 
         # Start all Docker containers (will pull images if needed)
-        echo "Starting Docker services (this may take a moment if images need to be pulled)..."
+        echo "Starting all Docker services:"
+        echo "  - PostgreSQL (database)"
+        echo "  - Redis (cache)"
+        echo "  - Kafka + Zookeeper (message queue)"
+        echo "  - Redpanda (Kafka-compatible streaming)"
+        echo "  - Kafka UI (management interface)"
+        echo "  - OpenSearch (search and analytics)"
+        echo "  - OpenTelemetry Collector (observability)"
+        echo ""
+        echo "This may take a moment if images need to be pulled..."
         $DOCKER_COMPOSE_CMD up -d 2>&1 | grep -v "^WARN"
 
         # Wait for PostgreSQL to be ready

@@ -11,7 +11,9 @@ import {
 import { v4 as uuid } from "uuid";
 
 import { serviceConfig } from "../config.js";
-import { enqueueOutboxRecord } from "../outbox/repository.js";
+import { withTransaction } from "../lib/db.js";
+import { enqueueOutboxRecordWithClient } from "../outbox/repository.js";
+import { recordLifecyclePersisted } from "../repositories/lifecycle-repository.js";
 import type {
   ReservationCancelCommand,
   ReservationCreateCommand,
@@ -62,25 +64,44 @@ export const createReservation = async (
   const aggregateId = validatedEvent.payload.id ?? eventId;
   const partitionKey = validatedEvent.payload.guest_id ?? tenantId;
 
-  await enqueueOutboxRecord({
-    eventId,
-    tenantId,
-    aggregateId,
-    aggregateType: "reservation",
-    eventType: validatedEvent.metadata.type,
-    payload: validatedEvent,
-    headers: {
-      tenantId,
+  await withTransaction(async (client) => {
+    await recordLifecyclePersisted(client, {
       eventId,
-      ...(options.correlationId
-        ? { correlationId: options.correlationId }
-        : {}),
-    },
-    correlationId: options.correlationId,
-    partitionKey,
-    metadata: {
-      source: serviceConfig.serviceId,
-    },
+      tenantId,
+      reservationId: aggregateId,
+      commandName: "reservation.create",
+      correlationId: options.correlationId,
+      partitionKey,
+      details: {
+        tenantId,
+        reservationId: aggregateId,
+        command: "reservation.create",
+      },
+      metadata: {
+        eventType: validatedEvent.metadata.type,
+      },
+    });
+
+    await enqueueOutboxRecordWithClient(client, {
+      eventId,
+      tenantId,
+      aggregateId,
+      aggregateType: "reservation",
+      eventType: validatedEvent.metadata.type,
+      payload: validatedEvent,
+      headers: {
+        tenantId,
+        eventId,
+        ...(options.correlationId
+          ? { correlationId: options.correlationId }
+          : {}),
+      },
+      correlationId: options.correlationId,
+      partitionKey,
+      metadata: {
+        source: serviceConfig.serviceId,
+      },
+    });
   });
 
   return {
@@ -111,25 +132,44 @@ export const modifyReservation = async (
   };
 
   const validatedEvent = ReservationUpdatedEventSchema.parse(payload);
-  await enqueueOutboxRecord({
-    eventId,
-    tenantId,
-    aggregateId: command.reservation_id,
-    aggregateType: "reservation",
-    eventType: validatedEvent.metadata.type,
-    payload: validatedEvent,
-    headers: {
-      tenantId,
+  await withTransaction(async (client) => {
+    await recordLifecyclePersisted(client, {
       eventId,
-      ...(options.correlationId
-        ? { correlationId: options.correlationId }
-        : {}),
-    },
-    correlationId: options.correlationId,
-    partitionKey: command.reservation_id,
-    metadata: {
-      source: serviceConfig.serviceId,
-    },
+      tenantId,
+      reservationId: command.reservation_id,
+      commandName: "reservation.modify",
+      correlationId: options.correlationId,
+      partitionKey: command.reservation_id,
+      details: {
+        tenantId,
+        reservationId: command.reservation_id,
+        command: "reservation.modify",
+      },
+      metadata: {
+        eventType: validatedEvent.metadata.type,
+      },
+    });
+
+    await enqueueOutboxRecordWithClient(client, {
+      eventId,
+      tenantId,
+      aggregateId: command.reservation_id,
+      aggregateType: "reservation",
+      eventType: validatedEvent.metadata.type,
+      payload: validatedEvent,
+      headers: {
+        tenantId,
+        eventId,
+        ...(options.correlationId
+          ? { correlationId: options.correlationId }
+          : {}),
+      },
+      correlationId: options.correlationId,
+      partitionKey: command.reservation_id,
+      metadata: {
+        source: serviceConfig.serviceId,
+      },
+    });
   });
 
   return {
@@ -165,26 +205,46 @@ export const cancelReservation = async (
   };
 
   const validatedEvent = ReservationCancelledEventSchema.parse(payload);
-  await enqueueOutboxRecord({
-    eventId,
-    tenantId,
-    aggregateId: command.reservation_id,
-    aggregateType: "reservation",
-    eventType: validatedEvent.metadata.type,
-    payload: validatedEvent,
-    headers: {
-      tenantId,
+  await withTransaction(async (client) => {
+    await recordLifecyclePersisted(client, {
       eventId,
-      ...(options.correlationId
-        ? { correlationId: options.correlationId }
-        : {}),
-    },
-    correlationId: options.correlationId,
-    partitionKey: command.reservation_id,
-    metadata: {
-      source: serviceConfig.serviceId,
-      action: "cancel",
-    },
+      tenantId,
+      reservationId: command.reservation_id,
+      commandName: "reservation.cancel",
+      correlationId: options.correlationId,
+      partitionKey: command.reservation_id,
+      details: {
+        tenantId,
+        reservationId: command.reservation_id,
+        command: "reservation.cancel",
+      },
+      metadata: {
+        eventType: validatedEvent.metadata.type,
+        action: "cancel",
+      },
+    });
+
+    await enqueueOutboxRecordWithClient(client, {
+      eventId,
+      tenantId,
+      aggregateId: command.reservation_id,
+      aggregateType: "reservation",
+      eventType: validatedEvent.metadata.type,
+      payload: validatedEvent,
+      headers: {
+        tenantId,
+        eventId,
+        ...(options.correlationId
+          ? { correlationId: options.correlationId }
+          : {}),
+      },
+      correlationId: options.correlationId,
+      partitionKey: command.reservation_id,
+      metadata: {
+        source: serviceConfig.serviceId,
+        action: "cancel",
+      },
+    });
   });
 
   return {

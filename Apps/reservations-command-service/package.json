@@ -17,7 +17,8 @@
     "biome:fix": "biome format src --write",
     "knip": "knip --tsConfig tsconfig.json",
     "knip:fix": "knip --tsConfig tsconfig.json --fix",
-    "clean": "rm -rf dist coverage vitest-report *.tsbuildinfo"
+    "clean": "rm -rf dist coverage vitest-report *.tsbuildinfo",
+    "requeue:outbox": "tsx scripts/requeue-outbox.ts"
   },
   "dependencies": {
     "@fastify/helmet": "^13.0.2",
@@ -35,7 +36,8 @@
     "kafkajs": "^2.2.4",
     "pg": "^8.11.3",
     "prom-client": "^15.1.3",
-    "uuid": "^9.0.1"
+    "uuid": "^9.0.1",
+    "zod": "^3.23.8"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.2.5",

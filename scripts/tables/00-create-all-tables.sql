@@ -68,6 +68,7 @@
 \ir 03-bookings/51_reservation_traces.sql
 \ir 03-bookings/52_waitlist_entries.sql
 \ir 03-bookings/53_reservation_event_offsets.sql
+\ir 03-bookings/54_reservation_command_lifecycle.sql
 
 -- ============================================================================
 -- CATEGORY 4: FINANCIAL (Payments, invoices, folios, accounting)

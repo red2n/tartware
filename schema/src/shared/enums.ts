@@ -114,6 +114,24 @@ export type CommandDispatchStatus = z.infer<
 	typeof CommandDispatchStatusEnum
 >;
 
+/**
+ * Reservation Command Lifecycle State
+ * @database reservation_command_lifecycle_state
+ */
+export const ReservationCommandLifecycleStateEnum = z.enum([
+	"RECEIVED",
+	"PERSISTED",
+	"IN_PROGRESS",
+	"PUBLISHED",
+	"CONSUMED",
+	"APPLIED",
+	"FAILED",
+	"DLQ",
+]);
+export type ReservationCommandLifecycleState = z.infer<
+	typeof ReservationCommandLifecycleStateEnum
+>;
+
 // =====================================================
 // PROPERTY & ROOM ENUMS
 // =====================================================

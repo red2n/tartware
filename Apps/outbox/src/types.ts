@@ -49,6 +49,10 @@ export type OutboxStatus =
 
 export type OutboxRepository = {
 	enqueueOutboxRecord: (input: EnqueueOutboxRecordInput) => Promise<void>;
+	enqueueOutboxRecordWithClient: (
+		client: PoolClient,
+		input: EnqueueOutboxRecordInput,
+	) => Promise<void>;
 	countPendingOutboxRows: () => Promise<number>;
 	releaseExpiredLocks: (lockTimeoutMs: number) => Promise<number>;
 	claimOutboxBatch: (
