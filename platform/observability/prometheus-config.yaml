@@ -1,4 +1,4 @@
-# Prometheus Custom Metrics and Alerting Rules for 20k ops/sec monitoring
+# Prometheus Custom Metrics and Alerting Rules for 30k ops/sec monitoring
 
 apiVersion: v1
 kind: ConfigMap

@@ -39,24 +39,24 @@ export const options = {
 	scenarios: {
 		command_pipeline: {
 			executor: "ramping-arrival-rate",
-			startRate: Number(__ENV.COMMAND_START_RATE ?? 500),
+			startRate: Number(__ENV.COMMAND_START_RATE ?? 1000),
 			timeUnit: "1s",
 			stages: [
-				{ target: Number(__ENV.COMMAND_TARGET_RATE ?? 5000), duration: "3m" },
-				{ target: Number(__ENV.COMMAND_TARGET_RATE ?? 5000), duration: TEST_DURATION },
+				{ target: Number(__ENV.COMMAND_TARGET_RATE ?? 30000), duration: "3m" },
+				{ target: Number(__ENV.COMMAND_TARGET_RATE ?? 30000), duration: TEST_DURATION },
 				{ target: 0, duration: "2m" },
 			],
-			preAllocatedVUs: Number(__ENV.COMMAND_PREALLOCATED_VUS ?? 500),
-			maxVUs: Number(__ENV.COMMAND_MAX_VUS ?? 5000),
+			preAllocatedVUs: Number(__ENV.COMMAND_PREALLOCATED_VUS ?? 2000),
+			maxVUs: Number(__ENV.COMMAND_MAX_VUS ?? 8000),
 			exec: "driveCommands",
 		},
 		read_proxies: {
 			executor: "constant-arrival-rate",
-			rate: Number(__ENV.READ_RATE ?? 5000),
+			rate: Number(__ENV.READ_RATE ?? 12000),
 			timeUnit: "1s",
 			duration: TEST_DURATION,
-			preAllocatedVUs: Number(__ENV.READ_PREALLOCATED_VUS ?? 300),
-			maxVUs: Number(__ENV.READ_MAX_VUS ?? 1500),
+			preAllocatedVUs: Number(__ENV.READ_PREALLOCATED_VUS ?? 600),
+			maxVUs: Number(__ENV.READ_MAX_VUS ?? 2400),
 			exec: "driveReads",
 		},
 		health_probes: {

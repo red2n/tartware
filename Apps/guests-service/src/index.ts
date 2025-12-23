@@ -1,5 +1,10 @@
 import process from "node:process";
 
+import {
+  ensureDependencies,
+  parseHostPort,
+  resolveOtelDependency,
+} from "@tartware/config";
 import { initTelemetry } from "@tartware/telemetry";
 
 import {
@@ -27,10 +32,37 @@ const telemetry = await initTelemetry({
 });
 
 const app = buildServer();
+const proc = process;
 const kafkaEnabled = process.env.DISABLE_KAFKA !== "true";
 
 const start = async () => {
   try {
+    const kafkaBroker = config.kafka.brokers[0];
+    const telemetryDependency = resolveOtelDependency(true);
+    const dependenciesOk = await ensureDependencies(
+      [
+        { name: "PostgreSQL", host: config.db.host, port: config.db.port },
+        ...(kafkaEnabled && kafkaBroker
+          ? [{ name: "Kafka broker", ...parseHostPort(kafkaBroker, 9092) }]
+          : []),
+        ...(telemetryDependency ? [telemetryDependency] : []),
+      ],
+      { logger: app.log },
+    );
+    if (!dependenciesOk) {
+      app.log.warn("Dependencies missing; exiting without starting service");
+      await telemetry
+        ?.shutdown()
+        .catch((shutdownError: unknown) =>
+          app.log.error(shutdownError, "Failed to shutdown telemetry"),
+        );
+      if (proc) {
+        proc.exit(0);
+      } else {
+        return;
+      }
+    }
+
     if (kafkaEnabled) {
       await startGuestsCommandCenterConsumer();
     } else {
@@ -53,7 +85,7 @@ const start = async () => {
       .catch((shutdownError: unknown) =>
         app.log.error(shutdownError, "failed to shutdown telemetry"),
       );
-    process.exit(1);
+    proc?.exit(1);
   }
 };
 
@@ -69,10 +101,10 @@ const shutdown = async (signal: NodeJS.Signals) => {
       .catch((shutdownError: unknown) =>
         app.log.error(shutdownError, "failed to shutdown telemetry"),
       );
-    process.exit(0);
+    proc?.exit(0);
   } catch (error) {
     app.log.error(error, "error during shutdown");
-    process.exit(1);
+    proc?.exit(1);
   }
 };
 

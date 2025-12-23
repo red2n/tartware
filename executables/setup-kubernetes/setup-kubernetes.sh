@@ -1,6 +1,6 @@
 #!/bin/bash
 # Tartware Kubernetes Infrastructure Setup Script
-# This script sets up the complete infrastructure for 20k ops/sec deployment
+# This script sets up the complete infrastructure for 30k ops/sec deployment
 
 set -euo pipefail
 

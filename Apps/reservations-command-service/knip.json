@@ -4,6 +4,7 @@
   "project": ["src/**/*.ts"],
   "ignoreDependencies": [
     "@biomejs/biome",
+    "@tartware/config",
     "@tartware/schemas",
     "@tartware/telemetry",
     "@tartware/openapi",

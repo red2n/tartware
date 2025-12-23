@@ -45,7 +45,7 @@
 - [ ] Vault tokens/keys if using Vault
 
 ### Resource Planning
-- [ ] Calculated expected load (current: 20k ops/sec)
+- [ ] Calculated expected load (current: 30k ops/sec)
 - [ ] Reviewed resource allocations in `values.yaml`
 - [ ] Adjusted HPA min/max replicas if needed
 - [ ] Reviewed node pool sizes
@@ -125,7 +125,7 @@
 ### Testing & Validation
 - [ ] Run baseline performance test
 - [ ] Run load test at 10k ops/sec
-- [ ] Run load test at 20k ops/sec
+- [ ] Run load test at 30k ops/sec
 - [ ] Run stress test to find limits
 - [ ] Verify auto-scaling works
 - [ ] Test failure scenarios
@@ -228,10 +228,10 @@
 ## 📊 Success Criteria
 
 ### Performance Targets
-- ✓ Throughput: 20,000+ RPS sustained
-- ✓ P95 Latency: <500ms
-- ✓ P99 Latency: <1000ms
-- ✓ Error Rate: <5%
+- ✓ Throughput: 30,000+ RPS sustained
+- ✓ P95 Latency: <450ms
+- ✓ P99 Latency: <900ms
+- ✓ Error Rate: <4%
 - ✓ Availability: 99.9%
 
 ### Operational Targets

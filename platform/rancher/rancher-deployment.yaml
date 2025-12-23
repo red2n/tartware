@@ -1,4 +1,4 @@
-Next up: I can help add any missing explicit read proxies or start wiring the 20k ops/sec load test when you’re ready.# Rancher Management Server Deployment
+Next up: I can help add any missing explicit read proxies or start wiring the 30k ops/sec load test when you’re ready.# Rancher Management Server Deployment
 ---
 apiVersion: v1
 kind: Namespace

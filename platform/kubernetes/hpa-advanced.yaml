@@ -1,4 +1,4 @@
-# Advanced HPA with custom metrics for handling 20k ops/sec
+# Advanced HPA with custom metrics for handling 30k ops/sec
 # These HPAs use both resource metrics and custom application metrics
 
 ---
@@ -13,8 +13,8 @@ spec:
     apiVersion: apps/v1
     kind: Deployment
     name: api-gateway
-  minReplicas: 10
-  maxReplicas: 100
+  minReplicas: 12
+  maxReplicas: 150
   metrics:
     # CPU-based scaling
     - type: Resource
@@ -37,7 +37,7 @@ spec:
           name: http_requests_per_second
         target:
           type: AverageValue
-          averageValue: "200"
+          averageValue: "300"
     # Custom metric: response time
     - type: Pods
       pods:
@@ -45,7 +45,7 @@ spec:
           name: http_request_duration_p95
         target:
           type: AverageValue
-          averageValue: "500m"  # 500ms
+          averageValue: "450m"  # 450ms
   behavior:
     scaleUp:
       stabilizationWindowSeconds: 30
@@ -54,7 +54,7 @@ spec:
           value: 100
           periodSeconds: 15
         - type: Pods
-          value: 10
+          value: 15
           periodSeconds: 15
       selectPolicy: Max
     scaleDown:
@@ -185,7 +185,7 @@ spec:
     kind: Deployment
     name: billing-service
   minReplicas: 5
-  maxReplicas: 40
+  maxReplicas: 45
   metrics:
     - type: Resource
       resource:
@@ -227,7 +227,7 @@ spec:
     kind: Deployment
     name: guests-service
   minReplicas: 5
-  maxReplicas: 35
+  maxReplicas: 45
   metrics:
     - type: Resource
       resource:
@@ -268,7 +268,7 @@ spec:
     kind: Deployment
     name: rooms-service
   minReplicas: 5
-  maxReplicas: 35
+  maxReplicas: 45
   metrics:
     - type: Resource
       resource:

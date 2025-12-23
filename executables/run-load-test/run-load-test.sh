@@ -1,6 +1,6 @@
 #!/bin/bash
 # Tartware Load Testing Script
-# Tests system capacity up to 20k ops/sec
+# Tests system capacity up to 30k ops/sec
 
 set -euo pipefail
 
@@ -13,8 +13,8 @@ NC='\033[0m'
 # Configuration
 API_BASE_URL="${API_BASE_URL:-https://api.tartware.local}"
 DURATION="${DURATION:-5m}"
-MAX_VUS="${MAX_VUS:-5000}"
-TARGET_RPS="${TARGET_RPS:-20000}"
+MAX_VUS="${MAX_VUS:-8000}"
+TARGET_RPS="${TARGET_RPS:-30000}"
 
 log_info() {
     echo -e "${GREEN}[INFO]${NC} $1"
@@ -54,15 +54,15 @@ const requestCount = new Counter('requests');
 export const options = {
     stages: [
         // Ramp up
-        { duration: '2m', target: 1000 },   // Ramp to 1k VUs
-        { duration: '2m', target: 2500 },   // Ramp to 2.5k VUs
-        { duration: '2m', target: 5000 },   // Ramp to 5k VUs (20k RPS)
+        { duration: '2m', target: 1500 },   // Ramp to 1.5k VUs
+        { duration: '2m', target: 4000 },   // Ramp to 4k VUs
+        { duration: '2m', target: 8000 },   // Ramp to 8k VUs (30k RPS)
 
         // Sustained load
-        { duration: '10m', target: 5000 },  // Maintain 5k VUs
+        { duration: '12m', target: 8000 },  // Maintain 8k VUs
 
         // Ramp down
-        { duration: '2m', target: 1000 },
+        { duration: '2m', target: 1500 },
         { duration: '1m', target: 0 },
     ],
     thresholds: {
@@ -277,7 +277,7 @@ main() {
     PS3="Select test type: "
     options=(
         "Smoke Test (30s)"
-        "Load Test (20k RPS)"
+        "Load Test (30k RPS)"
         "Stress Test (Max capacity)"
         "Monitor Cluster"
         "Analyze Results"
@@ -290,7 +290,7 @@ main() {
                 run_smoke_test
                 analyze_results
                 ;;
-            "Load Test (20k RPS)")
+            "Load Test (30k RPS)")
                 run_load_test
                 analyze_results
                 ;;

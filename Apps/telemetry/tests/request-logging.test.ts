@@ -1,4 +1,5 @@
-import { describe, expect, it, vi } from "vitest";
+import { describe, it } from "node:test";
+import assert from "node:assert/strict";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 
 import {
@@ -6,6 +7,17 @@ import {
 	withRequestLogging,
 	DEFAULT_LOG_REDACT_CENSOR,
 } from "../src/index.js";
+
+type MockFn = ((...args: unknown[]) => void) & { calls: unknown[][] };
+
+const createMockFn = (): MockFn => {
+	const calls: unknown[][] = [];
+	const fn = ((...args: unknown[]) => {
+		calls.push(args);
+	}) as MockFn;
+	fn.calls = calls;
+	return fn;
+};
 
 describe("log sanitizer", () => {
 	it("redacts sensitive fields recursively", () => {
@@ -18,7 +30,7 @@ describe("log sanitizer", () => {
 			},
 		};
 
-		expect(sanitize(sample)).toEqual({
+		assert.deepStrictEqual(sanitize(sample), {
 			email: DEFAULT_LOG_REDACT_CENSOR,
 			nested: {
 				password: DEFAULT_LOG_REDACT_CENSOR,
@@ -59,10 +71,10 @@ describe("withRequestLogging", () => {
 
 		const onRequest = app.__hooks.onRequest?.[0];
 		const onResponse = app.__hooks.onResponse?.[0];
-		expect(onRequest).toBeTypeOf("function");
-		expect(onResponse).toBeTypeOf("function");
+		assert.strictEqual(typeof onRequest, "function");
+		assert.strictEqual(typeof onResponse, "function");
 
-		const requestLog = vi.fn();
+		const requestLog = createMockFn();
 		const request = {
 			id: "req-1",
 			method: "POST",
@@ -76,7 +88,7 @@ describe("withRequestLogging", () => {
 
 		await onRequest?.(request);
 
-		expect(requestLog).toHaveBeenCalledWith(
+		assert.deepStrictEqual(requestLog.calls[0], [
 			{
 				requestId: "req-1",
 				method: "POST",
@@ -87,9 +99,9 @@ describe("withRequestLogging", () => {
 				headers: { authorization: DEFAULT_LOG_REDACT_CENSOR },
 			},
 			"request received",
-		);
+		]);
 
-		const responseLog = vi.fn();
+		const responseLog = createMockFn();
 		request.log.info = responseLog;
 
 		const reply = {
@@ -99,18 +111,18 @@ describe("withRequestLogging", () => {
 			getHeaders: () => ({ "set-cookie": "session=abc" }),
 		} as unknown as FastifyReply;
 
-	await onResponse?.(request, reply);
+		await onResponse?.(request, reply);
 
-	expect(responseLog).toHaveBeenCalledWith(
-		{
-			requestId: "req-1",
-			method: "POST",
-			url: "/test",
-			statusCode: 200,
-			durationMs: 42,
-			responseHeaders: { "set-cookie": "session=abc" },
-		},
-		"request completed",
-	);
-});
+		assert.deepStrictEqual(responseLog.calls[0], [
+			{
+				requestId: "req-1",
+				method: "POST",
+				url: "/test",
+				statusCode: 200,
+				durationMs: 42,
+				responseHeaders: { "set-cookie": "session=abc" },
+			},
+			"request completed",
+		]);
+	});
 });

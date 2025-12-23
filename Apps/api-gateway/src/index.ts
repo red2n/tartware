@@ -1,12 +1,17 @@
 import process from "node:process";
 
+import {
+	ensureDependencies,
+	parseHostPort,
+	resolveOtelDependency,
+} from "@tartware/config";
 import { initTelemetry } from "@tartware/telemetry";
 
 import {
 	shutdownCommandRegistry,
 	startCommandRegistry,
 } from "./command-center/index.js";
-import { gatewayConfig } from "./config.js";
+import { dbConfig, gatewayConfig, kafkaConfig } from "./config.js";
 import { shutdownProducer, startProducer } from "./kafka/producer.js";
 import { buildServer } from "./server.js";
 
@@ -27,6 +32,34 @@ let isShuttingDown = false;
 
 const start = async () => {
 	try {
+		const kafkaBroker = kafkaConfig.brokers[0];
+		const telemetryDependency = resolveOtelDependency(true);
+		const dependenciesOk = await ensureDependencies(
+			[
+				{ name: "PostgreSQL", host: dbConfig.host, port: dbConfig.port },
+				...(kafkaBroker
+					? [{ name: "Kafka broker", ...parseHostPort(kafkaBroker, 9092) }]
+					: []),
+				...(telemetryDependency ? [telemetryDependency] : []),
+			],
+			{ logger: app.log },
+		);
+		if (!dependenciesOk) {
+			app.log.warn("Dependencies missing; exiting without starting service");
+			await telemetry
+				?.shutdown()
+				.catch((telemetryError: unknown) =>
+					app.log.error(
+						telemetryError,
+						"Failed to shutdown telemetry after dependency failure",
+					),
+				);
+			if (proc) {
+				proc.exit(0);
+			} else {
+				return;
+			}
+		}
 		await startCommandRegistry();
 		await startProducer();
 		await app.listen({ port: gatewayConfig.port, host: gatewayConfig.host });

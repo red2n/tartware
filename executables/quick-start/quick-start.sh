@@ -17,7 +17,7 @@ cat << "EOF"
   |_|\__,_|_|   \__| \_/\_/ \__,_|_|  \___|
                                             
   Kubernetes Deployment - Quick Start
-  Capacity: 20,000 ops/sec
+  Capacity: 30,000 ops/sec
 EOF
 echo -e "${NC}"
 
