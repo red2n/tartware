@@ -101,9 +101,7 @@ const shutdown = async (signal: string) => {
     await closeRedis();
     await telemetry
       ?.shutdown()
-      .catch((telemetryError) =>
-        app.log.error(telemetryError, "Failed to shutdown telemetry"),
-      );
+      .catch((telemetryError) => app.log.error(telemetryError, "Failed to shutdown telemetry"));
     await app.close();
     proc?.exit(0);
   } catch (error) {
