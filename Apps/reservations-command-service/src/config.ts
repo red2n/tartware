@@ -64,3 +64,11 @@ export const commandCenterConfig = {
   targetServiceId:
     env.COMMAND_CENTER_TARGET_SERVICE_ID ?? serviceConfig.serviceId,
 };
+
+export const availabilityGuardConfig = {
+  address: env.AVAILABILITY_GUARD_ADDRESS ?? "localhost:4400",
+  timeoutMs: Number(env.AVAILABILITY_GUARD_TIMEOUT_MS ?? 1500),
+  enabled: parseBoolean(env.AVAILABILITY_GUARD_ENABLED, true),
+  shadowMode: parseBoolean(env.AVAILABILITY_GUARD_SHADOW_MODE, true),
+  failOpen: parseBoolean(env.AVAILABILITY_GUARD_FAIL_OPEN, true),
+};

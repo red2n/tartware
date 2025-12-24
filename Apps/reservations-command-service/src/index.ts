@@ -1,5 +1,6 @@
 import { ensureDependencies, parseHostPort } from "@tartware/config";
 
+import { shutdownAvailabilityGuardClient } from "./clients/availability-guard-client.js";
 import {
   shutdownCommandCenterConsumer,
   startCommandCenterConsumer,
@@ -85,6 +86,7 @@ const shutdown = async () => {
       await shutdownOutboxDispatcher();
       await shutdownProducer();
     }
+    await shutdownAvailabilityGuardClient();
     await app.close();
   } catch (error) {
     app.log.error(error, "error during graceful shutdown");

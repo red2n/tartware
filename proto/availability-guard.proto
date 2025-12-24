@@ -1,0 +1,74 @@
+syntax = "proto3";
+
+package availabilityguard.v1;
+
+message InventoryLock {
+  string id = 1;
+  string tenant_id = 2;
+  string reservation_id = 3;
+  string room_type_id = 4;
+  string room_id = 5;
+  string stay_start = 6;
+  string stay_end = 7;
+  string expires_at = 8;
+  string status = 9;
+  string created_at = 10;
+  string updated_at = 11;
+}
+
+message LockRoomRequest {
+  string tenant_id = 1;
+  string reservation_id = 2;
+  string room_type_id = 3;
+  string room_id = 4;
+  string stay_start = 5;
+  string stay_end = 6;
+  string reason = 7;
+  string correlation_id = 8;
+  string idempotency_key = 9;
+  uint32 ttl_seconds = 10;
+  map<string, string> metadata = 11;
+}
+
+message LockRoomResponse {
+  enum Status {
+    STATUS_UNKNOWN = 0;
+    STATUS_LOCKED = 1;
+    STATUS_CONFLICT = 2;
+  }
+
+  Status status = 1;
+  InventoryLock lock = 2;
+  InventoryLock conflict = 3;
+}
+
+message ReleaseRoomRequest {
+  string tenant_id = 1;
+  string lock_id = 2;
+  string reservation_id = 3;
+  string reason = 4;
+  string correlation_id = 5;
+  map<string, string> metadata = 6;
+}
+
+message ReleaseRoomResponse {
+  bool released = 1;
+  InventoryLock lock = 2;
+}
+
+message BulkReleaseRequest {
+  string tenant_id = 1;
+  repeated string lock_ids = 2;
+  string reason = 3;
+  string correlation_id = 4;
+}
+
+message BulkReleaseResponse {
+  uint32 released = 1;
+}
+
+service AvailabilityGuard {
+  rpc LockRoom (LockRoomRequest) returns (LockRoomResponse);
+  rpc ReleaseRoom (ReleaseRoomRequest) returns (ReleaseRoomResponse);
+  rpc BulkRelease (BulkReleaseRequest) returns (BulkReleaseResponse);
+}

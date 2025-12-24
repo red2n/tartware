@@ -69,6 +69,11 @@
 \ir 03-bookings/52_waitlist_entries.sql
 \ir 03-bookings/53_reservation_event_offsets.sql
 \ir 03-bookings/54_reservation_command_lifecycle.sql
+-- Shadow observability (Roll Service parity + Availability Guard metadata)
+\echo '    - Shadow roll ledgers, checkpoints, and guard audit tables'
+\ir 03-bookings/90_roll_service_shadow_tables.sql
+\ir 03-bookings/91_inventory_lock_audits.sql
+\ir 03-bookings/92_reservation_guard_locks.sql
 
 -- ============================================================================
 -- CATEGORY 4: FINANCIAL (Payments, invoices, folios, accounting)

@@ -1,0 +1,123 @@
+import fastifyHelmet from "@fastify/helmet";
+import fastifySensible from "@fastify/sensible";
+import { buildRouteSchema, jsonObjectSchema } from "@tartware/openapi";
+import { withRequestLogging } from "@tartware/telemetry";
+import fastify from "fastify";
+
+import { config } from "./config.js";
+import { checkDatabaseHealth } from "./lib/health-checks.js";
+import { metricsRegistry } from "./lib/metrics.js";
+import { shutdownNotificationDispatcher } from "./lib/notification-dispatcher.js";
+import grpcServerPlugin from "./plugins/grpc-server.js";
+import swaggerPlugin from "./plugins/swagger.js";
+import { locksRoutes } from "./routes/locks.js";
+import {
+  shutdownManualReleaseNotificationConsumer,
+  startManualReleaseNotificationConsumer,
+} from "./workers/manual-release-notification-consumer.js";
+
+export const buildServer = () => {
+  const app = fastify({
+    logger: {
+      level: config.log.level ?? "info",
+    },
+  });
+
+  if (config.log.requestLogging) {
+    withRequestLogging(app, {
+      includeBody: false,
+      includeRequestHeaders: false,
+      includeResponseHeaders: false,
+    });
+  }
+
+  void app.register(fastifyHelmet, { global: true });
+  void app.register(fastifySensible);
+  void app.register(swaggerPlugin);
+  void app.register(grpcServerPlugin);
+  void app.register(locksRoutes);
+  app.addHook("onReady", async () => {
+    await startManualReleaseNotificationConsumer(app.log);
+  });
+  app.addHook("onClose", async () => {
+    await shutdownNotificationDispatcher();
+  });
+  app.addHook("onClose", async () => {
+    await shutdownManualReleaseNotificationConsumer(app.log);
+  });
+
+  app.after(() => {
+    app.get(
+      "/health",
+      {
+        schema: buildRouteSchema({
+          tag: "Health",
+          summary: "Basic health probe",
+          response: { 200: jsonObjectSchema },
+        }),
+      },
+      () => ({ status: "ok", service: config.service.name }),
+    );
+
+    app.get("/ready", () => ({
+      status: "ready",
+      service: config.service.name,
+    }));
+
+    app.get(
+      "/health/liveness",
+      {
+        schema: buildRouteSchema({
+          tag: "Health",
+          summary: "Liveness probe",
+          response: { 200: jsonObjectSchema },
+        }),
+      },
+      () => ({ status: "alive", service: config.service.name }),
+    );
+
+    app.get(
+      "/health/readiness",
+      {
+        schema: buildRouteSchema({
+          tag: "Health",
+          summary: "Readiness probe",
+          response: {
+            200: jsonObjectSchema,
+            503: jsonObjectSchema,
+          },
+        }),
+      },
+      async (_request, reply) => {
+        try {
+          await checkDatabaseHealth();
+          return { status: "ready", service: config.service.name };
+        } catch (error) {
+          app.log.error(error, "Readiness check failed");
+          void reply.code(503);
+          return { status: "unavailable", service: config.service.name };
+        }
+      },
+    );
+
+    app.get(
+      "/metrics",
+      {
+        schema: buildRouteSchema({
+          tag: "Metrics",
+          summary: "Prometheus metrics",
+          response: {
+            200: { type: "string" },
+          },
+        }),
+      },
+      async (_request, reply) => {
+        void reply.header("Content-Type", metricsRegistry.contentType);
+        const metrics = await metricsRegistry.metrics();
+        return metrics;
+      },
+    );
+  });
+
+  return app;
+};

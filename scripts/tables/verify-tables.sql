@@ -23,6 +23,7 @@
 -- Bookings and guest CRM
 \i tables/03-bookings/verify-03-reservations-booking.sql
 \i tables/03-bookings/verify-07-guest-crm.sql
+\i tables/03-bookings/verify-08-roll-guard-shadow.sql
 
 -- Financial management
 \i tables/04-financial/verify-04-financial-management.sql

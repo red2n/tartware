@@ -198,6 +198,9 @@ $RECYCLE.BIN/
 *.lnk
 
 # Linux
+
+# Tartware docs outputs
+docs/rolls/reports/*.json
 *~
 .directory
 .Trash-*
