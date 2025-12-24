@@ -10,10 +10,24 @@ import {
 } from "@tartware/schemas";
 import { v4 as uuid } from "uuid";
 
+import {
+  type AvailabilityGuardMetadata,
+  lockReservationHold,
+  releaseReservationHold,
+} from "../clients/availability-guard-client.js";
 import { serviceConfig } from "../config.js";
 import { withTransaction } from "../lib/db.js";
 import { enqueueOutboxRecordWithClient } from "../outbox/repository.js";
 import { recordLifecyclePersisted } from "../repositories/lifecycle-repository.js";
+import {
+  getReservationGuardMetadata,
+  type ReservationGuardMetadata as StoredGuardMetadata,
+  upsertReservationGuardMetadata,
+} from "../repositories/reservation-guard-metadata-repository.js";
+import {
+  fetchReservationStaySnapshot,
+  type ReservationStaySnapshot,
+} from "../repositories/reservation-repository.js";
 import type {
   ReservationCancelCommand,
   ReservationCreateCommand,
@@ -64,6 +78,20 @@ export const createReservation = async (
   const aggregateId = validatedEvent.payload.id ?? eventId;
   const partitionKey = validatedEvent.payload.guest_id ?? tenantId;
 
+  const availabilityGuard: AvailabilityGuardMetadata | undefined =
+    await lockReservationHold({
+      tenantId,
+      reservationId: aggregateId,
+      roomTypeId: command.room_type_id,
+      roomId: null,
+      stayStart: new Date(command.check_in_date),
+      stayEnd: new Date(command.check_out_date),
+      reason: "RESERVATION_CREATE",
+      correlationId: options.correlationId ?? eventId,
+    });
+
+  const guardMetadata = availabilityGuard ?? { status: "SKIPPED" };
+
   await withTransaction(async (client) => {
     await recordLifecyclePersisted(client, {
       eventId,
@@ -79,8 +107,22 @@ export const createReservation = async (
       },
       metadata: {
         eventType: validatedEvent.metadata.type,
+        availabilityGuard: guardMetadata,
       },
     });
+
+    if (guardMetadata.status === "LOCKED" && guardMetadata.lockId) {
+      await upsertReservationGuardMetadata(
+        {
+          tenantId,
+          reservationId: aggregateId,
+          lockId: guardMetadata.lockId,
+          status: guardMetadata.status,
+          metadata: guardMetadata,
+        },
+        client,
+      );
+    }
 
     await enqueueOutboxRecordWithClient(client, {
       eventId,
@@ -100,6 +142,7 @@ export const createReservation = async (
       partitionKey,
       metadata: {
         source: serviceConfig.serviceId,
+        availabilityGuard: guardMetadata,
       },
     });
   });
@@ -116,6 +159,14 @@ export const modifyReservation = async (
   command: ReservationModifyCommand,
   options: { correlationId?: string } = {},
 ): Promise<CreateReservationResult> => {
+  const snapshot: ReservationStaySnapshot | null =
+    await fetchReservationStaySnapshot(tenantId, command.reservation_id);
+  if (!snapshot) {
+    throw new Error(
+      `Reservation ${command.reservation_id} not found for tenant ${tenantId}`,
+    );
+  }
+
   const eventId = uuid();
   const updatePayload = buildReservationUpdatePayload(tenantId, command);
   const payload: ReservationUpdatedEvent = {
@@ -132,6 +183,23 @@ export const modifyReservation = async (
   };
 
   const validatedEvent = ReservationUpdatedEventSchema.parse(payload);
+  const stayChanged = hasStayCriticalChanges(command, snapshot);
+  const guardMetadata: AvailabilityGuardMetadata = stayChanged
+    ? await lockReservationHold({
+        tenantId,
+        reservationId: command.reservation_id,
+        roomTypeId: command.room_type_id ?? snapshot.roomTypeId,
+        roomId: null,
+        stayStart: new Date(command.check_in_date ?? snapshot.checkInDate),
+        stayEnd: new Date(command.check_out_date ?? snapshot.checkOutDate),
+        reason: "RESERVATION_MODIFY",
+        correlationId: options.correlationId ?? eventId,
+      })
+    : {
+        status: "SKIPPED",
+        message: "NO_STAY_CRITICAL_CHANGES",
+      };
+
   await withTransaction(async (client) => {
     await recordLifecyclePersisted(client, {
       eventId,
@@ -147,8 +215,22 @@ export const modifyReservation = async (
       },
       metadata: {
         eventType: validatedEvent.metadata.type,
+        availabilityGuard: guardMetadata,
       },
     });
+
+    if (guardMetadata.status === "LOCKED" && guardMetadata.lockId) {
+      await upsertReservationGuardMetadata(
+        {
+          tenantId,
+          reservationId: command.reservation_id,
+          lockId: guardMetadata.lockId,
+          status: guardMetadata.status,
+          metadata: guardMetadata,
+        },
+        client,
+      );
+    }
 
     await enqueueOutboxRecordWithClient(client, {
       eventId,
@@ -168,6 +250,7 @@ export const modifyReservation = async (
       partitionKey: command.reservation_id,
       metadata: {
         source: serviceConfig.serviceId,
+        availabilityGuard: guardMetadata,
       },
     });
   });
@@ -205,6 +288,19 @@ export const cancelReservation = async (
   };
 
   const validatedEvent = ReservationCancelledEventSchema.parse(payload);
+
+  const guardRecord: StoredGuardMetadata | null =
+    await getReservationGuardMetadata(tenantId, command.reservation_id);
+  const releaseLockId = guardRecord?.lockId ?? command.reservation_id;
+
+  await releaseReservationHold({
+    tenantId,
+    lockId: releaseLockId,
+    reservationId: command.reservation_id,
+    reason: command.reason ?? "RESERVATION_CANCEL",
+    correlationId: options.correlationId ?? eventId,
+  });
+
   await withTransaction(async (client) => {
     await recordLifecyclePersisted(client, {
       eventId,
@@ -221,8 +317,28 @@ export const cancelReservation = async (
       metadata: {
         eventType: validatedEvent.metadata.type,
         action: "cancel",
+        availabilityGuard: {
+          status: "RELEASE_REQUESTED",
+          lockId: releaseLockId,
+        },
       },
     });
+
+    if (guardRecord) {
+      await upsertReservationGuardMetadata(
+        {
+          tenantId,
+          reservationId: command.reservation_id,
+          lockId: guardRecord.lockId ?? releaseLockId,
+          status: "RELEASE_REQUESTED",
+          metadata: {
+            previousStatus: guardRecord.status,
+            reason: command.reason ?? "RESERVATION_CANCEL",
+          },
+        },
+        client,
+      );
+    }
 
     await enqueueOutboxRecordWithClient(client, {
       eventId,
@@ -243,6 +359,10 @@ export const cancelReservation = async (
       metadata: {
         source: serviceConfig.serviceId,
         action: "cancel",
+        availabilityGuard: {
+          status: "RELEASE_REQUESTED",
+          lockId: releaseLockId,
+        },
       },
     });
   });
@@ -294,4 +414,27 @@ const buildReservationUpdatePayload = (
     payload.internal_notes = command.notes;
   }
   return payload;
+};
+
+const hasStayCriticalChanges = (
+  command: ReservationModifyCommand,
+  snapshot: {
+    roomTypeId: string;
+    checkInDate: Date;
+    checkOutDate: Date;
+  },
+): boolean => {
+  const roomTypeChanged =
+    command.room_type_id !== undefined &&
+    command.room_type_id !== snapshot.roomTypeId;
+  const checkInChanged =
+    command.check_in_date !== undefined &&
+    new Date(command.check_in_date).getTime() !==
+      snapshot.checkInDate.getTime();
+  const checkOutChanged =
+    command.check_out_date !== undefined &&
+    new Date(command.check_out_date).getTime() !==
+      snapshot.checkOutDate.getTime();
+
+  return roomTypeChanged || checkInChanged || checkOutChanged;
 };

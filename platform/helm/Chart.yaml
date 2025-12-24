@@ -51,6 +51,18 @@ dependencies:
     repository: "file://./charts/command-center-service"
     condition: command-center-service.enabled
 
+  - name: service-template
+    version: 1.0.0
+    repository: "file://./charts/service-template"
+    alias: availability-guard-service
+    condition: availability-guard-service.enabled
+
+  - name: service-template
+    version: 1.0.0
+    repository: "file://./charts/service-template"
+    alias: roll-service
+    condition: roll-service.enabled
+
 maintainers:
   - name: Tartware Team
     email: devops@tartware.local

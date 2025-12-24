@@ -20,6 +20,9 @@ spec:
       labels:
         {{- include "service.selectorLabels" . | nindent 8 }}
         version: {{ .Chart.AppVersion | quote }}
+        {{- with .Values.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
     spec:
       {{- with .Values.imagePullSecrets }}
       imagePullSecrets:
@@ -40,6 +43,9 @@ spec:
               protocol: TCP
           env:
             {{- toYaml .Values.env | nindent 12 }}
+            {{- with .Values.extraEnv }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
           {{- with .Values.livenessProbe }}
           livenessProbe:
             {{- toYaml . | nindent 12 }}

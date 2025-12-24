@@ -1,0 +1,27 @@
+{
+  "extends": "../../schema/tsconfig.json",
+  "compilerOptions": {
+    "outDir": "dist",
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "composite": false,
+    "noEmit": false,
+    "resolveJsonModule": true,
+    "allowSyntheticDefaultImports": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "baseUrl": "./src",
+    "paths": {
+      "@tartware/schemas": ["../../../schema/src/index.ts"],
+      "@tartware/schemas/*": ["../../../schema/src/*"],
+      "@tartware/telemetry": ["../../telemetry/src/index.ts"],
+      "@tartware/telemetry/*": ["../../telemetry/src/*"],
+      "@tartware/config": ["../../config/src/index.ts"],
+      "@tartware/config/*": ["../../config/src/*"],
+      "@tartware/openapi": ["../../openapi-utils/src/index.ts"],
+      "@tartware/openapi/*": ["../../openapi-utils/src/*"]
+    }
+  },
+  "include": ["src/**/*", "proto/**/*.proto"],
+  "exclude": ["dist", "node_modules"]
+}

@@ -57,6 +57,21 @@ const outboxPublishDuration = new Histogram({
   registers: [metricsRegistry],
 });
 
+const availabilityGuardRequestCounter = new Counter({
+  name: "availability_guard_requests_total",
+  help: "Total Availability Guard client calls",
+  labelNames: ["method", "status"] as const,
+  registers: [metricsRegistry],
+});
+
+const availabilityGuardDurationHistogram = new Histogram({
+  name: "availability_guard_request_duration_seconds",
+  help: "Duration of Availability Guard gRPC requests",
+  labelNames: ["method"] as const,
+  buckets: [0.01, 0.05, 0.1, 0.25, 0.5, 1, 2, 5],
+  registers: [metricsRegistry],
+});
+
 /**
  * Records a retry attempt for observability dashboards.
  */
@@ -108,4 +123,18 @@ export const setOutboxQueueSize = (size: number): void => {
  */
 export const observeOutboxPublishDuration = (durationSeconds: number): void => {
   outboxPublishDuration.observe(durationSeconds);
+};
+
+export const recordAvailabilityGuardRequest = (
+  method: string,
+  status: string,
+): void => {
+  availabilityGuardRequestCounter.labels(method, status).inc();
+};
+
+export const observeAvailabilityGuardDuration = (
+  method: string,
+  durationSeconds: number,
+): void => {
+  availabilityGuardDurationHistogram.observe({ method }, durationSeconds);
 };

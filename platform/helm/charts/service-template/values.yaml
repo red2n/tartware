@@ -19,6 +19,8 @@ podAnnotations:
   prometheus.io/port: "3000"
   prometheus.io/path: "/metrics"
 
+podLabels: {}
+
 podSecurityContext:
   runAsNonRoot: true
   runAsUser: 1000
@@ -157,6 +159,8 @@ env:
     value: "http://opentelemetry-collector.observability.svc.cluster.local:4317"
   - name: OTEL_SERVICE_NAME
     value: "{{ include \"service.fullname\" . }}"
+
+extraEnv: []
 
 livenessProbe:
   httpGet:

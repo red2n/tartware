@@ -213,6 +213,17 @@ reservations-command-service:
     minReplicas: 8
     maxReplicas: 70
     targetCPUUtilizationPercentage: 70
+  env:
+    - name: AVAILABILITY_GUARD_ADDRESS
+      value: "availability-guard-service:4400"
+    - name: AVAILABILITY_GUARD_TIMEOUT_MS
+      value: "1500"
+    - name: AVAILABILITY_GUARD_ENABLED
+      value: "true"
+    - name: AVAILABILITY_GUARD_SHADOW_MODE
+      value: "true"
+    - name: AVAILABILITY_GUARD_FAIL_OPEN
+      value: "true"
 
 rooms-service:
   enabled: true
@@ -276,3 +287,255 @@ command-center-service:
     minReplicas: 3
     maxReplicas: 25
     targetCPUUtilizationPercentage: 75
+
+availability-guard-service:
+  enabled: false
+  replicaCount: 2
+  image:
+    repository: docker.io/tartware/availability-guard-service
+    tag: "latest"
+  service:
+    type: ClusterIP
+    port: 3800
+    targetPort: 3800
+  podAnnotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "3800"
+    prometheus.io/path: "/metrics"
+  podLabels:
+    shadow-mode.tartware.io/enabled: "true"
+  resources:
+    requests:
+      cpu: 200m
+      memory: 256Mi
+    limits:
+      cpu: 1000m
+      memory: 512Mi
+  autoscaling:
+    enabled: true
+    minReplicas: 1
+    maxReplicas: 4
+    targetCPUUtilizationPercentage: 70
+  env:
+    - name: NODE_ENV
+      value: "production"
+    - name: PORT
+      value: "3800"
+    - name: HOST
+      value: "0.0.0.0"
+    - name: LOG_LEVEL
+      value: "info"
+    - name: SERVICE_NAME
+      value: "@tartware/availability-guard-service"
+    - name: SERVICE_VERSION
+      value: "0.1.0"
+    - name: SHADOW_MODE
+      value: "true"
+    - name: AVAILABILITY_GUARD_FAIL_OPEN
+      value: "true"
+    - name: GRPC_PORT
+      value: "4400"
+    - name: RESERVATION_EVENTS_TOPIC
+      value: "reservations.events"
+    - name: INVENTORY_EVENTS_TOPIC
+      value: "inventory.events.shadow"
+    - name: INVENTORY_EVENTS_DLQ_TOPIC
+      value: "inventory.events.dlq"
+    - name: COMMAND_CENTER_TOPIC
+      value: "commands.primary"
+    - name: AVAILABILITY_GUARD_CONSUMER_GROUP
+      value: "availability-guard-shadow"
+    - name: LOCK_DEFAULT_TTL_SECONDS
+      value: "7200"
+    - name: LOCK_MAX_TTL_SECONDS
+      value: "86400"
+    - name: KAFKA_MAX_BATCH_BYTES
+      value: "1048576"
+    - name: AVAILABILITY_GUARD_NOTIFICATION_RECIPIENTS
+      value: "ops@hotel.local,revenue@hotel.local"
+    - name: AVAILABILITY_GUARD_NOTIFICATION_CONSUMER_ENABLED
+      value: "true"
+    - name: AVAILABILITY_GUARD_NOTIFICATION_CONSUMER_MAX_RETRIES
+      value: "3"
+    - name: AVAILABILITY_GUARD_NOTIFICATION_CONSUMER_RETRY_BACKOFF_MS
+      value: "2000"
+    - name: AVAILABILITY_GUARD_NOTIFICATION_DRY_RUN
+      value: "true"
+    - name: AVAILABILITY_GUARD_NOTIFICATION_EMAIL_ENABLED
+      value: "true"
+    - name: AVAILABILITY_GUARD_NOTIFICATION_EMAIL_WEBHOOK_URL
+      valueFrom:
+        secretKeyRef:
+          name: availability-guard-notification-secrets
+          key: email-webhook-url
+    - name: AVAILABILITY_GUARD_NOTIFICATION_EMAIL_API_KEY
+      valueFrom:
+        secretKeyRef:
+          name: availability-guard-notification-secrets
+          key: email-api-key
+    - name: AVAILABILITY_GUARD_NOTIFICATION_EMAIL_TIMEOUT_MS
+      value: "7000"
+    - name: AVAILABILITY_GUARD_NOTIFICATION_SMS_ENABLED
+      value: "false"
+    - name: AVAILABILITY_GUARD_NOTIFICATION_SMS_WEBHOOK_URL
+      valueFrom:
+        secretKeyRef:
+          name: availability-guard-notification-secrets
+          key: sms-webhook-url
+    - name: AVAILABILITY_GUARD_NOTIFICATION_SMS_API_KEY
+      valueFrom:
+        secretKeyRef:
+          name: availability-guard-notification-secrets
+          key: sms-api-key
+    - name: AVAILABILITY_GUARD_NOTIFICATION_SMS_TIMEOUT_MS
+      value: "5000"
+    - name: AVAILABILITY_GUARD_NOTIFICATION_SLACK_ENABLED
+      value: "true"
+    - name: AVAILABILITY_GUARD_NOTIFICATION_SLACK_WEBHOOK_URL
+      valueFrom:
+        secretKeyRef:
+          name: availability-guard-notification-secrets
+          key: slack-webhook-url
+    - name: AVAILABILITY_GUARD_NOTIFICATION_SLACK_API_KEY
+      valueFrom:
+        secretKeyRef:
+          name: availability-guard-notification-secrets
+          key: slack-api-key
+    - name: AVAILABILITY_GUARD_NOTIFICATION_SLACK_TIMEOUT_MS
+      value: "5000"
+    # Database
+    - name: DB_HOST
+      valueFrom:
+        configMapKeyRef:
+          name: database-config
+          key: host
+    - name: DB_PORT
+      valueFrom:
+        configMapKeyRef:
+          name: database-config
+          key: port
+    - name: DB_NAME
+      valueFrom:
+        configMapKeyRef:
+          name: database-config
+          key: database
+    - name: DB_USER
+      valueFrom:
+        secretKeyRef:
+          name: database-credentials
+          key: username
+    - name: DB_PASSWORD
+      valueFrom:
+        secretKeyRef:
+          name: database-credentials
+          key: password
+    # Kafka
+    - name: KAFKA_BROKERS
+      valueFrom:
+        configMapKeyRef:
+          name: messaging-config
+          key: kafka-brokers
+    # NATS
+    - name: NATS_URL
+      valueFrom:
+        configMapKeyRef:
+          name: messaging-config
+          key: nats-url
+    # OpenTelemetry
+    - name: OTEL_EXPORTER_OTLP_ENDPOINT
+      value: "http://opentelemetry-collector.observability.svc.cluster.local:4317"
+    - name: OTEL_SERVICE_NAME
+      value: "availability-guard-service"
+
+roll-service:
+  enabled: false
+  replicaCount: 2
+  image:
+    repository: docker.io/tartware/roll-service
+    tag: "latest"
+  service:
+    type: ClusterIP
+    port: 3900
+    targetPort: 3900
+  podAnnotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "3900"
+    prometheus.io/path: "/metrics"
+  podLabels:
+    shadow-mode.tartware.io/enabled: "true"
+  resources:
+    requests:
+      cpu: 200m
+      memory: 256Mi
+    limits:
+      cpu: 1000m
+      memory: 512Mi
+  autoscaling:
+    enabled: true
+    minReplicas: 1
+    maxReplicas: 4
+    targetCPUUtilizationPercentage: 70
+  env:
+    - name: NODE_ENV
+      value: "production"
+    - name: PORT
+      value: "3900"
+    - name: HOST
+      value: "0.0.0.0"
+    - name: LOG_LEVEL
+      value: "info"
+    - name: SERVICE_NAME
+      value: "@tartware/roll-service"
+    - name: SERVICE_VERSION
+      value: "0.1.0"
+    - name: SHADOW_MODE
+      value: "true"
+    - name: RESERVATION_EVENTS_TOPIC
+      value: "reservations.events"
+    - name: ROLL_SERVICE_CONSUMER_GROUP
+      value: "roll-service-shadow"
+    - name: KAFKA_MAX_BATCH_BYTES
+      value: "1048576"
+    # Database
+    - name: DB_HOST
+      valueFrom:
+        configMapKeyRef:
+          name: database-config
+          key: host
+    - name: DB_PORT
+      valueFrom:
+        configMapKeyRef:
+          name: database-config
+          key: port
+    - name: DB_NAME
+      valueFrom:
+        configMapKeyRef:
+          name: database-config
+          key: database
+    - name: DB_USER
+      valueFrom:
+        secretKeyRef:
+          name: database-credentials
+          key: username
+    - name: DB_PASSWORD
+      valueFrom:
+        secretKeyRef:
+          name: database-credentials
+          key: password
+    # Kafka
+    - name: KAFKA_BROKERS
+      valueFrom:
+        configMapKeyRef:
+          name: messaging-config
+          key: kafka-brokers
+    # NATS
+    - name: NATS_URL
+      valueFrom:
+        configMapKeyRef:
+          name: messaging-config
+          key: nats-url
+    # OpenTelemetry
+    - name: OTEL_EXPORTER_OTLP_ENDPOINT
+      value: "http://opentelemetry-collector.observability.svc.cluster.local:4317"
+    - name: OTEL_SERVICE_NAME
+      value: "roll-service"
