@@ -1,4 +1,4 @@
-import type { QueryResultRow } from "pg";
+import type { PoolClient, QueryResultRow } from "pg";
 
 import type {
 	EnqueueOutboxRecordInput,
@@ -8,15 +8,14 @@ import type {
 	OutboxStatus,
 } from "./types.js";
 
-export const createOutboxRepository = ({
-	query,
-	withTransaction,
-}: OutboxRepositoryDeps): OutboxRepository => {
-	const enqueueOutboxRecord = async (
-		input: EnqueueOutboxRecordInput,
-	): Promise<void> => {
-		await query(
-			`
+type SqlExecutor = Pick<PoolClient, "query">;
+
+const insertOutboxRecord = async (
+	executor: SqlExecutor,
+	input: EnqueueOutboxRecordInput,
+): Promise<void> => {
+	await executor.query(
+		`
         INSERT INTO transactional_outbox (
           event_id,
           tenant_id,
@@ -45,23 +44,40 @@ export const createOutboxRepository = ({
           $11::jsonb
         )
       `,
-			[
-				input.eventId,
-				input.tenantId,
-				input.aggregateId,
-				input.aggregateType,
-				input.eventType,
-				JSON.stringify(input.payload),
-				JSON.stringify(input.headers),
-				input.priority ?? 0,
-				input.correlationId ?? null,
-				input.partitionKey ?? null,
-				JSON.stringify({
-					lifecycleState: "PERSISTED",
-					...(input.metadata ?? {}),
-				}),
-			],
-		);
+		[
+			input.eventId,
+			input.tenantId,
+			input.aggregateId,
+			input.aggregateType,
+			input.eventType,
+			JSON.stringify(input.payload),
+			JSON.stringify(input.headers),
+			input.priority ?? 0,
+			input.correlationId ?? null,
+			input.partitionKey ?? null,
+			JSON.stringify({
+				lifecycleState: "PERSISTED",
+				...(input.metadata ?? {}),
+			}),
+		],
+	);
+};
+
+export const createOutboxRepository = ({
+	query,
+	withTransaction,
+}: OutboxRepositoryDeps): OutboxRepository => {
+	const enqueueOutboxRecord = async (
+		input: EnqueueOutboxRecordInput,
+	): Promise<void> => {
+		await insertOutboxRecord({ query } as SqlExecutor, input);
+	};
+
+	const enqueueOutboxRecordWithClient = async (
+		client: PoolClient,
+		input: EnqueueOutboxRecordInput,
+	): Promise<void> => {
+		await insertOutboxRecord(client, input);
 	};
 
 	const countPendingOutboxRows = async (): Promise<number> => {
@@ -221,6 +237,7 @@ export const createOutboxRepository = ({
 
 	return {
 		enqueueOutboxRecord,
+		enqueueOutboxRecordWithClient,
 		countPendingOutboxRows,
 		releaseExpiredLocks,
 		claimOutboxBatch,

@@ -58,6 +58,11 @@ services:
       - tartware_network
     volumes:
       - tartware_zookeeper_data:/bitnami/zookeeper
+    healthcheck:
+      test: ["CMD", "nc", "-z", "localhost", "2181"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   kafka:
     image: confluentinc/cp-kafka:7.6.1
@@ -76,7 +81,8 @@ services:
       KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
       KAFKA_NUM_PARTITIONS: 12
     depends_on:
-      - zookeeper
+      zookeeper:
+        condition: service_healthy
     ports:
       - "9092:9092"
       - "29092:29092"
@@ -84,6 +90,11 @@ services:
       - tartware_network
     volumes:
       - tartware_kafka_data:/bitnami/kafka
+    healthcheck:
+      test: ["CMD", "kafka-broker-api-versions", "--bootstrap-server", "localhost:9092"]
+      interval: 10s
+      timeout: 10s
+      retries: 5
 
   kafka-ui:
     image: provectuslabs/kafka-ui:latest
@@ -95,12 +106,58 @@ services:
       KAFKA_CLUSTERS_0_NAME: tartware-local
       KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9092
       KAFKA_CLUSTERS_0_ZOOKEEPER: zookeeper:2181
+      KAFKA_CLUSTERS_1_NAME: tartware-redpanda
+      KAFKA_CLUSTERS_1_BOOTSTRAPSERVERS: redpanda:9093
     depends_on:
-      - kafka
+      kafka:
+        condition: service_healthy
+      zookeeper:
+        condition: service_healthy
     networks:
       - tartware_network
 
-  opensearch-node:
+  redpanda:
+    image: redpandadata/redpanda:v24.3.1
+    container_name: tartware-redpanda
+    restart: always
+    command:
+      - redpanda
+      - start
+      - --kafka-addr
+      - internal://0.0.0.0:9093,external://0.0.0.0:19093
+      - --advertise-kafka-addr
+      - internal://redpanda:9093,external://localhost:19093
+      - --pandaproxy-addr
+      - internal://0.0.0.0:8082,external://0.0.0.0:18082
+      - --advertise-pandaproxy-addr
+      - internal://redpanda:8082,external://localhost:18082
+      - --schema-registry-addr
+      - internal://0.0.0.0:8083,external://0.0.0.0:18083
+      - --rpc-addr
+      - redpanda:33145
+      - --advertise-rpc-addr
+      - redpanda:33145
+      - --mode
+      - dev-container
+      - --smp
+      - '1'
+      - --default-log-level=info
+    ports:
+      - "18082:18082"
+      - "18083:18083"
+      - "19093:19093"
+      - "9093:9093"
+    volumes:
+      - tartware_redpanda_data:/var/lib/redpanda/data
+    networks:
+      - tartware_network
+    healthcheck:
+      test: ["CMD-SHELL", "rpk cluster health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  opensearch:
     image: opensearchproject/opensearch:2.13.0
     container_name: tartware-opensearch
     restart: unless-stopped
@@ -120,6 +177,11 @@ services:
       - tartware_opensearch_data:/usr/share/opensearch/data
     networks:
       - tartware_network
+    healthcheck:
+      test: ["CMD-SHELL", "curl -k -u admin:$$OPENSEARCH_INITIAL_ADMIN_PASSWORD https://localhost:9200/_cluster/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   otel-collector:
     image: otel/opentelemetry-collector-contrib:0.104.0
@@ -132,7 +194,8 @@ services:
     volumes:
       - ./docker/otel-collector-config.yaml:/etc/otel-collector-config.yaml:ro
     depends_on:
-      - opensearch-node
+      opensearch:
+        condition: service_healthy
     networks:
       - tartware_network
 
@@ -148,6 +211,9 @@ volumes:
     driver: local
   tartware_kafka_data:
     name: tartware_kafka_data
+    driver: local
+  tartware_redpanda_data:
+    name: tartware_redpanda_data
     driver: local
   tartware_opensearch_data:
     name: tartware_opensearch_data

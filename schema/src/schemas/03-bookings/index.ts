@@ -22,3 +22,4 @@ export * from "./communication-templates.js";
 export * from "./automated-messages.js";
 export * from "./waitlist-entries.js";
 export * from "./reservation-event-offsets.js";
+export * from "./reservation-command-lifecycle.js";

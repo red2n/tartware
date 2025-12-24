@@ -17,7 +17,8 @@
     "biome:fix": "biome format src --write",
     "knip": "knip --tsConfig tsconfig.json",
     "knip:fix": "knip --tsConfig tsconfig.json --fix",
-    "clean": "rm -rf dist coverage vitest-report *.tsbuildinfo"
+    "clean": "rm -rf dist coverage vitest-report *.tsbuildinfo",
+    "requeue:outbox": "tsx scripts/requeue-outbox.ts"
   },
   "dependencies": {
     "@fastify/helmet": "^13.0.2",
@@ -29,6 +30,7 @@
     "@tartware/outbox": "file:../outbox",
     "@tartware/schemas": "file:../../schema",
     "@tartware/telemetry": "file:../telemetry",
+    "zod": "^3.23.8",
     "dotenv": "^17.2.3",
     "fastify": "^5.6.2",
     "fastify-plugin": "^5.1.0",

@@ -11,12 +11,12 @@ Platform-wide standardization for resilient CRUD handling at 20+ ops/sec with au
 - Outbox processor batches unsent rows, publishes to Kafka, and marks rows delivered; failures stay in-table for retry with exponential backoff metadata. Deploy processor as a stateless pod/job suitable for both full K8s and lightweight K3s clusters.
 
 ##### 0.1.a **Implementation Tasks**
-- Extend reservation command routes to wrap DB writes + outbox insert within one transaction, including lifecycle metadata (state = `PERSISTED`, correlation ID, partition key).
 - Build an outbox dispatcher worker (Node process + Fastify health endpoint) that:
   - Locks `PENDING/FAILED` rows in priority order, stamps `IN_PROGRESS`, publishes to Kafka, updates status (`DELIVERED` or `FAILED`) with retry metadata.
   - Respects per-tenant throttling + jitter to avoid flooding Kafka partitions.
 - Provide Helm/Kustomize manifests + K3s-compatible CronJob/Deployment spec with probes + metrics (outbox queue depth, publish latency).
 - Add CLI/script to manually requeue `FAILED/DLQ` rows after remediation with audit logging.
+- _2025-12-23 Update_: Added `npm run requeue:outbox` (backed by `scripts/requeue-outbox.ts`) so ops can requeue filtered outbox rows with audit metadata (`requeuedAt`/`requeuedBy`) after remediation.
 
 #### 0.2 **Consumer Hardening**
 - Reservations command service switches to manual commit with KafkaJS `eachBatch`, wrapping handler execution in a retry policy (3 quick retries with jittered backoff, then DLQ).
@@ -55,6 +55,8 @@ Platform-wide standardization for resilient CRUD handling at 20+ ops/sec with au
 - Introduce automated flow auditors that scan for stalled states (e.g., stuck in `PERSISTED` > 2 min) and trigger retries or alerting.
 - Expose lifecycle inspection APIs (`GET /v1/reservations/:id/lifecycle`) leveraging the guard data so support can resume workflows from the last safe checkpoint.
 - _2025-12-15 Update_: Documented lifecycle checkpoints + guard-rail expectations in code comments/TODO; next milestone is wiring guard metadata into reservation write path once transactional outbox + offset ledger stabilize.
+- _2025-12-23 Update_: Added `/v1/reservations/:reservationId/lifecycle` (tenant-scoped) that surfaces the `reservation_command_lifecycle` rows so support can trace command states end-to-end. Next steps: layer alerting/auditing on top of the guard data.
+- _2025-12-23 Update_: Reservation command service now records `RECEIVED`/`PERSISTED` states alongside the transactional outbox write, dispatcher flushes update `IN_PROGRESS`/`PUBLISHED`/`FAILED`/`DLQ`, and the Kafka consumer stamps `CONSUMED`/`APPLIED` to close the loop. Lifecycle inspection APIs are live; next steps focus on building stalled-command detectors plus alerting/SLIs that watch the guard data.
 
 #### 0.7 **Rate Plan Fallback System**
 - Enforce deterministic BAR/RACK seed data via setup scripts so every property has a known-good rate plan for emergency pricing (BAR = best available, RACK = published rack).
@@ -109,6 +111,24 @@ Platform-wide standardization for resilient CRUD handling at 20+ ops/sec with au
 - _2025-12-19T23:00:00Z Update_: Removed the legacy `Apps/tartware-ui` workspace (and its dev/build/test wiring) so the monorepo now focuses solely on backend APIs, schemas, and scripts; dev helpers such as `scripts/kill-ports.sh` were scrubbed accordingly.
 - _2025-12-20T00:15:00Z Update_: Added a reusable k6 scenario (`loadtest/k6/command-pipeline.js`) plus Docker Compose + Kubernetes manifests (`platform/kubernetes/loadtest`) so we can exercise the event-driven gateway at 30k ops/sec. Updated `docs/TESTING_ENVIRONMENT.md` with the new workflow and ensured Locust shares the same routes/env wiring.
 - _2025-12-20T00:45:00Z Update_: Extended the load-test harness so both k6 and Locust fire billing capture plus housekeeping assign/complete commands, passed the required ID lists through Compose/k8s env wiring, and updated `docs/TESTING_ENVIRONMENT.md` with guidance on sourcing the reservation/guest/task/staff UUIDs.
+
+### 0.P0 **Roll Service & Availability Guard Refactor (Priority: P0)**
+End-state goal: decouple scheduled settlement and real-time inventory locking from the hot reservation write path so audit trails stay accurate even when the command service is idle or under duress.
+
+#### Roll / Schedule Service
+- Consume reservation lifecycle `APPLIED`/`COMPLETED` signals and emit deterministic roll events (EOD, checkout, cancel) without waiting for foreground API traffic.
+- Own ledger-style tables (room balance snapshots, rate overrides, charge accruals) to support idempotent replays/backfills.
+- Provide replay tooling so finance can regenerate rolls from lifecycle history without redeploying the reservations service.
+
+#### Availability Guard / Inventory Service
+- Maintain the single source of truth for room and room-type locks with explicit TTLs, manual releases, and bulk maintenance actions (blackouts, OOO rooms).
+- Expose a gRPC/HTTP API for lock/unlock so reservations-service no longer manages availability inside transactional writes.
+- Consume reservation & room commands, apply lock deltas, and publish `inventory.locked` / `inventory.released` events for analytics and downstream consumers.
+
+#### Integration & Migration Notes
+- API Gateway continues to emit the existing reservation/room commands; new services subscribe via Kafka to stay in sync.
+- Reservations-service becomes a client of the availability guard (lock before commit, release on cancel/fail) and emits lifecycle checkpoints the roll service consumes.
+- Migration plan: stand up services in shadow mode (read lifecycle + emit metrics), backfill historical lifecycle data into the roll service, then cut over the lock path to the guard once parity dashboards are green.
 
 ### 1. **Super Admin / Global Administrator Implementation (Priority: HIGH)**
 Industry-standard privileged access management for multi-tenant PMS platform following OWASP Authorization best practices.

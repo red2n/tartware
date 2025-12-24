@@ -1,7 +1,9 @@
 import { performance } from "node:perf_hooks";
 
-import type { ReservationEvent } from "@tartware/schemas";
-import { ReservationEventSchema } from "@tartware/schemas";
+import {
+  type ReservationEvent,
+  ReservationEventSchema,
+} from "@tartware/schemas";
 import type { Consumer, EachBatchPayload } from "kafkajs";
 
 import { kafkaConfig } from "../config.js";
@@ -14,6 +16,10 @@ import {
 import { upsertReservationEventOffset } from "../lib/reservation-event-offsets.js";
 import { processWithRetry, RetryExhaustedError } from "../lib/retry.js";
 import { reservationsLogger } from "../logger.js";
+import {
+  type ReservationCommandLifecycleState,
+  updateLifecycleState,
+} from "../repositories/lifecycle-repository.js";
 import { processReservationEvent } from "../services/reservation-event-handler.js";
 
 import { kafka } from "./client.js";
@@ -132,6 +138,12 @@ const handleBatch = async ({
     }
 
     try {
+      await updateLifecycleStateSafe(parsedEvent.metadata.id, "CONSUMED", {
+        topic: batch.topic,
+        partition: batch.partition,
+        offset,
+      });
+
       const { value: handlerResult, attempts } = await processWithRetry(
         () => processReservationEvent(parsedEvent),
         {
@@ -160,6 +172,12 @@ const handleBatch = async ({
           messageKey,
           messageTimestamp: message.timestamp,
         },
+      });
+      await updateLifecycleStateSafe(parsedEvent.metadata.id, "APPLIED", {
+        reservationId: handlerResult.reservationId,
+        attempts,
+        offset,
+        partition: batch.partition,
       });
       observeProcessingDuration(
         batch.topic,
@@ -192,6 +210,15 @@ const handleBatch = async ({
         },
       });
       recordDlqEvent("handler");
+      await updateLifecycleStateSafe(parsedEvent.metadata.id, "DLQ", {
+        offset,
+        partition: batch.partition,
+        attempts,
+        error:
+          error instanceof Error
+            ? { name: error.name, message: error.message }
+            : String(error),
+      });
       observeProcessingDuration(
         batch.topic,
         batch.partition,
@@ -272,6 +299,28 @@ const updateConsumerLag = (
     reservationsLogger.warn(
       { err: error, topic, partition, currentOffset, highWatermark },
       "Failed to compute consumer lag",
+    );
+  }
+};
+
+const updateLifecycleStateSafe = async (
+  eventId: string | undefined,
+  state: ReservationCommandLifecycleState,
+  details: Record<string, unknown>,
+): Promise<void> => {
+  if (!eventId) {
+    return;
+  }
+  try {
+    await updateLifecycleState({
+      eventId,
+      state,
+      details,
+    });
+  } catch (error) {
+    reservationsLogger.warn(
+      { err: error, eventId, state },
+      "Failed to update lifecycle state from consumer",
     );
   }
 };
