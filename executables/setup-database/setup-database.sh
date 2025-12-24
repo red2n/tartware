@@ -318,6 +318,7 @@ DB_PORT="5432"
 
 # Set password for psql commands
 export PGPASSWORD="$DB_PASSWORD"
+export DB_HOST DB_PORT DB_NAME DB_USER DB_PASSWORD
 
 # Start time
 START_TIME=$(date +%s)
@@ -346,35 +347,38 @@ echo ""
 
 echo -e "${CYAN}Select Installation Mode:${NC}"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo -e "  ${GREEN}1)${NC} Fresh Install (Drop existing DB, create everything, load sample data) ${YELLOW}[DEFAULT]${NC}"
-echo -e "  ${GREEN}2)${NC} Load Sample Data Only (Keep existing DB structure, reload data)"
+echo -e "  ${GREEN}1)${NC} Fresh Install + Industry Defaults (drop DB, seed baseline) ${YELLOW}[DEFAULT]${NC}"
+echo -e "  ${GREEN}2)${NC} Fresh Install (Schema Only)"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
 echo -ne "${CYAN}Enter your choice [1-2] (press Enter for default):${NC} "
 read -r INSTALL_MODE
 
-# Default to fresh install if no input
+# Default to option 1 if no input
 if [ -z "$INSTALL_MODE" ]; then
     INSTALL_MODE=1
 fi
 
 # Validate input
 if [[ ! "$INSTALL_MODE" =~ ^[1-2]$ ]]; then
-    echo -e "${RED}✗ Invalid option. Defaulting to Fresh Install.${NC}"
+    echo -e "${RED}✗ Invalid option. Defaulting to Fresh Install + Industry Defaults.${NC}"
     INSTALL_MODE=1
 fi
 
 echo ""
 
-if [ "$INSTALL_MODE" -eq 1 ]; then
-    echo -e "${GREEN}✓ Selected: Fresh Install${NC}"
-    DO_FRESH_INSTALL=true
-    LOAD_SAMPLE_DATA=true
-else
-    echo -e "${GREEN}✓ Selected: Load Sample Data Only${NC}"
-    DO_FRESH_INSTALL=false
-    LOAD_SAMPLE_DATA=true
-fi
+LOAD_DEFAULT_DATA=false
+
+case "$INSTALL_MODE" in
+    1)
+        echo -e "${GREEN}✓ Selected: Fresh Install + Industry Defaults${NC}"
+        LOAD_DEFAULT_DATA=true
+        ;;
+    2)
+        echo -e "${GREEN}✓ Selected: Fresh Install (schema only)${NC}"
+        LOAD_DEFAULT_DATA=false
+        ;;
+esac
 
 echo ""
 
@@ -412,32 +416,7 @@ echo ""
 # STEP 1: Check PostgreSQL Connection
 # ============================================================================
 
-# Skip structure creation if only loading data
-if [ "$DO_FRESH_INSTALL" = false ]; then
-    echo -e "${BLUE}Skipping database structure creation - loading data only${NC}"
-    echo ""
-
-    # Check if database exists
-    DB_EXISTS=$(psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d postgres -tAc "SELECT 1 FROM pg_database WHERE datname='$DB_NAME'" 2>/dev/null || echo "")
-
-    if [ "$DB_EXISTS" != "1" ]; then
-        echo -e "${RED}✗ Database '$DB_NAME' does not exist!${NC}"
-        echo -e "${YELLOW}⚠  Please run Fresh Install first to create the database structure.${NC}"
-        exit 1
-    fi
-
-    echo -e "${GREEN}✓ Database '$DB_NAME' exists${NC}"
-    echo ""
-
-    # Jump to sample data loading
-    jump_to_sample_data=true
-else
-    jump_to_sample_data=false
-fi
-
-if [ "$jump_to_sample_data" = false ]; then
-
-echo -e "${BLUE}[1/12]${NC} Checking PostgreSQL connection..."
+echo -e "${BLUE}[1/13]${NC} Checking PostgreSQL connection..."
 
 if ! pg_isready -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" &> /dev/null; then
     echo -e "${YELLOW}⚠  PostgreSQL is not accessible on $DB_HOST:$DB_PORT${NC}"
@@ -515,7 +494,7 @@ echo ""
 # STEP 2: Drop Existing Database (Automatic Fresh Install)
 # ============================================================================
 
-echo -e "${BLUE}[2/12]${NC} Checking if database exists..."
+echo -e "${BLUE}[2/13]${NC} Checking if database exists..."
 
 DB_EXISTS=$(psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d postgres -tAc "SELECT 1 FROM pg_database WHERE datname='$DB_NAME'" 2>/dev/null || echo "")
 
@@ -548,7 +527,7 @@ echo ""
 # STEP 3: Create Database
 # ============================================================================
 
-echo -e "${BLUE}[3/12]${NC} Creating database '$DB_NAME'..."
+echo -e "${BLUE}[3/13]${NC} Creating database '$DB_NAME'..."
 
 psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d postgres -c "
     CREATE DATABASE $DB_NAME
@@ -569,7 +548,7 @@ echo ""
 # STEP 4: Create Extensions & Schemas
 # ============================================================================
 
-echo -e "${BLUE}[4/12]${NC} Creating extensions and schemas..."
+echo -e "${BLUE}[4/13]${NC} Creating extensions and schemas..."
 
 psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -f "$SCRIPTS_DIR/01-database-setup.sql" &> /dev/null
 
@@ -581,7 +560,7 @@ echo ""
 # STEP 5: Create ENUM Types
 # ============================================================================
 
-echo -e "${BLUE}[5/12]${NC} Creating ${EXPECTED_ENUMS} ENUM types..."
+echo -e "${BLUE}[5/13]${NC} Creating ${EXPECTED_ENUMS} ENUM types..."
 
 psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -f "$SCRIPTS_DIR/02-enum-types.sql" &> /dev/null
 
@@ -594,7 +573,7 @@ echo ""
 # STEP 6: Create Tables
 # ============================================================================
 
-echo -e "${BLUE}[6/12]${NC} Creating ${EXPECTED_TABLES} tables (${TABLE_FILES} files, some create multiple tables)..."
+echo -e "${BLUE}[6/13]${NC} Creating ${EXPECTED_TABLES} tables (${TABLE_FILES} files, some create multiple tables)..."
 
 cd "$SCRIPTS_DIR"
 psql -q -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -f "$SCRIPTS_DIR/tables/00-create-all-tables.sql" > /dev/null 2>&1
@@ -615,7 +594,7 @@ echo ""
 # STEP 7: Create Indexes
 # ============================================================================
 
-echo -e "${BLUE}[7/12]${NC} Creating indexes..."
+echo -e "${BLUE}[7/13]${NC} Creating indexes..."
 
 psql -q -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -f "$SCRIPTS_DIR/indexes/00-create-all-indexes.sql" > /dev/null 2>&1
 
@@ -628,7 +607,7 @@ echo ""
 # STEP 8: Create Constraints
 # ============================================================================
 
-echo -e "${BLUE}[8/12]${NC} Creating foreign key constraints..."
+echo -e "${BLUE}[8/13]${NC} Creating foreign key constraints..."
 
 cd "$SCRIPTS_DIR/constraints"
 psql -q -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -f "00-create-all-constraints.sql" > /dev/null 2>&1
@@ -640,10 +619,34 @@ echo -e "${GREEN}✓ Created $FK_COUNT foreign key constraints${NC}"
 echo ""
 
 # ============================================================================
-# STEP 9: Create Stored Procedures
+# STEP 9: Seed Default Operational Data (optional)
 # ============================================================================
 
-echo -e "${BLUE}[9/13]${NC} Creating stored procedures..."
+if [ "$LOAD_DEFAULT_DATA" = true ]; then
+    echo -e "${BLUE}[9/13]${NC} Seeding industry-standard default data..."
+    DEFAULT_DATA_SCRIPT="$SCRIPTS_DIR/data/defaults/seed-default-data.mjs"
+
+    if [ -f "$DEFAULT_DATA_SCRIPT" ]; then
+        if node "$DEFAULT_DATA_SCRIPT"; then
+            echo -e "${GREEN}✓ Default baseline data inserted${NC}"
+        else
+            echo -e "${RED}✗ Failed to seed default data via $DEFAULT_DATA_SCRIPT${NC}"
+            exit 1
+        fi
+    else
+        echo -e "${YELLOW}⚠  Default data script not found at $DEFAULT_DATA_SCRIPT - skipping${NC}"
+    fi
+else
+    echo -e "${BLUE}[9/13]${NC} Skipping default data seed (mode does not require it)${NC}"
+fi
+
+echo ""
+
+# ============================================================================
+# STEP 10: Create Stored Procedures
+# ============================================================================
+
+echo -e "${BLUE}[10/13]${NC} Creating stored procedures..."
 
 psql -q -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -f "$SCRIPTS_DIR/procedures/00-create-all-procedures.sql" > /dev/null 2>&1
 
@@ -653,10 +656,10 @@ echo -e "${GREEN}✓ Created $PROCEDURE_COUNT stored procedures${NC}"
 echo ""
 
 # ============================================================================
-# STEP 10: Install Trigger & Monitoring Suite
+# STEP 11: Install Trigger & Monitoring Suite
 # ============================================================================
 
-echo -e "${BLUE}[10/13]${NC} Installing trigger suite (query safety & optimistic locking)..."
+echo -e "${BLUE}[11/13]${NC} Installing trigger suite (query safety & optimistic locking)..."
 
 psql -q -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -f "$SCRIPTS_DIR/triggers/00-create-all-efficiency-triggers.sql" > /dev/null 2>&1
 
@@ -664,160 +667,23 @@ echo -e "${GREEN}✓ Trigger suite installed${NC}"
 echo ""
 
 # ============================================================================
-# STEP 11: Add User-Friendly Constraint Messages
+# STEP 12: Add User-Friendly Constraint Messages
 # ============================================================================
 
-echo -e "${BLUE}[11/13]${NC} Adding user-friendly constraint error messages..."
+echo -e "${BLUE}[12/13]${NC} Adding user-friendly constraint error messages..."
 
 psql -q -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -f "$SCRIPTS_DIR/add_friendly_constraint_messages.sql" > /dev/null 2>&1
 
 echo -e "${GREEN}✓ Friendly constraint messages added${NC}"
 echo ""
 
-fi  # End of structure creation block (DO_FRESH_INSTALL)
-
 # ============================================================================
-# STEP 12: Verification
+# STEP 13: Verification
 # ============================================================================
 
-if [ "$DO_FRESH_INSTALL" = true ]; then
-    echo -e "${BLUE}[12/13]${NC} Running verification..."
+echo -e "${BLUE}[13/13]${NC} Running verification..."
 
-    psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -f "$SCRIPTS_DIR/verify-all.sql" 2>&1 | tail -30
-
-    echo ""
-fi
-
-# ============================================================================
-# STEP 13: Load Sample Data
-# ============================================================================
-
-if [ "$LOAD_SAMPLE_DATA" = true ]; then
-
-if [ "$DO_FRESH_INSTALL" = true ]; then
-    echo -e "${BLUE}[13/13]${NC} Loading sample data with category tracking..."
-else
-    echo -e "${BLUE}Loading sample data with category tracking...${NC}"
-fi
-echo ""
-
-# Check if Python 3 is available
-if ! command -v python3 &> /dev/null; then
-    echo -e "${YELLOW}⚠  Python 3 not found, skipping sample data load${NC}"
-    echo -e "${YELLOW}⚠  You can load data manually later with: cd scripts/data && python3 load_all.py${NC}"
-else
-    # Set environment variables for the Python script
-    export DB_HOST="$DB_HOST"
-    export DB_PORT="$DB_PORT"
-    export DB_NAME="$DB_NAME"
-    export DB_USER="$DB_USER"
-    export DB_PASSWORD="$DB_PASSWORD"
-
-    # Run the sample data script (new modular structure) with live output
-    cd "$SCRIPTS_DIR/data" && python3 load_all.py 2>&1 | while IFS= read -r line; do
-        echo "$line"
-
-        # Detect category completion and add visual flags
-        if [[ "$line" == *"CORE BUSINESS DATA"* ]]; then
-            echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-        elif [[ "$line" == *"housekeeping tasks"* ]]; then
-            echo -e "${GREEN}✓✓✓ CORE BUSINESS DATA - COMPLETED${NC}"
-            echo ""
-        elif [[ "$line" == *"FINANCIAL OPERATIONS"* ]]; then
-            echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-        elif [[ "$line" == *"financial closures"* ]]; then
-            echo -e "${GREEN}✓✓✓ FINANCIAL OPERATIONS - COMPLETED${NC}"
-            echo ""
-        elif [[ "$line" == *"CHANNEL MANAGEMENT"* ]]; then
-            echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-        elif [[ "$line" == *"commission rules"* ]]; then
-            echo -e "${GREEN}✓✓✓ CHANNEL MANAGEMENT & OTA - COMPLETED${NC}"
-            echo ""
-        elif [[ "$line" == *"GUEST MANAGEMENT"* ]]; then
-            echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-        elif [[ "$line" == *"GDPR consent logs"* ]]; then
-            echo -e "${GREEN}✓✓✓ GUEST MANAGEMENT - COMPLETED${NC}"
-            echo ""
-        elif [[ "$line" == *"REVENUE MANAGEMENT"* ]]; then
-            echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-        elif [[ "$line" == *"revenue goals"* ]]; then
-            echo -e "${GREEN}✓✓✓ REVENUE MANAGEMENT & PRICING - COMPLETED${NC}"
-            echo ""
-        elif [[ "$line" == *"ANALYTICS & REPORTING"* ]]; then
-            echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-        elif [[ "$line" == *"audit logs"* ]]; then
-            echo -e "${GREEN}✓✓✓ ANALYTICS & REPORTING - COMPLETED${NC}"
-            echo ""
-        elif [[ "$line" == *"STAFF & OPERATIONS"* ]]; then
-            echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-        elif [[ "$line" == *"reservation status history"* ]]; then
-            echo -e "${GREEN}✓✓✓ STAFF & OPERATIONS - COMPLETED${NC}"
-            echo ""
-        elif [[ "$line" == *"MARKETING & SALES"* ]]; then
-            echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-        elif [[ "$line" == *"commission tracking"* ]]; then
-            echo -e "${GREEN}✓✓✓ MARKETING & SALES - COMPLETED${NC}"
-            echo ""
-        elif [[ "$line" == *"MOBILE & DIGITAL"* ]]; then
-            echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-        elif [[ "$line" == *"push notifications"* ]]; then
-            echo -e "${GREEN}✓✓✓ MOBILE & DIGITAL - COMPLETED${NC}"
-            echo ""
-        elif [[ "$line" == *"COMPLIANCE & LEGAL"* ]]; then
-            echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-        elif [[ "$line" == *"lost and found"* ]]; then
-            echo -e "${GREEN}✓✓✓ COMPLIANCE & LEGAL - COMPLETED${NC}"
-            echo ""
-        elif [[ "$line" == *"INTEGRATIONS & TECHNICAL"* ]]; then
-            echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-        elif [[ "$line" == *"vendor contracts"* ]]; then
-            echo -e "${GREEN}✓✓✓ INTEGRATIONS & TECHNICAL - COMPLETED${NC}"
-            echo ""
-        fi
-    done
-
-    PIPE_STATUS=${PIPESTATUS[0]}
-
-    # Re-seed system settings catalog (sample loader truncates via cascade)
-    psql -q -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -f "$SCRIPTS_DIR/tables/01-core/06_settings.sql" > /dev/null 2>&1
-
-    if [ $PIPE_STATUS -eq 0 ]; then
-        # Calculate exact total records across all tables
-        TOTAL_RECORDS=$(psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -tAc "
-            SELECT SUM(n_tup_ins)::bigint
-            FROM pg_stat_user_tables
-            WHERE schemaname IN ('public', 'availability');
-        " 2>/dev/null)
-
-        # Get count of tables with data
-        TABLES_WITH_DATA=$(psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -tAc "
-            SELECT COUNT(*)
-            FROM pg_stat_user_tables
-            WHERE schemaname IN ('public', 'availability')
-            AND n_tup_ins > 0;
-        " 2>/dev/null)
-
-        # Get count of total tables
-        TOTAL_TABLES=$(psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -tAc "
-            SELECT COUNT(*)
-            FROM information_schema.tables
-            WHERE table_schema IN ('public', 'availability');
-        " 2>/dev/null)
-
-        echo ""
-        echo -e "${GREEN}╔════════════════════════════════════════════════════════════╗${NC}"
-        echo -e "${GREEN}║  ✓✓✓ ALL DATA LOADING COMPLETE ✓✓✓                       ║${NC}"
-        echo -e "${GREEN}╚════════════════════════════════════════════════════════════╝${NC}"
-        echo -e "${GREEN}✓ Sample data loaded successfully${NC}"
-        echo -e "  Total Records: ${CYAN}${TOTAL_RECORDS}${NC}"
-        echo -e "  Tables with Data: ${CYAN}${TABLES_WITH_DATA}${NC} / ${CYAN}${TOTAL_TABLES}${NC}"
-    else
-        echo -e "${YELLOW}⚠  Sample data load encountered issues${NC}"
-        echo -e "${YELLOW}⚠  Database structure is complete, data can be loaded manually${NC}"
-    fi
-fi  # End of Python check
-
-fi  # End of LOAD_SAMPLE_DATA block
+psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -f "$SCRIPTS_DIR/verify-all.sql" 2>&1 | tail -30
 
 echo ""
 
@@ -833,11 +699,7 @@ SECONDS=$((DURATION % 60))
 echo ""
 echo -e "${GREEN}╔════════════════════════════════════════════════════════════════╗${NC}"
 echo -e "${GREEN}║                                                                ║${NC}"
-if [ "$DO_FRESH_INSTALL" = true ]; then
-    echo -e "${GREEN}║  ✓✓✓ TARTWARE PMS DATABASE SETUP COMPLETE ✓✓✓                ║${NC}"
-else
-    echo -e "${GREEN}║  ✓✓✓ TARTWARE PMS SAMPLE DATA LOADED ✓✓✓                     ║${NC}"
-fi
+echo -e "${GREEN}║  ✓✓✓ TARTWARE PMS DATABASE SETUP COMPLETE ✓✓✓                ║${NC}"
 echo -e "${GREEN}║                                                                ║${NC}"
 echo -e "${GREEN}╚════════════════════════════════════════════════════════════════╝${NC}"
 echo ""
@@ -845,8 +707,6 @@ echo ""
 echo -e "${CYAN}Database Statistics:${NC}"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo -e "  Database:            ${GREEN}$DB_NAME${NC}"
-
-if [ "$DO_FRESH_INSTALL" = true ]; then
 
 # Tables - should match exactly
 if [ "$TABLE_COUNT" -eq "$EXPECTED_TABLES" ]; then
@@ -868,10 +728,13 @@ echo -e "  Indexes:             ${GREEN}$INDEX_COUNT${NC} ${CYAN}(includes auto-
 # Foreign Keys - actual count (includes inline definitions)
 echo -e "  Foreign Keys:        ${GREEN}$FK_COUNT${NC} ${CYAN}(from constraints + inline table definitions)${NC}"
 
-fi  # End of DO_FRESH_INSTALL stats
-
 echo ""
-echo -e "  ${CYAN}Sample Data:${NC}"
+echo -e "  ${CYAN}Data Snapshot:${NC}"
+if [ "$LOAD_DEFAULT_DATA" = true ]; then
+    echo -e "    Default Seed:      ${GREEN}applied${NC}"
+else
+    echo -e "    Default Seed:      ${YELLOW}skipped (schema only)${NC}"
+fi
 
 # Ensure PGPASSWORD is exported for subshells
 export PGPASSWORD="$DB_PASSWORD"
@@ -891,16 +754,8 @@ DATA_TABLES_POPULATED=$(PGPASSWORD="$DB_PASSWORD" psql -h "$DB_HOST" -p "$DB_POR
     AND n_tup_ins > 0;
 " 2>/dev/null)
 
-# Get total table count
-if [ "$DO_FRESH_INSTALL" = true ]; then
-    TOTAL_TABLE_COUNT=$TABLE_COUNT
-else
-    TOTAL_TABLE_COUNT=$(PGPASSWORD="$DB_PASSWORD" psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -tAc "
-        SELECT COUNT(*)
-        FROM information_schema.tables
-        WHERE table_schema IN ('public', 'availability');
-    " 2>/dev/null)
-fi
+# Total tables (matches count from creation step)
+TOTAL_TABLE_COUNT=$TABLE_COUNT
 
 # Calculate coverage percentage
 if [ "$TOTAL_TABLE_COUNT" -gt 0 ]; then
@@ -917,19 +772,10 @@ elif [ "$DATA_TABLES_POPULATED" -gt 0 ]; then
     echo -e "  Total Records:       ${GREEN}${TOTAL_DATA_RECORDS}${NC}"
     echo -e "  Tables Populated:    ${YELLOW}${DATA_TABLES_POPULATED}${NC} / ${CYAN}${TOTAL_TABLE_COUNT}${NC} ${YELLOW}(${DATA_COVERAGE}%)${NC}"
 
-    # Show list of empty tables using the Python script
     EMPTY_COUNT=$((TOTAL_TABLE_COUNT - DATA_TABLES_POPULATED))
     echo ""
     echo -e "  ${YELLOW}⚠  ${EMPTY_COUNT} tables without data:${NC}"
-
-    # Run the Python script and format output
-    python3 scripts/data/list_empty_tables.py 2>/dev/null | rg "^ *[0-9]+\." | head -20 | while IFS= read -r line; do
-        echo -e "     ${CYAN}${line}${NC}"
-    done
-
-    if [ "$EMPTY_COUNT" -gt 20 ]; then
-        echo -e "     ${CYAN}... and $((EMPTY_COUNT - 20)) more${NC}"
-    fi
+    echo -e "     ${CYAN}Use information_schema.tables to inspect empty tables if needed.${NC}"
 else
     echo -e "  Total Records:       ${YELLOW}${TOTAL_DATA_RECORDS}${NC}"
     echo -e "  Tables Populated:    ${YELLOW}${DATA_TABLES_POPULATED}${NC} / ${CYAN}${TOTAL_TABLE_COUNT}${NC} ${YELLOW}(${DATA_COVERAGE}%)${NC}"
