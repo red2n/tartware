@@ -55,7 +55,7 @@ CREATE TABLE IF NOT EXISTS roll_service_consumer_offsets (
     consumer_group TEXT NOT NULL,
     topic TEXT NOT NULL,
     partition INT NOT NULL,
-    offset BIGINT NOT NULL,
+    offset_position BIGINT NOT NULL,
     high_watermark BIGINT,
     last_event_id UUID,
     last_event_created_at TIMESTAMPTZ,

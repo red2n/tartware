@@ -40,7 +40,7 @@ export const upsertConsumerOffset = async (
         consumer_group,
         topic,
         partition,
-        offset,
+        offset_position,
         high_watermark,
         last_event_id,
         last_event_created_at,
@@ -57,7 +57,7 @@ export const upsertConsumerOffset = async (
       )
       ON CONFLICT (consumer_group, topic, partition) DO UPDATE
       SET
-        offset = EXCLUDED.offset,
+        offset_position = EXCLUDED.offset_position,
         high_watermark = EXCLUDED.high_watermark,
         last_event_id = EXCLUDED.last_event_id,
         last_event_created_at = EXCLUDED.last_event_created_at,

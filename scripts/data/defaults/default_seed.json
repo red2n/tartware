@@ -1,0 +1,529 @@
+{
+  "tenants": [
+    {
+      "id": "11111111-1111-1111-1111-111111111111",
+      "name": "Tartware Hospitality Labs",
+      "slug": "tartware-hospitality",
+      "type": "INDEPENDENT",
+      "status": "ACTIVE",
+      "email": "ops@tartware.demo",
+      "phone": "+1-555-0100",
+      "website": "https://hospitality.tartware.demo",
+      "country": "US",
+      "config": {
+        "brandingEnabled": true,
+        "enableMultiProperty": true,
+        "enableChannelManager": true,
+        "enableAdvancedReporting": true,
+        "enablePaymentProcessing": true,
+        "enableLoyaltyProgram": false,
+        "maxProperties": 5,
+        "maxUsers": 50,
+        "defaultCurrency": "USD",
+        "defaultLanguage": "en",
+        "defaultTimezone": "UTC",
+        "features": [
+          "reservations",
+          "payments",
+          "housekeeping"
+        ]
+      },
+      "subscription": {
+        "plan": "PROFESSIONAL",
+        "billingCycle": "MONTHLY",
+        "amount": 299,
+        "currency": "USD"
+      },
+      "metadata": {
+        "seed": "industry_defaults",
+        "notes": "Baseline tenant created by installer"
+      }
+    }
+  ],
+  "properties": [
+    {
+      "id": "22222222-2222-2222-2222-222222222222",
+      "tenantId": "11111111-1111-1111-1111-111111111111",
+      "propertyName": "Tartware City Center",
+      "propertyCode": "TAR-CITY",
+      "address": {
+        "street": "100 Innovation Way",
+        "city": "New York",
+        "state": "NY",
+        "postalCode": "10001",
+        "country": "US",
+        "latitude": 40.7506,
+        "longitude": -73.9935
+      },
+      "phone": "+1-555-0101",
+      "email": "frontdesk@tartware.demo",
+      "website": "https://citycenter.tartware.demo",
+      "propertyType": "hotel",
+      "starRating": 4.0,
+      "totalRooms": 120,
+      "currency": "USD",
+      "timezone": "America/New_York",
+      "config": {
+        "checkInTime": "15:00",
+        "checkOutTime": "11:00",
+        "cancellationPolicy": {
+          "hours": 24,
+          "penalty": 1
+        },
+        "paymentMethods": [
+          "cash",
+          "card",
+          "wire"
+        ],
+        "amenities": [
+          "wifi",
+          "parking",
+          "pool",
+          "gym"
+        ],
+        "policies": {
+          "smoking": "Non-smoking",
+          "pets": "Service animals only"
+        }
+      },
+      "metadata": {
+        "seed": "industry_defaults",
+        "brand": "Tartware Collection"
+      }
+    }
+  ],
+  "users": [
+    {
+      "id": "33333333-3333-3333-3333-333333333333",
+      "username": "setup.admin",
+      "email": "setup.admin@tartware.demo",
+      "passwordHash": "$2a$10$erzSav5dzulZWAtge.vtmexT.PryHC4S7.Fd2jzxI8R1Kg3biyrwq",
+      "firstName": "Setup",
+      "lastName": "Administrator",
+      "phone": "+1-555-0102",
+      "isActive": true,
+      "isVerified": false,
+      "metadata": {
+        "seed": "industry_defaults",
+        "oneTimeLogin": true,
+        "instructions": "Update password on first login"
+      }
+    }
+  ],
+  "userTenantAssociations": [
+    {
+      "userId": "33333333-3333-3333-3333-333333333333",
+      "tenantId": "11111111-1111-1111-1111-111111111111",
+      "role": "OWNER",
+      "permissions": {
+        "properties": [
+          "22222222-2222-2222-2222-222222222222"
+        ],
+        "canAccessAll": true,
+        "restrictions": {}
+      },
+      "metadata": {
+        "seed": "industry_defaults",
+        "description": "Bootstrap owner access"
+      }
+    }
+  ],
+  "roomTypes": [
+    {
+      "id": "44444444-4444-4444-4444-444444444444",
+      "tenantId": "11111111-1111-1111-1111-111111111111",
+      "propertyId": "22222222-2222-2222-2222-222222222222",
+      "typeName": "Cityline King",
+      "typeCode": "CLKING",
+      "description": "Modern 32 sqm king room with workspace and skyline views.",
+      "shortDescription": "King room with workspace and walk-in shower.",
+      "category": "STANDARD",
+      "baseOccupancy": 2,
+      "maxOccupancy": 3,
+      "maxAdults": 2,
+      "maxChildren": 1,
+      "sizeSqm": 32,
+      "bedType": "King",
+      "numberOfBeds": 1,
+      "amenities": [
+        "wifi",
+        "workspace",
+        "rain-shower",
+        "smart-tv"
+      ],
+      "features": {
+        "view": "city",
+        "floor": "mid",
+        "accessibility": true,
+        "connecting": false,
+        "smoking": false
+      },
+      "basePrice": 199,
+      "currency": "USD",
+      "images": [
+        "https://cdn.tartware.demo/rooms/cityline-king.jpg"
+      ],
+      "metadata": {
+        "seed": "industry_defaults"
+      }
+    }
+  ],
+  "rooms": [
+    {
+      "id": "55555555-5555-5555-5555-555555555551",
+      "tenantId": "11111111-1111-1111-1111-111111111111",
+      "propertyId": "22222222-2222-2222-2222-222222222222",
+      "roomTypeId": "44444444-4444-4444-4444-444444444444",
+      "roomNumber": "101",
+      "roomName": "Cityline King 101",
+      "floor": "10",
+      "status": "AVAILABLE",
+      "housekeepingStatus": "CLEAN",
+      "maintenanceStatus": "OPERATIONAL",
+      "features": {
+        "view": "city",
+        "smoking": false,
+        "balcony": true
+      },
+      "metadata": {
+        "seed": "industry_defaults",
+        "template": "baseline_room"
+      }
+    },
+    {
+      "id": "55555555-5555-5555-5555-555555555552",
+      "tenantId": "11111111-1111-1111-1111-111111111111",
+      "propertyId": "22222222-2222-2222-2222-222222222222",
+      "roomTypeId": "44444444-4444-4444-4444-444444444444",
+      "roomNumber": "102",
+      "roomName": "Cityline King 102",
+      "floor": "10",
+      "status": "AVAILABLE",
+      "housekeepingStatus": "CLEAN",
+      "maintenanceStatus": "OPERATIONAL",
+      "features": {
+        "view": "city",
+        "smoking": false,
+        "balcony": false
+      },
+      "metadata": {
+        "seed": "industry_defaults",
+        "template": "baseline_room"
+      }
+    },
+    {
+      "id": "55555555-5555-5555-5555-555555555553",
+      "tenantId": "11111111-1111-1111-1111-111111111111",
+      "propertyId": "22222222-2222-2222-2222-222222222222",
+      "roomTypeId": "44444444-4444-4444-4444-444444444444",
+      "roomNumber": "201",
+      "roomName": "Cityline King 201",
+      "floor": "11",
+      "status": "AVAILABLE",
+      "housekeepingStatus": "CLEAN",
+      "maintenanceStatus": "OPERATIONAL",
+      "features": {
+        "view": "courtyard",
+        "smoking": false,
+        "balcony": false
+      },
+      "metadata": {
+        "seed": "industry_defaults",
+        "template": "baseline_room"
+      }
+    },
+    {
+      "id": "55555555-5555-5555-5555-555555555554",
+      "tenantId": "11111111-1111-1111-1111-111111111111",
+      "propertyId": "22222222-2222-2222-2222-222222222222",
+      "roomTypeId": "44444444-4444-4444-4444-444444444444",
+      "roomNumber": "202",
+      "roomName": "Cityline King 202",
+      "floor": "11",
+      "status": "AVAILABLE",
+      "housekeepingStatus": "CLEAN",
+      "maintenanceStatus": "OPERATIONAL",
+      "features": {
+        "view": "courtyard",
+        "smoking": false,
+        "balcony": true
+      },
+      "metadata": {
+        "seed": "industry_defaults",
+        "template": "baseline_room"
+      }
+    }
+  ],
+  "rates": [
+    {
+      "tenantId": "11111111-1111-1111-1111-111111111111",
+      "propertyId": "22222222-2222-2222-2222-222222222222",
+      "roomTypeId": "44444444-4444-4444-4444-444444444444",
+      "rateName": "Rack Rate",
+      "rateCode": "RACK",
+      "description": "Full published rack rate used for corporate contracts.",
+      "strategy": "FIXED",
+      "baseRate": 249,
+      "singleOccupancyRate": 249,
+      "doubleOccupancyRate": 269,
+      "extraPersonRate": 35,
+      "minLengthOfStay": 1,
+      "mealPlan": "RO",
+      "cancellationPolicy": {
+        "hours": 48,
+        "penalty": 100,
+        "type": "flexible"
+      },
+      "channels": [
+        "direct",
+        "ota",
+        "phone"
+      ],
+      "customerSegments": [
+        "all"
+      ],
+      "taxInclusive": false,
+      "displayOrder": 1,
+      "metadata": {
+        "seed": "industry_defaults"
+      }
+    },
+    {
+      "tenantId": "11111111-1111-1111-1111-111111111111",
+      "propertyId": "22222222-2222-2222-2222-222222222222",
+      "roomTypeId": "44444444-4444-4444-4444-444444444444",
+      "rateName": "Best Available Rate",
+      "rateCode": "BAR",
+      "description": "Dynamic day-of rate with advance purchase flexibility.",
+      "strategy": "DYNAMIC",
+      "baseRate": 209,
+      "singleOccupancyRate": 189,
+      "doubleOccupancyRate": 219,
+      "extraPersonRate": 25,
+      "minLengthOfStay": 1,
+      "mealPlan": "RO",
+      "cancellationPolicy": {
+        "hours": 24,
+        "penalty": 50,
+        "type": "flexible"
+      },
+      "channels": [
+        "direct",
+        "ota",
+        "phone"
+      ],
+      "customerSegments": [
+        "all"
+      ],
+      "taxInclusive": false,
+      "displayOrder": 2,
+      "metadata": {
+        "seed": "industry_defaults"
+      }
+    }
+  ],
+  "bookingSources": [
+    {
+      "tenantId": "11111111-1111-1111-1111-111111111111",
+      "propertyId": "22222222-2222-2222-2222-222222222222",
+      "sourceCode": "DIRECT-WEB",
+      "sourceName": "Direct Website",
+      "sourceType": "DIRECT",
+      "category": "ONLINE",
+      "channelName": "Tartware Booking Engine",
+      "commissionType": "NONE",
+      "commissionPercentage": null,
+      "metadata": {
+        "seed": "industry_defaults"
+      }
+    },
+    {
+      "tenantId": "11111111-1111-1111-1111-111111111111",
+      "propertyId": "22222222-2222-2222-2222-222222222222",
+      "sourceCode": "DIRECT-PHONE",
+      "sourceName": "Reservations Line",
+      "sourceType": "PHONE",
+      "category": "OFFLINE",
+      "channelName": "Voice Reservations",
+      "commissionType": "NONE",
+      "commissionPercentage": null,
+      "metadata": {
+        "seed": "industry_defaults"
+      }
+    },
+    {
+      "tenantId": "11111111-1111-1111-1111-111111111111",
+      "propertyId": "22222222-2222-2222-2222-222222222222",
+      "sourceCode": "BOOKINGCOM",
+      "sourceName": "Booking.com",
+      "sourceType": "OTA",
+      "category": "ONLINE",
+      "channelName": "Booking.com",
+      "commissionType": "PERCENTAGE",
+      "commissionPercentage": 15,
+      "metadata": {
+        "seed": "industry_defaults"
+      }
+    },
+    {
+      "tenantId": "11111111-1111-1111-1111-111111111111",
+      "propertyId": "22222222-2222-2222-2222-222222222222",
+      "sourceCode": "EXPEDIA",
+      "sourceName": "Expedia",
+      "sourceType": "OTA",
+      "category": "ONLINE",
+      "channelName": "Expedia Collect",
+      "commissionType": "PERCENTAGE",
+      "commissionPercentage": 18,
+      "metadata": {
+        "seed": "industry_defaults"
+      }
+    },
+    {
+      "tenantId": "11111111-1111-1111-1111-111111111111",
+      "propertyId": "22222222-2222-2222-2222-222222222222",
+      "sourceCode": "WALKIN",
+      "sourceName": "Walk-In",
+      "sourceType": "WALK_IN",
+      "category": "OFFLINE",
+      "channelName": "Front Desk",
+      "commissionType": "NONE",
+      "commissionPercentage": null,
+      "metadata": {
+        "seed": "industry_defaults"
+      }
+    }
+  ],
+  "marketSegments": [
+    {
+      "tenantId": "11111111-1111-1111-1111-111111111111",
+      "propertyId": "22222222-2222-2222-2222-222222222222",
+      "segmentCode": "CORP",
+      "segmentName": "Corporate Negotiated",
+      "segmentType": "CORPORATE",
+      "rateMultiplier": 0.92,
+      "marketingPriority": 1,
+      "metadata": {
+        "seed": "industry_defaults"
+      }
+    },
+    {
+      "tenantId": "11111111-1111-1111-1111-111111111111",
+      "propertyId": "22222222-2222-2222-2222-222222222222",
+      "segmentCode": "BUS",
+      "segmentName": "Business Transient",
+      "segmentType": "CORPORATE",
+      "rateMultiplier": 1.0,
+      "marketingPriority": 2,
+      "metadata": {
+        "seed": "industry_defaults"
+      }
+    },
+    {
+      "tenantId": "11111111-1111-1111-1111-111111111111",
+      "propertyId": "22222222-2222-2222-2222-222222222222",
+      "segmentCode": "LEIS",
+      "segmentName": "Leisure FIT",
+      "segmentType": "LEISURE",
+      "rateMultiplier": 1.05,
+      "marketingPriority": 3,
+      "metadata": {
+        "seed": "industry_defaults"
+      }
+    },
+    {
+      "tenantId": "11111111-1111-1111-1111-111111111111",
+      "propertyId": "22222222-2222-2222-2222-222222222222",
+      "segmentCode": "GRP",
+      "segmentName": "Group & Events",
+      "segmentType": "GROUP",
+      "rateMultiplier": 0.9,
+      "marketingPriority": 4,
+      "metadata": {
+        "seed": "industry_defaults"
+      }
+    },
+    {
+      "tenantId": "11111111-1111-1111-1111-111111111111",
+      "propertyId": "22222222-2222-2222-2222-222222222222",
+      "segmentCode": "GOV",
+      "segmentName": "Government",
+      "segmentType": "GOVERNMENT",
+      "rateMultiplier": 0.85,
+      "marketingPriority": 5,
+      "metadata": {
+        "seed": "industry_defaults"
+      }
+    }
+  ],
+  "services": [
+    {
+      "tenantId": "11111111-1111-1111-1111-111111111111",
+      "propertyId": "22222222-2222-2222-2222-222222222222",
+      "serviceName": "Daily Breakfast Buffet",
+      "serviceCode": "FNB-BREAKFAST",
+      "category": "F&B",
+      "description": "Full American breakfast served in the Market Cafe.",
+      "price": 28,
+      "pricingUnit": "per_person",
+      "isTaxable": true,
+      "taxRate": 8.875,
+      "requiresBooking": false,
+      "durationMinutes": 0,
+      "metadata": {
+        "seed": "industry_defaults"
+      }
+    },
+    {
+      "tenantId": "11111111-1111-1111-1111-111111111111",
+      "propertyId": "22222222-2222-2222-2222-222222222222",
+      "serviceName": "Overnight Parking",
+      "serviceCode": "OPS-PARK",
+      "category": "OPERATIONS",
+      "description": "Self-parking with in/out privileges.",
+      "price": 55,
+      "pricingUnit": "per_night",
+      "isTaxable": true,
+      "taxRate": 8.875,
+      "requiresBooking": false,
+      "durationMinutes": 0,
+      "metadata": {
+        "seed": "industry_defaults"
+      }
+    },
+    {
+      "tenantId": "11111111-1111-1111-1111-111111111111",
+      "propertyId": "22222222-2222-2222-2222-222222222222",
+      "serviceName": "Standard Room Cleaning",
+      "serviceCode": "HK-STAYOVER",
+      "category": "HOUSEKEEPING",
+      "description": "Stay-over service following brand checklist.",
+      "price": 0,
+      "pricingUnit": "per_room",
+      "isTaxable": false,
+      "taxRate": 0,
+      "requiresBooking": false,
+      "durationMinutes": 0,
+      "metadata": {
+        "seed": "industry_defaults"
+      }
+    },
+    {
+      "tenantId": "11111111-1111-1111-1111-111111111111",
+      "propertyId": "22222222-2222-2222-2222-222222222222",
+      "serviceName": "60-min Signature Massage",
+      "serviceCode": "SPA-60",
+      "category": "SPA",
+      "description": "Therapeutic treatment with essential oils.",
+      "price": 140,
+      "pricingUnit": "per_service",
+      "isTaxable": true,
+      "taxRate": 8.875,
+      "requiresBooking": true,
+      "durationMinutes": 60,
+      "metadata": {
+        "seed": "industry_defaults"
+      }
+    }
+  ]
+}
