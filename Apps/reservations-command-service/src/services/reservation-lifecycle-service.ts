@@ -3,16 +3,11 @@ import { ReservationCommandLifecycleSchema } from "@tartware/schemas";
 
 import { query } from "../lib/db.js";
 
-type LifecycleRow = ReservationCommandLifecycle & {
-  created_at: Date;
-  updated_at: Date;
-};
-
 export const listReservationLifecycle = async (
   tenantId: string,
   reservationId: string,
 ): Promise<ReservationCommandLifecycle[]> => {
-  const result = await query<LifecycleRow>(
+  const result = await query<ReservationCommandLifecycle>(
     `
       SELECT
         event_id,

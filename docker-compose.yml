@@ -178,7 +178,7 @@ services:
     networks:
       - tartware_network
     healthcheck:
-      test: ["CMD-SHELL", "curl -k -u admin:Admin123#ChangeMe https://localhost:9200/_cluster/health || exit 1"]
+      test: ["CMD-SHELL", "curl -k -u admin:$$OPENSEARCH_INITIAL_ADMIN_PASSWORD https://localhost:9200/_cluster/health || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 5
