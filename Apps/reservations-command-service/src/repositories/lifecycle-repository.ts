@@ -5,19 +5,15 @@ import { query } from "../lib/db.js";
 
 const ACTOR = serviceConfig.serviceId;
 
-const LIFECYCLE_STATES = [
-  "RECEIVED",
-  "PERSISTED",
-  "IN_PROGRESS",
-  "PUBLISHED",
-  "CONSUMED",
-  "APPLIED",
-  "FAILED",
-  "DLQ",
-] as const;
-
 export type ReservationCommandLifecycleState =
-  (typeof LIFECYCLE_STATES)[number];
+  | "RECEIVED"
+  | "PERSISTED"
+  | "IN_PROGRESS"
+  | "PUBLISHED"
+  | "CONSUMED"
+  | "APPLIED"
+  | "FAILED"
+  | "DLQ";
 
 type LifecycleInsertInput = {
   eventId: string;
