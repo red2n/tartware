@@ -46,15 +46,15 @@ fi
 if ! command -v "${DUPLO_BIN}" >/dev/null 2>&1; then
   cat <<EOF_INSTALL >&2
 ✗ Duplo is not installed or not on PATH.
-  
+
   Install via Go:
     go install github.com/dlidstrom/Duplo@latest
-  
+
   Or download pre-built binaries:
     Linux:   https://github.com/dlidstrom/Duplo/releases/latest (duplo-linux.zip)
     macOS:   https://github.com/dlidstrom/Duplo/releases/latest (duplo-macos.zip)
     Windows: https://github.com/dlidstrom/Duplo/releases/latest (duplo-windows.zip)
-  
+
   See: https://github.com/dlidstrom/Duplo
 EOF_INSTALL
   exit 1

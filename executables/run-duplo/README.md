@@ -119,7 +119,7 @@ Reports are timestamped and stored in `reports/duplo/`:
   run: |
     DUPLO_MIN_LINES=25 ./executables/run-duplo/run-duplo.sh
   continue-on-error: true
-  
+
 - name: Upload Duplo Reports
   uses: actions/upload-artifact@v3
   with:
