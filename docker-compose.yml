@@ -96,6 +96,21 @@ services:
       timeout: 10s
       retries: 5
 
+  kafka-init:
+    image: confluentinc/cp-kafka:7.6.1
+    container_name: tartware-kafka-init
+    depends_on:
+      kafka:
+        condition: service_healthy
+    entrypoint: ["/bin/bash", "-c"]
+    command: >
+      kafka-topics --create --if-not-exists --topic reservations.events --partitions 12 --replication-factor 1 --config retention.ms=604800000 --bootstrap-server kafka:9092;
+      kafka-topics --create --if-not-exists --topic reservations.events.dlq --partitions 12 --replication-factor 1 --config retention.ms=1209600000 --config cleanup.policy=delete --bootstrap-server kafka:9092;
+      echo "Kafka topics ensured";
+    networks:
+      - tartware_network
+    restart: "no"
+
   kafka-ui:
     image: provectuslabs/kafka-ui:latest
     container_name: tartware-kafka-ui

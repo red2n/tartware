@@ -5,4 +5,4 @@ export {
   ReservationCreateCommandSchema,
   type ReservationModifyCommand,
   ReservationModifyCommandSchema,
-} from "@tartware/schemas/events/commands/reservations";
+} from "@tartware/schemas";

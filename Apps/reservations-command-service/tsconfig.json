@@ -21,6 +21,8 @@
       "@tartware/telemetry/*": ["../telemetry/src/*"],
       "@tartware/openapi": ["../openapi-utils/src/index.ts"],
       "@tartware/openapi/*": ["../openapi-utils/src/*"],
+      "@tartware/config": ["../config/src/index.ts"],
+      "@tartware/config/*": ["../config/src/*"],
       "@tartware/outbox": ["../outbox/src/index.ts"],
       "@tartware/outbox/*": ["../outbox/src/*"]
     }

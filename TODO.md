@@ -38,11 +38,13 @@ Platform-wide standardization for resilient CRUD handling at 20+ ops/sec with au
 #### 0.3 **Retry & Visibility Controls**
 - Implement configurable retry schedule (e.g., 1s, 5s, 30s) and max attempts; publish metrics (`reservation_event_retries_total`, `reservation_event_dlq_total`).
 - Use Kafka consumer lag + DLQ depth alarms; expose `/health/reliability` endpoint reporting backlog stats, last successful commit, DLQ size.
+- _2025-12-20T12:55:00Z Update_: Added `/health/reliability` on reservations command service exposing transactional outbox backlog stats, last committed Kafka offsets (per partition lag), and DLQ topic depth. Wired configurable warning thresholds via `RELIABILITY_*` env vars so ops can tune alerting per environment.
 
 #### 0.4 **Schema & Config Updates**
 - Extend `@tartware/schemas` event definitions with `retryCount`, `attemptedAt`, and `failureCause` for DLQ reprocessing.
 - Update `docker-compose` and Helm values to provision the DLQ topic, retention, and Kafka UI dashboard panel.
 - Add per-environment config for retry thresholds, DLQ topic name, and outbox sweep interval.
+- _2025-12-20T13:15:00Z Update_: Reservation event metadata now carries optional retry/failure fields and DLQ publishes include them. Docker Compose provisions the `reservations.events` + DLQ topics with retention, and Helm/dev configs expose the new reliability thresholds plus DLQ/outbox knobs.
 
 #### 0.5 **Operational Runbook & Tests**
 - Document replay procedure: inspect DLQ, patch payload if needed, re-publish to main topic with incremented correlation.

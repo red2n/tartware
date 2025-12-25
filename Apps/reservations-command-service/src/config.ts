@@ -45,6 +45,14 @@ export const outboxConfig = {
   retryBackoffMs: Number(env.OUTBOX_RETRY_BACKOFF_MS ?? 5000),
 };
 
+const parseNumber = (value: string | undefined, fallback: number): number => {
+  const parsed = Number(value);
+  if (Number.isFinite(parsed)) {
+    return parsed;
+  }
+  return fallback;
+};
+
 export const databaseConfig = {
   host: env.DB_HOST ?? "127.0.0.1",
   port: Number(env.DB_PORT ?? 5432),
@@ -71,4 +79,27 @@ export const availabilityGuardConfig = {
   enabled: parseBoolean(env.AVAILABILITY_GUARD_ENABLED, true),
   shadowMode: parseBoolean(env.AVAILABILITY_GUARD_SHADOW_MODE, true),
   failOpen: parseBoolean(env.AVAILABILITY_GUARD_FAIL_OPEN, true),
+};
+
+export const reliabilityConfig = {
+  outboxPendingWarning: Math.max(
+    0,
+    parseNumber(env.RELIABILITY_OUTBOX_PENDING_WARNING, 250),
+  ),
+  outboxFailedWarning: Math.max(
+    0,
+    parseNumber(env.RELIABILITY_OUTBOX_FAILED_WARNING, 0),
+  ),
+  outboxDlqWarning: Math.max(
+    0,
+    parseNumber(env.RELIABILITY_OUTBOX_DLQ_WARNING, 0),
+  ),
+  consumerLagWarning: Math.max(
+    0,
+    parseNumber(env.RELIABILITY_CONSUMER_LAG_WARNING, 500),
+  ),
+  dlqDepthWarning: Math.max(
+    0,
+    parseNumber(env.RELIABILITY_DLQ_DEPTH_WARNING, 0),
+  ),
 };

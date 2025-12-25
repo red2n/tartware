@@ -214,6 +214,36 @@ reservations-command-service:
     maxReplicas: 70
     targetCPUUtilizationPercentage: 70
   env:
+    - name: KAFKA_RESERVATION_TOPIC
+      value: "reservations.events"
+    - name: RESERVATION_DLQ_TOPIC
+      value: "reservations.events.dlq"
+    - name: KAFKA_MAX_RETRIES
+      value: "3"
+    - name: KAFKA_RETRY_BACKOFF_MS
+      value: "1000"
+    - name: KAFKA_MAX_BATCH_BYTES
+      value: "1048576"
+    - name: OUTBOX_POLL_INTERVAL_MS
+      value: "2000"
+    - name: OUTBOX_BATCH_SIZE
+      value: "25"
+    - name: OUTBOX_LOCK_TIMEOUT_MS
+      value: "30000"
+    - name: OUTBOX_MAX_RETRIES
+      value: "5"
+    - name: OUTBOX_RETRY_BACKOFF_MS
+      value: "5000"
+    - name: RELIABILITY_OUTBOX_PENDING_WARNING
+      value: "250"
+    - name: RELIABILITY_OUTBOX_FAILED_WARNING
+      value: "0"
+    - name: RELIABILITY_OUTBOX_DLQ_WARNING
+      value: "0"
+    - name: RELIABILITY_CONSUMER_LAG_WARNING
+      value: "500"
+    - name: RELIABILITY_DLQ_DEPTH_WARNING
+      value: "0"
     - name: AVAILABILITY_GUARD_ADDRESS
       value: "availability-guard-service:4400"
     - name: AVAILABILITY_GUARD_TIMEOUT_MS

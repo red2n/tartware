@@ -116,6 +116,16 @@ const handleOutboxRecord = async (record: OutboxRecord): Promise<void> => {
     });
     observeOutboxPublishDuration(secondsSince(startedAt));
   } catch (error) {
+    const attemptCount = record.retryCount + 1;
+    const failureCause = "OUTBOX_DISPATCH_FAILURE";
+    const attemptedAt = new Date().toISOString();
+    const payloadWithFailureMetadata = attachFailureMetadata(
+      record.payload,
+      attemptCount,
+      attemptedAt,
+      failureCause,
+    );
+
     const status = await markOutboxFailed(
       record.id,
       error,
@@ -143,10 +153,17 @@ const handleOutboxRecord = async (record: OutboxRecord): Promise<void> => {
       await publishDlqEvent({
         key: record.partitionKey ?? record.aggregateId,
         value: JSON.stringify({
-          failureReason: "OUTBOX_DISPATCH_FAILURE",
-          failedAt: new Date().toISOString(),
+          failureReason: failureCause,
+          failureCause,
+          failedAt: attemptedAt,
+          attemptedAt,
+          retryCount: attemptCount,
           topic: kafkaConfig.topic,
-          record,
+          record: {
+            ...record,
+            retryCount: attemptCount,
+            payload: payloadWithFailureMetadata,
+          },
           error:
             error instanceof Error
               ? {
@@ -174,6 +191,32 @@ const normalizeHeaders = (
     }
   }
   return normalized;
+};
+
+const attachFailureMetadata = (
+  payload: Record<string, unknown>,
+  retryCount: number,
+  attemptedAt: string,
+  failureCause: string,
+): Record<string, unknown> => {
+  const existingMetadata =
+    typeof (payload as { metadata?: unknown }).metadata === "object" &&
+    (payload as { metadata?: unknown }).metadata !== null
+      ? ((payload as { metadata?: unknown }).metadata as Record<
+          string,
+          unknown
+        >)
+      : {};
+
+  return {
+    ...payload,
+    metadata: {
+      ...existingMetadata,
+      retryCount,
+      attemptedAt,
+      failureCause,
+    },
+  };
 };
 
 const secondsSince = (startedAt: number): number => {

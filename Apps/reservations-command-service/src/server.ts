@@ -14,6 +14,10 @@ import { serviceConfig } from "./config.js";
 import { checkDatabaseHealth, checkKafkaHealth } from "./lib/health-checks.js";
 import { metricsRegistry } from "./lib/metrics.js";
 import swaggerPlugin from "./plugins/swagger.js";
+import {
+  getReliabilitySnapshot,
+  type ReliabilitySnapshot,
+} from "./services/reliability-health-service.js";
 import { listReservationLifecycle } from "./services/reservation-lifecycle-service.js";
 
 const ReservationLifecycleParamsSchema = z.object({
@@ -34,6 +38,57 @@ const ReservationLifecycleQueryJsonSchema = schemaFromZod(
 const ReservationLifecycleResponseJsonSchema = schemaFromZod(
   z.array(ReservationCommandLifecycleSchema),
   "ReservationLifecycleResponse",
+);
+
+const ReliabilityPartitionSchema = z.object({
+  partition: z.number(),
+  offset: z.string().nullable(),
+  processedAt: z.string().nullable(),
+  lag: z.number().nullable(),
+  highWatermark: z.string().nullable(),
+});
+
+const ReliabilityKafkaSchema = z.object({
+  reachable: z.boolean(),
+  error: z.string().nullable(),
+  topicError: z.string().nullable(),
+});
+
+const ReliabilitySnapshotSchema = schemaFromZod(
+  z.object({
+    generatedAt: z.string(),
+    status: z.enum(["healthy", "degraded"]),
+    issues: z.array(z.string()),
+    outbox: z.object({
+      pending: z.number(),
+      failed: z.number(),
+      inProgress: z.number(),
+      dlq: z.number(),
+      oldestPendingAt: z.string().nullable(),
+      oldestPendingAgeSeconds: z.number().nullable(),
+      lastFailureAt: z.string().nullable(),
+      lastDlqAt: z.string().nullable(),
+    }),
+    consumer: z.object({
+      topic: z.string(),
+      consumerGroup: z.string(),
+      partitions: z.array(ReliabilityPartitionSchema),
+      lastProcessedAt: z.string().nullable(),
+      maxLag: z.number().nullable(),
+      kafka: ReliabilityKafkaSchema,
+    }),
+    dlqTopic: z.object({
+      topic: z.string(),
+      depth: z.number().nullable(),
+      latestOffset: z.string().nullable(),
+      earliestOffset: z.string().nullable(),
+      kafka: z.object({
+        reachable: z.boolean(),
+        error: z.string().nullable(),
+      }),
+    }),
+  }),
+  "ReliabilitySnapshot",
 );
 
 export const buildServer = () => {
@@ -121,6 +176,22 @@ export const buildServer = () => {
             error: error instanceof Error ? error.message : String(error),
           };
         }
+      },
+    );
+
+    app.get(
+      "/health/reliability",
+      {
+        schema: buildRouteSchema({
+          tag: "Health",
+          summary: "Reliability posture (outbox + Kafka backlogs)",
+          response: {
+            200: ReliabilitySnapshotSchema,
+          },
+        }),
+      },
+      async (): Promise<ReliabilitySnapshot> => {
+        return getReliabilitySnapshot();
       },
     );
 

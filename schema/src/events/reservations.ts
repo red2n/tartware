@@ -13,6 +13,9 @@ export const EventMetadataSchema = z.object({
 	version: z.string().default("1.0"),
 	correlationId: z.string().uuid().optional(),
 	tenantId: z.string().uuid(),
+	retryCount: z.number().int().nonnegative().optional(),
+	attemptedAt: z.string().datetime().optional(),
+	failureCause: z.string().max(500).optional(),
 });
 
 export type EventMetadata = z.infer<typeof EventMetadataSchema>;

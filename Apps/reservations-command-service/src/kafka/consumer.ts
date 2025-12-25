@@ -255,9 +255,26 @@ type DlqPayloadInput = {
 };
 
 const buildDlqPayload = (input: DlqPayloadInput): string => {
+  const attemptedAt = new Date().toISOString();
+  const failureCause = input.failureReason;
+  const eventWithMetadata = input.event
+    ? {
+        ...input.event,
+        metadata: {
+          ...input.event.metadata,
+          retryCount: input.attempts,
+          attemptedAt,
+          failureCause,
+        },
+      }
+    : null;
+
   return JSON.stringify({
-    failureReason: input.failureReason,
-    failedAt: new Date().toISOString(),
+    failureReason,
+    failureCause,
+    failedAt: attemptedAt,
+    attemptedAt,
+    retryCount: input.attempts,
     topic: input.topic,
     partition: input.partition,
     offset: input.offset,
@@ -270,7 +287,7 @@ const buildDlqPayload = (input: DlqPayloadInput): string => {
             stack: input.error.stack,
           }
         : { message: String(input.error) },
-    event: input.event,
+    event: eventWithMetadata,
     rawValue: input.rawValue,
   });
 };

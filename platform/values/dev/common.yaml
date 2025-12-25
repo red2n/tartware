@@ -15,3 +15,9 @@ reservationCommandService:
     lockTimeoutMs: 30000
     maxRetries: 5
     retryBackoffMs: 5000
+  reliability:
+    outboxPendingWarning: 250
+    outboxFailedWarning: 0
+    outboxDlqWarning: 0
+    consumerLagWarning: 500
+    dlqDepthWarning: 0
