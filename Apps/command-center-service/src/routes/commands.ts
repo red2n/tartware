@@ -1,8 +1,9 @@
 import { randomUUID } from "node:crypto";
 
 import { buildRouteSchema, schemaFromZod } from "@tartware/openapi";
+import { validateCommandPayload } from "@tartware/schemas";
 import type { FastifyInstance } from "fastify";
-import { z } from "zod";
+import { ZodError, z } from "zod";
 
 import {
   acceptCommand,
@@ -90,11 +91,26 @@ export const registerCommandRoutes = (app: FastifyInstance): void => {
           }
         : null;
 
+      let validatedPayload: Record<string, unknown>;
+      try {
+        validatedPayload = validateCommandPayload(commandName, body.payload);
+      } catch (error) {
+        if (error instanceof ZodError) {
+          reply.status(400).send({
+            error: "COMMAND_PAYLOAD_INVALID",
+            message: `${commandName} payload failed validation`,
+            issues: error.issues,
+          });
+          return;
+        }
+        throw error;
+      }
+
       try {
         const result = await acceptCommand({
           commandName,
           tenantId: body.tenant_id,
-          payload: body.payload,
+          payload: validatedPayload,
           correlationId: body.correlation_id,
           initiatedBy,
           membership,

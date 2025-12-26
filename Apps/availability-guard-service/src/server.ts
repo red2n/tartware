@@ -12,6 +12,10 @@ import grpcServerPlugin from "./plugins/grpc-server.js";
 import swaggerPlugin from "./plugins/swagger.js";
 import { locksRoutes } from "./routes/locks.js";
 import {
+  shutdownAvailabilityGuardCommandCenterConsumer,
+  startAvailabilityGuardCommandCenterConsumer,
+} from "./workers/command-center-consumer.js";
+import {
   shutdownManualReleaseNotificationConsumer,
   startManualReleaseNotificationConsumer,
 } from "./workers/manual-release-notification-consumer.js";
@@ -38,12 +42,13 @@ export const buildServer = () => {
   void app.register(locksRoutes);
   app.addHook("onReady", async () => {
     await startManualReleaseNotificationConsumer(app.log);
+    await startAvailabilityGuardCommandCenterConsumer(app.log);
   });
   app.addHook("onClose", async () => {
-    await shutdownNotificationDispatcher();
-  });
-  app.addHook("onClose", async () => {
+    // Shutdown in proper order: stop consumers first, then notification dispatcher
+    await shutdownAvailabilityGuardCommandCenterConsumer(app.log);
     await shutdownManualReleaseNotificationConsumer(app.log);
+    await shutdownNotificationDispatcher();
   });
 
   app.after(() => {

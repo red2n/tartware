@@ -1,6 +1,8 @@
 import { randomUUID } from "node:crypto";
 
+import { validateCommandPayload } from "@tartware/schemas";
 import type { FastifyReply, FastifyRequest } from "fastify";
+import { ZodError } from "zod";
 
 import {
 	type AcceptedCommand,
@@ -86,6 +88,21 @@ export const submitCommand = async ({
 		return;
 	}
 
+	let validatedPayload: Record<string, unknown>;
+	try {
+		validatedPayload = validateCommandPayload(commandName, payload);
+	} catch (error) {
+		if (error instanceof ZodError) {
+			reply.status(400).send({
+				error: "COMMAND_PAYLOAD_INVALID",
+				message: `${commandName} payload failed validation`,
+				issues: error.issues,
+			});
+			return;
+		}
+		throw error;
+	}
+
 	const correlationId =
 		(request.headers["x-correlation-id"] as string | undefined) ?? undefined;
 	const requestId =
@@ -100,7 +117,7 @@ export const submitCommand = async ({
 		acceptance = await acceptCommand({
 			commandName,
 			tenantId,
-			payload,
+			payload: validatedPayload,
 			correlationId,
 			requestId,
 			initiatedBy,

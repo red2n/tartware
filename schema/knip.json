@@ -1,5 +1,13 @@
 {
   "$schema": "https://unpkg.com/knip@latest/schema.json",
+  "entry": ["src/index.ts!", "src/command-validators.ts!"],
+  "project": ["src/**/*.ts"],
+  "ignore": [
+    "src/**/*.d.ts",
+    "dist/**",
+    "src/schemas/08-settings/**",
+    "src/shared/validators.ts"
+  ],
   "ignoreDependencies": ["@biomejs/biome", "prettier", "tsx"],
   "ignoreBinaries": ["biome", "eslint", "knip", "prettier", "tsc", "tsx", "vitest"]
 }

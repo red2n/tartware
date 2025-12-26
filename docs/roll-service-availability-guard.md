@@ -32,7 +32,7 @@ Both services register their own consumer groups suffixed with `-shadow` so they
 
 ### 1.4 Observability Wiring
 - Reuse `@tartware/telemetry` helpers so both services expose `/metrics`, `/health/liveness`, `/health/readiness`, and OTLP exporters.
-- Add Grafana dashboards under `docs/observability/shadow-mode.md` (to be created) showing lag vs. production consumers using `kafka_consumer_lag` plus custom gauges emitted below.
+- Grafana dashboards + alert rules now live in `docs/observability/shadow-mode.md`. They cover kafka lag, replay drift, lock success/latency, and manual release notification health via the new metrics (`roll_service_lifecycle_events_total`, `roll_service_processing_lag_seconds`, `availability_guard_requests_total`, `availability_guard_notification_delivery_lag_seconds`, etc.).
 
 ### 1.5 Shadow Helm Bootstrap (in progress)
 - ✅ Added Helm dependencies that alias `service-template` for both shadow services so they can be toggled via `availability-guard-service.enabled` / `roll-service.enabled`.

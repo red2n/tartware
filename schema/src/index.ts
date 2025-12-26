@@ -23,6 +23,7 @@ export * from "./events/commands/index.js";
 
 // Re-export base schemas and validators
 export * from "./shared/base-schemas.js";
+export * from "./command-validators.js";
 
 // Re-export all ENUMs
 export * from "./shared/enums.js";
@@ -34,4 +35,3 @@ export * from "./shared/validators.js";
 export const SCHEMA_VERSION = "0.1.0";
 export const SCHEMA_DATE = "2025-12-15";
 export const TABLE_COUNT = 160;
-export const ENUM_COUNT = 70;
