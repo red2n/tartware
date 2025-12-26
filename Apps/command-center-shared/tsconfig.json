@@ -9,10 +9,13 @@
     "allowSyntheticDefaultImports": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
-    "baseUrl": "./src",
-    "rootDir": "src",
+    "baseUrl": ".",
     "declaration": true,
-    "strict": true
+    "strict": true,
+    "paths": {
+      "@tartware/schemas": ["../../schema/src/index.ts"],
+      "@tartware/schemas/*": ["../../schema/src/*.ts"]
+    }
   },
   "include": ["src/**/*.ts"],
   "exclude": ["dist", "node_modules"]

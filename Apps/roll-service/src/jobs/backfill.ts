@@ -68,6 +68,7 @@ export const buildBackfillJob = (
   const processBatch = async () => {
     await tracer.startActiveSpan("roll.backfill.batch", async (span) => {
       const startedAt = performance.now();
+      let hasError = false;
       try {
         span.setAttributes({
           "roll.backfill.batch_size": options.batchSize,
@@ -138,6 +139,7 @@ export const buildBackfillJob = (
           "Roll backfill batch persisted to shadow ledger",
         );
       } catch (error) {
+        hasError = true;
         span.recordException(error as Error);
         span.setStatus({
           code: SpanStatusCode.ERROR,
@@ -148,7 +150,7 @@ export const buildBackfillJob = (
       } finally {
         const durationSeconds = (performance.now() - startedAt) / 1000;
         // Only record duration for successful batches
-        if (span.status?.code !== SpanStatusCode.ERROR) {
+        if (!hasError) {
           backfillBatchDurationHistogram.observe(durationSeconds);
         }
       }

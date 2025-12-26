@@ -16,7 +16,9 @@
     "baseUrl": ".",
     "paths": {
       "@tartware/schemas": ["../../schema/src/index.ts"],
-      "@tartware/schemas/*": ["../../schema/src/*"],
+      "@tartware/schemas/*": ["../../schema/src/*", "../../schema/src/*.ts"],
+      "@tartware/config": ["../config/src/index.ts"],
+      "@tartware/config/*": ["../config/src/*"],
       "@tartware/telemetry": ["../telemetry/src/index.ts"],
       "@tartware/telemetry/*": ["../telemetry/src/*"],
       "@tartware/openapi": ["../openapi-utils/src/index.ts"],
