@@ -45,13 +45,10 @@ export const buildServer = () => {
     await startAvailabilityGuardCommandCenterConsumer(app.log);
   });
   app.addHook("onClose", async () => {
-    await shutdownNotificationDispatcher();
-  });
-  app.addHook("onClose", async () => {
-    await shutdownManualReleaseNotificationConsumer(app.log);
-  });
-  app.addHook("onClose", async () => {
+    // Shutdown in proper order: stop consumers first, then notification dispatcher
     await shutdownAvailabilityGuardCommandCenterConsumer(app.log);
+    await shutdownManualReleaseNotificationConsumer(app.log);
+    await shutdownNotificationDispatcher();
   });
 
   app.after(() => {

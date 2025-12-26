@@ -143,11 +143,14 @@ export const buildBackfillJob = (
           code: SpanStatusCode.ERROR,
           message: error instanceof Error ? error.message : "backfill_error",
         });
+        span.end();
         throw error;
       } finally {
         const durationSeconds = (performance.now() - startedAt) / 1000;
-        backfillBatchDurationHistogram.observe(durationSeconds);
-        span.end();
+        // Only record duration for successful batches
+        if (span.status?.code !== SpanStatusCode.ERROR) {
+          backfillBatchDurationHistogram.observe(durationSeconds);
+        }
       }
     });
   };

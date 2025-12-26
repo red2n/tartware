@@ -164,7 +164,7 @@ const processMessage = async (
       },
       "Command processing failed",
     );
-    throw error;
+    // Skip error and continue - consistent with parse errors and filtered commands
   }
 };
 

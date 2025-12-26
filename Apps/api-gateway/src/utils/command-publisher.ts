@@ -1,28 +1,6 @@
 import { randomUUID } from "node:crypto";
 
-import {
-	BillingPaymentCaptureCommandSchema,
-	BillingPaymentRefundCommandSchema,
-} from "@tartware/schemas/events/commands/billing";
-import {
-	GuestMergeCommandSchema,
-	GuestRegisterCommandSchema,
-} from "@tartware/schemas/events/commands/guests";
-import {
-	HousekeepingAssignCommandSchema,
-	HousekeepingCompleteCommandSchema,
-} from "@tartware/schemas/events/commands/housekeeping";
-import {
-	InventoryBulkReleaseCommandSchema,
-	InventoryLockRoomCommandSchema,
-	InventoryReleaseRoomCommandSchema,
-} from "@tartware/schemas/events/commands/inventory";
-import {
-	ReservationCancelCommandSchema,
-	ReservationCreateCommandSchema,
-	ReservationModifyCommandSchema,
-} from "@tartware/schemas/events/commands/reservations";
-import { RoomInventoryBlockCommandSchema } from "@tartware/schemas/events/commands/rooms";
+import { validateCommandPayload } from "@tartware/schemas";
 import type { FastifyReply, FastifyRequest } from "fastify";
 import { ZodError } from "zod";
 
@@ -90,67 +68,6 @@ const ensureTenantAccess = (
 	}
 
 	return membership;
-};
-
-type CommandPayloadValidator = (
-	payload: Record<string, unknown>,
-) => Record<string, unknown>;
-
-const commandPayloadValidators = new Map<string, CommandPayloadValidator>([
-	[
-		"billing.payment.capture",
-		(payload) => BillingPaymentCaptureCommandSchema.parse(payload),
-	],
-	[
-		"billing.payment.refund",
-		(payload) => BillingPaymentRefundCommandSchema.parse(payload),
-	],
-	["guest.register", (payload) => GuestRegisterCommandSchema.parse(payload)],
-	["guest.merge", (payload) => GuestMergeCommandSchema.parse(payload)],
-	[
-		"housekeeping.task.assign",
-		(payload) => HousekeepingAssignCommandSchema.parse(payload),
-	],
-	[
-		"housekeeping.task.complete",
-		(payload) => HousekeepingCompleteCommandSchema.parse(payload),
-	],
-	[
-		"inventory.lock.room",
-		(payload) => InventoryLockRoomCommandSchema.parse(payload),
-	],
-	[
-		"inventory.release.room",
-		(payload) => InventoryReleaseRoomCommandSchema.parse(payload),
-	],
-	[
-		"inventory.release.bulk",
-		(payload) => InventoryBulkReleaseCommandSchema.parse(payload),
-	],
-	[
-		"reservation.create",
-		(payload) => ReservationCreateCommandSchema.parse(payload),
-	],
-	[
-		"reservation.modify",
-		(payload) => ReservationModifyCommandSchema.parse(payload),
-	],
-	[
-		"reservation.cancel",
-		(payload) => ReservationCancelCommandSchema.parse(payload),
-	],
-	[
-		"rooms.inventory.block",
-		(payload) => RoomInventoryBlockCommandSchema.parse(payload),
-	],
-]);
-
-const validateCommandPayload = (
-	commandName: string,
-	payload: Record<string, unknown>,
-): Record<string, unknown> => {
-	const validator = commandPayloadValidators.get(commandName);
-	return validator ? validator(payload) : payload;
 };
 
 export const submitCommand = async ({

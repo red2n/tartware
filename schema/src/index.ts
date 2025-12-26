@@ -23,6 +23,7 @@ export * from "./events/commands/index.js";
 
 // Re-export base schemas and validators
 export * from "./shared/base-schemas.js";
+export * from "./command-validators.js";
 
 // Re-export all ENUMs
 export * from "./shared/enums.js";

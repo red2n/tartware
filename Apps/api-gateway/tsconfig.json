@@ -22,12 +22,10 @@
       "@tartware/config": ["../config/src/index.ts"],
       "@tartware/config/*": ["../config/src/*"],
       "@tartware/schemas": [
-        "../../schema/src/index.ts",
-        "../../schema/dist/index.d.ts"
+        "../../schema/src/index.ts"
       ],
       "@tartware/schemas/*": [
-        "../../schema/src/*.ts",
-        "../../schema/dist/*.d.ts"
+        "../../schema/src/*.ts"
       ],
       "@tartware/outbox": ["../outbox/src/index.ts"],
       "@tartware/outbox/*": ["../outbox/src/*"],
