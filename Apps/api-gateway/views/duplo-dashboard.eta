@@ -137,7 +137,10 @@
 	<body>
 		<header>
 			<h1>Duplo Duplicate Dashboard</h1>
-			<p>Render summaries from <code>reports/duplo</code> for quick duplicate reviews.</p>
+			<p>
+				Render summaries from
+				<code><%= it.reportsBaseLabel %></code> for quick duplicate reviews.
+			</p>
 		</header>
 		<main>
 			<% if (!it.hasReports) { %>

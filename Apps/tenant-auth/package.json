@@ -11,11 +11,12 @@
     "typecheck": "tsc --noEmit",
     "clean": "rm -rf dist *.tsbuildinfo"
   },
-  "dependencies": {},
+  "dependencies": {
+    "fastify-plugin": "^5.1.0"
+  },
   "peerDependencies": {
     "fastify": ">=4.0.0 <6"
   },
-  "devDependencies": {},
   "engines": {
     "node": ">=20.0.0",
     "npm": ">=10.0.0"

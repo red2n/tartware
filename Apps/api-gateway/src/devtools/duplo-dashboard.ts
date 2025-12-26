@@ -4,7 +4,13 @@ import { fileURLToPath } from "node:url";
 
 import { buildRouteSchema } from "@tartware/openapi";
 import { Eta } from "eta";
-import type { FastifyBaseLogger, FastifyInstance } from "fastify";
+import type {
+	FastifyBaseLogger,
+	FastifyInstance,
+	FastifyReply,
+	FastifyRequest,
+	preHandlerHookHandler,
+} from "fastify";
 
 interface DuploSummary {
 	timestamp: string;
@@ -22,6 +28,7 @@ interface DuploSummaryRecord {
 
 interface DashboardContext {
 	hasReports: boolean;
+	reportsBaseLabel: string;
 	availableReports: Array<{
 		timestamp: string;
 		displayLabel: string;
@@ -43,14 +50,67 @@ interface DashboardContext {
 const SUMMARY_FILE_PATTERN = /^duplo-summary-(\d{8}-\d{6})\.json$/;
 const moduleDir = path.dirname(fileURLToPath(import.meta.url));
 const workspaceRoot = path.resolve(moduleDir, "../..");
-const repoRoot = path.resolve(workspaceRoot, "..", "..");
-const reportsDir = path.join(repoRoot, "reports", "duplo");
+const fallbackRepoRoot = path.resolve(workspaceRoot, "..", "..");
+const repoRoot = path.resolve(
+	process.env.TARTWARE_REPO_ROOT ?? fallbackRepoRoot,
+);
+const defaultReportsDir = path.join(repoRoot, "reports", "duplo");
+const reportsDir = path.resolve(
+	process.env.DUPLO_REPORTS_DIR ?? defaultReportsDir,
+);
 const viewsDir = path.join(workspaceRoot, "views");
+
+const toDisplayPath = (targetPath: string): string => {
+	const repoRelative = path.relative(repoRoot, targetPath);
+	if (repoRelative && !repoRelative.startsWith("..")) {
+		return repoRelative.split(path.sep).join(path.posix.sep);
+	}
+	if (!repoRelative) {
+		return ".";
+	}
+	return targetPath;
+};
+
+const reportsBaseLabel = toDisplayPath(reportsDir);
+const DEVTOOLS_TOKEN_HEADER = "x-devtools-token";
 
 const eta = new Eta({
 	views: viewsDir,
 	cache: process.env.NODE_ENV === "production",
 });
+
+type DashboardAccessOptions = {
+	sharedSecret?: string;
+};
+
+const buildDashboardAccessGuard = (
+	options?: DashboardAccessOptions,
+): preHandlerHookHandler | undefined => {
+	const sharedSecret =
+		options?.sharedSecret && options.sharedSecret.trim().length > 0
+			? options.sharedSecret
+			: undefined;
+	if (!sharedSecret) {
+		return undefined;
+	}
+
+	return async (request: FastifyRequest, reply: FastifyReply) => {
+		const provided =
+			request.headers[DEVTOOLS_TOKEN_HEADER] ??
+			request.headers[DEVTOOLS_TOKEN_HEADER.toUpperCase()];
+		const value = Array.isArray(provided) ? provided.at(0) : provided;
+		if (value !== sharedSecret) {
+			request.log.warn(
+				{ path: request.url },
+				"Rejected Duplo dashboard request without valid developer token",
+			);
+			return reply
+				.code(403)
+				.type("application/json")
+				.send({ error: "DEVELOPER_DASHBOARD_FORBIDDEN" });
+		}
+	};
+};
 
 const formatTimestampLabel = (timestamp: string): string => {
 	if (!/^\d{8}-\d{6}$/.test(timestamp)) {
@@ -120,7 +180,7 @@ const listDuploSummaries = async (
 		const record: DuploSummaryRecord = {
 			fileName: entry,
 			filePath,
-			relativePath: path.posix.join("reports/duplo", entry),
+			relativePath: toDisplayPath(filePath),
 			metadata: {
 				timestamp,
 				status: typeof parsed.status === "number" ? parsed.status : 0,
@@ -173,6 +233,7 @@ const buildDashboardContext = (
 
 	return {
 		hasReports: summaries.length > 0,
+		reportsBaseLabel,
 		availableReports: summaries.map((summary) => ({
 			timestamp: summary.metadata.timestamp,
 			displayLabel: formatTimestampLabel(summary.metadata.timestamp),
@@ -195,7 +256,11 @@ const buildDashboardContext = (
 	};
 };
 
-export const registerDuploDashboard = (app: FastifyInstance): void => {
+export const registerDuploDashboard = (
+	app: FastifyInstance,
+	options?: DashboardAccessOptions,
+): void => {
+	const preHandler = buildDashboardAccessGuard(options);
 	app.get(
 		"/developers/duplo",
 		{
@@ -217,6 +282,7 @@ export const registerDuploDashboard = (app: FastifyInstance): void => {
 					200: { type: "string" },
 				},
 			}),
+			...(preHandler ? { preHandler } : {}),
 		},
 		async (request, reply) => {
 			const summaries = await listDuploSummaries(request.log);

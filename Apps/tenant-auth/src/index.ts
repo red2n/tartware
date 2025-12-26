@@ -5,6 +5,7 @@ import type {
   FastifyRequest,
   preHandlerHookHandler,
 } from "fastify";
+import fp from "fastify-plugin";
 
 export interface TenantMembershipBase {
   tenantId: string;
@@ -48,11 +49,33 @@ export type TenantScopeDecorator<Membership extends TenantMembershipBase> = (
   options?: TenantScopeOptions<Membership>,
 ) => preHandlerHookHandler;
 
+/** Required callbacks/config to wire tenant auth into a service. */
 export interface TenantAuthPluginOptions<Membership extends TenantMembershipBase> {
+  /**
+   * Resolves the full set of tenant memberships for a user identified by the
+   * token subject. Return an empty array when the user has no memberships.
+   */
   getUserMemberships: (userId: string) => Promise<Membership[]>;
+  /**
+   * Extracts a bearer token (e.g. strips the "Bearer " prefix) from the
+   * Authorization header. Return null when no token is provided.
+   */
   extractBearerToken: (authorizationHeader?: string) => string | null;
+  /**
+   * Verifies the bearer token and returns its payload (must include sub) when
+   * valid. Return null for expired/invalid tokens to treat the request as
+   * unauthenticated.
+   */
   verifyAccessToken: (token: string) => AccessTokenPayload | null;
+  /**
+   * Role weight table used to compare membership privilege. Higher numbers
+   * represent more privileged roles (e.g. ADMIN > STAFF).
+   */
   rolePriority: Record<string, number>;
+  /**
+   * Optional escape hatch for routes (like health checks) that should skip
+   * auth entirely.
+   */
   shouldBypassAuth?: (request: FastifyRequest) => boolean;
 }
 
@@ -181,20 +204,14 @@ export const createTenantAuthPlugin = <
   } = options;
   const createAuthContext = createAuthContextFactory<Membership>(rolePriority);
 
-  return async (fastify: FastifyInstance) => {
-    (fastify.decorateRequest as (...args: unknown[]) => FastifyInstance)(
-      "auth",
-      null,
-    );
+  return fp(async (fastify: FastifyInstance) => {
+    fastify.decorateRequest("auth", null);
 
     const tenantScopeDecorator: TenantScopeDecorator<Membership> = (
       scopeOptions?: TenantScopeOptions<Membership>,
     ) => buildTenantScopeGuard(scopeOptions);
 
-    (fastify.decorate as (...args: unknown[]) => FastifyInstance)(
-      "withTenantScope",
-      tenantScopeDecorator,
-    );
+    fastify.decorate("withTenantScope", tenantScopeDecorator);
 
     fastify.addHook("onRequest", async (request) => {
       const scopedRequest = request as unknown as RequestWithAuth<Membership>;
@@ -225,5 +242,5 @@ export const createTenantAuthPlugin = <
         scopedRequest.auth = createAuthContext(payload.sub, []);
       }
     });
-  };
+  });
 };

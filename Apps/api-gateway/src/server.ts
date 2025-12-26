@@ -15,7 +15,7 @@ import fastify, {
 	type FastifyRequest,
 } from "fastify";
 
-import { gatewayConfig, serviceTargets } from "./config.js";
+import { devToolsConfig, gatewayConfig, serviceTargets } from "./config.js";
 import { registerDuploDashboard } from "./devtools/duplo-dashboard.js";
 import { gatewayLogger } from "./logger.js";
 import authContextPlugin from "./plugins/auth-context.js";
@@ -143,7 +143,13 @@ export const buildServer = () => {
 	);
 
 	app.after(() => {
-		registerDuploDashboard(app);
+		if (devToolsConfig.duploDashboard.enabled) {
+			registerDuploDashboard(app, {
+				sharedSecret: devToolsConfig.duploDashboard.sharedSecret,
+			});
+		} else {
+			app.log.debug("Duplo dashboard disabled for this environment");
+		}
 
 		const allowCorsHeaders = (reply: FastifyReply): FastifyReply =>
 			reply
