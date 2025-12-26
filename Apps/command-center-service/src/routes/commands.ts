@@ -1,8 +1,31 @@
 import { randomUUID } from "node:crypto";
 
 import { buildRouteSchema, schemaFromZod } from "@tartware/openapi";
+import {
+  BillingPaymentCaptureCommandSchema,
+  BillingPaymentRefundCommandSchema,
+} from "@tartware/schemas/events/commands/billing";
+import {
+  GuestMergeCommandSchema,
+  GuestRegisterCommandSchema,
+} from "@tartware/schemas/events/commands/guests";
+import {
+  HousekeepingAssignCommandSchema,
+  HousekeepingCompleteCommandSchema,
+} from "@tartware/schemas/events/commands/housekeeping";
+import {
+  InventoryBulkReleaseCommandSchema,
+  InventoryLockRoomCommandSchema,
+  InventoryReleaseRoomCommandSchema,
+} from "@tartware/schemas/events/commands/inventory";
+import {
+  ReservationCancelCommandSchema,
+  ReservationCreateCommandSchema,
+  ReservationModifyCommandSchema,
+} from "@tartware/schemas/events/commands/reservations";
+import { RoomInventoryBlockCommandSchema } from "@tartware/schemas/events/commands/rooms";
 import type { FastifyInstance } from "fastify";
-import { z } from "zod";
+import { ZodError, z } from "zod";
 
 import {
   acceptCommand,
@@ -52,6 +75,67 @@ const CommandExecuteResponseJsonSchema = schemaFromZod(
   "CommandExecuteResponse",
 );
 
+type CommandPayloadValidator = (
+  payload: Record<string, unknown>,
+) => Record<string, unknown>;
+
+const commandPayloadValidators = new Map<string, CommandPayloadValidator>([
+  [
+    "billing.payment.capture",
+    (payload) => BillingPaymentCaptureCommandSchema.parse(payload),
+  ],
+  [
+    "billing.payment.refund",
+    (payload) => BillingPaymentRefundCommandSchema.parse(payload),
+  ],
+  ["guest.register", (payload) => GuestRegisterCommandSchema.parse(payload)],
+  ["guest.merge", (payload) => GuestMergeCommandSchema.parse(payload)],
+  [
+    "housekeeping.task.assign",
+    (payload) => HousekeepingAssignCommandSchema.parse(payload),
+  ],
+  [
+    "housekeeping.task.complete",
+    (payload) => HousekeepingCompleteCommandSchema.parse(payload),
+  ],
+  [
+    "inventory.lock.room",
+    (payload) => InventoryLockRoomCommandSchema.parse(payload),
+  ],
+  [
+    "inventory.release.room",
+    (payload) => InventoryReleaseRoomCommandSchema.parse(payload),
+  ],
+  [
+    "inventory.release.bulk",
+    (payload) => InventoryBulkReleaseCommandSchema.parse(payload),
+  ],
+  [
+    "reservation.create",
+    (payload) => ReservationCreateCommandSchema.parse(payload),
+  ],
+  [
+    "reservation.modify",
+    (payload) => ReservationModifyCommandSchema.parse(payload),
+  ],
+  [
+    "reservation.cancel",
+    (payload) => ReservationCancelCommandSchema.parse(payload),
+  ],
+  [
+    "rooms.inventory.block",
+    (payload) => RoomInventoryBlockCommandSchema.parse(payload),
+  ],
+]);
+
+const validateCommandPayload = (
+  commandName: string,
+  payload: Record<string, unknown>,
+): Record<string, unknown> => {
+  const validator = commandPayloadValidators.get(commandName);
+  return validator ? validator(payload) : payload;
+};
+
 export const registerCommandRoutes = (app: FastifyInstance): void => {
   app.post(
     "/v1/commands/:commandName/execute",
@@ -90,11 +174,26 @@ export const registerCommandRoutes = (app: FastifyInstance): void => {
           }
         : null;
 
+      let validatedPayload: Record<string, unknown>;
+      try {
+        validatedPayload = validateCommandPayload(commandName, body.payload);
+      } catch (error) {
+        if (error instanceof ZodError) {
+          reply.status(400).send({
+            error: "COMMAND_PAYLOAD_INVALID",
+            message: `${commandName} payload failed validation`,
+            issues: error.issues,
+          });
+          return;
+        }
+        throw error;
+      }
+
       try {
         const result = await acceptCommand({
           commandName,
           tenantId: body.tenant_id,
-          payload: body.payload,
+          payload: validatedPayload,
           correlationId: body.correlation_id,
           initiatedBy,
           membership,

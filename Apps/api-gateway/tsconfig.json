@@ -21,8 +21,14 @@
       "@tartware/telemetry/*": ["../telemetry/src/*"],
       "@tartware/config": ["../config/src/index.ts"],
       "@tartware/config/*": ["../config/src/*"],
-      "@tartware/schemas": ["../../schema/src/index.ts"],
-      "@tartware/schemas/*": ["../../schema/src/*"],
+      "@tartware/schemas": [
+        "../../schema/src/index.ts",
+        "../../schema/dist/index.d.ts"
+      ],
+      "@tartware/schemas/*": [
+        "../../schema/src/*.ts",
+        "../../schema/dist/*.d.ts"
+      ],
       "@tartware/outbox": ["../outbox/src/index.ts"],
       "@tartware/outbox/*": ["../outbox/src/*"],
       "@tartware/command-center-shared": ["../command-center-shared/src/index.ts"],

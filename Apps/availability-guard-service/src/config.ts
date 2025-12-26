@@ -42,6 +42,17 @@ const kafka = {
   maxBatchBytes: toNumber(process.env.KAFKA_MAX_BATCH_BYTES, 1048576),
 };
 
+const commandCenter = {
+  topic: kafka.commandTopic,
+  consumerGroupId:
+    process.env.AVAILABILITY_GUARD_COMMAND_CONSUMER_GROUP ??
+    `${kafka.consumerGroupId}-commands`,
+  targetServiceId:
+    process.env.COMMAND_CENTER_TARGET_SERVICE_ID ??
+    "availability-guard-service",
+  maxBatchBytes: kafka.maxBatchBytes,
+};
+
 const grpc = {
   host: process.env.GRPC_HOST ?? "0.0.0.0",
   port: toNumber(process.env.GRPC_PORT, 4400),
@@ -170,4 +181,5 @@ export const config = {
   kafka,
   grpc,
   guard,
+  commandCenter,
 };

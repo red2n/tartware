@@ -100,6 +100,26 @@ export const consumerTimestampDriftGauge = new Gauge({
   registers: [metricsRegistry],
 });
 
+export const lifecycleEventsCounter = new Counter({
+  name: "roll_service_lifecycle_events_total",
+  help: "Lifecycle events handled by the roll service consumer partitioned by result",
+  labelNames: ["result"],
+  registers: [metricsRegistry],
+});
+
+export const lifecycleEventDurationHistogram = new Histogram({
+  name: "roll_service_lifecycle_event_duration_seconds",
+  help: "Per-event processing duration for lifecycle records",
+  buckets: [0.0025, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5],
+  registers: [metricsRegistry],
+});
+
+export const lifecycleBatchFailuresCounter = new Counter({
+  name: "roll_service_lifecycle_batch_failures_total",
+  help: "Count of Kafka batches that failed before all offsets were committed",
+  registers: [metricsRegistry],
+});
+
 export type ReplayDriftStatus = "match" | "mismatch" | "missing";
 
 export const recordReplayDrift = (status: ReplayDriftStatus): void => {

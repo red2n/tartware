@@ -1,5 +1,6 @@
 import { performance } from "node:perf_hooks";
 
+import { SpanStatusCode, trace } from "@opentelemetry/api";
 import type { FastifyBaseLogger } from "fastify";
 
 import { query, withTransaction } from "../lib/db.js";
@@ -21,6 +22,8 @@ import {
   buildLedgerEntryFromLifecycleRow,
   type LifecycleRow,
 } from "../services/roll-ledger-builder.js";
+
+const tracer = trace.getTracer("roll-service");
 
 type LifecycleRowResult = LifecycleRow;
 
@@ -63,64 +66,90 @@ export const buildBackfillJob = (
   let inFlight = false;
 
   const processBatch = async () => {
-    const startedAt = performance.now();
-    const checkpoint = await getBackfillCheckpoint();
-    if (checkpoint?.lastEventCreatedAt) {
-      backfillCheckpointGauge.set(
-        checkpoint.lastEventCreatedAt.getTime() / 1000,
-      );
-    }
+    await tracer.startActiveSpan("roll.backfill.batch", async (span) => {
+      const startedAt = performance.now();
+      try {
+        span.setAttributes({
+          "roll.backfill.batch_size": options.batchSize,
+        });
 
-    const rows = await fetchLifecycleBatch(
-      checkpoint?.lastEventCreatedAt ?? null,
-      options.batchSize,
-    );
+        const checkpoint = await getBackfillCheckpoint();
+        if (checkpoint?.lastEventCreatedAt) {
+          backfillCheckpointGauge.set(
+            checkpoint.lastEventCreatedAt.getTime() / 1000,
+          );
+          span.setAttribute(
+            "roll.backfill.checkpoint",
+            checkpoint.lastEventCreatedAt.toISOString(),
+          );
+        }
 
-    if (rows.length === 0) {
-      logger.debug("No lifecycle rows available for roll backfill");
-      backfillBatchDurationHistogram.observe(
-        (performance.now() - startedAt) / 1000,
-      );
-      return;
-    }
-
-    await withTransaction(async (client) => {
-      for (const row of rows) {
-        const ledgerEntry = buildLedgerEntryFromLifecycleRow(row);
-        const driftStatus = await upsertRollLedgerEntry(ledgerEntry, client);
-        recordReplayDrift(driftStatus);
-      }
-
-      const lastRow = rows[rows.length - 1];
-      if (!lastRow) {
-        logger.error(
-          { rowsProcessed: rows.length },
-          "Expected at least one lifecycle row in backfill batch",
+        const rows = await fetchLifecycleBatch(
+          checkpoint?.lastEventCreatedAt ?? null,
+          options.batchSize,
         );
-        return;
+
+        span.setAttribute("roll.backfill.row_count", rows.length);
+
+        if (rows.length === 0) {
+          logger.debug("No lifecycle rows available for roll backfill");
+          return;
+        }
+
+        await withTransaction(async (client) => {
+          for (const row of rows) {
+            const ledgerEntry = buildLedgerEntryFromLifecycleRow(row);
+            const driftStatus = await upsertRollLedgerEntry(
+              ledgerEntry,
+              client,
+            );
+            recordReplayDrift(driftStatus);
+          }
+
+          const lastRow = rows[rows.length - 1];
+          if (!lastRow) {
+            logger.error(
+              { rowsProcessed: rows.length },
+              "Expected at least one lifecycle row in backfill batch",
+            );
+            return;
+          }
+          await upsertBackfillCheckpoint(
+            {
+              tenantId: GLOBAL_TENANT_SENTINEL,
+              lastEventId: lastRow.event_id,
+              lastEventCreatedAt: lastRow.created_at,
+            },
+            client,
+          );
+
+          backfillCheckpointGauge.set(lastRow.created_at.getTime() / 1000);
+          span.setAttribute(
+            "roll.backfill.last_event_at",
+            lastRow.created_at.toISOString(),
+          );
+        });
+
+        backfillRowsCounter.inc(rows.length);
+        backfillBatchesCounter.inc();
+
+        logger.info(
+          { processed: rows.length },
+          "Roll backfill batch persisted to shadow ledger",
+        );
+      } catch (error) {
+        span.recordException(error as Error);
+        span.setStatus({
+          code: SpanStatusCode.ERROR,
+          message: error instanceof Error ? error.message : "backfill_error",
+        });
+        throw error;
+      } finally {
+        const durationSeconds = (performance.now() - startedAt) / 1000;
+        backfillBatchDurationHistogram.observe(durationSeconds);
+        span.end();
       }
-      await upsertBackfillCheckpoint(
-        {
-          tenantId: GLOBAL_TENANT_SENTINEL,
-          lastEventId: lastRow.event_id,
-          lastEventCreatedAt: lastRow.created_at,
-        },
-        client,
-      );
-
-      backfillCheckpointGauge.set(lastRow.created_at.getTime() / 1000);
     });
-
-    backfillRowsCounter.inc(rows.length);
-    backfillBatchesCounter.inc();
-    backfillBatchDurationHistogram.observe(
-      (performance.now() - startedAt) / 1000,
-    );
-
-    logger.info(
-      { processed: rows.length },
-      "Roll backfill batch persisted to shadow ledger",
-    );
   };
 
   const runOnce = async () => {
