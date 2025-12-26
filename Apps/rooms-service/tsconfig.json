@@ -19,7 +19,9 @@
       "@tartware/config": ["../../config/src/index.ts"],
       "@tartware/config/*": ["../../config/src/*"],
       "@tartware/openapi": ["../../openapi-utils/src/index.ts"],
-      "@tartware/openapi/*": ["../../openapi-utils/src/*"]
+      "@tartware/openapi/*": ["../../openapi-utils/src/*"],
+      "@tartware/tenant-auth": ["../../tenant-auth/src/index.ts"],
+      "@tartware/tenant-auth/*": ["../../tenant-auth/src/*"]
     }
   },
   "include": ["src/**/*"],

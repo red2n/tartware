@@ -29,6 +29,7 @@
     "@tartware/openapi": "file:../openapi-utils",
     "@tartware/schemas": "file:../../schema",
     "@tartware/telemetry": "file:../telemetry",
+    "@tartware/tenant-auth": "file:../tenant-auth",
     "kafkajs": "^2.2.4",
     "fastify": "^4.26.2",
     "fastify-plugin": "^4.5.1",

@@ -8,6 +8,7 @@
     "@tartware/telemetry",
     "@tartware/openapi",
     "@tartware/config",
+    "@tartware/tenant-auth",
     "tsx"
   ],
   "ignoreBinaries": ["biome", "eslint", "knip", "tsc", "tsx"]

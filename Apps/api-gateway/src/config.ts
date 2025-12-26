@@ -51,6 +51,8 @@ const toDelay = (value: string | undefined, fallback: number): number => {
 };
 
 const baseConfig = loadServiceConfig(databaseSchema);
+const runtimeEnvironment = (env.NODE_ENV ?? "development").toLowerCase();
+const isProduction = runtimeEnvironment === "production";
 
 export const gatewayConfig = {
 	port: toNumber(env.API_GATEWAY_PORT, baseConfig.PORT ?? 8080),
@@ -62,6 +64,18 @@ export const gatewayConfig = {
 		timeWindow: env.API_GATEWAY_RATE_WINDOW ?? "1 minute",
 	},
 	logRequests: parseBoolean(env.API_GATEWAY_LOG_REQUESTS, false),
+};
+export const devToolsConfig = {
+	duploDashboard: {
+		enabled: parseBoolean(
+			env.API_GATEWAY_ENABLE_DUPLO_DASHBOARD,
+			!isProduction,
+		),
+		sharedSecret:
+			env.API_GATEWAY_DUPLO_TOKEN && env.API_GATEWAY_DUPLO_TOKEN.length > 0
+				? env.API_GATEWAY_DUPLO_TOKEN
+				: undefined,
+	},
 };
 
 export const serviceTargets = {

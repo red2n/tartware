@@ -9,7 +9,8 @@
     "@tartware/telemetry",
     "@tartware/config",
     "@tartware/outbox",
-    "@tartware/schemas"
+    "@tartware/schemas",
+    "@tartware/command-center-shared"
   ],
   "ignoreBinaries": ["biome", "eslint", "knip", "tsc", "tsx"]
 }
