@@ -79,6 +79,8 @@ export interface TenantAuthPluginOptions<Membership extends TenantMembershipBase
   shouldBypassAuth?: (request: FastifyRequest) => boolean;
 }
 
+const TENANT_SCOPE_DECORATOR_KEY: string = "withTenantScope";
+
 const coerceModules = (modules: string[] | readonly string[] | undefined): string[] => {
   if (!Array.isArray(modules)) {
     return [];
@@ -211,7 +213,7 @@ export const createTenantAuthPlugin = <
       scopeOptions?: TenantScopeOptions<Membership>,
     ) => buildTenantScopeGuard(scopeOptions);
 
-    fastify.decorate("withTenantScope", tenantScopeDecorator);
+    fastify.decorate(TENANT_SCOPE_DECORATOR_KEY, tenantScopeDecorator);
 
     fastify.addHook("onRequest", async (request) => {
       const scopedRequest = request as unknown as RequestWithAuth<Membership>;
