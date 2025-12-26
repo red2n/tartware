@@ -270,6 +270,7 @@ data/postgres/
 
 # Node modules (if any frontend tools are added)
 node_modules/
+node_modules
 
 # Tooling artifacts
 duplo
