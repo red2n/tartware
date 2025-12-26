@@ -28,7 +28,10 @@ type AccessTokenPayload = {
   [key: string]: unknown;
 };
 
-type RequestWithAuth<Membership extends TenantMembershipBase> = FastifyRequest & {
+type RequestWithAuth<Membership extends TenantMembershipBase> = Omit<
+  FastifyRequest,
+  "auth"
+> & {
   auth: AuthContext<Membership>;
 };
 
@@ -49,7 +52,7 @@ export interface TenantAuthPluginOptions<Membership extends TenantMembershipBase
   getUserMemberships: (userId: string) => Promise<Membership[]>;
   extractBearerToken: (authorizationHeader?: string) => string | null;
   verifyAccessToken: (token: string) => AccessTokenPayload | null;
-  rolePriority: Record<Membership["role"], number>;
+  rolePriority: Record<string, number>;
   shouldBypassAuth?: (request: FastifyRequest) => boolean;
 }
 
@@ -61,7 +64,7 @@ const coerceModules = (modules: string[] | readonly string[] | undefined): strin
 };
 
 const createAuthContextFactory = <Membership extends TenantMembershipBase>(
-  rolePriority: Record<Membership["role"], number>,
+  rolePriority: Record<string, number>,
 ) =>
   (userId: string | null, memberships: Membership[]): AuthContext<Membership> => {
     const membershipMap = new Map(
@@ -108,10 +111,14 @@ const buildTenantScopeGuard = <Membership extends TenantMembershipBase>(
   const resolver = resolveTenantId ?? (() => undefined);
 
   return async (request: FastifyRequest, reply: FastifyReply) => {
-    const scopedRequest = request as RequestWithAuth<Membership>;
+    const scopedRequest = request as unknown as RequestWithAuth<Membership>;
+
+    const sendError = (statusCode: number, message: string) => {
+      reply.code(statusCode).send({ error: message });
+    };
 
     if (!allowUnauthenticated && !scopedRequest.auth?.isAuthenticated) {
-      reply.unauthorized("AUTHENTICATION_REQUIRED");
+      sendError(401, "AUTHENTICATION_REQUIRED");
       return reply;
     }
 
@@ -121,23 +128,23 @@ const buildTenantScopeGuard = <Membership extends TenantMembershipBase>(
       if (allowMissingTenantId) {
         return;
       }
-      reply.badRequest("TENANT_ID_REQUIRED");
+      sendError(400, "TENANT_ID_REQUIRED");
       return reply;
     }
 
     const membership = scopedRequest.auth.getMembership(tenantId);
     if (!membership) {
-      reply.forbidden("TENANT_ACCESS_DENIED");
+      sendError(403, "TENANT_ACCESS_DENIED");
       return reply;
     }
 
     if (requireActiveMembership && !membership.isActive) {
-      reply.forbidden("TENANT_ACCESS_INACTIVE");
+      sendError(403, "TENANT_ACCESS_INACTIVE");
       return reply;
     }
 
     if (minRole && !scopedRequest.auth.hasRole(tenantId, minRole)) {
-      reply.forbidden("TENANT_ROLE_INSUFFICIENT");
+      sendError(403, "TENANT_ROLE_INSUFFICIENT");
       return reply;
     }
 
@@ -151,7 +158,7 @@ const buildTenantScopeGuard = <Membership extends TenantMembershipBase>(
       const enabledModules = new Set(coerceModules(membership.modules));
       const missing = modules.filter((moduleId) => !enabledModules.has(moduleId));
       if (missing.length > 0) {
-        reply.forbidden("TENANT_MODULE_NOT_ENABLED");
+        sendError(403, "TENANT_MODULE_NOT_ENABLED");
         return reply;
       }
     }
@@ -172,19 +179,25 @@ export const createTenantAuthPlugin = <
     rolePriority,
     shouldBypassAuth,
   } = options;
-  const createAuthContext = createAuthContextFactory(rolePriority);
+  const createAuthContext = createAuthContextFactory<Membership>(rolePriority);
 
   return async (fastify: FastifyInstance) => {
-    fastify.decorateRequest("auth", null);
+    (fastify.decorateRequest as (...args: unknown[]) => FastifyInstance)(
+      "auth",
+      null,
+    );
 
     const tenantScopeDecorator: TenantScopeDecorator<Membership> = (
       scopeOptions?: TenantScopeOptions<Membership>,
     ) => buildTenantScopeGuard(scopeOptions);
 
-    fastify.decorate("withTenantScope", tenantScopeDecorator);
+    (fastify.decorate as (...args: unknown[]) => FastifyInstance)(
+      "withTenantScope",
+      tenantScopeDecorator,
+    );
 
     fastify.addHook("onRequest", async (request) => {
-      const scopedRequest = request as RequestWithAuth<Membership>;
+      const scopedRequest = request as unknown as RequestWithAuth<Membership>;
 
       if (shouldBypassAuth?.(request)) {
         scopedRequest.auth = createAuthContext(null, []);

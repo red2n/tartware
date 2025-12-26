@@ -1,6 +1,6 @@
 import {
-  createTenantAuthPlugin,
   type AuthContext,
+  createTenantAuthPlugin,
   type TenantScopeDecorator,
 } from "@tartware/tenant-auth";
 

@@ -22,13 +22,12 @@ type AcceptedCommand = {
   requestedAt: string;
 };
 
-const { acceptCommand: acceptCommandInternal } = createCommandDispatchService<
-  TenantMembership
->({
-  resolveCommandForTenant,
-  enqueueOutboxRecord,
-  insertCommandDispatch,
-});
+const { acceptCommand: acceptCommandInternal } =
+  createCommandDispatchService<TenantMembership>({
+    resolveCommandForTenant,
+    enqueueOutboxRecord,
+    insertCommandDispatch,
+  });
 
 export const acceptCommand = async (
   input: AcceptCommandInput,

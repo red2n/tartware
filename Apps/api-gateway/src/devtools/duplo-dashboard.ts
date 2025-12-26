@@ -115,9 +115,8 @@ const listDuploSummaries = async (
 			continue;
 		}
 
-		const timestamp = typeof parsed.timestamp === "string"
-			? parsed.timestamp
-			: match[1];
+		const timestamp =
+			typeof parsed.timestamp === "string" ? parsed.timestamp : match[1];
 		const record: DuploSummaryRecord = {
 			fileName: entry,
 			filePath,
@@ -133,19 +132,19 @@ const listDuploSummaries = async (
 					typeof parsed.duplicates_per_file === "object" &&
 					parsed.duplicates_per_file !== null
 						? Object.fromEntries(
-							Object.entries(parsed.duplicates_per_file).filter(
-								([key, value]) =>
-									typeof key === "string" && typeof value === "number",
-							),
-						)
+								Object.entries(parsed.duplicates_per_file).filter(
+									([key, value]) =>
+										typeof key === "string" && typeof value === "number",
+								),
+							)
 						: {},
 			},
 		};
 		summaries.push(record);
 	}
 
-	return summaries.sort(
-		(a, b) => b.metadata.timestamp.localeCompare(a.metadata.timestamp),
+	return summaries.sort((a, b) =>
+		b.metadata.timestamp.localeCompare(a.metadata.timestamp),
 	);
 };
 
@@ -153,23 +152,23 @@ const buildDashboardContext = (
 	summaries: DuploSummaryRecord[],
 	selectedTimestamp?: string,
 ): DashboardContext => {
-	const selected =
-		selectedTimestamp &&
-		summaries.find(
-			(summary) => summary.metadata.timestamp === selectedTimestamp,
-		);
+	const selected = selectedTimestamp
+		? summaries.find(
+				(summary) => summary.metadata.timestamp === selectedTimestamp,
+			)
+		: undefined;
 	const fallbackSummary = summaries[0];
 	const activeSummary = selected ?? fallbackSummary;
 
 	const duplicates = activeSummary
 		? Object.entries(activeSummary.metadata.duplicates_per_file)
-			.map(([file, count]) => ({ file, count }))
-			.sort((left, right) => {
-				if (right.count === left.count) {
-					return left.file.localeCompare(right.file);
-				}
-				return right.count - left.count;
-			})
+				.map(([file, count]) => ({ file, count }))
+				.sort((left, right) => {
+					if (right.count === left.count) {
+						return left.file.localeCompare(right.file);
+					}
+					return right.count - left.count;
+				})
 		: [];
 
 	return {
@@ -179,17 +178,18 @@ const buildDashboardContext = (
 			displayLabel: formatTimestampLabel(summary.metadata.timestamp),
 			duplicatesCount: summary.metadata.duplicates_count,
 			status: summary.metadata.status,
-			isSelected: summary.metadata.timestamp === activeSummary?.metadata.timestamp,
+			isSelected:
+				summary.metadata.timestamp === activeSummary?.metadata.timestamp,
 		})),
 		selectedReport: activeSummary
 			? {
-				timestamp: activeSummary.metadata.timestamp,
-				displayLabel: formatTimestampLabel(activeSummary.metadata.timestamp),
-				duplicatesCount: activeSummary.metadata.duplicates_count,
-				status: activeSummary.metadata.status,
-				relativePath: activeSummary.relativePath,
-				duplicates,
-			}
+					timestamp: activeSummary.metadata.timestamp,
+					displayLabel: formatTimestampLabel(activeSummary.metadata.timestamp),
+					duplicatesCount: activeSummary.metadata.duplicates_count,
+					status: activeSummary.metadata.status,
+					relativePath: activeSummary.relativePath,
+					duplicates,
+				}
 			: undefined,
 		generatedAtIso: new Date().toISOString(),
 	};
@@ -202,7 +202,6 @@ export const registerDuploDashboard = (app: FastifyInstance): void => {
 			schema: buildRouteSchema({
 				tag: "Developer Utilities",
 				summary: "View duplicate code findings from the latest Duplo scans.",
-				hide: true,
 				querystring: {
 					type: "object",
 					properties: {

@@ -47,13 +47,12 @@ const COMMAND_OUTBOX_MAX_RETRIES = Number(
 	process.env.COMMAND_OUTBOX_MAX_RETRIES ?? 5,
 );
 
-const { acceptCommand: acceptCommandInternal } = createCommandDispatchService<
-	TenantMembership
->({
-	resolveCommandForTenant,
-	enqueueOutboxRecord,
-	insertCommandDispatch,
-});
+const { acceptCommand: acceptCommandInternal } =
+	createCommandDispatchService<TenantMembership>({
+		resolveCommandForTenant,
+		enqueueOutboxRecord,
+		insertCommandDispatch,
+	});
 
 export const acceptCommand = async (
 	input: AcceptCommandInput,

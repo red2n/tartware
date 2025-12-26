@@ -1,7 +1,4 @@
-import type {
-  AuthContext,
-  TenantScopeDecorator,
-} from "@tartware/tenant-auth";
+import type { AuthContext, TenantScopeDecorator } from "@tartware/tenant-auth";
 
 import type { TenantMembership } from "../services/membership-service.js";
 

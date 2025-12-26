@@ -1,6 +1,7 @@
 import type { CommandDispatchStatus } from "@tartware/schemas";
+import type { QueryResultRow } from "pg";
 
-export type QueryExecutor = <T = unknown>(
+export type QueryExecutor = <T extends QueryResultRow = QueryResultRow>(
   sql: string,
   params?: unknown[],
 ) => Promise<{ rows: T[] }>;
