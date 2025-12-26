@@ -24,7 +24,9 @@
       "@tartware/schemas": ["../../schema/src/index.ts"],
       "@tartware/schemas/*": ["../../schema/src/*"],
       "@tartware/outbox": ["../outbox/src/index.ts"],
-      "@tartware/outbox/*": ["../outbox/src/*"]
+      "@tartware/outbox/*": ["../outbox/src/*"],
+      "@tartware/command-center-shared": ["../command-center-shared/src/index.ts"],
+      "@tartware/command-center-shared/*": ["../command-center-shared/src/*"]
     }
   },
   "include": ["src/**/*.ts"],

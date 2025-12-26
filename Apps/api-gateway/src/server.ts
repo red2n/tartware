@@ -16,6 +16,7 @@ import fastify, {
 } from "fastify";
 
 import { gatewayConfig, serviceTargets } from "./config.js";
+import { registerDuploDashboard } from "./devtools/duplo-dashboard.js";
 import { gatewayLogger } from "./logger.js";
 import authContextPlugin from "./plugins/auth-context.js";
 import swaggerPlugin from "./plugins/swagger.js";
@@ -142,6 +143,8 @@ export const buildServer = () => {
 	);
 
 	app.after(() => {
+		registerDuploDashboard(app);
+
 		const allowCorsHeaders = (reply: FastifyReply): FastifyReply =>
 			reply
 				.header("Access-Control-Allow-Origin", "*")

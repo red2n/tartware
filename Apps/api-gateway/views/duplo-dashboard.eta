@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<title>Duplo Duplicate Dashboard</title>
+		<style>
+			:root {
+				color-scheme: light dark;
+				font-family: "Inter", "Segoe UI", system-ui, -apple-system, sans-serif;
+				line-height: 1.5;
+			}
+
+			body {
+				margin: 0;
+				padding: 0;
+				background: #0f172a;
+				color: #f8fafc;
+			}
+
+			main {
+				max-width: 960px;
+				margin: 0 auto;
+				padding: 32px 24px 64px;
+			}
+
+			header {
+				background: linear-gradient(135deg, #0f172a, #1e293b);
+				padding: 24px;
+				border-bottom: 1px solid #1e293b;
+			}
+
+			h1 {
+				margin: 0;
+				font-size: 1.8rem;
+			}
+
+			p {
+				margin-top: 8px;
+				color: #cbd5f5;
+			}
+
+			.card {
+				background: #0b1120;
+				border: 1px solid #1e293b;
+				border-radius: 10px;
+				padding: 20px;
+				margin-bottom: 24px;
+				box-shadow: 0 10px 25px rgba(15, 23, 42, 0.6);
+			}
+
+			label {
+				display: block;
+				font-size: 0.9rem;
+				color: #94a3b8;
+				margin-bottom: 6px;
+			}
+
+			select {
+				width: 100%;
+				padding: 10px;
+				border-radius: 6px;
+				border: 1px solid #334155;
+				background: #020617;
+				color: #f8fafc;
+				font-size: 1rem;
+			}
+
+			.summary-grid {
+				display: grid;
+				grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+				gap: 16px;
+			}
+
+			.summary-tile {
+				padding: 16px;
+				border-radius: 8px;
+				background: #111827;
+				border: 1px solid #1f2937;
+			}
+
+			.summary-label {
+				font-size: 0.85rem;
+				color: #94a3b8;
+				text-transform: uppercase;
+				letter-spacing: 0.04em;
+				margin-bottom: 8px;
+			}
+
+			.summary-value {
+				font-size: 1.2rem;
+			}
+
+			table {
+				width: 100%;
+				border-collapse: collapse;
+				font-size: 0.95rem;
+			}
+
+			th,
+			td {
+				text-align: left;
+				padding: 12px 10px;
+				border-bottom: 1px solid #1f2937;
+			}
+
+			th {
+				color: #cbd5f5;
+				font-weight: 600;
+				text-transform: uppercase;
+				font-size: 0.85rem;
+				letter-spacing: 0.05em;
+			}
+
+			tr:hover td {
+				background: rgba(59, 130, 246, 0.08);
+			}
+
+			code {
+				font-family: "JetBrains Mono", "SFMono-Regular", Consolas, monospace;
+				font-size: 0.9rem;
+				color: #e0f2fe;
+			}
+
+			footer {
+				margin-top: 24px;
+				font-size: 0.85rem;
+				color: #94a3b8;
+				text-align: right;
+			}
+
+			a {
+				color: #93c5fd;
+			}
+		</style>
+	</head>
+	<body>
+		<header>
+			<h1>Duplo Duplicate Dashboard</h1>
+			<p>Render summaries from <code>reports/duplo</code> for quick duplicate reviews.</p>
+		</header>
+		<main>
+			<% if (!it.hasReports) { %>
+				<div class="card">
+					<h2>No Duplo summaries found</h2>
+					<p>
+						Run <code>./executables/run-duplo/run-duplo.sh</code> to generate a fresh
+						report, then reload this page.
+					</p>
+				</div>
+			<% } else { %>
+				<section class="card">
+					<form method="get" action="/developers/duplo">
+						<label for="timestamp">Choose a summary</label>
+						<select name="timestamp" id="timestamp" onchange="this.form.submit()">
+							<% it.availableReports.forEach(function(report) { %>
+								<option value="<%= report.timestamp %>" <% if (report.isSelected) { %>selected<% } %>>
+									<%= report.displayLabel %> — <%= report.duplicatesCount %> duplicates
+									(<%= report.status === 0 ? "clean" : "duplicates" %>)
+								</option>
+							<% }) %>
+						</select>
+						<noscript>
+							<button type="submit">Load summary</button>
+						</noscript>
+					</form>
+				</section>
+
+				<section class="card">
+					<div class="summary-grid">
+						<div class="summary-tile">
+							<div class="summary-label">Selected report</div>
+							<div class="summary-value"><%= it.selectedReport?.displayLabel ?? "—" %></div>
+						</div>
+						<div class="summary-tile">
+							<div class="summary-label">Duplicate blocks</div>
+							<div class="summary-value"><%= it.selectedReport?.duplicatesCount ?? 0 %></div>
+						</div>
+						<div class="summary-tile">
+							<div class="summary-label">Status</div>
+							<div class="summary-value">
+								<% if ((it.selectedReport?.status ?? 1) === 0) { %>
+									Clean
+								<% } else { %>
+									Duplicates detected
+								<% } %>
+							</div>
+						</div>
+						<div class="summary-tile">
+							<div class="summary-label">Summary file</div>
+							<div class="summary-value">
+								<code><%= it.selectedReport?.relativePath ?? "n/a" %></code>
+							</div>
+						</div>
+					</div>
+				</section>
+
+				<section class="card">
+					<h2>Duplicates by file</h2>
+					<table>
+						<thead>
+							<tr>
+								<th scope="col">File</th>
+								<th scope="col">Blocks</th>
+							</tr>
+						</thead>
+						<tbody>
+							<% if (!it.selectedReport || it.selectedReport.duplicates.length === 0) { %>
+								<tr>
+									<td colspan="2">No duplicate fragments detected in this summary.</td>
+								</tr>
+							<% } else { %>
+								<% it.selectedReport.duplicates.forEach(function(entry) { %>
+									<tr>
+										<td><code><%= entry.file %></code></td>
+										<td><%= entry.count %></td>
+									</tr>
+								<% }) %>
+							<% } %>
+						</tbody>
+					</table>
+				</section>
+			<% } %>
+			<footer>Generated at <%= it.generatedAtIso %></footer>
+		</main>
+	</body>
+</html>

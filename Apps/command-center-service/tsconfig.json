@@ -21,7 +21,11 @@
       "@tartware/openapi": ["../../openapi-utils/src/index.ts"],
       "@tartware/openapi/*": ["../../openapi-utils/src/*"],
       "@tartware/outbox": ["../../outbox/src/index.ts"],
-      "@tartware/outbox/*": ["../../outbox/src/*"]
+      "@tartware/outbox/*": ["../../outbox/src/*"],
+      "@tartware/tenant-auth": ["../../tenant-auth/src/index.ts"],
+      "@tartware/tenant-auth/*": ["../../tenant-auth/src/*"],
+      "@tartware/command-center-shared": ["../../command-center-shared/src/index.ts"],
+      "@tartware/command-center-shared/*": ["../../command-center-shared/src/*"]
     }
   },
   "include": ["src/**/*"],

@@ -24,22 +24,16 @@ Outputs land in `reports/duplo/`:
 - `duplo-report-<timestamp>.json` – full Duplo JSON
 - `duplo-summary-<timestamp>.json` – condensed summary
 
-## Latest Findings (2025-12-24 13:37:53)
+## Latest Findings (2025-12-26 06:40:13)
 
-Summary: `reports/duplo/duplo-summary-20251224-133753.json`
+Summary: `reports/duplo/duplo-summary-20251226-064013.json`
 
-| File | Duplicate Blocks |
-| --- | --- |
-| `Apps/rooms-service/src/plugins/auth-context.ts` | 4 |
-| `Apps/billing-service/src/plugins/auth-context.ts` | 4 |
-| `Apps/housekeeping-service/src/plugins/auth-context.ts` | 4 |
-| `Apps/command-center-service/src/plugins/auth-context.ts` | 4 |
-| `Apps/guests-service/src/plugins/auth-context.ts` | 4 |
-| `Apps/api-gateway/src/command-center/sql/command-dispatches.ts` | 1 |
-| `Apps/command-center-service/src/sql/command-dispatches.ts` | 1 |
-| `Apps/api-gateway/src/command-center/sql/command-registry.ts` | 1 |
-| `Apps/command-center-service/src/sql/command-registry.ts` | 1 |
-| `Apps/api-gateway/src/command-center/command-dispatch-service.ts` | 1 |
-| `Apps/command-center-service/src/services/command-dispatch-service.ts` | 1 |
+✅ The latest scan is clean—no duplicate blocks were detected. The shared `@tartware/tenant-auth` plugin and `@tartware/command-center-shared` helpers eliminated the previously duplicated auth-context plugins and command-dispatch SQL/service logic. Full CLI output lives in `duplo-report-20251226-064013.log` for audit purposes.
 
-Full match details (line ranges payloads) are in `duplo-report-20251224-133753.json`.
+## Developer Dashboard
+
+Developers can review the Duplo summaries in a small HTML dashboard without opening the JSON files:
+
+1. Start the API Gateway (`npm run dev:gateway`).
+2. Run `./executables/run-duplo/run-duplo.sh` whenever you need a fresh report.
+3. Visit [http://localhost:3200/developers/duplo](http://localhost:3200/developers/duplo) to browse the rendered summaries (the latest report loads by default, and you can switch to any historical summary via the dropdown).
