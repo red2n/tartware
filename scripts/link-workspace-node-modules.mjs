@@ -3,8 +3,8 @@ import { promises as fs } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-const repoRoot = path.dirname(fileURLToPath(import.meta.url));
-const rootDir = path.resolve(repoRoot, "..");
+const scriptsDir = path.dirname(fileURLToPath(import.meta.url));
+const rootDir = path.resolve(scriptsDir, "..");
 const rootNodeModules = path.join(rootDir, "node_modules");
 
 const workspacesToVisit = [
@@ -24,12 +24,13 @@ const ensureSymlink = async (workspaceDir) => {
 		// Respect fully installed workspace-level node_modules directories.
 		return;
 	} catch (error) {
-		if ((error ?? {}).code !== "ENOENT") {
+		const nodeError = /** @type {NodeJS.ErrnoException} */ (error);
+		if (nodeError?.code !== "ENOENT") {
 			throw error;
 		}
 	}
 
-	const relativeTarget = path.relative(workspaceDir, rootNodeModules) || ".";
+	const relativeTarget = path.relative(workspaceDir, rootNodeModules);
 	await fs.symlink(relativeTarget, linkPath, symlinkType);
 };
 
@@ -42,7 +43,8 @@ const findWorkspaceDirs = async () => {
 				continue;
 			}
 		} catch (error) {
-			if ((error ?? {}).code === "ENOENT") {
+			const nodeError = /** @type {NodeJS.ErrnoException} */ (error);
+			if (nodeError?.code === "ENOENT") {
 				continue;
 			}
 			throw error;
@@ -68,7 +70,8 @@ const findWorkspaceDirs = async () => {
 					workspaceDirs.push(path.join(candidate, entry.name));
 				}
 			} catch (error) {
-				if ((error ?? {}).code !== "ENOENT") {
+				const nodeError = /** @type {NodeJS.ErrnoException} */ (error);
+				if (nodeError?.code !== "ENOENT") {
 					throw error;
 				}
 			}
@@ -81,7 +84,8 @@ const main = async () => {
 	try {
 		await fs.access(rootNodeModules);
 	} catch (error) {
-		if ((error ?? {}).code === "ENOENT") {
+		const nodeError = /** @type {NodeJS.ErrnoException} */ (error);
+		if (nodeError?.code === "ENOENT") {
 			console.warn(
 				"[link-node-modules] Skipping workspace links; root node_modules missing",
 			);
