@@ -2,6 +2,7 @@ import bcrypt from "bcryptjs";
 
 import { config } from "../src/config.js";
 import { pool } from "../src/lib/db.js";
+import { userCacheService } from "../src/services/user-cache-service.js";
 
 const run = async (): Promise<void> => {
   if (process.env.NODE_ENV === "production") {
@@ -28,6 +29,9 @@ const run = async (): Promise<void> => {
     console.log(
       "ℹ️  Each user will be prompted to change their password on next login (must_change_password flag).",
     );
+
+    const deletedKeys = await userCacheService.invalidateAllUsers();
+    console.log(`🧹 Cleared ${deletedKeys} cached user entries after password reset.`);
   } catch (error) {
     console.error("❌ Failed to reset user passwords:", error);
     process.exitCode = 1;

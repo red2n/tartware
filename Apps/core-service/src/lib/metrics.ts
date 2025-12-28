@@ -28,7 +28,7 @@ const systemAdminRateLimitDeniedCounter = new Counter({
   name: "core_system_admin_rate_limit_denied_total",
   help: "Total number of system admin requests rejected by the rate limiter",
   registers: [metricsRegistry],
-  labelNames: ["scope"],
+  labelNames: ["scope", "admin_id", "session_id"],
 });
 
 const impersonationSessionCounter = new Counter({
@@ -89,8 +89,20 @@ export const recordMembershipCacheError = (): void => {
   membershipCacheErrorCounter.inc();
 };
 
-export const recordSystemAdminRateLimitDenied = (scope = "SYSTEM_ADMIN"): void => {
-  systemAdminRateLimitDeniedCounter.inc({ scope });
+export const recordSystemAdminRateLimitDenied = ({
+  scope = "SYSTEM_ADMIN",
+  adminIdHash,
+  sessionIdHash,
+}: {
+  scope?: string;
+  adminIdHash?: string;
+  sessionIdHash?: string;
+} = {}): void => {
+  systemAdminRateLimitDeniedCounter.inc({
+    scope,
+    admin_id: adminIdHash ?? "unknown",
+    session_id: sessionIdHash ?? "unknown",
+  });
 };
 
 export const recordImpersonationSessionStarted = (adminId: string): void => {

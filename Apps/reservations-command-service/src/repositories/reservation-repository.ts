@@ -5,6 +5,7 @@ import { query } from "../lib/db.js";
 type ReservationStayRow = {
   id: string;
   tenant_id: string;
+  property_id: string;
   room_type_id: string;
   check_in_date: Date;
   check_out_date: Date;
@@ -13,6 +14,7 @@ type ReservationStayRow = {
 export type ReservationStaySnapshot = {
   reservationId: string;
   tenantId: string;
+  propertyId: string;
   roomTypeId: string;
   checkInDate: Date;
   checkOutDate: Date;
@@ -43,6 +45,7 @@ export const fetchReservationStaySnapshot = async (
       SELECT
         id,
         tenant_id,
+        property_id,
         room_type_id,
         check_in_date,
         check_out_date
@@ -63,6 +66,7 @@ export const fetchReservationStaySnapshot = async (
   return {
     reservationId: row.id,
     tenantId: row.tenant_id,
+    propertyId: row.property_id,
     roomTypeId: row.room_type_id,
     checkInDate: new Date(row.check_in_date),
     checkOutDate: new Date(row.check_out_date),

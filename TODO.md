@@ -1,5 +1,14 @@
 ## Implementation Plan
 
+### P0. **Execution Order & Focus Areas**
+1. Super Admin / Global Administrator program (Section 1) – unblock platform-level access control, multi-factor authentication, impersonation, and audit logging.
+2. Core-Service Hardening & Compliance Gaps (Section 2) – auth-context caching, distributed rate limits, Redis SCAN deletes, and sensitive data redaction.
+3. Shared Logging & Fastify Bootstrap (Section 3) – centralize sanitized logging defaults under a shared package.
+4. API & Command Surface Test Coverage (Section 3.1) – add regression tests for the API gateway, reservations command service, command-center-service, and command-center-shared before expanding traffic.
+5. Reservation Event Processor + Real-Time Metrics Pipeline (Sections “Reservation Event Processor (JVM)” and “Real-Time Metrics Pipeline”) – offload heavy consumers and enable sub‑50 ms dashboards.
+6. Telemetry Fan-In Layer & Bloom Filter Maintenance Job – finish observability consolidation and automated cache upkeep.
+7. Premium Access Audit Platform & Billing/Settlement Service – long-range audit/export initiatives once the reliability/security layers are locked in.
+
 ### 0. **Reservation CRUD Reliability & Retry Architecture (Priority: BLOCKING)**
 - Start Date: 2025-12-15
 - Finish Date: TBD
@@ -38,6 +47,8 @@ Platform-wide standardization for resilient CRUD handling at 20+ ops/sec with au
 #### 0.3 **Retry & Visibility Controls**
 - Implement configurable retry schedule (e.g., 1s, 5s, 30s) and max attempts; publish metrics (`reservation_event_retries_total`, `reservation_event_dlq_total`).
 - Use Kafka consumer lag + DLQ depth alarms; expose `/health/reliability` endpoint reporting backlog stats, last successful commit, DLQ size.
+- _2025-12-26T10:05:00Z Update_: Reservations command consumer now ships a default retry ladder (1s/5s/30s) that can be overridden via `KAFKA_RETRY_SCHEDULE_MS`, and `/health/reliability` pulls Kafka DLQ depth via the admin API while exporting `reservation_event_dlq_depth` for Prometheus. DLQ warning/critical thresholds live behind `RELIABILITY_DLQ_WARN_THRESHOLD` / `RELIABILITY_DLQ_CRITICAL_THRESHOLD`; next step is wiring these metrics into alertmanager + ops runbooks.
+- _2025-12-26T11:10:00Z Update_: Dead-letter queue depth now feeds Alertmanager via the `reservation_event_dlq_threshold{level=warn|critical}` gauges and two Prometheus alerts (`ReservationCommandDlqWarning`, `ReservationCommandDlqCritical`). The supporting runbook lives at `docs/observability/reservations-dead-letter-queue-runbook.md`; next step is to automate replays and link PagerDuty to the runbook URL.
 
 #### 0.4 **Schema & Config Updates**
 - Extend `@tartware/schemas` event definitions with `retryCount`, `attemptedAt`, and `failureCause` for DLQ reprocessing.
@@ -72,10 +83,12 @@ Platform-wide standardization for resilient CRUD handling at 20+ ops/sec with au
 - Expose catalog data to API/CLI later for tenant overrides while preserving `is_default` markers so operators understand which entries are Tartware-managed.
 - _2025-12-15T11:45:00Z Update_: Added `room_amenity_catalog` table + indexes, wired into `00-create-all-tables.sql`, and enhanced `setup-database.sh` to upsert the default amenity set (WiFi, Smart TV, Climate Control, etc.) for every property. The script now replaces any non-canonical `room_types.amenities` arrays with the curated list so downstream room creation flows derive from the same template without data conflicts.
 - _2025-12-15T12:15:00Z Update_: Settings-service now exposes `/v1/settings/properties/:propertyId/amenities` (list/create/update) backed by the new catalog, complete with JWT auth, zod validation, and conflict-safe repository logic. Tenants can toggle Tartware defaults via the `isActive` flag or register custom amenities, prepping us for UI enablement later.
-- **Follow-ups (not started):**
-  1. Add tenant-facing API surfaces (and eventual UI hooks) that allow cloning the catalog into new room types and surfacing amenity metadata in the room creation wizard.
-  2. Introduce policy controls per tenant/property for custom tags (max count, naming conventions) and emit Prometheus metrics for catalog drift.
-  3. Build a background reconciler that flags room types referencing non-catalog amenity codes and offers a repair endpoint/command.
+- _2025-12-25T13:10:00Z Update_: Implemented the amenity catalog Postgres schema + seeds, added repository/data layer wiring to settings-service, and exposed JWT-scoped `/v1/settings/properties/:propertyId/amenities` routes (list/create/update) with OpenAPI schemas and Vitest coverage so tenants can manage canonical amenity codes safely.
+- **Next Steps**
+  1. Extend the amenity API to support cloning catalog templates directly into `room_types` (bulk selection + metadata propagation) and surface the curated amenity list in the room-creation wizard.
+  2. Add guardrail policies per tenant/property (custom tag limits, naming validation, requirement overrides) plus Prometheus metrics + logs that track catalog drift and blocked writes.
+  3. Implement an amenity reconciler/repair workflow that scans existing room_types/rooms for out-of-catalog codes, raises drift alerts, and exposes a remediation endpoint to auto-map or remove invalid amenities.
+- _2025-12-26T15:50:00Z Update_: Tooling lane is green again (`npm run build` now succeeds end-to-end after re-installing dependencies under Node 22 per repo engines). This clears the blocker on §3.1 so we can proceed with the next API gateway regression test harness tomorrow.
 
 #### 0.9 **API Discoverability / Swagger**
 - Every Fastify edge (API Gateway, Core Service, Reservations Command Service, Settings Service) must expose OpenAPI 3.0 specs + Swagger UI at `/docs` so platform and partner teams can self-discover endpoints.
@@ -315,29 +328,21 @@ Shore up urgent items uncovered during the latest core-service review so the pla
    - Update `auth-context` plugin to consume `userCacheService.getUserMemberships` (three-layer Bloom/Redis/Postgres) instead of live DB queries.
    - Emit cache hit/miss metrics + logs for membership lookups; degrade gracefully when Redis is down.
    - Ensure user/association mutations invalidate the cache via shared hooks.
+   - _2025-12-28T15:23:00Z Update_: Auth context now streams membership telemetry from the cache service (hit/miss logging + duration), falls back to direct database lookups automatically when cache access fails, and every membership-affecting flow emits shared invalidation hooks (with Vitest coverage ensuring the fallback path). Section 2.1 is considered complete; follow-on work should leverage the new hooks for future user or association mutations.
 
 2. **System Admin Rate Limiting**
    - Move the token bucket state from the in-process `Map` to Redis (or another distributed store) so rate limits hold across replicas.
    - Add Prometheus counters and structured logs for denied requests (adminId, sessionId, scope) to support SOC reviews.
+   - _2025-12-28T15:35:00Z Update_: System admin throttling now relies exclusively on Redis token buckets (no per-process Map), emits hashed admin/session identifiers via the Prometheus counter + denial logs, and degrades with an explicit warning when Redis is unavailable. Vitest coverage stubs the limiter to assert 429 responses while the Redis integration test continues to exercise the Lua script.
 
 3. **Redis Pattern Deletes**
    - Replace `cacheService.delPattern`’s blocking `KEYS` call with a SCAN-based deleter or tag-based invalidation to avoid production stalls.
    - Add regression tests preventing reintroduction of `KEYS` usage.
 
-4. **Operational Metrics Placeholders**
-  - ✅ 2025-12-16: Dashboard KPIs now use live SQL aggregates (occupancy deltas, revenue trends, check-in/out completion), property listings include real-time room/guest counts, and guest stats (upcoming/past/cancelled stays, average stay, preferred room types, lifetime value) are sourced from reservations.
-  - Document interim limits so API consumers know which KPIs are authoritative.
-
-5. **PII Redaction & Secure Logging**
+4. **PII Redaction & Secure Logging**
    - Configure Fastify/Pino redaction to strip emails, passport numbers, and payment metadata from request logs.
    - Store hashed identifiers in audit logs when possible and keep raw values confined to encrypted tables.
-
-6. **Tenant Auth Security Controls**
-   - ✅ 2025-12-17: Tenant auth now enforces Redis-backed throttles, database lockouts, TOTP MFA, and password rotation policy. `/v1/auth/login` surfaces structured error codes + Retry-After headers, and auth tests cover MFA/lockout/password-age paths. Change-password resets lock state and rotation timestamp so policy compliance is verifiable via tests.
-
-7. **Compliance & Monitoring**
-   - ✅ 2025-12-16: Retention/encryption policies codified for guest/billing data with automated redaction plus startup validation and tests.
-   - ✅ 2025-12-16: Added compliance monitoring alerts (impersonation surge detection, off-hours tenant access, membership cache hit-rate drops) with Prometheus counters/logs.
+   - _2025-12-28T15:50:00Z Update_: Telemetry’s sanitizer now detects PII by value (email/passport/payment patterns with Luhn checks) even when keys are unknown, core-service adopts the secure request logging defaults, and the shared logger redacts request headers/query/params plus hashed audit identifiers consolidated under `utils/hash`. This closes the outstanding secure logging gaps for core-service; other services can opt in by consuming the same telemetry helpers.
 
 ### 3. **Shared Logging & Fastify Bootstrap (Priority: HIGH)**
 Consolidate logger + Fastify instrumentation so every service inherits the same PII safeguards and request lifecycle hooks.
@@ -347,6 +352,15 @@ Consolidate logger + Fastify instrumentation so every service inherits the same 
 - Provide integration tests to guarantee headers/query/body redaction stays intact and add docs instructing each service to opt in.
 - Update all Fastify-based services (api-gateway, reservations-command-service, settings-service, etc.) to consume the shared helpers and remove duplicate logger setup.
 - Add CI guardrails (lint rule or unit test) ensuring no service registers raw `request.log.info` statements without going through the shared sanitizer.
+
+### 3.1 **API & Command Surface Test Coverage (Priority: HIGH)**
+Guard the gateway + command services with executable regression tests so we can safely tighten rate limits, logging, and retry logic.
+
+- Add Vitest (or node:test) harnesses for each ingress service (API gateway, reservations-command-service, command-center-service, command-center-shared) so health, readiness, metrics, and business routes all have baseline success + failure-path coverage before we enable new commands.
+- Wire the reservations-command-service tests to stub database/kafka dependencies and exercise `/health`, `/health/readiness`, `/health/reliability`, `/metrics`, and `/v1/reservations/:reservationId/lifecycle` using Fastify inject so we catch schema regressions without standing up Postgres/Kafka. ✅ _2025-12-28 Update_: Added `vitest.config.ts`, `tests/setup.ts`, and `tests/server.test.ts`, covering the happy path, dependency failures, and the reservation lifecycle read flow. Running `npm run test --workspace=Apps/reservations-command-service` now validates the Fastify bootstrap once the workspace dependencies (vitest + vite) are installed.
+- Expand the API gateway suite next so command routing, rate limiting, and request-logging hooks stay wired as we refactor plugins; include mocked downstream responses plus failure scenarios (403, 429, schema validation).
+- Follow with command-center-service and command-center-shared unit tests that pin the command registry boot order, Kafka publish contracts, and outbox dispatcher behavior (including DLQ + retry metrics).
+- Track coverage in CI (text + HTML summaries) and fail builds when any ingress service drops below the agreed baseline (start at smoke coverage, then ratchet upward once suites stabilize).
 
 ### 2. **Reservation Event Processor (JVM microservice)**
    - Define shared Avro/protobuf schemas for reservation events emitted by Node services.

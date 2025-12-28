@@ -2,7 +2,7 @@
  * Bookings & Reservations Schemas (Category 03)
  * Reservations, allotments, guest communications, feedback
  *
- * Tables: 17
+ * Tables: 18
  */
 
 export * from "./reservations.js";
@@ -23,3 +23,4 @@ export * from "./automated-messages.js";
 export * from "./waitlist-entries.js";
 export * from "./reservation-event-offsets.js";
 export * from "./reservation-command-lifecycle.js";
+export * from "./reservation-rate-fallbacks.js";

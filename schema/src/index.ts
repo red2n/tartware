@@ -11,7 +11,7 @@
 
 // Re-export all schema categories (will be added as we build them)
 export * from "./schemas/01-core/index.js";
-// export * from './schemas/02-inventory/index.js';
+export * from "./schemas/02-inventory/index.js";
 export * from "./schemas/03-bookings/index.js";
 // export * from './schemas/04-financial/index.js';
 // export * from './schemas/05-operations/index.js';

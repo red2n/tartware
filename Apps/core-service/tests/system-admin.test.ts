@@ -1,19 +1,25 @@
 import { authenticator } from "otplib";
 import type { FastifyInstance } from "fastify";
-import { beforeAll, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 
 import { buildServer } from "../src/server.js";
 import {
   TEST_SYSTEM_ADMIN_PASSWORD,
   TEST_SYSTEM_ADMIN_USERNAME,
   configureSystemAdminMock,
+  seedBreakGlassCode,
 } from "./mocks/db.js";
+import * as systemAdminRateLimiter from "../src/lib/system-admin-rate-limiter.js";
 
 const buildApp = async (): Promise<FastifyInstance> => {
   const app = buildServer();
   await app.ready();
   return app;
 };
+
+afterEach(() => {
+  vi.restoreAllMocks();
+});
 
 const performSystemLogin = async (
   app: FastifyInstance,
@@ -33,6 +39,41 @@ const performSystemLogin = async (
       password: TEST_SYSTEM_ADMIN_PASSWORD,
       mfa_code: "123456",
       device_fingerprint: "trusted-device",
+      ...overrides,
+    },
+  });
+
+  expect(response.statusCode).toBe(200);
+  const payload = response.json();
+  expect(payload).toHaveProperty("access_token");
+  expect(payload).toHaveProperty("session_id");
+
+  return payload as {
+    access_token: string;
+    session_id: string;
+    scope: string;
+  };
+};
+
+const performBreakGlassLogin = async (
+  app: FastifyInstance,
+  overrides: Partial<{
+    username: string;
+    break_glass_code: string;
+    reason: string;
+    ticket_id: string;
+    device_fingerprint: string;
+  }> = {},
+) => {
+  const response = await app.inject({
+    method: "POST",
+    url: "/v1/system/auth/break-glass",
+    payload: {
+      username: TEST_SYSTEM_ADMIN_USERNAME,
+      break_glass_code: "SAFE-CODE-0001",
+      reason: "Primary MFA infrastructure down",
+      ticket_id: "SEC-2025-0002",
+      device_fingerprint: "vault-device",
       ...overrides,
     },
   });
@@ -183,6 +224,16 @@ describe("System Administrator Capabilities", () => {
 
   it("enforces per-admin rate limiting with a 200 request burst cap", async () => {
     const { access_token } = await performSystemLogin(app);
+    let allowance = 200;
+    vi.spyOn(systemAdminRateLimiter, "consumeSystemAdminRateLimit").mockImplementation(
+      async () => {
+        if (allowance > 0) {
+          allowance -= 1;
+          return { allowed: true, remaining: allowance };
+        }
+        return { allowed: false, remaining: 0, retryAfterMs: 1_000 };
+      },
+    );
 
     for (let i = 0; i < 200; i += 1) {
       const response = await app.inject({
@@ -207,5 +258,70 @@ describe("System Administrator Capabilities", () => {
     expect(limitedResponse.statusCode).toBe(429);
     const payload = limitedResponse.json();
     expect(payload.error).toBe("SYSTEM_ADMIN_RATE_LIMITED");
+  });
+
+  it("allows break-glass authentication when a valid unused code is provided", async () => {
+    seedBreakGlassCode("SAFE-CODE-0001");
+    const payload = await performBreakGlassLogin(app);
+    expect(payload.scope).toBe("SYSTEM_ADMIN");
+
+    // Same code cannot be replayed after first use
+    const replayResponse = await app.inject({
+      method: "POST",
+      url: "/v1/system/auth/break-glass",
+      payload: {
+        username: TEST_SYSTEM_ADMIN_USERNAME,
+        break_glass_code: "SAFE-CODE-0001",
+        reason: "Retry after success should fail",
+        ticket_id: "SEC-2025-0003",
+        device_fingerprint: "vault-device",
+      },
+    });
+
+    expect(replayResponse.statusCode).toBe(403);
+    const replayPayload = replayResponse.json();
+    expect(replayPayload.error).toBe("BREAK_GLASS_UNAVAILABLE");
+  });
+
+  it("rejects break-glass authentication when the code is incorrect", async () => {
+    seedBreakGlassCode("SAFE-CODE-9999");
+
+    const response = await app.inject({
+      method: "POST",
+      url: "/v1/system/auth/break-glass",
+      payload: {
+        username: TEST_SYSTEM_ADMIN_USERNAME,
+        break_glass_code: "WRONG-CODE-0000",
+        reason: "Operator typed an incorrect vault code",
+        ticket_id: "SEC-2025-0004",
+        device_fingerprint: "vault-device",
+      },
+    });
+
+    expect(response.statusCode).toBe(401);
+    const payload = response.json();
+    expect(payload.error).toBe("BREAK_GLASS_CODE_INVALID");
+  });
+
+  it("rejects break-glass authentication when no active codes are available", async () => {
+    seedBreakGlassCode("EXPIRED-CODE-0001", {
+      expiresAt: new Date(Date.now() - 60_000),
+    });
+
+    const response = await app.inject({
+      method: "POST",
+      url: "/v1/system/auth/break-glass",
+      payload: {
+        username: TEST_SYSTEM_ADMIN_USERNAME,
+        break_glass_code: "EXPIRED-CODE-0001",
+        reason: "Attempt against expired code should fail",
+        ticket_id: "SEC-2025-0005",
+        device_fingerprint: "vault-device",
+      },
+    });
+
+    expect(response.statusCode).toBe(403);
+    const payload = response.json();
+    expect(payload.error).toBe("BREAK_GLASS_UNAVAILABLE");
   });
 });

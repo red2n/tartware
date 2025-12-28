@@ -28,6 +28,13 @@ type RetryOptions = {
    */
   maxRetries: number;
   /**
+   * Optional explicit delay schedule in milliseconds. When provided,
+   * each retry attempt uses the corresponding delay from the list.
+   * If the number of retries exceeds the schedule length, the last
+   * delay value is reused.
+   */
+  delayScheduleMs?: number[];
+  /**
    * Base delay applied to the first retry attempt. Subsequent retries
    * use exponential backoff.
    */
@@ -89,6 +96,12 @@ export const processWithRetry = async <T>(
 ): Promise<RetryResult<T>> => {
   const maxRetries = Math.max(0, options.maxRetries);
   const baseDelayMs = Math.max(1, options.baseDelayMs);
+  const schedule = Array.isArray(options.delayScheduleMs)
+    ? options.delayScheduleMs.filter(
+        (value) => Number.isFinite(value) && value > 0,
+      )
+    : [];
+  const hasSchedule = schedule.length > 0;
   const jitterFactor =
     options.jitterFactor !== undefined ? options.jitterFactor : 0.2;
 
@@ -107,8 +120,15 @@ export const processWithRetry = async <T>(
         );
       }
 
-      const delayMs =
-        baseDelayMs * 2 ** attempt + Math.random() * baseDelayMs * jitterFactor;
+      const scheduleIndex = Math.min(attempt, Math.max(0, schedule.length - 1));
+      const rawDelay = hasSchedule
+        ? schedule[scheduleIndex]
+        : baseDelayMs * 2 ** attempt;
+      const jitter =
+        hasSchedule || jitterFactor === 0
+          ? 0
+          : Math.random() * baseDelayMs * jitterFactor;
+      const delayMs = rawDelay + jitter;
 
       options.onRetry?.({
         attempt: attempt + 1,

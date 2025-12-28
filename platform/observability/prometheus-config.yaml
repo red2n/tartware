@@ -85,6 +85,30 @@ data:
               summary: "Kafka consumer lag is high"
               description: "Lag: {{ $value }} messages"
 
+          # Reservations dead-letter queue warning threshold
+          - alert: ReservationCommandDlqWarning
+            expr: reservation_event_dlq_depth
+              > max without (level) (reservation_event_dlq_threshold{level="warn"})
+            for: 2m
+            labels:
+              severity: warning
+              component: reservations-command-service
+            annotations:
+              summary: "Reservation dead-letter queue backlog is above the warning threshold"
+              description: "Dead-letter queue depth {{ $value }} exceeds the warning threshold; inspect /health/reliability and Kafka consumers."
+
+          # Reservations dead-letter queue critical threshold
+          - alert: ReservationCommandDlqCritical
+            expr: reservation_event_dlq_depth
+              > max without (level) (reservation_event_dlq_threshold{level="critical"})
+            for: 2m
+            labels:
+              severity: critical
+              component: reservations-command-service
+            annotations:
+              summary: "Reservation dead-letter queue backlog exceeded the critical threshold"
+              description: "Dead-letter queue depth {{ $value }} is above the critical limit; trigger remediation per runbook."
+
           # Roll service streaming lag > 60s
           - alert: RollServiceProcessingLag
             expr: max(roll_service_processing_lag_seconds) > 60

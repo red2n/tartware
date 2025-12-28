@@ -5,4 +5,5 @@
  * Tables: 17
  */
 
-// Export schemas as they are created
+export * from "./room-amenity-catalog.js";
+export * from "./room-types.js";

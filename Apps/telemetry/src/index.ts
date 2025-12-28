@@ -59,14 +59,39 @@ export const DEFAULT_SENSITIVE_LOG_KEYS = Object.freeze([
 	"passcode",
 	"token",
 	"email",
+	"emailaddress",
+	"primaryemail",
+	"guestemail",
+	"billingemail",
 	"phone",
 	"id_number",
+	"idnumber",
 	"passport_number",
+	"passportnumber",
 	"ssn",
+	"tax_id",
+	"taxid",
+	"national_id",
+	"nationalid",
+	"drivers_license",
+	"driverslicense",
 	"payment_reference",
+	"paymentmethod",
+	"payment_token",
+	"paymenttoken",
+	"paymentidentifier",
+	"routing_number",
+	"routingnumber",
+	"account_number",
+	"accountnumber",
 	"card_number",
+	"cardnumber",
+	"cardtoken",
+	"cardholder",
 	"cvv",
 	"authorization",
+	"devicefingerprint",
+	"device_fingerprint",
 ]);
 
 export const DEFAULT_LOG_REDACT_PATHS = Object.freeze([
@@ -78,6 +103,10 @@ export const DEFAULT_LOG_REDACT_PATHS = Object.freeze([
 	"request.body",
 	"res.body",
 	"response.body",
+	"req.query",
+	"request.query",
+	"req.params",
+	"request.params",
 	...DEFAULT_SENSITIVE_LOG_KEYS.map((key) => `*.${key}`),
 ]);
 
@@ -108,23 +137,100 @@ const isPlainObject = (value: unknown): value is Record<string, unknown> => {
 	return proto === Object.prototype || proto === null;
 };
 
+const EMAIL_REGEX =
+	/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}(?:\.[A-Z]{2,})?/i;
+const PASSPORT_REGEX = /\b[CFGHJKLMNPRTVWXYZ][0-9]{7,8}\b/i;
+const IBAN_REGEX = /\b[A-Z]{2}[0-9]{2}[A-Z0-9]{10,30}\b/;
+
+const normalizeDigits = (value: string): string => value.replace(/\D/g, "");
+
+const looksLikeCardNumber = (value: string): boolean => {
+	const digitsOnly = normalizeDigits(value);
+	if (digitsOnly.length < 13 || digitsOnly.length > 19) {
+		return false;
+	}
+
+	let sum = 0;
+	let shouldDouble = false;
+
+	for (let index = digitsOnly.length - 1; index >= 0; index -= 1) {
+		let digit = Number(digitsOnly[index]);
+		if (Number.isNaN(digit)) {
+			return false;
+		}
+
+		if (shouldDouble) {
+			digit *= 2;
+			if (digit > 9) {
+				digit -= 9;
+			}
+		}
+
+		sum += digit;
+		shouldDouble = !shouldDouble;
+	}
+
+	return sum % 10 === 0;
+};
+
+type SensitiveValueTester = (value: string) => boolean;
+
+const DEFAULT_SENSITIVE_VALUE_TESTERS: ReadonlyArray<SensitiveValueTester> = [
+	(value) => EMAIL_REGEX.test(value),
+	(value) => looksLikeCardNumber(value),
+	(value) => PASSPORT_REGEX.test(value),
+	(value) => IBAN_REGEX.test(value),
+];
+
+const buildValueTesterList = (
+	additional?: SensitiveValueTester[],
+): SensitiveValueTester[] => {
+	const testers = [...DEFAULT_SENSITIVE_VALUE_TESTERS];
+	if (Array.isArray(additional)) {
+		for (const tester of additional) {
+			if (typeof tester === "function") {
+				testers.push(tester);
+			}
+		}
+	}
+	return testers;
+};
+
+const shouldRedactString = (
+	value: string,
+	testers: SensitiveValueTester[],
+): boolean => testers.some((tester) => tester(value));
+
 export interface LogSanitizerOptions {
 	sensitiveKeys?: string[];
 	censor?: string;
 	maxDepth?: number;
+	valueTesters?: SensitiveValueTester[];
 }
 
 export const createLogSanitizer = (options?: LogSanitizerOptions) => {
 	const sensitiveKeys = buildSensitiveKeySet(options?.sensitiveKeys);
 	const censor = options?.censor ?? DEFAULT_LOG_REDACT_CENSOR;
 	const maxDepth = Math.max(1, options?.maxDepth ?? 6);
+	const sensitiveValueTesters = buildValueTesterList(options?.valueTesters);
 
 	const sanitizeInternal = (
 		value: unknown,
 		depth: number,
 		visited: WeakSet<object>,
 	): unknown => {
-		if (value === null || typeof value !== "object") {
+		if (value === null || typeof value === "undefined") {
+			return value;
+		}
+
+		if (typeof value === "string") {
+			if (shouldRedactString(value, sensitiveValueTesters)) {
+				return censor;
+			}
+			return value;
+		}
+
+		if (typeof value !== "object") {
 			return value;
 		}
 
@@ -246,6 +352,79 @@ type FastifyAppLike = {
 		name: "onRequest" | "onResponse",
 		hook: (...args: any[]) => unknown,
 	) => unknown;
+};
+
+const ADDITIONAL_REQUEST_LOG_SENSITIVE_KEYS = Object.freeze([
+	"primaryEmail",
+	"primary_email",
+	"guestEmail",
+	"guest_email",
+	"billingEmail",
+	"billing_email",
+	"deviceFingerprint",
+	"device_fingerprint",
+	"cardToken",
+	"card_token",
+	"routingNumber",
+	"routing_number",
+	"accountNumber",
+	"account_number",
+	"paymentToken",
+	"payment_token",
+]);
+
+const STANDARD_REQUEST_LOG_SENSITIVE_KEYS = Array.from(
+	new Set([
+		...DEFAULT_SENSITIVE_LOG_KEYS,
+		...ADDITIONAL_REQUEST_LOG_SENSITIVE_KEYS,
+	]),
+);
+Object.freeze(STANDARD_REQUEST_LOG_SENSITIVE_KEYS);
+
+const STANDARD_REQUEST_LOGGING_OPTIONS: RequestLoggingOptions = {
+	includeBody: true,
+	includeQuery: true,
+	includeParams: true,
+	includeRequestHeaders: false,
+	includeResponseHeaders: false,
+	logOnRequest: true,
+	logOnResponse: true,
+	maxDepth: 6,
+	sensitiveKeys: STANDARD_REQUEST_LOG_SENSITIVE_KEYS,
+	valueTesters: [...DEFAULT_SENSITIVE_VALUE_TESTERS],
+};
+Object.freeze(STANDARD_REQUEST_LOGGING_OPTIONS);
+
+export const buildSecureRequestLoggingOptions = (
+	overrides?: Partial<RequestLoggingOptions>,
+): RequestLoggingOptions => {
+	const base = STANDARD_REQUEST_LOGGING_OPTIONS;
+	const merged: RequestLoggingOptions = {
+		...base,
+		...(overrides ?? {}),
+	};
+
+	if (overrides?.sensitiveKeys?.length) {
+		merged.sensitiveKeys = Array.from(
+			new Set([
+				...(base.sensitiveKeys ?? []),
+				...overrides.sensitiveKeys,
+			]),
+		);
+	} else {
+		merged.sensitiveKeys = base.sensitiveKeys;
+	}
+
+	if (overrides?.valueTesters?.length) {
+		merged.valueTesters = [
+			...(base.valueTesters ?? []),
+			...overrides.valueTesters,
+		];
+	} else {
+		merged.valueTesters = base.valueTesters ? [...base.valueTesters] : undefined;
+	}
+
+	return merged;
 };
 
 export const withRequestLogging = (

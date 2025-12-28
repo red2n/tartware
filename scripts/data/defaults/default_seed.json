@@ -146,10 +146,10 @@
       "bedType": "King",
       "numberOfBeds": 1,
       "amenities": [
-        "wifi",
-        "workspace",
-        "rain-shower",
-        "smart-tv"
+        "WIFI",
+        "SMART_TV",
+        "WORK_DESK",
+        "RAIN_SHOWER"
       ],
       "features": {
         "view": "city",
@@ -251,6 +251,124 @@
       "metadata": {
         "seed": "industry_defaults",
         "template": "baseline_room"
+      }
+    }
+  ],
+  "roomAmenityCatalog": [
+    {
+      "id": "66666666-6666-6666-6666-666666666661",
+      "tenantId": "11111111-1111-1111-1111-111111111111",
+      "propertyId": "22222222-2222-2222-2222-222222222222",
+      "amenityCode": "WIFI",
+      "displayName": "High-Speed WiFi",
+      "description": "Fiber-backed WiFi up to 500 Mbps.",
+      "category": "TECHNOLOGY",
+      "icon": "wifi",
+      "isDefault": true,
+      "isActive": true,
+      "sortOrder": 1,
+      "tags": [
+        "CONNECTIVITY",
+        "BUSINESS"
+      ],
+      "metadata": {
+        "seed": "industry_defaults"
+      }
+    },
+    {
+      "id": "66666666-6666-6666-6666-666666666662",
+      "tenantId": "11111111-1111-1111-1111-111111111111",
+      "propertyId": "22222222-2222-2222-2222-222222222222",
+      "amenityCode": "SMART_TV",
+      "displayName": "55in Smart TV",
+      "description": "4K HDR display with Chromecast and AirPlay support.",
+      "category": "IN_ROOM_TECH",
+      "icon": "tv",
+      "isDefault": true,
+      "isActive": true,
+      "sortOrder": 2,
+      "tags": [
+        "ENTERTAINMENT"
+      ],
+      "metadata": {
+        "seed": "industry_defaults"
+      }
+    },
+    {
+      "id": "66666666-6666-6666-6666-666666666663",
+      "tenantId": "11111111-1111-1111-1111-111111111111",
+      "propertyId": "22222222-2222-2222-2222-222222222222",
+      "amenityCode": "CLIMATE_CONTROL",
+      "displayName": "Smart Climate Control",
+      "description": "In-room thermostat with humidity control.",
+      "category": "COMFORT",
+      "icon": "thermostat",
+      "isDefault": true,
+      "isActive": true,
+      "sortOrder": 3,
+      "tags": [
+        "WELLNESS"
+      ],
+      "metadata": {
+        "seed": "industry_defaults"
+      }
+    },
+    {
+      "id": "66666666-6666-6666-6666-666666666664",
+      "tenantId": "11111111-1111-1111-1111-111111111111",
+      "propertyId": "22222222-2222-2222-2222-222222222222",
+      "amenityCode": "WORK_DESK",
+      "displayName": "Ergonomic Work Desk",
+      "description": "Sit/stand desk with task lighting and USB-C power.",
+      "category": "BUSINESS",
+      "icon": "desk",
+      "isDefault": true,
+      "isActive": true,
+      "sortOrder": 4,
+      "tags": [
+        "BUSINESS",
+        "REMOTE_WORK"
+      ],
+      "metadata": {
+        "seed": "industry_defaults"
+      }
+    },
+    {
+      "id": "66666666-6666-6666-6666-666666666665",
+      "tenantId": "11111111-1111-1111-1111-111111111111",
+      "propertyId": "22222222-2222-2222-2222-222222222222",
+      "amenityCode": "RAIN_SHOWER",
+      "displayName": "Rain Shower",
+      "description": "Walk-in shower with rainfall head and premium fixtures.",
+      "category": "BATHROOM",
+      "icon": "shower",
+      "isDefault": true,
+      "isActive": true,
+      "sortOrder": 5,
+      "tags": [
+        "BATH"
+      ],
+      "metadata": {
+        "seed": "industry_defaults"
+      }
+    },
+    {
+      "id": "66666666-6666-6666-6666-666666666666",
+      "tenantId": "11111111-1111-1111-1111-111111111111",
+      "propertyId": "22222222-2222-2222-2222-222222222222",
+      "amenityCode": "COFFEE_BAR",
+      "displayName": "In-Room Coffee Bar",
+      "description": "Nespresso machine with complimentary pods and kettle.",
+      "category": "REFRESHMENTS",
+      "icon": "coffee",
+      "isDefault": true,
+      "isActive": true,
+      "sortOrder": 6,
+      "tags": [
+        "F&B"
+      ],
+      "metadata": {
+        "seed": "industry_defaults"
       }
     }
   ],

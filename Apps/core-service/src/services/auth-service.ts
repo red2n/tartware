@@ -6,6 +6,7 @@ import { pool } from "../lib/db.js";
 import { signAccessToken } from "../lib/jwt.js";
 import { TENANT_AUTH_UPDATE_PASSWORD_SQL } from "../sql/tenant-auth-queries.js";
 
+import { emitMembershipCacheInvalidation } from "./membership-cache-hooks.js";
 import {
   checkTenantThrottle,
   isAccountLocked,
@@ -243,7 +244,10 @@ export const changeUserPassword = async (
     return { ok: false, reason: "INVALID_CREDENTIALS" };
   }
 
-  await userCacheService.invalidateUser(userId);
+  await emitMembershipCacheInvalidation({
+    userId,
+    reason: "PASSWORD_UPDATED",
+  });
   await resetTenantLoginState(userId);
 
   // Fetch memberships for new token payload

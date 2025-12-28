@@ -1,3 +1,5 @@
+import { randomUUID } from "node:crypto";
+import bcrypt from "bcryptjs";
 import { vi } from "vitest";
 import type pg from "pg";
 
@@ -6,6 +8,7 @@ export const TEST_USER_ID = "550e8400-e29b-41d4-a716-446655440000";
 export const TEST_TENANT_ID = "660e8400-e29b-41d4-a716-446655440000";
 export const TEST_GUEST_ID = "770e8400-e29b-41d4-a716-446655440000";
 export const TEST_PROPERTY_ID = "880e8400-e29b-41d4-a716-446655440000";
+export const TEST_ROOM_TYPE_ID = "990e8400-e29b-41d4-a716-446655440010";
 export const TEST_USER_USERNAME = "testuser";
 export const TEST_USER_PASSWORD_HASH =
   "$2a$10$U8wfbip4Pk1ReP6u.sHcuu/mV7Xz2xvkjGF1mR5lBeRHyW/t4qxza"; // hash for Password123!
@@ -34,6 +37,42 @@ const systemAdminState: {
   ipWhitelist: ["127.0.0.1/32", "::1/128"],
   trustedDevices: ["trusted-device"],
   mfaEnabled: true,
+};
+
+type BreakGlassEntry = {
+  id: string;
+  adminId: string;
+  codeHash: string;
+  expiresAt: Date | null;
+  usedAt: Date | null;
+  usedSessionId: string | null;
+  metadata: Record<string, unknown> | null;
+  createdAt: Date;
+};
+
+const breakGlassCodes: BreakGlassEntry[] = [];
+
+export const resetBreakGlassCodes = (): void => {
+  breakGlassCodes.length = 0;
+};
+
+export const seedBreakGlassCode = (
+  plainCode: string,
+  options: { expiresAt?: Date | null } = {},
+): BreakGlassEntry => {
+  const codeHash = bcrypt.hashSync(plainCode, 10);
+  const entry: BreakGlassEntry = {
+    id: randomUUID(),
+    adminId: TEST_SYSTEM_ADMIN_ID,
+    codeHash,
+    expiresAt: options.expiresAt ?? null,
+    usedAt: null,
+    usedSessionId: null,
+    metadata: null,
+    createdAt: new Date(),
+  };
+  breakGlassCodes.push(entry);
+  return entry;
 };
 
 const tenantAuthState: {
@@ -166,6 +205,39 @@ export const query = vi.fn(async <T extends pg.QueryResultRow = pg.QueryResultRo
   }
 
   if (
+    sql.startsWith("select") &&
+    sql.includes("from public.system_admin_break_glass_codes")
+  ) {
+    const adminId = params?.[0];
+    const now = new Date();
+    const rows = breakGlassCodes
+      .filter(
+        (entry) =>
+          entry.adminId === adminId &&
+          entry.usedAt === null &&
+          (entry.expiresAt === null || entry.expiresAt > now),
+      )
+      .map(
+        (entry) =>
+          ({
+            id: entry.id,
+            admin_id: entry.adminId,
+            code_hash: entry.codeHash,
+            expires_at: entry.expiresAt,
+            used_at: entry.usedAt,
+          }) as unknown as T,
+      );
+
+    return {
+      rows,
+      rowCount: rows.length,
+      command: "SELECT",
+      oid: 0,
+      fields: [],
+    };
+  }
+
+  if (
     sql.startsWith("update public.system_administrators") &&
     sql.includes("failed_login_attempts = failed_login_attempts + 1")
   ) {
@@ -211,6 +283,68 @@ export const query = vi.fn(async <T extends pg.QueryResultRow = pg.QueryResultRo
   if (sql.startsWith("insert into public.system_admin_audit_log")) {
     return {
       rows: [] as unknown as T[],
+      rowCount: 1,
+      command: "INSERT",
+      oid: 0,
+      fields: [],
+    };
+  }
+
+  if (
+    sql.startsWith("update public.system_admin_break_glass_codes") &&
+    sql.includes("set used_at = now()")
+  ) {
+    const codeId = params?.[0];
+    const sessionId = typeof params?.[1] === "string" ? (params?.[1] as string) : null;
+    const reason = typeof params?.[2] === "string" ? (params?.[2] as string) : null;
+    const entry = breakGlassCodes.find((code) => code.id === codeId);
+    if (entry) {
+      entry.usedAt = new Date();
+      entry.usedSessionId = sessionId;
+      entry.metadata = {
+        ...(entry.metadata ?? {}),
+        used_reason: reason,
+        used_by_session: sessionId,
+      };
+    }
+
+    return {
+      rows: [] as unknown as T[],
+      rowCount: entry ? 1 : 0,
+      command: "UPDATE",
+      oid: 0,
+      fields: [],
+    };
+  }
+
+  if (sql.startsWith("insert into public.system_admin_break_glass_codes")) {
+    const adminId = typeof params?.[0] === "string" ? (params?.[0] as string) : TEST_SYSTEM_ADMIN_ID;
+    const codeHash = typeof params?.[1] === "string" ? (params?.[1] as string) : "";
+    const expiresAtParam = params?.[3];
+    const expiresAt =
+      expiresAtParam instanceof Date
+        ? expiresAtParam
+        : expiresAtParam
+          ? new Date(String(expiresAtParam))
+          : null;
+    const entry: BreakGlassEntry = {
+      id: randomUUID(),
+      adminId,
+      codeHash,
+      expiresAt,
+      usedAt: null,
+      usedSessionId: null,
+      metadata: (params?.[4] as Record<string, unknown>) ?? null,
+      createdAt: new Date(),
+    };
+    breakGlassCodes.push(entry);
+    return {
+      rows: [
+        {
+          id: entry.id,
+          created_at: entry.createdAt,
+        },
+      ] as unknown as T[],
       rowCount: 1,
       command: "INSERT",
       oid: 0,
@@ -576,6 +710,50 @@ export const query = vi.fn(async <T extends pg.QueryResultRow = pg.QueryResultRo
           updated_by: null,
           deleted_at: null,
           version: BigInt(1),
+        },
+      ] as unknown as T[],
+      rowCount: 1,
+      command: "SELECT",
+      oid: 0,
+      fields: [],
+    };
+  }
+
+  if (sql.includes("from public.reservations")) {
+    return {
+      rows: [
+        {
+          id: "aa0e8400-e29b-41d4-a716-446655440099",
+          tenant_id: TEST_TENANT_ID,
+          property_id: TEST_PROPERTY_ID,
+          property_name: "Test Property",
+          guest_id: TEST_GUEST_ID,
+          room_type_id: TEST_ROOM_TYPE_ID,
+          room_type_name: "Deluxe Suite",
+          confirmation_number: "CONF-123456",
+          check_in_date: new Date("2024-01-10T15:00:00Z"),
+          check_out_date: new Date("2024-01-12T11:00:00Z"),
+          booking_date: new Date("2023-12-30T12:00:00Z"),
+          actual_check_in: null,
+          actual_check_out: null,
+          room_number: "1205",
+          number_of_adults: 2,
+          number_of_children: 1,
+          total_amount: "450.00",
+          paid_amount: "200.00",
+          balance_due: "250.00",
+          currency: "USD",
+          status: "CONFIRMED",
+          source: "DIRECT",
+          guest_name: "John Doe",
+          guest_email: "john.doe@example.com",
+          guest_phone: "+1234567890",
+          special_requests: "Late check-in",
+          internal_notes: "VIP guest",
+          created_at: new Date("2023-12-01T10:00:00Z"),
+          updated_at: new Date("2023-12-15T10:00:00Z"),
+          version: BigInt(1),
+          nights: 2,
         },
       ] as unknown as T[],
       rowCount: 1,

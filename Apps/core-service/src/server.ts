@@ -1,7 +1,7 @@
 import fastifyCors from "@fastify/cors";
 import fastifyHelmet from "@fastify/helmet";
 import fastifySensible from "@fastify/sensible";
-import { withRequestLogging } from "@tartware/telemetry";
+import { buildSecureRequestLoggingOptions, withRequestLogging } from "@tartware/telemetry";
 import Fastify, { type FastifyBaseLogger, type FastifyInstance } from "fastify";
 
 import { config } from "./config.js";
@@ -80,11 +80,25 @@ export const buildServer = (): FastifyInstance => {
   });
 
   if (config.log.requestLogging) {
-    withRequestLogging(app, {
-      includeBody: false,
-      includeQuery: true,
-      includeParams: true,
-    });
+    withRequestLogging(
+      app,
+      buildSecureRequestLoggingOptions({
+        includeRequestHeaders: false,
+        includeResponseHeaders: false,
+        maxDepth: 5,
+        sensitiveKeys: [
+          "primaryEmail",
+          "guestEmail",
+          "emailAddress",
+          "passportNumber",
+          "paymentToken",
+          "cardNumber",
+          "card_number",
+          "routingNumber",
+          "accountNumber",
+        ],
+      }),
+    );
   }
 
   app.after(() => {

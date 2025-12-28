@@ -4,6 +4,16 @@ loadEnv();
 
 const env = process.env;
 
+const parseNumberList = (value: string | undefined): number[] => {
+  if (!value) {
+    return [];
+  }
+  return value
+    .split(",")
+    .map((entry) => Number(entry.trim()))
+    .filter((entry) => Number.isFinite(entry) && entry > 0);
+};
+
 const parseBoolean = (
   value: string | undefined,
   fallback: boolean,
@@ -21,6 +31,8 @@ export const serviceConfig = {
   requestLogging: parseBoolean(env.RESERVATION_COMMAND_LOG_REQUESTS, false),
 };
 
+const defaultRetryScheduleMs = parseNumberList(env.KAFKA_RETRY_SCHEDULE_MS);
+
 export const kafkaConfig = {
   clientId: env.KAFKA_CLIENT_ID ?? "tartware-reservations-command",
   brokers: (env.KAFKA_BROKERS ?? "localhost:9092")
@@ -34,6 +46,10 @@ export const kafkaConfig = {
   maxRetries: Number(env.KAFKA_MAX_RETRIES ?? 3),
   retryBackoffMs: Number(env.KAFKA_RETRY_BACKOFF_MS ?? 1000),
   maxBatchBytes: Number(env.KAFKA_MAX_BATCH_BYTES ?? 1048576),
+  retryScheduleMs:
+    defaultRetryScheduleMs.length > 0
+      ? defaultRetryScheduleMs
+      : [1000, 5000, 30000],
 };
 
 export const outboxConfig = {
@@ -43,6 +59,19 @@ export const outboxConfig = {
   lockTimeoutMs: Number(env.OUTBOX_LOCK_TIMEOUT_MS ?? 30000),
   maxRetries: Number(env.OUTBOX_MAX_RETRIES ?? 5),
   retryBackoffMs: Number(env.OUTBOX_RETRY_BACKOFF_MS ?? 5000),
+};
+
+export const reliabilityConfig = {
+  stalledThresholdSeconds: Number(
+    env.RELIABILITY_STALLED_THRESHOLD_SECONDS ?? 120,
+  ),
+  consumerStaleSeconds: Number(env.RELIABILITY_CONSUMER_STALE_SECONDS ?? 60),
+  outboxWarnThreshold: Number(env.RELIABILITY_OUTBOX_WARN_THRESHOLD ?? 100),
+  outboxCriticalThreshold: Number(
+    env.RELIABILITY_OUTBOX_CRITICAL_THRESHOLD ?? 500,
+  ),
+  dlqWarnThreshold: Number(env.RELIABILITY_DLQ_WARN_THRESHOLD ?? 10),
+  dlqCriticalThreshold: Number(env.RELIABILITY_DLQ_CRITICAL_THRESHOLD ?? 50),
 };
 
 export const databaseConfig = {

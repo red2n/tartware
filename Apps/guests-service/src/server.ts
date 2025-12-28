@@ -1,7 +1,10 @@
 import fastifyCors from "@fastify/cors";
 import fastifyHelmet from "@fastify/helmet";
 import fastifySensible from "@fastify/sensible";
-import { withRequestLogging } from "@tartware/telemetry";
+import {
+  buildSecureRequestLoggingOptions,
+  withRequestLogging,
+} from "@tartware/telemetry";
 import fastify, { type FastifyBaseLogger, type FastifyInstance } from "fastify";
 
 import { config } from "./config.js";
@@ -22,10 +25,7 @@ export const buildServer = (): FastifyInstance => {
   });
 
   if (config.log.requestLogging) {
-    withRequestLogging(app, {
-      includeQuery: true,
-      includeParams: true,
-    });
+    withRequestLogging(app, buildSecureRequestLoggingOptions());
   }
 
   app.register(fastifySensible);

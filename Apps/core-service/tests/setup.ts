@@ -3,6 +3,7 @@ import { beforeAll, afterAll, beforeEach, vi } from "vitest";
 import {
   resetSystemAdminState,
   resetTenantAuthState,
+  resetBreakGlassCodes,
   TEST_TENANT_ID,
   TEST_USER_ID,
   MANAGER_USER_ID,
@@ -160,6 +161,7 @@ beforeEach(async () => {
   vi.clearAllMocks();
   resetSystemAdminState();
   resetTenantAuthState();
+  resetBreakGlassCodes();
   const reset = await ensureRateLimiterResetter();
   await reset?.();
 });

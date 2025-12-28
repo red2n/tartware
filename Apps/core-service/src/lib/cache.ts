@@ -381,15 +381,43 @@ export class CacheService {
       return 0;
     }
 
-    const stripPrefix = (key: string): string => {
-      if (config.redis.keyPrefix && key.startsWith(config.redis.keyPrefix)) {
-        return key.slice(config.redis.keyPrefix.length);
+    const globalPrefix = config.redis.keyPrefix ?? "";
+    const basePattern = this.buildKey(pattern, options?.prefix);
+    const matchPattern =
+      globalPrefix.length > 0 && !basePattern.startsWith(globalPrefix)
+        ? `${globalPrefix}${basePattern}`
+        : basePattern;
+
+    const stripGlobalPrefix = (key: string): string => {
+      if (globalPrefix.length > 0 && key.startsWith(globalPrefix)) {
+        return key.slice(globalPrefix.length);
       }
       return key;
     };
 
+    const deleteBatch = async (keys: string[]): Promise<number> => {
+      if (keys.length === 0) {
+        return 0;
+      }
+
+      const normalizedKeys = keys.map(stripGlobalPrefix);
+
+      try {
+        const unlinked = await redis.unlink(...normalizedKeys);
+        return typeof unlinked === "number" ? unlinked : 0;
+      } catch (unlinkError) {
+        console.warn("cache unlink failed, falling back to DEL", unlinkError);
+        try {
+          const deleted = await redis.del(...normalizedKeys);
+          return typeof deleted === "number" ? deleted : 0;
+        } catch (delError) {
+          console.error("cache delete fallback failed:", delError);
+          return 0;
+        }
+      }
+    };
+
     try {
-      const fullPattern = this.buildKey(pattern, options?.prefix);
       let cursor = "0";
       let deletedTotal = 0;
 
@@ -397,19 +425,12 @@ export class CacheService {
         const [nextCursor, keys] = await redis.scan(
           cursor,
           "MATCH",
-          fullPattern,
+          matchPattern,
           "COUNT",
           SCAN_BATCH_SIZE,
         );
         cursor = nextCursor;
-
-        if (keys.length === 0) {
-          continue;
-        }
-
-        const keysWithoutPrefix = keys.map(stripPrefix);
-        const deletedCount = await redis.del(...keysWithoutPrefix);
-        deletedTotal += deletedCount;
+        deletedTotal += await deleteBatch(keys);
       } while (cursor !== "0");
 
       return deletedTotal;

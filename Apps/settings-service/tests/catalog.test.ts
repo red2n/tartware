@@ -19,6 +19,8 @@ const PRIVATE_KEY_OBJECT = createPrivateKey({
   type: "pkcs8",
 });
 
+const TEST_TENANT_ID = "11111111-1111-1111-1111-111111111111";
+
 const createToken = () => {
   const now = Math.floor(Date.now() / 1000);
   const header = {
@@ -30,6 +32,7 @@ const createToken = () => {
     iss: process.env.JWT_ISSUER,
     aud: process.env.JWT_AUDIENCE,
     scope: ["settings:read"],
+    tenantId: TEST_TENANT_ID,
     iat: now,
     exp: now + 300,
   };
