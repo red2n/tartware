@@ -28,6 +28,8 @@ export const buildServer = () => {
   const app = fastify({
     logger: appLogger as FastifyBaseLogger,
     disableRequestLogging: !config.log.requestLogging,
+    // Allow extra time for async plugin init (Kafka consumers, gRPC server)
+    pluginTimeout: 30000,
   });
 
   if (config.log.requestLogging) {
@@ -37,10 +39,16 @@ export const buildServer = () => {
   void app.register(fastifyHelmet, { global: true });
   void app.register(fastifySensible);
   void app.register(swaggerPlugin);
-  void app.register(grpcServerPlugin);
+  if (process.env.SKIP_GRPC !== "true") {
+    void app.register(grpcServerPlugin);
+  } else {
+    app.log.warn("Skipping gRPC server startup (SKIP_GRPC=true)");
+  }
   void app.register(locksRoutes);
   app.addHook("onReady", async () => {
+    app.log.info("starting manual release notification consumer");
     await startManualReleaseNotificationConsumer(app.log);
+    app.log.info("starting availability guard command consumer");
     await startAvailabilityGuardCommandCenterConsumer(app.log);
   });
   app.addHook("onClose", async () => {

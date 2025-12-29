@@ -74,7 +74,7 @@ When in doubt, check `docs/roll-service-availability-guard.md` for the Availabil
 
 To keep a lightweight user interface for demos and regression testing, we maintain a Postman collection that exercises the same HTTP surfaces exposed by the services:
 
-1. **Start the stack** – run `npm run dev:gateway` and `npm run dev:reservations` from the repo root so the API Gateway (port `3200`) and reservations-command-service (port `3101`) are available.
+1. **Start the stack** – run `npm run dev:gateway` and `npm run dev:reservations` from the repo root so the API Gateway (port `3200`) and reservations-command-service (port `3101`) are available. Make sure `docker compose up -d postgres redis kafka` is running in another terminal, then execute `npm run kafka:topics` once per environment to provision the Kafka topics that every service expects. The dev scripts will automatically ensure the OpenTelemetry collector (`docker compose up -d opensearch otel-collector`) is online before launching; if Docker isn’t available, they’ll prompt you to start it manually or clear the OTEL env vars to skip telemetry.
 2. **Obtain a tenant JWT** – send `POST http://localhost:3200/v1/auth/login` with a seeded user credential. Store the `accessToken` in a Postman environment variable such as `{{tenant_token}}`.
 3. **Check reliability** – issue `GET http://localhost:3101/health/reliability` (no auth required) to confirm the transactional outbox backlog, Kafka consumer freshness, and dead-letter queue depth before running workflow tests.
 4. **Trace lifecycle state** – request `GET http://localhost:3101/v1/reservations/{{reservationId}}/lifecycle?tenant_id={{tenantId}}` to inspect the lifecycle guard data for any reservation you just modified via commands.
