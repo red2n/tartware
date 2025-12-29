@@ -32,6 +32,28 @@ export const buildServer = () => {
     pluginTimeout: 0,
   });
 
+  const SHUTDOWN_STEP_TIMEOUT_MS = 5_000;
+
+  const shutdownStep = async (label: string, fn: () => Promise<void>) => {
+    app.log.info({ step: label }, "shutdown step starting");
+    const timer = setTimeout(() => {
+      app.log.error(
+        { step: label, timeoutMs: SHUTDOWN_STEP_TIMEOUT_MS },
+        "shutdown step timed out",
+      );
+    }, SHUTDOWN_STEP_TIMEOUT_MS);
+    timer.unref();
+
+    try {
+      await fn();
+    } catch (error) {
+      app.log.error({ err: error, step: label }, "shutdown step failed");
+    } finally {
+      clearTimeout(timer);
+      app.log.info({ step: label }, "shutdown step finished");
+    }
+  };
+
   if (config.log.requestLogging) {
     withRequestLogging(app, buildSecureRequestLoggingOptions());
   }
@@ -57,9 +79,15 @@ export const buildServer = () => {
   });
   app.addHook("onClose", async () => {
     // Shutdown in proper order: stop consumers first, then notification dispatcher
-    await shutdownAvailabilityGuardCommandCenterConsumer(app.log);
-    await shutdownManualReleaseNotificationConsumer(app.log);
-    await shutdownNotificationDispatcher();
+    await shutdownStep("command-consumer", () =>
+      shutdownAvailabilityGuardCommandCenterConsumer(app.log),
+    );
+    await shutdownStep("manual-release-consumer", () =>
+      shutdownManualReleaseNotificationConsumer(app.log),
+    );
+    await shutdownStep("notification-dispatcher", () =>
+      shutdownNotificationDispatcher(),
+    );
   });
 
   app.after(() => {
