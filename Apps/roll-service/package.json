@@ -11,7 +11,7 @@
     "build": "npm run lint && npm run biome && npm run knip && tsc --project tsconfig.json",
     "start": "node dist/index.js",
     "replay": "tsx src/cli/roll-replay.ts",
-    "test": "tsc --project tsconfig.json && node dist/Apps/roll-service/src/tests/run-tests.js",
+    "test": "node --import tsx --no-warnings src/tests/run-tests.ts",
     "lint": "eslint --ext .ts src",
     "lint:fix": "eslint --ext .ts src --fix",
     "typecheck": "tsc --noEmit",

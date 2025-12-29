@@ -59,6 +59,11 @@ export const outboxConfig = {
   lockTimeoutMs: Number(env.OUTBOX_LOCK_TIMEOUT_MS ?? 30000),
   maxRetries: Number(env.OUTBOX_MAX_RETRIES ?? 5),
   retryBackoffMs: Number(env.OUTBOX_RETRY_BACKOFF_MS ?? 5000),
+  tenantThrottleMs: Number(env.OUTBOX_TENANT_THROTTLE_MS ?? 0),
+  tenantJitterMs: Number(env.OUTBOX_TENANT_JITTER_MS ?? 0),
+  tenantThrottleCleanupMs: Number(
+    env.OUTBOX_TENANT_THROTTLE_CLEANUP_MS ?? 60_000,
+  ),
 };
 
 export const reliabilityConfig = {

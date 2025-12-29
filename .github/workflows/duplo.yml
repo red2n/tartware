@@ -1,0 +1,37 @@
+name: Duplo Duplicate Scan
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  duplo:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+
+      - name: Install Duplo
+        run: go install github.com/dlidstrom/Duplo/cmd/duplo@latest
+
+      - name: Run Duplo scan
+        env:
+          DUPLO_TARGET_DIR: ./Apps
+          DUPLO_MIN_LINES: 60
+          DUPLO_EXTENSIONS: ts,tsx,js
+          DUPLO_IGNORE_SAME_NAME: "true"
+        run: ./executables/run-duplo/run-duplo.sh
+
+      - name: Upload Duplo reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: duplo-report
+          path: reports/duplo

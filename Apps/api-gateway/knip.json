@@ -4,6 +4,7 @@
   "project": ["src/**/*.ts"],
   "ignoreDependencies": [
     "@biomejs/biome",
+    "@vitest/coverage-v8",
     "tsx",
     "@tartware/openapi",
     "@tartware/telemetry",
@@ -12,5 +13,5 @@
     "@tartware/schemas",
     "@tartware/command-center-shared"
   ],
-  "ignoreBinaries": ["biome", "eslint", "knip", "tsc", "tsx"]
+  "ignoreBinaries": ["biome", "eslint", "knip", "tsc", "tsx", "vitest"]
 }
