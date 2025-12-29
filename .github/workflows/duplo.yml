@@ -19,7 +19,7 @@ jobs:
           go-version: '1.22'
 
       - name: Install Duplo
-        run: go install github.com/dlidstrom/Duplo/cmd/duplo@latest
+        run: go install github.com/dlidstrom/duplo/cmd/duplo@latest
 
       - name: Run Duplo scan
         env:
