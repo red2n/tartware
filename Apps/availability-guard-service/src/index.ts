@@ -25,6 +25,7 @@ const app = buildServer();
 
 const start = async () => {
   try {
+    app.log.info("Starting Availability Guard service startup");
     const telemetryDependency = resolveOtelDependency(true);
     const dependenciesOk = await ensureDependencies(
       [
@@ -49,6 +50,8 @@ const start = async () => {
         .catch((error) => app.log.error(error, "Failed to shutdown telemetry"));
       process.exit(0);
     }
+
+    app.log.info("Dependencies available; starting HTTP server");
 
     await app.listen({ port: config.port, host: config.host });
     app.log.info(

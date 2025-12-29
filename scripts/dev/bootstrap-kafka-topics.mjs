@@ -67,6 +67,11 @@ const topics = [
     numPartitions: 6,
     replicationFactor: 1,
   },
+  {
+    topic: "availability-guard.notifications",
+    numPartitions: 3,
+    replicationFactor: 1,
+  },
 ];
 
 const clientId = process.env.KAFKA_CLIENT_ID ?? "tartware-kafka-bootstrapper";

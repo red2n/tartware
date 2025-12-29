@@ -1,15 +1,24 @@
 import fp from "fastify-plugin";
 
+import { config } from "../config.js";
 import { startGrpcServer } from "../grpc/server.js";
 
 export default fp((app) => {
   let controller: Awaited<ReturnType<typeof startGrpcServer>> | null = null;
 
-  app.addHook("onReady", async () => {
-    controller = await startGrpcServer(app.log);
-  });
+  app.log.info("Starting gRPC server for Availability Guard");
+  void startGrpcServer(app.log)
+    .then((started) => {
+      controller = started;
+      app.log.info({ host: config.grpc.host, port: config.grpc.port }, "gRPC server started");
+    })
+    .catch((err) => {
+      app.log.error({ err }, "Failed to start gRPC server");
+    });
 
   app.addHook("onClose", async () => {
-    await controller?.stop();
+    if (controller) {
+      await controller.stop();
+    }
   });
 });
