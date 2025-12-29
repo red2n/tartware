@@ -146,10 +146,10 @@ export class ImpersonationComponent {
   @HostListener('document:keydown.tab', ['$event'])
   trapFocus(event: KeyboardEvent) {
     if (!this.confirming()) return;
-    const focusable: HTMLElement[] = [
+    const focusable = [
       this.confirmButton?.nativeElement,
       this.cancelButton?.nativeElement,
-    ].filter((el): el is HTMLElement => Boolean(el));
+    ].filter((el): el is HTMLButtonElement => Boolean(el));
 
     if (focusable.length === 0) return;
     const active = document.activeElement as HTMLElement | null;

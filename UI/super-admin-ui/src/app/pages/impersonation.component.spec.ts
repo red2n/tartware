@@ -1,4 +1,4 @@
-import { TestBed, fakeAsync, flushMicrotasks } from '@angular/core/testing';
+import { TestBed, fakeAsync, flush, flushMicrotasks } from '@angular/core/testing';
 import { of, throwError } from 'rxjs';
 import { ImpersonationComponent } from './impersonation.component';
 import { AdminAuthService, ImpersonationResponse } from '../services/admin-auth.service';
@@ -19,7 +19,7 @@ describe('ImpersonationComponent', () => {
     }).compileComponents();
   });
 
-  it('shows the confirmation dialog when form is valid', () => {
+  it('shows the confirmation dialog when form is valid', fakeAsync(() => {
     const fixture = TestBed.createComponent(ImpersonationComponent);
     const component = fixture.componentInstance;
 
@@ -33,7 +33,8 @@ describe('ImpersonationComponent', () => {
     component.onSubmit();
 
     expect(component.confirming()).toBeTrue();
-  });
+    flush();
+  }));
 
   it('starts impersonation when confirmed and shows token details', fakeAsync(() => {
     const fixture = TestBed.createComponent(ImpersonationComponent);
@@ -58,6 +59,7 @@ describe('ImpersonationComponent', () => {
 
     component.confirmStart();
     flushMicrotasks();
+    flush();
 
     expect(authSpy.startImpersonation).toHaveBeenCalledWith(component.form.getRawValue());
     expect(component.sessionToken()).toBe('imp-token');
@@ -92,6 +94,7 @@ describe('ImpersonationComponent', () => {
 
     component.confirmStart();
     flushMicrotasks();
+    flush();
 
     expect(component.errorMessage()).toContain('nope');
     expect(component.confirming()).toBeFalse();
