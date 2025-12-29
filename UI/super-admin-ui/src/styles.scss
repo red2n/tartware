@@ -1,0 +1,27 @@
+@import "../projects/ui-theme/src/lib/styles/theme";
+
+:root {
+	font-family: var(--font-sans);
+}
+
+* {
+	box-sizing: border-box;
+}
+
+body {
+	margin: 0;
+	background: var(--color-surface);
+	color: var(--color-text);
+	font-family: var(--font-sans);
+}
+
+a {
+	color: var(--color-accent);
+	text-decoration: none;
+}
+
+a:hover {
+	color: var(--color-accent-strong);
+}
+
+html, body { height: 100%; }

@@ -100,6 +100,7 @@ const mapRowToAdministrator = (row: SystemAdministratorRow) => {
     ...row,
     ip_whitelist: row.ip_whitelist ?? [],
     allowed_hours: row.allowed_hours ?? undefined,
+    mfa_secret: row.mfa_secret ?? undefined,
     metadata: row.metadata ?? undefined,
     updated_at: row.updated_at ?? undefined,
     created_by: row.created_by ?? undefined,

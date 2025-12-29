@@ -1,0 +1,23 @@
+<div class="app-shell">
+  <header class="topbar" aria-label="System admin shell">
+    <div class="brand">Tartware System Admin</div>
+    <nav class="nav" aria-label="Primary">
+      <a routerLink="/login" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">Login</a>
+      <a routerLink="/break-glass" routerLinkActive="active">Break glass</a>
+      <a routerLink="/impersonation" routerLinkActive="active">Impersonation</a>
+      <a routerLink="/welcome" routerLinkActive="active">Welcome</a>
+    </nav>
+    <div class="actions">
+      <button type="button" class="ghost" (click)="toggleTheme()">
+        {{ currentTheme() === 'theme-light' ? 'Dark mode' : 'Light mode' }}
+      </button>
+      <div class="session" aria-live="polite">Session pending</div>
+    </div>
+  </header>
+
+  <main class="content" role="main">
+    <div class="page-container">
+      <router-outlet />
+    </div>
+  </main>
+</div>

@@ -240,6 +240,9 @@ export const buildServer = () => {
 			return forwardReservationCommand(request, reply);
 		};
 
+		const proxyCore = async (request: FastifyRequest, reply: FastifyReply) =>
+			proxyRequest(request, reply, serviceTargets.coreServiceUrl);
+
 		app.all(
 			"/v1/tenants/:tenantId/reservations",
 			{
@@ -255,6 +258,20 @@ export const buildServer = () => {
 				}),
 			},
 			reservationHandler,
+		);
+
+		app.all(
+			"/v1/system/*",
+			{
+				schema: buildRouteSchema({
+					tag: CORE_PROXY_TAG,
+					summary: "Proxy system admin calls to core service.",
+					response: {
+						200: jsonObjectSchema,
+					},
+				}),
+			},
+			proxyCore,
 		);
 
 		app.all(
