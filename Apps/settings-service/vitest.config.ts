@@ -39,6 +39,10 @@ export default defineConfig({
         find: "@tartware/config",
         replacement: resolve(__dirname, "../config/src/index.ts"),
       },
+      {
+        find: "@tartware/openapi",
+        replacement: resolve(__dirname, "../openapi-utils/src/index.ts"),
+      },
     ],
   },
 });

@@ -1,5 +1,11 @@
 import { z } from "zod";
 
+const RateCodeSchema = z
+	.string()
+	.min(2)
+	.max(50)
+	.regex(/^[A-Z0-9_-]+$/i, "Rate code must be alphanumeric with - or _");
+
 const ReservationStatusEnum = z.enum([
 	"PENDING",
 	"CONFIRMED",
@@ -17,6 +23,7 @@ export const ReservationCreateCommandSchema = z.object({
 	check_out_date: z.coerce.date(),
 	booking_date: z.coerce.date().optional(),
 	status: ReservationStatusEnum.optional(),
+	rate_code: RateCodeSchema.optional(),
 	source: z
 		.enum(["DIRECT", "WEBSITE", "PHONE", "WALKIN", "OTA", "CORPORATE", "GROUP"])
 		.optional(),
@@ -39,6 +46,7 @@ export const ReservationModifyCommandSchema = z
 		check_out_date: z.coerce.date().optional(),
 		booking_date: z.coerce.date().optional(),
 		status: ReservationStatusEnum.optional(),
+		rate_code: RateCodeSchema.optional(),
 		total_amount: z.coerce.number().nonnegative().optional(),
 		currency: z.string().length(3).optional(),
 		notes: z.string().max(2000).optional(),

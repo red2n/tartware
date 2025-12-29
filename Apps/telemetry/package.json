@@ -11,7 +11,7 @@
     "typecheck": "tsc --noEmit",
     "clean": "rm -rf dist dist-tests *.tsbuildinfo",
     "build:tests": "tsc --project tsconfig.tests.json",
-    "test": "npm run build:tests && node --test dist-tests"
+    "test": "npm run build:tests && node --test dist-tests/tests/*.js"
   },
   "dependencies": {
     "@opentelemetry/api": "^1.9.0",

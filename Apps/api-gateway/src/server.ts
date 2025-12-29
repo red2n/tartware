@@ -7,7 +7,10 @@ import {
 	type JsonSchema,
 	jsonObjectSchema,
 } from "@tartware/openapi";
-import { withRequestLogging } from "@tartware/telemetry";
+import {
+	buildSecureRequestLoggingOptions,
+	withRequestLogging,
+} from "@tartware/telemetry";
 import fastify, {
 	type FastifyBaseLogger,
 	type FastifyPluginAsync,
@@ -116,12 +119,7 @@ export const buildServer = () => {
 	});
 
 	if (gatewayConfig.logRequests) {
-		withRequestLogging(app, {
-			includeBody: false,
-			includeParams: true,
-			includeRequestHeaders: false,
-			includeResponseHeaders: false,
-		});
+		withRequestLogging(app, buildSecureRequestLoggingOptions());
 	}
 
 	app.register(fastifyHelmet, { global: true });

@@ -44,6 +44,19 @@ const consumerLagGauge = new Gauge({
   registers: [metricsRegistry],
 });
 
+const dlqDepthGauge = new Gauge({
+  name: "reservation_event_dlq_depth",
+  help: "Total backlog recorded on the reservations DLQ topic",
+  registers: [metricsRegistry],
+});
+
+const dlqThresholdGauge = new Gauge({
+  name: "reservation_event_dlq_threshold",
+  help: "Configured DLQ backlog thresholds used for alerting",
+  labelNames: ["level"] as const,
+  registers: [metricsRegistry],
+});
+
 const outboxQueueGauge = new Gauge({
   name: "reservation_outbox_pending_records",
   help: "Approximate number of pending/failed records waiting in the transactional outbox",
@@ -123,6 +136,18 @@ export const setOutboxQueueSize = (size: number): void => {
  */
 export const observeOutboxPublishDuration = (durationSeconds: number): void => {
   outboxPublishDuration.observe(durationSeconds);
+};
+
+/**
+ * Sets the gauge representing DLQ backlog depth.
+ */
+export const setDlqDepth = (depth: number): void => {
+  dlqDepthGauge.set(depth);
+};
+
+export const setDlqThresholds = (warn: number, critical: number): void => {
+  dlqThresholdGauge.set({ level: "warn" }, warn);
+  dlqThresholdGauge.set({ level: "critical" }, critical);
 };
 
 export const recordAvailabilityGuardRequest = (

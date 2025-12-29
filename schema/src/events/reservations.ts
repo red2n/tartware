@@ -2,6 +2,27 @@ import { z } from "zod";
 
 import { ReservationsSchema } from "../schemas/03-bookings/reservations.js";
 
+const RateCodeSchema = z
+	.string()
+	.min(2)
+	.max(50)
+	.regex(/^[A-Z0-9_-]+$/i, "Rate code must be alphanumeric with - or _");
+
+const FailureCauseSchema = z.object({
+	name: z.string().optional(),
+	message: z.string(),
+	stack: z.string().optional(),
+	origin: z.string().optional(),
+});
+
+const RateFallbackMetadataSchema = z.object({
+	requestedCode: RateCodeSchema.optional(),
+	appliedCode: RateCodeSchema,
+	reason: z.string().optional(),
+	decidedBy: z.string(),
+	decidedAt: z.string().datetime(),
+});
+
 /**
  * Event envelope metadata
  */
@@ -13,9 +34,14 @@ export const EventMetadataSchema = z.object({
 	version: z.string().default("1.0"),
 	correlationId: z.string().uuid().optional(),
 	tenantId: z.string().uuid(),
+	retryCount: z.number().int().nonnegative().default(0),
+	attemptedAt: z.string().datetime().optional(),
+	failureCause: FailureCauseSchema.optional(),
+	rateFallback: RateFallbackMetadataSchema.optional(),
 });
 
 export type EventMetadata = z.infer<typeof EventMetadataSchema>;
+export type FailureCause = z.infer<typeof FailureCauseSchema>;
 
 /**
  * Reservation Created Event
@@ -25,6 +51,7 @@ const ReservationCreatePayloadSchema = z.object({
 	property_id: ReservationsSchema.shape.property_id,
 	guest_id: ReservationsSchema.shape.guest_id,
 	room_type_id: ReservationsSchema.shape.room_type_id,
+	rate_code: RateCodeSchema.optional(),
 	check_in_date: z.coerce.date(),
 	check_out_date: z.coerce.date(),
 	booking_date: z.coerce.date().optional(),
@@ -53,6 +80,7 @@ export const ReservationUpdatedEventSchema = z.object({
 	}),
 	payload: ReservationsSchema.partial().extend({
 		id: ReservationsSchema.shape.id,
+		rate_code: RateCodeSchema.optional(),
 	}),
 });
 

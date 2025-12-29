@@ -41,6 +41,30 @@ describe("log sanitizer", () => {
 			},
 		});
 	});
+
+	it("redacts email patterns even when the key is not flagged", () => {
+		const sanitize = createLogSanitizer();
+		const sample = {
+			notes: "Contact guest at guest@example.com for follow-up",
+		};
+
+		assert.deepStrictEqual(sanitize(sample), {
+			notes: DEFAULT_LOG_REDACT_CENSOR,
+		});
+	});
+
+	it("redacts credit card numbers using Luhn detection", () => {
+		const sanitize = createLogSanitizer();
+		const sample = {
+			comment: "Card 4111 1111 1111 1111 expires soon",
+			other: "no pii here",
+		};
+
+		assert.deepStrictEqual(sanitize(sample), {
+			comment: DEFAULT_LOG_REDACT_CENSOR,
+			other: "no pii here",
+		});
+	});
 });
 
 const createMockApp = (): FastifyInstance & {

@@ -81,3 +81,47 @@ export const SYSTEM_ADMIN_AUDIT_INSERT_SQL = `
     $15
   )
 `;
+
+export const SYSTEM_ADMIN_BREAK_GLASS_FETCH_SQL = `
+  SELECT
+    id,
+    admin_id,
+    code_hash,
+    expires_at,
+    used_at
+  FROM public.system_admin_break_glass_codes
+  WHERE admin_id = $1::uuid
+    AND used_at IS NULL
+    AND (expires_at IS NULL OR expires_at > NOW())
+  ORDER BY created_at DESC
+`;
+
+export const SYSTEM_ADMIN_BREAK_GLASS_MARK_USED_SQL = `
+  UPDATE public.system_admin_break_glass_codes
+  SET used_at = NOW(),
+      used_session_id = $2,
+      metadata = COALESCE(metadata, '{}'::jsonb) || jsonb_build_object(
+        'used_reason',
+        $3,
+        'used_by_session',
+        $2
+      )
+  WHERE id = $1::uuid
+`;
+
+export const SYSTEM_ADMIN_BREAK_GLASS_INSERT_SQL = `
+  INSERT INTO public.system_admin_break_glass_codes (
+    admin_id,
+    code_hash,
+    label,
+    expires_at,
+    metadata
+  ) VALUES (
+    $1::uuid,
+    $2,
+    $3,
+    $4,
+    $5::jsonb
+  )
+  RETURNING id, created_at
+`;

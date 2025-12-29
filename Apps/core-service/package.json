@@ -24,7 +24,8 @@
     "clean": "rm -rf dist coverage vitest-report *.tsbuildinfo",
     "reset:passwords": "tsx scripts/reset-default-password.ts",
     "bootstrap:modules": "tsx scripts/bootstrap-modules.ts",
-    "bootstrap:system-admin-token": "tsx scripts/bootstrap-system-admin-token.ts"
+    "bootstrap:system-admin-token": "tsx scripts/bootstrap-system-admin-token.ts",
+    "generate:break-glass": "tsx scripts/generate-break-glass-codes.ts"
   },
   "dependencies": {
     "@fastify/cors": "^8.3.0",

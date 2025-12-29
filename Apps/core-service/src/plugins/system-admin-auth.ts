@@ -13,6 +13,7 @@ import type {
   SystemAdminScopeDecorator,
   SystemAdminScopeOptions,
 } from "../types/system-admin.js";
+import { hashIdentifier } from "../utils/hash.js";
 
 const ROLE_PRIORITY: Record<SystemAdminRole, number> = {
   SYSTEM_ADMIN: 400,
@@ -86,7 +87,13 @@ const buildGuard =
         rateLimitResult.retryAfterMs !== undefined
           ? rateLimitResult.retryAfterMs / 1000
           : undefined;
-      recordSystemAdminRateLimitDenied(context.scope);
+      const adminIdHash = hashIdentifier(context.adminId);
+      const sessionIdHash = hashIdentifier(context.sessionId);
+      recordSystemAdminRateLimitDenied({
+        scope: context.scope,
+        adminIdHash,
+        sessionIdHash,
+      });
       request.log.warn(
         {
           adminId: context.adminId,
@@ -95,6 +102,8 @@ const buildGuard =
           scope: context.scope,
           remaining: rateLimitResult.remaining,
           retryAfterMs: rateLimitResult.retryAfterMs,
+          adminIdHash,
+          sessionIdHash,
         },
         "system admin rate limit exceeded",
       );

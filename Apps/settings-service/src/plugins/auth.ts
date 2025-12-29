@@ -3,6 +3,7 @@ import type { FastifyReply, FastifyRequest } from "fastify";
 import fp from "fastify-plugin";
 
 import { config } from "../config.js";
+import type { AuthUser } from "../types/auth.js";
 
 declare module "fastify" {
   interface FastifyInstance {
@@ -10,7 +11,7 @@ declare module "fastify" {
   }
 
   interface FastifyRequest {
-    authUser?: unknown;
+    authUser?: AuthUser;
   }
 }
 
@@ -36,10 +37,15 @@ export const authPlugin = fp(async (app) => {
 
   app.decorate("authenticate", async (request: FastifyRequest, reply: FastifyReply) => {
     try {
-      request.authUser = await request.jwtVerify();
+      const payload = await request.jwtVerify<AuthUser>();
+      if (!payload.tenantId) {
+        request.log.warn("Missing tenantId claim in JWT");
+        return reply.status(403).send({ message: "Tenant context required" });
+      }
+      request.authUser = payload;
     } catch (error) {
       request.log.warn({ err: error }, "Authentication failed");
-      void reply.status(401).send({ message: "Unauthorized" });
+      return reply.status(401).send({ message: "Unauthorized" });
     }
   });
 });

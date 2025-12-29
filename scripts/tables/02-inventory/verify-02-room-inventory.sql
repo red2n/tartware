@@ -1,7 +1,7 @@
 -- =====================================================
 -- verify-02-room-inventory.sql
 -- Verification Script for Room & Inventory Management Tables
--- Category: 02-room-inventory (4 tables)
+-- Category: 02-room-inventory (5 tables)
 -- Date: 2025-10-19
 -- =====================================================
 
@@ -10,18 +10,18 @@
 \echo ''
 \echo '=============================================='
 \echo '  CATEGORY: ROOM & INVENTORY MANAGEMENT VERIFICATION'
-\echo '  Tables: 4 | Description: Room types, rooms, rates, availability'
+\echo '  Tables: 5 | Description: Room types, rooms, amenities, rates, availability'
 \echo '=============================================='
 \echo ''
 
 -- =====================================================
 -- 1. CHECK IF ALL TABLES EXIST
 -- =====================================================
-\echo '1. Checking if all 4 tables exist...'
+\echo '1. Checking if all 5 tables exist...'
 
 DO $$
 DECLARE
-    v_expected_tables TEXT[] := ARRAY['room_types', 'rooms', 'rates'];
+    v_expected_tables TEXT[] := ARRAY['room_types', 'rooms', 'room_amenity_catalog', 'rates'];
     v_table TEXT;
     v_missing_tables TEXT[] := '{}'::TEXT[];
     v_found_count INTEGER := 0;
@@ -59,7 +59,7 @@ BEGIN
         RAISE WARNING 'Missing tables: %', array_to_string(v_missing_tables, ', ');
         RAISE EXCEPTION 'Room & Inventory Management verification FAILED - missing tables!';
     ELSE
-        RAISE NOTICE '✓✓✓ All 4 Room & Inventory Management tables exist!';
+        RAISE NOTICE '✓✓✓ All 5 Room & Inventory Management tables exist!';
     END IF;
 END $$;
 
@@ -80,7 +80,7 @@ FROM information_schema.tables t
 LEFT JOIN information_schema.columns c
     ON t.table_schema = c.table_schema
     AND t.table_name = c.table_name
-WHERE t.table_name IN ('room_types', 'rooms', 'rates')
+WHERE t.table_name IN ('room_types', 'rooms', 'room_amenity_catalog', 'rates')
     AND (t.table_schema = 'public' OR (t.table_schema = 'availability' AND t.table_name = 'room_availability'))
 GROUP BY t.table_schema, t.table_name
 ORDER BY t.table_name;
@@ -100,7 +100,7 @@ DECLARE
 BEGIN
     SELECT COUNT(*) INTO v_table_count
     FROM information_schema.tables t
-    WHERE t.table_name IN ('room_types', 'rooms', 'rates')
+    WHERE t.table_name IN ('room_types', 'rooms', 'room_amenity_catalog', 'rates')
         AND (t.table_schema = 'public' OR (t.table_schema = 'availability' AND t.table_name = 'room_availability'));
 
     -- Add room_availability from availability schema
@@ -114,14 +114,14 @@ BEGIN
 
     RAISE NOTICE '';
     RAISE NOTICE 'Category: Room & Inventory Management';
-    RAISE NOTICE 'Tables Found: % / 4', v_table_count;
+    RAISE NOTICE 'Tables Found: % / 5', v_table_count;
     RAISE NOTICE '';
 
-    IF v_table_count = 4 THEN
+    IF v_table_count = 5 THEN
         RAISE NOTICE '✓✓✓ ROOM & INVENTORY MANAGEMENT VERIFICATION PASSED ✓✓✓';
     ELSE
         RAISE WARNING '⚠⚠⚠ ROOM & INVENTORY MANAGEMENT VERIFICATION FAILED ⚠⚠⚠';
-        RAISE WARNING 'Expected 4 tables, found %', v_table_count;
+        RAISE WARNING 'Expected 5 tables, found %', v_table_count;
     END IF;
 END $$;
 

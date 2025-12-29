@@ -1,6 +1,7 @@
 import { config } from "../config.js";
 
 import { cacheService } from "./cache.js";
+import { appLogger } from "./logger.js";
 import { getRedis } from "./redis.js";
 
 const WINDOW_MS = 60_000;
@@ -53,13 +54,6 @@ redis.call("PEXPIRE", KEYS[1], windowMs)
 return { allowed, remaining, retryAfterMs }
 `;
 
-type BucketState = {
-  tokens: number;
-  updatedAt: number;
-};
-
-const fallbackBuckets = new Map<string, BucketState>();
-
 export interface RateLimitResult {
   allowed: boolean;
   remaining: number;
@@ -67,40 +61,6 @@ export interface RateLimitResult {
 }
 
 const buildRedisKey = (adminId: string): string => `${RATE_LIMIT_PREFIX}:${adminId}`;
-
-const consumeWithFallback = (key: string, now: number): RateLimitResult => {
-  let bucket = fallbackBuckets.get(key);
-  if (!bucket) {
-    bucket = { tokens: burstCapacity, updatedAt: now };
-    fallbackBuckets.set(key, bucket);
-  }
-
-  const elapsed = Math.max(0, now - bucket.updatedAt);
-  if (elapsed > 0) {
-    const refilled = bucket.tokens + elapsed * tokensPerMs;
-    bucket.tokens = Math.min(burstCapacity, refilled);
-    bucket.updatedAt = now;
-  }
-
-  if (bucket.tokens < 1) {
-    const deficit = 1 - bucket.tokens;
-    const retryAfterMs = deficit / tokensPerMs;
-    fallbackBuckets.set(key, bucket);
-    return {
-      allowed: false,
-      remaining: 0,
-      retryAfterMs: Number.isFinite(retryAfterMs) ? retryAfterMs : WINDOW_MS,
-    };
-  }
-
-  bucket.tokens -= 1;
-  fallbackBuckets.set(key, bucket);
-
-  return {
-    allowed: true,
-    remaining: Math.max(0, Math.floor(bucket.tokens)),
-  };
-};
 
 const tryConsumeWithRedis = async (key: string, now: number): Promise<RateLimitResult | null> => {
   if (!config.redis.enabled) {
@@ -136,9 +96,25 @@ const tryConsumeWithRedis = async (key: string, now: number): Promise<RateLimitR
       retryAfterMs: allowed ? undefined : retryAfterMs,
     };
   } catch (error) {
-    console.error("system admin rate limiter redis error:", error);
+    appLogger.error(
+      { err: error },
+      "system admin rate limiter failed to evaluate redis token bucket",
+    );
     return null;
   }
+};
+
+let hasWarnedAboutRedis = false;
+
+const logRedisUnavailable = (reason: string) => {
+  if (hasWarnedAboutRedis) {
+    return;
+  }
+  hasWarnedAboutRedis = true;
+  appLogger.warn(
+    { reason },
+    "system admin rate limiter running in degraded mode; requests are not rate limited",
+  );
 };
 
 export const consumeSystemAdminRateLimit = async (
@@ -154,19 +130,20 @@ export const consumeSystemAdminRateLimit = async (
     return redisResult;
   }
 
-  return consumeWithFallback(key, now);
+  logRedisUnavailable(config.redis.enabled ? "redis_unreachable" : "redis_disabled");
+  return { allowed: true, remaining: burstCapacity };
 };
 
 export const resetSystemAdminRateLimiter = async (): Promise<void> => {
-  fallbackBuckets.clear();
   if (!config.redis.enabled) {
+    logRedisUnavailable("redis_disabled");
     return;
   }
 
   try {
     await cacheService.delPattern("*", { prefix: RATE_LIMIT_PREFIX });
   } catch (error) {
-    console.error("failed to reset system admin rate limiter keys:", error);
+    appLogger.error({ err: error }, "failed to reset system admin rate limiter keys");
   }
 };
 

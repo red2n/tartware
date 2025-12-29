@@ -23,6 +23,7 @@
 \ir 01-core/08_system_admin_audit_log.sql
 \ir 01-core/09_transactional_outbox.sql
 \ir 01-core/10_command_center.sql
+\ir 01-core/11_system_admin_break_glass_codes.sql
 
 -- ============================================================================
 -- CATEGORY 2: INVENTORY (Rooms, rates, availability, revenue management)
@@ -30,6 +31,7 @@
 \echo '>>> Category 2/7: INVENTORY & PRICING'
 \ir 02-inventory/06_room_types.sql
 \ir 02-inventory/07_rooms.sql
+\ir 02-inventory/10_room_amenity_catalog.sql
 \ir 02-inventory/08_rates.sql
 \ir 02-inventory/09_availability_room_availability.sql
 \ir 02-inventory/36_rate_overrides.sql
@@ -69,6 +71,7 @@
 \ir 03-bookings/52_waitlist_entries.sql
 \ir 03-bookings/53_reservation_event_offsets.sql
 \ir 03-bookings/54_reservation_command_lifecycle.sql
+\ir 03-bookings/55_reservation_rate_fallbacks.sql
 -- Shadow observability (Roll Service parity + Availability Guard metadata)
 \echo '    - Shadow roll ledgers, checkpoints, and guard audit tables'
 \ir 03-bookings/90_roll_service_shadow_tables.sql

@@ -1,6 +1,7 @@
 import { performance } from "node:perf_hooks";
 
 import {
+  type FailureCause,
   type ReservationEvent,
   ReservationEventSchema,
 } from "@tartware/schemas";
@@ -101,6 +102,7 @@ const handleBatch = async ({
     try {
       parsedEvent = parseReservationEvent(rawValue);
     } catch (error) {
+      const failureCause = buildFailureCause(error, "parser");
       batchLogger.error(
         { err: error, offset },
         "Failed to parse reservation event; routing to DLQ",
@@ -115,6 +117,7 @@ const handleBatch = async ({
           failureReason: "PARSING_ERROR",
           attempts: 1,
           error,
+          failureCause,
         }),
         headers: {
           "x-tartware-dlq": "reservations-command-service",
@@ -149,6 +152,7 @@ const handleBatch = async ({
         {
           maxRetries: kafkaConfig.maxRetries,
           baseDelayMs: kafkaConfig.retryBackoffMs,
+          delayScheduleMs: kafkaConfig.retryScheduleMs,
           onRetry: ({ attempt, delayMs, error }) => {
             recordRetryAttempt("handler");
             batchLogger.warn(
@@ -187,6 +191,12 @@ const handleBatch = async ({
     } catch (error) {
       const attempts =
         error instanceof RetryExhaustedError ? error.attempts : 1;
+      const failureCause = buildFailureCause(error, "handler");
+      const dlqEvent = enrichEventForFailure(
+        parsedEvent,
+        attempts,
+        failureCause,
+      );
 
       batchLogger.error(
         { err: error, offset, attempts },
@@ -196,7 +206,7 @@ const handleBatch = async ({
       await publishDlqEvent({
         key: messageKey,
         value: buildDlqPayload({
-          event: parsedEvent,
+          event: dlqEvent,
           rawValue,
           topic: batch.topic,
           partition: batch.partition,
@@ -204,6 +214,7 @@ const handleBatch = async ({
           attempts,
           error,
           failureReason: "HANDLER_FAILURE",
+          failureCause,
         }),
         headers: {
           "x-tartware-dlq": "reservations-command-service",
@@ -214,6 +225,7 @@ const handleBatch = async ({
         offset,
         partition: batch.partition,
         attempts,
+        failureCause,
         error:
           error instanceof Error
             ? { name: error.name, message: error.message }
@@ -251,6 +263,7 @@ type DlqPayloadInput = {
   attempts: number;
   failureReason: string;
   error: unknown;
+  failureCause?: FailureCause;
   event?: ReservationEvent | null;
 };
 
@@ -262,6 +275,7 @@ const buildDlqPayload = (input: DlqPayloadInput): string => {
     partition: input.partition,
     offset: input.offset,
     attempts: input.attempts,
+    failureCause: input.failureCause,
     error:
       input.error instanceof Error
         ? {
@@ -273,6 +287,40 @@ const buildDlqPayload = (input: DlqPayloadInput): string => {
     event: input.event,
     rawValue: input.rawValue,
   });
+};
+
+const enrichEventForFailure = <TEvent extends ReservationEvent>(
+  event: TEvent,
+  attempts: number,
+  failureCause: FailureCause,
+): TEvent => {
+  return {
+    ...event,
+    metadata: {
+      ...event.metadata,
+      retryCount: attempts,
+      attemptedAt: new Date().toISOString(),
+      failureCause,
+    },
+  };
+};
+
+const buildFailureCause = (
+  error: unknown,
+  origin: "parser" | "handler",
+): FailureCause => {
+  if (error instanceof Error) {
+    return {
+      name: error.name,
+      message: error.message,
+      stack: error.stack,
+      origin,
+    };
+  }
+  return {
+    message: String(error),
+    origin,
+  };
 };
 
 const secondsSince = (startedAt: number): number => {

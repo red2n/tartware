@@ -19,6 +19,7 @@ import { serviceConfig } from "../config.js";
 import { withTransaction } from "../lib/db.js";
 import { enqueueOutboxRecordWithClient } from "../outbox/repository.js";
 import { recordLifecyclePersisted } from "../repositories/lifecycle-repository.js";
+import { insertRateFallbackRecord } from "../repositories/rate-fallback-repository.js";
 import {
   getReservationGuardMetadata,
   type ReservationGuardMetadata as StoredGuardMetadata,
@@ -33,6 +34,8 @@ import type {
   ReservationCreateCommand,
   ReservationModifyCommand,
 } from "../schemas/reservation-command.js";
+import type { RatePlanResolution } from "../services/rate-plan-service.js";
+import { resolveRatePlan } from "../services/rate-plan-service.js";
 
 interface CreateReservationResult {
   eventId: string;
@@ -52,6 +55,31 @@ export const createReservation = async (
   options: { correlationId?: string } = {},
 ): Promise<CreateReservationResult> => {
   const eventId = uuid();
+  const stayStart = new Date(command.check_in_date);
+  const stayEnd = new Date(command.check_out_date);
+  const rateResolution: RatePlanResolution = await resolveRatePlan({
+    tenantId,
+    propertyId: command.property_id,
+    roomTypeId: command.room_type_id,
+    stayStart,
+    stayEnd,
+    requestedRateCode: command.rate_code,
+  });
+
+  const rateFallbackMetadata = rateResolution.fallbackApplied
+    ? {
+        requestedCode: rateResolution.requestedRateCode,
+        appliedCode: rateResolution.appliedRateCode,
+        reason: rateResolution.reason,
+        decidedBy: serviceConfig.serviceId,
+        decidedAt: rateResolution.decidedAt.toISOString(),
+      }
+    : undefined;
+
+  const normalizedCurrency = (
+    command.currency ?? DEFAULT_CURRENCY
+  ).toUpperCase();
+
   const payload: ReservationCreatedEvent = {
     metadata: {
       id: eventId,
@@ -61,14 +89,17 @@ export const createReservation = async (
       version: "1.0",
       correlationId: options.correlationId,
       tenantId,
+      retryCount: 0,
+      ...(rateFallbackMetadata ? { rateFallback: rateFallbackMetadata } : {}),
     },
     payload: {
       ...command,
-      check_in_date: command.check_in_date,
-      check_out_date: command.check_out_date,
+      rate_code: rateResolution.appliedRateCode,
+      check_in_date: stayStart,
+      check_out_date: stayEnd,
       booking_date: command.booking_date ?? new Date(),
       total_amount: command.total_amount,
-      currency: command.currency ?? DEFAULT_CURRENCY,
+      currency: normalizedCurrency,
       status: command.status ?? "PENDING",
       source: command.source ?? "DIRECT",
     },
@@ -93,6 +124,22 @@ export const createReservation = async (
   const guardMetadata = availabilityGuard ?? { status: "SKIPPED" };
 
   await withTransaction(async (client) => {
+    if (rateResolution.fallbackApplied) {
+      await insertRateFallbackRecord(client, {
+        tenantId,
+        reservationId: aggregateId,
+        propertyId: command.property_id,
+        requestedRateCode: rateResolution.requestedRateCode,
+        appliedRateCode: rateResolution.appliedRateCode,
+        reason: rateResolution.reason,
+        actor: serviceConfig.serviceId,
+        correlationId: options.correlationId,
+        metadata: {
+          decidedAt: rateResolution.decidedAt.toISOString(),
+        },
+      });
+    }
+
     await recordLifecyclePersisted(client, {
       eventId,
       tenantId,
@@ -108,6 +155,7 @@ export const createReservation = async (
       metadata: {
         eventType: validatedEvent.metadata.type,
         availabilityGuard: guardMetadata,
+        ...(rateFallbackMetadata ? { rateFallback: rateFallbackMetadata } : {}),
       },
     });
 
@@ -143,6 +191,7 @@ export const createReservation = async (
       metadata: {
         source: serviceConfig.serviceId,
         availabilityGuard: guardMetadata,
+        ...(rateFallbackMetadata ? { rateFallback: rateFallbackMetadata } : {}),
       },
     });
   });
@@ -167,8 +216,39 @@ export const modifyReservation = async (
     );
   }
 
+  const targetPropertyId = command.property_id ?? snapshot.propertyId;
+  const targetRoomTypeId = command.room_type_id ?? snapshot.roomTypeId;
+  const stayStart = new Date(command.check_in_date ?? snapshot.checkInDate);
+  const stayEnd = new Date(command.check_out_date ?? snapshot.checkOutDate);
+
+  const shouldResolveRate = command.rate_code !== undefined;
+  const rateResolution: RatePlanResolution | null = shouldResolveRate
+    ? await resolveRatePlan({
+        tenantId,
+        propertyId: targetPropertyId,
+        roomTypeId: targetRoomTypeId,
+        stayStart,
+        stayEnd,
+        requestedRateCode: command.rate_code,
+      })
+    : null;
+
+  const rateFallbackMetadata = rateResolution?.fallbackApplied
+    ? {
+        requestedCode: rateResolution.requestedRateCode,
+        appliedCode: rateResolution.appliedRateCode,
+        reason: rateResolution.reason,
+        decidedBy: serviceConfig.serviceId,
+        decidedAt: rateResolution.decidedAt.toISOString(),
+      }
+    : undefined;
+
   const eventId = uuid();
-  const updatePayload = buildReservationUpdatePayload(tenantId, command);
+  const updatePayload = buildReservationUpdatePayload(
+    tenantId,
+    command,
+    rateResolution?.appliedRateCode,
+  );
   const payload: ReservationUpdatedEvent = {
     metadata: {
       id: eventId,
@@ -178,6 +258,8 @@ export const modifyReservation = async (
       version: "1.0",
       correlationId: options.correlationId,
       tenantId,
+      retryCount: 0,
+      ...(rateFallbackMetadata ? { rateFallback: rateFallbackMetadata } : {}),
     },
     payload: updatePayload,
   };
@@ -201,6 +283,22 @@ export const modifyReservation = async (
       };
 
   await withTransaction(async (client) => {
+    if (rateResolution?.fallbackApplied) {
+      await insertRateFallbackRecord(client, {
+        tenantId,
+        reservationId: command.reservation_id,
+        propertyId: targetPropertyId,
+        requestedRateCode: rateResolution.requestedRateCode,
+        appliedRateCode: rateResolution.appliedRateCode,
+        reason: rateResolution.reason,
+        actor: serviceConfig.serviceId,
+        correlationId: options.correlationId,
+        metadata: {
+          decidedAt: rateResolution.decidedAt.toISOString(),
+        },
+      });
+    }
+
     await recordLifecyclePersisted(client, {
       eventId,
       tenantId,
@@ -216,6 +314,7 @@ export const modifyReservation = async (
       metadata: {
         eventType: validatedEvent.metadata.type,
         availabilityGuard: guardMetadata,
+        ...(rateFallbackMetadata ? { rateFallback: rateFallbackMetadata } : {}),
       },
     });
 
@@ -251,6 +350,7 @@ export const modifyReservation = async (
       metadata: {
         source: serviceConfig.serviceId,
         availabilityGuard: guardMetadata,
+        ...(rateFallbackMetadata ? { rateFallback: rateFallbackMetadata } : {}),
       },
     });
   });
@@ -277,6 +377,7 @@ export const cancelReservation = async (
       version: "1.0",
       correlationId: options.correlationId,
       tenantId,
+      retryCount: 0,
     },
     payload: {
       id: command.reservation_id,
@@ -377,6 +478,7 @@ export const cancelReservation = async (
 const buildReservationUpdatePayload = (
   tenantId: string,
   command: ReservationModifyCommand,
+  rateCode?: string,
 ): ReservationUpdatedEvent["payload"] => {
   const payload: ReservationUpdatedEvent["payload"] = {
     id: command.reservation_id,
@@ -412,6 +514,11 @@ const buildReservationUpdatePayload = (
   }
   if (command.notes) {
     payload.internal_notes = command.notes;
+  }
+  if (rateCode) {
+    payload.rate_code = rateCode;
+  } else if (command.rate_code) {
+    payload.rate_code = command.rate_code.toUpperCase();
   }
   return payload;
 };

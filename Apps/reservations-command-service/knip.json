@@ -9,6 +9,7 @@
     "@tartware/telemetry",
     "@tartware/openapi",
     "@tartware/outbox",
+    "esbuild",
     "tsx"
   ],
   "ignoreBinaries": ["biome", "eslint", "knip", "tsc", "tsx"]

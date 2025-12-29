@@ -107,6 +107,7 @@ import { config } from "../config.js";
 import { usernameBloomFilter } from "../lib/bloom-filter.js";
 import { cacheService } from "../lib/cache.js";
 import { pool } from "../lib/db.js";
+import { appLogger } from "../lib/logger.js";
 import {
   recordMembershipCacheError,
   recordMembershipCacheHit,
@@ -150,6 +151,19 @@ export const CachedMembershipSchema = z.object({
 });
 
 export type CachedMembership = z.infer<typeof CachedMembershipSchema>;
+
+export type MembershipLookupSource = "cache" | "database";
+
+export type MembershipLookupDetails = {
+  userId: string;
+  membershipCount: number;
+  source: MembershipLookupSource;
+  durationMs: number;
+};
+
+export type MembershipLookupOptions = {
+  telemetry?: (details: MembershipLookupDetails) => void;
+};
 
 /**
  * Combined user with memberships - validated by Zod schemas.
@@ -310,7 +324,21 @@ export class UserCacheService {
    * });
    * ```
    */
-  async getUserMemberships(userId: string): Promise<CachedMembership[]> {
+  async getUserMemberships(
+    userId: string,
+    options?: MembershipLookupOptions,
+  ): Promise<CachedMembership[]> {
+    const lookupStartedAt = Date.now();
+
+    const recordTelemetry = (details: Omit<MembershipLookupDetails, "userId">) => {
+      const payload: MembershipLookupDetails = {
+        userId,
+        ...details,
+      };
+      options?.telemetry?.(payload);
+      appLogger.debug(payload, "membership lookup resolved");
+    };
+
     // Check cache first
     const cached = await cacheService.get<CachedMembership[]>(userId, {
       prefix: this.MEMBERSHIPS_PREFIX,
@@ -320,6 +348,11 @@ export class UserCacheService {
     if (cached) {
       recordMembershipCacheHit();
       trackMembershipCacheSample("hit");
+      recordTelemetry({
+        membershipCount: cached.length,
+        source: "cache",
+        durationMs: Date.now() - lookupStartedAt,
+      });
       return cached;
     }
 
@@ -335,6 +368,31 @@ export class UserCacheService {
       });
     }
 
+    recordTelemetry({
+      membershipCount: memberships.length,
+      source: "database",
+      durationMs: Date.now() - lookupStartedAt,
+    });
+
+    return memberships;
+  }
+
+  /**
+   * Fetches memberships directly from the database without touching cache.
+   * Useful for fallback flows when cache lookups fail.
+   */
+  async getUserMembershipsFromDb(userId: string): Promise<CachedMembership[]> {
+    const startedAt = Date.now();
+    const memberships = await this.fetchMembershipsFromDb(userId);
+    appLogger.warn(
+      {
+        userId,
+        membershipCount: memberships.length,
+        source: "fallback_database",
+        durationMs: Date.now() - startedAt,
+      },
+      "membership cache fallback executed",
+    );
     return memberships;
   }
 

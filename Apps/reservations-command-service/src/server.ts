@@ -6,14 +6,20 @@ import {
   schemaFromZod,
 } from "@tartware/openapi";
 import { ReservationCommandLifecycleSchema } from "@tartware/schemas";
-import { withRequestLogging } from "@tartware/telemetry";
-import fastify from "fastify";
+import {
+  buildSecureRequestLoggingOptions,
+  withRequestLogging,
+} from "@tartware/telemetry";
+import fastify, { type FastifyBaseLogger } from "fastify";
 import { z } from "zod";
 
 import { serviceConfig } from "./config.js";
 import { checkDatabaseHealth, checkKafkaHealth } from "./lib/health-checks.js";
 import { metricsRegistry } from "./lib/metrics.js";
+import { reservationsLogger } from "./logger.js";
 import swaggerPlugin from "./plugins/swagger.js";
+import type { ReliabilitySnapshot } from "./services/reliability-service.js";
+import { getReliabilitySnapshot } from "./services/reliability-service.js";
 import { listReservationLifecycle } from "./services/reservation-lifecycle-service.js";
 
 const ReservationLifecycleParamsSchema = z.object({
@@ -35,18 +41,48 @@ const ReservationLifecycleResponseJsonSchema = schemaFromZod(
   z.array(ReservationCommandLifecycleSchema),
   "ReservationLifecycleResponse",
 );
+const ReliabilitySnapshotSchema = z.object({
+  status: z.enum(["healthy", "degraded", "critical"]),
+  generatedAt: z.string(),
+  issues: z.array(z.string()),
+  outbox: z.object({
+    pending: z.number(),
+    warnThreshold: z.number(),
+    criticalThreshold: z.number(),
+  }),
+  consumer: z.object({
+    partitions: z.number(),
+    stalePartitions: z.number(),
+    maxSecondsSinceCommit: z.number().nullable(),
+    staleThresholdSeconds: z.number(),
+  }),
+  lifecycle: z.object({
+    stalledCommands: z.number(),
+    oldestStuckSeconds: z.number().nullable(),
+    dlqTotal: z.number(),
+    stalledThresholdSeconds: z.number(),
+  }),
+  dlq: z.object({
+    depth: z.number().nullable(),
+    warnThreshold: z.number(),
+    criticalThreshold: z.number(),
+    topic: z.string(),
+    error: z.string().nullable(),
+  }),
+});
+const ReliabilitySnapshotJsonSchema = schemaFromZod(
+  ReliabilitySnapshotSchema,
+  "ReliabilitySnapshot",
+);
 
 export const buildServer = () => {
   const app = fastify({
-    logger: true,
+    logger: reservationsLogger as FastifyBaseLogger,
+    disableRequestLogging: !serviceConfig.requestLogging,
   });
 
   if (serviceConfig.requestLogging) {
-    withRequestLogging(app, {
-      includeBody: false,
-      includeRequestHeaders: false,
-      includeResponseHeaders: false,
-    });
+    withRequestLogging(app, buildSecureRequestLoggingOptions());
   }
 
   app.register(fastifyHelmet, { global: true });
@@ -121,6 +157,23 @@ export const buildServer = () => {
             error: error instanceof Error ? error.message : String(error),
           };
         }
+      },
+    );
+
+    app.get(
+      "/health/reliability",
+      {
+        schema: buildRouteSchema({
+          tag: "Health",
+          summary: "Command pipeline reliability snapshot",
+          response: {
+            200: ReliabilitySnapshotJsonSchema,
+          },
+        }),
+      },
+      async () => {
+        const snapshot: ReliabilitySnapshot = await getReliabilitySnapshot();
+        return snapshot;
       },
     );
 

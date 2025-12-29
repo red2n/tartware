@@ -342,6 +342,63 @@ const upsertRooms = async (client, rooms = []) => {
   }
 };
 
+const upsertRoomAmenityCatalog = async (client, amenities = []) => {
+  for (const amenity of amenities) {
+    await client.query(
+      `
+        INSERT INTO room_amenity_catalog AS rac (
+          id, tenant_id, property_id, amenity_code, display_name, description,
+          category, icon, tags, sort_order, is_default, is_active, is_required,
+          metadata, created_at, updated_at, created_by, updated_by
+        )
+        VALUES (
+          COALESCE($1::uuid, uuid_generate_v4()),
+          $2, $3, $4, $5, $6,
+          COALESCE($7, 'GENERAL'), $8,
+          COALESCE($9::text[], '{}'::text[]),
+          COALESCE($10, 0),
+          COALESCE($11, TRUE),
+          COALESCE($12, TRUE),
+          COALESCE($13, FALSE),
+          COALESCE($14::jsonb, '{}'::jsonb),
+          NOW(), NOW(), 'seed@installer', 'seed@installer'
+        )
+        ON CONFLICT (property_id, amenity_code) DO UPDATE
+        SET
+          tenant_id = EXCLUDED.tenant_id,
+          display_name = EXCLUDED.display_name,
+          description = EXCLUDED.description,
+          category = EXCLUDED.category,
+          icon = EXCLUDED.icon,
+          tags = EXCLUDED.tags,
+          sort_order = EXCLUDED.sort_order,
+          is_default = EXCLUDED.is_default,
+          is_active = EXCLUDED.is_active,
+          is_required = EXCLUDED.is_required,
+          metadata = COALESCE(rac.metadata, '{}'::jsonb) || EXCLUDED.metadata,
+          updated_at = NOW(),
+          updated_by = 'seed@installer';
+      `,
+      [
+        amenity.id ?? null,
+        amenity.tenantId,
+        amenity.propertyId,
+        amenity.amenityCode,
+        amenity.displayName,
+        amenity.description ?? null,
+        amenity.category ?? "GENERAL",
+        amenity.icon ?? null,
+        amenity.tags ?? [],
+        amenity.sortOrder ?? 0,
+        amenity.isDefault ?? true,
+        amenity.isActive ?? true,
+        amenity.isRequired ?? false,
+        jsonb(amenity.metadata),
+      ],
+    );
+  }
+};
+
 const upsertRates = async (client, rates = []) => {
   for (const rate of rates) {
     const validFrom = rate.validFrom ?? nowDate();
@@ -564,6 +621,7 @@ const seed = async () => {
     await upsertUserTenantAssociations(client, dataset.userTenantAssociations);
     await upsertRoomTypes(client, dataset.roomTypes);
     await upsertRooms(client, dataset.rooms);
+    await upsertRoomAmenityCatalog(client, dataset.roomAmenityCatalog);
     await upsertRates(client, dataset.rates);
     await upsertBookingSources(client, dataset.bookingSources);
     await upsertMarketSegments(client, dataset.marketSegments);

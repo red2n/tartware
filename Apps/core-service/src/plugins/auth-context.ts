@@ -8,7 +8,11 @@ import type {
 import fp from "fastify-plugin";
 
 import { extractBearerToken, verifyAccessToken } from "../lib/jwt.js";
-import { type CachedMembership, userCacheService } from "../services/user-cache-service.js";
+import {
+  type CachedMembership,
+  type MembershipLookupDetails,
+  userCacheService,
+} from "../services/user-cache-service.js";
 import type {
   AuthContext,
   RolePriorityMap,
@@ -197,13 +201,48 @@ const authContextPlugin: FastifyPluginAsync = async (fastify) => {
       return;
     }
 
+    const telemetryLogger = (details: MembershipLookupDetails) => {
+      request.log.debug(
+        {
+          userId: details.userId,
+          membershipCount: details.membershipCount,
+          membershipSource: details.source,
+          durationMs: details.durationMs,
+        },
+        "auth context membership lookup resolved",
+      );
+    };
+
     try {
-      const cachedMemberships = await userCacheService.getUserMemberships(payload.sub);
+      const cachedMemberships = await userCacheService.getUserMemberships(payload.sub, {
+        telemetry: telemetryLogger,
+      });
       const memberships = cachedMemberships.map(toTenantMembership);
       request.auth = createAuthContext(payload.sub, memberships);
     } catch (error) {
-      request.log.error(error, "Failed to load tenant memberships for authenticated user");
-      request.auth = createAuthContext(payload.sub, []);
+      request.log.warn(
+        { err: error, userId: payload.sub },
+        "membership cache lookup failed; attempting direct database fallback",
+      );
+
+      try {
+        const fallbackMemberships = await userCacheService.getUserMembershipsFromDb(payload.sub);
+        const memberships = fallbackMemberships.map(toTenantMembership);
+        request.log.info(
+          {
+            userId: payload.sub,
+            membershipCount: memberships.length,
+          },
+          "auth context populated via direct database fallback",
+        );
+        request.auth = createAuthContext(payload.sub, memberships);
+      } catch (fallbackError) {
+        request.log.error(
+          { err: fallbackError, userId: payload.sub },
+          "failed to load tenant memberships from cache or database fallback",
+        );
+        request.auth = createAuthContext(payload.sub, []);
+      }
     }
   });
 };

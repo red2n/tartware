@@ -1,11 +1,15 @@
 import fastifyHelmet from "@fastify/helmet";
 import fastifySensible from "@fastify/sensible";
 import { buildRouteSchema, jsonObjectSchema } from "@tartware/openapi";
-import { withRequestLogging } from "@tartware/telemetry";
-import fastify from "fastify";
+import {
+  buildSecureRequestLoggingOptions,
+  withRequestLogging,
+} from "@tartware/telemetry";
+import fastify, { type FastifyBaseLogger } from "fastify";
 
 import { config } from "./config.js";
 import { checkDatabaseHealth } from "./lib/health-checks.js";
+import { appLogger } from "./lib/logger.js";
 import { metricsRegistry } from "./lib/metrics.js";
 import { shutdownNotificationDispatcher } from "./lib/notification-dispatcher.js";
 import grpcServerPlugin from "./plugins/grpc-server.js";
@@ -22,17 +26,12 @@ import {
 
 export const buildServer = () => {
   const app = fastify({
-    logger: {
-      level: config.log.level ?? "info",
-    },
+    logger: appLogger as FastifyBaseLogger,
+    disableRequestLogging: !config.log.requestLogging,
   });
 
   if (config.log.requestLogging) {
-    withRequestLogging(app, {
-      includeBody: false,
-      includeRequestHeaders: false,
-      includeResponseHeaders: false,
-    });
+    withRequestLogging(app, buildSecureRequestLoggingOptions());
   }
 
   void app.register(fastifyHelmet, { global: true });

@@ -1,12 +1,17 @@
 import cors from "@fastify/cors";
 import helmet from "@fastify/helmet";
 import sensible from "@fastify/sensible";
-import { type PinoLogger, withRequestLogging } from "@tartware/telemetry";
+import {
+  buildSecureRequestLoggingOptions,
+  type PinoLogger,
+  withRequestLogging,
+} from "@tartware/telemetry";
 import Fastify from "fastify";
 
 import { config } from "./config.js";
 import { authPlugin } from "./plugins/auth.js";
 import swaggerPlugin from "./plugins/swagger.js";
+import amenitiesRoutes from "./routes/amenities.js";
 import catalogRoutes from "./routes/catalog.js";
 
 type BuildServerOptions = {
@@ -25,13 +30,7 @@ export const buildServer = ({ logger }: BuildServerOptions) => {
   void app.register(swaggerPlugin);
 
   if (config.log.requestLogging) {
-    withRequestLogging(app, {
-      includeBody: false,
-      includeRequestHeaders: false,
-      includeResponseHeaders: false,
-      logOnRequest: true,
-      logOnResponse: true,
-    });
+    withRequestLogging(app, buildSecureRequestLoggingOptions());
   }
 
   app.get("/health", async () => ({
@@ -47,6 +46,7 @@ export const buildServer = ({ logger }: BuildServerOptions) => {
     secureRoutes.addHook("onRequest", secureRoutes.authenticate);
 
     await secureRoutes.register(catalogRoutes);
+    await secureRoutes.register(amenitiesRoutes);
 
     secureRoutes.get("/v1/settings/ping", async () => ({
       status: "ok",

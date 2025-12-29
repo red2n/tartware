@@ -147,31 +147,26 @@ describeIfRedis("Redis Cache Integration", () => {
       expect(count3).toBeGreaterThan(count2);
     });
 
-    it("should delete keys by pattern", async () => {
-      // Use unique prefix for this test to avoid interference
+    it("should delete keys by pattern even when a global key prefix is configured", async () => {
       const uniquePrefix = `pattern-test-${Date.now()}`;
 
-      // Create multiple keys
       await cacheService.set("user-1", { id: 1 }, { prefix: uniquePrefix });
       await cacheService.set("user-2", { id: 2 }, { prefix: uniquePrefix });
       await cacheService.set("user-3", { id: 3 }, { prefix: uniquePrefix });
 
-      // Verify keys exist
-      const exists1 = await cacheService.exists("user-1", { prefix: uniquePrefix });
-      expect(exists1).toBe(true);
+      const beforeDelete = await cacheService.exists("user-1", { prefix: uniquePrefix });
+      expect(beforeDelete).toBe(true);
 
-      // Delete all user-* keys
       const deleted = await cacheService.delPattern("user-*", { prefix: uniquePrefix });
-      // delPattern may have issues with wildcards - just verify at least 1 deleted
-      expect(deleted).toBeGreaterThanOrEqual(0); // Changed expectation
+      expect(deleted).toBe(3);
 
-      // Alternative: manually delete and verify
-      await cacheService.del("user-1", { prefix: uniquePrefix });
-      await cacheService.del("user-2", { prefix: uniquePrefix });
-      await cacheService.del("user-3", { prefix: uniquePrefix });
+      const afterDelete = await cacheService.exists("user-1", { prefix: uniquePrefix });
+      expect(afterDelete).toBe(false);
 
-      const exists2 = await cacheService.exists("user-1", { prefix: uniquePrefix });
-      expect(exists2).toBe(false);
+      const remaining = await cacheService.mget<{ id: number }>(["user-2", "user-3"], {
+        prefix: uniquePrefix,
+      });
+      expect(remaining.size).toBe(0);
     });
   });
 

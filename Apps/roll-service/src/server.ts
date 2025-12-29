@@ -1,11 +1,15 @@
 import fastifyHelmet from "@fastify/helmet";
 import fastifySensible from "@fastify/sensible";
 import { buildRouteSchema, jsonObjectSchema } from "@tartware/openapi";
-import { withRequestLogging } from "@tartware/telemetry";
-import fastify from "fastify";
+import {
+  buildSecureRequestLoggingOptions,
+  withRequestLogging,
+} from "@tartware/telemetry";
+import fastify, { type FastifyBaseLogger } from "fastify";
 
 import { config } from "./config.js";
 import { query, withTransaction } from "./lib/db.js";
+import { rollLogger } from "./lib/logger.js";
 import {
   batchDurationHistogram,
   metricsRegistry,
@@ -17,17 +21,12 @@ import lifecycleConsumerPlugin from "./plugins/lifecycle-consumer.js";
 
 export const buildServer = () => {
   const app = fastify({
-    logger: {
-      level: config.log.level ?? "info",
-    },
+    logger: rollLogger as FastifyBaseLogger,
+    disableRequestLogging: !config.log.requestLogging,
   });
 
   if (config.log.requestLogging) {
-    withRequestLogging(app, {
-      includeBody: false,
-      includeRequestHeaders: false,
-      includeResponseHeaders: false,
-    });
+    withRequestLogging(app, buildSecureRequestLoggingOptions());
   }
 
   void app.register(fastifyHelmet, { global: true });

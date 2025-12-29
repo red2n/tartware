@@ -19,10 +19,13 @@ import { trackImpersonationSession } from "../lib/monitoring.js";
 import { listUserTenantAssociations } from "../services/user-tenant-association-service.js";
 import {
   SYSTEM_ADMIN_AUDIT_INSERT_SQL,
+  SYSTEM_ADMIN_BREAK_GLASS_FETCH_SQL,
+  SYSTEM_ADMIN_BREAK_GLASS_MARK_USED_SQL,
   SYSTEM_ADMIN_INCREMENT_FAILED_LOGIN_SQL,
   SYSTEM_ADMIN_LOOKUP_SQL,
   SYSTEM_ADMIN_RESET_LOGIN_SQL,
 } from "../sql/system-admin-queries.js";
+import { hashIdentifier } from "../utils/hash.js";
 
 import { userCacheService } from "./user-cache-service.js";
 
@@ -47,6 +50,51 @@ type SystemAdministratorRow = {
   metadata: Record<string, unknown> | null;
 };
 
+type BreakGlassCodeRow = {
+  id: string;
+  code_hash: string;
+  expires_at: Date | null;
+  used_at: Date | null;
+};
+
+const AUDIT_REDACTED_VALUE = "[REDACTED]";
+const AUDIT_MAX_DEPTH = 6;
+const AUDIT_SENSITIVE_FIELDS = [
+  "password",
+  "current_password",
+  "new_password",
+  "token",
+  "mfa_code",
+  "email",
+  "emailaddress",
+  "phone",
+  "id_number",
+  "idnumber",
+  "passport_number",
+  "passportnumber",
+  "ssn",
+  "tax_id",
+  "taxid",
+  "national_id",
+  "nationalid",
+  "payment_reference",
+  "paymentmethod",
+  "payment_token",
+  "paymenttoken",
+  "routing_number",
+  "routingnumber",
+  "account_number",
+  "accountnumber",
+  "card_number",
+  "cardnumber",
+  "cardtoken",
+  "cardholder",
+  "cvv",
+];
+const AUDIT_SENSITIVE_FIELD_SET = new Set(
+  AUDIT_SENSITIVE_FIELDS.map((field) => field.toLowerCase()),
+);
+
 const mapRowToAdministrator = (row: SystemAdministratorRow) => {
   return SystemAdministratorSchema.parse({
     ...row,
@@ -57,6 +105,15 @@ const mapRowToAdministrator = (row: SystemAdministratorRow) => {
     created_by: row.created_by ?? undefined,
     updated_by: row.updated_by ?? undefined,
   });
+};
+
+const loadBreakGlassCodes = async (adminId: string): Promise<BreakGlassCodeRow[]> => {
+  const { rows } = await query<BreakGlassCodeRow>(SYSTEM_ADMIN_BREAK_GLASS_FETCH_SQL, [adminId]);
+  return rows;
+};
+
+const markBreakGlassCodeUsed = async (codeId: string, sessionId: string, reason: string) => {
+  await query(SYSTEM_ADMIN_BREAK_GLASS_MARK_USED_SQL, [codeId, sessionId, reason]);
 };
 
 const parseIp = (value: string) => {
@@ -199,6 +256,76 @@ const checksumEvent = (payload: Record<string, unknown>) => {
   return createHash("sha256").update(data).digest("hex");
 };
 
+const isPlainObject = (value: unknown): value is Record<string, unknown> => {
+  if (value === null || typeof value !== "object") {
+    return false;
+  }
+  const prototype = Object.getPrototypeOf(value);
+  return prototype === Object.prototype || prototype === null;
+};
+
+const sanitizeAuditValue = (value: unknown, depth: number): unknown => {
+  if (value === null || typeof value !== "object") {
+    return value;
+  }
+
+  if (depth >= AUDIT_MAX_DEPTH) {
+    return "[TRUNCATED]";
+  }
+
+  if (Array.isArray(value)) {
+    return value.map((entry) => sanitizeAuditValue(entry, depth + 1));
+  }
+
+  if (!isPlainObject(value)) {
+    return value;
+  }
+
+  const entries = Object.entries(value).map(([key, nestedValue]) => {
+    if (AUDIT_SENSITIVE_FIELD_SET.has(key.toLowerCase())) {
+      return [key, AUDIT_REDACTED_VALUE] as const;
+    }
+    return [key, sanitizeAuditValue(nestedValue, depth + 1)] as const;
+  });
+
+  return Object.fromEntries(entries);
+};
+
+const sanitizeAuditPayload = (
+  payload: Record<string, unknown> | null | undefined,
+): Record<string, unknown> | null => {
+  if (!payload || !isPlainObject(payload)) {
+    return null;
+  }
+  return sanitizeAuditValue(payload, 0) as Record<string, unknown>;
+};
+
+const buildHashedIdentifiers = (
+  event: SystemAdminAuditEvent,
+): Record<string, string> | undefined => {
+  const hashedEntries: [string, string][] = [];
+
+  const registerHash = (label: string, value?: string) => {
+    const hashed = hashIdentifier(value);
+    if (hashed) {
+      hashedEntries.push([label, hashed]);
+    }
+  };
+
+  registerHash("admin_id", event.adminId);
+  registerHash("resource_id", event.resourceId);
+  registerHash("tenant_id", event.tenantId);
+  registerHash("impersonated_user_id", event.impersonatedUserId);
+  registerHash("session_id", event.sessionId);
+  registerHash("ip_address", event.ipAddress);
+
+  if (hashedEntries.length === 0) {
+    return undefined;
+  }
+
+  return Object.fromEntries(hashedEntries);
+};
+
 export interface SystemAdminAuditEvent {
   adminId: string;
   action: string;
@@ -217,6 +344,16 @@ export interface SystemAdminAuditEvent {
 }
 
 export const logSystemAdminEvent = async (event: SystemAdminAuditEvent) => {
+  const sanitizedPayload = sanitizeAuditPayload(event.requestPayload ?? undefined);
+  const hashedIdentifiers = buildHashedIdentifiers(event);
+  const requestPayloadForAudit =
+    sanitizedPayload || hashedIdentifiers
+      ? {
+          ...(sanitizedPayload ?? {}),
+          ...(hashedIdentifiers ? { hashed_identifiers: hashedIdentifiers } : {}),
+        }
+      : null;
+
   const payloadForChecksum = {
     admin_id: event.adminId,
     action: event.action,
@@ -225,7 +362,7 @@ export const logSystemAdminEvent = async (event: SystemAdminAuditEvent) => {
     tenant_id: event.tenantId ?? null,
     request_method: event.requestMethod ?? null,
     request_path: event.requestPath ?? null,
-    request_payload: event.requestPayload ?? null,
+    request_payload: requestPayloadForAudit,
     response_status: event.responseStatus ?? null,
     ip_address: event.ipAddress ?? null,
     user_agent: event.userAgent ?? null,
@@ -246,7 +383,7 @@ export const logSystemAdminEvent = async (event: SystemAdminAuditEvent) => {
       event.tenantId ?? null,
       event.requestMethod ?? null,
       event.requestPath ?? null,
-      event.requestPayload ?? null,
+      requestPayloadForAudit,
       event.responseStatus ?? null,
       event.ipAddress ?? null,
       event.userAgent ?? null,
@@ -274,6 +411,12 @@ export type SystemAdminAuthFailureReason =
   | "MFA_INVALID"
   | "MFA_MISCONFIGURED";
 
+export type SystemAdminBreakGlassFailureReason =
+  | "ADMIN_NOT_FOUND"
+  | "ACCOUNT_INACTIVE"
+  | "BREAK_GLASS_UNAVAILABLE"
+  | "BREAK_GLASS_CODE_INVALID";
+
 export type SystemAdminAuthResult =
   | {
       ok: true;
@@ -290,10 +433,35 @@ export type SystemAdminAuthResult =
       lockExpiresAt?: Date;
     };
 
+export type SystemAdminBreakGlassAuthResult =
+  | {
+      ok: true;
+      data: {
+        admin: PublicSystemAdministrator;
+        token: string;
+        expiresIn: number;
+        sessionId: string;
+      };
+    }
+  | {
+      ok: false;
+      reason: SystemAdminBreakGlassFailureReason;
+    };
+
 export interface SystemAdminLoginInput {
   username: string;
   password: string;
   mfaCode?: string;
+  ipAddress?: string;
+  userAgent?: string;
+  deviceFingerprint?: string;
+}
+
+export interface SystemAdminBreakGlassLoginInput {
+  username: string;
+  code: string;
+  reason: string;
+  ticketId?: string;
   ipAddress?: string;
   userAgent?: string;
   deviceFingerprint?: string;
@@ -388,6 +556,77 @@ export const authenticateSystemAdministrator = async (
     ipAddress: input.ipAddress,
     userAgent: input.userAgent,
     sessionId,
+  });
+
+  const publicAdmin = PublicSystemAdministratorSchema.parse(admin);
+
+  return {
+    ok: true,
+    data: {
+      admin: publicAdmin,
+      token,
+      expiresIn: config.systemAdmin.jwt.expiresInSeconds,
+      sessionId,
+    },
+  };
+};
+
+export const authenticateSystemAdministratorWithBreakGlass = async (
+  input: SystemAdminBreakGlassLoginInput,
+): Promise<SystemAdminBreakGlassAuthResult> => {
+  const admin = await findSystemAdministrator(input.username);
+  if (!admin) {
+    return { ok: false, reason: "ADMIN_NOT_FOUND" };
+  }
+
+  if (!admin.is_active) {
+    return { ok: false, reason: "ACCOUNT_INACTIVE" };
+  }
+
+  const codes = await loadBreakGlassCodes(admin.id);
+  if (codes.length === 0) {
+    return { ok: false, reason: "BREAK_GLASS_UNAVAILABLE" };
+  }
+
+  let matchedCode: BreakGlassCodeRow | null = null;
+  for (const code of codes) {
+    const isMatch = await bcrypt.compare(input.code, code.code_hash);
+    if (isMatch) {
+      matchedCode = code;
+      break;
+    }
+  }
+
+  if (!matchedCode) {
+    return { ok: false, reason: "BREAK_GLASS_CODE_INVALID" };
+  }
+
+  await resetLoginState(admin.id);
+
+  const sessionId = randomUUID();
+  const token = signSystemAdminToken({
+    adminId: admin.id,
+    username: admin.username,
+    role: admin.role,
+    sessionId,
+  });
+
+  await markBreakGlassCodeUsed(matchedCode.id, sessionId, input.reason);
+
+  await logSystemAdminEvent({
+    adminId: admin.id,
+    action: "SYSTEM_BREAK_GLASS_LOGIN_SUCCESS",
+    requestMethod: "POST",
+    requestPath: "/v1/system/auth/break-glass",
+    ipAddress: input.ipAddress,
+    userAgent: input.userAgent,
+    sessionId,
+    ticketId: input.ticketId,
+    requestPayload: {
+      reason: input.reason,
+      ticket_id: input.ticketId,
+      device_fingerprint: input.deviceFingerprint,
+    },
   });
 
   const publicAdmin = PublicSystemAdministratorSchema.parse(admin);

@@ -54,6 +54,8 @@ This repository hosts every backend component that powers Tartware’s property 
 ## Observability & Resilience Highlights
 
 - Every Fastify service exposes `/health`, `/health/readiness`, and `/metrics` (Prometheus text) through the shared telemetry plugin.
+- Reservations command service also exposes `/health/reliability`, which reports transactional outbox backlog, consumer commit freshness, and Kafka dead-letter queue depth; thresholds are tuned via `KAFKA_RETRY_SCHEDULE_MS`, `RELIABILITY_DLQ_WARN_THRESHOLD`, `RELIABILITY_DLQ_CRITICAL_THRESHOLD`, and the topic surfaced through `RESERVATION_DLQ_TOPIC`.
+- `docs/observability/reservations-dead-letter-queue-runbook.md` documents the on-call workflow for investigating those dead-letter queue alerts and replaying poison events safely.
 - Command Center, reservations-command-service, and other producers use a transactional outbox + manual Kafka commits, ensuring at-least-once delivery with idempotent handlers.
 - Roll Service checkpoints both the backfill job (`roll_service_backfill_checkpoint`) and the streaming consumer (`roll_service_consumer_offsets`) so horizontal scaling or crashes restart exactly at the last processed event. Metrics `roll_service_backfill_*` and `roll_service_consumer_*` power Grafana dashboards/alerts.
 - Availability Guard keeps Postgres state plus Kafka mirrors; `SHADOW_MODE` env flag ensures it fails open until the guard replaces the legacy locker.
@@ -67,3 +69,15 @@ This repository hosts every backend component that powers Tartware’s property 
 - **Shadow services (Availability Guard & Roll)** observe the same streams, verify correctness, and will take over the hot path once parity is proven.
 
 When in doubt, check `docs/roll-service-availability-guard.md` for the Availability Guard + Roll rollout plan, and `docs/command-center-service/README.md` for the command pipeline specifics.
+
+## Manual API Checks (Postman)
+
+To keep a lightweight user interface for demos and regression testing, we maintain a Postman collection that exercises the same HTTP surfaces exposed by the services:
+
+1. **Start the stack** – run `npm run dev:gateway` and `npm run dev:reservations` from the repo root so the API Gateway (port `3200`) and reservations-command-service (port `3101`) are available.
+2. **Obtain a tenant JWT** – send `POST http://localhost:3200/v1/auth/login` with a seeded user credential. Store the `accessToken` in a Postman environment variable such as `{{tenant_token}}`.
+3. **Check reliability** – issue `GET http://localhost:3101/health/reliability` (no auth required) to confirm the transactional outbox backlog, Kafka consumer freshness, and dead-letter queue depth before running workflow tests.
+4. **Trace lifecycle state** – request `GET http://localhost:3101/v1/reservations/{{reservationId}}/lifecycle?tenant_id={{tenantId}}` to inspect the lifecycle guard data for any reservation you just modified via commands.
+5. **Drive commands through the gateway** – call `POST http://localhost:3200/v1/tenants/{{tenantId}}/reservations` with the JWT and a JSON body that includes `guestId`, `propertyId`, `roomTypeId`, `checkInDate`, `checkOutDate`, and `totalAmount`. The gateway responds with `202 Accepted`, and you can watch `/health/reliability` plus the lifecycle endpoint to verify the command propagated.
+
+Saving those requests inside Postman (or exporting them as a collection for the team) gives us a UI-lite workflow until a dedicated front-end returns.

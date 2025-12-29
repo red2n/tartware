@@ -24,5 +24,6 @@ export * from "./properties.js";
 export * from "./guests.js";
 export * from "./system-administrators.js";
 export * from "./system-admin-audit-log.js";
+export * from "./system-admin-break-glass-codes.js";
 export * from "./transactional-outbox.js";
 export * from "./command-center.js";
