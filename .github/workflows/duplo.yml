@@ -13,13 +13,37 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set up Go
-        uses: actions/setup-go@v5
-        with:
-          go-version: '1.22'
-
       - name: Install Duplo
-        run: go install github.com/dlidstrom/duplo/cmd/duplo@latest
+        env:
+          DUPLO_VERSION: v2.0.26
+        run: |
+          set -euo pipefail
+
+          # Fetch the prebuilt Linux binary (Duplo is a C++ tool, not Go)
+          if [ "${DUPLO_VERSION}" = "latest" ]; then
+            DOWNLOAD_URL=$(curl -s https://api.github.com/repos/dlidstrom/Duplo/releases/latest \
+              | grep browser_download_url \
+              | grep duplo-linux \
+              | head -n1 \
+              | cut -d '"' -f 4)
+          else
+            DOWNLOAD_URL="https://github.com/dlidstrom/Duplo/releases/download/${DUPLO_VERSION}/duplo-linux.zip"
+          fi
+
+          if [ -z "${DOWNLOAD_URL}" ]; then
+            echo "✗ Unable to determine Duplo download URL" >&2
+            exit 1
+          fi
+
+          INSTALL_DIR="${HOME}/.local/bin"
+          mkdir -p "${INSTALL_DIR}"
+
+          curl -sSL "${DOWNLOAD_URL}" -o /tmp/duplo.zip
+          unzip -oq /tmp/duplo.zip -d "${INSTALL_DIR}"
+          chmod +x "${INSTALL_DIR}/duplo"
+          echo "${INSTALL_DIR}" >> "${GITHUB_PATH}"
+
+          duplo -v || true
 
       - name: Run Duplo scan
         env:
