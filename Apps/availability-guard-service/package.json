@@ -34,7 +34,6 @@
     "fastify": "^4.26.2",
     "fastify-plugin": "^4.5.1",
     "kafkajs": "^2.2.4",
-    "mime": "^3.0.0",
     "p-retry": "^6.0.1",
     "pg": "^8.11.3",
     "prom-client": "^15.1.3",
