@@ -3,6 +3,8 @@ import { Component, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { firstValueFrom } from 'rxjs';
 import { AdminAuthService } from '../services/admin-auth.service';
+import { generateDeviceFingerprint } from '../services/device-fingerprint';
+import { extractErrorMessage } from '../services/error-utils';
 
 @Component({
   standalone: true,
@@ -75,7 +77,7 @@ export class LoginComponent {
     username: ['', [Validators.required, Validators.minLength(3)]],
     password: ['', [Validators.required, Validators.minLength(8)]],
     mfa_code: ['', [Validators.pattern(/^\d{6}$/)]],
-    device_fingerprint: ['ui-device-01', [Validators.required, Validators.minLength(8)]],
+    device_fingerprint: [generateDeviceFingerprint(), [Validators.required, Validators.minLength(8)]],
   });
 
   onSubmit() {
@@ -92,14 +94,8 @@ export class LoginComponent {
         this.statusMessage.set(`Signed in. Session ends in ${res.expires_in}s. Token type ${res.token_type}.`);
       })
       .catch(err => {
-        this.errorMessage.set(this.normalizeError(err));
+      this.errorMessage.set(extractErrorMessage(err, 'Login failed. Please retry.'));
       })
       .finally(() => this.loading.set(false));
-  }
-
-  private normalizeError(err: unknown): string {
-    if (typeof err === 'string') return err;
-    if (err && typeof err === 'object' && 'message' in err) return String((err as any).message);
-    return 'Login failed. Please retry.';
   }
 }

@@ -3,6 +3,8 @@ import { Component, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { firstValueFrom } from 'rxjs';
 import { AdminAuthService } from '../services/admin-auth.service';
+import { generateDeviceFingerprint } from '../services/device-fingerprint';
+import { extractErrorMessage } from '../services/error-utils';
 
 @Component({
   standalone: true,
@@ -81,7 +83,7 @@ export class BreakGlassComponent {
     break_glass_code: ['', [Validators.required, Validators.minLength(8)]],
     reason: ['', [Validators.required, Validators.minLength(10)]],
     ticket_id: ['', [Validators.minLength(3)]],
-    device_fingerprint: ['ui-device-01', [Validators.required, Validators.minLength(8)]],
+    device_fingerprint: [generateDeviceFingerprint(), [Validators.required, Validators.minLength(8)]],
   });
 
   onSubmit() {
@@ -100,14 +102,8 @@ export class BreakGlassComponent {
         );
       })
       .catch(err => {
-        this.errorMessage.set(this.normalizeError(err));
+      this.errorMessage.set(extractErrorMessage(err, 'Break-glass request failed. Please retry.'));
       })
       .finally(() => this.loading.set(false));
-  }
-
-  private normalizeError(err: unknown): string {
-    if (typeof err === 'string') return err;
-    if (err && typeof err === 'object' && 'message' in err) return String((err as any).message);
-    return 'Break-glass request failed. Please retry.';
   }
 }

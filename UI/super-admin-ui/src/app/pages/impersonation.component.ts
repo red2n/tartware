@@ -1,8 +1,9 @@
 import { CommonModule } from '@angular/common';
-import { Component, inject, signal } from '@angular/core';
+import { Component, HostListener, ElementRef, ViewChild, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { firstValueFrom } from 'rxjs';
 import { AdminAuthService } from '../services/admin-auth.service';
+import { extractErrorMessage } from '../services/error-utils';
 
 @Component({
   standalone: true,
@@ -70,8 +71,8 @@ import { AdminAuthService } from '../services/admin-auth.service';
         <h2>Confirm impersonation</h2>
         <p>Proceed to impersonate <strong>{{ form.value.user_id }}</strong> in tenant <strong>{{ form.value.tenant_id }}</strong>? This action is fully audited.</p>
         <div class="modal__actions">
-          <button type="button" class="ghost" (click)="cancelConfirm()">Cancel</button>
-          <button type="button" class="primary" (click)="confirmStart()" [attr.aria-busy]="loading()">Confirm</button>
+          <button #cancelButton type="button" class="ghost" (click)="cancelConfirm()">Cancel</button>
+          <button #confirmButton type="button" class="primary" (click)="confirmStart()" [attr.aria-busy]="loading()">Confirm</button>
         </div>
       </div>
     </section>
@@ -88,6 +89,9 @@ export class ImpersonationComponent {
   readonly sessionToken = signal('');
   readonly expiresAt = signal('');
 
+  @ViewChild('confirmButton') confirmButton?: ElementRef<HTMLButtonElement>;
+  @ViewChild('cancelButton') cancelButton?: ElementRef<HTMLButtonElement>;
+
   readonly form = this.fb.nonNullable.group({
     tenant_id: ['', [Validators.required, Validators.minLength(8)]],
     user_id: ['', [Validators.required, Validators.minLength(8)]],
@@ -101,6 +105,7 @@ export class ImpersonationComponent {
       return;
     }
     this.confirming.set(true);
+    this.focusModalAction();
   }
 
   confirmStart() {
@@ -118,7 +123,7 @@ export class ImpersonationComponent {
         this.statusMessage.set(`Impersonation started. Scope ${res.scope}, expires in ${res.expires_in}s.`);
       })
       .catch(err => {
-        this.errorMessage.set(this.normalizeError(err));
+  this.errorMessage.set(extractErrorMessage(err, 'Impersonation failed. Please retry.'));
       })
       .finally(() => {
         this.loading.set(false);
@@ -131,9 +136,44 @@ export class ImpersonationComponent {
     this.confirming.set(false);
   }
 
-  private normalizeError(err: unknown): string {
-    if (typeof err === 'string') return err;
-    if (err && typeof err === 'object' && 'message' in err) return String((err as any).message);
-    return 'Impersonation failed. Please retry.';
+  @HostListener('document:keydown.escape', ['$event'])
+  onEscape(event: KeyboardEvent) {
+    if (!this.confirming()) return;
+    event.preventDefault();
+    this.cancelConfirm();
+  }
+
+  @HostListener('document:keydown.tab', ['$event'])
+  trapFocus(event: KeyboardEvent) {
+    if (!this.confirming()) return;
+    const focusable: HTMLElement[] = [
+      this.confirmButton?.nativeElement,
+      this.cancelButton?.nativeElement,
+    ].filter((el): el is HTMLElement => Boolean(el));
+
+    if (focusable.length === 0) return;
+    const active = document.activeElement as HTMLElement | null;
+    const currentIndex = focusable.findIndex(el => el === active);
+    if (currentIndex === -1) {
+      event.preventDefault();
+      focusable[0].focus();
+      return;
+    }
+
+    const nextIndex = event.shiftKey
+      ? (currentIndex === 0 ? focusable.length - 1 : currentIndex - 1)
+      : (currentIndex === focusable.length - 1 ? 0 : currentIndex + 1);
+
+    if ((event.shiftKey && currentIndex === 0) || (!event.shiftKey && currentIndex === focusable.length - 1)) {
+      event.preventDefault();
+      focusable[nextIndex].focus();
+    }
+  }
+
+  private focusModalAction() {
+    setTimeout(() => {
+      const target = this.confirmButton?.nativeElement ?? this.cancelButton?.nativeElement;
+      target?.focus();
+    }, 0);
   }
 }

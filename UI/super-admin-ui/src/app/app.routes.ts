@@ -9,7 +9,7 @@ export const routes: Routes = [
 	{
 		path: '',
 		pathMatch: 'full',
-		redirectTo: 'login',
+		redirectTo: 'welcome',
 	},
 	{
 		path: 'login',
@@ -33,6 +33,6 @@ export const routes: Routes = [
 	},
 	{
 		path: '**',
-		redirectTo: 'login',
+		redirectTo: 'welcome',
 	},
 ];

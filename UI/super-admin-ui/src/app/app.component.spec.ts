@@ -14,16 +14,19 @@ describe('AppComponent', () => {
     expect(app).toBeTruthy();
   });
 
-  it(`should have the 'super-admin-ui' title`, () => {
+  it('should expose a currentTheme signal', () => {
     const fixture = TestBed.createComponent(AppComponent);
-    const app = fixture.componentInstance;
-    expect(app.title).toEqual('super-admin-ui');
+    const app = fixture.componentInstance as any;
+    expect(app.currentTheme).toBeDefined();
+    expect(app.currentTheme()).toBe('theme-light');
   });
 
-  it('should render title', () => {
+  it('should render the shell navigation', () => {
     const fixture = TestBed.createComponent(AppComponent);
     fixture.detectChanges();
     const compiled = fixture.nativeElement as HTMLElement;
-    expect(compiled.querySelector('h1')?.textContent).toContain('Hello, super-admin-ui');
+    const navItems = Array.from(compiled.querySelectorAll('nav a')).map(el => el.textContent?.trim());
+    expect(navItems).toContain('Login');
+    expect(navItems).toContain('Welcome');
   });
 });
