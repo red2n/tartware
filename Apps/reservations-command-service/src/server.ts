@@ -77,7 +77,8 @@ const ReliabilitySnapshotJsonSchema = schemaFromZod(
 
 export const buildServer = () => {
   const app = fastify({
-    logger: reservationsLogger as FastifyBaseLogger,
+    logger: false,
+    loggerInstance: reservationsLogger as FastifyBaseLogger,
     disableRequestLogging: !serviceConfig.requestLogging,
   });
 

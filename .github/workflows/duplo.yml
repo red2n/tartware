@@ -1,0 +1,61 @@
+name: Duplo Duplicate Scan
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  duplo:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Duplo
+        env:
+          DUPLO_VERSION: v2.0.26
+        run: |
+          set -euo pipefail
+
+          # Fetch the prebuilt Linux binary (Duplo is a C++ tool, not Go)
+          if [ "${DUPLO_VERSION}" = "latest" ]; then
+            DOWNLOAD_URL=$(curl -s https://api.github.com/repos/dlidstrom/Duplo/releases/latest \
+              | grep browser_download_url \
+              | grep duplo-linux \
+              | head -n1 \
+              | cut -d '"' -f 4)
+          else
+            DOWNLOAD_URL="https://github.com/dlidstrom/Duplo/releases/download/${DUPLO_VERSION}/duplo-linux.zip"
+          fi
+
+          if [ -z "${DOWNLOAD_URL}" ]; then
+            echo "✗ Unable to determine Duplo download URL" >&2
+            exit 1
+          fi
+
+          INSTALL_DIR="${HOME}/.local/bin"
+          mkdir -p "${INSTALL_DIR}"
+
+          curl -sSL "${DOWNLOAD_URL}" -o /tmp/duplo.zip
+          unzip -oq /tmp/duplo.zip -d "${INSTALL_DIR}"
+          chmod +x "${INSTALL_DIR}/duplo"
+          echo "${INSTALL_DIR}" >> "${GITHUB_PATH}"
+
+          duplo -v || true
+
+      - name: Run Duplo scan
+        env:
+          DUPLO_TARGET_DIR: ./Apps
+          DUPLO_MIN_LINES: 60
+          DUPLO_EXTENSIONS: ts,tsx,js
+          DUPLO_IGNORE_SAME_NAME: "true"
+        run: ./executables/run-duplo/run-duplo.sh
+
+      - name: Upload Duplo reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: duplo-report
+          path: reports/duplo

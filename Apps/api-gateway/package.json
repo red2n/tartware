@@ -17,7 +17,8 @@
     "biome:fix": "biome format src --write",
     "knip": "knip --tsConfig tsconfig.json",
     "knip:fix": "knip --tsConfig tsconfig.json --fix",
-    "clean": "rm -rf dist coverage vitest-report *.tsbuildinfo"
+    "clean": "rm -rf dist coverage vitest-report *.tsbuildinfo",
+    "test": "vitest run"
   },
   "dependencies": {
     "@fastify/helmet": "^13.0.2",
@@ -50,6 +51,7 @@
     "eslint-config-prettier": "^9.1.0",
     "eslint-plugin-import": "^2.29.1",
     "knip": "^5.67.0",
+    "vitest": "^1.6.0",
     "tsx": "^4.7.1",
     "typescript": "^5.3.3"
   },

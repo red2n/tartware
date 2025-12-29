@@ -12,5 +12,5 @@
     "esbuild",
     "tsx"
   ],
-  "ignoreBinaries": ["biome", "eslint", "knip", "tsc", "tsx"]
+  "ignoreBinaries": ["biome", "eslint", "knip", "tsc", "tsx", "vitest"]
 }

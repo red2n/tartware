@@ -48,6 +48,18 @@ const outbox = {
     process.env.COMMAND_CENTER_OUTBOX_RETRY_BACKOFF_MS,
     5000,
   ),
+  tenantThrottleMs: toNumber(
+    process.env.COMMAND_CENTER_OUTBOX_TENANT_THROTTLE_MS,
+    0,
+  ),
+  tenantJitterMs: toNumber(
+    process.env.COMMAND_CENTER_OUTBOX_TENANT_JITTER_MS,
+    0,
+  ),
+  tenantThrottleCleanupMs: toNumber(
+    process.env.COMMAND_CENTER_OUTBOX_TENANT_THROTTLE_CLEANUP_MS,
+    60_000,
+  ),
 };
 
 const registry = {

@@ -4,7 +4,10 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 DUPLO_BIN="${DUPLO_BIN:-duplo}"
-TARGET_DIR="${ROOT_DIR}/Apps"
+TARGET_DIR="${DUPLO_TARGET_DIR:-${ROOT_DIR}/Apps}"
+if [[ "${TARGET_DIR}" != /* ]]; then
+  TARGET_DIR="${ROOT_DIR}/${TARGET_DIR#./}"
+fi
 MIN_LINES="${DUPLO_MIN_LINES:-60}"
 PERCENT_THRESHOLD="${DUPLO_PERCENT_THRESHOLD:-}"
 MIN_CHARS="${DUPLO_MIN_CHARS:-3}"

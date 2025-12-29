@@ -60,7 +60,7 @@ describe("reservations-command-service HTTP routes", () => {
     });
 
     expect(checkDatabaseHealth).toHaveBeenCalledTimes(1);
-    expect(checkKafkaHealth).not.toHaveBeenCalled();
+    expect(checkKafkaHealth).toHaveBeenCalledTimes(1);
     expect(response.statusCode).toBe(503);
     expect(response.json()).toMatchObject({
       status: "unavailable",

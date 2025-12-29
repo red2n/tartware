@@ -1,6 +1,6 @@
 import { performance } from "node:perf_hooks";
 
-import type { OutboxRecord } from "@tartware/outbox";
+import { createTenantThrottler, type OutboxRecord } from "@tartware/outbox";
 
 import { config } from "../config.js";
 import {
@@ -10,6 +10,7 @@ import {
 import { appLogger } from "../lib/logger.js";
 import {
   observeOutboxPublishDuration,
+  observeOutboxThrottleWait,
   setOutboxQueueSize,
 } from "../lib/metrics.js";
 import {
@@ -28,6 +29,12 @@ const dispatcherLogger = appLogger.child({
 let dispatcherTimer: NodeJS.Timeout | null = null;
 let isRunning = false;
 let currentCycle: Promise<void> | null = null;
+
+const throttleTenant = createTenantThrottler({
+  minSpacingMs: config.outbox.tenantThrottleMs,
+  maxJitterMs: config.outbox.tenantJitterMs,
+  cleanupIntervalMs: config.outbox.tenantThrottleCleanupMs,
+});
 
 export const startCommandOutboxDispatcher = (): void => {
   if (isRunning) {
@@ -90,6 +97,9 @@ const processOutboxBatch = async (): Promise<void> => {
   );
 
   for (const record of records) {
+    const throttledAt = performance.now();
+    await throttleTenant(record.tenantId);
+    observeOutboxThrottleWait(secondsSince(throttledAt));
     await handleOutboxRecord(record);
   }
 };

@@ -19,10 +19,21 @@ const outboxPublishHistogram = new Histogram({
   buckets: [0.01, 0.05, 0.1, 0.25, 0.5, 1, 2],
 });
 
+const outboxThrottleWait = new Histogram({
+  name: "command_center_outbox_throttle_wait_seconds",
+  help: "Time spent waiting on tenant throttle + jitter before publishing to Kafka",
+  registers: [metricsRegistry],
+  buckets: [0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1],
+});
+
 export const setOutboxQueueSize = (size: number): void => {
   outboxQueueGauge.set(size);
 };
 
 export const observeOutboxPublishDuration = (durationSeconds: number): void => {
   outboxPublishHistogram.observe(durationSeconds);
+};
+
+export const observeOutboxThrottleWait = (durationSeconds: number): void => {
+  outboxThrottleWait.observe(durationSeconds);
 };

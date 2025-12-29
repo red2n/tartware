@@ -1,11 +1,12 @@
 import { performance } from "node:perf_hooks";
 
-import type { OutboxRecord } from "@tartware/outbox";
+import { createTenantThrottler, type OutboxRecord } from "@tartware/outbox";
 
 import { kafkaConfig, outboxConfig } from "../config.js";
 import { publishDlqEvent, publishEvent } from "../kafka/producer.js";
 import {
   observeOutboxPublishDuration,
+  observeOutboxThrottleWait,
   setOutboxQueueSize,
 } from "../lib/metrics.js";
 import { reservationsLogger } from "../logger.js";
@@ -25,6 +26,12 @@ import {
 let dispatcherTimer: NodeJS.Timeout | null = null;
 let isDispatcherRunning = false;
 let currentCycle: Promise<void> | null = null;
+
+const throttleTenant = createTenantThrottler({
+  minSpacingMs: outboxConfig.tenantThrottleMs,
+  maxJitterMs: outboxConfig.tenantJitterMs,
+  cleanupIntervalMs: outboxConfig.tenantThrottleCleanupMs,
+});
 
 /**
  * Boots the outbox dispatcher loop which continuously flushes
@@ -91,6 +98,9 @@ const processOutboxBatch = async (): Promise<void> => {
   );
 
   for (const record of records) {
+    const throttledAt = performance.now();
+    await throttleTenant(record.tenantId);
+    observeOutboxThrottleWait(secondsSince(throttledAt));
     await handleOutboxRecord(record);
   }
 };

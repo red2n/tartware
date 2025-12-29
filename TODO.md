@@ -22,10 +22,11 @@ Platform-wide standardization for resilient CRUD handling at 20+ ops/sec with au
 ##### 0.1.a **Implementation Tasks**
 - Build an outbox dispatcher worker (Node process + Fastify health endpoint) that:
   - Locks `PENDING/FAILED` rows in priority order, stamps `IN_PROGRESS`, publishes to Kafka, updates status (`DELIVERED` or `FAILED`) with retry metadata.
-  - Respects per-tenant throttling + jitter to avoid flooding Kafka partitions.
+  - Instrument per-tenant throttle waits + jitter to avoid flooding Kafka partitions, surfacing Prometheus metrics for alerting.
 - Provide Helm/Kustomize manifests + K3s-compatible CronJob/Deployment spec with probes + metrics (outbox queue depth, publish latency).
 - Add CLI/script to manually requeue `FAILED/DLQ` rows after remediation with audit logging.
 - _2025-12-23 Update_: Added `npm run requeue:outbox` (backed by `scripts/requeue-outbox.ts`) so ops can requeue filtered outbox rows with audit metadata (`requeuedAt`/`requeuedBy`) after remediation.
+- _2025-12-27T06:30:00Z Update_: Reservations and Command Center outbox dispatchers now share a tenant-aware throttler (spacing + jitter) via `@tartware/outbox`, with env defaults wired into `.env.example` and dev scripts. Next step: emit throttle-wait metrics and alerts per tenant to catch noisy publishers.
 
 #### 0.2 **Consumer Hardening**
 - Reservations command service switches to manual commit with KafkaJS `eachBatch`, wrapping handler execution in a retry policy (3 quick retries with jittered backoff, then DLQ).
