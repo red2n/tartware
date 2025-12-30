@@ -76,7 +76,7 @@ export const startAvailabilityGuardCommandCenterConsumer = async (
     },
   });
 
-  runLoop.catch((error) => {
+  runLoop.catch((error: unknown) => {
     workerLogger.error(
       { err: error },
       "Availability Guard command consumer crashed",
