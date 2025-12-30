@@ -58,6 +58,7 @@ type BreakGlassCodeRow = {
 };
 
 const AUDIT_REDACTED_VALUE = "[REDACTED]";
+const ALLOWED_HOURS_EMPTY_SENTINEL = "empty";
 const AUDIT_MAX_DEPTH = 6;
 const AUDIT_SENSITIVE_FIELDS = [
   "password",
@@ -176,7 +177,7 @@ const isWithinAllowedHours = (range: string | null | undefined, now = new Date()
 
   const trimmed = range.trim();
   // Empty string or explicit "empty" sentinel means no access allowed
-  if (trimmed.length === 0 || trimmed.toLowerCase() === "empty") {
+  if (trimmed.length === 0 || trimmed.toLowerCase() === ALLOWED_HOURS_EMPTY_SENTINEL) {
     return false;
   }
 

@@ -71,7 +71,8 @@ generate_jwt_secret() {
 # Generate 20 random bytes -> 32 base32 characters (160 bits of entropy)
 generate_mfa_secret() {
     # Generate 20 random bytes, encode to base32, remove padding
-    openssl rand 20 | base32 | tr -d "=" | head -c 32
+    # Base32 encoding of 20 bytes produces exactly 32 characters
+    openssl rand 20 | base32 | tr -d "="
 }
 
 # Generate SSH key pair
