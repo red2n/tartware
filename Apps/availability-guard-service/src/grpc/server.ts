@@ -249,6 +249,8 @@ const buildBulkReleaseHandler =
   };
 
 export const startGrpcServer = async (logger: FastifyBaseLogger) => {
+  logger.info("Initializing Availability Guard gRPC server");
+
   const server = new Server();
   const availabilityGuardService = grpcDescriptor.availabilityguard.v1
     .AvailabilityGuard.service as ServiceDefinition<AvailabilityGuardHandlers>;
@@ -260,12 +262,18 @@ export const startGrpcServer = async (logger: FastifyBaseLogger) => {
   });
 
   const address = `${config.grpc.host}:${config.grpc.port}`;
+  logger.info({ address }, "Binding Availability Guard gRPC server");
+
   await new Promise<void>((resolve, reject) => {
     server.bindAsync(
       address,
       ServerCredentials.createInsecure(),
       (error, port) => {
         if (error) {
+          logger.error(
+            { err: error },
+            "Failed to bind Availability Guard gRPC server",
+          );
           reject(error);
           return;
         }
