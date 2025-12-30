@@ -7,7 +7,7 @@ import type {
 } from "fastify";
 import fp from "fastify-plugin";
 
-import { extractBearerToken, verifyAccessToken } from "../lib/jwt.js";
+import { extractBearerToken, verifyAccessToken, verifySystemAdminToken } from "../lib/jwt.js";
 import {
   type CachedMembership,
   type MembershipLookupDetails,
@@ -195,6 +195,15 @@ const authContextPlugin: FastifyPluginAsync = async (fastify) => {
       return;
     }
 
+    // Try system admin token first (different issuer)
+    const systemAdminPayload = verifySystemAdminToken(token);
+    if (systemAdminPayload?.scope === "SYSTEM_ADMIN") {
+      // System admin tokens don't need membership lookup
+      request.auth = createAuthContext(null, []);
+      return;
+    }
+
+    // Fall back to regular access token
     const payload = verifyAccessToken(token);
     if (!payload || !payload.sub) {
       request.auth = createAuthContext(null, []);

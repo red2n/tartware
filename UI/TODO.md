@@ -21,6 +21,11 @@
 - Tenants list (paged) with basic filters.
 - Users list (filter by tenant) with basic paging.
 - Session strip (role, session hash, sign-out).
+- Reservations browser (tenant + optional property/status/search filters) using /v1/reservations; add paging/export later.
+
+## Tenant context & filters
+- Persist tenant/property context in session service (localStorage) and reuse across pages.
+- Tenant picker component pulls /v1/system/tenants and emits selection for downstream views.
 
 ## Contract-driven
 - Generate typed API client from OpenAPI for system-admin endpoints; add runtime validation per response (Zod or similar).

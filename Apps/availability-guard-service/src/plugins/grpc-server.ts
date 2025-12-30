@@ -16,7 +16,7 @@ export default fp((app) => {
         "gRPC server started",
       );
     })
-    .catch((err) => {
+    .catch((err: unknown) => {
       app.log.error({ err }, "Failed to start gRPC server");
     });
 

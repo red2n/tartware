@@ -77,6 +77,19 @@
 .session {
 	font-size: 0.9rem;
 	color: var(--color-text-muted);
+	display: flex;
+	align-items: center;
+	gap: 0.5rem;
+}
+
+.session__user {
+	color: var(--color-text);
+	font-weight: 600;
+}
+
+.session__meta {
+	color: var(--color-text-muted);
+	font-size: 0.85rem;
 }
 
 .content {

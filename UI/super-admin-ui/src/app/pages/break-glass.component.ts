@@ -5,6 +5,7 @@ import { firstValueFrom } from 'rxjs';
 import { AdminAuthService } from '../services/admin-auth.service';
 import { generateDeviceFingerprint } from '../services/device-fingerprint';
 import { extractErrorMessage } from '../services/error-utils';
+import { SystemSessionService } from '../services/system-session.service';
 
 @Component({
   standalone: true,
@@ -74,6 +75,7 @@ import { extractErrorMessage } from '../services/error-utils';
 export class BreakGlassComponent {
   private readonly fb = inject(FormBuilder);
   private readonly auth = inject(AdminAuthService);
+  private readonly session = inject(SystemSessionService);
   readonly statusMessage = signal('');
   readonly errorMessage = signal('');
   readonly loading = signal(false);
@@ -97,12 +99,12 @@ export class BreakGlassComponent {
 
     firstValueFrom(this.auth.breakGlass(this.form.getRawValue()))
       .then(res => {
-        this.statusMessage.set(
-          `Break-glass accepted. Token type ${res.token_type}, expires in ${res.expires_in}s.`,
-        );
+        this.session.setAdminSession(res);
+        const adminLabel = res.admin?.username ?? 'admin';
+        this.statusMessage.set(`Break-glass accepted for ${adminLabel}. Expires in ${res.expires_in}s.`);
       })
       .catch(err => {
-      this.errorMessage.set(extractErrorMessage(err, 'Break-glass request failed. Please retry.'));
+        this.errorMessage.set(extractErrorMessage(err, 'Break-glass request failed. Please retry.'));
       })
       .finally(() => this.loading.set(false));
   }

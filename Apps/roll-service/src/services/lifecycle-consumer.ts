@@ -6,7 +6,7 @@ import {
   ReservationEventSchema,
 } from "@tartware/schemas";
 import type { FastifyBaseLogger } from "fastify";
-import { type Consumer, type EachBatchPayload, Kafka } from "kafkajs";
+import { type Consumer, type EachBatchPayload, Kafka, logLevel } from "kafkajs";
 
 import { config } from "../config.js";
 import {
@@ -37,6 +37,7 @@ const buildKafkaClient = () =>
   new Kafka({
     clientId: config.kafka.clientId,
     brokers: config.kafka.brokers,
+    logLevel: logLevel.NOTHING,
   });
 
 export const buildLifecycleConsumer = (logger: FastifyBaseLogger) =>

@@ -26,6 +26,15 @@
     "paths": {
       "ui-theme": [
         "./dist/ui-theme"
+      ],
+      "@tartware/schemas/*": [
+        "../../schema/dist/*"
+      ],
+      "rxjs": [
+        "../../node_modules/rxjs"
+      ],
+      "rxjs/*": [
+        "../../node_modules/rxjs/*"
       ]
     }
   },

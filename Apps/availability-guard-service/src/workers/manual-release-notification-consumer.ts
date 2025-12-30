@@ -97,7 +97,7 @@ export const startManualReleaseNotificationConsumer = async (
     },
   });
 
-  runLoop.catch((error) => {
+  runLoop.catch((error: unknown) => {
     workerLogger.error(
       { err: error },
       "Manual release notification consumer crashed",
@@ -235,7 +235,7 @@ const processNotification = async (
       failedDeliveries += 1;
       logger.error(
         {
-          err: result.reason,
+          err: result.reason as Error,
           lockId: payload.lockId,
           channel: attempt.channel,
         },
