@@ -208,7 +208,7 @@ export const createTenantAuthPlugin = <
 
   return fp(async (fastify: FastifyInstance) => {
     const authStorage = new WeakMap<FastifyRequest, AuthContext<Membership>>();
-    
+
     fastify.decorateRequest("auth", {
       getter(this: FastifyRequest) {
         return authStorage.get(this) || createAuthContext(null, []);
