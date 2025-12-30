@@ -23,6 +23,8 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
   }
 
   // Correlation ID for observability
+  // Note: Fallback using Date.now() and Math.random() is not cryptographically secure
+  // but is acceptable for correlation IDs (non-security-critical identifiers)
   const requestId = typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
     ? crypto.randomUUID()
     : `${Date.now()}-${Math.random().toString(16).slice(2)}`;

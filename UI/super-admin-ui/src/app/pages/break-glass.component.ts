@@ -100,9 +100,7 @@ export class BreakGlassComponent {
     firstValueFrom(this.auth.breakGlass(this.form.getRawValue()))
       .then(res => {
         this.session.setAdminSession(res);
-        const adminLabel = res.admin && typeof res.admin === 'object' && 'username' in res.admin
-          ? (res.admin as { username?: string }).username ?? 'admin'
-          : 'admin';
+        const adminLabel = res.admin?.username ?? 'admin';
         this.statusMessage.set(`Break-glass accepted for ${adminLabel}. Expires in ${res.expires_in}s.`);
       })
       .catch(err => {

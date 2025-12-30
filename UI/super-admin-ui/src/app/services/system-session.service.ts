@@ -48,8 +48,8 @@ export class SystemSessionService {
           if (parsed && parsed.accessToken && parsed.scope === 'SYSTEM_ADMIN') {
             this.adminState.set(parsed);
           }
-        } catch (_) {
-          // ignore corrupted storage
+        } catch (err) {
+          console.error('Failed to parse admin session from localStorage:', err);
         }
       }
 
@@ -60,8 +60,8 @@ export class SystemSessionService {
           if (parsed?.tenantId) {
             this.tenantContextState.set(parsed);
           }
-        } catch (_) {
-          // ignore corrupted storage
+        } catch (err) {
+          console.error('Failed to parse tenant context from localStorage:', err);
         }
       }
 
@@ -73,8 +73,8 @@ export class SystemSessionService {
           } else {
             localStorage.removeItem(this.storageKey);
           }
-        } catch (_) {
-          // ignore storage failures
+        } catch (err) {
+          console.error('Failed to save admin session to localStorage:', err);
         }
       });
 
@@ -86,8 +86,8 @@ export class SystemSessionService {
           } else {
             localStorage.removeItem(this.tenantKey);
           }
-        } catch (_) {
-          // ignore storage failures
+        } catch (err) {
+          console.error('Failed to save tenant context to localStorage:', err);
         }
       });
     }
@@ -100,7 +100,7 @@ export class SystemSessionService {
       scope: res.scope,
       expiresIn: res.expires_in,
       sessionId: res.session_id,
-      admin: (res as LoginResponse).admin ?? (res as BreakGlassResponse).admin,
+      admin: res.admin,
     });
   }
 

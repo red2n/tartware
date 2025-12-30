@@ -12,6 +12,12 @@
 
 set -euo pipefail
 
+# Validate we're running in bash (required for PIPESTATUS)
+if [ -z "$BASH_VERSION" ]; then
+    echo "Error: This script requires bash. Please run with: bash $0"
+    exit 1
+fi
+
 # Find repository root (look for package.json and lerna.json)
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
@@ -61,8 +67,12 @@ generate_jwt_secret() {
 }
 
 # Generate MFA secret (base32 encoded for TOTP)
+# TOTP requires a base32-encoded secret (RFC 4648)
+# Generate 20 random bytes -> 32 base32 characters (160 bits of entropy)
 generate_mfa_secret() {
-    openssl rand -base64 32 | base32 | tr -d "=" | cut -c1-32
+    # Generate 20 random bytes, encode to base32, remove padding
+    # Base32 encoding of 20 bytes produces exactly 32 characters
+    openssl rand 20 | base32 | tr -d "="
 }
 
 # Generate SSH key pair
@@ -339,15 +349,16 @@ echo "📋 Redis Password:           ${GREEN}$(echo $REDIS_PASSWORD | cut -c1-8)
 echo ""
 echo "📋 System Admin Username:    ${GREEN}sysadmin${NC}"
 echo "📋 System Admin Email:       ${GREEN}sysadmin@tartware.io${NC}"
-echo "📋 System Admin Password:    ${GREEN}$ADMIN_PASSWORD${NC}"
+echo "📋 System Admin Password:    ${GREEN}$(echo $ADMIN_PASSWORD | cut -c1-4)...${NC} (see $CREDENTIALS_FILE)"
 echo ""
 echo "🔐 MFA Secret (Base32):      ${GREEN}$(grep SYSTEM_ADMIN_MFA_SECRET $CREDENTIALS_FILE | tail -1 | cut -d= -f2)${NC}"
-echo "📱 MFA Setup URI:"
 MFA_SECRET=$(grep SYSTEM_ADMIN_MFA_SECRET $CREDENTIALS_FILE | tail -1 | cut -d= -f2)
-echo "   ${YELLOW}otpauth://totp/Tartware:sysadmin?secret=${MFA_SECRET}&issuer=Tartware${NC}"
+OTPAUTH_URL="otpauth://totp/Tartware:sysadmin?secret=${MFA_SECRET}&issuer=Tartware"
+echo "📱 MFA Setup URI:            ${YELLOW}${OTPAUTH_URL}${NC}"
 echo ""
-echo "   ${BLUE}Scan this QR code with Google Authenticator, Authy, or 1Password:${NC}"
-echo "   https://chart.googleapis.com/chart?chs=200x200&cht=qr&chl=otpauth://totp/Tartware:sysadmin%3Fsecret%3D${MFA_SECRET}%26issuer%3DTartware"
+echo "   ${GREEN}To generate QR code securely (local only):${NC}"
+echo "   Run: ${BLUE}./executables/show-mfa-qr/show-mfa-qr.sh${NC}"
+echo "   Or:  ${BLUE}echo \"${OTPAUTH_URL}\" | qrencode -t UTF8${NC}"
 echo ""
 echo "📋 Rancher Admin Password:   ${GREEN}$RANCHER_PASSWORD${NC}"
 echo "📋 Grafana Admin Password:   ${GREEN}$GRAFANA_ADMIN_PASSWORD${NC}"
@@ -360,10 +371,11 @@ echo -e "${YELLOW}⚠️  IMPORTANT SECURITY NOTES:${NC}"
 echo "1. Keep $CREDENTIALS_FILE secure and NEVER commit to git"
 echo "2. SSH private keys in platform/.ssh/ must NEVER be committed to git"
 echo "3. Store credentials in a password manager (1Password, LastPass, etc.)"
-echo "4. Apply secrets to cluster: ${GREEN}kubectl apply -f platform/secrets/${NC}"
-echo "5. Delete secret files after applying: ${GREEN}rm -rf platform/secrets/*.yaml${NC}"
-echo "6. Rotate credentials regularly (every 90 days recommended)"
-echo "7. MFA is generated but NOT enabled by default. Enable it in system settings."
+echo "4. NEVER use online QR code generators for MFA - use local generation only"
+echo "5. Apply secrets to cluster: ${GREEN}kubectl apply -f platform/secrets/${NC}"
+echo "6. Delete secret files after applying: ${GREEN}rm -rf platform/secrets/*.yaml${NC}"
+echo "7. Rotate credentials regularly (every 90 days recommended)"
+echo "8. MFA is generated but NOT enabled by default. Enable it in system settings."
 echo ""
 echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 echo ""
