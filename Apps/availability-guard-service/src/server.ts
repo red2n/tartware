@@ -70,11 +70,17 @@ export const buildServer = () => {
   app.addHook("onReady", () => {
     app.log.info("starting manual release notification consumer");
     void startManualReleaseNotificationConsumer(app.log).catch((err) =>
-      app.log.error({ err }, "failed to start manual release notification consumer"),
+      app.log.error(
+        { err },
+        "failed to start manual release notification consumer",
+      ),
     );
     app.log.info("starting availability guard command consumer");
     void startAvailabilityGuardCommandCenterConsumer(app.log).catch((err) =>
-      app.log.error({ err }, "failed to start availability guard command consumer"),
+      app.log.error(
+        { err },
+        "failed to start availability guard command consumer",
+      ),
     );
   });
   app.addHook("onClose", async () => {

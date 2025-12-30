@@ -270,7 +270,10 @@ export const startGrpcServer = async (logger: FastifyBaseLogger) => {
       ServerCredentials.createInsecure(),
       (error, port) => {
         if (error) {
-          logger.error({ err: error }, "Failed to bind Availability Guard gRPC server");
+          logger.error(
+            { err: error },
+            "Failed to bind Availability Guard gRPC server",
+          );
           reject(error);
           return;
         }

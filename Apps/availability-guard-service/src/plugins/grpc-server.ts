@@ -11,7 +11,10 @@ export default fp((app) => {
   void startGrpcServer(app.log)
     .then((started) => {
       controller = started;
-      app.log.info({ host: config.grpc.host, port: config.grpc.port }, "gRPC server started");
+      app.log.info(
+        { host: config.grpc.host, port: config.grpc.port },
+        "gRPC server started",
+      );
     })
     .catch((err) => {
       app.log.error({ err }, "Failed to start gRPC server");

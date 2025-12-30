@@ -107,9 +107,7 @@ const shutdown = async (signal: NodeJS.Signals) => {
     });
 
     await Promise.race([closePromise, delay(SHUTDOWN_GRACE_MS)]);
-    if (closePromise) {
-      void closePromise.catch(() => undefined);
-    }
+    void closePromise.catch(() => undefined);
 
     const telemetryShutdown = telemetry?.shutdown();
     if (telemetryShutdown) {
