@@ -53,6 +53,7 @@ const settings = {
 		.map((value) => value.trim())
 		.filter(Boolean),
 	resetPassword: toBool(process.env.RESET_PASSWORD, false),
+	mfaSecret: process.env.ADMIN_MFA_SECRET ?? null,
 };
 
 const buildClientConfig = () => {
@@ -69,7 +70,7 @@ const buildClientConfig = () => {
 };
 
 const ensureAdmin = async (client: Client) => {
-	const { username, email, password, role, ips, resetPassword } = settings;
+	const { username, email, password, role, ips, resetPassword, mfaSecret } = settings;
 	const { rows } = await client.query(
 		"SELECT id, password_hash, is_active FROM system_administrators WHERE username = $1 LIMIT 1",
 		[username],
@@ -85,10 +86,10 @@ const ensureAdmin = async (client: Client) => {
 				id, username, email, password_hash, role, mfa_secret, mfa_enabled,
 				ip_whitelist, allowed_hours, metadata, is_active, created_at
 			) VALUES (
-				$1::uuid, $2, $3, $4, $5::system_admin_role, NULL, false,
-				$6::inet[], NULL, $7::jsonb, true, $8
+				$1::uuid, $2, $3, $4, $5::system_admin_role, $6, false,
+				$7::inet[], NULL, $8::jsonb, true, $9
 			)` ,
-			[id, username, email, hashedPassword, role, ips, JSON.stringify({ trusted_devices: ["bootstrap"] }), now],
+			[id, username, email, hashedPassword, role, mfaSecret, ips, JSON.stringify({ trusted_devices: ["*"] }), now],
 		);
 		return { id, passwordChanged: true } as const;
 	}
@@ -100,19 +101,41 @@ const ensureAdmin = async (client: Client) => {
 		await client.query(
 			`UPDATE system_administrators
 			 SET password_hash = $2,
+			     mfa_secret = $3,
 			     failed_login_attempts = 0,
 			     account_locked_until = NULL,
 			     is_active = true,
-			     updated_at = $3
+			     updated_at = $4
 			 WHERE id = $1`,
-			[admin.id, hashedPassword, now],
+			[admin.id, hashedPassword, mfaSecret, now],
 		);
 		passwordChanged = true;
+	} else if (mfaSecret) {
+		// Update MFA secret without changing password
+		await client.query(
+			`UPDATE system_administrators
+			 SET mfa_secret = $2,
+			     failed_login_attempts = 0,
+			     account_locked_until = NULL,
+			     updated_at = $3
+			 WHERE id = $1`,
+			[admin.id, mfaSecret, now],
+		);
+	} else {
+		// Always unlock account and reset failed attempts when running bootstrap
+		await client.query(
+			`UPDATE system_administrators
+			 SET failed_login_attempts = 0,
+			     account_locked_until = NULL,
+			     updated_at = $2
+			 WHERE id = $1`,
+			[admin.id, now],
+		);
 	}
 
 	if (!admin.is_active) {
 		await client.query(
-			"UPDATE system_administrators SET is_active = true, account_locked_until = NULL, failed_login_attempts = 0, updated_at = $2 WHERE id = $1",
+			"UPDATE system_administrators SET is_active = true, updated_at = $2 WHERE id = $1",
 			[admin.id, now],
 		);
 	}

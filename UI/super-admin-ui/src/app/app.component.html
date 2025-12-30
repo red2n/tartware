@@ -5,13 +5,23 @@
       <a routerLink="/login" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">Login</a>
       <a routerLink="/break-glass" routerLinkActive="active">Break glass</a>
       <a routerLink="/impersonation" routerLinkActive="active">Impersonation</a>
+      <a routerLink="/tenants" routerLinkActive="active">Tenants</a>
+      <a routerLink="/reservations" routerLinkActive="active">Support reservations</a>
+      <a routerLink="/users" routerLinkActive="active">Users</a>
       <a routerLink="/welcome" routerLinkActive="active">Welcome</a>
     </nav>
     <div class="actions">
       <button type="button" class="ghost" (click)="toggleTheme()">
         {{ currentTheme() === 'theme-light' ? 'Dark mode' : 'Light mode' }}
       </button>
-      <div class="session" aria-live="polite">Session pending</div>
+      <div class="session" aria-live="polite" *ngIf="adminSession as session; else noSession">
+        <div class="session__user">{{ session?.admin?.username }} ({{ session?.admin?.role }})</div>
+        <div class="session__meta">Session {{ session?.sessionId }}</div>
+        <button type="button" class="ghost" (click)="signOut()">Sign out</button>
+      </div>
+      <ng-template #noSession>
+        <div class="session" aria-live="polite">No active session</div>
+      </ng-template>
     </div>
   </header>
 

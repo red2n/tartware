@@ -4,6 +4,7 @@ import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { firstValueFrom } from 'rxjs';
 import { AdminAuthService } from '../services/admin-auth.service';
 import { extractErrorMessage } from '../services/error-utils';
+import { SystemSessionService } from '../services/system-session.service';
 
 @Component({
   standalone: true,
@@ -82,6 +83,7 @@ import { extractErrorMessage } from '../services/error-utils';
 export class ImpersonationComponent {
   private readonly fb = inject(FormBuilder);
   private readonly auth = inject(AdminAuthService);
+  private readonly session = inject(SystemSessionService);
   readonly statusMessage = signal('');
   readonly errorMessage = signal('');
   readonly loading = signal(false);
@@ -121,9 +123,15 @@ export class ImpersonationComponent {
         this.sessionToken.set(res.access_token);
         this.expiresAt.set(`${res.expires_in}s`);
         this.statusMessage.set(`Impersonation started. Scope ${res.scope}, expires in ${res.expires_in}s.`);
+        this.session.setImpersonationSession({
+          accessToken: res.access_token,
+          tokenType: res.token_type,
+          scope: res.scope,
+          expiresIn: res.expires_in,
+        });
       })
       .catch(err => {
-  this.errorMessage.set(extractErrorMessage(err, 'Impersonation failed. Please retry.'));
+        this.errorMessage.set(extractErrorMessage(err, 'Impersonation failed. Please retry.'));
       })
       .finally(() => {
         this.loading.set(false);

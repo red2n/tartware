@@ -1,27 +1,25 @@
-# SuperAdminUi
+# Platform Admin Console (UI/super-admin-ui)
 
-This project was generated with [Angular CLI](https://github.com/angular/angular-cli) version 18.2.21.
+System-admin console for platform operators and support. Lives under `UI/super-admin-ui` and uses system admin plus impersonation tokens to inspect tenant data. This is **not** the tenant/guest-facing reservation portal.
 
-## Development server
+## Scope
+- System admin auth flows (login, break-glass, impersonation)
+- Tenant and user lookup (admin perspective)
+- Support-only reservation viewer (tenant-scoped, read-only)
+- Session strip, theme toggle, and HTTP interceptor wiring
+- Types come from `@tartware/schemas`; no ad-hoc DTOs
 
-Run `ng serve` for a dev server. Navigate to `http://localhost:4200/`. The application will automatically reload if you change any of the source files.
+## Guardrails
+- Flat theme (see `src/styles/theme.scss`), Material/CDK controls
+- Standalone components, signals, SSR-compatible patterns
+- Admin/support context only; avoid tenant/guest UI here
 
-## Code scaffolding
+## Development
+- `npm start` (dev server)
+- `npm test` (Karma)
+- `npm run build` (Angular build)
 
-Run `ng generate component component-name` to generate a new component. You can also use `ng generate directive|pipe|service|class|guard|interface|enum|module`.
-
-## Build
-
-Run `ng build` to build the project. The build artifacts will be stored in the `dist/` directory.
-
-## Running unit tests
-
-Run `ng test` to execute the unit tests via [Karma](https://karma-runner.github.io).
-
-## Running end-to-end tests
-
-Run `ng e2e` to execute the end-to-end tests via a platform of your choice. To use this command, you need to first add a package that implements end-to-end testing capabilities.
-
-## Further help
-
-To get more help on the Angular CLI use `ng help` or go check out the [Angular CLI Overview and Command Reference](https://angular.dev/tools/cli) page.
+## Notes
+- API base defaults to `/v1`; adjust via `API_BASE` provider if needed.
+- Uses admin token for `/system/*` calls; prefers impersonation token for tenant-scoped calls.
+- Reservation view is for support triage; tenant-facing booking UI should live in its own app.

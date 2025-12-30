@@ -330,3 +330,13 @@ site/
 # Keep SQL scripts (they're source code)
 !scripts/**/*.sql
 !docs/**/*.sql
+
+# ============================================================================
+# Sensitive Platform Files (NEVER COMMIT)
+# ============================================================================
+platform/.credentials
+platform/.ssh/
+platform/.ssh/*
+platform/secrets/*.yaml
+platform/.admin-token
+platform/.env

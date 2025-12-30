@@ -168,9 +168,10 @@ const parseRangeBoundary = (value: string | undefined) => {
   return parsed;
 };
 
-const isWithinAllowedHours = (range: string | undefined, now = new Date()): boolean => {
-  if (!range || range.trim().length === 0 || range === "empty") {
-    return false;
+const isWithinAllowedHours = (range: string | null | undefined, now = new Date()): boolean => {
+  // NULL or undefined means no restrictions - allow 24/7 access
+  if (range === null || range === undefined || !range || range.trim().length === 0 || range === "empty") {
+    return true;
   }
 
   const trimmed = range.trim();

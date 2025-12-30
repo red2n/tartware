@@ -5,6 +5,7 @@ import { firstValueFrom } from 'rxjs';
 import { AdminAuthService } from '../services/admin-auth.service';
 import { generateDeviceFingerprint } from '../services/device-fingerprint';
 import { extractErrorMessage } from '../services/error-utils';
+import { SystemSessionService } from '../services/system-session.service';
 
 @Component({
   standalone: true,
@@ -69,6 +70,7 @@ import { extractErrorMessage } from '../services/error-utils';
 export class LoginComponent {
   private readonly fb = inject(FormBuilder);
   private readonly auth = inject(AdminAuthService);
+  private readonly session = inject(SystemSessionService);
   readonly statusMessage = signal('');
   readonly errorMessage = signal('');
   readonly loading = signal(false);
@@ -91,10 +93,12 @@ export class LoginComponent {
 
     firstValueFrom(this.auth.login(this.form.getRawValue()))
       .then(res => {
-        this.statusMessage.set(`Signed in. Session ends in ${res.expires_in}s. Token type ${res.token_type}.`);
+        this.session.setAdminSession(res);
+        const adminLabel = res.admin?.username ?? 'admin';
+        this.statusMessage.set(`Signed in as ${adminLabel}. Session ends in ${res.expires_in}s.`);
       })
       .catch(err => {
-      this.errorMessage.set(extractErrorMessage(err, 'Login failed. Please retry.'));
+        this.errorMessage.set(extractErrorMessage(err, 'Login failed. Please retry.'));
       })
       .finally(() => this.loading.set(false));
   }

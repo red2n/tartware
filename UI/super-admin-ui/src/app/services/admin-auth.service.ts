@@ -10,12 +10,21 @@ export interface LoginRequest {
   device_fingerprint: string;
 }
 
+export interface AdminUser {
+  id?: string;
+  username?: string;
+  role?: string;
+  first_name?: string;
+  last_name?: string;
+}
+
 export interface LoginResponse {
   access_token: string;
   token_type: 'Bearer';
   expires_in: number;
   scope: 'SYSTEM_ADMIN';
   session_id: string;
+  admin?: AdminUser;
 }
 
 export interface BreakGlassRequest {
@@ -32,7 +41,7 @@ export interface BreakGlassResponse {
   expires_in: number;
   scope: 'SYSTEM_ADMIN';
   session_id: string;
-  admin: unknown;
+  admin: AdminUser;
 }
 
 export interface ImpersonationRequest {
