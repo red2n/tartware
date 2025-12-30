@@ -267,7 +267,7 @@ const run = async () => {
   );
 };
 
-await run().catch((error) => {
+await run().catch((error: unknown) => {
   rollLogger.error(
     { err: error, reservationId: process.argv.join(" ") },
     "Failed to run roll replay",
