@@ -89,7 +89,7 @@ const ensureAdmin = async (client: Client) => {
 				$1::uuid, $2, $3, $4, $5::system_admin_role, $6, false,
 				$7::inet[], NULL, $8::jsonb, true, $9
 			)` ,
-			[id, username, email, hashedPassword, role, mfaSecret, ips, JSON.stringify({ trusted_devices: ["*"] }), now],
+			[id, username, email, hashedPassword, role, mfaSecret, ips, JSON.stringify({ trusted_devices: ["bootstrap"] }), now],
 		);
 		return { id, passwordChanged: true } as const;
 	}

@@ -170,17 +170,16 @@ const parseRangeBoundary = (value: string | undefined) => {
 
 const isWithinAllowedHours = (range: string | null | undefined, now = new Date()): boolean => {
   // NULL or undefined means no restrictions - allow 24/7 access
-  if (
-    range === null ||
-    range === undefined ||
-    !range ||
-    range.trim().length === 0 ||
-    range === "empty"
-  ) {
+  if (range === null || range === undefined) {
     return true;
   }
 
   const trimmed = range.trim();
+  // Empty string or explicit "empty" sentinel means no access allowed
+  if (trimmed.length === 0 || trimmed.toLowerCase() === "empty") {
+    return false;
+  }
+
   if (trimmed.length < 5) {
     return false;
   }
