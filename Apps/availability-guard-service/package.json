@@ -31,7 +31,7 @@
     "@tartware/openapi": "file:../openapi-utils",
     "@tartware/schemas": "file:../../schema",
     "@tartware/telemetry": "file:../telemetry",
-    "fastify": "^4.26.2",
+    "fastify": "^5.6.2",
     "fastify-plugin": "^4.5.1",
     "kafkajs": "^2.2.4",
     "p-retry": "^6.0.1",

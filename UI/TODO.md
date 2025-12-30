@@ -1,13 +1,18 @@
 # Super Admin UI TODO
 
+# Super Admin UI TODO
+
 ## Guardrails (must follow in every template)
-- Flat colors only; no gradients or heavy effects. Keep light and dark palettes minimal.
-- All colors sourced from a dedicated theme file (no inline hex in templates/styles). Light/dark tokens only.
-- Prefer Angular CDK + Material form controls/dialogs/tables; keep templates lean and duplication-free.
-- Accessible and audit-friendly: keyboard-first, focus-visible, a11y lint clean, emit audit breadcrumbs where needed.
-- Performance-first: strict mode, standalone components, signals/component-store; avoid extra DOM wrappers and animations (disable global animations).
-- SSR considered for settings-like screens and any data-heavy views (plan routing to support SSR later).
-- Upgradable: keep to Angular v18 LTS, no custom Material theming hacks; isolate styling in theme file for easy updates.
+- **Flat colors only**: No gradients, shadows, or heavy visual effects
+- **Minimal styling**: Keep CSS lean - use utility classes where possible
+- **All colors from theme file**: Source from `projects/ui-theme/src/lib/styles/theme.scss` CSS variables only
+- **No animations**: `provideNoopAnimations()` is enabled, avoid transition/animation CSS
+- **Light and dark palettes**: Use CSS custom properties (--color-*) for automatic theme support
+- Prefer Angular CDK + Material form controls/dialogs/tables; keep templates lean and duplication-free
+- Accessible and audit-friendly: keyboard-first, focus-visible, a11y lint clean, emit audit breadcrumbs where needed
+- Performance-first: strict mode, standalone components, signals/component-store; avoid extra DOM wrappers
+- SSR considered for settings-like screens and any data-heavy views (plan routing to support SSR later)
+- Upgradable: keep to Angular v19+ LTS, no custom Material theming hacks; isolate styling in theme file for easy updates
 
 ## Immediate setup
 - Scaffold Angular workspace (standalone, strict) for system-admin UI.

@@ -207,7 +207,7 @@ export const createTenantAuthPlugin = <
   const createAuthContext = createAuthContextFactory<Membership>(rolePriority);
 
   return fp(async (fastify: FastifyInstance) => {
-    fastify.decorateRequest("auth", null);
+    fastify.decorateRequest("auth", { getter: () => undefined });
 
     const tenantScopeDecorator: TenantScopeDecorator<Membership> = (
       scopeOptions?: TenantScopeOptions<Membership>,

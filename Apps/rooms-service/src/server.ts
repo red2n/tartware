@@ -5,7 +5,7 @@ import {
   buildSecureRequestLoggingOptions,
   withRequestLogging,
 } from "@tartware/telemetry";
-import fastify, { type FastifyBaseLogger, type FastifyInstance } from "fastify";
+import Fastify, { type FastifyBaseLogger, type FastifyInstance } from "fastify";
 
 import { config } from "./config.js";
 import { appLogger } from "./lib/logger.js";
@@ -16,7 +16,7 @@ import { registerHealthRoutes } from "./routes/health.js";
 import { registerRoomRoutes } from "./routes/rooms.js";
 
 export const buildServer = (): FastifyInstance => {
-  const app = fastify({
+  const app = Fastify({
     logger: appLogger as FastifyBaseLogger,
     disableRequestLogging: !config.log.requestLogging,
   });

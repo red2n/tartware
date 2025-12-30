@@ -173,7 +173,7 @@ const buildTenantScopeGuard = (options: TenantScopeOptions = {}): preHandlerHook
 };
 
 const authContextPlugin: FastifyPluginAsync = async (fastify) => {
-  fastify.decorateRequest("auth", null);
+  fastify.decorateRequest("auth", { getter: () => undefined });
 
   const tenantScopeDecorator: TenantScopeDecorator = (decoratorOptions?: TenantScopeOptions) =>
     buildTenantScopeGuard(decoratorOptions);

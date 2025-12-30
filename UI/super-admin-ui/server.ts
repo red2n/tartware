@@ -1,18 +1,16 @@
 import { APP_BASE_HREF } from '@angular/common';
-import { CommonEngine } from '@angular/ssr';
+import { AngularAppEngine } from '@angular/ssr';
 import express from 'express';
 import { fileURLToPath } from 'node:url';
 import { dirname, join, resolve } from 'node:path';
-import bootstrap from './src/main.server';
 
 // The Express app is exported so that it can be used by serverless Functions.
 export function app(): express.Express {
   const server = express();
   const serverDistFolder = dirname(fileURLToPath(import.meta.url));
   const browserDistFolder = resolve(serverDistFolder, '../browser');
-  const indexHtml = join(serverDistFolder, 'index.server.html');
 
-  const commonEngine = new CommonEngine();
+  const angularApp = new AngularAppEngine();
 
   server.set('view engine', 'html');
   server.set('views', browserDistFolder);
@@ -26,19 +24,35 @@ export function app(): express.Express {
   }));
 
   // All regular routes use the Angular engine
-  server.get('**', (req, res, next) => {
-    const { protocol, originalUrl, baseUrl, headers } = req;
+  server.use('**', async (req, res, next) => {
+    try {
+      const protocol = req.protocol;
+      const host = req.get('host') || 'localhost';
+      const url = new URL(req.url, `${protocol}://${host}`);
 
-    commonEngine
-      .render({
-        bootstrap,
-        documentFilePath: indexHtml,
-        url: `${protocol}://${headers.host}${originalUrl}`,
-        publicPath: browserDistFolder,
-        providers: [{ provide: APP_BASE_HREF, useValue: baseUrl }],
-      })
-      .then((html) => res.send(html))
-      .catch((err) => next(err));
+      const response = await angularApp.handle(new Request(url, {
+        method: req.method,
+        headers: new Headers(req.headers as Record<string, string>),
+      }));
+
+      if (response) {
+        res.status(response.status);
+        response.headers.forEach((value, key) => res.setHeader(key, value));
+        if (response.body) {
+          const reader = response.body.getReader();
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            res.write(value);
+          }
+        }
+        res.end();
+      } else {
+        next();
+      }
+    } catch (err) {
+      next(err);
+    }
   });
 
   return server;

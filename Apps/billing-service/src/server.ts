@@ -5,7 +5,7 @@ import {
   buildSecureRequestLoggingOptions,
   withRequestLogging,
 } from "@tartware/telemetry";
-import fastify, { type FastifyBaseLogger, type FastifyInstance } from "fastify";
+import Fastify, { type FastifyBaseLogger, type FastifyInstance } from "fastify";
 
 import { config } from "./config.js";
 import { ensureBillingEncryptionRequirementsMet } from "./lib/compliance-policies.js";
@@ -18,7 +18,7 @@ import { registerHealthRoutes } from "./routes/health.js";
 
 export const buildServer = (): FastifyInstance => {
   ensureBillingEncryptionRequirementsMet();
-  const app = fastify({
+  const app = Fastify({
     logger: appLogger as FastifyBaseLogger,
     disableRequestLogging: !config.log.requestLogging,
   });
