@@ -27,6 +27,7 @@
     "@fastify/swagger-ui": "^1.7.0",
     "@tartware/command-center-shared": "file:../command-center-shared",
     "@tartware/config": "file:../config",
+    "@tartware/fastify-server": "file:../fastify-server",
     "@tartware/openapi": "file:../openapi-utils",
     "@tartware/outbox": "file:../outbox",
     "@tartware/schemas": "file:../../schema",

@@ -1,8 +1,8 @@
-import fastifyCors from "@fastify/cors";
-import fastifyHelmet from "@fastify/helmet";
-import fastifySensible from "@fastify/sensible";
-import { buildSecureRequestLoggingOptions, withRequestLogging } from "@tartware/telemetry";
-import Fastify, { type FastifyBaseLogger, type FastifyInstance } from "fastify";
+import {
+  buildFastifyServer,
+  createRouteTracker,
+  type FastifyInstance,
+} from "@tartware/fastify-server";
 
 import { config } from "./config.js";
 import { ensureEncryptionRequirementsMet } from "./lib/compliance-policies.js";
@@ -30,99 +30,58 @@ import { registerUserRoutes } from "./routes/users.js";
 
 export const buildServer = (): FastifyInstance => {
   ensureEncryptionRequirementsMet();
-  const app = Fastify({
-    logger: appLogger as FastifyBaseLogger,
-    disableRequestLogging: !config.log.requestLogging,
+
+  const app = buildFastifyServer({
+    logger: appLogger,
+    enableRequestLogging: config.log.requestLogging,
+    corsOrigin: true,
+    enableMetricsEndpoint: true,
+    metricsRegistry,
+    requestLoggingOptions: {
+      includeRequestHeaders: false,
+      includeResponseHeaders: false,
+      maxDepth: 5,
+      sensitiveKeys: [
+        "primaryEmail",
+        "guestEmail",
+        "emailAddress",
+        "passportNumber",
+        "paymentToken",
+        "cardNumber",
+        "card_number",
+        "routingNumber",
+        "accountNumber",
+      ],
+    },
+    beforeRoutes: (app) => {
+      app.register(swaggerPlugin);
+      app.register(errorHandlerPlugin);
+      app.register(authContextPlugin);
+      app.register(systemAdminAuthPlugin);
+      app.register(complianceMonitorPlugin);
+    },
+    registerRoutes: (app) => {
+      registerHealthRoutes(app);
+      registerAuthRoutes(app);
+      registerTenantRoutes(app);
+      registerPropertyRoutes(app);
+      registerUserRoutes(app);
+      registerUserTenantAssociationRoutes(app);
+      registerDashboardRoutes(app);
+      registerReservationRoutes(app);
+      registerReportRoutes(app);
+      registerModuleRoutes(app);
+      registerSystemAuthRoutes(app);
+      registerSystemTenantRoutes(app);
+      registerSystemUserRoutes(app);
+      registerSystemImpersonationRoutes(app);
+    },
   });
 
-  const registeredRoutes = new Map<string, { method: string; url: string }>();
-
-  app.addHook("onRoute", (routeOptions) => {
-    const methods = Array.isArray(routeOptions.method)
-      ? routeOptions.method
-      : [routeOptions.method ?? "GET"];
-
-    for (const method of methods) {
-      if (typeof method !== "string") {
-        continue;
-      }
-
-      const normalizedMethod = method.toUpperCase();
-      if (normalizedMethod === "HEAD" || normalizedMethod === "OPTIONS") {
-        continue;
-      }
-
-      const routeKey = `${normalizedMethod} ${routeOptions.url}`;
-      registeredRoutes.set(routeKey, {
-        method: normalizedMethod,
-        url: routeOptions.url,
-      });
-    }
-  });
-
-  app.register(fastifySensible);
-  app.register(fastifyHelmet, { global: true });
-  app.register(fastifyCors, { origin: true });
-  app.register(swaggerPlugin);
-  app.register(errorHandlerPlugin);
-  app.register(authContextPlugin);
-  app.register(systemAdminAuthPlugin);
-  app.register(complianceMonitorPlugin);
-
-  app.get("/metrics", async (request, reply) => {
-    try {
-      const body = await metricsRegistry.metrics();
-      reply.header("Content-Type", metricsRegistry.contentType).send(body);
-    } catch (error) {
-      request.log.error(error, "failed to collect core-service metrics");
-      reply.status(500).send("metrics_unavailable");
-    }
-  });
-
-  if (config.log.requestLogging) {
-    withRequestLogging(
-      app,
-      buildSecureRequestLoggingOptions({
-        includeRequestHeaders: false,
-        includeResponseHeaders: false,
-        maxDepth: 5,
-        sensitiveKeys: [
-          "primaryEmail",
-          "guestEmail",
-          "emailAddress",
-          "passportNumber",
-          "paymentToken",
-          "cardNumber",
-          "card_number",
-          "routingNumber",
-          "accountNumber",
-        ],
-      }),
-    );
-  }
-
-  app.after(() => {
-    registerHealthRoutes(app);
-    registerAuthRoutes(app);
-    registerTenantRoutes(app);
-    registerPropertyRoutes(app);
-    registerUserRoutes(app);
-    registerUserTenantAssociationRoutes(app);
-    registerDashboardRoutes(app);
-    registerReservationRoutes(app);
-    registerReportRoutes(app);
-    registerModuleRoutes(app);
-    registerSystemAuthRoutes(app);
-    registerSystemTenantRoutes(app);
-    registerSystemUserRoutes(app);
-    registerSystemImpersonationRoutes(app);
-  });
-
+  // Track and log registered routes
+  const routeTracker = createRouteTracker(app);
   app.addHook("onReady", async () => {
-    const routeSummaries = Array.from(registeredRoutes.values()).map(
-      ({ method, url }) => `(${method}) ${url}`,
-    );
-    app.log.info({ routes: routeSummaries }, "fastify routes registered");
+    routeTracker.logRoutes();
   });
 
   return app;

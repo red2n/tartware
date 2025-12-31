@@ -1,21 +1,15 @@
-import fastifyHelmet from "@fastify/helmet";
 import type { RateLimitPluginOptions } from "@fastify/rate-limit";
 import rateLimit from "@fastify/rate-limit";
-import fastifySensible from "@fastify/sensible";
 import {
 	buildRouteSchema,
 	type JsonSchema,
 	jsonObjectSchema,
 } from "@tartware/openapi";
-import {
-	buildSecureRequestLoggingOptions,
-	withRequestLogging,
-} from "@tartware/telemetry";
-import fastify, {
-	type FastifyBaseLogger,
-	type FastifyPluginAsync,
-	type FastifyReply,
-	type FastifyRequest,
+import { buildFastifyServer } from "@tartware/fastify-server";
+import type {
+	FastifyPluginAsync,
+	FastifyReply,
+	FastifyRequest,
 } from "fastify";
 
 import { devToolsConfig, gatewayConfig, serviceTargets } from "./config.js";
@@ -113,20 +107,19 @@ const tenantPaymentParamsSchema = {
 } as const satisfies JsonSchema;
 
 export const buildServer = () => {
-	const app = fastify({
-		logger: false,
-		loggerInstance: gatewayLogger as FastifyBaseLogger,
+	// API Gateway doesn't expose metrics endpoint (handled by individual services)
+	const app = buildFastifyServer({
+		logger: gatewayLogger,
+		enableRequestLogging: gatewayConfig.logRequests,
+		corsOrigin: false, // Custom CORS handling below
+		enableMetricsEndpoint: false, // Gateway doesn't expose metrics
 	});
 
-	if (gatewayConfig.logRequests) {
-		withRequestLogging(app, buildSecureRequestLoggingOptions());
-	}
-
-	app.register(fastifyHelmet, { global: true });
-	app.register(fastifySensible);
+	// Register swagger and auth plugins
 	app.register(swaggerPlugin);
 	app.register(authContextPlugin);
 
+	// Register rate limiting
 	app.register(
 		rateLimit as unknown as FastifyPluginAsync,
 		{
