@@ -1,16 +1,12 @@
 import type { RateLimitPluginOptions } from "@fastify/rate-limit";
 import rateLimit from "@fastify/rate-limit";
+import { buildFastifyServer } from "@tartware/fastify-server";
 import {
 	buildRouteSchema,
 	type JsonSchema,
 	jsonObjectSchema,
 } from "@tartware/openapi";
-import { buildFastifyServer } from "@tartware/fastify-server";
-import type {
-	FastifyPluginAsync,
-	FastifyReply,
-	FastifyRequest,
-} from "fastify";
+import type { FastifyPluginAsync, FastifyReply, FastifyRequest } from "fastify";
 
 import { devToolsConfig, gatewayConfig, serviceTargets } from "./config.js";
 import { registerDuploDashboard } from "./devtools/duplo-dashboard.js";

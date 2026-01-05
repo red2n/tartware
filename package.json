@@ -72,7 +72,9 @@
     "eslint": "8.57.0",
     "rxjs": "7.8.2",
     "@modelcontextprotocol/sdk": "^1.24.1",
-    "js-yaml": "4.1.1"
+    "js-yaml": "4.1.1",
+    "@fastify/swagger": "^10.0.0",
+    "@fastify/swagger-ui": "^6.0.0"
   },
   "dependencies": {
     "fast-deep-equal": "^3.1.3",

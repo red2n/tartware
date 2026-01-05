@@ -1,7 +1,4 @@
-import {
-  buildFastifyServer,
-  type FastifyInstance,
-} from "@tartware/fastify-server";
+import { buildFastifyServer, type FastifyInstance } from "@tartware/fastify-server";
 import type { PinoLogger } from "@tartware/telemetry";
 
 import { config } from "./config.js";

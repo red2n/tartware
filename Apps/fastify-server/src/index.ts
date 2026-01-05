@@ -115,15 +115,16 @@ export const buildFastifyServer = (
     });
   }
 
-  // Call beforeRoutes hook if provided
-  if (beforeRoutes) {
-    void beforeRoutes(app);
-  }
+  // Call beforeRoutes hook if provided (support async hooks)
+  const beforeRoutesTask = beforeRoutes
+    ? Promise.resolve(beforeRoutes(app))
+    : Promise.resolve();
 
-  // Register routes inside app.after()
+  // Register routes as a plugin so decorations from beforeRoutes are available
   if (registerRoutes) {
-    app.after(() => {
-      void registerRoutes(app);
+    app.register(async (instance) => {
+      await beforeRoutesTask;
+      await registerRoutes(instance);
     });
   }
 

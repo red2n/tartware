@@ -1,7 +1,8 @@
 {
   "$schema": "https://unpkg.com/knip@5/schema.json",
-  "entry": ["src/index.ts", "src/server.ts"],
-  "project": ["src/**/*.ts"],
+  "project": [
+    "src/**/*.ts"
+  ],
   "ignoreDependencies": [
     "@biomejs/biome",
     "@vitest/coverage-v8",
@@ -11,7 +12,16 @@
     "@tartware/config",
     "@tartware/outbox",
     "@tartware/schemas",
-    "@tartware/command-center-shared"
+    "@tartware/command-center-shared",
+    "@fastify/helmet",
+    "@fastify/sensible",
+    "@tartware/fastify-server"
   ],
-  "ignoreBinaries": ["biome", "eslint", "knip", "tsc", "tsx", "vitest"]
+  "ignoreBinaries": [
+    "biome",
+    "eslint",
+    "knip",
+    "tsc",
+    "tsx"
+  ]
 }

@@ -1,5 +1,5 @@
-import { buildRouteSchema, jsonObjectSchema } from "@tartware/openapi";
 import { buildFastifyServer } from "@tartware/fastify-server";
+import { buildRouteSchema, jsonObjectSchema } from "@tartware/openapi";
 
 import { config } from "./config.js";
 import { query, withTransaction } from "./lib/db.js";
@@ -18,7 +18,7 @@ export const buildServer = () => {
     logger: rollLogger,
     enableRequestLogging: config.log.requestLogging,
     corsOrigin: false,
-    enableMetricsEndpoint: true,
+    enableMetricsEndpoint: false,
     metricsRegistry,
   });
 

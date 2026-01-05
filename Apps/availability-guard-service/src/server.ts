@@ -1,5 +1,5 @@
-import { buildRouteSchema, jsonObjectSchema } from "@tartware/openapi";
 import { buildFastifyServer } from "@tartware/fastify-server";
+import { buildRouteSchema, jsonObjectSchema } from "@tartware/openapi";
 
 import { config } from "./config.js";
 import { checkDatabaseHealth } from "./lib/health-checks.js";
@@ -141,24 +141,6 @@ export const buildServer = () => {
           void reply.code(503);
           return { status: "unavailable", service: config.service.name };
         }
-      },
-    );
-
-    app.get(
-      "/metrics",
-      {
-        schema: buildRouteSchema({
-          tag: "Metrics",
-          summary: "Prometheus metrics",
-          response: {
-            200: { type: "string" },
-          },
-        }),
-      },
-      async (_request, reply) => {
-        void reply.header("Content-Type", metricsRegistry.contentType);
-        const metrics = await metricsRegistry.metrics();
-        return metrics;
       },
     );
   });

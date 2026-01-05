@@ -30,7 +30,9 @@
       "@tartware/outbox": ["../outbox/src/index.ts"],
       "@tartware/outbox/*": ["../outbox/src/*"],
       "@tartware/command-center-shared": ["../command-center-shared/src/index.ts"],
-      "@tartware/command-center-shared/*": ["../command-center-shared/src/*"]
+      "@tartware/command-center-shared/*": ["../command-center-shared/src/*"],
+      "@tartware/fastify-server": ["../fastify-server/src/index.ts"],
+      "@tartware/fastify-server/*": ["../fastify-server/src/*"]
     }
   },
   "include": ["src/**/*.ts"],

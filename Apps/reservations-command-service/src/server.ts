@@ -1,10 +1,11 @@
+import { buildFastifyServer } from "@tartware/fastify-server";
 import {
   buildRouteSchema,
   jsonObjectSchema,
   schemaFromZod,
 } from "@tartware/openapi";
 import { ReservationCommandLifecycleSchema } from "@tartware/schemas";
-import { buildFastifyServer } from "@tartware/fastify-server";
+import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 
 import { serviceConfig } from "./config.js";
@@ -69,7 +70,7 @@ const ReliabilitySnapshotJsonSchema = schemaFromZod(
   "ReliabilitySnapshot",
 );
 
-export const buildServer = () => {
+export const buildServer = (): FastifyInstance => {
   const app = buildFastifyServer({
     logger: reservationsLogger,
     enableRequestLogging: serviceConfig.requestLogging,

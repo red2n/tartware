@@ -1,7 +1,8 @@
 {
   "$schema": "https://unpkg.com/knip@5/schema.json",
-  "entry": ["src/index.ts"],
-  "project": ["src/**/*.ts"],
+  "project": [
+    "src/**/*.ts"
+  ],
   "ignoreDependencies": [
     "@biomejs/biome",
     "@tartware/schemas",
@@ -9,7 +10,17 @@
     "@tartware/openapi",
     "@tartware/telemetry",
     "@tartware/tenant-auth",
-    "tsx"
+    "tsx",
+    "@fastify/cors",
+    "@fastify/helmet",
+    "@fastify/sensible",
+    "@tartware/fastify-server"
   ],
-  "ignoreBinaries": ["biome", "eslint", "knip", "tsc", "tsx"]
+  "ignoreBinaries": [
+    "biome",
+    "eslint",
+    "knip",
+    "tsc",
+    "tsx"
+  ]
 }
