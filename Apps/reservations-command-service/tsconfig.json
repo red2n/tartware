@@ -24,7 +24,9 @@
       "@tartware/openapi": ["../openapi-utils/src/index.ts"],
       "@tartware/openapi/*": ["../openapi-utils/src/*"],
       "@tartware/outbox": ["../outbox/src/index.ts"],
-      "@tartware/outbox/*": ["../outbox/src/*"]
+      "@tartware/outbox/*": ["../outbox/src/*"],
+      "@tartware/fastify-server": ["../fastify-server/src/index.ts"],
+      "@tartware/fastify-server/*": ["../fastify-server/src/*"]
     }
   },
   "include": ["src/**/*.ts"],

@@ -1,11 +1,5 @@
-import fastifyHelmet from "@fastify/helmet";
-import fastifySensible from "@fastify/sensible";
+import { buildFastifyServer } from "@tartware/fastify-server";
 import { buildRouteSchema, jsonObjectSchema } from "@tartware/openapi";
-import {
-  buildSecureRequestLoggingOptions,
-  withRequestLogging,
-} from "@tartware/telemetry";
-import fastify, { type FastifyBaseLogger } from "fastify";
 
 import { config } from "./config.js";
 import { query, withTransaction } from "./lib/db.js";
@@ -20,17 +14,14 @@ import backfillJobPlugin from "./plugins/backfill-job.js";
 import lifecycleConsumerPlugin from "./plugins/lifecycle-consumer.js";
 
 export const buildServer = () => {
-  const app = fastify({
-    logger: rollLogger as FastifyBaseLogger,
-    disableRequestLogging: !config.log.requestLogging,
+  const app = buildFastifyServer({
+    logger: rollLogger,
+    enableRequestLogging: config.log.requestLogging,
+    corsOrigin: false,
+    enableMetricsEndpoint: false,
+    metricsRegistry,
   });
 
-  if (config.log.requestLogging) {
-    withRequestLogging(app, buildSecureRequestLoggingOptions());
-  }
-
-  void app.register(fastifyHelmet, { global: true });
-  void app.register(fastifySensible);
   void app.register(lifecycleConsumerPlugin);
   void app.register(backfillJobPlugin);
 

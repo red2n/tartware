@@ -28,6 +28,7 @@
     "@fastify/swagger-ui": "^5.2.3",
     "@tartware/command-center-shared": "file:../command-center-shared",
     "@tartware/config": "file:../config",
+    "@tartware/fastify-server": "file:../fastify-server",
     "@tartware/openapi": "file:../openapi-utils",
     "@tartware/outbox": "file:../outbox",
     "@tartware/schemas": "file:../../schema",
@@ -51,9 +52,9 @@
     "eslint-config-prettier": "^9.1.0",
     "eslint-plugin-import": "^2.29.1",
     "knip": "^5.67.0",
-    "vitest": "^1.6.0",
     "tsx": "^4.7.1",
-    "typescript": "^5.3.3"
+    "typescript": "^5.3.3",
+    "vitest": "^1.6.0"
   },
   "engines": {
     "node": ">=20.0.0",

@@ -17,11 +17,12 @@ const complianceMonitorPlugin: FastifyPluginAsync = async (fastify) => {
 
       if (isOutsideComplianceHours(new Date(), offHoursStartHour, offHoursEndHour)) {
         const userId = request.auth.userId ?? "unknown";
-        recordOffHoursAccessEvent(request.routerPath ?? request.url, userId);
+        const routePath = request.routeOptions?.url ?? request.url;
+        recordOffHoursAccessEvent(routePath, userId);
         request.log.warn(
           {
             userId,
-            route: request.routerPath ?? request.url,
+            route: routePath,
             offHoursStartHour,
             offHoursEndHour,
           },

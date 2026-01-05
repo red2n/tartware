@@ -1,11 +1,5 @@
-import fastifyHelmet from "@fastify/helmet";
-import fastifySensible from "@fastify/sensible";
+import { buildFastifyServer } from "@tartware/fastify-server";
 import { buildRouteSchema, jsonObjectSchema } from "@tartware/openapi";
-import {
-  buildSecureRequestLoggingOptions,
-  withRequestLogging,
-} from "@tartware/telemetry";
-import fastify, { type FastifyBaseLogger } from "fastify";
 
 import { config } from "./config.js";
 import { checkDatabaseHealth } from "./lib/health-checks.js";
@@ -25,11 +19,16 @@ import {
 } from "./workers/manual-release-notification-consumer.js";
 
 export const buildServer = () => {
-  const app = fastify({
-    logger: appLogger as FastifyBaseLogger,
-    disableRequestLogging: !config.log.requestLogging,
-    // Disable plugin timeout during dev to allow Kafka/GRPC startup without failing fast
-    pluginTimeout: 0,
+  const app = buildFastifyServer({
+    logger: appLogger,
+    enableRequestLogging: config.log.requestLogging,
+    corsOrigin: false,
+    enableMetricsEndpoint: true,
+    metricsRegistry,
+    serverOptions: {
+      // Disable plugin timeout during dev to allow Kafka/GRPC startup without failing fast
+      pluginTimeout: 0,
+    },
   });
 
   const SHUTDOWN_STEP_TIMEOUT_MS = 5_000;
@@ -54,12 +53,6 @@ export const buildServer = () => {
     }
   };
 
-  if (config.log.requestLogging) {
-    withRequestLogging(app, buildSecureRequestLoggingOptions());
-  }
-
-  void app.register(fastifyHelmet, { global: true });
-  void app.register(fastifySensible);
   void app.register(swaggerPlugin);
   if (process.env.SKIP_GRPC !== "true") {
     void app.register(grpcServerPlugin);
@@ -148,24 +141,6 @@ export const buildServer = () => {
           void reply.code(503);
           return { status: "unavailable", service: config.service.name };
         }
-      },
-    );
-
-    app.get(
-      "/metrics",
-      {
-        schema: buildRouteSchema({
-          tag: "Metrics",
-          summary: "Prometheus metrics",
-          response: {
-            200: { type: "string" },
-          },
-        }),
-      },
-      async (_request, reply) => {
-        void reply.header("Content-Type", metricsRegistry.contentType);
-        const metrics = await metricsRegistry.metrics();
-        return metrics;
       },
     );
   });

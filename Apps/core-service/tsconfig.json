@@ -20,9 +20,11 @@
       "@tartware/config": ["../../config/src/index.ts"],
       "@tartware/config/*": ["../../config/src/*"],
       "@tartware/openapi": ["../../openapi-utils/src/index.ts"],
-      "@tartware/openapi/*": ["../../openapi-utils/src/*"]
+      "@tartware/openapi/*": ["../../openapi-utils/src/*"],
+      "@tartware/fastify-server": ["../../fastify-server/src/index.ts"],
+      "@tartware/fastify-server/*": ["../../fastify-server/src/*"]
     }
   },
-  "include": ["src/**/*", "tests/**/*"],
-  "exclude": ["dist", "node_modules"]
+  "include": ["src/**/*"],
+  "exclude": ["dist", "node_modules", "tests"]
 }

@@ -3,8 +3,10 @@ import { UserWithTenantsSchema } from "@tartware/schemas";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 
+import { query } from "../lib/db.js";
 import { logSystemAdminEvent } from "../services/system-admin-service.js";
 import { listUsers } from "../services/user-service.js";
+import { hashPassword } from "../utils/password.js";
 import { sanitizeForJson } from "../utils/sanitize.js";
 
 const SystemUserListQuerySchema = z.object({
@@ -28,7 +30,103 @@ const SystemUserListResponseJsonSchema = schemaFromZod(
 
 const SYSTEM_USERS_TAG = "System Users";
 
+const CreateUserSchema = z.object({
+  username: z.string().min(3).max(50),
+  email: z.string().email(),
+  password: z.string().min(8),
+  first_name: z.string().min(1).max(100),
+  last_name: z.string().min(1).max(100),
+  phone: z.string().optional(),
+  tenant_id: z.string().uuid().optional(),
+  role: z.enum(["VIEWER", "STAFF", "MANAGER", "ADMIN", "OWNER"]).optional(),
+});
+
+const CreateUserResponseSchema = z.object({
+  id: z.string().uuid(),
+  username: z.string(),
+  email: z.string(),
+  message: z.string(),
+});
+
+const CreateUserJsonSchema = schemaFromZod(CreateUserSchema, "CreateUser");
+const CreateUserResponseJsonSchema = schemaFromZod(CreateUserResponseSchema, "CreateUserResponse");
+
 export const registerSystemUserRoutes = (app: FastifyInstance): void => {
+  app.post(
+    "/v1/system/users",
+    {
+      preHandler: app.withSystemAdminScope({ minRole: "SYSTEM_ADMIN" }),
+      schema: buildRouteSchema({
+        tag: SYSTEM_USERS_TAG,
+        summary: "Create a new user (system admin)",
+        body: CreateUserJsonSchema,
+        response: {
+          201: CreateUserResponseJsonSchema,
+          400: errorResponseSchema,
+          401: errorResponseSchema,
+        },
+      }),
+    },
+    async (request, reply) => {
+      const adminContext = request.systemAdmin;
+      if (!adminContext) {
+        throw request.server.httpErrors.unauthorized("System admin authentication required");
+      }
+
+      const data = CreateUserSchema.parse(request.body);
+      const passwordHash = await hashPassword(data.password);
+
+      const { rows } = await query<{ id: string; username: string; email: string }>(
+        `INSERT INTO users (username, email, password_hash, first_name, last_name, phone, is_active, is_verified)
+         VALUES ($1, $2, $3, $4, $5, $6, true, false)
+         RETURNING id, username, email`,
+        [
+          data.username,
+          data.email,
+          passwordHash,
+          data.first_name,
+          data.last_name,
+          data.phone || null,
+        ],
+      );
+
+      const user = rows[0];
+      if (!user) {
+        throw new Error("Failed to create user");
+      }
+
+      // If tenant_id and role provided, create association
+      if (data.tenant_id && data.role) {
+        await query(
+          `INSERT INTO user_tenant_associations (user_id, tenant_id, role, is_active)
+           VALUES ($1, $2, $3, true)`,
+          [user.id, data.tenant_id, data.role],
+        );
+      }
+
+      await logSystemAdminEvent({
+        adminId: adminContext.adminId,
+        action: "USER_CREATE",
+        resourceType: "USER",
+        resourceId: user.id,
+        requestMethod: "POST",
+        requestPath: request.url,
+        responseStatus: 201,
+        ipAddress: request.ip,
+        userAgent: request.headers["user-agent"],
+        sessionId: adminContext.sessionId,
+      });
+
+      reply.status(201);
+      return CreateUserResponseSchema.parse({
+        id: user.id,
+        username: user.username,
+        email: user.email,
+        message: "User created successfully",
+      });
+    },
+  );
+
   app.get(
     "/v1/system/users",
     {

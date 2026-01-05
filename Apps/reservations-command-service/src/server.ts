@@ -1,16 +1,11 @@
-import fastifyHelmet from "@fastify/helmet";
-import fastifySensible from "@fastify/sensible";
+import { buildFastifyServer } from "@tartware/fastify-server";
 import {
   buildRouteSchema,
   jsonObjectSchema,
   schemaFromZod,
 } from "@tartware/openapi";
 import { ReservationCommandLifecycleSchema } from "@tartware/schemas";
-import {
-  buildSecureRequestLoggingOptions,
-  withRequestLogging,
-} from "@tartware/telemetry";
-import fastify, { type FastifyBaseLogger } from "fastify";
+import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 
 import { serviceConfig } from "./config.js";
@@ -75,19 +70,14 @@ const ReliabilitySnapshotJsonSchema = schemaFromZod(
   "ReliabilitySnapshot",
 );
 
-export const buildServer = () => {
-  const app = fastify({
-    logger: false,
-    loggerInstance: reservationsLogger as FastifyBaseLogger,
-    disableRequestLogging: !serviceConfig.requestLogging,
+export const buildServer = (): FastifyInstance => {
+  const app = buildFastifyServer({
+    logger: reservationsLogger,
+    enableRequestLogging: serviceConfig.requestLogging,
+    corsOrigin: false,
+    enableMetricsEndpoint: false, // Custom metrics endpoint below
   });
 
-  if (serviceConfig.requestLogging) {
-    withRequestLogging(app, buildSecureRequestLoggingOptions());
-  }
-
-  app.register(fastifyHelmet, { global: true });
-  app.register(fastifySensible);
   app.register(swaggerPlugin);
 
   app.after(() => {

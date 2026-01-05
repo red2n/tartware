@@ -1,12 +1,5 @@
-import cors from "@fastify/cors";
-import helmet from "@fastify/helmet";
-import sensible from "@fastify/sensible";
-import {
-  buildSecureRequestLoggingOptions,
-  type PinoLogger,
-  withRequestLogging,
-} from "@tartware/telemetry";
-import Fastify from "fastify";
+import { buildFastifyServer, type FastifyInstance } from "@tartware/fastify-server";
+import type { PinoLogger } from "@tartware/telemetry";
 
 import { config } from "./config.js";
 import { authPlugin } from "./plugins/auth.js";
@@ -18,20 +11,16 @@ type BuildServerOptions = {
   logger: PinoLogger;
 };
 
-export const buildServer = ({ logger }: BuildServerOptions) => {
-  const app = Fastify({
+export const buildServer = ({ logger }: BuildServerOptions): FastifyInstance => {
+  const app = buildFastifyServer({
     logger,
+    enableRequestLogging: config.log.requestLogging,
+    corsOrigin: false,
+    enableMetricsEndpoint: false, // No metrics endpoint for this service
   });
 
-  void app.register(helmet, { global: true });
-  void app.register(cors, { origin: false });
-  void app.register(sensible);
   void app.register(authPlugin);
   void app.register(swaggerPlugin);
-
-  if (config.log.requestLogging) {
-    withRequestLogging(app, buildSecureRequestLoggingOptions());
-  }
 
   app.get("/health", async () => ({
     status: "ok",

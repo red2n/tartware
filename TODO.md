@@ -9,6 +9,13 @@
 6. Telemetry Fan-In Layer & Bloom Filter Maintenance Job – finish observability consolidation and automated cache upkeep.
 7. Premium Access Audit Platform & Billing/Settlement Service – long-range audit/export initiatives once the reliability/security layers are locked in.
 
+### DR. **Production Disaster Recovery Readiness (Priority: BLOCKING)**
+- **Automated Postgres protection** – Replace the single-writer dependency with a managed HA cluster (Patroni/RDS/Crunchy) plus a Velero/WAL-G style backup pipeline that runs on a CronJob and ships encrypted artifacts to the `BACKUP_S3_BUCKET`. Wire services to a highly available endpoint (pgBouncer/proxy) and automate weekly restore drills to prove the RPO/RTO targets defined in `platform/.env.example`.
+- **Rooms command durability** – Refactor `Apps/rooms-service` Kafka consumer to mirror the reservations reliability stack (manual commits, retry helper, DLQ topic, offset ledger, `/health/reliability`), ensuring `rooms.inventory.block/release` commands survive pod restarts, broker flaps, or DB outages.
+- **Promote Availability Guard from shadow mode** – Rename the Postgres tables to canonical (`inventory_locks`, `room_state`), update the gRPC/HTTP server to mutate them, and route the rooms/reservations workflow through the guard client so lock state lives outside the legacy `public.rooms` flags. Ship a replay tool that can rebuild `public.rooms` from guard data after failover.
+- **Kafka continuity** – Stand up MirrorMaker 2 (or provider-native replication) so `commands.primary`, `reservations.events`, and `rooms.inventory.*` replicate to a secondary cluster. Extend service configs with primary/failover broker lists plus a feature flag that flips consumers/producers during DR exercises.
+- **End-to-end DR drill** – Build an executable runbook that kills the primary Postgres + Kafka stack, fails traffic to the standby endpoints, replays guard locks, and verifies a synthetic block → release → availability lookup succeeds within the agreed RTO.
+
 ### 0. **Reservation CRUD Reliability & Retry Architecture (Priority: BLOCKING)**
 - Start Date: 2025-12-15
 - Finish Date: TBD
@@ -25,8 +32,6 @@ Platform-wide standardization for resilient CRUD handling at 20+ ops/sec with au
   - Instrument per-tenant throttle waits + jitter to avoid flooding Kafka partitions, surfacing Prometheus metrics for alerting.
 - Provide Helm/Kustomize manifests + K3s-compatible CronJob/Deployment spec with probes + metrics (outbox queue depth, publish latency).
 - Add CLI/script to manually requeue `FAILED/DLQ` rows after remediation with audit logging.
-- _2025-12-23 Update_: Added `npm run requeue:outbox` (backed by `scripts/requeue-outbox.ts`) so ops can requeue filtered outbox rows with audit metadata (`requeuedAt`/`requeuedBy`) after remediation.
-- _2025-12-27T06:30:00Z Update_: Reservations and Command Center outbox dispatchers now share a tenant-aware throttler (spacing + jitter) via `@tartware/outbox`, with env defaults wired into `.env.example` and dev scripts. Next step: emit throttle-wait metrics and alerts per tenant to catch noisy publishers.
 
 #### 0.2 **Consumer Hardening**
 - Reservations command service switches to manual commit with KafkaJS `eachBatch`, wrapping handler execution in a retry policy (3 quick retries with jittered backoff, then DLQ).
@@ -41,15 +46,10 @@ Platform-wide standardization for resilient CRUD handling at 20+ ops/sec with au
 - Metrics: expose Prometheus counters/gauges via Fastify plugin (`/metrics` endpoint) for retry totals, DLQ count, batch duration, and consumer lag (scraped by K8s/K3s Prometheus operators).
 - Probes: add readiness/liveness endpoints that verify Kafka connectivity + DB health so Deployments/StatefulSets restart unhealthy pods automatically in both Kubernetes distributions.
 
-- _2025-12-15 Update_: Transactional outbox + reservation event offset tables defined, new Kafka reliability env toggles exposed (dev stack + future Helm/K3s wiring). Next step: implement retry helper + DLQ flow using these primitives.
-- _2025-12-15 Update_: Consumer now uses manual commits, bounded retries, DLQ publishing, Prometheus metrics, and readiness/liveness probes (Fastify `/metrics`, `/health/liveness`, `/health/readiness`) ready for K8s/K3s scraping.
-- _2025-12-15 Update_: Transactional outbox writer + dispatcher wired into reservations command API; Kustomize manifests under `platform/apps/reservations-command-service` ship readiness/liveness probes and ServiceMonitor to scrape `/metrics`.
 
 #### 0.3 **Retry & Visibility Controls**
 - Implement configurable retry schedule (e.g., 1s, 5s, 30s) and max attempts; publish metrics (`reservation_event_retries_total`, `reservation_event_dlq_total`).
 - Use Kafka consumer lag + DLQ depth alarms; expose `/health/reliability` endpoint reporting backlog stats, last successful commit, DLQ size.
-- _2025-12-26T10:05:00Z Update_: Reservations command consumer now ships a default retry ladder (1s/5s/30s) that can be overridden via `KAFKA_RETRY_SCHEDULE_MS`, and `/health/reliability` pulls Kafka DLQ depth via the admin API while exporting `reservation_event_dlq_depth` for Prometheus. DLQ warning/critical thresholds live behind `RELIABILITY_DLQ_WARN_THRESHOLD` / `RELIABILITY_DLQ_CRITICAL_THRESHOLD`; next step is wiring these metrics into alertmanager + ops runbooks.
-- _2025-12-26T11:10:00Z Update_: Dead-letter queue depth now feeds Alertmanager via the `reservation_event_dlq_threshold{level=warn|critical}` gauges and two Prometheus alerts (`ReservationCommandDlqWarning`, `ReservationCommandDlqCritical`). The supporting runbook lives at `docs/observability/reservations-dead-letter-queue-runbook.md`; next step is to automate replays and link PagerDuty to the runbook URL.
 
 #### 0.4 **Schema & Config Updates**
 - Extend `@tartware/schemas` event definitions with `retryCount`, `attemptedAt`, and `failureCause` for DLQ reprocessing.
@@ -66,9 +66,6 @@ Platform-wide standardization for resilient CRUD handling at 20+ ops/sec with au
 - Build a guard service/library that stamps every reservation command with lifecycle metadata (correlation ID, state, timestamp, actor) and persists snapshots so operators can query “where is my request?”.
 - Introduce automated flow auditors that scan for stalled states (e.g., stuck in `PERSISTED` > 2 min) and trigger retries or alerting.
 - Expose lifecycle inspection APIs (`GET /v1/reservations/:id/lifecycle`) leveraging the guard data so support can resume workflows from the last safe checkpoint.
-- _2025-12-15 Update_: Documented lifecycle checkpoints + guard-rail expectations in code comments/TODO; next milestone is wiring guard metadata into reservation write path once transactional outbox + offset ledger stabilize.
-- _2025-12-23 Update_: Added `/v1/reservations/:reservationId/lifecycle` (tenant-scoped) that surfaces the `reservation_command_lifecycle` rows so support can trace command states end-to-end. Next steps: layer alerting/auditing on top of the guard data.
-- _2025-12-23 Update_: Reservation command service now records `RECEIVED`/`PERSISTED` states alongside the transactional outbox write, dispatcher flushes update `IN_PROGRESS`/`PUBLISHED`/`FAILED`/`DLQ`, and the Kafka consumer stamps `CONSUMED`/`APPLIED` to close the loop. Lifecycle inspection APIs are live; next steps focus on building stalled-command detectors plus alerting/SLIs that watch the guard data.
 
 #### 0.7 **Rate Plan Fallback System**
 - Enforce deterministic BAR/RACK seed data via setup scripts so every property has a known-good rate plan for emergency pricing (BAR = best available, RACK = published rack).
@@ -76,28 +73,18 @@ Platform-wide standardization for resilient CRUD handling at 20+ ops/sec with au
 - Persist the fallback decision (original code, fallback code, actor, timestamp) in a dedicated audit table and attach to the reservation event so downstream analytics can track override frequency.
 - Add policy knobs per property/tenant (allow/deny fallback, max delta vs. requested rate, notification recipients) and expose operational dashboards showing fallback counts, top offending partners, and escalations.
 - Provide manual replay tooling so revenue managers can re-rate affected reservations once the partner corrects their data.
-- _2025-12-15 Update_: `setup-database.sh` now hard-resets rate plans to BAR/RACK defaults and the data loaders enforce those seeds. Fallback runbook + audit requirements captured above; implementation will plug into reservation ingestion after lifecycle guard wiring.
 
 #### 0.8 **Amenity Catalog Templates**
 - Provide a canonical amenity catalog (WiFi, smart TV, climate control, etc.) per property so room types can be cloned/derived without free-form JSON conflicts. Catalog entries must be open-source friendly, production ready, and safe to regenerate during installs.
 - Update setup automation to purge/normalize conflicting amenity payloads, seed the default catalog, and keep room types aligned so API consumers always start from the sanctioned list.
 - Expose catalog data to API/CLI later for tenant overrides while preserving `is_default` markers so operators understand which entries are Tartware-managed.
-- _2025-12-15T11:45:00Z Update_: Added `room_amenity_catalog` table + indexes, wired into `00-create-all-tables.sql`, and enhanced `setup-database.sh` to upsert the default amenity set (WiFi, Smart TV, Climate Control, etc.) for every property. The script now replaces any non-canonical `room_types.amenities` arrays with the curated list so downstream room creation flows derive from the same template without data conflicts.
-- _2025-12-15T12:15:00Z Update_: Settings-service now exposes `/v1/settings/properties/:propertyId/amenities` (list/create/update) backed by the new catalog, complete with JWT auth, zod validation, and conflict-safe repository logic. Tenants can toggle Tartware defaults via the `isActive` flag or register custom amenities, prepping us for UI enablement later.
-- _2025-12-25T13:10:00Z Update_: Implemented the amenity catalog Postgres schema + seeds, added repository/data layer wiring to settings-service, and exposed JWT-scoped `/v1/settings/properties/:propertyId/amenities` routes (list/create/update) with OpenAPI schemas and Vitest coverage so tenants can manage canonical amenity codes safely.
 - **Next Steps**
   1. Extend the amenity API to support cloning catalog templates directly into `room_types` (bulk selection + metadata propagation) and surface the curated amenity list in the room-creation wizard.
   2. Add guardrail policies per tenant/property (custom tag limits, naming validation, requirement overrides) plus Prometheus metrics + logs that track catalog drift and blocked writes.
   3. Implement an amenity reconciler/repair workflow that scans existing room_types/rooms for out-of-catalog codes, raises drift alerts, and exposes a remediation endpoint to auto-map or remove invalid amenities.
-- _2025-12-26T15:50:00Z Update_: Tooling lane is green again (`npm run build` now succeeds end-to-end after re-installing dependencies under Node 22 per repo engines). This clears the blocker on §3.1 so we can proceed with the next API gateway regression test harness tomorrow.
 
 #### 0.9 **API Discoverability / Swagger**
 - Every Fastify edge (API Gateway, Core Service, Reservations Command Service, Settings Service) must expose OpenAPI 3.0 specs + Swagger UI at `/docs` so platform and partner teams can self-discover endpoints.
-- _2025-12-15T13:05:00Z Update_: Added `@fastify/swagger` + `@fastify/swagger-ui` dependencies to all Fastify services and registered route-independent plugins so `/docs` now renders live specs (Core, Reservations Command, Settings, API Gateway). Next steps: enrich route schemas (request/response bodies) to improve the generated docs and export static bundles for CI compliance reviews.
-- _2025-12-16T06:37:00Z Update_: API Gateway health + reservation proxy routes now include Fastify schemas so `/docs` lists the operations instead of an empty spec. Still need granular schemas for nested reservation resources and the remaining services, plus a script to export the OpenAPI bundle for CI.
-- _2025-12-16T08:10:00Z Update_: Core-service, reservations-command-service, and settings-service now ship baseline schemas on every exposed route (health probes, catalog endpoints, reservation commands, etc.), so their Swagger `/docs` endpoints enumerate the available APIs. Remaining work: replace the generic object/array schemas with precise shapes generated from our Zod definitions and add an automated `npm run export:openapi` target that writes the JSON bundle for CI/compliance.
-- _2025-12-16T09:45:00Z Update_: Core-service and reservations-command-service route schemas now emit OpenAPI responses generated from the Zod validators, and settings-service inherits the Swagger plugin so `/docs` reflects the typed contracts.
-- _2025-12-16T09:45:00Z Update_: Added `npm run export:openapi`, which boots the Fastify instances from their compiled artifacts and writes JSON bundles under `docs/openapi/*.json` for CI/compliance consumers.
 
 #### 0.10 **Core-Service Domain Decomposition & Microservice Readiness**
 
@@ -109,22 +96,6 @@ Platform-wide standardization for resilient CRUD handling at 20+ ops/sec with au
   - Messaging contracts (events, cache invalidation) to keep existing flows working during cohabitation.
 - Introduce a "microservice-ready" checklist inside the repo (lint rule or docs) ensuring each module keeps its code, config, and tests under a cohesive folder tree so it can be lifted out with minimal coupling.
 - Add CI telemetry that surfaces module-level ownership metrics (files per domain, dependency graph) to spot regressions when boundaries blur.
-- _2025-12-17 Update_: Guests domain extracted into `Apps/guests-service` with dedicated Fastify instance + auth context; API gateway now routes `/v1/guests*` there while core-service drops the legacy guest routes. Next steps: iterate on additional domain splits (rooms, housekeeping, billing) and harden inter-service contracts.
-- _2025-12-18 Update_: Rooms domain extracted into `Apps/rooms-service` (Fastify service with shared auth/logging/metrics + SQL under `src/sql`), API gateway proxies `/v1/rooms*` to it, and core-service shed the room routes/tests. Continue decomposing remaining core modules and align per-service env defaults/scripts.
-- _2025-12-18 Update_: Housekeeping tasks moved into `Apps/housekeeping-service`, including Fastify wiring, dedicated SQL, and API gateway proxying `/v1/housekeeping/*`; core-service no longer ships those routes. Next microservice targets: billing & reports.
-- _2025-12-19 Update_: Command Center service planned to centralize command ingress with configurable routing to downstream microservices. Implementation branch `feature/command-center` will introduce the shared outbox package, command registry, and command dispatcher; all future write APIs must funnel through it.
-- _2025-12-19 Update_: Scaffolded `@tartware/command-center-service` with the first `/v1/commands/:commandName/execute` ingress plus a shared `@tartware/outbox` package used by reservations + command-center for transactional outbox access. Next steps: add routing registry, dispatcher wiring, and migrate existing mutating APIs to submit commands instead of direct writes.
-- _2025-12-19T15:30:00Z Update_: Command Center now loads the command catalog (`command_templates`, `command_routes`, `command_features`) into a refreshable registry, enforces per-command module + feature flags, logs dispatches, and ships an outbox dispatcher + Kafka producer so commands are actually published. Follow-up: migrate the first legacy write API to call the Command Center and plumb downstream acknowledgements back into `command_dispatches`.
-- _2025-12-19 Update_: Billing payments now live under `Apps/billing-service` with dedicated Fastify app + compliance retention policy. API gateway proxies `/v1/billing/*`, `.env.example` exposes `BILLING_SERVICE_URL`, and core-service shed the billing routes/tests.
-- _2025-12-19T17:10:00Z Update_: API Gateway now forwards `POST /v1/guests` to the Command Center, and guests-service consumes `guest.register` commands from Kafka via the shared pipeline (calling `upsert_guest`) so guest onboarding is fully event-driven like reservations.
-- _2025-12-19T19:05:00Z Update_: Reservations command service now processes `reservation.modify` and `reservation.cancel` events (with idempotent offsets + DLQ) and guests-service consumes the new `guest.merge` command, while API Gateway exposes dedicated endpoints that forward these writes into the Command Center pipeline.
-- _2025-12-19T19:05:00Z Update_: Rooms-, housekeeping-, and billing-services now run Kafka consumers tied to Command Center commands (`rooms.inventory.block/release`, `housekeeping.task.assign/complete`, `billing.payment.capture/refund`), and API Gateway exposes tenant-scoped command routes so all remaining write APIs flow through the event-driven ingress instead of direct REST calls.
-- _2025-12-19T20:30:00Z Update_: Centralized every command schema under `@tartware/schemas/events/commands/*` and updated the downstream services to import from the shared package (no more app-local command schema drift). Also cleaned the reservations command Fastify bootstrap to remove the deleted REST route registration and fixed the housekeeping command processor so task completions update the correct audit fields.
-- _2025-12-19T21:45:00Z Update_: API Gateway now embeds the command registry/outbox dispatcher from Command Center, performs membership + module checks locally, and publishes accepted commands straight to Kafka (Command Center HTTP ingress retired). All domain services dropped their write REST routes (only `/health` + read/query endpoints remain) and instead host lightweight Kafka consumers that apply the commands directly. Follow-ups: turn off the redundant Command Center Fastify server once the catalog/audit gRPC shim is stood up, and add synthetic load to confirm the gateway+Kafka lane sustains 30k ops/sec before scaling tests.
-- _2025-12-19T22:30:00Z Update_: Locked the gateway's domain proxies (`/v1/guests/*`, `/v1/rooms/*`, `/v1/billing/*`, `/v1/housekeeping/*`) to GET-only reads and removed the legacy `/v1/*` fallback so every write—and every new route—must be explicitly registered and flow through the `submitCommand` pipeline. Validated the change by running each service's `npm run build` (lint → biome → knip → tsc) to ensure API Gateway, billing, guests, housekeeping, rooms, reservations-command-service, and the shared schema package remain healthy.
-- _2025-12-19T23:00:00Z Update_: Removed the legacy `Apps/tartware-ui` workspace (and its dev/build/test wiring) so the monorepo now focuses solely on backend APIs, schemas, and scripts; dev helpers such as `scripts/kill-ports.sh` were scrubbed accordingly.
-- _2025-12-20T00:15:00Z Update_: Added a reusable k6 scenario (`loadtest/k6/command-pipeline.js`) plus Docker Compose + Kubernetes manifests (`platform/kubernetes/loadtest`) so we can exercise the event-driven gateway at 30k ops/sec. Updated `docs/TESTING_ENVIRONMENT.md` with the new workflow and ensured Locust shares the same routes/env wiring.
-- _2025-12-20T00:45:00Z Update_: Extended the load-test harness so both k6 and Locust fire billing capture plus housekeeping assign/complete commands, passed the required ID lists through Compose/k8s env wiring, and updated `docs/TESTING_ENVIRONMENT.md` with guidance on sourcing the reservation/guest/task/staff UUIDs.
 
 ### 0.P0 **Roll Service & Availability Guard Refactor (Priority: P0)**
 End-state goal: decouple scheduled settlement and real-time inventory locking from the hot reservation write path so audit trails stay accurate even when the command service is idle or under duress.
@@ -329,12 +300,10 @@ Shore up urgent items uncovered during the latest core-service review so the pla
    - Update `auth-context` plugin to consume `userCacheService.getUserMemberships` (three-layer Bloom/Redis/Postgres) instead of live DB queries.
    - Emit cache hit/miss metrics + logs for membership lookups; degrade gracefully when Redis is down.
    - Ensure user/association mutations invalidate the cache via shared hooks.
-   - _2025-12-28T15:23:00Z Update_: Auth context now streams membership telemetry from the cache service (hit/miss logging + duration), falls back to direct database lookups automatically when cache access fails, and every membership-affecting flow emits shared invalidation hooks (with Vitest coverage ensuring the fallback path). Section 2.1 is considered complete; follow-on work should leverage the new hooks for future user or association mutations.
 
 2. **System Admin Rate Limiting**
    - Move the token bucket state from the in-process `Map` to Redis (or another distributed store) so rate limits hold across replicas.
    - Add Prometheus counters and structured logs for denied requests (adminId, sessionId, scope) to support SOC reviews.
-   - _2025-12-28T15:35:00Z Update_: System admin throttling now relies exclusively on Redis token buckets (no per-process Map), emits hashed admin/session identifiers via the Prometheus counter + denial logs, and degrades with an explicit warning when Redis is unavailable. Vitest coverage stubs the limiter to assert 429 responses while the Redis integration test continues to exercise the Lua script.
 
 3. **Redis Pattern Deletes**
    - Replace `cacheService.delPattern`’s blocking `KEYS` call with a SCAN-based deleter or tag-based invalidation to avoid production stalls.
@@ -343,7 +312,6 @@ Shore up urgent items uncovered during the latest core-service review so the pla
 4. **PII Redaction & Secure Logging**
    - Configure Fastify/Pino redaction to strip emails, passport numbers, and payment metadata from request logs.
    - Store hashed identifiers in audit logs when possible and keep raw values confined to encrypted tables.
-   - _2025-12-28T15:50:00Z Update_: Telemetry’s sanitizer now detects PII by value (email/passport/payment patterns with Luhn checks) even when keys are unknown, core-service adopts the secure request logging defaults, and the shared logger redacts request headers/query/params plus hashed audit identifiers consolidated under `utils/hash`. This closes the outstanding secure logging gaps for core-service; other services can opt in by consuming the same telemetry helpers.
 
 ### 3. **Shared Logging & Fastify Bootstrap (Priority: HIGH)**
 Consolidate logger + Fastify instrumentation so every service inherits the same PII safeguards and request lifecycle hooks.
@@ -358,7 +326,6 @@ Consolidate logger + Fastify instrumentation so every service inherits the same 
 Guard the gateway + command services with executable regression tests so we can safely tighten rate limits, logging, and retry logic.
 
 - Add Vitest (or node:test) harnesses for each ingress service (API gateway, reservations-command-service, command-center-service, command-center-shared) so health, readiness, metrics, and business routes all have baseline success + failure-path coverage before we enable new commands.
-- Wire the reservations-command-service tests to stub database/kafka dependencies and exercise `/health`, `/health/readiness`, `/health/reliability`, `/metrics`, and `/v1/reservations/:reservationId/lifecycle` using Fastify inject so we catch schema regressions without standing up Postgres/Kafka. ✅ _2025-12-28 Update_: Added `vitest.config.ts`, `tests/setup.ts`, and `tests/server.test.ts`, covering the happy path, dependency failures, and the reservation lifecycle read flow. Running `npm run test --workspace=Apps/reservations-command-service` now validates the Fastify bootstrap once the workspace dependencies (vitest + vite) are installed.
 - Expand the API gateway suite next so command routing, rate limiting, and request-logging hooks stay wired as we refactor plugins; include mocked downstream responses plus failure scenarios (403, 429, schema validation).
 - Follow with command-center-service and command-center-shared unit tests that pin the command registry boot order, Kafka publish contracts, and outbox dispatcher behavior (including DLQ + retry metrics).
 - Track coverage in CI (text + HTML summaries) and fail builds when any ingress service drops below the agreed baseline (start at smoke coverage, then ratchet upward once suites stabilize).
