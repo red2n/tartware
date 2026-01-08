@@ -81,7 +81,10 @@ let resolvedKafkaBrokers = primaryKafkaBrokers;
 if (useKafkaFailover) {
   resolvedKafkaBrokers = failoverKafkaBrokers;
   kafkaActiveCluster = "failover";
-} else if (primaryKafkaBrokers.length === 0 && failoverKafkaBrokers.length > 0) {
+} else if (
+  primaryKafkaBrokers.length === 0 &&
+  failoverKafkaBrokers.length > 0
+) {
   resolvedKafkaBrokers = failoverKafkaBrokers;
   kafkaActiveCluster = "failover";
 }
