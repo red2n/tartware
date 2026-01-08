@@ -146,6 +146,15 @@ env:
       configMapKeyRef:
         name: messaging-config
         key: kafka-brokers
+  - name: KAFKA_FAILOVER_BROKERS
+    valueFrom:
+      configMapKeyRef:
+        name: messaging-config
+        key: kafka-failover-brokers
+  - name: KAFKA_ACTIVE_CLUSTER
+    value: primary
+  - name: KAFKA_FAILOVER_ENABLED
+    value: "false"
 
   # NATS
   - name: NATS_URL

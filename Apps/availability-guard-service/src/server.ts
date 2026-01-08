@@ -106,6 +106,16 @@ export const buildServer = () => {
     app.get("/ready", () => ({
       status: "ready",
       service: config.service.name,
+      kafka: {
+        activeCluster: config.kafka.activeCluster,
+        brokers: config.kafka.brokers,
+        primaryBrokers: config.kafka.primaryBrokers,
+        failoverBrokers: config.kafka.failoverBrokers,
+        topics: [
+          config.kafka.reservationEventsTopic,
+          config.kafka.inventoryEventsTopic,
+        ],
+      },
     }));
 
     app.get(
@@ -135,11 +145,37 @@ export const buildServer = () => {
       async (_request, reply) => {
         try {
           await checkDatabaseHealth();
-          return { status: "ready", service: config.service.name };
+          return {
+            status: "ready",
+            service: config.service.name,
+            kafka: {
+              activeCluster: config.kafka.activeCluster,
+              brokers: config.kafka.brokers,
+              primaryBrokers: config.kafka.primaryBrokers,
+              failoverBrokers: config.kafka.failoverBrokers,
+              topics: [
+                config.kafka.reservationEventsTopic,
+                config.kafka.inventoryEventsTopic,
+              ],
+            },
+          };
         } catch (error) {
           app.log.error(error, "Readiness check failed");
           void reply.code(503);
-          return { status: "unavailable", service: config.service.name };
+          return {
+            status: "unavailable",
+            service: config.service.name,
+            kafka: {
+              activeCluster: config.kafka.activeCluster,
+              brokers: config.kafka.brokers,
+              primaryBrokers: config.kafka.primaryBrokers,
+              failoverBrokers: config.kafka.failoverBrokers,
+              topics: [
+                config.kafka.reservationEventsTopic,
+                config.kafka.inventoryEventsTopic,
+              ],
+            },
+          };
         }
       },
     );

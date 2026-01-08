@@ -21,14 +21,51 @@ const parseList = (value: string | undefined): string[] =>
     .map((entry) => entry.trim())
     .filter((entry) => entry.length > 0) ?? [];
 
+const parseBrokerList = (
+  value: string | undefined,
+  fallback?: string,
+): string[] =>
+  (value ?? fallback ?? "")
+    .split(",")
+    .map((broker) => broker.trim())
+    .filter((broker) => broker.length > 0);
+
 const configValues = loadServiceConfig(databaseSchema);
+
+const primaryKafkaBrokers = parseBrokerList(
+  process.env.KAFKA_BROKERS,
+  "localhost:29092",
+);
+const failoverKafkaBrokers = parseBrokerList(
+  process.env.KAFKA_FAILOVER_BROKERS,
+);
+const requestedKafkaCluster = (
+  process.env.KAFKA_ACTIVE_CLUSTER ?? "primary"
+).toLowerCase();
+const kafkaFailoverEnabled = toBoolean(
+  process.env.KAFKA_FAILOVER_ENABLED,
+  false,
+);
+const shouldUseFailover =
+  (requestedKafkaCluster === "failover" || kafkaFailoverEnabled) &&
+  failoverKafkaBrokers.length > 0;
+const kafkaBrokers =
+  shouldUseFailover && failoverKafkaBrokers.length > 0
+    ? failoverKafkaBrokers
+    : primaryKafkaBrokers.length > 0
+      ? primaryKafkaBrokers
+      : failoverKafkaBrokers;
+const kafkaActiveCluster =
+  kafkaBrokers === failoverKafkaBrokers && kafkaBrokers.length > 0
+    ? "failover"
+    : "primary";
 
 const kafka = {
   clientId: process.env.KAFKA_CLIENT_ID ?? "tartware-availability-guard",
-  brokers: (process.env.KAFKA_BROKERS ?? "localhost:29092")
-    .split(",")
-    .map((broker) => broker.trim())
-    .filter(Boolean),
+  brokers: kafkaBrokers,
+  primaryBrokers: primaryKafkaBrokers,
+  failoverBrokers: failoverKafkaBrokers,
+  activeCluster: kafkaActiveCluster,
   reservationEventsTopic:
     process.env.RESERVATION_EVENTS_TOPIC ?? "reservations.events",
   inventoryEventsTopic:

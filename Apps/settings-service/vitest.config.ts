@@ -1,5 +1,6 @@
 import { defineConfig } from "vitest/config";
-import { resolve } from "node:path";
+
+import { buildTsconfigAliases } from "../../vitest.tsconfig-alias.js";
 
 export default defineConfig({
   test: {
@@ -22,27 +23,6 @@ export default defineConfig({
     },
   },
   resolve: {
-    alias: [
-      {
-        find: /^@tartware\/schemas\/(.*)$/,
-        replacement: resolve(__dirname, "../../schema/src/$1.ts"),
-      },
-      {
-        find: "@tartware/schemas",
-        replacement: resolve(__dirname, "../../schema/src/index.ts"),
-      },
-      {
-        find: "@tartware/telemetry",
-        replacement: resolve(__dirname, "../telemetry/src/index.ts"),
-      },
-      {
-        find: "@tartware/config",
-        replacement: resolve(__dirname, "../config/src/index.ts"),
-      },
-      {
-        find: "@tartware/openapi",
-        replacement: resolve(__dirname, "../openapi-utils/src/index.ts"),
-      },
-    ],
+    alias: buildTsconfigAliases("./tsconfig.json", import.meta.url),
   },
 });

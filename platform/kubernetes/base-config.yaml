@@ -167,6 +167,8 @@ metadata:
   namespace: tartware-system
 data:
   kafka-brokers: "redpanda-0.redpanda.messaging.svc.cluster.local:9092,redpanda-1.redpanda.messaging.svc.cluster.local:9092,redpanda-2.redpanda.messaging.svc.cluster.local:9092,redpanda-3.redpanda.messaging.svc.cluster.local:9092,redpanda-4.redpanda.messaging.svc.cluster.local:9092,redpanda-5.redpanda.messaging.svc.cluster.local:9092,redpanda-6.redpanda.messaging.svc.cluster.local:9092"
+  kafka-failover-brokers: "redpanda-failover.messaging.svc.cluster.local:9092"
+  kafka-critical-topics: "commands.primary,reservations.events,rooms.inventory.*"
   nats-url: "nats://nats-jetstream.messaging.svc.cluster.local:4222"
   # Performance settings
   kafka-batch-size: "65536"

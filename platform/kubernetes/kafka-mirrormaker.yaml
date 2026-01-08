@@ -1,0 +1,97 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: kafka-mirrormaker-config
+  namespace: tartware-system
+data:
+  entrypoint.sh: |
+    #!/usr/bin/env bash
+    set -euo pipefail
+
+    if [[ -z "${PRIMARY_BOOTSTRAP_SERVERS}" || -z "${FAILOVER_BOOTSTRAP_SERVERS}" ]]; then
+      echo "PRIMARY_BOOTSTRAP_SERVERS and FAILOVER_BOOTSTRAP_SERVERS must be set" >&2
+      exit 1
+    fi
+
+    cat <<EOF >/tmp/mm2.properties
+    clusters = primary, failover
+    primary.bootstrap.servers = ${PRIMARY_BOOTSTRAP_SERVERS}
+    failover.bootstrap.servers = ${FAILOVER_BOOTSTRAP_SERVERS}
+    primary.security.protocol = PLAINTEXT
+    failover.security.protocol = PLAINTEXT
+
+    tasks.max = 1
+    refresh.topics.interval.seconds = 60
+    replication.factor = 1
+    offset-syncs.topic.replication.factor = 1
+    sync.topic.acls.enabled = false
+    heartbeats.interval.seconds = 5
+    emit.checkpoints.enabled = true
+    emit.heartbeats.enabled = true
+    checkpoints.topic.replication.factor = 1
+    checkpoints.topic.retention.ms = 604800000
+
+    primary->failover.enabled = true
+    primary->failover.topics = ${CRITICAL_TOPICS}
+    primary->failover.sync.group.offsets.enabled = true
+    primary->failover.emit.checkpoints.enabled = true
+    primary->failover.replication.factor = 1
+    EOF
+
+    exec /usr/bin/connect-mirror-maker /tmp/mm2.properties
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kafka-mirrormaker
+  namespace: tartware-system
+  labels:
+    app.kubernetes.io/name: kafka-mirrormaker
+    app.kubernetes.io/part-of: tartware
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: kafka-mirrormaker
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: kafka-mirrormaker
+    spec:
+      containers:
+        - name: kafka-mirrormaker
+          image: confluentinc/cp-kafka:7.6.1
+          imagePullPolicy: IfNotPresent
+          command:
+            - /bin/bash
+            - /etc/kafka-mirrormaker/entrypoint.sh
+          env:
+            - name: PRIMARY_BOOTSTRAP_SERVERS
+              valueFrom:
+                configMapKeyRef:
+                  name: messaging-config
+                  key: kafka-brokers
+            - name: FAILOVER_BOOTSTRAP_SERVERS
+              valueFrom:
+                configMapKeyRef:
+                  name: messaging-config
+                  key: kafka-failover-brokers
+            - name: CRITICAL_TOPICS
+              valueFrom:
+                configMapKeyRef:
+                  name: messaging-config
+                  key: kafka-critical-topics
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          volumeMounts:
+            - name: kafka-mirrormaker-config
+              mountPath: /etc/kafka-mirrormaker
+      volumes:
+        - name: kafka-mirrormaker-config
+          configMap:
+            name: kafka-mirrormaker-config
