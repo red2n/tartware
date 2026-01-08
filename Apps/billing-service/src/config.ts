@@ -35,6 +35,8 @@ const parseBrokerList = (
     .filter((broker) => broker.length > 0);
 
 const configValues = loadServiceConfig(databaseSchema);
+const runtimeEnv = (process.env.NODE_ENV ?? "development").toLowerCase();
+const isProduction = runtimeEnv === "production";
 const billingDataRetentionDays = toNumber(
   process.env.COMPLIANCE_BILLING_DATA_RETENTION_DAYS,
   2555,
@@ -50,6 +52,8 @@ const primaryKafkaBrokers = parseBrokerList(
   process.env.KAFKA_BROKERS,
   "localhost:29092",
 );
+const usedDefaultPrimary =
+  (process.env.KAFKA_BROKERS ?? "").trim().length === 0;
 const failoverKafkaBrokers = parseBrokerList(
   process.env.KAFKA_FAILOVER_BROKERS,
 );
@@ -71,6 +75,26 @@ const activeKafkaCluster =
   resolvedKafkaBrokers.length > 0
     ? "failover"
     : "primary";
+
+if (primaryKafkaBrokers.length === 0 && failoverKafkaBrokers.length === 0) {
+  throw new Error("KAFKA_BROKERS or KAFKA_FAILOVER_BROKERS must be set");
+}
+
+if (useFailover && failoverKafkaBrokers.length === 0) {
+  throw new Error(
+    "Failover requested/enabled but KAFKA_FAILOVER_BROKERS is empty",
+  );
+}
+
+if (activeKafkaCluster === "primary" && primaryKafkaBrokers.length === 0) {
+  throw new Error("Primary cluster requested but KAFKA_BROKERS is empty");
+}
+
+if (isProduction && usedDefaultPrimary && activeKafkaCluster === "primary") {
+  throw new Error(
+    "Production requires explicit KAFKA_BROKERS; default localhost fallback is disabled",
+  );
+}
 
 const kafka = {
   clientId: process.env.KAFKA_CLIENT_ID ?? "tartware-billing-service",
