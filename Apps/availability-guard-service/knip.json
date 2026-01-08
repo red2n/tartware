@@ -10,8 +10,6 @@
     "@tartware/telemetry",
     "@tartware/config",
     "@fastify/cors",
-    "@fastify/swagger",
-    "@fastify/swagger-ui",
     "p-retry",
     "uuid",
     "tsx",

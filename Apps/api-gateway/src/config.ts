@@ -121,6 +121,7 @@ const primaryKafkaBrokers = parseBrokerList(
 	env.KAFKA_BROKERS,
 	"localhost:29092",
 );
+const usedDefaultPrimary = (env.KAFKA_BROKERS ?? "").trim().length === 0;
 const failoverKafkaBrokers = parseBrokerList(env.KAFKA_FAILOVER_BROKERS);
 const requestedCluster = (env.KAFKA_ACTIVE_CLUSTER ?? "primary").toLowerCase();
 const failoverToggle = parseBoolean(env.KAFKA_FAILOVER_ENABLED, false);
@@ -137,6 +138,26 @@ const resolvedCluster =
 	resolvedBrokers === failoverKafkaBrokers && resolvedBrokers.length > 0
 		? "failover"
 		: "primary";
+
+if (primaryKafkaBrokers.length === 0 && failoverKafkaBrokers.length === 0) {
+	throw new Error("KAFKA_BROKERS or KAFKA_FAILOVER_BROKERS must be set");
+}
+
+if (shouldUseFailover && failoverKafkaBrokers.length === 0) {
+	throw new Error(
+		"Failover requested/enabled but KAFKA_FAILOVER_BROKERS is empty",
+	);
+}
+
+if (!shouldUseFailover && primaryKafkaBrokers.length === 0) {
+	throw new Error("Primary cluster requested but KAFKA_BROKERS is empty");
+}
+
+if (isProduction && usedDefaultPrimary) {
+	throw new Error(
+		"Production requires explicit KAFKA_BROKERS; default localhost fallback is disabled",
+	);
+}
 
 export const kafkaConfig = {
 	clientId: process.env.KAFKA_CLIENT_ID ?? "tartware-api-gateway",

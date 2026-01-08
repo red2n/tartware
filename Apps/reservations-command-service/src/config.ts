@@ -40,11 +40,15 @@ export const serviceConfig = {
   requestLogging: parseBoolean(env.RESERVATION_COMMAND_LOG_REQUESTS, false),
 };
 
+const runtimeEnv = (env.NODE_ENV ?? "development").toLowerCase();
+const isProduction = runtimeEnv === "production";
+
 const defaultRetryScheduleMs = parseNumberList(env.KAFKA_RETRY_SCHEDULE_MS);
 const primaryKafkaBrokers = parseBrokerList(
   env.KAFKA_BROKERS,
   "localhost:9092",
 );
+const usedDefaultPrimary = (env.KAFKA_BROKERS ?? "").trim().length === 0;
 const failoverKafkaBrokers = parseBrokerList(env.KAFKA_FAILOVER_BROKERS);
 const requestedKafkaCluster = (
   env.KAFKA_ACTIVE_CLUSTER ?? "primary"
@@ -64,6 +68,26 @@ const kafkaActiveCluster =
   resolvedKafkaBrokers.length > 0
     ? "failover"
     : "primary";
+
+if (primaryKafkaBrokers.length === 0 && failoverKafkaBrokers.length === 0) {
+  throw new Error("KAFKA_BROKERS or KAFKA_FAILOVER_BROKERS must be set");
+}
+
+if (useFailover && failoverKafkaBrokers.length === 0) {
+  throw new Error(
+    "Failover requested/enabled but KAFKA_FAILOVER_BROKERS is empty",
+  );
+}
+
+if (!useFailover && primaryKafkaBrokers.length === 0) {
+  throw new Error("Primary cluster requested but KAFKA_BROKERS is empty");
+}
+
+if (isProduction && usedDefaultPrimary) {
+  throw new Error(
+    "Production requires explicit KAFKA_BROKERS; default localhost fallback is disabled",
+  );
+}
 
 export const kafkaConfig = {
   clientId: env.KAFKA_CLIENT_ID ?? "tartware-reservations-command",

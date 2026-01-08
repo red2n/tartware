@@ -53,10 +53,15 @@ const parseBrokerList = (
 
 const configValues = loadServiceConfig(databaseSchema);
 
+const runtimeEnv = (process.env.NODE_ENV ?? "development").toLowerCase();
+const isProduction = runtimeEnv === "production";
+
 const primaryKafkaBrokers = parseBrokerList(
   process.env.COMMAND_CENTER_KAFKA_BROKERS,
   "localhost:29092",
 );
+const usedDefaultPrimary =
+  (process.env.COMMAND_CENTER_KAFKA_BROKERS ?? "").trim().length === 0;
 const failoverKafkaBrokers = parseBrokerList(
   process.env.COMMAND_CENTER_KAFKA_FAILOVER_BROKERS ??
     process.env.KAFKA_FAILOVER_BROKERS,
@@ -87,6 +92,30 @@ if (useKafkaFailover) {
 ) {
   resolvedKafkaBrokers = failoverKafkaBrokers;
   kafkaActiveCluster = "failover";
+}
+
+if (primaryKafkaBrokers.length === 0 && failoverKafkaBrokers.length === 0) {
+  throw new Error(
+    "COMMAND_CENTER_KAFKA_BROKERS or COMMAND_CENTER_KAFKA_FAILOVER_BROKERS must be set",
+  );
+}
+
+if (useKafkaFailover && failoverKafkaBrokers.length === 0) {
+  throw new Error(
+    "Failover requested/enabled but COMMAND_CENTER_KAFKA_FAILOVER_BROKERS is empty",
+  );
+}
+
+if (!useKafkaFailover && primaryKafkaBrokers.length === 0) {
+  throw new Error(
+    "Primary cluster requested but COMMAND_CENTER_KAFKA_BROKERS is empty",
+  );
+}
+
+if (isProduction && usedDefaultPrimary) {
+  throw new Error(
+    "Production requires explicit COMMAND_CENTER_KAFKA_BROKERS; default localhost fallback is disabled",
+  );
 }
 
 const kafka = {
