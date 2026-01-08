@@ -32,13 +32,18 @@ data:
     checkpoints.topic.retention.ms = 604800000
 
     primary->failover.enabled = true
-    primary->failover.topics = ${CRITICAL_TOPICS}
+    primary->failover.topics.regex = ${CRITICAL_TOPICS}
     primary->failover.sync.group.offsets.enabled = true
     primary->failover.emit.checkpoints.enabled = true
     primary->failover.replication.factor = 1
     EOF
 
-    exec /usr/bin/connect-mirror-maker /tmp/mm2.properties
+    /usr/bin/connect-mirror-maker /tmp/mm2.properties &
+    CHILD_PID=$!
+
+    trap "kill -TERM ${CHILD_PID}; wait ${CHILD_PID}" SIGTERM SIGINT
+
+    wait ${CHILD_PID}
 ---
 apiVersion: apps/v1
 kind: Deployment

@@ -24,7 +24,22 @@ const parseBoolean = (
   if (value === undefined) {
     return fallback;
   }
-  return !["0", "false", "no", "off"].includes(value.toLowerCase());
+
+  const normalized = value.trim().toLowerCase();
+
+  if (normalized.length === 0) {
+    return fallback;
+  }
+
+  if (["1", "true", "yes", "on"].includes(normalized)) {
+    return true;
+  }
+
+  if (["0", "false", "no", "off"].includes(normalized)) {
+    return false;
+  }
+
+  return fallback;
 };
 
 const parseBrokerList = (
@@ -59,17 +74,17 @@ const kafkaFailoverEnabled = parseBoolean(
 const useKafkaFailover =
   (requestedKafkaCluster === "failover" || kafkaFailoverEnabled) &&
   failoverKafkaBrokers.length > 0;
-const resolvedKafkaBrokers =
-  useKafkaFailover && failoverKafkaBrokers.length > 0
-    ? failoverKafkaBrokers
-    : primaryKafkaBrokers.length > 0
-      ? primaryKafkaBrokers
-      : failoverKafkaBrokers;
-const kafkaActiveCluster =
-  resolvedKafkaBrokers === failoverKafkaBrokers &&
-  resolvedKafkaBrokers.length > 0
-    ? "failover"
-    : "primary";
+
+let kafkaActiveCluster: "primary" | "failover" = "primary";
+let resolvedKafkaBrokers = primaryKafkaBrokers;
+
+if (useKafkaFailover) {
+  resolvedKafkaBrokers = failoverKafkaBrokers;
+  kafkaActiveCluster = "failover";
+} else if (primaryKafkaBrokers.length === 0 && failoverKafkaBrokers.length > 0) {
+  resolvedKafkaBrokers = failoverKafkaBrokers;
+  kafkaActiveCluster = "failover";
+}
 
 const kafka = {
   clientId:

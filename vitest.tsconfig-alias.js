@@ -5,7 +5,19 @@ import { fileURLToPath } from "node:url";
 export const buildTsconfigAliases = (tsconfigRelativePath, importerUrl) => {
   const tsconfigUrl = new URL(tsconfigRelativePath, importerUrl);
   const tsconfigPath = fileURLToPath(tsconfigUrl);
-  const tsconfig = JSON.parse(readFileSync(tsconfigPath, "utf8"));
+  let tsconfig;
+
+  try {
+    const contents = readFileSync(tsconfigPath, "utf8");
+    tsconfig = JSON.parse(contents);
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : String(error);
+    const parseError = new Error(
+      `Failed to load tsconfig from ${tsconfigPath}: ${reason}`,
+    );
+    parseError.cause = error;
+    throw parseError;
+  }
   const paths = tsconfig?.compilerOptions?.paths ?? {};
   const baseDir = path.resolve(
     path.dirname(tsconfigPath),

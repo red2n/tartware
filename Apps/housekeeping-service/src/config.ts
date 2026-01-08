@@ -22,7 +22,22 @@ const parseBoolean = (
   if (value === undefined) {
     return fallback;
   }
-  return !["0", "false", "no", "off"].includes(value.toLowerCase());
+
+  const normalized = value.trim().toLowerCase();
+
+  if (normalized.length === 0) {
+    return fallback;
+  }
+
+  if (["1", "true", "yes", "on"].includes(normalized)) {
+    return true;
+  }
+
+  if (["0", "false", "no", "off"].includes(normalized)) {
+    return false;
+  }
+
+  return fallback;
 };
 
 const parseBrokerList = (
@@ -50,16 +65,17 @@ const failoverToggle = parseBoolean(process.env.KAFKA_FAILOVER_ENABLED, false);
 const useFailover =
   (requestedCluster === "failover" || failoverToggle) &&
   failoverKafkaBrokers.length > 0;
-const kafkaBrokers =
-  useFailover && failoverKafkaBrokers.length > 0
-    ? failoverKafkaBrokers
-    : primaryKafkaBrokers.length > 0
-      ? primaryKafkaBrokers
-      : failoverKafkaBrokers;
-const kafkaActiveCluster =
-  kafkaBrokers === failoverKafkaBrokers && kafkaBrokers.length > 0
-    ? "failover"
-    : "primary";
+
+let kafkaActiveCluster: "primary" | "failover" = "primary";
+let kafkaBrokers = primaryKafkaBrokers;
+
+if (useFailover) {
+  kafkaBrokers = failoverKafkaBrokers;
+  kafkaActiveCluster = "failover";
+} else if (primaryKafkaBrokers.length === 0 && failoverKafkaBrokers.length > 0) {
+  kafkaBrokers = failoverKafkaBrokers;
+  kafkaActiveCluster = "failover";
+}
 
 const kafka = {
   clientId: process.env.KAFKA_CLIENT_ID ?? "tartware-housekeeping-service",
