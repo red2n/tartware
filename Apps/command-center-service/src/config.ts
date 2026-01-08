@@ -106,13 +106,13 @@ if (useKafkaFailover && failoverKafkaBrokers.length === 0) {
   );
 }
 
-if (!useKafkaFailover && primaryKafkaBrokers.length === 0) {
+if (kafkaActiveCluster === "primary" && primaryKafkaBrokers.length === 0) {
   throw new Error(
     "Primary cluster requested but COMMAND_CENTER_KAFKA_BROKERS is empty",
   );
 }
 
-if (isProduction && usedDefaultPrimary) {
+if (isProduction && usedDefaultPrimary && kafkaActiveCluster === "primary") {
   throw new Error(
     "Production requires explicit COMMAND_CENTER_KAFKA_BROKERS; default localhost fallback is disabled",
   );
