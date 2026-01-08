@@ -86,11 +86,11 @@ if (useFailover && failoverKafkaBrokers.length === 0) {
   );
 }
 
-if (!useFailover && primaryKafkaBrokers.length === 0) {
+if (activeKafkaCluster === "primary" && primaryKafkaBrokers.length === 0) {
   throw new Error("Primary cluster requested but KAFKA_BROKERS is empty");
 }
 
-if (isProduction && usedDefaultPrimary) {
+if (isProduction && usedDefaultPrimary && activeKafkaCluster === "primary") {
   throw new Error(
     "Production requires explicit KAFKA_BROKERS; default localhost fallback is disabled",
   );
