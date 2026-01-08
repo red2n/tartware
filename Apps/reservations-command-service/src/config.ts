@@ -24,6 +24,15 @@ const parseBoolean = (
   return !["0", "false", "no", "off"].includes(value.toLowerCase());
 };
 
+const parseBrokerList = (
+  value: string | undefined,
+  fallback?: string,
+): string[] =>
+  (value ?? fallback ?? "")
+    .split(",")
+    .map((broker) => broker.trim())
+    .filter((broker) => broker.length > 0);
+
 export const serviceConfig = {
   port: Number(env.RESERVATION_COMMAND_PORT ?? 3101),
   host: env.RESERVATION_COMMAND_HOST ?? "0.0.0.0",
@@ -32,13 +41,36 @@ export const serviceConfig = {
 };
 
 const defaultRetryScheduleMs = parseNumberList(env.KAFKA_RETRY_SCHEDULE_MS);
+const primaryKafkaBrokers = parseBrokerList(
+  env.KAFKA_BROKERS,
+  "localhost:9092",
+);
+const failoverKafkaBrokers = parseBrokerList(env.KAFKA_FAILOVER_BROKERS);
+const requestedKafkaCluster = (
+  env.KAFKA_ACTIVE_CLUSTER ?? "primary"
+).toLowerCase();
+const kafkaFailoverEnabled = parseBoolean(env.KAFKA_FAILOVER_ENABLED, false);
+const useFailover =
+  (requestedKafkaCluster === "failover" || kafkaFailoverEnabled) &&
+  failoverKafkaBrokers.length > 0;
+const resolvedKafkaBrokers =
+  useFailover && failoverKafkaBrokers.length > 0
+    ? failoverKafkaBrokers
+    : primaryKafkaBrokers.length > 0
+      ? primaryKafkaBrokers
+      : failoverKafkaBrokers;
+const kafkaActiveCluster =
+  resolvedKafkaBrokers === failoverKafkaBrokers &&
+  resolvedKafkaBrokers.length > 0
+    ? "failover"
+    : "primary";
 
 export const kafkaConfig = {
   clientId: env.KAFKA_CLIENT_ID ?? "tartware-reservations-command",
-  brokers: (env.KAFKA_BROKERS ?? "localhost:9092")
-    .split(",")
-    .map((broker) => broker.trim())
-    .filter((broker) => broker.length > 0),
+  brokers: resolvedKafkaBrokers,
+  primaryBrokers: primaryKafkaBrokers,
+  failoverBrokers: failoverKafkaBrokers,
+  activeCluster: kafkaActiveCluster,
   topic: env.KAFKA_RESERVATION_TOPIC ?? "reservations.events",
   consumerGroupId:
     env.KAFKA_RESERVATION_CONSUMER_GROUP ?? "reservations-event-consumers",

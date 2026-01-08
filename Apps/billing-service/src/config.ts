@@ -25,6 +25,15 @@ const toBoolean = (value: string | undefined, fallback: boolean): boolean => {
   return !FALSEY_VALUES.has(value.toLowerCase());
 };
 
+const parseBrokerList = (
+  value: string | undefined,
+  fallback?: string,
+): string[] =>
+  (value ?? fallback ?? "")
+    .split(",")
+    .map((broker) => broker.trim())
+    .filter((broker) => broker.length > 0);
+
 const configValues = loadServiceConfig(databaseSchema);
 const billingDataRetentionDays = toNumber(
   process.env.COMPLIANCE_BILLING_DATA_RETENTION_DAYS,
@@ -37,12 +46,38 @@ const requireBillingEncryption = toBoolean(
 const billingEncryptionKey =
   process.env.BILLING_DATA_ENCRYPTION_KEY ?? "local-dev-billing-key";
 
+const primaryKafkaBrokers = parseBrokerList(
+  process.env.KAFKA_BROKERS,
+  "localhost:29092",
+);
+const failoverKafkaBrokers = parseBrokerList(
+  process.env.KAFKA_FAILOVER_BROKERS,
+);
+const requestedCluster = (
+  process.env.KAFKA_ACTIVE_CLUSTER ?? "primary"
+).toLowerCase();
+const failoverToggle = toBoolean(process.env.KAFKA_FAILOVER_ENABLED, false);
+const useFailover =
+  (requestedCluster === "failover" || failoverToggle) &&
+  failoverKafkaBrokers.length > 0;
+const resolvedKafkaBrokers =
+  useFailover && failoverKafkaBrokers.length > 0
+    ? failoverKafkaBrokers
+    : primaryKafkaBrokers.length > 0
+      ? primaryKafkaBrokers
+      : failoverKafkaBrokers;
+const activeKafkaCluster =
+  resolvedKafkaBrokers === failoverKafkaBrokers &&
+  resolvedKafkaBrokers.length > 0
+    ? "failover"
+    : "primary";
+
 const kafka = {
   clientId: process.env.KAFKA_CLIENT_ID ?? "tartware-billing-service",
-  brokers: (process.env.KAFKA_BROKERS ?? "localhost:29092")
-    .split(",")
-    .map((broker) => broker.trim())
-    .filter((broker) => broker.length > 0),
+  brokers: resolvedKafkaBrokers,
+  primaryBrokers: primaryKafkaBrokers,
+  failoverBrokers: failoverKafkaBrokers,
+  activeCluster: activeKafkaCluster,
 };
 
 const commandCenter = {

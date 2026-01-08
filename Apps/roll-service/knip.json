@@ -15,6 +15,7 @@
     "@tartware/config",
     "p-retry",
     "zod",
+    "tsx",
     "@fastify/helmet",
     "@fastify/sensible",
     "@tartware/fastify-server"
@@ -24,7 +25,8 @@
     "eslint",
     "knip",
     "tsc",
-    "tsx"
+    "tsx",
+    "vitest"
   ],
   "ignoreExportsUsedInFile": true
 }

@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { buildServer } from "../src/server.js";
+import { kafkaConfig } from "../src/config.js";
 import {
   checkDatabaseHealth,
   checkKafkaHealth,
@@ -66,6 +67,13 @@ describe("reservations-command-service HTTP routes", () => {
       status: "unavailable",
       service: process.env.RESERVATION_COMMAND_ID,
       error: error.message,
+      kafka: {
+        activeCluster: kafkaConfig.activeCluster,
+        brokers: kafkaConfig.brokers,
+        primaryBrokers: kafkaConfig.primaryBrokers,
+        failoverBrokers: kafkaConfig.failoverBrokers,
+        topic: kafkaConfig.topic,
+      },
     });
 
     await app.close();
@@ -85,6 +93,13 @@ describe("reservations-command-service HTTP routes", () => {
     expect(response.json()).toMatchObject({
       status: "ready",
       service: process.env.RESERVATION_COMMAND_ID,
+      kafka: {
+        activeCluster: kafkaConfig.activeCluster,
+        brokers: kafkaConfig.brokers,
+        primaryBrokers: kafkaConfig.primaryBrokers,
+        failoverBrokers: kafkaConfig.failoverBrokers,
+        topic: kafkaConfig.topic,
+      },
     });
 
     await app.close();

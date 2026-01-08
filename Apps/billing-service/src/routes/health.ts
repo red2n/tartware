@@ -13,5 +13,12 @@ export const registerHealthRoutes = (app: FastifyInstance): void => {
     status: "ready",
     service: config.service.name,
     version: config.service.version,
+    kafka: {
+      activeCluster: config.kafka.activeCluster,
+      brokers: config.kafka.brokers,
+      primaryBrokers: config.kafka.primaryBrokers,
+      failoverBrokers: config.kafka.failoverBrokers,
+      topic: config.commandCenter.topic,
+    },
   }));
 };

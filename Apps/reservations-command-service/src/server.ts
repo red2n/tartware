@@ -8,7 +8,7 @@ import { ReservationCommandLifecycleSchema } from "@tartware/schemas";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 
-import { serviceConfig } from "./config.js";
+import { kafkaConfig, serviceConfig } from "./config.js";
 import { checkDatabaseHealth, checkKafkaHealth } from "./lib/health-checks.js";
 import { metricsRegistry } from "./lib/metrics.js";
 import { reservationsLogger } from "./logger.js";
@@ -120,6 +120,14 @@ export const buildServer = (): FastifyInstance => {
       }),
     );
 
+    const kafkaSummary = {
+      activeCluster: kafkaConfig.activeCluster,
+      brokers: kafkaConfig.brokers,
+      primaryBrokers: kafkaConfig.primaryBrokers,
+      failoverBrokers: kafkaConfig.failoverBrokers,
+      topic: kafkaConfig.topic,
+    } as const;
+
     app.get(
       "/health/readiness",
       {
@@ -138,6 +146,7 @@ export const buildServer = (): FastifyInstance => {
           return {
             status: "ready",
             service: serviceConfig.serviceId,
+            kafka: kafkaSummary,
           };
         } catch (error) {
           app.log.error(error, "Readiness check failed");
@@ -145,6 +154,7 @@ export const buildServer = (): FastifyInstance => {
           return {
             status: "unavailable",
             service: serviceConfig.serviceId,
+            kafka: kafkaSummary,
             error: error instanceof Error ? error.message : String(error),
           };
         }

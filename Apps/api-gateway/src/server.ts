@@ -8,7 +8,12 @@ import {
 } from "@tartware/openapi";
 import type { FastifyPluginAsync, FastifyReply, FastifyRequest } from "fastify";
 
-import { devToolsConfig, gatewayConfig, serviceTargets } from "./config.js";
+import {
+	devToolsConfig,
+	gatewayConfig,
+	kafkaConfig,
+	serviceTargets,
+} from "./config.js";
 import { registerDuploDashboard } from "./devtools/duplo-dashboard.js";
 import { gatewayLogger } from "./logger.js";
 import authContextPlugin from "./plugins/auth-context.js";
@@ -32,6 +37,34 @@ const healthResponseSchema = {
 		service: { type: "string" },
 	},
 	required: ["status", "service"],
+	additionalProperties: false,
+} as const satisfies JsonSchema;
+
+const readinessResponseSchema = {
+	type: "object",
+	properties: {
+		status: { type: "string" },
+		service: { type: "string" },
+		kafka: {
+			type: "object",
+			properties: {
+				activeCluster: { type: "string" },
+				brokers: { type: "array", items: { type: "string" } },
+				primaryBrokers: { type: "array", items: { type: "string" } },
+				failoverBrokers: { type: "array", items: { type: "string" } },
+				topic: { type: "string" },
+			},
+			required: [
+				"activeCluster",
+				"brokers",
+				"primaryBrokers",
+				"failoverBrokers",
+				"topic",
+			],
+			additionalProperties: false,
+		},
+	},
+	required: ["status", "service", "kafka"],
 	additionalProperties: false,
 } as const satisfies JsonSchema;
 
@@ -130,6 +163,14 @@ export const buildServer = () => {
 	);
 
 	app.after(() => {
+		const kafkaSummary = {
+			activeCluster: kafkaConfig.activeCluster,
+			brokers: kafkaConfig.brokers,
+			primaryBrokers: kafkaConfig.primaryBrokers,
+			failoverBrokers: kafkaConfig.failoverBrokers,
+			topic: kafkaConfig.commandTopic,
+		} as const;
+
 		if (devToolsConfig.duploDashboard.enabled) {
 			registerDuploDashboard(app, {
 				sharedSecret: devToolsConfig.duploDashboard.sharedSecret,
@@ -206,7 +247,7 @@ export const buildServer = () => {
 					tag: HEALTH_TAG,
 					summary: "API gateway readiness status.",
 					response: {
-						200: healthResponseSchema,
+						200: readinessResponseSchema,
 					},
 				}),
 			},
@@ -215,6 +256,7 @@ export const buildServer = () => {
 				return reply.send({
 					status: "ok",
 					service: gatewayConfig.serviceId,
+					kafka: kafkaSummary,
 				});
 			},
 		);

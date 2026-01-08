@@ -17,15 +17,85 @@ const toNumber = (value: string | undefined, fallback: number): number => {
   return fallback;
 };
 
+const parseBoolean = (
+  value: string | undefined,
+  fallback: boolean,
+): boolean => {
+  if (value === undefined) {
+    return fallback;
+  }
+
+  const normalized = value.trim().toLowerCase();
+
+  if (normalized.length === 0) {
+    return fallback;
+  }
+
+  if (["1", "true", "yes", "on"].includes(normalized)) {
+    return true;
+  }
+
+  if (["0", "false", "no", "off"].includes(normalized)) {
+    return false;
+  }
+
+  return fallback;
+};
+
+const parseBrokerList = (
+  value: string | undefined,
+  fallback?: string,
+): string[] =>
+  (value ?? fallback ?? "")
+    .split(",")
+    .map((broker) => broker.trim())
+    .filter((broker) => broker.length > 0);
+
 const configValues = loadServiceConfig(databaseSchema);
+
+const primaryKafkaBrokers = parseBrokerList(
+  process.env.COMMAND_CENTER_KAFKA_BROKERS,
+  "localhost:29092",
+);
+const failoverKafkaBrokers = parseBrokerList(
+  process.env.COMMAND_CENTER_KAFKA_FAILOVER_BROKERS ??
+    process.env.KAFKA_FAILOVER_BROKERS,
+);
+const requestedKafkaCluster = (
+  process.env.COMMAND_CENTER_KAFKA_ACTIVE_CLUSTER ??
+  process.env.KAFKA_ACTIVE_CLUSTER ??
+  "primary"
+).toLowerCase();
+const kafkaFailoverEnabled = parseBoolean(
+  process.env.COMMAND_CENTER_KAFKA_FAILOVER_ENABLED ??
+    process.env.KAFKA_FAILOVER_ENABLED,
+  false,
+);
+const useKafkaFailover =
+  (requestedKafkaCluster === "failover" || kafkaFailoverEnabled) &&
+  failoverKafkaBrokers.length > 0;
+
+let kafkaActiveCluster: "primary" | "failover" = "primary";
+let resolvedKafkaBrokers = primaryKafkaBrokers;
+
+if (useKafkaFailover) {
+  resolvedKafkaBrokers = failoverKafkaBrokers;
+  kafkaActiveCluster = "failover";
+} else if (
+  primaryKafkaBrokers.length === 0 &&
+  failoverKafkaBrokers.length > 0
+) {
+  resolvedKafkaBrokers = failoverKafkaBrokers;
+  kafkaActiveCluster = "failover";
+}
 
 const kafka = {
   clientId:
     process.env.COMMAND_CENTER_KAFKA_CLIENT_ID ?? "tartware-command-center",
-  brokers: (process.env.COMMAND_CENTER_KAFKA_BROKERS ?? "localhost:29092")
-    .split(",")
-    .map((broker) => broker.trim())
-    .filter((broker) => broker.length > 0),
+  brokers: resolvedKafkaBrokers,
+  primaryBrokers: primaryKafkaBrokers,
+  failoverBrokers: failoverKafkaBrokers,
+  activeCluster: kafkaActiveCluster,
   topic: process.env.COMMAND_CENTER_KAFKA_TOPIC ?? "commands.primary",
   dlqTopic: process.env.COMMAND_CENTER_DLQ_TOPIC ?? "commands.primary.dlq",
 };

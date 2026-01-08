@@ -1,6 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
 import { buildServer } from "../src/server.js";
+import { kafkaConfig } from "../src/config.js";
 
 const { submitCommandMock, proxyRequestMock } = vi.hoisted(() => {
   return {
@@ -65,6 +66,26 @@ describe("API Gateway server", () => {
     expect(response.json()).toMatchObject({
       status: "ok",
       service: expect.any(String),
+    });
+  });
+
+  it("reports readiness with kafka cluster summary", async () => {
+    const response = await app.inject({
+      method: "GET",
+      url: "/ready",
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toMatchObject({
+      status: "ok",
+      service: expect.any(String),
+      kafka: {
+        activeCluster: kafkaConfig.activeCluster,
+        brokers: kafkaConfig.brokers,
+        primaryBrokers: kafkaConfig.primaryBrokers,
+        failoverBrokers: kafkaConfig.failoverBrokers,
+        topic: kafkaConfig.commandTopic,
+      },
     });
   });
 

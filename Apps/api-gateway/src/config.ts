@@ -50,6 +50,15 @@ const toDelay = (value: string | undefined, fallback: number): number => {
 	return Math.max(250, parsed);
 };
 
+const parseBrokerList = (
+	value: string | undefined,
+	fallback?: string,
+): string[] =>
+	(value ?? fallback ?? "")
+		.split(",")
+		.map((broker) => broker.trim())
+		.filter((broker) => broker.length > 0);
+
 const baseConfig = loadServiceConfig(databaseSchema);
 const runtimeEnvironment = (env.NODE_ENV ?? "development").toLowerCase();
 const isProduction = runtimeEnvironment === "production";
@@ -108,12 +117,33 @@ export const authConfig = {
 	},
 };
 
+const primaryKafkaBrokers = parseBrokerList(
+	env.KAFKA_BROKERS,
+	"localhost:29092",
+);
+const failoverKafkaBrokers = parseBrokerList(env.KAFKA_FAILOVER_BROKERS);
+const requestedCluster = (env.KAFKA_ACTIVE_CLUSTER ?? "primary").toLowerCase();
+const failoverToggle = parseBoolean(env.KAFKA_FAILOVER_ENABLED, false);
+const shouldUseFailover =
+	(requestedCluster === "failover" || failoverToggle) &&
+	failoverKafkaBrokers.length > 0;
+const resolvedBrokers =
+	shouldUseFailover && failoverKafkaBrokers.length > 0
+		? failoverKafkaBrokers
+		: primaryKafkaBrokers.length > 0
+			? primaryKafkaBrokers
+			: failoverKafkaBrokers;
+const resolvedCluster =
+	resolvedBrokers === failoverKafkaBrokers && resolvedBrokers.length > 0
+		? "failover"
+		: "primary";
+
 export const kafkaConfig = {
 	clientId: process.env.KAFKA_CLIENT_ID ?? "tartware-api-gateway",
-	brokers: (process.env.KAFKA_BROKERS ?? "localhost:29092")
-		.split(",")
-		.map((broker) => broker.trim())
-		.filter((broker) => broker.length > 0),
+	primaryBrokers: primaryKafkaBrokers,
+	failoverBrokers: failoverKafkaBrokers,
+	activeCluster: resolvedCluster,
+	brokers: resolvedBrokers,
 	commandTopic: process.env.COMMAND_CENTER_TOPIC ?? "commands.primary",
 };
 

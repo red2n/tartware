@@ -15,14 +15,77 @@ const toNumber = (value: string | undefined, fallback: number): number => {
   return Number.isFinite(parsed) ? parsed : fallback;
 };
 
+const parseBoolean = (
+  value: string | undefined,
+  fallback: boolean,
+): boolean => {
+  if (value === undefined) {
+    return fallback;
+  }
+
+  const normalized = value.trim().toLowerCase();
+
+  if (normalized.length === 0) {
+    return fallback;
+  }
+
+  if (["1", "true", "yes", "on"].includes(normalized)) {
+    return true;
+  }
+
+  if (["0", "false", "no", "off"].includes(normalized)) {
+    return false;
+  }
+
+  return fallback;
+};
+
+const parseBrokerList = (
+  value: string | undefined,
+  fallback?: string,
+): string[] =>
+  (value ?? fallback ?? "")
+    .split(",")
+    .map((broker) => broker.trim())
+    .filter((broker) => broker.length > 0);
+
 const configValues = loadServiceConfig(databaseSchema);
+
+const primaryKafkaBrokers = parseBrokerList(
+  process.env.KAFKA_BROKERS,
+  "localhost:29092",
+);
+const failoverKafkaBrokers = parseBrokerList(
+  process.env.KAFKA_FAILOVER_BROKERS,
+);
+const requestedCluster = (
+  process.env.KAFKA_ACTIVE_CLUSTER ?? "primary"
+).toLowerCase();
+const failoverToggle = parseBoolean(process.env.KAFKA_FAILOVER_ENABLED, false);
+const useFailover =
+  (requestedCluster === "failover" || failoverToggle) &&
+  failoverKafkaBrokers.length > 0;
+
+let kafkaActiveCluster: "primary" | "failover" = "primary";
+let kafkaBrokers = primaryKafkaBrokers;
+
+if (useFailover) {
+  kafkaBrokers = failoverKafkaBrokers;
+  kafkaActiveCluster = "failover";
+} else if (
+  primaryKafkaBrokers.length === 0 &&
+  failoverKafkaBrokers.length > 0
+) {
+  kafkaBrokers = failoverKafkaBrokers;
+  kafkaActiveCluster = "failover";
+}
 
 const kafka = {
   clientId: process.env.KAFKA_CLIENT_ID ?? "tartware-housekeeping-service",
-  brokers: (process.env.KAFKA_BROKERS ?? "localhost:29092")
-    .split(",")
-    .map((broker) => broker.trim())
-    .filter((broker) => broker.length > 0),
+  brokers: kafkaBrokers,
+  primaryBrokers: primaryKafkaBrokers,
+  failoverBrokers: failoverKafkaBrokers,
+  activeCluster: kafkaActiveCluster,
 };
 
 const commandCenter = {
