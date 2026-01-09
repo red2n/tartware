@@ -31,7 +31,7 @@ type CreateUserResponse = {
 type CreateTenantRequest = {
   name: string;
   slug: string;
-  type?: 'INDIVIDUAL' | 'BUSINESS' | 'ENTERPRISE';
+  type?: 'INDEPENDENT' | 'CHAIN' | 'FRANCHISE' | 'MANAGEMENT_COMPANY';
   email: string;
   phone?: string;
   website?: string;

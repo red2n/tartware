@@ -40,9 +40,10 @@ import { extractErrorMessage } from '../services/error-utils';
             <label>
               Type
               <select formControlName="type">
-                <option value="BUSINESS">Business</option>
-                <option value="INDIVIDUAL">Individual</option>
-                <option value="ENTERPRISE">Enterprise</option>
+                <option value="INDEPENDENT">Independent</option>
+                <option value="CHAIN">Chain</option>
+                <option value="FRANCHISE">Franchise</option>
+                <option value="MANAGEMENT_COMPANY">Management Company</option>
               </select>
             </label>
             <label>
@@ -163,7 +164,7 @@ export class TenantsComponent implements OnInit {
   readonly createForm = this.fb.nonNullable.group({
     name: ['', [Validators.required, Validators.minLength(1), Validators.maxLength(200)]],
     slug: ['', [Validators.required, Validators.pattern(/^[a-z0-9-]+$/)]],
-    type: ['BUSINESS' as const],
+    type: ['INDEPENDENT' as const],
     email: ['', [Validators.required, Validators.email]],
     phone: [''],
     website: ['', [Validators.pattern(/^https?:\/\/.+/)]],
@@ -200,7 +201,7 @@ export class TenantsComponent implements OnInit {
       const data = {
         name: formValue.name!,
         slug: formValue.slug!,
-        type: formValue.type! as 'INDIVIDUAL' | 'BUSINESS' | 'ENTERPRISE',
+        type: formValue.type! as 'INDEPENDENT' | 'CHAIN' | 'FRANCHISE' | 'MANAGEMENT_COMPANY',
         email: formValue.email!,
         phone: formValue.phone || undefined,
         website: formValue.website || undefined,
@@ -227,7 +228,7 @@ export class TenantsComponent implements OnInit {
     this.createForm.reset({
       name: '',
       slug: '',
-      type: 'BUSINESS',
+      type: 'INDEPENDENT',
       email: '',
       phone: '',
       website: '',

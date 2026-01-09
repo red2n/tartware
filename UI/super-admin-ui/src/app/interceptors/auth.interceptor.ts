@@ -9,8 +9,9 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
 
   let cloned: HttpRequest<unknown> | null = null;
 
-  const isSystem = req.url.includes('/system/');
-  const token = isSystem
+  // Command Center endpoints require system admin token
+  const isSystemEndpoint = req.url.includes('/system/') || req.url.includes('/commands/');
+  const token = isSystemEndpoint
     ? admin
     : impersonation ?? admin; // prefer impersonation for tenant-scoped calls; fall back to admin if available
 
