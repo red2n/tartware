@@ -13,6 +13,8 @@ const SettingsSectionArraySchema = z.array(SettingsSectionsSchema);
 const SettingsDefinitionArraySchema = z.array(SettingsDefinitionsSchema);
 const SettingsOptionArraySchema = z.array(SettingsOptionsSchema);
 
+const escapeLike = (value: string) => value.replace(/([\\%_])/g, "\\$1");
+
 export type CatalogFilters = {
   activeOnly: boolean;
   categoryId?: string;
@@ -74,10 +76,11 @@ export const listDefinitions = async (filters: CatalogFilters) => {
     conditions.push(`section_id = $${params.length}`);
   }
   if (filters.search) {
-    params.push(`%${filters.search.toLowerCase()}%`);
+    const escaped = escapeLike(filters.search.toLowerCase());
+    params.push(`%${escaped}%`);
     const idx = params.length;
     conditions.push(
-      `(LOWER(code) LIKE $${idx} OR LOWER(name) LIKE $${idx} OR LOWER(description) LIKE $${idx})`,
+      `(LOWER(code) LIKE $${idx} ESCAPE '\\' OR LOWER(name) LIKE $${idx} ESCAPE '\\' OR LOWER(description) LIKE $${idx} ESCAPE '\\')`,
     );
   }
 

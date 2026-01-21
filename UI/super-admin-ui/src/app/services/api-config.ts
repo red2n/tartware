@@ -5,7 +5,7 @@ const resolveApiBase = (): string => {
   if (typeof window === 'undefined') return '/v1';
   const { hostname, port, protocol } = window.location;
   if (hostname === 'localhost' && port === '4200') {
-    return `${protocol}//${hostname}:3200/v1`;
+    return `${protocol}//${hostname}:3000/v1`;
   }
   return '/v1';
 };

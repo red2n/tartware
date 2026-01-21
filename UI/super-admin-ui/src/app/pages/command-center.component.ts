@@ -187,7 +187,9 @@ export class CommandCenterComponent implements OnInit {
       try {
         parsedPayload = JSON.parse(raw.payload || '{}');
       } catch (err) {
-        throw new Error('Payload must be valid JSON');
+        const parseError = err instanceof Error ? err : new Error(String(err));
+        const details = parseError.message ? `: ${parseError.message}` : '';
+        throw new Error(`Payload must be valid JSON${details}`);
       }
 
       const metadata = raw.initiated_by_user_id && raw.initiated_by_role

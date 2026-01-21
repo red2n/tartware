@@ -72,7 +72,8 @@ export const listValues = async (filters: ValueFilters) => {
     conditions.push(`user_id = $${params.length}`);
   }
   if (filters.activeOnly) {
-    conditions.push(`status = 'ACTIVE'`);
+    params.push("ACTIVE");
+    conditions.push(`status = $${params.length}`);
   }
 
   const where = conditions.length ? `WHERE ${conditions.join(" AND ")}` : "";

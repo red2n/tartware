@@ -11,6 +11,14 @@ if (!fs.existsSync(envPath)) {
   process.exit(2);
 }
 
+const rgCheck = spawnSync("rg", ["--version"], { stdio: "ignore" });
+if (rgCheck.error || rgCheck.status !== 0) {
+  console.error(
+    "ripgrep (rg) is required to validate .env usage. Install rg and re-run.",
+  );
+  process.exit(2);
+}
+
 const contents = fs.readFileSync(envPath, "utf8");
 const keys = [];
 const counts = new Map();

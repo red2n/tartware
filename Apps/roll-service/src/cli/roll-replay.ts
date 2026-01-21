@@ -58,9 +58,78 @@ type DerivedSnapshot = {
   rollDate: string;
   occurredAt: string;
   sourceEventType: string;
+  financial?: Record<string, number>;
 };
 
 type ShadowSnapshot = DerivedSnapshot & { ledgerId: string };
+
+const FINANCIAL_FIELDS: Array<{ key: string; aliases: string[] }> = [
+  { key: "total_amount", aliases: ["totalAmount"] },
+  { key: "subtotal_amount", aliases: ["subtotalAmount"] },
+  { key: "tax_amount", aliases: ["taxAmount"] },
+  { key: "fee_amount", aliases: ["feeAmount", "fees", "fees_amount"] },
+  { key: "deposit_amount", aliases: ["depositAmount"] },
+  { key: "balance_due", aliases: ["balanceDue"] },
+  { key: "amount", aliases: [] },
+];
+
+const coerceNumber = (value: unknown): number | null => {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return value;
+  }
+  if (typeof value === "string" && value.trim().length > 0) {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+  return null;
+};
+
+const readPath = (
+  source: Record<string, unknown> | undefined,
+  path: string[],
+): unknown => {
+  let current: unknown = source;
+  for (const key of path) {
+    if (!current || typeof current !== "object") {
+      return undefined;
+    }
+    current = (current as Record<string, unknown>)[key];
+  }
+  return current;
+};
+
+const extractFinancialSnapshot = (
+  payload: Record<string, unknown>,
+): Record<string, number> | undefined => {
+  const snapshot: Record<string, number> = {};
+  const searchRoots: Array<Record<string, unknown> | undefined> = [
+    payload,
+    (payload.payload as Record<string, unknown> | undefined) ?? undefined,
+    (payload.metadata as Record<string, unknown> | undefined) ?? undefined,
+  ];
+
+  for (const field of FINANCIAL_FIELDS) {
+    const candidates = [field.key, ...field.aliases];
+    let value: number | null = null;
+    for (const root of searchRoots) {
+      for (const key of candidates) {
+        const direct = readPath(root, [key]);
+        value = coerceNumber(direct);
+        if (value !== null) {
+          break;
+        }
+      }
+      if (value !== null) {
+        break;
+      }
+    }
+    if (value !== null) {
+      snapshot[field.key] = value;
+    }
+  }
+
+  return Object.keys(snapshot).length > 0 ? snapshot : undefined;
+};
 
 const toDerivedSnapshot = (
   entry: ReturnType<typeof buildLedgerEntryFromLifecycleRow>,
@@ -71,6 +140,7 @@ const toDerivedSnapshot = (
   rollDate: entry.rollDate,
   occurredAt: entry.occurredAt.toISOString(),
   sourceEventType: entry.sourceEventType,
+  financial: extractFinancialSnapshot(entry.payload),
 });
 
 const toShadowSnapshot = (entry: ShadowLedgerEntry): ShadowSnapshot => ({
@@ -81,7 +151,31 @@ const toShadowSnapshot = (entry: ShadowLedgerEntry): ShadowSnapshot => ({
   rollDate: entry.rollDate,
   occurredAt: entry.occurredAt.toISOString(),
   sourceEventType: entry.sourceEventType,
+  financial: extractFinancialSnapshot(entry.payload),
 });
+
+const compareFinancial = (
+  derivedSnapshot: DerivedSnapshot,
+  shadowSnapshot: ShadowSnapshot,
+): FieldDiff[] => {
+  const diffs: FieldDiff[] = [];
+  const derived = derivedSnapshot.financial ?? {};
+  const shadow = shadowSnapshot.financial ?? {};
+  const keys = new Set([...Object.keys(derived), ...Object.keys(shadow)]);
+
+  for (const key of keys) {
+    const expected = derived[key];
+    const actual = shadow[key];
+    if (expected !== actual) {
+      diffs.push({
+        field: `financial.${key}`,
+        expected,
+        actual,
+      });
+    }
+  }
+  return diffs;
+};
 
 const compareEntries = (
   derivedSnapshot: DerivedSnapshot,
@@ -106,6 +200,7 @@ const compareEntries = (
       });
     }
   }
+  diffs.push(...compareFinancial(derivedSnapshot, shadowSnapshot));
   return diffs;
 };
 
@@ -130,6 +225,7 @@ type ReplayReport = {
     shadowEntries: number;
     matches: number;
     mismatches: number;
+    financialMismatches: number;
     missingInShadow: number;
     extraInShadow: number;
   };
@@ -169,6 +265,7 @@ const run = async () => {
   let matches = 0;
   let mismatches = 0;
   let missingInShadow = 0;
+  let financialMismatches = 0;
 
   for (const derived of derivedEntries) {
     const shadow = shadowByLifecycleId.get(derived.lifecycleEventId);
@@ -186,6 +283,10 @@ const run = async () => {
     seenLifecycleIds.add(derived.lifecycleEventId);
     const shadowSnapshot = toShadowSnapshot(shadow);
     const diffs = compareEntries(derivedSnapshot, shadowSnapshot);
+    const financialDiffs = diffs.filter((diff) =>
+      diff.field.startsWith("financial."),
+    );
+    financialMismatches += financialDiffs.length;
 
     if (diffs.length === 0) {
       matches += 1;
@@ -229,6 +330,7 @@ const run = async () => {
       shadowEntries: shadowEntries.length,
       matches,
       mismatches,
+      financialMismatches,
       missingInShadow,
       extraInShadow: extraInShadowEntries.length,
     },
@@ -242,6 +344,7 @@ const run = async () => {
         reservationId: args.reservationId,
         matches,
         mismatches,
+        financialMismatches,
         missingInShadow,
         extraInShadow: extraInShadowEntries.length,
       },
@@ -260,6 +363,7 @@ const run = async () => {
       reservationId: args.reservationId,
       matches,
       mismatches,
+      financialMismatches,
       missingInShadow,
       extraInShadow: extraInShadowEntries.length,
     },
