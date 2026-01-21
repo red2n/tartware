@@ -1,6 +1,5 @@
 import { buildRouteSchema, errorResponseSchema, schemaFromZod } from "@tartware/openapi";
-import { TenantWithRelationsSchema } from "@tartware/schemas";
-import { TenantTypeEnum } from "@tartware/schemas/enums";
+import { TenantTypeEnum, TenantWithRelationsSchema } from "@tartware/schemas";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 

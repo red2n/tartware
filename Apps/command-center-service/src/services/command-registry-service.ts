@@ -262,13 +262,15 @@ const resolveFeature = (
 export const listCommandDefinitions = (): CommandDefinitionView[] => {
   return Array.from(state.templates.values()).map((template) => {
     const label =
-      typeof template.metadata.label === "string" && template.metadata.label.length > 0
+      typeof template.metadata.label === "string" &&
+      template.metadata.label.length > 0
         ? template.metadata.label
         : template.command_name;
     const description =
-      typeof template.metadata.description === "string" && template.metadata.description.length > 0
+      typeof template.metadata.description === "string" &&
+      template.metadata.description.length > 0
         ? template.metadata.description
-        : template.description ?? template.command_name;
+        : (template.description ?? template.command_name);
 
     return {
       name: template.command_name,

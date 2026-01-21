@@ -1,11 +1,17 @@
-import { databaseSchema, loadServiceConfig } from "@tartware/config";
+import {
+  coreAuthSchema,
+  databaseSchema,
+  loadServiceConfig,
+} from "@tartware/config";
 
 process.env.SERVICE_NAME =
   process.env.SERVICE_NAME ?? "@tartware/command-center-service";
 process.env.SERVICE_VERSION = process.env.SERVICE_VERSION ?? "0.1.0";
 process.env.AUTH_JWT_SECRET = process.env.AUTH_JWT_SECRET ?? "local-dev-secret";
-process.env.AUTH_JWT_ISSUER = process.env.AUTH_JWT_ISSUER ?? "@tartware/core-service:system";
-process.env.AUTH_JWT_AUDIENCE = process.env.AUTH_JWT_AUDIENCE ?? "tartware-core";
+process.env.AUTH_JWT_ISSUER =
+  process.env.AUTH_JWT_ISSUER ?? "@tartware/core-service:system";
+process.env.AUTH_JWT_AUDIENCE =
+  process.env.AUTH_JWT_AUDIENCE ?? "tartware-core";
 
 const toNumber = (value: string | undefined, fallback: number): number => {
   if (typeof value === "string" && value.trim().length > 0) {
@@ -51,7 +57,7 @@ const parseBrokerList = (
     .map((broker) => broker.trim())
     .filter((broker) => broker.length > 0);
 
-const configValues = loadServiceConfig(databaseSchema);
+const configValues = loadServiceConfig(databaseSchema.merge(coreAuthSchema));
 
 const runtimeEnv = (process.env.NODE_ENV ?? "development").toLowerCase();
 const isProduction = runtimeEnv === "production";

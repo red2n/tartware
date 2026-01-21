@@ -1,4 +1,9 @@
-import { buildRouteSchema, type JsonSchema, jsonObjectSchema, schemaFromZod } from "@tartware/openapi";
+import {
+  buildRouteSchema,
+  type JsonSchema,
+  jsonObjectSchema,
+  schemaFromZod,
+} from "@tartware/openapi";
 import {
   SettingsCategoriesSchema,
   SettingsDefinitionsSchema,
@@ -10,9 +15,9 @@ import type { FastifyPluginAsync } from "fastify";
 import fp from "fastify-plugin";
 import { z } from "zod";
 
+import { config } from "../config.js";
 import { settingsCatalogData } from "../data/settings-catalog.js";
 import { settingsValues } from "../data/settings-values.js";
-import { config } from "../config.js";
 import {
   listCategories as listDbCategories,
   listDefinitions as listDbDefinitions,
@@ -230,7 +235,9 @@ const catalogRoutes: FastifyPluginAsync = async (app) => {
       }),
     },
     async (request) => {
-      const { active_only, category_id, category_code } = SectionsQuerySchema.parse(request.query ?? {});
+      const { active_only, category_id, category_code } = SectionsQuerySchema.parse(
+        request.query ?? {},
+      );
       let sections = isDbEnabled()
         ? await listDbSections({ activeOnly: active_only, categoryId: category_id })
         : settingsCatalogData.sections;
@@ -241,7 +248,9 @@ const catalogRoutes: FastifyPluginAsync = async (app) => {
         sections = sections.filter((item) => item.category_id === category_id);
       }
       if (category_code) {
-        const category = settingsCatalogData.categories.find((item) => item.code === category_code.toUpperCase());
+        const category = settingsCatalogData.categories.find(
+          (item) => item.code === category_code.toUpperCase(),
+        );
         sections = category ? sections.filter((item) => item.category_id === category.id) : [];
       }
       return SettingsSectionListSchema.parse({
@@ -273,7 +282,7 @@ const catalogRoutes: FastifyPluginAsync = async (app) => {
           })
         : settingsCatalogData.definitions;
       if (active_only) {
-        definitions = definitions.filter((item) => item.is_active);
+        definitions = definitions.filter((item) => !item.is_deprecated);
       }
       if (category_id) {
         definitions = definitions.filter((item) => item.category_id === category_id);
@@ -282,11 +291,17 @@ const catalogRoutes: FastifyPluginAsync = async (app) => {
         definitions = definitions.filter((item) => item.section_id === section_id);
       }
       if (category_code) {
-        const category = settingsCatalogData.categories.find((item) => item.code === category_code.toUpperCase());
-        definitions = category ? definitions.filter((item) => item.category_id === category.id) : [];
+        const category = settingsCatalogData.categories.find(
+          (item) => item.code === category_code.toUpperCase(),
+        );
+        definitions = category
+          ? definitions.filter((item) => item.category_id === category.id)
+          : [];
       }
       if (section_code) {
-        const section = settingsCatalogData.sections.find((item) => item.code === section_code.toUpperCase());
+        const section = settingsCatalogData.sections.find(
+          (item) => item.code === section_code.toUpperCase(),
+        );
         definitions = section ? definitions.filter((item) => item.section_id === section.id) : [];
       }
       if (search) {
@@ -315,7 +330,9 @@ const catalogRoutes: FastifyPluginAsync = async (app) => {
       }),
     },
     async (request) => {
-      const { active_only, setting_id, setting_code } = OptionsQuerySchema.parse(request.query ?? {});
+      const { active_only, setting_id, setting_code } = OptionsQuerySchema.parse(
+        request.query ?? {},
+      );
       let options = isDbEnabled()
         ? await listDbOptions({ activeOnly: active_only, settingId: setting_id })
         : settingsCatalogData.options;
@@ -326,7 +343,9 @@ const catalogRoutes: FastifyPluginAsync = async (app) => {
         options = options.filter((item) => item.setting_id === setting_id);
       }
       if (setting_code) {
-        const definition = settingsCatalogData.definitions.find((item) => item.code === setting_code);
+        const definition = settingsCatalogData.definitions.find(
+          (item) => item.code === setting_code,
+        );
         options = definition ? options.filter((item) => item.setting_id === definition.id) : [];
       }
       return SettingsOptionListSchema.parse({
@@ -353,9 +372,7 @@ const catalogRoutes: FastifyPluginAsync = async (app) => {
       const { categoryCode } = request.params as { categoryCode: string };
       const normalized = categoryCode.toUpperCase();
       const category = isDbEnabled()
-        ? (await listDbCategories({ activeOnly: false })).find(
-            (item) => item.code === normalized,
-          )
+        ? (await listDbCategories({ activeOnly: false })).find((item) => item.code === normalized)
         : settingsCatalogData.categories.find((item) => item.code === normalized);
 
       if (!category) {
@@ -372,7 +389,9 @@ const catalogRoutes: FastifyPluginAsync = async (app) => {
         ? (await listDbDefinitions({ activeOnly: false, categoryId: category.id })).filter(
             (definition) => sectionIds.has(definition.section_id),
           )
-        : settingsCatalogData.definitions.filter((definition) => sectionIds.has(definition.section_id));
+        : settingsCatalogData.definitions.filter((definition) =>
+            sectionIds.has(definition.section_id),
+          );
       const definitionIds = new Set(definitions.map((definition) => definition.id));
       const options = isDbEnabled()
         ? (await listDbOptions({ activeOnly: false })).filter((option) =>

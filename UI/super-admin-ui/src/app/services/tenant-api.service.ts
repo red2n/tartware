@@ -6,9 +6,14 @@ import { API_BASE } from './api-config';
 
 @Injectable({ providedIn: 'root' })
 export class TenantApiService {
-  constructor(private readonly http: HttpClient, @Inject(API_BASE) private readonly api: string) {}
+  private readonly tenantListPath: string;
 
-  private readonly tenantListPath = `${this.api}/system/tenants`;
+  constructor(
+    private readonly http: HttpClient,
+    @Inject(API_BASE) private readonly api: string,
+  ) {
+    this.tenantListPath = `${this.api}/system/tenants`;
+  }
 
   listTenants(limit = 50): Observable<TenantWithRelations[]> {
     const params = new HttpParams().set('limit', limit.toString());

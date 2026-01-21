@@ -21,9 +21,7 @@ export type CatalogFilters = {
   search?: string;
 };
 
-export const listCategories = async (
-  filters: CatalogFilters,
-) => {
+export const listCategories = async (filters: CatalogFilters) => {
   const params: unknown[] = [];
   let where = "";
   if (filters.activeOnly) {
@@ -38,15 +36,13 @@ export const listCategories = async (
   return SettingsCategoryArraySchema.parse(rows);
 };
 
-export const listSections = async (
-  filters: CatalogFilters,
-) => {
+export const listSections = async (filters: CatalogFilters) => {
   const conditions: string[] = [];
   const params: unknown[] = [];
 
   if (filters.activeOnly) {
-    params.push(true);
-    conditions.push(`is_active = $${params.length}`);
+    params.push(false);
+    conditions.push(`is_deprecated = $${params.length}`);
   }
   if (filters.categoryId) {
     params.push(filters.categoryId);
@@ -61,9 +57,7 @@ export const listSections = async (
   return SettingsSectionArraySchema.parse(rows);
 };
 
-export const listDefinitions = async (
-  filters: CatalogFilters,
-) => {
+export const listDefinitions = async (filters: CatalogFilters) => {
   const conditions: string[] = [];
   const params: unknown[] = [];
 
@@ -95,9 +89,7 @@ export const listDefinitions = async (
   return SettingsDefinitionArraySchema.parse(rows);
 };
 
-export const listOptions = async (
-  filters: CatalogFilters,
-) => {
+export const listOptions = async (filters: CatalogFilters) => {
   const conditions: string[] = [];
   const params: unknown[] = [];
 
