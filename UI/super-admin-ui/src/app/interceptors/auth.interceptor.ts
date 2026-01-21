@@ -1,5 +1,6 @@
 import { HttpInterceptorFn, HttpRequest } from '@angular/common/http';
 import { inject } from '@angular/core';
+import { throwError } from 'rxjs';
 import { SystemSessionService } from '../services/system-session.service';
 
 export const authInterceptor: HttpInterceptorFn = (req, next) => {
@@ -9,10 +10,19 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
 
   let cloned: HttpRequest<unknown> | null = null;
 
-  const isSystem = req.url.includes('/system/');
-  const token = isSystem
+  const isSystemEndpoint = req.url.includes('/system/');
+  const isCommandDefinitions = req.url.includes('/commands/definitions');
+  const isCommandExecute = req.url.includes('/commands/') && req.url.includes('/execute');
+
+  if (isCommandExecute && !impersonation) {
+    return throwError(() => new Error('Impersonation token required for command execution.'));
+  }
+
+  const token = isSystemEndpoint || isCommandDefinitions
     ? admin
-    : impersonation ?? admin; // prefer impersonation for tenant-scoped calls; fall back to admin if available
+    : isCommandExecute
+      ? impersonation
+      : impersonation ?? admin; // prefer impersonation for tenant-scoped calls; fall back to admin if available
 
   if (token) {
     cloned = req.clone({

@@ -32,6 +32,21 @@ Copy `.env.example` to `.env` and adjust values for your environment before runn
 |--------|----------------------|----------------------------|------|
 | GET    | `/health`            | Liveness probe             | No   |
 | GET    | `/v1/settings/ping`  | Authenticated connectivity | Yes  |
+| GET    | `/v1/settings/catalog` | Full settings catalog snapshot | Yes |
+| GET    | `/v1/settings/catalog/:categoryCode` | Category metadata tree | Yes |
+| GET    | `/v1/settings/categories` | List categories | Yes |
+| GET    | `/v1/settings/sections` | List sections | Yes |
+| GET    | `/v1/settings/definitions` | List definitions | Yes |
+| GET    | `/v1/settings/options` | List options | Yes |
+| GET    | `/v1/settings/values` | List values (seed or DB) | Yes |
+| POST   | `/v1/settings/values` | Create value (DB mode only) | Yes |
+| PATCH  | `/v1/settings/values/:valueId` | Update value (DB mode only) | Yes |
+
+## Environment
+
+| Variable | Description | Default |
+| --- | --- | --- |
+| `SETTINGS_DATA_SOURCE` | `seed` for in-memory catalog/values, `db` to read/write from Postgres tables. | `seed` |
 
 ## Next Steps
 

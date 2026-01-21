@@ -2,6 +2,7 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 import { Inject, Injectable } from '@angular/core';
 import type { TenantWithRelations } from '@tartware/schemas/core/tenants';
 import type { UserWithTenants } from '@tartware/schemas/core/users';
+import { TenantTypeEnum } from '@tartware/schemas/enums';
 import { Observable } from 'rxjs';
 import { API_BASE } from './api-config';
 
@@ -28,10 +29,12 @@ type CreateUserResponse = {
   message: string;
 };
 
+type TenantType = (typeof TenantTypeEnum.options)[number];
+
 type CreateTenantRequest = {
   name: string;
   slug: string;
-  type?: 'INDIVIDUAL' | 'BUSINESS' | 'ENTERPRISE';
+  type?: TenantType;
   email: string;
   phone?: string;
   website?: string;

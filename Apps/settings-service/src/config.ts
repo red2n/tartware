@@ -10,6 +10,9 @@ export const config = {
     name: configValues.SERVICE_NAME,
     version: configValues.SERVICE_VERSION,
   },
+  settings: {
+    dataSource: (process.env.SETTINGS_DATA_SOURCE ?? "seed").toLowerCase(),
+  },
   port: configValues.PORT,
   host: configValues.HOST,
   log: {

@@ -2,6 +2,7 @@ import { CommonModule } from '@angular/common';
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import type { TenantWithRelations } from '@tartware/schemas/core/tenants';
+import { TenantTypeEnum } from '@tartware/schemas/enums';
 import { firstValueFrom } from 'rxjs';
 import { SystemAdminApiService } from '../services/system-admin-api.service';
 import { extractErrorMessage } from '../services/error-utils';
@@ -40,9 +41,9 @@ import { extractErrorMessage } from '../services/error-utils';
             <label>
               Type
               <select formControlName="type">
-                <option value="BUSINESS">Business</option>
-                <option value="INDIVIDUAL">Individual</option>
-                <option value="ENTERPRISE">Enterprise</option>
+                <option *ngFor="let type of tenantTypes" [value]="type">
+                  {{ formatTenantType(type) }}
+                </option>
               </select>
             </label>
             <label>
@@ -160,10 +161,14 @@ export class TenantsComponent implements OnInit {
     limit: 50,
   });
 
+  readonly tenantTypes = TenantTypeEnum.options;
+  private readonly defaultTenantType: (typeof TenantTypeEnum.options)[number] =
+    this.tenantTypes[0] ?? 'INDEPENDENT';
+
   readonly createForm = this.fb.nonNullable.group({
     name: ['', [Validators.required, Validators.minLength(1), Validators.maxLength(200)]],
     slug: ['', [Validators.required, Validators.pattern(/^[a-z0-9-]+$/)]],
-    type: ['BUSINESS' as const],
+    type: [this.defaultTenantType],
     email: ['', [Validators.required, Validators.email]],
     phone: [''],
     website: ['', [Validators.pattern(/^https?:\/\/.+/)]],
@@ -200,7 +205,7 @@ export class TenantsComponent implements OnInit {
       const data = {
         name: formValue.name!,
         slug: formValue.slug!,
-        type: formValue.type! as 'INDIVIDUAL' | 'BUSINESS' | 'ENTERPRISE',
+        type: (formValue.type ?? this.defaultTenantType) as (typeof TenantTypeEnum.options)[number],
         email: formValue.email!,
         phone: formValue.phone || undefined,
         website: formValue.website || undefined,
@@ -223,11 +228,15 @@ export class TenantsComponent implements OnInit {
     }
   }
 
+  formatTenantType(value: string): string {
+    return titleize(value);
+  }
+
   resetCreateForm() {
     this.createForm.reset({
       name: '',
       slug: '',
-      type: 'BUSINESS',
+      type: this.defaultTenantType,
       email: '',
       phone: '',
       website: '',
@@ -235,4 +244,12 @@ export class TenantsComponent implements OnInit {
     this.createErrorMessage.set('');
     this.createSuccessMessage.set('');
   }
+}
+
+function titleize(value: string): string {
+  return value
+    .toLowerCase()
+    .split('_')
+    .map(part => (part ? part[0].toUpperCase() + part.slice(1) : part))
+    .join(' ');
 }

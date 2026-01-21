@@ -1,10 +1,4 @@
-.controls {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-  margin-bottom: 1rem;
-}
-
+/* Reservations page - using shared styles with custom grid */
 .filters {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
@@ -12,92 +6,7 @@
   align-items: end;
 }
 
-.full-row {
-  grid-column: 1 / -1;
-  display: flex;
-  flex-direction: column;
-  gap: 0.35rem;
-}
-
-.filters label {
-  display: flex;
-  flex-direction: column;
-  gap: 0.35rem;
-  color: var(--color-text);
-  font-size: 0.95rem;
-}
-
-.filters input,
-.filters select {
-  padding: 0.5rem 0.65rem;
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--color-border);
-  background: var(--color-surface);
-  color: var(--color-text);
-}
-
-.actions {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.75rem;
-  flex-wrap: wrap;
-  grid-column: 1 / -1;
-}
-
-.status {
-  color: var(--color-text-muted);
-  font-size: 0.95rem;
-}
-
-.table {
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  background: var(--color-surface);
-  overflow: hidden;
-}
-
-.table__head, .table__row {
-  display: grid;
+.table__head,
+.table__row {
   grid-template-columns: 1.6fr 1.4fr 1.1fr 1fr 1fr;
-  gap: 0.5rem;
-  padding: 0.75rem 1rem;
-}
-
-.table__head {
-  background: var(--color-surface-strong);
-  border-bottom: 1px solid var(--color-border);
-  font-weight: 600;
-}
-
-.table__row:nth-child(even) {
-  background: var(--color-surface);
-}
-
-.title {
-  font-weight: 600;
-}
-
-.muted {
-  color: var(--color-text-muted);
-  font-size: 0.9rem;
-}
-
-.badge {
-  display: inline-flex;
-  align-items: center;
-  padding: 0.25rem 0.5rem;
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--color-border);
-  background: var(--color-surface-strong);
-  font-size: 0.9rem;
-}
-
-.placeholder {
-  color: var(--color-text-muted);
-  font-size: 0.95rem;
-}
-
-.error {
-  color: var(--color-danger, #c62828);
-  font-size: 0.9rem;
 }

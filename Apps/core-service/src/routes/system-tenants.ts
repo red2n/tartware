@@ -1,5 +1,5 @@
 import { buildRouteSchema, errorResponseSchema, schemaFromZod } from "@tartware/openapi";
-import { TenantWithRelationsSchema } from "@tartware/schemas";
+import { TenantTypeEnum, TenantWithRelationsSchema } from "@tartware/schemas";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 
@@ -38,7 +38,7 @@ const CreateTenantSchema = z.object({
     .min(1)
     .max(100)
     .regex(/^[a-z0-9-]+$/),
-  type: z.enum(["INDIVIDUAL", "BUSINESS", "ENTERPRISE"]).default("BUSINESS"),
+  type: TenantTypeEnum.default("INDEPENDENT"),
   email: z.string().email(),
   phone: z.string().optional(),
   website: z.string().url().optional(),

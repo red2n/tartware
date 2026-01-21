@@ -8,6 +8,7 @@ import { appLogger } from "./lib/logger.js";
 import { metricsRegistry } from "./lib/metrics.js";
 import authContextPlugin from "./plugins/auth-context.js";
 import swaggerPlugin from "./plugins/swagger.js";
+import { registerCommandDefinitionRoutes } from "./routes/command-definitions.js";
 import { registerCommandRoutes } from "./routes/commands.js";
 import { registerHealthRoutes } from "./routes/health.js";
 
@@ -24,6 +25,7 @@ export const buildServer = (): FastifyInstance => {
     },
     registerRoutes: (app) => {
       registerHealthRoutes(app);
+      registerCommandDefinitionRoutes(app);
       registerCommandRoutes(app);
     },
   });

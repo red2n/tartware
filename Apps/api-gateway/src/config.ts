@@ -96,6 +96,9 @@ export const serviceTargets = {
 	housekeepingServiceUrl:
 		env.HOUSEKEEPING_SERVICE_URL ?? "http://localhost:3500",
 	billingServiceUrl: env.BILLING_SERVICE_URL ?? "http://localhost:3600",
+	commandCenterServiceUrl:
+		env.COMMAND_CENTER_SERVICE_URL ?? "http://localhost:3700",
+	settingsServiceUrl: env.SETTINGS_SERVICE_URL ?? "http://localhost:3000",
 };
 
 export const dbConfig = {

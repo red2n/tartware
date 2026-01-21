@@ -132,6 +132,17 @@ type ResolveCommandOptions = {
   membership: TenantMembership;
 };
 
+export type CommandDefinitionView = {
+  name: string;
+  label: string;
+  description: string;
+  samplePayload: Record<string, unknown>;
+  requiredModules: string[];
+  defaultTargetService: string;
+  defaultTopic: string;
+  version: string;
+};
+
 export const resolveCommandForTenant = ({
   commandName,
   tenantId,
@@ -246,4 +257,30 @@ const resolveFeature = (
     return tenantFeature;
   }
   return entries.find((feature) => feature.tenant_id === null) ?? null;
+};
+
+export const listCommandDefinitions = (): CommandDefinitionView[] => {
+  return Array.from(state.templates.values()).map((template) => {
+    const label =
+      typeof template.metadata.label === "string" &&
+      template.metadata.label.length > 0
+        ? template.metadata.label
+        : template.command_name;
+    const description =
+      typeof template.metadata.description === "string" &&
+      template.metadata.description.length > 0
+        ? template.metadata.description
+        : (template.description ?? template.command_name);
+
+    return {
+      name: template.command_name,
+      label,
+      description,
+      samplePayload: template.sample_payload ?? {},
+      requiredModules: template.required_modules ?? [],
+      defaultTargetService: template.default_target_service,
+      defaultTopic: template.default_topic,
+      version: template.version,
+    };
+  });
 };

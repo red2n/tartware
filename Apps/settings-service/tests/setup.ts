@@ -10,6 +10,7 @@ process.env.SERVICE_NAME = process.env.SERVICE_NAME ?? "@tartware/settings-servi
 process.env.SERVICE_VERSION = process.env.SERVICE_VERSION ?? "test";
 process.env.JWT_AUDIENCE = process.env.JWT_AUDIENCE ?? "test-audience";
 process.env.JWT_ISSUER = process.env.JWT_ISSUER ?? "https://auth.tartware.test";
+process.env.SETTINGS_DATA_SOURCE = process.env.SETTINGS_DATA_SOURCE ?? "seed";
 if (!process.env.JWT_PUBLIC_KEY || !process.env.JWT_PRIVATE_KEY) {
   const { publicKey, privateKey } = generateKeyPairSync("rsa", {
     modulusLength: 2048,
