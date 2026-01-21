@@ -107,6 +107,23 @@ api-gateway:
           - type: Percent
             value: 10
             periodSeconds: 60
+  env:
+    - name: CORE_SERVICE_URL
+      value: "http://tartware-core-service:3000"
+    - name: RESERVATION_COMMAND_SERVICE_URL
+      value: "http://tartware-reservations-command-service:3101"
+    - name: GUESTS_SERVICE_URL
+      value: "http://tartware-guests-service:3000"
+    - name: ROOMS_SERVICE_URL
+      value: "http://tartware-rooms-service:3000"
+    - name: HOUSEKEEPING_SERVICE_URL
+      value: "http://tartware-housekeeping-service:3000"
+    - name: BILLING_SERVICE_URL
+      value: "http://tartware-billing-service:3000"
+    - name: COMMAND_CENTER_SERVICE_URL
+      value: "http://tartware-command-center-service:3000"
+    - name: SETTINGS_SERVICE_URL
+      value: "http://tartware-settings-service:3000"
 
 core-service:
   enabled: true

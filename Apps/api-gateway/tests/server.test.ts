@@ -1,7 +1,7 @@
-import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { buildServer } from "../src/server.js";
-import { kafkaConfig } from "../src/config.js";
+import { kafkaConfig, serviceTargets } from "../src/config.js";
 
 const { submitCommandMock, proxyRequestMock } = vi.hoisted(() => {
   return {
@@ -50,6 +50,11 @@ describe("API Gateway server", () => {
   beforeAll(async () => {
     app = buildServer();
     await app.ready();
+  });
+
+  beforeEach(() => {
+    submitCommandMock.mockClear();
+    proxyRequestMock.mockClear();
   });
 
   afterAll(async () => {
@@ -122,11 +127,62 @@ describe("API Gateway server", () => {
     expect(response.statusCode).toBe(200);
     expect(proxyRequestMock).toHaveBeenCalledTimes(1);
     expect(proxyRequestMock.mock.calls[0][2]).toBe(
-      "http://localhost:3300",
+      serviceTargets.guestsServiceUrl,
     );
     expect(response.json()).toEqual({
       proxied: true,
-      targetUrl: "http://localhost:3300",
+      targetUrl: serviceTargets.guestsServiceUrl,
+    });
+  });
+
+  it("proxies reservation queries to the core service", async () => {
+    const response = await app.inject({
+      method: "GET",
+      url: "/v1/reservations?tenant_id=tenant-123",
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(proxyRequestMock).toHaveBeenCalledTimes(1);
+    expect(proxyRequestMock.mock.calls[0][2]).toBe(
+      serviceTargets.coreServiceUrl,
+    );
+    expect(response.json()).toEqual({
+      proxied: true,
+      targetUrl: serviceTargets.coreServiceUrl,
+    });
+  });
+
+  it("proxies command definitions to the command-center service", async () => {
+    const response = await app.inject({
+      method: "GET",
+      url: "/v1/commands/definitions",
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(proxyRequestMock).toHaveBeenCalledTimes(1);
+    expect(proxyRequestMock.mock.calls[0][2]).toBe(
+      serviceTargets.commandCenterServiceUrl,
+    );
+    expect(response.json()).toEqual({
+      proxied: true,
+      targetUrl: serviceTargets.commandCenterServiceUrl,
+    });
+  });
+
+  it("proxies settings catalog queries to the settings service", async () => {
+    const response = await app.inject({
+      method: "GET",
+      url: "/v1/settings/catalog",
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(proxyRequestMock).toHaveBeenCalledTimes(1);
+    expect(proxyRequestMock.mock.calls[0][2]).toBe(
+      serviceTargets.settingsServiceUrl,
+    );
+    expect(response.json()).toEqual({
+      proxied: true,
+      targetUrl: serviceTargets.settingsServiceUrl,
     });
   });
 });

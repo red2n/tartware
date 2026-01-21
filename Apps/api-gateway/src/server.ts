@@ -24,6 +24,8 @@ import { proxyRequest } from "./utils/proxy.js";
 const HEALTH_TAG = "Gateway Health";
 const RESERVATION_PROXY_TAG = "Reservation Proxy";
 const CORE_PROXY_TAG = "Core Proxy";
+const COMMAND_CENTER_PROXY_TAG = "Command Center Proxy";
+const SETTINGS_PROXY_TAG = "Settings Proxy";
 const GUESTS_PROXY_TAG = "Guests Proxy";
 const BILLING_PROXY_TAG = "Billing Proxy";
 const HOUSEKEEPING_COMMAND_TAG = "Housekeeping Commands";
@@ -274,6 +276,20 @@ export const buildServer = () => {
 		const proxyCore = async (request: FastifyRequest, reply: FastifyReply) =>
 			proxyRequest(request, reply, serviceTargets.coreServiceUrl);
 
+		app.get(
+			"/v1/reservations",
+			{
+				schema: buildRouteSchema({
+					tag: RESERVATION_PROXY_TAG,
+					summary: "Proxy reservation queries to core service.",
+					response: {
+						200: jsonObjectSchema,
+					},
+				}),
+			},
+			proxyCore,
+		);
+
 		app.all(
 			"/v1/tenants/:tenantId/reservations",
 			{
@@ -305,6 +321,41 @@ export const buildServer = () => {
 			proxyCore,
 		);
 
+		const proxyCommandCenter = async (
+			request: FastifyRequest,
+			reply: FastifyReply,
+		) => proxyRequest(request, reply, serviceTargets.commandCenterServiceUrl);
+
+		app.all(
+			"/v1/commands",
+			{
+				schema: buildRouteSchema({
+					tag: COMMAND_CENTER_PROXY_TAG,
+					summary: "Proxy command center calls to the command-center service.",
+					response: {
+						200: jsonObjectSchema,
+						202: jsonObjectSchema,
+					},
+				}),
+			},
+			proxyCommandCenter,
+		);
+
+		app.all(
+			"/v1/commands/*",
+			{
+				schema: buildRouteSchema({
+					tag: COMMAND_CENTER_PROXY_TAG,
+					summary: "Proxy command center calls to the command-center service.",
+					response: {
+						200: jsonObjectSchema,
+						202: jsonObjectSchema,
+					},
+				}),
+			},
+			proxyCommandCenter,
+		);
+
 		app.all(
 			"/v1/tenants/:tenantId/reservations/*",
 			{
@@ -318,6 +369,39 @@ export const buildServer = () => {
 				}),
 			},
 			reservationHandler,
+		);
+
+		const proxySettings = async (
+			request: FastifyRequest,
+			reply: FastifyReply,
+		) => proxyRequest(request, reply, serviceTargets.settingsServiceUrl);
+
+		app.all(
+			"/v1/settings",
+			{
+				schema: buildRouteSchema({
+					tag: SETTINGS_PROXY_TAG,
+					summary: "Proxy settings requests to the settings service.",
+					response: {
+						200: jsonObjectSchema,
+					},
+				}),
+			},
+			proxySettings,
+		);
+
+		app.all(
+			"/v1/settings/*",
+			{
+				schema: buildRouteSchema({
+					tag: SETTINGS_PROXY_TAG,
+					summary: "Proxy settings requests to the settings service.",
+					response: {
+						200: jsonObjectSchema,
+					},
+				}),
+			},
+			proxySettings,
 		);
 
 		const proxyGuests = async (request: FastifyRequest, reply: FastifyReply) =>

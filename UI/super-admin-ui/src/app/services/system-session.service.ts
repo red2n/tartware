@@ -17,6 +17,7 @@ export type ImpersonationToken = {
   tokenType: 'Bearer';
   scope: 'TENANT_IMPERSONATION';
   expiresIn: number;
+  expiresAt?: string;
 };
 
 export type TenantContext = {
@@ -29,6 +30,7 @@ export class SystemSessionService {
   private readonly platformId = inject(PLATFORM_ID);
   private readonly storageKey = 'tart.system-admin.session';
   private readonly tenantKey = 'tart.system-admin.tenant-context';
+  private readonly impersonationKey = 'tart.system-admin.impersonation';
 
   private readonly adminState: WritableSignal<SystemAdminToken | null> = signal(null);
   private readonly impersonationState: WritableSignal<ImpersonationToken | null> = signal(null);
@@ -65,6 +67,23 @@ export class SystemSessionService {
         }
       }
 
+      const rawImpersonation = localStorage.getItem(this.impersonationKey);
+      if (rawImpersonation) {
+        try {
+          const parsed = JSON.parse(rawImpersonation) as ImpersonationToken | null;
+          if (parsed?.accessToken) {
+            const expiresAt = parsed.expiresAt ? new Date(parsed.expiresAt).getTime() : null;
+            if (!expiresAt || expiresAt > Date.now()) {
+              this.impersonationState.set(parsed);
+            } else {
+              localStorage.removeItem(this.impersonationKey);
+            }
+          }
+        } catch (err) {
+          console.error('Failed to parse impersonation session from localStorage:', err);
+        }
+      }
+
       effect(() => {
         const admin = this.adminState();
         try {
@@ -90,6 +109,19 @@ export class SystemSessionService {
           console.error('Failed to save tenant context to localStorage:', err);
         }
       });
+
+      effect(() => {
+        const impersonation = this.impersonationState();
+        try {
+          if (impersonation) {
+            localStorage.setItem(this.impersonationKey, JSON.stringify(impersonation));
+          } else {
+            localStorage.removeItem(this.impersonationKey);
+          }
+        } catch (err) {
+          console.error('Failed to save impersonation session to localStorage:', err);
+        }
+      });
     }
   }
 
@@ -111,7 +143,8 @@ export class SystemSessionService {
   }
 
   setImpersonationSession(token: ImpersonationToken) {
-    this.impersonationState.set(token);
+    const expiresAt = new Date(Date.now() + token.expiresIn * 1000).toISOString();
+    this.impersonationState.set({ ...token, expiresAt });
   }
 
   setTenantContext(context: TenantContext | null) {

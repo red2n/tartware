@@ -8,6 +8,7 @@ import { TenantsComponent } from './pages/tenants.component';
 import { UsersComponent } from './pages/users.component';
 import { ReservationsComponent } from './pages/reservations.component';
 import { CommandCenterComponent } from './pages/command-center.component';
+import { SettingsCatalogComponent } from './pages/settings-catalog.component';
 import { systemAdminGuard } from './guards/system-admin.guard';
 
 export const routes: Routes = [
@@ -55,6 +56,12 @@ export const routes: Routes = [
 		component: CommandCenterComponent,
 		canActivate: [systemAdminGuard],
 		title: 'System Admin | Command Center',
+	},
+	{
+		path: 'settings-catalog',
+		component: SettingsCatalogComponent,
+		canActivate: [systemAdminGuard],
+		title: 'System Admin | Settings catalog',
 	},
 	{
 		path: 'welcome',
