@@ -9,7 +9,7 @@
 
 CREATE TABLE IF NOT EXISTS settings_options (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    setting_id UUID NOT NULL,
+    setting_id UUID NOT NULL REFERENCES settings_definitions(id) ON DELETE CASCADE,
     value VARCHAR(128) NOT NULL,
     label VARCHAR(160) NOT NULL,
     description TEXT,
@@ -24,5 +24,15 @@ CREATE TABLE IF NOT EXISTS settings_options (
     created_by VARCHAR(120),
     updated_by VARCHAR(120)
 );
+
+-- =====================================================
+-- INDEXES
+-- =====================================================
+
+CREATE INDEX IF NOT EXISTS idx_settings_options_setting_active_sort
+    ON settings_options (setting_id, is_active, sort_order);
+
+CREATE INDEX IF NOT EXISTS idx_settings_options_setting_default
+    ON settings_options (setting_id, is_default);
 
 \echo 'settings_options table created.'

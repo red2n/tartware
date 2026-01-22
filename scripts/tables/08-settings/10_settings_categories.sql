@@ -22,4 +22,11 @@ CREATE TABLE IF NOT EXISTS settings_categories (
     updated_at TIMESTAMPTZ
 );
 
+-- =====================================================
+-- INDEXES
+-- =====================================================
+
+CREATE INDEX IF NOT EXISTS idx_settings_categories_active_sort
+    ON settings_categories (is_active, sort_order);
+
 \echo 'settings_categories table created.'
