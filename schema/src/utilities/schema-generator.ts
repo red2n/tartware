@@ -1,11 +1,10 @@
+#!/usr/bin/env tsx
 /**
  * DEV DOC
  * Module: utilities/schema-generator.ts
  * Purpose: Shared schema/type definitions and validation helpers.
  * Ownership: Schema package
  */
-
-#!/usr/bin/env tsx
 /**
  * Schema Generator Utility
  * Auto-generates Zod schemas from PostgreSQL information_schema

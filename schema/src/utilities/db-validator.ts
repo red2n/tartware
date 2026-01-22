@@ -195,7 +195,9 @@ async function collectSchemaTables(): Promise<Record<string, string[]>> {
 			const { tables: docTables, hasTableDoc } =
 				await parseTablesFromSchemaFile(filePath);
 			if (docTables.length > 0) {
-				docTables.forEach((table) => tables.add(table));
+				for (const table of docTables) {
+					tables.add(table);
+				}
 				continue;
 			}
 			if (hasTableDoc) {

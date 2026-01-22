@@ -8,6 +8,8 @@ import type {
 import { Observable } from 'rxjs';
 import { API_BASE } from './api-config';
 
+export type { CommandDefinition };
+
 @Injectable({ providedIn: 'root' })
 export class CommandCenterApiService {
   constructor(private readonly http: HttpClient, @Inject(API_BASE) private readonly api: string) {}

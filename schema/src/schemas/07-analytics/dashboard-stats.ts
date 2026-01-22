@@ -96,7 +96,7 @@ export const DashboardStatsQuerySchema = z.object({
 		.string()
 		.optional()
 		.refine(
-			(val) =>
+			(val: string | undefined) =>
 				!val ||
 				val === "all" ||
 				/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(

@@ -271,4 +271,4 @@ export const uniqueArray = <T>(
 ) =>
 	z
 		.array(schema)
-		.refine((arr) => new Set(arr).size === arr.length, { message });
+		.refine((arr: T[]) => new Set(arr).size === arr.length, { message });

@@ -7,6 +7,8 @@
 
 import { z } from "zod";
 
+import { TenantWithRelationsSchema } from "../schemas/01-core/tenants.js";
+import { UserWithTenantsSchema } from "../schemas/01-core/users.js";
 import {
 	email,
 	nonEmptyString,
@@ -15,8 +17,6 @@ import {
 	url,
 } from "../shared/base-schemas.js";
 import { TenantRoleEnum, TenantTypeEnum } from "../shared/enums.js";
-import { TenantWithRelationsSchema } from "../schemas/01-core/tenants.js";
-import { UserWithTenantsSchema } from "../schemas/01-core/users.js";
 
 export const TenantCollectionResponseSchema = z.object({
 	tenants: z.array(TenantWithRelationsSchema),
