@@ -1,4 +1,16 @@
 /**
+ * DEV DOC
+ * Module: schemas/05-operations/shift-handovers.ts
+ * Description: ShiftHandovers Schema
+ * Table: shift_handovers
+ * Category: 05-operations
+ * Primary exports: ShiftHandoversSchema, CreateShiftHandoversSchema, UpdateShiftHandoversSchema
+ * @table shift_handovers
+ * @category 05-operations
+ * Ownership: Schema package
+ */
+
+/**
  * ShiftHandovers Schema
  * @table shift_handovers
  * @category 05-operations

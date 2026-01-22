@@ -1,4 +1,16 @@
 /**
+ * DEV DOC
+ * Module: schemas/03-bookings/waitlist-entries.ts
+ * Description: WaitlistEntries Schema
+ * Table: waitlist_entries
+ * Category: 03-bookings
+ * Primary exports: WaitlistEntriesSchema, CreateWaitlistEntriesSchema, UpdateWaitlistEntriesSchema
+ * @table waitlist_entries
+ * @category 03-bookings
+ * Ownership: Schema package
+ */
+
+/**
  * WaitlistEntries Schema
  * @table waitlist_entries
  * @category 03-bookings

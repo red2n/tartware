@@ -1,4 +1,16 @@
 /**
+ * DEV DOC
+ * Module: schemas/07-analytics/business-dates.ts
+ * Description: BusinessDates Schema
+ * Table: business_dates
+ * Category: 07-analytics
+ * Primary exports: BusinessDatesSchema, CreateBusinessDatesSchema, UpdateBusinessDatesSchema
+ * @table business_dates
+ * @category 07-analytics
+ * Ownership: Schema package
+ */
+
+/**
  * BusinessDates Schema
  * @table business_dates
  * @category 07-analytics

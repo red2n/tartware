@@ -1,4 +1,16 @@
 /**
+ * DEV DOC
+ * Module: schemas/03-bookings/market-segments.ts
+ * Description: MarketSegments Schema
+ * Table: market_segments
+ * Category: 03-bookings
+ * Primary exports: MarketSegmentsSchema, CreateMarketSegmentsSchema, UpdateMarketSegmentsSchema
+ * @table market_segments
+ * @category 03-bookings
+ * Ownership: Schema package
+ */
+
+/**
  * MarketSegments Schema
  * @table market_segments
  * @category 03-bookings

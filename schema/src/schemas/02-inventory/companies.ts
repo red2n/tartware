@@ -1,4 +1,16 @@
 /**
+ * DEV DOC
+ * Module: schemas/02-inventory/companies.ts
+ * Description: Companies Schema
+ * Table: companies
+ * Category: 02-inventory
+ * Primary exports: CompaniesSchema, CreateCompaniesSchema, UpdateCompaniesSchema
+ * @table companies
+ * @category 02-inventory
+ * Ownership: Schema package
+ */
+
+/**
  * Companies Schema
  * @table companies
  * @category 02-inventory

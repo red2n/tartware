@@ -1,4 +1,16 @@
 /**
+ * DEV DOC
+ * Module: schemas/05-operations/vendor-contracts.ts
+ * Description: VendorContracts Schema
+ * Table: vendor_contracts
+ * Category: 05-operations
+ * Primary exports: VendorContractsSchema, CreateVendorContractsSchema, UpdateVendorContractsSchema
+ * @table vendor_contracts
+ * @category 05-operations
+ * Ownership: Schema package
+ */
+
+/**
  * VendorContracts Schema
  * @table vendor_contracts
  * @category 05-operations

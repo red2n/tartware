@@ -1,4 +1,16 @@
 /**
+ * DEV DOC
+ * Module: schemas/02-inventory/rates.ts
+ * Description: Rates Schema
+ * Table: rates
+ * Category: 02-inventory
+ * Primary exports: RatesSchema, CreateRatesSchema, UpdateRatesSchema
+ * @table rates
+ * @category 02-inventory
+ * Ownership: Schema package
+ */
+
+/**
  * Rates Schema
  * @table rates
  * @category 02-inventory

@@ -1,4 +1,16 @@
 /**
+ * DEV DOC
+ * Module: schemas/01-core/user-settings.ts
+ * Description: UserSettings Schema
+ * Table: user_settings
+ * Category: 01-core
+ * Primary exports: UserSettingsSchema, CreateUserSettingsSchema, UpdateUserSettingsSchema
+ * @table user_settings
+ * @category 01-core
+ * Ownership: Schema package
+ */
+
+/**
  * UserSettings Schema
  * @table user_settings
  * @category 01-core

@@ -1,4 +1,16 @@
 /**
+ * DEV DOC
+ * Module: schemas/06-integrations/sentiment-trends.ts
+ * Description: SentimentTrends Schema
+ * Table: sentiment_trends
+ * Category: 06-integrations
+ * Primary exports: SentimentTrendsSchema, CreateSentimentTrendsSchema, UpdateSentimentTrendsSchema
+ * @table sentiment_trends
+ * @category 06-integrations
+ * Ownership: Schema package
+ */
+
+/**
  * SentimentTrends Schema
  * @table sentiment_trends
  * @category 06-integrations

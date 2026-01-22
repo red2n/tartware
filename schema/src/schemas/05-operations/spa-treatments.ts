@@ -1,4 +1,16 @@
 /**
+ * DEV DOC
+ * Module: schemas/05-operations/spa-treatments.ts
+ * Description: SpaTreatments Schema
+ * Table: spa_treatments
+ * Category: 05-operations
+ * Primary exports: SpaTreatmentsSchema, CreateSpaTreatmentsSchema, UpdateSpaTreatmentsSchema
+ * @table spa_treatments
+ * @category 05-operations
+ * Ownership: Schema package
+ */
+
+/**
  * SpaTreatments Schema
  * @table spa_treatments
  * @category 05-operations

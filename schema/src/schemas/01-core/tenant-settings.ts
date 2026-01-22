@@ -1,4 +1,16 @@
 /**
+ * DEV DOC
+ * Module: schemas/01-core/tenant-settings.ts
+ * Description: TenantSettings Schema
+ * Table: tenant_settings
+ * Category: 01-core
+ * Primary exports: TenantSettingsSchema, CreateTenantSettingsSchema, UpdateTenantSettingsSchema
+ * @table tenant_settings
+ * @category 01-core
+ * Ownership: Schema package
+ */
+
+/**
  * TenantSettings Schema
  * @table tenant_settings
  * @category 01-core

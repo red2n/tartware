@@ -1,4 +1,16 @@
 /**
+ * DEV DOC
+ * Module: schemas/07-analytics/performance-thresholds.ts
+ * Description: PerformanceThresholds Schema
+ * Table: performance_thresholds
+ * Category: 07-analytics
+ * Primary exports: PerformanceThresholdsSchema, CreatePerformanceThresholdsSchema, UpdatePerformanceThresholdsSchema
+ * @table performance_thresholds
+ * @category 07-analytics
+ * Ownership: Schema package
+ */
+
+/**
  * PerformanceThresholds Schema
  * @table performance_thresholds
  * @category 07-analytics

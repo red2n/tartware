@@ -1,4 +1,11 @@
 /**
+ * DEV DOC
+ * Module: shared/base-schemas.ts
+ * Purpose: Shared schema/type definitions and validation helpers.
+ * Ownership: Schema package
+ */
+
+/**
  * Base Zod schemas for common Tartware database patterns
  * These reusable schemas enforce consistency across all table schemas
  */

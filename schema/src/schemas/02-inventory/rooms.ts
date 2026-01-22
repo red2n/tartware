@@ -1,4 +1,16 @@
 /**
+ * DEV DOC
+ * Module: schemas/02-inventory/rooms.ts
+ * Description: Rooms Schema
+ * Table: rooms
+ * Category: 02-inventory
+ * Primary exports: RoomsSchema, CreateRoomsSchema, UpdateRoomsSchema
+ * @table rooms
+ * @category 02-inventory
+ * Ownership: Schema package
+ */
+
+/**
  * Rooms Schema
  * @table rooms
  * @category 02-inventory

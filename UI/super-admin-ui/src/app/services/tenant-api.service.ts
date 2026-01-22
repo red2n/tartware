@@ -1,5 +1,6 @@
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Inject, Injectable } from '@angular/core';
+import type { TenantCollectionResponse } from '@tartware/schemas';
 import type { TenantWithRelations } from '@tartware/schemas/core/tenants';
 import { Observable, map } from 'rxjs';
 import { API_BASE } from './api-config';
@@ -18,7 +19,7 @@ export class TenantApiService {
   listTenants(limit = 50): Observable<TenantWithRelations[]> {
     const params = new HttpParams().set('limit', limit.toString());
     return this.http
-      .get<{ tenants: TenantWithRelations[] }>(this.tenantListPath, { params })
+      .get<TenantCollectionResponse>(this.tenantListPath, { params })
       .pipe(map((response) => response.tenants));
   }
 }

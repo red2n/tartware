@@ -1,4 +1,16 @@
 /**
+ * DEV DOC
+ * Module: schemas/07-analytics/performance-reports.ts
+ * Description: PerformanceReports Schema
+ * Table: performance_reports
+ * Category: 07-analytics
+ * Primary exports: PerformanceReportsSchema, CreatePerformanceReportsSchema, UpdatePerformanceReportsSchema
+ * @table performance_reports
+ * @category 07-analytics
+ * Ownership: Schema package
+ */
+
+/**
  * PerformanceReports Schema
  * @table performance_reports
  * @category 07-analytics

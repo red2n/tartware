@@ -1,4 +1,16 @@
 /**
+ * DEV DOC
+ * Module: schemas/02-inventory/room-availability.ts
+ * Description: RoomAvailability Schema
+ * Table: room_availability
+ * Category: 02-inventory
+ * Primary exports: RoomAvailabilitySchema, CreateRoomAvailabilitySchema, UpdateRoomAvailabilitySchema
+ * @table room_availability
+ * @category 02-inventory
+ * Ownership: Schema package
+ */
+
+/**
  * RoomAvailability Schema
  * @table room_availability
  * @category 02-inventory

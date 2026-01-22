@@ -1,4 +1,16 @@
 /**
+ * DEV DOC
+ * Module: schemas/07-analytics/gdpr-consent-logs.ts
+ * Description: GdprConsentLogs Schema
+ * Table: gdpr_consent_logs
+ * Category: 07-analytics
+ * Primary exports: GdprConsentLogsSchema, CreateGdprConsentLogsSchema, UpdateGdprConsentLogsSchema
+ * @table gdpr_consent_logs
+ * @category 07-analytics
+ * Ownership: Schema package
+ */
+
+/**
  * GdprConsentLogs Schema
  * @table gdpr_consent_logs
  * @category 07-analytics

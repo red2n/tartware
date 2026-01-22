@@ -1,4 +1,16 @@
 /**
+ * DEV DOC
+ * Module: schemas/02-inventory/commission-statements.ts
+ * Description: CommissionStatements Schema
+ * Table: commission_statements
+ * Category: 02-inventory
+ * Primary exports: CommissionStatementsSchema, CreateCommissionStatementsSchema, UpdateCommissionStatementsSchema
+ * @table commission_statements
+ * @category 02-inventory
+ * Ownership: Schema package
+ */
+
+/**
  * CommissionStatements Schema
  * @table commission_statements
  * @category 02-inventory

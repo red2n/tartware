@@ -1,4 +1,16 @@
 /**
+ * DEV DOC
+ * Module: schemas/01-core/user-tenant-associations.ts
+ * Description: UserTenantAssociations Schema
+ * Table: user_tenant_associations
+ * Category: 01-core
+ * Primary exports: UserTenantAssociationSchema, CreateUserTenantAssociationSchema, UpdateUserTenantAssociationSchema, UserTenantAssociationWithDetailsSchema
+ * @table user_tenant_associations
+ * @category 01-core
+ * Ownership: Schema package
+ */
+
+/**
  * UserTenantAssociations Schema
  * @table user_tenant_associations
  * @category 01-core

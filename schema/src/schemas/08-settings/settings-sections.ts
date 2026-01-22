@@ -1,4 +1,16 @@
 /**
+ * DEV DOC
+ * Module: schemas/08-settings/settings-sections.ts
+ * Description: Settings Sections Schema
+ * Table: settings_sections
+ * Category: 08-settings
+ * Primary exports: SettingsSectionsSchema, CreateSettingsSectionSchema, UpdateSettingsSectionSchema
+ * @table settings_sections
+ * @category 08-settings
+ * Ownership: Schema package
+ */
+
+/**
  * Settings Sections Schema
  * @table settings_sections
  * @category 08-settings

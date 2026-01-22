@@ -1,4 +1,16 @@
 /**
+ * DEV DOC
+ * Module: schemas/06-integrations/sentiment-analysis.ts
+ * Description: SentimentAnalysis Schema
+ * Table: sentiment_analysis
+ * Category: 06-integrations
+ * Primary exports: SentimentAnalysisSchema, CreateSentimentAnalysisSchema, UpdateSentimentAnalysisSchema
+ * @table sentiment_analysis
+ * @category 06-integrations
+ * Ownership: Schema package
+ */
+
+/**
  * SentimentAnalysis Schema
  * @table sentiment_analysis
  * @category 06-integrations

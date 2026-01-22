@@ -1,4 +1,16 @@
 /**
+ * DEV DOC
+ * Module: schemas/02-inventory/demand-calendar.ts
+ * Description: DemandCalendar Schema
+ * Table: demand_calendar
+ * Category: 02-inventory
+ * Primary exports: DemandCalendarSchema, CreateDemandCalendarSchema, UpdateDemandCalendarSchema
+ * @table demand_calendar
+ * @category 02-inventory
+ * Ownership: Schema package
+ */
+
+/**
  * DemandCalendar Schema
  * @table demand_calendar
  * @category 02-inventory

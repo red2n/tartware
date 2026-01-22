@@ -1,4 +1,16 @@
 /**
+ * DEV DOC
+ * Module: schemas/05-operations/guest-room-preferences.ts
+ * Description: GuestRoomPreferences Schema
+ * Table: guest_room_preferences
+ * Category: 05-operations
+ * Primary exports: GuestRoomPreferencesSchema, CreateGuestRoomPreferencesSchema, UpdateGuestRoomPreferencesSchema
+ * @table guest_room_preferences
+ * @category 05-operations
+ * Ownership: Schema package
+ */
+
+/**
  * GuestRoomPreferences Schema
  * @table guest_room_preferences
  * @category 05-operations

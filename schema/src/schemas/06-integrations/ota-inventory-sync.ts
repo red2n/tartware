@@ -1,4 +1,16 @@
 /**
+ * DEV DOC
+ * Module: schemas/06-integrations/ota-inventory-sync.ts
+ * Description: OtaInventorySync Schema
+ * Table: ota_inventory_sync
+ * Category: 06-integrations
+ * Primary exports: OtaInventorySyncSchema, CreateOtaInventorySyncSchema, UpdateOtaInventorySyncSchema
+ * @table ota_inventory_sync
+ * @category 06-integrations
+ * Ownership: Schema package
+ */
+
+/**
  * OtaInventorySync Schema
  * @table ota_inventory_sync
  * @category 06-integrations

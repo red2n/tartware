@@ -1,4 +1,16 @@
 /**
+ * DEV DOC
+ * Module: schemas/08-settings/settings-definitions.ts
+ * Description: Settings Definitions Schema
+ * Table: settings_definitions
+ * Category: 08-settings
+ * Primary exports: SettingsDefinitionsSchema, CreateSettingsDefinitionSchema, UpdateSettingsDefinitionSchema
+ * @table settings_definitions
+ * @category 08-settings
+ * Ownership: Schema package
+ */
+
+/**
  * Settings Definitions Schema
  * @table settings_definitions
  * @category 08-settings

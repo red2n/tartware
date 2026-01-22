@@ -1,3 +1,10 @@
+/**
+ * DEV DOC
+ * Module: events/reservations.ts
+ * Purpose: Shared schema/type definitions and validation helpers.
+ * Ownership: Schema package
+ */
+
 import { z } from "zod";
 
 import { ReservationsSchema } from "../schemas/03-bookings/reservations.js";

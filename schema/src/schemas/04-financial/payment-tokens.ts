@@ -1,4 +1,16 @@
 /**
+ * DEV DOC
+ * Module: schemas/04-financial/payment-tokens.ts
+ * Description: PaymentTokens Schema
+ * Table: payment_tokens
+ * Category: 04-financial
+ * Primary exports: PaymentTokensSchema, CreatePaymentTokensSchema, UpdatePaymentTokensSchema
+ * @table payment_tokens
+ * @category 04-financial
+ * Ownership: Schema package
+ */
+
+/**
  * PaymentTokens Schema
  * @table payment_tokens
  * @category 04-financial

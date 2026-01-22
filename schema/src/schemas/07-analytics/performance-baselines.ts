@@ -1,4 +1,16 @@
 /**
+ * DEV DOC
+ * Module: schemas/07-analytics/performance-baselines.ts
+ * Description: PerformanceBaselines Schema
+ * Table: performance_baselines
+ * Category: 07-analytics
+ * Primary exports: PerformanceBaselinesSchema, CreatePerformanceBaselinesSchema, UpdatePerformanceBaselinesSchema
+ * @table performance_baselines
+ * @category 07-analytics
+ * Ownership: Schema package
+ */
+
+/**
  * PerformanceBaselines Schema
  * @table performance_baselines
  * @category 07-analytics

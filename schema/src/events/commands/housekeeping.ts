@@ -1,3 +1,10 @@
+/**
+ * DEV DOC
+ * Module: events/commands/housekeeping.ts
+ * Purpose: Shared schema/type definitions and validation helpers.
+ * Ownership: Schema package
+ */
+
 import { z } from "zod";
 
 export const HousekeepingAssignCommandSchema = z.object({

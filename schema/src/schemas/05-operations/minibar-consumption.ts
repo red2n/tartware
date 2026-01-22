@@ -1,4 +1,16 @@
 /**
+ * DEV DOC
+ * Module: schemas/05-operations/minibar-consumption.ts
+ * Description: MinibarConsumption Schema
+ * Table: minibar_consumption
+ * Category: 05-operations
+ * Primary exports: MinibarConsumptionSchema, CreateMinibarConsumptionSchema, UpdateMinibarConsumptionSchema
+ * @table minibar_consumption
+ * @category 05-operations
+ * Ownership: Schema package
+ */
+
+/**
  * MinibarConsumption Schema
  * @table minibar_consumption
  * @category 05-operations

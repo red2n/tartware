@@ -1,4 +1,16 @@
 /**
+ * DEV DOC
+ * Module: schemas/06-integrations/demand-scenarios.ts
+ * Description: DemandScenarios Schema
+ * Table: demand_scenarios
+ * Category: 06-integrations
+ * Primary exports: DemandScenariosSchema, CreateDemandScenariosSchema, UpdateDemandScenariosSchema
+ * @table demand_scenarios
+ * @category 06-integrations
+ * Ownership: Schema package
+ */
+
+/**
  * DemandScenarios Schema
  * @table demand_scenarios
  * @category 06-integrations

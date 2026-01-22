@@ -1,4 +1,16 @@
 /**
+ * DEV DOC
+ * Module: schemas/02-inventory/banquet-event-orders.ts
+ * Description: BanquetEventOrders Schema
+ * Table: banquet_event_orders
+ * Category: 02-inventory
+ * Primary exports: BanquetEventOrdersSchema, CreateBanquetEventOrdersSchema, UpdateBanquetEventOrdersSchema
+ * @table banquet_event_orders
+ * @category 02-inventory
+ * Ownership: Schema package
+ */
+
+/**
  * BanquetEventOrders Schema
  * @table banquet_event_orders
  * @category 02-inventory

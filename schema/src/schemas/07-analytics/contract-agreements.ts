@@ -1,4 +1,16 @@
 /**
+ * DEV DOC
+ * Module: schemas/07-analytics/contract-agreements.ts
+ * Description: ContractAgreements Schema
+ * Table: contract_agreements
+ * Category: 07-analytics
+ * Primary exports: ContractAgreementsSchema, CreateContractAgreementsSchema, UpdateContractAgreementsSchema
+ * @table contract_agreements
+ * @category 07-analytics
+ * Ownership: Schema package
+ */
+
+/**
  * ContractAgreements Schema
  * @table contract_agreements
  * @category 07-analytics

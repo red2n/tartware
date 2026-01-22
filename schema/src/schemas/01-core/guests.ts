@@ -1,4 +1,16 @@
 /**
+ * DEV DOC
+ * Module: schemas/01-core/guests.ts
+ * Description: Guests Schema
+ * Table: guests
+ * Category: 01-core
+ * Primary exports: GuestSchema, GuestWithStatsSchema, CreateGuestSchema, UpdateGuestSchema
+ * @table guests
+ * @category 01-core
+ * Ownership: Schema package
+ */
+
+/**
  * Guests Schema
  * @table guests
  * @category 01-core

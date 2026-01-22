@@ -1,4 +1,16 @@
 /**
+ * DEV DOC
+ * Module: schemas/02-inventory/commission-rules.ts
+ * Description: CommissionRules Schema
+ * Table: commission_rules
+ * Category: 02-inventory
+ * Primary exports: CommissionRulesSchema, CreateCommissionRulesSchema, UpdateCommissionRulesSchema
+ * @table commission_rules
+ * @category 02-inventory
+ * Ownership: Schema package
+ */
+
+/**
  * CommissionRules Schema
  * @table commission_rules
  * @category 02-inventory

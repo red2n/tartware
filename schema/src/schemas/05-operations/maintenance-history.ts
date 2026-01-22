@@ -1,4 +1,16 @@
 /**
+ * DEV DOC
+ * Module: schemas/05-operations/maintenance-history.ts
+ * Description: MaintenanceHistory Schema
+ * Table: maintenance_history
+ * Category: 05-operations
+ * Primary exports: MaintenanceHistorySchema, CreateMaintenanceHistorySchema, UpdateMaintenanceHistorySchema
+ * @table maintenance_history
+ * @category 05-operations
+ * Ownership: Schema package
+ */
+
+/**
  * MaintenanceHistory Schema
  * @table maintenance_history
  * @category 05-operations

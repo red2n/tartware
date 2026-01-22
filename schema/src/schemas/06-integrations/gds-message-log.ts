@@ -1,4 +1,16 @@
 /**
+ * DEV DOC
+ * Module: schemas/06-integrations/gds-message-log.ts
+ * Description: GdsMessageLog Schema
+ * Table: gds_message_log
+ * Category: 06-integrations
+ * Primary exports: GdsMessageLogSchema, CreateGdsMessageLogSchema, UpdateGdsMessageLogSchema
+ * @table gds_message_log
+ * @category 06-integrations
+ * Ownership: Schema package
+ */
+
+/**
  * GdsMessageLog Schema
  * @table gds_message_log
  * @category 06-integrations

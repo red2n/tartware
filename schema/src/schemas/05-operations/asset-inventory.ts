@@ -1,4 +1,16 @@
 /**
+ * DEV DOC
+ * Module: schemas/05-operations/asset-inventory.ts
+ * Description: AssetInventory Schema
+ * Table: asset_inventory
+ * Category: 05-operations
+ * Primary exports: AssetInventorySchema, CreateAssetInventorySchema, UpdateAssetInventorySchema
+ * @table asset_inventory
+ * @category 05-operations
+ * Ownership: Schema package
+ */
+
+/**
  * AssetInventory Schema
  * @table asset_inventory
  * @category 05-operations

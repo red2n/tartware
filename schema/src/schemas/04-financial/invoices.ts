@@ -1,4 +1,16 @@
 /**
+ * DEV DOC
+ * Module: schemas/04-financial/invoices.ts
+ * Description: Invoices Schema
+ * Table: invoices
+ * Category: 04-financial
+ * Primary exports: InvoicesSchema, CreateInvoicesSchema, UpdateInvoicesSchema
+ * @table invoices
+ * @category 04-financial
+ * Ownership: Schema package
+ */
+
+/**
  * Invoices Schema
  * @table invoices
  * @category 04-financial

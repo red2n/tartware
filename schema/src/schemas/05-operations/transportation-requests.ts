@@ -1,4 +1,16 @@
 /**
+ * DEV DOC
+ * Module: schemas/05-operations/transportation-requests.ts
+ * Description: TransportationRequests Schema
+ * Table: transportation_requests
+ * Category: 05-operations
+ * Primary exports: TransportationRequestsSchema, CreateTransportationRequestsSchema, UpdateTransportationRequestsSchema
+ * @table transportation_requests
+ * @category 05-operations
+ * Ownership: Schema package
+ */
+
+/**
  * TransportationRequests Schema
  * @table transportation_requests
  * @category 05-operations

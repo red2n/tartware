@@ -1,4 +1,16 @@
 /**
+ * DEV DOC
+ * Module: schemas/05-operations/services.ts
+ * Description: Services Schema
+ * Table: services
+ * Category: 05-operations
+ * Primary exports: ServicesSchema, CreateServicesSchema, UpdateServicesSchema
+ * @table services
+ * @category 05-operations
+ * Ownership: Schema package
+ */
+
+/**
  * Services Schema
  * @table services
  * @category 05-operations

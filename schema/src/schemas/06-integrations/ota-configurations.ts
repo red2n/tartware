@@ -1,4 +1,16 @@
 /**
+ * DEV DOC
+ * Module: schemas/06-integrations/ota-configurations.ts
+ * Description: OtaConfigurations Schema
+ * Table: ota_configurations
+ * Category: 06-integrations
+ * Primary exports: OtaConfigurationsSchema, CreateOtaConfigurationsSchema, UpdateOtaConfigurationsSchema
+ * @table ota_configurations
+ * @category 06-integrations
+ * Ownership: Schema package
+ */
+
+/**
  * OtaConfigurations Schema
  * @table ota_configurations
  * @category 06-integrations

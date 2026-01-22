@@ -1,4 +1,16 @@
 /**
+ * DEV DOC
+ * Module: schemas/05-operations/housekeeping-tasks.ts
+ * Description: HousekeepingTasks Schema
+ * Table: housekeeping_tasks
+ * Category: 05-operations
+ * Primary exports: HousekeepingTasksSchema, CreateHousekeepingTasksSchema, UpdateHousekeepingTasksSchema
+ * @table housekeeping_tasks
+ * @category 05-operations
+ * Ownership: Schema package
+ */
+
+/**
  * HousekeepingTasks Schema
  * @table housekeeping_tasks
  * @category 05-operations

@@ -1,4 +1,16 @@
 /**
+ * DEV DOC
+ * Module: schemas/05-operations/room-energy-usage.ts
+ * Description: RoomEnergyUsage Schema
+ * Table: room_energy_usage
+ * Category: 05-operations
+ * Primary exports: RoomEnergyUsageSchema, CreateRoomEnergyUsageSchema, UpdateRoomEnergyUsageSchema
+ * @table room_energy_usage
+ * @category 05-operations
+ * Ownership: Schema package
+ */
+
+/**
  * RoomEnergyUsage Schema
  * @table room_energy_usage
  * @category 05-operations

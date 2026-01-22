@@ -1,4 +1,16 @@
 /**
+ * DEV DOC
+ * Module: schemas/05-operations/spa-appointments.ts
+ * Description: SpaAppointments Schema
+ * Table: spa_appointments
+ * Category: 05-operations
+ * Primary exports: SpaAppointmentsSchema, CreateSpaAppointmentsSchema, UpdateSpaAppointmentsSchema
+ * @table spa_appointments
+ * @category 05-operations
+ * Ownership: Schema package
+ */
+
+/**
  * SpaAppointments Schema
  * @table spa_appointments
  * @category 05-operations

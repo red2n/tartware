@@ -1,4 +1,16 @@
 /**
+ * DEV DOC
+ * Module: schemas/06-integrations/channel-mappings.ts
+ * Description: ChannelMappings Schema
+ * Table: channel_mappings
+ * Category: 06-integrations
+ * Primary exports: ChannelMappingsSchema, CreateChannelMappingsSchema, UpdateChannelMappingsSchema
+ * @table channel_mappings
+ * @category 06-integrations
+ * Ownership: Schema package
+ */
+
+/**
  * ChannelMappings Schema
  * @table channel_mappings
  * @category 06-integrations

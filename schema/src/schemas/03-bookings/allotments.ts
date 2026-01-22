@@ -1,4 +1,16 @@
 /**
+ * DEV DOC
+ * Module: schemas/03-bookings/allotments.ts
+ * Description: Allotments Schema
+ * Table: allotments
+ * Category: 03-bookings
+ * Primary exports: AllotmentsSchema, CreateAllotmentsSchema, UpdateAllotmentsSchema
+ * @table allotments
+ * @category 03-bookings
+ * Ownership: Schema package
+ */
+
+/**
  * Allotments Schema
  * @table allotments
  * @category 03-bookings

@@ -1,34 +1,14 @@
 import { HttpClient } from '@angular/common/http';
 import { Inject, Injectable } from '@angular/core';
+import type {
+  CommandDefinition,
+  CommandExecuteRequest,
+  CommandExecuteResponse,
+} from '@tartware/schemas';
 import { Observable } from 'rxjs';
 import { API_BASE } from './api-config';
 
-export interface CommandExecuteRequest {
-  tenant_id: string;
-  payload: Record<string, unknown>;
-  correlation_id?: string;
-  initiated_by?: {
-    user_id: string;
-    role: string;
-  };
-}
-
-export interface CommandExecuteResponse {
-  status: 'accepted';
-  commandId: string;
-  commandName: string;
-  tenantId: string;
-  correlationId?: string;
-  targetService: string;
-  requestedAt: string;
-}
-
-export interface CommandDefinition {
-  name: string;
-  label: string;
-  description: string;
-  samplePayload?: Record<string, unknown>;
-}
+export type { CommandDefinition };
 
 @Injectable({ providedIn: 'root' })
 export class CommandCenterApiService {

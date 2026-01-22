@@ -1,4 +1,16 @@
 /**
+ * DEV DOC
+ * Module: schemas/01-core/system-admin-audit-log.ts
+ * Description: System Admin Audit Log Schema
+ * Table: system_admin_audit_log
+ * Category: 01-core
+ * Primary exports: SystemAdminAuditLogSchema, CreateSystemAdminAuditLogSchema, UpdateSystemAdminAuditLogSchema
+ * @table system_admin_audit_log
+ * @category 01-core
+ * Ownership: Schema package
+ */
+
+/**
  * System Admin Audit Log Schema
  * @table system_admin_audit_log
  * @category 01-core

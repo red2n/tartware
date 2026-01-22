@@ -1,4 +1,16 @@
 /**
+ * DEV DOC
+ * Module: schemas/05-operations/contactless-requests.ts
+ * Description: ContactlessRequests Schema
+ * Table: contactless_requests
+ * Category: 05-operations
+ * Primary exports: ContactlessRequestsSchema, CreateContactlessRequestsSchema, UpdateContactlessRequestsSchema
+ * @table contactless_requests
+ * @category 05-operations
+ * Ownership: Schema package
+ */
+
+/**
  * ContactlessRequests Schema
  * @table contactless_requests
  * @category 05-operations

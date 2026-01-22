@@ -1,4 +1,16 @@
 /**
+ * DEV DOC
+ * Module: schemas/06-integrations/gds-reservation-queue.ts
+ * Description: GdsReservationQueue Schema
+ * Table: gds_reservation_queue
+ * Category: 06-integrations
+ * Primary exports: GdsReservationQueueSchema, CreateGdsReservationQueueSchema, UpdateGdsReservationQueueSchema
+ * @table gds_reservation_queue
+ * @category 06-integrations
+ * Ownership: Schema package
+ */
+
+/**
  * GdsReservationQueue Schema
  * @table gds_reservation_queue
  * @category 06-integrations

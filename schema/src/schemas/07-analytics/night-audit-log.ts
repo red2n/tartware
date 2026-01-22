@@ -1,4 +1,16 @@
 /**
+ * DEV DOC
+ * Module: schemas/07-analytics/night-audit-log.ts
+ * Description: NightAuditLog Schema
+ * Table: night_audit_log
+ * Category: 07-analytics
+ * Primary exports: NightAuditLogSchema, CreateNightAuditLogSchema, UpdateNightAuditLogSchema
+ * @table night_audit_log
+ * @category 07-analytics
+ * Ownership: Schema package
+ */
+
+/**
  * NightAuditLog Schema
  * @table night_audit_log
  * @category 07-analytics

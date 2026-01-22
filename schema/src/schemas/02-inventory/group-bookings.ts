@@ -1,4 +1,16 @@
 /**
+ * DEV DOC
+ * Module: schemas/02-inventory/group-bookings.ts
+ * Description: GroupBookings Schema
+ * Table: group_bookings
+ * Category: 02-inventory
+ * Primary exports: GroupBookingsSchema, CreateGroupBookingsSchema, UpdateGroupBookingsSchema
+ * @table group_bookings
+ * @category 02-inventory
+ * Ownership: Schema package
+ */
+
+/**
  * GroupBookings Schema
  * @table group_bookings
  * @category 02-inventory

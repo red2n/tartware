@@ -1,4 +1,16 @@
 /**
+ * DEV DOC
+ * Module: schemas/01-core/setting-definitions.ts
+ * Description: SettingDefinitions Schema
+ * Table: setting_definitions
+ * Category: 01-core
+ * Primary exports: SettingDefinitionsSchema, CreateSettingDefinitionsSchema, UpdateSettingDefinitionsSchema
+ * @table setting_definitions
+ * @category 01-core
+ * Ownership: Schema package
+ */
+
+/**
  * SettingDefinitions Schema
  * @table setting_definitions
  * @category 01-core

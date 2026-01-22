@@ -1,4 +1,16 @@
 /**
+ * DEV DOC
+ * Module: schemas/07-analytics/audit-logs.ts
+ * Description: AuditLogs Schema
+ * Table: audit_logs
+ * Category: 07-analytics
+ * Primary exports: AuditLogsSchema, CreateAuditLogsSchema, UpdateAuditLogsSchema
+ * @table audit_logs
+ * @category 07-analytics
+ * Ownership: Schema package
+ */
+
+/**
  * AuditLogs Schema
  * @table audit_logs
  * @category 07-analytics

@@ -1,4 +1,11 @@
 /**
+ * DEV DOC
+ * Module: shared/enums.ts
+ * Purpose: Shared schema/type definitions and validation helpers.
+ * Ownership: Schema package
+ */
+
+/**
  * Zod ENUM definitions for Tartware PMS
  * Synchronized with PostgreSQL ENUMs in scripts/02-enum-types.sql
  *

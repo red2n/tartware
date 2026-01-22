@@ -1,4 +1,16 @@
 /**
+ * DEV DOC
+ * Module: schemas/06-integrations/referral-tracking.ts
+ * Description: ReferralTracking Schema
+ * Table: referral_tracking
+ * Category: 06-integrations
+ * Primary exports: ReferralTrackingSchema, CreateReferralTrackingSchema, UpdateReferralTrackingSchema
+ * @table referral_tracking
+ * @category 06-integrations
+ * Ownership: Schema package
+ */
+
+/**
  * ReferralTracking Schema
  * @table referral_tracking
  * @category 06-integrations

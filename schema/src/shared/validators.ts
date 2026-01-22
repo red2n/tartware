@@ -1,4 +1,11 @@
 /**
+ * DEV DOC
+ * Module: shared/validators.ts
+ * Purpose: Shared schema/type definitions and validation helpers.
+ * Ownership: Schema package
+ */
+
+/**
  * Custom validation functions for Tartware PMS
  * Complex business rules and cross-field validations
  */
@@ -264,4 +271,4 @@ export const uniqueArray = <T>(
 ) =>
 	z
 		.array(schema)
-		.refine((arr) => new Set(arr).size === arr.length, { message });
+		.refine((arr: T[]) => new Set(arr).size === arr.length, { message });

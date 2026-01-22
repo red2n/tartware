@@ -1,4 +1,16 @@
 /**
+ * DEV DOC
+ * Module: schemas/02-inventory/travel-agent-commissions.ts
+ * Description: TravelAgentCommissions Schema
+ * Table: travel_agent_commissions
+ * Category: 02-inventory
+ * Primary exports: TravelAgentCommissionsSchema, CreateTravelAgentCommissionsSchema, UpdateTravelAgentCommissionsSchema
+ * @table travel_agent_commissions
+ * @category 02-inventory
+ * Ownership: Schema package
+ */
+
+/**
  * TravelAgentCommissions Schema
  * @table travel_agent_commissions
  * @category 02-inventory

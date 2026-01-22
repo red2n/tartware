@@ -1,4 +1,16 @@
 /**
+ * DEV DOC
+ * Module: schemas/05-operations/app-usage-analytics.ts
+ * Description: AppUsageAnalytics Schema
+ * Table: app_usage_analytics
+ * Category: 05-operations
+ * Primary exports: AppUsageAnalyticsSchema, CreateAppUsageAnalyticsSchema, UpdateAppUsageAnalyticsSchema
+ * @table app_usage_analytics
+ * @category 05-operations
+ * Ownership: Schema package
+ */
+
+/**
  * AppUsageAnalytics Schema
  * @table app_usage_analytics
  * @category 05-operations

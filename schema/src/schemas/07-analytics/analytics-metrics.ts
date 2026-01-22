@@ -1,4 +1,16 @@
 /**
+ * DEV DOC
+ * Module: schemas/07-analytics/analytics-metrics.ts
+ * Description: AnalyticsMetrics Schema
+ * Table: analytics_metrics
+ * Category: 07-analytics
+ * Primary exports: AnalyticsMetricsSchema, CreateAnalyticsMetricsSchema, UpdateAnalyticsMetricsSchema
+ * @table analytics_metrics
+ * @category 07-analytics
+ * Ownership: Schema package
+ */
+
+/**
  * AnalyticsMetrics Schema
  * @table analytics_metrics
  * @category 07-analytics

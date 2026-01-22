@@ -1,4 +1,16 @@
 /**
+ * DEV DOC
+ * Module: schemas/05-operations/predictive-maintenance-alerts.ts
+ * Description: PredictiveMaintenanceAlerts Schema
+ * Table: predictive_maintenance_alerts
+ * Category: 05-operations
+ * Primary exports: PredictiveMaintenanceAlertsSchema, CreatePredictiveMaintenanceAlertsSchema, UpdatePredictiveMaintenanceAlertsSchema
+ * @table predictive_maintenance_alerts
+ * @category 05-operations
+ * Ownership: Schema package
+ */
+
+/**
  * PredictiveMaintenanceAlerts Schema
  * @table predictive_maintenance_alerts
  * @category 05-operations

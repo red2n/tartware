@@ -1,4 +1,16 @@
 /**
+ * DEV DOC
+ * Module: schemas/02-inventory/package-bookings.ts
+ * Description: PackageBookings Schema
+ * Table: package_bookings
+ * Category: 02-inventory
+ * Primary exports: PackageBookingsSchema, CreatePackageBookingsSchema, UpdatePackageBookingsSchema
+ * @table package_bookings
+ * @category 02-inventory
+ * Ownership: Schema package
+ */
+
+/**
  * PackageBookings Schema
  * @table package_bookings
  * @category 02-inventory

@@ -1,4 +1,16 @@
 /**
+ * DEV DOC
+ * Module: schemas/04-financial/refunds.ts
+ * Description: Refunds Schema
+ * Table: refunds
+ * Category: 04-financial
+ * Primary exports: RefundsSchema, CreateRefundsSchema, UpdateRefundsSchema
+ * @table refunds
+ * @category 04-financial
+ * Ownership: Schema package
+ */
+
+/**
  * Refunds Schema
  * @table refunds
  * @category 04-financial

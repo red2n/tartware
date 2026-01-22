@@ -1,4 +1,16 @@
 /**
+ * DEV DOC
+ * Module: schemas/07-analytics/report-schedules.ts
+ * Description: ReportSchedules Schema
+ * Table: report_schedules
+ * Category: 07-analytics
+ * Primary exports: ReportSchedulesSchema, CreateReportSchedulesSchema, UpdateReportSchedulesSchema
+ * @table report_schedules
+ * @category 07-analytics
+ * Ownership: Schema package
+ */
+
+/**
  * ReportSchedules Schema
  * @table report_schedules
  * @category 07-analytics

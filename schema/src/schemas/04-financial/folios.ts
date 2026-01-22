@@ -1,4 +1,16 @@
 /**
+ * DEV DOC
+ * Module: schemas/04-financial/folios.ts
+ * Description: Folios Schema
+ * Table: folios
+ * Category: 04-financial
+ * Primary exports: FoliosSchema, CreateFoliosSchema, UpdateFoliosSchema
+ * @table folios
+ * @category 04-financial
+ * Ownership: Schema package
+ */
+
+/**
  * Folios Schema
  * @table folios
  * @category 04-financial

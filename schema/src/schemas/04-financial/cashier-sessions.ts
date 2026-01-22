@@ -1,4 +1,16 @@
 /**
+ * DEV DOC
+ * Module: schemas/04-financial/cashier-sessions.ts
+ * Description: CashierSessions Schema
+ * Table: cashier_sessions
+ * Category: 04-financial
+ * Primary exports: CashierSessionsSchema, CreateCashierSessionsSchema, UpdateCashierSessionsSchema
+ * @table cashier_sessions
+ * @category 04-financial
+ * Ownership: Schema package
+ */
+
+/**
  * CashierSessions Schema
  * @table cashier_sessions
  * @category 04-financial

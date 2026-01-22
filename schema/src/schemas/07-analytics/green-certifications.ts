@@ -1,4 +1,16 @@
 /**
+ * DEV DOC
+ * Module: schemas/07-analytics/green-certifications.ts
+ * Description: GreenCertifications Schema
+ * Table: green_certifications
+ * Category: 07-analytics
+ * Primary exports: GreenCertificationsSchema, CreateGreenCertificationsSchema, UpdateGreenCertificationsSchema
+ * @table green_certifications
+ * @category 07-analytics
+ * Ownership: Schema package
+ */
+
+/**
  * GreenCertifications Schema
  * @table green_certifications
  * @category 07-analytics

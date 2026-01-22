@@ -1,4 +1,16 @@
 /**
+ * DEV DOC
+ * Module: schemas/06-integrations/channel-rate-parity.ts
+ * Description: ChannelRateParity Schema
+ * Table: channel_rate_parity
+ * Category: 06-integrations
+ * Primary exports: ChannelRateParitySchema, CreateChannelRateParitySchema, UpdateChannelRateParitySchema
+ * @table channel_rate_parity
+ * @category 06-integrations
+ * Ownership: Schema package
+ */
+
+/**
  * ChannelRateParity Schema
  * @table channel_rate_parity
  * @category 06-integrations

@@ -43,6 +43,9 @@
 \i tables/07-analytics/verify-12-analytics-reporting.sql
 \i tables/07-analytics/verify-14-system-audit.sql
 
+-- Settings catalog
+\i tables/08-settings/verify-08-settings-catalog.sql
+
 \echo ''
 \echo '======================================================'
 \echo '  TABLE VERIFICATION COMPLETE'

@@ -1,4 +1,16 @@
 /**
+ * DEV DOC
+ * Module: schemas/03-bookings/guest-communications.ts
+ * Description: GuestCommunications Schema
+ * Table: guest_communications
+ * Category: 03-bookings
+ * Primary exports: GuestCommunicationsSchema, CreateGuestCommunicationsSchema, UpdateGuestCommunicationsSchema
+ * @table guest_communications
+ * @category 03-bookings
+ * Ownership: Schema package
+ */
+
+/**
  * GuestCommunications Schema
  * @table guest_communications
  * @category 03-bookings

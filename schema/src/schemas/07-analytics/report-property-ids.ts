@@ -1,4 +1,16 @@
 /**
+ * DEV DOC
+ * Module: schemas/07-analytics/report-property-ids.ts
+ * Description: ReportPropertyIds Schema
+ * Table: report_property_ids
+ * Category: 07-analytics
+ * Primary exports: ReportPropertyIdsSchema, CreateReportPropertyIdsSchema, UpdateReportPropertyIdsSchema
+ * @table report_property_ids
+ * @category 07-analytics
+ * Ownership: Schema package
+ */
+
+/**
  * ReportPropertyIds Schema
  * @table report_property_ids
  * @category 07-analytics

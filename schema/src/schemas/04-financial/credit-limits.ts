@@ -1,4 +1,16 @@
 /**
+ * DEV DOC
+ * Module: schemas/04-financial/credit-limits.ts
+ * Description: CreditLimits Schema
+ * Table: credit_limits
+ * Category: 04-financial
+ * Primary exports: CreditLimitsSchema, CreateCreditLimitsSchema, UpdateCreditLimitsSchema
+ * @table credit_limits
+ * @category 04-financial
+ * Ownership: Schema package
+ */
+
+/**
  * CreditLimits Schema
  * @table credit_limits
  * @category 04-financial

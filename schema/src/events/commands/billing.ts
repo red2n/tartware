@@ -1,3 +1,10 @@
+/**
+ * DEV DOC
+ * Module: events/commands/billing.ts
+ * Purpose: Shared schema/type definitions and validation helpers.
+ * Ownership: Schema package
+ */
+
 import { z } from "zod";
 
 import { PaymentMethodEnum } from "../../shared/enums.js";

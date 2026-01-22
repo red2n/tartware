@@ -1,4 +1,16 @@
 /**
+ * DEV DOC
+ * Module: schemas/05-operations/qr-codes.ts
+ * Description: QrCodes Schema
+ * Table: qr_codes
+ * Category: 05-operations
+ * Primary exports: QrCodesSchema, CreateQrCodesSchema, UpdateQrCodesSchema
+ * @table qr_codes
+ * @category 05-operations
+ * Ownership: Schema package
+ */
+
+/**
  * QrCodes Schema
  * @table qr_codes
  * @category 05-operations

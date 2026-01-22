@@ -1,4 +1,16 @@
 /**
+ * DEV DOC
+ * Module: schemas/05-operations/push-notifications.ts
+ * Description: PushNotifications Schema
+ * Table: push_notifications
+ * Category: 05-operations
+ * Primary exports: PushNotificationsSchema, CreatePushNotificationsSchema, UpdatePushNotificationsSchema
+ * @table push_notifications
+ * @category 05-operations
+ * Ownership: Schema package
+ */
+
+/**
  * PushNotifications Schema
  * @table push_notifications
  * @category 05-operations

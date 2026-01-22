@@ -1,4 +1,16 @@
 /**
+ * DEV DOC
+ * Module: schemas/02-inventory/packages.ts
+ * Description: Packages Schema
+ * Table: packages
+ * Category: 02-inventory
+ * Primary exports: PackagesSchema, CreatePackagesSchema, UpdatePackagesSchema
+ * @table packages
+ * @category 02-inventory
+ * Ownership: Schema package
+ */
+
+/**
  * Packages Schema
  * @table packages
  * @category 02-inventory

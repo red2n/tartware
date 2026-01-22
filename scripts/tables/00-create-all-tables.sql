@@ -1,18 +1,18 @@
 -- ============================================================================
 -- Tartware PMS - Master Table Creation Script
--- Consolidated Structure (7 categories instead of 20)
+-- Consolidated Structure (8 categories instead of 20)
 -- ============================================================================
 
 \echo '========================================='
 \echo 'TARTWARE PMS - Creating All Tables'
-\echo 'Consolidated Structure: 7 Categories'
+\echo 'Consolidated Structure: 8 Categories'
 \echo '========================================='
 \echo ''
 
 -- ============================================================================
 -- CATEGORY 1: CORE (Foundation: tenants, users, properties, guests)
 -- ============================================================================
-\echo '>>> Category 1/7: CORE FOUNDATION'
+\echo '>>> Category 1/8: CORE FOUNDATION'
 \ir 01-core/01_tenants.sql
 \ir 01-core/02_users.sql
 \ir 01-core/03_user_tenant_associations.sql
@@ -28,7 +28,7 @@
 -- ============================================================================
 -- CATEGORY 2: INVENTORY (Rooms, rates, availability, revenue management)
 -- ============================================================================
-\echo '>>> Category 2/7: INVENTORY & PRICING'
+\echo '>>> Category 2/8: INVENTORY & PRICING'
 \ir 02-inventory/06_room_types.sql
 \ir 02-inventory/07_rooms.sql
 \ir 02-inventory/10_room_amenity_catalog.sql
@@ -52,7 +52,7 @@
 -- ============================================================================
 -- CATEGORY 3: BOOKINGS (Reservations, guest relations, booking sources)
 -- ============================================================================
-\echo '>>> Category 3/7: BOOKINGS & GUEST RELATIONS'
+\echo '>>> Category 3/8: BOOKINGS & GUEST RELATIONS'
 \ir 03-bookings/10_reservations.sql
 \ir 03-bookings/11_reservation_status_history.sql
 \ir 03-bookings/30_deposit_schedules.sql
@@ -81,7 +81,7 @@
 -- ============================================================================
 -- CATEGORY 4: FINANCIAL (Payments, invoices, folios, accounting)
 -- ============================================================================
-\echo '>>> Category 4/7: FINANCIAL MANAGEMENT'
+\echo '>>> Category 4/8: FINANCIAL MANAGEMENT'
 \ir 04-financial/12_payments.sql
 \ir 04-financial/13_invoices.sql
 \ir 04-financial/14_invoice_items.sql
@@ -101,7 +101,7 @@
 -- ============================================================================
 -- CATEGORY 5: OPERATIONS (Services, housekeeping, staff, mobile, assets)
 -- ============================================================================
-\echo '>>> Category 5/7: OPERATIONS & SERVICES'
+\echo '>>> Category 5/8: OPERATIONS & SERVICES'
 \ir 05-operations/15_services.sql
 \ir 05-operations/16_reservation_services.sql
 \ir 05-operations/17_housekeeping_tasks.sql
@@ -130,7 +130,7 @@
 -- ============================================================================
 -- CATEGORY 6: INTEGRATIONS (Channels, OTA, marketing, external systems)
 -- ============================================================================
-\echo '>>> Category 6/7: INTEGRATIONS & CHANNELS'
+\echo '>>> Category 6/8: INTEGRATIONS & CHANNELS'
 \ir 06-integrations/18_channel_mappings.sql
 \ir 06-integrations/38_ota_configurations.sql
 \ir 06-integrations/39_ota_rate_plans.sql
@@ -158,7 +158,7 @@
 -- ============================================================================
 -- CATEGORY 7: ANALYTICS (Reporting, compliance, audit, sustainability)
 -- ============================================================================
-\echo '>>> Category 7/7: ANALYTICS & COMPLIANCE'
+\echo '>>> Category 7/8: ANALYTICS & COMPLIANCE'
 \ir 07-analytics/19_analytics_metrics.sql
 \ir 07-analytics/20_analytics_metric_dimensions.sql
 \ir 07-analytics/21_analytics_reports.sql
@@ -177,6 +177,16 @@
 \ir 07-analytics/80_forecasting_models.sql
 \ir 07-analytics/81_ab_test_results.sql
 \ir 07-analytics/98_sustainability_metrics.sql
+
+-- =========================================================================
+-- CATEGORY 8: SETTINGS (Catalog definitions + values)
+-- =========================================================================
+\echo '>>> Category 8/8: SETTINGS CATALOG'
+\ir 08-settings/10_settings_categories.sql
+\ir 08-settings/11_settings_sections.sql
+\ir 08-settings/12_settings_definitions.sql
+\ir 08-settings/13_settings_options.sql
+\ir 08-settings/14_settings_values.sql
 
 \echo ''
 \echo '========================================='

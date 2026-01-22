@@ -1,4 +1,16 @@
 /**
+ * DEV DOC
+ * Module: schemas/01-core/users.ts
+ * Description: Users Schema
+ * Table: users
+ * Category: 01-core
+ * Primary exports: UserSchema, PublicUserSchema, UserTenantMembershipSchema, UserWithTenantsSchema, CreateUserSchema, UpdateUserSchema
+ * @table users
+ * @category 01-core
+ * Ownership: Schema package
+ */
+
+/**
  * Users Schema
  * @table users
  * @category 01-core

@@ -1,29 +1,17 @@
 import { Injectable, Signal, WritableSignal, computed, effect, inject, signal } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { PLATFORM_ID } from '@angular/core';
-import type { AdminUser, BreakGlassResponse, LoginResponse } from './admin-auth.service';
+import type {
+  SystemAdminBreakGlassResponse,
+  SystemAdminLoginResponse,
+  SystemAdminToken,
+  ImpersonationToken,
+  TenantContext,
+} from '@tartware/schemas';
 
-export type SystemAdminToken = {
-  accessToken: string;
-  tokenType: 'Bearer';
-  scope: 'SYSTEM_ADMIN';
-  sessionId: string;
-  expiresIn: number;
-  admin?: AdminUser;
-};
-
-export type ImpersonationToken = {
-  accessToken: string;
-  tokenType: 'Bearer';
-  scope: 'TENANT_IMPERSONATION';
-  expiresIn: number;
-  expiresAt?: string;
-};
-
-export type TenantContext = {
-  tenantId: string;
-  propertyId?: string;
-};
+export type SystemAdminSessionToken = SystemAdminToken;
+export type ImpersonationSessionToken = ImpersonationToken;
+export type TenantSessionContext = TenantContext;
 
 @Injectable({ providedIn: 'root' })
 export class SystemSessionService {
@@ -125,7 +113,7 @@ export class SystemSessionService {
     }
   }
 
-  setAdminSession(res: LoginResponse | BreakGlassResponse) {
+  setAdminSession(res: SystemAdminLoginResponse | SystemAdminBreakGlassResponse) {
     this.adminState.set({
       accessToken: res.access_token,
       tokenType: res.token_type,

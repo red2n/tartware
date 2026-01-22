@@ -1,4 +1,16 @@
 /**
+ * DEV DOC
+ * Module: schemas/03-bookings/reservation-event-offsets.ts
+ * Description: Reservation Event Offsets Schema
+ * Table: reservation_event_offsets
+ * Category: 03-bookings
+ * Primary exports: ReservationEventOffsetsSchema, CreateReservationEventOffsetsSchema, UpdateReservationEventOffsetsSchema
+ * @table reservation_event_offsets
+ * @category 03-bookings
+ * Ownership: Schema package
+ */
+
+/**
  * Reservation Event Offsets Schema
  * @table reservation_event_offsets
  * @category 03-bookings

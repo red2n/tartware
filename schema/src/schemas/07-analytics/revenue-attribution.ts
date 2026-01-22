@@ -1,4 +1,16 @@
 /**
+ * DEV DOC
+ * Module: schemas/07-analytics/revenue-attribution.ts
+ * Description: RevenueAttribution Schema
+ * Table: revenue_attribution
+ * Category: 07-analytics
+ * Primary exports: RevenueAttributionSchema, CreateRevenueAttributionSchema, UpdateRevenueAttributionSchema
+ * @table revenue_attribution
+ * @category 07-analytics
+ * Ownership: Schema package
+ */
+
+/**
  * RevenueAttribution Schema
  * @table revenue_attribution
  * @category 07-analytics

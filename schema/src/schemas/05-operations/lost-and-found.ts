@@ -1,4 +1,16 @@
 /**
+ * DEV DOC
+ * Module: schemas/05-operations/lost-and-found.ts
+ * Description: LostAndFound Schema
+ * Table: lost_and_found
+ * Category: 05-operations
+ * Primary exports: LostAndFoundSchema, CreateLostAndFoundSchema, UpdateLostAndFoundSchema
+ * @table lost_and_found
+ * @category 05-operations
+ * Ownership: Schema package
+ */
+
+/**
  * LostAndFound Schema
  * @table lost_and_found
  * @category 05-operations

@@ -1,4 +1,16 @@
 /**
+ * DEV DOC
+ * Module: schemas/02-inventory/event-bookings.ts
+ * Description: EventBookings Schema
+ * Table: event_bookings
+ * Category: 02-inventory
+ * Primary exports: EventBookingsSchema, CreateEventBookingsSchema, UpdateEventBookingsSchema
+ * @table event_bookings
+ * @category 02-inventory
+ * Ownership: Schema package
+ */
+
+/**
  * EventBookings Schema
  * @table event_bookings
  * @category 02-inventory

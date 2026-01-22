@@ -1,4 +1,16 @@
 /**
+ * DEV DOC
+ * Module: schemas/06-integrations/guest-interaction-events.ts
+ * Description: GuestInteractionEvents Schema
+ * Table: guest_interaction_events
+ * Category: 06-integrations
+ * Primary exports: GuestInteractionEventsSchema, CreateGuestInteractionEventsSchema, UpdateGuestInteractionEventsSchema
+ * @table guest_interaction_events
+ * @category 06-integrations
+ * Ownership: Schema package
+ */
+
+/**
  * GuestInteractionEvents Schema
  * @table guest_interaction_events
  * @category 06-integrations

@@ -1,4 +1,16 @@
 /**
+ * DEV DOC
+ * Module: schemas/03-bookings/deposit-schedules.ts
+ * Description: DepositSchedules Schema
+ * Table: deposit_schedules
+ * Category: 03-bookings
+ * Primary exports: DepositSchedulesSchema, CreateDepositSchedulesSchema, UpdateDepositSchedulesSchema
+ * @table deposit_schedules
+ * @category 03-bookings
+ * Ownership: Schema package
+ */
+
+/**
  * DepositSchedules Schema
  * @table deposit_schedules
  * @category 03-bookings

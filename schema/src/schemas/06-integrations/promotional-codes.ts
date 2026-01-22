@@ -1,4 +1,16 @@
 /**
+ * DEV DOC
+ * Module: schemas/06-integrations/promotional-codes.ts
+ * Description: PromotionalCodes Schema
+ * Table: promotional_codes
+ * Category: 06-integrations
+ * Primary exports: PromotionalCodesSchema, CreatePromotionalCodesSchema, UpdatePromotionalCodesSchema
+ * @table promotional_codes
+ * @category 06-integrations
+ * Ownership: Schema package
+ */
+
+/**
  * PromotionalCodes Schema
  * @table promotional_codes
  * @category 06-integrations

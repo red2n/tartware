@@ -1,4 +1,16 @@
 /**
+ * DEV DOC
+ * Module: schemas/05-operations/shuttle-schedules.ts
+ * Description: ShuttleSchedules Schema
+ * Table: shuttle_schedules
+ * Category: 05-operations
+ * Primary exports: ShuttleSchedulesSchema, CreateShuttleSchedulesSchema, UpdateShuttleSchedulesSchema
+ * @table shuttle_schedules
+ * @category 05-operations
+ * Ownership: Schema package
+ */
+
+/**
  * ShuttleSchedules Schema
  * @table shuttle_schedules
  * @category 05-operations

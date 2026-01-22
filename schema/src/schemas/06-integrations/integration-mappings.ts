@@ -1,4 +1,16 @@
 /**
+ * DEV DOC
+ * Module: schemas/06-integrations/integration-mappings.ts
+ * Description: IntegrationMappings Schema
+ * Table: integration_mappings
+ * Category: 06-integrations
+ * Primary exports: IntegrationMappingsSchema, CreateIntegrationMappingsSchema, UpdateIntegrationMappingsSchema
+ * @table integration_mappings
+ * @category 06-integrations
+ * Ownership: Schema package
+ */
+
+/**
  * IntegrationMappings Schema
  * @table integration_mappings
  * @category 06-integrations

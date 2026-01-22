@@ -1,4 +1,16 @@
 /**
+ * DEV DOC
+ * Module: schemas/07-analytics/analytics-reports.ts
+ * Description: AnalyticsReports Schema
+ * Table: analytics_reports
+ * Category: 07-analytics
+ * Primary exports: AnalyticsReportsSchema, CreateAnalyticsReportsSchema, UpdateAnalyticsReportsSchema
+ * @table analytics_reports
+ * @category 07-analytics
+ * Ownership: Schema package
+ */
+
+/**
  * AnalyticsReports Schema
  * @table analytics_reports
  * @category 07-analytics

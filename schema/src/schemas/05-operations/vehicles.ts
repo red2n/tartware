@@ -1,4 +1,16 @@
 /**
+ * DEV DOC
+ * Module: schemas/05-operations/vehicles.ts
+ * Description: Vehicles Schema
+ * Table: vehicles
+ * Category: 05-operations
+ * Primary exports: VehiclesSchema, CreateVehiclesSchema, UpdateVehiclesSchema
+ * @table vehicles
+ * @category 05-operations
+ * Ownership: Schema package
+ */
+
+/**
  * Vehicles Schema
  * @table vehicles
  * @category 05-operations

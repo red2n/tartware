@@ -1,4 +1,16 @@
 /**
+ * DEV DOC
+ * Module: schemas/05-operations/maintenance-requests.ts
+ * Description: MaintenanceRequests Schema
+ * Table: maintenance_requests
+ * Category: 05-operations
+ * Primary exports: MaintenanceRequestsSchema, CreateMaintenanceRequestsSchema, UpdateMaintenanceRequestsSchema
+ * @table maintenance_requests
+ * @category 05-operations
+ * Ownership: Schema package
+ */
+
+/**
  * MaintenanceRequests Schema
  * @table maintenance_requests
  * @category 05-operations
