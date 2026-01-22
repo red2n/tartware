@@ -9,8 +9,8 @@
 
 CREATE TABLE IF NOT EXISTS settings_definitions (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    category_id UUID NOT NULL,
-    section_id UUID NOT NULL,
+    category_id UUID NOT NULL REFERENCES settings_categories(id) ON DELETE CASCADE,
+    section_id UUID NOT NULL REFERENCES settings_sections(id) ON DELETE CASCADE,
     code VARCHAR(96) NOT NULL UNIQUE,
     name VARCHAR(160) NOT NULL,
     description TEXT NOT NULL,
@@ -45,5 +45,18 @@ CREATE TABLE IF NOT EXISTS settings_definitions (
     created_by VARCHAR(120),
     updated_by VARCHAR(120)
 );
+
+-- =====================================================
+-- INDEXES
+-- =====================================================
+
+CREATE INDEX IF NOT EXISTS idx_settings_definitions_section_sort
+    ON settings_definitions (section_id, sort_order);
+
+CREATE INDEX IF NOT EXISTS idx_settings_definitions_deprecated
+    ON settings_definitions (is_deprecated);
+
+CREATE INDEX IF NOT EXISTS idx_settings_definitions_feature_flag
+    ON settings_definitions (feature_flag);
 
 \echo 'settings_definitions table created.'
