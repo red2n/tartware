@@ -1,4 +1,16 @@
 /**
+ * DEV DOC
+ * Module: schemas/04-financial/payments.ts
+ * Description: Payments Schema
+ * Table: payments
+ * Category: 04-financial
+ * Primary exports: PaymentsSchema, CreatePaymentsSchema, UpdatePaymentsSchema
+ * @table payments
+ * @category 04-financial
+ * Ownership: Schema package
+ */
+
+/**
  * Payments Schema
  * @table payments
  * @category 04-financial

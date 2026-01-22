@@ -1,4 +1,16 @@
 /**
+ * DEV DOC
+ * Module: schemas/01-core/system-admin-break-glass-codes.ts
+ * Description: System Admin Break Glass Codes Schema
+ * Table: system_admin_break_glass_codes
+ * Category: 01-core
+ * Primary exports: SystemAdminBreakGlassCodeSchema, CreateSystemAdminBreakGlassCodeSchema, UpdateSystemAdminBreakGlassCodeSchema
+ * @table system_admin_break_glass_codes
+ * @category 01-core
+ * Ownership: Schema package
+ */
+
+/**
  * System Admin Break Glass Codes Schema
  * @table system_admin_break_glass_codes
  * @category 01-core

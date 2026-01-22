@@ -1,4 +1,16 @@
 /**
+ * DEV DOC
+ * Module: schemas/04-financial/general-ledger-entries.ts
+ * Description: GeneralLedgerEntries Schema
+ * Table: general_ledger_entries
+ * Category: 04-financial
+ * Primary exports: GeneralLedgerEntriesSchema, CreateGeneralLedgerEntriesSchema, UpdateGeneralLedgerEntriesSchema
+ * @table general_ledger_entries
+ * @category 04-financial
+ * Ownership: Schema package
+ */
+
+/**
  * GeneralLedgerEntries Schema
  * @table general_ledger_entries
  * @category 04-financial

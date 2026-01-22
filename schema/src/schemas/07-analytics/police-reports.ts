@@ -1,4 +1,16 @@
 /**
+ * DEV DOC
+ * Module: schemas/07-analytics/police-reports.ts
+ * Description: PoliceReports Schema
+ * Table: police_reports
+ * Category: 07-analytics
+ * Primary exports: PoliceReportsSchema, CreatePoliceReportsSchema, UpdatePoliceReportsSchema
+ * @table police_reports
+ * @category 07-analytics
+ * Ownership: Schema package
+ */
+
+/**
  * PoliceReports Schema
  * @table police_reports
  * @category 07-analytics

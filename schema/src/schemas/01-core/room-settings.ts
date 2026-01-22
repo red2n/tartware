@@ -1,4 +1,16 @@
 /**
+ * DEV DOC
+ * Module: schemas/01-core/room-settings.ts
+ * Description: RoomSettings Schema
+ * Table: room_settings
+ * Category: 01-core
+ * Primary exports: RoomSettingsSchema, CreateRoomSettingsSchema, UpdateRoomSettingsSchema
+ * @table room_settings
+ * @category 01-core
+ * Ownership: Schema package
+ */
+
+/**
  * RoomSettings Schema
  * @table room_settings
  * @category 01-core

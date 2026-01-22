@@ -1,4 +1,16 @@
 /**
+ * DEV DOC
+ * Module: schemas/06-integrations/personalized-recommendations.ts
+ * Description: PersonalizedRecommendations Schema
+ * Table: personalized_recommendations
+ * Category: 06-integrations
+ * Primary exports: PersonalizedRecommendationsSchema, CreatePersonalizedRecommendationsSchema, UpdatePersonalizedRecommendationsSchema
+ * @table personalized_recommendations
+ * @category 06-integrations
+ * Ownership: Schema package
+ */
+
+/**
  * PersonalizedRecommendations Schema
  * @table personalized_recommendations
  * @category 06-integrations

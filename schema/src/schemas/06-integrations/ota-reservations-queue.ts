@@ -1,4 +1,16 @@
 /**
+ * DEV DOC
+ * Module: schemas/06-integrations/ota-reservations-queue.ts
+ * Description: OtaReservationsQueue Schema
+ * Table: ota_reservations_queue
+ * Category: 06-integrations
+ * Primary exports: OtaReservationsQueueSchema, CreateOtaReservationsQueueSchema, UpdateOtaReservationsQueueSchema
+ * @table ota_reservations_queue
+ * @category 06-integrations
+ * Ownership: Schema package
+ */
+
+/**
  * OtaReservationsQueue Schema
  * @table ota_reservations_queue
  * @category 06-integrations

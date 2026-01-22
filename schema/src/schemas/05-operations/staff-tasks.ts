@@ -1,4 +1,16 @@
 /**
+ * DEV DOC
+ * Module: schemas/05-operations/staff-tasks.ts
+ * Description: StaffTasks Schema
+ * Table: staff_tasks
+ * Category: 05-operations
+ * Primary exports: StaffTasksSchema, CreateStaffTasksSchema, UpdateStaffTasksSchema
+ * @table staff_tasks
+ * @category 05-operations
+ * Ownership: Schema package
+ */
+
+/**
  * StaffTasks Schema
  * @table staff_tasks
  * @category 05-operations

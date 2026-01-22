@@ -1,4 +1,16 @@
 /**
+ * DEV DOC
+ * Module: schemas/02-inventory/room-amenity-catalog.ts
+ * Description: Room Amenity Catalog Schema
+ * Table: room_amenity_catalog
+ * Category: 02-inventory
+ * Primary exports: RoomAmenityCatalogSchema, CreateRoomAmenitySchema, UpdateRoomAmenitySchema
+ * @table room_amenity_catalog
+ * @category 02-inventory
+ * Ownership: Schema package
+ */
+
+/**
  * Room Amenity Catalog Schema
  * @table room_amenity_catalog
  * @category 02-inventory

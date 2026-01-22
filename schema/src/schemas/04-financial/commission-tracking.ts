@@ -1,4 +1,16 @@
 /**
+ * DEV DOC
+ * Module: schemas/04-financial/commission-tracking.ts
+ * Description: CommissionTracking Schema
+ * Table: commission_tracking
+ * Category: 04-financial
+ * Primary exports: CommissionTrackingSchema, CreateCommissionTrackingSchema, UpdateCommissionTrackingSchema
+ * @table commission_tracking
+ * @category 04-financial
+ * Ownership: Schema package
+ */
+
+/**
  * CommissionTracking Schema
  * @table commission_tracking
  * @category 04-financial

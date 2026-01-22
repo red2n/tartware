@@ -1,4 +1,16 @@
 /**
+ * DEV DOC
+ * Module: schemas/06-integrations/data-sync-status.ts
+ * Description: DataSyncStatus Schema
+ * Table: data_sync_status
+ * Category: 06-integrations
+ * Primary exports: DataSyncStatusSchema, CreateDataSyncStatusSchema, UpdateDataSyncStatusSchema
+ * @table data_sync_status
+ * @category 06-integrations
+ * Ownership: Schema package
+ */
+
+/**
  * DataSyncStatus Schema
  * @table data_sync_status
  * @category 06-integrations

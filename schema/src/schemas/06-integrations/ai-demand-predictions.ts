@@ -1,4 +1,16 @@
 /**
+ * DEV DOC
+ * Module: schemas/06-integrations/ai-demand-predictions.ts
+ * Description: AiDemandPredictions Schema
+ * Table: ai_demand_predictions
+ * Category: 06-integrations
+ * Primary exports: AiDemandPredictionsSchema, CreateAiDemandPredictionsSchema, UpdateAiDemandPredictionsSchema
+ * @table ai_demand_predictions
+ * @category 06-integrations
+ * Ownership: Schema package
+ */
+
+/**
  * AiDemandPredictions Schema
  * @table ai_demand_predictions
  * @category 06-integrations

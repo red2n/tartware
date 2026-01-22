@@ -1,4 +1,16 @@
 /**
+ * DEV DOC
+ * Module: schemas/06-integrations/campaign-segments.ts
+ * Description: CampaignSegments Schema
+ * Table: campaign_segments
+ * Category: 06-integrations
+ * Primary exports: CampaignSegmentsSchema, CreateCampaignSegmentsSchema, UpdateCampaignSegmentsSchema
+ * @table campaign_segments
+ * @category 06-integrations
+ * Ownership: Schema package
+ */
+
+/**
  * CampaignSegments Schema
  * @table campaign_segments
  * @category 06-integrations

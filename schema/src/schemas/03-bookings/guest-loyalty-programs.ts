@@ -1,4 +1,16 @@
 /**
+ * DEV DOC
+ * Module: schemas/03-bookings/guest-loyalty-programs.ts
+ * Description: GuestLoyaltyPrograms Schema
+ * Table: guest_loyalty_programs
+ * Category: 03-bookings
+ * Primary exports: GuestLoyaltyProgramsSchema, CreateGuestLoyaltyProgramsSchema, UpdateGuestLoyaltyProgramsSchema
+ * @table guest_loyalty_programs
+ * @category 03-bookings
+ * Ownership: Schema package
+ */
+
+/**
  * GuestLoyaltyPrograms Schema
  * @table guest_loyalty_programs
  * @category 03-bookings

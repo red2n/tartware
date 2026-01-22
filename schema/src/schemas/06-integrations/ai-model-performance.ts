@@ -1,4 +1,16 @@
 /**
+ * DEV DOC
+ * Module: schemas/06-integrations/ai-model-performance.ts
+ * Description: AiModelPerformance Schema
+ * Table: ai_model_performance
+ * Category: 06-integrations
+ * Primary exports: AiModelPerformanceSchema, CreateAiModelPerformanceSchema, UpdateAiModelPerformanceSchema
+ * @table ai_model_performance
+ * @category 06-integrations
+ * Ownership: Schema package
+ */
+
+/**
  * AiModelPerformance Schema
  * @table ai_model_performance
  * @category 06-integrations

@@ -1,4 +1,16 @@
 /**
+ * DEV DOC
+ * Module: schemas/05-operations/staff-schedules.ts
+ * Description: StaffSchedules Schema
+ * Table: staff_schedules
+ * Category: 05-operations
+ * Primary exports: StaffSchedulesSchema, CreateStaffSchedulesSchema, UpdateStaffSchedulesSchema
+ * @table staff_schedules
+ * @category 05-operations
+ * Ownership: Schema package
+ */
+
+/**
  * StaffSchedules Schema
  * @table staff_schedules
  * @category 05-operations

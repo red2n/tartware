@@ -1,4 +1,16 @@
 /**
+ * DEV DOC
+ * Module: schemas/03-bookings/reservation-status-history.ts
+ * Description: ReservationStatusHistory Schema
+ * Table: reservation_status_history
+ * Category: 03-bookings
+ * Primary exports: ReservationStatusHistorySchema, CreateReservationStatusHistorySchema, UpdateReservationStatusHistorySchema
+ * @table reservation_status_history
+ * @category 03-bookings
+ * Ownership: Schema package
+ */
+
+/**
  * ReservationStatusHistory Schema
  * @table reservation_status_history
  * @category 03-bookings

@@ -1,4 +1,16 @@
 /**
+ * DEV DOC
+ * Module: schemas/07-analytics/insurance-claims.ts
+ * Description: InsuranceClaims Schema
+ * Table: insurance_claims
+ * Category: 07-analytics
+ * Primary exports: InsuranceClaimsSchema, CreateInsuranceClaimsSchema, UpdateInsuranceClaimsSchema
+ * @table insurance_claims
+ * @category 07-analytics
+ * Ownership: Schema package
+ */
+
+/**
  * InsuranceClaims Schema
  * @table insurance_claims
  * @category 07-analytics

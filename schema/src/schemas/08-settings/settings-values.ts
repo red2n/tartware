@@ -1,4 +1,16 @@
 /**
+ * DEV DOC
+ * Module: schemas/08-settings/settings-values.ts
+ * Description: Settings Values Schema
+ * Table: settings_values
+ * Category: 08-settings
+ * Primary exports: SettingsValuesSchema, CreateSettingsValueSchema, UpdateSettingsValueSchema
+ * @table settings_values
+ * @category 08-settings
+ * Ownership: Schema package
+ */
+
+/**
  * Settings Values Schema
  * @table settings_values
  * @category 08-settings

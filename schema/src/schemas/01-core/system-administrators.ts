@@ -1,4 +1,16 @@
 /**
+ * DEV DOC
+ * Module: schemas/01-core/system-administrators.ts
+ * Description: System Administrators Schema
+ * Table: system_administrators
+ * Category: 01-core
+ * Primary exports: SystemAdministratorSchema, PublicSystemAdministratorSchema, CreateSystemAdministratorSchema, UpdateSystemAdministratorSchema
+ * @table system_administrators
+ * @category 01-core
+ * Ownership: Schema package
+ */
+
+/**
  * System Administrators Schema
  * @table system_administrators
  * @category 01-core

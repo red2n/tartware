@@ -1,4 +1,16 @@
 /**
+ * DEV DOC
+ * Module: schemas/01-core/setting-categories.ts
+ * Description: SettingCategories Schema
+ * Table: setting_categories
+ * Category: 01-core
+ * Primary exports: SettingCategoriesSchema, CreateSettingCategoriesSchema, UpdateSettingCategoriesSchema
+ * @table setting_categories
+ * @category 01-core
+ * Ownership: Schema package
+ */
+
+/**
  * SettingCategories Schema
  * @table setting_categories
  * @category 01-core

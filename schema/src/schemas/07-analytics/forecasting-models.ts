@@ -1,4 +1,16 @@
 /**
+ * DEV DOC
+ * Module: schemas/07-analytics/forecasting-models.ts
+ * Description: ForecastingModels Schema
+ * Table: forecasting_models
+ * Category: 07-analytics
+ * Primary exports: ForecastingModelsSchema, CreateForecastingModelsSchema, UpdateForecastingModelsSchema
+ * @table forecasting_models
+ * @category 07-analytics
+ * Ownership: Schema package
+ */
+
+/**
  * ForecastingModels Schema
  * @table forecasting_models
  * @category 07-analytics

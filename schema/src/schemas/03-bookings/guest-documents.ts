@@ -1,4 +1,16 @@
 /**
+ * DEV DOC
+ * Module: schemas/03-bookings/guest-documents.ts
+ * Description: GuestDocuments Schema
+ * Table: guest_documents
+ * Category: 03-bookings
+ * Primary exports: GuestDocumentsSchema, CreateGuestDocumentsSchema, UpdateGuestDocumentsSchema
+ * @table guest_documents
+ * @category 03-bookings
+ * Ownership: Schema package
+ */
+
+/**
  * GuestDocuments Schema
  * @table guest_documents
  * @category 03-bookings

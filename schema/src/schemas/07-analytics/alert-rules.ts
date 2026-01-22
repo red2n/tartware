@@ -1,4 +1,16 @@
 /**
+ * DEV DOC
+ * Module: schemas/07-analytics/alert-rules.ts
+ * Description: AlertRules Schema
+ * Table: alert_rules
+ * Category: 07-analytics
+ * Primary exports: AlertRulesSchema, CreateAlertRulesSchema, UpdateAlertRulesSchema
+ * @table alert_rules
+ * @category 07-analytics
+ * Ownership: Schema package
+ */
+
+/**
  * AlertRules Schema
  * @table alert_rules
  * @category 07-analytics

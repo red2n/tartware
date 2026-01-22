@@ -1,4 +1,16 @@
 /**
+ * DEV DOC
+ * Module: schemas/03-bookings/guest-notes.ts
+ * Description: GuestNotes Schema
+ * Table: guest_notes
+ * Category: 03-bookings
+ * Primary exports: GuestNotesSchema, CreateGuestNotesSchema, UpdateGuestNotesSchema
+ * @table guest_notes
+ * @category 03-bookings
+ * Ownership: Schema package
+ */
+
+/**
  * GuestNotes Schema
  * @table guest_notes
  * @category 03-bookings

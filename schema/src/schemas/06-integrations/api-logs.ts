@@ -1,4 +1,16 @@
 /**
+ * DEV DOC
+ * Module: schemas/06-integrations/api-logs.ts
+ * Description: ApiLogs Schema
+ * Table: api_logs
+ * Category: 06-integrations
+ * Primary exports: ApiLogsSchema, CreateApiLogsSchema, UpdateApiLogsSchema
+ * @table api_logs
+ * @category 06-integrations
+ * Ownership: Schema package
+ */
+
+/**
  * ApiLogs Schema
  * @table api_logs
  * @category 06-integrations

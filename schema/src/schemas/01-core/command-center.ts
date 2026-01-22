@@ -1,4 +1,16 @@
 /**
+ * DEV DOC
+ * Module: schemas/01-core/command-center.ts
+ * Description: Command Center catalog & routing schemas
+ * Tables: command_templates, command_routes, command_features, command_dispatches
+ * Category: 01-core
+ * Primary exports: CommandTemplateSchema, CommandRouteSchema, CommandFeatureSchema, CommandDispatchSchema
+ * @tables command_templates, command_routes, command_features, command_dispatches
+ * @category 01-core
+ * Ownership: Schema package
+ */
+
+/**
  * Command Center catalog & routing schemas
  * @tables command_templates, command_routes, command_features, command_dispatches
  */

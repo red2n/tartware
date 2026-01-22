@@ -1,4 +1,16 @@
 /**
+ * DEV DOC
+ * Module: schemas/07-analytics/sustainability-metrics.ts
+ * Description: SustainabilityMetrics Schema
+ * Table: sustainability_metrics
+ * Category: 07-analytics
+ * Primary exports: SustainabilityMetricsSchema, CreateSustainabilityMetricsSchema, UpdateSustainabilityMetricsSchema
+ * @table sustainability_metrics
+ * @category 07-analytics
+ * Ownership: Schema package
+ */
+
+/**
  * SustainabilityMetrics Schema
  * @table sustainability_metrics
  * @category 07-analytics

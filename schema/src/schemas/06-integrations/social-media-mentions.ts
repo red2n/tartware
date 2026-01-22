@@ -1,4 +1,16 @@
 /**
+ * DEV DOC
+ * Module: schemas/06-integrations/social-media-mentions.ts
+ * Description: SocialMediaMentions Schema
+ * Table: social_media_mentions
+ * Category: 06-integrations
+ * Primary exports: SocialMediaMentionsSchema, CreateSocialMediaMentionsSchema, UpdateSocialMediaMentionsSchema
+ * @table social_media_mentions
+ * @category 06-integrations
+ * Ownership: Schema package
+ */
+
+/**
  * SocialMediaMentions Schema
  * @table social_media_mentions
  * @category 06-integrations

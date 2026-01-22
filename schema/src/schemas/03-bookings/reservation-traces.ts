@@ -1,4 +1,16 @@
 /**
+ * DEV DOC
+ * Module: schemas/03-bookings/reservation-traces.ts
+ * Description: ReservationTraces Schema
+ * Table: reservation_traces
+ * Category: 03-bookings
+ * Primary exports: ReservationTracesSchema, CreateReservationTracesSchema, UpdateReservationTracesSchema
+ * @table reservation_traces
+ * @category 03-bookings
+ * Ownership: Schema package
+ */
+
+/**
  * ReservationTraces Schema
  * @table reservation_traces
  * @category 03-bookings

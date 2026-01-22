@@ -1,4 +1,16 @@
 /**
+ * DEV DOC
+ * Module: schemas/02-inventory/rate-recommendations.ts
+ * Description: RateRecommendations Schema
+ * Table: rate_recommendations
+ * Category: 02-inventory
+ * Primary exports: RateRecommendationsSchema, CreateRateRecommendationsSchema, UpdateRateRecommendationsSchema
+ * @table rate_recommendations
+ * @category 02-inventory
+ * Ownership: Schema package
+ */
+
+/**
  * RateRecommendations Schema
  * @table rate_recommendations
  * @category 02-inventory

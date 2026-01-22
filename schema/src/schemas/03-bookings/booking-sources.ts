@@ -1,4 +1,16 @@
 /**
+ * DEV DOC
+ * Module: schemas/03-bookings/booking-sources.ts
+ * Description: BookingSources Schema
+ * Table: booking_sources
+ * Category: 03-bookings
+ * Primary exports: BookingSourcesSchema, CreateBookingSourcesSchema, UpdateBookingSourcesSchema
+ * @table booking_sources
+ * @category 03-bookings
+ * Ownership: Schema package
+ */
+
+/**
  * BookingSources Schema
  * @table booking_sources
  * @category 03-bookings

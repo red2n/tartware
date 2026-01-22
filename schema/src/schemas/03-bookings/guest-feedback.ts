@@ -1,4 +1,16 @@
 /**
+ * DEV DOC
+ * Module: schemas/03-bookings/guest-feedback.ts
+ * Description: GuestFeedback Schema
+ * Table: guest_feedback
+ * Category: 03-bookings
+ * Primary exports: GuestFeedbackSchema, CreateGuestFeedbackSchema, UpdateGuestFeedbackSchema
+ * @table guest_feedback
+ * @category 03-bookings
+ * Ownership: Schema package
+ */
+
+/**
  * GuestFeedback Schema
  * @table guest_feedback
  * @category 03-bookings

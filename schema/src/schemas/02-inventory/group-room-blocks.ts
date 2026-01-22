@@ -1,4 +1,16 @@
 /**
+ * DEV DOC
+ * Module: schemas/02-inventory/group-room-blocks.ts
+ * Description: GroupRoomBlocks Schema
+ * Table: group_room_blocks
+ * Category: 02-inventory
+ * Primary exports: GroupRoomBlocksSchema, CreateGroupRoomBlocksSchema, UpdateGroupRoomBlocksSchema
+ * @table group_room_blocks
+ * @category 02-inventory
+ * Ownership: Schema package
+ */
+
+/**
  * GroupRoomBlocks Schema
  * @table group_room_blocks
  * @category 02-inventory

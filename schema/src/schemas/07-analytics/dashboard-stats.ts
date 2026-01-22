@@ -1,4 +1,16 @@
 /**
+ * DEV DOC
+ * Module: schemas/07-analytics/dashboard-stats.ts
+ * Description: Dashboard Statistics Schema - Real-time dashboard metrics
+ * Table: n/a
+ * Category: 07-analytics
+ * Primary exports: DashboardStatsSchema, DashboardStatsQuerySchema, OccupancyStatsSchema, RevenueStatsSchema, CheckInStatsSchema, CheckOutStatsSchema, ActivityItemSchema
+ * @table n/a
+ * @category 07-analytics
+ * Ownership: Schema package
+ */
+
+/**
  * Dashboard Statistics Schema - Real-time dashboard metrics
  * @category 07-analytics
  * @synchronized 2025-11-09

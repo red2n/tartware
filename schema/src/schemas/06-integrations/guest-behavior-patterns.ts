@@ -1,4 +1,16 @@
 /**
+ * DEV DOC
+ * Module: schemas/06-integrations/guest-behavior-patterns.ts
+ * Description: GuestBehaviorPatterns Schema
+ * Table: guest_behavior_patterns
+ * Category: 06-integrations
+ * Primary exports: GuestBehaviorPatternsSchema, CreateGuestBehaviorPatternsSchema, UpdateGuestBehaviorPatternsSchema
+ * @table guest_behavior_patterns
+ * @category 06-integrations
+ * Ownership: Schema package
+ */
+
+/**
  * GuestBehaviorPatterns Schema
  * @table guest_behavior_patterns
  * @category 06-integrations

@@ -1,4 +1,16 @@
 /**
+ * DEV DOC
+ * Module: schemas/05-operations/device-events-log.ts
+ * Description: DeviceEventsLog Schema
+ * Table: device_events_log
+ * Category: 05-operations
+ * Primary exports: DeviceEventsLogSchema, CreateDeviceEventsLogSchema, UpdateDeviceEventsLogSchema
+ * @table device_events_log
+ * @category 05-operations
+ * Ownership: Schema package
+ */
+
+/**
  * DeviceEventsLog Schema
  * @table device_events_log
  * @category 05-operations

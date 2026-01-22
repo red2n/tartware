@@ -1,4 +1,16 @@
 /**
+ * DEV DOC
+ * Module: schemas/06-integrations/webhook-subscriptions.ts
+ * Description: WebhookSubscriptions Schema
+ * Table: webhook_subscriptions
+ * Category: 06-integrations
+ * Primary exports: WebhookSubscriptionsSchema, CreateWebhookSubscriptionsSchema, UpdateWebhookSubscriptionsSchema
+ * @table webhook_subscriptions
+ * @category 06-integrations
+ * Ownership: Schema package
+ */
+
+/**
  * WebhookSubscriptions Schema
  * @table webhook_subscriptions
  * @category 06-integrations

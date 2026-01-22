@@ -1,3 +1,10 @@
+/**
+ * DEV DOC
+ * Module: utilities/db-validator.ts
+ * Purpose: Shared schema/type definitions and validation helpers.
+ * Ownership: Schema package
+ */
+
 import type { Dirent } from "node:fs";
 import { readdir, stat, readFile } from "node:fs/promises";
 import path from "node:path";
@@ -27,9 +34,9 @@ const REQUIRED_PATHS: Array<{ path: string; kind: PathKind; description: string 
 		description: "Schema root export (src/index.ts)",
 	},
 	{
-		path: path.join(repoRoot, "setup-database.sh"),
+		path: path.join(repoRoot, "executables", "setup-database", "setup-database.sh"),
 		kind: "file",
-		description: "Database bootstrap script (setup-database.sh)",
+		description: "Database bootstrap script (executables/setup-database/setup-database.sh)",
 	},
 	{
 		path: path.join(scriptsRoot, "01-database-setup.sql"),
@@ -90,6 +97,11 @@ async function ensurePathKind(inputPath: string, kind: PathKind, description: st
 }
 
 const tableRegex = /CREATE\s+TABLE(?:\s+IF\s+NOT\s+EXISTS)?\s+([^\s(]+)/gi;
+const docTableRegexes = [
+	/^\s*\*\s*@tables?\s+([^\n*]+)/gim,
+	/^\s*\*\s*Tables?:\s+([^\n*]+)/gim,
+];
+const ignoredTableValues = new Set(["n/a", "na", "none"]);
 
 async function extractTablesFromSql(filePath: string): Promise<string[]> {
 	const tables = new Set<string>();
@@ -142,20 +154,59 @@ async function collectSchemaTables(): Promise<Record<string, string[]>> {
 	const result: Record<string, string[]> = {};
 	const entries = await readdir(schemasDir, { withFileTypes: true });
 
+	const parseTablesFromSchemaFile = async (
+		filePath: string,
+	): Promise<{ tables: string[]; hasTableDoc: boolean }> => {
+		const content = await readFile(filePath, "utf-8");
+		const tables = new Set<string>();
+		let hasTableDoc = false;
+
+		for (const regex of docTableRegexes) {
+			for (const match of content.matchAll(regex)) {
+				const raw = match[1];
+				if (!raw) continue;
+				hasTableDoc = true;
+				raw
+					.split(",")
+					.map((value) => value.trim())
+					.filter(Boolean)
+					.forEach((value) => {
+						const normalized = value.toLowerCase();
+						if (ignoredTableValues.has(normalized)) return;
+						if (!/[a-z]/i.test(value)) return;
+						tables.add(normalized);
+					});
+			}
+		}
+
+		return { tables: Array.from(tables), hasTableDoc };
+	};
+
 	for (const entry of entries) {
 		const entryName = entry.name.toString();
 		if (!entry.isDirectory() || !/^\d{2}-/.test(entryName)) continue;
 		const categoryDir = path.join(schemasDir, entryName);
 		const files = await readdir(categoryDir);
-		const tables = files
-			.filter((file) => file.endsWith(".ts") && file !== "index.ts")
-			.map((file) =>
-				file
-					.replace(/\.ts$/, "")
-					.replace(/-/g, "_")
-					.toLowerCase(),
+		const tables = new Set<string>();
+
+		for (const file of files) {
+			if (!file.endsWith(".ts") || file === "index.ts") continue;
+			const filePath = path.join(categoryDir, file);
+			const { tables: docTables, hasTableDoc } =
+				await parseTablesFromSchemaFile(filePath);
+			if (docTables.length > 0) {
+				docTables.forEach((table) => tables.add(table));
+				continue;
+			}
+			if (hasTableDoc) {
+				continue;
+			}
+			tables.add(
+				file.replace(/\.ts$/, "").replace(/-/g, "_").toLowerCase(),
 			);
-		result[entryName] = tables.sort();
+		}
+
+		result[entryName] = Array.from(tables).sort();
 	}
 
 	return result;

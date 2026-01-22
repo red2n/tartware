@@ -1,3 +1,10 @@
+/**
+ * DEV DOC
+ * Module: events/commands/guests.ts
+ * Purpose: Shared schema/type definitions and validation helpers.
+ * Ownership: Schema package
+ */
+
 import { z } from "zod";
 
 const GuestAddressSchema = z

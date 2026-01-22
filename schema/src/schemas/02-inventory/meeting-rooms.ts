@@ -1,4 +1,16 @@
 /**
+ * DEV DOC
+ * Module: schemas/02-inventory/meeting-rooms.ts
+ * Description: MeetingRooms Schema
+ * Table: meeting_rooms
+ * Category: 02-inventory
+ * Primary exports: MeetingRoomsSchema, CreateMeetingRoomsSchema, UpdateMeetingRoomsSchema
+ * @table meeting_rooms
+ * @category 02-inventory
+ * Ownership: Schema package
+ */
+
+/**
  * MeetingRooms Schema
  * @table meeting_rooms
  * @category 02-inventory

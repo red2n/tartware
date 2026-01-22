@@ -1,4 +1,16 @@
 /**
+ * DEV DOC
+ * Module: schemas/03-bookings/automated-messages.ts
+ * Description: AutomatedMessages Schema
+ * Table: automated_messages
+ * Category: 03-bookings
+ * Primary exports: AutomatedMessagesSchema, CreateAutomatedMessagesSchema, UpdateAutomatedMessagesSchema
+ * @table automated_messages
+ * @category 03-bookings
+ * Ownership: Schema package
+ */
+
+/**
  * AutomatedMessages Schema
  * @table automated_messages
  * @category 03-bookings

@@ -1,4 +1,16 @@
 /**
+ * DEV DOC
+ * Module: schemas/02-inventory/pricing-rules.ts
+ * Description: PricingRules Schema
+ * Table: pricing_rules
+ * Category: 02-inventory
+ * Primary exports: PricingRulesSchema, CreatePricingRulesSchema, UpdatePricingRulesSchema
+ * @table pricing_rules
+ * @category 02-inventory
+ * Ownership: Schema package
+ */
+
+/**
  * PricingRules Schema
  * @table pricing_rules
  * @category 02-inventory

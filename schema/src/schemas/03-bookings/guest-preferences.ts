@@ -1,4 +1,16 @@
 /**
+ * DEV DOC
+ * Module: schemas/03-bookings/guest-preferences.ts
+ * Description: GuestPreferences Schema
+ * Table: guest_preferences
+ * Category: 03-bookings
+ * Primary exports: GuestPreferencesSchema, CreateGuestPreferencesSchema, UpdateGuestPreferencesSchema
+ * @table guest_preferences
+ * @category 03-bookings
+ * Ownership: Schema package
+ */
+
+/**
  * GuestPreferences Schema
  * @table guest_preferences
  * @category 03-bookings

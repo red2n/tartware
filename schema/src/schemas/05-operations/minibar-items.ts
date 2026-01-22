@@ -1,4 +1,16 @@
 /**
+ * DEV DOC
+ * Module: schemas/05-operations/minibar-items.ts
+ * Description: MinibarItems Schema
+ * Table: minibar_items
+ * Category: 05-operations
+ * Primary exports: MinibarItemsSchema, CreateMinibarItemsSchema, UpdateMinibarItemsSchema
+ * @table minibar_items
+ * @category 05-operations
+ * Ownership: Schema package
+ */
+
+/**
  * MinibarItems Schema
  * @table minibar_items
  * @category 05-operations

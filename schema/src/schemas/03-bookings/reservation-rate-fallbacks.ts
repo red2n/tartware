@@ -1,4 +1,16 @@
 /**
+ * DEV DOC
+ * Module: schemas/03-bookings/reservation-rate-fallbacks.ts
+ * Description: Reservation Rate Fallbacks Schema
+ * Table: reservation_rate_fallbacks
+ * Category: 03-bookings
+ * Primary exports: ReservationRateFallbacksSchema, CreateReservationRateFallbacksSchema, UpdateReservationRateFallbacksSchema
+ * @table reservation_rate_fallbacks
+ * @category 03-bookings
+ * Ownership: Schema package
+ */
+
+/**
  * Reservation Rate Fallbacks Schema
  * @table reservation_rate_fallbacks
  * @category 03-bookings

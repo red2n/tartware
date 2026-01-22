@@ -1,4 +1,11 @@
 /**
+ * DEV DOC
+ * Module: shared/validators.ts
+ * Purpose: Shared schema/type definitions and validation helpers.
+ * Ownership: Schema package
+ */
+
+/**
  * Custom validation functions for Tartware PMS
  * Complex business rules and cross-field validations
  */

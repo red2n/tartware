@@ -1,4 +1,16 @@
 /**
+ * DEV DOC
+ * Module: schemas/06-integrations/channel-commission-rules.ts
+ * Description: ChannelCommissionRules Schema
+ * Table: channel_commission_rules
+ * Category: 06-integrations
+ * Primary exports: ChannelCommissionRulesSchema, CreateChannelCommissionRulesSchema, UpdateChannelCommissionRulesSchema
+ * @table channel_commission_rules
+ * @category 06-integrations
+ * Ownership: Schema package
+ */
+
+/**
  * ChannelCommissionRules Schema
  * @table channel_commission_rules
  * @category 06-integrations

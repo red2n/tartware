@@ -1,4 +1,16 @@
 /**
+ * DEV DOC
+ * Module: schemas/04-financial/invoice-items.ts
+ * Description: InvoiceItems Schema
+ * Table: invoice_items
+ * Category: 04-financial
+ * Primary exports: InvoiceItemsSchema, CreateInvoiceItemsSchema, UpdateInvoiceItemsSchema
+ * @table invoice_items
+ * @category 04-financial
+ * Ownership: Schema package
+ */
+
+/**
  * InvoiceItems Schema
  * @table invoice_items
  * @category 04-financial

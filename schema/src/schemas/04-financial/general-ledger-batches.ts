@@ -1,4 +1,16 @@
 /**
+ * DEV DOC
+ * Module: schemas/04-financial/general-ledger-batches.ts
+ * Description: GeneralLedgerBatches Schema
+ * Table: general_ledger_batches
+ * Category: 04-financial
+ * Primary exports: GeneralLedgerBatchesSchema, CreateGeneralLedgerBatchesSchema, UpdateGeneralLedgerBatchesSchema
+ * @table general_ledger_batches
+ * @category 04-financial
+ * Ownership: Schema package
+ */
+
+/**
  * GeneralLedgerBatches Schema
  * @table general_ledger_batches
  * @category 04-financial

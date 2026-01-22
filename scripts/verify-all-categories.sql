@@ -1,7 +1,7 @@
 -- =====================================================
 -- verify-all-categories.sql
 -- Master script to run all category verifications
--- Runs verification for all 7 consolidated categories
+-- Runs verification for all 8 consolidated categories
 -- Date: 2025-10-23
 -- =====================================================
 
@@ -11,7 +11,7 @@
 \echo ''
 \echo '======================================================'
 \echo '  TARTWARE PMS - CATEGORY-LEVEL VERIFICATION'
-\echo '  Running verification for all 7 business domains'
+\echo '  Running verification for all 8 business domains'
 \echo '======================================================'
 \echo ''
 
@@ -19,7 +19,7 @@
 -- CATEGORY 1: CORE FOUNDATION
 -- =====================================================
 \echo '══════════════════════════════════════════════════════'
-\echo 'CATEGORY 1/7: Core Foundation'
+\echo 'CATEGORY 1/8: Core Foundation'
 \echo '══════════════════════════════════════════════════════'
 \i tables/01-core/verify-01-core-foundation.sql
 \i indexes/01-core/verify-01-core-foundation-indexes.sql
@@ -29,7 +29,7 @@
 -- CATEGORY 2: INVENTORY & REVENUE MANAGEMENT
 -- =====================================================
 \echo '══════════════════════════════════════════════════════'
-\echo 'CATEGORY 2/7: Inventory & Revenue Management'
+\echo 'CATEGORY 2/8: Inventory & Revenue Management'
 \echo '══════════════════════════════════════════════════════'
 \i tables/02-inventory/verify-02-room-inventory.sql
 \i tables/02-inventory/verify-08-revenue-management.sql
@@ -42,7 +42,7 @@
 -- CATEGORY 3: BOOKINGS & GUEST EXPERIENCE
 -- =====================================================
 \echo '══════════════════════════════════════════════════════'
-\echo 'CATEGORY 3/7: Bookings & Guest Experience'
+\echo 'CATEGORY 3/8: Bookings & Guest Experience'
 \echo '══════════════════════════════════════════════════════'
 \i tables/03-bookings/verify-03-reservations-booking.sql
 \i tables/03-bookings/verify-07-guest-crm.sql
@@ -55,7 +55,7 @@
 -- CATEGORY 4: FINANCIAL MANAGEMENT
 -- =====================================================
 \echo '══════════════════════════════════════════════════════'
-\echo 'CATEGORY 4/7: Financial Management'
+\echo 'CATEGORY 4/8: Financial Management'
 \echo '══════════════════════════════════════════════════════'
 \i tables/04-financial/verify-04-financial-management.sql
 \i indexes/04-financial/verify-04-financial-management-indexes.sql
@@ -65,7 +65,7 @@
 -- CATEGORY 5: OPERATIONS & GUEST SERVICES
 -- =====================================================
 \echo '══════════════════════════════════════════════════════'
-\echo 'CATEGORY 5/7: Operations & Guest Services'
+\echo 'CATEGORY 5/8: Operations & Guest Services'
 \echo '══════════════════════════════════════════════════════'
 \i tables/05-operations/verify-05-services-housekeeping.sql
 \i tables/05-operations/verify-09-staff-operations.sql
@@ -81,7 +81,7 @@
 -- CATEGORY 6: INTEGRATIONS & DISTRIBUTION
 -- =====================================================
 \echo '══════════════════════════════════════════════════════'
-\echo 'CATEGORY 6/7: Integrations & Distribution'
+\echo 'CATEGORY 6/8: Integrations & Distribution'
 \echo '══════════════════════════════════════════════════════'
 \i tables/06-integrations/verify-06-channel-ota.sql
 \i tables/06-integrations/verify-10-marketing-campaigns.sql
@@ -97,7 +97,7 @@
 -- CATEGORY 7: ANALYTICS, COMPLIANCE & AUDIT
 -- =====================================================
 \echo '══════════════════════════════════════════════════════'
-\echo 'CATEGORY 7/7: Analytics, Compliance & Audit'
+\echo 'CATEGORY 7/8: Analytics, Compliance & Audit'
 \echo '══════════════════════════════════════════════════════'
 \i tables/07-analytics/verify-11-compliance-legal.sql
 \i tables/07-analytics/verify-12-analytics-reporting.sql
@@ -110,6 +110,14 @@
 \i constraints/07-analytics/verify-14-system-audit-constraints.sql
 
 -- =====================================================
+-- CATEGORY 8: SETTINGS CATALOG
+-- =====================================================
+\echo '══════════════════════════════════════════════════════'
+\echo 'CATEGORY 8/8: Settings Catalog'
+\echo '══════════════════════════════════════════════════════'
+\i tables/08-settings/verify-08-settings-catalog.sql
+
+-- =====================================================
 -- FINAL SUMMARY
 -- =====================================================
 \echo ''
@@ -118,7 +126,7 @@
 \echo '======================================================'
 \echo ''
 \echo 'Verified:'
-\echo '  • 7 business domains'
+\echo '  • 8 business domains'
 
 SELECT COUNT(*) AS verified_table_count
 FROM information_schema.tables

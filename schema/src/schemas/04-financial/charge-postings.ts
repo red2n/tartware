@@ -1,4 +1,16 @@
 /**
+ * DEV DOC
+ * Module: schemas/04-financial/charge-postings.ts
+ * Description: ChargePostings Schema
+ * Table: charge_postings
+ * Category: 04-financial
+ * Primary exports: ChargePostingsSchema, CreateChargePostingsSchema, UpdateChargePostingsSchema
+ * @table charge_postings
+ * @category 04-financial
+ * Ownership: Schema package
+ */
+
+/**
  * ChargePostings Schema
  * @table charge_postings
  * @category 04-financial

@@ -1,4 +1,16 @@
 /**
+ * DEV DOC
+ * Module: schemas/05-operations/digital-registration-cards.ts
+ * Description: DigitalRegistrationCards Schema
+ * Table: digital_registration_cards
+ * Category: 05-operations
+ * Primary exports: DigitalRegistrationCardsSchema, CreateDigitalRegistrationCardsSchema, UpdateDigitalRegistrationCardsSchema
+ * @table digital_registration_cards
+ * @category 05-operations
+ * Ownership: Schema package
+ */
+
+/**
  * DigitalRegistrationCards Schema
  * @table digital_registration_cards
  * @category 05-operations

@@ -1,4 +1,16 @@
 /**
+ * DEV DOC
+ * Module: schemas/03-bookings/communication-templates.ts
+ * Description: CommunicationTemplates Schema
+ * Table: communication_templates
+ * Category: 03-bookings
+ * Primary exports: CommunicationTemplatesSchema, CreateCommunicationTemplatesSchema, UpdateCommunicationTemplatesSchema
+ * @table communication_templates
+ * @category 03-bookings
+ * Ownership: Schema package
+ */
+
+/**
  * CommunicationTemplates Schema
  * @table communication_templates
  * @category 03-bookings

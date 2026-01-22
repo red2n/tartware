@@ -1,4 +1,16 @@
 /**
+ * DEV DOC
+ * Module: schemas/08-settings/settings-options.ts
+ * Description: Settings Options Schema
+ * Table: settings_options
+ * Category: 08-settings
+ * Primary exports: SettingsOptionsSchema, CreateSettingsOptionSchema, UpdateSettingsOptionSchema
+ * @table settings_options
+ * @category 08-settings
+ * Ownership: Schema package
+ */
+
+/**
  * Settings Options Schema
  * @table settings_options
  * @category 08-settings

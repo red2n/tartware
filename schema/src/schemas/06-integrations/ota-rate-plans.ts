@@ -1,4 +1,16 @@
 /**
+ * DEV DOC
+ * Module: schemas/06-integrations/ota-rate-plans.ts
+ * Description: OtaRatePlans Schema
+ * Table: ota_rate_plans
+ * Category: 06-integrations
+ * Primary exports: OtaRatePlansSchema, CreateOtaRatePlansSchema, UpdateOtaRatePlansSchema
+ * @table ota_rate_plans
+ * @category 06-integrations
+ * Ownership: Schema package
+ */
+
+/**
  * OtaRatePlans Schema
  * @table ota_rate_plans
  * @category 06-integrations

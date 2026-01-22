@@ -1,4 +1,16 @@
 /**
+ * DEV DOC
+ * Module: schemas/07-analytics/ab-test-results.ts
+ * Description: AbTestResults Schema
+ * Table: ab_test_results
+ * Category: 07-analytics
+ * Primary exports: AbTestResultsSchema, CreateAbTestResultsSchema, UpdateAbTestResultsSchema
+ * @table ab_test_results
+ * @category 07-analytics
+ * Ownership: Schema package
+ */
+
+/**
  * AbTestResults Schema
  * @table ab_test_results
  * @category 07-analytics

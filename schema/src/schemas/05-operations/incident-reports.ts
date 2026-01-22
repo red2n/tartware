@@ -1,4 +1,16 @@
 /**
+ * DEV DOC
+ * Module: schemas/05-operations/incident-reports.ts
+ * Description: IncidentReports Schema
+ * Table: incident_reports
+ * Category: 05-operations
+ * Primary exports: IncidentReportsSchema, CreateIncidentReportsSchema, UpdateIncidentReportsSchema
+ * @table incident_reports
+ * @category 05-operations
+ * Ownership: Schema package
+ */
+
+/**
  * IncidentReports Schema
  * @table incident_reports
  * @category 05-operations

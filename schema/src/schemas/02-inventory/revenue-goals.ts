@@ -1,4 +1,16 @@
 /**
+ * DEV DOC
+ * Module: schemas/02-inventory/revenue-goals.ts
+ * Description: RevenueGoals Schema
+ * Table: revenue_goals
+ * Category: 02-inventory
+ * Primary exports: RevenueGoalsSchema, CreateRevenueGoalsSchema, UpdateRevenueGoalsSchema
+ * @table revenue_goals
+ * @category 02-inventory
+ * Ownership: Schema package
+ */
+
+/**
  * RevenueGoals Schema
  * @table revenue_goals
  * @category 02-inventory

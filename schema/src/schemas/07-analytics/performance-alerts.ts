@@ -1,4 +1,16 @@
 /**
+ * DEV DOC
+ * Module: schemas/07-analytics/performance-alerts.ts
+ * Description: PerformanceAlerts Schema
+ * Table: performance_alerts
+ * Category: 07-analytics
+ * Primary exports: PerformanceAlertsSchema, CreatePerformanceAlertsSchema, UpdatePerformanceAlertsSchema
+ * @table performance_alerts
+ * @category 07-analytics
+ * Ownership: Schema package
+ */
+
+/**
  * PerformanceAlerts Schema
  * @table performance_alerts
  * @category 07-analytics

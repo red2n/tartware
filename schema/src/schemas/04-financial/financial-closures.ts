@@ -1,4 +1,16 @@
 /**
+ * DEV DOC
+ * Module: schemas/04-financial/financial-closures.ts
+ * Description: FinancialClosures Schema
+ * Table: financial_closures
+ * Category: 04-financial
+ * Primary exports: FinancialClosuresSchema, CreateFinancialClosuresSchema, UpdateFinancialClosuresSchema
+ * @table financial_closures
+ * @category 04-financial
+ * Ownership: Schema package
+ */
+
+/**
  * FinancialClosures Schema
  * @table financial_closures
  * @category 04-financial

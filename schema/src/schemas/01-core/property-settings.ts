@@ -1,4 +1,16 @@
 /**
+ * DEV DOC
+ * Module: schemas/01-core/property-settings.ts
+ * Description: PropertySettings Schema
+ * Table: property_settings
+ * Category: 01-core
+ * Primary exports: PropertySettingsSchema, CreatePropertySettingsSchema, UpdatePropertySettingsSchema
+ * @table property_settings
+ * @category 01-core
+ * Ownership: Schema package
+ */
+
+/**
  * PropertySettings Schema
  * @table property_settings
  * @category 01-core

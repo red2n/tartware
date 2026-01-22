@@ -1,51 +1,15 @@
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Inject, Injectable } from '@angular/core';
-import type { TenantWithRelations } from '@tartware/schemas/core/tenants';
+import type {
+  CreateTenantRequest,
+  CreateTenantResponse,
+  CreateUserRequest,
+  CreateUserResponse,
+  TenantListResponse,
+} from '@tartware/schemas';
 import type { UserWithTenants } from '@tartware/schemas/core/users';
-import { TenantTypeEnum } from '@tartware/schemas/enums';
 import { Observable } from 'rxjs';
 import { API_BASE } from './api-config';
-
-type TenantListResponse = {
-  tenants: TenantWithRelations[];
-  count: number;
-};
-
-type CreateUserRequest = {
-  username: string;
-  email: string;
-  password: string;
-  first_name: string;
-  last_name: string;
-  phone?: string;
-  tenant_id?: string;
-  role?: 'VIEWER' | 'STAFF' | 'MANAGER' | 'ADMIN' | 'OWNER';
-};
-
-type CreateUserResponse = {
-  id: string;
-  username: string;
-  email: string;
-  message: string;
-};
-
-type TenantType = (typeof TenantTypeEnum.options)[number];
-
-type CreateTenantRequest = {
-  name: string;
-  slug: string;
-  type?: TenantType;
-  email: string;
-  phone?: string;
-  website?: string;
-};
-
-type CreateTenantResponse = {
-  id: string;
-  name: string;
-  slug: string;
-  message: string;
-};
 
 @Injectable({ providedIn: 'root' })
 export class SystemAdminApiService {

@@ -1,4 +1,16 @@
 /**
+ * DEV DOC
+ * Module: schemas/01-core/tenants.ts
+ * Description: Tenant Schema - Multi-tenant root entity
+ * Table: tenants
+ * Category: 01-core
+ * Primary exports: TenantConfigSchema, TenantSubscriptionSchema, TenantSchema, CreateTenantSchema, UpdateTenantSchema, TenantWithRelationsSchema
+ * @table tenants
+ * @category 01-core
+ * Ownership: Schema package
+ */
+
+/**
  * Tenant Schema - Multi-tenant root entity
  * @table tenants
  * @category 01-core

@@ -1,4 +1,16 @@
 /**
+ * DEV DOC
+ * Module: schemas/07-analytics/guest-journey-tracking.ts
+ * Description: GuestJourneyTracking Schema
+ * Table: guest_journey_tracking
+ * Category: 07-analytics
+ * Primary exports: GuestJourneyTrackingSchema, CreateGuestJourneyTrackingSchema, UpdateGuestJourneyTrackingSchema
+ * @table guest_journey_tracking
+ * @category 07-analytics
+ * Ownership: Schema package
+ */
+
+/**
  * GuestJourneyTracking Schema
  * @table guest_journey_tracking
  * @category 07-analytics

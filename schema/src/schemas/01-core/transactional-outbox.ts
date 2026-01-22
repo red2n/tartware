@@ -1,4 +1,16 @@
 /**
+ * DEV DOC
+ * Module: schemas/01-core/transactional-outbox.ts
+ * Description: Transactional Outbox Schema
+ * Table: transactional_outbox
+ * Category: 01-core
+ * Primary exports: TransactionalOutboxSchema, CreateTransactionalOutboxSchema, UpdateTransactionalOutboxSchema
+ * @table transactional_outbox
+ * @category 01-core
+ * Ownership: Schema package
+ */
+
+/**
  * Transactional Outbox Schema
  * @table transactional_outbox
  * @category 01-core

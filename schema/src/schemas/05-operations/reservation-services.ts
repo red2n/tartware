@@ -1,4 +1,16 @@
 /**
+ * DEV DOC
+ * Module: schemas/05-operations/reservation-services.ts
+ * Description: ReservationServices Schema
+ * Table: reservation_services
+ * Category: 05-operations
+ * Primary exports: ReservationServicesSchema, CreateReservationServicesSchema, UpdateReservationServicesSchema
+ * @table reservation_services
+ * @category 05-operations
+ * Ownership: Schema package
+ */
+
+/**
  * ReservationServices Schema
  * @table reservation_services
  * @category 05-operations

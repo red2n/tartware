@@ -1,4 +1,16 @@
 /**
+ * DEV DOC
+ * Module: schemas/04-financial/tax-configurations.ts
+ * Description: TaxConfigurations Schema
+ * Table: tax_configurations
+ * Category: 04-financial
+ * Primary exports: TaxConfigurationsSchema, CreateTaxConfigurationsSchema, UpdateTaxConfigurationsSchema
+ * @table tax_configurations
+ * @category 04-financial
+ * Ownership: Schema package
+ */
+
+/**
  * TaxConfigurations Schema
  * @table tax_configurations
  * @category 04-financial

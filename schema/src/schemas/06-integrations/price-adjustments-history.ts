@@ -1,4 +1,16 @@
 /**
+ * DEV DOC
+ * Module: schemas/06-integrations/price-adjustments-history.ts
+ * Description: PriceAdjustmentsHistory Schema
+ * Table: price_adjustments_history
+ * Category: 06-integrations
+ * Primary exports: PriceAdjustmentsHistorySchema, CreatePriceAdjustmentsHistorySchema, UpdatePriceAdjustmentsHistorySchema
+ * @table price_adjustments_history
+ * @category 06-integrations
+ * Ownership: Schema package
+ */
+
+/**
  * PriceAdjustmentsHistory Schema
  * @table price_adjustments_history
  * @category 06-integrations

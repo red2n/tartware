@@ -1,4 +1,16 @@
 /**
+ * DEV DOC
+ * Module: schemas/07-analytics/sustainability-initiatives.ts
+ * Description: SustainabilityInitiatives Schema
+ * Table: sustainability_initiatives
+ * Category: 07-analytics
+ * Primary exports: SustainabilityInitiativesSchema, CreateSustainabilityInitiativesSchema, UpdateSustainabilityInitiativesSchema
+ * @table sustainability_initiatives
+ * @category 07-analytics
+ * Ownership: Schema package
+ */
+
+/**
  * SustainabilityInitiatives Schema
  * @table sustainability_initiatives
  * @category 07-analytics

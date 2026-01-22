@@ -1,4 +1,16 @@
 /**
+ * DEV DOC
+ * Module: schemas/05-operations/mobile-keys.ts
+ * Description: MobileKeys Schema
+ * Table: mobile_keys
+ * Category: 05-operations
+ * Primary exports: MobileKeysSchema, CreateMobileKeysSchema, UpdateMobileKeysSchema
+ * @table mobile_keys
+ * @category 05-operations
+ * Ownership: Schema package
+ */
+
+/**
  * MobileKeys Schema
  * @table mobile_keys
  * @category 05-operations

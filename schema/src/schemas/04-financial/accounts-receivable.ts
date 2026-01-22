@@ -1,4 +1,16 @@
 /**
+ * DEV DOC
+ * Module: schemas/04-financial/accounts-receivable.ts
+ * Description: AccountsReceivable Schema
+ * Table: accounts_receivable
+ * Category: 04-financial
+ * Primary exports: AccountsReceivableSchema, CreateAccountsReceivableSchema, UpdateAccountsReceivableSchema
+ * @table accounts_receivable
+ * @category 04-financial
+ * Ownership: Schema package
+ */
+
+/**
  * AccountsReceivable Schema
  * @table accounts_receivable
  * @category 04-financial

@@ -1,4 +1,16 @@
 /**
+ * DEV DOC
+ * Module: schemas/02-inventory/rate-overrides.ts
+ * Description: RateOverrides Schema
+ * Table: rate_overrides
+ * Category: 02-inventory
+ * Primary exports: RateOverridesSchema, CreateRateOverridesSchema, UpdateRateOverridesSchema
+ * @table rate_overrides
+ * @category 02-inventory
+ * Ownership: Schema package
+ */
+
+/**
  * RateOverrides Schema
  * @table rate_overrides
  * @category 02-inventory

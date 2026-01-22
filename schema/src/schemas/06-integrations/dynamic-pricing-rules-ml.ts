@@ -1,4 +1,16 @@
 /**
+ * DEV DOC
+ * Module: schemas/06-integrations/dynamic-pricing-rules-ml.ts
+ * Description: DynamicPricingRulesMl Schema
+ * Table: dynamic_pricing_rules_ml
+ * Category: 06-integrations
+ * Primary exports: DynamicPricingRulesMlSchema, CreateDynamicPricingRulesMlSchema, UpdateDynamicPricingRulesMlSchema
+ * @table dynamic_pricing_rules_ml
+ * @category 06-integrations
+ * Ownership: Schema package
+ */
+
+/**
  * DynamicPricingRulesMl Schema
  * @table dynamic_pricing_rules_ml
  * @category 06-integrations

@@ -1,4 +1,16 @@
 /**
+ * DEV DOC
+ * Module: schemas/02-inventory/competitor-rates.ts
+ * Description: CompetitorRates Schema
+ * Table: competitor_rates
+ * Category: 02-inventory
+ * Primary exports: CompetitorRatesSchema, CreateCompetitorRatesSchema, UpdateCompetitorRatesSchema
+ * @table competitor_rates
+ * @category 02-inventory
+ * Ownership: Schema package
+ */
+
+/**
  * CompetitorRates Schema
  * @table competitor_rates
  * @category 02-inventory

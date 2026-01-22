@@ -1,4 +1,16 @@
 /**
+ * DEV DOC
+ * Module: schemas/05-operations/mobile-check-ins.ts
+ * Description: MobileCheckIns Schema
+ * Table: mobile_check_ins
+ * Category: 05-operations
+ * Primary exports: MobileCheckInsSchema, CreateMobileCheckInsSchema, UpdateMobileCheckInsSchema
+ * @table mobile_check_ins
+ * @category 05-operations
+ * Ownership: Schema package
+ */
+
+/**
  * MobileCheckIns Schema
  * @table mobile_check_ins
  * @category 05-operations

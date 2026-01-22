@@ -1,62 +1,24 @@
 import { Inject, Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
+import type {
+  AdminUser as SchemaAdminUser,
+  SystemAdminBreakGlassRequest,
+  SystemAdminBreakGlassResponse,
+  SystemAdminImpersonationRequest,
+  SystemAdminImpersonationResponse,
+  SystemAdminLoginRequest,
+  SystemAdminLoginResponse,
+} from '@tartware/schemas';
 import { Observable } from 'rxjs';
 import { API_BASE } from './api-config';
 
-export interface LoginRequest {
-  username: string;
-  password: string;
-  mfa_code?: string | null;
-  device_fingerprint: string;
-}
-
-export interface AdminUser {
-  id?: string;
-  username?: string;
-  role?: string;
-  first_name?: string;
-  last_name?: string;
-}
-
-export interface LoginResponse {
-  access_token: string;
-  token_type: 'Bearer';
-  expires_in: number;
-  scope: 'SYSTEM_ADMIN';
-  session_id: string;
-  admin?: AdminUser;
-}
-
-export interface BreakGlassRequest {
-  username: string;
-  break_glass_code: string;
-  reason: string;
-  ticket_id?: string | null;
-  device_fingerprint: string;
-}
-
-export interface BreakGlassResponse {
-  access_token: string;
-  token_type: 'Bearer';
-  expires_in: number;
-  scope: 'SYSTEM_ADMIN';
-  session_id: string;
-  admin: AdminUser;
-}
-
-export interface ImpersonationRequest {
-  tenant_id: string;
-  user_id: string;
-  reason: string;
-  ticket_id: string;
-}
-
-export interface ImpersonationResponse {
-  access_token: string;
-  token_type: 'Bearer';
-  scope: 'TENANT_IMPERSONATION';
-  expires_in: number;
-}
+export type LoginRequest = SystemAdminLoginRequest;
+export type LoginResponse = SystemAdminLoginResponse;
+export type BreakGlassRequest = SystemAdminBreakGlassRequest;
+export type BreakGlassResponse = SystemAdminBreakGlassResponse;
+export type ImpersonationRequest = SystemAdminImpersonationRequest;
+export type ImpersonationResponse = SystemAdminImpersonationResponse;
+export type AdminUser = SchemaAdminUser;
 
 @Injectable({ providedIn: 'root' })
 export class AdminAuthService {

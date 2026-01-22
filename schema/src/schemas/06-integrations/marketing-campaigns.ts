@@ -1,4 +1,16 @@
 /**
+ * DEV DOC
+ * Module: schemas/06-integrations/marketing-campaigns.ts
+ * Description: MarketingCampaigns Schema
+ * Table: marketing_campaigns
+ * Category: 06-integrations
+ * Primary exports: MarketingCampaignsSchema, CreateMarketingCampaignsSchema, UpdateMarketingCampaignsSchema
+ * @table marketing_campaigns
+ * @category 06-integrations
+ * Ownership: Schema package
+ */
+
+/**
  * MarketingCampaigns Schema
  * @table marketing_campaigns
  * @category 06-integrations

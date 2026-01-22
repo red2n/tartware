@@ -1,4 +1,16 @@
 /**
+ * DEV DOC
+ * Module: schemas/06-integrations/gds-connections.ts
+ * Description: GdsConnections Schema
+ * Table: gds_connections
+ * Category: 06-integrations
+ * Primary exports: GdsConnectionsSchema, CreateGdsConnectionsSchema, UpdateGdsConnectionsSchema
+ * @table gds_connections
+ * @category 06-integrations
+ * Ownership: Schema package
+ */
+
+/**
  * GdsConnections Schema
  * @table gds_connections
  * @category 06-integrations

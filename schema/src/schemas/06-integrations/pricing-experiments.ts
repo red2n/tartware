@@ -1,4 +1,16 @@
 /**
+ * DEV DOC
+ * Module: schemas/06-integrations/pricing-experiments.ts
+ * Description: PricingExperiments Schema
+ * Table: pricing_experiments
+ * Category: 06-integrations
+ * Primary exports: PricingExperimentsSchema, CreatePricingExperimentsSchema, UpdatePricingExperimentsSchema
+ * @table pricing_experiments
+ * @category 06-integrations
+ * Ownership: Schema package
+ */
+
+/**
  * PricingExperiments Schema
  * @table pricing_experiments
  * @category 06-integrations

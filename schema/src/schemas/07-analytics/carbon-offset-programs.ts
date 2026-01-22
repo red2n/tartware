@@ -1,4 +1,16 @@
 /**
+ * DEV DOC
+ * Module: schemas/07-analytics/carbon-offset-programs.ts
+ * Description: CarbonOffsetPrograms Schema
+ * Table: carbon_offset_programs
+ * Category: 07-analytics
+ * Primary exports: CarbonOffsetProgramsSchema, CreateCarbonOffsetProgramsSchema, UpdateCarbonOffsetProgramsSchema
+ * @table carbon_offset_programs
+ * @category 07-analytics
+ * Ownership: Schema package
+ */
+
+/**
  * CarbonOffsetPrograms Schema
  * @table carbon_offset_programs
  * @category 07-analytics

@@ -1,4 +1,16 @@
 /**
+ * DEV DOC
+ * Module: schemas/02-inventory/room-types.ts
+ * Description: RoomTypes Schema
+ * Table: room_types
+ * Category: 02-inventory
+ * Primary exports: RoomTypesSchema, CreateRoomTypesSchema, UpdateRoomTypesSchema
+ * @table room_types
+ * @category 02-inventory
+ * Ownership: Schema package
+ */
+
+/**
  * RoomTypes Schema
  * @table room_types
  * @category 02-inventory

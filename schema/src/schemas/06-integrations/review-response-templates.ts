@@ -1,4 +1,16 @@
 /**
+ * DEV DOC
+ * Module: schemas/06-integrations/review-response-templates.ts
+ * Description: ReviewResponseTemplates Schema
+ * Table: review_response_templates
+ * Category: 06-integrations
+ * Primary exports: ReviewResponseTemplatesSchema, CreateReviewResponseTemplatesSchema, UpdateReviewResponseTemplatesSchema
+ * @table review_response_templates
+ * @category 06-integrations
+ * Ownership: Schema package
+ */
+
+/**
  * ReviewResponseTemplates Schema
  * @table review_response_templates
  * @category 06-integrations

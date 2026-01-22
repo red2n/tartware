@@ -1,4 +1,16 @@
 /**
+ * DEV DOC
+ * Module: schemas/03-bookings/reservation-command-lifecycle.ts
+ * Description: Reservation Command Lifecycle Schema
+ * Table: reservation_command_lifecycle
+ * Category: 03-bookings
+ * Primary exports: ReservationCommandLifecycleSchema, CreateReservationCommandLifecycleSchema, UpdateReservationCommandLifecycleSchema
+ * @table reservation_command_lifecycle
+ * @category 03-bookings
+ * Ownership: Schema package
+ */
+
+/**
  * Reservation Command Lifecycle Schema
  * @table reservation_command_lifecycle
  * @category 03-bookings

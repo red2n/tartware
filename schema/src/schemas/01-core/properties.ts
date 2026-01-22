@@ -1,4 +1,16 @@
 /**
+ * DEV DOC
+ * Module: schemas/01-core/properties.ts
+ * Description: Property Schema - Core property metadata
+ * Table: properties
+ * Category: 01-core
+ * Primary exports: PropertySchema, CreatePropertySchema, UpdatePropertySchema, PropertyWithStatsSchema
+ * @table properties
+ * @category 01-core
+ * Ownership: Schema package
+ */
+
+/**
  * Property Schema - Core property metadata
  * @table properties
  * @category 01-core

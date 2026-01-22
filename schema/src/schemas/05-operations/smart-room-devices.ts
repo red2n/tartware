@@ -1,4 +1,16 @@
 /**
+ * DEV DOC
+ * Module: schemas/05-operations/smart-room-devices.ts
+ * Description: SmartRoomDevices Schema
+ * Table: smart_room_devices
+ * Category: 05-operations
+ * Primary exports: SmartRoomDevicesSchema, CreateSmartRoomDevicesSchema, UpdateSmartRoomDevicesSchema
+ * @table smart_room_devices
+ * @category 05-operations
+ * Ownership: Schema package
+ */
+
+/**
  * SmartRoomDevices Schema
  * @table smart_room_devices
  * @category 05-operations

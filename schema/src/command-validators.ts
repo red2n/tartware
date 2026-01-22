@@ -1,3 +1,10 @@
+/**
+ * DEV DOC
+ * Module: command-validators.ts
+ * Purpose: Shared schema/type definitions and validation helpers.
+ * Ownership: Schema package
+ */
+
 import {
 	BillingPaymentCaptureCommandSchema,
 	BillingPaymentRefundCommandSchema,

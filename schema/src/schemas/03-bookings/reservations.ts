@@ -1,4 +1,16 @@
 /**
+ * DEV DOC
+ * Module: schemas/03-bookings/reservations.ts
+ * Description: Reservations Schema
+ * Table: reservations
+ * Category: 03-bookings
+ * Primary exports: ReservationsSchema, CreateReservationsSchema, UpdateReservationsSchema
+ * @table reservations
+ * @category 03-bookings
+ * Ownership: Schema package
+ */
+
+/**
  * Reservations Schema
  * @table reservations
  * @category 03-bookings

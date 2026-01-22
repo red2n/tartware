@@ -1,4 +1,16 @@
 /**
+ * DEV DOC
+ * Module: schemas/02-inventory/revenue-forecasts.ts
+ * Description: RevenueForecasts Schema
+ * Table: revenue_forecasts
+ * Category: 02-inventory
+ * Primary exports: RevenueForecastsSchema, CreateRevenueForecastsSchema, UpdateRevenueForecastsSchema
+ * @table revenue_forecasts
+ * @category 02-inventory
+ * Ownership: Schema package
+ */
+
+/**
  * RevenueForecasts Schema
  * @table revenue_forecasts
  * @category 02-inventory

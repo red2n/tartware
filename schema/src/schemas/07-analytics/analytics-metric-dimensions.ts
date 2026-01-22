@@ -1,4 +1,16 @@
 /**
+ * DEV DOC
+ * Module: schemas/07-analytics/analytics-metric-dimensions.ts
+ * Description: AnalyticsMetricDimensions Schema
+ * Table: analytics_metric_dimensions
+ * Category: 07-analytics
+ * Primary exports: AnalyticsMetricDimensionsSchema, CreateAnalyticsMetricDimensionsSchema, UpdateAnalyticsMetricDimensionsSchema
+ * @table analytics_metric_dimensions
+ * @category 07-analytics
+ * Ownership: Schema package
+ */
+
+/**
  * AnalyticsMetricDimensions Schema
  * @table analytics_metric_dimensions
  * @category 07-analytics
