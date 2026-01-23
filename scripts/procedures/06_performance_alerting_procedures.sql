@@ -22,10 +22,22 @@ CREATE OR REPLACE FUNCTION update_performance_baselines()
 RETURNS void
 LANGUAGE plpgsql
 AS $$
+DECLARE
+    v_tenant_id UUID;
 BEGIN
+    SELECT id INTO v_tenant_id
+    FROM tenants
+    ORDER BY created_at NULLS LAST, id
+    LIMIT 1;
+
+    IF v_tenant_id IS NULL THEN
+        v_tenant_id := '11111111-1111-1111-1111-111111111111';
+    END IF;
+
     -- Query execution time baseline
     BEGIN
         INSERT INTO performance_baselines (
+            tenant_id,
             metric_name,
             time_window,
             baseline_value,
@@ -35,6 +47,7 @@ BEGIN
             sample_count
         )
         SELECT
+            v_tenant_id,
             'query_execution_time',
             'hourly',
             AVG(mean_exec_time),
@@ -59,12 +72,14 @@ BEGIN
 
     -- Connection count baseline
     INSERT INTO performance_baselines (
+        tenant_id,
         metric_name,
         time_window,
         baseline_value,
         sample_count
     )
     SELECT
+        v_tenant_id,
         'connection_count',
         'hourly',
         (SELECT COUNT(*)::NUMERIC FROM pg_stat_activity),
@@ -77,11 +92,13 @@ BEGIN
 
     -- Cache hit rate baseline
     INSERT INTO performance_baselines (
+        tenant_id,
         metric_name,
         time_window,
         baseline_value
     )
     SELECT
+        v_tenant_id,
         'cache_hit_rate',
         'daily',
         ROUND(
@@ -95,11 +112,13 @@ BEGIN
 
     -- Table scan rate baseline
     INSERT INTO performance_baselines (
+        tenant_id,
         metric_name,
         time_window,
         baseline_value
     )
     SELECT
+        v_tenant_id,
         'sequential_scan_rate',
         'daily',
         SUM(seq_scan)::NUMERIC / NULLIF(SUM(seq_scan + idx_scan), 0) * 100
@@ -333,7 +352,17 @@ LANGUAGE plpgsql
 AS $$
 DECLARE
     v_alert RECORD;
+    v_tenant_id UUID;
 BEGIN
+    SELECT id INTO v_tenant_id
+    FROM tenants
+    ORDER BY created_at NULLS LAST, id
+    LIMIT 1;
+
+    IF v_tenant_id IS NULL THEN
+        v_tenant_id := '11111111-1111-1111-1111-111111111111';
+    END IF;
+
     -- Check query degradation
     FOR v_alert IN
         SELECT * FROM detect_query_degradation()
@@ -341,6 +370,7 @@ BEGIN
     LOOP
         -- Log alert
         INSERT INTO performance_alerts (
+            tenant_id,
             alert_type,
             severity,
             metric_name,
@@ -350,6 +380,7 @@ BEGIN
             alert_message,
             details
         ) VALUES (
+            v_tenant_id,
             'QUERY_DEGRADATION',
             v_alert.alert_level,
             'query_execution_time',
@@ -377,6 +408,7 @@ BEGIN
     -- Check connection spike
     FOR v_alert IN SELECT * FROM detect_connection_spike() LOOP
         INSERT INTO performance_alerts (
+            tenant_id,
             alert_type,
             severity,
             metric_name,
@@ -385,6 +417,7 @@ BEGIN
             deviation_percent,
             alert_message
         ) VALUES (
+            v_tenant_id,
             'CONNECTION_SPIKE',
             v_alert.alert_level,
             'connection_count',
@@ -408,6 +441,7 @@ BEGIN
     -- Check cache degradation
     FOR v_alert IN SELECT * FROM detect_cache_degradation() LOOP
         INSERT INTO performance_alerts (
+            tenant_id,
             alert_type,
             severity,
             metric_name,
@@ -416,6 +450,7 @@ BEGIN
             deviation_percent,
             alert_message
         ) VALUES (
+            v_tenant_id,
             'CACHE_DEGRADATION',
             v_alert.alert_level,
             'cache_hit_rate',
@@ -641,6 +676,7 @@ SELECT update_performance_baselines();
 
 -- Insert default alert rules
 INSERT INTO alert_rules (
+    tenant_id,
     rule_name,
     metric_query,
     condition_type,
@@ -648,6 +684,7 @@ INSERT INTO alert_rules (
     severity
 ) VALUES
 (
+    COALESCE((SELECT id FROM tenants ORDER BY created_at NULLS LAST, id LIMIT 1), '11111111-1111-1111-1111-111111111111'),
     'high_query_time',
     'SELECT MAX(mean_exec_time) FROM pg_stat_statements',
     'threshold',
@@ -655,6 +692,7 @@ INSERT INTO alert_rules (
     'WARNING'
 ),
 (
+    COALESCE((SELECT id FROM tenants ORDER BY created_at NULLS LAST, id LIMIT 1), '11111111-1111-1111-1111-111111111111'),
     'connection_saturation',
     'SELECT COUNT(*) FROM pg_stat_activity',
     'threshold',
@@ -662,6 +700,7 @@ INSERT INTO alert_rules (
     'CRITICAL'
 ),
 (
+    COALESCE((SELECT id FROM tenants ORDER BY created_at NULLS LAST, id LIMIT 1), '11111111-1111-1111-1111-111111111111'),
     'low_cache_hit',
     'SELECT 100.0 * SUM(heap_blks_hit) / NULLIF(SUM(heap_blks_hit) + SUM(heap_blks_read), 0) FROM pg_statio_user_tables',
     'threshold',

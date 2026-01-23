@@ -46,62 +46,54 @@ BEGIN
             (item->>'closed')::BOOLEAN AS is_closed
         FROM jsonb_array_elements(p_channel_data) AS item
     )
-    MERGE INTO availability.room_availability AS target
-    USING channel_availability AS source
-    ON (
-        target.property_id = source.property_id
-        AND target.room_type_id = source.room_type_id
-        AND target.availability_date = source.availability_date
-        AND target.tenant_id = p_tenant_id
+    INSERT INTO availability.room_availability (
+        tenant_id,
+        property_id,
+        room_type_id,
+        availability_date,
+        available_rooms,
+        reserved_rooms,
+        dynamic_price,
+        min_length_of_stay,
+        max_length_of_stay,
+        stop_sell,
+        created_by,
+        updated_by
     )
-    WHEN MATCHED THEN
-        UPDATE SET
-            available_rooms = source.available_rooms,
-            booked_rooms = source.booked_rooms,
-            rate_override = COALESCE(source.rate, target.rate_override),
-            min_stay_override = COALESCE(source.min_stay, target.min_stay_override),
-            max_stay_override = COALESCE(source.max_stay, target.max_stay_override),
-            is_closed = COALESCE(source.is_closed, target.is_closed),
-            updated_at = CURRENT_TIMESTAMP,
-            updated_by = p_sync_by
-    WHEN NOT MATCHED THEN
-        INSERT (
-            tenant_id,
-            property_id,
-            room_type_id,
-            availability_date,
-            available_rooms,
-            booked_rooms,
-            rate_override,
-            min_stay_override,
-            max_stay_override,
-            is_closed,
-            created_by,
-            updated_by
-        )
-        VALUES (
-            p_tenant_id,
-            source.property_id,
-            source.room_type_id,
-            source.availability_date,
-            source.available_rooms,
-            source.booked_rooms,
-            source.rate,
-            source.min_stay,
-            source.max_stay,
-            source.is_closed,
-            p_sync_by,
-            p_sync_by
-        )
+    SELECT
+        p_tenant_id,
+        source.property_id,
+        source.room_type_id,
+        source.availability_date,
+        COALESCE(source.available_rooms, 0),
+        COALESCE(source.booked_rooms, 0),
+        source.rate,
+        source.min_stay,
+        source.max_stay,
+        COALESCE(source.is_closed, FALSE),
+        p_sync_by,
+        p_sync_by
+    FROM channel_availability AS source
+    ON CONFLICT ON CONSTRAINT room_avail_unique
+    DO UPDATE SET
+        available_rooms = EXCLUDED.available_rooms,
+        reserved_rooms = EXCLUDED.reserved_rooms,
+        dynamic_price = COALESCE(EXCLUDED.dynamic_price, availability.room_availability.dynamic_price),
+        min_length_of_stay = COALESCE(EXCLUDED.min_length_of_stay, availability.room_availability.min_length_of_stay),
+        max_length_of_stay = COALESCE(EXCLUDED.max_length_of_stay, availability.room_availability.max_length_of_stay),
+        stop_sell = COALESCE(EXCLUDED.stop_sell, availability.room_availability.stop_sell),
+        updated_at = CURRENT_TIMESTAMP,
+        updated_by = p_sync_by,
+        version = availability.room_availability.version + 1
     RETURNING
-        target.availability_date,
-        target.room_type_id,
+        availability.room_availability.availability_date,
+        availability.room_availability.room_type_id,
         CASE
             WHEN xmax = 0 THEN 'INSERTED'
             ELSE 'UPDATED'
         END AS action,
-        target.available_rooms,
-        target.booked_rooms;
+        availability.room_availability.available_rooms,
+        availability.room_availability.reserved_rooms;
 END;
 $$;
 
@@ -287,48 +279,44 @@ BEGIN
             (item->>'is_active')::BOOLEAN AS is_active
         FROM jsonb_array_elements(p_mappings) AS item
     )
-    MERGE INTO channel_mappings AS target
-    USING channel_mappings_data AS source
-    ON (
-        target.tenant_id = p_tenant_id
-        AND target.property_id = source.property_id
-        AND target.channel_name = p_channel_name
-        AND target.channel_room_type_id = source.channel_room_type_id
+    INSERT INTO channel_mappings (
+        tenant_id,
+        property_id,
+        channel_name,
+        channel_code,
+        entity_type,
+        entity_id,
+        external_id,
+        external_code,
+        is_active,
+        created_by,
+        updated_by
     )
-    WHEN MATCHED AND target.deleted_at IS NULL THEN
-        UPDATE SET
-            local_room_type_id = source.local_room_type_id,
-            channel_room_type_name = source.channel_room_type_name,
-            is_active = COALESCE(source.is_active, target.is_active),
-            updated_at = CURRENT_TIMESTAMP,
-            updated_by = p_sync_by
-    WHEN NOT MATCHED THEN
-        INSERT (
-            tenant_id,
-            property_id,
-            channel_name,
-            local_room_type_id,
-            channel_room_type_id,
-            channel_room_type_name,
-            is_active,
-            created_by,
-            updated_by
-        )
-        VALUES (
-            p_tenant_id,
-            source.property_id,
-            p_channel_name,
-            source.local_room_type_id,
-            source.channel_room_type_id,
-            source.channel_room_type_name,
-            COALESCE(source.is_active, TRUE),
-            p_sync_by,
-            p_sync_by
-        )
+    SELECT
+        p_tenant_id,
+        source.property_id,
+        p_channel_name,
+        UPPER(REGEXP_REPLACE(p_channel_name, '[^A-Za-z0-9]+', '_', 'g')),
+        'room_type',
+        source.local_room_type_id,
+        source.channel_room_type_id,
+        source.channel_room_type_name,
+        COALESCE(source.is_active, TRUE),
+        p_sync_by,
+        p_sync_by
+    FROM channel_mappings_data AS source
+    ON CONFLICT ON CONSTRAINT channel_mappings_unique
+    DO UPDATE SET
+        external_id = EXCLUDED.external_id,
+        external_code = EXCLUDED.external_code,
+        is_active = EXCLUDED.is_active,
+        updated_at = CURRENT_TIMESTAMP,
+        updated_by = p_sync_by,
+        version = channel_mappings.version + 1
     RETURNING
-        target.local_room_type_id,
-        target.channel_room_type_id,
-        target.channel_room_type_name,
+        channel_mappings.entity_id,
+        channel_mappings.external_id,
+        channel_mappings.external_code,
         CASE
             WHEN xmax = 0 THEN 'INSERTED'
             ELSE 'UPDATED'

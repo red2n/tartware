@@ -37,8 +37,12 @@
 \echo '  Phase 2: Creating Reporting & Alerting Tables'
 \echo '======================================================'
 \echo ''
-\ir ../tables/07-analytics/23_performance_reporting_tables.sql
-\ir ../tables/07-analytics/24_performance_alerting_tables.sql
+\ir ../tables/07-analytics/23_performance_reports.sql
+\ir ../tables/07-analytics/24_report_schedules.sql
+\ir ../tables/07-analytics/25_performance_thresholds.sql
+\ir ../tables/07-analytics/26_performance_baselines.sql
+\ir ../tables/07-analytics/30_performance_alerts.sql
+\ir ../tables/07-analytics/31_alert_rules.sql
 
 -- =====================================================
 -- PHASE 3: Reporting Procedures

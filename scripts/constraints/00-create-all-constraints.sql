@@ -27,7 +27,7 @@
 \ir 02-inventory/04_room_types_fk.sql
 \ir 02-inventory/05_rooms_fk.sql
 \ir 02-inventory/06_rates_fk.sql
-\ir 02-inventory/07_availability_room_availability_fk.sql
+\ir 02-inventory/07_room_availability_fk.sql
 \ir 02-inventory/36_rate_overrides_fk.sql
 \ir 02-inventory/51_revenue_forecasts_fk.sql
 \ir 02-inventory/52_competitor_rates_fk.sql

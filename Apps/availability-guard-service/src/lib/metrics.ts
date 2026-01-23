@@ -77,7 +77,7 @@ export const recordNotificationMessage = (
 };
 
 export const recordNotificationChannelDelivery = (
-  channel: "email" | "sms" | "slack",
+  channel: "email" | "sms" | "slack" | "log",
   status: "delivered" | "failed",
 ): void => {
   notificationChannelCounter.labels(channel, status).inc();

@@ -17,7 +17,11 @@ import { z } from "zod";
 
 import { config } from "../config.js";
 import { settingsCatalogData } from "../data/settings-catalog.js";
-import { settingsValues } from "../data/settings-values.js";
+import {
+  createSeedValue,
+  listSeedValues,
+  updateSeedValue,
+} from "../data/settings-values-store.js";
 import {
   listCategories as listDbCategories,
   listDefinitions as listDbDefinitions,
@@ -431,11 +435,21 @@ const catalogRoutes: FastifyPluginAsync = async (app) => {
     },
     async (request) => {
       if (!isDbEnabled()) {
+        const { scope_level, setting_id, property_id, unit_id, user_id, active_only } =
+          ValuesQuerySchema.parse(request.query ?? {});
+        const seedValues = listSeedValues({
+          scopeLevel: scope_level,
+          settingId: setting_id,
+          propertyId: property_id,
+          unitId: unit_id,
+          userId: user_id,
+          activeOnly: active_only,
+        });
         return {
-          data: settingsValues,
+          data: seedValues,
           meta: {
-            count: settingsValues.length,
-            sampleTenantId: settingsValues[0]?.tenant_id ?? null,
+            count: seedValues.length,
+            sampleTenantId: seedValues[0]?.tenant_id ?? null,
           },
         };
       }
@@ -485,7 +499,29 @@ const catalogRoutes: FastifyPluginAsync = async (app) => {
     },
     async (request, reply) => {
       if (!isDbEnabled()) {
-        reply.status(501).send({ message: "Settings values are read-only in seed mode." });
+        const tenantId = request.authUser?.tenantId;
+        if (!tenantId) {
+          reply.status(403).send({ message: "Tenant context required" });
+          return;
+        }
+        const body = CreateValueSchema.parse(request.body);
+        const created = createSeedValue({
+          tenantId,
+          settingId: body.setting_id,
+          scopeLevel: body.scope_level,
+          value: body.value,
+          propertyId: body.property_id ?? null,
+          unitId: body.unit_id ?? null,
+          userId: body.user_id ?? null,
+          status: body.status ?? null,
+          notes: body.notes ?? null,
+          effectiveFrom: body.effective_from ?? null,
+          effectiveTo: body.effective_to ?? null,
+          context: body.context ?? null,
+          metadata: body.metadata ?? null,
+          createdBy: request.authUser?.sub ?? null,
+        });
+        reply.status(201).send({ data: created });
         return;
       }
       const tenantId = request.authUser?.tenantId;
@@ -530,7 +566,31 @@ const catalogRoutes: FastifyPluginAsync = async (app) => {
     },
     async (request, reply) => {
       if (!isDbEnabled()) {
-        reply.status(501).send({ message: "Settings values are read-only in seed mode." });
+        const tenantId = request.authUser?.tenantId;
+        if (!tenantId) {
+          reply.status(403).send({ message: "Tenant context required" });
+          return;
+        }
+        const { valueId } = z.object({ valueId: z.string().uuid() }).parse(request.params);
+        const body = UpdateValueSchema.parse(request.body);
+        const updated = updateSeedValue({
+          valueId,
+          tenantId,
+          value: body.value ?? null,
+          status: body.status ?? null,
+          notes: body.notes ?? null,
+          effectiveFrom: body.effective_from ?? null,
+          effectiveTo: body.effective_to ?? null,
+          lockedUntil: body.locked_until ?? null,
+          context: body.context ?? null,
+          metadata: body.metadata ?? null,
+          updatedBy: request.authUser?.sub ?? null,
+        });
+        if (!updated) {
+          reply.status(404).send({ message: "Settings value not found" });
+          return;
+        }
+        reply.send({ data: updated });
         return;
       }
       const tenantId = request.authUser?.tenantId;

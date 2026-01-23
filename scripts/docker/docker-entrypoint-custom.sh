@@ -85,7 +85,7 @@ run_sql() {
     local file=$1
     local db=${2:-$POSTGRES_DB}
     echo "Running: $(basename $file)"
-    psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$db" -f "$file"
+    psql -v ON_ERROR_STOP=1 -v scripts_dir="$SCRIPTS_DIR" --username "$POSTGRES_USER" --dbname "$db" -f "$file"
 }
 
 # Check if tartware database exists
@@ -155,6 +155,13 @@ if [ -d "$SCRIPTS_DIR" ]; then
                 run_sql "$script" "tartware"
             fi
         done
+    fi
+
+    # Auto-generate missing FK indexes
+    if [ -f "$SCRIPTS_DIR/indexes/99_auto_fk_indexes.sql" ]; then
+        echo ""
+        echo "Creating missing foreign key indexes..."
+        run_sql "$SCRIPTS_DIR/indexes/99_auto_fk_indexes.sql" "tartware"
     fi
     
     # Run index scripts

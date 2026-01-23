@@ -586,17 +586,17 @@ export const initTelemetry = async (
 		process.env.OTEL_EXPORTER_OTLP_TRACES_ENDPOINT ??
 		process.env.OTEL_EXPORTER_OTLP_ENDPOINT;
 
-	if (!traceEndpoint) {
-		console.info(
-			"[telemetry] No OTLP trace endpoint configured - telemetry disabled.",
-		);
-		return undefined;
-	}
-
 	// Configure log exporter
 	const logEndpoint =
 		process.env.OTEL_EXPORTER_OTLP_LOGS_ENDPOINT ??
 		process.env.OTEL_EXPORTER_OTLP_ENDPOINT;
+
+	if (!traceEndpoint && !logEndpoint) {
+		console.info(
+			"[telemetry] No OTLP endpoints configured - telemetry disabled.",
+		);
+		return undefined;
+	}
 
 	const loggerProvider = logEndpoint
 		? new LoggerProvider({ resource })
@@ -632,13 +632,15 @@ export const initTelemetry = async (
 				  }),
 			  )
 			: undefined,
-		traceExporter: new OTLPTraceExporter({
-			url: traceEndpoint,
-			headers: parseHeaders(
-				process.env.OTEL_EXPORTER_OTLP_TRACES_HEADERS ??
-					process.env.OTEL_EXPORTER_OTLP_HEADERS,
-			),
-		}),
+		traceExporter: traceEndpoint
+			? new OTLPTraceExporter({
+					url: traceEndpoint,
+					headers: parseHeaders(
+						process.env.OTEL_EXPORTER_OTLP_TRACES_HEADERS ??
+							process.env.OTEL_EXPORTER_OTLP_HEADERS,
+					),
+				})
+			: undefined,
 		instrumentations: [
 			getNodeAutoInstrumentations(options.instrumentationOptions),
 		],

@@ -56,11 +56,11 @@ BEGIN
             ra.tenant_id,
             ra.property_id,
             p_metric_date AS metric_date,
-            SUM(ra.available_rooms) AS total_rooms,
-            SUM(ra.booked_rooms) AS occupied_rooms,
+            SUM(ra.total_rooms) AS total_rooms,
+            SUM(ra.reserved_rooms) AS occupied_rooms,
             CASE
-                WHEN SUM(ra.available_rooms) > 0
-                THEN (SUM(ra.booked_rooms)::NUMERIC / SUM(ra.available_rooms) * 100)
+                WHEN SUM(ra.total_rooms) > 0
+                THEN (SUM(ra.reserved_rooms)::NUMERIC / SUM(ra.total_rooms) * 100)
                 ELSE 0
             END AS occupancy_rate
         FROM availability.room_availability ra
@@ -68,120 +68,166 @@ BEGIN
           AND (p_property_id IS NULL OR ra.property_id = p_property_id)
           AND ra.availability_date = p_metric_date
         GROUP BY ra.tenant_id, ra.property_id
-    )
-    -- Merge booking metrics
-    MERGE INTO analytics_metrics AS target
-    USING (
-        SELECT * FROM daily_stats
-        CROSS JOIN LATERAL (
-            VALUES
-                ('BOOKING_COUNT', booking_count),
-                ('CONFIRMED_BOOKINGS', confirmed_bookings),
-                ('CANCELLED_BOOKINGS', cancelled_bookings),
-                ('AVG_BOOKING_VALUE', avg_booking_value),
-                ('TOTAL_REVENUE', total_revenue),
-                ('AVG_LENGTH_OF_STAY', avg_length_of_stay),
-                ('TOTAL_GUESTS', total_guests),
-                ('UNIQUE_GUESTS', unique_guests)
-        ) AS metrics(metric_name, metric_val)
-    ) AS source
-    ON (
-        target.tenant_id = source.tenant_id
-        AND (target.property_id = source.property_id OR (target.property_id IS NULL AND source.property_id IS NULL))
-        AND target.period_start = source.metric_date
-        AND target.metric_type = source.metric_name
-        AND target.granularity = 'DAILY'
-    )
-    WHEN MATCHED THEN
-        UPDATE SET
-            metric_value = source.metric_val,
-            updated_at = CURRENT_TIMESTAMP,
-            updated_by = p_updated_by
-    WHEN NOT MATCHED THEN
-        INSERT (
+    ),
+    metric_source AS (
+        SELECT
+            ds.tenant_id,
+            ds.property_id,
+            p_metric_date AS metric_date,
+            'BOOKING_COUNT'::metric_type AS metric_type,
+            'Booking Count'::VARCHAR(100) AS metric_name,
+            'BOOKING_COUNT'::VARCHAR(50) AS metric_code,
+            ds.booking_count::NUMERIC(15,4) AS metric_value,
+            'count'::VARCHAR(50) AS metric_unit
+        FROM daily_stats ds
+        UNION ALL
+        SELECT
+            ds.tenant_id,
+            ds.property_id,
+            p_metric_date,
+            'TOTAL_REVENUE'::metric_type,
+            'Total Revenue',
+            'TOTAL_REVENUE',
+            COALESCE(ds.total_revenue, 0)::NUMERIC(15,4),
+            'currency'
+        FROM daily_stats ds
+        UNION ALL
+        SELECT
+            ds.tenant_id,
+            ds.property_id,
+            p_metric_date,
+            'LENGTH_OF_STAY'::metric_type,
+            'Average Length of Stay',
+            'AVG_LENGTH_OF_STAY',
+            COALESCE(ds.avg_length_of_stay, 0)::NUMERIC(15,4),
+            'days'
+        FROM daily_stats ds
+        UNION ALL
+        SELECT
+            ds.tenant_id,
+            ds.property_id,
+            p_metric_date,
+            'CANCELLATION_RATE'::metric_type,
+            'Cancellation Rate',
+            'CANCELLATION_RATE',
+            CASE
+                WHEN ds.booking_count > 0
+                THEN (ds.cancelled_bookings::NUMERIC / ds.booking_count * 100)
+                ELSE 0
+            END::NUMERIC(15,4),
+            'percent'
+        FROM daily_stats ds
+        UNION ALL
+        SELECT
+            os.tenant_id,
+            os.property_id,
+            p_metric_date,
+            'OCCUPANCY_RATE'::metric_type,
+            'Occupancy Rate',
+            'OCCUPANCY_RATE',
+            COALESCE(os.occupancy_rate, 0)::NUMERIC(15,4),
+            'percent'
+        FROM occupancy_stats os
+        UNION ALL
+        SELECT
+            os.tenant_id,
+            os.property_id,
+            p_metric_date,
+            'ADR'::metric_type,
+            'Average Daily Rate',
+            'ADR',
+            CASE
+                WHEN os.occupied_rooms > 0
+                THEN (ds.total_revenue / os.occupied_rooms)
+                ELSE 0
+            END::NUMERIC(15,4),
+            'currency'
+        FROM occupancy_stats os
+        JOIN daily_stats ds
+            ON ds.tenant_id = os.tenant_id
+           AND ds.property_id = os.property_id
+        UNION ALL
+        SELECT
+            os.tenant_id,
+            os.property_id,
+            p_metric_date,
+            'REVPAR'::metric_type,
+            'Revenue Per Available Room',
+            'REVPAR',
+            CASE
+                WHEN os.total_rooms > 0
+                THEN (ds.total_revenue / os.total_rooms)
+                ELSE 0
+            END::NUMERIC(15,4),
+            'currency'
+        FROM occupancy_stats os
+        JOIN daily_stats ds
+            ON ds.tenant_id = os.tenant_id
+           AND ds.property_id = os.property_id
+    ),
+    updated AS (
+        UPDATE analytics_metrics AS target
+        SET
+            metric_value = source.metric_value,
+            metric_name = source.metric_name,
+            metric_code = source.metric_code,
+            metric_unit = source.metric_unit,
+            updated_at = CURRENT_TIMESTAMP
+        FROM metric_source AS source
+        WHERE target.tenant_id = source.tenant_id
+          AND target.property_id = source.property_id
+          AND target.metric_type = source.metric_type
+          AND target.metric_date = source.metric_date
+          AND target.time_granularity = 'DAILY'
+        RETURNING
+            target.metric_type::VARCHAR(50) AS metric_type,
+            target.metric_value::NUMERIC(12,2) AS metric_value,
+            'UPDATED'::VARCHAR(10) AS action
+    ),
+    inserted AS (
+        INSERT INTO analytics_metrics (
             tenant_id,
             property_id,
             metric_type,
+            metric_name,
+            metric_code,
+            metric_date,
+            time_granularity,
             metric_value,
-            period_start,
-            period_end,
-            granularity,
-            created_by,
-            updated_by
+            metric_unit,
+            status,
+            calculated_at
         )
-        VALUES (
+        SELECT
             source.tenant_id,
             source.property_id,
+            source.metric_type,
             source.metric_name,
-            source.metric_val,
-            source.metric_date,
+            source.metric_code,
             source.metric_date,
             'DAILY',
-            p_updated_by,
-            p_updated_by
+            source.metric_value,
+            source.metric_unit,
+            'COMPLETED',
+            CURRENT_TIMESTAMP
+        FROM metric_source AS source
+        WHERE NOT EXISTS (
+            SELECT 1
+            FROM analytics_metrics AS existing
+            WHERE existing.tenant_id = source.tenant_id
+              AND existing.property_id = source.property_id
+              AND existing.metric_type = source.metric_type
+              AND existing.metric_date = source.metric_date
+              AND existing.time_granularity = 'DAILY'
         )
-    RETURNING
-        target.metric_type,
-        target.metric_value,
-        CASE
-            WHEN xmax = 0 THEN 'INSERTED'
-            ELSE 'UPDATED'
-        END AS action;
-
-    -- Also merge occupancy metrics
-    RETURN QUERY
-    MERGE INTO analytics_metrics AS target
-    USING (
-        SELECT * FROM occupancy_stats
-        CROSS JOIN LATERAL (
-            VALUES
-                ('TOTAL_ROOMS', total_rooms),
-                ('OCCUPIED_ROOMS', occupied_rooms),
-                ('OCCUPANCY_RATE', occupancy_rate)
-        ) AS metrics(metric_name, metric_val)
-    ) AS source
-    ON (
-        target.tenant_id = source.tenant_id
-        AND (target.property_id = source.property_id OR (target.property_id IS NULL AND source.property_id IS NULL))
-        AND target.period_start = source.metric_date
-        AND target.metric_type = source.metric_name
-        AND target.granularity = 'DAILY'
+        RETURNING
+            metric_type::VARCHAR(50) AS metric_type,
+            metric_value::NUMERIC(12,2) AS metric_value,
+            'INSERTED'::VARCHAR(10) AS action
     )
-    WHEN MATCHED THEN
-        UPDATE SET
-            metric_value = source.metric_val,
-            updated_at = CURRENT_TIMESTAMP,
-            updated_by = p_updated_by
-    WHEN NOT MATCHED THEN
-        INSERT (
-            tenant_id,
-            property_id,
-            metric_type,
-            metric_value,
-            period_start,
-            period_end,
-            granularity,
-            created_by,
-            updated_by
-        )
-        VALUES (
-            source.tenant_id,
-            source.property_id,
-            source.metric_name,
-            source.metric_val,
-            source.metric_date,
-            source.metric_date,
-            'DAILY',
-            p_updated_by,
-            p_updated_by
-        )
-    RETURNING
-        target.metric_type,
-        target.metric_value,
-        CASE
-            WHEN xmax = 0 THEN 'INSERTED'
-            ELSE 'UPDATED'
-        END AS action;
+    SELECT * FROM updated
+    UNION ALL
+    SELECT * FROM inserted;
 END;
 $$;
 
@@ -224,67 +270,86 @@ BEGIN
             m.metric_type,
             CASE
                 -- Sum metrics
-                WHEN m.metric_type IN ('BOOKING_COUNT', 'CONFIRMED_BOOKINGS', 'CANCELLED_BOOKINGS',
-                                      'TOTAL_REVENUE', 'TOTAL_GUESTS', 'UNIQUE_GUESTS',
-                                      'TOTAL_ROOMS', 'OCCUPIED_ROOMS')
+                WHEN m.metric_type IN ('BOOKING_COUNT', 'TOTAL_REVENUE')
                 THEN SUM(m.metric_value)
                 -- Average metrics
-                WHEN m.metric_type IN ('AVG_BOOKING_VALUE', 'AVG_LENGTH_OF_STAY', 'OCCUPANCY_RATE')
+                WHEN m.metric_type IN ('OCCUPANCY_RATE', 'ADR', 'REVPAR', 'CANCELLATION_RATE', 'LENGTH_OF_STAY')
                 THEN AVG(m.metric_value)
                 ELSE SUM(m.metric_value)
-            END AS metric_value
+            END AS metric_value,
+            MAX(m.metric_name) AS metric_name,
+            MAX(m.metric_code) AS metric_code,
+            MAX(m.metric_unit) AS metric_unit
         FROM analytics_metrics m
         WHERE m.tenant_id = p_tenant_id
           AND (p_property_id IS NULL OR m.property_id = p_property_id)
-          AND m.granularity = 'DAILY'
-          AND m.period_start BETWEEN v_period_start AND v_period_end
+          AND m.time_granularity = 'DAILY'
+          AND m.metric_date BETWEEN v_period_start AND v_period_end
         GROUP BY m.tenant_id, m.property_id, m.metric_type
-    )
-    MERGE INTO analytics_metrics AS target
-    USING monthly_aggregates AS source
-    ON (
-        target.tenant_id = source.tenant_id
-        AND (target.property_id = source.property_id OR (target.property_id IS NULL AND source.property_id IS NULL))
-        AND target.period_start = v_period_start
-        AND target.metric_type = source.metric_type
-        AND target.granularity = 'MONTHLY'
-    )
-    WHEN MATCHED THEN
-        UPDATE SET
+    ),
+    updated AS (
+        UPDATE analytics_metrics AS target
+        SET
             metric_value = source.metric_value,
-            period_end = v_period_end,
-            updated_at = CURRENT_TIMESTAMP,
-            updated_by = p_updated_by
-    WHEN NOT MATCHED THEN
-        INSERT (
+            metric_name = source.metric_name,
+            metric_code = source.metric_code,
+            metric_unit = source.metric_unit,
+            updated_at = CURRENT_TIMESTAMP
+        FROM monthly_aggregates AS source
+        WHERE target.tenant_id = source.tenant_id
+          AND target.property_id = source.property_id
+          AND target.metric_type = source.metric_type
+          AND target.metric_date = v_period_start
+          AND target.time_granularity = 'MONTHLY'
+        RETURNING
+            target.metric_type::VARCHAR(50) AS metric_type,
+            target.metric_value::NUMERIC(12,2) AS metric_value,
+            'UPDATED'::VARCHAR(10) AS action
+    ),
+    inserted AS (
+        INSERT INTO analytics_metrics (
             tenant_id,
             property_id,
             metric_type,
+            metric_name,
+            metric_code,
+            metric_date,
+            time_granularity,
             metric_value,
-            period_start,
-            period_end,
-            granularity,
-            created_by,
-            updated_by
+            metric_unit,
+            status,
+            calculated_at
         )
-        VALUES (
+        SELECT
             source.tenant_id,
             source.property_id,
             source.metric_type,
-            source.metric_value,
+            source.metric_name,
+            source.metric_code,
             v_period_start,
-            v_period_end,
             'MONTHLY',
-            p_updated_by,
-            p_updated_by
+            source.metric_value,
+            source.metric_unit,
+            'COMPLETED',
+            CURRENT_TIMESTAMP
+        FROM monthly_aggregates AS source
+        WHERE NOT EXISTS (
+            SELECT 1
+            FROM analytics_metrics AS existing
+            WHERE existing.tenant_id = source.tenant_id
+              AND existing.property_id = source.property_id
+              AND existing.metric_type = source.metric_type
+              AND existing.metric_date = v_period_start
+              AND existing.time_granularity = 'MONTHLY'
         )
-    RETURNING
-        target.metric_type,
-        target.metric_value,
-        CASE
-            WHEN xmax = 0 THEN 'INSERTED'
-            ELSE 'UPDATED'
-        END AS action;
+        RETURNING
+            metric_type::VARCHAR(50) AS metric_type,
+            metric_value::NUMERIC(12,2) AS metric_value,
+            'INSERTED'::VARCHAR(10) AS action
+    )
+    SELECT * FROM updated
+    UNION ALL
+    SELECT * FROM inserted;
 END;
 $$;
 
@@ -381,92 +446,164 @@ BEGIN
           AND DATE(r.created_at) = p_metric_date
           AND r.deleted_at IS NULL
         GROUP BY r.tenant_id, r.property_id, rt.id, rt.room_type_name
-    )
-    -- First, get or create the parent metric
-    , parent_metrics AS (
+    ),
+    room_type_totals AS (
+        SELECT
+            tenant_id,
+            property_id,
+            SUM(booking_count) AS total_bookings
+        FROM room_type_metrics
+        GROUP BY tenant_id, property_id
+    ),
+    existing_parent AS (
+        SELECT DISTINCT ON (tenant_id, property_id)
+            id,
+            tenant_id,
+            property_id
+        FROM analytics_metrics
+        WHERE tenant_id = p_tenant_id
+          AND (p_property_id IS NULL OR property_id = p_property_id)
+          AND metric_code = 'BOOKINGS_BY_ROOM_TYPE'
+          AND metric_date = p_metric_date
+          AND time_granularity = 'DAILY'
+        ORDER BY tenant_id, property_id, calculated_at DESC NULLS LAST, created_at DESC NULLS LAST
+    ),
+    inserted_parent AS (
         INSERT INTO analytics_metrics (
             tenant_id,
             property_id,
             metric_type,
+            metric_name,
+            metric_code,
+            metric_date,
+            time_granularity,
             metric_value,
-            period_start,
-            period_end,
-            granularity,
-            created_by,
-            updated_by
+            metric_unit,
+            status,
+            calculated_at
         )
         SELECT
-            tenant_id,
-            property_id,
-            'BOOKINGS_BY_ROOM_TYPE',
-            booking_count,
-            p_metric_date,
+            totals.tenant_id,
+            totals.property_id,
+            'BOOKING_COUNT'::metric_type,
+            'Bookings by Room Type'::VARCHAR(100),
+            'BOOKINGS_BY_ROOM_TYPE'::VARCHAR(50),
             p_metric_date,
             'DAILY',
-            p_updated_by,
-            p_updated_by
-        FROM room_type_metrics
-        ON CONFLICT DO NOTHING
+            totals.total_bookings::NUMERIC(15,4),
+            'count',
+            'COMPLETED',
+            CURRENT_TIMESTAMP
+        FROM room_type_totals AS totals
+        WHERE NOT EXISTS (
+            SELECT 1
+            FROM analytics_metrics AS existing
+            WHERE existing.tenant_id = totals.tenant_id
+              AND existing.property_id = totals.property_id
+              AND existing.metric_code = 'BOOKINGS_BY_ROOM_TYPE'
+              AND existing.metric_date = p_metric_date
+              AND existing.time_granularity = 'DAILY'
+        )
         RETURNING id, tenant_id, property_id
-    )
-    -- Then merge dimensions
-    MERGE INTO analytics_metric_dimensions AS target
-    USING (
+    ),
+    parent_metrics AS (
+        SELECT * FROM existing_parent
+        UNION ALL
+        SELECT * FROM inserted_parent
+    ),
+    dimension_source AS (
         SELECT
             pm.id AS metric_id,
             rtm.tenant_id,
-            'ROOM_TYPE' AS dimension_type,
+            'ROOM_TYPE'::VARCHAR(50) AS dimension_type,
+            rtm.room_type_id::VARCHAR(100) AS dimension_key,
             rtm.room_type_name AS dimension_value,
-            rtm.booking_count AS dimension_metric_value,
+            rtm.booking_count::NUMERIC(15,4) AS metric_value,
+            CASE
+                WHEN totals.total_bookings > 0
+                THEN (rtm.booking_count::NUMERIC / totals.total_bookings * 100)
+                ELSE 0
+            END::NUMERIC(5,2) AS percentage_of_total,
+            DENSE_RANK() OVER (
+                PARTITION BY rtm.tenant_id, rtm.property_id
+                ORDER BY rtm.booking_count DESC
+            ) AS rank_position,
             jsonb_build_object(
                 'revenue', rtm.revenue,
-                'avg_rate', rtm.avg_rate,
-                'room_type_id', rtm.room_type_id
-            ) AS dimension_metadata
+                'avg_rate', rtm.avg_rate
+            ) AS metadata
         FROM room_type_metrics rtm
-        JOIN parent_metrics pm ON rtm.tenant_id = pm.tenant_id
-                              AND (rtm.property_id = pm.property_id OR (rtm.property_id IS NULL AND pm.property_id IS NULL))
-    ) AS source
-    ON (
-        target.metric_id = source.metric_id
-        AND target.dimension_type = source.dimension_type
-        AND target.dimension_value = source.dimension_value
-    )
-    WHEN MATCHED THEN
-        UPDATE SET
-            dimension_metric_value = source.dimension_metric_value,
-            dimension_metadata = source.dimension_metadata,
-            updated_at = CURRENT_TIMESTAMP,
-            updated_by = p_updated_by
-    WHEN NOT MATCHED THEN
-        INSERT (
-            tenant_id,
+        JOIN room_type_totals totals
+            ON totals.tenant_id = rtm.tenant_id
+           AND totals.property_id = rtm.property_id
+        JOIN parent_metrics pm
+            ON pm.tenant_id = rtm.tenant_id
+           AND pm.property_id = rtm.property_id
+    ),
+    updated AS (
+        UPDATE analytics_metric_dimensions AS target
+        SET
+            metric_value = source.metric_value,
+            percentage_of_total = source.percentage_of_total,
+            rank_position = source.rank_position,
+            metadata = source.metadata,
+            updated_by = p_updated_by,
+            version = target.version + 1
+        FROM dimension_source AS source
+        WHERE target.metric_id = source.metric_id
+          AND target.dimension_type = source.dimension_type
+          AND target.dimension_key = source.dimension_key
+          AND target.dimension_value = source.dimension_value
+        RETURNING
+            target.dimension_type,
+            target.dimension_value,
+            target.metric_value::INTEGER AS metric_count,
+            'UPDATED'::VARCHAR(10) AS action
+    ),
+    inserted AS (
+        INSERT INTO analytics_metric_dimensions (
             metric_id,
+            tenant_id,
             dimension_type,
+            dimension_key,
             dimension_value,
-            dimension_metric_value,
-            dimension_metadata,
+            metric_value,
+            percentage_of_total,
+            rank_position,
+            metadata,
             created_by,
             updated_by
         )
-        VALUES (
-            source.tenant_id,
+        SELECT
             source.metric_id,
+            source.tenant_id,
             source.dimension_type,
+            source.dimension_key,
             source.dimension_value,
-            source.dimension_metric_value,
-            source.dimension_metadata,
+            source.metric_value,
+            source.percentage_of_total,
+            source.rank_position,
+            source.metadata,
             p_updated_by,
             p_updated_by
+        FROM dimension_source AS source
+        WHERE NOT EXISTS (
+            SELECT 1
+            FROM analytics_metric_dimensions AS existing
+            WHERE existing.metric_id = source.metric_id
+              AND existing.dimension_type = source.dimension_type
+              AND existing.dimension_key = source.dimension_key
+              AND existing.dimension_value = source.dimension_value
         )
-    RETURNING
-        target.dimension_type,
-        target.dimension_value,
-        target.dimension_metric_value::INTEGER AS metric_count,
-        CASE
-            WHEN xmax = 0 THEN 'INSERTED'
-            ELSE 'UPDATED'
-        END AS action;
+        RETURNING
+            dimension_type,
+            dimension_value,
+            metric_value::INTEGER AS metric_count,
+            'INSERTED'::VARCHAR(10) AS action
+    )
+    SELECT * FROM updated
+    UNION ALL
+    SELECT * FROM inserted;
 END;
 $$;
 

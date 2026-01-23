@@ -161,6 +161,8 @@ const consumerSlackChannel = {
   ),
 };
 
+const defaultNotificationDryRun = !isProduction;
+
 const manualReleaseConfig = {
   enabled: toBoolean(
     process.env.AVAILABILITY_GUARD_MANUAL_RELEASE_ENABLED,
@@ -196,7 +198,7 @@ const manualReleaseConfig = {
       ),
       dryRun: toBoolean(
         process.env.AVAILABILITY_GUARD_NOTIFICATION_DRY_RUN,
-        true,
+        defaultNotificationDryRun,
       ),
       channels: {
         email: consumerEmailChannel,

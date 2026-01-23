@@ -215,10 +215,18 @@ const runWithRetry = async <T>(
 const secondsSince = (startedAt: number): number =>
   (performance.now() - startedAt) / 1000;
 
+const isGuardRequired = (): boolean => {
+  const env = (process.env.NODE_ENV ?? "development").toLowerCase();
+  return env === "production" || env === "staging";
+};
+
 export const lockReservationHold = async (
   input: LockReservationInput,
 ): Promise<AvailabilityGuardMetadata> => {
   if (!availabilityGuardConfig.enabled) {
+    if (isGuardRequired()) {
+      throw new Error("Availability Guard is disabled in a non-dev environment");
+    }
     return { status: "SKIPPED" };
   }
 
@@ -309,6 +317,12 @@ export const releaseReservationHold = async (
   input: ReleaseReservationInput,
 ): Promise<void> => {
   if (!availabilityGuardConfig.enabled) {
+    if (isGuardRequired()) {
+      reservationsLogger.warn(
+        { reservationId: input.reservationId },
+        "Availability Guard disabled; skipping release in non-dev environment",
+      );
+    }
     return;
   }
 

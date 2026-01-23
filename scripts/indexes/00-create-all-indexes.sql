@@ -29,7 +29,7 @@
 \ir 02-inventory/06_room_types_indexes.sql
 \ir 02-inventory/07_rooms_indexes.sql
 \ir 02-inventory/08_rates_indexes.sql
-\ir 02-inventory/09_availability_room_availability_indexes.sql
+\ir 02-inventory/09_room_availability_indexes.sql
 \ir 02-inventory/36_rate_overrides_indexes.sql
 \ir 02-inventory/51_revenue_forecasts_indexes.sql
 \ir 02-inventory/52_competitor_rates_indexes.sql

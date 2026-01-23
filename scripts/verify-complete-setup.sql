@@ -35,7 +35,7 @@ WITH table_categories AS (
                 'competitor_rates', 'demand_calendar', 'pricing_rules', 'rate_recommendations',
                 'revenue_goals', 'companies', 'group_bookings', 'packages',
                 'travel_agent_commissions', 'meeting_rooms', 'event_bookings',
-                'banquet_event_orders', 'availability_room_availability'
+                'banquet_event_orders', 'room_availability'
             ) THEN '02-Inventory & Revenue'
             WHEN tablename IN (
                 'reservations', 'reservation_status_history', 'deposit_schedules', 'allotments',
@@ -69,7 +69,8 @@ WITH table_categories AS (
             ) THEN '06-Integrations & Intelligence'
             WHEN tablename IN (
                 'analytics_metrics', 'analytics_metric_dimensions', 'analytics_reports',
-                'report_property_ids', 'performance_reporting_tables', 'performance_alerting_tables',
+                'report_property_ids', 'performance_reports', 'report_schedules', 'performance_thresholds',
+                'performance_baselines', 'performance_alerts', 'alert_rules',
                 'audit_logs', 'business_dates', 'night_audit_log', 'gdpr_consent_logs',
                 'police_reports', 'contract_agreements', 'insurance_claims',
                 'guest_journey_tracking', 'revenue_attribution', 'forecasting_models',

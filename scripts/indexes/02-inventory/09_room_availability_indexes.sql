@@ -1,5 +1,5 @@
 -- =====================================================
--- 09_availability_room_availability_indexes.sql
+-- 09_room_availability_indexes.sql
 -- Indexes for availability.room_availability table
 -- Performance optimization for high-volume availability queries
 -- Date: 2025-10-15

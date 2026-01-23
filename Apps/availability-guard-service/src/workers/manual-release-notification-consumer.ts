@@ -17,7 +17,7 @@ import {
   recordNotificationMessage,
 } from "../lib/metrics.js";
 
-type ManualReleaseNotificationChannel = "email" | "sms" | "slack";
+type ManualReleaseNotificationChannel = "email" | "sms" | "slack" | "log";
 
 const ManualReleaseNotificationSchema = z.object({
   type: z.literal("availability_guard.manual_release"),
@@ -203,14 +203,6 @@ const processNotification = async (
     consumerConfig.dryRun ?? false,
   );
 
-  if (attempts.length === 0) {
-    logger.warn(
-      { lockId: payload.lockId },
-      "No notification channels configured for manual release recipients",
-    );
-    return;
-  }
-
   const results = await Promise.allSettled(
     attempts.map((attempt) => attempt.run()),
   );
@@ -339,6 +331,33 @@ const buildChannelAttempts = (
           logger,
           dryRun,
         ),
+    });
+  }
+
+  if (attempts.length === 0) {
+    logger.error(
+      { lockId: payload.lockId },
+      "No notification channels configured; falling back to log delivery",
+    );
+    attempts.push({
+      channel: "log",
+      run: async () => {
+        logger.warn(
+          {
+            lockId: payload.lockId,
+            tenantId: payload.tenantId,
+            reservationId: payload.reservationId,
+            roomTypeId: payload.roomTypeId,
+            roomId: payload.roomId,
+            stayStart: payload.stayStart,
+            stayEnd: payload.stayEnd,
+            actor: payload.actor,
+            recipients: payload.recipients,
+            summary: summary.plainText,
+          },
+          "Manual release notification delivered via log fallback",
+        );
+      },
     });
   }
 
