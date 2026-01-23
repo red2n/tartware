@@ -56,3 +56,14 @@
      - `scripts/tables/06-integrations/98_price_adjustments_history.sql`
      - `scripts/tables/06-integrations/99_pricing_experiments.sql`
    - Planned approach: resolve naming mismatches (e.g., room availability), then split/rename combined scripts to match schema file names.
+
+8. **SaaS tenant enforcement gaps** (done)
+   - Settings service now validates active tenant membership during auth.
+   - API gateway tenant proxy routes now require `withTenantScope` membership checks.
+   - Availability Guard HTTP endpoints now require admin token when guard tokens are configured.
+
+9. **SaaS tenant bootstrap (industry standard)** (done)
+   - Standard: create tenant + primary property + owner user in one transaction; assign OWNER via `user_tenant_associations`.
+   - Standard: owner manages managers/department heads and module access; system admin only for platform tasks.
+   - Implemented: `POST /v1/system/tenants/bootstrap` in core-service for tenant + property + owner bootstrap.
+   - Optional next: add self-serve onboarding (invite code or billing signup) that calls the same bootstrap flow.

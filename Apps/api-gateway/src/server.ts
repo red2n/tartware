@@ -276,6 +276,13 @@ export const buildServer = () => {
 		const proxyCore = async (request: FastifyRequest, reply: FastifyReply) =>
 			proxyRequest(request, reply, serviceTargets.coreServiceUrl);
 
+		const tenantScopeFromParams = app.withTenantScope({
+			resolveTenantId: (request) =>
+				(request.params as { tenantId?: string }).tenantId,
+			minRole: "STAFF",
+			requiredModules: "core",
+		});
+
 		app.get(
 			"/v1/reservations",
 			{
@@ -293,6 +300,7 @@ export const buildServer = () => {
 		app.all(
 			"/v1/tenants/:tenantId/reservations",
 			{
+				preHandler: tenantScopeFromParams,
 				schema: buildRouteSchema({
 					tag: RESERVATION_PROXY_TAG,
 					summary: "Proxy tenant reservation requests to the backing services.",
@@ -359,6 +367,7 @@ export const buildServer = () => {
 		app.all(
 			"/v1/tenants/:tenantId/reservations/*",
 			{
+				preHandler: tenantScopeFromParams,
 				schema: buildRouteSchema({
 					tag: RESERVATION_PROXY_TAG,
 					summary: "Proxy nested reservation resource calls.",
@@ -494,6 +503,7 @@ export const buildServer = () => {
 		app.post(
 			"/v1/tenants/:tenantId/rooms/:roomId/block",
 			{
+				preHandler: tenantScopeFromParams,
 				schema: buildRouteSchema({
 					tag: ROOM_COMMAND_TAG,
 					summary: "Block a room's inventory via the Command Center.",
@@ -515,6 +525,7 @@ export const buildServer = () => {
 		app.post(
 			"/v1/tenants/:tenantId/rooms/:roomId/release",
 			{
+				preHandler: tenantScopeFromParams,
 				schema: buildRouteSchema({
 					tag: ROOM_COMMAND_TAG,
 					summary: "Release a manual room block via the Command Center.",
@@ -565,6 +576,7 @@ export const buildServer = () => {
 		app.post(
 			"/v1/tenants/:tenantId/housekeeping/tasks/:taskId/assign",
 			{
+				preHandler: tenantScopeFromParams,
 				schema: buildRouteSchema({
 					tag: HOUSEKEEPING_COMMAND_TAG,
 					summary: "Assign a housekeeping task via the Command Center.",
@@ -581,6 +593,7 @@ export const buildServer = () => {
 		app.post(
 			"/v1/tenants/:tenantId/housekeeping/tasks/:taskId/complete",
 			{
+				preHandler: tenantScopeFromParams,
 				schema: buildRouteSchema({
 					tag: HOUSEKEEPING_COMMAND_TAG,
 					summary: "Complete a housekeeping task via the Command Center.",
@@ -611,6 +624,7 @@ export const buildServer = () => {
 		app.post(
 			"/v1/tenants/:tenantId/billing/payments/capture",
 			{
+				preHandler: tenantScopeFromParams,
 				schema: buildRouteSchema({
 					tag: BILLING_COMMAND_TAG,
 					summary: "Capture a payment via the Command Center.",
@@ -627,6 +641,7 @@ export const buildServer = () => {
 		app.post(
 			"/v1/tenants/:tenantId/billing/payments/:paymentId/refund",
 			{
+				preHandler: tenantScopeFromParams,
 				schema: buildRouteSchema({
 					tag: BILLING_COMMAND_TAG,
 					summary: "Refund a payment via the Command Center.",
