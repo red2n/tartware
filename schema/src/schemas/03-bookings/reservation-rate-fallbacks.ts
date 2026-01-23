@@ -31,6 +31,9 @@ const RateCodeSchema = z
 
 export const ReservationRateFallbacksSchema = z.object({
 	id: uuid,
+	is_deleted: z.boolean().optional(),
+	deleted_at: z.coerce.date().optional(),
+	deleted_by: z.string().max(100).optional(),
 	tenant_id: uuid,
 	reservation_id: uuid,
 	property_id: uuid,

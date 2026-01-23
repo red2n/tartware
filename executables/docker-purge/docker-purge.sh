@@ -33,7 +33,7 @@ stop_and_remove_containers() {
   docker stop "${containers}" >/dev/null || true
 
   echo "Removing containers..."
-  docker rm -f "${containers}" >/dev/null
+  docker rm -f "${containers}" >/dev/null || true
 }
 
 remove_images() {
@@ -46,7 +46,7 @@ remove_images() {
   fi
 
   echo "Removing images..."
-  docker rmi -f "${images}" >/dev/null
+  docker rmi -f "${images}" >/dev/null || true
 }
 
 remove_volumes() {
@@ -59,7 +59,7 @@ remove_volumes() {
   fi
 
   echo "Removing volumes..."
-  docker volume rm "${volumes}" >/dev/null
+  docker volume rm "${volumes}" >/dev/null || true
 }
 
 remove_networks() {
@@ -73,7 +73,7 @@ remove_networks() {
   fi
 
   echo "Removing custom networks..."
-  docker network rm "${networks}" >/dev/null
+  docker network rm "${networks}" >/dev/null || true
 }
 
 stop_and_remove_containers
@@ -82,9 +82,9 @@ remove_volumes
 remove_networks
 
 echo "Running docker system prune..."
-docker system prune -a --volumes -f >/dev/null
+docker system prune -a --volumes -f >/dev/null || true
 
 echo "Running docker builder prune..."
-docker builder prune -a -f >/dev/null
+docker builder prune -a -f >/dev/null || true
 
 echo "Docker cleanup complete."

@@ -23,6 +23,9 @@ import { uuid } from "../../shared/base-schemas.js";
 
 export const RollServiceBackfillCheckpointSchema = z.object({
 	tenant_id: uuid,
+	is_deleted: z.boolean().optional(),
+	deleted_at: z.coerce.date().optional(),
+	deleted_by: z.string().max(100).optional(),
 	last_event_id: uuid.optional(),
 	last_event_created_at: z.date().optional(),
 	updated_at: z.date(),

@@ -29,6 +29,10 @@ import {
  */
 export const PackageBookingsSchema = z.object({
   package_booking_id: uuid,
+  tenant_id: uuid,
+  is_deleted: z.boolean().optional(),
+  deleted_at: z.coerce.date().optional(),
+  deleted_by: z.string().max(100).optional(),
   package_id: uuid,
   reservation_id: uuid,
   package_price: money,

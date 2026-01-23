@@ -41,7 +41,7 @@ BEGIN
             item->>'description' AS description,
             (item->>'base_rate')::NUMERIC(10,2) AS base_rate,
             (item->>'weekend_rate')::NUMERIC(10,2) AS weekend_rate,
-            (item->>'currency')::currency_code AS currency,
+            (item->>'currency')::VARCHAR(3) AS currency,
             (item->>'is_refundable')::BOOLEAN AS is_refundable,
             (item->>'cancellation_hours')::INTEGER AS cancellation_hours,
             (item->>'minimum_stay')::INTEGER AS minimum_stay,
@@ -51,39 +51,72 @@ BEGIN
             (item->>'valid_from')::DATE AS valid_from,
             (item->>'valid_to')::DATE AS valid_to
         FROM jsonb_array_elements(p_rates) AS item
-    )
-    MERGE INTO rates AS target
-    USING rate_data AS source
-    ON (
-        target.tenant_id = p_tenant_id
-        AND target.property_id = source.property_id
-        AND target.room_type_id = source.room_type_id
-        AND target.rate_code = source.rate_code
-        AND target.deleted_at IS NULL
-    )
-    WHEN MATCHED AND source.is_active = FALSE THEN
-        UPDATE SET
-            deleted_at = CURRENT_TIMESTAMP,
-            deleted_by = p_sync_by
-    WHEN MATCHED AND source.is_active = TRUE THEN
-        UPDATE SET
+    ),
+    updated_active AS (
+        UPDATE rates AS target
+        SET
             rate_name = source.rate_name,
             description = COALESCE(source.description, target.description),
-            base_rate = source.base_rate,
-            weekend_rate = COALESCE(source.weekend_rate, target.weekend_rate),
+            base_rate = COALESCE(source.base_rate, target.base_rate),
             currency = COALESCE(source.currency, target.currency),
-            is_refundable = COALESCE(source.is_refundable, target.is_refundable),
-            cancellation_hours = COALESCE(source.cancellation_hours, target.cancellation_hours),
-            minimum_stay = COALESCE(source.minimum_stay, target.minimum_stay),
-            maximum_stay = COALESCE(source.maximum_stay, target.maximum_stay),
-            advance_booking_days = COALESCE(source.advance_booking_days, target.advance_booking_days),
+            min_length_of_stay = COALESCE(source.minimum_stay, target.min_length_of_stay),
+            max_length_of_stay = COALESCE(source.maximum_stay, target.max_length_of_stay),
+            advance_booking_days_max = COALESCE(source.advance_booking_days, target.advance_booking_days_max),
             valid_from = COALESCE(source.valid_from, target.valid_from),
-            valid_to = COALESCE(source.valid_to, target.valid_to),
+            valid_until = COALESCE(source.valid_to, target.valid_until),
+            status = 'ACTIVE',
+            is_deleted = FALSE,
+            deleted_at = NULL,
+            deleted_by = NULL,
+            cancellation_policy = CASE
+                WHEN source.cancellation_hours IS NULL THEN target.cancellation_policy
+                ELSE jsonb_build_object('hours', source.cancellation_hours, 'penalty', 0, 'type', 'flexible')
+            END,
+            modifiers = CASE
+                WHEN source.weekend_rate IS NULL THEN target.modifiers
+                ELSE COALESCE(target.modifiers, '{}'::jsonb) || jsonb_build_object('weekendRate', source.weekend_rate)
+            END,
             updated_at = CURRENT_TIMESTAMP,
             updated_by = p_sync_by,
             version = target.version + 1
-    WHEN NOT MATCHED AND source.is_active = TRUE THEN
-        INSERT (
+        FROM rate_data AS source
+        WHERE target.tenant_id = p_tenant_id
+          AND target.property_id = source.property_id
+          AND target.rate_code = source.rate_code
+          AND target.deleted_at IS NULL
+          AND COALESCE(source.is_active, TRUE) = TRUE
+        RETURNING
+            target.id AS rate_id,
+            target.rate_code,
+            target.rate_name,
+            target.base_rate,
+            'UPDATED'::VARCHAR(10) AS action
+    ),
+    updated_inactive AS (
+        UPDATE rates AS target
+        SET
+            status = 'INACTIVE',
+            is_deleted = TRUE,
+            deleted_at = CURRENT_TIMESTAMP,
+            deleted_by = p_sync_by,
+            updated_at = CURRENT_TIMESTAMP,
+            updated_by = p_sync_by,
+            version = target.version + 1
+        FROM rate_data AS source
+        WHERE target.tenant_id = p_tenant_id
+          AND target.property_id = source.property_id
+          AND target.rate_code = source.rate_code
+          AND COALESCE(source.is_active, TRUE) = FALSE
+          AND target.deleted_at IS NULL
+        RETURNING
+            target.id AS rate_id,
+            target.rate_code,
+            target.rate_name,
+            target.base_rate,
+            'DELETED'::VARCHAR(10) AS action
+    ),
+    inserted AS (
+        INSERT INTO rates (
             tenant_id,
             property_id,
             room_type_id,
@@ -91,48 +124,67 @@ BEGIN
             rate_name,
             description,
             base_rate,
-            weekend_rate,
             currency,
-            is_refundable,
-            cancellation_hours,
-            minimum_stay,
-            maximum_stay,
-            advance_booking_days,
+            min_length_of_stay,
+            max_length_of_stay,
+            advance_booking_days_min,
+            advance_booking_days_max,
             valid_from,
-            valid_to,
+            valid_until,
+            status,
+            cancellation_policy,
+            modifiers,
             created_by,
             updated_by
         )
-        VALUES (
+        SELECT
             p_tenant_id,
             source.property_id,
             source.room_type_id,
             source.rate_code,
             source.rate_name,
             source.description,
-            source.base_rate,
-            source.weekend_rate,
+            COALESCE(source.base_rate, 0),
             COALESCE(source.currency, 'USD'),
-            COALESCE(source.is_refundable, TRUE),
-            COALESCE(source.cancellation_hours, 24),
             COALESCE(source.minimum_stay, 1),
-            COALESCE(source.maximum_stay, 365),
+            source.maximum_stay,
+            0,
             COALESCE(source.advance_booking_days, 0),
             COALESCE(source.valid_from, CURRENT_DATE),
             source.valid_to,
+            'ACTIVE',
+            CASE
+                WHEN source.cancellation_hours IS NULL THEN NULL
+                ELSE jsonb_build_object('hours', source.cancellation_hours, 'penalty', 0, 'type', 'flexible')
+            END,
+            CASE
+                WHEN source.weekend_rate IS NULL THEN NULL
+                ELSE jsonb_build_object('weekendRate', source.weekend_rate)
+            END,
             p_sync_by,
             p_sync_by
-        )
-    RETURNING
-        target.id AS rate_id,
-        target.rate_code,
-        target.rate_name,
-        target.base_rate,
-        CASE
-            WHEN xmax = 0 THEN 'INSERTED'
-            WHEN target.deleted_at IS NOT NULL THEN 'DELETED'
-            ELSE 'UPDATED'
-        END AS action;
+        FROM rate_data AS source
+        WHERE COALESCE(source.is_active, TRUE) = TRUE
+          AND NOT EXISTS (
+              SELECT 1
+              FROM rates AS existing
+              WHERE existing.tenant_id = p_tenant_id
+                AND existing.property_id = source.property_id
+                AND existing.rate_code = source.rate_code
+                AND existing.deleted_at IS NULL
+          )
+        RETURNING
+            id AS rate_id,
+            rate_code,
+            rate_name,
+            base_rate,
+            'INSERTED'::VARCHAR(10) AS action
+    )
+    SELECT * FROM updated_active
+    UNION ALL
+    SELECT * FROM updated_inactive
+    UNION ALL
+    SELECT * FROM inserted;
 END;
 $$;
 

@@ -25,6 +25,10 @@ import { jsonbMetadata, uuid } from "../../shared/base-schemas.js";
 
 export const ReservationEventOffsetsSchema = z.object({
 	id: z.bigint(),
+	tenant_id: uuid,
+	is_deleted: z.boolean().optional(),
+	deleted_at: z.coerce.date().optional(),
+	deleted_by: z.string().max(100).optional(),
 	consumer_group: z.string(),
 	topic: z.string(),
 	partition: z.number().int(),

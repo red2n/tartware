@@ -25,7 +25,17 @@ AS $$
 DECLARE
     v_report_id UUID;
     v_report_data JSONB;
+    v_tenant_id UUID;
 BEGIN
+    SELECT id INTO v_tenant_id
+    FROM tenants
+    ORDER BY created_at NULLS LAST, id
+    LIMIT 1;
+
+    IF v_tenant_id IS NULL THEN
+        v_tenant_id := '11111111-1111-1111-1111-111111111111';
+    END IF;
+
     -- Collect all performance metrics
     v_report_data := jsonb_build_object(
         'report_date', CURRENT_DATE,
@@ -133,11 +143,13 @@ BEGIN
 
     -- Insert report
     INSERT INTO performance_reports (
+        tenant_id,
         report_type,
         report_name,
         report_data,
         severity
     ) VALUES (
+        v_tenant_id,
         'DAILY_PERFORMANCE',
         FORMAT('Daily Performance Report - %s', CURRENT_DATE),
         v_report_data,
@@ -167,7 +179,17 @@ DECLARE
     v_report_id UUID;
     v_issues JSONB := '[]'::JSONB;
     v_severity TEXT := 'INFO';
+    v_tenant_id UUID;
 BEGIN
+    SELECT id INTO v_tenant_id
+    FROM tenants
+    ORDER BY created_at NULLS LAST, id
+    LIMIT 1;
+
+    IF v_tenant_id IS NULL THEN
+        v_tenant_id := '11111111-1111-1111-1111-111111111111';
+    END IF;
+
     -- Check connection pool saturation
     IF (SELECT COUNT(*)::NUMERIC / current_setting('max_connections')::INT
         FROM pg_stat_activity) > 0.8 THEN
@@ -236,11 +258,13 @@ BEGIN
 
     -- Create health report
     INSERT INTO performance_reports (
+        tenant_id,
         report_type,
         report_name,
         report_data,
         severity
     ) VALUES (
+        v_tenant_id,
         'HEALTH_CHECK',
         FORMAT('Health Check - %s', NOW()::TIMESTAMP(0)),
         jsonb_build_object(
@@ -453,29 +477,45 @@ CREATE OR REPLACE FUNCTION init_report_schedules()
 RETURNS void
 LANGUAGE plpgsql
 AS $$
+DECLARE
+    v_tenant_id UUID;
 BEGIN
+    SELECT id INTO v_tenant_id
+    FROM tenants
+    ORDER BY created_at NULLS LAST, id
+    LIMIT 1;
+
+    IF v_tenant_id IS NULL THEN
+        v_tenant_id := '11111111-1111-1111-1111-111111111111';
+    END IF;
+
     -- Daily performance report at 2 AM
     INSERT INTO report_schedules (
+        tenant_id,
         report_type,
         schedule_expression,
         recipients
     ) VALUES
     (
+        v_tenant_id,
         'DAILY_PERFORMANCE',
         '0 2 * * *',  -- Daily at 2 AM
         ARRAY['admin@tartware.com', 'dba@tartware.com']
     ),
     (
+        v_tenant_id,
         'HEALTH_CHECK',
         '0 * * * *',  -- Every hour
         ARRAY['ops@tartware.com']
     ),
     (
+        v_tenant_id,
         'WEEKLY_SUMMARY',
         '0 9 * * 1',  -- Monday at 9 AM
         ARRAY['management@tartware.com']
     ),
     (
+        v_tenant_id,
         'THRESHOLD_ALERTS',
         '*/5 * * * *',  -- Every 5 minutes
         ARRAY['alerts@tartware.com']

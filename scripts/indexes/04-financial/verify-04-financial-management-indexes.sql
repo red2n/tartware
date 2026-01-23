@@ -81,30 +81,17 @@ WITH fk_columns AS (
 ),
 indexed_columns AS (
     SELECT
-        tablename,
-        (string_to_array(
-            regexp_replace(indexdef, '.*\((.*)\)', '\1'),
-            ', '
-        ))[1] AS column_name
-    FROM pg_indexes
-    WHERE tablename IN (
-        'payments',
-        'invoices',
-        'invoice_items',
-        'folios',
-        'charge_postings',
-        'refunds',
-        'tax_configurations',
-        'financial_closures',
-        'commission_tracking',
-        'cashier_sessions',
-        'accounts_receivable',
-        'credit_limits',
-        'payment_tokens',
-        'general_ledger_batches',
-        'general_ledger_entries'
-    )
-        AND schemaname = 'public'
+        rel.relname AS tablename,
+        att.attname AS column_name
+    FROM pg_index i
+    JOIN pg_class rel ON rel.oid = i.indrelid
+    JOIN pg_namespace nsp ON nsp.oid = rel.relnamespace
+    JOIN unnest(i.indkey) WITH ORDINALITY AS ord(attnum, ordinality) ON true
+    JOIN pg_attribute att ON att.attrelid = i.indrelid AND att.attnum = ord.attnum
+    WHERE rel.relname IN (SELECT DISTINCT table_name FROM fk_columns)
+        AND nsp.nspname IN ('public', 'availability')
+        AND i.indisvalid
+        AND i.indisready
 )
 SELECT
     fk.table_name,
@@ -223,13 +210,15 @@ BEGIN
     -- Count FKs without indexes
     SELECT COUNT(*) INTO v_fk_without_index
     FROM (
-        SELECT tc.table_name, kcu.column_name
+        SELECT
+            tc.table_name,
+            kcu.column_name
         FROM information_schema.table_constraints tc
         JOIN information_schema.key_column_usage kcu
             ON tc.constraint_name = kcu.constraint_name
+            AND tc.table_schema = kcu.table_schema
         WHERE tc.constraint_type = 'FOREIGN KEY'
-            AND tc.table_name IN (
-                'payments',
+            AND tc.table_name IN ('payments',
                 'invoices',
                 'invoice_items',
                 'folios',
@@ -243,35 +232,21 @@ BEGIN
                 'credit_limits',
                 'payment_tokens',
                 'general_ledger_batches',
-                'general_ledger_entries'
-            )
-        EXCEPT
-        SELECT
-            tablename,
-            (string_to_array(
-                regexp_replace(indexdef, '.*\((.*)\)', '\1'),
-                ', '
-            ))[1]
-        FROM pg_indexes
-        WHERE tablename IN (
-            'payments',
-            'invoices',
-            'invoice_items',
-            'folios',
-            'charge_postings',
-            'refunds',
-            'tax_configurations',
-            'financial_closures',
-            'commission_tracking',
-            'cashier_sessions',
-            'accounts_receivable',
-            'credit_limits',
-            'payment_tokens',
-            'general_ledger_batches',
-            'general_ledger_entries'
-        )
-            AND schemaname = 'public'
-    ) missing;
+                'general_ledger_entries')
+    ) fk
+    WHERE NOT EXISTS (
+        SELECT 1
+        FROM pg_index i
+        JOIN pg_class rel ON rel.oid = i.indrelid
+        JOIN pg_namespace nsp ON nsp.oid = rel.relnamespace
+        JOIN unnest(i.indkey) WITH ORDINALITY AS ord(attnum, ordinality) ON true
+        JOIN pg_attribute att ON att.attrelid = i.indrelid AND att.attnum = ord.attnum
+        WHERE rel.relname = fk.table_name
+            AND nsp.nspname IN ('public', 'availability')
+            AND i.indisvalid
+            AND i.indisready
+            AND att.attname = fk.column_name
+    );
 
     RAISE NOTICE '';
     RAISE NOTICE 'Category: Financial Management';

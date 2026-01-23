@@ -26,6 +26,10 @@ import { uuid, jsonbMetadata } from "../../shared/base-schemas.js";
  */
 export const SettingsCategoriesSchema = z.object({
 	id: uuid,
+	tenant_id: uuid,
+	is_deleted: z.boolean().optional(),
+	deleted_at: z.coerce.date().optional(),
+	deleted_by: z.string().max(100).optional(),
 	code: z
 		.string()
 		.min(2)
@@ -43,8 +47,6 @@ export const SettingsCategoriesSchema = z.object({
 	metadata: jsonbMetadata,
 	created_at: z.coerce.date(),
 	updated_at: z.coerce.date().optional(),
-	created_by: z.string().optional(),
-	updated_by: z.string().optional(),
 });
 
 export type SettingsCategory = z.infer<typeof SettingsCategoriesSchema>;

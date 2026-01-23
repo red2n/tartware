@@ -26,6 +26,10 @@ import { uuid } from "../../shared/base-schemas.js";
  */
 export const DeviceEventsLogSchema = z.object({
 	event_id: uuid,
+	tenant_id: uuid,
+	is_deleted: z.boolean().optional(),
+	deleted_at: z.coerce.date().optional(),
+	deleted_by: z.string().max(100).optional(),
 	device_id: uuid,
 	event_type: z.string(),
 	event_timestamp: z.coerce.date().optional(),

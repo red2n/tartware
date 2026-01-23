@@ -1,5 +1,5 @@
 -- =====================================================
--- 07_availability_room_availability_fk.sql
+-- 07_room_availability_fk.sql
 -- Foreign Key Constraints for availability.room_availability
 -- Date: 2025-10-15
 -- =====================================================

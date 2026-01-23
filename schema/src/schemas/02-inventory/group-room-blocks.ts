@@ -29,6 +29,10 @@ import {
  */
 export const GroupRoomBlocksSchema = z.object({
   block_id: uuid,
+  tenant_id: uuid,
+  is_deleted: z.boolean().optional(),
+  deleted_at: z.coerce.date().optional(),
+  deleted_by: z.string().max(100).optional(),
   group_booking_id: uuid,
   room_type_id: uuid,
   block_date: z.coerce.date(),

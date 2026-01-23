@@ -26,6 +26,8 @@ import { uuid, money } from "../../shared/base-schemas.js";
  */
 export const OtaConfigurationsSchema = z.object({
 	id: uuid,
+	is_deleted: z.boolean().optional(),
+	deleted_by: z.string().max(100).optional(),
 	tenant_id: uuid,
 	property_id: uuid,
 	ota_name: z.string(),

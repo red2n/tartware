@@ -18,12 +18,18 @@
 \ir 01-core/03_user_tenant_associations.sql
 \ir 01-core/04_properties.sql
 \ir 01-core/05_guests.sql
-\ir 01-core/06_settings.sql
+\ir 01-core/06_setting_categories.sql
+\ir 01-core/07_setting_definitions.sql
+\ir 01-core/08_tenant_settings.sql
+\ir 01-core/09_property_settings.sql
+\ir 01-core/10_room_settings.sql
+\ir 01-core/11_user_settings.sql
 \ir 01-core/07_system_administrators.sql
 \ir 01-core/08_system_admin_audit_log.sql
 \ir 01-core/09_transactional_outbox.sql
 \ir 01-core/10_command_center.sql
 \ir 01-core/11_system_admin_break_glass_codes.sql
+\ir 01-core/12_settings_seed.sql
 
 -- ============================================================================
 -- CATEGORY 2: INVENTORY (Rooms, rates, availability, revenue management)
@@ -33,7 +39,7 @@
 \ir 02-inventory/07_rooms.sql
 \ir 02-inventory/10_room_amenity_catalog.sql
 \ir 02-inventory/08_rates.sql
-\ir 02-inventory/09_availability_room_availability.sql
+\ir 02-inventory/09_room_availability.sql
 \ir 02-inventory/36_rate_overrides.sql
 \ir 02-inventory/51_revenue_forecasts.sql
 \ir 02-inventory/52_competitor_rates.sql
@@ -74,7 +80,9 @@
 \ir 03-bookings/55_reservation_rate_fallbacks.sql
 -- Shadow observability (Roll Service parity + Availability Guard metadata)
 \echo '    - Shadow roll ledgers, checkpoints, and guard audit tables'
-\ir 03-bookings/90_roll_service_shadow_tables.sql
+\ir 03-bookings/90_roll_service_shadow_ledgers.sql
+\ir 03-bookings/91_roll_service_backfill_checkpoint.sql
+\ir 03-bookings/92_roll_service_consumer_offsets.sql
 \ir 03-bookings/91_inventory_lock_audits.sql
 \ir 03-bookings/92_reservation_guard_locks.sql
 
@@ -118,6 +126,8 @@
 \ir 05-operations/85_app_usage_analytics.sql
 \ir 05-operations/99_smart_room_devices.sql
 \ir 05-operations/100_mobile_check_ins.sql
+\ir 05-operations/109_digital_registration_cards.sql
+\ir 05-operations/110_contactless_requests.sql
 \ir 05-operations/101_asset_inventory.sql
 \ir 05-operations/102_minibar_items.sql
 \ir 05-operations/103_minibar_consumption.sql
@@ -152,6 +162,8 @@
 \ir 06-integrations/89_data_sync_status.sql
 \ir 06-integrations/94_ai_demand_predictions.sql
 \ir 06-integrations/95_dynamic_pricing_rules_ml.sql
+\ir 06-integrations/98_price_adjustments_history.sql
+\ir 06-integrations/99_pricing_experiments.sql
 \ir 06-integrations/96_guest_behavior_patterns.sql
 \ir 06-integrations/97_sentiment_analysis.sql
 
@@ -163,8 +175,12 @@
 \ir 07-analytics/20_analytics_metric_dimensions.sql
 \ir 07-analytics/21_analytics_reports.sql
 \ir 07-analytics/22_report_property_ids.sql
-\ir 07-analytics/23_performance_reporting_tables.sql
-\ir 07-analytics/24_performance_alerting_tables.sql
+\ir 07-analytics/23_performance_reports.sql
+\ir 07-analytics/24_report_schedules.sql
+\ir 07-analytics/25_performance_thresholds.sql
+\ir 07-analytics/26_performance_baselines.sql
+\ir 07-analytics/30_performance_alerts.sql
+\ir 07-analytics/31_alert_rules.sql
 \ir 07-analytics/27_audit_logs.sql
 \ir 07-analytics/28_business_dates.sql
 \ir 07-analytics/29_night_audit_log.sql
@@ -187,6 +203,9 @@
 \ir 08-settings/12_settings_definitions.sql
 \ir 08-settings/13_settings_options.sql
 \ir 08-settings/14_settings_values.sql
+
+\echo '>>> Enforcing tenant_id and soft delete coverage'
+\ir 99_enforce_tenant_soft_delete.sql
 
 \echo ''
 \echo '========================================='

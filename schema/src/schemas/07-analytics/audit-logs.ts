@@ -26,6 +26,9 @@ import { uuid } from "../../shared/base-schemas.js";
  */
 export const AuditLogsSchema = z.object({
 	audit_id: uuid,
+	is_deleted: z.boolean().optional(),
+	deleted_at: z.coerce.date().optional(),
+	deleted_by: z.string().max(100).optional(),
 	tenant_id: uuid,
 	property_id: uuid.optional(),
 	audit_timestamp: z.coerce.date(),

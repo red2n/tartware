@@ -26,6 +26,10 @@ import { uuid, money } from "../../shared/base-schemas.js";
  */
 export const PerformanceThresholdsSchema = z.object({
 	threshold_id: uuid,
+	tenant_id: uuid,
+	is_deleted: z.boolean().optional(),
+	deleted_at: z.coerce.date().optional(),
+	deleted_by: z.string().max(100).optional(),
 	metric_name: z.string(),
 	warning_threshold: money.optional(),
 	critical_threshold: money.optional(),

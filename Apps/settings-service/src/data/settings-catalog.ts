@@ -20,6 +20,7 @@ import type { RawCategory } from "./catalog-types.js";
 const BASE_TIMESTAMP = new Date("2025-11-12T00:00:00Z");
 const SYSTEM_USER_ID = "00000000-0000-0000-0000-000000000000";
 const UUID_NAMESPACE = "4f19b8a1-1132-4ffc-8a10-b5f51a9f90d1";
+const DEFAULT_TENANT_ID = "11111111-1111-1111-1111-111111111111";
 
 const rawCatalog: RawCategory[] = catalogCategories;
 
@@ -49,6 +50,7 @@ const mapScopes = (scopes: Array<keyof typeof SettingsScopeEnum.enum>): Settings
 
 const categories: SettingsCategory[] = rawCatalog.map((category, index) => ({
   id: deterministicUuid(`CATEGORY:${category.code}`),
+  tenant_id: DEFAULT_TENANT_ID,
   code: category.code,
   name: category.name,
   description: category.description,
@@ -60,13 +62,12 @@ const categories: SettingsCategory[] = rawCatalog.map((category, index) => ({
   metadata: {},
   created_at: BASE_TIMESTAMP,
   updated_at: BASE_TIMESTAMP,
-  created_by: SYSTEM_USER_ID,
-  updated_by: SYSTEM_USER_ID,
 }));
 
 const sections: SettingsSection[] = rawCatalog.flatMap((category) =>
   category.sections.map((section, sectionIndex) => ({
     id: deterministicUuid(`SECTION:${category.code}:${section.code}`),
+    tenant_id: DEFAULT_TENANT_ID,
     category_id: deterministicUuid(`CATEGORY:${category.code}`),
     code: section.code,
     name: section.name,
@@ -78,8 +79,6 @@ const sections: SettingsSection[] = rawCatalog.flatMap((category) =>
     metadata: {},
     created_at: BASE_TIMESTAMP,
     updated_at: BASE_TIMESTAMP,
-    created_by: SYSTEM_USER_ID,
-    updated_by: SYSTEM_USER_ID,
   })),
 );
 
@@ -87,6 +86,7 @@ const definitions = rawCatalog.flatMap((category) =>
   category.sections.flatMap((section) =>
     section.definitions.map((definition, definitionIndex) => ({
       id: deterministicUuid(`SETTING:${category.code}:${section.code}:${definition.code}`),
+      tenant_id: DEFAULT_TENANT_ID,
       category_id: deterministicUuid(`CATEGORY:${category.code}`),
       section_id: deterministicUuid(`SECTION:${category.code}:${section.code}`),
       code: definition.code,
@@ -135,6 +135,7 @@ const options: SettingsOption[] = rawCatalog.flatMap((category) =>
         id: deterministicUuid(
           `OPTION:${category.code}:${section.code}:${definition.code}:${option.value}`,
         ),
+        tenant_id: DEFAULT_TENANT_ID,
         setting_id: deterministicUuid(
           `SETTING:${category.code}:${section.code}:${definition.code}`,
         ),

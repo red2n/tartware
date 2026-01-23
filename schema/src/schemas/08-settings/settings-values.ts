@@ -35,6 +35,9 @@ const SettingsValuePayloadSchema = z.union([
  */
 export const SettingsValuesSchema = z.object({
 	id: uuid,
+	is_deleted: z.boolean().optional(),
+	deleted_at: z.coerce.date().optional(),
+	deleted_by: z.string().max(100).optional(),
 	setting_id: uuid,
 	scope_level: SettingsScopeEnum,
 	tenant_id: uuid,

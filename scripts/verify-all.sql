@@ -10,6 +10,11 @@
 -- =====================================================
 
 \c tartware
+\if :{?scripts_dir}
+\else
+\set scripts_dir '.'
+\endif
+\cd :scripts_dir
 
 \echo ''
 \echo '██████████████████████████████████████████████████'
@@ -31,7 +36,7 @@
 \echo '  PHASE 1: TABLES VERIFICATION'
 \echo '======================================================'
 \echo ''
-\i tables/verify-tables.sql
+\i :scripts_dir/tables/verify-tables.sql
 
 -- =====================================================
 -- PHASE 2: INDEXES VERIFICATION
@@ -41,7 +46,7 @@
 \echo '  PHASE 2: INDEXES VERIFICATION'
 \echo '======================================================'
 \echo ''
-\i indexes/verify-indexes.sql
+\i :scripts_dir/indexes/verify-indexes.sql
 
 -- =====================================================
 -- PHASE 3: CONSTRAINTS VERIFICATION
@@ -51,7 +56,7 @@
 \echo '  PHASE 3: CONSTRAINTS VERIFICATION'
 \echo '======================================================'
 \echo ''
-\i constraints/verify-constraints.sql
+\i :scripts_dir/constraints/verify-constraints.sql
 
 -- =====================================================
 -- PHASE 4: PROCEDURES VERIFICATION
@@ -61,7 +66,7 @@
 \echo '  PHASE 4: PROCEDURES VERIFICATION'
 \echo '======================================================'
 \echo ''
-\i procedures/verify-procedures.sql
+\i :scripts_dir/procedures/verify-procedures.sql
 
 -- =====================================================
 -- FINAL SUMMARY
@@ -123,17 +128,45 @@ BEGIN
             'calculate_revenue_metrics', 'sync_metric_dimensions'
         );
 
-    -- Count soft delete implementations
-    SELECT COUNT(DISTINCT table_name) INTO v_soft_delete_count
-    FROM information_schema.columns
-    WHERE table_schema = 'public'
-        AND column_name = 'deleted_at';
+    -- Count soft delete implementations (base tables only)
+    SELECT COUNT(*) INTO v_soft_delete_count
+    FROM information_schema.tables t
+    WHERE t.table_schema IN ('public', 'availability')
+        AND t.table_type = 'BASE TABLE'
+        AND EXISTS (
+            SELECT 1
+            FROM information_schema.columns c
+            WHERE c.table_schema = t.table_schema
+                AND c.table_name = t.table_name
+                AND c.column_name = 'is_deleted'
+        )
+        AND EXISTS (
+            SELECT 1
+            FROM information_schema.columns c
+            WHERE c.table_schema = t.table_schema
+                AND c.table_name = t.table_name
+                AND c.column_name = 'deleted_at'
+        )
+        AND EXISTS (
+            SELECT 1
+            FROM information_schema.columns c
+            WHERE c.table_schema = t.table_schema
+                AND c.table_name = t.table_name
+                AND c.column_name = 'deleted_by'
+        );
 
-    -- Count tenant_id implementations
-    SELECT COUNT(DISTINCT table_name) INTO v_tenant_id_count
-    FROM information_schema.columns
-    WHERE table_schema IN ('public', 'availability')
-        AND column_name = 'tenant_id';
+    -- Count tenant_id implementations (base tables only)
+    SELECT COUNT(*) INTO v_tenant_id_count
+    FROM information_schema.tables t
+    WHERE t.table_schema IN ('public', 'availability')
+        AND t.table_type = 'BASE TABLE'
+        AND EXISTS (
+            SELECT 1
+            FROM information_schema.columns c
+            WHERE c.table_schema = t.table_schema
+                AND c.table_name = t.table_name
+                AND c.column_name = 'tenant_id'
+        );
 
     -- Compute derived metrics
     IF v_table_count > 0 THEN
@@ -209,27 +242,38 @@ ORDER BY SUM(pg_total_relation_size(schemaname||'.'||tablename)) DESC;
 
 \echo ''
 
--- Check for missing indexes on foreign keys
+-- Check for missing indexes on foreign keys (public + availability)
 \echo 'Foreign keys without indexes (if any):'
 \echo '----------------------------------------------------'
-WITH fk_no_index AS (
+WITH fk_columns AS (
     SELECT
-        tc.table_name,
-        kcu.column_name
-    FROM information_schema.table_constraints tc
-    JOIN information_schema.key_column_usage kcu
-        ON tc.constraint_name = kcu.constraint_name
-    WHERE tc.constraint_type = 'FOREIGN KEY'
-        AND tc.table_schema = 'public'
-    EXCEPT
+        con.conrelid AS table_oid,
+        nsp.nspname AS schema_name,
+        rel.relname AS table_name,
+        con.conkey AS col_nums,
+        array_agg(att.attname ORDER BY ord.ordinality) AS col_names
+    FROM pg_constraint con
+    JOIN pg_class rel ON rel.oid = con.conrelid
+    JOIN pg_namespace nsp ON nsp.oid = rel.relnamespace
+    JOIN unnest(con.conkey) WITH ORDINALITY AS ord(attnum, ordinality) ON true
+    JOIN pg_attribute att ON att.attrelid = con.conrelid AND att.attnum = ord.attnum
+    WHERE con.contype = 'f'
+      AND nsp.nspname IN ('public', 'availability')
+    GROUP BY con.conrelid, nsp.nspname, rel.relname, con.conkey
+),
+fk_no_index AS (
     SELECT
-        tablename,
-        (string_to_array(
-            regexp_replace(indexdef, '.*\((.*)\)', '\1'),
-            ', '
-        ))[1]
-    FROM pg_indexes
-    WHERE schemaname = 'public'
+        table_name,
+        array_to_string(col_names, ', ') AS column_name
+    FROM fk_columns fk
+    WHERE NOT EXISTS (
+        SELECT 1
+        FROM pg_index i
+        WHERE i.indrelid = fk.table_oid
+          AND i.indisvalid
+          AND i.indisready
+          AND (i.indkey::int2[] @> fk.col_nums)
+    )
 )
 SELECT
     COALESCE(table_name, 'None') AS table_name,

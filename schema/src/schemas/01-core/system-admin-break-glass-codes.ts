@@ -23,6 +23,10 @@ import { jsonbMetadata, uuid } from "../../shared/base-schemas.js";
 
 export const SystemAdminBreakGlassCodeSchema = z.object({
 	id: uuid,
+	tenant_id: uuid,
+	is_deleted: z.boolean().optional(),
+	deleted_at: z.coerce.date().optional(),
+	deleted_by: z.string().max(100).optional(),
 	admin_id: uuid,
 	code_hash: z.string().min(20),
 	label: z.string().max(100).nullable().optional(),

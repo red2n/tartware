@@ -9,6 +9,11 @@
 -- =====================================================
 
 \c tartware
+\if :{?scripts_dir}
+\else
+\set scripts_dir '.'
+\endif
+\cd :scripts_dir/procedures
 
 \echo '=============================================='
 \echo '  TARTWARE PMS - STORED PROCEDURES'

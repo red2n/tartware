@@ -202,7 +202,7 @@ DO $$
 DECLARE
     v_test_tenant_id UUID := gen_random_uuid();
     v_test_property_id UUID := gen_random_uuid();
-    v_guest_id UUID;
+    v_proc_name TEXT;
     v_error_count INTEGER := 0;
 BEGIN
     RAISE NOTICE '';
@@ -211,7 +211,7 @@ BEGIN
 
     -- Test 1: Check if upsert_guest exists and has correct signature
     BEGIN
-        SELECT proname INTO STRICT v_guest_id
+        SELECT proname INTO STRICT v_proc_name
         FROM pg_proc
         WHERE proname = 'upsert_guest';
         RAISE NOTICE '✓ Test 1: upsert_guest exists';

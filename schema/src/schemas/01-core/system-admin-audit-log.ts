@@ -23,6 +23,9 @@ import { jsonbMetadata, uuid } from "../../shared/base-schemas.js";
 
 export const SystemAdminAuditLogSchema = z.object({
 	id: z.bigint(),
+	is_deleted: z.boolean().optional(),
+	deleted_at: z.coerce.date().optional(),
+	deleted_by: z.string().max(100).optional(),
 	admin_id: uuid,
 	action: z.string(),
 	resource_type: z.string().optional(),

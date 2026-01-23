@@ -68,6 +68,38 @@ CYAN='\033[0;36m'
 MAGENTA='\033[0;35m'
 NC='\033[0m' # No Color
 
+# Simple spinner for long-running commands
+run_with_spinner() {
+    local message="$1"
+    shift
+    local log_file
+    log_file="$(mktemp)"
+    local spin='|/-\\'
+    local i=0
+
+    "$@" >"$log_file" 2>&1 &
+    local pid=$!
+
+    while kill -0 "$pid" 2>/dev/null; do
+        printf "\r%s %c" "$message" "${spin:i%4:1}"
+        i=$((i + 1))
+        sleep 0.2
+    done
+
+    wait "$pid"
+    local status=$?
+    if [ $status -ne 0 ]; then
+        printf "\r%s ... failed\n" "$message"
+        cat "$log_file"
+        rm -f "$log_file"
+        return $status
+    fi
+
+    printf "\r%s ... done\n" "$message"
+    rm -f "$log_file"
+    return 0
+}
+
 # Resolve repository paths (script now lives under executables/)
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
@@ -124,7 +156,8 @@ if [ "$DEPLOY_MODE" == "docker" ]; then
     echo "    • OpenSearch (search and analytics)"
     echo "    • OpenTelemetry Collector (observability)"
     echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-    $DOCKER_COMPOSE_CMD up -d
+    run_with_spinner "Pulling Docker images" $DOCKER_COMPOSE_CMD -f "$REPO_ROOT/docker-compose.yml" pull --quiet
+    run_with_spinner "Starting Docker containers" $DOCKER_COMPOSE_CMD -f "$REPO_ROOT/docker-compose.yml" up -d --pull=never
     echo ""
     echo -e "${GREEN}✓ All containers started${NC}"
     echo ""
@@ -342,43 +375,22 @@ echo -e "${GREEN}Initializing Tartware PMS Database...${NC}"
 echo ""
 
 # ============================================================================
-# Installation Mode Selection
+# Installation Mode Selection (Non-interactive)
 # ============================================================================
 
-echo -e "${CYAN}Select Installation Mode:${NC}"
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo -e "  ${GREEN}1)${NC} Fresh Install + Industry Defaults (drop DB, seed baseline) ${YELLOW}[DEFAULT]${NC}"
-echo -e "  ${GREEN}2)${NC} Fresh Install (Schema Only)"
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo ""
-echo -ne "${CYAN}Enter your choice [1-2] (press Enter for default):${NC} "
-read -r INSTALL_MODE
+INSTALL_MODE=1
+LOAD_DEFAULT_DATA=true
 
-# Default to option 1 if no input
-if [ -z "$INSTALL_MODE" ]; then
-    INSTALL_MODE=1
+if [ "${TARTWARE_SEED_DEFAULTS:-true}" = "false" ]; then
+    INSTALL_MODE=2
+    LOAD_DEFAULT_DATA=false
 fi
 
-# Validate input
-if [[ ! "$INSTALL_MODE" =~ ^[1-2]$ ]]; then
-    echo -e "${RED}✗ Invalid option. Defaulting to Fresh Install + Industry Defaults.${NC}"
-    INSTALL_MODE=1
+if [ "$LOAD_DEFAULT_DATA" = true ]; then
+    echo -e "${GREEN}✓ Selected: Fresh Install + Industry Defaults${NC}"
+else
+    echo -e "${GREEN}✓ Selected: Fresh Install (schema only)${NC}"
 fi
-
-echo ""
-
-LOAD_DEFAULT_DATA=false
-
-case "$INSTALL_MODE" in
-    1)
-        echo -e "${GREEN}✓ Selected: Fresh Install + Industry Defaults${NC}"
-        LOAD_DEFAULT_DATA=true
-        ;;
-    2)
-        echo -e "${GREEN}✓ Selected: Fresh Install (schema only)${NC}"
-        LOAD_DEFAULT_DATA=false
-        ;;
-esac
 
 echo ""
 
@@ -394,6 +406,35 @@ EXPECTED_ENUMS=$(rg 'CREATE TYPE' "$SCRIPTS_DIR/02-enum-types.sql" 2>/dev/null |
 
 # Count table files
 TABLE_FILES=$(find "$SCRIPTS_DIR/tables/" -name "*.sql" -not -name "00-create-all-tables.sql" | wc -l)
+
+# Validate required scripts exist
+REQUIRED_SCRIPTS=(
+    "$SCRIPTS_DIR/01-database-setup.sql"
+    "$SCRIPTS_DIR/02-enum-types.sql"
+    "$SCRIPTS_DIR/tables/00-create-all-tables.sql"
+    "$SCRIPTS_DIR/indexes/00-create-all-indexes.sql"
+    "$SCRIPTS_DIR/constraints/00-create-all-constraints.sql"
+    "$SCRIPTS_DIR/verify-all.sql"
+)
+
+for script in "${REQUIRED_SCRIPTS[@]}"; do
+    if [ ! -f "$script" ]; then
+        echo -e "${RED}✗ Missing required script: $script${NC}"
+        exit 1
+    fi
+done
+
+# Validate table master includes
+while read -r include_path; do
+    include_path="$(echo "$include_path" | xargs)"
+    if [ -z "$include_path" ]; then
+        continue
+    fi
+    if [ ! -f "$SCRIPTS_DIR/tables/$include_path" ]; then
+        echo -e "${RED}✗ Missing table script referenced in 00-create-all-tables.sql: $include_path${NC}"
+        exit 1
+    fi
+done < <(rg -o '^\\ir\\s+.+$' "$SCRIPTS_DIR/tables/00-create-all-tables.sql" | sed 's/^\\ir\\s\\+//')
 
 # For indexes and FKs, we'll use actual database counts after creation
 # because PostgreSQL auto-creates additional indexes (PK, unique constraints)
@@ -416,7 +457,7 @@ echo ""
 # STEP 1: Check PostgreSQL Connection
 # ============================================================================
 
-echo -e "${BLUE}[1/13]${NC} Checking PostgreSQL connection..."
+echo -e "${BLUE}[1/14]${NC} Checking PostgreSQL connection..."
 
 if ! pg_isready -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" &> /dev/null; then
     echo -e "${YELLOW}⚠  PostgreSQL is not accessible on $DB_HOST:$DB_PORT${NC}"
@@ -448,8 +489,8 @@ if ! pg_isready -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" &> /dev/null; then
         echo "  - OpenSearch (search and analytics)"
         echo "  - OpenTelemetry Collector (observability)"
         echo ""
-        echo "This may take a moment if images need to be pulled..."
-        $DOCKER_COMPOSE_CMD up -d 2>&1 | grep -v "^WARN"
+        run_with_spinner "Pulling Docker images" $DOCKER_COMPOSE_CMD -f "$REPO_ROOT/docker-compose.yml" pull --quiet
+        run_with_spinner "Starting Docker containers" $DOCKER_COMPOSE_CMD -f "$REPO_ROOT/docker-compose.yml" up -d --pull=never
 
         # Wait for PostgreSQL to be ready
         echo ""
@@ -494,7 +535,7 @@ echo ""
 # STEP 2: Drop Existing Database (Automatic Fresh Install)
 # ============================================================================
 
-echo -e "${BLUE}[2/13]${NC} Checking if database exists..."
+echo -e "${BLUE}[2/14]${NC} Checking if database exists..."
 
 DB_EXISTS=$(psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d postgres -tAc "SELECT 1 FROM pg_database WHERE datname='$DB_NAME'" 2>/dev/null || echo "")
 
@@ -527,7 +568,7 @@ echo ""
 # STEP 3: Create Database
 # ============================================================================
 
-echo -e "${BLUE}[3/13]${NC} Creating database '$DB_NAME'..."
+echo -e "${BLUE}[3/14]${NC} Creating database '$DB_NAME'..."
 
 psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d postgres -c "
     CREATE DATABASE $DB_NAME
@@ -548,7 +589,7 @@ echo ""
 # STEP 4: Create Extensions & Schemas
 # ============================================================================
 
-echo -e "${BLUE}[4/13]${NC} Creating extensions and schemas..."
+echo -e "${BLUE}[4/14]${NC} Creating extensions and schemas..."
 
 psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -f "$SCRIPTS_DIR/01-database-setup.sql" &> /dev/null
 
@@ -560,7 +601,7 @@ echo ""
 # STEP 5: Create ENUM Types
 # ============================================================================
 
-echo -e "${BLUE}[5/13]${NC} Creating ${EXPECTED_ENUMS} ENUM types..."
+echo -e "${BLUE}[5/14]${NC} Creating ${EXPECTED_ENUMS} ENUM types..."
 
 psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -f "$SCRIPTS_DIR/02-enum-types.sql" &> /dev/null
 
@@ -573,7 +614,7 @@ echo ""
 # STEP 6: Create Tables
 # ============================================================================
 
-echo -e "${BLUE}[6/13]${NC} Creating ${EXPECTED_TABLES} tables (${TABLE_FILES} files, some create multiple tables)..."
+echo -e "${BLUE}[6/14]${NC} Creating ${EXPECTED_TABLES} tables (${TABLE_FILES} files, some create multiple tables)..."
 
 cd "$SCRIPTS_DIR"
 psql -q -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -f "$SCRIPTS_DIR/tables/00-create-all-tables.sql" > /dev/null 2>&1
@@ -594,7 +635,7 @@ echo ""
 # STEP 7: Create Indexes
 # ============================================================================
 
-echo -e "${BLUE}[7/13]${NC} Creating indexes..."
+echo -e "${BLUE}[7/14]${NC} Creating indexes..."
 
 psql -q -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -f "$SCRIPTS_DIR/indexes/00-create-all-indexes.sql" > /dev/null 2>&1
 
@@ -607,7 +648,7 @@ echo ""
 # STEP 8: Create Constraints
 # ============================================================================
 
-echo -e "${BLUE}[8/13]${NC} Creating foreign key constraints..."
+echo -e "${BLUE}[8/14]${NC} Creating foreign key constraints..."
 
 cd "$SCRIPTS_DIR/constraints"
 psql -q -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -f "00-create-all-constraints.sql" > /dev/null 2>&1
@@ -619,11 +660,22 @@ echo -e "${GREEN}✓ Created $FK_COUNT foreign key constraints${NC}"
 echo ""
 
 # ============================================================================
-# STEP 9: Seed Default Operational Data (optional)
+# STEP 9: Auto-generate Missing FK Indexes
+# ============================================================================
+
+echo -e "${BLUE}[9/14]${NC} Creating missing foreign key indexes..."
+
+psql -q -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -f "$SCRIPTS_DIR/indexes/99_auto_fk_indexes.sql" > /dev/null 2>&1
+
+echo -e "${GREEN}✓ Missing foreign key indexes created${NC}"
+echo ""
+
+# ============================================================================
+# STEP 10: Seed Default Operational Data (optional)
 # ============================================================================
 
 if [ "$LOAD_DEFAULT_DATA" = true ]; then
-    echo -e "${BLUE}[9/13]${NC} Seeding industry-standard default data..."
+    echo -e "${BLUE}[10/14]${NC} Seeding industry-standard default data..."
     DEFAULT_DATA_SCRIPT="$SCRIPTS_DIR/data/defaults/seed-default-data.mjs"
 
     if [ -f "$DEFAULT_DATA_SCRIPT" ]; then
@@ -637,18 +689,18 @@ if [ "$LOAD_DEFAULT_DATA" = true ]; then
         echo -e "${YELLOW}⚠  Default data script not found at $DEFAULT_DATA_SCRIPT - skipping${NC}"
     fi
 else
-    echo -e "${BLUE}[9/13]${NC} Skipping default data seed (mode does not require it)${NC}"
+    echo -e "${BLUE}[10/14]${NC} Skipping default data seed (mode does not require it)${NC}"
 fi
 
 echo ""
 
 # ============================================================================
-# STEP 10: Create Stored Procedures
+# STEP 11: Create Stored Procedures
 # ============================================================================
 
-echo -e "${BLUE}[10/13]${NC} Creating stored procedures..."
+echo -e "${BLUE}[11/14]${NC} Creating stored procedures..."
 
-psql -q -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -f "$SCRIPTS_DIR/procedures/00-create-all-procedures.sql" > /dev/null 2>&1
+psql -q -v scripts_dir="$SCRIPTS_DIR" -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -f "$SCRIPTS_DIR/procedures/00-create-all-procedures.sql" > /dev/null 2>&1
 
 PROCEDURE_COUNT=$(psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -tAc "SELECT COUNT(*) FROM pg_proc p JOIN pg_namespace n ON p.pronamespace = n.oid WHERE n.nspname = 'public' AND p.prokind IN ('f', 'p');" 2>/dev/null)
 
@@ -656,10 +708,10 @@ echo -e "${GREEN}✓ Created $PROCEDURE_COUNT stored procedures${NC}"
 echo ""
 
 # ============================================================================
-# STEP 11: Install Trigger & Monitoring Suite
+# STEP 12: Install Trigger & Monitoring Suite
 # ============================================================================
 
-echo -e "${BLUE}[11/13]${NC} Installing trigger suite (query safety & optimistic locking)..."
+echo -e "${BLUE}[12/14]${NC} Installing trigger suite (query safety & optimistic locking)..."
 
 psql -q -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -f "$SCRIPTS_DIR/triggers/00-create-all-efficiency-triggers.sql" > /dev/null 2>&1
 
@@ -667,10 +719,10 @@ echo -e "${GREEN}✓ Trigger suite installed${NC}"
 echo ""
 
 # ============================================================================
-# STEP 12: Add User-Friendly Constraint Messages
+# STEP 13: Add User-Friendly Constraint Messages
 # ============================================================================
 
-echo -e "${BLUE}[12/13]${NC} Adding user-friendly constraint error messages..."
+echo -e "${BLUE}[13/14]${NC} Adding user-friendly constraint error messages..."
 
 psql -q -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -f "$SCRIPTS_DIR/add_friendly_constraint_messages.sql" > /dev/null 2>&1
 
@@ -678,12 +730,12 @@ echo -e "${GREEN}✓ Friendly constraint messages added${NC}"
 echo ""
 
 # ============================================================================
-# STEP 13: Verification
+# STEP 14: Verification
 # ============================================================================
 
-echo -e "${BLUE}[13/13]${NC} Running verification..."
+echo -e "${BLUE}[14/14]${NC} Running verification..."
 
-psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -f "$SCRIPTS_DIR/verify-all.sql" 2>&1 | tail -30
+psql -v scripts_dir="$SCRIPTS_DIR" -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -f "$SCRIPTS_DIR/verify-all.sql" 2>&1 | tail -30
 
 echo ""
 

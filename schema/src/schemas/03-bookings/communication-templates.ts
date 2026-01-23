@@ -26,6 +26,7 @@ import { uuid } from "../../shared/base-schemas.js";
  */
 export const CommunicationTemplatesSchema = z.object({
 	id: uuid,
+	deleted_by: z.string().max(100).optional(),
 	tenant_id: uuid,
 	property_id: uuid.optional(),
 	template_name: z.string(),

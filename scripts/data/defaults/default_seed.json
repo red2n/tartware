@@ -95,6 +95,7 @@
   "users": [
     {
       "id": "33333333-3333-3333-3333-333333333333",
+      "tenantId": "11111111-1111-1111-1111-111111111111",
       "username": "setup.admin",
       "email": "setup.admin@tartware.demo",
       "passwordHash": "$2a$10$erzSav5dzulZWAtge.vtmexT.PryHC4S7.Fd2jzxI8R1Kg3biyrwq",

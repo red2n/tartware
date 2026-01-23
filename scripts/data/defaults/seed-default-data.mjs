@@ -30,23 +30,27 @@ const pool = new Pool({
   max: 2,
 });
 
+let seedActorId = "00000000-0000-0000-0000-000000000000";
+let defaultTenantId = null;
+
 const upsertTenants = async (client, tenants = []) => {
   for (const tenant of tenants) {
     await client.query(
       `
         INSERT INTO tenants AS t (
-          id, name, slug, type, status, email, phone, website, country,
+          id, tenant_id, name, slug, type, status, email, phone, website, country,
           config, subscription, metadata, created_at, updated_at, created_by, updated_by
         )
         VALUES (
-          $1, $2, $3, $4, $5, $6, $7, $8, $9,
-          COALESCE($10::jsonb, '{}'::jsonb),
+          $1, $2, $3, $4, $5, $6, $7, $8, $9, $10,
           COALESCE($11::jsonb, '{}'::jsonb),
           COALESCE($12::jsonb, '{}'::jsonb),
-          NOW(), NOW(), 'seed@installer', 'seed@installer'
+          COALESCE($13::jsonb, '{}'::jsonb),
+          NOW(), NOW(), $14, $14
         )
         ON CONFLICT (id) DO UPDATE
         SET
+          tenant_id = EXCLUDED.tenant_id,
           name = EXCLUDED.name,
           slug = EXCLUDED.slug,
           type = EXCLUDED.type,
@@ -59,11 +63,12 @@ const upsertTenants = async (client, tenants = []) => {
           subscription = EXCLUDED.subscription,
           metadata = COALESCE(t.metadata, '{}'::jsonb) || EXCLUDED.metadata,
           updated_at = NOW(),
-          updated_by = 'seed@installer',
+          updated_by = $14,
           version = COALESCE(t.version, 0) + 1;
       `,
       [
         tenant.id,
+        tenant.tenantId ?? tenant.id,
         tenant.name,
         tenant.slug,
         tenant.type,
@@ -75,6 +80,7 @@ const upsertTenants = async (client, tenants = []) => {
         jsonb(tenant.config),
         jsonb(tenant.subscription),
         jsonb(tenant.metadata),
+        seedActorId,
       ],
     );
   }
@@ -94,7 +100,7 @@ const upsertProperties = async (client, properties = []) => {
           $9, $10, $11, $12, $13,
           COALESCE($14::jsonb, '{}'::jsonb),
           COALESCE($15::jsonb, '{}'::jsonb),
-          NOW(), NOW(), 'seed@installer', 'seed@installer'
+          NOW(), NOW(), $16, $16
         )
         ON CONFLICT (id) DO UPDATE
         SET
@@ -113,7 +119,7 @@ const upsertProperties = async (client, properties = []) => {
           config = EXCLUDED.config,
           metadata = COALESCE(p.metadata, '{}'::jsonb) || EXCLUDED.metadata,
           updated_at = NOW(),
-          updated_by = 'seed@installer',
+          updated_by = $16,
           version = COALESCE(p.version, 0) + 1;
       `,
       [
@@ -132,6 +138,7 @@ const upsertProperties = async (client, properties = []) => {
         property.timezone ?? "UTC",
         jsonb(property.config),
         jsonb(property.metadata),
+        seedActorId,
       ],
     );
   }
@@ -142,17 +149,18 @@ const upsertUsers = async (client, users = []) => {
     await client.query(
       `
         INSERT INTO users AS u (
-          id, username, email, password_hash, first_name, last_name, phone,
+          id, tenant_id, username, email, password_hash, first_name, last_name, phone,
           is_active, is_verified, metadata, created_at, updated_at, created_by, updated_by
         )
         VALUES (
-          $1, $2, $3, $4, $5, $6, $7,
-          COALESCE($8, TRUE), COALESCE($9, FALSE),
-          COALESCE($10::jsonb, '{}'::jsonb),
-          NOW(), NOW(), 'seed@installer', 'seed@installer'
+          $1, $2, $3, $4, $5, $6, $7, $8,
+          COALESCE($9, TRUE), COALESCE($10, FALSE),
+          COALESCE($11::jsonb, '{}'::jsonb),
+          NOW(), NOW(), $12, $12
         )
         ON CONFLICT (id) DO UPDATE
         SET
+          tenant_id = EXCLUDED.tenant_id,
           username = EXCLUDED.username,
           email = EXCLUDED.email,
           password_hash = EXCLUDED.password_hash,
@@ -163,11 +171,12 @@ const upsertUsers = async (client, users = []) => {
           is_verified = EXCLUDED.is_verified,
           metadata = COALESCE(u.metadata, '{}'::jsonb) || EXCLUDED.metadata,
           updated_at = NOW(),
-          updated_by = 'seed@installer',
+          updated_by = $12,
           version = COALESCE(u.version, 0) + 1;
       `,
       [
         user.id,
+        user.tenantId ?? defaultTenantId,
         user.username,
         user.email,
         user.passwordHash,
@@ -177,6 +186,7 @@ const upsertUsers = async (client, users = []) => {
         user.isActive ?? true,
         user.isVerified ?? false,
         jsonb(user.metadata),
+        seedActorId,
       ],
     );
   }
@@ -194,7 +204,7 @@ const upsertUserTenantAssociations = async (client, associations = []) => {
           $1, $2, $3, TRUE,
           COALESCE($4::jsonb, '{}'::jsonb),
           COALESCE($5::jsonb, '{}'::jsonb),
-          NOW(), NOW(), 'seed@installer', 'seed@installer'
+          NOW(), NOW(), $6, $6
         )
         ON CONFLICT (user_id, tenant_id) DO UPDATE
         SET
@@ -203,7 +213,7 @@ const upsertUserTenantAssociations = async (client, associations = []) => {
           permissions = EXCLUDED.permissions,
           metadata = COALESCE(uta.metadata, '{}'::jsonb) || EXCLUDED.metadata,
           updated_at = NOW(),
-          updated_by = 'seed@installer',
+          updated_by = $6,
           version = COALESCE(uta.version, 0) + 1;
       `,
       [
@@ -212,6 +222,7 @@ const upsertUserTenantAssociations = async (client, associations = []) => {
         association.role ?? "OWNER",
         jsonb(association.permissions),
         jsonb(association.metadata),
+        seedActorId,
       ],
     );
   }
@@ -236,7 +247,7 @@ const upsertRoomTypes = async (client, roomTypes = []) => {
           $18, $19, COALESCE($20::jsonb, '[]'::jsonb),
           COALESCE($21, 0), TRUE,
           COALESCE($22::jsonb, '{}'::jsonb),
-          NOW(), NOW(), 'seed@installer', 'seed@installer'
+          NOW(), NOW(), $23, $23
         )
         ON CONFLICT (id) DO UPDATE
         SET
@@ -262,7 +273,7 @@ const upsertRoomTypes = async (client, roomTypes = []) => {
           display_order = EXCLUDED.display_order,
           metadata = COALESCE(rt.metadata, '{}'::jsonb) || EXCLUDED.metadata,
           updated_at = NOW(),
-          updated_by = 'seed@installer',
+          updated_by = $23,
           version = COALESCE(rt.version, 0) + 1;
       `,
       [
@@ -288,6 +299,7 @@ const upsertRoomTypes = async (client, roomTypes = []) => {
         jsonb(roomType.images ?? []),
         roomType.displayOrder ?? 0,
         jsonb(roomType.metadata),
+        seedActorId,
       ],
     );
   }
@@ -307,7 +319,7 @@ const upsertRooms = async (client, rooms = []) => {
           $8, $9, $10,
           COALESCE($11::jsonb, '{}'::jsonb),
           COALESCE($12::jsonb, '{}'::jsonb),
-          NOW(), NOW(), 'seed@installer', 'seed@installer'
+          NOW(), NOW(), $13, $13
         )
         ON CONFLICT (property_id, room_number) DO UPDATE
         SET
@@ -321,7 +333,7 @@ const upsertRooms = async (client, rooms = []) => {
           features = EXCLUDED.features,
           metadata = COALESCE(r.metadata, '{}'::jsonb) || EXCLUDED.metadata,
           updated_at = NOW(),
-          updated_by = 'seed@installer',
+          updated_by = $13,
           version = COALESCE(r.version, 0) + 1;
       `,
       [
@@ -337,6 +349,7 @@ const upsertRooms = async (client, rooms = []) => {
         room.maintenanceStatus ?? "OPERATIONAL",
         jsonb(room.features ?? {}),
         jsonb(room.metadata),
+        seedActorId,
       ],
     );
   }
@@ -361,7 +374,7 @@ const upsertRoomAmenityCatalog = async (client, amenities = []) => {
           COALESCE($12, TRUE),
           COALESCE($13, FALSE),
           COALESCE($14::jsonb, '{}'::jsonb),
-          NOW(), NOW(), 'seed@installer', 'seed@installer'
+          NOW(), NOW(), $15, $15
         )
         ON CONFLICT (property_id, amenity_code) DO UPDATE
         SET
@@ -377,7 +390,7 @@ const upsertRoomAmenityCatalog = async (client, amenities = []) => {
           is_required = EXCLUDED.is_required,
           metadata = COALESCE(rac.metadata, '{}'::jsonb) || EXCLUDED.metadata,
           updated_at = NOW(),
-          updated_by = 'seed@installer';
+          updated_by = $15;
       `,
       [
         amenity.id ?? null,
@@ -394,6 +407,7 @@ const upsertRoomAmenityCatalog = async (client, amenities = []) => {
         amenity.isActive ?? true,
         amenity.isRequired ?? false,
         jsonb(amenity.metadata),
+        seedActorId,
       ],
     );
   }
@@ -422,7 +436,7 @@ const upsertRates = async (client, rates = []) => {
           COALESCE($20, 0),
           'ACTIVE',
           COALESCE($21::jsonb, '{}'::jsonb),
-          NOW(), NOW(), 'seed@installer', 'seed@installer'
+          NOW(), NOW(), $22, $22
         )
         ON CONFLICT (property_id, rate_code) DO UPDATE
         SET
@@ -446,7 +460,7 @@ const upsertRates = async (client, rates = []) => {
           display_order = EXCLUDED.display_order,
           metadata = COALESCE(rt.metadata, '{}'::jsonb) || EXCLUDED.metadata,
           updated_at = NOW(),
-          updated_by = 'seed@installer',
+          updated_by = $22,
           version = COALESCE(rt.version, 0) + 1;
       `,
       [
@@ -471,6 +485,7 @@ const upsertRates = async (client, rates = []) => {
         rate.taxInclusive ?? false,
         rate.displayOrder ?? 0,
         jsonb(rate.metadata),
+        seedActorId,
       ],
     );
   }
@@ -569,7 +584,7 @@ const upsertServices = async (client, services = []) => {
           $6, $7, $8, $9, COALESCE($10, FALSE), COALESCE($11::numeric, 0)::numeric,
           COALESCE($12, FALSE), COALESCE($13::integer, 0),
           COALESCE($14::jsonb, '{}'::jsonb),
-          NOW(), NOW(), 'seed@installer', 'seed@installer'
+          NOW(), NOW(), $15, $15
         )
         ON CONFLICT (property_id, service_code) DO UPDATE
         SET
@@ -586,7 +601,7 @@ const upsertServices = async (client, services = []) => {
           duration_minutes = EXCLUDED.duration_minutes,
           metadata = COALESCE(s.metadata, '{}'::jsonb) || EXCLUDED.metadata,
           updated_at = NOW(),
-          updated_by = 'seed@installer',
+          updated_by = $15,
           version = COALESCE(s.version, 0) + 1;
       `,
       [
@@ -604,6 +619,7 @@ const upsertServices = async (client, services = []) => {
         service.requiresBooking ?? false,
         service.durationMinutes ?? 0,
         jsonb(service.metadata),
+        seedActorId,
       ],
     );
   }
@@ -612,6 +628,8 @@ const upsertServices = async (client, services = []) => {
 const seed = async () => {
   console.log("→ Loading industry-standard default dataset (JSON)...");
   const dataset = loadDataset();
+  seedActorId = dataset.users?.[0]?.id ?? seedActorId;
+  defaultTenantId = dataset.tenants?.[0]?.id ?? defaultTenantId;
   const client = await pool.connect();
   try {
     await client.query("BEGIN");

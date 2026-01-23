@@ -26,6 +26,9 @@ import { uuid, money } from "../../shared/base-schemas.js";
  */
 export const PricingExperimentsSchema = z.object({
 	experiment_id: uuid,
+	is_deleted: z.boolean().optional(),
+	deleted_at: z.coerce.date().optional(),
+	deleted_by: z.string().max(100).optional(),
 	tenant_id: uuid,
 	property_id: uuid,
 	experiment_name: z.string(),

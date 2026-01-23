@@ -87,17 +87,17 @@ fk_columns AS (
 ),
 indexed_columns AS (
     SELECT
-        pi.tablename,
-        trim(split_part(col, ' ', 1)) AS column_name
-    FROM pg_indexes pi
-    CROSS JOIN LATERAL unnest(
-        string_to_array(
-            regexp_replace(pi.indexdef, '.*\((.*)\)', '\1'),
-            ', '
-        )
-    ) AS col
-    WHERE pi.tablename IN (SELECT table_name FROM core_tables)
-        AND pi.schemaname = 'public'
+        rel.relname AS tablename,
+        att.attname AS column_name
+    FROM pg_index i
+    JOIN pg_class rel ON rel.oid = i.indrelid
+    JOIN pg_namespace nsp ON nsp.oid = rel.relnamespace
+    JOIN unnest(i.indkey) WITH ORDINALITY AS ord(attnum, ordinality) ON true
+    JOIN pg_attribute att ON att.attrelid = i.indrelid AND att.attnum = ord.attnum
+    WHERE rel.relname IN (SELECT DISTINCT table_name FROM fk_columns)
+        AND nsp.nspname IN ('public', 'availability')
+        AND i.indisvalid
+        AND i.indisready
 )
 SELECT
     fk.table_name,
@@ -206,33 +206,29 @@ BEGIN
 
     SELECT COUNT(*) INTO v_fk_without_index
     FROM (
-        SELECT fk.table_name, fk.column_name
-        FROM (
-            SELECT
-                tc.table_name,
-                kcu.column_name
-            FROM information_schema.table_constraints tc
-            JOIN information_schema.key_column_usage kcu
-                ON tc.constraint_name = kcu.constraint_name
-                AND tc.table_schema = kcu.table_schema
-            WHERE tc.constraint_type = 'FOREIGN KEY'
-                AND tc.table_schema = 'public'
-                AND tc.table_name = ANY (v_tables)
-        ) fk
-        WHERE NOT EXISTS (
-            SELECT 1
-            FROM pg_indexes pi
-            CROSS JOIN LATERAL unnest(
-                string_to_array(
-                    regexp_replace(pi.indexdef, '.*\((.*)\)', '\1'),
-                    ', '
-                )
-            ) AS col
-            WHERE pi.tablename = fk.table_name
-                AND pi.schemaname = 'public'
-                AND trim(split_part(col, ' ', 1)) = fk.column_name
-        )
-    ) missing;
+        SELECT
+            tc.table_name,
+            kcu.column_name
+        FROM information_schema.table_constraints tc
+        JOIN information_schema.key_column_usage kcu
+            ON tc.constraint_name = kcu.constraint_name
+            AND tc.table_schema = kcu.table_schema
+        WHERE tc.constraint_type = 'FOREIGN KEY'
+            AND tc.table_name = ANY (v_tables)
+    ) fk
+    WHERE NOT EXISTS (
+        SELECT 1
+        FROM pg_index i
+        JOIN pg_class rel ON rel.oid = i.indrelid
+        JOIN pg_namespace nsp ON nsp.oid = rel.relnamespace
+        JOIN unnest(i.indkey) WITH ORDINALITY AS ord(attnum, ordinality) ON true
+        JOIN pg_attribute att ON att.attrelid = i.indrelid AND att.attnum = ord.attnum
+        WHERE rel.relname = fk.table_name
+            AND nsp.nspname IN ('public', 'availability')
+            AND i.indisvalid
+            AND i.indisready
+            AND att.attname = fk.column_name
+    );
 
     RAISE NOTICE '';
     RAISE NOTICE 'Category: Core Foundation';

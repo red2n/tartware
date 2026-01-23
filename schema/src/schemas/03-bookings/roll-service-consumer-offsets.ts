@@ -23,6 +23,10 @@ import { uuid } from "../../shared/base-schemas.js";
 
 export const RollServiceConsumerOffsetsSchema = z.object({
 	consumer_group: z.string(),
+	tenant_id: uuid,
+	is_deleted: z.boolean().optional(),
+	deleted_at: z.coerce.date().optional(),
+	deleted_by: z.string().max(100).optional(),
 	topic: z.string(),
 	partition: z.number().int(),
 	offset_position: z.bigint(),
