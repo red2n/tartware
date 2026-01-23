@@ -49,14 +49,17 @@ WITH fk_columns AS (
 ),
 indexed_columns AS (
     SELECT
-        tablename,
-        (string_to_array(
-            regexp_replace(indexdef, '.*\((.*)\)', '\1'),
-            ', '
-        ))[1] AS column_name
-    FROM pg_indexes
-    WHERE tablename IN ('analytics_metrics', 'analytics_metric_dimensions', 'analytics_reports', 'report_property_ids', 'performance_reports', 'report_schedules', 'performance_thresholds', 'performance_baselines', 'performance_alerts', 'alert_rules', 'guest_journey_tracking', 'revenue_attribution', 'forecasting_models', 'ab_test_results')
-        AND schemaname = 'public'
+        rel.relname AS tablename,
+        att.attname AS column_name
+    FROM pg_index i
+    JOIN pg_class rel ON rel.oid = i.indrelid
+    JOIN pg_namespace nsp ON nsp.oid = rel.relnamespace
+    JOIN unnest(i.indkey) WITH ORDINALITY AS ord(attnum, ordinality) ON true
+    JOIN pg_attribute att ON att.attrelid = i.indrelid AND att.attnum = ord.attnum
+    WHERE rel.relname IN (SELECT DISTINCT table_name FROM fk_columns)
+        AND nsp.nspname IN ('public', 'availability')
+        AND i.indisvalid
+        AND i.indisready
 )
 SELECT
     fk.table_name,
@@ -127,23 +130,29 @@ BEGIN
     -- Count FKs without indexes
     SELECT COUNT(*) INTO v_fk_without_index
     FROM (
-        SELECT tc.table_name, kcu.column_name
+        SELECT
+            tc.table_name,
+            kcu.column_name
         FROM information_schema.table_constraints tc
         JOIN information_schema.key_column_usage kcu
             ON tc.constraint_name = kcu.constraint_name
+            AND tc.table_schema = kcu.table_schema
         WHERE tc.constraint_type = 'FOREIGN KEY'
             AND tc.table_name IN ('analytics_metrics', 'analytics_metric_dimensions', 'analytics_reports', 'report_property_ids', 'performance_reports', 'report_schedules', 'performance_thresholds', 'performance_baselines', 'performance_alerts', 'alert_rules', 'guest_journey_tracking', 'revenue_attribution', 'forecasting_models', 'ab_test_results')
-        EXCEPT
-        SELECT
-            tablename,
-            (string_to_array(
-                regexp_replace(indexdef, '.*\((.*)\)', '\1'),
-                ', '
-            ))[1]
-        FROM pg_indexes
-        WHERE tablename IN ('analytics_metrics', 'analytics_metric_dimensions', 'analytics_reports', 'report_property_ids', 'performance_reports', 'report_schedules', 'performance_thresholds', 'performance_baselines', 'performance_alerts', 'alert_rules', 'guest_journey_tracking', 'revenue_attribution', 'forecasting_models', 'ab_test_results')
-            AND schemaname = 'public'
-    ) missing;
+    ) fk
+    WHERE NOT EXISTS (
+        SELECT 1
+        FROM pg_index i
+        JOIN pg_class rel ON rel.oid = i.indrelid
+        JOIN pg_namespace nsp ON nsp.oid = rel.relnamespace
+        JOIN unnest(i.indkey) WITH ORDINALITY AS ord(attnum, ordinality) ON true
+        JOIN pg_attribute att ON att.attrelid = i.indrelid AND att.attnum = ord.attnum
+        WHERE rel.relname = fk.table_name
+            AND nsp.nspname IN ('public', 'availability')
+            AND i.indisvalid
+            AND i.indisready
+            AND att.attname = fk.column_name
+    );
 
     RAISE NOTICE '';
     RAISE NOTICE 'Category: Analytics & Reporting';
