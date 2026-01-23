@@ -26,6 +26,10 @@ import { uuid, money } from "../../shared/base-schemas.js";
  */
 export const PerformanceAlertsSchema = z.object({
 	alert_id: uuid,
+	tenant_id: uuid,
+	is_deleted: z.boolean().optional(),
+	deleted_at: z.coerce.date().optional(),
+	deleted_by: z.string().max(100).optional(),
 	alert_type: z.string(),
 	severity: z.string(),
 	metric_name: z.string().optional(),

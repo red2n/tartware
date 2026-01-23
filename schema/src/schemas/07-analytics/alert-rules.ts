@@ -26,6 +26,10 @@ import { uuid, money } from "../../shared/base-schemas.js";
  */
 export const AlertRulesSchema = z.object({
 	rule_id: uuid,
+	tenant_id: uuid,
+	is_deleted: z.boolean().optional(),
+	deleted_at: z.coerce.date().optional(),
+	deleted_by: z.string().max(100).optional(),
 	rule_name: z.string(),
 	metric_query: z.string(),
 	condition_type: z.string(),

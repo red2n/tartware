@@ -38,6 +38,10 @@ import { TenantTypeEnum, TenantStatusEnum } from "../../shared/enums.js";
  */
 export const TenantConfigSchema = z.object({
 	features: z.array(z.string()).default(["reservations", "payments"]),
+	tenant_id: uuid,
+	is_deleted: z.boolean().optional(),
+	deleted_at: z.coerce.date().optional(),
+	deleted_by: z.string().max(100).optional(),
 	maxUsers: z.number().int().positive().default(10),
 	maxProperties: z.number().int().positive().default(5),
 	defaultCurrency: z.string().length(3).default("USD"),
@@ -69,6 +73,7 @@ export const TenantSubscriptionSchema = z.object({
  */
 export const TenantSchema = z.object({
 	id: uuid.describe("Primary key"),
+	tenant_id: uuid.describe("Tenant self-reference"),
 	name: nonEmptyString.max(200).describe("Tenant organization name"),
 	slug: nonEmptyString
 		.max(200)

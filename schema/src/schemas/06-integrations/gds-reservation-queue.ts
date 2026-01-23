@@ -26,6 +26,9 @@ import { uuid, money } from "../../shared/base-schemas.js";
  */
 export const GdsReservationQueueSchema = z.object({
 	queue_id: uuid,
+	is_deleted: z.boolean().optional(),
+	deleted_at: z.coerce.date().optional(),
+	deleted_by: z.string().max(100).optional(),
 	gds_message_id: uuid,
 	gds_connection_id: uuid,
 	tenant_id: uuid,

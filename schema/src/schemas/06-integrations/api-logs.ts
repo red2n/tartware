@@ -26,6 +26,8 @@ import { uuid } from "../../shared/base-schemas.js";
  */
 export const ApiLogsSchema = z.object({
 	log_id: uuid,
+	deleted_at: z.coerce.date().optional(),
+	deleted_by: z.string().max(100).optional(),
 	tenant_id: uuid,
 	property_id: uuid.optional(),
 	api_name: z.string().optional(),

@@ -28,6 +28,10 @@ import {
  */
 export const SettingCategoriesSchema = z.object({
   category_id: uuid,
+  tenant_id: uuid,
+  is_deleted: z.boolean().optional(),
+  deleted_at: z.coerce.date().optional(),
+  deleted_by: z.string().max(100).optional(),
   category_key: z.string(),
   display_name: z.string(),
   description: z.string(),

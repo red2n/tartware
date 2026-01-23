@@ -30,6 +30,9 @@ const tagsSchema = z.array(z.string().min(1)).default([]);
 
 export const RoomAmenityCatalogSchema = z.object({
 	id: uuid,
+	is_deleted: z.boolean().optional(),
+	deleted_at: z.coerce.date().optional(),
+	deleted_by: z.string().max(100).optional(),
 	tenant_id: tenantId,
 	property_id: propertyId,
 	amenity_code: z

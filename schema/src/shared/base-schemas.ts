@@ -53,11 +53,21 @@ export const auditTimestamps = {
  * Prefer soft deletes over hard deletes for audit trail
  */
 export const softDelete = {
+	is_deleted: z
+		.boolean()
+		.default(false)
+		.describe("Soft delete flag (FALSE = active)"),
 	deleted_at: z
 		.date()
 		.optional()
 		.nullable()
 		.describe("Timestamp when record was soft-deleted (NULL = active)"),
+	deleted_by: z
+		.string()
+		.max(100)
+		.optional()
+		.nullable()
+		.describe("User identifier who performed soft delete"),
 };
 
 /**

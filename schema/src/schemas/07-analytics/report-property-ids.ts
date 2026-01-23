@@ -26,6 +26,9 @@ import { uuid } from "../../shared/base-schemas.js";
  */
 export const ReportPropertyIdsSchema = z.object({
 	id: uuid,
+	is_deleted: z.boolean().optional(),
+	deleted_at: z.coerce.date().optional(),
+	deleted_by: z.string().max(100).optional(),
 	report_id: uuid,
 	property_id: uuid,
 	tenant_id: uuid,

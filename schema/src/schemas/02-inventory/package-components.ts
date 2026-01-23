@@ -29,6 +29,10 @@ import {
  */
 export const PackageComponentsSchema = z.object({
   component_id: uuid,
+  tenant_id: uuid,
+  is_deleted: z.boolean().optional(),
+  deleted_at: z.coerce.date().optional(),
+  deleted_by: z.string().max(100).optional(),
   package_id: uuid,
   component_type: z.string(),
   component_name: z.string(),

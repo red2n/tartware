@@ -46,6 +46,10 @@ const CommunicationPreferencesSchema = z.object({
 
 const GuestPreferencesSchema = z.object({
 	smoking: z.boolean().default(false),
+	tenant_id: uuid,
+	is_deleted: z.boolean().optional(),
+	deleted_at: z.coerce.date().optional(),
+	deleted_by: z.string().max(100).optional(),
 	language: z.string().length(2).default("en"),
 	dietaryRestrictions: z.array(z.string()).default([]),
 	specialRequests: z.array(z.string()).default([]),

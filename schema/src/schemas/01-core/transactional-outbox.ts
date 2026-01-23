@@ -26,6 +26,9 @@ import { OutboxStatusEnum } from "../../shared/enums.js";
 
 export const TransactionalOutboxSchema = z.object({
 	id: z.bigint(),
+	is_deleted: z.boolean().optional(),
+	deleted_at: z.coerce.date().optional(),
+	deleted_by: z.string().max(100).optional(),
 	event_id: uuid,
 	tenant_id: uuid,
 	aggregate_id: uuid,

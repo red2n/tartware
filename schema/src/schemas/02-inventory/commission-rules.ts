@@ -29,6 +29,9 @@ import {
  */
 export const CommissionRulesSchema = z.object({
   rule_id: uuid,
+  is_deleted: z.boolean().optional(),
+  deleted_at: z.coerce.date().optional(),
+  deleted_by: z.string().max(100).optional(),
   tenant_id: uuid,
   property_id: uuid.optional(),
   company_id: uuid.optional(),

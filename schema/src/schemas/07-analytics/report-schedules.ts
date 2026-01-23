@@ -26,6 +26,10 @@ import { uuid } from "../../shared/base-schemas.js";
  */
 export const ReportSchedulesSchema = z.object({
 	schedule_id: uuid,
+	tenant_id: uuid,
+	is_deleted: z.boolean().optional(),
+	deleted_at: z.coerce.date().optional(),
+	deleted_by: z.string().max(100).optional(),
 	report_type: z.string(),
 	schedule_expression: z.string(),
 	is_active: z.boolean().optional(),
