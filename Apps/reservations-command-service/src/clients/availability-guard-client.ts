@@ -225,7 +225,9 @@ export const lockReservationHold = async (
 ): Promise<AvailabilityGuardMetadata> => {
   if (!availabilityGuardConfig.enabled) {
     if (isGuardRequired()) {
-      throw new Error("Availability Guard is disabled in a non-dev environment");
+      throw new Error(
+        "Availability Guard is disabled in a non-dev environment",
+      );
     }
     return { status: "SKIPPED" };
   }

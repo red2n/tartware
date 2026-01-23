@@ -1,10 +1,6 @@
 import { randomUUID } from "node:crypto";
 
-import {
-  SettingsScopeEnum,
-  SettingsValuesSchema,
-  type SettingsValue,
-} from "@tartware/schemas";
+import { SettingsScopeEnum, type SettingsValue, SettingsValuesSchema } from "@tartware/schemas";
 
 import { settingsValues } from "./settings-values.js";
 
@@ -49,9 +45,7 @@ type UpdateSeedValueInput = {
   updatedBy?: string | null;
 };
 
-const seedStore: SettingsValue[] = settingsValues.map((value) =>
-  SettingsValuesSchema.parse(value),
-);
+const seedStore: SettingsValue[] = settingsValues.map((value) => SettingsValuesSchema.parse(value));
 
 const normalizeScope = (value?: string): string | undefined =>
   value ? value.toUpperCase() : undefined;
@@ -64,10 +58,7 @@ const matchesScope = (value: string | undefined, filter?: string): boolean => {
   return normalized ? value === normalized : true;
 };
 
-const matchesOptional = (
-  value: string | undefined,
-  filter?: string,
-): boolean => {
+const matchesOptional = (value: string | undefined, filter?: string): boolean => {
   if (!filter) {
     return true;
   }
@@ -135,9 +126,7 @@ export const createSeedValue = (input: CreateSeedValueInput): SettingsValue => {
   return record;
 };
 
-export const updateSeedValue = (
-  input: UpdateSeedValueInput,
-): SettingsValue | null => {
+export const updateSeedValue = (input: UpdateSeedValueInput): SettingsValue | null => {
   const index = seedStore.findIndex(
     (value) => value.id === input.valueId && value.tenant_id === input.tenantId,
   );
@@ -146,6 +135,9 @@ export const updateSeedValue = (
   }
 
   const current = seedStore[index];
+  if (!current) {
+    return null;
+  }
   const updated: SettingsValue = SettingsValuesSchema.parse({
     ...current,
     value: input.value ?? current.value,

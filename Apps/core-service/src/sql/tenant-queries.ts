@@ -1,6 +1,7 @@
 export const TENANT_LIST_SQL = `
   SELECT
     t.id,
+    t.tenant_id,
     t.name,
     t.slug,
     t.type,
@@ -24,7 +25,9 @@ export const TENANT_LIST_SQL = `
     t.updated_at,
     t.created_by,
     t.updated_by,
+    t.is_deleted,
     t.deleted_at,
+    t.deleted_by,
     t.version,
     COALESCE(pc.property_count, 0) AS property_count,
     COALESCE(uc.user_count, 0) AS user_count,

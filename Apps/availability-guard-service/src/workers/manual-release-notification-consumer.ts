@@ -341,7 +341,7 @@ const buildChannelAttempts = (
     );
     attempts.push({
       channel: "log",
-      run: async () => {
+      run: () => {
         logger.warn(
           {
             lockId: payload.lockId,
@@ -357,6 +357,7 @@ const buildChannelAttempts = (
           },
           "Manual release notification delivered via log fallback",
         );
+        return Promise.resolve();
       },
     });
   }

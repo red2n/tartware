@@ -17,11 +17,7 @@ import { z } from "zod";
 
 import { config } from "../config.js";
 import { settingsCatalogData } from "../data/settings-catalog.js";
-import {
-  createSeedValue,
-  listSeedValues,
-  updateSeedValue,
-} from "../data/settings-values-store.js";
+import { createSeedValue, listSeedValues, updateSeedValue } from "../data/settings-values-store.js";
 import {
   listCategories as listDbCategories,
   listDefinitions as listDbDefinitions,

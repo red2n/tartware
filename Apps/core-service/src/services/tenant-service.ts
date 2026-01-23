@@ -6,6 +6,7 @@ import { normalizePhoneNumber } from "../utils/phone.js";
 
 type TenantRow = {
   id: string;
+  tenant_id: string;
   name: string;
   slug: string;
   type: string;
@@ -29,7 +30,9 @@ type TenantRow = {
   updated_at: Date | null;
   created_by: string | null;
   updated_by: string | null;
+  is_deleted: boolean | null;
   deleted_at: Date | null;
+  deleted_by: string | null;
   version: bigint | null;
   property_count: number | null;
   user_count: number | null;
@@ -40,6 +43,7 @@ const mapRowToTenant = (row: TenantRow): TenantWithRelations => {
   // Return object matching schema structure - validation happens at route level
   return {
     id: row.id,
+    tenant_id: row.tenant_id,
     name: row.name,
     slug: row.slug,
     type: row.type as TenantWithRelations["type"],
@@ -63,7 +67,9 @@ const mapRowToTenant = (row: TenantRow): TenantWithRelations => {
     updated_at: row.updated_at ?? undefined,
     created_by: row.created_by ?? undefined,
     updated_by: row.updated_by ?? undefined,
+    is_deleted: row.is_deleted ?? false,
     deleted_at: row.deleted_at ?? null,
+    deleted_by: row.deleted_by ?? undefined,
     version: row.version ?? BigInt(0),
     property_count: row.property_count ?? 0,
     user_count: row.user_count ?? 0,
