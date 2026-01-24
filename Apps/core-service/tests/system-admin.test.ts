@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { authenticator } from "otplib";
 import type { FastifyInstance } from "fastify";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
@@ -6,6 +7,7 @@ import { buildServer } from "../src/server.js";
 import {
   TEST_SYSTEM_ADMIN_PASSWORD,
   TEST_SYSTEM_ADMIN_USERNAME,
+  TEST_TENANT_ID,
   configureSystemAdminMock,
   seedBreakGlassCode,
 } from "./mocks/db.js";
@@ -174,6 +176,33 @@ describe("System Administrator Capabilities", () => {
     expect(payload.length).toBeGreaterThan(0);
   });
 
+  it("allows system admins to create users with tenant assignments", async () => {
+    const { access_token } = await performSystemLogin(app);
+    const unique = randomUUID().slice(0, 8);
+
+    const response = await app.inject({
+      method: "POST",
+      url: "/v1/system/users",
+      headers: {
+        Authorization: `Bearer ${access_token}`,
+      },
+      payload: {
+        username: `system-user-${unique}`,
+        email: `system-user-${unique}@example.com`,
+        password: "TempPass123!",
+        first_name: "System",
+        last_name: "User",
+        tenant_id: TEST_TENANT_ID,
+        role: "MANAGER",
+      },
+    });
+
+    expect(response.statusCode).toBe(201);
+    const payload = response.json();
+    expect(payload.username).toBe(`system-user-${unique}`);
+    expect(payload).toHaveProperty("id");
+  });
+
   it("rejects system routes without admin token", async () => {
     const response = await app.inject({
       method: "GET",
@@ -198,6 +227,68 @@ describe("System Administrator Capabilities", () => {
     const payload = response.json();
     expect(payload).toHaveProperty("tenants");
     expect(Array.isArray(payload.tenants)).toBe(true);
+  });
+
+  it("allows system admins to create tenants", async () => {
+    const { access_token } = await performSystemLogin(app);
+    const unique = randomUUID().slice(0, 8);
+
+    const response = await app.inject({
+      method: "POST",
+      url: "/v1/system/tenants",
+      headers: {
+        Authorization: `Bearer ${access_token}`,
+      },
+      payload: {
+        name: `System Tenant ${unique}`,
+        slug: `system-tenant-${unique}`,
+        type: "INDEPENDENT",
+        email: `tenant-${unique}@example.com`,
+      },
+    });
+
+    expect(response.statusCode).toBe(201);
+    const payload = response.json();
+    expect(payload).toHaveProperty("id");
+    expect(payload.slug).toBe(`system-tenant-${unique}`);
+  });
+
+  it("allows system admins to bootstrap tenants", async () => {
+    const { access_token } = await performSystemLogin(app);
+    const unique = randomUUID().slice(0, 8);
+
+    const response = await app.inject({
+      method: "POST",
+      url: "/v1/system/tenants/bootstrap",
+      headers: {
+        Authorization: `Bearer ${access_token}`,
+      },
+      payload: {
+        tenant: {
+          name: `Bootstrap Tenant ${unique}`,
+          slug: `bootstrap-${unique}`,
+          type: "INDEPENDENT",
+          email: `bootstrap-${unique}@example.com`,
+        },
+        property: {
+          property_name: "Main Property",
+          property_code: `PROP${unique.toUpperCase()}`,
+        },
+        owner: {
+          username: `owner_${unique}`,
+          email: `owner-${unique}@example.com`,
+          password: "TempPass123!",
+          first_name: "Owner",
+          last_name: "User",
+        },
+      },
+    });
+
+    expect(response.statusCode).toBe(201);
+    const payload = response.json();
+    expect(payload).toHaveProperty("tenant.id");
+    expect(payload).toHaveProperty("property.id");
+    expect(payload).toHaveProperty("owner.id");
   });
 
   it("issues short-lived tenant tokens through impersonation", async () => {

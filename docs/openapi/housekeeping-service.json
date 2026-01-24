@@ -1,0 +1,209 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "@tartware/housekeeping-service API",
+    "version": "0.1.0",
+    "description": "Housekeeping domain service for Tartware PMS"
+  },
+  "components": {
+    "schemas": {}
+  },
+  "paths": {
+    "/health": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        }
+      }
+    },
+    "/ready": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        }
+      }
+    },
+    "/v1/housekeeping/tasks": {
+      "get": {
+        "summary": "List housekeeping tasks",
+        "tags": [
+          "Housekeeping"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "in": "query",
+            "name": "tenant_id",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "in": "query",
+            "name": "property_id",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "status",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "scheduled_date",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "exclusiveMinimum": 0,
+              "maximum": 500,
+              "default": 200
+            },
+            "in": "query",
+            "name": "limit",
+            "required": false
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "format": "uuid"
+                      },
+                      "tenant_id": {
+                        "type": "string",
+                        "format": "uuid"
+                      },
+                      "property_id": {
+                        "type": "string",
+                        "format": "uuid"
+                      },
+                      "property_name": {
+                        "type": "string"
+                      },
+                      "room_number": {
+                        "type": "string"
+                      },
+                      "task_type": {
+                        "type": "string"
+                      },
+                      "priority": {
+                        "type": "string"
+                      },
+                      "status": {
+                        "type": "string"
+                      },
+                      "status_display": {
+                        "type": "string"
+                      },
+                      "assigned_to": {
+                        "type": "string",
+                        "format": "uuid"
+                      },
+                      "assigned_at": {
+                        "type": "string"
+                      },
+                      "scheduled_date": {
+                        "type": "string"
+                      },
+                      "scheduled_time": {
+                        "type": "string"
+                      },
+                      "started_at": {
+                        "type": "string"
+                      },
+                      "completed_at": {
+                        "type": "string"
+                      },
+                      "inspected_by": {
+                        "type": "string",
+                        "format": "uuid"
+                      },
+                      "inspected_at": {
+                        "type": "string"
+                      },
+                      "inspection_passed": {
+                        "type": "boolean"
+                      },
+                      "is_guest_request": {
+                        "type": "boolean"
+                      },
+                      "special_instructions": {
+                        "type": "string"
+                      },
+                      "notes": {
+                        "type": "string"
+                      },
+                      "issues_found": {
+                        "type": "string"
+                      },
+                      "credits": {
+                        "type": "number"
+                      },
+                      "metadata": {
+                        "type": "object",
+                        "additionalProperties": {}
+                      },
+                      "created_at": {
+                        "type": "string"
+                      },
+                      "updated_at": {
+                        "type": "string"
+                      },
+                      "version": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "id",
+                      "tenant_id",
+                      "property_id",
+                      "room_number",
+                      "task_type",
+                      "status",
+                      "status_display",
+                      "scheduled_date",
+                      "is_guest_request",
+                      "created_at",
+                      "version"
+                    ],
+                    "additionalProperties": false
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "servers": [
+    {
+      "url": "/"
+    }
+  ]
+}

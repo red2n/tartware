@@ -62,6 +62,15 @@
         }
       }
     },
+    "/ready": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        }
+      }
+    },
     "/v1/auth/login": {
       "post": {
         "summary": "Authenticate a user and return a JWT",
@@ -81,6 +90,10 @@
                   "password": {
                     "type": "string",
                     "minLength": 8
+                  },
+                  "mfa_code": {
+                    "type": "string",
+                    "pattern": "^\\d{6}$"
                   }
                 },
                 "required": [
@@ -226,6 +239,52 @@
             }
           },
           "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error",
+                    "message"
+                  ],
+                  "additionalProperties": true
+                }
+              }
+            }
+          },
+          "423": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error",
+                    "message"
+                  ],
+                  "additionalProperties": true
+                }
+              }
+            }
+          },
+          "429": {
             "description": "Default Response",
             "content": {
               "application/json": {
@@ -544,6 +603,402 @@
         }
       }
     },
+    "/v1/auth/mfa/enroll": {
+      "post": {
+        "summary": "Start MFA enrollment for the authenticated user",
+        "tags": [
+          "Auth"
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "secret": {
+                      "type": "string"
+                    },
+                    "otpauth_url": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "secret",
+                    "otpauth_url",
+                    "message"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error",
+                    "message"
+                  ],
+                  "additionalProperties": true
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error",
+                    "message"
+                  ],
+                  "additionalProperties": true
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error",
+                    "message"
+                  ],
+                  "additionalProperties": true
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/auth/mfa/verify": {
+      "post": {
+        "summary": "Verify MFA code and enable MFA",
+        "tags": [
+          "Auth"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "mfa_code": {
+                    "type": "string",
+                    "pattern": "^\\d{6}$"
+                  }
+                },
+                "required": [
+                  "mfa_code"
+                ],
+                "additionalProperties": false
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "message"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error",
+                    "message"
+                  ],
+                  "additionalProperties": true
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error",
+                    "message"
+                  ],
+                  "additionalProperties": true
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error",
+                    "message"
+                  ],
+                  "additionalProperties": true
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error",
+                    "message"
+                  ],
+                  "additionalProperties": true
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/auth/mfa/rotate": {
+      "post": {
+        "summary": "Rotate MFA secret for the authenticated user",
+        "tags": [
+          "Auth"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "mfa_code": {
+                    "type": "string",
+                    "pattern": "^\\d{6}$"
+                  }
+                },
+                "required": [
+                  "mfa_code"
+                ],
+                "additionalProperties": false
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "secret": {
+                      "type": "string"
+                    },
+                    "otpauth_url": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "secret",
+                    "otpauth_url",
+                    "message"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error",
+                    "message"
+                  ],
+                  "additionalProperties": true
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error",
+                    "message"
+                  ],
+                  "additionalProperties": true
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error",
+                    "message"
+                  ],
+                  "additionalProperties": true
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error",
+                    "message"
+                  ],
+                  "additionalProperties": true
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/tenants": {
       "get": {
         "summary": "List the tenants available to the authenticated user",
@@ -577,6 +1032,11 @@
                         "type": "string",
                         "format": "uuid",
                         "description": "Primary key"
+                      },
+                      "tenant_id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "description": "Tenant self-reference"
                       },
                       "name": {
                         "type": "string",
@@ -683,6 +1143,21 @@
                               "payments"
                             ]
                           },
+                          "tenant_id": {
+                            "type": "string",
+                            "format": "uuid"
+                          },
+                          "is_deleted": {
+                            "type": "boolean"
+                          },
+                          "deleted_at": {
+                            "type": "string",
+                            "format": "date-time"
+                          },
+                          "deleted_by": {
+                            "type": "string",
+                            "maxLength": 100
+                          },
                           "maxUsers": {
                             "type": "integer",
                             "exclusiveMinimum": 0,
@@ -734,6 +1209,9 @@
                             "default": true
                           }
                         },
+                        "required": [
+                          "tenant_id"
+                        ],
                         "additionalProperties": true,
                         "description": "Tenant configuration settings"
                       },
@@ -812,11 +1290,22 @@
                         "format": "uuid",
                         "description": "User ID who last updated the record"
                       },
+                      "is_deleted": {
+                        "type": "boolean",
+                        "default": false,
+                        "description": "Soft delete flag (FALSE = active)"
+                      },
                       "deleted_at": {
                         "type": "string",
                         "format": "date-time",
                         "nullable": true,
                         "description": "Timestamp when record was soft-deleted (NULL = active)"
+                      },
+                      "deleted_by": {
+                        "type": "string",
+                        "maxLength": 100,
+                        "nullable": true,
+                        "description": "User identifier who performed soft delete"
                       },
                       "version": {
                         "type": "string"
@@ -836,6 +1325,7 @@
                     },
                     "required": [
                       "id",
+                      "tenant_id",
                       "name",
                       "slug",
                       "type",
@@ -853,7 +1343,541 @@
         }
       }
     },
+    "/v1/tenants/bootstrap": {
+      "post": {
+        "summary": "Self-serve tenant onboarding (tenant + property + owner user)",
+        "tags": [
+          "Tenants"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "tenant": {
+                    "type": "object",
+                    "properties": {
+                      "name": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 200
+                      },
+                      "slug": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 100,
+                        "pattern": "^[a-z0-9-]+$"
+                      },
+                      "type": {
+                        "type": "string",
+                        "enum": [
+                          "INDEPENDENT",
+                          "CHAIN",
+                          "FRANCHISE",
+                          "MANAGEMENT_COMPANY"
+                        ],
+                        "default": "INDEPENDENT"
+                      },
+                      "email": {
+                        "type": "string",
+                        "format": "email"
+                      },
+                      "phone": {
+                        "type": "string"
+                      },
+                      "website": {
+                        "type": "string",
+                        "format": "uri"
+                      }
+                    },
+                    "required": [
+                      "name",
+                      "email"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "property": {
+                    "type": "object",
+                    "properties": {
+                      "property_name": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 200
+                      },
+                      "property_code": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 50
+                      },
+                      "property_type": {
+                        "type": "string"
+                      },
+                      "star_rating": {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 5
+                      },
+                      "total_rooms": {
+                        "type": "integer",
+                        "minimum": 0
+                      },
+                      "phone": {
+                        "type": "string"
+                      },
+                      "email": {
+                        "type": "string",
+                        "format": "email"
+                      },
+                      "website": {
+                        "type": "string",
+                        "format": "uri"
+                      },
+                      "address": {
+                        "type": "object",
+                        "properties": {
+                          "line1": {
+                            "type": "string"
+                          },
+                          "line2": {
+                            "type": "string"
+                          },
+                          "city": {
+                            "type": "string"
+                          },
+                          "state": {
+                            "type": "string"
+                          },
+                          "postal_code": {
+                            "type": "string"
+                          },
+                          "country": {
+                            "type": "string"
+                          }
+                        },
+                        "additionalProperties": false
+                      },
+                      "currency": {
+                        "type": "string",
+                        "minLength": 3,
+                        "maxLength": 3
+                      },
+                      "timezone": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "property_name"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "owner": {
+                    "type": "object",
+                    "properties": {
+                      "username": {
+                        "type": "string",
+                        "minLength": 3,
+                        "maxLength": 50
+                      },
+                      "email": {
+                        "type": "string",
+                        "format": "email"
+                      },
+                      "password": {
+                        "type": "string",
+                        "minLength": 8
+                      },
+                      "first_name": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 100
+                      },
+                      "last_name": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 100
+                      },
+                      "phone": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "username",
+                      "email",
+                      "password",
+                      "first_name",
+                      "last_name"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "tenant",
+                  "property",
+                  "owner"
+                ],
+                "additionalProperties": false
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "tenant": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "name": {
+                          "type": "string"
+                        },
+                        "slug": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "name",
+                        "slug"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "property": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "property_name": {
+                          "type": "string"
+                        },
+                        "property_code": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "property_name",
+                        "property_code"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "owner": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "username": {
+                          "type": "string"
+                        },
+                        "email": {
+                          "type": "string",
+                          "format": "email"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "username",
+                        "email"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "tenant",
+                    "property",
+                    "owner",
+                    "message"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error",
+                    "message"
+                  ],
+                  "additionalProperties": true
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error",
+                    "message"
+                  ],
+                  "additionalProperties": true
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error",
+                    "message"
+                  ],
+                  "additionalProperties": true
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error",
+                    "message"
+                  ],
+                  "additionalProperties": true
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/properties": {
+      "post": {
+        "summary": "Create a new property",
+        "tags": [
+          "Properties"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "tenant_id": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "property_name": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200
+                  },
+                  "property_code": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 50
+                  },
+                  "property_type": {
+                    "type": "string"
+                  },
+                  "star_rating": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 5
+                  },
+                  "total_rooms": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "phone": {
+                    "type": "string"
+                  },
+                  "email": {
+                    "type": "string",
+                    "format": "email"
+                  },
+                  "website": {
+                    "type": "string",
+                    "format": "uri"
+                  },
+                  "address": {
+                    "type": "object",
+                    "properties": {
+                      "line1": {
+                        "type": "string"
+                      },
+                      "line2": {
+                        "type": "string"
+                      },
+                      "city": {
+                        "type": "string"
+                      },
+                      "state": {
+                        "type": "string"
+                      },
+                      "postal_code": {
+                        "type": "string"
+                      },
+                      "country": {
+                        "type": "string"
+                      }
+                    },
+                    "additionalProperties": false
+                  },
+                  "currency": {
+                    "type": "string",
+                    "minLength": 3,
+                    "maxLength": 3
+                  },
+                  "timezone": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "tenant_id",
+                  "property_name",
+                  "property_code"
+                ],
+                "additionalProperties": false
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "property_name": {
+                      "type": "string"
+                    },
+                    "property_code": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "property_name",
+                    "property_code",
+                    "message"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error",
+                    "message"
+                  ],
+                  "additionalProperties": true
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error",
+                    "message"
+                  ],
+                  "additionalProperties": true
+                }
+              }
+            }
+          }
+        }
+      },
       "get": {
         "summary": "List properties for a tenant",
         "tags": [
@@ -1000,11 +2024,22 @@
                         "format": "uuid",
                         "description": "User ID who last updated the record"
                       },
+                      "is_deleted": {
+                        "type": "boolean",
+                        "default": false,
+                        "description": "Soft delete flag (FALSE = active)"
+                      },
                       "deleted_at": {
                         "type": "string",
                         "format": "date-time",
                         "nullable": true,
                         "description": "Timestamp when record was soft-deleted (NULL = active)"
+                      },
+                      "deleted_by": {
+                        "type": "string",
+                        "maxLength": 100,
+                        "nullable": true,
+                        "description": "User identifier who performed soft delete"
                       },
                       "room_count": {
                         "type": "integer",
@@ -1190,379 +2225,350 @@
             }
           }
         }
+      },
+      "post": {
+        "summary": "Create or invite a tenant user",
+        "tags": [
+          "Users"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "tenant_id": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "username": {
+                    "type": "string",
+                    "minLength": 3,
+                    "maxLength": 50
+                  },
+                  "email": {
+                    "type": "string",
+                    "format": "email"
+                  },
+                  "password": {
+                    "type": "string",
+                    "minLength": 8
+                  },
+                  "first_name": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 100
+                  },
+                  "last_name": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 100
+                  },
+                  "phone": {
+                    "type": "string"
+                  },
+                  "role": {
+                    "type": "string",
+                    "enum": [
+                      "OWNER",
+                      "ADMIN",
+                      "MANAGER",
+                      "STAFF",
+                      "VIEWER"
+                    ]
+                  }
+                },
+                "required": [
+                  "tenant_id",
+                  "username",
+                  "email",
+                  "first_name",
+                  "last_name",
+                  "role"
+                ],
+                "additionalProperties": false
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "username": {
+                      "type": "string"
+                    },
+                    "email": {
+                      "type": "string",
+                      "format": "email"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "username",
+                    "email",
+                    "message"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error",
+                    "message"
+                  ],
+                  "additionalProperties": true
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error",
+                    "message"
+                  ],
+                  "additionalProperties": true
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error",
+                    "message"
+                  ],
+                  "additionalProperties": true
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error",
+                    "message"
+                  ],
+                  "additionalProperties": true
+                }
+              }
+            }
+          }
+        }
       }
     },
-    "/v1/guests": {
-      "get": {
-        "summary": "List guests with optional filters",
+    "/v1/users/reset-password": {
+      "post": {
+        "summary": "Reset a tenant user's password",
         "tags": [
-          "Guests"
+          "Users"
         ],
-        "parameters": [
-          {
-            "schema": {
-              "type": "integer",
-              "exclusiveMinimum": 0,
-              "maximum": 100,
-              "default": 50
-            },
-            "in": "query",
-            "name": "limit",
-            "required": false
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "tenant_id": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "user_id": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "new_password": {
+                    "type": "string",
+                    "minLength": 8
+                  }
+                },
+                "required": [
+                  "tenant_id",
+                  "user_id"
+                ],
+                "additionalProperties": false
+              }
+            }
           },
-          {
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            },
-            "in": "query",
-            "name": "tenant_id",
-            "required": true
-          },
-          {
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            },
-            "in": "query",
-            "name": "property_id",
-            "required": false
-          },
-          {
-            "schema": {
-              "type": "string",
-              "minLength": 3,
-              "maxLength": 255
-            },
-            "in": "query",
-            "name": "email",
-            "required": false
-          },
-          {
-            "schema": {
-              "type": "string",
-              "minLength": 3,
-              "maxLength": 20
-            },
-            "in": "query",
-            "name": "phone",
-            "required": false
-          },
-          {
-            "schema": {
-              "type": "string",
-              "minLength": 1,
-              "maxLength": 50
-            },
-            "in": "query",
-            "name": "loyalty_tier",
-            "required": false
-          },
-          {
-            "schema": {
-              "type": "boolean"
-            },
-            "in": "query",
-            "name": "vip_status",
-            "required": false
-          },
-          {
-            "schema": {
-              "type": "boolean"
-            },
-            "in": "query",
-            "name": "is_blacklisted",
-            "required": false
-          }
-        ],
+          "required": true
+        },
         "responses": {
           "200": {
             "description": "Default Response",
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "array",
-                  "items": {
-                    "type": "object",
-                    "properties": {
-                      "id": {
-                        "type": "string",
-                        "format": "uuid"
-                      },
-                      "tenant_id": {
-                        "type": "string",
-                        "format": "uuid"
-                      },
-                      "first_name": {
-                        "type": "string",
-                        "minLength": 1
-                      },
-                      "last_name": {
-                        "type": "string",
-                        "minLength": 1
-                      },
-                      "middle_name": {
-                        "type": "string"
-                      },
-                      "title": {
-                        "type": "string"
-                      },
-                      "date_of_birth": {
-                        "type": "string",
-                        "format": "date-time"
-                      },
-                      "gender": {
-                        "type": "string"
-                      },
-                      "nationality": {
-                        "type": "string"
-                      },
-                      "email": {
-                        "type": "string",
-                        "format": "email",
-                        "description": "Email address"
-                      },
-                      "phone": {
-                        "type": "string",
-                        "pattern": "^\\+?[1-9]\\d{1,14}$",
-                        "description": "Phone number in international format"
-                      },
-                      "secondary_phone": {
-                        "type": "string",
-                        "pattern": "^\\+?[1-9]\\d{1,14}$",
-                        "description": "Phone number in international format"
-                      },
-                      "address": {
-                        "type": "object",
-                        "properties": {
-                          "street": {
-                            "type": "string"
-                          },
-                          "city": {
-                            "type": "string"
-                          },
-                          "state": {
-                            "type": "string"
-                          },
-                          "postalCode": {
-                            "type": "string"
-                          },
-                          "country": {
-                            "type": "string"
-                          }
-                        },
-                        "additionalProperties": false,
-                        "default": {}
-                      },
-                      "id_type": {
-                        "type": "string"
-                      },
-                      "id_number": {
-                        "type": "string"
-                      },
-                      "passport_number": {
-                        "type": "string"
-                      },
-                      "passport_expiry": {
-                        "type": "string",
-                        "format": "date-time"
-                      },
-                      "company_name": {
-                        "type": "string"
-                      },
-                      "company_tax_id": {
-                        "type": "string"
-                      },
-                      "loyalty_tier": {
-                        "type": "string"
-                      },
-                      "loyalty_points": {
-                        "type": "integer",
-                        "minimum": 0,
-                        "default": 0
-                      },
-                      "vip_status": {
-                        "type": "boolean",
-                        "default": false
-                      },
-                      "preferences": {
-                        "type": "object",
-                        "properties": {
-                          "smoking": {
-                            "type": "boolean",
-                            "default": false
-                          },
-                          "language": {
-                            "type": "string",
-                            "minLength": 2,
-                            "maxLength": 2,
-                            "default": "en"
-                          },
-                          "dietaryRestrictions": {
-                            "type": "array",
-                            "items": {
-                              "type": "string"
-                            },
-                            "default": []
-                          },
-                          "specialRequests": {
-                            "type": "array",
-                            "items": {
-                              "type": "string"
-                            },
-                            "default": []
-                          },
-                          "roomType": {
-                            "type": "string"
-                          },
-                          "floor": {
-                            "type": "string"
-                          },
-                          "bedType": {
-                            "type": "string",
-                            "enum": [
-                              "KING",
-                              "QUEEN",
-                              "TWIN",
-                              "DOUBLE"
-                            ]
-                          }
-                        },
-                        "additionalProperties": true,
-                        "default": {}
-                      },
-                      "marketing_consent": {
-                        "type": "boolean",
-                        "default": false
-                      },
-                      "communication_preferences": {
-                        "type": "object",
-                        "properties": {
-                          "email": {
-                            "type": "boolean",
-                            "default": true
-                          },
-                          "sms": {
-                            "type": "boolean",
-                            "default": false
-                          },
-                          "phone": {
-                            "type": "boolean",
-                            "default": true
-                          },
-                          "post": {
-                            "type": "boolean",
-                            "default": false
-                          }
-                        },
-                        "additionalProperties": false,
-                        "default": {}
-                      },
-                      "total_bookings": {
-                        "type": "integer",
-                        "minimum": 0,
-                        "default": 0
-                      },
-                      "total_nights": {
-                        "type": "integer",
-                        "minimum": 0,
-                        "default": 0
-                      },
-                      "total_revenue": {
-                        "type": "number",
-                        "multipleOf": 0.01,
-                        "minimum": 0,
-                        "description": "Monetary amount with 2 decimal precision",
-                        "default": 0
-                      },
-                      "last_stay_date": {
-                        "type": "string",
-                        "format": "date-time"
-                      },
-                      "is_blacklisted": {
-                        "type": "boolean",
-                        "default": false
-                      },
-                      "blacklist_reason": {
-                        "type": "string"
-                      },
-                      "notes": {
-                        "type": "string"
-                      },
-                      "metadata": {
-                        "type": "object",
-                        "additionalProperties": {},
-                        "description": "Flexible JSONB metadata object"
-                      },
-                      "created_at": {
-                        "type": "string",
-                        "format": "date-time",
-                        "default": {},
-                        "description": "Timestamp when record was created"
-                      },
-                      "updated_at": {
-                        "type": "string",
-                        "format": "date-time",
-                        "description": "Timestamp when record was last updated"
-                      },
-                      "created_by": {
-                        "type": "string",
-                        "format": "uuid",
-                        "description": "User ID who created the record"
-                      },
-                      "updated_by": {
-                        "type": "string",
-                        "format": "uuid",
-                        "description": "User ID who last updated the record"
-                      },
-                      "deleted_at": {
-                        "type": "string",
-                        "format": "date-time",
-                        "nullable": true,
-                        "description": "Timestamp when record was soft-deleted (NULL = active)"
-                      },
-                      "version": {
-                        "type": "string"
-                      },
-                      "upcoming_reservations": {
-                        "type": "integer",
-                        "minimum": 0
-                      },
-                      "past_reservations": {
-                        "type": "integer",
-                        "minimum": 0
-                      },
-                      "cancelled_reservations": {
-                        "type": "integer",
-                        "minimum": 0
-                      },
-                      "average_stay_length": {
-                        "type": "number",
-                        "minimum": 0
-                      },
-                      "preferred_room_types": {
-                        "type": "array",
-                        "items": {
-                          "type": "string"
-                        }
-                      },
-                      "lifetime_value": {
-                        "type": "number",
-                        "multipleOf": 0.01,
-                        "minimum": 0,
-                        "description": "Monetary amount with 2 decimal precision"
-                      }
+                  "type": "object",
+                  "properties": {
+                    "user_id": {
+                      "type": "string",
+                      "format": "uuid"
                     },
-                    "required": [
-                      "id",
-                      "tenant_id",
-                      "first_name",
-                      "last_name",
-                      "email",
-                      "version"
-                    ],
-                    "additionalProperties": false
-                  }
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "user_id",
+                    "message"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error",
+                    "message"
+                  ],
+                  "additionalProperties": true
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error",
+                    "message"
+                  ],
+                  "additionalProperties": true
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error",
+                    "message"
+                  ],
+                  "additionalProperties": true
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error",
+                    "message"
+                  ],
+                  "additionalProperties": true
                 }
               }
             }
@@ -1643,6 +2649,17 @@
                       "id": {
                         "type": "string",
                         "format": "uuid"
+                      },
+                      "is_deleted": {
+                        "type": "boolean"
+                      },
+                      "deleted_at": {
+                        "type": "string",
+                        "format": "date-time"
+                      },
+                      "deleted_by": {
+                        "type": "string",
+                        "maxLength": 100
                       },
                       "user_id": {
                         "type": "string",
@@ -1771,6 +2788,373 @@
                     ],
                     "additionalProperties": false
                   }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/user-tenant-associations/role": {
+      "post": {
+        "summary": "Update a user's role within a tenant",
+        "tags": [
+          "User Tenant Associations"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "tenant_id": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "user_id": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "role": {
+                    "type": "string",
+                    "enum": [
+                      "OWNER",
+                      "ADMIN",
+                      "MANAGER",
+                      "STAFF",
+                      "VIEWER"
+                    ]
+                  }
+                },
+                "required": [
+                  "tenant_id",
+                  "user_id",
+                  "role"
+                ],
+                "additionalProperties": false
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "user_id": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "tenant_id": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "role": {
+                      "type": "string",
+                      "enum": [
+                        "OWNER",
+                        "ADMIN",
+                        "MANAGER",
+                        "STAFF",
+                        "VIEWER"
+                      ]
+                    },
+                    "is_active": {
+                      "type": "boolean"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "user_id",
+                    "tenant_id",
+                    "role",
+                    "is_active",
+                    "message"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error",
+                    "message"
+                  ],
+                  "additionalProperties": true
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error",
+                    "message"
+                  ],
+                  "additionalProperties": true
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error",
+                    "message"
+                  ],
+                  "additionalProperties": true
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error",
+                    "message"
+                  ],
+                  "additionalProperties": true
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/user-tenant-associations/status": {
+      "post": {
+        "summary": "Activate or deactivate a user's tenant access",
+        "tags": [
+          "User Tenant Associations"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "tenant_id": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "user_id": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "is_active": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "tenant_id",
+                  "user_id",
+                  "is_active"
+                ],
+                "additionalProperties": false
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "user_id": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "tenant_id": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "role": {
+                      "type": "string",
+                      "enum": [
+                        "OWNER",
+                        "ADMIN",
+                        "MANAGER",
+                        "STAFF",
+                        "VIEWER"
+                      ]
+                    },
+                    "is_active": {
+                      "type": "boolean"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "user_id",
+                    "tenant_id",
+                    "role",
+                    "is_active",
+                    "message"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error",
+                    "message"
+                  ],
+                  "additionalProperties": true
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error",
+                    "message"
+                  ],
+                  "additionalProperties": true
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error",
+                    "message"
+                  ],
+                  "additionalProperties": true
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error",
+                    "message"
+                  ],
+                  "additionalProperties": true
                 }
               }
             }
@@ -2303,530 +3687,6 @@
         }
       }
     },
-    "/v1/rooms": {
-      "get": {
-        "summary": "List rooms with housekeeping filters",
-        "tags": [
-          "Rooms"
-        ],
-        "parameters": [
-          {
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            },
-            "in": "query",
-            "name": "tenant_id",
-            "required": true
-          },
-          {
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            },
-            "in": "query",
-            "name": "property_id",
-            "required": false
-          },
-          {
-            "schema": {
-              "type": "string"
-            },
-            "in": "query",
-            "name": "status",
-            "required": false
-          },
-          {
-            "schema": {
-              "type": "string"
-            },
-            "in": "query",
-            "name": "housekeeping_status",
-            "required": false
-          },
-          {
-            "schema": {
-              "type": "string",
-              "minLength": 1,
-              "maxLength": 50
-            },
-            "in": "query",
-            "name": "search",
-            "required": false
-          },
-          {
-            "schema": {
-              "type": "integer",
-              "exclusiveMinimum": 0,
-              "maximum": 500,
-              "default": 200
-            },
-            "in": "query",
-            "name": "limit",
-            "required": false
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Default Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "type": "object",
-                    "properties": {
-                      "id": {
-                        "type": "string",
-                        "format": "uuid"
-                      },
-                      "tenant_id": {
-                        "type": "string",
-                        "format": "uuid"
-                      },
-                      "property_id": {
-                        "type": "string",
-                        "format": "uuid"
-                      },
-                      "property_name": {
-                        "type": "string"
-                      },
-                      "room_type_id": {
-                        "type": "string",
-                        "format": "uuid"
-                      },
-                      "room_type_name": {
-                        "type": "string"
-                      },
-                      "room_number": {
-                        "type": "string"
-                      },
-                      "room_name": {
-                        "type": "string"
-                      },
-                      "floor": {
-                        "type": "string"
-                      },
-                      "building": {
-                        "type": "string"
-                      },
-                      "wing": {
-                        "type": "string"
-                      },
-                      "status": {
-                        "type": "string"
-                      },
-                      "status_display": {
-                        "type": "string"
-                      },
-                      "housekeeping_status": {
-                        "type": "string"
-                      },
-                      "housekeeping_display": {
-                        "type": "string"
-                      },
-                      "maintenance_status": {
-                        "type": "string"
-                      },
-                      "maintenance_display": {
-                        "type": "string"
-                      },
-                      "is_blocked": {
-                        "type": "boolean"
-                      },
-                      "block_reason": {
-                        "type": "string"
-                      },
-                      "is_out_of_order": {
-                        "type": "boolean"
-                      },
-                      "out_of_order_reason": {
-                        "type": "string"
-                      },
-                      "expected_ready_date": {
-                        "type": "string"
-                      },
-                      "housekeeping_notes": {
-                        "type": "string"
-                      },
-                      "updated_at": {
-                        "type": "string"
-                      },
-                      "version": {
-                        "type": "string"
-                      }
-                    },
-                    "required": [
-                      "id",
-                      "tenant_id",
-                      "property_id",
-                      "room_number",
-                      "status",
-                      "status_display",
-                      "housekeeping_status",
-                      "housekeeping_display",
-                      "maintenance_status",
-                      "maintenance_display",
-                      "is_blocked",
-                      "is_out_of_order",
-                      "version"
-                    ],
-                    "additionalProperties": false
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/v1/housekeeping/tasks": {
-      "get": {
-        "summary": "List housekeeping tasks",
-        "tags": [
-          "Housekeeping"
-        ],
-        "parameters": [
-          {
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            },
-            "in": "query",
-            "name": "tenant_id",
-            "required": true
-          },
-          {
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            },
-            "in": "query",
-            "name": "property_id",
-            "required": false
-          },
-          {
-            "schema": {
-              "type": "string"
-            },
-            "in": "query",
-            "name": "status",
-            "required": false
-          },
-          {
-            "schema": {
-              "type": "string"
-            },
-            "in": "query",
-            "name": "scheduled_date",
-            "required": false
-          },
-          {
-            "schema": {
-              "type": "integer",
-              "exclusiveMinimum": 0,
-              "maximum": 500,
-              "default": 200
-            },
-            "in": "query",
-            "name": "limit",
-            "required": false
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Default Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "type": "object",
-                    "properties": {
-                      "id": {
-                        "type": "string",
-                        "format": "uuid"
-                      },
-                      "tenant_id": {
-                        "type": "string",
-                        "format": "uuid"
-                      },
-                      "property_id": {
-                        "type": "string",
-                        "format": "uuid"
-                      },
-                      "property_name": {
-                        "type": "string"
-                      },
-                      "room_number": {
-                        "type": "string"
-                      },
-                      "task_type": {
-                        "type": "string"
-                      },
-                      "priority": {
-                        "type": "string"
-                      },
-                      "status": {
-                        "type": "string"
-                      },
-                      "status_display": {
-                        "type": "string"
-                      },
-                      "assigned_to": {
-                        "type": "string",
-                        "format": "uuid"
-                      },
-                      "assigned_at": {
-                        "type": "string"
-                      },
-                      "scheduled_date": {
-                        "type": "string"
-                      },
-                      "scheduled_time": {
-                        "type": "string"
-                      },
-                      "started_at": {
-                        "type": "string"
-                      },
-                      "completed_at": {
-                        "type": "string"
-                      },
-                      "inspected_by": {
-                        "type": "string",
-                        "format": "uuid"
-                      },
-                      "inspected_at": {
-                        "type": "string"
-                      },
-                      "inspection_passed": {
-                        "type": "boolean"
-                      },
-                      "is_guest_request": {
-                        "type": "boolean"
-                      },
-                      "special_instructions": {
-                        "type": "string"
-                      },
-                      "notes": {
-                        "type": "string"
-                      },
-                      "issues_found": {
-                        "type": "string"
-                      },
-                      "credits": {
-                        "type": "number"
-                      },
-                      "metadata": {
-                        "type": "object",
-                        "additionalProperties": {}
-                      },
-                      "created_at": {
-                        "type": "string"
-                      },
-                      "updated_at": {
-                        "type": "string"
-                      },
-                      "version": {
-                        "type": "string"
-                      }
-                    },
-                    "required": [
-                      "id",
-                      "tenant_id",
-                      "property_id",
-                      "room_number",
-                      "task_type",
-                      "status",
-                      "status_display",
-                      "scheduled_date",
-                      "is_guest_request",
-                      "created_at",
-                      "version"
-                    ],
-                    "additionalProperties": false
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/v1/billing/payments": {
-      "get": {
-        "summary": "List billing payments with optional filters",
-        "tags": [
-          "Billing"
-        ],
-        "parameters": [
-          {
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            },
-            "in": "query",
-            "name": "tenant_id",
-            "required": true
-          },
-          {
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            },
-            "in": "query",
-            "name": "property_id",
-            "required": false
-          },
-          {
-            "schema": {
-              "type": "string"
-            },
-            "in": "query",
-            "name": "status",
-            "required": false
-          },
-          {
-            "schema": {
-              "type": "string"
-            },
-            "in": "query",
-            "name": "transaction_type",
-            "required": false
-          },
-          {
-            "schema": {
-              "type": "string"
-            },
-            "in": "query",
-            "name": "payment_method",
-            "required": false
-          },
-          {
-            "schema": {
-              "type": "integer",
-              "exclusiveMinimum": 0,
-              "maximum": 200,
-              "default": 100
-            },
-            "in": "query",
-            "name": "limit",
-            "required": false
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Default Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "type": "object",
-                    "properties": {
-                      "id": {
-                        "type": "string",
-                        "format": "uuid"
-                      },
-                      "tenant_id": {
-                        "type": "string",
-                        "format": "uuid"
-                      },
-                      "property_id": {
-                        "type": "string",
-                        "format": "uuid"
-                      },
-                      "property_name": {
-                        "type": "string"
-                      },
-                      "reservation_id": {
-                        "type": "string",
-                        "format": "uuid"
-                      },
-                      "confirmation_number": {
-                        "type": "string"
-                      },
-                      "guest_id": {
-                        "type": "string",
-                        "format": "uuid"
-                      },
-                      "guest_name": {
-                        "type": "string"
-                      },
-                      "payment_reference": {
-                        "type": "string"
-                      },
-                      "external_transaction_id": {
-                        "type": "string"
-                      },
-                      "transaction_type": {
-                        "type": "string"
-                      },
-                      "transaction_type_display": {
-                        "type": "string"
-                      },
-                      "payment_method": {
-                        "type": "string"
-                      },
-                      "payment_method_display": {
-                        "type": "string"
-                      },
-                      "status": {
-                        "type": "string"
-                      },
-                      "status_display": {
-                        "type": "string"
-                      },
-                      "amount": {
-                        "type": "number"
-                      },
-                      "currency": {
-                        "type": "string"
-                      },
-                      "processed_at": {
-                        "type": "string"
-                      },
-                      "created_at": {
-                        "type": "string"
-                      },
-                      "updated_at": {
-                        "type": "string"
-                      },
-                      "version": {
-                        "type": "string"
-                      },
-                      "gateway_name": {
-                        "type": "string"
-                      },
-                      "gateway_reference": {
-                        "type": "string"
-                      }
-                    },
-                    "required": [
-                      "id",
-                      "tenant_id",
-                      "property_id",
-                      "payment_reference",
-                      "transaction_type",
-                      "transaction_type_display",
-                      "payment_method",
-                      "payment_method_display",
-                      "status",
-                      "status_display",
-                      "amount",
-                      "currency",
-                      "created_at",
-                      "version"
-                    ],
-                    "additionalProperties": false
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "/v1/reports/performance": {
       "get": {
         "summary": "Generate a performance report",
@@ -2991,8 +3851,11 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "additionalProperties": true
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": true
+                  }
                 }
               }
             }
@@ -3023,11 +3886,8 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "array",
-                  "items": {
-                    "type": "object",
-                    "additionalProperties": true
-                  }
+                  "type": "object",
+                  "additionalProperties": true
                 }
               }
             }
@@ -3234,7 +4094,642 @@
         }
       }
     },
+    "/v1/system/auth/break-glass": {
+      "post": {
+        "summary": "Emergency break-glass login for system administrators",
+        "tags": [
+          "System Auth"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "username": {
+                    "type": "string",
+                    "minLength": 3
+                  },
+                  "break_glass_code": {
+                    "type": "string",
+                    "minLength": 8
+                  },
+                  "reason": {
+                    "type": "string",
+                    "minLength": 10
+                  },
+                  "ticket_id": {
+                    "type": "string",
+                    "minLength": 3
+                  },
+                  "device_fingerprint": {
+                    "type": "string",
+                    "minLength": 8
+                  }
+                },
+                "required": [
+                  "username",
+                  "break_glass_code",
+                  "reason",
+                  "device_fingerprint"
+                ],
+                "additionalProperties": false
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "access_token": {
+                      "type": "string"
+                    },
+                    "token_type": {
+                      "type": "string",
+                      "enum": [
+                        "Bearer"
+                      ]
+                    },
+                    "expires_in": {
+                      "type": "number",
+                      "exclusiveMinimum": 0
+                    },
+                    "scope": {
+                      "type": "string",
+                      "enum": [
+                        "SYSTEM_ADMIN"
+                      ]
+                    },
+                    "session_id": {
+                      "type": "string"
+                    },
+                    "admin": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "username": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 150,
+                          "description": "Non-empty string"
+                        },
+                        "email": {
+                          "type": "string",
+                          "format": "email",
+                          "description": "Email address"
+                        },
+                        "role": {
+                          "type": "string",
+                          "enum": [
+                            "SYSTEM_ADMIN",
+                            "SYSTEM_OPERATOR",
+                            "SYSTEM_AUDITOR",
+                            "SYSTEM_SUPPORT"
+                          ]
+                        },
+                        "last_login_at": {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        "is_active": {
+                          "type": "boolean",
+                          "default": true
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "username",
+                        "email",
+                        "role"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "access_token",
+                    "token_type",
+                    "expires_in",
+                    "scope",
+                    "session_id",
+                    "admin"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error",
+                    "message"
+                  ],
+                  "additionalProperties": true
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error",
+                    "message"
+                  ],
+                  "additionalProperties": true
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/system/tenants/bootstrap": {
+      "post": {
+        "summary": "Bootstrap a tenant with a primary property and owner user",
+        "tags": [
+          "System Tenants"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "tenant": {
+                    "type": "object",
+                    "properties": {
+                      "name": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 200
+                      },
+                      "slug": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 100,
+                        "pattern": "^[a-z0-9-]+$"
+                      },
+                      "type": {
+                        "type": "string",
+                        "enum": [
+                          "INDEPENDENT",
+                          "CHAIN",
+                          "FRANCHISE",
+                          "MANAGEMENT_COMPANY"
+                        ],
+                        "default": "INDEPENDENT"
+                      },
+                      "email": {
+                        "type": "string",
+                        "format": "email"
+                      },
+                      "phone": {
+                        "type": "string"
+                      },
+                      "website": {
+                        "type": "string",
+                        "format": "uri"
+                      }
+                    },
+                    "required": [
+                      "name",
+                      "slug",
+                      "email"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "property": {
+                    "type": "object",
+                    "properties": {
+                      "property_name": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 200
+                      },
+                      "property_code": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 50
+                      },
+                      "property_type": {
+                        "type": "string"
+                      },
+                      "star_rating": {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 5
+                      },
+                      "total_rooms": {
+                        "type": "integer",
+                        "minimum": 0
+                      },
+                      "phone": {
+                        "type": "string"
+                      },
+                      "email": {
+                        "type": "string",
+                        "format": "email"
+                      },
+                      "website": {
+                        "type": "string",
+                        "format": "uri"
+                      },
+                      "address": {
+                        "type": "object",
+                        "properties": {
+                          "line1": {
+                            "type": "string"
+                          },
+                          "line2": {
+                            "type": "string"
+                          },
+                          "city": {
+                            "type": "string"
+                          },
+                          "state": {
+                            "type": "string"
+                          },
+                          "postal_code": {
+                            "type": "string"
+                          },
+                          "country": {
+                            "type": "string"
+                          }
+                        },
+                        "additionalProperties": false
+                      },
+                      "currency": {
+                        "type": "string",
+                        "minLength": 3,
+                        "maxLength": 3
+                      },
+                      "timezone": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "property_name",
+                      "property_code"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "owner": {
+                    "type": "object",
+                    "properties": {
+                      "username": {
+                        "type": "string",
+                        "minLength": 3,
+                        "maxLength": 50
+                      },
+                      "email": {
+                        "type": "string",
+                        "format": "email"
+                      },
+                      "password": {
+                        "type": "string",
+                        "minLength": 8
+                      },
+                      "first_name": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 100
+                      },
+                      "last_name": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 100
+                      },
+                      "phone": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "username",
+                      "email",
+                      "password",
+                      "first_name",
+                      "last_name"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "tenant",
+                  "property",
+                  "owner"
+                ],
+                "additionalProperties": false
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "tenant": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "name": {
+                          "type": "string"
+                        },
+                        "slug": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "name",
+                        "slug"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "property": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "property_name": {
+                          "type": "string"
+                        },
+                        "property_code": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "property_name",
+                        "property_code"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "owner": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "username": {
+                          "type": "string"
+                        },
+                        "email": {
+                          "type": "string",
+                          "format": "email"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "username",
+                        "email"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "tenant",
+                    "property",
+                    "owner",
+                    "message"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error",
+                    "message"
+                  ],
+                  "additionalProperties": true
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error",
+                    "message"
+                  ],
+                  "additionalProperties": true
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/system/tenants": {
+      "post": {
+        "summary": "Create a new tenant",
+        "tags": [
+          "System Tenants"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200
+                  },
+                  "slug": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 100,
+                    "pattern": "^[a-z0-9-]+$"
+                  },
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "INDEPENDENT",
+                      "CHAIN",
+                      "FRANCHISE",
+                      "MANAGEMENT_COMPANY"
+                    ],
+                    "default": "INDEPENDENT"
+                  },
+                  "email": {
+                    "type": "string",
+                    "format": "email"
+                  },
+                  "phone": {
+                    "type": "string"
+                  },
+                  "website": {
+                    "type": "string",
+                    "format": "uri"
+                  }
+                },
+                "required": [
+                  "name",
+                  "slug",
+                  "email"
+                ],
+                "additionalProperties": false
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "slug": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "name",
+                    "slug",
+                    "message"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error",
+                    "message"
+                  ],
+                  "additionalProperties": true
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error",
+                    "message"
+                  ],
+                  "additionalProperties": true
+                }
+              }
+            }
+          }
+        }
+      },
       "get": {
         "summary": "List tenants for system administrators",
         "tags": [
@@ -3270,6 +4765,11 @@
                             "type": "string",
                             "format": "uuid",
                             "description": "Primary key"
+                          },
+                          "tenant_id": {
+                            "type": "string",
+                            "format": "uuid",
+                            "description": "Tenant self-reference"
                           },
                           "name": {
                             "type": "string",
@@ -3376,6 +4876,21 @@
                                   "payments"
                                 ]
                               },
+                              "tenant_id": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "is_deleted": {
+                                "type": "boolean"
+                              },
+                              "deleted_at": {
+                                "type": "string",
+                                "format": "date-time"
+                              },
+                              "deleted_by": {
+                                "type": "string",
+                                "maxLength": 100
+                              },
                               "maxUsers": {
                                 "type": "integer",
                                 "exclusiveMinimum": 0,
@@ -3427,6 +4942,9 @@
                                 "default": true
                               }
                             },
+                            "required": [
+                              "tenant_id"
+                            ],
                             "additionalProperties": true,
                             "description": "Tenant configuration settings"
                           },
@@ -3505,11 +5023,22 @@
                             "format": "uuid",
                             "description": "User ID who last updated the record"
                           },
+                          "is_deleted": {
+                            "type": "boolean",
+                            "default": false,
+                            "description": "Soft delete flag (FALSE = active)"
+                          },
                           "deleted_at": {
                             "type": "string",
                             "format": "date-time",
                             "nullable": true,
                             "description": "Timestamp when record was soft-deleted (NULL = active)"
+                          },
+                          "deleted_by": {
+                            "type": "string",
+                            "maxLength": 100,
+                            "nullable": true,
+                            "description": "User identifier who performed soft delete"
                           },
                           "version": {
                             "type": "string"
@@ -3529,6 +5058,7 @@
                         },
                         "required": [
                           "id",
+                          "tenant_id",
                           "name",
                           "slug",
                           "type",
@@ -3581,6 +5111,152 @@
       }
     },
     "/v1/system/users": {
+      "post": {
+        "summary": "Create a new user (system admin)",
+        "tags": [
+          "System Users"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "username": {
+                    "type": "string",
+                    "minLength": 3,
+                    "maxLength": 50
+                  },
+                  "email": {
+                    "type": "string",
+                    "format": "email"
+                  },
+                  "password": {
+                    "type": "string",
+                    "minLength": 8
+                  },
+                  "first_name": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 100
+                  },
+                  "last_name": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 100
+                  },
+                  "phone": {
+                    "type": "string"
+                  },
+                  "tenant_id": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "role": {
+                    "type": "string",
+                    "enum": [
+                      "VIEWER",
+                      "STAFF",
+                      "MANAGER",
+                      "ADMIN",
+                      "OWNER"
+                    ]
+                  }
+                },
+                "required": [
+                  "username",
+                  "email",
+                  "password",
+                  "first_name",
+                  "last_name"
+                ],
+                "additionalProperties": false
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "username": {
+                      "type": "string"
+                    },
+                    "email": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "username",
+                    "email",
+                    "message"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error",
+                    "message"
+                  ],
+                  "additionalProperties": true
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error",
+                    "message"
+                  ],
+                  "additionalProperties": true
+                }
+              }
+            }
+          }
+        }
+      },
       "get": {
         "summary": "List users across tenants (system admin)",
         "tags": [

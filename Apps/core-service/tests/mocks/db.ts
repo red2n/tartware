@@ -6,6 +6,7 @@ import type pg from "pg";
 // Test data - realistic UUIDs and data
 export const TEST_USER_ID = "550e8400-e29b-41d4-a716-446655440000";
 export const TEST_TENANT_ID = "660e8400-e29b-41d4-a716-446655440000";
+export const OTHER_TENANT_ID = "aa0e8400-e29b-41d4-a716-446655440000";
 export const TEST_GUEST_ID = "770e8400-e29b-41d4-a716-446655440000";
 export const TEST_PROPERTY_ID = "880e8400-e29b-41d4-a716-446655440000";
 export const TEST_ROOM_TYPE_ID = "990e8400-e29b-41d4-a716-446655440010";
@@ -155,6 +156,56 @@ export const MANAGER_USER_ID = "550e8400-e29b-41d4-a716-446655440001";
 export const STAFF_USER_ID = "550e8400-e29b-41d4-a716-446655440002";
 export const VIEWER_USER_ID = "550e8400-e29b-41d4-a716-446655440003";
 export const MODULE_DISABLED_USER_ID = "550e8400-e29b-41d4-a716-446655440004";
+export const OWNER_USER_ID = "550e8400-e29b-41d4-a716-446655440005";
+
+type MockUser = {
+  id: string;
+  username: string;
+  email: string;
+};
+
+type MockAssociation = {
+  id: string;
+  user_id: string;
+  tenant_id: string;
+  role: string;
+  is_active: boolean;
+  is_deleted: boolean;
+  deleted_at: Date | null;
+};
+
+type MockTenant = {
+  id: string;
+  name: string;
+  slug: string;
+};
+
+const mockUsers = new Map<string, MockUser>();
+const mockAssociations = new Map<string, MockAssociation>();
+const mockTenants = new Map<string, MockTenant>();
+
+export const resetMockData = (): void => {
+  mockUsers.clear();
+  mockAssociations.clear();
+  mockTenants.clear();
+  mockUsers.set(TEST_USER_ID, {
+    id: TEST_USER_ID,
+    username: TEST_USER_USERNAME,
+    email: "test@example.com",
+  });
+  mockTenants.set(TEST_TENANT_ID, {
+    id: TEST_TENANT_ID,
+    name: "Test Tenant",
+    slug: "test-tenant",
+  });
+  mockTenants.set(OTHER_TENANT_ID, {
+    id: OTHER_TENANT_ID,
+    name: "Other Tenant",
+    slug: "other-tenant",
+  });
+};
+
+resetMockData();
 
 // Mock query function
 export const query = vi.fn(async <T extends pg.QueryResultRow = pg.QueryResultRow>(
@@ -165,6 +216,7 @@ export const query = vi.fn(async <T extends pg.QueryResultRow = pg.QueryResultRo
 
   const buildSystemAdminRow = () => ({
     id: TEST_SYSTEM_ADMIN_ID,
+    tenant_id: TEST_TENANT_ID,
     username: TEST_SYSTEM_ADMIN_USERNAME,
     email: "sysadmin@example.com",
     password_hash: TEST_SYSTEM_ADMIN_PASSWORD_HASH,
@@ -352,6 +404,22 @@ export const query = vi.fn(async <T extends pg.QueryResultRow = pg.QueryResultRo
     };
   }
 
+  if (
+    sql.startsWith("select") &&
+    sql.includes("from tenants") &&
+    sql.includes("where slug = $1")
+  ) {
+    const slug = typeof params?.[0] === "string" ? (params?.[0] as string) : "";
+    const match = Array.from(mockTenants.values()).find((tenant) => tenant.slug === slug);
+    return {
+      rows: match ? ([{ id: match.id }] as unknown as T[]) : ([] as T[]),
+      rowCount: match ? 1 : 0,
+      command: "SELECT",
+      oid: 0,
+      fields: [],
+    };
+  }
+
   // Mock active memberships query (used by auth plugin)
   if (sql.includes("user_tenant_associations") && sql.includes("where uta.user_id")) {
     const userId = params?.[0];
@@ -461,6 +529,33 @@ export const query = vi.fn(async <T extends pg.QueryResultRow = pg.QueryResultRo
         };
       }
 
+      if (userId === OWNER_USER_ID) {
+        return {
+          rows: [
+            {
+              tenant_id: TEST_TENANT_ID,
+              role: "OWNER",
+              is_active: true,
+              permissions: {},
+              tenant_name: "Test Tenant",
+              modules: [
+                "core",
+                "finance-automation",
+                "tenant-owner-portal",
+                "facility-maintenance",
+                "analytics-bi",
+                "marketing-channel",
+                "enterprise-api",
+              ],
+            },
+          ] as unknown as T[],
+          rowCount: 1,
+          command: "SELECT",
+          oid: 0,
+          fields: [],
+        };
+      }
+
       return {
         rows: [] as T[],
         rowCount: 0,
@@ -475,26 +570,31 @@ export const query = vi.fn(async <T extends pg.QueryResultRow = pg.QueryResultRo
   if (
     sql.includes("select") &&
     sql.includes("from public.tenants t") &&
+    sql.includes("where t.id !=")
+  ) {
+    return {
+      rows: [
+        {
+          id: OTHER_TENANT_ID,
+        },
+      ] as unknown as T[],
+      rowCount: 1,
+      command: "SELECT",
+      oid: 0,
+      fields: [],
+    };
+  }
+
+  if (
+    sql.includes("select") &&
+    sql.includes("from public.tenants t") &&
     sql.includes("t.name")
   ) {
-    if (sql.includes("where t.id !=")) {
-      return {
-        rows: [
-          {
-            id: "aa0e8400-e29b-41d4-a716-446655440000",
-          },
-        ] as unknown as T[],
-        rowCount: 1,
-        command: "SELECT",
-        oid: 0,
-        fields: [],
-      };
-    }
-
     return {
       rows: [
         {
           id: TEST_TENANT_ID,
+          tenant_id: TEST_TENANT_ID,
           name: "Test Tenant",
           slug: "test-tenant",
           type: "CHAIN", // Must match TenantTypeEnum
@@ -514,6 +614,7 @@ export const query = vi.fn(async <T extends pg.QueryResultRow = pg.QueryResultRo
           // Match TenantConfigSchema
           config: {
             features: ["reservations", "payments", "housekeeping"],
+            tenant_id: TEST_TENANT_ID,
             maxUsers: 10,
             maxProperties: 5,
             brandingEnabled: true,
@@ -554,6 +655,36 @@ export const query = vi.fn(async <T extends pg.QueryResultRow = pg.QueryResultRo
   }
 
   if (sql.includes("from public.user_tenant_associations uta") && sql.includes("distinct uta.user_id")) {
+    if (sql.includes("uta.role = 'admin'")) {
+      return {
+        rows: [
+          {
+            user_id: TEST_USER_ID,
+            tenant_id: TEST_TENANT_ID,
+          },
+        ] as unknown as T[],
+        rowCount: 1,
+        command: "SELECT",
+        oid: 0,
+        fields: [],
+      };
+    }
+
+    if (sql.includes("uta.role = 'owner'")) {
+      return {
+        rows: [
+          {
+            user_id: OWNER_USER_ID,
+            tenant_id: TEST_TENANT_ID,
+          },
+        ] as unknown as T[],
+        rowCount: 1,
+        command: "SELECT",
+        oid: 0,
+        fields: [],
+      };
+    }
+
     if (sql.includes("uta.role = 'staff'")) {
       return {
         rows: [
@@ -597,6 +728,190 @@ export const query = vi.fn(async <T extends pg.QueryResultRow = pg.QueryResultRo
         fields: [],
       };
     }
+  }
+
+  if (
+    sql.startsWith("select") &&
+    (sql.includes("from public.users") || sql.includes("from users")) &&
+    sql.includes("where (username = $1 or email = $2)")
+  ) {
+    const username = params?.[0];
+    const email = params?.[1];
+    const match = Array.from(mockUsers.values()).find(
+      (user) => user.username === username || user.email === email,
+    );
+
+    return {
+      rows: match ? ([match] as unknown as T[]) : ([] as T[]),
+      rowCount: match ? 1 : 0,
+      command: "SELECT",
+      oid: 0,
+      fields: [],
+    };
+  }
+
+  if (sql.startsWith("insert into tenants") || sql.startsWith("insert into public.tenants")) {
+    const id = randomUUID();
+    const name = typeof params?.[0] === "string" ? (params?.[0] as string) : "";
+    const slug = typeof params?.[1] === "string" ? (params?.[1] as string) : "";
+    mockTenants.set(id, { id, name, slug });
+    return {
+      rows: [
+        {
+          id,
+          name,
+          slug,
+        },
+      ] as unknown as T[],
+      rowCount: 1,
+      command: "INSERT",
+      oid: 0,
+      fields: [],
+    };
+  }
+
+  if (
+    sql.startsWith("insert into users") ||
+    sql.startsWith("insert into public.users")
+  ) {
+    const id = randomUUID();
+    const username = typeof params?.[0] === "string" ? (params?.[0] as string) : "";
+    const email = typeof params?.[1] === "string" ? (params?.[1] as string) : "";
+    mockUsers.set(id, { id, username, email });
+    return {
+      rows: [
+        {
+          id,
+          username,
+          email,
+        },
+      ] as unknown as T[],
+      rowCount: 1,
+      command: "INSERT",
+      oid: 0,
+      fields: [],
+    };
+  }
+
+  if (
+    sql.startsWith("insert into properties") ||
+    sql.startsWith("insert into public.properties")
+  ) {
+    const id = randomUUID();
+    const propertyName = typeof params?.[1] === "string" ? (params?.[1] as string) : "";
+    const propertyCode = typeof params?.[2] === "string" ? (params?.[2] as string) : "";
+    return {
+      rows: [
+        {
+          id,
+          property_name: propertyName,
+          property_code: propertyCode,
+        },
+      ] as unknown as T[],
+      rowCount: 1,
+      command: "INSERT",
+      oid: 0,
+      fields: [],
+    };
+  }
+
+  if (
+    sql.startsWith("select") &&
+    sql.includes("from public.user_tenant_associations") &&
+    sql.includes("where user_id = $1") &&
+    sql.includes("tenant_id = $2") &&
+    sql.includes("limit 1")
+  ) {
+    const userId = params?.[0];
+    const tenantId = params?.[1];
+    const match = Array.from(mockAssociations.values()).find(
+      (assoc) => assoc.user_id === userId && assoc.tenant_id === tenantId,
+    );
+
+    return {
+      rows: match ? ([match] as unknown as T[]) : ([] as T[]),
+      rowCount: match ? 1 : 0,
+      command: "SELECT",
+      oid: 0,
+      fields: [],
+    };
+  }
+
+  if (
+    sql.startsWith("insert into user_tenant_associations") ||
+    sql.startsWith("insert into public.user_tenant_associations")
+  ) {
+    const userId = typeof params?.[0] === "string" ? (params?.[0] as string) : "";
+    const tenantId = typeof params?.[1] === "string" ? (params?.[1] as string) : "";
+    const role = typeof params?.[2] === "string" ? (params?.[2] as string) : "STAFF";
+    const id = randomUUID();
+    mockAssociations.set(id, {
+      id,
+      user_id: userId,
+      tenant_id: tenantId,
+      role,
+      is_active: true,
+      is_deleted: false,
+      deleted_at: null,
+    });
+    return {
+      rows: [] as unknown as T[],
+      rowCount: 1,
+      command: "INSERT",
+      oid: 0,
+      fields: [],
+    };
+  }
+
+  if (
+    sql.startsWith("update public.user_tenant_associations") &&
+    (sql.includes("set role =") || sql.includes("set is_active ="))
+  ) {
+    const userId = params?.[0];
+    const tenantId = params?.[1];
+    const association = Array.from(mockAssociations.values()).find(
+      (assoc) => assoc.user_id === userId && assoc.tenant_id === tenantId,
+    );
+
+    if (association) {
+      if (sql.includes("set role =")) {
+        association.role = params?.[2] as string;
+      }
+      if (sql.includes("set is_active =")) {
+        association.is_active = Boolean(params?.[2]);
+      }
+      return {
+        rows: [
+          {
+            id: association.id,
+            role: association.role,
+            is_active: association.is_active,
+          },
+        ] as unknown as T[],
+        rowCount: 1,
+        command: "UPDATE",
+        oid: 0,
+        fields: [],
+      };
+    }
+
+    return {
+      rows: [] as unknown as T[],
+      rowCount: 0,
+      command: "UPDATE",
+      oid: 0,
+      fields: [],
+    };
+  }
+
+  if (sql === "begin" || sql === "commit" || sql === "rollback") {
+    return {
+      rows: [] as unknown as T[],
+      rowCount: 1,
+      command: sql.toUpperCase(),
+      oid: 0,
+      fields: [],
+    };
   }
 
 
@@ -846,6 +1161,57 @@ export const query = vi.fn(async <T extends pg.QueryResultRow = pg.QueryResultRo
     };
   }
 
+  if (
+    sql.startsWith("update public.users") &&
+    sql.includes("set mfa_secret =") &&
+    sql.includes("mfa_enabled =")
+  ) {
+    tenantAuthState.mfaSecret = typeof params?.[0] === "string" ? (params?.[0] as string) : "";
+    tenantAuthState.mfaEnabled = Boolean(params?.[1]);
+    return {
+      rows: [] as T[],
+      rowCount: 1,
+      command: "UPDATE",
+      oid: 0,
+      fields: [],
+    };
+  }
+
+  if (
+    sql.startsWith("select") &&
+    sql.includes("from public.users") &&
+    sql.includes("mfa_secret") &&
+    sql.includes("mfa_enabled") &&
+    sql.includes("where id = $1")
+  ) {
+    const userId = params?.[0];
+    if (userId !== TEST_USER_ID) {
+      return {
+        rows: [] as unknown as T[],
+        rowCount: 0,
+        command: "SELECT",
+        oid: 0,
+        fields: [],
+      };
+    }
+    return {
+      rows: [
+        {
+          id: TEST_USER_ID,
+          username: TEST_USER_USERNAME,
+          email: "test@example.com",
+          is_active: true,
+          mfa_secret: tenantAuthState.mfaSecret,
+          mfa_enabled: tenantAuthState.mfaEnabled,
+        },
+      ] as unknown as T[],
+      rowCount: 1,
+      command: "SELECT",
+      oid: 0,
+      fields: [],
+    };
+  }
+
   if (sql.includes("password_hash") && sql.includes("from public.users")) {
     return {
       rows: [
@@ -942,7 +1308,10 @@ export const query = vi.fn(async <T extends pg.QueryResultRow = pg.QueryResultRo
 // Mock pool
 export const pool = {
   query,
-  connect: vi.fn(),
+  connect: vi.fn(async () => ({
+    query,
+    release: vi.fn(),
+  })),
   end: vi.fn(),
   on: vi.fn(),
 } as unknown as pg.Pool;

@@ -84,6 +84,30 @@ const ensureAdminAuthorized = (
   return true;
 };
 
+const isAdminTokenConfigured = (): boolean =>
+  config.guard.manualRelease.tokens.length > 0;
+
+const ensureHttpAuthorized = (
+  request: { headers: Record<string, unknown> },
+  reply: {
+    code: (statusCode: number) => unknown;
+    send: (body: unknown) => unknown;
+  },
+): boolean => {
+  if (!isAdminTokenConfigured()) {
+    return true;
+  }
+  const token = extractAdminToken(
+    request.headers["x-guard-admin-token"] as string | string[] | undefined,
+  );
+  if (!token || !config.guard.manualRelease.tokens.includes(token)) {
+    void reply.code(403);
+    void reply.send({ error: "admin_token_required" });
+    return false;
+  }
+  return true;
+};
+
 const manualReleaseNotificationTestSchema = z.object({
   lockId: z.string().uuid(),
   tenantId: z.string().uuid(),
@@ -101,6 +125,12 @@ const manualReleaseNotificationTestSchema = z.object({
 
 export const locksRoutes = fastifyPlugin(
   (app: FastifyInstance, _opts, done): void => {
+    app.addHook("preHandler", async (request, reply) => {
+      if (!ensureHttpAuthorized(request, reply)) {
+        return reply;
+      }
+    });
+
     app.post(
       "/v1/locks",
       {

@@ -1,0 +1,425 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "@tartware/guests-service API",
+    "version": "0.1.0",
+    "description": "Guests domain service for Tartware PMS"
+  },
+  "components": {
+    "schemas": {}
+  },
+  "paths": {
+    "/health": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        }
+      }
+    },
+    "/ready": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        }
+      }
+    },
+    "/v1/guests": {
+      "get": {
+        "summary": "List guests with optional filters",
+        "tags": [
+          "Guests"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "integer",
+              "exclusiveMinimum": 0,
+              "maximum": 100,
+              "default": 50
+            },
+            "in": "query",
+            "name": "limit",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "in": "query",
+            "name": "tenant_id",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "in": "query",
+            "name": "property_id",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 3,
+              "maxLength": 255
+            },
+            "in": "query",
+            "name": "email",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 3,
+              "maxLength": 20
+            },
+            "in": "query",
+            "name": "phone",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 50
+            },
+            "in": "query",
+            "name": "loyalty_tier",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "boolean"
+            },
+            "in": "query",
+            "name": "vip_status",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "boolean"
+            },
+            "in": "query",
+            "name": "is_blacklisted",
+            "required": false
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "format": "uuid"
+                      },
+                      "tenant_id": {
+                        "type": "string",
+                        "format": "uuid"
+                      },
+                      "first_name": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "last_name": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "middle_name": {
+                        "type": "string"
+                      },
+                      "title": {
+                        "type": "string"
+                      },
+                      "date_of_birth": {
+                        "type": "string",
+                        "format": "date-time"
+                      },
+                      "gender": {
+                        "type": "string"
+                      },
+                      "nationality": {
+                        "type": "string"
+                      },
+                      "email": {
+                        "type": "string",
+                        "format": "email",
+                        "description": "Email address"
+                      },
+                      "phone": {
+                        "type": "string",
+                        "pattern": "^\\+?[1-9]\\d{1,14}$",
+                        "description": "Phone number in international format"
+                      },
+                      "secondary_phone": {
+                        "type": "string",
+                        "pattern": "^\\+?[1-9]\\d{1,14}$",
+                        "description": "Phone number in international format"
+                      },
+                      "address": {
+                        "type": "object",
+                        "properties": {
+                          "street": {
+                            "type": "string"
+                          },
+                          "city": {
+                            "type": "string"
+                          },
+                          "state": {
+                            "type": "string"
+                          },
+                          "postalCode": {
+                            "type": "string"
+                          },
+                          "country": {
+                            "type": "string"
+                          }
+                        },
+                        "additionalProperties": false,
+                        "default": {}
+                      },
+                      "id_type": {
+                        "type": "string"
+                      },
+                      "id_number": {
+                        "type": "string"
+                      },
+                      "passport_number": {
+                        "type": "string"
+                      },
+                      "passport_expiry": {
+                        "type": "string",
+                        "format": "date-time"
+                      },
+                      "company_name": {
+                        "type": "string"
+                      },
+                      "company_tax_id": {
+                        "type": "string"
+                      },
+                      "loyalty_tier": {
+                        "type": "string"
+                      },
+                      "loyalty_points": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "default": 0
+                      },
+                      "vip_status": {
+                        "type": "boolean",
+                        "default": false
+                      },
+                      "preferences": {
+                        "type": "object",
+                        "properties": {
+                          "smoking": {
+                            "type": "boolean",
+                            "default": false
+                          },
+                          "language": {
+                            "type": "string",
+                            "minLength": 2,
+                            "maxLength": 2,
+                            "default": "en"
+                          },
+                          "dietaryRestrictions": {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            },
+                            "default": []
+                          },
+                          "specialRequests": {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            },
+                            "default": []
+                          },
+                          "roomType": {
+                            "type": "string"
+                          },
+                          "floor": {
+                            "type": "string"
+                          },
+                          "bedType": {
+                            "type": "string",
+                            "enum": [
+                              "KING",
+                              "QUEEN",
+                              "TWIN",
+                              "DOUBLE"
+                            ]
+                          }
+                        },
+                        "additionalProperties": true,
+                        "default": {}
+                      },
+                      "marketing_consent": {
+                        "type": "boolean",
+                        "default": false
+                      },
+                      "communication_preferences": {
+                        "type": "object",
+                        "properties": {
+                          "email": {
+                            "type": "boolean",
+                            "default": true
+                          },
+                          "sms": {
+                            "type": "boolean",
+                            "default": false
+                          },
+                          "phone": {
+                            "type": "boolean",
+                            "default": true
+                          },
+                          "post": {
+                            "type": "boolean",
+                            "default": false
+                          }
+                        },
+                        "additionalProperties": false,
+                        "default": {}
+                      },
+                      "total_bookings": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "default": 0
+                      },
+                      "total_nights": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "default": 0
+                      },
+                      "total_revenue": {
+                        "type": "number",
+                        "multipleOf": 0.01,
+                        "minimum": 0,
+                        "description": "Monetary amount with 2 decimal precision",
+                        "default": 0
+                      },
+                      "last_stay_date": {
+                        "type": "string",
+                        "format": "date-time"
+                      },
+                      "is_blacklisted": {
+                        "type": "boolean",
+                        "default": false
+                      },
+                      "blacklist_reason": {
+                        "type": "string"
+                      },
+                      "notes": {
+                        "type": "string"
+                      },
+                      "metadata": {
+                        "type": "object",
+                        "additionalProperties": {},
+                        "description": "Flexible JSONB metadata object"
+                      },
+                      "created_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "default": {},
+                        "description": "Timestamp when record was created"
+                      },
+                      "updated_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "description": "Timestamp when record was last updated"
+                      },
+                      "created_by": {
+                        "type": "string",
+                        "format": "uuid",
+                        "description": "User ID who created the record"
+                      },
+                      "updated_by": {
+                        "type": "string",
+                        "format": "uuid",
+                        "description": "User ID who last updated the record"
+                      },
+                      "is_deleted": {
+                        "type": "boolean",
+                        "default": false,
+                        "description": "Soft delete flag (FALSE = active)"
+                      },
+                      "deleted_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "nullable": true,
+                        "description": "Timestamp when record was soft-deleted (NULL = active)"
+                      },
+                      "deleted_by": {
+                        "type": "string",
+                        "maxLength": 100,
+                        "nullable": true,
+                        "description": "User identifier who performed soft delete"
+                      },
+                      "version": {
+                        "type": "string"
+                      },
+                      "upcoming_reservations": {
+                        "type": "integer",
+                        "minimum": 0
+                      },
+                      "past_reservations": {
+                        "type": "integer",
+                        "minimum": 0
+                      },
+                      "cancelled_reservations": {
+                        "type": "integer",
+                        "minimum": 0
+                      },
+                      "average_stay_length": {
+                        "type": "number",
+                        "minimum": 0
+                      },
+                      "preferred_room_types": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      "lifetime_value": {
+                        "type": "number",
+                        "multipleOf": 0.01,
+                        "minimum": 0,
+                        "description": "Monetary amount with 2 decimal precision"
+                      }
+                    },
+                    "required": [
+                      "id",
+                      "tenant_id",
+                      "first_name",
+                      "last_name",
+                      "email",
+                      "version"
+                    ],
+                    "additionalProperties": false
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "servers": [
+    {
+      "url": "/"
+    }
+  ]
+}

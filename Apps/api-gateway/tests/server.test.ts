@@ -28,7 +28,7 @@ vi.mock("../src/utils/proxy.js", () => ({
 vi.mock("../src/services/membership-service.js", () => ({
   getUserMemberships: vi.fn(async () => [
     {
-      tenantId: "tenant-123",
+      tenantId: "11111111-1111-1111-1111-111111111111",
       tenantName: "Demo Hotel",
       role: "MANAGER",
       isActive: true,
