@@ -1,6 +1,7 @@
+import { randomUUID } from "node:crypto";
+
 import { buildRouteSchema, errorResponseSchema, schemaFromZod } from "@tartware/openapi";
 import { TenantTypeEnum, TenantWithRelationsSchema } from "@tartware/schemas";
-import { randomUUID } from "crypto";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 
