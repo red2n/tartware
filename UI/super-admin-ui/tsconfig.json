@@ -27,8 +27,35 @@
       "ui-theme": [
         "./dist/ui-theme"
       ],
+      "@tartware/schemas": [
+        "../../schema/src/index.ts"
+      ],
+      "@tartware/schemas/enums": [
+        "../../schema/src/shared/enums.ts"
+      ],
+      "@tartware/schemas/core/*": [
+        "../../schema/src/schemas/01-core/*"
+      ],
+      "@tartware/schemas/bookings/*": [
+        "../../schema/src/schemas/03-bookings/*"
+      ],
+      "@tartware/schemas/inventory/*": [
+        "../../schema/src/schemas/02-inventory/*"
+      ],
+      "@tartware/schemas/financial/*": [
+        "../../schema/src/schemas/04-financial/*"
+      ],
+      "@tartware/schemas/operations/*": [
+        "../../schema/src/schemas/05-operations/*"
+      ],
+      "@tartware/schemas/integrations/*": [
+        "../../schema/src/schemas/06-integrations/*"
+      ],
+      "@tartware/schemas/analytics/*": [
+        "../../schema/src/schemas/07-analytics/*"
+      ],
       "@tartware/schemas/*": [
-        "../../schema/dist/*"
+        "../../schema/src/*"
       ],
       "rxjs": [
         "../../node_modules/rxjs"

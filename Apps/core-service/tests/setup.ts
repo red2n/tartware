@@ -4,12 +4,14 @@ import {
   resetSystemAdminState,
   resetTenantAuthState,
   resetBreakGlassCodes,
+  resetMockData,
   TEST_TENANT_ID,
   TEST_USER_ID,
   MANAGER_USER_ID,
   STAFF_USER_ID,
   VIEWER_USER_ID,
   MODULE_DISABLED_USER_ID,
+  OWNER_USER_ID,
 } from "./mocks/db.js";
 import type { CachedMembership } from "../src/services/user-cache-service.js";
 import type { TenantMembership } from "../src/types/auth.js";
@@ -117,6 +119,24 @@ const membershipByUser: Record<string, TenantMembership[]> = {
       modules: ["finance-automation"],
     },
   ],
+  [OWNER_USER_ID]: [
+    {
+      tenantId: TEST_TENANT_ID,
+      tenantName: "Test Tenant",
+      role: "OWNER",
+      isActive: true,
+      permissions: {},
+      modules: [
+        "core",
+        "finance-automation",
+        "tenant-owner-portal",
+        "facility-maintenance",
+        "analytics-bi",
+        "marketing-channel",
+        "enterprise-api",
+      ],
+    },
+  ],
 };
 
 vi.mock("../src/services/user-cache-service.js", async () => {
@@ -153,6 +173,7 @@ const ensureRateLimiterResetter = async () => {
 };
 
 beforeAll(async () => {
+  resetMockData();
   console.log("✓ Database mocks initialized for tests");
 });
 

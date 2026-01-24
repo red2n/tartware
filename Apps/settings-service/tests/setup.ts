@@ -1,5 +1,7 @@
 import { generateKeyPairSync } from "node:crypto";
 
+import { vi } from "vitest";
+
 process.env.NODE_ENV = process.env.NODE_ENV ?? "test";
 process.env.PORT = process.env.PORT ?? "3100";
 process.env.HOST = process.env.HOST ?? "127.0.0.1";
@@ -8,6 +10,18 @@ process.env.LOG_PRETTY = process.env.LOG_PRETTY ?? "false";
 process.env.LOG_REQUESTS = process.env.LOG_REQUESTS ?? "false";
 process.env.SERVICE_NAME = process.env.SERVICE_NAME ?? "@tartware/settings-service";
 process.env.SERVICE_VERSION = process.env.SERVICE_VERSION ?? "test";
+
+const TEST_TENANT_ID = "11111111-1111-1111-1111-111111111111";
+
+vi.mock("../src/services/membership-service.js", () => ({
+  getUserTenantMembership: vi.fn(async () => ({
+    tenantId: TEST_TENANT_ID,
+    role: "ADMIN",
+    isActive: true,
+    permissions: {},
+    modules: ["settings"],
+  })),
+}));
 process.env.JWT_AUDIENCE = process.env.JWT_AUDIENCE ?? "test-audience";
 process.env.JWT_ISSUER = process.env.JWT_ISSUER ?? "https://auth.tartware.test";
 process.env.SETTINGS_DATA_SOURCE = process.env.SETTINGS_DATA_SOURCE ?? "seed";

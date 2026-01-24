@@ -1,0 +1,210 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "@tartware/core-service API",
+    "version": "0.1.0",
+    "description": "Billing and payments service for Tartware PMS"
+  },
+  "components": {
+    "schemas": {}
+  },
+  "paths": {
+    "/health": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        }
+      }
+    },
+    "/ready": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        }
+      }
+    },
+    "/v1/billing/payments": {
+      "get": {
+        "summary": "List billing payments with optional filters",
+        "tags": [
+          "Billing"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "in": "query",
+            "name": "tenant_id",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "in": "query",
+            "name": "property_id",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "status",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "transaction_type",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "payment_method",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "exclusiveMinimum": 0,
+              "maximum": 200,
+              "default": 100
+            },
+            "in": "query",
+            "name": "limit",
+            "required": false
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "format": "uuid"
+                      },
+                      "tenant_id": {
+                        "type": "string",
+                        "format": "uuid"
+                      },
+                      "property_id": {
+                        "type": "string",
+                        "format": "uuid"
+                      },
+                      "property_name": {
+                        "type": "string"
+                      },
+                      "reservation_id": {
+                        "type": "string",
+                        "format": "uuid"
+                      },
+                      "confirmation_number": {
+                        "type": "string"
+                      },
+                      "guest_id": {
+                        "type": "string",
+                        "format": "uuid"
+                      },
+                      "guest_name": {
+                        "type": "string"
+                      },
+                      "payment_reference": {
+                        "type": "string"
+                      },
+                      "external_transaction_id": {
+                        "type": "string"
+                      },
+                      "transaction_type": {
+                        "type": "string"
+                      },
+                      "transaction_type_display": {
+                        "type": "string"
+                      },
+                      "payment_method": {
+                        "type": "string"
+                      },
+                      "payment_method_display": {
+                        "type": "string"
+                      },
+                      "status": {
+                        "type": "string"
+                      },
+                      "status_display": {
+                        "type": "string"
+                      },
+                      "amount": {
+                        "type": "number"
+                      },
+                      "currency": {
+                        "type": "string"
+                      },
+                      "processed_at": {
+                        "type": "string"
+                      },
+                      "created_at": {
+                        "type": "string"
+                      },
+                      "updated_at": {
+                        "type": "string"
+                      },
+                      "version": {
+                        "type": "string"
+                      },
+                      "gateway_name": {
+                        "type": "string"
+                      },
+                      "gateway_reference": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "id",
+                      "tenant_id",
+                      "property_id",
+                      "payment_reference",
+                      "transaction_type",
+                      "transaction_type_display",
+                      "payment_method",
+                      "payment_method_display",
+                      "status",
+                      "status_display",
+                      "amount",
+                      "currency",
+                      "created_at",
+                      "version"
+                    ],
+                    "additionalProperties": false
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "servers": [
+    {
+      "url": "/"
+    }
+  ]
+}

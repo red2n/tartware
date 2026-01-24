@@ -14,7 +14,8 @@
     "@fastify/cors",
     "@fastify/helmet",
     "@fastify/sensible",
-    "@tartware/fastify-server"
+    "@tartware/fastify-server",
+    "ast-v8-to-istanbul"
   ],
   "ignoreBinaries": [
     "tsx",

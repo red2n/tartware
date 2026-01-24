@@ -75,3 +75,121 @@ describe("CacheService.delPattern", () => {
     redisSpy.mockRestore();
   });
 });
+
+describe("CacheService basic operations", () => {
+  const originalEnabled = config.redis.enabled;
+
+  beforeEach(() => {
+    config.redis.enabled = true;
+  });
+
+  afterEach(() => {
+    config.redis.enabled = originalEnabled;
+    vi.restoreAllMocks();
+  });
+
+  it("gets cached entries and respects prefixes", async () => {
+    const mockRedis = {
+      get: vi.fn(async (key: string) => {
+        expect(key).toBe("user:123");
+        return JSON.stringify({ data: { id: "123" }, cachedAt: 1, ttl: 60 });
+      }),
+    };
+
+    vi
+      .spyOn(cacheService as unknown as { getRedisClient: () => typeof mockRedis }, "getRedisClient")
+      .mockReturnValue(mockRedis as unknown as typeof mockRedis);
+
+    const result = await cacheService.get<{ id: string }>("123", { prefix: "user" });
+    expect(result).toEqual({ id: "123" });
+  });
+
+  it("returns null when cached entry is not valid JSON", async () => {
+    const mockRedis = {
+      get: vi.fn(async () => "not-json"),
+    };
+
+    vi
+      .spyOn(cacheService as unknown as { getRedisClient: () => typeof mockRedis }, "getRedisClient")
+      .mockReturnValue(mockRedis as unknown as typeof mockRedis);
+
+    const result = await cacheService.get<{ id: string }>("123", { prefix: "user" });
+    expect(result).toBeNull();
+  });
+
+  it("stores entries with TTL using setex", async () => {
+    const mockRedis = {
+      setex: vi.fn(async () => "OK"),
+    };
+
+    vi.spyOn(Date, "now").mockReturnValue(123);
+    vi
+      .spyOn(cacheService as unknown as { getRedisClient: () => typeof mockRedis }, "getRedisClient")
+      .mockReturnValue(mockRedis as unknown as typeof mockRedis);
+
+    const stored = await cacheService.set("abc", { ok: true }, { prefix: "session", ttl: 42 });
+
+    expect(stored).toBe(true);
+    const [[key, ttl, payload]] = mockRedis.setex.mock.calls;
+    expect(key).toBe("session:abc");
+    expect(ttl).toBe(42);
+    expect(JSON.parse(payload)).toEqual({ data: { ok: true }, cachedAt: 123, ttl: 42 });
+  });
+
+  it("returns a map for mget and skips invalid entries", async () => {
+    const mockRedis = {
+      mget: vi.fn(async () => [
+        JSON.stringify({ data: { name: "alpha" }, cachedAt: 1, ttl: 5 }),
+        "broken-json",
+      ]),
+    };
+
+    vi
+      .spyOn(cacheService as unknown as { getRedisClient: () => typeof mockRedis }, "getRedisClient")
+      .mockReturnValue(mockRedis as unknown as typeof mockRedis);
+
+    const result = await cacheService.mget<{ name: string }>(["a", "b"], { prefix: "item" });
+
+    expect(mockRedis.mget).toHaveBeenCalledWith("item:a", "item:b");
+    expect(result.size).toBe(1);
+    expect(result.get("a")).toEqual({ name: "alpha" });
+  });
+
+  it("writes multiple entries with pipeline setex", async () => {
+    const pipeline = {
+      setex: vi.fn().mockReturnThis(),
+      exec: vi.fn(async () => []),
+    };
+    const mockRedis = {
+      pipeline: vi.fn(() => pipeline),
+    };
+
+    vi
+      .spyOn(cacheService as unknown as { getRedisClient: () => typeof mockRedis }, "getRedisClient")
+      .mockReturnValue(mockRedis as unknown as typeof mockRedis);
+
+    const entries = new Map<string, { value: number }>([
+      ["one", { value: 1 }],
+      ["two", { value: 2 }],
+    ]);
+
+    const stored = await cacheService.mset(entries, { prefix: "batch", ttl: 90 });
+
+    expect(stored).toBe(true);
+    expect(pipeline.setex).toHaveBeenCalledTimes(2);
+    expect(pipeline.exec).toHaveBeenCalledTimes(1);
+  });
+
+  it("expires keys when Redis confirms the update", async () => {
+    const mockRedis = {
+      expire: vi.fn(async () => 1),
+    };
+
+    vi
+      .spyOn(cacheService as unknown as { getRedisClient: () => typeof mockRedis }, "getRedisClient")
+      .mockReturnValue(mockRedis as unknown as typeof mockRedis);
+
+    const result = await cacheService.expire("token", 300, { prefix: "session" });
+    expect(result).toBe(true);
+  });
+});

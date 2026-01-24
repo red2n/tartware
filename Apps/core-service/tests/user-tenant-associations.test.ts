@@ -1,8 +1,10 @@
+import { randomUUID } from "node:crypto";
 import { describe, it, expect, beforeAll } from "vitest";
 import { buildServer } from "../src/server.js";
 import { query } from "../src/lib/db.js";
 import type { FastifyInstance } from "fastify";
 import { buildAuthHeader } from "./utils/auth.js";
+import { hashPassword } from "../src/utils/password.js";
 
 describe("User-Tenant Associations Endpoint", () => {
   let app: FastifyInstance;
@@ -12,6 +14,7 @@ describe("User-Tenant Associations Endpoint", () => {
   let ownerTenantId: string | null = null;
   let managerUserId: string | null = null;
   let otherTenantId: string | null = null;
+  let managedUserId: string | null = null;
 
   beforeAll(async () => {
     app = buildServer();
@@ -72,6 +75,34 @@ describe("User-Tenant Associations Endpoint", () => {
     );
     if (otherTenantResult.rows.length > 0) {
       otherTenantId = otherTenantResult.rows[0]?.id ?? null;
+    }
+
+    if (adminUserId && adminTenantId) {
+      const uniqueId = randomUUID().slice(0, 8);
+      const passwordHash = await hashPassword("TempPass123!");
+      const userResult = await query<{ id: string }>(
+        `INSERT INTO users
+          (username, email, password_hash, first_name, last_name, is_active, is_verified, created_by, updated_by)
+         VALUES ($1, $2, $3, $4, $5, true, false, $6, $6)
+         RETURNING id`,
+        [
+          `assoc_user_${uniqueId}`,
+          `assoc_user_${uniqueId}@example.com`,
+          passwordHash,
+          "Assoc",
+          "User",
+          adminUserId,
+        ],
+      );
+
+      managedUserId = userResult.rows[0]?.id ?? null;
+      if (managedUserId) {
+        await query(
+          `INSERT INTO user_tenant_associations (user_id, tenant_id, role, is_active)
+           VALUES ($1, $2, 'STAFF', true)`,
+          [managedUserId, adminTenantId],
+        );
+      }
     }
   });
 
@@ -379,6 +410,52 @@ describe("User-Tenant Associations Endpoint", () => {
       });
 
       expect(response.statusCode).toBe(400);
+    });
+  });
+
+  describe("POST /v1/user-tenant-associations - Tenant Admin Cases", () => {
+    it("should allow ADMIN to update a user's role", async () => {
+      if (!adminUserId || !adminTenantId || !managedUserId) {
+        console.warn("⚠ Skipping test: missing admin or managed user");
+        return;
+      }
+
+      const response = await app.inject({
+        method: "POST",
+        url: "/v1/user-tenant-associations/role",
+        headers: buildAuthHeader(adminUserId),
+        payload: {
+          tenant_id: adminTenantId,
+          user_id: managedUserId,
+          role: "MANAGER",
+        },
+      });
+
+      expect(response.statusCode).toBe(200);
+      const payload = JSON.parse(response.payload);
+      expect(payload).toHaveProperty("role", "MANAGER");
+    });
+
+    it("should allow ADMIN to deactivate a user's tenant access", async () => {
+      if (!adminUserId || !adminTenantId || !managedUserId) {
+        console.warn("⚠ Skipping test: missing admin or managed user");
+        return;
+      }
+
+      const response = await app.inject({
+        method: "POST",
+        url: "/v1/user-tenant-associations/status",
+        headers: buildAuthHeader(adminUserId),
+        payload: {
+          tenant_id: adminTenantId,
+          user_id: managedUserId,
+          is_active: false,
+        },
+      });
+
+      expect(response.statusCode).toBe(200);
+      const payload = JSON.parse(response.payload);
+      expect(payload).toHaveProperty("is_active", false);
     });
   });
 });

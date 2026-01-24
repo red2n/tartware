@@ -52,9 +52,11 @@
     "roll:replay": "npm run replay --workspace=Apps/roll-service --"
   },
   "devDependencies": {
+    "@biomejs/biome": "^2.3.12",
     "concurrently": "^9.2.1",
     "eslint": "8.57.0",
     "lerna": "^9.0.1",
+    "lodash": "^4.17.23",
     "tinyglobby": "^0.2.15"
   },
   "keywords": [
@@ -75,7 +77,19 @@
     "@modelcontextprotocol/sdk": "^1.24.1",
     "js-yaml": "4.1.1",
     "@fastify/swagger": "^10.0.0",
-    "@fastify/swagger-ui": "^6.0.0"
+    "@fastify/swagger-ui": "^6.0.0",
+    "@angular/compiler": "19.2.18",
+    "@angular/compiler-cli": "19.2.18",
+    "esbuild": "0.27.2",
+    "tar": "7.5.6",
+    "pacote": {
+      ".": "21.0.4",
+      "tar": "7.5.6"
+    },
+    "@angular/cli": {
+      "pacote": "21.0.4"
+    },
+    "vite": "6.4.1"
   },
   "dependencies": {
     "fast-deep-equal": "^3.1.3",

@@ -1,10 +1,16 @@
 import { buildRouteSchema, errorResponseSchema, schemaFromZod } from "@tartware/openapi";
 import { PublicUserSchema, TenantRoleEnum } from "@tartware/schemas";
 import type { FastifyInstance } from "fastify";
+import { authenticator } from "otplib";
 import { z } from "zod";
 
 import { config } from "../config.js";
+import { pool } from "../lib/db.js";
 import { authenticateUser, changeUserPassword } from "../services/auth-service.js";
+import {
+  TENANT_AUTH_MFA_PROFILE_SQL,
+  TENANT_AUTH_UPDATE_MFA_SQL,
+} from "../sql/tenant-auth-queries.js";
 import { sanitizeForJson } from "../utils/sanitize.js";
 
 // Use schemas from @tartware/schemas
@@ -109,6 +115,40 @@ const ChangePasswordRequestJsonSchema = schemaFromZod(
   ChangePasswordRequestSchema,
   "AuthChangePasswordRequest",
 );
+
+const MfaCodeSchema = z.string().regex(/^\d{6}$/, "MFA code must be a 6-digit value");
+const MfaEnrollResponseSchema = z.object({
+  secret: z.string(),
+  otpauth_url: z.string(),
+  message: z.string(),
+});
+const MfaVerifyRequestSchema = z.object({
+  mfa_code: MfaCodeSchema,
+});
+const MfaVerifyResponseSchema = z.object({
+  message: z.string(),
+});
+
+const MfaEnrollResponseJsonSchema = schemaFromZod(MfaEnrollResponseSchema, "AuthMfaEnrollResponse");
+const MfaVerifyRequestJsonSchema = schemaFromZod(MfaVerifyRequestSchema, "AuthMfaVerifyRequest");
+const MfaVerifyResponseJsonSchema = schemaFromZod(MfaVerifyResponseSchema, "AuthMfaVerifyResponse");
+
+type TenantMfaProfile = {
+  id: string;
+  username: string;
+  email: string;
+  is_active: boolean;
+  mfa_secret: string | null;
+  mfa_enabled: boolean;
+};
+
+const loadTenantMfaProfile = async (userId: string): Promise<TenantMfaProfile | null> => {
+  const result = await pool.query<TenantMfaProfile>(TENANT_AUTH_MFA_PROFILE_SQL, [userId]);
+  return result.rows[0] ?? null;
+};
+
+const buildOtpAuthUrl = (username: string, secret: string): string =>
+  authenticator.keyuri(username, config.tenantAuth.security.mfa.issuer, secret);
 
 export const registerAuthRoutes = (app: FastifyInstance): void => {
   app.post(
@@ -265,6 +305,198 @@ export const registerAuthRoutes = (app: FastifyInstance): void => {
       });
 
       return LoginResponseSchema.parse(payload);
+    },
+  );
+
+  app.post(
+    "/v1/auth/mfa/enroll",
+    {
+      schema: buildRouteSchema({
+        tag: AUTH_TAG,
+        summary: "Start MFA enrollment for the authenticated user",
+        response: {
+          200: MfaEnrollResponseJsonSchema,
+          401: errorResponseSchema,
+          403: errorResponseSchema,
+          409: errorResponseSchema,
+        },
+      }),
+    },
+    async (request, reply) => {
+      if (!request.auth.isAuthenticated || !request.auth.userId) {
+        reply.unauthorized("AUTHENTICATION_REQUIRED");
+        return reply;
+      }
+
+      const profile = await loadTenantMfaProfile(request.auth.userId);
+      if (!profile) {
+        return reply.status(401).send({
+          error: "Unauthorized",
+          message: "User not found.",
+        });
+      }
+
+      if (!profile.is_active) {
+        return reply.status(403).send({
+          error: "Account inactive",
+          message: "This account is not active.",
+        });
+      }
+
+      if (profile.mfa_enabled) {
+        return reply.status(409).send({
+          error: "MFA already enabled",
+          message: "Multi-factor authentication is already enabled for this user.",
+        });
+      }
+
+      const secret = authenticator.generateSecret();
+      await pool.query(TENANT_AUTH_UPDATE_MFA_SQL, [secret, false, profile.id]);
+
+      return MfaEnrollResponseSchema.parse({
+        secret,
+        otpauth_url: buildOtpAuthUrl(profile.username, secret),
+        message: "MFA enrollment started. Verify the code to enable MFA.",
+      });
+    },
+  );
+
+  app.post(
+    "/v1/auth/mfa/verify",
+    {
+      schema: buildRouteSchema({
+        tag: AUTH_TAG,
+        summary: "Verify MFA code and enable MFA",
+        body: MfaVerifyRequestJsonSchema,
+        response: {
+          200: MfaVerifyResponseJsonSchema,
+          400: errorResponseSchema,
+          401: errorResponseSchema,
+          403: errorResponseSchema,
+          409: errorResponseSchema,
+        },
+      }),
+    },
+    async (request, reply) => {
+      if (!request.auth.isAuthenticated || !request.auth.userId) {
+        reply.unauthorized("AUTHENTICATION_REQUIRED");
+        return reply;
+      }
+
+      const { mfa_code } = MfaVerifyRequestSchema.parse(request.body);
+      const profile = await loadTenantMfaProfile(request.auth.userId);
+      if (!profile) {
+        return reply.status(401).send({
+          error: "Unauthorized",
+          message: "User not found.",
+        });
+      }
+
+      if (!profile.is_active) {
+        return reply.status(403).send({
+          error: "Account inactive",
+          message: "This account is not active.",
+        });
+      }
+
+      if (profile.mfa_enabled) {
+        return reply.status(409).send({
+          error: "MFA already enabled",
+          message: "Multi-factor authentication is already enabled for this user.",
+        });
+      }
+
+      if (!profile.mfa_secret) {
+        return reply.status(400).send({
+          error: "MFA enrollment missing",
+          message: "Start MFA enrollment before verifying the code.",
+        });
+      }
+
+      const valid = authenticator.check(mfa_code, profile.mfa_secret);
+      if (!valid) {
+        return reply.status(400).send({
+          error: "Invalid MFA code",
+          message: "The provided MFA code is invalid.",
+        });
+      }
+
+      await pool.query(TENANT_AUTH_UPDATE_MFA_SQL, [profile.mfa_secret, true, profile.id]);
+
+      return MfaVerifyResponseSchema.parse({
+        message: "MFA enabled successfully.",
+      });
+    },
+  );
+
+  app.post(
+    "/v1/auth/mfa/rotate",
+    {
+      schema: buildRouteSchema({
+        tag: AUTH_TAG,
+        summary: "Rotate MFA secret for the authenticated user",
+        body: MfaVerifyRequestJsonSchema,
+        response: {
+          200: MfaEnrollResponseJsonSchema,
+          400: errorResponseSchema,
+          401: errorResponseSchema,
+          403: errorResponseSchema,
+          409: errorResponseSchema,
+        },
+      }),
+    },
+    async (request, reply) => {
+      if (!request.auth.isAuthenticated || !request.auth.userId) {
+        reply.unauthorized("AUTHENTICATION_REQUIRED");
+        return reply;
+      }
+
+      const { mfa_code } = MfaVerifyRequestSchema.parse(request.body);
+      const profile = await loadTenantMfaProfile(request.auth.userId);
+      if (!profile) {
+        return reply.status(401).send({
+          error: "Unauthorized",
+          message: "User not found.",
+        });
+      }
+
+      if (!profile.is_active) {
+        return reply.status(403).send({
+          error: "Account inactive",
+          message: "This account is not active.",
+        });
+      }
+
+      if (!profile.mfa_enabled) {
+        return reply.status(409).send({
+          error: "MFA not enabled",
+          message: "Enable MFA before rotating the secret.",
+        });
+      }
+
+      if (!profile.mfa_secret) {
+        return reply.status(400).send({
+          error: "MFA misconfigured",
+          message: "MFA is enabled without a secret.",
+        });
+      }
+
+      const valid = authenticator.check(mfa_code, profile.mfa_secret);
+      if (!valid) {
+        return reply.status(400).send({
+          error: "Invalid MFA code",
+          message: "The provided MFA code is invalid.",
+        });
+      }
+
+      const secret = authenticator.generateSecret();
+      await pool.query(TENANT_AUTH_UPDATE_MFA_SQL, [secret, false, profile.id]);
+
+      return MfaEnrollResponseSchema.parse({
+        secret,
+        otpauth_url: buildOtpAuthUrl(profile.username, secret),
+        message: "MFA rotation started. Verify the new code to re-enable MFA.",
+      });
     },
   );
 };

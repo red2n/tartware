@@ -1,7 +1,7 @@
 {
   "openapi": "3.0.3",
   "info": {
-    "title": "Reservations Command Service API",
+    "title": "reservations-command-service API",
     "description": "Reservation command ingestion surface that writes to the transactional outbox and lifecycle guard.",
     "version": "1.0.0"
   },
@@ -26,6 +26,15 @@
                 }
               }
             }
+          }
+        }
+      }
+    },
+    "/ready": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "Default Response"
           }
         }
       }
@@ -83,6 +92,155 @@
         }
       }
     },
+    "/health/reliability": {
+      "get": {
+        "summary": "Command pipeline reliability snapshot",
+        "tags": [
+          "Health"
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "healthy",
+                        "degraded",
+                        "critical"
+                      ]
+                    },
+                    "generatedAt": {
+                      "type": "string"
+                    },
+                    "issues": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "outbox": {
+                      "type": "object",
+                      "properties": {
+                        "pending": {
+                          "type": "number"
+                        },
+                        "warnThreshold": {
+                          "type": "number"
+                        },
+                        "criticalThreshold": {
+                          "type": "number"
+                        }
+                      },
+                      "required": [
+                        "pending",
+                        "warnThreshold",
+                        "criticalThreshold"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "consumer": {
+                      "type": "object",
+                      "properties": {
+                        "partitions": {
+                          "type": "number"
+                        },
+                        "stalePartitions": {
+                          "type": "number"
+                        },
+                        "maxSecondsSinceCommit": {
+                          "type": "number",
+                          "nullable": true
+                        },
+                        "staleThresholdSeconds": {
+                          "type": "number"
+                        }
+                      },
+                      "required": [
+                        "partitions",
+                        "stalePartitions",
+                        "maxSecondsSinceCommit",
+                        "staleThresholdSeconds"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "lifecycle": {
+                      "type": "object",
+                      "properties": {
+                        "stalledCommands": {
+                          "type": "number"
+                        },
+                        "oldestStuckSeconds": {
+                          "type": "number",
+                          "nullable": true
+                        },
+                        "dlqTotal": {
+                          "type": "number"
+                        },
+                        "stalledThresholdSeconds": {
+                          "type": "number"
+                        }
+                      },
+                      "required": [
+                        "stalledCommands",
+                        "oldestStuckSeconds",
+                        "dlqTotal",
+                        "stalledThresholdSeconds"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "dlq": {
+                      "type": "object",
+                      "properties": {
+                        "depth": {
+                          "type": "number",
+                          "nullable": true
+                        },
+                        "warnThreshold": {
+                          "type": "number"
+                        },
+                        "criticalThreshold": {
+                          "type": "number"
+                        },
+                        "topic": {
+                          "type": "string"
+                        },
+                        "error": {
+                          "type": "string",
+                          "nullable": true
+                        }
+                      },
+                      "required": [
+                        "depth",
+                        "warnThreshold",
+                        "criticalThreshold",
+                        "topic",
+                        "error"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "status",
+                    "generatedAt",
+                    "issues",
+                    "outbox",
+                    "consumer",
+                    "lifecycle",
+                    "dlq"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/metrics": {
       "get": {
         "summary": "Prometheus metrics endpoint",
@@ -104,132 +262,158 @@
         }
       }
     },
-    "/v1/tenants/{tenantId}/reservations": {
-      "post": {
-        "summary": "Submit an asynchronous reservation command",
+    "/v1/reservations/{reservationId}/lifecycle": {
+      "get": {
+        "summary": "Inspect lifecycle states for a reservation",
         "tags": [
-          "Reservation Commands"
+          "Reservation Lifecycle"
         ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "property_id": {
-                    "type": "string",
-                    "format": "uuid"
-                  },
-                  "guest_id": {
-                    "type": "string",
-                    "format": "uuid"
-                  },
-                  "room_type_id": {
-                    "type": "string",
-                    "format": "uuid"
-                  },
-                  "check_in_date": {
-                    "type": "string",
-                    "format": "date-time"
-                  },
-                  "check_out_date": {
-                    "type": "string",
-                    "format": "date-time"
-                  },
-                  "booking_date": {
-                    "type": "string",
-                    "format": "date-time"
-                  },
-                  "status": {
-                    "type": "string",
-                    "enum": [
-                      "PENDING",
-                      "CONFIRMED",
-                      "CHECKED_IN",
-                      "CHECKED_OUT",
-                      "CANCELLED",
-                      "NO_SHOW"
-                    ]
-                  },
-                  "source": {
-                    "type": "string",
-                    "enum": [
-                      "DIRECT",
-                      "WEBSITE",
-                      "PHONE",
-                      "WALKIN",
-                      "OTA",
-                      "CORPORATE",
-                      "GROUP"
-                    ]
-                  },
-                  "total_amount": {
-                    "type": "number",
-                    "minimum": 0
-                  },
-                  "currency": {
-                    "type": "string",
-                    "minLength": 3,
-                    "maxLength": 3
-                  },
-                  "notes": {
-                    "type": "string",
-                    "maxLength": 2000
-                  }
-                },
-                "required": [
-                  "property_id",
-                  "guest_id",
-                  "room_type_id",
-                  "check_in_date",
-                  "check_out_date",
-                  "total_amount"
-                ],
-                "additionalProperties": false
-              }
-            }
-          },
-          "required": true
-        },
         "parameters": [
           {
             "schema": {
               "type": "string",
               "format": "uuid"
             },
+            "in": "query",
+            "name": "tenant_id",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
             "in": "path",
-            "name": "tenantId",
+            "name": "reservationId",
             "required": true
           }
         ],
         "responses": {
-          "202": {
+          "200": {
             "description": "Default Response",
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "properties": {
-                    "status": {
-                      "type": "string",
-                      "enum": [
-                        "accepted"
-                      ]
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "event_id": {
+                        "type": "string",
+                        "format": "uuid"
+                      },
+                      "is_deleted": {
+                        "type": "boolean"
+                      },
+                      "deleted_at": {
+                        "type": "string",
+                        "format": "date-time"
+                      },
+                      "deleted_by": {
+                        "type": "string",
+                        "maxLength": 100
+                      },
+                      "tenant_id": {
+                        "type": "string",
+                        "format": "uuid"
+                      },
+                      "reservation_id": {
+                        "type": "string",
+                        "format": "uuid"
+                      },
+                      "command_name": {
+                        "type": "string"
+                      },
+                      "correlation_id": {
+                        "type": "string",
+                        "nullable": true
+                      },
+                      "partition_key": {
+                        "type": "string",
+                        "nullable": true
+                      },
+                      "current_state": {
+                        "type": "string",
+                        "enum": [
+                          "RECEIVED",
+                          "PERSISTED",
+                          "IN_PROGRESS",
+                          "PUBLISHED",
+                          "CONSUMED",
+                          "APPLIED",
+                          "FAILED",
+                          "DLQ"
+                        ]
+                      },
+                      "state_transitions": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "state": {
+                              "type": "string",
+                              "enum": [
+                                "RECEIVED",
+                                "PERSISTED",
+                                "IN_PROGRESS",
+                                "PUBLISHED",
+                                "CONSUMED",
+                                "APPLIED",
+                                "FAILED",
+                                "DLQ"
+                              ]
+                            },
+                            "timestamp": {
+                              "anyOf": [
+                                {
+                                  "type": "string"
+                                },
+                                {
+                                  "type": "string",
+                                  "format": "date-time"
+                                }
+                              ]
+                            },
+                            "actor": {
+                              "type": "string"
+                            },
+                            "details": {
+                              "type": "object",
+                              "additionalProperties": {}
+                            }
+                          },
+                          "required": [
+                            "state",
+                            "timestamp"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "metadata": {
+                        "type": "object",
+                        "additionalProperties": {},
+                        "description": "Flexible JSONB metadata object"
+                      },
+                      "created_at": {
+                        "type": "string",
+                        "format": "date-time"
+                      },
+                      "updated_at": {
+                        "type": "string",
+                        "format": "date-time"
+                      }
                     },
-                    "eventId": {
-                      "type": "string",
-                      "format": "uuid"
-                    },
-                    "correlationId": {
-                      "type": "string",
-                      "minLength": 1
-                    }
-                  },
-                  "required": [
-                    "status",
-                    "eventId"
-                  ],
-                  "additionalProperties": false
+                    "required": [
+                      "event_id",
+                      "tenant_id",
+                      "command_name",
+                      "current_state",
+                      "state_transitions",
+                      "created_at",
+                      "updated_at"
+                    ],
+                    "additionalProperties": false
+                  }
                 }
               }
             }

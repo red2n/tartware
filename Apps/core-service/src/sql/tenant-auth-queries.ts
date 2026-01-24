@@ -29,3 +29,28 @@ export const TENANT_AUTH_UPDATE_PASSWORD_SQL = `
          version = COALESCE(version, 0) + 1
    WHERE id = $2;
 `;
+
+export const TENANT_AUTH_MFA_PROFILE_SQL = `
+  SELECT id,
+         username,
+         email,
+         is_active,
+         mfa_secret,
+         mfa_enabled
+  FROM public.users
+  WHERE id = $1
+    AND deleted_at IS NULL
+    AND COALESCE(is_deleted, false) = false
+  LIMIT 1;
+`;
+
+export const TENANT_AUTH_UPDATE_MFA_SQL = `
+  UPDATE public.users
+     SET mfa_secret = $1,
+         mfa_enabled = $2,
+         updated_at = NOW(),
+         version = COALESCE(version, 0) + 1
+   WHERE id = $3
+     AND deleted_at IS NULL
+     AND COALESCE(is_deleted, false) = false;
+`;

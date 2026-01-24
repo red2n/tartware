@@ -23,39 +23,9 @@
 6. **Make the settings service reachable** (done)
    - Added Settings Catalog page in the system-admin UI that reads `/v1/settings/catalog` and `/v1/settings/values` through the gateway.
 
-7. **Align schemas with table scripts** (in progress)
-   - Schema-only (no matching table script) examples:
-     - (none from current list; re-scan pending)
-   - Script-only (no matching schema) examples:
-     - (none from current list; re-scan pending)
-   - Progress: split roll-service shadow tables into aligned scripts:
-     - `scripts/tables/03-bookings/90_roll_service_shadow_ledgers.sql`
-     - `scripts/tables/03-bookings/91_roll_service_backfill_checkpoint.sql`
-     - `scripts/tables/03-bookings/92_roll_service_consumer_offsets.sql`
-   - Progress: split analytics performance tables into aligned scripts:
-     - `scripts/tables/07-analytics/23_performance_reports.sql`
-     - `scripts/tables/07-analytics/24_report_schedules.sql`
-     - `scripts/tables/07-analytics/25_performance_thresholds.sql`
-     - `scripts/tables/07-analytics/26_performance_baselines.sql`
-     - `scripts/tables/07-analytics/30_performance_alerts.sql`
-     - `scripts/tables/07-analytics/31_alert_rules.sql`
-   - Progress: split settings tables + seed data into per-table scripts:
-     - `scripts/tables/01-core/06_setting_categories.sql`
-     - `scripts/tables/01-core/07_setting_definitions.sql`
-     - `scripts/tables/01-core/08_tenant_settings.sql`
-     - `scripts/tables/01-core/09_property_settings.sql`
-     - `scripts/tables/01-core/10_room_settings.sql`
-     - `scripts/tables/01-core/11_user_settings.sql`
-     - `scripts/tables/01-core/12_settings_seed.sql`
-   - Progress: split mobile/digital operations tables into per-table scripts:
-     - `scripts/tables/05-operations/100_mobile_check_ins.sql`
-     - `scripts/tables/05-operations/109_digital_registration_cards.sql`
-     - `scripts/tables/05-operations/110_contactless_requests.sql`
-   - Progress: split dynamic pricing tables into per-table scripts:
-     - `scripts/tables/06-integrations/95_dynamic_pricing_rules_ml.sql`
-     - `scripts/tables/06-integrations/98_price_adjustments_history.sql`
-     - `scripts/tables/06-integrations/99_pricing_experiments.sql`
-   - Planned approach: resolve naming mismatches (e.g., room availability), then split/rename combined scripts to match schema file names.
+7. **Align schemas with table scripts** (done)
+   - Schema vs SQL field verification shows 0 mismatches.
+   - Report: `schema-script-field-report.txt`.
 
 8. **SaaS tenant enforcement gaps** (done)
    - Settings service now validates active tenant membership during auth.
@@ -67,3 +37,8 @@
    - Standard: owner manages managers/department heads and module access; system admin only for platform tasks.
    - Implemented: `POST /v1/system/tenants/bootstrap` in core-service for tenant + property + owner bootstrap.
    - Optional next: add self-serve onboarding (invite code or billing signup) that calls the same bootstrap flow.
+
+10. **Tenant admin access management (industry standard)** (done)
+   - Added tenant-scoped user management: invite/create user, update role, deactivate, reset password.
+   - Added tenant self-serve onboarding (non-system-admin) that creates tenant + owner + property.
+   - Added tenant MFA enrollment/rotation endpoints to pair with login enforcement.

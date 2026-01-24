@@ -1,0 +1,213 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "@tartware/core-service API",
+    "version": "0.1.0",
+    "description": "Rooms domain service for Tartware PMS"
+  },
+  "components": {
+    "schemas": {}
+  },
+  "paths": {
+    "/health": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        }
+      }
+    },
+    "/ready": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        }
+      }
+    },
+    "/v1/rooms": {
+      "get": {
+        "summary": "List rooms with housekeeping filters",
+        "tags": [
+          "Rooms"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "in": "query",
+            "name": "tenant_id",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "in": "query",
+            "name": "property_id",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "status",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "housekeeping_status",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 50
+            },
+            "in": "query",
+            "name": "search",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "exclusiveMinimum": 0,
+              "maximum": 500,
+              "default": 200
+            },
+            "in": "query",
+            "name": "limit",
+            "required": false
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "format": "uuid"
+                      },
+                      "tenant_id": {
+                        "type": "string",
+                        "format": "uuid"
+                      },
+                      "property_id": {
+                        "type": "string",
+                        "format": "uuid"
+                      },
+                      "property_name": {
+                        "type": "string"
+                      },
+                      "room_type_id": {
+                        "type": "string",
+                        "format": "uuid"
+                      },
+                      "room_type_name": {
+                        "type": "string"
+                      },
+                      "room_number": {
+                        "type": "string"
+                      },
+                      "room_name": {
+                        "type": "string"
+                      },
+                      "floor": {
+                        "type": "string"
+                      },
+                      "building": {
+                        "type": "string"
+                      },
+                      "wing": {
+                        "type": "string"
+                      },
+                      "status": {
+                        "type": "string"
+                      },
+                      "status_display": {
+                        "type": "string"
+                      },
+                      "housekeeping_status": {
+                        "type": "string"
+                      },
+                      "housekeeping_display": {
+                        "type": "string"
+                      },
+                      "maintenance_status": {
+                        "type": "string"
+                      },
+                      "maintenance_display": {
+                        "type": "string"
+                      },
+                      "is_blocked": {
+                        "type": "boolean"
+                      },
+                      "block_reason": {
+                        "type": "string"
+                      },
+                      "is_out_of_order": {
+                        "type": "boolean"
+                      },
+                      "out_of_order_reason": {
+                        "type": "string"
+                      },
+                      "expected_ready_date": {
+                        "type": "string"
+                      },
+                      "housekeeping_notes": {
+                        "type": "string"
+                      },
+                      "updated_at": {
+                        "type": "string"
+                      },
+                      "version": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "id",
+                      "tenant_id",
+                      "property_id",
+                      "room_number",
+                      "status",
+                      "status_display",
+                      "housekeeping_status",
+                      "housekeeping_display",
+                      "maintenance_status",
+                      "maintenance_display",
+                      "is_blocked",
+                      "is_out_of_order",
+                      "version"
+                    ],
+                    "additionalProperties": false
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "servers": [
+    {
+      "url": "/"
+    }
+  ]
+}

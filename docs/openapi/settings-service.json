@@ -1,7 +1,7 @@
 {
   "openapi": "3.0.3",
   "info": {
-    "title": "@tartware/settings-service API",
+    "title": "@tartware/core-service API",
     "description": "Settings catalog service APIs for tenant metadata.",
     "version": "0.1.0"
   },
@@ -23,6 +23,857 @@
                 "schema": {
                   "type": "object",
                   "additionalProperties": true
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/settings/categories": {
+      "get": {
+        "summary": "List settings categories",
+        "tags": [
+          "Settings Catalog"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "boolean",
+              "default": true
+            },
+            "in": "query",
+            "name": "active_only",
+            "required": false
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "format": "uuid"
+                          },
+                          "tenant_id": {
+                            "type": "string",
+                            "format": "uuid"
+                          },
+                          "is_deleted": {
+                            "type": "boolean"
+                          },
+                          "deleted_at": {
+                            "type": "string",
+                            "format": "date-time"
+                          },
+                          "deleted_by": {
+                            "type": "string",
+                            "maxLength": 100
+                          },
+                          "code": {
+                            "type": "string",
+                            "minLength": 2,
+                            "maxLength": 64,
+                            "pattern": "^[A-Z0-9_]+$"
+                          },
+                          "name": {
+                            "type": "string",
+                            "minLength": 3,
+                            "maxLength": 120
+                          },
+                          "description": {
+                            "type": "string",
+                            "maxLength": 1024
+                          },
+                          "icon": {
+                            "type": "string",
+                            "maxLength": 64
+                          },
+                          "color": {
+                            "type": "string",
+                            "maxLength": 32
+                          },
+                          "sort_order": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "default": 0
+                          },
+                          "is_active": {
+                            "type": "boolean",
+                            "default": true
+                          },
+                          "tags": {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            }
+                          },
+                          "metadata": {
+                            "type": "object",
+                            "additionalProperties": {},
+                            "description": "Flexible JSONB metadata object"
+                          },
+                          "created_at": {
+                            "type": "string",
+                            "format": "date-time"
+                          },
+                          "updated_at": {
+                            "type": "string",
+                            "format": "date-time"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "tenant_id",
+                          "code",
+                          "name",
+                          "created_at"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "count": {
+                          "type": "integer",
+                          "minimum": 0
+                        }
+                      },
+                      "required": [
+                        "count"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/settings/sections": {
+      "get": {
+        "summary": "List settings sections",
+        "tags": [
+          "Settings Catalog"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "boolean",
+              "default": true
+            },
+            "in": "query",
+            "name": "active_only",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "in": "query",
+            "name": "category_id",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 2,
+              "maxLength": 64
+            },
+            "in": "query",
+            "name": "category_code",
+            "required": false
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "format": "uuid"
+                          },
+                          "tenant_id": {
+                            "type": "string",
+                            "format": "uuid"
+                          },
+                          "is_deleted": {
+                            "type": "boolean"
+                          },
+                          "deleted_at": {
+                            "type": "string",
+                            "format": "date-time"
+                          },
+                          "deleted_by": {
+                            "type": "string",
+                            "maxLength": 100
+                          },
+                          "category_id": {
+                            "type": "string",
+                            "format": "uuid"
+                          },
+                          "code": {
+                            "type": "string",
+                            "minLength": 2,
+                            "maxLength": 64,
+                            "pattern": "^[A-Z0-9_]+$"
+                          },
+                          "name": {
+                            "type": "string",
+                            "minLength": 3,
+                            "maxLength": 160
+                          },
+                          "description": {
+                            "type": "string",
+                            "maxLength": 2048
+                          },
+                          "icon": {
+                            "type": "string",
+                            "maxLength": 64
+                          },
+                          "sort_order": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "default": 0
+                          },
+                          "is_active": {
+                            "type": "boolean",
+                            "default": true
+                          },
+                          "tags": {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            }
+                          },
+                          "metadata": {
+                            "type": "object",
+                            "additionalProperties": {},
+                            "description": "Flexible JSONB metadata object"
+                          },
+                          "created_at": {
+                            "type": "string",
+                            "format": "date-time"
+                          },
+                          "updated_at": {
+                            "type": "string",
+                            "format": "date-time"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "tenant_id",
+                          "category_id",
+                          "code",
+                          "name",
+                          "created_at"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "count": {
+                          "type": "integer",
+                          "minimum": 0
+                        }
+                      },
+                      "required": [
+                        "count"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/settings/definitions": {
+      "get": {
+        "summary": "List settings definitions",
+        "tags": [
+          "Settings Catalog"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "boolean",
+              "default": true
+            },
+            "in": "query",
+            "name": "active_only",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "in": "query",
+            "name": "category_id",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "in": "query",
+            "name": "section_id",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 2,
+              "maxLength": 64
+            },
+            "in": "query",
+            "name": "category_code",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 2,
+              "maxLength": 64
+            },
+            "in": "query",
+            "name": "section_code",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 2,
+              "maxLength": 120
+            },
+            "in": "query",
+            "name": "search",
+            "required": false
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "format": "uuid"
+                          },
+                          "tenant_id": {
+                            "type": "string",
+                            "format": "uuid"
+                          },
+                          "is_deleted": {
+                            "type": "boolean"
+                          },
+                          "deleted_at": {
+                            "type": "string",
+                            "format": "date-time"
+                          },
+                          "deleted_by": {
+                            "type": "string",
+                            "maxLength": 100
+                          },
+                          "category_id": {
+                            "type": "string",
+                            "format": "uuid"
+                          },
+                          "section_id": {
+                            "type": "string",
+                            "format": "uuid"
+                          },
+                          "code": {
+                            "type": "string",
+                            "minLength": 3,
+                            "maxLength": 96,
+                            "pattern": "^[A-Z0-9_.-]+$"
+                          },
+                          "name": {
+                            "type": "string",
+                            "minLength": 3,
+                            "maxLength": 160
+                          },
+                          "description": {
+                            "type": "string",
+                            "maxLength": 4096
+                          },
+                          "help_text": {
+                            "type": "string",
+                            "maxLength": 2048
+                          },
+                          "placeholder": {
+                            "type": "string",
+                            "maxLength": 256
+                          },
+                          "tooltip": {
+                            "type": "string",
+                            "maxLength": 512
+                          },
+                          "data_type": {
+                            "type": "string",
+                            "enum": [
+                              "STRING",
+                              "TEXT",
+                              "INTEGER",
+                              "DECIMAL",
+                              "BOOLEAN",
+                              "JSON",
+                              "DATE",
+                              "TIME",
+                              "DATETIME",
+                              "ENUM",
+                              "MULTI_ENUM",
+                              "PERCENTAGE",
+                              "CURRENCY",
+                              "DURATION"
+                            ]
+                          },
+                          "control_type": {
+                            "type": "string",
+                            "enum": [
+                              "TOGGLE",
+                              "TEXT_INPUT",
+                              "TEXT_AREA",
+                              "NUMBER_INPUT",
+                              "SELECT",
+                              "MULTI_SELECT",
+                              "RADIO_GROUP",
+                              "SLIDER",
+                              "DATE_PICKER",
+                              "TIME_PICKER",
+                              "DATETIME_PICKER",
+                              "JSON_EDITOR",
+                              "TAGS",
+                              "FILE_UPLOAD"
+                            ]
+                          },
+                          "default_value": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "number"
+                              },
+                              {
+                                "type": "boolean"
+                              },
+                              {
+                                "type": "array",
+                                "items": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string"
+                                    },
+                                    {
+                                      "type": "number"
+                                    },
+                                    {
+                                      "type": "boolean"
+                                    }
+                                  ]
+                                }
+                              },
+                              {
+                                "type": "object",
+                                "additionalProperties": {}
+                              }
+                            ]
+                          },
+                          "value_constraints": {
+                            "type": "object",
+                            "properties": {},
+                            "additionalProperties": true,
+                            "description": "Structured JSONB settings object"
+                          },
+                          "allowed_scopes": {
+                            "type": "array",
+                            "items": {
+                              "type": "string",
+                              "enum": [
+                                "GLOBAL",
+                                "TENANT",
+                                "TENANT_TEMPLATE",
+                                "PROPERTY",
+                                "UNIT",
+                                "USER"
+                              ]
+                            },
+                            "minItems": 1
+                          },
+                          "default_scope": {
+                            "type": "string",
+                            "enum": [
+                              "GLOBAL",
+                              "TENANT",
+                              "TENANT_TEMPLATE",
+                              "PROPERTY",
+                              "UNIT",
+                              "USER"
+                            ]
+                          },
+                          "override_scopes": {
+                            "type": "array",
+                            "items": {
+                              "type": "string",
+                              "enum": [
+                                "GLOBAL",
+                                "TENANT",
+                                "TENANT_TEMPLATE",
+                                "PROPERTY",
+                                "UNIT",
+                                "USER"
+                              ]
+                            }
+                          },
+                          "is_required": {
+                            "type": "boolean",
+                            "default": false
+                          },
+                          "is_advanced": {
+                            "type": "boolean",
+                            "default": false
+                          },
+                          "is_readonly": {
+                            "type": "boolean",
+                            "default": false
+                          },
+                          "is_deprecated": {
+                            "type": "boolean",
+                            "default": false
+                          },
+                          "sensitivity": {
+                            "type": "string",
+                            "enum": [
+                              "PUBLIC",
+                              "INTERNAL",
+                              "SENSITIVE",
+                              "CONFIDENTIAL"
+                            ],
+                            "default": "INTERNAL"
+                          },
+                          "module_dependencies": {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            }
+                          },
+                          "feature_flag": {
+                            "type": "string"
+                          },
+                          "compliance_tags": {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            }
+                          },
+                          "related_settings": {
+                            "type": "array",
+                            "items": {
+                              "type": "string",
+                              "format": "uuid"
+                            }
+                          },
+                          "labels": {
+                            "type": "object",
+                            "additionalProperties": {
+                              "type": "string"
+                            }
+                          },
+                          "tags": {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            }
+                          },
+                          "sort_order": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "default": 0
+                          },
+                          "version": {
+                            "type": "string"
+                          },
+                          "reference_docs": {
+                            "type": "array",
+                            "items": {
+                              "type": "string",
+                              "format": "uri"
+                            }
+                          },
+                          "form_schema": {
+                            "type": "object",
+                            "properties": {},
+                            "additionalProperties": true,
+                            "description": "Structured JSONB settings object"
+                          },
+                          "metadata": {
+                            "type": "object",
+                            "additionalProperties": {},
+                            "description": "Flexible JSONB metadata object"
+                          },
+                          "created_at": {
+                            "type": "string",
+                            "format": "date-time"
+                          },
+                          "updated_at": {
+                            "type": "string",
+                            "format": "date-time"
+                          },
+                          "created_by": {
+                            "type": "string"
+                          },
+                          "updated_by": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "tenant_id",
+                          "category_id",
+                          "section_id",
+                          "code",
+                          "name",
+                          "description",
+                          "data_type",
+                          "control_type",
+                          "allowed_scopes",
+                          "default_scope",
+                          "created_at"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "count": {
+                          "type": "integer",
+                          "minimum": 0
+                        }
+                      },
+                      "required": [
+                        "count"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/settings/options": {
+      "get": {
+        "summary": "List settings options",
+        "tags": [
+          "Settings Catalog"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "boolean",
+              "default": true
+            },
+            "in": "query",
+            "name": "active_only",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "in": "query",
+            "name": "setting_id",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 2,
+              "maxLength": 160
+            },
+            "in": "query",
+            "name": "setting_code",
+            "required": false
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "format": "uuid"
+                          },
+                          "tenant_id": {
+                            "type": "string",
+                            "format": "uuid"
+                          },
+                          "is_deleted": {
+                            "type": "boolean"
+                          },
+                          "deleted_at": {
+                            "type": "string",
+                            "format": "date-time"
+                          },
+                          "deleted_by": {
+                            "type": "string",
+                            "maxLength": 100
+                          },
+                          "setting_id": {
+                            "type": "string",
+                            "format": "uuid"
+                          },
+                          "value": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 128
+                          },
+                          "label": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 160
+                          },
+                          "description": {
+                            "type": "string",
+                            "maxLength": 1024
+                          },
+                          "icon": {
+                            "type": "string",
+                            "maxLength": 64
+                          },
+                          "color": {
+                            "type": "string",
+                            "maxLength": 32
+                          },
+                          "sort_order": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "default": 0
+                          },
+                          "is_default": {
+                            "type": "boolean",
+                            "default": false
+                          },
+                          "is_active": {
+                            "type": "boolean",
+                            "default": true
+                          },
+                          "metadata": {
+                            "type": "object",
+                            "additionalProperties": {},
+                            "description": "Flexible JSONB metadata object"
+                          },
+                          "created_at": {
+                            "type": "string",
+                            "format": "date-time"
+                          },
+                          "updated_at": {
+                            "type": "string",
+                            "format": "date-time"
+                          },
+                          "created_by": {
+                            "type": "string"
+                          },
+                          "updated_by": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "tenant_id",
+                          "setting_id",
+                          "value",
+                          "label",
+                          "created_at"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "count": {
+                          "type": "integer",
+                          "minimum": 0
+                        }
+                      },
+                      "required": [
+                        "count"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
                 }
               }
             }
@@ -86,6 +937,69 @@
         "tags": [
           "Settings Catalog"
         ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "boolean",
+              "default": true
+            },
+            "in": "query",
+            "name": "active_only",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "GLOBAL",
+                "TENANT",
+                "TENANT_TEMPLATE",
+                "PROPERTY",
+                "UNIT",
+                "USER"
+              ]
+            },
+            "in": "query",
+            "name": "scope_level",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "in": "query",
+            "name": "setting_id",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "in": "query",
+            "name": "property_id",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "in": "query",
+            "name": "unit_id",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "in": "query",
+            "name": "user_id",
+            "required": false
+          }
+        ],
         "responses": {
           "200": {
             "description": "Default Response",
@@ -94,6 +1008,755 @@
                 "schema": {
                   "type": "object",
                   "additionalProperties": true
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Create a settings value",
+        "tags": [
+          "Settings Catalog"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "setting_id": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "scope_level": {
+                    "type": "string",
+                    "enum": [
+                      "GLOBAL",
+                      "TENANT",
+                      "TENANT_TEMPLATE",
+                      "PROPERTY",
+                      "UNIT",
+                      "USER"
+                    ]
+                  },
+                  "value": {},
+                  "property_id": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "unit_id": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "user_id": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "status": {
+                    "type": "string",
+                    "enum": [
+                      "ACTIVE",
+                      "PENDING",
+                      "EXPIRED"
+                    ]
+                  },
+                  "notes": {
+                    "type": "string",
+                    "maxLength": 1024
+                  },
+                  "effective_from": {
+                    "type": "string",
+                    "format": "date-time"
+                  },
+                  "effective_to": {
+                    "type": "string",
+                    "format": "date-time"
+                  },
+                  "context": {
+                    "type": "object",
+                    "additionalProperties": {}
+                  },
+                  "metadata": {
+                    "type": "object",
+                    "additionalProperties": {}
+                  }
+                },
+                "required": [
+                  "setting_id",
+                  "scope_level"
+                ],
+                "additionalProperties": false
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/settings/values/{valueId}": {
+      "patch": {
+        "summary": "Update a settings value",
+        "tags": [
+          "Settings Catalog"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "setting_id": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "scope_level": {
+                    "type": "string",
+                    "enum": [
+                      "GLOBAL",
+                      "TENANT",
+                      "TENANT_TEMPLATE",
+                      "PROPERTY",
+                      "UNIT",
+                      "USER"
+                    ]
+                  },
+                  "value": {},
+                  "property_id": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "unit_id": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "user_id": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "status": {
+                    "type": "string",
+                    "enum": [
+                      "ACTIVE",
+                      "PENDING",
+                      "EXPIRED"
+                    ]
+                  },
+                  "notes": {
+                    "type": "string",
+                    "maxLength": 1024
+                  },
+                  "effective_from": {
+                    "type": "string",
+                    "format": "date-time"
+                  },
+                  "effective_to": {
+                    "type": "string",
+                    "format": "date-time"
+                  },
+                  "context": {
+                    "type": "object",
+                    "additionalProperties": {}
+                  },
+                  "metadata": {
+                    "type": "object",
+                    "additionalProperties": {}
+                  },
+                  "locked_until": {
+                    "type": "string",
+                    "format": "date-time"
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "in": "path",
+            "name": "valueId",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/settings/properties/{propertyId}/amenities": {
+      "get": {
+        "summary": "List amenities for a property",
+        "tags": [
+          "Amenity Catalog"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "in": "path",
+            "name": "propertyId",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "format": "uuid"
+                          },
+                          "tenantId": {
+                            "type": "string",
+                            "format": "uuid"
+                          },
+                          "propertyId": {
+                            "type": "string",
+                            "format": "uuid"
+                          },
+                          "amenityCode": {
+                            "type": "string"
+                          },
+                          "displayName": {
+                            "type": "string"
+                          },
+                          "description": {
+                            "type": "string"
+                          },
+                          "category": {
+                            "type": "string"
+                          },
+                          "icon": {
+                            "type": "string"
+                          },
+                          "tags": {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            },
+                            "default": []
+                          },
+                          "sortOrder": {
+                            "type": "integer"
+                          },
+                          "isDefault": {
+                            "type": "boolean"
+                          },
+                          "isActive": {
+                            "type": "boolean"
+                          },
+                          "isRequired": {
+                            "type": "boolean"
+                          },
+                          "metadata": {
+                            "type": "object",
+                            "additionalProperties": {},
+                            "default": {}
+                          },
+                          "createdAt": {
+                            "type": "string",
+                            "format": "date-time"
+                          },
+                          "updatedAt": {
+                            "type": "string",
+                            "format": "date-time"
+                          },
+                          "createdBy": {
+                            "type": "string",
+                            "format": "uuid"
+                          },
+                          "updatedBy": {
+                            "type": "string",
+                            "format": "uuid"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "tenantId",
+                          "propertyId",
+                          "amenityCode",
+                          "displayName",
+                          "category",
+                          "sortOrder",
+                          "isDefault",
+                          "isActive",
+                          "isRequired",
+                          "createdAt"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "count": {
+                          "type": "integer"
+                        }
+                      },
+                      "required": [
+                        "count"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Create a property amenity",
+        "tags": [
+          "Amenity Catalog"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "amenityCode": {
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 80,
+                    "pattern": "^[A-Za-z0-9_-]+$"
+                  },
+                  "displayName": {
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 160
+                  },
+                  "description": {
+                    "type": "string",
+                    "maxLength": 1024
+                  },
+                  "category": {
+                    "type": "string",
+                    "maxLength": 80
+                  },
+                  "icon": {
+                    "type": "string",
+                    "maxLength": 120
+                  },
+                  "tags": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "maxLength": 80
+                    }
+                  },
+                  "sortOrder": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "isDefault": {
+                    "type": "boolean"
+                  },
+                  "isActive": {
+                    "type": "boolean"
+                  },
+                  "isRequired": {
+                    "type": "boolean"
+                  },
+                  "metadata": {
+                    "type": "object",
+                    "additionalProperties": {}
+                  }
+                },
+                "required": [
+                  "amenityCode",
+                  "displayName"
+                ],
+                "additionalProperties": false
+              }
+            }
+          },
+          "required": true
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "in": "path",
+            "name": "propertyId",
+            "required": true
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "tenantId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "propertyId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "amenityCode": {
+                          "type": "string"
+                        },
+                        "displayName": {
+                          "type": "string"
+                        },
+                        "description": {
+                          "type": "string"
+                        },
+                        "category": {
+                          "type": "string"
+                        },
+                        "icon": {
+                          "type": "string"
+                        },
+                        "tags": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          },
+                          "default": []
+                        },
+                        "sortOrder": {
+                          "type": "integer"
+                        },
+                        "isDefault": {
+                          "type": "boolean"
+                        },
+                        "isActive": {
+                          "type": "boolean"
+                        },
+                        "isRequired": {
+                          "type": "boolean"
+                        },
+                        "metadata": {
+                          "type": "object",
+                          "additionalProperties": {},
+                          "default": {}
+                        },
+                        "createdAt": {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        "updatedAt": {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        "createdBy": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "updatedBy": {
+                          "type": "string",
+                          "format": "uuid"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "tenantId",
+                        "propertyId",
+                        "amenityCode",
+                        "displayName",
+                        "category",
+                        "sortOrder",
+                        "isDefault",
+                        "isActive",
+                        "isRequired",
+                        "createdAt"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "message"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/settings/properties/{propertyId}/amenities/{amenityCode}": {
+      "put": {
+        "summary": "Update a property amenity",
+        "tags": [
+          "Amenity Catalog"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "displayName": {
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 160
+                  },
+                  "description": {
+                    "type": "string",
+                    "maxLength": 1024
+                  },
+                  "category": {
+                    "type": "string",
+                    "maxLength": 80
+                  },
+                  "icon": {
+                    "type": "string",
+                    "maxLength": 120
+                  },
+                  "tags": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "maxLength": 80
+                    }
+                  },
+                  "sortOrder": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "isActive": {
+                    "type": "boolean"
+                  },
+                  "isRequired": {
+                    "type": "boolean"
+                  },
+                  "metadata": {
+                    "type": "object",
+                    "additionalProperties": {}
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "in": "path",
+            "name": "propertyId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]+$"
+            },
+            "in": "path",
+            "name": "amenityCode",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "tenantId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "propertyId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "amenityCode": {
+                          "type": "string"
+                        },
+                        "displayName": {
+                          "type": "string"
+                        },
+                        "description": {
+                          "type": "string"
+                        },
+                        "category": {
+                          "type": "string"
+                        },
+                        "icon": {
+                          "type": "string"
+                        },
+                        "tags": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          },
+                          "default": []
+                        },
+                        "sortOrder": {
+                          "type": "integer"
+                        },
+                        "isDefault": {
+                          "type": "boolean"
+                        },
+                        "isActive": {
+                          "type": "boolean"
+                        },
+                        "isRequired": {
+                          "type": "boolean"
+                        },
+                        "metadata": {
+                          "type": "object",
+                          "additionalProperties": {},
+                          "default": {}
+                        },
+                        "createdAt": {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        "updatedAt": {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        "createdBy": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "updatedBy": {
+                          "type": "string",
+                          "format": "uuid"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "tenantId",
+                        "propertyId",
+                        "amenityCode",
+                        "displayName",
+                        "category",
+                        "sortOrder",
+                        "isDefault",
+                        "isActive",
+                        "isRequired",
+                        "createdAt"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "message"
+                  ]
                 }
               }
             }

@@ -288,6 +288,77 @@ describe("Authentication Routes", () => {
     });
   });
 
+  describe("Tenant MFA enrollment", () => {
+    it("enrolls, verifies, and rotates MFA", async () => {
+      const enrollResponse = await app.inject({
+        method: "POST",
+        url: "/v1/auth/mfa/enroll",
+        headers: buildAuthHeader(TEST_USER_ID),
+      });
+
+      expect(enrollResponse.statusCode).toBe(200);
+      const enrollPayload = JSON.parse(enrollResponse.payload);
+      expect(enrollPayload.secret).toBeDefined();
+      expect(enrollPayload.otpauth_url).toContain("otpauth://");
+
+      const firstCode = authenticator.generate(enrollPayload.secret);
+      const verifyResponse = await app.inject({
+        method: "POST",
+        url: "/v1/auth/mfa/verify",
+        headers: buildAuthHeader(TEST_USER_ID),
+        payload: {
+          mfa_code: firstCode,
+        },
+      });
+
+      expect(verifyResponse.statusCode).toBe(200);
+
+      const rotateCode = authenticator.generate(enrollPayload.secret);
+      const rotateResponse = await app.inject({
+        method: "POST",
+        url: "/v1/auth/mfa/rotate",
+        headers: buildAuthHeader(TEST_USER_ID),
+        payload: {
+          mfa_code: rotateCode,
+        },
+      });
+
+      expect(rotateResponse.statusCode).toBe(200);
+      const rotatePayload = JSON.parse(rotateResponse.payload);
+      expect(rotatePayload.secret).toBeDefined();
+      expect(rotatePayload.otpauth_url).toContain("otpauth://");
+
+      const newCode = authenticator.generate(rotatePayload.secret);
+      const verifyNewResponse = await app.inject({
+        method: "POST",
+        url: "/v1/auth/mfa/verify",
+        headers: buildAuthHeader(TEST_USER_ID),
+        payload: {
+          mfa_code: newCode,
+        },
+      });
+
+      expect(verifyNewResponse.statusCode).toBe(200);
+    });
+
+    it("rejects invalid MFA codes", async () => {
+      vi.spyOn(authenticator, "check").mockReturnValue(false);
+
+      const response = await app.inject({
+        method: "POST",
+        url: "/v1/auth/mfa/verify",
+        headers: buildAuthHeader(TEST_USER_ID),
+        payload: {
+          mfa_code: "123456",
+        },
+      });
+
+      expect(response.statusCode).toBe(400);
+      const payload = JSON.parse(response.payload);
+      expect(payload.error).toBe("Invalid MFA code");
+    });
+  });
+
   describe("POST /v1/auth/change-password", () => {
     const NEW_PASSWORD = "Password456!";
 

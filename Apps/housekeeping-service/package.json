@@ -51,9 +51,9 @@
     "eslint": "8.57.0",
     "eslint-config-prettier": "^9.1.0",
     "eslint-plugin-import": "^2.29.1",
-    "@vitest/coverage-v8": "^2.1.4",
+    "@vitest/coverage-v8": "^4.0.18",
     "knip": "^5.67.0",
-    "vitest": "^2.1.4",
+    "vitest": "^4.0.18",
     "tsx": "^4.7.1",
     "typescript": "^5.3.3"
   },

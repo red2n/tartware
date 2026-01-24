@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { describe, it, expect, beforeAll } from "vitest";
 import { buildServer } from "../src/server.js";
 import { query } from "../src/lib/db.js";
@@ -13,6 +14,7 @@ describe("Users Endpoint", () => {
   let staffUserId: string | null = null;
   let staffTenantId: string | null = null;
   let otherTenantId: string | null = null;
+  let createdUserId: string | null = null;
 
   beforeAll(async () => {
     app = buildServer();
@@ -292,6 +294,66 @@ describe("Users Endpoint", () => {
       });
 
       expect(response.statusCode).toBe(400);
+    });
+  });
+
+  describe("POST /v1/users - Tenant Admin Cases", () => {
+    it("should allow ADMIN to create a tenant user", async () => {
+      if (!adminUserId || !adminTenantId) {
+        console.warn("⚠ Skipping test: no ADMIN users with tenants");
+        return;
+      }
+
+      const uniqueId = randomUUID().slice(0, 8);
+      const payload = {
+        tenant_id: adminTenantId,
+        username: `tenant_user_${uniqueId}`,
+        email: `tenant_user_${uniqueId}@example.com`,
+        password: "TempPass123!",
+        first_name: "Tenant",
+        last_name: "User",
+        role: "STAFF",
+      };
+
+      const response = await app.inject({
+        method: "POST",
+        url: "/v1/users",
+        headers: buildAuthHeader(adminUserId),
+        payload,
+      });
+
+      expect(response.statusCode).toBe(201);
+      const result = JSON.parse(response.payload);
+      expect(result).toHaveProperty("id");
+      expect(result).toHaveProperty("email", payload.email);
+      createdUserId = result.id;
+    });
+
+    it("should allow ADMIN to reset a tenant user's password", async () => {
+      if (!adminUserId || !adminTenantId) {
+        console.warn("⚠ Skipping test: no ADMIN users with tenants");
+        return;
+      }
+
+      if (!createdUserId) {
+        console.warn("⚠ Skipping test: missing created user");
+        return;
+      }
+
+      const response = await app.inject({
+        method: "POST",
+        url: "/v1/users/reset-password",
+        headers: buildAuthHeader(adminUserId),
+        payload: {
+          tenant_id: adminTenantId,
+          user_id: createdUserId,
+          new_password: "ResetPass123!",
+        },
+      });
+
+      expect(response.statusCode).toBe(200);
+      const result = JSON.parse(response.payload);
+      expect(result).toHaveProperty("user_id", createdUserId);
     });
   });
 });

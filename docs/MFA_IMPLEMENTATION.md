@@ -2,7 +2,7 @@
 
 ## Overview
 
-MFA support has been added to the Tartware system for enhanced security of system administrator accounts.
+MFA support has been added to the Tartware system for enhanced security of system administrator accounts and tenant users.
 
 ## Components Modified
 
@@ -53,6 +53,29 @@ MFA support has been added to the Tartware system for enhanced security of syste
 The `system_administrators` table already had MFA support:
 - `mfa_secret` (TEXT) - Base32-encoded TOTP secret
 - `mfa_enabled` (BOOLEAN) - Whether MFA is required for this account
+
+Tenant users also store MFA settings in `users`:
+- `mfa_secret` (TEXT) - Base32-encoded TOTP secret
+- `mfa_enabled` (BOOLEAN) - Whether MFA is required for the account
+
+## Tenant MFA API
+
+Tenant MFA enrollment and rotation are handled by the core-service auth endpoints:
+
+1. `POST /v1/auth/mfa/enroll` (authenticated)
+   - Generates a new secret and stores it with `mfa_enabled=false`.
+   - Returns `secret` and `otpauth_url` for QR code enrollment.
+
+2. `POST /v1/auth/mfa/verify` (authenticated)
+   - Body: `{ "mfa_code": "123456" }`
+   - Validates the TOTP code and flips `mfa_enabled=true`.
+
+3. `POST /v1/auth/mfa/rotate` (authenticated)
+   - Body: `{ "mfa_code": "123456" }`
+   - Verifies the current code, generates a new secret, and sets `mfa_enabled=false`.
+   - Returns the new `secret` and `otpauth_url` for re-enrollment.
+
+All endpoints return `401` for unauthenticated users, `403` for inactive accounts, and `400` for invalid codes.
 
 ## Security Flow
 
