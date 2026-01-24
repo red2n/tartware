@@ -1,7 +1,7 @@
 {
   "openapi": "3.0.3",
   "info": {
-    "title": "@tartware/core-service API",
+    "title": "@tartware/command-center-service API",
     "version": "0.1.0",
     "description": "Command orchestration surface for Tartware (central ingress + routing)."
   },

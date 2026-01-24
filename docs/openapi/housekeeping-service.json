@@ -1,7 +1,7 @@
 {
   "openapi": "3.0.3",
   "info": {
-    "title": "@tartware/core-service API",
+    "title": "@tartware/housekeeping-service API",
     "version": "0.1.0",
     "description": "Housekeeping domain service for Tartware PMS"
   },

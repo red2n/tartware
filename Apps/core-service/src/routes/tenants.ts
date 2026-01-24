@@ -1,5 +1,6 @@
 import { buildRouteSchema, errorResponseSchema, schemaFromZod } from "@tartware/openapi";
 import { TenantTypeEnum, TenantWithRelationsSchema } from "@tartware/schemas";
+import { randomUUID } from "crypto";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 
@@ -100,6 +101,8 @@ const bootstrapRateLimitWindowMs = Number(
   process.env.TENANT_BOOTSTRAP_RATE_LIMIT_WINDOW_MS ?? "60000",
 );
 const bootstrapRateLimits = new Map<string, { count: number; resetAt: number }>();
+let bootstrapRateLimitLastCleanup = 0;
+const bootstrapRateLimitCleanupIntervalMs = 60_000;
 
 const checkBootstrapRateLimit = (ip: string): { allowed: boolean; retryAfterMs?: number } => {
   if (!Number.isFinite(bootstrapRateLimitMax) || bootstrapRateLimitMax <= 0) {
@@ -107,6 +110,14 @@ const checkBootstrapRateLimit = (ip: string): { allowed: boolean; retryAfterMs?:
   }
 
   const now = Date.now();
+  if (now - bootstrapRateLimitLastCleanup >= bootstrapRateLimitCleanupIntervalMs) {
+    for (const [key, entry] of bootstrapRateLimits) {
+      if (entry.resetAt <= now) {
+        bootstrapRateLimits.delete(key);
+      }
+    }
+    bootstrapRateLimitLastCleanup = now;
+  }
   const entry = bootstrapRateLimits.get(ip);
   if (!entry || entry.resetAt <= now) {
     bootstrapRateLimits.set(ip, { count: 1, resetAt: now + bootstrapRateLimitWindowMs });
@@ -242,38 +253,21 @@ export const registerTenantRoutes = (app: FastifyInstance): void => {
           throw request.server.httpErrors.conflict("USER_ALREADY_EXISTS");
         }
 
-        const tenantResult = await client.query<{ id: string; name: string; slug: string }>(
-          `INSERT INTO tenants
-            (name, slug, type, status, email, phone, website, config, subscription, metadata)
-           VALUES ($1, $2, $3, 'ACTIVE', $4, $5, $6, '{}'::jsonb, '{}'::jsonb, '{}'::jsonb)
-           RETURNING id, name, slug`,
-          [
-            tenantInput.name,
-            normalizedTenantSlug,
-            tenantInput.type,
-            tenantInput.email,
-            tenantInput.phone || null,
-            tenantInput.website || null,
-          ],
-        );
-
-        const tenant = tenantResult.rows[0];
-        if (!tenant) {
-          throw new Error("Failed to create tenant");
-        }
-
+        const ownerId = randomUUID();
         const userResult = await client.query<{ id: string; username: string; email: string }>(
           `INSERT INTO users
-            (username, email, password_hash, first_name, last_name, phone, is_active, is_verified)
-           VALUES ($1, $2, $3, $4, $5, $6, true, false)
+            (id, username, email, password_hash, first_name, last_name, phone, is_active, is_verified, created_by, updated_by)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, true, false, $8, $8)
            RETURNING id, username, email`,
           [
+            ownerId,
             ownerInput.username,
             ownerInput.email,
             passwordHash,
             ownerInput.first_name,
             ownerInput.last_name,
             ownerInput.phone || null,
+            ownerId,
           ],
         );
 
@@ -282,11 +276,32 @@ export const registerTenantRoutes = (app: FastifyInstance): void => {
           throw new Error("Failed to create owner user");
         }
 
+        const tenantResult = await client.query<{ id: string; name: string; slug: string }>(
+          `INSERT INTO tenants
+            (name, slug, type, status, email, phone, website, config, subscription, metadata, created_by, updated_by)
+           VALUES ($1, $2, $3, 'ACTIVE', $4, $5, $6, '{}'::jsonb, '{}'::jsonb, '{}'::jsonb, $7, $7)
+           RETURNING id, name, slug`,
+          [
+            tenantInput.name,
+            normalizedTenantSlug,
+            tenantInput.type,
+            tenantInput.email,
+            tenantInput.phone || null,
+            tenantInput.website || null,
+            ownerId,
+          ],
+        );
+
+        const tenant = tenantResult.rows[0];
+        if (!tenant) {
+          throw new Error("Failed to create tenant");
+        }
+
         await client.query(
           `INSERT INTO user_tenant_associations
-            (user_id, tenant_id, role, is_active)
-           VALUES ($1, $2, 'OWNER', true)`,
-          [owner.id, tenant.id],
+            (user_id, tenant_id, role, is_active, created_by, updated_by)
+           VALUES ($1, $2, 'OWNER', true, $3, $3)`,
+          [owner.id, tenant.id, ownerId],
         );
 
         const propertyResult = await client.query<{
@@ -296,8 +311,8 @@ export const registerTenantRoutes = (app: FastifyInstance): void => {
         }>(
           `INSERT INTO properties
             (tenant_id, property_name, property_code, property_type, star_rating, total_rooms,
-             phone, email, website, address, currency, timezone, config, integrations, is_active, metadata)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, '{}'::jsonb, '{}'::jsonb, true, '{}'::jsonb)
+             phone, email, website, address, currency, timezone, config, integrations, is_active, metadata, created_by, updated_by)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, '{}'::jsonb, '{}'::jsonb, true, '{}'::jsonb, $13, $13)
            RETURNING id, property_name, property_code`,
           [
             tenant.id,
@@ -312,6 +327,7 @@ export const registerTenantRoutes = (app: FastifyInstance): void => {
             JSON.stringify(propertyAddress),
             propertyInput.currency || "USD",
             propertyInput.timezone || "UTC",
+            ownerId,
           ],
         );
 

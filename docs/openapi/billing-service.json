@@ -1,7 +1,7 @@
 {
   "openapi": "3.0.3",
   "info": {
-    "title": "@tartware/core-service API",
+    "title": "@tartware/billing-service API",
     "version": "0.1.0",
     "description": "Billing and payments service for Tartware PMS"
   },

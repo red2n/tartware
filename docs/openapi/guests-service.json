@@ -1,7 +1,7 @@
 {
   "openapi": "3.0.3",
   "info": {
-    "title": "@tartware/core-service API",
+    "title": "@tartware/guests-service API",
     "version": "0.1.0",
     "description": "Guests domain service for Tartware PMS"
   },
