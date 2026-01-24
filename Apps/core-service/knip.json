@@ -22,7 +22,8 @@
     "tsc",
     "biome",
     "eslint",
-    "knip"
+    "knip",
+    "vitest"
   ],
   "ignoreExportsUsedInFile": true
 }
