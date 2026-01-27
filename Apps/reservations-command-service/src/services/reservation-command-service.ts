@@ -681,14 +681,6 @@ export const cancelReservation = async (
     await getReservationGuardMetadata(tenantId, command.reservation_id);
   const releaseLockId = guardRecord?.lockId ?? command.reservation_id;
 
-  await releaseReservationHold({
-    tenantId,
-    lockId: releaseLockId,
-    reservationId: command.reservation_id,
-    reason: command.reason ?? "RESERVATION_CANCEL",
-    correlationId: options.correlationId ?? eventId,
-  });
-
   await withTransaction(async (client) => {
     await recordLifecyclePersisted(client, {
       eventId,
@@ -753,6 +745,16 @@ export const cancelReservation = async (
         },
       },
     });
+  });
+
+  // Release availability hold AFTER transaction succeeds
+  // If this fails, reservation is cancelled but hold remains (safer than reverse)
+  await releaseReservationHold({
+    tenantId,
+    lockId: releaseLockId,
+    reservationId: command.reservation_id,
+    reason: command.reason ?? "RESERVATION_CANCEL",
+    correlationId: options.correlationId ?? eventId,
   });
 
   return {

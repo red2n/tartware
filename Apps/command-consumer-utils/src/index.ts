@@ -5,6 +5,7 @@ import type { EachBatchPayload, KafkaMessage } from "kafkajs";
 export type CommandEnvelope = {
   metadata?: {
     commandId?: string;
+    idempotencyKey?: string;
     commandName?: string;
     tenantId?: string;
     targetService?: string;
@@ -72,11 +73,25 @@ type PublishDlqEvent = (input: {
 type CommandConsumerMetrics = {
   recordOutcome?: (
     commandName: string,
-    status: "success" | "parse_error" | "handler_error",
+    status: "success" | "parse_error" | "handler_error" | "duplicate",
   ) => void;
   observeDuration?: (commandName: string, durationSeconds: number) => void;
   setConsumerLag?: (topic: string, partition: number, lag: number) => void;
 };
+
+type IdempotencyCheck = (input: {
+  tenantId: string;
+  idempotencyKey: string;
+  commandName: string;
+}) => Promise<boolean>;
+
+type IdempotencyRecord = (input: {
+  tenantId: string;
+  idempotencyKey: string;
+  commandName: string;
+  commandId?: string;
+  processedAt: Date;
+}) => Promise<void>;
 
 type CreateCommandCenterHandlersInput = {
   targetServiceId: string;
@@ -97,6 +112,16 @@ type CreateCommandCenterHandlersInput = {
   ) => Promise<void>;
   commandLabel: string;
   metrics?: CommandConsumerMetrics;
+  /**
+   * Optional idempotency check - returns true if command was already processed.
+   * When provided, duplicate commands will be skipped.
+   */
+  checkIdempotency?: IdempotencyCheck;
+  /**
+   * Optional callback to record a processed command for idempotency.
+   * Called after successful command processing.
+   */
+  recordIdempotency?: IdempotencyRecord;
 };
 
 export const createCommandCenterHandlers = (
@@ -171,23 +196,30 @@ export const createCommandCenterHandlers = (
         "unknown",
         (performance.now() - startedAt) / 1000,
       );
-      await input.publishDlqEvent({
-        key: messageKey,
-        value: JSON.stringify(
-          input.buildDlqPayload({
-            rawValue,
-            topic,
-            partition,
-            offset: message.offset,
-            attempts: 1,
-            failureReason: "PARSING_ERROR",
-            error,
-          }),
-        ),
-        headers: {
-          "x-tartware-dlq": input.serviceName,
-        },
-      });
+      try {
+        await input.publishDlqEvent({
+          key: messageKey,
+          value: JSON.stringify(
+            input.buildDlqPayload({
+              rawValue,
+              topic,
+              partition,
+              offset: message.offset,
+              attempts: 1,
+              failureReason: "PARSING_ERROR",
+              error,
+            }),
+          ),
+          headers: {
+            "x-tartware-dlq": input.serviceName,
+          },
+        });
+      } catch (dlqError) {
+        input.logger.error(
+          { err: dlqError, topic, partition, offset: message.offset },
+          "CRITICAL: Failed to publish parse error to DLQ; message may be lost",
+        );
+      }
       recordLag();
       return;
     }
@@ -196,6 +228,37 @@ export const createCommandCenterHandlers = (
     if (!shouldProcess(metadata)) {
       recordLag();
       return;
+    }
+
+    // Idempotency check - skip if command was already processed
+    const idempotencyKey = metadata.idempotencyKey ?? metadata.commandId;
+    if (idempotencyKey && input.checkIdempotency) {
+      try {
+        const isDuplicate = await input.checkIdempotency({
+          tenantId: metadata.tenantId,
+          idempotencyKey,
+          commandName: metadata.commandName,
+        });
+        if (isDuplicate) {
+          input.logger.info(
+            {
+              commandName: metadata.commandName,
+              tenantId: metadata.tenantId,
+              idempotencyKey,
+              commandId: metadata.commandId,
+            },
+            `${input.commandLabel} command skipped (duplicate)`,
+          );
+          input.metrics?.recordOutcome?.(metadata.commandName, "duplicate");
+          recordLag();
+          return;
+        }
+      } catch (error) {
+        input.logger.warn(
+          { err: error, metadata, idempotencyKey },
+          "Idempotency check failed; proceeding with command processing",
+        );
+      }
     }
 
     try {
@@ -229,6 +292,24 @@ export const createCommandCenterHandlers = (
         metadata.commandName,
         (performance.now() - startedAt) / 1000,
       );
+
+      // Record idempotency after successful processing
+      if (idempotencyKey && input.recordIdempotency) {
+        try {
+          await input.recordIdempotency({
+            tenantId: metadata.tenantId,
+            idempotencyKey,
+            commandName: metadata.commandName,
+            commandId: metadata.commandId,
+            processedAt: new Date(),
+          });
+        } catch (error) {
+          input.logger.warn(
+            { err: error, metadata, idempotencyKey },
+            "Failed to record idempotency; command processed successfully",
+          );
+        }
+      }
     } catch (error) {
       const attempts =
         error instanceof input.RetryExhaustedError ? error.attempts : 1;
@@ -241,24 +322,31 @@ export const createCommandCenterHandlers = (
         metadata.commandName,
         (performance.now() - startedAt) / 1000,
       );
-      await input.publishDlqEvent({
-        key: messageKey,
-        value: JSON.stringify(
-          input.buildDlqPayload({
-            envelope,
-            rawValue,
-            topic,
-            partition,
-            offset: message.offset,
-            attempts,
-            failureReason: "HANDLER_FAILURE",
-            error,
-          }),
-        ),
-        headers: {
-          "x-tartware-dlq": input.serviceName,
-        },
-      });
+      try {
+        await input.publishDlqEvent({
+          key: messageKey,
+          value: JSON.stringify(
+            input.buildDlqPayload({
+              envelope,
+              rawValue,
+              topic,
+              partition,
+              offset: message.offset,
+              attempts,
+              failureReason: "HANDLER_FAILURE",
+              error,
+            }),
+          ),
+          headers: {
+            "x-tartware-dlq": input.serviceName,
+          },
+        });
+      } catch (dlqError) {
+        input.logger.error(
+          { err: dlqError, metadata, attempts, topic, partition, offset: message.offset },
+          "CRITICAL: Failed to publish handler error to DLQ; message may be lost",
+        );
+      }
     }
 
     recordLag();

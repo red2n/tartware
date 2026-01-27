@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 
-import { query } from "../lib/db.js";
+import { query, queryWithClient, withTransaction } from "../lib/db.js";
 import {
   type BillingChargePostCommand,
   BillingChargePostCommandSchema,
@@ -650,37 +650,41 @@ const applyFolioTransfer = async (
     );
   }
 
-  await query(
-    `
-      UPDATE public.folios
-      SET
-        total_credits = total_credits + $2,
-        balance = balance - $2,
-        transferred_to_folio_id = $3::uuid,
-        transferred_at = NOW(),
-        updated_at = NOW(),
-        updated_by = $4::uuid
-      WHERE tenant_id = $1::uuid
-        AND folio_id = $5::uuid
-    `,
-    [context.tenantId, command.amount, toFolioId, actorId, fromFolioId],
-  );
+  await withTransaction(async (client) => {
+    await queryWithClient(
+      client,
+      `
+        UPDATE public.folios
+        SET
+          total_credits = total_credits + $2,
+          balance = balance - $2,
+          transferred_to_folio_id = $3::uuid,
+          transferred_at = NOW(),
+          updated_at = NOW(),
+          updated_by = $4::uuid
+        WHERE tenant_id = $1::uuid
+          AND folio_id = $5::uuid
+      `,
+      [context.tenantId, command.amount, toFolioId, actorId, fromFolioId],
+    );
 
-  await query(
-    `
-      UPDATE public.folios
-      SET
-        total_charges = total_charges + $2,
-        balance = balance + $2,
-        transferred_from_folio_id = $3::uuid,
-        transferred_at = NOW(),
-        updated_at = NOW(),
-        updated_by = $4::uuid
-      WHERE tenant_id = $1::uuid
-        AND folio_id = $5::uuid
-    `,
-    [context.tenantId, command.amount, fromFolioId, actorId, toFolioId],
-  );
+    await queryWithClient(
+      client,
+      `
+        UPDATE public.folios
+        SET
+          total_charges = total_charges + $2,
+          balance = balance + $2,
+          transferred_from_folio_id = $3::uuid,
+          transferred_at = NOW(),
+          updated_at = NOW(),
+          updated_by = $4::uuid
+        WHERE tenant_id = $1::uuid
+          AND folio_id = $5::uuid
+      `,
+      [context.tenantId, command.amount, fromFolioId, actorId, toFolioId],
+    );
+  });
 
   return toFolioId;
 };
