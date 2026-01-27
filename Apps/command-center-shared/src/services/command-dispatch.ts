@@ -135,6 +135,7 @@ export const createCommandDispatchService = <Membership>(
 			input.requestId,
 		);
 		if (existing) {
+			// Idempotent replays return the original dispatch without reapplying throttles.
 			if (existing.payload_hash !== payloadHash) {
 				throw new CommandDispatchError(
 					409,

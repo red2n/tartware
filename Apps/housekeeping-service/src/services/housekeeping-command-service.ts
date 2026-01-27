@@ -188,7 +188,7 @@ const applyCompletion = async (
 const lookupRoomNumber = async (
   tenantId: string,
   roomId: string,
-): Promise<string | null> => {
+): Promise<{ exists: boolean; roomNumber: string | null }> => {
   const { rows } = await query<{ room_number: string | null }>(
     `
       SELECT room_number
@@ -200,7 +200,10 @@ const lookupRoomNumber = async (
     `,
     [tenantId, roomId],
   );
-  return rows[0]?.room_number ?? null;
+  if (!rows[0]) {
+    return { exists: false, roomNumber: null };
+  }
+  return { exists: true, roomNumber: rows[0].room_number ?? null };
 };
 
 const applyCreate = async (
@@ -209,13 +212,22 @@ const applyCreate = async (
 ): Promise<string> => {
   const actor = context.initiatedBy?.userId ?? APP_ACTOR;
   let roomNumber: string | null = null;
+  let roomExists = false;
   if (command.room_id) {
-    roomNumber = await lookupRoomNumber(context.tenantId, command.room_id);
+    const lookup = await lookupRoomNumber(context.tenantId, command.room_id);
+    roomNumber = lookup.roomNumber;
+    roomExists = lookup.exists;
   }
-  if (!roomNumber) {
+  if (!roomExists) {
     throw new HousekeepingCommandError(
       "ROOM_NOT_FOUND",
       "Unable to locate room for housekeeping task.",
+    );
+  }
+  if (!roomNumber) {
+    throw new HousekeepingCommandError(
+      "ROOM_NUMBER_MISSING",
+      "Room is missing a room number for housekeeping task creation.",
     );
   }
 

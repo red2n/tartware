@@ -35,6 +35,7 @@ class BillingCommandError extends Error {
 }
 
 const APP_ACTOR = "COMMAND_CENTER";
+const SYSTEM_ACTOR_ID = "00000000-0000-0000-0000-000000000000";
 const UUID_REGEX =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -448,7 +449,7 @@ const applyChargePost = async (
   context: CommandContext,
 ): Promise<string> => {
   const actor = context.initiatedBy?.userId ?? APP_ACTOR;
-  const actorId = asUuid(actor);
+  const actorId = asUuid(actor) ?? SYSTEM_ACTOR_ID;
   const currency = command.currency ?? "USD";
   const folioId = await resolveFolioId(
     context.tenantId,
@@ -633,7 +634,7 @@ const applyFolioTransfer = async (
   context: CommandContext,
 ): Promise<string> => {
   const actor = context.initiatedBy?.userId ?? APP_ACTOR;
-  const actorId = asUuid(actor);
+  const actorId = asUuid(actor) ?? SYSTEM_ACTOR_ID;
   const fromFolioId = await resolveFolioId(
     context.tenantId,
     command.from_reservation_id,

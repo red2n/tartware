@@ -14,10 +14,14 @@ type TokenBucket = {
   capacity: number;
   refillPerMs: number;
   lastRefillMs: number;
+  lastUsedMs: number;
 };
 
 const buckets = new Map<string, TokenBucket>();
 const throttleLogger = appLogger.child({ module: "command-throttle" });
+const BUCKET_TTL_MS = 30 * 60 * 1000;
+const PRUNE_INTERVAL_MS = 5 * 60 * 1000;
+let lastPruneMs = Date.now();
 
 const resolveLimits = (
   feature: CommandFeatureInfo | null,
@@ -34,6 +38,9 @@ const resolveLimits = (
   if (maxPerMinute !== null && burst === null) {
     return { maxPerMinute, burst: maxPerMinute };
   }
+  if (maxPerMinute !== null && burst !== null && burst < maxPerMinute) {
+    return { maxPerMinute, burst: maxPerMinute };
+  }
   return { maxPerMinute, burst };
 };
 
@@ -45,6 +52,14 @@ const shouldThrottle = (input: ThrottleInput): boolean => {
 
   const key = `${input.tenantId}:${input.commandName}`;
   const now = Date.now();
+  if (now - lastPruneMs >= PRUNE_INTERVAL_MS) {
+    for (const [bucketKey, bucket] of buckets.entries()) {
+      if (now - bucket.lastUsedMs > BUCKET_TTL_MS) {
+        buckets.delete(bucketKey);
+      }
+    }
+    lastPruneMs = now;
+  }
   const refillPerMs = maxPerMinute / 60_000;
   const bucket = buckets.get(key);
 
@@ -55,6 +70,7 @@ const shouldThrottle = (input: ThrottleInput): boolean => {
       capacity: burst,
       refillPerMs,
       lastRefillMs: now,
+      lastUsedMs: now,
     });
     return tokens < 0;
   }
@@ -66,6 +82,7 @@ const shouldThrottle = (input: ThrottleInput): boolean => {
   );
   bucket.tokens = refilled;
   bucket.lastRefillMs = now;
+  bucket.lastUsedMs = now;
 
   if (bucket.tokens < 1) {
     return true;

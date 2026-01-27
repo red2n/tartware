@@ -12,6 +12,19 @@ const registryLogger = gatewayLogger.child({
 });
 const environment = process.env.NODE_ENV ?? "development";
 
+const LEGACY_MODULE_MAP: Record<string, string> = {
+	reservations: "core",
+	guests: "core",
+	inventory: "core",
+	operations: "facility-maintenance",
+	billing: "finance-automation",
+};
+
+const normalizeModuleId = (moduleId: string): string => {
+	const normalized = moduleId.trim().toLowerCase();
+	return LEGACY_MODULE_MAP[normalized] ?? normalized;
+};
+
 type CommandTemplateRecord = CommandRegistrySnapshot["templates"][number] & {
 	required_modules: string[];
 	metadata: Record<string, unknown>;
@@ -193,8 +206,8 @@ export const resolveCommandForTenant = ({
 	const tenantModules = new Set(
 		(membership.modules ?? []).map((moduleId) => moduleId.toLowerCase()),
 	);
-	const requiredModules = (template.required_modules ?? []).map((moduleId) =>
-		moduleId.toLowerCase(),
+	const requiredModules = (template.required_modules ?? []).map(
+		normalizeModuleId,
 	);
 	const missingModules = requiredModules.filter(
 		(moduleId) => !tenantModules.has(moduleId),
