@@ -95,13 +95,18 @@ const applyAssignment = async (
   context: CommandContext,
 ): Promise<void> => {
   const actor = context.initiatedBy?.userId ?? APP_ACTOR;
+  // MED-004: Preserve completed statuses (CLEAN/INSPECTED) when assigning staff
+  // Only transition to IN_PROGRESS if task is not already completed
   const { rowCount } = await query(
     `
       UPDATE public.housekeeping_tasks
       SET
         assigned_to = $3::uuid,
         assigned_at = NOW(),
-        status = 'IN_PROGRESS',
+        status = CASE
+          WHEN status IN ('CLEAN', 'INSPECTED') THEN status
+          ELSE 'IN_PROGRESS'
+        END,
         priority = COALESCE($4, priority),
         notes = CASE
           WHEN $5 IS NULL THEN notes
@@ -297,13 +302,18 @@ const applyReassign = async (
   context: CommandContext,
 ): Promise<void> => {
   const actor = context.initiatedBy?.userId ?? APP_ACTOR;
+  // MED-004: Preserve completed statuses (CLEAN/INSPECTED) when reassigning staff
+  // Only transition to IN_PROGRESS if task is not already completed
   const { rowCount } = await query(
     `
       UPDATE public.housekeeping_tasks
       SET
         assigned_to = $3::uuid,
         assigned_at = NOW(),
-        status = 'IN_PROGRESS',
+        status = CASE
+          WHEN status IN ('CLEAN', 'INSPECTED') THEN status
+          ELSE 'IN_PROGRESS'
+        END,
         notes = CASE
           WHEN $4 IS NULL THEN notes
           WHEN notes IS NULL THEN $4

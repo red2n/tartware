@@ -3,6 +3,9 @@
   "project": [
     "src/**/*.ts"
   ],
+  "ignore": [
+    "src/utils/money.ts"
+  ],
   "ignoreDependencies": [
     "@biomejs/biome",
     "@tartware/schemas",

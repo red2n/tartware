@@ -4,7 +4,6 @@
  */
 
 const CENTS_MULTIPLIER = 100;
-const ROUNDING_PRECISION = 2;
 
 /**
  * Convert a dollar amount to integer cents.

@@ -756,6 +756,28 @@ const mergeGuestRows = (
     primary.preferences ?? {},
   );
 
+  // MED-005: Handle VIP+blacklist conflict - blacklist takes precedence
+  // If either profile is blacklisted, the merged profile is blacklisted and NOT VIP
+  const eitherBlacklisted = Boolean(
+    primary.is_blacklisted || duplicate.is_blacklisted,
+  );
+  const eitherVip = Boolean(primary.vip_status || duplicate.vip_status);
+
+  // Log conflict for audit trail
+  if (eitherBlacklisted && eitherVip) {
+    guestCommandLogger.warn(
+      {
+        primaryGuestId: primary.id,
+        duplicateGuestId: duplicate.id,
+        primaryVip: primary.vip_status,
+        duplicateVip: duplicate.vip_status,
+        primaryBlacklisted: primary.is_blacklisted,
+        duplicateBlacklisted: duplicate.is_blacklisted,
+      },
+      "Guest merge conflict: VIP status suppressed due to blacklist flag",
+    );
+  }
+
   return {
     phone: primary.phone ?? duplicate.phone ?? null,
     secondary_phone:
@@ -779,8 +801,9 @@ const mergeGuestRows = (
       Number(primary.loyalty_points ?? 0) +
       Number(duplicate.loyalty_points ?? 0),
     loyalty_tier: primary.loyalty_tier ?? duplicate.loyalty_tier ?? null,
-    vip_status: Boolean(primary.vip_status || duplicate.vip_status),
-    is_blacklisted: Boolean(primary.is_blacklisted || duplicate.is_blacklisted),
+    // Blacklist takes precedence: if blacklisted, cannot be VIP
+    vip_status: eitherBlacklisted ? false : eitherVip,
+    is_blacklisted: eitherBlacklisted,
   };
 };
 

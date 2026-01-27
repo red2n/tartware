@@ -48,7 +48,9 @@ export const query = async <T extends QueryResultRow = QueryResultRow>(
   return pool.query<T>(text, params);
 };
 
-export const queryWithClient = async <T extends QueryResultRow = QueryResultRow>(
+export const queryWithClient = async <
+  T extends QueryResultRow = QueryResultRow,
+>(
   client: PoolClient,
   text: string,
   params: unknown[] = [],

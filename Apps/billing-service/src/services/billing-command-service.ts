@@ -17,7 +17,13 @@ import {
   type BillingPaymentRefundCommand,
   BillingPaymentRefundCommandSchema,
 } from "../schemas/billing-commands.js";
-import { addMoney, moneyGt, moneyGte, parseDbMoney, subtractMoney } from "../utils/money.js";
+import {
+  addMoney,
+  moneyGt,
+  moneyGte,
+  parseDbMoney,
+  subtractMoney,
+} from "../utils/money.js";
 
 type CommandContext = {
   tenantId: string;
@@ -226,10 +232,12 @@ const refundPayment = async (
     );
   }
 
-  const refundStatus =
-    moneyGte(refundTotal, originalAmount) ? "REFUNDED" : "PARTIALLY_REFUNDED";
-  const refundTransactionType =
-    moneyGte(command.amount, originalAmount) ? "REFUND" : "PARTIAL_REFUND";
+  const refundStatus = moneyGte(refundTotal, originalAmount)
+    ? "REFUNDED"
+    : "PARTIALLY_REFUNDED";
+  const refundTransactionType = moneyGte(command.amount, originalAmount)
+    ? "REFUND"
+    : "PARTIAL_REFUND";
 
   const refundReference =
     command.refund_reference ??

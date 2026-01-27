@@ -76,7 +76,12 @@ export const registerSystemUserRoutes = (app: FastifyInstance): void => {
       const data = CreateUserSchema.parse(request.body);
       const passwordHash = await hashPassword(data.password);
 
-      const { rows } = await query<{ id: string; username: string; email: string; created: boolean }>(
+      const { rows } = await query<{
+        id: string;
+        username: string;
+        email: string;
+        created: boolean;
+      }>(
         `INSERT INTO users (username, email, password_hash, first_name, last_name, phone, is_active, is_verified)
          VALUES ($1, $2, $3, $4, $5, $6, true, false)
          ON CONFLICT (username) DO NOTHING

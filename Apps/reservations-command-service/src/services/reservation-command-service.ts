@@ -43,6 +43,14 @@ import type {
 import type { RatePlanResolution } from "../services/rate-plan-service.js";
 import { resolveRatePlan } from "../services/rate-plan-service.js";
 
+class ReservationCommandError extends Error {
+  code: string;
+  constructor(code: string, message: string) {
+    super(message);
+    this.code = code;
+  }
+}
+
 interface CreateReservationResult {
   eventId: string;
   correlationId?: string;
@@ -64,6 +72,14 @@ export const createReservation = async (
   const eventId = uuid();
   const stayStart = new Date(command.check_in_date);
   const stayEnd = new Date(command.check_out_date);
+
+  // Validate check_out_date is after check_in_date
+  if (stayEnd <= stayStart) {
+    throw new Error(
+      "INVALID_DATES: check_out_date must be after check_in_date",
+    );
+  }
+
   const rateResolution: RatePlanResolution = await resolveRatePlan({
     tenantId,
     propertyId: command.property_id,
@@ -72,6 +88,16 @@ export const createReservation = async (
     stayEnd,
     requestedRateCode: command.rate_code,
   });
+
+  // MED-007: Require explicit opt-in for rate fallback to prevent silent repricing
+  if (rateResolution.fallbackApplied && !command.allow_rate_fallback) {
+    throw new ReservationCommandError(
+      "RATE_FALLBACK_NOT_ALLOWED",
+      `Requested rate code "${rateResolution.requestedRateCode}" is unavailable. ` +
+        `Fallback to "${rateResolution.appliedRateCode}" requires allow_rate_fallback=true. ` +
+        `Reason: ${rateResolution.reason}`,
+    );
+  }
 
   const rateFallbackMetadata = rateResolution.fallbackApplied
     ? {
@@ -228,6 +254,13 @@ export const modifyReservation = async (
   const stayStart = new Date(command.check_in_date ?? snapshot.checkInDate);
   const stayEnd = new Date(command.check_out_date ?? snapshot.checkOutDate);
 
+  // Validate dates (either from command or after merge with snapshot)
+  if (stayEnd <= stayStart) {
+    throw new Error(
+      "INVALID_DATES: check_out_date must be after check_in_date",
+    );
+  }
+
   const shouldResolveRate = command.rate_code !== undefined;
   const rateResolution: RatePlanResolution | null = shouldResolveRate
     ? await resolveRatePlan({
@@ -239,6 +272,16 @@ export const modifyReservation = async (
         requestedRateCode: command.rate_code,
       })
     : null;
+
+  // MED-007: Require explicit opt-in for rate fallback to prevent silent repricing
+  if (rateResolution?.fallbackApplied && !command.allow_rate_fallback) {
+    throw new ReservationCommandError(
+      "RATE_FALLBACK_NOT_ALLOWED",
+      `Requested rate code "${rateResolution.requestedRateCode}" is unavailable. ` +
+        `Fallback to "${rateResolution.appliedRateCode}" requires allow_rate_fallback=true. ` +
+        `Reason: ${rateResolution.reason}`,
+    );
+  }
 
   const rateFallbackMetadata = rateResolution?.fallbackApplied
     ? {
@@ -511,16 +554,43 @@ export const assignRoom = async (
   command: ReservationAssignRoomCommand,
   options: { correlationId?: string } = {},
 ): Promise<CreateReservationResult> => {
+  const eventId = uuid();
+
   const roomNumber = await fetchRoomNumber(tenantId, command.room_id);
   if (!roomNumber) {
     throw new Error("ROOM_NOT_FOUND");
   }
+
+  // Fetch reservation to get stay dates for availability check
+  const snapshot = await fetchReservationStaySnapshot(
+    tenantId,
+    command.reservation_id,
+  );
+  if (!snapshot) {
+    throw new Error("RESERVATION_NOT_FOUND");
+  }
+
+  // Verify room is available for the reservation's date range
+  const guardMetadata = await lockReservationHold({
+    tenantId,
+    reservationId: command.reservation_id,
+    roomTypeId: snapshot.roomTypeId,
+    roomId: command.room_id, // Check specific room availability
+    stayStart: new Date(snapshot.checkInDate),
+    stayEnd: new Date(snapshot.checkOutDate),
+    reason: "RESERVATION_ASSIGN_ROOM",
+    correlationId: options.correlationId ?? eventId,
+  });
+
   const updatePayload: ReservationUpdatePayload = {
     id: command.reservation_id,
     tenant_id: tenantId,
     room_number: roomNumber,
     internal_notes: command.notes,
-    metadata: command.metadata,
+    metadata: {
+      ...command.metadata,
+      availabilityGuard: guardMetadata,
+    },
   };
   return enqueueReservationUpdate(
     tenantId,
@@ -555,12 +625,56 @@ export const extendStay = async (
   command: ReservationExtendStayCommand,
   options: { correlationId?: string } = {},
 ): Promise<CreateReservationResult> => {
+  const eventId = uuid();
+
+  // Fetch current reservation to check if extension requires availability lock
+  const snapshot = await fetchReservationStaySnapshot(
+    tenantId,
+    command.reservation_id,
+  );
+  if (!snapshot) {
+    throw new Error("RESERVATION_NOT_FOUND");
+  }
+
+  const newCheckOut = new Date(command.new_check_out_date);
+  const currentCheckOut = new Date(snapshot.checkOutDate);
+  const checkIn = new Date(snapshot.checkInDate);
+
+  // Validate new checkout is after check-in
+  if (newCheckOut <= checkIn) {
+    throw new Error(
+      "INVALID_DATES: new_check_out_date must be after check_in_date",
+    );
+  }
+
+  // If extending (new checkout is later), verify availability for extended period
+  let guardMetadata: AvailabilityGuardMetadata = {
+    status: "SKIPPED",
+    message: "NO_EXTENSION_REQUIRED",
+  };
+
+  if (newCheckOut > currentCheckOut) {
+    guardMetadata = await lockReservationHold({
+      tenantId,
+      reservationId: command.reservation_id,
+      roomTypeId: snapshot.roomTypeId,
+      roomId: null, // Room assignment handled separately
+      stayStart: currentCheckOut, // Lock from current checkout to new checkout
+      stayEnd: newCheckOut,
+      reason: "RESERVATION_EXTEND_STAY",
+      correlationId: options.correlationId ?? eventId,
+    });
+  }
+
   const updatePayload: ReservationUpdatePayload = {
     id: command.reservation_id,
     tenant_id: tenantId,
     check_out_date: command.new_check_out_date,
     internal_notes: command.reason,
-    metadata: command.metadata,
+    metadata: {
+      ...command.metadata,
+      availabilityGuard: guardMetadata,
+    },
   };
   return enqueueReservationUpdate(
     tenantId,

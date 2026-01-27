@@ -58,12 +58,24 @@ export const handleRoomStatusUpdate = async (
 ): Promise<void> => {
   const command = RoomStatusUpdateCommandSchema.parse(payload);
   const actor = context.initiatedBy?.userId ?? APP_ACTOR;
+  // MED-006: Sync is_blocked and is_out_of_order flags when status changes
+  // to maintain single source of truth for room availability
   const { rowCount } = await query(
     `
       UPDATE public.rooms
       SET
         status = COALESCE($3::room_status, status),
         maintenance_status = COALESCE($4::maintenance_status, maintenance_status),
+        is_blocked = CASE
+          WHEN $3 = 'AVAILABLE' THEN false
+          WHEN $3 = 'BLOCKED' THEN true
+          ELSE is_blocked
+        END,
+        is_out_of_order = CASE
+          WHEN $3 = 'AVAILABLE' THEN false
+          WHEN $3 IN ('OUT_OF_ORDER', 'OUT_OF_SERVICE') THEN true
+          ELSE is_out_of_order
+        END,
         notes = CASE
           WHEN $5 IS NULL THEN notes
           WHEN notes IS NULL THEN $5
@@ -275,11 +287,14 @@ const blockRoom = async (
   const actor = context.initiatedBy?.userId ?? APP_ACTOR;
   const blockedFrom = command.blocked_from ?? new Date();
 
+  // MED-006: Also update status to maintain single source of truth
+  // A blocked room should have status reflecting unavailability
   const { rowCount } = await query(
     `
       UPDATE public.rooms
       SET
         is_blocked = TRUE,
+        status = 'BLOCKED',
         block_reason = COALESCE($3, block_reason),
         blocked_from = $4,
         blocked_until = $5,
@@ -314,11 +329,17 @@ const releaseRoomBlock = async (
   context: CommandContext,
 ): Promise<void> => {
   const actor = context.initiatedBy?.userId ?? APP_ACTOR;
+  // MED-006: Restore status when releasing block
+  // Only set to AVAILABLE if room is not out_of_order; otherwise preserve that status
   const { rowCount } = await query(
     `
       UPDATE public.rooms
       SET
         is_blocked = FALSE,
+        status = CASE
+          WHEN is_out_of_order = true THEN status
+          ELSE 'AVAILABLE'
+        END,
         block_reason = NULL,
         blocked_from = NULL,
         blocked_until = NULL,

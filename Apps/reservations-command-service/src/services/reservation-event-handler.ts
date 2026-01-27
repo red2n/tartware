@@ -16,6 +16,34 @@ type ReservationEventHandlerResult = {
   reservationId?: string;
 };
 
+class ReservationEventError extends Error {
+  code: string;
+  constructor(code: string, message: string) {
+    super(message);
+    this.code = code;
+  }
+}
+
+/**
+ * MED-008: Validate that property_id belongs to the given tenant
+ * to prevent cross-tenant data pollution from malformed events
+ */
+const validatePropertyBelongsToTenant = async (
+  tenantId: string,
+  propertyId: string,
+): Promise<void> => {
+  const { rowCount } = await query(
+    `SELECT 1 FROM properties WHERE id = $1 AND tenant_id = $2 LIMIT 1`,
+    [propertyId, tenantId],
+  );
+  if (!rowCount || rowCount === 0) {
+    throw new ReservationEventError(
+      "PROPERTY_NOT_FOUND_FOR_TENANT",
+      `Property ${propertyId} does not belong to tenant ${tenantId}`,
+    );
+  }
+};
+
 /**
  * Routes reservation events to the appropriate handler.
  */
@@ -52,10 +80,14 @@ const handleReservationCreated = async (
   event: ReservationCreatedEvent,
 ): Promise<string> => {
   const payload = event.payload;
+  const tenantId = event.metadata.tenantId;
   const reservationId = payload.id ?? uuid();
   const confirmation =
     (payload as { confirmation_number?: string }).confirmation_number ??
     `TW-${reservationId.slice(0, 8).toUpperCase()}`;
+
+  // MED-008: Validate property belongs to tenant before creating reservation
+  await validatePropertyBelongsToTenant(tenantId, payload.property_id);
 
   await query(
     `
@@ -119,6 +151,7 @@ const handleReservationUpdated = async (
   event: ReservationUpdatedEvent,
 ): Promise<string> => {
   const payload = event.payload;
+  const tenantId = event.metadata.tenantId;
   const fields: string[] = [];
   const values: unknown[] = [];
 
@@ -127,7 +160,11 @@ const handleReservationUpdated = async (
     values.push(value);
   };
 
-  if (payload.property_id) addField("property_id", payload.property_id);
+  // MED-008: Validate property belongs to tenant if property_id is being changed
+  if (payload.property_id) {
+    await validatePropertyBelongsToTenant(tenantId, payload.property_id);
+    addField("property_id", payload.property_id);
+  }
   if (payload.guest_id) addField("guest_id", payload.guest_id);
   if (payload.room_type_id) addField("room_type_id", payload.room_type_id);
   if (payload.check_in_date) addField("check_in_date", payload.check_in_date);

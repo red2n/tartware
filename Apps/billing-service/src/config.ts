@@ -4,7 +4,8 @@ process.env.SERVICE_NAME =
   process.env.SERVICE_NAME ?? "@tartware/billing-service";
 process.env.SERVICE_VERSION = process.env.SERVICE_VERSION ?? "0.1.0";
 // Dev default - must be overridden in production via env var
-process.env.AUTH_JWT_SECRET = process.env.AUTH_JWT_SECRET ?? "local-dev-secret-minimum-32-chars!";
+process.env.AUTH_JWT_SECRET =
+  process.env.AUTH_JWT_SECRET ?? "local-dev-secret-minimum-32-chars!";
 process.env.AUTH_JWT_ISSUER = process.env.AUTH_JWT_ISSUER ?? "tartware-core";
 process.env.AUTH_JWT_AUDIENCE = process.env.AUTH_JWT_AUDIENCE ?? "tartware";
 
@@ -149,7 +150,8 @@ export const config = {
   },
   auth: {
     jwt: {
-      secret: process.env.AUTH_JWT_SECRET ?? "local-dev-secret-minimum-32-chars!",
+      secret:
+        process.env.AUTH_JWT_SECRET ?? "local-dev-secret-minimum-32-chars!",
       issuer: process.env.AUTH_JWT_ISSUER ?? "tartware-core",
       audience: process.env.AUTH_JWT_AUDIENCE ?? "tartware",
     },
