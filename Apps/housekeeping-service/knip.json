@@ -10,6 +10,7 @@
     "@tartware/openapi",
     "@tartware/config",
     "@tartware/tenant-auth",
+    "@tartware/command-consumer-utils",
     "tsx",
     "@fastify/cors",
     "@fastify/helmet",

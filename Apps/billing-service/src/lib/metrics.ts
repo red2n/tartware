@@ -43,8 +43,5 @@ export const setCommandConsumerLag = (
   partition: number,
   lag: number,
 ): void => {
-  commandConsumerLagGauge.set(
-    { topic, partition: String(partition) },
-    lag,
-  );
+  commandConsumerLagGauge.set({ topic, partition: String(partition) }, lag);
 };

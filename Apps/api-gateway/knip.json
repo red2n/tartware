@@ -22,6 +22,7 @@
     "eslint",
     "knip",
     "tsc",
-    "tsx"
+    "tsx",
+    "vitest"
   ]
 }

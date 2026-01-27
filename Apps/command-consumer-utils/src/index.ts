@@ -67,7 +67,7 @@ type PublishDlqEvent = (input: {
   key: string;
   value: string;
   headers?: Record<string, string>;
-}) => Promise<void>;
+}) => Promise<unknown>;
 
 type CommandConsumerMetrics = {
   recordOutcome?: (

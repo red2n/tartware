@@ -9,5 +9,5 @@
     "src/shared/validators.ts"
   ],
   "ignoreDependencies": ["@biomejs/biome", "prettier", "tsx"],
-  "ignoreBinaries": ["biome", "eslint", "knip", "prettier", "tsc", "tsx"]
+  "ignoreBinaries": ["biome", "eslint", "knip", "prettier", "tsc", "tsx", "vitest"]
 }

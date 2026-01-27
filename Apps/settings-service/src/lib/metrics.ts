@@ -31,20 +31,10 @@ export const recordCommandOutcome = (
   commandOutcomeCounter.labels(commandName, status).inc();
 };
 
-export const observeCommandDuration = (
-  commandName: string,
-  durationSeconds: number,
-): void => {
+export const observeCommandDuration = (commandName: string, durationSeconds: number): void => {
   commandDurationHistogram.observe({ command: commandName }, durationSeconds);
 };
 
-export const setCommandConsumerLag = (
-  topic: string,
-  partition: number,
-  lag: number,
-): void => {
-  commandConsumerLagGauge.set(
-    { topic, partition: String(partition) },
-    lag,
-  );
+export const setCommandConsumerLag = (topic: string, partition: number, lag: number): void => {
+  commandConsumerLagGauge.set({ topic, partition: String(partition) }, lag);
 };

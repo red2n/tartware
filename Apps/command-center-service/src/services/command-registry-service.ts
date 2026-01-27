@@ -1,5 +1,9 @@
 import { config } from "../config.js";
 import { appLogger } from "../lib/logger.js";
+import {
+  type CommandRegistrySnapshot,
+  loadCommandRegistrySnapshot,
+} from "../sql/command-registry.js";
 
 const LEGACY_MODULE_MAP: Record<string, string> = {
   reservations: "core",
@@ -13,10 +17,6 @@ const normalizeModuleId = (moduleId: string): string => {
   const normalized = moduleId.trim().toLowerCase();
   return LEGACY_MODULE_MAP[normalized] ?? normalized;
 };
-import {
-  type CommandRegistrySnapshot,
-  loadCommandRegistrySnapshot,
-} from "../sql/command-registry.js";
 
 import type { TenantMembership } from "./membership-service.js";
 

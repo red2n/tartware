@@ -1,7 +1,7 @@
 import {
-  createCommandCenterHandlers,
   type CommandEnvelope,
   type CommandMetadata,
+  createCommandCenterHandlers,
 } from "@tartware/command-consumer-utils";
 import { createServiceLogger } from "@tartware/telemetry";
 import type { Consumer } from "kafkajs";
@@ -75,7 +75,6 @@ export const shutdownSettingsCommandCenterConsumer = async (): Promise<void> => 
     consumer = null;
   }
 };
-
 
 const buildDlqPayload = (input: {
   envelope?: CommandEnvelope;

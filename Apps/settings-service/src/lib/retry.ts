@@ -60,8 +60,7 @@ export const processWithRetry = async <T>(
       const scheduleDelay = schedule[scheduleIndex] ?? baseDelayMs;
       const rawDelay = hasSchedule ? scheduleDelay : baseDelayMs * 2 ** attempt;
       const jitterBase = rawDelay;
-      const jitter =
-        jitterFactor === 0 ? 0 : Math.random() * jitterBase * jitterFactor;
+      const jitter = jitterFactor === 0 ? 0 : Math.random() * jitterBase * jitterFactor;
       const delayMs = rawDelay + jitter;
 
       options.onRetry?.({
