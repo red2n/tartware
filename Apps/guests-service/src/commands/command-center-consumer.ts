@@ -1,11 +1,20 @@
-import { performance } from "node:perf_hooks";
+import {
+  createCommandCenterHandlers,
+  type CommandEnvelope,
+  type CommandMetadata,
+} from "@tartware/command-consumer-utils";
 
-import type { Consumer, EachBatchPayload, KafkaMessage } from "kafkajs";
+import type { Consumer } from "kafkajs";
 
 import { config } from "../config.js";
 import { kafka } from "../kafka/client.js";
 import { publishDlqEvent } from "../kafka/producer.js";
 import { appLogger } from "../lib/logger.js";
+import {
+  observeCommandDuration,
+  recordCommandOutcome,
+  setCommandConsumerLag,
+} from "../lib/metrics.js";
 import { processWithRetry, RetryExhaustedError } from "../lib/retry.js";
 import { GuestRegisterCommandSchema } from "../schemas/guest-commands.js";
 import {
@@ -19,22 +28,6 @@ import {
   updateGuestPreferences,
   updateGuestProfile,
 } from "../services/guest-command-service.js";
-
-type CommandEnvelope = {
-  metadata?: {
-    commandId?: string;
-    commandName?: string;
-    tenantId?: string;
-    targetService?: string;
-    correlationId?: string;
-    requestId?: string;
-    initiatedBy?: {
-      userId?: string;
-      role?: string;
-    };
-  };
-  payload?: unknown;
-};
 
 const consumerLogger = appLogger.child({
   module: "guests-command-center-consumer",
@@ -87,161 +80,6 @@ export const shutdownGuestsCommandCenterConsumer = async (): Promise<void> => {
   }
 };
 
-const shouldProcessCommand = (
-  metadata: NonNullable<CommandEnvelope["metadata"]>,
-): metadata is NonNullable<CommandEnvelope["metadata"]> & {
-  commandName: string;
-  tenantId: string;
-} => {
-  if (
-    metadata.targetService &&
-    metadata.targetService !== config.commandCenter.targetServiceId
-  ) {
-    return false;
-  }
-  if (
-    typeof metadata.commandName !== "string" ||
-    typeof metadata.tenantId !== "string"
-  ) {
-    return false;
-  }
-  return metadata.commandName.length > 0 && metadata.tenantId.length > 0;
-};
-
-const handleBatch = async ({
-  batch,
-  resolveOffset,
-  heartbeat,
-  commitOffsetsIfNecessary,
-  isRunning,
-  isStale,
-}: EachBatchPayload): Promise<void> => {
-  if (!isRunning() || isStale()) {
-    return;
-  }
-
-  try {
-    for (const message of batch.messages) {
-      if (!isRunning() || isStale()) {
-        break;
-      }
-      await processMessage(message, batch.topic, batch.partition);
-      resolveOffset(message.offset);
-      await heartbeat();
-    }
-  } finally {
-    await commitOffsetsIfNecessary();
-  }
-};
-
-const processMessage = async (
-  message: KafkaMessage,
-  topic: string,
-  partition: number,
-): Promise<void> => {
-  if (!message.value) {
-    consumerLogger.warn(
-      { topic, partition, offset: message.offset },
-      "skipping Kafka message with empty value",
-    );
-    return;
-  }
-
-  let envelope: CommandEnvelope;
-  try {
-    envelope = JSON.parse(message.value.toString()) as CommandEnvelope;
-  } catch (error) {
-    consumerLogger.error(
-      { err: error, topic, partition, offset: message.offset },
-      "failed to parse command envelope; routing to DLQ",
-    );
-    await publishDlqEvent({
-      key: message.key?.toString() ?? `offset-${message.offset}`,
-      value: JSON.stringify(
-        buildDlqPayload({
-          rawValue: message.value.toString(),
-          topic,
-          partition,
-          offset: message.offset,
-          attempts: 1,
-          failureReason: "PARSING_ERROR",
-          error,
-        }),
-      ),
-      headers: {
-        "x-tartware-dlq": config.service.name,
-      },
-    });
-    return;
-  }
-
-  const metadata = envelope.metadata ?? {};
-  if (!shouldProcessCommand(metadata)) {
-    return;
-  }
-
-  try {
-    const startedAt = performance.now();
-    const { attempts } = await processWithRetry(
-      () => routeCommand(envelope, metadata),
-      {
-        maxRetries: config.commandCenter.maxRetries,
-        baseDelayMs: config.commandCenter.retryBackoffMs,
-        delayScheduleMs:
-          config.commandCenter.retryScheduleMs.length > 0
-            ? config.commandCenter.retryScheduleMs
-            : undefined,
-        onRetry: ({ attempt, delayMs, error }) => {
-          consumerLogger.warn(
-            { attempt, delayMs, err: error, metadata },
-            "retrying guest command",
-          );
-        },
-      },
-    );
-    consumerLogger.info(
-      {
-        commandName: metadata.commandName,
-        tenantId: metadata.tenantId,
-        commandId: metadata.commandId,
-        correlationId: metadata.correlationId,
-        attempts,
-        durationMs: performance.now() - startedAt,
-      },
-      "guest command applied",
-    );
-  } catch (error) {
-    const attempts = error instanceof RetryExhaustedError ? error.attempts : 1;
-    consumerLogger.error(
-      {
-        err: error,
-        metadata,
-        topic,
-        partition,
-        offset: message.offset,
-      },
-      "guest command failed after retries; routing to DLQ",
-    );
-    await publishDlqEvent({
-      key: message.key?.toString() ?? `offset-${message.offset}`,
-      value: JSON.stringify(
-        buildDlqPayload({
-          envelope,
-          rawValue: message.value.toString(),
-          topic,
-          partition,
-          offset: message.offset,
-          attempts,
-          failureReason: "HANDLER_FAILURE",
-          error,
-        }),
-      ),
-      headers: {
-        "x-tartware-dlq": config.service.name,
-      },
-    });
-  }
-};
 
 const buildDlqPayload = (input: {
   envelope?: CommandEnvelope;
@@ -280,10 +118,7 @@ const buildDlqPayload = (input: {
 
 const routeCommand = async (
   envelope: CommandEnvelope,
-  metadata: NonNullable<CommandEnvelope["metadata"]> & {
-    commandName: string;
-    tenantId: string;
-  },
+  metadata: CommandMetadata,
 ): Promise<void> => {
   switch (metadata.commandName) {
     case "guest.register":
@@ -363,9 +198,34 @@ const routeCommand = async (
   }
 };
 
+const { handleBatch } = createCommandCenterHandlers({
+  targetServiceId: config.commandCenter.targetServiceId,
+  serviceName: config.service.name,
+  logger: consumerLogger,
+  retry: {
+    maxRetries: config.commandCenter.maxRetries,
+    baseDelayMs: config.commandCenter.retryBackoffMs,
+    delayScheduleMs:
+      config.commandCenter.retryScheduleMs.length > 0
+        ? config.commandCenter.retryScheduleMs
+        : undefined,
+  },
+  processWithRetry,
+  RetryExhaustedError,
+  publishDlqEvent,
+  buildDlqPayload,
+  routeCommand,
+  commandLabel: "guest",
+  metrics: {
+    recordOutcome: recordCommandOutcome,
+    observeDuration: observeCommandDuration,
+    setConsumerLag: setCommandConsumerLag,
+  },
+});
+
 const handleGuestRegisterCommand = async (
   payload: unknown,
-  metadata: NonNullable<CommandEnvelope["metadata"]>,
+  metadata: CommandMetadata,
 ): Promise<void> => {
   const parsedPayload = GuestRegisterCommandSchema.parse(payload);
   await registerGuestProfile({

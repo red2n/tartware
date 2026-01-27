@@ -69,6 +69,15 @@ type PublishDlqEvent = (input: {
   headers?: Record<string, string>;
 }) => Promise<void>;
 
+type CommandConsumerMetrics = {
+  recordOutcome?: (
+    commandName: string,
+    status: "success" | "parse_error" | "handler_error",
+  ) => void;
+  observeDuration?: (commandName: string, durationSeconds: number) => void;
+  setConsumerLag?: (topic: string, partition: number, lag: number) => void;
+};
+
 type CreateCommandCenterHandlersInput = {
   targetServiceId: string;
   serviceName: string;
@@ -87,6 +96,7 @@ type CreateCommandCenterHandlersInput = {
     metadata: CommandMetadata,
   ) => Promise<void>;
   commandLabel: string;
+  metrics?: CommandConsumerMetrics;
 };
 
 export const createCommandCenterHandlers = (
@@ -114,12 +124,33 @@ export const createCommandCenterHandlers = (
     message: KafkaMessage,
     topic: string,
     partition: number,
+    highWatermark?: string | null,
   ): Promise<void> => {
+    const recordLag = (): void => {
+      if (!input.metrics?.setConsumerLag || !highWatermark) {
+        return;
+      }
+
+      try {
+        const high = BigInt(highWatermark);
+        const current = BigInt(message.offset);
+        const rawLag = high - current - 1n;
+        const lag = rawLag > 0n ? Number(rawLag) : 0;
+        input.metrics.setConsumerLag(topic, partition, lag);
+      } catch (error) {
+        input.logger.warn(
+          { err: error, topic, partition, offset: message.offset, highWatermark },
+          "Failed to compute command consumer lag",
+        );
+      }
+    };
+
     if (!message.value) {
       input.logger.warn(
         { topic, partition, offset: message.offset },
         "skipping Kafka message with empty value",
       );
+      recordLag();
       return;
     }
 
@@ -134,6 +165,11 @@ export const createCommandCenterHandlers = (
       input.logger.error(
         { err: error, topic, partition, offset: message.offset },
         "failed to parse command envelope; routing to DLQ",
+      );
+      input.metrics?.recordOutcome?.("unknown", "parse_error");
+      input.metrics?.observeDuration?.(
+        "unknown",
+        (performance.now() - startedAt) / 1000,
       );
       await input.publishDlqEvent({
         key: messageKey,
@@ -152,11 +188,13 @@ export const createCommandCenterHandlers = (
           "x-tartware-dlq": input.serviceName,
         },
       });
+      recordLag();
       return;
     }
 
     const metadata = envelope.metadata;
     if (!shouldProcess(metadata)) {
+      recordLag();
       return;
     }
 
@@ -186,12 +224,22 @@ export const createCommandCenterHandlers = (
         },
         `${input.commandLabel} command applied`,
       );
+      input.metrics?.recordOutcome?.(metadata.commandName, "success");
+      input.metrics?.observeDuration?.(
+        metadata.commandName,
+        (performance.now() - startedAt) / 1000,
+      );
     } catch (error) {
       const attempts =
         error instanceof input.RetryExhaustedError ? error.attempts : 1;
       input.logger.error(
         { err: error, metadata, attempts },
         `${input.commandLabel} command failed after retries; routing to DLQ`,
+      );
+      input.metrics?.recordOutcome?.(metadata.commandName, "handler_error");
+      input.metrics?.observeDuration?.(
+        metadata.commandName,
+        (performance.now() - startedAt) / 1000,
       );
       await input.publishDlqEvent({
         key: messageKey,
@@ -212,6 +260,8 @@ export const createCommandCenterHandlers = (
         },
       });
     }
+
+    recordLag();
   };
 
   const handleBatch = async ({
@@ -230,7 +280,12 @@ export const createCommandCenterHandlers = (
       if (!isRunning() || isStale()) {
         break;
       }
-      await processMessage(message, batch.topic, batch.partition);
+      await processMessage(
+        message,
+        batch.topic,
+        batch.partition,
+        batch.highWatermark,
+      );
       resolveOffset(message.offset);
       await heartbeat();
     }

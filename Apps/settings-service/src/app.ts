@@ -2,6 +2,7 @@ import { buildFastifyServer, type FastifyInstance } from "@tartware/fastify-serv
 import type { PinoLogger } from "@tartware/telemetry";
 
 import { config } from "./config.js";
+import { metricsRegistry } from "./lib/metrics.js";
 import { authPlugin } from "./plugins/auth.js";
 import swaggerPlugin from "./plugins/swagger.js";
 import amenitiesRoutes from "./routes/amenities.js";
@@ -16,7 +17,8 @@ export const buildServer = ({ logger }: BuildServerOptions): FastifyInstance => 
     logger,
     enableRequestLogging: config.log.requestLogging,
     corsOrigin: false,
-    enableMetricsEndpoint: false, // No metrics endpoint for this service
+    enableMetricsEndpoint: true,
+    metricsRegistry,
   });
 
   void app.register(authPlugin);

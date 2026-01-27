@@ -3,22 +3,22 @@ import { Counter, Gauge, Histogram, Registry } from "prom-client";
 export const metricsRegistry = new Registry();
 
 const commandOutcomeCounter = new Counter({
-  name: "rooms_command_outcomes_total",
-  help: "Count of rooms commands processed by outcome",
+  name: "settings_command_outcomes_total",
+  help: "Count of settings commands processed by outcome",
   labelNames: ["command", "status"] as const,
   registers: [metricsRegistry],
 });
 
 const commandDurationHistogram = new Histogram({
-  name: "rooms_command_processing_duration_seconds",
-  help: "Duration of rooms command processing",
+  name: "settings_command_processing_duration_seconds",
+  help: "Duration of settings command processing",
   labelNames: ["command"] as const,
   registers: [metricsRegistry],
   buckets: [0.01, 0.05, 0.1, 0.25, 0.5, 1, 2, 5],
 });
 
 const commandConsumerLagGauge = new Gauge({
-  name: "rooms_command_consumer_lag",
+  name: "settings_command_consumer_lag",
   help: "Approximate number of messages between current offset and the latest Kafka high watermark",
   labelNames: ["topic", "partition"] as const,
   registers: [metricsRegistry],

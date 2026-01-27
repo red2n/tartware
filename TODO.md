@@ -43,7 +43,7 @@
    - Added tenant self-serve onboarding (non-system-admin) that creates tenant + owner + property.
    - Added tenant MFA enrollment/rotation endpoints to pair with login enforcement.
 
-11. **Command-based write pipeline roadmap for 20K ops/sec** (in progress)
+11. **Command-based write pipeline roadmap for 20K ops/sec** (done)
     - Step 1: Establish a command catalog with owners, payload schemas, and routing rules (command-center targetService + service ownership). (done)
       - Catalog draft (v1):
         - Reservations (owner: `reservations-command-service`):
@@ -97,7 +97,9 @@
       - Settings command consumer now retries with backoff and routes failures to `commands.primary.dlq`.
       - Billing/housekeeping/rooms/guests command consumers now retry with backoff and route failures to `commands.primary.dlq`.
       - Command center now enforces per-tenant throttles via command_features and has a DLQ replay runbook.
-    - Step 10: Add observability and SLOs for command throughput/latency/backlog per service.
+    - Step 10: Add observability and SLOs for command throughput/latency/backlog per service. (done)
+      - Added command outcome counters, duration histograms, and consumer lag gauges for rooms/housekeeping/billing/guests/settings.
+      - Documented SLOs and dashboard PromQL in `docs/observability/command-consumer-slos.md`.
 
 ## Checkpoint (2025-09-05)
 - Step 1-7 of the command-based write pipeline roadmap are complete; Step 8 is next.
@@ -106,7 +108,7 @@
 - Tests run: `npm run biome`, `npm run knip`, `npm run build` (all green). Knip hints remain for `vitest` in `Apps/core-service/knip.json` and `Apps/settings-service/knip.json`.
 
 ## Resume Notes
-- Next task: Step 10 (observability + SLOs for command throughput/latency/backlog per service).
+- Next task: Validate Grafana dashboards + alert rules from `docs/observability/command-consumer-slos.md`.
 - Gateway already has a generic POST `/v1/tenants/:tenantId/commands/:commandName` endpoint; reuse it for new settings commands.
 - Command catalog + command-center registry entries already expanded in `scripts/tables/01-core/10_command_center.sql`.
 - Reservations updates include check-in/out, assign/unassign, extend stay, rate override, deposits; reservation schema allows `room_number` nullable (`schema/src/schemas/03-bookings/reservations.ts`).

@@ -10,6 +10,11 @@ import { config } from "../config.js";
 import { kafka } from "../kafka/client.js";
 import { publishDlqEvent } from "../kafka/producer.js";
 import { appLogger } from "../lib/logger.js";
+import {
+  observeCommandDuration,
+  recordCommandOutcome,
+  setCommandConsumerLag,
+} from "../lib/metrics.js";
 import { processWithRetry, RetryExhaustedError } from "../lib/retry.js";
 import {
   addHousekeepingTaskNote,
@@ -180,4 +185,9 @@ const { handleBatch } = createCommandCenterHandlers({
   buildDlqPayload,
   routeCommand: routeHousekeepingCommand,
   commandLabel: "housekeeping",
+  metrics: {
+    recordOutcome: recordCommandOutcome,
+    observeDuration: observeCommandDuration,
+    setConsumerLag: setCommandConsumerLag,
+  },
 });
