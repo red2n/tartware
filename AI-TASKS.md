@@ -1,74 +1,47 @@
 # AI Task Queue - Code Quality Fixes
 
-> **Usage**: Ask the AI to complete any task by referencing its ID (e.g., "Fix CRIT-001")
+> **Usage**: Ask the AI to complete any task by referencing its ID (e.g., "Fix LOW-001")
 > **Generated**: 2026-01-27
-> **Branch**: saas-enforcement
+> **Branch**: fix/code-quality-issues
+> **Status**: All CRIT, HIGH, MEDIUM tasks completed. LOW tasks remaining.
 
 ---
 
-## 🔴 CRITICAL (P0) - Data Loss/Integrity
+## ✅ COMPLETED - CRITICAL (P0) - Data Loss/Integrity
 
-### CRIT-001: Non-atomic folio transfer causes money loss
-- **File**: `Apps/billing-service/src/services/billing-command-service.ts`
-- **Lines**: ~315-355
-- **Current Behavior**: Folio transfer uses two separate UPDATE queries without transaction wrapping
-- **Risk**: If second query fails, first folio is debited but second isn't credited - money disappears
-- **Fix Required**: Wrap both queries in `withTransaction()` from the database utilities
-- **Test**: Simulate failure after first UPDATE, verify rollback occurs
+### ~~CRIT-001~~: Non-atomic folio transfer causes money loss ✅ FIXED
+### ~~CRIT-002~~: Cancel releases availability lock before transaction commit ✅ FIXED
+### ~~CRIT-003~~: Command consumer lacks idempotency enforcement ✅ FIXED
+### ~~CRIT-004~~: DLQ publish is fire-and-forget ✅ FIXED
 
 ---
 
-### CRIT-002: Cancel releases availability lock before transaction commit
-- **File**: `Apps/reservations-command-service/src/services/reservation-command-service.ts`
-- **Lines**: ~418-424
-- **Current Behavior**: `releaseReservationHold()` is called BEFORE the database transaction
-- **Risk**: If transaction fails/rolls back, the availability lock is already released but reservation isn't cancelled
-- **Fix Required**: Either:
-  1. Move `releaseReservationHold()` inside the transaction as the final step, OR
-  2. Implement saga pattern with compensating transaction
-- **Test**: Simulate DB failure during cancel, verify availability guard state matches DB state
+## ✅ COMPLETED - HIGH (P1) - Security/Financial
+
+### ~~HIGH-001~~: Hardcoded default passwords in config ✅ FIXED
+### ~~HIGH-002~~: JWT secret in repository allowed ✅ FIXED (multiple services)
+### ~~HIGH-003~~: Refund amount > original payment allowed ✅ FIXED
+### ~~HIGH-004~~: Floating-point in currency calculations ✅ FIXED (money.ts utilities)
+### ~~HIGH-005~~: GDPR erase leaves guest PII in related tables ✅ FIXED (7-table cascade)
+### ~~HIGH-006~~: Password enumeration via timing/response ✅ FIXED (check is_active first)
+### ~~HIGH-007~~: TOCTOU race in user creation ✅ FIXED (ON CONFLICT DO NOTHING)
 
 ---
 
-### CRIT-003: Command consumer lacks idempotency enforcement
-- **File**: `Apps/command-consumer-utils/src/index.ts` (or main consumer file)
-- **Scope**: All command consumers using this utility
-- **Current Behavior**: Commands are processed without checking for duplicate delivery
-- **Risk**: Kafka redelivery can cause duplicate charges, reservations, etc.
-- **Fix Required**:
-  1. Add idempotency key field to command schema
-  2. Create `processed_commands` table with (idempotency_key, tenant_id, processed_at)
-  3. Check for existing key before processing, skip if found
-  4. Insert key after successful processing (inside same transaction)
-- **Reference**: AGENTS.md requires "Every new command must support idempotency keys and deduplication"
+## ✅ COMPLETED - MEDIUM (P2) - Business Logic
+
+### ~~MED-001~~: extendStay bypasses availability guard ✅ FIXED
+### ~~MED-002~~: assignRoom doesn't verify room availability ✅ FIXED
+### ~~MED-003~~: Missing check_in < check_out date validation ✅ FIXED
+### ~~MED-004~~: Housekeeping assignment overwrites completed status ✅ FIXED
+### ~~MED-005~~: Guest merge creates VIP + Blacklisted contradiction ✅ FIXED
+### ~~MED-006~~: Room unavailability uses conflicting mechanisms ✅ FIXED
+### ~~MED-007~~: Rate fallback silently reprices reservation ✅ FIXED
+### ~~MED-008~~: Cross-tenant property_id validation missing ✅ FIXED
 
 ---
 
-### CRIT-004: DLQ publish is fire-and-forget
-- **File**: `Apps/command-consumer-utils/src/index.ts`
-- **Function**: `publishToDlq()` or similar
-- **Current Behavior**: DLQ publish doesn't await confirmation
-- **Risk**: Message can be lost if publish fails silently
-- **Fix Required**: Await the Kafka producer `send()` result and handle errors appropriately
-- **Test**: Verify DLQ message count matches expected after simulated failures
-
----
-
-## 🟠 HIGH (P1) - Security/Financial
-
-### HIGH-001: Hardcoded default passwords in config
-- **File**: `Apps/config/src/index.ts`
-- **Current Code**:
-  ```typescript
-  DB_PASSWORD: env.DB_PASSWORD ?? "postgres"
-  AUTH_DEFAULT_PASSWORD: env.AUTH_DEFAULT_PASSWORD ?? "ChangeMe123!"
-  ```
-- **Risk**: Production deployments may accidentally use default credentials
-- **Fix Required**:
-  1. Remove default values for sensitive config
-  2. Throw error if required secrets not provided in production
-  3. Add `NODE_ENV` check: `if (isProduction && !env.DB_PASSWORD) throw new Error(...)`
-- **Test**: Verify app fails to start in production mode without required secrets
+## 🔵 LOW (P3) - Code Quality
 
 ---
 
@@ -338,14 +311,14 @@
 | HIGH-005 | ✅ Done | 2026-01-27 | fix/code-quality-issues |
 | HIGH-006 | ✅ Done | 2026-01-27 | fix/code-quality-issues |
 | HIGH-007 | ✅ Done | 2026-01-27 | fix/code-quality-issues |
-| MED-001 | ⬜ Pending | | |
-| MED-002 | ⬜ Pending | | |
-| MED-003 | ⬜ Pending | | |
-| MED-004 | ⬜ Pending | | |
-| MED-005 | ⬜ Pending | | |
-| MED-006 | ⬜ Pending | | |
-| MED-007 | ⬜ Pending | | |
-| MED-008 | ⬜ Pending | | |
+| MED-001 | ✅ Done | 2026-01-27 | fix/code-quality-issues |
+| MED-002 | ✅ Done | 2026-01-27 | fix/code-quality-issues |
+| MED-003 | ✅ Done | 2026-01-27 | fix/code-quality-issues |
+| MED-004 | ✅ Done | 2026-01-27 | fix/code-quality-issues |
+| MED-005 | ✅ Done | 2026-01-27 | fix/code-quality-issues |
+| MED-006 | ✅ Done | 2026-01-27 | fix/code-quality-issues |
+| MED-007 | ✅ Done | 2026-01-27 | fix/code-quality-issues |
+| MED-008 | ✅ Done | 2026-01-27 | fix/code-quality-issues |
 | LOW-001 | ⬜ Pending | | |
 | LOW-002 | ⬜ Pending | | |
 | LOW-003 | ⬜ Pending | | |
