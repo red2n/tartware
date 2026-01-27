@@ -331,13 +331,13 @@
 | CRIT-002 | ✅ Done | 2026-01-27 | fix/code-quality-issues |
 | CRIT-003 | ✅ Done | 2026-01-27 | fix/code-quality-issues |
 | CRIT-004 | ✅ Done | 2026-01-27 | fix/code-quality-issues |
-| HIGH-001 | ⬜ Pending | | |
-| HIGH-002 | ⬜ Pending | | |
-| HIGH-003 | ⬜ Pending | | |
-| HIGH-004 | ⬜ Pending | | |
-| HIGH-005 | ⬜ Pending | | |
-| HIGH-006 | ⬜ Pending | | |
-| HIGH-007 | ⬜ Pending | | |
+| HIGH-001 | ✅ Done | 2026-01-27 | fix/code-quality-issues |
+| HIGH-002 | ✅ Done | 2026-01-27 | fix/code-quality-issues |
+| HIGH-003 | ✅ Done | 2026-01-27 | fix/code-quality-issues |
+| HIGH-004 | ✅ Done | 2026-01-27 | fix/code-quality-issues |
+| HIGH-005 | ✅ Done | 2026-01-27 | fix/code-quality-issues |
+| HIGH-006 | ✅ Done | 2026-01-27 | fix/code-quality-issues |
+| HIGH-007 | ✅ Done | 2026-01-27 | fix/code-quality-issues |
 | MED-001 | ⬜ Pending | | |
 | MED-002 | ⬜ Pending | | |
 | MED-003 | ⬜ Pending | | |

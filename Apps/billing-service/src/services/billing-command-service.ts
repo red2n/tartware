@@ -17,6 +17,7 @@ import {
   type BillingPaymentRefundCommand,
   BillingPaymentRefundCommandSchema,
 } from "../schemas/billing-commands.js";
+import { addMoney, moneyGt, moneyGte, parseDbMoney, subtractMoney } from "../utils/money.js";
 
 type CommandContext = {
   tenantId: string;
@@ -212,11 +213,23 @@ const refundPayment = async (
   }
 
   const actor = context.initiatedBy?.userId ?? APP_ACTOR;
-  const refundTotal = Number(original.refund_amount ?? 0) + command.amount;
+  const originalAmount = parseDbMoney(original.amount);
+  const previousRefunds = parseDbMoney(original.refund_amount);
+  const refundTotal = addMoney(previousRefunds, command.amount);
+
+  // Prevent refunds exceeding original payment (using safe money comparison)
+  if (moneyGt(refundTotal, originalAmount)) {
+    const availableRefund = subtractMoney(originalAmount, previousRefunds);
+    throw new BillingCommandError(
+      "REFUND_EXCEEDS_PAYMENT",
+      `Refund amount ${command.amount} would exceed original payment. Available for refund: ${availableRefund}`,
+    );
+  }
+
   const refundStatus =
-    refundTotal >= Number(original.amount) ? "REFUNDED" : "PARTIALLY_REFUNDED";
+    moneyGte(refundTotal, originalAmount) ? "REFUNDED" : "PARTIALLY_REFUNDED";
   const refundTransactionType =
-    command.amount >= Number(original.amount) ? "REFUND" : "PARTIAL_REFUND";
+    moneyGte(command.amount, originalAmount) ? "REFUND" : "PARTIAL_REFUND";
 
   const refundReference =
     command.refund_reference ??

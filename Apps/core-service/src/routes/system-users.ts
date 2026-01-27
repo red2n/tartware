@@ -76,10 +76,11 @@ export const registerSystemUserRoutes = (app: FastifyInstance): void => {
       const data = CreateUserSchema.parse(request.body);
       const passwordHash = await hashPassword(data.password);
 
-      const { rows } = await query<{ id: string; username: string; email: string }>(
+      const { rows } = await query<{ id: string; username: string; email: string; created: boolean }>(
         `INSERT INTO users (username, email, password_hash, first_name, last_name, phone, is_active, is_verified)
          VALUES ($1, $2, $3, $4, $5, $6, true, false)
-         RETURNING id, username, email`,
+         ON CONFLICT (username) DO NOTHING
+         RETURNING id, username, email, true as created`,
         [
           data.username,
           data.email,
@@ -92,6 +93,18 @@ export const registerSystemUserRoutes = (app: FastifyInstance): void => {
 
       const user = rows[0];
       if (!user) {
+        // User already exists - check if email conflict or username conflict
+        const existingResult = await query<{ username: string; email: string }>(
+          `SELECT username, email FROM users WHERE username = $1 OR email = $2 LIMIT 1`,
+          [data.username, data.email],
+        );
+        const existing = existingResult.rows[0];
+        if (existing?.username === data.username) {
+          throw request.server.httpErrors.conflict("Username already exists");
+        }
+        if (existing?.email === data.email) {
+          throw request.server.httpErrors.conflict("Email already exists");
+        }
         throw new Error("Failed to create user");
       }
 

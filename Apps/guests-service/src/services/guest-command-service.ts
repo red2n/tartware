@@ -1,4 +1,4 @@
-import { query } from "../lib/db.js";
+import { query, queryWithClient, withTransaction } from "../lib/db.js";
 import { appLogger } from "../lib/logger.js";
 import {
   GuestGdprEraseCommandSchema,
@@ -539,6 +539,7 @@ export const eraseGuestForGdpr = async ({
   const command = GuestGdprEraseCommandSchema.parse(payload);
   const actor = initiatedBy?.userId ?? APP_ACTOR;
   const redactedEmail = `gdpr+${command.guest_id}@redacted.invalid`;
+  const redactedName = "Deleted Guest";
 
   // Check if guest is already deleted for idempotency
   const existingGuest = await query(
@@ -559,50 +560,127 @@ export const eraseGuestForGdpr = async ({
     return;
   }
 
-  const { rowCount } = await query(
-    `
-      UPDATE public.guests
-      SET
-        first_name = 'Deleted',
-        last_name = 'Guest',
-        email = $3,
-        phone = NULL,
-        secondary_phone = NULL,
-        address = '{}'::jsonb,
-        preferences = '{}'::jsonb,
-        marketing_consent = false,
-        notes = NULL,
-        metadata = COALESCE(metadata, '{}'::jsonb) || $4::jsonb,
-        is_deleted = true,
-        deleted_at = NOW(),
-        deleted_by = $5,
-        updated_at = NOW(),
-        updated_by = $5
-      WHERE tenant_id = $1::uuid
-        AND id = $2::uuid
-        AND COALESCE(is_deleted, false) = false
-    `,
-    [
-      tenantId,
-      command.guest_id,
-      redactedEmail,
-      JSON.stringify(
-        appendMetadata(command.metadata ?? null, {
-          gdpr_erased_at: new Date().toISOString(),
-          gdpr_reason: command.reason ?? null,
-        }),
-      ),
-      actor,
-    ],
+  const gdprMetadata = JSON.stringify(
+    appendMetadata(command.metadata ?? null, {
+      gdpr_erased_at: new Date().toISOString(),
+      gdpr_reason: command.reason ?? null,
+    }),
   );
 
-  if (!rowCount || rowCount === 0) {
-    throw new Error("GUEST_NOT_FOUND");
-  }
+  await withTransaction(async (client) => {
+    // 1. Update the guest record itself
+    const { rowCount } = await queryWithClient(
+      client,
+      `
+        UPDATE public.guests
+        SET
+          first_name = 'Deleted',
+          last_name = 'Guest',
+          email = $3,
+          phone = NULL,
+          secondary_phone = NULL,
+          address = '{}'::jsonb,
+          preferences = '{}'::jsonb,
+          marketing_consent = false,
+          notes = NULL,
+          metadata = COALESCE(metadata, '{}'::jsonb) || $4::jsonb,
+          is_deleted = true,
+          deleted_at = NOW(),
+          deleted_by = $5,
+          updated_at = NOW(),
+          updated_by = $5
+        WHERE tenant_id = $1::uuid
+          AND id = $2::uuid
+          AND COALESCE(is_deleted, false) = false
+      `,
+      [tenantId, command.guest_id, redactedEmail, gdprMetadata, actor],
+    );
+
+    if (!rowCount || rowCount === 0) {
+      throw new Error("GUEST_NOT_FOUND");
+    }
+
+    // 2. Cascade anonymization to folios (has guest_name)
+    await queryWithClient(
+      client,
+      `
+        UPDATE public.folios
+        SET guest_name = $3, updated_at = NOW()
+        WHERE tenant_id = $1::uuid AND guest_id = $2::uuid
+      `,
+      [tenantId, command.guest_id, redactedName],
+    );
+
+    // 3. Cascade anonymization to ota_reservations_queue
+    await queryWithClient(
+      client,
+      `
+        UPDATE public.ota_reservations_queue
+        SET guest_name = $3, guest_email = NULL, guest_phone = NULL, updated_at = NOW()
+        WHERE tenant_id = $1::uuid AND guest_id = $2::uuid
+      `,
+      [tenantId, command.guest_id, redactedName],
+    );
+
+    // 4. Cascade anonymization to gds_reservation_queue
+    await queryWithClient(
+      client,
+      `
+        UPDATE public.gds_reservation_queue
+        SET guest_name = $3, guest_email = NULL, guest_phone = NULL, updated_at = NOW()
+        WHERE tenant_id = $1::uuid AND guest_id = $2::uuid
+      `,
+      [tenantId, command.guest_id, redactedName],
+    );
+
+    // 5. Cascade anonymization to lost_and_found
+    await queryWithClient(
+      client,
+      `
+        UPDATE public.lost_and_found
+        SET guest_name = $3, guest_email = NULL, guest_phone = NULL, updated_at = NOW()
+        WHERE tenant_id = $1::uuid AND claimed_by_guest_id = $2::uuid
+      `,
+      [tenantId, command.guest_id, redactedName],
+    );
+
+    // 6. Cascade anonymization to transportation_requests
+    await queryWithClient(
+      client,
+      `
+        UPDATE public.transportation_requests
+        SET guest_name = $3, guest_email = NULL, guest_phone = NULL, updated_at = NOW()
+        WHERE tenant_id = $1::uuid AND guest_id = $2::uuid
+      `,
+      [tenantId, command.guest_id, redactedName],
+    );
+
+    // 7. Cascade anonymization to digital_registration_cards
+    await queryWithClient(
+      client,
+      `
+        UPDATE public.digital_registration_cards
+        SET guest_email = NULL, guest_phone = NULL, updated_at = NOW()
+        WHERE tenant_id = $1::uuid AND guest_id = $2::uuid
+      `,
+      [tenantId, command.guest_id],
+    );
+
+    // 8. Cascade anonymization to incident_reports
+    await queryWithClient(
+      client,
+      `
+        UPDATE public.incident_reports
+        SET guest_name = $3, updated_at = NOW()
+        WHERE tenant_id = $1::uuid AND guest_id = $2::uuid
+      `,
+      [tenantId, command.guest_id, redactedName],
+    );
+  });
 
   guestCommandLogger.info(
     { tenantId, guestId: command.guest_id, correlationId, initiatedBy },
-    "guest.gdpr.erase command applied",
+    "guest.gdpr.erase command applied with cascade to related tables",
   );
 };
 

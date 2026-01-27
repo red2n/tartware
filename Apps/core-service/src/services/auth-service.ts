@@ -130,6 +130,11 @@ export const authenticateUser = async ({
     return { ok: false, reason: "INVALID_CREDENTIALS" };
   }
 
+  // Check account status BEFORE password validation to prevent enumeration
+  if (!user.is_active) {
+    return { ok: false, reason: "INVALID_CREDENTIALS" };
+  }
+
   const lockStatus = isAccountLocked({ locked_until: user.locked_until ?? null });
   if (lockStatus.locked) {
     return { ok: false, reason: "ACCOUNT_LOCKED", lockExpiresAt: lockStatus.lockExpiresAt };
@@ -140,10 +145,6 @@ export const authenticateUser = async ({
     const { lockExpiresAt } = await recordFailedTenantLogin(user.id);
     const reason = lockExpiresAt ? "ACCOUNT_LOCKED" : "INVALID_CREDENTIALS";
     return { ok: false, reason, lockExpiresAt };
-  }
-
-  if (!user.is_active) {
-    return { ok: false, reason: "ACCOUNT_INACTIVE" };
   }
 
   const mfaValidation = validateTenantMfa(
