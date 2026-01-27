@@ -76,6 +76,23 @@ export const registerSystemUserRoutes = (app: FastifyInstance): void => {
       const data = CreateUserSchema.parse(request.body);
       const passwordHash = await hashPassword(data.password);
 
+      // PR feedback: Check for both username AND email conflicts before insert
+      // to provide accurate error messages for either conflict type
+      const [usernameResult, emailResult] = await Promise.all([
+        query<{ username: string }>(`SELECT username FROM users WHERE username = $1 LIMIT 1`, [
+          data.username,
+        ]),
+        query<{ email: string }>(`SELECT email FROM users WHERE email = $1 LIMIT 1`, [data.email]),
+      ]);
+
+      if (usernameResult.rows[0]) {
+        throw request.server.httpErrors.conflict("Username already exists");
+      }
+      if (emailResult.rows[0]) {
+        throw request.server.httpErrors.conflict("Email already exists");
+      }
+
+      // Use ON CONFLICT to handle race conditions atomically
       const { rows } = await query<{
         id: string;
         username: string;
@@ -84,7 +101,7 @@ export const registerSystemUserRoutes = (app: FastifyInstance): void => {
       }>(
         `INSERT INTO users (username, email, password_hash, first_name, last_name, phone, is_active, is_verified)
          VALUES ($1, $2, $3, $4, $5, $6, true, false)
-         ON CONFLICT (username) DO NOTHING
+         ON CONFLICT DO NOTHING
          RETURNING id, username, email, true as created`,
         [
           data.username,
@@ -98,19 +115,10 @@ export const registerSystemUserRoutes = (app: FastifyInstance): void => {
 
       const user = rows[0];
       if (!user) {
-        // User already exists - check if email conflict or username conflict
-        const existingResult = await query<{ username: string; email: string }>(
-          `SELECT username, email FROM users WHERE username = $1 OR email = $2 LIMIT 1`,
-          [data.username, data.email],
+        // Race condition: another request created user between check and insert
+        throw request.server.httpErrors.conflict(
+          "User with this username or email was just created",
         );
-        const existing = existingResult.rows[0];
-        if (existing?.username === data.username) {
-          throw request.server.httpErrors.conflict("Username already exists");
-        }
-        if (existing?.email === data.email) {
-          throw request.server.httpErrors.conflict("Email already exists");
-        }
-        throw new Error("Failed to create user");
       }
 
       // If tenant_id and role provided, create association

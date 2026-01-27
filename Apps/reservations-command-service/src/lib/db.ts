@@ -36,19 +36,27 @@ export const withTransaction = async <T>(
   handler: (client: PoolClient) => Promise<T>,
 ): Promise<T> => {
   const client = await pool.connect();
+  let transactionStarted = false;
+  let rollbackError: unknown = null;
+
   try {
     await client.query("BEGIN");
+    transactionStarted = true;
     const result = await handler(client);
     await client.query("COMMIT");
     return result;
   } catch (error) {
-    try {
-      await client.query("ROLLBACK");
-    } catch {
-      // ignore rollback errors
+    if (transactionStarted) {
+      try {
+        await client.query("ROLLBACK");
+      } catch (rbError) {
+        rollbackError = rbError;
+        console.error("Transaction rollback failed", rbError);
+      }
     }
     throw error;
   } finally {
-    client.release();
+    // Pass true to release() to signal error occurred, allowing pool to discard connection if needed
+    client.release(rollbackError !== null);
   }
 };

@@ -568,6 +568,9 @@ export const eraseGuestForGdpr = async ({
   );
 
   await withTransaction(async (client) => {
+    // Audit trail for GDPR compliance
+    const cascadeAudit: Record<string, number> = {};
+
     // 1. Update the guest record itself
     const { rowCount } = await queryWithClient(
       client,
@@ -599,9 +602,10 @@ export const eraseGuestForGdpr = async ({
     if (!rowCount || rowCount === 0) {
       throw new Error("GUEST_NOT_FOUND");
     }
+    cascadeAudit.guests = rowCount;
 
     // 2. Cascade anonymization to folios (has guest_name)
-    await queryWithClient(
+    const foliosResult = await queryWithClient(
       client,
       `
         UPDATE public.folios
@@ -610,9 +614,10 @@ export const eraseGuestForGdpr = async ({
       `,
       [tenantId, command.guest_id, redactedName],
     );
+    cascadeAudit.folios = foliosResult.rowCount ?? 0;
 
     // 3. Cascade anonymization to ota_reservations_queue
-    await queryWithClient(
+    const otaResult = await queryWithClient(
       client,
       `
         UPDATE public.ota_reservations_queue
@@ -621,9 +626,10 @@ export const eraseGuestForGdpr = async ({
       `,
       [tenantId, command.guest_id, redactedName],
     );
+    cascadeAudit.ota_reservations_queue = otaResult.rowCount ?? 0;
 
     // 4. Cascade anonymization to gds_reservation_queue
-    await queryWithClient(
+    const gdsResult = await queryWithClient(
       client,
       `
         UPDATE public.gds_reservation_queue
@@ -632,9 +638,10 @@ export const eraseGuestForGdpr = async ({
       `,
       [tenantId, command.guest_id, redactedName],
     );
+    cascadeAudit.gds_reservation_queue = gdsResult.rowCount ?? 0;
 
     // 5. Cascade anonymization to lost_and_found
-    await queryWithClient(
+    const lostFoundResult = await queryWithClient(
       client,
       `
         UPDATE public.lost_and_found
@@ -643,9 +650,10 @@ export const eraseGuestForGdpr = async ({
       `,
       [tenantId, command.guest_id, redactedName],
     );
+    cascadeAudit.lost_and_found = lostFoundResult.rowCount ?? 0;
 
     // 6. Cascade anonymization to transportation_requests
-    await queryWithClient(
+    const transportResult = await queryWithClient(
       client,
       `
         UPDATE public.transportation_requests
@@ -654,9 +662,10 @@ export const eraseGuestForGdpr = async ({
       `,
       [tenantId, command.guest_id, redactedName],
     );
+    cascadeAudit.transportation_requests = transportResult.rowCount ?? 0;
 
     // 7. Cascade anonymization to digital_registration_cards
-    await queryWithClient(
+    const regCardsResult = await queryWithClient(
       client,
       `
         UPDATE public.digital_registration_cards
@@ -665,9 +674,10 @@ export const eraseGuestForGdpr = async ({
       `,
       [tenantId, command.guest_id],
     );
+    cascadeAudit.digital_registration_cards = regCardsResult.rowCount ?? 0;
 
     // 8. Cascade anonymization to incident_reports
-    await queryWithClient(
+    const incidentsResult = await queryWithClient(
       client,
       `
         UPDATE public.incident_reports
@@ -675,6 +685,19 @@ export const eraseGuestForGdpr = async ({
         WHERE tenant_id = $1::uuid AND guest_id = $2::uuid
       `,
       [tenantId, command.guest_id, redactedName],
+    );
+    cascadeAudit.incident_reports = incidentsResult.rowCount ?? 0;
+
+    // Log GDPR audit trail for compliance
+    guestCommandLogger.info(
+      {
+        tenantId,
+        guestId: command.guest_id,
+        correlationId,
+        initiatedBy,
+        cascadeAudit,
+      },
+      "guest.gdpr.erase cascade audit - records anonymized per table",
     );
   });
 

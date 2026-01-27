@@ -15,6 +15,7 @@ import {
 } from "../clients/availability-guard-client.js";
 import { serviceConfig } from "../config.js";
 import { query, withTransaction } from "../lib/db.js";
+import { reservationsLogger } from "../logger.js";
 import { enqueueOutboxRecordWithClient } from "../outbox/repository.js";
 import { recordLifecyclePersisted } from "../repositories/lifecycle-repository.js";
 import { insertRateFallbackRecord } from "../repositories/rate-fallback-repository.js";
@@ -863,13 +864,24 @@ export const cancelReservation = async (
 
   // Release availability hold AFTER transaction succeeds
   // If this fails, reservation is cancelled but hold remains (safer than reverse)
-  await releaseReservationHold({
-    tenantId,
-    lockId: releaseLockId,
-    reservationId: command.reservation_id,
-    reason: command.reason ?? "RESERVATION_CANCEL",
-    correlationId: options.correlationId ?? eventId,
-  });
+  try {
+    await releaseReservationHold({
+      tenantId,
+      lockId: releaseLockId,
+      reservationId: command.reservation_id,
+      reason: command.reason ?? "RESERVATION_CANCEL",
+      correlationId: options.correlationId ?? eventId,
+    });
+  } catch (releaseError) {
+    reservationsLogger.warn(
+      {
+        reservationId: command.reservation_id,
+        lockId: releaseLockId,
+        error: releaseError,
+      },
+      "Failed to release availability hold after cancellation - hold may require manual cleanup",
+    );
+  }
 
   return {
     eventId,

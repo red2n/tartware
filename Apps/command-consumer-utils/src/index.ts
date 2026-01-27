@@ -127,6 +127,15 @@ type CreateCommandCenterHandlersInput = {
 export const createCommandCenterHandlers = (
   input: CreateCommandCenterHandlersInput,
 ) => {
+  // Validate idempotency callbacks are properly paired
+  const hasCheck = typeof input.checkIdempotency === "function";
+  const hasRecord = typeof input.recordIdempotency === "function";
+  if (hasCheck !== hasRecord) {
+    throw new Error(
+      "checkIdempotency and recordIdempotency must both be provided or both omitted",
+    );
+  }
+
   const shouldProcess = (
     metadata: CommandEnvelope["metadata"],
   ): metadata is CommandMetadata => {
