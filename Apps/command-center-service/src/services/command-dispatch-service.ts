@@ -5,9 +5,13 @@ import {
 } from "@tartware/command-center-shared";
 
 import { enqueueOutboxRecord } from "../outbox/repository.js";
-import { insertCommandDispatch } from "../sql/command-dispatches.js";
+import {
+  findCommandDispatchByRequest,
+  insertCommandDispatch,
+} from "../sql/command-dispatches.js";
 
 import { resolveCommandForTenant } from "./command-registry-service.js";
+import { throttleCommand } from "./command-throttle-service.js";
 import type { TenantMembership } from "./membership-service.js";
 
 type AcceptCommandInput = SharedAcceptCommandInput<TenantMembership>;
@@ -27,6 +31,8 @@ const { acceptCommand: acceptCommandInternal } =
     resolveCommandForTenant,
     enqueueOutboxRecord,
     insertCommandDispatch,
+    findCommandDispatchByRequest,
+    throttleCommand,
   });
 
 export const acceptCommand = async (

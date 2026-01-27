@@ -8,6 +8,7 @@
     "@tartware/config",
     "@tartware/openapi",
     "@tartware/telemetry",
+    "@tartware/command-consumer-utils",
     "@biomejs/biome",
     "tsx",
     "@fastify/cors",

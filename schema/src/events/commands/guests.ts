@@ -53,3 +53,117 @@ export const GuestMergeCommandSchema = z
 	);
 
 export type GuestMergeCommand = z.infer<typeof GuestMergeCommandSchema>;
+
+export const GuestUpdateProfileCommandSchema = z
+	.object({
+		guest_id: z.string().uuid(),
+		first_name: z.string().trim().min(1).max(100).optional(),
+		last_name: z.string().trim().min(1).max(100).optional(),
+		email: z.string().email().max(255).optional(),
+		phone: z.string().trim().min(3).max(25).optional(),
+		address: GuestAddressSchema,
+		preferences: GuestPreferencesSchema,
+		metadata: z.record(z.unknown()).optional(),
+		idempotency_key: z.string().max(120).optional(),
+	})
+	.refine(
+		(value) =>
+			Boolean(
+				value.first_name ||
+					value.last_name ||
+					value.email ||
+					value.phone ||
+					value.address ||
+					value.preferences,
+			),
+		"At least one profile field must be provided",
+	);
+
+export type GuestUpdateProfileCommand = z.infer<
+	typeof GuestUpdateProfileCommandSchema
+>;
+
+export const GuestUpdateContactCommandSchema = z
+	.object({
+		guest_id: z.string().uuid(),
+		email: z.string().email().max(255).optional(),
+		phone: z.string().trim().min(3).max(25).optional(),
+		address: GuestAddressSchema,
+		metadata: z.record(z.unknown()).optional(),
+		idempotency_key: z.string().max(120).optional(),
+	})
+	.refine(
+		(value) => Boolean(value.email || value.phone || value.address),
+		"At least one contact field must be provided",
+	);
+
+export type GuestUpdateContactCommand = z.infer<
+	typeof GuestUpdateContactCommandSchema
+>;
+
+export const GuestSetLoyaltyCommandSchema = z
+	.object({
+		guest_id: z.string().uuid(),
+		loyalty_tier: z.string().max(100).optional(),
+		points_delta: z.coerce.number().optional(),
+		reason: z.string().max(500).optional(),
+		metadata: z.record(z.unknown()).optional(),
+		idempotency_key: z.string().max(120).optional(),
+	})
+	.refine(
+		(value) =>
+			Boolean(
+				value.loyalty_tier ||
+					typeof value.points_delta === "number",
+			),
+		"loyalty_tier or points_delta is required",
+	);
+
+export type GuestSetLoyaltyCommand = z.infer<
+	typeof GuestSetLoyaltyCommandSchema
+>;
+
+export const GuestSetVipCommandSchema = z.object({
+	guest_id: z.string().uuid(),
+	vip_status: z.boolean(),
+	reason: z.string().max(500).optional(),
+	metadata: z.record(z.unknown()).optional(),
+	idempotency_key: z.string().max(120).optional(),
+});
+
+export type GuestSetVipCommand = z.infer<typeof GuestSetVipCommandSchema>;
+
+export const GuestSetBlacklistCommandSchema = z.object({
+	guest_id: z.string().uuid(),
+	is_blacklisted: z.boolean(),
+	reason: z.string().max(500).optional(),
+	metadata: z.record(z.unknown()).optional(),
+	idempotency_key: z.string().max(120).optional(),
+});
+
+export type GuestSetBlacklistCommand = z.infer<
+	typeof GuestSetBlacklistCommandSchema
+>;
+
+export const GuestGdprEraseCommandSchema = z.object({
+	guest_id: z.string().uuid(),
+	requested_by: z.string().uuid().optional(),
+	reason: z.string().max(500).optional(),
+	metadata: z.record(z.unknown()).optional(),
+	idempotency_key: z.string().max(120).optional(),
+});
+
+export type GuestGdprEraseCommand = z.infer<
+	typeof GuestGdprEraseCommandSchema
+>;
+
+export const GuestPreferenceUpdateCommandSchema = z.object({
+	guest_id: z.string().uuid(),
+	preferences: GuestPreferencesSchema,
+	metadata: z.record(z.unknown()).optional(),
+	idempotency_key: z.string().max(120).optional(),
+});
+
+export type GuestPreferenceUpdateCommand = z.infer<
+	typeof GuestPreferenceUpdateCommandSchema
+>;

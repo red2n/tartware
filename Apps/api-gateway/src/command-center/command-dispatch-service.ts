@@ -14,6 +14,7 @@ import {
 	markOutboxFailed,
 } from "./outbox.js";
 import {
+	findCommandDispatchByRequest,
 	insertCommandDispatch,
 	updateCommandDispatchStatus,
 } from "./sql/command-dispatches.js";
@@ -52,6 +53,7 @@ const { acceptCommand: acceptCommandInternal } =
 		resolveCommandForTenant,
 		enqueueOutboxRecord,
 		insertCommandDispatch,
+		findCommandDispatchByRequest,
 	});
 
 export const acceptCommand = async (

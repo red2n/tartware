@@ -12,6 +12,7 @@ import {
   startRoomsCommandCenterConsumer,
 } from "./commands/command-center-consumer.js";
 import { config } from "./config.js";
+import { shutdownProducer } from "./kafka/producer.js";
 import { buildServer } from "./server.js";
 
 const telemetry = await initTelemetry({
@@ -94,6 +95,7 @@ const shutdown = async (signal: NodeJS.Signals) => {
   try {
     if (kafkaEnabled) {
       await shutdownRoomsCommandCenterConsumer();
+      await shutdownProducer();
     }
     await app.close();
     await telemetry

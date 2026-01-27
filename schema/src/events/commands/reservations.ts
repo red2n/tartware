@@ -89,3 +89,120 @@ export const ReservationCancelCommandSchema = z.object({
 export type ReservationCancelCommand = z.infer<
 	typeof ReservationCancelCommandSchema
 >;
+
+export const ReservationCheckInCommandSchema = z.object({
+	reservation_id: z.string().uuid(),
+	room_id: z.string().uuid().optional(),
+	checked_in_at: z.coerce.date().optional(),
+	notes: z.string().max(2000).optional(),
+	metadata: z.record(z.unknown()).optional(),
+	idempotency_key: z.string().max(120).optional(),
+});
+
+export type ReservationCheckInCommand = z.infer<
+	typeof ReservationCheckInCommandSchema
+>;
+
+export const ReservationCheckOutCommandSchema = z.object({
+	reservation_id: z.string().uuid(),
+	checked_out_at: z.coerce.date().optional(),
+	notes: z.string().max(2000).optional(),
+	metadata: z.record(z.unknown()).optional(),
+	idempotency_key: z.string().max(120).optional(),
+});
+
+export type ReservationCheckOutCommand = z.infer<
+	typeof ReservationCheckOutCommandSchema
+>;
+
+export const ReservationAssignRoomCommandSchema = z.object({
+	reservation_id: z.string().uuid(),
+	room_id: z.string().uuid(),
+	assigned_at: z.coerce.date().optional(),
+	notes: z.string().max(2000).optional(),
+	metadata: z.record(z.unknown()).optional(),
+	idempotency_key: z.string().max(120).optional(),
+});
+
+export type ReservationAssignRoomCommand = z.infer<
+	typeof ReservationAssignRoomCommandSchema
+>;
+
+export const ReservationUnassignRoomCommandSchema = z.object({
+	reservation_id: z.string().uuid(),
+	reason: z.string().max(500).optional(),
+	metadata: z.record(z.unknown()).optional(),
+	idempotency_key: z.string().max(120).optional(),
+});
+
+export type ReservationUnassignRoomCommand = z.infer<
+	typeof ReservationUnassignRoomCommandSchema
+>;
+
+export const ReservationExtendStayCommandSchema = z.object({
+	reservation_id: z.string().uuid(),
+	new_check_out_date: z.coerce.date(),
+	reason: z.string().max(500).optional(),
+	metadata: z.record(z.unknown()).optional(),
+	idempotency_key: z.string().max(120).optional(),
+});
+
+export type ReservationExtendStayCommand = z.infer<
+	typeof ReservationExtendStayCommandSchema
+>;
+
+export const ReservationRateOverrideCommandSchema = z
+	.object({
+		reservation_id: z.string().uuid(),
+		rate_code: RateCodeSchema.optional(),
+		total_amount: z.coerce.number().nonnegative().optional(),
+		currency: z.string().length(3).optional(),
+		reason: z.string().max(500).optional(),
+		metadata: z.record(z.unknown()).optional(),
+		idempotency_key: z.string().max(120).optional(),
+	})
+	.refine(
+		(value) =>
+			Boolean(
+				value.rate_code ||
+					typeof value.total_amount === "number" ||
+					value.currency,
+			),
+		"rate_code, total_amount, or currency is required",
+	);
+
+export type ReservationRateOverrideCommand = z.infer<
+	typeof ReservationRateOverrideCommandSchema
+>;
+
+export const ReservationDepositAddCommandSchema = z.object({
+	reservation_id: z.string().uuid(),
+	amount: z.coerce.number().positive(),
+	currency: z.string().length(3).optional(),
+	method: z.string().max(50).optional(),
+	notes: z.string().max(2000).optional(),
+	metadata: z.record(z.unknown()).optional(),
+	idempotency_key: z.string().max(120).optional(),
+});
+
+export type ReservationDepositAddCommand = z.infer<
+	typeof ReservationDepositAddCommandSchema
+>;
+
+export const ReservationDepositReleaseCommandSchema = z
+	.object({
+		reservation_id: z.string().uuid(),
+		deposit_id: z.string().uuid().optional(),
+		amount: z.coerce.number().positive().optional(),
+		reason: z.string().max(500).optional(),
+		metadata: z.record(z.unknown()).optional(),
+		idempotency_key: z.string().max(120).optional(),
+	})
+	.refine(
+		(value) => Boolean(value.deposit_id || value.amount),
+		"deposit_id or amount is required",
+	);
+
+export type ReservationDepositReleaseCommand = z.infer<
+	typeof ReservationDepositReleaseCommandSchema
+>;

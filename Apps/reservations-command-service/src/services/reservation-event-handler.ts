@@ -133,11 +133,26 @@ const handleReservationUpdated = async (
   if (payload.check_in_date) addField("check_in_date", payload.check_in_date);
   if (payload.check_out_date)
     addField("check_out_date", payload.check_out_date);
+  if (payload.actual_check_in)
+    addField("actual_check_in", payload.actual_check_in);
+  if (payload.actual_check_out)
+    addField("actual_check_out", payload.actual_check_out);
+  if (payload.room_number !== undefined)
+    addField("room_number", payload.room_number);
   if (payload.status) addField("status", payload.status);
   if (payload.source) addField("source", payload.source);
   if (payload.total_amount !== undefined)
     addField("total_amount", Number(payload.total_amount ?? 0));
   if (payload.currency) addField("currency", payload.currency);
+  if (payload.internal_notes !== undefined)
+    addField("internal_notes", payload.internal_notes);
+  if (payload.metadata !== undefined) {
+    const index = fields.length + 2;
+    fields.push(
+      `metadata = COALESCE(metadata, '{}'::jsonb) || $${index}::jsonb`,
+    );
+    values.push(JSON.stringify(payload.metadata ?? {}));
+  }
   if ((payload as { confirmation_number?: string }).confirmation_number) {
     addField(
       "confirmation_number",

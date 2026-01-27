@@ -119,6 +119,42 @@ const tenantRoomParamsSchema = {
 	additionalProperties: false,
 } as const satisfies JsonSchema;
 
+const tenantGuestParamsSchema = {
+	type: "object",
+	properties: {
+		tenantId: {
+			type: "string",
+			format: "uuid",
+			description: "Tenant identifier.",
+		},
+		guestId: {
+			type: "string",
+			format: "uuid",
+			description: "Guest identifier.",
+		},
+	},
+	required: ["tenantId", "guestId"],
+	additionalProperties: false,
+} as const satisfies JsonSchema;
+
+const tenantReservationParamsSchema = {
+	type: "object",
+	properties: {
+		tenantId: {
+			type: "string",
+			format: "uuid",
+			description: "Tenant identifier.",
+		},
+		reservationId: {
+			type: "string",
+			format: "uuid",
+			description: "Reservation identifier.",
+		},
+	},
+	required: ["tenantId", "reservationId"],
+	additionalProperties: false,
+} as const satisfies JsonSchema;
+
 const tenantPaymentParamsSchema = {
 	type: "object",
 	properties: {
@@ -134,6 +170,41 @@ const tenantPaymentParamsSchema = {
 		},
 	},
 	required: ["tenantId", "paymentId"],
+	additionalProperties: false,
+} as const satisfies JsonSchema;
+
+const tenantInvoiceParamsSchema = {
+	type: "object",
+	properties: {
+		tenantId: {
+			type: "string",
+			format: "uuid",
+			description: "Tenant identifier.",
+		},
+		invoiceId: {
+			type: "string",
+			format: "uuid",
+			description: "Invoice identifier.",
+		},
+	},
+	required: ["tenantId", "invoiceId"],
+	additionalProperties: false,
+} as const satisfies JsonSchema;
+
+const tenantCommandParamsSchema = {
+	type: "object",
+	properties: {
+		tenantId: {
+			type: "string",
+			format: "uuid",
+			description: "Tenant identifier.",
+		},
+		commandName: {
+			type: "string",
+			description: "Command name to dispatch.",
+		},
+	},
+	required: ["tenantId", "commandName"],
 	additionalProperties: false,
 } as const satisfies JsonSchema;
 
@@ -315,6 +386,198 @@ export const buildServer = () => {
 			reservationHandler,
 		);
 
+		app.post(
+			"/v1/tenants/:tenantId/reservations/:reservationId/check-in",
+			{
+				preHandler: tenantScopeFromParams,
+				schema: buildRouteSchema({
+					tag: RESERVATION_PROXY_TAG,
+					summary: "Check in a reservation via Command Center.",
+					params: tenantReservationParamsSchema,
+					body: jsonObjectSchema,
+					response: {
+						202: jsonObjectSchema,
+					},
+				}),
+			},
+			(request, reply) =>
+				forwardCommandWithParamId({
+					request,
+					reply,
+					commandName: "reservation.check_in",
+					paramKey: "reservationId",
+					payloadKey: "reservation_id",
+				}),
+		);
+
+		app.post(
+			"/v1/tenants/:tenantId/reservations/:reservationId/check-out",
+			{
+				preHandler: tenantScopeFromParams,
+				schema: buildRouteSchema({
+					tag: RESERVATION_PROXY_TAG,
+					summary: "Check out a reservation via Command Center.",
+					params: tenantReservationParamsSchema,
+					body: jsonObjectSchema,
+					response: {
+						202: jsonObjectSchema,
+					},
+				}),
+			},
+			(request, reply) =>
+				forwardCommandWithParamId({
+					request,
+					reply,
+					commandName: "reservation.check_out",
+					paramKey: "reservationId",
+					payloadKey: "reservation_id",
+				}),
+		);
+
+		app.post(
+			"/v1/tenants/:tenantId/reservations/:reservationId/assign-room",
+			{
+				preHandler: tenantScopeFromParams,
+				schema: buildRouteSchema({
+					tag: RESERVATION_PROXY_TAG,
+					summary: "Assign a room to a reservation via Command Center.",
+					params: tenantReservationParamsSchema,
+					body: jsonObjectSchema,
+					response: {
+						202: jsonObjectSchema,
+					},
+				}),
+			},
+			(request, reply) =>
+				forwardCommandWithParamId({
+					request,
+					reply,
+					commandName: "reservation.assign_room",
+					paramKey: "reservationId",
+					payloadKey: "reservation_id",
+				}),
+		);
+
+		app.post(
+			"/v1/tenants/:tenantId/reservations/:reservationId/unassign-room",
+			{
+				preHandler: tenantScopeFromParams,
+				schema: buildRouteSchema({
+					tag: RESERVATION_PROXY_TAG,
+					summary: "Unassign a room from a reservation via Command Center.",
+					params: tenantReservationParamsSchema,
+					body: jsonObjectSchema,
+					response: {
+						202: jsonObjectSchema,
+					},
+				}),
+			},
+			(request, reply) =>
+				forwardCommandWithParamId({
+					request,
+					reply,
+					commandName: "reservation.unassign_room",
+					paramKey: "reservationId",
+					payloadKey: "reservation_id",
+				}),
+		);
+
+		app.post(
+			"/v1/tenants/:tenantId/reservations/:reservationId/extend",
+			{
+				preHandler: tenantScopeFromParams,
+				schema: buildRouteSchema({
+					tag: RESERVATION_PROXY_TAG,
+					summary: "Extend a reservation stay via Command Center.",
+					params: tenantReservationParamsSchema,
+					body: jsonObjectSchema,
+					response: {
+						202: jsonObjectSchema,
+					},
+				}),
+			},
+			(request, reply) =>
+				forwardCommandWithParamId({
+					request,
+					reply,
+					commandName: "reservation.extend_stay",
+					paramKey: "reservationId",
+					payloadKey: "reservation_id",
+				}),
+		);
+
+		app.post(
+			"/v1/tenants/:tenantId/reservations/:reservationId/rate-override",
+			{
+				preHandler: tenantScopeFromParams,
+				schema: buildRouteSchema({
+					tag: RESERVATION_PROXY_TAG,
+					summary: "Override reservation rates via Command Center.",
+					params: tenantReservationParamsSchema,
+					body: jsonObjectSchema,
+					response: {
+						202: jsonObjectSchema,
+					},
+				}),
+			},
+			(request, reply) =>
+				forwardCommandWithParamId({
+					request,
+					reply,
+					commandName: "reservation.rate_override",
+					paramKey: "reservationId",
+					payloadKey: "reservation_id",
+				}),
+		);
+
+		app.post(
+			"/v1/tenants/:tenantId/reservations/:reservationId/deposit/add",
+			{
+				preHandler: tenantScopeFromParams,
+				schema: buildRouteSchema({
+					tag: RESERVATION_PROXY_TAG,
+					summary: "Add a deposit to a reservation via Command Center.",
+					params: tenantReservationParamsSchema,
+					body: jsonObjectSchema,
+					response: {
+						202: jsonObjectSchema,
+					},
+				}),
+			},
+			(request, reply) =>
+				forwardCommandWithParamId({
+					request,
+					reply,
+					commandName: "reservation.add_deposit",
+					paramKey: "reservationId",
+					payloadKey: "reservation_id",
+				}),
+		);
+
+		app.post(
+			"/v1/tenants/:tenantId/reservations/:reservationId/deposit/release",
+			{
+				preHandler: tenantScopeFromParams,
+				schema: buildRouteSchema({
+					tag: RESERVATION_PROXY_TAG,
+					summary: "Release a reservation deposit via Command Center.",
+					params: tenantReservationParamsSchema,
+					body: jsonObjectSchema,
+					response: {
+						202: jsonObjectSchema,
+					},
+				}),
+			},
+			(request, reply) =>
+				forwardCommandWithParamId({
+					request,
+					reply,
+					commandName: "reservation.release_deposit",
+					paramKey: "reservationId",
+					payloadKey: "reservation_id",
+				}),
+		);
+
 		app.all(
 			"/v1/system/*",
 			{
@@ -362,6 +625,22 @@ export const buildServer = () => {
 				}),
 			},
 			proxyCommandCenter,
+		);
+
+		app.post(
+			"/v1/tenants/:tenantId/commands/:commandName",
+			{
+				schema: buildRouteSchema({
+					tag: COMMAND_CENTER_PROXY_TAG,
+					summary: "Dispatch a command by name via the Command Center.",
+					params: tenantCommandParamsSchema,
+					body: jsonObjectSchema,
+					response: {
+						202: jsonObjectSchema,
+					},
+				}),
+			},
+			forwardGenericCommand,
 		);
 
 		app.all(
@@ -472,6 +751,174 @@ export const buildServer = () => {
 			forwardGuestMergeCommand,
 		);
 
+		app.post(
+			"/v1/tenants/:tenantId/guests/:guestId/profile",
+			{
+				preHandler: tenantScopeFromParams,
+				schema: buildRouteSchema({
+					tag: GUESTS_PROXY_TAG,
+					summary: "Update guest profile details via Command Center.",
+					params: tenantGuestParamsSchema,
+					body: jsonObjectSchema,
+					response: {
+						202: jsonObjectSchema,
+					},
+				}),
+			},
+			(request, reply) =>
+				forwardCommandWithParamId({
+					request,
+					reply,
+					commandName: "guest.update_profile",
+					paramKey: "guestId",
+					payloadKey: "guest_id",
+				}),
+		);
+
+		app.post(
+			"/v1/tenants/:tenantId/guests/:guestId/contact",
+			{
+				preHandler: tenantScopeFromParams,
+				schema: buildRouteSchema({
+					tag: GUESTS_PROXY_TAG,
+					summary: "Update guest contact details via Command Center.",
+					params: tenantGuestParamsSchema,
+					body: jsonObjectSchema,
+					response: {
+						202: jsonObjectSchema,
+					},
+				}),
+			},
+			(request, reply) =>
+				forwardCommandWithParamId({
+					request,
+					reply,
+					commandName: "guest.update_contact",
+					paramKey: "guestId",
+					payloadKey: "guest_id",
+				}),
+		);
+
+		app.post(
+			"/v1/tenants/:tenantId/guests/:guestId/loyalty",
+			{
+				preHandler: tenantScopeFromParams,
+				schema: buildRouteSchema({
+					tag: GUESTS_PROXY_TAG,
+					summary: "Update guest loyalty information via Command Center.",
+					params: tenantGuestParamsSchema,
+					body: jsonObjectSchema,
+					response: {
+						202: jsonObjectSchema,
+					},
+				}),
+			},
+			(request, reply) =>
+				forwardCommandWithParamId({
+					request,
+					reply,
+					commandName: "guest.set_loyalty",
+					paramKey: "guestId",
+					payloadKey: "guest_id",
+				}),
+		);
+
+		app.post(
+			"/v1/tenants/:tenantId/guests/:guestId/vip",
+			{
+				preHandler: tenantScopeFromParams,
+				schema: buildRouteSchema({
+					tag: GUESTS_PROXY_TAG,
+					summary: "Update guest VIP status via Command Center.",
+					params: tenantGuestParamsSchema,
+					body: jsonObjectSchema,
+					response: {
+						202: jsonObjectSchema,
+					},
+				}),
+			},
+			(request, reply) =>
+				forwardCommandWithParamId({
+					request,
+					reply,
+					commandName: "guest.set_vip",
+					paramKey: "guestId",
+					payloadKey: "guest_id",
+				}),
+		);
+
+		app.post(
+			"/v1/tenants/:tenantId/guests/:guestId/blacklist",
+			{
+				preHandler: tenantScopeFromParams,
+				schema: buildRouteSchema({
+					tag: GUESTS_PROXY_TAG,
+					summary: "Update guest blacklist status via Command Center.",
+					params: tenantGuestParamsSchema,
+					body: jsonObjectSchema,
+					response: {
+						202: jsonObjectSchema,
+					},
+				}),
+			},
+			(request, reply) =>
+				forwardCommandWithParamId({
+					request,
+					reply,
+					commandName: "guest.set_blacklist",
+					paramKey: "guestId",
+					payloadKey: "guest_id",
+				}),
+		);
+
+		app.post(
+			"/v1/tenants/:tenantId/guests/:guestId/gdpr-erase",
+			{
+				preHandler: tenantScopeFromParams,
+				schema: buildRouteSchema({
+					tag: GUESTS_PROXY_TAG,
+					summary: "Erase guest data for GDPR via Command Center.",
+					params: tenantGuestParamsSchema,
+					body: jsonObjectSchema,
+					response: {
+						202: jsonObjectSchema,
+					},
+				}),
+			},
+			(request, reply) =>
+				forwardCommandWithParamId({
+					request,
+					reply,
+					commandName: "guest.gdpr.erase",
+					paramKey: "guestId",
+					payloadKey: "guest_id",
+				}),
+		);
+
+		app.post(
+			"/v1/tenants/:tenantId/guests/:guestId/preferences",
+			{
+				preHandler: tenantScopeFromParams,
+				schema: buildRouteSchema({
+					tag: GUESTS_PROXY_TAG,
+					summary: "Update guest preferences via Command Center.",
+					params: tenantGuestParamsSchema,
+					body: jsonObjectSchema,
+					response: {
+						202: jsonObjectSchema,
+					},
+				}),
+			},
+			(request, reply) =>
+				forwardCommandWithParamId({
+					request,
+					reply,
+					commandName: "guest.preference.update",
+					paramKey: "guestId",
+					payloadKey: "guest_id",
+				}),
+		);
+
 		app.get(
 			"/v1/guests/*",
 			{
@@ -544,6 +991,126 @@ export const buildServer = () => {
 				}),
 		);
 
+		app.post(
+			"/v1/tenants/:tenantId/rooms/:roomId/status",
+			{
+				preHandler: tenantScopeFromParams,
+				schema: buildRouteSchema({
+					tag: ROOM_COMMAND_TAG,
+					summary: "Update room status via Command Center.",
+					params: tenantRoomParamsSchema,
+					body: jsonObjectSchema,
+					response: {
+						202: jsonObjectSchema,
+					},
+				}),
+			},
+			(request, reply) =>
+				forwardCommandWithParamId({
+					request,
+					reply,
+					commandName: "rooms.status.update",
+					paramKey: "roomId",
+					payloadKey: "room_id",
+				}),
+		);
+
+		app.post(
+			"/v1/tenants/:tenantId/rooms/:roomId/housekeeping-status",
+			{
+				preHandler: tenantScopeFromParams,
+				schema: buildRouteSchema({
+					tag: ROOM_COMMAND_TAG,
+					summary: "Update room housekeeping status via Command Center.",
+					params: tenantRoomParamsSchema,
+					body: jsonObjectSchema,
+					response: {
+						202: jsonObjectSchema,
+					},
+				}),
+			},
+			(request, reply) =>
+				forwardCommandWithParamId({
+					request,
+					reply,
+					commandName: "rooms.housekeeping_status.update",
+					paramKey: "roomId",
+					payloadKey: "room_id",
+				}),
+		);
+
+		app.post(
+			"/v1/tenants/:tenantId/rooms/:roomId/out-of-order",
+			{
+				preHandler: tenantScopeFromParams,
+				schema: buildRouteSchema({
+					tag: ROOM_COMMAND_TAG,
+					summary: "Mark room out of order via Command Center.",
+					params: tenantRoomParamsSchema,
+					body: jsonObjectSchema,
+					response: {
+						202: jsonObjectSchema,
+					},
+				}),
+			},
+			(request, reply) =>
+				forwardCommandWithParamId({
+					request,
+					reply,
+					commandName: "rooms.out_of_order",
+					paramKey: "roomId",
+					payloadKey: "room_id",
+				}),
+		);
+
+		app.post(
+			"/v1/tenants/:tenantId/rooms/:roomId/out-of-service",
+			{
+				preHandler: tenantScopeFromParams,
+				schema: buildRouteSchema({
+					tag: ROOM_COMMAND_TAG,
+					summary: "Mark room out of service via Command Center.",
+					params: tenantRoomParamsSchema,
+					body: jsonObjectSchema,
+					response: {
+						202: jsonObjectSchema,
+					},
+				}),
+			},
+			(request, reply) =>
+				forwardCommandWithParamId({
+					request,
+					reply,
+					commandName: "rooms.out_of_service",
+					paramKey: "roomId",
+					payloadKey: "room_id",
+				}),
+		);
+
+		app.post(
+			"/v1/tenants/:tenantId/rooms/:roomId/features",
+			{
+				preHandler: tenantScopeFromParams,
+				schema: buildRouteSchema({
+					tag: ROOM_COMMAND_TAG,
+					summary: "Update room features via Command Center.",
+					params: tenantRoomParamsSchema,
+					body: jsonObjectSchema,
+					response: {
+						202: jsonObjectSchema,
+					},
+				}),
+			},
+			(request, reply) =>
+				forwardCommandWithParamId({
+					request,
+					reply,
+					commandName: "rooms.features.update",
+					paramKey: "roomId",
+					payloadKey: "room_id",
+				}),
+		);
+
 		app.get(
 			"/v1/rooms/*",
 			{
@@ -607,6 +1174,122 @@ export const buildServer = () => {
 			forwardHousekeepingCompleteCommand,
 		);
 
+		app.post(
+			"/v1/tenants/:tenantId/housekeeping/tasks",
+			{
+				preHandler: tenantScopeFromParams,
+				schema: buildRouteSchema({
+					tag: HOUSEKEEPING_COMMAND_TAG,
+					summary: "Create a housekeeping task via the Command Center.",
+					params: reservationParamsSchema,
+					body: jsonObjectSchema,
+					response: {
+						202: jsonObjectSchema,
+					},
+				}),
+			},
+			(request, reply) =>
+				forwardCommandWithTenant({
+					request,
+					reply,
+					commandName: "housekeeping.task.create",
+				}),
+		);
+
+		app.post(
+			"/v1/tenants/:tenantId/housekeeping/tasks/:taskId/reassign",
+			{
+				preHandler: tenantScopeFromParams,
+				schema: buildRouteSchema({
+					tag: HOUSEKEEPING_COMMAND_TAG,
+					summary: "Reassign a housekeeping task via the Command Center.",
+					params: tenantTaskParamsSchema,
+					body: jsonObjectSchema,
+					response: {
+						202: jsonObjectSchema,
+					},
+				}),
+			},
+			(request, reply) =>
+				forwardCommandWithParamId({
+					request,
+					reply,
+					commandName: "housekeeping.task.reassign",
+					paramKey: "taskId",
+					payloadKey: "task_id",
+				}),
+		);
+
+		app.post(
+			"/v1/tenants/:tenantId/housekeeping/tasks/:taskId/reopen",
+			{
+				preHandler: tenantScopeFromParams,
+				schema: buildRouteSchema({
+					tag: HOUSEKEEPING_COMMAND_TAG,
+					summary: "Reopen a housekeeping task via the Command Center.",
+					params: tenantTaskParamsSchema,
+					body: jsonObjectSchema,
+					response: {
+						202: jsonObjectSchema,
+					},
+				}),
+			},
+			(request, reply) =>
+				forwardCommandWithParamId({
+					request,
+					reply,
+					commandName: "housekeeping.task.reopen",
+					paramKey: "taskId",
+					payloadKey: "task_id",
+				}),
+		);
+
+		app.post(
+			"/v1/tenants/:tenantId/housekeeping/tasks/:taskId/notes",
+			{
+				preHandler: tenantScopeFromParams,
+				schema: buildRouteSchema({
+					tag: HOUSEKEEPING_COMMAND_TAG,
+					summary: "Add a housekeeping task note via the Command Center.",
+					params: tenantTaskParamsSchema,
+					body: jsonObjectSchema,
+					response: {
+						202: jsonObjectSchema,
+					},
+				}),
+			},
+			(request, reply) =>
+				forwardCommandWithParamId({
+					request,
+					reply,
+					commandName: "housekeeping.task.add_note",
+					paramKey: "taskId",
+					payloadKey: "task_id",
+				}),
+		);
+
+		app.post(
+			"/v1/tenants/:tenantId/housekeeping/tasks/bulk-status",
+			{
+				preHandler: tenantScopeFromParams,
+				schema: buildRouteSchema({
+					tag: HOUSEKEEPING_COMMAND_TAG,
+					summary: "Bulk update housekeeping tasks via the Command Center.",
+					params: reservationParamsSchema,
+					body: jsonObjectSchema,
+					response: {
+						202: jsonObjectSchema,
+					},
+				}),
+			},
+			(request, reply) =>
+				forwardCommandWithTenant({
+					request,
+					reply,
+					commandName: "housekeeping.task.bulk_status",
+				}),
+		);
+
 		app.get(
 			"/v1/billing/payments",
 			{
@@ -653,6 +1336,120 @@ export const buildServer = () => {
 				}),
 			},
 			forwardBillingRefundCommand,
+		);
+
+		app.post(
+			"/v1/tenants/:tenantId/billing/invoices",
+			{
+				preHandler: tenantScopeFromParams,
+				schema: buildRouteSchema({
+					tag: BILLING_COMMAND_TAG,
+					summary: "Create an invoice via the Command Center.",
+					params: reservationParamsSchema,
+					body: jsonObjectSchema,
+					response: {
+						202: jsonObjectSchema,
+					},
+				}),
+			},
+			(request, reply) =>
+				forwardCommandWithTenant({
+					request,
+					reply,
+					commandName: "billing.invoice.create",
+				}),
+		);
+
+		app.post(
+			"/v1/tenants/:tenantId/billing/invoices/:invoiceId/adjust",
+			{
+				preHandler: tenantScopeFromParams,
+				schema: buildRouteSchema({
+					tag: BILLING_COMMAND_TAG,
+					summary: "Adjust an invoice via the Command Center.",
+					params: tenantInvoiceParamsSchema,
+					body: jsonObjectSchema,
+					response: {
+						202: jsonObjectSchema,
+					},
+				}),
+			},
+			(request, reply) =>
+				forwardCommandWithParamId({
+					request,
+					reply,
+					commandName: "billing.invoice.adjust",
+					paramKey: "invoiceId",
+					payloadKey: "invoice_id",
+				}),
+		);
+
+		app.post(
+			"/v1/tenants/:tenantId/billing/charges",
+			{
+				preHandler: tenantScopeFromParams,
+				schema: buildRouteSchema({
+					tag: BILLING_COMMAND_TAG,
+					summary: "Post a charge via the Command Center.",
+					params: reservationParamsSchema,
+					body: jsonObjectSchema,
+					response: {
+						202: jsonObjectSchema,
+					},
+				}),
+			},
+			(request, reply) =>
+				forwardCommandWithTenant({
+					request,
+					reply,
+					commandName: "billing.charge.post",
+				}),
+		);
+
+		app.post(
+			"/v1/tenants/:tenantId/billing/payments/:paymentId/apply",
+			{
+				preHandler: tenantScopeFromParams,
+				schema: buildRouteSchema({
+					tag: BILLING_COMMAND_TAG,
+					summary: "Apply a payment via the Command Center.",
+					params: tenantPaymentParamsSchema,
+					body: jsonObjectSchema,
+					response: {
+						202: jsonObjectSchema,
+					},
+				}),
+			},
+			(request, reply) =>
+				forwardCommandWithParamId({
+					request,
+					reply,
+					commandName: "billing.payment.apply",
+					paramKey: "paymentId",
+					payloadKey: "payment_id",
+				}),
+		);
+
+		app.post(
+			"/v1/tenants/:tenantId/billing/folios/transfer",
+			{
+				preHandler: tenantScopeFromParams,
+				schema: buildRouteSchema({
+					tag: BILLING_COMMAND_TAG,
+					summary: "Transfer a folio balance via the Command Center.",
+					params: reservationParamsSchema,
+					body: jsonObjectSchema,
+					response: {
+						202: jsonObjectSchema,
+					},
+				}),
+			},
+			(request, reply) =>
+				forwardCommandWithTenant({
+					request,
+					reply,
+					commandName: "billing.folio.transfer",
+				}),
 		);
 
 		app.get(
@@ -748,6 +1545,94 @@ const forwardGuestMergeCommand = async (
 		payload,
 		requiredRole: "MANAGER",
 		requiredModules: "core",
+	});
+};
+
+const getParamValue = (request: FastifyRequest, key: string): string | null => {
+	const params = (request.params ?? {}) as Record<string, unknown>;
+	const value = params[key];
+	return typeof value === "string" ? value : null;
+};
+
+const forwardCommandWithTenant = async ({
+	request,
+	reply,
+	commandName,
+}: {
+	request: FastifyRequest;
+	reply: FastifyReply;
+	commandName: string;
+}): Promise<void> => {
+	const tenantId = getParamValue(request, "tenantId");
+	if (!tenantId) {
+		reply.badRequest("TENANT_ID_REQUIRED");
+		return;
+	}
+	const payload = normalizePayloadObject(request.body);
+	await submitCommand({
+		request,
+		reply,
+		commandName,
+		tenantId,
+		payload,
+		requiredRole: "MANAGER",
+	});
+};
+
+const forwardCommandWithParamId = async ({
+	request,
+	reply,
+	commandName,
+	paramKey,
+	payloadKey,
+}: {
+	request: FastifyRequest;
+	reply: FastifyReply;
+	commandName: string;
+	paramKey: string;
+	payloadKey: string;
+}): Promise<void> => {
+	const tenantId = getParamValue(request, "tenantId");
+	const paramValue = getParamValue(request, paramKey);
+	if (!tenantId || !paramValue) {
+		reply.badRequest("TENANT_AND_RESOURCE_ID_REQUIRED");
+		return;
+	}
+	const payload = {
+		...normalizePayloadObject(request.body),
+		[payloadKey]: paramValue,
+	};
+	await submitCommand({
+		request,
+		reply,
+		commandName,
+		tenantId,
+		payload,
+		requiredRole: "MANAGER",
+	});
+};
+
+const forwardGenericCommand = async (
+	request: FastifyRequest,
+	reply: FastifyReply,
+): Promise<void> => {
+	const params = (request.params ?? {}) as Record<string, unknown>;
+	const tenantId = typeof params.tenantId === "string" ? params.tenantId : null;
+	const commandName =
+		typeof params.commandName === "string" ? params.commandName : null;
+	if (!tenantId || !commandName) {
+		reply.badRequest("TENANT_AND_COMMAND_REQUIRED");
+		return;
+	}
+
+	const payload = normalizePayloadObject(request.body);
+	await submitCommand({
+		request,
+		reply,
+		commandName,
+		tenantId,
+		payload,
+		requiredRole: "MANAGER",
 	});
 };
 
@@ -913,15 +1798,24 @@ const forwardRoomInventoryCommand = async ({
 		reply.badRequest("TENANT_AND_ROOM_ID_REQUIRED");
 		return;
 	}
-	const payload = {
+	const payloadBase = {
 		...normalizePayloadObject(request.body),
 		room_id: roomId,
-		action,
 	};
+	const payload =
+		action === "release"
+			? payloadBase
+			: {
+					...payloadBase,
+					action,
+				};
 	await submitCommand({
 		request,
 		reply,
-		commandName: "rooms.inventory.block",
+		commandName:
+			action === "release"
+				? "rooms.inventory.release"
+				: "rooms.inventory.block",
 		tenantId,
 		payload,
 		requiredRole: "MANAGER",
