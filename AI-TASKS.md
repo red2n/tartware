@@ -3,7 +3,7 @@
 > **Usage**: Ask the AI to complete any task by referencing its ID (e.g., "Fix LOW-001")
 > **Generated**: 2026-01-27
 > **Branch**: fix/code-quality-issues
-> **Status**: All CRIT, HIGH, MEDIUM tasks completed. LOW tasks remaining.
+> **Status**: All CRIT, HIGH, MEDIUM tasks completed. PR review comments addressed.
 
 ---
 
@@ -41,11 +41,31 @@
 
 ---
 
-## 🔵 LOW (P3) - Code Quality
+## ✅ COMPLETED - PR Review Comments
+
+### ~~PR-001~~: System-users username/email conflict handling ✅ FIXED
+- Pre-validate both fields with Promise.all, return specific conflict error message
+
+### ~~PR-002~~: Production JWT secret enforcement ✅ FIXED (6 services)
+- api-gateway, core-service, guests, billing, housekeeping, command-center
+- Fail fast in production if AUTH_JWT_SECRET not set
+
+### ~~PR-003~~: Release hold failure logging ✅ FIXED
+- reservation-command-service wraps releaseReservationHold in try-catch with warning log
+
+### ~~PR-004~~: GDPR cascade audit trail ✅ FIXED
+- guest-command-service collects rowCount from each cascade UPDATE, logs per-table audit
+
+### ~~PR-005~~: Idempotency callback validation ✅ FIXED
+- command-consumer-utils validates both callbacks provided together or neither
+
+### ~~PR-006~~: Transaction wrapper improvements ✅ FIXED (5 services)
+- api-gateway, billing, command-center, guests, reservations-command-service
+- Track transactionStarted state, catch rollback errors, signal failures to pool
 
 ---
 
-### HIGH-002: JWT secret mismatch between services
+## 🔵 LOW (P3) - Code Quality
 - **Files**:
   - `Apps/api-gateway/src/...` uses `"local-dev-secret"`
   - `Apps/core-service/src/...` uses `"local-dev-secret-change-me"`
