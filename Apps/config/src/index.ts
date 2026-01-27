@@ -260,3 +260,11 @@ export const resolveOtelDependency = (
     optional,
   };
 };
+
+export {
+  parseBooleanEnv,
+  parseBrokerList,
+  parseNumberEnv,
+  parseNumberList,
+  resolveKafkaConfig,
+} from "./kafka.js";
