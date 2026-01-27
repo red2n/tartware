@@ -210,6 +210,11 @@ export const handleRoomOutOfService = async (
   }
 };
 
+/**
+ * Room move operations require reservation context and workflow coordination.
+ * This command is registered in the catalog for future implementation but
+ * currently returns NOT_SUPPORTED. Use the reservations domain move workflow instead.
+ */
 export const handleRoomMove = async (
   payload: unknown,
   context: CommandContext,
@@ -218,7 +223,7 @@ export const handleRoomMove = async (
   void context;
   throw new RoomCommandError(
     "ROOM_MOVE_NOT_SUPPORTED",
-    `Room move requires reservation context (from ${command.from_room_id} to ${command.to_room_id}).`,
+    `Room move is not yet implemented. Move from ${command.from_room_id} to ${command.to_room_id} requires reservation workflow. Use reservations.room.move instead.`,
   );
 };
 

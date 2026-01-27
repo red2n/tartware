@@ -540,6 +540,25 @@ export const eraseGuestForGdpr = async ({
   const actor = initiatedBy?.userId ?? APP_ACTOR;
   const redactedEmail = `gdpr+${command.guest_id}@redacted.invalid`;
 
+  // Check if guest is already deleted for idempotency
+  const existingGuest = await query(
+    `SELECT id, is_deleted FROM public.guests WHERE tenant_id = $1::uuid AND id = $2::uuid`,
+    [tenantId, command.guest_id],
+  );
+
+  if (!existingGuest.rowCount || existingGuest.rowCount === 0) {
+    throw new Error("GUEST_NOT_FOUND");
+  }
+
+  // Idempotent: if already deleted, log and return success
+  if (existingGuest.rows[0]?.is_deleted) {
+    guestCommandLogger.info(
+      { tenantId, guestId: command.guest_id, correlationId, initiatedBy },
+      "guest.gdpr.erase already applied (idempotent)",
+    );
+    return;
+  }
+
   const { rowCount } = await query(
     `
       UPDATE public.guests
