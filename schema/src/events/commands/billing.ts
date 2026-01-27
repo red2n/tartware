@@ -52,3 +52,86 @@ export const BillingPaymentRefundCommandSchema = z
 export type BillingPaymentRefundCommand = z.infer<
 	typeof BillingPaymentRefundCommandSchema
 >;
+
+export const BillingInvoiceCreateCommandSchema = z.object({
+	property_id: z.string().uuid(),
+	reservation_id: z.string().uuid(),
+	guest_id: z.string().uuid(),
+	invoice_number: z.string().max(50).optional(),
+	invoice_date: z.coerce.date().optional(),
+	due_date: z.coerce.date().optional(),
+	total_amount: z.coerce.number().positive(),
+	currency: z.string().length(3).optional(),
+	notes: z.string().max(2000).optional(),
+	metadata: z.record(z.unknown()).optional(),
+	idempotency_key: z.string().max(120).optional(),
+});
+
+export type BillingInvoiceCreateCommand = z.infer<
+	typeof BillingInvoiceCreateCommandSchema
+>;
+
+export const BillingInvoiceAdjustCommandSchema = z
+	.object({
+		invoice_id: z.string().uuid(),
+		adjustment_amount: z.coerce.number(),
+		reason: z.string().max(500).optional(),
+		metadata: z.record(z.unknown()).optional(),
+		idempotency_key: z.string().max(120).optional(),
+	})
+	.refine(
+		(value) => value.adjustment_amount !== 0,
+		"adjustment_amount cannot be zero",
+	);
+
+export type BillingInvoiceAdjustCommand = z.infer<
+	typeof BillingInvoiceAdjustCommandSchema
+>;
+
+export const BillingChargePostCommandSchema = z.object({
+	property_id: z.string().uuid(),
+	reservation_id: z.string().uuid(),
+	amount: z.coerce.number().positive(),
+	currency: z.string().length(3).optional(),
+	description: z.string().max(2000).optional(),
+	posted_at: z.coerce.date().optional(),
+	metadata: z.record(z.unknown()).optional(),
+	idempotency_key: z.string().max(120).optional(),
+});
+
+export type BillingChargePostCommand = z.infer<
+	typeof BillingChargePostCommandSchema
+>;
+
+export const BillingPaymentApplyCommandSchema = z
+	.object({
+		payment_id: z.string().uuid(),
+		invoice_id: z.string().uuid().optional(),
+		reservation_id: z.string().uuid().optional(),
+		amount: z.coerce.number().positive().optional(),
+		notes: z.string().max(2000).optional(),
+		metadata: z.record(z.unknown()).optional(),
+		idempotency_key: z.string().max(120).optional(),
+	})
+	.refine(
+		(value) => Boolean(value.invoice_id || value.reservation_id),
+		"invoice_id or reservation_id is required",
+	);
+
+export type BillingPaymentApplyCommand = z.infer<
+	typeof BillingPaymentApplyCommandSchema
+>;
+
+export const BillingFolioTransferCommandSchema = z.object({
+	from_reservation_id: z.string().uuid(),
+	to_reservation_id: z.string().uuid(),
+	amount: z.coerce.number().positive(),
+	currency: z.string().length(3).optional(),
+	reason: z.string().max(500).optional(),
+	metadata: z.record(z.unknown()).optional(),
+	idempotency_key: z.string().max(120).optional(),
+});
+
+export type BillingFolioTransferCommand = z.infer<
+	typeof BillingFolioTransferCommandSchema
+>;

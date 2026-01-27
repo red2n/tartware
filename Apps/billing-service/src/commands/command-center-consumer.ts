@@ -1,11 +1,20 @@
-import type { Consumer } from "kafkajs";
+import { performance } from "node:perf_hooks";
+
+import type { Consumer, EachBatchPayload, KafkaMessage } from "kafkajs";
 
 import { config } from "../config.js";
 import { kafka } from "../kafka/client.js";
+import { publishDlqEvent } from "../kafka/producer.js";
 import { appLogger } from "../lib/logger.js";
+import { processWithRetry, RetryExhaustedError } from "../lib/retry.js";
 import {
+  adjustInvoice,
+  applyPayment,
   captureBillingPayment,
+  createInvoice,
+  postCharge,
   refundBillingPayment,
+  transferFolio,
 } from "../services/billing-command-service.js";
 
 type CommandEnvelope = {
@@ -45,44 +54,9 @@ export const startBillingCommandCenterConsumer = async (): Promise<void> => {
   });
 
   await consumer.run({
-    eachMessage: async ({ message, partition, topic }) => {
-      if (!message.value) {
-        return;
-      }
-      let envelope: CommandEnvelope;
-      try {
-        envelope = JSON.parse(message.value.toString()) as CommandEnvelope;
-      } catch (error) {
-        logger.error(
-          { err: error, topic, partition },
-          "failed to parse command envelope",
-        );
-        return;
-      }
-
-      const metadata = envelope.metadata;
-      if (!shouldProcess(metadata)) {
-        return;
-      }
-
-      try {
-        await routeBillingCommand(envelope, metadata);
-        logger.info(
-          {
-            commandName: metadata.commandName,
-            tenantId: metadata.tenantId,
-            commandId: metadata.commandId,
-            correlationId: metadata.correlationId,
-          },
-          "billing command applied",
-        );
-      } catch (error) {
-        logger.error(
-          { err: error, metadata },
-          "billing command processing failed",
-        );
-      }
-    },
+    autoCommit: false,
+    eachBatchAutoResolve: false,
+    eachBatch: handleBatch,
   });
 
   logger.info(
@@ -131,6 +105,171 @@ const shouldProcess = (
   return metadata.commandName.length > 0 && metadata.tenantId.length > 0;
 };
 
+const handleBatch = async ({
+  batch,
+  resolveOffset,
+  heartbeat,
+  commitOffsetsIfNecessary,
+  isRunning,
+  isStale,
+}: EachBatchPayload): Promise<void> => {
+  if (!isRunning() || isStale()) {
+    return;
+  }
+
+  for (const message of batch.messages) {
+    if (!isRunning() || isStale()) {
+      break;
+    }
+    await processMessage(message, batch.topic, batch.partition);
+    resolveOffset(message.offset);
+    await heartbeat();
+  }
+
+  await commitOffsetsIfNecessary();
+};
+
+const processMessage = async (
+  message: KafkaMessage,
+  topic: string,
+  partition: number,
+): Promise<void> => {
+  if (!message.value) {
+    logger.warn(
+      { topic, partition, offset: message.offset },
+      "skipping Kafka message with empty value",
+    );
+    return;
+  }
+
+  const startedAt = performance.now();
+  const rawValue = message.value.toString();
+  const messageKey = message.key?.toString() ?? `offset-${message.offset}`;
+
+  let envelope: CommandEnvelope;
+  try {
+    envelope = JSON.parse(rawValue) as CommandEnvelope;
+  } catch (error) {
+    logger.error(
+      { err: error, topic, partition, offset: message.offset },
+      "failed to parse command envelope; routing to DLQ",
+    );
+    await publishDlqEvent({
+      key: messageKey,
+      value: JSON.stringify(
+        buildDlqPayload({
+          rawValue,
+          topic,
+          partition,
+          offset: message.offset,
+          attempts: 1,
+          failureReason: "PARSING_ERROR",
+          error,
+        }),
+      ),
+      headers: {
+        "x-tartware-dlq": config.service.name,
+      },
+    });
+    return;
+  }
+
+  const metadata = envelope.metadata;
+  if (!shouldProcess(metadata)) {
+    return;
+  }
+
+  try {
+    const { attempts } = await processWithRetry(
+      () => routeBillingCommand(envelope, metadata),
+      {
+        maxRetries: config.commandCenter.maxRetries,
+        baseDelayMs: config.commandCenter.retryBackoffMs,
+        delayScheduleMs:
+          config.commandCenter.retryScheduleMs.length > 0
+            ? config.commandCenter.retryScheduleMs
+            : undefined,
+        onRetry: ({ attempt, delayMs, error }) => {
+          logger.warn(
+            { attempt, delayMs, err: error, metadata },
+            "retrying billing command",
+          );
+        },
+      },
+    );
+    logger.info(
+      {
+        commandName: metadata.commandName,
+        tenantId: metadata.tenantId,
+        commandId: metadata.commandId,
+        correlationId: metadata.correlationId,
+        attempts,
+        durationMs: performance.now() - startedAt,
+      },
+      "billing command applied",
+    );
+  } catch (error) {
+    const attempts = error instanceof RetryExhaustedError ? error.attempts : 1;
+    logger.error(
+      { err: error, metadata, attempts },
+      "billing command failed after retries; routing to DLQ",
+    );
+    await publishDlqEvent({
+      key: messageKey,
+      value: JSON.stringify(
+        buildDlqPayload({
+          envelope,
+          rawValue,
+          topic,
+          partition,
+          offset: message.offset,
+          attempts,
+          failureReason: "HANDLER_FAILURE",
+          error,
+        }),
+      ),
+      headers: {
+        "x-tartware-dlq": config.service.name,
+      },
+    });
+  }
+};
+
+const buildDlqPayload = (input: {
+  envelope?: CommandEnvelope;
+  rawValue: string;
+  topic: string;
+  partition: number;
+  offset: string;
+  attempts: number;
+  failureReason: "PARSING_ERROR" | "HANDLER_FAILURE";
+  error: unknown;
+}) => {
+  const error =
+    input.error instanceof Error
+      ? { name: input.error.name, message: input.error.message }
+      : { name: "Error", message: String(input.error) };
+
+  return {
+    metadata: {
+      failureReason: input.failureReason,
+      attempts: input.attempts,
+      topic: input.topic,
+      partition: input.partition,
+      offset: input.offset,
+      commandId: input.envelope?.metadata?.commandId,
+      commandName: input.envelope?.metadata?.commandName,
+      tenantId: input.envelope?.metadata?.tenantId,
+      requestId: input.envelope?.metadata?.requestId,
+      targetService: input.envelope?.metadata?.targetService,
+    },
+    error,
+    payload: input.envelope?.payload ?? null,
+    raw: input.rawValue,
+    emittedAt: new Date().toISOString(),
+  };
+};
+
 const routeBillingCommand = async (
   envelope: CommandEnvelope,
   metadata: NonNullable<CommandEnvelope["metadata"]> & {
@@ -147,6 +286,36 @@ const routeBillingCommand = async (
       return;
     case "billing.payment.refund":
       await refundBillingPayment(envelope.payload, {
+        tenantId: metadata.tenantId,
+        initiatedBy: metadata.initiatedBy ?? null,
+      });
+      return;
+    case "billing.invoice.create":
+      await createInvoice(envelope.payload, {
+        tenantId: metadata.tenantId,
+        initiatedBy: metadata.initiatedBy ?? null,
+      });
+      return;
+    case "billing.invoice.adjust":
+      await adjustInvoice(envelope.payload, {
+        tenantId: metadata.tenantId,
+        initiatedBy: metadata.initiatedBy ?? null,
+      });
+      return;
+    case "billing.charge.post":
+      await postCharge(envelope.payload, {
+        tenantId: metadata.tenantId,
+        initiatedBy: metadata.initiatedBy ?? null,
+      });
+      return;
+    case "billing.payment.apply":
+      await applyPayment(envelope.payload, {
+        tenantId: metadata.tenantId,
+        initiatedBy: metadata.initiatedBy ?? null,
+      });
+      return;
+    case "billing.folio.transfer":
+      await transferFolio(envelope.payload, {
         tenantId: metadata.tenantId,
         initiatedBy: metadata.initiatedBy ?? null,
       });

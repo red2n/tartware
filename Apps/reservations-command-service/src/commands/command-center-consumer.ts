@@ -4,14 +4,30 @@ import { commandCenterConfig, kafkaConfig, serviceConfig } from "../config.js";
 import { kafka } from "../kafka/client.js";
 import { reservationsLogger } from "../logger.js";
 import {
+  ReservationAssignRoomCommandSchema,
   ReservationCancelCommandSchema,
+  ReservationCheckInCommandSchema,
+  ReservationCheckOutCommandSchema,
   ReservationCreateCommandSchema,
+  ReservationDepositAddCommandSchema,
+  ReservationDepositReleaseCommandSchema,
+  ReservationExtendStayCommandSchema,
   ReservationModifyCommandSchema,
+  ReservationRateOverrideCommandSchema,
+  ReservationUnassignRoomCommandSchema,
 } from "../schemas/reservation-command.js";
 import {
+  addDeposit,
+  assignRoom,
   cancelReservation,
+  checkInReservation,
+  checkOutReservation,
   createReservation,
+  extendStay,
   modifyReservation,
+  overrideRate,
+  releaseDeposit,
+  unassignRoom,
 } from "../services/reservation-command-service.js";
 
 type CommandEnvelope = {
@@ -124,6 +140,78 @@ const routeReservationCommand = async (
         envelope.payload,
       );
       await cancelReservation(metadata.tenantId as string, commandPayload, {
+        correlationId: metadata.correlationId ?? metadata.requestId,
+      });
+      break;
+    }
+    case "reservation.check_in": {
+      const commandPayload = ReservationCheckInCommandSchema.parse(
+        envelope.payload,
+      );
+      await checkInReservation(metadata.tenantId as string, commandPayload, {
+        correlationId: metadata.correlationId ?? metadata.requestId,
+      });
+      break;
+    }
+    case "reservation.check_out": {
+      const commandPayload = ReservationCheckOutCommandSchema.parse(
+        envelope.payload,
+      );
+      await checkOutReservation(metadata.tenantId as string, commandPayload, {
+        correlationId: metadata.correlationId ?? metadata.requestId,
+      });
+      break;
+    }
+    case "reservation.assign_room": {
+      const commandPayload = ReservationAssignRoomCommandSchema.parse(
+        envelope.payload,
+      );
+      await assignRoom(metadata.tenantId as string, commandPayload, {
+        correlationId: metadata.correlationId ?? metadata.requestId,
+      });
+      break;
+    }
+    case "reservation.unassign_room": {
+      const commandPayload = ReservationUnassignRoomCommandSchema.parse(
+        envelope.payload,
+      );
+      await unassignRoom(metadata.tenantId as string, commandPayload, {
+        correlationId: metadata.correlationId ?? metadata.requestId,
+      });
+      break;
+    }
+    case "reservation.extend_stay": {
+      const commandPayload = ReservationExtendStayCommandSchema.parse(
+        envelope.payload,
+      );
+      await extendStay(metadata.tenantId as string, commandPayload, {
+        correlationId: metadata.correlationId ?? metadata.requestId,
+      });
+      break;
+    }
+    case "reservation.rate_override": {
+      const commandPayload = ReservationRateOverrideCommandSchema.parse(
+        envelope.payload,
+      );
+      await overrideRate(metadata.tenantId as string, commandPayload, {
+        correlationId: metadata.correlationId ?? metadata.requestId,
+      });
+      break;
+    }
+    case "reservation.add_deposit": {
+      const commandPayload = ReservationDepositAddCommandSchema.parse(
+        envelope.payload,
+      );
+      await addDeposit(metadata.tenantId as string, commandPayload, {
+        correlationId: metadata.correlationId ?? metadata.requestId,
+      });
+      break;
+    }
+    case "reservation.release_deposit": {
+      const commandPayload = ReservationDepositReleaseCommandSchema.parse(
+        envelope.payload,
+      );
+      await releaseDeposit(metadata.tenantId as string, commandPayload, {
         correlationId: metadata.correlationId ?? metadata.requestId,
       });
       break;

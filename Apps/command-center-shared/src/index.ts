@@ -15,4 +15,5 @@ export {
   type CommandOutboxRecord,
   type AcceptCommandInput,
   type Initiator,
+  type CommandFeatureInfo,
 } from "./services/command-dispatch.js";

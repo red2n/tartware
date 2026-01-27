@@ -1,10 +1,15 @@
 import process from "node:process";
 
-import { ensureDependencies, resolveOtelDependency } from "@tartware/config";
+import { ensureDependencies, parseHostPort, resolveOtelDependency } from "@tartware/config";
 import { createServiceLogger, initTelemetry } from "@tartware/telemetry";
 
 import { buildServer } from "./app.js";
+import {
+  shutdownSettingsCommandCenterConsumer,
+  startSettingsCommandCenterConsumer,
+} from "./commands/command-center-consumer.js";
 import { config } from "./config.js";
+import { shutdownProducer } from "./kafka/producer.js";
 
 const telemetry = await initTelemetry({
   serviceName: config.service.name,
@@ -31,12 +36,17 @@ const logger = createServiceLogger({
 });
 
 const server = buildServer({ logger });
+const kafkaEnabled = process.env.DISABLE_KAFKA !== "true";
 
 try {
+  const kafkaBroker = config.kafka.brokers[0];
   const telemetryDependency = resolveOtelDependency(true);
   const dependenciesOk = await ensureDependencies(
     [
       { name: "PostgreSQL", host: config.db.host, port: config.db.port },
+      ...(kafkaEnabled && kafkaBroker
+        ? [{ name: "Kafka broker", ...parseHostPort(kafkaBroker, 9092) }]
+        : []),
       ...(telemetryDependency ? [telemetryDependency] : []),
     ],
     { logger },
@@ -49,6 +59,11 @@ try {
         logger.error({ err: shutdownError }, "Failed to shutdown telemetry"),
       );
     process.exit(0);
+  }
+  if (kafkaEnabled) {
+    await startSettingsCommandCenterConsumer();
+  } else {
+    logger.warn("Kafka disabled via DISABLE_KAFKA; skipping consumer start");
   }
   await server.listen({ port: config.port, host: config.host });
   logger.info(
@@ -72,6 +87,10 @@ try {
 const shutdown = async (signal: string) => {
   logger.info({ signal }, "Shutdown signal received");
   try {
+    if (kafkaEnabled) {
+      await shutdownSettingsCommandCenterConsumer();
+      await shutdownProducer();
+    }
     await server.close();
     await telemetry
       ?.shutdown()

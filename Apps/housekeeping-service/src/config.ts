@@ -49,6 +49,12 @@ const parseBrokerList = (
     .map((broker) => broker.trim())
     .filter((broker) => broker.length > 0);
 
+const parseNumberList = (value: string | undefined): number[] =>
+  (value ?? "")
+    .split(",")
+    .map((entry) => Number(entry.trim()))
+    .filter((entry) => Number.isFinite(entry) && entry > 0);
+
 const configValues = loadServiceConfig(databaseSchema);
 
 const runtimeEnv = (process.env.NODE_ENV ?? "development").toLowerCase();
@@ -121,6 +127,10 @@ const commandCenter = {
   targetServiceId:
     process.env.COMMAND_CENTER_TARGET_SERVICE_ID ?? "housekeeping-service",
   maxBatchBytes: toNumber(process.env.KAFKA_MAX_BATCH_BYTES, 1048576),
+  dlqTopic: process.env.COMMAND_CENTER_DLQ_TOPIC ?? "commands.primary.dlq",
+  maxRetries: toNumber(process.env.KAFKA_MAX_RETRIES, 3),
+  retryBackoffMs: toNumber(process.env.KAFKA_RETRY_BACKOFF_MS, 1000),
+  retryScheduleMs: parseNumberList(process.env.KAFKA_RETRY_SCHEDULE_MS),
 };
 
 export const config = {

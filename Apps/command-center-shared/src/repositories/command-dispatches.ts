@@ -21,6 +21,20 @@ export type InsertCommandDispatchInput = {
   metadata?: Record<string, unknown>;
 };
 
+export type CommandDispatchLookup = {
+  id: string;
+  command_name: string;
+  tenant_id: string;
+  correlation_id: string | null;
+  request_id: string;
+  payload_hash: string;
+  target_service: string;
+  target_topic: string;
+  issued_at: string;
+  routing_metadata: Record<string, unknown> | null;
+  metadata: Record<string, unknown> | null;
+};
+
 const INSERT_COMMAND_DISPATCH_SQL = `
   INSERT INTO command_dispatches (
     id,
@@ -59,6 +73,26 @@ const INSERT_COMMAND_DISPATCH_SQL = `
   )
 `;
 
+const FIND_COMMAND_DISPATCH_BY_REQUEST_SQL = `
+  SELECT
+    id,
+    command_name,
+    tenant_id,
+    correlation_id,
+    request_id,
+    payload_hash,
+    target_service,
+    target_topic,
+    issued_at,
+    routing_metadata,
+    metadata
+  FROM command_dispatches
+  WHERE tenant_id = $1
+    AND command_name = $2
+    AND request_id = $3
+  LIMIT 1
+`;
+
 const UPDATE_STATUS_SQL = `
   UPDATE command_dispatches
   SET
@@ -68,6 +102,18 @@ const UPDATE_STATUS_SQL = `
 `;
 
 export const createCommandDispatchRepository = (query: QueryExecutor) => {
+  const findCommandDispatchByRequest = async (
+    tenantId: string,
+    commandName: string,
+    requestId: string,
+  ): Promise<CommandDispatchLookup | null> => {
+    const { rows } = await query<CommandDispatchLookup>(
+      FIND_COMMAND_DISPATCH_BY_REQUEST_SQL,
+      [tenantId, commandName, requestId],
+    );
+    return rows[0] ?? null;
+  };
+
   const insertCommandDispatch = async (
     input: InsertCommandDispatchInput,
   ): Promise<void> => {
@@ -95,6 +141,7 @@ export const createCommandDispatchRepository = (query: QueryExecutor) => {
   };
 
   return {
+    findCommandDispatchByRequest,
     insertCommandDispatch,
     updateCommandDispatchStatus,
   };

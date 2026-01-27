@@ -41,7 +41,7 @@ export const ReservationsSchema = z.object({
 	booking_date: z.coerce.date(),
 	actual_check_in: z.coerce.date().optional(),
 	actual_check_out: z.coerce.date().optional(),
-	room_number: z.string().optional(),
+	room_number: z.string().nullable().optional(),
 	number_of_adults: z.number().int(),
 	number_of_children: z.number().int().optional(),
 	number_of_infants: z.number().int().optional(),

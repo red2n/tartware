@@ -1,11 +1,9 @@
-import type {
-  ReservationCancelledEvent,
-  ReservationCreatedEvent,
-  ReservationUpdatedEvent,
-} from "@tartware/schemas";
 import {
+  type ReservationCancelledEvent,
   ReservationCancelledEventSchema,
+  type ReservationCreatedEvent,
   ReservationCreatedEventSchema,
+  type ReservationUpdatedEvent,
   ReservationUpdatedEventSchema,
 } from "@tartware/schemas";
 import { v4 as uuid } from "uuid";
@@ -16,7 +14,7 @@ import {
   releaseReservationHold,
 } from "../clients/availability-guard-client.js";
 import { serviceConfig } from "../config.js";
-import { withTransaction } from "../lib/db.js";
+import { query, withTransaction } from "../lib/db.js";
 import { enqueueOutboxRecordWithClient } from "../outbox/repository.js";
 import { recordLifecyclePersisted } from "../repositories/lifecycle-repository.js";
 import { insertRateFallbackRecord } from "../repositories/rate-fallback-repository.js";
@@ -30,9 +28,17 @@ import {
   type ReservationStaySnapshot,
 } from "../repositories/reservation-repository.js";
 import type {
+  ReservationAssignRoomCommand,
   ReservationCancelCommand,
+  ReservationCheckInCommand,
+  ReservationCheckOutCommand,
   ReservationCreateCommand,
+  ReservationDepositAddCommand,
+  ReservationDepositReleaseCommand,
+  ReservationExtendStayCommand,
   ReservationModifyCommand,
+  ReservationRateOverrideCommand,
+  ReservationUnassignRoomCommand,
 } from "../schemas/reservation-command.js";
 import type { RatePlanResolution } from "../services/rate-plan-service.js";
 import { resolveRatePlan } from "../services/rate-plan-service.js";
@@ -44,6 +50,7 @@ interface CreateReservationResult {
 }
 
 const DEFAULT_CURRENCY = "USD";
+const APP_ACTOR = "COMMAND_CENTER";
 
 /**
  * Accepts a reservation create command and enqueues its event payload
@@ -360,6 +367,286 @@ export const modifyReservation = async (
     correlationId: options.correlationId,
     status: "accepted",
   };
+};
+
+type ReservationUpdatePayload = ReservationUpdatedEvent["payload"];
+
+const enqueueReservationUpdate = async (
+  tenantId: string,
+  commandName: string,
+  payload: ReservationUpdatePayload,
+  options: { correlationId?: string } = {},
+): Promise<CreateReservationResult> => {
+  const eventId = uuid();
+  const updateEvent = ReservationUpdatedEventSchema.parse({
+    metadata: {
+      id: eventId,
+      source: serviceConfig.serviceId,
+      type: "reservation.updated",
+      timestamp: new Date().toISOString(),
+      version: "1.0",
+      correlationId: options.correlationId,
+      tenantId,
+      retryCount: 0,
+    },
+    payload,
+  });
+
+  const aggregateId = updateEvent.payload.id;
+  const partitionKey = aggregateId;
+
+  await withTransaction(async (client) => {
+    await recordLifecyclePersisted(client, {
+      eventId,
+      tenantId,
+      reservationId: aggregateId,
+      commandName,
+      correlationId: options.correlationId,
+      partitionKey,
+      details: {
+        tenantId,
+        reservationId: aggregateId,
+        command: commandName,
+      },
+      metadata: {
+        eventType: updateEvent.metadata.type,
+      },
+    });
+
+    await enqueueOutboxRecordWithClient(client, {
+      eventId,
+      tenantId,
+      aggregateId,
+      aggregateType: "reservation",
+      eventType: updateEvent.metadata.type,
+      payload: updateEvent,
+      headers: {
+        tenantId,
+        eventId,
+        ...(options.correlationId
+          ? { correlationId: options.correlationId }
+          : {}),
+      },
+      correlationId: options.correlationId,
+      partitionKey,
+      metadata: {
+        source: serviceConfig.serviceId,
+      },
+    });
+  });
+
+  return {
+    eventId,
+    correlationId: options.correlationId,
+    status: "accepted",
+  };
+};
+
+const fetchRoomNumber = async (
+  tenantId: string,
+  roomId: string,
+): Promise<string | null> => {
+  const { rows } = await query<{ room_number: string | null }>(
+    `
+      SELECT room_number
+      FROM public.rooms
+      WHERE tenant_id = $1::uuid
+        AND id = $2::uuid
+        AND COALESCE(is_deleted, false) = false
+      LIMIT 1
+    `,
+    [tenantId, roomId],
+  );
+  return rows[0]?.room_number ?? null;
+};
+
+export const checkInReservation = async (
+  tenantId: string,
+  command: ReservationCheckInCommand,
+  options: { correlationId?: string } = {},
+): Promise<CreateReservationResult> => {
+  const roomNumber = command.room_id
+    ? await fetchRoomNumber(tenantId, command.room_id)
+    : null;
+  const updatePayload: ReservationUpdatePayload = {
+    id: command.reservation_id,
+    tenant_id: tenantId,
+    status: "CHECKED_IN",
+    actual_check_in: command.checked_in_at ?? new Date(),
+    ...(roomNumber ? { room_number: roomNumber } : {}),
+    internal_notes: command.notes,
+    metadata: command.metadata,
+  };
+  return enqueueReservationUpdate(
+    tenantId,
+    "reservation.check_in",
+    updatePayload,
+    options,
+  );
+};
+
+export const checkOutReservation = async (
+  tenantId: string,
+  command: ReservationCheckOutCommand,
+  options: { correlationId?: string } = {},
+): Promise<CreateReservationResult> => {
+  const updatePayload: ReservationUpdatePayload = {
+    id: command.reservation_id,
+    tenant_id: tenantId,
+    status: "CHECKED_OUT",
+    actual_check_out: command.checked_out_at ?? new Date(),
+    internal_notes: command.notes,
+    metadata: command.metadata,
+  };
+  return enqueueReservationUpdate(
+    tenantId,
+    "reservation.check_out",
+    updatePayload,
+    options,
+  );
+};
+
+export const assignRoom = async (
+  tenantId: string,
+  command: ReservationAssignRoomCommand,
+  options: { correlationId?: string } = {},
+): Promise<CreateReservationResult> => {
+  const roomNumber = await fetchRoomNumber(tenantId, command.room_id);
+  if (!roomNumber) {
+    throw new Error("ROOM_NOT_FOUND");
+  }
+  const updatePayload: ReservationUpdatePayload = {
+    id: command.reservation_id,
+    tenant_id: tenantId,
+    room_number: roomNumber,
+    internal_notes: command.notes,
+    metadata: command.metadata,
+  };
+  return enqueueReservationUpdate(
+    tenantId,
+    "reservation.assign_room",
+    updatePayload,
+    options,
+  );
+};
+
+export const unassignRoom = async (
+  tenantId: string,
+  command: ReservationUnassignRoomCommand,
+  options: { correlationId?: string } = {},
+): Promise<CreateReservationResult> => {
+  const updatePayload: ReservationUpdatePayload = {
+    id: command.reservation_id,
+    tenant_id: tenantId,
+    room_number: null,
+    internal_notes: command.reason,
+    metadata: command.metadata,
+  };
+  return enqueueReservationUpdate(
+    tenantId,
+    "reservation.unassign_room",
+    updatePayload,
+    options,
+  );
+};
+
+export const extendStay = async (
+  tenantId: string,
+  command: ReservationExtendStayCommand,
+  options: { correlationId?: string } = {},
+): Promise<CreateReservationResult> => {
+  const updatePayload: ReservationUpdatePayload = {
+    id: command.reservation_id,
+    tenant_id: tenantId,
+    check_out_date: command.new_check_out_date,
+    internal_notes: command.reason,
+    metadata: command.metadata,
+  };
+  return enqueueReservationUpdate(
+    tenantId,
+    "reservation.extend_stay",
+    updatePayload,
+    options,
+  );
+};
+
+export const overrideRate = async (
+  tenantId: string,
+  command: ReservationRateOverrideCommand,
+  options: { correlationId?: string } = {},
+): Promise<CreateReservationResult> => {
+  const updatePayload: ReservationUpdatePayload = {
+    id: command.reservation_id,
+    tenant_id: tenantId,
+    rate_code: command.rate_code?.toUpperCase(),
+    total_amount: command.total_amount,
+    currency: command.currency?.toUpperCase(),
+    internal_notes: command.reason,
+    metadata: command.metadata,
+  };
+  return enqueueReservationUpdate(
+    tenantId,
+    "reservation.rate_override",
+    updatePayload,
+    options,
+  );
+};
+
+export const addDeposit = async (
+  tenantId: string,
+  command: ReservationDepositAddCommand,
+  options: { correlationId?: string } = {},
+): Promise<CreateReservationResult> => {
+  const updatePayload: ReservationUpdatePayload = {
+    id: command.reservation_id,
+    tenant_id: tenantId,
+    internal_notes: command.notes,
+    metadata: {
+      deposit_event: {
+        type: "add",
+        amount: command.amount,
+        currency: command.currency ?? DEFAULT_CURRENCY,
+        method: command.method,
+        recorded_at: new Date().toISOString(),
+        actor: APP_ACTOR,
+      },
+      ...(command.metadata ?? {}),
+    },
+  };
+  return enqueueReservationUpdate(
+    tenantId,
+    "reservation.add_deposit",
+    updatePayload,
+    options,
+  );
+};
+
+export const releaseDeposit = async (
+  tenantId: string,
+  command: ReservationDepositReleaseCommand,
+  options: { correlationId?: string } = {},
+): Promise<CreateReservationResult> => {
+  const updatePayload: ReservationUpdatePayload = {
+    id: command.reservation_id,
+    tenant_id: tenantId,
+    internal_notes: command.reason,
+    metadata: {
+      deposit_event: {
+        type: "release",
+        amount: command.amount,
+        deposit_id: command.deposit_id,
+        recorded_at: new Date().toISOString(),
+        actor: APP_ACTOR,
+      },
+      ...(command.metadata ?? {}),
+    },
+  };
+  return enqueueReservationUpdate(
+    tenantId,
+    "reservation.release_deposit",
+    updatePayload,
+    options,
+  );
 };
 
 export const cancelReservation = async (
