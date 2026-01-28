@@ -3,7 +3,8 @@
  * All monetary values should be converted to cents for calculations, then back to dollars for storage/display.
  */
 
-const CENTS_MULTIPLIER = 100;
+const ROUNDING_PRECISION = 2;
+const CENTS_MULTIPLIER = 10 ** ROUNDING_PRECISION;
 
 /**
  * Convert a dollar amount to integer cents.
@@ -66,16 +67,22 @@ export const moneyGt = (a: number, b: number): boolean => {
  * Safely convert a database numeric/decimal value to a number for calculations.
  * Handles null/undefined and string representations from PostgreSQL.
  */
-export const parseDbMoney = (value: unknown): number => {
+export const parseDbMoney = (value: unknown): number | null => {
   if (value === null || value === undefined) {
-    return 0;
+    return null;
   }
   if (typeof value === "number") {
     return roundMoney(value);
   }
   if (typeof value === "string") {
     const parsed = Number.parseFloat(value);
-    return Number.isFinite(parsed) ? roundMoney(parsed) : 0;
+    return Number.isFinite(parsed) ? roundMoney(parsed) : null;
   }
-  return 0;
+  return null;
 };
+
+/**
+ * Safely convert a database numeric/decimal value to a number, defaulting to 0.
+ */
+export const parseDbMoneyOrZero = (value: unknown): number =>
+  parseDbMoney(value) ?? 0;

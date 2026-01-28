@@ -1,15 +1,21 @@
-import { databaseSchema, loadServiceConfig } from "@tartware/config";
+import {
+  databaseSchema,
+  loadServiceConfig,
+  validateProductionSecrets,
+} from "@tartware/config";
 
 process.env.SERVICE_NAME =
   process.env.SERVICE_NAME ?? "@tartware/billing-service";
 process.env.SERVICE_VERSION = process.env.SERVICE_VERSION ?? "0.1.0";
 
-// PR feedback: Enforce JWT secret in production, fail fast if not set
-if (process.env.NODE_ENV === "production" && !process.env.AUTH_JWT_SECRET) {
-  throw new Error("AUTH_JWT_SECRET must be set in production environment");
+if (!process.env.AUTH_JWT_SECRET) {
+  if (process.env.NODE_ENV === "production") {
+    throw new Error(
+      "AUTH_JWT_SECRET must be set in production and cannot use a default value.",
+    );
+  }
+  process.env.AUTH_JWT_SECRET = "dev-secret-minimum-32-chars-change-me!";
 }
-process.env.AUTH_JWT_SECRET =
-  process.env.AUTH_JWT_SECRET ?? "local-dev-secret-minimum-32-chars!";
 process.env.AUTH_JWT_ISSUER = process.env.AUTH_JWT_ISSUER ?? "tartware-core";
 process.env.AUTH_JWT_AUDIENCE = process.env.AUTH_JWT_AUDIENCE ?? "tartware";
 
@@ -47,6 +53,12 @@ const parseNumberList = (value: string | undefined): number[] =>
     .filter((entry) => Number.isFinite(entry) && entry > 0);
 
 const configValues = loadServiceConfig(databaseSchema);
+validateProductionSecrets({
+  ...configValues,
+  NODE_ENV: process.env.NODE_ENV,
+  AUTH_JWT_SECRET: process.env.AUTH_JWT_SECRET,
+  AUTH_DEFAULT_PASSWORD: process.env.AUTH_DEFAULT_PASSWORD,
+});
 const runtimeEnv = (process.env.NODE_ENV ?? "development").toLowerCase();
 const isProduction = runtimeEnv === "production";
 const billingDataRetentionDays = toNumber(
@@ -155,7 +167,7 @@ export const config = {
   auth: {
     jwt: {
       secret:
-        process.env.AUTH_JWT_SECRET ?? "local-dev-secret-minimum-32-chars!",
+        process.env.AUTH_JWT_SECRET ?? "dev-secret-minimum-32-chars-change-me!",
       issuer: process.env.AUTH_JWT_ISSUER ?? "tartware-core",
       audience: process.env.AUTH_JWT_AUDIENCE ?? "tartware",
     },

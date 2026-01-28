@@ -1,13 +1,20 @@
-import { coreAuthSchema, databaseSchema, loadServiceConfig, redisSchema } from "@tartware/config";
+import {
+  coreAuthSchema,
+  databaseSchema,
+  loadServiceConfig,
+  redisSchema,
+  validateProductionSecrets,
+} from "@tartware/config";
 
 process.env.SERVICE_NAME = process.env.SERVICE_NAME ?? "@tartware/core-service";
 process.env.SERVICE_VERSION = process.env.SERVICE_VERSION ?? "0.1.0";
 
-// PR feedback: Enforce JWT secret in production, fail fast if not set
-if (process.env.NODE_ENV === "production" && !process.env.AUTH_JWT_SECRET) {
-  throw new Error("AUTH_JWT_SECRET must be set in production environment");
+if (!process.env.AUTH_JWT_SECRET) {
+  if (process.env.NODE_ENV === "production") {
+    throw new Error("AUTH_JWT_SECRET must be set in production and cannot use a default value.");
+  }
+  process.env.AUTH_JWT_SECRET = "dev-secret-minimum-32-chars-change-me!";
 }
-process.env.AUTH_JWT_SECRET = process.env.AUTH_JWT_SECRET ?? "local-dev-secret-minimum-32-chars!";
 process.env.AUTH_JWT_ISSUER = process.env.AUTH_JWT_ISSUER ?? "tartware-core-service";
 process.env.AUTH_JWT_AUDIENCE = process.env.AUTH_JWT_AUDIENCE ?? "tartware-core";
 process.env.AUTH_DEFAULT_PASSWORD = process.env.AUTH_DEFAULT_PASSWORD ?? "DevPassword123!";
@@ -31,6 +38,7 @@ const toBoolean = (value: string | undefined, fallback: boolean): boolean => {
 };
 
 const configValues = loadServiceConfig(databaseSchema.merge(redisSchema).merge(coreAuthSchema));
+validateProductionSecrets(configValues);
 
 const tenantAuthMaxFailedAttempts = configValues.TENANT_AUTH_MAX_FAILED_ATTEMPTS;
 const tenantAuthLockoutMinutes = configValues.TENANT_AUTH_LOCKOUT_MINUTES;

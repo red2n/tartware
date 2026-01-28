@@ -22,6 +22,7 @@ import {
   moneyGt,
   moneyGte,
   parseDbMoney,
+  parseDbMoneyOrZero,
   subtractMoney,
 } from "../utils/money.js";
 
@@ -244,7 +245,13 @@ const refundPayment = async (
 
   const actor = resolveActorId(context.initiatedBy);
   const originalAmount = parseDbMoney(original.amount);
-  const previousRefunds = parseDbMoney(original.refund_amount);
+  if (originalAmount === null) {
+    throw new BillingCommandError(
+      "PAYMENT_AMOUNT_MISSING",
+      "Original payment amount is missing; refund cannot be processed.",
+    );
+  }
+  const previousRefunds = parseDbMoneyOrZero(original.refund_amount);
   const refundTotal = addMoney(previousRefunds, command.amount);
 
   // Prevent refunds exceeding original payment (using safe money comparison)

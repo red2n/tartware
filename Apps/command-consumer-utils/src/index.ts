@@ -122,6 +122,12 @@ type CreateCommandCenterHandlersInput = {
    * Called after successful command processing.
    */
   recordIdempotency?: IdempotencyRecord;
+  /**
+   * Behavior when the idempotency check fails.
+   * - fail-open: log and proceed (default)
+   * - fail-closed: route to DLQ and skip processing
+   */
+  idempotencyFailureMode?: "fail-open" | "fail-closed";
 };
 
 export const createCommandCenterHandlers = (
@@ -135,6 +141,8 @@ export const createCommandCenterHandlers = (
       "checkIdempotency and recordIdempotency must both be provided or both omitted",
     );
   }
+
+  const idempotencyFailureMode = input.idempotencyFailureMode ?? "fail-open";
 
   const shouldProcess = (
     metadata: CommandEnvelope["metadata"],
@@ -263,6 +271,45 @@ export const createCommandCenterHandlers = (
           return;
         }
       } catch (error) {
+        if (idempotencyFailureMode === "fail-closed") {
+          input.logger.error(
+            { err: error, metadata, idempotencyKey },
+            "Idempotency check failed; routing to DLQ",
+          );
+          input.metrics?.recordOutcome?.(metadata.commandName, "handler_error");
+          input.metrics?.observeDuration?.(
+            metadata.commandName,
+            (performance.now() - startedAt) / 1000,
+          );
+          try {
+            await input.publishDlqEvent({
+              key: messageKey,
+              value: JSON.stringify(
+                input.buildDlqPayload({
+                  envelope,
+                  rawValue,
+                  topic,
+                  partition,
+                  offset: message.offset,
+                  attempts: 1,
+                  failureReason: "HANDLER_FAILURE",
+                  error,
+                }),
+              ),
+              headers: {
+                "x-tartware-dlq": input.serviceName,
+              },
+            });
+          } catch (dlqError) {
+            input.logger.error(
+              { err: dlqError, metadata, topic, partition, offset: message.offset },
+              "CRITICAL: Failed to publish idempotency failure to DLQ; message may be lost",
+            );
+          }
+          recordLag();
+          return;
+        }
+
         input.logger.warn(
           { err: error, metadata, idempotencyKey },
           "Idempotency check failed; proceeding with command processing",

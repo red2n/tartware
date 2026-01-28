@@ -29,7 +29,10 @@ export const databaseSchema = z.object({
   DB_PORT: z.coerce.number().int().default(5432),
   DB_NAME: z.string().default("tartware"),
   DB_USER: z.string().default("postgres"),
-  DB_PASSWORD: z.string().min(1, "DB_PASSWORD is required"),
+  DB_PASSWORD: z.string().refine(
+    (value) => process.env.NODE_ENV === "test" || value.length > 0,
+    "DB_PASSWORD is required in non-test environments",
+  ),
   DB_SSL: booleanString,
   DB_POOL_MAX: z.coerce.number().int().default(10),
   DB_POOL_IDLE_TIMEOUT_MS: z.coerce.number().int().default(30000),

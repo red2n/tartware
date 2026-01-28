@@ -2,18 +2,21 @@ import {
   coreAuthSchema,
   databaseSchema,
   loadServiceConfig,
+  validateProductionSecrets,
 } from "@tartware/config";
 
 process.env.SERVICE_NAME =
   process.env.SERVICE_NAME ?? "@tartware/command-center-service";
 process.env.SERVICE_VERSION = process.env.SERVICE_VERSION ?? "0.1.0";
 
-// PR feedback: Enforce JWT secret in production, fail fast if not set
-if (process.env.NODE_ENV === "production" && !process.env.AUTH_JWT_SECRET) {
-  throw new Error("AUTH_JWT_SECRET must be set in production environment");
+if (!process.env.AUTH_JWT_SECRET) {
+  if (process.env.NODE_ENV === "production") {
+    throw new Error(
+      "AUTH_JWT_SECRET must be set in production and cannot use a default value.",
+    );
+  }
+  process.env.AUTH_JWT_SECRET = "dev-secret-minimum-32-chars-change-me!";
 }
-process.env.AUTH_JWT_SECRET =
-  process.env.AUTH_JWT_SECRET ?? "local-dev-secret-minimum-32-chars!";
 process.env.AUTH_JWT_ISSUER =
   process.env.AUTH_JWT_ISSUER ?? "@tartware/core-service:system";
 process.env.AUTH_JWT_AUDIENCE =
@@ -64,6 +67,7 @@ const parseBrokerList = (
     .filter((broker) => broker.length > 0);
 
 const configValues = loadServiceConfig(databaseSchema.merge(coreAuthSchema));
+validateProductionSecrets(configValues);
 
 const runtimeEnv = (process.env.NODE_ENV ?? "development").toLowerCase();
 const isProduction = runtimeEnv === "production";
