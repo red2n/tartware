@@ -76,10 +76,33 @@ export const registerSystemUserRoutes = (app: FastifyInstance): void => {
       const data = CreateUserSchema.parse(request.body);
       const passwordHash = await hashPassword(data.password);
 
-      const { rows } = await query<{ id: string; username: string; email: string }>(
+      // PR feedback: Check for both username AND email conflicts before insert
+      // to provide accurate error messages for either conflict type
+      const [usernameResult, emailResult] = await Promise.all([
+        query<{ username: string }>(`SELECT username FROM users WHERE username = $1 LIMIT 1`, [
+          data.username,
+        ]),
+        query<{ email: string }>(`SELECT email FROM users WHERE email = $1 LIMIT 1`, [data.email]),
+      ]);
+
+      if (usernameResult.rows[0]) {
+        throw request.server.httpErrors.conflict("Username already exists");
+      }
+      if (emailResult.rows[0]) {
+        throw request.server.httpErrors.conflict("Email already exists");
+      }
+
+      // Use ON CONFLICT to handle race conditions atomically
+      const { rows } = await query<{
+        id: string;
+        username: string;
+        email: string;
+        created: boolean;
+      }>(
         `INSERT INTO users (username, email, password_hash, first_name, last_name, phone, is_active, is_verified)
          VALUES ($1, $2, $3, $4, $5, $6, true, false)
-         RETURNING id, username, email`,
+         ON CONFLICT DO NOTHING
+         RETURNING id, username, email, true as created`,
         [
           data.username,
           data.email,
@@ -92,7 +115,10 @@ export const registerSystemUserRoutes = (app: FastifyInstance): void => {
 
       const user = rows[0];
       if (!user) {
-        throw new Error("Failed to create user");
+        // Race condition: another request created user between check and insert
+        throw request.server.httpErrors.conflict(
+          "User with this username or email was just created",
+        );
       }
 
       // If tenant_id and role provided, create association

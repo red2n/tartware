@@ -24,6 +24,9 @@ type DlqStats = {
 
 type ReliabilityStatus = "healthy" | "degraded" | "critical";
 
+/**
+ * Reliability snapshot for reservation command pipeline.
+ */
 export type ReliabilitySnapshot = {
   status: ReliabilityStatus;
   generatedAt: string;
@@ -170,6 +173,9 @@ const safeBigInt = (value: string | number): bigint => {
   }
 };
 
+/**
+ * Compute reliability snapshot for outbox, consumers, lifecycle, and DLQ.
+ */
 export const getReliabilitySnapshot =
   async (): Promise<ReliabilitySnapshot> => {
     const [outboxPending, consumer, lifecycle, dlq] = await Promise.all([

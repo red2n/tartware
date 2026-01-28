@@ -1,4 +1,10 @@
-import { Pool, type QueryResult, type QueryResultRow, types } from "pg";
+import {
+  Pool,
+  type PoolClient,
+  type QueryResult,
+  type QueryResultRow,
+  types,
+} from "pg";
 
 import { config } from "../config.js";
 
@@ -40,4 +46,43 @@ export const query = async <T extends QueryResultRow = QueryResultRow>(
   params: unknown[] = [],
 ): Promise<QueryResult<T>> => {
   return pool.query<T>(text, params);
+};
+
+export const queryWithClient = async <
+  T extends QueryResultRow = QueryResultRow,
+>(
+  client: PoolClient,
+  text: string,
+  params: unknown[] = [],
+): Promise<QueryResult<T>> => {
+  return client.query<T>(text, params);
+};
+
+export const withTransaction = async <T>(
+  fn: (client: PoolClient) => Promise<T>,
+): Promise<T> => {
+  const client = await pool.connect();
+  let transactionStarted = false;
+  let rollbackError: unknown = null;
+
+  try {
+    await client.query("BEGIN");
+    transactionStarted = true;
+    const result = await fn(client);
+    await client.query("COMMIT");
+    return result;
+  } catch (error) {
+    if (transactionStarted) {
+      try {
+        await client.query("ROLLBACK");
+      } catch (rbError) {
+        rollbackError = rbError;
+        console.error("Transaction rollback failed", rbError);
+      }
+    }
+    throw error;
+  } finally {
+    // Pass true to release() to signal error occurred, allowing pool to discard connection if needed
+    client.release(rollbackError !== null);
+  }
 };

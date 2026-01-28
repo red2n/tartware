@@ -1,5 +1,8 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+process.env.NODE_ENV = "test";
+process.env.DB_PASSWORD = process.env.DB_PASSWORD ?? "postgres";
+
 const baseEnv = { ...process.env };
 
 const resetEnv = () => {

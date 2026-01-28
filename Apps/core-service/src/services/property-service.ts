@@ -126,6 +126,9 @@ const fetchPropertyOperationalStats = async (
   }, new Map());
 };
 
+/**
+ * List properties with optional tenant filtering and operational stats.
+ */
 export const listProperties = async (
   options: { limit?: number; tenantId?: string } = {},
 ): Promise<PropertyWithStatsApi[]> => {

@@ -26,7 +26,7 @@ const commandConsumerLagGauge = new Gauge({
 
 export const recordCommandOutcome = (
   commandName: string,
-  status: "success" | "parse_error" | "handler_error",
+  status: "success" | "parse_error" | "handler_error" | "duplicate",
 ): void => {
   commandOutcomeCounter.labels(commandName, status).inc();
 };

@@ -4,6 +4,9 @@ import { query } from "../lib/db.js";
 import { HOUSEKEEPING_TASK_LIST_SQL } from "../sql/housekeeping-queries.js";
 import { toNumberOrFallback } from "../utils/numbers.js";
 
+/**
+ * Housekeeping task list response schema.
+ */
 export const HousekeepingTaskSchema = z.object({
   id: z.string().uuid(),
   tenant_id: z.string().uuid(),
@@ -78,7 +81,7 @@ const toIsoString = (value: string | Date | null): string | undefined => {
 const normalizeStatus = (
   value: string | null,
 ): { value: string; display: string } => {
-  if (!value) {
+  if (!value || typeof value !== "string") {
     return { value: "unknown", display: "Unknown" };
   }
   const normalized = value.toLowerCase();
@@ -126,6 +129,9 @@ const mapRowToTask = (row: HousekeepingTaskRow): HousekeepingTask => {
   });
 };
 
+/**
+ * List housekeeping tasks with optional filters.
+ */
 export const listHousekeepingTasks = async (options: {
   limit?: number;
   tenantId: string;

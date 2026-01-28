@@ -33,6 +33,9 @@ type ManualReleaseResult = {
 const secondsSince = (startedAt: number): number =>
   (performance.now() - startedAt) / 1000;
 
+/**
+ * Manually release an inventory lock and emit audit/notification.
+ */
 export const manualReleaseLock = async (
   input: ManualReleaseInput,
   logger: FastifyBaseLogger,

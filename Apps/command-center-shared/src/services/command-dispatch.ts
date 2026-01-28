@@ -87,6 +87,9 @@ export interface CommandDispatchDependencies<Membership> {
 	}) => Promise<boolean>;
 }
 
+/**
+ * Error type for command dispatch failures.
+ */
 export class CommandDispatchError extends Error {
   code: string;
   statusCode: number;
@@ -120,6 +123,9 @@ export type CommandAcceptanceResult = {
   };
 };
 
+/**
+ * Create a command dispatch service with provided dependencies.
+ */
 export const createCommandDispatchService = <Membership>(
 	deps: CommandDispatchDependencies<Membership>,
 ) => {

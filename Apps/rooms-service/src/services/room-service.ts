@@ -3,6 +3,9 @@ import { z } from "zod";
 import { query } from "../lib/db.js";
 import { ROOM_LIST_SQL } from "../sql/room-queries.js";
 
+/**
+ * Room list response schema.
+ */
 export const RoomListItemSchema = z.object({
   id: z.string().uuid(),
   tenant_id: z.string().uuid(),
@@ -69,7 +72,7 @@ const normalizeEnum = (
   value: string | null,
   fallback: string,
 ): { value: string; display: string } => {
-  if (!value) {
+  if (!value || typeof value !== "string") {
     return { value: fallback, display: toTitleCase(fallback) };
   }
   const normalized = value.toLowerCase();
@@ -125,6 +128,9 @@ const mapRowToRoom = (row: RoomListRow): RoomListItem => {
   });
 };
 
+/**
+ * List rooms with optional filters and search.
+ */
 export const listRooms = async (options: {
   limit?: number;
   tenantId: string;

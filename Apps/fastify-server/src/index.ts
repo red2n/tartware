@@ -120,11 +120,20 @@ export const buildFastifyServer = (
     ? Promise.resolve(beforeRoutes(app))
     : Promise.resolve();
 
-  // Register routes as a plugin so decorations from beforeRoutes are available
   if (registerRoutes) {
-    app.register(async (instance) => {
+    app.after(async (error) => {
+      if (error) {
+        throw error;
+      }
       await beforeRoutesTask;
-      await registerRoutes(instance);
+      await registerRoutes(app);
+    });
+  } else if (beforeRoutes) {
+    app.after(async (error) => {
+      if (error) {
+        throw error;
+      }
+      await beforeRoutesTask;
     });
   }
 

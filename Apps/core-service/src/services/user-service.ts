@@ -70,6 +70,9 @@ const mapRowToUser = (row: UserRow): UserWithTenants => {
   return parsed;
 };
 
+/**
+ * List users with optional tenant filtering and pagination.
+ */
 export const listUsers = async (
   options: { limit?: number; tenantId?: string } = {},
 ): Promise<UserWithTenants[]> => {

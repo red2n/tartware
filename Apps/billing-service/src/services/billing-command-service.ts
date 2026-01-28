@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 
-import { query } from "../lib/db.js";
+import { query, queryWithClient, withTransaction } from "../lib/db.js";
 import {
   type BillingChargePostCommand,
   BillingChargePostCommandSchema,
@@ -17,6 +17,14 @@ import {
   type BillingPaymentRefundCommand,
   BillingPaymentRefundCommandSchema,
 } from "../schemas/billing-commands.js";
+import {
+  addMoney,
+  moneyGt,
+  moneyGte,
+  parseDbMoney,
+  parseDbMoneyOrZero,
+  subtractMoney,
+} from "../utils/money.js";
 
 type CommandContext = {
   tenantId: string;
@@ -42,6 +50,12 @@ const UUID_REGEX =
 const asUuid = (value: string | undefined | null): string | null =>
   value && UUID_REGEX.test(value) ? value : null;
 
+const resolveActorId = (initiatedBy?: { userId?: string } | null): string =>
+  initiatedBy?.userId ?? APP_ACTOR;
+
+/**
+ * Capture a payment and record it in billing.
+ */
 export const captureBillingPayment = async (
   payload: unknown,
   context: CommandContext,
@@ -50,6 +64,9 @@ export const captureBillingPayment = async (
   return capturePayment(command, context);
 };
 
+/**
+ * Refund a captured payment and record the refund.
+ */
 export const refundBillingPayment = async (
   payload: unknown,
   context: CommandContext,
@@ -58,6 +75,9 @@ export const refundBillingPayment = async (
   return refundPayment(command, context);
 };
 
+/**
+ * Create a billing invoice.
+ */
 export const createInvoice = async (
   payload: unknown,
   context: CommandContext,
@@ -66,6 +86,9 @@ export const createInvoice = async (
   return applyInvoiceCreate(command, context);
 };
 
+/**
+ * Adjust an invoice total with a positive or negative delta.
+ */
 export const adjustInvoice = async (
   payload: unknown,
   context: CommandContext,
@@ -74,6 +97,9 @@ export const adjustInvoice = async (
   return applyInvoiceAdjust(command, context);
 };
 
+/**
+ * Post a miscellaneous charge to a reservation folio.
+ */
 export const postCharge = async (
   payload: unknown,
   context: CommandContext,
@@ -82,6 +108,9 @@ export const postCharge = async (
   return applyChargePost(command, context);
 };
 
+/**
+ * Apply a payment to an invoice.
+ */
 export const applyPayment = async (
   payload: unknown,
   context: CommandContext,
@@ -90,6 +119,9 @@ export const applyPayment = async (
   return applyPaymentToInvoice(command, context);
 };
 
+/**
+ * Transfer folio balance between reservations.
+ */
 export const transferFolio = async (
   payload: unknown,
   context: CommandContext,
@@ -102,7 +134,7 @@ const capturePayment = async (
   command: BillingPaymentCaptureCommand,
   context: CommandContext,
 ): Promise<string> => {
-  const actor = context.initiatedBy?.userId ?? APP_ACTOR;
+  const actor = resolveActorId(context.initiatedBy);
   const currency = command.currency ?? "USD";
   const gatewayResponse = command.gateway?.response ?? {};
 
@@ -211,12 +243,32 @@ const refundPayment = async (
     );
   }
 
-  const actor = context.initiatedBy?.userId ?? APP_ACTOR;
-  const refundTotal = Number(original.refund_amount ?? 0) + command.amount;
-  const refundStatus =
-    refundTotal >= Number(original.amount) ? "REFUNDED" : "PARTIALLY_REFUNDED";
-  const refundTransactionType =
-    command.amount >= Number(original.amount) ? "REFUND" : "PARTIAL_REFUND";
+  const actor = resolveActorId(context.initiatedBy);
+  const originalAmount = parseDbMoney(original.amount);
+  if (originalAmount === null) {
+    throw new BillingCommandError(
+      "PAYMENT_AMOUNT_MISSING",
+      "Original payment amount is missing; refund cannot be processed.",
+    );
+  }
+  const previousRefunds = parseDbMoneyOrZero(original.refund_amount);
+  const refundTotal = addMoney(previousRefunds, command.amount);
+
+  // Prevent refunds exceeding original payment (using safe money comparison)
+  if (moneyGt(refundTotal, originalAmount)) {
+    const availableRefund = subtractMoney(originalAmount, previousRefunds);
+    throw new BillingCommandError(
+      "REFUND_EXCEEDS_PAYMENT",
+      `Refund amount ${command.amount} would exceed original payment. Available for refund: ${availableRefund}`,
+    );
+  }
+
+  const refundStatus = moneyGte(refundTotal, originalAmount)
+    ? "REFUNDED"
+    : "PARTIALLY_REFUNDED";
+  const refundTransactionType = moneyGte(command.amount, originalAmount)
+    ? "REFUND"
+    : "PARTIAL_REFUND";
 
   const refundReference =
     command.refund_reference ??
@@ -316,7 +368,7 @@ const applyInvoiceCreate = async (
   command: BillingInvoiceCreateCommand,
   context: CommandContext,
 ): Promise<string> => {
-  const actor = context.initiatedBy?.userId ?? APP_ACTOR;
+  const actor = resolveActorId(context.initiatedBy);
   const invoiceNumber =
     command.invoice_number ??
     `INV-${Date.now().toString(36)}-${randomUUID().slice(0, 8)}`;
@@ -389,7 +441,7 @@ const applyInvoiceAdjust = async (
   command: BillingInvoiceAdjustCommand,
   context: CommandContext,
 ): Promise<string> => {
-  const actor = context.initiatedBy?.userId ?? APP_ACTOR;
+  const actor = resolveActorId(context.initiatedBy);
   const { rows } = await query<{ id: string }>(
     `
       UPDATE public.invoices
@@ -448,7 +500,7 @@ const applyChargePost = async (
   command: BillingChargePostCommand,
   context: CommandContext,
 ): Promise<string> => {
-  const actor = context.initiatedBy?.userId ?? APP_ACTOR;
+  const actor = resolveActorId(context.initiatedBy);
   const actorId = asUuid(actor) ?? SYSTEM_ACTOR_ID;
   const currency = command.currency ?? "USD";
   const folioId = await resolveFolioId(
@@ -552,7 +604,7 @@ const applyPaymentToInvoice = async (
   command: BillingPaymentApplyCommand,
   context: CommandContext,
 ): Promise<string> => {
-  const actor = context.initiatedBy?.userId ?? APP_ACTOR;
+  const actor = resolveActorId(context.initiatedBy);
   const payment = await loadPaymentById(context.tenantId, command.payment_id);
   if (!payment) {
     throw new BillingCommandError(
@@ -633,7 +685,7 @@ const applyFolioTransfer = async (
   command: BillingFolioTransferCommand,
   context: CommandContext,
 ): Promise<string> => {
-  const actor = context.initiatedBy?.userId ?? APP_ACTOR;
+  const actor = resolveActorId(context.initiatedBy);
   const actorId = asUuid(actor) ?? SYSTEM_ACTOR_ID;
   const fromFolioId = await resolveFolioId(
     context.tenantId,
@@ -650,37 +702,41 @@ const applyFolioTransfer = async (
     );
   }
 
-  await query(
-    `
-      UPDATE public.folios
-      SET
-        total_credits = total_credits + $2,
-        balance = balance - $2,
-        transferred_to_folio_id = $3::uuid,
-        transferred_at = NOW(),
-        updated_at = NOW(),
-        updated_by = $4::uuid
-      WHERE tenant_id = $1::uuid
-        AND folio_id = $5::uuid
-    `,
-    [context.tenantId, command.amount, toFolioId, actorId, fromFolioId],
-  );
+  await withTransaction(async (client) => {
+    await queryWithClient(
+      client,
+      `
+        UPDATE public.folios
+        SET
+          total_credits = total_credits + $2,
+          balance = balance - $2,
+          transferred_to_folio_id = $3::uuid,
+          transferred_at = NOW(),
+          updated_at = NOW(),
+          updated_by = $4::uuid
+        WHERE tenant_id = $1::uuid
+          AND folio_id = $5::uuid
+      `,
+      [context.tenantId, command.amount, toFolioId, actorId, fromFolioId],
+    );
 
-  await query(
-    `
-      UPDATE public.folios
-      SET
-        total_charges = total_charges + $2,
-        balance = balance + $2,
-        transferred_from_folio_id = $3::uuid,
-        transferred_at = NOW(),
-        updated_at = NOW(),
-        updated_by = $4::uuid
-      WHERE tenant_id = $1::uuid
-        AND folio_id = $5::uuid
-    `,
-    [context.tenantId, command.amount, fromFolioId, actorId, toFolioId],
-  );
+    await queryWithClient(
+      client,
+      `
+        UPDATE public.folios
+        SET
+          total_charges = total_charges + $2,
+          balance = balance + $2,
+          transferred_from_folio_id = $3::uuid,
+          transferred_at = NOW(),
+          updated_at = NOW(),
+          updated_by = $4::uuid
+        WHERE tenant_id = $1::uuid
+          AND folio_id = $5::uuid
+      `,
+      [context.tenantId, command.amount, fromFolioId, actorId, toFolioId],
+    );
+  });
 
   return toFolioId;
 };

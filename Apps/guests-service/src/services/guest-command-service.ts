@@ -1,4 +1,4 @@
-import { query } from "../lib/db.js";
+import { query, queryWithClient, withTransaction } from "../lib/db.js";
 import { appLogger } from "../lib/logger.js";
 import {
   GuestGdprEraseCommandSchema,
@@ -19,6 +19,9 @@ const guestCommandLogger = appLogger.child({
 });
 
 const APP_ACTOR = "COMMAND_CENTER";
+
+const resolveActorId = (initiatedBy?: { userId?: string } | null): string =>
+  initiatedBy?.userId ?? APP_ACTOR;
 
 type GuestAddress = {
   street?: string;
@@ -61,6 +64,9 @@ type RegisterGuestOptions = {
   } | null;
 };
 
+/**
+ * Register or update a guest profile (idempotent upsert).
+ */
 export const registerGuestProfile = async ({
   tenantId,
   payload,
@@ -74,7 +80,7 @@ export const registerGuestProfile = async ({
       ? JSON.stringify(payload.preferences)
       : null;
 
-  const createdBy = initiatedBy?.userId ?? "COMMAND_CENTER";
+  const createdBy = resolveActorId(initiatedBy);
 
   const result = await query<{ guest_id: string }>(
     `
@@ -157,6 +163,9 @@ type GuestMergeResult = {
   primaryGuestId: string;
 };
 
+/**
+ * Merge two guest profiles into a primary profile.
+ */
 export const mergeGuestProfiles = async ({
   tenantId,
   payload,
@@ -164,7 +173,7 @@ export const mergeGuestProfiles = async ({
   initiatedBy,
 }: MergeGuestOptions): Promise<GuestMergeResult> => {
   const command = GuestMergeCommandSchema.parse(payload);
-  const actor = initiatedBy?.userId ?? "COMMAND_CENTER";
+  const actor = resolveActorId(initiatedBy);
   const guests = await query<GuestRow>(
     `
       SELECT
@@ -289,6 +298,9 @@ type GuestUpdateOptions = {
   } | null;
 };
 
+/**
+ * Update guest profile attributes with partial fields.
+ */
 export const updateGuestProfile = async ({
   tenantId,
   payload,
@@ -296,7 +308,7 @@ export const updateGuestProfile = async ({
   initiatedBy,
 }: GuestUpdateOptions): Promise<void> => {
   const command = GuestUpdateProfileCommandSchema.parse(payload);
-  const actor = initiatedBy?.userId ?? APP_ACTOR;
+  const actor = resolveActorId(initiatedBy);
   const normalizedPhone = normalizePhoneNumber(command.phone ?? undefined);
   const address = normalizeAddress(command.address ?? null);
   const preferences =
@@ -350,6 +362,9 @@ export const updateGuestProfile = async ({
   );
 };
 
+/**
+ * Update guest contact information (email/phone/address).
+ */
 export const updateGuestContact = async ({
   tenantId,
   payload,
@@ -357,7 +372,7 @@ export const updateGuestContact = async ({
   initiatedBy,
 }: GuestUpdateOptions): Promise<void> => {
   const command = GuestUpdateContactCommandSchema.parse(payload);
-  const actor = initiatedBy?.userId ?? APP_ACTOR;
+  const actor = resolveActorId(initiatedBy);
   const normalizedPhone = normalizePhoneNumber(command.phone ?? undefined);
   const address = normalizeAddress(command.address ?? null);
 
@@ -397,6 +412,9 @@ export const updateGuestContact = async ({
   );
 };
 
+/**
+ * Adjust guest loyalty tier and points with audit notes.
+ */
 export const setGuestLoyalty = async ({
   tenantId,
   payload,
@@ -404,9 +422,12 @@ export const setGuestLoyalty = async ({
   initiatedBy,
 }: GuestUpdateOptions): Promise<void> => {
   const command = GuestSetLoyaltyCommandSchema.parse(payload);
-  const actor = initiatedBy?.userId ?? APP_ACTOR;
+  const actor = resolveActorId(initiatedBy);
 
-  const { rowCount } = await query(
+  const delta =
+    typeof command.points_delta === "number" ? command.points_delta : null;
+
+  const { rowCount, rows } = await query<{ loyalty_points: number | null }>(
     `
       UPDATE public.guests
       SET
@@ -425,12 +446,13 @@ export const setGuestLoyalty = async ({
       WHERE tenant_id = $1::uuid
         AND id = $2::uuid
         AND COALESCE(is_deleted, false) = false
+      RETURNING loyalty_points
     `,
     [
       tenantId,
       command.guest_id,
       command.loyalty_tier ?? null,
-      typeof command.points_delta === "number" ? command.points_delta : null,
+      delta,
       command.reason ?? null,
       actor,
     ],
@@ -440,12 +462,32 @@ export const setGuestLoyalty = async ({
     throw new Error("GUEST_NOT_FOUND");
   }
 
+  if (delta !== null && delta < 0) {
+    const updatedPoints = rows[0]?.loyalty_points ?? null;
+    if (updatedPoints === 0) {
+      guestCommandLogger.warn(
+        {
+          tenantId,
+          guestId: command.guest_id,
+          pointsDelta: delta,
+          updatedPoints,
+          correlationId,
+          initiatedBy,
+        },
+        "guest.set_loyalty clamped negative balance to zero",
+      );
+    }
+  }
+
   guestCommandLogger.info(
     { tenantId, guestId: command.guest_id, correlationId, initiatedBy },
     "guest.set_loyalty command applied",
   );
 };
 
+/**
+ * Set guest VIP status and optional reason.
+ */
 export const setGuestVip = async ({
   tenantId,
   payload,
@@ -453,7 +495,7 @@ export const setGuestVip = async ({
   initiatedBy,
 }: GuestUpdateOptions): Promise<void> => {
   const command = GuestSetVipCommandSchema.parse(payload);
-  const actor = initiatedBy?.userId ?? APP_ACTOR;
+  const actor = resolveActorId(initiatedBy);
 
   const { rowCount } = await query(
     `
@@ -490,6 +532,9 @@ export const setGuestVip = async ({
   );
 };
 
+/**
+ * Set guest blacklist status and optional reason.
+ */
 export const setGuestBlacklist = async ({
   tenantId,
   payload,
@@ -497,7 +542,7 @@ export const setGuestBlacklist = async ({
   initiatedBy,
 }: GuestUpdateOptions): Promise<void> => {
   const command = GuestSetBlacklistCommandSchema.parse(payload);
-  const actor = initiatedBy?.userId ?? APP_ACTOR;
+  const actor = resolveActorId(initiatedBy);
 
   const { rowCount } = await query(
     `
@@ -530,6 +575,9 @@ export const setGuestBlacklist = async ({
   );
 };
 
+/**
+ * Erase a guest for GDPR compliance with cascade anonymization.
+ */
 export const eraseGuestForGdpr = async ({
   tenantId,
   payload,
@@ -537,8 +585,9 @@ export const eraseGuestForGdpr = async ({
   initiatedBy,
 }: GuestUpdateOptions): Promise<void> => {
   const command = GuestGdprEraseCommandSchema.parse(payload);
-  const actor = initiatedBy?.userId ?? APP_ACTOR;
+  const actor = resolveActorId(initiatedBy);
   const redactedEmail = `gdpr+${command.guest_id}@redacted.invalid`;
+  const redactedName = "Deleted Guest";
 
   // Check if guest is already deleted for idempotency
   const existingGuest = await query(
@@ -559,53 +608,156 @@ export const eraseGuestForGdpr = async ({
     return;
   }
 
-  const { rowCount } = await query(
-    `
-      UPDATE public.guests
-      SET
-        first_name = 'Deleted',
-        last_name = 'Guest',
-        email = $3,
-        phone = NULL,
-        secondary_phone = NULL,
-        address = '{}'::jsonb,
-        preferences = '{}'::jsonb,
-        marketing_consent = false,
-        notes = NULL,
-        metadata = COALESCE(metadata, '{}'::jsonb) || $4::jsonb,
-        is_deleted = true,
-        deleted_at = NOW(),
-        deleted_by = $5,
-        updated_at = NOW(),
-        updated_by = $5
-      WHERE tenant_id = $1::uuid
-        AND id = $2::uuid
-        AND COALESCE(is_deleted, false) = false
-    `,
-    [
-      tenantId,
-      command.guest_id,
-      redactedEmail,
-      JSON.stringify(
-        appendMetadata(command.metadata ?? null, {
-          gdpr_erased_at: new Date().toISOString(),
-          gdpr_reason: command.reason ?? null,
-        }),
-      ),
-      actor,
-    ],
+  const gdprMetadata = JSON.stringify(
+    appendMetadata(command.metadata ?? null, {
+      gdpr_erased_at: new Date().toISOString(),
+      gdpr_reason: command.reason ?? null,
+    }),
   );
 
-  if (!rowCount || rowCount === 0) {
-    throw new Error("GUEST_NOT_FOUND");
-  }
+  await withTransaction(async (client) => {
+    // Audit trail for GDPR compliance
+    const cascadeAudit: Record<string, number> = {};
+
+    // 1. Update the guest record itself
+    const { rowCount } = await queryWithClient(
+      client,
+      `
+        UPDATE public.guests
+        SET
+          first_name = 'Deleted',
+          last_name = 'Guest',
+          email = $3,
+          phone = NULL,
+          secondary_phone = NULL,
+          address = '{}'::jsonb,
+          preferences = '{}'::jsonb,
+          marketing_consent = false,
+          notes = NULL,
+          metadata = COALESCE(metadata, '{}'::jsonb) || $4::jsonb,
+          is_deleted = true,
+          deleted_at = NOW(),
+          deleted_by = $5,
+          updated_at = NOW(),
+          updated_by = $5
+        WHERE tenant_id = $1::uuid
+          AND id = $2::uuid
+          AND COALESCE(is_deleted, false) = false
+      `,
+      [tenantId, command.guest_id, redactedEmail, gdprMetadata, actor],
+    );
+
+    if (!rowCount || rowCount === 0) {
+      throw new Error("GUEST_NOT_FOUND");
+    }
+    cascadeAudit.guests = rowCount;
+
+    // 2. Cascade anonymization to folios (has guest_name)
+    const foliosResult = await queryWithClient(
+      client,
+      `
+        UPDATE public.folios
+        SET guest_name = $3, updated_at = NOW()
+        WHERE tenant_id = $1::uuid AND guest_id = $2::uuid
+      `,
+      [tenantId, command.guest_id, redactedName],
+    );
+    cascadeAudit.folios = foliosResult.rowCount ?? 0;
+
+    // 3. Cascade anonymization to ota_reservations_queue
+    const otaResult = await queryWithClient(
+      client,
+      `
+        UPDATE public.ota_reservations_queue
+        SET guest_name = $3, guest_email = NULL, guest_phone = NULL, updated_at = NOW()
+        WHERE tenant_id = $1::uuid AND guest_id = $2::uuid
+      `,
+      [tenantId, command.guest_id, redactedName],
+    );
+    cascadeAudit.ota_reservations_queue = otaResult.rowCount ?? 0;
+
+    // 4. Cascade anonymization to gds_reservation_queue
+    const gdsResult = await queryWithClient(
+      client,
+      `
+        UPDATE public.gds_reservation_queue
+        SET guest_name = $3, guest_email = NULL, guest_phone = NULL, updated_at = NOW()
+        WHERE tenant_id = $1::uuid AND guest_id = $2::uuid
+      `,
+      [tenantId, command.guest_id, redactedName],
+    );
+    cascadeAudit.gds_reservation_queue = gdsResult.rowCount ?? 0;
+
+    // 5. Cascade anonymization to lost_and_found
+    const lostFoundResult = await queryWithClient(
+      client,
+      `
+        UPDATE public.lost_and_found
+        SET guest_name = $3, guest_email = NULL, guest_phone = NULL, updated_at = NOW()
+        WHERE tenant_id = $1::uuid AND claimed_by_guest_id = $2::uuid
+      `,
+      [tenantId, command.guest_id, redactedName],
+    );
+    cascadeAudit.lost_and_found = lostFoundResult.rowCount ?? 0;
+
+    // 6. Cascade anonymization to transportation_requests
+    const transportResult = await queryWithClient(
+      client,
+      `
+        UPDATE public.transportation_requests
+        SET guest_name = $3, guest_email = NULL, guest_phone = NULL, updated_at = NOW()
+        WHERE tenant_id = $1::uuid AND guest_id = $2::uuid
+      `,
+      [tenantId, command.guest_id, redactedName],
+    );
+    cascadeAudit.transportation_requests = transportResult.rowCount ?? 0;
+
+    // 7. Cascade anonymization to digital_registration_cards
+    const regCardsResult = await queryWithClient(
+      client,
+      `
+        UPDATE public.digital_registration_cards
+        SET guest_email = NULL, guest_phone = NULL, updated_at = NOW()
+        WHERE tenant_id = $1::uuid AND guest_id = $2::uuid
+      `,
+      [tenantId, command.guest_id],
+    );
+    cascadeAudit.digital_registration_cards = regCardsResult.rowCount ?? 0;
+
+    // 8. Cascade anonymization to incident_reports
+    const incidentsResult = await queryWithClient(
+      client,
+      `
+        UPDATE public.incident_reports
+        SET guest_name = $3, updated_at = NOW()
+        WHERE tenant_id = $1::uuid AND guest_id = $2::uuid
+      `,
+      [tenantId, command.guest_id, redactedName],
+    );
+    cascadeAudit.incident_reports = incidentsResult.rowCount ?? 0;
+
+    // Log GDPR audit trail for compliance
+    guestCommandLogger.info(
+      {
+        tenantId,
+        guestId: command.guest_id,
+        correlationId,
+        initiatedBy,
+        cascadeAudit,
+      },
+      "guest.gdpr.erase cascade audit - records anonymized per table",
+    );
+  });
 
   guestCommandLogger.info(
     { tenantId, guestId: command.guest_id, correlationId, initiatedBy },
-    "guest.gdpr.erase command applied",
+    "guest.gdpr.erase command applied with cascade to related tables",
   );
 };
 
+/**
+ * Update guest preference settings and marketing consent.
+ */
 export const updateGuestPreferences = async ({
   tenantId,
   payload,
@@ -613,7 +765,7 @@ export const updateGuestPreferences = async ({
   initiatedBy,
 }: GuestUpdateOptions): Promise<void> => {
   const command = GuestPreferenceUpdateCommandSchema.parse(payload);
-  const actor = initiatedBy?.userId ?? APP_ACTOR;
+  const actor = resolveActorId(initiatedBy);
   const marketingConsent = command.preferences?.marketing_consent ?? undefined;
 
   const { rowCount } = await query(
@@ -678,6 +830,28 @@ const mergeGuestRows = (
     primary.preferences ?? {},
   );
 
+  // MED-005: Handle VIP+blacklist conflict - blacklist takes precedence
+  // If either profile is blacklisted, the merged profile is blacklisted and NOT VIP
+  const eitherBlacklisted = Boolean(
+    primary.is_blacklisted || duplicate.is_blacklisted,
+  );
+  const eitherVip = Boolean(primary.vip_status || duplicate.vip_status);
+
+  // Log conflict for audit trail
+  if (eitherBlacklisted && eitherVip) {
+    guestCommandLogger.warn(
+      {
+        primaryGuestId: primary.id,
+        duplicateGuestId: duplicate.id,
+        primaryVip: primary.vip_status,
+        duplicateVip: duplicate.vip_status,
+        primaryBlacklisted: primary.is_blacklisted,
+        duplicateBlacklisted: duplicate.is_blacklisted,
+      },
+      "Guest merge conflict: VIP status suppressed due to blacklist flag",
+    );
+  }
+
   return {
     phone: primary.phone ?? duplicate.phone ?? null,
     secondary_phone:
@@ -701,8 +875,9 @@ const mergeGuestRows = (
       Number(primary.loyalty_points ?? 0) +
       Number(duplicate.loyalty_points ?? 0),
     loyalty_tier: primary.loyalty_tier ?? duplicate.loyalty_tier ?? null,
-    vip_status: Boolean(primary.vip_status || duplicate.vip_status),
-    is_blacklisted: Boolean(primary.is_blacklisted || duplicate.is_blacklisted),
+    // Blacklist takes precedence: if blacklisted, cannot be VIP
+    vip_status: eitherBlacklisted ? false : eitherVip,
+    is_blacklisted: eitherBlacklisted,
   };
 };
 

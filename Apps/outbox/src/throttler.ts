@@ -38,6 +38,10 @@ export const createTenantThrottler = (
 
 	const lastPublished = new Map<string, number>();
 	let lastCleanupAt = 0;
+	const cleanupTimer = setInterval(() => {
+		maybeCleanup(nowFn());
+	}, cleanupInterval);
+	cleanupTimer.unref?.();
 
 	const maybeCleanup = (nowTs: number) => {
 		if (nowTs - lastCleanupAt < cleanupInterval) {

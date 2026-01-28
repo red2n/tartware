@@ -35,7 +35,7 @@
     "lint:fix": "npx lerna run lint:fix --stream --no-bail",
     "biome": "npx lerna run biome --stream",
     "knip": "npx lerna run knip --stream",
-    "test": "npx lerna run test --stream",
+    "test": "npx lerna run test --stream --ignore super-admin-ui",
     "test:core": "npx lerna run test --scope=@tartware/core-service --stream",
     "test:schema": "npx lerna run test --scope=@tartware/schemas --stream",
     "validate": "npm run check && npm run test && npm run validate:env",

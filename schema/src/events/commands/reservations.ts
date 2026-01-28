@@ -31,6 +31,9 @@ export const ReservationCreateCommandSchema = z.object({
 	booking_date: z.coerce.date().optional(),
 	status: ReservationStatusEnum.optional(),
 	rate_code: RateCodeSchema.optional(),
+	// MED-007: Require explicit opt-in for rate fallback
+	// When requested rate is unavailable, fallback to BAR/RACK only if this is true
+	allow_rate_fallback: z.boolean().optional(),
 	source: z
 		.enum(["DIRECT", "WEBSITE", "PHONE", "WALKIN", "OTA", "CORPORATE", "GROUP"])
 		.optional(),
@@ -54,6 +57,8 @@ export const ReservationModifyCommandSchema = z
 		booking_date: z.coerce.date().optional(),
 		status: ReservationStatusEnum.optional(),
 		rate_code: RateCodeSchema.optional(),
+		// MED-007: Require explicit opt-in for rate fallback
+		allow_rate_fallback: z.boolean().optional(),
 		total_amount: z.coerce.number().nonnegative().optional(),
 		currency: z.string().length(3).optional(),
 		notes: z.string().max(2000).optional(),

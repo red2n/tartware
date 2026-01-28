@@ -1,9 +1,20 @@
-import { databaseSchema, jwtVerificationSchema, loadServiceConfig } from "@tartware/config";
+import {
+  databaseSchema,
+  jwtVerificationSchema,
+  loadServiceConfig,
+  validateProductionSecrets,
+} from "@tartware/config";
 
 process.env.SERVICE_NAME = process.env.SERVICE_NAME ?? "@tartware/settings-service";
 process.env.SERVICE_VERSION = process.env.SERVICE_VERSION ?? "0.1.0";
 
 const configValues = loadServiceConfig(databaseSchema.merge(jwtVerificationSchema));
+validateProductionSecrets({
+  ...configValues,
+  NODE_ENV: process.env.NODE_ENV,
+  AUTH_DEFAULT_PASSWORD: process.env.AUTH_DEFAULT_PASSWORD,
+  AUTH_JWT_SECRET: process.env.AUTH_JWT_SECRET,
+});
 
 const toNumber = (value: string | undefined, fallback: number): number => {
   if (value === undefined) {

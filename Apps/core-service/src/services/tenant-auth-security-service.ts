@@ -14,6 +14,9 @@ import {
   TENANT_AUTH_RESET_LOGIN_STATE_SQL,
 } from "../sql/tenant-auth-queries.js";
 
+/**
+ * Tenant authentication security profile fields.
+ */
 export interface TenantAuthSecurityProfile {
   id: string;
   locked_until: Date | null;
@@ -23,14 +26,23 @@ export interface TenantAuthSecurityProfile {
   password_rotated_at: Date | null | undefined;
 }
 
+/**
+ * Throttle decision result for tenant auth attempts.
+ */
 export interface TenantAuthThrottleCheck {
   allowed: boolean;
   remaining: number;
   retryAfterMs?: number;
 }
 
+/**
+ * Maximum age for tenant passwords in days.
+ */
 export const TENANT_PASSWORD_MAX_AGE_DAYS = config.tenantAuth.security.password.maxAgeDays;
 
+/**
+ * Check tenant auth throttle limits for a username.
+ */
 export const checkTenantThrottle = async (username: string): Promise<TenantAuthThrottleCheck> => {
   const result = await checkTenantAuthThrottle(username);
   if (!result.allowed) {
@@ -39,6 +51,9 @@ export const checkTenantThrottle = async (username: string): Promise<TenantAuthT
   return result;
 };
 
+/**
+ * Determine if the tenant account is currently locked.
+ */
 export const isAccountLocked = (
   securityProfile: Pick<TenantAuthSecurityProfile, "locked_until">,
 ): { locked: boolean; lockExpiresAt?: Date } => {
@@ -52,6 +67,9 @@ export const isAccountLocked = (
   };
 };
 
+/**
+ * Record a failed tenant login attempt and return lockout status if triggered.
+ */
 export const recordFailedTenantLogin = async (
   userId: string,
 ): Promise<{ lockExpiresAt?: Date }> => {
@@ -75,6 +93,9 @@ export const recordFailedTenantLogin = async (
   }
 };
 
+/**
+ * Reset failed login state for a tenant user after successful auth.
+ */
 export const resetTenantLoginState = async (userId: string): Promise<void> => {
   try {
     await pool.query(TENANT_AUTH_RESET_LOGIN_STATE_SQL, [userId]);
@@ -83,6 +104,9 @@ export const resetTenantLoginState = async (userId: string): Promise<void> => {
   }
 };
 
+/**
+ * Check if password rotation is required based on last rotation time.
+ */
 export const isPasswordRotationRequired = (rotatedAt: Date | null | undefined): boolean => {
   if (!TENANT_PASSWORD_MAX_AGE_DAYS || TENANT_PASSWORD_MAX_AGE_DAYS <= 0) {
     return false;
@@ -100,6 +124,9 @@ export type TenantMfaValidationResult =
   | { ok: true }
   | { ok: false; reason: "MFA_REQUIRED" | "MFA_INVALID" | "MFA_NOT_ENROLLED" };
 
+/**
+ * Validate MFA requirements and the provided MFA code.
+ */
 export const validateTenantMfa = (
   profile: Pick<TenantAuthSecurityProfile, "id" | "mfa_enabled" | "mfa_secret">,
   mfaCode?: string,

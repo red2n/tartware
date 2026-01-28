@@ -40,6 +40,9 @@ class SettingsCommandError extends Error {
 
 const APP_ACTOR = "COMMAND_CENTER";
 
+const resolveActorId = (initiatedBy?: { userId?: string } | null): string =>
+  initiatedBy?.userId ?? APP_ACTOR;
+
 const isDbEnabled = () => config.settings.dataSource === "db";
 
 const mergeMetadata = (
@@ -286,21 +289,27 @@ const applySettingsValueSet = async (
   return id;
 };
 
+/**
+ * Set or update a settings value (idempotent).
+ */
 export const setSettingsValue = async (
   payload: unknown,
   context: CommandContext,
 ): Promise<string> => {
   const command = SettingsValueSetCommandSchema.parse(payload);
-  const actor = context.initiatedBy?.userId ?? APP_ACTOR;
+  const actor = resolveActorId(context.initiatedBy);
   return applySettingsValueSet(command, context, actor);
 };
 
+/**
+ * Bulk set settings values using a shared idempotency key.
+ */
 export const bulkSetSettingsValues = async (
   payload: unknown,
   context: CommandContext,
 ): Promise<string[]> => {
   const command = SettingsValueBulkSetCommandSchema.parse(payload);
-  const actor = context.initiatedBy?.userId ?? APP_ACTOR;
+  const actor = resolveActorId(context.initiatedBy);
   const bulkKey = normalizeIdempotencyKey(command.idempotency_key);
   const ids: string[] = [];
 
@@ -334,12 +343,15 @@ export const bulkSetSettingsValues = async (
   return ids;
 };
 
+/**
+ * Approve a pending settings value and expire previous active values.
+ */
 export const approveSettingsValue = async (
   payload: unknown,
   context: CommandContext,
 ): Promise<string> => {
   const command = SettingsValueApproveCommandSchema.parse(payload);
-  const actor = command.approved_by ?? context.initiatedBy?.userId ?? APP_ACTOR;
+  const actor = command.approved_by ?? resolveActorId(context.initiatedBy);
   const idempotencyKey = normalizeIdempotencyKey(command.idempotency_key);
 
   if (idempotencyKey && isDbEnabled()) {
@@ -454,12 +466,15 @@ export const approveSettingsValue = async (
   return id;
 };
 
+/**
+ * Revert an active settings value to expired.
+ */
 export const revertSettingsValue = async (
   payload: unknown,
   context: CommandContext,
 ): Promise<string> => {
   const command = SettingsValueRevertCommandSchema.parse(payload);
-  const actor = context.initiatedBy?.userId ?? APP_ACTOR;
+  const actor = resolveActorId(context.initiatedBy);
   const idempotencyKey = normalizeIdempotencyKey(command.idempotency_key);
   const metadata = withIdempotencyKey(command.metadata, idempotencyKey);
   const reason = command.reason ?? null;

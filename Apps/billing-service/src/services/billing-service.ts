@@ -5,6 +5,9 @@ import { query } from "../lib/db.js";
 import { BILLING_PAYMENT_LIST_SQL } from "../sql/billing-queries.js";
 import { toNumberOrFallback } from "../utils/numbers.js";
 
+/**
+ * Billing payment list response schema.
+ */
 export const BillingPaymentSchema = z.object({
   id: z.string().uuid(),
   tenant_id: z.string().uuid(),
@@ -65,7 +68,7 @@ const formatEnumDisplay = (
   value: string | null,
   fallback: string,
 ): { value: string; display: string } => {
-  if (!value) {
+  if (!value || typeof value !== "string") {
     const formatted = fallback.toLowerCase();
     return { value: formatted, display: fallback };
   }
@@ -138,6 +141,9 @@ const mapRowToPayment = (row: BillingPaymentRow): BillingPayment => {
   });
 };
 
+/**
+ * List billing payments with optional filters.
+ */
 export const listBillingPayments = async (options: {
   limit?: number;
   tenantId: string;

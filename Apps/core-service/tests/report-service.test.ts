@@ -104,4 +104,58 @@ describe("Report Service", () => {
     });
     expect(report.topSources).toEqual([]);
   });
+
+  it("handles non-string status and source values safely", async () => {
+    vi.mocked(query)
+      .mockImplementationOnce(async () => ({
+        rows: [
+          { status: 123, count: 1 },
+          { status: null, count: 2 },
+        ],
+        rowCount: 2,
+        command: "SELECT",
+        oid: 0,
+        fields: [],
+      }))
+      .mockImplementationOnce(async () => ({
+        rows: [
+          {
+            revenue_today: 0,
+            revenue_month: 0,
+            revenue_year: 0,
+          },
+        ],
+        rowCount: 1,
+        command: "SELECT",
+        oid: 0,
+        fields: [],
+      }))
+      .mockImplementationOnce(async () => ({
+        rows: [
+          { source: 42, reservations: 1, total_amount: 10 },
+          { source: null, reservations: 2, total_amount: 20 },
+        ],
+        rowCount: 2,
+        command: "SELECT",
+        oid: 0,
+        fields: [],
+      }));
+
+    const report = await getPerformanceReport({
+      tenantId: "660e8400-e29b-41d4-a716-446655440000",
+    });
+
+    expect(report.statusSummary).toEqual({
+      confirmed: 0,
+      pending: 0,
+      checked_in: 0,
+      checked_out: 0,
+      cancelled: 0,
+      no_show: 0,
+    });
+    expect(report.topSources).toEqual([
+      { source: "unknown", reservations: 1, total_amount: 10 },
+      { source: "unknown", reservations: 2, total_amount: 20 },
+    ]);
+  });
 });

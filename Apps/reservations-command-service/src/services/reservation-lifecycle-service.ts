@@ -3,6 +3,9 @@ import { ReservationCommandLifecycleSchema } from "@tartware/schemas";
 
 import { query } from "../lib/db.js";
 
+/**
+ * List lifecycle entries for a reservation.
+ */
 export const listReservationLifecycle = async (
   tenantId: string,
   reservationId: string,

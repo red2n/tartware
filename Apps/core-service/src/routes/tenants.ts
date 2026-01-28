@@ -105,6 +105,16 @@ const bootstrapRateLimits = new Map<string, { count: number; resetAt: number }>(
 let bootstrapRateLimitLastCleanup = 0;
 const bootstrapRateLimitCleanupIntervalMs = 60_000;
 
+setInterval(() => {
+  const now = Date.now();
+  for (const [key, entry] of bootstrapRateLimits) {
+    if (entry.resetAt <= now) {
+      bootstrapRateLimits.delete(key);
+    }
+  }
+  bootstrapRateLimitLastCleanup = now;
+}, bootstrapRateLimitCleanupIntervalMs).unref?.();
+
 const checkBootstrapRateLimit = (ip: string): { allowed: boolean; retryAfterMs?: number } => {
   if (!Number.isFinite(bootstrapRateLimitMax) || bootstrapRateLimitMax <= 0) {
     return { allowed: true };

@@ -34,6 +34,12 @@ class HousekeepingCommandError extends Error {
 
 const APP_ACTOR = "COMMAND_CENTER";
 
+const resolveActorId = (initiatedBy?: { userId?: string } | null): string =>
+  initiatedBy?.userId ?? APP_ACTOR;
+
+/**
+ * Assign a housekeeping task to a staff member.
+ */
 export const assignHousekeepingTask = async (
   payload: unknown,
   context: CommandContext,
@@ -42,6 +48,9 @@ export const assignHousekeepingTask = async (
   await applyAssignment(command, context);
 };
 
+/**
+ * Mark a housekeeping task as completed/inspected.
+ */
 export const completeHousekeepingTask = async (
   payload: unknown,
   context: CommandContext,
@@ -50,6 +59,9 @@ export const completeHousekeepingTask = async (
   await applyCompletion(command, context);
 };
 
+/**
+ * Create a new housekeeping task for a room.
+ */
 export const createHousekeepingTask = async (
   payload: unknown,
   context: CommandContext,
@@ -58,6 +70,9 @@ export const createHousekeepingTask = async (
   return applyCreate(command, context);
 };
 
+/**
+ * Reassign a housekeeping task to a different staff member.
+ */
 export const reassignHousekeepingTask = async (
   payload: unknown,
   context: CommandContext,
@@ -66,6 +81,9 @@ export const reassignHousekeepingTask = async (
   await applyReassign(command, context);
 };
 
+/**
+ * Reopen a housekeeping task that was previously completed.
+ */
 export const reopenHousekeepingTask = async (
   payload: unknown,
   context: CommandContext,
@@ -74,6 +92,9 @@ export const reopenHousekeepingTask = async (
   await applyReopen(command, context);
 };
 
+/**
+ * Add a note to a housekeeping task.
+ */
 export const addHousekeepingTaskNote = async (
   payload: unknown,
   context: CommandContext,
@@ -82,6 +103,9 @@ export const addHousekeepingTaskNote = async (
   await applyAddNote(command, context);
 };
 
+/**
+ * Bulk update housekeeping task status.
+ */
 export const bulkUpdateHousekeepingStatus = async (
   payload: unknown,
   context: CommandContext,
@@ -94,14 +118,19 @@ const applyAssignment = async (
   command: HousekeepingAssignCommand,
   context: CommandContext,
 ): Promise<void> => {
-  const actor = context.initiatedBy?.userId ?? APP_ACTOR;
+  const actor = resolveActorId(context.initiatedBy);
+  // MED-004: Preserve completed statuses (CLEAN/INSPECTED) when assigning staff
+  // Only transition to IN_PROGRESS if task is not already completed
   const { rowCount } = await query(
     `
       UPDATE public.housekeeping_tasks
       SET
         assigned_to = $3::uuid,
         assigned_at = NOW(),
-        status = 'IN_PROGRESS',
+        status = CASE
+          WHEN status IN ('CLEAN', 'INSPECTED') THEN status
+          ELSE 'IN_PROGRESS'
+        END,
         priority = COALESCE($4, priority),
         notes = CASE
           WHEN $5 IS NULL THEN notes
@@ -136,7 +165,7 @@ const applyCompletion = async (
   command: HousekeepingCompleteCommand,
   context: CommandContext,
 ): Promise<void> => {
-  const actor = context.initiatedBy?.userId ?? APP_ACTOR;
+  const actor = resolveActorId(context.initiatedBy);
   const inspectionPassed = command.inspection?.passed ?? null;
   const inspectedStatus = inspectionPassed === true ? "INSPECTED" : "CLEAN";
   const inspectedBy = command.inspection?.inspected_by ?? null;
@@ -210,7 +239,7 @@ const applyCreate = async (
   command: HousekeepingTaskCreateCommand,
   context: CommandContext,
 ): Promise<string> => {
-  const actor = context.initiatedBy?.userId ?? APP_ACTOR;
+  const actor = resolveActorId(context.initiatedBy);
   let roomNumber: string | null = null;
   let roomExists = false;
   if (command.room_id) {
@@ -296,14 +325,19 @@ const applyReassign = async (
   command: HousekeepingTaskReassignCommand,
   context: CommandContext,
 ): Promise<void> => {
-  const actor = context.initiatedBy?.userId ?? APP_ACTOR;
+  const actor = resolveActorId(context.initiatedBy);
+  // MED-004: Preserve completed statuses (CLEAN/INSPECTED) when reassigning staff
+  // Only transition to IN_PROGRESS if task is not already completed
   const { rowCount } = await query(
     `
       UPDATE public.housekeeping_tasks
       SET
         assigned_to = $3::uuid,
         assigned_at = NOW(),
-        status = 'IN_PROGRESS',
+        status = CASE
+          WHEN status IN ('CLEAN', 'INSPECTED') THEN status
+          ELSE 'IN_PROGRESS'
+        END,
         notes = CASE
           WHEN $4 IS NULL THEN notes
           WHEN notes IS NULL THEN $4
@@ -336,7 +370,7 @@ const applyReopen = async (
   command: HousekeepingTaskReopenCommand,
   context: CommandContext,
 ): Promise<void> => {
-  const actor = context.initiatedBy?.userId ?? APP_ACTOR;
+  const actor = resolveActorId(context.initiatedBy);
   const { rowCount } = await query(
     `
       UPDATE public.housekeeping_tasks
@@ -373,7 +407,7 @@ const applyAddNote = async (
   command: HousekeepingTaskAddNoteCommand,
   context: CommandContext,
 ): Promise<void> => {
-  const actor = context.initiatedBy?.userId ?? APP_ACTOR;
+  const actor = resolveActorId(context.initiatedBy);
   const { rowCount } = await query(
     `
       UPDATE public.housekeeping_tasks
@@ -403,7 +437,7 @@ const applyBulkStatus = async (
   command: HousekeepingTaskBulkStatusCommand,
   context: CommandContext,
 ): Promise<void> => {
-  const actor = context.initiatedBy?.userId ?? APP_ACTOR;
+  const actor = resolveActorId(context.initiatedBy);
   const { rowCount } = await query(
     `
       UPDATE public.housekeeping_tasks

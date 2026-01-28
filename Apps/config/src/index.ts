@@ -29,7 +29,10 @@ export const databaseSchema = z.object({
   DB_PORT: z.coerce.number().int().default(5432),
   DB_NAME: z.string().default("tartware"),
   DB_USER: z.string().default("postgres"),
-  DB_PASSWORD: z.string().default("postgres"),
+  DB_PASSWORD: z.string().refine(
+    (value) => process.env.NODE_ENV === "test" || value.length > 0,
+    "DB_PASSWORD is required in non-test environments",
+  ),
   DB_SSL: booleanString,
   DB_POOL_MAX: z.coerce.number().int().default(10),
   DB_POOL_IDLE_TIMEOUT_MS: z.coerce.number().int().default(30000),
@@ -55,12 +58,12 @@ export const jwtVerificationSchema = z.object({
 });
 
 export const coreAuthSchema = z.object({
-  AUTH_JWT_SECRET: z.string().min(8),
+  AUTH_JWT_SECRET: z.string().min(32, "AUTH_JWT_SECRET must be at least 32 characters in production"),
   AUTH_JWT_ISSUER: z.string().default("tartware-core-service"),
   AUTH_JWT_AUDIENCE: z.string().optional(),
   AUTH_JWT_EXPIRES_IN_SECONDS: z.coerce.number().int().default(900),
-  AUTH_DEFAULT_PASSWORD: z.string().min(8).default("ChangeMe123!"),
-  SYSTEM_ADMIN_JWT_SECRET: z.string().min(8).optional(),
+  AUTH_DEFAULT_PASSWORD: z.string().min(8),
+  SYSTEM_ADMIN_JWT_SECRET: z.string().min(32).optional(),
   SYSTEM_ADMIN_JWT_ISSUER: z.string().optional(),
   SYSTEM_ADMIN_JWT_AUDIENCE: z.string().optional(),
   SYSTEM_ADMIN_JWT_EXPIRES_IN_SECONDS: z.coerce.number().int().default(900),
@@ -103,6 +106,54 @@ export function loadServiceConfig<TSchema extends z.ZodObject<any>>(
 
   return result.data as z.infer<typeof baseConfigSchema>;
 }
+
+const INSECURE_PATTERNS = [
+  /^changeme/i,
+  /^password/i,
+  /^secret/i,
+  /^default/i,
+  /^postgres$/i,
+  /^admin$/i,
+  /^local-dev/i,
+];
+
+/**
+ * Validates that sensitive configuration values don't use insecure defaults in production.
+ * Call this after loading config if the service handles authentication or sensitive data.
+ */
+export const validateProductionSecrets = (config: {
+  NODE_ENV?: string;
+  AUTH_JWT_SECRET?: string;
+  AUTH_DEFAULT_PASSWORD?: string;
+  DB_PASSWORD?: string;
+  SYSTEM_ADMIN_JWT_SECRET?: string;
+}): void => {
+  if (config.NODE_ENV !== "production") {
+    return;
+  }
+
+  const errors: string[] = [];
+
+  const checkInsecure = (name: string, value: string | undefined): void => {
+    if (!value) return;
+    if (INSECURE_PATTERNS.some((pattern) => pattern.test(value))) {
+      errors.push(`${name} appears to use an insecure default value`);
+    }
+  };
+
+  checkInsecure("AUTH_JWT_SECRET", config.AUTH_JWT_SECRET);
+  checkInsecure("AUTH_DEFAULT_PASSWORD", config.AUTH_DEFAULT_PASSWORD);
+  checkInsecure("DB_PASSWORD", config.DB_PASSWORD);
+  checkInsecure("SYSTEM_ADMIN_JWT_SECRET", config.SYSTEM_ADMIN_JWT_SECRET);
+
+  if (errors.length > 0) {
+    // eslint-disable-next-line no-console
+    console.error("Production security validation failed:", errors);
+    throw new Error(
+      `Insecure configuration detected in production: ${errors.join("; ")}`,
+    );
+  }
+};
 
 export type DependencyTarget = {
   name: string;
