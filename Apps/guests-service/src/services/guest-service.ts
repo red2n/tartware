@@ -274,6 +274,9 @@ const fetchGuestReservationStats = async (
   }, new Map());
 };
 
+/**
+ * List guests with optional filters and computed reservation stats.
+ */
 export const listGuests = async (options: {
   limit?: number;
   tenantId: string;

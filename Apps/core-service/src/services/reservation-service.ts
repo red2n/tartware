@@ -4,6 +4,9 @@ import { query } from "../lib/db.js";
 import { RESERVATION_LIST_SQL } from "../sql/reservation-queries.js";
 import { toNonNegativeInt, toNumberOrFallback } from "../utils/numbers.js";
 
+/**
+ * Response schema for reservation list items.
+ */
 export const ReservationListItemSchema = z.object({
   id: z.string().uuid(),
   tenant_id: z.string().uuid(),
@@ -73,7 +76,7 @@ type ReservationListRow = {
 };
 
 const normalizeStatus = (value: string | null): { status: string; display: string } => {
-  if (!value) {
+  if (!value || typeof value !== "string") {
     return { status: "unknown", display: "Unknown" };
   }
   const normalized = value.toLowerCase();
@@ -85,7 +88,7 @@ const normalizeStatus = (value: string | null): { status: string; display: strin
 };
 
 const normalizeSource = (value: string | null): string | undefined => {
-  if (!value) {
+  if (!value || typeof value !== "string") {
     return undefined;
   }
   return value.toLowerCase();
@@ -139,6 +142,9 @@ const mapRowToReservation = (row: ReservationListRow): ReservationListItem => {
   return parsed;
 };
 
+/**
+ * List reservations with filter and search support.
+ */
 export const listReservations = async (options: {
   limit?: number;
   tenantId: string;

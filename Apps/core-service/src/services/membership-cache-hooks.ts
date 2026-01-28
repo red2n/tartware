@@ -2,6 +2,9 @@ import { appLogger } from "../lib/logger.js";
 
 import { userCacheService } from "./user-cache-service.js";
 
+/**
+ * Reasons for invalidating user membership cache entries.
+ */
 export type MembershipCacheInvalidationReason =
   | "PASSWORD_UPDATED"
   | "USER_PROFILE_UPDATED"
@@ -11,6 +14,9 @@ export type MembershipCacheInvalidationReason =
   | "BULK_OPERATION"
   | (string & { readonly __membershipReasonBrand?: never });
 
+/**
+ * Membership cache invalidation event payload.
+ */
 export type MembershipCacheInvalidationEvent = {
   userId: string;
   username?: string;
@@ -24,6 +30,9 @@ type MembershipCacheInvalidationHandler = (
 
 const membershipCacheInvalidationHandlers = new Set<MembershipCacheInvalidationHandler>();
 
+/**
+ * Register a handler for membership cache invalidation events.
+ */
 export const registerMembershipCacheInvalidationHandler = (
   handler: MembershipCacheInvalidationHandler,
 ): (() => void) => {
@@ -53,6 +62,9 @@ registerMembershipCacheInvalidationHandler(async (event) => {
   }
 });
 
+/**
+ * Emit a membership cache invalidation event to all handlers.
+ */
 export const emitMembershipCacheInvalidation = async (
   event: MembershipCacheInvalidationEvent,
 ): Promise<void> => {

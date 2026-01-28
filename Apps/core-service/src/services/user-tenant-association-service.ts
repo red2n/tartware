@@ -70,6 +70,9 @@ const mapRowToAssociation = (row: AssociationRow): UserTenantAssociationWithDeta
   return parsed;
 };
 
+/**
+ * List user-tenant associations with optional filters and pagination.
+ */
 export const listUserTenantAssociations = async (
   options: {
     tenantId?: string;

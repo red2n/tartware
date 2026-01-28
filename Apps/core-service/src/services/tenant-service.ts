@@ -77,6 +77,9 @@ const mapRowToTenant = (row: TenantRow): TenantWithRelations => {
   };
 };
 
+/**
+ * List tenants with optional filtering and pagination.
+ */
 export const listTenants = async (
   options: { limit?: number; tenantIds?: string[] } = {},
 ): Promise<TenantWithRelations[]> => {

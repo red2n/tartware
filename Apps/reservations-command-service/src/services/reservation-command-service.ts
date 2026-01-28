@@ -237,6 +237,9 @@ export const createReservation = async (
   };
 };
 
+/**
+ * Accept a reservation modify command and enqueue update events.
+ */
 export const modifyReservation = async (
   tenantId: string,
   command: ReservationModifyCommand,
@@ -504,6 +507,9 @@ const fetchRoomNumber = async (
   return rows[0]?.room_number ?? null;
 };
 
+/**
+ * Check in a reservation and enqueue update event.
+ */
 export const checkInReservation = async (
   tenantId: string,
   command: ReservationCheckInCommand,
@@ -529,6 +535,9 @@ export const checkInReservation = async (
   );
 };
 
+/**
+ * Check out a reservation and enqueue update event.
+ */
 export const checkOutReservation = async (
   tenantId: string,
   command: ReservationCheckOutCommand,
@@ -550,6 +559,9 @@ export const checkOutReservation = async (
   );
 };
 
+/**
+ * Assign a room to a reservation with availability guard.
+ */
 export const assignRoom = async (
   tenantId: string,
   command: ReservationAssignRoomCommand,
@@ -601,6 +613,9 @@ export const assignRoom = async (
   );
 };
 
+/**
+ * Remove room assignment from a reservation.
+ */
 export const unassignRoom = async (
   tenantId: string,
   command: ReservationUnassignRoomCommand,
@@ -621,6 +636,9 @@ export const unassignRoom = async (
   );
 };
 
+/**
+ * Extend reservation stay dates with availability guard.
+ */
 export const extendStay = async (
   tenantId: string,
   command: ReservationExtendStayCommand,
@@ -685,6 +703,9 @@ export const extendStay = async (
   );
 };
 
+/**
+ * Override the reservation rate code and amount.
+ */
 export const overrideRate = async (
   tenantId: string,
   command: ReservationRateOverrideCommand,
@@ -707,6 +728,9 @@ export const overrideRate = async (
   );
 };
 
+/**
+ * Add a reservation deposit entry.
+ */
 export const addDeposit = async (
   tenantId: string,
   command: ReservationDepositAddCommand,
@@ -736,6 +760,9 @@ export const addDeposit = async (
   );
 };
 
+/**
+ * Release a reservation deposit entry.
+ */
 export const releaseDeposit = async (
   tenantId: string,
   command: ReservationDepositReleaseCommand,
@@ -764,6 +791,9 @@ export const releaseDeposit = async (
   );
 };
 
+/**
+ * Cancel a reservation and release availability holds.
+ */
 export const cancelReservation = async (
   tenantId: string,
   command: ReservationCancelCommand,

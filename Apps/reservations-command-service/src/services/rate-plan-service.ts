@@ -2,6 +2,9 @@ import { findActiveRateByCode } from "../repositories/rate-repository.js";
 
 const FALLBACK_RATE_CODES = ["BAR", "RACK"] as const;
 
+/**
+ * Rate plan resolution output including fallback metadata.
+ */
 export type RatePlanResolution = {
   appliedRateCode: string;
   rateId?: string;
@@ -45,6 +48,9 @@ const findRateOrNull = async (
   });
 };
 
+/**
+ * Resolve the applicable rate plan for a stay window.
+ */
 export const resolveRatePlan = async (
   input: ResolveRatePlanInput,
 ): Promise<RatePlanResolution> => {

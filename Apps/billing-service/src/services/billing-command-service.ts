@@ -49,6 +49,12 @@ const UUID_REGEX =
 const asUuid = (value: string | undefined | null): string | null =>
   value && UUID_REGEX.test(value) ? value : null;
 
+const resolveActorId = (initiatedBy?: { userId?: string } | null): string =>
+  initiatedBy?.userId ?? APP_ACTOR;
+
+/**
+ * Capture a payment and record it in billing.
+ */
 export const captureBillingPayment = async (
   payload: unknown,
   context: CommandContext,
@@ -57,6 +63,9 @@ export const captureBillingPayment = async (
   return capturePayment(command, context);
 };
 
+/**
+ * Refund a captured payment and record the refund.
+ */
 export const refundBillingPayment = async (
   payload: unknown,
   context: CommandContext,
@@ -65,6 +74,9 @@ export const refundBillingPayment = async (
   return refundPayment(command, context);
 };
 
+/**
+ * Create a billing invoice.
+ */
 export const createInvoice = async (
   payload: unknown,
   context: CommandContext,
@@ -73,6 +85,9 @@ export const createInvoice = async (
   return applyInvoiceCreate(command, context);
 };
 
+/**
+ * Adjust an invoice total with a positive or negative delta.
+ */
 export const adjustInvoice = async (
   payload: unknown,
   context: CommandContext,
@@ -81,6 +96,9 @@ export const adjustInvoice = async (
   return applyInvoiceAdjust(command, context);
 };
 
+/**
+ * Post a miscellaneous charge to a reservation folio.
+ */
 export const postCharge = async (
   payload: unknown,
   context: CommandContext,
@@ -89,6 +107,9 @@ export const postCharge = async (
   return applyChargePost(command, context);
 };
 
+/**
+ * Apply a payment to an invoice.
+ */
 export const applyPayment = async (
   payload: unknown,
   context: CommandContext,
@@ -97,6 +118,9 @@ export const applyPayment = async (
   return applyPaymentToInvoice(command, context);
 };
 
+/**
+ * Transfer folio balance between reservations.
+ */
 export const transferFolio = async (
   payload: unknown,
   context: CommandContext,
@@ -109,7 +133,7 @@ const capturePayment = async (
   command: BillingPaymentCaptureCommand,
   context: CommandContext,
 ): Promise<string> => {
-  const actor = context.initiatedBy?.userId ?? APP_ACTOR;
+  const actor = resolveActorId(context.initiatedBy);
   const currency = command.currency ?? "USD";
   const gatewayResponse = command.gateway?.response ?? {};
 
@@ -218,7 +242,7 @@ const refundPayment = async (
     );
   }
 
-  const actor = context.initiatedBy?.userId ?? APP_ACTOR;
+  const actor = resolveActorId(context.initiatedBy);
   const originalAmount = parseDbMoney(original.amount);
   const previousRefunds = parseDbMoney(original.refund_amount);
   const refundTotal = addMoney(previousRefunds, command.amount);
@@ -337,7 +361,7 @@ const applyInvoiceCreate = async (
   command: BillingInvoiceCreateCommand,
   context: CommandContext,
 ): Promise<string> => {
-  const actor = context.initiatedBy?.userId ?? APP_ACTOR;
+  const actor = resolveActorId(context.initiatedBy);
   const invoiceNumber =
     command.invoice_number ??
     `INV-${Date.now().toString(36)}-${randomUUID().slice(0, 8)}`;
@@ -410,7 +434,7 @@ const applyInvoiceAdjust = async (
   command: BillingInvoiceAdjustCommand,
   context: CommandContext,
 ): Promise<string> => {
-  const actor = context.initiatedBy?.userId ?? APP_ACTOR;
+  const actor = resolveActorId(context.initiatedBy);
   const { rows } = await query<{ id: string }>(
     `
       UPDATE public.invoices
@@ -469,7 +493,7 @@ const applyChargePost = async (
   command: BillingChargePostCommand,
   context: CommandContext,
 ): Promise<string> => {
-  const actor = context.initiatedBy?.userId ?? APP_ACTOR;
+  const actor = resolveActorId(context.initiatedBy);
   const actorId = asUuid(actor) ?? SYSTEM_ACTOR_ID;
   const currency = command.currency ?? "USD";
   const folioId = await resolveFolioId(
@@ -573,7 +597,7 @@ const applyPaymentToInvoice = async (
   command: BillingPaymentApplyCommand,
   context: CommandContext,
 ): Promise<string> => {
-  const actor = context.initiatedBy?.userId ?? APP_ACTOR;
+  const actor = resolveActorId(context.initiatedBy);
   const payment = await loadPaymentById(context.tenantId, command.payment_id);
   if (!payment) {
     throw new BillingCommandError(
@@ -654,7 +678,7 @@ const applyFolioTransfer = async (
   command: BillingFolioTransferCommand,
   context: CommandContext,
 ): Promise<string> => {
-  const actor = context.initiatedBy?.userId ?? APP_ACTOR;
+  const actor = resolveActorId(context.initiatedBy);
   const actorId = asUuid(actor) ?? SYSTEM_ACTOR_ID;
   const fromFolioId = await resolveFolioId(
     context.tenantId,

@@ -16,7 +16,7 @@ import {
 import type { CachedMembership } from "../src/services/user-cache-service.js";
 import type { TenantMembership } from "../src/types/auth.js";
 
-process.env.NODE_ENV = process.env.NODE_ENV ?? "test";
+process.env.NODE_ENV = "test";
 process.env.SERVICE_NAME = process.env.SERVICE_NAME ?? "@tartware/core-service";
 process.env.SERVICE_VERSION = process.env.SERVICE_VERSION ?? "test";
 process.env.PORT = process.env.PORT ?? "3000";
@@ -40,7 +40,8 @@ process.env.REDIS_TTL_DEFAULT = process.env.REDIS_TTL_DEFAULT ?? "3600";
 process.env.REDIS_TTL_USER = process.env.REDIS_TTL_USER ?? "1800";
 process.env.REDIS_TTL_TENANT = process.env.REDIS_TTL_TENANT ?? "3600";
 process.env.REDIS_TTL_BLOOM = process.env.REDIS_TTL_BLOOM ?? "86400";
-process.env.AUTH_JWT_SECRET = process.env.AUTH_JWT_SECRET ?? "test-secret-change-me";
+process.env.AUTH_JWT_SECRET =
+  process.env.AUTH_JWT_SECRET ?? "test-secret-change-me-32-characters-minimum";
 process.env.AUTH_JWT_ISSUER = process.env.AUTH_JWT_ISSUER ?? "core-service-test";
 process.env.AUTH_JWT_AUDIENCE = process.env.AUTH_JWT_AUDIENCE ?? "core-service";
 process.env.AUTH_JWT_EXPIRES_IN_SECONDS = process.env.AUTH_JWT_EXPIRES_IN_SECONDS ?? "900";

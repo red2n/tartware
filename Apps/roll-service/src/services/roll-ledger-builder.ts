@@ -2,6 +2,9 @@ import type { ReservationEvent } from "@tartware/schemas";
 
 import type { RollLedgerEntry } from "../repositories/ledger-repository.js";
 
+/**
+ * Lifecycle row shape used to build roll ledger entries.
+ */
 export type LifecycleRow = {
   event_id: string;
   tenant_id: string;
@@ -32,7 +35,8 @@ const deriveRollType = (
   commandOrEvent: string,
   currentState?: string,
 ): "EOD" | "CHECKOUT" | "CANCEL" | "UNKNOWN" => {
-  const normalized = commandOrEvent.toLowerCase();
+  const normalized =
+    typeof commandOrEvent === "string" ? commandOrEvent.toLowerCase() : "";
   if (normalized.includes("cancel")) {
     return "CANCEL";
   }
@@ -45,6 +49,9 @@ const deriveRollType = (
   return "UNKNOWN";
 };
 
+/**
+ * Build a roll ledger entry from a reservation event.
+ */
 export const buildLedgerEntryFromReservationEvent = (
   event: ReservationEvent,
 ): RollLedgerEntry => {
@@ -74,6 +81,9 @@ export const buildLedgerEntryFromReservationEvent = (
   };
 };
 
+/**
+ * Build a roll ledger entry from a lifecycle table row.
+ */
 export const buildLedgerEntryFromLifecycleRow = (
   row: LifecycleRow,
 ): RollLedgerEntry => {

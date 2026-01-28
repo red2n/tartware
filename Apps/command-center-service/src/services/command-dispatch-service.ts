@@ -35,6 +35,9 @@ const { acceptCommand: acceptCommandInternal } =
     throttleCommand,
   });
 
+/**
+ * Accept a command request and enqueue it for dispatch.
+ */
 export const acceptCommand = async (
   input: AcceptCommandInput,
 ): Promise<AcceptedCommand> => {

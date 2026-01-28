@@ -334,6 +334,9 @@ const buildHashedIdentifiers = (
   return Object.fromEntries(hashedEntries);
 };
 
+/**
+ * System admin audit event payload.
+ */
 export interface SystemAdminAuditEvent {
   adminId: string;
   action: string;
@@ -351,6 +354,9 @@ export interface SystemAdminAuditEvent {
   ticketId?: string;
 }
 
+/**
+ * Persist a system admin audit event with redacted payload.
+ */
 export const logSystemAdminEvent = async (event: SystemAdminAuditEvent) => {
   const sanitizedPayload = sanitizeAuditPayload(event.requestPayload ?? undefined);
   const hashedIdentifiers = buildHashedIdentifiers(event);
@@ -484,6 +490,9 @@ const findSystemAdministrator = async (username: string) => {
   return mapRowToAdministrator(row);
 };
 
+/**
+ * Authenticate a system administrator and issue an access token.
+ */
 export const authenticateSystemAdministrator = async (
   input: SystemAdminLoginInput,
 ): Promise<SystemAdminAuthResult> => {
@@ -579,6 +588,9 @@ export const authenticateSystemAdministrator = async (
   };
 };
 
+/**
+ * Authenticate a system administrator using break-glass credentials.
+ */
 export const authenticateSystemAdministratorWithBreakGlass = async (
   input: SystemAdminBreakGlassLoginInput,
 ): Promise<SystemAdminBreakGlassAuthResult> => {
@@ -669,6 +681,9 @@ const findMembership = (
   userId: string,
 ) => associations.find((assoc) => assoc.tenant_id === tenantId && assoc.user_id === userId);
 
+/**
+ * Start an impersonation session for a tenant user.
+ */
 export const startImpersonationSession = async (
   admin: { adminId: string; sessionId: string },
   input: {

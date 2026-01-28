@@ -29,6 +29,9 @@ type LockRoomResult =
   | { status: "LOCKED"; lock: InventoryLock }
   | { status: "CONFLICT"; conflict: InventoryLock };
 
+/**
+ * Acquire an inventory lock for a room or room type.
+ */
 export const lockRoom = async (
   input: LockRoomInput,
 ): Promise<LockRoomResult> => {
@@ -78,6 +81,9 @@ export const lockRoom = async (
   }
 };
 
+/**
+ * Release a single inventory lock.
+ */
 export const releaseLock = async (
   input: ReleaseLockInput,
 ): Promise<InventoryLock | null> => {
@@ -99,6 +105,9 @@ export const releaseLock = async (
   }
 };
 
+/**
+ * Release multiple inventory locks in bulk.
+ */
 export const releaseLocksInBulk = async (
   input: BulkReleaseInput,
 ): Promise<number> => {

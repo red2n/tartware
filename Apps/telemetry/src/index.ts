@@ -12,10 +12,7 @@ import { logs, SeverityNumber } from "@opentelemetry/api-logs";
 import { getNodeAutoInstrumentations } from "@opentelemetry/auto-instrumentations-node";
 import { OTLPLogExporter } from "@opentelemetry/exporter-logs-otlp-http";
 import { OTLPTraceExporter } from "@opentelemetry/exporter-trace-otlp-http";
-import {
-	BatchLogRecordProcessor,
-	LoggerProvider,
-} from "@opentelemetry/sdk-logs";
+import { BatchLogRecordProcessor } from "@opentelemetry/sdk-logs";
 import { NodeSDK } from "@opentelemetry/sdk-node";
 import { Resource } from "@opentelemetry/resources";
 import { SemanticResourceAttributes } from "@opentelemetry/semantic-conventions";
@@ -598,13 +595,8 @@ export const initTelemetry = async (
 		return undefined;
 	}
 
-	const loggerProvider = logEndpoint
-		? new LoggerProvider({ resource })
-		: undefined;
-
-	if (loggerProvider && logEndpoint) {
-		loggerProvider.addLogRecordProcessor(
-			new BatchLogRecordProcessor(
+	const logRecordProcessor = logEndpoint
+		? new BatchLogRecordProcessor(
 				new OTLPLogExporter({
 					url: logEndpoint,
 					headers: parseHeaders(
@@ -612,8 +604,10 @@ export const initTelemetry = async (
 							process.env.OTEL_EXPORTER_OTLP_HEADERS,
 					),
 				}),
-			),
-		);
+			)
+		: undefined;
+
+	if (logRecordProcessor) {
 		console.info("[telemetry] Log export enabled to", logEndpoint);
 	} else {
 		console.info("[telemetry] Log export disabled - no endpoint configured");
@@ -621,17 +615,7 @@ export const initTelemetry = async (
 
 	const sdk = new NodeSDK({
 		resource,
-		logRecordProcessor: loggerProvider
-			? new BatchLogRecordProcessor(
-				  new OTLPLogExporter({
-					  url: logEndpoint,
-					  headers: parseHeaders(
-						  process.env.OTEL_EXPORTER_OTLP_LOGS_HEADERS ??
-							  process.env.OTEL_EXPORTER_OTLP_HEADERS,
-					  ),
-				  }),
-			  )
-			: undefined,
+		logRecordProcessor,
 		traceExporter: traceEndpoint
 			? new OTLPTraceExporter({
 					url: traceEndpoint,
@@ -796,6 +780,8 @@ const mapSeverity = (
 
 class OtelLogStream extends Writable {
 	private readonly otelLogger;
+	private malformedLogCount = 0;
+	private lastMalformedLogAt = 0;
 
 	constructor(private readonly options: OtelLogStreamOptions) {
 		super({ objectMode: false });
@@ -829,8 +815,17 @@ class OtelLogStream extends Writable {
 			try {
 				const entry = JSON.parse(line) as Record<string, unknown>;
 				this.emitRecord(entry);
-			} catch {
-				// ignore malformed log lines
+			} catch (error) {
+				this.malformedLogCount += 1;
+				const now = Date.now();
+				if (now - this.lastMalformedLogAt > 60_000) {
+					this.lastMalformedLogAt = now;
+					console.warn(
+						`[telemetry] Failed to parse log line (${this.malformedLogCount} total): ${
+							error instanceof Error ? error.message : String(error)
+						}`,
+					);
+				}
 			}
 		}
 

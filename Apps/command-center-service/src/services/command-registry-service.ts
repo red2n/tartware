@@ -14,6 +14,9 @@ const LEGACY_MODULE_MAP: Record<string, string> = {
 };
 
 const normalizeModuleId = (moduleId: string): string => {
+  if (!moduleId || typeof moduleId !== "string") {
+    return "";
+  }
   const normalized = moduleId.trim().toLowerCase();
   return LEGACY_MODULE_MAP[normalized] ?? normalized;
 };
@@ -66,6 +69,9 @@ type CommandResolution =
   | { status: "MODULES_MISSING"; missingModules: string[] }
   | { status: "DISABLED"; reason: string };
 
+/**
+ * Start the command registry refresh loop.
+ */
 export const startCommandRegistry = async (): Promise<void> => {
   await refreshRegistry();
   if (config.registry.refreshIntervalMs > 0) {
@@ -80,6 +86,9 @@ export const startCommandRegistry = async (): Promise<void> => {
   }
 };
 
+/**
+ * Stop the command registry refresh loop and reset state.
+ */
 export const shutdownCommandRegistry = async (): Promise<void> => {
   if (refreshTimer) {
     clearInterval(refreshTimer);
@@ -156,6 +165,9 @@ export type CommandDefinitionView = {
   version: string;
 };
 
+/**
+ * Resolve the command route for a tenant based on registry state.
+ */
 export const resolveCommandForTenant = ({
   commandName,
   tenantId,
@@ -167,7 +179,9 @@ export const resolveCommandForTenant = ({
   }
 
   const tenantModules = new Set(
-    (membership.modules ?? []).map((moduleId) => moduleId.toLowerCase()),
+    (membership.modules ?? [])
+      .filter((moduleId): moduleId is string => typeof moduleId === "string")
+      .map((moduleId) => moduleId.toLowerCase()),
   );
   const requiredModules = (template.required_modules ?? []).map(
     normalizeModuleId,
@@ -272,6 +286,9 @@ const resolveFeature = (
   return entries.find((feature) => feature.tenant_id === null) ?? null;
 };
 
+/**
+ * List the command definitions available in the registry.
+ */
 export const listCommandDefinitions = (): CommandDefinitionView[] => {
   return Array.from(state.templates.values()).map((template) => {
     const label =

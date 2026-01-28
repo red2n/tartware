@@ -8,6 +8,9 @@ import {
 } from "../sql/report-queries.js";
 import { toNonNegativeInt, toNumberOrFallback } from "../utils/numbers.js";
 
+/**
+ * Reservation status summary response schema.
+ */
 export const ReservationStatusSummarySchema = z.object({
   confirmed: z.number().nonnegative().default(0),
   pending: z.number().nonnegative().default(0),
@@ -17,6 +20,9 @@ export const ReservationStatusSummarySchema = z.object({
   no_show: z.number().nonnegative().default(0),
 });
 
+/**
+ * Revenue summary response schema.
+ */
 export const RevenueSummarySchema = z.object({
   today: z.number().nonnegative(),
   monthToDate: z.number().nonnegative(),
@@ -24,12 +30,18 @@ export const RevenueSummarySchema = z.object({
   currency: z.string(),
 });
 
+/**
+ * Reservation source summary response schema.
+ */
 export const ReservationSourceSchema = z.object({
   source: z.string(),
   reservations: z.number().nonnegative(),
   total_amount: z.number().nonnegative(),
 });
 
+/**
+ * Performance report response schema.
+ */
 export const PerformanceReportSchema = z.object({
   statusSummary: ReservationStatusSummarySchema,
   revenueSummary: RevenueSummarySchema,
@@ -58,7 +70,10 @@ type ReservationSourceRow = {
 const normalizeStatusKey = (
   value: string | null,
 ): keyof z.infer<typeof ReservationStatusSummarySchema> | null => {
-  const key = value?.toLowerCase();
+  if (!value || typeof value !== "string") {
+    return null;
+  }
+  const key = value.toLowerCase();
   switch (key) {
     case "confirmed":
     case "pending":
@@ -73,7 +88,7 @@ const normalizeStatusKey = (
 };
 
 const normalizeSource = (value: string | null): string => {
-  if (!value) {
+  if (!value || typeof value !== "string") {
     return "unknown";
   }
   return value
@@ -82,6 +97,9 @@ const normalizeSource = (value: string | null): string => {
     .join(" ");
 };
 
+/**
+ * Build a performance report for reservations and revenue.
+ */
 export const getPerformanceReport = async (options: {
   tenantId: string;
   propertyId?: string;

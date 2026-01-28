@@ -36,6 +36,9 @@ const throttleTenant = createTenantThrottler({
   cleanupIntervalMs: config.outbox.tenantThrottleCleanupMs,
 });
 
+/**
+ * Start the command outbox dispatcher loop.
+ */
 export const startCommandOutboxDispatcher = (): void => {
   if (isRunning) {
     return;
@@ -48,6 +51,9 @@ export const startCommandOutboxDispatcher = (): void => {
   );
 };
 
+/**
+ * Stop the command outbox dispatcher and wait for in-flight cycle.
+ */
 export const shutdownCommandOutboxDispatcher = async (): Promise<void> => {
   isRunning = false;
   if (dispatcherTimer) {

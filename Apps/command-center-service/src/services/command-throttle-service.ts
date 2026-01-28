@@ -92,6 +92,9 @@ const shouldThrottle = (input: ThrottleInput): boolean => {
   return false;
 };
 
+/**
+ * Apply throttling logic for command execution.
+ */
 export const throttleCommand = async (
   input: ThrottleInput,
 ): Promise<boolean> => {

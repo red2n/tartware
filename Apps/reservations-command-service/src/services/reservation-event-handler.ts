@@ -45,7 +45,7 @@ const validatePropertyBelongsToTenant = async (
 };
 
 /**
- * Routes reservation events to the appropriate handler.
+ * Route reservation events to the appropriate handler.
  */
 export const processReservationEvent = async (
   event: ReservationEvent,

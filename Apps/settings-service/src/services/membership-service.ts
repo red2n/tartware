@@ -29,6 +29,9 @@ const USER_TENANT_MEMBERSHIP_SQL = `
 
 type TenantRole = (typeof TenantRoleEnum)["_type"];
 
+/**
+ * Tenant membership view for a user within a tenant.
+ */
 export type TenantMembership = {
   tenantId: string;
   role: TenantRole;
@@ -37,6 +40,9 @@ export type TenantMembership = {
   modules: string[];
 };
 
+/**
+ * Fetch a user's membership for a specific tenant.
+ */
 export const getUserTenantMembership = async (
   userId: string,
   tenantId: string,

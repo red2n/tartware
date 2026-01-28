@@ -1,5 +1,13 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+process.env.NODE_ENV = "test";
+process.env.DB_PASSWORD = process.env.DB_PASSWORD ?? "postgres";
+process.env.AUTH_DEFAULT_PASSWORD =
+  process.env.AUTH_DEFAULT_PASSWORD ?? "ChangeMe123!";
+if (!process.env.AUTH_JWT_SECRET || process.env.AUTH_JWT_SECRET.length < 32) {
+  process.env.AUTH_JWT_SECRET = "test-secret-change-me-32-characters-minimum";
+}
+
 const baseEnv = { ...process.env };
 
 const resetEnv = () => {

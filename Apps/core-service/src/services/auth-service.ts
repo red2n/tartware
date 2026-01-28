@@ -111,6 +111,9 @@ interface AuthenticateUserInput {
   mfaCode?: string;
 }
 
+/**
+ * Authenticate a tenant user and issue an access token when valid.
+ */
 export const authenticateUser = async ({
   username,
   password,
@@ -213,6 +216,9 @@ const findUserById = async (userId: string): Promise<AuthUser | null> => {
   }
 };
 
+/**
+ * Change a user's password and issue a refreshed access token.
+ */
 export const changeUserPassword = async (
   userId: string,
   currentPassword: string,

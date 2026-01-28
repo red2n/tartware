@@ -29,6 +29,12 @@ class RoomCommandError extends Error {
 
 const APP_ACTOR = "COMMAND_CENTER";
 
+const resolveActorId = (initiatedBy?: { userId?: string } | null): string =>
+  initiatedBy?.userId ?? APP_ACTOR;
+
+/**
+ * Handle room inventory block or release commands.
+ */
 export const handleRoomInventoryCommand = async (
   payload: unknown,
   context: CommandContext,
@@ -41,6 +47,9 @@ export const handleRoomInventoryCommand = async (
   await blockRoom(command, context);
 };
 
+/**
+ * Handle explicit room inventory release commands.
+ */
 export const handleRoomInventoryRelease = async (
   payload: unknown,
   context: CommandContext,
@@ -52,12 +61,15 @@ export const handleRoomInventoryRelease = async (
   );
 };
 
+/**
+ * Handle room status updates.
+ */
 export const handleRoomStatusUpdate = async (
   payload: unknown,
   context: CommandContext,
 ): Promise<void> => {
   const command = RoomStatusUpdateCommandSchema.parse(payload);
-  const actor = context.initiatedBy?.userId ?? APP_ACTOR;
+  const actor = resolveActorId(context.initiatedBy);
   // MED-006: Sync is_blocked and is_out_of_order flags when status changes
   // to maintain single source of truth for room availability
   const { rowCount } = await query(
@@ -105,12 +117,15 @@ export const handleRoomStatusUpdate = async (
   }
 };
 
+/**
+ * Handle housekeeping status updates for a room.
+ */
 export const handleRoomHousekeepingStatusUpdate = async (
   payload: unknown,
   context: CommandContext,
 ): Promise<void> => {
   const command = RoomHousekeepingStatusUpdateCommandSchema.parse(payload);
-  const actor = context.initiatedBy?.userId ?? APP_ACTOR;
+  const actor = resolveActorId(context.initiatedBy);
   const { rowCount } = await query(
     `
       UPDATE public.rooms
@@ -144,12 +159,15 @@ export const handleRoomHousekeepingStatusUpdate = async (
   }
 };
 
+/**
+ * Mark a room as out of order.
+ */
 export const handleRoomOutOfOrder = async (
   payload: unknown,
   context: CommandContext,
 ): Promise<void> => {
   const command = RoomOutOfOrderCommandSchema.parse(payload);
-  const actor = context.initiatedBy?.userId ?? APP_ACTOR;
+  const actor = resolveActorId(context.initiatedBy);
   const { rowCount } = await query(
     `
       UPDATE public.rooms
@@ -183,12 +201,15 @@ export const handleRoomOutOfOrder = async (
   }
 };
 
+/**
+ * Mark a room as out of service.
+ */
 export const handleRoomOutOfService = async (
   payload: unknown,
   context: CommandContext,
 ): Promise<void> => {
   const command = RoomOutOfServiceCommandSchema.parse(payload);
-  const actor = context.initiatedBy?.userId ?? APP_ACTOR;
+  const actor = resolveActorId(context.initiatedBy);
   const { rowCount } = await query(
     `
       UPDATE public.rooms
@@ -227,6 +248,9 @@ export const handleRoomOutOfService = async (
  * This command is registered in the catalog for future implementation but
  * currently returns NOT_SUPPORTED. Use the reservations domain move workflow instead.
  */
+/**
+ * Handle room move requests (currently not supported).
+ */
 export const handleRoomMove = async (
   payload: unknown,
   context: CommandContext,
@@ -239,12 +263,15 @@ export const handleRoomMove = async (
   );
 };
 
+/**
+ * Handle updates to room features and amenities.
+ */
 export const handleRoomFeaturesUpdate = async (
   payload: unknown,
   context: CommandContext,
 ): Promise<void> => {
   const command = RoomFeaturesUpdateCommandSchema.parse(payload);
-  const actor = context.initiatedBy?.userId ?? APP_ACTOR;
+  const actor = resolveActorId(context.initiatedBy);
   const { rowCount } = await query(
     `
       UPDATE public.rooms
@@ -284,7 +311,7 @@ const blockRoom = async (
   command: RoomInventoryBlockCommand,
   context: CommandContext,
 ): Promise<void> => {
-  const actor = context.initiatedBy?.userId ?? APP_ACTOR;
+  const actor = resolveActorId(context.initiatedBy);
   const blockedFrom = command.blocked_from ?? new Date();
 
   // MED-006: Also update status to maintain single source of truth
@@ -328,7 +355,7 @@ const releaseRoomBlock = async (
   command: RoomInventoryBlockCommand,
   context: CommandContext,
 ): Promise<void> => {
-  const actor = context.initiatedBy?.userId ?? APP_ACTOR;
+  const actor = resolveActorId(context.initiatedBy);
   // MED-006: Restore status when releasing block
   // Only set to AVAILABLE if room is not out_of_order; otherwise preserve that status
   const { rowCount } = await query(

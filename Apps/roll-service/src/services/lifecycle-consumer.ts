@@ -40,6 +40,9 @@ const buildKafkaClient = () =>
     logLevel: logLevel.NOTHING,
   });
 
+/**
+ * Build a roll lifecycle Kafka consumer.
+ */
 export const buildLifecycleConsumer = (logger: FastifyBaseLogger) =>
   new RollLifecycleConsumer(logger);
 
