@@ -39,7 +39,7 @@ export const RoomListItemSchema = z.object({
 
 type RoomListItem = z.infer<typeof RoomListItemSchema>;
 
-export type CreateRoomInput = {
+type CreateRoomInput = {
   tenant_id: string;
   property_id: string;
   room_type_id: string;
@@ -67,7 +67,7 @@ export type CreateRoomInput = {
   created_by?: string;
 };
 
-export type UpdateRoomInput = {
+type UpdateRoomInput = {
   tenant_id: string;
   room_id: string;
   property_id?: string;
@@ -170,7 +170,9 @@ const mapRowToRoom = (row: RoomListRow): RoomListItem => {
     normalizeEnum(row.maintenance_status, "normal");
 
   // Return raw data - let UI decide how to merge/display
-  const roomTypeAmenities = Array.isArray(row.room_type_amenities) ? row.room_type_amenities : [];
+  const roomTypeAmenities = Array.isArray(row.room_type_amenities)
+    ? row.room_type_amenities
+    : [];
   const roomAmenities = Array.isArray(row.amenities) ? row.amenities : [];
 
   return RoomListItemSchema.parse({
@@ -180,7 +182,8 @@ const mapRowToRoom = (row: RoomListRow): RoomListItem => {
     property_name: row.property_name ?? undefined,
     room_type_id: row.room_type_id ?? undefined,
     room_type_name: row.room_type_name ?? undefined,
-    room_type_amenities: roomTypeAmenities.length > 0 ? roomTypeAmenities : undefined,
+    room_type_amenities:
+      roomTypeAmenities.length > 0 ? roomTypeAmenities : undefined,
     room_number: row.room_number,
     room_name: row.room_name ?? undefined,
     floor: row.floor ?? undefined,
@@ -208,7 +211,9 @@ const mapRowToRoom = (row: RoomListRow): RoomListItem => {
 /**
  * Create a new room in the inventory.
  */
-export const createRoom = async (input: CreateRoomInput): Promise<RoomListItem> => {
+export const createRoom = async (
+  input: CreateRoomInput,
+): Promise<RoomListItem> => {
   const { rows } = await query<RoomListRow>(ROOM_CREATE_SQL, [
     input.tenant_id,
     input.property_id,
@@ -219,8 +224,12 @@ export const createRoom = async (input: CreateRoomInput): Promise<RoomListItem> 
     input.building ?? null,
     input.wing ?? null,
     input.status ? input.status.trim().toUpperCase() : null,
-    input.housekeeping_status ? input.housekeeping_status.trim().toUpperCase() : null,
-    input.maintenance_status ? input.maintenance_status.trim().toUpperCase() : null,
+    input.housekeeping_status
+      ? input.housekeeping_status.trim().toUpperCase()
+      : null,
+    input.maintenance_status
+      ? input.maintenance_status.trim().toUpperCase()
+      : null,
     toJson(input.features),
     toJson(input.amenities),
     input.is_blocked ?? null,
@@ -237,6 +246,9 @@ export const createRoom = async (input: CreateRoomInput): Promise<RoomListItem> 
     input.created_by ?? null,
   ]);
 
+  if (!rows[0]) {
+    throw new Error("Failed to create room");
+  }
   return mapRowToRoom(rows[0]);
 };
 
@@ -355,10 +367,9 @@ export const updateRoom = async (
     return null;
   }
 
-
-/**
- * Soft delete a room by id.
- */
+  /**
+   * Soft delete a room by id.
+   */
   return mapRowToRoom(rows[0]);
 };
 

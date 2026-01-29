@@ -72,7 +72,9 @@ const CreateRoomBodySchema = CreateRoomsSchema.extend({
     .refine(
       (value) =>
         !value ||
-        RoomStatusEnum.options.includes(value),
+        RoomStatusEnum.options.includes(
+          value as (typeof RoomStatusEnum.options)[number],
+        ),
       { message: "Invalid room status" },
     ),
   housekeeping_status: z
@@ -82,7 +84,9 @@ const CreateRoomBodySchema = CreateRoomsSchema.extend({
     .refine(
       (value) =>
         !value ||
-        HousekeepingStatusEnum.options.includes(value),
+        HousekeepingStatusEnum.options.includes(
+          value as (typeof HousekeepingStatusEnum.options)[number],
+        ),
       { message: "Invalid housekeeping status" },
     ),
   maintenance_status: z
@@ -92,7 +96,9 @@ const CreateRoomBodySchema = CreateRoomsSchema.extend({
     .refine(
       (value) =>
         !value ||
-        MaintenanceStatusEnum.options.includes(value),
+        MaintenanceStatusEnum.options.includes(
+          value as (typeof MaintenanceStatusEnum.options)[number],
+        ),
       { message: "Invalid maintenance status" },
     ),
 });
@@ -284,7 +290,10 @@ export const registerRoomRoutes = (app: FastifyInstance): void => {
         tag: ROOMS_TAG,
         summary: "Delete a room",
         params: schemaFromZod(RoomParamsSchema, "RoomParams"),
-        body: schemaFromZod(z.object({ tenant_id: z.string().uuid() }), "DeleteRoomBody"),
+        body: schemaFromZod(
+          z.object({ tenant_id: z.string().uuid() }),
+          "DeleteRoomBody",
+        ),
         response: {
           204: { type: "null" },
           404: ErrorResponseSchema,
@@ -293,7 +302,9 @@ export const registerRoomRoutes = (app: FastifyInstance): void => {
     },
     async (request, reply) => {
       const params = RoomParamsSchema.parse(request.params);
-      const body = z.object({ tenant_id: z.string().uuid() }).parse(request.body);
+      const body = z
+        .object({ tenant_id: z.string().uuid() })
+        .parse(request.body);
 
       const deleted = await deleteRoom({
         tenant_id: body.tenant_id,

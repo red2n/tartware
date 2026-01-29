@@ -38,7 +38,7 @@ export const RoomTypeItemSchema = z.object({
   version: z.string().optional(),
 });
 
-export type RoomTypeItem = z.infer<typeof RoomTypeItemSchema>;
+type RoomTypeItem = z.infer<typeof RoomTypeItemSchema>;
 
 type RoomTypeRow = {
   id: string;
@@ -118,7 +118,7 @@ const toJson = (value: unknown): string | null => {
   return JSON.stringify(value);
 };
 
-export type CreateRoomTypeInput = {
+type CreateRoomTypeInput = {
   tenant_id: string;
   property_id: string;
   type_name: string;
@@ -196,10 +196,13 @@ export const createRoomType = async (
     input.created_by ?? null,
   ]);
 
+  if (!rows[0]) {
+    throw new Error("Failed to create room type");
+  }
   return mapRowToRoomType(rows[0]);
 };
 
-export type UpdateRoomTypeInput = {
+type UpdateRoomTypeInput = {
   tenant_id: string;
   room_type_id: string;
   property_id?: string;

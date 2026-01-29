@@ -47,14 +47,21 @@ const CreateRoomTypeBodySchema = CreateRoomTypesSchema.extend({
     .toUpperCase()
     .optional()
     .refine(
-      (value) => !value || RoomCategoryEnum.options.includes(value),
-      { message: "Invalid room category" },
+      (value) =>
+        !value ||
+        RoomCategoryEnum.options.includes(
+          value as (typeof RoomCategoryEnum.options)[number],
+        ),
+      {
+        message: "Invalid room category",
+      },
     ),
 });
 
 type CreateRoomTypeBody = z.infer<typeof CreateRoomTypeBodySchema>;
 
 const UpdateRoomTypeBodySchema = CreateRoomTypeBodySchema.partial().extend({
+  tenant_id: z.string().uuid(),
   type_code: z
     .string()
     .min(2)
@@ -69,8 +76,14 @@ const UpdateRoomTypeBodySchema = CreateRoomTypeBodySchema.partial().extend({
     .toUpperCase()
     .optional()
     .refine(
-      (value) => !value || RoomCategoryEnum.options.includes(value),
-      { message: "Invalid room category" },
+      (value) =>
+        !value ||
+        RoomCategoryEnum.options.includes(
+          value as (typeof RoomCategoryEnum.options)[number],
+        ),
+      {
+        message: "Invalid room category",
+      },
     ),
 });
 
@@ -162,13 +175,15 @@ export const registerRoomTypeRoutes = (app: FastifyInstance): void => {
         if (typeof error === "object" && error && "code" in error) {
           const code = (error as { code?: string }).code;
           if (code === "23505") {
-            return reply
-              .status(409)
-              .send({ message: "Room type code already exists for this property" });
+            return reply.status(409).send({
+              message: "Room type code already exists for this property",
+            });
           }
         }
         request.log.error({ err: error }, "Failed to create room type");
-        return reply.status(500).send({ message: "Failed to create room type" });
+        return reply
+          .status(500)
+          .send({ message: "Failed to create room type" });
       }
     },
   );
@@ -218,13 +233,15 @@ export const registerRoomTypeRoutes = (app: FastifyInstance): void => {
         if (typeof error === "object" && error && "code" in error) {
           const code = (error as { code?: string }).code;
           if (code === "23505") {
-            return reply
-              .status(409)
-              .send({ message: "Room type code already exists for this property" });
+            return reply.status(409).send({
+              message: "Room type code already exists for this property",
+            });
           }
         }
         request.log.error({ err: error }, "Failed to update room type");
-        return reply.status(500).send({ message: "Failed to update room type" });
+        return reply
+          .status(500)
+          .send({ message: "Failed to update room type" });
       }
     },
   );
@@ -245,7 +262,10 @@ export const registerRoomTypeRoutes = (app: FastifyInstance): void => {
         tag: ROOM_TYPES_TAG,
         summary: "Delete a room type",
         params: schemaFromZod(RoomTypeParamsSchema, "RoomTypeParams"),
-        body: schemaFromZod(z.object({ tenant_id: z.string().uuid() }), "DeleteRoomTypeBody"),
+        body: schemaFromZod(
+          z.object({ tenant_id: z.string().uuid() }),
+          "DeleteRoomTypeBody",
+        ),
         response: {
           204: { type: "null" },
           404: ErrorResponseSchema,
@@ -254,7 +274,9 @@ export const registerRoomTypeRoutes = (app: FastifyInstance): void => {
     },
     async (request, reply) => {
       const params = RoomTypeParamsSchema.parse(request.params);
-      const body = z.object({ tenant_id: z.string().uuid() }).parse(request.body);
+      const body = z
+        .object({ tenant_id: z.string().uuid() })
+        .parse(request.body);
 
       const deleted = await deleteRoomType({
         tenant_id: body.tenant_id,
