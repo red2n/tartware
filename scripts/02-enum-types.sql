@@ -142,6 +142,27 @@ CREATE TYPE maintenance_status AS ENUM (
 -- RATE MANAGEMENT ENUMS
 -- =====================================================
 
+-- Rate Type (Rate Classification for Priority)
+-- Standard: Industry-standard rate types for pricing priority
+CREATE TYPE rate_type AS ENUM (
+    'RACK',           -- Default/published rate (highest price, lowest priority)
+    'BAR',            -- Best Available Rate
+    'COMP',           -- Complimentary (free)
+    'HOUSE',          -- House use (internal)
+    'CORPORATE',      -- Corporate negotiated rate
+    'GOVERNMENT',     -- Government rate
+    'TRAVEL_AGENT',   -- Travel agent commission rate
+    'PROMO',          -- Promotional rate
+    'COUPON',         -- Coupon/discount code rate
+    'EARLYBIRD',      -- Early booking discount
+    'LASTMINUTE',     -- Last-minute deal
+    'NON_REFUNDABLE', -- Non-refundable discounted rate
+    'FLEXIBLE',       -- Flexible cancellation rate
+    'LOS',            -- Length of stay rate
+    'DERIVED',        -- Derived from parent rate
+    'MANUAL_OVERRIDE' -- Manual price override
+);
+
 -- Rate Strategy (Pricing Strategy)
 -- Standard: RMS Cloud dynamic pricing strategies
 CREATE TYPE rate_strategy AS ENUM (

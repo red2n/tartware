@@ -1,4 +1,7 @@
-import { z } from "zod";
+import {
+  type BillingPaymentListItem,
+  BillingPaymentListItemSchema,
+} from "@tartware/schemas";
 
 import { applyBillingRetentionPolicy } from "../lib/compliance-policies.js";
 import { query } from "../lib/db.js";
@@ -6,36 +9,10 @@ import { BILLING_PAYMENT_LIST_SQL } from "../sql/billing-queries.js";
 import { toNumberOrFallback } from "../utils/numbers.js";
 
 /**
- * Billing payment list response schema.
+ * Re-export for backward compatibility.
  */
-export const BillingPaymentSchema = z.object({
-  id: z.string().uuid(),
-  tenant_id: z.string().uuid(),
-  property_id: z.string().uuid(),
-  property_name: z.string().optional(),
-  reservation_id: z.string().uuid().optional(),
-  confirmation_number: z.string().optional(),
-  guest_id: z.string().uuid().optional(),
-  guest_name: z.string().optional(),
-  payment_reference: z.string(),
-  external_transaction_id: z.string().optional(),
-  transaction_type: z.string(),
-  transaction_type_display: z.string(),
-  payment_method: z.string(),
-  payment_method_display: z.string(),
-  status: z.string(),
-  status_display: z.string(),
-  amount: z.number(),
-  currency: z.string(),
-  processed_at: z.string().optional(),
-  created_at: z.string(),
-  updated_at: z.string().optional(),
-  version: z.string(),
-  gateway_name: z.string().optional(),
-  gateway_reference: z.string().optional(),
-});
-
-export type BillingPayment = z.infer<typeof BillingPaymentSchema>;
+export const BillingPaymentSchema = BillingPaymentListItemSchema;
+export type BillingPayment = BillingPaymentListItem;
 
 type BillingPaymentRow = {
   id: string;

@@ -1,43 +1,17 @@
-import { z } from "zod";
+import {
+  type HousekeepingTaskListItem,
+  HousekeepingTaskListItemSchema,
+} from "@tartware/schemas";
 
 import { query } from "../lib/db.js";
 import { HOUSEKEEPING_TASK_LIST_SQL } from "../sql/housekeeping-queries.js";
 import { toNumberOrFallback } from "../utils/numbers.js";
 
 /**
- * Housekeeping task list response schema.
+ * Re-export for backward compatibility.
  */
-export const HousekeepingTaskSchema = z.object({
-  id: z.string().uuid(),
-  tenant_id: z.string().uuid(),
-  property_id: z.string().uuid(),
-  property_name: z.string().optional(),
-  room_number: z.string(),
-  task_type: z.string(),
-  priority: z.string().optional(),
-  status: z.string(),
-  status_display: z.string(),
-  assigned_to: z.string().uuid().optional(),
-  assigned_at: z.string().optional(),
-  scheduled_date: z.string(),
-  scheduled_time: z.string().optional(),
-  started_at: z.string().optional(),
-  completed_at: z.string().optional(),
-  inspected_by: z.string().uuid().optional(),
-  inspected_at: z.string().optional(),
-  inspection_passed: z.boolean().optional(),
-  is_guest_request: z.boolean(),
-  special_instructions: z.string().optional(),
-  notes: z.string().optional(),
-  issues_found: z.string().optional(),
-  credits: z.number().optional(),
-  metadata: z.record(z.unknown()).optional(),
-  created_at: z.string(),
-  updated_at: z.string().optional(),
-  version: z.string(),
-});
-
-type HousekeepingTask = z.infer<typeof HousekeepingTaskSchema>;
+export const HousekeepingTaskSchema = HousekeepingTaskListItemSchema;
+type HousekeepingTask = HousekeepingTaskListItem;
 
 type HousekeepingTaskRow = {
   id: string;

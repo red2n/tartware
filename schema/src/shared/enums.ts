@@ -201,6 +201,30 @@ export type MaintenanceStatus = z.infer<typeof MaintenanceStatusEnum>;
 // =====================================================
 
 /**
+ * Rate Type - Rate classification for pricing priority
+ * @database rate_type
+ */
+export const RateTypeEnum = z.enum([
+	"RACK", // Default/published rate (highest price, lowest priority)
+	"BAR", // Best Available Rate
+	"COMP", // Complimentary (free)
+	"HOUSE", // House use (internal)
+	"CORPORATE", // Corporate negotiated rate
+	"GOVERNMENT", // Government rate
+	"TRAVEL_AGENT", // Travel agent commission rate
+	"PROMO", // Promotional rate
+	"COUPON", // Coupon/discount code rate
+	"EARLYBIRD", // Early booking discount
+	"LASTMINUTE", // Last-minute deal
+	"NON_REFUNDABLE", // Non-refundable discounted rate
+	"FLEXIBLE", // Flexible cancellation rate
+	"LOS", // Length of stay rate
+	"DERIVED", // Derived from parent rate
+	"MANUAL_OVERRIDE", // Manual price override
+]);
+export type RateType = z.infer<typeof RateTypeEnum>;
+
+/**
  * Rate Strategy - Pricing strategy
  * @database rate_strategy
  */
@@ -1124,6 +1148,7 @@ export const AllEnums = {
 	RoomCategoryEnum,
 	HousekeepingStatusEnum,
 	MaintenanceStatusEnum,
+	RateTypeEnum,
 	RateStrategyEnum,
 	RateStatusEnum,
 	SeasonTypeEnum,

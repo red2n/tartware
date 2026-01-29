@@ -49,14 +49,14 @@
     "@types/node": "^20.11.19",
     "@typescript-eslint/eslint-plugin": "^7.0.1",
     "@typescript-eslint/parser": "^7.0.1",
+    "@vitest/coverage-v8": "^4.0.18",
     "eslint": "8.57.0",
     "eslint-config-prettier": "^9.1.0",
     "eslint-plugin-import": "^2.29.1",
-    "@vitest/coverage-v8": "^4.0.18",
     "knip": "^5.67.0",
-    "vitest": "^4.0.18",
-    "tsx": "^4.7.1",
-    "typescript": "^5.3.3"
+    "tsx": "^4.21.0",
+    "typescript": "^5.3.3",
+    "vitest": "^4.0.18"
   },
   "engines": {
     "node": ">=20.0.0",

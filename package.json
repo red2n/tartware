@@ -57,7 +57,8 @@
     "eslint": "8.57.0",
     "lerna": "^9.0.1",
     "lodash": "^4.17.23",
-    "tinyglobby": "^0.2.15"
+    "tinyglobby": "^0.2.15",
+    "tsx": "^4.21.0"
   },
   "keywords": [
     "property-management",
