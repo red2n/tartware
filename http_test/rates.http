@@ -1,7 +1,8 @@
 // =====================================================
 // RATES API - HTTP Test File
-// rooms-service (port 3400)
 // =====================================================
+// All requests route via API Gateway (localhost:8080)
+// Backend: rooms-service (port 3400)
 //
 // Prerequisites:
 // 1. Run migration: scripts/2026-01-29-add-rate-type-and-priority-to-rates.sql
