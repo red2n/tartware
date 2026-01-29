@@ -5,7 +5,8 @@ export const TENANT_AUTH_INCREMENT_FAILED_LOGIN_SQL = `
            WHEN failed_login_attempts + 1 >= $2 THEN NOW() + ($3 || ' minutes')::interval
            ELSE locked_until
          END,
-         updated_at = NOW()
+         updated_at = NOW(),
+         version = COALESCE(version, 0) + 1
    WHERE id = $1
    RETURNING failed_login_attempts, locked_until;
 `;
@@ -15,7 +16,8 @@ export const TENANT_AUTH_RESET_LOGIN_STATE_SQL = `
      SET failed_login_attempts = 0,
          locked_until = NULL,
          last_login_at = NOW(),
-         updated_at = NOW()
+      updated_at = NOW(),
+      version = COALESCE(version, 0) + 1
    WHERE id = $1;
 `;
 

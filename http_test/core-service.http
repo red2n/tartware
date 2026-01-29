@@ -1,0 +1,149 @@
+// valid login (tenant user)
+// NOTE: core-service runs on port 3000 by default
+POST /v1/auth/login HTTP/1.1
+Host: localhost:3000
+Content-Type: application/json
+
+{"username":"setup.admin","password":"TempPass123"}
+
+###
+// invalid login (missing username)
+POST /v1/auth/login HTTP/1.1
+Host: localhost:3000
+Content-Type: application/json
+
+{"password":"TempPass123"}
+
+###
+// valid GET tenants (requires Authorization header with Bearer token)
+GET /v1/tenants?limit=50 HTTP/1.1
+Host: localhost:3000
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIzMzMzMzMzMy0zMzMzLTMzMzMtMzMzMy0zMzMzMzMzMzMzMzMiLCJ1c2VybmFtZSI6InNldHVwLmFkbWluIiwidHlwZSI6ImFjY2VzcyIsImlhdCI6MTc2OTU5NjU0OSwiZXhwIjoxNzY5NTk3NDQ5LCJhdWQiOiJ0YXJ0d2FyZS1jb3JlIiwiaXNzIjoidGFydHdhcmUtY29yZS1zZXJ2aWNlIn0.3IsaYVF93FLU0VqRANhfNHj_GJDRz-JhmKpz7pioZV0
+
+###
+// invalid GET tenants (missing Authorization)
+GET /v1/tenants?limit=50 HTTP/1.1
+Host: localhost:3000
+
+###
+// valid GET properties (Aurora)
+GET /v1/properties?tenant_id=19b2afbb-e6f6-4776-8e52-efbab18f4bec&limit=50 HTTP/1.1
+Host: localhost:3000
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJlZDU3MDM4Mi03Mjc0LTQ2NjQtYjZlYy02OWUwY2M2MjYwYmEiLCJ1c2VybmFtZSI6ImF1cm9yYS5vd25lciIsInR5cGUiOiJhY2Nlc3MiLCJpYXQiOjE3Njk1OTY1NDksImV4cCI6MTc2OTU5NzQ0OSwiYXVkIjoidGFydHdhcmUtY29yZSIsImlzcyI6InRhcnR3YXJlLWNvcmUtc2VydmljZSJ9.XjwW2zV9v0M26gJNUqKedFtqEqiu9pK-gMWA4rEems0
+
+###
+// invalid GET properties (missing tenant_id)
+GET /v1/properties?limit=50 HTTP/1.1
+Host: localhost:3000
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJlZDU3MDM4Mi03Mjc0LTQ2NjQtYjZlYy02OWUwY2M2MjYwYmEiLCJ1c2VybmFtZSI6ImF1cm9yYS5vd25lciIsInR5cGUiOiJhY2Nlc3MiLCJpYXQiOjE3Njk1OTY1NDksImV4cCI6MTc2OTU5NzQ0OSwiYXVkIjoidGFydHdhcmUtY29yZSIsImlzcyI6InRhcnR3YXJlLWNvcmUtc2VydmljZSJ9.XjwW2zV9v0M26gJNUqKedFtqEqiu9pK-gMWA4rEems0
+
+###
+// valid GET properties (Cedar)
+GET /v1/properties?tenant_id=8c332645-d702-4391-a026-d141c53df71c&limit=50 HTTP/1.1
+Host: localhost:3000
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIyZmU5MWU4ZS0yNDk2LTQ1OTYtYTRmNy1iNzBiZGI0MDlmOGMiLCJ1c2VybmFtZSI6ImNlZGFyLm93bmVyIiwidHlwZSI6ImFjY2VzcyIsImlhdCI6MTc2OTU5NjU0OSwiZXhwIjoxNzY5NTk3NDQ5LCJhdWQiOiJ0YXJ0d2FyZS1jb3JlIiwiaXNzIjoidGFydHdhcmUtY29yZS1zZXJ2aWNlIn0.7oXawPPwOhHfJulhuxy8reYQa-6DaChK5Vzwdeoyums
+
+###
+// valid GET properties (Mariner)
+GET /v1/properties?tenant_id=2c89b4c0-335c-4e36-a134-c2740bda6666&limit=50 HTTP/1.1
+Host: localhost:3000
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI2NTljNjE5Zi1kY2FjLTRlYjEtYmJjMC05OTM1MzI1ZmU3MmYiLCJ1c2VybmFtZSI6Im1hcmluZXIub3duZXIiLCJ0eXBlIjoiYWNjZXNzIiwiaWF0IjoxNzY5NTk2NTUwLCJleHAiOjE3Njk1OTc0NTAsImF1ZCI6InRhcnR3YXJlLWNvcmUiLCJpc3MiOiJ0YXJ0d2FyZS1jb3JlLXNlcnZpY2UifQ.rSRP8QMQgx8UO0irSFWaaCaN9zY1kAWJBZDEBSVqlks
+
+###
+// valid GET dashboard stats
+GET /v1/dashboard/stats?tenant_id=19b2afbb-e6f6-4776-8e52-efbab18f4bec HTTP/1.1
+Host: localhost:3000
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJlZDU3MDM4Mi03Mjc0LTQ2NjQtYjZlYy02OWUwY2M2MjYwYmEiLCJ1c2VybmFtZSI6ImF1cm9yYS5vd25lciIsInR5cGUiOiJhY2Nlc3MiLCJpYXQiOjE3Njk1OTY1NDksImV4cCI6MTc2OTU5NzQ0OSwiYXVkIjoidGFydHdhcmUtY29yZSIsImlzcyI6InRhcnR3YXJlLWNvcmUtc2VydmljZSJ9.XjwW2zV9v0M26gJNUqKedFtqEqiu9pK-gMWA4rEems0
+
+###
+// invalid GET dashboard stats (missing tenant_id)
+GET /v1/dashboard/stats HTTP/1.1
+Host: localhost:3000
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJlZDU3MDM4Mi03Mjc0LTQ2NjQtYjZlYy02OWUwY2M2MjYwYmEiLCJ1c2VybmFtZSI6ImF1cm9yYS5vd25lciIsInR5cGUiOiJhY2Nlc3MiLCJpYXQiOjE3Njk1OTY1NDksImV4cCI6MTc2OTU5NzQ0OSwiYXVkIjoidGFydHdhcmUtY29yZSIsImlzcyI6InRhcnR3YXJlLWNvcmUtc2VydmljZSJ9.XjwW2zV9v0M26gJNUqKedFtqEqiu9pK-gMWA4rEems0
+
+###
+// create new tenant + owner user (bootstrap)
+POST /v1/tenants/bootstrap HTTP/1.1
+Host: localhost:3000
+Content-Type: application/json
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIzMzMzMzMzMy0zMzMzLTMzMzMtMzMzMy0zMzMzMzMzMzMzMzMiLCJ1c2VybmFtZSI6InNldHVwLmFkbWluIiwidHlwZSI6ImFjY2VzcyIsImlhdCI6MTc2OTU5NjU0OSwiZXhwIjoxNzY5NTk3NDQ5LCJhdWQiOiJ0YXJ0d2FyZS1jb3JlIiwiaXNzIjoidGFydHdhcmUtY29yZS1zZXJ2aWNlIn0.3IsaYVF93FLU0VqRANhfNHj_GJDRz-JhmKpz7pioZV0
+
+{
+	"tenant": {
+		"name": "Harborlight Hotels",
+		"slug": "harborlight-hotels",
+		"type": "INDEPENDENT",
+		"email": "ops@harborlight.demo",
+		"phone": "+15551212",
+		"website": "https://harborlight.demo",
+		"country": "US",
+		"config": {
+			"features": ["reservations", "housekeeping", "payments"],
+			"maxUsers": 25,
+			"maxProperties": 5,
+			"defaultCurrency": "USD",
+			"defaultLanguage": "en",
+			"defaultTimezone": "UTC",
+			"enableMultiProperty": true,
+			"enableChannelManager": false,
+			"enableLoyaltyProgram": false,
+			"enableAdvancedReporting": true,
+			"enablePaymentProcessing": true,
+			"brandingEnabled": true
+		}
+	},
+	"owner": {
+		"username": "harborlight.owner",
+		"email": "harborlight.owner@harborlight.demo",
+		"first_name": "Harborlight",
+		"last_name": "Owner",
+		"password": "TempPass123"
+	}
+}
+
+###
+// login owner to get token
+POST /v1/auth/login HTTP/1.1
+Host: localhost:3000
+Content-Type: application/json
+
+{"username":"harborlight.owner","password":"TempPass123"}
+
+###
+// create property (use tenant_id from bootstrap response)
+POST /v1/properties HTTP/1.1
+Host: localhost:3000
+Content-Type: application/json
+Authorization: Bearer {{owner_token}}
+
+{
+	"tenant_id": "<TENANT_ID_FROM_BOOTSTRAP>",
+	"property_name": "Harborlight Bay Resort",
+	"property_code": "HBR-BAY",
+	"address": {
+		"line1": "101 Bayfront Ave",
+		"city": "San Diego",
+		"state": "CA",
+		"country": "US",
+		"postal_code": "92101"
+	},
+	"phone": "+15551213",
+	"email": "bay@harborlight.demo",
+	"website": "https://bay.harborlight.demo"
+}
+
+###
+// curl commands for creating tenant + user, token, and properties
+// curl -sS -X POST http://localhost:3000/v1/tenants/bootstrap \
+//   -H "Content-Type: application/json" \
+//   -H "Authorization: Bearer <SETUP_ADMIN_TOKEN>" \
+//   -d '{"tenant":{"name":"Harborlight Hotels","slug":"harborlight-hotels","type":"INDEPENDENT","email":"ops@harborlight.demo","phone":"+15551212","website":"https://harborlight.demo","country":"US","config":{"features":["reservations","housekeeping","payments"],"maxUsers":25,"maxProperties":5,"defaultCurrency":"USD","defaultLanguage":"en","defaultTimezone":"UTC","enableMultiProperty":true,"enableChannelManager":false,"enableLoyaltyProgram":false,"enableAdvancedReporting":true,"enablePaymentProcessing":true,"brandingEnabled":true}},"owner":{"username":"harborlight.owner","email":"harborlight.owner@harborlight.demo","first_name":"Harborlight","last_name":"Owner","password":"TempPass123"}}'
+//
+// curl -sS -X POST http://localhost:3000/v1/auth/login \
+//   -H "Content-Type: application/json" \
+//   -d '{"username":"harborlight.owner","password":"TempPass123"}'
+//
+// curl -sS -X POST http://localhost:3000/v1/properties \
+//   -H "Content-Type: application/json" \
+//   -H "Authorization: Bearer <OWNER_TOKEN>" \
+//   -d '{"tenant_id":"<TENANT_ID_FROM_BOOTSTRAP>","property_name":"Harborlight Bay Resort","property_code":"HBR-BAY","address":{"line1":"101 Bayfront Ave","city":"San Diego","state":"CA","country":"US","postal_code":"92101"},"phone":"+15551213","email":"bay@harborlight.demo","website":"https://bay.harborlight.demo"}'

@@ -9,6 +9,7 @@ import { metricsRegistry } from "./lib/metrics.js";
 import authContextPlugin from "./plugins/auth-context.js";
 import swaggerPlugin from "./plugins/swagger.js";
 import { registerHealthRoutes } from "./routes/health.js";
+import { registerRoomTypeRoutes } from "./routes/room-types.js";
 import { registerRoomRoutes } from "./routes/rooms.js";
 
 export const buildServer = (): FastifyInstance => {
@@ -25,6 +26,7 @@ export const buildServer = (): FastifyInstance => {
     registerRoutes: (app) => {
       registerHealthRoutes(app);
       registerRoomRoutes(app);
+      registerRoomTypeRoutes(app);
     },
   });
 

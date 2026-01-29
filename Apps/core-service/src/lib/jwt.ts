@@ -144,7 +144,7 @@ export const verifySystemAdminToken = (token: string): SystemAdminTokenPayload |
     }
     return decoded as SystemAdminTokenPayload;
   } catch (error) {
-    appLogger.error({ err: error }, "Failed to verify system admin token");
+    appLogger.debug({ err: error }, "Failed to verify system admin token");
     return null;
   }
 };

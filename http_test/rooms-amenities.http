@@ -1,0 +1,440 @@
+// login to core-service to get tenant-scoped token (HS256)
+// Core-service runs on port 3000 by default
+POST /v1/auth/login HTTP/1.1
+Host: localhost:3000
+Content-Type: application/json
+
+{"username":"aurora.owner","password":"TempPass123"}
+
+###
+// ========================
+// ROOM TYPES - LIST
+// ========================
+
+// list room types for Aurora Central Hotel
+GET /v1/room-types?tenant_id=19b2afbb-e6f6-4776-8e52-efbab18f4bec&property_id=eedfeb3f-4c09-47d9-9b02-2d8d6610ce27&limit=50 HTTP/1.1
+Host: localhost:3400
+Authorization: Bearer {{core_token}}
+
+###
+// list rooms for Aurora Central Hotel (rooms-service)
+GET /v1/rooms?tenant_id=19b2afbb-e6f6-4776-8e52-efbab18f4bec&property_id=eedfeb3f-4c09-47d9-9b02-2d8d6610ce27&limit=50 HTTP/1.1
+Host: localhost:3400
+Authorization: Bearer {{core_token}}
+
+###
+// ========================
+// ROOM TYPES - CREATE (all types)
+// ========================
+
+// Create Standard Room ($99) - Basic entry-level room
+POST /v1/room-types HTTP/1.1
+Host: localhost:3400
+Content-Type: application/json
+Authorization: Bearer {{core_token}}
+
+{
+  "tenant_id": "19b2afbb-e6f6-4776-8e52-efbab18f4bec",
+  "property_id": "eedfeb3f-4c09-47d9-9b02-2d8d6610ce27",
+  "type_name": "Standard Room",
+  "type_code": "STD",
+  "category": "STANDARD",
+  "base_occupancy": 2,
+  "max_occupancy": 2,
+  "max_adults": 2,
+  "max_children": 0,
+  "base_price": 99,
+  "currency": "USD",
+  "amenities": ["WIFI"],
+  "features": {"view": "courtyard", "size_sqft": 250},
+  "is_active": true
+}
+
+###
+// Create Twin Room ($129) - Two single beds
+POST /v1/room-types HTTP/1.1
+Host: localhost:3400
+Content-Type: application/json
+Authorization: Bearer {{core_token}}
+
+{
+  "tenant_id": "19b2afbb-e6f6-4776-8e52-efbab18f4bec",
+  "property_id": "eedfeb3f-4c09-47d9-9b02-2d8d6610ce27",
+  "type_name": "Twin Room",
+  "type_code": "TWIN",
+  "category": "STANDARD",
+  "base_occupancy": 2,
+  "max_occupancy": 2,
+  "max_adults": 2,
+  "max_children": 0,
+  "base_price": 129,
+  "currency": "USD",
+  "amenities": ["WIFI"],
+  "features": {"view": "courtyard", "size_sqft": 280, "bed_type": "twin"},
+  "is_active": true
+}
+
+###
+// Create Accessible Room ($149) - Wheelchair-friendly layout
+POST /v1/room-types HTTP/1.1
+Host: localhost:3400
+Content-Type: application/json
+Authorization: Bearer {{core_token}}
+
+{
+  "tenant_id": "19b2afbb-e6f6-4776-8e52-efbab18f4bec",
+  "property_id": "eedfeb3f-4c09-47d9-9b02-2d8d6610ce27",
+  "type_name": "Accessible Room",
+  "type_code": "ADA",
+  "category": "STANDARD",
+  "base_occupancy": 2,
+  "max_occupancy": 2,
+  "max_adults": 2,
+  "max_children": 0,
+  "base_price": 149,
+  "currency": "USD",
+  "amenities": ["WIFI", "ACCESSIBLE"],
+  "features": {"view": "courtyard", "size_sqft": 320, "wheelchair_accessible": true, "roll_in_shower": true},
+  "is_active": true
+}
+
+###
+// Create Deluxe King ($179) - Upgraded room with king bed
+POST /v1/room-types HTTP/1.1
+Host: localhost:3400
+Content-Type: application/json
+Authorization: Bearer {{core_token}}
+
+{
+  "tenant_id": "19b2afbb-e6f6-4776-8e52-efbab18f4bec",
+  "property_id": "eedfeb3f-4c09-47d9-9b02-2d8d6610ce27",
+  "type_name": "Deluxe King",
+  "type_code": "DLX-K",
+  "category": "STANDARD",
+  "base_occupancy": 2,
+  "max_occupancy": 2,
+  "max_adults": 2,
+  "max_children": 0,
+  "base_price": 179,
+  "currency": "USD",
+  "amenities": ["WIFI"],
+  "features": {"view": "city", "size_sqft": 350},
+  "is_active": true
+}
+
+###
+// Create Family Room ($199) - Extra beds for families
+POST /v1/room-types HTTP/1.1
+Host: localhost:3400
+Content-Type: application/json
+Authorization: Bearer {{core_token}}
+
+{
+  "tenant_id": "19b2afbb-e6f6-4776-8e52-efbab18f4bec",
+  "property_id": "eedfeb3f-4c09-47d9-9b02-2d8d6610ce27",
+  "type_name": "Family Room",
+  "type_code": "FAMILY",
+  "category": "STANDARD",
+  "base_occupancy": 4,
+  "max_occupancy": 5,
+  "max_adults": 2,
+  "max_children": 3,
+  "base_price": 199,
+  "currency": "USD",
+  "amenities": ["WIFI", "MINIBAR"],
+  "features": {"view": "garden", "size_sqft": 400, "extra_beds": 2},
+  "is_active": true
+}
+
+###
+// Create Junior Suite ($229) - Suite on a budget
+POST /v1/room-types HTTP/1.1
+Host: localhost:3400
+Content-Type: application/json
+Authorization: Bearer {{core_token}}
+
+{
+  "tenant_id": "19b2afbb-e6f6-4776-8e52-efbab18f4bec",
+  "property_id": "eedfeb3f-4c09-47d9-9b02-2d8d6610ce27",
+  "type_name": "Junior Suite",
+  "type_code": "JR-SUITE",
+  "category": "SUITE",
+  "base_occupancy": 2,
+  "max_occupancy": 3,
+  "max_adults": 2,
+  "max_children": 1,
+  "base_price": 229,
+  "currency": "USD",
+  "amenities": ["WIFI", "MINIBAR"],
+  "features": {"view": "city", "size_sqft": 380},
+  "is_active": true
+}
+
+###
+// Create Suite ($299) - Full suite with living room
+POST /v1/room-types HTTP/1.1
+Host: localhost:3400
+Content-Type: application/json
+Authorization: Bearer {{core_token}}
+
+{
+  "tenant_id": "19b2afbb-e6f6-4776-8e52-efbab18f4bec",
+  "property_id": "eedfeb3f-4c09-47d9-9b02-2d8d6610ce27",
+  "type_name": "Suite",
+  "type_code": "SUITE",
+  "category": "SUITE",
+  "base_occupancy": 2,
+  "max_occupancy": 4,
+  "max_adults": 2,
+  "max_children": 2,
+  "base_price": 299,
+  "currency": "USD",
+  "amenities": ["WIFI", "MINIBAR", "BATHTUB"],
+  "features": {"view": "city", "size_sqft": 500, "has_living_room": true},
+  "is_active": true
+}
+
+###
+// ========================
+// ROOMS - LIST
+// ========================
+
+// list rooms for Aurora Central Hotel
+GET /v1/rooms?tenant_id=19b2afbb-e6f6-4776-8e52-efbab18f4bec&property_id=eedfeb3f-4c09-47d9-9b02-2d8d6610ce27&limit=50 HTTP/1.1
+Host: localhost:3400
+Authorization: Bearer {{core_token}}
+
+###
+// list rooms for Aurora Harbor Hotel
+GET /v1/rooms?tenant_id=19b2afbb-e6f6-4776-8e52-efbab18f4bec&property_id=97d98b4f-6c2c-4df9-adfe-6a536a81ac2d&limit=50 HTTP/1.1
+Host: localhost:3400
+Authorization: Bearer {{core_token}}
+
+###
+// ========================
+// ROOMS - CREATE (examples by type)
+// ========================
+
+// Create Standard Room (Floor 3)
+// Room Type ID: 9300203c-775f-4ffe-ba03-6681f301f478 (STD)
+POST /v1/rooms HTTP/1.1
+Host: localhost:3400
+Content-Type: application/json
+Authorization: Bearer {{core_token}}
+
+{
+  "tenant_id": "19b2afbb-e6f6-4776-8e52-efbab18f4bec",
+  "property_id": "eedfeb3f-4c09-47d9-9b02-2d8d6610ce27",
+  "room_type_id": "9300203c-775f-4ffe-ba03-6681f301f478",
+  "room_number": "306",
+  "room_name": "Standard 306",
+  "floor": "3",
+  "status": "AVAILABLE",
+  "housekeeping_status": "CLEAN",
+  "maintenance_status": "OPERATIONAL"
+}
+
+###
+// Create Twin Room (Floor 3)
+// Room Type ID: 50967d25-50c8-474a-b010-a6e902f1e303 (TWIN)
+POST /v1/rooms HTTP/1.1
+Host: localhost:3400
+Content-Type: application/json
+Authorization: Bearer {{core_token}}
+
+{
+  "tenant_id": "19b2afbb-e6f6-4776-8e52-efbab18f4bec",
+  "property_id": "eedfeb3f-4c09-47d9-9b02-2d8d6610ce27",
+  "room_type_id": "50967d25-50c8-474a-b010-a6e902f1e303",
+  "room_number": "306",
+  "room_name": "Twin Room 306",
+  "floor": "3",
+  "status": "AVAILABLE",
+  "housekeeping_status": "CLEAN",
+  "maintenance_status": "OPERATIONAL"
+}
+
+###
+// Create Accessible Room (Floor 1 - ground level)
+// Room Type ID: 9b4cb8bc-5d85-40c6-93cb-5cf036506c5a (ADA)
+POST /v1/rooms HTTP/1.1
+Host: localhost:3400
+Content-Type: application/json
+Authorization: Bearer {{core_token}}
+
+{
+  "tenant_id": "19b2afbb-e6f6-4776-8e52-efbab18f4bec",
+  "property_id": "eedfeb3f-4c09-47d9-9b02-2d8d6610ce27",
+  "room_type_id": "9b4cb8bc-5d85-40c6-93cb-5cf036506c5a",
+  "room_number": "107",
+  "room_name": "Accessible Room 107",
+  "floor": "1",
+  "status": "AVAILABLE",
+  "housekeeping_status": "CLEAN",
+  "maintenance_status": "OPERATIONAL"
+}
+
+###
+// Create Deluxe King (Floor 1-2)
+// Room Type ID: 2e5c6085-b217-4741-9dd3-538b4aa2df62 (DLX-K)
+POST /v1/rooms HTTP/1.1
+Host: localhost:3400
+Content-Type: application/json
+Authorization: Bearer {{core_token}}
+
+{
+  "tenant_id": "19b2afbb-e6f6-4776-8e52-efbab18f4bec",
+  "property_id": "eedfeb3f-4c09-47d9-9b02-2d8d6610ce27",
+  "room_type_id": "2e5c6085-b217-4741-9dd3-538b4aa2df62",
+  "room_number": "206",
+  "room_name": "Deluxe King 206",
+  "floor": "2",
+  "status": "AVAILABLE",
+  "housekeeping_status": "CLEAN",
+  "maintenance_status": "OPERATIONAL"
+}
+
+###
+// Create Family Room (Floor 4)
+// Room Type ID: 39ccffe7-9f5a-4a5d-9f4c-94b35a4dd6df (FAMILY)
+POST /v1/rooms HTTP/1.1
+Host: localhost:3400
+Content-Type: application/json
+Authorization: Bearer {{core_token}}
+
+{
+  "tenant_id": "19b2afbb-e6f6-4776-8e52-efbab18f4bec",
+  "property_id": "eedfeb3f-4c09-47d9-9b02-2d8d6610ce27",
+  "room_type_id": "39ccffe7-9f5a-4a5d-9f4c-94b35a4dd6df",
+  "room_number": "403",
+  "room_name": "Family Room 403",
+  "floor": "4",
+  "status": "AVAILABLE",
+  "housekeeping_status": "CLEAN",
+  "maintenance_status": "OPERATIONAL"
+}
+
+###
+// Create Junior Suite (Floor 5)
+// Room Type ID: 7512710b-2048-43f5-8ada-11f8cd4e26a6 (JR-SUITE)
+POST /v1/rooms HTTP/1.1
+Host: localhost:3400
+Content-Type: application/json
+Authorization: Bearer {{core_token}}
+
+{
+  "tenant_id": "19b2afbb-e6f6-4776-8e52-efbab18f4bec",
+  "property_id": "eedfeb3f-4c09-47d9-9b02-2d8d6610ce27",
+  "room_type_id": "7512710b-2048-43f5-8ada-11f8cd4e26a6",
+  "room_number": "503",
+  "room_name": "Junior Suite 503",
+  "floor": "5",
+  "status": "AVAILABLE",
+  "housekeeping_status": "CLEAN",
+  "maintenance_status": "OPERATIONAL"
+}
+
+###
+// Create Suite (Floor 6 - Penthouse level)
+// Room Type ID: dfe4044f-278a-4afc-acc8-8ef222113981 (SUITE)
+POST /v1/rooms HTTP/1.1
+Host: localhost:3400
+Content-Type: application/json
+Authorization: Bearer {{core_token}}
+
+{
+  "tenant_id": "19b2afbb-e6f6-4776-8e52-efbab18f4bec",
+  "property_id": "eedfeb3f-4c09-47d9-9b02-2d8d6610ce27",
+  "room_type_id": "dfe4044f-278a-4afc-acc8-8ef222113981",
+  "room_number": "603",
+  "room_name": "Suite 603",
+  "floor": "6",
+  "status": "AVAILABLE",
+  "housekeeping_status": "CLEAN",
+  "maintenance_status": "OPERATIONAL"
+}
+
+###
+// ========================
+// AMENITIES (settings-service port 3100)
+// ========================
+
+// create amenity
+POST /v1/settings/properties/eedfeb3f-4c09-47d9-9b02-2d8d6610ce27/amenities HTTP/1.1
+Host: localhost:3100
+Content-Type: application/json
+Authorization: Bearer {{settings_token}}
+
+{
+  "amenityCode": "WIFI",
+  "displayName": "Wi-Fi",
+  "description": "High speed wireless internet",
+  "category": "IN_ROOM",
+  "tags": ["connectivity"],
+  "sortOrder": 1,
+  "isDefault": true,
+  "isActive": true
+}
+
+###
+// list amenities for Aurora Central Hotel
+GET /v1/settings/properties/eedfeb3f-4c09-47d9-9b02-2d8d6610ce27/amenities HTTP/1.1
+Host: localhost:3100
+Authorization: Bearer {{settings_token}}
+
+###
+// ========================
+// REFERENCE: IDs & PRICING
+// ========================
+//
+// TENANTS:
+//   Aurora Hospitality: 19b2afbb-e6f6-4776-8e52-efbab18f4bec
+//   Cedar Hospitality:  8c332645-d702-4391-a026-d141c53df71c
+//   Mariner Hospitality: 2c89b4c0-335c-4e36-a134-c2740bda6666
+//
+// PROPERTIES (Aurora):
+//   Aurora Central Hotel: eedfeb3f-4c09-47d9-9b02-2d8d6610ce27 (AUR-CEN)
+//   Aurora Harbor Hotel:  97d98b4f-6c2c-4df9-adfe-6a536a81ac2d (AUR-HARBOR)
+//   Aurora Uptown Suites: fd35e1bb-5b7c-486a-b2db-205284622d28 (AUR-UPT)
+//
+// ROOM TYPES @ Aurora Central Hotel (eedfeb3f-4c09-47d9-9b02-2d8d6610ce27):
+//   STD       | Standard Room    | 9300203c-775f-4ffe-ba03-6681f301f478 | $99
+//   TWIN      | Twin Room        | 50967d25-50c8-474a-b010-a6e902f1e303 | $129
+//   ADA       | Accessible Room  | 9b4cb8bc-5d85-40c6-93cb-5cf036506c5a | $149
+//   DLX-K     | Deluxe King      | 2e5c6085-b217-4741-9dd3-538b4aa2df62 | $179
+//   FAMILY    | Family Room      | 39ccffe7-9f5a-4a5d-9f4c-94b35a4dd6df | $199
+//   JR-SUITE  | Junior Suite     | 7512710b-2048-43f5-8ada-11f8cd4e26a6 | $229
+//   SUITE     | Suite            | dfe4044f-278a-4afc-acc8-8ef222113981 | $299
+//
+// ROOM TYPES @ Aurora Harbor (97d98b4f-6c2c-4df9-adfe-6a536a81ac2d):
+//   OCN-Q     | Ocean View Queen | b6e4e02e-13df-454a-abbb-62bb5f20ccae | $199
+//
+// ROOM TYPES @ Aurora Uptown (fd35e1bb-5b7c-486a-b2db-205284622d28):
+//   EXEC-S    | Executive Suite  | 20a64efd-423b-43e5-94c8-01f6c6a032ac | $299
+//
+// CURRENT ROOM INVENTORY (Aurora Central):
+//   Floor 1: 101-105 (DLX-K), 106 (ADA)
+//   Floor 2: 201-205 (DLX-K)
+//   Floor 3: 301-303 (STD), 304-305 (TWIN)
+//   Floor 4: 401-402 (FAMILY)
+//   Floor 5: 501-502 (JR-SUITE)
+//   Floor 6: 601-602 (SUITE)
+//   Total: 22 rooms
+//
+// ========================
+// ROOM TYPE CATEGORIES (PMS standard)
+// ========================
+// Standard Room   - Basic option, entry pricing
+// Deluxe Room     - Better view, same bed, more confidence
+// Superior Room   - Deluxe's older cousin
+// Executive Room  - Business travelers, desk included
+// Premium Room    - Marketing upgrade
+// Studio Room     - Open layout with kitchen
+// Suite           - Living room + bedroom with walls
+// Junior Suite    - Suite energy on a budget
+// Family Room     - Extra beds, chaos included
+// Twin Room       - Two single beds
+// Double Room     - One double bed
+// King/Queen Room - Mattress ego differentiator
+// Accessible Room - Wheelchair-friendly layout
+// Connecting Room - Two rooms with door between
