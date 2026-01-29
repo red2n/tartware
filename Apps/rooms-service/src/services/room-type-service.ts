@@ -25,12 +25,12 @@ type RoomTypeRow = {
   max_adults: number | null;
   max_children: number | null;
   extra_bed_capacity: number | null;
-  size_sqm: number | null;
+  size_sqm: string | number | null; // PostgreSQL numeric returns string
   bed_type: string | null;
   number_of_beds: number | null;
   amenities: unknown | null;
   features: unknown | null;
-  base_price: number | null;
+  base_price: string | number | null; // PostgreSQL numeric returns string
   currency: string | null;
   images: unknown | null;
   display_order: number | null;
@@ -39,6 +39,19 @@ type RoomTypeRow = {
   created_at: string | Date | null;
   updated_at: string | Date | null;
   version: bigint | null;
+};
+
+/**
+ * Convert PostgreSQL numeric (returned as string) to number.
+ */
+const toNumber = (
+  value: string | number | null | undefined,
+): number | undefined => {
+  if (value === null || value === undefined) {
+    return undefined;
+  }
+  const num = typeof value === "string" ? parseFloat(value) : value;
+  return Number.isFinite(num) ? num : undefined;
 };
 
 const toStringDate = (value: string | Date | null): string | undefined => {
@@ -66,12 +79,12 @@ const mapRowToRoomType = (row: RoomTypeRow): RoomTypeItem =>
     max_adults: row.max_adults ?? 2,
     max_children: row.max_children ?? undefined,
     extra_bed_capacity: row.extra_bed_capacity ?? undefined,
-    size_sqm: row.size_sqm ?? undefined,
+    size_sqm: toNumber(row.size_sqm),
     bed_type: row.bed_type ?? undefined,
     number_of_beds: row.number_of_beds ?? undefined,
     amenities: row.amenities ?? undefined,
     features: row.features ?? undefined,
-    base_price: row.base_price ?? 0,
+    base_price: toNumber(row.base_price) ?? 0,
     currency: row.currency ?? undefined,
     images: row.images ?? undefined,
     display_order: row.display_order ?? undefined,

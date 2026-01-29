@@ -36,4 +36,4 @@ Developers can review the Duplo summaries in a small HTML dashboard without open
 
 1. Start the API Gateway (`npm run dev:gateway`).
 2. Run `./executables/run-duplo/run-duplo.sh` whenever you need a fresh report.
-3. Visit [http://localhost:3200/developers/duplo](http://localhost:3200/developers/duplo) to browse the rendered summaries (the latest report loads by default, and you can switch to any historical summary via the dropdown).
+3. Visit [http://localhost:8080/developers/duplo](http://localhost:8080/developers/duplo) to browse the rendered summaries (the latest report loads by default, and you can switch to any historical summary via the dropdown).
