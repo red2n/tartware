@@ -1,4 +1,4 @@
-import { z } from "zod";
+import { type RoomTypeItem, RoomTypeItemSchema } from "@tartware/schemas";
 
 import { query } from "../lib/db.js";
 import {
@@ -8,37 +8,8 @@ import {
   ROOM_TYPE_UPDATE_SQL,
 } from "../sql/room-type-queries.js";
 
-export const RoomTypeItemSchema = z.object({
-  id: z.string().uuid(),
-  tenant_id: z.string().uuid(),
-  property_id: z.string().uuid(),
-  type_name: z.string(),
-  type_code: z.string(),
-  description: z.string().optional(),
-  short_description: z.string().optional(),
-  category: z.string(),
-  base_occupancy: z.number().int(),
-  max_occupancy: z.number().int(),
-  max_adults: z.number().int(),
-  max_children: z.number().int().optional(),
-  extra_bed_capacity: z.number().int().optional(),
-  size_sqm: z.number().optional(),
-  bed_type: z.string().optional(),
-  number_of_beds: z.number().int().optional(),
-  amenities: z.unknown().optional(),
-  features: z.unknown().optional(),
-  base_price: z.number(),
-  currency: z.string().optional(),
-  images: z.unknown().optional(),
-  display_order: z.number().int().optional(),
-  is_active: z.boolean(),
-  metadata: z.unknown().optional(),
-  created_at: z.string().optional(),
-  updated_at: z.string().optional(),
-  version: z.string().optional(),
-});
-
-type RoomTypeItem = z.infer<typeof RoomTypeItemSchema>;
+// Re-export schema for consumers that import from this module
+export { RoomTypeItemSchema };
 
 type RoomTypeRow = {
   id: string;
@@ -82,7 +53,7 @@ const toStringDate = (value: string | Date | null): string | undefined => {
 
 const mapRowToRoomType = (row: RoomTypeRow): RoomTypeItem =>
   RoomTypeItemSchema.parse({
-    id: row.id,
+    room_type_id: row.id,
     tenant_id: row.tenant_id,
     property_id: row.property_id,
     type_name: row.type_name,
@@ -100,7 +71,7 @@ const mapRowToRoomType = (row: RoomTypeRow): RoomTypeItem =>
     number_of_beds: row.number_of_beds ?? undefined,
     amenities: row.amenities ?? undefined,
     features: row.features ?? undefined,
-    base_price: row.base_price != null ? Number(row.base_price) : 0,
+    base_price: row.base_price ?? 0,
     currency: row.currency ?? undefined,
     images: row.images ?? undefined,
     display_order: row.display_order ?? undefined,

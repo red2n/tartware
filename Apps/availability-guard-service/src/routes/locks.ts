@@ -326,6 +326,7 @@ export const locksRoutes = fastifyPlugin(
         }
 
         const payload: ManualReleaseNotification = {
+          type: "availability_guard.manual_release",
           lockId: body.lockId,
           tenantId: body.tenantId,
           reservationId: body.reservationId ?? null,

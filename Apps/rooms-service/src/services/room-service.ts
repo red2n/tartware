@@ -1,43 +1,13 @@
-import { z } from "zod";
+import { type RoomItem, RoomItemSchema } from "@tartware/schemas";
 
 import { query } from "../lib/db.js";
 import { ROOM_CREATE_SQL, ROOM_LIST_SQL } from "../sql/room-queries.js";
 
-/**
- * Room list response schema.
- */
-export const RoomListItemSchema = z.object({
-  id: z.string().uuid(),
-  tenant_id: z.string().uuid(),
-  property_id: z.string().uuid(),
-  property_name: z.string().optional(),
-  room_type_id: z.string().uuid().optional(),
-  room_type_name: z.string().optional(),
-  room_type_amenities: z.array(z.string()).optional(),
-  room_number: z.string(),
-  room_name: z.string().optional(),
-  floor: z.string().optional(),
-  building: z.string().optional(),
-  wing: z.string().optional(),
-  status: z.string(),
-  status_display: z.string(),
-  housekeeping_status: z.string(),
-  housekeeping_display: z.string(),
-  maintenance_status: z.string(),
-  maintenance_display: z.string(),
-  features: z.record(z.unknown()).optional(),
-  amenities: z.array(z.string()).optional(),
-  is_blocked: z.boolean(),
-  block_reason: z.string().optional(),
-  is_out_of_order: z.boolean(),
-  out_of_order_reason: z.string().optional(),
-  expected_ready_date: z.string().optional(),
-  housekeeping_notes: z.string().optional(),
-  updated_at: z.string().optional(),
-  version: z.string(),
-});
+// Re-export schema for consumers that import from this module
+export const RoomListItemSchema = RoomItemSchema;
 
-type RoomListItem = z.infer<typeof RoomListItemSchema>;
+// Internal type alias
+type RoomListItem = RoomItem;
 
 type CreateRoomInput = {
   tenant_id: string;
@@ -159,7 +129,7 @@ const toStringDate = (value: string | Date | null): string | undefined => {
   return value;
 };
 
-const mapRowToRoom = (row: RoomListRow): RoomListItem => {
+const mapRowToRoom = (row: RoomListRow): RoomItem => {
   const { value: status, display: statusDisplay } = normalizeEnum(
     row.status,
     "unknown",
@@ -175,8 +145,8 @@ const mapRowToRoom = (row: RoomListRow): RoomListItem => {
     : [];
   const roomAmenities = Array.isArray(row.amenities) ? row.amenities : [];
 
-  return RoomListItemSchema.parse({
-    id: row.id,
+  return RoomItemSchema.parse({
+    room_id: row.id,
     tenant_id: row.tenant_id,
     property_id: row.property_id,
     property_name: row.property_name ?? undefined,

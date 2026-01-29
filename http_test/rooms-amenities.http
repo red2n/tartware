@@ -196,6 +196,52 @@ Authorization: Bearer {{core_token}}
 
 ###
 // ========================
+// ROOM TYPES - UPDATE
+// ========================
+
+// Update Standard Room price to $109
+// Room Type ID: 9300203c-775f-4ffe-ba03-6681f301f478 (STD)
+PUT /v1/room-types/9300203c-775f-4ffe-ba03-6681f301f478 HTTP/1.1
+Host: localhost:3400
+Content-Type: application/json
+Authorization: Bearer {{core_token}}
+
+{
+  "tenant_id": "19b2afbb-e6f6-4776-8e52-efbab18f4bec",
+  "base_price": 109,
+  "amenities": ["WIFI", "AC", "TV"]
+}
+
+###
+// Update Twin Room to inactive
+PUT /v1/room-types/50967d25-50c8-474a-b010-a6e902f1e303 HTTP/1.1
+Host: localhost:3400
+Content-Type: application/json
+Authorization: Bearer {{core_token}}
+
+{
+  "tenant_id": "19b2afbb-e6f6-4776-8e52-efbab18f4bec",
+  "is_active": false
+}
+
+###
+// ========================
+// ROOM TYPES - DELETE
+// ========================
+
+// Delete a room type (soft delete)
+// Room Type ID: {{room_type_id}} (replace with actual ID)
+DELETE /v1/room-types/{{room_type_id}} HTTP/1.1
+Host: localhost:3400
+Content-Type: application/json
+Authorization: Bearer {{core_token}}
+
+{
+  "tenant_id": "19b2afbb-e6f6-4776-8e52-efbab18f4bec"
+}
+
+###
+// ========================
 // ROOMS - LIST
 // ========================
 
@@ -352,6 +398,62 @@ Authorization: Bearer {{core_token}}
   "status": "AVAILABLE",
   "housekeeping_status": "CLEAN",
   "maintenance_status": "OPERATIONAL"
+}
+
+###
+// ========================
+// ROOMS - UPDATE
+// ========================
+
+// Update room status to OCCUPIED
+// Room ID: {{room_id}} (replace with actual ID from GET /v1/rooms)
+PUT /v1/rooms/{{room_id}} HTTP/1.1
+Host: localhost:3400
+Content-Type: application/json
+Authorization: Bearer {{core_token}}
+
+{
+  "tenant_id": "19b2afbb-e6f6-4776-8e52-efbab18f4bec",
+  "status": "OCCUPIED"
+}
+
+###
+// Update room housekeeping status to DIRTY
+PUT /v1/rooms/{{room_id}} HTTP/1.1
+Host: localhost:3400
+Content-Type: application/json
+Authorization: Bearer {{core_token}}
+
+{
+  "tenant_id": "19b2afbb-e6f6-4776-8e52-efbab18f4bec",
+  "housekeeping_status": "DIRTY"
+}
+
+###
+// Update room maintenance status
+PUT /v1/rooms/{{room_id}} HTTP/1.1
+Host: localhost:3400
+Content-Type: application/json
+Authorization: Bearer {{core_token}}
+
+{
+  "tenant_id": "19b2afbb-e6f6-4776-8e52-efbab18f4bec",
+  "maintenance_status": "OUT_OF_ORDER"
+}
+
+###
+// ========================
+// ROOMS - DELETE
+// ========================
+
+// Delete a room (soft delete)
+DELETE /v1/rooms/{{room_id}} HTTP/1.1
+Host: localhost:3400
+Content-Type: application/json
+Authorization: Bearer {{core_token}}
+
+{
+  "tenant_id": "19b2afbb-e6f6-4776-8e52-efbab18f4bec"
 }
 
 ###
