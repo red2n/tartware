@@ -6,14 +6,14 @@
  */
 
 import {
-  LockRoomSchema,
-  ReleaseLockSchema,
-  BulkReleaseSchema,
-  ManualReleaseSchema,
-  type LockRoomInput,
-  type ReleaseLockInput,
   type BulkReleaseInput,
+  BulkReleaseSchema,
+  type LockRoomInput,
+  LockRoomSchema,
   type ManualReleaseInput,
+  ManualReleaseSchema,
+  type ReleaseLockInput,
+  ReleaseLockSchema,
 } from "@tartware/schemas";
 
 // Re-export with lowercase names for backward compatibility
@@ -22,4 +22,9 @@ export const releaseLockSchema = ReleaseLockSchema;
 export const bulkReleaseSchema = BulkReleaseSchema;
 export const manualReleaseSchema = ManualReleaseSchema;
 
-export type { LockRoomInput, ReleaseLockInput, BulkReleaseInput, ManualReleaseInput };
+export type {
+  LockRoomInput,
+  ReleaseLockInput,
+  BulkReleaseInput,
+  ManualReleaseInput,
+};

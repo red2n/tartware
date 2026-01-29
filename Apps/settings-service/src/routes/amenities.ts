@@ -1,6 +1,5 @@
 import { buildRouteSchema, type JsonSchema, schemaFromZod } from "@tartware/openapi";
 import {
-  AmenityListItemSchema,
   AmenityListResponseSchema,
   AmenityResponseSchema,
   CreateAmenityBodySchema,

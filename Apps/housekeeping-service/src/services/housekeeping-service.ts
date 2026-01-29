@@ -1,6 +1,6 @@
 import {
-  HousekeepingTaskListItemSchema,
   type HousekeepingTaskListItem,
+  HousekeepingTaskListItemSchema,
 } from "@tartware/schemas";
 
 import { query } from "../lib/db.js";

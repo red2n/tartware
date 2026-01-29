@@ -1,6 +1,6 @@
 import {
-  ReservationListItemSchema as SchemaReservationListItemSchema,
   type ReservationListItem as SchemaReservationListItem,
+  ReservationListItemSchema as SchemaReservationListItemSchema,
 } from "@tartware/schemas";
 
 import { query } from "../lib/db.js";
