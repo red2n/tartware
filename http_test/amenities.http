@@ -2,12 +2,12 @@
 // AMENITIES HTTP TEST FILE
 // ========================
 // Purpose: Add and manage room amenities by room type
-// Per AGENTS.md: Always use API routes to test the app
+// Per AGENTS.md: Always use API routes via the API Gateway (localhost:8080) to test the app
 //
-// Services:
-//   - core-service (port 3000): Authentication
-//   - rooms-service (port 3400): Rooms and room types
-//   - settings-service (port 3100): Property amenity catalog
+// Backend Services (accessed via gateway):
+//   - core-service (backend port 3000): Authentication
+//   - rooms-service (backend port 3400): Rooms and room types
+//   - settings-service (backend port 3100): Property amenity catalog
 //
 // Workflow:
 //   1. Login to get JWT token
@@ -22,7 +22,7 @@
 
 // Login as Aurora owner
 POST /v1/auth/login HTTP/1.1
-Host: localhost:3000
+Host: localhost:8080
 Content-Type: application/json
 
 {"username":"aurora.owner","password":"TempPass123"}
@@ -36,7 +36,7 @@ Content-Type: application/json
 
 // Create: Wi-Fi (connectivity)
 POST /v1/settings/properties/eedfeb3f-4c09-47d9-9b02-2d8d6610ce27/amenities HTTP/1.1
-Host: localhost:3100
+Host: localhost:8080
 Content-Type: application/json
 Authorization: Bearer {{token}}
 
@@ -54,7 +54,7 @@ Authorization: Bearer {{token}}
 ###
 // Create: Air Conditioning
 POST /v1/settings/properties/eedfeb3f-4c09-47d9-9b02-2d8d6610ce27/amenities HTTP/1.1
-Host: localhost:3100
+Host: localhost:8080
 Content-Type: application/json
 Authorization: Bearer {{token}}
 
@@ -72,7 +72,7 @@ Authorization: Bearer {{token}}
 ###
 // Create: Minibar
 POST /v1/settings/properties/eedfeb3f-4c09-47d9-9b02-2d8d6610ce27/amenities HTTP/1.1
-Host: localhost:3100
+Host: localhost:8080
 Content-Type: application/json
 Authorization: Bearer {{token}}
 
@@ -90,7 +90,7 @@ Authorization: Bearer {{token}}
 ###
 // Create: Bathtub
 POST /v1/settings/properties/eedfeb3f-4c09-47d9-9b02-2d8d6610ce27/amenities HTTP/1.1
-Host: localhost:3100
+Host: localhost:8080
 Content-Type: application/json
 Authorization: Bearer {{token}}
 
@@ -108,7 +108,7 @@ Authorization: Bearer {{token}}
 ###
 // Create: Safe
 POST /v1/settings/properties/eedfeb3f-4c09-47d9-9b02-2d8d6610ce27/amenities HTTP/1.1
-Host: localhost:3100
+Host: localhost:8080
 Content-Type: application/json
 Authorization: Bearer {{token}}
 
@@ -126,7 +126,7 @@ Authorization: Bearer {{token}}
 ###
 // Create: Coffee Maker
 POST /v1/settings/properties/eedfeb3f-4c09-47d9-9b02-2d8d6610ce27/amenities HTTP/1.1
-Host: localhost:3100
+Host: localhost:8080
 Content-Type: application/json
 Authorization: Bearer {{token}}
 
@@ -144,7 +144,7 @@ Authorization: Bearer {{token}}
 ###
 // Create: Flat Screen TV
 POST /v1/settings/properties/eedfeb3f-4c09-47d9-9b02-2d8d6610ce27/amenities HTTP/1.1
-Host: localhost:3100
+Host: localhost:8080
 Content-Type: application/json
 Authorization: Bearer {{token}}
 
@@ -162,7 +162,7 @@ Authorization: Bearer {{token}}
 ###
 // Create: Work Desk
 POST /v1/settings/properties/eedfeb3f-4c09-47d9-9b02-2d8d6610ce27/amenities HTTP/1.1
-Host: localhost:3100
+Host: localhost:8080
 Content-Type: application/json
 Authorization: Bearer {{token}}
 
@@ -180,7 +180,7 @@ Authorization: Bearer {{token}}
 ###
 // Create: Room Service
 POST /v1/settings/properties/eedfeb3f-4c09-47d9-9b02-2d8d6610ce27/amenities HTTP/1.1
-Host: localhost:3100
+Host: localhost:8080
 Content-Type: application/json
 Authorization: Bearer {{token}}
 
@@ -198,7 +198,7 @@ Authorization: Bearer {{token}}
 ###
 // Create: Accessible Features
 POST /v1/settings/properties/eedfeb3f-4c09-47d9-9b02-2d8d6610ce27/amenities HTTP/1.1
-Host: localhost:3100
+Host: localhost:8080
 Content-Type: application/json
 Authorization: Bearer {{token}}
 
@@ -216,7 +216,7 @@ Authorization: Bearer {{token}}
 ###
 // Create: Balcony
 POST /v1/settings/properties/eedfeb3f-4c09-47d9-9b02-2d8d6610ce27/amenities HTTP/1.1
-Host: localhost:3100
+Host: localhost:8080
 Content-Type: application/json
 Authorization: Bearer {{token}}
 
@@ -234,7 +234,7 @@ Authorization: Bearer {{token}}
 ###
 // Create: Living Room
 POST /v1/settings/properties/eedfeb3f-4c09-47d9-9b02-2d8d6610ce27/amenities HTTP/1.1
-Host: localhost:3100
+Host: localhost:8080
 Content-Type: application/json
 Authorization: Bearer {{token}}
 
@@ -252,7 +252,7 @@ Authorization: Bearer {{token}}
 ###
 // Create: Kitchen
 POST /v1/settings/properties/eedfeb3f-4c09-47d9-9b02-2d8d6610ce27/amenities HTTP/1.1
-Host: localhost:3100
+Host: localhost:8080
 Content-Type: application/json
 Authorization: Bearer {{token}}
 
@@ -270,7 +270,7 @@ Authorization: Bearer {{token}}
 ###
 // Create: Crib Available
 POST /v1/settings/properties/eedfeb3f-4c09-47d9-9b02-2d8d6610ce27/amenities HTTP/1.1
-Host: localhost:3100
+Host: localhost:8080
 Content-Type: application/json
 Authorization: Bearer {{token}}
 
@@ -288,7 +288,7 @@ Authorization: Bearer {{token}}
 ###
 // List all amenities in catalog
 GET /v1/settings/properties/eedfeb3f-4c09-47d9-9b02-2d8d6610ce27/amenities HTTP/1.1
-Host: localhost:3100
+Host: localhost:8080
 Authorization: Bearer {{token}}
 
 ###
@@ -298,7 +298,7 @@ Authorization: Bearer {{token}}
 
 // Update WIFI amenity description
 PUT /v1/settings/properties/eedfeb3f-4c09-47d9-9b02-2d8d6610ce27/amenities/WIFI HTTP/1.1
-Host: localhost:3100
+Host: localhost:8080
 Content-Type: application/json
 Authorization: Bearer {{token}}
 
@@ -310,7 +310,7 @@ Authorization: Bearer {{token}}
 ###
 // Update amenity sort order
 PUT /v1/settings/properties/eedfeb3f-4c09-47d9-9b02-2d8d6610ce27/amenities/MINIBAR HTTP/1.1
-Host: localhost:3100
+Host: localhost:8080
 Content-Type: application/json
 Authorization: Bearer {{token}}
 
@@ -322,7 +322,7 @@ Authorization: Bearer {{token}}
 ###
 // Disable an amenity (isActive = false)
 PUT /v1/settings/properties/eedfeb3f-4c09-47d9-9b02-2d8d6610ce27/amenities/CRIB HTTP/1.1
-Host: localhost:3100
+Host: localhost:8080
 Content-Type: application/json
 Authorization: Bearer {{token}}
 
@@ -339,7 +339,7 @@ Authorization: Bearer {{token}}
 // Update Standard Room (STD) - Basic amenities
 // Room Type ID: 9300203c-775f-4ffe-ba03-6681f301f478
 PUT /v1/room-types/9300203c-775f-4ffe-ba03-6681f301f478 HTTP/1.1
-Host: localhost:3400
+Host: localhost:8080
 Content-Type: application/json
 Authorization: Bearer {{token}}
 
@@ -352,7 +352,7 @@ Authorization: Bearer {{token}}
 // Update Twin Room (TWIN) - Basic amenities
 // Room Type ID: 50967d25-50c8-474a-b010-a6e902f1e303
 PUT /v1/room-types/50967d25-50c8-474a-b010-a6e902f1e303 HTTP/1.1
-Host: localhost:3400
+Host: localhost:8080
 Content-Type: application/json
 Authorization: Bearer {{token}}
 
@@ -365,7 +365,7 @@ Authorization: Bearer {{token}}
 // Update Accessible Room (ADA) - Accessibility amenities
 // Room Type ID: 9b4cb8bc-5d85-40c6-93cb-5cf036506c5a
 PUT /v1/room-types/9b4cb8bc-5d85-40c6-93cb-5cf036506c5a HTTP/1.1
-Host: localhost:3400
+Host: localhost:8080
 Content-Type: application/json
 Authorization: Bearer {{token}}
 
@@ -378,7 +378,7 @@ Authorization: Bearer {{token}}
 // Update Deluxe King (DLX-K) - Premium amenities
 // Room Type ID: 2e5c6085-b217-4741-9dd3-538b4aa2df62
 PUT /v1/room-types/2e5c6085-b217-4741-9dd3-538b4aa2df62 HTTP/1.1
-Host: localhost:3400
+Host: localhost:8080
 Content-Type: application/json
 Authorization: Bearer {{token}}
 
@@ -391,7 +391,7 @@ Authorization: Bearer {{token}}
 // Update Family Room (FAMILY) - Family amenities
 // Room Type ID: 39ccffe7-9f5a-4a5d-9f4c-94b35a4dd6df
 PUT /v1/room-types/39ccffe7-9f5a-4a5d-9f4c-94b35a4dd6df HTTP/1.1
-Host: localhost:3400
+Host: localhost:8080
 Content-Type: application/json
 Authorization: Bearer {{token}}
 
@@ -404,7 +404,7 @@ Authorization: Bearer {{token}}
 // Update Junior Suite (JR-SUITE) - Suite amenities
 // Room Type ID: 7512710b-2048-43f5-8ada-11f8cd4e26a6
 PUT /v1/room-types/7512710b-2048-43f5-8ada-11f8cd4e26a6 HTTP/1.1
-Host: localhost:3400
+Host: localhost:8080
 Content-Type: application/json
 Authorization: Bearer {{token}}
 
@@ -417,7 +417,7 @@ Authorization: Bearer {{token}}
 // Update Suite (SUITE) - Full luxury amenities
 // Room Type ID: dfe4044f-278a-4afc-acc8-8ef222113981
 PUT /v1/room-types/dfe4044f-278a-4afc-acc8-8ef222113981 HTTP/1.1
-Host: localhost:3400
+Host: localhost:8080
 Content-Type: application/json
 Authorization: Bearer {{token}}
 
@@ -436,7 +436,7 @@ Authorization: Bearer {{token}}
 // Add extra amenities to Suite 601 (corner suite with extra balcony)
 // Note: Get room IDs from GET /v1/rooms first
 PUT /v1/rooms/{{suite_601_id}} HTTP/1.1
-Host: localhost:3400
+Host: localhost:8080
 Content-Type: application/json
 Authorization: Bearer {{token}}
 
@@ -452,13 +452,13 @@ Authorization: Bearer {{token}}
 
 // List rooms - should now include amenities field
 GET /v1/rooms?tenant_id=19b2afbb-e6f6-4776-8e52-efbab18f4bec&property_id=eedfeb3f-4c09-47d9-9b02-2d8d6610ce27&limit=50 HTTP/1.1
-Host: localhost:3400
+Host: localhost:8080
 Authorization: Bearer {{token}}
 
 ###
 // List room types - should show amenities per type
 GET /v1/room-types?tenant_id=19b2afbb-e6f6-4776-8e52-efbab18f4bec&property_id=eedfeb3f-4c09-47d9-9b02-2d8d6610ce27&limit=50 HTTP/1.1
-Host: localhost:3400
+Host: localhost:8080
 Authorization: Bearer {{token}}
 
 ###

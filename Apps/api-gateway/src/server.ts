@@ -977,15 +977,28 @@ export const buildServer = () => {
 			proxyRooms,
 		);
 
-		app.all(
+		app.get(
 			"/v1/room-types",
 			{
 				schema: buildRouteSchema({
 					tag: CORE_PROXY_TAG,
-					summary: "Proxy room type requests to the rooms service.",
-					body: jsonObjectSchema,
+					summary: "Proxy room type list requests to the rooms service.",
 					response: {
 						200: jsonObjectSchema,
+					},
+				}),
+			},
+			proxyRooms,
+		);
+
+		app.post(
+			"/v1/room-types",
+			{
+				schema: buildRouteSchema({
+					tag: CORE_PROXY_TAG,
+					summary: "Proxy room type creation to the rooms service.",
+					body: jsonObjectSchema,
+					response: {
 						201: jsonObjectSchema,
 					},
 				}),
@@ -993,7 +1006,21 @@ export const buildServer = () => {
 			proxyRooms,
 		);
 
-		app.all(
+		app.get(
+			"/v1/room-types/*",
+			{
+				schema: buildRouteSchema({
+					tag: CORE_PROXY_TAG,
+					summary: "Proxy room type detail requests to the rooms service.",
+					response: {
+						200: jsonObjectSchema,
+					},
+				}),
+			},
+			proxyRooms,
+		);
+
+		app.put(
 			"/v1/room-types/*",
 			{
 				schema: buildRouteSchema({
@@ -1002,6 +1029,34 @@ export const buildServer = () => {
 					body: jsonObjectSchema,
 					response: {
 						200: jsonObjectSchema,
+					},
+				}),
+			},
+			proxyRooms,
+		);
+
+		app.patch(
+			"/v1/room-types/*",
+			{
+				schema: buildRouteSchema({
+					tag: CORE_PROXY_TAG,
+					summary: "Proxy room type partial updates to the rooms service.",
+					body: jsonObjectSchema,
+					response: {
+						200: jsonObjectSchema,
+					},
+				}),
+			},
+			proxyRooms,
+		);
+
+		app.delete(
+			"/v1/room-types/*",
+			{
+				schema: buildRouteSchema({
+					tag: CORE_PROXY_TAG,
+					summary: "Proxy room type deletion to the rooms service.",
+					response: {
 						204: { type: "null" },
 					},
 				}),
@@ -1171,20 +1226,6 @@ export const buildServer = () => {
 					paramKey: "roomId",
 					payloadKey: "room_id",
 				}),
-		);
-
-		app.get(
-			"/v1/rooms/*",
-			{
-				schema: buildRouteSchema({
-					tag: CORE_PROXY_TAG,
-					summary: "Proxy nested room routes to the rooms service.",
-					response: {
-						200: jsonObjectSchema,
-					},
-				}),
-			},
-			proxyRooms,
 		);
 
 		app.get(
