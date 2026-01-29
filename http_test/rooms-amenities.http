@@ -14,13 +14,13 @@ Content-Type: application/json
 // list room types for Aurora Central Hotel
 GET /v1/room-types?tenant_id=19b2afbb-e6f6-4776-8e52-efbab18f4bec&property_id=eedfeb3f-4c09-47d9-9b02-2d8d6610ce27&limit=50 HTTP/1.1
 Host: localhost:3400
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJlZDU3MDM4Mi03Mjc0LTQ2NjQtYjZlYy02OWUwY2M2MjYwYmEiLCJ1c2VybmFtZSI6ImF1cm9yYS5vd25lciIsInR5cGUiOiJhY2Nlc3MiLCJpYXQiOjE3Njk2NjgxMDIsImV4cCI6MTc2OTY2OTAwMiwiYXVkIjoidGFydHdhcmUtY29yZSIsImlzcyI6InRhcnR3YXJlLWNvcmUtc2VydmljZSJ9.dMtN2ix9PnpOlBlzz1mxMD7misZ7Qvf7RJjpEBaOMLc
+Authorization: Bearer {{core_token}}
 
 ###
 // list rooms for Aurora Central Hotel (rooms-service)
 GET /v1/rooms?tenant_id=19b2afbb-e6f6-4776-8e52-efbab18f4bec&property_id=eedfeb3f-4c09-47d9-9b02-2d8d6610ce27&limit=50 HTTP/1.1
 Host: localhost:3400
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJlZDU3MDM4Mi03Mjc0LTQ2NjQtYjZlYy02OWUwY2M2MjYwYmEiLCJ1c2VybmFtZSI6ImF1cm9yYS5vd25lciIsInR5cGUiOiJhY2Nlc3MiLCJpYXQiOjE3Njk2NjgxMDIsImV4cCI6MTc2OTY2OTAwMiwiYXVkIjoidGFydHdhcmUtY29yZSIsImlzcyI6InRhcnR3YXJlLWNvcmUtc2VydmljZSJ9.dMtN2ix9PnpOlBlzz1mxMD7misZ7Qvf7RJjpEBaOMLc
+Authorization: Bearer {{core_token}}
 
 ###
 // ========================

@@ -359,20 +359,16 @@ export const updateRoom = async (
     ],
   );
 
-  /**
-   * Update an existing room by id.
-   */
-
   if (!rows[0]) {
     return null;
   }
 
-  /**
-   * Soft delete a room by id.
-   */
   return mapRowToRoom(rows[0]);
 };
 
+/**
+ * Soft delete a room by id.
+ */
 export const deleteRoom = async (options: {
   tenant_id: string;
   room_id: string;
