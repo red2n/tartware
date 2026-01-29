@@ -133,6 +133,113 @@ Authorization: Bearer {{owner_token}}
 }
 
 ###
+// ========================
+// AUTH CONTEXT & PASSWORD
+// ========================
+
+// view auth context (memberships, authorized tenants)
+GET /v1/auth/context HTTP/1.1
+Host: localhost:3000
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJlZDU3MDM4Mi03Mjc0LTQ2NjQtYjZlYy02OWUwY2M2MjYwYmEiLCJ1c2VybmFtZSI6ImF1cm9yYS5vd25lciIsInR5cGUiOiJhY2Nlc3MiLCJpYXQiOjE3Njk1OTY1NDksImV4cCI6MTc2OTU5NzQ0OSwiYXVkIjoidGFydHdhcmUtY29yZSIsImlzcyI6InRhcnR3YXJlLWNvcmUtc2VydmljZSJ9.XjwW2zV9v0M26gJNUqKedFtqEqiu9pK-gMWA4rEems0
+
+###
+// change password (requires valid current password)
+POST /v1/auth/change-password HTTP/1.1
+Host: localhost:3000
+Content-Type: application/json
+Authorization: Bearer {{owner_token}}
+
+{
+	"current_password": "TempPass123",
+	"new_password": "NewSecure123!"
+}
+
+###
+// ========================
+// MFA ENROLLMENT
+// ========================
+
+// start MFA enrollment (returns secret and otpauth_url)
+POST /v1/auth/mfa/enroll HTTP/1.1
+Host: localhost:3000
+Authorization: Bearer {{owner_token}}
+
+###
+// verify MFA code to enable MFA
+POST /v1/auth/mfa/verify HTTP/1.1
+Host: localhost:3000
+Content-Type: application/json
+Authorization: Bearer {{owner_token}}
+
+{
+	"mfa_code": "123456"
+}
+
+###
+// rotate MFA secret (requires current MFA code)
+POST /v1/auth/mfa/rotate HTTP/1.1
+Host: localhost:3000
+Content-Type: application/json
+Authorization: Bearer {{owner_token}}
+
+{
+	"mfa_code": "123456"
+}
+
+###
+// ========================
+// USER MANAGEMENT
+// ========================
+
+// list users for a tenant (requires MANAGER+ role)
+GET /v1/users?tenant_id=19b2afbb-e6f6-4776-8e52-efbab18f4bec&limit=50 HTTP/1.1
+Host: localhost:3000
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJlZDU3MDM4Mi03Mjc0LTQ2NjQtYjZlYy02OWUwY2M2MjYwYmEiLCJ1c2VybmFtZSI6ImF1cm9yYS5vd25lciIsInR5cGUiOiJhY2Nlc3MiLCJpYXQiOjE3Njk1OTY1NDksImV4cCI6MTc2OTU5NzQ0OSwiYXVkIjoidGFydHdhcmUtY29yZSIsImlzcyI6InRhcnR3YXJlLWNvcmUtc2VydmljZSJ9.XjwW2zV9v0M26gJNUqKedFtqEqiu9pK-gMWA4rEems0
+
+###
+// create a new tenant user (requires ADMIN+ role)
+POST /v1/users HTTP/1.1
+Host: localhost:3000
+Content-Type: application/json
+Authorization: Bearer {{owner_token}}
+
+{
+	"tenant_id": "19b2afbb-e6f6-4776-8e52-efbab18f4bec",
+	"username": "aurora.manager",
+	"email": "manager@aurora.demo",
+	"password": "TempPass123",
+	"first_name": "Aurora",
+	"last_name": "Manager",
+	"role": "MANAGER"
+}
+
+###
+// reset a user's password (requires ADMIN+ role)
+POST /v1/users/reset-password HTTP/1.1
+Host: localhost:3000
+Content-Type: application/json
+Authorization: Bearer {{owner_token}}
+
+{
+	"tenant_id": "19b2afbb-e6f6-4776-8e52-efbab18f4bec",
+	"user_id": "{{user_id}}",
+	"new_password": "NewTempPass123"
+}
+
+###
+// ========================
+// REFERENCE: TENANT ROLES
+// ========================
+//
+// OWNER    - Full tenant access, can manage all users
+// ADMIN    - Administrative access, can create/modify users
+// MANAGER  - Operational management, can view users
+// STAFF    - Standard access, limited to assigned tasks
+// VIEWER   - Read-only access
+//
+// ========================
+
+###
 // curl commands for creating tenant + user, token, and properties
 // curl -sS -X POST http://localhost:3000/v1/tenants/bootstrap \
 //   -H "Content-Type: application/json" \

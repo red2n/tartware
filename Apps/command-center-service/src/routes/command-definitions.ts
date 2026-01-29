@@ -1,16 +1,10 @@
 import { buildRouteSchema, schemaFromZod } from "@tartware/openapi";
+import { CommandDefinitionSchema } from "@tartware/schemas";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 
 import { extractBearerToken, verifyAccessToken } from "../lib/jwt.js";
 import { listCommandDefinitions } from "../services/command-registry-service.js";
-
-const CommandDefinitionSchema = z.object({
-  name: z.string().min(1),
-  label: z.string().min(1),
-  description: z.string().min(1),
-  samplePayload: z.record(z.unknown()).optional(),
-});
 
 const CommandDefinitionListSchema = z.array(CommandDefinitionSchema);
 const CommandDefinitionListJsonSchema = schemaFromZod(

@@ -293,6 +293,45 @@ Authorization: Bearer {{token}}
 
 ###
 // ========================
+// UPDATE AMENITY IN CATALOG
+// ========================
+
+// Update WIFI amenity description
+PUT /v1/settings/properties/eedfeb3f-4c09-47d9-9b02-2d8d6610ce27/amenities/WIFI HTTP/1.1
+Host: localhost:3100
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "description": "Ultra-fast fiber optic wireless internet",
+  "tags": ["connectivity", "business", "premium"]
+}
+
+###
+// Update amenity sort order
+PUT /v1/settings/properties/eedfeb3f-4c09-47d9-9b02-2d8d6610ce27/amenities/MINIBAR HTTP/1.1
+Host: localhost:3100
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "sortOrder": 5,
+  "description": "Complimentary minibar with premium selections"
+}
+
+###
+// Disable an amenity (isActive = false)
+PUT /v1/settings/properties/eedfeb3f-4c09-47d9-9b02-2d8d6610ce27/amenities/CRIB HTTP/1.1
+Host: localhost:3100
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "isActive": false
+}
+
+###
+// ========================
 // UPDATE ROOM TYPES WITH AMENITIES
 // ========================
 // Room types define default amenities for all rooms of that type.

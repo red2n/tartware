@@ -1,6 +1,6 @@
+import { ManualReleaseNotificationSchema } from "@tartware/schemas";
 import type { FastifyBaseLogger } from "fastify";
 import type { Consumer, KafkaMessage } from "kafkajs";
-import { z } from "zod";
 
 import { config } from "../config.js";
 import { kafka } from "../lib/kafka.js";
@@ -18,25 +18,6 @@ import {
 } from "../lib/metrics.js";
 
 type ManualReleaseNotificationChannel = "email" | "sms" | "slack" | "log";
-
-const ManualReleaseNotificationSchema = z.object({
-  type: z.literal("availability_guard.manual_release"),
-  sentAt: z.string(),
-  lockId: z.string().min(1),
-  tenantId: z.string().min(1),
-  reservationId: z.string().min(1).nullable().optional(),
-  roomTypeId: z.string().min(1),
-  roomId: z.string().min(1).nullable().optional(),
-  stayStart: z.string(),
-  stayEnd: z.string(),
-  reason: z.string().min(1),
-  actor: z.object({
-    id: z.string().min(1),
-    name: z.string().min(1),
-    email: z.string().email().nullable().optional(),
-  }),
-  recipients: z.array(z.string().min(1)),
-});
 
 let consumer: Consumer | null = null;
 let runLoop: Promise<void> | null = null;

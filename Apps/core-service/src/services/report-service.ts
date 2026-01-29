@@ -1,4 +1,11 @@
-import { z } from "zod";
+import {
+  type PerformanceReport,
+  PerformanceReportSchema,
+  ReservationSourceSummarySchema,
+  type ReservationStatusSummary,
+  ReservationStatusSummarySchema,
+  RevenueSummarySchema,
+} from "@tartware/schemas";
 
 import { query } from "../lib/db.js";
 import {
@@ -8,47 +15,17 @@ import {
 } from "../sql/report-queries.js";
 import { toNonNegativeInt, toNumberOrFallback } from "../utils/numbers.js";
 
-/**
- * Reservation status summary response schema.
- */
-export const ReservationStatusSummarySchema = z.object({
-  confirmed: z.number().nonnegative().default(0),
-  pending: z.number().nonnegative().default(0),
-  checked_in: z.number().nonnegative().default(0),
-  checked_out: z.number().nonnegative().default(0),
-  cancelled: z.number().nonnegative().default(0),
-  no_show: z.number().nonnegative().default(0),
-});
+// Re-export for consumers that import from this module
+export {
+  PerformanceReportSchema,
+  ReservationSourceSummarySchema,
+  ReservationStatusSummarySchema,
+  RevenueSummarySchema,
+  type PerformanceReport,
+};
 
-/**
- * Revenue summary response schema.
- */
-export const RevenueSummarySchema = z.object({
-  today: z.number().nonnegative(),
-  monthToDate: z.number().nonnegative(),
-  yearToDate: z.number().nonnegative(),
-  currency: z.string(),
-});
-
-/**
- * Reservation source summary response schema.
- */
-export const ReservationSourceSchema = z.object({
-  source: z.string(),
-  reservations: z.number().nonnegative(),
-  total_amount: z.number().nonnegative(),
-});
-
-/**
- * Performance report response schema.
- */
-export const PerformanceReportSchema = z.object({
-  statusSummary: ReservationStatusSummarySchema,
-  revenueSummary: RevenueSummarySchema,
-  topSources: z.array(ReservationSourceSchema),
-});
-
-export type PerformanceReport = z.infer<typeof PerformanceReportSchema>;
+// Backward compatibility alias
+export const ReservationSourceSchema = ReservationSourceSummarySchema;
 
 type ReservationStatusRow = {
   status: string | null;
@@ -67,9 +44,7 @@ type ReservationSourceRow = {
   total_amount: string | number | null;
 };
 
-const normalizeStatusKey = (
-  value: string | null,
-): keyof z.infer<typeof ReservationStatusSummarySchema> | null => {
+const normalizeStatusKey = (value: string | null): keyof ReservationStatusSummary | null => {
   if (!value || typeof value !== "string") {
     return null;
   }

@@ -1,20 +1,7 @@
-export type ManualReleaseNotification = {
-  lockId: string;
-  tenantId: string;
-  reservationId: string | null;
-  roomTypeId: string;
-  roomId: string | null;
-  stayStart: string;
-  stayEnd: string;
-  sentAt: string;
-  reason: string;
-  actor: {
-    id: string;
-    name: string;
-    email?: string | null;
-  };
-  recipients: string[];
-};
+import type { ManualReleaseNotification } from "@tartware/schemas";
+
+// Re-export for consumers
+export type { ManualReleaseNotification };
 
 export type RecipientBuckets = {
   email: string[];
