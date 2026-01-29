@@ -1,4 +1,11 @@
 import { buildRouteSchema, type JsonSchema, schemaFromZod } from "@tartware/openapi";
+import {
+  AmenityListItemSchema,
+  AmenityListResponseSchema,
+  AmenityResponseSchema,
+  CreateAmenityBodySchema,
+  UpdateAmenityBodySchema,
+} from "@tartware/schemas";
 import type { FastifyPluginAsync, FastifyReply, FastifyRequest } from "fastify";
 import fp from "fastify-plugin";
 import { z } from "zod";
@@ -13,38 +20,6 @@ import type { AuthUser } from "../types/auth.js";
 
 const AMENITIES_TAG = "Amenity Catalog";
 
-const AmenitySchema = z.object({
-  id: z.string().uuid(),
-  tenantId: z.string().uuid(),
-  propertyId: z.string().uuid(),
-  amenityCode: z.string(),
-  displayName: z.string(),
-  description: z.string().optional(),
-  category: z.string(),
-  icon: z.string().optional(),
-  tags: z.array(z.string()).default([]),
-  sortOrder: z.number().int(),
-  isDefault: z.boolean(),
-  isActive: z.boolean(),
-  isRequired: z.boolean(),
-  metadata: z.record(z.unknown()).default({}),
-  createdAt: z.string().datetime(),
-  updatedAt: z.string().datetime().optional(),
-  createdBy: z.string().uuid().optional(),
-  updatedBy: z.string().uuid().optional(),
-});
-
-const AmenitiesListResponseSchema = z.object({
-  data: z.array(AmenitySchema),
-  meta: z.object({
-    count: z.number().int(),
-  }),
-});
-
-const AmenityResponseSchema = z.object({
-  data: AmenitySchema,
-});
-
 const PropertyParamsSchema = z.object({
   propertyId: z.string().uuid(),
 });
@@ -53,33 +28,8 @@ const AmenityParamsSchema = PropertyParamsSchema.extend({
   amenityCode: z.string().regex(/^[A-Za-z0-9_-]+$/),
 });
 
-const CreateAmenityBodySchema = z.object({
-  amenityCode: z
-    .string()
-    .min(2)
-    .max(80)
-    .regex(/^[A-Za-z0-9_-]+$/, {
-      message: "Amenity code must be alphanumeric (with _ or -)",
-    }),
-  displayName: z.string().min(2).max(160),
-  description: z.string().max(1024).optional(),
-  category: z.string().max(80).optional(),
-  icon: z.string().max(120).optional(),
-  tags: z.array(z.string().max(80)).optional(),
-  sortOrder: z.number().int().min(0).optional(),
-  isDefault: z.boolean().optional(),
-  isActive: z.boolean().optional(),
-  isRequired: z.boolean().optional(),
-  metadata: z.record(z.unknown()).optional(),
-});
-
-const UpdateAmenityBodySchema = CreateAmenityBodySchema.partial().omit({
-  amenityCode: true,
-  isDefault: true,
-});
-
 const listAmenitiesResponse: JsonSchema = schemaFromZod(
-  AmenitiesListResponseSchema,
+  AmenityListResponseSchema,
   "AmenityListResponse",
 );
 

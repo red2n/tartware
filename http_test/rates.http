@@ -1,0 +1,530 @@
+// =====================================================
+// RATES API - HTTP Test File
+// rooms-service (port 3400)
+// =====================================================
+//
+// Prerequisites:
+// 1. Run migration: scripts/2026-01-29-add-rate-type-and-priority-to-rates.sql
+// 2. Start core-service (port 3000) and rooms-service (port 3400)
+// 3. Login via core-service to get {{core_token}}
+//
+// Rate Priority Guide (lower = higher priority):
+//   COMP/HOUSE:      1-5    (complimentary/internal use)
+//   CORPORATE/GOVT:  10-30  (negotiated rates)
+//   PROMO/COUPON:    40-50  (promotional offers)
+//   EARLYBIRD/LM:    60-80  (booking window rates)
+//   BAR:             100    (best available rate)
+//   RACK:            200    (published/walk-in rate)
+//
+// =====================================================
+
+// login to core-service to get tenant-scoped token
+POST /v1/auth/login HTTP/1.1
+Host: localhost:3000
+Content-Type: application/json
+
+{"username":"aurora.owner","password":"TempPass123"}
+
+###
+// ========================
+// RATES - LIST
+// ========================
+
+// List all rates for Aurora Central Hotel
+GET /v1/rates?tenant_id=19b2afbb-e6f6-4776-8e52-efbab18f4bec&property_id=eedfeb3f-4c09-47d9-9b02-2d8d6610ce27&limit=50 HTTP/1.1
+Host: localhost:3400
+Authorization: Bearer {{core_token}}
+
+###
+// List rates filtered by status=ACTIVE
+GET /v1/rates?tenant_id=19b2afbb-e6f6-4776-8e52-efbab18f4bec&property_id=eedfeb3f-4c09-47d9-9b02-2d8d6610ce27&status=ACTIVE HTTP/1.1
+Host: localhost:3400
+Authorization: Bearer {{core_token}}
+
+###
+// List rates filtered by rate_type=BAR
+GET /v1/rates?tenant_id=19b2afbb-e6f6-4776-8e52-efbab18f4bec&property_id=eedfeb3f-4c09-47d9-9b02-2d8d6610ce27&rate_type=BAR HTTP/1.1
+Host: localhost:3400
+Authorization: Bearer {{core_token}}
+
+###
+// List rates for specific room type (STD)
+// Room Type ID: 9300203c-775f-4ffe-ba03-6681f301f478
+GET /v1/rates?tenant_id=19b2afbb-e6f6-4776-8e52-efbab18f4bec&property_id=eedfeb3f-4c09-47d9-9b02-2d8d6610ce27&room_type_id=9300203c-775f-4ffe-ba03-6681f301f478 HTTP/1.1
+Host: localhost:3400
+Authorization: Bearer {{core_token}}
+
+###
+// Search rates by name
+GET /v1/rates?tenant_id=19b2afbb-e6f6-4776-8e52-efbab18f4bec&property_id=eedfeb3f-4c09-47d9-9b02-2d8d6610ce27&search=corporate HTTP/1.1
+Host: localhost:3400
+Authorization: Bearer {{core_token}}
+
+###
+// ========================
+// RATES - CREATE
+// ========================
+
+// Create RACK rate for Standard Room ($129 - highest price, lowest priority)
+// Room Type ID: 9300203c-775f-4ffe-ba03-6681f301f478 (STD)
+POST /v1/rates HTTP/1.1
+Host: localhost:3400
+Content-Type: application/json
+Authorization: Bearer {{core_token}}
+
+{
+  "tenant_id": "19b2afbb-e6f6-4776-8e52-efbab18f4bec",
+  "property_id": "eedfeb3f-4c09-47d9-9b02-2d8d6610ce27",
+  "room_type_id": "9300203c-775f-4ffe-ba03-6681f301f478",
+  "rate_name": "Rack Rate - Standard Room",
+  "rate_code": "RACK-STD",
+  "description": "Published rack rate for walk-in guests",
+  "rate_type": "RACK",
+  "strategy": "FIXED",
+  "priority": 200,
+  "base_rate": 129.00,
+  "currency": "USD",
+  "valid_from": "2026-01-01",
+  "valid_until": "2026-12-31",
+  "min_length_of_stay": 1,
+  "status": "ACTIVE",
+  "channels": ["direct", "phone", "walk_in"],
+  "customer_segments": ["all"]
+}
+
+###
+// Create BAR rate for Standard Room ($99 - best available)
+POST /v1/rates HTTP/1.1
+Host: localhost:3400
+Content-Type: application/json
+Authorization: Bearer {{core_token}}
+
+{
+  "tenant_id": "19b2afbb-e6f6-4776-8e52-efbab18f4bec",
+  "property_id": "eedfeb3f-4c09-47d9-9b02-2d8d6610ce27",
+  "room_type_id": "9300203c-775f-4ffe-ba03-6681f301f478",
+  "rate_name": "Best Available Rate - Standard Room",
+  "rate_code": "BAR-STD",
+  "description": "Best available rate for online bookings",
+  "rate_type": "BAR",
+  "strategy": "DYNAMIC",
+  "priority": 100,
+  "base_rate": 99.00,
+  "currency": "USD",
+  "valid_from": "2026-01-01",
+  "valid_until": "2026-12-31",
+  "min_length_of_stay": 1,
+  "status": "ACTIVE",
+  "channels": ["direct", "ota", "website"],
+  "customer_segments": ["all"]
+}
+
+###
+// Create Corporate rate for Standard Room ($79 - negotiated discount)
+POST /v1/rates HTTP/1.1
+Host: localhost:3400
+Content-Type: application/json
+Authorization: Bearer {{core_token}}
+
+{
+  "tenant_id": "19b2afbb-e6f6-4776-8e52-efbab18f4bec",
+  "property_id": "eedfeb3f-4c09-47d9-9b02-2d8d6610ce27",
+  "room_type_id": "9300203c-775f-4ffe-ba03-6681f301f478",
+  "rate_name": "Corporate Rate - Standard Room",
+  "rate_code": "CORP-STD",
+  "description": "Negotiated rate for corporate clients",
+  "rate_type": "CORPORATE",
+  "strategy": "FIXED",
+  "priority": 20,
+  "base_rate": 79.00,
+  "currency": "USD",
+  "valid_from": "2026-01-01",
+  "valid_until": "2026-12-31",
+  "min_length_of_stay": 1,
+  "cancellation_policy": {
+    "type": "flexible",
+    "hours": 24,
+    "penalty": 0
+  },
+  "status": "ACTIVE",
+  "channels": ["direct", "phone"],
+  "customer_segments": ["corporate"]
+}
+
+###
+// Create Government rate for Standard Room ($69)
+POST /v1/rates HTTP/1.1
+Host: localhost:3400
+Content-Type: application/json
+Authorization: Bearer {{core_token}}
+
+{
+  "tenant_id": "19b2afbb-e6f6-4776-8e52-efbab18f4bec",
+  "property_id": "eedfeb3f-4c09-47d9-9b02-2d8d6610ce27",
+  "room_type_id": "9300203c-775f-4ffe-ba03-6681f301f478",
+  "rate_name": "Government Rate - Standard Room",
+  "rate_code": "GOVT-STD",
+  "description": "Government per diem rate",
+  "rate_type": "GOVERNMENT",
+  "strategy": "FIXED",
+  "priority": 25,
+  "base_rate": 69.00,
+  "currency": "USD",
+  "valid_from": "2026-01-01",
+  "valid_until": "2026-12-31",
+  "min_length_of_stay": 1,
+  "status": "ACTIVE",
+  "channels": ["direct", "phone"],
+  "customer_segments": ["government"]
+}
+
+###
+// Create COMP rate for Standard Room (complimentary - $0)
+POST /v1/rates HTTP/1.1
+Host: localhost:3400
+Content-Type: application/json
+Authorization: Bearer {{core_token}}
+
+{
+  "tenant_id": "19b2afbb-e6f6-4776-8e52-efbab18f4bec",
+  "property_id": "eedfeb3f-4c09-47d9-9b02-2d8d6610ce27",
+  "room_type_id": "9300203c-775f-4ffe-ba03-6681f301f478",
+  "rate_name": "Complimentary - Standard Room",
+  "rate_code": "COMP-STD",
+  "description": "Complimentary stay for VIP guests",
+  "rate_type": "COMP",
+  "strategy": "FIXED",
+  "priority": 1,
+  "base_rate": 0.00,
+  "currency": "USD",
+  "valid_from": "2026-01-01",
+  "valid_until": "2026-12-31",
+  "min_length_of_stay": 1,
+  "status": "ACTIVE",
+  "channels": ["direct"],
+  "customer_segments": ["vip"]
+}
+
+###
+// Create House Use rate for Standard Room (internal use - $0)
+POST /v1/rates HTTP/1.1
+Host: localhost:3400
+Content-Type: application/json
+Authorization: Bearer {{core_token}}
+
+{
+  "tenant_id": "19b2afbb-e6f6-4776-8e52-efbab18f4bec",
+  "property_id": "eedfeb3f-4c09-47d9-9b02-2d8d6610ce27",
+  "room_type_id": "9300203c-775f-4ffe-ba03-6681f301f478",
+  "rate_name": "House Use - Standard Room",
+  "rate_code": "HOUSE-STD",
+  "description": "Internal use for staff or maintenance",
+  "rate_type": "HOUSE",
+  "strategy": "FIXED",
+  "priority": 2,
+  "base_rate": 0.00,
+  "currency": "USD",
+  "valid_from": "2026-01-01",
+  "valid_until": "2026-12-31",
+  "min_length_of_stay": 1,
+  "status": "ACTIVE",
+  "channels": ["direct"],
+  "customer_segments": ["internal"]
+}
+
+###
+// Create Early Bird rate for Standard Room ($85 - 10% off BAR for 14+ days advance)
+POST /v1/rates HTTP/1.1
+Host: localhost:3400
+Content-Type: application/json
+Authorization: Bearer {{core_token}}
+
+{
+  "tenant_id": "19b2afbb-e6f6-4776-8e52-efbab18f4bec",
+  "property_id": "eedfeb3f-4c09-47d9-9b02-2d8d6610ce27",
+  "room_type_id": "9300203c-775f-4ffe-ba03-6681f301f478",
+  "rate_name": "Early Bird Rate - Standard Room",
+  "rate_code": "EARLY-STD",
+  "description": "Book 14+ days in advance and save 10%",
+  "rate_type": "EARLYBIRD",
+  "strategy": "EARLYBIRD",
+  "priority": 70,
+  "base_rate": 89.00,
+  "currency": "USD",
+  "valid_from": "2026-01-01",
+  "valid_until": "2026-12-31",
+  "advance_booking_days_min": 14,
+  "min_length_of_stay": 1,
+  "cancellation_policy": {
+    "type": "moderate",
+    "hours": 72,
+    "penalty": 50
+  },
+  "status": "ACTIVE",
+  "channels": ["direct", "website", "ota"],
+  "customer_segments": ["all"]
+}
+
+###
+// Create Non-Refundable rate for Standard Room ($79 - 20% off BAR)
+POST /v1/rates HTTP/1.1
+Host: localhost:3400
+Content-Type: application/json
+Authorization: Bearer {{core_token}}
+
+{
+  "tenant_id": "19b2afbb-e6f6-4776-8e52-efbab18f4bec",
+  "property_id": "eedfeb3f-4c09-47d9-9b02-2d8d6610ce27",
+  "room_type_id": "9300203c-775f-4ffe-ba03-6681f301f478",
+  "rate_name": "Non-Refundable Rate - Standard Room",
+  "rate_code": "NR-STD",
+  "description": "Non-refundable rate - 20% discount",
+  "rate_type": "NON_REFUNDABLE",
+  "strategy": "FIXED",
+  "priority": 75,
+  "base_rate": 79.00,
+  "currency": "USD",
+  "valid_from": "2026-01-01",
+  "valid_until": "2026-12-31",
+  "min_length_of_stay": 1,
+  "cancellation_policy": {
+    "type": "non_refundable",
+    "hours": 0,
+    "penalty": 100
+  },
+  "status": "ACTIVE",
+  "channels": ["direct", "website", "ota"],
+  "customer_segments": ["all"]
+}
+
+###
+// Create Promo rate for Standard Room (Summer Sale)
+POST /v1/rates HTTP/1.1
+Host: localhost:3400
+Content-Type: application/json
+Authorization: Bearer {{core_token}}
+
+{
+  "tenant_id": "19b2afbb-e6f6-4776-8e52-efbab18f4bec",
+  "property_id": "eedfeb3f-4c09-47d9-9b02-2d8d6610ce27",
+  "room_type_id": "9300203c-775f-4ffe-ba03-6681f301f478",
+  "rate_name": "Summer Sale - Standard Room",
+  "rate_code": "SUMMER-STD",
+  "description": "Summer promotional rate",
+  "rate_type": "PROMO",
+  "strategy": "SEASONAL",
+  "priority": 45,
+  "base_rate": 75.00,
+  "currency": "USD",
+  "valid_from": "2026-06-01",
+  "valid_until": "2026-08-31",
+  "min_length_of_stay": 2,
+  "status": "ACTIVE",
+  "channels": ["direct", "website", "ota"],
+  "customer_segments": ["all"]
+}
+
+###
+// Create LOS rate for Standard Room (Stay 3+ nights)
+POST /v1/rates HTTP/1.1
+Host: localhost:3400
+Content-Type: application/json
+Authorization: Bearer {{core_token}}
+
+{
+  "tenant_id": "19b2afbb-e6f6-4776-8e52-efbab18f4bec",
+  "property_id": "eedfeb3f-4c09-47d9-9b02-2d8d6610ce27",
+  "room_type_id": "9300203c-775f-4ffe-ba03-6681f301f478",
+  "rate_name": "Extended Stay Rate - Standard Room",
+  "rate_code": "LOS3-STD",
+  "description": "Stay 3+ nights and save 15%",
+  "rate_type": "LOS",
+  "strategy": "FIXED",
+  "priority": 80,
+  "base_rate": 84.00,
+  "currency": "USD",
+  "valid_from": "2026-01-01",
+  "valid_until": "2026-12-31",
+  "min_length_of_stay": 3,
+  "status": "ACTIVE",
+  "channels": ["direct", "website", "ota"],
+  "customer_segments": ["all"]
+}
+
+###
+// ========================
+// RATES - CREATE (Deluxe King)
+// ========================
+
+// Create BAR rate for Deluxe King ($179)
+// Room Type ID: 2e5c6085-b217-4741-9dd3-538b4aa2df62 (DLX-K)
+POST /v1/rates HTTP/1.1
+Host: localhost:3400
+Content-Type: application/json
+Authorization: Bearer {{core_token}}
+
+{
+  "tenant_id": "19b2afbb-e6f6-4776-8e52-efbab18f4bec",
+  "property_id": "eedfeb3f-4c09-47d9-9b02-2d8d6610ce27",
+  "room_type_id": "2e5c6085-b217-4741-9dd3-538b4aa2df62",
+  "rate_name": "Best Available Rate - Deluxe King",
+  "rate_code": "BAR-DLX",
+  "description": "Best available rate for Deluxe King room",
+  "rate_type": "BAR",
+  "strategy": "DYNAMIC",
+  "priority": 100,
+  "base_rate": 179.00,
+  "currency": "USD",
+  "single_occupancy_rate": 159.00,
+  "double_occupancy_rate": 179.00,
+  "extra_person_rate": 25.00,
+  "valid_from": "2026-01-01",
+  "valid_until": "2026-12-31",
+  "min_length_of_stay": 1,
+  "status": "ACTIVE",
+  "channels": ["direct", "ota", "website"],
+  "customer_segments": ["all"]
+}
+
+###
+// Create RACK rate for Deluxe King ($229)
+POST /v1/rates HTTP/1.1
+Host: localhost:3400
+Content-Type: application/json
+Authorization: Bearer {{core_token}}
+
+{
+  "tenant_id": "19b2afbb-e6f6-4776-8e52-efbab18f4bec",
+  "property_id": "eedfeb3f-4c09-47d9-9b02-2d8d6610ce27",
+  "room_type_id": "2e5c6085-b217-4741-9dd3-538b4aa2df62",
+  "rate_name": "Rack Rate - Deluxe King",
+  "rate_code": "RACK-DLX",
+  "description": "Published rack rate for Deluxe King",
+  "rate_type": "RACK",
+  "strategy": "FIXED",
+  "priority": 200,
+  "base_rate": 229.00,
+  "currency": "USD",
+  "valid_from": "2026-01-01",
+  "valid_until": "2026-12-31",
+  "min_length_of_stay": 1,
+  "status": "ACTIVE",
+  "channels": ["direct", "phone", "walk_in"],
+  "customer_segments": ["all"]
+}
+
+###
+// ========================
+// RATES - GET BY ID
+// ========================
+
+// Get rate by ID (replace {rate_id} with actual ID from create response)
+GET /v1/rates/{rate_id}?tenant_id=19b2afbb-e6f6-4776-8e52-efbab18f4bec HTTP/1.1
+Host: localhost:3400
+Authorization: Bearer {{core_token}}
+
+###
+// ========================
+// RATES - UPDATE
+// ========================
+
+// Update rate base_rate (replace {rate_id} with actual ID)
+PUT /v1/rates/{rate_id} HTTP/1.1
+Host: localhost:3400
+Content-Type: application/json
+Authorization: Bearer {{core_token}}
+
+{
+  "tenant_id": "19b2afbb-e6f6-4776-8e52-efbab18f4bec",
+  "base_rate": 109.00,
+  "description": "Updated BAR rate for Standard Room"
+}
+
+###
+// Update rate status to INACTIVE
+PUT /v1/rates/{rate_id} HTTP/1.1
+Host: localhost:3400
+Content-Type: application/json
+Authorization: Bearer {{core_token}}
+
+{
+  "tenant_id": "19b2afbb-e6f6-4776-8e52-efbab18f4bec",
+  "status": "INACTIVE"
+}
+
+###
+// Update rate priority (lower = higher resolution priority)
+PUT /v1/rates/{rate_id} HTTP/1.1
+Host: localhost:3400
+Content-Type: application/json
+Authorization: Bearer {{core_token}}
+
+{
+  "tenant_id": "19b2afbb-e6f6-4776-8e52-efbab18f4bec",
+  "priority": 50
+}
+
+###
+// ========================
+// RATES - DELETE
+// ========================
+
+// Soft delete a rate (replace {rate_id} with actual ID)
+DELETE /v1/rates/{rate_id} HTTP/1.1
+Host: localhost:3400
+Content-Type: application/json
+Authorization: Bearer {{core_token}}
+
+{
+  "tenant_id": "19b2afbb-e6f6-4776-8e52-efbab18f4bec"
+}
+
+###
+// ========================
+// REFERENCE: IDs & PRICING
+// ========================
+//
+// TENANTS:
+//   Aurora Hospitality: 19b2afbb-e6f6-4776-8e52-efbab18f4bec
+//
+// PROPERTIES (Aurora):
+//   Aurora Central Hotel: eedfeb3f-4c09-47d9-9b02-2d8d6610ce27 (AUR-CEN)
+//
+// ROOM TYPES @ Aurora Central Hotel:
+//   STD       | Standard Room    | 9300203c-775f-4ffe-ba03-6681f301f478 | $99
+//   TWIN      | Twin Room        | 50967d25-50c8-474a-b010-a6e902f1e303 | $129
+//   ADA       | Accessible Room  | 9b4cb8bc-5d85-40c6-93cb-5cf036506c5a | $149
+//   DLX-K     | Deluxe King      | 2e5c6085-b217-4741-9dd3-538b4aa2df62 | $179
+//   FAMILY    | Family Room      | 39ccffe7-9f5a-4a5d-9f4c-94b35a4dd6df | $199
+//   JR-SUITE  | Junior Suite     | 7512710b-2048-43f5-8ada-11f8cd4e26a6 | $229
+//   SUITE     | Suite            | dfe4044f-278a-4afc-acc8-8ef222113981 | $299
+//
+// ========================
+// RATE TYPES (priority order)
+// ========================
+// COMP          | Complimentary        | Priority: 1
+// HOUSE         | House Use            | Priority: 2
+// CORPORATE     | Corporate Rate       | Priority: 20
+// GOVERNMENT    | Government Rate      | Priority: 25
+// TRAVEL_AGENT  | Travel Agent Rate    | Priority: 30
+// PROMO         | Promotional Rate     | Priority: 45
+// COUPON        | Coupon Code Rate     | Priority: 50
+// EARLYBIRD     | Early Bird Rate      | Priority: 70
+// NON_REFUNDABLE| Non-Refundable Rate  | Priority: 75
+// LOS           | Length of Stay Rate  | Priority: 80
+// LASTMINUTE    | Last Minute Deal     | Priority: 85
+// FLEXIBLE      | Flexible Rate        | Priority: 90
+// BAR           | Best Available Rate  | Priority: 100
+// DERIVED       | Derived Rate         | Priority: 150
+// RACK          | Published Rack Rate  | Priority: 200
+// MANUAL_OVERRIDE| Manual Override     | Priority: varies
+//
+// ========================
+// RATE STRATEGIES
+// ========================
+// FIXED     | Static pricing (no adjustments)
+// DYNAMIC   | Demand-based pricing (occupancy-driven)
+// SEASONAL  | Time-period based pricing
+// WEEKEND   | Day-of-week pricing
+// LASTMINUTE| Last-minute deals
+// EARLYBIRD | Advance booking discounts

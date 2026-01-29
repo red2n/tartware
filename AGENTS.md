@@ -17,6 +17,7 @@
 
 ## Schema-First Development
 - Always use the `schema/` package for data shapes and validation.
+- **Never define Zod schemas locally in App services**—import from `@tartware/schemas` instead.
 - Add or update schemas in `schema/src/schemas/...` before wiring new command handlers.
 - Keep command payloads aligned with schema definitions and enums.
 - Keep schema changes and SQL migrations in lockstep; never change one without the other.
@@ -24,6 +25,13 @@
 - Prefer additive, backward-compatible migrations: add nullable columns + defaults, backfill, then tighten constraints.
 - Use idempotent migration patterns (`IF NOT EXISTS`) and avoid destructive changes without an explicit rollback plan.
 - Add CHECK constraints for invariants (status enums, non-negative amounts) and keep audit fields (`created_at`, `updated_at`, `created_by`, `updated_by`) on new tables.
+
+## SQL Migration Execution
+- **Never leave new SQL migration files unexecuted**—run them against the local database immediately after creation.
+- New migration files (e.g., `scripts/YYYY-MM-DD-*.sql`) must be executed with: `psql -h localhost -U postgres -d tartware -f scripts/<migration-file>.sql`
+- After running a migration, verify it succeeded by checking affected tables/columns exist.
+- If a migration adds new ENUMs, tables, or columns, update `scripts/verify-installation.sql` or `scripts/verify-all.sql` expected counts if applicable.
+- Document one-time migrations in commit messages; recurring schema objects should be added to the appropriate `scripts/tables/`, `scripts/indexes/`, or `scripts/constraints/` directories for inclusion in master install.
 
 ## Reliability Defaults
 - Every new command must support idempotency keys and deduplication.
