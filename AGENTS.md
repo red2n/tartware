@@ -53,7 +53,9 @@
 
 ## Testing & Data Access
 - **Always use API routes** to test the application; do not use direct SQL queries or scripts (Python, TypeScript, shell) to GET, POST, PUT, or DELETE data in the database.
-- Use `http_test/*.http` files or `curl` commands against the running services for manual testing.
+- **Always route requests through the API Gateway (port 8080)**—never call individual services directly (ports 3000, 3100, 3400, etc.) during testing.
+- Use `http_test/*.http` files or `curl` commands against `localhost:8080` for manual testing.
+- The gateway provides unified authentication, rate limiting, and routing to backend services.
 - Direct database access is only permitted for read-only diagnostics (e.g., verifying record counts) or one-time migration scripts—never for routine data manipulation during testing.
 
 ## UI Scope

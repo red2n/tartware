@@ -1,7 +1,7 @@
 // valid login (tenant user)
 // NOTE: core-service runs on port 3000 by default
 POST /v1/auth/login HTTP/1.1
-Host: localhost:3000
+Host: localhost:8080
 Content-Type: application/json
 
 {"username":"setup.admin","password":"TempPass123"}
@@ -9,7 +9,7 @@ Content-Type: application/json
 ###
 // invalid login (missing username)
 POST /v1/auth/login HTTP/1.1
-Host: localhost:3000
+Host: localhost:8080
 Content-Type: application/json
 
 {"password":"TempPass123"}
@@ -17,54 +17,54 @@ Content-Type: application/json
 ###
 // valid GET tenants (requires Authorization header with Bearer token)
 GET /v1/tenants?limit=50 HTTP/1.1
-Host: localhost:3000
+Host: localhost:8080
 Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIzMzMzMzMzMy0zMzMzLTMzMzMtMzMzMy0zMzMzMzMzMzMzMzMiLCJ1c2VybmFtZSI6InNldHVwLmFkbWluIiwidHlwZSI6ImFjY2VzcyIsImlhdCI6MTc2OTU5NjU0OSwiZXhwIjoxNzY5NTk3NDQ5LCJhdWQiOiJ0YXJ0d2FyZS1jb3JlIiwiaXNzIjoidGFydHdhcmUtY29yZS1zZXJ2aWNlIn0.3IsaYVF93FLU0VqRANhfNHj_GJDRz-JhmKpz7pioZV0
 
 ###
 // invalid GET tenants (missing Authorization)
 GET /v1/tenants?limit=50 HTTP/1.1
-Host: localhost:3000
+Host: localhost:8080
 
 ###
 // valid GET properties (Aurora)
 GET /v1/properties?tenant_id=19b2afbb-e6f6-4776-8e52-efbab18f4bec&limit=50 HTTP/1.1
-Host: localhost:3000
+Host: localhost:8080
 Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJlZDU3MDM4Mi03Mjc0LTQ2NjQtYjZlYy02OWUwY2M2MjYwYmEiLCJ1c2VybmFtZSI6ImF1cm9yYS5vd25lciIsInR5cGUiOiJhY2Nlc3MiLCJpYXQiOjE3Njk1OTY1NDksImV4cCI6MTc2OTU5NzQ0OSwiYXVkIjoidGFydHdhcmUtY29yZSIsImlzcyI6InRhcnR3YXJlLWNvcmUtc2VydmljZSJ9.XjwW2zV9v0M26gJNUqKedFtqEqiu9pK-gMWA4rEems0
 
 ###
 // invalid GET properties (missing tenant_id)
 GET /v1/properties?limit=50 HTTP/1.1
-Host: localhost:3000
+Host: localhost:8080
 Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJlZDU3MDM4Mi03Mjc0LTQ2NjQtYjZlYy02OWUwY2M2MjYwYmEiLCJ1c2VybmFtZSI6ImF1cm9yYS5vd25lciIsInR5cGUiOiJhY2Nlc3MiLCJpYXQiOjE3Njk1OTY1NDksImV4cCI6MTc2OTU5NzQ0OSwiYXVkIjoidGFydHdhcmUtY29yZSIsImlzcyI6InRhcnR3YXJlLWNvcmUtc2VydmljZSJ9.XjwW2zV9v0M26gJNUqKedFtqEqiu9pK-gMWA4rEems0
 
 ###
 // valid GET properties (Cedar)
 GET /v1/properties?tenant_id=8c332645-d702-4391-a026-d141c53df71c&limit=50 HTTP/1.1
-Host: localhost:3000
+Host: localhost:8080
 Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIyZmU5MWU4ZS0yNDk2LTQ1OTYtYTRmNy1iNzBiZGI0MDlmOGMiLCJ1c2VybmFtZSI6ImNlZGFyLm93bmVyIiwidHlwZSI6ImFjY2VzcyIsImlhdCI6MTc2OTU5NjU0OSwiZXhwIjoxNzY5NTk3NDQ5LCJhdWQiOiJ0YXJ0d2FyZS1jb3JlIiwiaXNzIjoidGFydHdhcmUtY29yZS1zZXJ2aWNlIn0.7oXawPPwOhHfJulhuxy8reYQa-6DaChK5Vzwdeoyums
 
 ###
 // valid GET properties (Mariner)
 GET /v1/properties?tenant_id=2c89b4c0-335c-4e36-a134-c2740bda6666&limit=50 HTTP/1.1
-Host: localhost:3000
+Host: localhost:8080
 Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI2NTljNjE5Zi1kY2FjLTRlYjEtYmJjMC05OTM1MzI1ZmU3MmYiLCJ1c2VybmFtZSI6Im1hcmluZXIub3duZXIiLCJ0eXBlIjoiYWNjZXNzIiwiaWF0IjoxNzY5NTk2NTUwLCJleHAiOjE3Njk1OTc0NTAsImF1ZCI6InRhcnR3YXJlLWNvcmUiLCJpc3MiOiJ0YXJ0d2FyZS1jb3JlLXNlcnZpY2UifQ.rSRP8QMQgx8UO0irSFWaaCaN9zY1kAWJBZDEBSVqlks
 
 ###
 // valid GET dashboard stats
 GET /v1/dashboard/stats?tenant_id=19b2afbb-e6f6-4776-8e52-efbab18f4bec HTTP/1.1
-Host: localhost:3000
+Host: localhost:8080
 Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJlZDU3MDM4Mi03Mjc0LTQ2NjQtYjZlYy02OWUwY2M2MjYwYmEiLCJ1c2VybmFtZSI6ImF1cm9yYS5vd25lciIsInR5cGUiOiJhY2Nlc3MiLCJpYXQiOjE3Njk1OTY1NDksImV4cCI6MTc2OTU5NzQ0OSwiYXVkIjoidGFydHdhcmUtY29yZSIsImlzcyI6InRhcnR3YXJlLWNvcmUtc2VydmljZSJ9.XjwW2zV9v0M26gJNUqKedFtqEqiu9pK-gMWA4rEems0
 
 ###
 // invalid GET dashboard stats (missing tenant_id)
 GET /v1/dashboard/stats HTTP/1.1
-Host: localhost:3000
+Host: localhost:8080
 Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJlZDU3MDM4Mi03Mjc0LTQ2NjQtYjZlYy02OWUwY2M2MjYwYmEiLCJ1c2VybmFtZSI6ImF1cm9yYS5vd25lciIsInR5cGUiOiJhY2Nlc3MiLCJpYXQiOjE3Njk1OTY1NDksImV4cCI6MTc2OTU5NzQ0OSwiYXVkIjoidGFydHdhcmUtY29yZSIsImlzcyI6InRhcnR3YXJlLWNvcmUtc2VydmljZSJ9.XjwW2zV9v0M26gJNUqKedFtqEqiu9pK-gMWA4rEems0
 
 ###
 // create new tenant + owner user (bootstrap)
 POST /v1/tenants/bootstrap HTTP/1.1
-Host: localhost:3000
+Host: localhost:8080
 Content-Type: application/json
 Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIzMzMzMzMzMy0zMzMzLTMzMzMtMzMzMy0zMzMzMzMzMzMzMzMiLCJ1c2VybmFtZSI6InNldHVwLmFkbWluIiwidHlwZSI6ImFjY2VzcyIsImlhdCI6MTc2OTU5NjU0OSwiZXhwIjoxNzY5NTk3NDQ5LCJhdWQiOiJ0YXJ0d2FyZS1jb3JlIiwiaXNzIjoidGFydHdhcmUtY29yZS1zZXJ2aWNlIn0.3IsaYVF93FLU0VqRANhfNHj_GJDRz-JhmKpz7pioZV0
 
@@ -104,7 +104,7 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIzMzMzMzMzM
 ###
 // login owner to get token
 POST /v1/auth/login HTTP/1.1
-Host: localhost:3000
+Host: localhost:8080
 Content-Type: application/json
 
 {"username":"harborlight.owner","password":"TempPass123"}
@@ -112,7 +112,7 @@ Content-Type: application/json
 ###
 // create property (use tenant_id from bootstrap response)
 POST /v1/properties HTTP/1.1
-Host: localhost:3000
+Host: localhost:8080
 Content-Type: application/json
 Authorization: Bearer {{owner_token}}
 
@@ -139,13 +139,13 @@ Authorization: Bearer {{owner_token}}
 
 // view auth context (memberships, authorized tenants)
 GET /v1/auth/context HTTP/1.1
-Host: localhost:3000
+Host: localhost:8080
 Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJlZDU3MDM4Mi03Mjc0LTQ2NjQtYjZlYy02OWUwY2M2MjYwYmEiLCJ1c2VybmFtZSI6ImF1cm9yYS5vd25lciIsInR5cGUiOiJhY2Nlc3MiLCJpYXQiOjE3Njk1OTY1NDksImV4cCI6MTc2OTU5NzQ0OSwiYXVkIjoidGFydHdhcmUtY29yZSIsImlzcyI6InRhcnR3YXJlLWNvcmUtc2VydmljZSJ9.XjwW2zV9v0M26gJNUqKedFtqEqiu9pK-gMWA4rEems0
 
 ###
 // change password (requires valid current password)
 POST /v1/auth/change-password HTTP/1.1
-Host: localhost:3000
+Host: localhost:8080
 Content-Type: application/json
 Authorization: Bearer {{owner_token}}
 
@@ -161,13 +161,13 @@ Authorization: Bearer {{owner_token}}
 
 // start MFA enrollment (returns secret and otpauth_url)
 POST /v1/auth/mfa/enroll HTTP/1.1
-Host: localhost:3000
+Host: localhost:8080
 Authorization: Bearer {{owner_token}}
 
 ###
 // verify MFA code to enable MFA
 POST /v1/auth/mfa/verify HTTP/1.1
-Host: localhost:3000
+Host: localhost:8080
 Content-Type: application/json
 Authorization: Bearer {{owner_token}}
 
@@ -178,7 +178,7 @@ Authorization: Bearer {{owner_token}}
 ###
 // rotate MFA secret (requires current MFA code)
 POST /v1/auth/mfa/rotate HTTP/1.1
-Host: localhost:3000
+Host: localhost:8080
 Content-Type: application/json
 Authorization: Bearer {{owner_token}}
 
@@ -193,13 +193,13 @@ Authorization: Bearer {{owner_token}}
 
 // list users for a tenant (requires MANAGER+ role)
 GET /v1/users?tenant_id=19b2afbb-e6f6-4776-8e52-efbab18f4bec&limit=50 HTTP/1.1
-Host: localhost:3000
+Host: localhost:8080
 Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJlZDU3MDM4Mi03Mjc0LTQ2NjQtYjZlYy02OWUwY2M2MjYwYmEiLCJ1c2VybmFtZSI6ImF1cm9yYS5vd25lciIsInR5cGUiOiJhY2Nlc3MiLCJpYXQiOjE3Njk1OTY1NDksImV4cCI6MTc2OTU5NzQ0OSwiYXVkIjoidGFydHdhcmUtY29yZSIsImlzcyI6InRhcnR3YXJlLWNvcmUtc2VydmljZSJ9.XjwW2zV9v0M26gJNUqKedFtqEqiu9pK-gMWA4rEems0
 
 ###
 // create a new tenant user (requires ADMIN+ role)
 POST /v1/users HTTP/1.1
-Host: localhost:3000
+Host: localhost:8080
 Content-Type: application/json
 Authorization: Bearer {{owner_token}}
 
@@ -216,7 +216,7 @@ Authorization: Bearer {{owner_token}}
 ###
 // reset a user's password (requires ADMIN+ role)
 POST /v1/users/reset-password HTTP/1.1
-Host: localhost:3000
+Host: localhost:8080
 Content-Type: application/json
 Authorization: Bearer {{owner_token}}
 
@@ -240,17 +240,349 @@ Authorization: Bearer {{owner_token}}
 // ========================
 
 ###
+// ========================
+// DASHBOARD - ACTIVITY & TASKS
+// ========================
+
+// recent activity feed (requires MANAGER+ role)
+GET /v1/dashboard/activity?tenant_id=19b2afbb-e6f6-4776-8e52-efbab18f4bec HTTP/1.1
+Host: localhost:8080
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJlZDU3MDM4Mi03Mjc0LTQ2NjQtYjZlYy02OWUwY2M2MjYwYmEiLCJ1c2VybmFtZSI6ImF1cm9yYS5vd25lciIsInR5cGUiOiJhY2Nlc3MiLCJpYXQiOjE3Njk1OTY1NDksImV4cCI6MTc2OTU5NzQ0OSwiYXVkIjoidGFydHdhcmUtY29yZSIsImlzcyI6InRhcnR3YXJlLWNvcmUtc2VydmljZSJ9.XjwW2zV9v0M26gJNUqKedFtqEqiu9pK-gMWA4rEems0
+
+###
+// activity feed for specific property
+GET /v1/dashboard/activity?tenant_id=19b2afbb-e6f6-4776-8e52-efbab18f4bec&property_id=eedfeb3f-4c09-47d9-9b02-2d8d6610ce27 HTTP/1.1
+Host: localhost:8080
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJlZDU3MDM4Mi03Mjc0LTQ2NjQtYjZlYy02OWUwY2M2MjYwYmEiLCJ1c2VybmFtZSI6ImF1cm9yYS5vd25lciIsInR5cGUiOiJhY2Nlc3MiLCJpYXQiOjE3Njk1OTY1NDksImV4cCI6MTc2OTU5NzQ0OSwiYXVkIjoidGFydHdhcmUtY29yZSIsImlzcyI6InRhcnR3YXJlLWNvcmUtc2VydmljZSJ9.XjwW2zV9v0M26gJNUqKedFtqEqiu9pK-gMWA4rEems0
+
+###
+// upcoming tasks (check-ins/check-outs)
+GET /v1/dashboard/tasks?tenant_id=19b2afbb-e6f6-4776-8e52-efbab18f4bec HTTP/1.1
+Host: localhost:8080
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJlZDU3MDM4Mi03Mjc0LTQ2NjQtYjZlYy02OWUwY2M2MjYwYmEiLCJ1c2VybmFtZSI6ImF1cm9yYS5vd25lciIsInR5cGUiOiJhY2Nlc3MiLCJpYXQiOjE3Njk1OTY1NDksImV4cCI6MTc2OTU5NzQ0OSwiYXVkIjoidGFydHdhcmUtY29yZSIsImlzcyI6InRhcnR3YXJlLWNvcmUtc2VydmljZSJ9.XjwW2zV9v0M26gJNUqKedFtqEqiu9pK-gMWA4rEems0
+
+###
+// upcoming tasks for specific property
+GET /v1/dashboard/tasks?tenant_id=19b2afbb-e6f6-4776-8e52-efbab18f4bec&property_id=eedfeb3f-4c09-47d9-9b02-2d8d6610ce27 HTTP/1.1
+Host: localhost:8080
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJlZDU3MDM4Mi03Mjc0LTQ2NjQtYjZlYy02OWUwY2M2MjYwYmEiLCJ1c2VybmFtZSI6ImF1cm9yYS5vd25lciIsInR5cGUiOiJhY2Nlc3MiLCJpYXQiOjE3Njk1OTY1NDksImV4cCI6MTc2OTU5NzQ0OSwiYXVkIjoidGFydHdhcmUtY29yZSIsImlzcyI6InRhcnR3YXJlLWNvcmUtc2VydmljZSJ9.XjwW2zV9v0M26gJNUqKedFtqEqiu9pK-gMWA4rEems0
+
+###
+// ========================
+// MODULES CATALOG
+// ========================
+
+// list available platform modules (requires authentication)
+GET /v1/modules/catalog HTTP/1.1
+Host: localhost:8080
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJlZDU3MDM4Mi03Mjc0LTQ2NjQtYjZlYy02OWUwY2M2MjYwYmEiLCJ1c2VybmFtZSI6ImF1cm9yYS5vd25lciIsInR5cGUiOiJhY2Nlc3MiLCJpYXQiOjE3Njk1OTY1NDksImV4cCI6MTc2OTU5NzQ0OSwiYXVkIjoidGFydHdhcmUtY29yZSIsImlzcyI6InRhcnR3YXJlLWNvcmUtc2VydmljZSJ9.XjwW2zV9v0M26gJNUqKedFtqEqiu9pK-gMWA4rEems0
+
+###
+// list modules enabled for Aurora tenant
+GET /v1/tenants/19b2afbb-e6f6-4776-8e52-efbab18f4bec/modules HTTP/1.1
+Host: localhost:8080
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJlZDU3MDM4Mi03Mjc0LTQ2NjQtYjZlYy02OWUwY2M2MjYwYmEiLCJ1c2VybmFtZSI6ImF1cm9yYS5vd25lciIsInR5cGUiOiJhY2Nlc3MiLCJpYXQiOjE3Njk1OTY1NDksImV4cCI6MTc2OTU5NzQ0OSwiYXVkIjoidGFydHdhcmUtY29yZSIsImlzcyI6InRhcnR3YXJlLWNvcmUtc2VydmljZSJ9.XjwW2zV9v0M26gJNUqKedFtqEqiu9pK-gMWA4rEems0
+
+###
+// ========================
+// REPORTS
+// ========================
+
+// generate performance report (requires analytics-bi module)
+GET /v1/reports/performance?tenant_id=19b2afbb-e6f6-4776-8e52-efbab18f4bec HTTP/1.1
+Host: localhost:8080
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJlZDU3MDM4Mi03Mjc0LTQ2NjQtYjZlYy02OWUwY2M2MjYwYmEiLCJ1c2VybmFtZSI6ImF1cm9yYS5vd25lciIsInR5cGUiOiJhY2Nlc3MiLCJpYXQiOjE3Njk1OTY1NDksImV4cCI6MTc2OTU5NzQ0OSwiYXVkIjoidGFydHdhcmUtY29yZSIsImlzcyI6InRhcnR3YXJlLWNvcmUtc2VydmljZSJ9.XjwW2zV9v0M26gJNUqKedFtqEqiu9pK-gMWA4rEems0
+
+###
+// performance report with date range
+GET /v1/reports/performance?tenant_id=19b2afbb-e6f6-4776-8e52-efbab18f4bec&start_date=2026-01-01&end_date=2026-01-31 HTTP/1.1
+Host: localhost:8080
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJlZDU3MDM4Mi03Mjc0LTQ2NjQtYjZlYy02OWUwY2M2MjYwYmEiLCJ1c2VybmFtZSI6ImF1cm9yYS5vd25lciIsInR5cGUiOiJhY2Nlc3MiLCJpYXQiOjE3Njk1OTY1NDksImV4cCI6MTc2OTU5NzQ0OSwiYXVkIjoidGFydHdhcmUtY29yZSIsImlzcyI6InRhcnR3YXJlLWNvcmUtc2VydmljZSJ9.XjwW2zV9v0M26gJNUqKedFtqEqiu9pK-gMWA4rEems0
+
+###
+// performance report for specific property
+GET /v1/reports/performance?tenant_id=19b2afbb-e6f6-4776-8e52-efbab18f4bec&property_id=eedfeb3f-4c09-47d9-9b02-2d8d6610ce27 HTTP/1.1
+Host: localhost:8080
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJlZDU3MDM4Mi03Mjc0LTQ2NjQtYjZlYy02OWUwY2M2MjYwYmEiLCJ1c2VybmFtZSI6ImF1cm9yYS5vd25lciIsInR5cGUiOiJhY2Nlc3MiLCJpYXQiOjE3Njk1OTY1NDksImV4cCI6MTc2OTU5NzQ0OSwiYXVkIjoidGFydHdhcmUtY29yZSIsImlzcyI6InRhcnR3YXJlLWNvcmUtc2VydmljZSJ9.XjwW2zV9v0M26gJNUqKedFtqEqiu9pK-gMWA4rEems0
+
+###
+// ========================
+// RESERVATIONS
+// ========================
+
+// list reservations for tenant
+GET /v1/reservations?tenant_id=19b2afbb-e6f6-4776-8e52-efbab18f4bec&limit=50 HTTP/1.1
+Host: localhost:8080
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJlZDU3MDM4Mi03Mjc0LTQ2NjQtYjZlYy02OWUwY2M2MjYwYmEiLCJ1c2VybmFtZSI6ImF1cm9yYS5vd25lciIsInR5cGUiOiJhY2Nlc3MiLCJpYXQiOjE3Njk1OTY1NDksImV4cCI6MTc2OTU5NzQ0OSwiYXVkIjoidGFydHdhcmUtY29yZSIsImlzcyI6InRhcnR3YXJlLWNvcmUtc2VydmljZSJ9.XjwW2zV9v0M26gJNUqKedFtqEqiu9pK-gMWA4rEems0
+
+###
+// reservations filtered by property
+GET /v1/reservations?tenant_id=19b2afbb-e6f6-4776-8e52-efbab18f4bec&property_id=eedfeb3f-4c09-47d9-9b02-2d8d6610ce27&limit=50 HTTP/1.1
+Host: localhost:8080
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJlZDU3MDM4Mi03Mjc0LTQ2NjQtYjZlYy02OWUwY2M2MjYwYmEiLCJ1c2VybmFtZSI6ImF1cm9yYS5vd25lciIsInR5cGUiOiJhY2Nlc3MiLCJpYXQiOjE3Njk1OTY1NDksImV4cCI6MTc2OTU5NzQ0OSwiYXVkIjoidGFydHdhcmUtY29yZSIsImlzcyI6InRhcnR3YXJlLWNvcmUtc2VydmljZSJ9.XjwW2zV9v0M26gJNUqKedFtqEqiu9pK-gMWA4rEems0
+
+###
+// reservations filtered by status (confirmed)
+GET /v1/reservations?tenant_id=19b2afbb-e6f6-4776-8e52-efbab18f4bec&status=confirmed&limit=50 HTTP/1.1
+Host: localhost:8080
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJlZDU3MDM4Mi03Mjc0LTQ2NjQtYjZlYy02OWUwY2M2MjYwYmEiLCJ1c2VybmFtZSI6ImF1cm9yYS5vd25lciIsInR5cGUiOiJhY2Nlc3MiLCJpYXQiOjE3Njk1OTY1NDksImV4cCI6MTc2OTU5NzQ0OSwiYXVkIjoidGFydHdhcmUtY29yZSIsImlzcyI6InRhcnR3YXJlLWNvcmUtc2VydmljZSJ9.XjwW2zV9v0M26gJNUqKedFtqEqiu9pK-gMWA4rEems0
+
+###
+// reservations search by guest name
+GET /v1/reservations?tenant_id=19b2afbb-e6f6-4776-8e52-efbab18f4bec&search=Smith&limit=50 HTTP/1.1
+Host: localhost:8080
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJlZDU3MDM4Mi03Mjc0LTQ2NjQtYjZlYy02OWUwY2M2MjYwYmEiLCJ1c2VybmFtZSI6ImF1cm9yYS5vd25lciIsInR5cGUiOiJhY2Nlc3MiLCJpYXQiOjE3Njk1OTY1NDksImV4cCI6MTc2OTU5NzQ0OSwiYXVkIjoidGFydHdhcmUtY29yZSIsImlzcyI6InRhcnR3YXJlLWNvcmUtc2VydmljZSJ9.XjwW2zV9v0M26gJNUqKedFtqEqiu9pK-gMWA4rEems0
+
+###
+// ========================
+// USER-TENANT ASSOCIATIONS
+// ========================
+
+// list user-tenant associations for Aurora
+GET /v1/user-tenant-associations?tenant_id=19b2afbb-e6f6-4776-8e52-efbab18f4bec&limit=50 HTTP/1.1
+Host: localhost:8080
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJlZDU3MDM4Mi03Mjc0LTQ2NjQtYjZlYy02OWUwY2M2MjYwYmEiLCJ1c2VybmFtZSI6ImF1cm9yYS5vd25lciIsInR5cGUiOiJhY2Nlc3MiLCJpYXQiOjE3Njk1OTY1NDksImV4cCI6MTc2OTU5NzQ0OSwiYXVkIjoidGFydHdhcmUtY29yZSIsImlzcyI6InRhcnR3YXJlLWNvcmUtc2VydmljZSJ9.XjwW2zV9v0M26gJNUqKedFtqEqiu9pK-gMWA4rEems0
+
+###
+// filter associations by role (MANAGER)
+GET /v1/user-tenant-associations?tenant_id=19b2afbb-e6f6-4776-8e52-efbab18f4bec&role=MANAGER HTTP/1.1
+Host: localhost:8080
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJlZDU3MDM4Mi03Mjc0LTQ2NjQtYjZlYy02OWUwY2M2MjYwYmEiLCJ1c2VybmFtZSI6ImF1cm9yYS5vd25lciIsInR5cGUiOiJhY2Nlc3MiLCJpYXQiOjE3Njk1OTY1NDksImV4cCI6MTc2OTU5NzQ0OSwiYXVkIjoidGFydHdhcmUtY29yZSIsImlzcyI6InRhcnR3YXJlLWNvcmUtc2VydmljZSJ9.XjwW2zV9v0M26gJNUqKedFtqEqiu9pK-gMWA4rEems0
+
+###
+// filter associations by active status
+GET /v1/user-tenant-associations?tenant_id=19b2afbb-e6f6-4776-8e52-efbab18f4bec&is_active=true HTTP/1.1
+Host: localhost:8080
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJlZDU3MDM4Mi03Mjc0LTQ2NjQtYjZlYy02OWUwY2M2MjYwYmEiLCJ1c2VybmFtZSI6ImF1cm9yYS5vd25lciIsInR5cGUiOiJhY2Nlc3MiLCJpYXQiOjE3Njk1OTY1NDksImV4cCI6MTc2OTU5NzQ0OSwiYXVkIjoidGFydHdhcmUtY29yZSIsImlzcyI6InRhcnR3YXJlLWNvcmUtc2VydmljZSJ9.XjwW2zV9v0M26gJNUqKedFtqEqiu9pK-gMWA4rEems0
+
+###
+// update user's tenant role (requires ADMIN+ role)
+POST /v1/user-tenant-associations/role HTTP/1.1
+Host: localhost:8080
+Content-Type: application/json
+Authorization: Bearer {{owner_token}}
+
+{
+	"tenant_id": "19b2afbb-e6f6-4776-8e52-efbab18f4bec",
+	"user_id": "{{user_id}}",
+	"role": "MANAGER"
+}
+
+###
+// activate/deactivate user's tenant access
+POST /v1/user-tenant-associations/status HTTP/1.1
+Host: localhost:8080
+Content-Type: application/json
+Authorization: Bearer {{owner_token}}
+
+{
+	"tenant_id": "19b2afbb-e6f6-4776-8e52-efbab18f4bec",
+	"user_id": "{{user_id}}",
+	"is_active": false
+}
+
+###
+// ========================
+// SYSTEM ADMIN AUTHENTICATION
+// ========================
+// NOTE: These endpoints require system administrator credentials
+// and device fingerprinting for security.
+
+// system admin login (requires MFA if enabled)
+POST /v1/system/auth/login HTTP/1.1
+Host: localhost:8080
+Content-Type: application/json
+
+{
+	"username": "platform.admin",
+	"password": "SystemSecurePass123!",
+	"device_fingerprint": "browser-fingerprint-abc123"
+}
+
+###
+// system admin login with MFA code
+POST /v1/system/auth/login HTTP/1.1
+Host: localhost:8080
+Content-Type: application/json
+
+{
+	"username": "platform.admin",
+	"password": "SystemSecurePass123!",
+	"mfa_code": "123456",
+	"device_fingerprint": "browser-fingerprint-abc123"
+}
+
+###
+// emergency break-glass login (requires break-glass code)
+POST /v1/system/auth/break-glass HTTP/1.1
+Host: localhost:8080
+Content-Type: application/json
+
+{
+	"username": "platform.admin",
+	"break_glass_code": "EMERGNCY-CODE-12345678",
+	"reason": "Production incident requiring immediate system access - INC-2026-001",
+	"ticket_id": "INC-2026-001",
+	"device_fingerprint": "browser-fingerprint-abc123"
+}
+
+###
+// ========================
+// SYSTEM ADMIN - IMPERSONATION
+// ========================
+// NOTE: Requires system admin token with SYSTEM_SUPPORT+ role
+
+// start tenant impersonation session
+POST /v1/system/impersonate HTTP/1.1
+Host: localhost:8080
+Content-Type: application/json
+Authorization: Bearer {{system_admin_token}}
+
+{
+	"tenant_id": "19b2afbb-e6f6-4776-8e52-efbab18f4bec",
+	"user_id": "ed570382-7274-4664-b6ec-69e0cc6260ba",
+	"reason": "Customer support ticket investigation - TICKET-2026-001",
+	"ticket_id": "TICKET-2026-001"
+}
+
+###
+// ========================
+// SYSTEM ADMIN - TENANT MANAGEMENT
+// ========================
+// NOTE: Requires system admin token
+
+// list all tenants (system admin view)
+GET /v1/system/tenants?limit=50 HTTP/1.1
+Host: localhost:8080
+Authorization: Bearer {{system_admin_token}}
+
+###
+// create a new tenant (system admin)
+POST /v1/system/tenants HTTP/1.1
+Host: localhost:8080
+Content-Type: application/json
+Authorization: Bearer {{system_admin_token}}
+
+{
+	"name": "New Test Tenant",
+	"slug": "new-test-tenant",
+	"type": "INDEPENDENT",
+	"email": "admin@newtest.demo"
+}
+
+###
+// bootstrap tenant with property and owner (system admin)
+POST /v1/system/tenants/bootstrap HTTP/1.1
+Host: localhost:8080
+Content-Type: application/json
+Authorization: Bearer {{system_admin_token}}
+
+{
+	"tenant": {
+		"name": "Oceanview Resorts",
+		"slug": "oceanview-resorts",
+		"type": "INDEPENDENT",
+		"email": "admin@oceanview.demo"
+	},
+	"property": {
+		"property_name": "Oceanview Beach Resort",
+		"property_code": "OCN-BCH",
+		"property_type": "RESORT",
+		"star_rating": 4,
+		"total_rooms": 150,
+		"phone": "+15551234",
+		"email": "resort@oceanview.demo",
+		"address": {
+			"line1": "1 Beach Drive",
+			"city": "Miami",
+			"state": "FL",
+			"postal_code": "33139",
+			"country": "US"
+		},
+		"currency": "USD",
+		"timezone": "America/New_York"
+	},
+	"owner": {
+		"username": "oceanview.admin",
+		"email": "admin@oceanview.demo",
+		"password": "TempPass123",
+		"first_name": "Ocean",
+		"last_name": "Admin"
+	}
+}
+
+###
+// ========================
+// SYSTEM ADMIN - USER MANAGEMENT
+// ========================
+
+// list all users across tenants (system admin)
+GET /v1/system/users?limit=100 HTTP/1.1
+Host: localhost:8080
+Authorization: Bearer {{system_admin_token}}
+
+###
+// list users for specific tenant (system admin)
+GET /v1/system/users?tenant_id=19b2afbb-e6f6-4776-8e52-efbab18f4bec&limit=50 HTTP/1.1
+Host: localhost:8080
+Authorization: Bearer {{system_admin_token}}
+
+###
+// create user via system admin
+POST /v1/system/users HTTP/1.1
+Host: localhost:8080
+Content-Type: application/json
+Authorization: Bearer {{system_admin_token}}
+
+{
+	"username": "new.support.user",
+	"email": "support@platform.demo",
+	"password": "TempPass123",
+	"first_name": "Support",
+	"last_name": "User"
+}
+
+###
+// create user with tenant assignment (system admin)
+POST /v1/system/users HTTP/1.1
+Host: localhost:8080
+Content-Type: application/json
+Authorization: Bearer {{system_admin_token}}
+
+{
+	"username": "aurora.staff",
+	"email": "staff@aurora.demo",
+	"password": "TempPass123",
+	"first_name": "Aurora",
+	"last_name": "Staff",
+	"tenant_id": "19b2afbb-e6f6-4776-8e52-efbab18f4bec",
+	"role": "STAFF"
+}
+
+###
+// ========================
+// REFERENCE: SYSTEM ADMIN ROLES
+// ========================
+//
+// SYSTEM_SUPER_ADMIN - Full platform access, can manage all system admins
+// SYSTEM_ADMIN       - Full platform access, can create tenants/users
+// SYSTEM_OPERATOR    - Read-only system access for monitoring
+// SYSTEM_SUPPORT     - Support access, can impersonate tenant users
+//
+// ========================
+
+###
 // curl commands for creating tenant + user, token, and properties
-// curl -sS -X POST http://localhost:3000/v1/tenants/bootstrap \
+// curl -sS -X POST http://localhost:8080/v1/tenants/bootstrap \
 //   -H "Content-Type: application/json" \
 //   -H "Authorization: Bearer <SETUP_ADMIN_TOKEN>" \
 //   -d '{"tenant":{"name":"Harborlight Hotels","slug":"harborlight-hotels","type":"INDEPENDENT","email":"ops@harborlight.demo","phone":"+15551212","website":"https://harborlight.demo","country":"US","config":{"features":["reservations","housekeeping","payments"],"maxUsers":25,"maxProperties":5,"defaultCurrency":"USD","defaultLanguage":"en","defaultTimezone":"UTC","enableMultiProperty":true,"enableChannelManager":false,"enableLoyaltyProgram":false,"enableAdvancedReporting":true,"enablePaymentProcessing":true,"brandingEnabled":true}},"owner":{"username":"harborlight.owner","email":"harborlight.owner@harborlight.demo","first_name":"Harborlight","last_name":"Owner","password":"TempPass123"}}'
 //
-// curl -sS -X POST http://localhost:3000/v1/auth/login \
+// curl -sS -X POST http://localhost:8080/v1/auth/login \
 //   -H "Content-Type: application/json" \
 //   -d '{"username":"harborlight.owner","password":"TempPass123"}'
 //
-// curl -sS -X POST http://localhost:3000/v1/properties \
+// curl -sS -X POST http://localhost:8080/v1/properties \
 //   -H "Content-Type: application/json" \
 //   -H "Authorization: Bearer <OWNER_TOKEN>" \
 //   -d '{"tenant_id":"<TENANT_ID_FROM_BOOTSTRAP>","property_name":"Harborlight Bay Resort","property_code":"HBR-BAY","address":{"line1":"101 Bayfront Ave","city":"San Diego","state":"CA","country":"US","postal_code":"92101"},"phone":"+15551213","email":"bay@harborlight.demo","website":"https://bay.harborlight.demo"}'

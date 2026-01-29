@@ -20,7 +20,7 @@
 
 // login to core-service to get tenant-scoped token
 POST /v1/auth/login HTTP/1.1
-Host: localhost:3000
+Host: localhost:8080
 Content-Type: application/json
 
 {"username":"aurora.owner","password":"TempPass123"}
@@ -32,32 +32,32 @@ Content-Type: application/json
 
 // List all rates for Aurora Central Hotel
 GET /v1/rates?tenant_id=19b2afbb-e6f6-4776-8e52-efbab18f4bec&property_id=eedfeb3f-4c09-47d9-9b02-2d8d6610ce27&limit=50 HTTP/1.1
-Host: localhost:3400
+Host: localhost:8080
 Authorization: Bearer {{core_token}}
 
 ###
 // List rates filtered by status=ACTIVE
 GET /v1/rates?tenant_id=19b2afbb-e6f6-4776-8e52-efbab18f4bec&property_id=eedfeb3f-4c09-47d9-9b02-2d8d6610ce27&status=ACTIVE HTTP/1.1
-Host: localhost:3400
+Host: localhost:8080
 Authorization: Bearer {{core_token}}
 
 ###
 // List rates filtered by rate_type=BAR
 GET /v1/rates?tenant_id=19b2afbb-e6f6-4776-8e52-efbab18f4bec&property_id=eedfeb3f-4c09-47d9-9b02-2d8d6610ce27&rate_type=BAR HTTP/1.1
-Host: localhost:3400
+Host: localhost:8080
 Authorization: Bearer {{core_token}}
 
 ###
 // List rates for specific room type (STD)
 // Room Type ID: 9300203c-775f-4ffe-ba03-6681f301f478
 GET /v1/rates?tenant_id=19b2afbb-e6f6-4776-8e52-efbab18f4bec&property_id=eedfeb3f-4c09-47d9-9b02-2d8d6610ce27&room_type_id=9300203c-775f-4ffe-ba03-6681f301f478 HTTP/1.1
-Host: localhost:3400
+Host: localhost:8080
 Authorization: Bearer {{core_token}}
 
 ###
 // Search rates by name
 GET /v1/rates?tenant_id=19b2afbb-e6f6-4776-8e52-efbab18f4bec&property_id=eedfeb3f-4c09-47d9-9b02-2d8d6610ce27&search=corporate HTTP/1.1
-Host: localhost:3400
+Host: localhost:8080
 Authorization: Bearer {{core_token}}
 
 ###
@@ -68,7 +68,7 @@ Authorization: Bearer {{core_token}}
 // Create RACK rate for Standard Room ($129 - highest price, lowest priority)
 // Room Type ID: 9300203c-775f-4ffe-ba03-6681f301f478 (STD)
 POST /v1/rates HTTP/1.1
-Host: localhost:3400
+Host: localhost:8080
 Content-Type: application/json
 Authorization: Bearer {{core_token}}
 
@@ -95,7 +95,7 @@ Authorization: Bearer {{core_token}}
 ###
 // Create BAR rate for Standard Room ($99 - best available)
 POST /v1/rates HTTP/1.1
-Host: localhost:3400
+Host: localhost:8080
 Content-Type: application/json
 Authorization: Bearer {{core_token}}
 
@@ -122,7 +122,7 @@ Authorization: Bearer {{core_token}}
 ###
 // Create Corporate rate for Standard Room ($79 - negotiated discount)
 POST /v1/rates HTTP/1.1
-Host: localhost:3400
+Host: localhost:8080
 Content-Type: application/json
 Authorization: Bearer {{core_token}}
 
@@ -154,7 +154,7 @@ Authorization: Bearer {{core_token}}
 ###
 // Create Government rate for Standard Room ($69)
 POST /v1/rates HTTP/1.1
-Host: localhost:3400
+Host: localhost:8080
 Content-Type: application/json
 Authorization: Bearer {{core_token}}
 
@@ -181,7 +181,7 @@ Authorization: Bearer {{core_token}}
 ###
 // Create COMP rate for Standard Room (complimentary - $0)
 POST /v1/rates HTTP/1.1
-Host: localhost:3400
+Host: localhost:8080
 Content-Type: application/json
 Authorization: Bearer {{core_token}}
 
@@ -208,7 +208,7 @@ Authorization: Bearer {{core_token}}
 ###
 // Create House Use rate for Standard Room (internal use - $0)
 POST /v1/rates HTTP/1.1
-Host: localhost:3400
+Host: localhost:8080
 Content-Type: application/json
 Authorization: Bearer {{core_token}}
 
@@ -235,7 +235,7 @@ Authorization: Bearer {{core_token}}
 ###
 // Create Early Bird rate for Standard Room ($85 - 10% off BAR for 14+ days advance)
 POST /v1/rates HTTP/1.1
-Host: localhost:3400
+Host: localhost:8080
 Content-Type: application/json
 Authorization: Bearer {{core_token}}
 
@@ -268,7 +268,7 @@ Authorization: Bearer {{core_token}}
 ###
 // Create Non-Refundable rate for Standard Room ($79 - 20% off BAR)
 POST /v1/rates HTTP/1.1
-Host: localhost:3400
+Host: localhost:8080
 Content-Type: application/json
 Authorization: Bearer {{core_token}}
 
@@ -300,7 +300,7 @@ Authorization: Bearer {{core_token}}
 ###
 // Create Promo rate for Standard Room (Summer Sale)
 POST /v1/rates HTTP/1.1
-Host: localhost:3400
+Host: localhost:8080
 Content-Type: application/json
 Authorization: Bearer {{core_token}}
 
@@ -327,7 +327,7 @@ Authorization: Bearer {{core_token}}
 ###
 // Create LOS rate for Standard Room (Stay 3+ nights)
 POST /v1/rates HTTP/1.1
-Host: localhost:3400
+Host: localhost:8080
 Content-Type: application/json
 Authorization: Bearer {{core_token}}
 
@@ -359,7 +359,7 @@ Authorization: Bearer {{core_token}}
 // Create BAR rate for Deluxe King ($179)
 // Room Type ID: 2e5c6085-b217-4741-9dd3-538b4aa2df62 (DLX-K)
 POST /v1/rates HTTP/1.1
-Host: localhost:3400
+Host: localhost:8080
 Content-Type: application/json
 Authorization: Bearer {{core_token}}
 
@@ -389,7 +389,7 @@ Authorization: Bearer {{core_token}}
 ###
 // Create RACK rate for Deluxe King ($229)
 POST /v1/rates HTTP/1.1
-Host: localhost:3400
+Host: localhost:8080
 Content-Type: application/json
 Authorization: Bearer {{core_token}}
 
@@ -420,7 +420,7 @@ Authorization: Bearer {{core_token}}
 
 // Get rate by ID (replace {rate_id} with actual ID from create response)
 GET /v1/rates/{rate_id}?tenant_id=19b2afbb-e6f6-4776-8e52-efbab18f4bec HTTP/1.1
-Host: localhost:3400
+Host: localhost:8080
 Authorization: Bearer {{core_token}}
 
 ###
@@ -430,7 +430,7 @@ Authorization: Bearer {{core_token}}
 
 // Update rate base_rate (replace {rate_id} with actual ID)
 PUT /v1/rates/{rate_id} HTTP/1.1
-Host: localhost:3400
+Host: localhost:8080
 Content-Type: application/json
 Authorization: Bearer {{core_token}}
 
@@ -443,7 +443,7 @@ Authorization: Bearer {{core_token}}
 ###
 // Update rate status to INACTIVE
 PUT /v1/rates/{rate_id} HTTP/1.1
-Host: localhost:3400
+Host: localhost:8080
 Content-Type: application/json
 Authorization: Bearer {{core_token}}
 
@@ -455,7 +455,7 @@ Authorization: Bearer {{core_token}}
 ###
 // Update rate priority (lower = higher resolution priority)
 PUT /v1/rates/{rate_id} HTTP/1.1
-Host: localhost:3400
+Host: localhost:8080
 Content-Type: application/json
 Authorization: Bearer {{core_token}}
 
@@ -471,7 +471,7 @@ Authorization: Bearer {{core_token}}
 
 // Soft delete a rate (replace {rate_id} with actual ID)
 DELETE /v1/rates/{rate_id} HTTP/1.1
-Host: localhost:3400
+Host: localhost:8080
 Content-Type: application/json
 Authorization: Bearer {{core_token}}
 

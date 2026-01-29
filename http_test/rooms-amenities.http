@@ -1,7 +1,7 @@
 // login to core-service to get tenant-scoped token (HS256)
 // Core-service runs on port 3000 by default
 POST /v1/auth/login HTTP/1.1
-Host: localhost:3000
+Host: localhost:8080
 Content-Type: application/json
 
 {"username":"aurora.owner","password":"TempPass123"}
@@ -13,13 +13,13 @@ Content-Type: application/json
 
 // list room types for Aurora Central Hotel
 GET /v1/room-types?tenant_id=19b2afbb-e6f6-4776-8e52-efbab18f4bec&property_id=eedfeb3f-4c09-47d9-9b02-2d8d6610ce27&limit=50 HTTP/1.1
-Host: localhost:3400
+Host: localhost:8080
 Authorization: Bearer {{core_token}}
 
 ###
 // list rooms for Aurora Central Hotel (rooms-service)
 GET /v1/rooms?tenant_id=19b2afbb-e6f6-4776-8e52-efbab18f4bec&property_id=eedfeb3f-4c09-47d9-9b02-2d8d6610ce27&limit=50 HTTP/1.1
-Host: localhost:3400
+Host: localhost:8080
 Authorization: Bearer {{core_token}}
 
 ###
@@ -29,7 +29,7 @@ Authorization: Bearer {{core_token}}
 
 // Create Standard Room ($99) - Basic entry-level room
 POST /v1/room-types HTTP/1.1
-Host: localhost:3400
+Host: localhost:8080
 Content-Type: application/json
 Authorization: Bearer {{core_token}}
 
@@ -53,7 +53,7 @@ Authorization: Bearer {{core_token}}
 ###
 // Create Twin Room ($129) - Two single beds
 POST /v1/room-types HTTP/1.1
-Host: localhost:3400
+Host: localhost:8080
 Content-Type: application/json
 Authorization: Bearer {{core_token}}
 
@@ -77,7 +77,7 @@ Authorization: Bearer {{core_token}}
 ###
 // Create Accessible Room ($149) - Wheelchair-friendly layout
 POST /v1/room-types HTTP/1.1
-Host: localhost:3400
+Host: localhost:8080
 Content-Type: application/json
 Authorization: Bearer {{core_token}}
 
@@ -101,7 +101,7 @@ Authorization: Bearer {{core_token}}
 ###
 // Create Deluxe King ($179) - Upgraded room with king bed
 POST /v1/room-types HTTP/1.1
-Host: localhost:3400
+Host: localhost:8080
 Content-Type: application/json
 Authorization: Bearer {{core_token}}
 
@@ -125,7 +125,7 @@ Authorization: Bearer {{core_token}}
 ###
 // Create Family Room ($199) - Extra beds for families
 POST /v1/room-types HTTP/1.1
-Host: localhost:3400
+Host: localhost:8080
 Content-Type: application/json
 Authorization: Bearer {{core_token}}
 
@@ -149,7 +149,7 @@ Authorization: Bearer {{core_token}}
 ###
 // Create Junior Suite ($229) - Suite on a budget
 POST /v1/room-types HTTP/1.1
-Host: localhost:3400
+Host: localhost:8080
 Content-Type: application/json
 Authorization: Bearer {{core_token}}
 
@@ -173,7 +173,7 @@ Authorization: Bearer {{core_token}}
 ###
 // Create Suite ($299) - Full suite with living room
 POST /v1/room-types HTTP/1.1
-Host: localhost:3400
+Host: localhost:8080
 Content-Type: application/json
 Authorization: Bearer {{core_token}}
 
@@ -202,7 +202,7 @@ Authorization: Bearer {{core_token}}
 // Update Standard Room price to $109
 // Room Type ID: 9300203c-775f-4ffe-ba03-6681f301f478 (STD)
 PUT /v1/room-types/9300203c-775f-4ffe-ba03-6681f301f478 HTTP/1.1
-Host: localhost:3400
+Host: localhost:8080
 Content-Type: application/json
 Authorization: Bearer {{core_token}}
 
@@ -215,7 +215,7 @@ Authorization: Bearer {{core_token}}
 ###
 // Update Twin Room to inactive
 PUT /v1/room-types/50967d25-50c8-474a-b010-a6e902f1e303 HTTP/1.1
-Host: localhost:3400
+Host: localhost:8080
 Content-Type: application/json
 Authorization: Bearer {{core_token}}
 
@@ -232,7 +232,7 @@ Authorization: Bearer {{core_token}}
 // Delete a room type (soft delete)
 // Room Type ID: {{room_type_id}} (replace with actual ID)
 DELETE /v1/room-types/{{room_type_id}} HTTP/1.1
-Host: localhost:3400
+Host: localhost:8080
 Content-Type: application/json
 Authorization: Bearer {{core_token}}
 
@@ -247,13 +247,13 @@ Authorization: Bearer {{core_token}}
 
 // list rooms for Aurora Central Hotel
 GET /v1/rooms?tenant_id=19b2afbb-e6f6-4776-8e52-efbab18f4bec&property_id=eedfeb3f-4c09-47d9-9b02-2d8d6610ce27&limit=50 HTTP/1.1
-Host: localhost:3400
+Host: localhost:8080
 Authorization: Bearer {{core_token}}
 
 ###
 // list rooms for Aurora Harbor Hotel
 GET /v1/rooms?tenant_id=19b2afbb-e6f6-4776-8e52-efbab18f4bec&property_id=97d98b4f-6c2c-4df9-adfe-6a536a81ac2d&limit=50 HTTP/1.1
-Host: localhost:3400
+Host: localhost:8080
 Authorization: Bearer {{core_token}}
 
 ###
@@ -264,7 +264,7 @@ Authorization: Bearer {{core_token}}
 // Create Standard Room (Floor 3)
 // Room Type ID: 9300203c-775f-4ffe-ba03-6681f301f478 (STD)
 POST /v1/rooms HTTP/1.1
-Host: localhost:3400
+Host: localhost:8080
 Content-Type: application/json
 Authorization: Bearer {{core_token}}
 
@@ -284,7 +284,7 @@ Authorization: Bearer {{core_token}}
 // Create Twin Room (Floor 3)
 // Room Type ID: 50967d25-50c8-474a-b010-a6e902f1e303 (TWIN)
 POST /v1/rooms HTTP/1.1
-Host: localhost:3400
+Host: localhost:8080
 Content-Type: application/json
 Authorization: Bearer {{core_token}}
 
@@ -304,7 +304,7 @@ Authorization: Bearer {{core_token}}
 // Create Accessible Room (Floor 1 - ground level)
 // Room Type ID: 9b4cb8bc-5d85-40c6-93cb-5cf036506c5a (ADA)
 POST /v1/rooms HTTP/1.1
-Host: localhost:3400
+Host: localhost:8080
 Content-Type: application/json
 Authorization: Bearer {{core_token}}
 
@@ -324,7 +324,7 @@ Authorization: Bearer {{core_token}}
 // Create Deluxe King (Floor 1-2)
 // Room Type ID: 2e5c6085-b217-4741-9dd3-538b4aa2df62 (DLX-K)
 POST /v1/rooms HTTP/1.1
-Host: localhost:3400
+Host: localhost:8080
 Content-Type: application/json
 Authorization: Bearer {{core_token}}
 
@@ -344,7 +344,7 @@ Authorization: Bearer {{core_token}}
 // Create Family Room (Floor 4)
 // Room Type ID: 39ccffe7-9f5a-4a5d-9f4c-94b35a4dd6df (FAMILY)
 POST /v1/rooms HTTP/1.1
-Host: localhost:3400
+Host: localhost:8080
 Content-Type: application/json
 Authorization: Bearer {{core_token}}
 
@@ -364,7 +364,7 @@ Authorization: Bearer {{core_token}}
 // Create Junior Suite (Floor 5)
 // Room Type ID: 7512710b-2048-43f5-8ada-11f8cd4e26a6 (JR-SUITE)
 POST /v1/rooms HTTP/1.1
-Host: localhost:3400
+Host: localhost:8080
 Content-Type: application/json
 Authorization: Bearer {{core_token}}
 
@@ -384,7 +384,7 @@ Authorization: Bearer {{core_token}}
 // Create Suite (Floor 6 - Penthouse level)
 // Room Type ID: dfe4044f-278a-4afc-acc8-8ef222113981 (SUITE)
 POST /v1/rooms HTTP/1.1
-Host: localhost:3400
+Host: localhost:8080
 Content-Type: application/json
 Authorization: Bearer {{core_token}}
 
@@ -408,7 +408,7 @@ Authorization: Bearer {{core_token}}
 // Update room status to OCCUPIED
 // Room ID: {{room_id}} (replace with actual ID from GET /v1/rooms)
 PUT /v1/rooms/{{room_id}} HTTP/1.1
-Host: localhost:3400
+Host: localhost:8080
 Content-Type: application/json
 Authorization: Bearer {{core_token}}
 
@@ -420,7 +420,7 @@ Authorization: Bearer {{core_token}}
 ###
 // Update room housekeeping status to DIRTY
 PUT /v1/rooms/{{room_id}} HTTP/1.1
-Host: localhost:3400
+Host: localhost:8080
 Content-Type: application/json
 Authorization: Bearer {{core_token}}
 
@@ -432,7 +432,7 @@ Authorization: Bearer {{core_token}}
 ###
 // Update room maintenance status
 PUT /v1/rooms/{{room_id}} HTTP/1.1
-Host: localhost:3400
+Host: localhost:8080
 Content-Type: application/json
 Authorization: Bearer {{core_token}}
 
@@ -448,7 +448,7 @@ Authorization: Bearer {{core_token}}
 
 // Delete a room (soft delete)
 DELETE /v1/rooms/{{room_id}} HTTP/1.1
-Host: localhost:3400
+Host: localhost:8080
 Content-Type: application/json
 Authorization: Bearer {{core_token}}
 
@@ -463,7 +463,7 @@ Authorization: Bearer {{core_token}}
 
 // create amenity
 POST /v1/settings/properties/eedfeb3f-4c09-47d9-9b02-2d8d6610ce27/amenities HTTP/1.1
-Host: localhost:3100
+Host: localhost:8080
 Content-Type: application/json
 Authorization: Bearer {{settings_token}}
 
@@ -481,7 +481,7 @@ Authorization: Bearer {{settings_token}}
 ###
 // list amenities for Aurora Central Hotel
 GET /v1/settings/properties/eedfeb3f-4c09-47d9-9b02-2d8d6610ce27/amenities HTTP/1.1
-Host: localhost:3100
+Host: localhost:8080
 Authorization: Bearer {{settings_token}}
 
 ###
