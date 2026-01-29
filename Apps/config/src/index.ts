@@ -1,7 +1,16 @@
 import { config as loadEnv } from "dotenv";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { z } from "zod";
 
 loadEnv();
+
+const rootEnvPath = path.resolve(
+  path.dirname(fileURLToPath(import.meta.url)),
+  "../../..",
+  ".env",
+);
+loadEnv({ path: rootEnvPath });
 
 const booleanString = z
   .union([

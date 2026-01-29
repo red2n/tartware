@@ -354,6 +354,16 @@ case "$cmd" in
         case "$sub" in
             up)
                 $compose_cmd -f "$REPO_ROOT/docker-compose.yml" up -d
+                log "Bootstrapping Kafka topics"
+                (cd "$REPO_ROOT" && npm run kafka:topics)
+                log "Seeding default data"
+                DB_HOST=127.0.0.1 DB_PORT=5432 DB_USER=postgres DB_PASSWORD=postgres DB_NAME=tartware \
+                    node "$REPO_ROOT/scripts/data/defaults/seed-default-data.mjs"
+                log "Resetting default user passwords"
+                DB_HOST=127.0.0.1 DB_PORT=5432 DB_USER=postgres DB_PASSWORD=postgres DB_NAME=tartware \
+                    AUTH_DEFAULT_PASSWORD=TempPass123 NODE_ENV=development \
+                    npx tsx --tsconfig "$REPO_ROOT/Apps/core-service/tsconfig.json" \
+                    "$REPO_ROOT/Apps/core-service/scripts/reset-default-password.ts"
                 ;;
             down)
                 $compose_cmd -f "$REPO_ROOT/docker-compose.yml" down
