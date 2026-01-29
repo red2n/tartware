@@ -51,7 +51,7 @@ const toNumber = (
     return undefined;
   }
   const num = typeof value === "string" ? parseFloat(value) : value;
-  return Number.isNaN(num) ? undefined : num;
+  return Number.isFinite(num) ? num : undefined;
 };
 
 const toStringDate = (value: string | Date | null): string | undefined => {
