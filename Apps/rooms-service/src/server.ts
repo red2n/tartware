@@ -10,6 +10,7 @@ import authContextPlugin from "./plugins/auth-context.js";
 import swaggerPlugin from "./plugins/swagger.js";
 import { registerHealthRoutes } from "./routes/health.js";
 import { registerRoomRoutes } from "./routes/rooms.js";
+import { registerRoomTypeRoutes } from "./routes/room-types.js";
 
 export const buildServer = (): FastifyInstance => {
   const app = buildFastifyServer({
@@ -25,6 +26,7 @@ export const buildServer = (): FastifyInstance => {
     registerRoutes: (app) => {
       registerHealthRoutes(app);
       registerRoomRoutes(app);
+      registerRoomTypeRoutes(app);
     },
   });
 

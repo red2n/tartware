@@ -948,6 +948,68 @@ export const buildServer = () => {
 		);
 
 		app.post(
+			"/v1/rooms",
+			{
+				schema: buildRouteSchema({
+					tag: CORE_PROXY_TAG,
+					summary: "Proxy room creation to the rooms service.",
+					body: jsonObjectSchema,
+					response: {
+						201: jsonObjectSchema,
+					},
+				}),
+			},
+			proxyRooms,
+		);
+
+		app.all(
+			"/v1/rooms/*",
+			{
+				schema: buildRouteSchema({
+					tag: CORE_PROXY_TAG,
+					summary: "Proxy room updates to the rooms service.",
+					response: {
+						200: jsonObjectSchema,
+						204: { type: "null" },
+					},
+				}),
+			},
+			proxyRooms,
+		);
+
+		app.all(
+			"/v1/room-types",
+			{
+				schema: buildRouteSchema({
+					tag: CORE_PROXY_TAG,
+					summary: "Proxy room type requests to the rooms service.",
+					body: jsonObjectSchema,
+					response: {
+						200: jsonObjectSchema,
+						201: jsonObjectSchema,
+					},
+				}),
+			},
+			proxyRooms,
+		);
+
+		app.all(
+			"/v1/room-types/*",
+			{
+				schema: buildRouteSchema({
+					tag: CORE_PROXY_TAG,
+					summary: "Proxy room type updates to the rooms service.",
+					body: jsonObjectSchema,
+					response: {
+						200: jsonObjectSchema,
+						204: { type: "null" },
+					},
+				}),
+			},
+			proxyRooms,
+		);
+
+		app.post(
 			"/v1/tenants/:tenantId/rooms/:roomId/block",
 			{
 				preHandler: tenantScopeFromParams,

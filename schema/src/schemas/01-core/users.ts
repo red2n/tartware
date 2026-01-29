@@ -51,7 +51,7 @@ export const UserSchema = z.object({
 	last_login_at: z.coerce.date().optional(),
 	failed_login_attempts: z.number().int().nonnegative().default(0),
 	locked_until: z.coerce.date().optional(),
-	mfa_secret: z.string().min(16).optional(),
+	mfa_secret: z.string().min(16).nullable().optional(),
 	mfa_enabled: z.boolean().default(false),
 	mfa_backup_codes: z.array(z.string().min(8)).default([]),
 	password_rotated_at: z.coerce.date().optional(),

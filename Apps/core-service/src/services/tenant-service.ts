@@ -60,7 +60,10 @@ const mapRowToTenant = (row: TenantRow): TenantWithRelations => {
     tax_id: row.tax_id ?? undefined,
     business_license: row.business_license ?? undefined,
     registration_number: row.registration_number ?? undefined,
-    config: row.config as TenantWithRelations["config"],
+    config: {
+      tenant_id: row.tenant_id,
+      ...(row.config ?? {}),
+    } as TenantWithRelations["config"],
     subscription: row.subscription as TenantWithRelations["subscription"],
     metadata: row.metadata ?? undefined,
     created_at: row.created_at,

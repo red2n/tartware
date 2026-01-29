@@ -43,5 +43,10 @@
 - Keep migrations in `scripts/` aligned with schemas in `schema/` (schema-first, lockstep changes).
 - Add metrics for new command streams (throughput, lag, error, DLQ) by default.
 
+## Testing & Data Access
+- **Always use API routes** to test the application; do not use direct SQL queries or scripts (Python, TypeScript, shell) to GET, POST, PUT, or DELETE data in the database.
+- Use `http_test/*.http` files or `curl` commands against the running services for manual testing.
+- Direct database access is only permitted for read-only diagnostics (e.g., verifying record counts) or one-time migration scripts—never for routine data manipulation during testing.
+
 ## UI Scope
 - Unless explicitly asked, ignore UI changes.

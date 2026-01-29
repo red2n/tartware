@@ -45,7 +45,7 @@ export const RoomTypesSchema = z.object({
   size_sqm: money.optional(),
   bed_type: z.string().optional(),
   number_of_beds: z.number().int().optional(),
-  amenities: z.record(z.unknown()).optional(),
+  amenities: z.union([z.array(z.string()), z.record(z.unknown())]).optional(),
   features: z.record(z.unknown()).optional(),
   base_price: money,
   currency: z.string().optional(),
@@ -69,7 +69,26 @@ export type RoomTypes = z.infer<typeof RoomTypesSchema>;
  * Schema for creating a new room types
  */
 export const CreateRoomTypesSchema = RoomTypesSchema.omit({
-  // TODO: Add fields to omit for creation
+  id: true,
+  created_at: true,
+  updated_at: true,
+  created_by: true,
+  updated_by: true,
+  is_deleted: true,
+  deleted_at: true,
+  deleted_by: true,
+  version: true,
+}).extend({
+  category: RoomCategoryEnum.optional().default("STANDARD"),
+  base_occupancy: z.number().int().optional().default(2),
+  max_occupancy: z.number().int().optional().default(2),
+  max_adults: z.number().int().optional().default(2),
+  max_children: z.number().int().optional().default(0),
+  extra_bed_capacity: z.number().int().optional().default(0),
+  number_of_beds: z.number().int().optional().default(1),
+  currency: z.string().optional().default("USD"),
+  is_active: z.boolean().optional().default(true),
+  display_order: z.number().int().optional().default(0),
 });
 
 export type CreateRoomTypes = z.infer<typeof CreateRoomTypesSchema>;

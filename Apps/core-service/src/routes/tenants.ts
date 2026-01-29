@@ -265,34 +265,15 @@ export const registerTenantRoutes = (app: FastifyInstance): void => {
         }
 
         const ownerId = randomUUID();
-        const userResult = await client.query<{ id: string; username: string; email: string }>(
-          `INSERT INTO users
-            (id, username, email, password_hash, first_name, last_name, phone, is_active, is_verified, created_by, updated_by)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, true, false, $8, $8)
-           RETURNING id, username, email`,
-          [
-            ownerId,
-            ownerInput.username,
-            ownerInput.email,
-            passwordHash,
-            ownerInput.first_name,
-            ownerInput.last_name,
-            ownerInput.phone || null,
-            ownerId,
-          ],
-        );
-
-        const owner = userResult.rows[0];
-        if (!owner) {
-          throw new Error("Failed to create owner user");
-        }
-
+        const tenantId = randomUUID();
         const tenantResult = await client.query<{ id: string; name: string; slug: string }>(
           `INSERT INTO tenants
-            (name, slug, type, status, email, phone, website, config, subscription, metadata, created_by, updated_by)
-           VALUES ($1, $2, $3, 'ACTIVE', $4, $5, $6, '{}'::jsonb, '{}'::jsonb, '{}'::jsonb, $7, $7)
+            (id, tenant_id, name, slug, type, status, email, phone, website, config, subscription, metadata, created_by, updated_by)
+           VALUES ($1, $2, $3, $4, $5, 'ACTIVE', $6, $7, $8, '{}'::jsonb, '{}'::jsonb, '{}'::jsonb, $9, $9)
            RETURNING id, name, slug`,
           [
+            tenantId,
+            tenantId,
             tenantInput.name,
             normalizedTenantSlug,
             tenantInput.type,
@@ -306,6 +287,30 @@ export const registerTenantRoutes = (app: FastifyInstance): void => {
         const tenant = tenantResult.rows[0];
         if (!tenant) {
           throw new Error("Failed to create tenant");
+        }
+
+        const userResult = await client.query<{ id: string; username: string; email: string }>(
+          `INSERT INTO users
+            (id, tenant_id, username, email, password_hash, first_name, last_name, phone, mfa_secret, is_active, is_verified, created_by, updated_by)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, true, false, $10, $10)
+           RETURNING id, username, email`,
+          [
+            ownerId,
+            tenant.id,
+            ownerInput.username,
+            ownerInput.email,
+            passwordHash,
+            ownerInput.first_name,
+            ownerInput.last_name,
+            ownerInput.phone || null,
+            "0000000000000000",
+            ownerId,
+          ],
+        );
+
+        const owner = userResult.rows[0];
+        if (!owner) {
+          throw new Error("Failed to create owner user");
         }
 
         await client.query(

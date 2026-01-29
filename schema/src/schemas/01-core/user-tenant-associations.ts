@@ -35,6 +35,7 @@ export const UserTenantAssociationSchema = z.object({
 	role: TenantRoleEnum,
 	is_active: z.boolean().default(true),
 	permissions: jsonbMetadata.describe("Role overrides / grants"),
+	modules: z.array(z.string()).default([]),
 	valid_from: z.coerce.date().optional(),
 	valid_until: z.coerce.date().optional(),
 	metadata: jsonbMetadata,

@@ -32,6 +32,24 @@ export interface BuildFastifyServerOptions {
   corsOrigin?: boolean | string | string[] | RegExp | RegExp[];
 
   /**
+   * Whether to allow credentials in CORS requests
+   * @default false
+   */
+  corsCredentials?: boolean;
+
+  /**
+   * Max age for CORS preflight cache (in seconds)
+   * @default 86400 (24 hours)
+   */
+  corsMaxAge?: number;
+
+  /**
+   * Whether to add Cache-Control headers to API responses
+   * @default true
+   */
+  enableCacheControl?: boolean;
+
+  /**
    * Whether to enable the metrics endpoint
    * @default true
    */
@@ -79,6 +97,9 @@ export const buildFastifyServer = (
     logger,
     enableRequestLogging = true,
     corsOrigin = false,
+    corsCredentials = false,
+    corsMaxAge = 86400,
+    enableCacheControl = true,
     enableMetricsEndpoint = true,
     metricsRegistry,
     serverOptions = {},
@@ -104,8 +125,90 @@ export const buildFastifyServer = (
 
   // Register core plugins
   app.register(fastifySensible);
-  app.register(fastifyHelmet, { global: true });
-  app.register(fastifyCors, { origin: corsOrigin });
+
+  // Register Helmet with enhanced security headers
+  app.register(fastifyHelmet, {
+    global: true,
+    // Content Security Policy
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        scriptSrc: ["'self'"],
+        styleSrc: ["'self'", "'unsafe-inline'"],
+        imgSrc: ["'self'", "data:"],
+        connectSrc: ["'self'"],
+        fontSrc: ["'self'"],
+        objectSrc: ["'none'"],
+        frameAncestors: ["'none'"],
+        upgradeInsecureRequests: [],
+      },
+    },
+    // Strict Transport Security
+    hsts: {
+      maxAge: 31536000, // 1 year
+      includeSubDomains: true,
+      preload: true,
+    },
+    // X-Frame-Options
+    frameguard: { action: "deny" },
+    // X-Content-Type-Options
+    noSniff: true,
+    // Referrer-Policy
+    referrerPolicy: { policy: "strict-origin-when-cross-origin" },
+    // X-XSS-Protection (legacy but still useful)
+    xssFilter: true,
+    // X-DNS-Prefetch-Control
+    dnsPrefetchControl: { allow: false },
+    // X-Download-Options (IE)
+    ieNoOpen: true,
+    // X-Permitted-Cross-Domain-Policies
+    permittedCrossDomainPolicies: { permittedPolicies: "none" },
+  });
+
+  // Register CORS with enhanced configuration
+  app.register(fastifyCors, {
+    origin: corsOrigin,
+    credentials: corsCredentials,
+    maxAge: corsMaxAge,
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allowedHeaders: [
+      "Content-Type",
+      "Authorization",
+      "X-Request-Id",
+      "X-Tenant-Id",
+      "X-Idempotency-Key",
+    ],
+    exposedHeaders: [
+      "X-Request-Id",
+      "X-RateLimit-Limit",
+      "X-RateLimit-Remaining",
+      "X-RateLimit-Reset",
+    ],
+  });
+
+  // Add Permissions-Policy header (not covered by helmet)
+  app.addHook("onSend", async (_request, reply, payload) => {
+    reply.header(
+      "Permissions-Policy",
+      "geolocation=(), camera=(), microphone=(), payment=(), usb=(), bluetooth=()",
+    );
+    return payload;
+  });
+
+  // Add Cache-Control headers for API responses (exclude health/metrics)
+  if (enableCacheControl) {
+    app.addHook("onSend", async (request, reply, payload) => {
+      const url = request.url;
+      // Skip cache headers for health and metrics endpoints
+      if (url === "/health" || url === "/metrics" || url === "/ready") {
+        return payload;
+      }
+      reply.header("Cache-Control", "no-store, no-cache, must-revalidate");
+      reply.header("Pragma", "no-cache");
+      reply.header("Expires", "0");
+      return payload;
+    });
+  }
 
   // Register metrics endpoint if enabled
   if (enableMetricsEndpoint && metricsRegistry) {

@@ -41,7 +41,7 @@ export const RoomsSchema = z.object({
   housekeeping_status: HousekeepingStatusEnum,
   maintenance_status: MaintenanceStatusEnum,
   features: z.record(z.unknown()).optional(),
-  amenities: z.record(z.unknown()).optional(),
+  amenities: z.union([z.array(z.string()), z.record(z.unknown())]).optional(),
   is_blocked: z.boolean().optional(),
   block_reason: z.string().optional(),
   blocked_from: z.coerce.date().optional(),
@@ -69,7 +69,19 @@ export type Rooms = z.infer<typeof RoomsSchema>;
  * Schema for creating a new rooms
  */
 export const CreateRoomsSchema = RoomsSchema.omit({
-  // TODO: Add fields to omit for creation
+  id: true,
+  created_at: true,
+  updated_at: true,
+  created_by: true,
+  updated_by: true,
+  is_deleted: true,
+  deleted_at: true,
+  deleted_by: true,
+  version: true,
+}).extend({
+  status: RoomStatusEnum.optional().default("AVAILABLE"),
+  housekeeping_status: HousekeepingStatusEnum.optional().default("CLEAN"),
+  maintenance_status: MaintenanceStatusEnum.optional().default("OPERATIONAL"),
 });
 
 export type CreateRooms = z.infer<typeof CreateRoomsSchema>;
