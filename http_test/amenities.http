@@ -2,12 +2,12 @@
 // AMENITIES HTTP TEST FILE
 // ========================
 // Purpose: Add and manage room amenities by room type
-// Per AGENTS.md: Always use API routes to test the app
+// Per AGENTS.md: Always use API routes via the API Gateway (localhost:8080) to test the app
 //
-// Services:
-//   - core-service (port 3000): Authentication
-//   - rooms-service (port 3400): Rooms and room types
-//   - settings-service (port 3100): Property amenity catalog
+// Backend Services (accessed via gateway):
+//   - core-service (backend port 3000): Authentication
+//   - rooms-service (backend port 3400): Rooms and room types
+//   - settings-service (backend port 3100): Property amenity catalog
 //
 // Workflow:
 //   1. Login to get JWT token

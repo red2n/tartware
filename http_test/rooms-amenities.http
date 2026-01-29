@@ -1,5 +1,5 @@
-// login to core-service to get tenant-scoped token (HS256)
-// Core-service runs on port 3000 by default
+// Login via API Gateway to core-service to get tenant-scoped token (HS256)
+// Core-service runs on port 3000 by default but is exposed through the API Gateway on port 8080
 POST /v1/auth/login HTTP/1.1
 Host: localhost:8080
 Content-Type: application/json
@@ -458,7 +458,8 @@ Authorization: Bearer {{core_token}}
 
 ###
 // ========================
-// AMENITIES (settings-service port 3100)
+// AMENITIES (via API Gateway - settings-service backend on port 3100)
+// Note: Using {{settings_token}} variable - obtain by logging in via /v1/auth/login
 // ========================
 
 // create amenity

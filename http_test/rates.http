@@ -1,7 +1,8 @@
 // =====================================================
 // RATES API - HTTP Test File
-// rooms-service (port 3400)
 // =====================================================
+// All requests route via API Gateway (localhost:8080)
+// Backend: rooms-service (port 3400)
 //
 // Prerequisites:
 // 1. Run migration: scripts/2026-01-29-add-rate-type-and-priority-to-rates.sql
@@ -418,8 +419,8 @@ Authorization: Bearer {{core_token}}
 // RATES - GET BY ID
 // ========================
 
-// Get rate by ID (replace {rate_id} with actual ID from create response)
-GET /v1/rates/{rate_id}?tenant_id=19b2afbb-e6f6-4776-8e52-efbab18f4bec HTTP/1.1
+// Get rate by ID (replace {{rate_id}} with actual ID from create response)
+GET /v1/rates/{{rate_id}}?tenant_id=19b2afbb-e6f6-4776-8e52-efbab18f4bec HTTP/1.1
 Host: localhost:8080
 Authorization: Bearer {{core_token}}
 
@@ -428,8 +429,8 @@ Authorization: Bearer {{core_token}}
 // RATES - UPDATE
 // ========================
 
-// Update rate base_rate (replace {rate_id} with actual ID)
-PUT /v1/rates/{rate_id} HTTP/1.1
+// Update rate base_rate (replace {{rate_id}} with actual ID)
+PUT /v1/rates/{{rate_id}} HTTP/1.1
 Host: localhost:8080
 Content-Type: application/json
 Authorization: Bearer {{core_token}}
@@ -442,7 +443,7 @@ Authorization: Bearer {{core_token}}
 
 ###
 // Update rate status to INACTIVE
-PUT /v1/rates/{rate_id} HTTP/1.1
+PUT /v1/rates/{{rate_id}} HTTP/1.1
 Host: localhost:8080
 Content-Type: application/json
 Authorization: Bearer {{core_token}}
@@ -454,7 +455,7 @@ Authorization: Bearer {{core_token}}
 
 ###
 // Update rate priority (lower = higher resolution priority)
-PUT /v1/rates/{rate_id} HTTP/1.1
+PUT /v1/rates/{{rate_id}} HTTP/1.1
 Host: localhost:8080
 Content-Type: application/json
 Authorization: Bearer {{core_token}}
@@ -469,8 +470,8 @@ Authorization: Bearer {{core_token}}
 // RATES - DELETE
 // ========================
 
-// Soft delete a rate (replace {rate_id} with actual ID)
-DELETE /v1/rates/{rate_id} HTTP/1.1
+// Soft delete a rate (replace {{rate_id}} with actual ID)
+DELETE /v1/rates/{{rate_id}} HTTP/1.1
 Host: localhost:8080
 Content-Type: application/json
 Authorization: Bearer {{core_token}}

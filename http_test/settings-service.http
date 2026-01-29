@@ -1,11 +1,11 @@
 // =====================================================
 // SETTINGS SERVICE - HTTP Test File
-// settings-service (port 3100)
 // =====================================================
 //
 // Prerequisites:
 // 1. Start core-service (port 3000) and settings-service (port 3100)
-// 2. Login via core-service to get {{token}}
+// 2. All requests below are routed via the API Gateway (localhost:8080)
+// 3. Login via core-service to get {{token}}
 //
 // The settings service provides:
 // - Settings catalog (categories, sections, definitions, options)
