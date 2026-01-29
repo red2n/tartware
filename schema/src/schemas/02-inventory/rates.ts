@@ -38,7 +38,7 @@ export const RatesSchema = z.object({
   description: z.string().optional(),
   rate_type: RateTypeEnum.default('BAR'),
   strategy: RateStrategyEnum,
-  priority: z.number().int().min(0).default(100),
+  priority: z.number().int().min(0).max(999).default(100),
   base_rate: money,
   currency: z.string().optional(),
   single_occupancy_rate: money.optional(),
