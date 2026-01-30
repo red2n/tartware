@@ -725,7 +725,7 @@ if [ "$LOAD_DEFAULT_DATA" = true ]; then
         echo -e "${CYAN}Resetting user passwords to default...${NC}"
         if DB_HOST="$DB_HOST" DB_PORT="$DB_PORT" DB_USER="$DB_USER" DB_PASSWORD="$DB_PASSWORD" DB_NAME="$DB_NAME" \
             AUTH_DEFAULT_PASSWORD="$DEFAULT_PASSWORD" NODE_ENV=development \
-            npx tsx --tsconfig "$REPO_ROOT/Apps/core-service/tsconfig.json" "$RESET_PASSWORD_SCRIPT" 2>/dev/null; then
+            npx tsx --tsconfig "$REPO_ROOT/Apps/core-service/tsconfig.json" "$RESET_PASSWORD_SCRIPT"; then
             echo -e "${GREEN}✓ Default passwords reset to '$DEFAULT_PASSWORD'${NC}"
         else
             echo -e "${YELLOW}⚠  Failed to reset default passwords${NC}"

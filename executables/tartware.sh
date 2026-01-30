@@ -68,7 +68,7 @@ reset_default_passwords() {
         if DB_HOST="${DB_HOST:-127.0.0.1}" DB_PORT="${DB_PORT:-5432}" DB_USER="${DB_USER:-postgres}" \
             DB_PASSWORD="${DB_PASSWORD:-postgres}" DB_NAME="${DB_NAME:-tartware}" \
             AUTH_DEFAULT_PASSWORD="$default_password" NODE_ENV=development \
-            npx tsx --tsconfig "$REPO_ROOT/Apps/core-service/tsconfig.json" "$reset_script" 2>/dev/null; then
+            npx tsx --tsconfig "$REPO_ROOT/Apps/core-service/tsconfig.json" "$reset_script"; then
             log "Default passwords reset to '$default_password'"
         else
             log "Warning: Failed to reset default passwords"
