@@ -579,6 +579,34 @@ export const buildServer = () => {
 		);
 
 		app.all(
+			"/v1/auth",
+			{
+				schema: buildRouteSchema({
+					tag: CORE_PROXY_TAG,
+					summary: "Proxy auth calls to core service.",
+					response: {
+						200: jsonObjectSchema,
+					},
+				}),
+			},
+			proxyCore,
+		);
+
+		app.all(
+			"/v1/auth/*",
+			{
+				schema: buildRouteSchema({
+					tag: CORE_PROXY_TAG,
+					summary: "Proxy auth calls to core service.",
+					response: {
+						200: jsonObjectSchema,
+					},
+				}),
+			},
+			proxyCore,
+		);
+
+		app.all(
 			"/v1/system/*",
 			{
 				schema: buildRouteSchema({

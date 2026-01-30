@@ -21,7 +21,9 @@
       "@tartware/openapi": ["../../openapi-utils/src/index.ts"],
       "@tartware/openapi/*": ["../../openapi-utils/src/*"],
       "@tartware/fastify-server": ["../../fastify-server/src/index.ts"],
-      "@tartware/fastify-server/*": ["../../fastify-server/src/*"]
+      "@tartware/fastify-server/*": ["../../fastify-server/src/*"],
+      "@tartware/command-consumer-utils": ["../../command-consumer-utils/src/index.ts"],
+      "@tartware/command-consumer-utils/*": ["../../command-consumer-utils/src/*"]
     }
   },
   "include": ["src/**/*", "tests/**/*"],

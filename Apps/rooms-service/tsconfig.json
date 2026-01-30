@@ -23,7 +23,9 @@
       "@tartware/fastify-server": ["../../fastify-server/src/index.ts"],
       "@tartware/fastify-server/*": ["../../fastify-server/src/*"],
       "@tartware/tenant-auth": ["../../tenant-auth/src/index.ts"],
-      "@tartware/tenant-auth/*": ["../../tenant-auth/src/*"]
+      "@tartware/tenant-auth/*": ["../../tenant-auth/src/*"],
+      "@tartware/command-consumer-utils": ["../../command-consumer-utils/src/index.ts"],
+      "@tartware/command-consumer-utils/*": ["../../command-consumer-utils/src/*"]
     }
   },
   "include": ["src/**/*"],
