@@ -368,6 +368,125 @@ export const buildServer = () => {
 			proxyCore,
 		);
 
+		app.get(
+			"/v1/tenants",
+			{
+				schema: buildRouteSchema({
+					tag: CORE_PROXY_TAG,
+					summary: "List tenants accessible to the authenticated user.",
+					response: {
+						200: jsonObjectSchema,
+					},
+				}),
+			},
+			proxyCore,
+		);
+
+		// Properties routes - proxy to core service
+		app.get(
+			"/v1/properties",
+			{
+				schema: buildRouteSchema({
+					tag: CORE_PROXY_TAG,
+					summary: "List properties for a tenant.",
+					response: {
+						200: jsonObjectSchema,
+					},
+				}),
+			},
+			proxyCore,
+		);
+
+		app.post(
+			"/v1/properties",
+			{
+				schema: buildRouteSchema({
+					tag: CORE_PROXY_TAG,
+					summary: "Create a new property.",
+					body: jsonObjectSchema,
+					response: {
+						201: jsonObjectSchema,
+					},
+				}),
+			},
+			proxyCore,
+		);
+
+		app.all(
+			"/v1/properties/*",
+			{
+				schema: buildRouteSchema({
+					tag: CORE_PROXY_TAG,
+					summary: "Proxy property operations to core service.",
+					response: {
+						200: jsonObjectSchema,
+					},
+				}),
+			},
+			proxyCore,
+		);
+
+		// Dashboard routes - proxy to core service
+		app.all(
+			"/v1/dashboard/*",
+			{
+				schema: buildRouteSchema({
+					tag: CORE_PROXY_TAG,
+					summary: "Proxy dashboard requests to core service.",
+					response: {
+						200: jsonObjectSchema,
+					},
+				}),
+			},
+			proxyCore,
+		);
+
+		// Modules routes - proxy to core service
+		app.get(
+			"/v1/modules/catalog",
+			{
+				schema: buildRouteSchema({
+					tag: CORE_PROXY_TAG,
+					summary: "List available platform modules.",
+					response: {
+						200: jsonObjectSchema,
+					},
+				}),
+			},
+			proxyCore,
+		);
+
+		app.all(
+			"/v1/tenants/:tenantId/modules",
+			{
+				preHandler: tenantScopeFromParams,
+				schema: buildRouteSchema({
+					tag: CORE_PROXY_TAG,
+					summary: "List modules enabled for a tenant.",
+					params: reservationParamsSchema,
+					response: {
+						200: jsonObjectSchema,
+					},
+				}),
+			},
+			proxyCore,
+		);
+
+		// Reports routes - proxy to core service
+		app.all(
+			"/v1/reports/*",
+			{
+				schema: buildRouteSchema({
+					tag: CORE_PROXY_TAG,
+					summary: "Proxy report requests to core service.",
+					response: {
+						200: jsonObjectSchema,
+					},
+				}),
+			},
+			proxyCore,
+		);
+
 		app.all(
 			"/v1/tenants/:tenantId/reservations",
 			{
@@ -1085,6 +1204,51 @@ export const buildServer = () => {
 					tag: CORE_PROXY_TAG,
 					summary: "Proxy room type deletion to the rooms service.",
 					response: {
+						204: { type: "null" },
+					},
+				}),
+			},
+			proxyRooms,
+		);
+
+		// Rates routes - proxy to rooms service
+		app.get(
+			"/v1/rates",
+			{
+				schema: buildRouteSchema({
+					tag: CORE_PROXY_TAG,
+					summary: "List rates for a tenant.",
+					response: {
+						200: jsonObjectSchema,
+					},
+				}),
+			},
+			proxyRooms,
+		);
+
+		app.post(
+			"/v1/rates",
+			{
+				schema: buildRouteSchema({
+					tag: CORE_PROXY_TAG,
+					summary: "Create a new rate.",
+					body: jsonObjectSchema,
+					response: {
+						201: jsonObjectSchema,
+					},
+				}),
+			},
+			proxyRooms,
+		);
+
+		app.all(
+			"/v1/rates/*",
+			{
+				schema: buildRouteSchema({
+					tag: CORE_PROXY_TAG,
+					summary: "Proxy rate operations to rooms service.",
+					response: {
+						200: jsonObjectSchema,
 						204: { type: "null" },
 					},
 				}),

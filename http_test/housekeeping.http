@@ -1,0 +1,210 @@
+###############################################################################
+# HOUSEKEEPING SERVICE - Task Management
+# Routes via API Gateway (localhost:8080) -> housekeeping-service (port 3500)
+#
+# Content: Housekeeping Tasks, Assignments, Status Updates
+#
+# Related files:
+# - rooms.http - Room status updates
+###############################################################################
+
+# --- VARIABLES ---
+@baseUrl = http://localhost:8080
+@tenantId = 11111111-1111-1111-1111-111111111111
+@propertyId = 22222222-2222-2222-2222-222222222222
+@room101Id = 55555555-5555-5555-5555-555555555551
+
+###############################################################################
+# 1. LOGIN
+###############################################################################
+
+# @name login
+POST {{baseUrl}}/v1/auth/login
+Content-Type: application/json
+
+{
+  "username": "setup.admin",
+  "password": "TempPass123"
+}
+
+### Extract token
+@authToken = {{login.response.body.access_token}}
+
+###############################################################################
+# 2. HOUSEKEEPING TASKS - READ
+###############################################################################
+
+# List all housekeeping tasks
+GET {{baseUrl}}/v1/housekeeping/tasks?tenant_id={{tenantId}}&limit=50
+Authorization: Bearer {{authToken}}
+
+###
+# Filter by status
+GET {{baseUrl}}/v1/housekeeping/tasks?tenant_id={{tenantId}}&status=PENDING
+Authorization: Bearer {{authToken}}
+
+###
+# Filter by priority
+GET {{baseUrl}}/v1/housekeeping/tasks?tenant_id={{tenantId}}&priority=HIGH
+Authorization: Bearer {{authToken}}
+
+###
+# Filter by assignee
+GET {{baseUrl}}/v1/housekeeping/tasks?tenant_id={{tenantId}}&assigned_to={{staffId}}
+Authorization: Bearer {{authToken}}
+
+###############################################################################
+# 3. HOUSEKEEPING TASKS - CREATE (via Command Center)
+###############################################################################
+
+# @name createTask
+# Create a cleaning task
+POST {{baseUrl}}/v1/tenants/{{tenantId}}/housekeeping/tasks
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+
+{
+  "property_id": "{{propertyId}}",
+  "room_id": "{{room101Id}}",
+  "task_type": "CHECKOUT_CLEANING",
+  "priority": "HIGH",
+  "due_time": "2026-01-30T14:00:00Z",
+  "notes": "VIP checkout - deep clean required",
+  "estimated_minutes": 45
+}
+
+### Extract created task ID
+@taskId = {{createTask.response.body.task_id}}
+
+###
+# Create maintenance inspection task
+POST {{baseUrl}}/v1/tenants/{{tenantId}}/housekeeping/tasks
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+
+{
+  "property_id": "{{propertyId}}",
+  "room_id": "{{room101Id}}",
+  "task_type": "INSPECTION",
+  "priority": "MEDIUM",
+  "due_time": "2026-01-30T16:00:00Z",
+  "notes": "Monthly AC filter check",
+  "estimated_minutes": 15
+}
+
+###
+# Create turndown service task
+POST {{baseUrl}}/v1/tenants/{{tenantId}}/housekeeping/tasks
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+
+{
+  "property_id": "{{propertyId}}",
+  "room_id": "{{room101Id}}",
+  "task_type": "TURNDOWN",
+  "priority": "LOW",
+  "due_time": "2026-01-30T18:00:00Z",
+  "notes": "Evening turndown service",
+  "estimated_minutes": 10
+}
+
+###############################################################################
+# 4. TASK ASSIGNMENT
+###############################################################################
+
+# Assign task to staff member
+POST {{baseUrl}}/v1/tenants/{{tenantId}}/housekeeping/tasks/{{taskId}}/assign
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+
+{
+  "assigned_to": "{{staffUserId}}",
+  "notes": "Please prioritize - VIP guest"
+}
+
+###
+# Reassign task
+POST {{baseUrl}}/v1/tenants/{{tenantId}}/housekeeping/tasks/{{taskId}}/reassign
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+
+{
+  "assigned_to": "{{newStaffUserId}}",
+  "reason": "Original assignee on break"
+}
+
+###############################################################################
+# 5. TASK STATUS UPDATES
+###############################################################################
+
+# Complete task
+POST {{baseUrl}}/v1/tenants/{{tenantId}}/housekeeping/tasks/{{taskId}}/complete
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+
+{
+  "notes": "Room cleaned and inspected",
+  "actual_minutes": 40,
+  "supplies_used": ["towels_set", "toiletries_set", "minibar_restock"]
+}
+
+###
+# Reopen task
+POST {{baseUrl}}/v1/tenants/{{tenantId}}/housekeeping/tasks/{{taskId}}/reopen
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+
+{
+  "reason": "Guest reported issue - needs re-cleaning"
+}
+
+###
+# Add note to task
+POST {{baseUrl}}/v1/tenants/{{tenantId}}/housekeeping/tasks/{{taskId}}/notes
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+
+{
+  "note": "Found damaged towel rack - maintenance notified"
+}
+
+###############################################################################
+# 6. BULK OPERATIONS
+###############################################################################
+
+# Bulk status update
+POST {{baseUrl}}/v1/tenants/{{tenantId}}/housekeeping/tasks/bulk-status
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+
+{
+  "task_ids": ["{{taskId}}", "{{taskId2}}"],
+  "status": "IN_PROGRESS",
+  "notes": "Starting morning cleaning rounds"
+}
+
+###############################################################################
+# REFERENCE
+###############################################################################
+#
+# TASK TYPES:
+#   CHECKOUT_CLEANING - Post-checkout deep clean
+#   STAYOVER_CLEANING - Daily cleaning during stay
+#   TURNDOWN          - Evening turndown service
+#   INSPECTION        - Room inspection
+#   DEEP_CLEANING     - Periodic deep clean
+#   MAINTENANCE       - Minor maintenance
+#   SPECIAL_REQUEST   - Guest special request
+#
+# TASK STATUSES:
+#   PENDING, ASSIGNED, IN_PROGRESS, COMPLETED, CANCELLED
+#
+# PRIORITIES:
+#   LOW, MEDIUM, HIGH, URGENT
+#
+# SAMPLE IDs:
+#   Tenant:   11111111-1111-1111-1111-111111111111
+#   Property: 22222222-2222-2222-2222-222222222222
+#   Room 101: 55555555-5555-5555-5555-555555555551
+#
+###############################################################################

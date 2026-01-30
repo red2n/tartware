@@ -1,334 +1,105 @@
-// =====================================================
-// SETTINGS SERVICE - HTTP Test File
-// =====================================================
-//
-// Prerequisites:
-// 1. Start core-service (port 3000) and settings-service (port 3100)
-// 2. All requests below are routed via the API Gateway (localhost:8080)
-// 3. Login via core-service to get {{token}}
-//
-// The settings service provides:
-// - Settings catalog (categories, sections, definitions, options)
-// - Settings values (tenant-scoped configuration)
-// - Property amenities (see amenities.http)
-//
-// =====================================================
+###############################################################################
+# SETTINGS SERVICE - Configuration Management
+# Routes via API Gateway (localhost:8080) -> settings-service (port 3000)
+#
+# Content: System Settings, Tenant Configuration
+#
+# Note: Settings service routes are proxied through core-service
+###############################################################################
 
-// login to core-service to get tenant-scoped token
-POST /v1/auth/login HTTP/1.1
-Host: localhost:8080
+# --- VARIABLES ---
+@baseUrl = http://localhost:8080
+@tenantId = 11111111-1111-1111-1111-111111111111
+@propertyId = 22222222-2222-2222-2222-222222222222
+
+###############################################################################
+# 1. LOGIN
+###############################################################################
+
+# @name login
+POST {{baseUrl}}/v1/auth/login
 Content-Type: application/json
-
-{"username":"aurora.owner","password":"TempPass123"}
-
-###
-// ========================
-// SETTINGS CATALOG - FULL
-// ========================
-
-// list full settings catalog (all categories, sections, definitions, options)
-GET /v1/settings/catalog HTTP/1.1
-Host: localhost:8080
-Authorization: Bearer {{token}}
-
-###
-// ========================
-// SETTINGS CATEGORIES
-// ========================
-
-// list all active categories
-GET /v1/settings/categories HTTP/1.1
-Host: localhost:8080
-Authorization: Bearer {{token}}
-
-###
-// list all categories (including inactive)
-GET /v1/settings/categories?active_only=false HTTP/1.1
-Host: localhost:8080
-Authorization: Bearer {{token}}
-
-###
-// ========================
-// SETTINGS SECTIONS
-// ========================
-
-// list all active sections
-GET /v1/settings/sections HTTP/1.1
-Host: localhost:8080
-Authorization: Bearer {{token}}
-
-###
-// list sections by category ID
-GET /v1/settings/sections?category_id={{category_id}} HTTP/1.1
-Host: localhost:8080
-Authorization: Bearer {{token}}
-
-###
-// list sections by category code
-GET /v1/settings/sections?category_code=PROPERTY HTTP/1.1
-Host: localhost:8080
-Authorization: Bearer {{token}}
-
-###
-// list all sections (including inactive)
-GET /v1/settings/sections?active_only=false HTTP/1.1
-Host: localhost:8080
-Authorization: Bearer {{token}}
-
-###
-// ========================
-// SETTINGS DEFINITIONS
-// ========================
-
-// list all active definitions
-GET /v1/settings/definitions HTTP/1.1
-Host: localhost:8080
-Authorization: Bearer {{token}}
-
-###
-// list definitions by category ID
-GET /v1/settings/definitions?category_id={{category_id}} HTTP/1.1
-Host: localhost:8080
-Authorization: Bearer {{token}}
-
-###
-// list definitions by section ID
-GET /v1/settings/definitions?section_id={{section_id}} HTTP/1.1
-Host: localhost:8080
-Authorization: Bearer {{token}}
-
-###
-// list definitions by category code
-GET /v1/settings/definitions?category_code=PROPERTY HTTP/1.1
-Host: localhost:8080
-Authorization: Bearer {{token}}
-
-###
-// list definitions by section code
-GET /v1/settings/definitions?section_code=GENERAL HTTP/1.1
-Host: localhost:8080
-Authorization: Bearer {{token}}
-
-###
-// search definitions by name/description
-GET /v1/settings/definitions?search=timezone HTTP/1.1
-Host: localhost:8080
-Authorization: Bearer {{token}}
-
-###
-// list all definitions (including deprecated)
-GET /v1/settings/definitions?active_only=false HTTP/1.1
-Host: localhost:8080
-Authorization: Bearer {{token}}
-
-###
-// ========================
-// SETTINGS OPTIONS
-// ========================
-
-// list all active options
-GET /v1/settings/options HTTP/1.1
-Host: localhost:8080
-Authorization: Bearer {{token}}
-
-###
-// list options for specific setting ID
-GET /v1/settings/options?setting_id={{setting_id}} HTTP/1.1
-Host: localhost:8080
-Authorization: Bearer {{token}}
-
-###
-// list options for specific setting code
-GET /v1/settings/options?setting_code=PROPERTY.GENERAL.TIMEZONE HTTP/1.1
-Host: localhost:8080
-Authorization: Bearer {{token}}
-
-###
-// list all options (including inactive)
-GET /v1/settings/options?active_only=false HTTP/1.1
-Host: localhost:8080
-Authorization: Bearer {{token}}
-
-###
-// ========================
-// SETTINGS CATALOG BY CATEGORY
-// ========================
-
-// get catalog for specific category (PROPERTY)
-GET /v1/settings/catalog/PROPERTY HTTP/1.1
-Host: localhost:8080
-Authorization: Bearer {{token}}
-
-###
-// get catalog for RESERVATION category
-GET /v1/settings/catalog/RESERVATION HTTP/1.1
-Host: localhost:8080
-Authorization: Bearer {{token}}
-
-###
-// get catalog for BILLING category
-GET /v1/settings/catalog/BILLING HTTP/1.1
-Host: localhost:8080
-Authorization: Bearer {{token}}
-
-###
-// get catalog for non-existent category (404)
-GET /v1/settings/catalog/NONEXISTENT HTTP/1.1
-Host: localhost:8080
-Authorization: Bearer {{token}}
-
-###
-// ========================
-// SETTINGS VALUES
-// ========================
-
-// list all settings values for tenant
-GET /v1/settings/values HTTP/1.1
-Host: localhost:8080
-Authorization: Bearer {{token}}
-
-###
-// list values filtered by scope level
-GET /v1/settings/values?scope_level=PROPERTY HTTP/1.1
-Host: localhost:8080
-Authorization: Bearer {{token}}
-
-###
-// list values for specific setting ID
-GET /v1/settings/values?setting_id={{setting_id}} HTTP/1.1
-Host: localhost:8080
-Authorization: Bearer {{token}}
-
-###
-// list values for specific property
-GET /v1/settings/values?property_id=eedfeb3f-4c09-47d9-9b02-2d8d6610ce27 HTTP/1.1
-Host: localhost:8080
-Authorization: Bearer {{token}}
-
-###
-// list all values (including expired/pending)
-GET /v1/settings/values?active_only=false HTTP/1.1
-Host: localhost:8080
-Authorization: Bearer {{token}}
-
-###
-// ========================
-// SETTINGS VALUES - CREATE
-// ========================
-
-// create a tenant-level setting value
-POST /v1/settings/values HTTP/1.1
-Host: localhost:8080
-Content-Type: application/json
-Authorization: Bearer {{token}}
 
 {
-  "setting_id": "{{setting_id}}",
-  "scope_level": "TENANT",
-  "value": "America/New_York",
-  "status": "ACTIVE",
-  "notes": "Updated timezone for tenant"
+  "username": "setup.admin",
+  "password": "TempPass123"
 }
 
-###
-// create a property-level setting value
-POST /v1/settings/values HTTP/1.1
-Host: localhost:8080
-Content-Type: application/json
-Authorization: Bearer {{token}}
+### Extract token
+@authToken = {{login.response.body.access_token}}
 
-{
-  "setting_id": "{{setting_id}}",
-  "scope_level": "PROPERTY",
-  "property_id": "eedfeb3f-4c09-47d9-9b02-2d8d6610ce27",
-  "value": "14:00",
-  "status": "ACTIVE",
-  "notes": "Check-in time for Aurora Central Hotel"
-}
+###############################################################################
+# 2. SETTINGS - READ
+###############################################################################
+
+# Get all settings for tenant
+GET {{baseUrl}}/v1/settings?tenant_id={{tenantId}}
+Authorization: Bearer {{authToken}}
 
 ###
-// create a setting value with effective dates
-POST /v1/settings/values HTTP/1.1
-Host: localhost:8080
-Content-Type: application/json
-Authorization: Bearer {{token}}
-
-{
-  "setting_id": "{{setting_id}}",
-  "scope_level": "PROPERTY",
-  "property_id": "eedfeb3f-4c09-47d9-9b02-2d8d6610ce27",
-  "value": true,
-  "status": "PENDING",
-  "effective_from": "2026-02-01T00:00:00Z",
-  "effective_to": "2026-03-31T23:59:59Z",
-  "notes": "Promotional feature enabled for Q1"
-}
+# Get settings by category
+GET {{baseUrl}}/v1/settings?tenant_id={{tenantId}}&category=reservations
+Authorization: Bearer {{authToken}}
 
 ###
-// ========================
-// SETTINGS VALUES - UPDATE
-// ========================
+# Get property-specific settings
+GET {{baseUrl}}/v1/settings?tenant_id={{tenantId}}&property_id={{propertyId}}
+Authorization: Bearer {{authToken}}
 
-// update a setting value
-PATCH /v1/settings/values/{{value_id}} HTTP/1.1
-Host: localhost:8080
+###############################################################################
+# 3. SETTINGS - UPDATE
+###############################################################################
+
+# Update a setting
+PUT {{baseUrl}}/v1/settings
 Content-Type: application/json
-Authorization: Bearer {{token}}
+Authorization: Bearer {{authToken}}
 
 {
+  "tenant_id": "{{tenantId}}",
+  "key": "reservations.default_check_in_time",
   "value": "15:00",
-  "notes": "Updated check-in time"
+  "category": "reservations"
 }
 
 ###
-// update setting value status
-PATCH /v1/settings/values/{{value_id}} HTTP/1.1
-Host: localhost:8080
+# Update property setting
+PUT {{baseUrl}}/v1/settings
 Content-Type: application/json
-Authorization: Bearer {{token}}
+Authorization: Bearer {{authToken}}
 
 {
-  "status": "EXPIRED"
+  "tenant_id": "{{tenantId}}",
+  "property_id": "{{propertyId}}",
+  "key": "housekeeping.checkout_deadline",
+  "value": "11:00",
+  "category": "housekeeping"
 }
 
-###
-// lock a setting value (prevent changes until date)
-PATCH /v1/settings/values/{{value_id}} HTTP/1.1
-Host: localhost:8080
-Content-Type: application/json
-Authorization: Bearer {{token}}
-
-{
-  "locked_until": "2026-12-31T23:59:59Z",
-  "notes": "Locked per compliance requirement"
-}
-
-###
-// ========================
-// REFERENCE: SCOPE LEVELS
-// ========================
-//
-// GLOBAL   - Platform-wide default (set by system admin)
-// TENANT   - Tenant-wide setting
-// PROPERTY - Property-specific override
-// UNIT     - Unit-specific override (e.g., room)
-// USER     - User preference override
-//
-// Inheritance: USER > UNIT > PROPERTY > TENANT > GLOBAL
-//
-// ========================
-
-###
-// ========================
-// REFERENCE: IDs
-// ========================
-//
-// TENANT ID (Aurora):
-//   19b2afbb-e6f6-4776-8e52-efbab18f4bec
-//
-// PROPERTY IDs (Aurora):
-//   Aurora Central Hotel: eedfeb3f-4c09-47d9-9b02-2d8d6610ce27
-//   Aurora Harbor Hotel:  97d98b4f-6c2c-4df9-adfe-6a536a81ac2d
-//   Aurora Uptown Suites: fd35e1bb-5b7c-486a-b2db-205284622d28
-//
-// ========================
+###############################################################################
+# REFERENCE
+###############################################################################
+#
+# SETTING CATEGORIES:
+#   general      - General tenant settings
+#   reservations - Booking and check-in/out settings
+#   housekeeping - Cleaning and task settings
+#   billing      - Payment and invoice settings
+#   notifications - Email and alert settings
+#   integrations - Third-party integration settings
+#
+# COMMON SETTINGS:
+#   reservations.default_check_in_time   - Default check-in time
+#   reservations.default_check_out_time  - Default check-out time
+#   reservations.min_advance_booking     - Minimum advance booking hours
+#   reservations.max_advance_booking     - Maximum advance booking days
+#   housekeeping.checkout_deadline       - Checkout deadline
+#   housekeeping.auto_assign_tasks       - Auto-assign tasks enabled
+#   billing.default_currency             - Default currency code
+#   billing.tax_rate                     - Default tax rate
+#
+# SAMPLE IDs:
+#   Tenant:   11111111-1111-1111-1111-111111111111
+#   Property: 22222222-2222-2222-2222-222222222222
+#
+###############################################################################

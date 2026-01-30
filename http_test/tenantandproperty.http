@@ -1,77 +1,168 @@
-// =====================================================
-// TENANT & PROPERTY - HTTP Test File
-// =====================================================
-//
-// Use the API Gateway on localhost:8080.
-//
-// =====================================================
+###############################################################################
+# TENANTS & PROPERTIES - Organization Management
+# Routes via API Gateway (localhost:8080) -> core-service (port 3000)
+#
+# Content: Tenants, Properties, Dashboard Stats
+#
+# Related files:
+# - core-service.http - Users and authentication
+# - modules.http - Module management
+###############################################################################
 
-// create new tenant + owner user (bootstrap)
-POST /v1/tenants/bootstrap HTTP/1.1
-Host: localhost:8080
+# --- VARIABLES ---
+@baseUrl = http://localhost:8080
+@tenantId = 11111111-1111-1111-1111-111111111111
+@propertyId = 22222222-2222-2222-2222-222222222222
+
+###############################################################################
+# 1. LOGIN
+###############################################################################
+
+# @name login
+POST {{baseUrl}}/v1/auth/login
 Content-Type: application/json
-Authorization: Bearer {{setup_admin_token}}
 
 {
-	"tenant": {
-		"name": "Harborlight Hotels",
-		"slug": "harborlight-hotels",
-		"type": "INDEPENDENT",
-		"email": "ops@harborlight.demo",
-		"phone": "+15551212",
-		"website": "https://harborlight.demo",
-		"country": "US",
-		"config": {
-			"features": ["reservations", "housekeeping", "payments"],
-			"maxUsers": 25,
-			"maxProperties": 5,
-			"defaultCurrency": "USD",
-			"defaultLanguage": "en",
-			"defaultTimezone": "UTC",
-			"enableMultiProperty": true,
-			"enableChannelManager": false,
-			"enableLoyaltyProgram": false,
-			"enableAdvancedReporting": true,
-			"enablePaymentProcessing": true,
-			"brandingEnabled": true
-		}
-	},
-	"owner": {
-		"username": "harborlight.owner",
-		"email": "harborlight.owner@harborlight.demo",
-		"first_name": "Harborlight",
-		"last_name": "Owner",
-		"password": "TempPass123"
-	}
+  "username": "setup.admin",
+  "password": "TempPass123"
 }
 
-###
-// login owner to get token
-POST /v1/auth/login HTTP/1.1
-Host: localhost:8080
-Content-Type: application/json
+### Extract token
+@authToken = {{login.response.body.access_token}}
 
-{"username":"harborlight.owner","password":"TempPass123"}
+###############################################################################
+# 2. TENANTS - READ
+###############################################################################
+
+# List all tenants accessible to user
+GET {{baseUrl}}/v1/tenants
+Authorization: Bearer {{authToken}}
 
 ###
-// create property (use tenant_id from bootstrap response)
-POST /v1/properties HTTP/1.1
-Host: localhost:8080
+# List with pagination
+GET {{baseUrl}}/v1/tenants?limit=10&offset=0
+Authorization: Bearer {{authToken}}
+
+###############################################################################
+# 3. PROPERTIES - READ
+###############################################################################
+
+# List properties for tenant
+GET {{baseUrl}}/v1/properties?tenant_id={{tenantId}}&limit=50
+Authorization: Bearer {{authToken}}
+
+###############################################################################
+# 4. PROPERTIES - CREATE
+###############################################################################
+
+# @name createProperty
+# Create a new property
+POST {{baseUrl}}/v1/properties
 Content-Type: application/json
-Authorization: Bearer {{owner_token}}
+Authorization: Bearer {{authToken}}
 
 {
-	"tenant_id": "<TENANT_ID_FROM_BOOTSTRAP>",
-	"property_name": "Harborlight Bay Resort",
-	"property_code": "HBR-BAY",
-	"address": {
-		"line1": "101 Bayfront Ave",
-		"city": "San Diego",
-		"state": "CA",
-		"country": "US",
-		"postal_code": "92101"
-	},
-	"phone": "+15551213",
-	"email": "bay@harborlight.demo",
-	"website": "https://bay.harborlight.demo"
+  "tenant_id": "{{tenantId}}",
+  "property_name": "Tartware Beach Resort",
+  "property_code": "TBR",
+  "property_type": "RESORT",
+  "star_rating": 4,
+  "total_rooms": 150,
+  "phone": "+1-555-0300",
+  "email": "info@tartware-beach.demo",
+  "website": "https://beach.tartware.demo",
+  "address": {
+    "line1": "100 Ocean Drive",
+    "city": "Miami",
+    "state": "FL",
+    "postal_code": "33139",
+    "country": "US"
+  },
+  "currency": "USD",
+  "timezone": "America/New_York"
 }
+
+### Extract created property ID
+@newPropertyId = {{createProperty.response.body.id}}
+
+###
+# Create boutique hotel
+POST {{baseUrl}}/v1/properties
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+
+{
+  "tenant_id": "{{tenantId}}",
+  "property_name": "Tartware Boutique Downtown",
+  "property_code": "TBD",
+  "property_type": "BOUTIQUE",
+  "star_rating": 5,
+  "total_rooms": 45,
+  "phone": "+1-555-0400",
+  "email": "info@tartware-boutique.demo",
+  "website": "https://boutique.tartware.demo",
+  "address": {
+    "line1": "50 Fashion District Lane",
+    "city": "New York",
+    "state": "NY",
+    "postal_code": "10001",
+    "country": "US"
+  },
+  "currency": "USD",
+  "timezone": "America/New_York"
+}
+
+###############################################################################
+# 5. DASHBOARD - STATS & ACTIVITY
+###############################################################################
+
+# Get dashboard statistics
+GET {{baseUrl}}/v1/dashboard/stats?tenant_id={{tenantId}}
+Authorization: Bearer {{authToken}}
+
+###
+# Get stats for specific property
+GET {{baseUrl}}/v1/dashboard/stats?tenant_id={{tenantId}}&property_id={{propertyId}}
+Authorization: Bearer {{authToken}}
+
+###
+# Get recent activity feed
+GET {{baseUrl}}/v1/dashboard/activity?tenant_id={{tenantId}}&limit=20
+Authorization: Bearer {{authToken}}
+
+###
+# Get activity for specific property
+GET {{baseUrl}}/v1/dashboard/activity?tenant_id={{tenantId}}&property_id={{propertyId}}&limit=10
+Authorization: Bearer {{authToken}}
+
+###
+# Get upcoming tasks
+GET {{baseUrl}}/v1/dashboard/tasks?tenant_id={{tenantId}}&limit=10
+Authorization: Bearer {{authToken}}
+
+###
+# Get tasks for specific property
+GET {{baseUrl}}/v1/dashboard/tasks?tenant_id={{tenantId}}&property_id={{propertyId}}&limit=10
+Authorization: Bearer {{authToken}}
+
+###############################################################################
+# REFERENCE
+###############################################################################
+#
+# PROPERTY TYPES:
+#   HOTEL, RESORT, BOUTIQUE, MOTEL, HOSTEL, BED_AND_BREAKFAST,
+#   APARTMENT, VILLA, CABIN, CASTLE
+#
+# STAR RATINGS: 1-5
+#
+# SUBSCRIPTION PLANS:
+#   STARTER, PROFESSIONAL, ENTERPRISE
+#
+# TENANT STATUSES:
+#   ACTIVE, SUSPENDED, PENDING, INACTIVE
+#
+# SAMPLE IDs:
+#   Tenant:   11111111-1111-1111-1111-111111111111 (Tartware Hospitality Labs)
+#   Property: 22222222-2222-2222-2222-222222222222 (Tartware City Center)
+#
+###############################################################################

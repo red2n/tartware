@@ -36,6 +36,9 @@ permissions JSONB DEFAULT '{
         "restrictions": {}
     }'::jsonb, -- Optional overrides for property-level access
 
+-- Module Access (which modules user can access for this tenant)
+modules JSONB DEFAULT '["core"]'::jsonb, -- Enabled modules: core, reservations, housekeeping, billing, etc.
+
 -- Date Range (optional: for temporary access)
 valid_from TIMESTAMP, -- When access becomes active
 valid_until TIMESTAMP, -- When access expires

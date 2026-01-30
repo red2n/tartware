@@ -1,0 +1,252 @@
+###############################################################################
+# BILLING SERVICE - Payments & Invoices
+# Routes via API Gateway (localhost:8080) -> billing-service (port 3600)
+#
+# Content: Payments, Invoices, Charges, Folios
+#
+# Related files:
+# - reservations.http - Reservation billing
+# - guests.http - Guest accounts
+###############################################################################
+
+# --- VARIABLES ---
+@baseUrl = http://localhost:8080
+@tenantId = 11111111-1111-1111-1111-111111111111
+@propertyId = 22222222-2222-2222-2222-222222222222
+
+###############################################################################
+# 1. LOGIN
+###############################################################################
+
+# @name login
+POST {{baseUrl}}/v1/auth/login
+Content-Type: application/json
+
+{
+  "username": "setup.admin",
+  "password": "TempPass123"
+}
+
+### Extract token
+@authToken = {{login.response.body.access_token}}
+
+###############################################################################
+# 2. PAYMENTS - READ
+###############################################################################
+
+# List all payments
+GET {{baseUrl}}/v1/billing/payments?tenant_id={{tenantId}}&limit=50
+Authorization: Bearer {{authToken}}
+
+###
+# Filter by status
+GET {{baseUrl}}/v1/billing/payments?tenant_id={{tenantId}}&status=COMPLETED
+Authorization: Bearer {{authToken}}
+
+###
+# Filter by reservation
+GET {{baseUrl}}/v1/billing/payments?tenant_id={{tenantId}}&reservation_id={{reservationId}}
+Authorization: Bearer {{authToken}}
+
+###############################################################################
+# 3. PAYMENT CAPTURE (via Command Center)
+###############################################################################
+
+# Capture a payment
+POST {{baseUrl}}/v1/tenants/{{tenantId}}/billing/payments/capture
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+
+{
+  "property_id": "{{propertyId}}",
+  "reservation_id": "{{reservationId}}",
+  "amount": 627.00,
+  "currency": "USD",
+  "payment_method": "CREDIT_CARD",
+  "card_details": {
+    "last_four": "4242",
+    "brand": "VISA",
+    "exp_month": 12,
+    "exp_year": 2027
+  },
+  "description": "Room charges - 3 nights",
+  "metadata": {
+    "invoice_number": "INV-2026-001"
+  }
+}
+
+###
+# Capture deposit
+POST {{baseUrl}}/v1/tenants/{{tenantId}}/billing/payments/capture
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+
+{
+  "property_id": "{{propertyId}}",
+  "reservation_id": "{{reservationId}}",
+  "amount": 200.00,
+  "currency": "USD",
+  "payment_method": "CREDIT_CARD",
+  "payment_type": "DEPOSIT",
+  "card_details": {
+    "last_four": "4242",
+    "brand": "VISA"
+  },
+  "description": "Security deposit"
+}
+
+###############################################################################
+# 4. PAYMENT REFUND
+###############################################################################
+
+# Refund a payment
+POST {{baseUrl}}/v1/tenants/{{tenantId}}/billing/payments/{{paymentId}}/refund
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+
+{
+  "amount": 200.00,
+  "reason": "Security deposit return - no damages",
+  "refund_method": "ORIGINAL_PAYMENT_METHOD"
+}
+
+###
+# Partial refund
+POST {{baseUrl}}/v1/tenants/{{tenantId}}/billing/payments/{{paymentId}}/refund
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+
+{
+  "amount": 50.00,
+  "reason": "Service compensation - AC issue on first night",
+  "refund_method": "ORIGINAL_PAYMENT_METHOD"
+}
+
+###############################################################################
+# 5. PAYMENT APPLICATION
+###############################################################################
+
+# Apply payment to folio
+POST {{baseUrl}}/v1/tenants/{{tenantId}}/billing/payments/{{paymentId}}/apply
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+
+{
+  "folio_id": "{{folioId}}",
+  "amount": 627.00,
+  "notes": "Full payment applied to guest folio"
+}
+
+###############################################################################
+# 6. INVOICES
+###############################################################################
+
+# Create invoice
+POST {{baseUrl}}/v1/tenants/{{tenantId}}/billing/invoices
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+
+{
+  "property_id": "{{propertyId}}",
+  "reservation_id": "{{reservationId}}",
+  "guest_id": "{{guestId}}",
+  "line_items": [
+    {
+      "description": "Room Charges - Cityline King (3 nights)",
+      "quantity": 3,
+      "unit_price": 209.00,
+      "amount": 627.00,
+      "tax_rate": 12.5
+    },
+    {
+      "description": "Minibar",
+      "quantity": 1,
+      "unit_price": 25.00,
+      "amount": 25.00,
+      "tax_rate": 12.5
+    }
+  ],
+  "subtotal": 652.00,
+  "tax_amount": 81.50,
+  "total_amount": 733.50,
+  "currency": "USD",
+  "due_date": "2026-02-28",
+  "notes": "Thank you for staying with us!"
+}
+
+###
+# Adjust invoice
+POST {{baseUrl}}/v1/tenants/{{tenantId}}/billing/invoices/{{invoiceId}}/adjust
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+
+{
+  "adjustment_type": "DISCOUNT",
+  "amount": -50.00,
+  "reason": "Loyalty member discount",
+  "authorization": "MGR-2026-001"
+}
+
+###############################################################################
+# 7. CHARGES
+###############################################################################
+
+# Post a charge
+POST {{baseUrl}}/v1/tenants/{{tenantId}}/billing/charges
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+
+{
+  "property_id": "{{propertyId}}",
+  "reservation_id": "{{reservationId}}",
+  "folio_id": "{{folioId}}",
+  "charge_type": "ROOM_SERVICE",
+  "description": "Room Service - Dinner",
+  "amount": 45.00,
+  "currency": "USD",
+  "tax_rate": 12.5,
+  "posted_by": "{{userId}}"
+}
+
+###############################################################################
+# 8. FOLIO TRANSFERS
+###############################################################################
+
+# Transfer folio balance
+POST {{baseUrl}}/v1/tenants/{{tenantId}}/billing/folios/transfer
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+
+{
+  "source_folio_id": "{{folioId}}",
+  "target_folio_id": "{{targetFolioId}}",
+  "amount": 100.00,
+  "reason": "Split billing - company portion",
+  "notes": "Transfer approved by guest"
+}
+
+###############################################################################
+# REFERENCE
+###############################################################################
+#
+# PAYMENT STATUSES:
+#   PENDING, AUTHORIZED, COMPLETED, FAILED, REFUNDED, PARTIALLY_REFUNDED
+#
+# PAYMENT METHODS:
+#   CREDIT_CARD, DEBIT_CARD, CASH, BANK_TRANSFER, VIRTUAL_CARD, INVOICE
+#
+# PAYMENT TYPES:
+#   PAYMENT, DEPOSIT, PREPAYMENT, REFUND
+#
+# CHARGE TYPES:
+#   ROOM_CHARGE, ROOM_SERVICE, MINIBAR, RESTAURANT, SPA, PARKING,
+#   LAUNDRY, PHONE, MISCELLANEOUS, TAX, SERVICE_CHARGE
+#
+# INVOICE STATUSES:
+#   DRAFT, SENT, PAID, PARTIALLY_PAID, OVERDUE, CANCELLED
+#
+# SAMPLE IDs:
+#   Tenant:   11111111-1111-1111-1111-111111111111
+#   Property: 22222222-2222-2222-2222-222222222222
+#
+###############################################################################

@@ -17,7 +17,7 @@ if (!process.env.AUTH_JWT_SECRET) {
 }
 process.env.AUTH_JWT_ISSUER = process.env.AUTH_JWT_ISSUER ?? "tartware-core-service";
 process.env.AUTH_JWT_AUDIENCE = process.env.AUTH_JWT_AUDIENCE ?? "tartware-core";
-process.env.AUTH_DEFAULT_PASSWORD = process.env.AUTH_DEFAULT_PASSWORD ?? "DevPassword123!";
+process.env.AUTH_DEFAULT_PASSWORD = process.env.AUTH_DEFAULT_PASSWORD ?? "TempPass123";
 
 const toNumber = (value: string | undefined, fallback: number): number => {
   if (typeof value === "string" && value.trim().length > 0) {

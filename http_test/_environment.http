@@ -1,0 +1,86 @@
+###############################################################################
+# HTTP Test Environment Variables
+#
+# This file contains all the base configuration and sample IDs for testing.
+# Import these variables into other .http files using VS Code REST Client.
+#
+# Requirements:
+# - Install VS Code REST Client extension
+# - Run 'npm run dev' to start all services
+# - Ensure migrations are applied (scripts/2026-01-28-*.sql, scripts/2026-01-29-*.sql)
+#
+# Default tenant credentials: setup.admin / TempPass123
+###############################################################################
+
+# Base URL for API Gateway
+@baseUrl = http://localhost:8080
+
+# Authentication
+@username = setup.admin
+@password = TempPass123
+
+# --- Known Sample IDs (from seed data) ---
+
+# Tenant - Tartware Hospitality Labs
+@tenantId = 11111111-1111-1111-1111-111111111111
+
+# Property - Tartware City Center
+@propertyId = 22222222-2222-2222-2222-222222222222
+
+# User - setup.admin
+@userId = 33333333-3333-3333-3333-333333333333
+
+# Room Type - Cityline King
+@roomTypeId = 44444444-4444-4444-4444-444444444444
+
+# Rooms - Sample room IDs
+@room101Id = 55555555-5555-5555-5555-555555555551
+@room102Id = 55555555-5555-5555-5555-555555555552
+@room201Id = 55555555-5555-5555-5555-555555555553
+@room202Id = 55555555-5555-5555-5555-555555555554
+
+# --- Dynamic IDs (to be populated from API responses) ---
+# @guestId =
+# @reservationId =
+# @invoiceId =
+# @paymentId =
+# @taskId =
+
+###############################################################################
+# 1. LOGIN - Get Access Token (run this first)
+###############################################################################
+
+# @name login
+POST {{baseUrl}}/v1/auth/login
+Content-Type: application/json
+
+{
+  "username": "{{username}}",
+  "password": "{{password}}"
+}
+
+### Extract token for subsequent requests
+@authToken = {{login.response.body.access_token}}
+
+###############################################################################
+# 2. HEALTH CHECK
+###############################################################################
+
+# @name healthCheck
+GET {{baseUrl}}/health
+
+###############################################################################
+# 3. VERIFY TENANT ACCESS
+###############################################################################
+
+# @name listTenants
+GET {{baseUrl}}/v1/tenants
+Authorization: Bearer {{authToken}}
+
+###############################################################################
+# 4. VERIFY PROPERTY ACCESS
+###############################################################################
+
+# @name listProperties
+GET {{baseUrl}}/v1/properties?tenant_id={{tenantId}}
+Authorization: Bearer {{authToken}}

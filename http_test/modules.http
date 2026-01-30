@@ -1,0 +1,67 @@
+###############################################################################
+# MODULES - Platform Module Management
+# Routes via API Gateway (localhost:8080) -> core-service (port 3000)
+#
+# Content: Module Catalog, Tenant Module Configuration
+###############################################################################
+
+# --- VARIABLES ---
+@baseUrl = http://localhost:8080
+@tenantId = 11111111-1111-1111-1111-111111111111
+
+###############################################################################
+# 1. LOGIN
+###############################################################################
+
+# @name login
+POST {{baseUrl}}/v1/auth/login
+Content-Type: application/json
+
+{
+  "username": "setup.admin",
+  "password": "TempPass123"
+}
+
+### Extract token
+@authToken = {{login.response.body.access_token}}
+
+###############################################################################
+# 2. MODULE CATALOG
+###############################################################################
+
+# Get available platform modules
+GET {{baseUrl}}/v1/modules/catalog
+Authorization: Bearer {{authToken}}
+
+###############################################################################
+# 3. TENANT MODULES
+###############################################################################
+
+# Get modules enabled for tenant
+GET {{baseUrl}}/v1/tenants/{{tenantId}}/modules
+Authorization: Bearer {{authToken}}
+
+###############################################################################
+# REFERENCE
+###############################################################################
+#
+# AVAILABLE MODULES:
+#   core         - Core PMS functionality (required)
+#   reservations - Reservation management
+#   housekeeping - Housekeeping task management
+#   billing      - Payment and invoice processing
+#   guests       - Guest profile management
+#   reports      - Reporting and analytics
+#   channel      - Channel manager integration
+#   revenue      - Revenue management
+#   loyalty      - Loyalty program
+#
+# MODULE TIERS:
+#   STARTER      - core, reservations, guests
+#   PROFESSIONAL - All STARTER + housekeeping, billing, reports
+#   ENTERPRISE   - All modules
+#
+# SAMPLE IDs:
+#   Tenant: 11111111-1111-1111-1111-111111111111
+#
+###############################################################################

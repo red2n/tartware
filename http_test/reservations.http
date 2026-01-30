@@ -1,0 +1,305 @@
+###############################################################################
+# RESERVATIONS SERVICE - Booking Management
+# Routes via API Gateway (localhost:8080) -> core-service (port 3000)
+#
+# Content: Reservations, Check-in/out, Room Assignment, Deposits
+#
+# Related files:
+# - guests.http - Guest profiles
+# - rooms.http - Room inventory
+# - rates.http - Rate plans
+# - billing.http - Payments
+###############################################################################
+
+# --- VARIABLES ---
+@baseUrl = http://localhost:8080
+@tenantId = 11111111-1111-1111-1111-111111111111
+@propertyId = 22222222-2222-2222-2222-222222222222
+@roomTypeId = 44444444-4444-4444-4444-444444444444
+@room101Id = 55555555-5555-5555-5555-555555555551
+
+###############################################################################
+# 1. LOGIN
+###############################################################################
+
+# @name login
+POST {{baseUrl}}/v1/auth/login
+Content-Type: application/json
+
+{
+  "username": "setup.admin",
+  "password": "TempPass123"
+}
+
+### Extract token
+@authToken = {{login.response.body.access_token}}
+
+###############################################################################
+# 2. RESERVATIONS - READ
+###############################################################################
+
+# List all reservations for tenant
+GET {{baseUrl}}/v1/reservations?tenant_id={{tenantId}}&limit=50
+Authorization: Bearer {{authToken}}
+
+###
+# List reservations for property
+GET {{baseUrl}}/v1/tenants/{{tenantId}}/reservations?property_id={{propertyId}}&limit=50
+Authorization: Bearer {{authToken}}
+
+###
+# Filter by status
+GET {{baseUrl}}/v1/tenants/{{tenantId}}/reservations?status=CONFIRMED
+Authorization: Bearer {{authToken}}
+
+###
+# Filter by date range (arrivals)
+GET {{baseUrl}}/v1/tenants/{{tenantId}}/reservations?check_in_from=2026-01-30&check_in_to=2026-02-05
+Authorization: Bearer {{authToken}}
+
+###
+# Get reservation by ID
+GET {{baseUrl}}/v1/tenants/{{tenantId}}/reservations/{{reservationId}}
+Authorization: Bearer {{authToken}}
+
+###############################################################################
+# 3. RESERVATIONS - CREATE (via Command Center)
+###############################################################################
+
+# @name createReservation
+# Create a new reservation
+POST {{baseUrl}}/v1/tenants/{{tenantId}}/reservations
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+
+{
+  "property_id": "{{propertyId}}",
+  "guest_id": "{{guestId}}",
+  "room_type_id": "{{roomTypeId}}",
+  "rate_code": "BAR",
+  "check_in_date": "2026-02-15",
+  "check_out_date": "2026-02-18",
+  "adults": 2,
+  "children": 0,
+  "special_requests": "High floor preferred, king bed",
+  "source": "DIRECT",
+  "channel": "WEB",
+  "payment_method": "CREDIT_CARD",
+  "total_amount": 627.00,
+  "currency": "USD",
+  "guest_details": {
+    "first_name": "John",
+    "last_name": "Smith",
+    "email": "john.smith@example.com",
+    "phone": "+1-555-0101"
+  },
+  "metadata": {
+    "booking_reference": "WEB-2026-001"
+  }
+}
+
+### Extract created reservation ID
+@reservationId = {{createReservation.response.body.reservation_id}}
+
+###
+# Create group reservation
+POST {{baseUrl}}/v1/tenants/{{tenantId}}/reservations
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+
+{
+  "property_id": "{{propertyId}}",
+  "guest_id": "{{guestId}}",
+  "room_type_id": "{{roomTypeId}}",
+  "rate_code": "CORP",
+  "check_in_date": "2026-03-01",
+  "check_out_date": "2026-03-03",
+  "adults": 2,
+  "children": 0,
+  "rooms_count": 5,
+  "group_name": "ACME Corp Annual Meeting",
+  "special_requests": "Conference room needed, late checkout for all",
+  "source": "CORPORATE",
+  "channel": "PHONE",
+  "payment_method": "INVOICE",
+  "total_amount": 1590.00,
+  "currency": "USD",
+  "corporate_code": "ACME2026",
+  "metadata": {
+    "group_code": "GRP-ACME-2026-001",
+    "contact_email": "events@acme-corp.com"
+  }
+}
+
+###############################################################################
+# 4. RESERVATIONS - MODIFY (via Command Center)
+###############################################################################
+
+# Modify reservation dates
+PATCH {{baseUrl}}/v1/tenants/{{tenantId}}/reservations/{{reservationId}}
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+
+{
+  "check_out_date": "2026-02-19",
+  "reason": "Guest requested extension"
+}
+
+###
+# Extend stay
+POST {{baseUrl}}/v1/tenants/{{tenantId}}/reservations/{{reservationId}}/extend
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+
+{
+  "new_check_out_date": "2026-02-20",
+  "rate_code": "BAR",
+  "additional_amount": 209.00,
+  "reason": "Guest requested 2-day extension"
+}
+
+###
+# Rate override
+POST {{baseUrl}}/v1/tenants/{{tenantId}}/reservations/{{reservationId}}/rate-override
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+
+{
+  "new_rate": 179.00,
+  "reason": "Price match guarantee",
+  "authorization": "MGR-APPROVAL-001"
+}
+
+###############################################################################
+# 5. ROOM ASSIGNMENT
+###############################################################################
+
+# Assign room to reservation
+POST {{baseUrl}}/v1/tenants/{{tenantId}}/reservations/{{reservationId}}/assign-room
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+
+{
+  "room_id": "{{room101Id}}",
+  "notes": "Upgraded to high floor as requested"
+}
+
+###
+# Unassign room
+POST {{baseUrl}}/v1/tenants/{{tenantId}}/reservations/{{reservationId}}/unassign-room
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+
+{
+  "reason": "Room requires maintenance, reassigning"
+}
+
+###############################################################################
+# 6. CHECK-IN / CHECK-OUT
+###############################################################################
+
+# Check-in guest
+POST {{baseUrl}}/v1/tenants/{{tenantId}}/reservations/{{reservationId}}/check-in
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+
+{
+  "room_id": "{{room101Id}}",
+  "id_verified": true,
+  "id_type": "PASSPORT",
+  "id_number": "AB1234567",
+  "registration_card_signed": true,
+  "key_cards_issued": 2,
+  "notes": "Guest arrived at 3:15 PM, luggage stored"
+}
+
+###
+# Check-out guest
+POST {{baseUrl}}/v1/tenants/{{tenantId}}/reservations/{{reservationId}}/check-out
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+
+{
+  "express_checkout": false,
+  "room_inspected": true,
+  "keys_returned": 2,
+  "minibar_charges": 25.00,
+  "late_checkout_fee": 0,
+  "folio_settled": true,
+  "notes": "Smooth checkout, guest feedback collected"
+}
+
+###############################################################################
+# 7. DEPOSITS
+###############################################################################
+
+# Add deposit
+POST {{baseUrl}}/v1/tenants/{{tenantId}}/reservations/{{reservationId}}/deposit/add
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+
+{
+  "amount": 200.00,
+  "currency": "USD",
+  "payment_method": "CREDIT_CARD",
+  "card_last_four": "4242",
+  "authorization_code": "AUTH-123456",
+  "notes": "Security deposit"
+}
+
+###
+# Release deposit
+POST {{baseUrl}}/v1/tenants/{{tenantId}}/reservations/{{reservationId}}/deposit/release
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+
+{
+  "amount": 200.00,
+  "reason": "No damages, full refund",
+  "refund_method": "ORIGINAL_PAYMENT_METHOD"
+}
+
+###############################################################################
+# 8. CANCELLATION
+###############################################################################
+
+# Cancel reservation
+DELETE {{baseUrl}}/v1/tenants/{{tenantId}}/reservations/{{reservationId}}
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+
+{
+  "reason": "Guest request - changed travel plans",
+  "cancellation_fee": 0,
+  "waive_penalty": true,
+  "waive_reason": "Loyalty member, first cancellation"
+}
+
+###############################################################################
+# REFERENCE
+###############################################################################
+#
+# RESERVATION STATUSES:
+#   PENDING     - Awaiting confirmation
+#   CONFIRMED   - Reservation confirmed
+#   CHECKED_IN  - Guest has arrived
+#   CHECKED_OUT - Guest has departed
+#   CANCELLED   - Reservation cancelled
+#   NO_SHOW     - Guest did not arrive
+#
+# BOOKING SOURCES:
+#   DIRECT, OTA, GDS, CORPORATE, WALK_IN, PHONE, EMAIL
+#
+# BOOKING CHANNELS:
+#   WEB, MOBILE, PHONE, WALK_IN, BOOKING_COM, EXPEDIA, AIRBNB
+#
+# PAYMENT METHODS:
+#   CREDIT_CARD, DEBIT_CARD, CASH, BANK_TRANSFER, INVOICE, VIRTUAL_CARD
+#
+# SAMPLE IDs:
+#   Tenant:    11111111-1111-1111-1111-111111111111
+#   Property:  22222222-2222-2222-2222-222222222222
+#   Room Type: 44444444-4444-4444-4444-444444444444
+#   Room 101:  55555555-5555-5555-5555-555555555551
+#
+###############################################################################
