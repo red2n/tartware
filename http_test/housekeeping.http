@@ -1,305 +1,210 @@
-// =====================================================
-// HOUSEKEEPING - HTTP Test File
-// =====================================================
-//
-// Housekeeping task management: Create, Assign, Complete,
-// Reassign, Reopen, Notes, Bulk Updates
-//
-// All requests route via API Gateway (localhost:8080)
-// Backend: housekeeping-service
-//
-// =====================================================
+###############################################################################
+# HOUSEKEEPING SERVICE - Task Management
+# Routes via API Gateway (localhost:8080) -> housekeeping-service (port 3500)
+#
+# Content: Housekeeping Tasks, Assignments, Status Updates
+#
+# Related files:
+# - rooms.http - Room status updates
+###############################################################################
 
-// ========================
-// AUTHENTICATION
-// ========================
+# --- VARIABLES ---
+@baseUrl = http://localhost:8080
+@tenantId = 11111111-1111-1111-1111-111111111111
+@propertyId = 22222222-2222-2222-2222-222222222222
+@room101Id = 55555555-5555-5555-5555-555555555551
 
-// login to get tenant-scoped token
-POST /v1/auth/login HTTP/1.1
-Host: localhost:8080
+###############################################################################
+# 1. LOGIN
+###############################################################################
+
+# @name login
+POST {{baseUrl}}/v1/auth/login
 Content-Type: application/json
-
-{"username":"aurora.owner","password":"TempPass123"}
-
-###
-// ========================
-// HOUSEKEEPING TASKS - LIST
-// ========================
-
-// list all housekeeping tasks for tenant
-GET /v1/housekeeping/tasks?tenant_id=19b2afbb-e6f6-4776-8e52-efbab18f4bec&limit=50 HTTP/1.1
-Host: localhost:8080
-Authorization: Bearer {{token}}
-
-###
-// filter by property
-GET /v1/housekeeping/tasks?tenant_id=19b2afbb-e6f6-4776-8e52-efbab18f4bec&property_id=eedfeb3f-4c09-47d9-9b02-2d8d6610ce27&limit=50 HTTP/1.1
-Host: localhost:8080
-Authorization: Bearer {{token}}
-
-###
-// filter by status: pending
-GET /v1/housekeeping/tasks?tenant_id=19b2afbb-e6f6-4776-8e52-efbab18f4bec&status=pending&limit=50 HTTP/1.1
-Host: localhost:8080
-Authorization: Bearer {{token}}
-
-###
-// filter by status: in_progress
-GET /v1/housekeeping/tasks?tenant_id=19b2afbb-e6f6-4776-8e52-efbab18f4bec&status=in_progress&limit=50 HTTP/1.1
-Host: localhost:8080
-Authorization: Bearer {{token}}
-
-###
-// filter by status: completed
-GET /v1/housekeeping/tasks?tenant_id=19b2afbb-e6f6-4776-8e52-efbab18f4bec&status=completed&limit=50 HTTP/1.1
-Host: localhost:8080
-Authorization: Bearer {{token}}
-
-###
-// filter by scheduled date
-GET /v1/housekeeping/tasks?tenant_id=19b2afbb-e6f6-4776-8e52-efbab18f4bec&scheduled_date=2026-01-30&limit=50 HTTP/1.1
-Host: localhost:8080
-Authorization: Bearer {{token}}
-
-###
-// ========================
-// HOUSEKEEPING TASKS - CREATE
-// ========================
-
-// create checkout cleaning task
-POST /v1/tenants/19b2afbb-e6f6-4776-8e52-efbab18f4bec/housekeeping/tasks HTTP/1.1
-Host: localhost:8080
-Content-Type: application/json
-Authorization: Bearer {{token}}
 
 {
-	"property_id": "eedfeb3f-4c09-47d9-9b02-2d8d6610ce27",
-	"room_id": "{{room_id}}",
-	"task_type": "CHECKOUT_CLEAN",
-	"priority": "HIGH",
-	"scheduled_date": "2026-01-30",
-	"estimated_minutes": 45,
-	"notes": "Deep clean required - long stay checkout",
-	"idempotency_key": "hk-{{$guid}}"
+  "username": "setup.admin",
+  "password": "TempPass123"
+}
+
+### Extract token
+@authToken = {{login.response.body.access_token}}
+
+###############################################################################
+# 2. HOUSEKEEPING TASKS - READ
+###############################################################################
+
+# List all housekeeping tasks
+GET {{baseUrl}}/v1/housekeeping/tasks?tenant_id={{tenantId}}&limit=50
+Authorization: Bearer {{authToken}}
+
+###
+# Filter by status
+GET {{baseUrl}}/v1/housekeeping/tasks?tenant_id={{tenantId}}&status=PENDING
+Authorization: Bearer {{authToken}}
+
+###
+# Filter by priority
+GET {{baseUrl}}/v1/housekeeping/tasks?tenant_id={{tenantId}}&priority=HIGH
+Authorization: Bearer {{authToken}}
+
+###
+# Filter by assignee
+GET {{baseUrl}}/v1/housekeeping/tasks?tenant_id={{tenantId}}&assigned_to={{staffId}}
+Authorization: Bearer {{authToken}}
+
+###############################################################################
+# 3. HOUSEKEEPING TASKS - CREATE (via Command Center)
+###############################################################################
+
+# @name createTask
+# Create a cleaning task
+POST {{baseUrl}}/v1/tenants/{{tenantId}}/housekeeping/tasks
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+
+{
+  "property_id": "{{propertyId}}",
+  "room_id": "{{room101Id}}",
+  "task_type": "CHECKOUT_CLEANING",
+  "priority": "HIGH",
+  "due_time": "2026-01-30T14:00:00Z",
+  "notes": "VIP checkout - deep clean required",
+  "estimated_minutes": 45
+}
+
+### Extract created task ID
+@taskId = {{createTask.response.body.task_id}}
+
+###
+# Create maintenance inspection task
+POST {{baseUrl}}/v1/tenants/{{tenantId}}/housekeeping/tasks
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+
+{
+  "property_id": "{{propertyId}}",
+  "room_id": "{{room101Id}}",
+  "task_type": "INSPECTION",
+  "priority": "MEDIUM",
+  "due_time": "2026-01-30T16:00:00Z",
+  "notes": "Monthly AC filter check",
+  "estimated_minutes": 15
 }
 
 ###
-// create stayover cleaning task
-POST /v1/tenants/19b2afbb-e6f6-4776-8e52-efbab18f4bec/housekeeping/tasks HTTP/1.1
-Host: localhost:8080
+# Create turndown service task
+POST {{baseUrl}}/v1/tenants/{{tenantId}}/housekeeping/tasks
 Content-Type: application/json
-Authorization: Bearer {{token}}
+Authorization: Bearer {{authToken}}
 
 {
-	"property_id": "eedfeb3f-4c09-47d9-9b02-2d8d6610ce27",
-	"room_id": "{{room_id}}",
-	"task_type": "STAYOVER_CLEAN",
-	"priority": "NORMAL",
-	"scheduled_date": "2026-01-30",
-	"estimated_minutes": 20,
-	"notes": "Guest requested fresh towels only",
-	"idempotency_key": "hk-{{$guid}}"
+  "property_id": "{{propertyId}}",
+  "room_id": "{{room101Id}}",
+  "task_type": "TURNDOWN",
+  "priority": "LOW",
+  "due_time": "2026-01-30T18:00:00Z",
+  "notes": "Evening turndown service",
+  "estimated_minutes": 10
+}
+
+###############################################################################
+# 4. TASK ASSIGNMENT
+###############################################################################
+
+# Assign task to staff member
+POST {{baseUrl}}/v1/tenants/{{tenantId}}/housekeeping/tasks/{{taskId}}/assign
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+
+{
+  "assigned_to": "{{staffUserId}}",
+  "notes": "Please prioritize - VIP guest"
 }
 
 ###
-// create turndown service task
-POST /v1/tenants/19b2afbb-e6f6-4776-8e52-efbab18f4bec/housekeeping/tasks HTTP/1.1
-Host: localhost:8080
+# Reassign task
+POST {{baseUrl}}/v1/tenants/{{tenantId}}/housekeeping/tasks/{{taskId}}/reassign
 Content-Type: application/json
-Authorization: Bearer {{token}}
+Authorization: Bearer {{authToken}}
 
 {
-	"property_id": "eedfeb3f-4c09-47d9-9b02-2d8d6610ce27",
-	"room_id": "{{room_id}}",
-	"task_type": "TURNDOWN",
-	"priority": "NORMAL",
-	"scheduled_date": "2026-01-30",
-	"scheduled_time": "18:00",
-	"estimated_minutes": 10,
-	"notes": "VIP guest - include chocolates",
-	"idempotency_key": "hk-{{$guid}}"
+  "assigned_to": "{{newStaffUserId}}",
+  "reason": "Original assignee on break"
+}
+
+###############################################################################
+# 5. TASK STATUS UPDATES
+###############################################################################
+
+# Complete task
+POST {{baseUrl}}/v1/tenants/{{tenantId}}/housekeeping/tasks/{{taskId}}/complete
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+
+{
+  "notes": "Room cleaned and inspected",
+  "actual_minutes": 40,
+  "supplies_used": ["towels_set", "toiletries_set", "minibar_restock"]
 }
 
 ###
-// create deep clean task
-POST /v1/tenants/19b2afbb-e6f6-4776-8e52-efbab18f4bec/housekeeping/tasks HTTP/1.1
-Host: localhost:8080
+# Reopen task
+POST {{baseUrl}}/v1/tenants/{{tenantId}}/housekeeping/tasks/{{taskId}}/reopen
 Content-Type: application/json
-Authorization: Bearer {{token}}
+Authorization: Bearer {{authToken}}
 
 {
-	"property_id": "eedfeb3f-4c09-47d9-9b02-2d8d6610ce27",
-	"room_id": "{{room_id}}",
-	"task_type": "DEEP_CLEAN",
-	"priority": "LOW",
-	"scheduled_date": "2026-02-01",
-	"estimated_minutes": 90,
-	"notes": "Quarterly deep clean - carpets and drapes",
-	"idempotency_key": "hk-{{$guid}}"
+  "reason": "Guest reported issue - needs re-cleaning"
 }
 
 ###
-// create inspection task
-POST /v1/tenants/19b2afbb-e6f6-4776-8e52-efbab18f4bec/housekeeping/tasks HTTP/1.1
-Host: localhost:8080
+# Add note to task
+POST {{baseUrl}}/v1/tenants/{{tenantId}}/housekeeping/tasks/{{taskId}}/notes
 Content-Type: application/json
-Authorization: Bearer {{token}}
+Authorization: Bearer {{authToken}}
 
 {
-	"property_id": "eedfeb3f-4c09-47d9-9b02-2d8d6610ce27",
-	"room_id": "{{room_id}}",
-	"task_type": "INSPECTION",
-	"priority": "URGENT",
-	"scheduled_date": "2026-01-30",
-	"estimated_minutes": 15,
-	"notes": "VIP arrival - final inspection required",
-	"idempotency_key": "hk-{{$guid}}"
+  "note": "Found damaged towel rack - maintenance notified"
 }
 
-###
-// create laundry pickup task
-POST /v1/tenants/19b2afbb-e6f6-4776-8e52-efbab18f4bec/housekeeping/tasks HTTP/1.1
-Host: localhost:8080
+###############################################################################
+# 6. BULK OPERATIONS
+###############################################################################
+
+# Bulk status update
+POST {{baseUrl}}/v1/tenants/{{tenantId}}/housekeeping/tasks/bulk-status
 Content-Type: application/json
-Authorization: Bearer {{token}}
+Authorization: Bearer {{authToken}}
 
 {
-	"property_id": "eedfeb3f-4c09-47d9-9b02-2d8d6610ce27",
-	"room_id": "{{room_id}}",
-	"task_type": "LAUNDRY_PICKUP",
-	"priority": "NORMAL",
-	"scheduled_date": "2026-01-30",
-	"scheduled_time": "09:00",
-	"estimated_minutes": 5,
-	"notes": "Express service requested",
-	"idempotency_key": "hk-{{$guid}}"
+  "task_ids": ["{{taskId}}", "{{taskId2}}"],
+  "status": "IN_PROGRESS",
+  "notes": "Starting morning cleaning rounds"
 }
 
-###
-// ========================
-// HOUSEKEEPING TASKS - ASSIGN
-// ========================
-
-// assign task to housekeeper
-POST /v1/tenants/19b2afbb-e6f6-4776-8e52-efbab18f4bec/housekeeping/tasks/{{task_id}}/assign HTTP/1.1
-Host: localhost:8080
-Content-Type: application/json
-Authorization: Bearer {{token}}
-
-{
-	"assigned_to": "{{housekeeper_user_id}}",
-	"idempotency_key": "assign-{{$guid}}"
-}
-
-###
-// ========================
-// HOUSEKEEPING TASKS - COMPLETE
-// ========================
-
-// mark task as completed
-POST /v1/tenants/19b2afbb-e6f6-4776-8e52-efbab18f4bec/housekeeping/tasks/{{task_id}}/complete HTTP/1.1
-Host: localhost:8080
-Content-Type: application/json
-Authorization: Bearer {{token}}
-
-{
-	"notes": "Completed - room ready for inspection",
-	"idempotency_key": "complete-{{$guid}}"
-}
-
-###
-// ========================
-// HOUSEKEEPING TASKS - REASSIGN
-// ========================
-
-// reassign task to different housekeeper
-POST /v1/tenants/19b2afbb-e6f6-4776-8e52-efbab18f4bec/housekeeping/tasks/{{task_id}}/reassign HTTP/1.1
-Host: localhost:8080
-Content-Type: application/json
-Authorization: Bearer {{token}}
-
-{
-	"assigned_to": "{{new_housekeeper_user_id}}",
-	"idempotency_key": "reassign-{{$guid}}"
-}
-
-###
-// ========================
-// HOUSEKEEPING TASKS - REOPEN
-// ========================
-
-// reopen a completed task
-POST /v1/tenants/19b2afbb-e6f6-4776-8e52-efbab18f4bec/housekeeping/tasks/{{task_id}}/reopen HTTP/1.1
-Host: localhost:8080
-Content-Type: application/json
-Authorization: Bearer {{token}}
-
-{
-	"reason": "Failed inspection - bathroom needs re-cleaning",
-	"idempotency_key": "reopen-{{$guid}}"
-}
-
-###
-// ========================
-// HOUSEKEEPING TASKS - ADD NOTE
-// ========================
-
-// add note to task
-POST /v1/tenants/19b2afbb-e6f6-4776-8e52-efbab18f4bec/housekeeping/tasks/{{task_id}}/notes HTTP/1.1
-Host: localhost:8080
-Content-Type: application/json
-Authorization: Bearer {{token}}
-
-{
-	"note": "Guest reported stain on carpet - needs spot treatment",
-	"idempotency_key": "note-{{$guid}}"
-}
-
-###
-// ========================
-// HOUSEKEEPING TASKS - BULK STATUS
-// ========================
-
-// bulk update task status
-POST /v1/tenants/19b2afbb-e6f6-4776-8e52-efbab18f4bec/housekeeping/tasks/bulk-status HTTP/1.1
-Host: localhost:8080
-Content-Type: application/json
-Authorization: Bearer {{token}}
-
-{
-	"task_ids": ["{{task_id_1}}", "{{task_id_2}}", "{{task_id_3}}"],
-	"status": "completed",
-	"idempotency_key": "bulk-{{$guid}}"
-}
-
-###
-// ========================
-// REFERENCE: IDs & ENUMS
-// ========================
-//
-// TENANTS:
-//   Aurora Hospitality: 19b2afbb-e6f6-4776-8e52-efbab18f4bec
-//
-// PROPERTIES (Aurora):
-//   Aurora Central Hotel: eedfeb3f-4c09-47d9-9b02-2d8d6610ce27
-//   Aurora Harbor Hotel:  97d98b4f-6c2c-4df9-adfe-6a536a81ac2d
-//   Aurora Uptown Suites: fd35e1bb-5b7c-486a-b2db-205284622d28
-//
-// TASK TYPES:
-//   CHECKOUT_CLEAN   - Full cleaning after checkout
-//   STAYOVER_CLEAN   - Daily cleaning for occupied room
-//   TURNDOWN         - Evening turndown service
-//   DEEP_CLEAN       - Periodic deep cleaning
-//   INSPECTION       - Room inspection
-//   LAUNDRY_PICKUP   - Guest laundry collection
-//   LAUNDRY_DELIVERY - Guest laundry return
-//   MINIBAR_RESTOCK  - Minibar inventory restock
-//   MAINTENANCE_PREP - Prep for maintenance work
-//
-// TASK STATUS:
-//   pending, assigned, in_progress, completed, cancelled
-//
-// PRIORITY:
-//   LOW, NORMAL, HIGH, URGENT
-//
-// ========================
+###############################################################################
+# REFERENCE
+###############################################################################
+#
+# TASK TYPES:
+#   CHECKOUT_CLEANING - Post-checkout deep clean
+#   STAYOVER_CLEANING - Daily cleaning during stay
+#   TURNDOWN          - Evening turndown service
+#   INSPECTION        - Room inspection
+#   DEEP_CLEANING     - Periodic deep clean
+#   MAINTENANCE       - Minor maintenance
+#   SPECIAL_REQUEST   - Guest special request
+#
+# TASK STATUSES:
+#   PENDING, ASSIGNED, IN_PROGRESS, COMPLETED, CANCELLED
+#
+# PRIORITIES:
+#   LOW, MEDIUM, HIGH, URGENT
+#
+# SAMPLE IDs:
+#   Tenant:   11111111-1111-1111-1111-111111111111
+#   Property: 22222222-2222-2222-2222-222222222222
+#   Room 101: 55555555-5555-5555-5555-555555555551
+#
+###############################################################################

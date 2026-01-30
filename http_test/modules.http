@@ -1,57 +1,67 @@
-// =====================================================
-// MODULES - HTTP Test File
-// =====================================================
-//
-// All requests route via API Gateway (localhost:8080)
-// Backend: core-service (port 3000)
-//
-// Prerequisites:
-// 1. Login via /v1/auth/login to get {{token}}
-//
-// =====================================================
+###############################################################################
+# MODULES - Platform Module Management
+# Routes via API Gateway (localhost:8080) -> core-service (port 3000)
+#
+# Content: Module Catalog, Tenant Module Configuration
+###############################################################################
 
-// login to get tenant-scoped token
-POST /v1/auth/login HTTP/1.1
-Host: localhost:8080
+# --- VARIABLES ---
+@baseUrl = http://localhost:8080
+@tenantId = 11111111-1111-1111-1111-111111111111
+
+###############################################################################
+# 1. LOGIN
+###############################################################################
+
+# @name login
+POST {{baseUrl}}/v1/auth/login
 Content-Type: application/json
 
-{"username":"aurora.owner","password":"TempPass123"}
+{
+  "username": "setup.admin",
+  "password": "TempPass123"
+}
 
-###
-// ========================
-// MODULES CATALOG
-// ========================
+### Extract token
+@authToken = {{login.response.body.access_token}}
 
-// list available platform modules (requires authentication)
-GET /v1/modules/catalog HTTP/1.1
-Host: localhost:8080
-Authorization: Bearer {{token}}
+###############################################################################
+# 2. MODULE CATALOG
+###############################################################################
 
-###
-// list modules enabled for Aurora tenant
-GET /v1/tenants/19b2afbb-e6f6-4776-8e52-efbab18f4bec/modules HTTP/1.1
-Host: localhost:8080
-Authorization: Bearer {{token}}
+# Get available platform modules
+GET {{baseUrl}}/v1/modules/catalog
+Authorization: Bearer {{authToken}}
 
-###
-// list modules enabled for Cedar tenant
-GET /v1/tenants/8c332645-d702-4391-a026-d141c53df71c/modules HTTP/1.1
-Host: localhost:8080
-Authorization: Bearer {{token}}
+###############################################################################
+# 3. TENANT MODULES
+###############################################################################
 
-###
-// list modules enabled for Mariner tenant
-GET /v1/tenants/2c89b4c0-335c-4e36-a134-c2740bda6666/modules HTTP/1.1
-Host: localhost:8080
-Authorization: Bearer {{token}}
+# Get modules enabled for tenant
+GET {{baseUrl}}/v1/tenants/{{tenantId}}/modules
+Authorization: Bearer {{authToken}}
 
-###
-// ========================
-// REFERENCE: TENANT IDs
-// ========================
-//
-// Aurora Hospitality: 19b2afbb-e6f6-4776-8e52-efbab18f4bec
-// Cedar Hospitality:  8c332645-d702-4391-a026-d141c53df71c
-// Mariner Hospitality: 2c89b4c0-335c-4e36-a134-c2740bda6666
-//
-// ========================
+###############################################################################
+# REFERENCE
+###############################################################################
+#
+# AVAILABLE MODULES:
+#   core         - Core PMS functionality (required)
+#   reservations - Reservation management
+#   housekeeping - Housekeeping task management
+#   billing      - Payment and invoice processing
+#   guests       - Guest profile management
+#   reports      - Reporting and analytics
+#   channel      - Channel manager integration
+#   revenue      - Revenue management
+#   loyalty      - Loyalty program
+#
+# MODULE TIERS:
+#   STARTER      - core, reservations, guests
+#   PROFESSIONAL - All STARTER + housekeeping, billing, reports
+#   ENTERPRISE   - All modules
+#
+# SAMPLE IDs:
+#   Tenant: 11111111-1111-1111-1111-111111111111
+#
+###############################################################################

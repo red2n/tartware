@@ -1,303 +1,262 @@
-// =====================================================
-// CORE SERVICE - Auth, Users & Associations
-// =====================================================
-//
-// All requests route via API Gateway (localhost:8080)
-// Backend: core-service (port 3000)
-//
-// Content:
-// - Authentication (login, context, password, MFA)
-// - User management
-// - User-tenant associations
-// - System admin authentication
-//
-// For other operations, see:
-// - tenantandproperty.http - Tenants, Properties, Dashboard
-// - reservations.http - Reservations
-// - modules.http - Modules catalog
-// - reports.http - Performance reports
-//
-// =====================================================
+###############################################################################
+# CORE SERVICE - Auth, Users & Associations
+# Routes via API Gateway (localhost:8080) -> core-service (port 3000)
+#
+# Content: Authentication, Users, User-Tenant Associations, System Admin
+#
+# Related files:
+# - tenantandproperty.http - Tenants, Properties, Dashboard
+# - modules.http - Modules catalog
+# - reports.http - Performance reports
+###############################################################################
 
-// ========================
-// AUTHENTICATION - LOGIN
-// ========================
+# --- VARIABLES ---
+@baseUrl = http://localhost:8080
+@tenantId = 11111111-1111-1111-1111-111111111111
+@userId = 33333333-3333-3333-3333-333333333333
 
-// valid login (super-admin)
-POST /v1/auth/login HTTP/1.1
-Host: localhost:8080
-Content-Type: application/json
+###############################################################################
+# 1. AUTHENTICATION - LOGIN
+###############################################################################
 
-{"username":"setup.admin","password":"TempPass123"}
-
-###
-// valid login (tenant user)
-POST /v1/auth/login HTTP/1.1
-Host: localhost:8080
-Content-Type: application/json
-
-{"username":"aurora.owner","password":"TempPass123"}
-
-###
-// invalid login (missing username)
-POST /v1/auth/login HTTP/1.1
-Host: localhost:8080
-Content-Type: application/json
-
-{"password":"TempPass123"}
-
-###
-// invalid login (wrong password)
-POST /v1/auth/login HTTP/1.1
-Host: localhost:8080
-Content-Type: application/json
-
-{"username":"aurora.owner","password":"WrongPassword"}
-
-###
-// ========================
-// AUTH CONTEXT & PASSWORD
-// ========================
-
-// view auth context (memberships, authorized tenants)
-GET /v1/auth/context HTTP/1.1
-Host: localhost:8080
-Authorization: Bearer {{token}}
-
-###
-// change password (requires valid current password)
-POST /v1/auth/change-password HTTP/1.1
-Host: localhost:8080
-Content-Type: application/json
-Authorization: Bearer {{token}}
-
-{
-	"current_password": "TempPass123",
-	"new_password": "NewSecure123!"
-}
-
-###
-// ========================
-// MFA ENROLLMENT
-// ========================
-
-// start MFA enrollment (returns secret and otpauth_url)
-POST /v1/auth/mfa/enroll HTTP/1.1
-Host: localhost:8080
-Authorization: Bearer {{token}}
-
-###
-// verify MFA code to enable MFA
-POST /v1/auth/mfa/verify HTTP/1.1
-Host: localhost:8080
-Content-Type: application/json
-Authorization: Bearer {{token}}
-
-{
-	"mfa_code": "123456"
-}
-
-###
-// rotate MFA secret (requires current MFA code)
-POST /v1/auth/mfa/rotate HTTP/1.1
-Host: localhost:8080
-Content-Type: application/json
-Authorization: Bearer {{token}}
-
-{
-	"mfa_code": "123456"
-}
-
-###
-// ========================
-// USER MANAGEMENT
-// ========================
-
-// list users for a tenant (requires MANAGER+ role)
-GET /v1/users?tenant_id=19b2afbb-e6f6-4776-8e52-efbab18f4bec&limit=50 HTTP/1.1
-Host: localhost:8080
-Authorization: Bearer {{token}}
-
-###
-// get user by ID
-GET /v1/users/ed570382-7274-4664-b6ec-69e0cc6260ba HTTP/1.1
-Host: localhost:8080
-Authorization: Bearer {{token}}
-
-###
-// create a new tenant user (requires ADMIN+ role)
-POST /v1/users HTTP/1.1
-Host: localhost:8080
-Content-Type: application/json
-Authorization: Bearer {{token}}
-
-{
-	"tenant_id": "19b2afbb-e6f6-4776-8e52-efbab18f4bec",
-	"username": "aurora.manager",
-	"email": "manager@aurora.demo",
-	"password": "TempPass123",
-	"first_name": "Aurora",
-	"last_name": "Manager",
-	"role": "MANAGER"
-}
-
-###
-// update user details
-PUT /v1/users/{{user_id}} HTTP/1.1
-Host: localhost:8080
-Content-Type: application/json
-Authorization: Bearer {{token}}
-
-{
-	"first_name": "Updated",
-	"last_name": "Name"
-}
-
-###
-// reset a user's password (requires ADMIN+ role)
-POST /v1/users/reset-password HTTP/1.1
-Host: localhost:8080
-Content-Type: application/json
-Authorization: Bearer {{token}}
-
-{
-	"tenant_id": "19b2afbb-e6f6-4776-8e52-efbab18f4bec",
-	"user_id": "{{user_id}}",
-	"new_password": "NewTempPass123"
-}
-
-###
-// ========================
-// USER-TENANT ASSOCIATIONS
-// ========================
-
-// list user-tenant associations for Aurora
-GET /v1/user-tenant-associations?tenant_id=19b2afbb-e6f6-4776-8e52-efbab18f4bec&limit=50 HTTP/1.1
-Host: localhost:8080
-Authorization: Bearer {{token}}
-
-###
-// filter associations by role (MANAGER)
-GET /v1/user-tenant-associations?tenant_id=19b2afbb-e6f6-4776-8e52-efbab18f4bec&role=MANAGER HTTP/1.1
-Host: localhost:8080
-Authorization: Bearer {{token}}
-
-###
-// filter associations by active status
-GET /v1/user-tenant-associations?tenant_id=19b2afbb-e6f6-4776-8e52-efbab18f4bec&is_active=true HTTP/1.1
-Host: localhost:8080
-Authorization: Bearer {{token}}
-
-###
-// update user's tenant role (requires ADMIN+ role)
-POST /v1/user-tenant-associations/role HTTP/1.1
-Host: localhost:8080
-Content-Type: application/json
-Authorization: Bearer {{token}}
-
-{
-	"tenant_id": "19b2afbb-e6f6-4776-8e52-efbab18f4bec",
-	"user_id": "{{user_id}}",
-	"role": "MANAGER"
-}
-
-###
-// activate/deactivate user's tenant access
-POST /v1/user-tenant-associations/status HTTP/1.1
-Host: localhost:8080
-Content-Type: application/json
-Authorization: Bearer {{token}}
-
-{
-	"tenant_id": "19b2afbb-e6f6-4776-8e52-efbab18f4bec",
-	"user_id": "{{user_id}}",
-	"is_active": false
-}
-
-###
-// ========================
-// SYSTEM ADMIN AUTHENTICATION
-// ========================
-// NOTE: These endpoints require system administrator credentials
-
-// system admin login (requires MFA if enabled)
-POST /v1/system/auth/login HTTP/1.1
-Host: localhost:8080
+# @name login
+# Valid login - setup.admin (OWNER role)
+POST {{baseUrl}}/v1/auth/login
 Content-Type: application/json
 
 {
-	"username": "{{system_admin_username}}",
-	"password": "{{system_admin_password}}",
-	"device_fingerprint": "{{device_fingerprint}}"
+  "username": "setup.admin",
+  "password": "TempPass123"
 }
 
+### Extract token for subsequent requests
+@authToken = {{login.response.body.access_token}}
+
 ###
-// system admin login with MFA code
-POST /v1/system/auth/login HTTP/1.1
-Host: localhost:8080
+# Invalid login - wrong password
+POST {{baseUrl}}/v1/auth/login
 Content-Type: application/json
 
 {
-	"username": "{{system_admin_username}}",
-	"password": "{{system_admin_password}}",
-	"mfa_code": "{{mfa_code}}",
-	"device_fingerprint": "{{device_fingerprint}}"
+  "username": "setup.admin",
+  "password": "WrongPassword"
 }
 
 ###
-// emergency break-glass login (requires break-glass code)
-POST /v1/system/auth/break-glass HTTP/1.1
-Host: localhost:8080
+# Invalid login - missing username
+POST {{baseUrl}}/v1/auth/login
 Content-Type: application/json
 
 {
-	"username": "{{system_admin_username}}",
-	"break_glass_code": "{{break_glass_code}}",
-	"reason": "Production incident requiring immediate system access",
-	"ticket_id": "{{ticket_id}}",
-	"device_fingerprint": "{{device_fingerprint}}"
+  "password": "TempPass123"
 }
 
-###
-// ========================
-// SYSTEM ADMIN - IMPERSONATION
-// ========================
-// NOTE: Requires system admin token with SYSTEM_SUPPORT+ role
+###############################################################################
+# 2. AUTH CONTEXT & PASSWORD
+###############################################################################
 
-// start tenant impersonation session
-POST /v1/system/impersonate HTTP/1.1
-Host: localhost:8080
+# Get auth context (memberships, authorized tenants)
+GET {{baseUrl}}/v1/auth/context
+Authorization: Bearer {{authToken}}
+
+###
+# Change password (requires valid current password)
+POST {{baseUrl}}/v1/auth/change-password
 Content-Type: application/json
-Authorization: Bearer {{system_admin_token}}
+Authorization: Bearer {{authToken}}
 
 {
-	"tenant_id": "19b2afbb-e6f6-4776-8e52-efbab18f4bec",
-	"user_id": "ed570382-7274-4664-b6ec-69e0cc6260ba",
-	"reason": "Customer support ticket investigation - TICKET-2026-001",
-	"ticket_id": "TICKET-2026-001"
+  "current_password": "TempPass123",
+  "new_password": "NewSecure123!"
+}
+
+###############################################################################
+# 3. MFA ENROLLMENT
+###############################################################################
+
+# Start MFA enrollment (returns secret and otpauth_url)
+POST {{baseUrl}}/v1/auth/mfa/enroll
+Authorization: Bearer {{authToken}}
+
+###
+# Verify MFA code to enable MFA
+POST {{baseUrl}}/v1/auth/mfa/verify
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+
+{
+  "mfa_code": "123456"
 }
 
 ###
-// ========================
-// REFERENCE: ROLES
-// ========================
-//
-// TENANT ROLES:
-//   OWNER    - Full tenant access, can manage all users
-//   ADMIN    - Administrative access, can create/modify users
-//   MANAGER  - Operational management, can view users
-//   STAFF    - Standard access, limited to assigned tasks
-//   VIEWER   - Read-only access
-//
-// SYSTEM ADMIN ROLES:
-//   SYSTEM_SUPER_ADMIN - Full platform access
-//   SYSTEM_ADMIN       - Full platform access, can create tenants/users
-//   SYSTEM_OPERATOR    - Read-only system access for monitoring
-//   SYSTEM_SUPPORT     - Support access, can impersonate tenant users
-//
-// TENANT IDs:
-//   Aurora Hospitality: 19b2afbb-e6f6-4776-8e52-efbab18f4bec
-//   Cedar Hospitality:  8c332645-d702-4391-a026-d141c53df71c
-//   Mariner Hospitality: 2c89b4c0-335c-4e36-a134-c2740bda6666
-//
-// ========================
+# Rotate MFA secret (requires current MFA code)
+POST {{baseUrl}}/v1/auth/mfa/rotate
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+
+{
+  "mfa_code": "123456"
+}
+
+###############################################################################
+# 4. USER MANAGEMENT
+###############################################################################
+
+# List users for Tartware tenant
+GET {{baseUrl}}/v1/users?tenant_id={{tenantId}}&limit=50
+Authorization: Bearer {{authToken}}
+
+###
+# Get user by ID
+GET {{baseUrl}}/v1/users/{{userId}}
+Authorization: Bearer {{authToken}}
+
+###
+# Create a new tenant user (requires ADMIN+ role)
+# @name createUser
+POST {{baseUrl}}/v1/users
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+
+{
+  "tenant_id": "{{tenantId}}",
+  "username": "test.staff",
+  "email": "staff@tartware.demo",
+  "password": "TempPass123",
+  "first_name": "Test",
+  "last_name": "Staff",
+  "role": "STAFF"
+}
+
+###
+# Update user details
+PUT {{baseUrl}}/v1/users/{{userId}}
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+
+{
+  "first_name": "Updated",
+  "last_name": "Name"
+}
+
+###
+# Reset a user's password (requires ADMIN+ role)
+POST {{baseUrl}}/v1/users/reset-password
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+
+{
+  "tenant_id": "{{tenantId}}",
+  "user_id": "{{userId}}",
+  "new_password": "NewTempPass123"
+}
+
+###############################################################################
+# 5. USER-TENANT ASSOCIATIONS
+###############################################################################
+
+# List user-tenant associations
+GET {{baseUrl}}/v1/user-tenant-associations?tenant_id={{tenantId}}&limit=50
+Authorization: Bearer {{authToken}}
+
+###
+# Filter associations by role
+GET {{baseUrl}}/v1/user-tenant-associations?tenant_id={{tenantId}}&role=OWNER
+Authorization: Bearer {{authToken}}
+
+###
+# Filter associations by active status
+GET {{baseUrl}}/v1/user-tenant-associations?tenant_id={{tenantId}}&is_active=true
+Authorization: Bearer {{authToken}}
+
+###
+# Update user's tenant role
+POST {{baseUrl}}/v1/user-tenant-associations/role
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+
+{
+  "tenant_id": "{{tenantId}}",
+  "user_id": "{{userId}}",
+  "role": "ADMIN"
+}
+
+###
+# Toggle user's tenant access status
+POST {{baseUrl}}/v1/user-tenant-associations/status
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+
+{
+  "tenant_id": "{{tenantId}}",
+  "user_id": "{{userId}}",
+  "is_active": true
+}
+
+###############################################################################
+# 6. SYSTEM ADMIN AUTHENTICATION
+###############################################################################
+# NOTE: These endpoints require system administrator credentials
+
+# System admin login (requires MFA if enabled)
+POST {{baseUrl}}/v1/system/auth/login
+Content-Type: application/json
+
+{
+  "username": "setup.admin",
+  "password": "TempPass123",
+  "device_fingerprint": "test-device-001"
+}
+
+###
+# Emergency break-glass login
+POST {{baseUrl}}/v1/system/auth/break-glass
+Content-Type: application/json
+
+{
+  "username": "setup.admin",
+  "break_glass_code": "EMERGENCY-CODE",
+  "reason": "Production incident requiring immediate system access",
+  "ticket_id": "TICKET-2026-001",
+  "device_fingerprint": "test-device-001"
+}
+
+###############################################################################
+# 7. SYSTEM ADMIN - IMPERSONATION
+###############################################################################
+
+# Start tenant impersonation session
+POST {{baseUrl}}/v1/system/impersonate
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+
+{
+  "tenant_id": "{{tenantId}}",
+  "user_id": "{{userId}}",
+  "reason": "Customer support investigation - TICKET-2026-001",
+  "ticket_id": "TICKET-2026-001"
+}
+
+###############################################################################
+# REFERENCE
+###############################################################################
+#
+# TENANT ROLES:
+#   OWNER   - Full tenant access, can manage all users
+#   ADMIN   - Administrative access, can create/modify users
+#   MANAGER - Operational management
+#   STAFF   - Standard access, limited to assigned tasks
+#   VIEWER  - Read-only access
+#
+# SYSTEM ROLES:
+#   SYSTEM_SUPER_ADMIN - Full platform access
+#   SYSTEM_ADMIN       - Create tenants/users
+#   SYSTEM_OPERATOR    - Read-only monitoring
+#   SYSTEM_SUPPORT     - Can impersonate tenant users
+#
+# SAMPLE IDs:
+#   Tenant:   11111111-1111-1111-1111-111111111111 (Tartware Hospitality Labs)
+#   Property: 22222222-2222-2222-2222-222222222222 (Tartware City Center)
+#   User:     33333333-3333-3333-3333-333333333333 (setup.admin)
+#
+###############################################################################

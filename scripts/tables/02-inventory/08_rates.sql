@@ -32,6 +32,8 @@ description TEXT, -- Marketing copy/long description
 
 -- Rate Strategy
 strategy rate_strategy NOT NULL DEFAULT 'FIXED', -- Pricing approach (fixed, dynamic, etc.)
+rate_type rate_type NOT NULL DEFAULT 'BAR', -- Rate category (BAR, RACK, CORPORATE, etc.)
+priority INTEGER NOT NULL DEFAULT 100, -- Display/selection priority (lower = higher priority)
 
 -- Pricing
 base_rate DECIMAL(15, 2) NOT NULL, -- Base nightly price

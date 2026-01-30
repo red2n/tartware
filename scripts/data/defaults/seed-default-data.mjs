@@ -197,23 +197,25 @@ const upsertUserTenantAssociations = async (client, associations = []) => {
     await client.query(
       `
         INSERT INTO user_tenant_associations AS uta (
-          user_id, tenant_id, role, is_active, permissions, metadata,
+          user_id, tenant_id, role, is_active, permissions, modules, metadata,
           created_at, updated_at, created_by, updated_by
         )
         VALUES (
           $1, $2, $3, TRUE,
           COALESCE($4::jsonb, '{}'::jsonb),
-          COALESCE($5::jsonb, '{}'::jsonb),
-          NOW(), NOW(), $6, $6
+          COALESCE($5::jsonb, '["core"]'::jsonb),
+          COALESCE($6::jsonb, '{}'::jsonb),
+          NOW(), NOW(), $7, $7
         )
         ON CONFLICT (user_id, tenant_id) DO UPDATE
         SET
           role = EXCLUDED.role,
           is_active = TRUE,
           permissions = EXCLUDED.permissions,
+          modules = EXCLUDED.modules,
           metadata = COALESCE(uta.metadata, '{}'::jsonb) || EXCLUDED.metadata,
           updated_at = NOW(),
-          updated_by = $6,
+          updated_by = $7,
           version = COALESCE(uta.version, 0) + 1;
       `,
       [
@@ -221,6 +223,7 @@ const upsertUserTenantAssociations = async (client, associations = []) => {
         association.tenantId,
         association.role ?? "OWNER",
         jsonb(association.permissions),
+        jsonb(association.modules ?? ["core", "reservations", "housekeeping", "billing"]),
         jsonb(association.metadata),
         seedActorId,
       ],
@@ -420,23 +423,23 @@ const upsertRates = async (client, rates = []) => {
       `
         INSERT INTO rates AS rt (
           tenant_id, property_id, room_type_id, rate_name, rate_code, description,
-          strategy, base_rate, currency, single_occupancy_rate, double_occupancy_rate,
+          strategy, rate_type, priority, base_rate, currency, single_occupancy_rate, double_occupancy_rate,
           extra_person_rate, valid_from, min_length_of_stay, meal_plan,
           cancellation_policy, channels, customer_segments, tax_inclusive,
           display_order, status, metadata, created_at, updated_at, created_by, updated_by
         )
         VALUES (
           $1, $2, $3, $4, $5, $6,
-          $7, $8, $9, $10, $11,
-          $12, $13::date, $14, $15,
-          COALESCE($16::jsonb, '{}'::jsonb),
-          COALESCE($17::jsonb, '[]'::jsonb),
-          COALESCE($18::jsonb, '[]'::jsonb),
-          COALESCE($19, FALSE),
-          COALESCE($20, 0),
+          $7, $8, $9, $10, $11, $12, $13,
+          $14, $15::date, $16, $17,
+          COALESCE($18::jsonb, '{}'::jsonb),
+          COALESCE($19::jsonb, '[]'::jsonb),
+          COALESCE($20::jsonb, '[]'::jsonb),
+          COALESCE($21, FALSE),
+          COALESCE($22, 0),
           'ACTIVE',
-          COALESCE($21::jsonb, '{}'::jsonb),
-          NOW(), NOW(), $22, $22
+          COALESCE($23::jsonb, '{}'::jsonb),
+          NOW(), NOW(), $24, $24
         )
         ON CONFLICT (property_id, rate_code) DO UPDATE
         SET
@@ -445,6 +448,8 @@ const upsertRates = async (client, rates = []) => {
           rate_name = EXCLUDED.rate_name,
           description = EXCLUDED.description,
           strategy = EXCLUDED.strategy,
+          rate_type = EXCLUDED.rate_type,
+          priority = EXCLUDED.priority,
           base_rate = EXCLUDED.base_rate,
           currency = EXCLUDED.currency,
           single_occupancy_rate = EXCLUDED.single_occupancy_rate,
@@ -460,7 +465,7 @@ const upsertRates = async (client, rates = []) => {
           display_order = EXCLUDED.display_order,
           metadata = COALESCE(rt.metadata, '{}'::jsonb) || EXCLUDED.metadata,
           updated_at = NOW(),
-          updated_by = $22,
+          updated_by = $24,
           version = COALESCE(rt.version, 0) + 1;
       `,
       [
@@ -471,6 +476,8 @@ const upsertRates = async (client, rates = []) => {
         rate.rateCode,
         rate.description ?? null,
         rate.strategy ?? "FIXED",
+        rate.rateType ?? "BAR",
+        rate.priority ?? 100,
         rate.baseRate ?? 0,
         rate.currency ?? "USD",
         rate.singleOccupancyRate ?? null,

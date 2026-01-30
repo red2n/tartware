@@ -123,6 +123,7 @@
         "canAccessAll": true,
         "restrictions": {}
       },
+      "modules": ["core", "reservations", "housekeeping", "billing"],
       "metadata": {
         "seed": "industry_defaults",
         "description": "Bootstrap owner access"
@@ -382,6 +383,8 @@
       "rateCode": "RACK",
       "description": "Full published rack rate used for corporate contracts.",
       "strategy": "FIXED",
+      "rateType": "RACK",
+      "priority": 50,
       "baseRate": 249,
       "singleOccupancyRate": 249,
       "doubleOccupancyRate": 269,
@@ -415,6 +418,8 @@
       "rateCode": "BAR",
       "description": "Dynamic day-of rate with advance purchase flexibility.",
       "strategy": "DYNAMIC",
+      "rateType": "BAR",
+      "priority": 100,
       "baseRate": 209,
       "singleOccupancyRate": 189,
       "doubleOccupancyRate": 219,
