@@ -368,6 +368,20 @@ export const buildServer = () => {
 			proxyCore,
 		);
 
+		app.get(
+			"/v1/tenants",
+			{
+				schema: buildRouteSchema({
+					tag: CORE_PROXY_TAG,
+					summary: "List tenants accessible to the authenticated user.",
+					response: {
+						200: jsonObjectSchema,
+					},
+				}),
+			},
+			proxyCore,
+		);
+
 		app.all(
 			"/v1/tenants/:tenantId/reservations",
 			{

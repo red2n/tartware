@@ -21,6 +21,63 @@ fail() {
     exit 1
 }
 
+ensure_env_vars() {
+    # Ensure critical environment variables exist in .env file
+    local env_file="$ENV_FILE_DEFAULT"
+    local updated=false
+
+    if [ ! -f "$env_file" ]; then
+        log "Creating .env file from template..."
+        if [ -f "$ENV_TEMPLATE_DEFAULT" ]; then
+            cp "$ENV_TEMPLATE_DEFAULT" "$env_file"
+        else
+            touch "$env_file"
+        fi
+    fi
+
+    # Check and add AUTH_JWT_SECRET if missing
+    if ! grep -q '^AUTH_JWT_SECRET=' "$env_file" 2>/dev/null; then
+        log "Adding AUTH_JWT_SECRET to .env"
+        echo "" >> "$env_file"
+        echo "# JWT secret for signing tokens (min 32 characters)" >> "$env_file"
+        echo "AUTH_JWT_SECRET=dev-secret-minimum-32-chars-change-me!" >> "$env_file"
+        updated=true
+    fi
+
+    # Check and add AUTH_DEFAULT_PASSWORD if missing
+    if ! grep -q '^AUTH_DEFAULT_PASSWORD=' "$env_file" 2>/dev/null; then
+        log "Adding AUTH_DEFAULT_PASSWORD to .env"
+        echo "" >> "$env_file"
+        echo "# Default password for seeded users (min 8 characters)" >> "$env_file"
+        echo "AUTH_DEFAULT_PASSWORD=TempPass123" >> "$env_file"
+        updated=true
+    fi
+
+    if [ "$updated" = true ]; then
+        log "Environment variables added to $env_file"
+    fi
+}
+
+reset_default_passwords() {
+    # Reset user passwords to AUTH_DEFAULT_PASSWORD value
+    local reset_script="$REPO_ROOT/Apps/core-service/scripts/reset-default-password.ts"
+    local default_password="${AUTH_DEFAULT_PASSWORD:-TempPass123}"
+
+    if [ -f "$reset_script" ]; then
+        log "Resetting user passwords to default..."
+        if DB_HOST="${DB_HOST:-127.0.0.1}" DB_PORT="${DB_PORT:-5432}" DB_USER="${DB_USER:-postgres}" \
+            DB_PASSWORD="${DB_PASSWORD:-postgres}" DB_NAME="${DB_NAME:-tartware}" \
+            AUTH_DEFAULT_PASSWORD="$default_password" NODE_ENV=development \
+            npx tsx --tsconfig "$REPO_ROOT/Apps/core-service/tsconfig.json" "$reset_script" 2>/dev/null; then
+            log "Default passwords reset to '$default_password'"
+        else
+            log "Warning: Failed to reset default passwords"
+        fi
+    else
+        log "Warning: Password reset script not found at $reset_script"
+    fi
+}
+
 record_last_cmd() {
     printf '%q ' "$EXEC_DIR/tartware.sh" "$@" > "$LAST_CMD_FILE"
 }
@@ -334,11 +391,23 @@ case "$cmd" in
         shift || true
         case "$sub" in
             setup)
+                # Ensure env vars exist before setup
+                ensure_env_vars
+                # Source .env for password value
+                if [ -f "$ENV_FILE_DEFAULT" ]; then
+                    set -a
+                    # shellcheck disable=SC1090
+                    source "$ENV_FILE_DEFAULT"
+                    set +a
+                fi
                 setup_script="$EXEC_DIR/setup-database/setup-database.sh"
                 if [ ! -x "$setup_script" ]; then
                     fail "Missing setup script: $setup_script"
                 fi
-                exec "$setup_script" "$@"
+                "$setup_script" "$@"
+                # Reset passwords after DB setup
+                reset_default_passwords
+                exit 0
                 ;;
             *)
                 fail "Unknown db subcommand: $sub"
@@ -353,6 +422,15 @@ case "$cmd" in
         compose_cmd="$(docker_compose_cmd)"
         case "$sub" in
             up)
+                # Ensure env vars exist before docker up
+                ensure_env_vars
+                # Source .env for password value
+                if [ -f "$ENV_FILE_DEFAULT" ]; then
+                    set -a
+                    # shellcheck disable=SC1090
+                    source "$ENV_FILE_DEFAULT"
+                    set +a
+                fi
                 $compose_cmd -f "$REPO_ROOT/docker-compose.yml" up -d
                 log "Bootstrapping Kafka topics"
                 if (cd "$REPO_ROOT" && npm run kafka:topics); then
@@ -367,15 +445,7 @@ case "$cmd" in
                 else
                     fail "Failed to seed default data"
                 fi
-                log "Resetting default user passwords"
-                if DB_HOST=127.0.0.1 DB_PORT=5432 DB_USER=postgres DB_PASSWORD=postgres DB_NAME=tartware \
-                    AUTH_DEFAULT_PASSWORD=TempPass123 NODE_ENV=development \
-                    npx tsx --tsconfig "$REPO_ROOT/Apps/core-service/tsconfig.json" \
-                    "$REPO_ROOT/Apps/core-service/scripts/reset-default-password.ts"; then
-                    log "Default passwords reset successfully"
-                else
-                    fail "Failed to reset default passwords"
-                fi
+                reset_default_passwords
                 ;;
             down)
                 $compose_cmd -f "$REPO_ROOT/docker-compose.yml" down
