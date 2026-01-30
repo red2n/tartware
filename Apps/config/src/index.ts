@@ -9,9 +9,9 @@ const rootEnvPath = path.resolve(
   ".env",
 );
 
-// Load root .env first for shared defaults, then local .env to override.
+// Load root .env first for shared defaults, then local .env with override to allow service-specific overrides.
 loadEnv({ path: rootEnvPath });
-loadEnv();
+loadEnv({ override: true });
 
 const booleanString = z
   .union([

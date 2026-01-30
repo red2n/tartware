@@ -358,16 +358,14 @@ case "$cmd" in
                 if (cd "$REPO_ROOT" && npm run kafka:topics); then
                     log "Kafka topics created successfully"
                 else
-                    error "Failed to create Kafka topics"
-                    exit 1
+                    fail "Failed to create Kafka topics"
                 fi
                 log "Seeding default data"
                 if DB_HOST=127.0.0.1 DB_PORT=5432 DB_USER=postgres DB_PASSWORD=postgres DB_NAME=tartware \
                     node "$REPO_ROOT/scripts/data/defaults/seed-default-data.mjs"; then
                     log "Default data seeded successfully"
                 else
-                    error "Failed to seed default data"
-                    exit 1
+                    fail "Failed to seed default data"
                 fi
                 log "Resetting default user passwords"
                 if DB_HOST=127.0.0.1 DB_PORT=5432 DB_USER=postgres DB_PASSWORD=postgres DB_NAME=tartware \
@@ -376,8 +374,7 @@ case "$cmd" in
                     "$REPO_ROOT/Apps/core-service/scripts/reset-default-password.ts"; then
                     log "Default passwords reset successfully"
                 else
-                    error "Failed to reset default passwords"
-                    exit 1
+                    fail "Failed to reset default passwords"
                 fi
                 ;;
             down)
