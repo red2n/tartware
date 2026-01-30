@@ -1,5 +1,20 @@
-// Login via API Gateway to core-service to get tenant-scoped token (HS256)
-// Core-service runs on port 3000 by default but is exposed through the API Gateway on port 8080
+// =====================================================
+// ROOMS & ROOM TYPES - HTTP Test File
+// =====================================================
+//
+// Room inventory management: Room Types, Rooms, Status,
+// Housekeeping, Blocks, Out-of-Order/Service
+//
+// All requests route via API Gateway (localhost:8080)
+// Backend: rooms-service (port 3400)
+//
+// =====================================================
+
+// ========================
+// AUTHENTICATION
+// ========================
+
+// Login to get tenant-scoped token
 POST /v1/auth/login HTTP/1.1
 Host: localhost:8080
 Content-Type: application/json
@@ -14,13 +29,13 @@ Content-Type: application/json
 // list room types for Aurora Central Hotel
 GET /v1/room-types?tenant_id=19b2afbb-e6f6-4776-8e52-efbab18f4bec&property_id=eedfeb3f-4c09-47d9-9b02-2d8d6610ce27&limit=50 HTTP/1.1
 Host: localhost:8080
-Authorization: Bearer {{core_token}}
+Authorization: Bearer {{token}}
 
 ###
 // list rooms for Aurora Central Hotel (rooms-service)
 GET /v1/rooms?tenant_id=19b2afbb-e6f6-4776-8e52-efbab18f4bec&property_id=eedfeb3f-4c09-47d9-9b02-2d8d6610ce27&limit=50 HTTP/1.1
 Host: localhost:8080
-Authorization: Bearer {{core_token}}
+Authorization: Bearer {{token}}
 
 ###
 // ========================
@@ -31,7 +46,7 @@ Authorization: Bearer {{core_token}}
 POST /v1/room-types HTTP/1.1
 Host: localhost:8080
 Content-Type: application/json
-Authorization: Bearer {{core_token}}
+Authorization: Bearer {{token}}
 
 {
   "tenant_id": "19b2afbb-e6f6-4776-8e52-efbab18f4bec",
@@ -55,7 +70,7 @@ Authorization: Bearer {{core_token}}
 POST /v1/room-types HTTP/1.1
 Host: localhost:8080
 Content-Type: application/json
-Authorization: Bearer {{core_token}}
+Authorization: Bearer {{token}}
 
 {
   "tenant_id": "19b2afbb-e6f6-4776-8e52-efbab18f4bec",
@@ -79,7 +94,7 @@ Authorization: Bearer {{core_token}}
 POST /v1/room-types HTTP/1.1
 Host: localhost:8080
 Content-Type: application/json
-Authorization: Bearer {{core_token}}
+Authorization: Bearer {{token}}
 
 {
   "tenant_id": "19b2afbb-e6f6-4776-8e52-efbab18f4bec",
@@ -103,7 +118,7 @@ Authorization: Bearer {{core_token}}
 POST /v1/room-types HTTP/1.1
 Host: localhost:8080
 Content-Type: application/json
-Authorization: Bearer {{core_token}}
+Authorization: Bearer {{token}}
 
 {
   "tenant_id": "19b2afbb-e6f6-4776-8e52-efbab18f4bec",
@@ -127,7 +142,7 @@ Authorization: Bearer {{core_token}}
 POST /v1/room-types HTTP/1.1
 Host: localhost:8080
 Content-Type: application/json
-Authorization: Bearer {{core_token}}
+Authorization: Bearer {{token}}
 
 {
   "tenant_id": "19b2afbb-e6f6-4776-8e52-efbab18f4bec",
@@ -151,7 +166,7 @@ Authorization: Bearer {{core_token}}
 POST /v1/room-types HTTP/1.1
 Host: localhost:8080
 Content-Type: application/json
-Authorization: Bearer {{core_token}}
+Authorization: Bearer {{token}}
 
 {
   "tenant_id": "19b2afbb-e6f6-4776-8e52-efbab18f4bec",
@@ -175,7 +190,7 @@ Authorization: Bearer {{core_token}}
 POST /v1/room-types HTTP/1.1
 Host: localhost:8080
 Content-Type: application/json
-Authorization: Bearer {{core_token}}
+Authorization: Bearer {{token}}
 
 {
   "tenant_id": "19b2afbb-e6f6-4776-8e52-efbab18f4bec",
@@ -204,7 +219,7 @@ Authorization: Bearer {{core_token}}
 PUT /v1/room-types/9300203c-775f-4ffe-ba03-6681f301f478 HTTP/1.1
 Host: localhost:8080
 Content-Type: application/json
-Authorization: Bearer {{core_token}}
+Authorization: Bearer {{token}}
 
 {
   "tenant_id": "19b2afbb-e6f6-4776-8e52-efbab18f4bec",
@@ -217,7 +232,7 @@ Authorization: Bearer {{core_token}}
 PUT /v1/room-types/50967d25-50c8-474a-b010-a6e902f1e303 HTTP/1.1
 Host: localhost:8080
 Content-Type: application/json
-Authorization: Bearer {{core_token}}
+Authorization: Bearer {{token}}
 
 {
   "tenant_id": "19b2afbb-e6f6-4776-8e52-efbab18f4bec",
@@ -234,7 +249,7 @@ Authorization: Bearer {{core_token}}
 DELETE /v1/room-types/{{room_type_id}} HTTP/1.1
 Host: localhost:8080
 Content-Type: application/json
-Authorization: Bearer {{core_token}}
+Authorization: Bearer {{token}}
 
 {
   "tenant_id": "19b2afbb-e6f6-4776-8e52-efbab18f4bec"
@@ -248,13 +263,13 @@ Authorization: Bearer {{core_token}}
 // list rooms for Aurora Central Hotel
 GET /v1/rooms?tenant_id=19b2afbb-e6f6-4776-8e52-efbab18f4bec&property_id=eedfeb3f-4c09-47d9-9b02-2d8d6610ce27&limit=50 HTTP/1.1
 Host: localhost:8080
-Authorization: Bearer {{core_token}}
+Authorization: Bearer {{token}}
 
 ###
 // list rooms for Aurora Harbor Hotel
 GET /v1/rooms?tenant_id=19b2afbb-e6f6-4776-8e52-efbab18f4bec&property_id=97d98b4f-6c2c-4df9-adfe-6a536a81ac2d&limit=50 HTTP/1.1
 Host: localhost:8080
-Authorization: Bearer {{core_token}}
+Authorization: Bearer {{token}}
 
 ###
 // ========================
@@ -266,7 +281,7 @@ Authorization: Bearer {{core_token}}
 POST /v1/rooms HTTP/1.1
 Host: localhost:8080
 Content-Type: application/json
-Authorization: Bearer {{core_token}}
+Authorization: Bearer {{token}}
 
 {
   "tenant_id": "19b2afbb-e6f6-4776-8e52-efbab18f4bec",
@@ -286,7 +301,7 @@ Authorization: Bearer {{core_token}}
 POST /v1/rooms HTTP/1.1
 Host: localhost:8080
 Content-Type: application/json
-Authorization: Bearer {{core_token}}
+Authorization: Bearer {{token}}
 
 {
   "tenant_id": "19b2afbb-e6f6-4776-8e52-efbab18f4bec",
@@ -306,7 +321,7 @@ Authorization: Bearer {{core_token}}
 POST /v1/rooms HTTP/1.1
 Host: localhost:8080
 Content-Type: application/json
-Authorization: Bearer {{core_token}}
+Authorization: Bearer {{token}}
 
 {
   "tenant_id": "19b2afbb-e6f6-4776-8e52-efbab18f4bec",
@@ -326,7 +341,7 @@ Authorization: Bearer {{core_token}}
 POST /v1/rooms HTTP/1.1
 Host: localhost:8080
 Content-Type: application/json
-Authorization: Bearer {{core_token}}
+Authorization: Bearer {{token}}
 
 {
   "tenant_id": "19b2afbb-e6f6-4776-8e52-efbab18f4bec",
@@ -346,7 +361,7 @@ Authorization: Bearer {{core_token}}
 POST /v1/rooms HTTP/1.1
 Host: localhost:8080
 Content-Type: application/json
-Authorization: Bearer {{core_token}}
+Authorization: Bearer {{token}}
 
 {
   "tenant_id": "19b2afbb-e6f6-4776-8e52-efbab18f4bec",
@@ -366,7 +381,7 @@ Authorization: Bearer {{core_token}}
 POST /v1/rooms HTTP/1.1
 Host: localhost:8080
 Content-Type: application/json
-Authorization: Bearer {{core_token}}
+Authorization: Bearer {{token}}
 
 {
   "tenant_id": "19b2afbb-e6f6-4776-8e52-efbab18f4bec",
@@ -386,7 +401,7 @@ Authorization: Bearer {{core_token}}
 POST /v1/rooms HTTP/1.1
 Host: localhost:8080
 Content-Type: application/json
-Authorization: Bearer {{core_token}}
+Authorization: Bearer {{token}}
 
 {
   "tenant_id": "19b2afbb-e6f6-4776-8e52-efbab18f4bec",
@@ -410,7 +425,7 @@ Authorization: Bearer {{core_token}}
 PUT /v1/rooms/{{room_id}} HTTP/1.1
 Host: localhost:8080
 Content-Type: application/json
-Authorization: Bearer {{core_token}}
+Authorization: Bearer {{token}}
 
 {
   "tenant_id": "19b2afbb-e6f6-4776-8e52-efbab18f4bec",
@@ -422,7 +437,7 @@ Authorization: Bearer {{core_token}}
 PUT /v1/rooms/{{room_id}} HTTP/1.1
 Host: localhost:8080
 Content-Type: application/json
-Authorization: Bearer {{core_token}}
+Authorization: Bearer {{token}}
 
 {
   "tenant_id": "19b2afbb-e6f6-4776-8e52-efbab18f4bec",
@@ -434,7 +449,7 @@ Authorization: Bearer {{core_token}}
 PUT /v1/rooms/{{room_id}} HTTP/1.1
 Host: localhost:8080
 Content-Type: application/json
-Authorization: Bearer {{core_token}}
+Authorization: Bearer {{token}}
 
 {
   "tenant_id": "19b2afbb-e6f6-4776-8e52-efbab18f4bec",
@@ -450,7 +465,7 @@ Authorization: Bearer {{core_token}}
 DELETE /v1/rooms/{{room_id}} HTTP/1.1
 Host: localhost:8080
 Content-Type: application/json
-Authorization: Bearer {{core_token}}
+Authorization: Bearer {{token}}
 
 {
   "tenant_id": "19b2afbb-e6f6-4776-8e52-efbab18f4bec"
@@ -458,15 +473,112 @@ Authorization: Bearer {{core_token}}
 
 ###
 // ========================
+// ROOMS - COMMAND OPERATIONS
+// ========================
+
+// Block room inventory (for maintenance, VIP holds, etc.)
+POST /v1/tenants/19b2afbb-e6f6-4776-8e52-efbab18f4bec/rooms/{{room_id}}/block HTTP/1.1
+Host: localhost:8080
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+	"start_date": "2026-02-01",
+	"end_date": "2026-02-05",
+	"reason": "VIP reservation hold",
+	"idempotency_key": "block-{{$guid}}"
+}
+
+###
+// Release room block
+POST /v1/tenants/19b2afbb-e6f6-4776-8e52-efbab18f4bec/rooms/{{room_id}}/release HTTP/1.1
+Host: localhost:8080
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+	"idempotency_key": "release-{{$guid}}"
+}
+
+###
+// Update room status via command
+POST /v1/tenants/19b2afbb-e6f6-4776-8e52-efbab18f4bec/rooms/{{room_id}}/status HTTP/1.1
+Host: localhost:8080
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+	"status": "OCCUPIED",
+	"idempotency_key": "status-{{$guid}}"
+}
+
+###
+// Update housekeeping status via command
+POST /v1/tenants/19b2afbb-e6f6-4776-8e52-efbab18f4bec/rooms/{{room_id}}/housekeeping-status HTTP/1.1
+Host: localhost:8080
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+	"housekeeping_status": "DIRTY",
+	"idempotency_key": "hk-{{$guid}}"
+}
+
+###
+// Mark room out of order (maintenance issue)
+POST /v1/tenants/19b2afbb-e6f6-4776-8e52-efbab18f4bec/rooms/{{room_id}}/out-of-order HTTP/1.1
+Host: localhost:8080
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+	"reason": "HVAC repair needed",
+	"start_date": "2026-02-01",
+	"end_date": "2026-02-03",
+	"idempotency_key": "ooo-{{$guid}}"
+}
+
+###
+// Mark room out of service (temporary unavailability)
+POST /v1/tenants/19b2afbb-e6f6-4776-8e52-efbab18f4bec/rooms/{{room_id}}/out-of-service HTTP/1.1
+Host: localhost:8080
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+	"reason": "Deep cleaning scheduled",
+	"start_date": "2026-02-05",
+	"end_date": "2026-02-05",
+	"idempotency_key": "oos-{{$guid}}"
+}
+
+###
+// Update room features via command
+POST /v1/tenants/19b2afbb-e6f6-4776-8e52-efbab18f4bec/rooms/{{room_id}}/features HTTP/1.1
+Host: localhost:8080
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+	"features": {
+		"view": "ocean",
+		"balcony": true,
+		"smoking": false
+	},
+	"idempotency_key": "feat-{{$guid}}"
+}
+
+###
+// ========================
 // AMENITIES (via API Gateway - settings-service backend on port 3100)
-// Note: Using {{settings_token}} variable - obtain by logging in via /v1/auth/login
+// Note: Using {{token}} variable - obtain by logging in via /v1/auth/login
 // ========================
 
 // create amenity
 POST /v1/settings/properties/eedfeb3f-4c09-47d9-9b02-2d8d6610ce27/amenities HTTP/1.1
 Host: localhost:8080
 Content-Type: application/json
-Authorization: Bearer {{settings_token}}
+Authorization: Bearer {{token}}
 
 {
   "amenityCode": "WIFI",
@@ -483,7 +595,7 @@ Authorization: Bearer {{settings_token}}
 // list amenities for Aurora Central Hotel
 GET /v1/settings/properties/eedfeb3f-4c09-47d9-9b02-2d8d6610ce27/amenities HTTP/1.1
 Host: localhost:8080
-Authorization: Bearer {{settings_token}}
+Authorization: Bearer {{token}}
 
 ###
 // ========================

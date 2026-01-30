@@ -7,7 +7,7 @@
 // Prerequisites:
 // 1. Run migration: scripts/2026-01-29-add-rate-type-and-priority-to-rates.sql
 // 2. Start core-service (port 3000) and rooms-service (port 3400)
-// 3. Login via core-service to get {{core_token}}
+// 3. Login via core-service to get {{token}}
 //
 // Rate Priority Guide (lower = higher priority):
 //   COMP/HOUSE:      1-5    (complimentary/internal use)
@@ -34,32 +34,32 @@ Content-Type: application/json
 // List all rates for Aurora Central Hotel
 GET /v1/rates?tenant_id=19b2afbb-e6f6-4776-8e52-efbab18f4bec&property_id=eedfeb3f-4c09-47d9-9b02-2d8d6610ce27&limit=50 HTTP/1.1
 Host: localhost:8080
-Authorization: Bearer {{core_token}}
+Authorization: Bearer {{token}}
 
 ###
 // List rates filtered by status=ACTIVE
 GET /v1/rates?tenant_id=19b2afbb-e6f6-4776-8e52-efbab18f4bec&property_id=eedfeb3f-4c09-47d9-9b02-2d8d6610ce27&status=ACTIVE HTTP/1.1
 Host: localhost:8080
-Authorization: Bearer {{core_token}}
+Authorization: Bearer {{token}}
 
 ###
 // List rates filtered by rate_type=BAR
 GET /v1/rates?tenant_id=19b2afbb-e6f6-4776-8e52-efbab18f4bec&property_id=eedfeb3f-4c09-47d9-9b02-2d8d6610ce27&rate_type=BAR HTTP/1.1
 Host: localhost:8080
-Authorization: Bearer {{core_token}}
+Authorization: Bearer {{token}}
 
 ###
 // List rates for specific room type (STD)
 // Room Type ID: 9300203c-775f-4ffe-ba03-6681f301f478
 GET /v1/rates?tenant_id=19b2afbb-e6f6-4776-8e52-efbab18f4bec&property_id=eedfeb3f-4c09-47d9-9b02-2d8d6610ce27&room_type_id=9300203c-775f-4ffe-ba03-6681f301f478 HTTP/1.1
 Host: localhost:8080
-Authorization: Bearer {{core_token}}
+Authorization: Bearer {{token}}
 
 ###
 // Search rates by name
 GET /v1/rates?tenant_id=19b2afbb-e6f6-4776-8e52-efbab18f4bec&property_id=eedfeb3f-4c09-47d9-9b02-2d8d6610ce27&search=corporate HTTP/1.1
 Host: localhost:8080
-Authorization: Bearer {{core_token}}
+Authorization: Bearer {{token}}
 
 ###
 // ========================
@@ -71,7 +71,7 @@ Authorization: Bearer {{core_token}}
 POST /v1/rates HTTP/1.1
 Host: localhost:8080
 Content-Type: application/json
-Authorization: Bearer {{core_token}}
+Authorization: Bearer {{token}}
 
 {
   "tenant_id": "19b2afbb-e6f6-4776-8e52-efbab18f4bec",
@@ -98,7 +98,7 @@ Authorization: Bearer {{core_token}}
 POST /v1/rates HTTP/1.1
 Host: localhost:8080
 Content-Type: application/json
-Authorization: Bearer {{core_token}}
+Authorization: Bearer {{token}}
 
 {
   "tenant_id": "19b2afbb-e6f6-4776-8e52-efbab18f4bec",
@@ -125,7 +125,7 @@ Authorization: Bearer {{core_token}}
 POST /v1/rates HTTP/1.1
 Host: localhost:8080
 Content-Type: application/json
-Authorization: Bearer {{core_token}}
+Authorization: Bearer {{token}}
 
 {
   "tenant_id": "19b2afbb-e6f6-4776-8e52-efbab18f4bec",
@@ -157,7 +157,7 @@ Authorization: Bearer {{core_token}}
 POST /v1/rates HTTP/1.1
 Host: localhost:8080
 Content-Type: application/json
-Authorization: Bearer {{core_token}}
+Authorization: Bearer {{token}}
 
 {
   "tenant_id": "19b2afbb-e6f6-4776-8e52-efbab18f4bec",
@@ -184,7 +184,7 @@ Authorization: Bearer {{core_token}}
 POST /v1/rates HTTP/1.1
 Host: localhost:8080
 Content-Type: application/json
-Authorization: Bearer {{core_token}}
+Authorization: Bearer {{token}}
 
 {
   "tenant_id": "19b2afbb-e6f6-4776-8e52-efbab18f4bec",
@@ -211,7 +211,7 @@ Authorization: Bearer {{core_token}}
 POST /v1/rates HTTP/1.1
 Host: localhost:8080
 Content-Type: application/json
-Authorization: Bearer {{core_token}}
+Authorization: Bearer {{token}}
 
 {
   "tenant_id": "19b2afbb-e6f6-4776-8e52-efbab18f4bec",
@@ -238,7 +238,7 @@ Authorization: Bearer {{core_token}}
 POST /v1/rates HTTP/1.1
 Host: localhost:8080
 Content-Type: application/json
-Authorization: Bearer {{core_token}}
+Authorization: Bearer {{token}}
 
 {
   "tenant_id": "19b2afbb-e6f6-4776-8e52-efbab18f4bec",
@@ -271,7 +271,7 @@ Authorization: Bearer {{core_token}}
 POST /v1/rates HTTP/1.1
 Host: localhost:8080
 Content-Type: application/json
-Authorization: Bearer {{core_token}}
+Authorization: Bearer {{token}}
 
 {
   "tenant_id": "19b2afbb-e6f6-4776-8e52-efbab18f4bec",
@@ -303,7 +303,7 @@ Authorization: Bearer {{core_token}}
 POST /v1/rates HTTP/1.1
 Host: localhost:8080
 Content-Type: application/json
-Authorization: Bearer {{core_token}}
+Authorization: Bearer {{token}}
 
 {
   "tenant_id": "19b2afbb-e6f6-4776-8e52-efbab18f4bec",
@@ -330,7 +330,7 @@ Authorization: Bearer {{core_token}}
 POST /v1/rates HTTP/1.1
 Host: localhost:8080
 Content-Type: application/json
-Authorization: Bearer {{core_token}}
+Authorization: Bearer {{token}}
 
 {
   "tenant_id": "19b2afbb-e6f6-4776-8e52-efbab18f4bec",
@@ -362,7 +362,7 @@ Authorization: Bearer {{core_token}}
 POST /v1/rates HTTP/1.1
 Host: localhost:8080
 Content-Type: application/json
-Authorization: Bearer {{core_token}}
+Authorization: Bearer {{token}}
 
 {
   "tenant_id": "19b2afbb-e6f6-4776-8e52-efbab18f4bec",
@@ -392,7 +392,7 @@ Authorization: Bearer {{core_token}}
 POST /v1/rates HTTP/1.1
 Host: localhost:8080
 Content-Type: application/json
-Authorization: Bearer {{core_token}}
+Authorization: Bearer {{token}}
 
 {
   "tenant_id": "19b2afbb-e6f6-4776-8e52-efbab18f4bec",
@@ -422,7 +422,7 @@ Authorization: Bearer {{core_token}}
 // Get rate by ID (replace {{rate_id}} with actual ID from create response)
 GET /v1/rates/{{rate_id}}?tenant_id=19b2afbb-e6f6-4776-8e52-efbab18f4bec HTTP/1.1
 Host: localhost:8080
-Authorization: Bearer {{core_token}}
+Authorization: Bearer {{token}}
 
 ###
 // ========================
@@ -433,7 +433,7 @@ Authorization: Bearer {{core_token}}
 PUT /v1/rates/{{rate_id}} HTTP/1.1
 Host: localhost:8080
 Content-Type: application/json
-Authorization: Bearer {{core_token}}
+Authorization: Bearer {{token}}
 
 {
   "tenant_id": "19b2afbb-e6f6-4776-8e52-efbab18f4bec",
@@ -446,7 +446,7 @@ Authorization: Bearer {{core_token}}
 PUT /v1/rates/{{rate_id}} HTTP/1.1
 Host: localhost:8080
 Content-Type: application/json
-Authorization: Bearer {{core_token}}
+Authorization: Bearer {{token}}
 
 {
   "tenant_id": "19b2afbb-e6f6-4776-8e52-efbab18f4bec",
@@ -458,7 +458,7 @@ Authorization: Bearer {{core_token}}
 PUT /v1/rates/{{rate_id}} HTTP/1.1
 Host: localhost:8080
 Content-Type: application/json
-Authorization: Bearer {{core_token}}
+Authorization: Bearer {{token}}
 
 {
   "tenant_id": "19b2afbb-e6f6-4776-8e52-efbab18f4bec",
@@ -474,7 +474,7 @@ Authorization: Bearer {{core_token}}
 DELETE /v1/rates/{{rate_id}} HTTP/1.1
 Host: localhost:8080
 Content-Type: application/json
-Authorization: Bearer {{core_token}}
+Authorization: Bearer {{token}}
 
 {
   "tenant_id": "19b2afbb-e6f6-4776-8e52-efbab18f4bec"

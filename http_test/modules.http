@@ -1,0 +1,57 @@
+// =====================================================
+// MODULES - HTTP Test File
+// =====================================================
+//
+// All requests route via API Gateway (localhost:8080)
+// Backend: core-service (port 3000)
+//
+// Prerequisites:
+// 1. Login via /v1/auth/login to get {{token}}
+//
+// =====================================================
+
+// login to get tenant-scoped token
+POST /v1/auth/login HTTP/1.1
+Host: localhost:8080
+Content-Type: application/json
+
+{"username":"aurora.owner","password":"TempPass123"}
+
+###
+// ========================
+// MODULES CATALOG
+// ========================
+
+// list available platform modules (requires authentication)
+GET /v1/modules/catalog HTTP/1.1
+Host: localhost:8080
+Authorization: Bearer {{token}}
+
+###
+// list modules enabled for Aurora tenant
+GET /v1/tenants/19b2afbb-e6f6-4776-8e52-efbab18f4bec/modules HTTP/1.1
+Host: localhost:8080
+Authorization: Bearer {{token}}
+
+###
+// list modules enabled for Cedar tenant
+GET /v1/tenants/8c332645-d702-4391-a026-d141c53df71c/modules HTTP/1.1
+Host: localhost:8080
+Authorization: Bearer {{token}}
+
+###
+// list modules enabled for Mariner tenant
+GET /v1/tenants/2c89b4c0-335c-4e36-a134-c2740bda6666/modules HTTP/1.1
+Host: localhost:8080
+Authorization: Bearer {{token}}
+
+###
+// ========================
+// REFERENCE: TENANT IDs
+// ========================
+//
+// Aurora Hospitality: 19b2afbb-e6f6-4776-8e52-efbab18f4bec
+// Cedar Hospitality:  8c332645-d702-4391-a026-d141c53df71c
+// Mariner Hospitality: 2c89b4c0-335c-4e36-a134-c2740bda6666
+//
+// ========================

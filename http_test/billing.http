@@ -1,0 +1,496 @@
+// =====================================================
+// BILLING - HTTP Test File
+// =====================================================
+//
+// Billing operations: Payments, Refunds, Invoices,
+// Charges, Folio Transfers
+//
+// All requests route via API Gateway (localhost:8080)
+// Backend: billing-service
+//
+// =====================================================
+
+// ========================
+// AUTHENTICATION
+// ========================
+
+// login to get tenant-scoped token
+POST /v1/auth/login HTTP/1.1
+Host: localhost:8080
+Content-Type: application/json
+
+{"username":"aurora.owner","password":"TempPass123"}
+
+###
+// ========================
+// PAYMENTS - LIST
+// ========================
+
+// list all payments for tenant
+GET /v1/billing/payments?tenant_id=19b2afbb-e6f6-4776-8e52-efbab18f4bec&limit=50 HTTP/1.1
+Host: localhost:8080
+Authorization: Bearer {{token}}
+
+###
+// filter by property
+GET /v1/billing/payments?tenant_id=19b2afbb-e6f6-4776-8e52-efbab18f4bec&property_id=eedfeb3f-4c09-47d9-9b02-2d8d6610ce27&limit=50 HTTP/1.1
+Host: localhost:8080
+Authorization: Bearer {{token}}
+
+###
+// filter by status: completed
+GET /v1/billing/payments?tenant_id=19b2afbb-e6f6-4776-8e52-efbab18f4bec&status=completed&limit=50 HTTP/1.1
+Host: localhost:8080
+Authorization: Bearer {{token}}
+
+###
+// filter by status: pending
+GET /v1/billing/payments?tenant_id=19b2afbb-e6f6-4776-8e52-efbab18f4bec&status=pending&limit=50 HTTP/1.1
+Host: localhost:8080
+Authorization: Bearer {{token}}
+
+###
+// filter by status: refunded
+GET /v1/billing/payments?tenant_id=19b2afbb-e6f6-4776-8e52-efbab18f4bec&status=refunded&limit=50 HTTP/1.1
+Host: localhost:8080
+Authorization: Bearer {{token}}
+
+###
+// filter by transaction type: payment
+GET /v1/billing/payments?tenant_id=19b2afbb-e6f6-4776-8e52-efbab18f4bec&transaction_type=payment&limit=50 HTTP/1.1
+Host: localhost:8080
+Authorization: Bearer {{token}}
+
+###
+// filter by transaction type: refund
+GET /v1/billing/payments?tenant_id=19b2afbb-e6f6-4776-8e52-efbab18f4bec&transaction_type=refund&limit=50 HTTP/1.1
+Host: localhost:8080
+Authorization: Bearer {{token}}
+
+###
+// filter by payment method: credit card
+GET /v1/billing/payments?tenant_id=19b2afbb-e6f6-4776-8e52-efbab18f4bec&payment_method=CREDIT_CARD&limit=50 HTTP/1.1
+Host: localhost:8080
+Authorization: Bearer {{token}}
+
+###
+// filter by payment method: cash
+GET /v1/billing/payments?tenant_id=19b2afbb-e6f6-4776-8e52-efbab18f4bec&payment_method=CASH&limit=50 HTTP/1.1
+Host: localhost:8080
+Authorization: Bearer {{token}}
+
+###
+// ========================
+// PAYMENTS - CAPTURE
+// ========================
+
+// capture credit card payment
+POST /v1/tenants/19b2afbb-e6f6-4776-8e52-efbab18f4bec/billing/payments/capture HTTP/1.1
+Host: localhost:8080
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+	"property_id": "eedfeb3f-4c09-47d9-9b02-2d8d6610ce27",
+	"reservation_id": "{{reservation_id}}",
+	"amount": 450.00,
+	"currency": "USD",
+	"payment_method": "CREDIT_CARD",
+	"card": {
+		"token": "tok_visa_4242",
+		"last_four": "4242",
+		"brand": "visa",
+		"exp_month": 12,
+		"exp_year": 2028
+	},
+	"description": "Room charges - Reservation #{{reservation_id}}",
+	"idempotency_key": "pay-{{$guid}}"
+}
+
+###
+// capture cash payment
+POST /v1/tenants/19b2afbb-e6f6-4776-8e52-efbab18f4bec/billing/payments/capture HTTP/1.1
+Host: localhost:8080
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+	"property_id": "eedfeb3f-4c09-47d9-9b02-2d8d6610ce27",
+	"reservation_id": "{{reservation_id}}",
+	"amount": 100.00,
+	"currency": "USD",
+	"payment_method": "CASH",
+	"description": "Deposit payment",
+	"idempotency_key": "pay-{{$guid}}"
+}
+
+###
+// capture bank transfer payment
+POST /v1/tenants/19b2afbb-e6f6-4776-8e52-efbab18f4bec/billing/payments/capture HTTP/1.1
+Host: localhost:8080
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+	"property_id": "eedfeb3f-4c09-47d9-9b02-2d8d6610ce27",
+	"reservation_id": "{{reservation_id}}",
+	"amount": 1500.00,
+	"currency": "USD",
+	"payment_method": "BANK_TRANSFER",
+	"reference": "WIRE-2026-001234",
+	"description": "Corporate advance payment",
+	"idempotency_key": "pay-{{$guid}}"
+}
+
+###
+// ========================
+// PAYMENTS - REFUND
+// ========================
+
+// full refund
+POST /v1/tenants/19b2afbb-e6f6-4776-8e52-efbab18f4bec/billing/payments/{{payment_id}}/refund HTTP/1.1
+Host: localhost:8080
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+	"reason": "Guest cancelled reservation within policy",
+	"idempotency_key": "refund-{{$guid}}"
+}
+
+###
+// partial refund
+POST /v1/tenants/19b2afbb-e6f6-4776-8e52-efbab18f4bec/billing/payments/{{payment_id}}/refund HTTP/1.1
+Host: localhost:8080
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+	"amount": 150.00,
+	"reason": "Service complaint - one night refund",
+	"idempotency_key": "refund-{{$guid}}"
+}
+
+###
+// ========================
+// PAYMENTS - APPLY TO INVOICE
+// ========================
+
+// apply payment to invoice
+POST /v1/tenants/19b2afbb-e6f6-4776-8e52-efbab18f4bec/billing/payments/{{payment_id}}/apply HTTP/1.1
+Host: localhost:8080
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+	"invoice_id": "{{invoice_id}}",
+	"amount": 450.00,
+	"idempotency_key": "apply-{{$guid}}"
+}
+
+###
+// ========================
+// INVOICES - CREATE
+// ========================
+
+// create invoice for reservation
+POST /v1/tenants/19b2afbb-e6f6-4776-8e52-efbab18f4bec/billing/invoices HTTP/1.1
+Host: localhost:8080
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+	"property_id": "eedfeb3f-4c09-47d9-9b02-2d8d6610ce27",
+	"reservation_id": "{{reservation_id}}",
+	"guest_id": "{{guest_id}}",
+	"items": [
+		{
+			"description": "Room - Deluxe King (3 nights)",
+			"quantity": 3,
+			"unit_price": 179.00,
+			"total": 537.00,
+			"category": "ROOM"
+		},
+		{
+			"description": "Room Service - Breakfast",
+			"quantity": 3,
+			"unit_price": 25.00,
+			"total": 75.00,
+			"category": "FB"
+		},
+		{
+			"description": "Minibar",
+			"quantity": 1,
+			"unit_price": 45.00,
+			"total": 45.00,
+			"category": "MINIBAR"
+		}
+	],
+	"subtotal": 657.00,
+	"tax_rate": 0.0875,
+	"tax_amount": 57.49,
+	"total": 714.49,
+	"due_date": "2026-02-05",
+	"notes": "Thank you for staying with us!",
+	"idempotency_key": "inv-{{$guid}}"
+}
+
+###
+// create invoice for guest (no reservation)
+POST /v1/tenants/19b2afbb-e6f6-4776-8e52-efbab18f4bec/billing/invoices HTTP/1.1
+Host: localhost:8080
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+	"property_id": "eedfeb3f-4c09-47d9-9b02-2d8d6610ce27",
+	"guest_id": "{{guest_id}}",
+	"items": [
+		{
+			"description": "Spa Services - Full Day Package",
+			"quantity": 2,
+			"unit_price": 250.00,
+			"total": 500.00,
+			"category": "SPA"
+		}
+	],
+	"subtotal": 500.00,
+	"tax_rate": 0.0875,
+	"tax_amount": 43.75,
+	"total": 543.75,
+	"due_date": "2026-02-10",
+	"idempotency_key": "inv-{{$guid}}"
+}
+
+###
+// ========================
+// INVOICES - ADJUST
+// ========================
+
+// adjust invoice (add discount)
+POST /v1/tenants/19b2afbb-e6f6-4776-8e52-efbab18f4bec/billing/invoices/{{invoice_id}}/adjust HTTP/1.1
+Host: localhost:8080
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+	"adjustments": [
+		{
+			"type": "DISCOUNT",
+			"description": "Loyalty discount - 10%",
+			"amount": -65.70,
+			"category": "DISCOUNT"
+		}
+	],
+	"reason": "Applied loyalty program discount",
+	"idempotency_key": "adj-{{$guid}}"
+}
+
+###
+// adjust invoice (add charges)
+POST /v1/tenants/19b2afbb-e6f6-4776-8e52-efbab18f4bec/billing/invoices/{{invoice_id}}/adjust HTTP/1.1
+Host: localhost:8080
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+	"adjustments": [
+		{
+			"type": "CHARGE",
+			"description": "Late checkout fee",
+			"amount": 50.00,
+			"category": "FEE"
+		}
+	],
+	"reason": "Guest requested late checkout (4pm)",
+	"idempotency_key": "adj-{{$guid}}"
+}
+
+###
+// ========================
+// CHARGES - POST
+// ========================
+
+// post room charge
+POST /v1/tenants/19b2afbb-e6f6-4776-8e52-efbab18f4bec/billing/charges HTTP/1.1
+Host: localhost:8080
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+	"property_id": "eedfeb3f-4c09-47d9-9b02-2d8d6610ce27",
+	"reservation_id": "{{reservation_id}}",
+	"charge_type": "ROOM",
+	"description": "Room - Deluxe King",
+	"amount": 179.00,
+	"currency": "USD",
+	"posting_date": "2026-01-30",
+	"idempotency_key": "chg-{{$guid}}"
+}
+
+###
+// post F&B charge
+POST /v1/tenants/19b2afbb-e6f6-4776-8e52-efbab18f4bec/billing/charges HTTP/1.1
+Host: localhost:8080
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+	"property_id": "eedfeb3f-4c09-47d9-9b02-2d8d6610ce27",
+	"reservation_id": "{{reservation_id}}",
+	"charge_type": "FB",
+	"description": "Room Service - Dinner",
+	"amount": 85.50,
+	"currency": "USD",
+	"posting_date": "2026-01-30",
+	"reference": "RS-2026-001234",
+	"idempotency_key": "chg-{{$guid}}"
+}
+
+###
+// post minibar charge
+POST /v1/tenants/19b2afbb-e6f6-4776-8e52-efbab18f4bec/billing/charges HTTP/1.1
+Host: localhost:8080
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+	"property_id": "eedfeb3f-4c09-47d9-9b02-2d8d6610ce27",
+	"reservation_id": "{{reservation_id}}",
+	"charge_type": "MINIBAR",
+	"description": "Minibar consumption",
+	"amount": 32.00,
+	"currency": "USD",
+	"posting_date": "2026-01-30",
+	"idempotency_key": "chg-{{$guid}}"
+}
+
+###
+// post spa charge
+POST /v1/tenants/19b2afbb-e6f6-4776-8e52-efbab18f4bec/billing/charges HTTP/1.1
+Host: localhost:8080
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+	"property_id": "eedfeb3f-4c09-47d9-9b02-2d8d6610ce27",
+	"reservation_id": "{{reservation_id}}",
+	"charge_type": "SPA",
+	"description": "Spa - 60 min massage",
+	"amount": 150.00,
+	"currency": "USD",
+	"posting_date": "2026-01-30",
+	"reference": "SPA-2026-005678",
+	"idempotency_key": "chg-{{$guid}}"
+}
+
+###
+// post parking charge
+POST /v1/tenants/19b2afbb-e6f6-4776-8e52-efbab18f4bec/billing/charges HTTP/1.1
+Host: localhost:8080
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+	"property_id": "eedfeb3f-4c09-47d9-9b02-2d8d6610ce27",
+	"reservation_id": "{{reservation_id}}",
+	"charge_type": "PARKING",
+	"description": "Valet Parking - Daily",
+	"amount": 35.00,
+	"currency": "USD",
+	"posting_date": "2026-01-30",
+	"idempotency_key": "chg-{{$guid}}"
+}
+
+###
+// post laundry charge
+POST /v1/tenants/19b2afbb-e6f6-4776-8e52-efbab18f4bec/billing/charges HTTP/1.1
+Host: localhost:8080
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+	"property_id": "eedfeb3f-4c09-47d9-9b02-2d8d6610ce27",
+	"reservation_id": "{{reservation_id}}",
+	"charge_type": "LAUNDRY",
+	"description": "Express Laundry Service",
+	"amount": 45.00,
+	"currency": "USD",
+	"posting_date": "2026-01-30",
+	"reference": "LDRY-2026-000123",
+	"idempotency_key": "chg-{{$guid}}"
+}
+
+###
+// post telephone charge
+POST /v1/tenants/19b2afbb-e6f6-4776-8e52-efbab18f4bec/billing/charges HTTP/1.1
+Host: localhost:8080
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+	"property_id": "eedfeb3f-4c09-47d9-9b02-2d8d6610ce27",
+	"reservation_id": "{{reservation_id}}",
+	"charge_type": "TELEPHONE",
+	"description": "International call - UK",
+	"amount": 12.50,
+	"currency": "USD",
+	"posting_date": "2026-01-30",
+	"idempotency_key": "chg-{{$guid}}"
+}
+
+###
+// ========================
+// FOLIO - TRANSFER
+// ========================
+
+// transfer folio balance between rooms/guests
+POST /v1/tenants/19b2afbb-e6f6-4776-8e52-efbab18f4bec/billing/folios/transfer HTTP/1.1
+Host: localhost:8080
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+	"source_folio_id": "{{source_folio_id}}",
+	"target_folio_id": "{{target_folio_id}}",
+	"amount": 250.00,
+	"description": "Transfer charges to master account",
+	"idempotency_key": "xfer-{{$guid}}"
+}
+
+###
+// ========================
+// REFERENCE: IDs & ENUMS
+// ========================
+//
+// TENANTS:
+//   Aurora Hospitality: 19b2afbb-e6f6-4776-8e52-efbab18f4bec
+//
+// PROPERTIES (Aurora):
+//   Aurora Central Hotel: eedfeb3f-4c09-47d9-9b02-2d8d6610ce27
+//   Aurora Harbor Hotel:  97d98b4f-6c2c-4df9-adfe-6a536a81ac2d
+//   Aurora Uptown Suites: fd35e1bb-5b7c-486a-b2db-205284622d28
+//
+// PAYMENT METHODS:
+//   CREDIT_CARD, DEBIT_CARD, CASH, BANK_TRANSFER, 
+//   CHECK, DIRECT_BILL, VOUCHER, GIFT_CARD
+//
+// PAYMENT STATUS:
+//   pending, completed, failed, refunded, partially_refunded
+//
+// CHARGE TYPES:
+//   ROOM        - Room charges
+//   FB          - Food & Beverage
+//   MINIBAR     - Minibar consumption
+//   SPA         - Spa services
+//   PARKING     - Parking/Valet
+//   LAUNDRY     - Laundry/Dry cleaning
+//   TELEPHONE   - Phone calls
+//   INTERNET    - Internet/WiFi
+//   MOVIE       - In-room movies
+//   OTHER       - Miscellaneous
+//   TAX         - Taxes
+//   FEE         - Service fees
+//   DISCOUNT    - Discounts/Credits
+//
+// ========================

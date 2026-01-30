@@ -1,0 +1,347 @@
+// =====================================================
+// GUESTS - HTTP Test File
+// =====================================================
+//
+// Guest profile management: Create, Update, Merge,
+// Loyalty, VIP status, Blacklist, GDPR, Preferences
+//
+// All requests route via API Gateway (localhost:8080)
+// Backend: guests-service
+//
+// =====================================================
+
+// ========================
+// AUTHENTICATION
+// ========================
+
+// login to get tenant-scoped token
+POST /v1/auth/login HTTP/1.1
+Host: localhost:8080
+Content-Type: application/json
+
+{"username":"aurora.owner","password":"TempPass123"}
+
+###
+// ========================
+// GUESTS - LIST & SEARCH
+// ========================
+
+// list all guests for tenant
+GET /v1/guests?tenant_id=19b2afbb-e6f6-4776-8e52-efbab18f4bec&limit=50 HTTP/1.1
+Host: localhost:8080
+Authorization: Bearer {{token}}
+
+###
+// filter by property
+GET /v1/guests?tenant_id=19b2afbb-e6f6-4776-8e52-efbab18f4bec&property_id=eedfeb3f-4c09-47d9-9b02-2d8d6610ce27&limit=50 HTTP/1.1
+Host: localhost:8080
+Authorization: Bearer {{token}}
+
+###
+// search by email
+GET /v1/guests?tenant_id=19b2afbb-e6f6-4776-8e52-efbab18f4bec&email=john.doe@example.com HTTP/1.1
+Host: localhost:8080
+Authorization: Bearer {{token}}
+
+###
+// search by phone
+GET /v1/guests?tenant_id=19b2afbb-e6f6-4776-8e52-efbab18f4bec&phone=+15551234567 HTTP/1.1
+Host: localhost:8080
+Authorization: Bearer {{token}}
+
+###
+// filter by loyalty tier
+GET /v1/guests?tenant_id=19b2afbb-e6f6-4776-8e52-efbab18f4bec&loyalty_tier=GOLD&limit=50 HTTP/1.1
+Host: localhost:8080
+Authorization: Bearer {{token}}
+
+###
+// filter by VIP status
+GET /v1/guests?tenant_id=19b2afbb-e6f6-4776-8e52-efbab18f4bec&vip_status=PLATINUM&limit=50 HTTP/1.1
+Host: localhost:8080
+Authorization: Bearer {{token}}
+
+###
+// filter blacklisted guests
+GET /v1/guests?tenant_id=19b2afbb-e6f6-4776-8e52-efbab18f4bec&is_blacklisted=true&limit=50 HTTP/1.1
+Host: localhost:8080
+Authorization: Bearer {{token}}
+
+###
+// ========================
+// GUESTS - CREATE
+// ========================
+
+// create new guest profile
+POST /v1/guests HTTP/1.1
+Host: localhost:8080
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+	"tenant_id": "19b2afbb-e6f6-4776-8e52-efbab18f4bec",
+	"property_id": "eedfeb3f-4c09-47d9-9b02-2d8d6610ce27",
+	"first_name": "John",
+	"last_name": "Doe",
+	"email": "john.doe@example.com",
+	"phone": "+15551234567",
+	"date_of_birth": "1985-03-15",
+	"nationality": "US",
+	"language": "en",
+	"address": {
+		"line1": "123 Main Street",
+		"line2": "Apt 4B",
+		"city": "New York",
+		"state": "NY",
+		"postal_code": "10001",
+		"country": "US"
+	},
+	"id_document": {
+		"type": "PASSPORT",
+		"number": "AB1234567",
+		"issuing_country": "US",
+		"expiry_date": "2030-12-31"
+	},
+	"preferences": {
+		"room_type": "non-smoking",
+		"floor": "high",
+		"pillow": "soft",
+		"newspaper": "none"
+	},
+	"idempotency_key": "guest-{{$guid}}"
+}
+
+###
+// create guest with minimal info
+POST /v1/guests HTTP/1.1
+Host: localhost:8080
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+	"tenant_id": "19b2afbb-e6f6-4776-8e52-efbab18f4bec",
+	"property_id": "eedfeb3f-4c09-47d9-9b02-2d8d6610ce27",
+	"first_name": "Jane",
+	"last_name": "Smith",
+	"email": "jane.smith@example.com",
+	"idempotency_key": "guest-{{$guid}}"
+}
+
+###
+// ========================
+// GUESTS - UPDATE PROFILE
+// ========================
+
+// update guest profile details
+POST /v1/tenants/19b2afbb-e6f6-4776-8e52-efbab18f4bec/guests/{{guest_id}}/profile HTTP/1.1
+Host: localhost:8080
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+	"first_name": "John",
+	"last_name": "Doe-Smith",
+	"date_of_birth": "1985-03-15",
+	"nationality": "US",
+	"language": "en",
+	"idempotency_key": "profile-{{$guid}}"
+}
+
+###
+// ========================
+// GUESTS - UPDATE CONTACT
+// ========================
+
+// update guest contact info
+POST /v1/tenants/19b2afbb-e6f6-4776-8e52-efbab18f4bec/guests/{{guest_id}}/contact HTTP/1.1
+Host: localhost:8080
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+	"email": "john.doe.updated@example.com",
+	"phone": "+15559876543",
+	"address": {
+		"line1": "456 Oak Avenue",
+		"city": "Los Angeles",
+		"state": "CA",
+		"postal_code": "90001",
+		"country": "US"
+	},
+	"idempotency_key": "contact-{{$guid}}"
+}
+
+###
+// ========================
+// GUESTS - LOYALTY
+// ========================
+
+// update guest loyalty status
+POST /v1/tenants/19b2afbb-e6f6-4776-8e52-efbab18f4bec/guests/{{guest_id}}/loyalty HTTP/1.1
+Host: localhost:8080
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+	"loyalty_tier": "GOLD",
+	"loyalty_number": "AURORA-123456",
+	"idempotency_key": "loyalty-{{$guid}}"
+}
+
+###
+// upgrade to platinum loyalty
+POST /v1/tenants/19b2afbb-e6f6-4776-8e52-efbab18f4bec/guests/{{guest_id}}/loyalty HTTP/1.1
+Host: localhost:8080
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+	"loyalty_tier": "PLATINUM",
+	"loyalty_number": "AURORA-123456",
+	"idempotency_key": "loyalty-{{$guid}}"
+}
+
+###
+// ========================
+// GUESTS - VIP STATUS
+// ========================
+
+// set guest VIP status
+POST /v1/tenants/19b2afbb-e6f6-4776-8e52-efbab18f4bec/guests/{{guest_id}}/vip HTTP/1.1
+Host: localhost:8080
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+	"vip_status": "GOLD",
+	"idempotency_key": "vip-{{$guid}}"
+}
+
+###
+// upgrade to platinum VIP
+POST /v1/tenants/19b2afbb-e6f6-4776-8e52-efbab18f4bec/guests/{{guest_id}}/vip HTTP/1.1
+Host: localhost:8080
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+	"vip_status": "PLATINUM",
+	"idempotency_key": "vip-{{$guid}}"
+}
+
+###
+// ========================
+// GUESTS - BLACKLIST
+// ========================
+
+// add guest to blacklist
+POST /v1/tenants/19b2afbb-e6f6-4776-8e52-efbab18f4bec/guests/{{guest_id}}/blacklist HTTP/1.1
+Host: localhost:8080
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+	"is_blacklisted": true,
+	"reason": "Payment fraud - chargeback on CC",
+	"idempotency_key": "blacklist-{{$guid}}"
+}
+
+###
+// remove guest from blacklist
+POST /v1/tenants/19b2afbb-e6f6-4776-8e52-efbab18f4bec/guests/{{guest_id}}/blacklist HTTP/1.1
+Host: localhost:8080
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+	"is_blacklisted": false,
+	"reason": "Issue resolved - legitimate transaction confirmed",
+	"idempotency_key": "unblacklist-{{$guid}}"
+}
+
+###
+// ========================
+// GUESTS - PREFERENCES
+// ========================
+
+// update guest preferences
+POST /v1/tenants/19b2afbb-e6f6-4776-8e52-efbab18f4bec/guests/{{guest_id}}/preferences HTTP/1.1
+Host: localhost:8080
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+	"preferences": {
+		"room_type": "non-smoking",
+		"floor": "high",
+		"bed_type": "king",
+		"pillow": "soft",
+		"room_temperature": "cool",
+		"minibar": "stocked",
+		"newspaper": "WSJ",
+		"wake_up_call": false,
+		"dietary": ["vegetarian", "gluten-free"],
+		"allergies": ["feathers", "latex"],
+		"special_occasions": ["birthday-March-15"]
+	},
+	"idempotency_key": "prefs-{{$guid}}"
+}
+
+###
+// ========================
+// GUESTS - MERGE DUPLICATES
+// ========================
+
+// merge duplicate guest profiles
+POST /v1/guests/merge HTTP/1.1
+Host: localhost:8080
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+	"tenant_id": "19b2afbb-e6f6-4776-8e52-efbab18f4bec",
+	"primary_guest_id": "{{primary_guest_id}}",
+	"duplicate_guest_id": "{{duplicate_guest_id}}",
+	"idempotency_key": "merge-{{$guid}}"
+}
+
+###
+// ========================
+// GUESTS - GDPR ERASE
+// ========================
+
+// erase guest data (GDPR right to be forgotten)
+POST /v1/tenants/19b2afbb-e6f6-4776-8e52-efbab18f4bec/guests/{{guest_id}}/gdpr-erase HTTP/1.1
+Host: localhost:8080
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+	"idempotency_key": "gdpr-{{$guid}}"
+}
+
+###
+// ========================
+// REFERENCE: IDs & ENUMS
+// ========================
+//
+// TENANTS:
+//   Aurora Hospitality: 19b2afbb-e6f6-4776-8e52-efbab18f4bec
+//   Cedar Hospitality:  8c332645-d702-4391-a026-d141c53df71c
+//   Mariner Hospitality: 2c89b4c0-335c-4e36-a134-c2740bda6666
+//
+// PROPERTIES (Aurora):
+//   Aurora Central Hotel: eedfeb3f-4c09-47d9-9b02-2d8d6610ce27
+//   Aurora Harbor Hotel:  97d98b4f-6c2c-4df9-adfe-6a536a81ac2d
+//   Aurora Uptown Suites: fd35e1bb-5b7c-486a-b2db-205284622d28
+//
+// LOYALTY TIERS:
+//   BRONZE, SILVER, GOLD, PLATINUM, DIAMOND
+//
+// VIP STATUS:
+//   NONE, SILVER, GOLD, PLATINUM, CELEBRITY
+//
+// ID DOCUMENT TYPES:
+//   PASSPORT, DRIVERS_LICENSE, NATIONAL_ID, OTHER
+//
+// ========================

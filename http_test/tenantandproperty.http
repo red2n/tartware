@@ -1,16 +1,39 @@
 // =====================================================
-// TENANT & PROPERTY - HTTP Test File
+// TENANTS & PROPERTIES - HTTP Test File
 // =====================================================
 //
-// Use the API Gateway on localhost:8080.
+// All requests route via API Gateway (localhost:8080)
+// Backend: core-service (port 3000)
+//
+// Content:
+// - Tenant Bootstrap
+// - Tenant CRUD
+// - Property CRUD
+// - Dashboard (stats, activity, tasks)
 //
 // =====================================================
 
-// create new tenant + owner user (bootstrap)
+// ========================
+// AUTHENTICATION
+// ========================
+
+// login to get super-admin token
+POST /v1/auth/login HTTP/1.1
+Host: localhost:8080
+Content-Type: application/json
+
+{"username":"setup.admin","password":"TempPass123"}
+
+###
+// ========================
+// TENANT BOOTSTRAP
+// ========================
+
+// full tenant bootstrap via super-admin (creates tenant + admin user)
 POST /v1/tenants/bootstrap HTTP/1.1
 Host: localhost:8080
 Content-Type: application/json
-Authorization: Bearer {{setup_admin_token}}
+Authorization: Bearer {{token}}
 
 {
 	"tenant": {
@@ -46,24 +69,44 @@ Authorization: Bearer {{setup_admin_token}}
 }
 
 ###
-// login owner to get token
+// ========================
+// TENANTS - LIST & READ
+// ========================
+
+// list all tenants (super-admin only)
+GET /v1/tenants HTTP/1.1
+Host: localhost:8080
+Authorization: Bearer {{token}}
+
+###
+// get specific tenant by ID
+GET /v1/tenants/19b2afbb-e6f6-4776-8e52-efbab18f4bec HTTP/1.1
+Host: localhost:8080
+Authorization: Bearer {{token}}
+
+###
+// ========================
+// PROPERTIES - CRUD
+// ========================
+
+// login to get tenant-scoped owner token
 POST /v1/auth/login HTTP/1.1
 Host: localhost:8080
 Content-Type: application/json
 
-{"username":"harborlight.owner","password":"TempPass123"}
+{"username":"aurora.owner","password":"TempPass123"}
 
 ###
-// create property (use tenant_id from bootstrap response)
+// create a new property
 POST /v1/properties HTTP/1.1
 Host: localhost:8080
 Content-Type: application/json
-Authorization: Bearer {{owner_token}}
+Authorization: Bearer {{token}}
 
 {
-	"tenant_id": "<TENANT_ID_FROM_BOOTSTRAP>",
-	"property_name": "Harborlight Bay Resort",
-	"property_code": "HBR-BAY",
+	"tenant_id": "19b2afbb-e6f6-4776-8e52-efbab18f4bec",
+	"property_name": "Aurora Test Resort",
+	"property_code": "AUR-TEST",
 	"address": {
 		"line1": "101 Bayfront Ave",
 		"city": "San Diego",
@@ -72,6 +115,83 @@ Authorization: Bearer {{owner_token}}
 		"postal_code": "92101"
 	},
 	"phone": "+15551213",
-	"email": "bay@harborlight.demo",
-	"website": "https://bay.harborlight.demo"
+	"email": "test@aurora.demo",
+	"website": "https://test.aurora.demo"
 }
+
+###
+// list properties for tenant
+GET /v1/properties?tenant_id=19b2afbb-e6f6-4776-8e52-efbab18f4bec HTTP/1.1
+Host: localhost:8080
+Authorization: Bearer {{token}}
+
+###
+// get specific property by ID
+GET /v1/properties/eedfeb3f-4c09-47d9-9b02-2d8d6610ce27 HTTP/1.1
+Host: localhost:8080
+Authorization: Bearer {{token}}
+
+###
+// ========================
+// DASHBOARD - STATS
+// ========================
+
+// dashboard stats
+GET /v1/dashboard/stats?tenant_id=19b2afbb-e6f6-4776-8e52-efbab18f4bec HTTP/1.1
+Host: localhost:8080
+Authorization: Bearer {{token}}
+
+###
+// dashboard stats for specific property
+GET /v1/dashboard/stats?tenant_id=19b2afbb-e6f6-4776-8e52-efbab18f4bec&property_id=eedfeb3f-4c09-47d9-9b02-2d8d6610ce27 HTTP/1.1
+Host: localhost:8080
+Authorization: Bearer {{token}}
+
+###
+// ========================
+// DASHBOARD - ACTIVITIES
+// ========================
+
+// list recent activities
+GET /v1/dashboard/activities?tenant_id=19b2afbb-e6f6-4776-8e52-efbab18f4bec&limit=20 HTTP/1.1
+Host: localhost:8080
+Authorization: Bearer {{token}}
+
+###
+// activities for specific property
+GET /v1/dashboard/activities?tenant_id=19b2afbb-e6f6-4776-8e52-efbab18f4bec&property_id=eedfeb3f-4c09-47d9-9b02-2d8d6610ce27 HTTP/1.1
+Host: localhost:8080
+Authorization: Bearer {{token}}
+
+###
+// ========================
+// DASHBOARD - TASKS
+// ========================
+
+// list pending tasks
+GET /v1/dashboard/tasks?tenant_id=19b2afbb-e6f6-4776-8e52-efbab18f4bec HTTP/1.1
+Host: localhost:8080
+Authorization: Bearer {{token}}
+
+###
+// tasks for specific property
+GET /v1/dashboard/tasks?tenant_id=19b2afbb-e6f6-4776-8e52-efbab18f4bec&property_id=eedfeb3f-4c09-47d9-9b02-2d8d6610ce27 HTTP/1.1
+Host: localhost:8080
+Authorization: Bearer {{token}}
+
+###
+// ========================
+// REFERENCE: IDs
+// ========================
+//
+// TENANTS:
+//   Aurora Hospitality: 19b2afbb-e6f6-4776-8e52-efbab18f4bec
+//   Cedar Hospitality:  8c332645-d702-4391-a026-d141c53df71c
+//   Mariner Hospitality: 2c89b4c0-335c-4e36-a134-c2740bda6666
+//
+// PROPERTIES (Aurora):
+//   Aurora Central Hotel: eedfeb3f-4c09-47d9-9b02-2d8d6610ce27
+//   Aurora Harbor Hotel:  97d98b4f-6c2c-4df9-adfe-6a536a81ac2d
+//   Aurora Uptown Suites: fd35e1bb-5b7c-486a-b2db-205284622d28
+//
+// ========================

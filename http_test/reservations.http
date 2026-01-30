@@ -1,0 +1,333 @@
+// =====================================================
+// RESERVATIONS - HTTP Test File
+// =====================================================
+//
+// Full reservation lifecycle: Create, Modify, Check-in,
+// Check-out, Extend, Cancel, Room Assignment, Deposits
+//
+// All requests route via API Gateway (localhost:8080)
+//
+// =====================================================
+
+// ========================
+// AUTHENTICATION
+// ========================
+
+// login to get tenant-scoped token
+POST /v1/auth/login HTTP/1.1
+Host: localhost:8080
+Content-Type: application/json
+
+{"username":"aurora.owner","password":"TempPass123"}
+
+###
+// ========================
+// RESERVATIONS - LIST & SEARCH
+// ========================
+
+// list all reservations for tenant
+GET /v1/reservations?tenant_id=19b2afbb-e6f6-4776-8e52-efbab18f4bec&limit=50 HTTP/1.1
+Host: localhost:8080
+Authorization: Bearer {{token}}
+
+###
+// list reservations via tenant path
+GET /v1/tenants/19b2afbb-e6f6-4776-8e52-efbab18f4bec/reservations?limit=50 HTTP/1.1
+Host: localhost:8080
+Authorization: Bearer {{token}}
+
+###
+// filter by property
+GET /v1/reservations?tenant_id=19b2afbb-e6f6-4776-8e52-efbab18f4bec&property_id=eedfeb3f-4c09-47d9-9b02-2d8d6610ce27&limit=50 HTTP/1.1
+Host: localhost:8080
+Authorization: Bearer {{token}}
+
+###
+// filter by status: confirmed
+GET /v1/reservations?tenant_id=19b2afbb-e6f6-4776-8e52-efbab18f4bec&status=confirmed&limit=50 HTTP/1.1
+Host: localhost:8080
+Authorization: Bearer {{token}}
+
+###
+// filter by status: checked_in
+GET /v1/reservations?tenant_id=19b2afbb-e6f6-4776-8e52-efbab18f4bec&status=checked_in&limit=50 HTTP/1.1
+Host: localhost:8080
+Authorization: Bearer {{token}}
+
+###
+// filter by status: checked_out
+GET /v1/reservations?tenant_id=19b2afbb-e6f6-4776-8e52-efbab18f4bec&status=checked_out&limit=50 HTTP/1.1
+Host: localhost:8080
+Authorization: Bearer {{token}}
+
+###
+// filter by status: cancelled
+GET /v1/reservations?tenant_id=19b2afbb-e6f6-4776-8e52-efbab18f4bec&status=cancelled&limit=50 HTTP/1.1
+Host: localhost:8080
+Authorization: Bearer {{token}}
+
+###
+// search by guest name
+GET /v1/reservations?tenant_id=19b2afbb-e6f6-4776-8e52-efbab18f4bec&search=Smith&limit=50 HTTP/1.1
+Host: localhost:8080
+Authorization: Bearer {{token}}
+
+###
+// ========================
+// RESERVATIONS - CREATE (BOOK)
+// ========================
+
+// create a new reservation (booking)
+POST /v1/tenants/19b2afbb-e6f6-4776-8e52-efbab18f4bec/reservations HTTP/1.1
+Host: localhost:8080
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+	"property_id": "eedfeb3f-4c09-47d9-9b02-2d8d6610ce27",
+	"room_type_id": "{{room_type_id}}",
+	"guest_id": "{{guest_id}}",
+	"check_in_date": "2026-02-15",
+	"check_out_date": "2026-02-18",
+	"adults": 2,
+	"children": 0,
+	"rate_code": "RACK",
+	"total_rate": 450.00,
+	"source": "DIRECT",
+	"booking_channel": "WEB",
+	"special_requests": "Late check-in requested",
+	"idempotency_key": "res-{{$guid}}"
+}
+
+###
+// create reservation with guest details inline
+POST /v1/tenants/19b2afbb-e6f6-4776-8e52-efbab18f4bec/reservations HTTP/1.1
+Host: localhost:8080
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+	"property_id": "eedfeb3f-4c09-47d9-9b02-2d8d6610ce27",
+	"room_type_id": "{{room_type_id}}",
+	"guest": {
+		"first_name": "John",
+		"last_name": "Doe",
+		"email": "john.doe@example.com",
+		"phone": "+15551234567"
+	},
+	"check_in_date": "2026-02-20",
+	"check_out_date": "2026-02-22",
+	"adults": 1,
+	"children": 0,
+	"rate_code": "BAR",
+	"total_rate": 300.00,
+	"source": "DIRECT",
+	"booking_channel": "PHONE",
+	"idempotency_key": "res-{{$guid}}"
+}
+
+###
+// ========================
+// RESERVATIONS - MODIFY
+// ========================
+
+// modify reservation dates
+PUT /v1/tenants/19b2afbb-e6f6-4776-8e52-efbab18f4bec/reservations/{{reservation_id}} HTTP/1.1
+Host: localhost:8080
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+	"check_in_date": "2026-02-16",
+	"check_out_date": "2026-02-20",
+	"reason": "Guest requested date change",
+	"idempotency_key": "mod-{{$guid}}"
+}
+
+###
+// modify reservation guest count
+PATCH /v1/tenants/19b2afbb-e6f6-4776-8e52-efbab18f4bec/reservations/{{reservation_id}} HTTP/1.1
+Host: localhost:8080
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+	"adults": 2,
+	"children": 1,
+	"special_requests": "Extra bed needed",
+	"idempotency_key": "mod-{{$guid}}"
+}
+
+###
+// ========================
+// RESERVATIONS - ROOM ASSIGNMENT
+// ========================
+
+// assign room to reservation
+POST /v1/tenants/19b2afbb-e6f6-4776-8e52-efbab18f4bec/reservations/{{reservation_id}}/assign-room HTTP/1.1
+Host: localhost:8080
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+	"room_id": "{{room_id}}",
+	"room_number": "101",
+	"idempotency_key": "assign-{{$guid}}"
+}
+
+###
+// unassign room from reservation
+POST /v1/tenants/19b2afbb-e6f6-4776-8e52-efbab18f4bec/reservations/{{reservation_id}}/unassign-room HTTP/1.1
+Host: localhost:8080
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+	"idempotency_key": "unassign-{{$guid}}"
+}
+
+###
+// ========================
+// RESERVATIONS - CHECK-IN
+// ========================
+
+// check in guest
+POST /v1/tenants/19b2afbb-e6f6-4776-8e52-efbab18f4bec/reservations/{{reservation_id}}/check-in HTTP/1.1
+Host: localhost:8080
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+	"room_id": "{{room_id}}",
+	"room_number": "101",
+	"id_verified": true,
+	"deposit_collected": true,
+	"deposit_amount": 100.00,
+	"notes": "Guest arrived early",
+	"idempotency_key": "checkin-{{$guid}}"
+}
+
+###
+// ========================
+// RESERVATIONS - EXTEND STAY
+// ========================
+
+// extend reservation
+POST /v1/tenants/19b2afbb-e6f6-4776-8e52-efbab18f4bec/reservations/{{reservation_id}}/extend HTTP/1.1
+Host: localhost:8080
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+	"new_check_out_date": "2026-02-25",
+	"reason": "Guest extended stay",
+	"idempotency_key": "extend-{{$guid}}"
+}
+
+###
+// ========================
+// RESERVATIONS - RATE OVERRIDE
+// ========================
+
+// override rate for reservation
+POST /v1/tenants/19b2afbb-e6f6-4776-8e52-efbab18f4bec/reservations/{{reservation_id}}/rate-override HTTP/1.1
+Host: localhost:8080
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+	"new_rate": 125.00,
+	"reason": "Loyalty discount applied",
+	"approved_by": "{{user_id}}",
+	"idempotency_key": "rate-{{$guid}}"
+}
+
+###
+// ========================
+// RESERVATIONS - DEPOSITS
+// ========================
+
+// add deposit to reservation
+POST /v1/tenants/19b2afbb-e6f6-4776-8e52-efbab18f4bec/reservations/{{reservation_id}}/deposit/add HTTP/1.1
+Host: localhost:8080
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+	"amount": 200.00,
+	"payment_method": "CREDIT_CARD",
+	"reference": "CC-AUTH-12345",
+	"idempotency_key": "deposit-{{$guid}}"
+}
+
+###
+// release deposit from reservation
+POST /v1/tenants/19b2afbb-e6f6-4776-8e52-efbab18f4bec/reservations/{{reservation_id}}/deposit/release HTTP/1.1
+Host: localhost:8080
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+	"idempotency_key": "release-{{$guid}}"
+}
+
+###
+// ========================
+// RESERVATIONS - CHECK-OUT
+// ========================
+
+// check out guest
+POST /v1/tenants/19b2afbb-e6f6-4776-8e52-efbab18f4bec/reservations/{{reservation_id}}/check-out HTTP/1.1
+Host: localhost:8080
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+	"final_bill_settled": true,
+	"payment_method": "CREDIT_CARD",
+	"feedback_collected": true,
+	"notes": "Smooth checkout",
+	"idempotency_key": "checkout-{{$guid}}"
+}
+
+###
+// ========================
+// RESERVATIONS - CANCEL
+// ========================
+
+// cancel reservation
+DELETE /v1/tenants/19b2afbb-e6f6-4776-8e52-efbab18f4bec/reservations/{{reservation_id}} HTTP/1.1
+Host: localhost:8080
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+	"cancellation_reason": "Guest request",
+	"cancellation_code": "GUEST_REQUEST",
+	"waive_fee": false,
+	"refund_deposit": true,
+	"idempotency_key": "cancel-{{$guid}}"
+}
+
+###
+// ========================
+// REFERENCE: IDs
+// ========================
+//
+// TENANTS:
+//   Aurora Hospitality: 19b2afbb-e6f6-4776-8e52-efbab18f4bec
+//   Cedar Hospitality:  8c332645-d702-4391-a026-d141c53df71c
+//   Mariner Hospitality: 2c89b4c0-335c-4e36-a134-c2740bda6666
+//
+// PROPERTIES (Aurora):
+//   Aurora Central Hotel: eedfeb3f-4c09-47d9-9b02-2d8d6610ce27
+//   Aurora Harbor Hotel:  97d98b4f-6c2c-4df9-adfe-6a536a81ac2d
+//   Aurora Uptown Suites: fd35e1bb-5b7c-486a-b2db-205284622d28
+//
+// RESERVATION STATUSES:
+//   pending, confirmed, checked_in, checked_out, cancelled, no_show
+//
+// BOOKING CHANNELS:
+//   WEB, PHONE, WALKIN, OTA, GDS, CORPORATE, TRAVEL_AGENT
+//
+// ========================

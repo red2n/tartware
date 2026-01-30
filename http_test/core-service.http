@@ -1,22 +1,42 @@
 // =====================================================
-// CORE SERVICE - HTTP Test File
+// CORE SERVICE - Auth, Users & Associations
 // =====================================================
 //
-// How to obtain tokens:
-// 1. Use the login requests below to authenticate and get a JWT token
-// 2. Copy the token from the response
-// 3. Replace {{setup_admin_token}}, {{aurora_token}}, {{cedar_token}}, or {{mariner_token}} placeholders
-//    in subsequent requests with your actual token
+// All requests route via API Gateway (localhost:8080)
+// Backend: core-service (port 3000)
+//
+// Content:
+// - Authentication (login, context, password, MFA)
+// - User management
+// - User-tenant associations
+// - System admin authentication
+//
+// For other operations, see:
+// - tenantandproperty.http - Tenants, Properties, Dashboard
+// - reservations.http - Reservations
+// - modules.http - Modules catalog
+// - reports.http - Performance reports
 //
 // =====================================================
 
-// valid login (tenant user)
-// NOTE: core-service itself runs on port 3000 by default, but these requests should be sent via the API Gateway on localhost:8080.
+// ========================
+// AUTHENTICATION - LOGIN
+// ========================
+
+// valid login (super-admin)
 POST /v1/auth/login HTTP/1.1
 Host: localhost:8080
 Content-Type: application/json
 
 {"username":"setup.admin","password":"TempPass123"}
+
+###
+// valid login (tenant user)
+POST /v1/auth/login HTTP/1.1
+Host: localhost:8080
+Content-Type: application/json
+
+{"username":"aurora.owner","password":"TempPass123"}
 
 ###
 // invalid login (missing username)
@@ -27,51 +47,12 @@ Content-Type: application/json
 {"password":"TempPass123"}
 
 ###
-// valid GET tenants (requires Authorization header with Bearer token)
-GET /v1/tenants?limit=50 HTTP/1.1
+// invalid login (wrong password)
+POST /v1/auth/login HTTP/1.1
 Host: localhost:8080
-Authorization: Bearer {{setup_admin_token}}
+Content-Type: application/json
 
-###
-// invalid GET tenants (missing Authorization)
-GET /v1/tenants?limit=50 HTTP/1.1
-Host: localhost:8080
-
-###
-// valid GET properties (Aurora)
-GET /v1/properties?tenant_id=19b2afbb-e6f6-4776-8e52-efbab18f4bec&limit=50 HTTP/1.1
-Host: localhost:8080
-Authorization: Bearer {{aurora_token}}
-
-###
-// invalid GET properties (missing tenant_id)
-GET /v1/properties?limit=50 HTTP/1.1
-Host: localhost:8080
-Authorization: Bearer {{aurora_token}}
-
-###
-// valid GET properties (Cedar)
-GET /v1/properties?tenant_id=8c332645-d702-4391-a026-d141c53df71c&limit=50 HTTP/1.1
-Host: localhost:8080
-Authorization: Bearer {{cedar_token}}
-
-###
-// valid GET properties (Mariner)
-GET /v1/properties?tenant_id=2c89b4c0-335c-4e36-a134-c2740bda6666&limit=50 HTTP/1.1
-Host: localhost:8080
-Authorization: Bearer {{mariner_token}}
-
-###
-// valid GET dashboard stats
-GET /v1/dashboard/stats?tenant_id=19b2afbb-e6f6-4776-8e52-efbab18f4bec HTTP/1.1
-Host: localhost:8080
-Authorization: Bearer {{aurora_token}}
-
-###
-// invalid GET dashboard stats (missing tenant_id)
-GET /v1/dashboard/stats HTTP/1.1
-Host: localhost:8080
-Authorization: Bearer {{aurora_token}}
+{"username":"aurora.owner","password":"WrongPassword"}
 
 ###
 // ========================
@@ -81,14 +62,14 @@ Authorization: Bearer {{aurora_token}}
 // view auth context (memberships, authorized tenants)
 GET /v1/auth/context HTTP/1.1
 Host: localhost:8080
-Authorization: Bearer {{aurora_token}}
+Authorization: Bearer {{token}}
 
 ###
 // change password (requires valid current password)
 POST /v1/auth/change-password HTTP/1.1
 Host: localhost:8080
 Content-Type: application/json
-Authorization: Bearer {{owner_token}}
+Authorization: Bearer {{token}}
 
 {
 	"current_password": "TempPass123",
@@ -103,14 +84,14 @@ Authorization: Bearer {{owner_token}}
 // start MFA enrollment (returns secret and otpauth_url)
 POST /v1/auth/mfa/enroll HTTP/1.1
 Host: localhost:8080
-Authorization: Bearer {{owner_token}}
+Authorization: Bearer {{token}}
 
 ###
 // verify MFA code to enable MFA
 POST /v1/auth/mfa/verify HTTP/1.1
 Host: localhost:8080
 Content-Type: application/json
-Authorization: Bearer {{owner_token}}
+Authorization: Bearer {{token}}
 
 {
 	"mfa_code": "123456"
@@ -121,7 +102,7 @@ Authorization: Bearer {{owner_token}}
 POST /v1/auth/mfa/rotate HTTP/1.1
 Host: localhost:8080
 Content-Type: application/json
-Authorization: Bearer {{owner_token}}
+Authorization: Bearer {{token}}
 
 {
 	"mfa_code": "123456"
@@ -135,14 +116,20 @@ Authorization: Bearer {{owner_token}}
 // list users for a tenant (requires MANAGER+ role)
 GET /v1/users?tenant_id=19b2afbb-e6f6-4776-8e52-efbab18f4bec&limit=50 HTTP/1.1
 Host: localhost:8080
-Authorization: Bearer {{aurora_token}}
+Authorization: Bearer {{token}}
+
+###
+// get user by ID
+GET /v1/users/ed570382-7274-4664-b6ec-69e0cc6260ba HTTP/1.1
+Host: localhost:8080
+Authorization: Bearer {{token}}
 
 ###
 // create a new tenant user (requires ADMIN+ role)
 POST /v1/users HTTP/1.1
 Host: localhost:8080
 Content-Type: application/json
-Authorization: Bearer {{owner_token}}
+Authorization: Bearer {{token}}
 
 {
 	"tenant_id": "19b2afbb-e6f6-4776-8e52-efbab18f4bec",
@@ -155,11 +142,23 @@ Authorization: Bearer {{owner_token}}
 }
 
 ###
+// update user details
+PUT /v1/users/{{user_id}} HTTP/1.1
+Host: localhost:8080
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+	"first_name": "Updated",
+	"last_name": "Name"
+}
+
+###
 // reset a user's password (requires ADMIN+ role)
 POST /v1/users/reset-password HTTP/1.1
 Host: localhost:8080
 Content-Type: application/json
-Authorization: Bearer {{owner_token}}
+Authorization: Bearer {{token}}
 
 {
 	"tenant_id": "19b2afbb-e6f6-4776-8e52-efbab18f4bec",
@@ -169,139 +168,32 @@ Authorization: Bearer {{owner_token}}
 
 ###
 // ========================
-// REFERENCE: TENANT ROLES
-// ========================
-//
-// OWNER    - Full tenant access, can manage all users
-// ADMIN    - Administrative access, can create/modify users
-// MANAGER  - Operational management, can view users
-// STAFF    - Standard access, limited to assigned tasks
-// VIEWER   - Read-only access
-//
-// ========================
-
-###
-// ========================
-// DASHBOARD - ACTIVITY & TASKS
-// ========================
-
-// recent activity feed (requires MANAGER+ role)
-GET /v1/dashboard/activity?tenant_id=19b2afbb-e6f6-4776-8e52-efbab18f4bec HTTP/1.1
-Host: localhost:8080
-Authorization: Bearer {{aurora_token}}
-
-###
-// activity feed for specific property
-GET /v1/dashboard/activity?tenant_id=19b2afbb-e6f6-4776-8e52-efbab18f4bec&property_id=eedfeb3f-4c09-47d9-9b02-2d8d6610ce27 HTTP/1.1
-Host: localhost:8080
-Authorization: Bearer {{aurora_token}}
-
-###
-// upcoming tasks (check-ins/check-outs)
-GET /v1/dashboard/tasks?tenant_id=19b2afbb-e6f6-4776-8e52-efbab18f4bec HTTP/1.1
-Host: localhost:8080
-Authorization: Bearer {{aurora_token}}
-
-###
-// upcoming tasks for specific property
-GET /v1/dashboard/tasks?tenant_id=19b2afbb-e6f6-4776-8e52-efbab18f4bec&property_id=eedfeb3f-4c09-47d9-9b02-2d8d6610ce27 HTTP/1.1
-Host: localhost:8080
-Authorization: Bearer {{aurora_token}}
-
-###
-// ========================
-// MODULES CATALOG
-// ========================
-
-// list available platform modules (requires authentication)
-GET /v1/modules/catalog HTTP/1.1
-Host: localhost:8080
-Authorization: Bearer {{aurora_token}}
-
-###
-// list modules enabled for Aurora tenant
-GET /v1/tenants/19b2afbb-e6f6-4776-8e52-efbab18f4bec/modules HTTP/1.1
-Host: localhost:8080
-Authorization: Bearer {{aurora_token}}
-
-###
-// ========================
-// REPORTS
-// ========================
-
-// generate performance report (requires analytics-bi module)
-GET /v1/reports/performance?tenant_id=19b2afbb-e6f6-4776-8e52-efbab18f4bec HTTP/1.1
-Host: localhost:8080
-Authorization: Bearer {{aurora_token}}
-
-###
-// performance report with date range
-GET /v1/reports/performance?tenant_id=19b2afbb-e6f6-4776-8e52-efbab18f4bec&start_date=2026-01-01&end_date=2026-01-31 HTTP/1.1
-Host: localhost:8080
-Authorization: Bearer {{aurora_token}}
-
-###
-// performance report for specific property
-GET /v1/reports/performance?tenant_id=19b2afbb-e6f6-4776-8e52-efbab18f4bec&property_id=eedfeb3f-4c09-47d9-9b02-2d8d6610ce27 HTTP/1.1
-Host: localhost:8080
-Authorization: Bearer {{aurora_token}}
-
-###
-// ========================
-// RESERVATIONS
-// ========================
-
-// list reservations for tenant
-GET /v1/reservations?tenant_id=19b2afbb-e6f6-4776-8e52-efbab18f4bec&limit=50 HTTP/1.1
-Host: localhost:8080
-Authorization: Bearer {{aurora_token}}
-
-###
-// reservations filtered by property
-GET /v1/reservations?tenant_id=19b2afbb-e6f6-4776-8e52-efbab18f4bec&property_id=eedfeb3f-4c09-47d9-9b02-2d8d6610ce27&limit=50 HTTP/1.1
-Host: localhost:8080
-Authorization: Bearer {{aurora_token}}
-
-###
-// reservations filtered by status (confirmed)
-GET /v1/reservations?tenant_id=19b2afbb-e6f6-4776-8e52-efbab18f4bec&status=confirmed&limit=50 HTTP/1.1
-Host: localhost:8080
-Authorization: Bearer {{aurora_token}}
-
-###
-// reservations search by guest name
-GET /v1/reservations?tenant_id=19b2afbb-e6f6-4776-8e52-efbab18f4bec&search=Smith&limit=50 HTTP/1.1
-Host: localhost:8080
-Authorization: Bearer {{aurora_token}}
-
-###
-// ========================
 // USER-TENANT ASSOCIATIONS
 // ========================
 
 // list user-tenant associations for Aurora
 GET /v1/user-tenant-associations?tenant_id=19b2afbb-e6f6-4776-8e52-efbab18f4bec&limit=50 HTTP/1.1
 Host: localhost:8080
-Authorization: Bearer {{aurora_token}}
+Authorization: Bearer {{token}}
 
 ###
 // filter associations by role (MANAGER)
 GET /v1/user-tenant-associations?tenant_id=19b2afbb-e6f6-4776-8e52-efbab18f4bec&role=MANAGER HTTP/1.1
 Host: localhost:8080
-Authorization: Bearer {{aurora_token}}
+Authorization: Bearer {{token}}
 
 ###
 // filter associations by active status
 GET /v1/user-tenant-associations?tenant_id=19b2afbb-e6f6-4776-8e52-efbab18f4bec&is_active=true HTTP/1.1
 Host: localhost:8080
-Authorization: Bearer {{aurora_token}}
+Authorization: Bearer {{token}}
 
 ###
 // update user's tenant role (requires ADMIN+ role)
 POST /v1/user-tenant-associations/role HTTP/1.1
 Host: localhost:8080
 Content-Type: application/json
-Authorization: Bearer {{owner_token}}
+Authorization: Bearer {{token}}
 
 {
 	"tenant_id": "19b2afbb-e6f6-4776-8e52-efbab18f4bec",
@@ -314,7 +206,7 @@ Authorization: Bearer {{owner_token}}
 POST /v1/user-tenant-associations/status HTTP/1.1
 Host: localhost:8080
 Content-Type: application/json
-Authorization: Bearer {{owner_token}}
+Authorization: Bearer {{token}}
 
 {
 	"tenant_id": "19b2afbb-e6f6-4776-8e52-efbab18f4bec",
@@ -327,7 +219,6 @@ Authorization: Bearer {{owner_token}}
 // SYSTEM ADMIN AUTHENTICATION
 // ========================
 // NOTE: These endpoints require system administrator credentials
-// and device fingerprinting for security.
 
 // system admin login (requires MFA if enabled)
 POST /v1/system/auth/login HTTP/1.1
@@ -361,9 +252,9 @@ Content-Type: application/json
 
 {
 	"username": "{{system_admin_username}}",
-	"break_glass_code": "{{BREAK_GLASS_CODE_PLACEHOLDER}}",
-	"reason": "Production incident requiring immediate system access - see incident {{INCIDENT_TICKET_ID_PLACEHOLDER}}",
-	"ticket_id": "{{INCIDENT_TICKET_ID_PLACEHOLDER}}",
+	"break_glass_code": "{{break_glass_code}}",
+	"reason": "Production incident requiring immediate system access",
+	"ticket_id": "{{ticket_id}}",
 	"device_fingerprint": "{{device_fingerprint}}"
 }
 
@@ -388,142 +279,25 @@ Authorization: Bearer {{system_admin_token}}
 
 ###
 // ========================
-// SYSTEM ADMIN - TENANT MANAGEMENT
-// ========================
-// NOTE: Requires system admin token
-
-// list all tenants (system admin view)
-GET /v1/system/tenants?limit=50 HTTP/1.1
-Host: localhost:8080
-Authorization: Bearer {{system_admin_token}}
-
-###
-// create a new tenant (system admin)
-POST /v1/system/tenants HTTP/1.1
-Host: localhost:8080
-Content-Type: application/json
-Authorization: Bearer {{system_admin_token}}
-
-{
-	"name": "New Test Tenant",
-	"slug": "new-test-tenant",
-	"type": "INDEPENDENT",
-	"email": "admin@newtest.demo"
-}
-
-###
-// bootstrap tenant with property and owner (system admin)
-POST /v1/system/tenants/bootstrap HTTP/1.1
-Host: localhost:8080
-Content-Type: application/json
-Authorization: Bearer {{system_admin_token}}
-
-{
-	"tenant": {
-		"name": "Oceanview Resorts",
-		"slug": "oceanview-resorts",
-		"type": "INDEPENDENT",
-		"email": "admin@oceanview.demo"
-	},
-	"property": {
-		"property_name": "Oceanview Beach Resort",
-		"property_code": "OCN-BCH",
-		"property_type": "RESORT",
-		"star_rating": 4,
-		"total_rooms": 150,
-		"phone": "+15551234",
-		"email": "resort@oceanview.demo",
-		"address": {
-			"line1": "1 Beach Drive",
-			"city": "Miami",
-			"state": "FL",
-			"postal_code": "33139",
-			"country": "US"
-		},
-		"currency": "USD",
-		"timezone": "America/New_York"
-	},
-	"owner": {
-		"username": "oceanview.admin",
-		"email": "admin@oceanview.demo",
-		"password": "TempPass123",
-		"first_name": "Ocean",
-		"last_name": "Admin"
-	}
-}
-
-###
-// ========================
-// SYSTEM ADMIN - USER MANAGEMENT
-// ========================
-
-// list all users across tenants (system admin)
-GET /v1/system/users?limit=100 HTTP/1.1
-Host: localhost:8080
-Authorization: Bearer {{system_admin_token}}
-
-###
-// list users for specific tenant (system admin)
-GET /v1/system/users?tenant_id=19b2afbb-e6f6-4776-8e52-efbab18f4bec&limit=50 HTTP/1.1
-Host: localhost:8080
-Authorization: Bearer {{system_admin_token}}
-
-###
-// create user via system admin
-POST /v1/system/users HTTP/1.1
-Host: localhost:8080
-Content-Type: application/json
-Authorization: Bearer {{system_admin_token}}
-
-{
-	"username": "new.support.user",
-	"email": "support@platform.demo",
-	"password": "TempPass123",
-	"first_name": "Support",
-	"last_name": "User"
-}
-
-###
-// create user with tenant assignment (system admin)
-POST /v1/system/users HTTP/1.1
-Host: localhost:8080
-Content-Type: application/json
-Authorization: Bearer {{system_admin_token}}
-
-{
-	"username": "aurora.staff",
-	"email": "staff@aurora.demo",
-	"password": "TempPass123",
-	"first_name": "Aurora",
-	"last_name": "Staff",
-	"tenant_id": "19b2afbb-e6f6-4776-8e52-efbab18f4bec",
-	"role": "STAFF"
-}
-
-###
-// ========================
-// REFERENCE: SYSTEM ADMIN ROLES
+// REFERENCE: ROLES
 // ========================
 //
-// SYSTEM_SUPER_ADMIN - Full platform access, can manage all system admins
-// SYSTEM_ADMIN       - Full platform access, can create tenants/users
-// SYSTEM_OPERATOR    - Read-only system access for monitoring
-// SYSTEM_SUPPORT     - Support access, can impersonate tenant users
+// TENANT ROLES:
+//   OWNER    - Full tenant access, can manage all users
+//   ADMIN    - Administrative access, can create/modify users
+//   MANAGER  - Operational management, can view users
+//   STAFF    - Standard access, limited to assigned tasks
+//   VIEWER   - Read-only access
+//
+// SYSTEM ADMIN ROLES:
+//   SYSTEM_SUPER_ADMIN - Full platform access
+//   SYSTEM_ADMIN       - Full platform access, can create tenants/users
+//   SYSTEM_OPERATOR    - Read-only system access for monitoring
+//   SYSTEM_SUPPORT     - Support access, can impersonate tenant users
+//
+// TENANT IDs:
+//   Aurora Hospitality: 19b2afbb-e6f6-4776-8e52-efbab18f4bec
+//   Cedar Hospitality:  8c332645-d702-4391-a026-d141c53df71c
+//   Mariner Hospitality: 2c89b4c0-335c-4e36-a134-c2740bda6666
 //
 // ========================
-
-###
-// curl commands for creating tenant + user, token, and properties
-// curl -sS -X POST http://localhost:8080/v1/tenants/bootstrap \
-//   -H "Content-Type: application/json" \
-//   -H "Authorization: Bearer <SETUP_ADMIN_TOKEN>" \
-//   -d '{"tenant":{"name":"Harborlight Hotels","slug":"harborlight-hotels","type":"INDEPENDENT","email":"ops@harborlight.demo","phone":"+15551212","website":"https://harborlight.demo","country":"US","config":{"features":["reservations","housekeeping","payments"],"maxUsers":25,"maxProperties":5,"defaultCurrency":"USD","defaultLanguage":"en","defaultTimezone":"UTC","enableMultiProperty":true,"enableChannelManager":false,"enableLoyaltyProgram":false,"enableAdvancedReporting":true,"enablePaymentProcessing":true,"brandingEnabled":true}},"owner":{"username":"harborlight.owner","email":"harborlight.owner@harborlight.demo","first_name":"Harborlight","last_name":"Owner","password":"TempPass123"}}'
-//
-// curl -sS -X POST http://localhost:8080/v1/auth/login \
-//   -H "Content-Type: application/json" \
-//   -d '{"username":"harborlight.owner","password":"TempPass123"}'
-//
-// curl -sS -X POST http://localhost:8080/v1/properties \
-//   -H "Content-Type: application/json" \
-//   -H "Authorization: Bearer <OWNER_TOKEN>" \
-//   -d '{"tenant_id":"<TENANT_ID_FROM_BOOTSTRAP>","property_name":"Harborlight Bay Resort","property_code":"HBR-BAY","address":{"line1":"101 Bayfront Ave","city":"San Diego","state":"CA","country":"US","postal_code":"92101"},"phone":"+15551213","email":"bay@harborlight.demo","website":"https://bay.harborlight.demo"}'
