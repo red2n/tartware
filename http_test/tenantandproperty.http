@@ -2,41 +2,6 @@
 // TENANT & PROPERTY - HTTP Test File
 // =====================================================
 //
-// =====================================================
-// TENANT & PROPERTY - HTTP Test File
-// =====================================================
-//
-// Use the API Gateway on localhost:8080.
-//
-// =====================================================
-
-// create new tenant + owner user (bootstrap)
-POST /v1/tenants/bootstrap HTTP/1.1
-Host: localhost:8080
-Content-Type: application/json
-Authorization: Bearer {{setup_admin_token}}
-
-{
-	"tenant": {
-		"name": "Harborlight Hotels",
-		"slug": "harborlight-hotels",
-		"type": "INDEPENDENT",
-		"email": "ops@harborlight.demo",
-		"phone": "+15551212",
-		"website": "https://harborlight.demo",
-		"country": "US",
-		"config": {
-			"features": ["reservations", "housekeeping", "payments"],
-			"maxUsers": 25,
-			"maxProperties": 5,
-			"defaultCurrency": "USD",
-			"defaultLanguage": "en",
-			"defaultTimezone": "UTC",
-			"enableMultiProperty": true,
-			"enableChannelManager": false,
-			"enableLoyaltyProgram": false,
-			"enableAdvancedReporting": true,
-
 // Use the API Gateway on localhost:8080.
 //
 // =====================================================

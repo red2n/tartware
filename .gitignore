@@ -276,6 +276,7 @@ node_modules
 duplo
 scripts/duplo
 reports/
+.tartware-last-command
 
 # ============================================================================
 # Documentation Build
