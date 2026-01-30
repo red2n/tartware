@@ -224,19 +224,25 @@ if [ "$DEPLOY_MODE" == "docker" ]; then
     RESET_PASSWORD_SCRIPT="$REPO_ROOT/Apps/core-service/scripts/reset-default-password.ts"
 
     if [ -f "$DEFAULT_DATA_SCRIPT" ]; then
-        DB_HOST=127.0.0.1 DB_PORT=5432 DB_USER=postgres DB_PASSWORD=postgres DB_NAME=tartware \
-            node "$DEFAULT_DATA_SCRIPT"
-        echo -e "${GREEN}✓ Default baseline data inserted${NC}"
+        if DB_HOST=127.0.0.1 DB_PORT=5432 DB_USER=postgres DB_PASSWORD=postgres DB_NAME=tartware \
+            node "$DEFAULT_DATA_SCRIPT"; then
+            echo -e "${GREEN}✓ Default baseline data inserted${NC}"
+        else
+            echo -e "${YELLOW}⚠  Failed to insert default baseline data using $DEFAULT_DATA_SCRIPT${NC}"
+        fi
     else
         echo -e "${YELLOW}⚠  Default data script not found at $DEFAULT_DATA_SCRIPT - skipping${NC}"
     fi
 
     if [ -f "$RESET_PASSWORD_SCRIPT" ]; then
-        DB_HOST=127.0.0.1 DB_PORT=5432 DB_USER=postgres DB_PASSWORD=postgres DB_NAME=tartware \
+        if DB_HOST=127.0.0.1 DB_PORT=5432 DB_USER=postgres DB_PASSWORD=postgres DB_NAME=tartware \
             AUTH_DEFAULT_PASSWORD=TempPass123 NODE_ENV=development \
             npx tsx --tsconfig "$REPO_ROOT/Apps/core-service/tsconfig.json" \
-            "$RESET_PASSWORD_SCRIPT"
-        echo -e "${GREEN}✓ Default passwords reset to TempPass123${NC}"
+            "$RESET_PASSWORD_SCRIPT"; then
+            echo -e "${GREEN}✓ Default passwords reset to TempPass123${NC}"
+        else
+            echo -e "${YELLOW}⚠  Failed to reset default passwords using $RESET_PASSWORD_SCRIPT${NC}"
+        fi
     else
         echo -e "${YELLOW}⚠  Reset password script not found at $RESET_PASSWORD_SCRIPT - skipping${NC}"
     fi

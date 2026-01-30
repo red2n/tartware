@@ -355,15 +355,27 @@ case "$cmd" in
             up)
                 $compose_cmd -f "$REPO_ROOT/docker-compose.yml" up -d
                 log "Bootstrapping Kafka topics"
-                (cd "$REPO_ROOT" && npm run kafka:topics)
+                if (cd "$REPO_ROOT" && npm run kafka:topics); then
+                    log "Kafka topics created successfully"
+                else
+                    fail "Failed to create Kafka topics"
+                fi
                 log "Seeding default data"
-                DB_HOST=127.0.0.1 DB_PORT=5432 DB_USER=postgres DB_PASSWORD=postgres DB_NAME=tartware \
-                    node "$REPO_ROOT/scripts/data/defaults/seed-default-data.mjs"
+                if DB_HOST=127.0.0.1 DB_PORT=5432 DB_USER=postgres DB_PASSWORD=postgres DB_NAME=tartware \
+                    node "$REPO_ROOT/scripts/data/defaults/seed-default-data.mjs"; then
+                    log "Default data seeded successfully"
+                else
+                    fail "Failed to seed default data"
+                fi
                 log "Resetting default user passwords"
-                DB_HOST=127.0.0.1 DB_PORT=5432 DB_USER=postgres DB_PASSWORD=postgres DB_NAME=tartware \
+                if DB_HOST=127.0.0.1 DB_PORT=5432 DB_USER=postgres DB_PASSWORD=postgres DB_NAME=tartware \
                     AUTH_DEFAULT_PASSWORD=TempPass123 NODE_ENV=development \
                     npx tsx --tsconfig "$REPO_ROOT/Apps/core-service/tsconfig.json" \
-                    "$REPO_ROOT/Apps/core-service/scripts/reset-default-password.ts"
+                    "$REPO_ROOT/Apps/core-service/scripts/reset-default-password.ts"; then
+                    log "Default passwords reset successfully"
+                else
+                    fail "Failed to reset default passwords"
+                fi
                 ;;
             down)
                 $compose_cmd -f "$REPO_ROOT/docker-compose.yml" down
