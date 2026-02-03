@@ -33,6 +33,9 @@ services:
     ports:
       - "3001:3000"
     environment:
+      # NOTE: Default admin credentials are for local load testing only.
+      #       Override GF_SECURITY_ADMIN_USER and GF_SECURITY_ADMIN_PASSWORD
+      #       with strong, unique values in any shared or persistent environment.
       GF_SECURITY_ADMIN_USER: admin
       GF_SECURITY_ADMIN_PASSWORD: admin
       GF_INSTALL_PLUGINS: grafana-piechart-panel
@@ -54,7 +57,8 @@ services:
     extra_hosts:
       - "host.docker.internal:host-gateway"
     environment:
-      K6_OUT: influxdb=http://influxdb:8086/k6
+      # k6 InfluxDB 2.x output format with organization, bucket, and token
+      K6_OUT: influxdb=http://influxdb:8086?org=tartware&bucket=k6&token=tartware-token
       K6_INFLUXDB_ORGANIZATION: tartware
       K6_INFLUXDB_TOKEN: tartware-token
       GATEWAY_URL: ${GATEWAY_URL:-http://host.docker.internal:8080}

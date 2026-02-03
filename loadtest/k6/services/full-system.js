@@ -19,12 +19,9 @@ import {
 	DEFAULT_THRESHOLDS,
 } from "../lib/config.js";
 import {
-	uuid,
 	sleepWithJitter,
 	isSuccess,
 	pickRandom,
-	generateGuest,
-	generateReservation,
 	futureDate,
 } from "../lib/utils.js";
 
@@ -175,7 +172,7 @@ function checkAvailabilityJourney(roomTypes) {
 
 		// 2. Get rate plans
 		const ratesRes = http.get(
-			`${GATEWAY_URL}/settings/rate-plans?tenant_id=${TENANT_ID}`,
+			`${GATEWAY_URL}${ENDPOINTS.ratePlans}?tenant_id=${TENANT_ID}`,
 			{ headers, tags: { service: "settings", journey: "availability" } },
 		);
 		recordMetric(ratesRes, settingsLatency, "rate-plans");
@@ -241,7 +238,7 @@ function reservationJourney(roomTypes, guests) {
 
 		// 3. Get packages (optional add-ons)
 		const packagesRes = http.get(
-			`${GATEWAY_URL}/settings/packages?tenant_id=${TENANT_ID}`,
+			`${GATEWAY_URL}${ENDPOINTS.packages}?tenant_id=${TENANT_ID}`,
 			{ headers, tags: { service: "settings", journey: "reservation" } },
 		);
 		recordMetric(packagesRes, settingsLatency, "packages");
@@ -310,7 +307,7 @@ function settingsJourney() {
 	group("Journey - Settings", () => {
 		// 1. Rate plans
 		const ratePlansRes = http.get(
-			`${GATEWAY_URL}/settings/rate-plans?tenant_id=${TENANT_ID}`,
+			`${GATEWAY_URL}${ENDPOINTS.ratePlans}?tenant_id=${TENANT_ID}`,
 			{ headers, tags: { service: "settings", journey: "settings" } },
 		);
 		recordMetric(ratePlansRes, settingsLatency, "rate-plans");
@@ -319,7 +316,7 @@ function settingsJourney() {
 
 		// 2. Policies
 		const policiesRes = http.get(
-			`${GATEWAY_URL}/settings/cancellation-policies?tenant_id=${TENANT_ID}`,
+			`${GATEWAY_URL}${ENDPOINTS.cancellationPolicies}?tenant_id=${TENANT_ID}`,
 			{ headers, tags: { service: "settings", journey: "settings" } },
 		);
 		recordMetric(policiesRes, settingsLatency, "cancellation-policies");
@@ -328,7 +325,7 @@ function settingsJourney() {
 
 		// 3. Seasons
 		const seasonsRes = http.get(
-			`${GATEWAY_URL}/settings/seasons?tenant_id=${TENANT_ID}`,
+			`${GATEWAY_URL}${ENDPOINTS.seasons}?tenant_id=${TENANT_ID}`,
 			{ headers, tags: { service: "settings", journey: "settings" } },
 		);
 		recordMetric(seasonsRes, settingsLatency, "seasons");

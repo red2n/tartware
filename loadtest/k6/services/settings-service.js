@@ -10,7 +10,6 @@ import { Trend, Counter, Rate } from "k6/metrics";
 import {
 	GATEWAY_URL,
 	TENANT_ID,
-	PROPERTY_ID,
 	VUS,
 	DURATION,
 	getHeaders,
@@ -38,13 +37,13 @@ export const options = {
 const headers = getHeaders();
 
 const SETTINGS_ENDPOINTS = {
-	packages: "/settings/packages",
-	policies: "/settings/policies",
-	cancellationPolicies: "/settings/cancellation-policies",
-	depositPolicies: "/settings/deposit-policies",
-	ratePlans: "/settings/rate-plans",
-	seasons: "/settings/seasons",
-	configurations: "/settings/configurations",
+	packages: "/v1/settings/packages",
+	policies: "/v1/settings/policies",
+	cancellationPolicies: "/v1/settings/cancellation-policies",
+	depositPolicies: "/v1/settings/deposit-policies",
+	ratePlans: "/v1/settings/rate-plans",
+	seasons: "/v1/settings/seasons",
+	configurations: "/v1/settings/configurations",
 };
 
 export function setup() {

@@ -5,8 +5,11 @@ datasources:
     type: influxdb
     access: proxy
     url: http://influxdb:8086
-    database: k6
     isDefault: true
     editable: true
     jsonData:
-      httpMode: GET
+      version: Flux
+      organization: tartware
+      defaultBucket: k6
+    secureJsonData:
+      token: tartware-token

@@ -94,6 +94,8 @@ export const ENDPOINTS = {
 
 	// Reservations
 	reservations: "/v1/reservations",
+	availability: "/v1/availability",
+	waitlist: "/v1/waitlist",
 
 	// Booking Config
 	allotments: "/v1/allotments",
@@ -107,9 +109,13 @@ export const ENDPOINTS = {
 
 	// Settings
 	rates: "/v1/rates",
-	ratePlans: "/v1/rate-plans",
-	packages: "/v1/packages",
+	ratePlans: "/v1/settings/rate-plans",
+	packages: "/v1/settings/packages",
 	amenities: "/v1/amenities",
+	cancellationPolicies: "/v1/settings/cancellation-policies",
+	depositPolicies: "/v1/settings/deposit-policies",
+	seasons: "/v1/settings/seasons",
+	configurations: "/v1/settings/configurations",
 };
 
 export default {

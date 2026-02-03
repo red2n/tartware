@@ -18,7 +18,6 @@ import {
 	DEFAULT_THRESHOLDS,
 } from "../lib/config.js";
 import {
-	uuid,
 	generateHousekeepingTask,
 	sleepWithJitter,
 	isSuccess,

@@ -18,11 +18,9 @@ import {
 	DEFAULT_THRESHOLDS,
 } from "../lib/config.js";
 import {
-	uuid,
 	sleepWithJitter,
 	isSuccess,
 	pickRandom,
-	randomInt,
 } from "../lib/utils.js";
 
 const roomsLatency = new Trend("rooms_service_latency");
@@ -159,7 +157,6 @@ function testRoomStatus(rooms) {
 	}
 
 	group("Rooms - Room Status", () => {
-		const statuses = ["CLEAN", "DIRTY", "INSPECTED", "OUT_OF_ORDER"];
 		const room = pickRandom(rooms);
 		const roomId = room.room_id || room.id;
 

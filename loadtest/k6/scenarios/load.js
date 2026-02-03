@@ -22,7 +22,6 @@ import {
 	DEFAULT_THRESHOLDS,
 } from "../lib/config.js";
 import {
-	uuid,
 	generateGuest,
 	generateReservation,
 	generatePayment,

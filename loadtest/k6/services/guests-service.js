@@ -16,7 +16,7 @@ import {
 	ENDPOINTS,
 	DEFAULT_THRESHOLDS,
 } from "../lib/config.js";
-import { uuid, generateGuest, sleepWithJitter, isSuccess } from "../lib/utils.js";
+import { generateGuest, sleepWithJitter, isSuccess } from "../lib/utils.js";
 
 const guestsLatency = new Trend("guests_service_latency");
 const guestsErrors = new Counter("guests_service_errors");

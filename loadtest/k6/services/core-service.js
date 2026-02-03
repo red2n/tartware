@@ -10,7 +10,6 @@ import { Trend, Counter, Rate } from "k6/metrics";
 import {
 	GATEWAY_URL,
 	TENANT_ID,
-	PROPERTY_ID,
 	VUS,
 	DURATION,
 	getHeaders,

@@ -7,7 +7,7 @@
  */
 
 import http from "k6/http";
-import { check, sleep, group } from "k6";
+import { check, sleep } from "k6";
 import { Trend, Counter, Rate, Gauge } from "k6/metrics";
 import {
 	GATEWAY_URL,
@@ -18,11 +18,8 @@ import {
 	ENDPOINTS,
 } from "../lib/config.js";
 import {
-	uuid,
 	generateGuest,
 	generateReservation,
-	generatePayment,
-	generateHousekeepingTask,
 	sleepWithJitter,
 	isSuccess,
 } from "../lib/utils.js";
