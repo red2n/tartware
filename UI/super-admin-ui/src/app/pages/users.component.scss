@@ -1,9 +1,0 @@
-/* Users page - using shared styles with custom grid */
-.table__head,
-.table__row {
-  grid-template-columns: 1.5fr 1.3fr 1fr 0.8fr 2fr;
-}
-
-.chip {
-  margin: 0.15rem;
-}
