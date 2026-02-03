@@ -14,6 +14,7 @@ import errorHandlerPlugin from "./plugins/error-handler.js";
 import swaggerPlugin from "./plugins/swagger.js";
 import systemAdminAuthPlugin from "./plugins/system-admin-auth.js";
 import { registerAuthRoutes } from "./routes/auth.js";
+import { registerBookingConfigRoutes } from "./routes/booking-config.js";
 import { registerDashboardRoutes } from "./routes/dashboard.js";
 import { registerHealthRoutes } from "./routes/health.js";
 import { registerModuleRoutes } from "./routes/modules.js";
@@ -71,6 +72,7 @@ export const buildServer = (): FastifyInstance => {
       registerReservationRoutes(app);
       registerReportRoutes(app);
       registerModuleRoutes(app);
+      registerBookingConfigRoutes(app);
       registerSystemAuthRoutes(app);
       registerSystemTenantRoutes(app);
       registerSystemUserRoutes(app);

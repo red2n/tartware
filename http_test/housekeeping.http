@@ -2,9 +2,21 @@
 # HOUSEKEEPING SERVICE - Task Management
 # Routes via API Gateway (localhost:8080) -> housekeeping-service (port 3500)
 #
-# Content: Housekeeping Tasks, Assignments, Status Updates
+# Content: Housekeeping Tasks Listing and Filtering (READ OPERATIONS)
+#
+# WRITE OPERATIONS: All housekeeping write operations go through the
+# Command Center. See command-center.http for:
+#   - housekeeping.task.create
+#   - housekeeping.task.assign
+#   - housekeeping.task.complete
+#   - housekeeping.task.reassign
+#   - housekeeping.task.reopen
+#   - housekeeping.task.add_note
+#   - housekeeping.task.bulk_status
 #
 # Related files:
+# - command-center.http - Write operations (commands)
+# - operations.http - Maintenance requests and incident reports
 # - rooms.http - Room status updates
 ###############################################################################
 
@@ -31,163 +43,66 @@ Content-Type: application/json
 @authToken = {{login.response.body.access_token}}
 
 ###############################################################################
-# 2. HOUSEKEEPING TASKS - READ
+# 2. HOUSEKEEPING TASKS - LIST WITH FILTERS
 ###############################################################################
 
-# List all housekeeping tasks
+# List all housekeeping tasks for tenant
 GET {{baseUrl}}/v1/housekeeping/tasks?tenant_id={{tenantId}}&limit=50
 Authorization: Bearer {{authToken}}
 
 ###
-# Filter by status
-GET {{baseUrl}}/v1/housekeeping/tasks?tenant_id={{tenantId}}&status=PENDING
+# List tasks for specific property
+GET {{baseUrl}}/v1/housekeeping/tasks?tenant_id={{tenantId}}&property_id={{propertyId}}&limit=50
 Authorization: Bearer {{authToken}}
 
 ###
-# Filter by priority
-GET {{baseUrl}}/v1/housekeeping/tasks?tenant_id={{tenantId}}&priority=HIGH
+# Filter by housekeeping status - CLEAN
+GET {{baseUrl}}/v1/housekeeping/tasks?tenant_id={{tenantId}}&status=clean
 Authorization: Bearer {{authToken}}
 
 ###
-# Filter by assignee
-GET {{baseUrl}}/v1/housekeeping/tasks?tenant_id={{tenantId}}&assigned_to={{staffId}}
+# Filter by housekeeping status - DIRTY
+GET {{baseUrl}}/v1/housekeeping/tasks?tenant_id={{tenantId}}&status=dirty
 Authorization: Bearer {{authToken}}
-
-###############################################################################
-# 3. HOUSEKEEPING TASKS - CREATE (via Command Center)
-###############################################################################
-
-# @name createTask
-# Create a cleaning task
-POST {{baseUrl}}/v1/tenants/{{tenantId}}/housekeeping/tasks
-Content-Type: application/json
-Authorization: Bearer {{authToken}}
-
-{
-  "property_id": "{{propertyId}}",
-  "room_id": "{{room101Id}}",
-  "task_type": "CHECKOUT_CLEANING",
-  "priority": "HIGH",
-  "due_time": "2026-01-30T14:00:00Z",
-  "notes": "VIP checkout - deep clean required",
-  "estimated_minutes": 45
-}
-
-### Extract created task ID
-@taskId = {{createTask.response.body.task_id}}
 
 ###
-# Create maintenance inspection task
-POST {{baseUrl}}/v1/tenants/{{tenantId}}/housekeeping/tasks
-Content-Type: application/json
+# Filter by housekeeping status - INSPECTED
+GET {{baseUrl}}/v1/housekeeping/tasks?tenant_id={{tenantId}}&status=inspected
 Authorization: Bearer {{authToken}}
-
-{
-  "property_id": "{{propertyId}}",
-  "room_id": "{{room101Id}}",
-  "task_type": "INSPECTION",
-  "priority": "MEDIUM",
-  "due_time": "2026-01-30T16:00:00Z",
-  "notes": "Monthly AC filter check",
-  "estimated_minutes": 15
-}
 
 ###
-# Create turndown service task
-POST {{baseUrl}}/v1/tenants/{{tenantId}}/housekeeping/tasks
-Content-Type: application/json
+# Filter by housekeeping status - IN_PROGRESS
+GET {{baseUrl}}/v1/housekeeping/tasks?tenant_id={{tenantId}}&status=in_progress
 Authorization: Bearer {{authToken}}
-
-{
-  "property_id": "{{propertyId}}",
-  "room_id": "{{room101Id}}",
-  "task_type": "TURNDOWN",
-  "priority": "LOW",
-  "due_time": "2026-01-30T18:00:00Z",
-  "notes": "Evening turndown service",
-  "estimated_minutes": 10
-}
-
-###############################################################################
-# 4. TASK ASSIGNMENT
-###############################################################################
-
-# Assign task to staff member
-POST {{baseUrl}}/v1/tenants/{{tenantId}}/housekeeping/tasks/{{taskId}}/assign
-Content-Type: application/json
-Authorization: Bearer {{authToken}}
-
-{
-  "assigned_to": "{{staffUserId}}",
-  "notes": "Please prioritize - VIP guest"
-}
 
 ###
-# Reassign task
-POST {{baseUrl}}/v1/tenants/{{tenantId}}/housekeeping/tasks/{{taskId}}/reassign
-Content-Type: application/json
+# Filter by scheduled date (today)
+GET {{baseUrl}}/v1/housekeeping/tasks?tenant_id={{tenantId}}&scheduled_date=2026-02-03
 Authorization: Bearer {{authToken}}
-
-{
-  "assigned_to": "{{newStaffUserId}}",
-  "reason": "Original assignee on break"
-}
-
-###############################################################################
-# 5. TASK STATUS UPDATES
-###############################################################################
-
-# Complete task
-POST {{baseUrl}}/v1/tenants/{{tenantId}}/housekeeping/tasks/{{taskId}}/complete
-Content-Type: application/json
-Authorization: Bearer {{authToken}}
-
-{
-  "notes": "Room cleaned and inspected",
-  "actual_minutes": 40,
-  "supplies_used": ["towels_set", "toiletries_set", "minibar_restock"]
-}
 
 ###
-# Reopen task
-POST {{baseUrl}}/v1/tenants/{{tenantId}}/housekeeping/tasks/{{taskId}}/reopen
-Content-Type: application/json
+# Combine property and status filters
+GET {{baseUrl}}/v1/housekeeping/tasks?tenant_id={{tenantId}}&property_id={{propertyId}}&status=dirty
 Authorization: Bearer {{authToken}}
-
-{
-  "reason": "Guest reported issue - needs re-cleaning"
-}
 
 ###
-# Add note to task
-POST {{baseUrl}}/v1/tenants/{{tenantId}}/housekeeping/tasks/{{taskId}}/notes
-Content-Type: application/json
+# Combine property, status, and date filters
+GET {{baseUrl}}/v1/housekeeping/tasks?tenant_id={{tenantId}}&property_id={{propertyId}}&status=dirty&scheduled_date=2026-02-03
 Authorization: Bearer {{authToken}}
 
-{
-  "note": "Found damaged towel rack - maintenance notified"
-}
-
-###############################################################################
-# 6. BULK OPERATIONS
-###############################################################################
-
-# Bulk status update
-POST {{baseUrl}}/v1/tenants/{{tenantId}}/housekeeping/tasks/bulk-status
-Content-Type: application/json
+###
+# Get large batch of tasks
+GET {{baseUrl}}/v1/housekeeping/tasks?tenant_id={{tenantId}}&limit=200
 Authorization: Bearer {{authToken}}
-
-{
-  "task_ids": ["{{taskId}}", "{{taskId2}}"],
-  "status": "IN_PROGRESS",
-  "notes": "Starting morning cleaning rounds"
-}
 
 ###############################################################################
 # REFERENCE
 ###############################################################################
 #
-# TASK TYPES:
+# HOUSEKEEPING STATUSES (for filtering):
+#   clean, dirty, inspected, in_progress
+#
+# TASK TYPES (for command center):
 #   CHECKOUT_CLEANING - Post-checkout deep clean
 #   STAYOVER_CLEANING - Daily cleaning during stay
 #   TURNDOWN          - Evening turndown service
@@ -196,11 +111,25 @@ Authorization: Bearer {{authToken}}
 #   MAINTENANCE       - Minor maintenance
 #   SPECIAL_REQUEST   - Guest special request
 #
-# TASK STATUSES:
+# TASK STATUSES (command center):
 #   PENDING, ASSIGNED, IN_PROGRESS, COMPLETED, CANCELLED
 #
 # PRIORITIES:
 #   LOW, MEDIUM, HIGH, URGENT
+#
+# WRITE OPERATIONS:
+#   All housekeeping write operations go through the Command Center.
+#   See command-center.http for full examples of:
+#     POST /v1/commands/housekeeping.task.create/execute
+#     POST /v1/commands/housekeeping.task.assign/execute
+#     POST /v1/commands/housekeeping.task.complete/execute
+#     POST /v1/commands/housekeeping.task.reassign/execute
+#     POST /v1/commands/housekeeping.task.reopen/execute
+#     POST /v1/commands/housekeeping.task.add_note/execute
+#     POST /v1/commands/housekeeping.task.bulk_status/execute
+#
+# NOTE: The housekeeping-service module requires the 'facility-maintenance'
+#       module to be enabled for the tenant.
 #
 # SAMPLE IDs:
 #   Tenant:   11111111-1111-1111-1111-111111111111

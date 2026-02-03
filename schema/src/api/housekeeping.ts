@@ -1,13 +1,17 @@
 /**
  * DEV DOC
  * Module: api/housekeeping.ts
- * Purpose: Housekeeping API response schemas
+ * Purpose: Housekeeping and Operations API response schemas
  * Ownership: Schema package
  */
 
 import { z } from "zod";
 
 import { uuid } from "../shared/base-schemas.js";
+
+// =====================================================
+// HOUSEKEEPING TASKS
+// =====================================================
 
 /**
  * Housekeeping task list item schema for API responses.
@@ -56,3 +60,290 @@ export const HousekeepingTaskListResponseSchema = z.object({
 });
 
 export type HousekeepingTaskListResponse = z.infer<typeof HousekeepingTaskListResponseSchema>;
+
+// =====================================================
+// MAINTENANCE REQUESTS
+// =====================================================
+
+/**
+ * Maintenance request type enum values matching database constraints.
+ */
+export const MaintenanceRequestTypeEnum = z.enum([
+	"CORRECTIVE",
+	"PREVENTIVE",
+	"EMERGENCY",
+	"ROUTINE",
+	"INSPECTION",
+	"UPGRADE",
+	"GUEST_REPORTED",
+]);
+export type MaintenanceRequestType = z.infer<typeof MaintenanceRequestTypeEnum>;
+
+/**
+ * Maintenance request status enum values matching database constraints.
+ */
+export const MaintenanceRequestStatusEnum = z.enum([
+	"OPEN",
+	"ASSIGNED",
+	"IN_PROGRESS",
+	"ON_HOLD",
+	"COMPLETED",
+	"CANCELLED",
+	"VERIFIED",
+]);
+export type MaintenanceRequestStatus = z.infer<typeof MaintenanceRequestStatusEnum>;
+
+/**
+ * Maintenance priority enum values matching database constraints.
+ */
+export const MaintenancePriorityEnum = z.enum([
+	"LOW",
+	"MEDIUM",
+	"HIGH",
+	"URGENT",
+	"EMERGENCY",
+]);
+export type MaintenancePriority = z.infer<typeof MaintenancePriorityEnum>;
+
+/**
+ * Maintenance issue category enum values matching database constraints.
+ */
+export const MaintenanceIssueCategoryEnum = z.enum([
+	"PLUMBING",
+	"ELECTRICAL",
+	"HVAC",
+	"APPLIANCE",
+	"FURNITURE",
+	"FIXTURE",
+	"SAFETY",
+	"CLEANLINESS",
+	"PEST",
+	"STRUCTURAL",
+	"EQUIPMENT",
+	"TECHNOLOGY",
+	"OTHER",
+]);
+export type MaintenanceIssueCategory = z.infer<typeof MaintenanceIssueCategoryEnum>;
+
+/**
+ * Maintenance request list item schema for API responses.
+ */
+export const MaintenanceRequestListItemSchema = z.object({
+	request_id: uuid,
+	tenant_id: uuid,
+	property_id: uuid,
+	property_name: z.string().optional(),
+	request_number: z.string().nullable(),
+	request_type: z.string(),
+	request_type_display: z.string(),
+	request_status: z.string(),
+	request_status_display: z.string(),
+	priority: z.string(),
+	priority_display: z.string(),
+
+	// Location
+	room_id: uuid.optional(),
+	room_number: z.string().nullable(),
+	location_description: z.string().nullable(),
+	location_type: z.string().nullable(),
+
+	// Issue Details
+	issue_category: z.string(),
+	issue_category_display: z.string(),
+	issue_subcategory: z.string().nullable(),
+	issue_description: z.string(),
+
+	// Severity indicators
+	affects_occupancy: z.boolean(),
+	affects_guest_comfort: z.boolean(),
+	is_safety_issue: z.boolean(),
+	is_health_issue: z.boolean(),
+
+	// Reporter info
+	reported_at: z.string(),
+	reported_by: uuid,
+	reporter_role: z.string().nullable(),
+
+	// Assignment
+	assigned_to: uuid.optional(),
+	assigned_at: z.string().optional(),
+	maintenance_team: z.string().nullable(),
+
+	// Scheduling
+	scheduled_date: z.string().nullable(),
+	estimated_duration_minutes: z.number().int().nullable(),
+
+	// Work details
+	work_started_at: z.string().optional(),
+	work_completed_at: z.string().optional(),
+	actual_duration_minutes: z.number().int().nullable(),
+	work_performed: z.string().nullable(),
+
+	// Costs
+	total_cost: z.number().nullable(),
+	currency_code: z.string(),
+
+	// Room impact
+	room_out_of_service: z.boolean(),
+	oos_from: z.string().optional(),
+	oos_until: z.string().optional(),
+
+	// SLA
+	response_time_minutes: z.number().int().nullable(),
+	resolution_time_hours: z.number().int().nullable(),
+	is_within_sla: z.boolean().nullable(),
+
+	// Audit
+	created_at: z.string(),
+	updated_at: z.string().optional(),
+});
+
+export type MaintenanceRequestListItem = z.infer<typeof MaintenanceRequestListItemSchema>;
+
+/**
+ * Maintenance request list response schema.
+ */
+export const MaintenanceRequestListResponseSchema = z.object({
+	data: z.array(MaintenanceRequestListItemSchema),
+	meta: z.object({
+		count: z.number().int().nonnegative(),
+	}),
+});
+
+export type MaintenanceRequestListResponse = z.infer<typeof MaintenanceRequestListResponseSchema>;
+
+// =====================================================
+// INCIDENT REPORTS
+// =====================================================
+
+/**
+ * Incident type enum values matching database constraints.
+ */
+export const IncidentTypeEnum = z.enum([
+	"accident",
+	"injury",
+	"illness",
+	"theft",
+	"damage",
+	"fire",
+	"security_breach",
+	"guest_complaint",
+	"staff_misconduct",
+	"food_poisoning",
+	"slip_fall",
+	"equipment_failure",
+	"medical_emergency",
+	"death",
+	"violence",
+	"harassment",
+	"property_damage",
+	"natural_disaster",
+	"other",
+]);
+export type IncidentType = z.infer<typeof IncidentTypeEnum>;
+
+/**
+ * Incident severity enum values matching database constraints.
+ */
+export const IncidentSeverityEnum = z.enum([
+	"minor",
+	"moderate",
+	"serious",
+	"critical",
+	"catastrophic",
+]);
+export type IncidentSeverity = z.infer<typeof IncidentSeverityEnum>;
+
+/**
+ * Incident status enum values matching database constraints.
+ */
+export const IncidentStatusEnum = z.enum([
+	"reported",
+	"under_investigation",
+	"investigated",
+	"resolved",
+	"closed",
+	"pending",
+	"escalated",
+	"legal_action",
+]);
+export type IncidentStatus = z.infer<typeof IncidentStatusEnum>;
+
+/**
+ * Incident report list item schema for API responses.
+ */
+export const IncidentReportListItemSchema = z.object({
+	incident_id: uuid,
+	tenant_id: uuid,
+	property_id: uuid,
+	property_name: z.string().optional(),
+	incident_number: z.string(),
+	incident_title: z.string(),
+
+	// Classification
+	incident_type: z.string(),
+	incident_type_display: z.string(),
+	incident_category: z.string().nullable(),
+	severity: z.string(),
+	severity_display: z.string(),
+	severity_score: z.number().int().nullable(),
+
+	// Date & Time
+	incident_datetime: z.string(),
+	incident_date: z.string(),
+	incident_time: z.string(),
+
+	// Location
+	incident_location: z.string(),
+	room_number: z.string().nullable(),
+	floor_number: z.number().int().nullable(),
+	area_name: z.string().nullable(),
+
+	// People involved
+	guest_involved: z.boolean(),
+	staff_involved: z.boolean(),
+	third_party_involved: z.boolean(),
+	witness_count: z.number().int(),
+
+	// Injuries
+	injuries_sustained: z.boolean(),
+	injury_severity: z.string().nullable(),
+	medical_attention_required: z.boolean(),
+
+	// Property damage
+	property_damage: z.boolean(),
+	estimated_damage_cost: z.number().nullable(),
+
+	// Status
+	incident_status: z.string(),
+	incident_status_display: z.string(),
+
+	// Investigation
+	investigation_required: z.boolean(),
+	investigation_completed: z.boolean(),
+
+	// Legal & Insurance
+	police_notified: z.boolean(),
+	police_report_number: z.string().nullable(),
+	insurance_claim_filed: z.boolean(),
+	insurance_claim_number: z.string().nullable(),
+
+	// Audit
+	created_at: z.string(),
+	updated_at: z.string().optional(),
+	created_by: uuid,
+});
+
+export type IncidentReportListItem = z.infer<typeof IncidentReportListItemSchema>;
+
+/**
+ * Incident report list response schema.
+ */
+export const IncidentReportListResponseSchema = z.object({
+	data: z.array(IncidentReportListItemSchema),
+	meta: z.object({
+		count: z.number().int().nonnegative(),
+	}),
+});
+
+export type IncidentReportListResponse = z.infer<typeof IncidentReportListResponseSchema>;

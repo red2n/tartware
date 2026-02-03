@@ -130,3 +130,128 @@ export const GUEST_RESERVATION_STATS_SQL = `
     ) AS preferred_room_types
   ) pref ON TRUE
 `;
+
+export const GUEST_PREFERENCES_LIST_SQL = `
+  SELECT
+    gp.preference_id AS id,
+    gp.tenant_id,
+    gp.property_id,
+    gp.guest_id,
+    gp.preference_category,
+    gp.preference_type,
+    gp.preference_value,
+    gp.preference_code,
+    gp.priority,
+    gp.is_mandatory,
+    gp.is_special_request,
+    gp.preferred_floor,
+    gp.floor_preference,
+    gp.bed_type_preference,
+    gp.smoking_preference,
+    gp.view_preference,
+    gp.room_location_preference,
+    gp.turndown_service,
+    gp.do_not_disturb_default,
+    gp.dietary_restrictions,
+    gp.food_allergies,
+    gp.mobility_accessible,
+    gp.hearing_accessible,
+    gp.visual_accessible,
+    gp.service_animal,
+    gp.accessibility_notes,
+    gp.preferred_language,
+    gp.preferred_contact_method,
+    gp.marketing_opt_in,
+    gp.is_active,
+    gp.source,
+    gp.times_honored,
+    gp.notes,
+    gp.created_at,
+    gp.updated_at
+  FROM public.guest_preferences gp
+  WHERE COALESCE(gp.is_deleted, false) = false
+    AND gp.deleted_at IS NULL
+    AND gp.tenant_id = $2::uuid
+    AND gp.guest_id = $3::uuid
+    AND ($4::text IS NULL OR gp.preference_category = UPPER($4::text))
+    AND ($5::boolean IS NULL OR gp.is_active = $5::boolean)
+  ORDER BY gp.priority DESC, gp.preference_category, gp.created_at DESC
+  LIMIT $1
+`;
+
+export const GUEST_DOCUMENTS_LIST_SQL = `
+  SELECT
+    gd.document_id AS id,
+    gd.tenant_id,
+    gd.property_id,
+    gd.guest_id,
+    gd.reservation_id,
+    gd.document_type,
+    gd.document_category,
+    gd.document_number,
+    gd.document_name,
+    gd.description,
+    gd.file_name,
+    gd.file_size_bytes,
+    gd.file_type,
+    gd.mime_type,
+    gd.issue_date,
+    gd.expiry_date,
+    gd.issuing_country,
+    gd.is_verified,
+    gd.verification_status,
+    gd.verified_at,
+    gd.uploaded_at,
+    gd.upload_source,
+    CASE
+      WHEN gd.expiry_date IS NOT NULL AND gd.expiry_date < CURRENT_DATE THEN TRUE
+      ELSE FALSE
+    END AS is_expired,
+    CASE
+      WHEN gd.expiry_date IS NOT NULL AND gd.expiry_date >= CURRENT_DATE
+      THEN (gd.expiry_date - CURRENT_DATE)::integer
+      ELSE NULL
+    END AS days_until_expiry,
+    gd.created_at
+  FROM public.guest_documents gd
+  WHERE COALESCE(gd.is_deleted, false) = false
+    AND gd.deleted_at IS NULL
+    AND gd.tenant_id = $2::uuid
+    AND gd.guest_id = $3::uuid
+    AND ($4::text IS NULL OR gd.document_type = LOWER($4::text))
+    AND ($5::text IS NULL OR gd.verification_status = LOWER($5::text))
+  ORDER BY gd.created_at DESC
+  LIMIT $1
+`;
+
+export const GUEST_COMMUNICATIONS_LIST_SQL = `
+  SELECT
+    gc.id,
+    gc.tenant_id,
+    gc.property_id,
+    gc.guest_id,
+    gc.reservation_id,
+    gc.communication_type,
+    gc.direction,
+    gc.subject,
+    gc.message,
+    gc.sender_name,
+    gc.sender_email,
+    gc.recipient_name,
+    gc.recipient_email,
+    gc.status,
+    gc.sent_at,
+    gc.delivered_at,
+    gc.opened_at,
+    gc.failed_at,
+    gc.failure_reason,
+    gc.created_at
+  FROM public.guest_communications gc
+  WHERE gc.tenant_id = $2::uuid
+    AND gc.guest_id = $3::uuid
+    AND ($4::text IS NULL OR gc.communication_type = UPPER($4::text))
+    AND ($5::text IS NULL OR gc.direction = UPPER($5::text))
+    AND ($6::text IS NULL OR gc.status = UPPER($6::text))
+  ORDER BY gc.created_at DESC
+  LIMIT $1
+`;

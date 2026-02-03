@@ -1,0 +1,467 @@
+### =============================================================
+### BOOKING CONFIGURATION ENDPOINTS (via API Gateway :8080)
+### Allotments, Booking Sources, Market Segments, Channel Mappings
+### =============================================================
+
+### -----------------------------------------------
+### ALLOTMENTS (Room Blocks for Groups/Events)
+### -----------------------------------------------
+
+### List All Allotments
+# @name listAllotments
+GET {{baseUrl}}/v1/allotments?tenant_id={{tenantId}}&limit=50
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+### List Allotments by Status
+# @name listAllotmentsByStatus
+GET {{baseUrl}}/v1/allotments?tenant_id={{tenantId}}&status=active
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+### List Allotments by Type
+# @name listAllotmentsByType
+GET {{baseUrl}}/v1/allotments?tenant_id={{tenantId}}&allotment_type=group
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+### List Allotments by Type (Corporate)
+GET {{baseUrl}}/v1/allotments?tenant_id={{tenantId}}&allotment_type=corporate
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+### List Allotments by Date Range
+# @name listAllotmentsByDateRange
+GET {{baseUrl}}/v1/allotments?tenant_id={{tenantId}}&start_date_from=2025-01-01&end_date_to=2025-12-31
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+### List Allotments with Property Filter
+GET {{baseUrl}}/v1/allotments?tenant_id={{tenantId}}&property_id={{propertyId}}
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+### List Tentative Allotments
+GET {{baseUrl}}/v1/allotments?tenant_id={{tenantId}}&status=tentative
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+### List Wedding Allotments
+GET {{baseUrl}}/v1/allotments?tenant_id={{tenantId}}&allotment_type=wedding
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+### Get Allotment by ID
+# @name getAllotmentById
+GET {{baseUrl}}/v1/allotments/{{allotmentId}}?tenant_id={{tenantId}}
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+
+### -----------------------------------------------
+### BOOKING SOURCES (OTAs, GDS, Direct Channels)
+### -----------------------------------------------
+
+### List All Booking Sources
+# @name listBookingSources
+GET {{baseUrl}}/v1/booking-sources?tenant_id={{tenantId}}&limit=100
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+### List Active Booking Sources
+# @name listActiveBookingSources
+GET {{baseUrl}}/v1/booking-sources?tenant_id={{tenantId}}&is_active=true
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+### List OTA Booking Sources
+# @name listOtaBookingSources
+GET {{baseUrl}}/v1/booking-sources?tenant_id={{tenantId}}&source_type=ota
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+### List GDS Booking Sources
+GET {{baseUrl}}/v1/booking-sources?tenant_id={{tenantId}}&source_type=gds
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+### List Direct Booking Sources
+GET {{baseUrl}}/v1/booking-sources?tenant_id={{tenantId}}&source_type=direct
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+### List Corporate Booking Sources
+GET {{baseUrl}}/v1/booking-sources?tenant_id={{tenantId}}&source_type=corporate
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+### List Sources with Integrations
+# @name listSourcesWithIntegrations
+GET {{baseUrl}}/v1/booking-sources?tenant_id={{tenantId}}&has_integration=true
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+### List Walk-In Sources
+GET {{baseUrl}}/v1/booking-sources?tenant_id={{tenantId}}&source_type=walk_in
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+### Get Booking Source by ID
+# @name getBookingSourceById
+GET {{baseUrl}}/v1/booking-sources/{{sourceId}}?tenant_id={{tenantId}}
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+
+### -----------------------------------------------
+### MARKET SEGMENTS (Guest Segmentation)
+### -----------------------------------------------
+
+### List All Market Segments
+# @name listMarketSegments
+GET {{baseUrl}}/v1/market-segments?tenant_id={{tenantId}}&limit=100
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+### List Active Market Segments
+# @name listActiveMarketSegments
+GET {{baseUrl}}/v1/market-segments?tenant_id={{tenantId}}&is_active=true
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+### List Corporate Segments
+# @name listCorporateSegments
+GET {{baseUrl}}/v1/market-segments?tenant_id={{tenantId}}&segment_type=corporate
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+### List Leisure Segments
+GET {{baseUrl}}/v1/market-segments?tenant_id={{tenantId}}&segment_type=leisure
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+### List Group Segments
+GET {{baseUrl}}/v1/market-segments?tenant_id={{tenantId}}&segment_type=group
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+### List Government Segments
+GET {{baseUrl}}/v1/market-segments?tenant_id={{tenantId}}&segment_type=government
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+### List Wholesale Segments
+GET {{baseUrl}}/v1/market-segments?tenant_id={{tenantId}}&segment_type=wholesale
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+### List Child Segments of a Parent
+# @name listChildSegments
+GET {{baseUrl}}/v1/market-segments?tenant_id={{tenantId}}&parent_segment_id={{parentSegmentId}}
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+### Get Market Segment by ID
+# @name getMarketSegmentById
+GET {{baseUrl}}/v1/market-segments/{{segmentId}}?tenant_id={{tenantId}}
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+
+### -----------------------------------------------
+### CHANNEL MAPPINGS (OTA/GDS Entity Mappings)
+### -----------------------------------------------
+
+### List All Channel Mappings
+# @name listChannelMappings
+GET {{baseUrl}}/v1/channel-mappings?tenant_id={{tenantId}}&limit=100
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+### List Active Channel Mappings
+# @name listActiveChannelMappings
+GET {{baseUrl}}/v1/channel-mappings?tenant_id={{tenantId}}&is_active=true
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+### List Channel Mappings by Channel Code
+# @name listMappingsByChannel
+GET {{baseUrl}}/v1/channel-mappings?tenant_id={{tenantId}}&channel_code=BOOKING_COM
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+### List Channel Mappings for Expedia
+GET {{baseUrl}}/v1/channel-mappings?tenant_id={{tenantId}}&channel_code=EXPEDIA
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+### List Channel Mappings by Entity Type (Room)
+# @name listRoomMappings
+GET {{baseUrl}}/v1/channel-mappings?tenant_id={{tenantId}}&entity_type=room
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+### List Channel Mappings by Entity Type (Rate)
+GET {{baseUrl}}/v1/channel-mappings?tenant_id={{tenantId}}&entity_type=rate
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+### List Channel Mappings by Entity Type (Inventory)
+GET {{baseUrl}}/v1/channel-mappings?tenant_id={{tenantId}}&entity_type=inventory
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+### List Channel Mappings for Property
+GET {{baseUrl}}/v1/channel-mappings?tenant_id={{tenantId}}&property_id={{propertyId}}
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+### Get Channel Mapping by ID
+# @name getChannelMappingById
+GET {{baseUrl}}/v1/channel-mappings/{{channelMappingId}}?tenant_id={{tenantId}}
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+
+### -----------------------------------------------
+### COMPANIES (Corporate Accounts, Agencies)
+### -----------------------------------------------
+
+### List All Companies
+# @name listCompanies
+GET {{baseUrl}}/v1/companies?tenant_id={{tenantId}}&limit=100
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+### List Active Companies
+# @name listActiveCompanies
+GET {{baseUrl}}/v1/companies?tenant_id={{tenantId}}&is_active=true
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+### List Corporate Accounts
+# @name listCorporateAccounts
+GET {{baseUrl}}/v1/companies?tenant_id={{tenantId}}&company_type=corporate
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+### List Travel Agencies
+GET {{baseUrl}}/v1/companies?tenant_id={{tenantId}}&company_type=travel_agency
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+### List Tour Operators
+GET {{baseUrl}}/v1/companies?tenant_id={{tenantId}}&company_type=tour_operator
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+### List Companies with Good Credit
+# @name listCompaniesGoodCredit
+GET {{baseUrl}}/v1/companies?tenant_id={{tenantId}}&credit_status=good
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+### List Companies with Suspended Credit
+GET {{baseUrl}}/v1/companies?tenant_id={{tenantId}}&credit_status=suspended
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+### List Blacklisted Companies
+GET {{baseUrl}}/v1/companies?tenant_id={{tenantId}}&is_blacklisted=true
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+### Get Company by ID
+# @name getCompanyById
+GET {{baseUrl}}/v1/companies/{{companyId}}?tenant_id={{tenantId}}
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+
+### -----------------------------------------------
+### MEETING ROOMS (Conference/Event Spaces)
+### -----------------------------------------------
+
+### List All Meeting Rooms
+# @name listMeetingRooms
+GET {{baseUrl}}/v1/meeting-rooms?tenant_id={{tenantId}}&limit=100
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+### List Active Meeting Rooms
+# @name listActiveMeetingRooms
+GET {{baseUrl}}/v1/meeting-rooms?tenant_id={{tenantId}}&is_active=true
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+### List Meeting Rooms by Property
+GET {{baseUrl}}/v1/meeting-rooms?tenant_id={{tenantId}}&property_id={{propertyId}}
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+### List Conference Rooms
+# @name listConferenceRooms
+GET {{baseUrl}}/v1/meeting-rooms?tenant_id={{tenantId}}&room_type=CONFERENCE
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+### List Ballrooms
+GET {{baseUrl}}/v1/meeting-rooms?tenant_id={{tenantId}}&room_type=BALLROOM
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+### List Boardrooms
+GET {{baseUrl}}/v1/meeting-rooms?tenant_id={{tenantId}}&room_type=BOARDROOM
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+### List Event Halls
+GET {{baseUrl}}/v1/meeting-rooms?tenant_id={{tenantId}}&room_type=EVENT_HALL
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+### List Available Meeting Rooms
+GET {{baseUrl}}/v1/meeting-rooms?tenant_id={{tenantId}}&room_status=AVAILABLE
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+### List Meeting Rooms with Min Capacity
+# @name listRoomsWithCapacity
+GET {{baseUrl}}/v1/meeting-rooms?tenant_id={{tenantId}}&min_capacity=50
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+### Get Meeting Room by ID
+# @name getMeetingRoomById
+GET {{baseUrl}}/v1/meeting-rooms/{{meetingRoomId}}?tenant_id={{tenantId}}
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+
+### -----------------------------------------------
+### EVENT BOOKINGS (Meetings, Conferences, Banquets)
+### -----------------------------------------------
+
+### List All Event Bookings
+# @name listEventBookings
+GET {{baseUrl}}/v1/event-bookings?tenant_id={{tenantId}}&limit=100
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+### List Event Bookings by Property
+GET {{baseUrl}}/v1/event-bookings?tenant_id={{tenantId}}&property_id={{propertyId}}
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+### List Confirmed Event Bookings
+# @name listConfirmedEvents
+GET {{baseUrl}}/v1/event-bookings?tenant_id={{tenantId}}&booking_status=CONFIRMED
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+### List Tentative Event Bookings
+GET {{baseUrl}}/v1/event-bookings?tenant_id={{tenantId}}&booking_status=TENTATIVE
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+### List Wedding Events
+# @name listWeddingEvents
+GET {{baseUrl}}/v1/event-bookings?tenant_id={{tenantId}}&event_type=WEDDING
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+### List Conference Events
+GET {{baseUrl}}/v1/event-bookings?tenant_id={{tenantId}}&event_type=CONFERENCE
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+### List Business Events
+GET {{baseUrl}}/v1/event-bookings?tenant_id={{tenantId}}&event_type=MEETING
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+### List Banquet Events
+GET {{baseUrl}}/v1/event-bookings?tenant_id={{tenantId}}&event_type=BANQUET
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+### List Events by Date Range
+# @name listEventsByDateRange
+GET {{baseUrl}}/v1/event-bookings?tenant_id={{tenantId}}&event_date_from=2025-01-01&event_date_to=2025-12-31
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+### List Events in a Meeting Room
+GET {{baseUrl}}/v1/event-bookings?tenant_id={{tenantId}}&meeting_room_id={{meetingRoomId}}
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+### Get Event Booking by ID
+# @name getEventBookingById
+GET {{baseUrl}}/v1/event-bookings/{{eventBookingId}}?tenant_id={{tenantId}}
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+
+### -----------------------------------------------
+### WAITLIST (Room Availability Waitlist)
+### -----------------------------------------------
+
+### List All Waitlist Entries
+# @name listWaitlistEntries
+GET {{baseUrl}}/v1/waitlist?tenant_id={{tenantId}}&limit=100
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+### List Waitlist by Property
+GET {{baseUrl}}/v1/waitlist?tenant_id={{tenantId}}&property_id={{propertyId}}
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+### List Active Waitlist Entries
+# @name listActiveWaitlist
+GET {{baseUrl}}/v1/waitlist?tenant_id={{tenantId}}&waitlist_status=WAITING
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+### List Waitlist Entries Offered Rooms
+GET {{baseUrl}}/v1/waitlist?tenant_id={{tenantId}}&waitlist_status=OFFERED
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+### List Converted Waitlist Entries
+GET {{baseUrl}}/v1/waitlist?tenant_id={{tenantId}}&waitlist_status=CONVERTED
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+### List VIP Waitlist Entries
+# @name listVipWaitlist
+GET {{baseUrl}}/v1/waitlist?tenant_id={{tenantId}}&is_vip=true
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+### List Waitlist by Arrival Date Range
+# @name listWaitlistByArrival
+GET {{baseUrl}}/v1/waitlist?tenant_id={{tenantId}}&arrival_date_from=2025-01-01&arrival_date_to=2025-03-31
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+### Get Waitlist Entry by ID
+# @name getWaitlistEntryById
+GET {{baseUrl}}/v1/waitlist/{{waitlistEntryId}}?tenant_id={{tenantId}}
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+
+### -----------------------------------------------
+### VARIABLES (update as needed)
+### -----------------------------------------------
+# @allotmentId = 00000000-0000-0000-0000-000000000000
+# @sourceId = 00000000-0000-0000-0000-000000000000
+# @segmentId = 00000000-0000-0000-0000-000000000000
+# @parentSegmentId = 00000000-0000-0000-0000-000000000000
+# @channelMappingId = 00000000-0000-0000-0000-000000000000
+# @companyId = 00000000-0000-0000-0000-000000000000
+# @meetingRoomId = 00000000-0000-0000-0000-000000000000
+# @eventBookingId = 00000000-0000-0000-0000-000000000000
+# @waitlistEntryId = 00000000-0000-0000-0000-000000000000

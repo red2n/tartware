@@ -2,9 +2,22 @@
 # GUESTS SERVICE - Guest Profiles & Management
 # Routes via API Gateway (localhost:8080) -> guests-service (port 3300)
 #
-# Content: Guest Registration, Profile Updates, Preferences, VIP/Blacklist
+# Content: Guest Profile Queries (READ OPERATIONS)
+#
+# WRITE OPERATIONS: All guest write operations go through the
+# Command Center. See command-center.http for:
+#   - guest.register
+#   - guest.merge
+#   - guest.update_profile
+#   - guest.update_contact
+#   - guest.set_loyalty
+#   - guest.set_vip
+#   - guest.set_blacklist
+#   - guest.gdpr.erase
+#   - guest.preference.update
 #
 # Related files:
+# - command-center.http - Write operations (commands)
 # - reservations.http - Guest reservations
 # - billing.http - Guest billing
 ###############################################################################
@@ -12,6 +25,7 @@
 # --- VARIABLES ---
 @baseUrl = http://localhost:8080
 @tenantId = 11111111-1111-1111-1111-111111111111
+@propertyId = 22222222-2222-2222-2222-222222222222
 
 ###############################################################################
 # 1. LOGIN
@@ -30,7 +44,7 @@ Content-Type: application/json
 @authToken = {{login.response.body.access_token}}
 
 ###############################################################################
-# 2. GUESTS - READ
+# 2. GUESTS - LIST WITH FILTERS
 ###############################################################################
 
 # List all guests for tenant
@@ -38,8 +52,18 @@ GET {{baseUrl}}/v1/guests?tenant_id={{tenantId}}&limit=50
 Authorization: Bearer {{authToken}}
 
 ###
-# Search guests by name
-GET {{baseUrl}}/v1/guests?tenant_id={{tenantId}}&search=John
+# List guests for specific property
+GET {{baseUrl}}/v1/guests?tenant_id={{tenantId}}&property_id={{propertyId}}&limit=50
+Authorization: Bearer {{authToken}}
+
+###
+# Filter by email (partial match)
+GET {{baseUrl}}/v1/guests?tenant_id={{tenantId}}&email=john
+Authorization: Bearer {{authToken}}
+
+###
+# Filter by phone
+GET {{baseUrl}}/v1/guests?tenant_id={{tenantId}}&phone=555-0101
 Authorization: Bearer {{authToken}}
 
 ###
@@ -48,230 +72,148 @@ GET {{baseUrl}}/v1/guests?tenant_id={{tenantId}}&vip_status=true
 Authorization: Bearer {{authToken}}
 
 ###
-# Get guest by ID
-GET {{baseUrl}}/v1/guests/{{guestId}}?tenant_id={{tenantId}}
+# Filter by loyalty tier
+GET {{baseUrl}}/v1/guests?tenant_id={{tenantId}}&loyalty_tier=GOLD
 Authorization: Bearer {{authToken}}
-
-###############################################################################
-# 3. GUESTS - CREATE (via Command Center)
-###############################################################################
-
-# @name registerGuest
-# Register a new guest
-POST {{baseUrl}}/v1/guests
-Content-Type: application/json
-Authorization: Bearer {{authToken}}
-
-{
-  "tenant_id": "{{tenantId}}",
-  "first_name": "John",
-  "last_name": "Smith",
-  "email": "john.smith@example.com",
-  "phone": "+1-555-0101",
-  "address": {
-    "line1": "123 Main Street",
-    "line2": "Apt 4B",
-    "city": "New York",
-    "state": "NY",
-    "postal_code": "10001",
-    "country": "US"
-  },
-  "date_of_birth": "1985-06-15",
-  "nationality": "US",
-  "id_type": "PASSPORT",
-  "id_number": "AB1234567",
-  "id_expiry": "2030-06-15",
-  "preferred_language": "en",
-  "preferences": {
-    "room_type": "high_floor",
-    "bed_type": "king",
-    "pillow_type": "firm",
-    "newspaper": "WSJ",
-    "dietary": []
-  },
-  "marketing_consent": true,
-  "vip_status": false,
-  "metadata": {}
-}
-
-### Extract created guest ID
-@guestId = {{registerGuest.response.body.guest_id}}
 
 ###
-# Register business guest
-POST {{baseUrl}}/v1/guests
-Content-Type: application/json
+# Filter blacklisted guests
+GET {{baseUrl}}/v1/guests?tenant_id={{tenantId}}&is_blacklisted=true
 Authorization: Bearer {{authToken}}
-
-{
-  "tenant_id": "{{tenantId}}",
-  "first_name": "Sarah",
-  "last_name": "Johnson",
-  "email": "sarah.johnson@acme-corp.com",
-  "phone": "+1-555-0202",
-  "company_name": "ACME Corporation",
-  "company_address": {
-    "line1": "456 Business Ave",
-    "city": "Chicago",
-    "state": "IL",
-    "postal_code": "60601",
-    "country": "US"
-  },
-  "date_of_birth": "1990-03-22",
-  "nationality": "US",
-  "id_type": "DRIVERS_LICENSE",
-  "id_number": "IL-DL-789456",
-  "corporate_code": "ACME2026",
-  "preferred_language": "en",
-  "preferences": {
-    "room_type": "quiet",
-    "early_checkin": true,
-    "late_checkout": true
-  },
-  "marketing_consent": false,
-  "vip_status": false,
-  "metadata": {
-    "corporate_account": true,
-    "travel_manager": "admin@acme-corp.com"
-  }
-}
-
-###############################################################################
-# 4. GUEST PROFILE UPDATES (via Command Center)
-###############################################################################
-
-# Update guest profile
-POST {{baseUrl}}/v1/tenants/{{tenantId}}/guests/{{guestId}}/profile
-Content-Type: application/json
-Authorization: Bearer {{authToken}}
-
-{
-  "first_name": "Jonathan",
-  "last_name": "Smith",
-  "date_of_birth": "1985-06-15",
-  "nationality": "US"
-}
 
 ###
-# Update guest contact information
-POST {{baseUrl}}/v1/tenants/{{tenantId}}/guests/{{guestId}}/contact
-Content-Type: application/json
+# Combine multiple filters - VIP guests with PLATINUM loyalty
+GET {{baseUrl}}/v1/guests?tenant_id={{tenantId}}&vip_status=true&loyalty_tier=PLATINUM
 Authorization: Bearer {{authToken}}
 
-{
-  "email": "jonathan.smith@newemail.com",
-  "phone": "+1-555-0199",
-  "address": {
-    "line1": "789 New Address",
-    "city": "Los Angeles",
-    "state": "CA",
-    "postal_code": "90001",
-    "country": "US"
-  }
-}
+###############################################################################
+# 3. GUEST PREFERENCES - LIST BY GUEST
+###############################################################################
+
+@guestId = 33333333-3333-3333-3333-333333333333
 
 ###
-# Update guest preferences
-POST {{baseUrl}}/v1/tenants/{{tenantId}}/guests/{{guestId}}/preferences
-Content-Type: application/json
+# List all preferences for a guest
+GET {{baseUrl}}/v1/guests/{{guestId}}/preferences?tenant_id={{tenantId}}
 Authorization: Bearer {{authToken}}
-
-{
-  "preferences": {
-    "room_type": "high_floor",
-    "bed_type": "king",
-    "pillow_type": "soft",
-    "minibar_stocked": true,
-    "newspaper": "NYT",
-    "wake_up_call": "07:00",
-    "dietary": ["vegetarian"],
-    "allergies": ["peanuts"],
-    "smoking": false
-  }
-}
-
-###############################################################################
-# 5. VIP & LOYALTY MANAGEMENT
-###############################################################################
-
-# Set VIP status
-POST {{baseUrl}}/v1/tenants/{{tenantId}}/guests/{{guestId}}/vip
-Content-Type: application/json
-Authorization: Bearer {{authToken}}
-
-{
-  "vip_status": true,
-  "vip_level": "GOLD",
-  "reason": "Frequent guest - 10+ stays"
-}
 
 ###
-# Set loyalty information
-POST {{baseUrl}}/v1/tenants/{{tenantId}}/guests/{{guestId}}/loyalty
-Content-Type: application/json
+# Filter by category - ROOM preferences
+GET {{baseUrl}}/v1/guests/{{guestId}}/preferences?tenant_id={{tenantId}}&category=room
 Authorization: Bearer {{authToken}}
-
-{
-  "loyalty_program": "TARTWARE_REWARDS",
-  "loyalty_number": "TR-2026-001234",
-  "loyalty_tier": "GOLD",
-  "points_balance": 15000
-}
-
-###############################################################################
-# 6. BLACKLIST MANAGEMENT
-###############################################################################
-
-# Add guest to blacklist
-POST {{baseUrl}}/v1/tenants/{{tenantId}}/guests/{{guestId}}/blacklist
-Content-Type: application/json
-Authorization: Bearer {{authToken}}
-
-{
-  "blacklist_status": true,
-  "reason": "Repeated policy violations",
-  "notes": "Property damage incidents on 2025-11-15 and 2025-12-20"
-}
 
 ###
-# Remove from blacklist
-POST {{baseUrl}}/v1/tenants/{{tenantId}}/guests/{{guestId}}/blacklist
-Content-Type: application/json
+# Filter by category - SERVICE preferences
+GET {{baseUrl}}/v1/guests/{{guestId}}/preferences?tenant_id={{tenantId}}&category=service
 Authorization: Bearer {{authToken}}
-
-{
-  "blacklist_status": false,
-  "reason": "Reinstated after management review",
-  "notes": "Agreed to updated terms"
-}
-
-###############################################################################
-# 7. GUEST MERGE & GDPR
-###############################################################################
-
-# Merge duplicate guest profiles
-POST {{baseUrl}}/v1/guests/merge
-Content-Type: application/json
-Authorization: Bearer {{authToken}}
-
-{
-  "tenant_id": "{{tenantId}}",
-  "primary_guest_id": "{{guestId}}",
-  "duplicate_guest_id": "{{duplicateGuestId}}",
-  "merge_reason": "Same person, duplicate registration"
-}
 
 ###
-# GDPR - Erase guest data
-POST {{baseUrl}}/v1/tenants/{{tenantId}}/guests/{{guestId}}/gdpr-erase
-Content-Type: application/json
+# Filter by category - DIETARY preferences
+GET {{baseUrl}}/v1/guests/{{guestId}}/preferences?tenant_id={{tenantId}}&category=dietary
 Authorization: Bearer {{authToken}}
 
-{
-  "reason": "Customer data erasure request",
-  "ticket_id": "GDPR-2026-001",
-  "verified_identity": true
-}
+###
+# Filter by category - ACCESSIBILITY preferences
+GET {{baseUrl}}/v1/guests/{{guestId}}/preferences?tenant_id={{tenantId}}&category=accessibility
+Authorization: Bearer {{authToken}}
+
+###
+# Filter by category - COMMUNICATION preferences
+GET {{baseUrl}}/v1/guests/{{guestId}}/preferences?tenant_id={{tenantId}}&category=communication
+Authorization: Bearer {{authToken}}
+
+###
+# Active preferences only
+GET {{baseUrl}}/v1/guests/{{guestId}}/preferences?tenant_id={{tenantId}}&active_only=true
+Authorization: Bearer {{authToken}}
+
+###############################################################################
+# 4. GUEST DOCUMENTS - LIST BY GUEST
+###############################################################################
+
+###
+# List all documents for a guest
+GET {{baseUrl}}/v1/guests/{{guestId}}/documents?tenant_id={{tenantId}}
+Authorization: Bearer {{authToken}}
+
+###
+# Filter by document type - PASSPORT
+GET {{baseUrl}}/v1/guests/{{guestId}}/documents?tenant_id={{tenantId}}&document_type=passport
+Authorization: Bearer {{authToken}}
+
+###
+# Filter by document type - NATIONAL_ID
+GET {{baseUrl}}/v1/guests/{{guestId}}/documents?tenant_id={{tenantId}}&document_type=national_id
+Authorization: Bearer {{authToken}}
+
+###
+# Filter by document type - DRIVERS_LICENSE
+GET {{baseUrl}}/v1/guests/{{guestId}}/documents?tenant_id={{tenantId}}&document_type=drivers_license
+Authorization: Bearer {{authToken}}
+
+###
+# Filter by verification status - VERIFIED
+GET {{baseUrl}}/v1/guests/{{guestId}}/documents?tenant_id={{tenantId}}&verification_status=verified
+Authorization: Bearer {{authToken}}
+
+###
+# Filter by verification status - PENDING
+GET {{baseUrl}}/v1/guests/{{guestId}}/documents?tenant_id={{tenantId}}&verification_status=pending
+Authorization: Bearer {{authToken}}
+
+###
+# Filter by verification status - EXPIRED
+GET {{baseUrl}}/v1/guests/{{guestId}}/documents?tenant_id={{tenantId}}&verification_status=expired
+Authorization: Bearer {{authToken}}
+
+###############################################################################
+# 5. GUEST COMMUNICATIONS - LIST BY GUEST
+###############################################################################
+
+###
+# List all communications for a guest
+GET {{baseUrl}}/v1/guests/{{guestId}}/communications?tenant_id={{tenantId}}
+Authorization: Bearer {{authToken}}
+
+###
+# Filter by communication type - EMAIL
+GET {{baseUrl}}/v1/guests/{{guestId}}/communications?tenant_id={{tenantId}}&communication_type=email
+Authorization: Bearer {{authToken}}
+
+###
+# Filter by communication type - SMS
+GET {{baseUrl}}/v1/guests/{{guestId}}/communications?tenant_id={{tenantId}}&communication_type=sms
+Authorization: Bearer {{authToken}}
+
+###
+# Filter by communication type - PHONE
+GET {{baseUrl}}/v1/guests/{{guestId}}/communications?tenant_id={{tenantId}}&communication_type=phone
+Authorization: Bearer {{authToken}}
+
+###
+# Filter by direction - OUTBOUND (sent to guest)
+GET {{baseUrl}}/v1/guests/{{guestId}}/communications?tenant_id={{tenantId}}&direction=outbound
+Authorization: Bearer {{authToken}}
+
+###
+# Filter by direction - INBOUND (from guest)
+GET {{baseUrl}}/v1/guests/{{guestId}}/communications?tenant_id={{tenantId}}&direction=inbound
+Authorization: Bearer {{authToken}}
+
+###
+# Filter by status - DELIVERED
+GET {{baseUrl}}/v1/guests/{{guestId}}/communications?tenant_id={{tenantId}}&status=delivered
+Authorization: Bearer {{authToken}}
+
+###
+# Filter by status - OPENED
+GET {{baseUrl}}/v1/guests/{{guestId}}/communications?tenant_id={{tenantId}}&status=opened
+Authorization: Bearer {{authToken}}
+
+###
+# Filter by status - FAILED
+GET {{baseUrl}}/v1/guests/{{guestId}}/communications?tenant_id={{tenantId}}&status=failed
+Authorization: Bearer {{authToken}}
 
 ###############################################################################
 # REFERENCE
@@ -286,13 +228,43 @@ Authorization: Bearer {{authToken}}
 # LOYALTY TIERS:
 #   BRONZE, SILVER, GOLD, PLATINUM, DIAMOND
 #
-# PREFERENCES:
-#   room_type: high_floor, low_floor, quiet, accessible, connecting
-#   bed_type: king, queen, twin, double
-#   pillow_type: soft, medium, firm, hypoallergenic
-#   dietary: vegetarian, vegan, gluten_free, halal, kosher
+# PREFERENCE CATEGORIES:
+#   ROOM, SERVICE, DIETARY, ACCESSIBILITY, COMMUNICATION, BILLING,
+#   AMENITY, EXPERIENCE, OTHER
+#
+# DOCUMENT TYPES:
+#   passport, national_id, drivers_license, visa, work_permit,
+#   registration_card, invoice, receipt, agreement, contract,
+#   photo, signature, credit_card, insurance, other
+#
+# VERIFICATION STATUSES:
+#   pending, verified, rejected, expired, requires_update
+#
+# COMMUNICATION TYPES:
+#   EMAIL, SMS, PHONE, WHATSAPP, IN_PERSON, CHAT
+#
+# COMMUNICATION DIRECTIONS:
+#   INBOUND, OUTBOUND
+#
+# COMMUNICATION STATUSES:
+#   DRAFT, QUEUED, SENT, DELIVERED, FAILED, BOUNCED, OPENED, CLICKED
+#
+# WRITE OPERATIONS:
+#   All guest write operations go through the Command Center.
+#   See command-center.http for full examples of:
+#     POST /v1/commands/guest.register/execute
+#     POST /v1/commands/guest.merge/execute
+#     POST /v1/commands/guest.update_profile/execute
+#     POST /v1/commands/guest.update_contact/execute
+#     POST /v1/commands/guest.set_loyalty/execute
+#     POST /v1/commands/guest.set_vip/execute
+#     POST /v1/commands/guest.set_blacklist/execute
+#     POST /v1/commands/guest.gdpr.erase/execute
+#     POST /v1/commands/guest.preference.update/execute
 #
 # SAMPLE IDs:
-#   Tenant: 11111111-1111-1111-1111-111111111111
+#   Tenant:   11111111-1111-1111-1111-111111111111
+#   Property: 22222222-2222-2222-2222-222222222222
+#   Guest:    33333333-3333-3333-3333-333333333333
 #
 ###############################################################################

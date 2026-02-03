@@ -11,6 +11,8 @@ export * from "./analytics.js";
 export * from "./availability-guard.js";
 export * from "./billing.js";
 export * from "./command-center.js";
+export * from "./events.js";
+export * from "./guests.js";
 export * from "./housekeeping.js";
 export * from "./reservations.js";
 export * from "./rooms.js";
