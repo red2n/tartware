@@ -235,7 +235,8 @@ const mapMaintenanceRequestRow = (
     work_completed_at: toIsoString(row.work_completed_at),
     actual_duration_minutes: row.actual_duration_minutes,
     work_performed: row.work_performed,
-    total_cost: toNumberOrFallback(row.total_cost, null),
+    total_cost:
+      row.total_cost != null ? toNumberOrFallback(row.total_cost, 0) : null,
     currency_code: row.currency_code ?? "USD",
     room_out_of_service: Boolean(row.room_out_of_service),
     oos_from: toIsoString(row.oos_from),
@@ -299,11 +300,12 @@ export const getMaintenanceRequestById = async (options: {
     [options.requestId, options.tenantId],
   );
 
-  if (rows.length === 0) {
+  const [row] = rows;
+  if (!row) {
     return null;
   }
 
-  return mapMaintenanceRequestRow(rows[0]);
+  return mapMaintenanceRequestRow(row);
 };
 
 // =====================================================
@@ -383,7 +385,10 @@ const mapIncidentReportRow = (
     injury_severity: row.injury_severity,
     medical_attention_required: Boolean(row.medical_attention_required),
     property_damage: Boolean(row.property_damage),
-    estimated_damage_cost: toNumberOrFallback(row.estimated_damage_cost, null),
+    estimated_damage_cost:
+      row.estimated_damage_cost != null
+        ? toNumberOrFallback(row.estimated_damage_cost, 0)
+        : null,
     incident_status: row.incident_status?.toLowerCase() ?? "reported",
     incident_status_display: formatDisplayLabel(row.incident_status),
     investigation_required: Boolean(row.investigation_required),
@@ -449,9 +454,10 @@ export const getIncidentReportById = async (options: {
     options.tenantId,
   ]);
 
-  if (rows.length === 0) {
+  const [row] = rows;
+  if (!row) {
     return null;
   }
 
-  return mapIncidentReportRow(rows[0]);
+  return mapIncidentReportRow(row);
 };

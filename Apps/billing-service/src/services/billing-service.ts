@@ -284,11 +284,12 @@ export const getInvoiceById = async (
     tenantId,
   ]);
 
-  if (rows.length === 0) {
+  const [row] = rows;
+  if (!row) {
     return null;
   }
 
-  return mapRowToInvoice(rows[0]);
+  return mapRowToInvoice(row);
 };
 
 // ============================================================================
@@ -402,11 +403,12 @@ export const getFolioById = async (
 ): Promise<FolioListItem | null> => {
   const { rows } = await query<FolioRow>(FOLIO_BY_ID_SQL, [folioId, tenantId]);
 
-  if (rows.length === 0) {
+  const [row] = rows;
+  if (!row) {
     return null;
   }
 
-  return mapRowToFolio(rows[0]);
+  return mapRowToFolio(row);
 };
 
 // ============================================================================
@@ -607,7 +609,7 @@ const mapRowToTaxConfiguration = (
     tax_rate: toNumberOrFallback(row.tax_rate, 0),
     is_percentage: Boolean(row.is_percentage),
     fixed_amount: row.fixed_amount
-      ? toNumberOrFallback(row.fixed_amount, null)
+      ? toNumberOrFallback(row.fixed_amount, 0)
       : null,
     effective_from: (toIsoString(row.effective_from) ?? "").split("T")[0],
     effective_to: row.effective_to
