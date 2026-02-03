@@ -1256,6 +1256,201 @@ export const buildServer = () => {
 			proxyRooms,
 		);
 
+		// Booking Configuration routes - proxy to core service
+		const BOOKING_CONFIG_TAG = "Booking Configuration";
+
+		app.get(
+			"/v1/allotments",
+			{
+				schema: buildRouteSchema({
+					tag: BOOKING_CONFIG_TAG,
+					summary: "List allotments (room blocks for groups/events).",
+					response: { 200: jsonObjectSchema },
+				}),
+			},
+			proxyCore,
+		);
+
+		app.all(
+			"/v1/allotments/*",
+			{
+				schema: buildRouteSchema({
+					tag: BOOKING_CONFIG_TAG,
+					summary: "Proxy allotment operations to core service.",
+					response: { 200: jsonObjectSchema },
+				}),
+			},
+			proxyCore,
+		);
+
+		app.get(
+			"/v1/booking-sources",
+			{
+				schema: buildRouteSchema({
+					tag: BOOKING_CONFIG_TAG,
+					summary: "List booking sources (OTAs, GDS, direct channels).",
+					response: { 200: jsonObjectSchema },
+				}),
+			},
+			proxyCore,
+		);
+
+		app.all(
+			"/v1/booking-sources/*",
+			{
+				schema: buildRouteSchema({
+					tag: BOOKING_CONFIG_TAG,
+					summary: "Proxy booking source operations to core service.",
+					response: { 200: jsonObjectSchema },
+				}),
+			},
+			proxyCore,
+		);
+
+		app.get(
+			"/v1/market-segments",
+			{
+				schema: buildRouteSchema({
+					tag: BOOKING_CONFIG_TAG,
+					summary: "List market segments for guest categorization.",
+					response: { 200: jsonObjectSchema },
+				}),
+			},
+			proxyCore,
+		);
+
+		app.all(
+			"/v1/market-segments/*",
+			{
+				schema: buildRouteSchema({
+					tag: BOOKING_CONFIG_TAG,
+					summary: "Proxy market segment operations to core service.",
+					response: { 200: jsonObjectSchema },
+				}),
+			},
+			proxyCore,
+		);
+
+		app.get(
+			"/v1/channel-mappings",
+			{
+				schema: buildRouteSchema({
+					tag: BOOKING_CONFIG_TAG,
+					summary: "List OTA/GDS channel mappings.",
+					response: { 200: jsonObjectSchema },
+				}),
+			},
+			proxyCore,
+		);
+
+		app.all(
+			"/v1/channel-mappings/*",
+			{
+				schema: buildRouteSchema({
+					tag: BOOKING_CONFIG_TAG,
+					summary: "Proxy channel mapping operations to core service.",
+					response: { 200: jsonObjectSchema },
+				}),
+			},
+			proxyCore,
+		);
+
+		app.get(
+			"/v1/companies",
+			{
+				schema: buildRouteSchema({
+					tag: BOOKING_CONFIG_TAG,
+					summary: "List corporate accounts and business partners.",
+					response: { 200: jsonObjectSchema },
+				}),
+			},
+			proxyCore,
+		);
+
+		app.all(
+			"/v1/companies/*",
+			{
+				schema: buildRouteSchema({
+					tag: BOOKING_CONFIG_TAG,
+					summary: "Proxy company operations to core service.",
+					response: { 200: jsonObjectSchema },
+				}),
+			},
+			proxyCore,
+		);
+
+		app.get(
+			"/v1/meeting-rooms",
+			{
+				schema: buildRouteSchema({
+					tag: BOOKING_CONFIG_TAG,
+					summary: "List conference rooms and event spaces.",
+					response: { 200: jsonObjectSchema },
+				}),
+			},
+			proxyCore,
+		);
+
+		app.all(
+			"/v1/meeting-rooms/*",
+			{
+				schema: buildRouteSchema({
+					tag: BOOKING_CONFIG_TAG,
+					summary: "Proxy meeting room operations to core service.",
+					response: { 200: jsonObjectSchema },
+				}),
+			},
+			proxyCore,
+		);
+
+		app.get(
+			"/v1/event-bookings",
+			{
+				schema: buildRouteSchema({
+					tag: BOOKING_CONFIG_TAG,
+					summary: "List event bookings (meetings, conferences, banquets).",
+					response: { 200: jsonObjectSchema },
+				}),
+			},
+			proxyCore,
+		);
+
+		app.all(
+			"/v1/event-bookings/*",
+			{
+				schema: buildRouteSchema({
+					tag: BOOKING_CONFIG_TAG,
+					summary: "Proxy event booking operations to core service.",
+					response: { 200: jsonObjectSchema },
+				}),
+			},
+			proxyCore,
+		);
+
+		app.get(
+			"/v1/waitlist",
+			{
+				schema: buildRouteSchema({
+					tag: BOOKING_CONFIG_TAG,
+					summary: "List waitlist entries for room availability.",
+					response: { 200: jsonObjectSchema },
+				}),
+			},
+			proxyCore,
+		);
+
+		app.all(
+			"/v1/waitlist/*",
+			{
+				schema: buildRouteSchema({
+					tag: BOOKING_CONFIG_TAG,
+					summary: "Proxy waitlist operations to core service.",
+					response: { 200: jsonObjectSchema },
+				}),
+			},
+			proxyCore,
+		);
+
 		app.post(
 			"/v1/tenants/:tenantId/rooms/:roomId/block",
 			{

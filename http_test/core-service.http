@@ -222,7 +222,92 @@ Content-Type: application/json
 }
 
 ###############################################################################
-# 7. SYSTEM ADMIN - IMPERSONATION
+# 7. SYSTEM ADMIN - TENANTS
+###############################################################################
+# NOTE: These endpoints require system admin role (SYSTEM_ADMIN or higher)
+
+# List all tenants (system admin)
+GET {{baseUrl}}/v1/system/tenants?limit=50
+Authorization: Bearer {{authToken}}
+
+###
+# Create tenant (system admin)
+POST {{baseUrl}}/v1/system/tenants
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+
+{
+  "name": "New Hotel Group",
+  "slug": "new-hotel-group",
+  "type": "INDEPENDENT",
+  "email": "admin@newhotelgroup.com",
+  "phone": "+1-555-0199"
+}
+
+###
+# Bootstrap tenant with property and owner (system admin)
+POST {{baseUrl}}/v1/system/tenants/bootstrap
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+
+{
+  "tenant": {
+    "name": "Skyline Hotels",
+    "slug": "skyline-hotels",
+    "type": "INDEPENDENT",
+    "email": "admin@skylinehotels.com"
+  },
+  "property": {
+    "property_name": "Skyline Downtown",
+    "property_code": "SKY-DT",
+    "property_type": "hotel",
+    "star_rating": 4,
+    "total_rooms": 150,
+    "email": "downtown@skylinehotels.com",
+    "timezone": "America/New_York",
+    "currency": "USD"
+  },
+  "owner": {
+    "username": "skyline.owner",
+    "email": "owner@skylinehotels.com",
+    "password": "SkylinePass123!",
+    "first_name": "Sarah",
+    "last_name": "Johnson"
+  }
+}
+
+###############################################################################
+# 8. SYSTEM ADMIN - USERS
+###############################################################################
+# NOTE: These endpoints require system admin role (SYSTEM_ADMIN or higher)
+
+# List all users (system admin)
+GET {{baseUrl}}/v1/system/users?limit=100
+Authorization: Bearer {{authToken}}
+
+###
+# List users for a specific tenant (system admin)
+GET {{baseUrl}}/v1/system/users?tenant_id={{tenantId}}&limit=50
+Authorization: Bearer {{authToken}}
+
+###
+# Create user (system admin)
+POST {{baseUrl}}/v1/system/users
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+
+{
+  "username": "sys.created.user",
+  "email": "sysuser@example.com",
+  "password": "SysUserPass123!",
+  "first_name": "System",
+  "last_name": "Created",
+  "tenant_id": "{{tenantId}}",
+  "role": "ADMIN"
+}
+
+###############################################################################
+# 9. SYSTEM ADMIN - IMPERSONATION
 ###############################################################################
 
 # Start tenant impersonation session

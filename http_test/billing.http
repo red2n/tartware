@@ -2,9 +2,20 @@
 # BILLING SERVICE - Payments & Invoices
 # Routes via API Gateway (localhost:8080) -> billing-service (port 3600)
 #
-# Content: Payments, Invoices, Charges, Folios
+# Content: Payment Listing and Filtering (READ OPERATIONS)
+#
+# WRITE OPERATIONS: All billing write operations go through the
+# Command Center. See command-center.http for:
+#   - billing.payment.capture
+#   - billing.payment.refund
+#   - billing.charge.post
+#   - billing.invoice.create
+#   - billing.invoice.void
+#   - billing.adjustment.apply
+#   - billing.folio.close
 #
 # Related files:
+# - command-center.http - Write operations (commands)
 # - reservations.http - Reservation billing
 # - guests.http - Guest accounts
 ###############################################################################
@@ -13,6 +24,10 @@
 @baseUrl = http://localhost:8080
 @tenantId = 11111111-1111-1111-1111-111111111111
 @propertyId = 22222222-2222-2222-2222-222222222222
+@guestId = 33333333-3333-3333-3333-333333333333
+@reservationId = 44444444-4444-4444-4444-444444444444
+@invoiceId = 55555555-5555-5555-5555-555555555555
+@folioId = 66666666-6666-6666-6666-666666666666
 
 ###############################################################################
 # 1. LOGIN
@@ -31,222 +46,355 @@ Content-Type: application/json
 @authToken = {{login.response.body.access_token}}
 
 ###############################################################################
-# 2. PAYMENTS - READ
+# 2. PAYMENTS - LIST WITH FILTERS
 ###############################################################################
 
-# List all payments
+# List all payments for tenant
 GET {{baseUrl}}/v1/billing/payments?tenant_id={{tenantId}}&limit=50
 Authorization: Bearer {{authToken}}
 
 ###
-# Filter by status
-GET {{baseUrl}}/v1/billing/payments?tenant_id={{tenantId}}&status=COMPLETED
+# List payments for specific property
+GET {{baseUrl}}/v1/billing/payments?tenant_id={{tenantId}}&property_id={{propertyId}}&limit=50
+Authorization: Bearer {{authToken}}
+
+###
+# Filter by payment status - COMPLETED
+GET {{baseUrl}}/v1/billing/payments?tenant_id={{tenantId}}&status=completed
+Authorization: Bearer {{authToken}}
+
+###
+# Filter by payment status - PENDING
+GET {{baseUrl}}/v1/billing/payments?tenant_id={{tenantId}}&status=pending
+Authorization: Bearer {{authToken}}
+
+###
+# Filter by payment status - FAILED
+GET {{baseUrl}}/v1/billing/payments?tenant_id={{tenantId}}&status=failed
+Authorization: Bearer {{authToken}}
+
+###
+# Filter by payment status - REFUNDED
+GET {{baseUrl}}/v1/billing/payments?tenant_id={{tenantId}}&status=refunded
+Authorization: Bearer {{authToken}}
+
+###
+# Filter by transaction type - PAYMENT
+GET {{baseUrl}}/v1/billing/payments?tenant_id={{tenantId}}&transaction_type=payment
+Authorization: Bearer {{authToken}}
+
+###
+# Filter by transaction type - REFUND
+GET {{baseUrl}}/v1/billing/payments?tenant_id={{tenantId}}&transaction_type=refund
+Authorization: Bearer {{authToken}}
+
+###
+# Filter by transaction type - DEPOSIT
+GET {{baseUrl}}/v1/billing/payments?tenant_id={{tenantId}}&transaction_type=deposit
+Authorization: Bearer {{authToken}}
+
+###
+# Filter by payment method - CREDIT_CARD
+GET {{baseUrl}}/v1/billing/payments?tenant_id={{tenantId}}&payment_method=credit_card
+Authorization: Bearer {{authToken}}
+
+###
+# Filter by payment method - CASH
+GET {{baseUrl}}/v1/billing/payments?tenant_id={{tenantId}}&payment_method=cash
+Authorization: Bearer {{authToken}}
+
+###
+# Filter by payment method - BANK_TRANSFER
+GET {{baseUrl}}/v1/billing/payments?tenant_id={{tenantId}}&payment_method=bank_transfer
+Authorization: Bearer {{authToken}}
+
+###
+# Combine multiple filters - completed credit card payments
+GET {{baseUrl}}/v1/billing/payments?tenant_id={{tenantId}}&status=completed&payment_method=credit_card
+Authorization: Bearer {{authToken}}
+
+###
+# Combine property, status, and transaction type filters
+GET {{baseUrl}}/v1/billing/payments?tenant_id={{tenantId}}&property_id={{propertyId}}&status=completed&transaction_type=payment
+Authorization: Bearer {{authToken}}
+
+###
+# Get larger batch of payments
+GET {{baseUrl}}/v1/billing/payments?tenant_id={{tenantId}}&limit=200
+Authorization: Bearer {{authToken}}
+
+###############################################################################
+# 3. INVOICES - LIST WITH FILTERS
+###############################################################################
+
+# List all invoices for tenant
+GET {{baseUrl}}/v1/billing/invoices?tenant_id={{tenantId}}&limit=50
+Authorization: Bearer {{authToken}}
+
+###
+# List invoices for specific property
+GET {{baseUrl}}/v1/billing/invoices?tenant_id={{tenantId}}&property_id={{propertyId}}
+Authorization: Bearer {{authToken}}
+
+###
+# Filter by invoice status - DRAFT
+GET {{baseUrl}}/v1/billing/invoices?tenant_id={{tenantId}}&status=draft
+Authorization: Bearer {{authToken}}
+
+###
+# Filter by invoice status - ISSUED
+GET {{baseUrl}}/v1/billing/invoices?tenant_id={{tenantId}}&status=issued
+Authorization: Bearer {{authToken}}
+
+###
+# Filter by invoice status - PAID
+GET {{baseUrl}}/v1/billing/invoices?tenant_id={{tenantId}}&status=paid
+Authorization: Bearer {{authToken}}
+
+###
+# Filter by invoice status - OVERDUE
+GET {{baseUrl}}/v1/billing/invoices?tenant_id={{tenantId}}&status=overdue
 Authorization: Bearer {{authToken}}
 
 ###
 # Filter by reservation
-GET {{baseUrl}}/v1/billing/payments?tenant_id={{tenantId}}&reservation_id={{reservationId}}
+GET {{baseUrl}}/v1/billing/invoices?tenant_id={{tenantId}}&reservation_id={{reservationId}}
 Authorization: Bearer {{authToken}}
-
-###############################################################################
-# 3. PAYMENT CAPTURE (via Command Center)
-###############################################################################
-
-# Capture a payment
-POST {{baseUrl}}/v1/tenants/{{tenantId}}/billing/payments/capture
-Content-Type: application/json
-Authorization: Bearer {{authToken}}
-
-{
-  "property_id": "{{propertyId}}",
-  "reservation_id": "{{reservationId}}",
-  "amount": 627.00,
-  "currency": "USD",
-  "payment_method": "CREDIT_CARD",
-  "card_details": {
-    "last_four": "4242",
-    "brand": "VISA",
-    "exp_month": 12,
-    "exp_year": 2027
-  },
-  "description": "Room charges - 3 nights",
-  "metadata": {
-    "invoice_number": "INV-2026-001"
-  }
-}
 
 ###
-# Capture deposit
-POST {{baseUrl}}/v1/tenants/{{tenantId}}/billing/payments/capture
-Content-Type: application/json
+# Filter by guest
+GET {{baseUrl}}/v1/billing/invoices?tenant_id={{tenantId}}&guest_id={{guestId}}
 Authorization: Bearer {{authToken}}
-
-{
-  "property_id": "{{propertyId}}",
-  "reservation_id": "{{reservationId}}",
-  "amount": 200.00,
-  "currency": "USD",
-  "payment_method": "CREDIT_CARD",
-  "payment_type": "DEPOSIT",
-  "card_details": {
-    "last_four": "4242",
-    "brand": "VISA"
-  },
-  "description": "Security deposit"
-}
-
-###############################################################################
-# 4. PAYMENT REFUND
-###############################################################################
-
-# Refund a payment
-POST {{baseUrl}}/v1/tenants/{{tenantId}}/billing/payments/{{paymentId}}/refund
-Content-Type: application/json
-Authorization: Bearer {{authToken}}
-
-{
-  "amount": 200.00,
-  "reason": "Security deposit return - no damages",
-  "refund_method": "ORIGINAL_PAYMENT_METHOD"
-}
 
 ###
-# Partial refund
-POST {{baseUrl}}/v1/tenants/{{tenantId}}/billing/payments/{{paymentId}}/refund
-Content-Type: application/json
+# Get invoice by ID
+GET {{baseUrl}}/v1/billing/invoices/{{invoiceId}}?tenant_id={{tenantId}}
 Authorization: Bearer {{authToken}}
 
-{
-  "amount": 50.00,
-  "reason": "Service compensation - AC issue on first night",
-  "refund_method": "ORIGINAL_PAYMENT_METHOD"
-}
-
 ###############################################################################
-# 5. PAYMENT APPLICATION
+# 4. FOLIOS - LIST WITH FILTERS
 ###############################################################################
 
-# Apply payment to folio
-POST {{baseUrl}}/v1/tenants/{{tenantId}}/billing/payments/{{paymentId}}/apply
-Content-Type: application/json
+# List all folios for tenant
+GET {{baseUrl}}/v1/billing/folios?tenant_id={{tenantId}}&limit=50
 Authorization: Bearer {{authToken}}
-
-{
-  "folio_id": "{{folioId}}",
-  "amount": 627.00,
-  "notes": "Full payment applied to guest folio"
-}
-
-###############################################################################
-# 6. INVOICES
-###############################################################################
-
-# Create invoice
-POST {{baseUrl}}/v1/tenants/{{tenantId}}/billing/invoices
-Content-Type: application/json
-Authorization: Bearer {{authToken}}
-
-{
-  "property_id": "{{propertyId}}",
-  "reservation_id": "{{reservationId}}",
-  "guest_id": "{{guestId}}",
-  "line_items": [
-    {
-      "description": "Room Charges - Cityline King (3 nights)",
-      "quantity": 3,
-      "unit_price": 209.00,
-      "amount": 627.00,
-      "tax_rate": 12.5
-    },
-    {
-      "description": "Minibar",
-      "quantity": 1,
-      "unit_price": 25.00,
-      "amount": 25.00,
-      "tax_rate": 12.5
-    }
-  ],
-  "subtotal": 652.00,
-  "tax_amount": 81.50,
-  "total_amount": 733.50,
-  "currency": "USD",
-  "due_date": "2026-02-28",
-  "notes": "Thank you for staying with us!"
-}
 
 ###
-# Adjust invoice
-POST {{baseUrl}}/v1/tenants/{{tenantId}}/billing/invoices/{{invoiceId}}/adjust
-Content-Type: application/json
+# List folios for specific property
+GET {{baseUrl}}/v1/billing/folios?tenant_id={{tenantId}}&property_id={{propertyId}}
 Authorization: Bearer {{authToken}}
 
-{
-  "adjustment_type": "DISCOUNT",
-  "amount": -50.00,
-  "reason": "Loyalty member discount",
-  "authorization": "MGR-2026-001"
-}
-
-###############################################################################
-# 7. CHARGES
-###############################################################################
-
-# Post a charge
-POST {{baseUrl}}/v1/tenants/{{tenantId}}/billing/charges
-Content-Type: application/json
+###
+# Filter by folio status - OPEN
+GET {{baseUrl}}/v1/billing/folios?tenant_id={{tenantId}}&folio_status=open
 Authorization: Bearer {{authToken}}
 
-{
-  "property_id": "{{propertyId}}",
-  "reservation_id": "{{reservationId}}",
-  "folio_id": "{{folioId}}",
-  "charge_type": "ROOM_SERVICE",
-  "description": "Room Service - Dinner",
-  "amount": 45.00,
-  "currency": "USD",
-  "tax_rate": 12.5,
-  "posted_by": "{{userId}}"
-}
-
-###############################################################################
-# 8. FOLIO TRANSFERS
-###############################################################################
-
-# Transfer folio balance
-POST {{baseUrl}}/v1/tenants/{{tenantId}}/billing/folios/transfer
-Content-Type: application/json
+###
+# Filter by folio status - CLOSED
+GET {{baseUrl}}/v1/billing/folios?tenant_id={{tenantId}}&folio_status=closed
 Authorization: Bearer {{authToken}}
 
-{
-  "source_folio_id": "{{folioId}}",
-  "target_folio_id": "{{targetFolioId}}",
-  "amount": 100.00,
-  "reason": "Split billing - company portion",
-  "notes": "Transfer approved by guest"
-}
+###
+# Filter by folio status - SETTLED
+GET {{baseUrl}}/v1/billing/folios?tenant_id={{tenantId}}&folio_status=settled
+Authorization: Bearer {{authToken}}
+
+###
+# Filter by folio type - GUEST
+GET {{baseUrl}}/v1/billing/folios?tenant_id={{tenantId}}&folio_type=guest
+Authorization: Bearer {{authToken}}
+
+###
+# Filter by folio type - MASTER
+GET {{baseUrl}}/v1/billing/folios?tenant_id={{tenantId}}&folio_type=master
+Authorization: Bearer {{authToken}}
+
+###
+# Filter by folio type - CITY_LEDGER
+GET {{baseUrl}}/v1/billing/folios?tenant_id={{tenantId}}&folio_type=city_ledger
+Authorization: Bearer {{authToken}}
+
+###
+# Filter by reservation
+GET {{baseUrl}}/v1/billing/folios?tenant_id={{tenantId}}&reservation_id={{reservationId}}
+Authorization: Bearer {{authToken}}
+
+###
+# Filter by guest
+GET {{baseUrl}}/v1/billing/folios?tenant_id={{tenantId}}&guest_id={{guestId}}
+Authorization: Bearer {{authToken}}
+
+###
+# Get folio by ID
+GET {{baseUrl}}/v1/billing/folios/{{folioId}}?tenant_id={{tenantId}}
+Authorization: Bearer {{authToken}}
+
+###############################################################################
+# 5. CHARGE POSTINGS - LIST WITH FILTERS
+###############################################################################
+
+# List all charge postings for tenant
+GET {{baseUrl}}/v1/billing/charges?tenant_id={{tenantId}}&limit=50
+Authorization: Bearer {{authToken}}
+
+###
+# List charges for specific property
+GET {{baseUrl}}/v1/billing/charges?tenant_id={{tenantId}}&property_id={{propertyId}}
+Authorization: Bearer {{authToken}}
+
+###
+# Filter by folio
+GET {{baseUrl}}/v1/billing/charges?tenant_id={{tenantId}}&folio_id={{folioId}}
+Authorization: Bearer {{authToken}}
+
+###
+# Filter by transaction type - CHARGE
+GET {{baseUrl}}/v1/billing/charges?tenant_id={{tenantId}}&transaction_type=charge
+Authorization: Bearer {{authToken}}
+
+###
+# Filter by transaction type - PAYMENT
+GET {{baseUrl}}/v1/billing/charges?tenant_id={{tenantId}}&transaction_type=payment
+Authorization: Bearer {{authToken}}
+
+###
+# Filter by transaction type - ADJUSTMENT
+GET {{baseUrl}}/v1/billing/charges?tenant_id={{tenantId}}&transaction_type=adjustment
+Authorization: Bearer {{authToken}}
+
+###
+# Filter by charge code
+GET {{baseUrl}}/v1/billing/charges?tenant_id={{tenantId}}&charge_code=ROOM
+Authorization: Bearer {{authToken}}
+
+###
+# Filter by charge code - MINIBAR
+GET {{baseUrl}}/v1/billing/charges?tenant_id={{tenantId}}&charge_code=MINIBAR
+Authorization: Bearer {{authToken}}
+
+###
+# Include voided transactions
+GET {{baseUrl}}/v1/billing/charges?tenant_id={{tenantId}}&include_voided=true
+Authorization: Bearer {{authToken}}
+
+###############################################################################
+# 6. TAX CONFIGURATIONS - LIST WITH FILTERS
+###############################################################################
+
+# List all tax configurations for tenant
+GET {{baseUrl}}/v1/billing/tax-configurations?tenant_id={{tenantId}}&limit=50
+Authorization: Bearer {{authToken}}
+
+###
+# List active tax configurations
+GET {{baseUrl}}/v1/billing/tax-configurations?tenant_id={{tenantId}}&is_active=true
+Authorization: Bearer {{authToken}}
+
+###
+# Filter by jurisdiction
+GET {{baseUrl}}/v1/billing/tax-configurations?tenant_id={{tenantId}}&jurisdiction=US-CA
+Authorization: Bearer {{authToken}}
+
+###
+# Filter by tax type - VALUE_ADDED
+GET {{baseUrl}}/v1/billing/tax-configurations?tenant_id={{tenantId}}&tax_type=VALUE_ADDED
+Authorization: Bearer {{authToken}}
+
+###
+# Filter by tax type - OCCUPANCY
+GET {{baseUrl}}/v1/billing/tax-configurations?tenant_id={{tenantId}}&tax_type=OCCUPANCY
+Authorization: Bearer {{authToken}}
+
+###
+# Filter by tax type - SALES
+GET {{baseUrl}}/v1/billing/tax-configurations?tenant_id={{tenantId}}&tax_type=SALES
+Authorization: Bearer {{authToken}}
+
+###
+# Filter by tax type - SERVICE
+GET {{baseUrl}}/v1/billing/tax-configurations?tenant_id={{tenantId}}&tax_type=SERVICE
+Authorization: Bearer {{authToken}}
+
+###
+# Filter by tax type - TOURISM
+GET {{baseUrl}}/v1/billing/tax-configurations?tenant_id={{tenantId}}&tax_type=TOURISM
+Authorization: Bearer {{authToken}}
+
+###
+# Filter by tax type - CITY
+GET {{baseUrl}}/v1/billing/tax-configurations?tenant_id={{tenantId}}&tax_type=CITY
+Authorization: Bearer {{authToken}}
+
+###
+# Filter by effective date
+GET {{baseUrl}}/v1/billing/tax-configurations?tenant_id={{tenantId}}&effective_date=2026-02-03
+Authorization: Bearer {{authToken}}
+
+###
+# Combine multiple filters - active occupancy taxes
+GET {{baseUrl}}/v1/billing/tax-configurations?tenant_id={{tenantId}}&is_active=true&tax_type=OCCUPANCY
+Authorization: Bearer {{authToken}}
+
+###
+# Get tax configuration by ID
+@taxConfigId = 77777777-7777-7777-7777-777777777777
+GET {{baseUrl}}/v1/billing/tax-configurations/{{taxConfigId}}?tenant_id={{tenantId}}
+Authorization: Bearer {{authToken}}
 
 ###############################################################################
 # REFERENCE
 ###############################################################################
 #
-# PAYMENT STATUSES:
-#   PENDING, AUTHORIZED, COMPLETED, FAILED, REFUNDED, PARTIALLY_REFUNDED
+# PAYMENT STATUSES (for filtering):
+#   pending, authorized, completed, failed, refunded, partially_refunded
 #
-# PAYMENT METHODS:
-#   CREDIT_CARD, DEBIT_CARD, CASH, BANK_TRANSFER, VIRTUAL_CARD, INVOICE
+# TRANSACTION TYPES (for filtering):
+#   payment, deposit, refund, adjustment, void
 #
-# PAYMENT TYPES:
-#   PAYMENT, DEPOSIT, PREPAYMENT, REFUND
+# PAYMENT METHODS (for filtering):
+#   credit_card, debit_card, cash, bank_transfer, virtual_card, invoice
 #
-# CHARGE TYPES:
-#   ROOM_CHARGE, ROOM_SERVICE, MINIBAR, RESTAURANT, SPA, PARKING,
+# INVOICE STATUSES (for filtering):
+#   draft, issued, paid, partially_paid, overdue, cancelled, void
+#
+# FOLIO STATUSES (for filtering):
+#   open, closed, transferred, settled
+#
+# FOLIO TYPES (for filtering):
+#   guest, master, city_ledger
+#
+# CHARGE TRANSACTION TYPES:
+#   charge, payment, adjustment, refund, transfer, void
+#
+# CHARGE CODES:
+#   ROOM, ROOM_SERVICE, MINIBAR, RESTAURANT, SPA, PARKING,
 #   LAUNDRY, PHONE, MISCELLANEOUS, TAX, SERVICE_CHARGE
 #
-# INVOICE STATUSES:
-#   DRAFT, SENT, PAID, PARTIALLY_PAID, OVERDUE, CANCELLED
+# TAX TYPES (for filtering):
+#   VALUE_ADDED, OCCUPANCY, SALES, SERVICE, TOURISM, CITY, COUNTY, STATE,
+#   FEDERAL, HOTEL_TAX, BED_TAX, CONVENTION, OTHER
+#
+# NOTE: The billing-service module requires the 'finance-automation'
+#       module to be enabled for the tenant.
+#
+# WRITE OPERATIONS:
+#   All billing write operations go through the Command Center.
+#   See command-center.http for full examples of:
+#     POST /v1/commands/billing.payment.capture/execute
+#     POST /v1/commands/billing.payment.refund/execute
+#     POST /v1/commands/billing.charge.post/execute
+#     POST /v1/commands/billing.invoice.create/execute
+#     POST /v1/commands/billing.invoice.void/execute
+#     POST /v1/commands/billing.adjustment.apply/execute
+#     POST /v1/commands/billing.folio.close/execute
 #
 # SAMPLE IDs:
-#   Tenant:   11111111-1111-1111-1111-111111111111
-#   Property: 22222222-2222-2222-2222-222222222222
+#   Tenant:      11111111-1111-1111-1111-111111111111
+#   Property:    22222222-2222-2222-2222-222222222222
+#   Guest:       33333333-3333-3333-3333-333333333333
+#   Reservation: 44444444-4444-4444-4444-444444444444
+#   Invoice:     55555555-5555-5555-5555-555555555555
+#   Folio:       66666666-6666-6666-6666-666666666666
+#   TaxConfig:   77777777-7777-7777-7777-777777777777
 #
 ###############################################################################

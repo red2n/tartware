@@ -1,16 +1,16 @@
 ###############################################################################
-# SETTINGS SERVICE - Configuration Management
-# Routes via API Gateway (localhost:8080) -> settings-service (port 3000)
+# SETTINGS SERVICE - Configuration & Catalog Management
+# Routes via API Gateway (localhost:8080) -> settings-service (port 3200)
 #
-# Content: System Settings, Tenant Configuration
-#
-# Note: Settings service routes are proxied through core-service
+# Content: Settings Catalog, Categories, Sections, Definitions, Options,
+#          Settings Values, Property Amenities, Packages
 ###############################################################################
 
 # --- VARIABLES ---
 @baseUrl = http://localhost:8080
 @tenantId = 11111111-1111-1111-1111-111111111111
 @propertyId = 22222222-2222-2222-2222-222222222222
+@packageId = 55555555-5555-5555-5555-555555555555
 
 ###############################################################################
 # 1. LOGIN
@@ -29,77 +29,383 @@ Content-Type: application/json
 @authToken = {{login.response.body.access_token}}
 
 ###############################################################################
-# 2. SETTINGS - READ
+# 2. SETTINGS CATALOG - Full Catalog
 ###############################################################################
 
-# Get all settings for tenant
-GET {{baseUrl}}/v1/settings?tenant_id={{tenantId}}
+# Get the full settings catalog (categories, sections, definitions, options)
+GET {{baseUrl}}/v1/settings/catalog
 Authorization: Bearer {{authToken}}
 
 ###
-# Get settings by category
-GET {{baseUrl}}/v1/settings?tenant_id={{tenantId}}&category=reservations
+# Get catalog for a specific category
+GET {{baseUrl}}/v1/settings/catalog/RESERVATIONS
+Authorization: Bearer {{authToken}}
+
+###############################################################################
+# 3. SETTINGS CATEGORIES
+###############################################################################
+
+# List all settings categories
+GET {{baseUrl}}/v1/settings/categories
 Authorization: Bearer {{authToken}}
 
 ###
-# Get property-specific settings
-GET {{baseUrl}}/v1/settings?tenant_id={{tenantId}}&property_id={{propertyId}}
+# List active categories only
+GET {{baseUrl}}/v1/settings/categories?active_only=true
 Authorization: Bearer {{authToken}}
 
 ###############################################################################
-# 3. SETTINGS - UPDATE
+# 4. SETTINGS SECTIONS
 ###############################################################################
 
-# Update a setting
-PUT {{baseUrl}}/v1/settings
+# List all settings sections
+GET {{baseUrl}}/v1/settings/sections
+Authorization: Bearer {{authToken}}
+
+###
+# Filter sections by category ID
+GET {{baseUrl}}/v1/settings/sections?category_id={{categoryId}}
+Authorization: Bearer {{authToken}}
+
+###
+# Filter sections by category code
+GET {{baseUrl}}/v1/settings/sections?category_code=RESERVATIONS
+Authorization: Bearer {{authToken}}
+
+###############################################################################
+# 5. SETTINGS DEFINITIONS
+###############################################################################
+
+# List all settings definitions
+GET {{baseUrl}}/v1/settings/definitions
+Authorization: Bearer {{authToken}}
+
+###
+# Filter definitions by category
+GET {{baseUrl}}/v1/settings/definitions?category_code=RESERVATIONS
+Authorization: Bearer {{authToken}}
+
+###
+# Filter definitions by section
+GET {{baseUrl}}/v1/settings/definitions?section_code=CHECK_IN_OUT
+Authorization: Bearer {{authToken}}
+
+###
+# Search definitions by name/code/description
+GET {{baseUrl}}/v1/settings/definitions?search=check_in
+Authorization: Bearer {{authToken}}
+
+###############################################################################
+# 6. SETTINGS OPTIONS
+###############################################################################
+
+# List all settings options
+GET {{baseUrl}}/v1/settings/options
+Authorization: Bearer {{authToken}}
+
+###
+# Filter options by setting ID
+GET {{baseUrl}}/v1/settings/options?setting_id={{settingId}}
+Authorization: Bearer {{authToken}}
+
+###
+# Filter options by setting code
+GET {{baseUrl}}/v1/settings/options?setting_code=RESERVATIONS.DEFAULT_CHECK_IN_TIME
+Authorization: Bearer {{authToken}}
+
+###############################################################################
+# 7. SETTINGS VALUES - Read
+###############################################################################
+
+# List all settings values for tenant (requires tenant context)
+GET {{baseUrl}}/v1/settings/values
+Authorization: Bearer {{authToken}}
+
+###
+# Filter values by scope level
+GET {{baseUrl}}/v1/settings/values?scope_level=PROPERTY
+Authorization: Bearer {{authToken}}
+
+###
+# Filter values by setting
+GET {{baseUrl}}/v1/settings/values?setting_id={{settingId}}
+Authorization: Bearer {{authToken}}
+
+###
+# Filter values by property
+GET {{baseUrl}}/v1/settings/values?property_id={{propertyId}}
+Authorization: Bearer {{authToken}}
+
+###############################################################################
+# 8. SETTINGS VALUES - Create
+###############################################################################
+
+# @name createSettingValue
+# Create a new settings value
+POST {{baseUrl}}/v1/settings/values
 Content-Type: application/json
 Authorization: Bearer {{authToken}}
 
 {
-  "tenant_id": "{{tenantId}}",
-  "key": "reservations.default_check_in_time",
+  "setting_id": "{{settingId}}",
+  "scope_level": "TENANT",
   "value": "15:00",
-  "category": "reservations"
+  "status": "ACTIVE",
+  "notes": "Default check-in time for all properties",
+  "effective_from": "2026-01-01T00:00:00Z",
+  "metadata": {}
 }
 
+### Extract created value ID
+@valueId = {{createSettingValue.response.body.data.id}}
+
 ###
-# Update property setting
-PUT {{baseUrl}}/v1/settings
+# Create property-level setting value
+POST {{baseUrl}}/v1/settings/values
 Content-Type: application/json
 Authorization: Bearer {{authToken}}
 
 {
-  "tenant_id": "{{tenantId}}",
+  "setting_id": "{{settingId}}",
+  "scope_level": "PROPERTY",
   "property_id": "{{propertyId}}",
-  "key": "housekeeping.checkout_deadline",
-  "value": "11:00",
-  "category": "housekeeping"
+  "value": "14:00",
+  "status": "ACTIVE",
+  "notes": "Early check-in time for City Center property"
 }
+
+###############################################################################
+# 9. SETTINGS VALUES - Update
+###############################################################################
+
+# Update a settings value
+PATCH {{baseUrl}}/v1/settings/values/{{valueId}}
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+
+{
+  "value": "16:00",
+  "notes": "Updated check-in time",
+  "effective_to": "2026-12-31T23:59:59Z"
+}
+
+###############################################################################
+# 10. PROPERTY AMENITIES - List
+###############################################################################
+
+# List amenities for a property
+GET {{baseUrl}}/v1/settings/properties/{{propertyId}}/amenities
+Authorization: Bearer {{authToken}}
+
+###############################################################################
+# 11. PROPERTY AMENITIES - Create
+###############################################################################
+
+# @name createAmenity
+# Create a property amenity
+POST {{baseUrl}}/v1/settings/properties/{{propertyId}}/amenities
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+
+{
+  "amenityCode": "POOL",
+  "name": "Swimming Pool",
+  "description": "Outdoor heated swimming pool",
+  "category": "RECREATION",
+  "isIncluded": true,
+  "additionalCost": 0,
+  "availability": "24/7",
+  "isActive": true,
+  "metadata": {
+    "size": "25m",
+    "depth": "1.2m-2.0m",
+    "heated": true
+  }
+}
+
+###
+# Create another amenity
+POST {{baseUrl}}/v1/settings/properties/{{propertyId}}/amenities
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+
+{
+  "amenityCode": "GYM",
+  "name": "Fitness Center",
+  "description": "Full-equipped gym with modern equipment",
+  "category": "RECREATION",
+  "isIncluded": true,
+  "additionalCost": 0,
+  "availability": "06:00-22:00",
+  "isActive": true,
+  "metadata": {
+    "equipment": ["treadmill", "weights", "elliptical", "bikes"]
+  }
+}
+
+###
+# Create paid amenity
+POST {{baseUrl}}/v1/settings/properties/{{propertyId}}/amenities
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+
+{
+  "amenityCode": "SPA",
+  "name": "Full-Service Spa",
+  "description": "Relaxation spa with massage services",
+  "category": "WELLNESS",
+  "isIncluded": false,
+  "additionalCost": 75.00,
+  "availability": "09:00-21:00",
+  "isActive": true,
+  "metadata": {
+    "services": ["massage", "facial", "sauna", "steam_room"],
+    "reservation_required": true
+  }
+}
+
+###############################################################################
+# 12. PROPERTY AMENITIES - Update
+###############################################################################
+
+# Update a property amenity
+PUT {{baseUrl}}/v1/settings/properties/{{propertyId}}/amenities/POOL
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+
+{
+  "description": "Heated outdoor pool with poolside service",
+  "availability": "07:00-22:00",
+  "metadata": {
+    "size": "25m",
+    "depth": "1.2m-2.0m",
+    "heated": true,
+    "poolside_service": true
+  }
+}
+
+###############################################################################
+# 13. PACKAGES - List
+###############################################################################
+
+# List all packages
+GET {{baseUrl}}/v1/packages?tenant_id={{tenantId}}
+Authorization: Bearer {{authToken}}
+
+###
+# List packages for a property
+GET {{baseUrl}}/v1/packages?tenant_id={{tenantId}}&property_id={{propertyId}}
+Authorization: Bearer {{authToken}}
+
+###
+# List active packages only
+GET {{baseUrl}}/v1/packages?tenant_id={{tenantId}}&is_active=true
+Authorization: Bearer {{authToken}}
+
+###
+# List published packages
+GET {{baseUrl}}/v1/packages?tenant_id={{tenantId}}&is_published=true
+Authorization: Bearer {{authToken}}
+
+###
+# List featured packages
+GET {{baseUrl}}/v1/packages?tenant_id={{tenantId}}&is_featured=true
+Authorization: Bearer {{authToken}}
+
+###
+# Filter by package type (bed_and_breakfast)
+GET {{baseUrl}}/v1/packages?tenant_id={{tenantId}}&package_type=bed_and_breakfast
+Authorization: Bearer {{authToken}}
+
+###
+# Filter by package type (all_inclusive)
+GET {{baseUrl}}/v1/packages?tenant_id={{tenantId}}&package_type=all_inclusive
+Authorization: Bearer {{authToken}}
+
+###
+# Filter by package type (romance)
+GET {{baseUrl}}/v1/packages?tenant_id={{tenantId}}&package_type=romance
+Authorization: Bearer {{authToken}}
+
+###
+# Filter by package type (spa)
+GET {{baseUrl}}/v1/packages?tenant_id={{tenantId}}&package_type=spa
+Authorization: Bearer {{authToken}}
+
+###
+# Get packages valid on a specific date
+GET {{baseUrl}}/v1/packages?tenant_id={{tenantId}}&valid_on=2026-06-15
+Authorization: Bearer {{authToken}}
+
+###
+# Get currently valid packages
+GET {{baseUrl}}/v1/packages?tenant_id={{tenantId}}&valid_on={{$datetime iso8601}}
+Authorization: Bearer {{authToken}}
+
+###
+# Combined filters: Active + Published + Featured
+GET {{baseUrl}}/v1/packages
+    ?tenant_id={{tenantId}}
+    &is_active=true
+    &is_published=true
+    &is_featured=true
+Authorization: Bearer {{authToken}}
+
+###############################################################################
+# 14. PACKAGES - Get by ID
+###############################################################################
+
+# Get package by ID
+GET {{baseUrl}}/v1/packages/{{packageId}}?tenant_id={{tenantId}}
+Authorization: Bearer {{authToken}}
+
+###############################################################################
+# 15. PACKAGE COMPONENTS
+###############################################################################
+
+# Get package components (services/amenities included)
+GET {{baseUrl}}/v1/packages/{{packageId}}/components?tenant_id={{tenantId}}
+Authorization: Bearer {{authToken}}
 
 ###############################################################################
 # REFERENCE
 ###############################################################################
 #
-# SETTING CATEGORIES:
-#   general      - General tenant settings
-#   reservations - Booking and check-in/out settings
-#   housekeeping - Cleaning and task settings
-#   billing      - Payment and invoice settings
-#   notifications - Email and alert settings
-#   integrations - Third-party integration settings
+# SCOPE LEVELS:
+#   SYSTEM    - Platform-wide defaults
+#   TENANT    - Tenant-level settings
+#   PROPERTY  - Property-specific overrides
+#   UNIT      - Room/unit-specific settings
+#   USER      - User preference overrides
 #
-# COMMON SETTINGS:
-#   reservations.default_check_in_time   - Default check-in time
-#   reservations.default_check_out_time  - Default check-out time
-#   reservations.min_advance_booking     - Minimum advance booking hours
-#   reservations.max_advance_booking     - Maximum advance booking days
-#   housekeeping.checkout_deadline       - Checkout deadline
-#   housekeeping.auto_assign_tasks       - Auto-assign tasks enabled
-#   billing.default_currency             - Default currency code
-#   billing.tax_rate                     - Default tax rate
+# VALUE STATUSES:
+#   ACTIVE, PENDING, EXPIRED
+#
+# SETTING CATEGORIES:
+#   RESERVATIONS    - Booking and check-in/out settings
+#   HOUSEKEEPING    - Cleaning and task settings
+#   BILLING         - Payment and invoice settings
+#   NOTIFICATIONS   - Email and alert settings
+#   INTEGRATIONS    - Third-party settings
+#   GENERAL         - General tenant settings
+#
+# AMENITY CATEGORIES:
+#   RECREATION, WELLNESS, DINING, BUSINESS, ACCESSIBILITY, ROOM
+#
+# PACKAGE TYPES:
+#   room_only, bed_and_breakfast, half_board, full_board, all_inclusive,
+#   romance, spa, golf, ski, family, business, weekend_getaway,
+#   extended_stay, seasonal, custom
+#
+# PACKAGE PRICING MODELS:
+#   per_night, per_stay, per_person, per_person_per_night, flat_rate, tiered
+#
+# PACKAGE COMPONENT TYPES:
+#   service, amenity, meal, activity, transportation, upgrade, credit, voucher, other
 #
 # SAMPLE IDs:
 #   Tenant:   11111111-1111-1111-1111-111111111111
 #   Property: 22222222-2222-2222-2222-222222222222
+#   Package:  55555555-5555-5555-5555-555555555555
 #
 ###############################################################################

@@ -2,9 +2,21 @@
 # ROOMS SERVICE - Rooms & Room Types
 # Routes via API Gateway (localhost:8080) -> rooms-service (port 3400)
 #
-# Content: Room Types, Rooms, Room Status/Features
+# Content: Room Types, Rooms (CRUD + STATUS COMMANDS)
+#
+# WRITE OPERATIONS - Room Status via Command Center:
+# See command-center.http for:
+#   - rooms.room.update_status
+#   - rooms.room.update_housekeeping
+#   - rooms.room.block
+#   - rooms.room.release
+#   - rooms.room.out_of_order
+#   - rooms.room.return_to_service
+#   - rooms.room.update_features
+#   - rooms.room_type.update_inventory
 #
 # Related files:
+# - command-center.http - Status commands
 # - rates.http - Rate plans and pricing
 # - housekeeping.http - Housekeeping tasks
 ###############################################################################
@@ -225,87 +237,50 @@ Authorization: Bearer {{authToken}}
 }
 
 ###############################################################################
-# 8. ROOM STATUS COMMANDS (via Command Center)
+# 8. ROOMS - DELETE
 ###############################################################################
 
-# Update room status
-POST {{baseUrl}}/v1/tenants/{{tenantId}}/rooms/{{room101Id}}/status
+# Delete a room (soft delete)
+DELETE {{baseUrl}}/v1/rooms/{{newRoomId}}
 Content-Type: application/json
 Authorization: Bearer {{authToken}}
 
 {
-  "status": "occupied"
+  "tenant_id": "{{tenantId}}"
 }
 
-###
-# Update housekeeping status
-POST {{baseUrl}}/v1/tenants/{{tenantId}}/rooms/{{room101Id}}/housekeeping-status
+###############################################################################
+# 9. ROOM TYPES - DELETE
+###############################################################################
+
+# Delete a room type (soft delete)
+DELETE {{baseUrl}}/v1/room-types/{{newRoomTypeId}}
 Content-Type: application/json
 Authorization: Bearer {{authToken}}
 
 {
-  "housekeeping_status": "dirty"
+  "tenant_id": "{{tenantId}}"
 }
 
-###
-# Mark room out of order
-POST {{baseUrl}}/v1/tenants/{{tenantId}}/rooms/{{room101Id}}/out-of-order
-Content-Type: application/json
-Authorization: Bearer {{authToken}}
+###############################################################################
+# 10. ROOM STATUS COMMANDS (via Command Center)
+# These endpoints represent the desired behavior.
+# Implementation via Command Center - see command-center.http
+###############################################################################
 
-{
-  "reason": "Plumbing issue - sink leak",
-  "estimated_return": "2026-02-01"
-}
-
-###
-# Mark room out of service (temporary maintenance)
-POST {{baseUrl}}/v1/tenants/{{tenantId}}/rooms/{{room101Id}}/out-of-service
-Content-Type: application/json
-Authorization: Bearer {{authToken}}
-
-{
-  "reason": "Deep cleaning scheduled",
-  "estimated_return": "2026-01-31"
-}
-
-###
-# Block room inventory
-POST {{baseUrl}}/v1/tenants/{{tenantId}}/rooms/{{room101Id}}/block
-Content-Type: application/json
-Authorization: Bearer {{authToken}}
-
-{
-  "reason": "VIP reservation hold",
-  "block_start": "2026-02-01",
-  "block_end": "2026-02-05"
-}
-
-###
-# Release room block
-POST {{baseUrl}}/v1/tenants/{{tenantId}}/rooms/{{room101Id}}/release
-Content-Type: application/json
-Authorization: Bearer {{authToken}}
-
-{
-  "reason": "Block no longer needed"
-}
-
-###
-# Update room features
-POST {{baseUrl}}/v1/tenants/{{tenantId}}/rooms/{{room101Id}}/features
-Content-Type: application/json
-Authorization: Bearer {{authToken}}
-
-{
-  "features": {
-    "view": "city",
-    "balcony": true,
-    "smoking": false,
-    "accessible": true,
-    "connecting_room": "102"
-  }
-}
+#
+# NOTE: Room status updates go through the Command Center for event sourcing.
+# See command-center.http for full command examples.
+#
+# Command patterns:
+#   POST /v1/commands/rooms.room.update_status/execute
+#   POST /v1/commands/rooms.room.update_housekeeping/execute
+#   POST /v1/commands/rooms.room.block/execute
+#   POST /v1/commands/rooms.room.release/execute
+#   POST /v1/commands/rooms.room.out_of_order/execute
+#   POST /v1/commands/rooms.room.return_to_service/execute
+#   POST /v1/commands/rooms.room.update_features/execute
+#
 
 ###############################################################################
 # REFERENCE
@@ -323,6 +298,18 @@ Authorization: Bearer {{authToken}}
 #
 # ROOM CATEGORIES:
 #   STANDARD, SUPERIOR, DELUXE, SUITE, PENTHOUSE, VILLA
+#
+# COMMAND CENTER OPERATIONS:
+#   All room status updates go through the Command Center.
+#   See command-center.http for full examples of:
+#     POST /v1/commands/rooms.room.update_status/execute
+#     POST /v1/commands/rooms.room.update_housekeeping/execute
+#     POST /v1/commands/rooms.room.block/execute
+#     POST /v1/commands/rooms.room.release/execute
+#     POST /v1/commands/rooms.room.out_of_order/execute
+#     POST /v1/commands/rooms.room.return_to_service/execute
+#     POST /v1/commands/rooms.room.update_features/execute
+#     POST /v1/commands/rooms.room_type.update_inventory/execute
 #
 # SAMPLE IDs:
 #   Tenant:    11111111-1111-1111-1111-111111111111

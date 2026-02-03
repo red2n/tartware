@@ -64,6 +64,11 @@ Authorization: Bearer {{authToken}}
 GET {{baseUrl}}/v1/rates?tenant_id={{tenantId}}&search=BAR
 Authorization: Bearer {{authToken}}
 
+###
+# Get rate by ID
+GET {{baseUrl}}/v1/rates/{{newRateId}}?tenant_id={{tenantId}}
+Authorization: Bearer {{authToken}}
+
 ###############################################################################
 # 3. RATES - CREATE
 ###############################################################################

@@ -2,7 +2,7 @@
 # TENANTS & PROPERTIES - Organization Management
 # Routes via API Gateway (localhost:8080) -> core-service (port 3000)
 #
-# Content: Tenants, Properties, Dashboard Stats
+# Content: Tenants, Properties, Dashboard Stats, Reports, System Admin
 #
 # Related files:
 # - core-service.http - Users and authentication
@@ -40,11 +40,58 @@ Authorization: Bearer {{authToken}}
 
 ###
 # List with pagination
-GET {{baseUrl}}/v1/tenants?limit=10&offset=0
+GET {{baseUrl}}/v1/tenants?limit=10
 Authorization: Bearer {{authToken}}
 
 ###############################################################################
-# 3. PROPERTIES - READ
+# 3. TENANTS - SELF-SERVICE BOOTSTRAP
+###############################################################################
+
+# Self-serve tenant onboarding (creates tenant + property + owner user)
+# NOTE: May require x-onboarding-token header if TENANT_BOOTSTRAP_TOKEN is set
+# @name bootstrapTenant
+POST {{baseUrl}}/v1/tenants/bootstrap
+Content-Type: application/json
+
+{
+  "tenant": {
+    "name": "Sunrise Hotels",
+    "slug": "sunrise-hotels",
+    "type": "INDEPENDENT",
+    "email": "info@sunrise-hotels.demo",
+    "phone": "+1-555-0500",
+    "website": "https://sunrise-hotels.demo"
+  },
+  "property": {
+    "property_name": "Sunrise Beach Resort",
+    "property_code": "SBR",
+    "property_type": "RESORT",
+    "star_rating": 4,
+    "total_rooms": 120,
+    "phone": "+1-555-0501",
+    "email": "reservations@sunrise-beach.demo",
+    "address": {
+      "line1": "500 Beach Boulevard",
+      "city": "San Diego",
+      "state": "CA",
+      "postal_code": "92101",
+      "country": "US"
+    },
+    "currency": "USD",
+    "timezone": "America/Los_Angeles"
+  },
+  "owner": {
+    "username": "sunrise.admin",
+    "email": "admin@sunrise-hotels.demo",
+    "password": "SecurePass123!",
+    "first_name": "Michael",
+    "last_name": "Chen",
+    "phone": "+1-555-0502"
+  }
+}
+
+###############################################################################
+# 4. PROPERTIES - READ
 ###############################################################################
 
 # List properties for tenant
@@ -52,7 +99,7 @@ GET {{baseUrl}}/v1/properties?tenant_id={{tenantId}}&limit=50
 Authorization: Bearer {{authToken}}
 
 ###############################################################################
-# 4. PROPERTIES - CREATE
+# 5. PROPERTIES - CREATE
 ###############################################################################
 
 # @name createProperty
@@ -113,7 +160,7 @@ Authorization: Bearer {{authToken}}
 }
 
 ###############################################################################
-# 5. DASHBOARD - STATS & ACTIVITY
+# 6. DASHBOARD - STATS & ACTIVITY
 ###############################################################################
 
 # Get dashboard statistics
@@ -126,24 +173,140 @@ GET {{baseUrl}}/v1/dashboard/stats?tenant_id={{tenantId}}&property_id={{property
 Authorization: Bearer {{authToken}}
 
 ###
+# Get stats for all properties (use "all" as property_id)
+GET {{baseUrl}}/v1/dashboard/stats?tenant_id={{tenantId}}&property_id=all
+Authorization: Bearer {{authToken}}
+
+###
 # Get recent activity feed
-GET {{baseUrl}}/v1/dashboard/activity?tenant_id={{tenantId}}&limit=20
+GET {{baseUrl}}/v1/dashboard/activity?tenant_id={{tenantId}}
 Authorization: Bearer {{authToken}}
 
 ###
 # Get activity for specific property
-GET {{baseUrl}}/v1/dashboard/activity?tenant_id={{tenantId}}&property_id={{propertyId}}&limit=10
+GET {{baseUrl}}/v1/dashboard/activity?tenant_id={{tenantId}}&property_id={{propertyId}}
 Authorization: Bearer {{authToken}}
 
 ###
 # Get upcoming tasks
-GET {{baseUrl}}/v1/dashboard/tasks?tenant_id={{tenantId}}&limit=10
+GET {{baseUrl}}/v1/dashboard/tasks?tenant_id={{tenantId}}
 Authorization: Bearer {{authToken}}
 
 ###
 # Get tasks for specific property
-GET {{baseUrl}}/v1/dashboard/tasks?tenant_id={{tenantId}}&property_id={{propertyId}}&limit=10
+GET {{baseUrl}}/v1/dashboard/tasks?tenant_id={{tenantId}}&property_id={{propertyId}}
 Authorization: Bearer {{authToken}}
+
+###############################################################################
+# 7. REPORTS - PERFORMANCE
+###############################################################################
+
+# Get performance report (requires analytics-bi module)
+GET {{baseUrl}}/v1/reports/performance?tenant_id={{tenantId}}
+Authorization: Bearer {{authToken}}
+
+###
+# Get performance report for specific property
+GET {{baseUrl}}/v1/reports/performance?tenant_id={{tenantId}}&property_id={{propertyId}}
+Authorization: Bearer {{authToken}}
+
+###
+# Get performance report with date range
+GET {{baseUrl}}/v1/reports/performance?tenant_id={{tenantId}}&start_date=2026-01-01&end_date=2026-01-31
+Authorization: Bearer {{authToken}}
+
+###############################################################################
+# 8. SYSTEM ADMIN - TENANTS (Requires System Admin Auth)
+###############################################################################
+# NOTE: These endpoints require system administrator authentication
+# obtained via POST /v1/system/auth/login
+
+# List all tenants (system admin view)
+GET {{baseUrl}}/v1/system/tenants?limit=50
+Authorization: Bearer {{systemAdminToken}}
+
+###
+# Create a tenant (system admin)
+POST {{baseUrl}}/v1/system/tenants
+Content-Type: application/json
+Authorization: Bearer {{systemAdminToken}}
+
+{
+  "name": "Enterprise Hotels Group",
+  "slug": "enterprise-hotels",
+  "type": "CHAIN",
+  "email": "admin@enterprise-hotels.com",
+  "phone": "+1-800-555-0001",
+  "website": "https://enterprise-hotels.com"
+}
+
+###
+# Bootstrap tenant with property and owner (system admin)
+POST {{baseUrl}}/v1/system/tenants/bootstrap
+Content-Type: application/json
+Authorization: Bearer {{systemAdminToken}}
+
+{
+  "tenant": {
+    "name": "Luxury Stays International",
+    "slug": "luxury-stays",
+    "type": "CHAIN",
+    "email": "contact@luxury-stays.com"
+  },
+  "property": {
+    "property_name": "Luxury Stays Manhattan",
+    "property_code": "LSM",
+    "property_type": "BOUTIQUE",
+    "star_rating": 5,
+    "total_rooms": 80,
+    "email": "manhattan@luxury-stays.com",
+    "address": {
+      "line1": "789 Park Avenue",
+      "city": "New York",
+      "state": "NY",
+      "postal_code": "10065",
+      "country": "US"
+    },
+    "currency": "USD",
+    "timezone": "America/New_York"
+  },
+  "owner": {
+    "username": "luxury.admin",
+    "email": "owner@luxury-stays.com",
+    "password": "LuxuryPass123!",
+    "first_name": "Victoria",
+    "last_name": "Sterling"
+  }
+}
+
+###############################################################################
+# 9. SYSTEM ADMIN - USERS (Requires System Admin Auth)
+###############################################################################
+
+# List all users (system admin view)
+GET {{baseUrl}}/v1/system/users?limit=100
+Authorization: Bearer {{systemAdminToken}}
+
+###
+# List users filtered by tenant
+GET {{baseUrl}}/v1/system/users?tenant_id={{tenantId}}&limit=50
+Authorization: Bearer {{systemAdminToken}}
+
+###
+# Create user (system admin)
+POST {{baseUrl}}/v1/system/users
+Content-Type: application/json
+Authorization: Bearer {{systemAdminToken}}
+
+{
+  "username": "global.support",
+  "email": "support@tartware.io",
+  "password": "SupportPass123!",
+  "first_name": "Global",
+  "last_name": "Support",
+  "tenant_id": "{{tenantId}}",
+  "role": "STAFF"
+}
 
 ###############################################################################
 # REFERENCE
@@ -152,6 +315,12 @@ Authorization: Bearer {{authToken}}
 # PROPERTY TYPES:
 #   HOTEL, RESORT, BOUTIQUE, MOTEL, HOSTEL, BED_AND_BREAKFAST,
 #   APARTMENT, VILLA, CABIN, CASTLE
+#
+# TENANT TYPES:
+#   INDEPENDENT - Single property
+#   CHAIN       - Multi-property chain
+#   FRANCHISE   - Franchise operation
+#   MANAGEMENT  - Management company
 #
 # STAR RATINGS: 1-5
 #

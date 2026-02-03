@@ -1,9 +1,21 @@
-import { type GuestWithStats, GuestWithStatsSchema } from "@tartware/schemas";
+import {
+  type GuestCommunicationListItem,
+  GuestCommunicationListItemSchema,
+  type GuestDocumentListItem,
+  GuestDocumentListItemSchema,
+  type GuestPreferenceListItem,
+  GuestPreferenceListItemSchema,
+  type GuestWithStats,
+  GuestWithStatsSchema,
+} from "@tartware/schemas";
 
 import { applyGuestRetentionPolicy } from "../lib/compliance.js";
 import { query } from "../lib/db.js";
 import {
+  GUEST_COMMUNICATIONS_LIST_SQL,
+  GUEST_DOCUMENTS_LIST_SQL,
   GUEST_LIST_SQL,
+  GUEST_PREFERENCES_LIST_SQL,
   GUEST_RESERVATION_STATS_SQL,
 } from "../sql/guest-queries.js";
 import { toNonNegativeInt, toNumberOrFallback } from "../utils/numbers.js";
@@ -321,4 +333,343 @@ export const listGuests = async (options: {
   return rows.map((row) =>
     applyGuestRetentionPolicy(mapRowToGuest(row, statsMap.get(row.id))),
   );
+};
+
+// ============================================================================
+// GUEST PREFERENCES
+// ============================================================================
+
+const formatEnumDisplay = (
+  value: string | null,
+  fallback: string,
+): { value: string; display: string } => {
+  if (!value || typeof value !== "string") {
+    const formatted = fallback.toLowerCase();
+    return { value: formatted, display: fallback };
+  }
+  const normalized = value.toLowerCase();
+  const display = normalized
+    .split("_")
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+  return { value: normalized, display };
+};
+
+const toIsoString = (value: string | Date | null): string | undefined => {
+  if (!value) {
+    return undefined;
+  }
+  if (value instanceof Date) {
+    return value.toISOString();
+  }
+  return value;
+};
+
+type GuestPreferenceRow = {
+  id: string;
+  tenant_id: string;
+  property_id: string | null;
+  guest_id: string;
+  preference_category: string;
+  preference_type: string;
+  preference_value: string | null;
+  preference_code: string | null;
+  priority: number;
+  is_mandatory: boolean;
+  is_special_request: boolean;
+  preferred_floor: number | null;
+  floor_preference: string | null;
+  bed_type_preference: string | null;
+  smoking_preference: string | null;
+  view_preference: string | null;
+  room_location_preference: string | null;
+  turndown_service: boolean | null;
+  do_not_disturb_default: boolean | null;
+  dietary_restrictions: string[] | null;
+  food_allergies: string[] | null;
+  mobility_accessible: boolean | null;
+  hearing_accessible: boolean | null;
+  visual_accessible: boolean | null;
+  service_animal: boolean | null;
+  accessibility_notes: string | null;
+  preferred_language: string | null;
+  preferred_contact_method: string | null;
+  marketing_opt_in: boolean | null;
+  is_active: boolean;
+  source: string | null;
+  times_honored: number | null;
+  notes: string | null;
+  created_at: Date;
+  updated_at: Date | null;
+};
+
+const mapRowToPreference = (
+  row: GuestPreferenceRow,
+): GuestPreferenceListItem => {
+  const { value: category, display: categoryDisplay } = formatEnumDisplay(
+    row.preference_category,
+    "Other",
+  );
+
+  return GuestPreferenceListItemSchema.parse({
+    id: row.id,
+    tenant_id: row.tenant_id,
+    property_id: row.property_id ?? undefined,
+    guest_id: row.guest_id,
+    preference_category: category,
+    preference_category_display: categoryDisplay,
+    preference_type: row.preference_type,
+    preference_value: row.preference_value ?? undefined,
+    preference_code: row.preference_code ?? undefined,
+    priority: row.priority,
+    is_mandatory: row.is_mandatory,
+    is_special_request: row.is_special_request,
+    preferred_floor: row.preferred_floor ?? undefined,
+    floor_preference: row.floor_preference ?? undefined,
+    bed_type_preference: row.bed_type_preference ?? undefined,
+    smoking_preference: row.smoking_preference ?? undefined,
+    view_preference: row.view_preference ?? undefined,
+    room_location_preference: row.room_location_preference ?? undefined,
+    turndown_service: row.turndown_service ?? undefined,
+    do_not_disturb_default: row.do_not_disturb_default ?? undefined,
+    dietary_restrictions: row.dietary_restrictions ?? undefined,
+    food_allergies: row.food_allergies ?? undefined,
+    mobility_accessible: row.mobility_accessible ?? undefined,
+    hearing_accessible: row.hearing_accessible ?? undefined,
+    visual_accessible: row.visual_accessible ?? undefined,
+    service_animal: row.service_animal ?? undefined,
+    accessibility_notes: row.accessibility_notes ?? undefined,
+    preferred_language: row.preferred_language ?? undefined,
+    preferred_contact_method: row.preferred_contact_method ?? undefined,
+    marketing_opt_in: row.marketing_opt_in ?? undefined,
+    is_active: row.is_active,
+    source: row.source ?? undefined,
+    times_honored: row.times_honored ?? undefined,
+    notes: row.notes ?? undefined,
+    created_at: toIsoString(row.created_at) ?? "",
+    updated_at: toIsoString(row.updated_at),
+  });
+};
+
+/**
+ * List guest preferences with optional filters.
+ */
+export const listGuestPreferences = async (options: {
+  limit?: number;
+  tenantId: string;
+  guestId: string;
+  category?: string;
+  activeOnly?: boolean;
+}): Promise<GuestPreferenceListItem[]> => {
+  const limit = options.limit ?? 100;
+  const tenantId = options.tenantId;
+  const guestId = options.guestId;
+  const category = options.category ?? null;
+  const activeOnly = options.activeOnly ?? null;
+
+  const { rows } = await query<GuestPreferenceRow>(GUEST_PREFERENCES_LIST_SQL, [
+    limit,
+    tenantId,
+    guestId,
+    category,
+    activeOnly,
+  ]);
+
+  return rows.map(mapRowToPreference);
+};
+
+// ============================================================================
+// GUEST DOCUMENTS
+// ============================================================================
+
+type GuestDocumentRow = {
+  id: string;
+  tenant_id: string;
+  property_id: string;
+  guest_id: string;
+  reservation_id: string | null;
+  document_type: string;
+  document_category: string | null;
+  document_number: string | null;
+  document_name: string;
+  description: string | null;
+  file_name: string;
+  file_size_bytes: number | null;
+  file_type: string | null;
+  mime_type: string | null;
+  issue_date: Date | null;
+  expiry_date: Date | null;
+  issuing_country: string | null;
+  is_verified: boolean;
+  verification_status: string;
+  verified_at: Date | null;
+  uploaded_at: Date;
+  upload_source: string | null;
+  is_expired: boolean;
+  days_until_expiry: number | null;
+  created_at: Date;
+};
+
+const mapRowToDocument = (row: GuestDocumentRow): GuestDocumentListItem => {
+  const { value: docType, display: docTypeDisplay } = formatEnumDisplay(
+    row.document_type,
+    "Other",
+  );
+  const { value: verStatus, display: verStatusDisplay } = formatEnumDisplay(
+    row.verification_status,
+    "Pending",
+  );
+
+  return GuestDocumentListItemSchema.parse({
+    id: row.id,
+    tenant_id: row.tenant_id,
+    property_id: row.property_id,
+    guest_id: row.guest_id,
+    reservation_id: row.reservation_id ?? undefined,
+    document_type: docType,
+    document_type_display: docTypeDisplay,
+    document_category: row.document_category ?? undefined,
+    document_number: row.document_number ?? undefined,
+    document_name: row.document_name,
+    description: row.description ?? undefined,
+    file_name: row.file_name,
+    file_size_bytes: row.file_size_bytes ?? undefined,
+    file_type: row.file_type ?? undefined,
+    mime_type: row.mime_type ?? undefined,
+    issue_date: toIsoString(row.issue_date),
+    expiry_date: toIsoString(row.expiry_date),
+    issuing_country: row.issuing_country ?? undefined,
+    is_verified: row.is_verified,
+    verification_status: verStatus,
+    verification_status_display: verStatusDisplay,
+    verified_at: toIsoString(row.verified_at),
+    uploaded_at: toIsoString(row.uploaded_at) ?? "",
+    upload_source: row.upload_source ?? undefined,
+    is_expired: row.is_expired,
+    days_until_expiry: row.days_until_expiry ?? undefined,
+    created_at: toIsoString(row.created_at) ?? "",
+  });
+};
+
+/**
+ * List guest documents with optional filters.
+ */
+export const listGuestDocuments = async (options: {
+  limit?: number;
+  tenantId: string;
+  guestId: string;
+  documentType?: string;
+  verificationStatus?: string;
+}): Promise<GuestDocumentListItem[]> => {
+  const limit = options.limit ?? 100;
+  const tenantId = options.tenantId;
+  const guestId = options.guestId;
+  const documentType = options.documentType ?? null;
+  const verificationStatus = options.verificationStatus ?? null;
+
+  const { rows } = await query<GuestDocumentRow>(GUEST_DOCUMENTS_LIST_SQL, [
+    limit,
+    tenantId,
+    guestId,
+    documentType,
+    verificationStatus,
+  ]);
+
+  return rows.map(mapRowToDocument);
+};
+
+// ============================================================================
+// GUEST COMMUNICATIONS
+// ============================================================================
+
+type GuestCommunicationRow = {
+  id: string;
+  tenant_id: string;
+  property_id: string;
+  guest_id: string;
+  reservation_id: string | null;
+  communication_type: string;
+  direction: string;
+  subject: string | null;
+  message: string;
+  sender_name: string | null;
+  sender_email: string | null;
+  recipient_name: string | null;
+  recipient_email: string | null;
+  status: string;
+  sent_at: Date | null;
+  delivered_at: Date | null;
+  opened_at: Date | null;
+  failed_at: Date | null;
+  failure_reason: string | null;
+  created_at: Date;
+};
+
+const mapRowToCommunication = (
+  row: GuestCommunicationRow,
+): GuestCommunicationListItem => {
+  const { value: commType, display: commTypeDisplay } = formatEnumDisplay(
+    row.communication_type,
+    "Email",
+  );
+  const { value: direction, display: directionDisplay } = formatEnumDisplay(
+    row.direction,
+    "Outbound",
+  );
+  const { value: status, display: statusDisplay } = formatEnumDisplay(
+    row.status,
+    "Sent",
+  );
+
+  return GuestCommunicationListItemSchema.parse({
+    id: row.id,
+    tenant_id: row.tenant_id,
+    property_id: row.property_id,
+    guest_id: row.guest_id,
+    reservation_id: row.reservation_id ?? undefined,
+    communication_type: commType,
+    communication_type_display: commTypeDisplay,
+    direction,
+    direction_display: directionDisplay,
+    subject: row.subject ?? undefined,
+    message: row.message,
+    sender_name: row.sender_name ?? undefined,
+    sender_email: row.sender_email ?? undefined,
+    recipient_name: row.recipient_name ?? undefined,
+    recipient_email: row.recipient_email ?? undefined,
+    status,
+    status_display: statusDisplay,
+    sent_at: toIsoString(row.sent_at),
+    delivered_at: toIsoString(row.delivered_at),
+    opened_at: toIsoString(row.opened_at),
+    failed_at: toIsoString(row.failed_at),
+    failure_reason: row.failure_reason ?? undefined,
+    created_at: toIsoString(row.created_at) ?? "",
+  });
+};
+
+/**
+ * List guest communications with optional filters.
+ */
+export const listGuestCommunications = async (options: {
+  limit?: number;
+  tenantId: string;
+  guestId: string;
+  communicationType?: string;
+  direction?: string;
+  status?: string;
+}): Promise<GuestCommunicationListItem[]> => {
+  const limit = options.limit ?? 100;
+  const tenantId = options.tenantId;
+  const guestId = options.guestId;
+  const communicationType = options.communicationType ?? null;
+  const direction = options.direction ?? null;
+  const status = options.status ?? null;
+
+  const { rows } = await query<GuestCommunicationRow>(
+    GUEST_COMMUNICATIONS_LIST_SQL,
+    [limit, tenantId, guestId, communicationType, direction, status],
+  );
+
+  return rows.map(mapRowToCommunication);
 };

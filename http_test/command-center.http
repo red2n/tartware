@@ -1,0 +1,1601 @@
+###############################################################################
+# COMMAND CENTER - Asynchronous Command Execution
+# Routes via API Gateway (localhost:8080) -> command-center-service (port 3600)
+#
+# Content: All write operations in tartware go through the Command Center
+#          for event-driven, idempotent processing via Kafka.
+#
+# Pattern: POST /v1/commands/{commandName}/execute
+#
+# Related files:
+# - reservations.http - Read operations
+# - guests.http - Read operations
+# - housekeeping.http - Read operations
+# - billing.http - Read operations
+# - rooms.http - CRUD operations (direct)
+###############################################################################
+
+# --- VARIABLES ---
+@baseUrl = http://localhost:8080
+@tenantId = 11111111-1111-1111-1111-111111111111
+@propertyId = 22222222-2222-2222-2222-222222222222
+@guestId = 33333333-3333-3333-3333-333333333333
+@reservationId = 44444444-4444-4444-4444-444444444444
+@roomId = 55555555-5555-5555-5555-555555555551
+@roomTypeId = 66666666-6666-6666-6666-666666666666
+@taskId = 77777777-7777-7777-7777-777777777777
+@paymentId = 88888888-8888-8888-8888-888888888888
+@invoiceId = 99999999-9999-9999-9999-999999999999
+@folioId = aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa
+
+###############################################################################
+# 1. LOGIN
+###############################################################################
+
+# @name login
+POST {{baseUrl}}/v1/auth/login
+Content-Type: application/json
+
+{
+  "username": "setup.admin",
+  "password": "TempPass123"
+}
+
+### Extract token
+@authToken = {{login.response.body.access_token}}
+
+###############################################################################
+# 2. COMMAND DEFINITIONS (System Admin Only)
+###############################################################################
+
+# List all supported command definitions
+GET {{baseUrl}}/v1/commands/definitions
+Authorization: Bearer {{authToken}}
+
+###############################################################################
+###############################################################################
+##                                                                           ##
+##                      RESERVATION COMMANDS                                 ##
+##                                                                           ##
+###############################################################################
+###############################################################################
+
+###############################################################################
+# 3. reservation.create - Create a new reservation
+###############################################################################
+
+# @name createReservation
+POST {{baseUrl}}/v1/commands/reservation.create/execute
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+X-Request-ID: {{$guid}}
+X-Idempotency-Key: res-create-{{$timestamp}}
+
+{
+  "tenant_id": "{{tenantId}}",
+  "payload": {
+    "property_id": "{{propertyId}}",
+    "guest_id": "{{guestId}}",
+    "room_type_id": "{{roomTypeId}}",
+    "rate_code": "BAR",
+    "check_in_date": "2026-03-15",
+    "check_out_date": "2026-03-18",
+    "adults": 2,
+    "children": 0,
+    "special_requests": "High floor preferred, king bed",
+    "source": "DIRECT",
+    "channel": "WEB",
+    "payment_method": "CREDIT_CARD",
+    "total_amount": 627.00,
+    "currency": "USD",
+    "guest_details": {
+      "first_name": "John",
+      "last_name": "Smith",
+      "email": "john.smith@example.com",
+      "phone": "+1-555-0101"
+    },
+    "metadata": {
+      "booking_reference": "WEB-2026-001"
+    }
+  }
+}
+
+###############################################################################
+# 4. reservation.modify - Modify an existing reservation
+###############################################################################
+
+POST {{baseUrl}}/v1/commands/reservation.modify/execute
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+X-Request-ID: {{$guid}}
+X-Idempotency-Key: res-modify-{{$timestamp}}
+
+{
+  "tenant_id": "{{tenantId}}",
+  "payload": {
+    "reservation_id": "{{reservationId}}",
+    "check_out_date": "2026-03-19",
+    "special_requests": "Late checkout requested",
+    "reason": "Guest requested extension"
+  }
+}
+
+###############################################################################
+# 5. reservation.cancel - Cancel a reservation
+###############################################################################
+
+POST {{baseUrl}}/v1/commands/reservation.cancel/execute
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+X-Request-ID: {{$guid}}
+X-Idempotency-Key: res-cancel-{{$timestamp}}
+
+{
+  "tenant_id": "{{tenantId}}",
+  "payload": {
+    "reservation_id": "{{reservationId}}",
+    "reason": "Guest request - changed travel plans",
+    "cancellation_fee": 0,
+    "waive_penalty": true,
+    "waive_reason": "Loyalty member, first cancellation"
+  }
+}
+
+###############################################################################
+# 6. reservation.check_in - Check in a guest
+###############################################################################
+
+POST {{baseUrl}}/v1/commands/reservation.check_in/execute
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+X-Request-ID: {{$guid}}
+X-Idempotency-Key: res-checkin-{{$timestamp}}
+
+{
+  "tenant_id": "{{tenantId}}",
+  "payload": {
+    "reservation_id": "{{reservationId}}",
+    "room_id": "{{roomId}}",
+    "id_verified": true,
+    "id_type": "PASSPORT",
+    "id_number": "AB1234567",
+    "registration_card_signed": true,
+    "key_cards_issued": 2,
+    "notes": "Guest arrived at 3:15 PM"
+  }
+}
+
+###############################################################################
+# 7. reservation.check_out - Check out a guest
+###############################################################################
+
+POST {{baseUrl}}/v1/commands/reservation.check_out/execute
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+X-Request-ID: {{$guid}}
+X-Idempotency-Key: res-checkout-{{$timestamp}}
+
+{
+  "tenant_id": "{{tenantId}}",
+  "payload": {
+    "reservation_id": "{{reservationId}}",
+    "express_checkout": false,
+    "room_inspected": true,
+    "keys_returned": 2,
+    "minibar_charges": 25.00,
+    "late_checkout_fee": 0,
+    "folio_settled": true,
+    "notes": "Smooth checkout, guest feedback collected"
+  }
+}
+
+###############################################################################
+# 8. reservation.assign_room - Assign a room to reservation
+###############################################################################
+
+POST {{baseUrl}}/v1/commands/reservation.assign_room/execute
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+X-Request-ID: {{$guid}}
+X-Idempotency-Key: res-assign-{{$timestamp}}
+
+{
+  "tenant_id": "{{tenantId}}",
+  "payload": {
+    "reservation_id": "{{reservationId}}",
+    "room_id": "{{roomId}}",
+    "notes": "Upgraded to high floor as requested"
+  }
+}
+
+###############################################################################
+# 9. reservation.unassign_room - Unassign a room from reservation
+###############################################################################
+
+POST {{baseUrl}}/v1/commands/reservation.unassign_room/execute
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+X-Request-ID: {{$guid}}
+X-Idempotency-Key: res-unassign-{{$timestamp}}
+
+{
+  "tenant_id": "{{tenantId}}",
+  "payload": {
+    "reservation_id": "{{reservationId}}",
+    "reason": "Room requires maintenance, reassigning"
+  }
+}
+
+###############################################################################
+# 10. reservation.extend_stay - Extend a stay
+###############################################################################
+
+POST {{baseUrl}}/v1/commands/reservation.extend_stay/execute
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+X-Request-ID: {{$guid}}
+X-Idempotency-Key: res-extend-{{$timestamp}}
+
+{
+  "tenant_id": "{{tenantId}}",
+  "payload": {
+    "reservation_id": "{{reservationId}}",
+    "new_check_out_date": "2026-03-20",
+    "rate_code": "BAR",
+    "additional_amount": 209.00,
+    "reason": "Guest requested 2-day extension"
+  }
+}
+
+###############################################################################
+# 11. reservation.rate_override - Override reservation rates
+###############################################################################
+
+POST {{baseUrl}}/v1/commands/reservation.rate_override/execute
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+X-Request-ID: {{$guid}}
+X-Idempotency-Key: res-rate-{{$timestamp}}
+
+{
+  "tenant_id": "{{tenantId}}",
+  "payload": {
+    "reservation_id": "{{reservationId}}",
+    "new_rate": 179.00,
+    "reason": "Price match guarantee",
+    "authorization": "MGR-APPROVAL-001"
+  }
+}
+
+###############################################################################
+# 12. reservation.add_deposit - Add a deposit
+###############################################################################
+
+POST {{baseUrl}}/v1/commands/reservation.add_deposit/execute
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+X-Request-ID: {{$guid}}
+X-Idempotency-Key: res-deposit-add-{{$timestamp}}
+
+{
+  "tenant_id": "{{tenantId}}",
+  "payload": {
+    "reservation_id": "{{reservationId}}",
+    "amount": 200.00,
+    "currency": "USD",
+    "payment_method": "CREDIT_CARD",
+    "card_last_four": "4242",
+    "authorization_code": "AUTH-123456",
+    "notes": "Security deposit"
+  }
+}
+
+###############################################################################
+# 13. reservation.release_deposit - Release a deposit
+###############################################################################
+
+POST {{baseUrl}}/v1/commands/reservation.release_deposit/execute
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+X-Request-ID: {{$guid}}
+X-Idempotency-Key: res-deposit-release-{{$timestamp}}
+
+{
+  "tenant_id": "{{tenantId}}",
+  "payload": {
+    "reservation_id": "{{reservationId}}",
+    "amount": 200.00,
+    "reason": "No damages, full refund",
+    "refund_method": "ORIGINAL_PAYMENT_METHOD"
+  }
+}
+
+###############################################################################
+###############################################################################
+##                                                                           ##
+##                         GUEST COMMANDS                                    ##
+##                                                                           ##
+###############################################################################
+###############################################################################
+
+###############################################################################
+# 14. guest.register - Create or import a guest profile
+###############################################################################
+
+# @name registerGuest
+POST {{baseUrl}}/v1/commands/guest.register/execute
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+X-Request-ID: {{$guid}}
+X-Idempotency-Key: guest-register-{{$timestamp}}
+
+{
+  "tenant_id": "{{tenantId}}",
+  "payload": {
+    "property_id": "{{propertyId}}",
+    "first_name": "Jane",
+    "last_name": "Doe",
+    "email": "jane.doe@example.com",
+    "phone": "+1-555-0202",
+    "date_of_birth": "1985-06-15",
+    "nationality": "US",
+    "address": {
+      "line1": "123 Main Street",
+      "city": "New York",
+      "state": "NY",
+      "postal_code": "10001",
+      "country": "US"
+    },
+    "id_type": "PASSPORT",
+    "id_number": "AB1234567",
+    "id_expiry": "2030-06-15",
+    "preferences": {
+      "room_type": "non-smoking",
+      "floor": "high",
+      "pillow": "firm",
+      "newspaper": "Wall Street Journal"
+    },
+    "marketing_opt_in": true,
+    "metadata": {
+      "source": "DIRECT_BOOKING"
+    }
+  }
+}
+
+###############################################################################
+# 15. guest.merge - Merge duplicate guest profiles
+###############################################################################
+
+POST {{baseUrl}}/v1/commands/guest.merge/execute
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+X-Request-ID: {{$guid}}
+X-Idempotency-Key: guest-merge-{{$timestamp}}
+
+{
+  "tenant_id": "{{tenantId}}",
+  "payload": {
+    "primary_guest_id": "{{guestId}}",
+    "duplicate_guest_ids": [
+      "dddddddd-dddd-dddd-dddd-dddddddddddd",
+      "eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee"
+    ],
+    "merge_strategy": "KEEP_PRIMARY",
+    "notes": "Duplicates created from OTA bookings"
+  }
+}
+
+###############################################################################
+# 16. guest.update_profile - Update guest profile details
+###############################################################################
+
+POST {{baseUrl}}/v1/commands/guest.update_profile/execute
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+X-Request-ID: {{$guid}}
+X-Idempotency-Key: guest-update-{{$timestamp}}
+
+{
+  "tenant_id": "{{tenantId}}",
+  "payload": {
+    "guest_id": "{{guestId}}",
+    "first_name": "Jane",
+    "last_name": "Doe-Smith",
+    "date_of_birth": "1985-06-15",
+    "anniversary_date": "2020-09-15",
+    "company": "Acme Corp",
+    "job_title": "Director of Operations"
+  }
+}
+
+###############################################################################
+# 17. guest.update_contact - Update guest contact details
+###############################################################################
+
+POST {{baseUrl}}/v1/commands/guest.update_contact/execute
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+X-Request-ID: {{$guid}}
+X-Idempotency-Key: guest-contact-{{$timestamp}}
+
+{
+  "tenant_id": "{{tenantId}}",
+  "payload": {
+    "guest_id": "{{guestId}}",
+    "email": "jane.smith@newcompany.com",
+    "phone": "+1-555-0303",
+    "mobile": "+1-555-0304",
+    "address": {
+      "line1": "456 Park Avenue",
+      "city": "New York",
+      "state": "NY",
+      "postal_code": "10022",
+      "country": "US"
+    }
+  }
+}
+
+###############################################################################
+# 18. guest.set_loyalty - Update guest loyalty tier or points
+###############################################################################
+
+POST {{baseUrl}}/v1/commands/guest.set_loyalty/execute
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+X-Request-ID: {{$guid}}
+X-Idempotency-Key: guest-loyalty-{{$timestamp}}
+
+{
+  "tenant_id": "{{tenantId}}",
+  "payload": {
+    "guest_id": "{{guestId}}",
+    "loyalty_program": "TARTWARE_REWARDS",
+    "membership_number": "TR-2026-001234",
+    "tier": "GOLD",
+    "points_balance": 15000,
+    "tier_expiry_date": "2027-12-31",
+    "enrollment_date": "2024-01-15"
+  }
+}
+
+###############################################################################
+# 19. guest.set_vip - Update guest VIP status
+###############################################################################
+
+POST {{baseUrl}}/v1/commands/guest.set_vip/execute
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+X-Request-ID: {{$guid}}
+X-Idempotency-Key: guest-vip-{{$timestamp}}
+
+{
+  "tenant_id": "{{tenantId}}",
+  "payload": {
+    "guest_id": "{{guestId}}",
+    "vip_status": true,
+    "vip_level": "PLATINUM",
+    "vip_reason": "Top 100 lifetime revenue guest",
+    "special_amenities": ["WELCOME_CHAMPAGNE", "SUITE_UPGRADE", "LATE_CHECKOUT"],
+    "notes": "Personal greeting by GM required"
+  }
+}
+
+###############################################################################
+# 20. guest.set_blacklist - Update guest blacklist status
+###############################################################################
+
+POST {{baseUrl}}/v1/commands/guest.set_blacklist/execute
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+X-Request-ID: {{$guid}}
+X-Idempotency-Key: guest-blacklist-{{$timestamp}}
+
+{
+  "tenant_id": "{{tenantId}}",
+  "payload": {
+    "guest_id": "{{guestId}}",
+    "blacklisted": true,
+    "reason": "Credit card fraud - incident #INC-2026-001",
+    "severity": "HIGH",
+    "effective_date": "2026-02-01",
+    "expiry_date": null,
+    "reported_by": "{{userId}}",
+    "incident_reference": "INC-2026-001"
+  }
+}
+
+###############################################################################
+# 21. guest.gdpr.erase - Erase guest data (GDPR Right to be Forgotten)
+###############################################################################
+
+POST {{baseUrl}}/v1/commands/guest.gdpr.erase/execute
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+X-Request-ID: {{$guid}}
+X-Idempotency-Key: guest-gdpr-{{$timestamp}}
+
+{
+  "tenant_id": "{{tenantId}}",
+  "payload": {
+    "guest_id": "{{guestId}}",
+    "request_reference": "GDPR-2026-001",
+    "verification_method": "EMAIL_CONFIRMATION",
+    "verification_date": "2026-02-01",
+    "retain_financial_records": true,
+    "retention_period_years": 7,
+    "notes": "Guest requested data erasure via email"
+  }
+}
+
+###############################################################################
+# 22. guest.preference.update - Update guest preferences
+###############################################################################
+
+POST {{baseUrl}}/v1/commands/guest.preference.update/execute
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+X-Request-ID: {{$guid}}
+X-Idempotency-Key: guest-pref-{{$timestamp}}
+
+{
+  "tenant_id": "{{tenantId}}",
+  "payload": {
+    "guest_id": "{{guestId}}",
+    "preferences": {
+      "room_type": "SUITE",
+      "bed_type": "KING",
+      "floor_preference": "HIGH",
+      "smoking": false,
+      "pillow_type": "FIRM",
+      "room_temperature": 21,
+      "newspaper": "Financial Times",
+      "dietary_restrictions": ["VEGETARIAN", "GLUTEN_FREE"],
+      "allergies": ["NUTS"],
+      "minibar_preferences": ["NO_ALCOHOL"],
+      "communication_preference": "EMAIL",
+      "language": "en"
+    }
+  }
+}
+
+###############################################################################
+###############################################################################
+##                                                                           ##
+##                         ROOM COMMANDS                                     ##
+##                                                                           ##
+###############################################################################
+###############################################################################
+
+###############################################################################
+# 23. rooms.inventory.block - Block rooms for maintenance
+###############################################################################
+
+POST {{baseUrl}}/v1/commands/rooms.inventory.block/execute
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+X-Request-ID: {{$guid}}
+X-Idempotency-Key: room-block-{{$timestamp}}
+
+{
+  "tenant_id": "{{tenantId}}",
+  "payload": {
+    "property_id": "{{propertyId}}",
+    "room_id": "{{roomId}}",
+    "block_type": "MAINTENANCE",
+    "start_date": "2026-02-10",
+    "end_date": "2026-02-12",
+    "reason": "HVAC system repair",
+    "notes": "Scheduled preventive maintenance",
+    "notify_housekeeping": true
+  }
+}
+
+###############################################################################
+# 24. rooms.inventory.release - Release a room block
+###############################################################################
+
+POST {{baseUrl}}/v1/commands/rooms.inventory.release/execute
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+X-Request-ID: {{$guid}}
+X-Idempotency-Key: room-release-{{$timestamp}}
+
+{
+  "tenant_id": "{{tenantId}}",
+  "payload": {
+    "property_id": "{{propertyId}}",
+    "room_id": "{{roomId}}",
+    "reason": "Maintenance completed ahead of schedule"
+  }
+}
+
+###############################################################################
+# 25. rooms.status.update - Update room status
+###############################################################################
+
+POST {{baseUrl}}/v1/commands/rooms.status.update/execute
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+X-Request-ID: {{$guid}}
+X-Idempotency-Key: room-status-{{$timestamp}}
+
+{
+  "tenant_id": "{{tenantId}}",
+  "payload": {
+    "property_id": "{{propertyId}}",
+    "room_id": "{{roomId}}",
+    "status": "OCCUPIED",
+    "notes": "Guest checked in"
+  }
+}
+
+###############################################################################
+# 26. rooms.housekeeping_status.update - Update housekeeping status
+###############################################################################
+
+POST {{baseUrl}}/v1/commands/rooms.housekeeping_status.update/execute
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+X-Request-ID: {{$guid}}
+X-Idempotency-Key: room-hk-{{$timestamp}}
+
+{
+  "tenant_id": "{{tenantId}}",
+  "payload": {
+    "property_id": "{{propertyId}}",
+    "room_id": "{{roomId}}",
+    "housekeeping_status": "CLEAN",
+    "inspected_by": "{{userId}}",
+    "inspection_notes": "Room passed QA check"
+  }
+}
+
+###############################################################################
+# 27. rooms.out_of_order - Mark a room out of order
+###############################################################################
+
+POST {{baseUrl}}/v1/commands/rooms.out_of_order/execute
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+X-Request-ID: {{$guid}}
+X-Idempotency-Key: room-ooo-{{$timestamp}}
+
+{
+  "tenant_id": "{{tenantId}}",
+  "payload": {
+    "property_id": "{{propertyId}}",
+    "room_id": "{{roomId}}",
+    "reason": "Water damage from burst pipe",
+    "estimated_return_date": "2026-02-15",
+    "maintenance_ticket": "MT-2026-001",
+    "notify_reservations": true,
+    "reassign_existing_bookings": true
+  }
+}
+
+###############################################################################
+# 28. rooms.out_of_service - Mark a room out of service
+###############################################################################
+
+POST {{baseUrl}}/v1/commands/rooms.out_of_service/execute
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+X-Request-ID: {{$guid}}
+X-Idempotency-Key: room-oos-{{$timestamp}}
+
+{
+  "tenant_id": "{{tenantId}}",
+  "payload": {
+    "property_id": "{{propertyId}}",
+    "room_id": "{{roomId}}",
+    "reason": "Deep cleaning scheduled",
+    "estimated_return_date": "2026-02-03",
+    "notes": "Quarterly deep clean"
+  }
+}
+
+###############################################################################
+# 29. rooms.move - Move a guest between rooms
+###############################################################################
+
+POST {{baseUrl}}/v1/commands/rooms.move/execute
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+X-Request-ID: {{$guid}}
+X-Idempotency-Key: room-move-{{$timestamp}}
+
+{
+  "tenant_id": "{{tenantId}}",
+  "payload": {
+    "property_id": "{{propertyId}}",
+    "reservation_id": "{{reservationId}}",
+    "from_room_id": "{{roomId}}",
+    "to_room_id": "55555555-5555-5555-5555-555555555552",
+    "reason": "Guest complaint about noise",
+    "rate_adjustment": 0,
+    "notes": "Complimentary upgrade to quieter room",
+    "move_luggage": true
+  }
+}
+
+###############################################################################
+# 30. rooms.features.update - Update room features and amenities
+###############################################################################
+
+POST {{baseUrl}}/v1/commands/rooms.features.update/execute
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+X-Request-ID: {{$guid}}
+X-Idempotency-Key: room-features-{{$timestamp}}
+
+{
+  "tenant_id": "{{tenantId}}",
+  "payload": {
+    "property_id": "{{propertyId}}",
+    "room_id": "{{roomId}}",
+    "features": {
+      "view": "CITY",
+      "balcony": true,
+      "smoking": false,
+      "accessible": true,
+      "connecting_room": "102",
+      "crib_available": true,
+      "rollaway_available": true
+    },
+    "amenities": ["WIFI", "SMART_TV", "WORK_DESK", "RAIN_SHOWER", "COFFEE_MAKER", "SAFE"]
+  }
+}
+
+###############################################################################
+###############################################################################
+##                                                                           ##
+##                      HOUSEKEEPING COMMANDS                                ##
+##                                                                           ##
+###############################################################################
+###############################################################################
+
+###############################################################################
+# 31. housekeeping.task.create - Create a housekeeping task
+###############################################################################
+
+# @name createHousekeepingTask
+POST {{baseUrl}}/v1/commands/housekeeping.task.create/execute
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+X-Request-ID: {{$guid}}
+X-Idempotency-Key: hk-create-{{$timestamp}}
+
+{
+  "tenant_id": "{{tenantId}}",
+  "payload": {
+    "property_id": "{{propertyId}}",
+    "room_id": "{{roomId}}",
+    "task_type": "CHECKOUT_CLEAN",
+    "priority": "HIGH",
+    "due_date": "2026-02-03",
+    "due_time": "14:00",
+    "estimated_duration_minutes": 45,
+    "special_instructions": "Deep clean requested, VIP arriving",
+    "supplies_needed": ["FRESH_FLOWERS", "WELCOME_AMENITY"]
+  }
+}
+
+###############################################################################
+# 32. housekeeping.task.assign - Assign a housekeeping task
+###############################################################################
+
+POST {{baseUrl}}/v1/commands/housekeeping.task.assign/execute
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+X-Request-ID: {{$guid}}
+X-Idempotency-Key: hk-assign-{{$timestamp}}
+
+{
+  "tenant_id": "{{tenantId}}",
+  "payload": {
+    "task_id": "{{taskId}}",
+    "assignee_id": "{{userId}}",
+    "assignment_notes": "Priority task - VIP guest arriving at 3 PM"
+  }
+}
+
+###############################################################################
+# 33. housekeeping.task.complete - Complete a housekeeping task
+###############################################################################
+
+POST {{baseUrl}}/v1/commands/housekeeping.task.complete/execute
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+X-Request-ID: {{$guid}}
+X-Idempotency-Key: hk-complete-{{$timestamp}}
+
+{
+  "tenant_id": "{{tenantId}}",
+  "payload": {
+    "task_id": "{{taskId}}",
+    "completed_by": "{{userId}}",
+    "completion_notes": "Room cleaned and inspected",
+    "actual_duration_minutes": 40,
+    "issues_found": [],
+    "maintenance_needed": false,
+    "photos": []
+  }
+}
+
+###############################################################################
+# 34. housekeeping.task.reassign - Reassign a housekeeping task
+###############################################################################
+
+POST {{baseUrl}}/v1/commands/housekeeping.task.reassign/execute
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+X-Request-ID: {{$guid}}
+X-Idempotency-Key: hk-reassign-{{$timestamp}}
+
+{
+  "tenant_id": "{{tenantId}}",
+  "payload": {
+    "task_id": "{{taskId}}",
+    "new_assignee_id": "{{userId}}",
+    "reason": "Original assignee called in sick",
+    "notes": "Urgent - please prioritize"
+  }
+}
+
+###############################################################################
+# 35. housekeeping.task.reopen - Reopen a completed task
+###############################################################################
+
+POST {{baseUrl}}/v1/commands/housekeeping.task.reopen/execute
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+X-Request-ID: {{$guid}}
+X-Idempotency-Key: hk-reopen-{{$timestamp}}
+
+{
+  "tenant_id": "{{tenantId}}",
+  "payload": {
+    "task_id": "{{taskId}}",
+    "reason": "Guest reported bathroom not cleaned properly",
+    "priority": "URGENT",
+    "notes": "Re-clean bathroom, specific focus on shower"
+  }
+}
+
+###############################################################################
+# 36. housekeeping.task.add_note - Add a note to a task
+###############################################################################
+
+POST {{baseUrl}}/v1/commands/housekeeping.task.add_note/execute
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+X-Request-ID: {{$guid}}
+X-Idempotency-Key: hk-note-{{$timestamp}}
+
+{
+  "tenant_id": "{{tenantId}}",
+  "payload": {
+    "task_id": "{{taskId}}",
+    "note": "Found damaged towel rack - reported to maintenance",
+    "note_type": "ISSUE",
+    "visibility": "INTERNAL"
+  }
+}
+
+###############################################################################
+# 37. housekeeping.task.bulk_status - Bulk update task status
+###############################################################################
+
+POST {{baseUrl}}/v1/commands/housekeeping.task.bulk_status/execute
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+X-Request-ID: {{$guid}}
+X-Idempotency-Key: hk-bulk-{{$timestamp}}
+
+{
+  "tenant_id": "{{tenantId}}",
+  "payload": {
+    "task_ids": [
+      "{{taskId}}",
+      "77777777-7777-7777-7777-777777777778",
+      "77777777-7777-7777-7777-777777777779"
+    ],
+    "new_status": "IN_PROGRESS",
+    "notes": "Morning shift starting work"
+  }
+}
+
+###############################################################################
+###############################################################################
+##                                                                           ##
+##                        BILLING COMMANDS                                   ##
+##                                                                           ##
+###############################################################################
+###############################################################################
+
+###############################################################################
+# 38. billing.payment.capture - Capture a payment
+###############################################################################
+
+# @name capturePayment
+POST {{baseUrl}}/v1/commands/billing.payment.capture/execute
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+X-Request-ID: {{$guid}}
+X-Idempotency-Key: pay-capture-{{$timestamp}}
+
+{
+  "tenant_id": "{{tenantId}}",
+  "payload": {
+    "property_id": "{{propertyId}}",
+    "reservation_id": "{{reservationId}}",
+    "folio_id": "{{folioId}}",
+    "amount": 627.00,
+    "currency": "USD",
+    "payment_method": "CREDIT_CARD",
+    "card_details": {
+      "last_four": "4242",
+      "brand": "VISA",
+      "exp_month": 12,
+      "exp_year": 2027
+    },
+    "description": "Room charges - 3 nights",
+    "metadata": {
+      "invoice_number": "INV-2026-001"
+    }
+  }
+}
+
+###############################################################################
+# 39. billing.payment.refund - Issue a refund
+###############################################################################
+
+POST {{baseUrl}}/v1/commands/billing.payment.refund/execute
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+X-Request-ID: {{$guid}}
+X-Idempotency-Key: pay-refund-{{$timestamp}}
+
+{
+  "tenant_id": "{{tenantId}}",
+  "payload": {
+    "payment_id": "{{paymentId}}",
+    "amount": 200.00,
+    "reason": "Security deposit return - no damages",
+    "refund_method": "ORIGINAL_PAYMENT_METHOD",
+    "notes": "Full deposit refund approved"
+  }
+}
+
+###############################################################################
+# 40. billing.invoice.create - Create an invoice
+###############################################################################
+
+# @name createInvoice
+POST {{baseUrl}}/v1/commands/billing.invoice.create/execute
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+X-Request-ID: {{$guid}}
+X-Idempotency-Key: inv-create-{{$timestamp}}
+
+{
+  "tenant_id": "{{tenantId}}",
+  "payload": {
+    "property_id": "{{propertyId}}",
+    "reservation_id": "{{reservationId}}",
+    "guest_id": "{{guestId}}",
+    "invoice_type": "STANDARD",
+    "line_items": [
+      {
+        "description": "Room Charges - Cityline King (3 nights)",
+        "quantity": 3,
+        "unit_price": 209.00,
+        "amount": 627.00,
+        "tax_rate": 12.5,
+        "category": "ROOM"
+      },
+      {
+        "description": "Minibar",
+        "quantity": 1,
+        "unit_price": 25.00,
+        "amount": 25.00,
+        "tax_rate": 12.5,
+        "category": "MINIBAR"
+      },
+      {
+        "description": "Room Service - Dinner",
+        "quantity": 1,
+        "unit_price": 45.00,
+        "amount": 45.00,
+        "tax_rate": 12.5,
+        "category": "FOOD_BEVERAGE"
+      }
+    ],
+    "subtotal": 697.00,
+    "tax_amount": 87.13,
+    "total_amount": 784.13,
+    "currency": "USD",
+    "due_date": "2026-02-28",
+    "notes": "Thank you for staying with us!",
+    "billing_address": {
+      "name": "John Smith",
+      "line1": "123 Main Street",
+      "city": "New York",
+      "state": "NY",
+      "postal_code": "10001",
+      "country": "US"
+    }
+  }
+}
+
+###############################################################################
+# 41. billing.invoice.adjust - Adjust an invoice
+###############################################################################
+
+POST {{baseUrl}}/v1/commands/billing.invoice.adjust/execute
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+X-Request-ID: {{$guid}}
+X-Idempotency-Key: inv-adjust-{{$timestamp}}
+
+{
+  "tenant_id": "{{tenantId}}",
+  "payload": {
+    "invoice_id": "{{invoiceId}}",
+    "adjustment_type": "DISCOUNT",
+    "amount": -50.00,
+    "reason": "Loyalty member discount",
+    "authorization": "MGR-2026-001",
+    "notes": "10% loyalty discount applied"
+  }
+}
+
+###############################################################################
+# 42. billing.charge.post - Post a charge to a folio
+###############################################################################
+
+POST {{baseUrl}}/v1/commands/billing.charge.post/execute
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+X-Request-ID: {{$guid}}
+X-Idempotency-Key: charge-post-{{$timestamp}}
+
+{
+  "tenant_id": "{{tenantId}}",
+  "payload": {
+    "property_id": "{{propertyId}}",
+    "reservation_id": "{{reservationId}}",
+    "folio_id": "{{folioId}}",
+    "charge_type": "ROOM_SERVICE",
+    "description": "Room Service - Breakfast",
+    "amount": 35.00,
+    "currency": "USD",
+    "tax_rate": 12.5,
+    "posted_by": "{{userId}}",
+    "reference": "RS-2026-001"
+  }
+}
+
+###############################################################################
+# 43. billing.payment.apply - Apply a payment to an invoice
+###############################################################################
+
+POST {{baseUrl}}/v1/commands/billing.payment.apply/execute
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+X-Request-ID: {{$guid}}
+X-Idempotency-Key: pay-apply-{{$timestamp}}
+
+{
+  "tenant_id": "{{tenantId}}",
+  "payload": {
+    "payment_id": "{{paymentId}}",
+    "folio_id": "{{folioId}}",
+    "amount": 627.00,
+    "notes": "Full payment applied to guest folio"
+  }
+}
+
+###############################################################################
+# 44. billing.folio.transfer - Transfer folio balance
+###############################################################################
+
+POST {{baseUrl}}/v1/commands/billing.folio.transfer/execute
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+X-Request-ID: {{$guid}}
+X-Idempotency-Key: folio-transfer-{{$timestamp}}
+
+{
+  "tenant_id": "{{tenantId}}",
+  "payload": {
+    "source_folio_id": "{{folioId}}",
+    "target_folio_id": "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb",
+    "amount": 100.00,
+    "reason": "Split billing - company portion",
+    "notes": "Transfer approved by guest",
+    "transfer_items": ["ROOM_CHARGES"]
+  }
+}
+
+###############################################################################
+###############################################################################
+##                                                                           ##
+##                       SETTINGS COMMANDS                                   ##
+##                                                                           ##
+###############################################################################
+###############################################################################
+
+###############################################################################
+# 45. settings.value.set - Set a configuration value
+###############################################################################
+
+POST {{baseUrl}}/v1/commands/settings.value.set/execute
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+X-Request-ID: {{$guid}}
+X-Idempotency-Key: settings-set-{{$timestamp}}
+
+{
+  "tenant_id": "{{tenantId}}",
+  "payload": {
+    "property_id": "{{propertyId}}",
+    "setting_key": "checkout.late_checkout_fee",
+    "value": 50.00,
+    "effective_date": "2026-02-01",
+    "notes": "Updated late checkout fee"
+  }
+}
+
+###############################################################################
+# 46. settings.value.bulk_set - Bulk set configuration values
+###############################################################################
+
+POST {{baseUrl}}/v1/commands/settings.value.bulk_set/execute
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+X-Request-ID: {{$guid}}
+X-Idempotency-Key: settings-bulk-{{$timestamp}}
+
+{
+  "tenant_id": "{{tenantId}}",
+  "payload": {
+    "property_id": "{{propertyId}}",
+    "settings": [
+      {
+        "setting_key": "checkout.standard_time",
+        "value": "11:00"
+      },
+      {
+        "setting_key": "checkout.late_checkout_time",
+        "value": "14:00"
+      },
+      {
+        "setting_key": "checkout.late_checkout_fee",
+        "value": 50.00
+      },
+      {
+        "setting_key": "checkin.standard_time",
+        "value": "15:00"
+      },
+      {
+        "setting_key": "checkin.early_checkin_fee",
+        "value": 30.00
+      }
+    ],
+    "effective_date": "2026-02-01",
+    "notes": "Q1 2026 policy updates"
+  }
+}
+
+###############################################################################
+# 47. settings.value.approve - Approve a pending setting value
+###############################################################################
+
+POST {{baseUrl}}/v1/commands/settings.value.approve/execute
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+X-Request-ID: {{$guid}}
+X-Idempotency-Key: settings-approve-{{$timestamp}}
+
+{
+  "tenant_id": "{{tenantId}}",
+  "payload": {
+    "setting_value_id": "cccccccc-cccc-cccc-cccc-cccccccccccc",
+    "approved_by": "{{userId}}",
+    "notes": "Approved after management review"
+  }
+}
+
+###############################################################################
+# 48. settings.value.revert - Revert a setting value
+###############################################################################
+
+POST {{baseUrl}}/v1/commands/settings.value.revert/execute
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+X-Request-ID: {{$guid}}
+X-Idempotency-Key: settings-revert-{{$timestamp}}
+
+{
+  "tenant_id": "{{tenantId}}",
+  "payload": {
+    "property_id": "{{propertyId}}",
+    "setting_key": "checkout.late_checkout_fee",
+    "revert_to_version": 1,
+    "reason": "Business decision to revert to previous pricing"
+  }
+}
+
+###############################################################################
+###############################################################################
+##                                                                           ##
+##                     INTEGRATION COMMANDS                                  ##
+##                                                                           ##
+###############################################################################
+###############################################################################
+
+###############################################################################
+# 49. integration.ota.sync_request - Request an OTA sync
+###############################################################################
+
+POST {{baseUrl}}/v1/commands/integration.ota.sync_request/execute
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+X-Request-ID: {{$guid}}
+X-Idempotency-Key: ota-sync-{{$timestamp}}
+
+{
+  "tenant_id": "{{tenantId}}",
+  "payload": {
+    "property_id": "{{propertyId}}",
+    "channel": "BOOKING_COM",
+    "sync_type": "FULL",
+    "date_range": {
+      "start_date": "2026-02-01",
+      "end_date": "2026-04-30"
+    },
+    "room_types": ["{{roomTypeId}}"],
+    "include_rates": true,
+    "include_availability": true,
+    "include_restrictions": true
+  }
+}
+
+###############################################################################
+# 50. integration.ota.rate_push - Push rates to OTA
+###############################################################################
+
+POST {{baseUrl}}/v1/commands/integration.ota.rate_push/execute
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+X-Request-ID: {{$guid}}
+X-Idempotency-Key: ota-rate-{{$timestamp}}
+
+{
+  "tenant_id": "{{tenantId}}",
+  "payload": {
+    "property_id": "{{propertyId}}",
+    "channel": "EXPEDIA",
+    "room_type_id": "{{roomTypeId}}",
+    "rate_plan_code": "BAR",
+    "rates": [
+      {
+        "date": "2026-03-01",
+        "rate": 199.00,
+        "currency": "USD"
+      },
+      {
+        "date": "2026-03-02",
+        "rate": 199.00,
+        "currency": "USD"
+      },
+      {
+        "date": "2026-03-03",
+        "rate": 249.00,
+        "currency": "USD"
+      }
+    ],
+    "restrictions": {
+      "min_los": 1,
+      "max_los": 14,
+      "closed_to_arrival": false,
+      "closed_to_departure": false
+    }
+  }
+}
+
+###############################################################################
+# 51. integration.webhook.retry - Retry a failed webhook
+###############################################################################
+
+POST {{baseUrl}}/v1/commands/integration.webhook.retry/execute
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+X-Request-ID: {{$guid}}
+X-Idempotency-Key: webhook-retry-{{$timestamp}}
+
+{
+  "tenant_id": "{{tenantId}}",
+  "payload": {
+    "webhook_delivery_id": "dddddddd-dddd-dddd-dddd-dddddddddddd",
+    "max_retries": 3,
+    "notes": "Manual retry after endpoint fix"
+  }
+}
+
+###############################################################################
+# 52. integration.mapping.update - Update integration mapping
+###############################################################################
+
+POST {{baseUrl}}/v1/commands/integration.mapping.update/execute
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+X-Request-ID: {{$guid}}
+X-Idempotency-Key: mapping-update-{{$timestamp}}
+
+{
+  "tenant_id": "{{tenantId}}",
+  "payload": {
+    "property_id": "{{propertyId}}",
+    "channel": "BOOKING_COM",
+    "mapping_type": "ROOM_TYPE",
+    "internal_id": "{{roomTypeId}}",
+    "external_id": "BDC-RT-12345",
+    "external_name": "Deluxe King Room",
+    "metadata": {
+      "max_occupancy": 2,
+      "bed_type": "KING"
+    }
+  }
+}
+
+###############################################################################
+###############################################################################
+##                                                                           ##
+##                      ANALYTICS COMMANDS                                   ##
+##                                                                           ##
+###############################################################################
+###############################################################################
+
+###############################################################################
+# 53. analytics.metric.ingest - Ingest an analytics metric
+###############################################################################
+
+POST {{baseUrl}}/v1/commands/analytics.metric.ingest/execute
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+X-Request-ID: {{$guid}}
+X-Idempotency-Key: metric-ingest-{{$timestamp}}
+
+{
+  "tenant_id": "{{tenantId}}",
+  "payload": {
+    "property_id": "{{propertyId}}",
+    "metric_type": "CUSTOM",
+    "metric_name": "guest_satisfaction_score",
+    "value": 4.5,
+    "dimensions": {
+      "source": "POST_STAY_SURVEY",
+      "category": "OVERALL"
+    },
+    "timestamp": "2026-02-03T12:00:00Z",
+    "metadata": {
+      "sample_size": 150
+    }
+  }
+}
+
+###############################################################################
+# 54. analytics.report.schedule - Schedule an analytics report
+###############################################################################
+
+POST {{baseUrl}}/v1/commands/analytics.report.schedule/execute
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+X-Request-ID: {{$guid}}
+X-Idempotency-Key: report-schedule-{{$timestamp}}
+
+{
+  "tenant_id": "{{tenantId}}",
+  "payload": {
+    "property_id": "{{propertyId}}",
+    "report_type": "DAILY_OPERATIONS",
+    "schedule": {
+      "frequency": "DAILY",
+      "time": "07:00",
+      "timezone": "America/New_York"
+    },
+    "recipients": [
+      {
+        "email": "gm@tartware-hotels.demo",
+        "format": "PDF"
+      },
+      {
+        "email": "revenue@tartware-hotels.demo",
+        "format": "EXCEL"
+      }
+    ],
+    "filters": {
+      "include_forecasts": true,
+      "include_comparisons": true,
+      "comparison_period": "PREVIOUS_YEAR"
+    }
+  }
+}
+
+###############################################################################
+###############################################################################
+##                                                                           ##
+##                      OPERATIONS COMMANDS                                  ##
+##                                                                           ##
+###############################################################################
+###############################################################################
+
+###############################################################################
+# 55. operations.maintenance.request - Create a maintenance request
+###############################################################################
+
+POST {{baseUrl}}/v1/commands/operations.maintenance.request/execute
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+X-Request-ID: {{$guid}}
+X-Idempotency-Key: maint-request-{{$timestamp}}
+
+{
+  "tenant_id": "{{tenantId}}",
+  "payload": {
+    "property_id": "{{propertyId}}",
+    "room_id": "{{roomId}}",
+    "category": "PLUMBING",
+    "priority": "HIGH",
+    "title": "Bathroom sink not draining",
+    "description": "Guest reported slow drain in bathroom sink. Possible clog.",
+    "reported_by": "{{userId}}",
+    "reported_by_guest": true,
+    "guest_impacted": true,
+    "room_usable": true,
+    "estimated_duration_hours": 1,
+    "preferred_time": "ASAP",
+    "photos": []
+  }
+}
+
+###############################################################################
+# 56. operations.incident.report - Report an incident
+###############################################################################
+
+POST {{baseUrl}}/v1/commands/operations.incident.report/execute
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+X-Request-ID: {{$guid}}
+X-Idempotency-Key: incident-report-{{$timestamp}}
+
+{
+  "tenant_id": "{{tenantId}}",
+  "payload": {
+    "property_id": "{{propertyId}}",
+    "incident_type": "GUEST_COMPLAINT",
+    "severity": "MEDIUM",
+    "title": "Noise complaint - Room 301",
+    "description": "Guest in Room 301 complained about loud music from Room 303 at 11:30 PM.",
+    "location": "Room 301 / Room 303",
+    "occurred_at": "2026-02-02T23:30:00Z",
+    "reported_by": "{{userId}}",
+    "guests_involved": ["{{guestId}}"],
+    "action_taken": "Security spoke with guests in Room 303. Music turned off.",
+    "follow_up_required": true,
+    "follow_up_notes": "Offer complimentary breakfast to guest in 301",
+    "witnesses": [],
+    "attachments": []
+  }
+}
+
+###############################################################################
+# 57. operations.asset.update - Update asset status
+###############################################################################
+
+POST {{baseUrl}}/v1/commands/operations.asset.update/execute
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+X-Request-ID: {{$guid}}
+X-Idempotency-Key: asset-update-{{$timestamp}}
+
+{
+  "tenant_id": "{{tenantId}}",
+  "payload": {
+    "property_id": "{{propertyId}}",
+    "asset_id": "eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee",
+    "status": "IN_MAINTENANCE",
+    "location": "MAINTENANCE_SHOP",
+    "condition": "FAIR",
+    "notes": "TV from Room 205 - display issue, sent for repair",
+    "maintenance_ticket": "MT-2026-002"
+  }
+}
+
+###############################################################################
+# 58. operations.inventory.adjust - Adjust inventory levels
+###############################################################################
+
+POST {{baseUrl}}/v1/commands/operations.inventory.adjust/execute
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+X-Request-ID: {{$guid}}
+X-Idempotency-Key: inventory-adjust-{{$timestamp}}
+
+{
+  "tenant_id": "{{tenantId}}",
+  "payload": {
+    "property_id": "{{propertyId}}",
+    "adjustments": [
+      {
+        "item_code": "TOWEL-BATH",
+        "adjustment_type": "RECEIVED",
+        "quantity": 100,
+        "unit_cost": 8.50,
+        "reference": "PO-2026-001"
+      },
+      {
+        "item_code": "SOAP-BAR",
+        "adjustment_type": "RECEIVED",
+        "quantity": 500,
+        "unit_cost": 0.75,
+        "reference": "PO-2026-001"
+      },
+      {
+        "item_code": "MINIBAR-WATER",
+        "adjustment_type": "WRITE_OFF",
+        "quantity": -12,
+        "reason": "Expired stock",
+        "reference": "WO-2026-001"
+      }
+    ],
+    "notes": "Weekly inventory adjustment"
+  }
+}
+
+###############################################################################
+# REFERENCE
+###############################################################################
+#
+# COMMAND EXECUTION:
+#   All commands follow the pattern:
+#   POST /v1/commands/{commandName}/execute
+#
+# IDEMPOTENCY:
+#   Include X-Idempotency-Key header for deduplication.
+#   Commands with the same key are processed only once.
+#
+# REQUEST TRACKING:
+#   Include X-Request-ID header for tracing across services.
+#
+# COMMAND STATUSES:
+#   ACCEPTED   - Command received and queued
+#   PUBLISHED  - Command sent to Kafka
+#   CONSUMED   - Downstream service received
+#   APPLIED    - Domain mutation complete
+#   FAILED     - Processing failed
+#   DLQ        - Moved to dead-letter queue
+#
+# REQUIRED MODULES BY COMMAND GROUP:
+#   Reservation, Guest, Room commands: core
+#   Housekeeping commands: facility-maintenance
+#   Billing commands: finance-automation
+#   Integration commands: marketing-channel
+#   Analytics commands: analytics-bi
+#   Operations commands: facility-maintenance
+#
+# SAMPLE IDs:
+#   Tenant:      11111111-1111-1111-1111-111111111111
+#   Property:    22222222-2222-2222-2222-222222222222
+#   Guest:       33333333-3333-3333-3333-333333333333
+#   Reservation: 44444444-4444-4444-4444-444444444444
+#   Room:        55555555-5555-5555-5555-555555555551
+#   Room Type:   66666666-6666-6666-6666-666666666666
+#   Task:        77777777-7777-7777-7777-777777777777
+#   Payment:     88888888-8888-8888-8888-888888888888
+#   Invoice:     99999999-9999-9999-9999-999999999999
+#   Folio:       aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa
+#
+###############################################################################
