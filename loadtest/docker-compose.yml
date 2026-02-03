@@ -1,0 +1,84 @@
+# Tartware Microservices Load Testing Infrastructure
+# Usage: docker compose up -d influxdb grafana && docker compose run --rm k6 run /scripts/scenarios/smoke.js
+
+services:
+  # InfluxDB for k6 metrics storage
+  influxdb:
+    image: influxdb:2.7
+    container_name: tartware-loadtest-influxdb
+    ports:
+      - "8086:8086"
+    environment:
+      DOCKER_INFLUXDB_INIT_MODE: setup
+      DOCKER_INFLUXDB_INIT_USERNAME: admin
+      DOCKER_INFLUXDB_INIT_PASSWORD: adminpassword
+      DOCKER_INFLUXDB_INIT_ORG: tartware
+      DOCKER_INFLUXDB_INIT_BUCKET: k6
+      DOCKER_INFLUXDB_INIT_RETENTION: 7d
+      DOCKER_INFLUXDB_INIT_ADMIN_TOKEN: tartware-token
+    volumes:
+      - influxdb_data:/var/lib/influxdb2
+    networks:
+      - loadtest
+    healthcheck:
+      test: ["CMD", "influx", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Grafana for visualization
+  grafana:
+    image: grafana/grafana:latest
+    container_name: tartware-loadtest-grafana
+    ports:
+      - "3001:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_INSTALL_PLUGINS: grafana-piechart-panel
+      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /etc/grafana/provisioning/dashboards/tartware-loadtest.json
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./grafana-dashboards:/etc/grafana/provisioning/dashboards
+      - ./grafana-datasources:/etc/grafana/provisioning/datasources
+    depends_on:
+      influxdb:
+        condition: service_healthy
+    networks:
+      - loadtest
+
+  # k6 load generator
+  k6:
+    image: grafana/k6:latest
+    container_name: tartware-loadtest-k6
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    environment:
+      K6_OUT: influxdb=http://influxdb:8086/k6
+      K6_INFLUXDB_ORGANIZATION: tartware
+      K6_INFLUXDB_TOKEN: tartware-token
+      GATEWAY_URL: ${GATEWAY_URL:-http://host.docker.internal:8080}
+      API_TOKEN: ${API_TOKEN:-}
+      TENANT_ID: ${TENANT_ID:-11111111-1111-1111-1111-111111111111}
+      PROPERTY_ID: ${PROPERTY_ID:-22222222-2222-2222-2222-222222222222}
+      ROOM_TYPE_ID: ${ROOM_TYPE_ID:-44444444-4444-4444-4444-444444444444}
+      VUS: ${VUS:-50}
+      DURATION: ${DURATION:-5m}
+      RAMP_UP: ${RAMP_UP:-30s}
+    volumes:
+      - ./k6:/scripts:ro
+    working_dir: /scripts
+    depends_on:
+      - influxdb
+    networks:
+      - loadtest
+    profiles:
+      - tools
+
+volumes:
+  influxdb_data:
+  grafana_data:
+
+networks:
+  loadtest:
+    driver: bridge
