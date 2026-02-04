@@ -34,13 +34,22 @@ export class AmenityHydrator extends BaseHydrator<
     }>(
       `
       SELECT
-        r.room_id,
-        COALESCE(ARRAY_AGG(a.name ORDER BY a.name), ARRAY[]::text[]) AS amenities
+        r.id AS room_id,
+        COALESCE(
+          ARRAY(
+            SELECT DISTINCT amenity
+            FROM (
+              SELECT jsonb_array_elements_text(COALESCE(rt.amenities, '[]'::jsonb)) AS amenity
+              UNION ALL
+              SELECT jsonb_array_elements_text(COALESCE(r.amenities, '[]'::jsonb)) AS amenity
+            ) amenities
+            ORDER BY amenity
+          ),
+          ARRAY[]::text[]
+        ) AS amenities
       FROM rooms r
-      LEFT JOIN room_amenities ra ON r.room_id = ra.room_id
-      LEFT JOIN amenities a ON ra.amenity_id = a.amenity_id
-      WHERE r.room_id = ANY($1::uuid[])
-      GROUP BY r.room_id
+      JOIN room_types rt ON r.room_type_id = rt.id
+      WHERE r.id = ANY($1::uuid[])
       `,
       [roomIds],
     );

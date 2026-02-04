@@ -74,7 +74,7 @@ export class SimilarRoomsSource extends BaseSource<
       JOIN room_types rt ON r.room_type_id = rt.id
       WHERE r.property_id = $1
         AND r.tenant_id = $2
-        AND LOWER(r.status::TEXT) IN ('available', 'vacant_clean', 'inspected')
+        AND LOWER(r.status::TEXT) IN ('available', 'clean', 'inspected')
         AND rt.max_occupancy >= $6
         AND r.is_deleted = false
         AND rt.is_deleted = false

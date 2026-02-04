@@ -37,14 +37,14 @@ export class RoomDetailsHydrator extends BaseHydrator<
     }>(
       `
       SELECT
-        r.room_id,
+        r.id AS room_id,
         rt.description,
-        r.bed_type,
-        r.square_footage,
+        rt.bed_type,
+        rt.size_sqm AS square_footage,
         rt.max_occupancy
       FROM rooms r
-      JOIN room_types rt ON r.room_type_id = rt.room_type_id
-      WHERE r.room_id = ANY($1::uuid[])
+      JOIN room_types rt ON r.room_type_id = rt.id
+      WHERE r.id = ANY($1::uuid[])
       `,
       [roomIds],
     );

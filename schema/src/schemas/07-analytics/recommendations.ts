@@ -70,7 +70,7 @@ export const RoomRecommendationSchema = z.object({
   roomTypeId: uuid.describe("Room type ID"),
   roomTypeName: z.string().describe("Room type name"),
   roomNumber: z.string().describe("Room number"),
-  floor: z.number().int().describe("Floor number"),
+  floor: z.union([z.string(), z.number().int()]).describe("Floor label"),
   viewType: z.string().optional().describe("View type"),
   baseRate: z.number().nonnegative().describe("Base rate per night"),
   dynamicRate: z.number().nonnegative().optional().describe("Dynamic rate for the dates"),

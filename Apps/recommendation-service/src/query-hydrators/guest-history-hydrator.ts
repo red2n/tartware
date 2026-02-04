@@ -38,26 +38,26 @@ export class GuestHistoryHydrator extends BaseQueryHydrator<RoomRecommendationQu
       `
       WITH guest_reservations AS (
         SELECT
-          r.reservation_id,
+          r.id AS reservation_id,
           r.property_id,
-          rr.room_type_id,
+          r.room_type_id,
           r.total_amount / NULLIF(r.check_out_date - r.check_in_date, 0) AS nightly_rate
         FROM reservations r
-        JOIN reservation_rooms rr ON r.reservation_id = rr.reservation_id
         WHERE r.guest_id = $1
           AND r.tenant_id = $2
-          AND r.status IN ('checked_out', 'completed')
+          AND r.status = 'CHECKED_OUT'
           AND r.check_out_date IS NOT NULL
         ORDER BY r.check_out_date DESC
         LIMIT 20
       ),
-      guest_amenities AS (
-        SELECT a.name, COUNT(*) as cnt
-        FROM guest_reservations gr
-        JOIN rooms rm ON rm.room_type_id = gr.room_type_id
-        JOIN room_amenities ra ON rm.room_id = ra.room_id
-        JOIN amenities a ON ra.amenity_id = a.amenity_id
-        GROUP BY a.name
+      amenity_counts AS (
+        SELECT amenity, COUNT(*) as cnt
+        FROM (
+          SELECT jsonb_array_elements_text(COALESCE(rt.amenities, '[]'::jsonb)) AS amenity
+          FROM guest_reservations gr
+          JOIN room_types rt ON gr.room_type_id = rt.id
+        ) amenities
+        GROUP BY amenity
         ORDER BY cnt DESC
         LIMIT 5
       )
@@ -66,7 +66,7 @@ export class GuestHistoryHydrator extends BaseQueryHydrator<RoomRecommendationQu
         COALESCE(ARRAY_AGG(DISTINCT room_type_id::text) FILTER (WHERE room_type_id IS NOT NULL), ARRAY[]::text[]) AS previous_room_types,
         COALESCE(ARRAY_AGG(DISTINCT property_id::text) FILTER (WHERE property_id IS NOT NULL), ARRAY[]::text[]) AS previous_properties,
         COALESCE(AVG(nightly_rate), 100) AS average_rate,
-        COALESCE((SELECT ARRAY_AGG(name) FROM guest_amenities), ARRAY[]::text[]) AS preferred_amenities
+        COALESCE((SELECT ARRAY_AGG(amenity) FROM amenity_counts), ARRAY[]::text[]) AS preferred_amenities
       FROM guest_reservations
       `,
       [queryParams.guestId, queryParams.tenantId],

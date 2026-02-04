@@ -179,8 +179,17 @@ export async function rankRooms(params: {
   if (params.guestId) {
     try {
       const prefResult = await pool.query(
-        `SELECT preferred_room_type, preferred_amenities, preferred_floor
-         FROM guests WHERE id = $1 AND tenant_id = $2`,
+        `SELECT
+           preferences->>'roomType' AS preferred_room_type,
+           preferences->>'floor' AS preferred_floor,
+           COALESCE(
+             ARRAY(
+               SELECT jsonb_array_elements_text(preferences->'specialRequests')
+             ),
+             ARRAY[]::text[]
+           ) AS preferred_amenities
+         FROM guests
+         WHERE id = $1 AND tenant_id = $2`,
         [params.guestId, params.tenantId],
       );
       if (prefResult.rows.length > 0) {
@@ -213,7 +222,7 @@ export async function rankRooms(params: {
   const roomMap = new Map<string, {
     id: string;
     room_number: string;
-    floor: number;
+    floor: string | null;
     room_type_id: string;
     room_type_name: string;
     base_rate: number;
@@ -223,7 +232,7 @@ export async function rankRooms(params: {
     const r = row as {
       id: string;
       room_number: string;
-      floor: number;
+      floor: string | null;
       room_type_id: string;
       room_type_name: string;
       base_rate: number;
@@ -269,8 +278,9 @@ export async function rankRooms(params: {
 
     if (guestPreferences.floor) {
       const preferredFloor = guestPreferences.floor.toLowerCase();
-      const isHighFloor = room.floor >= 5;
-      const isLowFloor = room.floor <= 2;
+      const floorNumber = room.floor ? Number.parseInt(room.floor, 10) : Number.NaN;
+      const isHighFloor = !Number.isNaN(floorNumber) && floorNumber >= 5;
+      const isLowFloor = !Number.isNaN(floorNumber) && floorNumber <= 2;
       if ((preferredFloor === "high" && isHighFloor) || (preferredFloor === "low" && isLowFloor)) {
         score += 0.15;
         reasons.push(`${isHighFloor ? "High" : "Low"} floor as preferred`);

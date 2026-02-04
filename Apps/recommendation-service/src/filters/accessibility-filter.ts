@@ -43,22 +43,21 @@ export class AccessibilityFilter extends BaseFilter<
     );
 
     // Fetch rooms that have the required accessibility features
-    const result = await query<{ room_id: string }>(
+    const result = await query<{ id: string }>(
       `
-      SELECT DISTINCT r.room_id
+      SELECT r.id
       FROM rooms r
-      JOIN room_amenities ra ON r.room_id = ra.room_id
-      JOIN amenities a ON ra.amenity_id = a.amenity_id
-      WHERE r.room_id = ANY($1::uuid[])
-        AND a.category = 'accessibility'
-        AND a.name = ANY($2::text[])
-      GROUP BY r.room_id
-      HAVING COUNT(DISTINCT a.name) >= $3
+      JOIN room_types rt ON r.room_type_id = rt.id
+      WHERE r.id = ANY($1::uuid[])
+        AND (
+          COALESCE((r.features->>'accessibility')::boolean, false)
+          OR COALESCE((rt.features->>'accessibility')::boolean, false)
+        )
       `,
-      [roomIds, requiredFeatures, requiredFeatures.length],
+      [roomIds],
     );
 
-    const accessibleRoomIds = new Set(result.rows.map((r) => r.room_id));
+    const accessibleRoomIds = new Set(result.rows.map((r) => r.id));
 
     const kept: RoomCandidate[] = [];
     const removed: RoomCandidate[] = [];

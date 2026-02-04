@@ -38,22 +38,12 @@ export class PricingHydrator extends BaseHydrator<
     }>(
       `
       SELECT
-        room_type_id,
-        COALESCE(
-          (SELECT rr.base_rate
-           FROM room_rates rr
-           WHERE rr.room_type_id = rt.room_type_id
-             AND rr.effective_date <= $2
-             AND (rr.end_date IS NULL OR rr.end_date >= $3)
-           ORDER BY rr.effective_date DESC
-           LIMIT 1),
-          rt.base_rate,
-          100
-        ) AS rate
+        rt.id AS room_type_id,
+        COALESCE(rt.base_price, 100) AS rate
       FROM room_types rt
-      WHERE rt.room_type_id = ANY($1::uuid[])
+      WHERE rt.id = ANY($1::uuid[])
       `,
-      [roomTypeIds, queryParams.checkInDate, queryParams.checkOutDate],
+      [roomTypeIds],
     );
 
     const rateMap = new Map(
