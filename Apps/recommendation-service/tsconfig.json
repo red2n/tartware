@@ -6,6 +6,11 @@
     "lib": ["ES2022", "DOM"],
     "outDir": "./dist",
     "rootDir": "./src",
+    "baseUrl": "./src",
+    "paths": {
+      "@tartware/candidate-pipeline": ["../../candidate-pipeline/dist/index.d.ts"],
+      "@tartware/candidate-pipeline/*": ["../../candidate-pipeline/dist/*"]
+    },
     "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true,

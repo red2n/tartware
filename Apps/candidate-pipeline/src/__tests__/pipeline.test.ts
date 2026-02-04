@@ -1,14 +1,8 @@
+import type { Logger } from "pino";
 import { describe, expect, it } from "vitest";
 
-import type { Logger } from "pino";
-
 import { CandidatePipeline } from "../pipeline.js";
-import type {
-  HasRequestId,
-  HasScore,
-  PipelineConfig,
-  PipelineContext,
-} from "../types.js";
+import type { HasRequestId, HasScore, PipelineConfig, PipelineContext } from "../types.js";
 
 interface TestQuery extends HasRequestId {
   requestId: string;
@@ -57,19 +51,14 @@ describe("CandidatePipeline.execute", () => {
           {
             name: "source",
             enable: () => true,
-            getCandidates: async () => [
-              { id: "c1" },
-              { id: "c2" },
-              { id: "c3" },
-            ],
+            getCandidates: async () => [{ id: "c1" }, { id: "c2" }, { id: "c3" }],
           },
         ],
         hydrators: [
           {
             name: "hydrator",
             enable: () => true,
-            hydrate: async (_query, candidates) =>
-              candidates.map(() => ({ hydrated: true })),
+            hydrate: async (_query, candidates) => candidates.map(() => ({ hydrated: true })),
             updateAll: (candidates, hydrated) => {
               candidates.forEach((candidate, index) => {
                 Object.assign(candidate, hydrated[index]);
@@ -111,8 +100,7 @@ describe("CandidatePipeline.execute", () => {
           {
             name: "post",
             enable: () => true,
-            hydrate: async (_query, candidates) =>
-              candidates.map(() => ({ postHydrated: true })),
+            hydrate: async (_query, candidates) => candidates.map(() => ({ postHydrated: true })),
             updateAll: (candidates, hydrated) => {
               candidates.forEach((candidate, index) => {
                 Object.assign(candidate, hydrated[index]);
