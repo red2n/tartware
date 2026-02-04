@@ -53,6 +53,45 @@ export const ROOM_LIST_SQL = `
   LIMIT $1
 `;
 
+export const ROOM_GET_BY_ID_SQL = `
+  SELECT
+    r.id,
+    r.tenant_id,
+    r.property_id,
+    p.property_name,
+    r.room_type_id,
+    rt.type_name AS room_type_name,
+    rt.amenities AS room_type_amenities,
+    r.room_number,
+    r.room_name,
+    r.floor,
+    r.building,
+    r.wing,
+    r.status,
+    r.housekeeping_status,
+    r.maintenance_status,
+    r.features,
+    r.amenities,
+    r.is_blocked,
+    r.block_reason,
+    r.is_out_of_order,
+    r.out_of_order_reason,
+    r.expected_ready_date,
+    r.housekeeping_notes,
+    r.metadata,
+    r.updated_at,
+    r.version
+  FROM public.rooms r
+  LEFT JOIN public.room_types rt
+    ON r.room_type_id = rt.id
+  LEFT JOIN public.properties p
+    ON r.property_id = p.id
+  WHERE r.id = $1::uuid
+    AND r.tenant_id = $2::uuid
+    AND COALESCE(r.is_deleted, false) = false
+    AND r.deleted_at IS NULL
+`;
+
 export const ROOM_CREATE_SQL = `
   WITH inserted AS (
     INSERT INTO public.rooms (

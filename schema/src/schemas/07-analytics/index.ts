@@ -37,6 +37,7 @@ export * from "./performance-baselines.js";
 export * from "./performance-reports.js";
 export * from "./performance-thresholds.js";
 export * from "./police-reports.js";
+export * from "./recommendations.js";
 export * from "./report-property-ids.js";
 export * from "./report-schedules.js";
 export * from "./revenue-attribution.js";

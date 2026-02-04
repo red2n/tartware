@@ -8,9 +8,11 @@ import {
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 
+import { config } from "../config.js";
 import {
   createRoom,
   deleteRoom,
+  getRoomById,
   listRooms,
   RoomListItemSchema,
   updateRoom,
@@ -45,6 +47,18 @@ const RoomListQuerySchema = z.object({
     ),
   search: z.string().min(1).max(50).optional(),
   limit: z.coerce.number().int().positive().max(500).default(200),
+  // Recommendation context - when provided, rooms are ranked by recommendation score
+  guest_id: z.string().uuid().optional(),
+  check_in_date: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/)
+    .optional(),
+  check_out_date: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/)
+    .optional(),
+  adults: z.coerce.number().int().min(1).max(20).optional(),
+  children: z.coerce.number().int().min(0).max(20).optional(),
 });
 
 type RoomListQuery = z.infer<typeof RoomListQuerySchema>;
@@ -203,6 +217,11 @@ export const registerRoomRoutes = (app: FastifyInstance): void => {
         housekeeping_status,
         search,
         limit,
+        guest_id,
+        check_in_date,
+        check_out_date,
+        adults,
+        children,
       } = RoomListQuerySchema.parse(request.query);
 
       const rooms = await listRooms({
@@ -214,7 +233,218 @@ export const registerRoomRoutes = (app: FastifyInstance): void => {
         limit,
       });
 
+      // If recommendation context is provided, fetch rankings from recommendation service
+      const hasRecommendationContext =
+        property_id && check_in_date && check_out_date;
+
+      if (hasRecommendationContext && rooms.length > 0) {
+        try {
+          const roomIds = rooms.map((r) => r.room_id);
+          const authHeader = request.headers.authorization;
+          const response = await fetch(
+            `${config.recommendationServiceUrl}/v1/recommendations/rank`,
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                "x-tenant-id": tenant_id,
+                ...(authHeader ? { Authorization: authHeader } : {}),
+              },
+              body: JSON.stringify({
+                propertyId: property_id,
+                guestId: guest_id,
+                checkInDate: check_in_date,
+                checkOutDate: check_out_date,
+                adults: adults ?? 1,
+                children: children ?? 0,
+                roomIds,
+              }),
+            },
+          );
+
+          if (response.ok) {
+            const rankResult = (await response.json()) as {
+              rankedRooms: Array<{
+                roomId: string;
+                rank: number;
+                relevanceScore: number;
+                reasons: string[];
+              }>;
+            };
+
+            // Create a map of room rankings
+            const rankMap = new Map<
+              string,
+              { rank: number; score: number; reasons: string[] }
+            >();
+            for (const ranked of rankResult.rankedRooms) {
+              rankMap.set(ranked.roomId, {
+                rank: ranked.rank,
+                score: ranked.relevanceScore,
+                reasons: ranked.reasons,
+              });
+            }
+
+            // Merge recommendation data into rooms and sort by rank
+            const enrichedRooms = rooms.map((room) => {
+              const ranking = rankMap.get(room.room_id);
+              return {
+                ...room,
+                recommendation_rank: ranking?.rank,
+                recommendation_score: ranking?.score,
+                recommendation_reasons: ranking?.reasons,
+              };
+            });
+
+            // Sort by recommendation rank (rooms with rank first, then unranked)
+            enrichedRooms.sort((a, b) => {
+              if (a.recommendation_rank && b.recommendation_rank) {
+                return a.recommendation_rank - b.recommendation_rank;
+              }
+              if (a.recommendation_rank) return -1;
+              if (b.recommendation_rank) return 1;
+              return 0;
+            });
+
+            return RoomListResponseSchema.parse(enrichedRooms);
+          }
+        } catch (error) {
+          // Log error but don't fail the request - return unranked rooms
+          request.log.warn(
+            { err: error },
+            "Failed to fetch room recommendations, returning unranked",
+          );
+        }
+      }
+
       return RoomListResponseSchema.parse(rooms);
+    },
+  );
+
+  // Schema for single room query with optional recommendation context
+  const RoomByIdQuerySchema = z.object({
+    tenant_id: z.string().uuid(),
+    // Recommendation context - when provided, room includes recommendation score
+    guest_id: z.string().uuid().optional(),
+    check_in_date: z
+      .string()
+      .regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be in YYYY-MM-DD format")
+      .optional(),
+    check_out_date: z
+      .string()
+      .regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be in YYYY-MM-DD format")
+      .optional(),
+    adults: z.coerce.number().int().positive().max(20).optional(),
+    children: z.coerce.number().int().nonnegative().max(10).optional(),
+  });
+
+  type RoomByIdQuery = z.infer<typeof RoomByIdQuerySchema>;
+
+  app.get<{
+    Params: { roomId: string };
+    Querystring: RoomByIdQuery;
+  }>(
+    "/v1/rooms/:roomId",
+    {
+      preHandler: app.withTenantScope({
+        resolveTenantId: (request) =>
+          (request.query as RoomByIdQuery).tenant_id,
+        minRole: "VIEWER",
+        requiredModules: "core",
+      }),
+      schema: buildRouteSchema({
+        tag: ROOMS_TAG,
+        summary: "Get a room by ID with optional recommendation scoring",
+        description:
+          "Returns a single room by ID. When recommendation context (check_in_date, check_out_date) is provided, includes recommendation_score and recommendation_reasons.",
+        params: schemaFromZod(RoomParamsSchema, "RoomParams"),
+        querystring: schemaFromZod(RoomByIdQuerySchema, "RoomByIdQuery"),
+        response: {
+          200: RoomListItemJsonSchema,
+          404: ErrorResponseSchema,
+        },
+      }),
+    },
+    async (request, reply) => {
+      const params = RoomParamsSchema.parse(request.params);
+      const {
+        tenant_id,
+        guest_id,
+        check_in_date,
+        check_out_date,
+        adults,
+        children,
+      } = RoomByIdQuerySchema.parse(request.query);
+
+      const room = await getRoomById({
+        tenantId: tenant_id,
+        roomId: params.roomId,
+      });
+
+      if (!room) {
+        return reply.status(404).send({ message: "Room not found" });
+      }
+
+      // If recommendation context is provided, fetch ranking from recommendation service
+      const hasRecommendationContext = check_in_date && check_out_date;
+
+      if (hasRecommendationContext) {
+        try {
+          const authHeader = request.headers.authorization;
+          const response = await fetch(
+            `${config.recommendationServiceUrl}/v1/recommendations/rank`,
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                "x-tenant-id": tenant_id,
+                ...(authHeader ? { Authorization: authHeader } : {}),
+              },
+              body: JSON.stringify({
+                propertyId: room.property_id,
+                guestId: guest_id,
+                checkInDate: check_in_date,
+                checkOutDate: check_out_date,
+                adults: adults ?? 1,
+                children: children ?? 0,
+                roomIds: [room.room_id],
+              }),
+            },
+          );
+
+          if (response.ok) {
+            const rankResult = (await response.json()) as {
+              rankedRooms: Array<{
+                roomId: string;
+                rank: number;
+                relevanceScore: number;
+                reasons: string[];
+              }>;
+            };
+
+            const ranking = rankResult.rankedRooms.find(
+              (r) => r.roomId === room.room_id,
+            );
+
+            if (ranking) {
+              return {
+                ...room,
+                recommendation_rank: ranking.rank,
+                recommendation_score: ranking.relevanceScore,
+                recommendation_reasons: ranking.reasons,
+              };
+            }
+          }
+        } catch (error) {
+          // Log error but don't fail the request - return room without ranking
+          request.log.warn(
+            { err: error },
+            "Failed to fetch room recommendation, returning unranked",
+          );
+        }
+      }
+
+      return room;
     },
   );
 
