@@ -31,6 +31,7 @@ const BILLING_PROXY_TAG = "Billing Proxy";
 const HOUSEKEEPING_COMMAND_TAG = "Housekeeping Commands";
 const ROOM_COMMAND_TAG = "Room Commands";
 const BILLING_COMMAND_TAG = "Billing Commands";
+const RECOMMENDATION_PROXY_TAG = "Recommendations";
 
 const healthResponseSchema = {
 	type: "object",
@@ -1954,6 +1955,55 @@ export const buildServer = () => {
 				}),
 			},
 			proxyBilling,
+		);
+
+		// Recommendation routes - proxy to recommendation service
+		const proxyRecommendations = async (
+			request: FastifyRequest,
+			reply: FastifyReply,
+		) => proxyRequest(request, reply, serviceTargets.recommendationServiceUrl);
+
+		app.get(
+			"/v1/recommendations",
+			{
+				schema: buildRouteSchema({
+					tag: RECOMMENDATION_PROXY_TAG,
+					summary: "Get personalized room recommendations for a guest.",
+					response: {
+						200: jsonObjectSchema,
+					},
+				}),
+			},
+			proxyRecommendations,
+		);
+
+		app.post(
+			"/v1/recommendations/rank",
+			{
+				schema: buildRouteSchema({
+					tag: RECOMMENDATION_PROXY_TAG,
+					summary: "Rank a list of rooms for a guest (personalized ordering).",
+					response: {
+						200: jsonObjectSchema,
+					},
+				}),
+			},
+			proxyRecommendations,
+		);
+
+		app.all(
+			"/v1/recommendations/*",
+			{
+				schema: buildRouteSchema({
+					tag: RECOMMENDATION_PROXY_TAG,
+					summary:
+						"Proxy recommendation requests to the recommendation service.",
+					response: {
+						200: jsonObjectSchema,
+					},
+				}),
+			},
+			proxyRecommendations,
 		);
 
 		app.get(

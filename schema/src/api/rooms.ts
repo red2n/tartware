@@ -146,6 +146,10 @@ export const RoomItemSchema = z.object({
 	housekeeping_notes: z.string().optional(),
 	updated_at: z.string().optional(),
 	version: z.string(),
+	// Recommendation fields (populated when guest context is provided)
+	recommendation_rank: z.number().int().min(1).optional(),
+	recommendation_score: z.number().min(0).max(1).optional(),
+	recommendation_reasons: z.array(z.string()).optional(),
 });
 
 export type RoomItem = z.infer<typeof RoomItemSchema>;

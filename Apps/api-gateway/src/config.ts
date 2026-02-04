@@ -107,16 +107,18 @@ export const devToolsConfig = {
 
 export const serviceTargets = {
 	coreServiceUrl: env.CORE_SERVICE_URL ?? "http://localhost:3000",
+	settingsServiceUrl: env.SETTINGS_SERVICE_URL ?? "http://localhost:3005",
+	guestsServiceUrl: env.GUESTS_SERVICE_URL ?? "http://localhost:3010",
+	roomsServiceUrl: env.ROOMS_SERVICE_URL ?? "http://localhost:3015",
 	reservationCommandServiceUrl:
-		env.RESERVATION_COMMAND_SERVICE_URL ?? "http://localhost:3101",
-	guestsServiceUrl: env.GUESTS_SERVICE_URL ?? "http://localhost:3300",
-	roomsServiceUrl: env.ROOMS_SERVICE_URL ?? "http://localhost:3400",
+		env.RESERVATION_COMMAND_SERVICE_URL ?? "http://localhost:3020",
+	billingServiceUrl: env.BILLING_SERVICE_URL ?? "http://localhost:3025",
 	housekeepingServiceUrl:
-		env.HOUSEKEEPING_SERVICE_URL ?? "http://localhost:3500",
-	billingServiceUrl: env.BILLING_SERVICE_URL ?? "http://localhost:3600",
+		env.HOUSEKEEPING_SERVICE_URL ?? "http://localhost:3030",
 	commandCenterServiceUrl:
-		env.COMMAND_CENTER_SERVICE_URL ?? "http://localhost:3700",
-	settingsServiceUrl: env.SETTINGS_SERVICE_URL ?? "http://localhost:3000",
+		env.COMMAND_CENTER_SERVICE_URL ?? "http://localhost:3035",
+	recommendationServiceUrl:
+		env.RECOMMENDATION_SERVICE_URL ?? "http://localhost:3040",
 };
 
 export const dbConfig = {

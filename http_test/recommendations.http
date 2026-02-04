@@ -1,0 +1,140 @@
+###############################################################################
+# RECOMMENDATION SERVICE - Room Recommendations
+# Routes via API Gateway (localhost:8080) -> recommendation-service (port 3040)
+#
+# Content: Room recommendations with personalized scoring
+#
+# Prerequisites:
+#   - Run: npm run dev (starts all services including recommendation-service)
+#   - Or run individual services: npm run dev:gateway && npm run dev:recommendation
+#
+# Related files:
+# - rooms.http - Room and Room Type queries
+# - reservations.http - Booking flows
+###############################################################################
+
+# --- VARIABLES ---
+@baseUrl = http://localhost:8080
+@tenantId = 11111111-1111-1111-1111-111111111111
+@propertyId = 22222222-2222-2222-2222-222222222222
+@guestId = 33333333-3333-3333-3333-333333333333
+@room101Id = 55555555-5555-5555-5555-555555555551
+@room102Id = 55555555-5555-5555-5555-555555555552
+
+###############################################################################
+# 1. LOGIN
+###############################################################################
+
+# @name login
+POST {{baseUrl}}/v1/auth/login
+Content-Type: application/json
+
+{
+  "username": "setup.admin",
+  "password": "TempPass123"
+}
+
+### Extract token
+@authToken = {{login.response.body.access_token}}
+
+###############################################################################
+# 2. HEALTH CHECK
+###############################################################################
+
+### Health check (direct to service - no auth required)
+GET http://localhost:3040/health
+
+###############################################################################
+# 3. GET RECOMMENDATIONS
+# Full recommendation pipeline: sourcing, filtering, scoring, ranking
+# Uses GET with query parameters
+###############################################################################
+
+### Get room recommendations for a guest
+# @name getRecommendations
+GET {{baseUrl}}/v1/recommendations?propertyId={{propertyId}}&guestId={{guestId}}&checkInDate=2025-02-01&checkOutDate=2025-02-03&adults=2&children=0
+Authorization: Bearer {{authToken}}
+x-tenant-id: {{tenantId}}
+
+### Get recommendations without guest ID (anonymous)
+GET {{baseUrl}}/v1/recommendations?propertyId={{propertyId}}&checkInDate=2025-03-15&checkOutDate=2025-03-18&adults=1&children=0
+Authorization: Bearer {{authToken}}
+x-tenant-id: {{tenantId}}
+
+### Get recommendations with limit
+GET {{baseUrl}}/v1/recommendations?propertyId={{propertyId}}&guestId={{guestId}}&checkInDate=2025-04-01&checkOutDate=2025-04-05&adults=2&children=2&limit=10
+Authorization: Bearer {{authToken}}
+x-tenant-id: {{tenantId}}
+
+###############################################################################
+# 4. RANK ROOMS
+# Re-rank a list of existing room IDs based on guest preferences
+# Use this when you already have available rooms and want personalized ordering
+###############################################################################
+
+### Rank specific rooms for a guest
+# @name rankRooms
+POST {{baseUrl}}/v1/recommendations/rank
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+x-tenant-id: {{tenantId}}
+
+{
+  "propertyId": "{{propertyId}}",
+  "guestId": "{{guestId}}",
+  "checkInDate": "2025-02-01",
+  "checkOutDate": "2025-02-03",
+  "adults": 2,
+  "children": 0,
+  "roomIds": [
+    "{{room101Id}}",
+    "{{room102Id}}"
+  ]
+}
+
+### Rank rooms without guest ID (uses property-level defaults)
+POST {{baseUrl}}/v1/recommendations/rank
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+x-tenant-id: {{tenantId}}
+
+{
+  "propertyId": "{{propertyId}}",
+  "checkInDate": "2025-02-01",
+  "checkOutDate": "2025-02-03",
+  "adults": 1,
+  "children": 0,
+  "roomIds": [
+    "{{room101Id}}",
+    "{{room102Id}}"
+  ]
+}
+
+###############################################################################
+# 5. INTEGRATION EXAMPLE - Room Search Flow
+# 1. First get available rooms from rooms-service
+# 2. Then rank them with recommendation-service
+###############################################################################
+
+### Step 1: Get available rooms (rooms-service)
+# @name availableRooms
+GET {{baseUrl}}/v1/properties/{{propertyId}}/rooms?status=available
+Authorization: Bearer {{authToken}}
+x-tenant-id: {{tenantId}}
+
+### Step 2: Rank the available rooms (recommendation-service)
+# Use room IDs from step 1 response
+POST {{baseUrl}}/v1/recommendations/rank
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+x-tenant-id: {{tenantId}}
+
+{
+  "propertyId": "{{propertyId}}",
+  "guestId": "{{guestId}}",
+  "checkInDate": "2025-02-01",
+  "checkOutDate": "2025-02-03",
+  "adults": 2,
+  "children": 0,
+  "roomIds": ["room-id-1", "room-id-2", "room-id-3"]
+}

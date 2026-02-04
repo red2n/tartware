@@ -1,7 +1,11 @@
 import { type RoomItem, RoomItemSchema } from "@tartware/schemas";
 
 import { query } from "../lib/db.js";
-import { ROOM_CREATE_SQL, ROOM_LIST_SQL } from "../sql/room-queries.js";
+import {
+  ROOM_CREATE_SQL,
+  ROOM_GET_BY_ID_SQL,
+  ROOM_LIST_SQL,
+} from "../sql/room-queries.js";
 
 // Re-export schema for consumers that import from this module
 export const RoomListItemSchema = RoomItemSchema;
@@ -364,6 +368,25 @@ export const deleteRoom = async (options: {
   );
 
   return Boolean(rows[0]?.id);
+};
+
+/**
+ * Get a room by ID.
+ */
+export const getRoomById = async (options: {
+  tenantId: string;
+  roomId: string;
+}): Promise<RoomListItem | null> => {
+  const { rows } = await query<RoomListRow>(ROOM_GET_BY_ID_SQL, [
+    options.roomId,
+    options.tenantId,
+  ]);
+
+  if (!rows[0]) {
+    return null;
+  }
+
+  return mapRowToRoom(rows[0]);
 };
 
 /**

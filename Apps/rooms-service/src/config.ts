@@ -60,6 +60,8 @@ export const config = {
     pretty: configValues.LOG_PRETTY,
     requestLogging: configValues.LOG_REQUESTS,
   },
+  recommendationServiceUrl:
+    process.env.RECOMMENDATION_SERVICE_URL ?? "http://localhost:3040",
   db: {
     host: configValues.DB_HOST,
     port: configValues.DB_PORT,
