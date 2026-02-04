@@ -33,6 +33,7 @@ const reservationsLatency = new Trend("reservations_service_latency");
 const billingLatency = new Trend("billing_service_latency");
 const housekeepingLatency = new Trend("housekeeping_service_latency");
 const settingsLatency = new Trend("settings_service_latency");
+const recommendationsLatency = new Trend("recommendations_service_latency");
 
 const totalErrors = new Counter("total_errors");
 const totalSuccess = new Rate("total_success_rate");
@@ -53,6 +54,7 @@ export const options = {
 		billing_service_latency: ["p(95)<500"],
 		housekeeping_service_latency: ["p(95)<500"],
 		settings_service_latency: ["p(95)<250"],
+		recommendations_service_latency: ["p(95)<600"],
 	},
 };
 
@@ -116,8 +118,10 @@ export default function (data) {
 		billingJourney();
 	} else if (journeySelector < 0.85) {
 		housekeepingJourney();
-	} else if (journeySelector < 0.95) {
+	} else if (journeySelector < 0.92) {
 		settingsJourney();
+	} else if (journeySelector < 0.97) {
+		recommendationsJourney();
 	} else {
 		adminJourney();
 	}
@@ -361,6 +365,64 @@ function adminJourney() {
 	});
 }
 
+function recommendationsJourney() {
+	group("Journey - Recommendations", () => {
+		const checkInDate = futureDate(7);
+		const checkOutDate = futureDate(10);
+
+		const recommendationsRes = http.get(
+			`${GATEWAY_URL}${ENDPOINTS.recommendations}?propertyId=${PROPERTY_ID}&checkInDate=${checkInDate}&checkOutDate=${checkOutDate}&adults=2&children=0&limit=5`,
+			{ headers, tags: { service: "recommendations", journey: "recommendations" } },
+		);
+		recordMetric(recommendationsRes, recommendationsLatency, "recommendations");
+
+		let roomId = null;
+		try {
+			const body = recommendationsRes.json();
+			const rooms = Array.isArray(body)
+				? body
+				: body.data || body.rooms || [];
+			const room = pickRandom(rooms);
+			roomId = room?.roomId || room?.room_id || room?.id;
+		} catch {
+			// ignore parsing errors
+		}
+
+		if (!roomId) {
+			const roomsRes = http.get(
+				`${GATEWAY_URL}${ENDPOINTS.rooms}?tenant_id=${TENANT_ID}&limit=5`,
+				{ headers, tags: { service: "rooms", journey: "recommendations" } },
+			);
+			if (roomsRes.status >= 200 && roomsRes.status < 300) {
+				try {
+					const body = roomsRes.json();
+					const rooms = Array.isArray(body) ? body : body.data || [];
+					const room = pickRandom(rooms);
+					roomId = room?.room_id || room?.id;
+				} catch {
+					// ignore
+				}
+			}
+		}
+
+		if (roomId) {
+			const rankRes = http.post(
+				`${GATEWAY_URL}${ENDPOINTS.recommendationsRank}`,
+				JSON.stringify({
+					propertyId: PROPERTY_ID,
+					checkInDate,
+					checkOutDate,
+					adults: 2,
+					children: 0,
+					roomIds: [roomId],
+				}),
+				{ headers, tags: { service: "recommendations", journey: "recommendations" } },
+			);
+			recordMetric(rankRes, recommendationsLatency, "recommendations-rank");
+		}
+	});
+}
+
 function recordMetric(response, latencyMetric, endpoint) {
 	const success = isSuccess(response);
 
@@ -401,6 +463,7 @@ export function handleSummary(data) {
 ║  Billing Service:      ${(metrics.billing_service_latency?.values["p(95)"] || 0).toFixed(0)}ms
 ║  Housekeeping Service: ${(metrics.housekeeping_service_latency?.values["p(95)"] || 0).toFixed(0)}ms
 ║  Settings Service:     ${(metrics.settings_service_latency?.values["p(95)"] || 0).toFixed(0)}ms
+║  Recommendations:      ${(metrics.recommendations_service_latency?.values["p(95)"] || 0).toFixed(0)}ms
 ╚══════════════════════════════════════════════════════════════════════════════╝
 `,
 	};

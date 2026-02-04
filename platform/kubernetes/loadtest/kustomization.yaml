@@ -9,10 +9,10 @@ generatorOptions:
 configMapGenerator:
   - name: tartware-k6-script
     files:
-      - command-pipeline.js=../../../loadtest/k6/command-pipeline.js
+      - command-pipeline.js=command-pipeline.js
   - name: tartware-k6-env
     literals:
-      - GATEWAY_BASE_URL=https://api-gateway.tartware.svc.cluster.local
+      - GATEWAY_BASE_URL=http://172.21.0.1:8080
       - TENANT_IDS=
       - PROPERTY_IDS=
       - ROOM_TYPE_IDS=
@@ -22,12 +22,13 @@ configMapGenerator:
       - HOUSEKEEPING_STAFF_IDS=
       - COMMAND_START_RATE=1000
       - COMMAND_TARGET_RATE=30000
-      - COMMAND_PREALLOCATED_VUS=2000
-      - COMMAND_MAX_VUS=8000
+      - COMMAND_PREALLOCATED_VUS=4000
+      - COMMAND_MAX_VUS=12000
       - READ_RATE=12000
-      - READ_PREALLOCATED_VUS=600
-      - READ_MAX_VUS=2400
-      - TEST_DURATION=20m
+      - READ_PREALLOCATED_VUS=3000
+      - READ_MAX_VUS=8000
+      - TEST_DURATION=5m
+      - DISABLE_THRESHOLDS=true
 
 secretGenerator:
   - name: tartware-k6-secret

@@ -97,6 +97,10 @@ export const ENDPOINTS = {
 	availability: "/v1/availability",
 	waitlist: "/v1/waitlist",
 
+	// Recommendations
+	recommendations: "/v1/recommendations",
+	recommendationsRank: "/v1/recommendations/rank",
+
 	// Booking Config
 	allotments: "/v1/allotments",
 	bookingSources: "/v1/booking-sources",

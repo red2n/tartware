@@ -16,6 +16,7 @@ import {
 	getHeaders,
 	ENDPOINTS,
 } from "../lib/config.js";
+import { futureDate, pickRandom } from "../lib/utils.js";
 
 const smokeLatency = new Trend("smoke_latency");
 
@@ -103,7 +104,59 @@ export default function () {
 		headers,
 	);
 
+	// Recommendations endpoints
+	testRecommendations();
+
 	sleep(1);
+}
+
+function testRecommendations() {
+	const checkInDate = futureDate(7);
+	const checkOutDate = futureDate(9);
+
+	testEndpoint(
+		"recommendations",
+		`${GATEWAY_URL}${ENDPOINTS.recommendations}?propertyId=${PROPERTY_ID}&checkInDate=${checkInDate}&checkOutDate=${checkOutDate}&adults=2&children=0&limit=5`,
+		headers,
+	);
+
+	const roomsRes = http.get(
+		`${GATEWAY_URL}${ENDPOINTS.rooms}?tenant_id=${TENANT_ID}&limit=10`,
+		{ headers },
+	);
+
+	if (roomsRes.status >= 200 && roomsRes.status < 300) {
+		try {
+			const body = roomsRes.json();
+			const rooms = Array.isArray(body) ? body : body.data || [];
+			const room = pickRandom(rooms);
+			const roomId = room?.room_id || room?.id;
+
+			if (roomId) {
+				const rankBody = {
+					propertyId: PROPERTY_ID,
+					checkInDate,
+					checkOutDate,
+					adults: 2,
+					children: 0,
+					roomIds: [roomId],
+				};
+
+				const rankRes = http.post(
+					`${GATEWAY_URL}${ENDPOINTS.recommendationsRank}`,
+					JSON.stringify(rankBody),
+					{ headers, tags: { name: "smoke_recommendations_rank" } },
+				);
+
+				smokeLatency.add(rankRes.timings.duration);
+				check(rankRes, {
+					"recommendations rank ok": (r) => r.status >= 200 && r.status < 300,
+				});
+			}
+		} catch {
+			// ignore parsing errors in smoke mode
+		}
+	}
 }
 
 function testEndpoint(name, url, requestHeaders) {
