@@ -10,3 +10,8 @@ This includes:
 - Follow SOLID principles for TypeScript design
 
 The AGENTS.md file contains project-specific rules that override general coding practices.
+
+## Git Workflow
+- **NEVER push changes without asking the user first**
+- Always ask for confirmation before running `git push`
+- Commits can be made without asking, but pushing requires explicit approval
