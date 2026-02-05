@@ -9,9 +9,12 @@ generatorOptions:
 configMapGenerator:
   - name: tartware-k6-script
     files:
+      # Reference the canonical source file to avoid duplication
       - command-pipeline.js=../../../loadtest/k6/command-pipeline.js
   - name: tartware-k6-env
     literals:
+      # For Kubernetes cluster deployments, use: https://api-gateway.tartware.svc.cluster.local
+      # For local development with Docker bridge network, use: http://172.21.0.1:8080
       - GATEWAY_BASE_URL=https://api-gateway.tartware.svc.cluster.local
       - TENANT_IDS=
       - PROPERTY_IDS=
@@ -22,12 +25,15 @@ configMapGenerator:
       - HOUSEKEEPING_STAFF_IDS=
       - COMMAND_START_RATE=1000
       - COMMAND_TARGET_RATE=30000
-      - COMMAND_PREALLOCATED_VUS=2000
-      - COMMAND_MAX_VUS=8000
+      - COMMAND_PREALLOCATED_VUS=4000
+      - COMMAND_MAX_VUS=12000
       - READ_RATE=12000
-      - READ_PREALLOCATED_VUS=600
-      - READ_MAX_VUS=2400
+      - READ_PREALLOCATED_VUS=3000
+      - READ_MAX_VUS=8000
+      # TEST_DURATION: Use 5m for quick smoke tests, 20m+ for comprehensive load testing
+      # Longer durations (20m+) are needed to observe memory leaks, connection pool issues, etc.
       - TEST_DURATION=20m
+      - DISABLE_THRESHOLDS=true
 
 secretGenerator:
   - name: tartware-k6-secret

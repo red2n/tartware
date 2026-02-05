@@ -31,7 +31,7 @@ releases:
   - name: cert-manager
     namespace: security
     chart: jetstack/cert-manager
-    version: 1.15.1
+    version: 1.19.3
     createNamespace: true
     values:
       - installCRDs: true
@@ -53,7 +53,7 @@ releases:
   - name: argo-cd
     namespace: argo
     chart: argo/argo-cd
-    version: 7.3.6
+    version: 9.4.0
     createNamespace: true
     values:
       - values/{{ .Environment.Name }}/argo-cd.yaml
@@ -79,14 +79,14 @@ releases:
   - name: consul
     namespace: consul
     chart: hashicorp/consul
-    version: 1.5.2
+    version: 1.9.3
     values:
       - values/{{ .Environment.Name }}/consul.yaml
 
   - name: opentelemetry-collector
     namespace: observability
     chart: open-telemetry/opentelemetry-collector
-    version: 0.88.0
+    version: 0.129.0
     createNamespace: true
     values:
       - values/{{ .Environment.Name }}/otel-collector.yaml
@@ -94,7 +94,7 @@ releases:
   - name: kube-prometheus-stack
     namespace: observability
     chart: prometheus-community/kube-prometheus-stack
-    version: 67.4.0
+    version: 81.5.0
     values:
       - values/{{ .Environment.Name }}/prometheus-stack.yaml
 
@@ -108,14 +108,14 @@ releases:
   - name: tempo
     namespace: observability
     chart: grafana/tempo
-    version: 1.8.1
+    version: 1.24.4
     values:
       - values/{{ .Environment.Name }}/tempo.yaml
 
   - name: redpanda
     namespace: messaging
     chart: redpanda/redpanda
-    version: 5.8.1
+    version: 25.3.2
     createNamespace: true
     values:
       - values/{{ .Environment.Name }}/redpanda.yaml
@@ -123,21 +123,21 @@ releases:
   - name: schema-registry
     namespace: messaging
     chart: bitnami/schema-registry
-    version: 11.2.4
+    version: 26.0.5
     values:
       - values/{{ .Environment.Name }}/schema-registry.yaml
 
   - name: nats-jetstream
     namespace: messaging
     chart: nats/nats
-    version: 1.1.12
+    version: 2.12.4
     values:
       - values/{{ .Environment.Name }}/nats.yaml
 
   - name: clickhouse
     namespace: analytics
     chart: bitnami/clickhouse
-    version: 5.1.7
+    version: 9.4.4
     createNamespace: true
     values:
       - values/{{ .Environment.Name }}/clickhouse.yaml

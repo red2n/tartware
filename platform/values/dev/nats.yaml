@@ -9,5 +9,5 @@ jetstream:
     enabled: true
     pvc:
       size: 10Gi
- limits:
+limits:
   maxPayload: 4MB

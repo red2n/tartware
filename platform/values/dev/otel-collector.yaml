@@ -1,4 +1,5 @@
 # OpenTelemetry Collector dev pipeline
+mode: deployment
 config:
   receivers:
     otlp:

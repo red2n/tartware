@@ -25,6 +25,8 @@ import {
 	generateGuest,
 	generateReservation,
 	generatePayment,
+	futureDate,
+	pickRandom,
 	sleepWithJitter,
 	isSuccess,
 } from "../lib/utils.js";
@@ -59,19 +61,21 @@ export default function () {
 	// 70% reads, 30% writes (typical PMS workload)
 	const selector = Math.random();
 
-	if (selector < 0.2) {
+	if (selector < 0.18) {
 		readRooms();
-	} else if (selector < 0.35) {
+	} else if (selector < 0.33) {
 		readGuests();
-	} else if (selector < 0.5) {
+	} else if (selector < 0.48) {
 		readReservations();
-	} else if (selector < 0.6) {
+	} else if (selector < 0.58) {
 		readBilling();
-	} else if (selector < 0.7) {
+	} else if (selector < 0.68) {
 		readBookingConfig();
-	} else if (selector < 0.8) {
+	} else if (selector < 0.78) {
+		readRecommendations();
+	} else if (selector < 0.88) {
 		createGuest();
-	} else if (selector < 0.9) {
+	} else if (selector < 0.95) {
 		createReservation();
 	} else {
 		createPayment();
@@ -179,6 +183,77 @@ function readBookingConfig() {
 		readLatency.add(response.timings.duration);
 		successRate.add(success);
 		if (!success) readErrors.add(1);
+	});
+}
+
+function readRecommendations() {
+	group("Read Recommendations", () => {
+		const checkInDate = futureDate(7);
+		const checkOutDate = futureDate(9);
+		const response = http.get(
+			`${GATEWAY_URL}${ENDPOINTS.recommendations}?propertyId=${PROPERTY_ID}&checkInDate=${checkInDate}&checkOutDate=${checkOutDate}&adults=2&children=0&limit=5`,
+			{ headers, tags: { operation: "read", service: "recommendations" } },
+		);
+
+		const success = check(response, {
+			"recommendations ok": (r) => isSuccess(r),
+		});
+
+		readLatency.add(response.timings.duration);
+		successRate.add(success);
+		if (!success) readErrors.add(1);
+
+		let roomId = null;
+		try {
+			const body = response.json();
+			const rooms = Array.isArray(body)
+				? body
+				: body.data || body.rooms || [];
+			const room = pickRandom(rooms);
+			roomId = room?.roomId || room?.room_id || room?.id;
+		} catch {
+			// ignore parsing errors for load test
+		}
+
+		if (!roomId) {
+			const roomsRes = http.get(
+				`${GATEWAY_URL}${ENDPOINTS.rooms}?tenant_id=${TENANT_ID}&limit=5`,
+				{ headers, tags: { operation: "read", service: "rooms" } },
+			);
+			if (isSuccess(roomsRes)) {
+				try {
+					const body = roomsRes.json();
+					const rooms = Array.isArray(body) ? body : body.data || [];
+					const room = pickRandom(rooms);
+					roomId = room?.room_id || room?.id;
+				} catch {
+					// ignore
+				}
+			}
+		}
+
+		if (roomId) {
+			const rankRes = http.post(
+				`${GATEWAY_URL}${ENDPOINTS.recommendationsRank}`,
+				JSON.stringify({
+					propertyId: PROPERTY_ID,
+					checkInDate,
+					checkOutDate,
+					adults: 2,
+					children: 0,
+					roomIds: [roomId],
+				}),
+				{ headers, tags: { operation: "read", service: "recommendations" } },
+			);
+
+			const rankSuccess = check(rankRes, {
+				"recommendations rank ok": (r) => isSuccess(r),
+			});
+
+			readLatency.add(rankRes.timings.duration);
+			successRate.add(rankSuccess);
+			if (!rankSuccess) readErrors.add(1);
+		}
 	});
 }
 
