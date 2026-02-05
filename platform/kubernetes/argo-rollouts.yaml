@@ -1,0 +1,349 @@
+# ============================================================================
+# Tartware - Argo Rollouts Configuration
+# Blue/Green Deployments for Zero-Downtime Releases
+# ============================================================================
+
+---
+# Install Argo Rollouts Controller
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: argo-rollouts
+  labels:
+    app.kubernetes.io/part-of: tartware
+
+---
+# Rollout CRD for API Gateway (critical service)
+apiVersion: argoproj.io/v1alpha1
+kind: Rollout
+metadata:
+  name: api-gateway
+  namespace: tartware-system
+  labels:
+    app: api-gateway
+    app.kubernetes.io/part-of: tartware
+spec:
+  replicas: 12
+  revisionHistoryLimit: 5
+  selector:
+    matchLabels:
+      app: api-gateway
+  template:
+    metadata:
+      labels:
+        app: api-gateway
+        app.kubernetes.io/part-of: tartware
+    spec:
+      priorityClassName: tartware-critical
+      containers:
+        - name: api-gateway
+          image: tartware/api-gateway:latest
+          ports:
+            - containerPort: 8080
+              name: http
+            - containerPort: 9090
+              name: metrics
+          resources:
+            requests:
+              cpu: 1000m
+              memory: 1Gi
+            limits:
+              cpu: 3500m
+              memory: 4Gi
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 15
+            periodSeconds: 10
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            failureThreshold: 3
+          env:
+            - name: NODE_ENV
+              value: production
+            - name: OTEL_ENABLED
+              value: "true"
+  strategy:
+    blueGreen:
+      activeService: api-gateway-active
+      previewService: api-gateway-preview
+      autoPromotionEnabled: false
+      scaleDownDelaySeconds: 30
+      prePromotionAnalysis:
+        templates:
+          - templateName: api-gateway-health-check
+        args:
+          - name: service-name
+            value: api-gateway-preview
+      postPromotionAnalysis:
+        templates:
+          - templateName: api-gateway-success-rate
+        args:
+          - name: service-name
+            value: api-gateway-active
+
+---
+# Rollout for Core Service
+apiVersion: argoproj.io/v1alpha1
+kind: Rollout
+metadata:
+  name: core-service
+  namespace: tartware-system
+  labels:
+    app: core-service
+    app.kubernetes.io/part-of: tartware
+spec:
+  replicas: 8
+  revisionHistoryLimit: 5
+  selector:
+    matchLabels:
+      app: core-service
+  template:
+    metadata:
+      labels:
+        app: core-service
+        app.kubernetes.io/part-of: tartware
+    spec:
+      priorityClassName: tartware-critical
+      containers:
+        - name: core-service
+          image: tartware/core-service:latest
+          ports:
+            - containerPort: 3000
+              name: http
+            - containerPort: 9090
+              name: metrics
+          resources:
+            requests:
+              cpu: 750m
+              memory: 1536Mi
+            limits:
+              cpu: 2500m
+              memory: 5Gi
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 20
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 5
+  strategy:
+    blueGreen:
+      activeService: core-service-active
+      previewService: core-service-preview
+      autoPromotionEnabled: false
+      scaleDownDelaySeconds: 60
+      prePromotionAnalysis:
+        templates:
+          - templateName: service-health-check
+        args:
+          - name: service-name
+            value: core-service-preview
+
+---
+# Rollout for Reservations Command Service (high priority)
+apiVersion: argoproj.io/v1alpha1
+kind: Rollout
+metadata:
+  name: reservations-command-service
+  namespace: tartware-system
+  labels:
+    app: reservations-command-service
+    app.kubernetes.io/part-of: tartware
+spec:
+  replicas: 8
+  revisionHistoryLimit: 5
+  selector:
+    matchLabels:
+      app: reservations-command-service
+  template:
+    metadata:
+      labels:
+        app: reservations-command-service
+        app.kubernetes.io/part-of: tartware
+    spec:
+      priorityClassName: tartware-high
+      containers:
+        - name: reservations-command-service
+          image: tartware/reservations-command-service:latest
+          ports:
+            - containerPort: 3100
+              name: http
+          resources:
+            requests:
+              cpu: 900m
+              memory: 1536Mi
+            limits:
+              cpu: 2500m
+              memory: 5Gi
+  strategy:
+    blueGreen:
+      activeService: reservations-active
+      previewService: reservations-preview
+      autoPromotionEnabled: false
+      scaleDownDelaySeconds: 60
+
+---
+# Active/Preview Services for API Gateway
+apiVersion: v1
+kind: Service
+metadata:
+  name: api-gateway-active
+  namespace: tartware-system
+  labels:
+    app: api-gateway
+spec:
+  selector:
+    app: api-gateway
+  ports:
+    - port: 8080
+      targetPort: http
+      name: http
+    - port: 9090
+      targetPort: metrics
+      name: metrics
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: api-gateway-preview
+  namespace: tartware-system
+  labels:
+    app: api-gateway
+spec:
+  selector:
+    app: api-gateway
+  ports:
+    - port: 8080
+      targetPort: http
+      name: http
+    - port: 9090
+      targetPort: metrics
+      name: metrics
+
+---
+# Active/Preview Services for Core Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: core-service-active
+  namespace: tartware-system
+spec:
+  selector:
+    app: core-service
+  ports:
+    - port: 3000
+      targetPort: http
+      name: http
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: core-service-preview
+  namespace: tartware-system
+spec:
+  selector:
+    app: core-service
+  ports:
+    - port: 3000
+      targetPort: http
+      name: http
+
+---
+# Analysis Templates for Pre/Post Promotion Checks
+apiVersion: argoproj.io/v1alpha1
+kind: AnalysisTemplate
+metadata:
+  name: api-gateway-health-check
+  namespace: tartware-system
+spec:
+  args:
+    - name: service-name
+  metrics:
+    - name: health-check
+      interval: 10s
+      count: 3
+      successCondition: result == "healthy"
+      failureLimit: 2
+      provider:
+        web:
+          url: "http://{{args.service-name}}.tartware-system.svc.cluster.local:8080/health"
+          jsonPath: "{$.status}"
+
+---
+apiVersion: argoproj.io/v1alpha1
+kind: AnalysisTemplate
+metadata:
+  name: api-gateway-success-rate
+  namespace: tartware-system
+spec:
+  args:
+    - name: service-name
+  metrics:
+    - name: success-rate
+      interval: 30s
+      count: 5
+      successCondition: result[0] >= 0.95
+      failureLimit: 2
+      provider:
+        prometheus:
+          address: http://prometheus.observability.svc.cluster.local:9090
+          query: |
+            sum(rate(http_requests_total{service="{{args.service-name}}",status=~"2.."}[5m])) /
+            sum(rate(http_requests_total{service="{{args.service-name}}"}[5m]))
+
+---
+apiVersion: argoproj.io/v1alpha1
+kind: AnalysisTemplate
+metadata:
+  name: service-health-check
+  namespace: tartware-system
+spec:
+  args:
+    - name: service-name
+  metrics:
+    - name: health
+      interval: 10s
+      count: 3
+      successCondition: result == "ok"
+      failureLimit: 2
+      provider:
+        web:
+          url: "http://{{args.service-name}}.tartware-system.svc.cluster.local/health"
+          jsonPath: "{$.status}"
+
+---
+# Rollback Policy (automatic on failure)
+apiVersion: argoproj.io/v1alpha1
+kind: AnalysisTemplate
+metadata:
+  name: error-rate-check
+  namespace: tartware-system
+spec:
+  args:
+    - name: service-name
+  metrics:
+    - name: error-rate
+      interval: 60s
+      count: 10
+      successCondition: result[0] <= 0.05
+      failureLimit: 3
+      provider:
+        prometheus:
+          address: http://prometheus.observability.svc.cluster.local:9090
+          query: |
+            sum(rate(http_requests_total{service="{{args.service-name}}",status=~"5.."}[5m])) /
+            sum(rate(http_requests_total{service="{{args.service-name}}"}[5m]))
