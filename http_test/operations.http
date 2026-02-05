@@ -273,3 +273,477 @@ Content-Type: {{contentType}}
 #     POST /v1/commands/incident.resolve/execute
 #
 ###############################################################################
+
+###############################################################################
+# CASHIER SESSIONS
+###############################################################################
+
+### List all cashier sessions
+GET {{baseUrl}}/v1/cashier-sessions
+    ?tenant_id={{tenantId}}
+    &limit=50
+Content-Type: {{contentType}}
+
+### List cashier sessions by property
+GET {{baseUrl}}/v1/cashier-sessions
+    ?tenant_id={{tenantId}}
+    &property_id={{propertyId}}
+    &limit=50
+Content-Type: {{contentType}}
+
+### List open cashier sessions
+GET {{baseUrl}}/v1/cashier-sessions
+    ?tenant_id={{tenantId}}
+    &session_status=open
+    &limit=50
+Content-Type: {{contentType}}
+
+### List closed cashier sessions
+GET {{baseUrl}}/v1/cashier-sessions
+    ?tenant_id={{tenantId}}
+    &session_status=closed
+    &limit=50
+Content-Type: {{contentType}}
+
+### List reconciled cashier sessions
+GET {{baseUrl}}/v1/cashier-sessions
+    ?tenant_id={{tenantId}}
+    &session_status=reconciled
+    &limit=50
+Content-Type: {{contentType}}
+
+### List disputed sessions (variance issues)
+GET {{baseUrl}}/v1/cashier-sessions
+    ?tenant_id={{tenantId}}
+    &session_status=disputed
+    &limit=50
+Content-Type: {{contentType}}
+
+### List cashier sessions by business date
+GET {{baseUrl}}/v1/cashier-sessions
+    ?tenant_id={{tenantId}}
+    &business_date=2026-02-10
+    &limit=50
+Content-Type: {{contentType}}
+
+###############################################################################
+# SHIFT HANDOVERS
+###############################################################################
+
+### List all shift handovers
+GET {{baseUrl}}/v1/shift-handovers
+    ?tenant_id={{tenantId}}
+    &limit=50
+Content-Type: {{contentType}}
+
+### List shift handovers by property
+GET {{baseUrl}}/v1/shift-handovers
+    ?tenant_id={{tenantId}}
+    &property_id={{propertyId}}
+    &limit=50
+Content-Type: {{contentType}}
+
+### List pending shift handovers
+GET {{baseUrl}}/v1/shift-handovers
+    ?tenant_id={{tenantId}}
+    &handover_status=pending
+    &limit=50
+Content-Type: {{contentType}}
+
+### List completed shift handovers
+GET {{baseUrl}}/v1/shift-handovers
+    ?tenant_id={{tenantId}}
+    &handover_status=completed
+    &limit=50
+Content-Type: {{contentType}}
+
+### List acknowledged shift handovers
+GET {{baseUrl}}/v1/shift-handovers
+    ?tenant_id={{tenantId}}
+    &handover_status=acknowledged
+    &limit=50
+Content-Type: {{contentType}}
+
+### List front_desk handovers
+GET {{baseUrl}}/v1/shift-handovers
+    ?tenant_id={{tenantId}}
+    &department=front_desk
+    &limit=50
+Content-Type: {{contentType}}
+
+### List housekeeping handovers
+GET {{baseUrl}}/v1/shift-handovers
+    ?tenant_id={{tenantId}}
+    &department=housekeeping
+    &limit=50
+Content-Type: {{contentType}}
+
+### List security handovers
+GET {{baseUrl}}/v1/shift-handovers
+    ?tenant_id={{tenantId}}
+    &department=security
+    &limit=50
+Content-Type: {{contentType}}
+
+### List handovers by date
+GET {{baseUrl}}/v1/shift-handovers
+    ?tenant_id={{tenantId}}
+    &shift_date=2026-02-10
+    &limit=50
+Content-Type: {{contentType}}
+
+###############################################################################
+# LOST AND FOUND
+###############################################################################
+
+### List all lost and found items
+GET {{baseUrl}}/v1/lost-and-found
+    ?tenant_id={{tenantId}}
+    &limit=50
+Content-Type: {{contentType}}
+
+### List lost and found items by property
+GET {{baseUrl}}/v1/lost-and-found
+    ?tenant_id={{tenantId}}
+    &property_id={{propertyId}}
+    &limit=50
+Content-Type: {{contentType}}
+
+### List registered items (newly found)
+GET {{baseUrl}}/v1/lost-and-found
+    ?tenant_id={{tenantId}}
+    &item_status=registered
+    &limit=50
+Content-Type: {{contentType}}
+
+### List stored items
+GET {{baseUrl}}/v1/lost-and-found
+    ?tenant_id={{tenantId}}
+    &item_status=stored
+    &limit=50
+Content-Type: {{contentType}}
+
+### List claimed items
+GET {{baseUrl}}/v1/lost-and-found
+    ?tenant_id={{tenantId}}
+    &item_status=claimed
+    &limit=50
+Content-Type: {{contentType}}
+
+### List returned items
+GET {{baseUrl}}/v1/lost-and-found
+    ?tenant_id={{tenantId}}
+    &item_status=returned
+    &limit=50
+Content-Type: {{contentType}}
+
+### List disposed items
+GET {{baseUrl}}/v1/lost-and-found
+    ?tenant_id={{tenantId}}
+    &item_status=disposed
+    &limit=50
+Content-Type: {{contentType}}
+
+### List electronics
+GET {{baseUrl}}/v1/lost-and-found
+    ?tenant_id={{tenantId}}
+    &item_category=electronics
+    &limit=50
+Content-Type: {{contentType}}
+
+### List jewelry
+GET {{baseUrl}}/v1/lost-and-found
+    ?tenant_id={{tenantId}}
+    &item_category=jewelry
+    &limit=50
+Content-Type: {{contentType}}
+
+### List wallets
+GET {{baseUrl}}/v1/lost-and-found
+    ?tenant_id={{tenantId}}
+    &item_category=wallets
+    &limit=50
+Content-Type: {{contentType}}
+
+### List phones
+GET {{baseUrl}}/v1/lost-and-found
+    ?tenant_id={{tenantId}}
+    &item_category=phones
+    &limit=50
+Content-Type: {{contentType}}
+
+### List documents
+GET {{baseUrl}}/v1/lost-and-found
+    ?tenant_id={{tenantId}}
+    &item_category=documents
+    &limit=50
+Content-Type: {{contentType}}
+
+### List items found after a date
+GET {{baseUrl}}/v1/lost-and-found
+    ?tenant_id={{tenantId}}
+    &found_date_from=2026-01-01
+    &limit=50
+Content-Type: {{contentType}}
+
+###############################################################################
+# BANQUET EVENT ORDERS (BEOs)
+###############################################################################
+
+### List all banquet orders
+GET {{baseUrl}}/v1/banquet-orders
+    ?tenant_id={{tenantId}}
+    &limit=50
+Content-Type: {{contentType}}
+
+### List banquet orders by property
+GET {{baseUrl}}/v1/banquet-orders
+    ?tenant_id={{tenantId}}
+    &property_id={{propertyId}}
+    &limit=50
+Content-Type: {{contentType}}
+
+### List draft BEOs
+GET {{baseUrl}}/v1/banquet-orders
+    ?tenant_id={{tenantId}}
+    &beo_status=DRAFT
+    &limit=50
+Content-Type: {{contentType}}
+
+### List pending approval BEOs
+GET {{baseUrl}}/v1/banquet-orders
+    ?tenant_id={{tenantId}}
+    &beo_status=PENDING_APPROVAL
+    &limit=50
+Content-Type: {{contentType}}
+
+### List approved BEOs
+GET {{baseUrl}}/v1/banquet-orders
+    ?tenant_id={{tenantId}}
+    &beo_status=APPROVED
+    &limit=50
+Content-Type: {{contentType}}
+
+### List BEOs in progress
+GET {{baseUrl}}/v1/banquet-orders
+    ?tenant_id={{tenantId}}
+    &beo_status=IN_PROGRESS
+    &limit=50
+Content-Type: {{contentType}}
+
+### List completed BEOs
+GET {{baseUrl}}/v1/banquet-orders
+    ?tenant_id={{tenantId}}
+    &beo_status=COMPLETED
+    &limit=50
+Content-Type: {{contentType}}
+
+### List cancelled BEOs
+GET {{baseUrl}}/v1/banquet-orders
+    ?tenant_id={{tenantId}}
+    &beo_status=CANCELLED
+    &limit=50
+Content-Type: {{contentType}}
+
+### List BEOs for a specific event date
+GET {{baseUrl}}/v1/banquet-orders
+    ?tenant_id={{tenantId}}
+    &event_date=2026-02-15
+    &limit=50
+Content-Type: {{contentType}}
+
+###############################################################################
+# GUEST FEEDBACK
+###############################################################################
+
+### List all guest feedback
+GET {{baseUrl}}/v1/guest-feedback
+    ?tenant_id={{tenantId}}
+    &limit=50
+Content-Type: {{contentType}}
+
+### List guest feedback by property
+GET {{baseUrl}}/v1/guest-feedback
+    ?tenant_id={{tenantId}}
+    &property_id={{propertyId}}
+    &limit=50
+Content-Type: {{contentType}}
+
+### List positive feedback
+GET {{baseUrl}}/v1/guest-feedback
+    ?tenant_id={{tenantId}}
+    &sentiment_label=POSITIVE
+    &limit=50
+Content-Type: {{contentType}}
+
+### List negative feedback
+GET {{baseUrl}}/v1/guest-feedback
+    ?tenant_id={{tenantId}}
+    &sentiment_label=NEGATIVE
+    &limit=50
+Content-Type: {{contentType}}
+
+### List neutral feedback
+GET {{baseUrl}}/v1/guest-feedback
+    ?tenant_id={{tenantId}}
+    &sentiment_label=NEUTRAL
+    &limit=50
+Content-Type: {{contentType}}
+
+### List public reviews only
+GET {{baseUrl}}/v1/guest-feedback
+    ?tenant_id={{tenantId}}
+    &is_public=true
+    &limit=50
+Content-Type: {{contentType}}
+
+### List reviews with manager response
+GET {{baseUrl}}/v1/guest-feedback
+    ?tenant_id={{tenantId}}
+    &has_response=true
+    &limit=50
+Content-Type: {{contentType}}
+
+### List reviews without response (need attention)
+GET {{baseUrl}}/v1/guest-feedback
+    ?tenant_id={{tenantId}}
+    &has_response=false
+    &limit=50
+Content-Type: {{contentType}}
+
+###############################################################################
+# POLICE REPORTS
+###############################################################################
+
+### List all police reports
+GET {{baseUrl}}/v1/police-reports
+    ?tenant_id={{tenantId}}
+    &limit=50
+Content-Type: {{contentType}}
+
+### List police reports by property
+GET {{baseUrl}}/v1/police-reports
+    ?tenant_id={{tenantId}}
+    &property_id={{propertyId}}
+    &limit=50
+Content-Type: {{contentType}}
+
+### List filed reports
+GET {{baseUrl}}/v1/police-reports
+    ?tenant_id={{tenantId}}
+    &report_status=filed
+    &limit=50
+Content-Type: {{contentType}}
+
+### List reports under investigation
+GET {{baseUrl}}/v1/police-reports
+    ?tenant_id={{tenantId}}
+    &report_status=under_investigation
+    &limit=50
+Content-Type: {{contentType}}
+
+### List closed reports
+GET {{baseUrl}}/v1/police-reports
+    ?tenant_id={{tenantId}}
+    &report_status=closed
+    &limit=50
+Content-Type: {{contentType}}
+
+### List reports with charges filed
+GET {{baseUrl}}/v1/police-reports
+    ?tenant_id={{tenantId}}
+    &report_status=charges_filed
+    &limit=50
+Content-Type: {{contentType}}
+
+### List theft reports
+GET {{baseUrl}}/v1/police-reports
+    ?tenant_id={{tenantId}}
+    &incident_type=theft
+    &limit=50
+Content-Type: {{contentType}}
+
+### List assault reports
+GET {{baseUrl}}/v1/police-reports
+    ?tenant_id={{tenantId}}
+    &incident_type=assault
+    &limit=50
+Content-Type: {{contentType}}
+
+### List vandalism reports
+GET {{baseUrl}}/v1/police-reports
+    ?tenant_id={{tenantId}}
+    &incident_type=vandalism
+    &limit=50
+Content-Type: {{contentType}}
+
+### List fraud reports
+GET {{baseUrl}}/v1/police-reports
+    ?tenant_id={{tenantId}}
+    &incident_type=fraud
+    &limit=50
+Content-Type: {{contentType}}
+
+### List trespassing reports
+GET {{baseUrl}}/v1/police-reports
+    ?tenant_id={{tenantId}}
+    &incident_type=trespassing
+    &limit=50
+Content-Type: {{contentType}}
+
+### List drug-related reports
+GET {{baseUrl}}/v1/police-reports
+    ?tenant_id={{tenantId}}
+    &incident_type=drug_related
+    &limit=50
+Content-Type: {{contentType}}
+
+### List reports from date
+GET {{baseUrl}}/v1/police-reports
+    ?tenant_id={{tenantId}}
+    &incident_date_from=2026-01-01
+    &limit=50
+Content-Type: {{contentType}}
+
+###############################################################################
+# SECONDARY OPERATIONS REFERENCE
+###############################################################################
+#
+# CASHIER SESSION STATUSES:
+#   open, suspended, closed, reconciled, audited, disputed, cancelled
+#
+# CASHIER SHIFT TYPES:
+#   morning, afternoon, evening, night, full_day, custom
+#
+# SHIFT HANDOVER STATUSES:
+#   pending, in_progress, completed, acknowledged, escalated
+#
+# SHIFT DEPARTMENTS:
+#   front_desk, housekeeping, maintenance, food_beverage,
+#   management, sales, security, spa, concierge, other
+#
+# LOST & FOUND ITEM STATUSES:
+#   registered, stored, claimed, returned, shipped,
+#   donated, disposed, lost_again, pending_claim
+#
+# LOST & FOUND ITEM CATEGORIES:
+#   electronics, jewelry, clothing, accessories, documents,
+#   keys, bags, wallets, phones, laptops, tablets,
+#   watches, glasses, books, toys, medical, other
+#
+# BANQUET ORDER STATUSES:
+#   DRAFT, PENDING_APPROVAL, APPROVED, IN_PROGRESS, COMPLETED, CANCELLED
+#
+# GUEST FEEDBACK SENTIMENT:
+#   POSITIVE, NEUTRAL, NEGATIVE
+#
+# POLICE REPORT STATUSES:
+#   filed, under_investigation, closed, charges_filed,
+#   no_action, referred, pending
+#
+# POLICE REPORT INCIDENT TYPES:
+#   theft, assault, vandalism, trespassing, fraud,
+#   suspicious_activity, missing_person, death, drug_related,
+#   domestic_disturbance, noise_complaint, vehicle_incident, other
+#
+###############################################################################
