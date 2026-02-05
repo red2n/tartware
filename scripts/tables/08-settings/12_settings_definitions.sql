@@ -59,4 +59,22 @@ CREATE INDEX IF NOT EXISTS idx_settings_definitions_deprecated
 CREATE INDEX IF NOT EXISTS idx_settings_definitions_feature_flag
     ON settings_definitions (feature_flag);
 
+-- =====================================================
+-- TABLE & COLUMN COMMENTS
+-- =====================================================
+
+COMMENT ON TABLE settings_definitions IS 'Master catalog of all configurable settings. Defines data type, validation rules, scopes, and UI rendering for each setting.';
+COMMENT ON COLUMN settings_definitions.code IS 'Unique dot-notation setting key (e.g., reservations.check_in.default_time)';
+COMMENT ON COLUMN settings_definitions.data_type IS 'Data type: STRING, INTEGER, DECIMAL, BOOLEAN, DATE, TIME, DATETIME, JSON, ARRAY';
+COMMENT ON COLUMN settings_definitions.control_type IS 'UI control: TEXT, TEXTAREA, SELECT, MULTISELECT, CHECKBOX, RADIO, DATE_PICKER, TIME_PICKER, SLIDER, COLOR_PICKER';
+COMMENT ON COLUMN settings_definitions.value_constraints IS 'Validation rules: min, max, pattern, enum values, custom validators';
+COMMENT ON COLUMN settings_definitions.allowed_scopes IS 'Scopes where this setting can be configured: SYSTEM, TENANT, PROPERTY, UNIT, USER';
+COMMENT ON COLUMN settings_definitions.default_scope IS 'Default scope when creating new values';
+COMMENT ON COLUMN settings_definitions.override_scopes IS 'Scopes that can override parent scope values';
+COMMENT ON COLUMN settings_definitions.sensitivity IS 'Data sensitivity: PUBLIC, INTERNAL, CONFIDENTIAL, RESTRICTED';
+COMMENT ON COLUMN settings_definitions.module_dependencies IS 'Modules required to use this setting';
+COMMENT ON COLUMN settings_definitions.feature_flag IS 'Feature flag that must be enabled for this setting';
+COMMENT ON COLUMN settings_definitions.compliance_tags IS 'Compliance/audit tags: PCI, GDPR, SOC2, HIPAA';
+COMMENT ON COLUMN settings_definitions.form_schema IS 'JSON Schema for complex/nested setting values';
+
 \echo 'settings_definitions table created.'

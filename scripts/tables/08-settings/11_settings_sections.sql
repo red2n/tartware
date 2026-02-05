@@ -32,4 +32,13 @@ CREATE INDEX IF NOT EXISTS idx_settings_sections_category_active_sort
 CREATE INDEX IF NOT EXISTS idx_settings_sections_code
     ON settings_sections (code);
 
+-- =====================================================
+-- TABLE & COLUMN COMMENTS
+-- =====================================================
+
+COMMENT ON TABLE settings_sections IS 'Logical grouping within a settings category. Sections organize related settings definitions (e.g., Check-in Rules, Rate Policies).';
+COMMENT ON COLUMN settings_sections.category_id IS 'Parent category this section belongs to';
+COMMENT ON COLUMN settings_sections.code IS 'Unique identifier within category for programmatic access';
+COMMENT ON COLUMN settings_sections.sort_order IS 'Display order within the parent category';
+
 \echo 'settings_sections table created.'
