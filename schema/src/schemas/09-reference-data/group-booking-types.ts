@@ -26,33 +26,11 @@ import { z } from "zod";
 import { uuid, percentage } from "../../shared/base-schemas.js";
 
 /**
- * Group booking segment enum
+ * Dynamic field validation - actual values enforced by database CHECK constraints.
+ * Do NOT hardcode enum values here; they are configurable in the lookup table.
  */
-export const GroupBookingSegmentEnum = z.enum([
-	"CORPORATE",
-	"ASSOCIATION",
-	"SOCIAL",
-	"TRAVEL",
-	"SPORTS",
-	"EDUCATIONAL",
-	"GOVERNMENT",
-	"CREW",
-	"OTHER",
-]);
-
-export type GroupBookingSegment = z.infer<typeof GroupBookingSegmentEnum>;
-
-/**
- * Revenue category enum
- */
-export const RevenueCategoryEnum = z.enum([
-	"ROOMS",
-	"CATERING",
-	"MIXED",
-	"MEETING_ONLY",
-]);
-
-export type RevenueCategory = z.infer<typeof RevenueCategoryEnum>;
+const segmentCode = z.string().min(1).max(30);
+const revenueCategoryCode = z.string().min(1).max(20);
 
 /**
  * Complete GroupBookingTypes schema
@@ -76,9 +54,9 @@ export const GroupBookingTypesSchema = z.object({
 	name: z.string().min(1).max(100),
 	description: z.string().optional().nullable(),
 
-	// Classification
-	segment: GroupBookingSegmentEnum.default("CORPORATE"),
-	revenue_category: RevenueCategoryEnum.default("ROOMS"),
+	// Classification (values enforced by DB CHECK constraints)
+	segment: segmentCode.default("CORPORATE"),
+	revenue_category: revenueCategoryCode.default("ROOMS"),
 
 	// Group Behavior
 	requires_contract: z.boolean().default(true),

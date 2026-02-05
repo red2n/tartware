@@ -26,59 +26,13 @@ import { z } from "zod";
 import { uuid, money, percentage } from "../../shared/base-schemas.js";
 
 /**
- * Company category enum
+ * Dynamic field validation - actual values enforced by database CHECK constraints.
+ * Do NOT hardcode enum values here; they are configurable in the lookup table.
  */
-export const CompanyCategoryEnum = z.enum([
-	"CORPORATE",
-	"INTERMEDIARY",
-	"GOVERNMENT",
-	"ASSOCIATION",
-	"SUPPLIER",
-	"PARTNER",
-	"INTERNAL",
-	"OTHER",
-]);
-
-export type CompanyCategory = z.infer<typeof CompanyCategoryEnum>;
-
-/**
- * Relationship type enum
- */
-export const RelationshipTypeEnum = z.enum([
-	"B2B",
-	"B2B2C",
-	"B2G",
-	"VENDOR",
-	"AFFILIATE",
-	"INTERNAL",
-]);
-
-export type RelationshipType = z.infer<typeof RelationshipTypeEnum>;
-
-/**
- * Rate access type enum
- */
-export const RateAccessTypeEnum = z.enum([
-	"PUBLIC",
-	"NEGOTIATED",
-	"NET",
-	"CONFIDENTIAL",
-]);
-
-export type RateAccessType = z.infer<typeof RateAccessTypeEnum>;
-
-/**
- * Review frequency enum
- */
-export const ReviewFrequencyEnum = z.enum([
-	"MONTHLY",
-	"QUARTERLY",
-	"ANNUAL",
-	"BIENNIAL",
-	"NONE",
-]);
-
-export type ReviewFrequency = z.infer<typeof ReviewFrequencyEnum>;
+const categoryCode = z.string().min(1).max(30);
+const relationshipType = z.string().min(1).max(30);
+const rateAccessType = z.string().min(1).max(20);
+const reviewFrequency = z.string().min(1).max(20);
 
 /**
  * Complete CompanyTypes schema
@@ -102,9 +56,9 @@ export const CompanyTypesSchema = z.object({
 	name: z.string().min(1).max(100),
 	description: z.string().optional().nullable(),
 
-	// Classification
-	category: CompanyCategoryEnum.default("CORPORATE"),
-	relationship_type: RelationshipTypeEnum.default("B2B"),
+	// Classification (values enforced by DB CHECK constraints)
+	category: categoryCode.default("CORPORATE"),
+	relationship_type: relationshipType.default("B2B"),
 
 	// Billing & AR Settings
 	has_ar_account: z.boolean().default(true),
@@ -117,7 +71,7 @@ export const CompanyTypesSchema = z.object({
 	receives_commission: z.boolean().default(false),
 	default_commission_pct: percentage.optional().nullable(),
 	has_negotiated_rates: z.boolean().default(false),
-	rate_access_type: RateAccessTypeEnum.default("PUBLIC"),
+	rate_access_type: rateAccessType.default("PUBLIC"),
 
 	// Distribution Flags
 	is_direct_sell: z.boolean().default(false),
@@ -137,7 +91,7 @@ export const CompanyTypesSchema = z.object({
 	// Volume & Performance
 	tracks_production: z.boolean().default(true),
 	has_volume_commitment: z.boolean().default(false),
-	review_frequency: ReviewFrequencyEnum.default("ANNUAL"),
+	review_frequency: reviewFrequency.default("ANNUAL"),
 
 	// Mapping to Legacy Enum
 	legacy_enum_value: z.string().max(50).optional().nullable(),

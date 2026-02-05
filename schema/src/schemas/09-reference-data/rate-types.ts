@@ -26,21 +26,10 @@ import { z } from "zod";
 import { uuid, percentage } from "../../shared/base-schemas.js";
 
 /**
- * Rate type category enum
+ * Dynamic field validation - actual values enforced by database CHECK constraints.
+ * Do NOT hardcode enum values here; they are configurable in the lookup table.
  */
-export const RateTypeCategoryEnum = z.enum([
-	"PUBLISHED",
-	"TRANSIENT",
-	"NEGOTIATED",
-	"PROMOTIONAL",
-	"PACKAGE",
-	"WHOLESALE",
-	"INTERNAL",
-	"RESTRICTION",
-	"OTHER",
-]);
-
-export type RateTypeCategory = z.infer<typeof RateTypeCategoryEnum>;
+const categoryCode = z.string().min(1).max(30);
 
 /**
  * Complete RateTypes schema
@@ -64,8 +53,8 @@ export const RateTypesSchema = z.object({
 	name: z.string().min(1).max(100),
 	description: z.string().optional().nullable(),
 
-	// Classification
-	category: RateTypeCategoryEnum.default("TRANSIENT"),
+	// Classification (values enforced by DB CHECK constraints)
+	category: categoryCode.default("TRANSIENT"),
 
 	// Rate Behavior
 	is_public: z.boolean().default(true),

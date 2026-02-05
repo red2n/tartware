@@ -26,16 +26,10 @@ import { z } from "zod";
 import { uuid } from "../../shared/base-schemas.js";
 
 /**
- * Room status category enum
+ * Dynamic field validation - actual values enforced by database CHECK constraints.
+ * Do NOT hardcode enum values here; they are configurable in the lookup table.
  */
-export const RoomStatusCategoryEnum = z.enum([
-	"OPERATIONAL",
-	"MAINTENANCE",
-	"BLOCKED",
-	"SPECIAL",
-]);
-
-export type RoomStatusCategory = z.infer<typeof RoomStatusCategoryEnum>;
+const categoryCode = z.string().min(1).max(30);
 
 /**
  * Complete RoomStatusCodes schema
@@ -79,8 +73,8 @@ export const RoomStatusCodesSchema = z.object({
 	icon: z.string().max(50).optional().nullable(),
 	badge_class: z.string().max(50).optional().nullable(),
 
-	// Categorization
-	category: RoomStatusCategoryEnum.default("OPERATIONAL"),
+	// Categorization (values enforced by DB CHECK constraints)
+	category: categoryCode.default("OPERATIONAL"),
 
 	// System vs Custom
 	is_system: z.boolean().default(false),

@@ -26,22 +26,10 @@ import { z } from "zod";
 import { uuid, money, percentage, currencyCode } from "../../shared/base-schemas.js";
 
 /**
- * Payment method category enum
+ * Dynamic field validation - actual values enforced by database CHECK constraints.
+ * Do NOT hardcode enum values here; they are configurable in the lookup table.
  */
-export const PaymentMethodCategoryEnum = z.enum([
-	"CASH",
-	"CREDIT_CARD",
-	"DEBIT_CARD",
-	"BANK",
-	"CHECK",
-	"DIGITAL",
-	"CRYPTO",
-	"VOUCHER",
-	"ACCOUNT",
-	"OTHER",
-]);
-
-export type PaymentMethodCategory = z.infer<typeof PaymentMethodCategoryEnum>;
+const categoryCode = z.string().min(1).max(30);
 
 /**
  * Complete PaymentMethods schema
@@ -65,8 +53,8 @@ export const PaymentMethodsSchema = z.object({
 	name: z.string().min(1).max(100),
 	description: z.string().optional().nullable(),
 
-	// Classification
-	category: PaymentMethodCategoryEnum,
+	// Classification (values enforced by DB CHECK constraints)
+	category: categoryCode,
 
 	// Processing Behavior
 	is_electronic: z.boolean().default(false),
@@ -142,7 +130,7 @@ export const CreatePaymentMethodsSchema = PaymentMethodsSchema.omit({
 			message: "Code must be uppercase alphanumeric with underscores",
 		}),
 	name: z.string().min(1).max(100),
-	category: PaymentMethodCategoryEnum,
+	category: categoryCode,
 });
 
 export type CreatePaymentMethods = z.infer<typeof CreatePaymentMethodsSchema>;

@@ -26,18 +26,10 @@ import { z } from "zod";
 import { uuid, money } from "../../shared/base-schemas.js";
 
 /**
- * Room category tier enum
+ * Dynamic field validation - actual values enforced by database CHECK constraints.
+ * Do NOT hardcode enum values here; they are configurable in the lookup table.
  */
-export const RoomCategoryTierEnum = z.enum([
-	"ECONOMY",
-	"STANDARD",
-	"SUPERIOR",
-	"DELUXE",
-	"PREMIUM",
-	"LUXURY",
-]);
-
-export type RoomCategoryTier = z.infer<typeof RoomCategoryTierEnum>;
+const tierCode = z.string().min(1).max(20);
 
 /**
  * Complete RoomCategories schema
@@ -61,8 +53,8 @@ export const RoomCategoriesSchema = z.object({
 	name: z.string().min(1).max(100),
 	description: z.string().optional().nullable(),
 
-	// Classification
-	tier: RoomCategoryTierEnum.default("STANDARD"),
+	// Classification (values enforced by DB CHECK constraints)
+	tier: tierCode.default("STANDARD"),
 	star_rating: z.number().min(1).max(5).optional().nullable(),
 
 	// Pricing
