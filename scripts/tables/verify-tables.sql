@@ -46,8 +46,11 @@
 -- Settings catalog
 \i tables/08-settings/verify-08-settings-catalog.sql
 
+-- Reference data (dynamic enums)
+\i tables/09-reference-data/verify-09-reference-data.sql
+
 \echo ''
-\echo '======================================================'
+\echo '======================================================
 \echo '  TABLE VERIFICATION COMPLETE'
 \echo '======================================================'
 \echo ''
