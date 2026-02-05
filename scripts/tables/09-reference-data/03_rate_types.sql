@@ -4,7 +4,7 @@
 --
 -- Purpose: Replace hardcoded rate_type ENUM with
 --          configurable lookup table
--- 
+--
 -- Industry Standard: OPERA (RATE_CODE_TYPE), Cloudbeds,
 --                    Protel (TARIFART), RMS Rate Categories
 --
@@ -18,16 +18,16 @@
 CREATE TABLE IF NOT EXISTS rate_types (
     -- Primary Key
     type_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    
+
     -- Multi-tenancy (NULL tenant_id = system default)
     tenant_id UUID,  -- NULL for system defaults available to all
     property_id UUID, -- NULL for tenant-level types
-    
+
     -- Rate Type Identification
     code VARCHAR(30) NOT NULL,           -- e.g., "RACK", "BAR", "CORP"
     name VARCHAR(100) NOT NULL,          -- e.g., "Best Available Rate"
     description TEXT,                    -- Detailed description
-    
+
     -- Classification
     category VARCHAR(30) NOT NULL DEFAULT 'TRANSIENT'
         CHECK (category IN (
@@ -41,7 +41,7 @@ CREATE TABLE IF NOT EXISTS rate_types (
             'RESTRICTION',  -- LOS, advance purchase
             'OTHER'
         )),
-    
+
     -- Rate Behavior
     is_public BOOLEAN DEFAULT TRUE,       -- Visible to guests
     is_refundable BOOLEAN DEFAULT TRUE,   -- Cancellation allowed
@@ -49,55 +49,55 @@ CREATE TABLE IF NOT EXISTS rate_types (
     is_discounted BOOLEAN DEFAULT FALSE,  -- Below rack rate
     is_yielded BOOLEAN DEFAULT TRUE,      -- Subject to revenue management
     is_derived BOOLEAN DEFAULT FALSE,     -- Calculated from parent rate
-    
+
     -- Restrictions
     requires_deposit BOOLEAN DEFAULT FALSE,
     requires_prepayment BOOLEAN DEFAULT FALSE,
     requires_guarantee BOOLEAN DEFAULT TRUE,
     min_advance_days INTEGER DEFAULT 0,   -- Minimum booking lead time
     max_advance_days INTEGER,             -- Maximum booking window
-    
+
     -- Commission & Distribution
     default_commission_pct DECIMAL(5,2),  -- Default agent commission
     ota_eligible BOOLEAN DEFAULT TRUE,    -- Distribute to OTAs
     gds_eligible BOOLEAN DEFAULT TRUE,    -- Distribute to GDS
-    
+
     -- Priority (for rate selection)
     priority INTEGER DEFAULT 100,         -- Lower = higher priority
     rate_hierarchy_level INTEGER DEFAULT 1, -- 1=base, 2=derived, etc.
-    
+
     -- Mapping to Legacy Enum
     legacy_enum_value VARCHAR(50),        -- Maps to rate_type ENUM
-    
+
     -- Display & UI
     display_order INTEGER DEFAULT 0,
     color_code VARCHAR(7),
     icon VARCHAR(50),
     badge_text VARCHAR(20),               -- e.g., "SALE", "BEST VALUE"
-    
+
     -- System vs Custom
     is_system BOOLEAN NOT NULL DEFAULT FALSE,
     is_active BOOLEAN NOT NULL DEFAULT TRUE,
-    
+
     -- Audit Fields
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     created_by UUID,
     updated_by UUID,
-    
+
     -- Soft Delete
     deleted_at TIMESTAMP,
     deleted_by UUID,
-    
+
     -- Constraints
-    CONSTRAINT uk_rate_types_tenant_code 
+    CONSTRAINT uk_rate_types_tenant_code
         UNIQUE NULLS NOT DISTINCT (tenant_id, property_id, code),
-    
+
     CONSTRAINT chk_rate_type_code_format
         CHECK (code ~ '^[A-Z0-9_]{1,30}$'),
-    
+
     CONSTRAINT chk_rate_type_commission
-        CHECK (default_commission_pct IS NULL OR 
+        CHECK (default_commission_pct IS NULL OR
                (default_commission_pct >= 0 AND default_commission_pct <= 100))
 );
 
@@ -105,41 +105,41 @@ CREATE TABLE IF NOT EXISTS rate_types (
 -- TABLE & COLUMN COMMENTS
 -- =====================================================
 
-COMMENT ON TABLE rate_types IS 
-'Configurable rate type codes (RACK, BAR, CORPORATE, etc.) 
-replacing hardcoded ENUM. Allows tenant-specific rate types 
+COMMENT ON TABLE rate_types IS
+'Configurable rate type codes (RACK, BAR, CORPORATE, etc.)
+replacing hardcoded ENUM. Allows tenant-specific rate types
 with behavioral flags for revenue management and distribution.';
 
-COMMENT ON COLUMN rate_types.category IS 
+COMMENT ON COLUMN rate_types.category IS
 'Classification: PUBLISHED, TRANSIENT, NEGOTIATED, PROMOTIONAL, PACKAGE, WHOLESALE, INTERNAL, RESTRICTION';
 
-COMMENT ON COLUMN rate_types.is_yielded IS 
+COMMENT ON COLUMN rate_types.is_yielded IS
 'TRUE if rate is subject to dynamic pricing/revenue management';
 
-COMMENT ON COLUMN rate_types.is_derived IS 
+COMMENT ON COLUMN rate_types.is_derived IS
 'TRUE if rate is calculated from a parent rate (e.g., AAA = BAR - 10%)';
 
-COMMENT ON COLUMN rate_types.priority IS 
+COMMENT ON COLUMN rate_types.priority IS
 'Rate selection priority. Lower value = selected first when multiple rates apply';
 
 -- =====================================================
 -- INDEXES
 -- =====================================================
 
-CREATE INDEX idx_rate_types_tenant 
-    ON rate_types(tenant_id, property_id) 
+CREATE INDEX idx_rate_types_tenant
+    ON rate_types(tenant_id, property_id)
     WHERE deleted_at IS NULL;
 
-CREATE INDEX idx_rate_types_active 
-    ON rate_types(tenant_id, is_active, display_order) 
+CREATE INDEX idx_rate_types_active
+    ON rate_types(tenant_id, is_active, display_order)
     WHERE deleted_at IS NULL AND is_active = TRUE;
 
-CREATE INDEX idx_rate_types_category 
-    ON rate_types(category, is_public) 
+CREATE INDEX idx_rate_types_category
+    ON rate_types(category, is_public)
     WHERE deleted_at IS NULL;
 
-CREATE INDEX idx_rate_types_legacy 
-    ON rate_types(legacy_enum_value) 
+CREATE INDEX idx_rate_types_legacy
+    ON rate_types(legacy_enum_value)
     WHERE legacy_enum_value IS NOT NULL;
 
 -- =====================================================
@@ -148,7 +148,7 @@ CREATE INDEX idx_rate_types_legacy
 
 INSERT INTO rate_types (
     tenant_id, code, name, description,
-    category, is_public, is_refundable, is_commissionable, 
+    category, is_public, is_refundable, is_commissionable,
     is_discounted, is_yielded, is_derived,
     requires_prepayment, min_advance_days,
     priority, legacy_enum_value, display_order, color_code, icon, is_system

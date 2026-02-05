@@ -4,7 +4,7 @@
 --
 -- Purpose: Replace hardcoded company_type ENUM with
 --          configurable lookup table
--- 
+--
 -- Industry Standard: OPERA Company Types, Sabre Profile
 --                    Categories, HTNG Corporation Types
 --
@@ -18,16 +18,16 @@
 CREATE TABLE IF NOT EXISTS company_types (
     -- Primary Key
     type_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    
+
     -- Multi-tenancy (NULL tenant_id = system default)
     tenant_id UUID,  -- NULL for system defaults available to all
     property_id UUID, -- NULL for tenant-level types
-    
+
     -- Company Type Identification
     code VARCHAR(30) NOT NULL,           -- e.g., "CORP", "OTA", "TA"
     name VARCHAR(100) NOT NULL,          -- e.g., "Online Travel Agency"
     description TEXT,                    -- Detailed description
-    
+
     -- Classification
     category VARCHAR(30) NOT NULL DEFAULT 'CORPORATE'
         CHECK (category IN (
@@ -40,7 +40,7 @@ CREATE TABLE IF NOT EXISTS company_types (
             'INTERNAL',       -- Hotel management companies
             'OTHER'
         )),
-    
+
     -- Relationship Type
     relationship_type VARCHAR(30) DEFAULT 'B2B'
         CHECK (relationship_type IN (
@@ -51,13 +51,13 @@ CREATE TABLE IF NOT EXISTS company_types (
             'AFFILIATE',     -- Affiliate partner
             'INTERNAL'       -- Same organization
         )),
-    
+
     -- Billing & AR Settings
     has_ar_account BOOLEAN DEFAULT TRUE,  -- Can bill on credit
     requires_po BOOLEAN DEFAULT FALSE,    -- Requires purchase order
     default_payment_terms INTEGER DEFAULT 30, -- Days to pay
     default_credit_limit DECIMAL(15,2),
-    
+
     -- Commission & Rates
     pays_commission BOOLEAN DEFAULT FALSE, -- Hotel pays them commission
     receives_commission BOOLEAN DEFAULT FALSE, -- They earn commission
@@ -65,64 +65,64 @@ CREATE TABLE IF NOT EXISTS company_types (
     has_negotiated_rates BOOLEAN DEFAULT FALSE,
     rate_access_type VARCHAR(20) DEFAULT 'PUBLIC'
         CHECK (rate_access_type IN ('PUBLIC', 'NEGOTIATED', 'NET', 'CONFIDENTIAL')),
-    
+
     -- Distribution Flags
     is_direct_sell BOOLEAN DEFAULT FALSE,  -- Sells directly to guests
     is_reseller BOOLEAN DEFAULT FALSE,     -- Resells inventory
     is_contracted BOOLEAN DEFAULT FALSE,   -- Has volume commitment
     is_preferred BOOLEAN DEFAULT FALSE,    -- Preferred partner status
-    
+
     -- Tax & Compliance
     requires_w9 BOOLEAN DEFAULT FALSE,     -- US tax form
     requires_tax_exempt BOOLEAN DEFAULT FALSE,
     requires_insurance_cert BOOLEAN DEFAULT FALSE,
-    
+
     -- Contact Requirements
     requires_travel_arranger BOOLEAN DEFAULT FALSE,
     requires_booker_list BOOLEAN DEFAULT FALSE,
-    
+
     -- Volume & Performance
     tracks_production BOOLEAN DEFAULT TRUE,
     has_volume_commitment BOOLEAN DEFAULT FALSE,
     review_frequency VARCHAR(20) DEFAULT 'ANNUAL'
         CHECK (review_frequency IN ('MONTHLY', 'QUARTERLY', 'ANNUAL', 'BIENNIAL', 'NONE')),
-    
+
     -- Mapping to Legacy Enum
     legacy_enum_value VARCHAR(50),
-    
+
     -- GDS/Distribution Codes
     iata_agency_type VARCHAR(10),          -- IATA agency classification
     arc_type VARCHAR(10),                  -- ARC (Airlines Reporting Corp)
     clia_type VARCHAR(10),                 -- CLIA (cruise lines)
-    
+
     -- Display & UI
     display_order INTEGER DEFAULT 0,
     color_code VARCHAR(7),
     icon VARCHAR(50),
-    
+
     -- System vs Custom
     is_system BOOLEAN NOT NULL DEFAULT FALSE,
     is_active BOOLEAN NOT NULL DEFAULT TRUE,
-    
+
     -- Audit Fields
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     created_by UUID,
     updated_by UUID,
-    
+
     -- Soft Delete
     deleted_at TIMESTAMP,
     deleted_by UUID,
-    
+
     -- Constraints
-    CONSTRAINT uk_company_types_tenant_code 
+    CONSTRAINT uk_company_types_tenant_code
         UNIQUE NULLS NOT DISTINCT (tenant_id, property_id, code),
-    
+
     CONSTRAINT chk_company_type_code_format
         CHECK (code ~ '^[A-Z0-9_]{1,30}$'),
-    
+
     CONSTRAINT chk_company_type_commission
-        CHECK (default_commission_pct IS NULL OR 
+        CHECK (default_commission_pct IS NULL OR
                (default_commission_pct >= 0 AND default_commission_pct <= 100))
 );
 
@@ -130,45 +130,45 @@ CREATE TABLE IF NOT EXISTS company_types (
 -- TABLE & COLUMN COMMENTS
 -- =====================================================
 
-COMMENT ON TABLE company_types IS 
-'Configurable company/account types (CORPORATE, OTA, TRAVEL_AGENCY, etc.) 
-replacing hardcoded ENUM. Includes billing terms, commission settings, 
+COMMENT ON TABLE company_types IS
+'Configurable company/account types (CORPORATE, OTA, TRAVEL_AGENCY, etc.)
+replacing hardcoded ENUM. Includes billing terms, commission settings,
 and distribution channel classification.';
 
-COMMENT ON COLUMN company_types.category IS 
+COMMENT ON COLUMN company_types.category IS
 'Classification: CORPORATE, INTERMEDIARY, GOVERNMENT, ASSOCIATION, SUPPLIER, PARTNER, INTERNAL';
 
-COMMENT ON COLUMN company_types.rate_access_type IS 
+COMMENT ON COLUMN company_types.rate_access_type IS
 'Rate visibility: PUBLIC (BAR), NEGOTIATED (corporate), NET (wholesale), CONFIDENTIAL';
 
-COMMENT ON COLUMN company_types.is_reseller IS 
+COMMENT ON COLUMN company_types.is_reseller IS
 'TRUE if company resells hotel inventory (OTAs, wholesalers, bedbanks)';
 
-COMMENT ON COLUMN company_types.iata_agency_type IS 
+COMMENT ON COLUMN company_types.iata_agency_type IS
 'IATA agency classification code for travel agencies';
 
 -- =====================================================
 -- INDEXES
 -- =====================================================
 
-CREATE INDEX idx_company_types_tenant 
-    ON company_types(tenant_id, property_id) 
+CREATE INDEX idx_company_types_tenant
+    ON company_types(tenant_id, property_id)
     WHERE deleted_at IS NULL;
 
-CREATE INDEX idx_company_types_active 
-    ON company_types(tenant_id, is_active, display_order) 
+CREATE INDEX idx_company_types_active
+    ON company_types(tenant_id, is_active, display_order)
     WHERE deleted_at IS NULL AND is_active = TRUE;
 
-CREATE INDEX idx_company_types_category 
-    ON company_types(category, relationship_type) 
+CREATE INDEX idx_company_types_category
+    ON company_types(category, relationship_type)
     WHERE deleted_at IS NULL;
 
-CREATE INDEX idx_company_types_distrib 
-    ON company_types(is_direct_sell, is_reseller) 
+CREATE INDEX idx_company_types_distrib
+    ON company_types(is_direct_sell, is_reseller)
     WHERE deleted_at IS NULL;
 
-CREATE INDEX idx_company_types_legacy 
-    ON company_types(legacy_enum_value) 
+CREATE INDEX idx_company_types_legacy
+    ON company_types(legacy_enum_value)
     WHERE legacy_enum_value IS NOT NULL;
 
 -- =====================================================

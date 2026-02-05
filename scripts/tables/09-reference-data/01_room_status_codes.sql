@@ -4,7 +4,7 @@
 --
 -- Purpose: Replace hardcoded room_status ENUM with
 --          configurable lookup table
--- 
+--
 -- Industry Standard: OPERA (ROOM_STATUS), Cloudbeds,
 --                    Protel (ZIMMER_STATUS), RMS
 --
@@ -22,16 +22,16 @@
 CREATE TABLE IF NOT EXISTS room_status_codes (
     -- Primary Key
     status_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    
+
     -- Multi-tenancy (NULL tenant_id = system default)
     tenant_id UUID,  -- NULL for system defaults available to all
     property_id UUID, -- NULL for tenant-level codes
-    
+
     -- Status Identification
     code VARCHAR(30) NOT NULL,           -- e.g., "VC", "VD", "OC", "SO"
     name VARCHAR(100) NOT NULL,          -- e.g., "Vacant Clean"
     description TEXT,                    -- Detailed description
-    
+
     -- Behavioral Flags (determines PMS logic)
     is_occupied BOOLEAN NOT NULL DEFAULT FALSE,      -- Guest currently in room
     is_sellable BOOLEAN NOT NULL DEFAULT TRUE,       -- Can be sold to new guest
@@ -39,41 +39,41 @@ CREATE TABLE IF NOT EXISTS room_status_codes (
     requires_housekeeping BOOLEAN NOT NULL DEFAULT FALSE, -- Needs HK attention
     requires_inspection BOOLEAN NOT NULL DEFAULT FALSE,   -- Needs supervisor QC
     is_out_of_inventory BOOLEAN NOT NULL DEFAULT FALSE,   -- OOO/OOS type
-    
+
     -- State Machine: Valid Transitions
     allowed_next_codes VARCHAR(30)[],    -- What statuses can follow this one
-    
+
     -- Mapping to Legacy Enum (for migration)
     legacy_enum_value VARCHAR(50),       -- Maps to room_status ENUM value
-    
+
     -- Display & UI
     display_order INTEGER DEFAULT 0,     -- Sort order in dropdowns
     color_code VARCHAR(7),               -- Hex color for UI (e.g., "#28a745")
     icon VARCHAR(50),                    -- Icon identifier (e.g., "check-circle")
     badge_class VARCHAR(50),             -- CSS class for badge styling
-    
+
     -- Categorization
     category VARCHAR(30) DEFAULT 'OPERATIONAL'
         CHECK (category IN ('OPERATIONAL', 'MAINTENANCE', 'BLOCKED', 'SPECIAL')),
-    
+
     -- System vs Custom
     is_system BOOLEAN NOT NULL DEFAULT FALSE,  -- System defaults, cannot delete
     is_active BOOLEAN NOT NULL DEFAULT TRUE,   -- Soft disable without delete
-    
+
     -- Audit Fields
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     created_by UUID,
     updated_by UUID,
-    
+
     -- Soft Delete
     deleted_at TIMESTAMP,
     deleted_by UUID,
-    
+
     -- Constraints
-    CONSTRAINT uk_room_status_codes_tenant_code 
+    CONSTRAINT uk_room_status_codes_tenant_code
         UNIQUE NULLS NOT DISTINCT (tenant_id, property_id, code),
-    
+
     -- System codes cannot be duplicated across tenants
     CONSTRAINT chk_room_status_code_format
         CHECK (code ~ '^[A-Z0-9_]{1,30}$')
@@ -83,33 +83,33 @@ CREATE TABLE IF NOT EXISTS room_status_codes (
 -- TABLE & COLUMN COMMENTS
 -- =====================================================
 
-COMMENT ON TABLE room_status_codes IS 
-'Configurable room status codes replacing hardcoded ENUM. 
-Allows tenant-specific and property-specific status codes 
+COMMENT ON TABLE room_status_codes IS
+'Configurable room status codes replacing hardcoded ENUM.
+Allows tenant-specific and property-specific status codes
 while maintaining system defaults for core operational statuses.';
 
-COMMENT ON COLUMN room_status_codes.tenant_id IS 
+COMMENT ON COLUMN room_status_codes.tenant_id IS
 'NULL for system-wide defaults; set for tenant-specific codes';
 
-COMMENT ON COLUMN room_status_codes.is_occupied IS 
+COMMENT ON COLUMN room_status_codes.is_occupied IS
 'TRUE if guest is physically in the room (affects inventory counts)';
 
-COMMENT ON COLUMN room_status_codes.is_sellable IS 
+COMMENT ON COLUMN room_status_codes.is_sellable IS
 'TRUE if room can be sold to a new guest (affects availability search)';
 
-COMMENT ON COLUMN room_status_codes.is_clean IS 
+COMMENT ON COLUMN room_status_codes.is_clean IS
 'TRUE if room has been cleaned and passed inspection';
 
-COMMENT ON COLUMN room_status_codes.requires_housekeeping IS 
+COMMENT ON COLUMN room_status_codes.requires_housekeeping IS
 'TRUE if this status triggers assignment to housekeeping queue';
 
-COMMENT ON COLUMN room_status_codes.is_out_of_inventory IS 
+COMMENT ON COLUMN room_status_codes.is_out_of_inventory IS
 'TRUE for OOO/OOS statuses that remove room from sellable inventory';
 
-COMMENT ON COLUMN room_status_codes.legacy_enum_value IS 
+COMMENT ON COLUMN room_status_codes.legacy_enum_value IS
 'Maps to the old room_status PostgreSQL ENUM for migration compatibility';
 
-COMMENT ON COLUMN room_status_codes.allowed_next_codes IS 
+COMMENT ON COLUMN room_status_codes.allowed_next_codes IS
 'Array of status codes that are valid transitions from this status';
 
 -- =====================================================
@@ -117,18 +117,18 @@ COMMENT ON COLUMN room_status_codes.allowed_next_codes IS
 -- =====================================================
 
 -- Lookup by tenant
-CREATE INDEX idx_room_status_codes_tenant 
-    ON room_status_codes(tenant_id, property_id) 
+CREATE INDEX idx_room_status_codes_tenant
+    ON room_status_codes(tenant_id, property_id)
     WHERE deleted_at IS NULL;
 
 -- Active codes for dropdown population
-CREATE INDEX idx_room_status_codes_active 
-    ON room_status_codes(tenant_id, is_active, display_order) 
+CREATE INDEX idx_room_status_codes_active
+    ON room_status_codes(tenant_id, is_active, display_order)
     WHERE deleted_at IS NULL AND is_active = TRUE;
 
 -- Legacy enum mapping for migration queries
-CREATE INDEX idx_room_status_codes_legacy 
-    ON room_status_codes(legacy_enum_value) 
+CREATE INDEX idx_room_status_codes_legacy
+    ON room_status_codes(legacy_enum_value)
     WHERE legacy_enum_value IS NOT NULL;
 
 -- =====================================================
@@ -138,7 +138,7 @@ CREATE INDEX idx_room_status_codes_legacy
 -- Insert system defaults (tenant_id = NULL means available to all)
 INSERT INTO room_status_codes (
     tenant_id, code, name, description,
-    is_occupied, is_sellable, is_clean, requires_housekeeping, 
+    is_occupied, is_sellable, is_clean, requires_housekeeping,
     requires_inspection, is_out_of_inventory,
     allowed_next_codes, legacy_enum_value,
     display_order, color_code, icon, category, is_system

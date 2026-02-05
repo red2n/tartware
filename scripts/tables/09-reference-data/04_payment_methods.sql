@@ -4,7 +4,7 @@
 --
 -- Purpose: Replace hardcoded payment_method ENUM with
 --          configurable lookup table
--- 
+--
 -- Industry Standard: PCI-DSS categories, EMV payment types,
 --                    HTNG Payment Specifications
 --
@@ -18,16 +18,16 @@
 CREATE TABLE IF NOT EXISTS payment_methods (
     -- Primary Key
     method_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    
+
     -- Multi-tenancy (NULL tenant_id = system default)
     tenant_id UUID,  -- NULL for system defaults available to all
     property_id UUID, -- NULL for tenant-level methods
-    
+
     -- Payment Method Identification
     code VARCHAR(30) NOT NULL,           -- e.g., "CASH", "CC_VISA"
     name VARCHAR(100) NOT NULL,          -- e.g., "Visa Credit Card"
     description TEXT,                    -- Detailed description
-    
+
     -- Classification
     category VARCHAR(30) NOT NULL
         CHECK (category IN (
@@ -42,7 +42,7 @@ CREATE TABLE IF NOT EXISTS payment_methods (
             'ACCOUNT',      -- Direct bill, AR
             'OTHER'
         )),
-    
+
     -- Processing Behavior
     is_electronic BOOLEAN DEFAULT FALSE,  -- Requires gateway processing
     is_guaranteed BOOLEAN DEFAULT FALSE,  -- Guarantees reservation
@@ -50,61 +50,61 @@ CREATE TABLE IF NOT EXISTS payment_methods (
     is_refundable BOOLEAN DEFAULT TRUE,   -- Can issue refunds
     is_tokenizable BOOLEAN DEFAULT FALSE, -- Supports tokenization
     requires_authorization BOOLEAN DEFAULT FALSE, -- Pre-auth needed
-    
+
     -- Card-Specific (for credit/debit)
     card_brand VARCHAR(20),              -- VISA, MASTERCARD, AMEX, etc.
     card_type VARCHAR(20),               -- CREDIT, DEBIT, PREPAID
     bin_range_start VARCHAR(6),          -- BIN range for auto-detect
     bin_range_end VARCHAR(6),
-    
+
     -- Settlement
     settlement_days INTEGER DEFAULT 0,   -- Days to settlement
     default_fee_pct DECIMAL(5,2),        -- Processing fee percentage
     default_fee_fixed DECIMAL(10,2),     -- Fixed processing fee
     currency_code VARCHAR(3) DEFAULT 'USD', -- Fee currency
-    
+
     -- Limits
     min_amount DECIMAL(15,2) DEFAULT 0,
     max_amount DECIMAL(15,2),
     requires_id_verification BOOLEAN DEFAULT FALSE,
     requires_signature BOOLEAN DEFAULT FALSE,
-    
+
     -- Integration
     gateway_code VARCHAR(50),            -- Payment gateway identifier
     terminal_type VARCHAR(30),           -- POS, MOTO, ECOM
-    
+
     -- Mapping to Legacy Enum
     legacy_enum_value VARCHAR(50),        -- Maps to payment_method ENUM
-    
+
     -- Display & UI
     display_order INTEGER DEFAULT 0,
     color_code VARCHAR(7),
     icon VARCHAR(50),                    -- Icon for UI (e.g., FontAwesome)
     logo_url VARCHAR(255),               -- Card/payment logo
-    
+
     -- System vs Custom
     is_system BOOLEAN NOT NULL DEFAULT FALSE,
     is_active BOOLEAN NOT NULL DEFAULT TRUE,
-    
+
     -- Audit Fields
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     created_by UUID,
     updated_by UUID,
-    
+
     -- Soft Delete
     deleted_at TIMESTAMP,
     deleted_by UUID,
-    
+
     -- Constraints
-    CONSTRAINT uk_payment_methods_tenant_code 
+    CONSTRAINT uk_payment_methods_tenant_code
         UNIQUE NULLS NOT DISTINCT (tenant_id, property_id, code),
-    
+
     CONSTRAINT chk_payment_method_code_format
         CHECK (code ~ '^[A-Z0-9_]{1,30}$'),
-    
+
     CONSTRAINT chk_payment_method_fee
-        CHECK (default_fee_pct IS NULL OR 
+        CHECK (default_fee_pct IS NULL OR
                (default_fee_pct >= 0 AND default_fee_pct <= 100))
 );
 
@@ -112,42 +112,42 @@ CREATE TABLE IF NOT EXISTS payment_methods (
 -- TABLE & COLUMN COMMENTS
 -- =====================================================
 
-COMMENT ON TABLE payment_methods IS 
-'Configurable payment method codes (CASH, CREDIT_CARD, etc.) 
-replacing hardcoded ENUM. Supports card brands, processing fees, 
+COMMENT ON TABLE payment_methods IS
+'Configurable payment method codes (CASH, CREDIT_CARD, etc.)
+replacing hardcoded ENUM. Supports card brands, processing fees,
 gateway integration, and PCI-DSS compliance requirements.';
 
-COMMENT ON COLUMN payment_methods.category IS 
+COMMENT ON COLUMN payment_methods.category IS
 'Payment category: CASH, CREDIT_CARD, DEBIT_CARD, BANK, CHECK, DIGITAL, CRYPTO, VOUCHER, ACCOUNT';
 
-COMMENT ON COLUMN payment_methods.is_tokenizable IS 
+COMMENT ON COLUMN payment_methods.is_tokenizable IS
 'TRUE if payment method supports card-on-file tokenization (PCI compliance)';
 
-COMMENT ON COLUMN payment_methods.gateway_code IS 
+COMMENT ON COLUMN payment_methods.gateway_code IS
 'Payment gateway identifier for routing transactions';
 
 -- =====================================================
 -- INDEXES
 -- =====================================================
 
-CREATE INDEX idx_payment_methods_tenant 
-    ON payment_methods(tenant_id, property_id) 
+CREATE INDEX idx_payment_methods_tenant
+    ON payment_methods(tenant_id, property_id)
     WHERE deleted_at IS NULL;
 
-CREATE INDEX idx_payment_methods_active 
-    ON payment_methods(tenant_id, is_active, display_order) 
+CREATE INDEX idx_payment_methods_active
+    ON payment_methods(tenant_id, is_active, display_order)
     WHERE deleted_at IS NULL AND is_active = TRUE;
 
-CREATE INDEX idx_payment_methods_category 
-    ON payment_methods(category, is_electronic) 
+CREATE INDEX idx_payment_methods_category
+    ON payment_methods(category, is_electronic)
     WHERE deleted_at IS NULL;
 
-CREATE INDEX idx_payment_methods_card_brand 
-    ON payment_methods(card_brand) 
+CREATE INDEX idx_payment_methods_card_brand
+    ON payment_methods(card_brand)
     WHERE card_brand IS NOT NULL AND deleted_at IS NULL;
 
-CREATE INDEX idx_payment_methods_legacy 
-    ON payment_methods(legacy_enum_value) 
+CREATE INDEX idx_payment_methods_legacy
+    ON payment_methods(legacy_enum_value)
     WHERE legacy_enum_value IS NOT NULL;
 
 -- =====================================================
@@ -156,7 +156,7 @@ CREATE INDEX idx_payment_methods_legacy
 
 INSERT INTO payment_methods (
     tenant_id, code, name, description,
-    category, is_electronic, is_guaranteed, is_prepayment, 
+    category, is_electronic, is_guaranteed, is_prepayment,
     is_refundable, is_tokenizable, requires_authorization,
     card_brand, card_type, settlement_days, default_fee_pct,
     requires_signature, gateway_code, terminal_type,
@@ -164,7 +164,7 @@ INSERT INTO payment_methods (
 ) VALUES
 -- CASH
 (NULL, 'CASH', 'Cash', 'Physical currency payment',
- 'CASH', FALSE, FALSE, TRUE, 
+ 'CASH', FALSE, FALSE, TRUE,
  TRUE, FALSE, FALSE,
  NULL, NULL, 0, 0.00,
  FALSE, NULL, 'POS',

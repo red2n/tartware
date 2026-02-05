@@ -4,7 +4,7 @@
 --
 -- Purpose: Replace hardcoded room_category ENUM with
 --          configurable lookup table
--- 
+--
 -- Industry Standard: OPERA (ROOM_CATEGORY), Cloudbeds,
 --                    Protel (ZIMMERKATEGORIE), STR Chain Scales
 --
@@ -18,29 +18,29 @@
 CREATE TABLE IF NOT EXISTS room_categories (
     -- Primary Key
     category_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    
+
     -- Multi-tenancy (NULL tenant_id = system default)
     tenant_id UUID,  -- NULL for system defaults available to all
     property_id UUID, -- NULL for tenant-level categories
-    
+
     -- Category Identification
     code VARCHAR(30) NOT NULL,           -- e.g., "STD", "DLX", "STE"
     name VARCHAR(100) NOT NULL,          -- e.g., "Standard", "Deluxe"
     description TEXT,                    -- Marketing description
-    
+
     -- Hierarchy
     parent_category_id UUID,             -- For sub-categories
     category_level INTEGER DEFAULT 1,    -- Hierarchy depth
-    
+
     -- Classification
     tier VARCHAR(20) DEFAULT 'STANDARD'
         CHECK (tier IN ('ECONOMY', 'STANDARD', 'SUPERIOR', 'DELUXE', 'PREMIUM', 'LUXURY')),
     star_rating DECIMAL(2,1),            -- 1.0 to 5.0 star equivalent
-    
+
     -- Pricing Tier
     rate_tier INTEGER DEFAULT 1,         -- 1=lowest, 5=highest for rate ordering
     base_rate_multiplier DECIMAL(5,4) DEFAULT 1.0000, -- Multiplier vs standard
-    
+
     -- Capacity
     default_occupancy INTEGER DEFAULT 2,  -- Standard guests
     max_occupancy INTEGER DEFAULT 4,      -- Maximum guests
@@ -48,55 +48,55 @@ CREATE TABLE IF NOT EXISTS room_categories (
     max_adults INTEGER DEFAULT 4,
     default_children INTEGER DEFAULT 0,
     max_children INTEGER DEFAULT 2,
-    
+
     -- Physical Attributes (defaults for rooms in this category)
     typical_square_feet INTEGER,          -- Approximate room size
     typical_square_meters INTEGER,
     has_separate_living BOOLEAN DEFAULT FALSE,  -- Suite indicator
     bedroom_count INTEGER DEFAULT 1,
     bathroom_count INTEGER DEFAULT 1,
-    
+
     -- Features (default amenities for category)
     default_amenities JSONB DEFAULT '[]'::jsonb,
     default_features JSONB DEFAULT '{}'::jsonb,
-    
+
     -- Mapping to Legacy Enum
     legacy_enum_value VARCHAR(50),        -- Maps to room_category ENUM
-    
+
     -- Display & UI
     display_order INTEGER DEFAULT 0,
     color_code VARCHAR(7),
     icon VARCHAR(50),
     image_url VARCHAR(500),               -- Category promotional image
-    
+
     -- System vs Custom
     is_system BOOLEAN NOT NULL DEFAULT FALSE,
     is_active BOOLEAN NOT NULL DEFAULT TRUE,
-    
+
     -- Audit Fields
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     created_by UUID,
     updated_by UUID,
-    
+
     -- Soft Delete
     deleted_at TIMESTAMP,
     deleted_by UUID,
-    
+
     -- Constraints
-    CONSTRAINT uk_room_categories_tenant_code 
+    CONSTRAINT uk_room_categories_tenant_code
         UNIQUE NULLS NOT DISTINCT (tenant_id, property_id, code),
-    
+
     CONSTRAINT fk_room_categories_parent
-        FOREIGN KEY (parent_category_id) 
+        FOREIGN KEY (parent_category_id)
         REFERENCES room_categories(category_id),
-    
+
     CONSTRAINT chk_room_category_code_format
         CHECK (code ~ '^[A-Z0-9_]{1,30}$'),
-    
+
     CONSTRAINT chk_room_category_occupancy
         CHECK (default_occupancy <= max_occupancy),
-    
+
     CONSTRAINT chk_room_category_star_rating
         CHECK (star_rating IS NULL OR (star_rating >= 1.0 AND star_rating <= 5.0))
 );
@@ -105,41 +105,41 @@ CREATE TABLE IF NOT EXISTS room_categories (
 -- TABLE & COLUMN COMMENTS
 -- =====================================================
 
-COMMENT ON TABLE room_categories IS 
-'Configurable room category codes (Standard, Deluxe, Suite, etc.) 
-replacing hardcoded ENUM. Allows tenant-specific categories 
+COMMENT ON TABLE room_categories IS
+'Configurable room category codes (Standard, Deluxe, Suite, etc.)
+replacing hardcoded ENUM. Allows tenant-specific categories
 with pricing tiers, capacity defaults, and feature sets.';
 
-COMMENT ON COLUMN room_categories.tier IS 
+COMMENT ON COLUMN room_categories.tier IS
 'Quality tier: ECONOMY, STANDARD, SUPERIOR, DELUXE, PREMIUM, LUXURY';
 
-COMMENT ON COLUMN room_categories.rate_tier IS 
+COMMENT ON COLUMN room_categories.rate_tier IS
 'Pricing tier 1-5 used for rate ordering and revenue management';
 
-COMMENT ON COLUMN room_categories.base_rate_multiplier IS 
+COMMENT ON COLUMN room_categories.base_rate_multiplier IS
 'Rate multiplier vs standard. 1.5 = 50% premium over base rate';
 
-COMMENT ON COLUMN room_categories.has_separate_living IS 
+COMMENT ON COLUMN room_categories.has_separate_living IS
 'TRUE for suites with separate living area';
 
 -- =====================================================
 -- INDEXES
 -- =====================================================
 
-CREATE INDEX idx_room_categories_tenant 
-    ON room_categories(tenant_id, property_id) 
+CREATE INDEX idx_room_categories_tenant
+    ON room_categories(tenant_id, property_id)
     WHERE deleted_at IS NULL;
 
-CREATE INDEX idx_room_categories_active 
-    ON room_categories(tenant_id, is_active, display_order) 
+CREATE INDEX idx_room_categories_active
+    ON room_categories(tenant_id, is_active, display_order)
     WHERE deleted_at IS NULL AND is_active = TRUE;
 
-CREATE INDEX idx_room_categories_tier 
-    ON room_categories(tier, rate_tier) 
+CREATE INDEX idx_room_categories_tier
+    ON room_categories(tier, rate_tier)
     WHERE deleted_at IS NULL;
 
-CREATE INDEX idx_room_categories_legacy 
-    ON room_categories(legacy_enum_value) 
+CREATE INDEX idx_room_categories_legacy
+    ON room_categories(legacy_enum_value)
     WHERE legacy_enum_value IS NOT NULL;
 
 -- =====================================================

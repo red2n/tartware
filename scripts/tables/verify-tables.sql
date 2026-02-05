@@ -50,7 +50,7 @@
 \i tables/09-reference-data/verify-09-reference-data.sql
 
 \echo ''
-\echo '======================================================
+\echo '======================================================'
 \echo '  TABLE VERIFICATION COMPLETE'
 \echo '======================================================'
 \echo ''

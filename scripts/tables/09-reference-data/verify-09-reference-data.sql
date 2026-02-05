@@ -23,7 +23,7 @@ DO $$
 DECLARE
     v_expected_tables TEXT[] := ARRAY[
         'room_status_codes',
-        'room_categories', 
+        'room_categories',
         'rate_types',
         'payment_methods',
         'group_booking_types',
@@ -117,10 +117,10 @@ BEGIN
     RAISE NOTICE '  group_booking_types: % system defaults', v_group;
     RAISE NOTICE '  company_types:       % system defaults', v_company;
     RAISE NOTICE '';
-    RAISE NOTICE '  Total system defaults: %', 
+    RAISE NOTICE '  Total system defaults: %',
         v_room_status + v_room_cat + v_rate_types + v_payment + v_group + v_company;
 
-    IF v_room_status = 0 OR v_room_cat = 0 OR v_rate_types = 0 
+    IF v_room_status = 0 OR v_room_cat = 0 OR v_rate_types = 0
        OR v_payment = 0 OR v_group = 0 OR v_company = 0 THEN
         RAISE WARNING '⚠ Some tables are missing system default data!';
     ELSE
@@ -135,37 +135,37 @@ END $$;
 -- =====================================================
 \echo '4. Checking legacy enum mappings...'
 
-SELECT 
+SELECT
     'room_status_codes' AS table_name,
     COUNT(*) FILTER (WHERE legacy_enum_value IS NOT NULL) AS mapped,
     COUNT(*) AS total
 FROM room_status_codes WHERE is_system = TRUE
 UNION ALL
-SELECT 
+SELECT
     'room_categories',
     COUNT(*) FILTER (WHERE legacy_enum_value IS NOT NULL),
     COUNT(*)
 FROM room_categories WHERE is_system = TRUE
 UNION ALL
-SELECT 
+SELECT
     'rate_types',
     COUNT(*) FILTER (WHERE legacy_enum_value IS NOT NULL),
     COUNT(*)
 FROM rate_types WHERE is_system = TRUE
 UNION ALL
-SELECT 
+SELECT
     'payment_methods',
     COUNT(*) FILTER (WHERE legacy_enum_value IS NOT NULL),
     COUNT(*)
 FROM payment_methods WHERE is_system = TRUE
 UNION ALL
-SELECT 
+SELECT
     'group_booking_types',
     COUNT(*) FILTER (WHERE legacy_enum_value IS NOT NULL),
     COUNT(*)
 FROM group_booking_types WHERE is_system = TRUE
 UNION ALL
-SELECT 
+SELECT
     'company_types',
     COUNT(*) FILTER (WHERE legacy_enum_value IS NOT NULL),
     COUNT(*)
@@ -198,7 +198,7 @@ BEGIN
     )
     AND t.table_schema = 'public';
 
-    SELECT 
+    SELECT
         (SELECT COUNT(*) FROM room_status_codes) +
         (SELECT COUNT(*) FROM room_categories) +
         (SELECT COUNT(*) FROM rate_types) +

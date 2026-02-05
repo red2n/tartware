@@ -1,11 +1,11 @@
 -- ============================================================================
 -- Tartware PMS - Master Table Creation Script
--- Consolidated Structure (8 categories instead of 20)
+-- Consolidated Structure (9 categories including reference data)
 -- ============================================================================
 
 \echo '========================================='
 \echo 'TARTWARE PMS - Creating All Tables'
-\echo 'Consolidated Structure: 8 Categories'
+\echo 'Consolidated Structure: 9 Categories'
 \echo '========================================='
 \echo ''
 
@@ -197,12 +197,23 @@
 -- =========================================================================
 -- CATEGORY 8: SETTINGS (Catalog definitions + values)
 -- =========================================================================
-\echo '>>> Category 8/8: SETTINGS CATALOG'
+\echo '>>> Category 8/9: SETTINGS CATALOG'
 \ir 08-settings/10_settings_categories.sql
 \ir 08-settings/11_settings_sections.sql
 \ir 08-settings/12_settings_definitions.sql
 \ir 08-settings/13_settings_options.sql
 \ir 08-settings/14_settings_values.sql
+
+-- =========================================================================
+-- CATEGORY 9: REFERENCE DATA (Dynamic enum lookup tables)
+-- =========================================================================
+\echo '>>> Category 9/9: REFERENCE DATA (Dynamic Enums)'
+\ir 09-reference-data/01_room_status_codes.sql
+\ir 09-reference-data/02_room_categories.sql
+\ir 09-reference-data/03_rate_types.sql
+\ir 09-reference-data/04_payment_methods.sql
+\ir 09-reference-data/05_group_booking_types.sql
+\ir 09-reference-data/06_company_types.sql
 
 \echo '>>> Enforcing tenant_id and soft delete coverage'
 \ir 99_enforce_tenant_soft_delete.sql

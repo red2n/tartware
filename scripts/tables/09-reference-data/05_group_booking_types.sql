@@ -4,7 +4,7 @@
 --
 -- Purpose: Replace hardcoded group_booking_type ENUM
 --          with configurable lookup table
--- 
+--
 -- Industry Standard: OPERA Group Codes, Delphi/Amadeus
 --                    Sales & Catering, HTNG Group Types
 --
@@ -18,16 +18,16 @@
 CREATE TABLE IF NOT EXISTS group_booking_types (
     -- Primary Key
     type_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    
+
     -- Multi-tenancy (NULL tenant_id = system default)
     tenant_id UUID,  -- NULL for system defaults available to all
     property_id UUID, -- NULL for tenant-level types
-    
+
     -- Group Type Identification
     code VARCHAR(30) NOT NULL,           -- e.g., "CONF", "WED", "CORP"
     name VARCHAR(100) NOT NULL,          -- e.g., "Conference"
     description TEXT,                    -- Detailed description
-    
+
     -- Classification
     segment VARCHAR(30) NOT NULL DEFAULT 'GROUP'
         CHECK (segment IN (
@@ -41,7 +41,7 @@ CREATE TABLE IF NOT EXISTS group_booking_types (
             'CREW',         -- Airline, ship crews
             'OTHER'
         )),
-    
+
     -- Revenue Classification (USALI)
     revenue_category VARCHAR(30) DEFAULT 'ROOMS'
         CHECK (revenue_category IN (
@@ -50,78 +50,78 @@ CREATE TABLE IF NOT EXISTS group_booking_types (
             'MIXED',        -- Both rooms and catering
             'MEETING_ONLY'  -- Day use / meeting rooms only
         )),
-    
+
     -- Group Behavior
     requires_contract BOOLEAN DEFAULT TRUE,
     requires_deposit BOOLEAN DEFAULT TRUE,
     requires_rooming_list BOOLEAN DEFAULT TRUE,
     requires_billing_instructions BOOLEAN DEFAULT FALSE,
-    
+
     -- Cutoff & Policies
     default_cutoff_days INTEGER DEFAULT 14,      -- Days before arrival
     default_attrition_pct DECIMAL(5,2) DEFAULT 20.00, -- Allowed shrinkage
     default_deposit_pct DECIMAL(5,2) DEFAULT 10.00,   -- Initial deposit
-    
+
     -- Meeting/Catering Flags
     has_meeting_space BOOLEAN DEFAULT FALSE,
     has_catering BOOLEAN DEFAULT FALSE,
     has_av_equipment BOOLEAN DEFAULT FALSE,
     has_exhibit_space BOOLEAN DEFAULT FALSE,
-    
+
     -- Room Block Defaults
     min_rooms_pickup INTEGER DEFAULT 10,
     default_comp_ratio INTEGER DEFAULT 50,  -- 1 comp per X rooms
-    
+
     -- Arrival/Departure Patterns
     typical_arrival_day VARCHAR(10),         -- MON, TUE, etc.
     typical_departure_day VARCHAR(10),
     typical_length_nights INTEGER,
-    
+
     -- Rate & Pricing
     rate_negotiable BOOLEAN DEFAULT TRUE,
     allows_dynamic_pricing BOOLEAN DEFAULT FALSE,
     default_discount_pct DECIMAL(5,2),
-    
+
     -- Sales Attribution
     requires_sales_manager BOOLEAN DEFAULT TRUE,
     commission_eligible BOOLEAN DEFAULT TRUE,
     default_commission_pct DECIMAL(5,2) DEFAULT 10.00,
-    
+
     -- Mapping to Legacy Enum
     legacy_enum_value VARCHAR(50),
-    
+
     -- Display & UI
     display_order INTEGER DEFAULT 0,
     color_code VARCHAR(7),
     icon VARCHAR(50),
-    
+
     -- System vs Custom
     is_system BOOLEAN NOT NULL DEFAULT FALSE,
     is_active BOOLEAN NOT NULL DEFAULT TRUE,
-    
+
     -- Audit Fields
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     created_by UUID,
     updated_by UUID,
-    
+
     -- Soft Delete
     deleted_at TIMESTAMP,
     deleted_by UUID,
-    
+
     -- Constraints
-    CONSTRAINT uk_group_booking_types_tenant_code 
+    CONSTRAINT uk_group_booking_types_tenant_code
         UNIQUE NULLS NOT DISTINCT (tenant_id, property_id, code),
-    
+
     CONSTRAINT chk_group_type_code_format
         CHECK (code ~ '^[A-Z0-9_]{1,30}$'),
-    
+
     CONSTRAINT chk_group_type_attrition
-        CHECK (default_attrition_pct IS NULL OR 
+        CHECK (default_attrition_pct IS NULL OR
                (default_attrition_pct >= 0 AND default_attrition_pct <= 100)),
-    
+
     CONSTRAINT chk_group_type_deposit
-        CHECK (default_deposit_pct IS NULL OR 
+        CHECK (default_deposit_pct IS NULL OR
                (default_deposit_pct >= 0 AND default_deposit_pct <= 100))
 );
 
@@ -129,41 +129,41 @@ CREATE TABLE IF NOT EXISTS group_booking_types (
 -- TABLE & COLUMN COMMENTS
 -- =====================================================
 
-COMMENT ON TABLE group_booking_types IS 
-'Configurable group booking types (CONFERENCE, WEDDING, TOUR, etc.) 
-replacing hardcoded ENUM. Includes cutoff policies, attrition percentages, 
+COMMENT ON TABLE group_booking_types IS
+'Configurable group booking types (CONFERENCE, WEDDING, TOUR, etc.)
+replacing hardcoded ENUM. Includes cutoff policies, attrition percentages,
 meeting/catering flags, and revenue classification.';
 
-COMMENT ON COLUMN group_booking_types.segment IS 
+COMMENT ON COLUMN group_booking_types.segment IS
 'Market segment: CORPORATE, ASSOCIATION, SOCIAL, TRAVEL, SPORTS, EDUCATIONAL, GOVERNMENT, CREW';
 
-COMMENT ON COLUMN group_booking_types.revenue_category IS 
+COMMENT ON COLUMN group_booking_types.revenue_category IS
 'Primary revenue: ROOMS, CATERING, MIXED, MEETING_ONLY';
 
-COMMENT ON COLUMN group_booking_types.default_attrition_pct IS 
+COMMENT ON COLUMN group_booking_types.default_attrition_pct IS
 'Allowed percentage of room block that can be released without penalty';
 
-COMMENT ON COLUMN group_booking_types.default_comp_ratio IS 
+COMMENT ON COLUMN group_booking_types.default_comp_ratio IS
 'Number of paid rooms per complimentary room (e.g., 50 = 1 comp per 50 rooms)';
 
 -- =====================================================
 -- INDEXES
 -- =====================================================
 
-CREATE INDEX idx_group_booking_types_tenant 
-    ON group_booking_types(tenant_id, property_id) 
+CREATE INDEX idx_group_booking_types_tenant
+    ON group_booking_types(tenant_id, property_id)
     WHERE deleted_at IS NULL;
 
-CREATE INDEX idx_group_booking_types_active 
-    ON group_booking_types(tenant_id, is_active, display_order) 
+CREATE INDEX idx_group_booking_types_active
+    ON group_booking_types(tenant_id, is_active, display_order)
     WHERE deleted_at IS NULL AND is_active = TRUE;
 
-CREATE INDEX idx_group_booking_types_segment 
-    ON group_booking_types(segment, revenue_category) 
+CREATE INDEX idx_group_booking_types_segment
+    ON group_booking_types(segment, revenue_category)
     WHERE deleted_at IS NULL;
 
-CREATE INDEX idx_group_booking_types_legacy 
-    ON group_booking_types(legacy_enum_value) 
+CREATE INDEX idx_group_booking_types_legacy
+    ON group_booking_types(legacy_enum_value)
     WHERE legacy_enum_value IS NOT NULL;
 
 -- =====================================================
