@@ -341,7 +341,13 @@ platform/.ssh/*
 platform/secrets/*.yaml
 platform/.admin-token
 platform/.env
-platform/secrets/*.yaml
 
-# JWT keys (generated locally)
+# ============================================================================
+# Cryptographic Keys (NEVER COMMIT)
+# ============================================================================
 keys/
+*.pem
+*.key
+*.p12
+*.pfx
+!*.pem.example
