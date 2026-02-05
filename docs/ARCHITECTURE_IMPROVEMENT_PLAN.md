@@ -49,34 +49,34 @@ CREATE TABLE room_status_codes (
     status_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     tenant_id UUID NOT NULL,
     property_id UUID,                    -- NULL for tenant-level
-    
+
     -- Code & Name
     code VARCHAR(30) NOT NULL,           -- e.g., "VC", "VD", "OC", "SO"
     name VARCHAR(100) NOT NULL,          -- e.g., "Vacant Clean"
     description TEXT,
-    
+
     -- Behavior Flags
     is_occupied BOOLEAN DEFAULT FALSE,
     is_sellable BOOLEAN DEFAULT TRUE,
     is_clean BOOLEAN DEFAULT FALSE,
     requires_housekeeping BOOLEAN DEFAULT FALSE,
-    
+
     -- Transition Rules
     allowed_next_statuses VARCHAR(30)[],  -- Valid state transitions
-    
+
     -- Display
     display_order INTEGER DEFAULT 0,
     color_code VARCHAR(7),
     icon VARCHAR(50),
-    
+
     -- Lifecycle
     is_system BOOLEAN DEFAULT FALSE,      -- System defaults, can't delete
     is_active BOOLEAN DEFAULT TRUE,
-    
+
     -- Audit
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    
+
     CONSTRAINT uk_room_status_codes UNIQUE (tenant_id, property_id, code)
 );
 
@@ -136,11 +136,11 @@ scripts/
 -- Affects: [list of tables using this type]
 
 -- Check: Does the value already exist?
-DO $$ 
+DO $$
 BEGIN
     IF NOT EXISTS (
-        SELECT 1 FROM pg_enum 
-        WHERE enumlabel = 'MOBILE_APP' 
+        SELECT 1 FROM pg_enum
+        WHERE enumlabel = 'MOBILE_APP'
         AND enumtypid = 'reservation_source'::regtype
     ) THEN
         ALTER TYPE reservation_source ADD VALUE 'MOBILE_APP';
@@ -172,7 +172,7 @@ Compliance settings (GDPR, CCPA, LGPD, police registration) are tenant-scoped, n
 #### Schema Change
 ```sql
 -- Add region_code to settings_values
-ALTER TABLE settings_values 
+ALTER TABLE settings_values
 ADD COLUMN region_code VARCHAR(10) DEFAULT NULL;
 
 -- Example: GDPR settings apply to EU region
@@ -183,27 +183,27 @@ CREATE TABLE compliance_region_requirements (
     requirement_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     region_code VARCHAR(10) NOT NULL,    -- ISO 3166-1/2
     regulation_name VARCHAR(100) NOT NULL, -- 'GDPR', 'CCPA', 'LGPD'
-    
+
     -- Consent Requirements
     requires_explicit_consent BOOLEAN DEFAULT TRUE,
     consent_types_required JSONB,         -- ['marketing', 'analytics', 'thirdParty']
-    
+
     -- Data Retention
     max_retention_days INTEGER,
     requires_deletion_on_request BOOLEAN DEFAULT TRUE,
-    
+
     -- Guest Registration
     requires_police_report BOOLEAN DEFAULT FALSE,
     police_report_fields JSONB,           -- ['passport', 'nationality', 'dob', ...]
     police_report_deadline_hours INTEGER,
-    
+
     -- Special Requirements
     special_requirements JSONB,
-    
+
     -- Effective Dates
     effective_from DATE NOT NULL,
     effective_until DATE,
-    
+
     is_active BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -222,19 +222,19 @@ INSERT INTO compliance_region_requirements (region_code, regulation_name, requir
 ```typescript
 // When fetching settings, include region context
 async function getComplianceSettings(
-  tenantId: string, 
+  tenantId: string,
   propertyId: string,
   guestCountry?: string  // Guest's nationality for police requirements
 ): Promise<ComplianceSettings> {
   const property = await getProperty(propertyId);
   const propertyRegion = property.country_code;
-  
+
   // Get region-specific requirements
   const requirements = await db.query(`
-    SELECT * FROM compliance_region_requirements 
+    SELECT * FROM compliance_region_requirements
     WHERE region_code = $1 AND is_active = true
   `, [propertyRegion]);
-  
+
   // Merge with tenant settings
   return mergeSettings(tenantSettings, requirements);
 }
@@ -260,21 +260,21 @@ export const HOOK_POINTS = {
   'reservation.afterModify': { input: 'Reservation' },
   'reservation.beforeCancel': { input: 'CancelReservationPayload' },
   'reservation.afterCancel': { input: 'Reservation' },
-  
+
   // Check-in/out
   'guest.beforeCheckIn': { input: 'CheckInPayload' },
   'guest.afterCheckIn': { input: 'CheckInResult' },
   'guest.beforeCheckOut': { input: 'CheckOutPayload' },
   'guest.afterCheckOut': { input: 'CheckOutResult' },
-  
+
   // Housekeeping
   'room.statusChanged': { input: 'RoomStatusChangeEvent' },
   'housekeeping.taskCompleted': { input: 'HousekeepingTask' },
-  
+
   // Financial
   'folio.chargePosted': { input: 'FolioCharge' },
   'payment.received': { input: 'Payment' },
-  
+
   // Rate
   'rate.beforeCalculate': { input: 'RateCalculationContext' },
   'rate.afterCalculate': { input: 'CalculatedRate' },
@@ -287,32 +287,32 @@ CREATE TABLE tenant_hooks (
     hook_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     tenant_id UUID NOT NULL,
     property_id UUID,
-    
+
     -- Hook Configuration
     hook_point VARCHAR(100) NOT NULL,    -- e.g., 'reservation.afterCreate'
     hook_name VARCHAR(200) NOT NULL,
-    
+
     -- Execution
     execution_type VARCHAR(20) NOT NULL
         CHECK (execution_type IN ('WEBHOOK', 'INTERNAL', 'KAFKA')),
     webhook_url VARCHAR(500),
     webhook_headers JSONB,
     kafka_topic VARCHAR(255),
-    
+
     -- Filtering
     filter_conditions JSONB,              -- When to trigger
-    
+
     -- Ordering
     priority INTEGER DEFAULT 100,         -- Lower = earlier
-    
+
     -- Error Handling
     retry_count INTEGER DEFAULT 3,
     timeout_ms INTEGER DEFAULT 5000,
     on_failure VARCHAR(20) DEFAULT 'LOG'
         CHECK (on_failure IN ('LOG', 'ABORT', 'CONTINUE')),
-    
+
     is_active BOOLEAN DEFAULT TRUE,
-    
+
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 ```
@@ -405,6 +405,6 @@ After implementation:
 
 ---
 
-**Author**: GitHub Copilot  
-**Date**: February 2026  
+**Author**: GitHub Copilot
+**Date**: February 2026
 **Version**: 1.0
