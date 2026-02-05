@@ -426,7 +426,7 @@ X-Idempotency-Key: room-oos-{{$timestamp}}
 {
   "property_id": "{{propertyId}}",
   "reason": "Deep cleaning scheduled",
-  "estimated_return_date": "2026-02-03",
+  "estimated_return_date": "2026-02-20",
   "notes": "Quarterly deep clean"
 }
 

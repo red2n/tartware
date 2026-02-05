@@ -116,7 +116,7 @@ X-Idempotency-Key: hk-create-{{$timestamp}}
   "room_id": "{{room101Id}}",
   "task_type": "CHECKOUT_CLEAN",
   "priority": "HIGH",
-  "due_date": "2026-02-03",
+  "due_date": "2026-02-10",
   "due_time": "14:00",
   "estimated_duration_minutes": 45,
   "special_instructions": "Deep clean requested, VIP arriving",

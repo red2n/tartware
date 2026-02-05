@@ -39,9 +39,9 @@ curl -H "$AUTH_HEADER" http://localhost:8080/v1/rooms
 
 ## Environment Variables
 
-Override defaults for different environments:
+Override defaults for different environments (use HTTPS for non-localhost/prod hosts):
 ```bash
-API_URL=http://prod.example.com API_USER=admin API_PASS=secret ./get-token.sh
+API_URL=https://prod.example.com API_USER=admin API_PASS=secret ./get-token.sh
 ```
 
 | Variable | Default | Description |
