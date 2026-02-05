@@ -123,6 +123,144 @@ GET {{baseUrl}}/v1/reservations?tenant_id={{tenantId}}&limit=200
 Authorization: Bearer {{authToken}}
 
 ###############################################################################
+# 3. RESERVATION LIFECYCLE - Event Sourcing State Inspection
+###############################################################################
+
+@reservationId = 44444444-4444-4444-4444-444444444444
+
+###
+# Get reservation lifecycle states (event sourcing inspection)
+GET {{baseUrl}}/v1/reservations/{{reservationId}}/lifecycle?tenant_id={{tenantId}}
+Authorization: Bearer {{authToken}}
+
+###############################################################################
+# 4. REST-STYLE COMMAND DISPATCH
+# Alternative to /v1/commands/{name}/execute pattern
+# These routes dispatch commands via the gateway
+###############################################################################
+
+###
+# Check-in a guest
+POST {{baseUrl}}/v1/tenants/{{tenantId}}/reservations/{{reservationId}}/check-in
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+X-Request-ID: {{$guid}}
+X-Idempotency-Key: checkin-{{$timestamp}}
+
+{
+  "room_id": "{{room101Id}}",
+  "id_verified": true,
+  "id_type": "PASSPORT",
+  "id_number": "AB1234567",
+  "registration_card_signed": true,
+  "key_cards_issued": 2,
+  "notes": "Guest arrived at 3:15 PM"
+}
+
+###
+# Check-out a guest
+POST {{baseUrl}}/v1/tenants/{{tenantId}}/reservations/{{reservationId}}/check-out
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+X-Request-ID: {{$guid}}
+X-Idempotency-Key: checkout-{{$timestamp}}
+
+{
+  "express_checkout": false,
+  "room_inspected": true,
+  "keys_returned": 2,
+  "minibar_charges": 25.00,
+  "late_checkout_fee": 0,
+  "folio_settled": true,
+  "notes": "Smooth checkout"
+}
+
+###
+# Assign room to reservation
+POST {{baseUrl}}/v1/tenants/{{tenantId}}/reservations/{{reservationId}}/assign-room
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+X-Request-ID: {{$guid}}
+X-Idempotency-Key: assign-{{$timestamp}}
+
+{
+  "room_id": "{{room101Id}}",
+  "notes": "Upgraded to high floor as requested"
+}
+
+###
+# Unassign room from reservation
+POST {{baseUrl}}/v1/tenants/{{tenantId}}/reservations/{{reservationId}}/unassign-room
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+X-Request-ID: {{$guid}}
+X-Idempotency-Key: unassign-{{$timestamp}}
+
+{
+  "reason": "Room requires maintenance, reassigning"
+}
+
+###
+# Extend stay
+POST {{baseUrl}}/v1/tenants/{{tenantId}}/reservations/{{reservationId}}/extend
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+X-Request-ID: {{$guid}}
+X-Idempotency-Key: extend-{{$timestamp}}
+
+{
+  "new_check_out_date": "2026-03-20",
+  "rate_code": "BAR",
+  "additional_amount": 209.00,
+  "reason": "Guest requested 2-day extension"
+}
+
+###
+# Rate override
+POST {{baseUrl}}/v1/tenants/{{tenantId}}/reservations/{{reservationId}}/rate-override
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+X-Request-ID: {{$guid}}
+X-Idempotency-Key: rate-override-{{$timestamp}}
+
+{
+  "new_rate": 179.00,
+  "reason": "Price match guarantee",
+  "authorization": "MGR-APPROVAL-001"
+}
+
+###
+# Add deposit
+POST {{baseUrl}}/v1/tenants/{{tenantId}}/reservations/{{reservationId}}/deposit/add
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+X-Request-ID: {{$guid}}
+X-Idempotency-Key: deposit-add-{{$timestamp}}
+
+{
+  "amount": 200.00,
+  "currency": "USD",
+  "payment_method": "CREDIT_CARD",
+  "card_last_four": "4242",
+  "authorization_code": "AUTH-123456",
+  "notes": "Security deposit"
+}
+
+###
+# Release deposit
+POST {{baseUrl}}/v1/tenants/{{tenantId}}/reservations/{{reservationId}}/deposit/release
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+X-Request-ID: {{$guid}}
+X-Idempotency-Key: deposit-release-{{$timestamp}}
+
+{
+  "amount": 200.00,
+  "reason": "No damages, full refund",
+  "refund_method": "ORIGINAL_PAYMENT_METHOD"
+}
+
+###############################################################################
 # REFERENCE
 ###############################################################################
 #
@@ -152,6 +290,16 @@ Authorization: Bearer {{authToken}}
 #     POST /v1/commands/reservation.rate_override/execute
 #     POST /v1/commands/reservation.add_deposit/execute
 #     POST /v1/commands/reservation.release_deposit/execute
+#
+# REST-STYLE COMMAND DISPATCH (alternative pattern):
+#   POST /v1/tenants/:tenantId/reservations/:reservationId/check-in
+#   POST /v1/tenants/:tenantId/reservations/:reservationId/check-out
+#   POST /v1/tenants/:tenantId/reservations/:reservationId/assign-room
+#   POST /v1/tenants/:tenantId/reservations/:reservationId/unassign-room
+#   POST /v1/tenants/:tenantId/reservations/:reservationId/extend
+#   POST /v1/tenants/:tenantId/reservations/:reservationId/rate-override
+#   POST /v1/tenants/:tenantId/reservations/:reservationId/deposit/add
+#   POST /v1/tenants/:tenantId/reservations/:reservationId/deposit/release
 #
 # SAMPLE IDs:
 #   Tenant:    11111111-1111-1111-1111-111111111111

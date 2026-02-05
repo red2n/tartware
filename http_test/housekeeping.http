@@ -96,6 +96,124 @@ GET {{baseUrl}}/v1/housekeeping/tasks?tenant_id={{tenantId}}&limit=200
 Authorization: Bearer {{authToken}}
 
 ###############################################################################
+# 3. REST-STYLE COMMAND DISPATCH
+# Alternative to /v1/commands/{name}/execute pattern
+# These routes dispatch commands via the gateway
+###############################################################################
+
+@taskId = 77777777-7777-7777-7777-777777777777
+
+###
+# Create housekeeping task
+POST {{baseUrl}}/v1/tenants/{{tenantId}}/housekeeping/tasks
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+X-Request-ID: {{$guid}}
+X-Idempotency-Key: hk-create-{{$timestamp}}
+
+{
+  "property_id": "{{propertyId}}",
+  "room_id": "{{room101Id}}",
+  "task_type": "CHECKOUT_CLEAN",
+  "priority": "HIGH",
+  "due_date": "2026-02-03",
+  "due_time": "14:00",
+  "estimated_duration_minutes": 45,
+  "special_instructions": "Deep clean requested, VIP arriving",
+  "supplies_needed": ["FRESH_FLOWERS", "WELCOME_AMENITY"]
+}
+
+###
+# Assign task
+POST {{baseUrl}}/v1/tenants/{{tenantId}}/housekeeping/tasks/{{taskId}}/assign
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+X-Request-ID: {{$guid}}
+X-Idempotency-Key: hk-assign-{{$timestamp}}
+
+{
+  "assignee_id": "33333333-3333-3333-3333-333333333333",
+  "assignment_notes": "Priority task - VIP guest arriving at 3 PM"
+}
+
+###
+# Complete task
+POST {{baseUrl}}/v1/tenants/{{tenantId}}/housekeeping/tasks/{{taskId}}/complete
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+X-Request-ID: {{$guid}}
+X-Idempotency-Key: hk-complete-{{$timestamp}}
+
+{
+  "completed_by": "33333333-3333-3333-3333-333333333333",
+  "completion_notes": "Room cleaned and inspected",
+  "actual_duration_minutes": 40,
+  "issues_found": [],
+  "maintenance_needed": false,
+  "photos": []
+}
+
+###
+# Reassign task
+POST {{baseUrl}}/v1/tenants/{{tenantId}}/housekeeping/tasks/{{taskId}}/reassign
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+X-Request-ID: {{$guid}}
+X-Idempotency-Key: hk-reassign-{{$timestamp}}
+
+{
+  "new_assignee_id": "33333333-3333-3333-3333-333333333333",
+  "reason": "Original assignee called in sick",
+  "notes": "Urgent - please prioritize"
+}
+
+###
+# Reopen task
+POST {{baseUrl}}/v1/tenants/{{tenantId}}/housekeeping/tasks/{{taskId}}/reopen
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+X-Request-ID: {{$guid}}
+X-Idempotency-Key: hk-reopen-{{$timestamp}}
+
+{
+  "reason": "Guest reported bathroom not cleaned properly",
+  "priority": "URGENT",
+  "notes": "Re-clean bathroom, specific focus on shower"
+}
+
+###
+# Add note to task
+POST {{baseUrl}}/v1/tenants/{{tenantId}}/housekeeping/tasks/{{taskId}}/notes
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+X-Request-ID: {{$guid}}
+X-Idempotency-Key: hk-note-{{$timestamp}}
+
+{
+  "note": "Found damaged towel rack - reported to maintenance",
+  "note_type": "ISSUE",
+  "visibility": "INTERNAL"
+}
+
+###
+# Bulk status update
+POST {{baseUrl}}/v1/tenants/{{tenantId}}/housekeeping/tasks/bulk-status
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+X-Request-ID: {{$guid}}
+X-Idempotency-Key: hk-bulk-{{$timestamp}}
+
+{
+  "task_ids": [
+    "{{taskId}}",
+    "77777777-7777-7777-7777-777777777778",
+    "77777777-7777-7777-7777-777777777779"
+  ],
+  "new_status": "IN_PROGRESS",
+  "notes": "Morning shift starting work"
+}
+
+###############################################################################
 # REFERENCE
 ###############################################################################
 #
@@ -128,6 +246,15 @@ Authorization: Bearer {{authToken}}
 #     POST /v1/commands/housekeeping.task.add_note/execute
 #     POST /v1/commands/housekeeping.task.bulk_status/execute
 #
+# REST-STYLE COMMAND DISPATCH (alternative pattern):
+#   POST /v1/tenants/:tenantId/housekeeping/tasks
+#   POST /v1/tenants/:tenantId/housekeeping/tasks/:taskId/assign
+#   POST /v1/tenants/:tenantId/housekeeping/tasks/:taskId/complete
+#   POST /v1/tenants/:tenantId/housekeeping/tasks/:taskId/reassign
+#   POST /v1/tenants/:tenantId/housekeeping/tasks/:taskId/reopen
+#   POST /v1/tenants/:tenantId/housekeeping/tasks/:taskId/notes
+#   POST /v1/tenants/:tenantId/housekeeping/tasks/bulk-status
+#
 # NOTE: The housekeeping-service module requires the 'facility-maintenance'
 #       module to be enabled for the tenant.
 #
@@ -135,5 +262,6 @@ Authorization: Bearer {{authToken}}
 #   Tenant:   11111111-1111-1111-1111-111111111111
 #   Property: 22222222-2222-2222-2222-222222222222
 #   Room 101: 55555555-5555-5555-5555-555555555551
+#   Task:     77777777-7777-7777-7777-777777777777
 #
 ###############################################################################
