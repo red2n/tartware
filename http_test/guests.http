@@ -216,6 +216,142 @@ GET {{baseUrl}}/v1/guests/{{guestId}}/communications?tenant_id={{tenantId}}&stat
 Authorization: Bearer {{authToken}}
 
 ###############################################################################
+# 6. REST-STYLE COMMAND DISPATCH
+# Alternative to /v1/commands/{name}/execute pattern
+# These routes dispatch commands via the gateway
+###############################################################################
+
+###
+# Update guest profile
+POST {{baseUrl}}/v1/tenants/{{tenantId}}/guests/{{guestId}}/profile
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+X-Request-ID: {{$guid}}
+X-Idempotency-Key: profile-{{$timestamp}}
+
+{
+  "first_name": "Jane",
+  "last_name": "Doe-Smith",
+  "date_of_birth": "1985-06-15",
+  "anniversary_date": "2020-09-15",
+  "company": "Acme Corp",
+  "job_title": "Director of Operations"
+}
+
+###
+# Update guest contact info
+POST {{baseUrl}}/v1/tenants/{{tenantId}}/guests/{{guestId}}/contact
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+X-Request-ID: {{$guid}}
+X-Idempotency-Key: contact-{{$timestamp}}
+
+{
+  "email": "jane.smith@newcompany.com",
+  "phone": "+1-555-0303",
+  "mobile": "+1-555-0304",
+  "address": {
+    "line1": "456 Park Avenue",
+    "city": "New York",
+    "state": "NY",
+    "postal_code": "10022",
+    "country": "US"
+  }
+}
+
+###
+# Update guest loyalty status
+POST {{baseUrl}}/v1/tenants/{{tenantId}}/guests/{{guestId}}/loyalty
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+X-Request-ID: {{$guid}}
+X-Idempotency-Key: loyalty-{{$timestamp}}
+
+{
+  "loyalty_program": "TARTWARE_REWARDS",
+  "membership_number": "TR-2026-001234",
+  "tier": "GOLD",
+  "points_balance": 15000,
+  "tier_expiry_date": "2027-12-31",
+  "enrollment_date": "2024-01-15"
+}
+
+###
+# Update VIP status
+POST {{baseUrl}}/v1/tenants/{{tenantId}}/guests/{{guestId}}/vip
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+X-Request-ID: {{$guid}}
+X-Idempotency-Key: vip-{{$timestamp}}
+
+{
+  "vip_status": true,
+  "vip_level": "PLATINUM",
+  "vip_reason": "Top 100 lifetime revenue guest",
+  "special_amenities": ["WELCOME_CHAMPAGNE", "SUITE_UPGRADE", "LATE_CHECKOUT"],
+  "notes": "Personal greeting by GM required"
+}
+
+###
+# Update blacklist status
+POST {{baseUrl}}/v1/tenants/{{tenantId}}/guests/{{guestId}}/blacklist
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+X-Request-ID: {{$guid}}
+X-Idempotency-Key: blacklist-{{$timestamp}}
+
+{
+  "blacklisted": true,
+  "reason": "Credit card fraud - incident #INC-2026-001",
+  "severity": "HIGH",
+  "effective_date": "2026-02-01",
+  "expiry_date": null,
+  "incident_reference": "INC-2026-001"
+}
+
+###
+# GDPR erase (Right to be Forgotten)
+POST {{baseUrl}}/v1/tenants/{{tenantId}}/guests/{{guestId}}/gdpr-erase
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+X-Request-ID: {{$guid}}
+X-Idempotency-Key: gdpr-{{$timestamp}}
+
+{
+  "request_reference": "GDPR-2026-001",
+  "verification_method": "EMAIL_CONFIRMATION",
+  "verification_date": "2026-02-01",
+  "retain_financial_records": true,
+  "retention_period_years": 7,
+  "notes": "Guest requested data erasure via email"
+}
+
+###
+# Update guest preferences
+POST {{baseUrl}}/v1/tenants/{{tenantId}}/guests/{{guestId}}/preferences
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+X-Request-ID: {{$guid}}
+X-Idempotency-Key: pref-{{$timestamp}}
+
+{
+  "preferences": {
+    "room_type": "SUITE",
+    "bed_type": "KING",
+    "floor_preference": "HIGH",
+    "smoking": false,
+    "pillow_type": "FIRM",
+    "room_temperature": 21,
+    "newspaper": "Financial Times",
+    "dietary_restrictions": ["VEGETARIAN", "GLUTEN_FREE"],
+    "allergies": ["NUTS"],
+    "minibar_preferences": ["NO_ALCOHOL"],
+    "communication_preference": "EMAIL",
+    "language": "en"
+  }
+}
+
+###############################################################################
 # REFERENCE
 ###############################################################################
 #
@@ -261,6 +397,15 @@ Authorization: Bearer {{authToken}}
 #     POST /v1/commands/guest.set_blacklist/execute
 #     POST /v1/commands/guest.gdpr.erase/execute
 #     POST /v1/commands/guest.preference.update/execute
+#
+# REST-STYLE COMMAND DISPATCH (alternative pattern):
+#   POST /v1/tenants/:tenantId/guests/:guestId/profile
+#   POST /v1/tenants/:tenantId/guests/:guestId/contact
+#   POST /v1/tenants/:tenantId/guests/:guestId/loyalty
+#   POST /v1/tenants/:tenantId/guests/:guestId/vip
+#   POST /v1/tenants/:tenantId/guests/:guestId/blacklist
+#   POST /v1/tenants/:tenantId/guests/:guestId/gdpr-erase
+#   POST /v1/tenants/:tenantId/guests/:guestId/preferences
 #
 # SAMPLE IDs:
 #   Tenant:   11111111-1111-1111-1111-111111111111

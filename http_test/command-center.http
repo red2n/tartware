@@ -53,6 +53,90 @@ GET {{baseUrl}}/v1/commands/definitions
 Authorization: Bearer {{authToken}}
 
 ###############################################################################
+# 2B. GENERIC COMMAND DISPATCH (REST-STYLE ALTERNATIVE)
+# Alternative pattern: POST /v1/tenants/:tenantId/commands/:commandName
+# This dispatches any command using a REST-friendly URL structure
+###############################################################################
+
+# Generic command dispatch - reservation.create
+POST {{baseUrl}}/v1/tenants/{{tenantId}}/commands/reservation.create
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+X-Request-ID: {{$guid}}
+X-Idempotency-Key: generic-res-{{$timestamp}}
+
+{
+  "payload": {
+    "property_id": "{{propertyId}}",
+    "guest_id": "{{guestId}}",
+    "room_type_id": "{{roomTypeId}}",
+    "rate_code": "BAR",
+    "check_in_date": "2026-03-15",
+    "check_out_date": "2026-03-18",
+    "adults": 2,
+    "children": 0,
+    "source": "DIRECT",
+    "channel": "WEB"
+  }
+}
+
+###
+# Generic command dispatch - guest.register
+POST {{baseUrl}}/v1/tenants/{{tenantId}}/commands/guest.register
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+X-Request-ID: {{$guid}}
+X-Idempotency-Key: generic-guest-{{$timestamp}}
+
+{
+  "payload": {
+    "property_id": "{{propertyId}}",
+    "first_name": "Generic",
+    "last_name": "Test",
+    "email": "generic.test@example.com",
+    "phone": "+1-555-0999"
+  }
+}
+
+###
+# Generic command dispatch - housekeeping.task.create
+POST {{baseUrl}}/v1/tenants/{{tenantId}}/commands/housekeeping.task.create
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+X-Request-ID: {{$guid}}
+X-Idempotency-Key: generic-hk-{{$timestamp}}
+
+{
+  "payload": {
+    "property_id": "{{propertyId}}",
+    "room_id": "{{roomId}}",
+    "task_type": "CHECKOUT_CLEAN",
+    "priority": "MEDIUM",
+    "due_date": "2026-02-05"
+  }
+}
+
+###
+# Generic command dispatch - billing.charge.post
+POST {{baseUrl}}/v1/tenants/{{tenantId}}/commands/billing.charge.post
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+X-Request-ID: {{$guid}}
+X-Idempotency-Key: generic-charge-{{$timestamp}}
+
+{
+  "payload": {
+    "property_id": "{{propertyId}}",
+    "reservation_id": "{{reservationId}}",
+    "folio_id": "{{folioId}}",
+    "charge_type": "MINIBAR",
+    "description": "Minibar charges",
+    "amount": 15.00,
+    "currency": "USD"
+  }
+}
+
+###############################################################################
 ###############################################################################
 ##                                                                           ##
 ##                      RESERVATION COMMANDS                                 ##
@@ -1562,6 +1646,10 @@ X-Idempotency-Key: inventory-adjust-{{$timestamp}}
 # COMMAND EXECUTION:
 #   All commands follow the pattern:
 #   POST /v1/commands/{commandName}/execute
+#
+# ALTERNATIVE REST-STYLE DISPATCH:
+#   POST /v1/tenants/{tenantId}/commands/{commandName}
+#   This pattern embeds the tenant in the URL for RESTful routing
 #
 # IDEMPOTENCY:
 #   Include X-Idempotency-Key header for deduplication.

@@ -481,3 +481,829 @@ export const WaitlistEntryListResponseSchema = z.object({
 });
 
 export type WaitlistEntryListResponse = z.infer<typeof WaitlistEntryListResponseSchema>;
+
+// =====================================================
+// GROUP BOOKINGS
+// =====================================================
+
+/**
+ * Group booking status enum matching database constraints.
+ */
+export const GroupBookingStatusEnum = z.enum([
+	"TENTATIVE",
+	"CONFIRMED",
+	"DEFINITE",
+	"CANCELED",
+	"COMPLETED",
+	"WAITLISTED",
+]);
+export type GroupBookingStatus = z.infer<typeof GroupBookingStatusEnum>;
+
+// Note: GroupBookingTypeEnum is exported from shared/enums.ts
+
+/**
+ * Group booking list item schema for API responses.
+ */
+export const GroupBookingListItemSchema = z.object({
+	group_booking_id: uuid,
+	tenant_id: uuid,
+	property_id: uuid,
+	property_name: z.string().optional(),
+
+	// Group Information
+	group_name: z.string(),
+	group_code: z.string().nullable(),
+	group_type: z.string(),
+	group_type_display: z.string(),
+	block_status: z.string(),
+	block_status_display: z.string(),
+
+	// Company/Organization
+	company_id: uuid.optional(),
+	company_name: z.string().optional(),
+	organization_name: z.string().nullable(),
+
+	// Event Context
+	event_name: z.string().nullable(),
+	event_type: z.string().nullable(),
+
+	// Contact
+	contact_name: z.string(),
+	contact_email: z.string().nullable(),
+	contact_phone: z.string().nullable(),
+
+	// Stay Details
+	arrival_date: z.string(),
+	departure_date: z.string(),
+	number_of_nights: z.number().int(),
+
+	// Room Tracking
+	total_rooms_requested: z.number().int(),
+	total_rooms_blocked: z.number().int(),
+	total_rooms_picked: z.number().int(),
+	total_rooms_confirmed: z.number().int(),
+	pickup_percentage: z.number(),
+
+	// Cutoff
+	cutoff_date: z.string(),
+	cutoff_days_before_arrival: z.number().int().nullable(),
+	release_unsold_rooms: z.boolean(),
+
+	// Rooming List
+	rooming_list_received: z.boolean(),
+	rooming_list_deadline: z.string().nullable(),
+
+	// Financial
+	deposit_amount: z.string().nullable(),
+	deposit_received: z.boolean(),
+	negotiated_rate: z.string().nullable(),
+	estimated_total_revenue: z.string().nullable(),
+	actual_revenue: z.string().nullable(),
+
+	// Status
+	contract_signed: z.boolean(),
+	is_active: z.boolean(),
+	booking_confidence: z.string().nullable(),
+
+	// Manager
+	account_manager_id: uuid.optional(),
+	account_manager_name: z.string().optional(),
+	sales_manager_id: uuid.optional(),
+
+	// Audit
+	created_at: z.string(),
+	updated_at: z.string().optional(),
+});
+
+export type GroupBookingListItem = z.infer<typeof GroupBookingListItemSchema>;
+
+/**
+ * Group booking list response schema.
+ */
+export const GroupBookingListResponseSchema = z.object({
+	data: z.array(GroupBookingListItemSchema),
+	meta: z.object({
+		count: z.number().int().nonnegative(),
+	}),
+});
+
+export type GroupBookingListResponse = z.infer<typeof GroupBookingListResponseSchema>;
+
+// =====================================================
+// PROMOTIONAL CODES
+// =====================================================
+
+/**
+ * Promotional code status enum matching database constraints.
+ */
+export const PromotionalCodeStatusEnum = z.enum([
+	"ACTIVE",
+	"INACTIVE",
+	"EXPIRED",
+	"DEPLETED",
+	"SCHEDULED",
+	"SUSPENDED",
+]);
+export type PromotionalCodeStatus = z.infer<typeof PromotionalCodeStatusEnum>;
+
+/**
+ * Promotional code discount type enum.
+ */
+export const PromotionalCodeDiscountTypeEnum = z.enum([
+	"PERCENTAGE",
+	"FIXED_AMOUNT",
+	"FREE_NIGHTS",
+	"UPGRADE",
+	"AMENITY",
+]);
+export type PromotionalCodeDiscountType = z.infer<typeof PromotionalCodeDiscountTypeEnum>;
+
+/**
+ * Promotional code list item schema for API responses.
+ */
+export const PromotionalCodeListItemSchema = z.object({
+	promo_id: uuid,
+	tenant_id: uuid,
+	property_id: uuid.optional(),
+	property_name: z.string().optional(),
+
+	// Code Info
+	promo_code: z.string(),
+	promo_name: z.string(),
+	promo_description: z.string().nullable(),
+	promo_type: z.string().nullable(),
+	promo_status: z.string(),
+	promo_status_display: z.string(),
+
+	// Validity
+	is_active: z.boolean(),
+	is_public: z.boolean(),
+	valid_from: z.string(),
+	valid_to: z.string(),
+
+	// Discount
+	discount_type: z.string().nullable(),
+	discount_type_display: z.string().nullable(),
+	discount_percent: z.string().nullable(),
+	discount_amount: z.string().nullable(),
+	discount_currency: z.string().nullable(),
+	max_discount_amount: z.string().nullable(),
+	free_nights_count: z.number().int().nullable(),
+
+	// Usage Limits
+	has_usage_limit: z.boolean(),
+	total_usage_limit: z.number().int().nullable(),
+	usage_count: z.number().int(),
+	remaining_uses: z.number().int().nullable(),
+	per_user_limit: z.number().int().nullable(),
+
+	// Stay Restrictions
+	minimum_stay_nights: z.number().int().nullable(),
+	maximum_stay_nights: z.number().int().nullable(),
+	minimum_booking_amount: z.string().nullable(),
+
+	// Analytics
+	times_viewed: z.number().int(),
+	times_applied: z.number().int(),
+	times_redeemed: z.number().int(),
+	total_discount_given: z.string().nullable(),
+	total_revenue_generated: z.string().nullable(),
+	conversion_rate: z.string().nullable(),
+
+	// Flags
+	combinable_with_other_promos: z.boolean(),
+	auto_apply: z.boolean(),
+	display_on_website: z.boolean(),
+	requires_approval: z.boolean(),
+
+	// Campaign
+	campaign_id: uuid.optional(),
+	marketing_source: z.string().nullable(),
+
+	// Audit
+	created_at: z.string(),
+	updated_at: z.string().optional(),
+});
+
+export type PromotionalCodeListItem = z.infer<typeof PromotionalCodeListItemSchema>;
+
+/**
+ * Promotional code list response schema.
+ */
+export const PromotionalCodeListResponseSchema = z.object({
+	data: z.array(PromotionalCodeListItemSchema),
+	meta: z.object({
+		count: z.number().int().nonnegative(),
+	}),
+});
+
+export type PromotionalCodeListResponse = z.infer<typeof PromotionalCodeListResponseSchema>;
+
+/**
+ * Promotional code validation request schema.
+ */
+export const ValidatePromoCodeRequestSchema = z.object({
+	promo_code: z.string().min(1).max(50),
+	tenant_id: uuid,
+	property_id: uuid.optional(),
+	arrival_date: z.string(),
+	departure_date: z.string(),
+	room_type_id: uuid.optional(),
+	rate_code: z.string().optional(),
+	booking_amount: z.number().positive().optional(),
+	guest_id: uuid.optional(),
+	channel: z.string().optional(),
+});
+
+export type ValidatePromoCodeRequest = z.infer<typeof ValidatePromoCodeRequestSchema>;
+
+/**
+ * Promotional code validation response schema.
+ */
+export const ValidatePromoCodeResponseSchema = z.object({
+	valid: z.boolean(),
+	promo_id: uuid.optional(),
+	promo_code: z.string(),
+	promo_name: z.string().optional(),
+	discount_type: z.string().optional(),
+	discount_value: z.string().optional(),
+	estimated_savings: z.string().optional(),
+	message: z.string().optional(),
+	rejection_reason: z.string().optional(),
+});
+
+export type ValidatePromoCodeResponse = z.infer<typeof ValidatePromoCodeResponseSchema>;
+
+// =====================================================
+// NIGHT AUDIT / BUSINESS DATES
+// =====================================================
+
+/**
+ * Business date status enum matching database constraints.
+ */
+export const BusinessDateStatusEnum = z.enum(["OPEN", "CLOSED", "IN_AUDIT"]);
+export type BusinessDateStatus = z.infer<typeof BusinessDateStatusEnum>;
+
+/**
+ * Night audit status enum matching database constraints.
+ */
+export const NightAuditStatusEnum = z.enum([
+	"NOT_STARTED",
+	"STARTED",
+	"IN_PROGRESS",
+	"COMPLETED",
+	"FAILED",
+	"CANCELLED",
+]);
+export type NightAuditStatus = z.infer<typeof NightAuditStatusEnum>;
+
+/**
+ * Night audit execution mode enum.
+ */
+export const NightAuditExecutionModeEnum = z.enum(["MANUAL", "SCHEDULED", "AUTOMATIC"]);
+export type NightAuditExecutionMode = z.infer<typeof NightAuditExecutionModeEnum>;
+
+/**
+ * Current business date status API response schema.
+ * Used by: GET /v1/night-audit/status
+ */
+export const BusinessDateStatusResponseSchema = z.object({
+	business_date_id: uuid,
+	tenant_id: uuid,
+	property_id: uuid,
+	property_name: z.string().optional(),
+	business_date: z.string(), // ISO date
+	system_date: z.string(), // ISO date
+	date_status: BusinessDateStatusEnum,
+	date_status_display: z.string(),
+	night_audit_status: NightAuditStatusEnum.optional(),
+	night_audit_status_display: z.string().optional(),
+	night_audit_started_at: z.string().optional(),
+	night_audit_completed_at: z.string().optional(),
+	is_locked: z.boolean(),
+	allow_postings: z.boolean(),
+	allow_check_ins: z.boolean(),
+	allow_check_outs: z.boolean(),
+	arrivals_count: z.number().int().nonnegative().optional(),
+	departures_count: z.number().int().nonnegative().optional(),
+	stayovers_count: z.number().int().nonnegative().optional(),
+	total_revenue: z.string().optional(), // Decimal as string
+	audit_errors: z.number().int().nonnegative().optional(),
+	audit_warnings: z.number().int().nonnegative().optional(),
+	is_reconciled: z.boolean().optional(),
+	notes: z.string().optional(),
+});
+
+export type BusinessDateStatusResponse = z.infer<typeof BusinessDateStatusResponseSchema>;
+
+/**
+ * Night audit run summary for list views.
+ * Used by: GET /v1/night-audit/history
+ */
+export const NightAuditRunListItemSchema = z.object({
+	audit_run_id: uuid,
+	tenant_id: uuid,
+	property_id: uuid,
+	property_name: z.string().optional(),
+	business_date: z.string(),
+	next_business_date: z.string().optional(),
+	audit_status: z.string(),
+	audit_status_display: z.string(),
+	execution_mode: NightAuditExecutionModeEnum.optional(),
+	execution_mode_display: z.string().optional(),
+	is_test_run: z.boolean().optional(),
+	started_at: z.string(),
+	completed_at: z.string().optional(),
+	duration_seconds: z.number().int().optional(),
+	total_steps: z.number().int(),
+	steps_completed: z.number().int(),
+	steps_failed: z.number().int(),
+	error_count: z.number().int().optional(),
+	warning_count: z.number().int().optional(),
+	is_successful: z.boolean().optional(),
+	requires_attention: z.boolean().optional(),
+	is_acknowledged: z.boolean().optional(),
+	initiated_by: uuid,
+	initiated_by_name: z.string().optional(),
+	// Statistics
+	occupancy_percent: z.string().optional(),
+	adr: z.string().optional(),
+	revpar: z.string().optional(),
+	total_revenue: z.string().optional(),
+	total_rooms_sold: z.number().int().optional(),
+});
+
+export type NightAuditRunListItem = z.infer<typeof NightAuditRunListItemSchema>;
+
+/**
+ * Night audit run list response schema.
+ */
+export const NightAuditRunListResponseSchema = z.object({
+	data: z.array(NightAuditRunListItemSchema),
+	meta: z.object({
+		count: z.number().int().nonnegative(),
+	}),
+});
+
+export type NightAuditRunListResponse = z.infer<typeof NightAuditRunListResponseSchema>;
+
+/**
+ * Night audit step detail for run details.
+ */
+export const NightAuditStepSchema = z.object({
+	step_number: z.number().int(),
+	step_name: z.string(),
+	step_category: z.string().optional(),
+	step_status: z.string(),
+	step_status_display: z.string(),
+	step_started_at: z.string().optional(),
+	step_completed_at: z.string().optional(),
+	step_duration_ms: z.number().int().optional(),
+	records_processed: z.number().int().optional(),
+	records_succeeded: z.number().int().optional(),
+	records_failed: z.number().int().optional(),
+	records_skipped: z.number().int().optional(),
+	amount_posted: z.string().optional(),
+	transactions_created: z.number().int().optional(),
+	error_count: z.number().int().optional(),
+	warning_count: z.number().int().optional(),
+	error_message: z.string().optional(),
+});
+
+export type NightAuditStep = z.infer<typeof NightAuditStepSchema>;
+
+/**
+ * Night audit run detail response.
+ * Used by: GET /v1/night-audit/runs/:runId
+ */
+export const NightAuditRunDetailResponseSchema = NightAuditRunListItemSchema.extend({
+	steps: z.array(NightAuditStepSchema),
+	reports_generated: z.array(z.string()).optional(),
+	actions_taken: z.array(z.string()).optional(),
+	notes: z.string().optional(),
+	resolution_notes: z.string().optional(),
+});
+
+export type NightAuditRunDetailResponse = z.infer<typeof NightAuditRunDetailResponseSchema>;
+
+// =====================================================
+// OTA / CHANNEL CONFIGURATION
+// =====================================================
+
+/**
+ * OTA connection status enum.
+ */
+export const OtaConnectionStatusEnum = z.enum([
+	"CONNECTED",
+	"DISCONNECTED",
+	"PENDING",
+	"ERROR",
+	"SUSPENDED",
+]);
+export type OtaConnectionStatus = z.infer<typeof OtaConnectionStatusEnum>;
+
+/**
+ * OTA sync status enum.
+ */
+export const OtaSyncStatusEnum = z.enum([
+	"SYNCED",
+	"PENDING",
+	"SYNCING",
+	"ERROR",
+	"PARTIAL",
+]);
+export type OtaSyncStatus = z.infer<typeof OtaSyncStatusEnum>;
+
+/**
+ * OTA configuration list item schema.
+ * Used by: GET /v1/ota-connections
+ */
+export const OtaConnectionListItemSchema = z.object({
+	ota_connection_id: uuid,
+	tenant_id: uuid,
+	property_id: uuid.optional(),
+	property_name: z.string().optional(),
+	channel_code: z.string(),
+	channel_name: z.string(),
+	channel_type: z.string().optional(),
+	connection_status: OtaConnectionStatusEnum,
+	connection_status_display: z.string(),
+	is_active: z.boolean(),
+	is_two_way_sync: z.boolean(),
+	last_sync_at: z.string().optional(),
+	last_sync_status: OtaSyncStatusEnum.optional(),
+	last_sync_status_display: z.string().optional(),
+	last_error_message: z.string().optional(),
+	sync_frequency_minutes: z.number().int().optional(),
+	rooms_mapped: z.number().int().optional(),
+	rates_mapped: z.number().int().optional(),
+	pending_reservations: z.number().int().optional(),
+	api_version: z.string().optional(),
+	created_at: z.string(),
+	updated_at: z.string().optional(),
+});
+
+export type OtaConnectionListItem = z.infer<typeof OtaConnectionListItemSchema>;
+
+/**
+ * OTA connection list response schema.
+ */
+export const OtaConnectionListResponseSchema = z.object({
+	data: z.array(OtaConnectionListItemSchema),
+	meta: z.object({
+		count: z.number().int().nonnegative(),
+	}),
+});
+
+export type OtaConnectionListResponse = z.infer<typeof OtaConnectionListResponseSchema>;
+
+/**
+ * OTA sync log entry schema.
+ * Used by: GET /v1/ota-connections/:connectionId/sync-history
+ */
+export const OtaSyncLogSchema = z.object({
+	sync_log_id: uuid,
+	ota_connection_id: uuid,
+	sync_type: z.string(),
+	sync_direction: z.enum(["INBOUND", "OUTBOUND", "BIDIRECTIONAL"]),
+	sync_status: OtaSyncStatusEnum,
+	sync_status_display: z.string(),
+	started_at: z.string(),
+	completed_at: z.string().optional(),
+	duration_ms: z.number().int().optional(),
+	records_processed: z.number().int().optional(),
+	records_created: z.number().int().optional(),
+	records_updated: z.number().int().optional(),
+	records_failed: z.number().int().optional(),
+	error_message: z.string().optional(),
+	triggered_by: z.enum(["SCHEDULED", "MANUAL", "WEBHOOK"]).optional(),
+});
+
+export type OtaSyncLog = z.infer<typeof OtaSyncLogSchema>;
+
+/**
+ * OTA sync log list response schema.
+ */
+export const OtaSyncLogListResponseSchema = z.object({
+	data: z.array(OtaSyncLogSchema),
+	meta: z.object({
+		count: z.number().int().nonnegative(),
+	}),
+});
+
+export type OtaSyncLogListResponse = z.infer<typeof OtaSyncLogListResponseSchema>;
+
+// =====================================================
+// CASHIER SESSIONS
+// =====================================================
+
+/**
+ * Cashier session status enum.
+ */
+export const CashierSessionStatusEnum = z.enum([
+	"OPEN",
+	"CLOSED",
+	"SUSPENDED",
+	"RECONCILED",
+	"PENDING_APPROVAL",
+]);
+export type CashierSessionStatus = z.infer<typeof CashierSessionStatusEnum>;
+
+/**
+ * Cashier session list item schema.
+ * Used by: GET /v1/cashier-sessions
+ */
+export const CashierSessionListItemSchema = z.object({
+	session_id: uuid,
+	tenant_id: uuid,
+	property_id: uuid,
+	property_name: z.string().optional(),
+	session_number: z.string(),
+	session_name: z.string().optional(),
+	cashier_id: uuid,
+	cashier_name: z.string().optional(),
+	terminal_id: z.string().optional(),
+	terminal_name: z.string().optional(),
+	location: z.string().optional(),
+	session_status: z.string(),
+	session_status_display: z.string(),
+	opened_at: z.string(),
+	closed_at: z.string().optional(),
+	business_date: z.string(),
+	shift_type: z.string().optional(),
+	opening_float_declared: z.string(),
+	total_transactions: z.number().int().optional(),
+	total_revenue: z.string().optional(),
+	total_refunds: z.string().optional(),
+	net_revenue: z.string().optional(),
+	expected_cash_balance: z.string().optional(),
+	closing_cash_counted: z.string().optional(),
+	cash_variance: z.string().optional(),
+	has_variance: z.boolean().optional(),
+	reconciled: z.boolean().optional(),
+	approved: z.boolean().optional(),
+	created_at: z.string().optional(),
+});
+
+export type CashierSessionListItem = z.infer<typeof CashierSessionListItemSchema>;
+
+// =====================================================
+// SHIFT HANDOVERS
+// =====================================================
+
+/**
+ * Shift handover status enum.
+ */
+export const ShiftHandoverStatusEnum = z.enum([
+	"DRAFT",
+	"PENDING",
+	"COMPLETED",
+	"ACKNOWLEDGED",
+	"REVIEWED",
+]);
+export type ShiftHandoverStatus = z.infer<typeof ShiftHandoverStatusEnum>;
+
+/**
+ * Shift handover list item schema.
+ * Used by: GET /v1/shift-handovers
+ */
+export const ShiftHandoverListItemSchema = z.object({
+	handover_id: uuid,
+	tenant_id: uuid,
+	property_id: uuid,
+	property_name: z.string().optional(),
+	handover_number: z.string().optional(),
+	handover_title: z.string().optional(),
+	shift_date: z.string(),
+	outgoing_shift: z.string(),
+	outgoing_user_id: uuid,
+	outgoing_user_name: z.string().optional(),
+	incoming_shift: z.string(),
+	incoming_user_id: uuid,
+	incoming_user_name: z.string().optional(),
+	department: z.string(),
+	department_display: z.string(),
+	handover_status: z.string(),
+	handover_status_display: z.string(),
+	handover_started_at: z.string().optional(),
+	handover_completed_at: z.string().optional(),
+	current_occupancy_percent: z.string().optional(),
+	expected_arrivals_count: z.number().int().optional(),
+	expected_departures_count: z.number().int().optional(),
+	tasks_pending: z.number().int().optional(),
+	tasks_urgent: z.number().int().optional(),
+	key_points: z.string(),
+	requires_follow_up: z.boolean().optional(),
+	acknowledged: z.boolean().optional(),
+	created_at: z.string().optional(),
+});
+
+export type ShiftHandoverListItem = z.infer<typeof ShiftHandoverListItemSchema>;
+
+// =====================================================
+// LOST AND FOUND
+// =====================================================
+
+/**
+ * Lost and found item status enum.
+ */
+export const LostFoundStatusEnum = z.enum([
+	"FOUND",
+	"STORED",
+	"CLAIMED",
+	"RETURNED",
+	"SHIPPED",
+	"DISPOSED",
+	"DONATED",
+]);
+export type LostFoundStatus = z.infer<typeof LostFoundStatusEnum>;
+
+/**
+ * Lost and found list item schema.
+ * Used by: GET /v1/lost-and-found
+ */
+export const LostFoundListItemSchema = z.object({
+	item_id: uuid,
+	tenant_id: uuid,
+	property_id: uuid,
+	property_name: z.string().optional(),
+	item_number: z.string().optional(),
+	item_name: z.string(),
+	item_description: z.string(),
+	item_category: z.string(),
+	item_category_display: z.string(),
+	color: z.string().optional(),
+	estimated_value: z.string().optional(),
+	is_valuable: z.boolean().optional(),
+	found_date: z.string(),
+	found_by_name: z.string().optional(),
+	found_location: z.string(),
+	room_number: z.string().optional(),
+	guest_name: z.string().optional(),
+	item_status: z.string(),
+	item_status_display: z.string(),
+	storage_location: z.string().optional(),
+	days_in_storage: z.number().int().optional(),
+	claimed: z.boolean().optional(),
+	returned: z.boolean().optional(),
+	disposed: z.boolean().optional(),
+	hold_until_date: z.string().optional(),
+	has_photos: z.boolean().optional(),
+	created_at: z.string().optional(),
+});
+
+export type LostFoundListItem = z.infer<typeof LostFoundListItemSchema>;
+
+// =====================================================
+// BANQUET EVENT ORDERS
+// =====================================================
+
+/**
+ * BEO status enum.
+ */
+export const BeoStatusEnum = z.enum([
+	"DRAFT",
+	"PENDING",
+	"CONFIRMED",
+	"IN_PROGRESS",
+	"COMPLETED",
+	"CANCELLED",
+]);
+export type BeoStatus = z.infer<typeof BeoStatusEnum>;
+
+/**
+ * Banquet Event Order list item schema.
+ * Used by: GET /v1/banquet-orders
+ */
+export const BanquetOrderListItemSchema = z.object({
+	beo_id: uuid,
+	tenant_id: uuid,
+	property_id: uuid,
+	property_name: z.string().optional(),
+	event_booking_id: uuid,
+	beo_number: z.string(),
+	beo_version: z.number().int().optional(),
+	beo_status: z.string(),
+	beo_status_display: z.string(),
+	event_date: z.string(),
+	event_start_time: z.string(),
+	event_end_time: z.string(),
+	meeting_room_id: uuid,
+	meeting_room_name: z.string().optional(),
+	room_setup: z.string(),
+	room_setup_display: z.string(),
+	guaranteed_count: z.number().int(),
+	expected_count: z.number().int().optional(),
+	actual_count: z.number().int().optional(),
+	menu_type: z.string().optional(),
+	service_style: z.string().optional(),
+	bar_type: z.string().optional(),
+	food_subtotal: z.string().optional(),
+	beverage_subtotal: z.string().optional(),
+	total_estimated: z.string().optional(),
+	total_actual: z.string().optional(),
+	client_approved: z.boolean().optional(),
+	chef_approved: z.boolean().optional(),
+	manager_approved: z.boolean().optional(),
+	setup_completed: z.boolean().optional(),
+	event_started: z.boolean().optional(),
+	event_ended: z.boolean().optional(),
+	created_at: z.string(),
+});
+
+export type BanquetOrderListItem = z.infer<typeof BanquetOrderListItemSchema>;
+
+// =====================================================
+// GUEST FEEDBACK
+// =====================================================
+
+/**
+ * Guest feedback list item schema.
+ * Used by: GET /v1/guest-feedback
+ */
+export const GuestFeedbackListItemSchema = z.object({
+	id: uuid,
+	tenant_id: uuid,
+	property_id: uuid,
+	property_name: z.string().optional(),
+	guest_id: uuid,
+	guest_name: z.string().optional(),
+	reservation_id: uuid,
+	feedback_source: z.string().optional(),
+	feedback_source_display: z.string().optional(),
+	overall_rating: z.string().optional(),
+	rating_scale: z.number().int().optional(),
+	cleanliness_rating: z.string().optional(),
+	staff_rating: z.string().optional(),
+	location_rating: z.string().optional(),
+	value_rating: z.string().optional(),
+	review_title: z.string().optional(),
+	review_text: z.string().optional(),
+	would_recommend: z.boolean().optional(),
+	would_return: z.boolean().optional(),
+	sentiment_label: z.string().optional(),
+	is_verified: z.boolean().optional(),
+	is_public: z.boolean().optional(),
+	is_featured: z.boolean().optional(),
+	response_text: z.string().optional(),
+	responded_at: z.string().optional(),
+	created_at: z.string().optional(),
+});
+
+export type GuestFeedbackListItem = z.infer<typeof GuestFeedbackListItemSchema>;
+
+// =====================================================
+// POLICE REPORTS
+// =====================================================
+
+/**
+ * Police report status enum.
+ */
+export const PoliceReportStatusEnum = z.enum([
+	"DRAFT",
+	"FILED",
+	"UNDER_INVESTIGATION",
+	"RESOLVED",
+	"CLOSED",
+	"ARCHIVED",
+]);
+export type PoliceReportStatus = z.infer<typeof PoliceReportStatusEnum>;
+
+/**
+ * Police report list item schema.
+ * Used by: GET /v1/police-reports
+ */
+export const PoliceReportListItemSchema = z.object({
+	report_id: uuid,
+	tenant_id: uuid,
+	property_id: uuid,
+	property_name: z.string().optional(),
+	report_number: z.string(),
+	police_case_number: z.string().optional(),
+	incident_id: uuid.optional(),
+	incident_date: z.string(),
+	incident_time: z.string().optional(),
+	reported_date: z.string(),
+	incident_type: z.string().optional(),
+	incident_type_display: z.string().optional(),
+	incident_description: z.string(),
+	incident_location: z.string().optional(),
+	room_number: z.string().optional(),
+	agency_name: z.string(),
+	responding_officer_name: z.string().optional(),
+	report_status: z.string(),
+	report_status_display: z.string(),
+	suspect_count: z.number().int().optional(),
+	victim_count: z.number().int().optional(),
+	guest_involved: z.boolean().optional(),
+	staff_involved: z.boolean().optional(),
+	property_stolen: z.boolean().optional(),
+	total_loss_value: z.string().optional(),
+	arrests_made: z.boolean().optional(),
+	investigation_ongoing: z.boolean().optional(),
+	resolved: z.boolean().optional(),
+	confidential: z.boolean().optional(),
+	created_at: z.string().optional(),
+});
+
+export type PoliceReportListItem = z.infer<typeof PoliceReportListItemSchema>;

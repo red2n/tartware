@@ -1,0 +1,308 @@
+###############################################################################
+# AVAILABILITY GUARD SERVICE - Room Locks & Availability Management
+# Routes via API Gateway (localhost:8080) -> availability-guard-service
+#
+# Content: Room locks for preventing double-booking during reservation flow
+#
+# Related files:
+# - reservations.http - Reservation management
+# - rooms.http - Room inventory
+# - command-center.http - Write operations
+###############################################################################
+
+# --- VARIABLES ---
+@baseUrl = http://localhost:8080
+@tenantId = 11111111-1111-1111-1111-111111111111
+@propertyId = 22222222-2222-2222-2222-222222222222
+@userId = 33333333-3333-3333-3333-333333333333
+@roomId = 55555555-5555-5555-5555-555555555551
+@lockId = 66666666-6666-6666-6666-666666666666
+
+###############################################################################
+# 1. LOGIN
+###############################################################################
+
+# @name login
+POST {{baseUrl}}/v1/auth/login
+Content-Type: application/json
+
+{
+  "username": "setup.admin",
+  "password": "TempPass123"
+}
+
+### Extract token
+@authToken = {{login.response.body.access_token}}
+
+###############################################################################
+# 2. CREATE LOCK
+# Acquire a temporary lock on a room for a date range
+###############################################################################
+
+# @name createLock
+POST {{baseUrl}}/v1/locks
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+X-Request-ID: {{$guid}}
+
+{
+  "tenant_id": "{{tenantId}}",
+  "property_id": "{{propertyId}}",
+  "room_id": "{{roomId}}",
+  "check_in_date": "2026-03-15",
+  "check_out_date": "2026-03-18",
+  "lock_type": "RESERVATION",
+  "lock_reason": "Guest booking in progress",
+  "ttl_seconds": 900,
+  "metadata": {
+    "session_id": "booking-session-001",
+    "channel": "WEB"
+  }
+}
+
+### Extract lock ID from response
+@newLockId = {{createLock.response.body.lock_id}}
+
+###
+# Create lock for maintenance block
+POST {{baseUrl}}/v1/locks
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+X-Request-ID: {{$guid}}
+
+{
+  "tenant_id": "{{tenantId}}",
+  "property_id": "{{propertyId}}",
+  "room_id": "{{roomId}}",
+  "check_in_date": "2026-04-01",
+  "check_out_date": "2026-04-03",
+  "lock_type": "MAINTENANCE",
+  "lock_reason": "Scheduled HVAC maintenance",
+  "ttl_seconds": 86400,
+  "metadata": {
+    "maintenance_ticket": "MT-2026-001"
+  }
+}
+
+###
+# Create lock for group block
+POST {{baseUrl}}/v1/locks
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+X-Request-ID: {{$guid}}
+
+{
+  "tenant_id": "{{tenantId}}",
+  "property_id": "{{propertyId}}",
+  "room_id": "{{roomId}}",
+  "check_in_date": "2026-05-10",
+  "check_out_date": "2026-05-15",
+  "lock_type": "GROUP_BLOCK",
+  "lock_reason": "Corporate event room block",
+  "ttl_seconds": 604800,
+  "metadata": {
+    "group_id": "GRP-2026-001",
+    "company": "Acme Corp"
+  }
+}
+
+###############################################################################
+# 3. RELEASE LOCK
+# Release a specific lock by ID
+###############################################################################
+
+# Release lock by ID
+DELETE {{baseUrl}}/v1/locks/{{newLockId}}
+Authorization: Bearer {{authToken}}
+X-Request-ID: {{$guid}}
+
+###
+# Release lock with tenant context
+DELETE {{baseUrl}}/v1/locks/{{lockId}}?tenant_id={{tenantId}}
+Authorization: Bearer {{authToken}}
+X-Request-ID: {{$guid}}
+
+###############################################################################
+# 4. BULK RELEASE LOCKS
+# Release multiple locks at once
+###############################################################################
+
+# Bulk release by lock IDs
+POST {{baseUrl}}/v1/locks/bulk-release
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+X-Request-ID: {{$guid}}
+
+{
+  "tenant_id": "{{tenantId}}",
+  "lock_ids": [
+    "{{lockId}}",
+    "77777777-7777-7777-7777-777777777777",
+    "88888888-8888-8888-8888-888888888888"
+  ],
+  "reason": "Booking flow cancelled by user"
+}
+
+###
+# Bulk release by room and date range
+POST {{baseUrl}}/v1/locks/bulk-release
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+X-Request-ID: {{$guid}}
+
+{
+  "tenant_id": "{{tenantId}}",
+  "property_id": "{{propertyId}}",
+  "room_id": "{{roomId}}",
+  "check_in_date": "2026-03-01",
+  "check_out_date": "2026-03-31",
+  "lock_type": "RESERVATION",
+  "reason": "Clearing stale reservation locks"
+}
+
+###############################################################################
+# 5. MANUAL RELEASE WITH AUDIT
+# Force release a lock with audit trail (requires elevated permissions)
+###############################################################################
+
+# Manual release with audit record
+POST {{baseUrl}}/v1/locks/{{lockId}}/manual-release
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+X-Request-ID: {{$guid}}
+
+{
+  "tenant_id": "{{tenantId}}",
+  "reason": "Guest cancelled reservation via phone",
+  "released_by": "{{userId}}",
+  "ticket_reference": "TICKET-2026-001",
+  "notify_stakeholders": true
+}
+
+###
+# Manual release for maintenance cancellation
+POST {{baseUrl}}/v1/locks/{{lockId}}/manual-release
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+X-Request-ID: {{$guid}}
+
+{
+  "tenant_id": "{{tenantId}}",
+  "reason": "Maintenance postponed to next month",
+  "released_by": "{{userId}}",
+  "ticket_reference": "MT-2026-001-CANCEL",
+  "notify_stakeholders": false
+}
+
+###############################################################################
+# 6. AUDIT RECORDS - BY LOCK ID
+# Get audit history for a specific lock
+###############################################################################
+
+# Get audit records for a lock
+GET {{baseUrl}}/v1/locks/{{lockId}}/audit?tenant_id={{tenantId}}
+Authorization: Bearer {{authToken}}
+
+###
+# Get audit records with limit
+GET {{baseUrl}}/v1/locks/{{lockId}}/audit?tenant_id={{tenantId}}&limit=10
+Authorization: Bearer {{authToken}}
+
+###############################################################################
+# 7. AUDIT RECORDS - TENANT-WIDE SEARCH
+# Search audit records across all locks
+###############################################################################
+
+# Search all audit records for tenant
+GET {{baseUrl}}/v1/locks/audit?tenant_id={{tenantId}}&limit=50
+Authorization: Bearer {{authToken}}
+
+###
+# Filter by property
+GET {{baseUrl}}/v1/locks/audit?tenant_id={{tenantId}}&property_id={{propertyId}}
+Authorization: Bearer {{authToken}}
+
+###
+# Filter by room
+GET {{baseUrl}}/v1/locks/audit?tenant_id={{tenantId}}&room_id={{roomId}}
+Authorization: Bearer {{authToken}}
+
+###
+# Filter by date range
+GET {{baseUrl}}/v1/locks/audit?tenant_id={{tenantId}}&from_date=2026-02-01&to_date=2026-02-28
+Authorization: Bearer {{authToken}}
+
+###
+# Filter by action type
+GET {{baseUrl}}/v1/locks/audit?tenant_id={{tenantId}}&action=MANUAL_RELEASE
+Authorization: Bearer {{authToken}}
+
+###
+# Filter by lock type
+GET {{baseUrl}}/v1/locks/audit?tenant_id={{tenantId}}&lock_type=RESERVATION
+Authorization: Bearer {{authToken}}
+
+###
+# Combined filters
+GET {{baseUrl}}/v1/locks/audit?tenant_id={{tenantId}}&property_id={{propertyId}}&action=MANUAL_RELEASE&from_date=2026-02-01
+Authorization: Bearer {{authToken}}
+
+###############################################################################
+# 8. NOTIFICATION TEST (DRY-RUN)
+# Test notification delivery without actually releasing the lock
+###############################################################################
+
+# Dry-run notification test
+POST {{baseUrl}}/v1/notifications/manual-release/test
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+X-Request-ID: {{$guid}}
+
+{
+  "tenant_id": "{{tenantId}}",
+  "lock_id": "{{lockId}}",
+  "notification_channels": ["email", "slack"],
+  "recipients": [
+    {
+      "type": "email",
+      "address": "ops@tartware.demo"
+    },
+    {
+      "type": "slack",
+      "channel": "#operations"
+    }
+  ],
+  "message": "Lock release notification test"
+}
+
+###############################################################################
+# REFERENCE
+###############################################################################
+#
+# LOCK TYPES:
+#   RESERVATION   - Temporary lock during booking flow
+#   MAINTENANCE   - Lock for scheduled maintenance
+#   GROUP_BLOCK   - Lock for group/event room blocks
+#   OUT_OF_ORDER  - Lock for rooms out of order
+#   ADMIN_HOLD    - Manual administrative hold
+#
+# AUDIT ACTIONS:
+#   CREATED        - Lock was created
+#   RELEASED       - Lock was released normally
+#   EXPIRED        - Lock expired (TTL reached)
+#   MANUAL_RELEASE - Lock was manually released
+#   BULK_RELEASE   - Lock was released via bulk operation
+#
+# TTL GUIDELINES:
+#   Reservation:  15 minutes (900 seconds) - booking flow
+#   Maintenance:  24 hours (86400 seconds)
+#   Group Block:  7 days (604800 seconds)
+#   Admin Hold:   Variable based on need
+#
+# SAMPLE IDs:
+#   Tenant:   11111111-1111-1111-1111-111111111111
+#   Property: 22222222-2222-2222-2222-222222222222
+#   Room:     55555555-5555-5555-5555-555555555551
+#   Lock:     66666666-6666-6666-6666-666666666666
+#
+###############################################################################

@@ -1452,6 +1452,273 @@ export const buildServer = () => {
 			proxyCore,
 		);
 
+		// Group Bookings - room blocks for corporate/group reservations
+		app.get(
+			"/v1/group-bookings",
+			{
+				schema: buildRouteSchema({
+					tag: BOOKING_CONFIG_TAG,
+					summary: "List group bookings (corporate blocks, tours, events).",
+					response: { 200: jsonObjectSchema },
+				}),
+			},
+			proxyCore,
+		);
+
+		app.all(
+			"/v1/group-bookings/*",
+			{
+				schema: buildRouteSchema({
+					tag: BOOKING_CONFIG_TAG,
+					summary: "Proxy group booking operations to core service.",
+					response: { 200: jsonObjectSchema },
+				}),
+			},
+			proxyCore,
+		);
+
+		// Promotional Codes - discounts and marketing campaigns
+		app.get(
+			"/v1/promo-codes",
+			{
+				schema: buildRouteSchema({
+					tag: BOOKING_CONFIG_TAG,
+					summary: "List promotional codes and discount campaigns.",
+					response: { 200: jsonObjectSchema },
+				}),
+			},
+			proxyCore,
+		);
+
+		app.all(
+			"/v1/promo-codes/*",
+			{
+				schema: buildRouteSchema({
+					tag: BOOKING_CONFIG_TAG,
+					summary: "Proxy promotional code operations to core service.",
+					response: { 200: jsonObjectSchema },
+				}),
+			},
+			proxyCore,
+		);
+
+		// Night Audit - EOD processing and business date management
+		app.get(
+			"/v1/night-audit/status",
+			{
+				schema: buildRouteSchema({
+					tag: BOOKING_CONFIG_TAG,
+					summary: "Get current business date status for a property.",
+					response: { 200: jsonObjectSchema },
+				}),
+			},
+			proxyCore,
+		);
+
+		app.get(
+			"/v1/night-audit/history",
+			{
+				schema: buildRouteSchema({
+					tag: BOOKING_CONFIG_TAG,
+					summary: "List night audit run history.",
+					response: { 200: jsonObjectSchema },
+				}),
+			},
+			proxyCore,
+		);
+
+		app.all(
+			"/v1/night-audit/*",
+			{
+				schema: buildRouteSchema({
+					tag: BOOKING_CONFIG_TAG,
+					summary: "Proxy night audit operations to core service.",
+					response: { 200: jsonObjectSchema },
+				}),
+			},
+			proxyCore,
+		);
+
+		// OTA/Channel Connections - third-party booking integrations
+		app.get(
+			"/v1/ota-connections",
+			{
+				schema: buildRouteSchema({
+					tag: BOOKING_CONFIG_TAG,
+					summary: "List OTA and channel manager connections.",
+					response: { 200: jsonObjectSchema },
+				}),
+			},
+			proxyCore,
+		);
+
+		app.all(
+			"/v1/ota-connections/*",
+			{
+				schema: buildRouteSchema({
+					tag: BOOKING_CONFIG_TAG,
+					summary: "Proxy OTA connection operations to core service.",
+					response: { 200: jsonObjectSchema },
+				}),
+			},
+			proxyCore,
+		);
+
+		// =====================================================
+		// OPERATIONS ENDPOINTS
+		// =====================================================
+		const OPERATIONS_TAG = "Operations";
+
+		// Cashier Sessions
+		app.get(
+			"/v1/cashier-sessions",
+			{
+				schema: buildRouteSchema({
+					tag: OPERATIONS_TAG,
+					summary: "List cashier sessions.",
+					response: { 200: jsonObjectSchema },
+				}),
+			},
+			proxyCore,
+		);
+
+		app.all(
+			"/v1/cashier-sessions/*",
+			{
+				schema: buildRouteSchema({
+					tag: OPERATIONS_TAG,
+					summary: "Proxy cashier session operations to core service.",
+					response: { 200: jsonObjectSchema },
+				}),
+			},
+			proxyCore,
+		);
+
+		// Shift Handovers
+		app.get(
+			"/v1/shift-handovers",
+			{
+				schema: buildRouteSchema({
+					tag: OPERATIONS_TAG,
+					summary: "List shift handovers.",
+					response: { 200: jsonObjectSchema },
+				}),
+			},
+			proxyCore,
+		);
+
+		app.all(
+			"/v1/shift-handovers/*",
+			{
+				schema: buildRouteSchema({
+					tag: OPERATIONS_TAG,
+					summary: "Proxy shift handover operations to core service.",
+					response: { 200: jsonObjectSchema },
+				}),
+			},
+			proxyCore,
+		);
+
+		// Lost and Found
+		app.get(
+			"/v1/lost-and-found",
+			{
+				schema: buildRouteSchema({
+					tag: OPERATIONS_TAG,
+					summary: "List lost and found items.",
+					response: { 200: jsonObjectSchema },
+				}),
+			},
+			proxyCore,
+		);
+
+		app.all(
+			"/v1/lost-and-found/*",
+			{
+				schema: buildRouteSchema({
+					tag: OPERATIONS_TAG,
+					summary: "Proxy lost and found operations to core service.",
+					response: { 200: jsonObjectSchema },
+				}),
+			},
+			proxyCore,
+		);
+
+		// Banquet Event Orders
+		app.get(
+			"/v1/banquet-orders",
+			{
+				schema: buildRouteSchema({
+					tag: OPERATIONS_TAG,
+					summary: "List banquet event orders (BEOs).",
+					response: { 200: jsonObjectSchema },
+				}),
+			},
+			proxyCore,
+		);
+
+		app.all(
+			"/v1/banquet-orders/*",
+			{
+				schema: buildRouteSchema({
+					tag: OPERATIONS_TAG,
+					summary: "Proxy banquet order operations to core service.",
+					response: { 200: jsonObjectSchema },
+				}),
+			},
+			proxyCore,
+		);
+
+		// Guest Feedback
+		app.get(
+			"/v1/guest-feedback",
+			{
+				schema: buildRouteSchema({
+					tag: OPERATIONS_TAG,
+					summary: "List guest feedback and reviews.",
+					response: { 200: jsonObjectSchema },
+				}),
+			},
+			proxyCore,
+		);
+
+		app.all(
+			"/v1/guest-feedback/*",
+			{
+				schema: buildRouteSchema({
+					tag: OPERATIONS_TAG,
+					summary: "Proxy guest feedback operations to core service.",
+					response: { 200: jsonObjectSchema },
+				}),
+			},
+			proxyCore,
+		);
+
+		// Police Reports
+		app.get(
+			"/v1/police-reports",
+			{
+				schema: buildRouteSchema({
+					tag: OPERATIONS_TAG,
+					summary: "List police/incident reports.",
+					response: { 200: jsonObjectSchema },
+				}),
+			},
+			proxyCore,
+		);
+
+		app.all(
+			"/v1/police-reports/*",
+			{
+				schema: buildRouteSchema({
+					tag: OPERATIONS_TAG,
+					summary: "Proxy police report operations to core service.",
+					response: { 200: jsonObjectSchema },
+				}),
+			},
+			proxyCore,
+		);
+
 		app.post(
 			"/v1/tenants/:tenantId/rooms/:roomId/block",
 			{

@@ -341,3 +341,7 @@ platform/.ssh/*
 platform/secrets/*.yaml
 platform/.admin-token
 platform/.env
+platform/secrets/*.yaml
+
+# JWT keys (generated locally)
+keys/

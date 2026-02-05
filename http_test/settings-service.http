@@ -29,7 +29,15 @@ Content-Type: application/json
 @authToken = {{login.response.body.access_token}}
 
 ###############################################################################
-# 2. SETTINGS CATALOG - Full Catalog
+# 2. HEALTH & PING
+###############################################################################
+
+# Ping endpoint
+GET {{baseUrl}}/v1/settings/ping
+Authorization: Bearer {{authToken}}
+
+###############################################################################
+# 3. SETTINGS CATALOG - Full Catalog
 ###############################################################################
 
 # Get the full settings catalog (categories, sections, definitions, options)
@@ -42,7 +50,7 @@ GET {{baseUrl}}/v1/settings/catalog/RESERVATIONS
 Authorization: Bearer {{authToken}}
 
 ###############################################################################
-# 3. SETTINGS CATEGORIES
+# 4. SETTINGS CATEGORIES
 ###############################################################################
 
 # List all settings categories
@@ -55,7 +63,7 @@ GET {{baseUrl}}/v1/settings/categories?active_only=true
 Authorization: Bearer {{authToken}}
 
 ###############################################################################
-# 4. SETTINGS SECTIONS
+# 5. SETTINGS SECTIONS
 ###############################################################################
 
 # List all settings sections
@@ -73,7 +81,7 @@ GET {{baseUrl}}/v1/settings/sections?category_code=RESERVATIONS
 Authorization: Bearer {{authToken}}
 
 ###############################################################################
-# 5. SETTINGS DEFINITIONS
+# 6. SETTINGS DEFINITIONS
 ###############################################################################
 
 # List all settings definitions
@@ -96,7 +104,7 @@ GET {{baseUrl}}/v1/settings/definitions?search=check_in
 Authorization: Bearer {{authToken}}
 
 ###############################################################################
-# 6. SETTINGS OPTIONS
+# 7. SETTINGS OPTIONS
 ###############################################################################
 
 # List all settings options
@@ -114,7 +122,7 @@ GET {{baseUrl}}/v1/settings/options?setting_code=RESERVATIONS.DEFAULT_CHECK_IN_T
 Authorization: Bearer {{authToken}}
 
 ###############################################################################
-# 7. SETTINGS VALUES - Read
+# 8. SETTINGS VALUES - Read
 ###############################################################################
 
 # List all settings values for tenant (requires tenant context)
@@ -137,7 +145,7 @@ GET {{baseUrl}}/v1/settings/values?property_id={{propertyId}}
 Authorization: Bearer {{authToken}}
 
 ###############################################################################
-# 8. SETTINGS VALUES - Create
+# 9. SETTINGS VALUES - Create
 ###############################################################################
 
 # @name createSettingValue
@@ -175,7 +183,7 @@ Authorization: Bearer {{authToken}}
 }
 
 ###############################################################################
-# 9. SETTINGS VALUES - Update
+# 10. SETTINGS VALUES - Update
 ###############################################################################
 
 # Update a settings value
@@ -190,7 +198,7 @@ Authorization: Bearer {{authToken}}
 }
 
 ###############################################################################
-# 10. PROPERTY AMENITIES - List
+# 11. PROPERTY AMENITIES - List
 ###############################################################################
 
 # List amenities for a property
@@ -198,7 +206,7 @@ GET {{baseUrl}}/v1/settings/properties/{{propertyId}}/amenities
 Authorization: Bearer {{authToken}}
 
 ###############################################################################
-# 11. PROPERTY AMENITIES - Create
+# 12. PROPERTY AMENITIES - Create
 ###############################################################################
 
 # @name createAmenity
@@ -265,7 +273,7 @@ Authorization: Bearer {{authToken}}
 }
 
 ###############################################################################
-# 12. PROPERTY AMENITIES - Update
+# 13. PROPERTY AMENITIES - Update
 ###############################################################################
 
 # Update a property amenity
@@ -285,7 +293,7 @@ Authorization: Bearer {{authToken}}
 }
 
 ###############################################################################
-# 13. PACKAGES - List
+# 14. PACKAGES - List
 ###############################################################################
 
 # List all packages
@@ -352,7 +360,7 @@ GET {{baseUrl}}/v1/packages
 Authorization: Bearer {{authToken}}
 
 ###############################################################################
-# 14. PACKAGES - Get by ID
+# 15. PACKAGES - Get by ID
 ###############################################################################
 
 # Get package by ID
@@ -360,7 +368,7 @@ GET {{baseUrl}}/v1/packages/{{packageId}}?tenant_id={{tenantId}}
 Authorization: Bearer {{authToken}}
 
 ###############################################################################
-# 15. PACKAGE COMPONENTS
+# 16. PACKAGE COMPONENTS
 ###############################################################################
 
 # Get package components (services/amenities included)

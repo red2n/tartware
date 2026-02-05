@@ -272,6 +272,21 @@ Authorization: Bearer {{authToken}}
 }
 
 ###############################################################################
+# 7. ROOMS - UPDATE (PATCH)
+###############################################################################
+
+# Partial update room details
+PATCH {{baseUrl}}/v1/rooms/{{room101Id}}
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+
+{
+  "tenant_id": "{{tenantId}}",
+  "housekeeping_status": "clean",
+  "maintenance_status": "operational"
+}
+
+###############################################################################
 # 8. ROOMS - DELETE
 ###############################################################################
 
@@ -318,6 +333,126 @@ Authorization: Bearer {{authToken}}
 #
 
 ###############################################################################
+# 11. REST-STYLE COMMAND DISPATCH
+# Alternative to /v1/commands/{name}/execute pattern
+# These routes dispatch commands via the gateway
+###############################################################################
+
+###
+# Block room inventory
+POST {{baseUrl}}/v1/tenants/{{tenantId}}/rooms/{{room101Id}}/block
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+X-Request-ID: {{$guid}}
+X-Idempotency-Key: room-block-{{$timestamp}}
+
+{
+  "property_id": "{{propertyId}}",
+  "block_type": "MAINTENANCE",
+  "start_date": "2026-02-10",
+  "end_date": "2026-02-12",
+  "reason": "HVAC system repair",
+  "notes": "Scheduled preventive maintenance",
+  "notify_housekeeping": true
+}
+
+###
+# Release room block
+POST {{baseUrl}}/v1/tenants/{{tenantId}}/rooms/{{room101Id}}/release
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+X-Request-ID: {{$guid}}
+X-Idempotency-Key: room-release-{{$timestamp}}
+
+{
+  "property_id": "{{propertyId}}",
+  "reason": "Maintenance completed ahead of schedule"
+}
+
+###
+# Update room status
+POST {{baseUrl}}/v1/tenants/{{tenantId}}/rooms/{{room101Id}}/status
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+X-Request-ID: {{$guid}}
+X-Idempotency-Key: room-status-{{$timestamp}}
+
+{
+  "property_id": "{{propertyId}}",
+  "status": "OCCUPIED",
+  "notes": "Guest checked in"
+}
+
+###
+# Update housekeeping status
+POST {{baseUrl}}/v1/tenants/{{tenantId}}/rooms/{{room101Id}}/housekeeping-status
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+X-Request-ID: {{$guid}}
+X-Idempotency-Key: room-hk-{{$timestamp}}
+
+{
+  "property_id": "{{propertyId}}",
+  "housekeeping_status": "CLEAN",
+  "inspected_by": "{{guestId}}",
+  "inspection_notes": "Room passed QA check"
+}
+
+###
+# Mark room out of order
+POST {{baseUrl}}/v1/tenants/{{tenantId}}/rooms/{{room101Id}}/out-of-order
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+X-Request-ID: {{$guid}}
+X-Idempotency-Key: room-ooo-{{$timestamp}}
+
+{
+  "property_id": "{{propertyId}}",
+  "reason": "Water damage from burst pipe",
+  "estimated_return_date": "2026-02-15",
+  "maintenance_ticket": "MT-2026-001",
+  "notify_reservations": true,
+  "reassign_existing_bookings": true
+}
+
+###
+# Mark room out of service
+POST {{baseUrl}}/v1/tenants/{{tenantId}}/rooms/{{room101Id}}/out-of-service
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+X-Request-ID: {{$guid}}
+X-Idempotency-Key: room-oos-{{$timestamp}}
+
+{
+  "property_id": "{{propertyId}}",
+  "reason": "Deep cleaning scheduled",
+  "estimated_return_date": "2026-02-20",
+  "notes": "Quarterly deep clean"
+}
+
+###
+# Update room features
+POST {{baseUrl}}/v1/tenants/{{tenantId}}/rooms/{{room101Id}}/features
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+X-Request-ID: {{$guid}}
+X-Idempotency-Key: room-features-{{$timestamp}}
+
+{
+  "property_id": "{{propertyId}}",
+  "features": {
+    "view": "CITY",
+    "balcony": true,
+    "smoking": false,
+    "accessible": true,
+    "connecting_room": "102",
+    "crib_available": true,
+    "rollaway_available": true
+  },
+  "amenities": ["WIFI", "SMART_TV", "WORK_DESK", "RAIN_SHOWER", "COFFEE_MAKER", "SAFE"]
+}
+
+###############################################################################
 # REFERENCE
 ###############################################################################
 #
@@ -345,6 +480,15 @@ Authorization: Bearer {{authToken}}
 #     POST /v1/commands/rooms.room.return_to_service/execute
 #     POST /v1/commands/rooms.room.update_features/execute
 #     POST /v1/commands/rooms.room_type.update_inventory/execute
+#
+# REST-STYLE COMMAND DISPATCH (alternative pattern):
+#   POST /v1/tenants/:tenantId/rooms/:roomId/block
+#   POST /v1/tenants/:tenantId/rooms/:roomId/release
+#   POST /v1/tenants/:tenantId/rooms/:roomId/status
+#   POST /v1/tenants/:tenantId/rooms/:roomId/housekeeping-status
+#   POST /v1/tenants/:tenantId/rooms/:roomId/out-of-order
+#   POST /v1/tenants/:tenantId/rooms/:roomId/out-of-service
+#   POST /v1/tenants/:tenantId/rooms/:roomId/features
 #
 # SAMPLE IDs:
 #   Tenant:    11111111-1111-1111-1111-111111111111

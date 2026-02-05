@@ -58,6 +58,19 @@ releases:
     values:
       - values/{{ .Environment.Name }}/argo-cd.yaml
 
+  - name: argo-rollouts
+    namespace: argo-rollouts
+    chart: argo/argo-rollouts
+    version: 2.35.1
+    createNamespace: true
+    values:
+      - dashboard:
+          enabled: true
+      - controller:
+          replicas: 2
+          metrics:
+            enabled: true
+
   - name: istio-base
     namespace: istio-system
     chart: istio/base
