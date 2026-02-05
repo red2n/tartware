@@ -106,11 +106,40 @@ This documentation serves as:
 
 ---
 
-## Contributing
+## Maintenance Schedule
 
-See the main [Tartware repository](../tartware/) for contribution guidelines. This documentation is maintained alongside the codebase.
+This documentation requires periodic updates to stay current with industry changes:
+
+| Section | Review Frequency | Trigger Events |
+|---------|------------------|----------------|
+| **11-compliance** | Quarterly | GDPR/PCI version updates, new privacy laws (state/country) |
+| **08-distribution** | Semi-annually | OTA mergers, new channels, commission changes |
+| **09-integrations** | Semi-annually | New HTNG specs, protocol versions |
+| **05-guests/loyalty** | Annually | Brand mergers, tier restructures, point devaluations |
+| **06-rates** | Annually | New revenue management KPIs |
+| **12-technical** | Annually | Performance benchmark updates |
+| **01-overview/glossary** | As needed | New industry terminology |
+
+### What Triggers Updates
+
+- **Regulatory**: GDPR amendments, new PCI DSS versions, new regional privacy laws
+- **Industry consolidation**: Hotel brand mergers (affecting loyalty docs), OTA acquisitions
+- **Technology**: New integration protocols, mobile key standards, payment methods
+- **Market shifts**: Commission structure changes, new distribution channels
 
 ---
 
-**Version**: 1.0
-**Last Updated**: February 2026
+## Contributing
+
+See the main [Tartware repository](../) for contribution guidelines. This documentation is maintained alongside the codebase.
+
+When updating:
+1. Update the "Last Updated" date below
+2. Add changelog entry if significant
+3. Verify cross-links still work
+
+---
+
+**Version**: 1.0  
+**Last Updated**: February 2026  
+**Next Review**: Q2 2026 (Compliance section)
