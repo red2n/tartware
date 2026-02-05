@@ -240,6 +240,7 @@ Economy        → ADR < $60    (Motel 6, Super 8)
 | **Inspected** | INS | QC passed, ready for VIP | VC |
 | **On Change** | CHG | Checkout in progress | VD |
 | **Do Not Disturb** | DND | Guest declined service | OD |
+| **Sleep Out** | SO | Guest checked in but did not use room overnight | OD, VD |
 
 ### 5.2 Room Type Hierarchy
 

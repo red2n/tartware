@@ -18,23 +18,18 @@ A comprehensive reference for Property Management Systems (PMS) in the hospitali
 ### Revenue & Finance
 - [Rate Management](06-rates/README.md) - Rate codes, restrictions, dynamic pricing
 - [Revenue Management](06-rates/revenue-management.md) - KPIs, yield strategies
-- [Financial Operations](07-financial/README.md) - Folios, payments, night audit
-- [Accounts Receivable](07-financial/accounts-receivable.md) - AR, direct billing
+- [Financial Operations](07-financial/README.md) - Folios, payments, night audit, AR
 
 ### Distribution & Integration
-- [Channel Distribution](08-distribution/README.md) - OTAs, GDS, channel managers
-- [Integration Protocols](09-integrations/README.md) - API standards, webhooks
-- [OTA Connectivity](09-integrations/ota-connectivity.md) - Booking.com, Expedia, Airbnb
+- [Channel Distribution](08-distribution/README.md) - OTAs, GDS, channel managers, connectivity
+- [Integration Protocols](09-integrations/README.md) - API standards, webhooks, HTNG/OTA
 
 ### Compliance & Reporting
 - [Reporting Standards](10-reporting/README.md) - Operational and financial reports
-- [Security & Compliance](11-compliance/README.md) - GDPR, PCI DSS, accessibility
-- [Regional Requirements](11-compliance/regional.md) - Police reports, tax by region
+- [Security & Compliance](11-compliance/README.md) - GDPR, PCI DSS, regional requirements
 
 ### Technical Reference
-- [Performance Benchmarks](12-technical/benchmarks.md) - System targets, SLAs
-- [Database Patterns](12-technical/database-patterns.md) - Schema conventions
-- [Code Standards](12-technical/code-standards.md) - Naming, market segment codes
+- [Technical Architecture](12-technical/README.md) - Benchmarks, database patterns, code standards
 
 ---
 
@@ -64,22 +59,17 @@ hospitality-standards/
 │   └── revenue-management.md
 ├── 07-financial/                # Billing and payments
 │   ├── README.md
-│   ├── night-audit.md
-│   └── accounts-receivable.md
-├── 08-distribution/             # Channel management
+│   └── night-audit.md
+├── 08-distribution/             # Channel management & OTA connectivity
 │   └── README.md
 ├── 09-integrations/             # Technical integrations
-│   ├── README.md
-│   └── ota-connectivity.md
+│   └── README.md
 ├── 10-reporting/                # Analytics and reports
 │   └── README.md
-├── 11-compliance/               # Regulatory requirements
-│   ├── README.md
-│   └── regional.md
-└── 12-technical/                # Technical reference
-    ├── benchmarks.md
-    ├── database-patterns.md
-    └── code-standards.md
+├── 11-compliance/               # Regulatory requirements (incl. regional)
+│   └── README.md
+└── 12-technical/                # Benchmarks, database patterns, code standards
+    └── README.md
 ```
 
 ---
@@ -131,7 +121,7 @@ This documentation requires periodic updates to stay current with industry chang
 
 ## Contributing
 
-See the main [Tartware repository](../) for contribution guidelines. This documentation is maintained alongside the codebase.
+See the [main Tartware repository](../README.md) for contribution guidelines. This documentation is maintained alongside the codebase.
 
 When updating:
 1. Update the "Last Updated" date below
@@ -140,6 +130,6 @@ When updating:
 
 ---
 
-**Version**: 1.0  
-**Last Updated**: February 2026  
+**Version**: 1.0
+**Last Updated**: February 2026
 **Next Review**: Q2 2026 (Compliance section)

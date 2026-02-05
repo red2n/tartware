@@ -160,14 +160,14 @@ DELETE /properties/{propertyId}/reservations/{id}     # Cancel
     "email": "john.smith@example.com"
   },
   "stayDetails": {
-    "arrivalDate": "2024-03-15",
-    "departureDate": "2024-03-18",
+    "arrivalDate": "2026-03-15",
+    "departureDate": "2026-03-18",
     "roomType": "KNG",
     "rateCode": "BAR",
     "dailyRates": [
-      { "date": "2024-03-15", "amount": 199.00 },
-      { "date": "2024-03-16", "amount": 219.00 },
-      { "date": "2024-03-17", "amount": 219.00 }
+      { "date": "2026-03-15", "amount": 199.00 },
+      { "date": "2026-03-16", "amount": 219.00 },
+      { "date": "2026-03-17", "amount": 219.00 }
     ]
   },
   "guarantee": {

@@ -36,7 +36,7 @@
 | **Direct** | Hotel website, call center | 2-5% (payment processing) |
 | **Brand.com** | Chain central reservation | 5-10% (reservation fee) |
 | **GDS** | Amadeus, Sabre, Travelport | $10-20 + travel agent commission |
-| **OTA** | Booking.com, Expedia | 15-25% commission |
+| **OTA** | Booking.com, Expedia | 15-18% commission |
 | **Metasearch** | Google, TripAdvisor, Kayak | CPC or CPA |
 | **Wholesale** | Bedbanks (Hotelbeds) | Net rate (20-30% margin to reseller) |
 | **Opaque** | Hotwire, Priceline | Discounted, brand hidden |
