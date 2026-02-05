@@ -24,6 +24,13 @@ CREATE TABLE IF NOT EXISTS command_templates (
 );
 
 COMMENT ON TABLE command_templates IS 'Canonical catalog of Commands (schema, owner, default routing)';
+COMMENT ON COLUMN command_templates.command_name IS 'Unique dot-notation command identifier (e.g., reservation.create)';
+COMMENT ON COLUMN command_templates.version IS 'Semantic version of the command schema';
+COMMENT ON COLUMN command_templates.default_target_service IS 'Service that handles this command by default';
+COMMENT ON COLUMN command_templates.default_topic IS 'Kafka topic for command routing';
+COMMENT ON COLUMN command_templates.required_modules IS 'Modules that must be licensed to use this command';
+COMMENT ON COLUMN command_templates.payload_schema IS 'JSON Schema for command payload validation';
+COMMENT ON COLUMN command_templates.sample_payload IS 'Example payload for documentation/testing';
 
 CREATE TABLE IF NOT EXISTS command_routes (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -42,6 +49,14 @@ CREATE TABLE IF NOT EXISTS command_routes (
 CREATE INDEX IF NOT EXISTS idx_command_routes_lookup
     ON command_routes (command_name, environment, tenant_id);
 
+COMMENT ON TABLE command_routes IS 'Environment and tenant-specific command routing overrides. Allows routing same command to different services per environment/tenant.';
+COMMENT ON COLUMN command_routes.environment IS 'Target environment (development, staging, production)';
+COMMENT ON COLUMN command_routes.tenant_id IS 'NULL for default routes; set for tenant-specific overrides';
+COMMENT ON COLUMN command_routes.service_id IS 'Target service identifier for this route';
+COMMENT ON COLUMN command_routes.topic IS 'Kafka topic override for this route';
+COMMENT ON COLUMN command_routes.weight IS 'Routing weight for load balancing (1-100)';
+COMMENT ON COLUMN command_routes.status IS 'Route status: active, disabled, shadow';
+
 CREATE TABLE IF NOT EXISTS command_features (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     command_name VARCHAR(150) NOT NULL REFERENCES command_templates (command_name) ON DELETE CASCADE,
@@ -57,6 +72,11 @@ CREATE TABLE IF NOT EXISTS command_features (
 
 CREATE INDEX IF NOT EXISTS idx_command_features_lookup
     ON command_features (command_name, environment, tenant_id);
+
+COMMENT ON TABLE command_features IS 'Feature flags and rate limiting configuration per command/environment/tenant. Controls command availability and throttling.';
+COMMENT ON COLUMN command_features.status IS 'Feature status: enabled, disabled, beta, deprecated';
+COMMENT ON COLUMN command_features.max_per_minute IS 'Rate limit: max commands per minute (NULL = unlimited)';
+COMMENT ON COLUMN command_features.burst IS 'Burst allowance above rate limit for short spikes';
 
 CREATE TABLE IF NOT EXISTS command_dispatches (
     id UUID PRIMARY KEY,
@@ -85,6 +105,16 @@ CREATE INDEX IF NOT EXISTS idx_command_dispatches_status
 
 CREATE UNIQUE INDEX IF NOT EXISTS idx_command_dispatches_request_dedupe
     ON command_dispatches (tenant_id, command_name, request_id);
+
+COMMENT ON TABLE command_dispatches IS 'Audit log of all dispatched commands. Tracks command lifecycle from acceptance through execution. Used for idempotency, debugging, and compliance.';
+COMMENT ON COLUMN command_dispatches.id IS 'Command dispatch ID (client-provided for idempotency)';
+COMMENT ON COLUMN command_dispatches.correlation_id IS 'Correlation ID for distributed tracing across services';
+COMMENT ON COLUMN command_dispatches.request_id IS 'Client request ID for deduplication within tenant/command';
+COMMENT ON COLUMN command_dispatches.status IS 'Dispatch status: ACCEPTED, DISPATCHED, DELIVERED, PROCESSED, FAILED, REJECTED';
+COMMENT ON COLUMN command_dispatches.payload_hash IS 'SHA-256 hash of payload for integrity verification';
+COMMENT ON COLUMN command_dispatches.outbox_event_id IS 'Reference to transactional outbox event for Kafka delivery';
+COMMENT ON COLUMN command_dispatches.routing_metadata IS 'Routing decision context (resolved route, topic, partition)';
+COMMENT ON COLUMN command_dispatches.initiated_by IS 'Actor who initiated the command (user_id, service, system)';
 
 WITH seed_commands(command_name, description, default_target_service, required_modules) AS (
     VALUES
