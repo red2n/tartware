@@ -18,6 +18,7 @@ import { registerBookingConfigRoutes } from "./routes/booking-config.js";
 import { registerDashboardRoutes } from "./routes/dashboard.js";
 import { registerHealthRoutes } from "./routes/health.js";
 import { registerModuleRoutes } from "./routes/modules.js";
+import { registerNightAuditRoutes, registerOtaRoutes } from "./routes/night-audit.js";
 import { registerPropertyRoutes } from "./routes/properties.js";
 import { registerReportRoutes } from "./routes/reports.js";
 import { registerReservationRoutes } from "./routes/reservations.js";
@@ -73,6 +74,8 @@ export const buildServer = (): FastifyInstance => {
       registerReportRoutes(app);
       registerModuleRoutes(app);
       registerBookingConfigRoutes(app);
+      registerNightAuditRoutes(app);
+      registerOtaRoutes(app);
       registerSystemAuthRoutes(app);
       registerSystemTenantRoutes(app);
       registerSystemUserRoutes(app);

@@ -1452,6 +1452,118 @@ export const buildServer = () => {
 			proxyCore,
 		);
 
+		// Group Bookings - room blocks for corporate/group reservations
+		app.get(
+			"/v1/group-bookings",
+			{
+				schema: buildRouteSchema({
+					tag: BOOKING_CONFIG_TAG,
+					summary: "List group bookings (corporate blocks, tours, events).",
+					response: { 200: jsonObjectSchema },
+				}),
+			},
+			proxyCore,
+		);
+
+		app.all(
+			"/v1/group-bookings/*",
+			{
+				schema: buildRouteSchema({
+					tag: BOOKING_CONFIG_TAG,
+					summary: "Proxy group booking operations to core service.",
+					response: { 200: jsonObjectSchema },
+				}),
+			},
+			proxyCore,
+		);
+
+		// Promotional Codes - discounts and marketing campaigns
+		app.get(
+			"/v1/promo-codes",
+			{
+				schema: buildRouteSchema({
+					tag: BOOKING_CONFIG_TAG,
+					summary: "List promotional codes and discount campaigns.",
+					response: { 200: jsonObjectSchema },
+				}),
+			},
+			proxyCore,
+		);
+
+		app.all(
+			"/v1/promo-codes/*",
+			{
+				schema: buildRouteSchema({
+					tag: BOOKING_CONFIG_TAG,
+					summary: "Proxy promotional code operations to core service.",
+					response: { 200: jsonObjectSchema },
+				}),
+			},
+			proxyCore,
+		);
+
+		// Night Audit - EOD processing and business date management
+		app.get(
+			"/v1/night-audit/status",
+			{
+				schema: buildRouteSchema({
+					tag: BOOKING_CONFIG_TAG,
+					summary: "Get current business date status for a property.",
+					response: { 200: jsonObjectSchema },
+				}),
+			},
+			proxyCore,
+		);
+
+		app.get(
+			"/v1/night-audit/history",
+			{
+				schema: buildRouteSchema({
+					tag: BOOKING_CONFIG_TAG,
+					summary: "List night audit run history.",
+					response: { 200: jsonObjectSchema },
+				}),
+			},
+			proxyCore,
+		);
+
+		app.all(
+			"/v1/night-audit/*",
+			{
+				schema: buildRouteSchema({
+					tag: BOOKING_CONFIG_TAG,
+					summary: "Proxy night audit operations to core service.",
+					response: { 200: jsonObjectSchema },
+				}),
+			},
+			proxyCore,
+		);
+
+		// OTA/Channel Connections - third-party booking integrations
+		app.get(
+			"/v1/ota-connections",
+			{
+				schema: buildRouteSchema({
+					tag: BOOKING_CONFIG_TAG,
+					summary: "List OTA and channel manager connections.",
+					response: { 200: jsonObjectSchema },
+				}),
+			},
+			proxyCore,
+		);
+
+		app.all(
+			"/v1/ota-connections/*",
+			{
+				schema: buildRouteSchema({
+					tag: BOOKING_CONFIG_TAG,
+					summary: "Proxy OTA connection operations to core service.",
+					response: { 200: jsonObjectSchema },
+				}),
+			},
+			proxyCore,
+		);
+
 		app.post(
 			"/v1/tenants/:tenantId/rooms/:roomId/block",
 			{

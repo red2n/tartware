@@ -1,0 +1,243 @@
+###############################################################################
+# NIGHT AUDIT & OPERATIONS API TEST FILE
+# Core Service (Port 3000)
+# Gateway: http://localhost:8080 (preferred)
+###############################################################################
+#
+# This file contains test requests for operations endpoints:
+# - Night Audit / Business Date Status
+# - Night Audit History
+# - OTA Connections
+# - Group Bookings
+# - Promotional Codes
+#
+###############################################################################
+
+@baseUrl = http://localhost:8080
+@contentType = application/json
+
+# Sample IDs for testing (replace with real values from your database)
+@tenantId = 11111111-1111-1111-1111-111111111111
+@propertyId = 22222222-2222-2222-2222-222222222222
+@auditRunId = 33333333-3333-3333-3333-333333333333
+@connectionId = 44444444-4444-4444-4444-444444444444
+@groupBookingId = 55555555-5555-5555-5555-555555555555
+@promoId = 66666666-6666-6666-6666-666666666666
+
+###############################################################################
+# NIGHT AUDIT - BUSINESS DATE STATUS
+###############################################################################
+
+### Get current business date status for property
+GET {{baseUrl}}/v1/night-audit/status
+    ?tenant_id={{tenantId}}
+    &property_id={{propertyId}}
+Content-Type: {{contentType}}
+
+###############################################################################
+# NIGHT AUDIT - HISTORY
+###############################################################################
+
+### List night audit history
+GET {{baseUrl}}/v1/night-audit/history
+    ?tenant_id={{tenantId}}
+    &limit=20
+Content-Type: {{contentType}}
+
+### List night audit history for specific property
+GET {{baseUrl}}/v1/night-audit/history
+    ?tenant_id={{tenantId}}
+    &property_id={{propertyId}}
+    &limit=50
+Content-Type: {{contentType}}
+
+### Get night audit run detail
+GET {{baseUrl}}/v1/night-audit/runs/{{auditRunId}}
+    ?tenant_id={{tenantId}}
+Content-Type: {{contentType}}
+
+###############################################################################
+# OTA CONNECTIONS
+###############################################################################
+
+### List all OTA/channel connections
+GET {{baseUrl}}/v1/ota-connections
+    ?tenant_id={{tenantId}}
+    &limit=100
+Content-Type: {{contentType}}
+
+### List OTA connections for specific property
+GET {{baseUrl}}/v1/ota-connections
+    ?tenant_id={{tenantId}}
+    &property_id={{propertyId}}
+    &limit=50
+Content-Type: {{contentType}}
+
+### List active OTA connections only
+GET {{baseUrl}}/v1/ota-connections
+    ?tenant_id={{tenantId}}
+    &is_active=true
+    &limit=50
+Content-Type: {{contentType}}
+
+### List OTA connections by status (CONNECTED)
+GET {{baseUrl}}/v1/ota-connections
+    ?tenant_id={{tenantId}}
+    &connection_status=CONNECTED
+    &limit=50
+Content-Type: {{contentType}}
+
+### List OTA connections by status (ERROR)
+GET {{baseUrl}}/v1/ota-connections
+    ?tenant_id={{tenantId}}
+    &connection_status=ERROR
+    &limit=50
+Content-Type: {{contentType}}
+
+### Get OTA connection sync history
+GET {{baseUrl}}/v1/ota-connections/{{connectionId}}/sync-history
+    ?tenant_id={{tenantId}}
+    &limit=50
+Content-Type: {{contentType}}
+
+###############################################################################
+# GROUP BOOKINGS
+###############################################################################
+
+### List all group bookings
+GET {{baseUrl}}/v1/group-bookings
+    ?tenant_id={{tenantId}}
+    &limit=100
+Content-Type: {{contentType}}
+
+### List group bookings for specific property
+GET {{baseUrl}}/v1/group-bookings
+    ?tenant_id={{tenantId}}
+    &property_id={{propertyId}}
+    &limit=50
+Content-Type: {{contentType}}
+
+### List active group bookings
+GET {{baseUrl}}/v1/group-bookings
+    ?tenant_id={{tenantId}}
+    &is_active=true
+    &limit=50
+Content-Type: {{contentType}}
+
+### List group bookings by block status (TENTATIVE)
+GET {{baseUrl}}/v1/group-bookings
+    ?tenant_id={{tenantId}}
+    &block_status=TENTATIVE
+    &limit=50
+Content-Type: {{contentType}}
+
+### List group bookings by block status (CONFIRMED)
+GET {{baseUrl}}/v1/group-bookings
+    ?tenant_id={{tenantId}}
+    &block_status=CONFIRMED
+    &limit=50
+Content-Type: {{contentType}}
+
+### List group bookings by type (CORPORATE)
+GET {{baseUrl}}/v1/group-bookings
+    ?tenant_id={{tenantId}}
+    &group_type=CORPORATE
+    &limit=50
+Content-Type: {{contentType}}
+
+### List group bookings by type (TOUR)
+GET {{baseUrl}}/v1/group-bookings
+    ?tenant_id={{tenantId}}
+    &group_type=TOUR
+    &limit=50
+Content-Type: {{contentType}}
+
+### List group bookings by type (WEDDING)
+GET {{baseUrl}}/v1/group-bookings
+    ?tenant_id={{tenantId}}
+    &group_type=WEDDING
+    &limit=50
+Content-Type: {{contentType}}
+
+### List group bookings by arrival date range
+GET {{baseUrl}}/v1/group-bookings
+    ?tenant_id={{tenantId}}
+    &arrival_date_from=2025-01-01
+    &arrival_date_to=2025-12-31
+    &limit=50
+Content-Type: {{contentType}}
+
+### Get group booking by ID
+GET {{baseUrl}}/v1/group-bookings/{{groupBookingId}}
+    ?tenant_id={{tenantId}}
+Content-Type: {{contentType}}
+
+###############################################################################
+# PROMOTIONAL CODES
+###############################################################################
+
+### List all promotional codes
+GET {{baseUrl}}/v1/promo-codes
+    ?tenant_id={{tenantId}}
+    &limit=100
+Content-Type: {{contentType}}
+
+### List promotional codes for specific property
+GET {{baseUrl}}/v1/promo-codes
+    ?tenant_id={{tenantId}}
+    &property_id={{propertyId}}
+    &limit=50
+Content-Type: {{contentType}}
+
+### List active promotional codes
+GET {{baseUrl}}/v1/promo-codes
+    ?tenant_id={{tenantId}}
+    &is_active=true
+    &limit=50
+Content-Type: {{contentType}}
+
+### List public promotional codes (visible on website)
+GET {{baseUrl}}/v1/promo-codes
+    ?tenant_id={{tenantId}}
+    &is_public=true
+    &limit=50
+Content-Type: {{contentType}}
+
+### List promotional codes by status (ACTIVE)
+GET {{baseUrl}}/v1/promo-codes
+    ?tenant_id={{tenantId}}
+    &promo_status=ACTIVE
+    &limit=50
+Content-Type: {{contentType}}
+
+### List promotional codes by status (EXPIRED)
+GET {{baseUrl}}/v1/promo-codes
+    ?tenant_id={{tenantId}}
+    &promo_status=EXPIRED
+    &limit=50
+Content-Type: {{contentType}}
+
+### Search promotional codes
+GET {{baseUrl}}/v1/promo-codes
+    ?tenant_id={{tenantId}}
+    &search=SUMMER
+    &limit=50
+Content-Type: {{contentType}}
+
+### Get promotional code by ID
+GET {{baseUrl}}/v1/promo-codes/{{promoId}}
+    ?tenant_id={{tenantId}}
+Content-Type: {{contentType}}
+
+### Validate promotional code
+POST {{baseUrl}}/v1/promo-codes/validate
+Content-Type: {{contentType}}
+
+{
+    "promo_code": "SUMMER2025",
+    "tenant_id": "{{tenantId}}",
+    "property_id": "{{propertyId}}",
+    "arrival_date": "2025-07-01",
+    "departure_date": "2025-07-05",
+    "booking_amount": 500.00
+}
