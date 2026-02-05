@@ -1,0 +1,164 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: api-gateway-config
+  namespace: tartware-system
+data:
+  NODE_ENV: "production"
+  PORT: "3000"
+  LOG_LEVEL: "info"
+  # Database config - pointing to docker containers on kind network
+  DATABASE_HOST: "172.21.0.6"
+  DATABASE_PORT: "5432"
+  DATABASE_NAME: "tartware"
+  DATABASE_USER: "postgres"
+  # Redis config
+  REDIS_HOST: "172.21.0.7"
+  REDIS_PORT: "6379"
+  # Kafka config
+  KAFKA_BROKERS: "172.21.0.8:9092"
+  # JWT settings
+  JWT_SECRET: "development-secret-key"
+  JWT_EXPIRES_IN: "24h"
+  # Service URLs - internal K8s services
+  CORE_SERVICE_URL: "http://core-service:3000"
+  BILLING_SERVICE_URL: "http://billing-service:3100"
+  GUESTS_SERVICE_URL: "http://guests-service:3300"
+  HOUSEKEEPING_SERVICE_URL: "http://housekeeping-service:3200"
+  RESERVATIONS_SERVICE_URL: "http://reservations-command-service:3101"
+  ROOMS_SERVICE_URL: "http://rooms-service:3400"
+  SETTINGS_SERVICE_URL: "http://settings-service:3500"
+
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: api-gateway-secrets
+  namespace: tartware-system
+type: Opaque
+stringData:
+  DATABASE_PASSWORD: "postgres"
+  REDIS_PASSWORD: "redis_password"
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: api-gateway
+  namespace: tartware-system
+  labels:
+    app: api-gateway
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: api-gateway
+  template:
+    metadata:
+      labels:
+        app: api-gateway
+    spec:
+      priorityClassName: tartware-critical
+      containers:
+        - name: api-gateway
+          image: tartware/api-gateway:latest
+          imagePullPolicy: Never
+          ports:
+            - containerPort: 3000
+              name: http
+          envFrom:
+            - configMapRef:
+                name: api-gateway-config
+            - secretRef:
+                name: api-gateway-secrets
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 15
+            periodSeconds: 20
+            timeoutSeconds: 3
+            failureThreshold: 3
+          resources:
+            requests:
+              cpu: 500m
+              memory: 512Mi
+            limits:
+              cpu: "1"
+              memory: 1Gi
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: api-gateway
+  namespace: tartware-system
+  labels:
+    app: api-gateway
+spec:
+  type: ClusterIP
+  selector:
+    app: api-gateway
+  ports:
+    - port: 8080
+      targetPort: 3000
+      protocol: TCP
+      name: http
+
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: api-gateway-ingress
+  namespace: tartware-system
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: api.tartware.localhost
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: api-gateway
+                port:
+                  number: 8080
+
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: api-gateway-hpa
+  namespace: tartware-system
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: api-gateway
+  minReplicas: 2
+  maxReplicas: 10
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: 80

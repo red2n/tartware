@@ -1,353 +1,318 @@
 /**
- * Load Test - Sustained normal traffic simulation
- *
- * Purpose: Test system behavior under expected production load
- * Duration: ~10 minutes
- * VUs: 50-100 (configurable)
+ * Baseline load test (v2)
  */
 
 import http from "k6/http";
-import { check, sleep, group } from "k6";
+import { check, sleep } from "k6";
 import { Trend, Counter, Rate } from "k6/metrics";
 import {
 	GATEWAY_URL,
-	TENANT_ID,
-	PROPERTY_ID,
-	ROOM_TYPE_ID,
+	ADMIN_USERNAME,
+	ADMIN_PASSWORD,
+	TENANT_IDS,
+	PROPERTY_IDS,
+	ROOM_TYPE_IDS,
+	RATE_CODE,
 	VUS,
 	DURATION,
 	RAMP_UP,
+	WORKLOAD_RATIOS,
+	DEFAULT_THRESHOLDS,
 	getHeaders,
 	ENDPOINTS,
-	DEFAULT_THRESHOLDS,
 } from "../lib/config.js";
 import {
-	generateGuest,
-	generateReservation,
-	generatePayment,
-	futureDate,
+	uuid,
+	randomInt,
 	pickRandom,
+	futureDate,
+	randomEmail,
+	randomPhone,
 	sleepWithJitter,
 	isSuccess,
+	parseList,
 } from "../lib/utils.js";
+import { getToken } from "../lib/auth.js";
 
-// Custom metrics
-const readLatency = new Trend("read_operations_latency");
-const writeLatency = new Trend("write_operations_latency");
-const readErrors = new Counter("read_operations_errors");
-const writeErrors = new Counter("write_operations_errors");
-const successRate = new Rate("operations_success_rate");
+const readLatency = new Trend("baseline_read_latency");
+const writeLatency = new Trend("baseline_write_latency");
+const errorCount = new Counter("baseline_errors");
+const successRate = new Rate("baseline_success_rate");
 
 export const options = {
 	stages: [
-		{ duration: RAMP_UP, target: Math.floor(VUS / 2) }, // ramp up
-		{ duration: "1m", target: VUS }, // ramp to full
-		{ duration: DURATION, target: VUS }, // sustained load
-		{ duration: "1m", target: Math.floor(VUS / 2) }, // scale down
-		{ duration: "30s", target: 0 }, // cool down
+		{ duration: RAMP_UP, target: Math.max(1, Math.floor(VUS / 2)) },
+		{ duration: DURATION, target: VUS },
+		{ duration: "30s", target: 0 },
 	],
 	thresholds: {
 		...DEFAULT_THRESHOLDS,
-		read_operations_latency: ["p(95)<300", "p(99)<500"],
-		write_operations_latency: ["p(95)<800", "p(99)<1500"],
-		operations_success_rate: ["rate>0.95"],
+		baseline_success_rate: ["rate>0.95"],
+		baseline_read_latency: ["p(95)<350"],
+		baseline_write_latency: ["p(95)<900"],
 	},
 };
 
-const headers = getHeaders();
-
 export default function () {
-	// Distribute load across different operation types
-	// 70% reads, 30% writes (typical PMS workload)
-	const selector = Math.random();
+	const token = getToken(ADMIN_USERNAME, ADMIN_PASSWORD);
+	if (!token) return;
+	const headers = getHeaders(token);
 
-	if (selector < 0.18) {
-		readRooms();
-	} else if (selector < 0.33) {
-		readGuests();
-	} else if (selector < 0.48) {
-		readReservations();
-	} else if (selector < 0.58) {
-		readBilling();
-	} else if (selector < 0.68) {
-		readBookingConfig();
-	} else if (selector < 0.78) {
-		readRecommendations();
-	} else if (selector < 0.88) {
-		createGuest();
-	} else if (selector < 0.95) {
-		createReservation();
+	const tenantId = pickRandom(TENANT_IDS);
+	const propertyId = pickRandom(PROPERTY_IDS);
+	const roomTypeId = pickRandom(ROOM_TYPE_IDS);
+
+	const choice = Math.random();
+	let cursor = 0;
+
+	if (choice < (cursor += WORKLOAD_RATIOS.availability)) {
+		doAvailability(headers, tenantId, propertyId);
+	} else if (choice < (cursor += WORKLOAD_RATIOS.reservationCreate)) {
+		doReservationCreate(headers, tenantId, propertyId, roomTypeId);
+	} else if (choice < (cursor += WORKLOAD_RATIOS.reservationModify)) {
+		doReservationModify(headers, tenantId, propertyId);
+	} else if (choice < (cursor += WORKLOAD_RATIOS.reservationCancel)) {
+		doReservationCancel(headers, tenantId);
+	} else if (choice < (cursor += WORKLOAD_RATIOS.otaSync)) {
+		doOtaSync(headers, tenantId, propertyId);
+	} else if (choice < (cursor += WORKLOAD_RATIOS.checkIn)) {
+		doCheckIn(headers, tenantId);
+	} else if (choice < (cursor += WORKLOAD_RATIOS.checkOut)) {
+		doCheckOut(headers, tenantId);
+	} else if (choice < (cursor += WORKLOAD_RATIOS.payment)) {
+		doPayment(headers, tenantId, propertyId);
 	} else {
-		createPayment();
+		doReporting(headers, tenantId, propertyId);
 	}
 
-	sleep(sleepWithJitter(0.5));
+	sleep(sleepWithJitter(0.4));
 }
 
-// Read Operations
-
-function readRooms() {
-	group("Read Rooms", () => {
-		const response = http.get(
-			`${GATEWAY_URL}${ENDPOINTS.rooms}?tenant_id=${TENANT_ID}&limit=20`,
-			{ headers, tags: { operation: "read", service: "rooms" } },
-		);
-
-		const success = check(response, {
-			"rooms list ok": (r) => isSuccess(r),
-			"rooms is array": (r) => {
-				try {
-					return Array.isArray(r.json());
-				} catch {
-					return false;
-				}
-			},
-		});
-
-		readLatency.add(response.timings.duration);
-		successRate.add(success);
-		if (!success) readErrors.add(1);
-	});
+function doAvailability(headers, tenantId, propertyId) {
+	// Query rooms endpoint for available rooms (since /v1/availability doesn't exist)
+	const response = http.get(
+		`${GATEWAY_URL}${ENDPOINTS.rooms}?tenant_id=${tenantId}&property_id=${propertyId}&status=available`,
+		{ headers, tags: { operation: "availability" } },
+	);
+	track(response, readLatency);
 }
 
-function readGuests() {
-	group("Read Guests", () => {
-		const response = http.get(
-			`${GATEWAY_URL}${ENDPOINTS.guests}?tenant_id=${TENANT_ID}&limit=20`,
-			{ headers, tags: { operation: "read", service: "guests" } },
-		);
+function doReservationCreate(headers, tenantId, propertyId, roomTypeId) {
+	const guestId = ensureGuest(headers, tenantId);
+	if (!guestId) return;
 
-		const success = check(response, {
-			"guests list ok": (r) => isSuccess(r),
-		});
-
-		readLatency.add(response.timings.duration);
-		successRate.add(success);
-		if (!success) readErrors.add(1);
-	});
-}
-
-function readReservations() {
-	group("Read Reservations", () => {
-		const response = http.get(
-			`${GATEWAY_URL}${ENDPOINTS.reservations}?tenant_id=${TENANT_ID}&limit=20`,
-			{ headers, tags: { operation: "read", service: "reservations" } },
-		);
-
-		const success = check(response, {
-			"reservations list ok": (r) => isSuccess(r),
-		});
-
-		readLatency.add(response.timings.duration);
-		successRate.add(success);
-		if (!success) readErrors.add(1);
-	});
-}
-
-function readBilling() {
-	group("Read Billing", () => {
-		// Payments
-		const paymentsRes = http.get(
-			`${GATEWAY_URL}${ENDPOINTS.payments}?tenant_id=${TENANT_ID}&limit=20`,
-			{ headers, tags: { operation: "read", service: "billing" } },
-		);
-
-		const success = check(paymentsRes, {
-			"payments list ok": (r) => isSuccess(r),
-		});
-
-		readLatency.add(paymentsRes.timings.duration);
-		successRate.add(success);
-		if (!success) readErrors.add(1);
-	});
-}
-
-function readBookingConfig() {
-	group("Read Booking Config", () => {
-		const endpoints = [
-			ENDPOINTS.bookingSources,
-			ENDPOINTS.marketSegments,
-			ENDPOINTS.allotments,
-		];
-		const endpoint = endpoints[Math.floor(Math.random() * endpoints.length)];
-
-		const response = http.get(
-			`${GATEWAY_URL}${endpoint}?tenant_id=${TENANT_ID}`,
-			{ headers, tags: { operation: "read", service: "booking-config" } },
-		);
-
-		const success = check(response, {
-			"booking config ok": (r) => isSuccess(r),
-		});
-
-		readLatency.add(response.timings.duration);
-		successRate.add(success);
-		if (!success) readErrors.add(1);
-	});
-}
-
-function readRecommendations() {
-	group("Read Recommendations", () => {
-		const checkInDate = futureDate(7);
-		const checkOutDate = futureDate(9);
-		const response = http.get(
-			`${GATEWAY_URL}${ENDPOINTS.recommendations}?propertyId=${PROPERTY_ID}&checkInDate=${checkInDate}&checkOutDate=${checkOutDate}&adults=2&children=0&limit=5`,
-			{ headers, tags: { operation: "read", service: "recommendations" } },
-		);
-
-		const success = check(response, {
-			"recommendations ok": (r) => isSuccess(r),
-		});
-
-		readLatency.add(response.timings.duration);
-		successRate.add(success);
-		if (!success) readErrors.add(1);
-
-		let roomId = null;
-		try {
-			const body = response.json();
-			const rooms = Array.isArray(body)
-				? body
-				: body.data || body.rooms || [];
-			const room = pickRandom(rooms);
-			roomId = room?.roomId || room?.room_id || room?.id;
-		} catch {
-			// ignore parsing errors for load test
-		}
-
-		if (!roomId) {
-			const roomsRes = http.get(
-				`${GATEWAY_URL}${ENDPOINTS.rooms}?tenant_id=${TENANT_ID}&limit=5`,
-				{ headers, tags: { operation: "read", service: "rooms" } },
-			);
-			if (isSuccess(roomsRes)) {
-				try {
-					const body = roomsRes.json();
-					const rooms = Array.isArray(body) ? body : body.data || [];
-					const room = pickRandom(rooms);
-					roomId = room?.room_id || room?.id;
-				} catch {
-					// ignore
-				}
-			}
-		}
-
-		if (roomId) {
-			const rankRes = http.post(
-				`${GATEWAY_URL}${ENDPOINTS.recommendationsRank}`,
-				JSON.stringify({
-					propertyId: PROPERTY_ID,
-					checkInDate,
-					checkOutDate,
-					adults: 2,
-					children: 0,
-					roomIds: [roomId],
-				}),
-				{ headers, tags: { operation: "read", service: "recommendations" } },
-			);
-
-			const rankSuccess = check(rankRes, {
-				"recommendations rank ok": (r) => isSuccess(r),
-			});
-
-			readLatency.add(rankRes.timings.duration);
-			successRate.add(rankSuccess);
-			if (!rankSuccess) readErrors.add(1);
-		}
-	});
-}
-
-// Write Operations
-
-function createGuest() {
-	group("Create Guest", () => {
-		const guestData = generateGuest(TENANT_ID);
-
-		const response = http.post(
-			`${GATEWAY_URL}${ENDPOINTS.guests}`,
-			JSON.stringify(guestData),
-			{ headers, tags: { operation: "write", service: "guests" } },
-		);
-
-		const success = check(response, {
-			"guest created": (r) => r.status === 201 || r.status === 200,
-		});
-
-		writeLatency.add(response.timings.duration);
-		successRate.add(success);
-		if (!success) writeErrors.add(1);
-	});
-}
-
-function createReservation() {
-	group("Create Reservation", () => {
-		const reservationData = generateReservation(
-			TENANT_ID,
-			PROPERTY_ID,
-			ROOM_TYPE_ID,
-		);
-
-		const response = http.post(
-			`${GATEWAY_URL}${ENDPOINTS.reservations}`,
-			JSON.stringify(reservationData),
-			{ headers, tags: { operation: "write", service: "reservations" } },
-		);
-
-		const success = check(response, {
-			"reservation created": (r) =>
-				r.status === 201 || r.status === 200 || r.status === 202,
-		});
-
-		writeLatency.add(response.timings.duration);
-		successRate.add(success);
-		if (!success) writeErrors.add(1);
-	});
-}
-
-function createPayment() {
-	group("Create Payment", () => {
-		const paymentData = generatePayment(TENANT_ID, PROPERTY_ID);
-
-		const response = http.post(
-			`${GATEWAY_URL}${ENDPOINTS.payments}`,
-			JSON.stringify(paymentData),
-			{ headers, tags: { operation: "write", service: "billing" } },
-		);
-
-		const success = check(response, {
-			"payment created": (r) =>
-				r.status === 201 || r.status === 200 || r.status === 202,
-		});
-
-		writeLatency.add(response.timings.duration);
-		successRate.add(success);
-		if (!success) writeErrors.add(1);
-	});
-}
-
-export function handleSummary(data) {
-	const readP95 =
-		data.metrics.read_operations_latency?.values["p(95)"]?.toFixed(0) || "N/A";
-	const writeP95 =
-		data.metrics.write_operations_latency?.values["p(95)"]?.toFixed(0) || "N/A";
-	const successPct =
-		((data.metrics.operations_success_rate?.values.rate || 0) * 100).toFixed(
-			1,
-		) || "N/A";
-
-	return {
-		stdout: `
-╔════════════════════════════════════════════════════════════╗
-║                    LOAD TEST SUMMARY                        ║
-╠════════════════════════════════════════════════════════════╣
-║  Duration: ${DURATION}
-║  Peak VUs: ${VUS}
-║  Success Rate: ${successPct}%
-║  Read p95: ${readP95}ms
-║  Write p95: ${writeP95}ms
-║  Total Requests: ${data.metrics.http_reqs?.values.count || 0}
-║  Error Rate: ${((data.metrics.http_req_failed?.values.rate || 0) * 100).toFixed(2)}%
-╚════════════════════════════════════════════════════════════╝
-`,
+	const payload = {
+		property_id: propertyId,
+		guest_id: guestId,
+		room_type_id: roomTypeId,
+		check_in_date: futureDate(10),
+		check_out_date: futureDate(12),
+		rate_code: RATE_CODE,
+		total_amount: randomInt(150, 900),
+		currency: "USD",
+		source: "DIRECT",
+		notes: `loadtest ${uuid().slice(0, 8)}`,
 	};
+
+	const response = http.post(
+		`${GATEWAY_URL}${ENDPOINTS.commands}/reservation.create/execute`,
+		JSON.stringify({ tenant_id: tenantId, payload }),
+		{
+			headers: { ...headers, "X-Request-ID": uuid(), "X-Idempotency-Key": `res-create-${uuid()}` },
+			tags: { operation: "reservation.create" },
+		},
+	);
+	track(response, writeLatency, response.status === 202);
+}
+
+function doReservationModify(headers, tenantId, propertyId) {
+	const reservationId = pickReservationId(headers, tenantId);
+	if (!reservationId) return;
+
+	const payload = {
+		reservation_id: reservationId,
+		property_id: propertyId,
+		check_out_date: futureDate(13),
+	};
+
+	const response = http.post(
+		`${GATEWAY_URL}${ENDPOINTS.commands}/reservation.modify/execute`,
+		JSON.stringify({ tenant_id: tenantId, payload }),
+		{
+			headers: { ...headers, "X-Request-ID": uuid(), "X-Idempotency-Key": `res-mod-${uuid()}` },
+			tags: { operation: "reservation.modify" },
+		},
+	);
+	track(response, writeLatency, response.status === 202);
+}
+
+function doReservationCancel(headers, tenantId) {
+	const reservationId = pickReservationId(headers, tenantId);
+	if (!reservationId) return;
+
+	const payload = {
+		reservation_id: reservationId,
+		reason: "loadtest cancel",
+	};
+
+	const response = http.post(
+		`${GATEWAY_URL}${ENDPOINTS.commands}/reservation.cancel/execute`,
+		JSON.stringify({ tenant_id: tenantId, payload }),
+		{
+			headers: { ...headers, "X-Request-ID": uuid(), "X-Idempotency-Key": `res-cancel-${uuid()}` },
+			tags: { operation: "reservation.cancel" },
+		},
+	);
+	track(response, writeLatency, response.status === 202);
+}
+
+function doCheckIn(headers, tenantId) {
+	const reservationId = pickReservationId(headers, tenantId);
+	if (!reservationId) return;
+
+	const payload = { reservation_id: reservationId, notes: "loadtest check-in" };
+	const response = http.post(
+		`${GATEWAY_URL}${ENDPOINTS.commands}/reservation.check_in/execute`,
+		JSON.stringify({ tenant_id: tenantId, payload }),
+		{
+			headers: { ...headers, "X-Request-ID": uuid(), "X-Idempotency-Key": `checkin-${uuid()}` },
+			tags: { operation: "reservation.check_in" },
+		},
+	);
+	track(response, writeLatency, response.status === 202);
+}
+
+function doCheckOut(headers, tenantId) {
+	const reservationId = pickReservationId(headers, tenantId);
+	if (!reservationId) return;
+
+	const payload = { reservation_id: reservationId, notes: "loadtest check-out" };
+	const response = http.post(
+		`${GATEWAY_URL}${ENDPOINTS.commands}/reservation.check_out/execute`,
+		JSON.stringify({ tenant_id: tenantId, payload }),
+		{
+			headers: { ...headers, "X-Request-ID": uuid(), "X-Idempotency-Key": `checkout-${uuid()}` },
+			tags: { operation: "reservation.check_out" },
+		},
+	);
+	track(response, writeLatency, response.status === 202);
+}
+
+function doPayment(headers, tenantId, propertyId) {
+	const reservationId = pickReservationId(headers, tenantId);
+	if (!reservationId) return;
+
+	const payload = {
+		property_id: propertyId,
+		reservation_id: reservationId,
+		amount: randomInt(20, 200),
+		currency: "USD",
+		description: "loadtest charge",
+	};
+
+	const response = http.post(
+		`${GATEWAY_URL}${ENDPOINTS.commands}/billing.charge.post/execute`,
+		JSON.stringify({ tenant_id: tenantId, payload }),
+		{
+			headers: { ...headers, "X-Request-ID": uuid(), "X-Idempotency-Key": `charge-${uuid()}` },
+			tags: { operation: "billing.charge.post" },
+		},
+	);
+	track(response, writeLatency, response.status === 202);
+}
+
+function doOtaSync(headers, tenantId, propertyId) {
+	const payload = {
+		property_id: propertyId,
+		ota_code: "BOOKING_COM",
+		sync_scope: "availability",
+	};
+
+	const response = http.post(
+		`${GATEWAY_URL}${ENDPOINTS.commands}/integration.ota.sync_request/execute`,
+		JSON.stringify({ tenant_id: tenantId, payload }),
+		{
+			headers: { ...headers, "X-Request-ID": uuid(), "X-Idempotency-Key": `ota-sync-${uuid()}` },
+			tags: { operation: "integration.ota.sync_request" },
+		},
+	);
+	track(response, writeLatency, response.status === 202);
+}
+
+function doReporting(headers, tenantId, propertyId) {
+	const response = http.get(
+		`${GATEWAY_URL}${ENDPOINTS.dashboardStats}?tenant_id=${tenantId}&property_id=${propertyId}`,
+		{ headers, tags: { operation: "reporting" } },
+	);
+	track(response, readLatency);
+}
+
+function ensureGuest(headers, tenantId) {
+	const listRes = http.get(
+		`${GATEWAY_URL}${ENDPOINTS.guests}?tenant_id=${tenantId}&limit=1`,
+		{ headers, tags: { operation: "guest.list" } },
+	);
+
+	if (isSuccess(listRes)) {
+		const guests = parseList(listRes);
+		const guest = guests[0];
+		const guestId = guest?.guest_id || guest?.id || null;
+		if (guestId) return guestId;
+	}
+
+	const guestEmail = randomEmail();
+	const payload = {
+		first_name: "Load",
+		last_name: "Tester",
+		email: guestEmail,
+		phone: randomPhone(),
+		metadata: { source: "loadtest" },
+	};
+
+	const response = http.post(
+		`${GATEWAY_URL}${ENDPOINTS.commands}/guest.register/execute`,
+		JSON.stringify({ tenant_id: tenantId, payload }),
+		{
+			headers: { ...headers, "X-Request-ID": uuid(), "X-Idempotency-Key": `guest-${uuid()}` },
+			tags: { operation: "guest.register" },
+		},
+	);
+
+	if (!isSuccess(response) || response.status !== 202) return null;
+
+	for (let attempt = 0; attempt < 4; attempt += 1) {
+		const lookupRes = http.get(
+			`${GATEWAY_URL}${ENDPOINTS.guests}?tenant_id=${tenantId}&email=${encodeURIComponent(guestEmail)}`,
+			{ headers, tags: { operation: "guest.lookup" } },
+		);
+		if (isSuccess(lookupRes)) {
+			const guests = parseList(lookupRes);
+			const guest = guests[0];
+			const guestId = guest?.guest_id || guest?.id || null;
+			if (guestId) return guestId;
+		}
+		sleep(0.3);
+	}
+
+	return null;
+}
+
+function pickReservationId(headers, tenantId) {
+	const response = http.get(
+		`${GATEWAY_URL}${ENDPOINTS.reservations}?tenant_id=${tenantId}&limit=1`,
+		{ headers, tags: { operation: "reservation.list" } },
+	);
+
+	if (!isSuccess(response)) return null;
+	const reservations = parseList(response);
+	const reservation = reservations[0];
+	return reservation?.reservation_id || reservation?.id || null;
+}
+
+function track(response, trend, explicitSuccess) {
+	const ok = explicitSuccess ?? isSuccess(response);
+	trend.add(response.timings.duration);
+	successRate.add(ok);
+	if (!ok) errorCount.add(1);
+	check(response, { "status ok": () => ok });
 }

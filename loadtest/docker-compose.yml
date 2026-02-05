@@ -1,41 +1,31 @@
-# Tartware Microservices Load Testing Infrastructure
+# Tartware PMS Load Testing (Fresh Start)
 # Usage: docker compose up -d influxdb grafana && docker compose run --rm k6 run /scripts/scenarios/smoke.js
 
 services:
-  # InfluxDB for k6 metrics storage
   influxdb:
-    image: influxdb:2.7
+    image: influxdb:1.8
     container_name: tartware-loadtest-influxdb
     ports:
       - "8086:8086"
     environment:
-      DOCKER_INFLUXDB_INIT_MODE: setup
-      DOCKER_INFLUXDB_INIT_USERNAME: admin
-      DOCKER_INFLUXDB_INIT_PASSWORD: adminpassword
-      DOCKER_INFLUXDB_INIT_ORG: tartware
-      DOCKER_INFLUXDB_INIT_BUCKET: k6
-      DOCKER_INFLUXDB_INIT_RETENTION: 7d
-      DOCKER_INFLUXDB_INIT_ADMIN_TOKEN: tartware-token
+      INFLUXDB_DB: k6
+      INFLUXDB_HTTP_AUTH_ENABLED: "false"
     volumes:
-      - influxdb_data:/var/lib/influxdb2
+      - influxdb_data:/var/lib/influxdb
     networks:
       - loadtest
     healthcheck:
-      test: ["CMD", "influx", "ping"]
+      test: ["CMD", "curl", "-f", "http://localhost:8086/ping"]
       interval: 10s
       timeout: 5s
       retries: 5
 
-  # Grafana for visualization
   grafana:
     image: grafana/grafana:latest
     container_name: tartware-loadtest-grafana
     ports:
       - "3001:3000"
     environment:
-      # NOTE: Default admin credentials are for local load testing only.
-      #       Override GF_SECURITY_ADMIN_USER and GF_SECURITY_ADMIN_PASSWORD
-      #       with strong, unique values in any shared or persistent environment.
       GF_SECURITY_ADMIN_USER: admin
       GF_SECURITY_ADMIN_PASSWORD: admin
       GF_INSTALL_PLUGINS: grafana-piechart-panel
@@ -50,34 +40,42 @@ services:
     networks:
       - loadtest
 
-  # k6 load generator
   k6:
     image: grafana/k6:latest
     container_name: tartware-loadtest-k6
     extra_hosts:
       - "host.docker.internal:host-gateway"
     environment:
-      # k6 InfluxDB 2.x output format with organization, bucket, and token
-      K6_OUT: influxdb=http://influxdb:8086?org=tartware&bucket=k6&token=tartware-token
-      K6_INFLUXDB_ORGANIZATION: tartware
-      K6_INFLUXDB_TOKEN: tartware-token
+      K6_OUT: influxdb=http://influxdb:8086/k6
       GATEWAY_URL: ${GATEWAY_URL:-http://host.docker.internal:8080}
       API_TOKEN: ${API_TOKEN:-}
-      TENANT_ID: ${TENANT_ID:-11111111-1111-1111-1111-111111111111}
-      PROPERTY_ID: ${PROPERTY_ID:-22222222-2222-2222-2222-222222222222}
-      ROOM_TYPE_ID: ${ROOM_TYPE_ID:-44444444-4444-4444-4444-444444444444}
+      ADMIN_USERNAME: ${ADMIN_USERNAME:-setup.admin}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-TempPass123}
+      TENANT_IDS: ${TENANT_IDS:-11111111-1111-1111-1111-111111111111}
+      PROPERTY_IDS: ${PROPERTY_IDS:-22222222-2222-2222-2222-222222222222}
+      ROOM_TYPE_IDS: ${ROOM_TYPE_IDS:-44444444-4444-4444-4444-444444444444}
+      RATE_CODE: ${RATE_CODE:-BAR}
       VUS: ${VUS:-50}
       DURATION: ${DURATION:-5m}
       RAMP_UP: ${RAMP_UP:-30s}
+      WORKLOAD_PROFILE: ${WORKLOAD_PROFILE:-enterprise-mix}
+      AVAILABILITY_RATIO: ${AVAILABILITY_RATIO:-0.40}
+      RES_CREATE_RATIO: ${RES_CREATE_RATIO:-0.10}
+      RES_MODIFY_RATIO: ${RES_MODIFY_RATIO:-0.06}
+      RES_CANCEL_RATIO: ${RES_CANCEL_RATIO:-0.04}
+      OTA_SYNC_RATIO: ${OTA_SYNC_RATIO:-0.12}
+      CHECKIN_RATIO: ${CHECKIN_RATIO:-0.04}
+      CHECKOUT_RATIO: ${CHECKOUT_RATIO:-0.04}
+      PAYMENT_RATIO: ${PAYMENT_RATIO:-0.08}
+      REPORTING_RATIO: ${REPORTING_RATIO:-0.12}
     volumes:
       - ./k6:/scripts:ro
     working_dir: /scripts
     depends_on:
-      - influxdb
+      influxdb:
+        condition: service_healthy
     networks:
       - loadtest
-    profiles:
-      - tools
 
 volumes:
   influxdb_data:

@@ -1,8 +1,8 @@
 import { createHash, randomUUID } from "node:crypto";
 
 import type {
-	CommandDispatchLookup,
-	InsertCommandDispatchInput,
+  CommandDispatchLookup,
+  InsertCommandDispatchInput,
 } from "../repositories/command-dispatches.js";
 
 export type Initiator = {
@@ -24,11 +24,11 @@ export type CommandRouteInfo = {
 };
 
 export type CommandFeatureInfo = {
-	status: string;
-	tenant_id: string | null;
-	max_per_minute?: number | null;
-	burst?: number | null;
-	metadata: Record<string, unknown>;
+  status: string;
+  tenant_id: string | null;
+  max_per_minute?: number | null;
+  burst?: number | null;
+  metadata: Record<string, unknown>;
 };
 
 export type CommandResolution<Membership> =
@@ -67,24 +67,22 @@ export interface CommandOutboxRecord {
 }
 
 export interface CommandDispatchDependencies<Membership> {
-	resolveCommandForTenant: (
-		args: Omit<AcceptCommandInput<Membership>, "payload" | "initiatedBy">,
-	) => CommandResolution<Membership>;
-	enqueueOutboxRecord: (record: CommandOutboxRecord) => Promise<void>;
-	insertCommandDispatch: (
-		input: InsertCommandDispatchInput,
-	) => Promise<void>;
-	findCommandDispatchByRequest: (
-		tenantId: string,
-		commandName: string,
-		requestId: string,
-	) => Promise<CommandDispatchLookup | null>;
-	throttleCommand?: (input: {
-		commandName: string;
-		tenantId: string;
-		requestId: string;
-		feature: CommandFeatureInfo | null;
-	}) => Promise<boolean>;
+  resolveCommandForTenant: (
+    args: Omit<AcceptCommandInput<Membership>, "payload" | "initiatedBy">,
+  ) => CommandResolution<Membership>;
+  enqueueOutboxRecord: (record: CommandOutboxRecord) => Promise<void>;
+  insertCommandDispatch: (input: InsertCommandDispatchInput) => Promise<void>;
+  findCommandDispatchByRequest: (
+    tenantId: string,
+    commandName: string,
+    requestId: string,
+  ) => Promise<CommandDispatchLookup | null>;
+  throttleCommand?: (input: {
+    commandName: string;
+    tenantId: string;
+    requestId: string;
+    feature: CommandFeatureInfo | null;
+  }) => Promise<boolean>;
 }
 
 /**
@@ -127,111 +125,111 @@ export type CommandAcceptanceResult = {
  * Create a command dispatch service with provided dependencies.
  */
 export const createCommandDispatchService = <Membership>(
-	deps: CommandDispatchDependencies<Membership>,
+  deps: CommandDispatchDependencies<Membership>,
 ) => {
-	const acceptCommand = async (
-		input: AcceptCommandInput<Membership>,
-	): Promise<CommandAcceptanceResult> => {
-		const payloadHash = createHash("sha256")
-			.update(JSON.stringify(input.payload))
-			.digest("hex");
-		const existing = await deps.findCommandDispatchByRequest(
-			input.tenantId,
-			input.commandName,
-			input.requestId,
-		);
-		if (existing) {
-			// Idempotent replays return the original dispatch without reapplying throttles.
-			if (existing.payload_hash !== payloadHash) {
-				throw new CommandDispatchError(
-					409,
-					"COMMAND_IDEMPOTENCY_CONFLICT",
-					"Request id already used with a different payload.",
-				);
-			}
+  const acceptCommand = async (
+    input: AcceptCommandInput<Membership>,
+  ): Promise<CommandAcceptanceResult> => {
+    const payloadHash = createHash("sha256")
+      .update(JSON.stringify(input.payload))
+      .digest("hex");
+    const existing = await deps.findCommandDispatchByRequest(
+      input.tenantId,
+      input.commandName,
+      input.requestId,
+    );
+    if (existing) {
+      // Idempotent replays return the original dispatch without reapplying throttles.
+      if (existing.payload_hash !== payloadHash) {
+        throw new CommandDispatchError(
+          409,
+          "COMMAND_IDEMPOTENCY_CONFLICT",
+          "Request id already used with a different payload.",
+        );
+      }
 
-			const routingMetadata = existing.routing_metadata ?? {};
-			const featureStatus =
-				typeof existing.metadata?.featureStatus === "string"
-					? existing.metadata.featureStatus
-					: "enabled";
-			const targetService = existing.target_service;
-			const targetTopic = existing.target_topic;
-			const issuedAt = existing.issued_at;
-			const headers: Record<string, string> = {
-				"x-command-name": existing.command_name,
-				"x-command-tenant-id": existing.tenant_id,
-				"x-command-request-id": existing.request_id,
-				"x-command-target": targetService,
-				"x-command-route-source":
-					typeof routingMetadata.routeSource === "string"
-						? routingMetadata.routeSource
-						: "unknown",
-			};
-			if (existing.correlation_id) {
-				headers["x-correlation-id"] = existing.correlation_id;
-			}
+      const routingMetadata = existing.routing_metadata ?? {};
+      const featureStatus =
+        typeof existing.metadata?.featureStatus === "string"
+          ? existing.metadata.featureStatus
+          : "enabled";
+      const targetService = existing.target_service;
+      const targetTopic = existing.target_topic;
+      const issuedAt = existing.issued_at;
+      const headers: Record<string, string> = {
+        "x-command-name": existing.command_name,
+        "x-command-tenant-id": existing.tenant_id,
+        "x-command-request-id": existing.request_id,
+        "x-command-target": targetService,
+        "x-command-route-source":
+          typeof routingMetadata.routeSource === "string"
+            ? routingMetadata.routeSource
+            : "unknown",
+      };
+      if (existing.correlation_id) {
+        headers["x-correlation-id"] = existing.correlation_id;
+      }
 
-			return {
-				status: "accepted",
-				commandId: existing.id,
-				commandName: existing.command_name,
-				tenantId: existing.tenant_id,
-				correlationId: existing.correlation_id ?? undefined,
-				targetService,
-				targetTopic,
-				issuedAt,
-				headers,
-				eventPayload: {
-					metadata: {
-						commandId: existing.id,
-						commandName: existing.command_name,
-						tenantId: existing.tenant_id,
-						correlationId: existing.correlation_id ?? undefined,
-						requestId: existing.request_id,
-						targetService,
-						targetTopic,
-						route: {
-							id:
-								typeof routingMetadata.routeId === "string"
-									? routingMetadata.routeId
-									: "unknown",
-							tenantId: routingMetadata.routeTenantId ?? null,
-							environment: routingMetadata.routeEnvironment ?? "unknown",
-							source:
-								typeof routingMetadata.routeSource === "string"
-									? routingMetadata.routeSource
-									: "unknown",
-						},
-						issuedAt,
-						featureStatus,
-					},
-					payload: input.payload,
-				},
-				featureStatus,
-				route: {
-					id:
-						typeof routingMetadata.routeId === "string"
-							? routingMetadata.routeId
-							: "unknown",
-					source:
-						typeof routingMetadata.routeSource === "string"
-							? routingMetadata.routeSource
-							: "unknown",
-					tenantId:
-						typeof routingMetadata.routeTenantId === "string"
-							? routingMetadata.routeTenantId
-							: null,
-				},
-			};
-		}
+      return {
+        status: "accepted",
+        commandId: existing.id,
+        commandName: existing.command_name,
+        tenantId: existing.tenant_id,
+        correlationId: existing.correlation_id ?? undefined,
+        targetService,
+        targetTopic,
+        issuedAt,
+        headers,
+        eventPayload: {
+          metadata: {
+            commandId: existing.id,
+            commandName: existing.command_name,
+            tenantId: existing.tenant_id,
+            correlationId: existing.correlation_id ?? undefined,
+            requestId: existing.request_id,
+            targetService,
+            targetTopic,
+            route: {
+              id:
+                typeof routingMetadata.routeId === "string"
+                  ? routingMetadata.routeId
+                  : "unknown",
+              tenantId: routingMetadata.routeTenantId ?? null,
+              environment: routingMetadata.routeEnvironment ?? "unknown",
+              source:
+                typeof routingMetadata.routeSource === "string"
+                  ? routingMetadata.routeSource
+                  : "unknown",
+            },
+            issuedAt,
+            featureStatus,
+          },
+          payload: input.payload,
+        },
+        featureStatus,
+        route: {
+          id:
+            typeof routingMetadata.routeId === "string"
+              ? routingMetadata.routeId
+              : "unknown",
+          source:
+            typeof routingMetadata.routeSource === "string"
+              ? routingMetadata.routeSource
+              : "unknown",
+          tenantId:
+            typeof routingMetadata.routeTenantId === "string"
+              ? routingMetadata.routeTenantId
+              : null,
+        },
+      };
+    }
 
-		const resolution = deps.resolveCommandForTenant({
-			commandName: input.commandName,
-			tenantId: input.tenantId,
-			membership: input.membership,
-			correlationId: input.correlationId,
-			requestId: input.requestId,
+    const resolution = deps.resolveCommandForTenant({
+      commandName: input.commandName,
+      tenantId: input.tenantId,
+      membership: input.membership,
+      correlationId: input.correlationId,
+      requestId: input.requestId,
     });
 
     if (resolution.status === "NOT_FOUND") {
@@ -250,33 +248,33 @@ export const createCommandDispatchService = <Membership>(
       );
     }
 
-		if (resolution.status === "DISABLED") {
-			throw new CommandDispatchError(
-				409,
-				resolution.reason,
-				`Command ${input.commandName} is currently disabled`,
-			);
-		}
+    if (resolution.status === "DISABLED") {
+      throw new CommandDispatchError(
+        409,
+        resolution.reason,
+        `Command ${input.commandName} is currently disabled`,
+      );
+    }
 
-		const { route, feature } = resolution;
-		if (deps.throttleCommand) {
-			const allowed = await deps.throttleCommand({
-				commandName: input.commandName,
-				tenantId: input.tenantId,
-				requestId: input.requestId,
-				feature: feature ?? null,
-			});
-			if (!allowed) {
-				throw new CommandDispatchError(
-					429,
-					"COMMAND_THROTTLED",
-					"Command rate limit exceeded.",
-				);
-			}
-		}
-		const commandId = randomUUID();
-		const targetService = route.service_id;
-		const targetTopic = route.topic;
+    const { route, feature } = resolution;
+    if (deps.throttleCommand) {
+      const allowed = await deps.throttleCommand({
+        commandName: input.commandName,
+        tenantId: input.tenantId,
+        requestId: input.requestId,
+        feature: feature ?? null,
+      });
+      if (!allowed) {
+        throw new CommandDispatchError(
+          429,
+          "COMMAND_THROTTLED",
+          "Command rate limit exceeded.",
+        );
+      }
+    }
+    const commandId = randomUUID();
+    const targetService = route.service_id;
+    const targetTopic = route.topic;
     const issuedAt = new Date().toISOString();
     const featureStatus = feature?.status ?? "enabled";
 
@@ -291,11 +289,11 @@ export const createCommandDispatchService = <Membership>(
       headers["x-correlation-id"] = input.correlationId;
     }
 
-		const eventPayload = {
-			metadata: {
-				commandId,
-				commandName: input.commandName,
-				tenantId: input.tenantId,
+    const eventPayload = {
+      metadata: {
+        commandId,
+        commandName: input.commandName,
+        tenantId: input.tenantId,
         correlationId: input.correlationId,
         requestId: input.requestId,
         targetService,
@@ -310,12 +308,12 @@ export const createCommandDispatchService = <Membership>(
         issuedAt,
         featureStatus,
       },
-			payload: input.payload,
-		};
+      payload: input.payload,
+    };
 
-		await deps.enqueueOutboxRecord({
-			eventId: commandId,
-			tenantId: input.tenantId,
+    await deps.enqueueOutboxRecord({
+      eventId: commandId,
+      tenantId: input.tenantId,
       aggregateId: commandId,
       aggregateType: "command",
       eventType: `command.${input.commandName}`,

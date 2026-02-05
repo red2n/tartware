@@ -1,22 +1,11 @@
 {
   "annotations": {
-    "list": [
-      {
-        "builtIn": 1,
-        "datasource": "-- Grafana --",
-        "enable": true,
-        "hide": true,
-        "iconColor": "rgba(0, 211, 255, 1)",
-        "name": "Annotations & Alerts",
-        "type": "dashboard"
-      }
-    ]
+    "list": []
   },
   "editable": true,
-  "gnetId": null,
+  "fiscalYearStartMonth": 0,
   "graphTooltip": 0,
   "id": null,
-  "iteration": 1,
   "links": [],
   "panels": [
     {
@@ -28,7 +17,7 @@
       "type": "row"
     },
     {
-      "datasource": "InfluxDB",
+      "datasource": { "type": "influxdb", "uid": "P951FEA4DE68E13C5" },
       "fieldConfig": {
         "defaults": {
           "color": { "mode": "thresholds" },
@@ -42,7 +31,8 @@
             ]
           },
           "unit": "percent"
-        }
+        },
+        "overrides": []
       },
       "gridPos": { "h": 6, "w": 6, "x": 0, "y": 1 },
       "id": 2,
@@ -51,33 +41,32 @@
         "graphMode": "area",
         "justifyMode": "auto",
         "orientation": "auto",
-        "reduceOptions": {
-          "calcs": ["lastNotNull"],
-          "fields": "",
-          "values": false
-        },
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
         "textMode": "auto"
       },
-      "pluginVersion": "9.0.0",
+      "pluginVersion": "10.0.0",
       "targets": [
         {
-          "query": "SELECT last(\"value\") * 100 FROM \"total_success_rate\" WHERE $timeFilter",
+          "datasource": { "type": "influxdb", "uid": "P951FEA4DE68E13C5" },
+          "query": "SELECT (1 - mean(\"value\")) * 100 FROM \"http_req_failed\" WHERE $timeFilter GROUP BY time(10s) fill(null)",
           "rawQuery": true,
-          "refId": "A"
+          "refId": "A",
+          "resultFormat": "time_series"
         }
       ],
       "title": "Success Rate",
       "type": "stat"
     },
     {
-      "datasource": "InfluxDB",
+      "datasource": { "type": "influxdb", "uid": "P951FEA4DE68E13C5" },
       "fieldConfig": {
         "defaults": {
           "color": { "mode": "palette-classic" },
           "mappings": [],
           "thresholds": { "mode": "absolute", "steps": [] },
           "unit": "reqps"
-        }
+        },
+        "overrides": []
       },
       "gridPos": { "h": 6, "w": 6, "x": 6, "y": 1 },
       "id": 3,
@@ -86,26 +75,24 @@
         "graphMode": "area",
         "justifyMode": "auto",
         "orientation": "auto",
-        "reduceOptions": {
-          "calcs": ["mean"],
-          "fields": "",
-          "values": false
-        },
+        "reduceOptions": { "calcs": ["mean"], "fields": "", "values": false },
         "textMode": "auto"
       },
-      "pluginVersion": "9.0.0",
+      "pluginVersion": "10.0.0",
       "targets": [
         {
-          "query": "SELECT mean(\"value\") FROM \"http_reqs\" WHERE $timeFilter GROUP BY time(10s) fill(0)",
+          "datasource": { "type": "influxdb", "uid": "P951FEA4DE68E13C5" },
+          "query": "SELECT non_negative_derivative(sum(\"value\"), 1s) FROM \"http_reqs\" WHERE $timeFilter GROUP BY time(1s) fill(0)",
           "rawQuery": true,
-          "refId": "A"
+          "refId": "A",
+          "resultFormat": "time_series"
         }
       ],
       "title": "Request Rate",
       "type": "stat"
     },
     {
-      "datasource": "InfluxDB",
+      "datasource": { "type": "influxdb", "uid": "P951FEA4DE68E13C5" },
       "fieldConfig": {
         "defaults": {
           "color": { "mode": "thresholds" },
@@ -119,7 +106,8 @@
             ]
           },
           "unit": "ms"
-        }
+        },
+        "overrides": []
       },
       "gridPos": { "h": 6, "w": 6, "x": 12, "y": 1 },
       "id": 4,
@@ -128,26 +116,24 @@
         "graphMode": "area",
         "justifyMode": "auto",
         "orientation": "auto",
-        "reduceOptions": {
-          "calcs": ["lastNotNull"],
-          "fields": "",
-          "values": false
-        },
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
         "textMode": "auto"
       },
-      "pluginVersion": "9.0.0",
+      "pluginVersion": "10.0.0",
       "targets": [
         {
+          "datasource": { "type": "influxdb", "uid": "P951FEA4DE68E13C5" },
           "query": "SELECT percentile(\"value\", 95) FROM \"http_req_duration\" WHERE $timeFilter",
           "rawQuery": true,
-          "refId": "A"
+          "refId": "A",
+          "resultFormat": "time_series"
         }
       ],
       "title": "p95 Latency",
       "type": "stat"
     },
     {
-      "datasource": "InfluxDB",
+      "datasource": { "type": "influxdb", "uid": "P951FEA4DE68E13C5" },
       "fieldConfig": {
         "defaults": {
           "color": { "mode": "thresholds" },
@@ -161,7 +147,8 @@
             ]
           },
           "unit": "short"
-        }
+        },
+        "overrides": []
       },
       "gridPos": { "h": 6, "w": 6, "x": 18, "y": 1 },
       "id": 5,
@@ -170,19 +157,17 @@
         "graphMode": "area",
         "justifyMode": "auto",
         "orientation": "auto",
-        "reduceOptions": {
-          "calcs": ["lastNotNull"],
-          "fields": "",
-          "values": false
-        },
+        "reduceOptions": { "calcs": ["sum"], "fields": "", "values": false },
         "textMode": "auto"
       },
-      "pluginVersion": "9.0.0",
+      "pluginVersion": "10.0.0",
       "targets": [
         {
-          "query": "SELECT sum(\"value\") FROM \"total_errors\" WHERE $timeFilter",
+          "datasource": { "type": "influxdb", "uid": "P951FEA4DE68E13C5" },
+          "query": "SELECT count(\"value\") FROM \"http_req_failed\" WHERE \"value\" = 1 AND $timeFilter",
           "rawQuery": true,
-          "refId": "A"
+          "refId": "A",
+          "resultFormat": "time_series"
         }
       ],
       "title": "Total Errors",
@@ -197,11 +182,14 @@
       "type": "row"
     },
     {
-      "datasource": "InfluxDB",
+      "datasource": { "type": "influxdb", "uid": "P951FEA4DE68E13C5" },
       "fieldConfig": {
         "defaults": {
           "color": { "mode": "palette-classic" },
           "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
             "axisLabel": "",
             "axisPlacement": "auto",
             "barAlignment": 0,
@@ -221,33 +209,40 @@
           "mappings": [],
           "thresholds": { "mode": "absolute", "steps": [] },
           "unit": "ms"
-        }
+        },
+        "overrides": []
       },
       "gridPos": { "h": 10, "w": 24, "x": 0, "y": 8 },
       "id": 7,
       "options": {
-        "legend": { "calcs": ["mean", "max", "p99"], "displayMode": "table", "placement": "bottom" },
-        "tooltip": { "mode": "multi" }
+        "legend": { "calcs": ["mean", "max"], "displayMode": "table", "placement": "bottom", "showLegend": true },
+        "tooltip": { "mode": "multi", "sort": "none" }
       },
-      "pluginVersion": "9.0.0",
+      "pluginVersion": "10.0.0",
       "targets": [
         {
           "alias": "p50",
+          "datasource": { "type": "influxdb", "uid": "P951FEA4DE68E13C5" },
           "query": "SELECT percentile(\"value\", 50) FROM \"http_req_duration\" WHERE $timeFilter GROUP BY time(10s)",
           "rawQuery": true,
-          "refId": "A"
+          "refId": "A",
+          "resultFormat": "time_series"
         },
         {
           "alias": "p95",
+          "datasource": { "type": "influxdb", "uid": "P951FEA4DE68E13C5" },
           "query": "SELECT percentile(\"value\", 95) FROM \"http_req_duration\" WHERE $timeFilter GROUP BY time(10s)",
           "rawQuery": true,
-          "refId": "B"
+          "refId": "B",
+          "resultFormat": "time_series"
         },
         {
           "alias": "p99",
+          "datasource": { "type": "influxdb", "uid": "P951FEA4DE68E13C5" },
           "query": "SELECT percentile(\"value\", 99) FROM \"http_req_duration\" WHERE $timeFilter GROUP BY time(10s)",
           "rawQuery": true,
-          "refId": "C"
+          "refId": "C",
+          "resultFormat": "time_series"
         }
       ],
       "title": "Response Time Percentiles",
@@ -256,135 +251,20 @@
     {
       "collapsed": false,
       "gridPos": { "h": 1, "w": 24, "x": 0, "y": 18 },
-      "id": 8,
-      "panels": [],
-      "title": "Service Latencies",
-      "type": "row"
-    },
-    {
-      "datasource": "InfluxDB",
-      "fieldConfig": {
-        "defaults": {
-          "color": { "mode": "palette-classic" },
-          "custom": {
-            "axisLabel": "",
-            "axisPlacement": "auto",
-            "drawStyle": "line",
-            "fillOpacity": 10,
-            "gradientMode": "none",
-            "lineInterpolation": "linear",
-            "lineWidth": 1,
-            "pointSize": 5,
-            "showPoints": "never",
-            "spanNulls": false,
-            "stacking": { "group": "A", "mode": "none" }
-          },
-          "mappings": [],
-          "unit": "ms"
-        }
-      },
-      "gridPos": { "h": 10, "w": 12, "x": 0, "y": 19 },
-      "id": 9,
-      "options": {
-        "legend": { "calcs": ["mean", "max"], "displayMode": "table", "placement": "bottom" },
-        "tooltip": { "mode": "multi" }
-      },
-      "pluginVersion": "9.0.0",
-      "targets": [
-        {
-          "alias": "Core",
-          "query": "SELECT percentile(\"value\", 95) FROM \"core_service_latency\" WHERE $timeFilter GROUP BY time(10s)",
-          "rawQuery": true,
-          "refId": "A"
-        },
-        {
-          "alias": "Rooms",
-          "query": "SELECT percentile(\"value\", 95) FROM \"rooms_service_latency\" WHERE $timeFilter GROUP BY time(10s)",
-          "rawQuery": true,
-          "refId": "B"
-        },
-        {
-          "alias": "Guests",
-          "query": "SELECT percentile(\"value\", 95) FROM \"guests_service_latency\" WHERE $timeFilter GROUP BY time(10s)",
-          "rawQuery": true,
-          "refId": "C"
-        },
-        {
-          "alias": "Reservations",
-          "query": "SELECT percentile(\"value\", 95) FROM \"reservations_service_latency\" WHERE $timeFilter GROUP BY time(10s)",
-          "rawQuery": true,
-          "refId": "D"
-        }
-      ],
-      "title": "Service Latencies (p95) - Part 1",
-      "type": "timeseries"
-    },
-    {
-      "datasource": "InfluxDB",
-      "fieldConfig": {
-        "defaults": {
-          "color": { "mode": "palette-classic" },
-          "custom": {
-            "axisLabel": "",
-            "axisPlacement": "auto",
-            "drawStyle": "line",
-            "fillOpacity": 10,
-            "gradientMode": "none",
-            "lineInterpolation": "linear",
-            "lineWidth": 1,
-            "pointSize": 5,
-            "showPoints": "never",
-            "spanNulls": false,
-            "stacking": { "group": "A", "mode": "none" }
-          },
-          "mappings": [],
-          "unit": "ms"
-        }
-      },
-      "gridPos": { "h": 10, "w": 12, "x": 12, "y": 19 },
-      "id": 10,
-      "options": {
-        "legend": { "calcs": ["mean", "max"], "displayMode": "table", "placement": "bottom" },
-        "tooltip": { "mode": "multi" }
-      },
-      "pluginVersion": "9.0.0",
-      "targets": [
-        {
-          "alias": "Billing",
-          "query": "SELECT percentile(\"value\", 95) FROM \"billing_service_latency\" WHERE $timeFilter GROUP BY time(10s)",
-          "rawQuery": true,
-          "refId": "A"
-        },
-        {
-          "alias": "Housekeeping",
-          "query": "SELECT percentile(\"value\", 95) FROM \"housekeeping_service_latency\" WHERE $timeFilter GROUP BY time(10s)",
-          "rawQuery": true,
-          "refId": "B"
-        },
-        {
-          "alias": "Settings",
-          "query": "SELECT percentile(\"value\", 95) FROM \"settings_service_latency\" WHERE $timeFilter GROUP BY time(10s)",
-          "rawQuery": true,
-          "refId": "C"
-        }
-      ],
-      "title": "Service Latencies (p95) - Part 2",
-      "type": "timeseries"
-    },
-    {
-      "collapsed": false,
-      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 29 },
       "id": 11,
       "panels": [],
       "title": "Virtual Users & Throughput",
       "type": "row"
     },
     {
-      "datasource": "InfluxDB",
+      "datasource": { "type": "influxdb", "uid": "P951FEA4DE68E13C5" },
       "fieldConfig": {
         "defaults": {
           "color": { "mode": "palette-classic" },
           "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
             "axisLabel": "",
             "axisPlacement": "auto",
             "drawStyle": "line",
@@ -398,32 +278,38 @@
           },
           "mappings": [],
           "unit": "short"
-        }
+        },
+        "overrides": []
       },
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 30 },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 19 },
       "id": 12,
       "options": {
-        "legend": { "calcs": ["mean", "max"], "displayMode": "list", "placement": "bottom" },
-        "tooltip": { "mode": "multi" }
+        "legend": { "calcs": ["mean", "max"], "displayMode": "list", "placement": "bottom", "showLegend": true },
+        "tooltip": { "mode": "multi", "sort": "none" }
       },
-      "pluginVersion": "9.0.0",
+      "pluginVersion": "10.0.0",
       "targets": [
         {
           "alias": "VUs",
+          "datasource": { "type": "influxdb", "uid": "P951FEA4DE68E13C5" },
           "query": "SELECT mean(\"value\") FROM \"vus\" WHERE $timeFilter GROUP BY time(10s)",
           "rawQuery": true,
-          "refId": "A"
+          "refId": "A",
+          "resultFormat": "time_series"
         }
       ],
       "title": "Virtual Users",
       "type": "timeseries"
     },
     {
-      "datasource": "InfluxDB",
+      "datasource": { "type": "influxdb", "uid": "P951FEA4DE68E13C5" },
       "fieldConfig": {
         "defaults": {
           "color": { "mode": "palette-classic" },
           "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
             "axisLabel": "",
             "axisPlacement": "auto",
             "drawStyle": "line",
@@ -437,21 +323,24 @@
           },
           "mappings": [],
           "unit": "reqps"
-        }
+        },
+        "overrides": []
       },
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 30 },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 19 },
       "id": 13,
       "options": {
-        "legend": { "calcs": ["mean", "max"], "displayMode": "list", "placement": "bottom" },
-        "tooltip": { "mode": "multi" }
+        "legend": { "calcs": ["mean", "max"], "displayMode": "list", "placement": "bottom", "showLegend": true },
+        "tooltip": { "mode": "multi", "sort": "none" }
       },
-      "pluginVersion": "9.0.0",
+      "pluginVersion": "10.0.0",
       "targets": [
         {
           "alias": "Requests/sec",
-          "query": "SELECT derivative(sum(\"value\"), 1s) FROM \"http_reqs\" WHERE $timeFilter GROUP BY time(10s)",
+          "datasource": { "type": "influxdb", "uid": "P951FEA4DE68E13C5" },
+          "query": "SELECT non_negative_derivative(sum(\"value\"), 1s) FROM \"http_reqs\" WHERE $timeFilter GROUP BY time(10s)",
           "rawQuery": true,
-          "refId": "A"
+          "refId": "A",
+          "resultFormat": "time_series"
         }
       ],
       "title": "Throughput",
@@ -459,14 +348,13 @@
     }
   ],
   "refresh": "5s",
-  "schemaVersion": 36,
-  "style": "dark",
+  "schemaVersion": 38,
   "tags": ["k6", "loadtest", "tartware"],
   "templating": { "list": [] },
   "time": { "from": "now-15m", "to": "now" },
   "timepicker": {},
   "timezone": "",
-  "title": "Tartware Load Test Dashboard",
+  "title": "Tartware Load Test",
   "uid": "tartware-loadtest",
   "version": 1
 }

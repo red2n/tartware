@@ -137,8 +137,4 @@ export const createCommandRegistryRepository = (query: QueryExecutor) => {
   };
 };
 
-export type {
-  CommandTemplateRow,
-  CommandRouteRow,
-  CommandFeatureRow,
-};
+export type { CommandTemplateRow, CommandRouteRow, CommandFeatureRow };

@@ -137,7 +137,7 @@ export const createOutboxRepository = ({
           SET
             status = 'IN_PROGRESS',
             locked_at = NOW(),
-            locked_by = $2,
+						locked_by = $2::text,
             retry_count = CASE
               WHEN o.status = 'FAILED' THEN o.retry_count + 1
               ELSE o.retry_count
@@ -148,7 +148,7 @@ export const createOutboxRepository = ({
               'lockedAt',
               NOW(),
               'lockedBy',
-              $2
+							$2::text
             ),
             updated_at = NOW()
           FROM due
