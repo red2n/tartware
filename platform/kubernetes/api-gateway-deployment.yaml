@@ -8,18 +8,16 @@ data:
   NODE_ENV: "production"
   PORT: "3000"
   LOG_LEVEL: "info"
-  # Database config - pointing to docker containers on kind network
-  DATABASE_HOST: "172.21.0.6"
+  # Database config - use Kubernetes service DNS
+  DATABASE_HOST: "postgres-service"
   DATABASE_PORT: "5432"
   DATABASE_NAME: "tartware"
   DATABASE_USER: "postgres"
-  # Redis config
-  REDIS_HOST: "172.21.0.7"
+  # Redis config - use Kubernetes service DNS
+  REDIS_HOST: "redis-service"
   REDIS_PORT: "6379"
-  # Kafka config
-  KAFKA_BROKERS: "172.21.0.8:9092"
-  # JWT settings
-  JWT_SECRET: "development-secret-key"
+  # Kafka config - use Kubernetes service DNS
+  KAFKA_BROKERS: "kafka-service:9092"
   JWT_EXPIRES_IN: "24h"
   # Service URLs - internal K8s services
   CORE_SERVICE_URL: "http://core-service:3000"
@@ -37,9 +35,12 @@ metadata:
   name: api-gateway-secrets
   namespace: tartware-system
 type: Opaque
+# WARNING: Replace these placeholder values with secure secrets before deploying.
+# In production, use external-secrets-operator, HashiCorp Vault, or inject from CI/CD.
 stringData:
-  DATABASE_PASSWORD: "postgres"
-  REDIS_PASSWORD: "redis_password"
+  JWT_SECRET: "__REPLACE_WITH_SECURE_JWT_SECRET__"
+  DATABASE_PASSWORD: "__REPLACE_WITH_SECURE_PASSWORD__"
+  REDIS_PASSWORD: "__REPLACE_WITH_SECURE_PASSWORD__"
 
 ---
 apiVersion: apps/v1
@@ -59,11 +60,12 @@ spec:
       labels:
         app: api-gateway
     spec:
-      priorityClassName: tartware-critical
+      # Uncomment and create the PriorityClass resource separately if needed:
+      # priorityClassName: tartware-critical
       containers:
         - name: api-gateway
           image: tartware/api-gateway:latest
-          imagePullPolicy: Never
+          imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 3000
               name: http

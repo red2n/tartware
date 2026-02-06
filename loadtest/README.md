@@ -32,6 +32,10 @@ docker compose up -d influxdb grafana
 docker compose run --rm k6 run /scripts/scenarios/smoke.js
 ```
 
+> **Note:** The k6 scenarios (including `smoke.js`) query the availability endpoint.
+> On a fresh installation this endpoint may not yet be implemented, so availability
+> checks are expected to fail until that endpoint is provided by the API.
+
 3) Run baseline workload:
 
 ```
@@ -41,7 +45,7 @@ docker compose run --rm k6 run /scripts/scenarios/load.js
 ## Real-Time Metrics
 
 - Grafana: http://localhost:3001 (admin/admin)
-- InfluxDB: http://localhost:8086 (admin/adminpassword)
+- InfluxDB: http://localhost:8086 (authentication disabled by default)
 
 If the default dashboard panels are empty, use Grafana Explore with the `k6` bucket and build panels for `http_req_duration`, `http_req_failed`, and scenario metrics (e.g. `baseline_read_latency`).
 

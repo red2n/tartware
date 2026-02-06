@@ -1,8 +1,10 @@
 /**
  * Auth helpers (v2)
  *
- * Uses pre-provided API_TOKEN from environment to avoid login bottleneck.
- * Falls back to login if API_TOKEN is not provided.
+ * Primary path: uses a pre-provided API_TOKEN from the environment (set via get-token.sh)
+ * and returns it directly for all requests, avoiding any runtime login bottleneck.
+ * Fallback path: if no API_TOKEN is set, performs a login and caches the returned token
+ * with an expiry buffer to minimize repeated logins during the test run.
  */
 
 import http from "k6/http";

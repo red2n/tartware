@@ -1,7 +1,11 @@
 apiVersion: 1
 
+# Datasource provisioning for InfluxDB 1.8 (InfluxQL mode).
+# httpMode: GET is required for InfluxDB 1.x InfluxQL queries.
+# The stable UID below is referenced by the provisioned Grafana dashboard.
 datasources:
   - name: InfluxDB
+    uid: tartware-influxdb
     type: influxdb
     access: proxy
     url: http://influxdb:8086
@@ -10,3 +14,4 @@ datasources:
     editable: true
     jsonData:
       httpMode: GET
+      version: InfluxQL

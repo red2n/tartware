@@ -82,7 +82,11 @@ function hasExplicitRatioOverrides() {
 
 function normalizeRatios(ratios) {
 	const total = Object.values(ratios).reduce((sum, value) => sum + value, 0);
-	if (!total) return ratios;
+	if (!total) {
+		throw new Error(
+			"All workload ratios are zero. Provide at least one non-zero ratio or select a valid WORKLOAD_PROFILE."
+		);
+	}
 	return Object.fromEntries(
 		Object.entries(ratios).map(([key, value]) => [key, value / total]),
 	);

@@ -20,6 +20,8 @@ services:
       timeout: 5s
       retries: 5
 
+  # WARNING: Default admin credentials below are for local testing only.
+  # Do NOT use these credentials in shared or production environments.
   grafana:
     image: grafana/grafana:latest
     container_name: tartware-loadtest-grafana

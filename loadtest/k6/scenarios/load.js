@@ -89,10 +89,10 @@ export default function () {
 }
 
 function doAvailability(headers, tenantId, propertyId) {
-	// Query rooms endpoint for available rooms (since /v1/availability doesn't exist)
+	// Derive availability by listing rooms with status=available via the /v1/rooms endpoint
 	const response = http.get(
 		`${GATEWAY_URL}${ENDPOINTS.rooms}?tenant_id=${tenantId}&property_id=${propertyId}&status=available`,
-		{ headers, tags: { operation: "availability" } },
+		{ headers, tags: { operation: "rooms.list.available" } },
 	);
 	track(response, readLatency);
 }
@@ -280,7 +280,11 @@ function ensureGuest(headers, tenantId) {
 
 	if (!isSuccess(response) || response.status !== 202) return null;
 
+	// Poll with exponential backoff (0.5s, 1s, 2s, 4s = ~7.5s total) to allow
+	// async command processing to complete before giving up.
 	for (let attempt = 0; attempt < 4; attempt += 1) {
+		const backoff = 0.5 * Math.pow(2, attempt);
+		sleep(backoff);
 		const lookupRes = http.get(
 			`${GATEWAY_URL}${ENDPOINTS.guests}?tenant_id=${tenantId}&email=${encodeURIComponent(guestEmail)}`,
 			{ headers, tags: { operation: "guest.lookup" } },
@@ -291,7 +295,6 @@ function ensureGuest(headers, tenantId) {
 			const guestId = guest?.guest_id || guest?.id || null;
 			if (guestId) return guestId;
 		}
-		sleep(0.3);
 	}
 
 	return null;

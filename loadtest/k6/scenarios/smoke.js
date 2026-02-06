@@ -34,7 +34,10 @@ export const options = {
 
 export default function () {
 	const token = getToken(ADMIN_USERNAME, ADMIN_PASSWORD);
-	const headers = token ? getHeaders(token) : {};
+	if (!token) {
+		throw new Error("Failed to retrieve authentication token for smoke test");
+	}
+	const headers = getHeaders(token);
 
 	const tenantId = TENANT_IDS[0];
 	const propertyId = PROPERTY_IDS[0];

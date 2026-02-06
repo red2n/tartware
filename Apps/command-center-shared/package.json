@@ -4,8 +4,8 @@
   "description": "Shared SQL helpers for command center components",
   "private": true,
   "type": "module",
-  "main": "dist/Apps/command-center-shared/src/index.js",
-  "types": "dist/Apps/command-center-shared/src/index.d.ts",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
   "scripts": {
     "build": "npm run lint && npm run biome && npm run knip && tsc --project tsconfig.json",
     "dev": "echo 'Shared library - no dev server'",

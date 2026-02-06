@@ -33,4 +33,4 @@ COPY --from=builder /app/Apps ./Apps
 COPY --from=builder /app/schema ./schema
 WORKDIR /app/Apps/${SERVICE}
 EXPOSE 3000
-CMD ["node", "dist/Apps/api-gateway/src/index.js"]
+CMD ["sh", "-c", "node dist/Apps/${SERVICE}/src/index.js"]

@@ -17,7 +17,7 @@
       "type": "row"
     },
     {
-      "datasource": { "type": "influxdb", "uid": "P951FEA4DE68E13C5" },
+      "datasource": { "type": "influxdb", "uid": "tartware-influxdb" },
       "fieldConfig": {
         "defaults": {
           "color": { "mode": "thresholds" },
@@ -47,7 +47,7 @@
       "pluginVersion": "10.0.0",
       "targets": [
         {
-          "datasource": { "type": "influxdb", "uid": "P951FEA4DE68E13C5" },
+          "datasource": { "type": "influxdb", "uid": "tartware-influxdb" },
           "query": "SELECT (1 - mean(\"value\")) * 100 FROM \"http_req_failed\" WHERE $timeFilter GROUP BY time(10s) fill(null)",
           "rawQuery": true,
           "refId": "A",
@@ -58,7 +58,7 @@
       "type": "stat"
     },
     {
-      "datasource": { "type": "influxdb", "uid": "P951FEA4DE68E13C5" },
+      "datasource": { "type": "influxdb", "uid": "tartware-influxdb" },
       "fieldConfig": {
         "defaults": {
           "color": { "mode": "palette-classic" },
@@ -81,7 +81,7 @@
       "pluginVersion": "10.0.0",
       "targets": [
         {
-          "datasource": { "type": "influxdb", "uid": "P951FEA4DE68E13C5" },
+          "datasource": { "type": "influxdb", "uid": "tartware-influxdb" },
           "query": "SELECT non_negative_derivative(sum(\"value\"), 1s) FROM \"http_reqs\" WHERE $timeFilter GROUP BY time(1s) fill(0)",
           "rawQuery": true,
           "refId": "A",
@@ -92,7 +92,7 @@
       "type": "stat"
     },
     {
-      "datasource": { "type": "influxdb", "uid": "P951FEA4DE68E13C5" },
+      "datasource": { "type": "influxdb", "uid": "tartware-influxdb" },
       "fieldConfig": {
         "defaults": {
           "color": { "mode": "thresholds" },
@@ -122,7 +122,7 @@
       "pluginVersion": "10.0.0",
       "targets": [
         {
-          "datasource": { "type": "influxdb", "uid": "P951FEA4DE68E13C5" },
+          "datasource": { "type": "influxdb", "uid": "tartware-influxdb" },
           "query": "SELECT percentile(\"value\", 95) FROM \"http_req_duration\" WHERE $timeFilter",
           "rawQuery": true,
           "refId": "A",
@@ -133,7 +133,7 @@
       "type": "stat"
     },
     {
-      "datasource": { "type": "influxdb", "uid": "P951FEA4DE68E13C5" },
+      "datasource": { "type": "influxdb", "uid": "tartware-influxdb" },
       "fieldConfig": {
         "defaults": {
           "color": { "mode": "thresholds" },
@@ -163,7 +163,7 @@
       "pluginVersion": "10.0.0",
       "targets": [
         {
-          "datasource": { "type": "influxdb", "uid": "P951FEA4DE68E13C5" },
+          "datasource": { "type": "influxdb", "uid": "tartware-influxdb" },
           "query": "SELECT count(\"value\") FROM \"http_req_failed\" WHERE \"value\" = 1 AND $timeFilter",
           "rawQuery": true,
           "refId": "A",
@@ -182,7 +182,7 @@
       "type": "row"
     },
     {
-      "datasource": { "type": "influxdb", "uid": "P951FEA4DE68E13C5" },
+      "datasource": { "type": "influxdb", "uid": "tartware-influxdb" },
       "fieldConfig": {
         "defaults": {
           "color": { "mode": "palette-classic" },
@@ -222,7 +222,7 @@
       "targets": [
         {
           "alias": "p50",
-          "datasource": { "type": "influxdb", "uid": "P951FEA4DE68E13C5" },
+          "datasource": { "type": "influxdb", "uid": "tartware-influxdb" },
           "query": "SELECT percentile(\"value\", 50) FROM \"http_req_duration\" WHERE $timeFilter GROUP BY time(10s)",
           "rawQuery": true,
           "refId": "A",
@@ -230,7 +230,7 @@
         },
         {
           "alias": "p95",
-          "datasource": { "type": "influxdb", "uid": "P951FEA4DE68E13C5" },
+          "datasource": { "type": "influxdb", "uid": "tartware-influxdb" },
           "query": "SELECT percentile(\"value\", 95) FROM \"http_req_duration\" WHERE $timeFilter GROUP BY time(10s)",
           "rawQuery": true,
           "refId": "B",
@@ -238,7 +238,7 @@
         },
         {
           "alias": "p99",
-          "datasource": { "type": "influxdb", "uid": "P951FEA4DE68E13C5" },
+          "datasource": { "type": "influxdb", "uid": "tartware-influxdb" },
           "query": "SELECT percentile(\"value\", 99) FROM \"http_req_duration\" WHERE $timeFilter GROUP BY time(10s)",
           "rawQuery": true,
           "refId": "C",
@@ -257,7 +257,7 @@
       "type": "row"
     },
     {
-      "datasource": { "type": "influxdb", "uid": "P951FEA4DE68E13C5" },
+      "datasource": { "type": "influxdb", "uid": "tartware-influxdb" },
       "fieldConfig": {
         "defaults": {
           "color": { "mode": "palette-classic" },
@@ -291,7 +291,7 @@
       "targets": [
         {
           "alias": "VUs",
-          "datasource": { "type": "influxdb", "uid": "P951FEA4DE68E13C5" },
+          "datasource": { "type": "influxdb", "uid": "tartware-influxdb" },
           "query": "SELECT mean(\"value\") FROM \"vus\" WHERE $timeFilter GROUP BY time(10s)",
           "rawQuery": true,
           "refId": "A",
@@ -302,7 +302,7 @@
       "type": "timeseries"
     },
     {
-      "datasource": { "type": "influxdb", "uid": "P951FEA4DE68E13C5" },
+      "datasource": { "type": "influxdb", "uid": "tartware-influxdb" },
       "fieldConfig": {
         "defaults": {
           "color": { "mode": "palette-classic" },
@@ -336,7 +336,7 @@
       "targets": [
         {
           "alias": "Requests/sec",
-          "datasource": { "type": "influxdb", "uid": "P951FEA4DE68E13C5" },
+          "datasource": { "type": "influxdb", "uid": "tartware-influxdb" },
           "query": "SELECT non_negative_derivative(sum(\"value\"), 1s) FROM \"http_reqs\" WHERE $timeFilter GROUP BY time(10s)",
           "rawQuery": true,
           "refId": "A",
