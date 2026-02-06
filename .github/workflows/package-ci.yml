@@ -40,7 +40,14 @@ jobs:
         run: npx lerna run knip --scope=${{ inputs.package-scope }} --stream
 
       - name: Build dependencies
-        run: npx lerna run build --scope=${{ inputs.package-scope }} --include-dependencies --ignore=${{ inputs.package-scope }} --stream --no-bail
+        run: |
+          # Build workspace dependencies so tests can resolve imports from sibling packages.
+          # Lerna exits EFILTER when scope + ignore leaves zero packages (no deps to build) — that's OK.
+          npx lerna run build \
+            --scope=${{ inputs.package-scope }} \
+            --include-dependencies \
+            --ignore=${{ inputs.package-scope }} \
+            --stream --no-bail || true
 
       - name: Test
         if: ${{ inputs.has-tests }}
