@@ -1,0 +1,21 @@
+name: CI · Availability Guard Service
+
+on:
+  push:
+    branches: [main, develop, deployment]
+    paths:
+      - 'Apps/availability-guard-service/**'
+      - 'schema/**'
+      - 'package.json'
+      - 'lerna.json'
+  pull_request:
+    paths:
+      - 'Apps/availability-guard-service/**'
+      - 'schema/**'
+  workflow_dispatch:
+
+jobs:
+  ci:
+    uses: ./.github/workflows/package-ci.yml
+    with:
+      package-scope: '@tartware/availability-guard-service'

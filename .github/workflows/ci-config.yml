@@ -1,0 +1,20 @@
+name: CI · Config
+
+on:
+  push:
+    branches: [main, develop, deployment]
+    paths:
+      - 'Apps/config/**'
+      - 'package.json'
+      - 'lerna.json'
+  pull_request:
+    paths:
+      - 'Apps/config/**'
+  workflow_dispatch:
+
+jobs:
+  ci:
+    uses: ./.github/workflows/package-ci.yml
+    with:
+      package-scope: '@tartware/config'
+      has-tests: false

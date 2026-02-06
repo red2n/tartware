@@ -9,41 +9,44 @@ Client → API Gateway (:8080) → Command Center → Kafka → Domain Services
                              → Proxy reads to domain services
 ```
 
-## Package Status
+## Build Status
+
+### Monorepo
+
+[![Build](https://github.com/red2n/tartware/actions/workflows/build.yml/badge.svg)](https://github.com/red2n/tartware/actions/workflows/build.yml)
+[![Duplo Duplicate Scan](https://github.com/red2n/tartware/actions/workflows/duplo.yml/badge.svg)](https://github.com/red2n/tartware/actions/workflows/duplo.yml)
 
 ### Services
 
-| Package | Path | Lint | Biome | Knip | Test | Build |
-|---------|------|:----:|:-----:|:----:|:----:|:-----:|
-| `@tartware/api-gateway` | `Apps/api-gateway` | ✅ | ✅ | ✅ | ✅ | ✅ |
-| `@tartware/core-service` | `Apps/core-service` | ✅ | ✅ | ✅ | ✅ | ✅ |
-| `@tartware/command-center-service` | `Apps/command-center-service` | ✅ | ✅ | ✅ | ✅ | ✅ |
-| `@tartware/reservations-command-service` | `Apps/reservations-command-service` | ✅ | ✅ | ✅ | ✅ | ✅ |
-| `@tartware/guests-service` | `Apps/guests-service` | ✅ | ✅ | ✅ | ✅ | ✅ |
-| `@tartware/rooms-service` | `Apps/rooms-service` | ✅ | ✅ | ✅ | ✅ | ✅ |
-| `@tartware/billing-service` | `Apps/billing-service` | ✅ | ✅ | ✅ | ✅ | ✅ |
-| `@tartware/housekeeping-service` | `Apps/housekeeping-service` | ✅ | ✅ | ✅ | ✅ | ✅ |
-| `@tartware/settings-service` | `Apps/settings-service` | ✅ | ✅ | ✅ | ✅ | ✅ |
-| `@tartware/availability-guard-service` | `Apps/availability-guard-service` | ✅ | ✅ | ✅ | ✅ | ✅ |
-| `@tartware/roll-service` | `Apps/roll-service` | ✅ | ✅ | ✅ | ✅ | ✅ |
-| `@tartware/recommendation-service` | `Apps/recommendation-service` | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Package | Status |
+|---------|--------|
+| API Gateway | [![CI · API Gateway](https://github.com/red2n/tartware/actions/workflows/ci-api-gateway.yml/badge.svg)](https://github.com/red2n/tartware/actions/workflows/ci-api-gateway.yml) |
+| Core Service | [![CI · Core Service](https://github.com/red2n/tartware/actions/workflows/ci-core-service.yml/badge.svg)](https://github.com/red2n/tartware/actions/workflows/ci-core-service.yml) |
+| Command Center Service | [![CI · Command Center Service](https://github.com/red2n/tartware/actions/workflows/ci-command-center-service.yml/badge.svg)](https://github.com/red2n/tartware/actions/workflows/ci-command-center-service.yml) |
+| Reservations Command Service | [![CI · Reservations Command Service](https://github.com/red2n/tartware/actions/workflows/ci-reservations-command-service.yml/badge.svg)](https://github.com/red2n/tartware/actions/workflows/ci-reservations-command-service.yml) |
+| Guests Service | [![CI · Guests Service](https://github.com/red2n/tartware/actions/workflows/ci-guests-service.yml/badge.svg)](https://github.com/red2n/tartware/actions/workflows/ci-guests-service.yml) |
+| Rooms Service | [![CI · Rooms Service](https://github.com/red2n/tartware/actions/workflows/ci-rooms-service.yml/badge.svg)](https://github.com/red2n/tartware/actions/workflows/ci-rooms-service.yml) |
+| Billing Service | [![CI · Billing Service](https://github.com/red2n/tartware/actions/workflows/ci-billing-service.yml/badge.svg)](https://github.com/red2n/tartware/actions/workflows/ci-billing-service.yml) |
+| Housekeeping Service | [![CI · Housekeeping Service](https://github.com/red2n/tartware/actions/workflows/ci-housekeeping-service.yml/badge.svg)](https://github.com/red2n/tartware/actions/workflows/ci-housekeeping-service.yml) |
+| Settings Service | [![CI · Settings Service](https://github.com/red2n/tartware/actions/workflows/ci-settings-service.yml/badge.svg)](https://github.com/red2n/tartware/actions/workflows/ci-settings-service.yml) |
+| Availability Guard Service | [![CI · Availability Guard Service](https://github.com/red2n/tartware/actions/workflows/ci-availability-guard-service.yml/badge.svg)](https://github.com/red2n/tartware/actions/workflows/ci-availability-guard-service.yml) |
+| Roll Service | [![CI · Roll Service](https://github.com/red2n/tartware/actions/workflows/ci-roll-service.yml/badge.svg)](https://github.com/red2n/tartware/actions/workflows/ci-roll-service.yml) |
+| Recommendation Service | [![CI · Recommendation Service](https://github.com/red2n/tartware/actions/workflows/ci-recommendation-service.yml/badge.svg)](https://github.com/red2n/tartware/actions/workflows/ci-recommendation-service.yml) |
 
 ### Shared Libraries
 
-| Package | Path | Lint | Biome | Knip | Test | Build |
-|---------|------|:----:|:-----:|:----:|:----:|:-----:|
-| `@tartware/schemas` | `schema` | ✅ | ✅ | ✅ | ✅ | ✅ |
-| `@tartware/command-center-shared` | `Apps/command-center-shared` | ✅ | ✅ | ✅ | ✅ | ✅ |
-| `@tartware/candidate-pipeline` | `Apps/candidate-pipeline` | ✅ | ✅ | ✅ | ✅ | ✅ |
-| `@tartware/fastify-server` | `Apps/fastify-server` | ✅ | ✅ | ✅ | ✅ | ✅ |
-| `@tartware/outbox` | `Apps/outbox` | ✅ | ✅ | ✅ | — | ✅ |
-| `@tartware/openapi` | `Apps/openapi-utils` | ✅ | ✅ | ✅ | ✅ | ✅ |
-| `@tartware/command-consumer-utils` | `Apps/command-consumer-utils` | ✅ | ✅ | ✅ | — | ✅ |
-| `@tartware/config` | `Apps/config` | ✅ | ✅ | ✅ | — | ✅ |
-| `@tartware/telemetry` | `Apps/telemetry` | ✅ | ✅ | ✅ | ✅ | ✅ |
-| `@tartware/tenant-auth` | `Apps/tenant-auth` | ✅ | ✅ | ✅ | — | ✅ |
-
-> Packages marked **—** under Test are thin utility libraries with no test files.
+| Package | Status |
+|---------|--------|
+| Schemas | [![CI · Schemas](https://github.com/red2n/tartware/actions/workflows/ci-schemas.yml/badge.svg)](https://github.com/red2n/tartware/actions/workflows/ci-schemas.yml) |
+| Command Center Shared | [![CI · Command Center Shared](https://github.com/red2n/tartware/actions/workflows/ci-command-center-shared.yml/badge.svg)](https://github.com/red2n/tartware/actions/workflows/ci-command-center-shared.yml) |
+| Candidate Pipeline | [![CI · Candidate Pipeline](https://github.com/red2n/tartware/actions/workflows/ci-candidate-pipeline.yml/badge.svg)](https://github.com/red2n/tartware/actions/workflows/ci-candidate-pipeline.yml) |
+| Fastify Server | [![CI · Fastify Server](https://github.com/red2n/tartware/actions/workflows/ci-fastify-server.yml/badge.svg)](https://github.com/red2n/tartware/actions/workflows/ci-fastify-server.yml) |
+| Outbox | [![CI · Outbox](https://github.com/red2n/tartware/actions/workflows/ci-outbox.yml/badge.svg)](https://github.com/red2n/tartware/actions/workflows/ci-outbox.yml) |
+| OpenAPI Utils | [![CI · OpenAPI Utils](https://github.com/red2n/tartware/actions/workflows/ci-openapi-utils.yml/badge.svg)](https://github.com/red2n/tartware/actions/workflows/ci-openapi-utils.yml) |
+| Command Consumer Utils | [![CI · Command Consumer Utils](https://github.com/red2n/tartware/actions/workflows/ci-command-consumer-utils.yml/badge.svg)](https://github.com/red2n/tartware/actions/workflows/ci-command-consumer-utils.yml) |
+| Config | [![CI · Config](https://github.com/red2n/tartware/actions/workflows/ci-config.yml/badge.svg)](https://github.com/red2n/tartware/actions/workflows/ci-config.yml) |
+| Telemetry | [![CI · Telemetry](https://github.com/red2n/tartware/actions/workflows/ci-telemetry.yml/badge.svg)](https://github.com/red2n/tartware/actions/workflows/ci-telemetry.yml) |
+| Tenant Auth | [![CI · Tenant Auth](https://github.com/red2n/tartware/actions/workflows/ci-tenant-auth.yml/badge.svg)](https://github.com/red2n/tartware/actions/workflows/ci-tenant-auth.yml) |
 
 ## Quick Start
 

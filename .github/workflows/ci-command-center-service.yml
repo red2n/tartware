@@ -1,0 +1,23 @@
+name: CI · Command Center Service
+
+on:
+  push:
+    branches: [main, develop, deployment]
+    paths:
+      - 'Apps/command-center-service/**'
+      - 'Apps/command-center-shared/**'
+      - 'schema/**'
+      - 'package.json'
+      - 'lerna.json'
+  pull_request:
+    paths:
+      - 'Apps/command-center-service/**'
+      - 'Apps/command-center-shared/**'
+      - 'schema/**'
+  workflow_dispatch:
+
+jobs:
+  ci:
+    uses: ./.github/workflows/package-ci.yml
+    with:
+      package-scope: '@tartware/command-center-service'

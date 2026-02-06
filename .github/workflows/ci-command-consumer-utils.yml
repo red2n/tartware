@@ -1,0 +1,22 @@
+name: CI · Command Consumer Utils
+
+on:
+  push:
+    branches: [main, develop, deployment]
+    paths:
+      - 'Apps/command-consumer-utils/**'
+      - 'schema/**'
+      - 'package.json'
+      - 'lerna.json'
+  pull_request:
+    paths:
+      - 'Apps/command-consumer-utils/**'
+      - 'schema/**'
+  workflow_dispatch:
+
+jobs:
+  ci:
+    uses: ./.github/workflows/package-ci.yml
+    with:
+      package-scope: '@tartware/command-consumer-utils'
+      has-tests: false

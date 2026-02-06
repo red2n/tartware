@@ -1,0 +1,22 @@
+name: CI · Outbox
+
+on:
+  push:
+    branches: [main, develop, deployment]
+    paths:
+      - 'Apps/outbox/**'
+      - 'schema/**'
+      - 'package.json'
+      - 'lerna.json'
+  pull_request:
+    paths:
+      - 'Apps/outbox/**'
+      - 'schema/**'
+  workflow_dispatch:
+
+jobs:
+  ci:
+    uses: ./.github/workflows/package-ci.yml
+    with:
+      package-scope: '@tartware/outbox'
+      has-tests: false
