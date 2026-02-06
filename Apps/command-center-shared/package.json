@@ -7,7 +7,7 @@
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {
-    "build": "npm run lint && npm run biome && npm run knip && tsc --project tsconfig.json",
+    "build": "tsc --project tsconfig.json",
     "dev": "echo 'Shared library - no dev server'",
     "lint": "eslint --ext .ts src",
     "lint:fix": "eslint --ext .ts src --fix",

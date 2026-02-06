@@ -14,7 +14,7 @@
   },
   "scripts": {
     "dev": "tsc --watch",
-    "build": "npm run lint && npm run biome && tsc --project tsconfig.json",
+    "build": "tsc --project tsconfig.json",
     "lint": "eslint --ext .ts src",
     "lint:fix": "eslint --ext .ts src --fix",
     "typecheck": "tsc --noEmit",

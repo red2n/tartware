@@ -38,7 +38,13 @@ export const buildTsconfigAliases = (tsconfigRelativePath, importerUrl) => {
     return targetPaths.map((targetPath) => {
       const isTargetWildcard = targetPath.endsWith("/*");
       const normalizedTarget = isTargetWildcard ? targetPath.slice(0, -1) : targetPath;
-      const replacement = path.resolve(baseDir, normalizedTarget);
+      let replacement = path.resolve(baseDir, normalizedTarget);
+      // For wildcard aliases, Vite does a simple string replace of find→replacement.
+      // The find already ends with "/" (e.g. "@tartware/schemas/"), so the replacement
+      // must also end with "/" to avoid concatenation bugs like "src" + "events" → "srcevents".
+      if (isKeyWildcard && !replacement.endsWith("/")) {
+        replacement += "/";
+      }
       return { find, replacement };
     });
   });

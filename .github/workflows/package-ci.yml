@@ -39,9 +39,6 @@ jobs:
       - name: Knip
         run: npx lerna run knip --scope=${{ inputs.package-scope }} --stream
 
-      - name: Build
-        run: npx lerna run build --scope=${{ inputs.package-scope }} --include-dependencies --stream
-
       - name: Test
         if: ${{ inputs.has-tests }}
         run: npx lerna run test --scope=${{ inputs.package-scope }} --stream
