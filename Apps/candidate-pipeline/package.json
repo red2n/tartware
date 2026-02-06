@@ -20,6 +20,7 @@
     "typecheck": "tsc --noEmit",
     "biome": "biome check src",
     "biome:fix": "biome format src --write",
+    "knip": "knip --tsConfig tsconfig.json",
     "test": "vitest run",
     "test:watch": "vitest",
     "clean": "rm -rf dist coverage *.tsbuildinfo"

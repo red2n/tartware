@@ -1,0 +1,25 @@
+{
+  "$schema": "https://unpkg.com/knip@5/schema.json",
+  "project": [
+    "src/**/*.ts"
+  ],
+  "ignoreFiles": [
+    ".eslintrc.cjs"
+  ],
+  "ignoreDependencies": [
+    "@tartware/candidate-pipeline",
+    "tsx"
+  ],
+  "ignoreBinaries": [
+    "biome",
+    "eslint",
+    "knip",
+    "tsc",
+    "tsx",
+    "vitest"
+  ],
+  "ignoreExportsUsedInFile": {
+    "type": true,
+    "interface": true
+  }
+}
