@@ -6,7 +6,7 @@ metadata:
   namespace: tartware-system
 data:
   NODE_ENV: "production"
-  PORT: "3000"
+  PORT: "8080"
   LOG_LEVEL: "info"
   # Database config - use Kubernetes service DNS
   DATABASE_HOST: "postgres-service"
@@ -67,7 +67,7 @@ spec:
           image: tartware/api-gateway:latest
           imagePullPolicy: IfNotPresent
           ports:
-            - containerPort: 3000
+            - containerPort: 8080
               name: http
           envFrom:
             - configMapRef:
@@ -112,7 +112,7 @@ spec:
     app: api-gateway
   ports:
     - port: 8080
-      targetPort: 3000
+      targetPort: 8080
       protocol: TCP
       name: http
 
