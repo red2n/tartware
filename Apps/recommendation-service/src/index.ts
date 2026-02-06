@@ -12,11 +12,7 @@ const proc = process;
 /**
  * Check if a TCP service is reachable.
  */
-async function checkDependency(
-  name: string,
-  host: string,
-  port: number,
-): Promise<boolean> {
+async function checkDependency(name: string, host: string, port: number): Promise<boolean> {
   try {
     // Simple connection test using pg pool
     const result = await pool.query("SELECT 1");
@@ -30,11 +26,7 @@ async function checkDependency(
 const start = async () => {
   try {
     // Check database connectivity
-    const dbOk = await checkDependency(
-      "PostgreSQL",
-      config.db.host,
-      config.db.port,
-    );
+    const dbOk = await checkDependency("PostgreSQL", config.db.host, config.db.port);
     if (!dbOk) {
       app.log.warn("Database not available; exiting");
       if (proc) {

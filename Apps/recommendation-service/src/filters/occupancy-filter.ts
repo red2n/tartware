@@ -6,10 +6,7 @@ import { PredicateFilter } from "@tartware/candidate-pipeline";
 
 import type { RoomCandidate, RoomRecommendationQuery } from "../types.js";
 
-export class OccupancyFilter extends PredicateFilter<
-  RoomRecommendationQuery,
-  RoomCandidate
-> {
+export class OccupancyFilter extends PredicateFilter<RoomRecommendationQuery, RoomCandidate> {
   readonly name = "occupancy";
 
   shouldKeep(query: RoomRecommendationQuery, candidate: RoomCandidate): boolean {

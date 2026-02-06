@@ -6,15 +6,9 @@ import {
   startCommandCenterConsumer,
 } from "./commands/command-center-consumer.js";
 import { databaseConfig, kafkaConfig, serviceConfig } from "./config.js";
-import {
-  shutdownReservationConsumer,
-  startReservationConsumer,
-} from "./kafka/consumer.js";
+import { shutdownReservationConsumer, startReservationConsumer } from "./kafka/consumer.js";
 import { shutdownProducer } from "./kafka/producer.js";
-import {
-  shutdownOutboxDispatcher,
-  startOutboxDispatcher,
-} from "./outbox/dispatcher.js";
+import { shutdownOutboxDispatcher, startOutboxDispatcher } from "./outbox/dispatcher.js";
 import { buildServer } from "./server.js";
 
 const app = buildServer();
@@ -53,9 +47,7 @@ const start = async () => {
       await startCommandCenterConsumer();
       startOutboxDispatcher();
     } else {
-      app.log.warn(
-        "Kafka disabled via DISABLE_KAFKA; skipping consumers and outbox",
-      );
+      app.log.warn("Kafka disabled via DISABLE_KAFKA; skipping consumers and outbox");
     }
     await app.listen({ port: serviceConfig.port, host: serviceConfig.host });
     app.log.info(

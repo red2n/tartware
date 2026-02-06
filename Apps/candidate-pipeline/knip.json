@@ -6,7 +6,10 @@
   "ignoreFiles": [
     ".eslintrc.cjs"
   ],
-  "ignoreDependencies": [],
+  "ignoreDependencies": [
+    "@biomejs/biome",
+    "@vitest/coverage-v8"
+  ],
   "ignoreBinaries": [
     "biome",
     "eslint",

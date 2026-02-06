@@ -21,10 +21,7 @@ export class GuestPreferencesHydrator extends BaseQueryHydrator<RoomRecommendati
     queryParams: RoomRecommendationQuery,
     context: PipelineContext,
   ): Promise<Partial<RoomRecommendationQuery>> {
-    context.logger.debug(
-      { guestId: queryParams.guestId },
-      "Fetching guest preferences",
-    );
+    context.logger.debug({ guestId: queryParams.guestId }, "Fetching guest preferences");
 
     const result = await query<{
       preferences: Record<string, unknown> | null;

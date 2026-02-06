@@ -43,10 +43,7 @@ export const startOutboxDispatcher = (): void => {
   }
   isDispatcherRunning = true;
   scheduleNextCycle();
-  reservationsLogger.info(
-    { workerId: outboxConfig.workerId },
-    "Outbox dispatcher started",
-  );
+  reservationsLogger.info({ workerId: outboxConfig.workerId }, "Outbox dispatcher started");
 };
 
 /**
@@ -92,10 +89,7 @@ const processOutboxBatch = async (): Promise<void> => {
     return;
   }
 
-  const records = await claimOutboxBatch(
-    outboxConfig.batchSize,
-    outboxConfig.workerId,
-  );
+  const records = await claimOutboxBatch(outboxConfig.batchSize, outboxConfig.workerId);
 
   for (const record of records) {
     const throttledAt = performance.now();
@@ -132,17 +126,10 @@ const handleOutboxRecord = async (record: OutboxRecord): Promise<void> => {
       outboxConfig.retryBackoffMs,
       outboxConfig.maxRetries,
     );
-    await updateLifecycleStateSafe(
-      record.eventId,
-      status === "DLQ" ? "DLQ" : "FAILED",
-      {
-        error:
-          error instanceof Error
-            ? { name: error.name, message: error.message }
-            : String(error),
-        workerId: outboxConfig.workerId,
-      },
-    );
+    await updateLifecycleStateSafe(record.eventId, status === "DLQ" ? "DLQ" : "FAILED", {
+      error: error instanceof Error ? { name: error.name, message: error.message } : String(error),
+      workerId: outboxConfig.workerId,
+    });
     observeOutboxPublishDuration(secondsSince(startedAt));
     reservationsLogger.error(
       { err: error, recordId: record.id, status },
@@ -174,9 +161,7 @@ const handleOutboxRecord = async (record: OutboxRecord): Promise<void> => {
   }
 };
 
-const normalizeHeaders = (
-  headers: Record<string, string>,
-): Record<string, string> => {
+const normalizeHeaders = (headers: Record<string, string>): Record<string, string> => {
   const normalized: Record<string, string> = {};
   for (const [key, value] of Object.entries(headers ?? {})) {
     if (value !== undefined && value !== null) {
@@ -202,9 +187,6 @@ const updateLifecycleStateSafe = async (
       details,
     });
   } catch (error) {
-    reservationsLogger.warn(
-      { err: error, eventId, state },
-      "Failed to update lifecycle state",
-    );
+    reservationsLogger.warn({ err: error, eventId, state }, "Failed to update lifecycle state");
   }
 };

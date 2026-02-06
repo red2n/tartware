@@ -10,10 +10,7 @@ import { BaseSource, type PipelineContext } from "@tartware/candidate-pipeline";
 import { query } from "../lib/db.js";
 import type { RoomCandidate, RoomRecommendationQuery } from "../types.js";
 
-export class UpgradeOpportunitySource extends BaseSource<
-  RoomRecommendationQuery,
-  RoomCandidate
-> {
+export class UpgradeOpportunitySource extends BaseSource<RoomRecommendationQuery, RoomCandidate> {
   readonly name = "upgrade_opportunity";
 
   /**
@@ -21,11 +18,9 @@ export class UpgradeOpportunitySource extends BaseSource<
    */
   enable(queryParams: RoomRecommendationQuery): boolean {
     const isLoyalMember =
-      queryParams.loyaltyTier !== undefined &&
-      queryParams.loyaltyTier !== "none";
+      queryParams.loyaltyTier !== undefined && queryParams.loyaltyTier !== "none";
     const isReturningGuest =
-      queryParams.guestHistory !== undefined &&
-      queryParams.guestHistory.totalBookings > 0;
+      queryParams.guestHistory !== undefined && queryParams.guestHistory.totalBookings > 0;
     return isLoyalMember || isReturningGuest;
   }
 

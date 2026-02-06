@@ -53,10 +53,7 @@ export type ReliabilitySnapshot = {
 
 const STATUS_ORDER: ReliabilityStatus[] = ["healthy", "degraded", "critical"];
 
-const escalateStatus = (
-  current: ReliabilityStatus,
-  next: ReliabilityStatus,
-): ReliabilityStatus => {
+const escalateStatus = (current: ReliabilityStatus, next: ReliabilityStatus): ReliabilityStatus => {
   const currentIdx = STATUS_ORDER.indexOf(current);
   const nextIdx = STATUS_ORDER.indexOf(next);
   return STATUS_ORDER[Math.max(currentIdx, nextIdx)];
@@ -86,8 +83,7 @@ const fetchConsumerStats = async (): Promise<ConsumerStats> => {
     partitions: Number(row?.partitions ?? "0"),
     stalePartitions: Number(row?.stale_partitions ?? "0"),
     maxSecondsSinceCommit:
-      row?.max_seconds_since_commit !== null &&
-      row?.max_seconds_since_commit !== undefined
+      row?.max_seconds_since_commit !== null && row?.max_seconds_since_commit !== undefined
         ? Number(row.max_seconds_since_commit)
         : null,
   };
@@ -123,8 +119,7 @@ const fetchLifecycleStats = async (): Promise<LifecycleStats> => {
   return {
     stalledCommands: Number(row?.stalled_commands ?? "0"),
     oldestStuckSeconds:
-      row?.oldest_stuck_seconds !== null &&
-      row?.oldest_stuck_seconds !== undefined
+      row?.oldest_stuck_seconds !== null && row?.oldest_stuck_seconds !== undefined
         ? Number(row.oldest_stuck_seconds)
         : null,
     dlqTotal: Number(row?.dlq_total ?? "0"),
@@ -138,9 +133,7 @@ const fetchDlqStats = async (): Promise<DlqStats> => {
     const offsets = await admin.fetchTopicOffsets(kafkaConfig.dlqTopic);
 
     const depth = offsets.reduce((total, partitionOffsets) => {
-      const high = safeBigInt(
-        partitionOffsets.high ?? partitionOffsets.offset ?? "0",
-      );
+      const high = safeBigInt(partitionOffsets.high ?? partitionOffsets.offset ?? "0");
       const low = safeBigInt(partitionOffsets.low ?? "0");
       const partitionDepth = high - low;
       return total + Number(partitionDepth > 0n ? partitionDepth : 0n);
@@ -176,98 +169,94 @@ const safeBigInt = (value: string | number): bigint => {
 /**
  * Compute reliability snapshot for outbox, consumers, lifecycle, and DLQ.
  */
-export const getReliabilitySnapshot =
-  async (): Promise<ReliabilitySnapshot> => {
-    const [outboxPending, consumer, lifecycle, dlq] = await Promise.all([
-      countPendingOutboxRows(),
-      fetchConsumerStats(),
-      fetchLifecycleStats(),
-      fetchDlqStats(),
-    ]);
+export const getReliabilitySnapshot = async (): Promise<ReliabilitySnapshot> => {
+  const [outboxPending, consumer, lifecycle, dlq] = await Promise.all([
+    countPendingOutboxRows(),
+    fetchConsumerStats(),
+    fetchLifecycleStats(),
+    fetchDlqStats(),
+  ]);
 
-    setDlqThresholds(
-      reliabilityConfig.dlqWarnThreshold,
-      reliabilityConfig.dlqCriticalThreshold,
+  setDlqThresholds(reliabilityConfig.dlqWarnThreshold, reliabilityConfig.dlqCriticalThreshold);
+  let status: ReliabilityStatus = "healthy";
+  const issues: string[] = [];
+
+  if (outboxPending >= reliabilityConfig.outboxCriticalThreshold) {
+    status = escalateStatus(status, "critical");
+    issues.push(
+      `Outbox backlog (${outboxPending}) exceeds critical threshold ${reliabilityConfig.outboxCriticalThreshold}`,
     );
-    let status: ReliabilityStatus = "healthy";
-    const issues: string[] = [];
+  } else if (outboxPending >= reliabilityConfig.outboxWarnThreshold) {
+    status = escalateStatus(status, "degraded");
+    issues.push(
+      `Outbox backlog (${outboxPending}) exceeds warning threshold ${reliabilityConfig.outboxWarnThreshold}`,
+    );
+  }
 
-    if (outboxPending >= reliabilityConfig.outboxCriticalThreshold) {
+  if (consumer.stalePartitions > 0) {
+    status = escalateStatus(status, "degraded");
+    issues.push(
+      `${consumer.stalePartitions} consumer partition(s) exceeded ${reliabilityConfig.consumerStaleSeconds}s without commits`,
+    );
+  }
+
+  if (lifecycle.stalledCommands > 0) {
+    status = escalateStatus(status, "degraded");
+    issues.push(
+      `${lifecycle.stalledCommands} command(s) stuck beyond ${reliabilityConfig.stalledThresholdSeconds}s`,
+    );
+  }
+
+  if (lifecycle.dlqTotal > 0) {
+    status = escalateStatus(status, "degraded");
+    issues.push(`${lifecycle.dlqTotal} command(s) currently in DLQ state`);
+  }
+
+  if (dlq.depth === null) {
+    status = escalateStatus(status, "degraded");
+    issues.push(
+      `Unable to determine DLQ backlog for ${kafkaConfig.dlqTopic}${
+        dlq.error ? ` (${dlq.error})` : ""
+      }`,
+    );
+  } else {
+    setDlqDepth(dlq.depth);
+    if (dlq.depth >= reliabilityConfig.dlqCriticalThreshold) {
       status = escalateStatus(status, "critical");
       issues.push(
-        `Outbox backlog (${outboxPending}) exceeds critical threshold ${reliabilityConfig.outboxCriticalThreshold}`,
+        `DLQ backlog (${dlq.depth}) exceeds critical threshold ${reliabilityConfig.dlqCriticalThreshold}`,
       );
-    } else if (outboxPending >= reliabilityConfig.outboxWarnThreshold) {
+    } else if (dlq.depth >= reliabilityConfig.dlqWarnThreshold) {
       status = escalateStatus(status, "degraded");
       issues.push(
-        `Outbox backlog (${outboxPending}) exceeds warning threshold ${reliabilityConfig.outboxWarnThreshold}`,
+        `DLQ backlog (${dlq.depth}) exceeds warning threshold ${reliabilityConfig.dlqWarnThreshold}`,
       );
     }
+  }
 
-    if (consumer.stalePartitions > 0) {
-      status = escalateStatus(status, "degraded");
-      issues.push(
-        `${consumer.stalePartitions} consumer partition(s) exceeded ${reliabilityConfig.consumerStaleSeconds}s without commits`,
-      );
-    }
-
-    if (lifecycle.stalledCommands > 0) {
-      status = escalateStatus(status, "degraded");
-      issues.push(
-        `${lifecycle.stalledCommands} command(s) stuck beyond ${reliabilityConfig.stalledThresholdSeconds}s`,
-      );
-    }
-
-    if (lifecycle.dlqTotal > 0) {
-      status = escalateStatus(status, "degraded");
-      issues.push(`${lifecycle.dlqTotal} command(s) currently in DLQ state`);
-    }
-
-    if (dlq.depth === null) {
-      status = escalateStatus(status, "degraded");
-      issues.push(
-        `Unable to determine DLQ backlog for ${kafkaConfig.dlqTopic}${
-          dlq.error ? ` (${dlq.error})` : ""
-        }`,
-      );
-    } else {
-      setDlqDepth(dlq.depth);
-      if (dlq.depth >= reliabilityConfig.dlqCriticalThreshold) {
-        status = escalateStatus(status, "critical");
-        issues.push(
-          `DLQ backlog (${dlq.depth}) exceeds critical threshold ${reliabilityConfig.dlqCriticalThreshold}`,
-        );
-      } else if (dlq.depth >= reliabilityConfig.dlqWarnThreshold) {
-        status = escalateStatus(status, "degraded");
-        issues.push(
-          `DLQ backlog (${dlq.depth}) exceeds warning threshold ${reliabilityConfig.dlqWarnThreshold}`,
-        );
-      }
-    }
-
-    return {
-      status,
-      generatedAt: new Date().toISOString(),
-      issues,
-      outbox: {
-        pending: outboxPending,
-        warnThreshold: reliabilityConfig.outboxWarnThreshold,
-        criticalThreshold: reliabilityConfig.outboxCriticalThreshold,
-      },
-      consumer: {
-        ...consumer,
-        staleThresholdSeconds: reliabilityConfig.consumerStaleSeconds,
-      },
-      lifecycle: {
-        ...lifecycle,
-        stalledThresholdSeconds: reliabilityConfig.stalledThresholdSeconds,
-      },
-      dlq: {
-        depth: dlq.depth,
-        warnThreshold: reliabilityConfig.dlqWarnThreshold,
-        criticalThreshold: reliabilityConfig.dlqCriticalThreshold,
-        topic: kafkaConfig.dlqTopic,
-        error: dlq.error ?? null,
-      },
-    };
+  return {
+    status,
+    generatedAt: new Date().toISOString(),
+    issues,
+    outbox: {
+      pending: outboxPending,
+      warnThreshold: reliabilityConfig.outboxWarnThreshold,
+      criticalThreshold: reliabilityConfig.outboxCriticalThreshold,
+    },
+    consumer: {
+      ...consumer,
+      staleThresholdSeconds: reliabilityConfig.consumerStaleSeconds,
+    },
+    lifecycle: {
+      ...lifecycle,
+      stalledThresholdSeconds: reliabilityConfig.stalledThresholdSeconds,
+    },
+    dlq: {
+      depth: dlq.depth,
+      warnThreshold: reliabilityConfig.dlqWarnThreshold,
+      criticalThreshold: reliabilityConfig.dlqCriticalThreshold,
+      topic: kafkaConfig.dlqTopic,
+      error: dlq.error ?? null,
+    },
   };
+};

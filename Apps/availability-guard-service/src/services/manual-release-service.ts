@@ -3,10 +3,7 @@ import { performance } from "node:perf_hooks";
 import type { FastifyBaseLogger } from "fastify";
 
 import { withTransaction } from "../lib/db.js";
-import {
-  observeGuardRequestDuration,
-  recordGuardRequest,
-} from "../lib/metrics.js";
+import { observeGuardRequestDuration, recordGuardRequest } from "../lib/metrics.js";
 import { sendManualReleaseNotification } from "../lib/notification-dispatcher.js";
 import { insertLockAuditRecord } from "../repositories/audit-repository.js";
 import type { InventoryLock } from "../repositories/lock-repository.js";
@@ -30,8 +27,7 @@ type ManualReleaseResult = {
   auditId: string;
 };
 
-const secondsSince = (startedAt: number): number =>
-  (performance.now() - startedAt) / 1000;
+const secondsSince = (startedAt: number): number => (performance.now() - startedAt) / 1000;
 
 /**
  * Manually release an inventory lock and emit audit/notification.

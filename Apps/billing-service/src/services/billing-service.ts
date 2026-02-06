@@ -89,23 +89,21 @@ const resolveGuestName = (row: BillingPaymentRow): string | undefined => {
     return row.reservation_guest_name;
   }
   if (row.guest_first_name || row.guest_last_name) {
-    return (
-      `${row.guest_first_name ?? ""} ${row.guest_last_name ?? ""}`.trim() ||
-      undefined
-    );
+    return `${row.guest_first_name ?? ""} ${row.guest_last_name ?? ""}`.trim() || undefined;
   }
   return undefined;
 };
 
 const mapRowToPayment = (row: BillingPaymentRow): BillingPayment => {
-  const { value: transactionType, display: transactionTypeDisplay } =
-    formatEnumDisplay(row.transaction_type, "Unknown");
-  const { value: paymentMethod, display: paymentMethodDisplay } =
-    formatEnumDisplay(row.payment_method, "Unknown");
-  const { value: status, display: statusDisplay } = formatEnumDisplay(
-    row.status,
+  const { value: transactionType, display: transactionTypeDisplay } = formatEnumDisplay(
+    row.transaction_type,
     "Unknown",
   );
+  const { value: paymentMethod, display: paymentMethodDisplay } = formatEnumDisplay(
+    row.payment_method,
+    "Unknown",
+  );
+  const { value: status, display: statusDisplay } = formatEnumDisplay(row.status, "Unknown");
 
   return BillingPaymentSchema.parse({
     id: row.id,
@@ -153,9 +151,7 @@ export const listBillingPayments = async (options: {
   const transactionType = options.transactionType
     ? options.transactionType.trim().toUpperCase()
     : null;
-  const paymentMethod = options.paymentMethod
-    ? options.paymentMethod.trim().toUpperCase()
-    : null;
+  const paymentMethod = options.paymentMethod ? options.paymentMethod.trim().toUpperCase() : null;
 
   const { rows } = await query<BillingPaymentRow>(BILLING_PAYMENT_LIST_SQL, [
     limit,
@@ -206,10 +202,7 @@ const mapRowToInvoice = (row: InvoiceRow): InvoiceListItem => {
     row.invoice_type,
     "Standard",
   );
-  const { value: status, display: statusDisplay } = formatEnumDisplay(
-    row.status,
-    "Draft",
-  );
+  const { value: status, display: statusDisplay } = formatEnumDisplay(row.status, "Draft");
 
   return InvoiceListItemSchema.parse({
     id: row.id,
@@ -279,10 +272,7 @@ export const getInvoiceById = async (
   invoiceId: string,
   tenantId: string,
 ): Promise<InvoiceListItem | null> => {
-  const { rows } = await query<InvoiceRow>(INVOICE_BY_ID_SQL, [
-    invoiceId,
-    tenantId,
-  ]);
+  const { rows } = await query<InvoiceRow>(INVOICE_BY_ID_SQL, [invoiceId, tenantId]);
 
   const [row] = rows;
   if (!row) {
@@ -372,12 +362,8 @@ export const listFolios = async (options: {
   const limit = options.limit ?? 100;
   const tenantId = options.tenantId;
   const propertyId = options.propertyId ?? null;
-  const folioStatus = options.folioStatus
-    ? options.folioStatus.trim().toUpperCase()
-    : null;
-  const folioType = options.folioType
-    ? options.folioType.trim().toUpperCase()
-    : null;
+  const folioStatus = options.folioStatus ? options.folioStatus.trim().toUpperCase() : null;
+  const folioType = options.folioType ? options.folioType.trim().toUpperCase() : null;
   const reservationId = options.reservationId ?? null;
   const guestId = options.guestId ?? null;
 
@@ -449,11 +435,11 @@ type ChargePostingRow = {
   version: bigint | null;
 };
 
-const mapRowToChargePosting = (
-  row: ChargePostingRow,
-): ChargePostingListItem => {
-  const { value: transactionType, display: transactionTypeDisplay } =
-    formatEnumDisplay(row.transaction_type, "Charge");
+const mapRowToChargePosting = (row: ChargePostingRow): ChargePostingListItem => {
+  const { value: transactionType, display: transactionTypeDisplay } = formatEnumDisplay(
+    row.transaction_type,
+    "Charge",
+  );
   const { value: postingType, display: postingTypeDisplay } = formatEnumDisplay(
     row.posting_type,
     "Debit",
@@ -580,13 +566,8 @@ type TaxConfigurationRow = {
   updated_at: string | Date | null;
 };
 
-const mapRowToTaxConfiguration = (
-  row: TaxConfigurationRow,
-): TaxConfigurationListItem => {
-  const { value: taxType, display: taxTypeDisplay } = formatEnumDisplay(
-    row.tax_type,
-    "Other",
-  );
+const mapRowToTaxConfiguration = (row: TaxConfigurationRow): TaxConfigurationListItem => {
+  const { value: taxType, display: taxTypeDisplay } = formatEnumDisplay(row.tax_type, "Other");
 
   return TaxConfigurationListItemSchema.parse({
     tax_config_id: row.tax_config_id,
@@ -608,13 +589,9 @@ const mapRowToTaxConfiguration = (
     tax_registration_number: row.tax_registration_number,
     tax_rate: toNumberOrFallback(row.tax_rate, 0),
     is_percentage: Boolean(row.is_percentage),
-    fixed_amount: row.fixed_amount
-      ? toNumberOrFallback(row.fixed_amount, 0)
-      : null,
+    fixed_amount: row.fixed_amount ? toNumberOrFallback(row.fixed_amount, 0) : null,
     effective_from: (toIsoString(row.effective_from) ?? "").split("T")[0],
-    effective_to: row.effective_to
-      ? (toIsoString(row.effective_to) ?? "").split("T")[0]
-      : null,
+    effective_to: row.effective_to ? (toIsoString(row.effective_to) ?? "").split("T")[0] : null,
     is_active: Boolean(row.is_active),
     calculation_method: row.calculation_method,
     calculation_base: row.calculation_base,
@@ -659,18 +636,15 @@ export const listTaxConfigurations = async (options: {
   const countryCode = options.countryCode ?? null;
   const jurisdictionLevel = options.jurisdictionLevel ?? null;
 
-  const { rows } = await query<TaxConfigurationRow>(
-    TAX_CONFIGURATION_LIST_SQL,
-    [
-      limit,
-      tenantId,
-      propertyId,
-      taxType,
-      isActive,
-      countryCode,
-      jurisdictionLevel,
-    ],
-  );
+  const { rows } = await query<TaxConfigurationRow>(TAX_CONFIGURATION_LIST_SQL, [
+    limit,
+    tenantId,
+    propertyId,
+    taxType,
+    isActive,
+    countryCode,
+    jurisdictionLevel,
+  ]);
 
   return rows.map(mapRowToTaxConfiguration);
 };
@@ -682,10 +656,10 @@ export const getTaxConfigurationById = async (options: {
   taxConfigId: string;
   tenantId: string;
 }): Promise<TaxConfigurationListItem | null> => {
-  const { rows } = await query<TaxConfigurationRow>(
-    TAX_CONFIGURATION_BY_ID_SQL,
-    [options.taxConfigId, options.tenantId],
-  );
+  const { rows } = await query<TaxConfigurationRow>(TAX_CONFIGURATION_BY_ID_SQL, [
+    options.taxConfigId,
+    options.tenantId,
+  ]);
 
   const row = rows[0];
   if (!row) {

@@ -130,9 +130,7 @@ export const createCommandDispatchService = <Membership>(
   const acceptCommand = async (
     input: AcceptCommandInput<Membership>,
   ): Promise<CommandAcceptanceResult> => {
-    const payloadHash = createHash("sha256")
-      .update(JSON.stringify(input.payload))
-      .digest("hex");
+    const payloadHash = createHash("sha256").update(JSON.stringify(input.payload)).digest("hex");
     const existing = await deps.findCommandDispatchByRequest(
       input.tenantId,
       input.commandName,
@@ -162,9 +160,7 @@ export const createCommandDispatchService = <Membership>(
         "x-command-request-id": existing.request_id,
         "x-command-target": targetService,
         "x-command-route-source":
-          typeof routingMetadata.routeSource === "string"
-            ? routingMetadata.routeSource
-            : "unknown",
+          typeof routingMetadata.routeSource === "string" ? routingMetadata.routeSource : "unknown",
       };
       if (existing.correlation_id) {
         headers["x-correlation-id"] = existing.correlation_id;
@@ -190,10 +186,7 @@ export const createCommandDispatchService = <Membership>(
             targetService,
             targetTopic,
             route: {
-              id:
-                typeof routingMetadata.routeId === "string"
-                  ? routingMetadata.routeId
-                  : "unknown",
+              id: typeof routingMetadata.routeId === "string" ? routingMetadata.routeId : "unknown",
               tenantId: routingMetadata.routeTenantId ?? null,
               environment: routingMetadata.routeEnvironment ?? "unknown",
               source:
@@ -208,10 +201,7 @@ export const createCommandDispatchService = <Membership>(
         },
         featureStatus,
         route: {
-          id:
-            typeof routingMetadata.routeId === "string"
-              ? routingMetadata.routeId
-              : "unknown",
+          id: typeof routingMetadata.routeId === "string" ? routingMetadata.routeId : "unknown",
           source:
             typeof routingMetadata.routeSource === "string"
               ? routingMetadata.routeSource
@@ -265,11 +255,7 @@ export const createCommandDispatchService = <Membership>(
         feature: feature ?? null,
       });
       if (!allowed) {
-        throw new CommandDispatchError(
-          429,
-          "COMMAND_THROTTLED",
-          "Command rate limit exceeded.",
-        );
+        throw new CommandDispatchError(429, "COMMAND_THROTTLED", "Command rate limit exceeded.");
       }
     }
     const commandId = randomUUID();

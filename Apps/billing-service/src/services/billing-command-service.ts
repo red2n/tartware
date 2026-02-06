@@ -44,8 +44,7 @@ class BillingCommandError extends Error {
 
 const APP_ACTOR = "COMMAND_CENTER";
 const SYSTEM_ACTOR_ID = "00000000-0000-0000-0000-000000000000";
-const UUID_REGEX =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 const asUuid = (value: string | undefined | null): string | null =>
   value && UUID_REGEX.test(value) ? value : null;
@@ -78,10 +77,7 @@ export const refundBillingPayment = async (
 /**
  * Create a billing invoice.
  */
-export const createInvoice = async (
-  payload: unknown,
-  context: CommandContext,
-): Promise<string> => {
+export const createInvoice = async (payload: unknown, context: CommandContext): Promise<string> => {
   const command = BillingInvoiceCreateCommandSchema.parse(payload);
   return applyInvoiceCreate(command, context);
 };
@@ -89,10 +85,7 @@ export const createInvoice = async (
 /**
  * Adjust an invoice total with a positive or negative delta.
  */
-export const adjustInvoice = async (
-  payload: unknown,
-  context: CommandContext,
-): Promise<string> => {
+export const adjustInvoice = async (payload: unknown, context: CommandContext): Promise<string> => {
   const command = BillingInvoiceAdjustCommandSchema.parse(payload);
   return applyInvoiceAdjust(command, context);
 };
@@ -100,10 +93,7 @@ export const adjustInvoice = async (
 /**
  * Post a miscellaneous charge to a reservation folio.
  */
-export const postCharge = async (
-  payload: unknown,
-  context: CommandContext,
-): Promise<string> => {
+export const postCharge = async (payload: unknown, context: CommandContext): Promise<string> => {
   const command = BillingChargePostCommandSchema.parse(payload);
   return applyChargePost(command, context);
 };
@@ -111,10 +101,7 @@ export const postCharge = async (
 /**
  * Apply a payment to an invoice.
  */
-export const applyPayment = async (
-  payload: unknown,
-  context: CommandContext,
-): Promise<string> => {
+export const applyPayment = async (payload: unknown, context: CommandContext): Promise<string> => {
   const command = BillingPaymentApplyCommandSchema.parse(payload);
   return applyPaymentToInvoice(command, context);
 };
@@ -122,10 +109,7 @@ export const applyPayment = async (
 /**
  * Transfer folio balance between reservations.
  */
-export const transferFolio = async (
-  payload: unknown,
-  context: CommandContext,
-): Promise<string> => {
+export const transferFolio = async (payload: unknown, context: CommandContext): Promise<string> => {
   const command = BillingFolioTransferCommandSchema.parse(payload);
   return applyFolioTransfer(command, context);
 };
@@ -214,10 +198,7 @@ const capturePayment = async (
 
   const paymentId = result.rows[0]?.id;
   if (!paymentId) {
-    throw new BillingCommandError(
-      "PAYMENT_CAPTURE_FAILED",
-      "Failed to record captured payment.",
-    );
+    throw new BillingCommandError("PAYMENT_CAPTURE_FAILED", "Failed to record captured payment.");
   }
   return paymentId;
 };
@@ -263,16 +244,13 @@ const refundPayment = async (
     );
   }
 
-  const refundStatus = moneyGte(refundTotal, originalAmount)
-    ? "REFUNDED"
-    : "PARTIALLY_REFUNDED";
+  const refundStatus = moneyGte(refundTotal, originalAmount) ? "REFUNDED" : "PARTIALLY_REFUNDED";
   const refundTransactionType = moneyGte(command.amount, originalAmount)
     ? "REFUND"
     : "PARTIAL_REFUND";
 
   const refundReference =
-    command.refund_reference ??
-    `${original.payment_reference}-RF-${Date.now().toString(36)}`;
+    command.refund_reference ?? `${original.payment_reference}-RF-${Date.now().toString(36)}`;
 
   const refundResult = await query<{ id: string }>(
     `
@@ -331,10 +309,7 @@ const refundPayment = async (
 
   const refundId = refundResult.rows[0]?.id;
   if (!refundId) {
-    throw new BillingCommandError(
-      "REFUND_RECORD_FAILED",
-      "Failed to record refund payment entry.",
-    );
+    throw new BillingCommandError("REFUND_RECORD_FAILED", "Failed to record refund payment entry.");
   }
 
   await query(
@@ -351,14 +326,7 @@ const refundPayment = async (
       WHERE tenant_id = $1::uuid
         AND id = $2::uuid
     `,
-    [
-      context.tenantId,
-      original.id,
-      command.amount,
-      refundStatus,
-      command.reason ?? null,
-      actor,
-    ],
+    [context.tenantId, original.id, command.amount, refundStatus, command.reason ?? null, actor],
   );
 
   return refundId;
@@ -370,8 +338,7 @@ const applyInvoiceCreate = async (
 ): Promise<string> => {
   const actor = resolveActorId(context.initiatedBy);
   const invoiceNumber =
-    command.invoice_number ??
-    `INV-${Date.now().toString(36)}-${randomUUID().slice(0, 8)}`;
+    command.invoice_number ?? `INV-${Date.now().toString(36)}-${randomUUID().slice(0, 8)}`;
   const currency = command.currency ?? "USD";
 
   const result = await query<{ id: string }>(
@@ -429,10 +396,7 @@ const applyInvoiceCreate = async (
 
   const invoiceId = result.rows[0]?.id;
   if (!invoiceId) {
-    throw new BillingCommandError(
-      "INVOICE_CREATE_FAILED",
-      "Failed to create invoice.",
-    );
+    throw new BillingCommandError("INVOICE_CREATE_FAILED", "Failed to create invoice.");
   }
   return invoiceId;
 };
@@ -469,18 +433,12 @@ const applyInvoiceAdjust = async (
 
   const invoiceId = rows[0]?.id;
   if (!invoiceId) {
-    throw new BillingCommandError(
-      "INVOICE_NOT_FOUND",
-      "Invoice not found for adjustment.",
-    );
+    throw new BillingCommandError("INVOICE_NOT_FOUND", "Invoice not found for adjustment.");
   }
   return invoiceId;
 };
 
-const resolveFolioId = async (
-  tenantId: string,
-  reservationId: string,
-): Promise<string | null> => {
+const resolveFolioId = async (tenantId: string, reservationId: string): Promise<string | null> => {
   const { rows } = await query<{ folio_id: string }>(
     `
       SELECT folio_id
@@ -503,15 +461,9 @@ const applyChargePost = async (
   const actor = resolveActorId(context.initiatedBy);
   const actorId = asUuid(actor) ?? SYSTEM_ACTOR_ID;
   const currency = command.currency ?? "USD";
-  const folioId = await resolveFolioId(
-    context.tenantId,
-    command.reservation_id,
-  );
+  const folioId = await resolveFolioId(context.tenantId, command.reservation_id);
   if (!folioId) {
-    throw new BillingCommandError(
-      "FOLIO_NOT_FOUND",
-      "No folio found for reservation.",
-    );
+    throw new BillingCommandError("FOLIO_NOT_FOUND", "No folio found for reservation.");
   }
 
   const result = await query<{ posting_id: string }>(
@@ -572,10 +524,7 @@ const applyChargePost = async (
 
   const postingId = result.rows[0]?.posting_id;
   if (!postingId) {
-    throw new BillingCommandError(
-      "CHARGE_POST_FAILED",
-      "Unable to post charge.",
-    );
+    throw new BillingCommandError("CHARGE_POST_FAILED", "Unable to post charge.");
   }
   return postingId;
 };
@@ -607,23 +556,14 @@ const applyPaymentToInvoice = async (
   const actor = resolveActorId(context.initiatedBy);
   const payment = await loadPaymentById(context.tenantId, command.payment_id);
   if (!payment) {
-    throw new BillingCommandError(
-      "PAYMENT_NOT_FOUND",
-      "Payment not found for apply.",
-    );
+    throw new BillingCommandError("PAYMENT_NOT_FOUND", "Payment not found for apply.");
   }
 
   const targetInvoiceId =
     command.invoice_id ??
-    (await resolveInvoiceId(
-      context.tenantId,
-      command.reservation_id ?? payment.reservation_id,
-    ));
+    (await resolveInvoiceId(context.tenantId, command.reservation_id ?? payment.reservation_id));
   if (!targetInvoiceId) {
-    throw new BillingCommandError(
-      "INVOICE_NOT_FOUND",
-      "Invoice not found for apply.",
-    );
+    throw new BillingCommandError("INVOICE_NOT_FOUND", "Invoice not found for apply.");
   }
 
   const applyAmount = command.amount ?? payment.amount;
@@ -651,10 +591,7 @@ const applyPaymentToInvoice = async (
 
   const invoiceId = rows[0]?.id;
   if (!invoiceId) {
-    throw new BillingCommandError(
-      "INVOICE_NOT_FOUND",
-      "Invoice not found for apply.",
-    );
+    throw new BillingCommandError("INVOICE_NOT_FOUND", "Invoice not found for apply.");
   }
   return invoiceId;
 };
@@ -687,19 +624,10 @@ const applyFolioTransfer = async (
 ): Promise<string> => {
   const actor = resolveActorId(context.initiatedBy);
   const actorId = asUuid(actor) ?? SYSTEM_ACTOR_ID;
-  const fromFolioId = await resolveFolioId(
-    context.tenantId,
-    command.from_reservation_id,
-  );
-  const toFolioId = await resolveFolioId(
-    context.tenantId,
-    command.to_reservation_id,
-  );
+  const fromFolioId = await resolveFolioId(context.tenantId, command.from_reservation_id);
+  const toFolioId = await resolveFolioId(context.tenantId, command.to_reservation_id);
   if (!fromFolioId || !toFolioId) {
-    throw new BillingCommandError(
-      "FOLIO_NOT_FOUND",
-      "Unable to locate folios for transfer.",
-    );
+    throw new BillingCommandError("FOLIO_NOT_FOUND", "Unable to locate folios for transfer.");
   }
 
   await withTransaction(async (client) => {

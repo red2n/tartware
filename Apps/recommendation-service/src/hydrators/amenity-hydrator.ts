@@ -7,10 +7,7 @@ import { BaseHydrator, type PipelineContext } from "@tartware/candidate-pipeline
 import { query } from "../lib/db.js";
 import type { RoomCandidate, RoomRecommendationQuery } from "../types.js";
 
-export class AmenityHydrator extends BaseHydrator<
-  RoomRecommendationQuery,
-  RoomCandidate
-> {
+export class AmenityHydrator extends BaseHydrator<RoomRecommendationQuery, RoomCandidate> {
   readonly name = "amenity";
 
   async hydrate(
@@ -23,10 +20,7 @@ export class AmenityHydrator extends BaseHydrator<
     }
 
     const roomIds = candidates.map((c) => c.roomId);
-    context.logger.debug(
-      { roomCount: roomIds.length },
-      "Fetching room amenities",
-    );
+    context.logger.debug({ roomCount: roomIds.length }, "Fetching room amenities");
 
     const result = await query<{
       room_id: string;
@@ -54,9 +48,7 @@ export class AmenityHydrator extends BaseHydrator<
       [roomIds],
     );
 
-    const amenityMap = new Map(
-      result.rows.map((row) => [row.room_id, row.amenities]),
-    );
+    const amenityMap = new Map(result.rows.map((row) => [row.room_id, row.amenities]));
 
     return candidates.map((c) => ({
       amenities: amenityMap.get(c.roomId) ?? [],

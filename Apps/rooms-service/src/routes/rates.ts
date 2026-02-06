@@ -6,12 +6,7 @@
  */
 
 import { buildRouteSchema, schemaFromZod } from "@tartware/openapi";
-import {
-  RateItemSchema,
-  RateStatusEnum,
-  RateStrategyEnum,
-  RateTypeEnum,
-} from "@tartware/schemas";
+import { RateItemSchema, RateStatusEnum, RateStrategyEnum, RateTypeEnum } from "@tartware/schemas";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 
@@ -35,10 +30,7 @@ const RateListQuerySchema = z.object({
     .optional()
     .refine(
       (value) =>
-        !value ||
-        RateStatusEnum.options.includes(
-          value as (typeof RateStatusEnum.options)[number],
-        ),
+        !value || RateStatusEnum.options.includes(value as (typeof RateStatusEnum.options)[number]),
       { message: "Invalid rate status" },
     ),
   rate_type: z
@@ -47,10 +39,7 @@ const RateListQuerySchema = z.object({
     .optional()
     .refine(
       (value) =>
-        !value ||
-        RateTypeEnum.options.includes(
-          value as (typeof RateTypeEnum.options)[number],
-        ),
+        !value || RateTypeEnum.options.includes(value as (typeof RateTypeEnum.options)[number]),
       { message: "Invalid rate type" },
     ),
   search: z.string().min(1).max(80).optional(),
@@ -60,14 +49,8 @@ const RateListQuerySchema = z.object({
 type RateListQuery = z.infer<typeof RateListQuerySchema>;
 
 const RateListResponseSchema = z.array(RateItemSchema);
-const RateListQueryJsonSchema = schemaFromZod(
-  RateListQuerySchema,
-  "RateListQuery",
-);
-const RateListResponseJsonSchema = schemaFromZod(
-  RateListResponseSchema,
-  "RateListResponse",
-);
+const RateListQueryJsonSchema = schemaFromZod(RateListQuerySchema, "RateListQuery");
+const RateListResponseJsonSchema = schemaFromZod(RateListResponseSchema, "RateListResponse");
 
 const CreateRateBodySchema = z.object({
   tenant_id: z.string().uuid(),
@@ -89,10 +72,7 @@ const CreateRateBodySchema = z.object({
     .optional()
     .refine(
       (value) =>
-        !value ||
-        RateTypeEnum.options.includes(
-          value as (typeof RateTypeEnum.options)[number],
-        ),
+        !value || RateTypeEnum.options.includes(value as (typeof RateTypeEnum.options)[number]),
       { message: "Invalid rate type" },
     ),
   strategy: z
@@ -102,9 +82,7 @@ const CreateRateBodySchema = z.object({
     .refine(
       (value) =>
         !value ||
-        RateStrategyEnum.options.includes(
-          value as (typeof RateStrategyEnum.options)[number],
-        ),
+        RateStrategyEnum.options.includes(value as (typeof RateStrategyEnum.options)[number]),
       { message: "Invalid rate strategy" },
     ),
   priority: z.number().int().min(0).max(999).optional(),
@@ -141,10 +119,7 @@ const CreateRateBodySchema = z.object({
     .optional()
     .refine(
       (value) =>
-        !value ||
-        RateStatusEnum.options.includes(
-          value as (typeof RateStatusEnum.options)[number],
-        ),
+        !value || RateStatusEnum.options.includes(value as (typeof RateStatusEnum.options)[number]),
       { message: "Invalid rate status" },
     ),
   display_order: z.number().int().min(0).optional(),
@@ -159,19 +134,10 @@ const UpdateRateBodySchema = CreateRateBodySchema.partial().extend({
 
 type UpdateRateBody = z.infer<typeof UpdateRateBodySchema>;
 
-const CreateRateBodyJsonSchema = schemaFromZod(
-  CreateRateBodySchema,
-  "CreateRateBody",
-);
-const UpdateRateBodyJsonSchema = schemaFromZod(
-  UpdateRateBodySchema,
-  "UpdateRateBody",
-);
+const CreateRateBodyJsonSchema = schemaFromZod(CreateRateBodySchema, "CreateRateBody");
+const UpdateRateBodyJsonSchema = schemaFromZod(UpdateRateBodySchema, "UpdateRateBody");
 const RateItemJsonSchema = schemaFromZod(RateItemSchema, "RateItem");
-const ErrorResponseSchema = schemaFromZod(
-  z.object({ message: z.string() }),
-  "ErrorResponse",
-);
+const ErrorResponseSchema = schemaFromZod(z.object({ message: z.string() }), "ErrorResponse");
 
 const RateParamsSchema = z.object({
   rateId: z.string().uuid(),
@@ -185,8 +151,7 @@ export const registerRateRoutes = (app: FastifyInstance): void => {
     "/v1/rates",
     {
       preHandler: app.withTenantScope({
-        resolveTenantId: (request) =>
-          (request.query as RateListQuery).tenant_id,
+        resolveTenantId: (request) => (request.query as RateListQuery).tenant_id,
         minRole: "MANAGER",
         requiredModules: "core",
       }),
@@ -227,8 +192,7 @@ export const registerRateRoutes = (app: FastifyInstance): void => {
     "/v1/rates/:rateId",
     {
       preHandler: app.withTenantScope({
-        resolveTenantId: (request) =>
-          (request.query as { tenant_id: string }).tenant_id,
+        resolveTenantId: (request) => (request.query as { tenant_id: string }).tenant_id,
         minRole: "MANAGER",
         requiredModules: "core",
       }),
@@ -236,10 +200,7 @@ export const registerRateRoutes = (app: FastifyInstance): void => {
         tag: RATES_TAG,
         summary: "Get rate by ID",
         params: schemaFromZod(RateParamsSchema, "RateParams"),
-        querystring: schemaFromZod(
-          z.object({ tenant_id: z.string().uuid() }),
-          "RateGetQuery",
-        ),
+        querystring: schemaFromZod(z.object({ tenant_id: z.string().uuid() }), "RateGetQuery"),
         response: {
           200: RateItemJsonSchema,
           404: ErrorResponseSchema,
@@ -248,9 +209,7 @@ export const registerRateRoutes = (app: FastifyInstance): void => {
     },
     async (request, reply) => {
       const params = RateParamsSchema.parse(request.params);
-      const { tenant_id } = z
-        .object({ tenant_id: z.string().uuid() })
-        .parse(request.query);
+      const { tenant_id } = z.object({ tenant_id: z.string().uuid() }).parse(request.query);
 
       const rate = await getRateById({
         rateId: params.rateId,
@@ -272,16 +231,14 @@ export const registerRateRoutes = (app: FastifyInstance): void => {
     "/v1/rates",
     {
       preHandler: app.withTenantScope({
-        resolveTenantId: (request) =>
-          (request.body as CreateRateBody).tenant_id,
+        resolveTenantId: (request) => (request.body as CreateRateBody).tenant_id,
         minRole: "MANAGER",
         requiredModules: "core",
       }),
       schema: buildRouteSchema({
         tag: RATES_TAG,
         summary: "Create a rate",
-        description:
-          "Create a new rate for a room type. Rate code must be unique per property.",
+        description: "Create a new rate for a room type. Rate code must be unique per property.",
         body: CreateRateBodyJsonSchema,
         response: {
           201: RateItemJsonSchema,
@@ -323,8 +280,7 @@ export const registerRateRoutes = (app: FastifyInstance): void => {
     "/v1/rates/:rateId",
     {
       preHandler: app.withTenantScope({
-        resolveTenantId: (request) =>
-          (request.body as UpdateRateBody).tenant_id,
+        resolveTenantId: (request) => (request.body as UpdateRateBody).tenant_id,
         minRole: "MANAGER",
         requiredModules: "core",
       }),
@@ -382,8 +338,7 @@ export const registerRateRoutes = (app: FastifyInstance): void => {
     "/v1/rates/:rateId",
     {
       preHandler: app.withTenantScope({
-        resolveTenantId: (request) =>
-          (request.body as { tenant_id: string }).tenant_id,
+        resolveTenantId: (request) => (request.body as { tenant_id: string }).tenant_id,
         minRole: "MANAGER",
         requiredModules: "core",
       }),
@@ -392,10 +347,7 @@ export const registerRateRoutes = (app: FastifyInstance): void => {
         summary: "Delete a rate",
         description: "Soft delete a rate by ID.",
         params: schemaFromZod(RateParamsSchema, "RateParams"),
-        body: schemaFromZod(
-          z.object({ tenant_id: z.string().uuid() }),
-          "DeleteRateBody",
-        ),
+        body: schemaFromZod(z.object({ tenant_id: z.string().uuid() }), "DeleteRateBody"),
         response: {
           204: { type: "null" },
           404: ErrorResponseSchema,
@@ -404,9 +356,7 @@ export const registerRateRoutes = (app: FastifyInstance): void => {
     },
     async (request, reply) => {
       const params = RateParamsSchema.parse(request.params);
-      const body = z
-        .object({ tenant_id: z.string().uuid() })
-        .parse(request.body);
+      const body = z.object({ tenant_id: z.string().uuid() }).parse(request.body);
 
       const deleted = await deleteRate({
         tenant_id: body.tenant_id,

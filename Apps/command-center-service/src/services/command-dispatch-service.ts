@@ -5,10 +5,7 @@ import {
 } from "@tartware/command-center-shared";
 
 import { enqueueOutboxRecord } from "../outbox/repository.js";
-import {
-  findCommandDispatchByRequest,
-  insertCommandDispatch,
-} from "../sql/command-dispatches.js";
+import { findCommandDispatchByRequest, insertCommandDispatch } from "../sql/command-dispatches.js";
 
 import { resolveCommandForTenant } from "./command-registry-service.js";
 import { throttleCommand } from "./command-throttle-service.js";
@@ -26,21 +23,18 @@ type AcceptedCommand = {
   requestedAt: string;
 };
 
-const { acceptCommand: acceptCommandInternal } =
-  createCommandDispatchService<TenantMembership>({
-    resolveCommandForTenant,
-    enqueueOutboxRecord,
-    insertCommandDispatch,
-    findCommandDispatchByRequest,
-    throttleCommand,
-  });
+const { acceptCommand: acceptCommandInternal } = createCommandDispatchService<TenantMembership>({
+  resolveCommandForTenant,
+  enqueueOutboxRecord,
+  insertCommandDispatch,
+  findCommandDispatchByRequest,
+  throttleCommand,
+});
 
 /**
  * Accept a command request and enqueue it for dispatch.
  */
-export const acceptCommand = async (
-  input: AcceptCommandInput,
-): Promise<AcceptedCommand> => {
+export const acceptCommand = async (input: AcceptCommandInput): Promise<AcceptedCommand> => {
   const result = await acceptCommandInternal(input);
 
   return {

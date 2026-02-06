@@ -43,12 +43,8 @@ export type TenantMembership = {
 /**
  * Fetch tenant memberships for a user.
  */
-export const getUserMemberships = async (
-  userId: string,
-): Promise<TenantMembership[]> => {
-  const { rows } = await query<TenantMembershipRow>(USER_MEMBERSHIP_SQL, [
-    userId,
-  ]);
+export const getUserMemberships = async (userId: string): Promise<TenantMembership[]> => {
+  const { rows } = await query<TenantMembershipRow>(USER_MEMBERSHIP_SQL, [userId]);
 
   return rows.map((row) => ({
     tenantId: row.tenant_id,

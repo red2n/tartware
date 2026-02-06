@@ -22,9 +22,7 @@ type KafkaEventMessage = {
   topic?: string;
 };
 
-const publishEvent = async (
-  message: KafkaEventMessage,
-): Promise<RecordMetadata[]> => {
+const publishEvent = async (message: KafkaEventMessage): Promise<RecordMetadata[]> => {
   const producerInstance = await getProducer();
   return producerInstance.send({
     topic: message.topic ?? config.commandCenter.topic,

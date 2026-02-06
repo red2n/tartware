@@ -8,10 +8,7 @@ import { BaseScorer, type PipelineContext } from "@tartware/candidate-pipeline";
 
 import type { RoomCandidate, RoomRecommendationQuery } from "../types.js";
 
-export class UpgradeScorer extends BaseScorer<
-  RoomRecommendationQuery,
-  RoomCandidate
-> {
+export class UpgradeScorer extends BaseScorer<RoomRecommendationQuery, RoomCandidate> {
   readonly name = "upgrade";
   readonly weight = 0.2; // 20% of final score
 
@@ -19,10 +16,7 @@ export class UpgradeScorer extends BaseScorer<
    * Only enable for guests who might be interested in upgrades.
    */
   enable(queryParams: RoomRecommendationQuery): boolean {
-    return (
-      queryParams.loyaltyTier !== undefined &&
-      queryParams.loyaltyTier !== "none"
-    );
+    return queryParams.loyaltyTier !== undefined && queryParams.loyaltyTier !== "none";
   }
 
   async score(
@@ -49,7 +43,7 @@ export class UpgradeScorer extends BaseScorer<
 
       // Higher discount = more attractive upgrade
       if (candidate.upgradeDiscount) {
-        score += candidate.upgradeDiscount / 100 * loyaltyMultiplier;
+        score += (candidate.upgradeDiscount / 100) * loyaltyMultiplier;
       }
 
       // Better views get a boost
@@ -58,8 +52,9 @@ export class UpgradeScorer extends BaseScorer<
       }
 
       // Higher floors (premium) get a slight boost
-      const floorNum = typeof candidate.floor === 'string' ? parseInt(candidate.floor, 10) : candidate.floor;
-      if (!isNaN(floorNum) && floorNum >= 10) {
+      const floorNum =
+        typeof candidate.floor === "string" ? parseInt(candidate.floor, 10) : candidate.floor;
+      if (!Number.isNaN(floorNum) && floorNum >= 10) {
         score += 0.1;
       }
 

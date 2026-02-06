@@ -6,7 +6,9 @@
   "ignoreFiles": [
     ".eslintrc.cjs"
   ],
-  "ignoreDependencies": [],
+  "ignoreDependencies": [
+    "pino-pretty"
+  ],
   "ignoreBinaries": [
     "biome",
     "eslint",

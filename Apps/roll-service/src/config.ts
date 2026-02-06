@@ -14,10 +14,7 @@ const toBoolean = (value: string | undefined, fallback: boolean): boolean => {
   return value === "true" || value === "1";
 };
 
-const parseBrokerList = (
-  value: string | undefined,
-  fallback?: string,
-): string[] =>
+const parseBrokerList = (value: string | undefined, fallback?: string): string[] =>
   (value ?? fallback ?? "")
     .split(",")
     .map((broker) => broker.trim())
@@ -28,22 +25,13 @@ const configValues = loadServiceConfig(databaseSchema);
 const runtimeEnv = (process.env.NODE_ENV ?? "development").toLowerCase();
 const isProduction = runtimeEnv === "production";
 
-const primaryKafkaBrokers = parseBrokerList(
-  process.env.KAFKA_BROKERS,
-  "localhost:29092",
-);
-const usedDefaultPrimary =
-  (process.env.KAFKA_BROKERS ?? "").trim().length === 0;
-const failoverKafkaBrokers = parseBrokerList(
-  process.env.KAFKA_FAILOVER_BROKERS,
-);
-const requestedCluster = (
-  process.env.KAFKA_ACTIVE_CLUSTER ?? "primary"
-).toLowerCase();
+const primaryKafkaBrokers = parseBrokerList(process.env.KAFKA_BROKERS, "localhost:29092");
+const usedDefaultPrimary = (process.env.KAFKA_BROKERS ?? "").trim().length === 0;
+const failoverKafkaBrokers = parseBrokerList(process.env.KAFKA_FAILOVER_BROKERS);
+const requestedCluster = (process.env.KAFKA_ACTIVE_CLUSTER ?? "primary").toLowerCase();
 const failoverToggle = toBoolean(process.env.KAFKA_FAILOVER_ENABLED, false);
 const useFailover =
-  (requestedCluster === "failover" || failoverToggle) &&
-  failoverKafkaBrokers.length > 0;
+  (requestedCluster === "failover" || failoverToggle) && failoverKafkaBrokers.length > 0;
 const kafkaBrokers =
   useFailover && failoverKafkaBrokers.length > 0
     ? failoverKafkaBrokers
@@ -51,18 +39,14 @@ const kafkaBrokers =
       ? primaryKafkaBrokers
       : failoverKafkaBrokers;
 const kafkaActiveCluster =
-  kafkaBrokers === failoverKafkaBrokers && kafkaBrokers.length > 0
-    ? "failover"
-    : "primary";
+  kafkaBrokers === failoverKafkaBrokers && kafkaBrokers.length > 0 ? "failover" : "primary";
 
 if (primaryKafkaBrokers.length === 0 && failoverKafkaBrokers.length === 0) {
   throw new Error("KAFKA_BROKERS or KAFKA_FAILOVER_BROKERS must be set");
 }
 
 if (useFailover && failoverKafkaBrokers.length === 0) {
-  throw new Error(
-    "Failover requested/enabled but KAFKA_FAILOVER_BROKERS is empty",
-  );
+  throw new Error("Failover requested/enabled but KAFKA_FAILOVER_BROKERS is empty");
 }
 
 if (kafkaActiveCluster === "primary" && primaryKafkaBrokers.length === 0) {
@@ -82,8 +66,7 @@ const kafka = {
   failoverBrokers: failoverKafkaBrokers,
   activeCluster: kafkaActiveCluster,
   topic: process.env.RESERVATION_EVENTS_TOPIC ?? "reservations.events",
-  consumerGroupId:
-    process.env.ROLL_SERVICE_CONSUMER_GROUP ?? "roll-service-shadow",
+  consumerGroupId: process.env.ROLL_SERVICE_CONSUMER_GROUP ?? "roll-service-shadow",
   maxBatchBytes: toNumber(process.env.KAFKA_MAX_BATCH_BYTES, 1048576),
   consumerEnabled: toBoolean(process.env.ROLL_SERVICE_CONSUMER_ENABLED, true),
 };

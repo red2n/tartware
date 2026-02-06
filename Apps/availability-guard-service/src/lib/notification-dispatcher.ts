@@ -40,9 +40,7 @@ const ensureProducer = async (): Promise<Producer> => {
 };
 
 const dedupe = (values: string[]): string[] => {
-  const normalized = values
-    .map((value) => value.trim())
-    .filter((value) => value.length > 0);
+  const normalized = values.map((value) => value.trim()).filter((value) => value.length > 0);
   return Array.from(new Set(normalized));
 };
 

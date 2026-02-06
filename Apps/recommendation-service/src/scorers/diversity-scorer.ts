@@ -9,10 +9,7 @@ import { BaseScorer, type PipelineContext } from "@tartware/candidate-pipeline";
 
 import type { RoomCandidate, RoomRecommendationQuery } from "../types.js";
 
-export class DiversityScorer extends BaseScorer<
-  RoomRecommendationQuery,
-  RoomCandidate
-> {
+export class DiversityScorer extends BaseScorer<RoomRecommendationQuery, RoomCandidate> {
   readonly name = "diversity";
   readonly weight = 0.15; // 15% of final score
 
@@ -24,10 +21,7 @@ export class DiversityScorer extends BaseScorer<
     candidates: readonly RoomCandidate[],
     context: PipelineContext,
   ): Promise<number[]> {
-    context.logger.debug(
-      { candidateCount: candidates.length },
-      "Scoring for diversity",
-    );
+    context.logger.debug({ candidateCount: candidates.length }, "Scoring for diversity");
 
     // Sort candidates by their current score (descending)
     const sorted = candidates
@@ -43,7 +37,7 @@ export class DiversityScorer extends BaseScorer<
       const count = roomTypeCounts.get(roomTypeId) ?? 0;
 
       // Apply attenuation: 1.0 for first, 0.7 for second, 0.49 for third, etc.
-      const diversityScore = Math.pow(this.attenuation, count);
+      const diversityScore = this.attenuation ** count;
       scores[item.index] = diversityScore;
 
       roomTypeCounts.set(roomTypeId, count + 1);

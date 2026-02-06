@@ -106,10 +106,7 @@ type CreateCommandCenterHandlersInput = {
   RetryExhaustedError: new (...args: never[]) => Error & { attempts: number };
   publishDlqEvent: PublishDlqEvent;
   buildDlqPayload: BuildDlqPayload;
-  routeCommand: (
-    envelope: CommandEnvelope,
-    metadata: CommandMetadata,
-  ) => Promise<void>;
+  routeCommand: (envelope: CommandEnvelope, metadata: CommandMetadata) => Promise<void>;
   commandLabel: string;
   metrics?: CommandConsumerMetrics;
   /**
@@ -130,33 +127,24 @@ type CreateCommandCenterHandlersInput = {
   idempotencyFailureMode?: "fail-open" | "fail-closed";
 };
 
-export const createCommandCenterHandlers = (
-  input: CreateCommandCenterHandlersInput,
-) => {
+export const createCommandCenterHandlers = (input: CreateCommandCenterHandlersInput) => {
   // Validate idempotency callbacks are properly paired
   const hasCheck = typeof input.checkIdempotency === "function";
   const hasRecord = typeof input.recordIdempotency === "function";
   if (hasCheck !== hasRecord) {
-    throw new Error(
-      "checkIdempotency and recordIdempotency must both be provided or both omitted",
-    );
+    throw new Error("checkIdempotency and recordIdempotency must both be provided or both omitted");
   }
 
   const idempotencyFailureMode = input.idempotencyFailureMode ?? "fail-open";
 
-  const shouldProcess = (
-    metadata: CommandEnvelope["metadata"],
-  ): metadata is CommandMetadata => {
+  const shouldProcess = (metadata: CommandEnvelope["metadata"]): metadata is CommandMetadata => {
     if (!metadata) {
       return false;
     }
     if (metadata.targetService && metadata.targetService !== input.targetServiceId) {
       return false;
     }
-    if (
-      typeof metadata.commandName !== "string" ||
-      typeof metadata.tenantId !== "string"
-    ) {
+    if (typeof metadata.commandName !== "string" || typeof metadata.tenantId !== "string") {
       return false;
     }
     return metadata.commandName.length > 0 && metadata.tenantId.length > 0;
@@ -181,7 +169,13 @@ export const createCommandCenterHandlers = (
         input.metrics.setConsumerLag(topic, partition, lag);
       } catch (error) {
         input.logger.warn(
-          { err: error, topic, partition, offset: message.offset, highWatermark },
+          {
+            err: error,
+            topic,
+            partition,
+            offset: message.offset,
+            highWatermark,
+          },
           "Failed to compute command consumer lag",
         );
       }
@@ -209,10 +203,7 @@ export const createCommandCenterHandlers = (
         "failed to parse command envelope; routing to DLQ",
       );
       input.metrics?.recordOutcome?.("unknown", "parse_error");
-      input.metrics?.observeDuration?.(
-        "unknown",
-        (performance.now() - startedAt) / 1000,
-      );
+      input.metrics?.observeDuration?.("unknown", (performance.now() - startedAt) / 1000);
       try {
         await input.publishDlqEvent({
           key: messageKey,
@@ -302,7 +293,13 @@ export const createCommandCenterHandlers = (
             });
           } catch (dlqError) {
             input.logger.error(
-              { err: dlqError, metadata, topic, partition, offset: message.offset },
+              {
+                err: dlqError,
+                metadata,
+                topic,
+                partition,
+                offset: message.offset,
+              },
               "CRITICAL: Failed to publish idempotency failure to DLQ; message may be lost",
             );
           }
@@ -367,8 +364,7 @@ export const createCommandCenterHandlers = (
         }
       }
     } catch (error) {
-      const attempts =
-        error instanceof input.RetryExhaustedError ? error.attempts : 1;
+      const attempts = error instanceof input.RetryExhaustedError ? error.attempts : 1;
       input.logger.error(
         { err: error, metadata, attempts },
         `${input.commandLabel} command failed after retries; routing to DLQ`,
@@ -399,7 +395,14 @@ export const createCommandCenterHandlers = (
         });
       } catch (dlqError) {
         input.logger.error(
-          { err: dlqError, metadata, attempts, topic, partition, offset: message.offset },
+          {
+            err: dlqError,
+            metadata,
+            attempts,
+            topic,
+            partition,
+            offset: message.offset,
+          },
           "CRITICAL: Failed to publish handler error to DLQ; message may be lost",
         );
       }
@@ -424,12 +427,7 @@ export const createCommandCenterHandlers = (
       if (!isRunning() || isStale()) {
         break;
       }
-      await processMessage(
-        message,
-        batch.topic,
-        batch.partition,
-        batch.highWatermark,
-      );
+      await processMessage(message, batch.topic, batch.partition, batch.highWatermark);
       resolveOffset(message.offset);
       await heartbeat();
     }

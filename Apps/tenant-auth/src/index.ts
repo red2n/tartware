@@ -29,10 +29,7 @@ type AccessTokenPayload = {
   [key: string]: unknown;
 };
 
-type RequestWithAuth<Membership extends TenantMembershipBase> = Omit<
-  FastifyRequest,
-  "auth"
-> & {
+type RequestWithAuth<Membership extends TenantMembershipBase> = Omit<FastifyRequest, "auth"> & {
   auth: AuthContext<Membership>;
 };
 
@@ -88,26 +85,19 @@ const coerceModules = (modules: string[] | readonly string[] | undefined): strin
   return [...modules];
 };
 
-const createAuthContextFactory = <Membership extends TenantMembershipBase>(
-  rolePriority: Record<string, number>,
-) =>
+const createAuthContextFactory =
+  <Membership extends TenantMembershipBase>(rolePriority: Record<string, number>) =>
   (userId: string | null, memberships: Membership[]): AuthContext<Membership> => {
     const membershipMap = new Map(
       memberships.map((membership) => [membership.tenantId, membership]),
     );
 
-    const hasRole = (
-      tenantId: string,
-      requiredRole: Membership["role"],
-    ): boolean => {
+    const hasRole = (tenantId: string, requiredRole: Membership["role"]): boolean => {
       const membership = membershipMap.get(tenantId);
       if (!membership) {
         return false;
       }
-      return (
-        (rolePriority[membership.role] ?? 0) >=
-        (rolePriority[requiredRole] ?? 0)
-      );
+      return (rolePriority[membership.role] ?? 0) >= (rolePriority[requiredRole] ?? 0);
     };
 
     return {
@@ -192,9 +182,7 @@ const buildTenantScopeGuard = <Membership extends TenantMembershipBase>(
   };
 };
 
-export const createTenantAuthPlugin = <
-  Membership extends TenantMembershipBase,
->(
+export const createTenantAuthPlugin = <Membership extends TenantMembershipBase>(
   options: TenantAuthPluginOptions<Membership>,
 ): FastifyPluginAsync => {
   const {
@@ -215,7 +203,8 @@ export const createTenantAuthPlugin = <
       },
       setter(this: FastifyRequest, value: AuthContext<Membership>) {
         authStorage.set(this, value);
-      }
+      },
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } as any);
 
     const tenantScopeDecorator: TenantScopeDecorator<Membership> = (

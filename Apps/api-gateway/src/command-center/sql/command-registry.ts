@@ -1,6 +1,6 @@
 import {
-	type CommandRegistrySnapshot,
-	createCommandRegistryRepository,
+  type CommandRegistrySnapshot,
+  createCommandRegistryRepository,
 } from "@tartware/command-center-shared";
 
 import { query } from "../../lib/db.js";

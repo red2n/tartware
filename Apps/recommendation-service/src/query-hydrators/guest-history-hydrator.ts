@@ -23,10 +23,7 @@ export class GuestHistoryHydrator extends BaseQueryHydrator<RoomRecommendationQu
     queryParams: RoomRecommendationQuery,
     context: PipelineContext,
   ): Promise<Partial<RoomRecommendationQuery>> {
-    context.logger.debug(
-      { guestId: queryParams.guestId },
-      "Fetching guest booking history",
-    );
+    context.logger.debug({ guestId: queryParams.guestId }, "Fetching guest booking history");
 
     const result = await query<{
       total_bookings: number;
@@ -81,10 +78,7 @@ export class GuestHistoryHydrator extends BaseQueryHydrator<RoomRecommendationQu
       preferredAmenities: row?.preferred_amenities ?? [],
     };
 
-    context.logger.debug(
-      { totalBookings: history.totalBookings },
-      "Guest history fetched",
-    );
+    context.logger.debug({ totalBookings: history.totalBookings }, "Guest history fetched");
 
     return { guestHistory: history };
   }

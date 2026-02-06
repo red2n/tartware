@@ -76,9 +76,7 @@ export const createReservation = async (
 
   // Validate check_out_date is after check_in_date
   if (stayEnd <= stayStart) {
-    throw new Error(
-      "INVALID_DATES: check_out_date must be after check_in_date",
-    );
+    throw new Error("INVALID_DATES: check_out_date must be after check_in_date");
   }
 
   const rateResolution: RatePlanResolution = await resolveRatePlan({
@@ -110,9 +108,7 @@ export const createReservation = async (
       }
     : undefined;
 
-  const normalizedCurrency = (
-    command.currency ?? DEFAULT_CURRENCY
-  ).toUpperCase();
+  const normalizedCurrency = (command.currency ?? DEFAULT_CURRENCY).toUpperCase();
 
   const payload: ReservationCreatedEvent = {
     metadata: {
@@ -143,17 +139,16 @@ export const createReservation = async (
   const aggregateId = validatedEvent.payload.id ?? eventId;
   const partitionKey = validatedEvent.payload.guest_id ?? tenantId;
 
-  const availabilityGuard: AvailabilityGuardMetadata | undefined =
-    await lockReservationHold({
-      tenantId,
-      reservationId: aggregateId,
-      roomTypeId: command.room_type_id,
-      roomId: null,
-      stayStart: new Date(command.check_in_date),
-      stayEnd: new Date(command.check_out_date),
-      reason: "RESERVATION_CREATE",
-      correlationId: options.correlationId ?? eventId,
-    });
+  const availabilityGuard: AvailabilityGuardMetadata | undefined = await lockReservationHold({
+    tenantId,
+    reservationId: aggregateId,
+    roomTypeId: command.room_type_id,
+    roomId: null,
+    stayStart: new Date(command.check_in_date),
+    stayEnd: new Date(command.check_out_date),
+    reason: "RESERVATION_CREATE",
+    correlationId: options.correlationId ?? eventId,
+  });
 
   const guardMetadata = availabilityGuard ?? { status: "SKIPPED" };
 
@@ -216,9 +211,7 @@ export const createReservation = async (
       headers: {
         tenantId,
         eventId,
-        ...(options.correlationId
-          ? { correlationId: options.correlationId }
-          : {}),
+        ...(options.correlationId ? { correlationId: options.correlationId } : {}),
       },
       correlationId: options.correlationId,
       partitionKey,
@@ -245,12 +238,12 @@ export const modifyReservation = async (
   command: ReservationModifyCommand,
   options: { correlationId?: string } = {},
 ): Promise<CreateReservationResult> => {
-  const snapshot: ReservationStaySnapshot | null =
-    await fetchReservationStaySnapshot(tenantId, command.reservation_id);
+  const snapshot: ReservationStaySnapshot | null = await fetchReservationStaySnapshot(
+    tenantId,
+    command.reservation_id,
+  );
   if (!snapshot) {
-    throw new Error(
-      `Reservation ${command.reservation_id} not found for tenant ${tenantId}`,
-    );
+    throw new Error(`Reservation ${command.reservation_id} not found for tenant ${tenantId}`);
   }
 
   const targetPropertyId = command.property_id ?? snapshot.propertyId;
@@ -260,9 +253,7 @@ export const modifyReservation = async (
 
   // Validate dates (either from command or after merge with snapshot)
   if (stayEnd <= stayStart) {
-    throw new Error(
-      "INVALID_DATES: check_out_date must be after check_in_date",
-    );
+    throw new Error("INVALID_DATES: check_out_date must be after check_in_date");
   }
 
   const shouldResolveRate = command.rate_code !== undefined;
@@ -395,9 +386,7 @@ export const modifyReservation = async (
       headers: {
         tenantId,
         eventId,
-        ...(options.correlationId
-          ? { correlationId: options.correlationId }
-          : {}),
+        ...(options.correlationId ? { correlationId: options.correlationId } : {}),
       },
       correlationId: options.correlationId,
       partitionKey: command.reservation_id,
@@ -470,9 +459,7 @@ const enqueueReservationUpdate = async (
       headers: {
         tenantId,
         eventId,
-        ...(options.correlationId
-          ? { correlationId: options.correlationId }
-          : {}),
+        ...(options.correlationId ? { correlationId: options.correlationId } : {}),
       },
       correlationId: options.correlationId,
       partitionKey,
@@ -489,10 +476,7 @@ const enqueueReservationUpdate = async (
   };
 };
 
-const fetchRoomNumber = async (
-  tenantId: string,
-  roomId: string,
-): Promise<string | null> => {
+const fetchRoomNumber = async (tenantId: string, roomId: string): Promise<string | null> => {
   const { rows } = await query<{ room_number: string | null }>(
     `
       SELECT room_number
@@ -515,9 +499,7 @@ export const checkInReservation = async (
   command: ReservationCheckInCommand,
   options: { correlationId?: string } = {},
 ): Promise<CreateReservationResult> => {
-  const roomNumber = command.room_id
-    ? await fetchRoomNumber(tenantId, command.room_id)
-    : null;
+  const roomNumber = command.room_id ? await fetchRoomNumber(tenantId, command.room_id) : null;
   const updatePayload: ReservationUpdatePayload = {
     id: command.reservation_id,
     tenant_id: tenantId,
@@ -527,12 +509,7 @@ export const checkInReservation = async (
     internal_notes: command.notes,
     metadata: command.metadata,
   };
-  return enqueueReservationUpdate(
-    tenantId,
-    "reservation.check_in",
-    updatePayload,
-    options,
-  );
+  return enqueueReservationUpdate(tenantId, "reservation.check_in", updatePayload, options);
 };
 
 /**
@@ -551,12 +528,7 @@ export const checkOutReservation = async (
     internal_notes: command.notes,
     metadata: command.metadata,
   };
-  return enqueueReservationUpdate(
-    tenantId,
-    "reservation.check_out",
-    updatePayload,
-    options,
-  );
+  return enqueueReservationUpdate(tenantId, "reservation.check_out", updatePayload, options);
 };
 
 /**
@@ -575,10 +547,7 @@ export const assignRoom = async (
   }
 
   // Fetch reservation to get stay dates for availability check
-  const snapshot = await fetchReservationStaySnapshot(
-    tenantId,
-    command.reservation_id,
-  );
+  const snapshot = await fetchReservationStaySnapshot(tenantId, command.reservation_id);
   if (!snapshot) {
     throw new Error("RESERVATION_NOT_FOUND");
   }
@@ -605,12 +574,7 @@ export const assignRoom = async (
       availabilityGuard: guardMetadata,
     },
   };
-  return enqueueReservationUpdate(
-    tenantId,
-    "reservation.assign_room",
-    updatePayload,
-    options,
-  );
+  return enqueueReservationUpdate(tenantId, "reservation.assign_room", updatePayload, options);
 };
 
 /**
@@ -628,12 +592,7 @@ export const unassignRoom = async (
     internal_notes: command.reason,
     metadata: command.metadata,
   };
-  return enqueueReservationUpdate(
-    tenantId,
-    "reservation.unassign_room",
-    updatePayload,
-    options,
-  );
+  return enqueueReservationUpdate(tenantId, "reservation.unassign_room", updatePayload, options);
 };
 
 /**
@@ -647,10 +606,7 @@ export const extendStay = async (
   const eventId = uuid();
 
   // Fetch current reservation to check if extension requires availability lock
-  const snapshot = await fetchReservationStaySnapshot(
-    tenantId,
-    command.reservation_id,
-  );
+  const snapshot = await fetchReservationStaySnapshot(tenantId, command.reservation_id);
   if (!snapshot) {
     throw new Error("RESERVATION_NOT_FOUND");
   }
@@ -661,9 +617,7 @@ export const extendStay = async (
 
   // Validate new checkout is after check-in
   if (newCheckOut <= checkIn) {
-    throw new Error(
-      "INVALID_DATES: new_check_out_date must be after check_in_date",
-    );
+    throw new Error("INVALID_DATES: new_check_out_date must be after check_in_date");
   }
 
   // If extending (new checkout is later), verify availability for extended period
@@ -695,12 +649,7 @@ export const extendStay = async (
       availabilityGuard: guardMetadata,
     },
   };
-  return enqueueReservationUpdate(
-    tenantId,
-    "reservation.extend_stay",
-    updatePayload,
-    options,
-  );
+  return enqueueReservationUpdate(tenantId, "reservation.extend_stay", updatePayload, options);
 };
 
 /**
@@ -720,12 +669,7 @@ export const overrideRate = async (
     internal_notes: command.reason,
     metadata: command.metadata,
   };
-  return enqueueReservationUpdate(
-    tenantId,
-    "reservation.rate_override",
-    updatePayload,
-    options,
-  );
+  return enqueueReservationUpdate(tenantId, "reservation.rate_override", updatePayload, options);
 };
 
 /**
@@ -752,12 +696,7 @@ export const addDeposit = async (
       ...(command.metadata ?? {}),
     },
   };
-  return enqueueReservationUpdate(
-    tenantId,
-    "reservation.add_deposit",
-    updatePayload,
-    options,
-  );
+  return enqueueReservationUpdate(tenantId, "reservation.add_deposit", updatePayload, options);
 };
 
 /**
@@ -783,12 +722,7 @@ export const releaseDeposit = async (
       ...(command.metadata ?? {}),
     },
   };
-  return enqueueReservationUpdate(
-    tenantId,
-    "reservation.release_deposit",
-    updatePayload,
-    options,
-  );
+  return enqueueReservationUpdate(tenantId, "reservation.release_deposit", updatePayload, options);
 };
 
 /**
@@ -822,8 +756,10 @@ export const cancelReservation = async (
 
   const validatedEvent = ReservationCancelledEventSchema.parse(payload);
 
-  const guardRecord: StoredGuardMetadata | null =
-    await getReservationGuardMetadata(tenantId, command.reservation_id);
+  const guardRecord: StoredGuardMetadata | null = await getReservationGuardMetadata(
+    tenantId,
+    command.reservation_id,
+  );
   const releaseLockId = guardRecord?.lockId ?? command.reservation_id;
 
   await withTransaction(async (client) => {
@@ -875,9 +811,7 @@ export const cancelReservation = async (
       headers: {
         tenantId,
         eventId,
-        ...(options.correlationId
-          ? { correlationId: options.correlationId }
-          : {}),
+        ...(options.correlationId ? { correlationId: options.correlationId } : {}),
       },
       correlationId: options.correlationId,
       partitionKey: command.reservation_id,
@@ -977,16 +911,13 @@ const hasStayCriticalChanges = (
   },
 ): boolean => {
   const roomTypeChanged =
-    command.room_type_id !== undefined &&
-    command.room_type_id !== snapshot.roomTypeId;
+    command.room_type_id !== undefined && command.room_type_id !== snapshot.roomTypeId;
   const checkInChanged =
     command.check_in_date !== undefined &&
-    new Date(command.check_in_date).getTime() !==
-      snapshot.checkInDate.getTime();
+    new Date(command.check_in_date).getTime() !== snapshot.checkInDate.getTime();
   const checkOutChanged =
     command.check_out_date !== undefined &&
-    new Date(command.check_out_date).getTime() !==
-      snapshot.checkOutDate.getTime();
+    new Date(command.check_out_date).getTime() !== snapshot.checkOutDate.getTime();
 
   return roomTypeChanged || checkInChanged || checkOutChanged;
 };

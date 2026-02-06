@@ -8,10 +8,7 @@ import { BaseScorer, type PipelineContext } from "@tartware/candidate-pipeline";
 
 import type { RoomCandidate, RoomRecommendationQuery } from "../types.js";
 
-export class ValueScorer extends BaseScorer<
-  RoomRecommendationQuery,
-  RoomCandidate
-> {
+export class ValueScorer extends BaseScorer<RoomRecommendationQuery, RoomCandidate> {
   readonly name = "value";
   readonly weight = 0.25; // 25% of final score
 
@@ -20,10 +17,7 @@ export class ValueScorer extends BaseScorer<
     candidates: readonly RoomCandidate[],
     context: PipelineContext,
   ): Promise<number[]> {
-    context.logger.debug(
-      { candidateCount: candidates.length },
-      "Scoring by value proposition",
-    );
+    context.logger.debug({ candidateCount: candidates.length }, "Scoring by value proposition");
 
     const avgRate = queryParams.guestHistory?.averageRate ?? 150;
     const budgetMax = queryParams.budgetRange?.max ?? avgRate * 1.5;

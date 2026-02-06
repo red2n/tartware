@@ -25,8 +25,7 @@ let runLoop: Promise<void> | null = null;
 export const startManualReleaseNotificationConsumer = async (
   logger: FastifyBaseLogger,
 ): Promise<void> => {
-  const consumerConfig =
-    config.guard.manualRelease.notifications.consumer ?? null;
+  const consumerConfig = config.guard.manualRelease.notifications.consumer ?? null;
   const topic = config.guard.manualRelease.notifications.topic;
   const workerLogger = logger.child({
     module: "manual-release-notification-consumer",
@@ -79,10 +78,7 @@ export const startManualReleaseNotificationConsumer = async (
   });
 
   runLoop.catch((error: unknown) => {
-    workerLogger.error(
-      { err: error },
-      "Manual release notification consumer crashed",
-    );
+    workerLogger.error({ err: error }, "Manual release notification consumer crashed");
   });
 
   workerLogger.info({ topic }, "Manual release notification consumer started");
@@ -105,10 +101,7 @@ export const shutdownManualReleaseNotificationConsumer = async (
     await consumer.disconnect();
     workerLogger.info("Manual release notification consumer stopped");
   } catch (error) {
-    workerLogger.error(
-      { err: error },
-      "Failed to shutdown manual release notification consumer",
-    );
+    workerLogger.error({ err: error }, "Failed to shutdown manual release notification consumer");
   } finally {
     consumer = null;
     runLoop = null;
@@ -184,9 +177,7 @@ const processNotification = async (
     consumerConfig.dryRun ?? false,
   );
 
-  const results = await Promise.allSettled(
-    attempts.map((attempt) => attempt.run()),
-  );
+  const results = await Promise.allSettled(attempts.map((attempt) => attempt.run()));
 
   let successfulDeliveries = 0;
   let failedDeliveries = 0;
@@ -194,10 +185,7 @@ const processNotification = async (
   for (const [index, result] of results.entries()) {
     const attempt = attempts[index];
     if (!attempt) {
-      logger.warn(
-        { index },
-        "Manual release notification attempt metadata missing",
-      );
+      logger.warn({ index }, "Manual release notification attempt metadata missing");
       continue;
     }
     if (result.status === "fulfilled") {
@@ -218,9 +206,7 @@ const processNotification = async (
   }
 
   if (successfulDeliveries === 0 && failedDeliveries > 0) {
-    throw new Error(
-      "Manual release notification delivery failed for all channels",
-    );
+    throw new Error("Manual release notification delivery failed for all channels");
   }
 };
 
@@ -346,13 +332,8 @@ const buildChannelAttempts = (
   return attempts;
 };
 
-const shouldAttemptChannel = (
-  recipients: string[],
-  channel: ChannelConfig,
-): boolean => {
-  return (
-    channel.enabled && Boolean(channel.webhookUrl) && recipients.length > 0
-  );
+const shouldAttemptChannel = (recipients: string[], channel: ChannelConfig): boolean => {
+  return channel.enabled && Boolean(channel.webhookUrl) && recipients.length > 0;
 };
 
 const dispatchViaWebhook = async (
@@ -363,8 +344,7 @@ const dispatchViaWebhook = async (
   dryRun: boolean,
 ): Promise<void> => {
   const retries = config.guard.manualRelease.notifications.consumer?.maxRetries;
-  const retryBackoffMs =
-    config.guard.manualRelease.notifications.consumer?.retryBackoffMs ?? 2000;
+  const retryBackoffMs = config.guard.manualRelease.notifications.consumer?.retryBackoffMs ?? 2000;
 
   const totalAttempts = Math.max(retries ?? 3, 0) + 1;
 
@@ -410,9 +390,7 @@ const sendWebhookRequest = async (
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        ...(channelConfig.apiKey
-          ? { Authorization: `Bearer ${channelConfig.apiKey}` }
-          : {}),
+        ...(channelConfig.apiKey ? { Authorization: `Bearer ${channelConfig.apiKey}` } : {}),
       },
       body: JSON.stringify(payload),
       signal: controller.signal,

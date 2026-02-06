@@ -16,14 +16,9 @@ import {
   insertLock,
   releaseLockRecord,
 } from "../repositories/lock-repository.js";
-import type {
-  BulkReleaseInput,
-  LockRoomInput,
-  ReleaseLockInput,
-} from "../types/lock-types.js";
+import type { BulkReleaseInput, LockRoomInput, ReleaseLockInput } from "../types/lock-types.js";
 
-const secondsSince = (startedAt: number): number =>
-  (performance.now() - startedAt) / 1000;
+const secondsSince = (startedAt: number): number => (performance.now() - startedAt) / 1000;
 
 type LockRoomResult =
   | { status: "LOCKED"; lock: InventoryLock }
@@ -32,9 +27,7 @@ type LockRoomResult =
 /**
  * Acquire an inventory lock for a room or room type.
  */
-export const lockRoom = async (
-  input: LockRoomInput,
-): Promise<LockRoomResult> => {
+export const lockRoom = async (input: LockRoomInput): Promise<LockRoomResult> => {
   const startedAt = performance.now();
   try {
     const result = await withTransaction(async (client) => {
@@ -54,9 +47,7 @@ export const lockRoom = async (
       );
       const expiresAt =
         ttlSeconds > 0
-          ? new Date(
-              Math.min(input.stayEnd.getTime(), Date.now() + ttlSeconds * 1000),
-            )
+          ? new Date(Math.min(input.stayEnd.getTime(), Date.now() + ttlSeconds * 1000))
           : null;
 
       const lock = await insertLock(client, {
@@ -68,10 +59,7 @@ export const lockRoom = async (
       return { status: "LOCKED", lock } as LockRoomResult;
     });
 
-    recordGuardRequest(
-      "lockRoom",
-      result.status === "LOCKED" ? "success" : "conflict",
-    );
+    recordGuardRequest("lockRoom", result.status === "LOCKED" ? "success" : "conflict");
     return result;
   } catch (error) {
     recordGuardRequest("lockRoom", "error");
@@ -84,9 +72,7 @@ export const lockRoom = async (
 /**
  * Release a single inventory lock.
  */
-export const releaseLock = async (
-  input: ReleaseLockInput,
-): Promise<InventoryLock | null> => {
+export const releaseLock = async (input: ReleaseLockInput): Promise<InventoryLock | null> => {
   const startedAt = performance.now();
   try {
     const result = await withTransaction((client) =>
@@ -108,9 +94,7 @@ export const releaseLock = async (
 /**
  * Release multiple inventory locks in bulk.
  */
-export const releaseLocksInBulk = async (
-  input: BulkReleaseInput,
-): Promise<number> => {
+export const releaseLocksInBulk = async (input: BulkReleaseInput): Promise<number> => {
   const startedAt = performance.now();
   try {
     const released = await bulkReleaseLocks({

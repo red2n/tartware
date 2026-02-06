@@ -8,10 +8,7 @@ import { PredicateFilter } from "@tartware/candidate-pipeline";
 
 import type { RoomCandidate, RoomRecommendationQuery } from "../types.js";
 
-export class BudgetFilter extends PredicateFilter<
-  RoomRecommendationQuery,
-  RoomCandidate
-> {
+export class BudgetFilter extends PredicateFilter<RoomRecommendationQuery, RoomCandidate> {
   readonly name = "budget";
 
   /**

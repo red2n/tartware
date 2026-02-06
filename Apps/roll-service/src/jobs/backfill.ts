@@ -57,10 +57,7 @@ type BackfillJobOptions = {
   intervalMs: number;
 };
 
-export const buildBackfillJob = (
-  logger: FastifyBaseLogger,
-  options: BackfillJobOptions,
-) => {
+export const buildBackfillJob = (logger: FastifyBaseLogger, options: BackfillJobOptions) => {
   let timer: NodeJS.Timeout | null = null;
   let running = false;
   let inFlight = false;
@@ -76,9 +73,7 @@ export const buildBackfillJob = (
 
         const checkpoint = await getBackfillCheckpoint();
         if (checkpoint?.lastEventCreatedAt) {
-          backfillCheckpointGauge.set(
-            checkpoint.lastEventCreatedAt.getTime() / 1000,
-          );
+          backfillCheckpointGauge.set(checkpoint.lastEventCreatedAt.getTime() / 1000);
           span.setAttribute(
             "roll.backfill.checkpoint",
             checkpoint.lastEventCreatedAt.toISOString(),
@@ -100,10 +95,7 @@ export const buildBackfillJob = (
         await withTransaction(async (client) => {
           for (const row of rows) {
             const ledgerEntry = buildLedgerEntryFromLifecycleRow(row);
-            const driftStatus = await upsertRollLedgerEntry(
-              ledgerEntry,
-              client,
-            );
+            const driftStatus = await upsertRollLedgerEntry(ledgerEntry, client);
             recordReplayDrift(driftStatus);
           }
 
@@ -125,19 +117,13 @@ export const buildBackfillJob = (
           );
 
           backfillCheckpointGauge.set(lastRow.created_at.getTime() / 1000);
-          span.setAttribute(
-            "roll.backfill.last_event_at",
-            lastRow.created_at.toISOString(),
-          );
+          span.setAttribute("roll.backfill.last_event_at", lastRow.created_at.toISOString());
         });
 
         backfillRowsCounter.inc(rows.length);
         backfillBatchesCounter.inc();
 
-        logger.info(
-          { processed: rows.length },
-          "Roll backfill batch persisted to shadow ledger",
-        );
+        logger.info({ processed: rows.length }, "Roll backfill batch persisted to shadow ledger");
       } catch (error) {
         hasError = true;
         span.recordException(error as Error);

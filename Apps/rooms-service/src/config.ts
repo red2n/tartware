@@ -7,14 +7,11 @@ import {
   validateProductionSecrets,
 } from "@tartware/config";
 
-process.env.SERVICE_NAME =
-  process.env.SERVICE_NAME ?? "@tartware/rooms-service";
+process.env.SERVICE_NAME = process.env.SERVICE_NAME ?? "@tartware/rooms-service";
 process.env.SERVICE_VERSION = process.env.SERVICE_VERSION ?? "0.1.0";
 if (!process.env.AUTH_JWT_SECRET) {
   if (process.env.NODE_ENV === "production") {
-    throw new Error(
-      "AUTH_JWT_SECRET must be set in production and cannot use a default value.",
-    );
+    throw new Error("AUTH_JWT_SECRET must be set in production and cannot use a default value.");
   }
   process.env.AUTH_JWT_SECRET = "dev-secret-minimum-32-chars-change-me!";
 }
@@ -36,11 +33,8 @@ const kafka = resolveKafkaConfig({
 
 const commandCenter = {
   topic: process.env.COMMAND_CENTER_TOPIC ?? "commands.primary",
-  consumerGroupId:
-    process.env.COMMAND_CENTER_CONSUMER_GROUP ??
-    "rooms-command-center-consumer",
-  targetServiceId:
-    process.env.COMMAND_CENTER_TARGET_SERVICE_ID ?? "rooms-service",
+  consumerGroupId: process.env.COMMAND_CENTER_CONSUMER_GROUP ?? "rooms-command-center-consumer",
+  targetServiceId: process.env.COMMAND_CENTER_TARGET_SERVICE_ID ?? "rooms-service",
   maxBatchBytes: parseNumberEnv(process.env.KAFKA_MAX_BATCH_BYTES, 1048576),
   dlqTopic: process.env.COMMAND_CENTER_DLQ_TOPIC ?? "commands.primary.dlq",
   maxRetries: parseNumberEnv(process.env.KAFKA_MAX_RETRIES, 3),
@@ -60,8 +54,7 @@ export const config = {
     pretty: configValues.LOG_PRETTY,
     requestLogging: configValues.LOG_REQUESTS,
   },
-  recommendationServiceUrl:
-    process.env.RECOMMENDATION_SERVICE_URL ?? "http://localhost:3040",
+  recommendationServiceUrl: process.env.RECOMMENDATION_SERVICE_URL ?? "http://localhost:3040",
   db: {
     host: configValues.DB_HOST,
     port: configValues.DB_PORT,
@@ -74,8 +67,7 @@ export const config = {
   },
   auth: {
     jwt: {
-      secret:
-        process.env.AUTH_JWT_SECRET ?? "dev-secret-minimum-32-chars-change-me!",
+      secret: process.env.AUTH_JWT_SECRET ?? "dev-secret-minimum-32-chars-change-me!",
       issuer: process.env.AUTH_JWT_ISSUER ?? "tartware-core",
       audience: process.env.AUTH_JWT_AUDIENCE ?? "tartware",
     },

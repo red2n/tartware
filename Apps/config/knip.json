@@ -6,7 +6,9 @@
   "ignoreFiles": [
     ".eslintrc.cjs"
   ],
-  "ignoreDependencies": [],
+  "ignoreDependencies": [
+    "fastify"
+  ],
   "ignoreBinaries": [
     "biome",
     "eslint",

@@ -1,10 +1,7 @@
 import { performance } from "node:perf_hooks";
 
 import { SpanStatusCode, trace } from "@opentelemetry/api";
-import {
-  type ReservationEvent,
-  ReservationEventSchema,
-} from "@tartware/schemas";
+import { type ReservationEvent, ReservationEventSchema } from "@tartware/schemas";
 import type { FastifyBaseLogger } from "fastify";
 import { type Consumer, type EachBatchPayload, Kafka, logLevel } from "kafkajs";
 
@@ -27,11 +24,7 @@ import { buildLedgerEntryFromReservationEvent } from "./roll-ledger-builder.js";
 
 const tracer = trace.getTracer("roll-service");
 
-type LifecycleEventResult =
-  | "processed"
-  | "skipped"
-  | "parse_error"
-  | "db_error";
+type LifecycleEventResult = "processed" | "skipped" | "parse_error" | "db_error";
 
 const buildKafkaClient = () =>
   new Kafka({
@@ -120,93 +113,86 @@ class RollLifecycleConsumer {
             break;
           }
 
-          await tracer.startActiveSpan(
-            "roll.lifecycle.event",
-            async (eventSpan) => {
-              const eventStartedAt = performance.now();
-              let result: LifecycleEventResult = "processed";
-              try {
-                eventSpan.setAttributes({
-                  "messaging.kafka.partition": batch.partition,
-                  "messaging.kafka.offset": message.offset,
-                  "messaging.destination": batch.topic,
-                });
+          await tracer.startActiveSpan("roll.lifecycle.event", async (eventSpan) => {
+            const eventStartedAt = performance.now();
+            let result: LifecycleEventResult = "processed";
+            try {
+              eventSpan.setAttributes({
+                "messaging.kafka.partition": batch.partition,
+                "messaging.kafka.offset": message.offset,
+                "messaging.destination": batch.topic,
+              });
 
-                if (!message.value) {
-                  result = "skipped";
-                  this.logger.warn(
-                    { partition: batch.partition, offset: message.offset },
-                    "Skipping Kafka message with empty value",
-                  );
-                  payload.resolveOffset(message.offset);
-                  await payload.heartbeat();
-                  return;
-                }
-
-                const rawValue = message.value.toString();
-                let event: ReservationEvent;
-
-                try {
-                  event = this.parseReservationEvent(rawValue);
-                } catch (error) {
-                  result = "parse_error";
-                  eventSpan.recordException(error as Error);
-                  eventSpan.setStatus({
-                    code: SpanStatusCode.ERROR,
-                    message:
-                      error instanceof Error ? error.message : "parse_error",
-                  });
-                  this.logger.error(
-                    { err: error, offset: message.offset },
-                    "Failed to parse reservation event; skipping",
-                  );
-                  payload.resolveOffset(message.offset);
-                  await payload.heartbeat();
-                  return;
-                }
-
-                try {
-                  const ledgerEntry =
-                    buildLedgerEntryFromReservationEvent(event);
-                  const driftStatus = await upsertRollLedgerEntry(ledgerEntry);
-                  recordReplayDrift(driftStatus);
-                  await this.persistConsumerOffset({
-                    batch,
-                    messageOffset: message.offset,
-                    event,
-                  });
-                } catch (error) {
-                  result = "db_error";
-                  shouldStopBatch = true;
-                  eventSpan.recordException(error as Error);
-                  eventSpan.setStatus({
-                    code: SpanStatusCode.ERROR,
-                    message:
-                      error instanceof Error ? error.message : "db_error",
-                  });
-                  this.logger.error(
-                    {
-                      err: error,
-                      offset: message.offset,
-                      eventId: event?.metadata.id,
-                    },
-                    "Failed to persist roll ledger entry",
-                  );
-                  return;
-                }
-
+              if (!message.value) {
+                result = "skipped";
+                this.logger.warn(
+                  { partition: batch.partition, offset: message.offset },
+                  "Skipping Kafka message with empty value",
+                );
                 payload.resolveOffset(message.offset);
                 await payload.heartbeat();
-                this.updateLagMetric(batch, message.timestamp);
-              } finally {
-                lifecycleEventsCounter.labels(result).inc();
-                const durationSeconds =
-                  (performance.now() - eventStartedAt) / 1000;
-                lifecycleEventDurationHistogram.observe(durationSeconds);
-                eventSpan.end();
+                return;
               }
-            },
-          );
+
+              const rawValue = message.value.toString();
+              let event: ReservationEvent;
+
+              try {
+                event = this.parseReservationEvent(rawValue);
+              } catch (error) {
+                result = "parse_error";
+                eventSpan.recordException(error as Error);
+                eventSpan.setStatus({
+                  code: SpanStatusCode.ERROR,
+                  message: error instanceof Error ? error.message : "parse_error",
+                });
+                this.logger.error(
+                  { err: error, offset: message.offset },
+                  "Failed to parse reservation event; skipping",
+                );
+                payload.resolveOffset(message.offset);
+                await payload.heartbeat();
+                return;
+              }
+
+              try {
+                const ledgerEntry = buildLedgerEntryFromReservationEvent(event);
+                const driftStatus = await upsertRollLedgerEntry(ledgerEntry);
+                recordReplayDrift(driftStatus);
+                await this.persistConsumerOffset({
+                  batch,
+                  messageOffset: message.offset,
+                  event,
+                });
+              } catch (error) {
+                result = "db_error";
+                shouldStopBatch = true;
+                eventSpan.recordException(error as Error);
+                eventSpan.setStatus({
+                  code: SpanStatusCode.ERROR,
+                  message: error instanceof Error ? error.message : "db_error",
+                });
+                this.logger.error(
+                  {
+                    err: error,
+                    offset: message.offset,
+                    eventId: event?.metadata.id,
+                  },
+                  "Failed to persist roll ledger entry",
+                );
+                return;
+              }
+
+              payload.resolveOffset(message.offset);
+              await payload.heartbeat();
+              this.updateLagMetric(batch, message.timestamp);
+            } finally {
+              lifecycleEventsCounter.labels(result).inc();
+              const durationSeconds = (performance.now() - eventStartedAt) / 1000;
+              lifecycleEventDurationHistogram.observe(durationSeconds);
+              eventSpan.end();
+            }
+          });
 
           if (shouldStopBatch) {
             break;
@@ -255,20 +241,14 @@ class RollLifecycleConsumer {
 
     const offsetValue = Number(messageOffset);
     if (Number.isFinite(offsetValue)) {
-      consumerOffsetGauge
-        .labels(labels.topic, labels.partition)
-        .set(offsetValue);
+      consumerOffsetGauge.labels(labels.topic, labels.partition).set(offsetValue);
     }
 
     const eventTimestamp = Date.parse(event.metadata.timestamp);
     if (!Number.isNaN(eventTimestamp)) {
-      consumerEventTimestampGauge
-        .labels(labels.topic, labels.partition)
-        .set(eventTimestamp / 1000);
+      consumerEventTimestampGauge.labels(labels.topic, labels.partition).set(eventTimestamp / 1000);
       const driftSeconds = Math.max(0, (Date.now() - eventTimestamp) / 1000);
-      consumerTimestampDriftGauge
-        .labels(labels.topic, labels.partition)
-        .set(driftSeconds);
+      consumerTimestampDriftGauge.labels(labels.topic, labels.partition).set(driftSeconds);
     }
 
     await upsertConsumerOffset({
@@ -278,16 +258,11 @@ class RollLifecycleConsumer {
       offset: messageOffset,
       highWatermark: batch.highWatermark,
       eventId: event.metadata.id,
-      eventCreatedAt: Number.isNaN(eventTimestamp)
-        ? undefined
-        : new Date(eventTimestamp),
+      eventCreatedAt: Number.isNaN(eventTimestamp) ? undefined : new Date(eventTimestamp),
     });
   }
 
-  private updateLagMetric(
-    batch: EachBatchPayload["batch"],
-    timestamp?: string,
-  ): void {
+  private updateLagMetric(batch: EachBatchPayload["batch"], timestamp?: string): void {
     if (!timestamp) {
       return;
     }
@@ -296,8 +271,6 @@ class RollLifecycleConsumer {
       return;
     }
     const lagSeconds = Math.max(0, (Date.now() - parsed) / 1000);
-    processingLagGauge
-      .labels(batch.topic, batch.partition.toString())
-      .set(lagSeconds);
+    processingLagGauge.labels(batch.topic, batch.partition.toString()).set(lagSeconds);
   }
 }

@@ -31,9 +31,7 @@ type GuestAddress = {
   postal_code?: string;
 };
 
-const normalizeAddress = (
-  address?: GuestAddress | null,
-): Record<string, unknown> | null => {
+const normalizeAddress = (address?: GuestAddress | null): Record<string, unknown> | null => {
   if (!address) {
     return null;
   }
@@ -76,9 +74,7 @@ export const registerGuestProfile = async ({
   const normalizedPhone = normalizePhoneNumber(payload.phone ?? undefined);
   const address = payload.address ?? {};
   const preferences =
-    payload.preferences !== undefined
-      ? JSON.stringify(payload.preferences)
-      : null;
+    payload.preferences !== undefined ? JSON.stringify(payload.preferences) : null;
 
   const createdBy = resolveActorId(initiatedBy);
 
@@ -203,12 +199,8 @@ export const mergeGuestProfiles = async ({
     [tenantId, command.primary_guest_id, command.duplicate_guest_id],
   );
 
-  const primary = guests.rows.find(
-    (guest) => guest.id === command.primary_guest_id,
-  );
-  const duplicate = guests.rows.find(
-    (guest) => guest.id === command.duplicate_guest_id,
-  );
+  const primary = guests.rows.find((guest) => guest.id === command.primary_guest_id);
+  const duplicate = guests.rows.find((guest) => guest.id === command.duplicate_guest_id);
 
   if (!primary || !duplicate) {
     throw new Error("GUEST_MERGE_TARGETS_NOT_FOUND");
@@ -311,8 +303,7 @@ export const updateGuestProfile = async ({
   const actor = resolveActorId(initiatedBy);
   const normalizedPhone = normalizePhoneNumber(command.phone ?? undefined);
   const address = normalizeAddress(command.address ?? null);
-  const preferences =
-    command.preferences !== undefined ? command.preferences : null;
+  const preferences = command.preferences !== undefined ? command.preferences : null;
   const marketingConsent = command.preferences?.marketing_consent ?? undefined;
 
   const { rowCount } = await query(
@@ -424,8 +415,7 @@ export const setGuestLoyalty = async ({
   const command = GuestSetLoyaltyCommandSchema.parse(payload);
   const actor = resolveActorId(initiatedBy);
 
-  const delta =
-    typeof command.points_delta === "number" ? command.points_delta : null;
+  const delta = typeof command.points_delta === "number" ? command.points_delta : null;
 
   const { rowCount, rows } = await query<{ loyalty_points: number | null }>(
     `
@@ -513,13 +503,7 @@ export const setGuestVip = async ({
         AND id = $2::uuid
         AND COALESCE(is_deleted, false) = false
     `,
-    [
-      tenantId,
-      command.guest_id,
-      command.vip_status,
-      command.reason ?? null,
-      actor,
-    ],
+    [tenantId, command.guest_id, command.vip_status, command.reason ?? null, actor],
   );
 
   if (!rowCount || rowCount === 0) {
@@ -556,13 +540,7 @@ export const setGuestBlacklist = async ({
         AND id = $2::uuid
         AND COALESCE(is_deleted, false) = false
     `,
-    [
-      tenantId,
-      command.guest_id,
-      command.is_blacklisted,
-      command.reason ?? null,
-      actor,
-    ],
+    [tenantId, command.guest_id, command.is_blacklisted, command.reason ?? null, actor],
   );
 
   if (!rowCount || rowCount === 0) {
@@ -799,11 +777,7 @@ export const updateGuestPreferences = async ({
   );
 };
 
-const mergeGuestRows = (
-  primary: GuestRow,
-  duplicate: GuestRow,
-  payload: GuestMergeCommand,
-) => {
+const mergeGuestRows = (primary: GuestRow, duplicate: GuestRow, payload: GuestMergeCommand) => {
   const mergedMetadata = {
     ...(duplicate.metadata ?? {}),
     ...(primary.metadata ?? {}),
@@ -820,21 +794,13 @@ const mergeGuestRows = (
     .filter((note) => Boolean(note && note.trim().length > 0))
     .join("\n---\n");
 
-  const mergedAddress = mergeRecord(
-    duplicate.address ?? {},
-    primary.address ?? {},
-  );
+  const mergedAddress = mergeRecord(duplicate.address ?? {}, primary.address ?? {});
 
-  const mergedPreferences = mergeRecord(
-    duplicate.preferences ?? {},
-    primary.preferences ?? {},
-  );
+  const mergedPreferences = mergeRecord(duplicate.preferences ?? {}, primary.preferences ?? {});
 
   // MED-005: Handle VIP+blacklist conflict - blacklist takes precedence
   // If either profile is blacklisted, the merged profile is blacklisted and NOT VIP
-  const eitherBlacklisted = Boolean(
-    primary.is_blacklisted || duplicate.is_blacklisted,
-  );
+  const eitherBlacklisted = Boolean(primary.is_blacklisted || duplicate.is_blacklisted);
   const eitherVip = Boolean(primary.vip_status || duplicate.vip_status);
 
   // Log conflict for audit trail
@@ -854,26 +820,16 @@ const mergeGuestRows = (
 
   return {
     phone: primary.phone ?? duplicate.phone ?? null,
-    secondary_phone:
-      primary.secondary_phone ?? duplicate.secondary_phone ?? null,
+    secondary_phone: primary.secondary_phone ?? duplicate.secondary_phone ?? null,
     address: mergedAddress,
     preferences: mergedPreferences,
     notes: mergedNotes || null,
     metadata: mergedMetadata,
-    total_bookings:
-      Number(primary.total_bookings ?? 0) +
-      Number(duplicate.total_bookings ?? 0),
-    total_nights:
-      Number(primary.total_nights ?? 0) + Number(duplicate.total_nights ?? 0),
-    total_revenue:
-      Number(primary.total_revenue ?? 0) + Number(duplicate.total_revenue ?? 0),
-    last_stay_date: pickLatestDate(
-      primary.last_stay_date,
-      duplicate.last_stay_date,
-    ),
-    loyalty_points:
-      Number(primary.loyalty_points ?? 0) +
-      Number(duplicate.loyalty_points ?? 0),
+    total_bookings: Number(primary.total_bookings ?? 0) + Number(duplicate.total_bookings ?? 0),
+    total_nights: Number(primary.total_nights ?? 0) + Number(duplicate.total_nights ?? 0),
+    total_revenue: Number(primary.total_revenue ?? 0) + Number(duplicate.total_revenue ?? 0),
+    last_stay_date: pickLatestDate(primary.last_stay_date, duplicate.last_stay_date),
+    loyalty_points: Number(primary.loyalty_points ?? 0) + Number(duplicate.loyalty_points ?? 0),
     loyalty_tier: primary.loyalty_tier ?? duplicate.loyalty_tier ?? null,
     // Blacklist takes precedence: if blacklisted, cannot be VIP
     vip_status: eitherBlacklisted ? false : eitherVip,
@@ -888,10 +844,7 @@ const mergeRecord = (
   return { ...base, ...overrides };
 };
 
-const pickLatestDate = (
-  first: string | Date | null,
-  second: string | Date | null,
-): Date | null => {
+const pickLatestDate = (first: string | Date | null, second: string | Date | null): Date | null => {
   const firstDate = first ? new Date(first) : null;
   const secondDate = second ? new Date(second) : null;
 

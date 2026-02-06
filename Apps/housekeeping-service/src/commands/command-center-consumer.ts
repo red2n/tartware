@@ -28,52 +28,50 @@ import {
 let consumer: Consumer | null = null;
 const logger = appLogger.child({ module: "housekeeping-command-consumer" });
 
-export const startHousekeepingCommandCenterConsumer =
-  async (): Promise<void> => {
-    if (consumer) {
-      return;
-    }
+export const startHousekeepingCommandCenterConsumer = async (): Promise<void> => {
+  if (consumer) {
+    return;
+  }
 
-    consumer = kafka.consumer({
-      groupId: config.commandCenter.consumerGroupId,
-      allowAutoTopicCreation: false,
-      maxBytesPerPartition: config.commandCenter.maxBatchBytes,
-    });
+  consumer = kafka.consumer({
+    groupId: config.commandCenter.consumerGroupId,
+    allowAutoTopicCreation: false,
+    maxBytesPerPartition: config.commandCenter.maxBatchBytes,
+  });
 
-    await consumer.connect();
-    await consumer.subscribe({
+  await consumer.connect();
+  await consumer.subscribe({
+    topic: config.commandCenter.topic,
+    fromBeginning: false,
+  });
+
+  await consumer.run({
+    autoCommit: false,
+    eachBatchAutoResolve: false,
+    eachBatch: handleBatch,
+  });
+
+  logger.info(
+    {
       topic: config.commandCenter.topic,
-      fromBeginning: false,
-    });
+      groupId: config.commandCenter.consumerGroupId,
+      targetService: config.commandCenter.targetServiceId,
+    },
+    "housekeeping command consumer started",
+  );
+};
 
-    await consumer.run({
-      autoCommit: false,
-      eachBatchAutoResolve: false,
-      eachBatch: handleBatch,
-    });
-
-    logger.info(
-      {
-        topic: config.commandCenter.topic,
-        groupId: config.commandCenter.consumerGroupId,
-        targetService: config.commandCenter.targetServiceId,
-      },
-      "housekeeping command consumer started",
-    );
-  };
-
-export const shutdownHousekeepingCommandCenterConsumer =
-  async (): Promise<void> => {
-    if (!consumer) {
-      return;
-    }
-    try {
-      await consumer.disconnect();
-      logger.info("housekeeping command consumer disconnected");
-    } finally {
-      consumer = null;
-    }
-  };
+export const shutdownHousekeepingCommandCenterConsumer = async (): Promise<void> => {
+  if (!consumer) {
+    return;
+  }
+  try {
+    await consumer.disconnect();
+    logger.info("housekeeping command consumer disconnected");
+  } finally {
+    consumer = null;
+  }
+};
 
 const buildDlqPayload = (input: {
   envelope?: CommandEnvelope;
@@ -158,10 +156,7 @@ const routeHousekeepingCommand = async (
       });
       return;
     default:
-      logger.debug(
-        { commandName: metadata.commandName },
-        "no housekeeping handler for command",
-      );
+      logger.debug({ commandName: metadata.commandName }, "no housekeeping handler for command");
   }
 };
 

@@ -5,10 +5,7 @@ import { validateCommandPayload } from "@tartware/schemas";
 import type { FastifyInstance } from "fastify";
 import { ZodError, z } from "zod";
 
-import {
-  acceptCommand,
-  CommandDispatchError,
-} from "../services/command-dispatch-service.js";
+import { acceptCommand, CommandDispatchError } from "../services/command-dispatch-service.js";
 
 const CommandParamSchema = z.object({
   commandName: z.string().min(1),
@@ -40,14 +37,8 @@ const CommandExecuteResponseSchema = z.object({
   requestedAt: z.string(),
 });
 
-const CommandParamJsonSchema = schemaFromZod(
-  CommandParamSchema,
-  "CommandExecuteParams",
-);
-const CommandExecuteBodyJsonSchema = schemaFromZod(
-  CommandExecuteBodySchema,
-  "CommandExecuteBody",
-);
+const CommandParamJsonSchema = schemaFromZod(CommandParamSchema, "CommandExecuteParams");
+const CommandExecuteBodyJsonSchema = schemaFromZod(CommandExecuteBodySchema, "CommandExecuteBody");
 const CommandExecuteResponseJsonSchema = schemaFromZod(
   CommandExecuteResponseSchema,
   "CommandExecuteResponse",
@@ -114,9 +105,7 @@ export const registerCommandRoutes = (app: FastifyInstance): void => {
           correlationId: body.correlation_id,
           initiatedBy,
           membership,
-          requestId:
-            (request.headers["x-request-id"] as string | undefined) ??
-            randomUUID(),
+          requestId: (request.headers["x-request-id"] as string | undefined) ?? randomUUID(),
         });
         reply.status(202).send(result);
       } catch (error) {

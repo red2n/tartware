@@ -1,10 +1,6 @@
 import process from "node:process";
 
-import {
-  ensureDependencies,
-  parseHostPort,
-  resolveOtelDependency,
-} from "@tartware/config";
+import { ensureDependencies, parseHostPort, resolveOtelDependency } from "@tartware/config";
 import { initTelemetry } from "@tartware/telemetry";
 
 import { config } from "./config.js";
@@ -97,9 +93,7 @@ const start = async () => {
     );
     await telemetry
       ?.shutdown()
-      .catch((shutdownError) =>
-        app.log.error(shutdownError, "failed to shutdown telemetry"),
-      );
+      .catch((shutdownError) => app.log.error(shutdownError, "failed to shutdown telemetry"));
     proc?.exit(1);
   }
 };
@@ -119,9 +113,7 @@ const shutdown = async (signal: NodeJS.Signals) => {
     await app.close();
     await telemetry
       ?.shutdown()
-      .catch((shutdownError) =>
-        app.log.error(shutdownError, "failed to shutdown telemetry"),
-      );
+      .catch((shutdownError) => app.log.error(shutdownError, "failed to shutdown telemetry"));
     proc?.exit(0);
   } catch (error) {
     app.log.error(error, "error during shutdown");

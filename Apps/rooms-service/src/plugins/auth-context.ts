@@ -5,10 +5,7 @@ import {
 } from "@tartware/tenant-auth";
 
 import { extractBearerToken, verifyAccessToken } from "../lib/jwt.js";
-import {
-  getUserMemberships,
-  type TenantMembership,
-} from "../services/membership-service.js";
+import { getUserMemberships, type TenantMembership } from "../services/membership-service.js";
 
 declare module "fastify" {
   interface FastifyRequest {

@@ -1,10 +1,4 @@
-import {
-  Pool,
-  type PoolClient,
-  type QueryResult,
-  type QueryResultRow,
-  types,
-} from "pg";
+import { Pool, type PoolClient, type QueryResult, type QueryResultRow, types } from "pg";
 
 import { config } from "../config.js";
 
@@ -48,9 +42,7 @@ export const query = async <T extends QueryResultRow = QueryResultRow>(
   return pool.query<T>(text, params);
 };
 
-export const queryWithClient = async <
-  T extends QueryResultRow = QueryResultRow,
->(
+export const queryWithClient = async <T extends QueryResultRow = QueryResultRow>(
   client: PoolClient,
   text: string,
   params: unknown[] = [],
@@ -58,9 +50,7 @@ export const queryWithClient = async <
   return client.query<T>(text, params);
 };
 
-export const withTransaction = async <T>(
-  fn: (client: PoolClient) => Promise<T>,
-): Promise<T> => {
+export const withTransaction = async <T>(fn: (client: PoolClient) => Promise<T>): Promise<T> => {
   const client = await pool.connect();
   let transactionStarted = false;
   let rollbackError: unknown = null;

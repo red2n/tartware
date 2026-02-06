@@ -3,10 +3,7 @@ import { HousekeepingStatusEnum } from "@tartware/schemas";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 
-import {
-  HousekeepingTaskSchema,
-  listHousekeepingTasks,
-} from "../services/housekeeping-service.js";
+import { HousekeepingTaskSchema, listHousekeepingTasks } from "../services/housekeeping-service.js";
 
 const HousekeepingListQuerySchema = z.object({
   tenant_id: z.string().uuid(),
@@ -18,9 +15,7 @@ const HousekeepingListQuerySchema = z.object({
     .refine(
       (value) =>
         !value ||
-        HousekeepingStatusEnum.options
-          .map((status) => status.toLowerCase())
-          .includes(value),
+        HousekeepingStatusEnum.options.map((status) => status.toLowerCase()).includes(value),
       { message: "Invalid housekeeping status" },
     ),
   scheduled_date: z
@@ -51,8 +46,7 @@ export const registerHousekeepingRoutes = (app: FastifyInstance): void => {
     "/v1/housekeeping/tasks",
     {
       preHandler: app.withTenantScope({
-        resolveTenantId: (request) =>
-          (request.query as HousekeepingListQuery).tenant_id,
+        resolveTenantId: (request) => (request.query as HousekeepingListQuery).tenant_id,
         minRole: "MANAGER",
         requiredModules: "facility-maintenance",
       }),

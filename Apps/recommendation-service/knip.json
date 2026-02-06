@@ -8,6 +8,8 @@
   ],
   "ignoreDependencies": [
     "@tartware/candidate-pipeline",
+    "@vitest/coverage-v8",
+    "pino-pretty",
     "tsx"
   ],
   "ignoreBinaries": [
@@ -21,5 +23,9 @@
   "ignoreExportsUsedInFile": {
     "type": true,
     "interface": true
-  }
+  },
+  "ignore": [
+    "src/filters/index.ts",
+    "src/lib/db.ts"
+  ]
 }

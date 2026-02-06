@@ -3,11 +3,7 @@ import type { Consumer, KafkaMessage } from "kafkajs";
 
 import { config } from "../config.js";
 import { kafka } from "../lib/kafka.js";
-import {
-  lockRoom,
-  releaseLock,
-  releaseLocksInBulk,
-} from "../services/lock-service.js";
+import { lockRoom, releaseLock, releaseLocksInBulk } from "../services/lock-service.js";
 import {
   type BulkReleaseInput,
   bulkReleaseSchema,
@@ -77,10 +73,7 @@ export const startAvailabilityGuardCommandCenterConsumer = async (
   });
 
   runLoop.catch((error: unknown) => {
-    workerLogger.error(
-      { err: error },
-      "Availability Guard command consumer crashed",
-    );
+    workerLogger.error({ err: error }, "Availability Guard command consumer crashed");
   });
 
   workerLogger.info(
@@ -110,10 +103,7 @@ export const shutdownAvailabilityGuardCommandCenterConsumer = async (
     await consumer.disconnect();
     workerLogger.info("Availability Guard command consumer stopped");
   } catch (error) {
-    workerLogger.error(
-      { err: error },
-      "Failed to shutdown Availability Guard command consumer",
-    );
+    workerLogger.error({ err: error }, "Failed to shutdown Availability Guard command consumer");
   } finally {
     consumer = null;
     runLoop = null;
@@ -138,10 +128,7 @@ const processMessage = async (
   try {
     envelope = JSON.parse(message.value.toString("utf-8")) as CommandEnvelope;
   } catch (error) {
-    logger.error(
-      { err: error, topic, partition },
-      "Failed to parse command envelope",
-    );
+    logger.error({ err: error, topic, partition }, "Failed to parse command envelope");
     return;
   }
 
@@ -184,10 +171,7 @@ const routeCommand = async (
       await handleBulkReleaseCommand(payload, metadata, logger);
       return;
     default:
-      logger.debug(
-        { commandName: metadata.commandName },
-        "No handler registered for command",
-      );
+      logger.debug({ commandName: metadata.commandName }, "No handler registered for command");
   }
 };
 
@@ -300,17 +284,11 @@ const shouldProcessCommand = (
     return false;
   }
 
-  if (
-    metadata.targetService &&
-    metadata.targetService !== config.commandCenter.targetServiceId
-  ) {
+  if (metadata.targetService && metadata.targetService !== config.commandCenter.targetServiceId) {
     return false;
   }
 
-  if (
-    !isNonEmptyString(metadata.commandName) ||
-    !isNonEmptyString(metadata.tenantId)
-  ) {
+  if (!isNonEmptyString(metadata.commandName) || !isNonEmptyString(metadata.tenantId)) {
     return false;
   }
 
@@ -389,8 +367,7 @@ const withCommandDefaults = (
     normalized.tenantId = metadata.tenantId;
   }
 
-  const correlationFallback =
-    metadata.correlationId ?? metadata.requestId ?? metadata.commandId;
+  const correlationFallback = metadata.correlationId ?? metadata.requestId ?? metadata.commandId;
   if (!isNonEmptyString(base.correlationId) && correlationFallback) {
     normalized.correlationId = correlationFallback;
   }
@@ -441,5 +418,4 @@ const isNonEmptyString = (value: unknown): value is string =>
 const isRecord = (value: unknown): value is UnknownRecord =>
   typeof value === "object" && value !== null && !Array.isArray(value);
 
-const toRecord = (value: unknown): UnknownRecord =>
-  isRecord(value) ? value : {};
+const toRecord = (value: unknown): UnknownRecord => (isRecord(value) ? value : {});

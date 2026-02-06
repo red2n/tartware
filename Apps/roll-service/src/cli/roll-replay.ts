@@ -84,10 +84,7 @@ const coerceNumber = (value: unknown): number | null => {
   return null;
 };
 
-const readPath = (
-  source: Record<string, unknown> | undefined,
-  path: string[],
-): unknown => {
+const readPath = (source: Record<string, unknown> | undefined, path: string[]): unknown => {
   let current: unknown = source;
   for (const key of path) {
     if (!current || typeof current !== "object") {
@@ -208,11 +205,7 @@ const buildReportPath = (reservationId: string, output?: string) => {
   if (output) {
     return path.resolve(process.cwd(), output);
   }
-  return path.resolve(
-    process.cwd(),
-    "docs/rolls/reports",
-    `reservation-${reservationId}.json`,
-  );
+  return path.resolve(process.cwd(), "docs/rolls/reports", `reservation-${reservationId}.json`);
 };
 
 type ReplayReport = {
@@ -239,22 +232,13 @@ const run = async () => {
     process.exit(1);
   }
 
-  const lifecycleRows = await fetchLifecycleRowsByReservation(
-    args.reservationId,
-  );
+  const lifecycleRows = await fetchLifecycleRowsByReservation(args.reservationId);
   if (lifecycleRows.length === 0) {
-    rollLogger.warn(
-      { reservationId: args.reservationId },
-      "No lifecycle rows found for replay",
-    );
+    rollLogger.warn({ reservationId: args.reservationId }, "No lifecycle rows found for replay");
   }
 
-  const derivedEntries = lifecycleRows.map((row) =>
-    buildLedgerEntryFromLifecycleRow(row),
-  );
-  const shadowEntries = await fetchShadowLedgersByReservation(
-    args.reservationId,
-  );
+  const derivedEntries = lifecycleRows.map((row) => buildLedgerEntryFromLifecycleRow(row));
+  const shadowEntries = await fetchShadowLedgersByReservation(args.reservationId);
 
   const shadowByLifecycleId = new Map(
     shadowEntries.map((entry) => [entry.lifecycleEventId, entry]),
@@ -283,9 +267,7 @@ const run = async () => {
     seenLifecycleIds.add(derived.lifecycleEventId);
     const shadowSnapshot = toShadowSnapshot(shadow);
     const diffs = compareEntries(derivedSnapshot, shadowSnapshot);
-    const financialDiffs = diffs.filter((diff) =>
-      diff.field.startsWith("financial."),
-    );
+    const financialDiffs = diffs.filter((diff) => diff.field.startsWith("financial."));
     financialMismatches += financialDiffs.length;
 
     if (diffs.length === 0) {

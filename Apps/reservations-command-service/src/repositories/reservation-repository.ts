@@ -30,8 +30,7 @@ const getRunner = (client?: PoolClient): QueryRunner => {
     return <TRow extends QueryResultRow>(sql: string, params: unknown[]) =>
       client.query<TRow>(sql, params);
   }
-  return <TRow extends QueryResultRow>(sql: string, params: unknown[]) =>
-    query<TRow>(sql, params);
+  return <TRow extends QueryResultRow>(sql: string, params: unknown[]) => query<TRow>(sql, params);
 };
 
 export const fetchReservationStaySnapshot = async (

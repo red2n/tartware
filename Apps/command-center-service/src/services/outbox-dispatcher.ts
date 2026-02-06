@@ -3,10 +3,7 @@ import { performance } from "node:perf_hooks";
 import { createTenantThrottler, type OutboxRecord } from "@tartware/outbox";
 
 import { config } from "../config.js";
-import {
-  publishCommandDlqEvent,
-  publishCommandEvent,
-} from "../kafka/producer.js";
+import { publishCommandDlqEvent, publishCommandEvent } from "../kafka/producer.js";
 import { appLogger } from "../lib/logger.js";
 import {
   observeOutboxPublishDuration,
@@ -63,10 +60,7 @@ export const shutdownCommandOutboxDispatcher = async (): Promise<void> => {
   try {
     await currentCycle;
   } catch (error) {
-    dispatcherLogger.warn(
-      { err: error },
-      "error while waiting for dispatcher cycle to finish",
-    );
+    dispatcherLogger.warn({ err: error }, "error while waiting for dispatcher cycle to finish");
   }
   dispatcherLogger.info("command center outbox dispatcher stopped");
 };
@@ -97,10 +91,7 @@ const processOutboxBatch = async (): Promise<void> => {
     return;
   }
 
-  const records = await claimOutboxBatch(
-    config.outbox.batchSize,
-    config.outbox.workerId,
-  );
+  const records = await claimOutboxBatch(config.outbox.batchSize, config.outbox.workerId);
 
   for (const record of records) {
     const throttledAt = performance.now();
@@ -136,10 +127,7 @@ const handleOutboxRecord = async (record: OutboxRecord): Promise<void> => {
     );
 
     if (status === "FAILED" || status === "DLQ") {
-      await updateCommandDispatchStatus(
-        record.eventId,
-        status === "DLQ" ? "DLQ" : "FAILED",
-      );
+      await updateCommandDispatchStatus(record.eventId, status === "DLQ" ? "DLQ" : "FAILED");
     }
 
     if (status === "DLQ") {
@@ -163,9 +151,7 @@ const handleOutboxRecord = async (record: OutboxRecord): Promise<void> => {
   }
 };
 
-const normalizeHeaders = (
-  headers: Record<string, string>,
-): Record<string, string> => {
+const normalizeHeaders = (headers: Record<string, string>): Record<string, string> => {
   const normalized: Record<string, string> = {};
   for (const [key, value] of Object.entries(headers ?? {})) {
     if (value !== undefined && value !== null) {

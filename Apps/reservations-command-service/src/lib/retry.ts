@@ -72,11 +72,7 @@ export class RetryExhaustedError extends Error {
    */
   public readonly attempts: number;
 
-  constructor(
-    message: string,
-    attempts: number,
-    options?: { cause?: unknown },
-  ) {
+  constructor(message: string, attempts: number, options?: { cause?: unknown }) {
     super(message, { cause: options?.cause });
     this.name = "RetryExhaustedError";
     this.attempts = attempts;
@@ -97,13 +93,10 @@ export const processWithRetry = async <T>(
   const maxRetries = Math.max(0, options.maxRetries);
   const baseDelayMs = Math.max(1, options.baseDelayMs);
   const schedule = Array.isArray(options.delayScheduleMs)
-    ? options.delayScheduleMs.filter(
-        (value) => Number.isFinite(value) && value > 0,
-      )
+    ? options.delayScheduleMs.filter((value) => Number.isFinite(value) && value > 0)
     : [];
   const hasSchedule = schedule.length > 0;
-  const jitterFactor =
-    options.jitterFactor !== undefined ? options.jitterFactor : 0.2;
+  const jitterFactor = options.jitterFactor !== undefined ? options.jitterFactor : 0.2;
 
   let attempt = 0;
 
@@ -121,12 +114,9 @@ export const processWithRetry = async <T>(
       }
 
       const scheduleIndex = Math.min(attempt, Math.max(0, schedule.length - 1));
-      const rawDelay = hasSchedule
-        ? schedule[scheduleIndex]
-        : baseDelayMs * 2 ** attempt;
+      const rawDelay = hasSchedule ? schedule[scheduleIndex] : baseDelayMs * 2 ** attempt;
       const jitterBase = rawDelay;
-      const jitter =
-        jitterFactor === 0 ? 0 : Math.random() * jitterBase * jitterFactor;
+      const jitter = jitterFactor === 0 ? 0 : Math.random() * jitterBase * jitterFactor;
       const delayMs = rawDelay + jitter;
 
       options.onRetry?.({

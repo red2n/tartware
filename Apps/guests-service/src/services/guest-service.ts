@@ -45,29 +45,16 @@ const DEFAULT_COMMUNICATION_PREFERENCES = {
 
 const GUEST_BED_TYPES = new Set(["KING", "QUEEN", "TWIN", "DOUBLE"]);
 
-const normalizeAddress = (
-  address: Record<string, unknown> | null | undefined,
-) => ({
-  street:
-    typeof address?.street === "string"
-      ? address.street
-      : DEFAULT_ADDRESS.street,
+const normalizeAddress = (address: Record<string, unknown> | null | undefined) => ({
+  street: typeof address?.street === "string" ? address.street : DEFAULT_ADDRESS.street,
   city: typeof address?.city === "string" ? address.city : DEFAULT_ADDRESS.city,
-  state:
-    typeof address?.state === "string" ? address.state : DEFAULT_ADDRESS.state,
+  state: typeof address?.state === "string" ? address.state : DEFAULT_ADDRESS.state,
   postalCode:
-    typeof address?.postalCode === "string"
-      ? address.postalCode
-      : DEFAULT_ADDRESS.postalCode,
-  country:
-    typeof address?.country === "string"
-      ? address.country
-      : DEFAULT_ADDRESS.country,
+    typeof address?.postalCode === "string" ? address.postalCode : DEFAULT_ADDRESS.postalCode,
+  country: typeof address?.country === "string" ? address.country : DEFAULT_ADDRESS.country,
 });
 
-const normalizePreferences = (
-  preferences: Record<string, unknown> | null | undefined,
-) => {
+const normalizePreferences = (preferences: Record<string, unknown> | null | undefined) => {
   const normalized = {
     ...DEFAULT_PREFERENCES,
   } as Record<string, unknown>;
@@ -78,24 +65,18 @@ const normalizePreferences = (
   const maybeBoolean = (value: unknown, fallback: boolean) =>
     typeof value === "boolean" ? value : fallback;
 
-  normalized.smoking = maybeBoolean(
-    preferences?.smoking,
-    DEFAULT_PREFERENCES.smoking,
-  );
+  normalized.smoking = maybeBoolean(preferences?.smoking, DEFAULT_PREFERENCES.smoking);
 
   const language = maybeString(preferences?.language);
-  normalized.language =
-    language && language.length === 2 ? language : DEFAULT_PREFERENCES.language;
+  normalized.language = language && language.length === 2 ? language : DEFAULT_PREFERENCES.language;
 
-  const rawDietary = (preferences as { dietaryRestrictions?: unknown })
-    ?.dietaryRestrictions;
+  const rawDietary = (preferences as { dietaryRestrictions?: unknown })?.dietaryRestrictions;
   const dietary = Array.isArray(rawDietary)
     ? rawDietary.filter((item): item is string => typeof item === "string")
     : DEFAULT_PREFERENCES.dietaryRestrictions;
   normalized.dietaryRestrictions = dietary;
 
-  const rawSpecial = (preferences as { specialRequests?: unknown })
-    ?.specialRequests;
+  const rawSpecial = (preferences as { specialRequests?: unknown })?.specialRequests;
   const special = Array.isArray(rawSpecial)
     ? rawSpecial.filter((item): item is string => typeof item === "string")
     : DEFAULT_PREFERENCES.specialRequests;
@@ -127,9 +108,7 @@ const normalizeCommunicationPreferences = (
       ? preferences.email
       : DEFAULT_COMMUNICATION_PREFERENCES.email,
   sms:
-    typeof preferences?.sms === "boolean"
-      ? preferences.sms
-      : DEFAULT_COMMUNICATION_PREFERENCES.sms,
+    typeof preferences?.sms === "boolean" ? preferences.sms : DEFAULT_COMMUNICATION_PREFERENCES.sms,
   phone:
     typeof preferences?.phone === "boolean"
       ? preferences.phone
@@ -191,10 +170,7 @@ type GuestReservationStats = {
   lifetimeValue?: number;
 };
 
-const mapRowToGuest = (
-  row: GuestRow,
-  stats?: GuestReservationStats,
-): GuestWithStats => {
+const mapRowToGuest = (row: GuestRow, stats?: GuestReservationStats): GuestWithStats => {
   const parsed = GuestWithStatsSchema.parse({
     id: row.id,
     tenant_id: row.tenant_id,
@@ -220,9 +196,7 @@ const mapRowToGuest = (
     vip_status: row.vip_status ?? false,
     preferences: normalizePreferences(row.preferences),
     marketing_consent: row.marketing_consent ?? false,
-    communication_preferences: normalizeCommunicationPreferences(
-      row.communication_preferences,
-    ),
+    communication_preferences: normalizeCommunicationPreferences(row.communication_preferences),
     total_bookings: row.total_bookings ?? 0,
     total_nights: row.total_nights ?? 0,
     total_revenue: toNumberOrFallback(row.total_revenue),
@@ -242,8 +216,7 @@ const mapRowToGuest = (
     cancelled_reservations: stats?.cancelledReservations ?? 0,
     average_stay_length: stats?.averageStayLength ?? undefined,
     preferred_room_types: stats?.preferredRoomTypes ?? undefined,
-    lifetime_value:
-      stats?.lifetimeValue ?? toNumberOrFallback(row.total_revenue),
+    lifetime_value: stats?.lifetimeValue ?? toNumberOrFallback(row.total_revenue),
   });
 
   return parsed;
@@ -324,15 +297,9 @@ export const listGuests = async (options: {
   }
 
   const guestIds = rows.map((row) => row.id);
-  const statsMap = await fetchGuestReservationStats(
-    tenantId,
-    guestIds,
-    propertyId ?? undefined,
-  );
+  const statsMap = await fetchGuestReservationStats(tenantId, guestIds, propertyId ?? undefined);
 
-  return rows.map((row) =>
-    applyGuestRetentionPolicy(mapRowToGuest(row, statsMap.get(row.id))),
-  );
+  return rows.map((row) => applyGuestRetentionPolicy(mapRowToGuest(row, statsMap.get(row.id))));
 };
 
 // ============================================================================
@@ -403,9 +370,7 @@ type GuestPreferenceRow = {
   updated_at: Date | null;
 };
 
-const mapRowToPreference = (
-  row: GuestPreferenceRow,
-): GuestPreferenceListItem => {
+const mapRowToPreference = (row: GuestPreferenceRow): GuestPreferenceListItem => {
   const { value: category, display: categoryDisplay } = formatEnumDisplay(
     row.preference_category,
     "Other",
@@ -511,10 +476,7 @@ type GuestDocumentRow = {
 };
 
 const mapRowToDocument = (row: GuestDocumentRow): GuestDocumentListItem => {
-  const { value: docType, display: docTypeDisplay } = formatEnumDisplay(
-    row.document_type,
-    "Other",
-  );
+  const { value: docType, display: docTypeDisplay } = formatEnumDisplay(row.document_type, "Other");
   const { value: verStatus, display: verStatusDisplay } = formatEnumDisplay(
     row.verification_status,
     "Pending",
@@ -605,9 +567,7 @@ type GuestCommunicationRow = {
   created_at: Date;
 };
 
-const mapRowToCommunication = (
-  row: GuestCommunicationRow,
-): GuestCommunicationListItem => {
+const mapRowToCommunication = (row: GuestCommunicationRow): GuestCommunicationListItem => {
   const { value: commType, display: commTypeDisplay } = formatEnumDisplay(
     row.communication_type,
     "Email",
@@ -616,10 +576,7 @@ const mapRowToCommunication = (
     row.direction,
     "Outbound",
   );
-  const { value: status, display: statusDisplay } = formatEnumDisplay(
-    row.status,
-    "Sent",
-  );
+  const { value: status, display: statusDisplay } = formatEnumDisplay(row.status, "Sent");
 
   return GuestCommunicationListItemSchema.parse({
     id: row.id,
@@ -666,10 +623,14 @@ export const listGuestCommunications = async (options: {
   const direction = options.direction ?? null;
   const status = options.status ?? null;
 
-  const { rows } = await query<GuestCommunicationRow>(
-    GUEST_COMMUNICATIONS_LIST_SQL,
-    [limit, tenantId, guestId, communicationType, direction, status],
-  );
+  const { rows } = await query<GuestCommunicationRow>(GUEST_COMMUNICATIONS_LIST_SQL, [
+    limit,
+    tenantId,
+    guestId,
+    communicationType,
+    direction,
+    status,
+  ]);
 
   return rows.map(mapRowToCommunication);
 };

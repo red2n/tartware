@@ -62,9 +62,7 @@ const toIsoString = (value: string | Date | null): string | undefined => {
   return value;
 };
 
-const normalizeStatus = (
-  value: string | null,
-): { value: string; display: string } => {
+const normalizeStatus = (value: string | null): { value: string; display: string } => {
   if (!value || typeof value !== "string") {
     return { value: "unknown", display: "Unknown" };
   }
@@ -129,10 +127,13 @@ export const listHousekeepingTasks = async (options: {
   const status = options.status ? options.status.trim().toUpperCase() : null;
   const scheduledDate = options.scheduledDate ?? null;
 
-  const { rows } = await query<HousekeepingTaskRow>(
-    HOUSEKEEPING_TASK_LIST_SQL,
-    [limit, tenantId, propertyId, status, scheduledDate],
-  );
+  const { rows } = await query<HousekeepingTaskRow>(HOUSEKEEPING_TASK_LIST_SQL, [
+    limit,
+    tenantId,
+    propertyId,
+    status,
+    scheduledDate,
+  ]);
 
   return rows.map(mapRowToTask);
 };
@@ -196,9 +197,7 @@ const formatDisplayLabel = (value: string | null): string => {
     .join(" ");
 };
 
-const mapMaintenanceRequestRow = (
-  row: MaintenanceRequestRow,
-): MaintenanceRequestListItem => {
+const mapMaintenanceRequestRow = (row: MaintenanceRequestRow): MaintenanceRequestListItem => {
   return MaintenanceRequestListItemSchema.parse({
     request_id: row.request_id,
     tenant_id: row.tenant_id,
@@ -235,8 +234,7 @@ const mapMaintenanceRequestRow = (
     work_completed_at: toIsoString(row.work_completed_at),
     actual_duration_minutes: row.actual_duration_minutes,
     work_performed: row.work_performed,
-    total_cost:
-      row.total_cost != null ? toNumberOrFallback(row.total_cost, 0) : null,
+    total_cost: row.total_cost != null ? toNumberOrFallback(row.total_cost, 0) : null,
     currency_code: row.currency_code ?? "USD",
     room_out_of_service: Boolean(row.room_out_of_service),
     oos_from: toIsoString(row.oos_from),
@@ -271,19 +269,16 @@ export const listMaintenanceRequests = async (options: {
   const roomId = options.roomId ?? null;
   const roomOutOfService = options.roomOutOfService ?? null;
 
-  const { rows } = await query<MaintenanceRequestRow>(
-    MAINTENANCE_REQUEST_LIST_SQL,
-    [
-      limit,
-      tenantId,
-      propertyId,
-      status,
-      priority,
-      issueCategory,
-      roomId,
-      roomOutOfService,
-    ],
-  );
+  const { rows } = await query<MaintenanceRequestRow>(MAINTENANCE_REQUEST_LIST_SQL, [
+    limit,
+    tenantId,
+    propertyId,
+    status,
+    priority,
+    issueCategory,
+    roomId,
+    roomOutOfService,
+  ]);
 
   return rows.map(mapMaintenanceRequestRow);
 };
@@ -295,10 +290,10 @@ export const getMaintenanceRequestById = async (options: {
   requestId: string;
   tenantId: string;
 }): Promise<MaintenanceRequestListItem | null> => {
-  const { rows } = await query<MaintenanceRequestRow>(
-    MAINTENANCE_REQUEST_BY_ID_SQL,
-    [options.requestId, options.tenantId],
-  );
+  const { rows } = await query<MaintenanceRequestRow>(MAINTENANCE_REQUEST_BY_ID_SQL, [
+    options.requestId,
+    options.tenantId,
+  ]);
 
   const [row] = rows;
   if (!row) {
@@ -351,9 +346,7 @@ type IncidentReportRow = {
   created_by: string;
 };
 
-const mapIncidentReportRow = (
-  row: IncidentReportRow,
-): IncidentReportListItem => {
+const mapIncidentReportRow = (row: IncidentReportRow): IncidentReportListItem => {
   return IncidentReportListItemSchema.parse({
     incident_id: row.incident_id,
     tenant_id: row.tenant_id,
@@ -367,11 +360,8 @@ const mapIncidentReportRow = (
     severity: row.severity?.toLowerCase() ?? "moderate",
     severity_display: formatDisplayLabel(row.severity),
     severity_score: row.severity_score,
-    incident_datetime:
-      toIsoString(row.incident_datetime) ?? new Date().toISOString(),
-    incident_date: (
-      toIsoString(row.incident_date) ?? new Date().toISOString()
-    ).split("T")[0],
+    incident_datetime: toIsoString(row.incident_datetime) ?? new Date().toISOString(),
+    incident_date: (toIsoString(row.incident_date) ?? new Date().toISOString()).split("T")[0],
     incident_time: row.incident_time,
     incident_location: row.incident_location,
     room_number: row.room_number,
@@ -386,9 +376,7 @@ const mapIncidentReportRow = (
     medical_attention_required: Boolean(row.medical_attention_required),
     property_damage: Boolean(row.property_damage),
     estimated_damage_cost:
-      row.estimated_damage_cost != null
-        ? toNumberOrFallback(row.estimated_damage_cost, 0)
-        : null,
+      row.estimated_damage_cost != null ? toNumberOrFallback(row.estimated_damage_cost, 0) : null,
     incident_status: row.incident_status?.toLowerCase() ?? "reported",
     incident_status_display: formatDisplayLabel(row.incident_status),
     investigation_required: Boolean(row.investigation_required),

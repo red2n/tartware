@@ -5,22 +5,17 @@ import {
   validateProductionSecrets,
 } from "@tartware/config";
 
-process.env.SERVICE_NAME =
-  process.env.SERVICE_NAME ?? "@tartware/command-center-service";
+process.env.SERVICE_NAME = process.env.SERVICE_NAME ?? "@tartware/command-center-service";
 process.env.SERVICE_VERSION = process.env.SERVICE_VERSION ?? "0.1.0";
 
 if (!process.env.AUTH_JWT_SECRET) {
   if (process.env.NODE_ENV === "production") {
-    throw new Error(
-      "AUTH_JWT_SECRET must be set in production and cannot use a default value.",
-    );
+    throw new Error("AUTH_JWT_SECRET must be set in production and cannot use a default value.");
   }
   process.env.AUTH_JWT_SECRET = "dev-secret-minimum-32-chars-change-me!";
 }
-process.env.AUTH_JWT_ISSUER =
-  process.env.AUTH_JWT_ISSUER ?? "@tartware/core-service:system";
-process.env.AUTH_JWT_AUDIENCE =
-  process.env.AUTH_JWT_AUDIENCE ?? "tartware-core";
+process.env.AUTH_JWT_ISSUER = process.env.AUTH_JWT_ISSUER ?? "@tartware/core-service:system";
+process.env.AUTH_JWT_AUDIENCE = process.env.AUTH_JWT_AUDIENCE ?? "tartware-core";
 
 const toNumber = (value: string | undefined, fallback: number): number => {
   if (typeof value === "string" && value.trim().length > 0) {
@@ -32,10 +27,7 @@ const toNumber = (value: string | undefined, fallback: number): number => {
   return fallback;
 };
 
-const parseBoolean = (
-  value: string | undefined,
-  fallback: boolean,
-): boolean => {
+const parseBoolean = (value: string | undefined, fallback: boolean): boolean => {
   if (value === undefined) {
     return fallback;
   }
@@ -57,10 +49,7 @@ const parseBoolean = (
   return fallback;
 };
 
-const parseBrokerList = (
-  value: string | undefined,
-  fallback?: string,
-): string[] =>
+const parseBrokerList = (value: string | undefined, fallback?: string): string[] =>
   (value ?? fallback ?? "")
     .split(",")
     .map((broker) => broker.trim())
@@ -76,11 +65,9 @@ const primaryKafkaBrokers = parseBrokerList(
   process.env.COMMAND_CENTER_KAFKA_BROKERS,
   "localhost:29092",
 );
-const usedDefaultPrimary =
-  (process.env.COMMAND_CENTER_KAFKA_BROKERS ?? "").trim().length === 0;
+const usedDefaultPrimary = (process.env.COMMAND_CENTER_KAFKA_BROKERS ?? "").trim().length === 0;
 const failoverKafkaBrokers = parseBrokerList(
-  process.env.COMMAND_CENTER_KAFKA_FAILOVER_BROKERS ??
-    process.env.KAFKA_FAILOVER_BROKERS,
+  process.env.COMMAND_CENTER_KAFKA_FAILOVER_BROKERS ?? process.env.KAFKA_FAILOVER_BROKERS,
 );
 const requestedKafkaCluster = (
   process.env.COMMAND_CENTER_KAFKA_ACTIVE_CLUSTER ??
@@ -88,13 +75,11 @@ const requestedKafkaCluster = (
   "primary"
 ).toLowerCase();
 const kafkaFailoverEnabled = parseBoolean(
-  process.env.COMMAND_CENTER_KAFKA_FAILOVER_ENABLED ??
-    process.env.KAFKA_FAILOVER_ENABLED,
+  process.env.COMMAND_CENTER_KAFKA_FAILOVER_ENABLED ?? process.env.KAFKA_FAILOVER_ENABLED,
   false,
 );
 const useKafkaFailover =
-  (requestedKafkaCluster === "failover" || kafkaFailoverEnabled) &&
-  failoverKafkaBrokers.length > 0;
+  (requestedKafkaCluster === "failover" || kafkaFailoverEnabled) && failoverKafkaBrokers.length > 0;
 
 let kafkaActiveCluster: "primary" | "failover" = "primary";
 let resolvedKafkaBrokers = primaryKafkaBrokers;
@@ -102,10 +87,7 @@ let resolvedKafkaBrokers = primaryKafkaBrokers;
 if (useKafkaFailover) {
   resolvedKafkaBrokers = failoverKafkaBrokers;
   kafkaActiveCluster = "failover";
-} else if (
-  primaryKafkaBrokers.length === 0 &&
-  failoverKafkaBrokers.length > 0
-) {
+} else if (primaryKafkaBrokers.length === 0 && failoverKafkaBrokers.length > 0) {
   resolvedKafkaBrokers = failoverKafkaBrokers;
   kafkaActiveCluster = "failover";
 }
@@ -117,15 +99,11 @@ if (primaryKafkaBrokers.length === 0 && failoverKafkaBrokers.length === 0) {
 }
 
 if (useKafkaFailover && failoverKafkaBrokers.length === 0) {
-  throw new Error(
-    "Failover requested/enabled but COMMAND_CENTER_KAFKA_FAILOVER_BROKERS is empty",
-  );
+  throw new Error("Failover requested/enabled but COMMAND_CENTER_KAFKA_FAILOVER_BROKERS is empty");
 }
 
 if (kafkaActiveCluster === "primary" && primaryKafkaBrokers.length === 0) {
-  throw new Error(
-    "Primary cluster requested but COMMAND_CENTER_KAFKA_BROKERS is empty",
-  );
+  throw new Error("Primary cluster requested but COMMAND_CENTER_KAFKA_BROKERS is empty");
 }
 
 if (isProduction && usedDefaultPrimary && kafkaActiveCluster === "primary") {
@@ -135,8 +113,7 @@ if (isProduction && usedDefaultPrimary && kafkaActiveCluster === "primary") {
 }
 
 const kafka = {
-  clientId:
-    process.env.COMMAND_CENTER_KAFKA_CLIENT_ID ?? "tartware-command-center",
+  clientId: process.env.COMMAND_CENTER_KAFKA_CLIENT_ID ?? "tartware-command-center",
   brokers: resolvedKafkaBrokers,
   primaryBrokers: primaryKafkaBrokers,
   failoverBrokers: failoverKafkaBrokers,
@@ -146,31 +123,14 @@ const kafka = {
 };
 
 const outbox = {
-  workerId:
-    process.env.COMMAND_CENTER_OUTBOX_WORKER_ID ??
-    `${configValues.SERVICE_NAME}-outbox`,
-  pollIntervalMs: toNumber(
-    process.env.COMMAND_CENTER_OUTBOX_POLL_INTERVAL_MS,
-    2000,
-  ),
+  workerId: process.env.COMMAND_CENTER_OUTBOX_WORKER_ID ?? `${configValues.SERVICE_NAME}-outbox`,
+  pollIntervalMs: toNumber(process.env.COMMAND_CENTER_OUTBOX_POLL_INTERVAL_MS, 2000),
   batchSize: toNumber(process.env.COMMAND_CENTER_OUTBOX_BATCH_SIZE, 25),
-  lockTimeoutMs: toNumber(
-    process.env.COMMAND_CENTER_OUTBOX_LOCK_TIMEOUT_MS,
-    30000,
-  ),
+  lockTimeoutMs: toNumber(process.env.COMMAND_CENTER_OUTBOX_LOCK_TIMEOUT_MS, 30000),
   maxRetries: toNumber(process.env.COMMAND_CENTER_OUTBOX_MAX_RETRIES, 5),
-  retryBackoffMs: toNumber(
-    process.env.COMMAND_CENTER_OUTBOX_RETRY_BACKOFF_MS,
-    5000,
-  ),
-  tenantThrottleMs: toNumber(
-    process.env.COMMAND_CENTER_OUTBOX_TENANT_THROTTLE_MS,
-    0,
-  ),
-  tenantJitterMs: toNumber(
-    process.env.COMMAND_CENTER_OUTBOX_TENANT_JITTER_MS,
-    0,
-  ),
+  retryBackoffMs: toNumber(process.env.COMMAND_CENTER_OUTBOX_RETRY_BACKOFF_MS, 5000),
+  tenantThrottleMs: toNumber(process.env.COMMAND_CENTER_OUTBOX_TENANT_THROTTLE_MS, 0),
+  tenantJitterMs: toNumber(process.env.COMMAND_CENTER_OUTBOX_TENANT_JITTER_MS, 0),
   tenantThrottleCleanupMs: toNumber(
     process.env.COMMAND_CENTER_OUTBOX_TENANT_THROTTLE_CLEANUP_MS,
     60_000,

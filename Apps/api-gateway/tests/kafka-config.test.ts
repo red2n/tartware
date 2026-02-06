@@ -41,6 +41,7 @@ const loadKafkaConfig = async (
       DB_POOL_MAX: 10,
       DB_POOL_IDLE_TIMEOUT_MS: 1000,
     }),
+    validateProductionSecrets: () => {},
   }));
 
   const module = await import("../src/config.js");
