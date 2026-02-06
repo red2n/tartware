@@ -35,8 +35,7 @@ const deriveRollType = (
   commandOrEvent: string,
   currentState?: string,
 ): "EOD" | "CHECKOUT" | "CANCEL" | "UNKNOWN" => {
-  const normalized =
-    typeof commandOrEvent === "string" ? commandOrEvent.toLowerCase() : "";
+  const normalized = typeof commandOrEvent === "string" ? commandOrEvent.toLowerCase() : "";
   if (normalized.includes("cancel")) {
     return "CANCEL";
   }
@@ -52,26 +51,18 @@ const deriveRollType = (
 /**
  * Build a roll ledger entry from a reservation event.
  */
-export const buildLedgerEntryFromReservationEvent = (
-  event: ReservationEvent,
-): RollLedgerEntry => {
+export const buildLedgerEntryFromReservationEvent = (event: ReservationEvent): RollLedgerEntry => {
   const checkoutDate =
-    "check_out_date" in event.payload
-      ? toDate(event.payload.check_out_date)
-      : null;
-  const cancelledAt =
-    "cancelled_at" in event.payload ? toDate(event.payload.cancelled_at) : null;
+    "check_out_date" in event.payload ? toDate(event.payload.check_out_date) : null;
+  const cancelledAt = "cancelled_at" in event.payload ? toDate(event.payload.cancelled_at) : null;
   const rollDateCandidate = checkoutDate ?? cancelledAt;
 
   return {
     tenantId: event.metadata.tenantId,
-    reservationId:
-      "id" in event.payload ? (event.payload.id ?? undefined) : undefined,
+    reservationId: "id" in event.payload ? (event.payload.id ?? undefined) : undefined,
     lifecycleEventId: event.metadata.id,
     rollType: deriveRollType(event.metadata.type),
-    rollDate: formatDateOnly(
-      rollDateCandidate ?? toDate(event.metadata.timestamp),
-    ),
+    rollDate: formatDateOnly(rollDateCandidate ?? toDate(event.metadata.timestamp)),
     occurredAt: toDate(event.metadata.timestamp) ?? new Date(),
     sourceEventType: event.metadata.type,
     payload: {
@@ -84,21 +75,16 @@ export const buildLedgerEntryFromReservationEvent = (
 /**
  * Build a roll ledger entry from a lifecycle table row.
  */
-export const buildLedgerEntryFromLifecycleRow = (
-  row: LifecycleRow,
-): RollLedgerEntry => {
+export const buildLedgerEntryFromLifecycleRow = (row: LifecycleRow): RollLedgerEntry => {
   const metadata: Record<string, unknown> = row.metadata ?? {};
   const stayEnd =
     (metadata.stayEnd as string | undefined) ??
     (metadata.checkOutDate as string | undefined) ??
     (metadata.check_out_date as string | undefined);
-  const rollDateCandidate = toDate(
-    stayEnd ?? (metadata.stay_end as string | undefined),
-  );
+  const rollDateCandidate = toDate(stayEnd ?? (metadata.stay_end as string | undefined));
   const occurredAt = row.created_at ?? new Date();
   const sourceEventType =
-    (metadata.eventType as string | undefined) ??
-    row.command_name.toLowerCase();
+    (metadata.eventType as string | undefined) ?? row.command_name.toLowerCase();
 
   return {
     tenantId: row.tenant_id,

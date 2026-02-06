@@ -1,10 +1,4 @@
-import {
-  Counter,
-  collectDefaultMetrics,
-  Gauge,
-  Histogram,
-  Registry,
-} from "prom-client";
+import { Counter, collectDefaultMetrics, Gauge, Histogram, Registry } from "prom-client";
 
 /**
  * Shared Prometheus registry exposed via the /metrics endpoint.
@@ -114,20 +108,13 @@ export const observeProcessingDuration = (
   partition: number,
   durationSeconds: number,
 ): void => {
-  processingDurationHistogram.observe(
-    { topic, partition: String(partition) },
-    durationSeconds,
-  );
+  processingDurationHistogram.observe({ topic, partition: String(partition) }, durationSeconds);
 };
 
 /**
  * Updates the consumer lag gauge for a partition.
  */
-export const setConsumerLag = (
-  topic: string,
-  partition: number,
-  lag: number,
-): void => {
+export const setConsumerLag = (topic: string, partition: number, lag: number): void => {
   consumerLagGauge.set({ topic, partition: String(partition) }, lag);
 };
 
@@ -161,16 +148,10 @@ export const setDlqThresholds = (warn: number, critical: number): void => {
   dlqThresholdGauge.set({ level: "critical" }, critical);
 };
 
-export const recordAvailabilityGuardRequest = (
-  method: string,
-  status: string,
-): void => {
+export const recordAvailabilityGuardRequest = (method: string, status: string): void => {
   availabilityGuardRequestCounter.labels(method, status).inc();
 };
 
-export const observeAvailabilityGuardDuration = (
-  method: string,
-  durationSeconds: number,
-): void => {
+export const observeAvailabilityGuardDuration = (method: string, durationSeconds: number): void => {
   availabilityGuardDurationHistogram.observe({ method }, durationSeconds);
 };

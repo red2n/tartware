@@ -65,9 +65,8 @@ const fetchExistingLedgerRow = async (
   return result.rows[0] ?? null;
 };
 
-const normalizePayload = (
-  payload: Record<string, unknown> | undefined,
-): string => JSON.stringify(payload ?? {});
+const normalizePayload = (payload: Record<string, unknown> | undefined): string =>
+  JSON.stringify(payload ?? {});
 
 const rowsMatch = (row: ExistingLedgerRow, entry: RollLedgerEntry): boolean => {
   const occurredAtMs = new Date(row.occurred_at).getTime();
@@ -78,8 +77,7 @@ const rowsMatch = (row: ExistingLedgerRow, entry: RollLedgerEntry): boolean => {
     occurredAtMs === entry.occurredAt.getTime() &&
     row.source_event_type === entry.sourceEventType &&
     (row.reservation_id ?? null) === (entry.reservationId ?? null) &&
-    normalizePayload(row.event_payload ?? {}) ===
-      normalizePayload(entry.payload)
+    normalizePayload(row.event_payload ?? {}) === normalizePayload(entry.payload)
   );
 };
 
@@ -87,11 +85,7 @@ export const upsertRollLedgerEntry = async (
   entry: RollLedgerEntry,
   client?: QueryExecutor,
 ): Promise<"match" | "mismatch" | "missing"> => {
-  const existingRow = await fetchExistingLedgerRow(
-    entry.tenantId,
-    entry.lifecycleEventId,
-    client,
-  );
+  const existingRow = await fetchExistingLedgerRow(entry.tenantId, entry.lifecycleEventId, client);
 
   let driftStatus: "match" | "mismatch" | "missing" = "missing";
   if (existingRow) {

@@ -1,7 +1,7 @@
-import fastifyPlugin from "fastify-plugin";
 import fastifySwagger from "@fastify/swagger";
 import fastifySwaggerUi from "@fastify/swagger-ui";
 import type { FastifyInstance } from "fastify";
+import fastifyPlugin from "fastify-plugin";
 
 import { config } from "../config.js";
 

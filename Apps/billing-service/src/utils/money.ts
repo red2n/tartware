@@ -84,5 +84,4 @@ export const parseDbMoney = (value: unknown): number | null => {
 /**
  * Safely convert a database numeric/decimal value to a number, defaulting to 0.
  */
-export const parseDbMoneyOrZero = (value: unknown): number =>
-  parseDbMoney(value) ?? 0;
+export const parseDbMoneyOrZero = (value: unknown): number => parseDbMoney(value) ?? 0;

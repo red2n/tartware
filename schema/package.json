@@ -58,7 +58,7 @@
     "CHANGELOG.md"
   ],
   "scripts": {
-    "build": "npm run lint && npm run biome && npm run knip && tsc",
+    "build": "tsc",
     "dev": "tsc --watch",
     "test": "vitest --run --passWithNoTests",
     "test:ui": "vitest --ui",

@@ -8,10 +8,7 @@ import {
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 
-import {
-  getIncidentReportById,
-  listIncidentReports,
-} from "../services/housekeeping-service.js";
+import { getIncidentReportById, listIncidentReports } from "../services/housekeeping-service.js";
 
 const IncidentListQuerySchema = z.object({
   tenant_id: z.string().uuid(),
@@ -23,9 +20,7 @@ const IncidentListQuerySchema = z.object({
     .refine(
       (value) =>
         !value ||
-        IncidentStatusEnum.options.includes(
-          value as (typeof IncidentStatusEnum.options)[number],
-        ),
+        IncidentStatusEnum.options.includes(value as (typeof IncidentStatusEnum.options)[number]),
       { message: "Invalid incident status" },
     ),
   severity: z
@@ -47,9 +42,7 @@ const IncidentListQuerySchema = z.object({
     .refine(
       (value) =>
         !value ||
-        IncidentTypeEnum.options.includes(
-          value as (typeof IncidentTypeEnum.options)[number],
-        ),
+        IncidentTypeEnum.options.includes(value as (typeof IncidentTypeEnum.options)[number]),
       { message: "Invalid incident type" },
     ),
   incident_date: z
@@ -81,10 +74,7 @@ const IncidentParamsSchema = z.object({
 
 const IncidentListResponseSchema = z.array(IncidentReportListItemSchema);
 
-const IncidentListQueryJsonSchema = schemaFromZod(
-  IncidentListQuerySchema,
-  "IncidentListQuery",
-);
+const IncidentListQueryJsonSchema = schemaFromZod(IncidentListQuerySchema, "IncidentListQuery");
 const IncidentListResponseJsonSchema = schemaFromZod(
   IncidentListResponseSchema,
   "IncidentListResponse",
@@ -93,15 +83,9 @@ const IncidentReportItemJsonSchema = schemaFromZod(
   IncidentReportListItemSchema,
   "IncidentReportListItem",
 );
-const IncidentParamsJsonSchema = schemaFromZod(
-  IncidentParamsSchema,
-  "IncidentParams",
-);
+const IncidentParamsJsonSchema = schemaFromZod(IncidentParamsSchema, "IncidentParams");
 
-const ErrorResponseSchema = schemaFromZod(
-  z.object({ message: z.string() }),
-  "ErrorResponse",
-);
+const ErrorResponseSchema = schemaFromZod(z.object({ message: z.string() }), "ErrorResponse");
 
 const INCIDENTS_TAG = "Incidents";
 
@@ -110,8 +94,7 @@ export const registerIncidentRoutes = (app: FastifyInstance): void => {
     "/v1/incidents",
     {
       preHandler: app.withTenantScope({
-        resolveTenantId: (request) =>
-          (request.query as IncidentListQuery).tenant_id,
+        resolveTenantId: (request) => (request.query as IncidentListQuery).tenant_id,
         minRole: "MANAGER",
         requiredModules: "facility-maintenance",
       }),
@@ -162,21 +145,16 @@ export const registerIncidentRoutes = (app: FastifyInstance): void => {
     "/v1/incidents/:incidentId",
     {
       preHandler: app.withTenantScope({
-        resolveTenantId: (request) =>
-          (request.query as { tenant_id: string }).tenant_id,
+        resolveTenantId: (request) => (request.query as { tenant_id: string }).tenant_id,
         minRole: "MANAGER",
         requiredModules: "facility-maintenance",
       }),
       schema: buildRouteSchema({
         tag: INCIDENTS_TAG,
         summary: "Get incident report by ID",
-        description:
-          "Retrieves detailed information for a specific incident report",
+        description: "Retrieves detailed information for a specific incident report",
         params: IncidentParamsJsonSchema,
-        querystring: schemaFromZod(
-          z.object({ tenant_id: z.string().uuid() }),
-          "TenantQuery",
-        ),
+        querystring: schemaFromZod(z.object({ tenant_id: z.string().uuid() }), "TenantQuery"),
         response: {
           200: IncidentReportItemJsonSchema,
           404: ErrorResponseSchema,
@@ -185,9 +163,7 @@ export const registerIncidentRoutes = (app: FastifyInstance): void => {
     },
     async (request, reply) => {
       const { incidentId } = IncidentParamsSchema.parse(request.params);
-      const { tenant_id } = z
-        .object({ tenant_id: z.string().uuid() })
-        .parse(request.query);
+      const { tenant_id } = z.object({ tenant_id: z.string().uuid() }).parse(request.query);
 
       const incident = await getIncidentReportById({
         incidentId,

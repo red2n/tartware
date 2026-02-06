@@ -7,9 +7,7 @@ type AccessTokenPayload = jwt.JwtPayload & {
   scope?: string[];
 };
 
-export const extractBearerToken = (
-  authorizationHeader?: string,
-): string | null => {
+export const extractBearerToken = (authorizationHeader?: string): string | null => {
   if (!authorizationHeader) {
     return null;
   }

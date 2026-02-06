@@ -25,9 +25,7 @@ type KafkaEventMessage = {
 /**
  * Publishes an event to Kafka, defaulting to the primary reservations topic.
  */
-export const publishEvent = async (
-  message: KafkaEventMessage,
-): Promise<RecordMetadata[]> => {
+export const publishEvent = async (message: KafkaEventMessage): Promise<RecordMetadata[]> => {
   const producerInstance = await getProducer();
   return producerInstance.send({
     topic: message.topic ?? kafkaConfig.topic,

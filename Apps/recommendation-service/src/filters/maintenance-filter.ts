@@ -8,17 +8,9 @@ import { PredicateFilter } from "@tartware/candidate-pipeline";
 
 import type { RoomCandidate, RoomRecommendationQuery } from "../types.js";
 
-const EXCLUDED_STATUSES = new Set([
-  "maintenance",
-  "out_of_service",
-  "blocked",
-  "renovation",
-]);
+const EXCLUDED_STATUSES = new Set(["maintenance", "out_of_service", "blocked", "renovation"]);
 
-export class MaintenanceFilter extends PredicateFilter<
-  RoomRecommendationQuery,
-  RoomCandidate
-> {
+export class MaintenanceFilter extends PredicateFilter<RoomRecommendationQuery, RoomCandidate> {
   readonly name = "maintenance";
 
   shouldKeep(_query: RoomRecommendationQuery, candidate: RoomCandidate): boolean {

@@ -8,19 +8,12 @@ const REDACTED_VALUE = "[REDACTED]" as const;
 const PLACEHOLDER_WARNING =
   "compliance encryption key is using a local placeholder. Override with a secure value in production.";
 
-const isOlderThanRetention = (
-  input: Date | string | undefined,
-  retentionDays: number,
-): boolean => {
+const isOlderThanRetention = (input: Date | string | undefined, retentionDays: number): boolean => {
   if (!input || retentionDays <= 0) {
     return false;
   }
   const timestamp =
-    typeof input === "string"
-      ? Date.parse(input)
-      : input instanceof Date
-        ? input.getTime()
-        : NaN;
+    typeof input === "string" ? Date.parse(input) : input instanceof Date ? input.getTime() : NaN;
   if (Number.isNaN(timestamp)) {
     return false;
   }
@@ -48,17 +41,10 @@ export const ensureBillingEncryptionRequirementsMet = (): void => {
   }
 };
 
-export const applyBillingRetentionPolicy = (
-  payment: BillingPayment,
-): BillingPayment => {
+export const applyBillingRetentionPolicy = (payment: BillingPayment): BillingPayment => {
   const retentionDays = config.compliance.retention.billingDataDays;
   const referenceDate = payment.processed_at ?? payment.created_at;
-  if (
-    !isOlderThanRetention(
-      referenceDate ? new Date(referenceDate) : undefined,
-      retentionDays,
-    )
-  ) {
+  if (!isOlderThanRetention(referenceDate ? new Date(referenceDate) : undefined, retentionDays)) {
     return payment;
   }
 

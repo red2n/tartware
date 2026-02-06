@@ -34,10 +34,7 @@ const normalizeRateCode = (value: string | undefined): string | undefined => {
   return trimmed.toUpperCase();
 };
 
-const findRateOrNull = async (
-  input: ResolveRatePlanInput,
-  rateCode: string,
-) => {
+const findRateOrNull = async (input: ResolveRatePlanInput, rateCode: string) => {
   return findActiveRateByCode({
     tenantId: input.tenantId,
     propertyId: input.propertyId,
@@ -51,9 +48,7 @@ const findRateOrNull = async (
 /**
  * Resolve the applicable rate plan for a stay window.
  */
-export const resolveRatePlan = async (
-  input: ResolveRatePlanInput,
-): Promise<RatePlanResolution> => {
+export const resolveRatePlan = async (input: ResolveRatePlanInput): Promise<RatePlanResolution> => {
   const normalizedRequested = normalizeRateCode(input.requestedRateCode);
   const decidedAt = new Date();
 
@@ -70,9 +65,7 @@ export const resolveRatePlan = async (
     }
   }
 
-  const fallbackReason = normalizedRequested
-    ? "RATE_UNAVAILABLE"
-    : "MISSING_RATE_CODE";
+  const fallbackReason = normalizedRequested ? "RATE_UNAVAILABLE" : "MISSING_RATE_CODE";
 
   for (const fallbackCode of FALLBACK_RATE_CODES) {
     if (normalizedRequested && fallbackCode === normalizedRequested) {
@@ -96,7 +89,5 @@ export const resolveRatePlan = async (
       `Rate code ${normalizedRequested} unavailable and fallback BAR/RACK not configured`,
     );
   }
-  throw new Error(
-    "Default fallback rate codes (BAR/RACK) are not configured for this stay window",
-  );
+  throw new Error("Default fallback rate codes (BAR/RACK) are not configured for this stay window");
 };

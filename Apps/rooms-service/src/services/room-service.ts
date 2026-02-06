@@ -1,11 +1,7 @@
 import { type RoomItem, RoomItemSchema } from "@tartware/schemas";
 
 import { query } from "../lib/db.js";
-import {
-  ROOM_CREATE_SQL,
-  ROOM_GET_BY_ID_SQL,
-  ROOM_LIST_SQL,
-} from "../sql/room-queries.js";
+import { ROOM_CREATE_SQL, ROOM_GET_BY_ID_SQL, ROOM_LIST_SQL } from "../sql/room-queries.js";
 
 // Re-export schema for consumers that import from this module
 export const RoomListItemSchema = RoomItemSchema;
@@ -134,19 +130,18 @@ const toStringDate = (value: string | Date | null): string | undefined => {
 };
 
 const mapRowToRoom = (row: RoomListRow): RoomItem => {
-  const { value: status, display: statusDisplay } = normalizeEnum(
-    row.status,
-    "unknown",
+  const { value: status, display: statusDisplay } = normalizeEnum(row.status, "unknown");
+  const { value: housekeepingStatus, display: housekeepingDisplay } = normalizeEnum(
+    row.housekeeping_status,
+    "unspecified",
   );
-  const { value: housekeepingStatus, display: housekeepingDisplay } =
-    normalizeEnum(row.housekeeping_status, "unspecified");
-  const { value: maintenanceStatus, display: maintenanceDisplay } =
-    normalizeEnum(row.maintenance_status, "normal");
+  const { value: maintenanceStatus, display: maintenanceDisplay } = normalizeEnum(
+    row.maintenance_status,
+    "normal",
+  );
 
   // Return raw data - let UI decide how to merge/display
-  const roomTypeAmenities = Array.isArray(row.room_type_amenities)
-    ? row.room_type_amenities
-    : [];
+  const roomTypeAmenities = Array.isArray(row.room_type_amenities) ? row.room_type_amenities : [];
   const roomAmenities = Array.isArray(row.amenities) ? row.amenities : [];
 
   return RoomItemSchema.parse({
@@ -156,8 +151,7 @@ const mapRowToRoom = (row: RoomListRow): RoomItem => {
     property_name: row.property_name ?? undefined,
     room_type_id: row.room_type_id ?? undefined,
     room_type_name: row.room_type_name ?? undefined,
-    room_type_amenities:
-      roomTypeAmenities.length > 0 ? roomTypeAmenities : undefined,
+    room_type_amenities: roomTypeAmenities.length > 0 ? roomTypeAmenities : undefined,
     room_number: row.room_number,
     room_name: row.room_name ?? undefined,
     floor: row.floor ?? undefined,
@@ -185,9 +179,7 @@ const mapRowToRoom = (row: RoomListRow): RoomItem => {
 /**
  * Create a new room in the inventory.
  */
-export const createRoom = async (
-  input: CreateRoomInput,
-): Promise<RoomListItem> => {
+export const createRoom = async (input: CreateRoomInput): Promise<RoomListItem> => {
   const { rows } = await query<RoomListRow>(ROOM_CREATE_SQL, [
     input.tenant_id,
     input.property_id,
@@ -198,12 +190,8 @@ export const createRoom = async (
     input.building ?? null,
     input.wing ?? null,
     input.status ? input.status.trim().toUpperCase() : null,
-    input.housekeeping_status
-      ? input.housekeeping_status.trim().toUpperCase()
-      : null,
-    input.maintenance_status
-      ? input.maintenance_status.trim().toUpperCase()
-      : null,
+    input.housekeeping_status ? input.housekeeping_status.trim().toUpperCase() : null,
+    input.maintenance_status ? input.maintenance_status.trim().toUpperCase() : null,
     toJson(input.features),
     toJson(input.amenities),
     input.is_blocked ?? null,
@@ -226,9 +214,7 @@ export const createRoom = async (
   return mapRowToRoom(rows[0]);
 };
 
-export const updateRoom = async (
-  input: UpdateRoomInput,
-): Promise<RoomListItem | null> => {
+export const updateRoom = async (input: UpdateRoomInput): Promise<RoomListItem | null> => {
   const { rows } = await query<RoomListRow>(
     `
       WITH updated AS (
@@ -310,12 +296,8 @@ export const updateRoom = async (
       input.building ?? null,
       input.wing ?? null,
       input.status ? input.status.trim().toUpperCase() : null,
-      input.housekeeping_status
-        ? input.housekeeping_status.trim().toUpperCase()
-        : null,
-      input.maintenance_status
-        ? input.maintenance_status.trim().toUpperCase()
-        : null,
+      input.housekeeping_status ? input.housekeeping_status.trim().toUpperCase() : null,
+      input.maintenance_status ? input.maintenance_status.trim().toUpperCase() : null,
       toJson(input.features),
       toJson(input.amenities),
       input.is_blocked ?? null,
@@ -377,10 +359,7 @@ export const getRoomById = async (options: {
   tenantId: string;
   roomId: string;
 }): Promise<RoomListItem | null> => {
-  const { rows } = await query<RoomListRow>(ROOM_GET_BY_ID_SQL, [
-    options.roomId,
-    options.tenantId,
-  ]);
+  const { rows } = await query<RoomListRow>(ROOM_GET_BY_ID_SQL, [options.roomId, options.tenantId]);
 
   if (!rows[0]) {
     return null;

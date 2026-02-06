@@ -1,12 +1,7 @@
 import { performance } from "node:perf_hooks";
 import { fileURLToPath } from "node:url";
 
-import {
-  type Client,
-  credentials,
-  loadPackageDefinition,
-  type ServiceError,
-} from "@grpc/grpc-js";
+import { type Client, credentials, loadPackageDefinition, type ServiceError } from "@grpc/grpc-js";
 import protoLoader from "@grpc/proto-loader";
 
 import { availabilityGuardConfig } from "../config.js";
@@ -59,24 +54,15 @@ type BulkReleaseRequestMessage = {
 type AvailabilityGuardGrpcClient = Client & {
   lockRoom(
     request: LockRoomRequestMessage,
-    callback: (
-      error: ServiceError | null,
-      response: LockRoomResponseMessage,
-    ) => void,
+    callback: (error: ServiceError | null, response: LockRoomResponseMessage) => void,
   ): void;
   releaseRoom(
     request: ReleaseRoomRequestMessage,
-    callback: (
-      error: ServiceError | null,
-      response: ReleaseRoomResponseMessage,
-    ) => void,
+    callback: (error: ServiceError | null, response: ReleaseRoomResponseMessage) => void,
   ): void;
   bulkRelease(
     request: BulkReleaseRequestMessage,
-    callback: (
-      error: ServiceError | null,
-      response: { released: number },
-    ) => void,
+    callback: (error: ServiceError | null, response: { released: number }) => void,
   ): void;
 };
 
@@ -146,10 +132,7 @@ const getClient = (): AvailabilityGuardGrpcClient | null => {
   }
   if (!client) {
     const ctor = descriptor.availabilityguard.v1.AvailabilityGuard;
-    client = new ctor(
-      availabilityGuardConfig.address,
-      credentials.createInsecure(),
-    );
+    client = new ctor(availabilityGuardConfig.address, credentials.createInsecure());
   }
   return client;
 };
@@ -166,10 +149,7 @@ const callGrpc = <TMethod extends keyof GrpcMethodMap>(
   return new Promise<GrpcMethodMap[TMethod][1]>((resolve, reject) => {
     const handler = grpcClient[method].bind(grpcClient) as (
       grpcRequest: GrpcMethodMap[TMethod][0],
-      callback: (
-        error: ServiceError | null,
-        response: GrpcMethodMap[TMethod][1],
-      ) => void,
+      callback: (error: ServiceError | null, response: GrpcMethodMap[TMethod][1]) => void,
     ) => void;
 
     handler(request, (error: ServiceError | null, response) => {
@@ -193,10 +173,7 @@ const sleep = (ms: number): Promise<void> =>
     setTimeout(resolve, ms);
   });
 
-const runWithRetry = async <T>(
-  fn: () => Promise<T>,
-  options: RetryOptions = {},
-): Promise<T> => {
+const runWithRetry = async <T>(fn: () => Promise<T>, options: RetryOptions = {}): Promise<T> => {
   const { retries = 0, baseDelayMs = 200, onFailedAttempt } = options;
 
   for (let attempt = 0; ; attempt += 1) {
@@ -212,8 +189,7 @@ const runWithRetry = async <T>(
   }
 };
 
-const secondsSince = (startedAt: number): number =>
-  (performance.now() - startedAt) / 1000;
+const secondsSince = (startedAt: number): number => (performance.now() - startedAt) / 1000;
 
 const isGuardRequired = (): boolean => {
   const env = (process.env.NODE_ENV ?? "development").toLowerCase();
@@ -225,9 +201,7 @@ export const lockReservationHold = async (
 ): Promise<AvailabilityGuardMetadata> => {
   if (!availabilityGuardConfig.enabled) {
     if (isGuardRequired()) {
-      throw new Error(
-        "Availability Guard is disabled in a non-dev environment",
-      );
+      throw new Error("Availability Guard is disabled in a non-dev environment");
     }
     return { status: "SKIPPED" };
   }
@@ -260,12 +234,7 @@ export const lockReservationHold = async (
       },
     );
 
-    const status =
-      response.status === 1
-        ? "LOCKED"
-        : response.status === 2
-          ? "CONFLICT"
-          : "ERROR";
+    const status = response.status === 1 ? "LOCKED" : response.status === 2 ? "CONFLICT" : "ERROR";
 
     recordAvailabilityGuardRequest(method, status);
     observeAvailabilityGuardDuration(method, secondsSince(startedAt));
@@ -279,10 +248,7 @@ export const lockReservationHold = async (
 
     const message = "Availability Guard reported a conflicting lock";
     if (status === "CONFLICT") {
-      if (
-        availabilityGuardConfig.shadowMode ||
-        availabilityGuardConfig.failOpen
-      ) {
+      if (availabilityGuardConfig.shadowMode || availabilityGuardConfig.failOpen) {
         reservationsLogger.warn(
           {
             status,
@@ -315,9 +281,7 @@ export const lockReservationHold = async (
   }
 };
 
-export const releaseReservationHold = async (
-  input: ReleaseReservationInput,
-): Promise<void> => {
+export const releaseReservationHold = async (input: ReleaseReservationInput): Promise<void> => {
   if (!availabilityGuardConfig.enabled) {
     if (isGuardRequired()) {
       reservationsLogger.warn(

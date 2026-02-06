@@ -1,18 +1,11 @@
-import {
-  databaseSchema,
-  loadServiceConfig,
-  validateProductionSecrets,
-} from "@tartware/config";
+import { databaseSchema, loadServiceConfig, validateProductionSecrets } from "@tartware/config";
 
-process.env.SERVICE_NAME =
-  process.env.SERVICE_NAME ?? "@tartware/billing-service";
+process.env.SERVICE_NAME = process.env.SERVICE_NAME ?? "@tartware/billing-service";
 process.env.SERVICE_VERSION = process.env.SERVICE_VERSION ?? "0.1.0";
 
 if (!process.env.AUTH_JWT_SECRET) {
   if (process.env.NODE_ENV === "production") {
-    throw new Error(
-      "AUTH_JWT_SECRET must be set in production and cannot use a default value.",
-    );
+    throw new Error("AUTH_JWT_SECRET must be set in production and cannot use a default value.");
   }
   process.env.AUTH_JWT_SECRET = "dev-secret-minimum-32-chars-change-me!";
 }
@@ -37,10 +30,7 @@ const toBoolean = (value: string | undefined, fallback: boolean): boolean => {
   return !FALSEY_VALUES.has(value.toLowerCase());
 };
 
-const parseBrokerList = (
-  value: string | undefined,
-  fallback?: string,
-): string[] =>
+const parseBrokerList = (value: string | undefined, fallback?: string): string[] =>
   (value ?? fallback ?? "")
     .split(",")
     .map((broker) => broker.trim())
@@ -61,33 +51,17 @@ validateProductionSecrets({
 });
 const runtimeEnv = (process.env.NODE_ENV ?? "development").toLowerCase();
 const isProduction = runtimeEnv === "production";
-const billingDataRetentionDays = toNumber(
-  process.env.COMPLIANCE_BILLING_DATA_RETENTION_DAYS,
-  2555,
-);
-const requireBillingEncryption = toBoolean(
-  process.env.COMPLIANCE_REQUIRE_BILLING_ENCRYPTION,
-  true,
-);
-const billingEncryptionKey =
-  process.env.BILLING_DATA_ENCRYPTION_KEY ?? "local-dev-billing-key";
+const billingDataRetentionDays = toNumber(process.env.COMPLIANCE_BILLING_DATA_RETENTION_DAYS, 2555);
+const requireBillingEncryption = toBoolean(process.env.COMPLIANCE_REQUIRE_BILLING_ENCRYPTION, true);
+const billingEncryptionKey = process.env.BILLING_DATA_ENCRYPTION_KEY ?? "local-dev-billing-key";
 
-const primaryKafkaBrokers = parseBrokerList(
-  process.env.KAFKA_BROKERS,
-  "localhost:29092",
-);
-const usedDefaultPrimary =
-  (process.env.KAFKA_BROKERS ?? "").trim().length === 0;
-const failoverKafkaBrokers = parseBrokerList(
-  process.env.KAFKA_FAILOVER_BROKERS,
-);
-const requestedCluster = (
-  process.env.KAFKA_ACTIVE_CLUSTER ?? "primary"
-).toLowerCase();
+const primaryKafkaBrokers = parseBrokerList(process.env.KAFKA_BROKERS, "localhost:29092");
+const usedDefaultPrimary = (process.env.KAFKA_BROKERS ?? "").trim().length === 0;
+const failoverKafkaBrokers = parseBrokerList(process.env.KAFKA_FAILOVER_BROKERS);
+const requestedCluster = (process.env.KAFKA_ACTIVE_CLUSTER ?? "primary").toLowerCase();
 const failoverToggle = toBoolean(process.env.KAFKA_FAILOVER_ENABLED, false);
 const useFailover =
-  (requestedCluster === "failover" || failoverToggle) &&
-  failoverKafkaBrokers.length > 0;
+  (requestedCluster === "failover" || failoverToggle) && failoverKafkaBrokers.length > 0;
 const resolvedKafkaBrokers =
   useFailover && failoverKafkaBrokers.length > 0
     ? failoverKafkaBrokers
@@ -95,8 +69,7 @@ const resolvedKafkaBrokers =
       ? primaryKafkaBrokers
       : failoverKafkaBrokers;
 const activeKafkaCluster =
-  resolvedKafkaBrokers === failoverKafkaBrokers &&
-  resolvedKafkaBrokers.length > 0
+  resolvedKafkaBrokers === failoverKafkaBrokers && resolvedKafkaBrokers.length > 0
     ? "failover"
     : "primary";
 
@@ -105,9 +78,7 @@ if (primaryKafkaBrokers.length === 0 && failoverKafkaBrokers.length === 0) {
 }
 
 if (useFailover && failoverKafkaBrokers.length === 0) {
-  throw new Error(
-    "Failover requested/enabled but KAFKA_FAILOVER_BROKERS is empty",
-  );
+  throw new Error("Failover requested/enabled but KAFKA_FAILOVER_BROKERS is empty");
 }
 
 if (activeKafkaCluster === "primary" && primaryKafkaBrokers.length === 0) {
@@ -130,11 +101,8 @@ const kafka = {
 
 const commandCenter = {
   topic: process.env.COMMAND_CENTER_TOPIC ?? "commands.primary",
-  consumerGroupId:
-    process.env.COMMAND_CENTER_CONSUMER_GROUP ??
-    "billing-command-center-consumer",
-  targetServiceId:
-    process.env.COMMAND_CENTER_TARGET_SERVICE_ID ?? "billing-service",
+  consumerGroupId: process.env.COMMAND_CENTER_CONSUMER_GROUP ?? "billing-command-center-consumer",
+  targetServiceId: process.env.COMMAND_CENTER_TARGET_SERVICE_ID ?? "billing-service",
   maxBatchBytes: toNumber(process.env.KAFKA_MAX_BATCH_BYTES, 1048576),
   dlqTopic: process.env.COMMAND_CENTER_DLQ_TOPIC ?? "commands.primary.dlq",
   maxRetries: toNumber(process.env.KAFKA_MAX_RETRIES, 3),
@@ -166,8 +134,7 @@ export const config = {
   },
   auth: {
     jwt: {
-      secret:
-        process.env.AUTH_JWT_SECRET ?? "dev-secret-minimum-32-chars-change-me!",
+      secret: process.env.AUTH_JWT_SECRET ?? "dev-secret-minimum-32-chars-change-me!",
       issuer: process.env.AUTH_JWT_ISSUER ?? "tartware-core",
       audience: process.env.AUTH_JWT_AUDIENCE ?? "tartware",
     },

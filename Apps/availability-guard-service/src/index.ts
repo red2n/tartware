@@ -1,10 +1,6 @@
 import process from "node:process";
 
-import {
-  ensureDependencies,
-  parseHostPort,
-  resolveOtelDependency,
-} from "@tartware/config";
+import { ensureDependencies, parseHostPort, resolveOtelDependency } from "@tartware/config";
 import { initTelemetry } from "@tartware/telemetry";
 
 import { config } from "./config.js";
@@ -75,9 +71,7 @@ const start = async () => {
     app.log.error(error, "Failed to start Availability Guard service");
     await telemetry
       ?.shutdown()
-      .catch((shutdownError) =>
-        app.log.error(shutdownError, "Failed to shutdown telemetry"),
-      );
+      .catch((shutdownError) => app.log.error(shutdownError, "Failed to shutdown telemetry"));
     process.exit(1);
   }
 };
@@ -112,9 +106,7 @@ const shutdown = async (signal: NodeJS.Signals) => {
     const telemetryShutdown = telemetry?.shutdown();
     if (telemetryShutdown) {
       await Promise.race([
-        telemetryShutdown.catch((error) =>
-          app.log.error(error, "Failed to shutdown telemetry"),
-        ),
+        telemetryShutdown.catch((error) => app.log.error(error, "Failed to shutdown telemetry")),
         delay(1_000),
       ]);
     }

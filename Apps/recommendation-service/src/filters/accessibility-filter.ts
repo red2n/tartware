@@ -4,15 +4,12 @@
  * Only applies if the guest has accessibility needs specified.
  */
 
-import { BaseFilter, type PipelineContext, type FilterResult } from "@tartware/candidate-pipeline";
+import { BaseFilter, type FilterResult, type PipelineContext } from "@tartware/candidate-pipeline";
 
 import { query } from "../lib/db.js";
 import type { RoomCandidate, RoomRecommendationQuery } from "../types.js";
 
-export class AccessibilityFilter extends BaseFilter<
-  RoomRecommendationQuery,
-  RoomCandidate
-> {
+export class AccessibilityFilter extends BaseFilter<RoomRecommendationQuery, RoomCandidate> {
   readonly name = "accessibility";
 
   /**

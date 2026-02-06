@@ -122,9 +122,7 @@ type LifecycleUpdateInput = {
   metadata?: Record<string, unknown>;
 };
 
-export const updateLifecycleState = async (
-  input: LifecycleUpdateInput,
-): Promise<void> => {
+export const updateLifecycleState = async (input: LifecycleUpdateInput): Promise<void> => {
   const result = await query(
     `
       UPDATE reservation_command_lifecycle
@@ -146,18 +144,10 @@ export const updateLifecycleState = async (
         metadata = COALESCE(metadata, '{}'::jsonb) || COALESCE($5::jsonb, '{}'::jsonb)
       WHERE event_id = $1
     `,
-    [
-      input.eventId,
-      input.state,
-      ACTOR,
-      toJson(input.details),
-      toJson(input.metadata),
-    ],
+    [input.eventId, input.state, ACTOR, toJson(input.details), toJson(input.metadata)],
   );
 
   if ((result.rowCount ?? 0) === 0) {
-    throw new Error(
-      `reservation_command_lifecycle missing for event ${input.eventId}`,
-    );
+    throw new Error(`reservation_command_lifecycle missing for event ${input.eventId}`);
   }
 };

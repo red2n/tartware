@@ -1,9 +1,5 @@
 import { buildFastifyServer } from "@tartware/fastify-server";
-import {
-  buildRouteSchema,
-  jsonObjectSchema,
-  schemaFromZod,
-} from "@tartware/openapi";
+import { buildRouteSchema, jsonObjectSchema, schemaFromZod } from "@tartware/openapi";
 import { ReservationCommandLifecycleSchema } from "@tartware/schemas";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
@@ -214,10 +210,7 @@ export const buildServer = (): FastifyInstance => {
       async (request) => {
         const params = ReservationLifecycleParamsSchema.parse(request.params);
         const query = ReservationLifecycleQuerySchema.parse(request.query);
-        const entries = await listReservationLifecycle(
-          query.tenant_id,
-          params.reservationId,
-        );
+        const entries = await listReservationLifecycle(query.tenant_id, params.reservationId);
         return entries;
       },
     );

@@ -88,18 +88,12 @@ export const startCommandCenterConsumer = async (): Promise<void> => {
       }
 
       if (!metadata.commandName || !metadata.tenantId) {
-        reservationsLogger.warn(
-          { metadata },
-          "Command missing commandName or tenantId; skipping",
-        );
+        reservationsLogger.warn({ metadata }, "Command missing commandName or tenantId; skipping");
         return;
       }
 
       await routeReservationCommand(envelope, metadata).catch((error) => {
-        reservationsLogger.error(
-          { err: error, metadata },
-          "Failed to process reservation command",
-        );
+        reservationsLogger.error({ err: error, metadata }, "Failed to process reservation command");
       });
     },
   });
@@ -118,99 +112,77 @@ const routeReservationCommand = async (
 ): Promise<void> => {
   switch (metadata.commandName) {
     case "reservation.create": {
-      const commandPayload = ReservationCreateCommandSchema.parse(
-        envelope.payload,
-      );
+      const commandPayload = ReservationCreateCommandSchema.parse(envelope.payload);
       await createReservation(metadata.tenantId as string, commandPayload, {
         correlationId: metadata.correlationId ?? metadata.requestId,
       });
       break;
     }
     case "reservation.modify": {
-      const commandPayload = ReservationModifyCommandSchema.parse(
-        envelope.payload,
-      );
+      const commandPayload = ReservationModifyCommandSchema.parse(envelope.payload);
       await modifyReservation(metadata.tenantId as string, commandPayload, {
         correlationId: metadata.correlationId ?? metadata.requestId,
       });
       break;
     }
     case "reservation.cancel": {
-      const commandPayload = ReservationCancelCommandSchema.parse(
-        envelope.payload,
-      );
+      const commandPayload = ReservationCancelCommandSchema.parse(envelope.payload);
       await cancelReservation(metadata.tenantId as string, commandPayload, {
         correlationId: metadata.correlationId ?? metadata.requestId,
       });
       break;
     }
     case "reservation.check_in": {
-      const commandPayload = ReservationCheckInCommandSchema.parse(
-        envelope.payload,
-      );
+      const commandPayload = ReservationCheckInCommandSchema.parse(envelope.payload);
       await checkInReservation(metadata.tenantId as string, commandPayload, {
         correlationId: metadata.correlationId ?? metadata.requestId,
       });
       break;
     }
     case "reservation.check_out": {
-      const commandPayload = ReservationCheckOutCommandSchema.parse(
-        envelope.payload,
-      );
+      const commandPayload = ReservationCheckOutCommandSchema.parse(envelope.payload);
       await checkOutReservation(metadata.tenantId as string, commandPayload, {
         correlationId: metadata.correlationId ?? metadata.requestId,
       });
       break;
     }
     case "reservation.assign_room": {
-      const commandPayload = ReservationAssignRoomCommandSchema.parse(
-        envelope.payload,
-      );
+      const commandPayload = ReservationAssignRoomCommandSchema.parse(envelope.payload);
       await assignRoom(metadata.tenantId as string, commandPayload, {
         correlationId: metadata.correlationId ?? metadata.requestId,
       });
       break;
     }
     case "reservation.unassign_room": {
-      const commandPayload = ReservationUnassignRoomCommandSchema.parse(
-        envelope.payload,
-      );
+      const commandPayload = ReservationUnassignRoomCommandSchema.parse(envelope.payload);
       await unassignRoom(metadata.tenantId as string, commandPayload, {
         correlationId: metadata.correlationId ?? metadata.requestId,
       });
       break;
     }
     case "reservation.extend_stay": {
-      const commandPayload = ReservationExtendStayCommandSchema.parse(
-        envelope.payload,
-      );
+      const commandPayload = ReservationExtendStayCommandSchema.parse(envelope.payload);
       await extendStay(metadata.tenantId as string, commandPayload, {
         correlationId: metadata.correlationId ?? metadata.requestId,
       });
       break;
     }
     case "reservation.rate_override": {
-      const commandPayload = ReservationRateOverrideCommandSchema.parse(
-        envelope.payload,
-      );
+      const commandPayload = ReservationRateOverrideCommandSchema.parse(envelope.payload);
       await overrideRate(metadata.tenantId as string, commandPayload, {
         correlationId: metadata.correlationId ?? metadata.requestId,
       });
       break;
     }
     case "reservation.add_deposit": {
-      const commandPayload = ReservationDepositAddCommandSchema.parse(
-        envelope.payload,
-      );
+      const commandPayload = ReservationDepositAddCommandSchema.parse(envelope.payload);
       await addDeposit(metadata.tenantId as string, commandPayload, {
         correlationId: metadata.correlationId ?? metadata.requestId,
       });
       break;
     }
     case "reservation.release_deposit": {
-      const commandPayload = ReservationDepositReleaseCommandSchema.parse(
-        envelope.payload,
-      );
+      const commandPayload = ReservationDepositReleaseCommandSchema.parse(envelope.payload);
       await releaseDeposit(metadata.tenantId as string, commandPayload, {
         correlationId: metadata.correlationId ?? metadata.requestId,
       });

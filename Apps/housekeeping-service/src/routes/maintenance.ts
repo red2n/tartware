@@ -56,9 +56,7 @@ const MaintenanceListQuerySchema = z.object({
   room_out_of_service: z
     .string()
     .optional()
-    .transform((v) =>
-      v === "true" ? true : v === "false" ? false : undefined,
-    ),
+    .transform((v) => (v === "true" ? true : v === "false" ? false : undefined)),
   limit: z.coerce.number().int().positive().max(500).default(200),
 });
 
@@ -87,10 +85,7 @@ const MaintenanceRequestParamsJsonSchema = schemaFromZod(
   "MaintenanceRequestParams",
 );
 
-const ErrorResponseSchema = schemaFromZod(
-  z.object({ message: z.string() }),
-  "ErrorResponse",
-);
+const ErrorResponseSchema = schemaFromZod(z.object({ message: z.string() }), "ErrorResponse");
 
 const MAINTENANCE_TAG = "Maintenance";
 
@@ -99,8 +94,7 @@ export const registerMaintenanceRoutes = (app: FastifyInstance): void => {
     "/v1/maintenance/requests",
     {
       preHandler: app.withTenantScope({
-        resolveTenantId: (request) =>
-          (request.query as MaintenanceListQuery).tenant_id,
+        resolveTenantId: (request) => (request.query as MaintenanceListQuery).tenant_id,
         minRole: "MANAGER",
         requiredModules: "facility-maintenance",
       }),
@@ -149,21 +143,16 @@ export const registerMaintenanceRoutes = (app: FastifyInstance): void => {
     "/v1/maintenance/requests/:requestId",
     {
       preHandler: app.withTenantScope({
-        resolveTenantId: (request) =>
-          (request.query as { tenant_id: string }).tenant_id,
+        resolveTenantId: (request) => (request.query as { tenant_id: string }).tenant_id,
         minRole: "MANAGER",
         requiredModules: "facility-maintenance",
       }),
       schema: buildRouteSchema({
         tag: MAINTENANCE_TAG,
         summary: "Get maintenance request by ID",
-        description:
-          "Retrieves detailed information for a specific maintenance request",
+        description: "Retrieves detailed information for a specific maintenance request",
         params: MaintenanceRequestParamsJsonSchema,
-        querystring: schemaFromZod(
-          z.object({ tenant_id: z.string().uuid() }),
-          "TenantQuery",
-        ),
+        querystring: schemaFromZod(z.object({ tenant_id: z.string().uuid() }), "TenantQuery"),
         response: {
           200: MaintenanceRequestItemJsonSchema,
           404: ErrorResponseSchema,
@@ -171,12 +160,8 @@ export const registerMaintenanceRoutes = (app: FastifyInstance): void => {
       }),
     },
     async (request, reply) => {
-      const { requestId } = MaintenanceRequestParamsSchema.parse(
-        request.params,
-      );
-      const { tenant_id } = z
-        .object({ tenant_id: z.string().uuid() })
-        .parse(request.query);
+      const { requestId } = MaintenanceRequestParamsSchema.parse(request.params);
+      const { tenant_id } = z.object({ tenant_id: z.string().uuid() }).parse(request.query);
 
       const maintenanceRequest = await getMaintenanceRequestById({
         requestId,
@@ -184,9 +169,7 @@ export const registerMaintenanceRoutes = (app: FastifyInstance): void => {
       });
 
       if (!maintenanceRequest) {
-        return reply
-          .status(404)
-          .send({ message: "Maintenance request not found" });
+        return reply.status(404).send({ message: "Maintenance request not found" });
       }
 
       return MaintenanceRequestListItemSchema.parse(maintenanceRequest);

@@ -33,14 +33,8 @@ const GuestListResponseSchema = z.array(
   }),
 );
 
-const GuestListQueryJsonSchema = schemaFromZod(
-  GuestListQuerySchema,
-  "GuestListQuery",
-);
-const GuestListResponseJsonSchema = schemaFromZod(
-  GuestListResponseSchema,
-  "GuestListResponse",
-);
+const GuestListQueryJsonSchema = schemaFromZod(GuestListQuerySchema, "GuestListQuery");
+const GuestListResponseJsonSchema = schemaFromZod(GuestListResponseSchema, "GuestListResponse");
 
 // Guest Preferences schemas
 const GuestPreferencesQuerySchema = z.object({
@@ -93,9 +87,7 @@ const GuestCommunicationsQuerySchema = z.object({
 
 type GuestCommunicationsQuery = z.infer<typeof GuestCommunicationsQuerySchema>;
 
-const GuestCommunicationsResponseSchema = z.array(
-  GuestCommunicationListItemSchema,
-);
+const GuestCommunicationsResponseSchema = z.array(GuestCommunicationListItemSchema);
 const GuestCommunicationsQueryJsonSchema = schemaFromZod(
   GuestCommunicationsQuerySchema,
   "GuestCommunicationsQuery",
@@ -165,18 +157,14 @@ export const registerGuestRoutes = (app: FastifyInstance): void => {
     "/v1/guests/:guestId/preferences",
     {
       preHandler: app.withTenantScope({
-        resolveTenantId: (request) =>
-          (request.query as GuestPreferencesQuery).tenant_id,
+        resolveTenantId: (request) => (request.query as GuestPreferencesQuery).tenant_id,
         minRole: "MANAGER",
         requiredModules: "core",
       }),
       schema: buildRouteSchema({
         tag: GUESTS_TAG,
         summary: "List guest preferences",
-        params: schemaFromZod(
-          z.object({ guestId: z.string().uuid() }),
-          "GuestIdParam",
-        ),
+        params: schemaFromZod(z.object({ guestId: z.string().uuid() }), "GuestIdParam"),
         querystring: GuestPreferencesQueryJsonSchema,
         response: {
           200: GuestPreferencesResponseJsonSchema,
@@ -185,8 +173,9 @@ export const registerGuestRoutes = (app: FastifyInstance): void => {
     },
     async (request) => {
       const { guestId } = request.params;
-      const { tenant_id, category, active_only, limit } =
-        GuestPreferencesQuerySchema.parse(request.query);
+      const { tenant_id, category, active_only, limit } = GuestPreferencesQuerySchema.parse(
+        request.query,
+      );
 
       const preferences = await listGuestPreferences({
         tenantId: tenant_id,
@@ -211,18 +200,14 @@ export const registerGuestRoutes = (app: FastifyInstance): void => {
     "/v1/guests/:guestId/documents",
     {
       preHandler: app.withTenantScope({
-        resolveTenantId: (request) =>
-          (request.query as GuestDocumentsQuery).tenant_id,
+        resolveTenantId: (request) => (request.query as GuestDocumentsQuery).tenant_id,
         minRole: "MANAGER",
         requiredModules: "core",
       }),
       schema: buildRouteSchema({
         tag: GUESTS_TAG,
         summary: "List guest documents",
-        params: schemaFromZod(
-          z.object({ guestId: z.string().uuid() }),
-          "GuestIdParamDocs",
-        ),
+        params: schemaFromZod(z.object({ guestId: z.string().uuid() }), "GuestIdParamDocs"),
         querystring: GuestDocumentsQueryJsonSchema,
         response: {
           200: GuestDocumentsResponseJsonSchema,
@@ -257,18 +242,14 @@ export const registerGuestRoutes = (app: FastifyInstance): void => {
     "/v1/guests/:guestId/communications",
     {
       preHandler: app.withTenantScope({
-        resolveTenantId: (request) =>
-          (request.query as GuestCommunicationsQuery).tenant_id,
+        resolveTenantId: (request) => (request.query as GuestCommunicationsQuery).tenant_id,
         minRole: "MANAGER",
         requiredModules: "core",
       }),
       schema: buildRouteSchema({
         tag: GUESTS_TAG,
         summary: "List guest communication history",
-        params: schemaFromZod(
-          z.object({ guestId: z.string().uuid() }),
-          "GuestIdParamComm",
-        ),
+        params: schemaFromZod(z.object({ guestId: z.string().uuid() }), "GuestIdParamComm"),
         querystring: GuestCommunicationsQueryJsonSchema,
         response: {
           200: GuestCommunicationsResponseJsonSchema,

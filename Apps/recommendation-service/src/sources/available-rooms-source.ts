@@ -10,10 +10,7 @@ import { BaseSource, type PipelineContext } from "@tartware/candidate-pipeline";
 import { query } from "../lib/db.js";
 import type { RoomCandidate, RoomRecommendationQuery } from "../types.js";
 
-export class AvailableRoomsSource extends BaseSource<
-  RoomRecommendationQuery,
-  RoomCandidate
-> {
+export class AvailableRoomsSource extends BaseSource<RoomRecommendationQuery, RoomCandidate> {
   readonly name = "available_rooms";
 
   async getCandidates(
@@ -97,10 +94,7 @@ export class AvailableRoomsSource extends BaseSource<
       source: this.name,
     }));
 
-    context.logger.debug(
-      { count: candidates.length },
-      "Available rooms fetched",
-    );
+    context.logger.debug({ count: candidates.length }, "Available rooms fetched");
     return candidates;
   }
 }

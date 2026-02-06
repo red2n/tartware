@@ -85,9 +85,7 @@ const COMMAND_FEATURES_SQL = `
   WHERE environment = $1
 `;
 
-const coerceObject = (
-  value: Record<string, unknown> | null,
-): Record<string, unknown> => {
+const coerceObject = (value: Record<string, unknown> | null): Record<string, unknown> => {
   if (value && typeof value === "object") {
     return value;
   }
@@ -124,10 +122,7 @@ export const createCommandRegistryRepository = (query: QueryExecutor) => {
           row.max_per_minute === null || row.max_per_minute === undefined
             ? null
             : Number(row.max_per_minute),
-        burst:
-          row.burst === null || row.burst === undefined
-            ? null
-            : Number(row.burst),
+        burst: row.burst === null || row.burst === undefined ? null : Number(row.burst),
       })),
     };
   };
@@ -137,8 +132,4 @@ export const createCommandRegistryRepository = (query: QueryExecutor) => {
   };
 };
 
-export type {
-  CommandTemplateRow,
-  CommandRouteRow,
-  CommandFeatureRow,
-};
+export type { CommandTemplateRow, CommandRouteRow, CommandFeatureRow };

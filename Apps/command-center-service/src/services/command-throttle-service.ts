@@ -29,8 +29,7 @@ const resolveLimits = (
   if (!feature) {
     return { maxPerMinute: null, burst: null };
   }
-  const maxPerMinute =
-    typeof feature.max_per_minute === "number" ? feature.max_per_minute : null;
+  const maxPerMinute = typeof feature.max_per_minute === "number" ? feature.max_per_minute : null;
   const burst = typeof feature.burst === "number" ? feature.burst : null;
   if (maxPerMinute === null && burst !== null) {
     return { maxPerMinute: burst, burst };
@@ -76,10 +75,7 @@ const shouldThrottle = (input: ThrottleInput): boolean => {
   }
 
   const elapsedMs = Math.max(0, now - bucket.lastRefillMs);
-  const refilled = Math.min(
-    bucket.capacity,
-    bucket.tokens + elapsedMs * bucket.refillPerMs,
-  );
+  const refilled = Math.min(bucket.capacity, bucket.tokens + elapsedMs * bucket.refillPerMs);
   bucket.tokens = refilled;
   bucket.lastRefillMs = now;
   bucket.lastUsedMs = now;
@@ -95,9 +91,7 @@ const shouldThrottle = (input: ThrottleInput): boolean => {
 /**
  * Apply throttling logic for command execution.
  */
-export const throttleCommand = async (
-  input: ThrottleInput,
-): Promise<boolean> => {
+export const throttleCommand = async (input: ThrottleInput): Promise<boolean> => {
   const throttled = shouldThrottle(input);
   if (!throttled) {
     return true;

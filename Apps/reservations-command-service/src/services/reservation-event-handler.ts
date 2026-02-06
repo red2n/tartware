@@ -54,21 +54,15 @@ export const processReservationEvent = async (
   switch (eventType) {
     case "reservation.created":
       return {
-        reservationId: await handleReservationCreated(
-          event as ReservationCreatedEvent,
-        ),
+        reservationId: await handleReservationCreated(event as ReservationCreatedEvent),
       };
     case "reservation.updated":
       return {
-        reservationId: await handleReservationUpdated(
-          event as ReservationUpdatedEvent,
-        ),
+        reservationId: await handleReservationUpdated(event as ReservationUpdatedEvent),
       };
     case "reservation.cancelled":
       return {
-        reservationId: await handleReservationCancelled(
-          event as ReservationCancelledEvent,
-        ),
+        reservationId: await handleReservationCancelled(event as ReservationCancelledEvent),
       };
     default:
       console.warn("Unhandled reservation event type", eventType);
@@ -76,9 +70,7 @@ export const processReservationEvent = async (
   }
 };
 
-const handleReservationCreated = async (
-  event: ReservationCreatedEvent,
-): Promise<string> => {
+const handleReservationCreated = async (event: ReservationCreatedEvent): Promise<string> => {
   const payload = event.payload;
   const tenantId = event.metadata.tenantId;
   const reservationId = payload.id ?? uuid();
@@ -147,9 +139,7 @@ const handleReservationCreated = async (
   return reservationId;
 };
 
-const handleReservationUpdated = async (
-  event: ReservationUpdatedEvent,
-): Promise<string> => {
+const handleReservationUpdated = async (event: ReservationUpdatedEvent): Promise<string> => {
   const payload = event.payload;
   const tenantId = event.metadata.tenantId;
   const fields: string[] = [];
@@ -168,26 +158,19 @@ const handleReservationUpdated = async (
   if (payload.guest_id) addField("guest_id", payload.guest_id);
   if (payload.room_type_id) addField("room_type_id", payload.room_type_id);
   if (payload.check_in_date) addField("check_in_date", payload.check_in_date);
-  if (payload.check_out_date)
-    addField("check_out_date", payload.check_out_date);
-  if (payload.actual_check_in)
-    addField("actual_check_in", payload.actual_check_in);
-  if (payload.actual_check_out)
-    addField("actual_check_out", payload.actual_check_out);
-  if (payload.room_number !== undefined)
-    addField("room_number", payload.room_number);
+  if (payload.check_out_date) addField("check_out_date", payload.check_out_date);
+  if (payload.actual_check_in) addField("actual_check_in", payload.actual_check_in);
+  if (payload.actual_check_out) addField("actual_check_out", payload.actual_check_out);
+  if (payload.room_number !== undefined) addField("room_number", payload.room_number);
   if (payload.status) addField("status", payload.status);
   if (payload.source) addField("source", payload.source);
   if (payload.total_amount !== undefined)
     addField("total_amount", Number(payload.total_amount ?? 0));
   if (payload.currency) addField("currency", payload.currency);
-  if (payload.internal_notes !== undefined)
-    addField("internal_notes", payload.internal_notes);
+  if (payload.internal_notes !== undefined) addField("internal_notes", payload.internal_notes);
   if (payload.metadata !== undefined) {
     const index = fields.length + 2;
-    fields.push(
-      `metadata = COALESCE(metadata, '{}'::jsonb) || $${index}::jsonb`,
-    );
+    fields.push(`metadata = COALESCE(metadata, '{}'::jsonb) || $${index}::jsonb`);
     values.push(JSON.stringify(payload.metadata ?? {}));
   }
   if ((payload as { confirmation_number?: string }).confirmation_number) {
@@ -211,9 +194,7 @@ const handleReservationUpdated = async (
   return payload.id;
 };
 
-const handleReservationCancelled = async (
-  event: ReservationCancelledEvent,
-): Promise<string> => {
+const handleReservationCancelled = async (event: ReservationCancelledEvent): Promise<string> => {
   const payload = event.payload;
   await query(
     `

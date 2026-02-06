@@ -1,7 +1,4 @@
-import {
-  buildFastifyServer,
-  type FastifyInstance,
-} from "@tartware/fastify-server";
+import { buildFastifyServer, type FastifyInstance } from "@tartware/fastify-server";
 
 import { config } from "./config.js";
 import { appLogger } from "./lib/logger.js";

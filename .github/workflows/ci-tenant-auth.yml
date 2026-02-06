@@ -1,0 +1,22 @@
+name: CI · Tenant Auth
+
+on:
+  push:
+    branches: [main, develop, deployment]
+    paths:
+      - 'Apps/tenant-auth/**'
+      - 'schema/**'
+      - 'package.json'
+      - 'lerna.json'
+  pull_request:
+    paths:
+      - 'Apps/tenant-auth/**'
+      - 'schema/**'
+  workflow_dispatch:
+
+jobs:
+  ci:
+    uses: ./.github/workflows/package-ci.yml
+    with:
+      package-scope: '@tartware/tenant-auth'
+      has-tests: false

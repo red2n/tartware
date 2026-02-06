@@ -10,10 +10,7 @@ import { BaseScorer, type PipelineContext } from "@tartware/candidate-pipeline";
 
 import type { RoomCandidate, RoomRecommendationQuery } from "../types.js";
 
-export class PreferenceScorer extends BaseScorer<
-  RoomRecommendationQuery,
-  RoomCandidate
-> {
+export class PreferenceScorer extends BaseScorer<RoomRecommendationQuery, RoomCandidate> {
   readonly name = "preference";
   readonly weight = 0.4; // 40% of final score
 
@@ -22,10 +19,7 @@ export class PreferenceScorer extends BaseScorer<
     candidates: readonly RoomCandidate[],
     context: PipelineContext,
   ): Promise<number[]> {
-    context.logger.debug(
-      { candidateCount: candidates.length },
-      "Scoring by preference match",
-    );
+    context.logger.debug({ candidateCount: candidates.length }, "Scoring by preference match");
 
     const history = queryParams.guestHistory;
     const preferences = queryParams.guestPreferences;
@@ -48,8 +42,9 @@ export class PreferenceScorer extends BaseScorer<
 
       // Floor preference match
       if (preferences?.floorPreference) {
-        const floorNum = typeof candidate.floor === 'string' ? parseInt(candidate.floor, 10) : candidate.floor;
-        if (!isNaN(floorNum)) {
+        const floorNum =
+          typeof candidate.floor === "string" ? parseInt(candidate.floor, 10) : candidate.floor;
+        if (!Number.isNaN(floorNum)) {
           if (preferences.floorPreference === "high" && floorNum >= 5) {
             score += 0.1;
           } else if (preferences.floorPreference === "low" && floorNum <= 2) {

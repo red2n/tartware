@@ -55,10 +55,7 @@ export const handleRoomInventoryRelease = async (
   context: CommandContext,
 ): Promise<void> => {
   const command = RoomInventoryReleaseCommandSchema.parse(payload);
-  await releaseRoomBlock(
-    { room_id: command.room_id, action: "release" },
-    context,
-  );
+  await releaseRoomBlock({ room_id: command.room_id, action: "release" }, context);
 };
 
 /**
@@ -110,10 +107,7 @@ export const handleRoomStatusUpdate = async (
   );
 
   if (!rowCount || rowCount === 0) {
-    throw new RoomCommandError(
-      "ROOM_NOT_FOUND",
-      "Unable to update room status.",
-    );
+    throw new RoomCommandError("ROOM_NOT_FOUND", "Unable to update room status.");
   }
 };
 
@@ -142,20 +136,11 @@ export const handleRoomHousekeepingStatusUpdate = async (
         AND id = $2::uuid
         AND COALESCE(is_deleted, false) = false
     `,
-    [
-      context.tenantId,
-      command.room_id,
-      command.housekeeping_status,
-      command.notes ?? null,
-      actor,
-    ],
+    [context.tenantId, command.room_id, command.housekeeping_status, command.notes ?? null, actor],
   );
 
   if (!rowCount || rowCount === 0) {
-    throw new RoomCommandError(
-      "ROOM_NOT_FOUND",
-      "Unable to update housekeeping status.",
-    );
+    throw new RoomCommandError("ROOM_NOT_FOUND", "Unable to update housekeeping status.");
   }
 };
 
@@ -194,10 +179,7 @@ export const handleRoomOutOfOrder = async (
   );
 
   if (!rowCount || rowCount === 0) {
-    throw new RoomCommandError(
-      "ROOM_NOT_FOUND",
-      "Unable to mark room out of order.",
-    );
+    throw new RoomCommandError("ROOM_NOT_FOUND", "Unable to mark room out of order.");
   }
 };
 
@@ -236,10 +218,7 @@ export const handleRoomOutOfService = async (
   );
 
   if (!rowCount || rowCount === 0) {
-    throw new RoomCommandError(
-      "ROOM_NOT_FOUND",
-      "Unable to mark room out of service.",
-    );
+    throw new RoomCommandError("ROOM_NOT_FOUND", "Unable to mark room out of service.");
   }
 };
 
@@ -251,10 +230,7 @@ export const handleRoomOutOfService = async (
 /**
  * Handle room move requests (currently not supported).
  */
-export const handleRoomMove = async (
-  payload: unknown,
-  context: CommandContext,
-): Promise<void> => {
+export const handleRoomMove = async (payload: unknown, context: CommandContext): Promise<void> => {
   const command = RoomMoveCommandSchema.parse(payload);
   void context;
   throw new RoomCommandError(
@@ -300,10 +276,7 @@ export const handleRoomFeaturesUpdate = async (
   );
 
   if (!rowCount || rowCount === 0) {
-    throw new RoomCommandError(
-      "ROOM_NOT_FOUND",
-      "Unable to update room features.",
-    );
+    throw new RoomCommandError("ROOM_NOT_FOUND", "Unable to update room features.");
   }
 };
 

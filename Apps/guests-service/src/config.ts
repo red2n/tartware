@@ -1,18 +1,11 @@
-import {
-  databaseSchema,
-  loadServiceConfig,
-  validateProductionSecrets,
-} from "@tartware/config";
+import { databaseSchema, loadServiceConfig, validateProductionSecrets } from "@tartware/config";
 
-process.env.SERVICE_NAME =
-  process.env.SERVICE_NAME ?? "@tartware/guests-service";
+process.env.SERVICE_NAME = process.env.SERVICE_NAME ?? "@tartware/guests-service";
 process.env.SERVICE_VERSION = process.env.SERVICE_VERSION ?? "0.1.0";
 
 if (!process.env.AUTH_JWT_SECRET) {
   if (process.env.NODE_ENV === "production") {
-    throw new Error(
-      "AUTH_JWT_SECRET must be set in production and cannot use a default value.",
-    );
+    throw new Error("AUTH_JWT_SECRET must be set in production and cannot use a default value.");
   }
   process.env.AUTH_JWT_SECRET = "dev-secret-minimum-32-chars-change-me!";
 }
@@ -35,10 +28,7 @@ const toNumber = (value: string | undefined, fallback: number): number => {
   return Number.isFinite(parsed) ? parsed : fallback;
 };
 
-const parseBrokerList = (
-  value: string | undefined,
-  fallback?: string,
-): string[] =>
+const parseBrokerList = (value: string | undefined, fallback?: string): string[] =>
   (value ?? fallback ?? "")
     .split(",")
     .map((broker) => broker.trim())
@@ -61,22 +51,13 @@ validateProductionSecrets({
 const runtimeEnv = (process.env.NODE_ENV ?? "development").toLowerCase();
 const isProduction = runtimeEnv === "production";
 
-const primaryKafkaBrokers = parseBrokerList(
-  process.env.KAFKA_BROKERS,
-  "localhost:29092",
-);
-const usedDefaultPrimary =
-  (process.env.KAFKA_BROKERS ?? "").trim().length === 0;
-const failoverKafkaBrokers = parseBrokerList(
-  process.env.KAFKA_FAILOVER_BROKERS,
-);
-const requestedCluster = (
-  process.env.KAFKA_ACTIVE_CLUSTER ?? "primary"
-).toLowerCase();
+const primaryKafkaBrokers = parseBrokerList(process.env.KAFKA_BROKERS, "localhost:29092");
+const usedDefaultPrimary = (process.env.KAFKA_BROKERS ?? "").trim().length === 0;
+const failoverKafkaBrokers = parseBrokerList(process.env.KAFKA_FAILOVER_BROKERS);
+const requestedCluster = (process.env.KAFKA_ACTIVE_CLUSTER ?? "primary").toLowerCase();
 const failoverToggle = toBoolean(process.env.KAFKA_FAILOVER_ENABLED, false);
 const useFailover =
-  (requestedCluster === "failover" || failoverToggle) &&
-  failoverKafkaBrokers.length > 0;
+  (requestedCluster === "failover" || failoverToggle) && failoverKafkaBrokers.length > 0;
 const kafkaBrokers =
   useFailover && failoverKafkaBrokers.length > 0
     ? failoverKafkaBrokers
@@ -84,18 +65,14 @@ const kafkaBrokers =
       ? primaryKafkaBrokers
       : failoverKafkaBrokers;
 const kafkaActiveCluster =
-  kafkaBrokers === failoverKafkaBrokers && kafkaBrokers.length > 0
-    ? "failover"
-    : "primary";
+  kafkaBrokers === failoverKafkaBrokers && kafkaBrokers.length > 0 ? "failover" : "primary";
 
 if (primaryKafkaBrokers.length === 0 && failoverKafkaBrokers.length === 0) {
   throw new Error("KAFKA_BROKERS or KAFKA_FAILOVER_BROKERS must be set");
 }
 
 if (useFailover && failoverKafkaBrokers.length === 0) {
-  throw new Error(
-    "Failover requested/enabled but KAFKA_FAILOVER_BROKERS is empty",
-  );
+  throw new Error("Failover requested/enabled but KAFKA_FAILOVER_BROKERS is empty");
 }
 
 if (kafkaActiveCluster === "primary" && primaryKafkaBrokers.length === 0) {
@@ -118,11 +95,8 @@ const kafka = {
 
 const commandCenter = {
   topic: process.env.COMMAND_CENTER_TOPIC ?? "commands.primary",
-  consumerGroupId:
-    process.env.COMMAND_CENTER_CONSUMER_GROUP ??
-    "guests-command-center-consumer",
-  targetServiceId:
-    process.env.COMMAND_CENTER_TARGET_SERVICE_ID ?? "guests-service",
+  consumerGroupId: process.env.COMMAND_CENTER_CONSUMER_GROUP ?? "guests-command-center-consumer",
+  targetServiceId: process.env.COMMAND_CENTER_TARGET_SERVICE_ID ?? "guests-service",
   maxBatchBytes: toNumber(process.env.KAFKA_MAX_BATCH_BYTES, 1048576),
   dlqTopic: process.env.COMMAND_CENTER_DLQ_TOPIC ?? "commands.primary.dlq",
   maxRetries: toNumber(process.env.KAFKA_MAX_RETRIES, 3),
@@ -154,26 +128,18 @@ export const config = {
   },
   auth: {
     jwt: {
-      secret:
-        process.env.AUTH_JWT_SECRET ?? "dev-secret-minimum-32-chars-change-me!",
+      secret: process.env.AUTH_JWT_SECRET ?? "dev-secret-minimum-32-chars-change-me!",
       issuer: process.env.AUTH_JWT_ISSUER ?? "tartware-core",
       audience: process.env.AUTH_JWT_AUDIENCE ?? "tartware",
     },
   },
   compliance: {
     retention: {
-      guestDataDays: toNumber(
-        process.env.COMPLIANCE_GUEST_DATA_RETENTION_DAYS,
-        1095,
-      ),
+      guestDataDays: toNumber(process.env.COMPLIANCE_GUEST_DATA_RETENTION_DAYS, 1095),
     },
     encryption: {
-      requireGuestEncryption: toBoolean(
-        process.env.COMPLIANCE_REQUIRE_GUEST_ENCRYPTION,
-        true,
-      ),
-      guestDataKey:
-        process.env.GUEST_DATA_ENCRYPTION_KEY ?? "local-dev-guest-key",
+      requireGuestEncryption: toBoolean(process.env.COMPLIANCE_REQUIRE_GUEST_ENCRYPTION, true),
+      guestDataKey: process.env.GUEST_DATA_ENCRYPTION_KEY ?? "local-dev-guest-key",
     },
   },
   kafka,

@@ -11,10 +11,7 @@ export default fp((app) => {
   void startGrpcServer(app.log)
     .then((started) => {
       controller = started;
-      app.log.info(
-        { host: config.grpc.host, port: config.grpc.port },
-        "gRPC server started",
-      );
+      app.log.info({ host: config.grpc.host, port: config.grpc.port }, "gRPC server started");
     })
     .catch((err: unknown) => {
       app.log.error({ err }, "Failed to start gRPC server");
@@ -23,10 +20,7 @@ export default fp((app) => {
   app.addHook("onClose", async () => {
     if (controller) {
       const timer = setTimeout(() => {
-        app.log.error(
-          { timeoutMs: SHUTDOWN_TIMEOUT_MS },
-          "gRPC shutdown timed out",
-        );
+        app.log.error({ timeoutMs: SHUTDOWN_TIMEOUT_MS }, "gRPC shutdown timed out");
       }, SHUTDOWN_TIMEOUT_MS);
       timer.unref();
 

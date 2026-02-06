@@ -1,0 +1,21 @@
+name: CI · Billing Service
+
+on:
+  push:
+    branches: [main, develop, deployment]
+    paths:
+      - 'Apps/billing-service/**'
+      - 'schema/**'
+      - 'package.json'
+      - 'lerna.json'
+  pull_request:
+    paths:
+      - 'Apps/billing-service/**'
+      - 'schema/**'
+  workflow_dispatch:
+
+jobs:
+  ci:
+    uses: ./.github/workflows/package-ci.yml
+    with:
+      package-scope: '@tartware/billing-service'

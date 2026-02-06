@@ -9,11 +9,7 @@ type QueryExecutor = {
   ) => Promise<QueryResult<TRow>>;
 };
 
-const runQuery = async (
-  text: string,
-  params: unknown[],
-  client?: QueryExecutor,
-) => {
+const runQuery = async (text: string, params: unknown[], client?: QueryExecutor) => {
   if (client) {
     return client.query(text, params);
   }

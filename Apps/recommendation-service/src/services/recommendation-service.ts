@@ -2,8 +2,8 @@
  * Recommendation service - business logic for room recommendations.
  */
 
-import type { CandidatePipeline } from "@tartware/candidate-pipeline";
 import { randomUUID } from "node:crypto";
+import type { CandidatePipeline } from "@tartware/candidate-pipeline";
 
 import { config } from "../config.js";
 import { appLogger } from "../lib/logger.js";
@@ -20,8 +20,7 @@ import type {
   RoomRecommendationResponse,
 } from "../types.js";
 
-let pipeline: CandidatePipeline<RoomRecommendationQuery, RoomCandidate> | null =
-  null;
+let pipeline: CandidatePipeline<RoomRecommendationQuery, RoomCandidate> | null = null;
 
 /**
  * Initialize the recommendation pipeline.
@@ -81,9 +80,7 @@ export async function getRecommendations(params: {
       result.metrics.candidateCounts.selected,
     );
 
-    const recommendations = result.selectedCandidates.map(
-      candidateToRecommendation,
-    );
+    const recommendations = result.selectedCandidates.map(candidateToRecommendation);
 
     const executionTimeMs = performance.now() - startTime;
     endTimer();
@@ -104,15 +101,10 @@ export async function getRecommendations(params: {
 /**
  * Convert a RoomCandidate to a RoomRecommendation response.
  */
-function candidateToRecommendation(
-  candidate: RoomCandidate,
-): RoomRecommendation {
+function candidateToRecommendation(candidate: RoomCandidate): RoomRecommendation {
   // Normalize score to 0-1 range for display
   const maxPossibleScore = 1.0; // Sum of all scorer weights
-  const normalizedScore = Math.min(
-    1,
-    Math.max(0, (candidate.score ?? 0) / maxPossibleScore),
-  );
+  const normalizedScore = Math.min(1, Math.max(0, (candidate.score ?? 0) / maxPossibleScore));
 
   return {
     roomId: candidate.roomId,
@@ -219,15 +211,18 @@ export async function rankRooms(params: {
     [params.roomIds, params.tenantId],
   );
 
-  const roomMap = new Map<string, {
-    id: string;
-    room_number: string;
-    floor: string | null;
-    room_type_id: string;
-    room_type_name: string;
-    base_rate: number;
-    max_occupancy: number;
-  }>();
+  const roomMap = new Map<
+    string,
+    {
+      id: string;
+      room_number: string;
+      floor: string | null;
+      room_type_id: string;
+      room_type_name: string;
+      base_rate: number;
+      max_occupancy: number;
+    }
+  >();
   for (const row of roomDetails.rows) {
     const r = row as {
       id: string;
@@ -271,7 +266,10 @@ export async function rankRooms(params: {
     }
 
     // Guest preference match (0-0.3)
-    if (guestPreferences.roomType && room.room_type_name.toLowerCase().includes(guestPreferences.roomType.toLowerCase())) {
+    if (
+      guestPreferences.roomType &&
+      room.room_type_name.toLowerCase().includes(guestPreferences.roomType.toLowerCase())
+    ) {
       score += 0.15;
       reasons.push("Matches your preferred room type");
     }

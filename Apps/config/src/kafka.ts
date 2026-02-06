@@ -1,7 +1,4 @@
-export const parseNumberEnv = (
-  value: string | undefined,
-  fallback: number,
-): number => {
+export const parseNumberEnv = (value: string | undefined, fallback: number): number => {
   if (value === undefined) {
     return fallback;
   }
@@ -9,10 +6,7 @@ export const parseNumberEnv = (
   return Number.isFinite(parsed) ? parsed : fallback;
 };
 
-export const parseBooleanEnv = (
-  value: string | undefined,
-  fallback: boolean,
-): boolean => {
+export const parseBooleanEnv = (value: string | undefined, fallback: boolean): boolean => {
   if (value === undefined) {
     return fallback;
   }
@@ -34,10 +28,7 @@ export const parseBooleanEnv = (
   return fallback;
 };
 
-export const parseBrokerList = (
-  value: string | undefined,
-  fallback?: string,
-): string[] =>
+export const parseBrokerList = (value: string | undefined, fallback?: string): string[] =>
   (value ?? fallback ?? "")
     .split(",")
     .map((broker) => broker.trim())
@@ -61,17 +52,13 @@ export const resolveKafkaConfig = (input: KafkaConfigInput) => {
   const runtimeEnv = (input.runtimeEnv ?? env.NODE_ENV ?? "development").toLowerCase();
   const isProduction = runtimeEnv === "production";
 
-  const primaryKafkaBrokers = parseBrokerList(
-    env.KAFKA_BROKERS,
-    input.defaultPrimaryBroker,
-  );
+  const primaryKafkaBrokers = parseBrokerList(env.KAFKA_BROKERS, input.defaultPrimaryBroker);
   const usedDefaultPrimary = (env.KAFKA_BROKERS ?? "").trim().length === 0;
   const failoverKafkaBrokers = parseBrokerList(env.KAFKA_FAILOVER_BROKERS);
   const requestedCluster = (env.KAFKA_ACTIVE_CLUSTER ?? "primary").toLowerCase();
   const failoverToggle = parseBooleanEnv(env.KAFKA_FAILOVER_ENABLED, false);
   const useFailover =
-    (requestedCluster === "failover" || failoverToggle) &&
-    failoverKafkaBrokers.length > 0;
+    (requestedCluster === "failover" || failoverToggle) && failoverKafkaBrokers.length > 0;
 
   let kafkaActiveCluster: "primary" | "failover" = "primary";
   let kafkaBrokers = primaryKafkaBrokers;
@@ -79,10 +66,7 @@ export const resolveKafkaConfig = (input: KafkaConfigInput) => {
   if (useFailover) {
     kafkaBrokers = failoverKafkaBrokers;
     kafkaActiveCluster = "failover";
-  } else if (
-    primaryKafkaBrokers.length === 0 &&
-    failoverKafkaBrokers.length > 0
-  ) {
+  } else if (primaryKafkaBrokers.length === 0 && failoverKafkaBrokers.length > 0) {
     kafkaBrokers = failoverKafkaBrokers;
     kafkaActiveCluster = "failover";
   }
@@ -92,9 +76,7 @@ export const resolveKafkaConfig = (input: KafkaConfigInput) => {
   }
 
   if (useFailover && failoverKafkaBrokers.length === 0) {
-    throw new Error(
-      "Failover requested/enabled but KAFKA_FAILOVER_BROKERS is empty",
-    );
+    throw new Error("Failover requested/enabled but KAFKA_FAILOVER_BROKERS is empty");
   }
 
   if (kafkaActiveCluster === "primary" && primaryKafkaBrokers.length === 0) {

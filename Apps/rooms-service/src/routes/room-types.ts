@@ -24,10 +24,7 @@ const RoomTypeListQuerySchema = z.object({
 type RoomTypeListQuery = z.infer<typeof RoomTypeListQuerySchema>;
 
 const RoomTypeListResponseSchema = z.array(RoomTypeItemSchema);
-const RoomTypeListQueryJsonSchema = schemaFromZod(
-  RoomTypeListQuerySchema,
-  "RoomTypeListQuery",
-);
+const RoomTypeListQueryJsonSchema = schemaFromZod(RoomTypeListQuerySchema, "RoomTypeListQuery");
 const RoomTypeListResponseJsonSchema = schemaFromZod(
   RoomTypeListResponseSchema,
   "RoomTypeListResponse",
@@ -49,9 +46,7 @@ const CreateRoomTypeBodySchema = CreateRoomTypesSchema.extend({
     .refine(
       (value) =>
         !value ||
-        RoomCategoryEnum.options.includes(
-          value as (typeof RoomCategoryEnum.options)[number],
-        ),
+        RoomCategoryEnum.options.includes(value as (typeof RoomCategoryEnum.options)[number]),
       {
         message: "Invalid room category",
       },
@@ -78,9 +73,7 @@ const UpdateRoomTypeBodySchema = CreateRoomTypeBodySchema.partial().extend({
     .refine(
       (value) =>
         !value ||
-        RoomCategoryEnum.options.includes(
-          value as (typeof RoomCategoryEnum.options)[number],
-        ),
+        RoomCategoryEnum.options.includes(value as (typeof RoomCategoryEnum.options)[number]),
       {
         message: "Invalid room category",
       },
@@ -89,22 +82,10 @@ const UpdateRoomTypeBodySchema = CreateRoomTypeBodySchema.partial().extend({
 
 type UpdateRoomTypeBody = z.infer<typeof UpdateRoomTypeBodySchema>;
 
-const CreateRoomTypeBodyJsonSchema = schemaFromZod(
-  CreateRoomTypeBodySchema,
-  "CreateRoomTypeBody",
-);
-const UpdateRoomTypeBodyJsonSchema = schemaFromZod(
-  UpdateRoomTypeBodySchema,
-  "UpdateRoomTypeBody",
-);
-const RoomTypeItemJsonSchema = schemaFromZod(
-  RoomTypeItemSchema,
-  "RoomTypeItem",
-);
-const ErrorResponseSchema = schemaFromZod(
-  z.object({ message: z.string() }),
-  "ErrorResponse",
-);
+const CreateRoomTypeBodyJsonSchema = schemaFromZod(CreateRoomTypeBodySchema, "CreateRoomTypeBody");
+const UpdateRoomTypeBodyJsonSchema = schemaFromZod(UpdateRoomTypeBodySchema, "UpdateRoomTypeBody");
+const RoomTypeItemJsonSchema = schemaFromZod(RoomTypeItemSchema, "RoomTypeItem");
+const ErrorResponseSchema = schemaFromZod(z.object({ message: z.string() }), "ErrorResponse");
 
 const RoomTypeParamsSchema = z.object({
   roomTypeId: z.string().uuid(),
@@ -115,8 +96,7 @@ export const registerRoomTypeRoutes = (app: FastifyInstance): void => {
     "/v1/room-types",
     {
       preHandler: app.withTenantScope({
-        resolveTenantId: (request) =>
-          (request.query as RoomTypeListQuery).tenant_id,
+        resolveTenantId: (request) => (request.query as RoomTypeListQuery).tenant_id,
         minRole: "MANAGER",
         requiredModules: "core",
       }),
@@ -147,8 +127,7 @@ export const registerRoomTypeRoutes = (app: FastifyInstance): void => {
     "/v1/room-types",
     {
       preHandler: app.withTenantScope({
-        resolveTenantId: (request) =>
-          (request.body as CreateRoomTypeBody).tenant_id,
+        resolveTenantId: (request) => (request.body as CreateRoomTypeBody).tenant_id,
         minRole: "MANAGER",
         requiredModules: "core",
       }),
@@ -181,9 +160,7 @@ export const registerRoomTypeRoutes = (app: FastifyInstance): void => {
           }
         }
         request.log.error({ err: error }, "Failed to create room type");
-        return reply
-          .status(500)
-          .send({ message: "Failed to create room type" });
+        return reply.status(500).send({ message: "Failed to create room type" });
       }
     },
   );
@@ -195,8 +172,7 @@ export const registerRoomTypeRoutes = (app: FastifyInstance): void => {
     "/v1/room-types/:roomTypeId",
     {
       preHandler: app.withTenantScope({
-        resolveTenantId: (request) =>
-          (request.body as UpdateRoomTypeBody).tenant_id,
+        resolveTenantId: (request) => (request.body as UpdateRoomTypeBody).tenant_id,
         minRole: "MANAGER",
         requiredModules: "core",
       }),
@@ -239,9 +215,7 @@ export const registerRoomTypeRoutes = (app: FastifyInstance): void => {
           }
         }
         request.log.error({ err: error }, "Failed to update room type");
-        return reply
-          .status(500)
-          .send({ message: "Failed to update room type" });
+        return reply.status(500).send({ message: "Failed to update room type" });
       }
     },
   );
@@ -253,8 +227,7 @@ export const registerRoomTypeRoutes = (app: FastifyInstance): void => {
     "/v1/room-types/:roomTypeId",
     {
       preHandler: app.withTenantScope({
-        resolveTenantId: (request) =>
-          (request.body as { tenant_id: string }).tenant_id,
+        resolveTenantId: (request) => (request.body as { tenant_id: string }).tenant_id,
         minRole: "MANAGER",
         requiredModules: "core",
       }),
@@ -262,10 +235,7 @@ export const registerRoomTypeRoutes = (app: FastifyInstance): void => {
         tag: ROOM_TYPES_TAG,
         summary: "Delete a room type",
         params: schemaFromZod(RoomTypeParamsSchema, "RoomTypeParams"),
-        body: schemaFromZod(
-          z.object({ tenant_id: z.string().uuid() }),
-          "DeleteRoomTypeBody",
-        ),
+        body: schemaFromZod(z.object({ tenant_id: z.string().uuid() }), "DeleteRoomTypeBody"),
         response: {
           204: { type: "null" },
           404: ErrorResponseSchema,
@@ -274,9 +244,7 @@ export const registerRoomTypeRoutes = (app: FastifyInstance): void => {
     },
     async (request, reply) => {
       const params = RoomTypeParamsSchema.parse(request.params);
-      const body = z
-        .object({ tenant_id: z.string().uuid() })
-        .parse(request.body);
+      const body = z.object({ tenant_id: z.string().uuid() }).parse(request.body);
 
       const deleted = await deleteRoomType({
         tenant_id: body.tenant_id,

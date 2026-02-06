@@ -5,9 +5,7 @@ import fp from "fastify-plugin";
 import { serviceConfig } from "../config.js";
 
 const serviceVersion =
-  process.env.RESERVATIONS_COMMAND_VERSION ??
-  process.env.npm_package_version ??
-  "1.0.0";
+  process.env.RESERVATIONS_COMMAND_VERSION ?? process.env.npm_package_version ?? "1.0.0";
 
 const openApiDocument = {
   info: {

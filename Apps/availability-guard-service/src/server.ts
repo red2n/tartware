@@ -63,18 +63,11 @@ export const buildServer = () => {
   app.addHook("onReady", () => {
     app.log.info("starting manual release notification consumer");
     void startManualReleaseNotificationConsumer(app.log).catch((err: unknown) =>
-      app.log.error(
-        { err },
-        "failed to start manual release notification consumer",
-      ),
+      app.log.error({ err }, "failed to start manual release notification consumer"),
     );
     app.log.info("starting availability guard command consumer");
-    void startAvailabilityGuardCommandCenterConsumer(app.log).catch(
-      (err: unknown) =>
-        app.log.error(
-          { err },
-          "failed to start availability guard command consumer",
-        ),
+    void startAvailabilityGuardCommandCenterConsumer(app.log).catch((err: unknown) =>
+      app.log.error({ err }, "failed to start availability guard command consumer"),
     );
   });
   app.addHook("onClose", async () => {
@@ -85,9 +78,7 @@ export const buildServer = () => {
     await shutdownStep("manual-release-consumer", () =>
       shutdownManualReleaseNotificationConsumer(app.log),
     );
-    await shutdownStep("notification-dispatcher", () =>
-      shutdownNotificationDispatcher(),
-    );
+    await shutdownStep("notification-dispatcher", () => shutdownNotificationDispatcher());
   });
 
   app.after(() => {
@@ -111,10 +102,7 @@ export const buildServer = () => {
         brokers: config.kafka.brokers,
         primaryBrokers: config.kafka.primaryBrokers,
         failoverBrokers: config.kafka.failoverBrokers,
-        topics: [
-          config.kafka.reservationEventsTopic,
-          config.kafka.inventoryEventsTopic,
-        ],
+        topics: [config.kafka.reservationEventsTopic, config.kafka.inventoryEventsTopic],
       },
     }));
 
@@ -153,10 +141,7 @@ export const buildServer = () => {
               brokers: config.kafka.brokers,
               primaryBrokers: config.kafka.primaryBrokers,
               failoverBrokers: config.kafka.failoverBrokers,
-              topics: [
-                config.kafka.reservationEventsTopic,
-                config.kafka.inventoryEventsTopic,
-              ],
+              topics: [config.kafka.reservationEventsTopic, config.kafka.inventoryEventsTopic],
             },
           };
         } catch (error) {
@@ -170,10 +155,7 @@ export const buildServer = () => {
               brokers: config.kafka.brokers,
               primaryBrokers: config.kafka.primaryBrokers,
               failoverBrokers: config.kafka.failoverBrokers,
-              topics: [
-                config.kafka.reservationEventsTopic,
-                config.kafka.inventoryEventsTopic,
-              ],
+              topics: [config.kafka.reservationEventsTopic, config.kafka.inventoryEventsTopic],
             },
           };
         }

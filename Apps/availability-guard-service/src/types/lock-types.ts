@@ -22,9 +22,4 @@ export const releaseLockSchema = ReleaseLockSchema;
 export const bulkReleaseSchema = BulkReleaseSchema;
 export const manualReleaseSchema = ManualReleaseSchema;
 
-export type {
-  LockRoomInput,
-  ReleaseLockInput,
-  BulkReleaseInput,
-  ManualReleaseInput,
-};
+export type { LockRoomInput, ReleaseLockInput, BulkReleaseInput, ManualReleaseInput };

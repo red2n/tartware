@@ -89,11 +89,9 @@ export function registerRecommendationRoutes(app: FastifyInstance) {
         },
       },
     },
-    async (
-      request: FastifyRequest<{ Querystring: RecommendationQuery }>,
-      reply: FastifyReply,
-    ) => {
-      const authContext = (request as unknown as { authContext?: { tenantId: string } }).authContext;
+    async (request: FastifyRequest<{ Querystring: RecommendationQuery }>, reply: FastifyReply) => {
+      const authContext = (request as unknown as { authContext?: { tenantId: string } })
+        .authContext;
       if (!authContext?.tenantId) {
         return reply.status(401).send({ error: "Unauthorized" });
       }
@@ -180,11 +178,9 @@ export function registerRecommendationRoutes(app: FastifyInstance) {
         },
       },
     },
-    async (
-      request: FastifyRequest<{ Body: RankRoomsBody }>,
-      reply: FastifyReply,
-    ) => {
-      const authContext = (request as unknown as { authContext?: { tenantId: string } }).authContext;
+    async (request: FastifyRequest<{ Body: RankRoomsBody }>, reply: FastifyReply) => {
+      const authContext = (request as unknown as { authContext?: { tenantId: string } })
+        .authContext;
       if (!authContext?.tenantId) {
         return reply.status(401).send({ error: "Unauthorized" });
       }

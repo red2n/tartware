@@ -27,10 +27,7 @@ const RoomListQuerySchema = z.object({
     .optional()
     .refine(
       (value) =>
-        !value ||
-        RoomStatusEnum.options
-          .map((status) => status.toLowerCase())
-          .includes(value),
+        !value || RoomStatusEnum.options.map((status) => status.toLowerCase()).includes(value),
       { message: "Invalid room status" },
     ),
   housekeeping_status: z
@@ -40,9 +37,7 @@ const RoomListQuerySchema = z.object({
     .refine(
       (value) =>
         !value ||
-        HousekeepingStatusEnum.options
-          .map((status) => status.toLowerCase())
-          .includes(value),
+        HousekeepingStatusEnum.options.map((status) => status.toLowerCase()).includes(value),
       { message: "Invalid housekeeping status" },
     ),
   search: z.string().min(1).max(50).optional(),
@@ -64,19 +59,10 @@ const RoomListQuerySchema = z.object({
 type RoomListQuery = z.infer<typeof RoomListQuerySchema>;
 
 const RoomListResponseSchema = z.array(RoomListItemSchema);
-const RoomListQueryJsonSchema = schemaFromZod(
-  RoomListQuerySchema,
-  "RoomListQuery",
-);
-const RoomListResponseJsonSchema = schemaFromZod(
-  RoomListResponseSchema,
-  "RoomListResponse",
-);
+const RoomListQueryJsonSchema = schemaFromZod(RoomListQuerySchema, "RoomListQuery");
+const RoomListResponseJsonSchema = schemaFromZod(RoomListResponseSchema, "RoomListResponse");
 
-const RoomListItemJsonSchema = schemaFromZod(
-  RoomListItemSchema,
-  "RoomListItem",
-);
+const RoomListItemJsonSchema = schemaFromZod(RoomListItemSchema, "RoomListItem");
 
 const CreateRoomBodySchema = CreateRoomsSchema.extend({
   status: z
@@ -85,10 +71,7 @@ const CreateRoomBodySchema = CreateRoomsSchema.extend({
     .optional()
     .refine(
       (value) =>
-        !value ||
-        RoomStatusEnum.options.includes(
-          value as (typeof RoomStatusEnum.options)[number],
-        ),
+        !value || RoomStatusEnum.options.includes(value as (typeof RoomStatusEnum.options)[number]),
       { message: "Invalid room status" },
     ),
   housekeeping_status: z
@@ -119,15 +102,9 @@ const CreateRoomBodySchema = CreateRoomsSchema.extend({
 
 type CreateRoomBody = z.infer<typeof CreateRoomBodySchema>;
 
-const CreateRoomBodyJsonSchema = schemaFromZod(
-  CreateRoomBodySchema,
-  "CreateRoomBody",
-);
+const CreateRoomBodyJsonSchema = schemaFromZod(CreateRoomBodySchema, "CreateRoomBody");
 
-const ErrorResponseSchema = schemaFromZod(
-  z.object({ message: z.string() }),
-  "ErrorResponse",
-);
+const ErrorResponseSchema = schemaFromZod(z.object({ message: z.string() }), "ErrorResponse");
 
 const UpdateRoomBodySchema = CreateRoomBodySchema.partial().extend({
   tenant_id: z.string().uuid(),
@@ -135,10 +112,7 @@ const UpdateRoomBodySchema = CreateRoomBodySchema.partial().extend({
 
 type UpdateRoomBody = z.infer<typeof UpdateRoomBodySchema>;
 
-const UpdateRoomBodyJsonSchema = schemaFromZod(
-  UpdateRoomBodySchema,
-  "UpdateRoomBody",
-);
+const UpdateRoomBodyJsonSchema = schemaFromZod(UpdateRoomBodySchema, "UpdateRoomBody");
 
 const RoomParamsSchema = z.object({
   roomId: z.string().uuid(),
@@ -151,8 +125,7 @@ export const registerRoomRoutes = (app: FastifyInstance): void => {
     "/v1/rooms",
     {
       preHandler: app.withTenantScope({
-        resolveTenantId: (request) =>
-          (request.body as CreateRoomBody).tenant_id,
+        resolveTenantId: (request) => (request.body as CreateRoomBody).tenant_id,
         minRole: "MANAGER",
         requiredModules: "core",
       }),
@@ -180,9 +153,7 @@ export const registerRoomRoutes = (app: FastifyInstance): void => {
         if (typeof error === "object" && error && "code" in error) {
           const code = (error as { code?: string }).code;
           if (code === "23505") {
-            return reply
-              .status(409)
-              .send({ message: "Room already exists for this property" });
+            return reply.status(409).send({ message: "Room already exists for this property" });
           }
         }
         request.log.error({ err: error }, "Failed to create room");
@@ -195,8 +166,7 @@ export const registerRoomRoutes = (app: FastifyInstance): void => {
     "/v1/rooms",
     {
       preHandler: app.withTenantScope({
-        resolveTenantId: (request) =>
-          (request.query as RoomListQuery).tenant_id,
+        resolveTenantId: (request) => (request.query as RoomListQuery).tenant_id,
         minRole: "MANAGER",
         requiredModules: "core",
       }),
@@ -234,8 +204,7 @@ export const registerRoomRoutes = (app: FastifyInstance): void => {
       });
 
       // If recommendation context is provided, fetch rankings from recommendation service
-      const hasRecommendationContext =
-        property_id && check_in_date && check_out_date;
+      const hasRecommendationContext = property_id && check_in_date && check_out_date;
 
       if (hasRecommendationContext && rooms.length > 0) {
         try {
@@ -273,10 +242,7 @@ export const registerRoomRoutes = (app: FastifyInstance): void => {
             };
 
             // Create a map of room rankings
-            const rankMap = new Map<
-              string,
-              { rank: number; score: number; reasons: string[] }
-            >();
+            const rankMap = new Map<string, { rank: number; score: number; reasons: string[] }>();
             for (const ranked of rankResult.rankedRooms) {
               rankMap.set(ranked.roomId, {
                 rank: ranked.rank,
@@ -347,8 +313,7 @@ export const registerRoomRoutes = (app: FastifyInstance): void => {
     "/v1/rooms/:roomId",
     {
       preHandler: app.withTenantScope({
-        resolveTenantId: (request) =>
-          (request.query as RoomByIdQuery).tenant_id,
+        resolveTenantId: (request) => (request.query as RoomByIdQuery).tenant_id,
         minRole: "VIEWER",
         requiredModules: "core",
       }),
@@ -367,14 +332,8 @@ export const registerRoomRoutes = (app: FastifyInstance): void => {
     },
     async (request, reply) => {
       const params = RoomParamsSchema.parse(request.params);
-      const {
-        tenant_id,
-        guest_id,
-        check_in_date,
-        check_out_date,
-        adults,
-        children,
-      } = RoomByIdQuerySchema.parse(request.query);
+      const { tenant_id, guest_id, check_in_date, check_out_date, adults, children } =
+        RoomByIdQuerySchema.parse(request.query);
 
       const room = await getRoomById({
         tenantId: tenant_id,
@@ -422,9 +381,7 @@ export const registerRoomRoutes = (app: FastifyInstance): void => {
               }>;
             };
 
-            const ranking = rankResult.rankedRooms.find(
-              (r) => r.roomId === room.room_id,
-            );
+            const ranking = rankResult.rankedRooms.find((r) => r.roomId === room.room_id);
 
             if (ranking) {
               return {
@@ -455,8 +412,7 @@ export const registerRoomRoutes = (app: FastifyInstance): void => {
     "/v1/rooms/:roomId",
     {
       preHandler: app.withTenantScope({
-        resolveTenantId: (request) =>
-          (request.body as UpdateRoomBody).tenant_id,
+        resolveTenantId: (request) => (request.body as UpdateRoomBody).tenant_id,
         minRole: "MANAGER",
         requiredModules: "core",
       }),
@@ -493,9 +449,7 @@ export const registerRoomRoutes = (app: FastifyInstance): void => {
         if (typeof error === "object" && error && "code" in error) {
           const code = (error as { code?: string }).code;
           if (code === "23505") {
-            return reply
-              .status(409)
-              .send({ message: "Room already exists for this property" });
+            return reply.status(409).send({ message: "Room already exists for this property" });
           }
         }
         request.log.error({ err: error }, "Failed to update room");
@@ -511,8 +465,7 @@ export const registerRoomRoutes = (app: FastifyInstance): void => {
     "/v1/rooms/:roomId",
     {
       preHandler: app.withTenantScope({
-        resolveTenantId: (request) =>
-          (request.body as { tenant_id: string }).tenant_id,
+        resolveTenantId: (request) => (request.body as { tenant_id: string }).tenant_id,
         minRole: "MANAGER",
         requiredModules: "core",
       }),
@@ -520,10 +473,7 @@ export const registerRoomRoutes = (app: FastifyInstance): void => {
         tag: ROOMS_TAG,
         summary: "Delete a room",
         params: schemaFromZod(RoomParamsSchema, "RoomParams"),
-        body: schemaFromZod(
-          z.object({ tenant_id: z.string().uuid() }),
-          "DeleteRoomBody",
-        ),
+        body: schemaFromZod(z.object({ tenant_id: z.string().uuid() }), "DeleteRoomBody"),
         response: {
           204: { type: "null" },
           404: ErrorResponseSchema,
@@ -532,9 +482,7 @@ export const registerRoomRoutes = (app: FastifyInstance): void => {
     },
     async (request, reply) => {
       const params = RoomParamsSchema.parse(request.params);
-      const body = z
-        .object({ tenant_id: z.string().uuid() })
-        .parse(request.body);
+      const body = z.object({ tenant_id: z.string().uuid() }).parse(request.body);
 
       const deleted = await deleteRoom({
         tenant_id: body.tenant_id,

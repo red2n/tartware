@@ -13,10 +13,7 @@ import { BaseSource, type PipelineContext } from "@tartware/candidate-pipeline";
 import { query } from "../lib/db.js";
 import type { RoomCandidate, RoomRecommendationQuery } from "../types.js";
 
-export class SimilarRoomsSource extends BaseSource<
-  RoomRecommendationQuery,
-  RoomCandidate
-> {
+export class SimilarRoomsSource extends BaseSource<RoomRecommendationQuery, RoomCandidate> {
   readonly name = "similar_rooms";
 
   /**
@@ -121,10 +118,7 @@ export class SimilarRoomsSource extends BaseSource<
       source: this.name,
     }));
 
-    context.logger.debug(
-      { count: candidates.length },
-      "Similar rooms fetched",
-    );
+    context.logger.debug({ count: candidates.length }, "Similar rooms fetched");
     return candidates;
   }
 }

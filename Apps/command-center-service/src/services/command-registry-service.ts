@@ -183,12 +183,8 @@ export const resolveCommandForTenant = ({
       .filter((moduleId): moduleId is string => typeof moduleId === "string")
       .map((moduleId) => moduleId.toLowerCase()),
   );
-  const requiredModules = (template.required_modules ?? []).map(
-    normalizeModuleId,
-  );
-  const missingModules = requiredModules.filter(
-    (moduleId) => !tenantModules.has(moduleId),
-  );
+  const requiredModules = (template.required_modules ?? []).map(normalizeModuleId);
+  const missingModules = requiredModules.filter((moduleId) => !tenantModules.has(moduleId));
   if (missingModules.length > 0) {
     return { status: "MODULES_MISSING", missingModules };
   }
@@ -245,11 +241,7 @@ const resolveRoute = (
   );
 
   const candidates =
-    tenantRoutes.length > 0
-      ? tenantRoutes
-      : globalRoutes.length > 0
-        ? globalRoutes
-        : [];
+    tenantRoutes.length > 0 ? tenantRoutes : globalRoutes.length > 0 ? globalRoutes : [];
 
   if (candidates.length === 0) {
     return null;
@@ -272,14 +264,9 @@ const resolveRoute = (
   };
 };
 
-const resolveFeature = (
-  commandName: string,
-  tenantId: string,
-): CommandFeatureRecord | null => {
+const resolveFeature = (commandName: string, tenantId: string): CommandFeatureRecord | null => {
   const entries = state.features.get(commandName) ?? [];
-  const tenantFeature = entries.find(
-    (feature) => feature.tenant_id === tenantId,
-  );
+  const tenantFeature = entries.find((feature) => feature.tenant_id === tenantId);
   if (tenantFeature) {
     return tenantFeature;
   }
@@ -292,13 +279,11 @@ const resolveFeature = (
 export const listCommandDefinitions = (): CommandDefinitionView[] => {
   return Array.from(state.templates.values()).map((template) => {
     const label =
-      typeof template.metadata.label === "string" &&
-      template.metadata.label.length > 0
+      typeof template.metadata.label === "string" && template.metadata.label.length > 0
         ? template.metadata.label
         : template.command_name;
     const description =
-      typeof template.metadata.description === "string" &&
-      template.metadata.description.length > 0
+      typeof template.metadata.description === "string" && template.metadata.description.length > 0
         ? template.metadata.description
         : (template.description ?? template.command_name);
 

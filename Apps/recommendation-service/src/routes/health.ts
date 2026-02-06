@@ -5,11 +5,8 @@ export function registerHealthRoutes(app: FastifyInstance) {
     return reply.send({ status: "ok" });
   });
 
-  app.get(
-    "/health/readiness",
-    async (_request: FastifyRequest, reply: FastifyReply) => {
-      // Could add DB connectivity check here
-      return reply.send({ status: "ready" });
-    },
-  );
+  app.get("/health/readiness", async (_request: FastifyRequest, reply: FastifyReply) => {
+    // Could add DB connectivity check here
+    return reply.send({ status: "ready" });
+  });
 }

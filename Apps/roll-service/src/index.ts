@@ -1,10 +1,6 @@
 import process from "node:process";
 
-import {
-  ensureDependencies,
-  parseHostPort,
-  resolveOtelDependency,
-} from "@tartware/config";
+import { ensureDependencies, parseHostPort, resolveOtelDependency } from "@tartware/config";
 import { initTelemetry } from "@tartware/telemetry";
 
 import { config } from "./config.js";
@@ -62,9 +58,7 @@ const start = async () => {
     app.log.error(error, "Failed to start roll service");
     await telemetry
       ?.shutdown()
-      .catch((shutdownError) =>
-        app.log.error(shutdownError, "Failed to shutdown telemetry"),
-      );
+      .catch((shutdownError) => app.log.error(shutdownError, "Failed to shutdown telemetry"));
     process.exit(1);
   }
 };

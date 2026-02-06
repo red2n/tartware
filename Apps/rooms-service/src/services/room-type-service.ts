@@ -44,9 +44,7 @@ type RoomTypeRow = {
 /**
  * Convert PostgreSQL numeric (returned as string) to number.
  */
-const toNumber = (
-  value: string | number | null | undefined,
-): number | undefined => {
+const toNumber = (value: string | number | null | undefined): number | undefined => {
   if (value === null || value === undefined) {
     return undefined;
   }
@@ -150,9 +148,7 @@ export const listRoomTypes = async (options: {
 /**
  * Create a new room type.
  */
-export const createRoomType = async (
-  input: CreateRoomTypeInput,
-): Promise<RoomTypeItem> => {
+export const createRoomType = async (input: CreateRoomTypeInput): Promise<RoomTypeItem> => {
   const { rows } = await query<RoomTypeRow>(ROOM_TYPE_CREATE_SQL, [
     input.tenant_id,
     input.property_id,
@@ -217,9 +213,7 @@ type UpdateRoomTypeInput = {
 /**
  * Update a room type by id.
  */
-export const updateRoomType = async (
-  input: UpdateRoomTypeInput,
-): Promise<RoomTypeItem | null> => {
+export const updateRoomType = async (input: UpdateRoomTypeInput): Promise<RoomTypeItem | null> => {
   const { rows } = await query<RoomTypeRow>(ROOM_TYPE_UPDATE_SQL, [
     input.room_type_id,
     input.tenant_id,

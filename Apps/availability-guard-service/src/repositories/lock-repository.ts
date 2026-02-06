@@ -1,11 +1,7 @@
 import type { PoolClient } from "pg";
 
 import { query } from "../lib/db.js";
-import type {
-  BulkReleaseInput,
-  LockRoomInput,
-  ReleaseLockInput,
-} from "../types/lock-types.js";
+import type { BulkReleaseInput, LockRoomInput, ReleaseLockInput } from "../types/lock-types.js";
 
 export type InventoryLock = {
   id: string;
@@ -144,13 +140,7 @@ export const releaseLockRecord = async (
         AND tenant_id = $2
       RETURNING *;
     `,
-    [
-      input.lockId,
-      input.tenantId,
-      input.reason,
-      input.releasedAt,
-      input.correlationId ?? null,
-    ],
+    [input.lockId, input.tenantId, input.reason, input.releasedAt, input.correlationId ?? null],
   );
   return result.rows[0] ?? null;
 };

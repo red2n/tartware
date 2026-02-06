@@ -13,16 +13,8 @@ import type { FastifyBaseLogger } from "fastify";
 
 import { config } from "../config.js";
 import type { InventoryLock } from "../repositories/lock-repository.js";
-import {
-  lockRoom,
-  releaseLock,
-  releaseLocksInBulk,
-} from "../services/lock-service.js";
-import {
-  bulkReleaseSchema,
-  lockRoomSchema,
-  releaseLockSchema,
-} from "../types/lock-types.js";
+import { lockRoom, releaseLock, releaseLocksInBulk } from "../services/lock-service.js";
+import { bulkReleaseSchema, lockRoomSchema, releaseLockSchema } from "../types/lock-types.js";
 
 type GrpcInventoryLock = {
   id?: string;
@@ -112,9 +104,7 @@ const grpcDescriptor = loadPackageDefinition(packageDefinition) as unknown as {
   };
 };
 
-const mapInventoryLock = (
-  lock: InventoryLock | null,
-): GrpcInventoryLock | undefined => {
+const mapInventoryLock = (lock: InventoryLock | null): GrpcInventoryLock | undefined => {
   if (!lock) {
     return undefined;
   }
@@ -144,9 +134,7 @@ const mapLockResponseStatus = (status: "LOCKED" | "CONFLICT"): number => {
 };
 
 const buildLockRoomHandler =
-  (
-    logger: FastifyBaseLogger,
-  ): handleUnaryCall<LockRoomRequestMessage, LockRoomResponseMessage> =>
+  (logger: FastifyBaseLogger): handleUnaryCall<LockRoomRequestMessage, LockRoomResponseMessage> =>
   async (call, callback) => {
     try {
       const parsedInput = lockRoomSchema.parse({
@@ -174,9 +162,7 @@ const buildLockRoomHandler =
       callback(null, {
         status: mapLockResponseStatus(result.status),
         lock: mapInventoryLock(result.status === "LOCKED" ? result.lock : null),
-        conflict: mapInventoryLock(
-          result.status === "CONFLICT" ? result.conflict : null,
-        ),
+        conflict: mapInventoryLock(result.status === "CONFLICT" ? result.conflict : null),
       });
     } catch (error) {
       logger.error({ err: error }, "lockRoom gRPC call failed");
@@ -252,8 +238,8 @@ export const startGrpcServer = async (logger: FastifyBaseLogger) => {
   logger.info("Initializing Availability Guard gRPC server");
 
   const server = new Server();
-  const availabilityGuardService = grpcDescriptor.availabilityguard.v1
-    .AvailabilityGuard.service as ServiceDefinition<AvailabilityGuardHandlers>;
+  const availabilityGuardService = grpcDescriptor.availabilityguard.v1.AvailabilityGuard
+    .service as ServiceDefinition<AvailabilityGuardHandlers>;
 
   server.addService(availabilityGuardService, {
     lockRoom: buildLockRoomHandler(logger),
@@ -265,23 +251,16 @@ export const startGrpcServer = async (logger: FastifyBaseLogger) => {
   logger.info({ address }, "Binding Availability Guard gRPC server");
 
   await new Promise<void>((resolve, reject) => {
-    server.bindAsync(
-      address,
-      ServerCredentials.createInsecure(),
-      (error, port) => {
-        if (error) {
-          logger.error(
-            { err: error },
-            "Failed to bind Availability Guard gRPC server",
-          );
-          reject(error);
-          return;
-        }
-        logger.info({ port }, "Availability Guard gRPC server bound");
-        server.start();
-        resolve();
-      },
-    );
+    server.bindAsync(address, ServerCredentials.createInsecure(), (error, port) => {
+      if (error) {
+        logger.error({ err: error }, "Failed to bind Availability Guard gRPC server");
+        reject(error);
+        return;
+      }
+      logger.info({ port }, "Availability Guard gRPC server bound");
+      server.start();
+      resolve();
+    });
   });
 
   return {

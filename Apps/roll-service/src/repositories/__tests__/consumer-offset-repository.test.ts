@@ -5,9 +5,7 @@ import type { QueryResult, QueryResultRow } from "pg";
 import { runTest } from "../../tests/helpers/run-test.js";
 import { upsertConsumerOffset } from "../consumer-offset-repository.js";
 
-type ConsumerQueryExecutor = NonNullable<
-  Parameters<typeof upsertConsumerOffset>[1]
->;
+type ConsumerQueryExecutor = NonNullable<Parameters<typeof upsertConsumerOffset>[1]>;
 
 const buildQueryRecorder = () => {
   const calls: Array<{ text: string; params: unknown[] }> = [];
@@ -19,10 +17,7 @@ const buildQueryRecorder = () => {
     rows: [],
   };
   const stub: ConsumerQueryExecutor = {
-    query: <TRow extends QueryResultRow = QueryResultRow>(
-      text: string,
-      params: unknown[],
-    ) => {
+    query: <TRow extends QueryResultRow = QueryResultRow>(text: string, params: unknown[]) => {
       calls.push({ text, params });
       return Promise.resolve(response as unknown as QueryResult<TRow>);
     },

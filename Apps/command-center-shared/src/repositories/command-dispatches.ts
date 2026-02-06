@@ -107,16 +107,15 @@ export const createCommandDispatchRepository = (query: QueryExecutor) => {
     commandName: string,
     requestId: string,
   ): Promise<CommandDispatchLookup | null> => {
-    const { rows } = await query<CommandDispatchLookup>(
-      FIND_COMMAND_DISPATCH_BY_REQUEST_SQL,
-      [tenantId, commandName, requestId],
-    );
+    const { rows } = await query<CommandDispatchLookup>(FIND_COMMAND_DISPATCH_BY_REQUEST_SQL, [
+      tenantId,
+      commandName,
+      requestId,
+    ]);
     return rows[0] ?? null;
   };
 
-  const insertCommandDispatch = async (
-    input: InsertCommandDispatchInput,
-  ): Promise<void> => {
+  const insertCommandDispatch = async (input: InsertCommandDispatchInput): Promise<void> => {
     await query(INSERT_COMMAND_DISPATCH_SQL, [
       input.id,
       input.commandName,

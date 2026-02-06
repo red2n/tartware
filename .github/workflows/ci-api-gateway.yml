@@ -1,0 +1,21 @@
+name: CI · API Gateway
+
+on:
+  push:
+    branches: [main, develop, deployment]
+    paths:
+      - 'Apps/api-gateway/**'
+      - 'schema/**'
+      - 'package.json'
+      - 'lerna.json'
+  pull_request:
+    paths:
+      - 'Apps/api-gateway/**'
+      - 'schema/**'
+  workflow_dispatch:
+
+jobs:
+  ci:
+    uses: ./.github/workflows/package-ci.yml
+    with:
+      package-scope: '@tartware/api-gateway'

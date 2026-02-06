@@ -4,8 +4,7 @@ import fp from "fastify-plugin";
 
 import { config } from "../config.js";
 
-const serviceVersion =
-  process.env.ROOMS_SERVICE_VERSION ?? config.service.version;
+const serviceVersion = process.env.ROOMS_SERVICE_VERSION ?? config.service.version;
 
 const swaggerPlugin = fp(async (app) => {
   if (process.env.DISABLE_SWAGGER === "true") {

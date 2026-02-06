@@ -1,13 +1,9 @@
-import { config as loadEnv } from "dotenv";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { config as loadEnv } from "dotenv";
 import { z } from "zod";
 
-const rootEnvPath = path.resolve(
-  path.dirname(fileURLToPath(import.meta.url)),
-  "../../..",
-  ".env",
-);
+const rootEnvPath = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../..", ".env");
 
 // Load root .env first for shared defaults, then local .env with override to allow service-specific overrides.
 loadEnv({ path: rootEnvPath });
@@ -16,9 +12,7 @@ loadEnv({ override: true });
 const booleanString = z
   .union([
     z.boolean(),
-    z
-      .string()
-      .transform((value) => ["true", "1", "yes", "on"].includes(value.toLowerCase())),
+    z.string().transform((value) => ["true", "1", "yes", "on"].includes(value.toLowerCase())),
   ])
   .default(false)
   .transform((value) => value === true);
@@ -39,10 +33,12 @@ export const databaseSchema = z.object({
   DB_PORT: z.coerce.number().int().default(5432),
   DB_NAME: z.string().default("tartware"),
   DB_USER: z.string().default("postgres"),
-  DB_PASSWORD: z.string().refine(
-    (value) => process.env.NODE_ENV === "test" || value.length > 0,
-    "DB_PASSWORD is required in non-test environments",
-  ),
+  DB_PASSWORD: z
+    .string()
+    .refine(
+      (value) => process.env.NODE_ENV === "test" || value.length > 0,
+      "DB_PASSWORD is required in non-test environments",
+    ),
   DB_SSL: booleanString,
   DB_POOL_MAX: z.coerce.number().int().default(10),
   DB_POOL_IDLE_TIMEOUT_MS: z.coerce.number().int().default(30000),
@@ -68,7 +64,9 @@ export const jwtVerificationSchema = z.object({
 });
 
 export const coreAuthSchema = z.object({
-  AUTH_JWT_SECRET: z.string().min(32, "AUTH_JWT_SECRET must be at least 32 characters in production"),
+  AUTH_JWT_SECRET: z
+    .string()
+    .min(32, "AUTH_JWT_SECRET must be at least 32 characters in production"),
   AUTH_JWT_ISSUER: z.string().default("tartware-core-service"),
   AUTH_JWT_AUDIENCE: z.string().optional(),
   AUTH_JWT_EXPIRES_IN_SECONDS: z.coerce.number().int().default(900),
@@ -94,12 +92,10 @@ export const coreAuthSchema = z.object({
 export type BaseConfig = z.infer<typeof baseConfigSchema>;
 
 export function loadServiceConfig(): z.infer<typeof baseConfigSchema>;
-export function loadServiceConfig<TSchema extends z.ZodObject<any>>(
+export function loadServiceConfig<TSchema extends z.ZodObject<z.ZodRawShape>>(
   schema: TSchema,
 ): z.infer<typeof baseConfigSchema> & z.infer<TSchema>;
-export function loadServiceConfig<TSchema extends z.ZodObject<any>>(
-  schema?: TSchema,
-) {
+export function loadServiceConfig<TSchema extends z.ZodObject<z.ZodRawShape>>(schema?: TSchema) {
   const mergedSchema = schema ? baseConfigSchema.merge(schema) : baseConfigSchema;
   const result = mergedSchema.safeParse(process.env);
 
@@ -159,9 +155,7 @@ export const validateProductionSecrets = (config: {
   if (errors.length > 0) {
     // eslint-disable-next-line no-console
     console.error("Production security validation failed:", errors);
-    throw new Error(
-      `Insecure configuration detected in production: ${errors.join("; ")}`,
-    );
+    throw new Error(`Insecure configuration detected in production: ${errors.join("; ")}`);
   }
 };
 
@@ -190,9 +184,7 @@ export const parseHostPort = (
 ): { host: string; port: number } => {
   const safeValue = value.trim();
   try {
-    const url = safeValue.includes("://")
-      ? new URL(safeValue)
-      : new URL(`tcp://${safeValue}`);
+    const url = safeValue.includes("://") ? new URL(safeValue) : new URL(`tcp://${safeValue}`);
     return {
       host: url.hostname,
       port: parsePort(url.port, url.protocol === "https:" ? 443 : defaultPort),
@@ -257,16 +249,10 @@ export const ensureDependencies = async (
     return true;
   }
 
-  const results = await Promise.all(
-    dependencies.map((dep) => probePort(dep, timeoutMs)),
-  );
+  const results = await Promise.all(dependencies.map((dep) => probePort(dep, timeoutMs)));
 
-  const failed = results.filter(
-    (result) => !result.ok && !result.target.optional,
-  );
-  const optionalFailed = results.filter(
-    (result) => !result.ok && result.target.optional,
-  );
+  const failed = results.filter((result) => !result.ok && !result.target.optional);
+  const optionalFailed = results.filter((result) => !result.ok && result.target.optional);
 
   if (failed.length > 0) {
     logger.warn?.(
@@ -301,9 +287,7 @@ export const ensureDependencies = async (
   return true;
 };
 
-export const resolveOtelDependency = (
-  optional = true,
-): DependencyTarget | null => {
+export const resolveOtelDependency = (optional = true): DependencyTarget | null => {
   const endpoint =
     process.env.OTEL_EXPORTER_OTLP_ENDPOINT ??
     process.env.OTEL_EXPORTER_OTLP_TRACES_ENDPOINT ??

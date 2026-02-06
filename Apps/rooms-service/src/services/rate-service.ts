@@ -92,19 +92,12 @@ const mapRowToRate = (row: RateRow): RateItem =>
     base_rate: row.base_rate != null ? Number(row.base_rate) : 0,
     currency: row.currency ?? undefined,
     single_occupancy_rate:
-      row.single_occupancy_rate != null
-        ? Number(row.single_occupancy_rate)
-        : undefined,
+      row.single_occupancy_rate != null ? Number(row.single_occupancy_rate) : undefined,
     double_occupancy_rate:
-      row.double_occupancy_rate != null
-        ? Number(row.double_occupancy_rate)
-        : undefined,
-    extra_person_rate:
-      row.extra_person_rate != null ? Number(row.extra_person_rate) : undefined,
-    extra_child_rate:
-      row.extra_child_rate != null ? Number(row.extra_child_rate) : undefined,
-    valid_from:
-      toDateString(row.valid_from) ?? new Date().toISOString().split("T")[0],
+      row.double_occupancy_rate != null ? Number(row.double_occupancy_rate) : undefined,
+    extra_person_rate: row.extra_person_rate != null ? Number(row.extra_person_rate) : undefined,
+    extra_child_rate: row.extra_child_rate != null ? Number(row.extra_child_rate) : undefined,
+    valid_from: toDateString(row.valid_from) ?? new Date().toISOString().split("T")[0],
     valid_until: toDateString(row.valid_until),
     advance_booking_days_min: row.advance_booking_days_min ?? undefined,
     advance_booking_days_max: row.advance_booking_days_max ?? undefined,
@@ -113,8 +106,7 @@ const mapRowToRate = (row: RateRow): RateItem =>
     closed_to_arrival: row.closed_to_arrival ?? undefined,
     closed_to_departure: row.closed_to_departure ?? undefined,
     meal_plan: row.meal_plan ?? undefined,
-    meal_plan_cost:
-      row.meal_plan_cost != null ? Number(row.meal_plan_cost) : undefined,
+    meal_plan_cost: row.meal_plan_cost != null ? Number(row.meal_plan_cost) : undefined,
     cancellation_policy: row.cancellation_policy ?? undefined,
     modifiers: row.modifiers ?? undefined,
     channels: row.channels ?? undefined,
@@ -206,10 +198,7 @@ export const getRateById = async (options: {
   rateId: string;
   tenantId: string;
 }): Promise<RateItem | null> => {
-  const { rows } = await query<RateRow>(RATE_GET_BY_ID_SQL, [
-    options.rateId,
-    options.tenantId,
-  ]);
+  const { rows } = await query<RateRow>(RATE_GET_BY_ID_SQL, [options.rateId, options.tenantId]);
 
   if (!rows[0]) {
     return null;
@@ -308,9 +297,7 @@ type UpdateRateInput = {
 /**
  * Update a rate by id.
  */
-export const updateRate = async (
-  input: UpdateRateInput,
-): Promise<RateItem | null> => {
+export const updateRate = async (input: UpdateRateInput): Promise<RateItem | null> => {
   const { rows } = await query<RateRow>(RATE_UPDATE_SQL, [
     input.rate_id,
     input.tenant_id,

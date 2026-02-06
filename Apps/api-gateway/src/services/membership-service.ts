@@ -3,12 +3,12 @@ import { TenantRoleEnum } from "@tartware/schemas";
 import { query } from "../lib/db.js";
 
 type TenantMembershipRow = {
-	tenant_id: string;
-	tenant_name: string;
-	role: string;
-	is_active: boolean;
-	permissions: Record<string, unknown> | null;
-	modules: string[] | null;
+  tenant_id: string;
+  tenant_name: string;
+  role: string;
+  is_active: boolean;
+  permissions: Record<string, unknown> | null;
+  modules: string[] | null;
 };
 
 const USER_MEMBERSHIP_SQL = `
@@ -32,30 +32,26 @@ type TenantRole = (typeof TenantRoleEnum)["_type"];
  * Tenant membership view for a user.
  */
 export type TenantMembership = {
-	tenantId: string;
-	tenantName: string;
-	role: TenantRole;
-	isActive: boolean;
-	permissions: Record<string, unknown>;
-	modules: string[];
+  tenantId: string;
+  tenantName: string;
+  role: TenantRole;
+  isActive: boolean;
+  permissions: Record<string, unknown>;
+  modules: string[];
 };
 
 /**
  * Fetch tenant memberships for a user.
  */
-export const getUserMemberships = async (
-	userId: string,
-): Promise<TenantMembership[]> => {
-	const { rows } = await query<TenantMembershipRow>(USER_MEMBERSHIP_SQL, [
-		userId,
-	]);
+export const getUserMemberships = async (userId: string): Promise<TenantMembership[]> => {
+  const { rows } = await query<TenantMembershipRow>(USER_MEMBERSHIP_SQL, [userId]);
 
-	return rows.map((row) => ({
-		tenantId: row.tenant_id,
-		tenantName: row.tenant_name,
-		role: TenantRoleEnum.parse(row.role),
-		isActive: row.is_active,
-		permissions: row.permissions ?? {},
-		modules: row.modules ?? [],
-	}));
+  return rows.map((row) => ({
+    tenantId: row.tenant_id,
+    tenantName: row.tenant_name,
+    role: TenantRoleEnum.parse(row.role),
+    isActive: row.is_active,
+    permissions: row.permissions ?? {},
+    modules: row.modules ?? [],
+  }));
 };

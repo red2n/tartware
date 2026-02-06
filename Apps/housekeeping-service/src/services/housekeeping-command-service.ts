@@ -349,13 +349,7 @@ const applyReassign = async (
         AND id = $2::uuid
         AND COALESCE(is_deleted, false) = false
     `,
-    [
-      context.tenantId,
-      command.task_id,
-      command.assigned_to,
-      command.reason ?? null,
-      actor,
-    ],
+    [context.tenantId, command.task_id, command.assigned_to, command.reason ?? null, actor],
   );
 
   if (!rowCount || rowCount === 0) {
@@ -454,13 +448,7 @@ const applyBulkStatus = async (
         AND id = ANY($5::uuid[])
         AND COALESCE(is_deleted, false) = false
     `,
-    [
-      context.tenantId,
-      command.status,
-      command.notes ?? null,
-      actor,
-      command.task_ids,
-    ],
+    [context.tenantId, command.status, command.notes ?? null, actor, command.task_ids],
   );
 
   if (!rowCount || rowCount === 0) {

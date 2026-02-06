@@ -34,10 +34,7 @@ const BillingListQuerySchema = z.object({
     .optional()
     .refine(
       (value) =>
-        !value ||
-        PaymentStatusEnum.options
-          .map((status) => status.toLowerCase())
-          .includes(value),
+        !value || PaymentStatusEnum.options.map((status) => status.toLowerCase()).includes(value),
       { message: "Invalid payment status" },
     ),
   transaction_type: z
@@ -47,9 +44,7 @@ const BillingListQuerySchema = z.object({
     .refine(
       (value) =>
         !value ||
-        TransactionTypeEnum.options
-          .map((transaction) => transaction.toLowerCase())
-          .includes(value),
+        TransactionTypeEnum.options.map((transaction) => transaction.toLowerCase()).includes(value),
       { message: "Invalid transaction type" },
     ),
   payment_method: z
@@ -58,10 +53,7 @@ const BillingListQuerySchema = z.object({
     .optional()
     .refine(
       (value) =>
-        !value ||
-        PaymentMethodEnum.options
-          .map((method) => method.toLowerCase())
-          .includes(value),
+        !value || PaymentMethodEnum.options.map((method) => method.toLowerCase()).includes(value),
       { message: "Invalid payment method" },
     ),
   limit: z.coerce.number().int().positive().max(200).default(100),
@@ -70,10 +62,7 @@ const BillingListQuerySchema = z.object({
 type BillingListQuery = z.infer<typeof BillingListQuerySchema>;
 
 const BillingListResponseSchema = z.array(BillingPaymentSchema);
-const BillingListQueryJsonSchema = schemaFromZod(
-  BillingListQuerySchema,
-  "BillingPaymentsQuery",
-);
+const BillingListQueryJsonSchema = schemaFromZod(BillingListQuerySchema, "BillingPaymentsQuery");
 const BillingListResponseJsonSchema = schemaFromZod(
   BillingListResponseSchema,
   "BillingPaymentsResponse",
@@ -88,9 +77,7 @@ const InvoiceListQuerySchema = z.object({
     .toLowerCase()
     .optional()
     .refine(
-      (value) =>
-        !value ||
-        InvoiceStatusEnum.options.map((s) => s.toLowerCase()).includes(value),
+      (value) => !value || InvoiceStatusEnum.options.map((s) => s.toLowerCase()).includes(value),
       { message: "Invalid invoice status" },
     ),
   reservation_id: z.string().uuid().optional(),
@@ -101,18 +88,12 @@ const InvoiceListQuerySchema = z.object({
 type InvoiceListQuery = z.infer<typeof InvoiceListQuerySchema>;
 
 const InvoiceListResponseSchema = z.array(InvoiceListItemSchema);
-const InvoiceListQueryJsonSchema = schemaFromZod(
-  InvoiceListQuerySchema,
-  "InvoiceListQuery",
-);
+const InvoiceListQueryJsonSchema = schemaFromZod(InvoiceListQuerySchema, "InvoiceListQuery");
 const InvoiceListResponseJsonSchema = schemaFromZod(
   InvoiceListResponseSchema,
   "InvoiceListResponse",
 );
-const InvoiceDetailJsonSchema = schemaFromZod(
-  InvoiceListItemSchema,
-  "InvoiceDetail",
-);
+const InvoiceDetailJsonSchema = schemaFromZod(InvoiceListItemSchema, "InvoiceDetail");
 
 // Folio schemas
 const FolioListQuerySchema = z.object({
@@ -128,14 +109,8 @@ const FolioListQuerySchema = z.object({
 type FolioListQuery = z.infer<typeof FolioListQuerySchema>;
 
 const FolioListResponseSchema = z.array(FolioListItemSchema);
-const FolioListQueryJsonSchema = schemaFromZod(
-  FolioListQuerySchema,
-  "FolioListQuery",
-);
-const FolioListResponseJsonSchema = schemaFromZod(
-  FolioListResponseSchema,
-  "FolioListResponse",
-);
+const FolioListQueryJsonSchema = schemaFromZod(FolioListQuerySchema, "FolioListQuery");
+const FolioListResponseJsonSchema = schemaFromZod(FolioListResponseSchema, "FolioListResponse");
 const FolioDetailJsonSchema = schemaFromZod(FolioListItemSchema, "FolioDetail");
 
 // Charge posting schemas
@@ -168,8 +143,7 @@ export const registerBillingRoutes = (app: FastifyInstance): void => {
     "/v1/billing/payments",
     {
       preHandler: app.withTenantScope({
-        resolveTenantId: (request) =>
-          (request.query as BillingListQuery).tenant_id,
+        resolveTenantId: (request) => (request.query as BillingListQuery).tenant_id,
         minRole: "ADMIN",
         requiredModules: "finance-automation",
       }),
@@ -183,14 +157,8 @@ export const registerBillingRoutes = (app: FastifyInstance): void => {
       }),
     },
     async (request) => {
-      const {
-        tenant_id,
-        property_id,
-        status,
-        transaction_type,
-        payment_method,
-        limit,
-      } = BillingListQuerySchema.parse(request.query);
+      const { tenant_id, property_id, status, transaction_type, payment_method, limit } =
+        BillingListQuerySchema.parse(request.query);
 
       const payments = await listBillingPayments({
         tenantId: tenant_id,
@@ -213,8 +181,7 @@ export const registerBillingRoutes = (app: FastifyInstance): void => {
     "/v1/billing/invoices",
     {
       preHandler: app.withTenantScope({
-        resolveTenantId: (request) =>
-          (request.query as InvoiceListQuery).tenant_id,
+        resolveTenantId: (request) => (request.query as InvoiceListQuery).tenant_id,
         minRole: "ADMIN",
         requiredModules: "finance-automation",
       }),
@@ -228,14 +195,8 @@ export const registerBillingRoutes = (app: FastifyInstance): void => {
       }),
     },
     async (request) => {
-      const {
-        tenant_id,
-        property_id,
-        status,
-        reservation_id,
-        guest_id,
-        limit,
-      } = InvoiceListQuerySchema.parse(request.query);
+      const { tenant_id, property_id, status, reservation_id, guest_id, limit } =
+        InvoiceListQuerySchema.parse(request.query);
 
       const invoices = await listInvoices({
         tenantId: tenant_id,
@@ -257,22 +218,15 @@ export const registerBillingRoutes = (app: FastifyInstance): void => {
     "/v1/billing/invoices/:invoiceId",
     {
       preHandler: app.withTenantScope({
-        resolveTenantId: (request) =>
-          (request.query as { tenant_id: string }).tenant_id,
+        resolveTenantId: (request) => (request.query as { tenant_id: string }).tenant_id,
         minRole: "ADMIN",
         requiredModules: "finance-automation",
       }),
       schema: buildRouteSchema({
         tag: BILLING_TAG,
         summary: "Get invoice by ID",
-        params: schemaFromZod(
-          z.object({ invoiceId: z.string().uuid() }),
-          "InvoiceIdParam",
-        ),
-        querystring: schemaFromZod(
-          z.object({ tenant_id: z.string().uuid() }),
-          "TenantIdQuery",
-        ),
+        params: schemaFromZod(z.object({ invoiceId: z.string().uuid() }), "InvoiceIdParam"),
+        querystring: schemaFromZod(z.object({ tenant_id: z.string().uuid() }), "TenantIdQuery"),
         response: {
           200: InvoiceDetailJsonSchema,
         },
@@ -301,8 +255,7 @@ export const registerBillingRoutes = (app: FastifyInstance): void => {
     "/v1/billing/folios",
     {
       preHandler: app.withTenantScope({
-        resolveTenantId: (request) =>
-          (request.query as FolioListQuery).tenant_id,
+        resolveTenantId: (request) => (request.query as FolioListQuery).tenant_id,
         minRole: "ADMIN",
         requiredModules: "finance-automation",
       }),
@@ -316,15 +269,8 @@ export const registerBillingRoutes = (app: FastifyInstance): void => {
       }),
     },
     async (request) => {
-      const {
-        tenant_id,
-        property_id,
-        folio_status,
-        folio_type,
-        reservation_id,
-        guest_id,
-        limit,
-      } = FolioListQuerySchema.parse(request.query);
+      const { tenant_id, property_id, folio_status, folio_type, reservation_id, guest_id, limit } =
+        FolioListQuerySchema.parse(request.query);
 
       const folios = await listFolios({
         tenantId: tenant_id,
@@ -344,18 +290,14 @@ export const registerBillingRoutes = (app: FastifyInstance): void => {
     "/v1/billing/folios/:folioId",
     {
       preHandler: app.withTenantScope({
-        resolveTenantId: (request) =>
-          (request.query as { tenant_id: string }).tenant_id,
+        resolveTenantId: (request) => (request.query as { tenant_id: string }).tenant_id,
         minRole: "ADMIN",
         requiredModules: "finance-automation",
       }),
       schema: buildRouteSchema({
         tag: BILLING_TAG,
         summary: "Get folio by ID",
-        params: schemaFromZod(
-          z.object({ folioId: z.string().uuid() }),
-          "FolioIdParam",
-        ),
+        params: schemaFromZod(z.object({ folioId: z.string().uuid() }), "FolioIdParam"),
         querystring: schemaFromZod(
           z.object({ tenant_id: z.string().uuid() }),
           "TenantIdQueryFolio",
@@ -388,8 +330,7 @@ export const registerBillingRoutes = (app: FastifyInstance): void => {
     "/v1/billing/charges",
     {
       preHandler: app.withTenantScope({
-        resolveTenantId: (request) =>
-          (request.query as ChargePostingListQuery).tenant_id,
+        resolveTenantId: (request) => (request.query as ChargePostingListQuery).tenant_id,
         minRole: "ADMIN",
         requiredModules: "finance-automation",
       }),
@@ -439,9 +380,7 @@ export const registerBillingRoutes = (app: FastifyInstance): void => {
       .toLowerCase()
       .optional()
       .refine(
-        (value) =>
-          !value ||
-          TaxTypeEnum.options.map((t) => t.toLowerCase()).includes(value),
+        (value) => !value || TaxTypeEnum.options.map((t) => t.toLowerCase()).includes(value),
         { message: "Invalid tax type" },
       ),
     is_active: z.coerce.boolean().optional(),
@@ -470,8 +409,7 @@ export const registerBillingRoutes = (app: FastifyInstance): void => {
     "/v1/billing/tax-configurations",
     {
       preHandler: app.withTenantScope({
-        resolveTenantId: (request) =>
-          (request.query as TaxConfigListQuery).tenant_id,
+        resolveTenantId: (request) => (request.query as TaxConfigListQuery).tenant_id,
         minRole: "ADMIN",
         requiredModules: "finance-automation",
       }),
@@ -518,24 +456,16 @@ export const registerBillingRoutes = (app: FastifyInstance): void => {
     "/v1/billing/tax-configurations/:taxConfigId",
     {
       preHandler: app.withTenantScope({
-        resolveTenantId: (request) =>
-          (request.query as { tenant_id: string }).tenant_id,
+        resolveTenantId: (request) => (request.query as { tenant_id: string }).tenant_id,
         minRole: "ADMIN",
         requiredModules: "finance-automation",
       }),
       schema: buildRouteSchema({
         tag: BILLING_TAG,
         summary: "Get tax configuration by ID",
-        description:
-          "Retrieve detailed information about a specific tax configuration",
-        params: schemaFromZod(
-          z.object({ taxConfigId: z.string().uuid() }),
-          "TaxConfigIdParam",
-        ),
-        querystring: schemaFromZod(
-          z.object({ tenant_id: z.string().uuid() }),
-          "TenantIdQueryTax",
-        ),
+        description: "Retrieve detailed information about a specific tax configuration",
+        params: schemaFromZod(z.object({ taxConfigId: z.string().uuid() }), "TaxConfigIdParam"),
+        querystring: schemaFromZod(z.object({ tenant_id: z.string().uuid() }), "TenantIdQueryTax"),
         response: {
           200: TaxConfigDetailJsonSchema,
         },

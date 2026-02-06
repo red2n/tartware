@@ -248,6 +248,7 @@ build/
 dist/
 dist-tests/
 *.egg-info/
+*.tsbuildinfo
 
 # Testing
 .pytest_cache/

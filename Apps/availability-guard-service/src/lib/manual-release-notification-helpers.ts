@@ -10,14 +10,11 @@ export type RecipientBuckets = {
 };
 
 export const dedupeRecipients = (values: string[]): string[] => {
-  const normalized = values
-    .map((value) => value.trim())
-    .filter((value) => value.length > 0);
+  const normalized = values.map((value) => value.trim()).filter((value) => value.length > 0);
   return Array.from(new Set(normalized));
 };
 
-const emailRegex =
-  /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9-]+(?:\.[a-zA-Z0-9-]+)+$/;
+const emailRegex = /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9-]+(?:\.[a-zA-Z0-9-]+)+$/;
 const phoneRegex = /^\+?[0-9]{7,15}$/;
 const slackRegex = /^(?:slack:)?[@#][\w.-]+$/i;
 
@@ -114,14 +111,10 @@ export const buildNotificationSummary = (
     <ul>
       <li><strong>Lock:</strong> ${escapeHtml(payload.lockId)}</li>
       <li><strong>Tenant:</strong> ${escapeHtml(payload.tenantId)}</li>
-      <li><strong>Reservation:</strong> ${escapeHtml(
-        payload.reservationId ?? "N/A",
-      )}</li>
+      <li><strong>Reservation:</strong> ${escapeHtml(payload.reservationId ?? "N/A")}</li>
       <li><strong>Room:</strong> ${escapeHtml(roomLabel)}</li>
       <li><strong>Stay:</strong> ${escapeHtml(stayWindow)}</li>
-      <li><strong>Actor:</strong> ${escapeHtml(
-        `${payload.actor.name} (${payload.actor.id})`,
-      )}</li>
+      <li><strong>Actor:</strong> ${escapeHtml(`${payload.actor.name} (${payload.actor.id})`)}</li>
     </ul>
     <p><strong>Reason:</strong> ${escapeHtml(payload.reason)}</p>
   `;

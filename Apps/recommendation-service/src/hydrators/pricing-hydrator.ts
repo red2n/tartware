@@ -10,10 +10,7 @@ import { BaseHydrator, type PipelineContext } from "@tartware/candidate-pipeline
 import { query } from "../lib/db.js";
 import type { RoomCandidate, RoomRecommendationQuery } from "../types.js";
 
-export class PricingHydrator extends BaseHydrator<
-  RoomRecommendationQuery,
-  RoomCandidate
-> {
+export class PricingHydrator extends BaseHydrator<RoomRecommendationQuery, RoomCandidate> {
   readonly name = "pricing";
 
   async hydrate(
@@ -26,10 +23,7 @@ export class PricingHydrator extends BaseHydrator<
     }
 
     const roomTypeIds = [...new Set(candidates.map((c) => c.roomTypeId))];
-    context.logger.debug(
-      { roomTypeCount: roomTypeIds.length },
-      "Fetching dynamic pricing",
-    );
+    context.logger.debug({ roomTypeCount: roomTypeIds.length }, "Fetching dynamic pricing");
 
     // Get rates for the date range
     const result = await query<{
@@ -46,24 +40,21 @@ export class PricingHydrator extends BaseHydrator<
       [roomTypeIds],
     );
 
-    const rateMap = new Map(
-      result.rows.map((row) => [row.room_type_id, Number(row.rate)]),
-    );
+    const rateMap = new Map(result.rows.map((row) => [row.room_type_id, Number(row.rate)]));
 
     // Calculate number of nights
     const checkIn = new Date(queryParams.checkInDate);
     const checkOut = new Date(queryParams.checkOutDate);
-    const nights = Math.ceil(
-      (checkOut.getTime() - checkIn.getTime()) / (1000 * 60 * 60 * 24),
-    );
+    const nights = Math.ceil((checkOut.getTime() - checkIn.getTime()) / (1000 * 60 * 60 * 24));
 
     return candidates.map((c) => {
       const dynamicRate = rateMap.get(c.roomTypeId) ?? c.baseRate;
 
       // Apply upgrade discount if applicable
-      const finalRate = c.isUpgrade && c.upgradeDiscount
-        ? dynamicRate * (1 - c.upgradeDiscount / 100)
-        : dynamicRate;
+      const finalRate =
+        c.isUpgrade && c.upgradeDiscount
+          ? dynamicRate * (1 - c.upgradeDiscount / 100)
+          : dynamicRate;
 
       return {
         dynamicRate: finalRate,

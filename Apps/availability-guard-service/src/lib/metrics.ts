@@ -1,9 +1,4 @@
-import {
-  Counter,
-  collectDefaultMetrics,
-  Histogram,
-  Registry,
-} from "prom-client";
+import { Counter, collectDefaultMetrics, Histogram, Registry } from "prom-client";
 
 export const metricsRegistry = new Registry();
 
@@ -59,10 +54,7 @@ export const recordGuardRequest = (
   requestCounter.labels(operation, result).inc();
 };
 
-export const observeGuardRequestDuration = (
-  operation: string,
-  durationSeconds: number,
-): void => {
+export const observeGuardRequestDuration = (operation: string, durationSeconds: number): void => {
   requestDuration.observe({ operation }, durationSeconds);
 };
 
@@ -70,9 +62,7 @@ export const recordLockConflict = (tenantId: string): void => {
   conflictCounter.labels(tenantId).inc();
 };
 
-export const recordNotificationMessage = (
-  status: "processed" | "skipped" | "failed",
-): void => {
+export const recordNotificationMessage = (status: "processed" | "skipped" | "failed"): void => {
   notificationMessageCounter.labels(status).inc();
 };
 
@@ -83,9 +73,7 @@ export const recordNotificationChannelDelivery = (
   notificationChannelCounter.labels(channel, status).inc();
 };
 
-export const observeNotificationDeliveryLag = (
-  lagSeconds: number | null,
-): void => {
+export const observeNotificationDeliveryLag = (lagSeconds: number | null): void => {
   if (lagSeconds === null || !Number.isFinite(lagSeconds)) {
     return;
   }

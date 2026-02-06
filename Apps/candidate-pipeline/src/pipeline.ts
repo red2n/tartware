@@ -228,6 +228,12 @@ export class CandidatePipeline<Q extends HasRequestId, C extends HasScore> {
       }),
     );
 
+    // Re-throw the first rejection when failOpen is false
+    if (!this.config.failOpen) {
+      const rejection = results.find((r): r is PromiseRejectedResult => r.status === "rejected");
+      if (rejection) throw rejection.reason;
+    }
+
     // Apply successful hydrations
     for (const result of results) {
       if (result.status === "fulfilled" && result.value) {
@@ -288,6 +294,12 @@ export class CandidatePipeline<Q extends HasRequestId, C extends HasScore> {
         }
       }),
     );
+
+    // Re-throw the first rejection when failOpen is false
+    if (!this.config.failOpen) {
+      const rejection = results.find((r): r is PromiseRejectedResult => r.status === "rejected");
+      if (rejection) throw rejection.reason;
+    }
 
     // Collect all successful results
     const candidates: C[] = [];
@@ -387,6 +399,12 @@ export class CandidatePipeline<Q extends HasRequestId, C extends HasScore> {
         }
       }),
     );
+
+    // Re-throw the first rejection when failOpen is false
+    if (!this.config.failOpen) {
+      const rejection = results.find((r): r is PromiseRejectedResult => r.status === "rejected");
+      if (rejection) throw rejection.reason;
+    }
 
     // Apply successful hydrations
     for (const result of results) {

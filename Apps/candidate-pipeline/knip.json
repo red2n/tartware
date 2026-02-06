@@ -1,0 +1,24 @@
+{
+  "$schema": "https://unpkg.com/knip@5/schema.json",
+  "project": [
+    "src/**/*.ts"
+  ],
+  "ignoreFiles": [
+    ".eslintrc.cjs"
+  ],
+  "ignoreDependencies": [
+    "@biomejs/biome",
+    "@vitest/coverage-v8"
+  ],
+  "ignoreBinaries": [
+    "biome",
+    "eslint",
+    "knip",
+    "tsc",
+    "vitest"
+  ],
+  "ignoreExportsUsedInFile": {
+    "type": true,
+    "interface": true
+  }
+}

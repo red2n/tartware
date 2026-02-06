@@ -1,19 +1,22 @@
-export type { QueryExecutor, InsertCommandDispatchInput } from "./repositories/command-dispatches.js";
+export type {
+  InsertCommandDispatchInput,
+  QueryExecutor,
+} from "./repositories/command-dispatches.js";
 export { createCommandDispatchRepository } from "./repositories/command-dispatches.js";
 export {
-  createCommandRegistryRepository,
-  type CommandRegistrySnapshot,
   type CommandFeatureRow,
+  type CommandRegistrySnapshot,
   type CommandRouteRow,
   type CommandTemplateRow,
+  createCommandRegistryRepository,
 } from "./repositories/command-registry.js";
 export {
-  createCommandDispatchService,
-  CommandDispatchError,
+  type AcceptCommandInput,
   type CommandAcceptanceResult,
   type CommandDispatchDependencies,
-  type CommandOutboxRecord,
-  type AcceptCommandInput,
-  type Initiator,
+  CommandDispatchError,
   type CommandFeatureInfo,
+  type CommandOutboxRecord,
+  createCommandDispatchService,
+  type Initiator,
 } from "./services/command-dispatch.js";

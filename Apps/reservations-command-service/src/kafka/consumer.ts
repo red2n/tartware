@@ -124,17 +124,8 @@ const handleBatch = async ({
         },
       });
       recordDlqEvent("parsing");
-      observeProcessingDuration(
-        batch.topic,
-        batch.partition,
-        secondsSince(startedAt),
-      );
-      updateConsumerLag(
-        batch.highWatermark,
-        batch.topic,
-        batch.partition,
-        offset,
-      );
+      observeProcessingDuration(batch.topic, batch.partition, secondsSince(startedAt));
+      updateConsumerLag(batch.highWatermark, batch.topic, batch.partition, offset);
       resolveOffset(offset);
       await heartbeat();
       continue;
@@ -183,20 +174,11 @@ const handleBatch = async ({
         offset,
         partition: batch.partition,
       });
-      observeProcessingDuration(
-        batch.topic,
-        batch.partition,
-        secondsSince(startedAt),
-      );
+      observeProcessingDuration(batch.topic, batch.partition, secondsSince(startedAt));
     } catch (error) {
-      const attempts =
-        error instanceof RetryExhaustedError ? error.attempts : 1;
+      const attempts = error instanceof RetryExhaustedError ? error.attempts : 1;
       const failureCause = buildFailureCause(error, "handler");
-      const dlqEvent = enrichEventForFailure(
-        parsedEvent,
-        attempts,
-        failureCause,
-      );
+      const dlqEvent = enrichEventForFailure(parsedEvent, attempts, failureCause);
 
       batchLogger.error(
         { err: error, offset, attempts },
@@ -227,22 +209,11 @@ const handleBatch = async ({
         attempts,
         failureCause,
         error:
-          error instanceof Error
-            ? { name: error.name, message: error.message }
-            : String(error),
+          error instanceof Error ? { name: error.name, message: error.message } : String(error),
       });
-      observeProcessingDuration(
-        batch.topic,
-        batch.partition,
-        secondsSince(startedAt),
-      );
+      observeProcessingDuration(batch.topic, batch.partition, secondsSince(startedAt));
     } finally {
-      updateConsumerLag(
-        batch.highWatermark,
-        batch.topic,
-        batch.partition,
-        offset,
-      );
+      updateConsumerLag(batch.highWatermark, batch.topic, batch.partition, offset);
       resolveOffset(offset);
       await heartbeat();
     }
@@ -305,10 +276,7 @@ const enrichEventForFailure = <TEvent extends ReservationEvent>(
   };
 };
 
-const buildFailureCause = (
-  error: unknown,
-  origin: "parser" | "handler",
-): FailureCause => {
+const buildFailureCause = (error: unknown, origin: "parser" | "handler"): FailureCause => {
   if (error instanceof Error) {
     return {
       name: error.name,

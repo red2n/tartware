@@ -1,0 +1,31 @@
+{
+  "$schema": "https://unpkg.com/knip@5/schema.json",
+  "project": [
+    "src/**/*.ts"
+  ],
+  "ignoreFiles": [
+    ".eslintrc.cjs"
+  ],
+  "ignoreDependencies": [
+    "@tartware/candidate-pipeline",
+    "@vitest/coverage-v8",
+    "pino-pretty",
+    "tsx"
+  ],
+  "ignoreBinaries": [
+    "biome",
+    "eslint",
+    "knip",
+    "tsc",
+    "tsx",
+    "vitest"
+  ],
+  "ignoreExportsUsedInFile": {
+    "type": true,
+    "interface": true
+  },
+  "ignore": [
+    "src/filters/index.ts",
+    "src/lib/db.ts"
+  ]
+}

@@ -86,8 +86,7 @@ export const listLockAuditRecords = async (
     conditions.push(`tenant_id = $${params.length}::uuid`);
   }
 
-  const whereClause =
-    conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
+  const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
   const limit = Math.min(Math.max(input.limit ?? 50, 1), 200);
 
   const result = await query<LockAuditRecord>(

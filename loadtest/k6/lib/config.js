@@ -1,138 +1,159 @@
 /**
- * Configuration module for Tartware load tests
- * Centralizes environment variables and default settings
+ * Fresh load testing configuration (v2)
+ * Focused on realistic PMS business transactions.
  */
 
-// Base URLs
 export const GATEWAY_URL = __ENV.GATEWAY_URL || "http://localhost:8080";
 
-// Authentication
 export const API_TOKEN = __ENV.API_TOKEN || "";
+export const ADMIN_USERNAME = __ENV.ADMIN_USERNAME || "setup.admin";
+export const ADMIN_PASSWORD = __ENV.ADMIN_PASSWORD || "TempPass123";
 
-// Test entities (seed data)
-export const TENANT_ID =
-	__ENV.TENANT_ID || "11111111-1111-1111-1111-111111111111";
-export const PROPERTY_ID =
-	__ENV.PROPERTY_ID || "22222222-2222-2222-2222-222222222222";
-export const ROOM_TYPE_ID =
-	__ENV.ROOM_TYPE_ID || "44444444-4444-4444-4444-444444444444";
-export const USER_ID =
-	__ENV.USER_ID || "33333333-3333-3333-3333-333333333333";
+const defaultTenantId = "11111111-1111-1111-1111-111111111111";
+const defaultPropertyId = "22222222-2222-2222-2222-222222222222";
+const defaultRoomTypeId = "44444444-4444-4444-4444-444444444444";
 
-// Service ports (for direct service testing)
-export const SERVICE_PORTS = {
-	gateway: 8080,
-	core: 3000,
-	settings: 3100,
-	guests: 3300,
-	rooms: 3400,
-	housekeeping: 3500,
-	billing: 3600,
-	commandCenter: 3700,
-};
+function parseCsv(value, fallback) {
+	if (!value) return fallback;
+	return value
+		.split(",")
+		.map((entry) => entry.trim())
+		.filter(Boolean);
+}
 
-// Test parameters
+export const TENANT_IDS = parseCsv(__ENV.TENANT_IDS, [defaultTenantId]);
+export const PROPERTY_IDS = parseCsv(__ENV.PROPERTY_IDS, [defaultPropertyId]);
+export const ROOM_TYPE_IDS = parseCsv(__ENV.ROOM_TYPE_IDS, [defaultRoomTypeId]);
+export const RATE_CODE = __ENV.RATE_CODE || "BAR";
+
 export const VUS = Number(__ENV.VUS) || 50;
 export const DURATION = __ENV.DURATION || "5m";
 export const RAMP_UP = __ENV.RAMP_UP || "30s";
 
-// Thresholds
-export const DEFAULT_THRESHOLDS = {
-	http_req_failed: ["rate<0.01"], // <1% errors
-	http_req_duration: ["p(95)<500", "p(99)<1000"], // p95 < 500ms, p99 < 1s
-	checks: ["rate>0.95"], // >95% checks pass
+const WORKLOAD_PROFILES = {
+	"ota-heavy": {
+		availability: 0.42,
+		reservationCreate: 0.1,
+		reservationModify: 0.07,
+		reservationCancel: 0.05,
+		otaSync: 0.14,
+		checkIn: 0.04,
+		checkOut: 0.04,
+		payment: 0.06,
+		reporting: 0.08,
+	},
+	"direct-heavy": {
+		availability: 0.38,
+		reservationCreate: 0.14,
+		reservationModify: 0.08,
+		reservationCancel: 0.05,
+		otaSync: 0.08,
+		checkIn: 0.05,
+		checkOut: 0.05,
+		payment: 0.09,
+		reporting: 0.08,
+	},
+	"enterprise-mix": {
+		availability: 0.4,
+		reservationCreate: 0.1,
+		reservationModify: 0.06,
+		reservationCancel: 0.04,
+		otaSync: 0.12,
+		checkIn: 0.05,
+		checkOut: 0.05,
+		payment: 0.08,
+		reporting: 0.1,
+	},
 };
 
-// Request headers
-export function getHeaders() {
-	if (!API_TOKEN) {
-		console.warn(
-			"WARNING: API_TOKEN not set. Authenticated requests will fail.",
+function hasExplicitRatioOverrides() {
+	return [
+		__ENV.AVAILABILITY_RATIO,
+		__ENV.RES_CREATE_RATIO,
+		__ENV.RES_MODIFY_RATIO,
+		__ENV.RES_CANCEL_RATIO,
+		__ENV.OTA_SYNC_RATIO,
+		__ENV.CHECKIN_RATIO,
+		__ENV.CHECKOUT_RATIO,
+		__ENV.PAYMENT_RATIO,
+		__ENV.REPORTING_RATIO,
+	].some((value) => value !== undefined && value !== "");
+}
+
+function normalizeRatios(ratios) {
+	const total = Object.values(ratios).reduce((sum, value) => sum + value, 0);
+	if (!total) {
+		throw new Error(
+			"All workload ratios are zero. Provide at least one non-zero ratio or select a valid WORKLOAD_PROFILE."
 		);
 	}
+	return Object.fromEntries(
+		Object.entries(ratios).map(([key, value]) => [key, value / total]),
+	);
+}
+
+const profileName = __ENV.WORKLOAD_PROFILE || "ota-heavy";
+const profileRatios = WORKLOAD_PROFILES[profileName] || WORKLOAD_PROFILES["ota-heavy"];
+
+const overrideRatios = {
+	availability: Number(__ENV.AVAILABILITY_RATIO) || 0,
+	reservationCreate: Number(__ENV.RES_CREATE_RATIO) || 0,
+	reservationModify: Number(__ENV.RES_MODIFY_RATIO) || 0,
+	reservationCancel: Number(__ENV.RES_CANCEL_RATIO) || 0,
+	otaSync: Number(__ENV.OTA_SYNC_RATIO) || 0,
+	checkIn: Number(__ENV.CHECKIN_RATIO) || 0,
+	checkOut: Number(__ENV.CHECKOUT_RATIO) || 0,
+	payment: Number(__ENV.PAYMENT_RATIO) || 0,
+	reporting: Number(__ENV.REPORTING_RATIO) || 0,
+};
+
+const baseRatios = hasExplicitRatioOverrides() ? overrideRatios : profileRatios;
+
+export const WORKLOAD_RATIOS = normalizeRatios(baseRatios);
+
+export const DEFAULT_THRESHOLDS = {
+	http_req_failed: ["rate<0.01"],
+	http_req_duration: ["p(95)<500", "p(99)<1000"],
+	checks: ["rate>0.95"],
+};
+
+export function getHeaders(token) {
 	return {
-		Authorization: `Bearer ${API_TOKEN}`,
+		Authorization: `Bearer ${token}`,
 		"Content-Type": "application/json",
 		Accept: "application/json",
-		"User-Agent": "tartware-k6-loadtest/1.0",
+		"User-Agent": "tartware-k6-loadtest/2.0",
 	};
 }
 
-// Service endpoints mapping
 export const ENDPOINTS = {
-	// Health
 	health: "/health",
-
-	// Auth
 	login: "/v1/auth/login",
-
-	// Core Service
+	commands: "/v1/commands",
 	tenants: "/v1/tenants",
 	properties: "/v1/properties",
-	users: "/v1/users",
-	modules: "/v1/modules",
-
-	// Rooms Service
 	rooms: "/v1/rooms",
 	roomTypes: "/v1/room-types",
-
-	// Guests Service
 	guests: "/v1/guests",
-	guestPreferences: "/v1/guest-preferences",
-	guestCommunications: "/v1/guest-communications",
-
-	// Billing Service
-	payments: "/v1/billing/payments",
-	invoices: "/v1/billing/invoices",
-	folios: "/v1/billing/folios",
-	taxConfigurations: "/v1/billing/tax-configurations",
-
-	// Housekeeping Service
-	housekeepingTasks: "/v1/housekeeping/tasks",
-	maintenanceRequests: "/v1/maintenance-requests",
-	incidentReports: "/v1/incident-reports",
-
-	// Reservations
 	reservations: "/v1/reservations",
 	availability: "/v1/availability",
-	waitlist: "/v1/waitlist",
-
-	// Recommendations
-	recommendations: "/v1/recommendations",
-	recommendationsRank: "/v1/recommendations/rank",
-
-	// Booking Config
-	allotments: "/v1/allotments",
-	bookingSources: "/v1/booking-sources",
-	marketSegments: "/v1/market-segments",
-	channelMappings: "/v1/channel-mappings",
-	companies: "/v1/companies",
-	meetingRooms: "/v1/meeting-rooms",
-	eventBookings: "/v1/event-bookings",
-	waitlist: "/v1/waitlist",
-
-	// Settings
-	rates: "/v1/rates",
-	ratePlans: "/v1/settings/rate-plans",
-	packages: "/v1/settings/packages",
-	amenities: "/v1/amenities",
-	cancellationPolicies: "/v1/settings/cancellation-policies",
-	depositPolicies: "/v1/settings/deposit-policies",
-	seasons: "/v1/settings/seasons",
-	configurations: "/v1/settings/configurations",
+	payments: "/v1/billing/payments",
+	dashboardStats: "/v1/dashboard/stats",
 };
 
 export default {
 	GATEWAY_URL,
 	API_TOKEN,
-	TENANT_ID,
-	PROPERTY_ID,
-	ROOM_TYPE_ID,
-	USER_ID,
-	SERVICE_PORTS,
+	ADMIN_USERNAME,
+	ADMIN_PASSWORD,
+	TENANT_IDS,
+	PROPERTY_IDS,
+	ROOM_TYPE_IDS,
+	RATE_CODE,
 	VUS,
 	DURATION,
 	RAMP_UP,
+	WORKLOAD_RATIOS,
 	DEFAULT_THRESHOLDS,
 	getHeaders,
 	ENDPOINTS,
