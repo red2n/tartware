@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { refundBillingPayment } from "../src/services/billing-command-service.js";
 
-const queryMock = vi.fn();
+const { queryMock } = vi.hoisted(() => ({ queryMock: vi.fn() }));
 
 vi.mock("../src/lib/db.js", () => ({
   query: queryMock,

@@ -24,9 +24,16 @@ export const buildTsconfigAliases = (tsconfigRelativePath, importerUrl) => {
     tsconfig?.compilerOptions?.baseUrl ?? ".",
   );
 
-  return Object.entries(paths).flatMap(([key, targetPaths]) => {
+  const aliases = Object.entries(paths).flatMap(([key, targetPaths]) => {
     const isKeyWildcard = key.endsWith("/*");
-    const find = isKeyWildcard ? key.slice(0, -1) : key;
+    // For wildcard keys like "@tartware/schemas/*", strip the trailing "*" to
+    // produce a prefix string that Vite will match via startsWith.
+    // For non-wildcard keys like "@tartware/schemas", use a regex anchored with $
+    // so that the alias only matches the exact bare specifier, not subpath imports
+    // like "@tartware/schemas/events/commands/billing".
+    const find = isKeyWildcard
+      ? key.slice(0, -1)
+      : new RegExp(`^${key.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`);
 
     return targetPaths.map((targetPath) => {
       const isTargetWildcard = targetPath.endsWith("/*");
@@ -35,4 +42,6 @@ export const buildTsconfigAliases = (tsconfigRelativePath, importerUrl) => {
       return { find, replacement };
     });
   });
+
+  return aliases;
 };
