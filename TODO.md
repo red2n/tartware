@@ -52,16 +52,17 @@ Full end-to-end trace of the reservation lifecycle across api-gateway, reservati
   - If the DB transaction fails, the lock is never released — room stays locked until TTL.
   - Fix: either move the gRPC call inside the transaction with a compensating release on rollback, or add a `finally` block that releases the lock on transaction failure.
 
-- [ ] **P1-3: No `GET /v1/reservations/:id` single-reservation endpoint**
+- [x] **P1-3: No `GET /v1/reservations/:id` single-reservation endpoint** (done)
   - core-service only has a list endpoint (`GET /v1/reservations`).
   - The gateway wildcard would proxy to core-service, which 404s since no handler exists.
   - Fix: add `RESERVATION_BY_ID_SQL` + route handler in core-service, expose through gateway.
+  - **Implemented**: `getReservationById()` in core-service with JOINs to properties/room_types, folio fetch, status_history array. Gateway route `GET /v1/reservations/:id` proxied to core-service. Returns full detail with nested folio and status history.
 
-- [ ] **P1-4: No room availability search endpoint**
+- [x] **P1-4: No room availability search endpoint** (done)
   - rooms-service has no `/v1/rooms/availability` endpoint.
   - Availability guard is gRPC-only (internal), not exposed via gateway.
   - No REST API for "show available rooms for date range" — a fundamental booking operation.
-  - Fix: add availability query endpoint in rooms-service or core-service that cross-references reservations/locks.
+  - **Implemented**: `searchAvailableRooms()` in rooms-service queries AVAILABLE + CLEAN/INSPECTED rooms excluding overlapping inventory_locks_shadow and active reservations, JOINs room_types and LEFT JOINs rates. Gateway route `GET /v1/rooms/availability?check_in=&check_out=` proxied to rooms-service.
 
 - [x] **P1-5: No folio auto-creation on reservation** (done — Tier 1 PMS Standards)
   - billing-service has no `billing.folio.create` command handler.
@@ -318,4 +319,32 @@ All 7 Tier 1 gaps (G1-G7) implemented and verified end-to-end via API Gateway (p
 | #28 | `current_date` is a PostgreSQL reserved keyword — night audit SQL used it as column name | Fixed to use actual column names: `business_date`, `previous_business_date` |
 | #29 | `billingLogger` undefined in night audit — variable never declared | Replaced with `appLogger` (imported from `"../lib/logger.js"`) |
 
-**Total bugs across all sessions**: 29 discovered, 28 fixed, 1 deferred (Bug #26 outbox bigint/UUID mismatch).
+**Total bugs across all sessions**: 35 discovered, 34 fixed, 1 deferred (Bug #26 outbox bigint/UUID mismatch).
+
+---
+
+### E2E Verification — Full Reservation Flow (2026-02-08, Session 2)
+
+Extended E2E testing to cover the complete reservation lifecycle: detailed retrieval, status history, cancellation guards, room availability search, folio settlement, and payment void.
+
+| Test | Feature | Result | Key Verifications |
+|------|---------|--------|-------------------|
+| 1 | GET /v1/reservations/:id | **PASS** | Full detail with nested folio object and status_history array |
+| 2 | Status history trigger | **PASS** | PENDING→CANCELLED captured with reason; shows in REST API response |
+| 3 | Cancel status guard | **PASS** | Logs `INVALID_STATUS_FOR_CANCEL: Cannot cancel reservation with status CANCELLED; must be PENDING or CONFIRMED` |
+| 4 | Room availability search | **PASS** | 2 rooms returned (101, 202); excludes occupied 201; rate $209; dates and nights calculated |
+| 5 | Cancel REST route | **PASS** | `POST /v1/tenants/:tenantId/reservations/:reservationId/cancel` added to gateway |
+| 6 | Folio close/settle | **PASS** | Folio `d5ee8a6d` → status=SETTLED, settled_at=2026-02-08, close_reason="settle" |
+| 7 | Payment void | **PASS** | Original AUTH-TEST-001 → CANCELLED; VOID-AUTH-TEST-001 record created with status=COMPLETED, type=VOID |
+
+#### Bugs Discovered During Session 2 E2E Testing (#30–#35)
+
+| Bug | Description | Fix |
+|-----|-------------|-----|
+| #30 | `rate_plans` table doesn't exist — availability query referenced wrong table | Changed to `rates` table with `status = 'ACTIVE'` filter |
+| #31 | `room_id` column doesn't exist in rooms table — PK is `id` | Changed `r.room_id` to `r.id AS room_id` in availability query |
+| #32 | `base_rate` column doesn't exist in room_types — column is `base_price` | Changed `rt.base_rate` to `rt.base_price` |
+| #33 | `.env` had `ROOMS_SERVICE_URL=http://localhost:3400` — rooms runs on 3015 | Fixed `.env` to port 3015 |
+| #34 | `close_reason` column missing from folios table | `ALTER TABLE folios ADD COLUMN close_reason TEXT` |
+| #35 | `chk_folios_settled` constraint — folio UPDATE must set `settled_at` NOT NULL when status=SETTLED | Moved `settled_at`/`settled_by` computation to JS-side with explicit type casts |
+| #36 | Version lock trigger on payment void UPDATE — missing `version = version + 1` | Added to payment UPDATE query in `voidPayment()` |

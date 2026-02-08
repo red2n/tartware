@@ -5,6 +5,7 @@ import { appLogger } from "../lib/logger.js";
 import {
   type BillingChargePostCommand,
   BillingChargePostCommandSchema,
+  BillingFolioCloseCommandSchema,
   type BillingFolioTransferCommand,
   BillingFolioTransferCommandSchema,
   type BillingInvoiceAdjustCommand,
@@ -19,6 +20,7 @@ import {
   BillingPaymentCaptureCommandSchema,
   type BillingPaymentRefundCommand,
   BillingPaymentRefundCommandSchema,
+  BillingPaymentVoidCommandSchema,
 } from "../schemas/billing-commands.js";
 import {
   addMoney,
@@ -524,18 +526,18 @@ const applyChargePost = async (
           $4::uuid,
           'CHARGE',
           'DEBIT',
-          'MISC',
           $5,
+          $6,
           1,
-          $6,
-          $6,
-          $6,
-          UPPER($7),
+          $7,
+          $7,
+          $7,
+          UPPER($8),
           NOW(),
           CURRENT_DATE,
-          $8,
-          $9::uuid,
-          $9::uuid
+          $9,
+          $10::uuid,
+          $10::uuid
         )
         RETURNING posting_id
       `,
@@ -544,6 +546,7 @@ const applyChargePost = async (
         command.property_id,
         folioId,
         command.reservation_id,
+        command.charge_code ?? "MISC",
         command.description ?? "Charge",
         command.amount,
         currency,
@@ -860,6 +863,7 @@ export const executeNightAudit = async (
 
   let chargesPosted = 0;
   let noShowsMarked = 0;
+  let taxChargesPosted = 0;
 
   // Step 1: Post room charges for in-house guests
   if (shouldPostCharges) {
@@ -902,7 +906,56 @@ export const executeNightAudit = async (
             [context.tenantId, command.property_id, folioId, res.id, roomRate, auditDate, actorId],
           );
 
-          // Update folio balance
+          // G7: Calculate and post applicable taxes for room charge
+          const taxResult = await queryWithClient<{ tax_code: string; tax_name: string; tax_rate: string }>(
+            client,
+            `SELECT tax_code, tax_name, tax_rate FROM tax_configurations
+             WHERE tenant_id = $1::uuid
+               AND (property_id = $2::uuid OR property_id IS NULL)
+               AND is_active = TRUE
+               AND effective_from <= $3::date
+               AND (effective_to IS NULL OR effective_to >= $3::date)
+               AND 'rooms' = ANY(applies_to)
+               AND is_percentage = TRUE
+             ORDER BY tax_code`,
+            [context.tenantId, command.property_id, auditDate],
+          );
+
+          let totalTaxAmount = 0;
+          for (const tax of taxResult.rows) {
+            const taxRate = Number(tax.tax_rate);
+            const taxAmount = Number((roomRate * taxRate / 100).toFixed(2));
+            if (taxAmount <= 0) continue;
+
+            await queryWithClient(
+              client,
+              `INSERT INTO public.charge_postings (
+                 tenant_id, property_id, folio_id, reservation_id,
+                 transaction_type, posting_type, charge_code, charge_description,
+                 quantity, unit_price, subtotal, total_amount,
+                 currency_code, posting_time, business_date,
+                 department_code, notes, created_by, updated_by
+               ) VALUES (
+                 $1::uuid, $2::uuid, $3::uuid, $4::uuid,
+                 'CHARGE', 'DEBIT', 'ROOM_TAX', $5,
+                 1, $6, $6, $6,
+                 'USD', NOW(), $7::date,
+                 'ROOMS', $8, $9::uuid, $9::uuid
+               )`,
+              [
+                context.tenantId, command.property_id, folioId, res.id,
+                `${tax.tax_name} (${taxRate}%)`,
+                taxAmount, auditDate,
+                `${tax.tax_code}: ${taxRate}% on room charge`,
+                actorId,
+              ],
+            );
+            totalTaxAmount += taxAmount;
+            taxChargesPosted++;
+          }
+
+          // Update folio balance (room charge + taxes)
+          const chargeTotal = roomRate + totalTaxAmount;
           await queryWithClient(
             client,
             `UPDATE public.folios
@@ -910,7 +963,7 @@ export const executeNightAudit = async (
                  balance = balance + $2,
                  updated_at = NOW(), updated_by = $3::uuid
              WHERE tenant_id = $1::uuid AND folio_id = $4::uuid`,
-            [context.tenantId, roomRate, actorId, folioId],
+            [context.tenantId, chargeTotal, actorId, folioId],
           );
         });
         chargesPosted++;
@@ -978,9 +1031,149 @@ export const executeNightAudit = async (
   );
 
   appLogger.info(
-    { auditDate, chargesPosted, noShowsMarked, auditRunId },
+    { auditDate, chargesPosted, noShowsMarked, taxChargesPosted, auditRunId },
     "Night audit completed",
   );
 
   return auditLogResult.rows[0]?.audit_log_id ?? `audit-${auditDate}`;
+};
+
+/**
+ * Close/settle a folio. Sets folio_status to SETTLED (if balance=0)
+ * or CLOSED (if balance > 0 and force=true). Blocks if balance > 0
+ * without force.
+ */
+export const closeFolio = async (
+  payload: unknown,
+  context: CommandContext,
+): Promise<string> => {
+  const command = BillingFolioCloseCommandSchema.parse(payload);
+  const actor = resolveActorId(context.initiatedBy);
+  const actorId = asUuid(actor) ?? SYSTEM_ACTOR_ID;
+
+  const folioId = await resolveFolioId(context.tenantId, command.reservation_id);
+  if (!folioId) {
+    throw new BillingCommandError("FOLIO_NOT_FOUND", "No folio found for reservation.");
+  }
+
+  // Check current folio state
+  const { rows } = await query<{ folio_status: string; balance: string }>(
+    `SELECT folio_status, balance FROM public.folios
+     WHERE tenant_id = $1::uuid AND folio_id = $2::uuid LIMIT 1`,
+    [context.tenantId, folioId],
+  );
+  const folio = rows[0];
+  if (!folio) {
+    throw new BillingCommandError("FOLIO_NOT_FOUND", "Folio record not found.");
+  }
+  if (folio.folio_status === "CLOSED" || folio.folio_status === "SETTLED") {
+    appLogger.info({ folioId, status: folio.folio_status }, "Folio already closed/settled");
+    return folioId;
+  }
+
+  const balance = parseDbMoneyOrZero(folio.balance);
+  if (balance > 0 && !command.force) {
+    throw new BillingCommandError(
+      "FOLIO_UNSETTLED",
+      `Folio has outstanding balance of ${balance.toFixed(2)}. Use force:true to close anyway.`,
+    );
+  }
+
+  const newStatus = balance === 0 ? "SETTLED" : "CLOSED";
+  const settledAt = newStatus === "SETTLED" ? new Date() : null;
+  const settledBy = newStatus === "SETTLED" ? actorId : null;
+  await query(
+    `UPDATE public.folios
+     SET folio_status = $3::text, closed_at = NOW(), close_reason = $4,
+         settled_at = $6::timestamptz, settled_by = $7::uuid,
+         updated_at = NOW(), updated_by = $5::uuid
+     WHERE tenant_id = $1::uuid AND folio_id = $2::uuid`,
+    [context.tenantId, folioId, newStatus, command.close_reason ?? null, actorId, settledAt, settledBy],
+  );
+
+  appLogger.info(
+    { folioId, newStatus, balance, reservationId: command.reservation_id },
+    "Folio closed/settled",
+  );
+  return folioId;
+};
+
+/**
+ * Void a previously authorized payment.
+ * Only AUTHORIZED payments can be voided. Creates a VOID transaction.
+ */
+export const voidPayment = async (
+  payload: unknown,
+  context: CommandContext,
+): Promise<string> => {
+  const command = BillingPaymentVoidCommandSchema.parse(payload);
+  const actor = resolveActorId(context.initiatedBy);
+  const actorId = asUuid(actor) ?? SYSTEM_ACTOR_ID;
+  const currency = "USD";
+
+  // Find the authorized payment by reference
+  const { rows: authRows } = await query<{ id: string; amount: string; status: string }>(
+    `SELECT id, amount, status FROM public.payments
+     WHERE tenant_id = $1::uuid AND payment_reference = $2
+     ORDER BY created_at DESC LIMIT 1`,
+    [context.tenantId, command.payment_reference],
+  );
+  const authPayment = authRows[0];
+  if (!authPayment) {
+    throw new BillingCommandError(
+      "PAYMENT_NOT_FOUND",
+      `No payment found with reference ${command.payment_reference}`,
+    );
+  }
+  if (authPayment.status !== "AUTHORIZED") {
+    throw new BillingCommandError(
+      "INVALID_PAYMENT_STATUS",
+      `Payment is ${authPayment.status}, only AUTHORIZED payments can be voided`,
+    );
+  }
+
+  const voidId = await withTransaction(async (client) => {
+    // Mark original payment as CANCELLED
+    await queryWithClient(
+      client,
+      `UPDATE public.payments SET status = 'CANCELLED', version = version + 1, updated_at = NOW()
+       WHERE id = $1::uuid AND tenant_id = $2::uuid`,
+      [authPayment.id, context.tenantId],
+    );
+
+    // Create a VOID transaction record
+    const result = await queryWithClient<{ id: string }>(
+      client,
+      `INSERT INTO public.payments (
+         tenant_id, property_id, reservation_id, guest_id,
+         payment_reference, amount, currency,
+         transaction_type, status, payment_method,
+         notes, created_by, updated_by
+       ) VALUES (
+         $1::uuid, $2::uuid, $3::uuid,
+         (SELECT guest_id FROM public.payments WHERE id = $4::uuid),
+         $5, $6, $7,
+         'VOID', 'COMPLETED', 'CREDIT_CARD',
+         $8, $9::uuid, $9::uuid
+       ) RETURNING id`,
+      [
+        context.tenantId,
+        command.property_id,
+        command.reservation_id,
+        authPayment.id,
+        `VOID-${command.payment_reference}`,
+        parseDbMoneyOrZero(authPayment.amount),
+        currency,
+        command.reason ?? "Payment voided",
+        actorId,
+      ],
+    );
+    return result.rows[0]?.id ?? randomUUID();
+  });
+
+  appLogger.info(
+    { voidId, originalPaymentId: authPayment.id, reference: command.payment_reference },
+    "Payment voided",
+  );
+  return voidId;
 };

@@ -15,6 +15,7 @@ import {
   getRoomById,
   listRooms,
   RoomListItemSchema,
+  searchAvailableRooms,
   updateRoom,
 } from "../services/room-service.js";
 
@@ -495,6 +496,94 @@ export const registerRoomRoutes = (app: FastifyInstance): void => {
       }
 
       return reply.status(204).send();
+    },
+  );
+
+  // --- Availability search endpoint ---
+
+  const AvailabilityQuerySchema = z.object({
+    tenant_id: z.string().uuid(),
+    property_id: z.string().uuid(),
+    check_in_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be YYYY-MM-DD"),
+    check_out_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be YYYY-MM-DD"),
+    room_type_id: z.string().uuid().optional(),
+    adults: z.coerce.number().int().min(1).max(20).optional(),
+    limit: z.coerce.number().int().positive().max(200).default(50),
+  });
+  type AvailabilityQuery = z.infer<typeof AvailabilityQuerySchema>;
+
+  const AvailableRoomSchema = z.object({
+    room_id: z.string(),
+    room_number: z.string(),
+    room_type_id: z.string(),
+    room_type_name: z.string(),
+    floor: z.string().nullable(),
+    status: z.string(),
+    housekeeping_status: z.string(),
+    max_occupancy: z.number(),
+    base_rate: z.number(),
+    currency: z.string(),
+    features: z.array(z.string()),
+  });
+  const AvailabilityResponseSchema = z.object({
+    available_rooms: z.array(AvailableRoomSchema),
+    total_count: z.number(),
+    check_in_date: z.string(),
+    check_out_date: z.string(),
+    nights: z.number(),
+  });
+
+  const AvailabilityQueryJsonSchema = schemaFromZod(AvailabilityQuerySchema, "AvailabilityQuery");
+  const AvailabilityResponseJsonSchema = schemaFromZod(AvailabilityResponseSchema, "AvailabilityResponse");
+
+  app.get<{ Querystring: AvailabilityQuery }>(
+    "/v1/rooms/availability",
+    {
+      preHandler: app.withTenantScope({
+        resolveTenantId: (request) => (request.query as AvailabilityQuery).tenant_id,
+        minRole: "STAFF",
+        requiredModules: "core",
+      }),
+      schema: buildRouteSchema({
+        tag: ROOMS_TAG,
+        summary: "Search available rooms for a date range",
+        querystring: AvailabilityQueryJsonSchema,
+        response: {
+          200: AvailabilityResponseJsonSchema,
+        },
+      }),
+    },
+    async (request, reply) => {
+      const q = AvailabilityQuerySchema.parse(request.query);
+
+      if (q.check_in_date >= q.check_out_date) {
+        return reply.status(400).send({
+          error: "INVALID_DATES",
+          message: "check_out_date must be after check_in_date",
+        });
+      }
+
+      const rooms = await searchAvailableRooms({
+        tenantId: q.tenant_id,
+        propertyId: q.property_id,
+        checkInDate: q.check_in_date,
+        checkOutDate: q.check_out_date,
+        roomTypeId: q.room_type_id,
+        adults: q.adults,
+        limit: q.limit,
+      });
+
+      const cinDate = new Date(q.check_in_date);
+      const coutDate = new Date(q.check_out_date);
+      const nights = Math.max(1, Math.round((coutDate.getTime() - cinDate.getTime()) / 86400000));
+
+      return {
+        available_rooms: rooms,
+        total_count: rooms.length,
+        check_in_date: q.check_in_date,
+        check_out_date: q.check_out_date,
+        nights,
+      };
     },
   );
 };

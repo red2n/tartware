@@ -346,6 +346,20 @@ export const buildServer = () => {
     );
 
     app.get(
+      "/v1/reservations/:id",
+      {
+        schema: buildRouteSchema({
+          tag: RESERVATION_PROXY_TAG,
+          summary: "Get a single reservation by ID with folio and status history.",
+          response: {
+            200: jsonObjectSchema,
+          },
+        }),
+      },
+      proxyCore,
+    );
+
+    app.get(
       "/v1/tenants",
       {
         schema: buildRouteSchema({
@@ -480,6 +494,30 @@ export const buildServer = () => {
         }),
       },
       reservationHandler,
+    );
+
+    app.post(
+      "/v1/tenants/:tenantId/reservations/:reservationId/cancel",
+      {
+        preHandler: tenantScopeFromParams,
+        schema: buildRouteSchema({
+          tag: RESERVATION_PROXY_TAG,
+          summary: "Cancel a reservation via Command Center.",
+          params: tenantReservationParamsSchema,
+          body: jsonObjectSchema,
+          response: {
+            202: jsonObjectSchema,
+          },
+        }),
+      },
+      (request, reply) =>
+        forwardCommandWithParamId({
+          request,
+          reply,
+          commandName: "reservation.cancel",
+          paramKey: "reservationId",
+          payloadKey: "reservation_id",
+        }),
     );
 
     app.post(
@@ -2175,6 +2213,52 @@ export const buildServer = () => {
           request,
           reply,
           commandName: "billing.folio.transfer",
+        }),
+    );
+
+    app.post(
+      "/v1/tenants/:tenantId/billing/folios/close",
+      {
+        preHandler: tenantScopeFromParams,
+        schema: buildRouteSchema({
+          tag: BILLING_COMMAND_TAG,
+          summary: "Close/settle a folio via the Command Center.",
+          params: reservationParamsSchema,
+          body: jsonObjectSchema,
+          response: {
+            202: jsonObjectSchema,
+          },
+        }),
+      },
+      (request, reply) =>
+        forwardCommandWithTenant({
+          request,
+          reply,
+          commandName: "billing.folio.close",
+        }),
+    );
+
+    app.post(
+      "/v1/tenants/:tenantId/billing/payments/:paymentId/void",
+      {
+        preHandler: tenantScopeFromParams,
+        schema: buildRouteSchema({
+          tag: BILLING_COMMAND_TAG,
+          summary: "Void a previously authorized payment via the Command Center.",
+          params: tenantPaymentParamsSchema,
+          body: jsonObjectSchema,
+          response: {
+            202: jsonObjectSchema,
+          },
+        }),
+      },
+      (request, reply) =>
+        forwardCommandWithParamId({
+          request,
+          reply,
+          commandName: "billing.payment.void",
+          paramKey: "paymentId",
+          payloadKey: "payment_id",
         }),
     );
 

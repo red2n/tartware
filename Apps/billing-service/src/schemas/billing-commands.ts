@@ -1,6 +1,8 @@
 export {
   type BillingChargePostCommand,
   BillingChargePostCommandSchema,
+  type BillingFolioCloseCommand,
+  BillingFolioCloseCommandSchema,
   type BillingFolioTransferCommand,
   BillingFolioTransferCommandSchema,
   type BillingInvoiceAdjustCommand,
@@ -17,4 +19,6 @@ export {
   BillingPaymentCaptureCommandSchema,
   type BillingPaymentRefundCommand,
   BillingPaymentRefundCommandSchema,
+  type BillingPaymentVoidCommand,
+  BillingPaymentVoidCommandSchema,
 } from "@tartware/schemas/events/commands/billing";
