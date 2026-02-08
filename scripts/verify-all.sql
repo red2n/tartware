@@ -125,7 +125,8 @@ BEGIN
             'sync_channel_availability', 'sync_channel_reservations', 'sync_channel_mapping',
             'sync_rate_plans', 'apply_seasonal_rate_adjustments', 'sync_daily_rate_overrides',
             'copy_rate_plan', 'aggregate_daily_metrics', 'aggregate_monthly_metrics',
-            'calculate_revenue_metrics', 'sync_metric_dimensions'
+            'calculate_revenue_metrics', 'sync_metric_dimensions',
+            'track_reservation_status_change'
         );
 
     -- Count soft delete implementations (base tables only)

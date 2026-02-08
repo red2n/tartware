@@ -28,6 +28,9 @@ import {
   ReservationNoShowCommandSchema,
   ReservationRateOverrideCommandSchema,
   ReservationUnassignRoomCommandSchema,
+  ReservationWaitlistAddCommandSchema,
+  ReservationWaitlistConvertCommandSchema,
+  ReservationWalkInCheckInCommandSchema,
 } from "../schemas/reservation-command.js";
 import {
   addDeposit,
@@ -42,6 +45,9 @@ import {
   overrideRate,
   releaseDeposit,
   unassignRoom,
+  waitlistAdd,
+  waitlistConvert,
+  walkInCheckIn,
 } from "../services/reservation-command-service.js";
 
 let commandConsumer: Consumer | null = null;
@@ -194,6 +200,21 @@ const routeReservationCommand = async (
     case "reservation.no_show": {
       const commandPayload = ReservationNoShowCommandSchema.parse(envelope.payload);
       await markNoShow(metadata.tenantId, commandPayload, context);
+      break;
+    }
+    case "reservation.walkin_checkin": {
+      const commandPayload = ReservationWalkInCheckInCommandSchema.parse(envelope.payload);
+      await walkInCheckIn(metadata.tenantId, commandPayload, context);
+      break;
+    }
+    case "reservation.waitlist_add": {
+      const commandPayload = ReservationWaitlistAddCommandSchema.parse(envelope.payload);
+      await waitlistAdd(metadata.tenantId, commandPayload, context);
+      break;
+    }
+    case "reservation.waitlist_convert": {
+      const commandPayload = ReservationWaitlistConvertCommandSchema.parse(envelope.payload);
+      await waitlistConvert(metadata.tenantId, commandPayload, context);
       break;
     }
     default:

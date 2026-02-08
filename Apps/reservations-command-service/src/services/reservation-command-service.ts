@@ -43,6 +43,9 @@ import type {
   ReservationNoShowCommand,
   ReservationRateOverrideCommand,
   ReservationUnassignRoomCommand,
+  ReservationWaitlistAddCommand,
+  ReservationWaitlistConvertCommand,
+  ReservationWalkInCheckInCommand,
 } from "../schemas/reservation-command.js";
 import type { RatePlanResolution } from "../services/rate-plan-service.js";
 import { resolveRatePlan } from "../services/rate-plan-service.js";
@@ -496,6 +499,48 @@ const fetchRoomNumber = async (tenantId: string, roomId: string): Promise<string
 };
 
 /**
+ * Find the best available room matching a room type for the given stay dates.
+ * Selects the first clean, available room with no overlapping locks or reservations.
+ * Used for auto-assignment at check-in and walk-in express.
+ */
+const findBestAvailableRoom = async (
+  tenantId: string,
+  propertyId: string,
+  roomTypeId: string,
+  checkIn: Date,
+  checkOut: Date,
+): Promise<{ room_id: string; room_number: string } | null> => {
+  const { rows } = await query<{ room_id: string; room_number: string }>(
+    `SELECT r.id AS room_id, r.room_number
+     FROM rooms r
+     WHERE r.tenant_id = $1::uuid
+       AND r.property_id = $2::uuid
+       AND r.room_type_id = $3::uuid
+       AND r.status = 'AVAILABLE'
+       AND r.housekeeping_status IN ('CLEAN', 'INSPECTED')
+       AND COALESCE(r.is_blocked, false) = false
+       AND COALESCE(r.is_out_of_order, false) = false
+       AND COALESCE(r.is_deleted, false) = false
+       AND NOT EXISTS (
+         SELECT 1 FROM inventory_locks_shadow ils
+         WHERE ils.room_id = r.id AND ils.tenant_id = r.tenant_id
+           AND ils.status = 'ACTIVE'
+           AND ils.stay_start < $5::date AND ils.stay_end > $4::date
+       )
+       AND NOT EXISTS (
+         SELECT 1 FROM reservations res
+         WHERE res.room_number = r.room_number AND res.tenant_id = r.tenant_id
+           AND res.status IN ('PENDING', 'CONFIRMED', 'CHECKED_IN')
+           AND res.check_in_date < $5::date AND res.check_out_date > $4::date
+       )
+     ORDER BY r.room_number
+     LIMIT 1`,
+    [tenantId, propertyId, roomTypeId, checkIn.toISOString(), checkOut.toISOString()],
+  );
+  return rows[0] ?? null;
+};
+
+/**
  * Check in a reservation: validates status, assigns room, marks room OCCUPIED.
  * PMS industry standard pre-conditions:
  *  - Reservation must exist and belong to this tenant
@@ -532,15 +577,19 @@ export const checkInReservation = async (
     );
   }
 
-  // 2. Validate room is available and clean if room_id provided
-  if (command.room_id) {
+  // 2. Validate room is available and clean if room_id provided.
+  //    If no room_id, auto-assign the best available room for this room type.
+  let assignedRoomId = command.room_id;
+  let assignedRoomNumber: string | null = null;
+
+  if (assignedRoomId) {
     const roomResult = await query(
       `SELECT id, status, room_number FROM rooms WHERE id = $1 AND tenant_id = $2 LIMIT 1`,
-      [command.room_id, tenantId],
+      [assignedRoomId, tenantId],
     );
     const room = roomResult.rows?.[0] as { id: string; status: string; room_number: string } | undefined;
     if (!room) {
-      throw new ReservationCommandError("ROOM_NOT_FOUND", `Room ${command.room_id} not found`);
+      throw new ReservationCommandError("ROOM_NOT_FOUND", `Room ${assignedRoomId} not found`);
     }
     if (room.status === "DIRTY") {
       throw new ReservationCommandError(
@@ -559,6 +608,33 @@ export const checkInReservation = async (
         "ROOM_NOT_AVAILABLE",
         `Room ${room.room_number} is ${room.status}, not AVAILABLE`,
       );
+    }
+    assignedRoomNumber = room.room_number;
+  } else {
+    // Auto-assign: find the best available room matching the reservation's room type
+    const resPropertyResult = await query(
+      `SELECT property_id FROM reservations WHERE id = $1 AND tenant_id = $2 LIMIT 1`,
+      [command.reservation_id, tenantId],
+    );
+    const propertyId = (resPropertyResult.rows?.[0] as { property_id: string } | undefined)?.property_id;
+    if (propertyId) {
+      const bestRoom = await findBestAvailableRoom(
+        tenantId, propertyId, reservation.room_type_id,
+        new Date(reservation.check_in_date), new Date(reservation.check_out_date),
+      );
+      if (bestRoom) {
+        assignedRoomId = bestRoom.room_id;
+        assignedRoomNumber = bestRoom.room_number;
+        reservationsLogger.info(
+          { reservationId: command.reservation_id, autoAssigned: bestRoom.room_number },
+          "Auto-assigned best available room for check-in",
+        );
+      } else {
+        reservationsLogger.warn(
+          { reservationId: command.reservation_id, roomTypeId: reservation.room_type_id },
+          "No clean available room found for auto-assignment; proceeding without room",
+        );
+      }
     }
   }
 
@@ -585,7 +661,7 @@ export const checkInReservation = async (
     }
   }
 
-  const roomNumber = command.room_id ? await fetchRoomNumber(tenantId, command.room_id) : null;
+  const roomNumber = assignedRoomNumber ?? (assignedRoomId ? await fetchRoomNumber(tenantId, assignedRoomId) : null);
   const updatePayload: ReservationUpdatePayload = {
     id: command.reservation_id,
     tenant_id: tenantId,
@@ -595,27 +671,28 @@ export const checkInReservation = async (
     internal_notes: command.notes,
     metadata: {
       ...command.metadata,
-      room_id: command.room_id,
+      room_id: assignedRoomId,
       guest_id: reservation.guest_id,
       room_type_id: reservation.room_type_id,
+      auto_assigned: !command.room_id && !!assignedRoomId,
     },
   };
   const result = await enqueueReservationUpdate(tenantId, "reservation.check_in", updatePayload, options);
 
   // 3. Mark room as OCCUPIED (post-enqueue, best-effort)
-  if (command.room_id) {
+  if (assignedRoomId) {
     try {
       await query(
         `UPDATE rooms SET status = 'OCCUPIED', version = version + 1, updated_at = NOW() WHERE id = $1 AND tenant_id = $2`,
-        [command.room_id, tenantId],
+        [assignedRoomId, tenantId],
       );
       reservationsLogger.info(
-        { roomId: command.room_id, reservationId: command.reservation_id },
+        { roomId: assignedRoomId, reservationId: command.reservation_id },
         "Room marked OCCUPIED on check-in",
       );
     } catch (roomError) {
       reservationsLogger.warn(
-        { roomId: command.room_id, error: roomError },
+        { roomId: assignedRoomId, error: roomError },
         "Failed to mark room OCCUPIED on check-in — manual update required",
       );
     }
@@ -664,7 +741,7 @@ export const checkOutReservation = async (
     );
   }
 
-  // 2. Enforce folio settlement (blocks checkout unless force=true)
+  // 2. Enforce folio settlement (blocks checkout unless force=true or express=true)
   try {
     const folioResult = await query(
       `SELECT folio_id, balance FROM folios
@@ -673,7 +750,29 @@ export const checkOutReservation = async (
     );
     const folio = folioResult.rows?.[0] as { folio_id: string; balance: number } | undefined;
     if (folio && Number(folio.balance) > 0) {
-      if (command.force) {
+      if (command.express) {
+        // Express checkout: auto-settle the folio (post-departure billing for any balance)
+        try {
+          await query(
+            `UPDATE folios
+             SET folio_status = 'SETTLED',
+                 settled_at = NOW(),
+                 close_reason = 'EXPRESS_CHECKOUT',
+                 updated_at = NOW()
+             WHERE folio_id = $1 AND tenant_id = $2`,
+            [folio.folio_id, tenantId],
+          );
+          reservationsLogger.info(
+            { reservationId: command.reservation_id, folioId: folio.folio_id, balance: folio.balance },
+            "Express checkout: folio auto-settled for post-departure billing",
+          );
+        } catch (settleErr) {
+          reservationsLogger.warn(
+            { folioId: folio.folio_id, error: settleErr },
+            "Express checkout: failed to auto-settle folio, proceeding anyway",
+          );
+        }
+      } else if (command.force) {
         reservationsLogger.warn(
           { reservationId: command.reservation_id, folioId: folio.folio_id, balance: folio.balance },
           "Check-out forced with unsettled folio balance",
@@ -681,8 +780,23 @@ export const checkOutReservation = async (
       } else {
         throw new ReservationCommandError(
           "FOLIO_UNSETTLED",
-          `Cannot check out — folio ${folio.folio_id} has outstanding balance of ${folio.balance}. Use force:true to override.`,
+          `Cannot check out — folio ${folio.folio_id} has outstanding balance of ${folio.balance}. Use force:true or express:true to override.`,
         );
+      }
+    } else if (folio && command.express) {
+      // Express checkout with $0 balance: just settle the folio cleanly
+      try {
+        await query(
+          `UPDATE folios
+           SET folio_status = 'SETTLED',
+               settled_at = NOW(),
+               close_reason = 'EXPRESS_CHECKOUT',
+               updated_at = NOW()
+           WHERE folio_id = $1 AND tenant_id = $2`,
+          [folio.folio_id, tenantId],
+        );
+      } catch {
+        // Non-critical
       }
     }
   } catch (err) {
@@ -1228,6 +1342,358 @@ export const cancelReservation = async (
     correlationId: options.correlationId,
     status: "accepted",
   };
+};
+
+/**
+ * Walk-in express check-in: creates a reservation, assigns a room, and checks
+ * in the guest in a single synchronous operation. Bypasses the normal async
+ * create pipeline because the guest is at the front desk and needs immediate
+ * accommodation.
+ *
+ * Flow: Direct INSERT → room OCCUPIED → availability lock → outbox event.
+ */
+export const walkInCheckIn = async (
+  tenantId: string,
+  command: ReservationWalkInCheckInCommand,
+  options: { correlationId?: string } = {},
+): Promise<CreateReservationResult> => {
+  const eventId = uuid();
+  const reservationId = uuid();
+  const now = new Date();
+  const checkInDate = now;
+  const checkOutDate = new Date(command.check_out_date);
+
+  if (checkOutDate <= checkInDate) {
+    throw new ReservationCommandError(
+      "INVALID_DATES",
+      "check_out_date must be after today for walk-in check-in",
+    );
+  }
+
+  // 1. Resolve rate plan
+  const rateResolution = await resolveRatePlan({
+    tenantId,
+    propertyId: command.property_id,
+    roomTypeId: command.room_type_id,
+    stayStart: checkInDate,
+    stayEnd: checkOutDate,
+    requestedRateCode: command.rate_code,
+  });
+
+  if (rateResolution.fallbackApplied && !command.allow_rate_fallback) {
+    throw new ReservationCommandError(
+      "RATE_FALLBACK_NOT_ALLOWED",
+      `Requested rate "${rateResolution.requestedRateCode}" unavailable; set allow_rate_fallback=true for fallback to "${rateResolution.appliedRateCode}"`,
+    );
+  }
+
+  // 2. Find or validate room
+  let roomId = command.room_id ?? null;
+  let roomNumber: string | null = null;
+
+  if (roomId) {
+    const rn = await fetchRoomNumber(tenantId, roomId);
+    if (!rn) throw new ReservationCommandError("ROOM_NOT_FOUND", `Room ${roomId} not found`);
+    // Validate room is available
+    const roomResult = await query(
+      `SELECT status FROM rooms WHERE id = $1 AND tenant_id = $2 LIMIT 1`,
+      [roomId, tenantId],
+    );
+    const roomStatus = (roomResult.rows?.[0] as { status: string } | undefined)?.status;
+    if (roomStatus !== "AVAILABLE") {
+      throw new ReservationCommandError("ROOM_NOT_AVAILABLE", `Room ${rn} is ${roomStatus}, not AVAILABLE`);
+    }
+    roomNumber = rn;
+  } else {
+    // Auto-assign best available room
+    const bestRoom = await findBestAvailableRoom(
+      tenantId, command.property_id, command.room_type_id, checkInDate, checkOutDate,
+    );
+    if (!bestRoom) {
+      throw new ReservationCommandError(
+        "NO_AVAILABLE_ROOMS",
+        "No clean available rooms found for the requested room type",
+      );
+    }
+    roomId = bestRoom.room_id;
+    roomNumber = bestRoom.room_number;
+  }
+
+  // 3. Look up guest details
+  const guestResult = await query(
+    `SELECT first_name, last_name, email FROM guests WHERE id = $1 AND tenant_id = $2 LIMIT 1`,
+    [command.guest_id, tenantId],
+  );
+  const guest = guestResult.rows?.[0] as
+    | { first_name: string; last_name: string; email: string }
+    | undefined;
+  const guestName = guest ? `${guest.first_name ?? ""} ${guest.last_name ?? ""}`.trim() : "Walk-In Guest";
+  const guestEmail = guest?.email ?? "walkin@unknown.com";
+
+  // 4. Calculate nightly rate
+  const nights = Math.max(
+    1,
+    Math.round((checkOutDate.getTime() - checkInDate.getTime()) / (1000 * 60 * 60 * 24)),
+  );
+  const totalAmount = Number(command.total_amount ?? 0);
+  const roomRate = Number((totalAmount / nights).toFixed(2));
+  const currency = (command.currency ?? DEFAULT_CURRENCY).toUpperCase();
+  const confirmation = `TW-${reservationId.slice(0, 8).toUpperCase()}`;
+
+  // 5. Lock availability
+  await lockReservationHold({
+    tenantId,
+    reservationId,
+    roomTypeId: command.room_type_id,
+    roomId,
+    stayStart: checkInDate,
+    stayEnd: checkOutDate,
+    reason: "WALKIN_CHECKIN",
+    correlationId: options.correlationId ?? eventId,
+  });
+
+  // 6. Direct INSERT + room OCCUPIED + outbox event in one transaction
+  await withTransaction(async (client) => {
+    // Insert reservation directly (CHECKED_IN from the start)
+    await client.query(
+      `INSERT INTO reservations (
+        id, tenant_id, property_id, guest_id, room_type_id,
+        check_in_date, check_out_date, booking_date,
+        status, source, reservation_type,
+        room_rate, total_amount, currency,
+        guest_name, guest_email, confirmation_number,
+        room_number, actual_check_in,
+        eta, company_id, travel_agent_id,
+        created_at, updated_at
+      ) VALUES (
+        $1, $2, $3, $4, $5,
+        $6, $7, NOW(),
+        'CHECKED_IN', 'WALKIN', 'TRANSIENT',
+        $8, $9, $10,
+        $11, $12, $13,
+        $14, NOW(),
+        $15, $16, $17,
+        NOW(), NOW()
+      )
+      ON CONFLICT (id) DO NOTHING`,
+      [
+        reservationId, tenantId, command.property_id, command.guest_id, command.room_type_id,
+        checkInDate.toISOString().slice(0, 10), checkOutDate.toISOString().slice(0, 10),
+        roomRate, totalAmount, currency,
+        guestName, guestEmail, confirmation,
+        roomNumber,
+        command.eta ?? null, command.company_id ?? null, command.travel_agent_id ?? null,
+      ],
+    );
+
+    // Mark room OCCUPIED
+    await client.query(
+      `UPDATE rooms SET status = 'OCCUPIED', version = version + 1, updated_at = NOW()
+       WHERE id = $1 AND tenant_id = $2`,
+      [roomId, tenantId],
+    );
+
+    // Record lifecycle
+    await recordLifecyclePersisted(client, {
+      eventId,
+      tenantId,
+      reservationId,
+      commandName: "reservation.walkin_checkin",
+      correlationId: options.correlationId,
+      partitionKey: command.guest_id,
+      details: {
+        tenantId, reservationId, command: "reservation.walkin_checkin",
+        roomNumber, source: "WALKIN",
+      },
+      metadata: { eventType: "reservation.created" },
+    });
+
+    // Enqueue outbox event for downstream consumers
+    const createdEvent = {
+      metadata: {
+        id: eventId,
+        source: serviceConfig.serviceId,
+        type: "reservation.created",
+        timestamp: now.toISOString(),
+        version: "1.0",
+        correlationId: options.correlationId,
+        tenantId,
+        retryCount: 0,
+      },
+      payload: {
+        id: reservationId,
+        property_id: command.property_id,
+        guest_id: command.guest_id,
+        room_type_id: command.room_type_id,
+        check_in_date: checkInDate,
+        check_out_date: checkOutDate,
+        booking_date: now,
+        total_amount: totalAmount,
+        currency,
+        status: "CHECKED_IN",
+        source: "WALKIN",
+        reservation_type: "TRANSIENT",
+        rate_code: rateResolution.appliedRateCode,
+      },
+    };
+
+    await enqueueOutboxRecordWithClient(client, {
+      eventId,
+      tenantId,
+      aggregateId: reservationId,
+      aggregateType: "reservation",
+      eventType: "reservation.created",
+      payload: createdEvent,
+      headers: { tenantId, eventId },
+      correlationId: options.correlationId,
+      partitionKey: command.guest_id,
+      metadata: {
+        source: serviceConfig.serviceId,
+        walkIn: true,
+        roomNumber,
+      },
+    });
+  });
+
+  reservationsLogger.info(
+    { reservationId, roomNumber, guestName, confirmation },
+    "Walk-in express check-in completed",
+  );
+
+  return { eventId, correlationId: options.correlationId, status: "accepted" };
+};
+
+/**
+ * Add a guest to the waitlist for a sold-out date/room type.
+ * Inserts a row into the waitlist_entries table.
+ */
+export const waitlistAdd = async (
+  tenantId: string,
+  command: ReservationWaitlistAddCommand,
+  options: { correlationId?: string } = {},
+): Promise<CreateReservationResult> => {
+  const eventId = uuid();
+  const waitlistId = uuid();
+
+  const arrivalDate = new Date(command.arrival_date);
+  const departureDate = new Date(command.departure_date);
+  if (departureDate <= arrivalDate) {
+    throw new ReservationCommandError("INVALID_DATES", "departure_date must be after arrival_date");
+  }
+
+  await query(
+    `INSERT INTO waitlist_entries (
+      waitlist_id, tenant_id, property_id, guest_id,
+      requested_room_type_id, requested_rate_id,
+      arrival_date, departure_date,
+      number_of_rooms, number_of_adults, number_of_children,
+      flexibility, waitlist_status, vip_flag, notes,
+      created_at
+    ) VALUES (
+      $1, $2, $3, $4,
+      $5, $6,
+      $7, $8,
+      $9, $10, $11,
+      $12, 'ACTIVE', $13, $14,
+      NOW()
+    )`,
+    [
+      waitlistId, tenantId, command.property_id, command.guest_id,
+      command.requested_room_type_id, command.requested_rate_id ?? null,
+      arrivalDate.toISOString().slice(0, 10), departureDate.toISOString().slice(0, 10),
+      command.number_of_rooms ?? 1, command.number_of_adults ?? 1, command.number_of_children ?? 0,
+      command.flexibility ?? "NONE", command.vip_flag ?? false, command.notes ?? null,
+    ],
+  );
+
+  reservationsLogger.info(
+    { waitlistId, guestId: command.guest_id, roomTypeId: command.requested_room_type_id,
+      arrivalDate: arrivalDate.toISOString().slice(0, 10) },
+    "Guest added to waitlist",
+  );
+
+  return { eventId, correlationId: options.correlationId, status: "accepted" };
+};
+
+/**
+ * Convert a waitlist entry into a confirmed reservation.
+ * Marks the waitlist entry as CONFIRMED and creates a new reservation
+ * through the normal creation pipeline.
+ */
+export const waitlistConvert = async (
+  tenantId: string,
+  command: ReservationWaitlistConvertCommand,
+  options: { correlationId?: string } = {},
+): Promise<CreateReservationResult> => {
+  // 1. Fetch waitlist entry
+  const wlResult = await query(
+    `SELECT waitlist_id, guest_id, requested_room_type_id, requested_rate_id,
+            arrival_date, departure_date, number_of_adults, number_of_children,
+            waitlist_status, notes
+     FROM waitlist_entries
+     WHERE waitlist_id = $1 AND tenant_id = $2 AND COALESCE(is_deleted, false) = false
+     LIMIT 1`,
+    [command.waitlist_id, tenantId],
+  );
+  const entry = wlResult.rows?.[0] as {
+    waitlist_id: string; guest_id: string; requested_room_type_id: string;
+    requested_rate_id: string | null; arrival_date: Date; departure_date: Date;
+    number_of_adults: number; number_of_children: number;
+    waitlist_status: string; notes: string | null;
+  } | undefined;
+
+  if (!entry) {
+    throw new ReservationCommandError("WAITLIST_NOT_FOUND", `Waitlist entry ${command.waitlist_id} not found`);
+  }
+  if (entry.waitlist_status !== "ACTIVE" && entry.waitlist_status !== "OFFERED") {
+    throw new ReservationCommandError(
+      "INVALID_WAITLIST_STATUS",
+      `Cannot convert waitlist with status ${entry.waitlist_status}; must be ACTIVE or OFFERED`,
+    );
+  }
+
+  // 2. Mark waitlist entry as CONFIRMED
+  await query(
+    `UPDATE waitlist_entries
+     SET waitlist_status = 'CONFIRMED', updated_at = NOW()
+     WHERE waitlist_id = $1 AND tenant_id = $2`,
+    [command.waitlist_id, tenantId],
+  );
+
+  // 3. Create reservation via the normal pipeline
+  const roomTypeId = command.room_type_id ?? entry.requested_room_type_id;
+  const result = await createReservation(tenantId, {
+    property_id: command.property_id,
+    guest_id: entry.guest_id,
+    room_type_id: roomTypeId,
+    check_in_date: entry.arrival_date,
+    check_out_date: entry.departure_date,
+    rate_code: command.rate_code,
+    allow_rate_fallback: command.allow_rate_fallback,
+    total_amount: command.total_amount,
+    currency: command.currency,
+    notes: command.notes ?? entry.notes ?? undefined,
+    source: "DIRECT",
+    reservation_type: "TRANSIENT",
+  }, options);
+
+  // 4. Link waitlist entry to the new reservation
+  try {
+    await query(
+      `UPDATE waitlist_entries SET reservation_id = $3, updated_at = NOW()
+       WHERE waitlist_id = $1 AND tenant_id = $2`,
+      [command.waitlist_id, tenantId, result.eventId],
+    );
+  } catch {
+    // Non-critical
+  }
+
+  reservationsLogger.info(
+    { waitlistId: command.waitlist_id, guestId: entry.guest_id },
+    "Waitlist entry converted to reservation",
+  );
+
+  return result;
 };
 
 const buildReservationUpdatePayload = (

@@ -272,12 +272,16 @@ export type SeasonType = z.infer<typeof SeasonTypeEnum>;
  * @database reservation_status
  */
 export const ReservationStatusEnum = z.enum([
+	"INQUIRY",
+	"QUOTED",
 	"PENDING",
 	"CONFIRMED",
+	"WAITLISTED",
 	"CHECKED_IN",
 	"CHECKED_OUT",
 	"CANCELLED",
 	"NO_SHOW",
+	"EXPIRED",
 ]);
 export type ReservationStatus = z.infer<typeof ReservationStatusEnum>;
 

@@ -14,12 +14,16 @@ const RateCodeSchema = z
 	.regex(/^[A-Z0-9_-]+$/i, "Rate code must be alphanumeric with - or _");
 
 const ReservationStatusEnum = z.enum([
+	"INQUIRY",
+	"QUOTED",
 	"PENDING",
 	"CONFIRMED",
+	"WAITLISTED",
 	"CHECKED_IN",
 	"CHECKED_OUT",
 	"CANCELLED",
 	"NO_SHOW",
+	"EXPIRED",
 ]);
 
 export const ReservationCreateCommandSchema = z.object({
@@ -43,6 +47,9 @@ export const ReservationCreateCommandSchema = z.object({
 	total_amount: z.coerce.number().nonnegative(),
 	currency: z.string().length(3).optional(),
 	notes: z.string().max(2000).optional(),
+	eta: z.string().regex(/^\d{2}:\d{2}$/, "ETA must be HH:MM format").optional(),
+	company_id: z.string().uuid().optional(),
+	travel_agent_id: z.string().uuid().optional(),
 });
 
 export type ReservationCreateCommand = z.infer<
@@ -115,6 +122,7 @@ export const ReservationCheckOutCommandSchema = z.object({
 	reservation_id: z.string().uuid(),
 	checked_out_at: z.coerce.date().optional(),
 	force: z.boolean().optional(),
+	express: z.boolean().optional(),
 	notes: z.string().max(2000).optional(),
 	metadata: z.record(z.unknown()).optional(),
 	idempotency_key: z.string().max(120).optional(),
@@ -230,4 +238,77 @@ export const ReservationNoShowCommandSchema = z.object({
 
 export type ReservationNoShowCommand = z.infer<
 	typeof ReservationNoShowCommandSchema
+>;
+
+/**
+ * Walk-in express check-in: creates a reservation, assigns a room, and checks
+ * in the guest in a single atomic operation. Used for walk-in guests at the
+ * front desk who need immediate accommodation.
+ */
+export const ReservationWalkInCheckInCommandSchema = z.object({
+	property_id: z.string().uuid(),
+	guest_id: z.string().uuid(),
+	room_type_id: z.string().uuid(),
+	room_id: z.string().uuid().optional(),
+	check_out_date: z.coerce.date(),
+	rate_code: RateCodeSchema.optional(),
+	allow_rate_fallback: z.boolean().optional(),
+	total_amount: z.coerce.number().nonnegative(),
+	currency: z.string().length(3).optional(),
+	notes: z.string().max(2000).optional(),
+	eta: z.string().regex(/^\d{2}:\d{2}$/, "ETA must be HH:MM format").optional(),
+	company_id: z.string().uuid().optional(),
+	travel_agent_id: z.string().uuid().optional(),
+	metadata: z.record(z.unknown()).optional(),
+	idempotency_key: z.string().max(120).optional(),
+});
+
+export type ReservationWalkInCheckInCommand = z.infer<
+	typeof ReservationWalkInCheckInCommandSchema
+>;
+
+/**
+ * Add a guest to the waitlist for a sold-out date/room type.
+ * Creates a waitlist_entries row with priority scoring.
+ */
+export const ReservationWaitlistAddCommandSchema = z.object({
+	property_id: z.string().uuid(),
+	guest_id: z.string().uuid(),
+	requested_room_type_id: z.string().uuid(),
+	requested_rate_id: z.string().uuid().optional(),
+	arrival_date: z.coerce.date(),
+	departure_date: z.coerce.date(),
+	number_of_rooms: z.coerce.number().int().positive().optional(),
+	number_of_adults: z.coerce.number().int().positive().optional(),
+	number_of_children: z.coerce.number().int().nonnegative().optional(),
+	flexibility: z.enum(["NONE", "DATE", "ROOM_TYPE", "EITHER"]).optional(),
+	vip_flag: z.boolean().optional(),
+	notes: z.string().max(2000).optional(),
+	metadata: z.record(z.unknown()).optional(),
+	idempotency_key: z.string().max(120).optional(),
+});
+
+export type ReservationWaitlistAddCommand = z.infer<
+	typeof ReservationWaitlistAddCommandSchema
+>;
+
+/**
+ * Convert a waitlist entry into a confirmed reservation.
+ * Marks the waitlist entry as CONFIRMED and creates a new reservation.
+ */
+export const ReservationWaitlistConvertCommandSchema = z.object({
+	waitlist_id: z.string().uuid(),
+	property_id: z.string().uuid(),
+	room_type_id: z.string().uuid().optional(),
+	rate_code: RateCodeSchema.optional(),
+	allow_rate_fallback: z.boolean().optional(),
+	total_amount: z.coerce.number().nonnegative(),
+	currency: z.string().length(3).optional(),
+	notes: z.string().max(2000).optional(),
+	metadata: z.record(z.unknown()).optional(),
+	idempotency_key: z.string().max(120).optional(),
+});
+
+export type ReservationWaitlistConvertCommand = z.infer<
+	typeof ReservationWaitlistConvertCommandSchema
 >;

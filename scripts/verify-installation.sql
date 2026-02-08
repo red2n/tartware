@@ -113,6 +113,204 @@ END $$;
 \echo 'VERIFICATION COMPLETE!'
 \echo '============================================='
 \echo ''
+
+-- =====================================================
+-- 8. INDUSTRY STANDARDS VALIDATION
+-- =====================================================
+\echo '8. INDUSTRY STANDARDS VALIDATION:'
+\echo '-------------------------------------------'
+
+DO $$
+DECLARE
+    v_pass INTEGER := 0;
+    v_fail INTEGER := 0;
+    v_enum_vals TEXT[];
+BEGIN
+    RAISE NOTICE '';
+    RAISE NOTICE '--- Enum Enhancements ---';
+
+    -- Check reservation_status has INQUIRY, QUOTED, EXPIRED, WAITLISTED
+    SELECT array_agg(enumlabel ORDER BY enumsortorder) INTO v_enum_vals
+    FROM pg_enum e
+    JOIN pg_type t ON e.enumtypid = t.oid
+    WHERE t.typname = 'reservation_status';
+
+    IF v_enum_vals @> ARRAY['INQUIRY', 'QUOTED', 'EXPIRED', 'WAITLISTED'] THEN
+        RAISE NOTICE '  ✓ reservation_status has INQUIRY, QUOTED, EXPIRED, WAITLISTED';
+        v_pass := v_pass + 1;
+    ELSE
+        RAISE WARNING '  ✗ reservation_status missing new values';
+        v_fail := v_fail + 1;
+    END IF;
+
+    -- Check payment_status has AUTHORIZED
+    SELECT array_agg(enumlabel ORDER BY enumsortorder) INTO v_enum_vals
+    FROM pg_enum e
+    JOIN pg_type t ON e.enumtypid = t.oid
+    WHERE t.typname = 'payment_status';
+
+    IF v_enum_vals @> ARRAY['AUTHORIZED'] THEN
+        RAISE NOTICE '  ✓ payment_status has AUTHORIZED';
+        v_pass := v_pass + 1;
+    ELSE
+        RAISE WARNING '  ✗ payment_status missing AUTHORIZED';
+        v_fail := v_fail + 1;
+    END IF;
+
+    RAISE NOTICE '';
+    RAISE NOTICE '--- Reservations Table Enhancements ---';
+
+    -- Check reservations has reservation_type, eta, company_id, travel_agent_id
+    IF EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema = 'public' AND table_name = 'reservations'
+        AND column_name = 'reservation_type'
+    ) THEN
+        RAISE NOTICE '  ✓ reservations.reservation_type column exists';
+        v_pass := v_pass + 1;
+    ELSE
+        RAISE WARNING '  ✗ reservations.reservation_type column MISSING';
+        v_fail := v_fail + 1;
+    END IF;
+
+    IF EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema = 'public' AND table_name = 'reservations'
+        AND column_name = 'eta'
+    ) THEN
+        RAISE NOTICE '  ✓ reservations.eta column exists';
+        v_pass := v_pass + 1;
+    ELSE
+        RAISE WARNING '  ✗ reservations.eta column MISSING';
+        v_fail := v_fail + 1;
+    END IF;
+
+    IF EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema = 'public' AND table_name = 'reservations'
+        AND column_name = 'company_id'
+    ) THEN
+        RAISE NOTICE '  ✓ reservations.company_id column exists';
+        v_pass := v_pass + 1;
+    ELSE
+        RAISE WARNING '  ✗ reservations.company_id column MISSING';
+        v_fail := v_fail + 1;
+    END IF;
+
+    IF EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema = 'public' AND table_name = 'reservations'
+        AND column_name = 'travel_agent_id'
+    ) THEN
+        RAISE NOTICE '  ✓ reservations.travel_agent_id column exists';
+        v_pass := v_pass + 1;
+    ELSE
+        RAISE WARNING '  ✗ reservations.travel_agent_id column MISSING';
+        v_fail := v_fail + 1;
+    END IF;
+
+    RAISE NOTICE '';
+    RAISE NOTICE '--- Reference Data ---';
+
+    -- Check charge_codes table exists
+    IF EXISTS (
+        SELECT 1 FROM information_schema.tables
+        WHERE table_schema = 'public' AND table_name = 'charge_codes'
+    ) THEN
+        RAISE NOTICE '  ✓ charge_codes table exists';
+        v_pass := v_pass + 1;
+    ELSE
+        RAISE WARNING '  ✗ charge_codes table MISSING';
+        v_fail := v_fail + 1;
+    END IF;
+
+    -- Check charge_codes has seed data
+    IF EXISTS (SELECT 1 FROM charge_codes WHERE code = 'ROOM') THEN
+        RAISE NOTICE '  ✓ charge_codes has USALI seed data';
+        v_pass := v_pass + 1;
+    ELSE
+        RAISE WARNING '  ✗ charge_codes seed data MISSING';
+        v_fail := v_fail + 1;
+    END IF;
+
+    -- Check tax_configurations has default seeds
+    IF EXISTS (SELECT 1 FROM tax_configurations WHERE tax_code = 'US-OCCUPANCY-DEFAULT') THEN
+        RAISE NOTICE '  ✓ tax_configurations has default tax seeds';
+        v_pass := v_pass + 1;
+    ELSE
+        RAISE WARNING '  ✗ tax_configurations default seeds MISSING';
+        v_fail := v_fail + 1;
+    END IF;
+
+    RAISE NOTICE '';
+    RAISE NOTICE '--- Procedures & Triggers ---';
+
+    -- Check track_reservation_status_change function exists
+    IF EXISTS (
+        SELECT 1 FROM pg_proc p
+        JOIN pg_namespace n ON p.pronamespace = n.oid
+        WHERE n.nspname = 'public' AND p.proname = 'track_reservation_status_change'
+    ) THEN
+        RAISE NOTICE '  ✓ track_reservation_status_change() function exists';
+        v_pass := v_pass + 1;
+    ELSE
+        RAISE WARNING '  ✗ track_reservation_status_change() function MISSING';
+        v_fail := v_fail + 1;
+    END IF;
+
+    -- Check trg_reservation_status_history trigger exists
+    IF EXISTS (
+        SELECT 1 FROM information_schema.triggers
+        WHERE trigger_schema = 'public'
+        AND trigger_name = 'trg_reservation_status_history'
+    ) THEN
+        RAISE NOTICE '  ✓ trg_reservation_status_history trigger exists';
+        v_pass := v_pass + 1;
+    ELSE
+        RAISE WARNING '  ✗ trg_reservation_status_history trigger MISSING';
+        v_fail := v_fail + 1;
+    END IF;
+
+    RAISE NOTICE '';
+    RAISE NOTICE '--- Indexes ---';
+
+    -- Check idx_reservations_type index exists
+    IF EXISTS (
+        SELECT 1 FROM pg_indexes
+        WHERE schemaname = 'public' AND indexname = 'idx_reservations_type'
+    ) THEN
+        RAISE NOTICE '  ✓ idx_reservations_type index exists';
+        v_pass := v_pass + 1;
+    ELSE
+        RAISE WARNING '  ✗ idx_reservations_type index MISSING';
+        v_fail := v_fail + 1;
+    END IF;
+
+    -- Check idx_guests_tenant_email is UNIQUE
+    IF EXISTS (
+        SELECT 1 FROM pg_index i
+        JOIN pg_class c ON c.oid = i.indexrelid
+        WHERE c.relname = 'idx_guests_tenant_email' AND i.indisunique = true
+    ) THEN
+        RAISE NOTICE '  ✓ idx_guests_tenant_email is UNIQUE';
+        v_pass := v_pass + 1;
+    ELSE
+        RAISE WARNING '  ✗ idx_guests_tenant_email is NOT UNIQUE';
+        v_fail := v_fail + 1;
+    END IF;
+
+    RAISE NOTICE '';
+    RAISE NOTICE '==========================================';
+    RAISE NOTICE 'Industry Standards: % passed, % failed', v_pass, v_fail;
+    IF v_fail = 0 THEN
+        RAISE NOTICE '✓✓✓ ALL INDUSTRY STANDARDS CHECKS PASSED ✓✓✓';
+    ELSE
+        RAISE WARNING '⚠⚠⚠ % INDUSTRY STANDARDS CHECK(S) FAILED ⚠⚠⚠', v_fail;
+    END IF;
+    RAISE NOTICE '==========================================';
+END $$;
+\echo ''
+
 \echo 'Expected Results:'
 \echo '  - Extensions: 1 (uuid-ossp)'
 \echo '  - Schemas: 2 (public, availability)'

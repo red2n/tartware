@@ -72,6 +72,9 @@ import {
 	ReservationRateOverrideCommandSchema,
 	ReservationUnassignRoomCommandSchema,
 	ReservationNoShowCommandSchema,
+	ReservationWalkInCheckInCommandSchema,
+	ReservationWaitlistAddCommandSchema,
+	ReservationWaitlistConvertCommandSchema,
 } from "./events/commands/reservations.js";
 import {
 	RoomFeaturesUpdateCommandSchema,
@@ -293,6 +296,18 @@ const commandPayloadValidators = new Map<string, CommandPayloadValidator>([
 	[
 		"reservation.no_show",
 		(payload) => ReservationNoShowCommandSchema.parse(payload),
+	],
+	[
+		"reservation.walkin_checkin",
+		(payload) => ReservationWalkInCheckInCommandSchema.parse(payload),
+	],
+	[
+		"reservation.waitlist_add",
+		(payload) => ReservationWaitlistAddCommandSchema.parse(payload),
+	],
+	[
+		"reservation.waitlist_convert",
+		(payload) => ReservationWaitlistConvertCommandSchema.parse(payload),
 	],
 	[
 		"rooms.inventory.block",

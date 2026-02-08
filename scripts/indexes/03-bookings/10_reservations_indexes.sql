@@ -46,6 +46,10 @@ CREATE INDEX IF NOT EXISTS idx_reservations_departures ON reservations(property_
 CREATE INDEX IF NOT EXISTS idx_reservations_in_house ON reservations(property_id, status, check_in_date, check_out_date)
     WHERE deleted_at IS NULL AND status = 'CHECKED_IN';
 
+-- Reservation type segmentation
+CREATE INDEX IF NOT EXISTS idx_reservations_type ON reservations(tenant_id, property_id, reservation_type)
+    WHERE is_deleted = false;
+
 -- Source and channel
 CREATE INDEX IF NOT EXISTS idx_reservations_source ON reservations(source) WHERE deleted_at IS NULL;
 CREATE INDEX IF NOT EXISTS idx_reservations_channel_ref ON reservations(channel_reference) WHERE channel_reference IS NOT NULL AND deleted_at IS NULL;

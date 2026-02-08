@@ -89,7 +89,7 @@ END;
 $$;
 
 COMMENT ON FUNCTION upsert_guest IS
-'Inserts new guest or updates existing guest based on email. Prevents duplicate profiles per tenant.';
+'Inserts new guest or updates existing guest based on email. Prevents duplicate profiles per tenant. Packs address fields into JSONB.';
 
 -- =====================================================
 -- Function: merge_duplicate_guests

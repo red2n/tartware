@@ -1,0 +1,6 @@
+        indexname        |                                                                  indexdef                                                                   
+-------------------------+---------------------------------------------------------------------------------------------------------------------------------------------
+ idx_guests_tenant_email | CREATE UNIQUE INDEX idx_guests_tenant_email ON public.guests USING btree (tenant_id, email) WHERE (deleted_at IS NULL)
+ idx_reservations_type   | CREATE INDEX idx_reservations_type ON public.reservations USING btree (tenant_id, property_id, reservation_type) WHERE (is_deleted = false)
+(2 rows)
+

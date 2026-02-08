@@ -88,6 +88,14 @@ CREATE TABLE IF NOT EXISTS reservations (
     no_show_date TIMESTAMP,
     no_show_fee DECIMAL(15,2) DEFAULT 0.00,
 
+    -- Reservation Classification
+    reservation_type reservation_type NOT NULL DEFAULT 'TRANSIENT',
+
+    -- ETA & Corporate/Agency Links
+    eta TIME,
+    company_id UUID,
+    travel_agent_id UUID,
+
     -- Marketing
     promo_code VARCHAR(50),
 
@@ -140,6 +148,10 @@ COMMENT ON COLUMN reservations.status IS 'ENUM: pending, confirmed, checked_in, 
 COMMENT ON COLUMN reservations.source IS 'ENUM: direct, ota, phone, walk_in, corporate, group, channel_manager';
 COMMENT ON COLUMN reservations.balance_due IS 'Computed: total_amount - paid_amount';
 COMMENT ON COLUMN reservations.is_no_show IS 'Guest did not arrive';
+COMMENT ON COLUMN reservations.reservation_type IS 'PMS industry-standard reservation classification (TRANSIENT, CORPORATE, GROUP, etc.)';
+COMMENT ON COLUMN reservations.eta IS 'Estimated time of arrival (HH:MM)';
+COMMENT ON COLUMN reservations.company_id IS 'Corporate account FK for negotiated-rate bookings';
+COMMENT ON COLUMN reservations.travel_agent_id IS 'Travel agency FK for agent-booked reservations';
 COMMENT ON COLUMN reservations.deleted_at IS 'Soft delete timestamp (NULL = active)';
 
 \echo 'Reservations table created successfully!'

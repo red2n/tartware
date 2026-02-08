@@ -23,4 +23,10 @@ export {
   ReservationRateOverrideCommandSchema,
   type ReservationUnassignRoomCommand,
   ReservationUnassignRoomCommandSchema,
+  type ReservationWaitlistAddCommand,
+  ReservationWaitlistAddCommandSchema,
+  type ReservationWaitlistConvertCommand,
+  ReservationWaitlistConvertCommandSchema,
+  type ReservationWalkInCheckInCommand,
+  ReservationWalkInCheckInCommandSchema,
 } from "@tartware/schemas/events/commands/reservations";

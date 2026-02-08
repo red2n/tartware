@@ -141,6 +141,24 @@ const tenantReservationParamsSchema = {
   additionalProperties: false,
 } as const satisfies JsonSchema;
 
+const waitlistConvertParamsSchema = {
+  type: "object",
+  properties: {
+    tenantId: {
+      type: "string",
+      format: "uuid",
+      description: "Tenant identifier.",
+    },
+    waitlistId: {
+      type: "string",
+      format: "uuid",
+      description: "Waitlist entry identifier.",
+    },
+  },
+  required: ["tenantId", "waitlistId"],
+  additionalProperties: false,
+} as const satisfies JsonSchema;
+
 const tenantPaymentParamsSchema = {
   type: "object",
   properties: {
@@ -710,6 +728,111 @@ export const buildServer = () => {
           paramKey: "reservationId",
           payloadKey: "reservation_id",
         }),
+    );
+
+    app.post(
+      "/v1/tenants/:tenantId/reservations/:reservationId/no-show",
+      {
+        preHandler: tenantScopeFromParams,
+        schema: buildRouteSchema({
+          tag: RESERVATION_PROXY_TAG,
+          summary: "Mark a reservation as no-show via Command Center.",
+          params: tenantReservationParamsSchema,
+          body: jsonObjectSchema,
+          response: {
+            202: jsonObjectSchema,
+          },
+        }),
+      },
+      (request, reply) =>
+        forwardCommandWithParamId({
+          request,
+          reply,
+          commandName: "reservation.no_show",
+          paramKey: "reservationId",
+          payloadKey: "reservation_id",
+        }),
+    );
+
+    app.post(
+      "/v1/tenants/:tenantId/reservations/walk-in",
+      {
+        preHandler: tenantScopeFromParams,
+        schema: buildRouteSchema({
+          tag: RESERVATION_PROXY_TAG,
+          summary: "Walk-in express check-in: create reservation + assign room + check-in atomically.",
+          params: reservationParamsSchema,
+          body: jsonObjectSchema,
+          response: {
+            202: jsonObjectSchema,
+          },
+        }),
+      },
+      async (request, reply) => {
+        const { tenantId } = request.params as { tenantId: string };
+        const body = (request.body ?? {}) as Record<string, unknown>;
+        return submitCommand({
+          request,
+          reply,
+          commandName: "reservation.walkin_checkin",
+          tenantId,
+          payload: { ...body, tenant_id: tenantId },
+        });
+      },
+    );
+
+    app.post(
+      "/v1/tenants/:tenantId/reservations/waitlist",
+      {
+        preHandler: tenantScopeFromParams,
+        schema: buildRouteSchema({
+          tag: RESERVATION_PROXY_TAG,
+          summary: "Add a guest to the room waitlist.",
+          params: reservationParamsSchema,
+          body: jsonObjectSchema,
+          response: {
+            202: jsonObjectSchema,
+          },
+        }),
+      },
+      async (request, reply) => {
+        const { tenantId } = request.params as { tenantId: string };
+        const body = (request.body ?? {}) as Record<string, unknown>;
+        return submitCommand({
+          request,
+          reply,
+          commandName: "reservation.waitlist_add",
+          tenantId,
+          payload: { ...body, tenant_id: tenantId },
+        });
+      },
+    );
+
+    app.post(
+      "/v1/tenants/:tenantId/reservations/waitlist/:waitlistId/convert",
+      {
+        preHandler: tenantScopeFromParams,
+        schema: buildRouteSchema({
+          tag: RESERVATION_PROXY_TAG,
+          summary: "Convert a waitlist entry into a confirmed reservation.",
+          params: waitlistConvertParamsSchema,
+          body: jsonObjectSchema,
+          response: {
+            202: jsonObjectSchema,
+          },
+        }),
+      },
+      async (request, reply) => {
+        const { tenantId, waitlistId } = request.params as { tenantId: string; waitlistId: string };
+        const body = (request.body ?? {}) as Record<string, unknown>;
+        return submitCommand({
+          request,
+          reply,
+          commandName: "reservation.waitlist_convert",
+          tenantId,
+          payload: { ...body, tenant_id: tenantId, waitlist_id: waitlistId },
+        });
+      },
     );
 
     app.all(
