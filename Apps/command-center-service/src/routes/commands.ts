@@ -70,8 +70,7 @@ export const registerCommandRoutes = (app: FastifyInstance): void => {
 
       const membership = request.auth.getMembership(body.tenant_id);
       if (!membership) {
-        reply.forbidden("TENANT_ACCESS_DENIED");
-        return;
+        return reply.forbidden("TENANT_ACCESS_DENIED");
       }
 
       const initiatedByInput = body.metadata?.initiated_by;
@@ -87,12 +86,11 @@ export const registerCommandRoutes = (app: FastifyInstance): void => {
         validatedPayload = validateCommandPayload(commandName, body.payload);
       } catch (error) {
         if (error instanceof ZodError) {
-          reply.status(400).send({
+          return reply.status(400).send({
             error: "COMMAND_PAYLOAD_INVALID",
             message: `${commandName} payload failed validation`,
             issues: error.issues,
           });
-          return;
         }
         throw error;
       }
@@ -107,14 +105,13 @@ export const registerCommandRoutes = (app: FastifyInstance): void => {
           membership,
           requestId: (request.headers["x-request-id"] as string | undefined) ?? randomUUID(),
         });
-        reply.status(202).send(result);
+        return reply.status(202).send(result);
       } catch (error) {
         if (error instanceof CommandDispatchError) {
-          reply.status(error.statusCode).send({
+          return reply.status(error.statusCode).send({
             error: error.code,
             message: error.message,
           });
-          return;
         }
         throw error;
       }

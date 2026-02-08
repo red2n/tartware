@@ -296,6 +296,23 @@ export const ReservationSourceEnum = z.enum([
 ]);
 export type ReservationSource = z.infer<typeof ReservationSourceEnum>;
 
+/**
+ * Reservation Type - Booking category classification
+ * @database reservation_type
+ */
+export const ReservationTypeEnum = z.enum([
+	"TRANSIENT",
+	"CORPORATE",
+	"GROUP",
+	"WHOLESALE",
+	"PACKAGE",
+	"COMPLIMENTARY",
+	"HOUSE_USE",
+	"DAY_USE",
+	"WAITLIST",
+]);
+export type ReservationType = z.infer<typeof ReservationTypeEnum>;
+
 // =====================================================
 // PAYMENT ENUMS
 // =====================================================
@@ -1154,6 +1171,7 @@ export const AllEnums = {
 	SeasonTypeEnum,
 	ReservationStatusEnum,
 	ReservationSourceEnum,
+	ReservationTypeEnum,
 	PaymentMethodEnum,
 	PaymentStatusEnum,
 	TransactionTypeEnum,

@@ -85,6 +85,7 @@
 \ir 03-bookings/92_roll_service_consumer_offsets.sql
 \ir 03-bookings/91_inventory_lock_audits.sql
 \ir 03-bookings/92_reservation_guard_locks.sql
+\ir 03-bookings/93_inventory_locks_shadow.sql
 
 -- ============================================================================
 -- CATEGORY 4: FINANCIAL (Payments, invoices, folios, accounting)

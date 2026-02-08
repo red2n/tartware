@@ -37,6 +37,9 @@ export const ReservationCreateCommandSchema = z.object({
 	source: z
 		.enum(["DIRECT", "WEBSITE", "PHONE", "WALKIN", "OTA", "CORPORATE", "GROUP"])
 		.optional(),
+	reservation_type: z
+		.enum(["TRANSIENT", "CORPORATE", "GROUP", "WHOLESALE", "PACKAGE", "COMPLIMENTARY", "HOUSE_USE", "DAY_USE", "WAITLIST"])
+		.optional(),
 	total_amount: z.coerce.number().nonnegative(),
 	currency: z.string().length(3).optional(),
 	notes: z.string().max(2000).optional(),
@@ -111,6 +114,7 @@ export type ReservationCheckInCommand = z.infer<
 export const ReservationCheckOutCommandSchema = z.object({
 	reservation_id: z.string().uuid(),
 	checked_out_at: z.coerce.date().optional(),
+	force: z.boolean().optional(),
 	notes: z.string().max(2000).optional(),
 	metadata: z.record(z.unknown()).optional(),
 	idempotency_key: z.string().max(120).optional(),
@@ -210,4 +214,20 @@ export const ReservationDepositReleaseCommandSchema = z
 
 export type ReservationDepositReleaseCommand = z.infer<
 	typeof ReservationDepositReleaseCommandSchema
+>;
+
+/**
+ * Mark a reservation as no-show. Applies when a guest fails to arrive
+ * by the cutoff time on the check-in date.
+ */
+export const ReservationNoShowCommandSchema = z.object({
+	reservation_id: z.string().uuid(),
+	no_show_fee: z.coerce.number().nonnegative().optional(),
+	reason: z.string().max(500).optional(),
+	metadata: z.record(z.unknown()).optional(),
+	idempotency_key: z.string().max(120).optional(),
+});
+
+export type ReservationNoShowCommand = z.infer<
+	typeof ReservationNoShowCommandSchema
 >;

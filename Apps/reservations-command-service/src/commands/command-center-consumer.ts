@@ -1,7 +1,19 @@
+import {
+  type CommandEnvelope,
+  type CommandMetadata,
+  createCommandCenterHandlers,
+} from "@tartware/command-consumer-utils";
 import type { Consumer } from "kafkajs";
 
-import { commandCenterConfig, kafkaConfig, serviceConfig } from "../config.js";
+import { commandCenterConfig } from "../config.js";
 import { kafka } from "../kafka/client.js";
+import { publishCommandDlqEvent } from "../kafka/producer.js";
+import {
+  observeCommandDuration,
+  recordCommandOutcome,
+  setCommandConsumerLag,
+} from "../lib/metrics.js";
+import { processWithRetry, RetryExhaustedError } from "../lib/retry.js";
 import { reservationsLogger } from "../logger.js";
 import {
   ReservationAssignRoomCommandSchema,
@@ -13,6 +25,7 @@ import {
   ReservationDepositReleaseCommandSchema,
   ReservationExtendStayCommandSchema,
   ReservationModifyCommandSchema,
+  ReservationNoShowCommandSchema,
   ReservationRateOverrideCommandSchema,
   ReservationUnassignRoomCommandSchema,
 } from "../schemas/reservation-command.js";
@@ -24,24 +37,15 @@ import {
   checkOutReservation,
   createReservation,
   extendStay,
+  markNoShow,
   modifyReservation,
   overrideRate,
   releaseDeposit,
   unassignRoom,
 } from "../services/reservation-command-service.js";
 
-type CommandEnvelope = {
-  metadata?: {
-    commandName?: string;
-    tenantId?: string;
-    targetService?: string | null;
-    correlationId?: string;
-    requestId?: string;
-  };
-  payload?: unknown;
-};
-
 let commandConsumer: Consumer | null = null;
+const logger = reservationsLogger.child({ module: "command-center-consumer" });
 
 export const startCommandCenterConsumer = async (): Promise<void> => {
   if (commandConsumer) {
@@ -51,7 +55,7 @@ export const startCommandCenterConsumer = async (): Promise<void> => {
   commandConsumer = kafka.consumer({
     groupId: commandCenterConfig.consumerGroupId,
     allowAutoTopicCreation: false,
-    maxBytesPerPartition: kafkaConfig.maxBatchBytes,
+    maxBytesPerPartition: commandCenterConfig.maxBatchBytes,
   });
 
   await commandConsumer.connect();
@@ -61,42 +65,19 @@ export const startCommandCenterConsumer = async (): Promise<void> => {
   });
 
   await commandConsumer.run({
-    eachMessage: async ({ message, topic, partition }) => {
-      if (!message.value) {
-        return;
-      }
-
-      const rawValue = message.value.toString();
-
-      let envelope: CommandEnvelope;
-      try {
-        envelope = JSON.parse(rawValue) as CommandEnvelope;
-      } catch (error) {
-        reservationsLogger.error(
-          { err: error, topic, partition },
-          "Failed to parse command envelope",
-        );
-        return;
-      }
-
-      const metadata = envelope.metadata ?? {};
-      if (
-        metadata.targetService &&
-        metadata.targetService !== commandCenterConfig.targetServiceId
-      ) {
-        return;
-      }
-
-      if (!metadata.commandName || !metadata.tenantId) {
-        reservationsLogger.warn({ metadata }, "Command missing commandName or tenantId; skipping");
-        return;
-      }
-
-      await routeReservationCommand(envelope, metadata).catch((error) => {
-        reservationsLogger.error({ err: error, metadata }, "Failed to process reservation command");
-      });
-    },
+    autoCommit: false,
+    eachBatchAutoResolve: false,
+    eachBatch: handleBatch,
   });
+
+  logger.info(
+    {
+      topic: commandCenterConfig.topic,
+      groupId: commandCenterConfig.consumerGroupId,
+      targetService: commandCenterConfig.targetServiceId,
+    },
+    "reservation command consumer started",
+  );
 };
 
 export const shutdownCommandCenterConsumer = async (): Promise<void> => {
@@ -106,102 +87,145 @@ export const shutdownCommandCenterConsumer = async (): Promise<void> => {
   }
 };
 
+const buildDlqPayload = (input: {
+  envelope?: CommandEnvelope;
+  rawValue: string;
+  topic: string;
+  partition: number;
+  offset: string;
+  attempts: number;
+  failureReason: "PARSING_ERROR" | "HANDLER_FAILURE";
+  error: unknown;
+}) => {
+  const error =
+    input.error instanceof Error
+      ? { name: input.error.name, message: input.error.message }
+      : { name: "Error", message: String(input.error) };
+
+  return {
+    metadata: {
+      failureReason: input.failureReason,
+      attempts: input.attempts,
+      topic: input.topic,
+      partition: input.partition,
+      offset: input.offset,
+      commandId: input.envelope?.metadata?.commandId,
+      commandName: input.envelope?.metadata?.commandName,
+      tenantId: input.envelope?.metadata?.tenantId,
+      requestId: input.envelope?.metadata?.requestId,
+      targetService: input.envelope?.metadata?.targetService,
+    },
+    error,
+    payload: input.envelope?.payload ?? null,
+    raw: input.rawValue,
+    emittedAt: new Date().toISOString(),
+  };
+};
+
+/**
+ * Routes a validated command envelope to the appropriate reservation handler.
+ */
 const routeReservationCommand = async (
   envelope: CommandEnvelope,
-  metadata: NonNullable<CommandEnvelope["metadata"]>,
+  metadata: CommandMetadata,
 ): Promise<void> => {
+  const rawCorrelation = metadata.correlationId ?? metadata.requestId;
+  const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+  const context = {
+    correlationId: rawCorrelation && UUID_RE.test(rawCorrelation) ? rawCorrelation : undefined,
+  };
+
   switch (metadata.commandName) {
     case "reservation.create": {
       const commandPayload = ReservationCreateCommandSchema.parse(envelope.payload);
-      await createReservation(metadata.tenantId as string, commandPayload, {
-        correlationId: metadata.correlationId ?? metadata.requestId,
-      });
+      await createReservation(metadata.tenantId, commandPayload, context);
       break;
     }
     case "reservation.modify": {
       const commandPayload = ReservationModifyCommandSchema.parse(envelope.payload);
-      await modifyReservation(metadata.tenantId as string, commandPayload, {
-        correlationId: metadata.correlationId ?? metadata.requestId,
-      });
+      await modifyReservation(metadata.tenantId, commandPayload, context);
       break;
     }
     case "reservation.cancel": {
       const commandPayload = ReservationCancelCommandSchema.parse(envelope.payload);
-      await cancelReservation(metadata.tenantId as string, commandPayload, {
-        correlationId: metadata.correlationId ?? metadata.requestId,
-      });
+      await cancelReservation(metadata.tenantId, commandPayload, context);
       break;
     }
     case "reservation.check_in": {
       const commandPayload = ReservationCheckInCommandSchema.parse(envelope.payload);
-      await checkInReservation(metadata.tenantId as string, commandPayload, {
-        correlationId: metadata.correlationId ?? metadata.requestId,
-      });
+      await checkInReservation(metadata.tenantId, commandPayload, context);
       break;
     }
     case "reservation.check_out": {
       const commandPayload = ReservationCheckOutCommandSchema.parse(envelope.payload);
-      await checkOutReservation(metadata.tenantId as string, commandPayload, {
-        correlationId: metadata.correlationId ?? metadata.requestId,
-      });
+      await checkOutReservation(metadata.tenantId, commandPayload, context);
       break;
     }
     case "reservation.assign_room": {
       const commandPayload = ReservationAssignRoomCommandSchema.parse(envelope.payload);
-      await assignRoom(metadata.tenantId as string, commandPayload, {
-        correlationId: metadata.correlationId ?? metadata.requestId,
-      });
+      await assignRoom(metadata.tenantId, commandPayload, context);
       break;
     }
     case "reservation.unassign_room": {
       const commandPayload = ReservationUnassignRoomCommandSchema.parse(envelope.payload);
-      await unassignRoom(metadata.tenantId as string, commandPayload, {
-        correlationId: metadata.correlationId ?? metadata.requestId,
-      });
+      await unassignRoom(metadata.tenantId, commandPayload, context);
       break;
     }
     case "reservation.extend_stay": {
       const commandPayload = ReservationExtendStayCommandSchema.parse(envelope.payload);
-      await extendStay(metadata.tenantId as string, commandPayload, {
-        correlationId: metadata.correlationId ?? metadata.requestId,
-      });
+      await extendStay(metadata.tenantId, commandPayload, context);
       break;
     }
     case "reservation.rate_override": {
       const commandPayload = ReservationRateOverrideCommandSchema.parse(envelope.payload);
-      await overrideRate(metadata.tenantId as string, commandPayload, {
-        correlationId: metadata.correlationId ?? metadata.requestId,
-      });
+      await overrideRate(metadata.tenantId, commandPayload, context);
       break;
     }
     case "reservation.add_deposit": {
       const commandPayload = ReservationDepositAddCommandSchema.parse(envelope.payload);
-      await addDeposit(metadata.tenantId as string, commandPayload, {
-        correlationId: metadata.correlationId ?? metadata.requestId,
-      });
+      await addDeposit(metadata.tenantId, commandPayload, context);
       break;
     }
     case "reservation.release_deposit": {
       const commandPayload = ReservationDepositReleaseCommandSchema.parse(envelope.payload);
-      await releaseDeposit(metadata.tenantId as string, commandPayload, {
-        correlationId: metadata.correlationId ?? metadata.requestId,
-      });
+      await releaseDeposit(metadata.tenantId, commandPayload, context);
+      break;
+    }
+    case "reservation.no_show": {
+      const commandPayload = ReservationNoShowCommandSchema.parse(envelope.payload);
+      await markNoShow(metadata.tenantId, commandPayload, context);
       break;
     }
     default:
-      reservationsLogger.debug(
+      logger.debug(
         { commandName: metadata.commandName },
         "no reservation handler registered for command",
       );
       return;
   }
-
-  reservationsLogger.info(
-    {
-      commandName: metadata.commandName,
-      tenantId: metadata.tenantId,
-      serviceId: serviceConfig.serviceId,
-    },
-    "reservation command accepted from Command Center",
-  );
 };
+
+const { handleBatch } = createCommandCenterHandlers({
+  targetServiceId: commandCenterConfig.targetServiceId,
+  serviceName: "reservations-command-service",
+  logger,
+  retry: {
+    maxRetries: commandCenterConfig.maxRetries,
+    baseDelayMs: commandCenterConfig.retryBackoffMs,
+    delayScheduleMs:
+      commandCenterConfig.retryScheduleMs.length > 0
+        ? commandCenterConfig.retryScheduleMs
+        : undefined,
+  },
+  processWithRetry,
+  RetryExhaustedError,
+  publishDlqEvent: publishCommandDlqEvent,
+  buildDlqPayload,
+  routeCommand: routeReservationCommand,
+  commandLabel: "reservation",
+  metrics: {
+    recordOutcome: recordCommandOutcome,
+    observeDuration: observeCommandDuration,
+    setConsumerLag: setCommandConsumerLag,
+  },
+});

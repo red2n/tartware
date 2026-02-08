@@ -223,20 +223,70 @@ export const handleRoomOutOfService = async (
 };
 
 /**
- * Room move operations require reservation context and workflow coordination.
- * This command is registered in the catalog for future implementation but
- * currently returns NOT_SUPPORTED. Use the reservations domain move workflow instead.
- */
-/**
- * Handle room move requests (currently not supported).
+ * Handle room move: reassign a guest from one room to another mid-stay.
+ * Updates both rooms' statuses and the reservation's room_number.
  */
 export const handleRoomMove = async (payload: unknown, context: CommandContext): Promise<void> => {
   const command = RoomMoveCommandSchema.parse(payload);
-  void context;
-  throw new RoomCommandError(
-    "ROOM_MOVE_NOT_SUPPORTED",
-    `Room move is not yet implemented. Move from ${command.from_room_id} to ${command.to_room_id} requires reservation workflow. Use reservations.room.move instead.`,
+  const actor = resolveActorId(context.initiatedBy);
+
+  // 1. Validate source room exists and is OCCUPIED
+  const fromResult = await query<{ id: string; status: string; room_number: string }>(
+    `SELECT id, status, room_number FROM public.rooms
+     WHERE id = $1 AND tenant_id = $2 AND COALESCE(is_deleted, false) = false LIMIT 1`,
+    [command.from_room_id, context.tenantId],
   );
+  const fromRoom = fromResult.rows[0];
+  if (!fromRoom) {
+    throw new RoomCommandError("ROOM_NOT_FOUND", `Source room ${command.from_room_id} not found.`);
+  }
+  if (fromRoom.status !== "OCCUPIED") {
+    throw new RoomCommandError(
+      "INVALID_ROOM_STATUS",
+      `Source room ${fromRoom.room_number} is ${fromRoom.status}, not OCCUPIED.`,
+    );
+  }
+
+  // 2. Validate target room exists and is AVAILABLE
+  const toResult = await query<{ id: string; status: string; room_number: string }>(
+    `SELECT id, status, room_number FROM public.rooms
+     WHERE id = $1 AND tenant_id = $2 AND COALESCE(is_deleted, false) = false LIMIT 1`,
+    [command.to_room_id, context.tenantId],
+  );
+  const toRoom = toResult.rows[0];
+  if (!toRoom) {
+    throw new RoomCommandError("ROOM_NOT_FOUND", `Target room ${command.to_room_id} not found.`);
+  }
+  if (toRoom.status !== "AVAILABLE") {
+    throw new RoomCommandError(
+      "ROOM_NOT_AVAILABLE",
+      `Target room ${toRoom.room_number} is ${toRoom.status}, not AVAILABLE.`,
+    );
+  }
+
+  // 3. Source room → DIRTY (vacated, needs housekeeping)
+  await query(
+    `UPDATE public.rooms SET status = 'DIRTY', version = version + 1, updated_at = NOW(), updated_by = $3
+     WHERE id = $1 AND tenant_id = $2`,
+    [command.from_room_id, context.tenantId, actor],
+  );
+
+  // 4. Target room → OCCUPIED
+  await query(
+    `UPDATE public.rooms SET status = 'OCCUPIED', version = version + 1, updated_at = NOW(), updated_by = $3
+     WHERE id = $1 AND tenant_id = $2`,
+    [command.to_room_id, context.tenantId, actor],
+  );
+
+  // 5. Update reservation room_number if reservation_id provided
+  if (command.reservation_id) {
+    await query(
+      `UPDATE public.reservations
+       SET room_number = $3, version = version + 1, updated_at = NOW()
+       WHERE id = $1 AND tenant_id = $2`,
+      [command.reservation_id, context.tenantId, toRoom.room_number],
+    );
+  }
 };
 
 /**

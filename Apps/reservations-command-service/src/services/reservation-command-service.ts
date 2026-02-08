@@ -25,9 +25,11 @@ import {
   upsertReservationGuardMetadata,
 } from "../repositories/reservation-guard-metadata-repository.js";
 import {
+  fetchReservationCancellationInfo,
   fetchReservationStaySnapshot,
   type ReservationStaySnapshot,
 } from "../repositories/reservation-repository.js";
+import { calculateCancellationFee } from "./cancellation-fee-service.js";
 import type {
   ReservationAssignRoomCommand,
   ReservationCancelCommand,
@@ -38,6 +40,7 @@ import type {
   ReservationDepositReleaseCommand,
   ReservationExtendStayCommand,
   ReservationModifyCommand,
+  ReservationNoShowCommand,
   ReservationRateOverrideCommand,
   ReservationUnassignRoomCommand,
 } from "../schemas/reservation-command.js";
@@ -132,6 +135,7 @@ export const createReservation = async (
       currency: normalizedCurrency,
       status: command.status ?? "PENDING",
       source: command.source ?? "DIRECT",
+      reservation_type: command.reservation_type ?? "TRANSIENT",
     },
   };
 
@@ -492,13 +496,95 @@ const fetchRoomNumber = async (tenantId: string, roomId: string): Promise<string
 };
 
 /**
- * Check in a reservation and enqueue update event.
+ * Check in a reservation: validates status, assigns room, marks room OCCUPIED.
+ * PMS industry standard pre-conditions:
+ *  - Reservation must exist and belong to this tenant
+ *  - Status must be PENDING or CONFIRMED (not already CHECKED_IN, CANCELLED, etc.)
+ *  - If a room_id is provided, the room must be AVAILABLE
  */
 export const checkInReservation = async (
   tenantId: string,
   command: ReservationCheckInCommand,
   options: { correlationId?: string } = {},
 ): Promise<CreateReservationResult> => {
+  // 1. Validate reservation exists and status allows check-in
+  const resResult = await query(
+    `SELECT id, status, room_type_id, guest_id, total_amount, check_in_date, check_out_date
+     FROM reservations WHERE id = $1 AND tenant_id = $2 LIMIT 1`,
+    [command.reservation_id, tenantId],
+  );
+  const reservation = resResult.rows?.[0] as
+    | { id: string; status: string; room_type_id: string; guest_id: string; total_amount: number; check_in_date: Date; check_out_date: Date }
+    | undefined;
+
+  if (!reservation) {
+    throw new ReservationCommandError(
+      "RESERVATION_NOT_FOUND",
+      `Reservation ${command.reservation_id} not found`,
+    );
+  }
+
+  const allowedStatuses = ["PENDING", "CONFIRMED"];
+  if (!allowedStatuses.includes(reservation.status)) {
+    throw new ReservationCommandError(
+      "INVALID_STATUS_FOR_CHECKIN",
+      `Cannot check in reservation with status ${reservation.status}; must be PENDING or CONFIRMED`,
+    );
+  }
+
+  // 2. Validate room is available and clean if room_id provided
+  if (command.room_id) {
+    const roomResult = await query(
+      `SELECT id, status, room_number FROM rooms WHERE id = $1 AND tenant_id = $2 LIMIT 1`,
+      [command.room_id, tenantId],
+    );
+    const room = roomResult.rows?.[0] as { id: string; status: string; room_number: string } | undefined;
+    if (!room) {
+      throw new ReservationCommandError("ROOM_NOT_FOUND", `Room ${command.room_id} not found`);
+    }
+    if (room.status === "DIRTY") {
+      throw new ReservationCommandError(
+        "ROOM_NOT_CLEAN",
+        `Room ${room.room_number} is DIRTY and must be cleaned before check-in`,
+      );
+    }
+    if (room.status === "OUT_OF_ORDER" || room.status === "OUT_OF_SERVICE") {
+      throw new ReservationCommandError(
+        "ROOM_UNAVAILABLE",
+        `Room ${room.room_number} is ${room.status} and cannot accept check-ins`,
+      );
+    }
+    if (room.status !== "AVAILABLE") {
+      throw new ReservationCommandError(
+        "ROOM_NOT_AVAILABLE",
+        `Room ${room.room_number} is ${room.status}, not AVAILABLE`,
+      );
+    }
+  }
+
+  // 3. Warn if no deposit has been received for a reservation with charges
+  if (Number(reservation.total_amount) > 0) {
+    try {
+      const depositResult = await query(
+        `SELECT COALESCE(SUM(amount), 0) AS deposit_total
+         FROM payments
+         WHERE reservation_id = $1 AND tenant_id = $2
+           AND transaction_type IN ('CAPTURE', 'AUTHORIZATION', 'DEPOSIT')
+           AND status IN ('COMPLETED', 'AUTHORIZED')`,
+        [command.reservation_id, tenantId],
+      );
+      const depositTotal = Number(depositResult.rows?.[0]?.deposit_total ?? 0);
+      if (depositTotal === 0) {
+        reservationsLogger.warn(
+          { reservationId: command.reservation_id, totalAmount: reservation.total_amount },
+          "Check-in without any deposit or payment guarantee on file",
+        );
+      }
+    } catch {
+      // Non-critical deposit check
+    }
+  }
+
   const roomNumber = command.room_id ? await fetchRoomNumber(tenantId, command.room_id) : null;
   const updatePayload: ReservationUpdatePayload = {
     id: command.reservation_id,
@@ -507,28 +593,166 @@ export const checkInReservation = async (
     actual_check_in: command.checked_in_at ?? new Date(),
     ...(roomNumber ? { room_number: roomNumber } : {}),
     internal_notes: command.notes,
-    metadata: command.metadata,
+    metadata: {
+      ...command.metadata,
+      room_id: command.room_id,
+      guest_id: reservation.guest_id,
+      room_type_id: reservation.room_type_id,
+    },
   };
-  return enqueueReservationUpdate(tenantId, "reservation.check_in", updatePayload, options);
+  const result = await enqueueReservationUpdate(tenantId, "reservation.check_in", updatePayload, options);
+
+  // 3. Mark room as OCCUPIED (post-enqueue, best-effort)
+  if (command.room_id) {
+    try {
+      await query(
+        `UPDATE rooms SET status = 'OCCUPIED', version = version + 1, updated_at = NOW() WHERE id = $1 AND tenant_id = $2`,
+        [command.room_id, tenantId],
+      );
+      reservationsLogger.info(
+        { roomId: command.room_id, reservationId: command.reservation_id },
+        "Room marked OCCUPIED on check-in",
+      );
+    } catch (roomError) {
+      reservationsLogger.warn(
+        { roomId: command.room_id, error: roomError },
+        "Failed to mark room OCCUPIED on check-in — manual update required",
+      );
+    }
+  }
+
+  return result;
 };
 
 /**
- * Check out a reservation and enqueue update event.
+ * Check out a reservation: validates status, marks room DIRTY, updates guest stats.
+ * PMS industry standard pre-conditions:
+ *  - Reservation must exist and be CHECKED_IN
+ *  - Guest stats (nights, revenue, last_stay_date) are updated
+ *  - Associated room transitions to DIRTY for housekeeping
+ *  - Folio should be settled (logged as warning if not, but doesn't block checkout)
  */
 export const checkOutReservation = async (
   tenantId: string,
   command: ReservationCheckOutCommand,
   options: { correlationId?: string } = {},
 ): Promise<CreateReservationResult> => {
+  // 1. Validate reservation exists and is CHECKED_IN
+  const resResult = await query(
+    `SELECT id, status, guest_id, room_number, room_type_id, total_amount,
+            check_in_date, check_out_date, actual_check_in
+     FROM reservations WHERE id = $1 AND tenant_id = $2 LIMIT 1`,
+    [command.reservation_id, tenantId],
+  );
+  const reservation = resResult.rows?.[0] as
+    | { id: string; status: string; guest_id: string; room_number: string | null;
+        room_type_id: string; total_amount: number; check_in_date: Date;
+        check_out_date: Date; actual_check_in: Date | null }
+    | undefined;
+
+  if (!reservation) {
+    throw new ReservationCommandError(
+      "RESERVATION_NOT_FOUND",
+      `Reservation ${command.reservation_id} not found`,
+    );
+  }
+
+  if (reservation.status !== "CHECKED_IN") {
+    throw new ReservationCommandError(
+      "INVALID_STATUS_FOR_CHECKOUT",
+      `Cannot check out reservation with status ${reservation.status}; must be CHECKED_IN`,
+    );
+  }
+
+  // 2. Enforce folio settlement (blocks checkout unless force=true)
+  try {
+    const folioResult = await query(
+      `SELECT folio_id, balance FROM folios
+       WHERE reservation_id = $1 AND tenant_id = $2 AND folio_status = 'OPEN' LIMIT 1`,
+      [command.reservation_id, tenantId],
+    );
+    const folio = folioResult.rows?.[0] as { folio_id: string; balance: number } | undefined;
+    if (folio && Number(folio.balance) > 0) {
+      if (command.force) {
+        reservationsLogger.warn(
+          { reservationId: command.reservation_id, folioId: folio.folio_id, balance: folio.balance },
+          "Check-out forced with unsettled folio balance",
+        );
+      } else {
+        throw new ReservationCommandError(
+          "FOLIO_UNSETTLED",
+          `Cannot check out — folio ${folio.folio_id} has outstanding balance of ${folio.balance}. Use force:true to override.`,
+        );
+      }
+    }
+  } catch (err) {
+    if (err instanceof ReservationCommandError) throw err;
+    // Non-critical if folio query itself fails
+  }
+
+  const checkOutTime = command.checked_out_at ?? new Date();
+
   const updatePayload: ReservationUpdatePayload = {
     id: command.reservation_id,
     tenant_id: tenantId,
     status: "CHECKED_OUT",
-    actual_check_out: command.checked_out_at ?? new Date(),
+    actual_check_out: checkOutTime,
     internal_notes: command.notes,
-    metadata: command.metadata,
+    metadata: {
+      ...command.metadata,
+      guest_id: reservation.guest_id,
+      room_number: reservation.room_number,
+    },
   };
-  return enqueueReservationUpdate(tenantId, "reservation.check_out", updatePayload, options);
+  const result = await enqueueReservationUpdate(tenantId, "reservation.check_out", updatePayload, options);
+
+  // 3. Mark room as DIRTY for housekeeping (post-enqueue, best-effort)
+  if (reservation.room_number) {
+    try {
+      await query(
+        `UPDATE rooms SET status = 'DIRTY', version = version + 1, updated_at = NOW()
+         WHERE room_number = $1 AND tenant_id = $2`,
+        [reservation.room_number, tenantId],
+      );
+      reservationsLogger.info(
+        { roomNumber: reservation.room_number, reservationId: command.reservation_id },
+        "Room marked DIRTY on check-out",
+      );
+    } catch (roomError) {
+      reservationsLogger.warn(
+        { roomNumber: reservation.room_number, error: roomError },
+        "Failed to mark room DIRTY on check-out",
+      );
+    }
+  }
+
+  // 4. Update guest stay statistics (total_nights, total_revenue, last_stay_date)
+  try {
+    const actualIn = reservation.actual_check_in ?? reservation.check_in_date;
+    const nights = Math.max(
+      1,
+      Math.round((checkOutTime.getTime() - new Date(actualIn).getTime()) / (1000 * 60 * 60 * 24)),
+    );
+    const { updateGuestStayStats } = await import("./reservation-event-handler.js");
+    await updateGuestStayStats(
+      tenantId,
+      reservation.guest_id,
+      nights,
+      Number(reservation.total_amount),
+      checkOutTime,
+    );
+    reservationsLogger.info(
+      { guestId: reservation.guest_id, nights, revenue: reservation.total_amount },
+      "Guest stay stats updated on check-out",
+    );
+  } catch (statsError) {
+    reservationsLogger.warn(
+      { guestId: reservation.guest_id, error: statsError },
+      "Failed to update guest stay stats on check-out",
+    );
+  }
+
+  return result;
 };
 
 /**
@@ -726,7 +950,107 @@ export const releaseDeposit = async (
 };
 
 /**
+ * Mark a reservation as no-show.
+ * PMS standard: guest did not arrive by the cutoff time.
+ * Sets is_no_show, no_show_date, no_show_fee, status = NO_SHOW, releases room.
+ */
+export const markNoShow = async (
+  tenantId: string,
+  command: ReservationNoShowCommand,
+  options: { correlationId?: string } = {},
+): Promise<CreateReservationResult> => {
+  // 1. Validate reservation exists and is eligible for no-show
+  const resResult = await query(
+    `SELECT id, status, room_number, room_rate, total_amount, guest_id
+     FROM reservations WHERE id = $1 AND tenant_id = $2 LIMIT 1`,
+    [command.reservation_id, tenantId],
+  );
+  const reservation = resResult.rows?.[0] as
+    | { id: string; status: string; room_number: string | null; room_rate: number;
+        total_amount: number; guest_id: string }
+    | undefined;
+
+  if (!reservation) {
+    throw new ReservationCommandError(
+      "RESERVATION_NOT_FOUND",
+      `Reservation ${command.reservation_id} not found`,
+    );
+  }
+
+  const eligibleStatuses = ["PENDING", "CONFIRMED"];
+  if (!eligibleStatuses.includes(reservation.status)) {
+    throw new ReservationCommandError(
+      "INVALID_STATUS_FOR_NO_SHOW",
+      `Cannot mark no-show for reservation with status ${reservation.status}; must be PENDING or CONFIRMED`,
+    );
+  }
+
+  // 2. Calculate no-show fee (default to 1 night room rate if not specified)
+  const noShowFee = command.no_show_fee ?? Number(reservation.room_rate ?? 0);
+
+  // 3. Enqueue status update
+  const updatePayload: ReservationUpdatePayload = {
+    id: command.reservation_id,
+    tenant_id: tenantId,
+    status: "NO_SHOW",
+    metadata: {
+      ...command.metadata,
+      is_no_show: true,
+      no_show_date: new Date().toISOString(),
+      no_show_fee: noShowFee,
+      reason: command.reason ?? "Guest did not arrive",
+    },
+  };
+  const result = await enqueueReservationUpdate(tenantId, "reservation.no_show", updatePayload, options);
+
+  // 4. Update no-show columns directly (event handler handles status/version)
+  try {
+    await query(
+      `UPDATE reservations
+       SET is_no_show = true,
+           no_show_date = NOW(),
+           no_show_fee = $3,
+           version = version + 1,
+           updated_at = NOW()
+       WHERE id = $1 AND tenant_id = $2`,
+      [command.reservation_id, tenantId, noShowFee],
+    );
+  } catch (err) {
+    reservationsLogger.warn(
+      { reservationId: command.reservation_id, error: err },
+      "Failed to set no-show columns directly; event handler will process",
+    );
+  }
+
+  // 5. Release room if assigned (best-effort)
+  if (reservation.room_number) {
+    try {
+      await query(
+        `UPDATE rooms SET status = 'AVAILABLE', version = version + 1, updated_at = NOW()
+         WHERE room_number = $1 AND tenant_id = $2`,
+        [reservation.room_number, tenantId],
+      );
+      reservationsLogger.info(
+        { roomNumber: reservation.room_number },
+        "Room released back to AVAILABLE on no-show",
+      );
+    } catch {
+      // Non-critical
+    }
+  }
+
+  reservationsLogger.info(
+    { reservationId: command.reservation_id, noShowFee, reason: command.reason },
+    "Reservation marked as NO_SHOW",
+  );
+
+  return result;
+};
+
+/**
  * Cancel a reservation and release availability holds.
+ * Calculates cancellation fee based on the rate's cancellation_policy.
+ * Only PENDING or CONFIRMED reservations may be cancelled.
  */
 export const cancelReservation = async (
   tenantId: string,
@@ -734,12 +1058,63 @@ export const cancelReservation = async (
   options: { correlationId?: string } = {},
 ): Promise<CreateReservationResult> => {
   const eventId = uuid();
+  const now = new Date();
+
+  // G5-cancel: Validate reservation status allows cancellation
+  const statusResult = await query(
+    `SELECT status FROM reservations WHERE id = $1 AND tenant_id = $2 LIMIT 1`,
+    [command.reservation_id, tenantId],
+  );
+  const reservation = statusResult.rows?.[0] as { status: string } | undefined;
+  if (!reservation) {
+    throw new ReservationCommandError(
+      "RESERVATION_NOT_FOUND",
+      `Reservation ${command.reservation_id} not found`,
+    );
+  }
+  const cancelAllowed = ["PENDING", "CONFIRMED"];
+  if (!cancelAllowed.includes(reservation.status)) {
+    throw new ReservationCommandError(
+      "INVALID_STATUS_FOR_CANCEL",
+      `Cannot cancel reservation with status ${reservation.status}; must be PENDING or CONFIRMED`,
+    );
+  }
+
+  // Calculate cancellation fee from rate policy
+  let cancellationFee = 0;
+  try {
+    const cancellationInfo = await fetchReservationCancellationInfo(
+      tenantId,
+      command.reservation_id,
+    );
+    if (cancellationInfo) {
+      const feeResult = calculateCancellationFee(cancellationInfo, now);
+      cancellationFee = feeResult.fee;
+      reservationsLogger.info(
+        {
+          reservationId: command.reservation_id,
+          policyType: feeResult.policyType,
+          hoursUntilCheckIn: feeResult.hoursUntilCheckIn,
+          policyDeadlineHours: feeResult.policyDeadlineHours,
+          withinPenaltyWindow: feeResult.withinPenaltyWindow,
+          cancellationFee,
+        },
+        "Cancellation fee calculated",
+      );
+    }
+  } catch (feeError) {
+    reservationsLogger.warn(
+      { reservationId: command.reservation_id, error: feeError },
+      "Failed to calculate cancellation fee; proceeding with fee = 0",
+    );
+  }
+
   const payload: ReservationCancelledEvent = {
     metadata: {
       id: eventId,
       source: serviceConfig.serviceId,
       type: "reservation.cancelled",
-      timestamp: new Date().toISOString(),
+      timestamp: now.toISOString(),
       version: "1.0",
       correlationId: options.correlationId,
       tenantId,
@@ -748,9 +1123,10 @@ export const cancelReservation = async (
     payload: {
       id: command.reservation_id,
       tenant_id: tenantId,
-      cancelled_at: new Date(),
+      cancelled_at: now,
       cancelled_by: command.cancelled_by,
       reason: command.reason,
+      cancellation_fee: cancellationFee > 0 ? cancellationFee : undefined,
     },
   };
 

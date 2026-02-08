@@ -58,6 +58,7 @@ export type OutboxRepository = {
 	claimOutboxBatch: (
 		limit: number,
 		workerId: string,
+		aggregateTypeFilter?: string,
 	) => Promise<OutboxRecord[]>;
 	markOutboxDelivered: (id: string) => Promise<void>;
 	markOutboxFailed: (

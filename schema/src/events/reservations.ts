@@ -64,6 +64,7 @@ const ReservationCreatePayloadSchema = z.object({
 	booking_date: z.coerce.date().optional(),
 	status: ReservationsSchema.shape.status.optional(),
 	source: ReservationsSchema.shape.source.optional(),
+	reservation_type: ReservationsSchema.shape.reservation_type,
 	total_amount: z.coerce.number().nonnegative(),
 	currency: ReservationsSchema.shape.currency.optional(),
 	notes: ReservationsSchema.shape.internal_notes.optional(),
@@ -106,6 +107,7 @@ export const ReservationCancelledEventSchema = z.object({
 		cancelled_at: z.coerce.date(),
 		cancelled_by: z.string().optional(),
 		reason: z.string().optional(),
+		cancellation_fee: z.coerce.number().nonnegative().optional(),
 	}),
 });
 

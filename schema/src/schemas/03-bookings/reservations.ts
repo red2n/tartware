@@ -23,6 +23,7 @@ import { uuid, money } from "../../shared/base-schemas.js";
 import {
 	ReservationStatusEnum,
 	ReservationSourceEnum,
+	ReservationTypeEnum,
 } from "../../shared/enums.js";
 
 /**
@@ -54,6 +55,7 @@ export const ReservationsSchema = z.object({
 	currency: z.string().optional(),
 	status: ReservationStatusEnum,
 	source: ReservationSourceEnum,
+	reservation_type: ReservationTypeEnum.optional(),
 	channel_reference: z.string().optional(),
 	guest_name: z.string(),
 	guest_email: z.string(),

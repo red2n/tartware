@@ -91,7 +91,7 @@ const processOutboxBatch = async (): Promise<void> => {
     return;
   }
 
-  const records = await claimOutboxBatch(config.outbox.batchSize, config.outbox.workerId);
+  const records = await claimOutboxBatch(config.outbox.batchSize, config.outbox.workerId, "command");
 
   for (const record of records) {
     const throttledAt = performance.now();

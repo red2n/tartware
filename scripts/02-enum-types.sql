@@ -220,6 +220,20 @@ CREATE TYPE reservation_source AS ENUM (
     'GROUP'         -- Group booking
 );
 
+-- Reservation Type (Booking Category)
+-- Standard: OPERA Cloud, Mews, Cloudbeds reservation type classification
+CREATE TYPE reservation_type AS ENUM (
+    'TRANSIENT',       -- Individual guest booking (most common)
+    'CORPORATE',       -- Company-negotiated rate
+    'GROUP',           -- 10+ rooms, common arrival
+    'WHOLESALE',       -- Tour operator pre-purchased
+    'PACKAGE',         -- Room + services bundled
+    'COMPLIMENTARY',   -- Comp stay (no charge)
+    'HOUSE_USE',       -- Internal use (staff, maintenance)
+    'DAY_USE',         -- Same-day check-in/out
+    'WAITLIST'         -- Pending availability
+);
+
 -- =====================================================
 -- PAYMENT ENUMS
 -- =====================================================

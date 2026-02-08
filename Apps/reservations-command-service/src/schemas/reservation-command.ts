@@ -17,6 +17,8 @@ export {
   ReservationExtendStayCommandSchema,
   type ReservationModifyCommand,
   ReservationModifyCommandSchema,
+  type ReservationNoShowCommand,
+  ReservationNoShowCommandSchema,
   type ReservationRateOverrideCommand,
   ReservationRateOverrideCommandSchema,
   type ReservationUnassignRoomCommand,

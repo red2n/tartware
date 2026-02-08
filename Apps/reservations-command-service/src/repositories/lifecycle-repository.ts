@@ -61,7 +61,7 @@ export const recordLifecyclePersisted = async (
             'timestamp',
             NOW(),
             'actor',
-            $7,
+            $7::text,
             'details',
             COALESCE($8::jsonb, '{}'::jsonb)
           ),
@@ -71,7 +71,7 @@ export const recordLifecyclePersisted = async (
             'timestamp',
             NOW(),
             'actor',
-            $7,
+            $7::text,
             'details',
             COALESCE($8::jsonb, '{}'::jsonb)
           )
@@ -89,7 +89,7 @@ export const recordLifecyclePersisted = async (
             'timestamp',
             NOW(),
             'actor',
-            $7,
+            $7::text,
             'details',
             COALESCE($8::jsonb, '{}'::jsonb)
           )
@@ -132,11 +132,11 @@ export const updateLifecycleState = async (input: LifecycleUpdateInput): Promise
         state_transitions = state_transitions || jsonb_build_array(
           jsonb_build_object(
             'state',
-            $2,
+            $2::text,
             'timestamp',
             NOW(),
             'actor',
-            $3,
+            $3::text,
             'details',
             COALESCE($4::jsonb, '{}'::jsonb)
           )

@@ -18,8 +18,10 @@ import { processWithRetry, RetryExhaustedError } from "../lib/retry.js";
 import {
   adjustInvoice,
   applyPayment,
+  authorizePayment,
   captureBillingPayment,
   createInvoice,
+  executeNightAudit,
   postCharge,
   refundBillingPayment,
   transferFolio,
@@ -151,6 +153,18 @@ const routeBillingCommand = async (
       return;
     case "billing.folio.transfer":
       await transferFolio(envelope.payload, {
+        tenantId: metadata.tenantId,
+        initiatedBy: metadata.initiatedBy ?? null,
+      });
+      return;
+    case "billing.payment.authorize":
+      await authorizePayment(envelope.payload, {
+        tenantId: metadata.tenantId,
+        initiatedBy: metadata.initiatedBy ?? null,
+      });
+      return;
+    case "billing.night_audit.execute":
+      await executeNightAudit(envelope.payload, {
         tenantId: metadata.tenantId,
         initiatedBy: metadata.initiatedBy ?? null,
       });

@@ -12,11 +12,15 @@ import {
 import {
 	BillingPaymentCaptureCommandSchema,
 	BillingPaymentRefundCommandSchema,
+	BillingPaymentAuthorizeCommandSchema,
 	BillingInvoiceAdjustCommandSchema,
 	BillingInvoiceCreateCommandSchema,
 	BillingChargePostCommandSchema,
 	BillingPaymentApplyCommandSchema,
 	BillingFolioTransferCommandSchema,
+	BillingNightAuditCommandSchema,
+	BillingFolioCloseCommandSchema,
+	BillingPaymentVoidCommandSchema,
 } from "./events/commands/billing.js";
 import {
 	GuestMergeCommandSchema,
@@ -67,6 +71,7 @@ import {
 	ReservationModifyCommandSchema,
 	ReservationRateOverrideCommandSchema,
 	ReservationUnassignRoomCommandSchema,
+	ReservationNoShowCommandSchema,
 } from "./events/commands/reservations.js";
 import {
 	RoomFeaturesUpdateCommandSchema,
@@ -125,6 +130,22 @@ const commandPayloadValidators = new Map<string, CommandPayloadValidator>([
 	[
 		"billing.folio.transfer",
 		(payload) => BillingFolioTransferCommandSchema.parse(payload),
+	],
+	[
+		"billing.payment.authorize",
+		(payload) => BillingPaymentAuthorizeCommandSchema.parse(payload),
+	],
+	[
+		"billing.night_audit.execute",
+		(payload) => BillingNightAuditCommandSchema.parse(payload),
+	],
+	[
+		"billing.folio.close",
+		(payload) => BillingFolioCloseCommandSchema.parse(payload),
+	],
+	[
+		"billing.payment.void",
+		(payload) => BillingPaymentVoidCommandSchema.parse(payload),
 	],
 	["guest.register", (payload) => GuestRegisterCommandSchema.parse(payload)],
 	["guest.merge", (payload) => GuestMergeCommandSchema.parse(payload)],
@@ -268,6 +289,10 @@ const commandPayloadValidators = new Map<string, CommandPayloadValidator>([
 	[
 		"reservation.release_deposit",
 		(payload) => ReservationDepositReleaseCommandSchema.parse(payload),
+	],
+	[
+		"reservation.no_show",
+		(payload) => ReservationNoShowCommandSchema.parse(payload),
 	],
 	[
 		"rooms.inventory.block",
