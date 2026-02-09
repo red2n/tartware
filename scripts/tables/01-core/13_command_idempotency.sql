@@ -1,20 +1,18 @@
 -- =====================================================
--- 2026-02-09-command-idempotency.sql
--- P1-1: Add consumer-side command idempotency table
+-- command_idempotency.sql
+-- P1-1: Consumer-side command idempotency table
 -- Prevents duplicate processing of retried Kafka messages
 -- =====================================================
-
-\c tartware
 
 \echo 'Creating command_idempotency table...'
 
 CREATE TABLE IF NOT EXISTS command_idempotency (
-    tenant_id     UUID          NOT NULL,
-    idempotency_key VARCHAR(200) NOT NULL,
-    command_name  VARCHAR(150)  NOT NULL,
-    command_id    UUID,
-    processed_at  TIMESTAMPTZ   NOT NULL DEFAULT NOW(),
-    created_at    TIMESTAMPTZ   NOT NULL DEFAULT NOW(),
+    tenant_id       UUID          NOT NULL,
+    idempotency_key VARCHAR(200)  NOT NULL,
+    command_name    VARCHAR(150)  NOT NULL,
+    command_id      UUID,
+    processed_at    TIMESTAMPTZ   NOT NULL DEFAULT NOW(),
+    created_at      TIMESTAMPTZ   NOT NULL DEFAULT NOW(),
 
     CONSTRAINT pk_command_idempotency PRIMARY KEY (tenant_id, idempotency_key)
 );

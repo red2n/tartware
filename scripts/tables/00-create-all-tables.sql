@@ -30,6 +30,7 @@
 \ir 01-core/10_command_center.sql
 \ir 01-core/11_system_admin_break_glass_codes.sql
 \ir 01-core/12_settings_seed.sql
+\ir 01-core/13_command_idempotency.sql
 
 -- ============================================================================
 -- CATEGORY 2: INVENTORY (Rooms, rates, availability, revenue management)

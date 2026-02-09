@@ -32,7 +32,7 @@ SELECT
     bd.is_reconciled,
     bd.notes
 FROM business_dates bd
-LEFT JOIN properties p ON p.property_id = bd.property_id
+LEFT JOIN properties p ON p.id = bd.property_id
 WHERE bd.tenant_id = $1
   AND bd.property_id = $2
   AND bd.date_status = 'OPEN'
@@ -109,8 +109,8 @@ SELECT
     ar.total_revenue,
     ar.total_rooms_sold
 FROM audit_runs ar
-LEFT JOIN properties p ON p.property_id = ar.property_id
-LEFT JOIN users u ON u.user_id = ar.initiated_by
+LEFT JOIN properties p ON p.id = ar.property_id
+LEFT JOIN users u ON u.id = ar.initiated_by
 ORDER BY ar.started_at DESC
 LIMIT $1
 OFFSET $4
@@ -166,8 +166,8 @@ SELECT
     nal.notes,
     nal.resolution_notes
 FROM night_audit_log nal
-LEFT JOIN properties p ON p.property_id = nal.property_id
-LEFT JOIN users u ON u.user_id = nal.initiated_by
+LEFT JOIN properties p ON p.id = nal.property_id
+LEFT JOIN users u ON u.id = nal.initiated_by
 WHERE nal.audit_run_id = $1
   AND nal.tenant_id = $2
   AND COALESCE(nal.is_deleted, false) = false
@@ -180,31 +180,32 @@ ORDER BY nal.step_number ASC
 
 export const OTA_CONNECTION_LIST_SQL = `
 SELECT
-    cm.channel_mapping_id as ota_connection_id,
+    cm.id as ota_connection_id,
     cm.tenant_id,
     cm.property_id,
     p.property_name,
     cm.channel_code,
     cm.channel_name,
-    cm.channel_type,
-    cm.connection_status,
+    cm.entity_type as channel_type,
+    cm.last_sync_status as connection_status,
     cm.is_active,
-    COALESCE(cm.is_two_way_sync, cm.rate_sync_enabled AND cm.inventory_sync_enabled) as is_two_way_sync,
+    COALESCE(
+      (cm.mapping_config->>'pushRates')::boolean AND (cm.mapping_config->>'pushAvailability')::boolean,
+      false
+    ) as is_two_way_sync,
     cm.last_sync_at,
     cm.last_sync_status,
-    cm.last_error_message,
-    cm.sync_frequency_minutes,
-    cm.rooms_mapped,
-    cm.rates_mapped,
-    cm.pending_reservations,
-    cm.api_version,
+    cm.last_sync_error as last_error_message,
+    cm.mapping_config,
+    cm.external_id,
+    cm.external_code,
     cm.created_at,
     cm.updated_at
 FROM channel_mappings cm
-LEFT JOIN properties p ON p.property_id = cm.property_id
+LEFT JOIN properties p ON p.id = cm.property_id
 WHERE cm.tenant_id = $2
   AND ($3::UUID IS NULL OR cm.property_id = $3)
-  AND ($4::VARCHAR IS NULL OR cm.connection_status = $4)
+  AND ($4::VARCHAR IS NULL OR cm.last_sync_status = $4)
   AND ($5::BOOLEAN IS NULL OR cm.is_active = $5)
   AND COALESCE(cm.is_deleted, false) = false
 ORDER BY cm.channel_name ASC

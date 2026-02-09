@@ -497,6 +497,33 @@ X-Idempotency-Key: folio-transfer-{{$timestamp}}
   "transfer_items": ["ROOM_CHARGES"]
 }
 
+###
+# Close a folio
+POST {{baseUrl}}/v1/tenants/{{tenantId}}/billing/folios/close
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+X-Request-ID: {{$guid}}
+X-Idempotency-Key: folio-close-{{$timestamp}}
+
+{
+  "folio_id": "{{folioId}}",
+  "settlement_method": "CREDIT_CARD",
+  "notes": "Closing folio at checkout"
+}
+
+###
+# Void a payment
+POST {{baseUrl}}/v1/tenants/{{tenantId}}/billing/payments/{{paymentId}}/void
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+X-Request-ID: {{$guid}}
+X-Idempotency-Key: payment-void-{{$timestamp}}
+
+{
+  "reason": "Duplicate charge - voiding",
+  "notes": "Authorized by front desk manager"
+}
+
 ###############################################################################
 # REFERENCE
 ###############################################################################
@@ -548,10 +575,12 @@ X-Idempotency-Key: folio-transfer-{{$timestamp}}
 #   POST /v1/tenants/:tenantId/billing/payments/capture
 #   POST /v1/tenants/:tenantId/billing/payments/:paymentId/refund
 #   POST /v1/tenants/:tenantId/billing/payments/:paymentId/apply
+#   POST /v1/tenants/:tenantId/billing/payments/:paymentId/void
 #   POST /v1/tenants/:tenantId/billing/invoices
 #   POST /v1/tenants/:tenantId/billing/invoices/:invoiceId/adjust
 #   POST /v1/tenants/:tenantId/billing/charges
 #   POST /v1/tenants/:tenantId/billing/folios/transfer
+#   POST /v1/tenants/:tenantId/billing/folios/close
 #
 # SAMPLE IDs:
 #   Tenant:      11111111-1111-1111-1111-111111111111

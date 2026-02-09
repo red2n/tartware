@@ -96,6 +96,11 @@ CREATE TABLE IF NOT EXISTS reservations (
     company_id UUID,
     travel_agent_id UUID,
 
+    -- Quote Lifecycle (INQUIRY → QUOTED → PENDING)
+    quoted_at TIMESTAMPTZ,
+    quote_expires_at TIMESTAMPTZ,
+    expired_at TIMESTAMPTZ,
+
     -- Marketing
     promo_code VARCHAR(50),
 
@@ -152,6 +157,9 @@ COMMENT ON COLUMN reservations.reservation_type IS 'PMS industry-standard reserv
 COMMENT ON COLUMN reservations.eta IS 'Estimated time of arrival (HH:MM)';
 COMMENT ON COLUMN reservations.company_id IS 'Corporate account FK for negotiated-rate bookings';
 COMMENT ON COLUMN reservations.travel_agent_id IS 'Travel agency FK for agent-booked reservations';
+COMMENT ON COLUMN reservations.quoted_at IS 'When the quote was sent to the guest';
+COMMENT ON COLUMN reservations.quote_expires_at IS 'When the quote validity expires (auto-expire target)';
+COMMENT ON COLUMN reservations.expired_at IS 'When the reservation was transitioned to EXPIRED';
 COMMENT ON COLUMN reservations.deleted_at IS 'Soft delete timestamp (NULL = active)';
 
 \echo 'Reservations table created successfully!'
