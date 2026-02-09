@@ -56,21 +56,27 @@ export const ReservationDetailSchema = z.object({
   no_show_date: z.string().optional(),
   no_show_fee: z.number().optional(),
   promo_code: z.string().optional(),
-  folio: z.object({
-    folio_id: z.string(),
-    folio_status: z.string(),
-    total_charges: z.number(),
-    total_payments: z.number(),
-    total_credits: z.number(),
-    balance: z.number(),
-  }).optional(),
-  status_history: z.array(z.object({
-    previous_status: z.string(),
-    new_status: z.string(),
-    change_reason: z.string().optional(),
-    changed_by: z.string(),
-    changed_at: z.string(),
-  })).optional(),
+  folio: z
+    .object({
+      folio_id: z.string(),
+      folio_status: z.string(),
+      total_charges: z.number(),
+      total_payments: z.number(),
+      total_credits: z.number(),
+      balance: z.number(),
+    })
+    .optional(),
+  status_history: z
+    .array(
+      z.object({
+        previous_status: z.string(),
+        new_status: z.string(),
+        change_reason: z.string().optional(),
+        changed_by: z.string(),
+        changed_at: z.string(),
+      }),
+    )
+    .optional(),
   created_at: z.string(),
   updated_at: z.string().optional(),
   version: z.string().default("0"),
@@ -331,7 +337,8 @@ export const getReservationById = async (options: {
     internal_notes: row.internal_notes ?? undefined,
     cancellation_date: toStringDate(row.cancellation_date as string | Date | null),
     cancellation_reason: row.cancellation_reason ?? undefined,
-    cancellation_fee: row.cancellation_fee != null ? toNumberOrFallback(row.cancellation_fee) : undefined,
+    cancellation_fee:
+      row.cancellation_fee != null ? toNumberOrFallback(row.cancellation_fee) : undefined,
     is_no_show: row.is_no_show ?? false,
     no_show_date: toStringDate(row.no_show_date as string | Date | null),
     no_show_fee: row.no_show_fee != null ? toNumberOrFallback(row.no_show_fee) : undefined,

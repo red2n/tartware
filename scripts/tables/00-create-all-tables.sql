@@ -215,6 +215,7 @@
 \ir 09-reference-data/04_payment_methods.sql
 \ir 09-reference-data/05_group_booking_types.sql
 \ir 09-reference-data/06_company_types.sql
+\ir 09-reference-data/07_charge_codes.sql
 
 \echo '>>> Enforcing tenant_id and soft delete coverage'
 \ir 99_enforce_tenant_soft_delete.sql

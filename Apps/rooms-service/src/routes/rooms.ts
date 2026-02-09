@@ -534,7 +534,10 @@ export const registerRoomRoutes = (app: FastifyInstance): void => {
   });
 
   const AvailabilityQueryJsonSchema = schemaFromZod(AvailabilityQuerySchema, "AvailabilityQuery");
-  const AvailabilityResponseJsonSchema = schemaFromZod(AvailabilityResponseSchema, "AvailabilityResponse");
+  const AvailabilityResponseJsonSchema = schemaFromZod(
+    AvailabilityResponseSchema,
+    "AvailabilityResponse",
+  );
 
   app.get<{ Querystring: AvailabilityQuery }>(
     "/v1/rooms/availability",

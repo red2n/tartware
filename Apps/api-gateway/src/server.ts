@@ -349,9 +349,17 @@ export const buildServer = () => {
       requiredModules: "core",
     });
 
+    /** Resolves tenant_id from query string for reservation routes. */
+    const tenantScopeFromQuery = app.withTenantScope({
+      resolveTenantId: (request) => (request.query as { tenant_id?: string }).tenant_id,
+      minRole: "STAFF",
+      requiredModules: "core",
+    });
+
     app.get(
       "/v1/reservations",
       {
+        preHandler: tenantScopeFromQuery,
         schema: buildRouteSchema({
           tag: RESERVATION_PROXY_TAG,
           summary: "Proxy reservation queries to core service.",
@@ -366,6 +374,7 @@ export const buildServer = () => {
     app.get(
       "/v1/reservations/:id",
       {
+        preHandler: tenantScopeFromQuery,
         schema: buildRouteSchema({
           tag: RESERVATION_PROXY_TAG,
           summary: "Get a single reservation by ID with folio and status history.",
@@ -760,7 +769,8 @@ export const buildServer = () => {
         preHandler: tenantScopeFromParams,
         schema: buildRouteSchema({
           tag: RESERVATION_PROXY_TAG,
-          summary: "Walk-in express check-in: create reservation + assign room + check-in atomically.",
+          summary:
+            "Walk-in express check-in: create reservation + assign room + check-in atomically.",
           params: reservationParamsSchema,
           body: jsonObjectSchema,
           response: {

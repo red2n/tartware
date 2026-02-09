@@ -5,7 +5,7 @@ export const RESERVATION_STATUS_SUMMARY_SQL = `
   FROM public.reservations r
   WHERE COALESCE(r.is_deleted, false) = false
     AND r.deleted_at IS NULL
-    AND ($1::uuid IS NULL OR r.tenant_id = $1::uuid)
+    AND r.tenant_id = $1::uuid
     AND ($2::uuid IS NULL OR r.property_id = $2::uuid)
     AND (
       $3::date IS NULL
@@ -27,7 +27,7 @@ export const REVENUE_SUMMARY_SQL = `
   WHERE COALESCE(p.is_deleted, false) = false
     AND p.deleted_at IS NULL
     AND p.status = 'COMPLETED'
-    AND ($1::uuid IS NULL OR p.tenant_id = $1::uuid)
+    AND p.tenant_id = $1::uuid
     AND ($2::uuid IS NULL OR p.property_id = $2::uuid)
 `;
 
@@ -39,7 +39,7 @@ export const RESERVATION_SOURCE_SUMMARY_SQL = `
   FROM public.reservations r
   WHERE COALESCE(r.is_deleted, false) = false
     AND r.deleted_at IS NULL
-    AND ($1::uuid IS NULL OR r.tenant_id = $1::uuid)
+    AND r.tenant_id = $1::uuid
     AND ($2::uuid IS NULL OR r.property_id = $2::uuid)
     AND (
       $3::date IS NULL

@@ -43,7 +43,7 @@ export const RESERVATION_LIST_SQL = `
     ON r.room_type_id = rt.id
   WHERE COALESCE(r.is_deleted, false) = false
     AND r.deleted_at IS NULL
-    AND ($2::uuid IS NULL OR r.tenant_id = $2::uuid)
+    AND r.tenant_id = $2::uuid
     AND ($3::uuid IS NULL OR r.property_id = $3::uuid)
     AND (
       $4::text IS NULL

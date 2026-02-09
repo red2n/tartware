@@ -44,7 +44,10 @@ const ReservationGetQuerySchema = z.object({
   tenant_id: z.string().uuid(),
 });
 type ReservationGetQuery = z.infer<typeof ReservationGetQuerySchema>;
-const ReservationGetQueryJsonSchema = schemaFromZod(ReservationGetQuerySchema, "ReservationGetQuery");
+const ReservationGetQueryJsonSchema = schemaFromZod(
+  ReservationGetQuerySchema,
+  "ReservationGetQuery",
+);
 const ReservationDetailJsonSchema = schemaFromZod(ReservationDetailSchema, "ReservationDetail");
 
 export const registerReservationRoutes = (app: FastifyInstance): void => {

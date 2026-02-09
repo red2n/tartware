@@ -602,6 +602,11 @@ const loadPaymentById = async (
   return rows[0] ?? null;
 };
 
+/**
+ * Apply a payment to an invoice, updating the invoice balance.
+ * Uses atomic dedup via payment metadata to prevent double-counting
+ * when the same command is retried (Kafka, network retry, etc.).
+ */
 const applyPaymentToInvoice = async (
   command: BillingPaymentApplyCommand,
   context: CommandContext,
@@ -617,6 +622,32 @@ const applyPaymentToInvoice = async (
     (await resolveInvoiceId(context.tenantId, command.reservation_id ?? payment.reservation_id));
   if (!targetInvoiceId) {
     throw new BillingCommandError("INVOICE_NOT_FOUND", "Invoice not found for apply.");
+  }
+
+  // ── Dedup guard: atomically mark this payment as applied to this invoice ──
+  // The WHERE clause ensures this UPDATE only succeeds once per (payment, invoice) pair.
+  // If the payment has already been applied to this invoice, rowCount = 0 → return idempotently.
+  const { rowCount: markedApplied } = await query(
+    `
+      UPDATE public.payments
+      SET
+        metadata = jsonb_set(
+          COALESCE(metadata, '{}'::jsonb),
+          '{applied_to_invoice_id}',
+          to_jsonb($3::text)
+        ),
+        updated_at = NOW(),
+        updated_by = $4
+      WHERE tenant_id = $1::uuid
+        AND id = $2::uuid
+        AND (metadata->>'applied_to_invoice_id' IS DISTINCT FROM $3::text)
+    `,
+    [context.tenantId, command.payment_id, targetInvoiceId, actor],
+  );
+
+  if (!markedApplied || markedApplied === 0) {
+    // Already applied — return idempotently without modifying invoice balance.
+    return targetInvoiceId;
   }
 
   const applyAmount = command.amount ?? payment.amount;
@@ -830,7 +861,10 @@ export const authorizePayment = async (
 
   const paymentId = result.rows[0]?.id;
   if (!paymentId) {
-    throw new BillingCommandError("PAYMENT_AUTHORIZE_FAILED", "Failed to record payment authorization.");
+    throw new BillingCommandError(
+      "PAYMENT_AUTHORIZE_FAILED",
+      "Failed to record payment authorization.",
+    );
   }
   return paymentId;
 };
@@ -868,8 +902,11 @@ export const executeNightAudit = async (
   // Step 1: Post room charges for in-house guests
   if (shouldPostCharges) {
     const inHouseResult = await query<{
-      id: string; room_rate: string; room_number: string;
-      total_amount: string; guest_id: string;
+      id: string;
+      room_rate: string;
+      room_number: string;
+      total_amount: string;
+      guest_id: string;
     }>(
       `SELECT r.id, r.room_rate, r.room_number, r.total_amount, r.guest_id
        FROM reservations r
@@ -907,7 +944,11 @@ export const executeNightAudit = async (
           );
 
           // G7: Calculate and post applicable taxes for room charge
-          const taxResult = await queryWithClient<{ tax_code: string; tax_name: string; tax_rate: string }>(
+          const taxResult = await queryWithClient<{
+            tax_code: string;
+            tax_name: string;
+            tax_rate: string;
+          }>(
             client,
             `SELECT tax_code, tax_name, tax_rate FROM tax_configurations
              WHERE tenant_id = $1::uuid
@@ -924,7 +965,7 @@ export const executeNightAudit = async (
           let totalTaxAmount = 0;
           for (const tax of taxResult.rows) {
             const taxRate = Number(tax.tax_rate);
-            const taxAmount = Number((roomRate * taxRate / 100).toFixed(2));
+            const taxAmount = Number(((roomRate * taxRate) / 100).toFixed(2));
             if (taxAmount <= 0) continue;
 
             await queryWithClient(
@@ -943,9 +984,13 @@ export const executeNightAudit = async (
                  'ROOMS', $8, $9::uuid, $9::uuid
                )`,
               [
-                context.tenantId, command.property_id, folioId, res.id,
+                context.tenantId,
+                command.property_id,
+                folioId,
+                res.id,
                 `${tax.tax_name} (${taxRate}%)`,
-                taxAmount, auditDate,
+                taxAmount,
+                auditDate,
                 `${tax.tax_code}: ${taxRate}% on room charge`,
                 actorId,
               ],
@@ -1043,10 +1088,7 @@ export const executeNightAudit = async (
  * or CLOSED (if balance > 0 and force=true). Blocks if balance > 0
  * without force.
  */
-export const closeFolio = async (
-  payload: unknown,
-  context: CommandContext,
-): Promise<string> => {
+export const closeFolio = async (payload: unknown, context: CommandContext): Promise<string> => {
   const command = BillingFolioCloseCommandSchema.parse(payload);
   const actor = resolveActorId(context.initiatedBy);
   const actorId = asUuid(actor) ?? SYSTEM_ACTOR_ID;
@@ -1088,7 +1130,15 @@ export const closeFolio = async (
          settled_at = $6::timestamptz, settled_by = $7::uuid,
          updated_at = NOW(), updated_by = $5::uuid
      WHERE tenant_id = $1::uuid AND folio_id = $2::uuid`,
-    [context.tenantId, folioId, newStatus, command.close_reason ?? null, actorId, settledAt, settledBy],
+    [
+      context.tenantId,
+      folioId,
+      newStatus,
+      command.close_reason ?? null,
+      actorId,
+      settledAt,
+      settledBy,
+    ],
   );
 
   appLogger.info(
@@ -1102,10 +1152,7 @@ export const closeFolio = async (
  * Void a previously authorized payment.
  * Only AUTHORIZED payments can be voided. Creates a VOID transaction.
  */
-export const voidPayment = async (
-  payload: unknown,
-  context: CommandContext,
-): Promise<string> => {
+export const voidPayment = async (payload: unknown, context: CommandContext): Promise<string> => {
   const command = BillingPaymentVoidCommandSchema.parse(payload);
   const actor = resolveActorId(context.initiatedBy);
   const actorId = asUuid(actor) ?? SYSTEM_ACTOR_ID;

@@ -91,9 +91,9 @@ export type ReservationCancellationInfo = {
 
 /** JSONB shape stored on the rates table. */
 export type CancellationPolicy = {
-  type: string;         // "flexible", "moderate", "strict", "non_refundable"
-  hours: number;        // hours before check-in deadline
-  penalty: number;      // fee amount (currency-relative)
+  type: string; // "flexible", "moderate", "strict", "non_refundable"
+  hours: number; // hours before check-in deadline
+  penalty: number; // fee amount (currency-relative)
 };
 
 /**

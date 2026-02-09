@@ -12,8 +12,8 @@ if (!process.env.AUTH_JWT_SECRET) {
   }
   process.env.AUTH_JWT_SECRET = "dev-secret-minimum-32-chars-change-me!";
 }
-process.env.AUTH_JWT_ISSUER = process.env.AUTH_JWT_ISSUER ?? "tartware-core";
-process.env.AUTH_JWT_AUDIENCE = process.env.AUTH_JWT_AUDIENCE ?? "tartware";
+process.env.AUTH_JWT_ISSUER = process.env.AUTH_JWT_ISSUER ?? "tartware-core-service";
+process.env.AUTH_JWT_AUDIENCE = process.env.AUTH_JWT_AUDIENCE ?? "tartware-core";
 
 const env = process.env;
 
@@ -116,8 +116,8 @@ export const dbConfig = {
 export const authConfig = {
   jwt: {
     secret: process.env.AUTH_JWT_SECRET ?? "dev-secret-minimum-32-chars-change-me!",
-    issuer: process.env.AUTH_JWT_ISSUER ?? "tartware-core",
-    audience: process.env.AUTH_JWT_AUDIENCE ?? "tartware",
+    issuer: process.env.AUTH_JWT_ISSUER ?? "tartware-core-service",
+    audience: process.env.AUTH_JWT_AUDIENCE ?? "tartware-core",
   },
 };
 

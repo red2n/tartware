@@ -16,6 +16,10 @@ import {
 import { processWithRetry, RetryExhaustedError } from "../lib/retry.js";
 import { reservationsLogger } from "../logger.js";
 import {
+  checkCommandIdempotency,
+  recordCommandIdempotency,
+} from "../repositories/idempotency-repository.js";
+import {
   ReservationAssignRoomCommandSchema,
   ReservationCancelCommandSchema,
   ReservationCheckInCommandSchema,
@@ -244,6 +248,9 @@ const { handleBatch } = createCommandCenterHandlers({
   buildDlqPayload,
   routeCommand: routeReservationCommand,
   commandLabel: "reservation",
+  checkIdempotency: checkCommandIdempotency,
+  recordIdempotency: recordCommandIdempotency,
+  idempotencyFailureMode: "fail-open",
   metrics: {
     recordOutcome: recordCommandOutcome,
     observeDuration: observeCommandDuration,

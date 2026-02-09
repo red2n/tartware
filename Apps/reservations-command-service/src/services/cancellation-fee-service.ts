@@ -1,10 +1,13 @@
-import type { CancellationPolicy, ReservationCancellationInfo } from "../repositories/reservation-repository.js";
 import { reservationsLogger } from "../logger.js";
+import type {
+  CancellationPolicy,
+  ReservationCancellationInfo,
+} from "../repositories/reservation-repository.js";
 
 /**
  * Result of cancellation fee calculation.
  */
-export type CancellationFeeResult = {
+type CancellationFeeResult = {
   /** Calculated cancellation fee (0 if within free-cancel window or no policy). */
   fee: number;
   /** Whether the cancellation is within the penalty window. */

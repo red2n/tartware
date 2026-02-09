@@ -403,7 +403,7 @@ export const listRooms = async (options: {
 /**
  * Available room item for availability search results.
  */
-export type AvailableRoomItem = {
+type AvailableRoomItem = {
   room_id: string;
   room_number: string;
   room_type_id: string;

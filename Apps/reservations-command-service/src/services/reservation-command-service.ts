@@ -29,7 +29,6 @@ import {
   fetchReservationStaySnapshot,
   type ReservationStaySnapshot,
 } from "../repositories/reservation-repository.js";
-import { calculateCancellationFee } from "./cancellation-fee-service.js";
 import type {
   ReservationAssignRoomCommand,
   ReservationCancelCommand,
@@ -49,6 +48,7 @@ import type {
 } from "../schemas/reservation-command.js";
 import type { RatePlanResolution } from "../services/rate-plan-service.js";
 import { resolveRatePlan } from "../services/rate-plan-service.js";
+import { calculateCancellationFee } from "./cancellation-fee-service.js";
 
 class ReservationCommandError extends Error {
   code: string;
@@ -159,76 +159,101 @@ export const createReservation = async (
 
   const guardMetadata = availabilityGuard ?? { status: "SKIPPED" };
 
-  await withTransaction(async (client) => {
-    if (rateResolution.fallbackApplied) {
-      await insertRateFallbackRecord(client, {
-        tenantId,
-        reservationId: aggregateId,
-        propertyId: command.property_id,
-        requestedRateCode: rateResolution.requestedRateCode,
-        appliedRateCode: rateResolution.appliedRateCode,
-        reason: rateResolution.reason,
-        actor: serviceConfig.serviceId,
-        correlationId: options.correlationId,
-        metadata: {
-          decidedAt: rateResolution.decidedAt.toISOString(),
-        },
-      });
-    }
-
-    await recordLifecyclePersisted(client, {
-      eventId,
-      tenantId,
-      reservationId: aggregateId,
-      commandName: "reservation.create",
-      correlationId: options.correlationId,
-      partitionKey,
-      details: {
-        tenantId,
-        reservationId: aggregateId,
-        command: "reservation.create",
-      },
-      metadata: {
-        eventType: validatedEvent.metadata.type,
-        availabilityGuard: guardMetadata,
-        ...(rateFallbackMetadata ? { rateFallback: rateFallbackMetadata } : {}),
-      },
-    });
-
-    if (guardMetadata.status === "LOCKED" && guardMetadata.lockId) {
-      await upsertReservationGuardMetadata(
-        {
+  try {
+    await withTransaction(async (client) => {
+      if (rateResolution.fallbackApplied) {
+        await insertRateFallbackRecord(client, {
           tenantId,
           reservationId: aggregateId,
-          lockId: guardMetadata.lockId,
-          status: guardMetadata.status,
-          metadata: guardMetadata,
-        },
-        client,
-      );
-    }
+          propertyId: command.property_id,
+          requestedRateCode: rateResolution.requestedRateCode,
+          appliedRateCode: rateResolution.appliedRateCode,
+          reason: rateResolution.reason,
+          actor: serviceConfig.serviceId,
+          correlationId: options.correlationId,
+          metadata: {
+            decidedAt: rateResolution.decidedAt.toISOString(),
+          },
+        });
+      }
 
-    await enqueueOutboxRecordWithClient(client, {
-      eventId,
-      tenantId,
-      aggregateId,
-      aggregateType: "reservation",
-      eventType: validatedEvent.metadata.type,
-      payload: validatedEvent,
-      headers: {
-        tenantId,
+      await recordLifecyclePersisted(client, {
         eventId,
-        ...(options.correlationId ? { correlationId: options.correlationId } : {}),
-      },
-      correlationId: options.correlationId,
-      partitionKey,
-      metadata: {
-        source: serviceConfig.serviceId,
-        availabilityGuard: guardMetadata,
-        ...(rateFallbackMetadata ? { rateFallback: rateFallbackMetadata } : {}),
-      },
+        tenantId,
+        reservationId: aggregateId,
+        commandName: "reservation.create",
+        correlationId: options.correlationId,
+        partitionKey,
+        details: {
+          tenantId,
+          reservationId: aggregateId,
+          command: "reservation.create",
+        },
+        metadata: {
+          eventType: validatedEvent.metadata.type,
+          availabilityGuard: guardMetadata,
+          ...(rateFallbackMetadata ? { rateFallback: rateFallbackMetadata } : {}),
+        },
+      });
+
+      if (guardMetadata.status === "LOCKED" && guardMetadata.lockId) {
+        await upsertReservationGuardMetadata(
+          {
+            tenantId,
+            reservationId: aggregateId,
+            lockId: guardMetadata.lockId,
+            status: guardMetadata.status,
+            metadata: guardMetadata,
+          },
+          client,
+        );
+      }
+
+      await enqueueOutboxRecordWithClient(client, {
+        eventId,
+        tenantId,
+        aggregateId,
+        aggregateType: "reservation",
+        eventType: validatedEvent.metadata.type,
+        payload: validatedEvent,
+        headers: {
+          tenantId,
+          eventId,
+          ...(options.correlationId ? { correlationId: options.correlationId } : {}),
+        },
+        correlationId: options.correlationId,
+        partitionKey,
+        metadata: {
+          source: serviceConfig.serviceId,
+          availabilityGuard: guardMetadata,
+          ...(rateFallbackMetadata ? { rateFallback: rateFallbackMetadata } : {}),
+        },
+      });
     });
-  });
+  } catch (txError) {
+    // P1-2: Release availability lock on transaction failure to prevent lock leak
+    if (guardMetadata.status === "LOCKED" && guardMetadata.lockId) {
+      try {
+        await releaseReservationHold({
+          tenantId,
+          lockId: guardMetadata.lockId,
+          reservationId: aggregateId,
+          reason: "TRANSACTION_FAILURE_ROLLBACK",
+          correlationId: options.correlationId ?? eventId,
+        });
+        reservationsLogger.info(
+          { reservationId: aggregateId, lockId: guardMetadata.lockId },
+          "Released availability lock after transaction failure",
+        );
+      } catch (releaseError) {
+        reservationsLogger.error(
+          { reservationId: aggregateId, lockId: guardMetadata.lockId, err: releaseError },
+          "Failed to release availability lock after transaction failure — lock will expire via TTL",
+        );
+      }
+    }
+    throw txError;
+  }
 
   return {
     eventId,
@@ -334,76 +359,105 @@ export const modifyReservation = async (
         message: "NO_STAY_CRITICAL_CHANGES",
       };
 
-  await withTransaction(async (client) => {
-    if (rateResolution?.fallbackApplied) {
-      await insertRateFallbackRecord(client, {
-        tenantId,
-        reservationId: command.reservation_id,
-        propertyId: targetPropertyId,
-        requestedRateCode: rateResolution.requestedRateCode,
-        appliedRateCode: rateResolution.appliedRateCode,
-        reason: rateResolution.reason,
-        actor: serviceConfig.serviceId,
-        correlationId: options.correlationId,
-        metadata: {
-          decidedAt: rateResolution.decidedAt.toISOString(),
-        },
-      });
-    }
-
-    await recordLifecyclePersisted(client, {
-      eventId,
-      tenantId,
-      reservationId: command.reservation_id,
-      commandName: "reservation.modify",
-      correlationId: options.correlationId,
-      partitionKey: command.reservation_id,
-      details: {
-        tenantId,
-        reservationId: command.reservation_id,
-        command: "reservation.modify",
-      },
-      metadata: {
-        eventType: validatedEvent.metadata.type,
-        availabilityGuard: guardMetadata,
-        ...(rateFallbackMetadata ? { rateFallback: rateFallbackMetadata } : {}),
-      },
-    });
-
-    if (guardMetadata.status === "LOCKED" && guardMetadata.lockId) {
-      await upsertReservationGuardMetadata(
-        {
+  try {
+    await withTransaction(async (client) => {
+      if (rateResolution?.fallbackApplied) {
+        await insertRateFallbackRecord(client, {
           tenantId,
           reservationId: command.reservation_id,
-          lockId: guardMetadata.lockId,
-          status: guardMetadata.status,
-          metadata: guardMetadata,
-        },
-        client,
-      );
-    }
+          propertyId: targetPropertyId,
+          requestedRateCode: rateResolution.requestedRateCode,
+          appliedRateCode: rateResolution.appliedRateCode,
+          reason: rateResolution.reason,
+          actor: serviceConfig.serviceId,
+          correlationId: options.correlationId,
+          metadata: {
+            decidedAt: rateResolution.decidedAt.toISOString(),
+          },
+        });
+      }
 
-    await enqueueOutboxRecordWithClient(client, {
-      eventId,
-      tenantId,
-      aggregateId: command.reservation_id,
-      aggregateType: "reservation",
-      eventType: validatedEvent.metadata.type,
-      payload: validatedEvent,
-      headers: {
-        tenantId,
+      await recordLifecyclePersisted(client, {
         eventId,
-        ...(options.correlationId ? { correlationId: options.correlationId } : {}),
-      },
-      correlationId: options.correlationId,
-      partitionKey: command.reservation_id,
-      metadata: {
-        source: serviceConfig.serviceId,
-        availabilityGuard: guardMetadata,
-        ...(rateFallbackMetadata ? { rateFallback: rateFallbackMetadata } : {}),
-      },
+        tenantId,
+        reservationId: command.reservation_id,
+        commandName: "reservation.modify",
+        correlationId: options.correlationId,
+        partitionKey: command.reservation_id,
+        details: {
+          tenantId,
+          reservationId: command.reservation_id,
+          command: "reservation.modify",
+        },
+        metadata: {
+          eventType: validatedEvent.metadata.type,
+          availabilityGuard: guardMetadata,
+          ...(rateFallbackMetadata ? { rateFallback: rateFallbackMetadata } : {}),
+        },
+      });
+
+      if (guardMetadata.status === "LOCKED" && guardMetadata.lockId) {
+        await upsertReservationGuardMetadata(
+          {
+            tenantId,
+            reservationId: command.reservation_id,
+            lockId: guardMetadata.lockId,
+            status: guardMetadata.status,
+            metadata: guardMetadata,
+          },
+          client,
+        );
+      }
+
+      await enqueueOutboxRecordWithClient(client, {
+        eventId,
+        tenantId,
+        aggregateId: command.reservation_id,
+        aggregateType: "reservation",
+        eventType: validatedEvent.metadata.type,
+        payload: validatedEvent,
+        headers: {
+          tenantId,
+          eventId,
+          ...(options.correlationId ? { correlationId: options.correlationId } : {}),
+        },
+        correlationId: options.correlationId,
+        partitionKey: command.reservation_id,
+        metadata: {
+          source: serviceConfig.serviceId,
+          availabilityGuard: guardMetadata,
+          ...(rateFallbackMetadata ? { rateFallback: rateFallbackMetadata } : {}),
+        },
+      });
     });
-  });
+  } catch (txError) {
+    // P1-2: Release availability lock on transaction failure to prevent lock leak
+    if (guardMetadata.status === "LOCKED" && guardMetadata.lockId) {
+      try {
+        await releaseReservationHold({
+          tenantId,
+          lockId: guardMetadata.lockId,
+          reservationId: command.reservation_id,
+          reason: "TRANSACTION_FAILURE_ROLLBACK",
+          correlationId: options.correlationId ?? eventId,
+        });
+        reservationsLogger.info(
+          { reservationId: command.reservation_id, lockId: guardMetadata.lockId },
+          "Released availability lock after modify transaction failure",
+        );
+      } catch (releaseError) {
+        reservationsLogger.error(
+          {
+            reservationId: command.reservation_id,
+            lockId: guardMetadata.lockId,
+            err: releaseError,
+          },
+          "Failed to release availability lock after modify transaction failure — lock will expire via TTL",
+        );
+      }
+    }
+    throw txError;
+  }
 
   return {
     eventId,
@@ -559,7 +613,15 @@ export const checkInReservation = async (
     [command.reservation_id, tenantId],
   );
   const reservation = resResult.rows?.[0] as
-    | { id: string; status: string; room_type_id: string; guest_id: string; total_amount: number; check_in_date: Date; check_out_date: Date }
+    | {
+        id: string;
+        status: string;
+        room_type_id: string;
+        guest_id: string;
+        total_amount: number;
+        check_in_date: Date;
+        check_out_date: Date;
+      }
     | undefined;
 
   if (!reservation) {
@@ -587,7 +649,9 @@ export const checkInReservation = async (
       `SELECT id, status, room_number FROM rooms WHERE id = $1 AND tenant_id = $2 LIMIT 1`,
       [assignedRoomId, tenantId],
     );
-    const room = roomResult.rows?.[0] as { id: string; status: string; room_number: string } | undefined;
+    const room = roomResult.rows?.[0] as
+      | { id: string; status: string; room_number: string }
+      | undefined;
     if (!room) {
       throw new ReservationCommandError("ROOM_NOT_FOUND", `Room ${assignedRoomId} not found`);
     }
@@ -616,11 +680,15 @@ export const checkInReservation = async (
       `SELECT property_id FROM reservations WHERE id = $1 AND tenant_id = $2 LIMIT 1`,
       [command.reservation_id, tenantId],
     );
-    const propertyId = (resPropertyResult.rows?.[0] as { property_id: string } | undefined)?.property_id;
+    const propertyId = (resPropertyResult.rows?.[0] as { property_id: string } | undefined)
+      ?.property_id;
     if (propertyId) {
       const bestRoom = await findBestAvailableRoom(
-        tenantId, propertyId, reservation.room_type_id,
-        new Date(reservation.check_in_date), new Date(reservation.check_out_date),
+        tenantId,
+        propertyId,
+        reservation.room_type_id,
+        new Date(reservation.check_in_date),
+        new Date(reservation.check_out_date),
       );
       if (bestRoom) {
         assignedRoomId = bestRoom.room_id;
@@ -661,7 +729,8 @@ export const checkInReservation = async (
     }
   }
 
-  const roomNumber = assignedRoomNumber ?? (assignedRoomId ? await fetchRoomNumber(tenantId, assignedRoomId) : null);
+  const roomNumber =
+    assignedRoomNumber ?? (assignedRoomId ? await fetchRoomNumber(tenantId, assignedRoomId) : null);
   const updatePayload: ReservationUpdatePayload = {
     id: command.reservation_id,
     tenant_id: tenantId,
@@ -677,7 +746,12 @@ export const checkInReservation = async (
       auto_assigned: !command.room_id && !!assignedRoomId,
     },
   };
-  const result = await enqueueReservationUpdate(tenantId, "reservation.check_in", updatePayload, options);
+  const result = await enqueueReservationUpdate(
+    tenantId,
+    "reservation.check_in",
+    updatePayload,
+    options,
+  );
 
   // 3. Mark room as OCCUPIED (post-enqueue, best-effort)
   if (assignedRoomId) {
@@ -722,9 +796,17 @@ export const checkOutReservation = async (
     [command.reservation_id, tenantId],
   );
   const reservation = resResult.rows?.[0] as
-    | { id: string; status: string; guest_id: string; room_number: string | null;
-        room_type_id: string; total_amount: number; check_in_date: Date;
-        check_out_date: Date; actual_check_in: Date | null }
+    | {
+        id: string;
+        status: string;
+        guest_id: string;
+        room_number: string | null;
+        room_type_id: string;
+        total_amount: number;
+        check_in_date: Date;
+        check_out_date: Date;
+        actual_check_in: Date | null;
+      }
     | undefined;
 
   if (!reservation) {
@@ -763,7 +845,11 @@ export const checkOutReservation = async (
             [folio.folio_id, tenantId],
           );
           reservationsLogger.info(
-            { reservationId: command.reservation_id, folioId: folio.folio_id, balance: folio.balance },
+            {
+              reservationId: command.reservation_id,
+              folioId: folio.folio_id,
+              balance: folio.balance,
+            },
             "Express checkout: folio auto-settled for post-departure billing",
           );
         } catch (settleErr) {
@@ -774,7 +860,11 @@ export const checkOutReservation = async (
         }
       } else if (command.force) {
         reservationsLogger.warn(
-          { reservationId: command.reservation_id, folioId: folio.folio_id, balance: folio.balance },
+          {
+            reservationId: command.reservation_id,
+            folioId: folio.folio_id,
+            balance: folio.balance,
+          },
           "Check-out forced with unsettled folio balance",
         );
       } else {
@@ -818,7 +908,12 @@ export const checkOutReservation = async (
       room_number: reservation.room_number,
     },
   };
-  const result = await enqueueReservationUpdate(tenantId, "reservation.check_out", updatePayload, options);
+  const result = await enqueueReservationUpdate(
+    tenantId,
+    "reservation.check_out",
+    updatePayload,
+    options,
+  );
 
   // 3. Mark room as DIRTY for housekeeping (post-enqueue, best-effort)
   if (reservation.room_number) {
@@ -912,7 +1007,42 @@ export const assignRoom = async (
       availabilityGuard: guardMetadata,
     },
   };
-  return enqueueReservationUpdate(tenantId, "reservation.assign_room", updatePayload, options);
+
+  try {
+    return await enqueueReservationUpdate(
+      tenantId,
+      "reservation.assign_room",
+      updatePayload,
+      options,
+    );
+  } catch (txError) {
+    // P1-2: Release availability lock on transaction failure to prevent lock leak
+    if (guardMetadata.status === "LOCKED" && guardMetadata.lockId) {
+      try {
+        await releaseReservationHold({
+          tenantId,
+          lockId: guardMetadata.lockId,
+          reservationId: command.reservation_id,
+          reason: "TRANSACTION_FAILURE_ROLLBACK",
+          correlationId: options.correlationId ?? eventId,
+        });
+        reservationsLogger.info(
+          { reservationId: command.reservation_id, lockId: guardMetadata.lockId },
+          "Released availability lock after assign-room transaction failure",
+        );
+      } catch (releaseError) {
+        reservationsLogger.error(
+          {
+            reservationId: command.reservation_id,
+            lockId: guardMetadata.lockId,
+            err: releaseError,
+          },
+          "Failed to release availability lock after assign-room failure — lock will expire via TTL",
+        );
+      }
+    }
+    throw txError;
+  }
 };
 
 /**
@@ -987,7 +1117,42 @@ export const extendStay = async (
       availabilityGuard: guardMetadata,
     },
   };
-  return enqueueReservationUpdate(tenantId, "reservation.extend_stay", updatePayload, options);
+
+  try {
+    return await enqueueReservationUpdate(
+      tenantId,
+      "reservation.extend_stay",
+      updatePayload,
+      options,
+    );
+  } catch (txError) {
+    // P1-2: Release availability lock on transaction failure to prevent lock leak
+    if (guardMetadata.status === "LOCKED" && guardMetadata.lockId) {
+      try {
+        await releaseReservationHold({
+          tenantId,
+          lockId: guardMetadata.lockId,
+          reservationId: command.reservation_id,
+          reason: "TRANSACTION_FAILURE_ROLLBACK",
+          correlationId: options.correlationId ?? eventId,
+        });
+        reservationsLogger.info(
+          { reservationId: command.reservation_id, lockId: guardMetadata.lockId },
+          "Released availability lock after extend-stay transaction failure",
+        );
+      } catch (releaseError) {
+        reservationsLogger.error(
+          {
+            reservationId: command.reservation_id,
+            lockId: guardMetadata.lockId,
+            err: releaseError,
+          },
+          "Failed to release availability lock after extend-stay failure — lock will expire via TTL",
+        );
+      }
+    }
+    throw txError;
+  }
 };
 
 /**
@@ -1080,8 +1245,14 @@ export const markNoShow = async (
     [command.reservation_id, tenantId],
   );
   const reservation = resResult.rows?.[0] as
-    | { id: string; status: string; room_number: string | null; room_rate: number;
-        total_amount: number; guest_id: string }
+    | {
+        id: string;
+        status: string;
+        room_number: string | null;
+        room_rate: number;
+        total_amount: number;
+        guest_id: string;
+      }
     | undefined;
 
   if (!reservation) {
@@ -1115,7 +1286,12 @@ export const markNoShow = async (
       reason: command.reason ?? "Guest did not arrive",
     },
   };
-  const result = await enqueueReservationUpdate(tenantId, "reservation.no_show", updatePayload, options);
+  const result = await enqueueReservationUpdate(
+    tenantId,
+    "reservation.no_show",
+    updatePayload,
+    options,
+  );
 
   // 4. Update no-show columns directly (event handler handles status/version)
   try {
@@ -1401,13 +1577,20 @@ export const walkInCheckIn = async (
     );
     const roomStatus = (roomResult.rows?.[0] as { status: string } | undefined)?.status;
     if (roomStatus !== "AVAILABLE") {
-      throw new ReservationCommandError("ROOM_NOT_AVAILABLE", `Room ${rn} is ${roomStatus}, not AVAILABLE`);
+      throw new ReservationCommandError(
+        "ROOM_NOT_AVAILABLE",
+        `Room ${rn} is ${roomStatus}, not AVAILABLE`,
+      );
     }
     roomNumber = rn;
   } else {
     // Auto-assign best available room
     const bestRoom = await findBestAvailableRoom(
-      tenantId, command.property_id, command.room_type_id, checkInDate, checkOutDate,
+      tenantId,
+      command.property_id,
+      command.room_type_id,
+      checkInDate,
+      checkOutDate,
     );
     if (!bestRoom) {
       throw new ReservationCommandError(
@@ -1427,7 +1610,9 @@ export const walkInCheckIn = async (
   const guest = guestResult.rows?.[0] as
     | { first_name: string; last_name: string; email: string }
     | undefined;
-  const guestName = guest ? `${guest.first_name ?? ""} ${guest.last_name ?? ""}`.trim() : "Walk-In Guest";
+  const guestName = guest
+    ? `${guest.first_name ?? ""} ${guest.last_name ?? ""}`.trim()
+    : "Walk-In Guest";
   const guestEmail = guest?.email ?? "walkin@unknown.com";
 
   // 4. Calculate nightly rate
@@ -1441,7 +1626,7 @@ export const walkInCheckIn = async (
   const confirmation = `TW-${reservationId.slice(0, 8).toUpperCase()}`;
 
   // 5. Lock availability
-  await lockReservationHold({
+  const walkInGuardMetadata = await lockReservationHold({
     tenantId,
     reservationId,
     roomTypeId: command.room_type_id,
@@ -1453,10 +1638,11 @@ export const walkInCheckIn = async (
   });
 
   // 6. Direct INSERT + room OCCUPIED + outbox event in one transaction
-  await withTransaction(async (client) => {
-    // Insert reservation directly (CHECKED_IN from the start)
-    await client.query(
-      `INSERT INTO reservations (
+  try {
+    await withTransaction(async (client) => {
+      // Insert reservation directly (CHECKED_IN from the start)
+      await client.query(
+        `INSERT INTO reservations (
         id, tenant_id, property_id, guest_id, room_type_id,
         check_in_date, check_out_date, booking_date,
         status, source, reservation_type,
@@ -1476,84 +1662,122 @@ export const walkInCheckIn = async (
         NOW(), NOW()
       )
       ON CONFLICT (id) DO NOTHING`,
-      [
-        reservationId, tenantId, command.property_id, command.guest_id, command.room_type_id,
-        checkInDate.toISOString().slice(0, 10), checkOutDate.toISOString().slice(0, 10),
-        roomRate, totalAmount, currency,
-        guestName, guestEmail, confirmation,
-        roomNumber,
-        command.eta ?? null, command.company_id ?? null, command.travel_agent_id ?? null,
-      ],
-    );
+        [
+          reservationId,
+          tenantId,
+          command.property_id,
+          command.guest_id,
+          command.room_type_id,
+          checkInDate.toISOString().slice(0, 10),
+          checkOutDate.toISOString().slice(0, 10),
+          roomRate,
+          totalAmount,
+          currency,
+          guestName,
+          guestEmail,
+          confirmation,
+          roomNumber,
+          command.eta ?? null,
+          command.company_id ?? null,
+          command.travel_agent_id ?? null,
+        ],
+      );
 
-    // Mark room OCCUPIED
-    await client.query(
-      `UPDATE rooms SET status = 'OCCUPIED', version = version + 1, updated_at = NOW()
+      // Mark room OCCUPIED
+      await client.query(
+        `UPDATE rooms SET status = 'OCCUPIED', version = version + 1, updated_at = NOW()
        WHERE id = $1 AND tenant_id = $2`,
-      [roomId, tenantId],
-    );
+        [roomId, tenantId],
+      );
 
-    // Record lifecycle
-    await recordLifecyclePersisted(client, {
-      eventId,
-      tenantId,
-      reservationId,
-      commandName: "reservation.walkin_checkin",
-      correlationId: options.correlationId,
-      partitionKey: command.guest_id,
-      details: {
-        tenantId, reservationId, command: "reservation.walkin_checkin",
-        roomNumber, source: "WALKIN",
-      },
-      metadata: { eventType: "reservation.created" },
-    });
-
-    // Enqueue outbox event for downstream consumers
-    const createdEvent = {
-      metadata: {
-        id: eventId,
-        source: serviceConfig.serviceId,
-        type: "reservation.created",
-        timestamp: now.toISOString(),
-        version: "1.0",
-        correlationId: options.correlationId,
+      // Record lifecycle
+      await recordLifecyclePersisted(client, {
+        eventId,
         tenantId,
-        retryCount: 0,
-      },
-      payload: {
-        id: reservationId,
-        property_id: command.property_id,
-        guest_id: command.guest_id,
-        room_type_id: command.room_type_id,
-        check_in_date: checkInDate,
-        check_out_date: checkOutDate,
-        booking_date: now,
-        total_amount: totalAmount,
-        currency,
-        status: "CHECKED_IN",
-        source: "WALKIN",
-        reservation_type: "TRANSIENT",
-        rate_code: rateResolution.appliedRateCode,
-      },
-    };
+        reservationId,
+        commandName: "reservation.walkin_checkin",
+        correlationId: options.correlationId,
+        partitionKey: command.guest_id,
+        details: {
+          tenantId,
+          reservationId,
+          command: "reservation.walkin_checkin",
+          roomNumber,
+          source: "WALKIN",
+        },
+        metadata: { eventType: "reservation.created" },
+      });
 
-    await enqueueOutboxRecordWithClient(client, {
-      eventId,
-      tenantId,
-      aggregateId: reservationId,
-      aggregateType: "reservation",
-      eventType: "reservation.created",
-      payload: createdEvent,
-      headers: { tenantId, eventId },
-      correlationId: options.correlationId,
-      partitionKey: command.guest_id,
-      metadata: {
-        source: serviceConfig.serviceId,
-        walkIn: true,
-        roomNumber,
-      },
+      // Enqueue outbox event for downstream consumers
+      const createdEvent = {
+        metadata: {
+          id: eventId,
+          source: serviceConfig.serviceId,
+          type: "reservation.created",
+          timestamp: now.toISOString(),
+          version: "1.0",
+          correlationId: options.correlationId,
+          tenantId,
+          retryCount: 0,
+        },
+        payload: {
+          id: reservationId,
+          property_id: command.property_id,
+          guest_id: command.guest_id,
+          room_type_id: command.room_type_id,
+          check_in_date: checkInDate,
+          check_out_date: checkOutDate,
+          booking_date: now,
+          total_amount: totalAmount,
+          currency,
+          status: "CHECKED_IN",
+          source: "WALKIN",
+          reservation_type: "TRANSIENT",
+          rate_code: rateResolution.appliedRateCode,
+        },
+      };
+
+      await enqueueOutboxRecordWithClient(client, {
+        eventId,
+        tenantId,
+        aggregateId: reservationId,
+        aggregateType: "reservation",
+        eventType: "reservation.created",
+        payload: createdEvent,
+        headers: { tenantId, eventId },
+        correlationId: options.correlationId,
+        partitionKey: command.guest_id,
+        metadata: {
+          source: serviceConfig.serviceId,
+          walkIn: true,
+          roomNumber,
+        },
+      });
     });
-  });
+  } catch (txError) {
+    // P1-2: Release availability lock on transaction failure to prevent lock leak
+    if (walkInGuardMetadata.status === "LOCKED" && walkInGuardMetadata.lockId) {
+      try {
+        await releaseReservationHold({
+          tenantId,
+          lockId: walkInGuardMetadata.lockId,
+          reservationId,
+          reason: "TRANSACTION_FAILURE_ROLLBACK",
+          correlationId: options.correlationId ?? eventId,
+        });
+        reservationsLogger.info(
+          { reservationId, lockId: walkInGuardMetadata.lockId },
+          "Released availability lock after walk-in transaction failure",
+        );
+      } catch (releaseError) {
+        reservationsLogger.error(
+          { reservationId, lockId: walkInGuardMetadata.lockId, err: releaseError },
+          "Failed to release availability lock after walk-in failure — lock will expire via TTL",
+        );
+      }
+    }
+    throw txError;
+  }
 
   reservationsLogger.info(
     { reservationId, roomNumber, guestName, confirmation },
@@ -1598,17 +1822,30 @@ export const waitlistAdd = async (
       NOW()
     )`,
     [
-      waitlistId, tenantId, command.property_id, command.guest_id,
-      command.requested_room_type_id, command.requested_rate_id ?? null,
-      arrivalDate.toISOString().slice(0, 10), departureDate.toISOString().slice(0, 10),
-      command.number_of_rooms ?? 1, command.number_of_adults ?? 1, command.number_of_children ?? 0,
-      command.flexibility ?? "NONE", command.vip_flag ?? false, command.notes ?? null,
+      waitlistId,
+      tenantId,
+      command.property_id,
+      command.guest_id,
+      command.requested_room_type_id,
+      command.requested_rate_id ?? null,
+      arrivalDate.toISOString().slice(0, 10),
+      departureDate.toISOString().slice(0, 10),
+      command.number_of_rooms ?? 1,
+      command.number_of_adults ?? 1,
+      command.number_of_children ?? 0,
+      command.flexibility ?? "NONE",
+      command.vip_flag ?? false,
+      command.notes ?? null,
     ],
   );
 
   reservationsLogger.info(
-    { waitlistId, guestId: command.guest_id, roomTypeId: command.requested_room_type_id,
-      arrivalDate: arrivalDate.toISOString().slice(0, 10) },
+    {
+      waitlistId,
+      guestId: command.guest_id,
+      roomTypeId: command.requested_room_type_id,
+      arrivalDate: arrivalDate.toISOString().slice(0, 10),
+    },
     "Guest added to waitlist",
   );
 
@@ -1635,15 +1872,26 @@ export const waitlistConvert = async (
      LIMIT 1`,
     [command.waitlist_id, tenantId],
   );
-  const entry = wlResult.rows?.[0] as {
-    waitlist_id: string; guest_id: string; requested_room_type_id: string;
-    requested_rate_id: string | null; arrival_date: Date; departure_date: Date;
-    number_of_adults: number; number_of_children: number;
-    waitlist_status: string; notes: string | null;
-  } | undefined;
+  const entry = wlResult.rows?.[0] as
+    | {
+        waitlist_id: string;
+        guest_id: string;
+        requested_room_type_id: string;
+        requested_rate_id: string | null;
+        arrival_date: Date;
+        departure_date: Date;
+        number_of_adults: number;
+        number_of_children: number;
+        waitlist_status: string;
+        notes: string | null;
+      }
+    | undefined;
 
   if (!entry) {
-    throw new ReservationCommandError("WAITLIST_NOT_FOUND", `Waitlist entry ${command.waitlist_id} not found`);
+    throw new ReservationCommandError(
+      "WAITLIST_NOT_FOUND",
+      `Waitlist entry ${command.waitlist_id} not found`,
+    );
   }
   if (entry.waitlist_status !== "ACTIVE" && entry.waitlist_status !== "OFFERED") {
     throw new ReservationCommandError(
@@ -1662,20 +1910,24 @@ export const waitlistConvert = async (
 
   // 3. Create reservation via the normal pipeline
   const roomTypeId = command.room_type_id ?? entry.requested_room_type_id;
-  const result = await createReservation(tenantId, {
-    property_id: command.property_id,
-    guest_id: entry.guest_id,
-    room_type_id: roomTypeId,
-    check_in_date: entry.arrival_date,
-    check_out_date: entry.departure_date,
-    rate_code: command.rate_code,
-    allow_rate_fallback: command.allow_rate_fallback,
-    total_amount: command.total_amount,
-    currency: command.currency,
-    notes: command.notes ?? entry.notes ?? undefined,
-    source: "DIRECT",
-    reservation_type: "TRANSIENT",
-  }, options);
+  const result = await createReservation(
+    tenantId,
+    {
+      property_id: command.property_id,
+      guest_id: entry.guest_id,
+      room_type_id: roomTypeId,
+      check_in_date: entry.arrival_date,
+      check_out_date: entry.departure_date,
+      rate_code: command.rate_code,
+      allow_rate_fallback: command.allow_rate_fallback,
+      total_amount: command.total_amount,
+      currency: command.currency,
+      notes: command.notes ?? entry.notes ?? undefined,
+      source: "DIRECT",
+      reservation_type: "TRANSIENT",
+    },
+    options,
+  );
 
   // 4. Link waitlist entry to the new reservation
   try {
