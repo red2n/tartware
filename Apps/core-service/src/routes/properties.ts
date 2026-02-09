@@ -8,6 +8,7 @@ import { listProperties } from "../services/property-service.js";
 
 const PropertyListQuerySchema = z.object({
   limit: z.coerce.number().int().positive().max(100).default(50),
+  offset: z.coerce.number().int().min(0).default(0),
   tenant_id: z.string().uuid(),
 });
 
@@ -144,8 +145,8 @@ export const registerPropertyRoutes = (app: FastifyInstance): void => {
       }),
     },
     async (request) => {
-      const { limit, tenant_id } = PropertyListQuerySchema.parse(request.query);
-      const properties = await listProperties({ limit, tenantId: tenant_id });
+      const { limit, offset, tenant_id } = PropertyListQuerySchema.parse(request.query);
+      const properties = await listProperties({ limit, offset, tenantId: tenant_id });
       // Properties already have version as string from the service
       return PropertyListResponseSchema.parse(properties);
     },

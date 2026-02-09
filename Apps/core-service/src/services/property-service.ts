@@ -130,11 +130,12 @@ const fetchPropertyOperationalStats = async (
  * List properties with optional tenant filtering and operational stats.
  */
 export const listProperties = async (
-  options: { limit?: number; tenantId?: string } = {},
+  options: { limit?: number; offset?: number; tenantId?: string } = {},
 ): Promise<PropertyWithStatsApi[]> => {
   const limit = options.limit ?? 50;
+  const offset = options.offset ?? 0;
   const tenantId = options.tenantId ?? null;
-  const { rows } = await query<PropertyRow>(PROPERTY_LIST_SQL, [limit, tenantId]);
+  const { rows } = await query<PropertyRow>(PROPERTY_LIST_SQL, [limit, tenantId, offset]);
   if (rows.length === 0) {
     return [];
   }

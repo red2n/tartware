@@ -5,6 +5,8 @@ import { appLogger } from "../lib/logger.js";
 import {
   type BillingChargePostCommand,
   BillingChargePostCommandSchema,
+  type BillingChargeVoidCommand,
+  BillingChargeVoidCommandSchema,
   BillingFolioCloseCommandSchema,
   type BillingFolioTransferCommand,
   BillingFolioTransferCommandSchema,
@@ -12,6 +14,7 @@ import {
   BillingInvoiceAdjustCommandSchema,
   type BillingInvoiceCreateCommand,
   BillingInvoiceCreateCommandSchema,
+  BillingInvoiceFinalizeCommandSchema,
   BillingNightAuditCommandSchema,
   type BillingPaymentApplyCommand,
   BillingPaymentApplyCommandSchema,
@@ -117,6 +120,24 @@ export const applyPayment = async (payload: unknown, context: CommandContext): P
 export const transferFolio = async (payload: unknown, context: CommandContext): Promise<string> => {
   const command = BillingFolioTransferCommandSchema.parse(payload);
   return applyFolioTransfer(command, context);
+};
+
+/**
+ * Void a charge posting and create a reversal entry.
+ * Adjusts folio balance to reverse the original charge.
+ */
+export const voidCharge = async (payload: unknown, context: CommandContext): Promise<string> => {
+  const command = BillingChargeVoidCommandSchema.parse(payload);
+  return applyChargeVoid(command, context);
+};
+
+/**
+ * Finalize an invoice, locking it from further edits.
+ * Only DRAFT or SENT invoices can be finalized.
+ */
+export const finalizeInvoice = async (payload: unknown, context: CommandContext): Promise<string> => {
+  const command = BillingInvoiceFinalizeCommandSchema.parse(payload);
+  return applyInvoiceFinalize(command, context);
 };
 
 const capturePayment = async (
@@ -497,6 +518,8 @@ const applyChargePost = async (
   }
 
   const postingId = await withTransaction(async (client) => {
+    const unitPrice = command.amount;
+    const subtotal = unitPrice * command.quantity;
     const result = await queryWithClient<{ posting_id: string }>(
       client,
       `
@@ -508,6 +531,7 @@ const applyChargePost = async (
           transaction_type,
           posting_type,
           charge_code,
+          department_code,
           charge_description,
           quantity,
           unit_price,
@@ -525,19 +549,20 @@ const applyChargePost = async (
           $3::uuid,
           $4::uuid,
           'CHARGE',
-          'DEBIT',
           $5,
           $6,
-          1,
           $7,
-          $7,
-          $7,
-          UPPER($8),
-          NOW(),
-          CURRENT_DATE,
+          $8,
           $9,
-          $10::uuid,
-          $10::uuid
+          $10,
+          $11,
+          $11,
+          UPPER($12),
+          COALESCE($13::timestamptz, NOW()),
+          CURRENT_DATE,
+          $14,
+          $15::uuid,
+          $15::uuid
         )
         RETURNING posting_id
       `,
@@ -546,10 +571,15 @@ const applyChargePost = async (
         command.property_id,
         folioId,
         command.reservation_id,
-        command.charge_code ?? "MISC",
+        command.posting_type,
+        command.charge_code,
+        command.department_code ?? null,
         command.description ?? "Charge",
-        command.amount,
+        command.quantity,
+        unitPrice,
+        subtotal,
         currency,
+        command.posted_at ?? null,
         command.description ?? null,
         actorId,
       ],
@@ -790,6 +820,224 @@ export const authorizePayment = async (
 ): Promise<string> => {
   const command = BillingPaymentAuthorizeCommandSchema.parse(payload);
   const actor = resolveActorId(context.initiatedBy);
+
+/**
+ * Void a charge posting. Within a single transaction:
+ * 1. Validates the original posting exists and is not already voided.
+ * 2. Marks the original posting as voided.
+ * 3. Inserts a reversal VOID posting (CREDIT) for the same amount.
+ * 4. Cross-links original ↔ void via void_posting_id / original_posting_id.
+ * 5. Adjusts folio balance to reverse the charge.
+ */
+const applyChargeVoid = async (
+  command: BillingChargeVoidCommand,
+  context: CommandContext,
+): Promise<string> => {
+  const actor = resolveActorId(context.initiatedBy);
+  const actorId = asUuid(actor) ?? SYSTEM_ACTOR_ID;
+
+  return withTransaction(async (client) => {
+    // 1. Fetch original posting with row lock
+    const { rows: postingRows } = await queryWithClient<{
+      posting_id: string;
+      tenant_id: string;
+      property_id: string;
+      folio_id: string;
+      reservation_id: string | null;
+      guest_id: string | null;
+      charge_code: string;
+      charge_description: string;
+      charge_category: string | null;
+      quantity: string;
+      unit_price: string;
+      subtotal: string;
+      tax_amount: string;
+      service_charge: string;
+      discount_amount: string;
+      total_amount: string;
+      currency_code: string;
+      department_code: string | null;
+      revenue_center: string | null;
+      gl_account: string | null;
+      is_voided: boolean;
+    }>(
+      client,
+      `SELECT posting_id, tenant_id, property_id, folio_id, reservation_id,
+              guest_id, charge_code, charge_description, charge_category,
+              quantity, unit_price, subtotal, tax_amount, service_charge,
+              discount_amount, total_amount, currency_code, department_code,
+              revenue_center, gl_account, is_voided
+       FROM public.charge_postings
+       WHERE posting_id = $1::uuid
+         AND tenant_id = $2::uuid
+       FOR UPDATE`,
+      [command.posting_id, context.tenantId],
+    );
+
+    const original = postingRows[0];
+    if (!original) {
+      throw new BillingCommandError(
+        "POSTING_NOT_FOUND",
+        `Charge posting ${command.posting_id} not found.`,
+      );
+    }
+    if (original.is_voided) {
+      throw new BillingCommandError(
+        "POSTING_ALREADY_VOIDED",
+        `Charge posting ${command.posting_id} has already been voided.`,
+      );
+    }
+
+    // 2. Mark original as voided
+    await queryWithClient(
+      client,
+      `UPDATE public.charge_postings
+       SET is_voided = TRUE,
+           voided_at = NOW(),
+           voided_by = $3::uuid,
+           void_reason = $4,
+           version = version + 1,
+           updated_at = NOW(),
+           updated_by = $3::uuid
+       WHERE posting_id = $1::uuid
+         AND tenant_id = $2::uuid`,
+      [command.posting_id, context.tenantId, actorId, command.void_reason ?? null],
+    );
+
+    // 3. Insert reversal VOID posting (mirror original amounts as CREDIT)
+    const voidResult = await queryWithClient<{ posting_id: string }>(
+      client,
+      `INSERT INTO public.charge_postings (
+         tenant_id, property_id, folio_id, reservation_id, guest_id,
+         transaction_type, posting_type, charge_code, charge_description,
+         charge_category, quantity, unit_price, subtotal,
+         tax_amount, service_charge, discount_amount, total_amount,
+         currency_code, department_code, revenue_center, gl_account,
+         original_posting_id, business_date, notes,
+         created_by, updated_by
+       ) VALUES (
+         $1::uuid, $2::uuid, $3::uuid, $4::uuid, $5::uuid,
+         'VOID', 'CREDIT', $6, $7,
+         $8, $9, $10, $11,
+         $12, $13, $14, $15,
+         $16, $17, $18, $19,
+         $20::uuid, CURRENT_DATE, $21,
+         $22::uuid, $22::uuid
+       )
+       RETURNING posting_id`,
+      [
+        context.tenantId,
+        original.property_id,
+        original.folio_id,
+        original.reservation_id,
+        original.guest_id,
+        original.charge_code,
+        `VOID: ${original.charge_description}`,
+        original.charge_category,
+        original.quantity,
+        original.unit_price,
+        original.subtotal,
+        original.tax_amount,
+        original.service_charge,
+        original.discount_amount,
+        original.total_amount,
+        original.currency_code,
+        original.department_code,
+        original.revenue_center,
+        original.gl_account,
+        command.posting_id,
+        command.void_reason ?? `Void of posting ${command.posting_id}`,
+        actorId,
+      ],
+    );
+
+    const voidPostingId = voidResult.rows[0]?.posting_id;
+    if (!voidPostingId) {
+      throw new BillingCommandError("CHARGE_VOID_FAILED", "Failed to create void posting.");
+    }
+
+    // 4. Cross-link original → void
+    await queryWithClient(
+      client,
+      `UPDATE public.charge_postings
+       SET void_posting_id = $3::uuid,
+           version = version + 1,
+           updated_at = NOW(),
+           updated_by = $4::uuid
+       WHERE posting_id = $1::uuid
+         AND tenant_id = $2::uuid`,
+      [command.posting_id, context.tenantId, voidPostingId, actorId],
+    );
+
+    // 5. Adjust folio balance — reverse the original charge
+    const totalAmount = parseDbMoneyOrZero(original.total_amount);
+    await queryWithClient(
+      client,
+      `UPDATE public.folios
+       SET total_charges = total_charges - $2,
+           balance = balance - $2,
+           updated_at = NOW(),
+           updated_by = $3::uuid
+       WHERE tenant_id = $1::uuid
+         AND folio_id = $4::uuid`,
+      [context.tenantId, totalAmount, actorId, original.folio_id],
+    );
+
+    appLogger.info(
+      { voidPostingId, originalPostingId: command.posting_id, totalAmount },
+      "Charge posting voided",
+    );
+
+    return voidPostingId;
+  });
+};
+
+/**
+ * Finalize an invoice. Transitions status from DRAFT or SENT to FINALIZED,
+ * locking the invoice from further edits or adjustments.
+ */
+const applyInvoiceFinalize = async (
+  command: { invoice_id: string; metadata?: Record<string, unknown> },
+  context: CommandContext,
+): Promise<string> => {
+  const actor = resolveActorId(context.initiatedBy);
+
+  const { rows } = await query<{ id: string; status: string }>(
+    `SELECT id, status FROM public.invoices
+     WHERE tenant_id = $1::uuid AND id = $2::uuid
+     LIMIT 1`,
+    [context.tenantId, command.invoice_id],
+  );
+
+  const invoice = rows[0];
+  if (!invoice) {
+    throw new BillingCommandError("INVOICE_NOT_FOUND", "Invoice not found for finalization.");
+  }
+
+  if (invoice.status !== "DRAFT" && invoice.status !== "SENT") {
+    throw new BillingCommandError(
+      "INVALID_INVOICE_STATUS",
+      `Invoice is ${invoice.status}; only DRAFT or SENT invoices can be finalized.`,
+    );
+  }
+
+  await query(
+    `UPDATE public.invoices
+     SET status = 'FINALIZED',
+         updated_at = NOW(),
+         updated_by = $3
+     WHERE tenant_id = $1::uuid
+       AND id = $2::uuid`,
+    [context.tenantId, command.invoice_id, actor],
+  );
+
+  appLogger.info(
+    { invoiceId: command.invoice_id, previousStatus: invoice.status },
+    "Invoice finalized",
+  );
+
+  return command.invoice_id;
+};
   const currency = command.currency ?? "USD";
   const gatewayResponse = command.gateway?.response ?? {};
 

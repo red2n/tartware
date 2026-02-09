@@ -2,10 +2,13 @@ import { type RoomTypeItem, RoomTypeItemSchema } from "@tartware/schemas";
 
 import { query } from "../lib/db.js";
 import {
+  buildDynamicUpdate,
+  type UpdateField,
+} from "../sql/dynamic-update-builder.js";
+import {
   ROOM_TYPE_CREATE_SQL,
   ROOM_TYPE_DELETE_SQL,
   ROOM_TYPE_LIST_SQL,
-  ROOM_TYPE_UPDATE_SQL,
 } from "../sql/room-type-queries.js";
 
 // Re-export schema for consumers that import from this module
@@ -133,6 +136,7 @@ export const listRoomTypes = async (options: {
   isActive?: boolean;
   search?: string;
   limit?: number;
+  offset?: number;
 }): Promise<RoomTypeItem[]> => {
   const { rows } = await query<RoomTypeRow>(ROOM_TYPE_LIST_SQL, [
     options.tenantId,
@@ -140,6 +144,7 @@ export const listRoomTypes = async (options: {
     options.isActive ?? null,
     options.search ? `%${options.search.trim()}%` : null,
     options.limit ?? 200,
+    options.offset ?? 0,
   ]);
 
   return rows.map(mapRowToRoomType);
@@ -211,36 +216,79 @@ type UpdateRoomTypeInput = {
 };
 
 /**
+ * Column mappings for room type updates.
+ * Key = property on UpdateRoomTypeInput; column = DB column; json = needs JSON.stringify.
+ */
+const ROOM_TYPE_UPDATE_FIELDS: ReadonlyArray<{
+  key: keyof UpdateRoomTypeInput;
+  column: string;
+  json?: boolean;
+}> = [
+  { key: "property_id", column: "property_id" },
+  { key: "type_name", column: "type_name" },
+  { key: "type_code", column: "type_code" },
+  { key: "description", column: "description" },
+  { key: "short_description", column: "short_description" },
+  { key: "category", column: "category" },
+  { key: "base_occupancy", column: "base_occupancy" },
+  { key: "max_occupancy", column: "max_occupancy" },
+  { key: "max_adults", column: "max_adults" },
+  { key: "max_children", column: "max_children" },
+  { key: "extra_bed_capacity", column: "extra_bed_capacity" },
+  { key: "size_sqm", column: "size_sqm" },
+  { key: "bed_type", column: "bed_type" },
+  { key: "number_of_beds", column: "number_of_beds" },
+  { key: "amenities", column: "amenities", json: true },
+  { key: "features", column: "features", json: true },
+  { key: "base_price", column: "base_price" },
+  { key: "currency", column: "currency" },
+  { key: "images", column: "images", json: true },
+  { key: "display_order", column: "display_order" },
+  { key: "is_active", column: "is_active" },
+  { key: "metadata", column: "metadata", json: true },
+  { key: "updated_by", column: "updated_by" },
+];
+
+/** Columns returned from the UPDATE CTE. */
+const ROOM_TYPE_SELECT_COLUMNS = [
+  "id", "tenant_id", "property_id", "type_name", "type_code",
+  "description", "short_description", "category", "base_occupancy",
+  "max_occupancy", "max_adults", "max_children", "extra_bed_capacity",
+  "size_sqm", "bed_type", "number_of_beds", "amenities", "features",
+  "base_price", "currency", "images", "display_order", "is_active",
+  "metadata", "created_at", "updated_at", "version",
+] as const;
+
+/**
  * Update a room type by id.
+ *
+ * Uses a dynamic query builder so that only explicitly provided fields are
+ * included in the SET clause. This distinguishes "not provided" (undefined →
+ * column untouched) from "set to null" (null → column cleared), unlike the
+ * former COALESCE($n, alias.column) approach.
  */
 export const updateRoomType = async (input: UpdateRoomTypeInput): Promise<RoomTypeItem | null> => {
-  const { rows } = await query<RoomTypeRow>(ROOM_TYPE_UPDATE_SQL, [
-    input.room_type_id,
-    input.tenant_id,
-    input.property_id ?? null,
-    input.type_name ?? null,
-    input.type_code ?? null,
-    input.description ?? null,
-    input.short_description ?? null,
-    input.category ?? null,
-    input.base_occupancy ?? null,
-    input.max_occupancy ?? null,
-    input.max_adults ?? null,
-    input.max_children ?? null,
-    input.extra_bed_capacity ?? null,
-    input.size_sqm ?? null,
-    input.bed_type ?? null,
-    input.number_of_beds ?? null,
-    toJson(input.amenities),
-    toJson(input.features),
-    input.base_price ?? null,
-    input.currency ?? null,
-    toJson(input.images),
-    input.display_order ?? null,
-    input.is_active ?? null,
-    toJson(input.metadata),
-    input.updated_by ?? null,
-  ]);
+  const fields: UpdateField[] = [];
+  for (const mapping of ROOM_TYPE_UPDATE_FIELDS) {
+    const value = input[mapping.key];
+    if (value !== undefined) {
+      fields.push({
+        column: mapping.column,
+        value: mapping.json ? toJson(value) : value,
+      });
+    }
+  }
+
+  const { sql, params } = buildDynamicUpdate({
+    table: "public.room_types",
+    alias: "rt",
+    id: input.room_type_id,
+    tenantId: input.tenant_id,
+    fields,
+    selectColumns: ROOM_TYPE_SELECT_COLUMNS,
+  });
+
+  const { rows } = await query<RoomTypeRow>(sql, params);
 
   if (!rows[0]) {
     return null;

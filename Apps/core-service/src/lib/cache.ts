@@ -57,7 +57,10 @@ import type { Redis } from "ioredis";
 
 import { config } from "../config.js";
 
+import { appLogger } from "./logger.js";
 import { getRedis } from "./redis.js";
+
+const cacheLogger = appLogger.child({ module: "cache" });
 
 /**
  * Generic cache interface
@@ -287,7 +290,7 @@ export class CacheService {
       const entry: CacheEntry<T> = JSON.parse(cached);
       return entry.data;
     } catch (error) {
-      console.error(`Cache get error for key ${key}:`, error);
+      cacheLogger.error({ err: error, key }, "Cache get error");
       return null;
     }
   }
@@ -348,7 +351,7 @@ export class CacheService {
       await redis.setex(fullKey, ttl, JSON.stringify(entry));
       return true;
     } catch (error) {
-      console.error(`Cache set error for key ${key}:`, error);
+      cacheLogger.error({ err: error, key }, "Cache set error");
       return false;
     }
   }
@@ -367,7 +370,7 @@ export class CacheService {
       await redis.del(fullKey);
       return true;
     } catch (error) {
-      console.error(`Cache delete error for key ${key}:`, error);
+      cacheLogger.error({ err: error, key }, "Cache delete error");
       return false;
     }
   }
@@ -406,12 +409,12 @@ export class CacheService {
         const unlinked = await redis.unlink(...normalizedKeys);
         return typeof unlinked === "number" ? unlinked : 0;
       } catch (unlinkError) {
-        console.warn("cache unlink failed, falling back to DEL", unlinkError);
+        cacheLogger.warn({ err: unlinkError }, "Cache unlink failed, falling back to DEL");
         try {
           const deleted = await redis.del(...normalizedKeys);
           return typeof deleted === "number" ? deleted : 0;
         } catch (delError) {
-          console.error("cache delete fallback failed:", delError);
+          cacheLogger.error({ err: delError }, "Cache delete fallback failed");
           return 0;
         }
       }
@@ -435,7 +438,7 @@ export class CacheService {
 
       return deletedTotal;
     } catch (error) {
-      console.error(`Cache delete pattern error for ${pattern}:`, error);
+      cacheLogger.error({ err: error, pattern }, "Cache delete pattern error");
       return 0;
     }
   }
@@ -454,7 +457,7 @@ export class CacheService {
       const result = await redis.exists(fullKey);
       return result === 1;
     } catch (error) {
-      console.error(`Cache exists error for key ${key}:`, error);
+      cacheLogger.error({ err: error, key }, "Cache exists error");
       return false;
     }
   }
@@ -487,7 +490,7 @@ export class CacheService {
 
       return result;
     } catch (error) {
-      console.error("Cache mget error:", error);
+      cacheLogger.error({ err: error }, "Cache mget error");
       return new Map();
     }
   }
@@ -518,7 +521,7 @@ export class CacheService {
       await pipeline.exec();
       return true;
     } catch (error) {
-      console.error("Cache mset error:", error);
+      cacheLogger.error({ err: error }, "Cache mset error");
       return false;
     }
   }
@@ -536,7 +539,7 @@ export class CacheService {
       const fullKey = this.buildKey(key, options?.prefix);
       return await redis.incr(fullKey);
     } catch (error) {
-      console.error(`Cache incr error for key ${key}:`, error);
+      cacheLogger.error({ err: error, key }, "Cache incr error");
       return 0;
     }
   }
@@ -554,7 +557,7 @@ export class CacheService {
       const fullKey = this.buildKey(key, options?.prefix);
       return await redis.ttl(fullKey);
     } catch (error) {
-      console.error(`Cache ttl error for key ${key}:`, error);
+      cacheLogger.error({ err: error, key }, "Cache ttl error");
       return -2;
     }
   }
@@ -573,7 +576,7 @@ export class CacheService {
       const result = await redis.expire(fullKey, ttl);
       return result === 1;
     } catch (error) {
-      console.error(`Cache expire error for key ${key}:`, error);
+      cacheLogger.error({ err: error, key }, "Cache expire error");
       return false;
     }
   }

@@ -23,9 +23,11 @@ import {
   closeFolio,
   createInvoice,
   executeNightAudit,
+  finalizeInvoice,
   postCharge,
   refundBillingPayment,
   transferFolio,
+  voidCharge,
   voidPayment,
 } from "../services/billing-command-service.js";
 
@@ -179,6 +181,18 @@ const routeBillingCommand = async (
       return;
     case "billing.payment.void":
       await voidPayment(envelope.payload, {
+        tenantId: metadata.tenantId,
+        initiatedBy: metadata.initiatedBy ?? null,
+      });
+      return;
+    case "billing.charge.void":
+      await voidCharge(envelope.payload, {
+        tenantId: metadata.tenantId,
+        initiatedBy: metadata.initiatedBy ?? null,
+      });
+      return;
+    case "billing.invoice.finalize":
+      await finalizeInvoice(envelope.payload, {
         tenantId: metadata.tenantId,
         initiatedBy: metadata.initiatedBy ?? null,
       });

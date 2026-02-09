@@ -21,6 +21,8 @@ import {
 	BillingNightAuditCommandSchema,
 	BillingFolioCloseCommandSchema,
 	BillingPaymentVoidCommandSchema,
+	BillingChargeVoidCommandSchema,
+	BillingInvoiceFinalizeCommandSchema,
 } from "./events/commands/billing.js";
 import {
 	GuestMergeCommandSchema,
@@ -68,6 +70,7 @@ import {
 	ReservationDepositReleaseCommandSchema,
 	ReservationExtendStayCommandSchema,
 	ReservationAssignRoomCommandSchema,
+	ReservationBatchNoShowCommandSchema,
 	ReservationModifyCommandSchema,
 	ReservationRateOverrideCommandSchema,
 	ReservationUnassignRoomCommandSchema,
@@ -75,6 +78,9 @@ import {
 	ReservationWalkInCheckInCommandSchema,
 	ReservationWaitlistAddCommandSchema,
 	ReservationWaitlistConvertCommandSchema,
+	ReservationSendQuoteCommandSchema,
+	ReservationConvertQuoteCommandSchema,
+	ReservationExpireCommandSchema,
 } from "./events/commands/reservations.js";
 import {
 	RoomFeaturesUpdateCommandSchema,
@@ -149,6 +155,14 @@ const commandPayloadValidators = new Map<string, CommandPayloadValidator>([
 	[
 		"billing.payment.void",
 		(payload) => BillingPaymentVoidCommandSchema.parse(payload),
+	],
+	[
+		"billing.charge.void",
+		(payload) => BillingChargeVoidCommandSchema.parse(payload),
+	],
+	[
+		"billing.invoice.finalize",
+		(payload) => BillingInvoiceFinalizeCommandSchema.parse(payload),
 	],
 	["guest.register", (payload) => GuestRegisterCommandSchema.parse(payload)],
 	["guest.merge", (payload) => GuestMergeCommandSchema.parse(payload)],
@@ -298,6 +312,10 @@ const commandPayloadValidators = new Map<string, CommandPayloadValidator>([
 		(payload) => ReservationNoShowCommandSchema.parse(payload),
 	],
 	[
+		"reservation.batch_no_show",
+		(payload) => ReservationBatchNoShowCommandSchema.parse(payload),
+	],
+	[
 		"reservation.walkin_checkin",
 		(payload) => ReservationWalkInCheckInCommandSchema.parse(payload),
 	],
@@ -308,6 +326,18 @@ const commandPayloadValidators = new Map<string, CommandPayloadValidator>([
 	[
 		"reservation.waitlist_convert",
 		(payload) => ReservationWaitlistConvertCommandSchema.parse(payload),
+	],
+	[
+		"reservation.send_quote",
+		(payload) => ReservationSendQuoteCommandSchema.parse(payload),
+	],
+	[
+		"reservation.convert_quote",
+		(payload) => ReservationConvertQuoteCommandSchema.parse(payload),
+	],
+	[
+		"reservation.expire",
+		(payload) => ReservationExpireCommandSchema.parse(payload),
 	],
 	[
 		"rooms.inventory.block",

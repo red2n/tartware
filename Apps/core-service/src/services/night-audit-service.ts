@@ -201,6 +201,7 @@ export type ListNightAuditHistoryInput = {
   tenantId: string;
   propertyId?: string;
   limit?: number;
+  offset?: number;
 };
 
 export const listNightAuditHistory = async (
@@ -210,6 +211,7 @@ export const listNightAuditHistory = async (
     options.limit ?? 50,
     options.tenantId,
     options.propertyId ?? null,
+    options.offset ?? 0,
   ]);
 
   return rows.map(mapNightAuditRunRow);
@@ -411,6 +413,7 @@ export type ListOtaConnectionsInput = {
   connectionStatus?: string;
   isActive?: boolean;
   limit?: number;
+  offset?: number;
 };
 
 export const listOtaConnections = async (
@@ -422,6 +425,7 @@ export const listOtaConnections = async (
     options.propertyId ?? null,
     options.connectionStatus ?? null,
     options.isActive ?? null,
+    options.offset ?? 0,
   ]);
 
   return rows.map(mapOtaConnectionRow);
@@ -452,6 +456,7 @@ export type ListOtaSyncLogsInput = {
   connectionId: string;
   tenantId: string;
   limit?: number;
+  offset?: number;
 };
 
 export const listOtaSyncLogs = async (options: ListOtaSyncLogsInput): Promise<OtaSyncLog[]> => {
@@ -459,6 +464,7 @@ export const listOtaSyncLogs = async (options: ListOtaSyncLogsInput): Promise<Ot
     options.connectionId,
     options.tenantId,
     options.limit ?? 50,
+    options.offset ?? 0,
   ]);
 
   return rows.map((row) =>

@@ -109,6 +109,8 @@ export const ReservationCheckInCommandSchema = z.object({
 	reservation_id: z.string().uuid(),
 	room_id: z.string().uuid().optional(),
 	checked_in_at: z.coerce.date().optional(),
+	/** When true, bypass blocking deposit enforcement. */
+	force: z.boolean().optional(),
 	notes: z.string().max(2000).optional(),
 	metadata: z.record(z.unknown()).optional(),
 	idempotency_key: z.string().max(120).optional(),
@@ -241,6 +243,29 @@ export type ReservationNoShowCommand = z.infer<
 >;
 
 /**
+ * Batch no-show sweep: finds all PENDING/CONFIRMED reservations whose
+ * check-in date has passed for the given property and marks each as no-show.
+ * Delegates to the individual `markNoShow` handler per reservation so that
+ * outbox events, room releases, and fee calculations are applied consistently.
+ */
+export const ReservationBatchNoShowCommandSchema = z.object({
+	property_id: z.string().uuid(),
+	/** Business date to evaluate against (defaults to today). */
+	business_date: z.coerce.date().optional(),
+	/** Whether to skip actually marking no-shows and just return the candidates. */
+	dry_run: z.boolean().optional(),
+	/** Override fee applied to each no-show (otherwise defaults to one-night room rate). */
+	no_show_fee_override: z.coerce.number().nonnegative().optional(),
+	reason: z.string().max(500).optional(),
+	metadata: z.record(z.unknown()).optional(),
+	idempotency_key: z.string().max(120).optional(),
+});
+
+export type ReservationBatchNoShowCommand = z.infer<
+	typeof ReservationBatchNoShowCommandSchema
+>;
+
+/**
  * Walk-in express check-in: creates a reservation, assigns a room, and checks
  * in the guest in a single atomic operation. Used for walk-in guests at the
  * front desk who need immediate accommodation.
@@ -311,4 +336,55 @@ export const ReservationWaitlistConvertCommandSchema = z.object({
 
 export type ReservationWaitlistConvertCommand = z.infer<
 	typeof ReservationWaitlistConvertCommandSchema
+>;
+
+/**
+ * Send a quote to a guest for an INQUIRY reservation.
+ * Transitions status from INQUIRY to QUOTED and records the quote
+ * expiry date so it can be auto-expired later.
+ */
+export const ReservationSendQuoteCommandSchema = z.object({
+	reservation_id: z.string().uuid(),
+	quote_expires_at: z.coerce.date().optional(),
+	total_amount: z.coerce.number().nonnegative().optional(),
+	currency: z.string().length(3).optional(),
+	notes: z.string().max(2000).optional(),
+	metadata: z.record(z.unknown()).optional(),
+	idempotency_key: z.string().max(120).optional(),
+});
+
+export type ReservationSendQuoteCommand = z.infer<
+	typeof ReservationSendQuoteCommandSchema
+>;
+
+/**
+ * Convert a QUOTED reservation into a PENDING booking.
+ * Transitions status from QUOTED to PENDING and locks availability.
+ */
+export const ReservationConvertQuoteCommandSchema = z.object({
+	reservation_id: z.string().uuid(),
+	total_amount: z.coerce.number().nonnegative().optional(),
+	currency: z.string().length(3).optional(),
+	notes: z.string().max(2000).optional(),
+	metadata: z.record(z.unknown()).optional(),
+	idempotency_key: z.string().max(120).optional(),
+});
+
+export type ReservationConvertQuoteCommand = z.infer<
+	typeof ReservationConvertQuoteCommandSchema
+>;
+
+/**
+ * Expire a reservation. Transitions INQUIRY, QUOTED, or PENDING
+ * reservations to EXPIRED status, releasing any availability holds.
+ */
+export const ReservationExpireCommandSchema = z.object({
+	reservation_id: z.string().uuid(),
+	reason: z.string().max(500).optional(),
+	metadata: z.record(z.unknown()).optional(),
+	idempotency_key: z.string().max(120).optional(),
+});
+
+export type ReservationExpireCommand = z.infer<
+	typeof ReservationExpireCommandSchema
 >;

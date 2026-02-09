@@ -1,6 +1,8 @@
 export {
   type BillingChargePostCommand,
   BillingChargePostCommandSchema,
+  type BillingChargeVoidCommand,
+  BillingChargeVoidCommandSchema,
   BillingFolioCloseCommandSchema,
   type BillingFolioTransferCommand,
   BillingFolioTransferCommandSchema,
@@ -8,6 +10,7 @@ export {
   BillingInvoiceAdjustCommandSchema,
   type BillingInvoiceCreateCommand,
   BillingInvoiceCreateCommandSchema,
+  BillingInvoiceFinalizeCommandSchema,
   BillingNightAuditCommandSchema,
   type BillingPaymentApplyCommand,
   BillingPaymentApplyCommandSchema,

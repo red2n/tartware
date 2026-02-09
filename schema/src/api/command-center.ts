@@ -12,11 +12,15 @@ import { uuid } from "../shared/base-schemas.js";
 export const CommandExecuteRequestSchema = z.object({
 	tenant_id: uuid,
 	payload: z.record(z.unknown()),
-	correlation_id: z.string().optional(),
-	initiated_by: z
+	correlation_id: z.string().min(1).optional(),
+	metadata: z
 		.object({
-			user_id: uuid,
-			role: z.string().min(1),
+			initiated_by: z
+				.object({
+					user_id: uuid,
+					role: z.string().min(1),
+				})
+				.optional(),
 		})
 		.optional(),
 });

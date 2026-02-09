@@ -31,16 +31,20 @@ import {
 } from "../repositories/reservation-repository.js";
 import type {
   ReservationAssignRoomCommand,
+  ReservationBatchNoShowCommand,
   ReservationCancelCommand,
   ReservationCheckInCommand,
   ReservationCheckOutCommand,
   ReservationCreateCommand,
   ReservationDepositAddCommand,
   ReservationDepositReleaseCommand,
+  ReservationExpireCommand,
   ReservationExtendStayCommand,
   ReservationModifyCommand,
   ReservationNoShowCommand,
   ReservationRateOverrideCommand,
+  ReservationSendQuoteCommand,
+  ReservationConvertQuoteCommand,
   ReservationUnassignRoomCommand,
   ReservationWaitlistAddCommand,
   ReservationWaitlistConvertCommand,
@@ -537,10 +541,16 @@ const enqueueReservationUpdate = async (
   };
 };
 
-const fetchRoomNumber = async (tenantId: string, roomId: string): Promise<string | null> => {
-  const { rows } = await query<{ room_number: string | null }>(
+type RoomInfo = { roomNumber: string; roomTypeId: string };
+
+/**
+ * Fetch a room's display number and type. Returns null when the room does not
+ * exist or has been soft-deleted.
+ */
+const fetchRoomInfo = async (tenantId: string, roomId: string): Promise<RoomInfo | null> => {
+  const { rows } = await query<{ room_number: string | null; room_type_id: string }>(
     `
-      SELECT room_number
+      SELECT room_number, room_type_id
       FROM public.rooms
       WHERE tenant_id = $1::uuid
         AND id = $2::uuid
@@ -549,7 +559,8 @@ const fetchRoomNumber = async (tenantId: string, roomId: string): Promise<string
     `,
     [tenantId, roomId],
   );
-  return rows[0]?.room_number ?? null;
+  if (!rows[0]) return null;
+  return { roomNumber: rows[0].room_number ?? "", roomTypeId: rows[0].room_type_id };
 };
 
 /**
@@ -706,7 +717,49 @@ export const checkInReservation = async (
     }
   }
 
-  // 3. Warn if no deposit has been received for a reservation with charges
+  // 3. S26: Enforce blocking deposit schedules before check-in
+  if (!command.force) {
+    try {
+      const blockingDeposits = await query<{
+        schedule_id: string;
+        schedule_type: string;
+        amount_due: number;
+        amount_remaining: number;
+        schedule_status: string;
+        due_date: Date | null;
+      }>(
+        `SELECT schedule_id, schedule_type, amount_due, amount_remaining, schedule_status, due_date
+         FROM public.deposit_schedules
+         WHERE reservation_id = $1::uuid
+           AND tenant_id = $2::uuid
+           AND blocks_check_in = TRUE
+           AND schedule_status NOT IN ('PAID', 'WAIVED', 'CANCELLED')
+           AND COALESCE(is_deleted, false) = false`,
+        [command.reservation_id, tenantId],
+      );
+
+      if (blockingDeposits.rows.length > 0) {
+        const totalOutstanding = blockingDeposits.rows.reduce(
+          (sum, row) => sum + Number(row.amount_remaining ?? 0),
+          0,
+        );
+        throw new ReservationCommandError(
+          "DEPOSIT_REQUIRED",
+          `${blockingDeposits.rows.length} blocking deposit(s) outstanding totalling ${totalOutstanding}. ` +
+            `Use force=true to override or collect payment before check-in.`,
+        );
+      }
+    } catch (err) {
+      // Re-throw our own errors; swallow unexpected DB failures (non-critical path)
+      if (err instanceof ReservationCommandError) throw err;
+      reservationsLogger.warn(
+        { reservationId: command.reservation_id, err },
+        "Unable to verify deposit schedules during check-in",
+      );
+    }
+  }
+
+  // 4. Warn if no deposit/payment received at all for a reservation with charges
   if (Number(reservation.total_amount) > 0) {
     try {
       const depositResult = await query(
@@ -730,7 +783,7 @@ export const checkInReservation = async (
   }
 
   const roomNumber =
-    assignedRoomNumber ?? (assignedRoomId ? await fetchRoomNumber(tenantId, assignedRoomId) : null);
+    assignedRoomNumber ?? (assignedRoomId ? (await fetchRoomInfo(tenantId, assignedRoomId))?.roomNumber ?? null : null);
   const updatePayload: ReservationUpdatePayload = {
     id: command.reservation_id,
     tenant_id: tenantId,
@@ -974,15 +1027,23 @@ export const assignRoom = async (
 ): Promise<CreateReservationResult> => {
   const eventId = uuid();
 
-  const roomNumber = await fetchRoomNumber(tenantId, command.room_id);
-  if (!roomNumber) {
-    throw new Error("ROOM_NOT_FOUND");
+  const roomInfo = await fetchRoomInfo(tenantId, command.room_id);
+  if (!roomInfo) {
+    throw new ReservationCommandError("ROOM_NOT_FOUND", `Room ${command.room_id} not found`);
   }
 
   // Fetch reservation to get stay dates for availability check
   const snapshot = await fetchReservationStaySnapshot(tenantId, command.reservation_id);
   if (!snapshot) {
-    throw new Error("RESERVATION_NOT_FOUND");
+    throw new ReservationCommandError("RESERVATION_NOT_FOUND", `Reservation ${command.reservation_id} not found`);
+  }
+
+  // P2-16: Validate the room's type matches the reservation's expected room type
+  if (roomInfo.roomTypeId !== snapshot.roomTypeId) {
+    throw new ReservationCommandError(
+      "ROOM_TYPE_MISMATCH",
+      `Room type ${roomInfo.roomTypeId} does not match reservation room type ${snapshot.roomTypeId}`,
+    );
   }
 
   // Verify room is available for the reservation's date range
@@ -1000,7 +1061,7 @@ export const assignRoom = async (
   const updatePayload: ReservationUpdatePayload = {
     id: command.reservation_id,
     tenant_id: tenantId,
-    room_number: roomNumber,
+    room_number: roomInfo.roomNumber,
     internal_notes: command.notes,
     metadata: {
       ...command.metadata,
@@ -1338,6 +1399,93 @@ export const markNoShow = async (
 };
 
 /**
+ * S22: Batch no-show sweep.
+ *
+ * Finds all PENDING / CONFIRMED reservations whose check-in date has passed
+ * for the given property and marks each as no-show by delegating to the
+ * individual {@link markNoShow} handler. This ensures outbox events, room
+ * releases, and fee calculations are applied consistently per reservation.
+ *
+ * @returns Summary of processed and failed reservation IDs.
+ */
+export const batchNoShowSweep = async (
+  tenantId: string,
+  command: ReservationBatchNoShowCommand,
+  options: { correlationId?: string } = {},
+): Promise<{ processed: string[]; failed: string[]; skipped: number }> => {
+  const businessDate = command.business_date ?? new Date();
+
+  // Find all eligible reservations for this property
+  const { rows: candidates } = await query<{ id: string }>(
+    `SELECT id
+     FROM public.reservations
+     WHERE tenant_id = $1::uuid
+       AND property_id = $2::uuid
+       AND status IN ('PENDING', 'CONFIRMED')
+       AND check_in_date <= $3::date
+       AND COALESCE(is_deleted, false) = false
+       AND deleted_at IS NULL
+     ORDER BY check_in_date ASC`,
+    [tenantId, command.property_id, businessDate],
+  );
+
+  if (candidates.length === 0) {
+    reservationsLogger.info(
+      { propertyId: command.property_id, businessDate },
+      "Batch no-show sweep: no eligible reservations found",
+    );
+    return { processed: [], failed: [], skipped: 0 };
+  }
+
+  // Dry-run mode: return candidates without processing
+  if (command.dry_run) {
+    reservationsLogger.info(
+      { propertyId: command.property_id, count: candidates.length },
+      "Batch no-show sweep dry-run: returning candidates without processing",
+    );
+    return { processed: [], failed: [], skipped: candidates.length };
+  }
+
+  const processed: string[] = [];
+  const failed: string[] = [];
+
+  for (const candidate of candidates) {
+    try {
+      await markNoShow(
+        tenantId,
+        {
+          reservation_id: candidate.id,
+          no_show_fee: command.no_show_fee_override,
+          reason: command.reason ?? "Batch no-show sweep: guest did not arrive",
+          metadata: command.metadata,
+        },
+        options,
+      );
+      processed.push(candidate.id);
+    } catch (err) {
+      reservationsLogger.warn(
+        { reservationId: candidate.id, err },
+        "Batch no-show sweep: failed to mark reservation as no-show",
+      );
+      failed.push(candidate.id);
+    }
+  }
+
+  reservationsLogger.info(
+    {
+      propertyId: command.property_id,
+      businessDate,
+      total: candidates.length,
+      processed: processed.length,
+      failed: failed.length,
+    },
+    "Batch no-show sweep completed",
+  );
+
+  return { processed, failed, skipped: 0 };
+};
+
+/**
  * Cancel a reservation and release availability holds.
  * Calculates cancellation fee based on the rate's cancellation_policy.
  * Only PENDING or CONFIRMED reservations may be cancelled.
@@ -1362,11 +1510,11 @@ export const cancelReservation = async (
       `Reservation ${command.reservation_id} not found`,
     );
   }
-  const cancelAllowed = ["PENDING", "CONFIRMED"];
+  const cancelAllowed = ["INQUIRY", "QUOTED", "PENDING", "CONFIRMED"];
   if (!cancelAllowed.includes(reservation.status)) {
     throw new ReservationCommandError(
       "INVALID_STATUS_FOR_CANCEL",
-      `Cannot cancel reservation with status ${reservation.status}; must be PENDING or CONFIRMED`,
+      `Cannot cancel reservation with status ${reservation.status}; must be INQUIRY, QUOTED, PENDING, or CONFIRMED`,
     );
   }
 
@@ -1568,8 +1716,8 @@ export const walkInCheckIn = async (
   let roomNumber: string | null = null;
 
   if (roomId) {
-    const rn = await fetchRoomNumber(tenantId, roomId);
-    if (!rn) throw new ReservationCommandError("ROOM_NOT_FOUND", `Room ${roomId} not found`);
+    const roomInfo = await fetchRoomInfo(tenantId, roomId);
+    if (!roomInfo) throw new ReservationCommandError("ROOM_NOT_FOUND", `Room ${roomId} not found`);
     // Validate room is available
     const roomResult = await query(
       `SELECT status FROM rooms WHERE id = $1 AND tenant_id = $2 LIMIT 1`,
@@ -1579,10 +1727,10 @@ export const walkInCheckIn = async (
     if (roomStatus !== "AVAILABLE") {
       throw new ReservationCommandError(
         "ROOM_NOT_AVAILABLE",
-        `Room ${rn} is ${roomStatus}, not AVAILABLE`,
+        `Room ${roomInfo.roomNumber} is ${roomStatus}, not AVAILABLE`,
       );
     }
-    roomNumber = rn;
+    roomNumber = roomInfo.roomNumber;
   } else {
     // Auto-assign best available room
     const bestRoom = await findBestAvailableRoom(
@@ -2014,4 +2162,270 @@ const hasStayCriticalChanges = (
     new Date(command.check_out_date).getTime() !== snapshot.checkOutDate.getTime();
 
   return roomTypeChanged || checkInChanged || checkOutChanged;
+};
+
+// ---------------------------------------------------------------------------
+// S8: INQUIRY → QUOTED → PENDING lifecycle handlers
+// ---------------------------------------------------------------------------
+
+/**
+ * Transition an INQUIRY reservation to QUOTED status.
+ * Records the quote timestamp and optional expiry date so the reservation
+ * can be auto-expired after the validity window lapses.
+ */
+export const sendQuote = async (
+  tenantId: string,
+  command: ReservationSendQuoteCommand,
+  options: { correlationId?: string } = {},
+): Promise<CreateReservationResult> => {
+  const eventId = uuid();
+
+  const statusResult = await query(
+    `SELECT status, room_type_id, check_in_date, check_out_date, property_id
+     FROM reservations WHERE id = $1 AND tenant_id = $2 LIMIT 1`,
+    [command.reservation_id, tenantId],
+  );
+  const reservation = statusResult.rows?.[0] as
+    | { status: string; room_type_id: string; check_in_date: string; check_out_date: string; property_id: string }
+    | undefined;
+
+  if (!reservation) {
+    throw new ReservationCommandError(
+      "RESERVATION_NOT_FOUND",
+      `Reservation ${command.reservation_id} not found`,
+    );
+  }
+  if (reservation.status !== "INQUIRY") {
+    throw new ReservationCommandError(
+      "INVALID_STATUS_FOR_QUOTE",
+      `Cannot send quote for reservation with status ${reservation.status}; must be INQUIRY`,
+    );
+  }
+
+  const updatePayload: ReservationUpdatedEvent = ReservationUpdatedEventSchema.parse({
+    eventType: "reservation.quoted",
+    reservationId: command.reservation_id,
+    tenantId,
+    propertyId: reservation.property_id,
+    status: "QUOTED",
+    quoted_at: new Date().toISOString(),
+    ...(command.quote_expires_at && { quote_expires_at: command.quote_expires_at.toISOString() }),
+    ...(command.total_amount !== undefined && { totalAmount: command.total_amount }),
+    ...(command.currency && { currency: command.currency }),
+    ...(command.notes && { notes: command.notes }),
+    updatedAt: new Date().toISOString(),
+    version: 1,
+  });
+
+  await withTransaction(async (client) => {
+    await enqueueOutboxRecordWithClient(client, {
+      aggregateType: "reservation",
+      aggregateId: command.reservation_id,
+      eventType: "reservation.quoted",
+      payload: updatePayload,
+      tenantId,
+    });
+  });
+
+  reservationsLogger.info(
+    { reservationId: command.reservation_id, quoteExpiresAt: command.quote_expires_at },
+    "Quote sent for inquiry reservation",
+  );
+
+  return { eventId, correlationId: options.correlationId, status: "accepted" };
+};
+
+/**
+ * Convert a QUOTED reservation to a PENDING booking.
+ * Locks availability via the availability guard, similar to createReservation.
+ */
+export const convertQuote = async (
+  tenantId: string,
+  command: ReservationConvertQuoteCommand,
+  options: { correlationId?: string } = {},
+): Promise<CreateReservationResult> => {
+  const eventId = uuid();
+
+  const statusResult = await query(
+    `SELECT status, room_type_id, check_in_date, check_out_date, property_id
+     FROM reservations WHERE id = $1 AND tenant_id = $2 LIMIT 1`,
+    [command.reservation_id, tenantId],
+  );
+  const reservation = statusResult.rows?.[0] as
+    | { status: string; room_type_id: string; check_in_date: string; check_out_date: string; property_id: string }
+    | undefined;
+
+  if (!reservation) {
+    throw new ReservationCommandError(
+      "RESERVATION_NOT_FOUND",
+      `Reservation ${command.reservation_id} not found`,
+    );
+  }
+  if (reservation.status !== "QUOTED") {
+    throw new ReservationCommandError(
+      "INVALID_STATUS_FOR_CONVERT",
+      `Cannot convert reservation with status ${reservation.status}; must be QUOTED`,
+    );
+  }
+
+  // Lock availability for the stay dates
+  let lockResult: AvailabilityGuardMetadata | null = null;
+  try {
+    lockResult = await lockReservationHold({
+      reservationId: command.reservation_id,
+      roomTypeId: reservation.room_type_id,
+      checkIn: reservation.check_in_date,
+      checkOut: reservation.check_out_date,
+      tenantId,
+      propertyId: reservation.property_id,
+    });
+  } catch (lockError) {
+    reservationsLogger.warn(
+      { reservationId: command.reservation_id, error: lockError },
+      "Availability lock failed during quote conversion; proceeding without guard",
+    );
+  }
+
+  const updatePayload: ReservationUpdatedEvent = ReservationUpdatedEventSchema.parse({
+    eventType: "reservation.updated",
+    reservationId: command.reservation_id,
+    tenantId,
+    propertyId: reservation.property_id,
+    status: "PENDING",
+    ...(command.total_amount !== undefined && { totalAmount: command.total_amount }),
+    ...(command.currency && { currency: command.currency }),
+    ...(command.notes && { notes: command.notes }),
+    updatedAt: new Date().toISOString(),
+    version: 1,
+  });
+
+  try {
+    await withTransaction(async (client) => {
+      if (lockResult) {
+        await upsertReservationGuardMetadata(client, {
+          reservationId: command.reservation_id,
+          lockId: lockResult.lockId,
+          shadowId: lockResult.shadowId,
+          roomTypeId: reservation.room_type_id,
+          checkIn: reservation.check_in_date,
+          checkOut: reservation.check_out_date,
+          tenantId,
+        });
+      }
+
+      await enqueueOutboxRecordWithClient(client, {
+        aggregateType: "reservation",
+        aggregateId: command.reservation_id,
+        eventType: "reservation.updated",
+        payload: updatePayload,
+        tenantId,
+      });
+    });
+  } catch (txError) {
+    // Release the guard lock on transaction failure (P1-2 pattern)
+    if (lockResult) {
+      try {
+        await releaseReservationHold({
+          reservationId: command.reservation_id,
+          lockId: lockResult.lockId,
+          tenantId,
+        });
+      } catch (releaseError) {
+        reservationsLogger.warn(
+          { reservationId: command.reservation_id, lockId: lockResult.lockId, error: releaseError },
+          "Failed to release availability lock after quote conversion tx failure",
+        );
+      }
+    }
+    throw txError;
+  }
+
+  reservationsLogger.info(
+    { reservationId: command.reservation_id },
+    "Quote converted to PENDING booking",
+  );
+
+  return { eventId, correlationId: options.correlationId, status: "accepted" };
+};
+
+/**
+ * Expire a reservation. Transitions INQUIRY, QUOTED, or PENDING
+ * reservations to EXPIRED status. Releases any availability guards
+ * if the reservation had an active lock.
+ */
+export const expireReservation = async (
+  tenantId: string,
+  command: ReservationExpireCommand,
+  options: { correlationId?: string } = {},
+): Promise<CreateReservationResult> => {
+  const eventId = uuid();
+
+  const statusResult = await query(
+    `SELECT status, room_type_id, check_in_date, check_out_date, property_id
+     FROM reservations WHERE id = $1 AND tenant_id = $2 LIMIT 1`,
+    [command.reservation_id, tenantId],
+  );
+  const reservation = statusResult.rows?.[0] as
+    | { status: string; room_type_id: string; check_in_date: string; check_out_date: string; property_id: string }
+    | undefined;
+
+  if (!reservation) {
+    throw new ReservationCommandError(
+      "RESERVATION_NOT_FOUND",
+      `Reservation ${command.reservation_id} not found`,
+    );
+  }
+
+  const expirableStatuses = ["INQUIRY", "QUOTED", "PENDING"];
+  if (!expirableStatuses.includes(reservation.status)) {
+    throw new ReservationCommandError(
+      "INVALID_STATUS_FOR_EXPIRE",
+      `Cannot expire reservation with status ${reservation.status}; must be INQUIRY, QUOTED, or PENDING`,
+    );
+  }
+
+  // Release availability guard if one exists
+  const guardMeta = await getReservationGuardMetadata(tenantId, command.reservation_id);
+  if (guardMeta?.lockId) {
+    try {
+      await releaseReservationHold({
+        reservationId: command.reservation_id,
+        lockId: guardMeta.lockId,
+        tenantId,
+      });
+    } catch (releaseError) {
+      reservationsLogger.warn(
+        { reservationId: command.reservation_id, lockId: guardMeta.lockId, error: releaseError },
+        "Failed to release availability lock during expiration",
+      );
+    }
+  }
+
+  const updatePayload: ReservationUpdatedEvent = ReservationUpdatedEventSchema.parse({
+    eventType: "reservation.expired",
+    reservationId: command.reservation_id,
+    tenantId,
+    propertyId: reservation.property_id,
+    status: "EXPIRED",
+    ...(command.reason && { notes: command.reason }),
+    updatedAt: new Date().toISOString(),
+    version: 1,
+  });
+
+  await withTransaction(async (client) => {
+    await enqueueOutboxRecordWithClient(client, {
+      aggregateType: "reservation",
+      aggregateId: command.reservation_id,
+      eventType: "reservation.expired",
+      payload: updatePayload,
+      tenantId,
+    });
+  });
+
+  reservationsLogger.info(
+    { reservationId: command.reservation_id, previousStatus: reservation.status, reason: command.reason },
+    "Reservation expired",
+  );
+
+  return { eventId, correlationId: options.correlationId, status: "accepted" };
 };

@@ -126,6 +126,7 @@ export type ListCashierSessionsInput = {
   businessDate?: string;
   cashierId?: string;
   limit?: number;
+  offset?: number;
 };
 
 export const listCashierSessions = async (
@@ -138,6 +139,7 @@ export const listCashierSessions = async (
     options.sessionStatus ?? null,
     options.businessDate ?? null,
     options.cashierId ?? null,
+    options.offset ?? 0,
   ]);
 
   return rows.map(mapCashierSessionRow);
@@ -238,6 +240,7 @@ export type ListShiftHandoversInput = {
   shiftDate?: string;
   department?: string;
   limit?: number;
+  offset?: number;
 };
 
 export const listShiftHandovers = async (
@@ -250,6 +253,7 @@ export const listShiftHandovers = async (
     options.handoverStatus ?? null,
     options.shiftDate ?? null,
     options.department ?? null,
+    options.offset ?? 0,
   ]);
 
   return rows.map(mapShiftHandoverRow);
@@ -348,6 +352,7 @@ export type ListLostFoundInput = {
   itemCategory?: string;
   foundDateFrom?: string;
   limit?: number;
+  offset?: number;
 };
 
 export const listLostFoundItems = async (
@@ -360,6 +365,7 @@ export const listLostFoundItems = async (
     options.itemStatus ?? null,
     options.itemCategory ?? null,
     options.foundDateFrom ?? null,
+    options.offset ?? 0,
   ]);
 
   return rows.map(mapLostFoundRow);
@@ -470,6 +476,7 @@ export type ListBanquetOrdersInput = {
   eventDate?: string;
   meetingRoomId?: string;
   limit?: number;
+  offset?: number;
 };
 
 export const listBanquetOrders = async (
@@ -482,6 +489,7 @@ export const listBanquetOrders = async (
     options.beoStatus ?? null,
     options.eventDate ?? null,
     options.meetingRoomId ?? null,
+    options.offset ?? 0,
   ]);
 
   return rows.map(mapBanquetOrderRow);
@@ -578,6 +586,7 @@ export type ListGuestFeedbackInput = {
   isPublic?: boolean;
   hasResponse?: boolean;
   limit?: number;
+  offset?: number;
 };
 
 export const listGuestFeedback = async (
@@ -590,6 +599,7 @@ export const listGuestFeedback = async (
     options.sentimentLabel ?? null,
     options.isPublic ?? null,
     options.hasResponse ?? null,
+    options.offset ?? 0,
   ]);
 
   return rows.map(mapGuestFeedbackRow);
@@ -694,6 +704,7 @@ export type ListPoliceReportsInput = {
   incidentType?: string;
   incidentDateFrom?: string;
   limit?: number;
+  offset?: number;
 };
 
 export const listPoliceReports = async (
@@ -706,6 +717,7 @@ export const listPoliceReports = async (
     options.reportStatus ?? null,
     options.incidentType ?? null,
     options.incidentDateFrom ?? null,
+    options.offset ?? 0,
   ]);
 
   return rows.map(mapPoliceReportRow);

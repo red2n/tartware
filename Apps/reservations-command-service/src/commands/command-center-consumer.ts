@@ -21,16 +21,20 @@ import {
 } from "../repositories/idempotency-repository.js";
 import {
   ReservationAssignRoomCommandSchema,
+  ReservationBatchNoShowCommandSchema,
   ReservationCancelCommandSchema,
   ReservationCheckInCommandSchema,
   ReservationCheckOutCommandSchema,
+  ReservationConvertQuoteCommandSchema,
   ReservationCreateCommandSchema,
   ReservationDepositAddCommandSchema,
   ReservationDepositReleaseCommandSchema,
+  ReservationExpireCommandSchema,
   ReservationExtendStayCommandSchema,
   ReservationModifyCommandSchema,
   ReservationNoShowCommandSchema,
   ReservationRateOverrideCommandSchema,
+  ReservationSendQuoteCommandSchema,
   ReservationUnassignRoomCommandSchema,
   ReservationWaitlistAddCommandSchema,
   ReservationWaitlistConvertCommandSchema,
@@ -39,15 +43,19 @@ import {
 import {
   addDeposit,
   assignRoom,
+  batchNoShowSweep,
   cancelReservation,
   checkInReservation,
   checkOutReservation,
+  convertQuote,
   createReservation,
+  expireReservation,
   extendStay,
   markNoShow,
   modifyReservation,
   overrideRate,
   releaseDeposit,
+  sendQuote,
   unassignRoom,
   waitlistAdd,
   waitlistConvert,
@@ -206,6 +214,11 @@ const routeReservationCommand = async (
       await markNoShow(metadata.tenantId, commandPayload, context);
       break;
     }
+    case "reservation.batch_no_show": {
+      const commandPayload = ReservationBatchNoShowCommandSchema.parse(envelope.payload);
+      await batchNoShowSweep(metadata.tenantId, commandPayload, context);
+      break;
+    }
     case "reservation.walkin_checkin": {
       const commandPayload = ReservationWalkInCheckInCommandSchema.parse(envelope.payload);
       await walkInCheckIn(metadata.tenantId, commandPayload, context);
@@ -219,6 +232,21 @@ const routeReservationCommand = async (
     case "reservation.waitlist_convert": {
       const commandPayload = ReservationWaitlistConvertCommandSchema.parse(envelope.payload);
       await waitlistConvert(metadata.tenantId, commandPayload, context);
+      break;
+    }
+    case "reservation.send_quote": {
+      const commandPayload = ReservationSendQuoteCommandSchema.parse(envelope.payload);
+      await sendQuote(metadata.tenantId, commandPayload, context);
+      break;
+    }
+    case "reservation.convert_quote": {
+      const commandPayload = ReservationConvertQuoteCommandSchema.parse(envelope.payload);
+      await convertQuote(metadata.tenantId, commandPayload, context);
+      break;
+    }
+    case "reservation.expire": {
+      const commandPayload = ReservationExpireCommandSchema.parse(envelope.payload);
+      await expireReservation(metadata.tenantId, commandPayload, context);
       break;
     }
     default:

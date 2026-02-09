@@ -64,6 +64,7 @@ const IncidentListQuerySchema = z.object({
       message: "date_to must be a valid ISO date string",
     }),
   limit: z.coerce.number().int().positive().max(500).default(200),
+  offset: z.coerce.number().int().min(0).default(0),
 });
 
 type IncidentListQuery = z.infer<typeof IncidentListQuerySchema>;
@@ -120,6 +121,7 @@ export const registerIncidentRoutes = (app: FastifyInstance): void => {
         date_from,
         date_to,
         limit,
+        offset,
       } = IncidentListQuerySchema.parse(request.query);
 
       const incidents = await listIncidentReports({
@@ -132,6 +134,7 @@ export const registerIncidentRoutes = (app: FastifyInstance): void => {
         dateFrom: date_from,
         dateTo: date_to,
         limit,
+        offset,
       });
 
       return IncidentListResponseSchema.parse(incidents);

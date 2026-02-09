@@ -51,6 +51,7 @@ export const ROOM_LIST_SQL = `
     )
   ORDER BY r.room_number ASC
   LIMIT $1
+  OFFSET $7
 `;
 
 export const ROOM_GET_BY_ID_SQL = `

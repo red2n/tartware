@@ -344,7 +344,8 @@ CREATE TYPE invoice_status AS ENUM (
     'PARTIALLY_PAID',   -- Partial payment
     'OVERDUE',          -- Payment overdue
     'CANCELLED',        -- Invoice cancelled
-    'REFUNDED'          -- Invoice refunded
+    'REFUNDED',         -- Invoice refunded
+    'FINALIZED'         -- Invoice finalized, locked from edits
 );
 
 -- =====================================================

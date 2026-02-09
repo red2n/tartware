@@ -11,6 +11,7 @@ import { sanitizeForJson } from "../utils/sanitize.js";
 
 const SystemTenantListQuerySchema = z.object({
   limit: z.coerce.number().int().positive().max(200).default(50),
+  offset: z.coerce.number().int().nonnegative().default(0),
 });
 
 const SystemTenantListResponseSchema = z.object({
@@ -20,6 +21,8 @@ const SystemTenantListResponseSchema = z.object({
     }),
   ),
   count: z.number().int().nonnegative(),
+  limit: z.number().int().positive(),
+  offset: z.number().int().nonnegative(),
 });
 const SystemTenantListQueryJsonSchema = schemaFromZod(
   SystemTenantListQuerySchema,
@@ -346,11 +349,13 @@ export const registerSystemTenantRoutes = (app: FastifyInstance): void => {
         );
       }
 
-      const { limit } = SystemTenantListQuerySchema.parse(request.query ?? {});
-      const tenants = await listTenants({ limit });
+      const { limit, offset } = SystemTenantListQuerySchema.parse(request.query ?? {});
+      const tenants = await listTenants({ limit, offset });
       const sanitized = sanitizeForJson({
         tenants,
         count: tenants.length,
+        limit,
+        offset,
       });
 
       await logSystemAdminEvent({

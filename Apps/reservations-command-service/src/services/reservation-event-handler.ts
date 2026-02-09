@@ -202,29 +202,29 @@ const handleReservationUpdated = async (event: ReservationUpdatedEvent): Promise
   };
 
   // MED-008: Validate property belongs to tenant if property_id is being changed
-  if (payload.property_id) {
+  if (payload.property_id !== undefined) {
     await validatePropertyBelongsToTenant(tenantId, payload.property_id);
     addField("property_id", payload.property_id);
   }
-  if (payload.guest_id) addField("guest_id", payload.guest_id);
-  if (payload.room_type_id) addField("room_type_id", payload.room_type_id);
-  if (payload.check_in_date) addField("check_in_date", payload.check_in_date);
-  if (payload.check_out_date) addField("check_out_date", payload.check_out_date);
-  if (payload.actual_check_in) addField("actual_check_in", payload.actual_check_in);
-  if (payload.actual_check_out) addField("actual_check_out", payload.actual_check_out);
+  if (payload.guest_id !== undefined) addField("guest_id", payload.guest_id);
+  if (payload.room_type_id !== undefined) addField("room_type_id", payload.room_type_id);
+  if (payload.check_in_date !== undefined) addField("check_in_date", payload.check_in_date);
+  if (payload.check_out_date !== undefined) addField("check_out_date", payload.check_out_date);
+  if (payload.actual_check_in !== undefined) addField("actual_check_in", payload.actual_check_in);
+  if (payload.actual_check_out !== undefined) addField("actual_check_out", payload.actual_check_out);
   if (payload.room_number !== undefined) addField("room_number", payload.room_number);
-  if (payload.status) addField("status", payload.status);
-  if (payload.source) addField("source", payload.source);
+  if (payload.status !== undefined) addField("status", payload.status);
+  if (payload.source !== undefined) addField("source", payload.source);
   if (payload.total_amount !== undefined)
     addField("total_amount", Number(payload.total_amount ?? 0));
-  if (payload.currency) addField("currency", payload.currency);
+  if (payload.currency !== undefined) addField("currency", payload.currency);
   if (payload.internal_notes !== undefined) addField("internal_notes", payload.internal_notes);
   if (payload.metadata !== undefined) {
     const index = fields.length + 3;
     fields.push(`metadata = COALESCE(metadata, '{}'::jsonb) || $${index}::jsonb`);
     values.push(JSON.stringify(payload.metadata ?? {}));
   }
-  if ((payload as { confirmation_number?: string }).confirmation_number) {
+  if ((payload as { confirmation_number?: string }).confirmation_number !== undefined) {
     addField(
       "confirmation_number",
       (payload as { confirmation_number?: string }).confirmation_number,

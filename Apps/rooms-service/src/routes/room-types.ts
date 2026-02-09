@@ -19,6 +19,7 @@ const RoomTypeListQuerySchema = z.object({
   is_active: z.coerce.boolean().optional(),
   search: z.string().min(1).max(80).optional(),
   limit: z.coerce.number().int().positive().max(500).default(200),
+  offset: z.coerce.number().int().min(0).default(0),
 });
 
 type RoomTypeListQuery = z.infer<typeof RoomTypeListQuerySchema>;
@@ -117,6 +118,7 @@ export const registerRoomTypeRoutes = (app: FastifyInstance): void => {
         isActive: query.is_active,
         search: query.search,
         limit: query.limit,
+        offset: query.offset,
       });
 
       return RoomTypeListResponseSchema.parse(roomTypes);

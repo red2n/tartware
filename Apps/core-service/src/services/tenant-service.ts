@@ -84,22 +84,23 @@ const mapRowToTenant = (row: TenantRow): TenantWithRelations => {
  * List tenants with optional filtering and pagination.
  */
 export const listTenants = async (
-  options: { limit?: number; tenantIds?: string[] } = {},
+  options: { limit?: number; offset?: number; tenantIds?: string[] } = {},
 ): Promise<TenantWithRelations[]> => {
   const limit = options.limit ?? 50;
+  const offset = options.offset ?? 0;
   const tenantIds = options.tenantIds ?? [];
 
   // If tenantIds filter is provided, use it
   if (tenantIds.length > 0) {
-    const placeholders = tenantIds.map((_, i) => `$${i + 2}`).join(", ");
+    const placeholders = tenantIds.map((_, i) => `$${i + 3}`).join(", ");
     const filteredQuery = TENANT_LIST_SQL.replace(
       "WHERE COALESCE(t.is_deleted, false) = false AND t.deleted_at IS NULL",
       `WHERE COALESCE(t.is_deleted, false) = false AND t.deleted_at IS NULL AND t.id IN (${placeholders})`,
     );
-    const { rows } = await query<TenantRow>(filteredQuery, [limit, ...tenantIds]);
+    const { rows } = await query<TenantRow>(filteredQuery, [limit, offset, ...tenantIds]);
     return rows.map(mapRowToTenant);
   }
 
-  const { rows } = await query<TenantRow>(TENANT_LIST_SQL, [limit]);
+  const { rows } = await query<TenantRow>(TENANT_LIST_SQL, [limit, offset]);
   return rows.map(mapRowToTenant);
 };

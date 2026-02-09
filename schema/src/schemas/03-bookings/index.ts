@@ -36,6 +36,7 @@ export * from "./reservation-event-offsets.js";
 export * from "./reservation-command-lifecycle.js";
 export * from "./reservation-rate-fallbacks.js";
 export * from "./inventory-lock-audits.js";
+export * from "./inventory-locks-shadow.js";
 export * from "./reservation-guard-locks.js";
 export * from "./roll-service-shadow-ledgers.js";
 export * from "./roll-service-backfill-checkpoint.js";

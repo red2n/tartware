@@ -120,12 +120,14 @@ export const listHousekeepingTasks = async (options: {
   propertyId?: string;
   status?: string;
   scheduledDate?: string;
+  offset?: number;
 }): Promise<HousekeepingTask[]> => {
   const limit = options.limit ?? 200;
   const tenantId = options.tenantId;
   const propertyId = options.propertyId ?? null;
   const status = options.status ? options.status.trim().toUpperCase() : null;
   const scheduledDate = options.scheduledDate ?? null;
+  const offset = options.offset ?? 0;
 
   const { rows } = await query<HousekeepingTaskRow>(HOUSEKEEPING_TASK_LIST_SQL, [
     limit,
@@ -133,6 +135,7 @@ export const listHousekeepingTasks = async (options: {
     propertyId,
     status,
     scheduledDate,
+    offset,
   ]);
 
   return rows.map(mapRowToTask);
@@ -259,6 +262,7 @@ export const listMaintenanceRequests = async (options: {
   issueCategory?: string;
   roomId?: string;
   roomOutOfService?: boolean;
+  offset?: number;
 }): Promise<MaintenanceRequestListItem[]> => {
   const limit = options.limit ?? 200;
   const tenantId = options.tenantId;
@@ -268,6 +272,7 @@ export const listMaintenanceRequests = async (options: {
   const issueCategory = options.issueCategory ?? null;
   const roomId = options.roomId ?? null;
   const roomOutOfService = options.roomOutOfService ?? null;
+  const offset = options.offset ?? 0;
 
   const { rows } = await query<MaintenanceRequestRow>(MAINTENANCE_REQUEST_LIST_SQL, [
     limit,
@@ -278,6 +283,7 @@ export const listMaintenanceRequests = async (options: {
     issueCategory,
     roomId,
     roomOutOfService,
+    offset,
   ]);
 
   return rows.map(mapMaintenanceRequestRow);
@@ -404,6 +410,7 @@ export const listIncidentReports = async (options: {
   incidentDate?: string;
   dateFrom?: string;
   dateTo?: string;
+  offset?: number;
 }): Promise<IncidentReportListItem[]> => {
   const limit = options.limit ?? 200;
   const tenantId = options.tenantId;
@@ -414,6 +421,7 @@ export const listIncidentReports = async (options: {
   const incidentDate = options.incidentDate ?? null;
   const dateFrom = options.dateFrom ?? null;
   const dateTo = options.dateTo ?? null;
+  const offset = options.offset ?? 0;
 
   const { rows } = await query<IncidentReportRow>(INCIDENT_REPORT_LIST_SQL, [
     limit,
@@ -425,6 +433,7 @@ export const listIncidentReports = async (options: {
     incidentDate,
     dateFrom,
     dateTo,
+    offset,
   ]);
 
   return rows.map(mapIncidentReportRow);

@@ -9,6 +9,7 @@ import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 
 import {
+  getGuestById,
   listGuestCommunications,
   listGuestDocuments,
   listGuestPreferences,
@@ -25,6 +26,7 @@ const GuestListQuerySchema = z.object({
   loyalty_tier: z.string().min(1).max(50).optional(),
   vip_status: z.coerce.boolean().optional(),
   is_blacklisted: z.coerce.boolean().optional(),
+  offset: z.coerce.number().int().min(0).default(0),
 });
 
 const GuestListResponseSchema = z.array(
@@ -36,12 +38,26 @@ const GuestListResponseSchema = z.array(
 const GuestListQueryJsonSchema = schemaFromZod(GuestListQuerySchema, "GuestListQuery");
 const GuestListResponseJsonSchema = schemaFromZod(GuestListResponseSchema, "GuestListResponse");
 
+// Single guest schemas
+const GuestIdParamSchema = z.object({ guestId: z.string().uuid() });
+const GuestByIdQuerySchema = z.object({
+  tenant_id: z.string().uuid(),
+  property_id: z.string().uuid().optional(),
+});
+type GuestByIdQuery = z.infer<typeof GuestByIdQuerySchema>;
+
+const GuestItemResponseSchema = GuestWithStatsSchema.extend({ version: z.string() });
+const GuestIdParamJsonSchema = schemaFromZod(GuestIdParamSchema, "GuestIdParam");
+const GuestByIdQueryJsonSchema = schemaFromZod(GuestByIdQuerySchema, "GuestByIdQuery");
+const GuestItemResponseJsonSchema = schemaFromZod(GuestItemResponseSchema, "GuestItemResponse");
+
 // Guest Preferences schemas
 const GuestPreferencesQuerySchema = z.object({
   tenant_id: z.string().uuid(),
   category: z.string().optional(),
   active_only: z.coerce.boolean().optional(),
   limit: z.coerce.number().int().positive().max(200).default(100),
+  offset: z.coerce.number().int().min(0).default(0),
 });
 
 type GuestPreferencesQuery = z.infer<typeof GuestPreferencesQuerySchema>;
@@ -62,6 +78,7 @@ const GuestDocumentsQuerySchema = z.object({
   document_type: z.string().optional(),
   verification_status: z.string().optional(),
   limit: z.coerce.number().int().positive().max(200).default(100),
+  offset: z.coerce.number().int().min(0).default(0),
 });
 
 type GuestDocumentsQuery = z.infer<typeof GuestDocumentsQuerySchema>;
@@ -83,6 +100,7 @@ const GuestCommunicationsQuerySchema = z.object({
   direction: z.string().optional(),
   status: z.string().optional(),
   limit: z.coerce.number().int().positive().max(200).default(100),
+  offset: z.coerce.number().int().min(0).default(0),
 });
 
 type GuestCommunicationsQuery = z.infer<typeof GuestCommunicationsQuerySchema>;
@@ -128,6 +146,7 @@ export const registerGuestRoutes = (app: FastifyInstance): void => {
         loyalty_tier,
         vip_status,
         is_blacklisted,
+        offset,
       } = GuestListQuerySchema.parse(request.query);
 
       const guests = await listGuests({
@@ -139,10 +158,55 @@ export const registerGuestRoutes = (app: FastifyInstance): void => {
         loyaltyTier: loyalty_tier,
         vipStatus: vip_status,
         isBlacklisted: is_blacklisted,
+        offset,
       });
 
       const response = sanitizeForJson(guests);
       return GuestListResponseSchema.parse(response);
+    },
+  );
+
+  // ============================================================================
+  // SINGLE GUEST BY ID
+  // ============================================================================
+
+  app.get<{
+    Params: z.infer<typeof GuestIdParamSchema>;
+    Querystring: GuestByIdQuery;
+  }>(
+    "/v1/guests/:guestId",
+    {
+      preHandler: app.withTenantScope({
+        resolveTenantId: (request) => (request.query as GuestByIdQuery).tenant_id,
+        minRole: "MANAGER",
+        requiredModules: "core",
+      }),
+      schema: buildRouteSchema({
+        tag: GUESTS_TAG,
+        summary: "Get a single guest by ID",
+        params: GuestIdParamJsonSchema,
+        querystring: GuestByIdQueryJsonSchema,
+        response: {
+          200: GuestItemResponseJsonSchema,
+        },
+      }),
+    },
+    async (request, reply) => {
+      const { guestId } = request.params;
+      const { tenant_id, property_id } = GuestByIdQuerySchema.parse(request.query);
+
+      const guest = await getGuestById({
+        guestId,
+        tenantId: tenant_id,
+        propertyId: property_id,
+      });
+
+      if (!guest) {
+        return reply.status(404).send({ error: "Guest not found" });
+      }
+
+      const response = sanitizeForJson(guest);
+      return GuestItemResponseSchema.parse(response);
     },
   );
 
@@ -173,7 +237,7 @@ export const registerGuestRoutes = (app: FastifyInstance): void => {
     },
     async (request) => {
       const { guestId } = request.params;
-      const { tenant_id, category, active_only, limit } = GuestPreferencesQuerySchema.parse(
+      const { tenant_id, category, active_only, limit, offset } = GuestPreferencesQuerySchema.parse(
         request.query,
       );
 
@@ -183,6 +247,7 @@ export const registerGuestRoutes = (app: FastifyInstance): void => {
         category,
         activeOnly: active_only,
         limit,
+        offset,
       });
 
       return GuestPreferencesResponseSchema.parse(preferences);
@@ -216,7 +281,7 @@ export const registerGuestRoutes = (app: FastifyInstance): void => {
     },
     async (request) => {
       const { guestId } = request.params;
-      const { tenant_id, document_type, verification_status, limit } =
+      const { tenant_id, document_type, verification_status, limit, offset } =
         GuestDocumentsQuerySchema.parse(request.query);
 
       const documents = await listGuestDocuments({
@@ -225,6 +290,7 @@ export const registerGuestRoutes = (app: FastifyInstance): void => {
         documentType: document_type,
         verificationStatus: verification_status,
         limit,
+        offset,
       });
 
       return GuestDocumentsResponseSchema.parse(documents);
@@ -258,7 +324,7 @@ export const registerGuestRoutes = (app: FastifyInstance): void => {
     },
     async (request) => {
       const { guestId } = request.params;
-      const { tenant_id, communication_type, direction, status, limit } =
+      const { tenant_id, communication_type, direction, status, limit, offset } =
         GuestCommunicationsQuerySchema.parse(request.query);
 
       const communications = await listGuestCommunications({
@@ -268,6 +334,7 @@ export const registerGuestRoutes = (app: FastifyInstance): void => {
         direction,
         status,
         limit,
+        offset,
       });
 
       return GuestCommunicationsResponseSchema.parse(communications);

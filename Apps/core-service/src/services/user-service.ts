@@ -74,10 +74,11 @@ const mapRowToUser = (row: UserRow): UserWithTenants => {
  * List users with optional tenant filtering and pagination.
  */
 export const listUsers = async (
-  options: { limit?: number; tenantId?: string } = {},
+  options: { limit?: number; offset?: number; tenantId?: string } = {},
 ): Promise<UserWithTenants[]> => {
   const limit = options.limit ?? 50;
+  const offset = options.offset ?? 0;
   const tenantId = options.tenantId ?? null;
-  const { rows } = await query<UserRow>(USER_LIST_SQL, [limit, tenantId]);
+  const { rows } = await query<UserRow>(USER_LIST_SQL, [limit, tenantId, offset]);
   return rows.map(mapRowToUser);
 };

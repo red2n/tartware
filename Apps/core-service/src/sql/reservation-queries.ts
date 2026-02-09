@@ -57,4 +57,5 @@ export const RESERVATION_LIST_SQL = `
     )
   ORDER BY r.check_in_date DESC, r.created_at DESC
   LIMIT $1
+  OFFSET $6
 `;

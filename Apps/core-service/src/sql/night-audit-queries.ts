@@ -113,6 +113,7 @@ LEFT JOIN properties p ON p.property_id = ar.property_id
 LEFT JOIN users u ON u.user_id = ar.initiated_by
 ORDER BY ar.started_at DESC
 LIMIT $1
+OFFSET $4
 `;
 
 // =====================================================
@@ -208,6 +209,7 @@ WHERE cm.tenant_id = $2
   AND COALESCE(cm.is_deleted, false) = false
 ORDER BY cm.channel_name ASC
 LIMIT $1
+OFFSET $6
 `;
 
 // =====================================================
@@ -235,4 +237,5 @@ WHERE csl.channel_mapping_id = $1
   AND csl.tenant_id = $2
 ORDER BY csl.started_at DESC
 LIMIT $3
+OFFSET $4
 `;

@@ -1,88 +1,15 @@
 import {
   type ReservationListItem as SchemaReservationListItem,
   ReservationListItemSchema as SchemaReservationListItemSchema,
+  ReservationDetailSchema,
+  type ReservationDetail,
 } from "@tartware/schemas";
-import { z } from "zod";
 
 import { query } from "../lib/db.js";
 import { RESERVATION_LIST_SQL } from "../sql/reservation-queries.js";
 import { toNonNegativeInt, toNumberOrFallback } from "../utils/numbers.js";
 
-/**
- * Detail schema for single reservation fetch — richer than list item.
- */
-export const ReservationDetailSchema = z.object({
-  id: z.string(),
-  tenant_id: z.string(),
-  property_id: z.string(),
-  property_name: z.string().optional(),
-  guest_id: z.string().optional(),
-  guest_name: z.string().optional(),
-  guest_email: z.string().optional(),
-  guest_phone: z.string().optional(),
-  room_type_id: z.string().optional(),
-  room_type_name: z.string().optional(),
-  rate_id: z.string().optional(),
-  confirmation_number: z.string(),
-  reservation_type: z.string().optional(),
-  check_in_date: z.string(),
-  check_out_date: z.string(),
-  booking_date: z.string().optional(),
-  actual_check_in: z.string().optional(),
-  actual_check_out: z.string().optional(),
-  nights: z.number(),
-  room_number: z.string().optional(),
-  number_of_adults: z.number().default(1),
-  number_of_children: z.number().default(0),
-  room_rate: z.number().default(0),
-  total_amount: z.number().default(0),
-  tax_amount: z.number().default(0),
-  discount_amount: z.number().default(0),
-  paid_amount: z.number().default(0),
-  balance_due: z.number().default(0),
-  currency: z.string().default("USD"),
-  status: z.string(),
-  status_display: z.string(),
-  source: z.string().optional(),
-  channel_reference: z.string().optional(),
-  guarantee_type: z.string().optional(),
-  credit_card_last4: z.string().optional(),
-  special_requests: z.string().optional(),
-  internal_notes: z.string().optional(),
-  cancellation_date: z.string().optional(),
-  cancellation_reason: z.string().optional(),
-  cancellation_fee: z.number().optional(),
-  is_no_show: z.boolean().default(false),
-  no_show_date: z.string().optional(),
-  no_show_fee: z.number().optional(),
-  promo_code: z.string().optional(),
-  folio: z
-    .object({
-      folio_id: z.string(),
-      folio_status: z.string(),
-      total_charges: z.number(),
-      total_payments: z.number(),
-      total_credits: z.number(),
-      balance: z.number(),
-    })
-    .optional(),
-  status_history: z
-    .array(
-      z.object({
-        previous_status: z.string(),
-        new_status: z.string(),
-        change_reason: z.string().optional(),
-        changed_by: z.string(),
-        changed_at: z.string(),
-      }),
-    )
-    .optional(),
-  created_at: z.string(),
-  updated_at: z.string().optional(),
-  version: z.string().default("0"),
-});
-
-export type ReservationDetail = z.infer<typeof ReservationDetailSchema>;
+export { ReservationDetailSchema, type ReservationDetail };
 
 /**
  * Re-export for backward compatibility.
@@ -196,12 +123,14 @@ const mapRowToReservation = (row: ReservationListRow): ReservationListItem => {
  */
 export const listReservations = async (options: {
   limit?: number;
+  offset?: number;
   tenantId: string;
   propertyId?: string;
   status?: string;
   search?: string;
 }): Promise<ReservationListItem[]> => {
   const limit = options.limit ?? 100;
+  const offset = options.offset ?? 0;
   const tenantId = options.tenantId;
   const propertyId = options.propertyId ?? null;
   const status = options.status ? options.status.trim().toUpperCase() : null;
@@ -213,6 +142,7 @@ export const listReservations = async (options: {
     propertyId,
     status,
     search,
+    offset,
   ]);
 
   return rows.map(mapRowToReservation);

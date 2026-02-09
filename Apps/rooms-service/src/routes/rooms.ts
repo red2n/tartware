@@ -55,6 +55,7 @@ const RoomListQuerySchema = z.object({
     .optional(),
   adults: z.coerce.number().int().min(1).max(20).optional(),
   children: z.coerce.number().int().min(0).max(20).optional(),
+  offset: z.coerce.number().int().min(0).default(0),
 });
 
 type RoomListQuery = z.infer<typeof RoomListQuerySchema>;
@@ -193,6 +194,7 @@ export const registerRoomRoutes = (app: FastifyInstance): void => {
         check_out_date,
         adults,
         children,
+        offset,
       } = RoomListQuerySchema.parse(request.query);
 
       const rooms = await listRooms({
@@ -202,6 +204,7 @@ export const registerRoomRoutes = (app: FastifyInstance): void => {
         housekeepingStatus: housekeeping_status,
         search,
         limit,
+        offset,
       });
 
       // If recommendation context is provided, fetch rankings from recommendation service
@@ -509,6 +512,7 @@ export const registerRoomRoutes = (app: FastifyInstance): void => {
     room_type_id: z.string().uuid().optional(),
     adults: z.coerce.number().int().min(1).max(20).optional(),
     limit: z.coerce.number().int().positive().max(200).default(50),
+    offset: z.coerce.number().int().min(0).default(0),
   });
   type AvailabilityQuery = z.infer<typeof AvailabilityQuerySchema>;
 
@@ -531,6 +535,7 @@ export const registerRoomRoutes = (app: FastifyInstance): void => {
     check_in_date: z.string(),
     check_out_date: z.string(),
     nights: z.number(),
+    offset: z.number(),
   });
 
   const AvailabilityQueryJsonSchema = schemaFromZod(AvailabilityQuerySchema, "AvailabilityQuery");
@@ -574,6 +579,7 @@ export const registerRoomRoutes = (app: FastifyInstance): void => {
         roomTypeId: q.room_type_id,
         adults: q.adults,
         limit: q.limit,
+        offset: q.offset,
       });
 
       const cinDate = new Date(q.check_in_date);
@@ -586,6 +592,7 @@ export const registerRoomRoutes = (app: FastifyInstance): void => {
         check_in_date: q.check_in_date,
         check_out_date: q.check_out_date,
         nights,
+        offset: q.offset,
       };
     },
   );

@@ -44,6 +44,7 @@ const RateListQuerySchema = z.object({
     ),
   search: z.string().min(1).max(80).optional(),
   limit: z.coerce.number().int().positive().max(500).default(200),
+  offset: z.coerce.number().int().min(0).default(0),
 });
 
 type RateListQuery = z.infer<typeof RateListQuerySchema>;
@@ -176,6 +177,7 @@ export const registerRateRoutes = (app: FastifyInstance): void => {
         rateType: query.rate_type,
         search: query.search,
         limit: query.limit,
+        offset: query.offset,
       });
 
       return RateListResponseSchema.parse(rates);

@@ -40,6 +40,7 @@ export const ROOM_TYPE_LIST_SQL = `
     )
   ORDER BY rt.display_order ASC, rt.type_name ASC
   LIMIT $5
+  OFFSET $6
 `;
 
 export const ROOM_TYPE_CREATE_SQL = `

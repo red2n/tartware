@@ -143,6 +143,7 @@ export const listBillingPayments = async (options: {
   status?: string;
   transactionType?: string;
   paymentMethod?: string;
+  offset?: number;
 }): Promise<BillingPayment[]> => {
   const limit = options.limit ?? 100;
   const tenantId = options.tenantId;
@@ -152,6 +153,7 @@ export const listBillingPayments = async (options: {
     ? options.transactionType.trim().toUpperCase()
     : null;
   const paymentMethod = options.paymentMethod ? options.paymentMethod.trim().toUpperCase() : null;
+  const offset = options.offset ?? 0;
 
   const { rows } = await query<BillingPaymentRow>(BILLING_PAYMENT_LIST_SQL, [
     limit,
@@ -160,6 +162,7 @@ export const listBillingPayments = async (options: {
     status,
     transactionType,
     paymentMethod,
+    offset,
   ]);
 
   return rows.map((row) => applyBillingRetentionPolicy(mapRowToPayment(row)));
@@ -245,6 +248,7 @@ export const listInvoices = async (options: {
   status?: string;
   reservationId?: string;
   guestId?: string;
+  offset?: number;
 }): Promise<InvoiceListItem[]> => {
   const limit = options.limit ?? 100;
   const tenantId = options.tenantId;
@@ -252,6 +256,7 @@ export const listInvoices = async (options: {
   const status = options.status ? options.status.trim().toUpperCase() : null;
   const reservationId = options.reservationId ?? null;
   const guestId = options.guestId ?? null;
+  const offset = options.offset ?? 0;
 
   const { rows } = await query<InvoiceRow>(INVOICE_LIST_SQL, [
     limit,
@@ -260,6 +265,7 @@ export const listInvoices = async (options: {
     status,
     reservationId,
     guestId,
+    offset,
   ]);
 
   return rows.map(mapRowToInvoice);
@@ -358,6 +364,7 @@ export const listFolios = async (options: {
   folioType?: string;
   reservationId?: string;
   guestId?: string;
+  offset?: number;
 }): Promise<FolioListItem[]> => {
   const limit = options.limit ?? 100;
   const tenantId = options.tenantId;
@@ -366,6 +373,7 @@ export const listFolios = async (options: {
   const folioType = options.folioType ? options.folioType.trim().toUpperCase() : null;
   const reservationId = options.reservationId ?? null;
   const guestId = options.guestId ?? null;
+  const offset = options.offset ?? 0;
 
   const { rows } = await query<FolioRow>(FOLIO_LIST_SQL, [
     limit,
@@ -375,6 +383,7 @@ export const listFolios = async (options: {
     folioType,
     reservationId,
     guestId,
+    offset,
   ]);
 
   return rows.map(mapRowToFolio);
@@ -493,6 +502,7 @@ export const listChargePostings = async (options: {
   transactionType?: string;
   chargeCode?: string;
   includeVoided?: boolean;
+  offset?: number;
 }): Promise<ChargePostingListItem[]> => {
   const limit = options.limit ?? 100;
   const tenantId = options.tenantId;
@@ -503,6 +513,7 @@ export const listChargePostings = async (options: {
     : null;
   const chargeCode = options.chargeCode ?? null;
   const includeVoided = options.includeVoided ?? null;
+  const offset = options.offset ?? 0;
 
   const { rows } = await query<ChargePostingRow>(CHARGE_POSTING_LIST_SQL, [
     limit,
@@ -512,6 +523,7 @@ export const listChargePostings = async (options: {
     transactionType,
     chargeCode,
     includeVoided === true ? null : false,
+    offset,
   ]);
 
   return rows.map(mapRowToChargePosting);
@@ -627,6 +639,7 @@ export const listTaxConfigurations = async (options: {
   isActive?: boolean;
   countryCode?: string;
   jurisdictionLevel?: string;
+  offset?: number;
 }): Promise<TaxConfigurationListItem[]> => {
   const limit = options.limit ?? 100;
   const tenantId = options.tenantId;
@@ -635,6 +648,7 @@ export const listTaxConfigurations = async (options: {
   const isActive = options.isActive ?? null;
   const countryCode = options.countryCode ?? null;
   const jurisdictionLevel = options.jurisdictionLevel ?? null;
+  const offset = options.offset ?? 0;
 
   const { rows } = await query<TaxConfigurationRow>(TAX_CONFIGURATION_LIST_SQL, [
     limit,
@@ -644,6 +658,7 @@ export const listTaxConfigurations = async (options: {
     isActive,
     countryCode,
     jurisdictionLevel,
+    offset,
   ]);
 
   return rows.map(mapRowToTaxConfiguration);

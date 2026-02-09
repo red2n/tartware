@@ -378,6 +378,7 @@ export const listRooms = async (options: {
   status?: string;
   housekeepingStatus?: string;
   search?: string;
+  offset?: number;
 }): Promise<RoomListItem[]> => {
   const limit = options.limit ?? 200;
   const tenantId = options.tenantId;
@@ -387,6 +388,7 @@ export const listRooms = async (options: {
     ? options.housekeepingStatus.trim().toUpperCase()
     : null;
   const search = options.search ? `%${options.search.trim()}%` : null;
+  const offset = options.offset ?? 0;
 
   const { rows } = await query<RoomListRow>(ROOM_LIST_SQL, [
     limit,
@@ -395,6 +397,7 @@ export const listRooms = async (options: {
     status,
     housekeepingStatus,
     search,
+    offset,
   ]);
 
   return rows.map(mapRowToRoom);
@@ -430,8 +433,10 @@ export const searchAvailableRooms = async (options: {
   roomTypeId?: string;
   adults?: number;
   limit?: number;
+  offset?: number;
 }): Promise<AvailableRoomItem[]> => {
   const limit = options.limit ?? 50;
+  const offset = options.offset ?? 0;
 
   const { rows } = await query<{
     room_id: string;
@@ -494,7 +499,8 @@ export const searchAvailableRooms = async (options: {
            AND res.check_out_date > $3::date
        )
      ORDER BY rt.type_name, r.room_number
-     LIMIT $7`,
+     LIMIT $7
+     OFFSET $8`,
     [
       options.tenantId,
       options.propertyId,
@@ -503,6 +509,7 @@ export const searchAvailableRooms = async (options: {
       options.roomTypeId ?? null,
       options.adults ?? null,
       limit,
+      offset,
     ],
   );
 

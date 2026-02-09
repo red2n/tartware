@@ -93,8 +93,10 @@ export const BillingChargePostCommandSchema = z.object({
 	reservation_id: z.string().uuid(),
 	amount: z.coerce.number().positive(),
 	currency: z.string().length(3).optional(),
-	charge_code: z.string().max(50).optional(),
+	charge_code: z.string().max(50).default("MISC"),
 	department_code: z.string().max(20).optional(),
+	posting_type: z.enum(["DEBIT", "CREDIT"]).default("DEBIT"),
+	quantity: z.coerce.number().int().positive().default(1),
 	description: z.string().max(2000).optional(),
 	posted_at: z.coerce.date().optional(),
 	metadata: z.record(z.unknown()).optional(),
@@ -215,4 +217,33 @@ export const BillingPaymentVoidCommandSchema = z.object({
 
 export type BillingPaymentVoidCommand = z.infer<
 	typeof BillingPaymentVoidCommandSchema
+>;
+
+/**
+ * Void a charge posting on a folio.
+ * Creates a reversal VOID posting and adjusts folio balance.
+ */
+export const BillingChargeVoidCommandSchema = z.object({
+	posting_id: z.string().uuid(),
+	void_reason: z.string().max(500).optional(),
+	metadata: z.record(z.unknown()).optional(),
+	idempotency_key: z.string().max(120).optional(),
+});
+
+export type BillingChargeVoidCommand = z.infer<
+	typeof BillingChargeVoidCommandSchema
+>;
+
+/**
+ * Finalize an invoice, locking it for editing.
+ * Only DRAFT or SENT invoices can be finalized.
+ */
+export const BillingInvoiceFinalizeCommandSchema = z.object({
+	invoice_id: z.string().uuid(),
+	metadata: z.record(z.unknown()).optional(),
+	idempotency_key: z.string().max(120).optional(),
+});
+
+export type BillingInvoiceFinalizeCommand = z.infer<
+	typeof BillingInvoiceFinalizeCommandSchema
 >;

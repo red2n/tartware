@@ -49,6 +49,7 @@ WHERE cs.tenant_id = $2
   AND COALESCE(cs.is_deleted, false) = false
 ORDER BY cs.opened_at DESC
 LIMIT $1
+OFFSET $7
 `;
 
 export const CASHIER_SESSION_BY_ID_SQL = `
@@ -110,6 +111,7 @@ WHERE sh.tenant_id = $2
   AND COALESCE(sh.is_deleted, false) = false
 ORDER BY sh.shift_date DESC, sh.handover_started_at DESC
 LIMIT $1
+OFFSET $7
 `;
 
 export const SHIFT_HANDOVER_BY_ID_SQL = `
@@ -171,6 +173,7 @@ WHERE lf.tenant_id = $2
   AND COALESCE(lf.is_deleted, false) = false
 ORDER BY lf.found_date DESC
 LIMIT $1
+OFFSET $7
 `;
 
 export const LOST_FOUND_BY_ID_SQL = `
@@ -236,6 +239,7 @@ WHERE beo.tenant_id = $2
   AND COALESCE(beo.is_deleted, false) = false
 ORDER BY beo.event_date ASC, beo.event_start_time ASC
 LIMIT $1
+OFFSET $7
 `;
 
 export const BANQUET_ORDER_BY_ID_SQL = `
@@ -293,6 +297,7 @@ WHERE gf.tenant_id = $2
   AND ($6::BOOLEAN IS NULL OR (gf.response_text IS NOT NULL) = $6)
 ORDER BY gf.created_at DESC
 LIMIT $1
+OFFSET $7
 `;
 
 export const GUEST_FEEDBACK_BY_ID_SQL = `
@@ -353,6 +358,7 @@ WHERE pr.tenant_id = $2
   AND COALESCE(pr.is_deleted, false) = false
 ORDER BY pr.incident_date DESC
 LIMIT $1
+OFFSET $7
 `;
 
 export const POLICE_REPORT_BY_ID_SQL = `

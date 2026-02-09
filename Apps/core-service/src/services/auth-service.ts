@@ -4,7 +4,10 @@ import bcrypt from "bcryptjs";
 import { config } from "../config.js";
 import { pool } from "../lib/db.js";
 import { signAccessToken } from "../lib/jwt.js";
+import { appLogger } from "../lib/logger.js";
 import { TENANT_AUTH_UPDATE_PASSWORD_SQL } from "../sql/tenant-auth-queries.js";
+
+const authLogger = appLogger.child({ module: "auth-service" });
 
 import { emitMembershipCacheInvalidation } from "./membership-cache-hooks.js";
 import {
@@ -100,7 +103,7 @@ const findUserForAuthentication = async (username: string): Promise<AuthUser | n
     }
     return AuthUserSchema.parse(result.rows[0]);
   } catch (error) {
-    console.error("Error fetching user for authentication:", error);
+    authLogger.error({ err: error }, "Error fetching user for authentication");
     return null;
   }
 };
@@ -211,7 +214,7 @@ const findUserById = async (userId: string): Promise<AuthUser | null> => {
 
     return AuthUserSchema.parse(result.rows[0]);
   } catch (error) {
-    console.error("Error retrieving user for password change:", error);
+    authLogger.error({ err: error }, "Error retrieving user for password change");
     return null;
   }
 };
@@ -247,7 +250,7 @@ export const changeUserPassword = async (
   try {
     await pool.query(TENANT_AUTH_UPDATE_PASSWORD_SQL, [newHash, userId]);
   } catch (error) {
-    console.error("Failed to update user password:", error);
+    authLogger.error({ err: error }, "Failed to update user password");
     return { ok: false, reason: "INVALID_CREDENTIALS" };
   }
 

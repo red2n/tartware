@@ -9,11 +9,14 @@ import { type RateItem, RateItemSchema } from "@tartware/schemas";
 
 import { query } from "../lib/db.js";
 import {
+  buildDynamicUpdate,
+  type UpdateField,
+} from "../sql/dynamic-update-builder.js";
+import {
   RATE_CREATE_SQL,
   RATE_DELETE_SQL,
   RATE_GET_BY_ID_SQL,
   RATE_LIST_SQL,
-  RATE_UPDATE_SQL,
 } from "../sql/rate-queries.js";
 
 type RateRow = {
@@ -177,6 +180,7 @@ export const listRates = async (options: {
   rateType?: string;
   search?: string;
   limit?: number;
+  offset?: number;
 }): Promise<RateItem[]> => {
   const { rows } = await query<RateRow>(RATE_LIST_SQL, [
     options.tenantId,
@@ -186,6 +190,7 @@ export const listRates = async (options: {
     options.rateType ?? null,
     options.search ? `%${options.search.trim()}%` : null,
     options.limit ?? 200,
+    options.offset ?? 0,
   ]);
 
   return rows.map(mapRowToRate);
@@ -295,47 +300,93 @@ type UpdateRateInput = {
 };
 
 /**
+ * Column mappings for rate updates.
+ * Key = property on UpdateRateInput; column = DB column; json = needs JSON.stringify.
+ */
+const RATE_UPDATE_FIELDS: ReadonlyArray<{
+  key: keyof UpdateRateInput;
+  column: string;
+  json?: boolean;
+}> = [
+  { key: "property_id", column: "property_id" },
+  { key: "room_type_id", column: "room_type_id" },
+  { key: "rate_name", column: "rate_name" },
+  { key: "rate_code", column: "rate_code" },
+  { key: "description", column: "description" },
+  { key: "rate_type", column: "rate_type" },
+  { key: "strategy", column: "strategy" },
+  { key: "priority", column: "priority" },
+  { key: "base_rate", column: "base_rate" },
+  { key: "currency", column: "currency" },
+  { key: "single_occupancy_rate", column: "single_occupancy_rate" },
+  { key: "double_occupancy_rate", column: "double_occupancy_rate" },
+  { key: "extra_person_rate", column: "extra_person_rate" },
+  { key: "extra_child_rate", column: "extra_child_rate" },
+  { key: "valid_from", column: "valid_from" },
+  { key: "valid_until", column: "valid_until" },
+  { key: "advance_booking_days_min", column: "advance_booking_days_min" },
+  { key: "advance_booking_days_max", column: "advance_booking_days_max" },
+  { key: "min_length_of_stay", column: "min_length_of_stay" },
+  { key: "max_length_of_stay", column: "max_length_of_stay" },
+  { key: "closed_to_arrival", column: "closed_to_arrival" },
+  { key: "closed_to_departure", column: "closed_to_departure" },
+  { key: "meal_plan", column: "meal_plan" },
+  { key: "meal_plan_cost", column: "meal_plan_cost" },
+  { key: "cancellation_policy", column: "cancellation_policy", json: true },
+  { key: "modifiers", column: "modifiers", json: true },
+  { key: "channels", column: "channels", json: true },
+  { key: "customer_segments", column: "customer_segments", json: true },
+  { key: "tax_inclusive", column: "tax_inclusive" },
+  { key: "tax_rate", column: "tax_rate" },
+  { key: "status", column: "status" },
+  { key: "display_order", column: "display_order" },
+  { key: "metadata", column: "metadata", json: true },
+  { key: "updated_by", column: "updated_by" },
+];
+
+/** Columns returned from the UPDATE CTE. */
+const RATE_SELECT_COLUMNS = [
+  "id", "tenant_id", "property_id", "room_type_id", "rate_name", "rate_code",
+  "description", "rate_type", "strategy", "priority", "base_rate", "currency",
+  "single_occupancy_rate", "double_occupancy_rate", "extra_person_rate",
+  "extra_child_rate", "valid_from", "valid_until", "advance_booking_days_min",
+  "advance_booking_days_max", "min_length_of_stay", "max_length_of_stay",
+  "closed_to_arrival", "closed_to_departure", "meal_plan", "meal_plan_cost",
+  "cancellation_policy", "modifiers", "channels", "customer_segments",
+  "tax_inclusive", "tax_rate", "status", "display_order", "metadata",
+  "created_at", "updated_at", "version",
+] as const;
+
+/**
  * Update a rate by id.
+ *
+ * Uses a dynamic query builder so that only explicitly provided fields are
+ * included in the SET clause. This distinguishes "not provided" (undefined →
+ * column untouched) from "set to null" (null → column cleared), unlike the
+ * former COALESCE($n, alias.column) approach.
  */
 export const updateRate = async (input: UpdateRateInput): Promise<RateItem | null> => {
-  const { rows } = await query<RateRow>(RATE_UPDATE_SQL, [
-    input.rate_id,
-    input.tenant_id,
-    input.property_id ?? null,
-    input.room_type_id ?? null,
-    input.rate_name ?? null,
-    input.rate_code ?? null,
-    input.description ?? null,
-    input.rate_type ?? null,
-    input.strategy ?? null,
-    input.priority ?? null,
-    input.base_rate ?? null,
-    input.currency ?? null,
-    input.single_occupancy_rate ?? null,
-    input.double_occupancy_rate ?? null,
-    input.extra_person_rate ?? null,
-    input.extra_child_rate ?? null,
-    input.valid_from ?? null,
-    input.valid_until ?? null,
-    input.advance_booking_days_min ?? null,
-    input.advance_booking_days_max ?? null,
-    input.min_length_of_stay ?? null,
-    input.max_length_of_stay ?? null,
-    input.closed_to_arrival ?? null,
-    input.closed_to_departure ?? null,
-    input.meal_plan ?? null,
-    input.meal_plan_cost ?? null,
-    toJson(input.cancellation_policy),
-    toJson(input.modifiers),
-    toJson(input.channels),
-    toJson(input.customer_segments),
-    input.tax_inclusive ?? null,
-    input.tax_rate ?? null,
-    input.status ?? null,
-    input.display_order ?? null,
-    toJson(input.metadata),
-    input.updated_by ?? null,
-  ]);
+  const fields: UpdateField[] = [];
+  for (const mapping of RATE_UPDATE_FIELDS) {
+    const value = input[mapping.key];
+    if (value !== undefined) {
+      fields.push({
+        column: mapping.column,
+        value: mapping.json ? toJson(value) : value,
+      });
+    }
+  }
+
+  const { sql, params } = buildDynamicUpdate({
+    table: "public.rates",
+    alias: "r",
+    id: input.rate_id,
+    tenantId: input.tenant_id,
+    fields,
+    selectColumns: RATE_SELECT_COLUMNS,
+  });
+
+  const { rows } = await query<RateRow>(sql, params);
 
   if (!rows[0]) {
     return null;

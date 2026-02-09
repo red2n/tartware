@@ -12,6 +12,7 @@ import {
 import { applyGuestRetentionPolicy } from "../lib/compliance.js";
 import { query } from "../lib/db.js";
 import {
+  GUEST_BY_ID_SQL,
   GUEST_COMMUNICATIONS_LIST_SQL,
   GUEST_DOCUMENTS_LIST_SQL,
   GUEST_LIST_SQL,
@@ -271,6 +272,7 @@ export const listGuests = async (options: {
   loyaltyTier?: string;
   vipStatus?: boolean;
   isBlacklisted?: boolean;
+  offset?: number;
 }): Promise<GuestWithStats[]> => {
   const limit = options.limit ?? 50;
   const tenantId = options.tenantId;
@@ -280,6 +282,7 @@ export const listGuests = async (options: {
   const loyaltyTier = options.loyaltyTier ?? null;
   const vipStatus = options.vipStatus ?? null;
   const isBlacklisted = options.isBlacklisted ?? null;
+  const offset = options.offset ?? 0;
 
   const { rows } = await query<GuestRow>(GUEST_LIST_SQL, [
     limit,
@@ -290,6 +293,7 @@ export const listGuests = async (options: {
     loyaltyTier,
     vipStatus,
     isBlacklisted,
+    offset,
   ]);
 
   if (rows.length === 0) {
@@ -300,6 +304,29 @@ export const listGuests = async (options: {
   const statsMap = await fetchGuestReservationStats(tenantId, guestIds, propertyId ?? undefined);
 
   return rows.map((row) => applyGuestRetentionPolicy(mapRowToGuest(row, statsMap.get(row.id))));
+};
+
+/**
+ * Fetch a single guest by id with computed reservation stats.
+ */
+export const getGuestById = async (options: {
+  guestId: string;
+  tenantId: string;
+  propertyId?: string;
+}): Promise<GuestWithStats | null> => {
+  const { rows } = await query<GuestRow>(GUEST_BY_ID_SQL, [options.guestId, options.tenantId]);
+
+  if (!rows[0]) {
+    return null;
+  }
+
+  const statsMap = await fetchGuestReservationStats(
+    options.tenantId,
+    [rows[0].id],
+    options.propertyId,
+  );
+
+  return applyGuestRetentionPolicy(mapRowToGuest(rows[0], statsMap.get(rows[0].id)));
 };
 
 // ============================================================================
@@ -425,12 +452,14 @@ export const listGuestPreferences = async (options: {
   guestId: string;
   category?: string;
   activeOnly?: boolean;
+  offset?: number;
 }): Promise<GuestPreferenceListItem[]> => {
   const limit = options.limit ?? 100;
   const tenantId = options.tenantId;
   const guestId = options.guestId;
   const category = options.category ?? null;
   const activeOnly = options.activeOnly ?? null;
+  const offset = options.offset ?? 0;
 
   const { rows } = await query<GuestPreferenceRow>(GUEST_PREFERENCES_LIST_SQL, [
     limit,
@@ -438,6 +467,7 @@ export const listGuestPreferences = async (options: {
     guestId,
     category,
     activeOnly,
+    offset,
   ]);
 
   return rows.map(mapRowToPreference);
@@ -522,12 +552,14 @@ export const listGuestDocuments = async (options: {
   guestId: string;
   documentType?: string;
   verificationStatus?: string;
+  offset?: number;
 }): Promise<GuestDocumentListItem[]> => {
   const limit = options.limit ?? 100;
   const tenantId = options.tenantId;
   const guestId = options.guestId;
   const documentType = options.documentType ?? null;
   const verificationStatus = options.verificationStatus ?? null;
+  const offset = options.offset ?? 0;
 
   const { rows } = await query<GuestDocumentRow>(GUEST_DOCUMENTS_LIST_SQL, [
     limit,
@@ -535,6 +567,7 @@ export const listGuestDocuments = async (options: {
     guestId,
     documentType,
     verificationStatus,
+    offset,
   ]);
 
   return rows.map(mapRowToDocument);
@@ -615,6 +648,7 @@ export const listGuestCommunications = async (options: {
   communicationType?: string;
   direction?: string;
   status?: string;
+  offset?: number;
 }): Promise<GuestCommunicationListItem[]> => {
   const limit = options.limit ?? 100;
   const tenantId = options.tenantId;
@@ -622,6 +656,7 @@ export const listGuestCommunications = async (options: {
   const communicationType = options.communicationType ?? null;
   const direction = options.direction ?? null;
   const status = options.status ?? null;
+  const offset = options.offset ?? 0;
 
   const { rows } = await query<GuestCommunicationRow>(GUEST_COMMUNICATIONS_LIST_SQL, [
     limit,
@@ -630,6 +665,7 @@ export const listGuestCommunications = async (options: {
     communicationType,
     direction,
     status,
+    offset,
   ]);
 
   return rows.map(mapRowToCommunication);

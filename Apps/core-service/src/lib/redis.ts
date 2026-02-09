@@ -35,6 +35,9 @@
 import Redis from "ioredis";
 
 import { config } from "../config.js";
+import { appLogger } from "./logger.js";
+
+const redisLogger = appLogger.child({ module: "redis" });
 
 /**
  * Singleton Redis client instance.
@@ -84,7 +87,7 @@ let redisClient: Redis | null = null;
  */
 export const initRedis = (): Redis | null => {
   if (!config.redis.enabled) {
-    console.log("Redis is disabled via configuration");
+    redisLogger.info("Redis is disabled via configuration");
     return null;
   }
 
@@ -105,20 +108,20 @@ export const initRedis = (): Redis | null => {
     });
 
     redisClient.on("connect", () => {
-      console.log("✓ Redis connected");
+      redisLogger.info("Redis connected");
     });
 
     redisClient.on("error", (error) => {
-      console.error("Redis error:", error);
+      redisLogger.error({ err: error }, "Redis error");
     });
 
     redisClient.on("close", () => {
-      console.log("Redis connection closed");
+      redisLogger.info("Redis connection closed");
     });
 
     return redisClient;
   } catch (error) {
-    console.error("Failed to initialize Redis:", error);
+    redisLogger.error({ err: error }, "Failed to initialize Redis");
     return null;
   }
 };

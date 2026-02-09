@@ -52,4 +52,5 @@ export const USER_LIST_SQL = `
   ) tenant_payload ON true
   ORDER BY u.created_at DESC
   LIMIT $1
+  OFFSET $3
 `;

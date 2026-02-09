@@ -54,4 +54,5 @@ export const TENANT_LIST_SQL = `
   WHERE COALESCE(t.is_deleted, false) = false AND t.deleted_at IS NULL
   ORDER BY t.created_at DESC
   LIMIT $1
+  OFFSET $2
 `;

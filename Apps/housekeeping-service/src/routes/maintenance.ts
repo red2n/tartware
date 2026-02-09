@@ -58,6 +58,7 @@ const MaintenanceListQuerySchema = z.object({
     .optional()
     .transform((v) => (v === "true" ? true : v === "false" ? false : undefined)),
   limit: z.coerce.number().int().positive().max(500).default(200),
+  offset: z.coerce.number().int().min(0).default(0),
 });
 
 type MaintenanceListQuery = z.infer<typeof MaintenanceListQuerySchema>;
@@ -119,6 +120,7 @@ export const registerMaintenanceRoutes = (app: FastifyInstance): void => {
         room_id,
         room_out_of_service,
         limit,
+        offset,
       } = MaintenanceListQuerySchema.parse(request.query);
 
       const requests = await listMaintenanceRequests({
@@ -130,6 +132,7 @@ export const registerMaintenanceRoutes = (app: FastifyInstance): void => {
         roomId: room_id,
         roomOutOfService: room_out_of_service,
         limit,
+        offset,
       });
 
       return MaintenanceListResponseSchema.parse(requests);

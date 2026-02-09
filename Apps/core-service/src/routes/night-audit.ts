@@ -79,6 +79,7 @@ export function registerNightAuditRoutes(fastify: FastifyInstance): void {
             tenant_id: { type: "string", format: "uuid" },
             property_id: { type: "string", format: "uuid" },
             limit: { type: "integer", minimum: 1, maximum: 200, default: 50 },
+            offset: { type: "integer", minimum: 0, default: 0 },
           },
         },
       },
@@ -89,21 +90,24 @@ export function registerNightAuditRoutes(fastify: FastifyInstance): void {
           tenant_id: string;
           property_id?: string;
           limit?: number;
+          offset?: number;
         };
       }>,
       reply: FastifyReply,
     ) => {
-      const { tenant_id, property_id, limit } = request.query;
+      const { tenant_id, property_id, limit, offset } = request.query;
 
       const runs = await listNightAuditHistory({
         tenantId: tenant_id,
         propertyId: property_id,
         limit: limit,
+        offset: offset,
       });
 
       return reply.send({
         data: runs,
         meta: { count: runs.length },
+        offset: offset ?? 0,
       });
     },
   );
@@ -186,6 +190,7 @@ export function registerOtaRoutes(fastify: FastifyInstance): void {
             },
             is_active: { type: "boolean" },
             limit: { type: "integer", minimum: 1, maximum: 200, default: 100 },
+            offset: { type: "integer", minimum: 0, default: 0 },
           },
         },
       },
@@ -198,11 +203,12 @@ export function registerOtaRoutes(fastify: FastifyInstance): void {
           connection_status?: string;
           is_active?: boolean;
           limit?: number;
+          offset?: number;
         };
       }>,
       reply: FastifyReply,
     ) => {
-      const { tenant_id, property_id, connection_status, is_active, limit } = request.query;
+      const { tenant_id, property_id, connection_status, is_active, limit, offset } = request.query;
 
       const connections = await listOtaConnections({
         tenantId: tenant_id,
@@ -210,11 +216,13 @@ export function registerOtaRoutes(fastify: FastifyInstance): void {
         connectionStatus: connection_status,
         isActive: is_active,
         limit: limit,
+        offset: offset,
       });
 
       return reply.send({
         data: connections,
         meta: { count: connections.length },
+        offset: offset ?? 0,
       });
     },
   );
@@ -241,6 +249,7 @@ export function registerOtaRoutes(fastify: FastifyInstance): void {
           properties: {
             tenant_id: { type: "string", format: "uuid" },
             limit: { type: "integer", minimum: 1, maximum: 200, default: 50 },
+            offset: { type: "integer", minimum: 0, default: 0 },
           },
         },
       },
@@ -251,22 +260,25 @@ export function registerOtaRoutes(fastify: FastifyInstance): void {
         Querystring: {
           tenant_id: string;
           limit?: number;
+          offset?: number;
         };
       }>,
       reply: FastifyReply,
     ) => {
       const { connectionId } = request.params;
-      const { tenant_id, limit } = request.query;
+      const { tenant_id, limit, offset } = request.query;
 
       const logs = await listOtaSyncLogs({
         connectionId,
         tenantId: tenant_id,
         limit: limit,
+        offset: offset,
       });
 
       return reply.send({
         data: logs,
         meta: { count: logs.length },
+        offset: offset ?? 0,
       });
     },
   );

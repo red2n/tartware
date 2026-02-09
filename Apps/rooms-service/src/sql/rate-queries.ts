@@ -60,6 +60,7 @@ export const RATE_LIST_SQL = `
     )
   ORDER BY r.priority ASC, r.rate_name ASC
   LIMIT $7
+  OFFSET $8
 `;
 
 export const RATE_GET_BY_ID_SQL = `

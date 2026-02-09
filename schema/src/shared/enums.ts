@@ -342,6 +342,7 @@ export type PaymentMethod = z.infer<typeof PaymentMethodEnum>;
  */
 export const PaymentStatusEnum = z.enum([
 	"PENDING",
+	"AUTHORIZED",
 	"PROCESSING",
 	"COMPLETED",
 	"FAILED",
@@ -520,6 +521,7 @@ export const InvoiceStatusEnum = z.enum([
 	"OVERDUE",
 	"CANCELLED",
 	"REFUNDED",
+	"FINALIZED",
 ]);
 export type InvoiceStatus = z.infer<typeof InvoiceStatusEnum>;
 

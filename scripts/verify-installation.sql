@@ -157,6 +157,20 @@ BEGIN
         v_fail := v_fail + 1;
     END IF;
 
+    -- Check invoice_status has FINALIZED
+    SELECT array_agg(enumlabel ORDER BY enumsortorder) INTO v_enum_vals
+    FROM pg_enum e
+    JOIN pg_type t ON e.enumtypid = t.oid
+    WHERE t.typname = 'invoice_status';
+
+    IF v_enum_vals @> ARRAY['FINALIZED'] THEN
+        RAISE NOTICE '  ✓ invoice_status has FINALIZED';
+        v_pass := v_pass + 1;
+    ELSE
+        RAISE WARNING '  ✗ invoice_status missing FINALIZED';
+        v_fail := v_fail + 1;
+    END IF;
+
     RAISE NOTICE '';
     RAISE NOTICE '--- Reservations Table Enhancements ---';
 
@@ -206,6 +220,70 @@ BEGIN
         v_pass := v_pass + 1;
     ELSE
         RAISE WARNING '  ✗ reservations.travel_agent_id column MISSING';
+        v_fail := v_fail + 1;
+    END IF;
+
+    -- Check quote/expire lifecycle columns (S8)
+    IF EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema = 'public' AND table_name = 'reservations'
+        AND column_name = 'quoted_at'
+    ) THEN
+        RAISE NOTICE '  ✓ reservations.quoted_at column exists';
+        v_pass := v_pass + 1;
+    ELSE
+        RAISE WARNING '  ✗ reservations.quoted_at column MISSING';
+        v_fail := v_fail + 1;
+    END IF;
+
+    IF EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema = 'public' AND table_name = 'reservations'
+        AND column_name = 'quote_expires_at'
+    ) THEN
+        RAISE NOTICE '  ✓ reservations.quote_expires_at column exists';
+        v_pass := v_pass + 1;
+    ELSE
+        RAISE WARNING '  ✗ reservations.quote_expires_at column MISSING';
+        v_fail := v_fail + 1;
+    END IF;
+
+    IF EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema = 'public' AND table_name = 'reservations'
+        AND column_name = 'expired_at'
+    ) THEN
+        RAISE NOTICE '  ✓ reservations.expired_at column exists';
+        v_pass := v_pass + 1;
+    ELSE
+        RAISE WARNING '  ✗ reservations.expired_at column MISSING';
+        v_fail := v_fail + 1;
+    END IF;
+
+    RAISE NOTICE '';
+    RAISE NOTICE '--- New Tables ---';
+
+    -- Check command_idempotency table exists (P1-1)
+    IF EXISTS (
+        SELECT 1 FROM information_schema.tables
+        WHERE table_schema = 'public' AND table_name = 'command_idempotency'
+    ) THEN
+        RAISE NOTICE '  ✓ command_idempotency table exists';
+        v_pass := v_pass + 1;
+    ELSE
+        RAISE WARNING '  ✗ command_idempotency table MISSING';
+        v_fail := v_fail + 1;
+    END IF;
+
+    -- Check inventory_locks_shadow table exists (P0-3)
+    IF EXISTS (
+        SELECT 1 FROM information_schema.tables
+        WHERE table_schema = 'public' AND table_name = 'inventory_locks_shadow'
+    ) THEN
+        RAISE NOTICE '  ✓ inventory_locks_shadow table exists';
+        v_pass := v_pass + 1;
+    ELSE
+        RAISE WARNING '  ✗ inventory_locks_shadow table MISSING';
         v_fail := v_fail + 1;
     END IF;
 

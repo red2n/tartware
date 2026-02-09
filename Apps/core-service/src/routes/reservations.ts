@@ -24,6 +24,7 @@ const ReservationListQuerySchema = z.object({
     ),
   search: z.string().min(2).max(100).optional(),
   limit: z.coerce.number().int().positive().max(200).default(100),
+  offset: z.coerce.number().int().min(0).default(0),
 });
 
 type ReservationListQuery = z.infer<typeof ReservationListQuerySchema>;
@@ -109,7 +110,7 @@ export const registerReservationRoutes = (app: FastifyInstance): void => {
       }),
     },
     async (request) => {
-      const { tenant_id, property_id, status, search, limit } = ReservationListQuerySchema.parse(
+      const { tenant_id, property_id, status, search, limit, offset } = ReservationListQuerySchema.parse(
         request.query,
       );
 
@@ -119,6 +120,7 @@ export const registerReservationRoutes = (app: FastifyInstance): void => {
         status,
         search,
         limit,
+        offset,
       });
 
       return ReservationListResponseSchema.parse(reservations);

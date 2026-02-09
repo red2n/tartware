@@ -55,6 +55,7 @@ export function registerCashierSessionRoutes(fastify: FastifyInstance): void {
             business_date: { type: "string", format: "date" },
             cashier_id: { type: "string", format: "uuid" },
             limit: { type: "integer", minimum: 1, maximum: 200, default: 50 },
+            offset: { type: "integer", minimum: 0, default: 0 },
           },
         },
       },
@@ -68,11 +69,12 @@ export function registerCashierSessionRoutes(fastify: FastifyInstance): void {
           business_date?: string;
           cashier_id?: string;
           limit?: number;
+          offset?: number;
         };
       }>,
       reply: FastifyReply,
     ) => {
-      const { tenant_id, property_id, session_status, business_date, cashier_id, limit } =
+      const { tenant_id, property_id, session_status, business_date, cashier_id, limit, offset } =
         request.query;
 
       const sessions = await listCashierSessions({
@@ -82,11 +84,13 @@ export function registerCashierSessionRoutes(fastify: FastifyInstance): void {
         businessDate: business_date,
         cashierId: cashier_id,
         limit: limit,
+        offset: offset,
       });
 
       return reply.send({
         data: sessions,
         meta: { count: sessions.length },
+        offset: offset ?? 0,
       });
     },
   );
@@ -184,6 +188,7 @@ export function registerShiftHandoverRoutes(fastify: FastifyInstance): void {
               ],
             },
             limit: { type: "integer", minimum: 1, maximum: 200, default: 50 },
+            offset: { type: "integer", minimum: 0, default: 0 },
           },
         },
       },
@@ -197,11 +202,12 @@ export function registerShiftHandoverRoutes(fastify: FastifyInstance): void {
           shift_date?: string;
           department?: string;
           limit?: number;
+          offset?: number;
         };
       }>,
       reply: FastifyReply,
     ) => {
-      const { tenant_id, property_id, handover_status, shift_date, department, limit } =
+      const { tenant_id, property_id, handover_status, shift_date, department, limit, offset } =
         request.query;
 
       const handovers = await listShiftHandovers({
@@ -211,11 +217,13 @@ export function registerShiftHandoverRoutes(fastify: FastifyInstance): void {
         shiftDate: shift_date,
         department: department,
         limit: limit,
+        offset: offset,
       });
 
       return reply.send({
         data: handovers,
         meta: { count: handovers.length },
+        offset: offset ?? 0,
       });
     },
   );
@@ -330,6 +338,7 @@ export function registerLostFoundRoutes(fastify: FastifyInstance): void {
             },
             found_date_from: { type: "string", format: "date" },
             limit: { type: "integer", minimum: 1, maximum: 200, default: 50 },
+            offset: { type: "integer", minimum: 0, default: 0 },
           },
         },
       },
@@ -343,11 +352,12 @@ export function registerLostFoundRoutes(fastify: FastifyInstance): void {
           item_category?: string;
           found_date_from?: string;
           limit?: number;
+          offset?: number;
         };
       }>,
       reply: FastifyReply,
     ) => {
-      const { tenant_id, property_id, item_status, item_category, found_date_from, limit } =
+      const { tenant_id, property_id, item_status, item_category, found_date_from, limit, offset } =
         request.query;
 
       const items = await listLostFoundItems({
@@ -357,11 +367,13 @@ export function registerLostFoundRoutes(fastify: FastifyInstance): void {
         itemCategory: item_category,
         foundDateFrom: found_date_from,
         limit: limit,
+        offset: offset,
       });
 
       return reply.send({
         data: items,
         meta: { count: items.length },
+        offset: offset ?? 0,
       });
     },
   );
@@ -452,6 +464,7 @@ export function registerBanquetOrderRoutes(fastify: FastifyInstance): void {
             event_date: { type: "string", format: "date" },
             meeting_room_id: { type: "string", format: "uuid" },
             limit: { type: "integer", minimum: 1, maximum: 200, default: 50 },
+            offset: { type: "integer", minimum: 0, default: 0 },
           },
         },
       },
@@ -465,11 +478,12 @@ export function registerBanquetOrderRoutes(fastify: FastifyInstance): void {
           event_date?: string;
           meeting_room_id?: string;
           limit?: number;
+          offset?: number;
         };
       }>,
       reply: FastifyReply,
     ) => {
-      const { tenant_id, property_id, beo_status, event_date, meeting_room_id, limit } =
+      const { tenant_id, property_id, beo_status, event_date, meeting_room_id, limit, offset } =
         request.query;
 
       const orders = await listBanquetOrders({
@@ -479,11 +493,13 @@ export function registerBanquetOrderRoutes(fastify: FastifyInstance): void {
         eventDate: event_date,
         meetingRoomId: meeting_room_id,
         limit: limit,
+        offset: offset,
       });
 
       return reply.send({
         data: orders,
         meta: { count: orders.length },
+        offset: offset ?? 0,
       });
     },
   );
@@ -567,6 +583,7 @@ export function registerGuestFeedbackRoutes(fastify: FastifyInstance): void {
             is_public: { type: "boolean" },
             has_response: { type: "boolean" },
             limit: { type: "integer", minimum: 1, maximum: 200, default: 50 },
+            offset: { type: "integer", minimum: 0, default: 0 },
           },
         },
       },
@@ -580,11 +597,12 @@ export function registerGuestFeedbackRoutes(fastify: FastifyInstance): void {
           is_public?: boolean;
           has_response?: boolean;
           limit?: number;
+          offset?: number;
         };
       }>,
       reply: FastifyReply,
     ) => {
-      const { tenant_id, property_id, sentiment_label, is_public, has_response, limit } =
+      const { tenant_id, property_id, sentiment_label, is_public, has_response, limit, offset } =
         request.query;
 
       const feedback = await listGuestFeedback({
@@ -594,11 +612,13 @@ export function registerGuestFeedbackRoutes(fastify: FastifyInstance): void {
         isPublic: is_public,
         hasResponse: has_response,
         limit: limit,
+        offset: offset,
       });
 
       return reply.send({
         data: feedback,
         meta: { count: feedback.length },
+        offset: offset ?? 0,
       });
     },
   );
@@ -707,6 +727,7 @@ export function registerPoliceReportRoutes(fastify: FastifyInstance): void {
             },
             incident_date_from: { type: "string", format: "date" },
             limit: { type: "integer", minimum: 1, maximum: 200, default: 50 },
+            offset: { type: "integer", minimum: 0, default: 0 },
           },
         },
       },
@@ -720,11 +741,12 @@ export function registerPoliceReportRoutes(fastify: FastifyInstance): void {
           incident_type?: string;
           incident_date_from?: string;
           limit?: number;
+          offset?: number;
         };
       }>,
       reply: FastifyReply,
     ) => {
-      const { tenant_id, property_id, report_status, incident_type, incident_date_from, limit } =
+      const { tenant_id, property_id, report_status, incident_type, incident_date_from, limit, offset } =
         request.query;
 
       const reports = await listPoliceReports({
@@ -734,11 +756,13 @@ export function registerPoliceReportRoutes(fastify: FastifyInstance): void {
         incidentType: incident_type,
         incidentDateFrom: incident_date_from,
         limit: limit,
+        offset: offset,
       });
 
       return reply.send({
         data: reports,
         meta: { count: reports.length },
+        offset: offset ?? 0,
       });
     },
   );

@@ -1,7 +1,12 @@
 import { randomUUID } from "node:crypto";
 
 import { buildRouteSchema, schemaFromZod } from "@tartware/openapi";
-import { validateCommandPayload } from "@tartware/schemas";
+import {
+  CommandExecuteRequestSchema,
+  CommandExecuteResponseSchema,
+  type CommandExecuteRequest,
+  validateCommandPayload,
+} from "@tartware/schemas";
 import type { FastifyInstance } from "fastify";
 import { ZodError, z } from "zod";
 
@@ -11,34 +16,8 @@ const CommandParamSchema = z.object({
   commandName: z.string().min(1),
 });
 
-const CommandExecuteBodySchema = z.object({
-  tenant_id: z.string().uuid(),
-  payload: z.record(z.unknown()),
-  correlation_id: z.string().min(1).optional(),
-  metadata: z
-    .object({
-      initiated_by: z
-        .object({
-          user_id: z.string().uuid(),
-          role: z.string().min(1),
-        })
-        .optional(),
-    })
-    .optional(),
-});
-
-const CommandExecuteResponseSchema = z.object({
-  status: z.literal("accepted"),
-  commandId: z.string().uuid(),
-  commandName: z.string(),
-  tenantId: z.string().uuid(),
-  correlationId: z.string().optional(),
-  targetService: z.string(),
-  requestedAt: z.string(),
-});
-
 const CommandParamJsonSchema = schemaFromZod(CommandParamSchema, "CommandExecuteParams");
-const CommandExecuteBodyJsonSchema = schemaFromZod(CommandExecuteBodySchema, "CommandExecuteBody");
+const CommandExecuteBodyJsonSchema = schemaFromZod(CommandExecuteRequestSchema, "CommandExecuteBody");
 const CommandExecuteResponseJsonSchema = schemaFromZod(
   CommandExecuteResponseSchema,
   "CommandExecuteResponse",
@@ -50,7 +29,7 @@ export const registerCommandRoutes = (app: FastifyInstance): void => {
     {
       preHandler: app.withTenantScope({
         resolveTenantId: (request) =>
-          (request.body as z.infer<typeof CommandExecuteBodySchema>).tenant_id,
+          (request.body as CommandExecuteRequest).tenant_id,
         minRole: "MANAGER",
         requiredModules: "core",
       }),
@@ -66,7 +45,7 @@ export const registerCommandRoutes = (app: FastifyInstance): void => {
     },
     async (request, reply) => {
       const { commandName } = CommandParamSchema.parse(request.params);
-      const body = CommandExecuteBodySchema.parse(request.body);
+      const body = CommandExecuteRequestSchema.parse(request.body);
 
       const membership = request.auth.getMembership(body.tenant_id);
       if (!membership) {

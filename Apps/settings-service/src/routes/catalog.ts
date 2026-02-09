@@ -10,6 +10,7 @@ import {
   SettingsOptionsSchema,
   SettingsScopeEnum,
   SettingsSectionsSchema,
+  SettingsValueStatusEnum,
 } from "@tartware/schemas";
 import type { FastifyPluginAsync } from "fastify";
 import fp from "fastify-plugin";
@@ -104,7 +105,7 @@ const CreateValueSchema = z.object({
   property_id: z.string().uuid().optional(),
   unit_id: z.string().uuid().optional(),
   user_id: z.string().uuid().optional(),
-  status: z.enum(["ACTIVE", "PENDING", "EXPIRED"]).optional(),
+  status: SettingsValueStatusEnum.optional(),
   notes: z.string().max(1024).optional(),
   effective_from: z.string().datetime().optional(),
   effective_to: z.string().datetime().optional(),
