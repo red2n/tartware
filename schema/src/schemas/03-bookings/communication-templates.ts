@@ -66,11 +66,20 @@ export type CommunicationTemplates = z.infer<
 >;
 
 /**
- * Schema for creating a new communication templates
+ * Schema for creating a new communication template
  */
 export const CreateCommunicationTemplatesSchema =
 	CommunicationTemplatesSchema.omit({
-		// TODO: Add fields to omit for creation
+		id: true,
+		usage_count: true,
+		last_used_at: true,
+		created_by: true,
+		updated_by: true,
+		created_at: true,
+		updated_at: true,
+		is_deleted: true,
+		deleted_at: true,
+		deleted_by: true,
 	});
 
 export type CreateCommunicationTemplates = z.infer<
@@ -78,10 +87,31 @@ export type CreateCommunicationTemplates = z.infer<
 >;
 
 /**
- * Schema for updating a communication templates
+ * Schema for updating a communication template
  */
 export const UpdateCommunicationTemplatesSchema =
-	CommunicationTemplatesSchema.partial();
+	CommunicationTemplatesSchema.pick({
+		template_name: true,
+		subject: true,
+		body: true,
+		html_body: true,
+		category: true,
+		language_code: true,
+		variables: true,
+		is_active: true,
+		is_automated: true,
+		trigger_event: true,
+		trigger_offset_hours: true,
+		send_priority: true,
+		from_name: true,
+		from_email: true,
+		from_phone: true,
+		reply_to_email: true,
+		cc_emails: true,
+		bcc_emails: true,
+		attachments: true,
+		metadata: true,
+	}).partial();
 
 export type UpdateCommunicationTemplates = z.infer<
 	typeof UpdateCommunicationTemplatesSchema

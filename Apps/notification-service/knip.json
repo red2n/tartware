@@ -1,0 +1,34 @@
+{
+  "$schema": "https://unpkg.com/knip@5/schema.json",
+  "project": [
+    "src/**/*.ts"
+  ],
+  "ignore": [
+    "src/utils/template-renderer.ts",
+    "src/lib/db.ts",
+    "src/kafka/producer.ts",
+    "src/services/template-service.ts"
+  ],
+  "ignoreDependencies": [
+    "@biomejs/biome",
+    "@tartware/schemas",
+    "@tartware/telemetry",
+    "@tartware/openapi",
+    "@tartware/config",
+    "@tartware/tenant-auth",
+    "@tartware/command-consumer-utils",
+    "tsx",
+    "@fastify/cors",
+    "@fastify/helmet",
+    "@fastify/sensible",
+    "@tartware/fastify-server"
+  ],
+  "ignoreBinaries": [
+    "biome",
+    "eslint",
+    "knip",
+    "tsc",
+    "tsx",
+    "vitest"
+  ]
+}

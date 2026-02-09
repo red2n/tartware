@@ -71,9 +71,9 @@ Full end-to-end trace of the reservation lifecycle across api-gateway, reservati
   - In `Apps/api-gateway/src/server.ts`, `GET /v1/reservations` had no `preHandler` — no auth guard at gateway level.
   - **Implemented**: Added `tenantScopeFromQuery` resolver (extracts `tenant_id` from query string) as `preHandler` on both `GET /v1/reservations` and `GET /v1/reservations/:id` gateway routes. Now consistent with all other tenant-scoped routes.
 
-- [ ] **P1-7: GDPR erase incomplete in guests-service** | Complexity: Medium | Priority: P1
-  - `guest.gdpr.erase` cascades to ~10 tables but skips `guest_preferences`, `guest_documents`, and `guest_communications` — all contain PII (identity docs, phone numbers, emails).
-  - Fix: add anonymization/deletion for those three tables in the GDPR handler.
+- [x] **P1-7: GDPR erase incomplete in guests-service** (done)
+  - `guest.gdpr.erase` cascades to ~10 tables but skipped `guest_preferences`, `guest_documents`, and `guest_communications` — all contain PII.
+  - **Implemented**: Added 3 new anonymization steps (9, 10, 11) to `guest-command-service.ts`. Step 9 nulls dietary_restrictions, food_allergies, accessibility fields, marketing opt-ins, notes, etc. in `guest_preferences`. Step 10 redacts document_number/name, nulls file paths and verification notes in `guest_documents`. Step 11 redacts sender/recipient names, subjects, messages, nulls email/phone in `guest_communications`. All scoped by `tenant_id + guest_id`, consistent with existing anonymization pattern.
 
 #### P2 — Medium (design gaps / hardening)
 
@@ -86,7 +86,8 @@ Full end-to-end trace of the reservation lifecycle across api-gateway, reservati
 - [x] **P2-7: `rooms.move` command unimplemented** — throws `ROOM_MOVE_NOT_SUPPORTED`. Critical for mid-stay room changes/upgrades. **Implemented**: `handleRoomMove` validates source=OCCUPIED, target=AVAILABLE, swaps statuses (source→DIRTY, target→OCCUPIED), updates reservation `room_number` with version lock.
 - [ ] **P2-8: Guest reservation stats miss NO_SHOW and PENDING** | Complexity: Low | Priority: P2 — those statuses aren't counted in any stats bucket in guests-service SQL.
 - [ ] **P2-9: `CreateReservationsSchema` / `UpdateReservationsSchema` are stubs** | Complexity: Medium | Priority: P2 — TODO comment, omit nothing, require `id`/`created_at` on creation.
-- [ ] **P2-10: Availability guard gRPC has zero auth** | Complexity: Medium | Priority: P1 — any gRPC caller can lock/release any tenant's inventory.
+- [x] **P2-10: Availability guard gRPC has zero auth** (done)
+  - **Implemented**: Added `withGrpcAuth<TReq, TRes>()` handler wrapper in `server.ts` that validates `authorization` metadata against configured `GRPC_AUTH_TOKEN`. All 3 gRPC handlers (lockRoom, releaseLock, bulkRelease) wrapped. Client-side: `callGrpc()` in reservations-command-service now sends `Bearer` token via gRPC `Metadata`. Passthrough when no token configured (dev mode). Dev scripts set `GRPC_AUTH_TOKEN=guard-shared-secret-dev` on guard and `AVAILABILITY_GUARD_GRPC_TOKEN=guard-shared-secret-dev` on reservations.
 - [x] **P2-11: No deposit authorization flow** — billing-service only does direct CAPTURE, missing AUTHORIZE → CAPTURE pattern for hotel deposits. **Implemented**: `billing.payment.authorize` command creates AUTHORIZATION payments with `status='AUTHORIZED'`, idempotent via `ON CONFLICT` on `payment_reference`.
 - [~] **P2-12: No void charge / finalize invoice / night audit commands** | Complexity: Medium | Priority: P2 — billing lifecycle gaps. **Partial**: `billing.night_audit.execute` implemented (posts room charges, marks no-shows, advances business date). Void charge and finalize invoice still TODO.
 - [ ] **P2-13: `handleReservationUpdated` truthy checks** | Complexity: Low | Priority: P2 — `if (payload.guest_id)` drops empty string / `0` values. Should use `!== undefined`.
@@ -231,7 +232,7 @@ Audit against online PMS industry standards (Oracle OPERA Cloud, Revfine PMS Fea
 | 8 | Financial / Folio Management | **75%** | Auto-folio + settlement; city ledger/AR not wired |
 | 9 | Guest Profile & CRM | **80%** | Rich profile + loyalty; missing CI recognition alerts |
 | 10 | Distribution / Channel Mgmt | **60%** | Schema ready; no runtime OTA/GDS connectors |
-| 11 | Notifications & Messaging | **40%** | Schema + triggers defined; no processor/email service |
+| 11 | Notifications & Messaging | **75%** | Runtime processor + template engine + event consumers done; email/SMS provider remaining |
 | 12 | Night Audit / End-of-Day | **55%** | Business dates + audit trail; no auto room-charge posting |
 | 13 | Reporting & Analytics | **45%** | Query-based listing; no dedicated report endpoints |
 
@@ -265,10 +266,9 @@ Audit against online PMS industry standards (Oracle OPERA Cloud, Revfine PMS Fea
 
 #### Tier 2 — Important Functional Gaps
 
-- [ ] **S7: Guest Communication & Notification Service** | Complexity: **High** | Priority: **P1**
+- [x] **S7: Guest Communication & Notification Service** (done)
   - PMS standard: confirmation emails/SMS sent on booking, modification, cancellation, pre-arrival, check-in.
-  - Coverage: **40%** — `automated_messages` table + `communication_templates` + `push_notifications` schema exist with 25+ trigger types. No runtime processor or email/SMS integration.
-  - Scope: add a notification service or integration with email/SMS provider; define templates for 5+ lifecycle events; wire event consumers to trigger notifications.
+  - **Implemented**: Full `notification-service` microservice (port 3055) with 20+ source files. Kafka command consumer (`commands.primary`) handles `notification.send`, `notification.template.create/update/delete`. Reservation event consumer (`reservations.events`) auto-triggers notifications on `reservation.confirmed/modified/cancelled/checked_in/checked_out` → maps to template codes `BOOKING_CONFIRMED/MODIFIED/CANCELLED`, `CHECK_IN/OUT_CONFIRMATION`. Template service with `{{variable}}` and `{{variable | fallback}}` interpolation. Pluggable provider interface with console (dev) and webhook providers. Gateway routes (8 endpoints): template CRUD + send + communications list/detail. Zod schemas fixed (Create/Update for guest-communications, communication-templates, push-notifications). `notifications.events` Kafka topic added (6 partitions). Coverage: **40% → 75%** (runtime processor + template rendering + event consumers done; email/SMS provider integration remaining).
 
 - [~] **S8: Missing Reservation Statuses** | Complexity: **Medium** | Priority: **P2**
   - PMS standard: full lifecycle includes INQUIRY, QUOTED, WAITLISTED, EXPIRED, NO_SHOW in addition to existing statuses.
@@ -391,9 +391,9 @@ Audit against online PMS industry standards (Oracle OPERA Cloud, Revfine PMS Fea
 |----|------|----------|------------|------|
 | ~~P1-1~~ | ~~Idempotency deduplication~~ | ~~P1~~ | ~~Medium~~ | ~~Done~~ |
 | ~~P1-2~~ | ~~Availability lock leak~~ | ~~P1~~ | ~~Medium~~ | ~~Done~~ |
-| P1-7 | GDPR erase incomplete | P1 | Medium | Compliance |
-| P2-10 | Guard gRPC zero auth | P1 | Medium | Security |
-| S7 | Notifications service | P1 | High | Messaging (40%) |
+| ~~P1-7~~ | ~~GDPR erase incomplete~~ | ~~P1~~ | ~~Medium~~ | ~~Done~~ |
+| ~~P2-10~~ | ~~Guard gRPC zero auth~~ | ~~P1~~ | ~~Medium~~ | ~~Done~~ |
+| ~~S7~~ | ~~Notifications service~~ | ~~P1~~ | ~~High~~ | ~~Done (75%)~~ |
 | S26 | Deposit enforcement at CI | P2 | Low | Check-In (82%) |
 | S18 | Early CI / Late CO fees | P2 | Low | Check-In (82%) |
 | S22 | Batch no-show processing | P2 | Low | Night Audit (55%) |

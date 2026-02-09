@@ -23,6 +23,8 @@ const HOUSEKEEPING_COMMAND_TAG = "Housekeeping Commands";
 const ROOM_COMMAND_TAG = "Room Commands";
 const BILLING_COMMAND_TAG = "Billing Commands";
 const RECOMMENDATION_PROXY_TAG = "Recommendations";
+const NOTIFICATION_PROXY_TAG = "Notification Proxy";
+const NOTIFICATION_COMMAND_TAG = "Notification Commands";
 
 const healthResponseSchema = {
   type: "object",
@@ -994,6 +996,9 @@ export const buildServer = () => {
 
     const proxyBilling = async (request: FastifyRequest, reply: FastifyReply) =>
       proxyRequest(request, reply, serviceTargets.billingServiceUrl);
+
+    const proxyNotifications = async (request: FastifyRequest, reply: FastifyReply) =>
+      proxyRequest(request, reply, serviceTargets.notificationServiceUrl);
 
     app.get(
       "/v1/guests",
@@ -2467,6 +2472,158 @@ export const buildServer = () => {
         }),
       },
       proxyHousekeeping,
+    );
+
+    // ─── Notification Routes ──────────────────────────────────────
+
+    app.get(
+      "/v1/tenants/:tenantId/notifications/templates",
+      {
+        preHandler: tenantScopeFromParams,
+        schema: buildRouteSchema({
+          tag: NOTIFICATION_PROXY_TAG,
+          summary: "List notification templates for a tenant.",
+          params: reservationParamsSchema,
+          response: {
+            200: jsonObjectSchema,
+          },
+        }),
+      },
+      proxyNotifications,
+    );
+
+    app.get(
+      "/v1/tenants/:tenantId/notifications/templates/:templateId",
+      {
+        preHandler: tenantScopeFromParams,
+        schema: buildRouteSchema({
+          tag: NOTIFICATION_PROXY_TAG,
+          summary: "Get a specific notification template.",
+          response: {
+            200: jsonObjectSchema,
+          },
+        }),
+      },
+      proxyNotifications,
+    );
+
+    app.post(
+      "/v1/tenants/:tenantId/notifications/templates",
+      {
+        preHandler: tenantScopeFromParams,
+        schema: buildRouteSchema({
+          tag: NOTIFICATION_COMMAND_TAG,
+          summary: "Create a notification template via the Command Center.",
+          params: reservationParamsSchema,
+          body: jsonObjectSchema,
+          response: {
+            202: jsonObjectSchema,
+          },
+        }),
+      },
+      (request, reply) =>
+        forwardCommandWithTenant({
+          request,
+          reply,
+          commandName: "notification.template.create",
+        }),
+    );
+
+    app.put(
+      "/v1/tenants/:tenantId/notifications/templates/:templateId",
+      {
+        preHandler: tenantScopeFromParams,
+        schema: buildRouteSchema({
+          tag: NOTIFICATION_COMMAND_TAG,
+          summary: "Update a notification template via the Command Center.",
+          body: jsonObjectSchema,
+          response: {
+            202: jsonObjectSchema,
+          },
+        }),
+      },
+      (request, reply) =>
+        forwardCommandWithParamId({
+          request,
+          reply,
+          commandName: "notification.template.update",
+          paramKey: "templateId",
+          payloadKey: "template_id",
+        }),
+    );
+
+    app.delete(
+      "/v1/tenants/:tenantId/notifications/templates/:templateId",
+      {
+        preHandler: tenantScopeFromParams,
+        schema: buildRouteSchema({
+          tag: NOTIFICATION_COMMAND_TAG,
+          summary: "Delete a notification template via the Command Center.",
+          response: {
+            202: jsonObjectSchema,
+          },
+        }),
+      },
+      (request, reply) =>
+        forwardCommandWithParamId({
+          request,
+          reply,
+          commandName: "notification.template.delete",
+          paramKey: "templateId",
+          payloadKey: "template_id",
+        }),
+    );
+
+    app.post(
+      "/v1/tenants/:tenantId/notifications/send",
+      {
+        preHandler: tenantScopeFromParams,
+        schema: buildRouteSchema({
+          tag: NOTIFICATION_COMMAND_TAG,
+          summary: "Send a notification to a guest via the Command Center.",
+          params: reservationParamsSchema,
+          body: jsonObjectSchema,
+          response: {
+            202: jsonObjectSchema,
+          },
+        }),
+      },
+      (request, reply) =>
+        forwardCommandWithTenant({
+          request,
+          reply,
+          commandName: "notification.send",
+        }),
+    );
+
+    app.get(
+      "/v1/tenants/:tenantId/notifications/guests/:guestId/communications",
+      {
+        preHandler: tenantScopeFromParams,
+        schema: buildRouteSchema({
+          tag: NOTIFICATION_PROXY_TAG,
+          summary: "List guest communication history.",
+          response: {
+            200: jsonObjectSchema,
+          },
+        }),
+      },
+      proxyNotifications,
+    );
+
+    app.get(
+      "/v1/tenants/:tenantId/notifications/communications/:communicationId",
+      {
+        preHandler: tenantScopeFromParams,
+        schema: buildRouteSchema({
+          tag: NOTIFICATION_PROXY_TAG,
+          summary: "Get a specific guest communication.",
+          response: {
+            200: jsonObjectSchema,
+          },
+        }),
+      },
+      proxyNotifications,
     );
   });
 

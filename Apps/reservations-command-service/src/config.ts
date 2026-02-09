@@ -139,4 +139,5 @@ export const availabilityGuardConfig = {
   enabled: parseBoolean(env.AVAILABILITY_GUARD_ENABLED, true),
   shadowMode: parseBoolean(env.AVAILABILITY_GUARD_SHADOW_MODE, true),
   failOpen: parseBoolean(env.AVAILABILITY_GUARD_FAIL_OPEN, true),
+  grpcAuthToken: env.AVAILABILITY_GUARD_GRPC_TOKEN ?? "",
 };

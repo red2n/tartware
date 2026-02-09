@@ -722,6 +722,83 @@ export const eraseGuestForGdpr = async ({
     );
     cascadeAudit.incident_reports = incidentsResult.rowCount ?? 0;
 
+    // 9. Cascade anonymization to guest_preferences (health/accessibility/personal data)
+    const prefsResult = await queryWithClient(
+      client,
+      `
+        UPDATE public.guest_preferences
+        SET
+          dietary_restrictions = NULL,
+          food_allergies = NULL,
+          accessibility_notes = NULL,
+          mobility_accessible = false,
+          hearing_accessible = false,
+          visual_accessible = false,
+          service_animal = false,
+          preferred_language = NULL,
+          preferred_contact_method = NULL,
+          marketing_opt_in = false,
+          newsletter_opt_in = false,
+          sms_opt_in = false,
+          notes = NULL,
+          internal_notes = NULL,
+          children_ages = NULL,
+          number_of_children = NULL,
+          pet_type = NULL,
+          celebration_dates = NULL,
+          occasions = NULL,
+          preferred_room_numbers = NULL,
+          avoid_room_numbers = NULL,
+          updated_at = NOW()
+        WHERE tenant_id = $1::uuid AND guest_id = $2::uuid
+      `,
+      [tenantId, command.guest_id],
+    );
+    cascadeAudit.guest_preferences = prefsResult.rowCount ?? 0;
+
+    // 10. Cascade anonymization to guest_documents (identity docs — high-sensitivity PII)
+    const docsResult = await queryWithClient(
+      client,
+      `
+        UPDATE public.guest_documents
+        SET
+          document_number = 'REDACTED',
+          document_name = $3,
+          description = NULL,
+          file_path = NULL,
+          file_name = NULL,
+          verification_notes = NULL,
+          upload_device_info = NULL,
+          notes = NULL,
+          updated_at = NOW()
+        WHERE tenant_id = $1::uuid AND guest_id = $2::uuid
+      `,
+      [tenantId, command.guest_id, redactedName],
+    );
+    cascadeAudit.guest_documents = docsResult.rowCount ?? 0;
+
+    // 11. Cascade anonymization to guest_communications (messages with PII)
+    const commsResult = await queryWithClient(
+      client,
+      `
+        UPDATE public.guest_communications
+        SET
+          sender_name = $3,
+          sender_email = NULL,
+          sender_phone = NULL,
+          recipient_name = $3,
+          recipient_email = NULL,
+          recipient_phone = NULL,
+          subject = 'REDACTED',
+          message = 'REDACTED',
+          attachments = NULL,
+          updated_at = NOW()
+        WHERE tenant_id = $1::uuid AND guest_id = $2::uuid
+      `,
+      [tenantId, command.guest_id, redactedName],
+    );
+    cascadeAudit.guest_communications = commsResult.rowCount ?? 0;
+
     // Log GDPR audit trail for compliance
     guestCommandLogger.info(
       {

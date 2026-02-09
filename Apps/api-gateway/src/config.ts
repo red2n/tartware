@@ -100,6 +100,7 @@ export const serviceTargets = {
   housekeepingServiceUrl: env.HOUSEKEEPING_SERVICE_URL ?? "http://localhost:3030",
   commandCenterServiceUrl: env.COMMAND_CENTER_SERVICE_URL ?? "http://localhost:3035",
   recommendationServiceUrl: env.RECOMMENDATION_SERVICE_URL ?? "http://localhost:3040",
+  notificationServiceUrl: env.NOTIFICATION_SERVICE_URL ?? "http://localhost:3055",
 };
 
 export const dbConfig = {
