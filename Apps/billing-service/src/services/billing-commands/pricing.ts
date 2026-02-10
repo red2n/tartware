@@ -6,10 +6,7 @@ import {
   BillingPricingBulkRecommendCommandSchema,
   BillingPricingEvaluateCommandSchema,
 } from "../../schemas/billing-commands.js";
-import {
-  type CommandContext,
-  resolveActorId,
-} from "./common.js";
+import { type CommandContext, resolveActorId } from "./common.js";
 
 /**
  * Pricing rule condition. Mirrors the JSONB `conditions` column

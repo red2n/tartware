@@ -1,13 +1,6 @@
-import {
-  type ReservationCreatedEvent,
-  ReservationCreatedEventSchema,
-  type ReservationUpdatedEvent,
-  ReservationUpdatedEventSchema,
-} from "@tartware/schemas";
 import { v4 as uuid } from "uuid";
 
 import {
-  type AvailabilityGuardMetadata,
   lockReservationHold,
   releaseReservationHold,
 } from "../../clients/availability-guard-client.js";
@@ -16,24 +9,22 @@ import { query, withTransaction } from "../../lib/db.js";
 import { reservationsLogger } from "../../logger.js";
 import { enqueueOutboxRecordWithClient } from "../../outbox/repository.js";
 import { recordLifecyclePersisted } from "../../repositories/lifecycle-repository.js";
-import {
-  upsertReservationGuardMetadata,
-} from "../../repositories/reservation-guard-metadata-repository.js";
 import type {
   ReservationCheckInCommand,
   ReservationCheckOutCommand,
   ReservationWalkInCheckInCommand,
 } from "../../schemas/reservation-command.js";
 import { resolveRatePlan } from "../../services/rate-plan-service.js";
+
 import {
-  ReservationCommandError,
   type CreateReservationResult,
   DEFAULT_CURRENCY,
-  SYSTEM_ACTOR_ID,
-  type ReservationUpdatePayload,
   enqueueReservationUpdate,
   fetchRoomInfo,
   findBestAvailableRoom,
+  ReservationCommandError,
+  type ReservationUpdatePayload,
+  SYSTEM_ACTOR_ID,
 } from "./common.js";
 
 /**

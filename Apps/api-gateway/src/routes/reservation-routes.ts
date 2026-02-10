@@ -1,16 +1,17 @@
-import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { buildRouteSchema, jsonObjectSchema } from "@tartware/openapi";
+import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 
 import { serviceTargets } from "../config.js";
 import { submitCommand } from "../utils/command-publisher.js";
 import { proxyRequest } from "../utils/proxy.js";
+
+import { forwardCommandWithParamId, forwardReservationCommand } from "./command-helpers.js";
 import {
   RESERVATION_PROXY_TAG,
   reservationParamsSchema,
   tenantReservationParamsSchema,
   waitlistConvertParamsSchema,
 } from "./schemas.js";
-import { forwardCommandWithParamId, forwardReservationCommand } from "./command-helpers.js";
 
 export const registerReservationRoutes = (app: FastifyInstance): void => {
   const proxyCore = async (request: FastifyRequest, reply: FastifyReply) =>

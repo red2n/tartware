@@ -1,8 +1,9 @@
-import type { FastifyInstance, FastifyReply } from "fastify";
 import { buildRouteSchema } from "@tartware/openapi";
+import type { FastifyInstance, FastifyReply } from "fastify";
 
 import { gatewayConfig, kafkaConfig } from "../config.js";
-import { healthResponseSchema, readinessResponseSchema, HEALTH_TAG } from "./schemas.js";
+
+import { HEALTH_TAG, healthResponseSchema, readinessResponseSchema } from "./schemas.js";
 
 export const registerHealthRoutes = (app: FastifyInstance): void => {
   const kafkaSummary = {

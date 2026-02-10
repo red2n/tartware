@@ -1,7 +1,4 @@
-import {
-  type ReservationUpdatedEvent,
-  ReservationUpdatedEventSchema,
-} from "@tartware/schemas";
+import { type ReservationUpdatedEvent, ReservationUpdatedEventSchema } from "@tartware/schemas";
 import { v4 as uuid } from "uuid";
 
 import { serviceConfig } from "../../config.js";
@@ -99,7 +96,7 @@ export const enqueueReservationUpdate = async (
   };
 };
 
-export type RoomInfo = { roomNumber: string; roomTypeId: string };
+type RoomInfo = { roomNumber: string; roomTypeId: string };
 
 /**
  * Fetch a room's display number and type. Returns null when the room does not

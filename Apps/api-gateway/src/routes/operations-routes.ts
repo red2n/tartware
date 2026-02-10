@@ -1,5 +1,5 @@
-import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { buildRouteSchema, jsonObjectSchema } from "@tartware/openapi";
+import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 
 import { serviceTargets } from "../config.js";
 import { proxyRequest } from "../utils/proxy.js";

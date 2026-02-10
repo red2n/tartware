@@ -9,11 +9,11 @@ import {
   CommissionStatementGenerateCommandSchema,
 } from "../../schemas/billing-commands.js";
 import {
-  type CommandContext,
-  BillingCommandError,
-  SYSTEM_ACTOR_ID,
   asUuid,
+  BillingCommandError,
+  type CommandContext,
   resolveActorId,
+  SYSTEM_ACTOR_ID,
 } from "./common.js";
 
 /**

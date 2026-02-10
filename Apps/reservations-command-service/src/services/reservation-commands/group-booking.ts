@@ -11,9 +11,10 @@ import type {
   GroupCutoffEnforceCommand,
   GroupUploadRoomingListCommand,
 } from "../../schemas/reservation-command.js";
+
 import {
-  ReservationCommandError,
   type CreateReservationResult,
+  ReservationCommandError,
   SYSTEM_ACTOR_ID,
 } from "./common.js";
 

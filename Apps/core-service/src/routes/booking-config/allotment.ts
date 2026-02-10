@@ -1,16 +1,9 @@
 import { buildRouteSchema, schemaFromZod } from "@tartware/openapi";
-import {
-  AllotmentListItemSchema,
-  AllotmentStatusEnum,
-  AllotmentTypeEnum,
-} from "@tartware/schemas";
+import { AllotmentListItemSchema, AllotmentStatusEnum, AllotmentTypeEnum } from "@tartware/schemas";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 
-import {
-  getAllotmentById,
-  listAllotments,
-} from "../../services/booking-config/allotment.js";
+import { getAllotmentById, listAllotments } from "../../services/booking-config/allotment.js";
 
 // =====================================================
 // ALLOTMENT SCHEMAS

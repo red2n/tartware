@@ -1,23 +1,25 @@
-import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { buildRouteSchema, jsonObjectSchema } from "@tartware/openapi";
+import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 
 import { serviceTargets } from "../config.js";
 import { proxyRequest } from "../utils/proxy.js";
+
+import {
+  forwardCommandWithParamId,
+  forwardCommandWithTenant,
+  forwardGenericCommand,
+} from "./command-helpers.js";
 import {
   COMMAND_CENTER_PROXY_TAG,
-  SETTINGS_PROXY_TAG,
-  RECOMMENDATION_PROXY_TAG,
-  NOTIFICATION_PROXY_TAG,
   NOTIFICATION_COMMAND_TAG,
-  tenantCommandParamsSchema,
+  NOTIFICATION_PROXY_TAG,
+  RECOMMENDATION_PROXY_TAG,
   reservationParamsSchema,
+  SETTINGS_PROXY_TAG,
+  tenantCommandParamsSchema,
 } from "./schemas.js";
-import { forwardGenericCommand, forwardCommandWithTenant, forwardCommandWithParamId } from "./command-helpers.js";
 
 export const registerMiscRoutes = (app: FastifyInstance): void => {
-  const proxyCore = async (request: FastifyRequest, reply: FastifyReply) =>
-    proxyRequest(request, reply, serviceTargets.coreServiceUrl);
-
   const tenantScopeFromParams = app.withTenantScope({
     resolveTenantId: (request) => (request.params as { tenantId?: string }).tenantId,
     minRole: "STAFF",

@@ -1,21 +1,22 @@
-import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { buildRouteSchema, jsonObjectSchema } from "@tartware/openapi";
+import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 
 import { serviceTargets } from "../config.js";
 import { proxyRequest } from "../utils/proxy.js";
-import {
-  BILLING_PROXY_TAG,
-  BILLING_COMMAND_TAG,
-  reservationParamsSchema,
-  tenantPaymentParamsSchema,
-  tenantInvoiceParamsSchema,
-} from "./schemas.js";
+
 import {
   forwardBillingCaptureCommand,
   forwardBillingRefundCommand,
-  forwardCommandWithTenant,
   forwardCommandWithParamId,
+  forwardCommandWithTenant,
 } from "./command-helpers.js";
+import {
+  BILLING_COMMAND_TAG,
+  BILLING_PROXY_TAG,
+  reservationParamsSchema,
+  tenantInvoiceParamsSchema,
+  tenantPaymentParamsSchema,
+} from "./schemas.js";
 
 export const registerBillingRoutes = (app: FastifyInstance): void => {
   const proxyBilling = async (request: FastifyRequest, reply: FastifyReply) =>

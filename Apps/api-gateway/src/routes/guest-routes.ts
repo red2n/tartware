@@ -1,14 +1,15 @@
-import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { buildRouteSchema, jsonObjectSchema } from "@tartware/openapi";
+import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 
 import { serviceTargets } from "../config.js";
 import { proxyRequest } from "../utils/proxy.js";
-import { GUESTS_PROXY_TAG, tenantGuestParamsSchema } from "./schemas.js";
+
 import {
-  forwardGuestRegisterCommand,
-  forwardGuestMergeCommand,
   forwardCommandWithParamId,
+  forwardGuestMergeCommand,
+  forwardGuestRegisterCommand,
 } from "./command-helpers.js";
+import { GUESTS_PROXY_TAG, tenantGuestParamsSchema } from "./schemas.js";
 
 export const registerGuestRoutes = (app: FastifyInstance): void => {
   const proxyGuests = async (request: FastifyRequest, reply: FastifyReply) =>

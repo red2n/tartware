@@ -16,9 +16,9 @@ export class BillingCommandError extends Error {
   }
 }
 
-export const APP_ACTOR = "COMMAND_CENTER";
+const APP_ACTOR = "COMMAND_CENTER";
 export const SYSTEM_ACTOR_ID = "00000000-0000-0000-0000-000000000000";
-export const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export const asUuid = (value: string | undefined | null): string | null =>
   value && UUID_REGEX.test(value) ? value : null;
@@ -26,7 +26,10 @@ export const asUuid = (value: string | undefined | null): string | null =>
 export const resolveActorId = (initiatedBy?: { userId?: string } | null): string =>
   initiatedBy?.userId ?? APP_ACTOR;
 
-export const resolveFolioId = async (tenantId: string, reservationId: string): Promise<string | null> => {
+export const resolveFolioId = async (
+  tenantId: string,
+  reservationId: string,
+): Promise<string | null> => {
   const { rows } = await query<{ folio_id: string }>(
     `
       SELECT folio_id

@@ -8,17 +8,16 @@ import { registerDuploDashboard } from "./devtools/duplo-dashboard.js";
 import { gatewayLogger } from "./logger.js";
 import authContextPlugin from "./plugins/auth-context.js";
 import swaggerPlugin from "./plugins/swagger.js";
-
-import { registerHealthRoutes } from "./routes/health-routes.js";
-import { registerReservationRoutes } from "./routes/reservation-routes.js";
+import { registerBillingRoutes } from "./routes/billing-routes.js";
+import { registerBookingConfigRoutes } from "./routes/booking-config-routes.js";
 import { registerCoreProxyRoutes } from "./routes/core-proxy-routes.js";
 import { registerGuestRoutes } from "./routes/guest-routes.js";
-import { registerRoomRoutes } from "./routes/room-routes.js";
-import { registerBookingConfigRoutes } from "./routes/booking-config-routes.js";
-import { registerOperationsRoutes } from "./routes/operations-routes.js";
+import { registerHealthRoutes } from "./routes/health-routes.js";
 import { registerHousekeepingRoutes } from "./routes/housekeeping-routes.js";
-import { registerBillingRoutes } from "./routes/billing-routes.js";
 import { registerMiscRoutes } from "./routes/misc-routes.js";
+import { registerOperationsRoutes } from "./routes/operations-routes.js";
+import { registerReservationRoutes } from "./routes/reservation-routes.js";
+import { registerRoomRoutes } from "./routes/room-routes.js";
 
 export const buildServer = () => {
   const app = buildFastifyServer({

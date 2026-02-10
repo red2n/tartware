@@ -1,8 +1,9 @@
-import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { buildRouteSchema, jsonObjectSchema } from "@tartware/openapi";
+import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 
 import { serviceTargets } from "../config.js";
 import { proxyRequest } from "../utils/proxy.js";
+
 import { CORE_PROXY_TAG, reservationParamsSchema } from "./schemas.js";
 
 export const registerCoreProxyRoutes = (app: FastifyInstance): void => {

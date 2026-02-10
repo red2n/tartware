@@ -1,19 +1,15 @@
 import { v4 as uuid } from "uuid";
 
-import { serviceConfig } from "../../config.js";
-import { query, withTransaction } from "../../lib/db.js";
+import { query } from "../../lib/db.js";
 import { reservationsLogger } from "../../logger.js";
-import { enqueueOutboxRecordWithClient } from "../../outbox/repository.js";
+
 import type {
   ReservationGenerateRegCardCommand,
   ReservationMobileCheckinCompleteCommand,
   ReservationMobileCheckinStartCommand,
 } from "../../schemas/reservation-command.js";
-import {
-  ReservationCommandError,
-  type CreateReservationResult,
-  SYSTEM_ACTOR_ID,
-} from "./common.js";
+
+import { ReservationCommandError } from "./common.js";
 
 // ─── S27: Digital Registration Cards ─────────────────────────────────────────
 

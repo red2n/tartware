@@ -1,10 +1,11 @@
-import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { buildRouteSchema, jsonObjectSchema } from "@tartware/openapi";
+import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 
 import { serviceTargets } from "../config.js";
 import { proxyRequest } from "../utils/proxy.js";
-import { CORE_PROXY_TAG, ROOM_COMMAND_TAG, tenantRoomParamsSchema } from "./schemas.js";
+
 import { forwardCommandWithParamId, forwardRoomInventoryCommand } from "./command-helpers.js";
+import { CORE_PROXY_TAG, ROOM_COMMAND_TAG, tenantRoomParamsSchema } from "./schemas.js";
 
 export const registerRoomRoutes = (app: FastifyInstance): void => {
   const proxyRooms = async (request: FastifyRequest, reply: FastifyReply) =>

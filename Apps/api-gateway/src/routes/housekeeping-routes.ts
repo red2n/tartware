@@ -1,20 +1,21 @@
-import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { buildRouteSchema, jsonObjectSchema } from "@tartware/openapi";
+import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 
 import { serviceTargets } from "../config.js";
 import { proxyRequest } from "../utils/proxy.js";
+
+import {
+  forwardCommandWithParamId,
+  forwardCommandWithTenant,
+  forwardHousekeepingAssignCommand,
+  forwardHousekeepingCompleteCommand,
+} from "./command-helpers.js";
 import {
   CORE_PROXY_TAG,
   HOUSEKEEPING_COMMAND_TAG,
-  tenantTaskParamsSchema,
   reservationParamsSchema,
+  tenantTaskParamsSchema,
 } from "./schemas.js";
-import {
-  forwardHousekeepingAssignCommand,
-  forwardHousekeepingCompleteCommand,
-  forwardCommandWithTenant,
-  forwardCommandWithParamId,
-} from "./command-helpers.js";
 
 export const registerHousekeepingRoutes = (app: FastifyInstance): void => {
   const proxyHousekeeping = async (request: FastifyRequest, reply: FastifyReply) =>

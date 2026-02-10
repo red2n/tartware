@@ -64,7 +64,7 @@ export const forwardGuestMergeCommand = async (
   });
 };
 
-export const getParamValue = (request: FastifyRequest, key: string): string | null => {
+const getParamValue = (request: FastifyRequest, key: string): string | null => {
   const params = (request.params ?? {}) as Record<string, unknown>;
   const value = params[key];
   return typeof value === "string" ? value : null;
@@ -213,7 +213,7 @@ export const forwardReservationCommand = async (
   });
 };
 
-export const normalizePayloadObject = (body: unknown): Record<string, unknown> => {
+const normalizePayloadObject = (body: unknown): Record<string, unknown> => {
   if (body && typeof body === "object" && !Array.isArray(body)) {
     return { ...(body as Record<string, unknown>) };
   }
@@ -223,14 +223,14 @@ export const normalizePayloadObject = (body: unknown): Record<string, unknown> =
   return { value: body };
 };
 
-export const toPlainObject = (value: unknown): Record<string, unknown> | null => {
+const toPlainObject = (value: unknown): Record<string, unknown> | null => {
   if (value && typeof value === "object" && !Array.isArray(value)) {
     return { ...(value as Record<string, unknown>) };
   }
   return null;
 };
 
-export const extractReservationId = (params: Record<string, unknown>): string | null => {
+const extractReservationId = (params: Record<string, unknown>): string | null => {
   const direct = params.reservationId;
   if (typeof direct === "string" && direct.length > 0) {
     return direct;

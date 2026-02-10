@@ -4,16 +4,12 @@ import { query } from "../../lib/db.js";
 import { appLogger } from "../../lib/logger.js";
 import {
   type BillingInvoiceAdjustCommand,
-  type BillingInvoiceCreateCommand,
   BillingInvoiceAdjustCommandSchema,
+  type BillingInvoiceCreateCommand,
   BillingInvoiceCreateCommandSchema,
   BillingInvoiceFinalizeCommandSchema,
 } from "../../schemas/billing-commands.js";
-import {
-  type CommandContext,
-  BillingCommandError,
-  resolveActorId,
-} from "./common.js";
+import { BillingCommandError, type CommandContext, resolveActorId } from "./common.js";
 
 /**
  * Create a billing invoice.

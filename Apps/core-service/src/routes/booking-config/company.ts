@@ -1,16 +1,9 @@
 import { buildRouteSchema, schemaFromZod } from "@tartware/openapi";
-import {
-  CompanyListItemSchema,
-  CompanyTypeEnum,
-  CreditStatusEnum,
-} from "@tartware/schemas";
+import { CompanyListItemSchema, CompanyTypeEnum, CreditStatusEnum } from "@tartware/schemas";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 
-import {
-  getCompanyById,
-  listCompanies,
-} from "../../services/booking-config/company.js";
+import { getCompanyById, listCompanies } from "../../services/booking-config/company.js";
 
 // =====================================================
 // ROUTE REGISTRATION

@@ -10,11 +10,11 @@ import {
 } from "../../schemas/billing-commands.js";
 import { addMoney, parseDbMoneyOrZero, subtractMoney } from "../../utils/money.js";
 import {
-  type CommandContext,
-  BillingCommandError,
-  SYSTEM_ACTOR_ID,
   asUuid,
+  BillingCommandError,
+  type CommandContext,
   resolveActorId,
+  SYSTEM_ACTOR_ID,
 } from "./common.js";
 
 /** Map textual payment_terms to number of days. */

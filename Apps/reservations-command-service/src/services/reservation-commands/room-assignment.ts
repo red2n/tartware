@@ -5,22 +5,21 @@ import {
   lockReservationHold,
   releaseReservationHold,
 } from "../../clients/availability-guard-client.js";
-import { query } from "../../lib/db.js";
+
 import { reservationsLogger } from "../../logger.js";
-import {
-  fetchReservationStaySnapshot,
-} from "../../repositories/reservation-repository.js";
+import { fetchReservationStaySnapshot } from "../../repositories/reservation-repository.js";
 import type {
   ReservationAssignRoomCommand,
   ReservationExtendStayCommand,
   ReservationUnassignRoomCommand,
 } from "../../schemas/reservation-command.js";
+
 import {
-  ReservationCommandError,
   type CreateReservationResult,
-  type ReservationUpdatePayload,
   enqueueReservationUpdate,
   fetchRoomInfo,
+  ReservationCommandError,
+  type ReservationUpdatePayload,
 } from "./common.js";
 
 /**
