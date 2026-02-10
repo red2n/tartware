@@ -1,4 +1,4 @@
-import { buildRouteSchema, schemaFromZod } from "@tartware/openapi";
+import { buildRouteSchema, errorResponseSchema, schemaFromZod } from "@tartware/openapi";
 import { CompanyListItemSchema, CompanyTypeEnum, CreditStatusEnum } from "@tartware/schemas";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
@@ -101,7 +101,7 @@ export const registerCompanyRoutes = (app: FastifyInstance): void => {
           z.object({ tenant_id: z.string().uuid() }),
           "CompanyDetailQuery",
         ),
-        response: { 200: CompanyDetailResponseJsonSchema },
+        response: { 200: CompanyDetailResponseJsonSchema, 404: errorResponseSchema },
       }),
     },
     async (request, reply) => {

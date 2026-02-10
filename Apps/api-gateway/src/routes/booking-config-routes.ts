@@ -10,9 +10,16 @@ export const registerBookingConfigRoutes = (app: FastifyInstance): void => {
   const proxyCore = async (request: FastifyRequest, reply: FastifyReply) =>
     proxyRequest(request, reply, serviceTargets.coreServiceUrl);
 
+  const tenantScopeFromQuery = app.withTenantScope({
+    resolveTenantId: (request) => (request.query as { tenant_id?: string }).tenant_id,
+    minRole: "STAFF",
+    requiredModules: "core",
+  });
+
   app.get(
     "/v1/allotments",
     {
+      preHandler: tenantScopeFromQuery,
       schema: buildRouteSchema({
         tag: BOOKING_CONFIG_TAG,
         summary: "List allotments (room blocks for groups/events).",
@@ -25,6 +32,7 @@ export const registerBookingConfigRoutes = (app: FastifyInstance): void => {
   app.all(
     "/v1/allotments/*",
     {
+      preHandler: tenantScopeFromQuery,
       schema: buildRouteSchema({
         tag: BOOKING_CONFIG_TAG,
         summary: "Proxy allotment operations to core service.",
@@ -37,6 +45,7 @@ export const registerBookingConfigRoutes = (app: FastifyInstance): void => {
   app.get(
     "/v1/booking-sources",
     {
+      preHandler: tenantScopeFromQuery,
       schema: buildRouteSchema({
         tag: BOOKING_CONFIG_TAG,
         summary: "List booking sources (OTAs, GDS, direct channels).",
@@ -49,6 +58,7 @@ export const registerBookingConfigRoutes = (app: FastifyInstance): void => {
   app.all(
     "/v1/booking-sources/*",
     {
+      preHandler: tenantScopeFromQuery,
       schema: buildRouteSchema({
         tag: BOOKING_CONFIG_TAG,
         summary: "Proxy booking source operations to core service.",
@@ -61,6 +71,7 @@ export const registerBookingConfigRoutes = (app: FastifyInstance): void => {
   app.get(
     "/v1/market-segments",
     {
+      preHandler: tenantScopeFromQuery,
       schema: buildRouteSchema({
         tag: BOOKING_CONFIG_TAG,
         summary: "List market segments for guest categorization.",
@@ -73,6 +84,7 @@ export const registerBookingConfigRoutes = (app: FastifyInstance): void => {
   app.all(
     "/v1/market-segments/*",
     {
+      preHandler: tenantScopeFromQuery,
       schema: buildRouteSchema({
         tag: BOOKING_CONFIG_TAG,
         summary: "Proxy market segment operations to core service.",
@@ -85,6 +97,7 @@ export const registerBookingConfigRoutes = (app: FastifyInstance): void => {
   app.get(
     "/v1/channel-mappings",
     {
+      preHandler: tenantScopeFromQuery,
       schema: buildRouteSchema({
         tag: BOOKING_CONFIG_TAG,
         summary: "List OTA/GDS channel mappings.",
@@ -97,6 +110,7 @@ export const registerBookingConfigRoutes = (app: FastifyInstance): void => {
   app.all(
     "/v1/channel-mappings/*",
     {
+      preHandler: tenantScopeFromQuery,
       schema: buildRouteSchema({
         tag: BOOKING_CONFIG_TAG,
         summary: "Proxy channel mapping operations to core service.",
@@ -109,6 +123,7 @@ export const registerBookingConfigRoutes = (app: FastifyInstance): void => {
   app.get(
     "/v1/companies",
     {
+      preHandler: tenantScopeFromQuery,
       schema: buildRouteSchema({
         tag: BOOKING_CONFIG_TAG,
         summary: "List corporate accounts and business partners.",
@@ -121,6 +136,7 @@ export const registerBookingConfigRoutes = (app: FastifyInstance): void => {
   app.all(
     "/v1/companies/*",
     {
+      preHandler: tenantScopeFromQuery,
       schema: buildRouteSchema({
         tag: BOOKING_CONFIG_TAG,
         summary: "Proxy company operations to core service.",
@@ -133,6 +149,7 @@ export const registerBookingConfigRoutes = (app: FastifyInstance): void => {
   app.get(
     "/v1/meeting-rooms",
     {
+      preHandler: tenantScopeFromQuery,
       schema: buildRouteSchema({
         tag: BOOKING_CONFIG_TAG,
         summary: "List conference rooms and event spaces.",
@@ -145,6 +162,7 @@ export const registerBookingConfigRoutes = (app: FastifyInstance): void => {
   app.all(
     "/v1/meeting-rooms/*",
     {
+      preHandler: tenantScopeFromQuery,
       schema: buildRouteSchema({
         tag: BOOKING_CONFIG_TAG,
         summary: "Proxy meeting room operations to core service.",
@@ -157,6 +175,7 @@ export const registerBookingConfigRoutes = (app: FastifyInstance): void => {
   app.get(
     "/v1/event-bookings",
     {
+      preHandler: tenantScopeFromQuery,
       schema: buildRouteSchema({
         tag: BOOKING_CONFIG_TAG,
         summary: "List event bookings (meetings, conferences, banquets).",
@@ -169,6 +188,7 @@ export const registerBookingConfigRoutes = (app: FastifyInstance): void => {
   app.all(
     "/v1/event-bookings/*",
     {
+      preHandler: tenantScopeFromQuery,
       schema: buildRouteSchema({
         tag: BOOKING_CONFIG_TAG,
         summary: "Proxy event booking operations to core service.",
@@ -181,6 +201,7 @@ export const registerBookingConfigRoutes = (app: FastifyInstance): void => {
   app.get(
     "/v1/waitlist",
     {
+      preHandler: tenantScopeFromQuery,
       schema: buildRouteSchema({
         tag: BOOKING_CONFIG_TAG,
         summary: "List waitlist entries for room availability.",
@@ -193,6 +214,7 @@ export const registerBookingConfigRoutes = (app: FastifyInstance): void => {
   app.all(
     "/v1/waitlist/*",
     {
+      preHandler: tenantScopeFromQuery,
       schema: buildRouteSchema({
         tag: BOOKING_CONFIG_TAG,
         summary: "Proxy waitlist operations to core service.",
@@ -206,6 +228,7 @@ export const registerBookingConfigRoutes = (app: FastifyInstance): void => {
   app.get(
     "/v1/group-bookings",
     {
+      preHandler: tenantScopeFromQuery,
       schema: buildRouteSchema({
         tag: BOOKING_CONFIG_TAG,
         summary: "List group bookings (corporate blocks, tours, events).",
@@ -218,6 +241,7 @@ export const registerBookingConfigRoutes = (app: FastifyInstance): void => {
   app.all(
     "/v1/group-bookings/*",
     {
+      preHandler: tenantScopeFromQuery,
       schema: buildRouteSchema({
         tag: BOOKING_CONFIG_TAG,
         summary: "Proxy group booking operations to core service.",
@@ -231,6 +255,7 @@ export const registerBookingConfigRoutes = (app: FastifyInstance): void => {
   app.get(
     "/v1/promo-codes",
     {
+      preHandler: tenantScopeFromQuery,
       schema: buildRouteSchema({
         tag: BOOKING_CONFIG_TAG,
         summary: "List promotional codes and discount campaigns.",
@@ -243,6 +268,7 @@ export const registerBookingConfigRoutes = (app: FastifyInstance): void => {
   app.all(
     "/v1/promo-codes/*",
     {
+      preHandler: tenantScopeFromQuery,
       schema: buildRouteSchema({
         tag: BOOKING_CONFIG_TAG,
         summary: "Proxy promotional code operations to core service.",
@@ -256,6 +282,7 @@ export const registerBookingConfigRoutes = (app: FastifyInstance): void => {
   app.get(
     "/v1/night-audit/status",
     {
+      preHandler: tenantScopeFromQuery,
       schema: buildRouteSchema({
         tag: BOOKING_CONFIG_TAG,
         summary: "Get current business date status for a property.",
@@ -268,6 +295,7 @@ export const registerBookingConfigRoutes = (app: FastifyInstance): void => {
   app.get(
     "/v1/night-audit/history",
     {
+      preHandler: tenantScopeFromQuery,
       schema: buildRouteSchema({
         tag: BOOKING_CONFIG_TAG,
         summary: "List night audit run history.",
@@ -280,6 +308,7 @@ export const registerBookingConfigRoutes = (app: FastifyInstance): void => {
   app.all(
     "/v1/night-audit/*",
     {
+      preHandler: tenantScopeFromQuery,
       schema: buildRouteSchema({
         tag: BOOKING_CONFIG_TAG,
         summary: "Proxy night audit operations to core service.",
@@ -293,6 +322,7 @@ export const registerBookingConfigRoutes = (app: FastifyInstance): void => {
   app.get(
     "/v1/ota-connections",
     {
+      preHandler: tenantScopeFromQuery,
       schema: buildRouteSchema({
         tag: BOOKING_CONFIG_TAG,
         summary: "List OTA and channel manager connections.",
@@ -305,6 +335,7 @@ export const registerBookingConfigRoutes = (app: FastifyInstance): void => {
   app.all(
     "/v1/ota-connections/*",
     {
+      preHandler: tenantScopeFromQuery,
       schema: buildRouteSchema({
         tag: BOOKING_CONFIG_TAG,
         summary: "Proxy OTA connection operations to core service.",

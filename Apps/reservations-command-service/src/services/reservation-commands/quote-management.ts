@@ -6,6 +6,7 @@ import {
   lockReservationHold,
   releaseReservationHold,
 } from "../../clients/availability-guard-client.js";
+import { serviceConfig } from "../../config.js";
 import { query, withTransaction } from "../../lib/db.js";
 import { reservationsLogger } from "../../logger.js";
 import { enqueueOutboxRecordWithClient } from "../../outbox/repository.js";
@@ -66,20 +67,29 @@ export const sendQuote = async (
     );
   }
 
-  const updatePayload: ReservationUpdatedEvent = ReservationUpdatedEventSchema.parse({
-    eventType: "reservation.quoted",
-    reservationId: command.reservation_id,
-    tenantId,
-    propertyId: reservation.property_id,
-    status: "QUOTED",
-    quoted_at: new Date().toISOString(),
-    ...(command.quote_expires_at && { quote_expires_at: command.quote_expires_at.toISOString() }),
-    ...(command.total_amount !== undefined && { totalAmount: command.total_amount }),
-    ...(command.currency && { currency: command.currency }),
-    ...(command.notes && { notes: command.notes }),
-    updatedAt: new Date().toISOString(),
-    version: 1,
-  });
+  const updatePayload = {
+    metadata: {
+      id: eventId,
+      source: serviceConfig.serviceId,
+      type: "reservation.quoted",
+      timestamp: new Date().toISOString(),
+      version: "1.0",
+      correlationId: options.correlationId,
+      tenantId,
+      retryCount: 0,
+    },
+    payload: {
+      id: command.reservation_id,
+      tenant_id: tenantId,
+      property_id: reservation.property_id,
+      status: "QUOTED" as const,
+      quoted_at: new Date().toISOString(),
+      ...(command.quote_expires_at && { quote_expires_at: command.quote_expires_at.toISOString() }),
+      ...(command.total_amount !== undefined && { total_amount: command.total_amount }),
+      ...(command.currency && { currency: command.currency }),
+      ...(command.notes && { internal_notes: command.notes }),
+    },
+  };
 
   await withTransaction(async (client) => {
     await enqueueOutboxRecordWithClient(client, {
@@ -163,16 +173,25 @@ export const convertQuote = async (
   }
 
   const updatePayload: ReservationUpdatedEvent = ReservationUpdatedEventSchema.parse({
-    eventType: "reservation.updated",
-    reservationId: command.reservation_id,
-    tenantId,
-    propertyId: reservation.property_id,
-    status: "PENDING",
-    ...(command.total_amount !== undefined && { totalAmount: command.total_amount }),
-    ...(command.currency && { currency: command.currency }),
-    ...(command.notes && { notes: command.notes }),
-    updatedAt: new Date().toISOString(),
-    version: 1,
+    metadata: {
+      id: eventId,
+      source: serviceConfig.serviceId,
+      type: "reservation.updated",
+      timestamp: new Date().toISOString(),
+      version: "1.0",
+      correlationId: options.correlationId,
+      tenantId,
+      retryCount: 0,
+    },
+    payload: {
+      id: command.reservation_id,
+      tenant_id: tenantId,
+      property_id: reservation.property_id,
+      status: "PENDING",
+      ...(command.total_amount !== undefined && { total_amount: command.total_amount }),
+      ...(command.currency && { currency: command.currency }),
+      ...(command.notes && { internal_notes: command.notes }),
+    },
   });
 
   try {
@@ -210,11 +229,11 @@ export const convertQuote = async (
     });
   } catch (txError) {
     // Release the guard lock on transaction failure (P1-2 pattern)
-    if (lockResult) {
+    if (lockResult?.status === "LOCKED" && lockResult.lockId) {
       try {
         await releaseReservationHold({
           reservationId: command.reservation_id,
-          lockId: lockResult.lockId!,
+          lockId: lockResult.lockId,
           tenantId,
           reason: "quote_conversion_rollback",
         });
@@ -296,16 +315,25 @@ export const expireReservation = async (
     }
   }
 
-  const updatePayload: ReservationUpdatedEvent = ReservationUpdatedEventSchema.parse({
-    eventType: "reservation.expired",
-    reservationId: command.reservation_id,
-    tenantId,
-    propertyId: reservation.property_id,
-    status: "EXPIRED",
-    ...(command.reason && { notes: command.reason }),
-    updatedAt: new Date().toISOString(),
-    version: 1,
-  });
+  const updatePayload = {
+    metadata: {
+      id: eventId,
+      source: serviceConfig.serviceId,
+      type: "reservation.expired",
+      timestamp: new Date().toISOString(),
+      version: "1.0",
+      correlationId: options.correlationId,
+      tenantId,
+      retryCount: 0,
+    },
+    payload: {
+      id: command.reservation_id,
+      tenant_id: tenantId,
+      property_id: reservation.property_id,
+      status: "EXPIRED" as const,
+      ...(command.reason && { internal_notes: command.reason }),
+    },
+  };
 
   await withTransaction(async (client) => {
     await enqueueOutboxRecordWithClient(client, {

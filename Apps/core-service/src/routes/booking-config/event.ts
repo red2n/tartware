@@ -1,4 +1,4 @@
-import { buildRouteSchema, schemaFromZod } from "@tartware/openapi";
+import { buildRouteSchema, errorResponseSchema, schemaFromZod } from "@tartware/openapi";
 import {
   EventBookingListItemSchema,
   EventBookingStatusEnum,
@@ -128,7 +128,7 @@ export const registerEventRoutes = (app: FastifyInstance): void => {
           z.object({ tenant_id: z.string().uuid() }),
           "MeetingRoomDetailQuery",
         ),
-        response: { 200: MeetingRoomDetailResponseJsonSchema },
+        response: { 200: MeetingRoomDetailResponseJsonSchema, 404: errorResponseSchema },
       }),
     },
     async (request, reply) => {
@@ -264,7 +264,7 @@ export const registerEventRoutes = (app: FastifyInstance): void => {
           z.object({ tenant_id: z.string().uuid() }),
           "EventBookingDetailQuery",
         ),
-        response: { 200: EventBookingDetailResponseJsonSchema },
+        response: { 200: EventBookingDetailResponseJsonSchema, 404: errorResponseSchema },
       }),
     },
     async (request, reply) => {

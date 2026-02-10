@@ -1,4 +1,4 @@
-import { buildRouteSchema, schemaFromZod } from "@tartware/openapi";
+import { buildRouteSchema, errorResponseSchema, schemaFromZod } from "@tartware/openapi";
 import {
   GroupBookingListItemSchema,
   PromotionalCodeListItemSchema,
@@ -138,7 +138,7 @@ export const registerGroupWaitlistPromoRoutes = (app: FastifyInstance): void => 
           z.object({ tenant_id: z.string().uuid() }),
           "WaitlistEntryDetailQuery",
         ),
-        response: { 200: WaitlistEntryDetailResponseJsonSchema },
+        response: { 200: WaitlistEntryDetailResponseJsonSchema, 404: errorResponseSchema },
       }),
     },
     async (request, reply) => {
@@ -260,7 +260,7 @@ export const registerGroupWaitlistPromoRoutes = (app: FastifyInstance): void => 
           z.object({ tenant_id: z.string().uuid() }),
           "GroupBookingDetailQuery",
         ),
-        response: { 200: GroupBookingDetailResponseJsonSchema },
+        response: { 200: GroupBookingDetailResponseJsonSchema, 404: errorResponseSchema },
       }),
     },
     async (request, reply) => {
@@ -374,7 +374,7 @@ export const registerGroupWaitlistPromoRoutes = (app: FastifyInstance): void => 
           z.object({ tenant_id: z.string().uuid() }),
           "PromotionalCodeDetailQuery",
         ),
-        response: { 200: PromotionalCodeDetailResponseJsonSchema },
+        response: { 200: PromotionalCodeDetailResponseJsonSchema, 404: errorResponseSchema },
       }),
     },
     async (request, reply) => {

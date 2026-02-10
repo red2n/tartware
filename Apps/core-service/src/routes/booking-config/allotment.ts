@@ -1,4 +1,4 @@
-import { buildRouteSchema, schemaFromZod } from "@tartware/openapi";
+import { buildRouteSchema, errorResponseSchema, schemaFromZod } from "@tartware/openapi";
 import { AllotmentListItemSchema, AllotmentStatusEnum, AllotmentTypeEnum } from "@tartware/schemas";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
@@ -135,6 +135,7 @@ export const registerAllotmentRoutes = (app: FastifyInstance): void => {
         ),
         response: {
           200: AllotmentDetailResponseJsonSchema,
+          404: errorResponseSchema,
         },
       }),
     },

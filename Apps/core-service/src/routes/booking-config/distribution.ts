@@ -1,4 +1,4 @@
-import { buildRouteSchema, schemaFromZod } from "@tartware/openapi";
+import { buildRouteSchema, errorResponseSchema, schemaFromZod } from "@tartware/openapi";
 import {
   BookingSourceListItemSchema,
   BookingSourceTypeEnum,
@@ -223,6 +223,7 @@ export const registerDistributionRoutes = (app: FastifyInstance): void => {
         ),
         response: {
           200: BookingSourceDetailResponseJsonSchema,
+          404: errorResponseSchema,
         },
       }),
     },
@@ -306,6 +307,7 @@ export const registerDistributionRoutes = (app: FastifyInstance): void => {
         ),
         response: {
           200: MarketSegmentDetailResponseJsonSchema,
+          404: errorResponseSchema,
         },
       }),
     },
@@ -389,6 +391,7 @@ export const registerDistributionRoutes = (app: FastifyInstance): void => {
         ),
         response: {
           200: ChannelMappingDetailResponseJsonSchema,
+          404: errorResponseSchema,
         },
       }),
     },

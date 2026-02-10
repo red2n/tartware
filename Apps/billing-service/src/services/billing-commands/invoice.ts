@@ -9,7 +9,7 @@ import {
   BillingInvoiceCreateCommandSchema,
   BillingInvoiceFinalizeCommandSchema,
 } from "../../schemas/billing-commands.js";
-import { BillingCommandError, type CommandContext, resolveActorId } from "./common.js";
+import { asUuid, BillingCommandError, type CommandContext, resolveActorId, SYSTEM_ACTOR_ID } from "./common.js";
 
 /**
  * Create a billing invoice.
@@ -43,7 +43,7 @@ const applyInvoiceCreate = async (
   command: BillingInvoiceCreateCommand,
   context: CommandContext,
 ): Promise<string> => {
-  const actor = resolveActorId(context.initiatedBy);
+  const actor = asUuid(resolveActorId(context.initiatedBy)) ?? SYSTEM_ACTOR_ID;
   const invoiceNumber =
     command.invoice_number ?? `INV-${Date.now().toString(36)}-${randomUUID().slice(0, 8)}`;
   const currency = command.currency ?? "USD";
@@ -112,7 +112,7 @@ const applyInvoiceAdjust = async (
   command: BillingInvoiceAdjustCommand,
   context: CommandContext,
 ): Promise<string> => {
-  const actor = resolveActorId(context.initiatedBy);
+  const actor = asUuid(resolveActorId(context.initiatedBy)) ?? SYSTEM_ACTOR_ID;
   const { rows } = await query<{ id: string }>(
     `
       UPDATE public.invoices
@@ -153,7 +153,7 @@ const applyInvoiceFinalize = async (
   command: { invoice_id: string; metadata?: Record<string, unknown> },
   context: CommandContext,
 ): Promise<string> => {
-  const actor = resolveActorId(context.initiatedBy);
+  const actor = asUuid(resolveActorId(context.initiatedBy)) ?? SYSTEM_ACTOR_ID;
 
   const { rows } = await query<{ id: string; status: string }>(
     `SELECT id, status FROM public.invoices

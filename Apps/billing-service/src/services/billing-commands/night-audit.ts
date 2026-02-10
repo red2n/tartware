@@ -154,8 +154,18 @@ export const executeNightAudit = async (
           );
         });
         chargesPosted++;
-      } catch {
-        // Log but continue with other reservations
+      } catch (error) {
+        appLogger.error(
+          {
+            tenantId: context.tenantId,
+            propertyId: command.property_id,
+            reservationId: res.id,
+            folioId,
+            auditDate,
+            error,
+          },
+          "Night audit: failed to post nightly room charges for reservation",
+        );
       }
     }
   }

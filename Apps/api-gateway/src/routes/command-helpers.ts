@@ -343,11 +343,12 @@ export const forwardBillingCaptureCommand = async (
     reply.badRequest("TENANT_ID_REQUIRED");
     return;
   }
-  const payload = normalizePayloadObject(request.body);
-  if (!payload) {
+  const body = toPlainObject(request.body);
+  if (!body || Object.keys(body).length === 0) {
     reply.badRequest("BILLING_CAPTURE_PAYLOAD_REQUIRED");
     return;
   }
+  const payload = normalizePayloadObject(request.body);
   await submitCommand({
     request,
     reply,

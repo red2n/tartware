@@ -298,11 +298,16 @@ export const generateCommissionStatement = async (
   const actorId = asUuid(resolveActorId(context.initiatedBy)) ?? SYSTEM_ACTOR_ID;
 
   // Aggregate commissions for the period
-  const agentFilter = command.agent_id
-    ? ` AND tac.agent_id = '${command.agent_id}'`
-    : command.company_id
-      ? ` AND tac.company_id = '${command.company_id}'`
-      : "";
+  const filterConditions: string[] = [];
+  const filterParams: unknown[] = [tenantId, command.property_id, command.period_start, command.period_end];
+  if (command.agent_id) {
+    filterParams.push(command.agent_id);
+    filterConditions.push(`AND tac.agent_id = $${filterParams.length}::uuid`);
+  } else if (command.company_id) {
+    filterParams.push(command.company_id);
+    filterConditions.push(`AND tac.company_id = $${filterParams.length}::uuid`);
+  }
+  const agentFilter = filterConditions.join(" ");
 
   const statsResult = await query<{
     total_bookings: number;
@@ -326,7 +331,7 @@ export const generateCommissionStatement = async (
        AND tac.created_at < $4
        ${agentFilter}
      GROUP BY tac.company_id, tac.agent_id`,
-    [tenantId, command.property_id, command.period_start, command.period_end],
+    filterParams,
   );
 
   if (statsResult.rows.length === 0) {

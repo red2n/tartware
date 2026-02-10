@@ -6,7 +6,7 @@ import {
   BillingCashierCloseCommandSchema,
   BillingCashierOpenCommandSchema,
 } from "../../schemas/billing-commands.js";
-import { BillingCommandError, type CommandContext, resolveActorId } from "./common.js";
+import { asUuid, BillingCommandError, type CommandContext, resolveActorId, SYSTEM_ACTOR_ID } from "./common.js";
 
 /**
  * Open a new cashier session (shift start).
@@ -18,7 +18,7 @@ export const openCashierSession = async (
 ): Promise<string> => {
   const command = BillingCashierOpenCommandSchema.parse(payload);
   const tenantId = context.tenantId;
-  const actorId = resolveActorId(context.initiatedBy);
+  const actorId = asUuid(resolveActorId(context.initiatedBy)) ?? SYSTEM_ACTOR_ID;
   const sessionId = randomUUID();
   const businessDate = command.business_date
     ? new Date(command.business_date).toISOString().slice(0, 10)
@@ -84,7 +84,7 @@ export const closeCashierSession = async (
 ): Promise<string> => {
   const command = BillingCashierCloseCommandSchema.parse(payload);
   const tenantId = context.tenantId;
-  const actorId = resolveActorId(context.initiatedBy);
+  const actorId = asUuid(resolveActorId(context.initiatedBy)) ?? SYSTEM_ACTOR_ID;
 
   // 1. Verify session exists and is open
   const { rows: sessionRows } = await query<Record<string, unknown>>(

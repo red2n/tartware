@@ -114,8 +114,9 @@ export const fetchRoomInfo = async (tenantId: string, roomId: string): Promise<R
     `,
     [tenantId, roomId],
   );
-  if (!rows[0]) return null;
-  return { roomNumber: rows[0].room_number ?? "", roomTypeId: rows[0].room_type_id };
+  const row = rows[0];
+  if (!row || row.room_number == null) return null;
+  return { roomNumber: row.room_number, roomTypeId: row.room_type_id };
 };
 
 /**
