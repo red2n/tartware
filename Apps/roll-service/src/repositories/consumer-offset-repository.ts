@@ -24,6 +24,7 @@ type UpsertConsumerOffsetInput = {
   highWatermark?: bigint | number | string;
   eventId?: string;
   eventCreatedAt?: Date;
+  tenantId: string;
 };
 
 export const upsertConsumerOffset = async (
@@ -40,6 +41,7 @@ export const upsertConsumerOffset = async (
         high_watermark,
         last_event_id,
         last_event_created_at,
+        tenant_id,
         updated_at
       ) VALUES (
         $1,
@@ -49,6 +51,7 @@ export const upsertConsumerOffset = async (
         $5::bigint,
         $6::uuid,
         $7::timestamptz,
+        $8::uuid,
         NOW()
       )
       ON CONFLICT (consumer_group, topic, partition) DO UPDATE
@@ -57,6 +60,7 @@ export const upsertConsumerOffset = async (
         high_watermark = EXCLUDED.high_watermark,
         last_event_id = EXCLUDED.last_event_id,
         last_event_created_at = EXCLUDED.last_event_created_at,
+        tenant_id = EXCLUDED.tenant_id,
         updated_at = NOW()
     `,
     [
@@ -67,6 +71,7 @@ export const upsertConsumerOffset = async (
       input.highWatermark ?? null,
       input.eventId ?? null,
       input.eventCreatedAt?.toISOString() ?? null,
+      input.tenantId,
     ],
     client,
   );

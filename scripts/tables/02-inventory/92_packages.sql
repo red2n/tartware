@@ -303,3 +303,5 @@ COMMENT ON TABLE package_bookings IS 'Links reservations to packages and tracks 
 COMMENT ON COLUMN packages.pricing_model IS 'How the package is priced: per night, per stay, per person, etc.';
 
 COMMENT ON COLUMN package_components.is_included IS 'Whether the component is included in base price or additional charge';
+
+\echo 'packages table created successfully!'

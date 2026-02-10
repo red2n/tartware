@@ -90,6 +90,7 @@ const AllotmentListQuerySchema = z.object({
       message: "end_date_to must be a valid ISO date",
     }),
   limit: z.coerce.number().int().positive().max(500).default(200),
+  offset: z.coerce.number().int().min(0).default(0),
 });
 
 type AllotmentListQuery = z.infer<typeof AllotmentListQuerySchema>;
@@ -128,6 +129,7 @@ const BookingSourceListQuerySchema = z.object({
   is_active: z.coerce.boolean().optional(),
   has_integration: z.coerce.boolean().optional(),
   limit: z.coerce.number().int().positive().max(500).default(200),
+  offset: z.coerce.number().int().min(0).default(0),
 });
 
 type BookingSourceListQuery = z.infer<typeof BookingSourceListQuerySchema>;
@@ -172,6 +174,7 @@ const MarketSegmentListQuerySchema = z.object({
   is_active: z.coerce.boolean().optional(),
   parent_segment_id: z.string().uuid().optional(),
   limit: z.coerce.number().int().positive().max(500).default(200),
+  offset: z.coerce.number().int().min(0).default(0),
 });
 
 type MarketSegmentListQuery = z.infer<typeof MarketSegmentListQuerySchema>;
@@ -210,6 +213,7 @@ const ChannelMappingListQuerySchema = z.object({
   entity_type: z.string().optional(),
   is_active: z.coerce.boolean().optional(),
   limit: z.coerce.number().int().positive().max(500).default(200),
+  offset: z.coerce.number().int().min(0).default(0),
 });
 
 type ChannelMappingListQuery = z.infer<typeof ChannelMappingListQuerySchema>;
@@ -282,6 +286,7 @@ export const registerBookingConfigRoutes = (app: FastifyInstance): void => {
         start_date_from,
         end_date_to,
         limit,
+        offset,
       } = AllotmentListQuerySchema.parse(request.query);
 
       const allotments = await listAllotments({
@@ -292,6 +297,7 @@ export const registerBookingConfigRoutes = (app: FastifyInstance): void => {
         startDateFrom: start_date_from,
         endDateTo: end_date_to,
         limit,
+        offset,
       });
 
       return AllotmentListResponseSchema.parse(allotments);
@@ -364,7 +370,7 @@ export const registerBookingConfigRoutes = (app: FastifyInstance): void => {
       }),
     },
     async (request) => {
-      const { tenant_id, property_id, source_type, is_active, has_integration, limit } =
+      const { tenant_id, property_id, source_type, is_active, has_integration, limit, offset } =
         BookingSourceListQuerySchema.parse(request.query);
 
       const sources = await listBookingSources({
@@ -374,6 +380,7 @@ export const registerBookingConfigRoutes = (app: FastifyInstance): void => {
         isActive: is_active,
         hasIntegration: has_integration,
         limit,
+        offset,
       });
 
       return BookingSourceListResponseSchema.parse(sources);
@@ -446,7 +453,7 @@ export const registerBookingConfigRoutes = (app: FastifyInstance): void => {
       }),
     },
     async (request) => {
-      const { tenant_id, property_id, segment_type, is_active, parent_segment_id, limit } =
+      const { tenant_id, property_id, segment_type, is_active, parent_segment_id, limit, offset } =
         MarketSegmentListQuerySchema.parse(request.query);
 
       const segments = await listMarketSegments({
@@ -456,6 +463,7 @@ export const registerBookingConfigRoutes = (app: FastifyInstance): void => {
         isActive: is_active,
         parentSegmentId: parent_segment_id,
         limit,
+        offset,
       });
 
       return MarketSegmentListResponseSchema.parse(segments);
@@ -528,7 +536,7 @@ export const registerBookingConfigRoutes = (app: FastifyInstance): void => {
       }),
     },
     async (request) => {
-      const { tenant_id, property_id, channel_code, entity_type, is_active, limit } =
+      const { tenant_id, property_id, channel_code, entity_type, is_active, limit, offset } =
         ChannelMappingListQuerySchema.parse(request.query);
 
       const mappings = await listChannelMappings({
@@ -538,6 +546,7 @@ export const registerBookingConfigRoutes = (app: FastifyInstance): void => {
         entityType: entity_type,
         isActive: is_active,
         limit,
+        offset,
       });
 
       return ChannelMappingListResponseSchema.parse(mappings);
@@ -612,6 +621,7 @@ export const registerBookingConfigRoutes = (app: FastifyInstance): void => {
       ),
     is_blacklisted: z.coerce.boolean().optional(),
     limit: z.coerce.number().int().positive().max(500).default(200),
+    offset: z.coerce.number().int().min(0).default(0),
   });
 
   type CompanyListQuery = z.infer<typeof CompanyListQuerySchema>;
@@ -648,7 +658,7 @@ export const registerBookingConfigRoutes = (app: FastifyInstance): void => {
       }),
     },
     async (request) => {
-      const { tenant_id, company_type, is_active, credit_status, is_blacklisted, limit } =
+      const { tenant_id, company_type, is_active, credit_status, is_blacklisted, limit, offset } =
         CompanyListQuerySchema.parse(request.query);
       const companies = await listCompanies({
         tenantId: tenant_id,
@@ -657,6 +667,7 @@ export const registerBookingConfigRoutes = (app: FastifyInstance): void => {
         creditStatus: credit_status,
         isBlacklisted: is_blacklisted,
         limit,
+        offset,
       });
       return CompanyListResponseSchema.parse(companies);
     },
@@ -717,6 +728,7 @@ export const registerBookingConfigRoutes = (app: FastifyInstance): void => {
     is_active: z.coerce.boolean().optional(),
     min_capacity: z.coerce.number().int().positive().optional(),
     limit: z.coerce.number().int().positive().max(500).default(200),
+    offset: z.coerce.number().int().min(0).default(0),
   });
 
   type MeetingRoomListQuery = z.infer<typeof MeetingRoomListQuerySchema>;
@@ -757,8 +769,16 @@ export const registerBookingConfigRoutes = (app: FastifyInstance): void => {
       }),
     },
     async (request) => {
-      const { tenant_id, property_id, room_type, room_status, is_active, min_capacity, limit } =
-        MeetingRoomListQuerySchema.parse(request.query);
+      const {
+        tenant_id,
+        property_id,
+        room_type,
+        room_status,
+        is_active,
+        min_capacity,
+        limit,
+        offset,
+      } = MeetingRoomListQuerySchema.parse(request.query);
       const rooms = await listMeetingRooms({
         tenantId: tenant_id,
         propertyId: property_id,
@@ -767,6 +787,7 @@ export const registerBookingConfigRoutes = (app: FastifyInstance): void => {
         isActive: is_active,
         minCapacity: min_capacity,
         limit,
+        offset,
       });
       return MeetingRoomListResponseSchema.parse(rooms);
     },
@@ -838,6 +859,7 @@ export const registerBookingConfigRoutes = (app: FastifyInstance): void => {
       }),
     meeting_room_id: z.string().uuid().optional(),
     limit: z.coerce.number().int().positive().max(500).default(200),
+    offset: z.coerce.number().int().min(0).default(0),
   });
 
   type EventBookingListQuery = z.infer<typeof EventBookingListQuerySchema>;
@@ -890,6 +912,7 @@ export const registerBookingConfigRoutes = (app: FastifyInstance): void => {
         event_date_to,
         meeting_room_id,
         limit,
+        offset,
       } = EventBookingListQuerySchema.parse(request.query);
       const events = await listEventBookings({
         tenantId: tenant_id,
@@ -900,6 +923,7 @@ export const registerBookingConfigRoutes = (app: FastifyInstance): void => {
         eventDateTo: event_date_to,
         meetingRoomId: meeting_room_id,
         limit,
+        offset,
       });
       return EventBookingListResponseSchema.parse(events);
     },
@@ -964,6 +988,7 @@ export const registerBookingConfigRoutes = (app: FastifyInstance): void => {
       }),
     is_vip: z.coerce.boolean().optional(),
     limit: z.coerce.number().int().positive().max(500).default(200),
+    offset: z.coerce.number().int().min(0).default(0),
   });
 
   type WaitlistEntryListQuery = z.infer<typeof WaitlistEntryListQuerySchema>;
@@ -1014,6 +1039,7 @@ export const registerBookingConfigRoutes = (app: FastifyInstance): void => {
         arrival_date_to,
         is_vip,
         limit,
+        offset,
       } = WaitlistEntryListQuerySchema.parse(request.query);
       const entries = await listWaitlistEntries({
         tenantId: tenant_id,
@@ -1023,6 +1049,7 @@ export const registerBookingConfigRoutes = (app: FastifyInstance): void => {
         arrivalDateTo: arrival_date_to,
         isVip: is_vip,
         limit,
+        offset,
       });
       return WaitlistEntryListResponseSchema.parse(entries);
     },
@@ -1078,6 +1105,7 @@ export const registerBookingConfigRoutes = (app: FastifyInstance): void => {
       .optional()
       .transform((val) => (val === "true" ? true : val === "false" ? false : undefined)),
     limit: z.coerce.number().int().positive().max(500).default(200),
+    offset: z.coerce.number().int().min(0).default(0),
   });
 
   type GroupBookingListQuery = z.infer<typeof GroupBookingListQuerySchema>;
@@ -1132,6 +1160,7 @@ export const registerBookingConfigRoutes = (app: FastifyInstance): void => {
         arrival_date_to,
         is_active,
         limit,
+        offset,
       } = GroupBookingListQuerySchema.parse(request.query);
       const bookings = await listGroupBookings({
         tenantId: tenant_id,
@@ -1142,6 +1171,7 @@ export const registerBookingConfigRoutes = (app: FastifyInstance): void => {
         arrivalDateTo: arrival_date_to,
         isActive: is_active,
         limit,
+        offset,
       });
       return GroupBookingListResponseSchema.parse(bookings);
     },
@@ -1199,6 +1229,7 @@ export const registerBookingConfigRoutes = (app: FastifyInstance): void => {
       .transform((val) => (val === "true" ? true : val === "false" ? false : undefined)),
     search: z.string().optional(),
     limit: z.coerce.number().int().positive().max(500).default(200),
+    offset: z.coerce.number().int().min(0).default(0),
   });
 
   type PromotionalCodeListQuery = z.infer<typeof PromotionalCodeListQuerySchema>;
@@ -1244,7 +1275,7 @@ export const registerBookingConfigRoutes = (app: FastifyInstance): void => {
       }),
     },
     async (request) => {
-      const { tenant_id, property_id, promo_status, is_active, is_public, search, limit } =
+      const { tenant_id, property_id, promo_status, is_active, is_public, search, limit, offset } =
         PromotionalCodeListQuerySchema.parse(request.query);
       const codes = await listPromotionalCodes({
         tenantId: tenant_id,
@@ -1254,6 +1285,7 @@ export const registerBookingConfigRoutes = (app: FastifyInstance): void => {
         isPublic: is_public,
         search,
         limit,
+        offset,
       });
       return PromotionalCodeListResponseSchema.parse(codes);
     },

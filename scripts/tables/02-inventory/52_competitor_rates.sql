@@ -208,3 +208,5 @@ COMMENT ON COLUMN competitor_rates.price_position IS 'Our competitive position: 
 COMMENT ON COLUMN competitor_rates.data_confidence_score IS 'Confidence level in scraped data accuracy (0-100)';
 
 COMMENT ON COLUMN competitor_rates.raw_data IS 'Complete raw JSON data from scraping source for audit trail';
+
+\echo 'competitor_rates table created successfully!'

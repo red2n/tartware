@@ -60,3 +60,19 @@ CREATE TABLE IF NOT EXISTS revenue_attribution (
 );
 
 COMMENT ON TABLE revenue_attribution IS 'Tracks revenue attribution across marketing touchpoints';
+
+COMMENT ON COLUMN revenue_attribution.attribution_id IS 'Unique identifier for the attribution record';
+COMMENT ON COLUMN revenue_attribution.tenant_id IS 'Tenant owning this attribution record';
+COMMENT ON COLUMN revenue_attribution.property_id IS 'Property where the revenue was generated';
+COMMENT ON COLUMN revenue_attribution.reservation_id IS 'Reservation that produced the attributed revenue';
+COMMENT ON COLUMN revenue_attribution.guest_id IS 'Guest associated with the revenue';
+COMMENT ON COLUMN revenue_attribution.touchpoint_sequence IS 'Order of this touchpoint in the multi-touch attribution chain';
+COMMENT ON COLUMN revenue_attribution.channel_type IS 'Marketing channel (e.g. organic, paid_search, email, OTA)';
+COMMENT ON COLUMN revenue_attribution.campaign_id IS 'Marketing campaign that generated this touchpoint';
+COMMENT ON COLUMN revenue_attribution.attribution_weight IS 'Fractional weight assigned to this touchpoint (0.0–1.0)';
+COMMENT ON COLUMN revenue_attribution.attributed_revenue IS 'Dollar amount of revenue attributed to this touchpoint';
+COMMENT ON COLUMN revenue_attribution.touchpoint_date IS 'When the marketing touchpoint occurred';
+COMMENT ON COLUMN revenue_attribution.conversion_date IS 'When the guest converted to a booking';
+COMMENT ON COLUMN revenue_attribution.version IS 'Optimistic locking version for concurrent update safety';
+
+\echo 'revenue_attribution table created successfully!'

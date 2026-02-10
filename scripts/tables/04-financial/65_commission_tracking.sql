@@ -252,3 +252,5 @@ COMMENT ON TABLE commission_tracking IS 'Tracks sales commissions for staff, age
 COMMENT ON COLUMN commission_tracking.calculation_method IS 'How commission is calculated: percentage, flat_rate, tiered, performance_based, etc';
 COMMENT ON COLUMN commission_tracking.is_split IS 'Whether commission is split between multiple recipients';
 COMMENT ON COLUMN commission_tracking.split_recipients IS 'JSON array of split recipients: [{recipient_id, name, percentage, amount}]';
+
+\echo 'commission_tracking table created successfully!'

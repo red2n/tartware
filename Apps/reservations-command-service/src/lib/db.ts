@@ -1,6 +1,9 @@
 import { Pool, type PoolClient, type QueryResult, type QueryResultRow } from "pg";
 
 import { databaseConfig } from "../config.js";
+import { reservationsLogger } from "../logger.js";
+
+const dbLogger = reservationsLogger.child({ module: "db" });
 
 const pool = new Pool({
   host: databaseConfig.host,
@@ -14,7 +17,7 @@ const pool = new Pool({
 });
 
 pool.on("error", (error) => {
-  console.error("Unexpected PostgreSQL error", error);
+  dbLogger.error({ err: error }, "Unexpected PostgreSQL error");
 });
 
 export const query = async <T extends QueryResultRow = QueryResultRow>(
@@ -46,7 +49,7 @@ export const withTransaction = async <T>(
         await client.query("ROLLBACK");
       } catch (rbError) {
         rollbackError = rbError;
-        console.error("Transaction rollback failed", rbError);
+        dbLogger.error({ err: rbError }, "Transaction rollback failed");
       }
     }
     throw error;

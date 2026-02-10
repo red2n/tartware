@@ -29,6 +29,7 @@
  */
 
 export * from "./command-center.js";
+export * from "./command-idempotency.js";
 export * from "./guests.js";
 export * from "./properties.js";
 export * from "./property-settings.js";

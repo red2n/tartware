@@ -31,6 +31,7 @@ export const PROPERTY_LIST_SQL = `
     AND ($2::uuid IS NULL OR p.tenant_id = $2::uuid)
   ORDER BY p.created_at DESC
   LIMIT $1
+  OFFSET $3
 `;
 
 export const PROPERTY_OPERATIONAL_STATS_SQL = `

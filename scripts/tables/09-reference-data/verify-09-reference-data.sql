@@ -1,7 +1,7 @@
 -- =====================================================
 -- verify-09-reference-data.sql
 -- Verification Script for Reference Data Lookup Tables
--- Category: 09-reference-data (6 tables)
+-- Category: 09-reference-data (7 tables)
 -- Date: 2026-02-05
 -- =====================================================
 
@@ -10,14 +10,14 @@
 \echo ''
 \echo '=============================================='
 \echo '  CATEGORY: REFERENCE DATA VERIFICATION'
-\echo '  Tables: 6 | Description: dynamic enum lookup tables'
+\echo '  Tables: 7 | Description: dynamic enum lookup tables + charge codes'
 \echo '=============================================='
 \echo ''
 
 -- =====================================================
 -- 1. CHECK IF ALL TABLES EXIST
 -- =====================================================
-\echo '1. Checking if all 6 tables exist...'
+\echo '1. Checking if all 7 tables exist...'
 
 DO $$
 DECLARE
@@ -27,7 +27,8 @@ DECLARE
         'rate_types',
         'payment_methods',
         'group_booking_types',
-        'company_types'
+        'company_types',
+        'charge_codes'
     ];
     v_table TEXT;
     v_missing_tables TEXT[] := '{}'::TEXT[];
@@ -53,7 +54,7 @@ BEGIN
         RAISE WARNING 'Missing tables: %', array_to_string(v_missing_tables, ', ');
         RAISE EXCEPTION 'Reference data verification FAILED - missing tables!';
     ELSE
-        RAISE NOTICE '✓✓✓ All 6 Reference data tables exist!';
+        RAISE NOTICE '✓✓✓ All 7 Reference data tables exist!';
     END IF;
 END $$;
 
@@ -81,7 +82,8 @@ WHERE t.table_name IN (
     'rate_types',
     'payment_methods',
     'group_booking_types',
-    'company_types'
+    'company_types',
+    'charge_codes'
 )
 AND t.table_schema = 'public'
 GROUP BY t.table_schema, t.table_name
@@ -194,7 +196,8 @@ BEGIN
         'rate_types',
         'payment_methods',
         'group_booking_types',
-        'company_types'
+        'company_types',
+        'charge_codes'
     )
     AND t.table_schema = 'public';
 
@@ -209,15 +212,15 @@ BEGIN
 
     RAISE NOTICE '';
     RAISE NOTICE 'Category: Reference Data (Dynamic Enums)';
-    RAISE NOTICE 'Tables Found: % / 6', v_table_count;
+    RAISE NOTICE 'Tables Found: % / 7', v_table_count;
     RAISE NOTICE 'Total Rows: %', v_total_rows;
     RAISE NOTICE '';
 
-    IF v_table_count = 6 THEN
+    IF v_table_count = 7 THEN
         RAISE NOTICE '✓✓✓ REFERENCE DATA VERIFICATION PASSED ✓✓✓';
     ELSE
         RAISE WARNING '⚠⚠⚠ REFERENCE DATA VERIFICATION FAILED ⚠⚠⚠';
-        RAISE WARNING 'Expected 6 tables, found %', v_table_count;
+        RAISE WARNING 'Expected 7 tables, found %', v_table_count;
     END IF;
 END $$;
 

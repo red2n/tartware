@@ -1,6 +1,9 @@
 import { Pool, type QueryResult, type QueryResultRow, types } from "pg";
 
 import { config } from "../config.js";
+import { appLogger } from "../lib/logger.js";
+
+const dbLogger = appLogger.child({ module: "db" });
 
 const parseBigInt = (value: string | null): bigint | null => {
   if (value === null) {
@@ -32,7 +35,7 @@ const pool = new Pool({
 });
 
 pool.on("error", (error: unknown) => {
-  console.error("Unexpected PostgreSQL pool error", error);
+  dbLogger.error({ err: error }, "Unexpected PostgreSQL pool error");
 });
 
 export const query = async <T extends QueryResultRow = QueryResultRow>(

@@ -86,7 +86,10 @@ import type { Redis } from "ioredis";
 
 import { config } from "../config.js";
 
+import { appLogger } from "./logger.js";
 import { getRedis } from "./redis.js";
+
+const bloomLogger = appLogger.child({ module: "bloom-filter" });
 
 /**
  * Bloom Filter implementation using Redis for persistent storage.
@@ -141,7 +144,7 @@ export class BloomFilter {
       this.initialized = exists === 1;
       return this.initialized;
     } catch (error) {
-      console.error("Bloom filter exists check failed:", error);
+      bloomLogger.error({ err: error }, "Bloom filter exists check failed");
       return false;
     }
   }
@@ -186,7 +189,7 @@ export class BloomFilter {
       this.initialized = true;
       return true;
     } catch (error) {
-      console.error(`Bloom filter add error for ${value}:`, error);
+      bloomLogger.error({ err: error, value }, "Bloom filter add error");
       return false;
     }
   }
@@ -222,7 +225,7 @@ export class BloomFilter {
       // All bits must be set for potential match
       return results.every((result) => result[1] === 1);
     } catch (error) {
-      console.error(`Bloom filter check error for ${value}:`, error);
+      bloomLogger.error({ err: error, value }, "Bloom filter check error");
       return true; // Fail open
     }
   }
@@ -250,7 +253,7 @@ export class BloomFilter {
       this.initialized = true;
       return true;
     } catch (error) {
-      console.error("Bloom filter batch add error:", error);
+      bloomLogger.error({ err: error }, "Bloom filter batch add error");
       return false;
     }
   }
@@ -269,7 +272,7 @@ export class BloomFilter {
       this.initialized = false;
       return true;
     } catch (error) {
-      console.error("Bloom filter clear error:", error);
+      bloomLogger.error({ err: error }, "Bloom filter clear error");
       return false;
     }
   }
@@ -287,7 +290,7 @@ export class BloomFilter {
       const result = await redis.exists(this.filterKey);
       return result === 1;
     } catch (error) {
-      console.error("Bloom filter exists error:", error);
+      bloomLogger.error({ err: error }, "Bloom filter exists error");
       return false;
     }
   }
@@ -305,7 +308,7 @@ export class BloomFilter {
       const result = await redis.expire(this.filterKey, ttl);
       return result === 1;
     } catch (error) {
-      console.error("Bloom filter expire error:", error);
+      bloomLogger.error({ err: error }, "Bloom filter expire error");
       return false;
     }
   }

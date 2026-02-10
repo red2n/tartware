@@ -38,7 +38,7 @@ const runtimeEnv = (env.NODE_ENV ?? "development").toLowerCase();
 const isProduction = runtimeEnv === "production";
 
 const defaultRetryScheduleMs = parseNumberList(env.KAFKA_RETRY_SCHEDULE_MS);
-const primaryKafkaBrokers = parseBrokerList(env.KAFKA_BROKERS, "localhost:9092");
+const primaryKafkaBrokers = parseBrokerList(env.KAFKA_BROKERS, "localhost:29092");
 const usedDefaultPrimary = (env.KAFKA_BROKERS ?? "").trim().length === 0;
 const failoverKafkaBrokers = parseBrokerList(env.KAFKA_FAILOVER_BROKERS);
 const requestedKafkaCluster = (env.KAFKA_ACTIVE_CLUSTER ?? "primary").toLowerCase();
@@ -126,6 +126,11 @@ export const commandCenterConfig = {
   consumerGroupId:
     env.COMMAND_CENTER_CONSUMER_GROUP ?? `${serviceConfig.serviceId}-command-consumer`,
   targetServiceId: env.COMMAND_CENTER_TARGET_SERVICE_ID ?? serviceConfig.serviceId,
+  maxBatchBytes: Number(env.KAFKA_MAX_BATCH_BYTES ?? 1048576),
+  dlqTopic: env.COMMAND_CENTER_DLQ_TOPIC ?? "commands.primary.dlq",
+  maxRetries: Number(env.KAFKA_MAX_RETRIES ?? 3),
+  retryBackoffMs: Number(env.KAFKA_RETRY_BACKOFF_MS ?? 1000),
+  retryScheduleMs: parseNumberList(env.KAFKA_RETRY_SCHEDULE_MS),
 };
 
 export const availabilityGuardConfig = {
@@ -134,4 +139,5 @@ export const availabilityGuardConfig = {
   enabled: parseBoolean(env.AVAILABILITY_GUARD_ENABLED, true),
   shadowMode: parseBoolean(env.AVAILABILITY_GUARD_SHADOW_MODE, true),
   failOpen: parseBoolean(env.AVAILABILITY_GUARD_FAIL_OPEN, true),
+  grpcAuthToken: env.AVAILABILITY_GUARD_GRPC_TOKEN ?? "",
 };

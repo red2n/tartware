@@ -11,18 +11,28 @@ import { uuid } from "../shared/base-schemas.js";
 
 /**
  * Lock room request schema.
+ *
+ * `roomId` and `ttlSeconds` use `preprocess` to coerce proto3 default values
+ * (`""` for strings, `0` for uint32) into `null` / `undefined` so downstream
+ * validation (UUID format, positive integer) does not reject them.
  */
 export const LockRoomSchema = z.object({
 	tenantId: uuid,
 	reservationId: uuid,
 	roomTypeId: uuid,
-	roomId: uuid.nullable().optional(),
+	roomId: z.preprocess(
+		(v) => (v === "" ? null : v),
+		uuid.nullable().optional(),
+	),
 	stayStart: z.coerce.date(),
 	stayEnd: z.coerce.date(),
 	reason: z.string().min(1).default("RESERVATION_CREATE"),
 	correlationId: z.string().optional(),
 	idempotencyKey: z.string().optional(),
-	ttlSeconds: z.number().int().positive().optional(),
+	ttlSeconds: z.preprocess(
+		(v) => (v === 0 ? undefined : v),
+		z.number().int().positive().optional(),
+	),
 	metadata: z.record(z.any()).optional(),
 });
 

@@ -7,6 +7,7 @@
 
 export * from "./analytics.js";
 export * from "./billing.js";
+export * from "./groups.js";
 export * from "./guests.js";
 export * from "./housekeeping.js";
 export * from "./integrations.js";

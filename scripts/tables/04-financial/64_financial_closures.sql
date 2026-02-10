@@ -252,3 +252,5 @@ COMMENT ON TABLE financial_closures IS 'Manages financial period closures, recon
 COMMENT ON COLUMN financial_closures.closure_type IS 'Type of closure: daily, weekly, monthly, quarterly, annual, custom';
 COMMENT ON COLUMN financial_closures.variance_details IS 'JSON array of variance analysis: [{type, expected, actual, variance, reason}]';
 COMMENT ON COLUMN financial_closures.period_locked IS 'Whether the financial period is locked from further modifications';
+
+\echo 'financial_closures table created successfully!'

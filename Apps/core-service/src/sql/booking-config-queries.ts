@@ -51,6 +51,7 @@ export const ALLOTMENT_LIST_SQL = `
     AND ($7::date IS NULL OR a.end_date <= $7::date)
   ORDER BY a.start_date ASC, a.allotment_name ASC
   LIMIT $1
+  OFFSET $8
 `;
 
 export const ALLOTMENT_BY_ID_SQL = `
@@ -185,6 +186,7 @@ export const BOOKING_SOURCE_LIST_SQL = `
     AND ($6::boolean IS NULL OR b.has_integration = $6::boolean)
   ORDER BY COALESCE(b.ranking, 999) ASC, b.source_name ASC
   LIMIT $1
+  OFFSET $7
 `;
 
 export const BOOKING_SOURCE_BY_ID_SQL = `
@@ -320,6 +322,7 @@ export const MARKET_SEGMENT_LIST_SQL = `
     AND ($6::uuid IS NULL OR m.parent_segment_id = $6::uuid)
   ORDER BY COALESCE(m.ranking, 999) ASC, m.segment_name ASC
   LIMIT $1
+  OFFSET $7
 `;
 
 export const MARKET_SEGMENT_BY_ID_SQL = `
@@ -439,6 +442,7 @@ export const CHANNEL_MAPPING_LIST_SQL = `
     AND ($6::boolean IS NULL OR c.is_active = $6::boolean)
   ORDER BY c.channel_name ASC, c.entity_type ASC
   LIMIT $1
+  OFFSET $7
 `;
 
 export const CHANNEL_MAPPING_BY_ID_SQL = `
@@ -527,6 +531,7 @@ export const COMPANY_LIST_SQL = `
     AND ($6::boolean IS NULL OR c.is_blacklisted = $6::boolean)
   ORDER BY c.company_name ASC
   LIMIT $1
+  OFFSET $7
 `;
 
 export const COMPANY_BY_ID_SQL = `
@@ -665,6 +670,7 @@ export const MEETING_ROOM_LIST_SQL = `
     AND ($7::integer IS NULL OR m.max_capacity >= $7::integer)
   ORDER BY m.room_name ASC
   LIMIT $1
+  OFFSET $8
 `;
 
 export const MEETING_ROOM_BY_ID_SQL = `
@@ -820,6 +826,7 @@ export const EVENT_BOOKING_LIST_SQL = `
     AND ($8::uuid IS NULL OR e.meeting_room_id = $8::uuid)
   ORDER BY e.event_date ASC, e.start_time ASC
   LIMIT $1
+  OFFSET $9
 `;
 
 export const EVENT_BOOKING_BY_ID_SQL = `
@@ -954,6 +961,7 @@ export const WAITLIST_ENTRY_LIST_SQL = `
     AND ($7::boolean IS NULL OR w.vip_flag = $7::boolean)
   ORDER BY w.priority_score DESC, w.created_at ASC
   LIMIT $1
+  OFFSET $8
 `;
 
 export const WAITLIST_ENTRY_BY_ID_SQL = `
@@ -1058,6 +1066,7 @@ export const GROUP_BOOKING_LIST_SQL = `
     AND ($8::boolean IS NULL OR gb.is_active = $8::boolean)
   ORDER BY gb.arrival_date DESC, gb.created_at DESC
   LIMIT $1
+  OFFSET $9
 `;
 
 export const GROUP_BOOKING_BY_ID_SQL = `
@@ -1203,6 +1212,7 @@ export const PROMOTIONAL_CODE_LIST_SQL = `
     AND ($7::text IS NULL OR UPPER(pc.promo_code) LIKE '%' || UPPER($7::text) || '%')
   ORDER BY pc.created_at DESC
   LIMIT $1
+  OFFSET $8
 `;
 
 export const PROMOTIONAL_CODE_BY_ID_SQL = `

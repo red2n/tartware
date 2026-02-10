@@ -60,3 +60,25 @@ CREATE TABLE IF NOT EXISTS data_sync_status (
 
 
 COMMENT ON TABLE data_sync_status IS 'Tracks data synchronization status between integrated systems';
+COMMENT ON COLUMN data_sync_status.sync_id IS 'Unique identifier for the sync operation';
+COMMENT ON COLUMN data_sync_status.tenant_id IS 'Tenant owning this sync operation';
+COMMENT ON COLUMN data_sync_status.property_id IS 'Property this sync pertains to';
+COMMENT ON COLUMN data_sync_status.sync_name IS 'Human-readable name of the sync job';
+COMMENT ON COLUMN data_sync_status.sync_type IS 'Type of synchronization (full, incremental, delta, realtime)';
+COMMENT ON COLUMN data_sync_status.entity_type IS 'Type of entity being synchronized (e.g., reservations, guests, rates)';
+COMMENT ON COLUMN data_sync_status.status IS 'Current status of the sync operation (pending, running, completed, failed, partial)';
+COMMENT ON COLUMN data_sync_status.started_at IS 'Timestamp when the sync operation began';
+COMMENT ON COLUMN data_sync_status.completed_at IS 'Timestamp when the sync operation finished';
+COMMENT ON COLUMN data_sync_status.duration_seconds IS 'Total wall-clock duration of the sync in seconds';
+COMMENT ON COLUMN data_sync_status.records_total IS 'Total number of records identified for synchronization';
+COMMENT ON COLUMN data_sync_status.records_processed IS 'Number of records that have been processed so far';
+COMMENT ON COLUMN data_sync_status.records_succeeded IS 'Number of records successfully synchronized';
+COMMENT ON COLUMN data_sync_status.records_failed IS 'Number of records that failed to synchronize';
+COMMENT ON COLUMN data_sync_status.records_skipped IS 'Number of records skipped (already up-to-date or filtered out)';
+COMMENT ON COLUMN data_sync_status.error_message IS 'High-level error message if the sync failed';
+COMMENT ON COLUMN data_sync_status.error_details IS 'Detailed error information including per-record failures';
+COMMENT ON COLUMN data_sync_status.sync_config IS 'Configuration parameters used for this sync run';
+COMMENT ON COLUMN data_sync_status.sync_results IS 'Summary results and statistics from the completed sync';
+COMMENT ON COLUMN data_sync_status.next_sync_at IS 'Scheduled timestamp for the next sync operation';
+
+\echo 'data_sync_status table created successfully!'

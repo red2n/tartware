@@ -9,27 +9,27 @@
 \c tartware \echo 'Creating transactional_outbox table...'
 
 CREATE TABLE IF NOT EXISTS transactional_outbox (
-    id BIGSERIAL PRIMARY KEY,
-    event_id UUID NOT NULL DEFAULT uuid_generate_v4(),
-    tenant_id UUID NOT NULL REFERENCES tenants (id) ON DELETE CASCADE,
-    aggregate_id UUID NOT NULL,
-    aggregate_type VARCHAR(120) NOT NULL,
-    event_type VARCHAR(150) NOT NULL,
-    payload JSONB NOT NULL,
-    headers JSONB NOT NULL DEFAULT '{}'::jsonb,
-    status outbox_status NOT NULL DEFAULT 'PENDING',
-    priority SMALLINT NOT NULL DEFAULT 0,
-    available_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    locked_at TIMESTAMPTZ,
-    locked_by VARCHAR(120),
-    retry_count INTEGER NOT NULL DEFAULT 0 CHECK (retry_count >= 0),
-    last_error TEXT,
-    correlation_id UUID,
-    partition_key VARCHAR(200),
-    delivered_at TIMESTAMPTZ,
-    metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at TIMESTAMPTZ,
+    id BIGSERIAL PRIMARY KEY, -- Auto-incrementing surrogate key
+    event_id UUID NOT NULL DEFAULT uuid_generate_v4(), -- Globally unique event identifier
+    tenant_id UUID NOT NULL REFERENCES tenants (id) ON DELETE CASCADE, -- Owning tenant scope
+    aggregate_id UUID NOT NULL, -- Domain entity this event belongs to
+    aggregate_type VARCHAR(120) NOT NULL, -- Entity kind (reservation, folio, etc.)
+    event_type VARCHAR(150) NOT NULL, -- Qualified event name for consumers
+    payload JSONB NOT NULL, -- Serialised event body
+    headers JSONB NOT NULL DEFAULT '{}'::jsonb, -- Transport-level metadata headers
+    status outbox_status NOT NULL DEFAULT 'PENDING', -- Delivery lifecycle state
+    priority SMALLINT NOT NULL DEFAULT 0, -- Dispatch priority (higher = sooner)
+    available_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), -- Earliest eligible dispatch time
+    locked_at TIMESTAMPTZ, -- Timestamp when worker acquired lock
+    locked_by VARCHAR(120), -- Pod/job holding the processing lock
+    retry_count INTEGER NOT NULL DEFAULT 0 CHECK (retry_count >= 0), -- Cumulative delivery attempts
+    last_error TEXT, -- Most recent failure reason
+    correlation_id UUID, -- Request trace correlation
+    partition_key VARCHAR(200), -- Kafka partition routing key
+    delivered_at TIMESTAMPTZ, -- Timestamp of successful delivery
+    metadata JSONB NOT NULL DEFAULT '{}'::jsonb, -- Extensible operational metadata
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), -- Row insertion timestamp
+    updated_at TIMESTAMPTZ, -- Last modification timestamp
     CONSTRAINT transactional_outbox_unique_event UNIQUE (event_id)
 );
 

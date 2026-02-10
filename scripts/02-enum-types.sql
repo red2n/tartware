@@ -200,12 +200,16 @@ CREATE TYPE season_type AS ENUM (
 -- Reservation Status (Booking Lifecycle)
 -- Standard: OPERA Cloud reservation status workflow
 CREATE TYPE reservation_status AS ENUM (
-    'PENDING',      -- Initial booking
-    'CONFIRMED',    -- Payment received
+    'INQUIRY',      -- Initial inquiry (pre-booking)
+    'QUOTED',       -- Quote sent to guest
+    'PENDING',      -- Booking placed, awaiting confirmation
+    'CONFIRMED',    -- Payment/deposit received
+    'WAITLISTED',   -- Waiting for availability
     'CHECKED_IN',   -- Guest arrived
     'CHECKED_OUT',  -- Guest departed
     'CANCELLED',    -- Booking cancelled
-    'NO_SHOW'       -- Guest didn't arrive
+    'NO_SHOW',      -- Guest didn't arrive
+    'EXPIRED'       -- Quote/hold expired
 );
 
 -- Reservation Source (Distribution Channel)
@@ -218,6 +222,20 @@ CREATE TYPE reservation_source AS ENUM (
     'OTA',          -- Online travel agency (Booking.com, Expedia)
     'CORPORATE',    -- Corporate booking
     'GROUP'         -- Group booking
+);
+
+-- Reservation Type (Booking Category)
+-- Standard: OPERA Cloud, Mews, Cloudbeds reservation type classification
+CREATE TYPE reservation_type AS ENUM (
+    'TRANSIENT',       -- Individual guest booking (most common)
+    'CORPORATE',       -- Company-negotiated rate
+    'GROUP',           -- 10+ rooms, common arrival
+    'WHOLESALE',       -- Tour operator pre-purchased
+    'PACKAGE',         -- Room + services bundled
+    'COMPLIMENTARY',   -- Comp stay (no charge)
+    'HOUSE_USE',       -- Internal use (staff, maintenance)
+    'DAY_USE',         -- Same-day check-in/out
+    'WAITLIST'         -- Pending availability
 );
 
 -- =====================================================
@@ -240,6 +258,7 @@ CREATE TYPE payment_method AS ENUM (
 -- Standard: Payment processing lifecycle
 CREATE TYPE payment_status AS ENUM (
     'PENDING',              -- Awaiting processing
+    'AUTHORIZED',           -- Pre-authorized hold
     'PROCESSING',           -- Being processed
     'COMPLETED',            -- Successfully completed
     'FAILED',              -- Payment failed
@@ -325,7 +344,8 @@ CREATE TYPE invoice_status AS ENUM (
     'PARTIALLY_PAID',   -- Partial payment
     'OVERDUE',          -- Payment overdue
     'CANCELLED',        -- Invoice cancelled
-    'REFUNDED'          -- Invoice refunded
+    'REFUNDED',         -- Invoice refunded
+    'FINALIZED'         -- Invoice finalized, locked from edits
 );
 
 -- =====================================================

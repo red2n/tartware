@@ -25,6 +25,7 @@ const HousekeepingListQuerySchema = z.object({
       message: "scheduled_date must be a valid ISO date string",
     }),
   limit: z.coerce.number().int().positive().max(500).default(200),
+  offset: z.coerce.number().int().min(0).default(0),
 });
 
 type HousekeepingListQuery = z.infer<typeof HousekeepingListQuerySchema>;
@@ -60,7 +61,7 @@ export const registerHousekeepingRoutes = (app: FastifyInstance): void => {
       }),
     },
     async (request) => {
-      const { tenant_id, property_id, status, scheduled_date, limit } =
+      const { tenant_id, property_id, status, scheduled_date, limit, offset } =
         HousekeepingListQuerySchema.parse(request.query);
 
       const tasks = await listHousekeepingTasks({
@@ -69,6 +70,7 @@ export const registerHousekeepingRoutes = (app: FastifyInstance): void => {
         status,
         scheduledDate: scheduled_date,
         limit,
+        offset,
       });
 
       return HousekeepingListResponseSchema.parse(tasks);

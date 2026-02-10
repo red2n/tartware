@@ -1,6 +1,9 @@
 import { Pool, type PoolClient, type QueryResult, type QueryResultRow } from "pg";
 
 import { config } from "../config.js";
+import { appLogger } from "../lib/logger.js";
+
+const dbLogger = appLogger.child({ module: "db" });
 
 const pool = new Pool({
   host: config.db.host,
@@ -14,7 +17,7 @@ const pool = new Pool({
 });
 
 pool.on("error", (error) => {
-  console.error("Unexpected PostgreSQL error", error);
+  dbLogger.error({ err: error }, "Unexpected PostgreSQL error");
 });
 
 export const query = async <T extends QueryResultRow = QueryResultRow>(

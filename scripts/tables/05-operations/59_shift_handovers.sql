@@ -205,3 +205,5 @@ COMMENT ON COLUMN shift_handovers.key_points IS 'Most important information to c
 COMMENT ON COLUMN shift_handovers.tasks_details IS 'JSON array of pending tasks with priority and status';
 COMMENT ON COLUMN shift_handovers.guest_issues IS 'JSON array of current guest issues requiring attention';
 COMMENT ON COLUMN shift_handovers.follow_up_items IS 'JSON array of items requiring follow-up action';
+
+\echo 'shift_handovers table created successfully!'

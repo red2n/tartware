@@ -42,6 +42,7 @@ export const HOUSEKEEPING_TASK_LIST_SQL = `
     )
   ORDER BY h.scheduled_date DESC, h.scheduled_time DESC NULLS LAST, h.created_at DESC
   LIMIT $1
+  OFFSET $6
 `;
 
 // =====================================================
@@ -112,6 +113,7 @@ export const MAINTENANCE_REQUEST_LIST_SQL = `
     END,
     m.reported_at DESC
   LIMIT $1
+  OFFSET $9
 `;
 
 export const MAINTENANCE_REQUEST_BY_ID_SQL = `
@@ -249,6 +251,7 @@ export const INCIDENT_REPORT_LIST_SQL = `
     AND ($9::date IS NULL OR i.incident_date <= $9::date)
   ORDER BY i.incident_datetime DESC
   LIMIT $1
+  OFFSET $10
 `;
 
 export const INCIDENT_REPORT_BY_ID_SQL = `

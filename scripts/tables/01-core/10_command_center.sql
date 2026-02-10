@@ -9,18 +9,18 @@
 \c tartware \echo 'Creating command center catalog tables...'
 
 CREATE TABLE IF NOT EXISTS command_templates (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    command_name VARCHAR(150) NOT NULL UNIQUE,
-    version VARCHAR(20) NOT NULL DEFAULT '1.0',
-    description TEXT,
-    default_target_service VARCHAR(150) NOT NULL,
-    default_topic VARCHAR(150) NOT NULL DEFAULT 'commands.primary',
-    required_modules TEXT[] NOT NULL DEFAULT ARRAY[]::text[],
-    payload_schema JSONB NOT NULL DEFAULT '{}'::jsonb,
-    sample_payload JSONB NOT NULL DEFAULT '{}'::jsonb,
-    metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),                  -- Unique template identifier
+    command_name VARCHAR(150) NOT NULL UNIQUE,                       -- Dot-notation command key (reservation.create)
+    version VARCHAR(20) NOT NULL DEFAULT '1.0',                      -- Semantic version of command schema
+    description TEXT,                                                -- Human-readable command description
+    default_target_service VARCHAR(150) NOT NULL,                    -- Service handling this command by default
+    default_topic VARCHAR(150) NOT NULL DEFAULT 'commands.primary',  -- Kafka topic for command routing
+    required_modules TEXT[] NOT NULL DEFAULT ARRAY[]::text[],        -- Licensed modules required to use command
+    payload_schema JSONB NOT NULL DEFAULT '{}'::jsonb,               -- JSON Schema for payload validation
+    sample_payload JSONB NOT NULL DEFAULT '{}'::jsonb,               -- Example payload for docs/testing
+    metadata JSONB NOT NULL DEFAULT '{}'::jsonb,                     -- Arbitrary extension metadata
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),                   -- Row creation timestamp
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()                    -- Row last-update timestamp
 );
 
 COMMENT ON TABLE command_templates IS 'Canonical catalog of Commands (schema, owner, default routing)';
@@ -33,17 +33,17 @@ COMMENT ON COLUMN command_templates.payload_schema IS 'JSON Schema for command p
 COMMENT ON COLUMN command_templates.sample_payload IS 'Example payload for documentation/testing';
 
 CREATE TABLE IF NOT EXISTS command_routes (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    command_name VARCHAR(150) NOT NULL REFERENCES command_templates (command_name) ON DELETE CASCADE,
-    environment VARCHAR(50) NOT NULL DEFAULT 'development',
-    tenant_id UUID,
-    service_id VARCHAR(150) NOT NULL,
-    topic VARCHAR(150) NOT NULL DEFAULT 'commands.primary',
-    weight INTEGER NOT NULL DEFAULT 100 CHECK (weight > 0 AND weight <= 100),
-    status command_route_status NOT NULL DEFAULT 'active',
-    metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),                                                    -- Unique route identifier
+    command_name VARCHAR(150) NOT NULL REFERENCES command_templates (command_name) ON DELETE CASCADE,  -- Command being routed
+    environment VARCHAR(50) NOT NULL DEFAULT 'development',                                           -- Target environment (dev/staging/prod)
+    tenant_id UUID,                                                                                   -- NULL = default; set for tenant override
+    service_id VARCHAR(150) NOT NULL,                                                                 -- Target service for this route
+    topic VARCHAR(150) NOT NULL DEFAULT 'commands.primary',                                           -- Kafka topic override
+    weight INTEGER NOT NULL DEFAULT 100 CHECK (weight > 0 AND weight <= 100),                         -- Routing weight for load balancing (1-100)
+    status command_route_status NOT NULL DEFAULT 'active',                                            -- Route status (active/disabled/shadow)
+    metadata JSONB NOT NULL DEFAULT '{}'::jsonb,                                                      -- Arbitrary extension metadata
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),                                                    -- Row creation timestamp
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()                                                     -- Row last-update timestamp
 );
 
 CREATE INDEX IF NOT EXISTS idx_command_routes_lookup
@@ -58,16 +58,16 @@ COMMENT ON COLUMN command_routes.weight IS 'Routing weight for load balancing (1
 COMMENT ON COLUMN command_routes.status IS 'Route status: active, disabled, shadow';
 
 CREATE TABLE IF NOT EXISTS command_features (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    command_name VARCHAR(150) NOT NULL REFERENCES command_templates (command_name) ON DELETE CASCADE,
-    environment VARCHAR(50) NOT NULL DEFAULT 'development',
-    tenant_id UUID,
-    status command_feature_status NOT NULL DEFAULT 'enabled',
-    max_per_minute INTEGER,
-    burst INTEGER,
-    metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),                                                    -- Unique feature-flag identifier
+    command_name VARCHAR(150) NOT NULL REFERENCES command_templates (command_name) ON DELETE CASCADE,  -- Command being configured
+    environment VARCHAR(50) NOT NULL DEFAULT 'development',                                           -- Target environment (dev/staging/prod)
+    tenant_id UUID,                                                                                   -- NULL = default; set for tenant override
+    status command_feature_status NOT NULL DEFAULT 'enabled',                                         -- Feature status (enabled/disabled/beta/deprecated)
+    max_per_minute INTEGER,                                                                           -- Rate limit per minute (NULL = unlimited)
+    burst INTEGER,                                                                                    -- Burst allowance above rate limit
+    metadata JSONB NOT NULL DEFAULT '{}'::jsonb,                                                      -- Arbitrary extension metadata
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),                                                    -- Row creation timestamp
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()                                                     -- Row last-update timestamp
 );
 
 CREATE INDEX IF NOT EXISTS idx_command_features_lookup
@@ -79,22 +79,22 @@ COMMENT ON COLUMN command_features.max_per_minute IS 'Rate limit: max commands p
 COMMENT ON COLUMN command_features.burst IS 'Burst allowance above rate limit for short spikes';
 
 CREATE TABLE IF NOT EXISTS command_dispatches (
-    id UUID PRIMARY KEY,
-    command_name VARCHAR(150) NOT NULL REFERENCES command_templates (command_name) ON DELETE CASCADE,
-    tenant_id UUID NOT NULL REFERENCES tenants (id) ON DELETE CASCADE,
-    target_service VARCHAR(150) NOT NULL,
-    target_topic VARCHAR(150) NOT NULL,
-    correlation_id VARCHAR(120),
-    request_id VARCHAR(120) NOT NULL,
-    status command_dispatch_status NOT NULL DEFAULT 'ACCEPTED',
-    payload_hash VARCHAR(130) NOT NULL,
-    outbox_event_id UUID NOT NULL REFERENCES transactional_outbox (event_id) ON DELETE CASCADE,
-    routing_metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
-    initiated_by JSONB,
-    issued_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    id UUID PRIMARY KEY,                                                                              -- Client-provided ID for idempotency
+    command_name VARCHAR(150) NOT NULL REFERENCES command_templates (command_name) ON DELETE CASCADE,  -- Dispatched command name
+    tenant_id UUID NOT NULL REFERENCES tenants (id) ON DELETE CASCADE,                                -- Owning tenant
+    target_service VARCHAR(150) NOT NULL,                                                             -- Resolved target service
+    target_topic VARCHAR(150) NOT NULL,                                                               -- Resolved Kafka topic
+    correlation_id VARCHAR(120),                                                                      -- Distributed tracing correlation ID
+    request_id VARCHAR(120) NOT NULL,                                                                 -- Client request ID for deduplication
+    status command_dispatch_status NOT NULL DEFAULT 'ACCEPTED',                                       -- Dispatch lifecycle status
+    payload_hash VARCHAR(130) NOT NULL,                                                               -- SHA-256 hash for payload integrity
+    outbox_event_id UUID NOT NULL REFERENCES transactional_outbox (event_id) ON DELETE CASCADE,       -- Linked outbox event for Kafka delivery
+    routing_metadata JSONB NOT NULL DEFAULT '{}'::jsonb,                                              -- Routing decision context
+    initiated_by JSONB,                                                                               -- Actor who initiated the command
+    issued_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),                                                     -- Command issuance timestamp
+    metadata JSONB NOT NULL DEFAULT '{}'::jsonb,                                                      -- Arbitrary extension metadata
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),                                                    -- Row creation timestamp
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()                                                     -- Row last-update timestamp
 );
 
 CREATE INDEX IF NOT EXISTS idx_command_dispatches_tenant
@@ -129,6 +129,14 @@ WITH seed_commands(command_name, description, default_target_service, required_m
         ('reservation.rate_override', 'Override reservation rates', 'reservations-command-service', ARRAY['core']),
         ('reservation.add_deposit', 'Add a reservation deposit', 'reservations-command-service', ARRAY['core']),
         ('reservation.release_deposit', 'Release a reservation deposit', 'reservations-command-service', ARRAY['core']),
+        ('reservation.no_show', 'Mark a reservation as no-show and apply fee', 'reservations-command-service', ARRAY['core']),
+        ('reservation.batch_no_show', 'Sweep all overdue reservations as no-show for a property', 'reservations-command-service', ARRAY['core']),
+        ('reservation.walkin_checkin', 'Walk-in guest express check-in', 'reservations-command-service', ARRAY['core']),
+        ('reservation.waitlist_add', 'Add guest to room type waitlist', 'reservations-command-service', ARRAY['core']),
+        ('reservation.waitlist_convert', 'Convert waitlist entry to reservation', 'reservations-command-service', ARRAY['core']),
+        ('reservation.send_quote', 'Send a quote for an inquiry reservation', 'reservations-command-service', ARRAY['core']),
+        ('reservation.convert_quote', 'Convert a quoted reservation to a pending booking', 'reservations-command-service', ARRAY['core']),
+        ('reservation.expire', 'Expire an inquiry, quoted, or pending reservation', 'reservations-command-service', ARRAY['core']),
         ('guest.register', 'Create or import guest profiles', 'guests-service', ARRAY['core']),
         ('guest.merge', 'Merge duplicate guest profiles', 'guests-service', ARRAY['core']),
         ('guest.update_profile', 'Update guest profile details', 'guests-service', ARRAY['core']),
@@ -160,14 +168,20 @@ WITH seed_commands(command_name, description, default_target_service, required_m
         ('billing.charge.post', 'Post a charge to a folio', 'billing-service', ARRAY['finance-automation']),
         ('billing.payment.apply', 'Apply a payment to an invoice or reservation', 'billing-service', ARRAY['finance-automation']),
         ('billing.folio.transfer', 'Transfer a folio balance between reservations', 'billing-service', ARRAY['finance-automation']),
+        ('billing.folio.close', 'Close/settle a folio', 'billing-service', ARRAY['finance-automation']),
+        ('billing.payment.authorize', 'Pre-authorize a payment hold on a guest card', 'billing-service', ARRAY['finance-automation']),
+        ('billing.payment.void', 'Void an authorized payment', 'billing-service', ARRAY['finance-automation']),
+        ('billing.night_audit.execute', 'Execute nightly audit: post room charges, mark no-shows, advance business date', 'billing-service', ARRAY['finance-automation']),
+        ('billing.charge.void', 'Void a charge posting and create reversal entry', 'billing-service', ARRAY['finance-automation']),
+        ('billing.invoice.finalize', 'Finalize an invoice, locking it from edits', 'billing-service', ARRAY['finance-automation']),
         ('settings.value.set', 'Set a configuration value', 'settings-service', ARRAY['core']),
         ('settings.value.bulk_set', 'Bulk set configuration values', 'settings-service', ARRAY['core']),
         ('settings.value.approve', 'Approve a pending setting value', 'settings-service', ARRAY['core']),
         ('settings.value.revert', 'Revert a setting value', 'settings-service', ARRAY['core']),
-        ('integration.ota.sync_request', 'Request an OTA sync', 'integrations-command-service', ARRAY['marketing-channel']),
-        ('integration.ota.rate_push', 'Push OTA rates', 'integrations-command-service', ARRAY['marketing-channel']),
-        ('integration.webhook.retry', 'Retry a webhook delivery', 'integrations-command-service', ARRAY['marketing-channel']),
-        ('integration.mapping.update', 'Update integration mapping', 'integrations-command-service', ARRAY['marketing-channel']),
+        ('integration.ota.sync_request', 'Request an OTA sync', 'reservations-command-service', ARRAY['marketing-channel']),
+        ('integration.ota.rate_push', 'Push OTA rates', 'reservations-command-service', ARRAY['marketing-channel']),
+        ('integration.webhook.retry', 'Retry a webhook delivery', 'reservations-command-service', ARRAY['marketing-channel']),
+        ('integration.mapping.update', 'Update integration mapping', 'reservations-command-service', ARRAY['marketing-channel']),
         ('analytics.metric.ingest', 'Ingest analytics metric', 'analytics-command-service', ARRAY['analytics-bi']),
         ('analytics.report.schedule', 'Schedule analytics report', 'analytics-command-service', ARRAY['analytics-bi']),
         ('operations.maintenance.request', 'Create maintenance request', 'operations-command-service', ARRAY['facility-maintenance']),

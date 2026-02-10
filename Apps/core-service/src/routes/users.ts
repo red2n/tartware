@@ -14,6 +14,7 @@ import { sanitizeForJson } from "../utils/sanitize.js";
 
 const UserListQuerySchema = z.object({
   limit: z.coerce.number().int().positive().max(100).default(50),
+  offset: z.coerce.number().int().min(0).default(0),
   tenant_id: z.string().uuid(),
 });
 
@@ -91,8 +92,8 @@ export const registerUserRoutes = (app: FastifyInstance): void => {
       }),
     },
     async (request) => {
-      const { limit, tenant_id } = UserListQuerySchema.parse(request.query);
-      const users = await listUsers({ limit, tenantId: tenant_id });
+      const { limit, offset, tenant_id } = UserListQuerySchema.parse(request.query);
+      const users = await listUsers({ limit, offset, tenantId: tenant_id });
       const response = sanitizeForJson(users);
       return UserListResponseSchema.parse(response);
     },

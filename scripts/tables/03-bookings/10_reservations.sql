@@ -88,6 +88,22 @@ CREATE TABLE IF NOT EXISTS reservations (
     no_show_date TIMESTAMP,
     no_show_fee DECIMAL(15,2) DEFAULT 0.00,
 
+    -- Reservation Classification
+    reservation_type reservation_type NOT NULL DEFAULT 'TRANSIENT',
+
+    -- ETA & Corporate/Agency Links
+    eta TIME,
+    company_id UUID,
+    travel_agent_id UUID,
+
+    -- Quote Lifecycle (INQUIRY → QUOTED → PENDING)
+    quoted_at TIMESTAMPTZ,
+    quote_expires_at TIMESTAMPTZ,
+    expired_at TIMESTAMPTZ,
+
+    -- Group Booking Link (S12)
+    group_booking_id UUID,  -- FK to group_bookings for reservations picked up from a group block
+
     -- Marketing
     promo_code VARCHAR(50),
 
@@ -140,6 +156,14 @@ COMMENT ON COLUMN reservations.status IS 'ENUM: pending, confirmed, checked_in, 
 COMMENT ON COLUMN reservations.source IS 'ENUM: direct, ota, phone, walk_in, corporate, group, channel_manager';
 COMMENT ON COLUMN reservations.balance_due IS 'Computed: total_amount - paid_amount';
 COMMENT ON COLUMN reservations.is_no_show IS 'Guest did not arrive';
+COMMENT ON COLUMN reservations.reservation_type IS 'PMS industry-standard reservation classification (TRANSIENT, CORPORATE, GROUP, etc.)';
+COMMENT ON COLUMN reservations.eta IS 'Estimated time of arrival (HH:MM)';
+COMMENT ON COLUMN reservations.company_id IS 'Corporate account FK for negotiated-rate bookings';
+COMMENT ON COLUMN reservations.travel_agent_id IS 'Travel agency FK for agent-booked reservations';
+COMMENT ON COLUMN reservations.quoted_at IS 'When the quote was sent to the guest';
+COMMENT ON COLUMN reservations.quote_expires_at IS 'When the quote validity expires (auto-expire target)';
+COMMENT ON COLUMN reservations.expired_at IS 'When the reservation was transitioned to EXPIRED';
+COMMENT ON COLUMN reservations.group_booking_id IS 'FK to group_bookings for reservations picked up from a group block';
 COMMENT ON COLUMN reservations.deleted_at IS 'Soft delete timestamp (NULL = active)';
 
 \echo 'Reservations table created successfully!'

@@ -34,7 +34,17 @@ LANGUAGE plpgsql
 AS $$
 DECLARE
     v_guest_id UUID;
+    v_address_jsonb JSONB;
 BEGIN
+    -- Build address JSONB from individual parameters
+    v_address_jsonb := jsonb_build_object(
+        'street',     COALESCE(p_address, ''),
+        'city',       COALESCE(p_city, ''),
+        'state',      COALESCE(p_state, ''),
+        'country',    COALESCE(p_country, ''),
+        'postalCode', COALESCE(p_postal_code, '')
+    );
+
     -- Upsert guest using ON CONFLICT
     INSERT INTO guests (
         tenant_id,
@@ -43,10 +53,6 @@ BEGIN
         last_name,
         phone,
         address,
-        city,
-        state,
-        country,
-        postal_code,
         preferences,
         created_by,
         created_at,
@@ -58,11 +64,7 @@ BEGIN
         TRIM(p_first_name),
         TRIM(p_last_name),
         p_phone,
-        p_address,
-        p_city,
-        p_state,
-        p_country,
-        p_postal_code,
+        v_address_jsonb,
         p_preferences,
         p_created_by,
         CURRENT_TIMESTAMP,
@@ -75,10 +77,6 @@ BEGIN
         last_name = TRIM(EXCLUDED.last_name),
         phone = COALESCE(EXCLUDED.phone, guests.phone),
         address = COALESCE(EXCLUDED.address, guests.address),
-        city = COALESCE(EXCLUDED.city, guests.city),
-        state = COALESCE(EXCLUDED.state, guests.state),
-        country = COALESCE(EXCLUDED.country, guests.country),
-        postal_code = COALESCE(EXCLUDED.postal_code, guests.postal_code),
         preferences = COALESCE(EXCLUDED.preferences, guests.preferences),
         updated_at = CURRENT_TIMESTAMP,
         updated_by = p_created_by,
@@ -91,7 +89,7 @@ END;
 $$;
 
 COMMENT ON FUNCTION upsert_guest IS
-'Inserts new guest or updates existing guest based on email. Prevents duplicate profiles per tenant.';
+'Inserts new guest or updates existing guest based on email. Prevents duplicate profiles per tenant. Packs address fields into JSONB.';
 
 -- =====================================================
 -- Function: merge_duplicate_guests

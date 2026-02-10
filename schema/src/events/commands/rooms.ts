@@ -100,6 +100,8 @@ export const RoomMoveCommandSchema = z.object({
 	from_room_id: z.string().uuid(),
 	to_room_id: z.string().uuid(),
 	reservation_id: z.string().uuid().optional(),
+	transfer_charges: z.boolean().default(true),
+	recalculate_rate: z.boolean().default(false),
 	reason: z.string().max(500).optional(),
 	metadata: z.record(z.unknown()).optional(),
 	idempotency_key: z.string().max(120).optional(),
@@ -124,3 +126,28 @@ export const RoomFeaturesUpdateCommandSchema = z
 export type RoomFeaturesUpdateCommand = z.infer<
 	typeof RoomFeaturesUpdateCommandSchema
 >;
+
+export const RoomKeyIssueCommandSchema = z.object({
+	room_id: z.string().uuid(),
+	guest_id: z.string().uuid(),
+	reservation_id: z.string().uuid(),
+	property_id: z.string().uuid(),
+	key_type: z.enum(["bluetooth", "nfc", "qr_code", "pin"]).default("bluetooth"),
+	valid_from: z.coerce.date().optional(),
+	valid_to: z.coerce.date().optional(),
+	device_id: z.string().max(255).optional(),
+	device_type: z.string().max(100).optional(),
+	metadata: z.record(z.unknown()).optional(),
+});
+
+export type RoomKeyIssueCommand = z.infer<typeof RoomKeyIssueCommandSchema>;
+
+export const RoomKeyRevokeCommandSchema = z.object({
+	key_id: z.string().uuid(),
+	reason: z.string().max(500).optional(),
+	revoke_all_for_reservation: z.boolean().default(false),
+	reservation_id: z.string().uuid().optional(),
+	metadata: z.record(z.unknown()).optional(),
+});
+
+export type RoomKeyRevokeCommand = z.infer<typeof RoomKeyRevokeCommandSchema>;

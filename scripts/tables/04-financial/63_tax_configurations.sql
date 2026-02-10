@@ -211,3 +211,9 @@ COMMENT ON TABLE tax_configurations IS 'Manages tax rules, rates, calculations, 
 COMMENT ON COLUMN tax_configurations.calculation_method IS 'How tax is calculated: inclusive, exclusive, compound, cascading, etc';
 COMMENT ON COLUMN tax_configurations.is_compound_tax IS 'Whether this tax compounds on other taxes';
 COMMENT ON COLUMN tax_configurations.tier_ranges IS 'JSON array for progressive/tiered tax rates: [{min_amount, max_amount, rate}]';
+
+-- NOTE: Default tax seed data has been moved to dev-only seeding scripts.
+-- See: scripts/seed/dev/tax_configurations_seed.sql
+-- Production environments should configure tax rules per tenant/property.
+
+\echo '✓ Tax configurations table created and seeded.'

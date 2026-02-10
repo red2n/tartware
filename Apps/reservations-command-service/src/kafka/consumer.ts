@@ -155,6 +155,7 @@ const handleBatch = async ({
       );
 
       await upsertReservationEventOffset({
+        tenantId: parsedEvent.metadata.tenantId,
         consumerGroup: kafkaConfig.consumerGroupId,
         topic: batch.topic,
         partition: batch.partition,

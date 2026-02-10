@@ -4,6 +4,7 @@ import { query } from "./db.js";
  * Payload required to upsert a reservation event offset entry.
  */
 type UpsertReservationEventOffsetInput = {
+  tenantId: string;
   consumerGroup: string;
   topic: string;
   partition: number;
@@ -26,6 +27,7 @@ export const upsertReservationEventOffset = async (
   await query(
     `
       INSERT INTO reservation_event_offsets (
+        tenant_id,
         consumer_group,
         topic,
         partition,
@@ -38,8 +40,8 @@ export const upsertReservationEventOffset = async (
         created_at,
         updated_at
       ) VALUES (
-        $1, $2, $3, $4,
-        $5, $6, $7, $8::jsonb,
+        $1, $2, $3, $4, $5,
+        $6, $7, $8, $9::jsonb,
         NOW(), NOW(), NOW()
       )
       ON CONFLICT (consumer_group, topic, partition)
@@ -53,6 +55,7 @@ export const upsertReservationEventOffset = async (
         updated_at = NOW();
     `,
     [
+      input.tenantId,
       input.consumerGroup,
       input.topic,
       input.partition,

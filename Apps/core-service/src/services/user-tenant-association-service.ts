@@ -80,9 +80,11 @@ export const listUserTenantAssociations = async (
     role?: string;
     isActive?: boolean;
     limit?: number;
+    offset?: number;
   } = {},
 ): Promise<UserTenantAssociationWithDetails[]> => {
   const limit = options.limit ?? 50;
+  const offset = options.offset ?? 0;
   const tenantId = options.tenantId ?? null;
   const userId = options.userId ?? null;
   const role = options.role ?? null;
@@ -94,6 +96,7 @@ export const listUserTenantAssociations = async (
     role,
     isActive,
     limit,
+    offset,
   ]);
 
   return rows.map(mapRowToAssociation);

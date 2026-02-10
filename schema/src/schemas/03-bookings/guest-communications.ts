@@ -62,10 +62,22 @@ export const GuestCommunicationsSchema = z.object({
 export type GuestCommunications = z.infer<typeof GuestCommunicationsSchema>;
 
 /**
- * Schema for creating a new guest communications
+ * Schema for creating a new guest communication
  */
 export const CreateGuestCommunicationsSchema = GuestCommunicationsSchema.omit({
-	// TODO: Add fields to omit for creation
+	id: true,
+	is_deleted: true,
+	deleted_at: true,
+	deleted_by: true,
+	external_message_id: true,
+	sent_at: true,
+	delivered_at: true,
+	opened_at: true,
+	clicked_at: true,
+	failed_at: true,
+	failure_reason: true,
+	created_at: true,
+	updated_at: true,
 });
 
 export type CreateGuestCommunications = z.infer<
@@ -73,10 +85,20 @@ export type CreateGuestCommunications = z.infer<
 >;
 
 /**
- * Schema for updating a guest communications
+ * Schema for updating a guest communication
  */
-export const UpdateGuestCommunicationsSchema =
-	GuestCommunicationsSchema.partial();
+export const UpdateGuestCommunicationsSchema = GuestCommunicationsSchema.pick({
+	status: true,
+	external_message_id: true,
+	sent_at: true,
+	delivered_at: true,
+	opened_at: true,
+	clicked_at: true,
+	failed_at: true,
+	failure_reason: true,
+	attachments: true,
+	metadata: true,
+}).partial();
 
 export type UpdateGuestCommunications = z.infer<
 	typeof UpdateGuestCommunicationsSchema

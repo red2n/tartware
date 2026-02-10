@@ -5,5 +5,5 @@ import { config } from "../config.js";
 export const kafka = new Kafka({
   clientId: config.kafka.clientId,
   brokers: config.kafka.brokers,
-  logLevel: logLevel.NOTHING,
+  logLevel: logLevel.ERROR,
 });

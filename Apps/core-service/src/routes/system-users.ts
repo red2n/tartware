@@ -1,5 +1,9 @@
 import { buildRouteSchema, errorResponseSchema, schemaFromZod } from "@tartware/openapi";
-import { UserWithTenantsSchema } from "@tartware/schemas";
+import {
+  CreateUserRequestSchema,
+  CreateUserResponseSchema,
+  UserWithTenantsSchema,
+} from "@tartware/schemas";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 
@@ -11,14 +15,20 @@ import { sanitizeForJson } from "../utils/sanitize.js";
 
 const SystemUserListQuerySchema = z.object({
   limit: z.coerce.number().int().positive().max(500).default(100),
+  offset: z.coerce.number().int().nonnegative().default(0),
   tenant_id: z.string().uuid().optional(),
 });
 
-const SystemUserListResponseSchema = z.array(
-  UserWithTenantsSchema.extend({
-    version: z.string(),
-  }),
-);
+const SystemUserListResponseSchema = z.object({
+  users: z.array(
+    UserWithTenantsSchema.extend({
+      version: z.string(),
+    }),
+  ),
+  count: z.number().int().nonnegative(),
+  limit: z.number().int().positive(),
+  offset: z.number().int().nonnegative(),
+});
 const SystemUserListQueryJsonSchema = schemaFromZod(
   SystemUserListQuerySchema,
   "SystemUserListQuery",
@@ -30,25 +40,7 @@ const SystemUserListResponseJsonSchema = schemaFromZod(
 
 const SYSTEM_USERS_TAG = "System Users";
 
-const CreateUserSchema = z.object({
-  username: z.string().min(3).max(50),
-  email: z.string().email(),
-  password: z.string().min(8),
-  first_name: z.string().min(1).max(100),
-  last_name: z.string().min(1).max(100),
-  phone: z.string().optional(),
-  tenant_id: z.string().uuid().optional(),
-  role: z.enum(["VIEWER", "STAFF", "MANAGER", "ADMIN", "OWNER"]).optional(),
-});
-
-const CreateUserResponseSchema = z.object({
-  id: z.string().uuid(),
-  username: z.string(),
-  email: z.string(),
-  message: z.string(),
-});
-
-const CreateUserJsonSchema = schemaFromZod(CreateUserSchema, "CreateUser");
+const CreateUserJsonSchema = schemaFromZod(CreateUserRequestSchema, "CreateUser");
 const CreateUserResponseJsonSchema = schemaFromZod(CreateUserResponseSchema, "CreateUserResponse");
 
 export const registerSystemUserRoutes = (app: FastifyInstance): void => {
@@ -73,7 +65,7 @@ export const registerSystemUserRoutes = (app: FastifyInstance): void => {
         throw request.server.httpErrors.unauthorized("System admin authentication required");
       }
 
-      const data = CreateUserSchema.parse(request.body);
+      const data = CreateUserRequestSchema.parse(request.body);
       const passwordHash = await hashPassword(data.password);
 
       // PR feedback: Check for both username AND email conflicts before insert
@@ -175,8 +167,8 @@ export const registerSystemUserRoutes = (app: FastifyInstance): void => {
         );
       }
 
-      const { limit, tenant_id } = SystemUserListQuerySchema.parse(request.query ?? {});
-      const users = await listUsers({ limit, tenantId: tenant_id });
+      const { limit, offset, tenant_id } = SystemUserListQuerySchema.parse(request.query ?? {});
+      const users = await listUsers({ limit, offset, tenantId: tenant_id });
 
       await logSystemAdminEvent({
         adminId: adminContext.adminId,
@@ -190,7 +182,9 @@ export const registerSystemUserRoutes = (app: FastifyInstance): void => {
         sessionId: adminContext.sessionId,
       });
 
-      return SystemUserListResponseSchema.parse(sanitizeForJson(users));
+      return SystemUserListResponseSchema.parse(
+        sanitizeForJson({ users, count: users.length, limit, offset }),
+      );
     },
   );
 };

@@ -90,6 +90,7 @@ const commandCenter = {
 const grpc = {
   host: process.env.GRPC_HOST ?? "0.0.0.0",
   port: toNumber(process.env.GRPC_PORT, 4400),
+  authToken: process.env.GRPC_AUTH_TOKEN ?? "",
 };
 
 const consumerEmailChannel = {

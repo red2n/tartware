@@ -194,3 +194,35 @@ CREATE TABLE IF NOT EXISTS promotional_codes (
 
 
 COMMENT ON TABLE promotional_codes IS 'Manages promotional codes, discounts, and usage tracking';
+COMMENT ON COLUMN promotional_codes.promo_id IS 'Unique identifier for the promotional code';
+COMMENT ON COLUMN promotional_codes.tenant_id IS 'Tenant owning this promotional code';
+COMMENT ON COLUMN promotional_codes.property_id IS 'Property this promo applies to, NULL for tenant-wide';
+COMMENT ON COLUMN promotional_codes.promo_code IS 'Unique code guests enter to redeem the promotion';
+COMMENT ON COLUMN promotional_codes.promo_name IS 'Human-readable name of the promotion';
+COMMENT ON COLUMN promotional_codes.promo_type IS 'Type of promotion (discount_percent, free_night, bonus_points, etc.)';
+COMMENT ON COLUMN promotional_codes.promo_status IS 'Current lifecycle status of the promo (draft, active, expired, etc.)';
+COMMENT ON COLUMN promotional_codes.valid_from IS 'Start date when the promo code becomes redeemable';
+COMMENT ON COLUMN promotional_codes.valid_to IS 'End date after which the promo code can no longer be redeemed';
+COMMENT ON COLUMN promotional_codes.discount_type IS 'How the discount is calculated (percentage, fixed_amount, free_night, upgrade)';
+COMMENT ON COLUMN promotional_codes.discount_percent IS 'Percentage discount applied when type is percentage';
+COMMENT ON COLUMN promotional_codes.discount_amount IS 'Fixed monetary discount applied when type is fixed_amount';
+COMMENT ON COLUMN promotional_codes.max_discount_amount IS 'Maximum discount cap for percentage-based promotions';
+COMMENT ON COLUMN promotional_codes.has_usage_limit IS 'Whether this promo has a finite number of total redemptions';
+COMMENT ON COLUMN promotional_codes.total_usage_limit IS 'Maximum total number of times this code can be redeemed';
+COMMENT ON COLUMN promotional_codes.usage_count IS 'Number of times this code has been redeemed so far';
+COMMENT ON COLUMN promotional_codes.remaining_uses IS 'Number of remaining redemptions available';
+COMMENT ON COLUMN promotional_codes.per_user_limit IS 'Maximum number of times a single guest can use this code';
+COMMENT ON COLUMN promotional_codes.minimum_stay_nights IS 'Minimum nights required in the reservation to use this promo';
+COMMENT ON COLUMN promotional_codes.minimum_booking_amount IS 'Minimum booking total required to qualify for this promo';
+COMMENT ON COLUMN promotional_codes.applicable_room_types IS 'Room type UUIDs this promo can be applied to';
+COMMENT ON COLUMN promotional_codes.applicable_rate_codes IS 'Rate codes this promo is compatible with';
+COMMENT ON COLUMN promotional_codes.combinable_with_other_promos IS 'Whether this code can be stacked with other promotions';
+COMMENT ON COLUMN promotional_codes.campaign_id IS 'Marketing campaign this promo is associated with';
+COMMENT ON COLUMN promotional_codes.times_redeemed IS 'Total successful redemptions of this promo code';
+COMMENT ON COLUMN promotional_codes.total_discount_given IS 'Cumulative monetary discount issued through this code';
+COMMENT ON COLUMN promotional_codes.total_revenue_generated IS 'Total booking revenue attributed to this promotional code';
+COMMENT ON COLUMN promotional_codes.conversion_rate IS 'Percentage of code views or applications that converted to bookings';
+COMMENT ON COLUMN promotional_codes.auto_apply IS 'Whether this promo is automatically applied when conditions are met';
+COMMENT ON COLUMN promotional_codes.requires_approval IS 'Whether redemption requires manual approval before applying';
+
+\echo 'promotional_codes table created successfully!'

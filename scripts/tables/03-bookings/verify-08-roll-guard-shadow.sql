@@ -1,8 +1,9 @@
 -- =====================================================
 -- verify-08-roll-guard-shadow.sql
 -- Verification Script for Roll Service & Availability Guard Shadow Tables
--- Category: 03-bookings (shadow observability) - 5 tables
+-- Category: 03-bookings (shadow observability) - 6 tables
 -- Date: 2025-10-19
+-- Updated: 2026-02-09
 -- =====================================================
 
 \c tartware
@@ -10,14 +11,14 @@
 \echo ''
 \echo '===================================================='
 \echo '  CATEGORY: ROLL SERVICE & AVAILABILITY GUARD TABLES'
-\echo '  Tables: 5 | Description: Shadow ledgers, checkpoints, audits, guard metadata'
+\echo '  Tables: 6 | Description: Shadow ledgers, checkpoints, audits, guard metadata, inventory locks'
 \echo '===================================================='
 \echo ''
 
 -- =====================================================
 -- 1. CHECK IF ALL TABLES EXIST
 -- =====================================================
-\echo '1. Checking if all 5 tables exist...'
+\echo '1. Checking if all 6 tables exist...'
 
 DO $$
 DECLARE
@@ -26,7 +27,8 @@ DECLARE
         'roll_service_backfill_checkpoint',
         'roll_service_consumer_offsets',
         'inventory_lock_audits',
-        'reservation_guard_locks'
+        'reservation_guard_locks',
+        'inventory_locks_shadow'
     ];
     v_table TEXT;
     v_missing_tables TEXT[] := '{}'::TEXT[];
@@ -53,7 +55,7 @@ BEGIN
         RAISE WARNING 'Missing tables: %', array_to_string(v_missing_tables, ', ');
         RAISE EXCEPTION 'Roll/Guard verification FAILED - missing tables!';
     ELSE
-        RAISE NOTICE '✓✓✓ All 5 Roll/Guard tables exist!';
+        RAISE NOTICE '✓✓✓ All 6 Roll/Guard tables exist!';
     END IF;
 END $$;
 
@@ -80,7 +82,8 @@ WHERE t.table_schema = 'public'
         'roll_service_backfill_checkpoint',
         'roll_service_consumer_offsets',
         'inventory_lock_audits',
-        'reservation_guard_locks'
+        'reservation_guard_locks',
+        'inventory_locks_shadow'
     )
 GROUP BY t.table_schema, t.table_name
 ORDER BY t.table_name;
@@ -129,15 +132,16 @@ BEGIN
             'roll_service_backfill_checkpoint',
             'roll_service_consumer_offsets',
             'inventory_lock_audits',
-            'reservation_guard_locks'
+            'reservation_guard_locks',
+            'inventory_locks_shadow'
         );
 
-    RAISE NOTICE 'Tables Found: % / 5', v_table_count;
-    IF v_table_count = 5 THEN
+    RAISE NOTICE 'Tables Found: % / 6', v_table_count;
+    IF v_table_count = 6 THEN
         RAISE NOTICE '✓✓✓ ROLL / GUARD VERIFICATION PASSED ✓✓✓';
     ELSE
         RAISE WARNING '⚠⚠⚠ ROLL / GUARD VERIFICATION FAILED ⚠⚠⚠';
-        RAISE WARNING 'Expected 5 tables, found %', v_table_count;
+        RAISE WARNING 'Expected 6 tables, found %', v_table_count;
     END IF;
 END $$;
 

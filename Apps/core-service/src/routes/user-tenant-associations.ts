@@ -11,6 +11,7 @@ import { sanitizeForJson } from "../utils/sanitize.js";
 
 const AssociationListQuerySchema = z.object({
   limit: z.coerce.number().int().positive().max(100).default(50),
+  offset: z.coerce.number().int().min(0).default(0),
   tenant_id: z.string().uuid(),
   user_id: z.string().uuid().optional(),
   role: TenantRoleEnum.optional(),
@@ -100,12 +101,12 @@ export const registerUserTenantAssociationRoutes = (app: FastifyInstance): void 
       }),
     },
     async (request) => {
-      const { limit, tenant_id, user_id, role, is_active } = AssociationListQuerySchema.parse(
-        request.query,
-      );
+      const { limit, offset, tenant_id, user_id, role, is_active } =
+        AssociationListQuerySchema.parse(request.query);
 
       const associations = await listUserTenantAssociations({
         limit,
+        offset,
         tenantId: tenant_id,
         userId: user_id,
         role,

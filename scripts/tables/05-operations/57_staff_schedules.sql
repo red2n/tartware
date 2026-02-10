@@ -201,3 +201,5 @@ COMMENT ON COLUMN staff_schedules.shift_type IS 'Type of shift: morning, afterno
 COMMENT ON COLUMN staff_schedules.schedule_status IS 'Current status: draft, scheduled, confirmed, in_progress, completed, no_show, cancelled, swapped, adjusted';
 COMMENT ON COLUMN staff_schedules.overtime_rate_multiplier IS 'Multiplier for overtime pay (e.g., 1.5 for time-and-a-half)';
 COMMENT ON COLUMN staff_schedules.assigned_tasks IS 'JSON array of tasks assigned during this shift';
+
+\echo 'staff_schedules table created successfully!'

@@ -23,6 +23,8 @@ const HOUSEKEEPING_COMMAND_TAG = "Housekeeping Commands";
 const ROOM_COMMAND_TAG = "Room Commands";
 const BILLING_COMMAND_TAG = "Billing Commands";
 const RECOMMENDATION_PROXY_TAG = "Recommendations";
+const NOTIFICATION_PROXY_TAG = "Notification Proxy";
+const NOTIFICATION_COMMAND_TAG = "Notification Commands";
 
 const healthResponseSchema = {
   type: "object",
@@ -138,6 +140,24 @@ const tenantReservationParamsSchema = {
     },
   },
   required: ["tenantId", "reservationId"],
+  additionalProperties: false,
+} as const satisfies JsonSchema;
+
+const waitlistConvertParamsSchema = {
+  type: "object",
+  properties: {
+    tenantId: {
+      type: "string",
+      format: "uuid",
+      description: "Tenant identifier.",
+    },
+    waitlistId: {
+      type: "string",
+      format: "uuid",
+      description: "Waitlist entry identifier.",
+    },
+  },
+  required: ["tenantId", "waitlistId"],
   additionalProperties: false,
 } as const satisfies JsonSchema;
 
@@ -331,12 +351,35 @@ export const buildServer = () => {
       requiredModules: "core",
     });
 
+    /** Resolves tenant_id from query string for reservation routes. */
+    const tenantScopeFromQuery = app.withTenantScope({
+      resolveTenantId: (request) => (request.query as { tenant_id?: string }).tenant_id,
+      minRole: "STAFF",
+      requiredModules: "core",
+    });
+
     app.get(
       "/v1/reservations",
       {
+        preHandler: tenantScopeFromQuery,
         schema: buildRouteSchema({
           tag: RESERVATION_PROXY_TAG,
           summary: "Proxy reservation queries to core service.",
+          response: {
+            200: jsonObjectSchema,
+          },
+        }),
+      },
+      proxyCore,
+    );
+
+    app.get(
+      "/v1/reservations/:id",
+      {
+        preHandler: tenantScopeFromQuery,
+        schema: buildRouteSchema({
+          tag: RESERVATION_PROXY_TAG,
+          summary: "Get a single reservation by ID with folio and status history.",
           response: {
             200: jsonObjectSchema,
           },
@@ -480,6 +523,30 @@ export const buildServer = () => {
         }),
       },
       reservationHandler,
+    );
+
+    app.post(
+      "/v1/tenants/:tenantId/reservations/:reservationId/cancel",
+      {
+        preHandler: tenantScopeFromParams,
+        schema: buildRouteSchema({
+          tag: RESERVATION_PROXY_TAG,
+          summary: "Cancel a reservation via Command Center.",
+          params: tenantReservationParamsSchema,
+          body: jsonObjectSchema,
+          response: {
+            202: jsonObjectSchema,
+          },
+        }),
+      },
+      (request, reply) =>
+        forwardCommandWithParamId({
+          request,
+          reply,
+          commandName: "reservation.cancel",
+          paramKey: "reservationId",
+          payloadKey: "reservation_id",
+        }),
     );
 
     app.post(
@@ -674,6 +741,112 @@ export const buildServer = () => {
         }),
     );
 
+    app.post(
+      "/v1/tenants/:tenantId/reservations/:reservationId/no-show",
+      {
+        preHandler: tenantScopeFromParams,
+        schema: buildRouteSchema({
+          tag: RESERVATION_PROXY_TAG,
+          summary: "Mark a reservation as no-show via Command Center.",
+          params: tenantReservationParamsSchema,
+          body: jsonObjectSchema,
+          response: {
+            202: jsonObjectSchema,
+          },
+        }),
+      },
+      (request, reply) =>
+        forwardCommandWithParamId({
+          request,
+          reply,
+          commandName: "reservation.no_show",
+          paramKey: "reservationId",
+          payloadKey: "reservation_id",
+        }),
+    );
+
+    app.post(
+      "/v1/tenants/:tenantId/reservations/walk-in",
+      {
+        preHandler: tenantScopeFromParams,
+        schema: buildRouteSchema({
+          tag: RESERVATION_PROXY_TAG,
+          summary:
+            "Walk-in express check-in: create reservation + assign room + check-in atomically.",
+          params: reservationParamsSchema,
+          body: jsonObjectSchema,
+          response: {
+            202: jsonObjectSchema,
+          },
+        }),
+      },
+      async (request, reply) => {
+        const { tenantId } = request.params as { tenantId: string };
+        const body = (request.body ?? {}) as Record<string, unknown>;
+        return submitCommand({
+          request,
+          reply,
+          commandName: "reservation.walkin_checkin",
+          tenantId,
+          payload: { ...body, tenant_id: tenantId },
+        });
+      },
+    );
+
+    app.post(
+      "/v1/tenants/:tenantId/reservations/waitlist",
+      {
+        preHandler: tenantScopeFromParams,
+        schema: buildRouteSchema({
+          tag: RESERVATION_PROXY_TAG,
+          summary: "Add a guest to the room waitlist.",
+          params: reservationParamsSchema,
+          body: jsonObjectSchema,
+          response: {
+            202: jsonObjectSchema,
+          },
+        }),
+      },
+      async (request, reply) => {
+        const { tenantId } = request.params as { tenantId: string };
+        const body = (request.body ?? {}) as Record<string, unknown>;
+        return submitCommand({
+          request,
+          reply,
+          commandName: "reservation.waitlist_add",
+          tenantId,
+          payload: { ...body, tenant_id: tenantId },
+        });
+      },
+    );
+
+    app.post(
+      "/v1/tenants/:tenantId/reservations/waitlist/:waitlistId/convert",
+      {
+        preHandler: tenantScopeFromParams,
+        schema: buildRouteSchema({
+          tag: RESERVATION_PROXY_TAG,
+          summary: "Convert a waitlist entry into a confirmed reservation.",
+          params: waitlistConvertParamsSchema,
+          body: jsonObjectSchema,
+          response: {
+            202: jsonObjectSchema,
+          },
+        }),
+      },
+      async (request, reply) => {
+        const { tenantId, waitlistId } = request.params as { tenantId: string; waitlistId: string };
+        const body = (request.body ?? {}) as Record<string, unknown>;
+        return submitCommand({
+          request,
+          reply,
+          commandName: "reservation.waitlist_convert",
+          tenantId,
+          payload: { ...body, tenant_id: tenantId, waitlist_id: waitlistId },
+        });
+      },
+    );
+
     app.all(
       "/v1/auth",
       {
@@ -823,6 +996,9 @@ export const buildServer = () => {
 
     const proxyBilling = async (request: FastifyRequest, reply: FastifyReply) =>
       proxyRequest(request, reply, serviceTargets.billingServiceUrl);
+
+    const proxyNotifications = async (request: FastifyRequest, reply: FastifyReply) =>
+      proxyRequest(request, reply, serviceTargets.notificationServiceUrl);
 
     app.get(
       "/v1/guests",
@@ -2178,6 +2354,52 @@ export const buildServer = () => {
         }),
     );
 
+    app.post(
+      "/v1/tenants/:tenantId/billing/folios/close",
+      {
+        preHandler: tenantScopeFromParams,
+        schema: buildRouteSchema({
+          tag: BILLING_COMMAND_TAG,
+          summary: "Close/settle a folio via the Command Center.",
+          params: reservationParamsSchema,
+          body: jsonObjectSchema,
+          response: {
+            202: jsonObjectSchema,
+          },
+        }),
+      },
+      (request, reply) =>
+        forwardCommandWithTenant({
+          request,
+          reply,
+          commandName: "billing.folio.close",
+        }),
+    );
+
+    app.post(
+      "/v1/tenants/:tenantId/billing/payments/:paymentId/void",
+      {
+        preHandler: tenantScopeFromParams,
+        schema: buildRouteSchema({
+          tag: BILLING_COMMAND_TAG,
+          summary: "Void a previously authorized payment via the Command Center.",
+          params: tenantPaymentParamsSchema,
+          body: jsonObjectSchema,
+          response: {
+            202: jsonObjectSchema,
+          },
+        }),
+      },
+      (request, reply) =>
+        forwardCommandWithParamId({
+          request,
+          reply,
+          commandName: "billing.payment.void",
+          paramKey: "paymentId",
+          payloadKey: "payment_id",
+        }),
+    );
+
     app.get(
       "/v1/billing/*",
       {
@@ -2250,6 +2472,158 @@ export const buildServer = () => {
         }),
       },
       proxyHousekeeping,
+    );
+
+    // ─── Notification Routes ──────────────────────────────────────
+
+    app.get(
+      "/v1/tenants/:tenantId/notifications/templates",
+      {
+        preHandler: tenantScopeFromParams,
+        schema: buildRouteSchema({
+          tag: NOTIFICATION_PROXY_TAG,
+          summary: "List notification templates for a tenant.",
+          params: reservationParamsSchema,
+          response: {
+            200: jsonObjectSchema,
+          },
+        }),
+      },
+      proxyNotifications,
+    );
+
+    app.get(
+      "/v1/tenants/:tenantId/notifications/templates/:templateId",
+      {
+        preHandler: tenantScopeFromParams,
+        schema: buildRouteSchema({
+          tag: NOTIFICATION_PROXY_TAG,
+          summary: "Get a specific notification template.",
+          response: {
+            200: jsonObjectSchema,
+          },
+        }),
+      },
+      proxyNotifications,
+    );
+
+    app.post(
+      "/v1/tenants/:tenantId/notifications/templates",
+      {
+        preHandler: tenantScopeFromParams,
+        schema: buildRouteSchema({
+          tag: NOTIFICATION_COMMAND_TAG,
+          summary: "Create a notification template via the Command Center.",
+          params: reservationParamsSchema,
+          body: jsonObjectSchema,
+          response: {
+            202: jsonObjectSchema,
+          },
+        }),
+      },
+      (request, reply) =>
+        forwardCommandWithTenant({
+          request,
+          reply,
+          commandName: "notification.template.create",
+        }),
+    );
+
+    app.put(
+      "/v1/tenants/:tenantId/notifications/templates/:templateId",
+      {
+        preHandler: tenantScopeFromParams,
+        schema: buildRouteSchema({
+          tag: NOTIFICATION_COMMAND_TAG,
+          summary: "Update a notification template via the Command Center.",
+          body: jsonObjectSchema,
+          response: {
+            202: jsonObjectSchema,
+          },
+        }),
+      },
+      (request, reply) =>
+        forwardCommandWithParamId({
+          request,
+          reply,
+          commandName: "notification.template.update",
+          paramKey: "templateId",
+          payloadKey: "template_id",
+        }),
+    );
+
+    app.delete(
+      "/v1/tenants/:tenantId/notifications/templates/:templateId",
+      {
+        preHandler: tenantScopeFromParams,
+        schema: buildRouteSchema({
+          tag: NOTIFICATION_COMMAND_TAG,
+          summary: "Delete a notification template via the Command Center.",
+          response: {
+            202: jsonObjectSchema,
+          },
+        }),
+      },
+      (request, reply) =>
+        forwardCommandWithParamId({
+          request,
+          reply,
+          commandName: "notification.template.delete",
+          paramKey: "templateId",
+          payloadKey: "template_id",
+        }),
+    );
+
+    app.post(
+      "/v1/tenants/:tenantId/notifications/send",
+      {
+        preHandler: tenantScopeFromParams,
+        schema: buildRouteSchema({
+          tag: NOTIFICATION_COMMAND_TAG,
+          summary: "Send a notification to a guest via the Command Center.",
+          params: reservationParamsSchema,
+          body: jsonObjectSchema,
+          response: {
+            202: jsonObjectSchema,
+          },
+        }),
+      },
+      (request, reply) =>
+        forwardCommandWithTenant({
+          request,
+          reply,
+          commandName: "notification.send",
+        }),
+    );
+
+    app.get(
+      "/v1/tenants/:tenantId/notifications/guests/:guestId/communications",
+      {
+        preHandler: tenantScopeFromParams,
+        schema: buildRouteSchema({
+          tag: NOTIFICATION_PROXY_TAG,
+          summary: "List guest communication history.",
+          response: {
+            200: jsonObjectSchema,
+          },
+        }),
+      },
+      proxyNotifications,
+    );
+
+    app.get(
+      "/v1/tenants/:tenantId/notifications/communications/:communicationId",
+      {
+        preHandler: tenantScopeFromParams,
+        schema: buildRouteSchema({
+          tag: NOTIFICATION_PROXY_TAG,
+          summary: "Get a specific guest communication.",
+          response: {
+            200: jsonObjectSchema,
+          },
+        }),
+      },
+      proxyNotifications,
     );
   });
 

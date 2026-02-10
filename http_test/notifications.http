@@ -1,0 +1,221 @@
+###############################################################################
+# NOTIFICATION SERVICE - Templates, Sending & Communication History
+# Routes via API Gateway (localhost:8080) -> notification-service (port 3055)
+#
+# Content:
+#   - Notification templates (list, get, create, update, delete)
+#   - Send notifications to guests
+#   - Guest communication history
+#
+# Related files:
+#   - command-center.http (command dispatch alternative)
+#   - _environment.http (shared auth token)
+#
+###############################################################################
+
+@baseUrl = http://localhost:8080
+@tenantId = 11111111-1111-1111-1111-111111111111
+@propertyId = 22222222-2222-2222-2222-222222222222
+@guestId = REPLACE_WITH_GUEST_ID
+@templateId = REPLACE_WITH_TEMPLATE_ID
+@communicationId = REPLACE_WITH_COMMUNICATION_ID
+
+###############################################################################
+# 1. LOGIN - Get Access Token
+###############################################################################
+
+# @name login
+POST {{baseUrl}}/v1/auth/login
+Content-Type: application/json
+
+{
+  "username": "setup.admin",
+  "password": "TempPass123"
+}
+
+###
+
+@authToken = {{login.response.body.access_token}}
+
+###############################################################################
+# 2. TEMPLATES - LIST
+###############################################################################
+
+###
+# List all notification templates for tenant
+GET {{baseUrl}}/v1/tenants/{{tenantId}}/notifications/templates
+Authorization: Bearer {{authToken}}
+
+###
+# List templates with pagination
+GET {{baseUrl}}/v1/tenants/{{tenantId}}/notifications/templates?limit=10&offset=0
+Authorization: Bearer {{authToken}}
+
+###############################################################################
+# 3. TEMPLATES - GET BY ID
+###############################################################################
+
+###
+# Get a specific template
+GET {{baseUrl}}/v1/tenants/{{tenantId}}/notifications/templates/{{templateId}}
+Authorization: Bearer {{authToken}}
+
+###############################################################################
+# 4. TEMPLATES - CREATE (Command Dispatch)
+###############################################################################
+
+###
+# Create a reservation confirmation email template
+POST {{baseUrl}}/v1/tenants/{{tenantId}}/notifications/templates
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+X-Request-ID: {{$guid}}
+X-Idempotency-Key: tpl-create-{{$timestamp}}
+
+{
+  "template_name": "Reservation Confirmation",
+  "template_code": "RESERVATION_CONFIRMATION",
+  "channel": "EMAIL",
+  "subject": "Your Reservation at {{property_name}} - Confirmation #{{confirmation_number}}",
+  "body_html": "<h1>Thank you, {{guest_name}}!</h1><p>Your reservation has been confirmed.</p><p>Check-in: {{check_in_date}}<br>Check-out: {{check_out_date}}</p>",
+  "body_text": "Thank you, {{guest_name}}! Your reservation has been confirmed. Check-in: {{check_in_date}}, Check-out: {{check_out_date}}",
+  "is_active": true
+}
+
+###
+# Create an SMS check-in reminder template
+POST {{baseUrl}}/v1/tenants/{{tenantId}}/notifications/templates
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+X-Request-ID: {{$guid}}
+X-Idempotency-Key: tpl-create-sms-{{$timestamp}}
+
+{
+  "template_name": "Check-in Reminder SMS",
+  "template_code": "CHECKIN_REMINDER_SMS",
+  "channel": "SMS",
+  "body_text": "Hi {{guest_name}}, your check-in at {{property_name}} is tomorrow. Confirmation: {{confirmation_number}}. We look forward to welcoming you!",
+  "is_active": true
+}
+
+###############################################################################
+# 5. TEMPLATES - UPDATE (Command Dispatch)
+###############################################################################
+
+###
+# Update an existing template
+PUT {{baseUrl}}/v1/tenants/{{tenantId}}/notifications/templates/{{templateId}}
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+X-Request-ID: {{$guid}}
+X-Idempotency-Key: tpl-update-{{$timestamp}}
+
+{
+  "template_name": "Reservation Confirmation (Updated)",
+  "subject": "Booking Confirmed - {{property_name}} #{{confirmation_number}}",
+  "body_html": "<h1>Welcome, {{guest_name}}!</h1><p>Your booking is confirmed.</p><p>Check-in: {{check_in_date}}<br>Check-out: {{check_out_date}}<br>Room Type: {{room_type}}</p>",
+  "is_active": true
+}
+
+###############################################################################
+# 6. TEMPLATES - DELETE (Command Dispatch)
+###############################################################################
+
+###
+# Delete a template
+DELETE {{baseUrl}}/v1/tenants/{{tenantId}}/notifications/templates/{{templateId}}
+Authorization: Bearer {{authToken}}
+X-Request-ID: {{$guid}}
+X-Idempotency-Key: tpl-delete-{{$timestamp}}
+
+###############################################################################
+# 7. SEND NOTIFICATION (Command Dispatch)
+###############################################################################
+
+###
+# Send an email notification to a guest
+POST {{baseUrl}}/v1/tenants/{{tenantId}}/notifications/send
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+X-Request-ID: {{$guid}}
+X-Idempotency-Key: notify-send-{{$timestamp}}
+
+{
+  "guest_id": "{{guestId}}",
+  "template_code": "RESERVATION_CONFIRMATION",
+  "channel": "EMAIL",
+  "variables": {
+    "guest_name": "Jane Smith",
+    "property_name": "Tartware City Center",
+    "confirmation_number": "CNF-202602-001",
+    "check_in_date": "2026-03-15",
+    "check_out_date": "2026-03-18"
+  }
+}
+
+###
+# Send an SMS notification to a guest
+POST {{baseUrl}}/v1/tenants/{{tenantId}}/notifications/send
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+X-Request-ID: {{$guid}}
+X-Idempotency-Key: notify-send-sms-{{$timestamp}}
+
+{
+  "guest_id": "{{guestId}}",
+  "template_code": "CHECKIN_REMINDER_SMS",
+  "channel": "SMS",
+  "variables": {
+    "guest_name": "Jane Smith",
+    "property_name": "Tartware City Center",
+    "confirmation_number": "CNF-202602-001"
+  }
+}
+
+###############################################################################
+# 8. GUEST COMMUNICATIONS - LIST BY GUEST
+###############################################################################
+
+###
+# List all communications for a guest
+GET {{baseUrl}}/v1/tenants/{{tenantId}}/notifications/guests/{{guestId}}/communications
+Authorization: Bearer {{authToken}}
+
+###
+# List communications with pagination
+GET {{baseUrl}}/v1/tenants/{{tenantId}}/notifications/guests/{{guestId}}/communications?limit=20&offset=0
+Authorization: Bearer {{authToken}}
+
+###############################################################################
+# 9. GUEST COMMUNICATIONS - GET BY ID
+###############################################################################
+
+###
+# Get a specific communication record
+GET {{baseUrl}}/v1/tenants/{{tenantId}}/notifications/communications/{{communicationId}}
+Authorization: Bearer {{authToken}}
+
+###############################################################################
+# REFERENCE
+###############################################################################
+#
+# NOTIFICATION CHANNELS:
+#   EMAIL, SMS, PUSH
+#
+# TEMPLATE VARIABLES (common):
+#   {{guest_name}}, {{property_name}}, {{confirmation_number}},
+#   {{check_in_date}}, {{check_out_date}}, {{room_type}}, {{room_number}}
+#
+# WRITE OPERATIONS:
+#   All notification write operations go through the Command Center.
+#   See command-center.http for full examples of:
+#     POST /v1/commands/notification.template.create/execute
+#     POST /v1/commands/notification.template.update/execute
+#     POST /v1/commands/notification.template.delete/execute
+#     POST /v1/commands/notification.send/execute
+#
+# SAMPLE IDs:
+#   Tenant:    11111111-1111-1111-1111-111111111111
+#   Property:  22222222-2222-2222-2222-222222222222
+#
+###############################################################################

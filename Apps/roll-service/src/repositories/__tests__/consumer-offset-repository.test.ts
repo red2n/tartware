@@ -37,6 +37,7 @@ await runTest("upsertConsumerOffset normalizes optional fields", async () => {
       topic: "reservations.events",
       partition: 2,
       offset: 123n,
+      tenantId: "11111111-1111-1111-1111-111111111111",
     },
     stub,
   );
@@ -65,6 +66,7 @@ await runTest(
         highWatermark: 789,
         eventId: "00000000-0000-0000-0000-000000000003",
         eventCreatedAt,
+        tenantId: "11111111-1111-1111-1111-111111111111",
       },
       stub,
     );

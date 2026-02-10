@@ -114,3 +114,5 @@ COMMENT ON COLUMN guest_notes.note_type IS 'Type of note: preference, complaint,
 COMMENT ON COLUMN guest_notes.alert_trigger IS 'Array of contexts where alert should be shown: checkin, checkout, reservation, pos';
 COMMENT ON COLUMN guest_notes.visible_to_roles IS 'Array of roles that can view this note';
 COMMENT ON COLUMN guest_notes.hide_from_guest IS 'If true, note is internal only and should never be shown to guest';
+
+\echo 'guest_notes table created successfully!'

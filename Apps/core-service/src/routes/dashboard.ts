@@ -245,11 +245,11 @@ export const registerDashboardRoutes = (app: FastifyInstance): void => {
              r.id::text as id,
              'reservation' as type,
              'New reservation created' as title,
-             COALESCE(r.room_number, 'TBD') || ' • ' || g.first_name || ' ' || g.last_name as description,
+             COALESCE(r.room_number, 'TBD') || ' • ' || COALESCE(g.first_name || ' ' || g.last_name, r.guest_name, 'Unknown Guest') as description,
              r.created_at as timestamp,
              'event' as icon
            FROM reservations r
-           JOIN guests g ON r.guest_id = g.id
+           LEFT JOIN guests g ON r.guest_id = g.id
            WHERE r.tenant_id = $1
            AND r.property_id = $2
            AND r.is_deleted = false
@@ -259,11 +259,11 @@ export const registerDashboardRoutes = (app: FastifyInstance): void => {
              r.id::text as id,
              'reservation' as type,
              'New reservation created' as title,
-             COALESCE(r.room_number, 'TBD') || ' • ' || g.first_name || ' ' || g.last_name as description,
+             COALESCE(r.room_number, 'TBD') || ' • ' || COALESCE(g.first_name || ' ' || g.last_name, r.guest_name, 'Unknown Guest') as description,
              r.created_at as timestamp,
              'event' as icon
            FROM reservations r
-           JOIN guests g ON r.guest_id = g.id
+           LEFT JOIN guests g ON r.guest_id = g.id
            WHERE r.tenant_id = $1
            AND r.is_deleted = false
            ORDER BY r.created_at DESC
@@ -308,7 +308,7 @@ export const registerDashboardRoutes = (app: FastifyInstance): void => {
                WHEN r.check_out_date = CURRENT_DATE THEN 'Check-out at ' || TO_CHAR(r.check_out_date, 'HH:MI AM')
                ELSE 'Upcoming reservation'
              END as title,
-             COALESCE(r.room_number, 'TBD') || ' • ' || g.first_name || ' ' || g.last_name as description,
+             COALESCE(r.room_number, 'TBD') || ' • ' || COALESCE(g.first_name || ' ' || g.last_name, r.guest_name, 'Unknown Guest') as description,
              CASE
                WHEN r.check_in_date = CURRENT_DATE THEN r.check_in_date
                ELSE r.check_out_date
@@ -324,7 +324,7 @@ export const registerDashboardRoutes = (app: FastifyInstance): void => {
                ELSE 'event'
              END as icon
            FROM reservations r
-           JOIN guests g ON r.guest_id = g.id
+           LEFT JOIN guests g ON r.guest_id = g.id
            WHERE r.tenant_id = $1
            AND r.property_id = $2
            AND (r.check_in_date = CURRENT_DATE OR r.check_out_date = CURRENT_DATE OR r.check_in_date = CURRENT_DATE + 1)
@@ -339,7 +339,7 @@ export const registerDashboardRoutes = (app: FastifyInstance): void => {
                WHEN r.check_out_date = CURRENT_DATE THEN 'Check-out at ' || TO_CHAR(r.check_out_date, 'HH:MI AM')
                ELSE 'Upcoming reservation'
              END as title,
-             COALESCE(r.room_number, 'TBD') || ' • ' || g.first_name || ' ' || g.last_name as description,
+             COALESCE(r.room_number, 'TBD') || ' • ' || COALESCE(g.first_name || ' ' || g.last_name, r.guest_name, 'Unknown Guest') as description,
              CASE
                WHEN r.check_in_date = CURRENT_DATE THEN r.check_in_date
                ELSE r.check_out_date
@@ -355,7 +355,7 @@ export const registerDashboardRoutes = (app: FastifyInstance): void => {
                ELSE 'event'
              END as icon
            FROM reservations r
-           JOIN guests g ON r.guest_id = g.id
+           LEFT JOIN guests g ON r.guest_id = g.id
            WHERE r.tenant_id = $1
            AND (r.check_in_date = CURRENT_DATE OR r.check_out_date = CURRENT_DATE OR r.check_in_date = CURRENT_DATE + 1)
            AND r.status IN ('CONFIRMED', 'CHECKED_IN')

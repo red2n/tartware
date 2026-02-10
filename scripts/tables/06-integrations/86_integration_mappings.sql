@@ -54,3 +54,21 @@ CREATE TABLE IF NOT EXISTS integration_mappings (
 
 
 COMMENT ON TABLE integration_mappings IS 'Manages field mappings and transformations between integrated systems';
+COMMENT ON COLUMN integration_mappings.mapping_id IS 'Unique identifier for the integration mapping';
+COMMENT ON COLUMN integration_mappings.tenant_id IS 'Tenant owning this mapping configuration';
+COMMENT ON COLUMN integration_mappings.property_id IS 'Property this mapping applies to, NULL for tenant-wide';
+COMMENT ON COLUMN integration_mappings.integration_name IS 'Human-readable name of the integration';
+COMMENT ON COLUMN integration_mappings.integration_type IS 'Category of integration (pms, channel_manager, payment, crm, etc.)';
+COMMENT ON COLUMN integration_mappings.external_system IS 'Name or identifier of the external system being mapped';
+COMMENT ON COLUMN integration_mappings.target_system IS 'Destination system for the mapped data';
+COMMENT ON COLUMN integration_mappings.source_entity IS 'Entity type in the source system being mapped';
+COMMENT ON COLUMN integration_mappings.target_entity IS 'Corresponding entity type in the target system';
+COMMENT ON COLUMN integration_mappings.field_mappings IS 'JSON definition of field-to-field mappings between systems';
+COMMENT ON COLUMN integration_mappings.transformation_rules IS 'JSON rules for data transformation during mapping';
+COMMENT ON COLUMN integration_mappings.is_active IS 'Whether this mapping is currently in use';
+COMMENT ON COLUMN integration_mappings.is_bidirectional IS 'Whether data flows in both directions between systems';
+COMMENT ON COLUMN integration_mappings.sync_frequency IS 'How often data is synchronized (realtime, hourly, daily, weekly, manual)';
+COMMENT ON COLUMN integration_mappings.last_sync_at IS 'Timestamp of the most recent synchronization';
+COMMENT ON COLUMN integration_mappings.next_sync_at IS 'Scheduled timestamp for the next synchronization';
+
+\echo 'integration_mappings table created successfully!'

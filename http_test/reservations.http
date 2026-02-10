@@ -260,6 +260,95 @@ X-Idempotency-Key: deposit-release-{{$timestamp}}
   "refund_method": "ORIGINAL_PAYMENT_METHOD"
 }
 
+###
+# Cancel a reservation
+POST {{baseUrl}}/v1/tenants/{{tenantId}}/reservations/{{reservationId}}/cancel
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+X-Request-ID: {{$guid}}
+X-Idempotency-Key: cancel-{{$timestamp}}
+
+{
+  "reason": "Guest requested cancellation",
+  "cancellation_fee": 0,
+  "refund_deposits": true,
+  "notify_guest": true
+}
+
+###
+# Mark reservation as no-show
+POST {{baseUrl}}/v1/tenants/{{tenantId}}/reservations/{{reservationId}}/no-show
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+X-Request-ID: {{$guid}}
+X-Idempotency-Key: noshow-{{$timestamp}}
+
+{
+  "no_show_fee": 150.00,
+  "charge_first_night": true,
+  "notes": "Guest did not arrive by cutoff time"
+}
+
+###
+# Walk-in express check-in (create + assign + check-in atomically)
+POST {{baseUrl}}/v1/tenants/{{tenantId}}/reservations/walk-in
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+X-Request-ID: {{$guid}}
+X-Idempotency-Key: walkin-{{$timestamp}}
+
+{
+  "property_id": "{{propertyId}}",
+  "guest_first_name": "Walk-In",
+  "guest_last_name": "Guest",
+  "guest_email": "walkin@example.com",
+  "room_type_id": "{{roomTypeId}}",
+  "room_id": "{{room101Id}}",
+  "check_in_date": "2026-02-09",
+  "check_out_date": "2026-02-10",
+  "number_of_adults": 1,
+  "number_of_children": 0,
+  "rate_code": "BAR",
+  "room_rate": 199.00,
+  "payment_method": "CREDIT_CARD",
+  "id_verified": true,
+  "id_type": "DRIVERS_LICENSE"
+}
+
+###
+# Add to room waitlist
+POST {{baseUrl}}/v1/tenants/{{tenantId}}/reservations/waitlist
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+X-Request-ID: {{$guid}}
+X-Idempotency-Key: waitlist-add-{{$timestamp}}
+
+{
+  "property_id": "{{propertyId}}",
+  "guest_id": "{{guestId}}",
+  "room_type_id": "{{roomTypeId}}",
+  "desired_check_in": "2026-03-15",
+  "desired_check_out": "2026-03-18",
+  "adults": 2,
+  "children": 0,
+  "priority": "NORMAL",
+  "notes": "Flexible on dates, prefer high floor"
+}
+
+###
+# Convert waitlist entry to confirmed reservation
+POST {{baseUrl}}/v1/tenants/{{tenantId}}/reservations/waitlist/{{waitlistId}}/convert
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+X-Request-ID: {{$guid}}
+X-Idempotency-Key: waitlist-convert-{{$timestamp}}
+
+{
+  "rate_code": "BAR",
+  "room_rate": 209.00,
+  "send_confirmation": true
+}
+
 ###############################################################################
 # REFERENCE
 ###############################################################################
@@ -292,6 +381,7 @@ X-Idempotency-Key: deposit-release-{{$timestamp}}
 #     POST /v1/commands/reservation.release_deposit/execute
 #
 # REST-STYLE COMMAND DISPATCH (alternative pattern):
+#   POST /v1/tenants/:tenantId/reservations/:reservationId/cancel
 #   POST /v1/tenants/:tenantId/reservations/:reservationId/check-in
 #   POST /v1/tenants/:tenantId/reservations/:reservationId/check-out
 #   POST /v1/tenants/:tenantId/reservations/:reservationId/assign-room
@@ -300,6 +390,10 @@ X-Idempotency-Key: deposit-release-{{$timestamp}}
 #   POST /v1/tenants/:tenantId/reservations/:reservationId/rate-override
 #   POST /v1/tenants/:tenantId/reservations/:reservationId/deposit/add
 #   POST /v1/tenants/:tenantId/reservations/:reservationId/deposit/release
+#   POST /v1/tenants/:tenantId/reservations/:reservationId/no-show
+#   POST /v1/tenants/:tenantId/reservations/walk-in
+#   POST /v1/tenants/:tenantId/reservations/waitlist
+#   POST /v1/tenants/:tenantId/reservations/waitlist/:waitlistId/convert
 #
 # SAMPLE IDs:
 #   Tenant:    11111111-1111-1111-1111-111111111111

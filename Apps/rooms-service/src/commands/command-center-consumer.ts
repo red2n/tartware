@@ -16,6 +16,8 @@ import {
 } from "../lib/metrics.js";
 import { processWithRetry, RetryExhaustedError } from "../lib/retry.js";
 import {
+  handleKeyIssue,
+  handleKeyRevoke,
   handleRoomFeaturesUpdate,
   handleRoomHousekeepingStatusUpdate,
   handleRoomInventoryCommand,
@@ -159,6 +161,18 @@ const routeRoomCommand = async (
       return;
     case "rooms.features.update":
       await handleRoomFeaturesUpdate(envelope.payload, {
+        tenantId: metadata.tenantId,
+        initiatedBy: metadata.initiatedBy ?? null,
+      });
+      return;
+    case "rooms.key.issue":
+      await handleKeyIssue(envelope.payload, {
+        tenantId: metadata.tenantId,
+        initiatedBy: metadata.initiatedBy ?? null,
+      });
+      return;
+    case "rooms.key.revoke":
+      await handleKeyRevoke(envelope.payload, {
         tenantId: metadata.tenantId,
         initiatedBy: metadata.initiatedBy ?? null,
       });

@@ -8,6 +8,150 @@
 import { z } from "zod";
 
 import { uuid } from "../shared/base-schemas.js";
+
+// =====================================================
+// RESERVATION DETAIL (single reservation fetch)
+// =====================================================
+
+/**
+ * Nested folio summary for reservation detail responses.
+ */
+export const ReservationFolioSummarySchema = z.object({
+	folio_id: z.string(),
+	folio_status: z.string(),
+	total_charges: z.number(),
+	total_payments: z.number(),
+	total_credits: z.number(),
+	balance: z.number(),
+});
+export type ReservationFolioSummary = z.infer<typeof ReservationFolioSummarySchema>;
+
+/**
+ * Status history entry for reservation audit trail.
+ */
+export const ReservationStatusHistoryEntrySchema = z.object({
+	previous_status: z.string(),
+	new_status: z.string(),
+	change_reason: z.string().optional(),
+	changed_by: z.string(),
+	changed_at: z.string(),
+});
+export type ReservationStatusHistoryEntry = z.infer<typeof ReservationStatusHistoryEntrySchema>;
+
+/**
+ * Detail schema for single reservation fetch — richer than list item.
+ * Includes nested folio summary, status history, and display fields.
+ */
+export const ReservationDetailSchema = z.object({
+	id: z.string(),
+	tenant_id: z.string(),
+	property_id: z.string(),
+	property_name: z.string().optional(),
+	guest_id: z.string().optional(),
+	guest_name: z.string().optional(),
+	guest_email: z.string().optional(),
+	guest_phone: z.string().optional(),
+	room_type_id: z.string().optional(),
+	room_type_name: z.string().optional(),
+	rate_id: z.string().optional(),
+	confirmation_number: z.string(),
+	reservation_type: z.string().optional(),
+	check_in_date: z.string(),
+	check_out_date: z.string(),
+	booking_date: z.string().optional(),
+	actual_check_in: z.string().optional(),
+	actual_check_out: z.string().optional(),
+	nights: z.number(),
+	room_number: z.string().optional(),
+	number_of_adults: z.number().default(1),
+	number_of_children: z.number().default(0),
+	room_rate: z.number().default(0),
+	total_amount: z.number().default(0),
+	tax_amount: z.number().default(0),
+	discount_amount: z.number().default(0),
+	paid_amount: z.number().default(0),
+	balance_due: z.number().default(0),
+	currency: z.string().default("USD"),
+	status: z.string(),
+	status_display: z.string(),
+	source: z.string().optional(),
+	channel_reference: z.string().optional(),
+	guarantee_type: z.string().optional(),
+	credit_card_last4: z.string().optional(),
+	special_requests: z.string().optional(),
+	internal_notes: z.string().optional(),
+	cancellation_date: z.string().optional(),
+	cancellation_reason: z.string().optional(),
+	cancellation_fee: z.number().optional(),
+	is_no_show: z.boolean().default(false),
+	no_show_date: z.string().optional(),
+	no_show_fee: z.number().optional(),
+	promo_code: z.string().optional(),
+	folio: ReservationFolioSummarySchema.optional(),
+	status_history: z.array(ReservationStatusHistoryEntrySchema).optional(),
+	created_at: z.string(),
+	updated_at: z.string().optional(),
+	version: z.string().default("0"),
+});
+export type ReservationDetail = z.infer<typeof ReservationDetailSchema>;
+
+// =====================================================
+// S23: CHECK-IN BRIEF (Guest Recognition)
+// =====================================================
+
+/** Schema for a single guest note shown at check-in. */
+export const CheckInNoteSchema = z.object({
+	note_id: z.string(),
+	note_type: z.string().nullable().optional(),
+	note_text: z.string().nullable().optional(),
+	alert_level: z.string().nullable().optional(),
+	is_alert: z.boolean().optional(),
+	status: z.string().nullable().optional(),
+});
+
+export type CheckInNote = z.infer<typeof CheckInNoteSchema>;
+
+/** Schema for a single guest preference. */
+export const CheckInPreferenceSchema = z.object({
+	category: z.string().nullable().optional(),
+	preference_type: z.string().nullable().optional(),
+	preference_value: z.string().nullable().optional(),
+	priority: z.number().nullable().optional(),
+	is_mandatory: z.boolean().optional(),
+	is_special_request: z.boolean().optional(),
+});
+
+export type CheckInPreference = z.infer<typeof CheckInPreferenceSchema>;
+
+/** Schema for the full check-in brief response. */
+export const CheckInBriefSchema = z.object({
+	reservation_id: z.string(),
+	guest_id: z.string().nullable().optional(),
+	guest_name: z.string(),
+	guest_email: z.string().nullable().optional(),
+	guest_phone: z.string().nullable().optional(),
+	vip_status: z.string().nullable().optional(),
+	loyalty_tier: z.string().nullable().optional(),
+	loyalty_points: z.number().nullable().optional(),
+	is_blacklisted: z.boolean().optional(),
+	total_stays: z.number().optional(),
+	total_nights: z.number().optional(),
+	total_revenue: z.number().optional(),
+	last_stay_date: z.string().nullable().optional(),
+	room_number: z.string().nullable().optional(),
+	room_type: z.string().nullable().optional(),
+	check_in_date: z.string(),
+	check_out_date: z.string(),
+	special_requests: z.string().nullable().optional(),
+	internal_notes: z.string().nullable().optional(),
+	reservation_type: z.string().nullable().optional(),
+	preferences: z.array(CheckInPreferenceSchema),
+	alerts: z.array(CheckInNoteSchema),
+	notes: z.array(CheckInNoteSchema),
+});
+
+export type CheckInBrief = z.infer<typeof CheckInBriefSchema>;
+
 // =====================================================
 // ALLOTMENTS (Room Blocks)
 // =====================================================

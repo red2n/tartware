@@ -226,6 +226,7 @@ export const mergeGuestProfiles = async ({
         loyalty_tier = $14,
         vip_status = $15,
         is_blacklisted = $16,
+        version = version + 1,
         updated_at = NOW(),
         updated_by = $17
       WHERE tenant_id = $1::uuid
@@ -259,7 +260,8 @@ export const mergeGuestProfiles = async ({
         is_deleted = TRUE,
         deleted_at = NOW(),
         deleted_by = $4,
-        metadata = metadata || jsonb_build_object('merged_into', $2, 'merged_at', NOW())
+        metadata = COALESCE(metadata, '{}'::jsonb) || jsonb_build_object('merged_into', $2::text, 'merged_at', NOW()),
+        version = version + 1
       WHERE tenant_id = $1::uuid
         AND id = $3::uuid
     `,
@@ -323,6 +325,7 @@ export const updateGuestProfile = async ({
           ELSE COALESCE(preferences, '{}'::jsonb) || $8::jsonb
         END,
         marketing_consent = COALESCE($9, marketing_consent),
+        version = version + 1,
         updated_at = NOW(),
         updated_by = $10
       WHERE tenant_id = $1::uuid
@@ -377,6 +380,7 @@ export const updateGuestContact = async ({
           WHEN $5::jsonb IS NULL THEN address
           ELSE COALESCE(address, '{}'::jsonb) || $5::jsonb
         END,
+        version = version + 1,
         updated_at = NOW(),
         updated_by = $6
       WHERE tenant_id = $1::uuid
@@ -431,6 +435,7 @@ export const setGuestLoyalty = async ({
           WHEN notes IS NULL THEN $5
           ELSE CONCAT_WS(E'\\n', notes, $5)
         END,
+        version = version + 1,
         updated_at = NOW(),
         updated_by = $6
       WHERE tenant_id = $1::uuid
@@ -497,6 +502,7 @@ export const setGuestVip = async ({
           WHEN notes IS NULL THEN $4
           ELSE CONCAT_WS(E'\\n', notes, $4)
         END,
+        version = version + 1,
         updated_at = NOW(),
         updated_by = $5
       WHERE tenant_id = $1::uuid
@@ -534,6 +540,7 @@ export const setGuestBlacklist = async ({
       SET
         is_blacklisted = $3,
         blacklist_reason = COALESCE($4, blacklist_reason),
+        version = version + 1,
         updated_at = NOW(),
         updated_by = $5
       WHERE tenant_id = $1::uuid
@@ -616,6 +623,7 @@ export const eraseGuestForGdpr = async ({
           is_deleted = true,
           deleted_at = NOW(),
           deleted_by = $5,
+          version = version + 1,
           updated_at = NOW(),
           updated_by = $5
         WHERE tenant_id = $1::uuid
@@ -714,6 +722,83 @@ export const eraseGuestForGdpr = async ({
     );
     cascadeAudit.incident_reports = incidentsResult.rowCount ?? 0;
 
+    // 9. Cascade anonymization to guest_preferences (health/accessibility/personal data)
+    const prefsResult = await queryWithClient(
+      client,
+      `
+        UPDATE public.guest_preferences
+        SET
+          dietary_restrictions = NULL,
+          food_allergies = NULL,
+          accessibility_notes = NULL,
+          mobility_accessible = false,
+          hearing_accessible = false,
+          visual_accessible = false,
+          service_animal = false,
+          preferred_language = NULL,
+          preferred_contact_method = NULL,
+          marketing_opt_in = false,
+          newsletter_opt_in = false,
+          sms_opt_in = false,
+          notes = NULL,
+          internal_notes = NULL,
+          children_ages = NULL,
+          number_of_children = NULL,
+          pet_type = NULL,
+          celebration_dates = NULL,
+          occasions = NULL,
+          preferred_room_numbers = NULL,
+          avoid_room_numbers = NULL,
+          updated_at = NOW()
+        WHERE tenant_id = $1::uuid AND guest_id = $2::uuid
+      `,
+      [tenantId, command.guest_id],
+    );
+    cascadeAudit.guest_preferences = prefsResult.rowCount ?? 0;
+
+    // 10. Cascade anonymization to guest_documents (identity docs — high-sensitivity PII)
+    const docsResult = await queryWithClient(
+      client,
+      `
+        UPDATE public.guest_documents
+        SET
+          document_number = 'REDACTED',
+          document_name = $3,
+          description = NULL,
+          file_path = NULL,
+          file_name = NULL,
+          verification_notes = NULL,
+          upload_device_info = NULL,
+          notes = NULL,
+          updated_at = NOW()
+        WHERE tenant_id = $1::uuid AND guest_id = $2::uuid
+      `,
+      [tenantId, command.guest_id, redactedName],
+    );
+    cascadeAudit.guest_documents = docsResult.rowCount ?? 0;
+
+    // 11. Cascade anonymization to guest_communications (messages with PII)
+    const commsResult = await queryWithClient(
+      client,
+      `
+        UPDATE public.guest_communications
+        SET
+          sender_name = $3,
+          sender_email = NULL,
+          sender_phone = NULL,
+          recipient_name = $3,
+          recipient_email = NULL,
+          recipient_phone = NULL,
+          subject = 'REDACTED',
+          message = 'REDACTED',
+          attachments = NULL,
+          updated_at = NOW()
+        WHERE tenant_id = $1::uuid AND guest_id = $2::uuid
+      `,
+      [tenantId, command.guest_id, redactedName],
+    );
+    cascadeAudit.guest_communications = commsResult.rowCount ?? 0;
+
     // Log GDPR audit trail for compliance
     guestCommandLogger.info(
       {
@@ -752,6 +837,7 @@ export const updateGuestPreferences = async ({
       SET
         preferences = COALESCE(preferences, '{}'::jsonb) || $3::jsonb,
         marketing_consent = COALESCE($4, marketing_consent),
+        version = version + 1,
         updated_at = NOW(),
         updated_by = $5
       WHERE tenant_id = $1::uuid

@@ -62,6 +62,55 @@ export const GUEST_LIST_SQL = `
     AND ($8::boolean IS NULL OR g.is_blacklisted = $8)
   ORDER BY g.created_at DESC
   LIMIT $1
+  OFFSET $9
+`;
+
+export const GUEST_BY_ID_SQL = `
+  SELECT
+    g.id,
+    g.tenant_id,
+    g.first_name,
+    g.last_name,
+    g.middle_name,
+    g.title,
+    g.date_of_birth,
+    g.gender,
+    g.nationality,
+    g.email,
+    g.phone,
+    g.secondary_phone,
+    g.address,
+    g.id_type,
+    g.id_number,
+    g.passport_number,
+    g.passport_expiry,
+    g.company_name,
+    g.company_tax_id,
+    g.loyalty_tier,
+    g.loyalty_points,
+    g.vip_status,
+    g.preferences,
+    g.marketing_consent,
+    g.communication_preferences,
+    g.total_bookings,
+    g.total_nights,
+    g.total_revenue,
+    g.last_stay_date,
+    g.is_blacklisted,
+    g.blacklist_reason,
+    g.notes,
+    g.metadata,
+    g.created_at,
+    g.updated_at,
+    g.created_by,
+    g.updated_by,
+    g.deleted_at,
+    g.version
+  FROM public.guests g
+  WHERE g.id = $1::uuid
+    AND g.tenant_id = $2::uuid
+    AND COALESCE(g.is_deleted, false) = false
+    AND g.deleted_at IS NULL
 `;
 
 export const GUEST_RESERVATION_STATS_SQL = `
@@ -86,20 +135,20 @@ export const GUEST_RESERVATION_STATS_SQL = `
     SELECT
       tr.guest_id,
       COUNT(*) FILTER (
-        WHERE tr.status IN ('CONFIRMED', 'CHECKED_IN')
+        WHERE tr.status IN ('PENDING', 'CONFIRMED', 'CHECKED_IN')
           AND tr.check_in_date >= CURRENT_DATE
       ) AS upcoming_reservations,
       COUNT(*) FILTER (
         WHERE tr.status = 'CHECKED_OUT'
           AND tr.check_out_date < CURRENT_DATE
       ) AS past_reservations,
-      COUNT(*) FILTER (WHERE tr.status = 'CANCELLED') AS cancelled_reservations,
+      COUNT(*) FILTER (WHERE tr.status IN ('CANCELLED', 'NO_SHOW')) AS cancelled_reservations,
       AVG(GREATEST(1, (tr.check_out_date::date - tr.check_in_date::date))) FILTER (
         WHERE tr.status IN ('CHECKED_IN', 'CHECKED_OUT')
           AND tr.check_out_date IS NOT NULL
       ) AS average_stay_length,
       SUM(COALESCE(tr.total_amount, 0)) FILTER (
-        WHERE tr.status NOT IN ('CANCELLED')
+        WHERE tr.status NOT IN ('CANCELLED', 'NO_SHOW')
       ) AS lifetime_value
     FROM target_reservations tr
     GROUP BY tr.guest_id
@@ -177,6 +226,7 @@ export const GUEST_PREFERENCES_LIST_SQL = `
     AND ($5::boolean IS NULL OR gp.is_active = $5::boolean)
   ORDER BY gp.priority DESC, gp.preference_category, gp.created_at DESC
   LIMIT $1
+  OFFSET $6
 `;
 
 export const GUEST_DOCUMENTS_LIST_SQL = `
@@ -222,6 +272,7 @@ export const GUEST_DOCUMENTS_LIST_SQL = `
     AND ($5::text IS NULL OR gd.verification_status = LOWER($5::text))
   ORDER BY gd.created_at DESC
   LIMIT $1
+  OFFSET $6
 `;
 
 export const GUEST_COMMUNICATIONS_LIST_SQL = `
@@ -254,4 +305,5 @@ export const GUEST_COMMUNICATIONS_LIST_SQL = `
     AND ($6::text IS NULL OR gc.status = UPPER($6::text))
   ORDER BY gc.created_at DESC
   LIMIT $1
+  OFFSET $7
 `;

@@ -194,3 +194,39 @@ CREATE TABLE IF NOT EXISTS social_media_mentions (
 
 
 COMMENT ON TABLE social_media_mentions IS 'Tracks social media mentions with sentiment analysis and response management';
+COMMENT ON COLUMN social_media_mentions.mention_id IS 'Unique identifier for the social media mention';
+COMMENT ON COLUMN social_media_mentions.tenant_id IS 'Tenant owning this mention record';
+COMMENT ON COLUMN social_media_mentions.platform IS 'Social media platform where the mention was posted';
+COMMENT ON COLUMN social_media_mentions.post_id IS 'Unique post identifier from the originating platform';
+COMMENT ON COLUMN social_media_mentions.post_url IS 'Direct URL to the original post on the platform';
+COMMENT ON COLUMN social_media_mentions.post_type IS 'Content format of the post (post, comment, review, story, reel, etc.)';
+COMMENT ON COLUMN social_media_mentions.author_username IS 'Username of the person who created the post';
+COMMENT ON COLUMN social_media_mentions.author_follower_count IS 'Number of followers the author has on the platform';
+COMMENT ON COLUMN social_media_mentions.author_verified IS 'Whether the author has a verified/blue-check account';
+COMMENT ON COLUMN social_media_mentions.guest_id IS 'Associated guest profile if the author is an identified guest';
+COMMENT ON COLUMN social_media_mentions.reservation_id IS 'Associated reservation if the mention relates to a specific stay';
+COMMENT ON COLUMN social_media_mentions.content_text IS 'Full text content of the post or mention';
+COMMENT ON COLUMN social_media_mentions.posted_at IS 'Timestamp when the post was originally published on the platform';
+COMMENT ON COLUMN social_media_mentions.detected_at IS 'Timestamp when the system first detected this mention';
+COMMENT ON COLUMN social_media_mentions.likes_count IS 'Number of likes or reactions on the post';
+COMMENT ON COLUMN social_media_mentions.comments_count IS 'Number of comments on the post';
+COMMENT ON COLUMN social_media_mentions.shares_count IS 'Number of times the post was shared or retweeted';
+COMMENT ON COLUMN social_media_mentions.engagement_rate IS 'Calculated engagement rate as a percentage of reach';
+COMMENT ON COLUMN social_media_mentions.reach IS 'Number of unique users who saw the post';
+COMMENT ON COLUMN social_media_mentions.sentiment IS 'Overall sentiment classification of the mention';
+COMMENT ON COLUMN social_media_mentions.sentiment_score IS 'Numeric sentiment score from -1.0 (negative) to 1.0 (positive)';
+COMMENT ON COLUMN social_media_mentions.mention_category IS 'Business category of the mention (review, complaint, praise, etc.)';
+COMMENT ON COLUMN social_media_mentions.priority IS 'Response priority level (low, medium, high, urgent)';
+COMMENT ON COLUMN social_media_mentions.requires_response IS 'Whether this mention requires a staff response';
+COMMENT ON COLUMN social_media_mentions.responded IS 'Whether staff have responded to the mention';
+COMMENT ON COLUMN social_media_mentions.response_time_minutes IS 'Minutes between detection and first response';
+COMMENT ON COLUMN social_media_mentions.mention_status IS 'Workflow status of the mention (new, reviewed, responded, escalated, etc.)';
+COMMENT ON COLUMN social_media_mentions.assigned_to IS 'Staff member assigned to handle this mention';
+COMMENT ON COLUMN social_media_mentions.escalated IS 'Whether the mention has been escalated to management';
+COMMENT ON COLUMN social_media_mentions.is_crisis IS 'Whether this mention is part of a PR crisis event';
+COMMENT ON COLUMN social_media_mentions.influencer_tier IS 'Influencer classification by follower count (nano through celebrity)';
+COMMENT ON COLUMN social_media_mentions.influence_score IS 'Numeric influence score for prioritizing responses';
+COMMENT ON COLUMN social_media_mentions.led_to_booking IS 'Whether this mention resulted in a booking conversion';
+COMMENT ON COLUMN social_media_mentions.conversion_value IS 'Monetary value of any booking attributed to this mention';
+
+\echo 'social_media_mentions table created successfully!'

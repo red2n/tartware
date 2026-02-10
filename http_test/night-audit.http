@@ -25,6 +25,22 @@
 @promoId = 66666666-6666-6666-6666-666666666666
 
 ###############################################################################
+# LOGIN
+###############################################################################
+
+# @name login
+POST {{baseUrl}}/v1/auth/login
+Content-Type: application/json
+
+{
+  "username": "setup.admin",
+  "password": "TempPass123"
+}
+
+### Extract token
+@authToken = {{login.response.body.access_token}}
+
+###############################################################################
 # NIGHT AUDIT - BUSINESS DATE STATUS
 ###############################################################################
 
@@ -32,7 +48,7 @@
 GET {{baseUrl}}/v1/night-audit/status
     ?tenant_id={{tenantId}}
     &property_id={{propertyId}}
-Content-Type: {{contentType}}
+Authorization: Bearer {{authToken}}
 
 ###############################################################################
 # NIGHT AUDIT - HISTORY
@@ -42,19 +58,19 @@ Content-Type: {{contentType}}
 GET {{baseUrl}}/v1/night-audit/history
     ?tenant_id={{tenantId}}
     &limit=20
-Content-Type: {{contentType}}
+Authorization: Bearer {{authToken}}
 
 ### List night audit history for specific property
 GET {{baseUrl}}/v1/night-audit/history
     ?tenant_id={{tenantId}}
     &property_id={{propertyId}}
     &limit=50
-Content-Type: {{contentType}}
+Authorization: Bearer {{authToken}}
 
 ### Get night audit run detail
 GET {{baseUrl}}/v1/night-audit/runs/{{auditRunId}}
     ?tenant_id={{tenantId}}
-Content-Type: {{contentType}}
+Authorization: Bearer {{authToken}}
 
 ###############################################################################
 # OTA CONNECTIONS
@@ -64,41 +80,41 @@ Content-Type: {{contentType}}
 GET {{baseUrl}}/v1/ota-connections
     ?tenant_id={{tenantId}}
     &limit=100
-Content-Type: {{contentType}}
+Authorization: Bearer {{authToken}}
 
 ### List OTA connections for specific property
 GET {{baseUrl}}/v1/ota-connections
     ?tenant_id={{tenantId}}
     &property_id={{propertyId}}
     &limit=50
-Content-Type: {{contentType}}
+Authorization: Bearer {{authToken}}
 
 ### List active OTA connections only
 GET {{baseUrl}}/v1/ota-connections
     ?tenant_id={{tenantId}}
     &is_active=true
     &limit=50
-Content-Type: {{contentType}}
+Authorization: Bearer {{authToken}}
 
 ### List OTA connections by status (CONNECTED)
 GET {{baseUrl}}/v1/ota-connections
     ?tenant_id={{tenantId}}
     &connection_status=CONNECTED
     &limit=50
-Content-Type: {{contentType}}
+Authorization: Bearer {{authToken}}
 
 ### List OTA connections by status (ERROR)
 GET {{baseUrl}}/v1/ota-connections
     ?tenant_id={{tenantId}}
     &connection_status=ERROR
     &limit=50
-Content-Type: {{contentType}}
+Authorization: Bearer {{authToken}}
 
 ### Get OTA connection sync history
 GET {{baseUrl}}/v1/ota-connections/{{connectionId}}/sync-history
     ?tenant_id={{tenantId}}
     &limit=50
-Content-Type: {{contentType}}
+Authorization: Bearer {{authToken}}
 
 ###############################################################################
 # GROUP BOOKINGS
@@ -108,56 +124,56 @@ Content-Type: {{contentType}}
 GET {{baseUrl}}/v1/group-bookings
     ?tenant_id={{tenantId}}
     &limit=100
-Content-Type: {{contentType}}
+Authorization: Bearer {{authToken}}
 
 ### List group bookings for specific property
 GET {{baseUrl}}/v1/group-bookings
     ?tenant_id={{tenantId}}
     &property_id={{propertyId}}
     &limit=50
-Content-Type: {{contentType}}
+Authorization: Bearer {{authToken}}
 
 ### List active group bookings
 GET {{baseUrl}}/v1/group-bookings
     ?tenant_id={{tenantId}}
     &is_active=true
     &limit=50
-Content-Type: {{contentType}}
+Authorization: Bearer {{authToken}}
 
 ### List group bookings by block status (TENTATIVE)
 GET {{baseUrl}}/v1/group-bookings
     ?tenant_id={{tenantId}}
     &block_status=TENTATIVE
     &limit=50
-Content-Type: {{contentType}}
+Authorization: Bearer {{authToken}}
 
 ### List group bookings by block status (CONFIRMED)
 GET {{baseUrl}}/v1/group-bookings
     ?tenant_id={{tenantId}}
     &block_status=CONFIRMED
     &limit=50
-Content-Type: {{contentType}}
+Authorization: Bearer {{authToken}}
 
 ### List group bookings by type (CORPORATE)
 GET {{baseUrl}}/v1/group-bookings
     ?tenant_id={{tenantId}}
     &group_type=CORPORATE
     &limit=50
-Content-Type: {{contentType}}
+Authorization: Bearer {{authToken}}
 
 ### List group bookings by type (TOUR)
 GET {{baseUrl}}/v1/group-bookings
     ?tenant_id={{tenantId}}
     &group_type=TOUR
     &limit=50
-Content-Type: {{contentType}}
+Authorization: Bearer {{authToken}}
 
 ### List group bookings by type (WEDDING)
 GET {{baseUrl}}/v1/group-bookings
     ?tenant_id={{tenantId}}
     &group_type=WEDDING
     &limit=50
-Content-Type: {{contentType}}
+Authorization: Bearer {{authToken}}
 
 ### List group bookings by arrival date range
 GET {{baseUrl}}/v1/group-bookings
@@ -165,12 +181,12 @@ GET {{baseUrl}}/v1/group-bookings
     &arrival_date_from=2025-01-01
     &arrival_date_to=2025-12-31
     &limit=50
-Content-Type: {{contentType}}
+Authorization: Bearer {{authToken}}
 
 ### Get group booking by ID
 GET {{baseUrl}}/v1/group-bookings/{{groupBookingId}}
     ?tenant_id={{tenantId}}
-Content-Type: {{contentType}}
+Authorization: Bearer {{authToken}}
 
 ###############################################################################
 # PROMOTIONAL CODES
@@ -180,58 +196,59 @@ Content-Type: {{contentType}}
 GET {{baseUrl}}/v1/promo-codes
     ?tenant_id={{tenantId}}
     &limit=100
-Content-Type: {{contentType}}
+Authorization: Bearer {{authToken}}
 
 ### List promotional codes for specific property
 GET {{baseUrl}}/v1/promo-codes
     ?tenant_id={{tenantId}}
     &property_id={{propertyId}}
     &limit=50
-Content-Type: {{contentType}}
+Authorization: Bearer {{authToken}}
 
 ### List active promotional codes
 GET {{baseUrl}}/v1/promo-codes
     ?tenant_id={{tenantId}}
     &is_active=true
     &limit=50
-Content-Type: {{contentType}}
+Authorization: Bearer {{authToken}}
 
 ### List public promotional codes (visible on website)
 GET {{baseUrl}}/v1/promo-codes
     ?tenant_id={{tenantId}}
     &is_public=true
     &limit=50
-Content-Type: {{contentType}}
+Authorization: Bearer {{authToken}}
 
 ### List promotional codes by status (ACTIVE)
 GET {{baseUrl}}/v1/promo-codes
     ?tenant_id={{tenantId}}
     &promo_status=ACTIVE
     &limit=50
-Content-Type: {{contentType}}
+Authorization: Bearer {{authToken}}
 
 ### List promotional codes by status (EXPIRED)
 GET {{baseUrl}}/v1/promo-codes
     ?tenant_id={{tenantId}}
     &promo_status=EXPIRED
     &limit=50
-Content-Type: {{contentType}}
+Authorization: Bearer {{authToken}}
 
 ### Search promotional codes
 GET {{baseUrl}}/v1/promo-codes
     ?tenant_id={{tenantId}}
     &search=SUMMER
     &limit=50
-Content-Type: {{contentType}}
+Authorization: Bearer {{authToken}}
 
 ### Get promotional code by ID
 GET {{baseUrl}}/v1/promo-codes/{{promoId}}
     ?tenant_id={{tenantId}}
-Content-Type: {{contentType}}
+Authorization: Bearer {{authToken}}
 
 ### Validate promotional code
 POST {{baseUrl}}/v1/promo-codes/validate
-Content-Type: {{contentType}}
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
 
 {
     "promo_code": "SUMMER2025",

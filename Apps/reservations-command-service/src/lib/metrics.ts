@@ -86,6 +86,28 @@ const availabilityGuardDurationHistogram = new Histogram({
   registers: [metricsRegistry],
 });
 
+const commandOutcomeCounter = new Counter({
+  name: "reservation_command_outcome_total",
+  help: "Count of reservation command processing outcomes",
+  labelNames: ["command", "status"] as const,
+  registers: [metricsRegistry],
+});
+
+const commandDurationHistogram = new Histogram({
+  name: "reservation_command_duration_seconds",
+  help: "Duration of reservation command processing",
+  labelNames: ["command"] as const,
+  buckets: [0.01, 0.05, 0.1, 0.25, 0.5, 1, 2, 5],
+  registers: [metricsRegistry],
+});
+
+const commandConsumerLagGauge = new Gauge({
+  name: "reservation_command_consumer_lag",
+  help: "Approximate consumer lag for the reservation command consumer",
+  labelNames: ["topic", "partition"] as const,
+  registers: [metricsRegistry],
+});
+
 /**
  * Records a retry attempt for observability dashboards.
  */
@@ -154,4 +176,25 @@ export const recordAvailabilityGuardRequest = (method: string, status: string): 
 
 export const observeAvailabilityGuardDuration = (method: string, durationSeconds: number): void => {
   availabilityGuardDurationHistogram.observe({ method }, durationSeconds);
+};
+
+/**
+ * Records the outcome of a reservation command (success, parse_error, handler_error, duplicate).
+ */
+export const recordCommandOutcome = (commandName: string, status: string): void => {
+  commandOutcomeCounter.labels(commandName, status).inc();
+};
+
+/**
+ * Observes how long it took to process a reservation command.
+ */
+export const observeCommandDuration = (commandName: string, durationSeconds: number): void => {
+  commandDurationHistogram.observe({ command: commandName }, durationSeconds);
+};
+
+/**
+ * Updates the consumer lag gauge for the reservation command consumer.
+ */
+export const setCommandConsumerLag = (topic: string, partition: number, lag: number): void => {
+  commandConsumerLagGauge.set({ topic, partition: String(partition) }, lag);
 };

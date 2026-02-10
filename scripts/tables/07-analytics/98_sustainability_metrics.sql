@@ -399,3 +399,5 @@ COMMENT ON TABLE sustainability_initiatives IS 'Sustainability projects and init
 COMMENT ON COLUMN sustainability_metrics.renewable_energy_percentage IS 'Percentage of total energy from renewable sources (computed)';
 COMMENT ON COLUMN sustainability_metrics.waste_diversion_rate IS 'Percentage of waste diverted from landfill via recycling/composting (computed)';
 COMMENT ON COLUMN sustainability_metrics.net_carbon_emissions_kg IS 'Total emissions minus carbon offsets (computed)';
+
+\echo 'sustainability_metrics table created successfully!'

@@ -240,3 +240,5 @@ COMMENT ON TABLE credit_limits IS 'Manages customer credit limits, utilization, 
 COMMENT ON COLUMN credit_limits.available_credit IS 'Calculated as credit_limit_amount - current_balance (including temporary increases)';
 COMMENT ON COLUMN credit_limits.limit_history IS 'JSON array of historical limit changes: [{date, old_limit, new_limit, reason, changed_by}]';
 COMMENT ON COLUMN credit_limits.temporary_increase_amount IS 'Additional credit available for temporary period';
+
+\echo 'credit_limits table created successfully!'

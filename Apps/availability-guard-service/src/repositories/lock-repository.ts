@@ -30,6 +30,7 @@ export const findConflictingLock = async (
       FROM inventory_locks_shadow
       WHERE tenant_id = $1
         AND status = ANY($2)
+        AND (expires_at IS NULL OR expires_at > NOW())
         AND (
           (room_id IS NOT NULL AND room_id = $3)
           OR (room_id IS NULL AND $3 IS NULL AND room_type_id = $4)
@@ -37,7 +38,8 @@ export const findConflictingLock = async (
         AND NOT ($6 <= stay_start OR $5 >= stay_end)
         AND (id <> $7 OR $7 IS NULL)
       ORDER BY created_at ASC
-      LIMIT 1;
+      LIMIT 1
+      FOR UPDATE;
     `,
     [
       input.tenantId,

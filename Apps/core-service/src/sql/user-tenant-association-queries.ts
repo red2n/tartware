@@ -33,4 +33,5 @@ export const ASSOCIATION_LIST_SQL = `
     AND ($4::boolean IS NULL OR uta.is_active = $4)
   ORDER BY uta.created_at DESC
   LIMIT $5
+  OFFSET $6
 `;

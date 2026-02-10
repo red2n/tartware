@@ -57,6 +57,7 @@ const BillingListQuerySchema = z.object({
       { message: "Invalid payment method" },
     ),
   limit: z.coerce.number().int().positive().max(200).default(100),
+  offset: z.coerce.number().int().min(0).default(0),
 });
 
 type BillingListQuery = z.infer<typeof BillingListQuerySchema>;
@@ -83,6 +84,7 @@ const InvoiceListQuerySchema = z.object({
   reservation_id: z.string().uuid().optional(),
   guest_id: z.string().uuid().optional(),
   limit: z.coerce.number().int().positive().max(200).default(100),
+  offset: z.coerce.number().int().min(0).default(0),
 });
 
 type InvoiceListQuery = z.infer<typeof InvoiceListQuerySchema>;
@@ -104,6 +106,7 @@ const FolioListQuerySchema = z.object({
   reservation_id: z.string().uuid().optional(),
   guest_id: z.string().uuid().optional(),
   limit: z.coerce.number().int().positive().max(200).default(100),
+  offset: z.coerce.number().int().min(0).default(0),
 });
 
 type FolioListQuery = z.infer<typeof FolioListQuerySchema>;
@@ -122,6 +125,7 @@ const ChargePostingListQuerySchema = z.object({
   charge_code: z.string().optional(),
   include_voided: z.coerce.boolean().optional(),
   limit: z.coerce.number().int().positive().max(200).default(100),
+  offset: z.coerce.number().int().min(0).default(0),
 });
 
 type ChargePostingListQuery = z.infer<typeof ChargePostingListQuerySchema>;
@@ -157,7 +161,7 @@ export const registerBillingRoutes = (app: FastifyInstance): void => {
       }),
     },
     async (request) => {
-      const { tenant_id, property_id, status, transaction_type, payment_method, limit } =
+      const { tenant_id, property_id, status, transaction_type, payment_method, limit, offset } =
         BillingListQuerySchema.parse(request.query);
 
       const payments = await listBillingPayments({
@@ -167,6 +171,7 @@ export const registerBillingRoutes = (app: FastifyInstance): void => {
         transactionType: transaction_type,
         paymentMethod: payment_method,
         limit,
+        offset,
       });
 
       return BillingListResponseSchema.parse(payments);
@@ -195,7 +200,7 @@ export const registerBillingRoutes = (app: FastifyInstance): void => {
       }),
     },
     async (request) => {
-      const { tenant_id, property_id, status, reservation_id, guest_id, limit } =
+      const { tenant_id, property_id, status, reservation_id, guest_id, limit, offset } =
         InvoiceListQuerySchema.parse(request.query);
 
       const invoices = await listInvoices({
@@ -205,6 +210,7 @@ export const registerBillingRoutes = (app: FastifyInstance): void => {
         reservationId: reservation_id,
         guestId: guest_id,
         limit,
+        offset,
       });
 
       return InvoiceListResponseSchema.parse(invoices);
@@ -269,8 +275,16 @@ export const registerBillingRoutes = (app: FastifyInstance): void => {
       }),
     },
     async (request) => {
-      const { tenant_id, property_id, folio_status, folio_type, reservation_id, guest_id, limit } =
-        FolioListQuerySchema.parse(request.query);
+      const {
+        tenant_id,
+        property_id,
+        folio_status,
+        folio_type,
+        reservation_id,
+        guest_id,
+        limit,
+        offset,
+      } = FolioListQuerySchema.parse(request.query);
 
       const folios = await listFolios({
         tenantId: tenant_id,
@@ -280,6 +294,7 @@ export const registerBillingRoutes = (app: FastifyInstance): void => {
         reservationId: reservation_id,
         guestId: guest_id,
         limit,
+        offset,
       });
 
       return FolioListResponseSchema.parse(folios);
@@ -352,6 +367,7 @@ export const registerBillingRoutes = (app: FastifyInstance): void => {
         charge_code,
         include_voided,
         limit,
+        offset,
       } = ChargePostingListQuerySchema.parse(request.query);
 
       const charges = await listChargePostings({
@@ -362,6 +378,7 @@ export const registerBillingRoutes = (app: FastifyInstance): void => {
         chargeCode: charge_code,
         includeVoided: include_voided,
         limit,
+        offset,
       });
 
       return ChargePostingListResponseSchema.parse(charges);
@@ -387,6 +404,7 @@ export const registerBillingRoutes = (app: FastifyInstance): void => {
     country_code: z.string().max(3).optional(),
     jurisdiction_level: z.string().optional(),
     limit: z.coerce.number().int().positive().max(500).default(200),
+    offset: z.coerce.number().int().min(0).default(0),
   });
 
   type TaxConfigListQuery = z.infer<typeof TaxConfigListQuerySchema>;
@@ -433,6 +451,7 @@ export const registerBillingRoutes = (app: FastifyInstance): void => {
         country_code,
         jurisdiction_level,
         limit,
+        offset,
       } = TaxConfigListQuerySchema.parse(request.query);
 
       const configs = await listTaxConfigurations({
@@ -443,6 +462,7 @@ export const registerBillingRoutes = (app: FastifyInstance): void => {
         countryCode: country_code,
         jurisdictionLevel: jurisdiction_level,
         limit,
+        offset,
       });
 
       return TaxConfigListResponseSchema.parse(configs);

@@ -272,12 +272,16 @@ export type SeasonType = z.infer<typeof SeasonTypeEnum>;
  * @database reservation_status
  */
 export const ReservationStatusEnum = z.enum([
+	"INQUIRY",
+	"QUOTED",
 	"PENDING",
 	"CONFIRMED",
+	"WAITLISTED",
 	"CHECKED_IN",
 	"CHECKED_OUT",
 	"CANCELLED",
 	"NO_SHOW",
+	"EXPIRED",
 ]);
 export type ReservationStatus = z.infer<typeof ReservationStatusEnum>;
 
@@ -295,6 +299,23 @@ export const ReservationSourceEnum = z.enum([
 	"GROUP",
 ]);
 export type ReservationSource = z.infer<typeof ReservationSourceEnum>;
+
+/**
+ * Reservation Type - Booking category classification
+ * @database reservation_type
+ */
+export const ReservationTypeEnum = z.enum([
+	"TRANSIENT",
+	"CORPORATE",
+	"GROUP",
+	"WHOLESALE",
+	"PACKAGE",
+	"COMPLIMENTARY",
+	"HOUSE_USE",
+	"DAY_USE",
+	"WAITLIST",
+]);
+export type ReservationType = z.infer<typeof ReservationTypeEnum>;
 
 // =====================================================
 // PAYMENT ENUMS
@@ -321,6 +342,7 @@ export type PaymentMethod = z.infer<typeof PaymentMethodEnum>;
  */
 export const PaymentStatusEnum = z.enum([
 	"PENDING",
+	"AUTHORIZED",
 	"PROCESSING",
 	"COMPLETED",
 	"FAILED",
@@ -499,6 +521,7 @@ export const InvoiceStatusEnum = z.enum([
 	"OVERDUE",
 	"CANCELLED",
 	"REFUNDED",
+	"FINALIZED",
 ]);
 export type InvoiceStatus = z.infer<typeof InvoiceStatusEnum>;
 
@@ -1154,6 +1177,7 @@ export const AllEnums = {
 	SeasonTypeEnum,
 	ReservationStatusEnum,
 	ReservationSourceEnum,
+	ReservationTypeEnum,
 	PaymentMethodEnum,
 	PaymentStatusEnum,
 	TransactionTypeEnum,

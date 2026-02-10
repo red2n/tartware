@@ -103,3 +103,5 @@ COMMENT ON TABLE guest_loyalty_programs IS 'Manages guest loyalty program member
 COMMENT ON COLUMN guest_loyalty_programs.program_tier IS 'Loyalty tier level: bronze, silver, gold, platinum, diamond, elite';
 COMMENT ON COLUMN guest_loyalty_programs.points_balance IS 'Current available points balance';
 COMMENT ON COLUMN guest_loyalty_programs.benefits IS 'JSON object containing tier-specific benefits and privileges';
+
+\echo 'guest_loyalty_programs table created successfully!'

@@ -8,18 +8,18 @@
 \echo 'Creating settings_sections table...'
 
 CREATE TABLE IF NOT EXISTS settings_sections (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    category_id UUID NOT NULL REFERENCES settings_categories(id) ON DELETE CASCADE,
-    code VARCHAR(64) NOT NULL,
-    name VARCHAR(160) NOT NULL,
-    description TEXT,
-    icon VARCHAR(64),
-    sort_order INT NOT NULL DEFAULT 0,
-    is_active BOOLEAN NOT NULL DEFAULT TRUE,
-    tags TEXT[] DEFAULT '{}',
-    metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at TIMESTAMPTZ
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),               -- Unique section identifier
+    category_id UUID NOT NULL REFERENCES settings_categories(id) ON DELETE CASCADE, -- Parent category
+    code VARCHAR(64) NOT NULL,                                    -- Machine-readable section key
+    name VARCHAR(160) NOT NULL,                                   -- Display name
+    description TEXT,                                             -- Optional section description
+    icon VARCHAR(64),                                             -- Icon identifier for UI display
+    sort_order INT NOT NULL DEFAULT 0,                            -- Display order within category
+    is_active BOOLEAN NOT NULL DEFAULT TRUE,                      -- Soft-delete / visibility flag
+    tags TEXT[] DEFAULT '{}',                                     -- Searchable tags for filtering
+    metadata JSONB NOT NULL DEFAULT '{}'::jsonb,                  -- Extensible key-value metadata
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),                -- Row creation timestamp
+    updated_at TIMESTAMPTZ                                        -- Last modification timestamp
 );
 
 -- =====================================================

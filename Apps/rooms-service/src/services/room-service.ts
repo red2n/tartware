@@ -378,6 +378,7 @@ export const listRooms = async (options: {
   status?: string;
   housekeepingStatus?: string;
   search?: string;
+  offset?: number;
 }): Promise<RoomListItem[]> => {
   const limit = options.limit ?? 200;
   const tenantId = options.tenantId;
@@ -387,6 +388,7 @@ export const listRooms = async (options: {
     ? options.housekeepingStatus.trim().toUpperCase()
     : null;
   const search = options.search ? `%${options.search.trim()}%` : null;
+  const offset = options.offset ?? 0;
 
   const { rows } = await query<RoomListRow>(ROOM_LIST_SQL, [
     limit,
@@ -395,7 +397,133 @@ export const listRooms = async (options: {
     status,
     housekeepingStatus,
     search,
+    offset,
   ]);
 
   return rows.map(mapRowToRoom);
+};
+
+/**
+ * Available room item for availability search results.
+ */
+type AvailableRoomItem = {
+  room_id: string;
+  room_number: string;
+  room_type_id: string;
+  room_type_name: string;
+  floor: string | null;
+  status: string;
+  housekeeping_status: string;
+  max_occupancy: number;
+  base_rate: number;
+  currency: string;
+  features: string[];
+};
+
+/**
+ * Search available rooms for a date range.
+ * Finds rooms that are AVAILABLE, not locked in inventory_locks_shadow,
+ * and not booked (CHECKED_IN/PENDING/CONFIRMED) for the given dates.
+ */
+export const searchAvailableRooms = async (options: {
+  tenantId: string;
+  propertyId: string;
+  checkInDate: string;
+  checkOutDate: string;
+  roomTypeId?: string;
+  adults?: number;
+  limit?: number;
+  offset?: number;
+}): Promise<AvailableRoomItem[]> => {
+  const limit = options.limit ?? 50;
+  const offset = options.offset ?? 0;
+
+  const { rows } = await query<{
+    room_id: string;
+    room_number: string;
+    room_type_id: string;
+    type_name: string;
+    floor: string | null;
+    status: string;
+    housekeeping_status: string;
+    max_occupancy: number | string | null;
+    base_rate: number | string | null;
+    currency: string | null;
+    features: string | null;
+  }>(
+    `SELECT
+       r.id AS room_id, r.room_number, r.room_type_id,
+       rt.type_name, r.floor, r.status, r.housekeeping_status,
+       rt.max_occupancy,
+       COALESCE(rp.base_rate, rt.base_price, 0) AS base_rate,
+       COALESCE(rp.currency, 'USD') AS currency,
+       r.features
+     FROM public.rooms r
+     JOIN public.room_types rt ON r.room_type_id = rt.id AND rt.tenant_id = r.tenant_id
+     LEFT JOIN LATERAL (
+       SELECT rp2.base_rate, rp2.currency
+       FROM public.rates rp2
+       WHERE rp2.tenant_id = r.tenant_id
+         AND rp2.room_type_id = r.room_type_id
+         AND rp2.status = 'ACTIVE'
+         AND COALESCE(rp2.is_deleted, false) = false
+       ORDER BY rp2.base_rate ASC
+       LIMIT 1
+     ) rp ON TRUE
+     WHERE r.tenant_id = $1::uuid
+       AND r.property_id = $2::uuid
+       AND r.status = 'AVAILABLE'
+       AND r.housekeeping_status IN ('CLEAN', 'INSPECTED')
+       AND COALESCE(r.is_blocked, false) = false
+       AND COALESCE(r.is_out_of_order, false) = false
+       AND COALESCE(r.is_deleted, false) = false
+       AND ($5::uuid IS NULL OR r.room_type_id = $5::uuid)
+       AND ($6::int IS NULL OR rt.max_occupancy >= $6)
+       -- Exclude rooms with overlapping inventory locks
+       AND NOT EXISTS (
+         SELECT 1 FROM public.inventory_locks_shadow ils
+         WHERE ils.room_id = r.id
+           AND ils.tenant_id = r.tenant_id
+           AND ils.status = 'ACTIVE'
+           AND ils.stay_start < $4::date
+           AND ils.stay_end > $3::date
+       )
+       -- Exclude rooms with overlapping active reservations
+       AND NOT EXISTS (
+         SELECT 1 FROM public.reservations res
+         WHERE res.room_number = r.room_number
+           AND res.tenant_id = r.tenant_id
+           AND res.property_id = r.property_id
+           AND res.status IN ('PENDING', 'CONFIRMED', 'CHECKED_IN')
+           AND res.check_in_date < $4::date
+           AND res.check_out_date > $3::date
+       )
+     ORDER BY rt.type_name, r.room_number
+     LIMIT $7
+     OFFSET $8`,
+    [
+      options.tenantId,
+      options.propertyId,
+      options.checkInDate,
+      options.checkOutDate,
+      options.roomTypeId ?? null,
+      options.adults ?? null,
+      limit,
+      offset,
+    ],
+  );
+
+  return rows.map((r) => ({
+    room_id: r.room_id,
+    room_number: r.room_number,
+    room_type_id: r.room_type_id,
+    room_type_name: r.type_name,
+    floor: r.floor,
+    status: r.status,
+    housekeeping_status: r.housekeeping_status,
+    max_occupancy: Number(r.max_occupancy ?? 2),
+    base_rate: Number(r.base_rate ?? 0),
+    currency: r.currency ?? "USD",
+    features: r.features ? (Array.isArray(r.features) ? r.features : []) : [],
+  }));
 };

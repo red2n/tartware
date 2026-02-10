@@ -1,6 +1,6 @@
 import type { Producer, RecordMetadata } from "kafkajs";
 
-import { kafkaConfig } from "../config.js";
+import { commandCenterConfig, kafkaConfig } from "../config.js";
 
 import { kafka } from "./client.js";
 
@@ -40,7 +40,7 @@ export const publishEvent = async (message: KafkaEventMessage): Promise<RecordMe
 };
 
 /**
- * Publishes a payload to the configured dead-letter topic.
+ * Publishes a payload to the configured dead-letter topic for reservation events.
  */
 export const publishDlqEvent = async (
   message: Omit<KafkaEventMessage, "topic">,
@@ -48,6 +48,18 @@ export const publishDlqEvent = async (
   return publishEvent({
     ...message,
     topic: kafkaConfig.dlqTopic,
+  });
+};
+
+/**
+ * Publishes a payload to the command-center dead-letter topic.
+ */
+export const publishCommandDlqEvent = async (
+  message: Omit<KafkaEventMessage, "topic">,
+): Promise<RecordMetadata[]> => {
+  return publishEvent({
+    ...message,
+    topic: commandCenterConfig.dlqTopic,
   });
 };
 

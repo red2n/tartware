@@ -180,6 +180,7 @@ export type ListAllotmentsInput = {
   allotmentType?: string;
   startDateFrom?: string;
   endDateTo?: string;
+  offset?: number;
 };
 
 export const listAllotments = async (
@@ -193,6 +194,7 @@ export const listAllotments = async (
     options.allotmentType ?? null,
     options.startDateFrom ?? null,
     options.endDateTo ?? null,
+    options.offset ?? 0,
   ]);
   return rows.map(mapAllotmentRow);
 };
@@ -296,6 +298,7 @@ export type ListBookingSourcesInput = {
   sourceType?: string;
   isActive?: boolean;
   hasIntegration?: boolean;
+  offset?: number;
 };
 
 export const listBookingSources = async (
@@ -308,6 +311,7 @@ export const listBookingSources = async (
     options.sourceType ?? null,
     options.isActive ?? null,
     options.hasIntegration ?? null,
+    options.offset ?? 0,
   ]);
   return rows.map(mapBookingSourceRow);
 };
@@ -425,6 +429,7 @@ export type ListMarketSegmentsInput = {
   segmentType?: string;
   isActive?: boolean;
   parentSegmentId?: string;
+  offset?: number;
 };
 
 export const listMarketSegments = async (
@@ -437,6 +442,7 @@ export const listMarketSegments = async (
     options.segmentType ?? null,
     options.isActive ?? null,
     options.parentSegmentId ?? null,
+    options.offset ?? 0,
   ]);
   return rows.map(mapMarketSegmentRow);
 };
@@ -513,6 +519,7 @@ export type ListChannelMappingsInput = {
   channelCode?: string;
   entityType?: string;
   isActive?: boolean;
+  offset?: number;
 };
 
 export const listChannelMappings = async (
@@ -525,6 +532,7 @@ export const listChannelMappings = async (
     options.channelCode ?? null,
     options.entityType ?? null,
     options.isActive ?? null,
+    options.offset ?? 0,
   ]);
   return rows.map(mapChannelMappingRow);
 };
@@ -657,6 +665,7 @@ export type ListCompaniesInput = {
   isActive?: boolean;
   creditStatus?: string;
   isBlacklisted?: boolean;
+  offset?: number;
 };
 
 export const listCompanies = async (options: ListCompaniesInput): Promise<CompanyListItem[]> => {
@@ -667,6 +676,7 @@ export const listCompanies = async (options: ListCompaniesInput): Promise<Compan
     options.isActive ?? null,
     options.creditStatus ?? null,
     options.isBlacklisted ?? null,
+    options.offset ?? 0,
   ]);
   return rows.map(mapCompanyRow);
 };
@@ -812,6 +822,7 @@ export type ListMeetingRoomsInput = {
   roomStatus?: string;
   isActive?: boolean;
   minCapacity?: number;
+  offset?: number;
 };
 
 export const listMeetingRooms = async (
@@ -825,6 +836,7 @@ export const listMeetingRooms = async (
     options.roomStatus ?? null,
     options.isActive ?? null,
     options.minCapacity ?? null,
+    options.offset ?? 0,
   ]);
   return rows.map(mapMeetingRoomRow);
 };
@@ -975,6 +987,7 @@ export type ListEventBookingsInput = {
   eventDateFrom?: string;
   eventDateTo?: string;
   meetingRoomId?: string;
+  offset?: number;
 };
 
 export const listEventBookings = async (
@@ -989,6 +1002,7 @@ export const listEventBookings = async (
     options.eventDateFrom ?? null,
     options.eventDateTo ?? null,
     options.meetingRoomId ?? null,
+    options.offset ?? 0,
   ]);
   return rows.map(mapEventBookingRow);
 };
@@ -1090,6 +1104,7 @@ export type ListWaitlistEntriesInput = {
   arrivalDateFrom?: string;
   arrivalDateTo?: string;
   isVip?: boolean;
+  offset?: number;
 };
 
 export const listWaitlistEntries = async (
@@ -1103,6 +1118,7 @@ export const listWaitlistEntries = async (
     options.arrivalDateFrom ?? null,
     options.arrivalDateTo ?? null,
     options.isVip ?? null,
+    options.offset ?? 0,
   ]);
   return rows.map(mapWaitlistEntryRow);
 };
@@ -1236,6 +1252,7 @@ export type ListGroupBookingsInput = {
   arrivalDateTo?: string;
   isActive?: boolean;
   limit?: number;
+  offset?: number;
 };
 
 export const listGroupBookings = async (
@@ -1250,6 +1267,7 @@ export const listGroupBookings = async (
     options.arrivalDateFrom ?? null,
     options.arrivalDateTo ?? null,
     options.isActive ?? null,
+    options.offset ?? 0,
   ]);
   return rows.map(mapGroupBookingRow);
 };
@@ -1377,6 +1395,7 @@ export type ListPromotionalCodesInput = {
   isPublic?: boolean;
   search?: string;
   limit?: number;
+  offset?: number;
 };
 
 export const listPromotionalCodes = async (
@@ -1390,6 +1409,7 @@ export const listPromotionalCodes = async (
     options.isActive ?? null,
     options.isPublic ?? null,
     options.search ?? null,
+    options.offset ?? 0,
   ]);
   return rows.map(mapPromotionalCodeRow);
 };

@@ -48,8 +48,8 @@ CREATE INDEX IF NOT EXISTS idx_guests_address_gin ON guests USING GIN(address);
 CREATE INDEX IF NOT EXISTS idx_guests_preferences_gin ON guests USING GIN(preferences);
 CREATE INDEX IF NOT EXISTS idx_guests_communication_gin ON guests USING GIN(communication_preferences);
 
--- Composite index for tenant guest lookup
-CREATE INDEX IF NOT EXISTS idx_guests_tenant_email ON guests(tenant_id, email) WHERE deleted_at IS NULL;
+-- Composite UNIQUE index for tenant guest lookup (required by ON CONFLICT in upsert_guest)
+CREATE UNIQUE INDEX IF NOT EXISTS idx_guests_tenant_email ON guests(tenant_id, email) WHERE deleted_at IS NULL;
 
 -- Date of birth (for birthday campaigns)
 CREATE INDEX IF NOT EXISTS idx_guests_date_of_birth ON guests(date_of_birth) WHERE deleted_at IS NULL;

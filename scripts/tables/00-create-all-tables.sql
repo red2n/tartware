@@ -30,6 +30,7 @@
 \ir 01-core/10_command_center.sql
 \ir 01-core/11_system_admin_break_glass_codes.sql
 \ir 01-core/12_settings_seed.sql
+\ir 01-core/13_command_idempotency.sql
 
 -- ============================================================================
 -- CATEGORY 2: INVENTORY (Rooms, rates, availability, revenue management)
@@ -78,6 +79,8 @@
 \ir 03-bookings/53_reservation_event_offsets.sql
 \ir 03-bookings/54_reservation_command_lifecycle.sql
 \ir 03-bookings/55_reservation_rate_fallbacks.sql
+\ir 03-bookings/56_overbooking_config.sql
+\ir 03-bookings/57_walk_history.sql
 -- Shadow observability (Roll Service parity + Availability Guard metadata)
 \echo '    - Shadow roll ledgers, checkpoints, and guard audit tables'
 \ir 03-bookings/90_roll_service_shadow_ledgers.sql
@@ -85,6 +88,7 @@
 \ir 03-bookings/92_roll_service_consumer_offsets.sql
 \ir 03-bookings/91_inventory_lock_audits.sql
 \ir 03-bookings/92_reservation_guard_locks.sql
+\ir 03-bookings/93_inventory_locks_shadow.sql
 
 -- ============================================================================
 -- CATEGORY 4: FINANCIAL (Payments, invoices, folios, accounting)
@@ -214,6 +218,7 @@
 \ir 09-reference-data/04_payment_methods.sql
 \ir 09-reference-data/05_group_booking_types.sql
 \ir 09-reference-data/06_company_types.sql
+\ir 09-reference-data/07_charge_codes.sql
 
 \echo '>>> Enforcing tenant_id and soft delete coverage'
 \ir 99_enforce_tenant_soft_delete.sql

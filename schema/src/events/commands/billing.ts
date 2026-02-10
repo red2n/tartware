@@ -93,6 +93,10 @@ export const BillingChargePostCommandSchema = z.object({
 	reservation_id: z.string().uuid(),
 	amount: z.coerce.number().positive(),
 	currency: z.string().length(3).optional(),
+	charge_code: z.string().max(50).default("MISC"),
+	department_code: z.string().max(20).optional(),
+	posting_type: z.enum(["DEBIT", "CREDIT"]).default("DEBIT"),
+	quantity: z.coerce.number().int().positive().default(1),
 	description: z.string().max(2000).optional(),
 	posted_at: z.coerce.date().optional(),
 	metadata: z.record(z.unknown()).optional(),
@@ -134,4 +138,391 @@ export const BillingFolioTransferCommandSchema = z.object({
 
 export type BillingFolioTransferCommand = z.infer<
 	typeof BillingFolioTransferCommandSchema
+>;
+
+/**
+ * Transfer a specific charge posting from one folio to another.
+ * Creates TRANSFER-type audit records on both folios.
+ */
+export const BillingChargeTransferCommandSchema = z.object({
+	posting_id: z.string().uuid(),
+	to_folio_id: z.string().uuid().optional(),
+	to_reservation_id: z.string().uuid().optional(),
+	reason: z.string().max(500).optional(),
+	metadata: z.record(z.unknown()).optional(),
+	idempotency_key: z.string().max(120).optional(),
+}).refine(
+	(v) => Boolean(v.to_folio_id || v.to_reservation_id),
+	"to_folio_id or to_reservation_id is required",
+);
+
+export type BillingChargeTransferCommand = z.infer<
+	typeof BillingChargeTransferCommandSchema
+>;
+
+/**
+ * Split a charge across multiple folios.
+ * Creates partial-amount postings on each target folio.
+ */
+export const BillingFolioSplitCommandSchema = z.object({
+	posting_id: z.string().uuid(),
+	splits: z.array(z.object({
+		folio_id: z.string().uuid().optional(),
+		reservation_id: z.string().uuid().optional(),
+		amount: z.coerce.number().positive(),
+		description: z.string().max(500).optional(),
+	})).min(2, "At least two split targets are required"),
+	reason: z.string().max(500).optional(),
+	metadata: z.record(z.unknown()).optional(),
+	idempotency_key: z.string().max(120).optional(),
+});
+
+export type BillingFolioSplitCommand = z.infer<
+	typeof BillingFolioSplitCommandSchema
+>;
+
+/**
+ * Pre-authorize a payment hold (AUTHORIZE) without capturing funds.
+ * Used for deposit guarantees at check-in.
+ */
+export const BillingPaymentAuthorizeCommandSchema = z.object({
+	payment_reference: z.string().trim().min(3).max(100),
+	property_id: z.string().uuid(),
+	reservation_id: z.string().uuid(),
+	guest_id: z.string().uuid(),
+	amount: z.coerce.number().positive(),
+	currency: z.string().length(3).optional(),
+	payment_method: PaymentMethodEnum,
+	gateway: z
+		.object({
+			name: z.string().max(100).optional(),
+			reference: z.string().max(150).optional(),
+			response: z.record(z.unknown()).optional(),
+		})
+		.optional(),
+	metadata: z.record(z.unknown()).optional(),
+	idempotency_key: z.string().max(120).optional(),
+});
+
+export type BillingPaymentAuthorizeCommand = z.infer<
+	typeof BillingPaymentAuthorizeCommandSchema
+>;
+
+/**
+ * Execute night audit: post room charges for in-house guests,
+ * mark no-shows, and advance the business date.
+ */
+export const BillingNightAuditCommandSchema = z.object({
+	property_id: z.string().uuid(),
+	business_date: z.string().optional(),
+	post_room_charges: z.boolean().optional(),
+	mark_no_shows: z.boolean().optional(),
+	advance_date: z.boolean().optional(),
+	metadata: z.record(z.unknown()).optional(),
+	idempotency_key: z.string().max(120).optional(),
+});
+
+export type BillingNightAuditCommand = z.infer<
+	typeof BillingNightAuditCommandSchema
+>;
+
+/**
+ * Close/settle a folio. Sets folio_status to CLOSED or SETTLED
+ * depending on balance. Zero balance → SETTLED, otherwise CLOSED.
+ */
+export const BillingFolioCloseCommandSchema = z.object({
+	property_id: z.string().uuid(),
+	reservation_id: z.string().uuid(),
+	close_reason: z.string().max(500).optional(),
+	force: z.boolean().optional(),
+	metadata: z.record(z.unknown()).optional(),
+	idempotency_key: z.string().max(120).optional(),
+});
+
+export type BillingFolioCloseCommand = z.infer<
+	typeof BillingFolioCloseCommandSchema
+>;
+
+/**
+ * Void a previously authorized payment.
+ * Only AUTHORIZED payments can be voided.
+ */
+export const BillingPaymentVoidCommandSchema = z.object({
+	payment_reference: z.string().trim().min(3).max(100),
+	property_id: z.string().uuid(),
+	reservation_id: z.string().uuid(),
+	reason: z.string().max(500).optional(),
+	metadata: z.record(z.unknown()).optional(),
+	idempotency_key: z.string().max(120).optional(),
+});
+
+export type BillingPaymentVoidCommand = z.infer<
+	typeof BillingPaymentVoidCommandSchema
+>;
+
+/**
+ * Void a charge posting on a folio.
+ * Creates a reversal VOID posting and adjusts folio balance.
+ */
+export const BillingChargeVoidCommandSchema = z.object({
+	posting_id: z.string().uuid(),
+	void_reason: z.string().max(500).optional(),
+	metadata: z.record(z.unknown()).optional(),
+	idempotency_key: z.string().max(120).optional(),
+});
+
+export type BillingChargeVoidCommand = z.infer<
+	typeof BillingChargeVoidCommandSchema
+>;
+
+/**
+ * Finalize an invoice, locking it for editing.
+ * Only DRAFT or SENT invoices can be finalized.
+ */
+export const BillingInvoiceFinalizeCommandSchema = z.object({
+	invoice_id: z.string().uuid(),
+	metadata: z.record(z.unknown()).optional(),
+	idempotency_key: z.string().max(120).optional(),
+});
+
+export type BillingInvoiceFinalizeCommand = z.infer<
+	typeof BillingInvoiceFinalizeCommandSchema
+>;
+
+// ─── Commission Commands ─────────────────────────────────────────────────────
+
+/**
+ * Calculate and record commission for a reservation.
+ * Typically triggered on checkout when a travel_agent_id or booking_source
+ * with commission config is present.
+ */
+export const CommissionCalculateCommandSchema = z.object({
+	property_id: z.string().uuid(),
+	reservation_id: z.string().uuid(),
+	travel_agent_id: z.string().uuid().optional(),
+	booking_source_id: z.string().uuid().optional(),
+	room_revenue: z.coerce.number().nonnegative(),
+	total_revenue: z.coerce.number().nonnegative(),
+	nights: z.coerce.number().int().positive(),
+	currency: z.string().length(3).default("USD"),
+	metadata: z.record(z.unknown()).optional(),
+	idempotency_key: z.string().max(120).optional(),
+});
+
+export type CommissionCalculateCommand = z.infer<
+	typeof CommissionCalculateCommandSchema
+>;
+
+/**
+ * Approve a pending commission for payout.
+ */
+export const CommissionApproveCommandSchema = z.object({
+	commission_id: z.string().uuid(),
+	approved_by: z.string().uuid(),
+	notes: z.string().max(2000).optional(),
+	idempotency_key: z.string().max(120).optional(),
+});
+
+export type CommissionApproveCommand = z.infer<
+	typeof CommissionApproveCommandSchema
+>;
+
+/**
+ * Mark a commission as paid.
+ */
+export const CommissionMarkPaidCommandSchema = z.object({
+	commission_id: z.string().uuid(),
+	payment_reference: z.string().max(100),
+	payment_date: z.coerce.date().optional(),
+	payment_method: z.string().max(50).optional(),
+	notes: z.string().max(2000).optional(),
+	idempotency_key: z.string().max(120).optional(),
+});
+
+export type CommissionMarkPaidCommand = z.infer<
+	typeof CommissionMarkPaidCommandSchema
+>;
+
+/**
+ * Generate a periodic commission statement for an agent/company.
+ */
+export const CommissionStatementGenerateCommandSchema = z.object({
+	property_id: z.string().uuid(),
+	company_id: z.string().uuid().optional(),
+	agent_id: z.string().uuid().optional(),
+	period_start: z.coerce.date(),
+	period_end: z.coerce.date(),
+	metadata: z.record(z.unknown()).optional(),
+	idempotency_key: z.string().max(120).optional(),
+});
+
+export type CommissionStatementGenerateCommand = z.infer<
+	typeof CommissionStatementGenerateCommandSchema
+>;
+
+// ─── Accounts Receivable Command Schemas ─────────────────────────────────────
+
+/**
+ * Post an AR entry (typically on checkout for direct-bill guests).
+ */
+export const BillingArPostCommandSchema = z.object({
+	reservation_id: z.string().uuid(),
+	folio_id: z.string().uuid().optional(),
+	account_type: z.enum([
+		"guest",
+		"corporate",
+		"travel_agent",
+		"group",
+		"direct_bill",
+		"city_ledger",
+		"other",
+	]),
+	account_id: z.string().uuid(),
+	account_name: z.string().max(255),
+	amount: z.number().positive(),
+	payment_terms: z.string().max(50).default("NET_30"),
+	notes: z.string().max(2000).optional(),
+	idempotency_key: z.string().max(120).optional(),
+});
+
+export type BillingArPostCommand = z.infer<typeof BillingArPostCommandSchema>;
+
+/**
+ * Apply a payment against an outstanding AR balance.
+ */
+export const BillingArApplyPaymentCommandSchema = z.object({
+	ar_id: z.string().uuid(),
+	amount: z.number().positive(),
+	payment_reference: z.string().max(100),
+	payment_method: z.string().max(50).optional(),
+	payment_date: z.coerce.date().optional(),
+	notes: z.string().max(2000).optional(),
+	idempotency_key: z.string().max(120).optional(),
+});
+
+export type BillingArApplyPaymentCommand = z.infer<
+	typeof BillingArApplyPaymentCommandSchema
+>;
+
+/**
+ * Recalculate aging buckets for all open AR entries.
+ */
+export const BillingArAgeCommandSchema = z.object({
+	property_id: z.string().uuid(),
+	as_of_date: z.coerce.date().optional(),
+	idempotency_key: z.string().max(120).optional(),
+});
+
+export type BillingArAgeCommand = z.infer<typeof BillingArAgeCommandSchema>;
+
+/**
+ * Write off an uncollectible AR entry.
+ */
+export const BillingArWriteOffCommandSchema = z.object({
+	ar_id: z.string().uuid(),
+	write_off_amount: z.number().positive(),
+	reason: z.string().max(2000),
+	approved_by: z.string().uuid().optional(),
+	notes: z.string().max(2000).optional(),
+	idempotency_key: z.string().max(120).optional(),
+});
+
+export type BillingArWriteOffCommand = z.infer<
+	typeof BillingArWriteOffCommandSchema
+>;
+
+// ─── Cashier Session Commands ────────────────────────────────────────────────
+
+/**
+ * Open a new cashier session (shift start).
+ */
+export const BillingCashierOpenCommandSchema = z.object({
+	property_id: z.string().uuid(),
+	cashier_id: z.string().uuid(),
+	cashier_name: z.string().max(200),
+	terminal_id: z.string().max(50).optional(),
+	shift_type: z.enum(["morning", "afternoon", "night", "full_day"]).default("full_day"),
+	opening_float: z.coerce.number().nonnegative().default(0),
+	business_date: z.coerce.date().optional(),
+	metadata: z.record(z.unknown()).optional(),
+	idempotency_key: z.string().max(120).optional(),
+});
+
+export type BillingCashierOpenCommand = z.infer<
+	typeof BillingCashierOpenCommandSchema
+>;
+
+/**
+ * Close a cashier session (shift end) with reconciliation.
+ */
+export const BillingCashierCloseCommandSchema = z.object({
+	session_id: z.string().uuid(),
+	closing_cash_declared: z.coerce.number().nonnegative(),
+	closing_cash_counted: z.coerce.number().nonnegative(),
+	notes: z.string().max(2000).optional(),
+	metadata: z.record(z.unknown()).optional(),
+	idempotency_key: z.string().max(120).optional(),
+});
+
+export type BillingCashierCloseCommand = z.infer<
+	typeof BillingCashierCloseCommandSchema
+>;
+
+// ─── Dynamic Pricing Commands ─────────────────────────────────────────────────
+
+/**
+ * Evaluate active pricing rules for a given property/room type/date.
+ * Loads applicable pricing_rules, evaluates conditions against provided
+ * context (occupancy, demand, lead time, etc.), applies adjustments
+ * with caps, and returns the recommended adjusted rate.
+ */
+export const BillingPricingEvaluateCommandSchema = z.object({
+	property_id: z.string().uuid(),
+	room_type_id: z.string().uuid(),
+	/** The base rate to adjust (from rate table). */
+	base_rate: z.coerce.number().nonnegative(),
+	/** Target date for pricing evaluation. */
+	stay_date: z.coerce.date(),
+	/** Current property occupancy percentage (0-100). */
+	occupancy_percent: z.coerce.number().min(0).max(100).optional(),
+	/** Demand level for the day: very_low to exceptional. */
+	demand_level: z.enum([
+		"very_low", "low", "moderate", "high", "very_high", "exceptional",
+	]).optional(),
+	/** Days until arrival for advance-purchase / last-minute rules. */
+	days_until_arrival: z.coerce.number().int().nonnegative().optional(),
+	/** Guest's requested length of stay (nights). */
+	length_of_stay: z.coerce.number().int().positive().optional(),
+	/** Day of week (0=Sunday to 6=Saturday). */
+	day_of_week: z.coerce.number().int().min(0).max(6).optional(),
+	/** Booking channel for channel-based rules. */
+	channel: z.string().max(50).optional(),
+	/** Market segment for segment-based rules. */
+	segment: z.string().max(50).optional(),
+	metadata: z.record(z.unknown()).optional(),
+	idempotency_key: z.string().max(120).optional(),
+});
+
+export type BillingPricingEvaluateCommand = z.infer<
+	typeof BillingPricingEvaluateCommandSchema
+>;
+
+/**
+ * Bulk generate rate recommendations for a property/date range.
+ * Evaluates pricing rules across all room types and dates, then
+ * writes results to rate_recommendations for revenue manager review.
+ */
+export const BillingPricingBulkRecommendCommandSchema = z.object({
+	property_id: z.string().uuid(),
+	start_date: z.coerce.date(),
+	end_date: z.coerce.date(),
+	/** Only evaluate for specific room types (all if omitted). */
+	room_type_ids: z.array(z.string().uuid()).optional(),
+	dry_run: z.boolean().optional(),
+	metadata: z.record(z.unknown()).optional(),
+	idempotency_key: z.string().max(120).optional(),
+});
+
+export type BillingPricingBulkRecommendCommand = z.infer<
+	typeof BillingPricingBulkRecommendCommandSchema
 >;

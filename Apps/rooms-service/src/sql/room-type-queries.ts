@@ -40,6 +40,7 @@ export const ROOM_TYPE_LIST_SQL = `
     )
   ORDER BY rt.display_order ASC, rt.type_name ASC
   LIMIT $5
+  OFFSET $6
 `;
 
 export const ROOM_TYPE_CREATE_SQL = `
@@ -131,71 +132,8 @@ export const ROOM_TYPE_CREATE_SQL = `
   FROM inserted i
 `;
 
-export const ROOM_TYPE_UPDATE_SQL = `
-  WITH updated AS (
-    UPDATE public.room_types rt
-    SET
-      property_id = COALESCE($3, rt.property_id),
-      type_name = COALESCE($4, rt.type_name),
-      type_code = COALESCE($5, rt.type_code),
-      description = COALESCE($6, rt.description),
-      short_description = COALESCE($7, rt.short_description),
-      category = COALESCE($8, rt.category),
-      base_occupancy = COALESCE($9, rt.base_occupancy),
-      max_occupancy = COALESCE($10, rt.max_occupancy),
-      max_adults = COALESCE($11, rt.max_adults),
-      max_children = COALESCE($12, rt.max_children),
-      extra_bed_capacity = COALESCE($13, rt.extra_bed_capacity),
-      size_sqm = COALESCE($14, rt.size_sqm),
-      bed_type = COALESCE($15, rt.bed_type),
-      number_of_beds = COALESCE($16, rt.number_of_beds),
-      amenities = COALESCE($17, rt.amenities),
-      features = COALESCE($18, rt.features),
-      base_price = COALESCE($19, rt.base_price),
-      currency = COALESCE($20, rt.currency),
-      images = COALESCE($21, rt.images),
-      display_order = COALESCE($22, rt.display_order),
-      is_active = COALESCE($23, rt.is_active),
-      metadata = COALESCE($24, rt.metadata),
-      updated_at = CURRENT_TIMESTAMP,
-      updated_by = COALESCE($25, rt.updated_by),
-      version = rt.version + 1
-    WHERE rt.id = $1::uuid
-      AND rt.tenant_id = $2::uuid
-      AND COALESCE(rt.is_deleted, false) = false
-      AND rt.deleted_at IS NULL
-    RETURNING *
-  )
-  SELECT
-    u.id,
-    u.tenant_id,
-    u.property_id,
-    u.type_name,
-    u.type_code,
-    u.description,
-    u.short_description,
-    u.category,
-    u.base_occupancy,
-    u.max_occupancy,
-    u.max_adults,
-    u.max_children,
-    u.extra_bed_capacity,
-    u.size_sqm,
-    u.bed_type,
-    u.number_of_beds,
-    u.amenities,
-    u.features,
-    u.base_price,
-    u.currency,
-    u.images,
-    u.display_order,
-    u.is_active,
-    u.metadata,
-    u.created_at,
-    u.updated_at,
-    u.version
-  FROM updated u
-`;
+// Note: Room type updates use a dynamic query builder in room-type-service.ts
+// to support partial updates (distinguishing undefined vs null).
 
 export const ROOM_TYPE_DELETE_SQL = `
   UPDATE public.room_types rt

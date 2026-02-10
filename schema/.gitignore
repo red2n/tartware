@@ -8,6 +8,12 @@ dist/
 build/
 *.tsbuildinfo
 
+# Compiled TS output that may land in src/ (outDir should be dist/)
+src/**/*.js
+src/**/*.js.map
+src/**/*.d.ts
+src/**/*.d.ts.map
+
 # Testing
 coverage/
 .nyc_output/

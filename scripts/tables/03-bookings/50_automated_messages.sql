@@ -166,3 +166,5 @@ COMMENT ON COLUMN automated_messages.trigger_type IS 'Event that triggers the au
 COMMENT ON COLUMN automated_messages.conditions IS 'JSON conditions that must be met for message to send';
 COMMENT ON COLUMN automated_messages.channel_priority IS 'Ordered array of fallback channels if primary channel fails';
 COMMENT ON COLUMN automated_messages.respect_quiet_hours IS 'If true, messages wont be sent during configured quiet hours';
+
+\echo 'automated_messages table created successfully!'

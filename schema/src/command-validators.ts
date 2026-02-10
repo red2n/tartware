@@ -12,12 +12,39 @@ import {
 import {
 	BillingPaymentCaptureCommandSchema,
 	BillingPaymentRefundCommandSchema,
+	BillingPaymentAuthorizeCommandSchema,
 	BillingInvoiceAdjustCommandSchema,
 	BillingInvoiceCreateCommandSchema,
 	BillingChargePostCommandSchema,
 	BillingPaymentApplyCommandSchema,
 	BillingFolioTransferCommandSchema,
+	BillingChargeTransferCommandSchema,
+	BillingFolioSplitCommandSchema,
+	BillingNightAuditCommandSchema,
+	BillingFolioCloseCommandSchema,
+	BillingPaymentVoidCommandSchema,
+	BillingChargeVoidCommandSchema,
+	BillingInvoiceFinalizeCommandSchema,
+	CommissionCalculateCommandSchema,
+	CommissionApproveCommandSchema,
+	CommissionMarkPaidCommandSchema,
+	CommissionStatementGenerateCommandSchema,
+	BillingArPostCommandSchema,
+	BillingArApplyPaymentCommandSchema,
+	BillingArAgeCommandSchema,
+	BillingArWriteOffCommandSchema,
+	BillingCashierOpenCommandSchema,
+	BillingCashierCloseCommandSchema,
+	BillingPricingEvaluateCommandSchema,
+	BillingPricingBulkRecommendCommandSchema,
 } from "./events/commands/billing.js";
+import {
+	GroupCreateCommandSchema,
+	GroupAddRoomsCommandSchema,
+	GroupUploadRoomingListCommandSchema,
+	GroupCutoffEnforceCommandSchema,
+	GroupBillingSetupCommandSchema,
+} from "./events/commands/groups.js";
 import {
 	GuestMergeCommandSchema,
 	GuestRegisterCommandSchema,
@@ -64,15 +91,31 @@ import {
 	ReservationDepositReleaseCommandSchema,
 	ReservationExtendStayCommandSchema,
 	ReservationAssignRoomCommandSchema,
+	ReservationBatchNoShowCommandSchema,
 	ReservationModifyCommandSchema,
 	ReservationRateOverrideCommandSchema,
 	ReservationUnassignRoomCommandSchema,
+	ReservationNoShowCommandSchema,
+	ReservationWalkInCheckInCommandSchema,
+	ReservationWaitlistAddCommandSchema,
+	ReservationWaitlistConvertCommandSchema,
+	ReservationWaitlistOfferCommandSchema,
+	ReservationWaitlistExpireSweepCommandSchema,
+	ReservationGenerateRegCardCommandSchema,
+	ReservationMobileCheckinStartCommandSchema,
+	ReservationMobileCheckinCompleteCommandSchema,
+	ReservationSendQuoteCommandSchema,
+	ReservationConvertQuoteCommandSchema,
+	ReservationExpireCommandSchema,
+	ReservationWalkGuestCommandSchema,
 } from "./events/commands/reservations.js";
 import {
 	RoomFeaturesUpdateCommandSchema,
 	RoomHousekeepingStatusUpdateCommandSchema,
 	RoomInventoryBlockCommandSchema,
 	RoomInventoryReleaseCommandSchema,
+	RoomKeyIssueCommandSchema,
+	RoomKeyRevokeCommandSchema,
 	RoomMoveCommandSchema,
 	RoomOutOfOrderCommandSchema,
 	RoomOutOfServiceCommandSchema,
@@ -125,6 +168,86 @@ const commandPayloadValidators = new Map<string, CommandPayloadValidator>([
 	[
 		"billing.folio.transfer",
 		(payload) => BillingFolioTransferCommandSchema.parse(payload),
+	],
+	[
+		"billing.charge.transfer",
+		(payload) => BillingChargeTransferCommandSchema.parse(payload),
+	],
+	[
+		"billing.folio.split",
+		(payload) => BillingFolioSplitCommandSchema.parse(payload),
+	],
+	[
+		"billing.payment.authorize",
+		(payload) => BillingPaymentAuthorizeCommandSchema.parse(payload),
+	],
+	[
+		"billing.night_audit.execute",
+		(payload) => BillingNightAuditCommandSchema.parse(payload),
+	],
+	[
+		"billing.folio.close",
+		(payload) => BillingFolioCloseCommandSchema.parse(payload),
+	],
+	[
+		"billing.payment.void",
+		(payload) => BillingPaymentVoidCommandSchema.parse(payload),
+	],
+	[
+		"billing.charge.void",
+		(payload) => BillingChargeVoidCommandSchema.parse(payload),
+	],
+	[
+		"billing.invoice.finalize",
+		(payload) => BillingInvoiceFinalizeCommandSchema.parse(payload),
+	],
+	[
+		"commission.calculate",
+		(payload) => CommissionCalculateCommandSchema.parse(payload),
+	],
+	[
+		"commission.approve",
+		(payload) => CommissionApproveCommandSchema.parse(payload),
+	],
+	[
+		"commission.mark_paid",
+		(payload) => CommissionMarkPaidCommandSchema.parse(payload),
+	],
+	[
+		"commission.statement.generate",
+		(payload) => CommissionStatementGenerateCommandSchema.parse(payload),
+	],
+	[
+		"billing.ar.post",
+		(payload) => BillingArPostCommandSchema.parse(payload),
+	],
+	[
+		"billing.ar.apply_payment",
+		(payload) => BillingArApplyPaymentCommandSchema.parse(payload),
+	],
+	[
+		"billing.ar.age",
+		(payload) => BillingArAgeCommandSchema.parse(payload),
+	],
+	[
+		"billing.ar.write_off",
+		(payload) => BillingArWriteOffCommandSchema.parse(payload),
+	],
+	[
+		"billing.cashier.open",
+		(payload) => BillingCashierOpenCommandSchema.parse(payload),
+	],
+	[
+		"billing.cashier.close",
+		(payload) => BillingCashierCloseCommandSchema.parse(payload),
+	],
+	[
+		"billing.pricing.evaluate",
+		(payload) => BillingPricingEvaluateCommandSchema.parse(payload),
+	],
+	[
+		"billing.pricing.bulk_recommend",
+		(payload) => BillingPricingBulkRecommendCommandSchema.parse(payload),
 	],
 	["guest.register", (payload) => GuestRegisterCommandSchema.parse(payload)],
 	["guest.merge", (payload) => GuestMergeCommandSchema.parse(payload)],
@@ -270,6 +393,82 @@ const commandPayloadValidators = new Map<string, CommandPayloadValidator>([
 		(payload) => ReservationDepositReleaseCommandSchema.parse(payload),
 	],
 	[
+		"reservation.no_show",
+		(payload) => ReservationNoShowCommandSchema.parse(payload),
+	],
+	[
+		"reservation.batch_no_show",
+		(payload) => ReservationBatchNoShowCommandSchema.parse(payload),
+	],
+	[
+		"reservation.walkin_checkin",
+		(payload) => ReservationWalkInCheckInCommandSchema.parse(payload),
+	],
+	[
+		"reservation.waitlist_add",
+		(payload) => ReservationWaitlistAddCommandSchema.parse(payload),
+	],
+	[
+		"reservation.waitlist_convert",
+		(payload) => ReservationWaitlistConvertCommandSchema.parse(payload),
+	],
+	[
+		"reservation.waitlist_offer",
+		(payload) => ReservationWaitlistOfferCommandSchema.parse(payload),
+	],
+	[
+		"reservation.waitlist_expire_sweep",
+		(payload) => ReservationWaitlistExpireSweepCommandSchema.parse(payload),
+	],
+	[
+		"reservation.generate_registration_card",
+		(payload) => ReservationGenerateRegCardCommandSchema.parse(payload),
+	],
+	[
+		"reservation.mobile_checkin.start",
+		(payload) => ReservationMobileCheckinStartCommandSchema.parse(payload),
+	],
+	[
+		"reservation.mobile_checkin.complete",
+		(payload) => ReservationMobileCheckinCompleteCommandSchema.parse(payload),
+	],
+	[
+		"reservation.send_quote",
+		(payload) => ReservationSendQuoteCommandSchema.parse(payload),
+	],
+	[
+		"reservation.convert_quote",
+		(payload) => ReservationConvertQuoteCommandSchema.parse(payload),
+	],
+	[
+		"reservation.expire",
+		(payload) => ReservationExpireCommandSchema.parse(payload),
+	],
+	[
+		"reservation.walk_guest",
+		(payload) => ReservationWalkGuestCommandSchema.parse(payload),
+	],
+	[
+		"group.create",
+		(payload) => GroupCreateCommandSchema.parse(payload),
+	],
+	[
+		"group.add_rooms",
+		(payload) => GroupAddRoomsCommandSchema.parse(payload),
+	],
+	[
+		"group.upload_rooming_list",
+		(payload) => GroupUploadRoomingListCommandSchema.parse(payload),
+	],
+	[
+		"group.cutoff_enforce",
+		(payload) => GroupCutoffEnforceCommandSchema.parse(payload),
+	],
+	[
+		"group.billing.setup",
+		(payload) => GroupBillingSetupCommandSchema.parse(payload),
+	],
+	[
 		"rooms.inventory.block",
 		(payload) => RoomInventoryBlockCommandSchema.parse(payload),
 	],
@@ -297,6 +496,14 @@ const commandPayloadValidators = new Map<string, CommandPayloadValidator>([
 	[
 		"rooms.features.update",
 		(payload) => RoomFeaturesUpdateCommandSchema.parse(payload),
+	],
+	[
+		"rooms.key.issue",
+		(payload) => RoomKeyIssueCommandSchema.parse(payload),
+	],
+	[
+		"rooms.key.revoke",
+		(payload) => RoomKeyRevokeCommandSchema.parse(payload),
 	],
 	[
 		"settings.value.set",

@@ -110,13 +110,23 @@ deleted_by VARCHAR(100), -- Deleting user identifier
 -- Optimistic Locking
 version BIGINT DEFAULT 0, -- Version counter for concurrency
 
+-- Early Check-In / Late Check-Out Fees (S18)
+early_checkin_fee DECIMAL(15, 2) DEFAULT 0.00, -- Fee for early check-in before cutoff hour
+late_checkout_fee DECIMAL(15, 2) DEFAULT 0.00, -- Fee for late check-out after cutoff hour
+early_checkin_cutoff_hour INTEGER DEFAULT 14,  -- Hour (0-23) before which early fee applies (default 2 PM)
+late_checkout_cutoff_hour INTEGER DEFAULT 11,  -- Hour (0-23) after which late fee applies (default 11 AM)
+
 -- Constraints
 CONSTRAINT rates_code_unique UNIQUE (property_id, rate_code), -- Unique code per property
     CONSTRAINT rates_code_format CHECK (rate_code ~ '^[A-Z0-9_-]+$'), -- Enforce rate code pattern
     CONSTRAINT rates_base_rate_check CHECK (base_rate >= 0), -- Non-negative pricing
     CONSTRAINT rates_valid_dates CHECK (valid_from < valid_until OR valid_until IS NULL), -- Validity window check
     CONSTRAINT rates_los_check CHECK (min_length_of_stay <= max_length_of_stay OR max_length_of_stay IS NULL), -- LOS constraint guard
-    CONSTRAINT rates_advance_booking CHECK (advance_booking_days_min <= advance_booking_days_max OR advance_booking_days_max IS NULL) -- Booking window guard
+    CONSTRAINT rates_advance_booking CHECK (advance_booking_days_min <= advance_booking_days_max OR advance_booking_days_max IS NULL), -- Booking window guard
+    CONSTRAINT chk_rates_early_checkin_fee CHECK (early_checkin_fee >= 0),
+    CONSTRAINT chk_rates_late_checkout_fee CHECK (late_checkout_fee >= 0),
+    CONSTRAINT chk_rates_early_checkin_cutoff CHECK (early_checkin_cutoff_hour BETWEEN 0 AND 23),
+    CONSTRAINT chk_rates_late_checkout_cutoff CHECK (late_checkout_cutoff_hour BETWEEN 0 AND 23)
 );
 
 -- =====================================================
@@ -168,5 +178,9 @@ COMMENT ON COLUMN rates.channels IS 'Distribution channels where rate is availab
 COMMENT ON COLUMN rates.status IS 'ENUM: active, inactive, archived';
 
 COMMENT ON COLUMN rates.deleted_at IS 'Soft delete timestamp (NULL = active)';
+COMMENT ON COLUMN rates.early_checkin_fee IS 'Fee charged for early check-in before cutoff hour';
+COMMENT ON COLUMN rates.late_checkout_fee IS 'Fee charged for late check-out after cutoff hour';
+COMMENT ON COLUMN rates.early_checkin_cutoff_hour IS 'Hour of day (0-23) before which early check-in fee applies (default 14 = 2 PM)';
+COMMENT ON COLUMN rates.late_checkout_cutoff_hour IS 'Hour of day (0-23) after which late check-out fee applies (default 11 = 11 AM)';
 
 \echo 'Rates table created successfully!'

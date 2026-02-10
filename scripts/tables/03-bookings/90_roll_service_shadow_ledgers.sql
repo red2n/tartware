@@ -9,17 +9,17 @@
 \echo 'Creating roll_service_shadow_ledgers table...'
 
 CREATE TABLE IF NOT EXISTS roll_service_shadow_ledgers (
-    ledger_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    tenant_id UUID NOT NULL,
-    reservation_id UUID,
-    lifecycle_event_id UUID NOT NULL,
-    roll_type VARCHAR(64) NOT NULL,
-    roll_date DATE NOT NULL,
-    occurred_at TIMESTAMPTZ NOT NULL,
-    source_event_type VARCHAR(150) NOT NULL,
-    event_payload JSONB NOT NULL DEFAULT '{}'::jsonb,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    ledger_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),  -- Unique ledger entry identifier
+    tenant_id UUID NOT NULL,                               -- FK tenants.id for data isolation
+    reservation_id UUID,                                   -- FK reservations.id (NULL for non-reservation rolls)
+    lifecycle_event_id UUID NOT NULL,                       -- Source lifecycle event used for idempotency
+    roll_type VARCHAR(64) NOT NULL,                         -- Roll classification (EOD, CHECKOUT, CANCEL, etc.)
+    roll_date DATE NOT NULL,                                -- Business date of the roll
+    occurred_at TIMESTAMPTZ NOT NULL,                       -- When the originating event occurred
+    source_event_type VARCHAR(150) NOT NULL,                -- Event type that triggered this roll
+    event_payload JSONB NOT NULL DEFAULT '{}'::jsonb,       -- Original lifecycle data for parity validation
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),          -- Record creation timestamp
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),          -- Last update timestamp
     UNIQUE (tenant_id, lifecycle_event_id)
 );
 

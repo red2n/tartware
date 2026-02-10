@@ -96,6 +96,8 @@ These IDs are pre-populated in the database:
 | `guests.http` | Guest profiles, preferences |
 | `housekeeping.http` | Tasks, assignments, status |
 | `modules.http` | Module catalog |
+| `night-audit.http` | Night audit, OTA, group bookings, promos |
+| `notifications.http` | Notification templates, sending, communications |
 | `operations.http` | Operations endpoints |
 | `rates.http` | Rate plans |
 | `recommendations.http` | Recommendation engine |

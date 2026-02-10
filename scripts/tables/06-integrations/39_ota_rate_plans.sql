@@ -74,3 +74,5 @@ COMMENT ON TABLE ota_rate_plans IS 'Mapping between internal rates and OTA rate 
 COMMENT ON COLUMN ota_rate_plans.mapping_type IS 'Type of rate mapping: STANDARD, PROMOTIONAL, LAST_MINUTE, OPAQUE';
 COMMENT ON COLUMN ota_rate_plans.markup_percentage IS 'Percentage markup applied to base rate';
 COMMENT ON COLUMN ota_rate_plans.markdown_percentage IS 'Percentage discount applied to base rate';
+
+\echo 'ota_rate_plans table created successfully!'

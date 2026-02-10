@@ -6,7 +6,9 @@ import {
   loadPackageDefinition,
   Server,
   ServerCredentials,
+  type ServerUnaryCall,
   type ServiceDefinition,
+  type sendUnaryData,
 } from "@grpc/grpc-js";
 import protoLoader from "@grpc/proto-loader";
 import type { FastifyBaseLogger } from "fastify";
@@ -237,14 +239,45 @@ const buildBulkReleaseHandler =
 export const startGrpcServer = async (logger: FastifyBaseLogger) => {
   logger.info("Initializing Availability Guard gRPC server");
 
+  const authToken = config.grpc.authToken;
+
+  /**
+   * Wraps a unary gRPC handler with Bearer token authentication.
+   * When GRPC_AUTH_TOKEN is configured, every inbound call must include
+   * an `authorization` metadata key with value `Bearer <token>`.
+   * In dev mode (no token set), auth is skipped.
+   */
+  const withGrpcAuth = <TReq, TRes>(
+    handler: handleUnaryCall<TReq, TRes>,
+  ): handleUnaryCall<TReq, TRes> => {
+    if (!authToken) {
+      return handler;
+    }
+    return (call: ServerUnaryCall<TReq, TRes>, callback: sendUnaryData<TRes>) => {
+      const meta = call.metadata.get("authorization");
+      const headerValue = meta.length > 0 ? String(meta[0]) : "";
+      const token = headerValue.startsWith("Bearer ") ? headerValue.slice(7) : headerValue;
+
+      if (token !== authToken) {
+        logger.warn({ peer: call.getPeer() }, "gRPC call rejected: invalid or missing auth token");
+        callback(
+          { code: GrpcStatus.UNAUTHENTICATED, message: "GRPC_AUTH_REQUIRED" },
+          null as unknown as TRes,
+        );
+        return;
+      }
+      handler(call, callback);
+    };
+  };
+
   const server = new Server();
   const availabilityGuardService = grpcDescriptor.availabilityguard.v1.AvailabilityGuard
     .service as ServiceDefinition<AvailabilityGuardHandlers>;
 
   server.addService(availabilityGuardService, {
-    lockRoom: buildLockRoomHandler(logger),
-    releaseRoom: buildReleaseRoomHandler(logger),
-    bulkRelease: buildBulkReleaseHandler(logger),
+    lockRoom: withGrpcAuth(buildLockRoomHandler(logger)),
+    releaseRoom: withGrpcAuth(buildReleaseRoomHandler(logger)),
+    bulkRelease: withGrpcAuth(buildBulkReleaseHandler(logger)),
   });
 
   const address = `${config.grpc.host}:${config.grpc.port}`;

@@ -39,8 +39,8 @@ SELECT
     cs.approved,
     cs.created_at
 FROM cashier_sessions cs
-LEFT JOIN properties p ON p.property_id = cs.property_id
-LEFT JOIN users u ON u.user_id = cs.cashier_id
+LEFT JOIN properties p ON p.id = cs.property_id
+LEFT JOIN users u ON u.id = cs.cashier_id
 WHERE cs.tenant_id = $2
   AND ($3::UUID IS NULL OR cs.property_id = $3)
   AND ($4::VARCHAR IS NULL OR cs.session_status = $4)
@@ -49,6 +49,7 @@ WHERE cs.tenant_id = $2
   AND COALESCE(cs.is_deleted, false) = false
 ORDER BY cs.opened_at DESC
 LIMIT $1
+OFFSET $7
 `;
 
 export const CASHIER_SESSION_BY_ID_SQL = `
@@ -57,8 +58,8 @@ SELECT
     p.property_name,
     u.email as cashier_name
 FROM cashier_sessions cs
-LEFT JOIN properties p ON p.property_id = cs.property_id
-LEFT JOIN users u ON u.user_id = cs.cashier_id
+LEFT JOIN properties p ON p.id = cs.property_id
+LEFT JOIN users u ON u.id = cs.cashier_id
 WHERE cs.session_id = $1
   AND cs.tenant_id = $2
   AND COALESCE(cs.is_deleted, false) = false
@@ -99,9 +100,9 @@ SELECT
     sh.acknowledged,
     sh.created_at
 FROM shift_handovers sh
-LEFT JOIN properties p ON p.property_id = sh.property_id
-LEFT JOIN users ou ON ou.user_id = sh.outgoing_user_id
-LEFT JOIN users iu ON iu.user_id = sh.incoming_user_id
+LEFT JOIN properties p ON p.id = sh.property_id
+LEFT JOIN users ou ON ou.id = sh.outgoing_user_id
+LEFT JOIN users iu ON iu.id = sh.incoming_user_id
 WHERE sh.tenant_id = $2
   AND ($3::UUID IS NULL OR sh.property_id = $3)
   AND ($4::VARCHAR IS NULL OR sh.handover_status = $4)
@@ -110,6 +111,7 @@ WHERE sh.tenant_id = $2
   AND COALESCE(sh.is_deleted, false) = false
 ORDER BY sh.shift_date DESC, sh.handover_started_at DESC
 LIMIT $1
+OFFSET $7
 `;
 
 export const SHIFT_HANDOVER_BY_ID_SQL = `
@@ -119,9 +121,9 @@ SELECT
     ou.email as outgoing_user_name,
     iu.email as incoming_user_name
 FROM shift_handovers sh
-LEFT JOIN properties p ON p.property_id = sh.property_id
-LEFT JOIN users ou ON ou.user_id = sh.outgoing_user_id
-LEFT JOIN users iu ON iu.user_id = sh.incoming_user_id
+LEFT JOIN properties p ON p.id = sh.property_id
+LEFT JOIN users ou ON ou.id = sh.outgoing_user_id
+LEFT JOIN users iu ON iu.id = sh.incoming_user_id
 WHERE sh.handover_id = $1
   AND sh.tenant_id = $2
   AND COALESCE(sh.is_deleted, false) = false
@@ -161,8 +163,8 @@ SELECT
     lf.has_photos,
     lf.created_at
 FROM lost_and_found lf
-LEFT JOIN properties p ON p.property_id = lf.property_id
-LEFT JOIN guests g ON g.guest_id = lf.guest_id AND g.tenant_id = lf.tenant_id
+LEFT JOIN properties p ON p.id = lf.property_id
+LEFT JOIN guests g ON g.id = lf.guest_id AND g.tenant_id = lf.tenant_id
 WHERE lf.tenant_id = $2
   AND ($3::UUID IS NULL OR lf.property_id = $3)
   AND ($4::VARCHAR IS NULL OR lf.item_status = $4)
@@ -171,6 +173,7 @@ WHERE lf.tenant_id = $2
   AND COALESCE(lf.is_deleted, false) = false
 ORDER BY lf.found_date DESC
 LIMIT $1
+OFFSET $7
 `;
 
 export const LOST_FOUND_BY_ID_SQL = `
@@ -179,8 +182,8 @@ SELECT
     p.property_name,
     g.first_name || ' ' || g.last_name as guest_name
 FROM lost_and_found lf
-LEFT JOIN properties p ON p.property_id = lf.property_id
-LEFT JOIN guests g ON g.guest_id = lf.guest_id AND g.tenant_id = lf.tenant_id
+LEFT JOIN properties p ON p.id = lf.property_id
+LEFT JOIN guests g ON g.id = lf.guest_id AND g.tenant_id = lf.tenant_id
 WHERE lf.item_id = $1
   AND lf.tenant_id = $2
   AND COALESCE(lf.is_deleted, false) = false
@@ -226,7 +229,7 @@ SELECT
     beo.event_ended,
     beo.created_at
 FROM banquet_event_orders beo
-LEFT JOIN properties p ON p.property_id = beo.property_id
+LEFT JOIN properties p ON p.id = beo.property_id
 LEFT JOIN meeting_rooms mr ON mr.room_id = beo.meeting_room_id
 WHERE beo.tenant_id = $2
   AND ($3::UUID IS NULL OR beo.property_id = $3)
@@ -236,6 +239,7 @@ WHERE beo.tenant_id = $2
   AND COALESCE(beo.is_deleted, false) = false
 ORDER BY beo.event_date ASC, beo.event_start_time ASC
 LIMIT $1
+OFFSET $7
 `;
 
 export const BANQUET_ORDER_BY_ID_SQL = `
@@ -244,7 +248,7 @@ SELECT
     p.property_name,
     mr.room_name as meeting_room_name
 FROM banquet_event_orders beo
-LEFT JOIN properties p ON p.property_id = beo.property_id
+LEFT JOIN properties p ON p.id = beo.property_id
 LEFT JOIN meeting_rooms mr ON mr.room_id = beo.meeting_room_id
 WHERE beo.beo_id = $1
   AND beo.tenant_id = $2
@@ -284,8 +288,8 @@ SELECT
     gf.responded_at,
     gf.created_at
 FROM guest_feedback gf
-LEFT JOIN properties p ON p.property_id = gf.property_id
-LEFT JOIN guests g ON g.guest_id = gf.guest_id AND g.tenant_id = gf.tenant_id
+LEFT JOIN properties p ON p.id = gf.property_id
+LEFT JOIN guests g ON g.id = gf.guest_id AND g.tenant_id = gf.tenant_id
 WHERE gf.tenant_id = $2
   AND ($3::UUID IS NULL OR gf.property_id = $3)
   AND ($4::VARCHAR IS NULL OR gf.sentiment_label = $4)
@@ -293,6 +297,7 @@ WHERE gf.tenant_id = $2
   AND ($6::BOOLEAN IS NULL OR (gf.response_text IS NOT NULL) = $6)
 ORDER BY gf.created_at DESC
 LIMIT $1
+OFFSET $7
 `;
 
 export const GUEST_FEEDBACK_BY_ID_SQL = `
@@ -301,8 +306,8 @@ SELECT
     p.property_name,
     g.first_name || ' ' || g.last_name as guest_name
 FROM guest_feedback gf
-LEFT JOIN properties p ON p.property_id = gf.property_id
-LEFT JOIN guests g ON g.guest_id = gf.guest_id AND g.tenant_id = gf.tenant_id
+LEFT JOIN properties p ON p.id = gf.property_id
+LEFT JOIN guests g ON g.id = gf.guest_id AND g.tenant_id = gf.tenant_id
 WHERE gf.id = $1
   AND gf.tenant_id = $2
 `;
@@ -344,7 +349,7 @@ SELECT
     pr.confidential,
     pr.created_at
 FROM police_reports pr
-LEFT JOIN properties p ON p.property_id = pr.property_id
+LEFT JOIN properties p ON p.id = pr.property_id
 WHERE pr.tenant_id = $2
   AND ($3::UUID IS NULL OR pr.property_id = $3)
   AND ($4::VARCHAR IS NULL OR pr.report_status = $4)
@@ -353,6 +358,7 @@ WHERE pr.tenant_id = $2
   AND COALESCE(pr.is_deleted, false) = false
 ORDER BY pr.incident_date DESC
 LIMIT $1
+OFFSET $7
 `;
 
 export const POLICE_REPORT_BY_ID_SQL = `
@@ -360,7 +366,7 @@ SELECT
     pr.*,
     p.property_name
 FROM police_reports pr
-LEFT JOIN properties p ON p.property_id = pr.property_id
+LEFT JOIN properties p ON p.id = pr.property_id
 WHERE pr.report_id = $1
   AND pr.tenant_id = $2
   AND COALESCE(pr.is_deleted, false) = false

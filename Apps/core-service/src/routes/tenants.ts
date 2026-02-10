@@ -12,15 +12,21 @@ import { sanitizeForJson } from "../utils/sanitize.js";
 
 const TenantListQuerySchema = z.object({
   limit: z.coerce.number().int().positive().max(100).default(50),
+  offset: z.coerce.number().int().nonnegative().default(0),
 });
 
 type TenantListQuery = z.infer<typeof TenantListQuerySchema>;
 
-const TenantListResponseSchema = z.array(
-  TenantWithRelationsSchema.extend({
-    version: z.string(), // BigInt serialized as string
-  }),
-);
+const TenantListResponseSchema = z.object({
+  tenants: z.array(
+    TenantWithRelationsSchema.extend({
+      version: z.string(), // BigInt serialized as string
+    }),
+  ),
+  count: z.number().int().nonnegative(),
+  limit: z.number().int().positive(),
+  offset: z.number().int().nonnegative(),
+});
 const TenantListQueryJsonSchema = schemaFromZod(TenantListQuerySchema, "TenantListQuery");
 const TenantListResponseJsonSchema = schemaFromZod(TenantListResponseSchema, "TenantListResponse");
 
@@ -161,11 +167,11 @@ export const registerTenantRoutes = (app: FastifyInstance): void => {
       }),
     },
     async (request) => {
-      const { limit } = TenantListQuerySchema.parse(request.query);
+      const { limit, offset } = TenantListQuerySchema.parse(request.query);
       // Only return tenants the user has access to
       const tenantIds = Array.from(request.auth.membershipMap.keys());
-      const tenants = await listTenants({ limit, tenantIds });
-      const response = sanitizeForJson(tenants);
+      const tenants = await listTenants({ limit, offset, tenantIds });
+      const response = sanitizeForJson({ tenants, count: tenants.length, limit, offset });
       return TenantListResponseSchema.parse(response);
     },
   );

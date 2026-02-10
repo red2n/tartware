@@ -66,6 +66,8 @@ export const resolveRatePlan = async (input: ResolveRatePlanInput): Promise<Rate
   }
 
   const fallbackReason = normalizedRequested ? "RATE_UNAVAILABLE" : "MISSING_RATE_CODE";
+  // When no rate code was requested, using BAR/RACK is the default — not a fallback
+  const isTrueFallback = !!normalizedRequested;
 
   for (const fallbackCode of FALLBACK_RATE_CODES) {
     if (normalizedRequested && fallbackCode === normalizedRequested) {
@@ -77,8 +79,8 @@ export const resolveRatePlan = async (input: ResolveRatePlanInput): Promise<Rate
         appliedRateCode: fallbackRate.rate_code,
         rateId: fallbackRate.id,
         requestedRateCode: normalizedRequested,
-        fallbackApplied: true,
-        reason: fallbackReason,
+        fallbackApplied: isTrueFallback,
+        reason: isTrueFallback ? fallbackReason : undefined,
         decidedAt,
       };
     }

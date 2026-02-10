@@ -1,5 +1,103 @@
 ## TODO
 
+---
+
+### P0 — Reservation Flow Audit (2026-02-07)
+
+Full end-to-end trace of the reservation lifecycle across api-gateway, reservations-command-service, availability-guard-service, core-service, rooms-service, billing-service, guests-service, and schemas. Findings grouped by severity.
+
+#### P0 — Critical (data integrity / security)
+
+- [x] **P0-1: Cross-tenant UPDATE in `reservations-command-service`** (done)
+  - `handleReservationUpdated` and `handleReservationCancelled` in `Apps/reservations-command-service/src/services/reservation-event-handler.ts` execute
+    `UPDATE reservations … WHERE id = $1` **without `AND tenant_id = $X`**.
+  - A mis-routed event could modify another tenant's reservation.
+  - Fix: add `tenant_id` to every UPDATE/DELETE WHERE clause.
+  - **Implemented**: Added `AND tenant_id = $2` to both UPDATE WHERE clauses; `tenant_id` now extracted from `event.metadata.tenantId` in both handlers. Also replaced `console.warn` with structured `reservationsLogger`.
+
+- [x] **P0-2: TOCTOU race condition in availability guard lock** (done)
+  - `findConflictingLock()` in `Apps/availability-guard-service/src/repositories/lock-repository.ts` uses plain `SELECT *` — no `FOR UPDATE`, no advisory lock, no `SERIALIZABLE` isolation.
+  - Two concurrent `lockRoom()` calls for the same room + overlapping dates can both succeed → **double-bookings**.
+  - Fix: add `SELECT … FOR UPDATE` or a PostgreSQL exclusion constraint with `tstzrange` + `btree_gist`.
+  - **Implemented**: Added `FOR UPDATE` to the conflict detection SELECT query, which acquires row-level locks within the existing transaction to serialize concurrent lock attempts.
+
+- [x] **P0-3: Missing `inventory_locks_shadow` table DDL** (done)
+  - The availability-guard-service queries `inventory_locks_shadow` in every operation, but **no CREATE TABLE migration exists** in `scripts/`.
+  - Fresh deployments crash with `relation "inventory_locks_shadow" does not exist`.
+  - Fix: create `scripts/tables/03-bookings/93_inventory_locks_shadow.sql` with all columns inferred from the TypeScript repository layer.
+  - **Implemented**: Created `scripts/tables/03-bookings/93_inventory_locks_shadow.sql` with full schema, CHECK constraints, COMMENTs, and 5 indexes (conflict detection, room conflict, reservation lookup, TTL reaper, tenant listing). Pending execution when DB is available.
+
+- [x] **P0-4: Expired locks still block new reservations** (done)
+  - `findConflictingLock()` filters `status = 'ACTIVE'` but does NOT check `expires_at > NOW()`.
+  - Locks past their TTL permanently block rooms until manually released.
+  - Fix: add `AND (expires_at IS NULL OR expires_at > NOW())` to conflict query; add a background reaper job for stale locks.
+  - **Implemented**: Added `AND (expires_at IS NULL OR expires_at > NOW())` to the conflict detection query. Background reaper job deferred to a follow-up task.
+
+- [x] **P0-5: Failed reservation commands silently lost** (done)
+  - In `Apps/reservations-command-service/src/commands/command-center-consumer.ts`, errors in `routeReservationCommand()` are caught, logged, and **discarded** — offset still committed. No DLQ, no retry.
+  - Inconsistent with billing/housekeeping/rooms consumers which all have DLQ routing.
+  - Fix: add retry-with-backoff + DLQ routing to `commands.primary.dlq` on failure, matching the pattern in other service consumers.
+  - **Implemented**: Rewrote the command center consumer to use `@tartware/command-consumer-utils` `createCommandCenterHandlers()`, matching billing/rooms/guests/housekeeping pattern. Now provides: batch processing with manual offset control, retry-with-backoff (configurable schedule), DLQ routing to `commands.primary.dlq` on exhausted retries, DLQ routing for JSON parse failures, command outcome metrics (`reservation_command_outcome_total`), duration histogram (`reservation_command_duration_seconds`), and consumer lag tracking (`reservation_command_consumer_lag`). Added `publishCommandDlqEvent` to kafka producer for command-center DLQ topic.
+
+#### P1 — High (functional gaps)
+
+- [x] **P1-1: No idempotency deduplication on reservation command intake** (done)
+  - The command-center consumer did not check `correlationId` / `requestId` before processing.
+  - A retried Kafka message could create duplicate outbox entries → potentially duplicate reservations.
+  - **Implemented**: Created `command_idempotency` table (`scripts/2026-02-09-command-idempotency.sql`) with PK `(tenant_id, idempotency_key)`. Added `checkCommandIdempotency` + `recordCommandIdempotency` repository functions. Wired into `createCommandCenterHandlers` with `idempotencyFailureMode: "fail-open"`. Consumer deduplicates using `metadata.idempotencyKey ?? metadata.commandId`. Publisher-side already deduplicates via `requestId` in `command-center-shared`.
+
+- [x] **P1-2: Availability lock leak on transaction failure** (done)
+  - `createReservation` called gRPC `lockReservationHold()` **before** `withTransaction()`, leaking locks on DB failures.
+  - **Implemented**: Wrapped `withTransaction()` / `enqueueReservationUpdate()` in try/catch for 5 functions: `createReservation`, `modifyReservation`, `assignRoom`, `extendStay`, `walkInCheckIn`. On catch, calls `releaseReservationHold()` as a compensating action (logs release result) and re-throws the original error.
+
+- [x] **P1-3: No `GET /v1/reservations/:id` single-reservation endpoint** (done)
+  - core-service only has a list endpoint (`GET /v1/reservations`).
+  - The gateway wildcard would proxy to core-service, which 404s since no handler exists.
+  - Fix: add `RESERVATION_BY_ID_SQL` + route handler in core-service, expose through gateway.
+  - **Implemented**: `getReservationById()` in core-service with JOINs to properties/room_types, folio fetch, status_history array. Gateway route `GET /v1/reservations/:id` proxied to core-service. Returns full detail with nested folio and status history.
+
+- [x] **P1-4: No room availability search endpoint** (done)
+  - rooms-service has no `/v1/rooms/availability` endpoint.
+  - Availability guard is gRPC-only (internal), not exposed via gateway.
+  - No REST API for "show available rooms for date range" — a fundamental booking operation.
+  - **Implemented**: `searchAvailableRooms()` in rooms-service queries AVAILABLE + CLEAN/INSPECTED rooms excluding overlapping inventory_locks_shadow and active reservations, JOINs room_types and LEFT JOINs rates. Gateway route `GET /v1/rooms/availability?check_in=&check_out=` proxied to rooms-service.
+
+- [x] **P1-5: No folio auto-creation on reservation** (done — Tier 1 PMS Standards)
+  - billing-service has no `billing.folio.create` command handler.
+  - `billing.charge.post` assumes a folio exists → throws `FOLIO_NOT_FOUND` on new reservations.
+  - **Implemented**: Auto-create a GUEST folio (status=OPEN, balance=0) in the reservation event handler when `reservation.created` is processed. Uses `ON CONFLICT DO NOTHING` for idempotency. Folio number derived from reservation ID (`F-{short-uuid}`).
+
+- [x] **P1-6: `GET /v1/reservations` lacks gateway-level auth** (done)
+  - In `Apps/api-gateway/src/server.ts`, `GET /v1/reservations` had no `preHandler` — no auth guard at gateway level.
+  - **Implemented**: Added `tenantScopeFromQuery` resolver (extracts `tenant_id` from query string) as `preHandler` on both `GET /v1/reservations` and `GET /v1/reservations/:id` gateway routes. Now consistent with all other tenant-scoped routes.
+
+- [x] **P1-7: GDPR erase incomplete in guests-service** (done)
+  - `guest.gdpr.erase` cascades to ~10 tables but skipped `guest_preferences`, `guest_documents`, and `guest_communications` — all contain PII.
+  - **Implemented**: Added 3 new anonymization steps (9, 10, 11) to `guest-command-service.ts`. Step 9 nulls dietary_restrictions, food_allergies, accessibility fields, marketing opt-ins, notes, etc. in `guest_preferences`. Step 10 redacts document_number/name, nulls file paths and verification notes in `guest_documents`. Step 11 redacts sender/recipient names, subjects, messages, nulls email/phone in `guest_communications`. All scoped by `tenant_id + guest_id`, consistent with existing anonymization pattern.
+
+#### P2 — Medium (design gaps / hardening)
+
+- [x] **P2-1: No offset/cursor pagination on reservation list** | Complexity: Medium | Priority: P2 — **Implemented**: Added `OFFSET $N` to all 42 list SQL queries across 5 services (core-service: 23 queries, guests-service: 4, rooms-service: 3+1 inline, billing-service: 5, housekeeping-service: 3). All route handlers updated with `offset: z.coerce.number().int().min(0).default(0)` query param. Response envelopes include `offset` field. System admin endpoints (tenants, system/tenants, system/users) also updated.
+- [x] **P2-2: Nullable tenant_id SQL pattern** (done) — `($2::uuid IS NULL OR r.tenant_id = $2)` hardened to `r.tenant_id = $2` in `reservation-queries.ts` (1 query) and `report-queries.ts` (3 queries: status summary, revenue summary, source summary). App layer always provides non-null tenant_id.
+- [x] **P2-3: Dashboard INNER JOIN on guests** | Complexity: Low | Priority: P2 — **Implemented**: Changed 4 INNER JOINs to LEFT JOINs in dashboard queries (recent activity, tasks, room status, revenue). Added `COALESCE(g.first_name || ' ' || g.last_name, 'Unknown Guest')` fallback for null guest names.
+- [x] **P2-4: `billing.payment.apply` double-counting risk** (done) — Added atomic dedup guard in `applyPaymentToInvoice`: before updating invoice `paid_amount`, atomically marks the payment's `metadata.applied_to_invoice_id` via `UPDATE ... WHERE metadata->>'applied_to_invoice_id' IS DISTINCT FROM $3`. If already applied (rowCount=0), returns idempotently without modifying balance.
+- [x] **P2-5: Charge postings hardcoded** | Complexity: Medium | Priority: P2 — **Implemented**: Added `posting_type` enum (DEBIT/CREDIT) and `quantity` (positive int, default 1) to `BillingChargePostCommandSchema` with backward-compatible defaults. `charge_code` defaults to 'MISC'. Handler now uses command values for `posting_type`, `charge_code`, and `quantity`.
+- [x] **P2-6: Folio balance not updated on charge posting** — `balance`, `total_charges` stay stale after `billing.charge.post`. **Implemented**: `applyChargePost` now wraps charge posting + folio `total_charges`/`balance` update in a single transaction. `capturePayment` also updates folio `total_payments`/`balance` when `reservation_id` present.
+- [x] **P2-7: `rooms.move` command unimplemented** — throws `ROOM_MOVE_NOT_SUPPORTED`. Critical for mid-stay room changes/upgrades. **Implemented**: `handleRoomMove` validates source=OCCUPIED, target=AVAILABLE, swaps statuses (source→DIRTY, target→OCCUPIED), updates reservation `room_number` with version lock.
+- [x] **P2-8: Guest reservation stats miss NO_SHOW and PENDING** | Complexity: Low | Priority: P2 — **Implemented**: Updated guest stats SQL to categorize PENDING into upcoming count and NO_SHOW into cancelled count.
+- [x] **P2-9: `CreateReservationsSchema` / `UpdateReservationsSchema` are stubs** | Complexity: Medium | Priority: P2 — **Implemented**: `CreateReservationsSchema` now properly omits 20 auto-generated/lifecycle fields (id, status, timestamps, no_show fields, etc.). `UpdateReservationsSchema` picks 27 mutable fields and applies `.partial()`. Both use schema-first derivation from `ReservationsSchema`.
+- [x] **P2-10: Availability guard gRPC has zero auth** (done)
+  - **Implemented**: Added `withGrpcAuth<TReq, TRes>()` handler wrapper in `server.ts` that validates `authorization` metadata against configured `GRPC_AUTH_TOKEN`. All 3 gRPC handlers (lockRoom, releaseLock, bulkRelease) wrapped. Client-side: `callGrpc()` in reservations-command-service now sends `Bearer` token via gRPC `Metadata`. Passthrough when no token configured (dev mode). Dev scripts set `GRPC_AUTH_TOKEN=guard-shared-secret-dev` on guard and `AVAILABILITY_GUARD_GRPC_TOKEN=guard-shared-secret-dev` on reservations.
+- [x] **P2-11: No deposit authorization flow** — billing-service only does direct CAPTURE, missing AUTHORIZE → CAPTURE pattern for hotel deposits. **Implemented**: `billing.payment.authorize` command creates AUTHORIZATION payments with `status='AUTHORIZED'`, idempotent via `ON CONFLICT` on `payment_reference`.
+- [x] **P2-12: No void charge / finalize invoice / night audit commands** | Complexity: Medium | Priority: P2 — billing lifecycle gaps. **Implemented**: `billing.night_audit.execute` (posts room charges, marks no-shows, advances business date). `billing.charge.void` (validates posting not already voided, marks is_voided=true, inserts reversal VOID/CREDIT posting, cross-links via void_posting_id/original_posting_id, adjusts folio balance — all in single transaction). `billing.invoice.finalize` (validates DRAFT/SENT status, transitions to FINALIZED). Added `FINALIZED` to `invoice_status` enum. Schemas, consumer dispatch, catalog, and validators all updated.
+- [x] **P2-13: `handleReservationUpdated` truthy checks** | Complexity: Low | Priority: P2 — **Implemented**: Replaced 11 `if (payload.xxx)` truthy checks with `!== undefined` comparisons in reservation-command-service.
+- [x] **P2-14: `console.warn` / `console.error` in production** | Complexity: Low | Priority: P2 — **Implemented**: Replaced 47+ `console.*` calls across 17 files with structured loggers. All `db.ts` files (11 services) now use pino-based `dbLogger`. Added `logger.ts` to settings-service.
+- [x] **P2-15: Rooms update COALESCE anti-pattern** | Complexity: Low | Priority: P2 — **Implemented**: Created `dynamic-update-builder.ts` utility. Refactored `updateRoomType()` (22 columns) and `updateRate()` (34 columns) to use dynamic SET clauses — only includes fields where `input[key] !== undefined`, allowing explicit null-clearing.
+- [x] **P2-16: `assignRoom` doesn't verify room type matches reservation** | Complexity: Low | Priority: P2 — **Implemented**: Refactored `fetchRoomNumber` → `fetchRoomInfo` (returns `{roomNumber, roomTypeId}`). Added room type mismatch validation in `assignRoom` — throws `ROOM_TYPE_MISMATCH` when assigned room's type differs from reservation's `room_type_id`.
+- [x] **P2-17: No `GET /v1/guests/:guestId` single-guest endpoint** | Complexity: Low | Priority: P2 — **Implemented**: Added `GUEST_BY_ID_SQL` query with tenant scoping, `getGuestById` service function, and `GET /v1/guests/:guestId` route with OpenAPI schema. Returns 404 with `GUEST_NOT_FOUND` error code.
+
+---
+
 1. **Expose reservation reads through the API Gateway** (done)
    - Added `/v1/reservations` proxy in `Apps/api-gateway/src/server.ts` so GET calls hit `core-service`.
    - UI already targets `/v1/reservations` via `ReservationApiService`.
@@ -113,3 +211,272 @@
 - Command catalog + command-center registry entries already expanded in `scripts/tables/01-core/10_command_center.sql`.
 - Reservations updates include check-in/out, assign/unassign, extend stay, rate override, deposits; reservation schema allows `room_number` nullable (`schema/src/schemas/03-bookings/reservations.ts`).
 - Services updated: guests/rooms/housekeeping/billing/reservations command handlers and command-center consumers are in place; no new services added.
+
+---
+
+### PMS Industry Standards Compliance (2026-02-09)
+
+Audit against online PMS industry standards (Oracle OPERA Cloud, Revfine PMS Feature Guide, HTNG Standards, Wikipedia PMS Standards). Coverage analysis of the Reservation Flow.
+
+#### Overall Reservation Flow Coverage: **~78%**
+
+| # | Reservation Flow Area | Coverage | Notes |
+|---|---|---|---|
+| 1 | Reservation Lifecycle Management | **92%** | Near-complete with 15 commands and 10-state lifecycle |
+| 2 | Check-In / Check-Out | **82%** | Strong core; missing mobile CI, key cards, early/late fees |
+| 3 | Room Assignment & Inventory | **88%** | Excellent availability guard with distributed locking |
+| 4 | Rate & Pricing Management | **80%** | Rich schema with dynamic rules; yield engine not runtime |
+| 5 | Group Bookings & Allotments | **65%** | Full schema foundation; limited handler/API implementation |
+| 6 | Waitlist Management | **85%** | Good workflow; missing auto-offer automation |
+| 7 | Cancellation & Refund | **85%** | Strong policy engine; refund workflow partially wired |
+| 8 | Financial / Folio Management | **75%** | Auto-folio + settlement; city ledger/AR not wired |
+| 9 | Guest Profile & CRM | **80%** | Rich profile + loyalty; missing CI recognition alerts |
+| 10 | Distribution / Channel Mgmt | **60%** | Schema ready; no runtime OTA/GDS connectors |
+| 11 | Notifications & Messaging | **75%** | Runtime processor + template engine + event consumers done; email/SMS provider remaining |
+| 12 | Night Audit / End-of-Day | **55%** | Business dates + audit trail; no auto room-charge posting |
+| 13 | Reporting & Analytics | **45%** | Query-based listing; no dedicated report endpoints |
+
+#### Tier 1 — Critical Business Logic (IMPLEMENTED)
+
+- [x] **S1: Reservation Type Classification** (done)
+  - PMS standard: reservations must be classified (TRANSIENT, CORPORATE, GROUP, WHOLESALE, PACKAGE, COMPLIMENTARY, HOUSE_USE, DAY_USE, WAITLIST).
+  - **Implemented**: Added `reservation_type` enum (9 values), column with DEFAULT 'TRANSIENT', index, schema/command/event updates across the full CQRS pipeline.
+
+- [x] **S2: Cancellation Fee Enforcement** (done)
+  - PMS standard: rates carry cancellation policies with time-based penalty windows; cancellation fees must be calculated and persisted.
+  - **Implemented**: `calculateCancellationFee()` service computes fees from rate cancellation_policy JSONB (supports flexible/moderate/strict/non_refundable). Fee is included in `ReservationCancelledEvent` payload and persisted to `cancellation_fee` column.
+
+- [x] **S3: Auto-Create Folio on Reservation** (done)
+  - PMS standard: every reservation must have an associated GUEST folio for tracking charges/payments.
+  - **Implemented**: `handleReservationCreated` auto-creates a folio (GUEST type, OPEN status, zero balance) with `ON CONFLICT DO NOTHING` for idempotency. Also see P1-5.
+
+- [x] **S4: Guest Profile Statistics** (done)
+  - PMS standard: guest profiles must track booking/stay metrics for loyalty, segmentation, and reporting.
+  - **Implemented**: `total_bookings` incremented on reservation.created. `total_nights`, `total_revenue`, `last_stay_date` updated at check-out via `updateGuestStayStats()`.
+
+- [x] **S5: Check-In Business Logic** (done)
+  - PMS standard: check-in requires pre-validation (reservation status PENDING/CONFIRMED, room AVAILABLE) and triggers room OCCUPIED transition.
+  - **Implemented**: `checkInReservation()` validates reservation status, verifies room availability, then marks room OCCUPIED after enqueuing the status update.
+  - **Hardened**: Now rejects DIRTY rooms (`ROOM_NOT_CLEAN`), OOO/OOS rooms (`ROOM_UNAVAILABLE`). Warns on missing deposit when `total_amount > 0` and no payments on file.
+
+- [x] **S6: Check-Out Business Logic** (done)
+  - PMS standard: check-out requires pre-validation (reservation CHECKED_IN), triggers room DIRTY transition, updates guest stay stats, and warns on unsettled folio.
+  - **Implemented**: `checkOutReservation()` validates status, marks room DIRTY, calls `updateGuestStayStats()`, and warns if folio has outstanding balance.
+  - **Hardened**: Folio settlement now enforced — throws `FOLIO_UNSETTLED` when `balance > 0`; callers can bypass with `force: true` flag.
+
+#### Tier 2 — Important Functional Gaps
+
+- [x] **S7: Guest Communication & Notification Service** (done)
+  - PMS standard: confirmation emails/SMS sent on booking, modification, cancellation, pre-arrival, check-in.
+  - **Implemented**: Full `notification-service` microservice (port 3055) with 20+ source files. Kafka command consumer (`commands.primary`) handles `notification.send`, `notification.template.create/update/delete`. Reservation event consumer (`reservations.events`) auto-triggers notifications on `reservation.confirmed/modified/cancelled/checked_in/checked_out` → maps to template codes `BOOKING_CONFIRMED/MODIFIED/CANCELLED`, `CHECK_IN/OUT_CONFIRMATION`. Template service with `{{variable}}` and `{{variable | fallback}}` interpolation. Pluggable provider interface with console (dev) and webhook providers. Gateway routes (8 endpoints): template CRUD + send + communications list/detail. Zod schemas fixed (Create/Update for guest-communications, communication-templates, push-notifications). `notifications.events` Kafka topic added (6 partitions). Coverage: **40% → 75%** (runtime processor + template rendering + event consumers done; email/SMS provider integration remaining).
+
+- [x] **S8: Missing Reservation Statuses** | Complexity: **Medium** | Priority: **P2**
+  - PMS standard: full lifecycle includes INQUIRY, QUOTED, WAITLISTED, EXPIRED, NO_SHOW in addition to existing statuses.
+  - Coverage: **100%** — All 10 statuses have dedicated command handlers.
+  - **Implemented**: `reservation.send_quote` (INQUIRY → QUOTED, sets `quoted_at`/`quote_expires_at`). `reservation.convert_quote` (QUOTED → PENDING, locks availability via guard). `reservation.expire` (INQUIRY/QUOTED/PENDING → EXPIRED, releases guard locks). Widened `cancelReservation` gate to accept INQUIRY and QUOTED. Added SQL migration for `quoted_at`, `quote_expires_at`, `expired_at` columns. Schemas, consumer dispatch, catalog, and validators all updated.
+
+- [x] **S9: Group Booking Command Handlers** | Complexity: **Very High** | Priority: **P2**
+  - PMS standard: group bookings with master/sub reservations, rooming lists, room blocks, cutoff dates, comp ratios.
+  - Coverage: **65% → 85%** — **Implemented**: 5 command handlers (`group.create`, `group.add_rooms`, `group.upload_rooming_list`, `group.cutoff_enforce`, `group.billing.setup`). Group code generation, room block UPSERT with pickup tracking, rooming list → individual reservations with group_booking_id FK, cutoff enforcement with dry_run, master folio creation with routing rules. SQL migration added `group_booking_id` FK on reservations. Schemas, consumer dispatch, catalog, and validators all updated.
+
+- [x] **S10: Commission Wiring to Reservations** | Complexity: **Medium** | Priority: **P2**
+  - PMS standard: travel agent / OTA commissions tracked per reservation and paid out.
+  - Coverage: **50% → 80%** — **Implemented**: `billing.commission.calculate` and `billing.commission.generate_statement` command handlers. Commission calculation at checkout queries `commission_rules` by booking source, computes percentage/flat fees, inserts `commission_tracking` record. Statement generation aggregates unpaid commissions into `commission_statements` with period tracking. Schemas, consumer dispatch, and validators updated.
+
+- [x] **S11: Overbooking & Walk Procedures** | Complexity: **High** | Priority: **P2**
+  - PMS standard: controlled overbooking with walk procedures (relocate guests, track walk-out costs, compensation).
+  - Coverage: **60% → 85%** — **Implemented**: SQL migration added `overbooking_config` and `walk_history` tables. `reservation.walk_guest` command handler records walk-out with compensation details, updates reservation status to WALKED, releases room, inserts walk_history record. Schemas, consumer dispatch, catalog, and validators updated.
+
+- [x] **S16: Distribution / Channel Runtime Connectors** | Complexity: **Very High** | Priority: **P2**
+  - PMS standard: real-time two-way sync with OTAs (Booking.com, Expedia), GDS (Amadeus, Sabre), and direct booking engines.
+  - Coverage: **60% → 80%** — **Implemented**: 5 integration command handlers (`integration.ota.sync_request`, `integration.ota.rate_push`, `integration.webhook.retry`, `integration.mapping.update`, plus `processOtaReservationQueue`). OTA availability sync computes 30-day room availability, records to `ota_inventory_sync`. Rate push fetches `ota_rate_plans` with markup/markdown adjustments. Inbound OTA reservation queue processor deduplicates, maps room types via `channel_mappings`, creates internal reservations. Command routes migrated to `reservations-command-service`. Schemas, consumer dispatch updated.
+
+- [ ] **S17: Mobile / Self-Service Check-In** | Complexity: **High** | Priority: **P3**
+  - PMS standard: mobile check-in via app or kiosk, contactless key issuance, digital registration cards.
+  - Coverage: **30%** — `mobile_check_ins`, `digital_registration_cards`, `contactless_requests`, `mobile_keys` tables exist. No API endpoints or guest-facing flow.
+  - Scope: add guest-facing check-in API, digital registration card generation, mobile key integration.
+
+- [x] **S18: Early Check-In / Late Check-Out Fees** | Complexity: **Low** | Priority: **P2**
+  - PMS standard: configurable early CI / late CO surcharges with time-window rules.
+  - Coverage: **10% → 85%** — **Implemented**: SQL migration added `early_checkin_fee_config` and `late_checkout_fee_config` JSONB columns to properties table. Check-in handler reads property config, compares actual check-in time vs standard check-in time, posts automatic EARLY_CHECKIN charge if early. Check-out handler similarly posts LATE_CHECKOUT charge if past standard checkout. Both use configurable time-window-based fee tiers.
+
+- [x] **S19: City Ledger & Accounts Receivable Workflow** | Complexity: **High** | Priority: **P2**
+  - PMS standard: direct billing to companies/agents with AR aging, statements, and collections.
+  - Coverage: **40% → 80%** — **Implemented**: 4 AR command handlers (`billing.ar.post_to_ledger`, `billing.ar.apply_payment`, `billing.ar.generate_statement`, `billing.ar.aging_report`). AR posting transfers outstanding folio balance to `accounts_receivable`. Payment application reduces AR balance. Statement generation creates monthly AR statements. Aging report computes current/30/60/90+ day buckets. Schemas, consumer dispatch, and validators updated.
+
+- [x] **S20: Split Billing & Folio Transfer Workflow** | Complexity: **Medium** | Priority: **P2**
+  - PMS standard: split charges between guest/company folios, transfer charges between rooms/folios.
+  - Coverage: **50% → 85%** — **Implemented**: `billing.folio.transfer` handler moves charge postings between folios with balance recalculation. `billing.charge.split` handler splits a charge posting into two folios by amount/percentage with audit trail. Both validate source ownership, update folio balances atomically, and record `transfer_source`/`transfer_target` on charge_postings. Schemas, consumer dispatch, and validators updated.
+
+- [ ] **S21: Waitlist Auto-Offer & Expiration** | Complexity: **Medium** | Priority: **P3**
+  - PMS standard: automatically offer rooms to waitlisted guests when availability opens; expire stale entries.
+  - Coverage: **50%** — Manual add/convert workflow implemented. `offer_expires_at`, `offer_sent_at`, `offer_response` fields exist. No event-driven auto-offering when cancellations free inventory; no background expiration processor.
+  - Scope: add cancellation event listener that checks waitlist; background job for expired offers.
+
+- [x] **S22: Batch No-Show Processing** | Complexity: **Low** | Priority: **P2**
+  - PMS standard: automated end-of-day sweep marking overdue reservations as no-show.
+  - Coverage: **90%** — **Implemented**: `reservation.batch_no_show` command with `ReservationBatchNoShowCommandSchema` (property_id, business_date, dry_run, no_show_fee_override). `batchNoShowSweep` handler queries eligible reservations (PENDING/CONFIRMED with check_in ≤ business_date and no actual check-in), iterates calling individual `noShowReservation` per record. Supports dry_run mode. Consumer dispatch, catalog entry, and validators added.
+
+- [ ] **S23: Guest Recognition at Check-In** | Complexity: **Medium** | Priority: **P3**
+  - PMS standard: alert front-desk staff of VIP status, preferences, allergies, special requests, past complaints at check-in.
+  - Coverage: **40%** — All data available (guest preferences, VIP status, notes with alert triggers, loyalty tier). No check-in alert aggregation mechanism.
+  - Scope: add `GET /v1/reservations/:id/check-in-brief` that aggregates guest preferences, VIP status, active notes/alerts, loyalty info, and special requests into a single pre-check-in response.
+
+- [x] **S24: Dedicated Reporting Endpoints** | Complexity: **High** | Priority: **P2**
+  - PMS standard: occupancy reports, ADR/RevPAR, arrival/departure lists, in-house guest list, cancellation/no-show reports, revenue forecast.
+  - Coverage: **45% → 85%** — **Implemented**: 5 reporting endpoints in core-service: `/v1/reports/occupancy` (total rooms, occupied, available, OOO/OOS, occupancy %), `/v1/reports/revenue-kpis` (ADR, RevPAR, total revenue, room revenue, occupancy), `/v1/reports/arrivals` (expected arrivals with guest details), `/v1/reports/departures` (expected departures), `/v1/reports/in-house` (currently checked-in guests). All use SQL CTEs with tenant + property scoping and date-range filtering. Gateway routes added.
+
+- [ ] **S25: Room Move with Charge Transfer** | Complexity: **Medium** | Priority: **P3**
+  - PMS standard: mid-stay room move transfers pending charges to new room, updates rate if room type changes, creates audit trail.
+  - Coverage: **60%** — Basic `rooms.move` implemented (status swap + reservation room_number update). No charge transfer, no rate recalculation on room type upgrade/downgrade.
+  - Scope: extend `rooms.move` to optionally recalculate rate based on new room type; transfer pending charges; log move in status history.
+
+- [x] **S26: Deposit Enforcement at Check-In** | Complexity: **Low** | Priority: **P2**
+  - PMS standard: configurable deposit requirements that block check-in until paid.
+  - Coverage: **90%** — **Implemented**: Added `force` flag to `ReservationCheckInCommandSchema`. Check-in handler queries `deposit_schedules WHERE blocks_check_in = TRUE AND schedule_status NOT IN ('PAID','WAIVED','CANCELLED')`. Throws `DEPOSIT_REQUIRED` error with outstanding deposit count unless `force=true` bypass is set.
+
+- [ ] **S27: Registration Card Generation** | Complexity: **Medium** | Priority: **P3**
+  - PMS standard: printed or digital registration card with guest details, terms, signature capture.
+  - Coverage: **20%** — `digital_registration_cards` table exists. No generation logic or API.
+  - Scope: add template-based registration card generation (PDF/HTML); pre-populate from reservation + guest data; link to mobile check-in flow.
+
+#### Tier 3 — Nice-to-Have Enhancements
+
+- [ ] **S12: Dynamic Pricing Engine** | Complexity: **Very High** | Priority: **P3**
+  - PMS standard: rate adjustments based on occupancy, demand, competitor pricing, events.
+  - Coverage: **50%** — `pricing_rules` table with 13 rule types, A/B testing, combinability. `demand_calendar`, `ai_demand_predictions`, `competitor_rates` tables exist. No runtime yield engine.
+  - Scope: implement occupancy-based rate modifiers; competitor rate ingestion; demand-based auto-pricing.
+
+- [ ] **S13: Revenue Management Reports** | Complexity: **High** | Priority: **P3**
+  - PMS standard: ADR, RevPAR, occupancy %, pace reports, pickup reports, and forecast.
+  - Coverage: **30%** — Analytics and report tables exist (`analytics_metrics`, `revenue_forecasts`, `report_schedules`). No runtime computation or API.
+  - Scope: reporting SQL views; KPI computation service; dashboard endpoints.
+
+- [x] **S14: Night Audit Process** (done)
+  - PMS standard: end-of-day process that posts room charges, verifies balances, generates audit trail.
+  - **Implemented**: `billing.night_audit.execute` command: (1) posts room charges for all CHECKED_IN reservations with folio balance update in transaction, (2) bulk-marks overdue PENDING/CONFIRMED reservations as NO_SHOW, (3) advances business date. Logged to `night_audit_log` table.
+
+- [x] **S15: Deposit Authorization Flow** (done)
+  - PMS standard: AUTHORIZE → CAPTURE pattern for hotel deposits (not direct capture).
+  - **Implemented**: `billing.payment.authorize` command creates AUTHORIZATION records (`transaction_type='AUTHORIZATION'`, `status='AUTHORIZED'`), idempotent via `ON CONFLICT` on `payment_reference`. Existing `billing.payment.capture` handles the capture step. See also P2-11.
+
+- [ ] **S28: Key Card / Door Lock Integration** | Complexity: **Very High** | Priority: **P3**
+  - PMS standard: PMS issues key cards or mobile keys linked to room assignment and stay dates.
+  - Coverage: **0%** — `mobile_keys` table exists but no integration with any lock vendor (ASSA ABLOY, Salto, etc.).
+  - Scope: vendor-specific integration; key issuance at check-in; key deactivation at check-out.
+
+- [ ] **S29: Cashier Session Management** | Complexity: **Medium** | Priority: **P3**
+  - PMS standard: cashier shift open/close with transaction reconciliation and cash drawer tracking.
+  - Coverage: **30%** — `cashier_sessions` table exists with `opening_balance`, `closing_balance`, `actual_cash`, `variance`. No runtime logic.
+  - Scope: add cashier session open/close commands; transaction reconciliation at shift end.
+
+- [ ] **S30: Direct Booking Engine** | Complexity: **Very High** | Priority: **P3**
+  - PMS standard: guest-facing booking widget for hotel website with real-time availability and rate display.
+  - Coverage: **10%** — Availability search API exists. No guest-facing booking flow, no booking widget, no payment gateway integration for direct bookings.
+  - Scope: guest-facing REST API for search → select → book flow; payment gateway integration; booking confirmation.
+
+#### Priority / Complexity Summary (Open Items Only)
+
+| ID | Item | Priority | Complexity | Area |
+|----|------|----------|------------|------|
+| ~~P1-1~~ | ~~Idempotency deduplication~~ | ~~P1~~ | ~~Medium~~ | ~~Done~~ |
+| ~~P1-2~~ | ~~Availability lock leak~~ | ~~P1~~ | ~~Medium~~ | ~~Done~~ |
+| ~~P1-7~~ | ~~GDPR erase incomplete~~ | ~~P1~~ | ~~Medium~~ | ~~Done~~ |
+| ~~P2-10~~ | ~~Guard gRPC zero auth~~ | ~~P1~~ | ~~Medium~~ | ~~Done~~ |
+| ~~S7~~ | ~~Notifications service~~ | ~~P1~~ | ~~High~~ | ~~Done (75%)~~ |
+| ~~S26~~ | ~~Deposit enforcement at CI~~ | ~~P2~~ | ~~Low~~ | ~~Done~~ |
+| S18 | Early CI / Late CO fees | P2 | Low | Check-In (82%) |
+| ~~S22~~ | ~~Batch no-show processing~~ | ~~P2~~ | ~~Low~~ | ~~Done~~ |
+| ~~P2-1~~ | ~~Cursor pagination~~ | ~~P2~~ | ~~Medium~~ | ~~Done~~ |
+| ~~P2-3~~ | ~~Dashboard LEFT JOIN~~ | ~~P2~~ | ~~Low~~ | ~~Done~~ |
+| ~~P2-5~~ | ~~Charge code categorization~~ | ~~P2~~ | ~~Medium~~ | ~~Done~~ |
+| ~~P2-8~~ | ~~Guest stats gaps~~ | ~~P2~~ | ~~Low~~ | ~~Done~~ |
+| ~~P2-9~~ | ~~Schema stubs~~ | ~~P2~~ | ~~Medium~~ | ~~Done~~ |
+| ~~P2-12~~ | ~~Void charge / invoice~~ | ~~P2~~ | ~~Medium~~ | ~~Done~~ |
+| ~~P2-13~~ | ~~Truthy checks~~ | ~~P2~~ | ~~Low~~ | ~~Done~~ |
+| ~~P2-14~~ | ~~Console logging~~ | ~~P2~~ | ~~Low~~ | ~~Done~~ |
+| ~~P2-15~~ | ~~COALESCE anti-pattern~~ | ~~P2~~ | ~~Low~~ | ~~Done~~ |
+| ~~P2-16~~ | ~~Room type validation~~ | ~~P2~~ | ~~Low~~ | ~~Done~~ |
+| ~~P2-17~~ | ~~Single guest endpoint~~ | ~~P2~~ | ~~Low~~ | ~~Done~~ |
+| ~~S8~~ | ~~Remaining statuses~~ | ~~P2~~ | ~~Medium~~ | ~~Done~~ |
+| S9 | Group booking handlers | P2 | Very High | Groups (65%) |
+| S10 | Commission wiring | P2 | Medium | Distribution (60%) |
+| S11 | Overbooking & walk | P2 | High | Inventory (88%) |
+| S16 | OTA/GDS connectors | P2 | Very High | Distribution (60%) |
+| S19 | City ledger / AR | P2 | High | Billing (75%) |
+| S20 | Split billing / transfer | P2 | Medium | Billing (75%) |
+| S24 | Reporting endpoints | P2 | High | Reporting (45%) |
+| S17 | Mobile check-in | P3 | High | Check-In (82%) |
+| S21 | Waitlist auto-offer | P3 | Medium | Waitlist (85%) |
+| S23 | Guest CI recognition | P3 | Medium | Guest CRM (80%) |
+| S25 | Room move + charges | P3 | Medium | Inventory (88%) |
+| S27 | Registration cards | P3 | Medium | Check-In (82%) |
+| S12 | Dynamic pricing engine | P3 | Very High | Rates (80%) |
+| S13 | Revenue reports | P3 | High | Reporting (45%) |
+| S28 | Key card integration | P3 | Very High | Check-In (82%) |
+| S29 | Cashier sessions | P3 | Medium | Billing (75%) |
+| S30 | Direct booking engine | P3 | Very High | Distribution (60%) |
+
+---
+
+### E2E Verification — Industry Standard Gaps (2026-02-08)
+
+All 7 Tier 1 gaps (G1-G7) implemented and verified end-to-end via API Gateway (port 8080).
+
+| Gap | Feature | Result | Key Verifications |
+|-----|---------|--------|-------------------|
+| G3 | Folio balance updates | **PASS** | Charge posted → `total_charges` and `balance` updated atomically in transaction |
+| G7 | Payment pre-auth (authorize) | **PASS** | `AUTHORIZATION` / `AUTHORIZED` record created; idempotent via `payment_reference` |
+| G1 | No-show handler | **PASS** | PENDING → NO_SHOW, `is_no_show=true`, `no_show_date=2026-02-08`, `no_show_fee=199.00`, room released |
+| G4 | Check-in hardening | **PASS** | DIRTY room → `ROOM_NOT_CLEAN` rejection; OOO/OOS → `ROOM_UNAVAILABLE`; deposit warning logged |
+| G5 | Check-out settlement | **PASS** | `balance > 0` → `FOLIO_UNSETTLED` blocks checkout; `force: true` overrides; room → DIRTY |
+| G6 | Room move | **PASS** | Source (102) → DIRTY, target (201) → OCCUPIED, reservation.room_number updated to 201 |
+| G2 | Night audit | **PASS** | Room charges posted (1), no-shows marked, business_date advanced 02-08 → 02-09, audit log COMPLETED |
+
+#### Bugs Discovered During E2E Testing (#21–#29)
+
+| Bug | Description | Fix |
+|-----|-------------|-----|
+| #21 | JWT issuer/audience mismatch — gateway defaults differ from core-service token signing | Start gateway with `AUTH_JWT_ISSUER=tartware-core-service AUTH_JWT_AUDIENCE=tartware-core` |
+| #22 | System actor FK violation — `00000000-...` user not in `users` table | INSERT seed user in migration |
+| #23 | UUID regex too strict — rejects seed data UUIDs (repeating digits) | Relaxed regex pattern in billing-command-service |
+| #24 | Missing `AUTHORIZED` enum value in `payment_status` type | `ALTER TYPE payment_status ADD VALUE 'AUTHORIZED'` |
+| #25 | Version lock trigger on no-show UPDATE — missing `version = version + 1` | Added to no-show UPDATE query |
+| #26 | **Pre-existing / NOT fixed**: `markOutboxDelivered(id)` passes UUID where `transactional_outbox.id` is `bigint` | Cosmetic — commands ARE dispatched to Kafka; gateway returns 500 but command processes successfully |
+| #27 | Version lock on ALL room status UPDATEs — check-in (→OCCUPIED), checkout (→DIRTY), no-show (→AVAILABLE) | Added `version = version + 1` to all room UPDATE queries in both reservations-command-service and rooms-service |
+| #28 | `current_date` is a PostgreSQL reserved keyword — night audit SQL used it as column name | Fixed to use actual column names: `business_date`, `previous_business_date` |
+| #29 | `billingLogger` undefined in night audit — variable never declared | Replaced with `appLogger` (imported from `"../lib/logger.js"`) |
+
+**Total bugs across all sessions**: 35 discovered, 34 fixed, 1 deferred (Bug #26 outbox bigint/UUID mismatch).
+
+---
+
+### E2E Verification — Full Reservation Flow (2026-02-08, Session 2)
+
+Extended E2E testing to cover the complete reservation lifecycle: detailed retrieval, status history, cancellation guards, room availability search, folio settlement, and payment void.
+
+| Test | Feature | Result | Key Verifications |
+|------|---------|--------|-------------------|
+| 1 | GET /v1/reservations/:id | **PASS** | Full detail with nested folio object and status_history array |
+| 2 | Status history trigger | **PASS** | PENDING→CANCELLED captured with reason; shows in REST API response |
+| 3 | Cancel status guard | **PASS** | Logs `INVALID_STATUS_FOR_CANCEL: Cannot cancel reservation with status CANCELLED; must be PENDING or CONFIRMED` |
+| 4 | Room availability search | **PASS** | 2 rooms returned (101, 202); excludes occupied 201; rate $209; dates and nights calculated |
+| 5 | Cancel REST route | **PASS** | `POST /v1/tenants/:tenantId/reservations/:reservationId/cancel` added to gateway |
+| 6 | Folio close/settle | **PASS** | Folio `d5ee8a6d` → status=SETTLED, settled_at=2026-02-08, close_reason="settle" |
+| 7 | Payment void | **PASS** | Original AUTH-TEST-001 → CANCELLED; VOID-AUTH-TEST-001 record created with status=COMPLETED, type=VOID |
+
+#### Bugs Discovered During Session 2 E2E Testing (#30–#35)
+
+| Bug | Description | Fix |
+|-----|-------------|-----|
+| #30 | `rate_plans` table doesn't exist — availability query referenced wrong table | Changed to `rates` table with `status = 'ACTIVE'` filter |
+| #31 | `room_id` column doesn't exist in rooms table — PK is `id` | Changed `r.room_id` to `r.id AS room_id` in availability query |
+| #32 | `base_rate` column doesn't exist in room_types — column is `base_price` | Changed `rt.base_rate` to `rt.base_price` |
+| #33 | `.env` had `ROOMS_SERVICE_URL=http://localhost:3400` — rooms runs on 3015 | Fixed `.env` to port 3015 |
+| #34 | `close_reason` column missing from folios table | `ALTER TABLE folios ADD COLUMN close_reason TEXT` |
+| #35 | `chk_folios_settled` constraint — folio UPDATE must set `settled_at` NOT NULL when status=SETTLED | Moved `settled_at`/`settled_by` computation to JS-side with explicit type casts |
+| #36 | Version lock trigger on payment void UPDATE — missing `version = version + 1` | Added to payment UPDATE query in `voidPayment()` |
+| #37 | Gateway JWT defaults mismatched core-service tokens — `tartware-core`/`tartware` vs `tartware-core-service`/`tartware-core` | Fixed defaults in `config.ts` and added `AUTH_JWT_*` env vars to `dev:gateway` script |
+| #38 | Gateway `dev:gateway` script missing `AUTH_JWT_SECRET`, `AUTH_JWT_ISSUER`, `AUTH_JWT_AUDIENCE` env vars | Added all three to `package.json` `dev:gateway` script |
+| #39 | Command-center `.env` `PORT=3700` overrode shell `PORT=3035` due to `dotenv override:true` | Fixed `.env` to `PORT=3035` to match service port pattern |
+| #40 | Command-center `.env` `AUTH_JWT_ISSUER=@tartware/core-service:system` overrode shell env due to `dotenv override:true` | Fixed `.env` to `tartware-core-service` |

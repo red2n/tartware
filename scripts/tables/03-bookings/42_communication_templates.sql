@@ -79,3 +79,5 @@ COMMENT ON COLUMN communication_templates.variables IS 'Available template varia
 COMMENT ON COLUMN communication_templates.is_automated IS 'If true, sends automatically based on trigger';
 COMMENT ON COLUMN communication_templates.trigger_event IS 'Event that triggers auto-send';
 COMMENT ON COLUMN communication_templates.trigger_offset_hours IS 'Hours before (-) or after (+) trigger event';
+
+\echo 'communication_templates table created successfully!'

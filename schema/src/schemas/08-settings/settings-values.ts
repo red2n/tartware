@@ -31,6 +31,12 @@ const SettingsValuePayloadSchema = z.union([
 ]);
 
 /**
+ * Settings value lifecycle status (not a DB enum — CHECK constraint).
+ */
+export const SettingsValueStatusEnum = z.enum(["ACTIVE", "PENDING", "EXPIRED"]);
+export type SettingsValueStatus = z.infer<typeof SettingsValueStatusEnum>;
+
+/**
  * Stores the resolved value of a setting per scope (tenant/property/unit/user)
  */
 export const SettingsValuesSchema = z.object({
@@ -55,7 +61,7 @@ export const SettingsValuesSchema = z.object({
 	source: z
 		.enum(["MANUAL", "IMPORT", "INTEGRATION", "DEFAULT", "API"])
 		.default("MANUAL"),
-	status: z.enum(["ACTIVE", "PENDING", "EXPIRED"]).default("ACTIVE"),
+	status: SettingsValueStatusEnum.default("ACTIVE"),
 	notes: z.string().max(1024).optional(),
 	context: jsonbSettings,
 	metadata: jsonbMetadata,

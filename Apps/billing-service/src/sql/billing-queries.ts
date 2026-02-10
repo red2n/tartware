@@ -49,6 +49,7 @@ export const BILLING_PAYMENT_LIST_SQL = `
     )
   ORDER BY p.processed_at DESC NULLS LAST, p.created_at DESC
   LIMIT $1
+  OFFSET $7
 `;
 
 export const INVOICE_LIST_SQL = `
@@ -91,6 +92,7 @@ export const INVOICE_LIST_SQL = `
     AND ($6::uuid IS NULL OR i.guest_id = $6::uuid)
   ORDER BY i.invoice_date DESC, i.created_at DESC
   LIMIT $1
+  OFFSET $7
 `;
 
 export const INVOICE_BY_ID_SQL = `
@@ -179,6 +181,7 @@ export const FOLIO_LIST_SQL = `
     AND ($7::uuid IS NULL OR f.guest_id = $7::uuid)
   ORDER BY f.opened_at DESC, f.created_at DESC
   LIMIT $1
+  OFFSET $8
 `;
 
 export const FOLIO_BY_ID_SQL = `
@@ -273,6 +276,7 @@ export const CHARGE_POSTING_LIST_SQL = `
     AND ($7::boolean IS NULL OR c.is_voided = $7::boolean)
   ORDER BY c.posting_date DESC, c.posting_time DESC
   LIMIT $1
+  OFFSET $8
 `;
 
 // =====================================================
@@ -334,6 +338,7 @@ export const TAX_CONFIGURATION_LIST_SQL = `
     AND ($7::text IS NULL OR t.jurisdiction_level = LOWER($7::text))
   ORDER BY COALESCE(t.display_order, 999) ASC, t.tax_name ASC
   LIMIT $1
+  OFFSET $8
 `;
 
 export const TAX_CONFIGURATION_BY_ID_SQL = `

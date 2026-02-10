@@ -237,3 +237,5 @@ COMMENT ON COLUMN revenue_goals.pace IS 'Progress pace compared to expected time
 COMMENT ON COLUMN revenue_goals.incentive_structure IS 'JSON defining incentive tiers based on achievement percentage';
 
 COMMENT ON COLUMN revenue_goals.segment_goals IS 'Revenue targets broken down by market segment';
+
+\echo 'revenue_goals table created successfully!'

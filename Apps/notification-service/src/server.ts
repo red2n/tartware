@@ -1,0 +1,29 @@
+import { buildFastifyServer, type FastifyInstance } from "@tartware/fastify-server";
+
+import { config } from "./config.js";
+import { appLogger } from "./lib/logger.js";
+import { metricsRegistry } from "./lib/metrics.js";
+import authContextPlugin from "./plugins/auth-context.js";
+import swaggerPlugin from "./plugins/swagger.js";
+import { registerHealthRoutes } from "./routes/health.js";
+import { registerNotificationRoutes } from "./routes/notifications.js";
+
+export const buildServer = (): FastifyInstance => {
+  const app = buildFastifyServer({
+    logger: appLogger,
+    enableRequestLogging: config.log.requestLogging,
+    corsOrigin: false,
+    enableMetricsEndpoint: true,
+    metricsRegistry,
+    beforeRoutes: (app) => {
+      app.register(authContextPlugin);
+      app.register(swaggerPlugin);
+    },
+    registerRoutes: (app) => {
+      registerHealthRoutes(app);
+      registerNotificationRoutes(app);
+    },
+  });
+
+  return app;
+};

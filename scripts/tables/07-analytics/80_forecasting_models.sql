@@ -50,3 +50,19 @@ CREATE TABLE IF NOT EXISTS forecasting_models (
 
 
 COMMENT ON TABLE forecasting_models IS 'Stores ML forecasting models and predictions';
+
+COMMENT ON COLUMN forecasting_models.model_id IS 'Unique identifier for the forecasting model';
+COMMENT ON COLUMN forecasting_models.tenant_id IS 'Tenant owning this forecasting model';
+COMMENT ON COLUMN forecasting_models.property_id IS 'Property the model generates forecasts for';
+COMMENT ON COLUMN forecasting_models.model_name IS 'Human-readable name of the forecasting model';
+COMMENT ON COLUMN forecasting_models.model_type IS 'Prediction domain: demand, revenue, occupancy, pricing, or cancellations';
+COMMENT ON COLUMN forecasting_models.algorithm IS 'ML algorithm used (e.g. ARIMA, XGBoost, LSTM)';
+COMMENT ON COLUMN forecasting_models.is_active IS 'Whether this model is currently used for predictions';
+COMMENT ON COLUMN forecasting_models.accuracy_score IS 'Model accuracy metric (e.g. R² or MAPE percentage)';
+COMMENT ON COLUMN forecasting_models.training_data_start IS 'Start date of the training data window';
+COMMENT ON COLUMN forecasting_models.training_data_end IS 'End date of the training data window';
+COMMENT ON COLUMN forecasting_models.last_trained_at IS 'Timestamp when the model was last retrained';
+COMMENT ON COLUMN forecasting_models.parameters IS 'Model hyperparameters and configuration as JSON';
+COMMENT ON COLUMN forecasting_models.predictions IS 'Latest prediction output stored as JSON';
+
+\echo 'forecasting_models table created successfully!'

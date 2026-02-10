@@ -80,3 +80,5 @@ CREATE TABLE IF NOT EXISTS price_adjustments_history (
 
 COMMENT ON TABLE price_adjustments_history IS 'Audit log of all price adjustments made by ML models or manual overrides';
 COMMENT ON COLUMN price_adjustments_history.feature_scores IS 'JSON showing which ML features (occupancy, events, etc.) influenced this price change';
+
+\echo 'price_adjustments_history table created successfully!'

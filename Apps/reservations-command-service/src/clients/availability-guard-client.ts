@@ -1,7 +1,13 @@
 import { performance } from "node:perf_hooks";
 import { fileURLToPath } from "node:url";
 
-import { type Client, credentials, loadPackageDefinition, type ServiceError } from "@grpc/grpc-js";
+import {
+  type Client,
+  credentials,
+  loadPackageDefinition,
+  Metadata,
+  type ServiceError,
+} from "@grpc/grpc-js";
 import protoLoader from "@grpc/proto-loader";
 
 import { availabilityGuardConfig } from "../config.js";
@@ -146,13 +152,21 @@ const callGrpc = <TMethod extends keyof GrpcMethodMap>(
     return Promise.reject(new Error("Availability Guard client disabled"));
   }
 
+  const meta = new Metadata();
+  if (availabilityGuardConfig.grpcAuthToken) {
+    meta.set("authorization", `Bearer ${availabilityGuardConfig.grpcAuthToken}`);
+  }
+
   return new Promise<GrpcMethodMap[TMethod][1]>((resolve, reject) => {
-    const handler = grpcClient[method].bind(grpcClient) as (
+    // gRPC client methods accept (request, metadata, callback) overloads at runtime
+    // but the generated types only expose the 2-arg form; use unknown bridge cast.
+    const handler = grpcClient[method].bind(grpcClient) as unknown as (
       grpcRequest: GrpcMethodMap[TMethod][0],
+      grpcMeta: Metadata,
       callback: (error: ServiceError | null, response: GrpcMethodMap[TMethod][1]) => void,
     ) => void;
 
-    handler(request, (error: ServiceError | null, response) => {
+    handler(request, meta, (error: ServiceError | null, response) => {
       if (error) {
         reject(error);
         return;

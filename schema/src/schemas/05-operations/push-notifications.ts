@@ -57,10 +57,21 @@ export const PushNotificationsSchema = z.object({
 export type PushNotifications = z.infer<typeof PushNotificationsSchema>;
 
 /**
- * Schema for creating a new push notifications
+ * Schema for creating a new push notification
  */
 export const CreatePushNotificationsSchema = PushNotificationsSchema.omit({
-	// TODO: Add fields to omit for creation
+	notification_id: true,
+	status: true,
+	sent_at: true,
+	delivered_at: true,
+	opened_at: true,
+	created_at: true,
+	updated_at: true,
+	created_by: true,
+	updated_by: true,
+	is_deleted: true,
+	deleted_at: true,
+	deleted_by: true,
 });
 
 export type CreatePushNotifications = z.infer<
@@ -68,9 +79,20 @@ export type CreatePushNotifications = z.infer<
 >;
 
 /**
- * Schema for updating a push notifications
+ * Schema for updating a push notification
  */
-export const UpdatePushNotificationsSchema = PushNotificationsSchema.partial();
+export const UpdatePushNotificationsSchema = PushNotificationsSchema.pick({
+	status: true,
+	sent_at: true,
+	delivered_at: true,
+	opened_at: true,
+	device_token: true,
+	platform: true,
+	action_url: true,
+	custom_data: true,
+	priority: true,
+	metadata: true,
+}).partial();
 
 export type UpdatePushNotifications = z.infer<
 	typeof UpdatePushNotificationsSchema

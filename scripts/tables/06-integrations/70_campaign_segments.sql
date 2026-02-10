@@ -155,3 +155,31 @@ CREATE TABLE IF NOT EXISTS campaign_segments (
 
 
 COMMENT ON TABLE campaign_segments IS 'Defines customer segments for targeted marketing campaigns';
+COMMENT ON COLUMN campaign_segments.segment_id IS 'Unique identifier for the campaign segment';
+COMMENT ON COLUMN campaign_segments.tenant_id IS 'Tenant owning this segment';
+COMMENT ON COLUMN campaign_segments.property_id IS 'Property this segment is scoped to, NULL for tenant-wide';
+COMMENT ON COLUMN campaign_segments.segment_code IS 'Unique short code used to reference the segment';
+COMMENT ON COLUMN campaign_segments.segment_name IS 'Human-readable name of the segment';
+COMMENT ON COLUMN campaign_segments.segment_type IS 'Classification of segment (demographic, behavioral, predictive, etc.)';
+COMMENT ON COLUMN campaign_segments.is_active IS 'Whether the segment is currently active for campaign targeting';
+COMMENT ON COLUMN campaign_segments.is_dynamic IS 'Whether membership is recalculated automatically based on criteria';
+COMMENT ON COLUMN campaign_segments.criteria_definition IS 'JSON rules defining segment membership criteria';
+COMMENT ON COLUMN campaign_segments.sql_filter IS 'Raw SQL filter expression for dynamic membership evaluation';
+COMMENT ON COLUMN campaign_segments.booking_frequency IS 'Guest booking frequency band (first_time, occasional, regular, frequent, vip)';
+COMMENT ON COLUMN campaign_segments.average_booking_value_min IS 'Minimum average booking value threshold for segment inclusion';
+COMMENT ON COLUMN campaign_segments.total_lifetime_value_min IS 'Minimum guest lifetime value threshold for segment inclusion';
+COMMENT ON COLUMN campaign_segments.engagement_level IS 'Guest engagement intensity level (low through very_high)';
+COMMENT ON COLUMN campaign_segments.loyalty_tier IS 'Loyalty program tiers eligible for this segment';
+COMMENT ON COLUMN campaign_segments.lifecycle_stage IS 'Customer lifecycle stage (prospect, active, at_risk, dormant, etc.)';
+COMMENT ON COLUMN campaign_segments.churn_risk_level IS 'Predicted churn risk level for predictive segmentation';
+COMMENT ON COLUMN campaign_segments.member_count IS 'Current number of guests in this segment';
+COMMENT ON COLUMN campaign_segments.auto_refresh IS 'Whether segment membership is refreshed automatically on a schedule';
+COMMENT ON COLUMN campaign_segments.refresh_frequency_hours IS 'Hours between automatic membership recalculations';
+COMMENT ON COLUMN campaign_segments.campaigns_used_in IS 'Number of campaigns that have used this segment for targeting';
+COMMENT ON COLUMN campaign_segments.average_open_rate IS 'Average email open rate across campaigns using this segment';
+COMMENT ON COLUMN campaign_segments.average_conversion_rate IS 'Average conversion rate across campaigns using this segment';
+COMMENT ON COLUMN campaign_segments.total_revenue_generated IS 'Total revenue attributed to campaigns targeting this segment';
+COMMENT ON COLUMN campaign_segments.exclude_unsubscribed IS 'Whether to automatically exclude guests who have unsubscribed';
+COMMENT ON COLUMN campaign_segments.is_test_segment IS 'Whether this segment is used for testing purposes only';
+
+\echo 'campaign_segments table created successfully!'

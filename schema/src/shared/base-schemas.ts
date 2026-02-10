@@ -44,8 +44,16 @@ export const auditTimestamps = {
 		.date()
 		.optional()
 		.describe("Timestamp when record was last updated"),
-	created_by: uuid.optional().describe("User ID who created the record"),
-	updated_by: uuid.optional().describe("User ID who last updated the record"),
+	created_by: z
+		.string()
+		.max(100)
+		.optional()
+		.describe("User or actor identifier who created the record"),
+	updated_by: z
+		.string()
+		.max(100)
+		.optional()
+		.describe("User or actor identifier who last updated the record"),
 };
 
 /**

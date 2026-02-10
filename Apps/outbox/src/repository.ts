@@ -120,8 +120,13 @@ export const createOutboxRepository = ({
 	const claimOutboxBatch = async (
 		limit: number,
 		workerId: string,
+		aggregateTypeFilter?: string,
 	): Promise<OutboxRecord[]> => {
 		return withTransaction(async (client) => {
+			const params: (string | number)[] = [limit, workerId];
+			const aggregateFilter = aggregateTypeFilter
+				? `AND aggregate_type = $${params.push(aggregateTypeFilter)}`
+				: "";
 			const result = await client.query(
 				`
           WITH due AS (
@@ -129,6 +134,7 @@ export const createOutboxRepository = ({
             FROM transactional_outbox
             WHERE status IN ('PENDING', 'FAILED')
               AND available_at <= NOW()
+              ${aggregateFilter}
             ORDER BY priority DESC, available_at ASC
             FOR UPDATE SKIP LOCKED
             LIMIT $1
@@ -155,7 +161,7 @@ export const createOutboxRepository = ({
           WHERE o.id = due.id
           RETURNING o.*;
         `,
-				[limit, workerId],
+				params,
 			);
 			return result.rows.map(mapOutboxRow);
 		});

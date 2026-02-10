@@ -188,3 +188,5 @@ COMMENT ON COLUMN companies.commission_rate IS 'Commission percentage for travel
 COMMENT ON COLUMN companies.tax_exempt IS 'Whether the company is exempt from taxes';
 
 COMMENT ON COLUMN companies.iata_number IS 'International Air Transport Association number for travel agencies';
+
+\echo 'companies table created successfully!'
