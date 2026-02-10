@@ -6,7 +6,13 @@ import {
   BillingCashierCloseCommandSchema,
   BillingCashierOpenCommandSchema,
 } from "../../schemas/billing-commands.js";
-import { asUuid, BillingCommandError, type CommandContext, resolveActorId, SYSTEM_ACTOR_ID } from "./common.js";
+import {
+  asUuid,
+  BillingCommandError,
+  type CommandContext,
+  resolveActorId,
+  SYSTEM_ACTOR_ID,
+} from "./common.js";
 
 /**
  * Open a new cashier session (shift start).

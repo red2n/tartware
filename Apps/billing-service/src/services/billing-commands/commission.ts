@@ -299,7 +299,12 @@ export const generateCommissionStatement = async (
 
   // Aggregate commissions for the period
   const filterConditions: string[] = [];
-  const filterParams: unknown[] = [tenantId, command.property_id, command.period_start, command.period_end];
+  const filterParams: unknown[] = [
+    tenantId,
+    command.property_id,
+    command.period_start,
+    command.period_end,
+  ];
   if (command.agent_id) {
     filterParams.push(command.agent_id);
     filterConditions.push(`AND tac.agent_id = $${filterParams.length}::uuid`);

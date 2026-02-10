@@ -145,7 +145,10 @@ export const extendStay = async (
   // Fetch current reservation to check if extension requires availability lock
   const snapshot = await fetchReservationStaySnapshot(tenantId, command.reservation_id);
   if (!snapshot) {
-    throw new ReservationCommandError("RESERVATION_NOT_FOUND", `Reservation ${command.reservation_id} not found`);
+    throw new ReservationCommandError(
+      "RESERVATION_NOT_FOUND",
+      `Reservation ${command.reservation_id} not found`,
+    );
   }
 
   const newCheckOut = new Date(command.new_check_out_date);
@@ -154,7 +157,10 @@ export const extendStay = async (
 
   // Validate new checkout is after check-in
   if (newCheckOut <= checkIn) {
-    throw new ReservationCommandError("INVALID_DATES", "new_check_out_date must be after check_in_date");
+    throw new ReservationCommandError(
+      "INVALID_DATES",
+      "new_check_out_date must be after check_in_date",
+    );
   }
 
   // If extending (new checkout is later), verify availability for extended period

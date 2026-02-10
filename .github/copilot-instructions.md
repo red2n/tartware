@@ -26,3 +26,4 @@ The AGENTS.md file contains project-specific rules that override general coding 
 - **NEVER push changes without asking the user first**
 - Always ask for confirmation before running `git push`
 - Commits can be made without asking, but pushing requires explicit approval
+- **Before every commit that will be pushed**, run biome, knip, and eslint on all affected services (see Pre-Push Quality Gates in AGENTS.md)

@@ -334,7 +334,7 @@ export const completeMobileCheckin = async (
       command.registration_card_signed,
       command.payment_method_verified,
       command.guest_signature_url ?? null,
-      command.room_id ? true : false,
+      !!command.room_id,
       digitalKeyGenerated,
       command.digital_key_type ?? null,
       command.terms_accepted,
