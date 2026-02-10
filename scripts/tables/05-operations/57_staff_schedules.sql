@@ -203,7 +203,3 @@ COMMENT ON COLUMN staff_schedules.overtime_rate_multiplier IS 'Multiplier for ov
 COMMENT ON COLUMN staff_schedules.assigned_tasks IS 'JSON array of tasks assigned during this shift';
 
 \echo 'staff_schedules table created successfully!'
-
-\echo 'staff_schedules table created successfully!'
-
-\echo 'staff_schedules table created successfully!'

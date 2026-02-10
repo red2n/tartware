@@ -106,7 +106,3 @@ COMMENT ON COLUMN ota_inventory_sync.conflict_resolution IS 'Strategy for resolv
 COMMENT ON COLUMN ota_inventory_sync.differences_detected IS 'JSON structure tracking differences found during sync';
 
 \echo 'ota_inventory_sync table created successfully!'
-
-\echo 'ota_inventory_sync table created successfully!'
-
-\echo 'ota_inventory_sync table created successfully!'

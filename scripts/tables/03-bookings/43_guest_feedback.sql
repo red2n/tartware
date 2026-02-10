@@ -91,7 +91,3 @@ COMMENT ON COLUMN guest_feedback.tags IS 'Array of extracted topics/tags from re
 COMMENT ON COLUMN guest_feedback.is_featured IS 'Mark as featured review for marketing';
 
 \echo 'guest_feedback table created successfully!'
-
-\echo 'guest_feedback table created successfully!'
-
-\echo 'guest_feedback table created successfully!'

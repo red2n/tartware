@@ -70,7 +70,3 @@ COMMENT ON COLUMN ota_reservations_queue.processing_attempts IS 'Number of times
 COMMENT ON COLUMN ota_reservations_queue.status IS 'Processing status: PENDING, PROCESSING, COMPLETED, FAILED, DUPLICATE';
 
 \echo 'ota_reservations_queue table created successfully!'
-
-\echo 'ota_reservations_queue table created successfully!'
-
-\echo 'ota_reservations_queue table created successfully!'

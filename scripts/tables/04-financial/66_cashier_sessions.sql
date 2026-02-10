@@ -242,7 +242,3 @@ COMMENT ON COLUMN cashier_sessions.payment_methods_summary IS 'JSON summary of a
 COMMENT ON COLUMN cashier_sessions.has_material_variance IS 'Whether variance exceeds threshold requiring investigation';
 
 \echo 'cashier_sessions table created successfully!'
-
-\echo 'cashier_sessions table created successfully!'
-
-\echo 'cashier_sessions table created successfully!'

@@ -351,7 +351,3 @@ COMMENT ON COLUMN travel_agent_commissions.net_commission IS 'Final commission a
 COMMENT ON COLUMN commission_rules.tier_structure IS 'JSON structure defining commission tiers for graduated/tiered commissions';
 
 \echo 'travel_agent_commissions table created successfully!'
-
-\echo 'travel_agent_commissions table created successfully!'
-
-\echo 'travel_agent_commissions table created successfully!'

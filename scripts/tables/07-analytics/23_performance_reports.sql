@@ -37,4 +37,14 @@ CREATE TABLE IF NOT EXISTS performance_reports (
 COMMENT ON TABLE performance_reports IS
 'Stores generated performance reports with JSON data';
 
+COMMENT ON COLUMN performance_reports.report_id IS 'Unique identifier for the performance report';
+COMMENT ON COLUMN performance_reports.report_type IS 'Classification of report (e.g. occupancy, revenue, ADR)';
+COMMENT ON COLUMN performance_reports.report_name IS 'Human-readable name of the generated report';
+COMMENT ON COLUMN performance_reports.report_data IS 'Full report content stored as structured JSON';
+COMMENT ON COLUMN performance_reports.severity IS 'Report severity level: INFO, WARNING, or CRITICAL';
+COMMENT ON COLUMN performance_reports.status IS 'Distribution status: PENDING, SENT, or FAILED';
+COMMENT ON COLUMN performance_reports.generated_at IS 'Timestamp when the report was generated';
+COMMENT ON COLUMN performance_reports.sent_at IS 'Timestamp when the report was distributed to recipients';
+COMMENT ON COLUMN performance_reports.recipients IS 'List of email addresses or user identifiers to receive the report';
+
 \echo '✓ performance_reports created.'

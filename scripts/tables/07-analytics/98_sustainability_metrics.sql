@@ -401,7 +401,3 @@ COMMENT ON COLUMN sustainability_metrics.waste_diversion_rate IS 'Percentage of 
 COMMENT ON COLUMN sustainability_metrics.net_carbon_emissions_kg IS 'Total emissions minus carbon offsets (computed)';
 
 \echo 'sustainability_metrics table created successfully!'
-
-\echo 'sustainability_metrics table created successfully!'
-
-\echo 'sustainability_metrics table created successfully!'

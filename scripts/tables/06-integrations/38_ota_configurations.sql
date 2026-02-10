@@ -75,7 +75,3 @@ COMMENT ON COLUMN ota_configurations.channel_manager IS 'Channel manager service
 COMMENT ON COLUMN ota_configurations.configuration_json IS 'OTA-specific configuration in JSON format';
 
 \echo 'ota_configurations table created successfully!'
-
-\echo 'ota_configurations table created successfully!'
-
-\echo 'ota_configurations table created successfully!'

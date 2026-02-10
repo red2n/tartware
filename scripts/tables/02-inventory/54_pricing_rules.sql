@@ -230,7 +230,3 @@ COMMENT ON COLUMN pricing_rules.adjustment_type IS 'Type of rate adjustment: per
 COMMENT ON COLUMN pricing_rules.can_combine_with_other_rules IS 'Whether this rule can be applied along with other rules';
 
 \echo 'pricing_rules table created successfully!'
-
-\echo 'pricing_rules table created successfully!'
-
-\echo 'pricing_rules table created successfully!'

@@ -239,7 +239,3 @@ COMMENT ON COLUMN revenue_goals.incentive_structure IS 'JSON defining incentive 
 COMMENT ON COLUMN revenue_goals.segment_goals IS 'Revenue targets broken down by market segment';
 
 \echo 'revenue_goals table created successfully!'
-
-\echo 'revenue_goals table created successfully!'
-
-\echo 'revenue_goals table created successfully!'

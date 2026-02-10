@@ -76,7 +76,3 @@ COMMENT ON COLUMN ota_rate_plans.markup_percentage IS 'Percentage markup applied
 COMMENT ON COLUMN ota_rate_plans.markdown_percentage IS 'Percentage discount applied to base rate';
 
 \echo 'ota_rate_plans table created successfully!'
-
-\echo 'ota_rate_plans table created successfully!'
-
-\echo 'ota_rate_plans table created successfully!'

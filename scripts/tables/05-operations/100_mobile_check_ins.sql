@@ -225,7 +225,3 @@ COMMENT ON COLUMN mobile_check_ins.time_to_complete_seconds IS 'Total time for g
 COMMENT ON COLUMN mobile_check_ins.digital_key_type IS 'Type of digital key issued (mobile app, NFC, Bluetooth, QR code, PIN)';
 
 \echo 'mobile_check_ins table created successfully!'
-
-\echo 'mobile_check_ins table created successfully!'
-
-\echo 'mobile_check_ins table created successfully!'

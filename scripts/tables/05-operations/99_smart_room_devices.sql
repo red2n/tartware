@@ -425,7 +425,3 @@ COMMENT ON COLUMN room_energy_usage.energy_per_guest IS 'Energy consumption norm
 COMMENT ON COLUMN guest_room_preferences.learning_mode_enabled IS 'Allow system to learn and adapt to guest behavior patterns';
 
 \echo 'smart_room_devices table created successfully!'
-
-\echo 'smart_room_devices table created successfully!'
-
-\echo 'smart_room_devices table created successfully!'

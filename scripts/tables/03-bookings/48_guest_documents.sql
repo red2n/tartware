@@ -122,7 +122,3 @@ COMMENT ON COLUMN guest_documents.retention_period_days IS 'Number of days to re
 COMMENT ON COLUMN guest_documents.legal_hold IS 'Prevents deletion when document is subject to legal proceedings';
 
 \echo 'guest_documents table created successfully!'
-
-\echo 'guest_documents table created successfully!'
-
-\echo 'guest_documents table created successfully!'

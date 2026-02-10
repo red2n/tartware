@@ -58,9 +58,23 @@ CREATE TABLE IF NOT EXISTS webhook_subscriptions (
 
 
 COMMENT ON TABLE webhook_subscriptions IS 'Manages webhook subscriptions for event notifications';
-
-\echo 'webhook_subscriptions table created successfully!'
-
-\echo 'webhook_subscriptions table created successfully!'
+COMMENT ON COLUMN webhook_subscriptions.subscription_id IS 'Unique identifier for the webhook subscription';
+COMMENT ON COLUMN webhook_subscriptions.tenant_id IS 'Tenant owning this webhook subscription';
+COMMENT ON COLUMN webhook_subscriptions.property_id IS 'Property this webhook is scoped to, NULL for tenant-wide';
+COMMENT ON COLUMN webhook_subscriptions.webhook_name IS 'Human-readable name describing the webhook purpose';
+COMMENT ON COLUMN webhook_subscriptions.webhook_url IS 'Destination URL where event payloads are delivered';
+COMMENT ON COLUMN webhook_subscriptions.event_types IS 'Array of event types this webhook subscribes to';
+COMMENT ON COLUMN webhook_subscriptions.is_active IS 'Whether this webhook subscription is currently active';
+COMMENT ON COLUMN webhook_subscriptions.http_method IS 'HTTP method used when delivering the webhook (POST or PUT)';
+COMMENT ON COLUMN webhook_subscriptions.headers IS 'Custom HTTP headers included with each webhook delivery';
+COMMENT ON COLUMN webhook_subscriptions.authentication_type IS 'Authentication method for webhook delivery (none, basic, bearer, api_key, oauth)';
+COMMENT ON COLUMN webhook_subscriptions.authentication_config IS 'Encrypted authentication credentials and configuration';
+COMMENT ON COLUMN webhook_subscriptions.retry_count IS 'Maximum number of delivery retry attempts on failure';
+COMMENT ON COLUMN webhook_subscriptions.retry_backoff_seconds IS 'Seconds to wait between retry attempts';
+COMMENT ON COLUMN webhook_subscriptions.last_triggered_at IS 'Timestamp of the most recent webhook delivery attempt';
+COMMENT ON COLUMN webhook_subscriptions.last_success_at IS 'Timestamp of the most recent successful delivery';
+COMMENT ON COLUMN webhook_subscriptions.last_failure_at IS 'Timestamp of the most recent failed delivery';
+COMMENT ON COLUMN webhook_subscriptions.success_count IS 'Total number of successful webhook deliveries';
+COMMENT ON COLUMN webhook_subscriptions.failure_count IS 'Total number of failed webhook deliveries';
 
 \echo 'webhook_subscriptions table created successfully!'

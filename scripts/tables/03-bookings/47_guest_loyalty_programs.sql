@@ -105,7 +105,3 @@ COMMENT ON COLUMN guest_loyalty_programs.points_balance IS 'Current available po
 COMMENT ON COLUMN guest_loyalty_programs.benefits IS 'JSON object containing tier-specific benefits and privileges';
 
 \echo 'guest_loyalty_programs table created successfully!'
-
-\echo 'guest_loyalty_programs table created successfully!'
-
-\echo 'guest_loyalty_programs table created successfully!'

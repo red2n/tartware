@@ -178,9 +178,36 @@ CREATE TABLE IF NOT EXISTS referral_tracking (
 
 
 COMMENT ON TABLE referral_tracking IS 'Tracks guest referrals, rewards, and referral program performance';
-
-\echo 'referral_tracking table created successfully!'
-
-\echo 'referral_tracking table created successfully!'
+COMMENT ON COLUMN referral_tracking.referral_id IS 'Unique identifier for the referral record';
+COMMENT ON COLUMN referral_tracking.tenant_id IS 'Tenant owning this referral';
+COMMENT ON COLUMN referral_tracking.referral_code IS 'Unique referral code shared by the referrer';
+COMMENT ON COLUMN referral_tracking.referral_link IS 'Full URL containing the referral code for tracking';
+COMMENT ON COLUMN referral_tracking.referrer_type IS 'Category of referrer (guest, staff, affiliate, influencer, partner)';
+COMMENT ON COLUMN referral_tracking.referrer_id IS 'ID of the person making the referral';
+COMMENT ON COLUMN referral_tracking.referrer_name IS 'Display name of the referrer';
+COMMENT ON COLUMN referral_tracking.referee_id IS 'ID of the referred person once registered';
+COMMENT ON COLUMN referral_tracking.referee_name IS 'Display name of the referred person';
+COMMENT ON COLUMN referral_tracking.referral_status IS 'Current status in the referral lifecycle (pending through rewarded)';
+COMMENT ON COLUMN referral_tracking.converted IS 'Whether the referee completed the desired conversion action';
+COMMENT ON COLUMN referral_tracking.conversion_type IS 'Type of conversion achieved (booking, signup, purchase, etc.)';
+COMMENT ON COLUMN referral_tracking.reservation_id IS 'Reservation created as a result of this referral';
+COMMENT ON COLUMN referral_tracking.booking_amount IS 'Monetary value of the booking from this referral';
+COMMENT ON COLUMN referral_tracking.referrer_reward_type IS 'Type of reward given to the referrer (discount, credit, points, etc.)';
+COMMENT ON COLUMN referral_tracking.referrer_reward_amount IS 'Monetary value of the reward issued to the referrer';
+COMMENT ON COLUMN referral_tracking.referrer_reward_issued IS 'Whether the referrer reward has been issued';
+COMMENT ON COLUMN referral_tracking.referee_reward_type IS 'Type of reward given to the referee (welcome_bonus, discount, etc.)';
+COMMENT ON COLUMN referral_tracking.referee_reward_amount IS 'Monetary value of the reward issued to the referee';
+COMMENT ON COLUMN referral_tracking.referee_reward_issued IS 'Whether the referee reward has been issued';
+COMMENT ON COLUMN referral_tracking.tier_level IS 'Level in a multi-tier referral chain (1 = direct referral)';
+COMMENT ON COLUMN referral_tracking.parent_referral_id IS 'Parent referral in a multi-tier referral chain';
+COMMENT ON COLUMN referral_tracking.campaign_id IS 'Marketing campaign this referral is associated with';
+COMMENT ON COLUMN referral_tracking.referral_program_id IS 'Referral program governing the rules and rewards';
+COMMENT ON COLUMN referral_tracking.source_channel IS 'Channel through which the referral was shared (email, social, etc.)';
+COMMENT ON COLUMN referral_tracking.qualified IS 'Whether the referral has met all qualification criteria';
+COMMENT ON COLUMN referral_tracking.minimum_booking_amount IS 'Minimum booking value required for the referral to qualify';
+COMMENT ON COLUMN referral_tracking.link_clicks IS 'Number of times the referral link was clicked';
+COMMENT ON COLUMN referral_tracking.revenue_generated IS 'Total revenue attributed to this referral';
+COMMENT ON COLUMN referral_tracking.flagged_suspicious IS 'Whether this referral has been flagged for potential fraud';
+COMMENT ON COLUMN referral_tracking.requires_approval IS 'Whether high-value rewards require manual approval';
 
 \echo 'referral_tracking table created successfully!'

@@ -416,7 +416,3 @@ COMMENT ON COLUMN guest_behavior_patterns.upsell_propensity_score IS 'ML score i
 COMMENT ON COLUMN personalized_recommendations.personalization_factors IS 'JSON showing which guest behaviors/preferences drove this recommendation';
 
 \echo 'guest_behavior_patterns table created successfully!'
-
-\echo 'guest_behavior_patterns table created successfully!'
-
-\echo 'guest_behavior_patterns table created successfully!'

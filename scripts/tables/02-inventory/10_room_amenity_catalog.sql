@@ -9,24 +9,24 @@
 \echo 'Creating room_amenity_catalog table...'
 
 CREATE TABLE IF NOT EXISTS room_amenity_catalog (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
-    property_id UUID NOT NULL REFERENCES properties(id) ON DELETE CASCADE,
-    amenity_code VARCHAR(80) NOT NULL,
-    display_name VARCHAR(160) NOT NULL,
-    description TEXT,
-    category VARCHAR(80) DEFAULT 'GENERAL',
-    icon VARCHAR(120),
-    tags TEXT[] DEFAULT '{}'::text[],
-    sort_order INTEGER DEFAULT 0,
-    is_default BOOLEAN DEFAULT TRUE,
-    is_active BOOLEAN DEFAULT TRUE,
-    is_required BOOLEAN DEFAULT FALSE,
-    metadata JSONB DEFAULT '{}'::jsonb,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at TIMESTAMPTZ,
-    created_by UUID,
-    updated_by UUID,
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(), -- Unique amenity record identifier
+    tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE, -- Owning tenant for multi-chain scope
+    property_id UUID NOT NULL REFERENCES properties(id) ON DELETE CASCADE, -- Property that defines this amenity
+    amenity_code VARCHAR(80) NOT NULL, -- Stable code used in APIs and templates
+    display_name VARCHAR(160) NOT NULL, -- Human-readable amenity label
+    description TEXT, -- Optional detailed amenity description
+    category VARCHAR(80) DEFAULT 'GENERAL', -- Grouping (TECHNOLOGY, WELLNESS, etc.)
+    icon VARCHAR(120), -- Icon identifier for UI rendering
+    tags TEXT[] DEFAULT '{}'::text[], -- Freeform classification tags
+    sort_order INTEGER DEFAULT 0, -- Display ordering weight
+    is_default BOOLEAN DEFAULT TRUE, -- Shipped by Tartware out-of-box
+    is_active BOOLEAN DEFAULT TRUE, -- Soft-delete / visibility flag
+    is_required BOOLEAN DEFAULT FALSE, -- Mandatory in room templates
+    metadata JSONB DEFAULT '{}'::jsonb, -- Extensible custom attributes
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), -- Row creation timestamp
+    updated_at TIMESTAMPTZ, -- Last modification timestamp
+    created_by UUID, -- User who created the record
+    updated_by UUID, -- User who last modified the record
     CONSTRAINT room_amenity_catalog_unique_code UNIQUE (property_id, amenity_code),
     CONSTRAINT room_amenity_catalog_code_format CHECK (amenity_code ~ '^[A-Z0-9_\\-]+$')
 );

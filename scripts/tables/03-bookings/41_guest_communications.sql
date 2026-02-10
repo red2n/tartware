@@ -72,7 +72,3 @@ COMMENT ON COLUMN guest_communications.status IS 'Message status: DRAFT, QUEUED,
 COMMENT ON COLUMN guest_communications.attachments IS 'Array of attachment metadata in JSON format';
 
 \echo 'guest_communications table created successfully!'
-
-\echo 'guest_communications table created successfully!'
-
-\echo 'guest_communications table created successfully!'

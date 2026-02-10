@@ -254,7 +254,3 @@ COMMENT ON COLUMN commission_tracking.is_split IS 'Whether commission is split b
 COMMENT ON COLUMN commission_tracking.split_recipients IS 'JSON array of split recipients: [{recipient_id, name, percentage, amount}]';
 
 \echo 'commission_tracking table created successfully!'
-
-\echo 'commission_tracking table created successfully!'
-
-\echo 'commission_tracking table created successfully!'

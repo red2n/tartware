@@ -7,12 +7,12 @@
 \echo 'Creating command_idempotency table...'
 
 CREATE TABLE IF NOT EXISTS command_idempotency (
-    tenant_id       UUID          NOT NULL,
-    idempotency_key VARCHAR(200)  NOT NULL,
-    command_name    VARCHAR(150)  NOT NULL,
-    command_id      UUID,
-    processed_at    TIMESTAMPTZ   NOT NULL DEFAULT NOW(),
-    created_at      TIMESTAMPTZ   NOT NULL DEFAULT NOW(),
+    tenant_id       UUID          NOT NULL, -- Tenant scope for isolation
+    idempotency_key VARCHAR(200)  NOT NULL, -- Client-supplied deduplication key
+    command_name    VARCHAR(150)  NOT NULL, -- Processed command type
+    command_id      UUID, -- Optional originating command identifier
+    processed_at    TIMESTAMPTZ   NOT NULL DEFAULT NOW(), -- When processing completed
+    created_at      TIMESTAMPTZ   NOT NULL DEFAULT NOW(), -- Row creation for TTL cleanup
 
     CONSTRAINT pk_command_idempotency PRIMARY KEY (tenant_id, idempotency_key)
 );

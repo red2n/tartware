@@ -54,9 +54,24 @@ CREATE TABLE IF NOT EXISTS api_logs (
 
 
 COMMENT ON TABLE api_logs IS 'Logs all API requests and responses for monitoring and debugging';
-
-\echo 'api_logs table created successfully!'
-
-\echo 'api_logs table created successfully!'
+COMMENT ON COLUMN api_logs.log_id IS 'Unique identifier for the API log entry';
+COMMENT ON COLUMN api_logs.tenant_id IS 'Tenant that made the API request';
+COMMENT ON COLUMN api_logs.property_id IS 'Property context of the API request';
+COMMENT ON COLUMN api_logs.api_name IS 'Logical name of the API or service called';
+COMMENT ON COLUMN api_logs.endpoint IS 'Full URL path of the API endpoint invoked';
+COMMENT ON COLUMN api_logs.http_method IS 'HTTP method used for the request (GET, POST, PUT, PATCH, DELETE)';
+COMMENT ON COLUMN api_logs.request_timestamp IS 'Timestamp when the API request was received';
+COMMENT ON COLUMN api_logs.response_timestamp IS 'Timestamp when the API response was sent';
+COMMENT ON COLUMN api_logs.duration_ms IS 'Total request-to-response duration in milliseconds';
+COMMENT ON COLUMN api_logs.status_code IS 'HTTP status code returned by the API';
+COMMENT ON COLUMN api_logs.status_message IS 'Human-readable status message accompanying the status code';
+COMMENT ON COLUMN api_logs.request_headers IS 'HTTP headers sent with the request (sensitive values redacted)';
+COMMENT ON COLUMN api_logs.request_body IS 'JSON body of the incoming API request';
+COMMENT ON COLUMN api_logs.response_body IS 'JSON body of the API response';
+COMMENT ON COLUMN api_logs.success IS 'Whether the API call completed successfully';
+COMMENT ON COLUMN api_logs.error_message IS 'Error message if the API call failed';
+COMMENT ON COLUMN api_logs.ip_address IS 'IP address of the client making the request';
+COMMENT ON COLUMN api_logs.user_agent IS 'User-Agent header identifying the client software';
+COMMENT ON COLUMN api_logs.user_id IS 'Authenticated user who made the API request';
 
 \echo 'api_logs table created successfully!'

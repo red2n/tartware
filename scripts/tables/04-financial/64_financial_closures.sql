@@ -254,7 +254,3 @@ COMMENT ON COLUMN financial_closures.variance_details IS 'JSON array of variance
 COMMENT ON COLUMN financial_closures.period_locked IS 'Whether the financial period is locked from further modifications';
 
 \echo 'financial_closures table created successfully!'
-
-\echo 'financial_closures table created successfully!'
-
-\echo 'financial_closures table created successfully!'

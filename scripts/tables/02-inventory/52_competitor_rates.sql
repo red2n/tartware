@@ -210,7 +210,3 @@ COMMENT ON COLUMN competitor_rates.data_confidence_score IS 'Confidence level in
 COMMENT ON COLUMN competitor_rates.raw_data IS 'Complete raw JSON data from scraping source for audit trail';
 
 \echo 'competitor_rates table created successfully!'
-
-\echo 'competitor_rates table created successfully!'
-
-\echo 'competitor_rates table created successfully!'

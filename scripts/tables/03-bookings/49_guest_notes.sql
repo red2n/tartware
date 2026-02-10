@@ -116,7 +116,3 @@ COMMENT ON COLUMN guest_notes.visible_to_roles IS 'Array of roles that can view 
 COMMENT ON COLUMN guest_notes.hide_from_guest IS 'If true, note is internal only and should never be shown to guest';
 
 \echo 'guest_notes table created successfully!'
-
-\echo 'guest_notes table created successfully!'
-
-\echo 'guest_notes table created successfully!'

@@ -8,15 +8,15 @@
 \c tartware \echo 'Creating system_admin_break_glass_codes table...'
 
 CREATE TABLE IF NOT EXISTS system_admin_break_glass_codes (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    admin_id UUID NOT NULL REFERENCES system_administrators (id) ON DELETE CASCADE,
-    code_hash VARCHAR(255) NOT NULL,
-    label VARCHAR(100),
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    expires_at TIMESTAMPTZ,
-    used_at TIMESTAMPTZ,
-    used_session_id VARCHAR(255),
-    metadata JSONB NOT NULL DEFAULT '{}'::jsonb
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(), -- Unique code record identifier
+    admin_id UUID NOT NULL REFERENCES system_administrators (id) ON DELETE CASCADE, -- Administrator who owns this code
+    code_hash VARCHAR(255) NOT NULL, -- BCrypt/Argon2 hash of the code
+    label VARCHAR(100), -- Storage location description
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), -- Code generation timestamp
+    expires_at TIMESTAMPTZ, -- Optional expiry cutoff
+    used_at TIMESTAMPTZ, -- Timestamp when code was consumed
+    used_session_id VARCHAR(255), -- Session that redeemed the code
+    metadata JSONB NOT NULL DEFAULT '{}'::jsonb -- Audit context and ticket references
 );
 
 COMMENT ON TABLE system_admin_break_glass_codes IS 'Hashed one-time codes that allow emergency SYSTEM_ADMIN access when normal MFA/IP controls fail.';

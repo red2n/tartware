@@ -237,7 +237,3 @@ COMMENT ON COLUMN rate_recommendations.effectiveness_score IS 'Post-implementati
 COMMENT ON COLUMN rate_recommendations.auto_apply_threshold IS 'Minimum confidence score required for automatic implementation';
 
 \echo 'rate_recommendations table created successfully!'
-
-\echo 'rate_recommendations table created successfully!'
-
-\echo 'rate_recommendations table created successfully!'

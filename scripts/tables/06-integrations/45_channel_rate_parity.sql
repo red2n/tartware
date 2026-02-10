@@ -128,7 +128,3 @@ COMMENT ON COLUMN channel_rate_parity.bar_rate IS 'Best Available Rate across al
 COMMENT ON COLUMN channel_rate_parity.contract_violation_risk IS 'Risk level of violating OTA contract terms';
 
 \echo 'channel_rate_parity table created successfully!'
-
-\echo 'channel_rate_parity table created successfully!'
-
-\echo 'channel_rate_parity table created successfully!'

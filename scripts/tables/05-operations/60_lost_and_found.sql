@@ -223,7 +223,3 @@ COMMENT ON COLUMN lost_and_found.hold_until_date IS 'Date until which item will 
 COMMENT ON COLUMN lost_and_found.access_log IS 'JSON array tracking who accessed the item and when';
 
 \echo 'lost_and_found table created successfully!'
-
-\echo 'lost_and_found table created successfully!'
-
-\echo 'lost_and_found table created successfully!'

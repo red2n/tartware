@@ -263,7 +263,3 @@ COMMENT ON COLUMN incident_reports.witnesses IS 'JSON array of witness informati
 COMMENT ON COLUMN incident_reports.follow_up_actions IS 'JSON array of required follow-up actions with assignments and deadlines';
 
 \echo 'incident_reports table created successfully!'
-
-\echo 'incident_reports table created successfully!'
-
-\echo 'incident_reports table created successfully!'

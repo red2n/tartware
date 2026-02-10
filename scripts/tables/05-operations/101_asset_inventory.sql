@@ -451,7 +451,3 @@ COMMENT ON COLUMN predictive_maintenance_alerts.confidence_level IS 'ML model co
 COMMENT ON COLUMN predictive_maintenance_alerts.prediction_factors IS 'JSON showing which factors (usage, age, sensor data) led to prediction';
 
 \echo 'asset tables created successfully!'
-
-\echo 'asset tables created successfully!'
-
-\echo 'asset tables created successfully!'

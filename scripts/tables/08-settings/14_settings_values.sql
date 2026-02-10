@@ -8,30 +8,30 @@
 \echo 'Creating settings_values table...'
 
 CREATE TABLE IF NOT EXISTS settings_values (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    setting_id UUID NOT NULL REFERENCES settings_definitions(id) ON DELETE CASCADE,
-    scope_level VARCHAR(64) NOT NULL,
-    tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
-    property_id UUID REFERENCES properties(id) ON DELETE CASCADE,
-    unit_id UUID REFERENCES rooms(id) ON DELETE CASCADE,
-    user_id UUID REFERENCES users(id) ON DELETE CASCADE,
-    value JSONB,
-    is_overridden BOOLEAN NOT NULL DEFAULT FALSE,
-    is_inherited BOOLEAN NOT NULL DEFAULT FALSE,
-    inheritance_path UUID[],
-    inherited_from_value_id UUID REFERENCES settings_values(id) ON DELETE SET NULL,
-    locked_until TIMESTAMPTZ,
-    effective_from DATE,
-    effective_to DATE,
-    source VARCHAR(32) NOT NULL DEFAULT 'MANUAL',
-    status VARCHAR(32) NOT NULL DEFAULT 'ACTIVE',
-    notes TEXT,
-    context JSONB,
-    metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at TIMESTAMPTZ,
-    created_by VARCHAR(120),
-    updated_by VARCHAR(120)
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),               -- Unique value identifier
+    setting_id UUID NOT NULL REFERENCES settings_definitions(id) ON DELETE CASCADE, -- Parent setting definition
+    scope_level VARCHAR(64) NOT NULL,                             -- Scope: SYSTEM, TENANT, PROPERTY, etc.
+    tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE, -- Owning tenant
+    property_id UUID REFERENCES properties(id) ON DELETE CASCADE, -- Optional property scope
+    unit_id UUID REFERENCES rooms(id) ON DELETE CASCADE,          -- Optional room/unit scope
+    user_id UUID REFERENCES users(id) ON DELETE CASCADE,          -- Optional user scope
+    value JSONB,                                                  -- Setting value as JSONB
+    is_overridden BOOLEAN NOT NULL DEFAULT FALSE,                 -- Overrides a parent scope value
+    is_inherited BOOLEAN NOT NULL DEFAULT FALSE,                  -- Inherited from parent scope
+    inheritance_path UUID[],                                      -- Parent value IDs in chain
+    inherited_from_value_id UUID REFERENCES settings_values(id) ON DELETE SET NULL, -- Source inherited value
+    locked_until TIMESTAMPTZ,                                     -- Change lock expiry timestamp
+    effective_from DATE,                                          -- Start date for time-bound value
+    effective_to DATE,                                            -- End date for time-bound value
+    source VARCHAR(32) NOT NULL DEFAULT 'MANUAL',                 -- How value was set (MANUAL, API, etc.)
+    status VARCHAR(32) NOT NULL DEFAULT 'ACTIVE',                 -- Value status (ACTIVE, ARCHIVED, etc.)
+    notes TEXT,                                                   -- Free-text notes or remarks
+    context JSONB,                                                -- Additional context metadata
+    metadata JSONB NOT NULL DEFAULT '{}'::jsonb,                  -- Extensible key-value metadata
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),                -- Row creation timestamp
+    updated_at TIMESTAMPTZ,                                       -- Last modification timestamp
+    created_by VARCHAR(120),                                      -- User who created this record
+    updated_by VARCHAR(120)                                       -- User who last modified this record
 );
 
 -- =====================================================

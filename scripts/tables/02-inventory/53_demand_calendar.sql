@@ -247,7 +247,3 @@ COMMENT ON COLUMN demand_calendar.events IS 'JSON array of events impacting dema
 COMMENT ON COLUMN demand_calendar.recommended_pricing_strategy IS 'AI-recommended pricing approach based on demand analysis';
 
 \echo 'demand_calendar table created successfully!'
-
-\echo 'demand_calendar table created successfully!'
-
-\echo 'demand_calendar table created successfully!'

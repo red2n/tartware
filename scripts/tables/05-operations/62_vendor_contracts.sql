@@ -251,7 +251,3 @@ COMMENT ON COLUMN vendor_contracts.auto_renewal IS 'Whether contract automatical
 COMMENT ON COLUMN vendor_contracts.performance_issues IS 'JSON array of performance issues and resolutions';
 
 \echo 'vendor_contracts table created successfully!'
-
-\echo 'vendor_contracts table created successfully!'
-
-\echo 'vendor_contracts table created successfully!'

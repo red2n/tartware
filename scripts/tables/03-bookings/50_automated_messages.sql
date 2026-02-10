@@ -168,7 +168,3 @@ COMMENT ON COLUMN automated_messages.channel_priority IS 'Ordered array of fallb
 COMMENT ON COLUMN automated_messages.respect_quiet_hours IS 'If true, messages wont be sent during configured quiet hours';
 
 \echo 'automated_messages table created successfully!'
-
-\echo 'automated_messages table created successfully!'
-
-\echo 'automated_messages table created successfully!'

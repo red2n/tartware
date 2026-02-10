@@ -6,15 +6,15 @@
 -- =====================================================
 
 CREATE TABLE IF NOT EXISTS charge_codes (
-    code VARCHAR(50) PRIMARY KEY,
-    description VARCHAR(255) NOT NULL,
-    department_code VARCHAR(20) NOT NULL,
-    department_name VARCHAR(100) NOT NULL,
-    revenue_group VARCHAR(50) NOT NULL DEFAULT 'OTHER',
-    is_taxable BOOLEAN NOT NULL DEFAULT TRUE,
-    is_active BOOLEAN NOT NULL DEFAULT TRUE,
-    display_order INTEGER NOT NULL DEFAULT 0,
-    created_at TIMESTAMP NOT NULL DEFAULT NOW()
+    code VARCHAR(50) PRIMARY KEY,                       -- Unique charge code identifier (e.g. ROOM)
+    description VARCHAR(255) NOT NULL,                  -- Human-readable charge description
+    department_code VARCHAR(20) NOT NULL,               -- Department short code (e.g. ROOMS, FB)
+    department_name VARCHAR(100) NOT NULL,              -- Full department display name
+    revenue_group VARCHAR(50) NOT NULL DEFAULT 'OTHER', -- Revenue classification per USALI
+    is_taxable BOOLEAN NOT NULL DEFAULT TRUE,           -- Whether charge is subject to tax
+    is_active BOOLEAN NOT NULL DEFAULT TRUE,            -- Soft-delete flag for charge code
+    display_order INTEGER NOT NULL DEFAULT 0,           -- Sort priority in UI listings
+    created_at TIMESTAMP NOT NULL DEFAULT NOW()         -- Row creation timestamp
 );
 
 COMMENT ON TABLE charge_codes IS 'Standard PMS charge codes with department categorization (USALI)';

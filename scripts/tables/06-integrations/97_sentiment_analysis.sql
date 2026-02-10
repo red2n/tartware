@@ -372,7 +372,3 @@ COMMENT ON COLUMN sentiment_analysis.emotion_scores IS 'ML-detected emotions wit
 COMMENT ON COLUMN sentiment_trends.nps_score IS 'Net Promoter Score calculated from promoter and detractor counts (computed)';
 
 \echo 'sentiment_analysis table created successfully!'
-
-\echo 'sentiment_analysis table created successfully!'
-
-\echo 'sentiment_analysis table created successfully!'

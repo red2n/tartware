@@ -190,7 +190,3 @@ COMMENT ON COLUMN companies.tax_exempt IS 'Whether the company is exempt from ta
 COMMENT ON COLUMN companies.iata_number IS 'International Air Transport Association number for travel agencies';
 
 \echo 'companies table created successfully!'
-
-\echo 'companies table created successfully!'
-
-\echo 'companies table created successfully!'

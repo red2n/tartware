@@ -282,7 +282,3 @@ COMMENT ON COLUMN ai_demand_predictions.occupancy_error IS 'Absolute error betwe
 COMMENT ON COLUMN ai_demand_predictions.feature_importance IS 'JSON showing which features (events, weather, etc.) most influenced prediction';
 
 \echo 'ai_demand_predictions table created successfully!'
-
-\echo 'ai_demand_predictions table created successfully!'
-
-\echo 'ai_demand_predictions table created successfully!'

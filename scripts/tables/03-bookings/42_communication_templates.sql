@@ -81,7 +81,3 @@ COMMENT ON COLUMN communication_templates.trigger_event IS 'Event that triggers 
 COMMENT ON COLUMN communication_templates.trigger_offset_hours IS 'Hours before (-) or after (+) trigger event';
 
 \echo 'communication_templates table created successfully!'
-
-\echo 'communication_templates table created successfully!'
-
-\echo 'communication_templates table created successfully!'

@@ -195,7 +195,3 @@ COMMENT ON COLUMN dynamic_pricing_rules_ml.pricing_strategy IS 'Type of ML prici
 COMMENT ON COLUMN dynamic_pricing_rules_ml.exploration_rate IS 'For reinforcement learning: balance between exploring new prices vs exploiting known good prices';
 
 \echo 'dynamic_pricing_rules_ml table created successfully!'
-
-\echo 'dynamic_pricing_rules_ml table created successfully!'
-
-\echo 'dynamic_pricing_rules_ml table created successfully!'

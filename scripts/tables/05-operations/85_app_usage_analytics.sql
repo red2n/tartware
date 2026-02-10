@@ -47,9 +47,20 @@ CREATE TABLE IF NOT EXISTS app_usage_analytics (
 
 
 COMMENT ON TABLE app_usage_analytics IS 'Tracks mobile app usage and user behavior analytics';
-
-\echo 'app_usage_analytics table created successfully!'
-
-\echo 'app_usage_analytics table created successfully!'
+COMMENT ON COLUMN app_usage_analytics.event_id IS 'Unique identifier for the analytics event';
+COMMENT ON COLUMN app_usage_analytics.tenant_id IS 'Tenant whose app generated the event';
+COMMENT ON COLUMN app_usage_analytics.property_id IS 'Property context for the event, if applicable';
+COMMENT ON COLUMN app_usage_analytics.guest_id IS 'Guest who triggered the event, if authenticated';
+COMMENT ON COLUMN app_usage_analytics.session_id IS 'Unique session identifier grouping related events';
+COMMENT ON COLUMN app_usage_analytics.device_id IS 'Device fingerprint or identifier';
+COMMENT ON COLUMN app_usage_analytics.platform IS 'Platform where the event occurred (ios, android, web)';
+COMMENT ON COLUMN app_usage_analytics.app_version IS 'Version of the mobile app that generated the event';
+COMMENT ON COLUMN app_usage_analytics.os_version IS 'Operating system version on the device';
+COMMENT ON COLUMN app_usage_analytics.event_type IS 'High-level event category (app_open, screen_view, booking, etc.)';
+COMMENT ON COLUMN app_usage_analytics.event_name IS 'Specific event name for detailed tracking';
+COMMENT ON COLUMN app_usage_analytics.screen_name IS 'App screen or page where the event was triggered';
+COMMENT ON COLUMN app_usage_analytics.event_timestamp IS 'Exact time the event occurred on the device';
+COMMENT ON COLUMN app_usage_analytics.duration_seconds IS 'Duration of the event or screen view in seconds';
+COMMENT ON COLUMN app_usage_analytics.event_data IS 'Structured payload with event-specific details';
 
 \echo 'app_usage_analytics table created successfully!'

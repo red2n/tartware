@@ -269,7 +269,3 @@ COMMENT ON COLUMN group_bookings.rooming_list_received IS 'Indicates if individu
 COMMENT ON COLUMN group_room_blocks.picked_rooms IS 'Number of rooms from the block that have been reserved';
 
 \echo 'group_bookings table created successfully!'
-
-\echo 'group_bookings table created successfully!'
-
-\echo 'group_bookings table created successfully!'

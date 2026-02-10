@@ -305,7 +305,3 @@ COMMENT ON COLUMN packages.pricing_model IS 'How the package is priced: per nigh
 COMMENT ON COLUMN package_components.is_included IS 'Whether the component is included in base price or additional charge';
 
 \echo 'packages table created successfully!'
-
-\echo 'packages table created successfully!'
-
-\echo 'packages table created successfully!'

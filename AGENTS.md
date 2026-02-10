@@ -36,6 +36,44 @@
 - After running a migration, verify it succeeded by checking affected tables/columns exist.
 - Use idempotent patterns (`CREATE TABLE IF NOT EXISTS`, `ADD COLUMN IF NOT EXISTS`, `ON CONFLICT DO NOTHING`) so scripts are safe to re-run.
 
+## SQL File Documentation Standard
+Every SQL table script must include all 6 documentation elements. Reference: `scripts/tables/01-core/01_tenants.sql`.
+
+1. **File header block** — banner comment with filename, table name, industry standard, pattern, and date:
+   ```sql
+   -- =====================================================
+   -- filename.sql
+   -- Table description
+   -- Industry Standard: ...
+   -- Pattern: ...
+   -- Date: YYYY-MM-DD
+   -- =====================================================
+   ```
+2. **Section header** — banner with table name in caps and brief purpose (for larger/multi-table files):
+   ```sql
+   -- =====================================================
+   -- TABLE_NAME TABLE
+   -- Brief purpose description
+   -- =====================================================
+   ```
+3. **Inline column comments** — `-- description` at the end of every column line in CREATE TABLE:
+   ```sql
+   name VARCHAR(200) NOT NULL, -- Legal name displayed in UI
+   status tenant_status NOT NULL DEFAULT 'TRIAL', -- Subscription lifecycle flag
+   ```
+4. **COMMENT ON TABLE** — PostgreSQL catalog comment:
+   ```sql
+   COMMENT ON TABLE tablename IS 'Business purpose description';
+   ```
+5. **COMMENT ON COLUMN** — for all domain-significant columns (skip generic audit columns like `created_at`, `updated_at`):
+   ```sql
+   COMMENT ON COLUMN tablename.column IS 'Description of business meaning';
+   ```
+6. **`\echo` confirmation** — at the end of every file:
+   ```sql
+   \echo 'tablename table created successfully!'
+   ```
+
 ## Reliability Defaults
 - Every new command must support idempotency keys and deduplication.
 - Use existing outbox patterns and Kafka throttling utilities.

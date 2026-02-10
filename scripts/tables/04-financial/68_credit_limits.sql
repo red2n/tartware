@@ -242,7 +242,3 @@ COMMENT ON COLUMN credit_limits.limit_history IS 'JSON array of historical limit
 COMMENT ON COLUMN credit_limits.temporary_increase_amount IS 'Additional credit available for temporary period';
 
 \echo 'credit_limits table created successfully!'
-
-\echo 'credit_limits table created successfully!'
-
-\echo 'credit_limits table created successfully!'

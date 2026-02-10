@@ -243,7 +243,3 @@ COMMENT ON COLUMN accounts_receivable.payments IS 'JSON array of payment history
 COMMENT ON COLUMN accounts_receivable.write_off_amount IS 'Amount written off as bad debt';
 
 \echo 'accounts_receivable table created successfully!'
-
-\echo 'accounts_receivable table created successfully!'
-
-\echo 'accounts_receivable table created successfully!'

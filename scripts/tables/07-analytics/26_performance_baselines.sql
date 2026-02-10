@@ -34,4 +34,14 @@ CREATE TABLE IF NOT EXISTS performance_baselines (
 COMMENT ON TABLE performance_baselines IS
 'Stores baseline values for performance metrics';
 
+COMMENT ON COLUMN performance_baselines.baseline_id IS 'Unique identifier for the baseline record';
+COMMENT ON COLUMN performance_baselines.metric_name IS 'Name of the performance metric being baselined';
+COMMENT ON COLUMN performance_baselines.time_window IS 'Aggregation window: hourly, daily, weekly, or monthly';
+COMMENT ON COLUMN performance_baselines.baseline_value IS 'Computed baseline (mean) value for the metric';
+COMMENT ON COLUMN performance_baselines.stddev_value IS 'Standard deviation used for anomaly detection bounds';
+COMMENT ON COLUMN performance_baselines.min_value IS 'Observed minimum value during the baseline period';
+COMMENT ON COLUMN performance_baselines.max_value IS 'Observed maximum value during the baseline period';
+COMMENT ON COLUMN performance_baselines.sample_count IS 'Number of data points used to compute the baseline';
+COMMENT ON COLUMN performance_baselines.last_updated IS 'Timestamp when the baseline was last recalculated';
+
 \echo '✓ performance_baselines created.'

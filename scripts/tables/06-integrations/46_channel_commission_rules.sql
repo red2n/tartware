@@ -135,7 +135,3 @@ COMMENT ON COLUMN channel_commission_rules.calculate_on IS 'Base amount on which
 COMMENT ON COLUMN channel_commission_rules.conflict_resolution IS 'Strategy when multiple rules apply to same booking';
 
 \echo 'channel_commission_rules table created successfully!'
-
-\echo 'channel_commission_rules table created successfully!'
-
-\echo 'channel_commission_rules table created successfully!'
