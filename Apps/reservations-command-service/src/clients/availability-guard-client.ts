@@ -1,7 +1,13 @@
 import { performance } from "node:perf_hooks";
 import { fileURLToPath } from "node:url";
 
-import { type Client, credentials, loadPackageDefinition, Metadata, type ServiceError } from "@grpc/grpc-js";
+import {
+  type Client,
+  credentials,
+  loadPackageDefinition,
+  Metadata,
+  type ServiceError,
+} from "@grpc/grpc-js";
 import protoLoader from "@grpc/proto-loader";
 
 import { availabilityGuardConfig } from "../config.js";

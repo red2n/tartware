@@ -16,12 +16,12 @@ import {
 } from "../lib/metrics.js";
 import { processWithRetry, RetryExhaustedError } from "../lib/retry.js";
 import {
+  handleKeyIssue,
+  handleKeyRevoke,
   handleRoomFeaturesUpdate,
   handleRoomHousekeepingStatusUpdate,
   handleRoomInventoryCommand,
   handleRoomInventoryRelease,
-  handleKeyIssue,
-  handleKeyRevoke,
   handleRoomMove,
   handleRoomOutOfOrder,
   handleRoomOutOfService,

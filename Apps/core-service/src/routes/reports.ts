@@ -3,22 +3,22 @@ import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 
 import {
+  DemandForecastReportSchema,
+  GuestListReportSchema,
   getArrivalsReport,
+  getDemandForecastReport,
   getDeparturesReport,
   getInHouseReport,
   getOccupancyReport,
-  getPerformanceReport,
-  getRevenueKpiReport,
-  getDemandForecastReport,
   getPaceReport,
+  getPerformanceReport,
   getRevenueForecastReport,
-  GuestListReportSchema,
+  getRevenueKpiReport,
   OccupancyReportSchema,
-  PerformanceReportSchema,
-  RevenueKpiReportSchema,
-  DemandForecastReportSchema,
   PaceReportSchema,
+  PerformanceReportSchema,
   RevenueForecastReportSchema,
+  RevenueKpiReportSchema,
 } from "../services/report-service.js";
 
 const PerformanceReportQuerySchema = z.object({
@@ -81,9 +81,15 @@ const InHouseQueryJsonSchema = schemaFromZod(InHouseQuerySchema, "InHouseQuery")
 const OccupancyReportJsonSchema = schemaFromZod(OccupancyReportSchema, "OccupancyReportResponse");
 const RevenueKpiJsonSchema = schemaFromZod(RevenueKpiReportSchema, "RevenueKpiReportResponse");
 const GuestListJsonSchema = schemaFromZod(GuestListReportSchema, "GuestListReportResponse");
-const DemandForecastJsonSchema = schemaFromZod(DemandForecastReportSchema, "DemandForecastReportResponse");
+const DemandForecastJsonSchema = schemaFromZod(
+  DemandForecastReportSchema,
+  "DemandForecastReportResponse",
+);
 const PaceReportJsonSchema = schemaFromZod(PaceReportSchema, "PaceReportResponse");
-const RevenueForecastJsonSchema = schemaFromZod(RevenueForecastReportSchema, "RevenueForecastReportResponse");
+const RevenueForecastJsonSchema = schemaFromZod(
+  RevenueForecastReportSchema,
+  "RevenueForecastReportResponse",
+);
 
 export const registerReportRoutes = (app: FastifyInstance): void => {
   // ─── Performance Report ────────────────────────────────────────────────────
@@ -137,8 +143,9 @@ export const registerReportRoutes = (app: FastifyInstance): void => {
       }),
     },
     async (request) => {
-      const { tenant_id, property_id, start_date, end_date } =
-        DateRangeReportQuerySchema.parse(request.query);
+      const { tenant_id, property_id, start_date, end_date } = DateRangeReportQuerySchema.parse(
+        request.query,
+      );
 
       return getOccupancyReport({
         tenantId: tenant_id,
@@ -166,8 +173,9 @@ export const registerReportRoutes = (app: FastifyInstance): void => {
       }),
     },
     async (request) => {
-      const { tenant_id, property_id, start_date, end_date } =
-        DateRangeReportQuerySchema.parse(request.query);
+      const { tenant_id, property_id, start_date, end_date } = DateRangeReportQuerySchema.parse(
+        request.query,
+      );
 
       return getRevenueKpiReport({
         tenantId: tenant_id,
@@ -257,8 +265,7 @@ export const registerReportRoutes = (app: FastifyInstance): void => {
       }),
     },
     async (request) => {
-      const { tenant_id, property_id, limit, offset } =
-        InHouseQuerySchema.parse(request.query);
+      const { tenant_id, property_id, limit, offset } = InHouseQuerySchema.parse(request.query);
 
       return getInHouseReport({
         tenantId: tenant_id,
@@ -286,8 +293,9 @@ export const registerReportRoutes = (app: FastifyInstance): void => {
       }),
     },
     async (request) => {
-      const { tenant_id, property_id, start_date, end_date } =
-        DateRangeReportQuerySchema.parse(request.query);
+      const { tenant_id, property_id, start_date, end_date } = DateRangeReportQuerySchema.parse(
+        request.query,
+      );
 
       return getDemandForecastReport({
         tenantId: tenant_id,
@@ -315,8 +323,9 @@ export const registerReportRoutes = (app: FastifyInstance): void => {
       }),
     },
     async (request) => {
-      const { tenant_id, property_id, start_date, end_date } =
-        DateRangeReportQuerySchema.parse(request.query);
+      const { tenant_id, property_id, start_date, end_date } = DateRangeReportQuerySchema.parse(
+        request.query,
+      );
 
       return getPaceReport({
         tenantId: tenant_id,
@@ -332,7 +341,10 @@ export const registerReportRoutes = (app: FastifyInstance): void => {
     scenario: z.string().optional(),
   });
   type RevenueForecastQuery = z.infer<typeof RevenueForecastQuerySchema>;
-  const RevenueForecastQueryJsonSchema = schemaFromZod(RevenueForecastQuerySchema, "RevenueForecastQuery");
+  const RevenueForecastQueryJsonSchema = schemaFromZod(
+    RevenueForecastQuerySchema,
+    "RevenueForecastQuery",
+  );
 
   app.get<{ Querystring: RevenueForecastQuery }>(
     "/v1/reports/revenue-forecast",

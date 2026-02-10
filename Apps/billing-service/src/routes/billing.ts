@@ -275,8 +275,16 @@ export const registerBillingRoutes = (app: FastifyInstance): void => {
       }),
     },
     async (request) => {
-      const { tenant_id, property_id, folio_status, folio_type, reservation_id, guest_id, limit, offset } =
-        FolioListQuerySchema.parse(request.query);
+      const {
+        tenant_id,
+        property_id,
+        folio_status,
+        folio_type,
+        reservation_id,
+        guest_id,
+        limit,
+        offset,
+      } = FolioListQuerySchema.parse(request.query);
 
       const folios = await listFolios({
         tenantId: tenant_id,

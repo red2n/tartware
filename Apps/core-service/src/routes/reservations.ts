@@ -4,10 +4,10 @@ import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 
 import {
-  getReservationById,
-  getCheckInBrief,
-  listReservations,
   CheckInBriefSchema,
+  getCheckInBrief,
+  getReservationById,
+  listReservations,
   ReservationDetailSchema,
   ReservationListItemSchema,
 } from "../services/reservation-service.js";
@@ -112,9 +112,8 @@ export const registerReservationRoutes = (app: FastifyInstance): void => {
       }),
     },
     async (request) => {
-      const { tenant_id, property_id, status, search, limit, offset } = ReservationListQuerySchema.parse(
-        request.query,
-      );
+      const { tenant_id, property_id, status, search, limit, offset } =
+        ReservationListQuerySchema.parse(request.query);
 
       const reservations = await listReservations({
         tenantId: tenant_id,

@@ -182,7 +182,9 @@ export const registerSystemUserRoutes = (app: FastifyInstance): void => {
         sessionId: adminContext.sessionId,
       });
 
-      return SystemUserListResponseSchema.parse(sanitizeForJson({ users, count: users.length, limit, offset }));
+      return SystemUserListResponseSchema.parse(
+        sanitizeForJson({ users, count: users.length, limit, offset }),
+      );
     },
   );
 };

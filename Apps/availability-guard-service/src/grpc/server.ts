@@ -1,14 +1,14 @@
 import { fileURLToPath } from "node:url";
 
 import {
-  type ServerUnaryCall,
-  type sendUnaryData,
   status as GrpcStatus,
   type handleUnaryCall,
   loadPackageDefinition,
   Server,
   ServerCredentials,
+  type ServerUnaryCall,
   type ServiceDefinition,
+  type sendUnaryData,
 } from "@grpc/grpc-js";
 import protoLoader from "@grpc/proto-loader";
 import type { FastifyBaseLogger } from "fastify";
@@ -256,15 +256,10 @@ export const startGrpcServer = async (logger: FastifyBaseLogger) => {
     return (call: ServerUnaryCall<TReq, TRes>, callback: sendUnaryData<TRes>) => {
       const meta = call.metadata.get("authorization");
       const headerValue = meta.length > 0 ? String(meta[0]) : "";
-      const token = headerValue.startsWith("Bearer ")
-        ? headerValue.slice(7)
-        : headerValue;
+      const token = headerValue.startsWith("Bearer ") ? headerValue.slice(7) : headerValue;
 
       if (token !== authToken) {
-        logger.warn(
-          { peer: call.getPeer() },
-          "gRPC call rejected: invalid or missing auth token",
-        );
+        logger.warn({ peer: call.getPeer() }, "gRPC call rejected: invalid or missing auth token");
         callback(
           { code: GrpcStatus.UNAUTHENTICATED, message: "GRPC_AUTH_REQUIRED" },
           null as unknown as TRes,

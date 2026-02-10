@@ -30,40 +30,40 @@ import {
   type ReservationStaySnapshot,
 } from "../repositories/reservation-repository.js";
 import type {
+  GroupAddRoomsCommand,
+  GroupBillingSetupCommand,
+  GroupCreateCommand,
+  GroupCutoffEnforceCommand,
+  GroupUploadRoomingListCommand,
+  IntegrationMappingUpdateCommand,
+  IntegrationOtaRatePushCommand,
+  IntegrationOtaSyncRequestCommand,
+  IntegrationWebhookRetryCommand,
   ReservationAssignRoomCommand,
   ReservationBatchNoShowCommand,
   ReservationCancelCommand,
   ReservationCheckInCommand,
   ReservationCheckOutCommand,
+  ReservationConvertQuoteCommand,
   ReservationCreateCommand,
   ReservationDepositAddCommand,
   ReservationDepositReleaseCommand,
   ReservationExpireCommand,
   ReservationExtendStayCommand,
+  ReservationGenerateRegCardCommand,
+  ReservationMobileCheckinCompleteCommand,
+  ReservationMobileCheckinStartCommand,
   ReservationModifyCommand,
   ReservationNoShowCommand,
   ReservationRateOverrideCommand,
   ReservationSendQuoteCommand,
-  ReservationConvertQuoteCommand,
   ReservationUnassignRoomCommand,
   ReservationWaitlistAddCommand,
   ReservationWaitlistConvertCommand,
-  ReservationWaitlistOfferCommand,
   ReservationWaitlistExpireSweepCommand,
-  ReservationGenerateRegCardCommand,
-  ReservationMobileCheckinStartCommand,
-  ReservationMobileCheckinCompleteCommand,
-  ReservationWalkInCheckInCommand,
+  ReservationWaitlistOfferCommand,
   ReservationWalkGuestCommand,
-  GroupCreateCommand,
-  GroupAddRoomsCommand,
-  GroupUploadRoomingListCommand,
-  GroupCutoffEnforceCommand,
-  GroupBillingSetupCommand,
-  IntegrationOtaSyncRequestCommand,
-  IntegrationOtaRatePushCommand,
-  IntegrationWebhookRetryCommand,
-  IntegrationMappingUpdateCommand,
+  ReservationWalkInCheckInCommand,
 } from "../schemas/reservation-command.js";
 import type { RatePlanResolution } from "../services/rate-plan-service.js";
 import { resolveRatePlan } from "../services/rate-plan-service.js";
@@ -868,7 +868,11 @@ export const checkInReservation = async (
               );
             });
             reservationsLogger.info(
-              { reservationId: command.reservation_id, fee, cutoffHour: rate.early_checkin_cutoff_hour },
+              {
+                reservationId: command.reservation_id,
+                fee,
+                cutoffHour: rate.early_checkin_cutoff_hour,
+              },
               "Early check-in fee posted",
             );
           }
@@ -883,7 +887,8 @@ export const checkInReservation = async (
   }
 
   const roomNumber =
-    assignedRoomNumber ?? (assignedRoomId ? (await fetchRoomInfo(tenantId, assignedRoomId))?.roomNumber ?? null : null);
+    assignedRoomNumber ??
+    (assignedRoomId ? ((await fetchRoomInfo(tenantId, assignedRoomId))?.roomNumber ?? null) : null);
   const updatePayload: ReservationUpdatePayload = {
     id: command.reservation_id,
     tenant_id: tenantId,
@@ -1119,7 +1124,11 @@ export const checkOutReservation = async (
               );
             });
             reservationsLogger.info(
-              { reservationId: command.reservation_id, fee, cutoffHour: rate.late_checkout_cutoff_hour },
+              {
+                reservationId: command.reservation_id,
+                fee,
+                cutoffHour: rate.late_checkout_cutoff_hour,
+              },
               "Late check-out fee posted",
             );
           }
@@ -1202,7 +1211,7 @@ export const checkOutReservation = async (
   if (reservation.travel_agent_id || reservation.source) {
     try {
       const actualIn = reservation.actual_check_in ?? reservation.check_in_date;
-      const stayNights = Math.max(
+      const _stayNights = Math.max(
         1,
         Math.round((checkOutTime.getTime() - new Date(actualIn).getTime()) / (1000 * 60 * 60 * 24)),
       );
@@ -1258,7 +1267,7 @@ export const checkOutReservation = async (
           [reservation.source, tenantId],
         );
         const src = srcResult.rows?.[0];
-        if (src && src.commission_type !== 'NONE') {
+        if (src && src.commission_type !== "NONE") {
           commissionType = src.commission_type;
           commissionRate = Number(src.commission_percentage);
           flatAmount = Number(src.commission_fixed_amount);
@@ -1268,9 +1277,16 @@ export const checkOutReservation = async (
       // Calculate gross commission
       let grossCommission = 0;
       const roomRevenue = Number(reservation.total_amount);
-      if ((commissionType === 'PERCENTAGE' || commissionType === 'percentage') && commissionRate > 0) {
+      if (
+        (commissionType === "PERCENTAGE" || commissionType === "percentage") &&
+        commissionRate > 0
+      ) {
         grossCommission = (roomRevenue * commissionRate) / 100;
-      } else if (commissionType === 'FIXED' || commissionType === 'FLAT_RATE' || commissionType === 'flat_rate') {
+      } else if (
+        commissionType === "FIXED" ||
+        commissionType === "FLAT_RATE" ||
+        commissionType === "flat_rate"
+      ) {
         grossCommission = flatAmount;
       } else if (commissionRate > 0) {
         grossCommission = (roomRevenue * commissionRate) / 100;
@@ -1372,7 +1388,10 @@ export const assignRoom = async (
   // Fetch reservation to get stay dates for availability check
   const snapshot = await fetchReservationStaySnapshot(tenantId, command.reservation_id);
   if (!snapshot) {
-    throw new ReservationCommandError("RESERVATION_NOT_FOUND", `Reservation ${command.reservation_id} not found`);
+    throw new ReservationCommandError(
+      "RESERVATION_NOT_FOUND",
+      `Reservation ${command.reservation_id} not found`,
+    );
   }
 
   // P2-16: Validate the room's type matches the reservation's expected room type
@@ -2523,7 +2542,13 @@ export const sendQuote = async (
     [command.reservation_id, tenantId],
   );
   const reservation = statusResult.rows?.[0] as
-    | { status: string; room_type_id: string; check_in_date: string; check_out_date: string; property_id: string }
+    | {
+        status: string;
+        room_type_id: string;
+        check_in_date: string;
+        check_out_date: string;
+        property_id: string;
+      }
     | undefined;
 
   if (!reservation) {
@@ -2595,7 +2620,13 @@ export const convertQuote = async (
     [command.reservation_id, tenantId],
   );
   const reservation = statusResult.rows?.[0] as
-    | { status: string; room_type_id: string; check_in_date: string; check_out_date: string; property_id: string }
+    | {
+        status: string;
+        room_type_id: string;
+        check_in_date: string;
+        check_out_date: string;
+        property_id: string;
+      }
     | undefined;
 
   if (!reservation) {
@@ -2721,7 +2752,13 @@ export const expireReservation = async (
     [command.reservation_id, tenantId],
   );
   const reservation = statusResult.rows?.[0] as
-    | { status: string; room_type_id: string; check_in_date: string; check_out_date: string; property_id: string }
+    | {
+        status: string;
+        room_type_id: string;
+        check_in_date: string;
+        check_out_date: string;
+        property_id: string;
+      }
     | undefined;
 
   if (!reservation) {
@@ -2785,7 +2822,11 @@ export const expireReservation = async (
   });
 
   reservationsLogger.info(
-    { reservationId: command.reservation_id, previousStatus: reservation.status, reason: command.reason },
+    {
+      reservationId: command.reservation_id,
+      previousStatus: reservation.status,
+      reason: command.reason,
+    },
     "Reservation expired",
   );
 
@@ -2829,7 +2870,10 @@ export const walkGuest = async (
 
   const reservation = result.rows[0];
   if (!reservation) {
-    throw new ReservationCommandError("NOT_FOUND", `Reservation ${command.reservation_id} not found.`);
+    throw new ReservationCommandError(
+      "NOT_FOUND",
+      `Reservation ${command.reservation_id} not found.`,
+    );
   }
 
   if (!["CONFIRMED", "PENDING"].includes(reservation.status)) {
@@ -2895,10 +2939,14 @@ export const walkGuest = async (
          $8::uuid, $8::uuid
        )`,
       [
-        tenantId, reservation.property_id,
-        command.reservation_id, reservation.confirmation_number,
-        reservation.guest_name, reservation.guest_id,
-        command.walk_reason ?? null, actorId,
+        tenantId,
+        reservation.property_id,
+        command.reservation_id,
+        reservation.confirmation_number,
+        reservation.guest_name,
+        reservation.guest_id,
+        command.walk_reason ?? null,
+        actorId,
         command.alternate_hotel_name ?? null,
         command.alternate_hotel_address ?? null,
         command.alternate_hotel_phone ?? null,
@@ -2929,7 +2977,8 @@ export const walkGuest = async (
            version = version + 1
        WHERE id = $1::uuid AND tenant_id = $2::uuid`,
       [
-        command.reservation_id, tenantId,
+        command.reservation_id,
+        tenantId,
         `WALKED: ${command.walk_reason ?? "Overbooking"}`,
         JSON.stringify({
           walked: true,
@@ -3033,10 +3082,7 @@ export const createGroupBooking = async (
   const arrivalDate = new Date(command.arrival_date);
   const departureDate = new Date(command.departure_date);
   if (departureDate <= arrivalDate) {
-    throw new ReservationCommandError(
-      "INVALID_DATES",
-      "departure_date must be after arrival_date",
-    );
+    throw new ReservationCommandError("INVALID_DATES", "departure_date must be after arrival_date");
   }
 
   // Generate a unique group code: GRP-<8 hex chars>
@@ -3080,19 +3126,40 @@ export const createGroupBooking = async (
         $29, $30, $30
       )`,
       [
-        groupBookingId, tenantId, command.property_id,
-        command.group_name, groupCode, command.group_type,
-        command.company_id ?? null, command.organization_name ?? null,
-        command.contact_name, command.contact_email ?? null, command.contact_phone ?? null,
-        arrivalDate.toISOString().slice(0, 10), departureDate.toISOString().slice(0, 10),
+        groupBookingId,
+        tenantId,
+        command.property_id,
+        command.group_name,
+        groupCode,
+        command.group_type,
+        command.company_id ?? null,
+        command.organization_name ?? null,
+        command.contact_name,
+        command.contact_email ?? null,
+        command.contact_phone ?? null,
+        arrivalDate.toISOString().slice(0, 10),
+        departureDate.toISOString().slice(0, 10),
         command.total_rooms_requested,
-        cutoffDate.toISOString().slice(0, 10), cutoffDays,
-        command.block_status ?? "tentative", command.rate_type ?? null, command.negotiated_rate ?? null,
-        command.payment_method ?? null, command.deposit_amount ?? 0, command.deposit_due_date ? new Date(command.deposit_due_date).toISOString().slice(0, 10) : null,
-        command.complimentary_rooms ?? 0, command.complimentary_ratio ?? null,
-        command.meeting_space_required ?? false, command.catering_required ?? false,
-        command.cancellation_policy ?? null, command.cancellation_deadline ? new Date(command.cancellation_deadline).toISOString().slice(0, 10) : null,
-        command.notes ?? null, SYSTEM_ACTOR_ID,
+        cutoffDate.toISOString().slice(0, 10),
+        cutoffDays,
+        command.block_status ?? "tentative",
+        command.rate_type ?? null,
+        command.negotiated_rate ?? null,
+        command.payment_method ?? null,
+        command.deposit_amount ?? 0,
+        command.deposit_due_date
+          ? new Date(command.deposit_due_date).toISOString().slice(0, 10)
+          : null,
+        command.complimentary_rooms ?? 0,
+        command.complimentary_ratio ?? null,
+        command.meeting_space_required ?? false,
+        command.catering_required ?? false,
+        command.cancellation_policy ?? null,
+        command.cancellation_deadline
+          ? new Date(command.cancellation_deadline).toISOString().slice(0, 10)
+          : null,
+        command.notes ?? null,
+        SYSTEM_ACTOR_ID,
       ],
     );
 
@@ -3349,8 +3416,12 @@ export const uploadGroupRoomingList = async (
           $10, $10
         )`,
         [
-          reservationId, tenantId, group.property_id, guest.room_type_id,
-          arrivalDate, departureDate,
+          reservationId,
+          tenantId,
+          group.property_id,
+          guest.room_type_id,
+          arrivalDate,
+          departureDate,
           group.negotiated_rate ?? 0,
           guest.special_requests ?? null,
           command.group_booking_id,
@@ -3601,7 +3672,9 @@ export const setupGroupBilling = async (
         $10, $10
       )`,
       [
-        folioId, tenantId, group.property_id,
+        folioId,
+        tenantId,
+        group.property_id,
         folioNumber,
         command.billing_contact_name ?? group.billing_contact_name ?? group.contact_name,
         group.organization_name ?? group.group_name,
@@ -3748,8 +3821,12 @@ export const otaSyncRequest = async (
         NOW(), NOW(), $7
       )`,
       [
-        syncId, tenantId, command.property_id, otaConfig.id,
-        syncScope, availabilityRows.length,
+        syncId,
+        tenantId,
+        command.property_id,
+        otaConfig.id,
+        syncScope,
+        availabilityRows.length,
         SYSTEM_ACTOR_ID,
       ],
     );
@@ -3830,10 +3907,7 @@ export const otaRatePush = async (
 
     // Fetch rate plans mapped for this OTA
     const ratePlanFilter = command.rate_plan_id ? "AND orp.rate_id = $4" : "";
-    const params: string[] = [
-      tenantId, command.property_id,
-      otaConfig.id,
-    ];
+    const params: string[] = [tenantId, command.property_id, otaConfig.id];
     if (command.rate_plan_id) params.push(command.rate_plan_id);
 
     const { rows: ratePlans } = await client.query(
@@ -3877,12 +3951,7 @@ export const otaRatePush = async (
         $5, $5, 0,
         NOW(), NOW(), $6
       )`,
-      [
-        syncId, tenantId, command.property_id,
-        otaConfig.id,
-        pushedRates.length,
-        SYSTEM_ACTOR_ID,
-      ],
+      [syncId, tenantId, command.property_id, otaConfig.id, pushedRates.length, SYSTEM_ACTOR_ID],
     );
 
     await enqueueOutboxRecordWithClient(client, {
@@ -3991,10 +4060,7 @@ export const webhookRetry = async (
     });
   });
 
-  reservationsLogger.info(
-    { subscriptionId: command.subscription_id },
-    "Webhook retry scheduled",
-  );
+  reservationsLogger.info({ subscriptionId: command.subscription_id }, "Webhook retry scheduled");
 
   return { eventId, correlationId: options.correlationId, status: "accepted" };
 };
@@ -4061,10 +4127,7 @@ export const updateIntegrationMapping = async (
     });
   });
 
-  reservationsLogger.info(
-    { mappingId: command.mapping_id },
-    "Integration mapping updated",
-  );
+  reservationsLogger.info({ mappingId: command.mapping_id }, "Integration mapping updated");
 
   return { eventId, correlationId: options.correlationId, status: "accepted" };
 };
@@ -4139,9 +4202,7 @@ export const processOtaReservationQueue = async (
           [tenantId, propertyId, entry.room_type],
         );
 
-        const roomTypeId = mappingRows.length > 0
-          ? mappingRows[0].entity_id
-          : null;
+        const roomTypeId = mappingRows.length > 0 ? mappingRows[0].entity_id : null;
 
         if (!roomTypeId) {
           throw new Error(`No channel mapping for OTA room type "${entry.room_type}"`);
@@ -4166,9 +4227,14 @@ export const processOtaReservationQueue = async (
             $11, $11
           )`,
           [
-            reservationId, tenantId, propertyId, roomTypeId,
-            entry.check_in_date, entry.check_out_date,
-            entry.total_amount ?? 0, entry.currency_code ?? "USD",
+            reservationId,
+            tenantId,
+            propertyId,
+            roomTypeId,
+            entry.check_in_date,
+            entry.check_out_date,
+            entry.total_amount ?? 0,
+            entry.currency_code ?? "USD",
             entry.special_requests ?? null,
             `OTA: ${entry.ota_booking_reference ?? entry.ota_reservation_id}`,
             SYSTEM_ACTOR_ID,
@@ -4234,7 +4300,9 @@ export const processOtaReservationQueue = async (
            WHERE id = $1`,
           [entry.id, err instanceof Error ? err.message : String(err)],
         );
-      } catch { /* ignore tracking error */ }
+      } catch {
+        /* ignore tracking error */
+      }
       failed++;
     }
   }
@@ -4366,9 +4434,11 @@ export const waitlistExpireSweep = async (
          ORDER BY priority_score DESC, vip_flag DESC, created_at ASC
          LIMIT 1`,
         [
-          tenantId, command.property_id,
+          tenantId,
+          command.property_id,
           row.requested_room_type_id,
-          row.arrival_date, row.departure_date,
+          row.arrival_date,
+          row.departure_date,
         ],
       );
 
@@ -4443,7 +4513,10 @@ export const generateRegistrationCard = async (
   // 3. Compute nights
   const arrivalDate = new Date(res.check_in_date as string);
   const departureDate = new Date(res.check_out_date as string);
-  const nights = Math.max(1, Math.round((departureDate.getTime() - arrivalDate.getTime()) / 86400000));
+  const nights = Math.max(
+    1,
+    Math.round((departureDate.getTime() - arrivalDate.getTime()) / 86400000),
+  );
 
   const guestFullName = `${res.first_name ?? ""} ${res.last_name ?? ""}`.trim();
 
@@ -4486,19 +4559,49 @@ export const generateRegistrationCard = async (
      )
      ON CONFLICT (registration_number) DO NOTHING`,
     [
-      registrationId, tenantId, command.property_id, command.reservation_id, res.guest_id,
+      registrationId,
+      tenantId,
+      command.property_id,
+      command.reservation_id,
+      res.guest_id,
       registrationNumber,
-      guestFullName, res.email, res.phone, res.date_of_birth, res.nationality,
-      res.id_type, res.id_number, res.id_issuing_country, res.id_issue_date, res.id_expiry_date,
-      res.address_line1, res.address_city, res.address_state, res.address_country, res.address_postal_code,
-      res.check_in_date, res.check_out_date, nights,
-      res.number_of_adults ?? 1, res.number_of_children ?? 0,
-      res.room_number ?? null, res.room_type_name ?? null, res.rate_code ?? null,
-      command.companion_names ?? null, command.companion_names?.length ?? 0,
-      command.vehicle_license_plate ?? null, command.vehicle_make ?? null, command.vehicle_model ?? null, command.vehicle_color ?? null,
-      command.visit_purpose ?? "leisure", command.company_name ?? null,
-      command.emergency_contact_name ?? null, command.emergency_contact_phone ?? null, command.emergency_contact_relationship ?? null,
-      command.terms_accepted, command.privacy_accepted, command.marketing_consent,
+      guestFullName,
+      res.email,
+      res.phone,
+      res.date_of_birth,
+      res.nationality,
+      res.id_type,
+      res.id_number,
+      res.id_issuing_country,
+      res.id_issue_date,
+      res.id_expiry_date,
+      res.address_line1,
+      res.address_city,
+      res.address_state,
+      res.address_country,
+      res.address_postal_code,
+      res.check_in_date,
+      res.check_out_date,
+      nights,
+      res.number_of_adults ?? 1,
+      res.number_of_children ?? 0,
+      res.room_number ?? null,
+      res.room_type_name ?? null,
+      res.rate_code ?? null,
+      command.companion_names ?? null,
+      command.companion_names?.length ?? 0,
+      command.vehicle_license_plate ?? null,
+      command.vehicle_make ?? null,
+      command.vehicle_model ?? null,
+      command.vehicle_color ?? null,
+      command.visit_purpose ?? "leisure",
+      command.company_name ?? null,
+      command.emergency_contact_name ?? null,
+      command.emergency_contact_phone ?? null,
+      command.emergency_contact_relationship ?? null,
+      command.terms_accepted,
+      command.privacy_accepted,
+      command.marketing_consent,
       command.special_notes ?? null,
     ],
   );
@@ -4564,9 +4667,15 @@ export const startMobileCheckin = async (
        SET checkin_status = 'in_progress', updated_at = NOW()
      RETURNING mobile_checkin_id`,
     [
-      checkinId, tenantId, command.property_id, command.reservation_id, command.guest_id,
+      checkinId,
+      tenantId,
+      command.property_id,
+      command.reservation_id,
+      command.guest_id,
       command.access_method,
-      command.device_type ?? null, command.device_os ?? null, command.app_version ?? null,
+      command.device_type ?? null,
+      command.device_os ?? null,
+      command.app_version ?? null,
     ],
   );
 
@@ -4603,7 +4712,10 @@ export const completeMobileCheckin = async (
       `Mobile check-in ${command.mobile_checkin_id} not found`,
     );
   }
-  if (checkin.checkin_status !== "in_progress" && checkin.checkin_status !== "identity_verification") {
+  if (
+    checkin.checkin_status !== "in_progress" &&
+    checkin.checkin_status !== "identity_verification"
+  ) {
     throw new ReservationCommandError(
       "INVALID_CHECKIN_STATUS",
       `Mobile check-in status is ${checkin.checkin_status}, cannot complete`,
@@ -4634,10 +4746,16 @@ export const completeMobileCheckin = async (
        )
        ON CONFLICT (key_code) DO NOTHING`,
       [
-        keyId, tenantId, checkin.property_id,
-        checkin.guest_id, checkin.reservation_id, command.room_id,
-        keyCode, command.digital_key_type,
-        validFrom.toISOString(), validTo.toISOString(),
+        keyId,
+        tenantId,
+        checkin.property_id,
+        checkin.guest_id,
+        checkin.reservation_id,
+        command.room_id,
+        keyCode,
+        command.digital_key_type,
+        validFrom.toISOString(),
+        validTo.toISOString(),
       ],
     );
     digitalKeyGenerated = true;
@@ -4660,7 +4778,8 @@ export const completeMobileCheckin = async (
        updated_at = NOW()
      WHERE mobile_checkin_id = $1 AND tenant_id = $2`,
     [
-      command.mobile_checkin_id, tenantId,
+      command.mobile_checkin_id,
+      tenantId,
       command.identity_verification_method,
       command.id_document_verified,
       command.registration_card_signed,

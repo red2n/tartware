@@ -2,9 +2,9 @@ import { randomUUID } from "node:crypto";
 
 import { buildRouteSchema, schemaFromZod } from "@tartware/openapi";
 import {
+  type CommandExecuteRequest,
   CommandExecuteRequestSchema,
   CommandExecuteResponseSchema,
-  type CommandExecuteRequest,
   validateCommandPayload,
 } from "@tartware/schemas";
 import type { FastifyInstance } from "fastify";
@@ -17,7 +17,10 @@ const CommandParamSchema = z.object({
 });
 
 const CommandParamJsonSchema = schemaFromZod(CommandParamSchema, "CommandExecuteParams");
-const CommandExecuteBodyJsonSchema = schemaFromZod(CommandExecuteRequestSchema, "CommandExecuteBody");
+const CommandExecuteBodyJsonSchema = schemaFromZod(
+  CommandExecuteRequestSchema,
+  "CommandExecuteBody",
+);
 const CommandExecuteResponseJsonSchema = schemaFromZod(
   CommandExecuteResponseSchema,
   "CommandExecuteResponse",
@@ -28,8 +31,7 @@ export const registerCommandRoutes = (app: FastifyInstance): void => {
     "/v1/commands/:commandName/execute",
     {
       preHandler: app.withTenantScope({
-        resolveTenantId: (request) =>
-          (request.body as CommandExecuteRequest).tenant_id,
+        resolveTenantId: (request) => (request.body as CommandExecuteRequest).tenant_id,
         minRole: "MANAGER",
         requiredModules: "core",
       }),

@@ -8,10 +8,7 @@
 import { type RateItem, RateItemSchema } from "@tartware/schemas";
 
 import { query } from "../lib/db.js";
-import {
-  buildDynamicUpdate,
-  type UpdateField,
-} from "../sql/dynamic-update-builder.js";
+import { buildDynamicUpdate, type UpdateField } from "../sql/dynamic-update-builder.js";
 import {
   RATE_CREATE_SQL,
   RATE_DELETE_SQL,
@@ -346,15 +343,44 @@ const RATE_UPDATE_FIELDS: ReadonlyArray<{
 
 /** Columns returned from the UPDATE CTE. */
 const RATE_SELECT_COLUMNS = [
-  "id", "tenant_id", "property_id", "room_type_id", "rate_name", "rate_code",
-  "description", "rate_type", "strategy", "priority", "base_rate", "currency",
-  "single_occupancy_rate", "double_occupancy_rate", "extra_person_rate",
-  "extra_child_rate", "valid_from", "valid_until", "advance_booking_days_min",
-  "advance_booking_days_max", "min_length_of_stay", "max_length_of_stay",
-  "closed_to_arrival", "closed_to_departure", "meal_plan", "meal_plan_cost",
-  "cancellation_policy", "modifiers", "channels", "customer_segments",
-  "tax_inclusive", "tax_rate", "status", "display_order", "metadata",
-  "created_at", "updated_at", "version",
+  "id",
+  "tenant_id",
+  "property_id",
+  "room_type_id",
+  "rate_name",
+  "rate_code",
+  "description",
+  "rate_type",
+  "strategy",
+  "priority",
+  "base_rate",
+  "currency",
+  "single_occupancy_rate",
+  "double_occupancy_rate",
+  "extra_person_rate",
+  "extra_child_rate",
+  "valid_from",
+  "valid_until",
+  "advance_booking_days_min",
+  "advance_booking_days_max",
+  "min_length_of_stay",
+  "max_length_of_stay",
+  "closed_to_arrival",
+  "closed_to_departure",
+  "meal_plan",
+  "meal_plan_cost",
+  "cancellation_policy",
+  "modifiers",
+  "channels",
+  "customer_segments",
+  "tax_inclusive",
+  "tax_rate",
+  "status",
+  "display_order",
+  "metadata",
+  "created_at",
+  "updated_at",
+  "version",
 ] as const;
 
 /**

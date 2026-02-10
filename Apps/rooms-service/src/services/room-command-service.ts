@@ -1,3 +1,4 @@
+import crypto from "node:crypto";
 import { query } from "../lib/db.js";
 import {
   RoomFeaturesUpdateCommandSchema,
@@ -12,7 +13,6 @@ import {
   RoomOutOfServiceCommandSchema,
   RoomStatusUpdateCommandSchema,
 } from "../schemas/room-commands.js";
-import crypto from "node:crypto";
 
 type CommandContext = {
   tenantId: string;
@@ -235,7 +235,12 @@ export const handleRoomMove = async (payload: unknown, context: CommandContext):
   const actor = resolveActorId(context.initiatedBy);
 
   // 1. Validate source room exists and is OCCUPIED
-  const fromResult = await query<{ id: string; status: string; room_number: string; room_type_id: string }>(
+  const fromResult = await query<{
+    id: string;
+    status: string;
+    room_number: string;
+    room_type_id: string;
+  }>(
     `SELECT id, status, room_number, room_type_id FROM public.rooms
      WHERE id = $1 AND tenant_id = $2 AND COALESCE(is_deleted, false) = false LIMIT 1`,
     [command.from_room_id, context.tenantId],
@@ -252,7 +257,12 @@ export const handleRoomMove = async (payload: unknown, context: CommandContext):
   }
 
   // 2. Validate target room exists and is AVAILABLE
-  const toResult = await query<{ id: string; status: string; room_number: string; room_type_id: string }>(
+  const toResult = await query<{
+    id: string;
+    status: string;
+    room_number: string;
+    room_type_id: string;
+  }>(
     `SELECT id, status, room_number, room_type_id FROM public.rooms
      WHERE id = $1 AND tenant_id = $2 AND COALESCE(is_deleted, false) = false LIMIT 1`,
     [command.to_room_id, context.tenantId],
@@ -414,10 +424,7 @@ export const handleRoomFeaturesUpdate = async (
  * S28 — Issue a digital key (mobile key) for a guest's room.
  * Generates a unique key_code, inserts into mobile_keys with status 'active'.
  */
-export const handleKeyIssue = async (
-  payload: unknown,
-  context: CommandContext,
-): Promise<void> => {
+export const handleKeyIssue = async (payload: unknown, context: CommandContext): Promise<void> => {
   const command = RoomKeyIssueCommandSchema.parse(payload);
   const actor = resolveActorId(context.initiatedBy);
 
@@ -476,10 +483,7 @@ export const handleKeyIssue = async (
  * S28 — Revoke a digital key (or all keys for a reservation).
  * Sets status to 'revoked' so the key is no longer valid.
  */
-export const handleKeyRevoke = async (
-  payload: unknown,
-  context: CommandContext,
-): Promise<void> => {
+export const handleKeyRevoke = async (payload: unknown, context: CommandContext): Promise<void> => {
   const command = RoomKeyRevokeCommandSchema.parse(payload);
   const actor = resolveActorId(context.initiatedBy);
 

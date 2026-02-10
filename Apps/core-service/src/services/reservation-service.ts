@@ -1,10 +1,10 @@
 import {
+  type CheckInBrief,
+  CheckInBriefSchema,
+  type ReservationDetail,
+  ReservationDetailSchema,
   type ReservationListItem as SchemaReservationListItem,
   ReservationListItemSchema as SchemaReservationListItemSchema,
-  ReservationDetailSchema,
-  type ReservationDetail,
-  CheckInBriefSchema,
-  type CheckInBrief,
 } from "@tartware/schemas";
 
 import { query } from "../lib/db.js";
@@ -84,8 +84,8 @@ export const getCheckInBrief = async (options: {
   }
 
   // 3. Fetch guest notes — separate alerts from informational notes
-  let alerts: CheckInBrief["alerts"] = [];
-  let notes: CheckInBrief["notes"] = [];
+  const alerts: CheckInBrief["alerts"] = [];
+  const notes: CheckInBrief["notes"] = [];
   if (guestId) {
     const { rows: noteRows } = await query<Record<string, unknown>>(
       `SELECT note_id, note_type, note_text, is_alert, alert_level, status
@@ -129,9 +129,9 @@ export const getCheckInBrief = async (options: {
     total_nights: toNonNegativeInt(row.total_nights, 0),
     total_revenue: toNumberOrFallback(row.total_revenue, 0),
     last_stay_date: row.last_stay_date
-      ? (row.last_stay_date instanceof Date
-          ? row.last_stay_date.toISOString()
-          : String(row.last_stay_date))
+      ? row.last_stay_date instanceof Date
+        ? row.last_stay_date.toISOString()
+        : String(row.last_stay_date)
       : null,
     room_number: row.room_number as string | null,
     room_type: row.room_type as string | null,

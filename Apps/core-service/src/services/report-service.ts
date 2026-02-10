@@ -1,23 +1,23 @@
 import {
-  type GuestListReport,
+  type DemandForecastReport,
+  DemandForecastReportSchema,
   GuestListItemSchema,
+  type GuestListReport,
   GuestListReportSchema,
   type OccupancyReport,
   OccupancyReportSchema,
+  type PaceReport,
+  PaceReportSchema,
   type PerformanceReport,
   PerformanceReportSchema,
   ReservationSourceSummarySchema,
   type ReservationStatusSummary,
   ReservationStatusSummarySchema,
+  type RevenueForecastReport,
+  RevenueForecastReportSchema,
   type RevenueKpiReport,
   RevenueKpiReportSchema,
   RevenueSummarySchema,
-  DemandForecastReportSchema,
-  type DemandForecastReport,
-  PaceReportSchema,
-  type PaceReport,
-  RevenueForecastReportSchema,
-  type RevenueForecastReport,
 } from "@tartware/schemas";
 
 import { query } from "../lib/db.js";
@@ -445,7 +445,9 @@ export const getDemandForecastReport = async (options: {
     rooms_occupied: Number(r.rooms_occupied),
     rooms_remaining: Number(r.rooms_remaining),
     booking_pace: r.booking_pace ? String(r.booking_pace) : null,
-    recommended_pricing_strategy: r.recommended_pricing_strategy ? String(r.recommended_pricing_strategy) : null,
+    recommended_pricing_strategy: r.recommended_pricing_strategy
+      ? String(r.recommended_pricing_strategy)
+      : null,
     season: r.season ? String(r.season) : null,
   }));
 
@@ -456,7 +458,8 @@ export const getDemandForecastReport = async (options: {
       total_days: days.length,
       avg_demand_score: days.reduce((s, d) => s + d.demand_score, 0) / total,
       avg_occupancy: days.reduce((s, d) => s + d.occupancy_percent, 0) / total,
-      avg_forecasted_occupancy: days.reduce((s, d) => s + d.forecasted_occupancy_percent, 0) / total,
+      avg_forecasted_occupancy:
+        days.reduce((s, d) => s + d.forecasted_occupancy_percent, 0) / total,
       avg_adr: days.reduce((s, d) => s + d.adr, 0) / total,
       avg_revpar: days.reduce((s, d) => s + d.revpar, 0) / total,
     },
@@ -542,7 +545,13 @@ export const getRevenueForecastReport = async (options: {
        AND ($2::uuid IS NULL OR property_id = $2::uuid)
        AND forecast_date >= $3::date AND forecast_date <= $4::date
        AND ($5::text IS NULL OR forecast_scenario = $5::text)`,
-    [options.tenantId, options.propertyId ?? null, options.startDate, options.endDate, options.scenario ?? null],
+    [
+      options.tenantId,
+      options.propertyId ?? null,
+      options.startDate,
+      options.endDate,
+      options.scenario ?? null,
+    ],
   );
 
   const { rows } = await query<Record<string, unknown>>(
@@ -567,8 +576,15 @@ export const getRevenueForecastReport = async (options: {
        AND ($5::text IS NULL OR forecast_scenario = $5::text)
      ORDER BY forecast_date, forecast_type
      LIMIT $6 OFFSET $7`,
-    [options.tenantId, options.propertyId ?? null, options.startDate, options.endDate,
-     options.scenario ?? null, limit, offset],
+    [
+      options.tenantId,
+      options.propertyId ?? null,
+      options.startDate,
+      options.endDate,
+      options.scenario ?? null,
+      limit,
+      offset,
+    ],
   );
 
   return RevenueForecastReportSchema.parse({
@@ -579,8 +595,10 @@ export const getRevenueForecastReport = async (options: {
       forecast_scenario: String(r.forecast_scenario),
       forecasted_value: Number(r.forecasted_value),
       confidence_level: Number(r.confidence_level),
-      confidence_interval_low: r.confidence_interval_low != null ? Number(r.confidence_interval_low) : null,
-      confidence_interval_high: r.confidence_interval_high != null ? Number(r.confidence_interval_high) : null,
+      confidence_interval_low:
+        r.confidence_interval_low != null ? Number(r.confidence_interval_low) : null,
+      confidence_interval_high:
+        r.confidence_interval_high != null ? Number(r.confidence_interval_high) : null,
       actual_value: r.actual_value != null ? Number(r.actual_value) : null,
       variance_percent: r.variance_percent != null ? Number(r.variance_percent) : null,
       room_revenue_forecast: Number(r.room_revenue_forecast),

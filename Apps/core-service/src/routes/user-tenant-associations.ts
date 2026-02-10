@@ -101,9 +101,8 @@ export const registerUserTenantAssociationRoutes = (app: FastifyInstance): void 
       }),
     },
     async (request) => {
-      const { limit, offset, tenant_id, user_id, role, is_active } = AssociationListQuerySchema.parse(
-        request.query,
-      );
+      const { limit, offset, tenant_id, user_id, role, is_active } =
+        AssociationListQuerySchema.parse(request.query);
 
       const associations = await listUserTenantAssociations({
         limit,

@@ -3,11 +3,19 @@ import { randomUUID } from "node:crypto";
 import { query, queryWithClient, withTransaction } from "../lib/db.js";
 import { appLogger } from "../lib/logger.js";
 import {
+  BillingArAgeCommandSchema,
+  BillingArApplyPaymentCommandSchema,
+  BillingArPostCommandSchema,
+  BillingArWriteOffCommandSchema,
+  BillingCashierCloseCommandSchema,
+  BillingCashierOpenCommandSchema,
   type BillingChargePostCommand,
   BillingChargePostCommandSchema,
+  BillingChargeTransferCommandSchema,
   type BillingChargeVoidCommand,
   BillingChargeVoidCommandSchema,
   BillingFolioCloseCommandSchema,
+  BillingFolioSplitCommandSchema,
   type BillingFolioTransferCommand,
   BillingFolioTransferCommandSchema,
   type BillingInvoiceAdjustCommand,
@@ -24,20 +32,12 @@ import {
   type BillingPaymentRefundCommand,
   BillingPaymentRefundCommandSchema,
   BillingPaymentVoidCommandSchema,
-  CommissionCalculateCommandSchema,
+  BillingPricingBulkRecommendCommandSchema,
+  BillingPricingEvaluateCommandSchema,
   CommissionApproveCommandSchema,
+  CommissionCalculateCommandSchema,
   CommissionMarkPaidCommandSchema,
   CommissionStatementGenerateCommandSchema,
-  BillingChargeTransferCommandSchema,
-  BillingFolioSplitCommandSchema,
-  BillingArPostCommandSchema,
-  BillingArApplyPaymentCommandSchema,
-  BillingArAgeCommandSchema,
-  BillingArWriteOffCommandSchema,
-  BillingCashierOpenCommandSchema,
-  BillingCashierCloseCommandSchema,
-  BillingPricingEvaluateCommandSchema,
-  BillingPricingBulkRecommendCommandSchema,
 } from "../schemas/billing-commands.js";
 import {
   addMoney,
@@ -1122,7 +1122,10 @@ const applyInvoiceFinalize = async (
  * Finalize an invoice, locking it from further edits.
  * Only DRAFT or SENT invoices can be finalized.
  */
-export const finalizeInvoice = async (payload: unknown, context: CommandContext): Promise<string> => {
+export const finalizeInvoice = async (
+  payload: unknown,
+  context: CommandContext,
+): Promise<string> => {
   const command = BillingInvoiceFinalizeCommandSchema.parse(payload);
   return applyInvoiceFinalize(command, context);
 };
@@ -1490,7 +1493,10 @@ export const voidPayment = async (payload: unknown, context: CommandContext): Pr
  * Looks up applicable commission rules from booking_sources or commission_rules,
  * then inserts into travel_agent_commissions and commission_tracking.
  */
-export const calculateCommission = async (payload: unknown, context: CommandContext): Promise<string> => {
+export const calculateCommission = async (
+  payload: unknown,
+  context: CommandContext,
+): Promise<string> => {
   const command = CommissionCalculateCommandSchema.parse(payload);
   const actorId = asUuid(resolveActorId(context.initiatedBy)) ?? SYSTEM_ACTOR_ID;
   const tenantId = context.tenantId;
@@ -1661,7 +1667,10 @@ export const calculateCommission = async (payload: unknown, context: CommandCont
 /**
  * Approve a pending commission for payout.
  */
-export const approveCommission = async (payload: unknown, context: CommandContext): Promise<string> => {
+export const approveCommission = async (
+  payload: unknown,
+  context: CommandContext,
+): Promise<string> => {
   const command = CommissionApproveCommandSchema.parse(payload);
   const tenantId = context.tenantId;
 
@@ -1701,7 +1710,10 @@ export const approveCommission = async (payload: unknown, context: CommandContex
 /**
  * Mark a commission as paid.
  */
-export const markCommissionPaid = async (payload: unknown, context: CommandContext): Promise<string> => {
+export const markCommissionPaid = async (
+  payload: unknown,
+  context: CommandContext,
+): Promise<string> => {
   const command = CommissionMarkPaidCommandSchema.parse(payload);
   const tenantId = context.tenantId;
 
@@ -1749,7 +1761,10 @@ export const markCommissionPaid = async (payload: unknown, context: CommandConte
 /**
  * Generate a periodic commission statement for an agent/company.
  */
-export const generateCommissionStatement = async (payload: unknown, context: CommandContext): Promise<string> => {
+export const generateCommissionStatement = async (
+  payload: unknown,
+  context: CommandContext,
+): Promise<string> => {
   const command = CommissionStatementGenerateCommandSchema.parse(payload);
   const tenantId = context.tenantId;
   const actorId = asUuid(resolveActorId(context.initiatedBy)) ?? SYSTEM_ACTOR_ID;
@@ -1788,7 +1803,11 @@ export const generateCommissionStatement = async (payload: unknown, context: Com
 
   if (statsResult.rows.length === 0) {
     appLogger.info(
-      { propertyId: command.property_id, periodStart: command.period_start, periodEnd: command.period_end },
+      {
+        propertyId: command.property_id,
+        periodStart: command.period_start,
+        periodEnd: command.period_end,
+      },
       "No commissions found for statement period",
     );
     return "NO_COMMISSIONS";
@@ -1853,7 +1872,10 @@ export const generateCommissionStatement = async (payload: unknown, context: Com
  * Transfer a specific charge posting from one folio to another.
  * Creates TRANSFER-type audit records on both folios and adjusts balances.
  */
-export const transferCharge = async (payload: unknown, context: CommandContext): Promise<string> => {
+export const transferCharge = async (
+  payload: unknown,
+  context: CommandContext,
+): Promise<string> => {
   const command = BillingChargeTransferCommandSchema.parse(payload);
   const actorId = asUuid(resolveActorId(context.initiatedBy)) ?? SYSTEM_ACTOR_ID;
   const tenantId = context.tenantId;
@@ -1864,7 +1886,10 @@ export const transferCharge = async (payload: unknown, context: CommandContext):
     targetFolioId = await resolveFolioId(tenantId, command.to_reservation_id);
   }
   if (!targetFolioId) {
-    throw new BillingCommandError("FOLIO_NOT_FOUND", "Unable to locate target folio for charge transfer.");
+    throw new BillingCommandError(
+      "FOLIO_NOT_FOUND",
+      "Unable to locate target folio for charge transfer.",
+    );
   }
 
   return withTransaction(async (client) => {
@@ -1896,7 +1921,10 @@ export const transferCharge = async (payload: unknown, context: CommandContext):
 
     const original = rows[0];
     if (!original) {
-      throw new BillingCommandError("POSTING_NOT_FOUND", `Posting ${command.posting_id} not found.`);
+      throw new BillingCommandError(
+        "POSTING_NOT_FOUND",
+        `Posting ${command.posting_id} not found.`,
+      );
     }
     if (original.is_voided) {
       throw new BillingCommandError("POSTING_VOIDED", "Cannot transfer a voided posting.");
@@ -1908,7 +1936,8 @@ export const transferCharge = async (payload: unknown, context: CommandContext):
     const amount = parseDbMoneyOrZero(original.total_amount);
 
     // 2. Mark original as transferred
-    await queryWithClient(client,
+    await queryWithClient(
+      client,
       `UPDATE charge_postings
        SET transfer_to_folio_id = $3::uuid, updated_at = NOW(), updated_by = $4::uuid
        WHERE posting_id = $1::uuid AND tenant_id = $2::uuid`,
@@ -1916,7 +1945,8 @@ export const transferCharge = async (payload: unknown, context: CommandContext):
     );
 
     // 3. Create TRANSFER CREDIT on source folio (reduces balance)
-    await queryWithClient(client,
+    await queryWithClient(
+      client,
       `INSERT INTO charge_postings (
          tenant_id, property_id, folio_id, reservation_id,
          transaction_type, posting_type, charge_code, charge_description,
@@ -1933,17 +1963,28 @@ export const transferCharge = async (payload: unknown, context: CommandContext):
          $16::uuid, $16::uuid
        )`,
       [
-        tenantId, original.property_id, original.folio_id, original.reservation_id,
-        original.charge_code, `Transfer out: ${original.charge_description}`,
-        original.quantity, original.unit_price, original.subtotal, original.total_amount, original.currency_code,
-        original.department_code, targetFolioId,
-        command.posting_id, command.reason ?? `Charge transferred to another folio`,
+        tenantId,
+        original.property_id,
+        original.folio_id,
+        original.reservation_id,
+        original.charge_code,
+        `Transfer out: ${original.charge_description}`,
+        original.quantity,
+        original.unit_price,
+        original.subtotal,
+        original.total_amount,
+        original.currency_code,
+        original.department_code,
+        targetFolioId,
+        command.posting_id,
+        command.reason ?? `Charge transferred to another folio`,
         actorId,
       ],
     );
 
     // 4. Create TRANSFER DEBIT on target folio (increases balance)
-    const { rows: newRows } = await queryWithClient<{ posting_id: string }>(client,
+    const { rows: newRows } = await queryWithClient<{ posting_id: string }>(
+      client,
       `INSERT INTO charge_postings (
          tenant_id, property_id, folio_id, reservation_id,
          transaction_type, posting_type, charge_code, charge_description,
@@ -1961,17 +2002,28 @@ export const transferCharge = async (payload: unknown, context: CommandContext):
        )
        RETURNING posting_id`,
       [
-        tenantId, original.property_id, targetFolioId, original.reservation_id,
-        original.charge_code, `Transfer in: ${original.charge_description}`,
-        original.quantity, original.unit_price, original.subtotal, original.total_amount, original.currency_code,
-        original.department_code, original.folio_id,
-        command.posting_id, command.reason ?? `Charge transferred from another folio`,
+        tenantId,
+        original.property_id,
+        targetFolioId,
+        original.reservation_id,
+        original.charge_code,
+        `Transfer in: ${original.charge_description}`,
+        original.quantity,
+        original.unit_price,
+        original.subtotal,
+        original.total_amount,
+        original.currency_code,
+        original.department_code,
+        original.folio_id,
+        command.posting_id,
+        command.reason ?? `Charge transferred from another folio`,
         actorId,
       ],
     );
 
     // 5. Adjust source folio balance (decrease)
-    await queryWithClient(client,
+    await queryWithClient(
+      client,
       `UPDATE folios
        SET total_charges = total_charges - $2,
            balance = balance - $2,
@@ -1981,7 +2033,8 @@ export const transferCharge = async (payload: unknown, context: CommandContext):
     );
 
     // 6. Adjust target folio balance (increase)
-    await queryWithClient(client,
+    await queryWithClient(
+      client,
       `UPDATE folios
        SET total_charges = total_charges + $2,
            balance = balance + $2,
@@ -1992,7 +2045,13 @@ export const transferCharge = async (payload: unknown, context: CommandContext):
 
     const newPostingId = newRows[0]?.posting_id ?? command.posting_id;
     appLogger.info(
-      { originalPostingId: command.posting_id, newPostingId, fromFolio: original.folio_id, toFolio: targetFolioId, amount },
+      {
+        originalPostingId: command.posting_id,
+        newPostingId,
+        fromFolio: original.folio_id,
+        toFolio: targetFolioId,
+        amount,
+      },
       "Charge transferred between folios",
     );
     return newPostingId;
@@ -2034,7 +2093,10 @@ export const splitCharge = async (payload: unknown, context: CommandContext): Pr
 
     const original = rows[0];
     if (!original) {
-      throw new BillingCommandError("POSTING_NOT_FOUND", `Posting ${command.posting_id} not found.`);
+      throw new BillingCommandError(
+        "POSTING_NOT_FOUND",
+        `Posting ${command.posting_id} not found.`,
+      );
     }
     if (original.is_voided) {
       throw new BillingCommandError("POSTING_VOIDED", "Cannot split a voided posting.");
@@ -2050,7 +2112,8 @@ export const splitCharge = async (payload: unknown, context: CommandContext): Pr
     }
 
     // 2. Void the original posting
-    await queryWithClient(client,
+    await queryWithClient(
+      client,
       `UPDATE charge_postings
        SET is_voided = TRUE, voided_at = NOW(), voided_by = $3::uuid,
            void_reason = 'Split into multiple folios', version = version + 1,
@@ -2060,7 +2123,8 @@ export const splitCharge = async (payload: unknown, context: CommandContext): Pr
     );
 
     // 3. Decrease source folio balance for the voided original
-    await queryWithClient(client,
+    await queryWithClient(
+      client,
       `UPDATE folios
        SET total_charges = total_charges - $2,
            balance = balance - $2,
@@ -2078,13 +2142,17 @@ export const splitCharge = async (payload: unknown, context: CommandContext): Pr
         targetFolioId = fid;
       }
       if (!targetFolioId) {
-        throw new BillingCommandError("FOLIO_NOT_FOUND", "Unable to locate target folio for split.");
+        throw new BillingCommandError(
+          "FOLIO_NOT_FOUND",
+          "Unable to locate target folio for split.",
+        );
       }
 
       const unitPrice = split.amount;
       const desc = split.description ?? `Split: ${original.charge_description}`;
 
-      const { rows: newRows } = await queryWithClient<{ posting_id: string }>(client,
+      const { rows: newRows } = await queryWithClient<{ posting_id: string }>(
+        client,
         `INSERT INTO charge_postings (
            tenant_id, property_id, folio_id, reservation_id,
            transaction_type, posting_type, charge_code, charge_description,
@@ -2100,9 +2168,14 @@ export const splitCharge = async (payload: unknown, context: CommandContext): Pr
          )
          RETURNING posting_id`,
         [
-          tenantId, original.property_id, targetFolioId, original.reservation_id,
-          original.charge_code, desc,
-          unitPrice, original.currency_code,
+          tenantId,
+          original.property_id,
+          targetFolioId,
+          original.reservation_id,
+          original.charge_code,
+          desc,
+          unitPrice,
+          original.currency_code,
           original.department_code,
           command.posting_id,
           command.reason ?? `Split from posting ${command.posting_id}`,
@@ -2111,7 +2184,8 @@ export const splitCharge = async (payload: unknown, context: CommandContext): Pr
       );
 
       // Update target folio balance
-      await queryWithClient(client,
+      await queryWithClient(
+        client,
         `UPDATE folios
          SET total_charges = total_charges + $2,
              balance = balance + $2,
@@ -2138,13 +2212,20 @@ export const splitCharge = async (payload: unknown, context: CommandContext): Pr
 /** Map textual payment_terms to number of days. */
 const paymentTermsToDays = (terms: string): number => {
   switch (terms.toLowerCase()) {
-    case "due_on_receipt": return 0;
-    case "net_15": return 15;
-    case "net_30": return 30;
-    case "net_45": return 45;
-    case "net_60": return 60;
-    case "net_90": return 90;
-    default: return 30;
+    case "due_on_receipt":
+      return 0;
+    case "net_15":
+      return 15;
+    case "net_30":
+      return 30;
+    case "net_45":
+      return 45;
+    case "net_60":
+      return 60;
+    case "net_90":
+      return 90;
+    default:
+      return 30;
   }
 };
 
@@ -2167,7 +2248,10 @@ export const postArEntry = async (payload: unknown, context: CommandContext): Pr
   );
   const propertyId = resRows[0]?.property_id;
   if (!propertyId) {
-    throw new BillingCommandError("RESERVATION_NOT_FOUND", `Reservation ${command.reservation_id} not found.`);
+    throw new BillingCommandError(
+      "RESERVATION_NOT_FOUND",
+      `Reservation ${command.reservation_id} not found.`,
+    );
   }
 
   const { rows } = await query<{ ar_id: string }>(
@@ -2188,9 +2272,14 @@ export const postArEntry = async (payload: unknown, context: CommandContext): Pr
      )
      RETURNING ar_id`,
     [
-      tenantId, propertyId, arNumber,
-      command.account_type, command.account_id, command.account_name,
-      command.reservation_id, command.folio_id ?? null,
+      tenantId,
+      propertyId,
+      arNumber,
+      command.account_type,
+      command.account_id,
+      command.account_name,
+      command.reservation_id,
+      command.folio_id ?? null,
       days,
       command.amount,
       command.payment_terms,
@@ -2200,14 +2289,20 @@ export const postArEntry = async (payload: unknown, context: CommandContext): Pr
   );
 
   const arId = rows[0]?.ar_id ?? arNumber;
-  appLogger.info({ arId, arNumber, amount: command.amount, accountName: command.account_name }, "AR entry posted");
+  appLogger.info(
+    { arId, arNumber, amount: command.amount, accountName: command.account_name },
+    "AR entry posted",
+  );
   return arId;
 };
 
 /**
  * Apply a payment against an outstanding AR balance.
  */
-export const applyArPayment = async (payload: unknown, context: CommandContext): Promise<string> => {
+export const applyArPayment = async (
+  payload: unknown,
+  context: CommandContext,
+): Promise<string> => {
   const command = BillingArApplyPaymentCommandSchema.parse(payload);
   const actorId = asUuid(resolveActorId(context.initiatedBy)) ?? SYSTEM_ACTOR_ID;
   const tenantId = context.tenantId;
@@ -2254,7 +2349,8 @@ export const applyArPayment = async (payload: unknown, context: CommandContext):
     };
     const updatedPayments = [...existingPayments, paymentEntry];
 
-    await queryWithClient(client,
+    await queryWithClient(
+      client,
       `UPDATE accounts_receivable
        SET outstanding_balance = $3,
            paid_amount = $4,
@@ -2267,9 +2363,13 @@ export const applyArPayment = async (payload: unknown, context: CommandContext):
            updated_at = NOW(), updated_by = $9::uuid
        WHERE ar_id = $1::uuid AND tenant_id = $2::uuid`,
       [
-        command.ar_id, tenantId,
-        newOutstanding, newPaid, newStatus,
-        paymentEntry.date, paymentAmount,
+        command.ar_id,
+        tenantId,
+        newOutstanding,
+        newPaid,
+        newStatus,
+        paymentEntry.date,
+        paymentAmount,
         JSON.stringify(updatedPayments),
         actorId,
       ],
@@ -2289,7 +2389,9 @@ export const applyArPayment = async (payload: unknown, context: CommandContext):
 export const ageArEntries = async (payload: unknown, context: CommandContext): Promise<string> => {
   const command = BillingArAgeCommandSchema.parse(payload);
   const tenantId = context.tenantId;
-  const asOfDate = command.as_of_date ? new Date(command.as_of_date).toISOString().slice(0, 10) : null;
+  const asOfDate = command.as_of_date
+    ? new Date(command.as_of_date).toISOString().slice(0, 10)
+    : null;
 
   const result = await query<{ updated: string }>(
     `WITH aged AS (
@@ -2344,7 +2446,10 @@ export const writeOffAr = async (payload: unknown, context: CommandContext): Pro
 
   const ar = rows[0];
   if (!ar) {
-    throw new BillingCommandError("AR_NOT_FOUND", `AR entry ${command.ar_id} not found or already closed.`);
+    throw new BillingCommandError(
+      "AR_NOT_FOUND",
+      `AR entry ${command.ar_id} not found or already closed.`,
+    );
   }
 
   const outstanding = parseDbMoneyOrZero(ar.outstanding_balance);
@@ -2366,10 +2471,14 @@ export const writeOffAr = async (payload: unknown, context: CommandContext): Pro
          updated_at = NOW(), updated_by = $5::uuid
      WHERE ar_id = $1::uuid AND tenant_id = $2::uuid`,
     [
-      command.ar_id, tenantId,
-      writeOffAmount, command.reason,
-      actorId, command.approved_by ?? null,
-      newOutstanding, newStatus,
+      command.ar_id,
+      tenantId,
+      writeOffAmount,
+      command.reason,
+      actorId,
+      command.approved_by ?? null,
+      newOutstanding,
+      newStatus,
     ],
   );
 
@@ -2426,9 +2535,15 @@ export const openCashierSession = async (
        NOW(), NOW(), $11, $11
      )`,
     [
-      sessionId, tenantId, command.property_id, sessionNumber,
-      command.cashier_id, command.cashier_name, command.terminal_id ?? null,
-      businessDate, command.shift_type,
+      sessionId,
+      tenantId,
+      command.property_id,
+      sessionNumber,
+      command.cashier_id,
+      command.cashier_name,
+      command.terminal_id ?? null,
+      businessDate,
+      command.shift_type,
       command.opening_float,
       actorId,
     ],
@@ -2463,10 +2578,16 @@ export const closeCashierSession = async (
   );
   const session = sessionRows[0];
   if (!session) {
-    throw new BillingCommandError("SESSION_NOT_FOUND", `Cashier session ${command.session_id} not found`);
+    throw new BillingCommandError(
+      "SESSION_NOT_FOUND",
+      `Cashier session ${command.session_id} not found`,
+    );
   }
   if (session.session_status !== "open") {
-    throw new BillingCommandError("SESSION_NOT_OPEN", `Cashier session is ${session.session_status}, not open`);
+    throw new BillingCommandError(
+      "SESSION_NOT_OPEN",
+      `Cashier session is ${session.session_status}, not open`,
+    );
   }
 
   // 2. Aggregate transactions for this session's property + business date
@@ -2515,7 +2636,8 @@ export const closeCashierSession = async (
        updated_by = $14
      WHERE session_id = $1 AND tenant_id = $2`,
     [
-      command.session_id, tenantId,
+      command.session_id,
+      tenantId,
       Number(agg.total_transactions ?? 0),
       Number(agg.cash_transactions ?? 0),
       Number(agg.card_transactions ?? 0),
@@ -2558,25 +2680,31 @@ interface PricingCondition {
 /**
  * Evaluate a single condition against the provided context.
  */
-const evalCondition = (
-  cond: PricingCondition,
-  ctx: Record<string, unknown>,
-): boolean => {
+const evalCondition = (cond: PricingCondition, ctx: Record<string, unknown>): boolean => {
   const actual = ctx[cond.field];
   if (actual === undefined || actual === null) return false;
   const numActual = Number(actual);
   const numValue = Number(cond.value);
   switch (cond.operator) {
-    case ">=": return numActual >= numValue;
-    case "<=": return numActual <= numValue;
-    case ">":  return numActual > numValue;
-    case "<":  return numActual < numValue;
+    case ">=":
+      return numActual >= numValue;
+    case "<=":
+      return numActual <= numValue;
+    case ">":
+      return numActual > numValue;
+    case "<":
+      return numActual < numValue;
     case "=":
-    case "==": return String(actual) === String(cond.value);
-    case "!=": return String(actual) !== String(cond.value);
+    case "==":
+      return String(actual) === String(cond.value);
+    case "!=":
+      return String(actual) !== String(cond.value);
     case "in":
-      return Array.isArray(cond.value) && (cond.value as unknown[]).map(String).includes(String(actual));
-    default: return false;
+      return (
+        Array.isArray(cond.value) && (cond.value as unknown[]).map(String).includes(String(actual))
+      );
+    default:
+      return false;
   }
 };
 
@@ -2667,7 +2795,12 @@ export const evaluatePricingRules = async (
        AND (effective_from IS NULL OR effective_from <= $4::date)
        AND (effective_to IS NULL OR effective_to >= $4::date)
      ORDER BY priority ASC, created_at ASC`,
-    [tenantId, command.property_id, command.room_type_id, new Date(command.stay_date).toISOString().slice(0, 10)],
+    [
+      tenantId,
+      command.property_id,
+      command.room_type_id,
+      new Date(command.stay_date).toISOString().slice(0, 10),
+    ],
   );
 
   // 2. Evaluate conditions and collect matching rules
@@ -2717,8 +2850,13 @@ export const evaluatePricingRules = async (
      WHERE tenant_id = $1 AND property_id = $2
        AND room_type_id = $3
        AND availability_date = $5::date`,
-    [tenantId, command.property_id, command.room_type_id, adjustedRate,
-     new Date(command.stay_date).toISOString().slice(0, 10)],
+    [
+      tenantId,
+      command.property_id,
+      command.room_type_id,
+      adjustedRate,
+      new Date(command.stay_date).toISOString().slice(0, 10),
+    ],
   );
 
   appLogger.info(
@@ -2775,7 +2913,12 @@ export const bulkGeneratePricingRecommendations = async (
      FROM demand_calendar
      WHERE tenant_id = $1 AND property_id = $2
        AND calendar_date >= $3::date AND calendar_date <= $4::date`,
-    [tenantId, command.property_id, startDate.toISOString().slice(0, 10), endDate.toISOString().slice(0, 10)],
+    [
+      tenantId,
+      command.property_id,
+      startDate.toISOString().slice(0, 10),
+      endDate.toISOString().slice(0, 10),
+    ],
   );
   const demandMap = new Map(demandRows.map((r) => [String(r.calendar_date), r]));
 
@@ -2831,10 +2974,22 @@ export const bulkGeneratePricingRecommendations = async (
       let adjustedRate = roomType.base_price;
       for (const rule of matched) {
         if (!rule.can_combine_with_other_rules) {
-          adjustedRate = applyAdjustment(roomType.base_price, rule.adjustment_type, rule.adjustment_value, rule.adjustment_cap_min, rule.adjustment_cap_max);
+          adjustedRate = applyAdjustment(
+            roomType.base_price,
+            rule.adjustment_type,
+            rule.adjustment_value,
+            rule.adjustment_cap_min,
+            rule.adjustment_cap_max,
+          );
           break;
         }
-        adjustedRate = applyAdjustment(adjustedRate, rule.adjustment_type, rule.adjustment_value, rule.adjustment_cap_min, rule.adjustment_cap_max);
+        adjustedRate = applyAdjustment(
+          adjustedRate,
+          rule.adjustment_type,
+          rule.adjustment_value,
+          rule.adjustment_cap_min,
+          rule.adjustment_cap_max,
+        );
       }
 
       if (!command.dry_run) {
@@ -2865,10 +3020,18 @@ export const bulkGeneratePricingRecommendations = async (
              confidence_score = EXCLUDED.confidence_score,
              updated_at = NOW()`,
           [
-            recommendationId, tenantId, command.property_id, roomType.id,
-            dateStr, roomType.base_price, adjustedRate,
+            recommendationId,
+            tenantId,
+            command.property_id,
+            roomType.id,
+            dateStr,
+            roomType.base_price,
+            adjustedRate,
             adjustedRate - roomType.base_price,
-            roomType.base_price > 0 ? Math.round(((adjustedRate - roomType.base_price) / roomType.base_price) * 10000) / 100 : 0,
+            roomType.base_price > 0
+              ? Math.round(((adjustedRate - roomType.base_price) / roomType.base_price) * 10000) /
+                100
+              : 0,
             `${matched.length} pricing rules applied (${matched.map((r) => r.rule_type).join(", ")})`,
             matched.length > 0 ? 80 : 50,
             actorId,
@@ -2880,7 +3043,12 @@ export const bulkGeneratePricingRecommendations = async (
   }
 
   appLogger.info(
-    { propertyId: command.property_id, roomTypes: roomTypes.length, dates: dates.length, generated },
+    {
+      propertyId: command.property_id,
+      roomTypes: roomTypes.length,
+      dates: dates.length,
+      generated,
+    },
     "Bulk pricing recommendations generated",
   );
 

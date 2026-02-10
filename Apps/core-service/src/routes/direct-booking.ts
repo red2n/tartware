@@ -29,12 +29,8 @@ const DIRECT_BOOKING_TAG = "Direct Booking";
 const AvailabilityQuerySchema = z.object({
   tenant_id: z.string().uuid(),
   property_id: z.string().uuid(),
-  check_in: z
-    .string()
-    .refine((v) => !Number.isNaN(Date.parse(v)), "valid ISO date required"),
-  check_out: z
-    .string()
-    .refine((v) => !Number.isNaN(Date.parse(v)), "valid ISO date required"),
+  check_in: z.string().refine((v) => !Number.isNaN(Date.parse(v)), "valid ISO date required"),
+  check_out: z.string().refine((v) => !Number.isNaN(Date.parse(v)), "valid ISO date required"),
   adults: z.coerce.number().int().min(1).optional(),
   children: z.coerce.number().int().min(0).optional(),
   room_type_id: z.string().uuid().optional(),
@@ -44,12 +40,8 @@ const RateQuoteQuerySchema = z.object({
   tenant_id: z.string().uuid(),
   property_id: z.string().uuid(),
   room_type_id: z.string().uuid(),
-  check_in: z
-    .string()
-    .refine((v) => !Number.isNaN(Date.parse(v)), "valid ISO date required"),
-  check_out: z
-    .string()
-    .refine((v) => !Number.isNaN(Date.parse(v)), "valid ISO date required"),
+  check_in: z.string().refine((v) => !Number.isNaN(Date.parse(v)), "valid ISO date required"),
+  check_out: z.string().refine((v) => !Number.isNaN(Date.parse(v)), "valid ISO date required"),
   promo_code: z.string().max(50).optional(),
   rate_code: z.string().max(50).optional(),
 });
@@ -59,12 +51,8 @@ const CreateBookingBodySchema = z.object({
   property_id: z.string().uuid(),
   guest_id: z.string().uuid(),
   room_type_id: z.string().uuid(),
-  check_in: z
-    .string()
-    .refine((v) => !Number.isNaN(Date.parse(v)), "valid ISO date required"),
-  check_out: z
-    .string()
-    .refine((v) => !Number.isNaN(Date.parse(v)), "valid ISO date required"),
+  check_in: z.string().refine((v) => !Number.isNaN(Date.parse(v)), "valid ISO date required"),
+  check_out: z.string().refine((v) => !Number.isNaN(Date.parse(v)), "valid ISO date required"),
   total_amount: z.number().min(0),
   currency: z.string().length(3).optional(),
   rate_code: z.string().max(50).optional(),

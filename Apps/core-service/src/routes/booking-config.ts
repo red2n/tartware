@@ -769,8 +769,16 @@ export const registerBookingConfigRoutes = (app: FastifyInstance): void => {
       }),
     },
     async (request) => {
-      const { tenant_id, property_id, room_type, room_status, is_active, min_capacity, limit, offset } =
-        MeetingRoomListQuerySchema.parse(request.query);
+      const {
+        tenant_id,
+        property_id,
+        room_type,
+        room_status,
+        is_active,
+        min_capacity,
+        limit,
+        offset,
+      } = MeetingRoomListQuerySchema.parse(request.query);
       const rooms = await listMeetingRooms({
         tenantId: tenant_id,
         propertyId: property_id,

@@ -746,8 +746,15 @@ export function registerPoliceReportRoutes(fastify: FastifyInstance): void {
       }>,
       reply: FastifyReply,
     ) => {
-      const { tenant_id, property_id, report_status, incident_type, incident_date_from, limit, offset } =
-        request.query;
+      const {
+        tenant_id,
+        property_id,
+        report_status,
+        incident_type,
+        incident_date_from,
+        limit,
+        offset,
+      } = request.query;
 
       const reports = await listPoliceReports({
         tenantId: tenant_id,

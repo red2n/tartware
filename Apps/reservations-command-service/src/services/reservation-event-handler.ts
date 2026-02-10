@@ -211,7 +211,8 @@ const handleReservationUpdated = async (event: ReservationUpdatedEvent): Promise
   if (payload.check_in_date !== undefined) addField("check_in_date", payload.check_in_date);
   if (payload.check_out_date !== undefined) addField("check_out_date", payload.check_out_date);
   if (payload.actual_check_in !== undefined) addField("actual_check_in", payload.actual_check_in);
-  if (payload.actual_check_out !== undefined) addField("actual_check_out", payload.actual_check_out);
+  if (payload.actual_check_out !== undefined)
+    addField("actual_check_out", payload.actual_check_out);
   if (payload.room_number !== undefined) addField("room_number", payload.room_number);
   if (payload.status !== undefined) addField("status", payload.status);
   if (payload.source !== undefined) addField("source", payload.source);
@@ -306,14 +307,21 @@ const handleReservationCancelled = async (event: ReservationCancelledEvent): Pro
           [waitlistRows[0].waitlist_id, tenantId, expiresAt.toISOString()],
         );
         reservationsLogger.info(
-          { waitlistId: waitlistRows[0].waitlist_id, guestId: waitlistRows[0].guest_id, reservationId: payload.id },
+          {
+            waitlistId: waitlistRows[0].waitlist_id,
+            guestId: waitlistRows[0].guest_id,
+            reservationId: payload.id,
+          },
           "Auto-offered freed room to waitlisted guest after cancellation",
         );
       }
     }
   } catch (err) {
     // Non-critical: log but don't fail the cancellation
-    reservationsLogger.warn({ err, reservationId: payload.id }, "Failed to auto-offer to waitlist after cancellation");
+    reservationsLogger.warn(
+      { err, reservationId: payload.id },
+      "Failed to auto-offer to waitlist after cancellation",
+    );
   }
 
   return payload.id;

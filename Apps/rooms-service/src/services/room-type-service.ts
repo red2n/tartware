@@ -1,10 +1,7 @@
 import { type RoomTypeItem, RoomTypeItemSchema } from "@tartware/schemas";
 
 import { query } from "../lib/db.js";
-import {
-  buildDynamicUpdate,
-  type UpdateField,
-} from "../sql/dynamic-update-builder.js";
+import { buildDynamicUpdate, type UpdateField } from "../sql/dynamic-update-builder.js";
 import {
   ROOM_TYPE_CREATE_SQL,
   ROOM_TYPE_DELETE_SQL,
@@ -251,12 +248,33 @@ const ROOM_TYPE_UPDATE_FIELDS: ReadonlyArray<{
 
 /** Columns returned from the UPDATE CTE. */
 const ROOM_TYPE_SELECT_COLUMNS = [
-  "id", "tenant_id", "property_id", "type_name", "type_code",
-  "description", "short_description", "category", "base_occupancy",
-  "max_occupancy", "max_adults", "max_children", "extra_bed_capacity",
-  "size_sqm", "bed_type", "number_of_beds", "amenities", "features",
-  "base_price", "currency", "images", "display_order", "is_active",
-  "metadata", "created_at", "updated_at", "version",
+  "id",
+  "tenant_id",
+  "property_id",
+  "type_name",
+  "type_code",
+  "description",
+  "short_description",
+  "category",
+  "base_occupancy",
+  "max_occupancy",
+  "max_adults",
+  "max_children",
+  "extra_bed_capacity",
+  "size_sqm",
+  "bed_type",
+  "number_of_beds",
+  "amenities",
+  "features",
+  "base_price",
+  "currency",
+  "images",
+  "display_order",
+  "is_active",
+  "metadata",
+  "created_at",
+  "updated_at",
+  "version",
 ] as const;
 
 /**

@@ -232,7 +232,7 @@ export const RATE_CREATE_SQL = `
   FROM inserted i
 `;
 
-export const RATE_UPDATE_SQL = `
+const _RATE_UPDATE_SQL = `
   WITH updated AS (
     UPDATE public.rates r
     SET
