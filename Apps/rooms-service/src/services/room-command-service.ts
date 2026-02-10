@@ -59,10 +59,7 @@ export const handleRoomInventoryRelease = async (
   context: CommandContext,
 ): Promise<void> => {
   const command = RoomInventoryReleaseCommandSchema.parse(payload);
-  await releaseRoomBlock(
-    { room_id: command.room_id, action: "release" },
-    context,
-  );
+  await releaseRoomBlock({ room_id: command.room_id, action: "release" }, context);
 };
 
 /**
@@ -114,10 +111,7 @@ export const handleRoomStatusUpdate = async (
   );
 
   if (!rowCount || rowCount === 0) {
-    throw new RoomCommandError(
-      "ROOM_NOT_FOUND",
-      "Unable to update room status.",
-    );
+    throw new RoomCommandError("ROOM_NOT_FOUND", "Unable to update room status.");
   }
 };
 
@@ -146,20 +140,11 @@ export const handleRoomHousekeepingStatusUpdate = async (
         AND id = $2::uuid
         AND COALESCE(is_deleted, false) = false
     `,
-    [
-      context.tenantId,
-      command.room_id,
-      command.housekeeping_status,
-      command.notes ?? null,
-      actor,
-    ],
+    [context.tenantId, command.room_id, command.housekeeping_status, command.notes ?? null, actor],
   );
 
   if (!rowCount || rowCount === 0) {
-    throw new RoomCommandError(
-      "ROOM_NOT_FOUND",
-      "Unable to update housekeeping status.",
-    );
+    throw new RoomCommandError("ROOM_NOT_FOUND", "Unable to update housekeeping status.");
   }
 };
 
@@ -198,10 +183,7 @@ export const handleRoomOutOfOrder = async (
   );
 
   if (!rowCount || rowCount === 0) {
-    throw new RoomCommandError(
-      "ROOM_NOT_FOUND",
-      "Unable to mark room out of order.",
-    );
+    throw new RoomCommandError("ROOM_NOT_FOUND", "Unable to mark room out of order.");
   }
 };
 
@@ -240,10 +222,7 @@ export const handleRoomOutOfService = async (
   );
 
   if (!rowCount || rowCount === 0) {
-    throw new RoomCommandError(
-      "ROOM_NOT_FOUND",
-      "Unable to mark room out of service.",
-    );
+    throw new RoomCommandError("ROOM_NOT_FOUND", "Unable to mark room out of service.");
   }
 };
 
@@ -252,10 +231,7 @@ export const handleRoomOutOfService = async (
  * S25 — supports charge transfer between folios and rate recalculation
  * when the room type changes (upgrade/downgrade).
  */
-export const handleRoomMove = async (
-  payload: unknown,
-  context: CommandContext,
-): Promise<void> => {
+export const handleRoomMove = async (payload: unknown, context: CommandContext): Promise<void> => {
   const command = RoomMoveCommandSchema.parse(payload);
   const actor = resolveActorId(context.initiatedBy);
 
@@ -272,10 +248,7 @@ export const handleRoomMove = async (
   );
   const fromRoom = fromResult.rows[0];
   if (!fromRoom) {
-    throw new RoomCommandError(
-      "ROOM_NOT_FOUND",
-      `Source room ${command.from_room_id} not found.`,
-    );
+    throw new RoomCommandError("ROOM_NOT_FOUND", `Source room ${command.from_room_id} not found.`);
   }
   if (fromRoom.status !== "OCCUPIED") {
     throw new RoomCommandError(
@@ -297,10 +270,7 @@ export const handleRoomMove = async (
   );
   const toRoom = toResult.rows[0];
   if (!toRoom) {
-    throw new RoomCommandError(
-      "ROOM_NOT_FOUND",
-      `Target room ${command.to_room_id} not found.`,
-    );
+    throw new RoomCommandError("ROOM_NOT_FOUND", `Target room ${command.to_room_id} not found.`);
   }
   if (toRoom.status !== "AVAILABLE") {
     throw new RoomCommandError(
@@ -333,12 +303,7 @@ export const handleRoomMove = async (
         `UPDATE public.reservations
          SET room_number = $3, room_type_id = $4, version = version + 1, updated_at = NOW()
          WHERE id = $1 AND tenant_id = $2`,
-        [
-          command.reservation_id,
-          context.tenantId,
-          toRoom.room_number,
-          toRoom.room_type_id,
-        ],
+        [command.reservation_id, context.tenantId, toRoom.room_number, toRoom.room_type_id],
       );
     } else {
       await query(
@@ -452,10 +417,7 @@ export const handleRoomFeaturesUpdate = async (
   );
 
   if (!rowCount || rowCount === 0) {
-    throw new RoomCommandError(
-      "ROOM_NOT_FOUND",
-      "Unable to update room features.",
-    );
+    throw new RoomCommandError("ROOM_NOT_FOUND", "Unable to update room features.");
   }
 };
 
@@ -463,10 +425,7 @@ export const handleRoomFeaturesUpdate = async (
  * S28 — Issue a digital key (mobile key) for a guest's room.
  * Generates a unique key_code, inserts into mobile_keys with status 'active'.
  */
-export const handleKeyIssue = async (
-  payload: unknown,
-  context: CommandContext,
-): Promise<void> => {
+export const handleKeyIssue = async (payload: unknown, context: CommandContext): Promise<void> => {
   const command = RoomKeyIssueCommandSchema.parse(payload);
   const actor = resolveActorId(context.initiatedBy);
 
@@ -477,10 +436,7 @@ export const handleKeyIssue = async (
     [command.room_id, context.tenantId],
   );
   if (!roomRows[0]) {
-    throw new RoomCommandError(
-      "ROOM_NOT_FOUND",
-      `Room ${command.room_id} not found.`,
-    );
+    throw new RoomCommandError("ROOM_NOT_FOUND", `Room ${command.room_id} not found.`);
   }
 
   // Generate unique key code
@@ -528,10 +484,7 @@ export const handleKeyIssue = async (
  * S28 — Revoke a digital key (or all keys for a reservation).
  * Sets status to 'revoked' so the key is no longer valid.
  */
-export const handleKeyRevoke = async (
-  payload: unknown,
-  context: CommandContext,
-): Promise<void> => {
+export const handleKeyRevoke = async (payload: unknown, context: CommandContext): Promise<void> => {
   const command = RoomKeyRevokeCommandSchema.parse(payload);
   const actor = resolveActorId(context.initiatedBy);
 
@@ -544,12 +497,7 @@ export const handleKeyRevoke = async (
        WHERE tenant_id = $1 AND reservation_id = $2
          AND status = 'active'
          AND COALESCE(is_deleted, false) = false`,
-      [
-        context.tenantId,
-        command.reservation_id,
-        actor,
-        command.reason ?? "bulk_revoke",
-      ],
+      [context.tenantId, command.reservation_id, actor, command.reason ?? "bulk_revoke"],
     );
     return;
   }
@@ -562,19 +510,11 @@ export const handleKeyRevoke = async (
      WHERE tenant_id = $1 AND key_id = $2
        AND status = 'active'
        AND COALESCE(is_deleted, false) = false`,
-    [
-      context.tenantId,
-      command.key_id,
-      actor,
-      command.reason ?? "manual_revoke",
-    ],
+    [context.tenantId, command.key_id, actor, command.reason ?? "manual_revoke"],
   );
 
   if (!rowCount || rowCount === 0) {
-    throw new RoomCommandError(
-      "KEY_NOT_FOUND",
-      `Active key ${command.key_id} not found.`,
-    );
+    throw new RoomCommandError("KEY_NOT_FOUND", `Active key ${command.key_id} not found.`);
   }
 };
 
