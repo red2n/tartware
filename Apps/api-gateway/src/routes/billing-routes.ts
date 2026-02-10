@@ -1,0 +1,251 @@
+import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
+import { buildRouteSchema, jsonObjectSchema } from "@tartware/openapi";
+
+import { serviceTargets } from "../config.js";
+import { proxyRequest } from "../utils/proxy.js";
+import {
+  BILLING_PROXY_TAG,
+  BILLING_COMMAND_TAG,
+  reservationParamsSchema,
+  tenantPaymentParamsSchema,
+  tenantInvoiceParamsSchema,
+} from "./schemas.js";
+import {
+  forwardBillingCaptureCommand,
+  forwardBillingRefundCommand,
+  forwardCommandWithTenant,
+  forwardCommandWithParamId,
+} from "./command-helpers.js";
+
+export const registerBillingRoutes = (app: FastifyInstance): void => {
+  const proxyBilling = async (request: FastifyRequest, reply: FastifyReply) =>
+    proxyRequest(request, reply, serviceTargets.billingServiceUrl);
+
+  const tenantScopeFromParams = app.withTenantScope({
+    resolveTenantId: (request) => (request.params as { tenantId?: string }).tenantId,
+    minRole: "STAFF",
+    requiredModules: "core",
+  });
+
+  app.get(
+    "/v1/billing/payments",
+    {
+      schema: buildRouteSchema({
+        tag: BILLING_PROXY_TAG,
+        summary: "Proxy billing payment requests to the billing service.",
+        response: {
+          200: jsonObjectSchema,
+        },
+      }),
+    },
+    proxyBilling,
+  );
+
+  app.post(
+    "/v1/tenants/:tenantId/billing/payments/capture",
+    {
+      preHandler: tenantScopeFromParams,
+      schema: buildRouteSchema({
+        tag: BILLING_COMMAND_TAG,
+        summary: "Capture a payment via the Command Center.",
+        params: reservationParamsSchema,
+        body: jsonObjectSchema,
+        response: {
+          202: jsonObjectSchema,
+        },
+      }),
+    },
+    forwardBillingCaptureCommand,
+  );
+
+  app.post(
+    "/v1/tenants/:tenantId/billing/payments/:paymentId/refund",
+    {
+      preHandler: tenantScopeFromParams,
+      schema: buildRouteSchema({
+        tag: BILLING_COMMAND_TAG,
+        summary: "Refund a payment via the Command Center.",
+        params: tenantPaymentParamsSchema,
+        body: jsonObjectSchema,
+        response: {
+          202: jsonObjectSchema,
+        },
+      }),
+    },
+    forwardBillingRefundCommand,
+  );
+
+  app.post(
+    "/v1/tenants/:tenantId/billing/invoices",
+    {
+      preHandler: tenantScopeFromParams,
+      schema: buildRouteSchema({
+        tag: BILLING_COMMAND_TAG,
+        summary: "Create an invoice via the Command Center.",
+        params: reservationParamsSchema,
+        body: jsonObjectSchema,
+        response: {
+          202: jsonObjectSchema,
+        },
+      }),
+    },
+    (request, reply) =>
+      forwardCommandWithTenant({
+        request,
+        reply,
+        commandName: "billing.invoice.create",
+      }),
+  );
+
+  app.post(
+    "/v1/tenants/:tenantId/billing/invoices/:invoiceId/adjust",
+    {
+      preHandler: tenantScopeFromParams,
+      schema: buildRouteSchema({
+        tag: BILLING_COMMAND_TAG,
+        summary: "Adjust an invoice via the Command Center.",
+        params: tenantInvoiceParamsSchema,
+        body: jsonObjectSchema,
+        response: {
+          202: jsonObjectSchema,
+        },
+      }),
+    },
+    (request, reply) =>
+      forwardCommandWithParamId({
+        request,
+        reply,
+        commandName: "billing.invoice.adjust",
+        paramKey: "invoiceId",
+        payloadKey: "invoice_id",
+      }),
+  );
+
+  app.post(
+    "/v1/tenants/:tenantId/billing/charges",
+    {
+      preHandler: tenantScopeFromParams,
+      schema: buildRouteSchema({
+        tag: BILLING_COMMAND_TAG,
+        summary: "Post a charge via the Command Center.",
+        params: reservationParamsSchema,
+        body: jsonObjectSchema,
+        response: {
+          202: jsonObjectSchema,
+        },
+      }),
+    },
+    (request, reply) =>
+      forwardCommandWithTenant({
+        request,
+        reply,
+        commandName: "billing.charge.post",
+      }),
+  );
+
+  app.post(
+    "/v1/tenants/:tenantId/billing/payments/:paymentId/apply",
+    {
+      preHandler: tenantScopeFromParams,
+      schema: buildRouteSchema({
+        tag: BILLING_COMMAND_TAG,
+        summary: "Apply a payment via the Command Center.",
+        params: tenantPaymentParamsSchema,
+        body: jsonObjectSchema,
+        response: {
+          202: jsonObjectSchema,
+        },
+      }),
+    },
+    (request, reply) =>
+      forwardCommandWithParamId({
+        request,
+        reply,
+        commandName: "billing.payment.apply",
+        paramKey: "paymentId",
+        payloadKey: "payment_id",
+      }),
+  );
+
+  app.post(
+    "/v1/tenants/:tenantId/billing/folios/transfer",
+    {
+      preHandler: tenantScopeFromParams,
+      schema: buildRouteSchema({
+        tag: BILLING_COMMAND_TAG,
+        summary: "Transfer a folio balance via the Command Center.",
+        params: reservationParamsSchema,
+        body: jsonObjectSchema,
+        response: {
+          202: jsonObjectSchema,
+        },
+      }),
+    },
+    (request, reply) =>
+      forwardCommandWithTenant({
+        request,
+        reply,
+        commandName: "billing.folio.transfer",
+      }),
+  );
+
+  app.post(
+    "/v1/tenants/:tenantId/billing/folios/close",
+    {
+      preHandler: tenantScopeFromParams,
+      schema: buildRouteSchema({
+        tag: BILLING_COMMAND_TAG,
+        summary: "Close/settle a folio via the Command Center.",
+        params: reservationParamsSchema,
+        body: jsonObjectSchema,
+        response: {
+          202: jsonObjectSchema,
+        },
+      }),
+    },
+    (request, reply) =>
+      forwardCommandWithTenant({
+        request,
+        reply,
+        commandName: "billing.folio.close",
+      }),
+  );
+
+  app.post(
+    "/v1/tenants/:tenantId/billing/payments/:paymentId/void",
+    {
+      preHandler: tenantScopeFromParams,
+      schema: buildRouteSchema({
+        tag: BILLING_COMMAND_TAG,
+        summary: "Void a previously authorized payment via the Command Center.",
+        params: tenantPaymentParamsSchema,
+        body: jsonObjectSchema,
+        response: {
+          202: jsonObjectSchema,
+        },
+      }),
+    },
+    (request, reply) =>
+      forwardCommandWithParamId({
+        request,
+        reply,
+        commandName: "billing.payment.void",
+        paramKey: "paymentId",
+        payloadKey: "payment_id",
+      }),
+  );
+
+  app.get(
+    "/v1/billing/*",
+    {
+      schema: buildRouteSchema({
+        tag: BILLING_PROXY_TAG,
+        summary: "Proxy nested billing routes to the billing service.",
+        response: {
+          200: jsonObjectSchema,
+        },
+      }),
+    },
+    proxyBilling,
+  );
+};
