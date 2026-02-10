@@ -212,42 +212,8 @@ COMMENT ON COLUMN tax_configurations.calculation_method IS 'How tax is calculate
 COMMENT ON COLUMN tax_configurations.is_compound_tax IS 'Whether this tax compounds on other taxes';
 COMMENT ON COLUMN tax_configurations.tier_ranges IS 'JSON array for progressive/tiered tax rates: [{min_amount, max_amount, rate}]';
 
--- Default tax seed data (US property defaults)
-INSERT INTO tax_configurations (
-    tenant_id, property_id, tax_code, tax_name, tax_type,
-    country_code, tax_rate, is_percentage, effective_from,
-    calculation_method, calculation_base, applies_to, is_active
-) VALUES
-    (
-        '11111111-1111-1111-1111-111111111111',
-        '22222222-2222-2222-2222-222222222222',
-        'US-OCCUPANCY-DEFAULT',
-        'Occupancy Tax',
-        'occupancy_tax',
-        'US',
-        8.875,
-        TRUE,
-        '2020-01-01',
-        'exclusive',
-        'room_only',
-        ARRAY['rooms'],
-        TRUE
-    ),
-    (
-        '11111111-1111-1111-1111-111111111111',
-        '22222222-2222-2222-2222-222222222222',
-        'US-SALES-DEFAULT',
-        'Sales Tax',
-        'sales_tax',
-        'US',
-        4.5,
-        TRUE,
-        '2020-01-01',
-        'exclusive',
-        'subtotal',
-        ARRAY['rooms', 'services', 'food_beverage'],
-        TRUE
-    )
-ON CONFLICT (tax_code) DO NOTHING;
+-- NOTE: Default tax seed data has been moved to dev-only seeding scripts.
+-- See: scripts/seed/dev/tax_configurations_seed.sql
+-- Production environments should configure tax rules per tenant/property.
 
 \echo '✓ Tax configurations table created and seeded.'

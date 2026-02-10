@@ -62,8 +62,12 @@ END $$;
 \i 05_performance_reporting_procedures.sql
 \echo ''
 
-\echo '6/6 Creating performance alerting procedures...'
+\echo '6/7 Creating performance alerting procedures...'
 \i 06_performance_alerting_procedures.sql
+\echo ''
+
+\echo '7/7 Creating reservation status trigger...'
+\i 07_reservation_status_trigger.sql
 \echo ''
 
 -- =====================================================
@@ -112,7 +116,8 @@ WHERE n.nspname = 'public'
     'monitor_performance_degradation',
     'get_active_alerts',
     'acknowledge_alert',
-    'acknowledge_alerts_by_type'
+    'acknowledge_alerts_by_type',
+    'track_reservation_status_change'
   )
 ORDER BY p.proname;
 
@@ -153,14 +158,16 @@ WHERE n.nspname = 'public'
     'monitor_performance_degradation',
     'get_active_alerts',
     'acknowledge_alert',
-    'acknowledge_alerts_by_type'
+    'acknowledge_alerts_by_type',
+    'track_reservation_status_change'
   );
 
 \echo ''
 \echo '✓ All stored procedures created successfully!'
 \echo '  - 14 Core business procedures'
 \echo '  - 13 Performance monitoring procedures'
-\echo '  - Total: 27 procedures/functions'
+\echo '  - 1 Reservation status trigger'
+\echo '  - Total: 28 procedures/functions'
 \echo ''
 \echo 'USAGE EXAMPLES:'
 \echo '---------------'

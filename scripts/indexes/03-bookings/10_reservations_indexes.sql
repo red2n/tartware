@@ -48,7 +48,7 @@ CREATE INDEX IF NOT EXISTS idx_reservations_in_house ON reservations(property_id
 
 -- Reservation type segmentation
 CREATE INDEX IF NOT EXISTS idx_reservations_type ON reservations(tenant_id, property_id, reservation_type)
-    WHERE is_deleted = false;
+    WHERE deleted_at IS NULL;
 
 -- Source and channel
 CREATE INDEX IF NOT EXISTS idx_reservations_source ON reservations(source) WHERE deleted_at IS NULL;

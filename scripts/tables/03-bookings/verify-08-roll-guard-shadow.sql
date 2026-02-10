@@ -143,7 +143,6 @@ BEGIN
         RAISE WARNING '⚠⚠⚠ ROLL / GUARD VERIFICATION FAILED ⚠⚠⚠';
         RAISE WARNING 'Expected 6 tables, found %', v_table_count;
     END IF;
-    END IF;
 END $$;
 
 \echo ''
