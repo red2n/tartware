@@ -126,3 +126,9 @@ COMMENT ON COLUMN channel_rate_parity.channel_rates IS 'JSON object containing r
 COMMENT ON COLUMN channel_rate_parity.violation_details IS 'Detailed information about parity violations';
 COMMENT ON COLUMN channel_rate_parity.bar_rate IS 'Best Available Rate across all channels';
 COMMENT ON COLUMN channel_rate_parity.contract_violation_risk IS 'Risk level of violating OTA contract terms';
+
+\echo 'channel_rate_parity table created successfully!'
+
+\echo 'channel_rate_parity table created successfully!'
+
+\echo 'channel_rate_parity table created successfully!'

@@ -194,3 +194,9 @@ CREATE TABLE IF NOT EXISTS promotional_codes (
 
 
 COMMENT ON TABLE promotional_codes IS 'Manages promotional codes, discounts, and usage tracking';
+
+\echo 'promotional_codes table created successfully!'
+
+\echo 'promotional_codes table created successfully!'
+
+\echo 'promotional_codes table created successfully!'

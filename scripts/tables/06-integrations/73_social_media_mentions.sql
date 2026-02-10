@@ -194,3 +194,9 @@ CREATE TABLE IF NOT EXISTS social_media_mentions (
 
 
 COMMENT ON TABLE social_media_mentions IS 'Tracks social media mentions with sentiment analysis and response management';
+
+\echo 'social_media_mentions table created successfully!'
+
+\echo 'social_media_mentions table created successfully!'
+
+\echo 'social_media_mentions table created successfully!'

@@ -178,3 +178,9 @@ CREATE TABLE IF NOT EXISTS referral_tracking (
 
 
 COMMENT ON TABLE referral_tracking IS 'Tracks guest referrals, rewards, and referral program performance';
+
+\echo 'referral_tracking table created successfully!'
+
+\echo 'referral_tracking table created successfully!'
+
+\echo 'referral_tracking table created successfully!'

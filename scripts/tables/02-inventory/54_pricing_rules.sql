@@ -228,3 +228,9 @@ COMMENT ON COLUMN pricing_rules.conflict_resolution IS 'Strategy when multiple r
 COMMENT ON COLUMN pricing_rules.adjustment_type IS 'Type of rate adjustment: percentage_increase, percentage_decrease, set_to_amount, etc';
 
 COMMENT ON COLUMN pricing_rules.can_combine_with_other_rules IS 'Whether this rule can be applied along with other rules';
+
+\echo 'pricing_rules table created successfully!'
+
+\echo 'pricing_rules table created successfully!'
+
+\echo 'pricing_rules table created successfully!'

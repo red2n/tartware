@@ -47,3 +47,9 @@ CREATE TABLE IF NOT EXISTS app_usage_analytics (
 
 
 COMMENT ON TABLE app_usage_analytics IS 'Tracks mobile app usage and user behavior analytics';
+
+\echo 'app_usage_analytics table created successfully!'
+
+\echo 'app_usage_analytics table created successfully!'
+
+\echo 'app_usage_analytics table created successfully!'

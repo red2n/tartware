@@ -240,3 +240,9 @@ COMMENT ON TABLE cashier_sessions IS 'Manages cashier/till sessions with cash ha
 COMMENT ON COLUMN cashier_sessions.cash_breakdown IS 'JSON array of cash denominations: [{denomination, count, amount}]';
 COMMENT ON COLUMN cashier_sessions.payment_methods_summary IS 'JSON summary of all payment methods: [{method, count, amount, fees}]';
 COMMENT ON COLUMN cashier_sessions.has_material_variance IS 'Whether variance exceeds threshold requiring investigation';
+
+\echo 'cashier_sessions table created successfully!'
+
+\echo 'cashier_sessions table created successfully!'
+
+\echo 'cashier_sessions table created successfully!'

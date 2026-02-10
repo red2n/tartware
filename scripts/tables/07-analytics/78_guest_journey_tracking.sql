@@ -98,3 +98,9 @@ CREATE TABLE IF NOT EXISTS guest_journey_tracking (
 
 
 COMMENT ON TABLE guest_journey_tracking IS 'Tracks complete guest journey with touchpoints and experience analytics';
+
+\echo 'guest_journey_tracking table created successfully!'
+
+\echo 'guest_journey_tracking table created successfully!'
+
+\echo 'guest_journey_tracking table created successfully!'

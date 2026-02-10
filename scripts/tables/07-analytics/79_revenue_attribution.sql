@@ -60,3 +60,9 @@ CREATE TABLE IF NOT EXISTS revenue_attribution (
 );
 
 COMMENT ON TABLE revenue_attribution IS 'Tracks revenue attribution across marketing touchpoints';
+
+\echo 'revenue_attribution table created successfully!'
+
+\echo 'revenue_attribution table created successfully!'
+
+\echo 'revenue_attribution table created successfully!'

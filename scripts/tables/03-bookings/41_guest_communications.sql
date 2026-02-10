@@ -70,3 +70,9 @@ COMMENT ON COLUMN guest_communications.communication_type IS 'Type: EMAIL, SMS, 
 COMMENT ON COLUMN guest_communications.direction IS 'Communication direction: INBOUND or OUTBOUND';
 COMMENT ON COLUMN guest_communications.status IS 'Message status: DRAFT, QUEUED, SENT, DELIVERED, FAILED, BOUNCED, OPENED, CLICKED';
 COMMENT ON COLUMN guest_communications.attachments IS 'Array of attachment metadata in JSON format';
+
+\echo 'guest_communications table created successfully!'
+
+\echo 'guest_communications table created successfully!'
+
+\echo 'guest_communications table created successfully!'

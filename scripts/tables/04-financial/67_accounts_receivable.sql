@@ -241,3 +241,9 @@ COMMENT ON TABLE accounts_receivable IS 'Manages accounts receivable, aging, col
 COMMENT ON COLUMN accounts_receivable.aging_bucket IS 'Aging category: current, 1_30_days, 31_60_days, 61_90_days, 91_120_days, over_120_days';
 COMMENT ON COLUMN accounts_receivable.payments IS 'JSON array of payment history: [{date, amount, method, reference}]';
 COMMENT ON COLUMN accounts_receivable.write_off_amount IS 'Amount written off as bad debt';
+
+\echo 'accounts_receivable table created successfully!'
+
+\echo 'accounts_receivable table created successfully!'
+
+\echo 'accounts_receivable table created successfully!'

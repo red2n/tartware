@@ -1,37 +1,76 @@
 -- =====================================================
 -- S11: Walk History
 -- Records of guests walked due to overbooking
+-- Tracks compensation, alternate accommodation, and
+-- guest satisfaction for walk-out incidents
 -- =====================================================
 
 CREATE TABLE IF NOT EXISTS walk_history (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    walk_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     tenant_id UUID NOT NULL,
     property_id UUID NOT NULL,
+
+    -- Original reservation
     reservation_id UUID NOT NULL,
+    confirmation_number VARCHAR(50),
+    guest_name VARCHAR(255) NOT NULL,
     guest_id UUID,
 
     -- Walk details
-    walk_date DATE NOT NULL,
-    walk_reason TEXT DEFAULT 'overbooking',
-    destination_hotel TEXT,
-    destination_confirmation TEXT,
+    walk_date DATE NOT NULL DEFAULT CURRENT_DATE,
+    walk_reason TEXT,
+    walked_by UUID,
+
+    -- Alternate accommodation
+    alternate_hotel_name VARCHAR(255),
+    alternate_hotel_address TEXT,
+    alternate_hotel_phone VARCHAR(50),
+    alternate_confirmation VARCHAR(100),
+    alternate_rate DECIMAL(15,2),
+    alternate_nights INTEGER DEFAULT 1,
 
     -- Compensation
-    compensation_type TEXT DEFAULT 'one_night'
-        CHECK (compensation_type IN ('one_night', 'flat_fee', 'percentage', 'custom')),
-    compensation_amount DECIMAL(12,2) DEFAULT 0,
-    transport_provided BOOLEAN DEFAULT TRUE,
-    transport_cost DECIMAL(12,2) DEFAULT 0,
-    total_walk_cost DECIMAL(12,2) GENERATED ALWAYS AS (
-        COALESCE(compensation_amount, 0) + COALESCE(transport_cost, 0)
+    compensation_type VARCHAR(50) CHECK (compensation_type IN (
+        'first_night_covered', 'full_stay_covered', 'rate_discount',
+        'loyalty_points', 'future_credit', 'cash', 'other'
+    )),
+    compensation_amount DECIMAL(15,2) DEFAULT 0.00,
+    compensation_currency VARCHAR(3) DEFAULT 'USD',
+    compensation_description TEXT,
+
+    -- Transportation
+    transportation_provided BOOLEAN DEFAULT FALSE,
+    transportation_type VARCHAR(50),
+    transportation_cost DECIMAL(10,2) DEFAULT 0.00,
+
+    -- Return guarantee
+    return_guaranteed BOOLEAN DEFAULT FALSE,
+    return_date DATE,
+    return_room_type VARCHAR(100),
+
+    -- Totals
+    total_walk_cost DECIMAL(15,2) GENERATED ALWAYS AS (
+        COALESCE(alternate_rate * alternate_nights, 0) +
+        COALESCE(compensation_amount, 0) +
+        COALESCE(transportation_cost, 0)
     ) STORED,
 
-    -- Status tracking
-    walk_status TEXT DEFAULT 'pending'
-        CHECK (walk_status IN ('pending', 'confirmed', 'guest_notified', 'completed', 'cancelled')),
+    -- Status
+    walk_status VARCHAR(50) DEFAULT 'initiated' CHECK (walk_status IN (
+        'initiated', 'guest_contacted', 'alternate_secured',
+        'guest_relocated', 'completed', 'cancelled'
+    )),
+
+    -- Communication
+    guest_notified BOOLEAN DEFAULT FALSE,
     guest_notified_at TIMESTAMPTZ,
-    completed_at TIMESTAMPTZ,
+    guest_satisfaction VARCHAR(20) CHECK (guest_satisfaction IN (
+        'satisfied', 'neutral', 'dissatisfied', 'complaint_filed'
+    )),
+
+    -- Notes
     notes TEXT,
+    internal_notes TEXT,
 
     -- Audit
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -39,18 +78,16 @@ CREATE TABLE IF NOT EXISTS walk_history (
     created_by UUID,
     updated_by UUID,
     is_deleted BOOLEAN DEFAULT FALSE,
-    deleted_at TIMESTAMPTZ,
-
-    CONSTRAINT fk_walk_reservation
-        FOREIGN KEY (reservation_id) REFERENCES reservations(reservation_id) ON DELETE RESTRICT
+    deleted_at TIMESTAMPTZ
 );
 
-COMMENT ON TABLE walk_history IS 'History of guests walked due to overbooking';
-COMMENT ON COLUMN walk_history.total_walk_cost IS 'Auto-calculated: compensation + transport cost';
-COMMENT ON COLUMN walk_history.walk_status IS 'Walk process status: pending → confirmed → guest_notified → completed';
+COMMENT ON TABLE walk_history IS 'Tracks guest walk-outs due to overbooking with compensation details';
+COMMENT ON COLUMN walk_history.total_walk_cost IS 'Total cost of the walk (alternate hotel + compensation + transport)';
 
 CREATE INDEX IF NOT EXISTS idx_walk_history_property_date
     ON walk_history (tenant_id, property_id, walk_date);
 
 CREATE INDEX IF NOT EXISTS idx_walk_history_reservation
     ON walk_history (reservation_id);
+
+\echo 'walk_history table created successfully!'

@@ -60,3 +60,9 @@ CREATE TABLE IF NOT EXISTS data_sync_status (
 
 
 COMMENT ON TABLE data_sync_status IS 'Tracks data synchronization status between integrated systems';
+
+\echo 'data_sync_status table created successfully!'
+
+\echo 'data_sync_status table created successfully!'
+
+\echo 'data_sync_status table created successfully!'

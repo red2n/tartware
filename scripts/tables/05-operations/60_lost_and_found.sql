@@ -221,3 +221,9 @@ COMMENT ON COLUMN lost_and_found.item_status IS 'Status: registered, stored, cla
 COMMENT ON COLUMN lost_and_found.verification_questions IS 'JSON array of questions to verify legitimate claimant';
 COMMENT ON COLUMN lost_and_found.hold_until_date IS 'Date until which item will be held before disposal';
 COMMENT ON COLUMN lost_and_found.access_log IS 'JSON array tracking who accessed the item and when';
+
+\echo 'lost_and_found table created successfully!'
+
+\echo 'lost_and_found table created successfully!'
+
+\echo 'lost_and_found table created successfully!'

@@ -54,3 +54,9 @@ CREATE TABLE IF NOT EXISTS api_logs (
 
 
 COMMENT ON TABLE api_logs IS 'Logs all API requests and responses for monitoring and debugging';
+
+\echo 'api_logs table created successfully!'
+
+\echo 'api_logs table created successfully!'
+
+\echo 'api_logs table created successfully!'

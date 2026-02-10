@@ -370,3 +370,9 @@ COMMENT ON COLUMN sentiment_analysis.sentiment_score IS 'Overall sentiment score
 COMMENT ON COLUMN sentiment_analysis.aspect_sentiments IS 'JSON breakdown of sentiment by specific aspects (room, staff, cleanliness, etc.)';
 COMMENT ON COLUMN sentiment_analysis.emotion_scores IS 'ML-detected emotions with confidence scores';
 COMMENT ON COLUMN sentiment_trends.nps_score IS 'Net Promoter Score calculated from promoter and detractor counts (computed)';
+
+\echo 'sentiment_analysis table created successfully!'
+
+\echo 'sentiment_analysis table created successfully!'
+
+\echo 'sentiment_analysis table created successfully!'

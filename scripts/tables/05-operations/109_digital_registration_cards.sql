@@ -133,3 +133,9 @@ CREATE TABLE IF NOT EXISTS digital_registration_cards (
 );
 
 COMMENT ON TABLE digital_registration_cards IS 'Electronic registration cards with digital signatures and compliance tracking';
+
+\echo 'digital_registration_cards table created successfully!'
+
+\echo 'digital_registration_cards table created successfully!'
+
+\echo 'digital_registration_cards table created successfully!'

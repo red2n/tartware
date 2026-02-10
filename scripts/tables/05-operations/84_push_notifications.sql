@@ -60,3 +60,9 @@ CREATE TABLE IF NOT EXISTS push_notifications (
 
 
 COMMENT ON TABLE push_notifications IS 'Manages push notifications for mobile apps';
+
+\echo 'push_notifications table created successfully!'
+
+\echo 'push_notifications table created successfully!'
+
+\echo 'push_notifications table created successfully!'

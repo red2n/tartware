@@ -414,3 +414,9 @@ COMMENT ON TABLE guest_interaction_events IS 'Event tracking for all guest inter
 COMMENT ON COLUMN guest_behavior_patterns.churn_risk_score IS 'ML-predicted likelihood guest will not return (0-100)';
 COMMENT ON COLUMN guest_behavior_patterns.upsell_propensity_score IS 'ML score indicating likelihood to purchase upgrades/add-ons';
 COMMENT ON COLUMN personalized_recommendations.personalization_factors IS 'JSON showing which guest behaviors/preferences drove this recommendation';
+
+\echo 'guest_behavior_patterns table created successfully!'
+
+\echo 'guest_behavior_patterns table created successfully!'
+
+\echo 'guest_behavior_patterns table created successfully!'

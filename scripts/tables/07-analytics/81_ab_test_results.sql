@@ -60,3 +60,9 @@ CREATE TABLE IF NOT EXISTS ab_test_results (
 
 
 COMMENT ON TABLE ab_test_results IS 'Tracks A/B testing experiments and results';
+
+\echo 'ab_test_results table created successfully!'
+
+\echo 'ab_test_results table created successfully!'
+
+\echo 'ab_test_results table created successfully!'

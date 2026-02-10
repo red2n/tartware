@@ -68,3 +68,9 @@ CREATE TABLE IF NOT EXISTS pricing_experiments (
 );
 
 COMMENT ON TABLE pricing_experiments IS 'A/B testing framework for comparing pricing strategies';
+
+\echo 'pricing_experiments table created successfully!'
+
+\echo 'pricing_experiments table created successfully!'
+
+\echo 'pricing_experiments table created successfully!'

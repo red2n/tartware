@@ -27,11 +27,14 @@
 - Add CHECK constraints for invariants (status enums, non-negative amounts) and keep audit fields (`created_at`, `updated_at`, `created_by`, `updated_by`) on new tables.
 
 ## SQL Migration Execution
-- **Never leave new SQL migration files unexecuted**—run them against the local database immediately after creation.
-- New migration files (e.g., `scripts/YYYY-MM-DD-*.sql`) must be executed with: `psql -h localhost -U postgres -d tartware -f scripts/<migration-file>.sql`
+- **Never create date-prefixed migration files** (e.g., `scripts/YYYY-MM-DD-*.sql`). All schema changes (new tables, new columns, seed data) must go directly into the canonical category table scripts under `scripts/tables/<category>/`.
+- New tables get their own numbered file (e.g., `scripts/tables/03-bookings/56_overbooking_config.sql`) and must be added to `scripts/tables/00-create-all-tables.sql`.
+- New columns on existing tables must be added to the existing canonical CREATE TABLE file (e.g., add columns to `08_rates.sql`, not a separate migration).
+- New seed/reference data rows must be added to the existing seed INSERT in the canonical file (e.g., add charge codes to `07_charge_codes.sql`).
+- After any table/column change, update the corresponding `verify-*.sql` script (table counts, column checks).
+- After creating or modifying SQL scripts, execute them against local database: `psql -h localhost -U postgres -d tartware -f scripts/tables/<category>/<file>.sql`
 - After running a migration, verify it succeeded by checking affected tables/columns exist.
-- If a migration adds new ENUMs, tables, or columns, update `scripts/verify-installation.sql` or `scripts/verify-all.sql` expected counts if applicable.
-- Document one-time migrations in commit messages; recurring schema objects should be added to the appropriate `scripts/tables/`, `scripts/indexes/`, or `scripts/constraints/` directories for inclusion in master install.
+- Use idempotent patterns (`CREATE TABLE IF NOT EXISTS`, `ADD COLUMN IF NOT EXISTS`, `ON CONFLICT DO NOTHING`) so scripts are safe to re-run.
 
 ## Reliability Defaults
 - Every new command must support idempotency keys and deduplication.

@@ -54,3 +54,9 @@ CREATE TABLE IF NOT EXISTS integration_mappings (
 
 
 COMMENT ON TABLE integration_mappings IS 'Manages field mappings and transformations between integrated systems';
+
+\echo 'integration_mappings table created successfully!'
+
+\echo 'integration_mappings table created successfully!'
+
+\echo 'integration_mappings table created successfully!'

@@ -133,3 +133,9 @@ COMMENT ON COLUMN channel_commission_rules.tier_structure IS 'JSON array definin
 COMMENT ON COLUMN channel_commission_rules.performance_bonuses IS 'JSON array of performance-based bonus structures';
 COMMENT ON COLUMN channel_commission_rules.calculate_on IS 'Base amount on which commission is calculated';
 COMMENT ON COLUMN channel_commission_rules.conflict_resolution IS 'Strategy when multiple rules apply to same booking';
+
+\echo 'channel_commission_rules table created successfully!'
+
+\echo 'channel_commission_rules table created successfully!'
+
+\echo 'channel_commission_rules table created successfully!'

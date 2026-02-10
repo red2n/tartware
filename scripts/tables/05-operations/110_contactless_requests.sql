@@ -156,3 +156,9 @@ CREATE TABLE IF NOT EXISTS contactless_requests (
 COMMENT ON TABLE contactless_requests IS 'Guest service requests via mobile app, QR codes, and contactless channels';
 COMMENT ON COLUMN contactless_requests.response_time_minutes IS 'Minutes from request to staff acknowledgment (computed)';
 COMMENT ON COLUMN contactless_requests.resolution_time_minutes IS 'Minutes from request to completion (computed)';
+
+\echo 'contactless_requests table created successfully!'
+
+\echo 'contactless_requests table created successfully!'
+
+\echo 'contactless_requests table created successfully!'

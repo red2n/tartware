@@ -120,3 +120,9 @@ COMMENT ON TABLE guest_documents IS 'Stores guest identification documents, cont
 COMMENT ON COLUMN guest_documents.file_hash IS 'SHA-256 hash of file content for integrity verification';
 COMMENT ON COLUMN guest_documents.retention_period_days IS 'Number of days to retain document as per policy';
 COMMENT ON COLUMN guest_documents.legal_hold IS 'Prevents deletion when document is subject to legal proceedings';
+
+\echo 'guest_documents table created successfully!'
+
+\echo 'guest_documents table created successfully!'
+
+\echo 'guest_documents table created successfully!'

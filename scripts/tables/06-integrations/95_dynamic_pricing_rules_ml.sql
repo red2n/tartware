@@ -193,3 +193,9 @@ CREATE TABLE IF NOT EXISTS dynamic_pricing_rules_ml (
 COMMENT ON TABLE dynamic_pricing_rules_ml IS 'ML-powered dynamic pricing rules with reinforcement learning, A/B testing, and automated price optimization';
 COMMENT ON COLUMN dynamic_pricing_rules_ml.pricing_strategy IS 'Type of ML pricing strategy: occupancy-based, demand-based, competitor-based, hybrid, RL';
 COMMENT ON COLUMN dynamic_pricing_rules_ml.exploration_rate IS 'For reinforcement learning: balance between exploring new prices vs exploiting known good prices';
+
+\echo 'dynamic_pricing_rules_ml table created successfully!'
+
+\echo 'dynamic_pricing_rules_ml table created successfully!'
+
+\echo 'dynamic_pricing_rules_ml table created successfully!'

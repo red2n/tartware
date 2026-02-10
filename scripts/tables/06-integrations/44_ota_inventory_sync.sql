@@ -104,3 +104,9 @@ COMMENT ON COLUMN ota_inventory_sync.sync_type IS 'Type of sync: full, increment
 COMMENT ON COLUMN ota_inventory_sync.sync_direction IS 'Direction of sync: push (PMS to OTA), pull (OTA to PMS), bidirectional';
 COMMENT ON COLUMN ota_inventory_sync.conflict_resolution IS 'Strategy for resolving data conflicts during sync';
 COMMENT ON COLUMN ota_inventory_sync.differences_detected IS 'JSON structure tracking differences found during sync';
+
+\echo 'ota_inventory_sync table created successfully!'
+
+\echo 'ota_inventory_sync table created successfully!'
+
+\echo 'ota_inventory_sync table created successfully!'

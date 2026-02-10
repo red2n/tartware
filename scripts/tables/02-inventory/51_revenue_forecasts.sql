@@ -175,3 +175,9 @@ COMMENT ON TABLE revenue_forecasts IS 'AI-driven revenue forecasting with multip
 COMMENT ON COLUMN revenue_forecasts.confidence_level IS 'Model confidence in forecast (0-100%)';
 
 COMMENT ON COLUMN revenue_forecasts.model_algorithm IS 'Machine learning algorithm used for forecasting';
+
+\echo 'revenue_forecasts table created successfully!'
+
+\echo 'revenue_forecasts table created successfully!'
+
+\echo 'revenue_forecasts table created successfully!'

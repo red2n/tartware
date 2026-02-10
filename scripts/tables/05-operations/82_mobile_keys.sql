@@ -55,3 +55,9 @@ CREATE TABLE IF NOT EXISTS mobile_keys (
 
 
 COMMENT ON TABLE mobile_keys IS 'Manages digital/mobile room keys for contactless access';
+
+\echo 'mobile_keys table created successfully!'
+
+\echo 'mobile_keys table created successfully!'
+
+\echo 'mobile_keys table created successfully!'

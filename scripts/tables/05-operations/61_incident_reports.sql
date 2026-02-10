@@ -261,3 +261,9 @@ COMMENT ON COLUMN incident_reports.severity IS 'Incident severity: minor, modera
 COMMENT ON COLUMN incident_reports.incident_type IS 'Type: accident, injury, theft, damage, security_breach, medical_emergency, etc';
 COMMENT ON COLUMN incident_reports.witnesses IS 'JSON array of witness information and statements';
 COMMENT ON COLUMN incident_reports.follow_up_actions IS 'JSON array of required follow-up actions with assignments and deadlines';
+
+\echo 'incident_reports table created successfully!'
+
+\echo 'incident_reports table created successfully!'
+
+\echo 'incident_reports table created successfully!'

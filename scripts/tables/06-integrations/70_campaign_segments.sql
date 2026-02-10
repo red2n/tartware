@@ -155,3 +155,9 @@ CREATE TABLE IF NOT EXISTS campaign_segments (
 
 
 COMMENT ON TABLE campaign_segments IS 'Defines customer segments for targeted marketing campaigns';
+
+\echo 'campaign_segments table created successfully!'
+
+\echo 'campaign_segments table created successfully!'
+
+\echo 'campaign_segments table created successfully!'

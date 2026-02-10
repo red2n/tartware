@@ -245,3 +245,9 @@ COMMENT ON COLUMN demand_calendar.booking_pace IS 'Booking velocity compared to 
 COMMENT ON COLUMN demand_calendar.events IS 'JSON array of events impacting demand for this date';
 
 COMMENT ON COLUMN demand_calendar.recommended_pricing_strategy IS 'AI-recommended pricing approach based on demand analysis';
+
+\echo 'demand_calendar table created successfully!'
+
+\echo 'demand_calendar table created successfully!'
+
+\echo 'demand_calendar table created successfully!'

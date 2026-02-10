@@ -55,3 +55,9 @@ CREATE TABLE IF NOT EXISTS qr_codes (
 
 
 COMMENT ON TABLE qr_codes IS 'Manages QR codes for various hotel services and touchpoints';
+
+\echo 'qr_codes table created successfully!'
+
+\echo 'qr_codes table created successfully!'
+
+\echo 'qr_codes table created successfully!'

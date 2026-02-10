@@ -9,23 +9,23 @@
 \echo 'Creating inventory_locks_shadow table...'
 
 CREATE TABLE IF NOT EXISTS inventory_locks_shadow (
-    id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    tenant_id       UUID NOT NULL,
-    reservation_id  UUID,
-    room_type_id    UUID NOT NULL,
-    room_id         UUID,
-    stay_start      TIMESTAMPTZ NOT NULL,
-    stay_end        TIMESTAMPTZ NOT NULL,
-    reason          VARCHAR(100) NOT NULL,
-    correlation_id  VARCHAR(255),
-    expires_at      TIMESTAMPTZ,
-    ttl_seconds     INTEGER,
-    metadata        JSONB NOT NULL DEFAULT '{}'::jsonb,
-    status          VARCHAR(50) NOT NULL DEFAULT 'ACTIVE'
+    id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),   -- Unique lock ID; doubles as idempotency key
+    tenant_id       UUID NOT NULL,                                 -- FK tenants.id for data isolation
+    reservation_id  UUID,                                          -- FK reservations.id (NULL for speculative locks)
+    room_type_id    UUID NOT NULL,                                 -- FK room_types.id being locked
+    room_id         UUID,                                          -- FK rooms.id for room-level locks (NULL for type-level)
+    stay_start      TIMESTAMPTZ NOT NULL,                          -- Start of the locked date range
+    stay_end        TIMESTAMPTZ NOT NULL,                          -- End of the locked date range
+    reason          VARCHAR(100) NOT NULL,                         -- Why the lock was created (RESERVATION_CREATE, etc.)
+    correlation_id  VARCHAR(255),                                  -- Correlation ID from the originating command
+    expires_at      TIMESTAMPTZ,                                   -- Absolute expiration timestamp
+    ttl_seconds     INTEGER,                                       -- Requested TTL in seconds
+    metadata        JSONB NOT NULL DEFAULT '{}'::jsonb,             -- Additional structured context
+    status          VARCHAR(50) NOT NULL DEFAULT 'ACTIVE'          -- Lock state: ACTIVE or RELEASED
                     CHECK (status IN ('ACTIVE', 'RELEASED')),
-    release_reason  TEXT,
-    created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    release_reason  TEXT,                                          -- Reason for releasing the lock
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),            -- Record creation timestamp
+    updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),            -- Last update timestamp
 
     CONSTRAINT chk_stay_range CHECK (stay_end > stay_start),
     CONSTRAINT chk_ttl_positive CHECK (ttl_seconds IS NULL OR ttl_seconds >= 0)
@@ -71,4 +71,4 @@ CREATE INDEX IF NOT EXISTS idx_inventory_locks_shadow_expires
 CREATE INDEX IF NOT EXISTS idx_inventory_locks_shadow_tenant
     ON inventory_locks_shadow (tenant_id, created_at DESC);
 
-\echo 'inventory_locks_shadow table ready.'
+\echo 'inventory_locks_shadow table created successfully!'

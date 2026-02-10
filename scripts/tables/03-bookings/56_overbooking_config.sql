@@ -42,3 +42,5 @@ COMMENT ON COLUMN overbooking_config.walk_priority_order IS 'Comma-separated pri
 CREATE INDEX IF NOT EXISTS idx_overbooking_config_lookup
     ON overbooking_config (tenant_id, property_id, room_type_id)
     WHERE COALESCE(is_deleted, false) = false;
+
+\echo 'overbooking_config table created successfully!'

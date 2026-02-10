@@ -50,3 +50,9 @@ CREATE TABLE IF NOT EXISTS forecasting_models (
 
 
 COMMENT ON TABLE forecasting_models IS 'Stores ML forecasting models and predictions';
+
+\echo 'forecasting_models table created successfully!'
+
+\echo 'forecasting_models table created successfully!'
+
+\echo 'forecasting_models table created successfully!'

@@ -235,3 +235,9 @@ COMMENT ON COLUMN rate_recommendations.contributing_factors IS 'JSON array of fa
 COMMENT ON COLUMN rate_recommendations.effectiveness_score IS 'Post-implementation validation score of recommendation accuracy';
 
 COMMENT ON COLUMN rate_recommendations.auto_apply_threshold IS 'Minimum confidence score required for automatic implementation';
+
+\echo 'rate_recommendations table created successfully!'
+
+\echo 'rate_recommendations table created successfully!'
+
+\echo 'rate_recommendations table created successfully!'

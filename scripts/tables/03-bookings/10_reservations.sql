@@ -101,6 +101,9 @@ CREATE TABLE IF NOT EXISTS reservations (
     quote_expires_at TIMESTAMPTZ,
     expired_at TIMESTAMPTZ,
 
+    -- Group Booking Link (S12)
+    group_booking_id UUID,  -- FK to group_bookings for reservations picked up from a group block
+
     -- Marketing
     promo_code VARCHAR(50),
 
@@ -160,6 +163,7 @@ COMMENT ON COLUMN reservations.travel_agent_id IS 'Travel agency FK for agent-bo
 COMMENT ON COLUMN reservations.quoted_at IS 'When the quote was sent to the guest';
 COMMENT ON COLUMN reservations.quote_expires_at IS 'When the quote validity expires (auto-expire target)';
 COMMENT ON COLUMN reservations.expired_at IS 'When the reservation was transitioned to EXPIRED';
+COMMENT ON COLUMN reservations.group_booking_id IS 'FK to group_bookings for reservations picked up from a group block';
 COMMENT ON COLUMN reservations.deleted_at IS 'Soft delete timestamp (NULL = active)';
 
 \echo 'Reservations table created successfully!'

@@ -68,3 +68,9 @@ COMMENT ON TABLE ota_reservations_queue IS 'Queue for incoming OTA reservations 
 COMMENT ON COLUMN ota_reservations_queue.raw_payload IS 'Complete XML/JSON payload from OTA';
 COMMENT ON COLUMN ota_reservations_queue.processing_attempts IS 'Number of times processing has been attempted';
 COMMENT ON COLUMN ota_reservations_queue.status IS 'Processing status: PENDING, PROCESSING, COMPLETED, FAILED, DUPLICATE';
+
+\echo 'ota_reservations_queue table created successfully!'
+
+\echo 'ota_reservations_queue table created successfully!'
+
+\echo 'ota_reservations_queue table created successfully!'

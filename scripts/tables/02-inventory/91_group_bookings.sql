@@ -267,3 +267,9 @@ COMMENT ON COLUMN group_bookings.cutoff_date IS 'Date by which unsold rooms are 
 COMMENT ON COLUMN group_bookings.rooming_list_received IS 'Indicates if individual guest names have been provided';
 
 COMMENT ON COLUMN group_room_blocks.picked_rooms IS 'Number of rooms from the block that have been reserved';
+
+\echo 'group_bookings table created successfully!'
+
+\echo 'group_bookings table created successfully!'
+
+\echo 'group_bookings table created successfully!'

@@ -46,6 +46,7 @@ VALUES
     ('CANCELLATION', 'Cancellation Fee',        'ADJ',   'Adjustments',        'FEES',   FALSE, 60),
     ('NO_SHOW',      'No-Show Fee',             'ADJ',   'Adjustments',        'FEES',   FALSE, 61),
     ('LATE_CHECKOUT','Late Checkout Fee',        'ADJ',   'Adjustments',        'FEES',   FALSE, 62),
+    ('EARLY_CHECKIN','Early Check-In Fee',       'ADJ',   'Adjustments',        'FEES',   FALSE, 63),
     ('RESORT_FEE',   'Resort Fee',              'FEES',  'Mandatory Fees',     'FEES',   TRUE,  70),
     ('MISC',         'Miscellaneous Charge',    'MISC',  'Miscellaneous',      'OTHER',  TRUE,  99)
 ON CONFLICT (code) DO NOTHING;

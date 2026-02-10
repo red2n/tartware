@@ -423,3 +423,9 @@ COMMENT ON TABLE device_events_log IS 'Comprehensive event log for all smart dev
 COMMENT ON COLUMN smart_room_devices.current_state IS 'JSON containing device-specific current state (temperature, lock status, brightness, etc.)';
 COMMENT ON COLUMN room_energy_usage.energy_per_guest IS 'Energy consumption normalized by number of guests (computed)';
 COMMENT ON COLUMN guest_room_preferences.learning_mode_enabled IS 'Allow system to learn and adapt to guest behavior patterns';
+
+\echo 'smart_room_devices table created successfully!'
+
+\echo 'smart_room_devices table created successfully!'
+
+\echo 'smart_room_devices table created successfully!'

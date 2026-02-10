@@ -449,3 +449,9 @@ COMMENT ON TABLE maintenance_history IS 'Complete maintenance history log for al
 COMMENT ON COLUMN asset_inventory.warranty_status IS 'Warranty status (active/expired/no_warranty) - should be set by trigger or application logic';
 COMMENT ON COLUMN predictive_maintenance_alerts.confidence_level IS 'ML model confidence in failure prediction (0-100)';
 COMMENT ON COLUMN predictive_maintenance_alerts.prediction_factors IS 'JSON showing which factors (usage, age, sensor data) led to prediction';
+
+\echo 'asset tables created successfully!'
+
+\echo 'asset tables created successfully!'
+
+\echo 'asset tables created successfully!'

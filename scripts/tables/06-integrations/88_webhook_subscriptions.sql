@@ -58,3 +58,9 @@ CREATE TABLE IF NOT EXISTS webhook_subscriptions (
 
 
 COMMENT ON TABLE webhook_subscriptions IS 'Manages webhook subscriptions for event notifications';
+
+\echo 'webhook_subscriptions table created successfully!'
+
+\echo 'webhook_subscriptions table created successfully!'
+
+\echo 'webhook_subscriptions table created successfully!'

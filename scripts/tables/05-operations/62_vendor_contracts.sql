@@ -249,3 +249,9 @@ COMMENT ON COLUMN vendor_contracts.contract_status IS 'Status: draft, pending_ap
 COMMENT ON COLUMN vendor_contracts.payment_terms IS 'Payment terms: net_15, net_30, net_45, net_60, net_90, due_on_receipt, etc';
 COMMENT ON COLUMN vendor_contracts.auto_renewal IS 'Whether contract automatically renews at end of term';
 COMMENT ON COLUMN vendor_contracts.performance_issues IS 'JSON array of performance issues and resolutions';
+
+\echo 'vendor_contracts table created successfully!'
+
+\echo 'vendor_contracts table created successfully!'
+
+\echo 'vendor_contracts table created successfully!'

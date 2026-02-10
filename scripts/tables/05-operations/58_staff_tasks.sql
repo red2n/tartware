@@ -217,3 +217,9 @@ COMMENT ON COLUMN staff_tasks.task_type IS 'Type of task: housekeeping, maintena
 COMMENT ON COLUMN staff_tasks.priority IS 'Task priority: low, normal, high, urgent, critical';
 COMMENT ON COLUMN staff_tasks.checklist_items IS 'JSON array of checklist items with completion status';
 COMMENT ON COLUMN staff_tasks.step_by_step_guide IS 'JSON array of step-by-step instructions with estimated times';
+
+\echo 'staff_tasks table created successfully!'
+
+\echo 'staff_tasks table created successfully!'
+
+\echo 'staff_tasks table created successfully!'

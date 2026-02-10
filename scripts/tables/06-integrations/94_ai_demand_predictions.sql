@@ -280,3 +280,9 @@ COMMENT ON TABLE ai_model_performance IS 'Track ML model accuracy and performanc
 COMMENT ON COLUMN ai_demand_predictions.confidence_level IS 'Model confidence in prediction (0-100)';
 COMMENT ON COLUMN ai_demand_predictions.occupancy_error IS 'Absolute error between predicted and actual occupancy (computed)';
 COMMENT ON COLUMN ai_demand_predictions.feature_importance IS 'JSON showing which features (events, weather, etc.) most influenced prediction';
+
+\echo 'ai_demand_predictions table created successfully!'
+
+\echo 'ai_demand_predictions table created successfully!'
+
+\echo 'ai_demand_predictions table created successfully!'
