@@ -15,7 +15,5 @@
     "@fastify/sensible",
     "@tartware/fastify-server"
   ],
-  "ignoreBinaries": ["biome", "eslint", "knip", "tsc", "tsx", "vitest"],
-  "ignoreExportsUsedInFile": true,
-  "ignore": ["src/sql/rate-queries.ts", "src/sql/room-type-queries.ts"]
+  "ignoreBinaries": ["biome", "eslint", "knip", "tsc", "tsx", "vitest"]
 }
