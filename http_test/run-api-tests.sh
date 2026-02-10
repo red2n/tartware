@@ -260,7 +260,7 @@ else
       \"first_name\": \"API\",
       \"last_name\": \"TestGuest-$TS\",
       \"email\": \"api.guest.$TS@tartware.test\",
-      \"phone\": \"+1-555-$(printf '%04d' $((RANDOM % 10000)))\",
+      \"phone\": \"+1-555-$(printf '%03d' $((RANDOM % 1000)))-$(printf '%04d' $((RANDOM % 10000)))\",
       \"address\": {
         \"street\": \"100 Test Street\",
         \"city\": \"New York\",

@@ -388,3 +388,41 @@ export const ReservationExpireCommandSchema = z.object({
 export type ReservationExpireCommand = z.infer<
 	typeof ReservationExpireCommandSchema
 >;
+
+/**
+ * Walk a guest: relocate to an alternate hotel due to overbooking.
+ * Creates a walk_history record and transitions reservation status.
+ */
+export const ReservationWalkGuestCommandSchema = z.object({
+	reservation_id: z.string().uuid(),
+	walk_reason: z.string().max(500).optional(),
+	alternate_hotel_name: z.string().max(255).optional(),
+	alternate_hotel_address: z.string().max(500).optional(),
+	alternate_hotel_phone: z.string().max(50).optional(),
+	alternate_confirmation: z.string().max(100).optional(),
+	alternate_rate: z.number().nonnegative().optional(),
+	alternate_nights: z.number().int().min(1).default(1),
+	compensation_type: z.enum([
+		"first_night_covered",
+		"full_stay_covered",
+		"rate_discount",
+		"loyalty_points",
+		"future_credit",
+		"cash",
+		"other",
+	]).optional(),
+	compensation_amount: z.number().nonnegative().default(0),
+	compensation_description: z.string().max(500).optional(),
+	transportation_provided: z.boolean().default(false),
+	transportation_type: z.string().max(50).optional(),
+	transportation_cost: z.number().nonnegative().default(0),
+	return_guaranteed: z.boolean().default(false),
+	return_date: z.coerce.date().optional(),
+	return_room_type: z.string().max(100).optional(),
+	notes: z.string().max(2000).optional(),
+	idempotency_key: z.string().max(120).optional(),
+});
+
+export type ReservationWalkGuestCommand = z.infer<
+	typeof ReservationWalkGuestCommandSchema
+>;

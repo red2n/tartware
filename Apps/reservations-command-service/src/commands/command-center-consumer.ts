@@ -39,6 +39,20 @@ import {
   ReservationWaitlistAddCommandSchema,
   ReservationWaitlistConvertCommandSchema,
   ReservationWalkInCheckInCommandSchema,
+  ReservationWalkGuestCommandSchema,
+} from "../schemas/reservation-command.js";
+import {
+  GroupCreateCommandSchema,
+  GroupAddRoomsCommandSchema,
+  GroupUploadRoomingListCommandSchema,
+  GroupCutoffEnforceCommandSchema,
+  GroupBillingSetupCommandSchema,
+} from "../schemas/reservation-command.js";
+import {
+  IntegrationOtaSyncRequestCommandSchema,
+  IntegrationOtaRatePushCommandSchema,
+  IntegrationWebhookRetryCommandSchema,
+  IntegrationMappingUpdateCommandSchema,
 } from "../schemas/reservation-command.js";
 import {
   addDeposit,
@@ -60,6 +74,17 @@ import {
   waitlistAdd,
   waitlistConvert,
   walkInCheckIn,
+  walkGuest,
+  createGroupBooking,
+  addGroupRooms,
+  uploadGroupRoomingList,
+  enforceGroupCutoff,
+  setupGroupBilling,
+  otaSyncRequest,
+  otaRatePush,
+  webhookRetry,
+  updateIntegrationMapping,
+  processOtaReservationQueue,
 } from "../services/reservation-command-service.js";
 
 let commandConsumer: Consumer | null = null;
@@ -247,6 +272,58 @@ const routeReservationCommand = async (
     case "reservation.expire": {
       const commandPayload = ReservationExpireCommandSchema.parse(envelope.payload);
       await expireReservation(metadata.tenantId, commandPayload, context);
+      break;
+    }
+    case "reservation.walk_guest": {
+      const commandPayload = ReservationWalkGuestCommandSchema.parse(envelope.payload);
+      await walkGuest(metadata.tenantId, commandPayload, context);
+      break;
+    }
+    case "group.create": {
+      const commandPayload = GroupCreateCommandSchema.parse(envelope.payload);
+      await createGroupBooking(metadata.tenantId, commandPayload, context);
+      break;
+    }
+    case "group.add_rooms": {
+      const commandPayload = GroupAddRoomsCommandSchema.parse(envelope.payload);
+      await addGroupRooms(metadata.tenantId, commandPayload, context);
+      break;
+    }
+    case "group.upload_rooming_list": {
+      const commandPayload = GroupUploadRoomingListCommandSchema.parse(envelope.payload);
+      await uploadGroupRoomingList(metadata.tenantId, commandPayload, context);
+      break;
+    }
+    case "group.cutoff_enforce": {
+      const commandPayload = GroupCutoffEnforceCommandSchema.parse(envelope.payload);
+      await enforceGroupCutoff(metadata.tenantId, commandPayload, context);
+      break;
+    }
+    case "group.billing.setup": {
+      const commandPayload = GroupBillingSetupCommandSchema.parse(envelope.payload);
+      await setupGroupBilling(metadata.tenantId, commandPayload, context);
+      break;
+    }
+    case "integration.ota.sync_request": {
+      const commandPayload = IntegrationOtaSyncRequestCommandSchema.parse(envelope.payload);
+      await otaSyncRequest(metadata.tenantId, commandPayload, context);
+      // Also process inbound reservation queue after sync
+      await processOtaReservationQueue(metadata.tenantId, commandPayload.property_id, context);
+      break;
+    }
+    case "integration.ota.rate_push": {
+      const commandPayload = IntegrationOtaRatePushCommandSchema.parse(envelope.payload);
+      await otaRatePush(metadata.tenantId, commandPayload, context);
+      break;
+    }
+    case "integration.webhook.retry": {
+      const commandPayload = IntegrationWebhookRetryCommandSchema.parse(envelope.payload);
+      await webhookRetry(metadata.tenantId, commandPayload, context);
+      break;
+    }
+    case "integration.mapping.update": {
+      const commandPayload = IntegrationMappingUpdateCommandSchema.parse(envelope.payload);
+      await updateIntegrationMapping(metadata.tenantId, commandPayload, context);
       break;
     }
     default:

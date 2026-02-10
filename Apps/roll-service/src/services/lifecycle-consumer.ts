@@ -259,6 +259,7 @@ class RollLifecycleConsumer {
       highWatermark: batch.highWatermark,
       eventId: event.metadata.id,
       eventCreatedAt: Number.isNaN(eventTimestamp) ? undefined : new Date(eventTimestamp),
+      tenantId: event.metadata.tenantId,
     });
   }
 

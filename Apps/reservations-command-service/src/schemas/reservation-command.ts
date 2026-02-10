@@ -37,4 +37,29 @@ export {
   ReservationWaitlistConvertCommandSchema,
   type ReservationWalkInCheckInCommand,
   ReservationWalkInCheckInCommandSchema,
+  type ReservationWalkGuestCommand,
+  ReservationWalkGuestCommandSchema,
 } from "@tartware/schemas/events/commands/reservations";
+export {
+	type GroupCreateCommand,
+	GroupCreateCommandSchema,
+	type GroupAddRoomsCommand,
+	GroupAddRoomsCommandSchema,
+	type GroupUploadRoomingListCommand,
+	GroupUploadRoomingListCommandSchema,
+	type GroupCutoffEnforceCommand,
+	GroupCutoffEnforceCommandSchema,
+	type GroupBillingSetupCommand,
+	GroupBillingSetupCommandSchema,
+} from "@tartware/schemas/events/commands/groups";
+
+export {
+	type IntegrationOtaSyncRequestCommand,
+	IntegrationOtaSyncRequestCommandSchema,
+	type IntegrationOtaRatePushCommand,
+	IntegrationOtaRatePushCommandSchema,
+	type IntegrationWebhookRetryCommand,
+	IntegrationWebhookRetryCommandSchema,
+	type IntegrationMappingUpdateCommand,
+	IntegrationMappingUpdateCommandSchema,
+} from "@tartware/schemas/events/commands/integrations";

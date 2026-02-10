@@ -18,17 +18,27 @@ import { processWithRetry, RetryExhaustedError } from "../lib/retry.js";
 import {
   adjustInvoice,
   applyPayment,
+  approveCommission,
   authorizePayment,
+  calculateCommission,
   captureBillingPayment,
   closeFolio,
   createInvoice,
   executeNightAudit,
   finalizeInvoice,
+  generateCommissionStatement,
+  markCommissionPaid,
   postCharge,
   refundBillingPayment,
+  splitCharge,
+  transferCharge,
   transferFolio,
   voidCharge,
   voidPayment,
+  postArEntry,
+  applyArPayment,
+  ageArEntries,
+  writeOffAr,
 } from "../services/billing-command-service.js";
 
 let consumer: Consumer | null = null;
@@ -193,6 +203,66 @@ const routeBillingCommand = async (
       return;
     case "billing.invoice.finalize":
       await finalizeInvoice(envelope.payload, {
+        tenantId: metadata.tenantId,
+        initiatedBy: metadata.initiatedBy ?? null,
+      });
+      return;
+    case "commission.calculate":
+      await calculateCommission(envelope.payload, {
+        tenantId: metadata.tenantId,
+        initiatedBy: metadata.initiatedBy ?? null,
+      });
+      return;
+    case "commission.approve":
+      await approveCommission(envelope.payload, {
+        tenantId: metadata.tenantId,
+        initiatedBy: metadata.initiatedBy ?? null,
+      });
+      return;
+    case "commission.mark_paid":
+      await markCommissionPaid(envelope.payload, {
+        tenantId: metadata.tenantId,
+        initiatedBy: metadata.initiatedBy ?? null,
+      });
+      return;
+    case "commission.statement.generate":
+      await generateCommissionStatement(envelope.payload, {
+        tenantId: metadata.tenantId,
+        initiatedBy: metadata.initiatedBy ?? null,
+      });
+      return;
+    case "billing.charge.transfer":
+      await transferCharge(envelope.payload, {
+        tenantId: metadata.tenantId,
+        initiatedBy: metadata.initiatedBy ?? null,
+      });
+      return;
+    case "billing.folio.split":
+      await splitCharge(envelope.payload, {
+        tenantId: metadata.tenantId,
+        initiatedBy: metadata.initiatedBy ?? null,
+      });
+      return;
+    case "billing.ar.post":
+      await postArEntry(envelope.payload, {
+        tenantId: metadata.tenantId,
+        initiatedBy: metadata.initiatedBy ?? null,
+      });
+      return;
+    case "billing.ar.apply_payment":
+      await applyArPayment(envelope.payload, {
+        tenantId: metadata.tenantId,
+        initiatedBy: metadata.initiatedBy ?? null,
+      });
+      return;
+    case "billing.ar.age":
+      await ageArEntries(envelope.payload, {
+        tenantId: metadata.tenantId,
+        initiatedBy: metadata.initiatedBy ?? null,
+      });
+      return;
+    case "billing.ar.write_off":
+      await writeOffAr(envelope.payload, {
         tenantId: metadata.tenantId,
         initiatedBy: metadata.initiatedBy ?? null,
       });

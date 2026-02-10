@@ -18,12 +18,29 @@ import {
 	BillingChargePostCommandSchema,
 	BillingPaymentApplyCommandSchema,
 	BillingFolioTransferCommandSchema,
+	BillingChargeTransferCommandSchema,
+	BillingFolioSplitCommandSchema,
 	BillingNightAuditCommandSchema,
 	BillingFolioCloseCommandSchema,
 	BillingPaymentVoidCommandSchema,
 	BillingChargeVoidCommandSchema,
 	BillingInvoiceFinalizeCommandSchema,
+	CommissionCalculateCommandSchema,
+	CommissionApproveCommandSchema,
+	CommissionMarkPaidCommandSchema,
+	CommissionStatementGenerateCommandSchema,
+	BillingArPostCommandSchema,
+	BillingArApplyPaymentCommandSchema,
+	BillingArAgeCommandSchema,
+	BillingArWriteOffCommandSchema,
 } from "./events/commands/billing.js";
+import {
+	GroupCreateCommandSchema,
+	GroupAddRoomsCommandSchema,
+	GroupUploadRoomingListCommandSchema,
+	GroupCutoffEnforceCommandSchema,
+	GroupBillingSetupCommandSchema,
+} from "./events/commands/groups.js";
 import {
 	GuestMergeCommandSchema,
 	GuestRegisterCommandSchema,
@@ -81,6 +98,7 @@ import {
 	ReservationSendQuoteCommandSchema,
 	ReservationConvertQuoteCommandSchema,
 	ReservationExpireCommandSchema,
+	ReservationWalkGuestCommandSchema,
 } from "./events/commands/reservations.js";
 import {
 	RoomFeaturesUpdateCommandSchema,
@@ -141,6 +159,14 @@ const commandPayloadValidators = new Map<string, CommandPayloadValidator>([
 		(payload) => BillingFolioTransferCommandSchema.parse(payload),
 	],
 	[
+		"billing.charge.transfer",
+		(payload) => BillingChargeTransferCommandSchema.parse(payload),
+	],
+	[
+		"billing.folio.split",
+		(payload) => BillingFolioSplitCommandSchema.parse(payload),
+	],
+	[
 		"billing.payment.authorize",
 		(payload) => BillingPaymentAuthorizeCommandSchema.parse(payload),
 	],
@@ -163,6 +189,38 @@ const commandPayloadValidators = new Map<string, CommandPayloadValidator>([
 	[
 		"billing.invoice.finalize",
 		(payload) => BillingInvoiceFinalizeCommandSchema.parse(payload),
+	],
+	[
+		"commission.calculate",
+		(payload) => CommissionCalculateCommandSchema.parse(payload),
+	],
+	[
+		"commission.approve",
+		(payload) => CommissionApproveCommandSchema.parse(payload),
+	],
+	[
+		"commission.mark_paid",
+		(payload) => CommissionMarkPaidCommandSchema.parse(payload),
+	],
+	[
+		"commission.statement.generate",
+		(payload) => CommissionStatementGenerateCommandSchema.parse(payload),
+	],
+	[
+		"billing.ar.post",
+		(payload) => BillingArPostCommandSchema.parse(payload),
+	],
+	[
+		"billing.ar.apply_payment",
+		(payload) => BillingArApplyPaymentCommandSchema.parse(payload),
+	],
+	[
+		"billing.ar.age",
+		(payload) => BillingArAgeCommandSchema.parse(payload),
+	],
+	[
+		"billing.ar.write_off",
+		(payload) => BillingArWriteOffCommandSchema.parse(payload),
 	],
 	["guest.register", (payload) => GuestRegisterCommandSchema.parse(payload)],
 	["guest.merge", (payload) => GuestMergeCommandSchema.parse(payload)],
@@ -338,6 +396,30 @@ const commandPayloadValidators = new Map<string, CommandPayloadValidator>([
 	[
 		"reservation.expire",
 		(payload) => ReservationExpireCommandSchema.parse(payload),
+	],
+	[
+		"reservation.walk_guest",
+		(payload) => ReservationWalkGuestCommandSchema.parse(payload),
+	],
+	[
+		"group.create",
+		(payload) => GroupCreateCommandSchema.parse(payload),
+	],
+	[
+		"group.add_rooms",
+		(payload) => GroupAddRoomsCommandSchema.parse(payload),
+	],
+	[
+		"group.upload_rooming_list",
+		(payload) => GroupUploadRoomingListCommandSchema.parse(payload),
+	],
+	[
+		"group.cutoff_enforce",
+		(payload) => GroupCutoffEnforceCommandSchema.parse(payload),
+	],
+	[
+		"group.billing.setup",
+		(payload) => GroupBillingSetupCommandSchema.parse(payload),
 	],
 	[
 		"rooms.inventory.block",

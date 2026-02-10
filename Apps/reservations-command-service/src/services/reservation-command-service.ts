@@ -49,6 +49,16 @@ import type {
   ReservationWaitlistAddCommand,
   ReservationWaitlistConvertCommand,
   ReservationWalkInCheckInCommand,
+  ReservationWalkGuestCommand,
+  GroupCreateCommand,
+  GroupAddRoomsCommand,
+  GroupUploadRoomingListCommand,
+  GroupCutoffEnforceCommand,
+  GroupBillingSetupCommand,
+  IntegrationOtaSyncRequestCommand,
+  IntegrationOtaRatePushCommand,
+  IntegrationWebhookRetryCommand,
+  IntegrationMappingUpdateCommand,
 } from "../schemas/reservation-command.js";
 import type { RatePlanResolution } from "../services/rate-plan-service.js";
 import { resolveRatePlan } from "../services/rate-plan-service.js";
@@ -70,6 +80,7 @@ interface CreateReservationResult {
 
 const DEFAULT_CURRENCY = "USD";
 const APP_ACTOR = "COMMAND_CENTER";
+const SYSTEM_ACTOR_ID = "00000000-0000-0000-0000-000000000000";
 
 /**
  * Accepts a reservation create command and enqueues its event payload
@@ -619,7 +630,8 @@ export const checkInReservation = async (
 ): Promise<CreateReservationResult> => {
   // 1. Validate reservation exists and status allows check-in
   const resResult = await query(
-    `SELECT id, status, room_type_id, guest_id, total_amount, check_in_date, check_out_date
+    `SELECT id, status, room_type_id, guest_id, total_amount, check_in_date, check_out_date,
+            property_id, rate_code
      FROM reservations WHERE id = $1 AND tenant_id = $2 LIMIT 1`,
     [command.reservation_id, tenantId],
   );
@@ -632,6 +644,8 @@ export const checkInReservation = async (
         total_amount: number;
         check_in_date: Date;
         check_out_date: Date;
+        property_id: string;
+        rate_code: string | null;
       }
     | undefined;
 
@@ -782,6 +796,87 @@ export const checkInReservation = async (
     }
   }
 
+  // S18: Post early check-in fee if guest checks in before the cutoff hour
+  const actualCheckInTime = command.checked_in_at ?? new Date();
+  try {
+    if (reservation.rate_code) {
+      const rateResult = await query<{
+        early_checkin_fee: number;
+        early_checkin_cutoff_hour: number;
+      }>(
+        `SELECT early_checkin_fee, early_checkin_cutoff_hour
+         FROM rates
+         WHERE rate_code = $1 AND tenant_id = $2 AND is_active = true
+         LIMIT 1`,
+        [reservation.rate_code, tenantId],
+      );
+      const rate = rateResult.rows?.[0];
+      if (rate && Number(rate.early_checkin_fee) > 0) {
+        const scheduledDate = new Date(reservation.check_in_date);
+        // Build the cutoff timestamp: scheduled check-in date at the cutoff hour (property local time)
+        const cutoffTime = new Date(scheduledDate);
+        cutoffTime.setHours(rate.early_checkin_cutoff_hour, 0, 0, 0);
+
+        if (actualCheckInTime < cutoffTime) {
+          const fee = Number(rate.early_checkin_fee);
+          // Find the folio for this reservation
+          const folioResult = await query<{ folio_id: string }>(
+            `SELECT folio_id FROM folios
+             WHERE reservation_id = $1 AND tenant_id = $2 AND folio_status = 'OPEN'
+             ORDER BY created_at DESC LIMIT 1`,
+            [command.reservation_id, tenantId],
+          );
+          const folioId = folioResult.rows?.[0]?.folio_id;
+          if (folioId) {
+            await withTransaction(async (client) => {
+              await client.query(
+                `INSERT INTO charge_postings (
+                   tenant_id, property_id, folio_id, reservation_id,
+                   transaction_type, posting_type, charge_code,
+                   charge_description, quantity, unit_price, subtotal, total_amount,
+                   currency_code, posting_time, business_date,
+                   notes, created_by, updated_by
+                 ) VALUES (
+                   $1::uuid, $2::uuid, $3::uuid, $4::uuid,
+                   'CHARGE', 'ROOM', 'EARLY_CHECKIN',
+                   'Early check-in fee', 1, $5, $5, $5,
+                   'USD', NOW(), CURRENT_DATE,
+                   $6, $7::uuid, $7::uuid
+                 )`,
+                [
+                  tenantId,
+                  reservation.property_id,
+                  folioId,
+                  command.reservation_id,
+                  fee,
+                  `Early check-in before ${rate.early_checkin_cutoff_hour}:00`,
+                  SYSTEM_ACTOR_ID,
+                ],
+              );
+              await client.query(
+                `UPDATE folios
+                 SET total_charges = total_charges + $2,
+                     balance = balance + $2,
+                     updated_at = NOW()
+                 WHERE folio_id = $1 AND tenant_id = $3`,
+                [folioId, fee, tenantId],
+              );
+            });
+            reservationsLogger.info(
+              { reservationId: command.reservation_id, fee, cutoffHour: rate.early_checkin_cutoff_hour },
+              "Early check-in fee posted",
+            );
+          }
+        }
+      }
+    }
+  } catch (feeError) {
+    reservationsLogger.warn(
+      { reservationId: command.reservation_id, error: feeError },
+      "Failed to post early check-in fee — proceeding with check-in",
+    );
+  }
+
   const roomNumber =
     assignedRoomNumber ?? (assignedRoomId ? (await fetchRoomInfo(tenantId, assignedRoomId))?.roomNumber ?? null : null);
   const updatePayload: ReservationUpdatePayload = {
@@ -844,7 +939,8 @@ export const checkOutReservation = async (
   // 1. Validate reservation exists and is CHECKED_IN
   const resResult = await query(
     `SELECT id, status, guest_id, room_number, room_type_id, total_amount,
-            check_in_date, check_out_date, actual_check_in
+            check_in_date, check_out_date, actual_check_in, property_id, rate_code,
+            travel_agent_id, source
      FROM reservations WHERE id = $1 AND tenant_id = $2 LIMIT 1`,
     [command.reservation_id, tenantId],
   );
@@ -859,6 +955,10 @@ export const checkOutReservation = async (
         check_in_date: Date;
         check_out_date: Date;
         actual_check_in: Date | null;
+        property_id: string;
+        rate_code: string | null;
+        travel_agent_id: string | null;
+        source: string | null;
       }
     | undefined;
 
@@ -949,6 +1049,85 @@ export const checkOutReservation = async (
 
   const checkOutTime = command.checked_out_at ?? new Date();
 
+  // S18: Post late check-out fee if guest checks out after the cutoff hour
+  try {
+    if (reservation.rate_code) {
+      const rateResult = await query<{
+        late_checkout_fee: number;
+        late_checkout_cutoff_hour: number;
+      }>(
+        `SELECT late_checkout_fee, late_checkout_cutoff_hour
+         FROM rates
+         WHERE rate_code = $1 AND tenant_id = $2 AND is_active = true
+         LIMIT 1`,
+        [reservation.rate_code, tenantId],
+      );
+      const rate = rateResult.rows?.[0];
+      if (rate && Number(rate.late_checkout_fee) > 0) {
+        const scheduledDate = new Date(reservation.check_out_date);
+        // Build the cutoff timestamp: scheduled check-out date at the cutoff hour
+        const cutoffTime = new Date(scheduledDate);
+        cutoffTime.setHours(rate.late_checkout_cutoff_hour, 0, 0, 0);
+
+        if (checkOutTime > cutoffTime) {
+          const fee = Number(rate.late_checkout_fee);
+          const folioLookup = await query<{ folio_id: string }>(
+            `SELECT folio_id FROM folios
+             WHERE reservation_id = $1 AND tenant_id = $2 AND folio_status = 'OPEN'
+             ORDER BY created_at DESC LIMIT 1`,
+            [command.reservation_id, tenantId],
+          );
+          const lateFolioId = folioLookup.rows?.[0]?.folio_id;
+          if (lateFolioId) {
+            await withTransaction(async (client) => {
+              await client.query(
+                `INSERT INTO charge_postings (
+                   tenant_id, property_id, folio_id, reservation_id,
+                   transaction_type, posting_type, charge_code,
+                   charge_description, quantity, unit_price, subtotal, total_amount,
+                   currency_code, posting_time, business_date,
+                   notes, created_by, updated_by
+                 ) VALUES (
+                   $1::uuid, $2::uuid, $3::uuid, $4::uuid,
+                   'CHARGE', 'ROOM', 'LATE_CHECKOUT',
+                   'Late check-out fee', 1, $5, $5, $5,
+                   'USD', NOW(), CURRENT_DATE,
+                   $6, $7::uuid, $7::uuid
+                 )`,
+                [
+                  tenantId,
+                  reservation.property_id,
+                  lateFolioId,
+                  command.reservation_id,
+                  fee,
+                  `Late check-out after ${rate.late_checkout_cutoff_hour}:00`,
+                  SYSTEM_ACTOR_ID,
+                ],
+              );
+              await client.query(
+                `UPDATE folios
+                 SET total_charges = total_charges + $2,
+                     balance = balance + $2,
+                     updated_at = NOW()
+                 WHERE folio_id = $1 AND tenant_id = $3`,
+                [lateFolioId, fee, tenantId],
+              );
+            });
+            reservationsLogger.info(
+              { reservationId: command.reservation_id, fee, cutoffHour: rate.late_checkout_cutoff_hour },
+              "Late check-out fee posted",
+            );
+          }
+        }
+      }
+    }
+  } catch (feeError) {
+    reservationsLogger.warn(
+      { reservationId: command.reservation_id, error: feeError },
+      "Failed to post late check-out fee — proceeding with check-out",
+    );
+  }
+
   const updatePayload: ReservationUpdatePayload = {
     id: command.reservation_id,
     tenant_id: tenantId,
@@ -1012,6 +1191,159 @@ export const checkOutReservation = async (
       { guestId: reservation.guest_id, error: statsError },
       "Failed to update guest stay stats on check-out",
     );
+  }
+
+  // S10: Calculate and record commission for travel-agent / OTA bookings
+  if (reservation.travel_agent_id || reservation.source) {
+    try {
+      const actualIn = reservation.actual_check_in ?? reservation.check_in_date;
+      const stayNights = Math.max(
+        1,
+        Math.round((checkOutTime.getTime() - new Date(actualIn).getTime()) / (1000 * 60 * 60 * 24)),
+      );
+
+      // Find commission config from booking_sources or commission_rules
+      let commissionType = "PERCENTAGE";
+      let commissionRate = 0;
+      let flatAmount = 0;
+      let agentCompanyId: string | null = null;
+
+      if (reservation.travel_agent_id) {
+        const ruleResult = await query<{
+          commission_type: string;
+          default_rate: number;
+          room_rate: number;
+          flat_amount: number;
+          company_id: string | null;
+        }>(
+          `SELECT cr.commission_type, cr.default_rate, cr.room_rate,
+                  COALESCE(cr.flat_amount_per_booking, 0) AS flat_amount,
+                  cr.company_id
+           FROM commission_rules cr
+           WHERE cr.tenant_id = $1
+             AND cr.is_active = true
+             AND (cr.company_id = (SELECT company_id FROM travel_agents WHERE agent_id = $2 AND tenant_id = $1 LIMIT 1)
+                  OR cr.apply_to_all_agents = true)
+             AND (cr.effective_start IS NULL OR cr.effective_start <= CURRENT_DATE)
+             AND (cr.effective_end IS NULL OR cr.effective_end >= CURRENT_DATE)
+           ORDER BY cr.apply_to_all_agents ASC, cr.priority DESC
+           LIMIT 1`,
+          [tenantId, reservation.travel_agent_id],
+        );
+        const rule = ruleResult.rows?.[0];
+        if (rule) {
+          commissionType = rule.commission_type;
+          commissionRate = Number(rule.room_rate || rule.default_rate || 0);
+          flatAmount = Number(rule.flat_amount || 0);
+          agentCompanyId = rule.company_id;
+        }
+      }
+
+      // Fallback to booking_sources commission config
+      if (commissionRate === 0 && flatAmount === 0 && reservation.source) {
+        const srcResult = await query<{
+          commission_type: string;
+          commission_percentage: number;
+          commission_fixed_amount: number;
+        }>(
+          `SELECT commission_type, COALESCE(commission_percentage, 0) AS commission_percentage,
+                  COALESCE(commission_fixed_amount, 0) AS commission_fixed_amount
+           FROM booking_sources
+           WHERE source_code = $1 AND tenant_id = $2 LIMIT 1`,
+          [reservation.source, tenantId],
+        );
+        const src = srcResult.rows?.[0];
+        if (src && src.commission_type !== 'NONE') {
+          commissionType = src.commission_type;
+          commissionRate = Number(src.commission_percentage);
+          flatAmount = Number(src.commission_fixed_amount);
+        }
+      }
+
+      // Calculate gross commission
+      let grossCommission = 0;
+      const roomRevenue = Number(reservation.total_amount);
+      if ((commissionType === 'PERCENTAGE' || commissionType === 'percentage') && commissionRate > 0) {
+        grossCommission = (roomRevenue * commissionRate) / 100;
+      } else if (commissionType === 'FIXED' || commissionType === 'FLAT_RATE' || commissionType === 'flat_rate') {
+        grossCommission = flatAmount;
+      } else if (commissionRate > 0) {
+        grossCommission = (roomRevenue * commissionRate) / 100;
+      }
+
+      if (grossCommission > 0) {
+        grossCommission = Math.round(grossCommission * 100) / 100;
+        await withTransaction(async (client) => {
+          await client.query(
+            `INSERT INTO travel_agent_commissions (
+               tenant_id, property_id, reservation_id,
+               agent_id, company_id, commission_type, room_revenue,
+               room_commission_rate, gross_commission_amount,
+               currency_code, payment_status,
+               created_by, updated_by
+             ) VALUES (
+               $1::uuid, $2::uuid, $3::uuid,
+               $4::uuid, $5::uuid, $6, $7,
+               $8, $9,
+               'USD', 'PENDING',
+               $10::uuid, $10::uuid
+             )`,
+            [
+              tenantId,
+              reservation.property_id,
+              command.reservation_id,
+              reservation.travel_agent_id,
+              agentCompanyId,
+              commissionType.toLowerCase(),
+              roomRevenue,
+              commissionRate,
+              grossCommission,
+              SYSTEM_ACTOR_ID,
+            ],
+          );
+          await client.query(
+            `INSERT INTO commission_tracking (
+               tenant_id, property_id, reservation_id,
+               commission_type, beneficiary_type, beneficiary_id,
+               base_amount, commission_rate, calculated_amount,
+               final_amount, currency_code, status,
+               created_by, updated_by
+             ) VALUES (
+               $1::uuid, $2::uuid, $3::uuid,
+               'booking', 'agent', $4::uuid,
+               $5, $6, $7,
+               $7, 'USD', 'pending',
+               $8::uuid, $8::uuid
+             )`,
+            [
+              tenantId,
+              reservation.property_id,
+              command.reservation_id,
+              reservation.travel_agent_id ?? null,
+              roomRevenue,
+              commissionRate,
+              grossCommission,
+              SYSTEM_ACTOR_ID,
+            ],
+          );
+        });
+        reservationsLogger.info(
+          {
+            reservationId: command.reservation_id,
+            grossCommission,
+            commissionRate,
+            commissionType,
+            agentId: reservation.travel_agent_id,
+          },
+          "Commission calculated and recorded on check-out",
+        );
+      }
+    } catch (commErr) {
+      reservationsLogger.warn(
+        { reservationId: command.reservation_id, error: commErr },
+        "Failed to calculate commission on check-out — continuing",
+      );
+    }
   }
 
   return result;
@@ -2219,11 +2551,17 @@ export const sendQuote = async (
 
   await withTransaction(async (client) => {
     await enqueueOutboxRecordWithClient(client, {
+      eventId,
       aggregateType: "reservation",
       aggregateId: command.reservation_id,
       eventType: "reservation.quoted",
       payload: updatePayload,
       tenantId,
+      headers: {
+        tenantId,
+        eventId,
+        ...(options.correlationId ? { correlationId: options.correlationId } : {}),
+      },
     });
   });
 
@@ -2274,10 +2612,10 @@ export const convertQuote = async (
     lockResult = await lockReservationHold({
       reservationId: command.reservation_id,
       roomTypeId: reservation.room_type_id,
-      checkIn: reservation.check_in_date,
-      checkOut: reservation.check_out_date,
+      stayStart: new Date(reservation.check_in_date),
+      stayEnd: new Date(reservation.check_out_date),
       tenantId,
-      propertyId: reservation.property_id,
+      reason: "quote_conversion",
     });
   } catch (lockError) {
     reservationsLogger.warn(
@@ -2302,23 +2640,34 @@ export const convertQuote = async (
   try {
     await withTransaction(async (client) => {
       if (lockResult) {
-        await upsertReservationGuardMetadata(client, {
-          reservationId: command.reservation_id,
-          lockId: lockResult.lockId,
-          shadowId: lockResult.shadowId,
-          roomTypeId: reservation.room_type_id,
-          checkIn: reservation.check_in_date,
-          checkOut: reservation.check_out_date,
-          tenantId,
-        });
+        await upsertReservationGuardMetadata(
+          {
+            tenantId,
+            reservationId: command.reservation_id,
+            lockId: lockResult.lockId ?? null,
+            status: lockResult.status,
+            metadata: {
+              roomTypeId: reservation.room_type_id,
+              checkIn: reservation.check_in_date,
+              checkOut: reservation.check_out_date,
+            },
+          },
+          client,
+        );
       }
 
       await enqueueOutboxRecordWithClient(client, {
+        eventId,
         aggregateType: "reservation",
         aggregateId: command.reservation_id,
         eventType: "reservation.updated",
         payload: updatePayload,
         tenantId,
+        headers: {
+          tenantId,
+          eventId,
+          ...(options.correlationId ? { correlationId: options.correlationId } : {}),
+        },
       });
     });
   } catch (txError) {
@@ -2327,8 +2676,9 @@ export const convertQuote = async (
       try {
         await releaseReservationHold({
           reservationId: command.reservation_id,
-          lockId: lockResult.lockId,
+          lockId: lockResult.lockId!,
           tenantId,
+          reason: "quote_conversion_rollback",
         });
       } catch (releaseError) {
         reservationsLogger.warn(
@@ -2392,6 +2742,7 @@ export const expireReservation = async (
         reservationId: command.reservation_id,
         lockId: guardMeta.lockId,
         tenantId,
+        reason: "reservation_expired",
       });
     } catch (releaseError) {
       reservationsLogger.warn(
@@ -2414,11 +2765,17 @@ export const expireReservation = async (
 
   await withTransaction(async (client) => {
     await enqueueOutboxRecordWithClient(client, {
+      eventId,
       aggregateType: "reservation",
       aggregateId: command.reservation_id,
       eventType: "reservation.expired",
       payload: updatePayload,
       tenantId,
+      headers: {
+        tenantId,
+        eventId,
+        ...(options.correlationId ? { correlationId: options.correlationId } : {}),
+      },
     });
   });
 
@@ -2428,4 +2785,1459 @@ export const expireReservation = async (
   );
 
   return { eventId, correlationId: options.correlationId, status: "accepted" };
+};
+
+// ─── S11: Walk Guest ─────────────────────────────────────────────────────────
+
+/**
+ * Walk a guest due to overbooking.
+ * Creates a walk_history record, transitions the reservation to CANCELLED with
+ * walk-specific metadata, and releases any availability holds.
+ */
+export const walkGuest = async (
+  tenantId: string,
+  command: ReservationWalkGuestCommand,
+  options: { correlationId?: string } = {},
+): Promise<CreateReservationResult> => {
+  const actorId = SYSTEM_ACTOR_ID;
+  const eventId = uuid();
+  const now = new Date();
+
+  // 1. Fetch reservation
+  const result = await query<{
+    id: string;
+    status: string;
+    property_id: string;
+    guest_id: string;
+    guest_name: string;
+    confirmation_number: string;
+    room_type_id: string;
+    room_number: string | null;
+  }>(
+    `SELECT id, status, property_id, guest_id, guest_name,
+            confirmation_number, room_type_id, room_number
+     FROM reservations
+     WHERE id = $1::uuid AND tenant_id = $2::uuid
+       AND COALESCE(is_deleted, false) = false`,
+    [command.reservation_id, tenantId],
+  );
+
+  const reservation = result.rows[0];
+  if (!reservation) {
+    throw new ReservationCommandError("NOT_FOUND", `Reservation ${command.reservation_id} not found.`);
+  }
+
+  if (!["CONFIRMED", "PENDING"].includes(reservation.status)) {
+    throw new ReservationCommandError(
+      "INVALID_STATUS",
+      `Cannot walk a reservation in ${reservation.status} status. Must be CONFIRMED or PENDING.`,
+    );
+  }
+
+  // Build the cancelled event envelope (same shape as cancelReservation)
+  const payload: ReservationCancelledEvent = {
+    metadata: {
+      id: eventId,
+      source: serviceConfig.serviceId,
+      type: "reservation.cancelled",
+      timestamp: now.toISOString(),
+      version: "1.0",
+      correlationId: options.correlationId,
+      tenantId,
+      retryCount: 0,
+    },
+    payload: {
+      id: command.reservation_id,
+      tenant_id: tenantId,
+      cancelled_at: now,
+      cancelled_by: actorId,
+      reason: `WALKED: ${command.walk_reason ?? "Overbooking"}`,
+    },
+  };
+  const validatedEvent = ReservationCancelledEventSchema.parse(payload);
+
+  // Look up guard metadata for lock release
+  const guardRecord: StoredGuardMetadata | null = await getReservationGuardMetadata(
+    tenantId,
+    command.reservation_id,
+  );
+  const releaseLockId = guardRecord?.lockId ?? command.reservation_id;
+
+  await withTransaction(async (client) => {
+    // 2. Create walk_history record
+    await client.query(
+      `INSERT INTO walk_history (
+         tenant_id, property_id, reservation_id, confirmation_number,
+         guest_name, guest_id, walk_date, walk_reason, walked_by,
+         alternate_hotel_name, alternate_hotel_address, alternate_hotel_phone,
+         alternate_confirmation, alternate_rate, alternate_nights,
+         compensation_type, compensation_amount, compensation_currency,
+         compensation_description,
+         transportation_provided, transportation_type, transportation_cost,
+         return_guaranteed, return_date, return_room_type,
+         walk_status, notes,
+         created_by, updated_by
+       ) VALUES (
+         $1::uuid, $2::uuid, $3::uuid, $4,
+         $5, $6::uuid, CURRENT_DATE, $7, $8::uuid,
+         $9, $10, $11,
+         $12, $13, $14,
+         $15, $16, 'USD',
+         $17,
+         $18, $19, $20,
+         $21, $22, $23,
+         'initiated', $24,
+         $8::uuid, $8::uuid
+       )`,
+      [
+        tenantId, reservation.property_id,
+        command.reservation_id, reservation.confirmation_number,
+        reservation.guest_name, reservation.guest_id,
+        command.walk_reason ?? null, actorId,
+        command.alternate_hotel_name ?? null,
+        command.alternate_hotel_address ?? null,
+        command.alternate_hotel_phone ?? null,
+        command.alternate_confirmation ?? null,
+        command.alternate_rate ?? null,
+        command.alternate_nights ?? 1,
+        command.compensation_type ?? null,
+        command.compensation_amount ?? 0,
+        command.compensation_description ?? null,
+        command.transportation_provided ?? false,
+        command.transportation_type ?? null,
+        command.transportation_cost ?? 0,
+        command.return_guaranteed ?? false,
+        command.return_date ? new Date(command.return_date).toISOString().slice(0, 10) : null,
+        command.return_room_type ?? null,
+        command.notes ?? null,
+      ],
+    );
+
+    // 3. Cancel the reservation with walk metadata
+    await client.query(
+      `UPDATE reservations
+       SET status = 'CANCELLED',
+           cancellation_date = NOW(),
+           cancellation_reason = $3,
+           metadata = COALESCE(metadata, '{}'::jsonb) || $4::jsonb,
+           updated_at = NOW(), updated_by = $5,
+           version = version + 1
+       WHERE id = $1::uuid AND tenant_id = $2::uuid`,
+      [
+        command.reservation_id, tenantId,
+        `WALKED: ${command.walk_reason ?? "Overbooking"}`,
+        JSON.stringify({
+          walked: true,
+          walk_date: now.toISOString().slice(0, 10),
+          alternate_hotel: command.alternate_hotel_name ?? null,
+          compensation_amount: command.compensation_amount ?? 0,
+        }),
+        actorId,
+      ],
+    );
+
+    // 4. Update guard metadata if exists
+    if (guardRecord) {
+      await upsertReservationGuardMetadata(
+        {
+          tenantId,
+          reservationId: command.reservation_id,
+          lockId: guardRecord.lockId ?? releaseLockId,
+          status: "RELEASE_REQUESTED",
+          metadata: {
+            previousStatus: guardRecord.status,
+            reason: "WALK_GUEST",
+          },
+        },
+        client,
+      );
+    }
+
+    // 5. Emit reservation.cancelled event via outbox
+    await enqueueOutboxRecordWithClient(client, {
+      eventId,
+      tenantId,
+      aggregateId: command.reservation_id,
+      aggregateType: "reservation",
+      eventType: validatedEvent.metadata.type,
+      payload: validatedEvent,
+      headers: {
+        tenantId,
+        eventId,
+        ...(options.correlationId ? { correlationId: options.correlationId } : {}),
+      },
+      correlationId: options.correlationId,
+      partitionKey: command.reservation_id,
+      metadata: {
+        source: serviceConfig.serviceId,
+        action: "walk_guest",
+        availabilityGuard: {
+          status: "RELEASE_REQUESTED",
+          lockId: releaseLockId,
+        },
+      },
+    });
+  });
+
+  // 6. Release availability hold (best-effort, outside transaction)
+  try {
+    await releaseReservationHold({
+      tenantId,
+      lockId: releaseLockId,
+      reservationId: command.reservation_id,
+      reason: "WALK_GUEST",
+      correlationId: options.correlationId ?? eventId,
+    });
+  } catch (err) {
+    reservationsLogger.warn(
+      { reservationId: command.reservation_id, error: err },
+      "Failed to release availability hold after walk (non-fatal)",
+    );
+  }
+
+  reservationsLogger.info(
+    {
+      reservationId: command.reservation_id,
+      guestName: reservation.guest_name,
+      alternateHotel: command.alternate_hotel_name,
+      compensationAmount: command.compensation_amount,
+    },
+    "Guest walked due to overbooking",
+  );
+
+  return { eventId, correlationId: options.correlationId, status: "accepted" };
+};
+
+/* ================================================================== */
+/*  GROUP BOOKING HANDLERS                                            */
+/* ================================================================== */
+
+/**
+ * Create a new group booking.
+ * Inserts into `group_bookings` with status INQUIRY/TENTATIVE and
+ * generates a unique group_code.
+ */
+export const createGroupBooking = async (
+  tenantId: string,
+  command: GroupCreateCommand,
+  options: { correlationId?: string } = {},
+): Promise<CreateReservationResult> => {
+  const eventId = uuid();
+  const groupBookingId = uuid();
+
+  const arrivalDate = new Date(command.arrival_date);
+  const departureDate = new Date(command.departure_date);
+  if (departureDate <= arrivalDate) {
+    throw new ReservationCommandError(
+      "INVALID_DATES",
+      "departure_date must be after arrival_date",
+    );
+  }
+
+  // Generate a unique group code: GRP-<8 hex chars>
+  const groupCode = `GRP-${groupBookingId.slice(0, 8).toUpperCase()}`;
+
+  // Calculate cutoff_date if not provided
+  const cutoffDays = command.cutoff_days_before_arrival ?? 14;
+  const cutoffDate = command.cutoff_date
+    ? new Date(command.cutoff_date)
+    : new Date(arrivalDate.getTime() - cutoffDays * 86_400_000);
+
+  await withTransaction(async (client) => {
+    await client.query(
+      `INSERT INTO group_bookings (
+        group_booking_id, tenant_id, property_id,
+        group_name, group_code, group_type,
+        company_id, organization_name,
+        contact_name, contact_email, contact_phone,
+        arrival_date, departure_date,
+        total_rooms_requested, total_rooms_blocked,
+        cutoff_date, cutoff_days_before_arrival, release_unsold_rooms,
+        block_status, rate_type, negotiated_rate,
+        payment_method, deposit_amount, deposit_due_date,
+        complimentary_rooms, complimentary_ratio,
+        meeting_space_required, catering_required,
+        cancellation_policy, cancellation_deadline,
+        notes, created_by, updated_by
+      ) VALUES (
+        $1, $2, $3,
+        $4, $5, $6,
+        $7, $8,
+        $9, $10, $11,
+        $12, $13,
+        $14, 0,
+        $15, $16, TRUE,
+        $17, $18, $19,
+        $20, $21, $22,
+        $23, $24,
+        $25, $26,
+        $27, $28,
+        $29, $30, $30
+      )`,
+      [
+        groupBookingId, tenantId, command.property_id,
+        command.group_name, groupCode, command.group_type,
+        command.company_id ?? null, command.organization_name ?? null,
+        command.contact_name, command.contact_email ?? null, command.contact_phone ?? null,
+        arrivalDate.toISOString().slice(0, 10), departureDate.toISOString().slice(0, 10),
+        command.total_rooms_requested,
+        cutoffDate.toISOString().slice(0, 10), cutoffDays,
+        command.block_status ?? "tentative", command.rate_type ?? null, command.negotiated_rate ?? null,
+        command.payment_method ?? null, command.deposit_amount ?? 0, command.deposit_due_date ? new Date(command.deposit_due_date).toISOString().slice(0, 10) : null,
+        command.complimentary_rooms ?? 0, command.complimentary_ratio ?? null,
+        command.meeting_space_required ?? false, command.catering_required ?? false,
+        command.cancellation_policy ?? null, command.cancellation_deadline ? new Date(command.cancellation_deadline).toISOString().slice(0, 10) : null,
+        command.notes ?? null, SYSTEM_ACTOR_ID,
+      ],
+    );
+
+    await enqueueOutboxRecordWithClient(client, {
+      eventId,
+      tenantId,
+      aggregateId: groupBookingId,
+      aggregateType: "group_booking",
+      eventType: "group.created",
+      payload: {
+        metadata: {
+          id: eventId,
+          source: serviceConfig.serviceId,
+          type: "group.created",
+          timestamp: new Date().toISOString(),
+          version: "1.0",
+          correlationId: options.correlationId,
+          tenantId,
+          retryCount: 0,
+        },
+        payload: {
+          group_booking_id: groupBookingId,
+          group_code: groupCode,
+          group_name: command.group_name,
+          group_type: command.group_type,
+          property_id: command.property_id,
+          arrival_date: arrivalDate.toISOString().slice(0, 10),
+          departure_date: departureDate.toISOString().slice(0, 10),
+          total_rooms_requested: command.total_rooms_requested,
+          block_status: command.block_status ?? "tentative",
+        },
+      },
+      headers: {
+        tenantId,
+        eventId,
+        ...(options.correlationId ? { correlationId: options.correlationId } : {}),
+      },
+      correlationId: options.correlationId,
+      partitionKey: groupBookingId,
+      metadata: { source: serviceConfig.serviceId, action: "group.create" },
+    });
+  });
+
+  reservationsLogger.info(
+    { groupBookingId, groupCode, groupName: command.group_name },
+    "Group booking created",
+  );
+
+  return { eventId, correlationId: options.correlationId, status: "accepted" };
+};
+
+/**
+ * Add or update room block allocations for a group by date + room type.
+ * Uses UPSERT on the unique (group_booking_id, room_type_id, block_date) index.
+ * Also recalculates group-level totals.
+ */
+export const addGroupRooms = async (
+  tenantId: string,
+  command: GroupAddRoomsCommand,
+  options: { correlationId?: string } = {},
+): Promise<CreateReservationResult> => {
+  const eventId = uuid();
+
+  await withTransaction(async (client) => {
+    // Verify group exists and belongs to tenant
+    const { rows: groupRows } = await client.query(
+      `SELECT group_booking_id, block_status
+       FROM group_bookings
+       WHERE group_booking_id = $1 AND tenant_id = $2 AND is_deleted = FALSE`,
+      [command.group_booking_id, tenantId],
+    );
+    if (groupRows.length === 0) {
+      throw new ReservationCommandError(
+        "GROUP_NOT_FOUND",
+        `Group booking ${command.group_booking_id} not found`,
+      );
+    }
+    if (groupRows[0].block_status === "cancelled") {
+      throw new ReservationCommandError(
+        "GROUP_CANCELLED",
+        "Cannot add rooms to a cancelled group booking",
+      );
+    }
+
+    // Upsert each block entry
+    for (const block of command.blocks) {
+      await client.query(
+        `INSERT INTO group_room_blocks (
+          block_id, group_booking_id, room_type_id, block_date,
+          blocked_rooms, negotiated_rate, rack_rate, discount_percentage,
+          block_status, created_by, updated_by
+        ) VALUES (
+          uuid_generate_v4(), $1, $2, $3,
+          $4, $5, $6, $7,
+          'active', $8, $8
+        )
+        ON CONFLICT (group_booking_id, room_type_id, block_date)
+        DO UPDATE SET
+          blocked_rooms = EXCLUDED.blocked_rooms,
+          negotiated_rate = EXCLUDED.negotiated_rate,
+          rack_rate = COALESCE(EXCLUDED.rack_rate, group_room_blocks.rack_rate),
+          discount_percentage = COALESCE(EXCLUDED.discount_percentage, group_room_blocks.discount_percentage),
+          updated_at = NOW(),
+          updated_by = $8`,
+        [
+          command.group_booking_id,
+          block.room_type_id,
+          new Date(block.block_date).toISOString().slice(0, 10),
+          block.blocked_rooms,
+          block.negotiated_rate,
+          block.rack_rate ?? null,
+          block.discount_percentage ?? null,
+          SYSTEM_ACTOR_ID,
+        ],
+      );
+    }
+
+    // Recalculate group-level totals
+    await client.query(
+      `UPDATE group_bookings
+       SET total_rooms_blocked = (
+         SELECT COALESCE(SUM(blocked_rooms), 0)
+         FROM group_room_blocks
+         WHERE group_booking_id = $1 AND block_status != 'cancelled'
+       ),
+       updated_at = NOW(), updated_by = $2, version = version + 1
+       WHERE group_booking_id = $1 AND tenant_id = $3`,
+      [command.group_booking_id, SYSTEM_ACTOR_ID, tenantId],
+    );
+
+    await enqueueOutboxRecordWithClient(client, {
+      eventId,
+      tenantId,
+      aggregateId: command.group_booking_id,
+      aggregateType: "group_booking",
+      eventType: "group.rooms_added",
+      payload: {
+        metadata: {
+          id: eventId,
+          source: serviceConfig.serviceId,
+          type: "group.rooms_added",
+          timestamp: new Date().toISOString(),
+          version: "1.0",
+          correlationId: options.correlationId,
+          tenantId,
+          retryCount: 0,
+        },
+        payload: {
+          group_booking_id: command.group_booking_id,
+          blocks_count: command.blocks.length,
+        },
+      },
+      headers: {
+        tenantId,
+        eventId,
+        ...(options.correlationId ? { correlationId: options.correlationId } : {}),
+      },
+      correlationId: options.correlationId,
+      partitionKey: command.group_booking_id,
+      metadata: { source: serviceConfig.serviceId, action: "group.add_rooms" },
+    });
+  });
+
+  reservationsLogger.info(
+    { groupBookingId: command.group_booking_id, blocksAdded: command.blocks.length },
+    "Room blocks added to group",
+  );
+
+  return { eventId, correlationId: options.correlationId, status: "accepted" };
+};
+
+/**
+ * Upload a rooming list to create individual reservations from a group block.
+ * For each guest entry, creates a reservation with reservation_type GROUP
+ * and increments picked_rooms on the matching block row.
+ */
+export const uploadGroupRoomingList = async (
+  tenantId: string,
+  command: GroupUploadRoomingListCommand,
+  options: { correlationId?: string } = {},
+): Promise<CreateReservationResult> => {
+  const eventId = uuid();
+
+  await withTransaction(async (client) => {
+    // Verify group booking exists
+    const { rows: groupRows } = await client.query(
+      `SELECT group_booking_id, property_id, block_status, negotiated_rate
+       FROM group_bookings
+       WHERE group_booking_id = $1 AND tenant_id = $2 AND is_deleted = FALSE
+       FOR UPDATE`,
+      [command.group_booking_id, tenantId],
+    );
+    if (groupRows.length === 0) {
+      throw new ReservationCommandError(
+        "GROUP_NOT_FOUND",
+        `Group booking ${command.group_booking_id} not found`,
+      );
+    }
+    const group = groupRows[0];
+    if (group.block_status === "cancelled" || group.block_status === "completed") {
+      throw new ReservationCommandError(
+        "GROUP_INVALID_STATUS",
+        `Cannot upload rooming list for group in ${group.block_status} status`,
+      );
+    }
+
+    let pickedCount = 0;
+
+    for (const guest of command.guests) {
+      const reservationId = uuid();
+      const arrivalDate = new Date(guest.arrival_date).toISOString().slice(0, 10);
+      const departureDate = new Date(guest.departure_date).toISOString().slice(0, 10);
+
+      // Verify and decrement block availability
+      const { rowCount } = await client.query(
+        `UPDATE group_room_blocks
+         SET picked_rooms = picked_rooms + 1,
+             updated_at = NOW(), updated_by = $5
+         WHERE group_booking_id = $1
+           AND room_type_id = $2
+           AND block_date = $3
+           AND picked_rooms < blocked_rooms
+           AND block_status IN ('active', 'pending')`,
+        [command.group_booking_id, guest.room_type_id, arrivalDate, departureDate, SYSTEM_ACTOR_ID],
+      );
+
+      if (!rowCount || rowCount === 0) {
+        reservationsLogger.warn(
+          {
+            groupBookingId: command.group_booking_id,
+            roomTypeId: guest.room_type_id,
+            guestName: guest.guest_name,
+            arrivalDate,
+          },
+          "No available block for guest — creating reservation without block decrement",
+        );
+      }
+
+      // Create individual reservation linked to the group
+      await client.query(
+        `INSERT INTO reservations (
+          id, tenant_id, property_id, room_type_id,
+          check_in_date, check_out_date, booking_date,
+          status, reservation_type, source,
+          total_amount, currency,
+          special_requests, group_booking_id,
+          created_by, updated_by
+        ) VALUES (
+          $1, $2, $3, $4,
+          $5, $6, NOW(),
+          'CONFIRMED', 'GROUP', 'DIRECT',
+          $7, 'USD',
+          $8, $9,
+          $10, $10
+        )`,
+        [
+          reservationId, tenantId, group.property_id, guest.room_type_id,
+          arrivalDate, departureDate,
+          group.negotiated_rate ?? 0,
+          guest.special_requests ?? null,
+          command.group_booking_id,
+          SYSTEM_ACTOR_ID,
+        ],
+      );
+
+      pickedCount++;
+    }
+
+    // Update group totals and rooming list flags
+    await client.query(
+      `UPDATE group_bookings
+       SET total_rooms_picked = (
+         SELECT COALESCE(SUM(picked_rooms), 0)
+         FROM group_room_blocks
+         WHERE group_booking_id = $1
+       ),
+       rooming_list_received = TRUE,
+       rooming_list_received_date = NOW(),
+       rooming_list_format = $3,
+       updated_at = NOW(), updated_by = $4, version = version + 1
+       WHERE group_booking_id = $1 AND tenant_id = $2`,
+      [command.group_booking_id, tenantId, command.rooming_list_format ?? "api", SYSTEM_ACTOR_ID],
+    );
+
+    await enqueueOutboxRecordWithClient(client, {
+      eventId,
+      tenantId,
+      aggregateId: command.group_booking_id,
+      aggregateType: "group_booking",
+      eventType: "group.rooming_list_uploaded",
+      payload: {
+        metadata: {
+          id: eventId,
+          source: serviceConfig.serviceId,
+          type: "group.rooming_list_uploaded",
+          timestamp: new Date().toISOString(),
+          version: "1.0",
+          correlationId: options.correlationId,
+          tenantId,
+          retryCount: 0,
+        },
+        payload: {
+          group_booking_id: command.group_booking_id,
+          guests_count: command.guests.length,
+          reservations_created: pickedCount,
+        },
+      },
+      headers: {
+        tenantId,
+        eventId,
+        ...(options.correlationId ? { correlationId: options.correlationId } : {}),
+      },
+      correlationId: options.correlationId,
+      partitionKey: command.group_booking_id,
+      metadata: { source: serviceConfig.serviceId, action: "group.upload_rooming_list" },
+    });
+  });
+
+  reservationsLogger.info(
+    { groupBookingId: command.group_booking_id, guestsProcessed: command.guests.length },
+    "Rooming list uploaded and reservations created",
+  );
+
+  return { eventId, correlationId: options.correlationId, status: "accepted" };
+};
+
+/**
+ * Enforce cutoff dates for group bookings.
+ * Finds groups whose cutoff_date <= business_date and releases unsold
+ * room blocks back to general inventory. Updates block status to 'released'.
+ */
+export const enforceGroupCutoff = async (
+  tenantId: string,
+  command: GroupCutoffEnforceCommand,
+  options: { correlationId?: string } = {},
+): Promise<CreateReservationResult> => {
+  const eventId = uuid();
+  const businessDate = command.business_date
+    ? new Date(command.business_date).toISOString().slice(0, 10)
+    : new Date().toISOString().slice(0, 10);
+
+  // Find all group bookings past cutoff for this property
+  const { rows: expiredGroups } = await query(
+    `SELECT gb.group_booking_id, gb.group_name, gb.cutoff_date,
+            gb.cancellation_penalty_percentage, gb.negotiated_rate,
+            gb.total_rooms_requested, gb.total_rooms_picked
+     FROM group_bookings gb
+     WHERE gb.tenant_id = $1
+       AND gb.property_id = $2
+       AND gb.cutoff_date <= $3::date
+       AND gb.release_unsold_rooms = TRUE
+       AND gb.block_status IN ('tentative', 'definite', 'confirmed')
+       AND gb.is_deleted = FALSE`,
+    [tenantId, command.property_id, businessDate],
+  );
+
+  if (command.dry_run) {
+    reservationsLogger.info(
+      { propertyId: command.property_id, businessDate, groupsFound: expiredGroups.length },
+      "Cutoff enforcement dry run complete",
+    );
+    return { eventId, correlationId: options.correlationId, status: "accepted" };
+  }
+
+  let totalBlocksReleased = 0;
+
+  for (const group of expiredGroups) {
+    await withTransaction(async (client) => {
+      // Release unsold blocks
+      const { rowCount } = await client.query(
+        `UPDATE group_room_blocks
+         SET block_status = 'released',
+             released_date = NOW(),
+             released_by = $3::uuid,
+             updated_at = NOW(), updated_by = $3::uuid
+         WHERE group_booking_id = $1
+           AND block_status IN ('active', 'pending')
+           AND picked_rooms < blocked_rooms
+           AND block_date >= $2::date`,
+        [group.group_booking_id, businessDate, SYSTEM_ACTOR_ID],
+      );
+
+      totalBlocksReleased += rowCount ?? 0;
+
+      // Update group status
+      await client.query(
+        `UPDATE group_bookings
+         SET block_status = CASE
+           WHEN total_rooms_picked >= total_rooms_requested THEN 'confirmed'
+           WHEN total_rooms_picked > 0 THEN 'partial'
+           ELSE block_status
+         END,
+         updated_at = NOW(), updated_by = $2, version = version + 1
+         WHERE group_booking_id = $1 AND tenant_id = $3`,
+        [group.group_booking_id, SYSTEM_ACTOR_ID, tenantId],
+      );
+
+      await enqueueOutboxRecordWithClient(client, {
+        eventId: uuid(),
+        tenantId,
+        aggregateId: group.group_booking_id,
+        aggregateType: "group_booking",
+        eventType: "group.cutoff_enforced",
+        payload: {
+          metadata: {
+            id: uuid(),
+            source: serviceConfig.serviceId,
+            type: "group.cutoff_enforced",
+            timestamp: new Date().toISOString(),
+            version: "1.0",
+            correlationId: options.correlationId,
+            tenantId,
+            retryCount: 0,
+          },
+          payload: {
+            group_booking_id: group.group_booking_id,
+            group_name: group.group_name,
+            blocks_released: rowCount ?? 0,
+            cutoff_date: group.cutoff_date,
+          },
+        },
+        headers: { tenantId, eventId },
+        correlationId: options.correlationId,
+        partitionKey: group.group_booking_id,
+        metadata: { source: serviceConfig.serviceId, action: "group.cutoff_enforce" },
+      });
+    });
+  }
+
+  reservationsLogger.info(
+    {
+      propertyId: command.property_id,
+      businessDate,
+      groupsProcessed: expiredGroups.length,
+      totalBlocksReleased,
+    },
+    "Group cutoff enforcement completed",
+  );
+
+  return { eventId, correlationId: options.correlationId, status: "accepted" };
+};
+
+/**
+ * Create a MASTER folio for a group booking and configure charge routing.
+ * Updates the group_bookings record with the master_folio_id and
+ * stores routing rules as JSONB metadata on the folio.
+ */
+export const setupGroupBilling = async (
+  tenantId: string,
+  command: GroupBillingSetupCommand,
+  options: { correlationId?: string } = {},
+): Promise<CreateReservationResult> => {
+  const eventId = uuid();
+
+  await withTransaction(async (client) => {
+    // Fetch group booking
+    const { rows: groupRows } = await client.query(
+      `SELECT group_booking_id, property_id, group_name, group_code,
+              master_folio_id, contact_name, billing_contact_name,
+              billing_contact_email, billing_contact_phone, organization_name
+       FROM group_bookings
+       WHERE group_booking_id = $1 AND tenant_id = $2 AND is_deleted = FALSE
+       FOR UPDATE`,
+      [command.group_booking_id, tenantId],
+    );
+    if (groupRows.length === 0) {
+      throw new ReservationCommandError(
+        "GROUP_NOT_FOUND",
+        `Group booking ${command.group_booking_id} not found`,
+      );
+    }
+    const group = groupRows[0];
+
+    if (group.master_folio_id) {
+      throw new ReservationCommandError(
+        "MASTER_FOLIO_EXISTS",
+        `Group ${command.group_booking_id} already has master folio ${group.master_folio_id}`,
+      );
+    }
+
+    const folioId = uuid();
+    const folioNumber = `GRP-${group.group_code ?? group.group_booking_id.slice(0, 8).toUpperCase()}`;
+
+    // Default routing: room & tax → master, incidentals → individual
+    const routingRules = command.routing_rules ?? [
+      { charge_type: "ROOM", target: "master" },
+      { charge_type: "TAX", target: "master" },
+      { charge_type: "INCIDENTAL", target: "individual" },
+    ];
+
+    // Create MASTER folio
+    await client.query(
+      `INSERT INTO folios (
+        folio_id, tenant_id, property_id,
+        folio_number, folio_type, folio_status,
+        guest_name, company_name,
+        tax_exempt, tax_id,
+        notes,
+        created_by, updated_by
+      ) VALUES (
+        $1, $2, $3,
+        $4, 'MASTER', 'OPEN',
+        $5, $6,
+        $7, $8,
+        $9,
+        $10, $10
+      )`,
+      [
+        folioId, tenantId, group.property_id,
+        folioNumber,
+        command.billing_contact_name ?? group.billing_contact_name ?? group.contact_name,
+        group.organization_name ?? group.group_name,
+        command.tax_exempt ?? false,
+        command.tax_id ?? null,
+        JSON.stringify({ routing_rules: routingRules }),
+        SYSTEM_ACTOR_ID,
+      ],
+    );
+
+    // Link folio to group booking and update billing details
+    await client.query(
+      `UPDATE group_bookings
+       SET master_folio_id = $1,
+           payment_method = COALESCE($3, payment_method),
+           billing_contact_name = COALESCE($4, billing_contact_name),
+           billing_contact_email = COALESCE($5, billing_contact_email),
+           billing_contact_phone = COALESCE($6, billing_contact_phone),
+           updated_at = NOW(), updated_by = $7, version = version + 1
+       WHERE group_booking_id = $2 AND tenant_id = $8`,
+      [
+        folioId,
+        command.group_booking_id,
+        command.payment_method ?? null,
+        command.billing_contact_name ?? null,
+        command.billing_contact_email ?? null,
+        command.billing_contact_phone ?? null,
+        SYSTEM_ACTOR_ID,
+        tenantId,
+      ],
+    );
+
+    await enqueueOutboxRecordWithClient(client, {
+      eventId,
+      tenantId,
+      aggregateId: command.group_booking_id,
+      aggregateType: "group_booking",
+      eventType: "group.billing_setup",
+      payload: {
+        metadata: {
+          id: eventId,
+          source: serviceConfig.serviceId,
+          type: "group.billing_setup",
+          timestamp: new Date().toISOString(),
+          version: "1.0",
+          correlationId: options.correlationId,
+          tenantId,
+          retryCount: 0,
+        },
+        payload: {
+          group_booking_id: command.group_booking_id,
+          master_folio_id: folioId,
+          folio_number: folioNumber,
+          payment_method: command.payment_method,
+          routing_rules: routingRules,
+        },
+      },
+      headers: {
+        tenantId,
+        eventId,
+        ...(options.correlationId ? { correlationId: options.correlationId } : {}),
+      },
+      correlationId: options.correlationId,
+      partitionKey: command.group_booking_id,
+      metadata: { source: serviceConfig.serviceId, action: "group.billing.setup" },
+    });
+  });
+
+  reservationsLogger.info(
+    { groupBookingId: command.group_booking_id },
+    "Group billing setup completed with master folio",
+  );
+
+  return { eventId, correlationId: options.correlationId, status: "accepted" };
+};
+
+/* ================================================================== */
+/*  INTEGRATION / OTA / GDS HANDLERS                                  */
+/* ================================================================== */
+
+/**
+ * Request an OTA availability sync.
+ * Reads current inventory for the property, builds an ARI (Availability-
+ * Rates-Inventory) update payload, and records it in `ota_inventory_sync`.
+ * Actual push to the OTA API is simulated — replace the stub with a real
+ * channel-manager client (e.g., SiteMinder, Cloudbeds) for production.
+ */
+export const otaSyncRequest = async (
+  tenantId: string,
+  command: IntegrationOtaSyncRequestCommand,
+  options: { correlationId?: string } = {},
+): Promise<CreateReservationResult> => {
+  const eventId = uuid();
+  const syncId = uuid();
+  const syncScope = command.sync_scope ?? "full";
+
+  await withTransaction(async (client) => {
+    // Verify OTA configuration exists
+    const { rows: otaRows } = await client.query(
+      `SELECT id, ota_name, api_endpoint, availability_push_enabled
+       FROM ota_configurations
+       WHERE tenant_id = $1 AND property_id = $2 AND ota_code = $3
+         AND is_active = TRUE AND is_deleted = FALSE`,
+      [tenantId, command.property_id, command.ota_code],
+    );
+    if (otaRows.length === 0) {
+      throw new ReservationCommandError(
+        "OTA_NOT_CONFIGURED",
+        `No active OTA configuration for code "${command.ota_code}" on property ${command.property_id}`,
+      );
+    }
+    const otaConfig = otaRows[0];
+
+    // Gather current room availability for the next 30 days
+    const { rows: availabilityRows } = await client.query(
+      `SELECT rt.id AS room_type_id, rt.code AS room_type_code,
+              rt.total_rooms,
+              COUNT(r.id) FILTER (WHERE r.status IN ('CONFIRMED', 'CHECKED_IN')
+                AND r.check_in_date <= d.day AND r.check_out_date > d.day) AS sold,
+              rt.total_rooms - COUNT(r.id) FILTER (WHERE r.status IN ('CONFIRMED', 'CHECKED_IN')
+                AND r.check_in_date <= d.day AND r.check_out_date > d.day) AS available
+       FROM room_types rt
+       CROSS JOIN generate_series(CURRENT_DATE, CURRENT_DATE + INTERVAL '30 days', '1 day') AS d(day)
+       LEFT JOIN reservations r ON r.room_type_id = rt.id AND r.tenant_id = $1
+         AND r.property_id = $2 AND r.is_deleted = FALSE
+       WHERE rt.tenant_id = $1 AND rt.property_id = $2 AND rt.is_deleted = FALSE
+       GROUP BY rt.id, rt.code, rt.total_rooms, d.day
+       ORDER BY d.day, rt.code
+       LIMIT 1000`,
+      [tenantId, command.property_id],
+    );
+
+    // Record sync attempt
+    await client.query(
+      `INSERT INTO ota_inventory_sync (
+        sync_id, tenant_id, property_id, ota_config_id,
+        sync_type, sync_direction, sync_status,
+        total_items, successful_items, failed_items,
+        sync_started_at, sync_completed_at, created_by
+      ) VALUES (
+        $1, $2, $3, $4,
+        $5, 'outbound', 'completed',
+        $6, $6, 0,
+        NOW(), NOW(), $7
+      )`,
+      [
+        syncId, tenantId, command.property_id, otaConfig.id,
+        syncScope, availabilityRows.length,
+        SYSTEM_ACTOR_ID,
+      ],
+    );
+
+    await enqueueOutboxRecordWithClient(client, {
+      eventId,
+      tenantId,
+      aggregateId: syncId,
+      aggregateType: "ota_sync",
+      eventType: "integration.ota.availability_synced",
+      payload: {
+        metadata: {
+          id: eventId,
+          source: serviceConfig.serviceId,
+          type: "integration.ota.availability_synced",
+          timestamp: new Date().toISOString(),
+          version: "1.0",
+          correlationId: options.correlationId,
+          tenantId,
+          retryCount: 0,
+        },
+        payload: {
+          sync_id: syncId,
+          ota_code: command.ota_code,
+          property_id: command.property_id,
+          sync_scope: syncScope,
+          records_synced: availabilityRows.length,
+        },
+      },
+      headers: {
+        tenantId,
+        eventId,
+        ...(options.correlationId ? { correlationId: options.correlationId } : {}),
+      },
+      correlationId: options.correlationId,
+      partitionKey: command.property_id,
+      metadata: { source: serviceConfig.serviceId, action: "integration.ota.sync_request" },
+    });
+  });
+
+  reservationsLogger.info(
+    { syncId, otaCode: command.ota_code, propertyId: command.property_id },
+    "OTA availability sync completed",
+  );
+
+  return { eventId, correlationId: options.correlationId, status: "accepted" };
+};
+
+/**
+ * Push rate plans to an OTA channel.
+ * Reads `ota_rate_plans` for the property/OTA, applies markup/markdown,
+ * and records the push in `ota_inventory_sync`.
+ */
+export const otaRatePush = async (
+  tenantId: string,
+  command: IntegrationOtaRatePushCommand,
+  options: { correlationId?: string } = {},
+): Promise<CreateReservationResult> => {
+  const eventId = uuid();
+  const syncId = uuid();
+
+  await withTransaction(async (client) => {
+    // Verify OTA configuration
+    const { rows: otaRows } = await client.query(
+      `SELECT id, ota_name, rate_push_enabled
+       FROM ota_configurations
+       WHERE tenant_id = $1 AND property_id = $2 AND ota_code = $3
+         AND is_active = TRUE AND is_deleted = FALSE`,
+      [tenantId, command.property_id, command.ota_code],
+    );
+    if (otaRows.length === 0) {
+      throw new ReservationCommandError(
+        "OTA_NOT_CONFIGURED",
+        `No active OTA configuration for code "${command.ota_code}"`,
+      );
+    }
+    const otaConfig = otaRows[0];
+
+    // Fetch rate plans mapped for this OTA
+    const ratePlanFilter = command.rate_plan_id ? "AND orp.rate_id = $4" : "";
+    const params: string[] = [
+      tenantId, command.property_id,
+      otaConfig.id,
+    ];
+    if (command.rate_plan_id) params.push(command.rate_plan_id);
+
+    const { rows: ratePlans } = await client.query(
+      `SELECT orp.id AS ota_rate_plan_id, orp.rate_id, orp.ota_rate_plan_id AS ota_rate_code,
+              orp.markup_percentage, orp.markdown_percentage,
+              r.rate_name, r.base_rate, r.currency
+       FROM ota_rate_plans orp
+       JOIN rates r ON r.rate_id = orp.rate_id AND r.tenant_id = $1
+       WHERE orp.tenant_id = $1 AND orp.property_id = $2
+         AND orp.ota_configuration_id = $3
+         AND orp.is_active = TRUE AND orp.is_deleted = FALSE
+         ${ratePlanFilter}`,
+      params,
+    );
+
+    // Calculate pushed rates with markup/markdown
+    const pushedRates = ratePlans.map((rp: Record<string, unknown>) => {
+      const base = Number(rp.base_rate) || 0;
+      const markup = Number(rp.markup_percentage) || 0;
+      const markdown = Number(rp.markdown_percentage) || 0;
+      const adjustedRate = base * (1 + markup / 100) * (1 - markdown / 100);
+      return {
+        ota_rate_code: rp.ota_rate_code,
+        rate_plan_id: rp.rate_plan_id,
+        base_rate: base,
+        pushed_rate: Math.round(adjustedRate * 100) / 100,
+        currency: rp.currency,
+      };
+    });
+
+    // Record rate push sync
+    await client.query(
+      `INSERT INTO ota_inventory_sync (
+        sync_id, tenant_id, property_id, ota_config_id,
+        sync_type, sync_direction, sync_status,
+        total_items, successful_items, failed_items,
+        sync_started_at, sync_completed_at, created_by
+      ) VALUES (
+        $1, $2, $3, $4,
+        'incremental', 'outbound', 'completed',
+        $5, $5, 0,
+        NOW(), NOW(), $6
+      )`,
+      [
+        syncId, tenantId, command.property_id,
+        otaConfig.id,
+        pushedRates.length,
+        SYSTEM_ACTOR_ID,
+      ],
+    );
+
+    await enqueueOutboxRecordWithClient(client, {
+      eventId,
+      tenantId,
+      aggregateId: syncId,
+      aggregateType: "ota_sync",
+      eventType: "integration.ota.rates_pushed",
+      payload: {
+        metadata: {
+          id: eventId,
+          source: serviceConfig.serviceId,
+          type: "integration.ota.rates_pushed",
+          timestamp: new Date().toISOString(),
+          version: "1.0",
+          correlationId: options.correlationId,
+          tenantId,
+          retryCount: 0,
+        },
+        payload: {
+          sync_id: syncId,
+          ota_code: command.ota_code,
+          property_id: command.property_id,
+          rate_plans_pushed: pushedRates.length,
+        },
+      },
+      headers: {
+        tenantId,
+        eventId,
+        ...(options.correlationId ? { correlationId: options.correlationId } : {}),
+      },
+      correlationId: options.correlationId,
+      partitionKey: command.property_id,
+      metadata: { source: serviceConfig.serviceId, action: "integration.ota.rate_push" },
+    });
+  });
+
+  reservationsLogger.info(
+    { syncId, otaCode: command.ota_code, propertyId: command.property_id },
+    "OTA rate push completed",
+  );
+
+  return { eventId, correlationId: options.correlationId, status: "accepted" };
+};
+
+/**
+ * Retry a failed webhook delivery.
+ * Finds the webhook subscription, increments retry count,
+ * and re-enqueues the delivery attempt.
+ */
+export const webhookRetry = async (
+  tenantId: string,
+  command: IntegrationWebhookRetryCommand,
+  options: { correlationId?: string } = {},
+): Promise<CreateReservationResult> => {
+  const eventId = uuid();
+
+  await withTransaction(async (client) => {
+    const { rowCount } = await client.query(
+      `UPDATE webhook_subscriptions
+       SET retry_count = retry_count + 1,
+           last_triggered_at = NOW(),
+           updated_at = NOW()
+       WHERE subscription_id = $1 AND tenant_id = $2 AND is_deleted = FALSE`,
+      [command.subscription_id, tenantId],
+    );
+
+    if (!rowCount || rowCount === 0) {
+      throw new ReservationCommandError(
+        "WEBHOOK_NOT_FOUND",
+        `Webhook subscription ${command.subscription_id} not found`,
+      );
+    }
+
+    await enqueueOutboxRecordWithClient(client, {
+      eventId,
+      tenantId,
+      aggregateId: command.subscription_id,
+      aggregateType: "webhook",
+      eventType: "integration.webhook.retried",
+      payload: {
+        metadata: {
+          id: eventId,
+          source: serviceConfig.serviceId,
+          type: "integration.webhook.retried",
+          timestamp: new Date().toISOString(),
+          version: "1.0",
+          correlationId: options.correlationId,
+          tenantId,
+          retryCount: 0,
+        },
+        payload: {
+          subscription_id: command.subscription_id,
+          event_id: command.event_id,
+          reason: command.reason,
+        },
+      },
+      headers: {
+        tenantId,
+        eventId,
+        ...(options.correlationId ? { correlationId: options.correlationId } : {}),
+      },
+      correlationId: options.correlationId,
+      partitionKey: command.subscription_id,
+      metadata: { source: serviceConfig.serviceId, action: "integration.webhook.retry" },
+    });
+  });
+
+  reservationsLogger.info(
+    { subscriptionId: command.subscription_id },
+    "Webhook retry scheduled",
+  );
+
+  return { eventId, correlationId: options.correlationId, status: "accepted" };
+};
+
+/**
+ * Update an integration mapping (channel_mappings / integration_mappings).
+ * Applies the new mapping payload and records the change.
+ */
+export const updateIntegrationMapping = async (
+  tenantId: string,
+  command: IntegrationMappingUpdateCommand,
+  options: { correlationId?: string } = {},
+): Promise<CreateReservationResult> => {
+  const eventId = uuid();
+
+  await withTransaction(async (client) => {
+    const { rowCount } = await client.query(
+      `UPDATE integration_mappings
+       SET transformation_rules = COALESCE(($3::jsonb)->'transformation_rules', transformation_rules),
+           field_mappings = COALESCE(($3::jsonb)->'field_mappings', field_mappings),
+           is_active = COALESCE((($3::jsonb)->>'is_active')::boolean, is_active),
+           updated_at = NOW(), updated_by = $4
+       WHERE mapping_id = $1 AND tenant_id = $2 AND is_deleted = FALSE`,
+      [command.mapping_id, tenantId, JSON.stringify(command.mapping_payload), SYSTEM_ACTOR_ID],
+    );
+
+    if (!rowCount || rowCount === 0) {
+      throw new ReservationCommandError(
+        "MAPPING_NOT_FOUND",
+        `Integration mapping ${command.mapping_id} not found`,
+      );
+    }
+
+    await enqueueOutboxRecordWithClient(client, {
+      eventId,
+      tenantId,
+      aggregateId: command.mapping_id,
+      aggregateType: "integration_mapping",
+      eventType: "integration.mapping.updated",
+      payload: {
+        metadata: {
+          id: eventId,
+          source: serviceConfig.serviceId,
+          type: "integration.mapping.updated",
+          timestamp: new Date().toISOString(),
+          version: "1.0",
+          correlationId: options.correlationId,
+          tenantId,
+          retryCount: 0,
+        },
+        payload: {
+          mapping_id: command.mapping_id,
+          reason: command.reason,
+        },
+      },
+      headers: {
+        tenantId,
+        eventId,
+        ...(options.correlationId ? { correlationId: options.correlationId } : {}),
+      },
+      correlationId: options.correlationId,
+      partitionKey: command.mapping_id,
+      metadata: { source: serviceConfig.serviceId, action: "integration.mapping.update" },
+    });
+  });
+
+  reservationsLogger.info(
+    { mappingId: command.mapping_id },
+    "Integration mapping updated",
+  );
+
+  return { eventId, correlationId: options.correlationId, status: "accepted" };
+};
+
+/**
+ * Process inbound OTA reservation queue entries.
+ * Reads PENDING entries from `ota_reservations_queue`, maps room types
+ * via `channel_mappings`, and creates internal reservations.
+ * Called during OTA sync requests or scheduled processing.
+ */
+export const processOtaReservationQueue = async (
+  tenantId: string,
+  propertyId: string,
+  options: { correlationId?: string } = {},
+): Promise<{ processed: number; failed: number; duplicates: number }> => {
+  const { rows: pending } = await query(
+    `SELECT id, ota_configuration_id, ota_reservation_id, ota_booking_reference,
+            guest_name, guest_email, guest_phone,
+            check_in_date, check_out_date,
+            room_type,
+            total_amount, currency_code,
+            special_requests, raw_payload
+     FROM ota_reservations_queue
+     WHERE tenant_id = $1 AND property_id = $2
+       AND status = 'pending'
+     ORDER BY created_at ASC
+     LIMIT 100`,
+    [tenantId, propertyId],
+  );
+
+  let processed = 0;
+  let failed = 0;
+  let duplicates = 0;
+
+  for (const entry of pending) {
+    try {
+      await withTransaction(async (client) => {
+        // Check for duplicates
+        const { rows: existing } = await client.query(
+          `SELECT id FROM ota_reservations_queue
+           WHERE tenant_id = $1 AND ota_reservation_id = $2
+             AND status IN ('completed', 'processing')
+             AND id != $3`,
+          [tenantId, entry.ota_reservation_id, entry.id],
+        );
+        if (existing.length > 0) {
+          await client.query(
+            `UPDATE ota_reservations_queue
+             SET status = 'duplicate', processed_at = NOW()
+             WHERE id = $1`,
+            [entry.id],
+          );
+          duplicates++;
+          return;
+        }
+
+        // Mark as processing
+        await client.query(
+          `UPDATE ota_reservations_queue
+           SET status = 'processing', updated_at = NOW()
+           WHERE id = $1`,
+          [entry.id],
+        );
+
+        // Map OTA room type to internal room type via channel_mappings
+        const { rows: mappingRows } = await client.query(
+          `SELECT entity_id FROM channel_mappings
+           WHERE tenant_id = $1 AND property_id = $2
+             AND entity_type = 'room_type'
+             AND external_code = $3
+             AND is_active = TRUE`,
+          [tenantId, propertyId, entry.room_type],
+        );
+
+        const roomTypeId = mappingRows.length > 0
+          ? mappingRows[0].entity_id
+          : null;
+
+        if (!roomTypeId) {
+          throw new Error(`No channel mapping for OTA room type "${entry.room_type}"`);
+        }
+
+        // Create the internal reservation
+        const reservationId = uuid();
+        await client.query(
+          `INSERT INTO reservations (
+            id, tenant_id, property_id, room_type_id,
+            check_in_date, check_out_date, booking_date,
+            status, reservation_type, source,
+            total_amount, currency_code,
+            special_requests, notes,
+            created_by, updated_by
+          ) VALUES (
+            $1, $2, $3, $4,
+            $5, $6, NOW(),
+            'CONFIRMED', 'TRANSIENT', 'OTA',
+            $7, $8,
+            $9, $10,
+            $11, $11
+          )`,
+          [
+            reservationId, tenantId, propertyId, roomTypeId,
+            entry.check_in_date, entry.check_out_date,
+            entry.total_amount ?? 0, entry.currency_code ?? "USD",
+            entry.special_requests ?? null,
+            `OTA: ${entry.ota_booking_reference ?? entry.ota_reservation_id}`,
+            SYSTEM_ACTOR_ID,
+          ],
+        );
+
+        // Mark queue entry as completed
+        await client.query(
+          `UPDATE ota_reservations_queue
+           SET status = 'completed',
+               reservation_id = $2,
+               processed_at = NOW()
+           WHERE id = $1`,
+          [entry.id, reservationId],
+        );
+
+        // Emit event
+        const outboxEventId = uuid();
+        await enqueueOutboxRecordWithClient(client, {
+          eventId: outboxEventId,
+          tenantId,
+          aggregateId: reservationId,
+          aggregateType: "reservation",
+          eventType: "reservation.created_from_ota",
+          payload: {
+            metadata: {
+              id: outboxEventId,
+              source: serviceConfig.serviceId,
+              type: "reservation.created_from_ota",
+              timestamp: new Date().toISOString(),
+              version: "1.0",
+              correlationId: options.correlationId,
+              tenantId,
+              retryCount: 0,
+            },
+            payload: {
+              reservation_id: reservationId,
+              ota_reservation_id: entry.ota_reservation_id,
+              ota_booking_reference: entry.ota_booking_reference,
+              guest_name: entry.guest_name ?? "",
+            },
+          },
+          headers: { tenantId, eventId: outboxEventId },
+          correlationId: options.correlationId,
+          partitionKey: reservationId,
+          metadata: { source: serviceConfig.serviceId, action: "ota_queue_process" },
+        });
+
+        processed++;
+      });
+    } catch (err) {
+      reservationsLogger.error(
+        { queueId: entry.id, otaReservationId: entry.ota_reservation_id, error: err },
+        "Failed to process OTA reservation queue entry",
+      );
+      try {
+        await query(
+          `UPDATE ota_reservations_queue
+           SET status = 'failed',
+               error_message = $2,
+               processing_attempts = processing_attempts + 1,
+               processed_at = NOW()
+           WHERE id = $1`,
+          [entry.id, err instanceof Error ? err.message : String(err)],
+        );
+      } catch { /* ignore tracking error */ }
+      failed++;
+    }
+  }
+
+  reservationsLogger.info(
+    { propertyId, processed, failed, duplicates },
+    "OTA reservation queue processing completed",
+  );
+
+  return { processed, failed, duplicates };
 };

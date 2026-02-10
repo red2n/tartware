@@ -24,6 +24,16 @@ import {
   type BillingPaymentRefundCommand,
   BillingPaymentRefundCommandSchema,
   BillingPaymentVoidCommandSchema,
+  CommissionCalculateCommandSchema,
+  CommissionApproveCommandSchema,
+  CommissionMarkPaidCommandSchema,
+  CommissionStatementGenerateCommandSchema,
+  BillingChargeTransferCommandSchema,
+  BillingFolioSplitCommandSchema,
+  BillingArPostCommandSchema,
+  BillingArApplyPaymentCommandSchema,
+  BillingArAgeCommandSchema,
+  BillingArWriteOffCommandSchema,
 } from "../schemas/billing-commands.js";
 import {
   addMoney,
@@ -120,24 +130,6 @@ export const applyPayment = async (payload: unknown, context: CommandContext): P
 export const transferFolio = async (payload: unknown, context: CommandContext): Promise<string> => {
   const command = BillingFolioTransferCommandSchema.parse(payload);
   return applyFolioTransfer(command, context);
-};
-
-/**
- * Void a charge posting and create a reversal entry.
- * Adjusts folio balance to reverse the original charge.
- */
-export const voidCharge = async (payload: unknown, context: CommandContext): Promise<string> => {
-  const command = BillingChargeVoidCommandSchema.parse(payload);
-  return applyChargeVoid(command, context);
-};
-
-/**
- * Finalize an invoice, locking it from further edits.
- * Only DRAFT or SENT invoices can be finalized.
- */
-export const finalizeInvoice = async (payload: unknown, context: CommandContext): Promise<string> => {
-  const command = BillingInvoiceFinalizeCommandSchema.parse(payload);
-  return applyInvoiceFinalize(command, context);
 };
 
 const capturePayment = async (
@@ -821,223 +813,6 @@ export const authorizePayment = async (
   const command = BillingPaymentAuthorizeCommandSchema.parse(payload);
   const actor = resolveActorId(context.initiatedBy);
 
-/**
- * Void a charge posting. Within a single transaction:
- * 1. Validates the original posting exists and is not already voided.
- * 2. Marks the original posting as voided.
- * 3. Inserts a reversal VOID posting (CREDIT) for the same amount.
- * 4. Cross-links original ↔ void via void_posting_id / original_posting_id.
- * 5. Adjusts folio balance to reverse the charge.
- */
-const applyChargeVoid = async (
-  command: BillingChargeVoidCommand,
-  context: CommandContext,
-): Promise<string> => {
-  const actor = resolveActorId(context.initiatedBy);
-  const actorId = asUuid(actor) ?? SYSTEM_ACTOR_ID;
-
-  return withTransaction(async (client) => {
-    // 1. Fetch original posting with row lock
-    const { rows: postingRows } = await queryWithClient<{
-      posting_id: string;
-      tenant_id: string;
-      property_id: string;
-      folio_id: string;
-      reservation_id: string | null;
-      guest_id: string | null;
-      charge_code: string;
-      charge_description: string;
-      charge_category: string | null;
-      quantity: string;
-      unit_price: string;
-      subtotal: string;
-      tax_amount: string;
-      service_charge: string;
-      discount_amount: string;
-      total_amount: string;
-      currency_code: string;
-      department_code: string | null;
-      revenue_center: string | null;
-      gl_account: string | null;
-      is_voided: boolean;
-    }>(
-      client,
-      `SELECT posting_id, tenant_id, property_id, folio_id, reservation_id,
-              guest_id, charge_code, charge_description, charge_category,
-              quantity, unit_price, subtotal, tax_amount, service_charge,
-              discount_amount, total_amount, currency_code, department_code,
-              revenue_center, gl_account, is_voided
-       FROM public.charge_postings
-       WHERE posting_id = $1::uuid
-         AND tenant_id = $2::uuid
-       FOR UPDATE`,
-      [command.posting_id, context.tenantId],
-    );
-
-    const original = postingRows[0];
-    if (!original) {
-      throw new BillingCommandError(
-        "POSTING_NOT_FOUND",
-        `Charge posting ${command.posting_id} not found.`,
-      );
-    }
-    if (original.is_voided) {
-      throw new BillingCommandError(
-        "POSTING_ALREADY_VOIDED",
-        `Charge posting ${command.posting_id} has already been voided.`,
-      );
-    }
-
-    // 2. Mark original as voided
-    await queryWithClient(
-      client,
-      `UPDATE public.charge_postings
-       SET is_voided = TRUE,
-           voided_at = NOW(),
-           voided_by = $3::uuid,
-           void_reason = $4,
-           version = version + 1,
-           updated_at = NOW(),
-           updated_by = $3::uuid
-       WHERE posting_id = $1::uuid
-         AND tenant_id = $2::uuid`,
-      [command.posting_id, context.tenantId, actorId, command.void_reason ?? null],
-    );
-
-    // 3. Insert reversal VOID posting (mirror original amounts as CREDIT)
-    const voidResult = await queryWithClient<{ posting_id: string }>(
-      client,
-      `INSERT INTO public.charge_postings (
-         tenant_id, property_id, folio_id, reservation_id, guest_id,
-         transaction_type, posting_type, charge_code, charge_description,
-         charge_category, quantity, unit_price, subtotal,
-         tax_amount, service_charge, discount_amount, total_amount,
-         currency_code, department_code, revenue_center, gl_account,
-         original_posting_id, business_date, notes,
-         created_by, updated_by
-       ) VALUES (
-         $1::uuid, $2::uuid, $3::uuid, $4::uuid, $5::uuid,
-         'VOID', 'CREDIT', $6, $7,
-         $8, $9, $10, $11,
-         $12, $13, $14, $15,
-         $16, $17, $18, $19,
-         $20::uuid, CURRENT_DATE, $21,
-         $22::uuid, $22::uuid
-       )
-       RETURNING posting_id`,
-      [
-        context.tenantId,
-        original.property_id,
-        original.folio_id,
-        original.reservation_id,
-        original.guest_id,
-        original.charge_code,
-        `VOID: ${original.charge_description}`,
-        original.charge_category,
-        original.quantity,
-        original.unit_price,
-        original.subtotal,
-        original.tax_amount,
-        original.service_charge,
-        original.discount_amount,
-        original.total_amount,
-        original.currency_code,
-        original.department_code,
-        original.revenue_center,
-        original.gl_account,
-        command.posting_id,
-        command.void_reason ?? `Void of posting ${command.posting_id}`,
-        actorId,
-      ],
-    );
-
-    const voidPostingId = voidResult.rows[0]?.posting_id;
-    if (!voidPostingId) {
-      throw new BillingCommandError("CHARGE_VOID_FAILED", "Failed to create void posting.");
-    }
-
-    // 4. Cross-link original → void
-    await queryWithClient(
-      client,
-      `UPDATE public.charge_postings
-       SET void_posting_id = $3::uuid,
-           version = version + 1,
-           updated_at = NOW(),
-           updated_by = $4::uuid
-       WHERE posting_id = $1::uuid
-         AND tenant_id = $2::uuid`,
-      [command.posting_id, context.tenantId, voidPostingId, actorId],
-    );
-
-    // 5. Adjust folio balance — reverse the original charge
-    const totalAmount = parseDbMoneyOrZero(original.total_amount);
-    await queryWithClient(
-      client,
-      `UPDATE public.folios
-       SET total_charges = total_charges - $2,
-           balance = balance - $2,
-           updated_at = NOW(),
-           updated_by = $3::uuid
-       WHERE tenant_id = $1::uuid
-         AND folio_id = $4::uuid`,
-      [context.tenantId, totalAmount, actorId, original.folio_id],
-    );
-
-    appLogger.info(
-      { voidPostingId, originalPostingId: command.posting_id, totalAmount },
-      "Charge posting voided",
-    );
-
-    return voidPostingId;
-  });
-};
-
-/**
- * Finalize an invoice. Transitions status from DRAFT or SENT to FINALIZED,
- * locking the invoice from further edits or adjustments.
- */
-const applyInvoiceFinalize = async (
-  command: { invoice_id: string; metadata?: Record<string, unknown> },
-  context: CommandContext,
-): Promise<string> => {
-  const actor = resolveActorId(context.initiatedBy);
-
-  const { rows } = await query<{ id: string; status: string }>(
-    `SELECT id, status FROM public.invoices
-     WHERE tenant_id = $1::uuid AND id = $2::uuid
-     LIMIT 1`,
-    [context.tenantId, command.invoice_id],
-  );
-
-  const invoice = rows[0];
-  if (!invoice) {
-    throw new BillingCommandError("INVOICE_NOT_FOUND", "Invoice not found for finalization.");
-  }
-
-  if (invoice.status !== "DRAFT" && invoice.status !== "SENT") {
-    throw new BillingCommandError(
-      "INVALID_INVOICE_STATUS",
-      `Invoice is ${invoice.status}; only DRAFT or SENT invoices can be finalized.`,
-    );
-  }
-
-  await query(
-    `UPDATE public.invoices
-     SET status = 'FINALIZED',
-         updated_at = NOW(),
-         updated_by = $3
-     WHERE tenant_id = $1::uuid
-       AND id = $2::uuid`,
-    [context.tenantId, command.invoice_id, actor],
-  );
-
-  appLogger.info(
-    { invoiceId: command.invoice_id, previousStatus: invoice.status },
-    "Invoice finalized",
-  );
-
-  return command.invoice_id;
-};
   const currency = command.currency ?? "USD";
   const gatewayResponse = command.gateway?.response ?? {};
 
@@ -1115,6 +890,237 @@ const applyInvoiceFinalize = async (
     );
   }
   return paymentId;
+};
+
+/**
+ * Void a charge posting. Within a single transaction:
+ * 1. Validates the original posting exists and is not already voided.
+ * 2. Marks the original posting as voided.
+ * 3. Inserts a reversal VOID posting (CREDIT) for the same amount.
+ * 4. Cross-links original ↔ void via void_posting_id / original_posting_id.
+ * 5. Adjusts folio balance to reverse the charge.
+ */
+const applyChargeVoid = async (
+  command: BillingChargeVoidCommand,
+  context: CommandContext,
+): Promise<string> => {
+  const actor = resolveActorId(context.initiatedBy);
+  const actorId = asUuid(actor) ?? SYSTEM_ACTOR_ID;
+
+  return withTransaction(async (client) => {
+    const { rows: postingRows } = await queryWithClient<{
+      posting_id: string;
+      tenant_id: string;
+      property_id: string;
+      folio_id: string;
+      reservation_id: string | null;
+      guest_id: string | null;
+      charge_code: string;
+      charge_description: string;
+      charge_category: string | null;
+      quantity: string;
+      unit_price: string;
+      subtotal: string;
+      tax_amount: string;
+      service_charge: string;
+      discount_amount: string;
+      total_amount: string;
+      currency_code: string;
+      department_code: string | null;
+      revenue_center: string | null;
+      gl_account: string | null;
+      is_voided: boolean;
+    }>(
+      client,
+      `SELECT posting_id, tenant_id, property_id, folio_id, reservation_id,
+              guest_id, charge_code, charge_description, charge_category,
+              quantity, unit_price, subtotal, tax_amount, service_charge,
+              discount_amount, total_amount, currency_code, department_code,
+              revenue_center, gl_account, is_voided
+       FROM public.charge_postings
+       WHERE posting_id = $1::uuid
+         AND tenant_id = $2::uuid
+       FOR UPDATE`,
+      [command.posting_id, context.tenantId],
+    );
+
+    const original = postingRows[0];
+    if (!original) {
+      throw new BillingCommandError(
+        "POSTING_NOT_FOUND",
+        `Charge posting ${command.posting_id} not found.`,
+      );
+    }
+    if (original.is_voided) {
+      throw new BillingCommandError(
+        "POSTING_ALREADY_VOIDED",
+        `Charge posting ${command.posting_id} has already been voided.`,
+      );
+    }
+
+    await queryWithClient(
+      client,
+      `UPDATE public.charge_postings
+       SET is_voided = TRUE,
+           voided_at = NOW(),
+           voided_by = $3::uuid,
+           void_reason = $4,
+           version = version + 1,
+           updated_at = NOW(),
+           updated_by = $3::uuid
+       WHERE posting_id = $1::uuid
+         AND tenant_id = $2::uuid`,
+      [command.posting_id, context.tenantId, actorId, command.void_reason ?? null],
+    );
+
+    const voidResult = await queryWithClient<{ posting_id: string }>(
+      client,
+      `INSERT INTO public.charge_postings (
+         tenant_id, property_id, folio_id, reservation_id, guest_id,
+         transaction_type, posting_type, charge_code, charge_description,
+         charge_category, quantity, unit_price, subtotal,
+         tax_amount, service_charge, discount_amount, total_amount,
+         currency_code, department_code, revenue_center, gl_account,
+         original_posting_id, business_date, notes,
+         created_by, updated_by
+       ) VALUES (
+         $1::uuid, $2::uuid, $3::uuid, $4::uuid, $5::uuid,
+         'VOID', 'CREDIT', $6, $7,
+         $8, $9, $10, $11,
+         $12, $13, $14, $15,
+         $16, $17, $18, $19,
+         $20::uuid, CURRENT_DATE, $21,
+         $22::uuid, $22::uuid
+       )
+       RETURNING posting_id`,
+      [
+        context.tenantId,
+        original.property_id,
+        original.folio_id,
+        original.reservation_id,
+        original.guest_id,
+        original.charge_code,
+        `VOID: ${original.charge_description}`,
+        original.charge_category,
+        original.quantity,
+        original.unit_price,
+        original.subtotal,
+        original.tax_amount,
+        original.service_charge,
+        original.discount_amount,
+        original.total_amount,
+        original.currency_code,
+        original.department_code,
+        original.revenue_center,
+        original.gl_account,
+        command.posting_id,
+        command.void_reason ?? `Void of posting ${command.posting_id}`,
+        actorId,
+      ],
+    );
+
+    const voidPostingId = voidResult.rows[0]?.posting_id;
+    if (!voidPostingId) {
+      throw new BillingCommandError("CHARGE_VOID_FAILED", "Failed to create void posting.");
+    }
+
+    await queryWithClient(
+      client,
+      `UPDATE public.charge_postings
+       SET void_posting_id = $3::uuid,
+           version = version + 1,
+           updated_at = NOW(),
+           updated_by = $4::uuid
+       WHERE posting_id = $1::uuid
+         AND tenant_id = $2::uuid`,
+      [command.posting_id, context.tenantId, voidPostingId, actorId],
+    );
+
+    const totalAmount = parseDbMoneyOrZero(original.total_amount);
+    await queryWithClient(
+      client,
+      `UPDATE public.folios
+       SET total_charges = total_charges - $2,
+           balance = balance - $2,
+           updated_at = NOW(),
+           updated_by = $3::uuid
+       WHERE tenant_id = $1::uuid
+         AND folio_id = $4::uuid`,
+      [context.tenantId, totalAmount, actorId, original.folio_id],
+    );
+
+    appLogger.info(
+      { voidPostingId, originalPostingId: command.posting_id, totalAmount },
+      "Charge posting voided",
+    );
+
+    return voidPostingId;
+  });
+};
+
+/**
+ * Void a charge posting and create a reversal entry.
+ * Adjusts folio balance to reverse the original charge.
+ */
+export const voidCharge = async (payload: unknown, context: CommandContext): Promise<string> => {
+  const command = BillingChargeVoidCommandSchema.parse(payload);
+  return applyChargeVoid(command, context);
+};
+
+/**
+ * Finalize an invoice. Transitions status from DRAFT or SENT to FINALIZED,
+ * locking the invoice from further edits or adjustments.
+ */
+const applyInvoiceFinalize = async (
+  command: { invoice_id: string; metadata?: Record<string, unknown> },
+  context: CommandContext,
+): Promise<string> => {
+  const actor = resolveActorId(context.initiatedBy);
+
+  const { rows } = await query<{ id: string; status: string }>(
+    `SELECT id, status FROM public.invoices
+     WHERE tenant_id = $1::uuid AND id = $2::uuid
+     LIMIT 1`,
+    [context.tenantId, command.invoice_id],
+  );
+
+  const invoice = rows[0];
+  if (!invoice) {
+    throw new BillingCommandError("INVOICE_NOT_FOUND", "Invoice not found for finalization.");
+  }
+
+  if (invoice.status !== "DRAFT" && invoice.status !== "SENT") {
+    throw new BillingCommandError(
+      "INVALID_INVOICE_STATUS",
+      `Invoice is ${invoice.status}; only DRAFT or SENT invoices can be finalized.`,
+    );
+  }
+
+  await query(
+    `UPDATE public.invoices
+     SET status = 'FINALIZED',
+         updated_at = NOW(),
+         updated_by = $3
+     WHERE tenant_id = $1::uuid
+       AND id = $2::uuid`,
+    [context.tenantId, command.invoice_id, actor],
+  );
+
+  appLogger.info(
+    { invoiceId: command.invoice_id, previousStatus: invoice.status },
+    "Invoice finalized",
+  );
+
+  return command.invoice_id;
+};
+
+/**
+ * Finalize an invoice, locking it from further edits.
+ * Only DRAFT or SENT invoices can be finalized.
+ */
+export const finalizeInvoice = async (payload: unknown, context: CommandContext): Promise<string> => {
+  const command = BillingInvoiceFinalizeCommandSchema.parse(payload);
+  return applyInvoiceFinalize(command, context);
 };
 
 /**
@@ -1471,4 +1477,901 @@ export const voidPayment = async (payload: unknown, context: CommandContext): Pr
     "Payment voided",
   );
   return voidId;
+};
+
+// ─── Commission Handlers ─────────────────────────────────────────────────────
+
+/**
+ * Calculate commission for a reservation.
+ * Looks up applicable commission rules from booking_sources or commission_rules,
+ * then inserts into travel_agent_commissions and commission_tracking.
+ */
+export const calculateCommission = async (payload: unknown, context: CommandContext): Promise<string> => {
+  const command = CommissionCalculateCommandSchema.parse(payload);
+  const actorId = asUuid(resolveActorId(context.initiatedBy)) ?? SYSTEM_ACTOR_ID;
+  const tenantId = context.tenantId;
+
+  // Determine commission config: prefer travel_agent_id → booking_sources fallback
+  let commissionType = "PERCENTAGE";
+  let commissionRate = 0;
+  let flatAmount = 0;
+  let agentCompanyId: string | null = null;
+
+  if (command.travel_agent_id) {
+    // Look up applicable commission rule for this agent
+    const ruleResult = await query<{
+      commission_type: string;
+      default_rate: number;
+      room_rate: number;
+      flat_amount: number;
+      company_id: string | null;
+    }>(
+      `SELECT cr.commission_type, cr.default_rate, cr.room_rate,
+              COALESCE(cr.flat_amount_per_booking, 0) AS flat_amount,
+              cr.company_id
+       FROM commission_rules cr
+       WHERE cr.tenant_id = $1
+         AND cr.is_active = true
+         AND (cr.company_id = (SELECT company_id FROM travel_agents WHERE agent_id = $2 AND tenant_id = $1 LIMIT 1)
+              OR cr.apply_to_all_agents = true)
+         AND (cr.effective_start IS NULL OR cr.effective_start <= CURRENT_DATE)
+         AND (cr.effective_end IS NULL OR cr.effective_end >= CURRENT_DATE)
+       ORDER BY cr.apply_to_all_agents ASC, cr.priority DESC
+       LIMIT 1`,
+      [tenantId, command.travel_agent_id],
+    );
+    const rule = ruleResult.rows?.[0];
+    if (rule) {
+      commissionType = rule.commission_type;
+      commissionRate = Number(rule.room_rate || rule.default_rate || 0);
+      flatAmount = Number(rule.flat_amount || 0);
+      agentCompanyId = rule.company_id;
+    }
+  }
+
+  if (commissionRate === 0 && flatAmount === 0 && command.booking_source_id) {
+    // Fallback: look up booking_sources commission config
+    const srcResult = await query<{
+      commission_type: string;
+      commission_percentage: number;
+      commission_fixed_amount: number;
+    }>(
+      `SELECT commission_type, COALESCE(commission_percentage, 0) AS commission_percentage,
+              COALESCE(commission_fixed_amount, 0) AS commission_fixed_amount
+       FROM booking_sources
+       WHERE source_id = $1 AND tenant_id = $2 LIMIT 1`,
+      [command.booking_source_id, tenantId],
+    );
+    const src = srcResult.rows?.[0];
+    if (src && src.commission_type !== "NONE") {
+      commissionType = src.commission_type;
+      commissionRate = Number(src.commission_percentage);
+      flatAmount = Number(src.commission_fixed_amount);
+    }
+  }
+
+  // Calculate gross commission
+  let grossCommission = 0;
+  if (commissionType === "PERCENTAGE" && commissionRate > 0) {
+    grossCommission = (command.room_revenue * commissionRate) / 100;
+  } else if (commissionType === "FIXED" || commissionType === "FLAT_RATE") {
+    grossCommission = flatAmount;
+  } else if (commissionRate > 0) {
+    // Default to percentage
+    grossCommission = (command.room_revenue * commissionRate) / 100;
+  }
+
+  if (grossCommission <= 0) {
+    appLogger.debug(
+      { reservationId: command.reservation_id },
+      "No commission applicable — skipping",
+    );
+    return "NO_COMMISSION";
+  }
+
+  // Round to 2 decimal places
+  grossCommission = Math.round(grossCommission * 100) / 100;
+
+  const commissionId = randomUUID();
+  const trackingId = randomUUID();
+
+  await withTransaction(async (client) => {
+    // Insert into travel_agent_commissions
+    await queryWithClient(
+      client,
+      `INSERT INTO travel_agent_commissions (
+         commission_id, tenant_id, property_id, reservation_id,
+         agent_id, company_id, commission_type, room_revenue,
+         room_commission_rate, gross_commission_amount,
+         currency_code, payment_status,
+         created_by, updated_by
+       ) VALUES (
+         $1::uuid, $2::uuid, $3::uuid, $4::uuid,
+         $5::uuid, $6::uuid, $7, $8,
+         $9, $10,
+         $11, 'PENDING',
+         $12::uuid, $12::uuid
+       )`,
+      [
+        commissionId,
+        tenantId,
+        command.property_id,
+        command.reservation_id,
+        command.travel_agent_id ?? null,
+        agentCompanyId,
+        commissionType.toLowerCase(),
+        command.room_revenue,
+        commissionRate,
+        grossCommission,
+        command.currency,
+        actorId,
+      ],
+    );
+
+    // Insert into commission_tracking
+    await queryWithClient(
+      client,
+      `INSERT INTO commission_tracking (
+         tracking_id, tenant_id, property_id, reservation_id,
+         commission_type, beneficiary_type, beneficiary_id,
+         base_amount, commission_rate, calculated_amount,
+         final_amount, currency_code, status,
+         created_by, updated_by
+       ) VALUES (
+         $1::uuid, $2::uuid, $3::uuid, $4::uuid,
+         'booking', 'agent', $5::uuid,
+         $6, $7, $8,
+         $8, $9, 'pending',
+         $10::uuid, $10::uuid
+       )`,
+      [
+        trackingId,
+        tenantId,
+        command.property_id,
+        command.reservation_id,
+        command.travel_agent_id ?? command.booking_source_id ?? null,
+        command.room_revenue,
+        commissionRate,
+        grossCommission,
+        command.currency,
+        actorId,
+      ],
+    );
+  });
+
+  appLogger.info(
+    {
+      commissionId,
+      trackingId,
+      reservationId: command.reservation_id,
+      grossCommission,
+      commissionRate,
+      commissionType,
+    },
+    "Commission calculated and recorded",
+  );
+
+  return commissionId;
+};
+
+/**
+ * Approve a pending commission for payout.
+ */
+export const approveCommission = async (payload: unknown, context: CommandContext): Promise<string> => {
+  const command = CommissionApproveCommandSchema.parse(payload);
+  const tenantId = context.tenantId;
+
+  const result = await query(
+    `UPDATE travel_agent_commissions
+     SET payment_status = 'APPROVED',
+         approved_at = NOW(),
+         approved_by = $3::uuid,
+         approval_notes = $4,
+         updated_by = $3::uuid,
+         updated_at = NOW()
+     WHERE commission_id = $1 AND tenant_id = $2 AND payment_status = 'PENDING'`,
+    [command.commission_id, tenantId, command.approved_by, command.notes ?? null],
+  );
+
+  if (result.rowCount === 0) {
+    throw new BillingCommandError(
+      "COMMISSION_NOT_FOUND",
+      `Commission ${command.commission_id} not found or not in PENDING status`,
+    );
+  }
+
+  // Also update commission_tracking
+  await query(
+    `UPDATE commission_tracking
+     SET status = 'approved', approved_at = NOW(), approved_by = $3::uuid, updated_at = NOW()
+     WHERE reservation_id = (
+       SELECT reservation_id FROM travel_agent_commissions WHERE commission_id = $1 AND tenant_id = $2
+     ) AND tenant_id = $2 AND status = 'pending'`,
+    [command.commission_id, tenantId, command.approved_by],
+  );
+
+  appLogger.info({ commissionId: command.commission_id }, "Commission approved");
+  return command.commission_id;
+};
+
+/**
+ * Mark a commission as paid.
+ */
+export const markCommissionPaid = async (payload: unknown, context: CommandContext): Promise<string> => {
+  const command = CommissionMarkPaidCommandSchema.parse(payload);
+  const tenantId = context.tenantId;
+
+  const result = await query(
+    `UPDATE travel_agent_commissions
+     SET payment_status = 'PAID',
+         payment_date = COALESCE($3::timestamptz, NOW()),
+         payment_reference = $4,
+         payment_method = $5,
+         updated_at = NOW()
+     WHERE commission_id = $1 AND tenant_id = $2 AND payment_status IN ('PENDING', 'APPROVED')`,
+    [
+      command.commission_id,
+      tenantId,
+      command.payment_date ?? null,
+      command.payment_reference,
+      command.payment_method ?? null,
+    ],
+  );
+
+  if (result.rowCount === 0) {
+    throw new BillingCommandError(
+      "COMMISSION_NOT_FOUND",
+      `Commission ${command.commission_id} not found or already paid`,
+    );
+  }
+
+  // Update commission_tracking
+  await query(
+    `UPDATE commission_tracking
+     SET status = 'paid', paid_at = NOW(), payment_reference = $3, updated_at = NOW()
+     WHERE reservation_id = (
+       SELECT reservation_id FROM travel_agent_commissions WHERE commission_id = $1 AND tenant_id = $2
+     ) AND tenant_id = $2 AND status IN ('pending', 'approved')`,
+    [command.commission_id, tenantId, command.payment_reference],
+  );
+
+  appLogger.info(
+    { commissionId: command.commission_id, paymentRef: command.payment_reference },
+    "Commission marked as paid",
+  );
+  return command.commission_id;
+};
+
+/**
+ * Generate a periodic commission statement for an agent/company.
+ */
+export const generateCommissionStatement = async (payload: unknown, context: CommandContext): Promise<string> => {
+  const command = CommissionStatementGenerateCommandSchema.parse(payload);
+  const tenantId = context.tenantId;
+  const actorId = asUuid(resolveActorId(context.initiatedBy)) ?? SYSTEM_ACTOR_ID;
+
+  // Aggregate commissions for the period
+  const agentFilter = command.agent_id
+    ? ` AND tac.agent_id = '${command.agent_id}'`
+    : command.company_id
+      ? ` AND tac.company_id = '${command.company_id}'`
+      : "";
+
+  const statsResult = await query<{
+    total_bookings: number;
+    total_room_nights: number;
+    total_revenue: number;
+    total_gross: number;
+    company_id: string | null;
+    agent_id: string | null;
+  }>(
+    `SELECT
+       COUNT(DISTINCT tac.reservation_id) AS total_bookings,
+       COALESCE(SUM(r.nights), 0) AS total_room_nights,
+       COALESCE(SUM(tac.room_revenue), 0) AS total_revenue,
+       COALESCE(SUM(tac.gross_commission_amount), 0) AS total_gross,
+       tac.company_id, tac.agent_id
+     FROM travel_agent_commissions tac
+     LEFT JOIN reservations r ON r.id = tac.reservation_id AND r.tenant_id = tac.tenant_id
+     WHERE tac.tenant_id = $1
+       AND tac.property_id = $2
+       AND tac.created_at >= $3
+       AND tac.created_at < $4
+       ${agentFilter}
+     GROUP BY tac.company_id, tac.agent_id`,
+    [tenantId, command.property_id, command.period_start, command.period_end],
+  );
+
+  if (statsResult.rows.length === 0) {
+    appLogger.info(
+      { propertyId: command.property_id, periodStart: command.period_start, periodEnd: command.period_end },
+      "No commissions found for statement period",
+    );
+    return "NO_COMMISSIONS";
+  }
+
+  const statementsCreated: string[] = [];
+
+  for (const stats of statsResult.rows) {
+    const statementId = randomUUID();
+    const statementNumber = `CS-${new Date().getFullYear()}-${statementId.slice(0, 8).toUpperCase()}`;
+
+    await query(
+      `INSERT INTO commission_statements (
+         statement_id, tenant_id, property_id, company_id, agent_id,
+         statement_number, statement_date, period_start, period_end,
+         total_bookings, total_room_nights, total_revenue,
+         gross_commission, net_commission,
+         currency_code, statement_status,
+         created_by, updated_by
+       ) VALUES (
+         $1::uuid, $2::uuid, $3::uuid, $4::uuid, $5::uuid,
+         $6, CURRENT_DATE, $7, $8,
+         $9, $10, $11, $12, $12,
+         $13, 'DRAFT',
+         $14::uuid, $14::uuid
+       )`,
+      [
+        statementId,
+        tenantId,
+        command.property_id,
+        stats.company_id,
+        stats.agent_id,
+        statementNumber,
+        command.period_start,
+        command.period_end,
+        stats.total_bookings,
+        stats.total_room_nights,
+        stats.total_revenue,
+        stats.total_gross,
+        command.metadata?.currency ?? "USD",
+        actorId,
+      ],
+    );
+    statementsCreated.push(statementId);
+  }
+
+  appLogger.info(
+    {
+      count: statementsCreated.length,
+      propertyId: command.property_id,
+      periodStart: command.period_start,
+      periodEnd: command.period_end,
+    },
+    "Commission statements generated",
+  );
+  return statementsCreated[0] ?? "NO_STATEMENTS";
+};
+
+// ─── Split Billing / Charge Transfer Handlers ────────────────────────────────
+
+/**
+ * Transfer a specific charge posting from one folio to another.
+ * Creates TRANSFER-type audit records on both folios and adjusts balances.
+ */
+export const transferCharge = async (payload: unknown, context: CommandContext): Promise<string> => {
+  const command = BillingChargeTransferCommandSchema.parse(payload);
+  const actorId = asUuid(resolveActorId(context.initiatedBy)) ?? SYSTEM_ACTOR_ID;
+  const tenantId = context.tenantId;
+
+  // Resolve target folio
+  let targetFolioId = command.to_folio_id ?? null;
+  if (!targetFolioId && command.to_reservation_id) {
+    targetFolioId = await resolveFolioId(tenantId, command.to_reservation_id);
+  }
+  if (!targetFolioId) {
+    throw new BillingCommandError("FOLIO_NOT_FOUND", "Unable to locate target folio for charge transfer.");
+  }
+
+  return withTransaction(async (client) => {
+    // 1. Fetch and lock the original posting
+    const { rows } = await queryWithClient<{
+      posting_id: string;
+      folio_id: string;
+      property_id: string;
+      reservation_id: string | null;
+      charge_code: string;
+      charge_description: string;
+      quantity: string;
+      unit_price: string;
+      subtotal: string;
+      total_amount: string;
+      currency_code: string;
+      department_code: string | null;
+      is_voided: boolean;
+    }>(
+      client,
+      `SELECT posting_id, folio_id, property_id, reservation_id,
+              charge_code, charge_description, quantity, unit_price,
+              subtotal, total_amount, currency_code, department_code, is_voided
+       FROM charge_postings
+       WHERE posting_id = $1::uuid AND tenant_id = $2::uuid
+       FOR UPDATE`,
+      [command.posting_id, tenantId],
+    );
+
+    const original = rows[0];
+    if (!original) {
+      throw new BillingCommandError("POSTING_NOT_FOUND", `Posting ${command.posting_id} not found.`);
+    }
+    if (original.is_voided) {
+      throw new BillingCommandError("POSTING_VOIDED", "Cannot transfer a voided posting.");
+    }
+    if (original.folio_id === targetFolioId) {
+      throw new BillingCommandError("SAME_FOLIO", "Source and target folio are the same.");
+    }
+
+    const amount = parseDbMoneyOrZero(original.total_amount);
+
+    // 2. Mark original as transferred
+    await queryWithClient(client,
+      `UPDATE charge_postings
+       SET transfer_to_folio_id = $3::uuid, updated_at = NOW(), updated_by = $4::uuid
+       WHERE posting_id = $1::uuid AND tenant_id = $2::uuid`,
+      [command.posting_id, tenantId, targetFolioId, actorId],
+    );
+
+    // 3. Create TRANSFER CREDIT on source folio (reduces balance)
+    await queryWithClient(client,
+      `INSERT INTO charge_postings (
+         tenant_id, property_id, folio_id, reservation_id,
+         transaction_type, posting_type, charge_code, charge_description,
+         quantity, unit_price, subtotal, total_amount, currency_code,
+         department_code, transfer_from_folio_id, transfer_to_folio_id,
+         original_posting_id, business_date, notes,
+         created_by, updated_by
+       ) VALUES (
+         $1::uuid, $2::uuid, $3::uuid, $4::uuid,
+         'TRANSFER', 'CREDIT', $5, $6,
+         $7, $8, $9, $10, $11,
+         $12, $3::uuid, $13::uuid,
+         $14::uuid, CURRENT_DATE, $15,
+         $16::uuid, $16::uuid
+       )`,
+      [
+        tenantId, original.property_id, original.folio_id, original.reservation_id,
+        original.charge_code, `Transfer out: ${original.charge_description}`,
+        original.quantity, original.unit_price, original.subtotal, original.total_amount, original.currency_code,
+        original.department_code, targetFolioId,
+        command.posting_id, command.reason ?? `Charge transferred to another folio`,
+        actorId,
+      ],
+    );
+
+    // 4. Create TRANSFER DEBIT on target folio (increases balance)
+    const { rows: newRows } = await queryWithClient<{ posting_id: string }>(client,
+      `INSERT INTO charge_postings (
+         tenant_id, property_id, folio_id, reservation_id,
+         transaction_type, posting_type, charge_code, charge_description,
+         quantity, unit_price, subtotal, total_amount, currency_code,
+         department_code, transfer_from_folio_id,
+         original_posting_id, business_date, notes,
+         created_by, updated_by
+       ) VALUES (
+         $1::uuid, $2::uuid, $3::uuid, $4::uuid,
+         'TRANSFER', 'DEBIT', $5, $6,
+         $7, $8, $9, $10, $11,
+         $12, $13::uuid,
+         $14::uuid, CURRENT_DATE, $15,
+         $16::uuid, $16::uuid
+       )
+       RETURNING posting_id`,
+      [
+        tenantId, original.property_id, targetFolioId, original.reservation_id,
+        original.charge_code, `Transfer in: ${original.charge_description}`,
+        original.quantity, original.unit_price, original.subtotal, original.total_amount, original.currency_code,
+        original.department_code, original.folio_id,
+        command.posting_id, command.reason ?? `Charge transferred from another folio`,
+        actorId,
+      ],
+    );
+
+    // 5. Adjust source folio balance (decrease)
+    await queryWithClient(client,
+      `UPDATE folios
+       SET total_charges = total_charges - $2,
+           balance = balance - $2,
+           updated_at = NOW(), updated_by = $3::uuid
+       WHERE tenant_id = $1::uuid AND folio_id = $4::uuid`,
+      [tenantId, amount, actorId, original.folio_id],
+    );
+
+    // 6. Adjust target folio balance (increase)
+    await queryWithClient(client,
+      `UPDATE folios
+       SET total_charges = total_charges + $2,
+           balance = balance + $2,
+           updated_at = NOW(), updated_by = $3::uuid
+       WHERE tenant_id = $1::uuid AND folio_id = $4::uuid`,
+      [tenantId, amount, actorId, targetFolioId],
+    );
+
+    const newPostingId = newRows[0]?.posting_id ?? command.posting_id;
+    appLogger.info(
+      { originalPostingId: command.posting_id, newPostingId, fromFolio: original.folio_id, toFolio: targetFolioId, amount },
+      "Charge transferred between folios",
+    );
+    return newPostingId;
+  });
+};
+
+/**
+ * Split a charge across multiple folios.
+ * Voids the original posting and creates partial-amount postings on each target folio.
+ */
+export const splitCharge = async (payload: unknown, context: CommandContext): Promise<string> => {
+  const command = BillingFolioSplitCommandSchema.parse(payload);
+  const actorId = asUuid(resolveActorId(context.initiatedBy)) ?? SYSTEM_ACTOR_ID;
+  const tenantId = context.tenantId;
+
+  return withTransaction(async (client) => {
+    // 1. Fetch and lock the original posting
+    const { rows } = await queryWithClient<{
+      posting_id: string;
+      folio_id: string;
+      property_id: string;
+      reservation_id: string | null;
+      charge_code: string;
+      charge_description: string;
+      total_amount: string;
+      currency_code: string;
+      department_code: string | null;
+      is_voided: boolean;
+    }>(
+      client,
+      `SELECT posting_id, folio_id, property_id, reservation_id,
+              charge_code, charge_description, total_amount, currency_code,
+              department_code, is_voided
+       FROM charge_postings
+       WHERE posting_id = $1::uuid AND tenant_id = $2::uuid
+       FOR UPDATE`,
+      [command.posting_id, tenantId],
+    );
+
+    const original = rows[0];
+    if (!original) {
+      throw new BillingCommandError("POSTING_NOT_FOUND", `Posting ${command.posting_id} not found.`);
+    }
+    if (original.is_voided) {
+      throw new BillingCommandError("POSTING_VOIDED", "Cannot split a voided posting.");
+    }
+
+    const originalAmount = parseDbMoneyOrZero(original.total_amount);
+    const splitTotal = command.splits.reduce((sum, s) => addMoney(sum, s.amount), 0);
+    if (Math.abs(splitTotal - originalAmount) > 0.01) {
+      throw new BillingCommandError(
+        "SPLIT_AMOUNT_MISMATCH",
+        `Split amounts sum to ${splitTotal} but original posting is ${originalAmount}.`,
+      );
+    }
+
+    // 2. Void the original posting
+    await queryWithClient(client,
+      `UPDATE charge_postings
+       SET is_voided = TRUE, voided_at = NOW(), voided_by = $3::uuid,
+           void_reason = 'Split into multiple folios', version = version + 1,
+           updated_at = NOW(), updated_by = $3::uuid
+       WHERE posting_id = $1::uuid AND tenant_id = $2::uuid`,
+      [command.posting_id, tenantId, actorId],
+    );
+
+    // 3. Decrease source folio balance for the voided original
+    await queryWithClient(client,
+      `UPDATE folios
+       SET total_charges = total_charges - $2,
+           balance = balance - $2,
+           updated_at = NOW(), updated_by = $3::uuid
+       WHERE tenant_id = $1::uuid AND folio_id = $4::uuid`,
+      [tenantId, originalAmount, actorId, original.folio_id],
+    );
+
+    // 4. Create split postings on each target folio
+    const splitIds: string[] = [];
+    for (const split of command.splits) {
+      let targetFolioId = split.folio_id ?? null;
+      if (!targetFolioId && split.reservation_id) {
+        const fid = await resolveFolioId(tenantId, split.reservation_id);
+        targetFolioId = fid;
+      }
+      if (!targetFolioId) {
+        throw new BillingCommandError("FOLIO_NOT_FOUND", "Unable to locate target folio for split.");
+      }
+
+      const unitPrice = split.amount;
+      const desc = split.description ?? `Split: ${original.charge_description}`;
+
+      const { rows: newRows } = await queryWithClient<{ posting_id: string }>(client,
+        `INSERT INTO charge_postings (
+           tenant_id, property_id, folio_id, reservation_id,
+           transaction_type, posting_type, charge_code, charge_description,
+           quantity, unit_price, subtotal, total_amount, currency_code,
+           department_code, original_posting_id, business_date,
+           notes, created_by, updated_by
+         ) VALUES (
+           $1::uuid, $2::uuid, $3::uuid, $4::uuid,
+           'CHARGE', 'DEBIT', $5, $6,
+           1, $7, $7, $7, $8,
+           $9, $10::uuid, CURRENT_DATE,
+           $11, $12::uuid, $12::uuid
+         )
+         RETURNING posting_id`,
+        [
+          tenantId, original.property_id, targetFolioId, original.reservation_id,
+          original.charge_code, desc,
+          unitPrice, original.currency_code,
+          original.department_code,
+          command.posting_id,
+          command.reason ?? `Split from posting ${command.posting_id}`,
+          actorId,
+        ],
+      );
+
+      // Update target folio balance
+      await queryWithClient(client,
+        `UPDATE folios
+         SET total_charges = total_charges + $2,
+             balance = balance + $2,
+             updated_at = NOW(), updated_by = $3::uuid
+         WHERE tenant_id = $1::uuid AND folio_id = $4::uuid`,
+        [tenantId, unitPrice, actorId, targetFolioId],
+      );
+
+      if (newRows[0]?.posting_id) {
+        splitIds.push(newRows[0].posting_id);
+      }
+    }
+
+    appLogger.info(
+      { originalPostingId: command.posting_id, splitCount: command.splits.length, splitIds },
+      "Charge split across folios",
+    );
+    return splitIds[0] ?? command.posting_id;
+  });
+};
+
+// ─── Accounts Receivable Handlers ────────────────────────────────────────────
+
+/** Map textual payment_terms to number of days. */
+const paymentTermsToDays = (terms: string): number => {
+  switch (terms.toLowerCase()) {
+    case "due_on_receipt": return 0;
+    case "net_15": return 15;
+    case "net_30": return 30;
+    case "net_45": return 45;
+    case "net_60": return 60;
+    case "net_90": return 90;
+    default: return 30;
+  }
+};
+
+/**
+ * Post an AR entry (e.g., on checkout for direct-bill guests).
+ * Creates a row in accounts_receivable with status "open" and aging_bucket "current".
+ */
+export const postArEntry = async (payload: unknown, context: CommandContext): Promise<string> => {
+  const command = BillingArPostCommandSchema.parse(payload);
+  const actorId = asUuid(resolveActorId(context.initiatedBy)) ?? SYSTEM_ACTOR_ID;
+  const tenantId = context.tenantId;
+
+  const days = paymentTermsToDays(command.payment_terms);
+  const arNumber = `AR-${Date.now()}-${randomUUID().slice(0, 8)}`;
+
+  // look up property_id from the reservation
+  const { rows: resRows } = await query<{ property_id: string }>(
+    `SELECT property_id FROM reservations WHERE id = $1::uuid AND tenant_id = $2::uuid`,
+    [command.reservation_id, tenantId],
+  );
+  const propertyId = resRows[0]?.property_id;
+  if (!propertyId) {
+    throw new BillingCommandError("RESERVATION_NOT_FOUND", `Reservation ${command.reservation_id} not found.`);
+  }
+
+  const { rows } = await query<{ ar_id: string }>(
+    `INSERT INTO accounts_receivable (
+       tenant_id, property_id, ar_number, account_type, account_id, account_name,
+       source_type, reservation_id, folio_id,
+       transaction_date, due_date,
+       original_amount, outstanding_balance, currency,
+       ar_status, aging_bucket, payment_terms, payment_terms_days,
+       notes, created_by, updated_by
+     ) VALUES (
+       $1::uuid, $2::uuid, $3, $4, $5::uuid, $6,
+       'reservation', $7::uuid, $8,
+       CURRENT_DATE, CURRENT_DATE + $9::int,
+       $10, $10, 'USD',
+       'open', 'current', $11, $9,
+       $12, $13::uuid, $13::uuid
+     )
+     RETURNING ar_id`,
+    [
+      tenantId, propertyId, arNumber,
+      command.account_type, command.account_id, command.account_name,
+      command.reservation_id, command.folio_id ?? null,
+      days,
+      command.amount,
+      command.payment_terms,
+      command.notes ?? null,
+      actorId,
+    ],
+  );
+
+  const arId = rows[0]?.ar_id ?? arNumber;
+  appLogger.info({ arId, arNumber, amount: command.amount, accountName: command.account_name }, "AR entry posted");
+  return arId;
+};
+
+/**
+ * Apply a payment against an outstanding AR balance.
+ */
+export const applyArPayment = async (payload: unknown, context: CommandContext): Promise<string> => {
+  const command = BillingArApplyPaymentCommandSchema.parse(payload);
+  const actorId = asUuid(resolveActorId(context.initiatedBy)) ?? SYSTEM_ACTOR_ID;
+  const tenantId = context.tenantId;
+
+  return withTransaction(async (client) => {
+    // fetch and lock the AR entry
+    const { rows } = await queryWithClient<{
+      ar_id: string;
+      outstanding_balance: string;
+      paid_amount: string;
+      payment_count: number;
+      payments: unknown;
+      ar_status: string;
+    }>(
+      client,
+      `SELECT ar_id, outstanding_balance, paid_amount, payment_count, payments, ar_status
+       FROM accounts_receivable
+       WHERE ar_id = $1::uuid AND tenant_id = $2::uuid
+       FOR UPDATE`,
+      [command.ar_id, tenantId],
+    );
+
+    const ar = rows[0];
+    if (!ar) {
+      throw new BillingCommandError("AR_NOT_FOUND", `AR entry ${command.ar_id} not found.`);
+    }
+    if (ar.ar_status === "paid" || ar.ar_status === "written_off" || ar.ar_status === "cancelled") {
+      throw new BillingCommandError("AR_CLOSED", `AR entry is already ${ar.ar_status}.`);
+    }
+
+    const outstanding = parseDbMoneyOrZero(ar.outstanding_balance);
+    const paymentAmount = Math.min(command.amount, outstanding);
+    const newOutstanding = subtractMoney(outstanding, paymentAmount);
+    const newPaid = addMoney(parseDbMoneyOrZero(ar.paid_amount), paymentAmount);
+    const newStatus = newOutstanding <= 0.005 ? "paid" : "partial";
+
+    // append to payments JSONB array
+    const existingPayments = Array.isArray(ar.payments) ? ar.payments : [];
+    const paymentEntry = {
+      date: (command.payment_date ?? new Date()).toISOString().slice(0, 10),
+      amount: paymentAmount,
+      method: command.payment_method ?? "UNKNOWN",
+      reference: command.payment_reference,
+    };
+    const updatedPayments = [...existingPayments, paymentEntry];
+
+    await queryWithClient(client,
+      `UPDATE accounts_receivable
+       SET outstanding_balance = $3,
+           paid_amount = $4,
+           ar_status = $5,
+           payment_count = payment_count + 1,
+           last_payment_date = $6::date,
+           last_payment_amount = $7,
+           payments = $8::jsonb,
+           is_overdue = CASE WHEN $5 = 'paid' THEN false ELSE is_overdue END,
+           updated_at = NOW(), updated_by = $9::uuid
+       WHERE ar_id = $1::uuid AND tenant_id = $2::uuid`,
+      [
+        command.ar_id, tenantId,
+        newOutstanding, newPaid, newStatus,
+        paymentEntry.date, paymentAmount,
+        JSON.stringify(updatedPayments),
+        actorId,
+      ],
+    );
+
+    appLogger.info(
+      { arId: command.ar_id, paymentAmount, newOutstanding, newStatus },
+      "AR payment applied",
+    );
+    return command.ar_id;
+  });
+};
+
+/**
+ * Recalculate aging buckets for all open AR entries in a property.
+ */
+export const ageArEntries = async (payload: unknown, context: CommandContext): Promise<string> => {
+  const command = BillingArAgeCommandSchema.parse(payload);
+  const tenantId = context.tenantId;
+  const asOfDate = command.as_of_date ? new Date(command.as_of_date).toISOString().slice(0, 10) : null;
+
+  const result = await query<{ updated: string }>(
+    `WITH aged AS (
+       UPDATE accounts_receivable
+       SET
+         days_overdue = GREATEST(0, ($3::date - due_date)::int),
+         is_overdue = (($3::date - due_date)::int > 0),
+         aging_bucket = CASE
+           WHEN ($3::date - due_date)::int <= 0 THEN 'current'
+           WHEN ($3::date - due_date)::int <= 30 THEN '1_30_days'
+           WHEN ($3::date - due_date)::int <= 60 THEN '31_60_days'
+           WHEN ($3::date - due_date)::int <= 90 THEN '61_90_days'
+           WHEN ($3::date - due_date)::int <= 120 THEN '91_120_days'
+           ELSE 'over_120_days'
+         END,
+         aging_days = GREATEST(0, ($3::date - due_date)::int),
+         ar_status = CASE
+           WHEN ar_status = 'open' AND ($3::date - due_date)::int > 0 THEN 'overdue'
+           WHEN ar_status = 'partial' AND ($3::date - due_date)::int > 0 THEN 'overdue'
+           ELSE ar_status
+         END,
+         updated_at = NOW()
+       WHERE tenant_id = $1::uuid
+         AND property_id = $2::uuid
+         AND ar_status IN ('open', 'partial', 'overdue')
+         AND COALESCE(is_deleted, false) = false
+       RETURNING ar_id
+     )
+     SELECT COUNT(*)::text AS updated FROM aged`,
+    [tenantId, command.property_id, asOfDate],
+  );
+
+  const updatedCount = result.rows[0]?.updated ?? "0";
+  appLogger.info({ propertyId: command.property_id, updatedCount }, "AR aging recalculated");
+  return updatedCount;
+};
+
+/**
+ * Write off an uncollectible AR entry.
+ */
+export const writeOffAr = async (payload: unknown, context: CommandContext): Promise<string> => {
+  const command = BillingArWriteOffCommandSchema.parse(payload);
+  const actorId = asUuid(resolveActorId(context.initiatedBy)) ?? SYSTEM_ACTOR_ID;
+  const tenantId = context.tenantId;
+
+  const { rows } = await query<{ ar_id: string; outstanding_balance: string }>(
+    `SELECT ar_id, outstanding_balance FROM accounts_receivable
+     WHERE ar_id = $1::uuid AND tenant_id = $2::uuid
+       AND ar_status NOT IN ('paid', 'written_off', 'cancelled')`,
+    [command.ar_id, tenantId],
+  );
+
+  const ar = rows[0];
+  if (!ar) {
+    throw new BillingCommandError("AR_NOT_FOUND", `AR entry ${command.ar_id} not found or already closed.`);
+  }
+
+  const outstanding = parseDbMoneyOrZero(ar.outstanding_balance);
+  const writeOffAmount = Math.min(command.write_off_amount, outstanding);
+  const newOutstanding = subtractMoney(outstanding, writeOffAmount);
+  const newStatus = newOutstanding <= 0.005 ? "written_off" : "partial";
+
+  await query(
+    `UPDATE accounts_receivable
+     SET written_off = TRUE,
+         write_off_amount = COALESCE(write_off_amount, 0) + $3,
+         write_off_reason = $4,
+         write_off_date = CURRENT_DATE,
+         written_off_by = $5::uuid,
+         write_off_approved_by = $6,
+         outstanding_balance = $7,
+         ar_status = $8,
+         is_bad_debt = CASE WHEN $8 = 'written_off' THEN TRUE ELSE is_bad_debt END,
+         updated_at = NOW(), updated_by = $5::uuid
+     WHERE ar_id = $1::uuid AND tenant_id = $2::uuid`,
+    [
+      command.ar_id, tenantId,
+      writeOffAmount, command.reason,
+      actorId, command.approved_by ?? null,
+      newOutstanding, newStatus,
+    ],
+  );
+
+  appLogger.info(
+    { arId: command.ar_id, writeOffAmount, newOutstanding, newStatus },
+    "AR entry written off",
+  );
+  return command.ar_id;
 };
