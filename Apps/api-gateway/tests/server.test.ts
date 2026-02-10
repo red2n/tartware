@@ -1,4 +1,12 @@
-import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  afterAll,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from "vitest";
 
 import { buildServer } from "../src/server.js";
 import { kafkaConfig, serviceTargets } from "../src/config.js";
@@ -39,8 +47,7 @@ vi.mock("../src/services/membership-service.js", () => ({
 }));
 
 vi.mock("../src/lib/jwt.js", () => ({
-  extractBearerToken: (header?: string) =>
-    header?.split(" ")[1] ?? null,
+  extractBearerToken: (header?: string) => header?.split(" ")[1] ?? null,
   verifyAccessToken: vi.fn(() => ({ sub: "user-1" })),
 }));
 
@@ -138,7 +145,10 @@ describe("API Gateway server", () => {
   it("proxies reservation queries to the core service", async () => {
     const response = await app.inject({
       method: "GET",
-      url: "/v1/reservations?tenant_id=tenant-123",
+      url: "/v1/reservations?tenant_id=11111111-1111-1111-1111-111111111111",
+      headers: {
+        authorization: "Bearer unit-test-token",
+      },
     });
 
     expect(response.statusCode).toBe(200);

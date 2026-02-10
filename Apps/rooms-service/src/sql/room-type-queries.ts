@@ -132,7 +132,7 @@ export const ROOM_TYPE_CREATE_SQL = `
   FROM inserted i
 `;
 
-const _ROOM_TYPE_UPDATE_SQL = `
+export const ROOM_TYPE_UPDATE_SQL = `
   WITH updated AS (
     UPDATE public.room_types rt
     SET
