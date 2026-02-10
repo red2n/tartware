@@ -20,6 +20,8 @@ import {
   handleRoomHousekeepingStatusUpdate,
   handleRoomInventoryCommand,
   handleRoomInventoryRelease,
+  handleKeyIssue,
+  handleKeyRevoke,
   handleRoomMove,
   handleRoomOutOfOrder,
   handleRoomOutOfService,
@@ -159,6 +161,18 @@ const routeRoomCommand = async (
       return;
     case "rooms.features.update":
       await handleRoomFeaturesUpdate(envelope.payload, {
+        tenantId: metadata.tenantId,
+        initiatedBy: metadata.initiatedBy ?? null,
+      });
+      return;
+    case "rooms.key.issue":
+      await handleKeyIssue(envelope.payload, {
+        tenantId: metadata.tenantId,
+        initiatedBy: metadata.initiatedBy ?? null,
+      });
+      return;
+    case "rooms.key.revoke":
+      await handleKeyRevoke(envelope.payload, {
         tenantId: metadata.tenantId,
         initiatedBy: metadata.initiatedBy ?? null,
       });

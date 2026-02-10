@@ -39,6 +39,10 @@ import {
   applyArPayment,
   ageArEntries,
   writeOffAr,
+  openCashierSession,
+  closeCashierSession,
+  evaluatePricingRules,
+  bulkGeneratePricingRecommendations,
 } from "../services/billing-command-service.js";
 
 let consumer: Consumer | null = null;
@@ -263,6 +267,30 @@ const routeBillingCommand = async (
       return;
     case "billing.ar.write_off":
       await writeOffAr(envelope.payload, {
+        tenantId: metadata.tenantId,
+        initiatedBy: metadata.initiatedBy ?? null,
+      });
+      return;
+    case "billing.cashier.open":
+      await openCashierSession(envelope.payload, {
+        tenantId: metadata.tenantId,
+        initiatedBy: metadata.initiatedBy ?? null,
+      });
+      return;
+    case "billing.cashier.close":
+      await closeCashierSession(envelope.payload, {
+        tenantId: metadata.tenantId,
+        initiatedBy: metadata.initiatedBy ?? null,
+      });
+      return;
+    case "billing.pricing.evaluate":
+      await evaluatePricingRules(envelope.payload, {
+        tenantId: metadata.tenantId,
+        initiatedBy: metadata.initiatedBy ?? null,
+      });
+      return;
+    case "billing.pricing.bulk_recommend":
+      await bulkGeneratePricingRecommendations(envelope.payload, {
         tenantId: metadata.tenantId,
         initiatedBy: metadata.initiatedBy ?? null,
       });

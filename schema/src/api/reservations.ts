@@ -96,6 +96,63 @@ export const ReservationDetailSchema = z.object({
 export type ReservationDetail = z.infer<typeof ReservationDetailSchema>;
 
 // =====================================================
+// S23: CHECK-IN BRIEF (Guest Recognition)
+// =====================================================
+
+/** Schema for a single guest note shown at check-in. */
+export const CheckInNoteSchema = z.object({
+	note_id: z.string(),
+	note_type: z.string().nullable().optional(),
+	note_text: z.string().nullable().optional(),
+	alert_level: z.string().nullable().optional(),
+	is_alert: z.boolean().optional(),
+	status: z.string().nullable().optional(),
+});
+
+export type CheckInNote = z.infer<typeof CheckInNoteSchema>;
+
+/** Schema for a single guest preference. */
+export const CheckInPreferenceSchema = z.object({
+	category: z.string().nullable().optional(),
+	preference_type: z.string().nullable().optional(),
+	preference_value: z.string().nullable().optional(),
+	priority: z.number().nullable().optional(),
+	is_mandatory: z.boolean().optional(),
+	is_special_request: z.boolean().optional(),
+});
+
+export type CheckInPreference = z.infer<typeof CheckInPreferenceSchema>;
+
+/** Schema for the full check-in brief response. */
+export const CheckInBriefSchema = z.object({
+	reservation_id: z.string(),
+	guest_id: z.string().nullable().optional(),
+	guest_name: z.string(),
+	guest_email: z.string().nullable().optional(),
+	guest_phone: z.string().nullable().optional(),
+	vip_status: z.string().nullable().optional(),
+	loyalty_tier: z.string().nullable().optional(),
+	loyalty_points: z.number().nullable().optional(),
+	is_blacklisted: z.boolean().optional(),
+	total_stays: z.number().optional(),
+	total_nights: z.number().optional(),
+	total_revenue: z.number().optional(),
+	last_stay_date: z.string().nullable().optional(),
+	room_number: z.string().nullable().optional(),
+	room_type: z.string().nullable().optional(),
+	check_in_date: z.string(),
+	check_out_date: z.string(),
+	special_requests: z.string().nullable().optional(),
+	internal_notes: z.string().nullable().optional(),
+	reservation_type: z.string().nullable().optional(),
+	preferences: z.array(CheckInPreferenceSchema),
+	alerts: z.array(CheckInNoteSchema),
+	notes: z.array(CheckInNoteSchema),
+});
+
+export type CheckInBrief = z.infer<typeof CheckInBriefSchema>;
+
+// =====================================================
 // ALLOTMENTS (Room Blocks)
 // =====================================================
 

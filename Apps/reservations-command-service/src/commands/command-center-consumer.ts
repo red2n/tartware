@@ -38,6 +38,11 @@ import {
   ReservationUnassignRoomCommandSchema,
   ReservationWaitlistAddCommandSchema,
   ReservationWaitlistConvertCommandSchema,
+  ReservationWaitlistOfferCommandSchema,
+  ReservationWaitlistExpireSweepCommandSchema,
+  ReservationGenerateRegCardCommandSchema,
+  ReservationMobileCheckinStartCommandSchema,
+  ReservationMobileCheckinCompleteCommandSchema,
   ReservationWalkInCheckInCommandSchema,
   ReservationWalkGuestCommandSchema,
 } from "../schemas/reservation-command.js";
@@ -73,6 +78,11 @@ import {
   unassignRoom,
   waitlistAdd,
   waitlistConvert,
+  waitlistOffer,
+  waitlistExpireSweep,
+  generateRegistrationCard,
+  startMobileCheckin,
+  completeMobileCheckin,
   walkInCheckIn,
   walkGuest,
   createGroupBooking,
@@ -257,6 +267,31 @@ const routeReservationCommand = async (
     case "reservation.waitlist_convert": {
       const commandPayload = ReservationWaitlistConvertCommandSchema.parse(envelope.payload);
       await waitlistConvert(metadata.tenantId, commandPayload, context);
+      break;
+    }
+    case "reservation.waitlist_offer": {
+      const commandPayload = ReservationWaitlistOfferCommandSchema.parse(envelope.payload);
+      await waitlistOffer(metadata.tenantId, commandPayload, context);
+      break;
+    }
+    case "reservation.waitlist_expire_sweep": {
+      const commandPayload = ReservationWaitlistExpireSweepCommandSchema.parse(envelope.payload);
+      await waitlistExpireSweep(metadata.tenantId, commandPayload, context);
+      break;
+    }
+    case "reservation.generate_registration_card": {
+      const commandPayload = ReservationGenerateRegCardCommandSchema.parse(envelope.payload);
+      await generateRegistrationCard(metadata.tenantId, commandPayload, context);
+      break;
+    }
+    case "reservation.mobile_checkin.start": {
+      const commandPayload = ReservationMobileCheckinStartCommandSchema.parse(envelope.payload);
+      await startMobileCheckin(metadata.tenantId, commandPayload, context);
+      break;
+    }
+    case "reservation.mobile_checkin.complete": {
+      const commandPayload = ReservationMobileCheckinCompleteCommandSchema.parse(envelope.payload);
+      await completeMobileCheckin(metadata.tenantId, commandPayload, context);
       break;
     }
     case "reservation.send_quote": {

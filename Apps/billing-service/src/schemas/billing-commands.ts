@@ -34,4 +34,8 @@ export {
   BillingArApplyPaymentCommandSchema,
   BillingArAgeCommandSchema,
   BillingArWriteOffCommandSchema,
+  BillingCashierOpenCommandSchema,
+  BillingCashierCloseCommandSchema,
+  BillingPricingEvaluateCommandSchema,
+  BillingPricingBulkRecommendCommandSchema,
 } from "@tartware/schemas/events/commands/billing";

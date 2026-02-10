@@ -33,6 +33,10 @@ import {
 	BillingArApplyPaymentCommandSchema,
 	BillingArAgeCommandSchema,
 	BillingArWriteOffCommandSchema,
+	BillingCashierOpenCommandSchema,
+	BillingCashierCloseCommandSchema,
+	BillingPricingEvaluateCommandSchema,
+	BillingPricingBulkRecommendCommandSchema,
 } from "./events/commands/billing.js";
 import {
 	GroupCreateCommandSchema,
@@ -95,6 +99,11 @@ import {
 	ReservationWalkInCheckInCommandSchema,
 	ReservationWaitlistAddCommandSchema,
 	ReservationWaitlistConvertCommandSchema,
+	ReservationWaitlistOfferCommandSchema,
+	ReservationWaitlistExpireSweepCommandSchema,
+	ReservationGenerateRegCardCommandSchema,
+	ReservationMobileCheckinStartCommandSchema,
+	ReservationMobileCheckinCompleteCommandSchema,
 	ReservationSendQuoteCommandSchema,
 	ReservationConvertQuoteCommandSchema,
 	ReservationExpireCommandSchema,
@@ -105,6 +114,8 @@ import {
 	RoomHousekeepingStatusUpdateCommandSchema,
 	RoomInventoryBlockCommandSchema,
 	RoomInventoryReleaseCommandSchema,
+	RoomKeyIssueCommandSchema,
+	RoomKeyRevokeCommandSchema,
 	RoomMoveCommandSchema,
 	RoomOutOfOrderCommandSchema,
 	RoomOutOfServiceCommandSchema,
@@ -221,6 +232,22 @@ const commandPayloadValidators = new Map<string, CommandPayloadValidator>([
 	[
 		"billing.ar.write_off",
 		(payload) => BillingArWriteOffCommandSchema.parse(payload),
+	],
+	[
+		"billing.cashier.open",
+		(payload) => BillingCashierOpenCommandSchema.parse(payload),
+	],
+	[
+		"billing.cashier.close",
+		(payload) => BillingCashierCloseCommandSchema.parse(payload),
+	],
+	[
+		"billing.pricing.evaluate",
+		(payload) => BillingPricingEvaluateCommandSchema.parse(payload),
+	],
+	[
+		"billing.pricing.bulk_recommend",
+		(payload) => BillingPricingBulkRecommendCommandSchema.parse(payload),
 	],
 	["guest.register", (payload) => GuestRegisterCommandSchema.parse(payload)],
 	["guest.merge", (payload) => GuestMergeCommandSchema.parse(payload)],
@@ -386,6 +413,26 @@ const commandPayloadValidators = new Map<string, CommandPayloadValidator>([
 		(payload) => ReservationWaitlistConvertCommandSchema.parse(payload),
 	],
 	[
+		"reservation.waitlist_offer",
+		(payload) => ReservationWaitlistOfferCommandSchema.parse(payload),
+	],
+	[
+		"reservation.waitlist_expire_sweep",
+		(payload) => ReservationWaitlistExpireSweepCommandSchema.parse(payload),
+	],
+	[
+		"reservation.generate_registration_card",
+		(payload) => ReservationGenerateRegCardCommandSchema.parse(payload),
+	],
+	[
+		"reservation.mobile_checkin.start",
+		(payload) => ReservationMobileCheckinStartCommandSchema.parse(payload),
+	],
+	[
+		"reservation.mobile_checkin.complete",
+		(payload) => ReservationMobileCheckinCompleteCommandSchema.parse(payload),
+	],
+	[
 		"reservation.send_quote",
 		(payload) => ReservationSendQuoteCommandSchema.parse(payload),
 	],
@@ -449,6 +496,14 @@ const commandPayloadValidators = new Map<string, CommandPayloadValidator>([
 	[
 		"rooms.features.update",
 		(payload) => RoomFeaturesUpdateCommandSchema.parse(payload),
+	],
+	[
+		"rooms.key.issue",
+		(payload) => RoomKeyIssueCommandSchema.parse(payload),
+	],
+	[
+		"rooms.key.revoke",
+		(payload) => RoomKeyRevokeCommandSchema.parse(payload),
 	],
 	[
 		"settings.value.set",

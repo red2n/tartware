@@ -39,6 +39,16 @@ export {
   ReservationWalkInCheckInCommandSchema,
   type ReservationWalkGuestCommand,
   ReservationWalkGuestCommandSchema,
+  type ReservationWaitlistOfferCommand,
+  ReservationWaitlistOfferCommandSchema,
+  type ReservationWaitlistExpireSweepCommand,
+  ReservationWaitlistExpireSweepCommandSchema,
+  type ReservationGenerateRegCardCommand,
+  ReservationGenerateRegCardCommandSchema,
+  type ReservationMobileCheckinStartCommand,
+  ReservationMobileCheckinStartCommandSchema,
+  type ReservationMobileCheckinCompleteCommand,
+  ReservationMobileCheckinCompleteCommandSchema,
 } from "@tartware/schemas/events/commands/reservations";
 export {
 	type GroupCreateCommand,

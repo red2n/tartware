@@ -430,3 +430,99 @@ export const BillingArWriteOffCommandSchema = z.object({
 export type BillingArWriteOffCommand = z.infer<
 	typeof BillingArWriteOffCommandSchema
 >;
+
+// ─── Cashier Session Commands ────────────────────────────────────────────────
+
+/**
+ * Open a new cashier session (shift start).
+ */
+export const BillingCashierOpenCommandSchema = z.object({
+	property_id: z.string().uuid(),
+	cashier_id: z.string().uuid(),
+	cashier_name: z.string().max(200),
+	terminal_id: z.string().max(50).optional(),
+	shift_type: z.enum(["morning", "afternoon", "night", "full_day"]).default("full_day"),
+	opening_float: z.coerce.number().nonnegative().default(0),
+	business_date: z.coerce.date().optional(),
+	metadata: z.record(z.unknown()).optional(),
+	idempotency_key: z.string().max(120).optional(),
+});
+
+export type BillingCashierOpenCommand = z.infer<
+	typeof BillingCashierOpenCommandSchema
+>;
+
+/**
+ * Close a cashier session (shift end) with reconciliation.
+ */
+export const BillingCashierCloseCommandSchema = z.object({
+	session_id: z.string().uuid(),
+	closing_cash_declared: z.coerce.number().nonnegative(),
+	closing_cash_counted: z.coerce.number().nonnegative(),
+	notes: z.string().max(2000).optional(),
+	metadata: z.record(z.unknown()).optional(),
+	idempotency_key: z.string().max(120).optional(),
+});
+
+export type BillingCashierCloseCommand = z.infer<
+	typeof BillingCashierCloseCommandSchema
+>;
+
+// ─── Dynamic Pricing Commands ─────────────────────────────────────────────────
+
+/**
+ * Evaluate active pricing rules for a given property/room type/date.
+ * Loads applicable pricing_rules, evaluates conditions against provided
+ * context (occupancy, demand, lead time, etc.), applies adjustments
+ * with caps, and returns the recommended adjusted rate.
+ */
+export const BillingPricingEvaluateCommandSchema = z.object({
+	property_id: z.string().uuid(),
+	room_type_id: z.string().uuid(),
+	/** The base rate to adjust (from rate table). */
+	base_rate: z.coerce.number().nonnegative(),
+	/** Target date for pricing evaluation. */
+	stay_date: z.coerce.date(),
+	/** Current property occupancy percentage (0-100). */
+	occupancy_percent: z.coerce.number().min(0).max(100).optional(),
+	/** Demand level for the day: very_low to exceptional. */
+	demand_level: z.enum([
+		"very_low", "low", "moderate", "high", "very_high", "exceptional",
+	]).optional(),
+	/** Days until arrival for advance-purchase / last-minute rules. */
+	days_until_arrival: z.coerce.number().int().nonnegative().optional(),
+	/** Guest's requested length of stay (nights). */
+	length_of_stay: z.coerce.number().int().positive().optional(),
+	/** Day of week (0=Sunday to 6=Saturday). */
+	day_of_week: z.coerce.number().int().min(0).max(6).optional(),
+	/** Booking channel for channel-based rules. */
+	channel: z.string().max(50).optional(),
+	/** Market segment for segment-based rules. */
+	segment: z.string().max(50).optional(),
+	metadata: z.record(z.unknown()).optional(),
+	idempotency_key: z.string().max(120).optional(),
+});
+
+export type BillingPricingEvaluateCommand = z.infer<
+	typeof BillingPricingEvaluateCommandSchema
+>;
+
+/**
+ * Bulk generate rate recommendations for a property/date range.
+ * Evaluates pricing rules across all room types and dates, then
+ * writes results to rate_recommendations for revenue manager review.
+ */
+export const BillingPricingBulkRecommendCommandSchema = z.object({
+	property_id: z.string().uuid(),
+	start_date: z.coerce.date(),
+	end_date: z.coerce.date(),
+	/** Only evaluate for specific room types (all if omitted). */
+	room_type_ids: z.array(z.string().uuid()).optional(),
+	dry_run: z.boolean().optional(),
+	metadata: z.record(z.unknown()).optional(),
+	idempotency_key: z.string().max(120).optional(),
+});
+
+export type BillingPricingBulkRecommendCommand = z.infer<
+	typeof BillingPricingBulkRecommendCommandSchema
+>;

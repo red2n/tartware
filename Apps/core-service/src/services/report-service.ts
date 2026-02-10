@@ -12,6 +12,12 @@ import {
   type RevenueKpiReport,
   RevenueKpiReportSchema,
   RevenueSummarySchema,
+  DemandForecastReportSchema,
+  type DemandForecastReport,
+  PaceReportSchema,
+  type PaceReport,
+  RevenueForecastReportSchema,
+  type RevenueForecastReport,
 } from "@tartware/schemas";
 
 import { query } from "../lib/db.js";
@@ -381,5 +387,211 @@ export const getInHouseReport = async (options: {
   return GuestListReportSchema.parse({
     total: toNonNegativeInt(countResult.rows[0]?.total, 0),
     items: parseGuestListRows(listResult.rows),
+  });
+};
+
+// ─── S13: Revenue Reports — Demand Forecast, Pace, Revenue Forecast ─────────
+
+// Re-export schemas from @tartware/schemas for consumers
+export {
+  DemandForecastReportSchema,
+  type DemandForecastReport,
+  PaceReportSchema,
+  type PaceReport,
+  RevenueForecastReportSchema,
+  type RevenueForecastReport,
+};
+
+/**
+ * Get demand forecast from the demand_calendar table.
+ */
+export const getDemandForecastReport = async (options: {
+  tenantId: string;
+  propertyId?: string;
+  startDate: string;
+  endDate: string;
+}): Promise<DemandForecastReport> => {
+  const { rows } = await query<Record<string, unknown>>(
+    `SELECT calendar_date::text, demand_level, demand_score,
+            COALESCE(occupancy_percent, 0) AS occupancy_percent,
+            COALESCE(forecasted_occupancy_percent, 0) AS forecasted_occupancy_percent,
+            COALESCE(adr, 0) AS adr,
+            COALESCE(forecasted_adr, 0) AS forecasted_adr,
+            COALESCE(revpar, 0) AS revpar,
+            COALESCE(forecasted_revpar, 0) AS forecasted_revpar,
+            COALESCE(rooms_available, 0) AS rooms_available,
+            COALESCE(rooms_occupied, 0) AS rooms_occupied,
+            COALESCE(rooms_remaining, 0) AS rooms_remaining,
+            booking_pace, recommended_pricing_strategy, season
+     FROM demand_calendar
+     WHERE tenant_id = $1
+       AND ($2::uuid IS NULL OR property_id = $2::uuid)
+       AND calendar_date >= $3::date AND calendar_date <= $4::date
+     ORDER BY calendar_date`,
+    [options.tenantId, options.propertyId ?? null, options.startDate, options.endDate],
+  );
+
+  const days = rows.map((r) => ({
+    calendar_date: String(r.calendar_date),
+    demand_level: String(r.demand_level ?? "unknown"),
+    demand_score: Number(r.demand_score ?? 0),
+    occupancy_percent: Number(r.occupancy_percent),
+    forecasted_occupancy_percent: Number(r.forecasted_occupancy_percent),
+    adr: Number(r.adr),
+    forecasted_adr: Number(r.forecasted_adr),
+    revpar: Number(r.revpar),
+    forecasted_revpar: Number(r.forecasted_revpar),
+    rooms_available: Number(r.rooms_available),
+    rooms_occupied: Number(r.rooms_occupied),
+    rooms_remaining: Number(r.rooms_remaining),
+    booking_pace: r.booking_pace ? String(r.booking_pace) : null,
+    recommended_pricing_strategy: r.recommended_pricing_strategy ? String(r.recommended_pricing_strategy) : null,
+    season: r.season ? String(r.season) : null,
+  }));
+
+  const total = days.length || 1;
+  return DemandForecastReportSchema.parse({
+    days,
+    summary: {
+      total_days: days.length,
+      avg_demand_score: days.reduce((s, d) => s + d.demand_score, 0) / total,
+      avg_occupancy: days.reduce((s, d) => s + d.occupancy_percent, 0) / total,
+      avg_forecasted_occupancy: days.reduce((s, d) => s + d.forecasted_occupancy_percent, 0) / total,
+      avg_adr: days.reduce((s, d) => s + d.adr, 0) / total,
+      avg_revpar: days.reduce((s, d) => s + d.revpar, 0) / total,
+    },
+  });
+};
+
+/**
+ * Get booking pace report from the demand_calendar table.
+ */
+export const getPaceReport = async (options: {
+  tenantId: string;
+  propertyId?: string;
+  startDate: string;
+  endDate: string;
+}): Promise<PaceReport> => {
+  const { rows } = await query<Record<string, unknown>>(
+    `SELECT calendar_date::text, booking_pace,
+            COALESCE(pace_vs_last_year, 0) AS pace_vs_last_year,
+            COALESCE(pace_vs_budget, 0) AS pace_vs_budget,
+            COALESCE(pickup_last_7_days, 0) AS pickup_last_7_days,
+            COALESCE(pickup_last_30_days, 0) AS pickup_last_30_days,
+            COALESCE(total_bookings, 0) AS total_bookings,
+            COALESCE(new_bookings_today, 0) AS new_bookings_today,
+            COALESCE(cancellations_today, 0) AS cancellations_today,
+            COALESCE(occupancy_percent, 0) AS occupancy_percent,
+            COALESCE(same_day_last_year_occupancy, 0) AS same_day_last_year_occupancy,
+            COALESCE(variance_vs_last_year_occupancy, 0) AS variance_vs_last_year_occupancy
+     FROM demand_calendar
+     WHERE tenant_id = $1
+       AND ($2::uuid IS NULL OR property_id = $2::uuid)
+       AND calendar_date >= $3::date AND calendar_date <= $4::date
+     ORDER BY calendar_date`,
+    [options.tenantId, options.propertyId ?? null, options.startDate, options.endDate],
+  );
+
+  const days = rows.map((r) => ({
+    calendar_date: String(r.calendar_date),
+    booking_pace: r.booking_pace ? String(r.booking_pace) : null,
+    pace_vs_last_year: Number(r.pace_vs_last_year),
+    pace_vs_budget: Number(r.pace_vs_budget),
+    pickup_last_7_days: Number(r.pickup_last_7_days),
+    pickup_last_30_days: Number(r.pickup_last_30_days),
+    total_bookings: Number(r.total_bookings),
+    new_bookings_today: Number(r.new_bookings_today),
+    cancellations_today: Number(r.cancellations_today),
+    occupancy_percent: Number(r.occupancy_percent),
+    same_day_last_year_occupancy: Number(r.same_day_last_year_occupancy),
+    variance_vs_last_year_occupancy: Number(r.variance_vs_last_year_occupancy),
+  }));
+
+  const total = days.length || 1;
+  return PaceReportSchema.parse({
+    days,
+    summary: {
+      total_days: days.length,
+      avg_pace_vs_last_year: days.reduce((s, d) => s + d.pace_vs_last_year, 0) / total,
+      total_pickup_7d: days.reduce((s, d) => s + d.pickup_last_7_days, 0),
+      total_pickup_30d: days.reduce((s, d) => s + d.pickup_last_30_days, 0),
+      total_new_bookings: days.reduce((s, d) => s + d.new_bookings_today, 0),
+      total_cancellations: days.reduce((s, d) => s + d.cancellations_today, 0),
+    },
+  });
+};
+
+/**
+ * Get revenue forecasts from the revenue_forecasts table.
+ */
+export const getRevenueForecastReport = async (options: {
+  tenantId: string;
+  propertyId?: string;
+  startDate: string;
+  endDate: string;
+  scenario?: string;
+  limit?: number;
+  offset?: number;
+}): Promise<RevenueForecastReport> => {
+  const limit = clampLimit(options.limit);
+  const offset = Math.max(options.offset ?? 0, 0);
+
+  const { rows: countResult } = await query<{ total: string }>(
+    `SELECT COUNT(*)::text AS total FROM revenue_forecasts
+     WHERE tenant_id = $1
+       AND ($2::uuid IS NULL OR property_id = $2::uuid)
+       AND forecast_date >= $3::date AND forecast_date <= $4::date
+       AND ($5::text IS NULL OR forecast_scenario = $5::text)`,
+    [options.tenantId, options.propertyId ?? null, options.startDate, options.endDate, options.scenario ?? null],
+  );
+
+  const { rows } = await query<Record<string, unknown>>(
+    `SELECT forecast_date::text, forecast_period, forecast_type, forecast_scenario,
+            COALESCE(forecasted_value, 0) AS forecasted_value,
+            COALESCE(confidence_level, 0) AS confidence_level,
+            confidence_interval_low, confidence_interval_high,
+            actual_value,
+            variance_percent,
+            COALESCE(room_revenue_forecast, 0) AS room_revenue_forecast,
+            COALESCE(fb_revenue_forecast, 0) AS fb_revenue_forecast,
+            COALESCE(other_revenue_forecast, 0) AS other_revenue_forecast,
+            COALESCE(total_revenue_forecast, 0) AS total_revenue_forecast,
+            COALESCE(forecasted_occupancy_percent, 0) AS forecasted_occupancy_percent,
+            COALESCE(forecasted_adr, 0) AS forecasted_adr,
+            COALESCE(forecasted_revpar, 0) AS forecasted_revpar,
+            COALESCE(review_status, 'draft') AS review_status
+     FROM revenue_forecasts
+     WHERE tenant_id = $1
+       AND ($2::uuid IS NULL OR property_id = $2::uuid)
+       AND forecast_date >= $3::date AND forecast_date <= $4::date
+       AND ($5::text IS NULL OR forecast_scenario = $5::text)
+     ORDER BY forecast_date, forecast_type
+     LIMIT $6 OFFSET $7`,
+    [options.tenantId, options.propertyId ?? null, options.startDate, options.endDate,
+     options.scenario ?? null, limit, offset],
+  );
+
+  return RevenueForecastReportSchema.parse({
+    forecasts: rows.map((r) => ({
+      forecast_date: String(r.forecast_date),
+      forecast_period: String(r.forecast_period),
+      forecast_type: String(r.forecast_type),
+      forecast_scenario: String(r.forecast_scenario),
+      forecasted_value: Number(r.forecasted_value),
+      confidence_level: Number(r.confidence_level),
+      confidence_interval_low: r.confidence_interval_low != null ? Number(r.confidence_interval_low) : null,
+      confidence_interval_high: r.confidence_interval_high != null ? Number(r.confidence_interval_high) : null,
+      actual_value: r.actual_value != null ? Number(r.actual_value) : null,
+      variance_percent: r.variance_percent != null ? Number(r.variance_percent) : null,
+      room_revenue_forecast: Number(r.room_revenue_forecast),
+      fb_revenue_forecast: Number(r.fb_revenue_forecast),
+      other_revenue_forecast: Number(r.other_revenue_forecast),
+      total_revenue_forecast: Number(r.total_revenue_forecast),
+      forecasted_occupancy_percent: Number(r.forecasted_occupancy_percent),
+      forecasted_adr: Number(r.forecasted_adr),
+      forecasted_revpar: Number(r.forecasted_revpar),
+      review_status: String(r.review_status),
+    })),
+    total: toNonNegativeInt(countResult[0]?.total, 0),
   });
 };

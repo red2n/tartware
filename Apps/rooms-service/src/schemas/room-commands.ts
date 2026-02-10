@@ -4,6 +4,8 @@ export {
   type RoomInventoryBlockCommand,
   RoomInventoryBlockCommandSchema,
   RoomInventoryReleaseCommandSchema,
+  RoomKeyIssueCommandSchema,
+  RoomKeyRevokeCommandSchema,
   RoomMoveCommandSchema,
   RoomOutOfOrderCommandSchema,
   RoomOutOfServiceCommandSchema,

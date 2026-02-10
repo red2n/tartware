@@ -3,6 +3,8 @@ import {
   ReservationListItemSchema as SchemaReservationListItemSchema,
   ReservationDetailSchema,
   type ReservationDetail,
+  CheckInBriefSchema,
+  type CheckInBrief,
 } from "@tartware/schemas";
 
 import { query } from "../lib/db.js";
@@ -10,6 +12,139 @@ import { RESERVATION_LIST_SQL } from "../sql/reservation-queries.js";
 import { toNonNegativeInt, toNumberOrFallback } from "../utils/numbers.js";
 
 export { ReservationDetailSchema, type ReservationDetail };
+export { CheckInBriefSchema, type CheckInBrief };
+
+/**
+ * S23: Aggregate pre-check-in guest recognition data.
+ * Combines reservation details, guest profile, preferences, and alerts
+ * into a single response for front-desk staff.
+ */
+export const getCheckInBrief = async (options: {
+  tenantId: string;
+  reservationId: string;
+}): Promise<CheckInBrief | null> => {
+  // 1. Fetch reservation + guest in one join
+  const { rows } = await query<Record<string, unknown>>(
+    `SELECT
+       r.id AS reservation_id,
+       r.guest_id,
+       r.guest_name,
+       r.guest_email,
+       r.guest_phone,
+       r.room_number,
+       rt.type_name AS room_type,
+       r.check_in_date,
+       r.check_out_date,
+       r.special_requests,
+       r.internal_notes,
+       r.reservation_type,
+       g.vip_status,
+       g.loyalty_tier,
+       g.loyalty_points,
+       g.is_blacklisted,
+       COALESCE(g.total_bookings, 0) AS total_stays,
+       COALESCE(g.total_nights, 0)   AS total_nights,
+       COALESCE(g.total_revenue, 0)  AS total_revenue,
+       g.last_stay_date
+     FROM reservations r
+     LEFT JOIN guests g ON r.guest_id = g.id AND g.tenant_id = r.tenant_id
+     LEFT JOIN room_types rt ON r.room_type_id = rt.id
+     WHERE r.id = $1 AND r.tenant_id = $2
+       AND COALESCE(r.is_deleted, false) = false
+     LIMIT 1`,
+    [options.reservationId, options.tenantId],
+  );
+
+  const row = rows[0];
+  if (!row) return null;
+
+  const guestId = row.guest_id as string | null;
+
+  // 2. Fetch guest preferences (if guest exists)
+  let preferences: CheckInBrief["preferences"] = [];
+  if (guestId) {
+    const { rows: prefRows } = await query<Record<string, unknown>>(
+      `SELECT preference_category, preference_type, preference_value,
+              priority, is_mandatory, is_special_request
+       FROM guest_preferences
+       WHERE guest_id = $1 AND tenant_id = $2
+         AND COALESCE(is_deleted, false) = false
+       ORDER BY priority DESC NULLS LAST
+       LIMIT 50`,
+      [guestId, options.tenantId],
+    );
+    preferences = prefRows.map((p) => ({
+      category: p.preference_category as string | null,
+      preference_type: p.preference_type as string | null,
+      preference_value: p.preference_value as string | null,
+      priority: p.priority != null ? Number(p.priority) : null,
+      is_mandatory: (p.is_mandatory as boolean) ?? false,
+      is_special_request: (p.is_special_request as boolean) ?? false,
+    }));
+  }
+
+  // 3. Fetch guest notes — separate alerts from informational notes
+  let alerts: CheckInBrief["alerts"] = [];
+  let notes: CheckInBrief["notes"] = [];
+  if (guestId) {
+    const { rows: noteRows } = await query<Record<string, unknown>>(
+      `SELECT note_id, note_type, note_text, is_alert, alert_level, status
+       FROM guest_notes
+       WHERE guest_id = $1 AND tenant_id = $2
+         AND (show_on_checkin = true OR is_alert = true OR show_at_frontdesk = true)
+         AND COALESCE(is_deleted, false) = false
+       ORDER BY is_alert DESC, alert_level ASC NULLS LAST
+       LIMIT 50`,
+      [guestId, options.tenantId],
+    );
+
+    for (const n of noteRows) {
+      const entry = {
+        note_id: String(n.note_id),
+        note_type: n.note_type as string | null,
+        note_text: n.note_text as string | null,
+        alert_level: n.alert_level as string | null,
+        is_alert: (n.is_alert as boolean) ?? false,
+        status: n.status as string | null,
+      };
+      if (entry.is_alert) {
+        alerts.push(entry);
+      } else {
+        notes.push(entry);
+      }
+    }
+  }
+
+  return CheckInBriefSchema.parse({
+    reservation_id: String(row.reservation_id),
+    guest_id: guestId,
+    guest_name: String(row.guest_name ?? "Unknown Guest"),
+    guest_email: row.guest_email as string | null,
+    guest_phone: row.guest_phone as string | null,
+    vip_status: row.vip_status as string | null,
+    loyalty_tier: row.loyalty_tier as string | null,
+    loyalty_points: row.loyalty_points != null ? Number(row.loyalty_points) : null,
+    is_blacklisted: (row.is_blacklisted as boolean) ?? false,
+    total_stays: toNonNegativeInt(row.total_stays, 0),
+    total_nights: toNonNegativeInt(row.total_nights, 0),
+    total_revenue: toNumberOrFallback(row.total_revenue, 0),
+    last_stay_date: row.last_stay_date
+      ? (row.last_stay_date instanceof Date
+          ? row.last_stay_date.toISOString()
+          : String(row.last_stay_date))
+      : null,
+    room_number: row.room_number as string | null,
+    room_type: row.room_type as string | null,
+    check_in_date: String(row.check_in_date),
+    check_out_date: String(row.check_out_date),
+    special_requests: row.special_requests as string | null,
+    internal_notes: row.internal_notes as string | null,
+    reservation_type: row.reservation_type as string | null,
+    preferences,
+    alerts,
+    notes,
+  });
+};
 
 /**
  * Re-export for backward compatibility.

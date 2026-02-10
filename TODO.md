@@ -275,45 +275,38 @@ Audit against online PMS industry standards (Oracle OPERA Cloud, Revfine PMS Fea
   - Coverage: **100%** — All 10 statuses have dedicated command handlers.
   - **Implemented**: `reservation.send_quote` (INQUIRY → QUOTED, sets `quoted_at`/`quote_expires_at`). `reservation.convert_quote` (QUOTED → PENDING, locks availability via guard). `reservation.expire` (INQUIRY/QUOTED/PENDING → EXPIRED, releases guard locks). Widened `cancelReservation` gate to accept INQUIRY and QUOTED. Added SQL migration for `quoted_at`, `quote_expires_at`, `expired_at` columns. Schemas, consumer dispatch, catalog, and validators all updated.
 
-- [ ] **S9: Group Booking Command Handlers** | Complexity: **Very High** | Priority: **P2**
+- [x] **S9: Group Booking Command Handlers** | Complexity: **Very High** | Priority: **P2**
   - PMS standard: group bookings with master/sub reservations, rooming lists, room blocks, cutoff dates, comp ratios.
-  - Coverage: **65%** — Rich schema exists (`group_bookings`, `group_room_blocks` with per-date/per-type granularity, pickup tracking, rooming list fields, comp ratios, BEO flag, revenue forecasting). No command handlers, no rooming list upload/parse, no cutoff enforcement, no group billing workflow.
-  - Scope: add `group.create`, `group.add_rooms`, `group.upload_rooming_list`, `group.cutoff_enforce`, `group.billing.setup` commands.
+  - Coverage: **65% → 85%** — **Implemented**: 5 command handlers (`group.create`, `group.add_rooms`, `group.upload_rooming_list`, `group.cutoff_enforce`, `group.billing.setup`). Group code generation, room block UPSERT with pickup tracking, rooming list → individual reservations with group_booking_id FK, cutoff enforcement with dry_run, master folio creation with routing rules. SQL migration added `group_booking_id` FK on reservations. Schemas, consumer dispatch, catalog, and validators all updated.
 
-- [ ] **S10: Commission Wiring to Reservations** | Complexity: **Medium** | Priority: **P2**
+- [x] **S10: Commission Wiring to Reservations** | Complexity: **Medium** | Priority: **P2**
   - PMS standard: travel agent / OTA commissions tracked per reservation and paid out.
-  - Coverage: **50%** — `commission_rules`, `commission_tracking`, `commission_statements`, `travel_agent_commissions` tables exist. `booking_sources` has commission fields. Not wired to reservation create/modify flow.
-  - Scope: link commission calculation to reservation pipeline; add commission statement generation.
+  - Coverage: **50% → 80%** — **Implemented**: `billing.commission.calculate` and `billing.commission.generate_statement` command handlers. Commission calculation at checkout queries `commission_rules` by booking source, computes percentage/flat fees, inserts `commission_tracking` record. Statement generation aggregates unpaid commissions into `commission_statements` with period tracking. Schemas, consumer dispatch, and validators updated.
 
-- [ ] **S11: Overbooking & Walk Procedures** | Complexity: **High** | Priority: **P2**
+- [x] **S11: Overbooking & Walk Procedures** | Complexity: **High** | Priority: **P2**
   - PMS standard: controlled overbooking with walk procedures (relocate guests, track walk-out costs, compensation).
-  - Coverage: **60%** — Availability guard with shadow mode / fail-open in dev. No explicit overbooking percentage config, no walk-out command, no compensation tracking.
-  - Scope: add overbooking allowance config per room type, `reservation.walk_guest` command, walk-out compensation tracking and reporting.
+  - Coverage: **60% → 85%** — **Implemented**: SQL migration added `overbooking_config` and `walk_history` tables. `reservation.walk_guest` command handler records walk-out with compensation details, updates reservation status to WALKED, releases room, inserts walk_history record. Schemas, consumer dispatch, catalog, and validators updated.
 
-- [ ] **S16: Distribution / Channel Runtime Connectors** | Complexity: **Very High** | Priority: **P2**
+- [x] **S16: Distribution / Channel Runtime Connectors** | Complexity: **Very High** | Priority: **P2**
   - PMS standard: real-time two-way sync with OTAs (Booking.com, Expedia), GDS (Amadeus, Sabre), and direct booking engines.
-  - Coverage: **60%** — Schema fully ready (`ota_configurations`, `ota_reservations_queue`, `ota_inventory_sync`, `ota_rate_plans`, `gds_connections`, `gds_message_log`, `gds_reservation_queue`, `channel_rate_parity`, `channel_mappings`). Multi-channel source tracking implemented (7 sources + 11 source types). No runtime OTA/GDS connector, no rate push, no availability sync.
-  - Scope: implement at least one OTA connector (Booking.com or channel manager API); add rate/availability push; wire inbound reservation queue processor.
+  - Coverage: **60% → 80%** — **Implemented**: 5 integration command handlers (`integration.ota.sync_request`, `integration.ota.rate_push`, `integration.webhook.retry`, `integration.mapping.update`, plus `processOtaReservationQueue`). OTA availability sync computes 30-day room availability, records to `ota_inventory_sync`. Rate push fetches `ota_rate_plans` with markup/markdown adjustments. Inbound OTA reservation queue processor deduplicates, maps room types via `channel_mappings`, creates internal reservations. Command routes migrated to `reservations-command-service`. Schemas, consumer dispatch updated.
 
 - [ ] **S17: Mobile / Self-Service Check-In** | Complexity: **High** | Priority: **P3**
   - PMS standard: mobile check-in via app or kiosk, contactless key issuance, digital registration cards.
   - Coverage: **30%** — `mobile_check_ins`, `digital_registration_cards`, `contactless_requests`, `mobile_keys` tables exist. No API endpoints or guest-facing flow.
   - Scope: add guest-facing check-in API, digital registration card generation, mobile key integration.
 
-- [ ] **S18: Early Check-In / Late Check-Out Fees** | Complexity: **Low** | Priority: **P2**
+- [x] **S18: Early Check-In / Late Check-Out Fees** | Complexity: **Low** | Priority: **P2**
   - PMS standard: configurable early CI / late CO surcharges with time-window rules.
-  - Coverage: **10%** — `eta` field on reservation; no fee logic or time-window configuration.
-  - Scope: add `early_checkin_fee`, `late_checkout_fee` to rate/property config; enforce at check-in/check-out with automatic charge posting.
+  - Coverage: **10% → 85%** — **Implemented**: SQL migration added `early_checkin_fee_config` and `late_checkout_fee_config` JSONB columns to properties table. Check-in handler reads property config, compares actual check-in time vs standard check-in time, posts automatic EARLY_CHECKIN charge if early. Check-out handler similarly posts LATE_CHECKOUT charge if past standard checkout. Both use configurable time-window-based fee tiers.
 
-- [ ] **S19: City Ledger & Accounts Receivable Workflow** | Complexity: **High** | Priority: **P2**
+- [x] **S19: City Ledger & Accounts Receivable Workflow** | Complexity: **High** | Priority: **P2**
   - PMS standard: direct billing to companies/agents with AR aging, statements, and collections.
-  - Coverage: **40%** — `accounts_receivable`, `credit_limits`, `CITY_LEDGER` folio type exist in schema. No runtime AR workflow, no aging reports, no statement generation.
-  - Scope: add AR posting on checkout for direct-bill guests; aging report; payment application against AR.
+  - Coverage: **40% → 80%** — **Implemented**: 4 AR command handlers (`billing.ar.post_to_ledger`, `billing.ar.apply_payment`, `billing.ar.generate_statement`, `billing.ar.aging_report`). AR posting transfers outstanding folio balance to `accounts_receivable`. Payment application reduces AR balance. Statement generation creates monthly AR statements. Aging report computes current/30/60/90+ day buckets. Schemas, consumer dispatch, and validators updated.
 
-- [ ] **S20: Split Billing & Folio Transfer Workflow** | Complexity: **Medium** | Priority: **P2**
+- [x] **S20: Split Billing & Folio Transfer Workflow** | Complexity: **Medium** | Priority: **P2**
   - PMS standard: split charges between guest/company folios, transfer charges between rooms/folios.
-  - Coverage: **50%** — `MASTER`, `CITY_LEDGER` folio types exist; `transfer_source/target` fields on `charge_postings`. `billing.folio.transfer` in command catalog but no handler implementation.
-  - Scope: implement `billing.folio.transfer` handler; add split-charge API; support multi-folio per reservation.
+  - Coverage: **50% → 85%** — **Implemented**: `billing.folio.transfer` handler moves charge postings between folios with balance recalculation. `billing.charge.split` handler splits a charge posting into two folios by amount/percentage with audit trail. Both validate source ownership, update folio balances atomically, and record `transfer_source`/`transfer_target` on charge_postings. Schemas, consumer dispatch, and validators updated.
 
 - [ ] **S21: Waitlist Auto-Offer & Expiration** | Complexity: **Medium** | Priority: **P3**
   - PMS standard: automatically offer rooms to waitlisted guests when availability opens; expire stale entries.
@@ -329,10 +322,9 @@ Audit against online PMS industry standards (Oracle OPERA Cloud, Revfine PMS Fea
   - Coverage: **40%** — All data available (guest preferences, VIP status, notes with alert triggers, loyalty tier). No check-in alert aggregation mechanism.
   - Scope: add `GET /v1/reservations/:id/check-in-brief` that aggregates guest preferences, VIP status, active notes/alerts, loyalty info, and special requests into a single pre-check-in response.
 
-- [ ] **S24: Dedicated Reporting Endpoints** | Complexity: **High** | Priority: **P2**
+- [x] **S24: Dedicated Reporting Endpoints** | Complexity: **High** | Priority: **P2**
   - PMS standard: occupancy reports, ADR/RevPAR, arrival/departure lists, in-house guest list, cancellation/no-show reports, revenue forecast.
-  - Coverage: **45%** — Can derive arrival/departure/in-house lists from `GET /v1/reservations` with date/status filters. No computed KPI endpoints (ADR, RevPAR, occupancy %), no forecast, no dedicated report format.
-  - Scope: add `/v1/reports/occupancy`, `/v1/reports/revenue-kpis`, `/v1/reports/arrivals`, `/v1/reports/departures`, `/v1/reports/in-house`; use SQL views/CTEs for aggregation.
+  - Coverage: **45% → 85%** — **Implemented**: 5 reporting endpoints in core-service: `/v1/reports/occupancy` (total rooms, occupied, available, OOO/OOS, occupancy %), `/v1/reports/revenue-kpis` (ADR, RevPAR, total revenue, room revenue, occupancy), `/v1/reports/arrivals` (expected arrivals with guest details), `/v1/reports/departures` (expected departures), `/v1/reports/in-house` (currently checked-in guests). All use SQL CTEs with tenant + property scoping and date-range filtering. Gateway routes added.
 
 - [ ] **S25: Room Move with Charge Transfer** | Complexity: **Medium** | Priority: **P3**
   - PMS standard: mid-stay room move transfers pending charges to new room, updates rate if room type changes, creates audit trail.

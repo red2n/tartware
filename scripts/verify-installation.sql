@@ -350,6 +350,113 @@ BEGIN
     END IF;
 
     RAISE NOTICE '';
+    RAISE NOTICE '--- Migration: Early/Late Fee Columns (S25) ---';
+
+    -- Check rates.early_checkin_fee column
+    IF EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema = 'public' AND table_name = 'rates'
+        AND column_name = 'early_checkin_fee'
+    ) THEN
+        RAISE NOTICE '  ✓ rates.early_checkin_fee column exists';
+        v_pass := v_pass + 1;
+    ELSE
+        RAISE WARNING '  ✗ rates.early_checkin_fee column MISSING';
+        v_fail := v_fail + 1;
+    END IF;
+
+    IF EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema = 'public' AND table_name = 'rates'
+        AND column_name = 'late_checkout_fee'
+    ) THEN
+        RAISE NOTICE '  ✓ rates.late_checkout_fee column exists';
+        v_pass := v_pass + 1;
+    ELSE
+        RAISE WARNING '  ✗ rates.late_checkout_fee column MISSING';
+        v_fail := v_fail + 1;
+    END IF;
+
+    IF EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema = 'public' AND table_name = 'rates'
+        AND column_name = 'early_checkin_cutoff_hour'
+    ) THEN
+        RAISE NOTICE '  ✓ rates.early_checkin_cutoff_hour column exists';
+        v_pass := v_pass + 1;
+    ELSE
+        RAISE WARNING '  ✗ rates.early_checkin_cutoff_hour column MISSING';
+        v_fail := v_fail + 1;
+    END IF;
+
+    IF EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema = 'public' AND table_name = 'rates'
+        AND column_name = 'late_checkout_cutoff_hour'
+    ) THEN
+        RAISE NOTICE '  ✓ rates.late_checkout_cutoff_hour column exists';
+        v_pass := v_pass + 1;
+    ELSE
+        RAISE WARNING '  ✗ rates.late_checkout_cutoff_hour column MISSING';
+        v_fail := v_fail + 1;
+    END IF;
+
+    RAISE NOTICE '';
+    RAISE NOTICE '--- Migration: Overbooking & Walk Tables (S11) ---';
+
+    -- Check overbooking_config table
+    IF EXISTS (
+        SELECT 1 FROM information_schema.tables
+        WHERE table_schema = 'public' AND table_name = 'overbooking_config'
+    ) THEN
+        RAISE NOTICE '  ✓ overbooking_config table exists';
+        v_pass := v_pass + 1;
+    ELSE
+        RAISE WARNING '  ✗ overbooking_config table MISSING';
+        v_fail := v_fail + 1;
+    END IF;
+
+    -- Check walk_history table
+    IF EXISTS (
+        SELECT 1 FROM information_schema.tables
+        WHERE table_schema = 'public' AND table_name = 'walk_history'
+    ) THEN
+        RAISE NOTICE '  ✓ walk_history table exists';
+        v_pass := v_pass + 1;
+    ELSE
+        RAISE WARNING '  ✗ walk_history table MISSING';
+        v_fail := v_fail + 1;
+    END IF;
+
+    RAISE NOTICE '';
+    RAISE NOTICE '--- Migration: Group Booking Link (S12) ---';
+
+    -- Check reservations.group_booking_id column
+    IF EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema = 'public' AND table_name = 'reservations'
+        AND column_name = 'group_booking_id'
+    ) THEN
+        RAISE NOTICE '  ✓ reservations.group_booking_id column exists';
+        v_pass := v_pass + 1;
+    ELSE
+        RAISE WARNING '  ✗ reservations.group_booking_id column MISSING';
+        v_fail := v_fail + 1;
+    END IF;
+
+    RAISE NOTICE '';
+    RAISE NOTICE '--- Migration: Early Check-in Charge Code ---';
+
+    -- Check EARLY_CHECKIN charge code exists
+    IF EXISTS (SELECT 1 FROM charge_codes WHERE code = 'EARLY_CHECKIN') THEN
+        RAISE NOTICE '  ✓ charge_codes has EARLY_CHECKIN';
+        v_pass := v_pass + 1;
+    ELSE
+        RAISE WARNING '  ✗ charge_codes EARLY_CHECKIN MISSING';
+        v_fail := v_fail + 1;
+    END IF;
+
+    RAISE NOTICE '';
     RAISE NOTICE '--- Indexes ---';
 
     -- Check idx_reservations_type index exists

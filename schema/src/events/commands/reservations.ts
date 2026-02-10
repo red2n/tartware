@@ -426,3 +426,129 @@ export const ReservationWalkGuestCommandSchema = z.object({
 export type ReservationWalkGuestCommand = z.infer<
 	typeof ReservationWalkGuestCommandSchema
 >;
+
+// ─── Waitlist Auto-Offer Commands ──────────────────────────────────────────────
+
+/**
+ * Offer a waitlisted guest a freed room. Transitions ACTIVE → OFFERED,
+ * sets offer_expiration_at and notifies the guest.
+ */
+export const ReservationWaitlistOfferCommandSchema = z.object({
+	waitlist_id: z.string().uuid(),
+	property_id: z.string().uuid(),
+	/** How many hours the guest has to accept (default 24). */
+	offer_ttl_hours: z.coerce.number().int().positive().default(24),
+	notify_via: z.enum(["EMAIL", "SMS", "PHONE", "PORTAL"]).default("EMAIL"),
+	notes: z.string().max(2000).optional(),
+	metadata: z.record(z.unknown()).optional(),
+	idempotency_key: z.string().max(120).optional(),
+});
+
+export type ReservationWaitlistOfferCommand = z.infer<
+	typeof ReservationWaitlistOfferCommandSchema
+>;
+
+/**
+ * Sweep expired waitlist offers. Finds OFFERED entries past
+ * offer_expiration_at and transitions them to EXPIRED, then
+ * auto-offers the next eligible guest.
+ */
+export const ReservationWaitlistExpireSweepCommandSchema = z.object({
+	property_id: z.string().uuid(),
+	/** Re-offer to next waitlisted guest automatically (default true). */
+	auto_reoffer: z.boolean().default(true),
+	dry_run: z.boolean().optional(),
+	metadata: z.record(z.unknown()).optional(),
+	idempotency_key: z.string().max(120).optional(),
+});
+
+export type ReservationWaitlistExpireSweepCommand = z.infer<
+	typeof ReservationWaitlistExpireSweepCommandSchema
+>;
+
+// ─── Registration Card Commands ──────────────────────────────────────────────
+
+/**
+ * Generate a digital registration card for a reservation.
+ * Snapshots guest data, room info, and stay dates into a
+ * digital_registration_cards row for legal/regulatory compliance.
+ */
+export const ReservationGenerateRegCardCommandSchema = z.object({
+	reservation_id: z.string().uuid(),
+	property_id: z.string().uuid(),
+	/** Override visit purpose (defaults to 'leisure'). */
+	visit_purpose: z.enum([
+		"leisure", "business", "conference", "wedding", "family_event", "other",
+	]).optional(),
+	company_name: z.string().max(200).optional(),
+	companion_names: z.array(z.string().max(200)).optional(),
+	vehicle_license_plate: z.string().max(30).optional(),
+	vehicle_make: z.string().max(50).optional(),
+	vehicle_model: z.string().max(50).optional(),
+	vehicle_color: z.string().max(30).optional(),
+	emergency_contact_name: z.string().max(200).optional(),
+	emergency_contact_phone: z.string().max(50).optional(),
+	emergency_contact_relationship: z.string().max(100).optional(),
+	terms_accepted: z.boolean().default(false),
+	privacy_accepted: z.boolean().default(false),
+	marketing_consent: z.boolean().default(false),
+	special_notes: z.string().max(2000).optional(),
+	metadata: z.record(z.unknown()).optional(),
+	idempotency_key: z.string().max(120).optional(),
+});
+
+export type ReservationGenerateRegCardCommand = z.infer<
+	typeof ReservationGenerateRegCardCommandSchema
+>;
+
+// ─── Mobile Check-in Commands ─────────────────────────────────────────────────
+
+/**
+ * Start a mobile check-in flow for a reservation. Creates a
+ * mobile_check_ins row in “in_progress” status.
+ */
+export const ReservationMobileCheckinStartCommandSchema = z.object({
+	reservation_id: z.string().uuid(),
+	property_id: z.string().uuid(),
+	guest_id: z.string().uuid(),
+	access_method: z.enum([
+		"mobile_app", "web_browser", "kiosk", "sms_link", "email_link", "qr_code",
+	]).default("mobile_app"),
+	device_type: z.string().max(50).optional(),
+	device_os: z.string().max(50).optional(),
+	app_version: z.string().max(20).optional(),
+	room_preferences: z.record(z.unknown()).optional(),
+	metadata: z.record(z.unknown()).optional(),
+	idempotency_key: z.string().max(120).optional(),
+});
+
+export type ReservationMobileCheckinStartCommand = z.infer<
+	typeof ReservationMobileCheckinStartCommandSchema
+>;
+
+/**
+ * Complete a mobile check-in flow. Verifies identity, assigns room,
+ * generates digital key, and transitions to “completed”.
+ */
+export const ReservationMobileCheckinCompleteCommandSchema = z.object({
+	mobile_checkin_id: z.string().uuid(),
+	identity_verification_method: z.enum([
+		"government_id", "passport", "drivers_license", "face_recognition",
+		"biometric", "existing_profile", "manual_verification", "not_required",
+	]).default("existing_profile"),
+	id_document_verified: z.boolean().default(false),
+	registration_card_signed: z.boolean().default(false),
+	payment_method_verified: z.boolean().default(false),
+	guest_signature_url: z.string().url().optional(),
+	room_id: z.string().uuid().optional(),
+	digital_key_type: z.enum([
+		"mobile_app_key", "nfc", "bluetooth", "qr_code", "pin_code", "physical_key_required",
+	]).optional(),
+	terms_accepted: z.boolean().default(false),
+	metadata: z.record(z.unknown()).optional(),
+	idempotency_key: z.string().max(120).optional(),
+});
+
+export type ReservationMobileCheckinCompleteCommand = z.infer<
+	typeof ReservationMobileCheckinCompleteCommandSchema
+>;

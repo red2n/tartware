@@ -5,7 +5,9 @@ import { z } from "zod";
 
 import {
   getReservationById,
+  getCheckInBrief,
   listReservations,
+  CheckInBriefSchema,
   ReservationDetailSchema,
   ReservationListItemSchema,
 } from "../services/reservation-service.js";
@@ -124,6 +126,46 @@ export const registerReservationRoutes = (app: FastifyInstance): void => {
       });
 
       return ReservationListResponseSchema.parse(reservations);
+    },
+  );
+
+  // ─── S23: Check-In Brief (Guest Recognition) ──────────────────────────────
+  const CheckInBriefJsonSchema = schemaFromZod(CheckInBriefSchema, "CheckInBrief");
+
+  app.get<{ Params: { id: string }; Querystring: ReservationGetQuery }>(
+    "/v1/reservations/:id/check-in-brief",
+    {
+      preHandler: app.withTenantScope({
+        resolveTenantId: (request) => (request.query as ReservationGetQuery).tenant_id,
+        minRole: "STAFF",
+        requiredModules: "core",
+      }),
+      schema: buildRouteSchema({
+        tag: RESERVATIONS_TAG,
+        summary: "Pre-check-in guest recognition brief (VIP status, preferences, alerts, loyalty)",
+        querystring: ReservationGetQueryJsonSchema,
+        response: {
+          200: CheckInBriefJsonSchema,
+        },
+      }),
+    },
+    async (request, reply) => {
+      const { tenant_id } = ReservationGetQuerySchema.parse(request.query);
+      const { id } = request.params;
+
+      const brief = await getCheckInBrief({
+        tenantId: tenant_id,
+        reservationId: id,
+      });
+
+      if (!brief) {
+        return reply.code(404).send({
+          error: "RESERVATION_NOT_FOUND",
+          message: `Reservation ${id} not found`,
+        });
+      }
+
+      return brief;
     },
   );
 };

@@ -9,10 +9,16 @@ import {
   getOccupancyReport,
   getPerformanceReport,
   getRevenueKpiReport,
+  getDemandForecastReport,
+  getPaceReport,
+  getRevenueForecastReport,
   GuestListReportSchema,
   OccupancyReportSchema,
   PerformanceReportSchema,
   RevenueKpiReportSchema,
+  DemandForecastReportSchema,
+  PaceReportSchema,
+  RevenueForecastReportSchema,
 } from "../services/report-service.js";
 
 const PerformanceReportQuerySchema = z.object({
@@ -75,6 +81,9 @@ const InHouseQueryJsonSchema = schemaFromZod(InHouseQuerySchema, "InHouseQuery")
 const OccupancyReportJsonSchema = schemaFromZod(OccupancyReportSchema, "OccupancyReportResponse");
 const RevenueKpiJsonSchema = schemaFromZod(RevenueKpiReportSchema, "RevenueKpiReportResponse");
 const GuestListJsonSchema = schemaFromZod(GuestListReportSchema, "GuestListReportResponse");
+const DemandForecastJsonSchema = schemaFromZod(DemandForecastReportSchema, "DemandForecastReportResponse");
+const PaceReportJsonSchema = schemaFromZod(PaceReportSchema, "PaceReportResponse");
+const RevenueForecastJsonSchema = schemaFromZod(RevenueForecastReportSchema, "RevenueForecastReportResponse");
 
 export const registerReportRoutes = (app: FastifyInstance): void => {
   // ─── Performance Report ────────────────────────────────────────────────────
@@ -254,6 +263,102 @@ export const registerReportRoutes = (app: FastifyInstance): void => {
       return getInHouseReport({
         tenantId: tenant_id,
         propertyId: property_id,
+        limit,
+        offset,
+      });
+    },
+  );
+
+  // ─── S13: Demand Forecast Report ──────────────────────────────────────────
+  app.get<{ Querystring: DateRangeReportQuery }>(
+    "/v1/reports/demand-forecast",
+    {
+      preHandler: app.withTenantScope({
+        resolveTenantId: (request) => (request.query as DateRangeReportQuery).tenant_id,
+        minRole: "ADMIN",
+        requiredModules: "analytics-bi",
+      }),
+      schema: buildRouteSchema({
+        tag: REPORTS_TAG,
+        summary: "Demand forecast (occupancy, ADR, RevPAR projections)",
+        querystring: DateRangeQueryJsonSchema,
+        response: { 200: DemandForecastJsonSchema },
+      }),
+    },
+    async (request) => {
+      const { tenant_id, property_id, start_date, end_date } =
+        DateRangeReportQuerySchema.parse(request.query);
+
+      return getDemandForecastReport({
+        tenantId: tenant_id,
+        propertyId: property_id,
+        startDate: start_date,
+        endDate: end_date,
+      });
+    },
+  );
+
+  // ─── S13: Booking Pace Report ─────────────────────────────────────────────
+  app.get<{ Querystring: DateRangeReportQuery }>(
+    "/v1/reports/pace",
+    {
+      preHandler: app.withTenantScope({
+        resolveTenantId: (request) => (request.query as DateRangeReportQuery).tenant_id,
+        minRole: "ADMIN",
+        requiredModules: "analytics-bi",
+      }),
+      schema: buildRouteSchema({
+        tag: REPORTS_TAG,
+        summary: "Booking pace report (pickup, vs last year, booking trends)",
+        querystring: DateRangeQueryJsonSchema,
+        response: { 200: PaceReportJsonSchema },
+      }),
+    },
+    async (request) => {
+      const { tenant_id, property_id, start_date, end_date } =
+        DateRangeReportQuerySchema.parse(request.query);
+
+      return getPaceReport({
+        tenantId: tenant_id,
+        propertyId: property_id,
+        startDate: start_date,
+        endDate: end_date,
+      });
+    },
+  );
+
+  // ─── S13: Revenue Forecast Report ─────────────────────────────────────────
+  const RevenueForecastQuerySchema = DateRangeReportQuerySchema.extend({
+    scenario: z.string().optional(),
+  });
+  type RevenueForecastQuery = z.infer<typeof RevenueForecastQuerySchema>;
+  const RevenueForecastQueryJsonSchema = schemaFromZod(RevenueForecastQuerySchema, "RevenueForecastQuery");
+
+  app.get<{ Querystring: RevenueForecastQuery }>(
+    "/v1/reports/revenue-forecast",
+    {
+      preHandler: app.withTenantScope({
+        resolveTenantId: (request) => (request.query as RevenueForecastQuery).tenant_id,
+        minRole: "ADMIN",
+        requiredModules: "analytics-bi",
+      }),
+      schema: buildRouteSchema({
+        tag: REPORTS_TAG,
+        summary: "Revenue forecast (scenario-based projections with confidence intervals)",
+        querystring: RevenueForecastQueryJsonSchema,
+        response: { 200: RevenueForecastJsonSchema },
+      }),
+    },
+    async (request) => {
+      const { tenant_id, property_id, start_date, end_date, scenario, limit, offset } =
+        RevenueForecastQuerySchema.parse(request.query);
+
+      return getRevenueForecastReport({
+        tenantId: tenant_id,
+        propertyId: property_id,
+        startDate: start_date,
+        endDate: end_date,
+        scenario,
         limit,
         offset,
       });

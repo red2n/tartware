@@ -79,6 +79,8 @@
 \ir 03-bookings/53_reservation_event_offsets.sql
 \ir 03-bookings/54_reservation_command_lifecycle.sql
 \ir 03-bookings/55_reservation_rate_fallbacks.sql
+\ir 03-bookings/56_overbooking_config.sql
+\ir 03-bookings/57_walk_history.sql
 -- Shadow observability (Roll Service parity + Availability Guard metadata)
 \echo '    - Shadow roll ledgers, checkpoints, and guard audit tables'
 \ir 03-bookings/90_roll_service_shadow_ledgers.sql

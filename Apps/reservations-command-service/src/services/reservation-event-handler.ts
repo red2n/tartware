@@ -268,6 +268,54 @@ const handleReservationCancelled = async (event: ReservationCancelledEvent): Pro
       tenantId,
     ],
   );
+
+  // S21: Auto-offer to waitlisted guests when a reservation is cancelled.
+  // Find the cancelled reservation's property + room type + dates, then
+  // look for the highest-priority ACTIVE waitlist entry and offer it.
+  try {
+    const { rows: resRows } = await query<Record<string, unknown>>(
+      `SELECT property_id, room_type_id, check_in_date, check_out_date
+       FROM reservations WHERE id = $1 AND tenant_id = $2`,
+      [payload.id, tenantId],
+    );
+    const res = resRows[0];
+    if (res?.property_id && res?.room_type_id) {
+      const { rows: waitlistRows } = await query<Record<string, unknown>>(
+        `SELECT waitlist_id, guest_id FROM waitlist_entries
+         WHERE tenant_id = $1 AND property_id = $2
+           AND requested_room_type_id = $3
+           AND waitlist_status = 'ACTIVE'
+           AND arrival_date <= $4 AND departure_date >= $5
+           AND is_deleted = false
+         ORDER BY priority_score DESC, vip_flag DESC, created_at ASC
+         LIMIT 1`,
+        [tenantId, res.property_id, res.room_type_id, res.check_in_date, res.check_out_date],
+      );
+      if (waitlistRows[0]) {
+        const expiresAt = new Date();
+        expiresAt.setHours(expiresAt.getHours() + 24);
+        await query(
+          `UPDATE waitlist_entries
+           SET waitlist_status = 'OFFERED',
+               offer_expiration_at = $3,
+               offer_response = 'PENDING',
+               last_notified_at = NOW(),
+               last_notified_via = 'EMAIL',
+               updated_at = NOW()
+           WHERE waitlist_id = $1 AND tenant_id = $2`,
+          [waitlistRows[0].waitlist_id, tenantId, expiresAt.toISOString()],
+        );
+        reservationsLogger.info(
+          { waitlistId: waitlistRows[0].waitlist_id, guestId: waitlistRows[0].guest_id, reservationId: payload.id },
+          "Auto-offered freed room to waitlisted guest after cancellation",
+        );
+      }
+    }
+  } catch (err) {
+    // Non-critical: log but don't fail the cancellation
+    reservationsLogger.warn({ err, reservationId: payload.id }, "Failed to auto-offer to waitlist after cancellation");
+  }
+
   return payload.id;
 };
 
