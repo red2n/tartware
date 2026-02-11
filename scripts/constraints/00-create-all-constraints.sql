@@ -155,9 +155,6 @@
 \ir 07-analytics/18_analytics_metric_dimensions_fk.sql
 \ir 07-analytics/19_analytics_reports_fk.sql
 \ir 07-analytics/20_report_property_ids_fk.sql
--- Note: Skipping duplicate 21_analytics_metrics_fk.sql (see 17_)
--- Note: Skipping duplicate 22_analytics_metric_dimensions_fk.sql (see 18_)
--- Note: Skipping duplicate 23_analytics_reports_fk.sql (see 19_)
 \ir 07-analytics/23_performance_reporting_fk.sql
 \ir 07-analytics/24_performance_alerting_fk.sql
 \ir 07-analytics/27_audit_logs_fk.sql
