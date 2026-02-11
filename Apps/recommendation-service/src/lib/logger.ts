@@ -1,17 +1,10 @@
-import pino from "pino";
+import { createServiceLogger, type PinoLogger } from "@tartware/telemetry";
 
 import { config } from "../config.js";
 
-export const appLogger = pino({
-  name: config.service.name,
+export const appLogger: PinoLogger = createServiceLogger({
+  serviceName: config.service.name,
   level: config.log.level,
-  transport: config.log.pretty
-    ? {
-        target: "pino-pretty",
-        options: {
-          colorize: true,
-          translateTime: "SYS:standard",
-        },
-      }
-    : undefined,
+  pretty: config.log.pretty,
+  environment: config.nodeEnv,
 });

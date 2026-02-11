@@ -2,14 +2,13 @@ import process from "node:process";
 
 import { ensureDependencies, parseHostPort, resolveOtelDependency } from "@tartware/config";
 import { createServiceLogger, initTelemetry } from "@tartware/telemetry";
-
-import { buildServer } from "./app.js";
 import {
   shutdownSettingsCommandCenterConsumer,
   startSettingsCommandCenterConsumer,
 } from "./commands/command-center-consumer.js";
 import { config } from "./config.js";
 import { shutdownProducer } from "./kafka/producer.js";
+import { buildServer } from "./server.js";
 
 const telemetry = await initTelemetry({
   serviceName: config.service.name,

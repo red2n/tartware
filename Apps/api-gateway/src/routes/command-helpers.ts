@@ -1,3 +1,20 @@
+/**
+ * Command dispatch helpers for the API gateway.
+ *
+ * The gateway acts as the CQRS command entry point: write requests arrive as
+ * REST calls and are translated into Kafka commands that downstream consumers
+ * (reservations-command-service, guests-service, housekeeping-service, etc.)
+ * process asynchronously.  This keeps the gateway thin — it validates the
+ * caller's role, extracts tenant/resource identifiers, and publishes a
+ * structured command message via {@link submitCommand} without executing any
+ * domain logic itself.
+ *
+ * Read requests (GET) are proxied directly to the owning service; only
+ * state-changing operations (POST/PUT/PATCH/DELETE) go through this command
+ * path.  The pattern avoids dual-write problems because the gateway never
+ * writes to the database — it only publishes to Kafka.
+ */
+
 import type { FastifyReply, FastifyRequest } from "fastify";
 
 import { submitCommand } from "../utils/command-publisher.js";

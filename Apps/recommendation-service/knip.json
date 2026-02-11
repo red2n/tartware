@@ -8,18 +8,11 @@
   ],
   "ignoreDependencies": [
     "@tartware/candidate-pipeline",
-    "@vitest/coverage-v8",
-    "pino-pretty",
-    "tsx"
+    "@tartware/config",
+    "@tartware/fastify-server",
+    "@tartware/telemetry"
   ],
-  "ignoreBinaries": [
-    "biome",
-    "eslint",
-    "knip",
-    "tsc",
-    "tsx",
-    "vitest"
-  ],
+  "ignoreBinaries": [],
   "ignoreExportsUsedInFile": {
     "type": true,
     "interface": true

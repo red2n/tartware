@@ -3,7 +3,7 @@
  */
 
 import { PipelineBuilder, TopKScoreSelector } from "@tartware/candidate-pipeline";
-import type { Logger } from "pino";
+import type { PinoLogger } from "@tartware/telemetry";
 
 import { config } from "../config.js";
 import {
@@ -34,7 +34,7 @@ import type { RoomCandidate, RoomRecommendationQuery } from "../types.js";
  * 5. Scorers: Preference, Value, Diversity, Upgrade
  * 6. Selection: TopKScore
  */
-export function buildRecommendationPipeline(logger: Logger) {
+export function buildRecommendationPipeline(logger: PinoLogger) {
   return (
     new PipelineBuilder<RoomRecommendationQuery, RoomCandidate>(logger)
       // Query Hydrators - enrich query with guest context
