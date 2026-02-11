@@ -11,6 +11,7 @@ import type {
 
 import { type CreateReservationResult, ReservationCommandError } from "./common.js";
 import { createReservation } from "./core.js";
+import { dispatchNotificationCommand } from "./notification-dispatch.js";
 
 /**
  * Add a guest to the waitlist for a sold-out date/room type.
@@ -233,6 +234,26 @@ export const waitlistOffer = async (
     },
     "Waitlist offer extended to guest",
   );
+
+  // S21: Dispatch notification to inform the guest about the offer
+  try {
+    await dispatchNotificationCommand({
+      tenantId,
+      guestId: entry.guest_id as string,
+      propertyId: command.property_id,
+      templateCode: "WAITLIST_OFFER",
+      waitlistId: command.waitlist_id,
+      arrivalDate: entry.arrival_date as string,
+      departureDate: entry.departure_date as string,
+      expiresAt: expiresAt.toISOString(),
+      correlationId: _context?.correlationId,
+    });
+  } catch (notifyErr) {
+    reservationsLogger.warn(
+      { err: notifyErr, waitlistId: command.waitlist_id },
+      "Failed to dispatch waitlist offer notification — offer still valid",
+    );
+  }
 
   return { eventId: command.waitlist_id, status: "offered" };
 };

@@ -8,6 +8,7 @@ import { v4 as uuid } from "uuid";
 
 import { query } from "../lib/db.js";
 import { reservationsLogger } from "../logger.js";
+import { dispatchNotificationCommand } from "./reservation-commands/notification-dispatch.js";
 
 /**
  * Result shape returned by reservation event handlers so the caller
@@ -314,6 +315,18 @@ const handleReservationCancelled = async (event: ReservationCancelledEvent): Pro
           },
           "Auto-offered freed room to waitlisted guest after cancellation",
         );
+
+        // S21: Notify the waitlisted guest about the offer
+        await dispatchNotificationCommand({
+          tenantId,
+          guestId: waitlistRows[0].guest_id as string,
+          propertyId: res.property_id as string,
+          templateCode: "WAITLIST_OFFER",
+          waitlistId: waitlistRows[0].waitlist_id as string,
+          arrivalDate: String(res.check_in_date),
+          departureDate: String(res.check_out_date),
+          expiresAt: expiresAt.toISOString(),
+        });
       }
     }
   } catch (err) {

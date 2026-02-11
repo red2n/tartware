@@ -72,6 +72,9 @@ import {
 	IntegrationWebhookRetryCommandSchema,
 } from "./events/commands/integrations.js";
 import {
+	NotificationSendCommandSchema,
+} from "./events/commands/notifications.js";
+import {
 	InventoryBulkReleaseCommandSchema,
 	InventoryLockRoomCommandSchema,
 	InventoryReleaseRoomCommandSchema,
@@ -520,6 +523,10 @@ const commandPayloadValidators = new Map<string, CommandPayloadValidator>([
 	[
 		"settings.value.revert",
 		(payload) => SettingsValueRevertCommandSchema.parse(payload),
+	],
+	[
+		"notification.send",
+		(payload) => NotificationSendCommandSchema.parse(payload),
 	],
 ]);
 

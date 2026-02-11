@@ -61,8 +61,15 @@ export type OutboxRepository = {
 		aggregateTypeFilter?: string,
 	) => Promise<OutboxRecord[]>;
 	markOutboxDelivered: (id: string) => Promise<void>;
+	markOutboxDeliveredByEventId: (eventId: string) => Promise<void>;
 	markOutboxFailed: (
 		id: string,
+		error: unknown,
+		retryBackoffMs: number,
+		maxRetries: number,
+	) => Promise<OutboxStatus>;
+	markOutboxFailedByEventId: (
+		eventId: string,
 		error: unknown,
 		retryBackoffMs: number,
 		maxRetries: number,
