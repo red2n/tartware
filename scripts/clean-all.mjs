@@ -42,10 +42,6 @@ const main = async () => {
   console.log("[clean] Running workspace clean scripts…");
   run("npx nx run-many -t clean");
 
-  console.log("[clean] Deriving workspace list…");
-  const nxProjects = runCapture("npx nx show projects --json");
-  const projectNames = JSON.parse(nxProjects);
-
   const removalTargets = new Map();
 
   // Root artifacts
@@ -112,4 +108,4 @@ const main = async () => {
   console.log("\n[clean] Clean complete");
 };
 
-main();
+await main();

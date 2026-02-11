@@ -10,10 +10,14 @@ COPY Apps/telemetry/package.json Apps/telemetry/
 COPY Apps/config/package.json Apps/config/
 COPY Apps/openapi-utils/package.json Apps/openapi-utils/
 COPY Apps/outbox/package.json Apps/outbox/
+COPY Apps/fastify-server/package.json Apps/fastify-server/
+COPY Apps/command-center-shared/package.json Apps/command-center-shared/
+COPY Apps/tenant-auth/package.json Apps/tenant-auth/
+COPY Apps/command-consumer-utils/package.json Apps/command-consumer-utils/
 COPY schema/package.json schema/
 COPY Apps/${SERVICE}/package.json Apps/${SERVICE}/
-RUN pnpm install --frozen-lockfile
 COPY . /app
+RUN pnpm install --frozen-lockfile
 RUN pnpm --filter @tartware/telemetry run build \
 	&& pnpm --filter @tartware/config run build \
 	&& pnpm --filter @tartware/openapi run build \
