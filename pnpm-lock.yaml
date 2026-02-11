@@ -573,9 +573,6 @@ importers:
       '@tartware/telemetry':
         specifier: workspace:*
         version: link:../telemetry
-      '@types/ioredis':
-        specifier: ^4.28.10
-        version: 4.28.10
       bcryptjs:
         specifier: ^2.4.3
         version: 2.4.3
@@ -953,6 +950,21 @@ importers:
       '@types/node':
         specifier: ^20.11.19
         version: 20.19.33
+      '@typescript-eslint/eslint-plugin':
+        specifier: ^7.0.1
+        version: 7.18.0(@typescript-eslint/parser@7.18.0(eslint@8.57.0)(typescript@5.9.3))(eslint@8.57.0)(typescript@5.9.3)
+      '@typescript-eslint/parser':
+        specifier: ^7.0.1
+        version: 7.18.0(eslint@8.57.0)(typescript@5.9.3)
+      eslint:
+        specifier: 8.57.0
+        version: 8.57.0
+      eslint-config-prettier:
+        specifier: ^9.1.0
+        version: 9.1.2(eslint@8.57.0)
+      eslint-plugin-import:
+        specifier: ^2.29.1
+        version: 2.32.0(@typescript-eslint/parser@7.18.0(eslint@8.57.0)(typescript@5.9.3))(eslint@8.57.0)
       knip:
         specifier: ^5.67.0
         version: 5.83.1(@types/node@20.19.33)(typescript@5.9.3)
@@ -962,6 +974,9 @@ importers:
       typescript:
         specifier: ^5.3.3
         version: 5.9.3
+      vitest:
+        specifier: ^4.0.18
+        version: 4.0.18(@opentelemetry/api@1.9.0)(@types/node@20.19.33)(@vitest/ui@4.0.18)(jiti@2.6.1)(tsx@4.21.0)(yaml@2.8.2)
 
   Apps/openapi-utils:
     dependencies:
@@ -2946,9 +2961,6 @@ packages:
 
   '@types/estree@1.0.8':
     resolution: {integrity: sha512-dWHzHa2WqEXI/O1E9OjrocMTKJl2mSrEolh1Iomrv6U+JuNwaHXsXx9bLu5gG7BUWFIN0skIQJQ/L1rIex4X6w==}
-
-  '@types/ioredis@4.28.10':
-    resolution: {integrity: sha512-69LyhUgrXdgcNDv7ogs1qXZomnfOEnSmrmMFqKgt1XMJxmoOSG/u3wYy13yACIfKuMJ8IhKgHafDO3sx19zVQQ==}
 
   '@types/json5@0.0.29':
     resolution: {integrity: sha512-dRLjCWHYg4oaA77cxO64oO+7JwCwnIzkZPdrrC71jQmQtlhM556pwKo5bUzqvZndkVbeFLIIi+9TC40JNF5hNQ==}
@@ -6666,10 +6678,6 @@ snapshots:
   '@types/deep-eql@4.0.2': {}
 
   '@types/estree@1.0.8': {}
-
-  '@types/ioredis@4.28.10':
-    dependencies:
-      '@types/node': 20.19.33
 
   '@types/json5@0.0.29': {}
 
