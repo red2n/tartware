@@ -20,6 +20,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -27,18 +29,27 @@ jobs:
           node-version: '20'
           cache: 'npm'
 
+      - name: Restore Nx cache
+        uses: actions/cache@v4
+        with:
+          path: .nx/cache
+          key: nx-${{ runner.os }}-${{ hashFiles('**/package-lock.json') }}-${{ github.sha }}
+          restore-keys: |
+            nx-${{ runner.os }}-${{ hashFiles('**/package-lock.json') }}-
+            nx-${{ runner.os }}-
+
       - name: Install dependencies
         run: npm ci
 
       - name: Lint
-        run: npx lerna run lint --scope=${{ inputs.package-scope }} --stream
+        run: npx nx run ${{ inputs.package-scope }}:lint
 
       - name: Biome
-        run: npx lerna run biome --scope=${{ inputs.package-scope }} --stream
+        run: npx nx run ${{ inputs.package-scope }}:biome
 
       - name: Knip
-        run: npx lerna run knip --scope=${{ inputs.package-scope }} --stream
+        run: npx nx run ${{ inputs.package-scope }}:knip
 
       - name: Test
         if: ${{ inputs.has-tests }}
-        run: npx lerna run test --scope=${{ inputs.package-scope }} --stream
+        run: npx nx run ${{ inputs.package-scope }}:test

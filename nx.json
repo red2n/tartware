@@ -1,0 +1,43 @@
+{
+  "$schema": "node_modules/nx/schemas/nx-schema.json",
+  "namedInputs": {
+    "default": ["{projectRoot}/**/*", "!{projectRoot}/dist/**", "!{projectRoot}/node_modules/**"],
+    "production": [
+      "default",
+      "!{projectRoot}/**/*.spec.ts",
+      "!{projectRoot}/**/*.test.ts",
+      "!{projectRoot}/vitest.config.*"
+    ]
+  },
+  "targetDefaults": {
+    "build": {
+      "dependsOn": ["^build"],
+      "inputs": ["production"],
+      "outputs": ["{projectRoot}/dist"],
+      "cache": true
+    },
+    "lint": {
+      "inputs": ["default"],
+      "cache": true
+    },
+    "biome": {
+      "inputs": ["default"],
+      "cache": true
+    },
+    "knip": {
+      "inputs": ["default"],
+      "cache": true
+    },
+    "test": {
+      "dependsOn": ["^build"],
+      "inputs": ["default"],
+      "cache": true
+    },
+    "dev": {
+      "cache": false
+    }
+  },
+  "defaultBase": "main",
+  "nxCloudId": null,
+  "useInferencePlugins": false
+}
