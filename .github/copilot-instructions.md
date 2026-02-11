@@ -27,3 +27,8 @@ The AGENTS.md file contains project-specific rules that override general coding 
 - Always ask for confirmation before running `git push`
 - Commits can be made without asking, but pushing requires explicit approval
 - **Before every commit that will be pushed**, run biome, knip, and eslint on all affected services (see Pre-Push Quality Gates in AGENTS.md)
+
+## GitHub Operations
+- **Always use GitHub CLI (`gh`)** for all GitHub-related tasks: PR creation, PR reviews, issue management, comment replies, thread resolution, release management, and repository operations.
+- Do NOT use raw `curl` calls to the GitHub API when `gh api` or a dedicated `gh` subcommand can accomplish the same task.
+- Use `gh api graphql` for operations that require GraphQL (e.g., resolving review threads).
