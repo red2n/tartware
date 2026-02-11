@@ -2,10 +2,10 @@ import { buildRouteSchema, errorResponseSchema, schemaFromZod } from "@tartware/
 import {
   CreateUserRequestSchema,
   CreateUserResponseSchema,
-  UserWithTenantsSchema,
+  SystemUserListQuerySchema,
+  SystemUserListResponseSchema,
 } from "@tartware/schemas";
 import type { FastifyInstance } from "fastify";
-import { z } from "zod";
 
 import { query } from "../lib/db.js";
 import { logSystemAdminEvent } from "../services/system-admin-service.js";
@@ -13,22 +13,6 @@ import { listUsers } from "../services/user-service.js";
 import { hashPassword } from "../utils/password.js";
 import { sanitizeForJson } from "../utils/sanitize.js";
 
-const SystemUserListQuerySchema = z.object({
-  limit: z.coerce.number().int().positive().max(500).default(100),
-  offset: z.coerce.number().int().nonnegative().default(0),
-  tenant_id: z.string().uuid().optional(),
-});
-
-const SystemUserListResponseSchema = z.object({
-  users: z.array(
-    UserWithTenantsSchema.extend({
-      version: z.string(),
-    }),
-  ),
-  count: z.number().int().nonnegative(),
-  limit: z.number().int().positive(),
-  offset: z.number().int().nonnegative(),
-});
 const SystemUserListQueryJsonSchema = schemaFromZod(
   SystemUserListQuerySchema,
   "SystemUserListQuery",

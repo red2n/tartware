@@ -1,7 +1,7 @@
 {
   "openapi": "3.0.3",
   "info": {
-    "title": "@tartware/settings-service API",
+    "title": "@tartware/core-service API",
     "description": "Settings catalog service APIs for tenant metadata.",
     "version": "0.1.0"
   },
@@ -1020,6 +1020,7 @@
           "Settings Catalog"
         ],
         "requestBody": {
+          "required": true,
           "content": {
             "application/json": {
               "schema": {
@@ -1089,8 +1090,7 @@
                 "additionalProperties": false
               }
             }
-          },
-          "required": true
+          }
         },
         "responses": {
           "201": {
@@ -1114,6 +1114,7 @@
           "Settings Catalog"
         ],
         "requestBody": {
+          "required": true,
           "content": {
             "application/json": {
               "schema": {
@@ -1340,7 +1341,8 @@
                       "type": "object",
                       "properties": {
                         "count": {
-                          "type": "integer"
+                          "type": "integer",
+                          "minimum": 0
                         }
                       },
                       "required": [
@@ -1366,6 +1368,7 @@
           "Amenity Catalog"
         ],
         "requestBody": {
+          "required": true,
           "content": {
             "application/json": {
               "schema": {
@@ -1426,8 +1429,7 @@
                 "additionalProperties": false
               }
             }
-          },
-          "required": true
+          }
         },
         "parameters": [
           {
@@ -1571,6 +1573,7 @@
           "Amenity Catalog"
         ],
         "requestBody": {
+          "required": true,
           "content": {
             "application/json": {
               "schema": {
@@ -1737,6 +1740,716 @@
                   },
                   "required": [
                     "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "message"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/packages": {
+      "get": {
+        "summary": "List packages",
+        "tags": [
+          "Packages"
+        ],
+        "description": "Retrieves room and service packages with filtering by type, status, and validity",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "in": "query",
+            "name": "tenant_id",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "in": "query",
+            "name": "property_id",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "package_type",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "is_active",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "is_published",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "is_featured",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "valid_on",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "exclusiveMinimum": 0,
+              "maximum": 500,
+              "default": 200
+            },
+            "in": "query",
+            "name": "limit",
+            "required": false
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "package_id": {
+                            "type": "string",
+                            "format": "uuid"
+                          },
+                          "tenant_id": {
+                            "type": "string",
+                            "format": "uuid"
+                          },
+                          "property_id": {
+                            "type": "string",
+                            "format": "uuid"
+                          },
+                          "property_name": {
+                            "type": "string"
+                          },
+                          "package_name": {
+                            "type": "string"
+                          },
+                          "package_code": {
+                            "type": "string"
+                          },
+                          "package_type": {
+                            "type": "string"
+                          },
+                          "package_type_display": {
+                            "type": "string"
+                          },
+                          "short_description": {
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "valid_from": {
+                            "type": "string"
+                          },
+                          "valid_to": {
+                            "type": "string"
+                          },
+                          "is_currently_valid": {
+                            "type": "boolean"
+                          },
+                          "min_nights": {
+                            "type": "integer"
+                          },
+                          "max_nights": {
+                            "type": "integer",
+                            "nullable": true
+                          },
+                          "min_guests": {
+                            "type": "integer"
+                          },
+                          "max_guests": {
+                            "type": "integer",
+                            "nullable": true
+                          },
+                          "pricing_model": {
+                            "type": "string"
+                          },
+                          "pricing_model_display": {
+                            "type": "string"
+                          },
+                          "base_price": {
+                            "type": "number"
+                          },
+                          "currency_code": {
+                            "type": "string",
+                            "default": "USD"
+                          },
+                          "discount_percentage": {
+                            "type": "number",
+                            "nullable": true
+                          },
+                          "includes_breakfast": {
+                            "type": "boolean"
+                          },
+                          "includes_lunch": {
+                            "type": "boolean"
+                          },
+                          "includes_dinner": {
+                            "type": "boolean"
+                          },
+                          "includes_parking": {
+                            "type": "boolean"
+                          },
+                          "includes_wifi": {
+                            "type": "boolean"
+                          },
+                          "includes_airport_transfer": {
+                            "type": "boolean"
+                          },
+                          "refundable": {
+                            "type": "boolean"
+                          },
+                          "free_cancellation_days": {
+                            "type": "integer",
+                            "nullable": true
+                          },
+                          "available_inventory": {
+                            "type": "integer",
+                            "nullable": true
+                          },
+                          "total_inventory": {
+                            "type": "integer",
+                            "nullable": true
+                          },
+                          "sold_count": {
+                            "type": "integer"
+                          },
+                          "is_active": {
+                            "type": "boolean"
+                          },
+                          "is_published": {
+                            "type": "boolean"
+                          },
+                          "is_featured": {
+                            "type": "boolean"
+                          },
+                          "total_bookings": {
+                            "type": "integer"
+                          },
+                          "total_revenue": {
+                            "type": "number",
+                            "nullable": true
+                          },
+                          "average_rating": {
+                            "type": "number",
+                            "nullable": true
+                          },
+                          "badge_text": {
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "image_urls": {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            },
+                            "nullable": true
+                          },
+                          "created_at": {
+                            "type": "string"
+                          },
+                          "updated_at": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "package_id",
+                          "tenant_id",
+                          "package_name",
+                          "package_code",
+                          "package_type",
+                          "package_type_display",
+                          "short_description",
+                          "valid_from",
+                          "valid_to",
+                          "is_currently_valid",
+                          "min_nights",
+                          "max_nights",
+                          "min_guests",
+                          "max_guests",
+                          "pricing_model",
+                          "pricing_model_display",
+                          "base_price",
+                          "discount_percentage",
+                          "includes_breakfast",
+                          "includes_lunch",
+                          "includes_dinner",
+                          "includes_parking",
+                          "includes_wifi",
+                          "includes_airport_transfer",
+                          "refundable",
+                          "free_cancellation_days",
+                          "available_inventory",
+                          "total_inventory",
+                          "sold_count",
+                          "is_active",
+                          "is_published",
+                          "is_featured",
+                          "total_bookings",
+                          "total_revenue",
+                          "average_rating",
+                          "badge_text",
+                          "image_urls",
+                          "created_at"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "count": {
+                          "type": "integer",
+                          "minimum": 0
+                        }
+                      },
+                      "required": [
+                        "count"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/packages/{packageId}": {
+      "get": {
+        "summary": "Get package by ID",
+        "tags": [
+          "Packages"
+        ],
+        "description": "Retrieves detailed information for a specific package",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "in": "query",
+            "name": "tenant_id",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "in": "path",
+            "name": "packageId",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "package_id": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "tenant_id": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "property_id": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "property_name": {
+                      "type": "string"
+                    },
+                    "package_name": {
+                      "type": "string"
+                    },
+                    "package_code": {
+                      "type": "string"
+                    },
+                    "package_type": {
+                      "type": "string"
+                    },
+                    "package_type_display": {
+                      "type": "string"
+                    },
+                    "short_description": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "valid_from": {
+                      "type": "string"
+                    },
+                    "valid_to": {
+                      "type": "string"
+                    },
+                    "is_currently_valid": {
+                      "type": "boolean"
+                    },
+                    "min_nights": {
+                      "type": "integer"
+                    },
+                    "max_nights": {
+                      "type": "integer",
+                      "nullable": true
+                    },
+                    "min_guests": {
+                      "type": "integer"
+                    },
+                    "max_guests": {
+                      "type": "integer",
+                      "nullable": true
+                    },
+                    "pricing_model": {
+                      "type": "string"
+                    },
+                    "pricing_model_display": {
+                      "type": "string"
+                    },
+                    "base_price": {
+                      "type": "number"
+                    },
+                    "currency_code": {
+                      "type": "string",
+                      "default": "USD"
+                    },
+                    "discount_percentage": {
+                      "type": "number",
+                      "nullable": true
+                    },
+                    "includes_breakfast": {
+                      "type": "boolean"
+                    },
+                    "includes_lunch": {
+                      "type": "boolean"
+                    },
+                    "includes_dinner": {
+                      "type": "boolean"
+                    },
+                    "includes_parking": {
+                      "type": "boolean"
+                    },
+                    "includes_wifi": {
+                      "type": "boolean"
+                    },
+                    "includes_airport_transfer": {
+                      "type": "boolean"
+                    },
+                    "refundable": {
+                      "type": "boolean"
+                    },
+                    "free_cancellation_days": {
+                      "type": "integer",
+                      "nullable": true
+                    },
+                    "available_inventory": {
+                      "type": "integer",
+                      "nullable": true
+                    },
+                    "total_inventory": {
+                      "type": "integer",
+                      "nullable": true
+                    },
+                    "sold_count": {
+                      "type": "integer"
+                    },
+                    "is_active": {
+                      "type": "boolean"
+                    },
+                    "is_published": {
+                      "type": "boolean"
+                    },
+                    "is_featured": {
+                      "type": "boolean"
+                    },
+                    "total_bookings": {
+                      "type": "integer"
+                    },
+                    "total_revenue": {
+                      "type": "number",
+                      "nullable": true
+                    },
+                    "average_rating": {
+                      "type": "number",
+                      "nullable": true
+                    },
+                    "badge_text": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "image_urls": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      },
+                      "nullable": true
+                    },
+                    "created_at": {
+                      "type": "string"
+                    },
+                    "updated_at": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "package_id",
+                    "tenant_id",
+                    "package_name",
+                    "package_code",
+                    "package_type",
+                    "package_type_display",
+                    "short_description",
+                    "valid_from",
+                    "valid_to",
+                    "is_currently_valid",
+                    "min_nights",
+                    "max_nights",
+                    "min_guests",
+                    "max_guests",
+                    "pricing_model",
+                    "pricing_model_display",
+                    "base_price",
+                    "discount_percentage",
+                    "includes_breakfast",
+                    "includes_lunch",
+                    "includes_dinner",
+                    "includes_parking",
+                    "includes_wifi",
+                    "includes_airport_transfer",
+                    "refundable",
+                    "free_cancellation_days",
+                    "available_inventory",
+                    "total_inventory",
+                    "sold_count",
+                    "is_active",
+                    "is_published",
+                    "is_featured",
+                    "total_bookings",
+                    "total_revenue",
+                    "average_rating",
+                    "badge_text",
+                    "image_urls",
+                    "created_at"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "message"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/packages/{packageId}/components": {
+      "get": {
+        "summary": "Get package components",
+        "tags": [
+          "Packages"
+        ],
+        "description": "Retrieves the services and amenities included in a package",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "in": "query",
+            "name": "tenant_id",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "in": "path",
+            "name": "packageId",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "component_id": {
+                            "type": "string",
+                            "format": "uuid"
+                          },
+                          "package_id": {
+                            "type": "string",
+                            "format": "uuid"
+                          },
+                          "component_type": {
+                            "type": "string"
+                          },
+                          "component_type_display": {
+                            "type": "string"
+                          },
+                          "component_name": {
+                            "type": "string"
+                          },
+                          "component_description": {
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "quantity": {
+                            "type": "integer"
+                          },
+                          "pricing_type": {
+                            "type": "string"
+                          },
+                          "unit_price": {
+                            "type": "number"
+                          },
+                          "is_included": {
+                            "type": "boolean"
+                          },
+                          "is_optional": {
+                            "type": "boolean"
+                          },
+                          "is_mandatory": {
+                            "type": "boolean"
+                          },
+                          "delivery_timing": {
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "delivery_location": {
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "display_order": {
+                            "type": "integer"
+                          },
+                          "is_active": {
+                            "type": "boolean"
+                          }
+                        },
+                        "required": [
+                          "component_id",
+                          "package_id",
+                          "component_type",
+                          "component_type_display",
+                          "component_name",
+                          "component_description",
+                          "quantity",
+                          "pricing_type",
+                          "unit_price",
+                          "is_included",
+                          "is_optional",
+                          "is_mandatory",
+                          "delivery_timing",
+                          "delivery_location",
+                          "display_order",
+                          "is_active"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "count": {
+                          "type": "integer",
+                          "minimum": 0
+                        }
+                      },
+                      "required": [
+                        "count"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
                   ],
                   "additionalProperties": false
                 }

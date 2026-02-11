@@ -1,49 +1,16 @@
 import { buildRouteSchema, errorResponseSchema, schemaFromZod } from "@tartware/openapi";
-import { PublicSystemAdministratorSchema } from "@tartware/schemas";
+import {
+  SystemAdminBreakGlassRequestSchema,
+  SystemAdminLoginRequestSchema,
+  SystemAdminLoginResponseSchema,
+} from "@tartware/schemas";
 import type { FastifyInstance } from "fastify";
-import { z } from "zod";
 
 import {
   authenticateSystemAdministrator,
   authenticateSystemAdministratorWithBreakGlass,
 } from "../services/system-admin-service.js";
 import { sanitizeForJson } from "../utils/sanitize.js";
-
-const SystemAdminLoginRequestSchema = z.object({
-  username: z.string().min(3),
-  password: z.string(),
-  mfa_code: z
-    .string()
-    .regex(/^\d{6}$/, "MFA code must be a 6-digit value")
-    .optional(),
-  device_fingerprint: z.string().min(8),
-});
-
-const SystemAdminProfileSchema = PublicSystemAdministratorSchema.pick({
-  id: true,
-  username: true,
-  email: true,
-  role: true,
-  last_login_at: true,
-  is_active: true,
-});
-
-const SystemAdminLoginResponseSchema = z.object({
-  access_token: z.string(),
-  token_type: z.literal("Bearer"),
-  expires_in: z.number().positive(),
-  scope: z.literal("SYSTEM_ADMIN"),
-  session_id: z.string(),
-  admin: SystemAdminProfileSchema,
-});
-
-const SystemAdminBreakGlassLoginRequestSchema = z.object({
-  username: z.string().min(3),
-  break_glass_code: z.string().min(8),
-  reason: z.string().min(10, "Reason must describe why emergency access is required."),
-  ticket_id: z.string().min(3).optional(),
-  device_fingerprint: z.string().min(8),
-});
 
 const ERROR_MESSAGES: Record<string, string> = {
   INVALID_CREDENTIALS: "Invalid username, password, or MFA code.",
@@ -83,7 +50,7 @@ const SystemAdminLoginResponseJsonSchema = schemaFromZod(
   "SystemAdminLoginResponse",
 );
 const SystemAdminBreakGlassLoginRequestJsonSchema = schemaFromZod(
-  SystemAdminBreakGlassLoginRequestSchema,
+  SystemAdminBreakGlassRequestSchema,
   "SystemAdminBreakGlassLoginRequest",
 );
 
@@ -108,7 +75,7 @@ export const registerSystemAuthRoutes = (app: FastifyInstance): void => {
       const result = await authenticateSystemAdministrator({
         username: body.username,
         password: body.password,
-        mfaCode: body.mfa_code,
+        mfaCode: body.mfa_code ?? undefined,
         deviceFingerprint: body.device_fingerprint,
         ipAddress: request.ip,
         userAgent: request.headers["user-agent"],
@@ -152,12 +119,12 @@ export const registerSystemAuthRoutes = (app: FastifyInstance): void => {
       }),
     },
     async (request, reply) => {
-      const body = SystemAdminBreakGlassLoginRequestSchema.parse(request.body);
+      const body = SystemAdminBreakGlassRequestSchema.parse(request.body);
       const result = await authenticateSystemAdministratorWithBreakGlass({
         username: body.username,
         code: body.break_glass_code,
         reason: body.reason,
-        ticketId: body.ticket_id,
+        ticketId: body.ticket_id ?? undefined,
         ipAddress: request.ip,
         userAgent: request.headers["user-agent"],
         deviceFingerprint: body.device_fingerprint,

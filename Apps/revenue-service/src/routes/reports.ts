@@ -1,6 +1,13 @@
 import { buildRouteSchema } from "@tartware/openapi";
+import {
+  type ForecastListQuery,
+  ForecastListQuerySchema,
+  type GoalListQuery,
+  GoalListQuerySchema,
+  type KpiQuery,
+  KpiQuerySchema,
+} from "@tartware/schemas";
 import type { FastifyInstance, FastifyPluginAsync } from "fastify";
-import { z } from "zod";
 
 import {
   getRevenueKpis,
@@ -9,36 +16,6 @@ import {
 } from "../services/report-service.js";
 
 const REPORTS_TAG = "Revenue Reports";
-
-const ForecastListQuerySchema = z.object({
-  tenant_id: z.string().uuid(),
-  property_id: z.string().uuid().optional(),
-  forecast_period: z.string().optional(),
-  scenario_type: z.string().optional(),
-  limit: z.coerce.number().int().positive().max(200).default(100),
-  offset: z.coerce.number().int().min(0).default(0),
-});
-
-type ForecastListQuery = z.infer<typeof ForecastListQuerySchema>;
-
-const GoalListQuerySchema = z.object({
-  tenant_id: z.string().uuid(),
-  property_id: z.string().uuid().optional(),
-  goal_type: z.string().optional(),
-  status: z.string().optional(),
-  limit: z.coerce.number().int().positive().max(200).default(100),
-  offset: z.coerce.number().int().min(0).default(0),
-});
-
-type GoalListQuery = z.infer<typeof GoalListQuerySchema>;
-
-const KpiQuerySchema = z.object({
-  tenant_id: z.string().uuid(),
-  property_id: z.string().uuid(),
-  business_date: z.string(),
-});
-
-type KpiQuery = z.infer<typeof KpiQuerySchema>;
 
 const reportRoutes: FastifyPluginAsync = async (app: FastifyInstance) => {
   app.get<{ Querystring: ForecastListQuery }>(

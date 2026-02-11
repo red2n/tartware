@@ -12,7 +12,7 @@ import type { RoomCandidate, RoomRecommendationQuery } from "../types.js";
 
 export class PreferenceScorer extends BaseScorer<RoomRecommendationQuery, RoomCandidate> {
   readonly name = "preference";
-  readonly weight = 0.4; // 40% of final score
+  override readonly weight = 0.4; // 40% of final score
 
   async score(
     queryParams: RoomRecommendationQuery,

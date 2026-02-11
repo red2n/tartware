@@ -15,7 +15,7 @@ export class GuestHistoryHydrator extends BaseQueryHydrator<RoomRecommendationQu
   /**
    * Only enable if we have a guest ID.
    */
-  enable(queryParams: RoomRecommendationQuery): boolean {
+  override enable(queryParams: RoomRecommendationQuery): boolean {
     return queryParams.guestId !== undefined;
   }
 

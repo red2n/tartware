@@ -1,7 +1,14 @@
 import { buildRouteSchema, errorResponseSchema, schemaFromZod } from "@tartware/openapi";
-import { PublicUserSchema, TenantRoleEnum } from "@tartware/schemas";
+import type { UserListQuery } from "@tartware/schemas";
+import {
+  CreateTenantUserResponseSchema,
+  CreateTenantUserSchema,
+  ResetTenantUserPasswordResponseSchema,
+  ResetTenantUserPasswordSchema,
+  TenantUserListResponseSchema,
+  UserListQuerySchema,
+} from "@tartware/schemas";
 import type { FastifyInstance } from "fastify";
-import { z } from "zod";
 
 import { config } from "../config.js";
 import { pool, query } from "../lib/db.js";
@@ -12,56 +19,14 @@ import { TENANT_AUTH_UPDATE_PASSWORD_SQL } from "../sql/tenant-auth-queries.js";
 import { hashPassword } from "../utils/password.js";
 import { sanitizeForJson } from "../utils/sanitize.js";
 
-const UserListQuerySchema = z.object({
-  limit: z.coerce.number().int().positive().max(100).default(50),
-  offset: z.coerce.number().int().min(0).default(0),
-  tenant_id: z.string().uuid(),
-});
-
-type UserListQuery = z.infer<typeof UserListQuerySchema>;
-
-const UserListResponseSchema = z.array(
-  PublicUserSchema.extend({
-    version: z.string(), // BigInt serialized as string
-  }),
-);
 const UserListQueryJsonSchema = schemaFromZod(UserListQuerySchema, "UserListQuery");
-const UserListResponseJsonSchema = schemaFromZod(UserListResponseSchema, "UserListResponse");
-
-const CreateTenantUserSchema = z.object({
-  tenant_id: z.string().uuid(),
-  username: z.string().min(3).max(50),
-  email: z.string().email(),
-  password: z.string().min(8).optional(),
-  first_name: z.string().min(1).max(100),
-  last_name: z.string().min(1).max(100),
-  phone: z.string().optional(),
-  role: TenantRoleEnum,
-});
-
-const CreateTenantUserResponseSchema = z.object({
-  id: z.string().uuid(),
-  username: z.string(),
-  email: z.string().email(),
-  message: z.string(),
-});
+const UserListResponseJsonSchema = schemaFromZod(TenantUserListResponseSchema, "UserListResponse");
 
 const CreateTenantUserJsonSchema = schemaFromZod(CreateTenantUserSchema, "CreateTenantUser");
 const CreateTenantUserResponseJsonSchema = schemaFromZod(
   CreateTenantUserResponseSchema,
   "CreateTenantUserResponse",
 );
-
-const ResetTenantUserPasswordSchema = z.object({
-  tenant_id: z.string().uuid(),
-  user_id: z.string().uuid(),
-  new_password: z.string().min(8).optional(),
-});
-
-const ResetTenantUserPasswordResponseSchema = z.object({
-  user_id: z.string().uuid(),
-  message: z.string(),
-});
 
 const ResetTenantUserPasswordJsonSchema = schemaFromZod(
   ResetTenantUserPasswordSchema,
@@ -95,7 +60,7 @@ export const registerUserRoutes = (app: FastifyInstance): void => {
       const { limit, offset, tenant_id } = UserListQuerySchema.parse(request.query);
       const users = await listUsers({ limit, offset, tenantId: tenant_id });
       const response = sanitizeForJson(users);
-      return UserListResponseSchema.parse(response);
+      return TenantUserListResponseSchema.parse(response);
     },
   );
 
@@ -103,8 +68,7 @@ export const registerUserRoutes = (app: FastifyInstance): void => {
     "/v1/users",
     {
       preHandler: app.withTenantScope({
-        resolveTenantId: (request) =>
-          (request.body as z.infer<typeof CreateTenantUserSchema>).tenant_id,
+        resolveTenantId: (request) => (request.body as { tenant_id: string }).tenant_id,
         minRole: "ADMIN",
       }),
       schema: buildRouteSchema({
@@ -252,8 +216,7 @@ export const registerUserRoutes = (app: FastifyInstance): void => {
     "/v1/users/reset-password",
     {
       preHandler: app.withTenantScope({
-        resolveTenantId: (request) =>
-          (request.body as z.infer<typeof ResetTenantUserPasswordSchema>).tenant_id,
+        resolveTenantId: (request) => (request.body as { tenant_id: string }).tenant_id,
         minRole: "ADMIN",
       }),
       schema: buildRouteSchema({

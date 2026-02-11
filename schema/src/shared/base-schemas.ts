@@ -353,3 +353,41 @@ export const confirmationNumber = z
 		message: "Confirmation number must be alphanumeric",
 	})
 	.describe("Confirmation number (6-20 characters)");
+
+// =====================================================
+// REUSABLE API QUERY SCHEMAS
+// =====================================================
+
+/**
+ * Standard pagination fields used across all list endpoints.
+ * `limit` caps at 200 rows, `offset` starts at 0.
+ */
+export const paginationFields = {
+	limit: z.coerce
+		.number()
+		.int()
+		.positive()
+		.max(200)
+		.default(100)
+		.describe("Maximum rows to return (1-200)"),
+	offset: z.coerce
+		.number()
+		.int()
+		.min(0)
+		.default(0)
+		.describe("Number of rows to skip"),
+};
+
+/**
+ * Base query schema for tenant-scoped list endpoints.
+ * Includes mandatory `tenant_id`, optional `property_id`, and pagination.
+ */
+export const TenantScopedListQuerySchema = z.object({
+	tenant_id: tenantId,
+	property_id: propertyId.optional(),
+	...paginationFields,
+});
+
+export type TenantScopedListQuery = z.infer<
+	typeof TenantScopedListQuerySchema
+>;

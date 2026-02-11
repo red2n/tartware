@@ -5,12 +5,17 @@ import {
   schemaFromZod,
 } from "@tartware/openapi";
 import {
-  SettingsCategoriesSchema,
-  SettingsDefinitionsSchema,
-  SettingsOptionsSchema,
-  SettingsScopeEnum,
-  SettingsSectionsSchema,
-  SettingsValueStatusEnum,
+  ActiveOnlyQuerySchema,
+  CreateValueSchema,
+  DefinitionsQuerySchema,
+  OptionsQuerySchema,
+  SectionsQuerySchema,
+  SettingsCategoryListSchema,
+  SettingsDefinitionListSchema,
+  SettingsOptionListSchema,
+  SettingsSectionListSchema,
+  UpdateValueSchema,
+  ValuesQuerySchema,
 } from "@tartware/schemas";
 import type { FastifyPluginAsync } from "fastify";
 import fp from "fastify-plugin";
@@ -34,23 +39,6 @@ import {
 const SETTINGS_CATALOG_TAG = "Settings Catalog";
 const defaultSettingsResponseSchema = jsonObjectSchema;
 
-const SettingsCategoryListSchema = z.object({
-  data: z.array(SettingsCategoriesSchema),
-  meta: z.object({ count: z.number().int().nonnegative() }),
-});
-const SettingsSectionListSchema = z.object({
-  data: z.array(SettingsSectionsSchema),
-  meta: z.object({ count: z.number().int().nonnegative() }),
-});
-const SettingsDefinitionListSchema = z.object({
-  data: z.array(SettingsDefinitionsSchema),
-  meta: z.object({ count: z.number().int().nonnegative() }),
-});
-const SettingsOptionListSchema = z.object({
-  data: z.array(SettingsOptionsSchema),
-  meta: z.object({ count: z.number().int().nonnegative() }),
-});
-
 const SettingsCategoryListJson = schemaFromZod(
   SettingsCategoryListSchema,
   "SettingsCategoryListResponse",
@@ -67,55 +55,6 @@ const SettingsOptionListJson = schemaFromZod(
   SettingsOptionListSchema,
   "SettingsOptionListResponse",
 );
-
-const ActiveOnlyQuerySchema = z.object({
-  active_only: z.coerce.boolean().default(true),
-});
-
-const SectionsQuerySchema = ActiveOnlyQuerySchema.extend({
-  category_id: z.string().uuid().optional(),
-  category_code: z.string().min(2).max(64).optional(),
-});
-
-const DefinitionsQuerySchema = ActiveOnlyQuerySchema.extend({
-  category_id: z.string().uuid().optional(),
-  section_id: z.string().uuid().optional(),
-  category_code: z.string().min(2).max(64).optional(),
-  section_code: z.string().min(2).max(64).optional(),
-  search: z.string().min(2).max(120).optional(),
-});
-
-const OptionsQuerySchema = ActiveOnlyQuerySchema.extend({
-  setting_id: z.string().uuid().optional(),
-  setting_code: z.string().min(2).max(160).optional(),
-});
-
-const ValuesQuerySchema = ActiveOnlyQuerySchema.extend({
-  scope_level: SettingsScopeEnum.optional(),
-  setting_id: z.string().uuid().optional(),
-  property_id: z.string().uuid().optional(),
-  unit_id: z.string().uuid().optional(),
-  user_id: z.string().uuid().optional(),
-});
-
-const CreateValueSchema = z.object({
-  setting_id: z.string().uuid(),
-  scope_level: SettingsScopeEnum,
-  value: z.unknown().optional(),
-  property_id: z.string().uuid().optional(),
-  unit_id: z.string().uuid().optional(),
-  user_id: z.string().uuid().optional(),
-  status: SettingsValueStatusEnum.optional(),
-  notes: z.string().max(1024).optional(),
-  effective_from: z.string().datetime().optional(),
-  effective_to: z.string().datetime().optional(),
-  context: z.record(z.unknown()).optional(),
-  metadata: z.record(z.unknown()).optional(),
-});
-
-const UpdateValueSchema = CreateValueSchema.partial().extend({
-  locked_until: z.string().datetime().optional(),
-});
 
 const ActiveOnlyQueryJson = schemaFromZod(ActiveOnlyQuerySchema, "SettingsActiveOnlyQuery");
 const SectionsQueryJson = schemaFromZod(SectionsQuerySchema, "SettingsSectionsQuery");

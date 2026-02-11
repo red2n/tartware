@@ -4,12 +4,12 @@
   "description": "Room recommendation service for Tartware PMS (inspired by X's recommendation architecture)",
   "private": true,
   "type": "module",
-  "main": "dist/index.js",
-  "types": "dist/index.d.ts",
+  "main": "dist/Apps/recommendation-service/src/index.js",
+  "types": "dist/Apps/recommendation-service/src/index.d.ts",
   "scripts": {
     "dev": "tsx src/index.ts",
     "build": "tsc --project tsconfig.json",
-    "start": "node dist/index.js",
+    "start": "node dist/Apps/recommendation-service/src/index.js",
     "lint": "eslint --ext .ts src",
     "lint:fix": "eslint --ext .ts src --fix",
     "biome": "biome check src",
@@ -33,7 +33,7 @@
     "jsonwebtoken": "^9.0.2",
     "pg": "^8.11.3",
     "prom-client": "^15.1.3",
-    "zod": "^3.23.8"
+    "@tartware/schemas": "workspace:*"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.2.5",

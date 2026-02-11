@@ -1,3 +1,4 @@
+import { generateKeyPairSync } from "node:crypto";
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import process from "node:process";
@@ -89,20 +90,66 @@ const services = [
   {
     id: "api-gateway",
     output: "docs/openapi/api-gateway.json",
-    modulePath: "Apps/api-gateway/dist/server.js",
+    modulePath: "Apps/api-gateway/dist/Apps/api-gateway/src/server.js",
     build: async () => {
-      const { buildServer } = await import(resolveDistModule("Apps/api-gateway/dist/server.js"));
+      const { buildServer } = await import(
+        resolveDistModule("Apps/api-gateway/dist/Apps/api-gateway/src/server.js")
+      );
       return buildServer();
     },
   },
   {
     id: "settings-service",
     output: "docs/openapi/settings-service.json",
-    modulePath: "Apps/settings-service/dist/Apps/settings-service/src/app.js",
+    modulePath: "Apps/settings-service/dist/Apps/settings-service/src/server.js",
     build: async () => {
       ensureSettingsServiceEnv();
       const { buildServer } = await import(
-        resolveDistModule("Apps/settings-service/dist/Apps/settings-service/src/app.js")
+        resolveDistModule("Apps/settings-service/dist/Apps/settings-service/src/server.js")
+      );
+      return buildServer({ logger: false });
+    },
+  },
+  {
+    id: "recommendation-service",
+    output: "docs/openapi/recommendation-service.json",
+    modulePath: "Apps/recommendation-service/dist/Apps/recommendation-service/src/server.js",
+    build: async () => {
+      const { buildServer } = await import(
+        resolveDistModule("Apps/recommendation-service/dist/Apps/recommendation-service/src/server.js")
+      );
+      return buildServer();
+    },
+  },
+  {
+    id: "availability-guard-service",
+    output: "docs/openapi/availability-guard-service.json",
+    modulePath: "Apps/availability-guard-service/dist/Apps/availability-guard-service/src/server.js",
+    build: async () => {
+      const { buildServer } = await import(
+        resolveDistModule("Apps/availability-guard-service/dist/Apps/availability-guard-service/src/server.js")
+      );
+      return buildServer();
+    },
+  },
+  {
+    id: "notification-service",
+    output: "docs/openapi/notification-service.json",
+    modulePath: "Apps/notification-service/dist/Apps/notification-service/src/server.js",
+    build: async () => {
+      const { buildServer } = await import(
+        resolveDistModule("Apps/notification-service/dist/Apps/notification-service/src/server.js")
+      );
+      return buildServer();
+    },
+  },
+  {
+    id: "revenue-service",
+    output: "docs/openapi/revenue-service.json",
+    modulePath: "Apps/revenue-service/dist/Apps/revenue-service/src/server.js",
+    build: async () => {
+      const { buildServer } = await import(
+        resolveDistModule("Apps/revenue-service/dist/Apps/revenue-service/src/server.js")
       );
       return buildServer({ logger: false });
     },
@@ -151,22 +198,34 @@ const exportSpec = async ({ id, output, modulePath, build }) => {
 };
 
 const run = async () => {
+  // Set test env to bypass config validation (DB_PASSWORD, JWT keys, etc.)
+  process.env.NODE_ENV = "test";
+
+  const failed = [];
   for (const service of services) {
-    await exportSpec(service);
+    try {
+      await exportSpec(service);
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : String(error);
+      console.error(`[export:openapi] SKIP ${service.id}: ${msg.split("\n")[0]}`);
+      failed.push(service.id);
+    }
+  }
+  if (failed.length > 0) {
+    console.warn(`\n[export:openapi] ${failed.length} service(s) failed: ${failed.join(", ")}`);
   }
 };
 
 const ensureSettingsServiceEnv = () => {
   process.env.JWT_AUDIENCE = process.env.JWT_AUDIENCE ?? "local-audience";
   process.env.JWT_ISSUER = process.env.JWT_ISSUER ?? "local-issuer";
-  process.env.JWT_PUBLIC_KEY =
-    process.env.JWT_PUBLIC_KEY ??
-    [
-      "-----BEGIN PUBLIC KEY-----",
-      "MFwwDQYJKoZIhvcNAQEBBQADSwAwSAJBALiH8XTur2qxGn8pY/+bexdFv+I5jBq5",
-      "x2VxYcy8KX2HFqRSbuuSSMzdg3NofM8JrIoVNewc19hXtOD87mpy4V8CAwEAAQ==",
-      "-----END PUBLIC KEY-----",
-    ].join("\n");
+  // Generate a valid RSA-2048 key pair for spec export (fast-jwt validates key format)
+  const { publicKey } = generateKeyPairSync("rsa", {
+    modulusLength: 2048,
+    publicKeyEncoding: { type: "spki", format: "pem" },
+    privateKeyEncoding: { type: "pkcs8", format: "pem" },
+  });
+  process.env.JWT_PUBLIC_KEY = publicKey;
 };
 
 run().catch((error) => {

@@ -1,6 +1,15 @@
 import { buildRouteSchema } from "@tartware/openapi";
+import {
+  type CompetitorRateListQuery,
+  CompetitorRateListQuerySchema,
+  type DemandCalendarListQuery,
+  DemandCalendarListQuerySchema,
+  type PricingRuleListQuery,
+  PricingRuleListQuerySchema,
+  type RecommendationListQuery,
+  RecommendationListQuerySchema,
+} from "@tartware/schemas";
 import type { FastifyInstance, FastifyPluginAsync } from "fastify";
-import { z } from "zod";
 
 import {
   getPricingRuleById,
@@ -11,49 +20,6 @@ import {
 } from "../services/pricing-service.js";
 
 const PRICING_TAG = "Dynamic Pricing";
-
-const PricingRuleListQuerySchema = z.object({
-  tenant_id: z.string().uuid(),
-  property_id: z.string().uuid().optional(),
-  rule_type: z.string().optional(),
-  is_active: z.coerce.boolean().optional(),
-  limit: z.coerce.number().int().positive().max(200).default(100),
-  offset: z.coerce.number().int().min(0).default(0),
-});
-
-type PricingRuleListQuery = z.infer<typeof PricingRuleListQuerySchema>;
-
-const RecommendationListQuerySchema = z.object({
-  tenant_id: z.string().uuid(),
-  property_id: z.string().uuid().optional(),
-  status: z.string().optional(),
-  recommendation_date: z.string().optional(),
-  limit: z.coerce.number().int().positive().max(200).default(100),
-  offset: z.coerce.number().int().min(0).default(0),
-});
-
-type RecommendationListQuery = z.infer<typeof RecommendationListQuerySchema>;
-
-const CompetitorRateListQuerySchema = z.object({
-  tenant_id: z.string().uuid(),
-  property_id: z.string().uuid().optional(),
-  rate_date: z.string().optional(),
-  limit: z.coerce.number().int().positive().max(200).default(100),
-  offset: z.coerce.number().int().min(0).default(0),
-});
-
-type CompetitorRateListQuery = z.infer<typeof CompetitorRateListQuerySchema>;
-
-const DemandCalendarListQuerySchema = z.object({
-  tenant_id: z.string().uuid(),
-  property_id: z.string().uuid().optional(),
-  date_from: z.string().optional(),
-  date_to: z.string().optional(),
-  limit: z.coerce.number().int().positive().max(200).default(100),
-  offset: z.coerce.number().int().min(0).default(0),
-});
-
-type DemandCalendarListQuery = z.infer<typeof DemandCalendarListQuerySchema>;
 
 const pricingRoutes: FastifyPluginAsync = async (app: FastifyInstance) => {
   app.get<{ Querystring: PricingRuleListQuery }>(

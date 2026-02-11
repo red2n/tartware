@@ -203,3 +203,100 @@ export const RoomResponseSchema = z.object({
 });
 
 export type RoomResponse = z.infer<typeof RoomResponseSchema>;
+
+// -----------------------------------------------------------------------------
+// Room List Query
+// -----------------------------------------------------------------------------
+
+/**
+ * Query schema for listing rooms with filters and optional recommendation context.
+ */
+export const RoomListQuerySchema = z.object({
+	tenant_id: uuid,
+	property_id: uuid.optional(),
+	status: z.string().toLowerCase().optional(),
+	housekeeping_status: z.string().toLowerCase().optional(),
+	search: z.string().min(1).max(50).optional(),
+	limit: z.coerce.number().int().positive().max(500).default(200),
+	guest_id: uuid.optional(),
+	check_in_date: z
+		.string()
+		.regex(/^\d{4}-\d{2}-\d{2}$/)
+		.optional(),
+	check_out_date: z
+		.string()
+		.regex(/^\d{4}-\d{2}-\d{2}$/)
+		.optional(),
+	adults: z.coerce.number().int().min(1).max(20).optional(),
+	children: z.coerce.number().int().min(0).max(20).optional(),
+	offset: z.coerce.number().int().min(0).default(0),
+});
+
+export type RoomListQuery = z.infer<typeof RoomListQuerySchema>;
+
+/**
+ * Query schema for getting a single room by ID with optional recommendation context.
+ */
+export const RoomByIdQuerySchema = z.object({
+	tenant_id: uuid,
+	guest_id: uuid.optional(),
+	check_in_date: z
+		.string()
+		.regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be in YYYY-MM-DD format")
+		.optional(),
+	check_out_date: z
+		.string()
+		.regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be in YYYY-MM-DD format")
+		.optional(),
+	adults: z.coerce.number().int().positive().max(20).optional(),
+	children: z.coerce.number().int().nonnegative().max(10).optional(),
+});
+
+export type RoomByIdQuery = z.infer<typeof RoomByIdQuerySchema>;
+
+// -----------------------------------------------------------------------------
+// Availability Search
+// -----------------------------------------------------------------------------
+
+/** Query schema for room availability search. */
+export const AvailabilityQuerySchema = z.object({
+	tenant_id: uuid,
+	property_id: uuid,
+	check_in_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be YYYY-MM-DD"),
+	check_out_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be YYYY-MM-DD"),
+	room_type_id: uuid.optional(),
+	adults: z.coerce.number().int().min(1).max(20).optional(),
+	limit: z.coerce.number().int().positive().max(200).default(50),
+	offset: z.coerce.number().int().min(0).default(0),
+});
+
+export type AvailabilityQuery = z.infer<typeof AvailabilityQuerySchema>;
+
+/** Available room entry in availability search results. */
+export const AvailableRoomSchema = z.object({
+	room_id: z.string(),
+	room_number: z.string(),
+	room_type_id: z.string(),
+	room_type_name: z.string(),
+	floor: z.string().nullable(),
+	status: z.string(),
+	housekeeping_status: z.string(),
+	max_occupancy: z.number(),
+	base_rate: z.number(),
+	currency: z.string(),
+	features: z.array(z.string()),
+});
+
+export type AvailableRoom = z.infer<typeof AvailableRoomSchema>;
+
+/** Availability search response. */
+export const AvailabilityResponseSchema = z.object({
+	available_rooms: z.array(AvailableRoomSchema),
+	total_count: z.number(),
+	check_in_date: z.string(),
+	check_out_date: z.string(),
+	nights: z.number(),
+	offset: z.number(),
+});
+
+export type AvailabilityResponse = z.infer<typeof AvailabilityResponseSchema>;

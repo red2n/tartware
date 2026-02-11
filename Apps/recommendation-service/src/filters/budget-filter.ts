@@ -14,7 +14,7 @@ export class BudgetFilter extends PredicateFilter<RoomRecommendationQuery, RoomC
   /**
    * Only enable if we have budget information.
    */
-  enable(query: RoomRecommendationQuery): boolean {
+  override enable(query: RoomRecommendationQuery): boolean {
     return query.budgetRange !== undefined;
   }
 

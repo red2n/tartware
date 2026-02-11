@@ -1,0 +1,327 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Recommendation Service API",
+    "description": "Room recommendation service for Tartware PMS",
+    "version": "0.1.0"
+  },
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    },
+    "schemas": {}
+  },
+  "paths": {
+    "/health": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        }
+      }
+    },
+    "/health/readiness": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        }
+      }
+    },
+    "/v1/recommendations": {
+      "get": {
+        "tags": [
+          "recommendations"
+        ],
+        "description": "Get personalized room recommendations",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "in": "query",
+            "name": "propertyId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "in": "query",
+            "name": "guestId",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "date"
+            },
+            "in": "query",
+            "name": "checkInDate",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "date"
+            },
+            "in": "query",
+            "name": "checkOutDate",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 10,
+              "default": 1
+            },
+            "in": "query",
+            "name": "adults",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 10,
+              "default": 0
+            },
+            "in": "query",
+            "name": "children",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 50
+            },
+            "in": "query",
+            "name": "limit",
+            "required": false
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "requestId": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "recommendations": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "roomId": {
+                            "type": "string",
+                            "format": "uuid"
+                          },
+                          "roomTypeId": {
+                            "type": "string",
+                            "format": "uuid"
+                          },
+                          "roomTypeName": {
+                            "type": "string"
+                          },
+                          "roomNumber": {
+                            "type": "string"
+                          },
+                          "floor": {
+                            "type": "integer"
+                          },
+                          "viewType": {
+                            "type": "string"
+                          },
+                          "baseRate": {
+                            "type": "number"
+                          },
+                          "dynamicRate": {
+                            "type": "number"
+                          },
+                          "totalPrice": {
+                            "type": "number"
+                          },
+                          "amenities": {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            }
+                          },
+                          "description": {
+                            "type": "string"
+                          },
+                          "maxOccupancy": {
+                            "type": "integer"
+                          },
+                          "bedType": {
+                            "type": "string"
+                          },
+                          "squareFootage": {
+                            "type": "number"
+                          },
+                          "isUpgrade": {
+                            "type": "boolean"
+                          },
+                          "upgradeDiscount": {
+                            "type": "number"
+                          },
+                          "relevanceScore": {
+                            "type": "number"
+                          },
+                          "source": {
+                            "type": "string"
+                          }
+                        }
+                      }
+                    },
+                    "totalCandidates": {
+                      "type": "integer"
+                    },
+                    "executionTimeMs": {
+                      "type": "number"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/recommendations/rank": {
+      "post": {
+        "tags": [
+          "recommendations"
+        ],
+        "description": "Rank a list of rooms for a guest (personalized ordering)",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "propertyId",
+                  "checkInDate",
+                  "checkOutDate",
+                  "roomIds"
+                ],
+                "properties": {
+                  "propertyId": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "guestId": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "checkInDate": {
+                    "type": "string",
+                    "format": "date"
+                  },
+                  "checkOutDate": {
+                    "type": "string",
+                    "format": "date"
+                  },
+                  "adults": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 10,
+                    "default": 1
+                  },
+                  "children": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 10,
+                    "default": 0
+                  },
+                  "roomIds": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "minItems": 1,
+                    "maxItems": 100
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "requestId": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "rankedRooms": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "roomId": {
+                            "type": "string",
+                            "format": "uuid"
+                          },
+                          "rank": {
+                            "type": "integer"
+                          },
+                          "relevanceScore": {
+                            "type": "number"
+                          },
+                          "reasons": {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            },
+                            "description": "Human-readable reasons for the ranking"
+                          }
+                        }
+                      }
+                    },
+                    "executionTimeMs": {
+                      "type": "number"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "servers": [
+    {
+      "url": "http://localhost:3040",
+      "description": "Development server"
+    }
+  ],
+  "security": [
+    {
+      "bearerAuth": []
+    }
+  ]
+}

@@ -1,99 +1,25 @@
 import { randomUUID } from "node:crypto";
 
 import { buildRouteSchema, errorResponseSchema, schemaFromZod } from "@tartware/openapi";
-import { TenantTypeEnum, TenantWithRelationsSchema } from "@tartware/schemas";
+import type { TenantListQuery } from "@tartware/schemas";
+import {
+  TenantBootstrapResponseSchema,
+  TenantBootstrapSchema,
+  TenantListQuerySchema,
+  TenantScopedListResponseSchema,
+} from "@tartware/schemas";
 import type { FastifyInstance } from "fastify";
-import { z } from "zod";
 
 import { pool } from "../lib/db.js";
 import { listTenants } from "../services/tenant-service.js";
 import { hashPassword } from "../utils/password.js";
 import { sanitizeForJson } from "../utils/sanitize.js";
 
-const TenantListQuerySchema = z.object({
-  limit: z.coerce.number().int().positive().max(100).default(50),
-  offset: z.coerce.number().int().nonnegative().default(0),
-});
-
-type TenantListQuery = z.infer<typeof TenantListQuerySchema>;
-
-const TenantListResponseSchema = z.object({
-  tenants: z.array(
-    TenantWithRelationsSchema.extend({
-      version: z.string(), // BigInt serialized as string
-    }),
-  ),
-  count: z.number().int().nonnegative(),
-  limit: z.number().int().positive(),
-  offset: z.number().int().nonnegative(),
-});
 const TenantListQueryJsonSchema = schemaFromZod(TenantListQuerySchema, "TenantListQuery");
-const TenantListResponseJsonSchema = schemaFromZod(TenantListResponseSchema, "TenantListResponse");
-
-const TenantBootstrapSchema = z.object({
-  tenant: z.object({
-    name: z.string().min(1).max(200),
-    slug: z
-      .string()
-      .min(1)
-      .max(100)
-      .regex(/^[a-z0-9-]+$/)
-      .optional(),
-    type: TenantTypeEnum.default("INDEPENDENT"),
-    email: z.string().email(),
-    phone: z.string().optional(),
-    website: z.string().url().optional(),
-  }),
-  property: z.object({
-    property_name: z.string().min(1).max(200),
-    property_code: z.string().min(1).max(50).optional(),
-    property_type: z.string().optional(),
-    star_rating: z.number().min(0).max(5).optional(),
-    total_rooms: z.number().int().nonnegative().optional(),
-    phone: z.string().optional(),
-    email: z.string().email().optional(),
-    website: z.string().url().optional(),
-    address: z
-      .object({
-        line1: z.string().optional(),
-        line2: z.string().optional(),
-        city: z.string().optional(),
-        state: z.string().optional(),
-        postal_code: z.string().optional(),
-        country: z.string().optional(),
-      })
-      .optional(),
-    currency: z.string().length(3).optional(),
-    timezone: z.string().optional(),
-  }),
-  owner: z.object({
-    username: z.string().min(3).max(50),
-    email: z.string().email(),
-    password: z.string().min(8),
-    first_name: z.string().min(1).max(100),
-    last_name: z.string().min(1).max(100),
-    phone: z.string().optional(),
-  }),
-});
-
-const TenantBootstrapResponseSchema = z.object({
-  tenant: z.object({
-    id: z.string().uuid(),
-    name: z.string(),
-    slug: z.string(),
-  }),
-  property: z.object({
-    id: z.string().uuid(),
-    property_name: z.string(),
-    property_code: z.string(),
-  }),
-  owner: z.object({
-    id: z.string().uuid(),
-    username: z.string(),
-    email: z.string().email(),
-  }),
-  message: z.string(),
-});
+const TenantListResponseJsonSchema = schemaFromZod(
+  TenantScopedListResponseSchema,
+  "TenantListResponse",
+);
 
 const TenantBootstrapJsonSchema = schemaFromZod(TenantBootstrapSchema, "TenantBootstrap");
 const TenantBootstrapResponseJsonSchema = schemaFromZod(
@@ -172,7 +98,7 @@ export const registerTenantRoutes = (app: FastifyInstance): void => {
       const tenantIds = Array.from(request.auth.membershipMap.keys());
       const tenants = await listTenants({ limit, offset, tenantIds });
       const response = sanitizeForJson({ tenants, count: tenants.length, limit, offset });
-      return TenantListResponseSchema.parse(response);
+      return TenantScopedListResponseSchema.parse(response);
     },
   );
 

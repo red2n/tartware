@@ -10,12 +10,12 @@ import type { RoomCandidate, RoomRecommendationQuery } from "../types.js";
 
 export class UpgradeScorer extends BaseScorer<RoomRecommendationQuery, RoomCandidate> {
   readonly name = "upgrade";
-  readonly weight = 0.2; // 20% of final score
+  override readonly weight = 0.2; // 20% of final score
 
   /**
    * Only enable for guests who might be interested in upgrades.
    */
-  enable(queryParams: RoomRecommendationQuery): boolean {
+  override enable(queryParams: RoomRecommendationQuery): boolean {
     return queryParams.loyaltyTier !== undefined && queryParams.loyaltyTier !== "none";
   }
 

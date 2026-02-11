@@ -15,7 +15,7 @@ export class AccessibilityFilter extends BaseFilter<RoomRecommendationQuery, Roo
   /**
    * Only enable if guest has accessibility requirements.
    */
-  enable(queryParams: RoomRecommendationQuery): boolean {
+  override enable(queryParams: RoomRecommendationQuery): boolean {
     return (
       queryParams.guestPreferences?.accessibilityNeeds !== undefined &&
       queryParams.guestPreferences.accessibilityNeeds.length > 0

@@ -14,13 +14,15 @@ export const buildServer = (): FastifyInstance => {
     corsOrigin: false,
     enableMetricsEndpoint: true,
     metricsRegistry,
+    beforeRoutes: (app) => {
+      app.register(authContextPlugin);
+      app.register(swaggerPlugin);
+    },
+    registerRoutes: (app) => {
+      registerHealthRoutes(app);
+      registerRecommendationRoutes(app);
+    },
   });
-
-  void app.register(authContextPlugin);
-  void app.register(swaggerPlugin);
-
-  registerHealthRoutes(app);
-  registerRecommendationRoutes(app);
 
   return app;
 };

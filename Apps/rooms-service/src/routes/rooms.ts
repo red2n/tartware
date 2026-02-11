@@ -1,8 +1,15 @@
 import { buildRouteSchema, schemaFromZod } from "@tartware/openapi";
 import {
+  type AvailabilityQuery,
+  AvailabilityQuerySchema,
+  AvailabilityResponseSchema,
   CreateRoomsSchema,
   HousekeepingStatusEnum,
   MaintenanceStatusEnum,
+  type RoomByIdQuery,
+  RoomByIdQuerySchema,
+  type RoomListQuery,
+  RoomListQuerySchema,
   RoomStatusEnum,
 } from "@tartware/schemas";
 import type { FastifyInstance } from "fastify";
@@ -18,47 +25,6 @@ import {
   searchAvailableRooms,
   updateRoom,
 } from "../services/room-service.js";
-
-const RoomListQuerySchema = z.object({
-  tenant_id: z.string().uuid(),
-  property_id: z.string().uuid().optional(),
-  status: z
-    .string()
-    .toLowerCase()
-    .optional()
-    .refine(
-      (value) =>
-        !value || RoomStatusEnum.options.map((status) => status.toLowerCase()).includes(value),
-      { message: "Invalid room status" },
-    ),
-  housekeeping_status: z
-    .string()
-    .toLowerCase()
-    .optional()
-    .refine(
-      (value) =>
-        !value ||
-        HousekeepingStatusEnum.options.map((status) => status.toLowerCase()).includes(value),
-      { message: "Invalid housekeeping status" },
-    ),
-  search: z.string().min(1).max(50).optional(),
-  limit: z.coerce.number().int().positive().max(500).default(200),
-  // Recommendation context - when provided, rooms are ranked by recommendation score
-  guest_id: z.string().uuid().optional(),
-  check_in_date: z
-    .string()
-    .regex(/^\d{4}-\d{2}-\d{2}$/)
-    .optional(),
-  check_out_date: z
-    .string()
-    .regex(/^\d{4}-\d{2}-\d{2}$/)
-    .optional(),
-  adults: z.coerce.number().int().min(1).max(20).optional(),
-  children: z.coerce.number().int().min(0).max(20).optional(),
-  offset: z.coerce.number().int().min(0).default(0),
-});
-
-type RoomListQuery = z.infer<typeof RoomListQuerySchema>;
 
 const RoomListResponseSchema = z.array(RoomListItemSchema);
 const RoomListQueryJsonSchema = schemaFromZod(RoomListQuerySchema, "RoomListQuery");
@@ -292,23 +258,6 @@ export const registerRoomRoutes = (app: FastifyInstance): void => {
   );
 
   // Schema for single room query with optional recommendation context
-  const RoomByIdQuerySchema = z.object({
-    tenant_id: z.string().uuid(),
-    // Recommendation context - when provided, room includes recommendation score
-    guest_id: z.string().uuid().optional(),
-    check_in_date: z
-      .string()
-      .regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be in YYYY-MM-DD format")
-      .optional(),
-    check_out_date: z
-      .string()
-      .regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be in YYYY-MM-DD format")
-      .optional(),
-    adults: z.coerce.number().int().positive().max(20).optional(),
-    children: z.coerce.number().int().nonnegative().max(10).optional(),
-  });
-
-  type RoomByIdQuery = z.infer<typeof RoomByIdQuerySchema>;
 
   app.get<{
     Params: { roomId: string };
@@ -503,40 +452,6 @@ export const registerRoomRoutes = (app: FastifyInstance): void => {
   );
 
   // --- Availability search endpoint ---
-
-  const AvailabilityQuerySchema = z.object({
-    tenant_id: z.string().uuid(),
-    property_id: z.string().uuid(),
-    check_in_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be YYYY-MM-DD"),
-    check_out_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be YYYY-MM-DD"),
-    room_type_id: z.string().uuid().optional(),
-    adults: z.coerce.number().int().min(1).max(20).optional(),
-    limit: z.coerce.number().int().positive().max(200).default(50),
-    offset: z.coerce.number().int().min(0).default(0),
-  });
-  type AvailabilityQuery = z.infer<typeof AvailabilityQuerySchema>;
-
-  const AvailableRoomSchema = z.object({
-    room_id: z.string(),
-    room_number: z.string(),
-    room_type_id: z.string(),
-    room_type_name: z.string(),
-    floor: z.string().nullable(),
-    status: z.string(),
-    housekeeping_status: z.string(),
-    max_occupancy: z.number(),
-    base_rate: z.number(),
-    currency: z.string(),
-    features: z.array(z.string()),
-  });
-  const AvailabilityResponseSchema = z.object({
-    available_rooms: z.array(AvailableRoomSchema),
-    total_count: z.number(),
-    check_in_date: z.string(),
-    check_out_date: z.string(),
-    nights: z.number(),
-    offset: z.number(),
-  });
 
   const AvailabilityQueryJsonSchema = schemaFromZod(AvailabilityQuerySchema, "AvailabilityQuery");
   const AvailabilityResponseJsonSchema = schemaFromZod(

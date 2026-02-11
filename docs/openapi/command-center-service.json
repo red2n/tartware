@@ -1,7 +1,7 @@
 {
   "openapi": "3.0.3",
   "info": {
-    "title": "@tartware/command-center-service API",
+    "title": "@tartware/core-service API",
     "version": "0.1.0",
     "description": "Command orchestration surface for Tartware (central ingress + routing)."
   },
@@ -44,16 +44,13 @@
                     "type": "object",
                     "properties": {
                       "name": {
-                        "type": "string",
-                        "minLength": 1
+                        "type": "string"
                       },
                       "label": {
-                        "type": "string",
-                        "minLength": 1
+                        "type": "string"
                       },
                       "description": {
-                        "type": "string",
-                        "minLength": 1
+                        "type": "string"
                       },
                       "samplePayload": {
                         "type": "object",
@@ -81,6 +78,7 @@
           "Command Center"
         ],
         "requestBody": {
+          "required": true,
           "content": {
             "application/json": {
               "schema": {
@@ -130,8 +128,7 @@
                 "additionalProperties": false
               }
             }
-          },
-          "required": true
+          }
         },
         "parameters": [
           {
@@ -159,8 +156,7 @@
                       ]
                     },
                     "commandId": {
-                      "type": "string",
-                      "format": "uuid"
+                      "type": "string"
                     },
                     "commandName": {
                       "type": "string"

@@ -1,7 +1,13 @@
 import { buildRouteSchema, errorResponseSchema, schemaFromZod } from "@tartware/openapi";
-import { TenantTypeEnum, TenantWithRelationsSchema } from "@tartware/schemas";
+import {
+  SystemBootstrapTenantResponseSchema,
+  SystemBootstrapTenantSchema,
+  SystemCreateTenantResponseSchema,
+  SystemCreateTenantSchema,
+  SystemTenantListQuerySchema,
+  SystemTenantListResponseSchema,
+} from "@tartware/schemas";
 import type { FastifyInstance } from "fastify";
-import { z } from "zod";
 
 import { pool, query } from "../lib/db.js";
 import { logSystemAdminEvent } from "../services/system-admin-service.js";
@@ -9,21 +15,6 @@ import { listTenants } from "../services/tenant-service.js";
 import { hashPassword } from "../utils/password.js";
 import { sanitizeForJson } from "../utils/sanitize.js";
 
-const SystemTenantListQuerySchema = z.object({
-  limit: z.coerce.number().int().positive().max(200).default(50),
-  offset: z.coerce.number().int().nonnegative().default(0),
-});
-
-const SystemTenantListResponseSchema = z.object({
-  tenants: z.array(
-    TenantWithRelationsSchema.extend({
-      version: z.string(),
-    }),
-  ),
-  count: z.number().int().nonnegative(),
-  limit: z.number().int().positive(),
-  offset: z.number().int().nonnegative(),
-});
 const SystemTenantListQueryJsonSchema = schemaFromZod(
   SystemTenantListQuerySchema,
   "SystemTenantListQuery",
@@ -35,88 +26,15 @@ const SystemTenantListResponseJsonSchema = schemaFromZod(
 
 const SYSTEM_TENANTS_TAG = "System Tenants";
 
-const CreateTenantSchema = z.object({
-  name: z.string().min(1).max(200),
-  slug: z
-    .string()
-    .min(1)
-    .max(100)
-    .regex(/^[a-z0-9-]+$/),
-  type: TenantTypeEnum.default("INDEPENDENT"),
-  email: z.string().email(),
-  phone: z.string().optional(),
-  website: z.string().url().optional(),
-});
-
-const CreateTenantResponseSchema = z.object({
-  id: z.string().uuid(),
-  name: z.string(),
-  slug: z.string(),
-  message: z.string(),
-});
-
-const CreateTenantJsonSchema = schemaFromZod(CreateTenantSchema, "CreateTenant");
+const CreateTenantJsonSchema = schemaFromZod(SystemCreateTenantSchema, "CreateTenant");
 const CreateTenantResponseJsonSchema = schemaFromZod(
-  CreateTenantResponseSchema,
+  SystemCreateTenantResponseSchema,
   "CreateTenantResponse",
 );
 
-const BootstrapTenantSchema = z.object({
-  tenant: CreateTenantSchema,
-  property: z.object({
-    property_name: z.string().min(1).max(200),
-    property_code: z.string().min(1).max(50),
-    property_type: z.string().optional(),
-    star_rating: z.number().min(0).max(5).optional(),
-    total_rooms: z.number().int().nonnegative().optional(),
-    phone: z.string().optional(),
-    email: z.string().email().optional(),
-    website: z.string().url().optional(),
-    address: z
-      .object({
-        line1: z.string().optional(),
-        line2: z.string().optional(),
-        city: z.string().optional(),
-        state: z.string().optional(),
-        postal_code: z.string().optional(),
-        country: z.string().optional(),
-      })
-      .optional(),
-    currency: z.string().length(3).optional(),
-    timezone: z.string().optional(),
-  }),
-  owner: z.object({
-    username: z.string().min(3).max(50),
-    email: z.string().email(),
-    password: z.string().min(8),
-    first_name: z.string().min(1).max(100),
-    last_name: z.string().min(1).max(100),
-    phone: z.string().optional(),
-  }),
-});
-
-const BootstrapTenantResponseSchema = z.object({
-  tenant: z.object({
-    id: z.string().uuid(),
-    name: z.string(),
-    slug: z.string(),
-  }),
-  property: z.object({
-    id: z.string().uuid(),
-    property_name: z.string(),
-    property_code: z.string(),
-  }),
-  owner: z.object({
-    id: z.string().uuid(),
-    username: z.string(),
-    email: z.string().email(),
-  }),
-  message: z.string(),
-});
-
-const BootstrapTenantJsonSchema = schemaFromZod(BootstrapTenantSchema, "BootstrapTenant");
+const BootstrapTenantJsonSchema = schemaFromZod(SystemBootstrapTenantSchema, "BootstrapTenant");
 const BootstrapTenantResponseJsonSchema = schemaFromZod(
-  BootstrapTenantResponseSchema,
+  SystemBootstrapTenantResponseSchema,
   "BootstrapTenantResponse",
 );
 
@@ -142,7 +60,7 @@ export const registerSystemTenantRoutes = (app: FastifyInstance): void => {
         throw request.server.httpErrors.unauthorized("System admin authentication required");
       }
 
-      const payload = BootstrapTenantSchema.parse(request.body);
+      const payload = SystemBootstrapTenantSchema.parse(request.body);
       const tenantInput = payload.tenant;
       const propertyInput = payload.property;
       const ownerInput = payload.owner;
@@ -254,7 +172,7 @@ export const registerSystemTenantRoutes = (app: FastifyInstance): void => {
         });
 
         reply.status(201);
-        return BootstrapTenantResponseSchema.parse({
+        return SystemBootstrapTenantResponseSchema.parse({
           tenant,
           property,
           owner,
@@ -290,7 +208,7 @@ export const registerSystemTenantRoutes = (app: FastifyInstance): void => {
         throw request.server.httpErrors.unauthorized("System admin authentication required");
       }
 
-      const data = CreateTenantSchema.parse(request.body);
+      const data = SystemCreateTenantSchema.parse(request.body);
 
       const { rows } = await query<{ id: string; name: string; slug: string }>(
         `INSERT INTO tenants (name, slug, type, status, email, phone, website, config, subscription, metadata)
@@ -318,7 +236,7 @@ export const registerSystemTenantRoutes = (app: FastifyInstance): void => {
       });
 
       reply.status(201);
-      return CreateTenantResponseSchema.parse({
+      return SystemCreateTenantResponseSchema.parse({
         id: tenant.id,
         name: tenant.name,
         slug: tenant.slug,
