@@ -15,7 +15,7 @@ if [ -z "$1" ]; then
 fi
 
 WORKSPACE="$1"
-NPM_COMMAND="${2:-dev}"
+PNPM_COMMAND="${2:-dev}"
 
 # Set OTEL environment variables
 export OTEL_EXPORTER_OTLP_ENDPOINT="http://localhost:4318/v1"
@@ -30,4 +30,4 @@ echo "📝 Logs will be sent to OpenSearch via OTEL Collector"
 echo ""
 
 # Run the service
-pnpm --filter "$WORKSPACE" run "$NPM_COMMAND"
+pnpm --filter "$WORKSPACE" run "$PNPM_COMMAND"
