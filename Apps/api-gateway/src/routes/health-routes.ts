@@ -1,9 +1,41 @@
 import { buildRouteSchema } from "@tartware/openapi";
 import type { FastifyInstance, FastifyReply } from "fastify";
 
-import { gatewayConfig, kafkaConfig } from "../config.js";
+import { gatewayConfig, kafkaConfig, serviceTargets } from "../config.js";
 
 import { HEALTH_TAG, healthResponseSchema, readinessResponseSchema } from "./schemas.js";
+
+/** Timeout (ms) for individual health checks when aggregating. */
+const HEALTH_CHECK_TIMEOUT_MS = 3000;
+
+interface ServiceHealthResult {
+  service: string;
+  status: "ok" | "error";
+  latencyMs: number;
+  error?: string;
+}
+
+async function checkServiceHealth(name: string, baseUrl: string): Promise<ServiceHealthResult> {
+  const start = performance.now();
+  try {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), HEALTH_CHECK_TIMEOUT_MS);
+    const response = await fetch(`${baseUrl}/health`, { signal: controller.signal });
+    clearTimeout(timer);
+    return {
+      service: name,
+      status: response.ok ? "ok" : "error",
+      latencyMs: Math.round(performance.now() - start),
+    };
+  } catch (err) {
+    return {
+      service: name,
+      status: "error",
+      latencyMs: Math.round(performance.now() - start),
+      error: err instanceof Error ? err.message : "unknown error",
+    };
+  }
+}
 
 export const registerHealthRoutes = (app: FastifyInstance): void => {
   const kafkaSummary = {
@@ -82,6 +114,63 @@ export const registerHealthRoutes = (app: FastifyInstance): void => {
         status: "ok",
         service: gatewayConfig.serviceId,
         kafka: kafkaSummary,
+      });
+    },
+  );
+
+  app.get(
+    "/health/all",
+    {
+      schema: buildRouteSchema({
+        tag: HEALTH_TAG,
+        summary: "Aggregated health status of all backend services.",
+        response: {
+          200: {
+            type: "object",
+            properties: {
+              status: { type: "string" },
+              services: {
+                type: "array",
+                items: {
+                  type: "object",
+                  properties: {
+                    service: { type: "string" },
+                    status: { type: "string" },
+                    latencyMs: { type: "number" },
+                    error: { type: "string" },
+                  },
+                  required: ["service", "status", "latencyMs"],
+                },
+              },
+            },
+            required: ["status", "services"],
+          } as const,
+        },
+      }),
+    },
+    async (_request, reply) => {
+      const checks = [
+        { name: "core-service", url: serviceTargets.coreServiceUrl },
+        { name: "settings-service", url: serviceTargets.settingsServiceUrl },
+        { name: "guests-service", url: serviceTargets.guestsServiceUrl },
+        { name: "rooms-service", url: serviceTargets.roomsServiceUrl },
+        { name: "reservations-command-service", url: serviceTargets.reservationCommandServiceUrl },
+        { name: "billing-service", url: serviceTargets.billingServiceUrl },
+        { name: "housekeeping-service", url: serviceTargets.housekeepingServiceUrl },
+        { name: "command-center-service", url: serviceTargets.commandCenterServiceUrl },
+        { name: "recommendation-service", url: serviceTargets.recommendationServiceUrl },
+        { name: "notification-service", url: serviceTargets.notificationServiceUrl },
+      ];
+
+      const results = await Promise.all(
+        checks.map(({ name, url }) => checkServiceHealth(name, url)),
+      );
+
+      const allHealthy = results.every((r) => r.status === "ok");
+      allowCorsHeaders(reply);
+      return reply.status(allHealthy ? 200 : 503).send({
+        status: allHealthy ? "ok" : "degraded",
+        services: results,
       });
     },
   );

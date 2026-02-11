@@ -2,18 +2,17 @@
   "$schema": "https://unpkg.com/knip@5/schema.json",
   "project": ["src/**/*.ts"],
   "ignoreDependencies": [
-    "@biomejs/biome",
     "@tartware/schemas",
     "@tartware/config",
     "@tartware/openapi",
     "@tartware/telemetry",
     "@tartware/tenant-auth",
     "@tartware/command-consumer-utils",
-    "tsx",
     "@fastify/cors",
     "@fastify/helmet",
     "@fastify/sensible",
     "@tartware/fastify-server"
   ],
-  "ignoreBinaries": ["biome", "eslint", "knip", "tsc", "tsx", "vitest"]
+  "ignoreBinaries": [],
+  "ignoreExportsUsedInFile": true
 }

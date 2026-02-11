@@ -68,6 +68,8 @@ export const buildServer = () => {
     });
 
     // Register all route groups
+    // GET routes proxy to backend services; POST/PUT/PATCH/DELETE routes
+    // dispatch Kafka commands via command-helpers (CQRS write path).
     registerHealthRoutes(app);
     registerCoreProxyRoutes(app);
     registerReservationRoutes(app);

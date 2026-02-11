@@ -7,7 +7,7 @@ on:
       - 'Apps/reservations-command-service/**'
       - 'schema/**'
       - 'package.json'
-      - 'lerna.json'
+      - 'nx.json'
   pull_request:
     paths:
       - 'Apps/reservations-command-service/**'

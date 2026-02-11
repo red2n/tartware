@@ -7,7 +7,7 @@ on:
       - 'Apps/rooms-service/**'
       - 'schema/**'
       - 'package.json'
-      - 'lerna.json'
+      - 'nx.json'
   pull_request:
     paths:
       - 'Apps/rooms-service/**'

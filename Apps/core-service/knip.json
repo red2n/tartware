@@ -8,8 +8,6 @@
     "@tartware/config",
     "@tartware/telemetry",
     "@tartware/openapi",
-    "@biomejs/biome",
-    "tsx",
     "redis",
     "@fastify/cors",
     "@fastify/helmet",
@@ -17,13 +15,6 @@
     "@tartware/fastify-server",
     "ast-v8-to-istanbul"
   ],
-  "ignoreBinaries": [
-    "tsx",
-    "tsc",
-    "biome",
-    "eslint",
-    "knip",
-    "vitest"
-  ],
+  "ignoreBinaries": [],
   "ignoreExportsUsedInFile": true
 }

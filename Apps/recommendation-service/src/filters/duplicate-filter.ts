@@ -9,7 +9,7 @@ import { PredicateFilter } from "@tartware/candidate-pipeline";
 
 import type { RoomCandidate, RoomRecommendationQuery } from "../types.js";
 
-export class DuplicateFilter extends PredicateFilter<RoomRecommendationQuery, RoomCandidate> {
+class DuplicateFilter extends PredicateFilter<RoomRecommendationQuery, RoomCandidate> {
   readonly name = "duplicate";
   private seenRoomIds = new Set<string>();
 

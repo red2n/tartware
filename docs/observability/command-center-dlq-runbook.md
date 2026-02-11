@@ -18,7 +18,7 @@ This runbook covers DLQ handling for command-center outbox publishing
 Use the CLI to requeue failed or DLQ outbox rows:
 
 ```bash
-npm run requeue:outbox --workspace=Apps/command-center-service -- --status=DLQ --limit=25 --tenant-id=<uuid> --command-name=billing.payment.capture
+pnpm --filter @tartware/command-center-service run requeue:outbox -- --status=DLQ --limit=25 --tenant-id=<uuid> --command-name=billing.payment.capture
 ```
 
 Options:

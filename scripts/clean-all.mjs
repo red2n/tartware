@@ -6,9 +6,6 @@ import process from "node:process";
 
 const cwd = process.cwd();
 
-const lernaBin = resolve(cwd, "node_modules/.bin/lerna");
-const lernaCmd = existsSync(lernaBin) ? `"${lernaBin}"` : "npx lerna";
-
 const run = (command, options = {}) => {
   try {
     execSync(command, { stdio: "inherit", ...options });
@@ -41,12 +38,9 @@ const toRelative = (target) => {
   return rel.length === 0 ? "." : rel;
 };
 
-const main = () => {
+const main = async () => {
   console.log("[clean] Running workspace clean scripts…");
-  run(`${lernaCmd} run clean --stream --no-bail`);
-
-  console.log("[clean] Deriving workspace list…");
-  const lernaList = JSON.parse(runCapture(`${lernaCmd} list --all --json`));
+  run("npx nx run-many -t clean");
 
   const removalTargets = new Map();
 
@@ -61,10 +55,22 @@ const main = () => {
   ].forEach((item) => removalTargets.set(resolve(cwd, item), { label: item }));
 
   // Workspace node_modules
-  lernaList.forEach((pkg) => {
-    const nmPath = resolve(pkg.location, "node_modules");
-    removalTargets.set(nmPath, { label: toRelative(nmPath) });
-  });
+  const workspaceDirs = ["Apps", "schema", "UI"];
+  for (const dir of workspaceDirs) {
+    const dirPath = resolve(cwd, dir);
+    if (!existsSync(dirPath)) continue;
+    const { readdirSync } = await import("node:fs");
+    if (dir === "schema") {
+      const nmPath = resolve(dirPath, "node_modules");
+      removalTargets.set(nmPath, { label: toRelative(nmPath) });
+    } else {
+      for (const entry of readdirSync(dirPath, { withFileTypes: true })) {
+        if (!entry.isDirectory()) continue;
+        const nmPath = resolve(dirPath, entry.name, "node_modules");
+        removalTargets.set(nmPath, { label: toRelative(nmPath) });
+      }
+    }
+  }
 
   const removed = [];
   const skipped = [];
@@ -102,4 +108,4 @@ const main = () => {
   console.log("\n[clean] Clean complete");
 };
 
-main();
+await main();

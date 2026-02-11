@@ -352,3 +352,7 @@ keys/
 *.p12
 *.pfx
 !*.pem.example
+
+# Nx
+.nx/cache
+.nx/workspace-data

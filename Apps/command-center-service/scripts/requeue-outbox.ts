@@ -3,7 +3,7 @@
  * Requeue command center transactional outbox rows.
  *
  * Usage:
- *   npm run requeue:outbox -- --status=DLQ --limit=25 --tenant-id=<uuid> --command-name=billing.payment.capture
+ *   pnpm run requeue:outbox -- --status=DLQ --limit=25 --tenant-id=<uuid> --command-name=billing.payment.capture
  */
 
 import { config } from "../src/config.js";

@@ -21,7 +21,7 @@
     "clean": "rm -rf dist *.tsbuildinfo"
   },
   "dependencies": {
-    "@tartware/schemas": "file:../../schema",
+    "@tartware/schemas": "workspace:*",
     "fastify": "^5.6.2"
   },
   "devDependencies": {

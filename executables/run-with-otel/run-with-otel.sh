@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Run Tartware services with OpenTelemetry enabled
-# Usage: ./run-with-otel.sh <workspace> [additional npm args]
+# Usage: ./run-with-otel.sh <workspace> [additional pnpm args]
 # Example: ./run-with-otel.sh Apps/core-service
 # Example: ./run-with-otel.sh Apps/api-gateway dev
 
@@ -9,7 +9,7 @@ set -e
 
 if [ -z "$1" ]; then
   echo "❌ Error: Workspace argument is required"
-  echo "Usage: $0 <workspace> [npm-command]"
+  echo "Usage: $0 <workspace> [pnpm-command]"
   echo "Example: $0 Apps/core-service dev"
   exit 1
 fi
@@ -30,4 +30,4 @@ echo "📝 Logs will be sent to OpenSearch via OTEL Collector"
 echo ""
 
 # Run the service
-npm run "$NPM_COMMAND" --workspace="$WORKSPACE"
+pnpm --filter "$WORKSPACE" run "$NPM_COMMAND"

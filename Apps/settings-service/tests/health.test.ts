@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { createLogger } from "@tartware/telemetry";
 
-import { buildServer } from "../src/app.js";
+import { buildServer } from "../src/server.js";
 import { config } from "../src/config.js";
 
 describe("health endpoint", () => {

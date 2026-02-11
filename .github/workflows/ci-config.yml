@@ -6,7 +6,7 @@ on:
     paths:
       - 'Apps/config/**'
       - 'package.json'
-      - 'lerna.json'
+      - 'nx.json'
   pull_request:
     paths:
       - 'Apps/config/**'

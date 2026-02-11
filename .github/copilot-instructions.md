@@ -20,10 +20,15 @@ The AGENTS.md file contains project-specific rules that override general coding 
 - **Allowed in `Apps/` service files only:** schemas that `.pick()` or `.omit().extend()` from an existing `@tartware/schemas` schema (derived transformations, not new definitions), or cache-specific projections that depend on app-internal constants not available in the schema package.
 - If a new API endpoint returns a new data shape, add the response schema to `schema/src/api/` first, then import it in the App service/route.
 - If a new command is added, add the command schema to `schema/src/events/commands/` first.
-- Run `npx lerna run build --scope=@tartware/schemas` after any schema change to ensure downstream Apps compile.
+- Run `npx nx run @tartware/schemas:build` after any schema change to ensure downstream Apps compile.
 
 ## Git Workflow
 - **NEVER push changes without asking the user first**
 - Always ask for confirmation before running `git push`
 - Commits can be made without asking, but pushing requires explicit approval
 - **Before every commit that will be pushed**, run biome, knip, and eslint on all affected services (see Pre-Push Quality Gates in AGENTS.md)
+
+## GitHub Operations
+- **Always use GitHub CLI (`gh`)** for all GitHub-related tasks: PR creation, PR reviews, issue management, comment replies, thread resolution, release management, and repository operations.
+- Do NOT use raw `curl` calls to the GitHub API when `gh api` or a dedicated `gh` subcommand can accomplish the same task.
+- Use `gh api graphql` for operations that require GraphQL (e.g., resolving review threads).

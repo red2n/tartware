@@ -10,4 +10,4 @@ Arguments:
 - 1st: workspace path (`Apps/core-service`, etc.)
 - 2nd (optional): npm script to run (`dev` by default)
 
-The script sets OTLP endpoints to `http://localhost:4318/v1*` before invoking `npm run <command> --workspace=<workspace>`.
+The script sets OTLP endpoints to `http://localhost:4318/v1*` before invoking `pnpm --filter <workspace> run <command>`.

@@ -7,7 +7,7 @@ on:
       - 'Apps/recommendation-service/**'
       - 'schema/**'
       - 'package.json'
-      - 'lerna.json'
+      - 'nx.json'
   pull_request:
     paths:
       - 'Apps/recommendation-service/**'

@@ -18,7 +18,7 @@ if [ -z "$BASH_VERSION" ]; then
     exit 1
 fi
 
-# Find repository root (look for package.json and lerna.json)
+# Find repository root (look for package.json and nx.json)
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 

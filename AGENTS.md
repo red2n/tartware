@@ -92,6 +92,15 @@ Every SQL table script must include all 6 documentation elements. Reference: `sc
 - Keep migrations in `scripts/` aligned with schemas in `schema/` (schema-first, lockstep changes).
 - Add metrics for new command streams (throughput, lag, error, DLQ) by default.
 
+## Root pnpm Overrides
+Every entry in `pnpm.overrides` (root `package.json`) must have a documented reason. Only add overrides for packages actually in the dependency tree.
+- **eslint 8.57.0** — Pin across all packages; v9 migration not yet complete.
+- **rxjs 7.8.2** — Required by concurrently; pin to stable release.
+- **js-yaml 4.1.1** — Security fix (prototype pollution CVE); used by eslint + nx.
+- **@fastify/swagger ^9.6.1** — Align version across all Fastify services.
+- **@fastify/swagger-ui ^5.2.3** — Align version across all Fastify services.
+- **esbuild 0.27.2** — Pin for tsx; prevents unexpected binary re-downloads.
+
 ## Testing & Data Access
 - **Always use API routes** to test the application; do not use direct SQL queries or scripts (Python, TypeScript, shell) to GET, POST, PUT, or DELETE data in the database.
 - **Always route requests through the API Gateway (port 8080)**—never call individual services directly (ports 3000, 3100, 3400, etc.) during testing.

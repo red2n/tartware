@@ -1,78 +1,60 @@
-/**
- * Configuration for the recommendation service.
- * Self-contained config without external @tartware/config dependency.
- */
+import { databaseSchema, loadServiceConfig, validateProductionSecrets } from "@tartware/config";
 
-import { z } from "zod";
+process.env.SERVICE_NAME = process.env.SERVICE_NAME ?? "@tartware/recommendation-service";
+process.env.SERVICE_VERSION = process.env.SERVICE_VERSION ?? "0.1.0";
+process.env.PORT = process.env.PORT ?? "3040";
 
-const envSchema = z.object({
-  NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
-  SERVICE_NAME: z.string().default("@tartware/recommendation-service"),
-  SERVICE_VERSION: z.string().default("0.1.0"),
-  PORT: z.coerce.number().default(3201),
-  HOST: z.string().default("0.0.0.0"),
-  LOG_LEVEL: z.enum(["trace", "debug", "info", "warn", "error", "fatal"]).default("info"),
-  LOG_PRETTY: z.preprocess((v) => v === "true" || v === "1", z.boolean()).default(false),
-  LOG_REQUESTS: z.preprocess((v) => v === "true" || v === "1", z.boolean()).default(true),
-  DB_HOST: z.string().default("localhost"),
-  DB_PORT: z.coerce.number().default(5432),
-  DB_NAME: z.string().default("tartware"),
-  DB_USER: z.string().default("postgres"),
-  DB_PASSWORD: z.string().default("postgres"),
-  DB_SSL: z.preprocess((v) => v === "true" || v === "1", z.boolean()).default(false),
-  DB_POOL_MAX: z.coerce.number().default(20),
-  DB_POOL_IDLE_TIMEOUT_MS: z.coerce.number().default(30000),
-  AUTH_JWT_SECRET: z.string().default("dev-secret-minimum-32-chars-change-me!"),
-  AUTH_JWT_ISSUER: z.string().default("tartware-core-service"),
-  AUTH_JWT_AUDIENCE: z.string().default("tartware-core"),
-  RECOMMENDATION_DEFAULT_RESULT_SIZE: z.coerce.number().default(10),
-  RECOMMENDATION_MAX_RESULT_SIZE: z.coerce.number().default(50),
-  RECOMMENDATION_ENABLE_ML_SCORING: z.preprocess((v) => v !== "false", z.boolean()).default(true),
-  PHOENIX_SERVICE_URL: z.string().default("http://localhost:5000"),
+if (!process.env.AUTH_JWT_SECRET) {
+  if (process.env.NODE_ENV === "production") {
+    throw new Error("AUTH_JWT_SECRET must be set in production and cannot use a default value.");
+  }
+  process.env.AUTH_JWT_SECRET = "dev-secret-minimum-32-chars-change-me!";
+}
+process.env.AUTH_JWT_ISSUER = process.env.AUTH_JWT_ISSUER ?? "tartware-core-service";
+process.env.AUTH_JWT_AUDIENCE = process.env.AUTH_JWT_AUDIENCE ?? "tartware-core";
+
+const configValues = loadServiceConfig(databaseSchema);
+validateProductionSecrets({
+  ...configValues,
+  NODE_ENV: process.env.NODE_ENV,
+  AUTH_JWT_SECRET: process.env.AUTH_JWT_SECRET,
+  AUTH_DEFAULT_PASSWORD: process.env.AUTH_DEFAULT_PASSWORD,
 });
 
-const parsed = envSchema.safeParse(process.env);
-if (!parsed.success) {
-  console.error("Environment configuration error:", parsed.error.format());
-  process.exit(1);
-}
-
-const env = parsed.data;
-
 export const config = {
-  nodeEnv: env.NODE_ENV,
+  nodeEnv: configValues.NODE_ENV,
   service: {
-    name: env.SERVICE_NAME,
-    version: env.SERVICE_VERSION,
+    name: configValues.SERVICE_NAME,
+    version: configValues.SERVICE_VERSION,
   },
-  port: env.PORT,
-  host: env.HOST,
+  port: configValues.PORT,
+  host: configValues.HOST,
   log: {
-    level: env.LOG_LEVEL,
-    pretty: env.LOG_PRETTY,
-    requestLogging: env.LOG_REQUESTS,
+    level: configValues.LOG_LEVEL,
+    pretty: configValues.LOG_PRETTY,
+    requestLogging: configValues.LOG_REQUESTS,
   },
   db: {
-    host: env.DB_HOST,
-    port: env.DB_PORT,
-    database: env.DB_NAME,
-    user: env.DB_USER,
-    password: env.DB_PASSWORD,
-    ssl: env.DB_SSL,
-    max: env.DB_POOL_MAX,
-    idleTimeoutMillis: env.DB_POOL_IDLE_TIMEOUT_MS,
+    host: configValues.DB_HOST,
+    port: configValues.DB_PORT,
+    database: configValues.DB_NAME,
+    user: configValues.DB_USER,
+    password: configValues.DB_PASSWORD,
+    ssl: configValues.DB_SSL,
+    max: configValues.DB_POOL_MAX,
+    idleTimeoutMillis: configValues.DB_POOL_IDLE_TIMEOUT_MS,
   },
   auth: {
     jwt: {
-      secret: env.AUTH_JWT_SECRET,
-      issuer: env.AUTH_JWT_ISSUER,
-      audience: env.AUTH_JWT_AUDIENCE,
+      secret: process.env.AUTH_JWT_SECRET,
+      issuer: process.env.AUTH_JWT_ISSUER!,
+      audience: process.env.AUTH_JWT_AUDIENCE!,
     },
   },
   recommendation: {
-    defaultResultSize: env.RECOMMENDATION_DEFAULT_RESULT_SIZE,
-    maxResultSize: env.RECOMMENDATION_MAX_RESULT_SIZE,
-    enableMlScoring: env.RECOMMENDATION_ENABLE_ML_SCORING,
-    phoenixServiceUrl: env.PHOENIX_SERVICE_URL,
+    defaultResultSize: Number(process.env.RECOMMENDATION_DEFAULT_RESULT_SIZE ?? "10"),
+    maxResultSize: Number(process.env.RECOMMENDATION_MAX_RESULT_SIZE ?? "50"),
+    enableMlScoring: process.env.RECOMMENDATION_ENABLE_ML_SCORING !== "false",
+    phoenixServiceUrl: process.env.PHOENIX_SERVICE_URL ?? "http://localhost:5000",
   },
 };

@@ -7,7 +7,7 @@ on:
       - 'Apps/api-gateway/**'
       - 'schema/**'
       - 'package.json'
-      - 'lerna.json'
+      - 'nx.json'
   pull_request:
     paths:
       - 'Apps/api-gateway/**'

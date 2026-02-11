@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { createLogger } from "@tartware/telemetry";
 
-import { buildServer } from "../src/app.js";
+import { buildServer } from "../src/server.js";
 import { config } from "../src/config.js";
 import {
   type AmenityRecord,

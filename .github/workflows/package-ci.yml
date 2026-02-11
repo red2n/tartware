@@ -4,7 +4,7 @@ on:
   workflow_call:
     inputs:
       package-scope:
-        description: 'npm workspace scope, e.g. @tartware/core-service'
+        description: 'pnpm workspace scope, e.g. @tartware/core-service'
         required: true
         type: string
       has-tests:
@@ -20,25 +20,51 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-          cache: 'npm'
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Get pnpm store directory
+        id: pnpm-cache
+        shell: bash
+        run: echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_OUTPUT
+
+      - name: Cache pnpm store
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.pnpm-cache.outputs.STORE_PATH }}
+          key: pnpm-${{ runner.os }}-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            pnpm-${{ runner.os }}-
+
+      - name: Restore Nx cache
+        uses: actions/cache@v4
+        with:
+          path: .nx/cache
+          key: nx-${{ runner.os }}-${{ hashFiles('**/pnpm-lock.yaml') }}-${{ github.sha }}
+          restore-keys: |
+            nx-${{ runner.os }}-${{ hashFiles('**/pnpm-lock.yaml') }}-
+            nx-${{ runner.os }}-
 
       - name: Install dependencies
-        run: npm ci
+        run: pnpm install --frozen-lockfile
 
       - name: Lint
-        run: npx lerna run lint --scope=${{ inputs.package-scope }} --stream
+        run: npx nx run ${{ inputs.package-scope }}:lint
 
       - name: Biome
-        run: npx lerna run biome --scope=${{ inputs.package-scope }} --stream
+        run: npx nx run ${{ inputs.package-scope }}:biome
 
       - name: Knip
-        run: npx lerna run knip --scope=${{ inputs.package-scope }} --stream
+        run: npx nx run ${{ inputs.package-scope }}:knip
 
       - name: Test
         if: ${{ inputs.has-tests }}
-        run: npx lerna run test --scope=${{ inputs.package-scope }} --stream
+        run: npx nx run ${{ inputs.package-scope }}:test
