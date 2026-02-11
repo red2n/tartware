@@ -7,7 +7,7 @@ on:
       - 'Apps/availability-guard-service/**'
       - 'schema/**'
       - 'package.json'
-      - 'lerna.json'
+      - 'nx.json'
   pull_request:
     paths:
       - 'Apps/availability-guard-service/**'

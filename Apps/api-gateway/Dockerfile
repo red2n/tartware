@@ -3,7 +3,7 @@ ARG SERVICE=api-gateway
 FROM node:20-alpine AS builder
 ARG SERVICE=api-gateway
 WORKDIR /app
-COPY package.json package-lock.json lerna.json ./
+COPY package.json package-lock.json nx.json ./
 COPY scripts ./scripts
 COPY Apps/telemetry/package.json Apps/telemetry/
 COPY Apps/config/package.json Apps/config/

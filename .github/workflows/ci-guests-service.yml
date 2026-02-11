@@ -7,7 +7,7 @@ on:
       - 'Apps/guests-service/**'
       - 'schema/**'
       - 'package.json'
-      - 'lerna.json'
+      - 'nx.json'
   pull_request:
     paths:
       - 'Apps/guests-service/**'

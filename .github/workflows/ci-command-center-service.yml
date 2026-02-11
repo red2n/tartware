@@ -8,7 +8,7 @@ on:
       - 'Apps/command-center-shared/**'
       - 'schema/**'
       - 'package.json'
-      - 'lerna.json'
+      - 'nx.json'
   pull_request:
     paths:
       - 'Apps/command-center-service/**'

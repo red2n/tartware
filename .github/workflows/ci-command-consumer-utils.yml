@@ -7,7 +7,7 @@ on:
       - 'Apps/command-consumer-utils/**'
       - 'schema/**'
       - 'package.json'
-      - 'lerna.json'
+      - 'nx.json'
   pull_request:
     paths:
       - 'Apps/command-consumer-utils/**'
