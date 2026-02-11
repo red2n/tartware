@@ -143,7 +143,7 @@ const exportSpec = async ({ id, output, modulePath, build }) => {
     const message =
       error instanceof Error ? error.message : `Unable to export spec for ${id}: ${String(error)}`;
     const enhancedError = new Error(
-      `${message}\nEnsure the service has been built (npm run build) so that ${resolvedModulePath} exists.`,
+      `${message}\nEnsure the service has been built (pnpm run build) so that ${resolvedModulePath} exists.`,
     );
     enhancedError.cause = error;
     throw enhancedError;

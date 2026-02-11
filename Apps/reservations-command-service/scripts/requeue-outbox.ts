@@ -3,7 +3,7 @@
  * Requeue reservation transactional outbox rows.
  *
  * Usage:
- *   npm run requeue:outbox -- --status=DLQ --limit=25 --tenant-id=<uuid> --reservation-id=<uuid>
+ *   pnpm run requeue:outbox -- --status=DLQ --limit=25 --tenant-id=<uuid> --reservation-id=<uuid>
  */
 
 import { databaseConfig, serviceConfig } from "../src/config.js";

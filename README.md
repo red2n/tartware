@@ -52,27 +52,27 @@ Client → API Gateway (:8080) → Command Center → Kafka → Domain Services
 
 ```bash
 # Install dependencies
-npm install
+pnpm install
 
 # Start infrastructure
 docker compose up -d postgres redis kafka
 
 # Bootstrap Kafka topics
-npm run kafka:topics
+pnpm run kafka:topics
 
 # Start all services
-npm run dev
+pnpm run dev
 ```
 
 ## Monorepo Commands
 
 ```bash
-npm run build        # Lint + Biome + Knip + compile all packages
-npm run lint         # ESLint across all packages
-npm run biome        # Biome check across all packages
-npm run knip         # Dead code detection across all packages
-npm run test         # Run all test suites
-npm run clean:all    # Remove all build artifacts
+pnpm run build        # Lint + Biome + Knip + compile all packages
+pnpm run lint         # ESLint across all packages
+pnpm run biome        # Biome check across all packages
+pnpm run knip         # Dead code detection across all packages
+pnpm run test         # Run all test suites
+pnpm run clean:all    # Remove all build artifacts
 ```
 
 ## Dev Ports

@@ -27,7 +27,7 @@
     "@fastify/sensible": "^6.0.4",
     "@fastify/swagger": "^9.6.1",
     "@fastify/swagger-ui": "^5.2.5",
-    "@tartware/candidate-pipeline": "file:../candidate-pipeline",
+    "@tartware/candidate-pipeline": "workspace:*",
     "fastify": "^5.6.2",
     "fastify-plugin": "^4.5.1",
     "jsonwebtoken": "^9.0.2",

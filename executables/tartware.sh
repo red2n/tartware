@@ -433,7 +433,7 @@ case "$cmd" in
                 fi
                 $compose_cmd -f "$REPO_ROOT/docker-compose.yml" up -d
                 log "Bootstrapping Kafka topics"
-                if (cd "$REPO_ROOT" && npm run kafka:topics); then
+                if (cd "$REPO_ROOT" && pnpm run kafka:topics); then
                     log "Kafka topics created successfully"
                 else
                     fail "Failed to create Kafka topics"

@@ -2,8 +2,9 @@ ARG SERVICE=api-gateway
 
 FROM node:20-alpine AS builder
 ARG SERVICE=api-gateway
+RUN corepack enable && corepack prepare pnpm@latest --activate
 WORKDIR /app
-COPY package.json package-lock.json nx.json ./
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc nx.json ./
 COPY scripts ./scripts
 COPY Apps/telemetry/package.json Apps/telemetry/
 COPY Apps/config/package.json Apps/config/
@@ -11,15 +12,15 @@ COPY Apps/openapi-utils/package.json Apps/openapi-utils/
 COPY Apps/outbox/package.json Apps/outbox/
 COPY schema/package.json schema/
 COPY Apps/${SERVICE}/package.json Apps/${SERVICE}/
-RUN npm ci --include=dev
+RUN pnpm install --frozen-lockfile
 COPY . /app
-RUN npm run build --workspace=Apps/telemetry \
-	&& npm run build --workspace=Apps/config \
-	&& npm run build --workspace=Apps/openapi-utils \
-	&& npm run build --workspace=Apps/outbox \
-	&& npm run build --workspace=schema \
-	&& npm run build --workspace=Apps/${SERVICE} \
-	&& npm prune --omit=dev
+RUN pnpm --filter @tartware/telemetry run build \
+	&& pnpm --filter @tartware/config run build \
+	&& pnpm --filter @tartware/openapi run build \
+	&& pnpm --filter @tartware/outbox run build \
+	&& pnpm --filter @tartware/schemas run build \
+	&& pnpm --filter @tartware/${SERVICE} run build \
+	&& pnpm prune --prod
 
 FROM node:20-alpine AS runtime
 ARG SERVICE=api-gateway

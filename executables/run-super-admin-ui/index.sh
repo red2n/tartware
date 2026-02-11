@@ -31,7 +31,7 @@ trap cleanup INT TERM
 # Start core-service
 echo "📦 Starting core-service on port 3000..."
 cd "$PROJECT_ROOT/Apps/core-service"
-REDIS_PASSWORD=redis_password npm run dev > /tmp/core-service.log 2>&1 &
+REDIS_PASSWORD=redis_password pnpm run dev > /tmp/core-service.log 2>&1 &
 CORE_PID=$!
 echo "   ✓ core-service started (PID: $CORE_PID)"
 
@@ -54,7 +54,7 @@ fi
 # Start command-center-service
 echo "📦 Starting command-center-service on port 3700..."
 cd "$PROJECT_ROOT/Apps/command-center-service"
-PORT=3700 npm run dev > /tmp/command-center-service.log 2>&1 &
+PORT=3700 pnpm run dev > /tmp/command-center-service.log 2>&1 &
 COMMAND_CENTER_PID=$!
 echo "   ✓ command-center-service started (PID: $COMMAND_CENTER_PID)"
 
@@ -77,7 +77,7 @@ fi
 # Start Angular UI
 echo "🎨 Starting Angular UI on port 4200..."
 cd "$PROJECT_ROOT/UI/super-admin-ui"
-npm run start > /tmp/super-admin-ui.log 2>&1 &
+pnpm run start > /tmp/super-admin-ui.log 2>&1 &
 UI_PID=$!
 echo "   ✓ Angular UI started (PID: $UI_PID)"
 
