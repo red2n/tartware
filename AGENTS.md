@@ -99,5 +99,13 @@ Every SQL table script must include all 6 documentation elements. Reference: `sc
 - The gateway provides unified authentication, rate limiting, and routing to backend services.
 - Direct database access is only permitted for read-only diagnostics (e.g., verifying record counts) or one-time migration scripts—never for routine data manipulation during testing.
 
+## Pre-Push Quality Gates
+- **Before every `git push`**, run these three checks on all affected services and fix any failures:
+  1. **Biome**: `cd Apps/<service> && npx biome check --write src/` (auto-fix formatting/lint)
+  2. **Knip**: `cd Apps/<service> && npx knip` (detect unused exports/deps)
+  3. **ESLint**: `cd Apps/<service> && npx eslint src/` (must have 0 errors; warnings are acceptable)
+- If any check fails, fix the issues before committing.
+- **Never push to git without explicit user confirmation.** Always ask the user before running `git push`.
+
 ## UI Scope
 - Unless explicitly asked, ignore UI changes.
