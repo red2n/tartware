@@ -171,8 +171,15 @@
 \ir 07-analytics/81_ab_test_results_indexes.sql
 \ir 07-analytics/98_sustainability_metrics_indexes.sql
 
+-- ============================================================================
+-- AUTO-GENERATED FK INDEXES (catch-all for missing FK indexes)
+-- ============================================================================
+\echo '>>> Creating auto-generated FK indexes'
+
+\ir 99_auto_fk_indexes.sql
+
 \echo ''
 \echo '========================================='
 \echo 'All Indexes Created Successfully!'
-\echo 'Total: 101 index files across 7 categories'
+\echo 'Total: 101 index files + auto FK indexes across 7 categories'
 \echo '========================================='

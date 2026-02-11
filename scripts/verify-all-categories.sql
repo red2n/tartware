@@ -1,7 +1,7 @@
 -- =====================================================
 -- verify-all-categories.sql
 -- Master script to run all category verifications
--- Runs verification for all 8 consolidated categories
+-- Runs verification for all 9 consolidated categories
 -- Date: 2025-10-23
 -- =====================================================
 
@@ -11,7 +11,7 @@
 \echo ''
 \echo '======================================================'
 \echo '  TARTWARE PMS - CATEGORY-LEVEL VERIFICATION'
-\echo '  Running verification for all 8 business domains'
+\echo '  Running verification for all 9 business domains'
 \echo '======================================================'
 \echo ''
 
@@ -46,6 +46,7 @@
 \echo '══════════════════════════════════════════════════════'
 \i tables/03-bookings/verify-03-reservations-booking.sql
 \i tables/03-bookings/verify-07-guest-crm.sql
+\i tables/03-bookings/verify-08-roll-guard-shadow.sql
 \i indexes/03-bookings/verify-03-reservations-booking-indexes.sql
 \i indexes/03-bookings/verify-07-guest-crm-indexes.sql
 \i constraints/03-bookings/verify-03-reservations-booking-constraints.sql
@@ -118,6 +119,30 @@
 \i tables/08-settings/verify-08-settings-catalog.sql
 
 -- =====================================================
+-- CATEGORY 9: REFERENCE DATA
+-- =====================================================
+\echo '══════════════════════════════════════════════════════'
+\echo 'CATEGORY 9/9: Reference Data'
+\echo '══════════════════════════════════════════════════════'
+\i tables/09-reference-data/verify-09-reference-data.sql
+
+-- =====================================================
+-- PROCEDURES VERIFICATION
+-- =====================================================
+\echo '══════════════════════════════════════════════════════'
+\echo 'PROCEDURES VERIFICATION'
+\echo '══════════════════════════════════════════════════════'
+\i procedures/verify-procedures.sql
+
+-- =====================================================
+-- TRIGGERS & EFFICIENCY VERIFICATION
+-- =====================================================
+\echo '══════════════════════════════════════════════════════'
+\echo 'TRIGGERS & EFFICIENCY VERIFICATION'
+\echo '══════════════════════════════════════════════════════'
+\i triggers/verify-triggers.sql
+
+-- =====================================================
 -- FINAL SUMMARY
 -- =====================================================
 \echo ''
@@ -126,7 +151,9 @@
 \echo '======================================================'
 \echo ''
 \echo 'Verified:'
-\echo '  • 8 business domains'
+\echo '  • 9 business domains'
+\echo '  • Procedures'
+\echo '  • Triggers & Efficiency functions'
 
 SELECT COUNT(*) AS verified_table_count
 FROM information_schema.tables
