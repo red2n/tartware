@@ -1,9 +1,8 @@
 import { randomUUID } from "node:crypto";
-
+import { config } from "../config.js";
+import { publishCommand } from "../kafka/producer.js";
 import { query } from "../lib/db.js";
 import { appLogger } from "../lib/logger.js";
-import { publishCommand } from "../kafka/producer.js";
-import { config } from "../config.js";
 
 const logger = appLogger.child({ module: "booking-service" });
 
@@ -286,10 +285,7 @@ export const createBooking = async (
     topic: config.commandCenter.topic,
   });
 
-  logger.info(
-    { reservationId, confirmationCode, guestId },
-    "direct booking submitted",
-  );
+  logger.info({ reservationId, confirmationCode, guestId }, "direct booking submitted");
 
   return {
     reservationId,
@@ -337,9 +333,7 @@ type BookingLookupRow = {
 /**
  * Look up a booking by confirmation code (guest-facing, no JWT).
  */
-export const lookupBooking = async (
-  confirmationCode: string,
-): Promise<BookingLookupRow | null> => {
+export const lookupBooking = async (confirmationCode: string): Promise<BookingLookupRow | null> => {
   const { rows } = await query<BookingLookupRow>(BOOKING_LOOKUP_SQL, [confirmationCode]);
   return rows[0] ?? null;
 };

@@ -47,8 +47,14 @@ const systemAdminJwtAudience =
     ? configValues.SYSTEM_ADMIN_JWT_AUDIENCE
     : (configValues.AUTH_JWT_AUDIENCE ?? "tartware-system");
 
-const guestDataRetentionDays = parseNumberEnv(process.env.COMPLIANCE_GUEST_DATA_RETENTION_DAYS, 1095);
-const billingDataRetentionDays = parseNumberEnv(process.env.COMPLIANCE_BILLING_DATA_RETENTION_DAYS, 2555);
+const guestDataRetentionDays = parseNumberEnv(
+  process.env.COMPLIANCE_GUEST_DATA_RETENTION_DAYS,
+  1095,
+);
+const billingDataRetentionDays = parseNumberEnv(
+  process.env.COMPLIANCE_BILLING_DATA_RETENTION_DAYS,
+  2555,
+);
 const guestEncryptionKey = process.env.GUEST_DATA_ENCRYPTION_KEY ?? "local-dev-guest-key";
 const billingEncryptionKey = process.env.BILLING_DATA_ENCRYPTION_KEY ?? "local-dev-billing-key";
 const offHoursStartHour = parseNumberEnv(process.env.COMPLIANCE_OFF_HOURS_START_HOUR, 0);
@@ -160,8 +166,14 @@ export const config = {
       billingDataDays: billingDataRetentionDays,
     },
     encryption: {
-      requireGuestEncryption: parseBooleanEnv(process.env.COMPLIANCE_REQUIRE_GUEST_ENCRYPTION, true),
-      requireBillingEncryption: parseBooleanEnv(process.env.COMPLIANCE_REQUIRE_BILLING_ENCRYPTION, true),
+      requireGuestEncryption: parseBooleanEnv(
+        process.env.COMPLIANCE_REQUIRE_GUEST_ENCRYPTION,
+        true,
+      ),
+      requireBillingEncryption: parseBooleanEnv(
+        process.env.COMPLIANCE_REQUIRE_BILLING_ENCRYPTION,
+        true,
+      ),
       guestDataKey: guestEncryptionKey,
       billingDataKey: billingEncryptionKey,
     },

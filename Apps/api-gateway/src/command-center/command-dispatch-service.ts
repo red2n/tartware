@@ -8,7 +8,11 @@ import { gatewayLogger } from "../logger.js";
 import type { TenantMembership } from "../services/membership-service.js";
 
 import { resolveCommandForTenant } from "./command-registry.js";
-import { enqueueOutboxRecord, markOutboxDeliveredByEventId, markOutboxFailedByEventId } from "./outbox.js";
+import {
+  enqueueOutboxRecord,
+  markOutboxDeliveredByEventId,
+  markOutboxFailedByEventId,
+} from "./outbox.js";
 import {
   findCommandDispatchByRequest,
   insertCommandDispatch,

@@ -73,12 +73,10 @@ const mapRowToForecast = (row: RevenueForecastRow): RevenueForecastListItem => (
     row.room_revenue_forecast != null ? toNumber(row.room_revenue_forecast) : undefined,
   total_revenue_forecast:
     row.total_revenue_forecast != null ? toNumber(row.total_revenue_forecast) : undefined,
-  occupancy_forecast:
-    row.occupancy_forecast != null ? toNumber(row.occupancy_forecast) : undefined,
+  occupancy_forecast: row.occupancy_forecast != null ? toNumber(row.occupancy_forecast) : undefined,
   adr_forecast: row.adr_forecast != null ? toNumber(row.adr_forecast) : undefined,
   revpar_forecast: row.revpar_forecast != null ? toNumber(row.revpar_forecast) : undefined,
-  confidence_level:
-    row.confidence_level != null ? toNumber(row.confidence_level) : undefined,
+  confidence_level: row.confidence_level != null ? toNumber(row.confidence_level) : undefined,
   scenario_type: row.scenario_type ?? undefined,
   created_at: toIsoString(row.created_at) ?? "",
   updated_at: toIsoString(row.updated_at),

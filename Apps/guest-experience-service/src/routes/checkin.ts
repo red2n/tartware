@@ -1,11 +1,11 @@
-import { z } from "zod";
 import type { FastifyInstance } from "fastify";
+import { z } from "zod";
 
 import {
-  startMobileCheckin,
   completeMobileCheckin,
-  lookupReservationByConfirmation,
   getCheckinById,
+  lookupReservationByConfirmation,
+  startMobileCheckin,
 } from "../services/checkin-service.js";
 import { generateRegistrationCard } from "../services/registration-card-service.js";
 

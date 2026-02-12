@@ -194,9 +194,9 @@ export const generateRegistrationCard = async (
   const property = properties[0];
 
   const fullName = `${guest.first_name} ${guest.last_name}`;
-  const guestAddress = [guest.address_line_1, guest.city, guest.state, guest.country]
-    .filter(Boolean)
-    .join(", ") || null;
+  const guestAddress =
+    [guest.address_line_1, guest.city, guest.state, guest.country].filter(Boolean).join(", ") ||
+    null;
   const propertyAddress = property
     ? [property.address_line_1, property.city, property.state, property.country]
         .filter(Boolean)

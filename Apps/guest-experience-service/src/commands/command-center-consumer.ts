@@ -3,8 +3,11 @@ import {
   type CommandMetadata,
   createCommandCenterHandlers,
 } from "@tartware/command-consumer-utils";
+import {
+  ReservationMobileCheckinCompleteCommandSchema,
+  ReservationMobileCheckinStartCommandSchema,
+} from "@tartware/schemas";
 import type { Consumer } from "kafkajs";
-
 import { config } from "../config.js";
 import { kafka } from "../kafka/client.js";
 import { publishDlqEvent } from "../kafka/producer.js";
@@ -15,14 +18,7 @@ import {
   setCommandConsumerLag,
 } from "../lib/metrics.js";
 import { processWithRetry, RetryExhaustedError } from "../lib/retry.js";
-import {
-  startMobileCheckin,
-  completeMobileCheckin,
-} from "../services/checkin-service.js";
-import {
-  ReservationMobileCheckinStartCommandSchema,
-  ReservationMobileCheckinCompleteCommandSchema,
-} from "@tartware/schemas";
+import { completeMobileCheckin, startMobileCheckin } from "../services/checkin-service.js";
 
 let consumer: Consumer | null = null;
 const logger = appLogger.child({ module: "guest-experience-command-consumer" });

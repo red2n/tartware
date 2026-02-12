@@ -27,8 +27,14 @@ validateProductionSecrets({
   AUTH_JWT_SECRET: process.env.AUTH_JWT_SECRET,
   AUTH_DEFAULT_PASSWORD: process.env.AUTH_DEFAULT_PASSWORD,
 });
-const billingDataRetentionDays = parseNumberEnv(process.env.COMPLIANCE_BILLING_DATA_RETENTION_DAYS, 2555);
-const requireBillingEncryption = parseBooleanEnv(process.env.COMPLIANCE_REQUIRE_BILLING_ENCRYPTION, true);
+const billingDataRetentionDays = parseNumberEnv(
+  process.env.COMPLIANCE_BILLING_DATA_RETENTION_DAYS,
+  2555,
+);
+const requireBillingEncryption = parseBooleanEnv(
+  process.env.COMPLIANCE_REQUIRE_BILLING_ENCRYPTION,
+  true,
+);
 const billingEncryptionKey = process.env.BILLING_DATA_ENCRYPTION_KEY ?? "local-dev-billing-key";
 
 const kafka = resolveKafkaConfig({

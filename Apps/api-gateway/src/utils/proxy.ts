@@ -82,13 +82,10 @@ export const proxyRequest = async (
       { targetUrl, method: request.method, circuitState: breaker.getState() },
       "circuit open — rejecting proxy request",
     );
-    reply
-      .header("Content-Type", "application/json")
-      .status(503)
-      .send({
-        error: "SERVICE_UNAVAILABLE",
-        message: "Upstream service is temporarily unavailable. Please try again shortly.",
-      });
+    reply.header("Content-Type", "application/json").status(503).send({
+      error: "SERVICE_UNAVAILABLE",
+      message: "Upstream service is temporarily unavailable. Please try again shortly.",
+    });
     return;
   }
 

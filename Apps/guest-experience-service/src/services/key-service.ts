@@ -199,10 +199,7 @@ export const revokeKeysForReservation = async (
   tenantId: string,
 ): Promise<number> => {
   // Get active keys to revoke via vendor
-  const { rows: activeKeys } = await query<KeyRow>(GET_ACTIVE_KEYS_SQL, [
-    reservationId,
-    tenantId,
-  ]);
+  const { rows: activeKeys } = await query<KeyRow>(GET_ACTIVE_KEYS_SQL, [reservationId, tenantId]);
 
   for (const key of activeKeys) {
     await vendor.revokeKey(key.key_id);
@@ -212,10 +209,7 @@ export const revokeKeysForReservation = async (
   const result = await query(REVOKE_KEYS_SQL, [reservationId]);
   const revokedCount = result.rowCount ?? 0;
 
-  logger.info(
-    { reservationId, revokedCount },
-    "mobile keys revoked for reservation",
-  );
+  logger.info({ reservationId, revokedCount }, "mobile keys revoked for reservation");
 
   return revokedCount;
 };

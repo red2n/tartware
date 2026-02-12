@@ -96,10 +96,7 @@ export class CircuitBreaker {
 /** Registry of circuit breakers keyed by service name. */
 const breakers = new Map<string, CircuitBreaker>();
 
-export const getCircuitBreaker = (
-  name: string,
-  options: CircuitBreakerOptions,
-): CircuitBreaker => {
+export const getCircuitBreaker = (name: string, options: CircuitBreakerOptions): CircuitBreaker => {
   let breaker = breakers.get(name);
   if (!breaker) {
     breaker = new CircuitBreaker(name, options);

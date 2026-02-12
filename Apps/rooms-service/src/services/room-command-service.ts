@@ -398,7 +398,13 @@ export const handleRoomMove = async (payload: unknown, context: CommandContext):
             // Non-critical: rate adjustment charge is best-effort but log for reconciliation
             const { appLogger } = await import("../lib/logger.js");
             appLogger.warn(
-              { err, reservationId: command.reservation_id, fromRoom: command.from_room_id, toRoom: command.to_room_id, rateDiff },
+              {
+                err,
+                reservationId: command.reservation_id,
+                fromRoom: command.from_room_id,
+                toRoom: command.to_room_id,
+                rateDiff,
+              },
               "Failed to post rate adjustment billing charge during room move",
             );
           }

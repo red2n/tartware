@@ -464,18 +464,28 @@ const mapRowToCashierSession = (row: CashierSessionRow): CashierSessionListItem 
     session_status_display: statusDisplay,
     opened_at: toIsoString(row.opened_at) ?? "",
     closed_at: toIsoString(row.closed_at),
-    business_date: row.business_date instanceof Date
-      ? row.business_date.toISOString().split("T")[0]
-      : String(row.business_date),
+    business_date:
+      row.business_date instanceof Date
+        ? row.business_date.toISOString().split("T")[0]
+        : String(row.business_date),
     shift_type: row.shift_type ?? undefined,
     opening_float_declared: String(toNumberOrFallback(row.opening_float_declared)),
     total_transactions: row.total_transactions ?? undefined,
-    total_revenue: row.total_revenue != null ? String(toNumberOrFallback(row.total_revenue)) : undefined,
-    total_refunds: row.total_refunds != null ? String(toNumberOrFallback(row.total_refunds)) : undefined,
+    total_revenue:
+      row.total_revenue != null ? String(toNumberOrFallback(row.total_revenue)) : undefined,
+    total_refunds:
+      row.total_refunds != null ? String(toNumberOrFallback(row.total_refunds)) : undefined,
     net_revenue: row.net_revenue != null ? String(toNumberOrFallback(row.net_revenue)) : undefined,
-    expected_cash_balance: row.expected_cash_balance != null ? String(toNumberOrFallback(row.expected_cash_balance)) : undefined,
-    closing_cash_counted: row.closing_cash_counted != null ? String(toNumberOrFallback(row.closing_cash_counted)) : undefined,
-    cash_variance: row.cash_variance != null ? String(toNumberOrFallback(row.cash_variance)) : undefined,
+    expected_cash_balance:
+      row.expected_cash_balance != null
+        ? String(toNumberOrFallback(row.expected_cash_balance))
+        : undefined,
+    closing_cash_counted:
+      row.closing_cash_counted != null
+        ? String(toNumberOrFallback(row.closing_cash_counted))
+        : undefined,
+    cash_variance:
+      row.cash_variance != null ? String(toNumberOrFallback(row.cash_variance)) : undefined,
     has_variance: row.has_variance ?? undefined,
     reconciled: row.reconciled ?? undefined,
     approved: row.approved ?? undefined,
@@ -523,10 +533,7 @@ export const getCashierSessionById = async (
   sessionId: string,
   tenantId: string,
 ): Promise<CashierSessionListItem | null> => {
-  const { rows } = await query<CashierSessionRow>(CASHIER_SESSION_BY_ID_SQL, [
-    sessionId,
-    tenantId,
-  ]);
+  const { rows } = await query<CashierSessionRow>(CASHIER_SESSION_BY_ID_SQL, [sessionId, tenantId]);
 
   const [row] = rows;
   if (!row) {

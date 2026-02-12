@@ -109,10 +109,7 @@ const routeRevenueCommand = async (
   _envelope: CommandEnvelope,
   metadata: CommandMetadata,
 ): Promise<void> => {
-  logger.debug(
-    { commandName: metadata.commandName },
-    "no revenue handler registered for command",
-  );
+  logger.debug({ commandName: metadata.commandName }, "no revenue handler registered for command");
 };
 
 const { handleBatch } = createCommandCenterHandlers({

@@ -1,13 +1,13 @@
 import { randomUUID } from "node:crypto";
 
 import {
-  ReservationMobileCheckinStartCommandSchema,
   ReservationMobileCheckinCompleteCommandSchema,
+  ReservationMobileCheckinStartCommandSchema,
 } from "@tartware/schemas";
 
 import { query, withTransaction } from "../lib/db.js";
 import { appLogger } from "../lib/logger.js";
-import { recordCheckinOutcome, observeCheckinDuration } from "../lib/metrics.js";
+import { observeCheckinDuration, recordCheckinOutcome } from "../lib/metrics.js";
 
 const logger = appLogger.child({ module: "checkin-service" });
 
@@ -160,9 +160,7 @@ export const startMobileCheckin = async (input: StartCheckinInput): Promise<Star
     today.setHours(0, 0, 0, 0);
     const checkinDate = new Date(reservation.check_in_date);
     checkinDate.setHours(0, 0, 0, 0);
-    const dayDiff = Math.abs(
-      (checkinDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24),
-    );
+    const dayDiff = Math.abs((checkinDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
     if (dayDiff > 1) {
       recordCheckinOutcome("start", "invalid");
       throw Object.assign(
@@ -318,18 +316,14 @@ export const completeMobileCheckin = async (
 export const lookupReservationByConfirmation = async (
   confirmationCode: string,
 ): Promise<ReservationRow | null> => {
-  const { rows } = await query<ReservationRow>(RESERVATION_BY_CONFIRMATION_SQL, [
-    confirmationCode,
-  ]);
+  const { rows } = await query<ReservationRow>(RESERVATION_BY_CONFIRMATION_SQL, [confirmationCode]);
   return rows[0] ?? null;
 };
 
 /**
  * Get a mobile check-in record by ID.
  */
-export const getCheckinById = async (
-  mobileCheckinId: string,
-): Promise<MobileCheckinRow | null> => {
+export const getCheckinById = async (mobileCheckinId: string): Promise<MobileCheckinRow | null> => {
   const { rows } = await query<MobileCheckinRow>(GET_CHECKIN_SQL, [mobileCheckinId]);
   return rows[0] ?? null;
 };

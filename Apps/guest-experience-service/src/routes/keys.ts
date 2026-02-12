@@ -1,5 +1,5 @@
-import { z } from "zod";
 import type { FastifyInstance } from "fastify";
+import { z } from "zod";
 
 import { getActiveKeysForReservation } from "../services/key-service.js";
 
@@ -34,10 +34,7 @@ export const registerKeyRoutes = (app: FastifyInstance): void => {
       const params = ReservationIdParams.parse(request.params);
       const queryParams = KeysQuery.parse(request.query);
 
-      const keys = await getActiveKeysForReservation(
-        params.reservationId,
-        queryParams.tenant_id,
-      );
+      const keys = await getActiveKeysForReservation(params.reservationId, queryParams.tenant_id);
 
       return reply.send({ keys });
     },

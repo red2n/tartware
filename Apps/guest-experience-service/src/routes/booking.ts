@@ -1,11 +1,11 @@
-import { z } from "zod";
 import type { FastifyInstance } from "fastify";
+import { z } from "zod";
 
 import {
-  searchAvailability,
   createBooking,
   lookupBooking,
   StubPaymentGateway,
+  searchAvailability,
 } from "../services/booking-service.js";
 
 const BOOKING_TAG = "Direct Booking";

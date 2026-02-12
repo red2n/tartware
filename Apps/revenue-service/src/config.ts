@@ -1,8 +1,4 @@
-import {
-  databaseSchema,
-  loadServiceConfig,
-  validateProductionSecrets,
-} from "@tartware/config";
+import { databaseSchema, loadServiceConfig, validateProductionSecrets } from "@tartware/config";
 
 process.env.SERVICE_NAME = process.env.SERVICE_NAME ?? "@tartware/revenue-service";
 process.env.SERVICE_VERSION = process.env.SERVICE_VERSION ?? "0.1.0";
