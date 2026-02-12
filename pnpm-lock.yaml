@@ -77,12 +77,6 @@ importers:
       '@fastify/sensible':
         specifier: ^6.0.4
         version: 6.0.4
-      '@fastify/swagger':
-        specifier: ^9.6.1
-        version: 9.7.0
-      '@fastify/swagger-ui':
-        specifier: ^5.2.3
-        version: 5.2.5
       '@tartware/command-center-shared':
         specifier: workspace:*
         version: link:../command-center-shared
@@ -177,12 +171,6 @@ importers:
       '@fastify/sensible':
         specifier: ^5.1.1
         version: 5.6.0
-      '@fastify/swagger':
-        specifier: ^9.6.1
-        version: 9.7.0
-      '@fastify/swagger-ui':
-        specifier: ^5.2.3
-        version: 5.2.5
       '@grpc/grpc-js':
         specifier: ^1.11.3
         version: 1.14.3
@@ -274,12 +262,6 @@ importers:
       '@fastify/sensible':
         specifier: ^5.1.1
         version: 5.6.0
-      '@fastify/swagger':
-        specifier: ^9.6.1
-        version: 9.7.0
-      '@fastify/swagger-ui':
-        specifier: ^5.2.3
-        version: 5.2.5
       '@tartware/command-consumer-utils':
         specifier: workspace:*
         version: link:../command-consumer-utils
@@ -304,9 +286,6 @@ importers:
       fastify:
         specifier: ^5.6.2
         version: 5.7.4
-      fastify-plugin:
-        specifier: ^4.5.1
-        version: 4.5.1
       jsonwebtoken:
         specifier: ^9.0.2
         version: 9.0.3
@@ -411,12 +390,6 @@ importers:
       '@fastify/sensible':
         specifier: ^5.1.1
         version: 5.6.0
-      '@fastify/swagger':
-        specifier: ^9.6.1
-        version: 9.7.0
-      '@fastify/swagger-ui':
-        specifier: ^5.2.3
-        version: 5.2.5
       '@tartware/command-center-shared':
         specifier: workspace:*
         version: link:../command-center-shared
@@ -444,9 +417,6 @@ importers:
       fastify:
         specifier: ^5.6.2
         version: 5.7.4
-      fastify-plugin:
-        specifier: ^4.5.1
-        version: 4.5.1
       jsonwebtoken:
         specifier: ^9.0.2
         version: 9.0.3
@@ -530,6 +500,9 @@ importers:
       fastify:
         specifier: ^5.6.2
         version: 5.7.4
+      pg:
+        specifier: ^8.16.0
+        version: 8.18.0
       zod:
         specifier: ^3.23.8
         version: 3.25.76
@@ -537,6 +510,9 @@ importers:
       '@types/node':
         specifier: ^20.11.19
         version: 20.19.33
+      '@types/pg':
+        specifier: ^8.15.4
+        version: 8.16.0
       typescript:
         specifier: ^5.3.3
         version: 5.9.3
@@ -552,12 +528,6 @@ importers:
       '@fastify/sensible':
         specifier: ^5.1.1
         version: 5.6.0
-      '@fastify/swagger':
-        specifier: ^9.6.1
-        version: 9.7.0
-      '@fastify/swagger-ui':
-        specifier: ^5.2.3
-        version: 5.2.5
       '@tartware/config':
         specifier: workspace:*
         version: link:../config
@@ -670,12 +640,21 @@ importers:
       '@fastify/sensible':
         specifier: ^6.0.1
         version: 6.0.4
+      '@fastify/swagger':
+        specifier: ^9.6.1
+        version: 9.7.0
+      '@fastify/swagger-ui':
+        specifier: ^5.2.3
+        version: 5.2.5
       '@tartware/telemetry':
         specifier: workspace:*
         version: link:../telemetry
       fastify:
         specifier: ^5.2.0
         version: 5.7.4
+      fastify-plugin:
+        specifier: ^4.5.1
+        version: 4.5.1
     devDependencies:
       '@types/node':
         specifier: ^20.11.16
@@ -695,12 +674,6 @@ importers:
       '@fastify/sensible':
         specifier: ^5.1.1
         version: 5.6.0
-      '@fastify/swagger':
-        specifier: ^9.6.1
-        version: 9.7.0
-      '@fastify/swagger-ui':
-        specifier: ^5.2.3
-        version: 5.2.5
       '@tartware/command-consumer-utils':
         specifier: workspace:*
         version: link:../command-consumer-utils
@@ -725,9 +698,6 @@ importers:
       fastify:
         specifier: ^5.6.2
         version: 5.7.4
-      fastify-plugin:
-        specifier: ^4.5.1
-        version: 4.5.1
       jsonwebtoken:
         specifier: ^9.0.2
         version: 9.0.3
@@ -795,12 +765,6 @@ importers:
       '@fastify/sensible':
         specifier: ^5.1.1
         version: 5.6.0
-      '@fastify/swagger':
-        specifier: ^9.6.1
-        version: 9.7.0
-      '@fastify/swagger-ui':
-        specifier: ^5.2.3
-        version: 5.2.5
       '@tartware/command-consumer-utils':
         specifier: workspace:*
         version: link:../command-consumer-utils
@@ -825,9 +789,6 @@ importers:
       fastify:
         specifier: ^5.6.2
         version: 5.7.4
-      fastify-plugin:
-        specifier: ^4.5.1
-        version: 4.5.1
       jsonwebtoken:
         specifier: ^9.0.2
         version: 9.0.3
@@ -895,12 +856,6 @@ importers:
       '@fastify/sensible':
         specifier: ^5.1.1
         version: 5.6.0
-      '@fastify/swagger':
-        specifier: ^9.6.1
-        version: 9.7.0
-      '@fastify/swagger-ui':
-        specifier: ^5.2.3
-        version: 5.2.5
       '@tartware/command-consumer-utils':
         specifier: workspace:*
         version: link:../command-consumer-utils
@@ -925,9 +880,6 @@ importers:
       fastify:
         specifier: ^5.6.2
         version: 5.7.4
-      fastify-plugin:
-        specifier: ^4.5.1
-        version: 4.5.1
       jsonwebtoken:
         specifier: ^9.0.2
         version: 9.0.3
@@ -1015,12 +967,6 @@ importers:
 
   Apps/recommendation-service:
     dependencies:
-      '@fastify/swagger':
-        specifier: ^9.6.1
-        version: 9.7.0
-      '@fastify/swagger-ui':
-        specifier: ^5.2.3
-        version: 5.2.5
       '@tartware/candidate-pipeline':
         specifier: workspace:*
         version: link:../candidate-pipeline
@@ -1103,12 +1049,6 @@ importers:
       '@fastify/sensible':
         specifier: ^6.0.4
         version: 6.0.4
-      '@fastify/swagger':
-        specifier: ^9.6.1
-        version: 9.7.0
-      '@fastify/swagger-ui':
-        specifier: ^5.2.3
-        version: 5.2.5
       '@grpc/grpc-js':
         specifier: ^1.11.3
         version: 1.14.3
@@ -1142,9 +1082,6 @@ importers:
       fastify:
         specifier: ^5.6.2
         version: 5.7.4
-      fastify-plugin:
-        specifier: ^5.1.0
-        version: 5.1.0
       kafkajs:
         specifier: ^2.2.4
         version: 2.2.4
@@ -1218,12 +1155,6 @@ importers:
       '@fastify/sensible':
         specifier: ^5.1.1
         version: 5.6.0
-      '@fastify/swagger':
-        specifier: ^9.6.1
-        version: 9.7.0
-      '@fastify/swagger-ui':
-        specifier: ^5.2.3
-        version: 5.2.5
       '@tartware/command-consumer-utils':
         specifier: workspace:*
         version: link:../command-consumer-utils
@@ -1248,9 +1179,6 @@ importers:
       fastify:
         specifier: ^5.6.2
         version: 5.7.4
-      fastify-plugin:
-        specifier: ^4.5.1
-        version: 4.5.1
       jsonwebtoken:
         specifier: ^9.0.2
         version: 9.0.3
@@ -1403,12 +1331,6 @@ importers:
       '@fastify/sensible':
         specifier: ^5.1.1
         version: 5.6.0
-      '@fastify/swagger':
-        specifier: ^9.6.1
-        version: 9.7.0
-      '@fastify/swagger-ui':
-        specifier: ^5.2.3
-        version: 5.2.5
       '@tartware/command-consumer-utils':
         specifier: workspace:*
         version: link:../command-consumer-utils
@@ -1433,9 +1355,6 @@ importers:
       fastify:
         specifier: ^5.6.2
         version: 5.7.4
-      fastify-plugin:
-        specifier: ^4.5.1
-        version: 4.5.1
       jsonwebtoken:
         specifier: ^9.0.2
         version: 9.0.3
@@ -1506,12 +1425,6 @@ importers:
       '@fastify/sensible':
         specifier: ^5.1.1
         version: 5.6.0
-      '@fastify/swagger':
-        specifier: ^9.6.1
-        version: 9.7.0
-      '@fastify/swagger-ui':
-        specifier: ^5.2.3
-        version: 5.2.5
       '@tartware/command-consumer-utils':
         specifier: workspace:*
         version: link:../command-consumer-utils

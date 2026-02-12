@@ -1,35 +1,9 @@
-import swagger from "@fastify/swagger";
-import swaggerUi from "@fastify/swagger-ui";
-import fp from "fastify-plugin";
+import { createSwaggerPlugin } from "@tartware/fastify-server/swagger";
 
 import { config } from "../config.js";
 
-const swaggerPlugin = fp(async (app) => {
-  if (process.env.DISABLE_SWAGGER === "true") {
-    app.log.warn("Swagger UI disabled via DISABLE_SWAGGER");
-    return;
-  }
-
-  await app.register(swagger, {
-    openapi: {
-      info: {
-        title: `${config.service.name} API`,
-        description: "Settings catalog service APIs for tenant metadata.",
-        version: config.service.version ?? "1.0.0",
-      },
-      servers: [{ url: "/" }],
-    },
-    mode: "dynamic",
-  });
-
-  await app.register(swaggerUi, {
-    routePrefix: "/docs",
-    uiConfig: {
-      docExpansion: "list",
-      deepLinking: false,
-    },
-    staticCSP: true,
-  });
+export default createSwaggerPlugin({
+  title: `${config.service.name} API`,
+  description: "Settings catalog service APIs for tenant metadata.",
+  version: config.service.version ?? "1.0.0",
 });
-
-export default swaggerPlugin;

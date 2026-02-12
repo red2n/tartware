@@ -2,6 +2,8 @@ import {
   coreAuthSchema,
   databaseSchema,
   loadServiceConfig,
+  parseBooleanEnv,
+  parseNumberEnv,
   redisSchema,
   validateProductionSecrets,
 } from "@tartware/config";
@@ -18,24 +20,6 @@ if (!process.env.AUTH_JWT_SECRET) {
 process.env.AUTH_JWT_ISSUER = process.env.AUTH_JWT_ISSUER ?? "tartware-core-service";
 process.env.AUTH_JWT_AUDIENCE = process.env.AUTH_JWT_AUDIENCE ?? "tartware-core";
 process.env.AUTH_DEFAULT_PASSWORD = process.env.AUTH_DEFAULT_PASSWORD ?? "TempPass123";
-
-const toNumber = (value: string | undefined, fallback: number): number => {
-  if (typeof value === "string" && value.trim().length > 0) {
-    const parsed = Number(value);
-    if (!Number.isNaN(parsed)) {
-      return parsed;
-    }
-  }
-  return fallback;
-};
-
-const FALSEY_VALUES = new Set(["0", "false", "no", "off"]);
-const toBoolean = (value: string | undefined, fallback: boolean): boolean => {
-  if (value === undefined) {
-    return fallback;
-  }
-  return !FALSEY_VALUES.has(value.toLowerCase());
-};
 
 const configValues = loadServiceConfig(databaseSchema.merge(redisSchema).merge(coreAuthSchema));
 validateProductionSecrets(configValues);
@@ -63,24 +47,24 @@ const systemAdminJwtAudience =
     ? configValues.SYSTEM_ADMIN_JWT_AUDIENCE
     : (configValues.AUTH_JWT_AUDIENCE ?? "tartware-system");
 
-const guestDataRetentionDays = toNumber(process.env.COMPLIANCE_GUEST_DATA_RETENTION_DAYS, 1095);
-const billingDataRetentionDays = toNumber(process.env.COMPLIANCE_BILLING_DATA_RETENTION_DAYS, 2555);
+const guestDataRetentionDays = parseNumberEnv(process.env.COMPLIANCE_GUEST_DATA_RETENTION_DAYS, 1095);
+const billingDataRetentionDays = parseNumberEnv(process.env.COMPLIANCE_BILLING_DATA_RETENTION_DAYS, 2555);
 const guestEncryptionKey = process.env.GUEST_DATA_ENCRYPTION_KEY ?? "local-dev-guest-key";
 const billingEncryptionKey = process.env.BILLING_DATA_ENCRYPTION_KEY ?? "local-dev-billing-key";
-const offHoursStartHour = toNumber(process.env.COMPLIANCE_OFF_HOURS_START_HOUR, 0);
-const offHoursEndHour = toNumber(process.env.COMPLIANCE_OFF_HOURS_END_HOUR, 6);
-const impersonationAlertThreshold = toNumber(
+const offHoursStartHour = parseNumberEnv(process.env.COMPLIANCE_OFF_HOURS_START_HOUR, 0);
+const offHoursEndHour = parseNumberEnv(process.env.COMPLIANCE_OFF_HOURS_END_HOUR, 6);
+const impersonationAlertThreshold = parseNumberEnv(
   process.env.COMPLIANCE_IMPERSONATION_ALERT_THRESHOLD,
   5,
 );
-const impersonationAlertWindowMinutes = toNumber(
+const impersonationAlertWindowMinutes = parseNumberEnv(
   process.env.COMPLIANCE_IMPERSONATION_ALERT_WINDOW_MINUTES,
   60,
 );
 const membershipCacheHitDropThreshold = Number(
   process.env.COMPLIANCE_MEMBERSHIP_CACHE_HIT_DROP_THRESHOLD ?? "0.6",
 );
-const membershipCacheHitDropCooldownMinutes = toNumber(
+const membershipCacheHitDropCooldownMinutes = parseNumberEnv(
   process.env.COMPLIANCE_MEMBERSHIP_CACHE_HIT_DROP_COOLDOWN_MINUTES,
   15,
 );
@@ -175,8 +159,8 @@ export const config = {
       billingDataDays: billingDataRetentionDays,
     },
     encryption: {
-      requireGuestEncryption: toBoolean(process.env.COMPLIANCE_REQUIRE_GUEST_ENCRYPTION, true),
-      requireBillingEncryption: toBoolean(process.env.COMPLIANCE_REQUIRE_BILLING_ENCRYPTION, true),
+      requireGuestEncryption: parseBooleanEnv(process.env.COMPLIANCE_REQUIRE_GUEST_ENCRYPTION, true),
+      requireBillingEncryption: parseBooleanEnv(process.env.COMPLIANCE_REQUIRE_BILLING_ENCRYPTION, true),
       guestDataKey: guestEncryptionKey,
       billingDataKey: billingEncryptionKey,
     },
