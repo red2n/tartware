@@ -525,6 +525,42 @@ X-Idempotency-Key: payment-void-{{$timestamp}}
 }
 
 ###############################################################################
+# CASHIER SESSION COMMANDS (S29)
+###############################################################################
+
+###
+# Open a cashier session
+POST {{baseUrl}}/v1/tenants/{{tenantId}}/billing/cashier-sessions/open
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+X-Request-ID: {{$guid}}
+X-Idempotency-Key: cashier-open-{{$timestamp}}
+
+{
+  "property_id": "{{propertyId}}",
+  "cashier_id": "{{userId}}",
+  "opening_balance": 500.00,
+  "currency": "USD",
+  "notes": "Morning shift opening"
+}
+
+###
+# Close a cashier session
+POST {{baseUrl}}/v1/tenants/{{tenantId}}/billing/cashier-sessions/close
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+X-Request-ID: {{$guid}}
+X-Idempotency-Key: cashier-close-{{$timestamp}}
+
+{
+  "property_id": "{{propertyId}}",
+  "session_id": "cccccccc-cccc-cccc-cccc-cccccccccccc",
+  "closing_balance": 1250.00,
+  "actual_cash": 1245.50,
+  "notes": "End of morning shift"
+}
+
+###############################################################################
 # REFERENCE
 ###############################################################################
 #
@@ -581,6 +617,8 @@ X-Idempotency-Key: payment-void-{{$timestamp}}
 #   POST /v1/tenants/:tenantId/billing/charges
 #   POST /v1/tenants/:tenantId/billing/folios/transfer
 #   POST /v1/tenants/:tenantId/billing/folios/close
+#   POST /v1/tenants/:tenantId/billing/cashier-sessions/open
+#   POST /v1/tenants/:tenantId/billing/cashier-sessions/close
 #
 # SAMPLE IDs:
 #   Tenant:      11111111-1111-1111-1111-111111111111

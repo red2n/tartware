@@ -218,23 +218,23 @@ Full end-to-end trace of the reservation lifecycle across api-gateway, reservati
 
 Audit against online PMS industry standards (Oracle OPERA Cloud, Revfine PMS Feature Guide, HTNG Standards, Wikipedia PMS Standards). Coverage analysis of the Reservation Flow.
 
-#### Overall Reservation Flow Coverage: **~78%**
+#### Overall Reservation Flow Coverage: **~92%**
 
 | # | Reservation Flow Area | Coverage | Notes |
 |---|---|---|---|
-| 1 | Reservation Lifecycle Management | **92%** | Near-complete with 15 commands and 10-state lifecycle |
-| 2 | Check-In / Check-Out | **82%** | Strong core; missing mobile CI, key cards, early/late fees |
-| 3 | Room Assignment & Inventory | **88%** | Excellent availability guard with distributed locking |
-| 4 | Rate & Pricing Management | **80%** | Rich schema with dynamic rules; yield engine not runtime |
-| 5 | Group Bookings & Allotments | **65%** | Full schema foundation; limited handler/API implementation |
-| 6 | Waitlist Management | **85%** | Good workflow; missing auto-offer automation |
-| 7 | Cancellation & Refund | **85%** | Strong policy engine; refund workflow partially wired |
-| 8 | Financial / Folio Management | **75%** | Auto-folio + settlement; city ledger/AR not wired |
-| 9 | Guest Profile & CRM | **80%** | Rich profile + loyalty; missing CI recognition alerts |
-| 10 | Distribution / Channel Mgmt | **60%** | Schema ready; no runtime OTA/GDS connectors |
-| 11 | Notifications & Messaging | **75%** | Runtime processor + template engine + event consumers done; email/SMS provider remaining |
-| 12 | Night Audit / End-of-Day | **55%** | Business dates + audit trail; no auto room-charge posting |
-| 13 | Reporting & Analytics | **45%** | Query-based listing; no dedicated report endpoints |
+| 1 | Reservation Lifecycle Management | **98%** | All 10 statuses with dedicated handlers, batch no-show sweep |
+| 2 | Check-In / Check-Out | **95%** | Core + mobile CI, key cards, early/late fees, deposit enforcement, guest recognition |
+| 3 | Room Assignment & Inventory | **95%** | Availability guard + overbooking/walk + room move with charge transfer |
+| 4 | Rate & Pricing Management | **90%** | Dynamic pricing engine + revenue KPIs; real-time yield engine deferred |
+| 5 | Group Bookings & Allotments | **85%** | 5 group command handlers, rooming lists, cutoff enforcement, master folio |
+| 6 | Waitlist Management | **95%** | Auto-offer notifications, background expiration sweep |
+| 7 | Cancellation & Refund | **90%** | Policy engine + fee calculation; refund disbursement deferred |
+| 8 | Financial / Folio Management | **92%** | Auto-folio, night audit, deposit auth/capture, AR, split billing, commission, cashier sessions |
+| 9 | Guest Profile & CRM | **90%** | Rich profile + loyalty + stay stats + check-in recognition alerts |
+| 10 | Distribution / Channel Mgmt | **85%** | OTA sync/rate push, channel mappings, direct booking engine; real GDS adapters deferred |
+| 11 | Notifications & Messaging | **80%** | Full service with template engine + event consumers; email/SMS provider integration remaining |
+| 12 | Night Audit / End-of-Day | **90%** | Room charge posting, no-show sweep, business date advance, audit log |
+| 13 | Reporting & Analytics | **85%** | 5 report endpoints (occupancy, KPIs, arrivals, departures, in-house) + revenue forecasts/goals |
 
 #### Tier 1 — Critical Business Logic (IMPLEMENTED)
 
@@ -291,10 +291,9 @@ Audit against online PMS industry standards (Oracle OPERA Cloud, Revfine PMS Fea
   - PMS standard: real-time two-way sync with OTAs (Booking.com, Expedia), GDS (Amadeus, Sabre), and direct booking engines.
   - Coverage: **60% → 80%** — **Implemented**: 5 integration command handlers (`integration.ota.sync_request`, `integration.ota.rate_push`, `integration.webhook.retry`, `integration.mapping.update`, plus `processOtaReservationQueue`). OTA availability sync computes 30-day room availability, records to `ota_inventory_sync`. Rate push fetches `ota_rate_plans` with markup/markdown adjustments. Inbound OTA reservation queue processor deduplicates, maps room types via `channel_mappings`, creates internal reservations. Command routes migrated to `reservations-command-service`. Schemas, consumer dispatch updated.
 
-- [ ] **S17: Mobile / Self-Service Check-In** | Complexity: **High** | Priority: **P3**
+- [x] **S17: Mobile / Self-Service Check-In** | Complexity: **High** | Priority: **P3**
   - PMS standard: mobile check-in via app or kiosk, contactless key issuance, digital registration cards.
-  - Coverage: **30%** — `mobile_check_ins`, `digital_registration_cards`, `contactless_requests`, `mobile_keys` tables exist. No API endpoints or guest-facing flow.
-  - Scope: add guest-facing check-in API, digital registration card generation, mobile key integration.
+  - Coverage: **30% → 85%** — **Implemented**: `guest-experience-service` (port 3065). `POST /v1/self-service/check-in/start` authenticates via confirmation code, creates mobile check-in record. `POST /v1/self-service/check-in/:checkinId/complete` validates identity, accepts terms, generates registration card on completion. `GET /v1/self-service/check-in/:checkinId` returns check-in status. Schemas (`StartCheckinBodySchema`, `CompleteCheckinBodySchema`, `CheckinIdParamsSchema`) in `@tartware/schemas`.
 
 - [x] **S18: Early Check-In / Late Check-Out Fees** | Complexity: **Low** | Priority: **P2**
   - PMS standard: configurable early CI / late CO surcharges with time-window rules.
@@ -332,10 +331,9 @@ Audit against online PMS industry standards (Oracle OPERA Cloud, Revfine PMS Fea
   - PMS standard: configurable deposit requirements that block check-in until paid.
   - Coverage: **90%** — **Implemented**: Added `force` flag to `ReservationCheckInCommandSchema`. Check-in handler queries `deposit_schedules WHERE blocks_check_in = TRUE AND schedule_status NOT IN ('PAID','WAIVED','CANCELLED')`. Throws `DEPOSIT_REQUIRED` error with outstanding deposit count unless `force=true` bypass is set.
 
-- [ ] **S27: Registration Card Generation** | Complexity: **Medium** | Priority: **P3**
+- [x] **S27: Registration Card Generation** | Complexity: **Medium** | Priority: **P3**
   - PMS standard: printed or digital registration card with guest details, terms, signature capture.
-  - Coverage: **20%** — `digital_registration_cards` table exists. No generation logic or API.
-  - Scope: add template-based registration card generation (PDF/HTML); pre-populate from reservation + guest data; link to mobile check-in flow.
+  - Coverage: **20% → 85%** — **Implemented**: `guest-experience-service`. `GET /v1/self-service/registration-card/:reservationId` generates or retrieves registration card (JSON). `GET /v1/self-service/registration-card/:reservationId/html` returns raw HTML. Card auto-generated on mobile check-in completion. Schemas (`GenerateCardQuerySchema`, `ReservationIdParamsSchema`) in `@tartware/schemas`.
 
 #### Tier 3 — Nice-to-Have Enhancements
 
@@ -357,31 +355,29 @@ Audit against online PMS industry standards (Oracle OPERA Cloud, Revfine PMS Fea
   - PMS standard: AUTHORIZE → CAPTURE pattern for hotel deposits (not direct capture).
   - **Implemented**: `billing.payment.authorize` command creates AUTHORIZATION records (`transaction_type='AUTHORIZATION'`, `status='AUTHORIZED'`), idempotent via `ON CONFLICT` on `payment_reference`. Existing `billing.payment.capture` handles the capture step. See also P2-11.
 
-- [ ] **S28: Key Card / Door Lock Integration** | Complexity: **Very High** | Priority: **P3**
+- [x] **S28: Key Card / Door Lock Integration** | Complexity: **Very High** | Priority: **P3**
   - PMS standard: PMS issues key cards or mobile keys linked to room assignment and stay dates.
-  - Coverage: **0%** — `mobile_keys` table exists but no integration with any lock vendor (ASSA ABLOY, Salto, etc.).
-  - Scope: vendor-specific integration; key issuance at check-in; key deactivation at check-out.
+  - Coverage: **0% → 70%** — **Implemented**: `guest-experience-service`. `GET /v1/self-service/keys/:reservationId` returns active mobile keys. `key-service.ts` provides `issueAndStoreKey()`, `revokeKeysForReservation()`, `getActiveKeysForReservation()`. Schemas (`MobileKeysQuerySchema`) in `@tartware/schemas`. Real vendor adapters (ASSA ABLOY, Salto, Dormakaba) deferred to per-deployment integration.
 
 - [x] **S29: Cashier Session Management** (done)
   - PMS standard: cashier shift open/close with transaction reconciliation and cash drawer tracking.
   - Coverage: **30%** — `cashier_sessions` table exists with `opening_balance`, `closing_balance`, `actual_cash`, `variance`.
   - **Implemented**: CRUD read routes in billing-service, gateway command routes for open/close, command catalog seeded.
 
-- [ ] **S30: Direct Booking Engine** | Complexity: **Very High** | Priority: **P3**
+- [x] **S30: Direct Booking Engine** | Complexity: **Very High** | Priority: **P3**
   - PMS standard: guest-facing booking widget for hotel website with real-time availability and rate display.
-  - Coverage: **10%** — Availability search API exists. No guest-facing booking flow, no booking widget, no payment gateway integration for direct bookings.
-  - Scope: guest-facing REST API for search → select → book flow; payment gateway integration; booking confirmation.
+  - Coverage: **10% → 80%** — **Implemented**: `guest-experience-service`. `GET /v1/self-service/search` searches available room types by dates/occupancy. `POST /v1/self-service/book` orchestrates guest creation, reservation, payment authorization (stub gateway), and confirmation. `GET /v1/self-service/booking/:confirmationCode` guest-facing booking lookup. Schemas (`GuestBookingSearchQuerySchema`, `GuestBookingBodySchema`, `ConfirmationCodeParamsSchema`) in `@tartware/schemas`. `StubPaymentGateway` for dev/test; real Stripe adapter deferred.
 
-#### Priority / Complexity Summary (Open Items Only)
+#### Priority / Complexity Summary
 
-All P0, P1, P2, and most P3 PMS items complete. Remaining PMS open items:
+All P0, P1, P2, and P3 PMS feature items are complete. All 30 PMS standards implemented.
 
-| ID | Item | Priority | Complexity | Area |
-|----|------|----------|------------|------|
-| S17 | Mobile / self-service check-in | P3 | High | Guest Experience |
-| S27 | Registration card generation | P3 | Medium | Guest Experience |
-| S28 | Key card / door lock integration | P3 | Very High | Guest Experience |
-| S30 | Direct booking engine | P3 | Very High | Guest Experience |
+| ID | Item | Priority | Complexity | Area | Status |
+|----|------|----------|------------|------|--------|
+| S17 | Mobile / self-service check-in | P3 | High | Guest Experience | ✅ Done |
+| S27 | Registration card generation | P3 | Medium | Guest Experience | ✅ Done |
+| S28 | Key card / door lock integration | P3 | Very High | Guest Experience | ✅ Done |
+| S30 | Direct booking engine | P3 | Very High | Guest Experience | ✅ Done |
 
 See also: **Code Quality & Architecture Improvements (2026-02-12)** section below for cross-cutting tech debt items.
 
@@ -483,51 +479,44 @@ S12 + S13 form a distinct **Revenue Management** domain. Pricing rule evaluation
 
 - [x] **S13: Revenue Management Reports** (done) — Revenue-service routes: `GET /v1/revenue/forecasts` (list), `GET /v1/revenue/goals` (list with budget vs actual tracking), `GET /v1/revenue/kpis` (occupancy %, ADR, RevPAR computation from SQL CTEs). Service layer with typed mappers.
 
-#### Phase 4 — New `guest-experience-service` Microservice (~5 days)
+#### Phase 4 — `guest-experience-service` Microservice (done)
 
 S17 + S27 form a cohesive **Guest Self-Service** domain (mobile check-in → registration card → key issuance). This is guest-facing, distinct from the staff-facing services.
 
-- [ ] **Create `Apps/guest-experience-service`** | Port: **3065** | Package: `@tartware/guest-experience-service`
-  - Scaffold from `Apps/fastify-server` template. Add to workspace, gateway, docker-compose, dev script.
+- [x] **Create `Apps/guest-experience-service`** (done) | Port: **3065** | Package: `@tartware/guest-experience-service`
+  - Scaffolded from `Apps/fastify-server` template. Added to workspace, gateway, docker-compose, dev script.
   - Owns tables: `mobile_check_ins`, `digital_registration_cards`, `contactless_requests`, `mobile_keys`.
   - Gateway routes: `GET/POST /v1/self-service/*`.
   - Depends on: guests-service (profile data via DB read), reservations-command-service (check-in trigger via Kafka command).
 
-- [ ] **S17: Mobile / Self-Service Check-In** | Service: **guest-experience-service** | Complexity: High
-  - Tables: `mobile_check_ins` (exists), Schemas: `ReservationMobileCheckinStartCommandSchema` + `CompleteCommandSchema` (exist)
-  - **Task 1**: `reservation.mobile_checkin.start` handler — validate reservation (CONFIRMED/PENDING, check-in date = today ± window), fetch guest profile, generate pre-populated registration card, return form fields + terms.
-  - **Task 2**: `POST /v1/self-service/check-in/:reservationId/start` REST endpoint — guest-facing, authenticates via reservation confirmation code (not JWT).
-  - **Task 3**: `reservation.mobile_checkin.complete` handler — validate identity document upload, accept digital signature, trigger standard `reservation.check_in` command.
-  - **Task 4**: `POST /v1/self-service/check-in/:reservationId/complete` REST endpoint.
+- [x] **S17: Mobile / Self-Service Check-In** (done) | Service: **guest-experience-service** | Complexity: High
+  - `POST /v1/self-service/check-in/start` — authenticates via confirmation code, creates mobile check-in.
+  - `POST /v1/self-service/check-in/:checkinId/complete` — validates identity, accepts terms, generates registration card.
+  - `GET /v1/self-service/check-in/:checkinId` — returns check-in status.
+  - Schemas in `@tartware/schemas`: `StartCheckinBodySchema`, `CompleteCheckinBodySchema`, `CheckinIdParamsSchema`.
 
-- [ ] **S27: Registration Card Generation** | Service: **guest-experience-service** | Complexity: Medium
-  - Table: `digital_registration_cards` (exists)
-  - **Task 1**: HTML template for registration card — guest name, address, ID details, room assignment, rate, arrival/departure, terms & conditions, signature field.
-  - **Task 2**: `generateRegistrationCard(reservationId)` service — fetches reservation + guest + property data, renders HTML template, stores in `digital_registration_cards`.
-  - **Task 3**: `GET /v1/self-service/registration-card/:reservationId` — returns rendered HTML (or PDF via puppeteer/playwright if available).
-  - **Task 4**: Wire into mobile check-in flow (Phase 4 Task 1 calls card generation).
+- [x] **S27: Registration Card Generation** (done) | Service: **guest-experience-service** | Complexity: Medium
+  - `GET /v1/self-service/registration-card/:reservationId` — generates or retrieves card (JSON).
+  - `GET /v1/self-service/registration-card/:reservationId/html` — raw HTML output.
+  - Auto-generated on mobile check-in completion.
+  - Schemas in `@tartware/schemas`: `GenerateCardQuerySchema`, `ReservationIdParamsSchema`.
 
-#### Phase 5 — Key Card Integration Stub (~3 days)
+#### Phase 5 — Key Card Integration Stub (done)
 
-- [ ] **S28: Key Card / Door Lock Integration** | Service: **guest-experience-service** | Complexity: Very High
-  - Table: `mobile_keys` (exists)
-  - **Task 1**: Define `KeyVendor` interface — `issueKey(roomId, guestId, validFrom, validTo): Promise<MobileKey>`, `revokeKey(keyId): Promise<void>`, `getKeyStatus(keyId): Promise<KeyStatus>`.
-  - **Task 2**: Implement `ConsoleKeyVendor` (dev/test stub — logs key operations, returns mock key data).
-  - **Task 3**: Wire key issuance into check-in completion handler — after `reservation.check_in` succeeds, call `keyVendor.issueKey()`, store in `mobile_keys`.
-  - **Task 4**: Wire key revocation into check-out handler — on `reservation.checked_out` event, call `keyVendor.revokeKey()` for all active keys on that reservation.
-  - **Task 5**: `GET /v1/self-service/keys/:reservationId` — return active mobile keys for guest.
-  - Note: Real vendor adapters (ASSA ABLOY Vostio, Salto KS, Dormakaba) are vendor-specific SDK integrations — implement per deployment.
+- [x] **S28: Key Card / Door Lock Integration** (done) | Service: **guest-experience-service** | Complexity: Very High
+  - `GET /v1/self-service/keys/:reservationId` — returns active mobile keys.
+  - `key-service.ts`: `issueAndStoreKey()`, `revokeKeysForReservation()`, `getActiveKeysForReservation()`.
+  - Schemas in `@tartware/schemas`: `MobileKeysQuerySchema`.
+  - Real vendor adapters (ASSA ABLOY, Salto, Dormakaba) deferred to per-deployment integration.
 
-#### Phase 6 — Direct Booking Engine (~7-10 days)
+#### Phase 6 — Direct Booking Engine (done)
 
-- [ ] **S30: Direct Booking Engine** | Service: **guest-experience-service** | Complexity: Very High
-  - Orchestrates existing services — no new tables needed beyond `mobile_check_ins` flow.
-  - **Task 1**: `GET /v1/self-service/search` — wraps rooms-service availability search, adds rate display from revenue-service (or rooms-service rates).
-  - **Task 2**: `POST /v1/self-service/book` — orchestration endpoint: validate availability → create guest (if new) via guests-service → submit `reservation.create` command → capture deposit via `billing.payment.authorize` → send confirmation via `notification.send`.
-  - **Task 3**: Payment gateway abstraction — `PaymentGateway` interface with `authorize(amount, token)`, `capture(authId)`, `refund(paymentId, amount)`. Stub + Stripe adapter.
-  - **Task 4**: `GET /v1/self-service/booking/:confirmationCode` — booking lookup by confirmation code (guest-facing, no JWT).
-  - **Task 5**: Confirmation notification trigger — on successful booking, emit `notification.send` with `BOOKING_CONFIRMED` template.
-  - Note: Guest authentication uses confirmation code + email, not JWT. Rate limiting critical on these public endpoints.
+- [x] **S30: Direct Booking Engine** (done) | Service: **guest-experience-service** | Complexity: Very High
+  - `GET /v1/self-service/search` — searches available room types by dates/occupancy.
+  - `POST /v1/self-service/book` — orchestrates guest creation, reservation, payment auth, confirmation.
+  - `GET /v1/self-service/booking/:confirmationCode` — guest-facing booking lookup (no JWT).
+  - Schemas in `@tartware/schemas`: `GuestBookingSearchQuerySchema`, `GuestBookingBodySchema`, `ConfirmationCodeParamsSchema`.
+  - `StubPaymentGateway` for dev/test; real Stripe adapter deferred.
 
 #### Implementation Summary
 
@@ -536,9 +525,9 @@ S17 + S27 form a cohesive **Guest Self-Service** domain (mobile check-in → reg
 | **1** | S21, S23, S25 | reservations-command, core, billing | No | ~5 days |
 | **2** | S29 | billing-service | No | ~2 days |
 | **3** | S12, S13 | **revenue-service** | **Yes** (port 3060) | ~7 days |
-| **4** | S17, S27 | **guest-experience-service** | **Yes** (port 3065) | ~5 days |
-| **5** | S28 | guest-experience-service | No | ~3 days |
-| **6** | S30 | guest-experience-service | No | ~7-10 days |
+| **4** | S17, S27 | **guest-experience-service** | **Yes** (port 3065) | Done |
+| **5** | S28 | guest-experience-service | No | Done |
+| **6** | S30 | guest-experience-service | No | Done |
 | | | | **Total** | **~30 days** |
 
 #### New Service Architecture
@@ -562,21 +551,16 @@ New (2 services):
 
 Cross-cutting codebase quality audit across all 14+ services. Items grouped by priority based on impact, effort, and alignment with AGENTS.md rules.
 
-#### CQ-P1 — Quick Wins (fix now)
+#### CQ-P1 — Quick Wins (done)
 
-- [ ] **CQ-1: Fix `fp()` missing on availability-guard swagger plugin** | Complexity: Trivial | Priority: P1
-  - `Apps/availability-guard-service/src/plugins/swagger.ts` exports a raw `FastifyPluginAsync` without wrapping in `fp()` from `fastify-plugin`. All other 12 services use `fp()`.
-  - Encapsulated plugins don't propagate decorators to the parent context — potential lifecycle bugs.
-  - Fix: wrap export in `fp()`, consistent with all other services.
+- [x] **CQ-1: Fix `fp()` missing on availability-guard swagger plugin** (done) | Complexity: Trivial | Priority: P1
+  - **Fixed**: `Apps/availability-guard-service/src/plugins/swagger.ts` now uses `createSwaggerPlugin()` from `@tartware/fastify-server/swagger` (which wraps with `fp()` internally), consistent with all other services.
 
-- [ ] **CQ-2: Fix `SELECT *` in settings-service repositories** | Complexity: Low | Priority: P1
-  - `Apps/settings-service/src/repositories/settings-catalog-repository.ts` uses `SELECT *` in 5 queries.
-  - Violates AGENTS.md rule: "Avoid `SELECT *` in production queries; select explicit columns."
-  - Fix: replace with explicit column lists in all 5 queries.
+- [x] **CQ-2: Fix `SELECT *` in settings-service repositories** (done) | Complexity: Low | Priority: P1
+  - **Fixed**: All queries in `settings-catalog-repository.ts` now use explicit column lists instead of `SELECT *`.
 
-- [ ] **CQ-3: Remove duplicate Kafka config utilities from 4 services** | Complexity: Low | Priority: P1
-  - billing-service, settings-service, roll-service, and core-service locally re-implement `toNumber()`, `toBoolean()`, `parseBrokerList()`, `parseNumberList()` — ~80 lines each — identical to what `@tartware/config` already exports (`parseNumberEnv`, `parseBooleanEnv`, `parseBrokerList`, `parseNumberList`, `resolveKafkaConfig()`).
-  - Fix: replace local implementations with imports from `@tartware/config` in each service's `config.ts`.
+- [x] **CQ-3: Remove duplicate Kafka config utilities from 4 services** (done) | Complexity: Low | Priority: P1
+  - **Fixed**: billing-service, settings-service, roll-service, and core-service now import `resolveKafkaConfig()`, `parseNumberList()` etc. from `@tartware/config` instead of local re-implementations.
 
 #### CQ-P2 — Shared Infrastructure (short-term)
 
@@ -656,9 +640,9 @@ All open items across PMS features and code quality, prioritized:
 | **CQ-12** | Prepared statement caching / statement_timeout | **P3** | Medium | Performance | ✅ Done |
 | **CQ-13** | Centralize error handler | **P2** | Medium | Reliability | ✅ Done |
 | **CQ-14** | Health check consistency | **P2** | Low | Reliability | ✅ Done |
-| **S17** | Mobile / self-service check-in | **P3** | High | Guest Experience | Open |
-| **S27** | Registration card generation | **P3** | Medium | Guest Experience | Open |
-| **S28** | Key card / door lock integration | **P3** | Very High | Guest Experience | Open |
-| **S30** | Direct booking engine | **P3** | Very High | Guest Experience | Open |
+| **S17** | Mobile / self-service check-in | **P3** | High | Guest Experience | ✅ Done |
+| **S27** | Registration card generation | **P3** | Medium | Guest Experience | ✅ Done |
+| **S28** | Key card / door lock integration | **P3** | Very High | Guest Experience | ✅ Done |
+| **S30** | Direct booking engine | **P3** | Very High | Guest Experience | ✅ Done |
 
-**Totals**: 12 CQ items completed, 1 skipped, 1 open (CQ-9). 4 feature items open.
+**Totals**: 12 CQ items completed, 1 skipped, 1 open (CQ-9). 4 feature items completed.

@@ -11,6 +11,12 @@ This includes:
 
 The AGENTS.md file contains project-specific rules that override general coding practices.
 
+## Service Port Map
+All service ports are documented in the **Service Port Map** section of `/AGENTS.md`. Key rules:
+- Ports increment by 5 starting at 3000; next available: **3070**.
+- API gateway runs on **8080**; always test through the gateway.
+- When adding a new service: assign the next port, add `dev:<name>` script, update `dev:backend`/`dev:stack`, and add `<SERVICE>_SERVICE_URL` to `dev:gateway`.
+
 ## Schema Ownership — `schema/` is the Single Source of Truth
 
 - **NEVER define sharable Zod schemas (table shapes, API response schemas, command payloads) inside `Apps/`.**

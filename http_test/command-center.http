@@ -1640,6 +1640,364 @@ X-Idempotency-Key: inventory-adjust-{{$timestamp}}
 }
 
 ###############################################################################
+# --- ADDITIONAL RESERVATION COMMANDS ---
+###############################################################################
+
+###############################################################################
+# 59. reservation.no_show - Mark reservation as no-show with fee
+###############################################################################
+
+POST {{baseUrl}}/v1/commands/reservation.no_show/execute
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+X-Request-ID: {{$guid}}
+X-Idempotency-Key: no-show-{{$timestamp}}
+
+{
+  "tenant_id": "{{tenantId}}",
+  "payload": {
+    "property_id": "{{propertyId}}",
+    "reservation_id": "{{reservationId}}",
+    "no_show_fee": 199.00,
+    "notes": "Guest did not arrive by end of day"
+  }
+}
+
+###############################################################################
+# 60. reservation.batch_no_show - Sweep overdue reservations as no-show
+###############################################################################
+
+POST {{baseUrl}}/v1/commands/reservation.batch_no_show/execute
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+X-Request-ID: {{$guid}}
+X-Idempotency-Key: batch-noshow-{{$timestamp}}
+
+{
+  "tenant_id": "{{tenantId}}",
+  "payload": {
+    "property_id": "{{propertyId}}",
+    "business_date": "2026-02-12",
+    "dry_run": true,
+    "no_show_fee_override": 150.00
+  }
+}
+
+###############################################################################
+# 61. reservation.send_quote - Send quote for an inquiry
+###############################################################################
+
+POST {{baseUrl}}/v1/commands/reservation.send_quote/execute
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+X-Request-ID: {{$guid}}
+X-Idempotency-Key: send-quote-{{$timestamp}}
+
+{
+  "tenant_id": "{{tenantId}}",
+  "payload": {
+    "property_id": "{{propertyId}}",
+    "reservation_id": "{{reservationId}}",
+    "quote_expires_at": "2026-02-15T23:59:59Z",
+    "notes": "Quote valid for 3 days"
+  }
+}
+
+###############################################################################
+# 62. reservation.convert_quote - Convert quoted reservation to pending
+###############################################################################
+
+POST {{baseUrl}}/v1/commands/reservation.convert_quote/execute
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+X-Request-ID: {{$guid}}
+X-Idempotency-Key: convert-quote-{{$timestamp}}
+
+{
+  "tenant_id": "{{tenantId}}",
+  "payload": {
+    "property_id": "{{propertyId}}",
+    "reservation_id": "{{reservationId}}"
+  }
+}
+
+###############################################################################
+# 63. reservation.expire - Expire an inquiry/quoted/pending reservation
+###############################################################################
+
+POST {{baseUrl}}/v1/commands/reservation.expire/execute
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+X-Request-ID: {{$guid}}
+X-Idempotency-Key: expire-res-{{$timestamp}}
+
+{
+  "tenant_id": "{{tenantId}}",
+  "payload": {
+    "property_id": "{{propertyId}}",
+    "reservation_id": "{{reservationId}}",
+    "reason": "Quote expired without conversion"
+  }
+}
+
+###############################################################################
+# 64. reservation.walk_guest - Walk guest to alternate property
+###############################################################################
+
+POST {{baseUrl}}/v1/commands/reservation.walk_guest/execute
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+X-Request-ID: {{$guid}}
+X-Idempotency-Key: walk-guest-{{$timestamp}}
+
+{
+  "tenant_id": "{{tenantId}}",
+  "payload": {
+    "property_id": "{{propertyId}}",
+    "reservation_id": "{{reservationId}}",
+    "walk_reason": "Overbooking — no available rooms",
+    "alternate_property_name": "Partner Hotel Downtown",
+    "compensation_type": "COMPLIMENTARY_NIGHT",
+    "compensation_amount": 199.00,
+    "transportation_arranged": true,
+    "notes": "Guest compensated with free night at partner hotel + taxi"
+  }
+}
+
+###############################################################################
+# 65. reservation.waitlist_offer - Offer freed room to waitlisted guest
+###############################################################################
+
+POST {{baseUrl}}/v1/commands/reservation.waitlist_offer/execute
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+X-Request-ID: {{$guid}}
+X-Idempotency-Key: waitlist-offer-{{$timestamp}}
+
+{
+  "tenant_id": "{{tenantId}}",
+  "payload": {
+    "property_id": "{{propertyId}}",
+    "waitlist_id": "dddddddd-dddd-dddd-dddd-dddddddddddd"
+  }
+}
+
+###############################################################################
+# 66. reservation.waitlist_expire_sweep - Expire stale waitlist offers
+###############################################################################
+
+POST {{baseUrl}}/v1/commands/reservation.waitlist_expire_sweep/execute
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+X-Request-ID: {{$guid}}
+X-Idempotency-Key: waitlist-sweep-{{$timestamp}}
+
+{
+  "tenant_id": "{{tenantId}}",
+  "payload": {
+    "property_id": "{{propertyId}}"
+  }
+}
+
+###############################################################################
+# --- ADDITIONAL BILLING COMMANDS ---
+###############################################################################
+
+###############################################################################
+# 67. billing.payment.authorize - Pre-authorize a payment hold
+###############################################################################
+
+POST {{baseUrl}}/v1/commands/billing.payment.authorize/execute
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+X-Request-ID: {{$guid}}
+X-Idempotency-Key: auth-pay-{{$timestamp}}
+
+{
+  "tenant_id": "{{tenantId}}",
+  "payload": {
+    "property_id": "{{propertyId}}",
+    "reservation_id": "{{reservationId}}",
+    "folio_id": "{{folioId}}",
+    "amount": 500.00,
+    "currency": "USD",
+    "payment_method": "credit_card",
+    "payment_reference": "AUTH-2026-001",
+    "notes": "Pre-authorization for room deposit"
+  }
+}
+
+###############################################################################
+# 68. billing.payment.void - Void an authorized payment
+###############################################################################
+
+POST {{baseUrl}}/v1/commands/billing.payment.void/execute
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+X-Request-ID: {{$guid}}
+X-Idempotency-Key: void-pay-{{$timestamp}}
+
+{
+  "tenant_id": "{{tenantId}}",
+  "payload": {
+    "property_id": "{{propertyId}}",
+    "payment_id": "{{paymentId}}",
+    "reason": "Duplicate authorization — voiding",
+    "notes": "Approved by front desk manager"
+  }
+}
+
+###############################################################################
+# 69. billing.folio.close - Close/settle a folio
+###############################################################################
+
+POST {{baseUrl}}/v1/commands/billing.folio.close/execute
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+X-Request-ID: {{$guid}}
+X-Idempotency-Key: folio-close-cmd-{{$timestamp}}
+
+{
+  "tenant_id": "{{tenantId}}",
+  "payload": {
+    "property_id": "{{propertyId}}",
+    "folio_id": "{{folioId}}",
+    "settlement_method": "CREDIT_CARD",
+    "notes": "Closing at checkout"
+  }
+}
+
+###############################################################################
+# 70. billing.charge.void - Void a charge posting
+###############################################################################
+
+POST {{baseUrl}}/v1/commands/billing.charge.void/execute
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+X-Request-ID: {{$guid}}
+X-Idempotency-Key: charge-void-{{$timestamp}}
+
+{
+  "tenant_id": "{{tenantId}}",
+  "payload": {
+    "property_id": "{{propertyId}}",
+    "charge_id": "eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee",
+    "reason": "Incorrect charge — guest dispute",
+    "notes": "Reversal entry created"
+  }
+}
+
+###############################################################################
+# 71. billing.invoice.finalize - Finalize invoice, lock from edits
+###############################################################################
+
+POST {{baseUrl}}/v1/commands/billing.invoice.finalize/execute
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+X-Request-ID: {{$guid}}
+X-Idempotency-Key: inv-finalize-{{$timestamp}}
+
+{
+  "tenant_id": "{{tenantId}}",
+  "payload": {
+    "property_id": "{{propertyId}}",
+    "invoice_id": "{{invoiceId}}",
+    "notes": "Final invoice issued to guest"
+  }
+}
+
+###############################################################################
+# 72. billing.night_audit.execute - Run nightly audit
+###############################################################################
+
+POST {{baseUrl}}/v1/commands/billing.night_audit.execute/execute
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+X-Request-ID: {{$guid}}
+X-Idempotency-Key: night-audit-{{$timestamp}}
+
+{
+  "tenant_id": "{{tenantId}}",
+  "payload": {
+    "property_id": "{{propertyId}}",
+    "business_date": "2026-02-12"
+  }
+}
+
+###############################################################################
+# 73. billing.cashier.open - Open cashier session
+###############################################################################
+
+POST {{baseUrl}}/v1/commands/billing.cashier.open/execute
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+X-Request-ID: {{$guid}}
+X-Idempotency-Key: cashier-open-{{$timestamp}}
+
+{
+  "tenant_id": "{{tenantId}}",
+  "payload": {
+    "property_id": "{{propertyId}}",
+    "cashier_id": "{{guestId}}",
+    "opening_balance": 500.00,
+    "currency": "USD",
+    "notes": "Morning shift opening"
+  }
+}
+
+###############################################################################
+# 74. billing.cashier.close - Close cashier session
+###############################################################################
+
+POST {{baseUrl}}/v1/commands/billing.cashier.close/execute
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+X-Request-ID: {{$guid}}
+X-Idempotency-Key: cashier-close-{{$timestamp}}
+
+{
+  "tenant_id": "{{tenantId}}",
+  "payload": {
+    "property_id": "{{propertyId}}",
+    "session_id": "cccccccc-cccc-cccc-cccc-cccccccccccc",
+    "closing_balance": 1250.00,
+    "actual_cash": 1245.50,
+    "notes": "End of morning shift"
+  }
+}
+
+###############################################################################
+# --- NOTIFICATION COMMAND ---
+###############################################################################
+
+###############################################################################
+# 75. notification.send - Send templated notification to guest
+###############################################################################
+
+POST {{baseUrl}}/v1/commands/notification.send/execute
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+X-Request-ID: {{$guid}}
+X-Idempotency-Key: notif-send-{{$timestamp}}
+
+{
+  "tenant_id": "{{tenantId}}",
+  "payload": {
+    "property_id": "{{propertyId}}",
+    "guest_id": "{{guestId}}",
+    "template_code": "BOOKING_CONFIRMED",
+    "channel": "email",
+    "variables": {
+      "guest_name": "John Doe",
+      "confirmation_code": "CONF-ABC123",
+      "check_in_date": "2026-03-01",
+      "check_out_date": "2026-03-03",
+      "property_name": "Tartware City Center"
+    }
+  }
+}
+
+###############################################################################
 # REFERENCE
 ###############################################################################
 #

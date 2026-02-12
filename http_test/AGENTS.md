@@ -101,8 +101,11 @@ These IDs are pre-populated in the database:
 | `operations.http` | Operations endpoints |
 | `rates.http` | Rate plans |
 | `recommendations.http` | Recommendation engine |
+| `reports.http` | Occupancy, KPIs, arrivals, departures, in-house, forecasts |
 | `reservations.http` | Reservation CRUD + lifecycle |
+| `revenue.http` | Pricing rules, demand calendar, revenue KPIs |
 | `rooms.http` | Room management |
+| `self-service.http` | Guest self-service: check-in, booking, keys, reg cards |
 | `settings-service.http` | Settings and amenities |
 | `tenantandproperty.http` | Tenant/property management |
 

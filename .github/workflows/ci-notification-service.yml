@@ -1,0 +1,21 @@
+name: CI · Notification Service
+
+on:
+  push:
+    branches: [main, develop, deployment]
+    paths:
+      - 'Apps/notification-service/**'
+      - 'schema/**'
+      - 'package.json'
+      - 'nx.json'
+  pull_request:
+    paths:
+      - 'Apps/notification-service/**'
+      - 'schema/**'
+  workflow_dispatch:
+
+jobs:
+  ci:
+    uses: ./.github/workflows/package-ci.yml
+    with:
+      package-scope: '@tartware/notification-service'

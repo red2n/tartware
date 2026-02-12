@@ -101,9 +101,34 @@ Every entry in `pnpm.overrides` (root `package.json`) must have a documented rea
 - **@fastify/swagger-ui ^5.2.3** — Align version across all Fastify services.
 - **esbuild 0.27.2** — Pin for tsx; prevents unexpected binary re-downloads.
 
+## Service Port Map
+Canonical dev port assignments (set via `PORT=` env var in root `package.json` dev scripts). Ports increment by 5.
+
+| Port | Service | Dev Script | Notes |
+|------|---------|------------|-------|
+| 3000 | core-service | `dev:core` | |
+| 3005 | settings-service | `dev:settings` | |
+| 3010 | guests-service | `dev:guests` | |
+| 3015 | rooms-service | `dev:rooms` | |
+| 3020 | reservations-command-service | `dev:reservations` | Kafka + outbox |
+| 3025 | billing-service | `dev:billing` | |
+| 3030 | housekeeping-service | `dev:housekeeping` | |
+| 3035 | command-center-service | `dev:command-center` | Kafka + outbox |
+| 3040 | recommendation-service | `dev:recommendation` | |
+| 3045 | availability-guard-service | `dev:availability-guard` | + gRPC on 4400 |
+| 3050 | roll-service | `dev:roll-service` | Internal consumer |
+| 3055 | notification-service | `dev:notification-service` | Kafka consumer |
+| 3060 | revenue-service | `dev:revenue` | Kafka consumer |
+| 3065 | guest-experience-service | `dev:guest-experience` | Kafka consumer |
+| 8080 | api-gateway | `dev:gateway` | Entry point |
+
+- When adding a new service, assign the next port in the sequence (next: **3070**) and add it to `dev:backend`/`dev:stack` in root `package.json`.
+- Add the service URL env var (`<SERVICE>_SERVICE_URL=http://localhost:<port>`) to the `dev:gateway` script.
+- Non-HTTP services (shared libs, outbox, config, telemetry, tenant-auth) do not need a port.
+
 ## Testing & Data Access
 - **Always use API routes** to test the application; do not use direct SQL queries or scripts (Python, TypeScript, shell) to GET, POST, PUT, or DELETE data in the database.
-- **Always route requests through the API Gateway (port 8080)**—never call individual services directly (ports 3000, 3100, 3400, etc.) during testing.
+- **Always route requests through the API Gateway (port 8080)**—never call individual services directly (ports 3000–3065, etc.) during testing.
 - Use `http_test/*.http` files or `curl` commands against `localhost:8080` for manual testing.
 - The gateway provides unified authentication, rate limiting, and routing to backend services.
 - Direct database access is only permitted for read-only diagnostics (e.g., verifying record counts) or one-time migration scripts—never for routine data manipulation during testing.

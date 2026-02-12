@@ -133,6 +133,12 @@ Authorization: Bearer {{authToken}}
 GET {{baseUrl}}/v1/reservations/{{reservationId}}/lifecycle?tenant_id={{tenantId}}
 Authorization: Bearer {{authToken}}
 
+###
+# Pre-check-in guest recognition brief (S23)
+# Returns VIP status, preferences, allergies, notes, loyalty, special requests
+GET {{baseUrl}}/v1/reservations/{{reservationId}}/check-in-brief?tenant_id={{tenantId}}
+Authorization: Bearer {{authToken}}
+
 ###############################################################################
 # 4. REST-STYLE COMMAND DISPATCH
 # Alternative to /v1/commands/{name}/execute pattern
