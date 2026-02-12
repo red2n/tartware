@@ -122,7 +122,7 @@ const routeGuestExperienceCommand = async (
         accessMethod: parsed.access_method,
         deviceType: parsed.device_type,
         appVersion: parsed.app_version,
-        initiatedBy: metadata.initiatedBy ?? null,
+        initiatedBy: metadata.initiatedBy?.userId ?? null,
       });
       return;
     }

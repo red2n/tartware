@@ -365,7 +365,7 @@ const findOrCreateGuest = async (input: {
     input.guestEmail,
     input.tenantId,
   ]);
-  if (existing.length > 0) {
+  if (existing.length > 0 && existing[0]) {
     return existing[0].id;
   }
 
