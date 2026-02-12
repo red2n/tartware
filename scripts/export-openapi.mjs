@@ -2,6 +2,7 @@ import { generateKeyPairSync } from "node:crypto";
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import process from "node:process";
+import { execFileSync } from "node:child_process";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
 const workspaceRoot = path.resolve(fileURLToPath(new URL("..", import.meta.url)));
@@ -9,6 +10,16 @@ const workspaceRoot = path.resolve(fileURLToPath(new URL("..", import.meta.url))
 const resolveDistModule = (relativePath) => {
   const absolutePath = path.resolve(workspaceRoot, relativePath);
   return pathToFileURL(absolutePath).href;
+};
+
+/**
+ * Create a silent pino logger for OpenAPI spec export.
+ * Satisfies the PinoLogger interface expected by buildServer / buildFastifyServer.
+ */
+const createSilentLogger = async () => {
+  const pinoMod = await import("pino");
+  const pino = pinoMod.default ?? pinoMod;
+  return pino({ level: "silent" });
 };
 
 const services = [
@@ -104,10 +115,11 @@ const services = [
     modulePath: "Apps/settings-service/dist/Apps/settings-service/src/server.js",
     build: async () => {
       ensureSettingsServiceEnv();
+      const logger = await createSilentLogger();
       const { buildServer } = await import(
         resolveDistModule("Apps/settings-service/dist/Apps/settings-service/src/server.js")
       );
-      return buildServer({ logger: false });
+      return buildServer({ logger });
     },
   },
   {
@@ -148,10 +160,11 @@ const services = [
     output: "docs/openapi/revenue-service.json",
     modulePath: "Apps/revenue-service/dist/Apps/revenue-service/src/server.js",
     build: async () => {
+      const logger = await createSilentLogger();
       const { buildServer } = await import(
         resolveDistModule("Apps/revenue-service/dist/Apps/revenue-service/src/server.js")
       );
-      return buildServer({ logger: false });
+      return buildServer({ logger });
     },
   },
 ];
@@ -167,6 +180,9 @@ const ensureDistExists = async (relativePath) => {
 
 const exportSpec = async ({ id, output, modulePath, build }) => {
   const resolvedModulePath = path.resolve(workspaceRoot, modulePath);
+  // Clear service-scoped env vars so each import gets its own defaults
+  delete process.env.SERVICE_NAME;
+  delete process.env.SERVICE_VERSION;
   try {
     await ensureDistExists(output);
     const app = await build();

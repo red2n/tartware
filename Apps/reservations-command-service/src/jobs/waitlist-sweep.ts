@@ -9,9 +9,9 @@ let running = false;
 let inFlight = false;
 
 const DEFAULT_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
-const SWEEP_INTERVAL_MS = Number(
-	process.env.WAITLIST_SWEEP_INTERVAL_MS ?? DEFAULT_INTERVAL_MS,
-);
+const MIN_INTERVAL_MS = 10_000; // 10 seconds floor
+const parsed = Number(process.env.WAITLIST_SWEEP_INTERVAL_MS ?? DEFAULT_INTERVAL_MS);
+const SWEEP_INTERVAL_MS = Number.isFinite(parsed) && parsed >= MIN_INTERVAL_MS ? parsed : DEFAULT_INTERVAL_MS;
 
 /**
  * Find all properties with expired waitlist offers and run the sweep

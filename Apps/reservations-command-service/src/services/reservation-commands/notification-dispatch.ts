@@ -44,7 +44,6 @@ export const dispatchNotificationCommand = async (
 			guest_id: input.guestId,
 			property_id: input.propertyId,
 			template_code: input.templateCode,
-			reservation_id: input.waitlistId,
 			idempotency_key: commandId,
 			context: {
 				waitlist_id: input.waitlistId,

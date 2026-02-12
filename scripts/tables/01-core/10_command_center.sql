@@ -195,14 +195,13 @@ WITH seed_commands(command_name, description, default_target_service, required_m
         ('billing.cashier.open', 'Open a new cashier/till session', 'billing-service', ARRAY['finance-automation']),
         ('billing.cashier.close', 'Close and reconcile a cashier session', 'billing-service', ARRAY['finance-automation'])
 )
-INSERT INTO command_templates (command_name, description, default_target_service, required_modules, metadata, tenant_id)
+INSERT INTO command_templates (command_name, description, default_target_service, required_modules, metadata)
 SELECT
     sc.command_name,
     sc.description,
     sc.default_target_service,
     sc.required_modules,
-    jsonb_build_object('seeded', true),
-    '11111111-1111-1111-1111-111111111111'::uuid
+    jsonb_build_object('seeded', true)
 FROM seed_commands sc
 ON CONFLICT (command_name) DO UPDATE
 SET

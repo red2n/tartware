@@ -348,14 +348,14 @@ export const handleRoomMove = async (payload: unknown, context: CommandContext):
               remaining_nights: number;
               property_id: string;
             }>(
-              `SELECT GREATEST(1, check_out_date::date - CURRENT_DATE) AS remaining_nights,
+              `SELECT GREATEST(0, check_out_date::date - CURRENT_DATE) AS remaining_nights,
                       property_id
                FROM public.reservations
                WHERE id = $1 AND tenant_id = $2`,
               [command.reservation_id, context.tenantId],
             );
             const stay = stayRows[0];
-            if (stay) {
+            if (stay && stay.remaining_nights > 0) {
               const adjustmentAmount = Math.abs(rateDiff) * stay.remaining_nights;
               const commandId = crypto.randomUUID();
               await publishEvent({
@@ -383,7 +383,7 @@ export const handleRoomMove = async (payload: unknown, context: CommandContext):
                     charge_code: rateDiff > 0 ? "UPGRADE" : "DOWNGRADE_CREDIT",
                     posting_type: rateDiff > 0 ? "DEBIT" : "CREDIT",
                     description: `Room move rate adjustment: ${fromRoom.room_number} → ${toRoom.room_number} (${rateDiff > 0 ? "upgrade" : "downgrade"} $${Math.abs(rateDiff).toFixed(2)}/night × ${stay.remaining_nights} nights)`,
-                    idempotency_key: `room-move-rate-${command.reservation_id}-${commandId}`,
+                    idempotency_key: `room-move-rate-${command.reservation_id}-${command.from_room_id}-${command.to_room_id}-${new Date().toISOString().slice(0, 10)}`,
                   },
                 }),
                 headers: {
@@ -394,8 +394,13 @@ export const handleRoomMove = async (payload: unknown, context: CommandContext):
                 },
               });
             }
-          } catch {
-            // Non-critical: rate adjustment charge is best-effort
+          } catch (err) {
+            // Non-critical: rate adjustment charge is best-effort but log for reconciliation
+            const { appLogger } = await import("../lib/logger.js");
+            appLogger.warn(
+              { err, reservationId: command.reservation_id, fromRoom: command.from_room_id, toRoom: command.to_room_id, rateDiff },
+              "Failed to post rate adjustment billing charge during room move",
+            );
           }
         }
       }

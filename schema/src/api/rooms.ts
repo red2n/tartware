@@ -8,6 +8,7 @@
 import { z } from "zod";
 
 import { uuid } from "../shared/base-schemas.js";
+import { HousekeepingStatusEnum, RoomStatusEnum } from "../shared/enums.js";
 
 // -----------------------------------------------------------------------------
 // Room Type Schemas
@@ -214,8 +215,22 @@ export type RoomResponse = z.infer<typeof RoomResponseSchema>;
 export const RoomListQuerySchema = z.object({
 	tenant_id: uuid,
 	property_id: uuid.optional(),
-	status: z.string().toLowerCase().optional(),
-	housekeeping_status: z.string().toLowerCase().optional(),
+	status: z
+		.string()
+		.toLowerCase()
+		.optional()
+		.refine(
+			(v) => !v || RoomStatusEnum.options.map((s) => s.toLowerCase()).includes(v),
+			{ message: "Invalid room status" },
+		),
+	housekeeping_status: z
+		.string()
+		.toLowerCase()
+		.optional()
+		.refine(
+			(v) => !v || HousekeepingStatusEnum.options.map((s) => s.toLowerCase()).includes(v),
+			{ message: "Invalid housekeeping status" },
+		),
 	search: z.string().min(1).max(50).optional(),
 	limit: z.coerce.number().int().positive().max(500).default(200),
 	guest_id: uuid.optional(),
