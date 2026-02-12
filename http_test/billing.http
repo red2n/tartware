@@ -28,6 +28,7 @@
 @reservationId = 44444444-4444-4444-4444-444444444444
 @invoiceId = 55555555-5555-5555-5555-555555555555
 @folioId = 66666666-6666-6666-6666-666666666666
+@userId = 33333333-3333-3333-3333-333333333333
 
 ###############################################################################
 # 1. LOGIN
@@ -539,9 +540,9 @@ X-Idempotency-Key: cashier-open-{{$timestamp}}
 {
   "property_id": "{{propertyId}}",
   "cashier_id": "{{userId}}",
-  "opening_balance": 500.00,
-  "currency": "USD",
-  "notes": "Morning shift opening"
+  "cashier_name": "Front Desk Cashier",
+  "opening_float": 500.00,
+  "shift_type": "MORNING"
 }
 
 ###
@@ -555,8 +556,8 @@ X-Idempotency-Key: cashier-close-{{$timestamp}}
 {
   "property_id": "{{propertyId}}",
   "session_id": "cccccccc-cccc-cccc-cccc-cccccccccccc",
-  "closing_balance": 1250.00,
-  "actual_cash": 1245.50,
+  "closing_cash_declared": 1250.00,
+  "closing_cash_counted": 1245.50,
   "notes": "End of morning shift"
 }
 

@@ -1756,10 +1756,10 @@ X-Idempotency-Key: walk-guest-{{$timestamp}}
     "property_id": "{{propertyId}}",
     "reservation_id": "{{reservationId}}",
     "walk_reason": "Overbooking — no available rooms",
-    "alternate_property_name": "Partner Hotel Downtown",
-    "compensation_type": "COMPLIMENTARY_NIGHT",
+    "alternate_hotel_name": "Partner Hotel Downtown",
+    "compensation_type": "first_night_covered",
     "compensation_amount": 199.00,
-    "transportation_arranged": true,
+    "transportation_provided": true,
     "notes": "Guest compensated with free night at partner hotel + taxi"
   }
 }
@@ -1818,12 +1818,11 @@ X-Idempotency-Key: auth-pay-{{$timestamp}}
   "payload": {
     "property_id": "{{propertyId}}",
     "reservation_id": "{{reservationId}}",
-    "folio_id": "{{folioId}}",
+    "guest_id": "{{guestId}}",
     "amount": 500.00,
     "currency": "USD",
     "payment_method": "credit_card",
-    "payment_reference": "AUTH-2026-001",
-    "notes": "Pre-authorization for room deposit"
+    "payment_reference": "AUTH-2026-001"
   }
 }
 
@@ -1841,7 +1840,8 @@ X-Idempotency-Key: void-pay-{{$timestamp}}
   "tenant_id": "{{tenantId}}",
   "payload": {
     "property_id": "{{propertyId}}",
-    "payment_id": "{{paymentId}}",
+    "reservation_id": "{{reservationId}}",
+    "payment_reference": "AUTH-2026-001",
     "reason": "Duplicate authorization — voiding",
     "notes": "Approved by front desk manager"
   }
@@ -1861,9 +1861,9 @@ X-Idempotency-Key: folio-close-cmd-{{$timestamp}}
   "tenant_id": "{{tenantId}}",
   "payload": {
     "property_id": "{{propertyId}}",
-    "folio_id": "{{folioId}}",
-    "settlement_method": "CREDIT_CARD",
-    "notes": "Closing at checkout"
+    "reservation_id": "{{reservationId}}",
+    "close_reason": "Guest checked out",
+    "force": false
   }
 }
 
@@ -1881,9 +1881,8 @@ X-Idempotency-Key: charge-void-{{$timestamp}}
   "tenant_id": "{{tenantId}}",
   "payload": {
     "property_id": "{{propertyId}}",
-    "charge_id": "eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee",
-    "reason": "Incorrect charge — guest dispute",
-    "notes": "Reversal entry created"
+    "posting_id": "eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee",
+    "void_reason": "Incorrect charge — guest dispute"
   }
 }
 
@@ -1939,9 +1938,9 @@ X-Idempotency-Key: cashier-open-{{$timestamp}}
   "payload": {
     "property_id": "{{propertyId}}",
     "cashier_id": "{{guestId}}",
-    "opening_balance": 500.00,
-    "currency": "USD",
-    "notes": "Morning shift opening"
+    "cashier_name": "Front Desk Agent",
+    "opening_float": 500.00,
+    "shift_type": "MORNING"
   }
 }
 
@@ -1960,8 +1959,8 @@ X-Idempotency-Key: cashier-close-{{$timestamp}}
   "payload": {
     "property_id": "{{propertyId}}",
     "session_id": "cccccccc-cccc-cccc-cccc-cccccccccccc",
-    "closing_balance": 1250.00,
-    "actual_cash": 1245.50,
+    "closing_cash_declared": 1250.00,
+    "closing_cash_counted": 1245.50,
     "notes": "End of morning shift"
   }
 }
