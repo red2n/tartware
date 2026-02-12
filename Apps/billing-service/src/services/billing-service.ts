@@ -1,6 +1,8 @@
 import {
   type BillingPaymentListItem,
   BillingPaymentListItemSchema,
+  type CashierSessionListItem,
+  CashierSessionListItemSchema,
   type ChargePostingListItem,
   ChargePostingListItemSchema,
   type FolioListItem,
@@ -15,6 +17,8 @@ import { applyBillingRetentionPolicy } from "../lib/compliance-policies.js";
 import { query } from "../lib/db.js";
 import {
   BILLING_PAYMENT_LIST_SQL,
+  CASHIER_SESSION_BY_ID_SQL,
+  CASHIER_SESSION_LIST_SQL,
   CHARGE_POSTING_LIST_SQL,
   FOLIO_BY_ID_SQL,
   FOLIO_LIST_SQL,
@@ -404,6 +408,139 @@ export const getFolioById = async (
   }
 
   return mapRowToFolio(row);
+};
+
+// ============================================================================
+// CASHIER SESSIONS
+// ============================================================================
+
+type CashierSessionRow = {
+  session_id: string;
+  tenant_id: string;
+  property_id: string;
+  property_name: string | null;
+  session_number: string;
+  session_name: string | null;
+  cashier_id: string;
+  cashier_name: string | null;
+  terminal_id: string | null;
+  terminal_name: string | null;
+  location: string | null;
+  session_status: string;
+  opened_at: string | Date;
+  closed_at: string | Date | null;
+  business_date: string | Date;
+  shift_type: string | null;
+  opening_float_declared: number | string;
+  total_transactions: number | null;
+  total_revenue: number | string | null;
+  total_refunds: number | string | null;
+  net_revenue: number | string | null;
+  expected_cash_balance: number | string | null;
+  closing_cash_counted: number | string | null;
+  cash_variance: number | string | null;
+  has_variance: boolean | null;
+  reconciled: boolean | null;
+  approved: boolean | null;
+  created_at: string | Date | null;
+};
+
+const mapRowToCashierSession = (row: CashierSessionRow): CashierSessionListItem => {
+  const { display: statusDisplay } = formatEnumDisplay(row.session_status, "Open");
+
+  return CashierSessionListItemSchema.parse({
+    session_id: row.session_id,
+    tenant_id: row.tenant_id,
+    property_id: row.property_id,
+    property_name: row.property_name ?? undefined,
+    session_number: row.session_number,
+    session_name: row.session_name ?? undefined,
+    cashier_id: row.cashier_id,
+    cashier_name: row.cashier_name ?? undefined,
+    terminal_id: row.terminal_id ?? undefined,
+    terminal_name: row.terminal_name ?? undefined,
+    location: row.location ?? undefined,
+    session_status: row.session_status.toLowerCase(),
+    session_status_display: statusDisplay,
+    opened_at: toIsoString(row.opened_at) ?? "",
+    closed_at: toIsoString(row.closed_at),
+    business_date:
+      row.business_date instanceof Date
+        ? row.business_date.toISOString().split("T")[0]
+        : String(row.business_date),
+    shift_type: row.shift_type ?? undefined,
+    opening_float_declared: String(toNumberOrFallback(row.opening_float_declared)),
+    total_transactions: row.total_transactions ?? undefined,
+    total_revenue:
+      row.total_revenue != null ? String(toNumberOrFallback(row.total_revenue)) : undefined,
+    total_refunds:
+      row.total_refunds != null ? String(toNumberOrFallback(row.total_refunds)) : undefined,
+    net_revenue: row.net_revenue != null ? String(toNumberOrFallback(row.net_revenue)) : undefined,
+    expected_cash_balance:
+      row.expected_cash_balance != null
+        ? String(toNumberOrFallback(row.expected_cash_balance))
+        : undefined,
+    closing_cash_counted:
+      row.closing_cash_counted != null
+        ? String(toNumberOrFallback(row.closing_cash_counted))
+        : undefined,
+    cash_variance:
+      row.cash_variance != null ? String(toNumberOrFallback(row.cash_variance)) : undefined,
+    has_variance: row.has_variance ?? undefined,
+    reconciled: row.reconciled ?? undefined,
+    approved: row.approved ?? undefined,
+    created_at: toIsoString(row.created_at as string | Date | null),
+  });
+};
+
+/**
+ * List cashier sessions with optional filters.
+ */
+export const listCashierSessions = async (options: {
+  limit?: number;
+  tenantId: string;
+  propertyId?: string;
+  sessionStatus?: string;
+  shiftType?: string;
+  businessDate?: string;
+  offset?: number;
+}): Promise<CashierSessionListItem[]> => {
+  const limit = options.limit ?? 100;
+  const tenantId = options.tenantId;
+  const propertyId = options.propertyId ?? null;
+  const sessionStatus = options.sessionStatus ?? null;
+  const shiftType = options.shiftType ?? null;
+  const businessDate = options.businessDate ?? null;
+  const offset = options.offset ?? 0;
+
+  const { rows } = await query<CashierSessionRow>(CASHIER_SESSION_LIST_SQL, [
+    limit,
+    tenantId,
+    propertyId,
+    sessionStatus,
+    shiftType,
+    businessDate,
+    offset,
+  ]);
+
+  return rows.map(mapRowToCashierSession);
+};
+
+/**
+ * Get cashier session by ID.
+ */
+export const getCashierSessionById = async (
+  sessionId: string,
+  tenantId: string,
+): Promise<CashierSessionListItem | null> => {
+  const { rows } = await query<CashierSessionRow>(CASHIER_SESSION_BY_ID_SQL, [sessionId, tenantId]);
+
+  const [row] = rows;
+  if (!row) {
+    return null;
+  }
+
+  return mapRowToCashierSession(row);
 };
 
 // ============================================================================

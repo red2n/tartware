@@ -15,7 +15,8 @@
     "@tartware/command-center-shared",
     "@fastify/helmet",
     "@fastify/sensible",
-    "@tartware/fastify-server"
+    "@tartware/fastify-server",
+    "pg"
   ],
   "ignoreBinaries": [
     "biome",

@@ -8,6 +8,11 @@
  */
 
 import { buildRouteSchema, schemaFromZod } from "@tartware/openapi";
+import {
+  CreateDirectBookingBodySchema,
+  DirectBookingAvailabilityQuerySchema,
+  DirectBookingRateQuoteQuerySchema,
+} from "@tartware/schemas";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 
@@ -26,80 +31,41 @@ const DIRECT_BOOKING_TAG = "Direct Booking";
 // JSON-schema constants (derived from Zod for OpenAPI docs)
 // ---------------------------------------------------------------------------
 
-const AvailabilityQuerySchema = z.object({
-  tenant_id: z.string().uuid(),
-  property_id: z.string().uuid(),
-  check_in: z.string().refine((v) => !Number.isNaN(Date.parse(v)), "valid ISO date required"),
-  check_out: z.string().refine((v) => !Number.isNaN(Date.parse(v)), "valid ISO date required"),
-  adults: z.coerce.number().int().min(1).optional(),
-  children: z.coerce.number().int().min(0).optional(),
-  room_type_id: z.string().uuid().optional(),
-});
-
-const RateQuoteQuerySchema = z.object({
-  tenant_id: z.string().uuid(),
-  property_id: z.string().uuid(),
-  room_type_id: z.string().uuid(),
-  check_in: z.string().refine((v) => !Number.isNaN(Date.parse(v)), "valid ISO date required"),
-  check_out: z.string().refine((v) => !Number.isNaN(Date.parse(v)), "valid ISO date required"),
-  promo_code: z.string().max(50).optional(),
-  rate_code: z.string().max(50).optional(),
-});
-
-const CreateBookingBodySchema = z.object({
-  tenant_id: z.string().uuid(),
-  property_id: z.string().uuid(),
-  guest_id: z.string().uuid(),
-  room_type_id: z.string().uuid(),
-  check_in: z.string().refine((v) => !Number.isNaN(Date.parse(v)), "valid ISO date required"),
-  check_out: z.string().refine((v) => !Number.isNaN(Date.parse(v)), "valid ISO date required"),
-  total_amount: z.number().min(0),
-  currency: z.string().length(3).optional(),
-  rate_code: z.string().max(50).optional(),
-  promo_code: z.string().max(50).optional(),
-  notes: z.string().max(2000).optional(),
-  eta: z
-    .string()
-    .regex(/^\d{2}:\d{2}$/, "HH:MM format required")
-    .optional(),
-});
+const AvailabilityQueryJsonSchema = schemaFromZod(
+  DirectBookingAvailabilityQuerySchema,
+  "DirectBookingAvailabilityQuery",
+);
+const AvailabilityResponseJsonSchema = schemaFromZod(
+  z.array(AvailabilityResultSchema),
+  "DirectBookingAvailabilityResponse",
+);
+const RateQuoteQueryJsonSchema = schemaFromZod(
+  DirectBookingRateQuoteQuerySchema,
+  "DirectBookingRateQuoteQuery",
+);
+const RateQuoteResponseJsonSchema = schemaFromZod(
+  RateQuoteSchema,
+  "DirectBookingRateQuoteResponse",
+);
+const CreateBookingBodyJsonSchema = schemaFromZod(
+  CreateDirectBookingBodySchema,
+  "DirectBookingCreateBody",
+);
+const BookingConfirmationJsonSchema = schemaFromZod(
+  BookingConfirmationSchema,
+  "DirectBookingConfirmation",
+);
 
 export const registerDirectBookingRoutes = (app: FastifyInstance): void => {
-  // JSON schema for OpenAPI
-  const AvailabilityQueryJsonSchema = schemaFromZod(
-    AvailabilityQuerySchema,
-    "DirectBookingAvailabilityQuery",
-  );
-  const AvailabilityResponseJsonSchema = schemaFromZod(
-    z.array(AvailabilityResultSchema),
-    "DirectBookingAvailabilityResponse",
-  );
-  const RateQuoteQueryJsonSchema = schemaFromZod(
-    RateQuoteQuerySchema,
-    "DirectBookingRateQuoteQuery",
-  );
-  const RateQuoteResponseJsonSchema = schemaFromZod(
-    RateQuoteSchema,
-    "DirectBookingRateQuoteResponse",
-  );
-  const CreateBookingBodyJsonSchema = schemaFromZod(
-    CreateBookingBodySchema,
-    "DirectBookingCreateBody",
-  );
-  const BookingConfirmationJsonSchema = schemaFromZod(
-    BookingConfirmationSchema,
-    "DirectBookingConfirmation",
-  );
-
   // -------------------------------------------------------------------------
   // GET /v1/direct-booking/availability
   // -------------------------------------------------------------------------
-  app.get<{ Querystring: z.infer<typeof AvailabilityQuerySchema> }>(
+  app.get<{ Querystring: z.infer<typeof DirectBookingAvailabilityQuerySchema> }>(
     "/v1/direct-booking/availability",
     {
       preHandler: app.withTenantScope({
         resolveTenantId: (request) =>
-          (request.query as z.infer<typeof AvailabilityQuerySchema>).tenant_id,
+          (request.query as z.infer<typeof DirectBookingAvailabilityQuerySchema>).tenant_id,
         minRole: "VIEWER",
         requiredModules: "core",
       }),
@@ -114,7 +80,7 @@ export const registerDirectBookingRoutes = (app: FastifyInstance): void => {
       }),
     },
     async (request) => {
-      const q = AvailabilityQuerySchema.parse(request.query);
+      const q = DirectBookingAvailabilityQuerySchema.parse(request.query);
       return searchAvailability({
         tenantId: q.tenant_id,
         propertyId: q.property_id,
@@ -130,12 +96,12 @@ export const registerDirectBookingRoutes = (app: FastifyInstance): void => {
   // -------------------------------------------------------------------------
   // GET /v1/direct-booking/rate-quote
   // -------------------------------------------------------------------------
-  app.get<{ Querystring: z.infer<typeof RateQuoteQuerySchema> }>(
+  app.get<{ Querystring: z.infer<typeof DirectBookingRateQuoteQuerySchema> }>(
     "/v1/direct-booking/rate-quote",
     {
       preHandler: app.withTenantScope({
         resolveTenantId: (request) =>
-          (request.query as z.infer<typeof RateQuoteQuerySchema>).tenant_id,
+          (request.query as z.infer<typeof DirectBookingRateQuoteQuerySchema>).tenant_id,
         minRole: "VIEWER",
         requiredModules: "core",
       }),
@@ -150,7 +116,7 @@ export const registerDirectBookingRoutes = (app: FastifyInstance): void => {
       }),
     },
     async (request) => {
-      const q = RateQuoteQuerySchema.parse(request.query);
+      const q = DirectBookingRateQuoteQuerySchema.parse(request.query);
       return getRateQuote({
         tenantId: q.tenant_id,
         propertyId: q.property_id,
@@ -166,12 +132,12 @@ export const registerDirectBookingRoutes = (app: FastifyInstance): void => {
   // -------------------------------------------------------------------------
   // POST /v1/direct-booking/book
   // -------------------------------------------------------------------------
-  app.post<{ Body: z.infer<typeof CreateBookingBodySchema> }>(
+  app.post<{ Body: z.infer<typeof CreateDirectBookingBodySchema> }>(
     "/v1/direct-booking/book",
     {
       preHandler: app.withTenantScope({
         resolveTenantId: (request) =>
-          (request.body as z.infer<typeof CreateBookingBodySchema>).tenant_id,
+          (request.body as z.infer<typeof CreateDirectBookingBodySchema>).tenant_id,
         minRole: "VIEWER",
         requiredModules: "core",
       }),
@@ -186,7 +152,7 @@ export const registerDirectBookingRoutes = (app: FastifyInstance): void => {
       }),
     },
     async (request, reply) => {
-      const body = CreateBookingBodySchema.parse(request.body);
+      const body = CreateDirectBookingBodySchema.parse(request.body);
       const result = await createDirectBooking({
         tenantId: body.tenant_id,
         propertyId: body.property_id,

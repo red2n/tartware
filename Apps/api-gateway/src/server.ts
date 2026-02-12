@@ -17,7 +17,9 @@ import { registerHousekeepingRoutes } from "./routes/housekeeping-routes.js";
 import { registerMiscRoutes } from "./routes/misc-routes.js";
 import { registerOperationsRoutes } from "./routes/operations-routes.js";
 import { registerReservationRoutes } from "./routes/reservation-routes.js";
+import { registerRevenueRoutes } from "./routes/revenue-routes.js";
 import { registerRoomRoutes } from "./routes/room-routes.js";
+import { registerSelfServiceRoutes } from "./routes/self-service-routes.js";
 
 export const buildServer = () => {
   const app = buildFastifyServer({
@@ -79,6 +81,8 @@ export const buildServer = () => {
     registerOperationsRoutes(app);
     registerHousekeepingRoutes(app);
     registerBillingRoutes(app);
+    registerRevenueRoutes(app);
+    registerSelfServiceRoutes(app);
     registerMiscRoutes(app);
   });
 

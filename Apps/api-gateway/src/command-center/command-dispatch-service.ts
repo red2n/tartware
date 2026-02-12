@@ -8,7 +8,11 @@ import { gatewayLogger } from "../logger.js";
 import type { TenantMembership } from "../services/membership-service.js";
 
 import { resolveCommandForTenant } from "./command-registry.js";
-import { enqueueOutboxRecord, markOutboxDelivered, markOutboxFailed } from "./outbox.js";
+import {
+  enqueueOutboxRecord,
+  markOutboxDeliveredByEventId,
+  markOutboxFailedByEventId,
+} from "./outbox.js";
 import {
   findCommandDispatchByRequest,
   insertCommandDispatch,
@@ -72,7 +76,7 @@ export { CommandDispatchError };
 
 export const markCommandDelivered = async (outboxEventId: string): Promise<void> => {
   await Promise.all([
-    markOutboxDelivered(outboxEventId).catch((error) => {
+    markOutboxDeliveredByEventId(outboxEventId).catch((error) => {
       logger.error({ outboxEventId, err: error }, "failed to mark outbox delivered");
       throw error;
     }),
@@ -82,7 +86,7 @@ export const markCommandDelivered = async (outboxEventId: string): Promise<void>
 
 export const markCommandFailed = async (outboxEventId: string, error: unknown): Promise<void> => {
   await Promise.all([
-    markOutboxFailed(
+    markOutboxFailedByEventId(
       outboxEventId,
       error ?? new Error("command publish failed"),
       COMMAND_OUTBOX_RETRY_BACKOFF_MS,

@@ -42,11 +42,62 @@ export const buildServer = () => {
           response: { 200: jsonObjectSchema },
         }),
       },
-      () => ({ status: "ok", service: config.service.name }),
+      () => ({ status: "ok", service: config.service.name, version: config.service.version }),
     );
+
+    const readinessCheck = async () => {
+      await query("SELECT 1");
+      return {
+        status: "ready" as const,
+        service: config.service.name,
+        version: config.service.version,
+        kafka: {
+          activeCluster: config.kafka.activeCluster,
+          brokers: config.kafka.brokers,
+          primaryBrokers: config.kafka.primaryBrokers,
+          failoverBrokers: config.kafka.failoverBrokers,
+          topic: config.kafka.topic,
+        },
+      };
+    };
+
+    const readinessErrorResponse = () => ({
+      status: "unavailable" as const,
+      service: config.service.name,
+      kafka: {
+        activeCluster: config.kafka.activeCluster,
+        brokers: config.kafka.brokers,
+        primaryBrokers: config.kafka.primaryBrokers,
+        failoverBrokers: config.kafka.failoverBrokers,
+        topic: config.kafka.topic,
+      },
+    });
 
     app.get(
       "/health/readiness",
+      {
+        schema: buildRouteSchema({
+          tag: "Health",
+          summary: "Readiness probe (deep)",
+          response: {
+            200: jsonObjectSchema,
+            503: jsonObjectSchema,
+          },
+        }),
+      },
+      async (_request, reply) => {
+        try {
+          return await readinessCheck();
+        } catch (error) {
+          app.log.error(error, "Readiness check failed");
+          void reply.code(503);
+          return readinessErrorResponse();
+        }
+      },
+    );
+
+    app.get(
+      "/ready",
       {
         schema: buildRouteSchema({
           tag: "Health",
@@ -59,32 +110,11 @@ export const buildServer = () => {
       },
       async (_request, reply) => {
         try {
-          await query("SELECT 1");
-          return {
-            status: "ready",
-            service: config.service.name,
-            kafka: {
-              activeCluster: config.kafka.activeCluster,
-              brokers: config.kafka.brokers,
-              primaryBrokers: config.kafka.primaryBrokers,
-              failoverBrokers: config.kafka.failoverBrokers,
-              topic: config.kafka.topic,
-            },
-          };
+          return await readinessCheck();
         } catch (error) {
           app.log.error(error, "Readiness check failed");
           void reply.code(503);
-          return {
-            status: "unavailable",
-            service: config.service.name,
-            kafka: {
-              activeCluster: config.kafka.activeCluster,
-              brokers: config.kafka.brokers,
-              primaryBrokers: config.kafka.primaryBrokers,
-              failoverBrokers: config.kafka.failoverBrokers,
-              topic: config.kafka.topic,
-            },
-          };
+          return readinessErrorResponse();
         }
       },
     );

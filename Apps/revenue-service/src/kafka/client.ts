@@ -1,0 +1,9 @@
+import { Kafka, logLevel } from "kafkajs";
+
+import { config } from "../config.js";
+
+export const kafka = new Kafka({
+  clientId: config.kafka.clientId,
+  brokers: config.kafka.brokers,
+  logLevel: logLevel.NOTHING,
+});

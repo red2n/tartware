@@ -1,29 +1,30 @@
 {
+  "extends": "../../schema/tsconfig.json",
   "compilerOptions": {
-    "target": "ES2022",
-    "module": "NodeNext",
-    "moduleResolution": "NodeNext",
-    "lib": ["ES2022", "DOM"],
-    "outDir": "./dist",
-    "rootDir": "./src",
-    "baseUrl": "./src",
-    "paths": {
-      "@tartware/candidate-pipeline": ["../../candidate-pipeline/dist/index.d.ts"],
-      "@tartware/candidate-pipeline/*": ["../../candidate-pipeline/dist/*"]
-    },
-    "strict": true,
+    "outDir": "dist",
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "types": ["vitest/globals", "node"],
+    "composite": false,
+    "noEmit": false,
+    "resolveJsonModule": true,
+    "allowSyntheticDefaultImports": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
-    "forceConsistentCasingInFileNames": true,
-    "declaration": true,
-    "declarationMap": true,
-    "sourceMap": true,
-    "resolveJsonModule": true,
-    "noUnusedLocals": true,
-    "noUnusedParameters": true,
-    "noImplicitReturns": true,
-    "noFallthroughCasesInSwitch": true
+    "baseUrl": "./src",
+    "paths": {
+      "@tartware/schemas": ["../../../schema/src/index.ts"],
+      "@tartware/schemas/*": ["../../../schema/src/*"],
+      "@tartware/telemetry": ["../../telemetry/src/index.ts"],
+      "@tartware/telemetry/*": ["../../telemetry/src/*"],
+      "@tartware/config": ["../../config/src/index.ts"],
+      "@tartware/config/*": ["../../config/src/*"],
+      "@tartware/fastify-server": ["../../fastify-server/src/index.ts"],
+      "@tartware/fastify-server/*": ["../../fastify-server/src/*"],
+      "@tartware/candidate-pipeline": ["../../candidate-pipeline/src/index.ts"],
+      "@tartware/candidate-pipeline/*": ["../../candidate-pipeline/src/*"]
+    }
   },
   "include": ["src/**/*"],
-  "exclude": ["node_modules", "dist", "**/*.test.ts"]
+  "exclude": ["dist", "node_modules", "**/*.test.ts"]
 }

@@ -16,7 +16,7 @@ export class UpgradeOpportunitySource extends BaseSource<RoomRecommendationQuery
   /**
    * Enable upgrade suggestions for loyalty members or returning guests.
    */
-  enable(queryParams: RoomRecommendationQuery): boolean {
+  override enable(queryParams: RoomRecommendationQuery): boolean {
     const isLoyalMember =
       queryParams.loyaltyTier !== undefined && queryParams.loyaltyTier !== "none";
     const isReturningGuest =

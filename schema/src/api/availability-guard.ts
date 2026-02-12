@@ -80,3 +80,54 @@ export const ManualReleaseSchema = z.object({
 });
 
 export type ManualReleaseInput = z.infer<typeof ManualReleaseSchema>;
+
+// -----------------------------------------------------------------------------
+// Lock Response
+// -----------------------------------------------------------------------------
+
+/** Lock response schema (LOCKED or CONFLICT). */
+export const LockResponseSchema = z.union([
+	z.object({
+		status: z.literal("LOCKED"),
+		lock: z.object({
+			id: uuid,
+			reservation_id: uuid.nullable(),
+			room_type_id: uuid,
+			room_id: uuid.nullable(),
+			stay_start: z.string(),
+			stay_end: z.string(),
+			expires_at: z.string().nullable(),
+		}),
+	}),
+	z.object({
+		status: z.literal("CONFLICT"),
+		conflict: z.object({
+			id: uuid,
+			reservation_id: uuid.nullable(),
+			room_type_id: uuid,
+			room_id: uuid.nullable(),
+			stay_start: z.string(),
+			stay_end: z.string(),
+		}),
+	}),
+]);
+
+export type LockResponse = z.infer<typeof LockResponseSchema>;
+
+/** Manual release notification test request body. */
+export const ManualReleaseNotificationTestSchema = z.object({
+	lockId: uuid,
+	tenantId: uuid,
+	reservationId: uuid.optional().nullable(),
+	roomTypeId: uuid,
+	roomId: uuid.optional().nullable(),
+	stayStart: z.coerce.date(),
+	stayEnd: z.coerce.date(),
+	reason: z.string().min(1),
+	actorId: z.string().min(1),
+	actorName: z.string().min(1),
+	actorEmail: z.string().email().optional(),
+	recipients: z.array(z.string().min(3)).nonempty(),
+});
+
+export type ManualReleaseNotificationTest = z.infer<typeof ManualReleaseNotificationTestSchema>;

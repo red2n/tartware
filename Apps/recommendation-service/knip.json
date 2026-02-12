@@ -10,7 +10,10 @@
     "@tartware/candidate-pipeline",
     "@tartware/config",
     "@tartware/fastify-server",
-    "@tartware/telemetry"
+    "@tartware/schemas",
+    "@tartware/telemetry",
+    "pg",
+    "@types/pg"
   ],
   "ignoreBinaries": [],
   "ignoreExportsUsedInFile": {

@@ -93,8 +93,9 @@ export abstract class BaseHydrator<Q extends HasRequestId, C extends object>
    */
   updateAll(candidates: C[], hydrated: Partial<C>[]): void {
     for (let i = 0; i < candidates.length; i++) {
-      if (hydrated[i]) {
-        Object.assign(candidates[i], hydrated[i]);
+      const h = hydrated[i];
+      if (h) {
+        Object.assign(candidates[i]!, h);
       }
     }
   }

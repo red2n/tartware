@@ -492,7 +492,7 @@ if [ "$bootstrap_admin" == "y" ] || [ "$bootstrap_admin" == "Y" ]; then
                         echo "  ADMIN_PASSWORD='$ADMIN_PASSWORD' tsx Apps/core-service/scripts/bootstrap-system-admin-token.ts"
                     fi
                 else
-                    warn "tsx not found. Install with: npm install -g tsx"
+                    warn "tsx not found. Install with: pnpm add -g tsx"
                     echo "Then run: ADMIN_PASSWORD='$ADMIN_PASSWORD' tsx $BOOTSTRAP_SCRIPT"
                 fi
             else

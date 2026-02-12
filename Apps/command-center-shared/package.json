@@ -4,8 +4,8 @@
   "description": "Shared SQL helpers for command center components",
   "private": true,
   "type": "module",
-  "main": "dist/index.js",
-  "types": "dist/index.d.ts",
+  "main": "dist/Apps/command-center-shared/src/index.js",
+  "types": "dist/Apps/command-center-shared/src/index.d.ts",
   "scripts": {
     "build": "tsc --project tsconfig.json",
     "dev": "echo 'Shared library - no dev server'",

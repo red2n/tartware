@@ -1,23 +1,12 @@
 import { buildRouteSchema, errorResponseSchema, schemaFromZod } from "@tartware/openapi";
+import {
+  SystemAdminImpersonationRequestSchema,
+  SystemAdminImpersonationResponseSchema,
+} from "@tartware/schemas";
 import type { FastifyInstance } from "fastify";
-import { z } from "zod";
 
 import { startImpersonationSession } from "../services/system-admin-service.js";
 import { sanitizeForJson } from "../utils/sanitize.js";
-
-const SystemImpersonationRequestSchema = z.object({
-  tenant_id: z.string().uuid(),
-  user_id: z.string().uuid(),
-  reason: z.string().min(10),
-  ticket_id: z.string().min(5),
-});
-
-const SystemImpersonationResponseSchema = z.object({
-  access_token: z.string(),
-  token_type: z.literal("Bearer"),
-  scope: z.literal("TENANT_IMPERSONATION"),
-  expires_in: z.number().positive(),
-});
 
 const IMPERSONATION_ERROR_MESSAGES: Record<string, string> = {
   USER_NOT_FOUND: "User was not found or is inactive.",
@@ -27,11 +16,11 @@ const IMPERSONATION_ERROR_MESSAGES: Record<string, string> = {
 
 const SYSTEM_IMPERSONATION_TAG = "System Impersonation";
 const SystemImpersonationRequestJsonSchema = schemaFromZod(
-  SystemImpersonationRequestSchema,
+  SystemAdminImpersonationRequestSchema,
   "SystemImpersonationRequest",
 );
 const SystemImpersonationResponseJsonSchema = schemaFromZod(
-  SystemImpersonationResponseSchema,
+  SystemAdminImpersonationResponseSchema,
   "SystemImpersonationResponse",
 );
 
@@ -61,7 +50,7 @@ export const registerSystemImpersonationRoutes = (app: FastifyInstance): void =>
         });
       }
 
-      const body = SystemImpersonationRequestSchema.parse(request.body);
+      const body = SystemAdminImpersonationRequestSchema.parse(request.body);
       const result = await startImpersonationSession(
         {
           adminId: adminContext.adminId,
@@ -91,7 +80,7 @@ export const registerSystemImpersonationRoutes = (app: FastifyInstance): void =>
         expires_in: result.data.expiresIn,
       });
 
-      return SystemImpersonationResponseSchema.parse(payload);
+      return SystemAdminImpersonationResponseSchema.parse(payload);
     },
   );
 };

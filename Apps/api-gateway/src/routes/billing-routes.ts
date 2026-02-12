@@ -236,6 +236,50 @@ export const registerBillingRoutes = (app: FastifyInstance): void => {
       }),
   );
 
+  app.post(
+    "/v1/tenants/:tenantId/billing/cashier-sessions/open",
+    {
+      preHandler: tenantScopeFromParams,
+      schema: buildRouteSchema({
+        tag: BILLING_COMMAND_TAG,
+        summary: "Open a cashier session via the Command Center.",
+        params: reservationParamsSchema,
+        body: jsonObjectSchema,
+        response: {
+          202: jsonObjectSchema,
+        },
+      }),
+    },
+    (request, reply) =>
+      forwardCommandWithTenant({
+        request,
+        reply,
+        commandName: "billing.cashier.open",
+      }),
+  );
+
+  app.post(
+    "/v1/tenants/:tenantId/billing/cashier-sessions/close",
+    {
+      preHandler: tenantScopeFromParams,
+      schema: buildRouteSchema({
+        tag: BILLING_COMMAND_TAG,
+        summary: "Close a cashier session via the Command Center.",
+        params: reservationParamsSchema,
+        body: jsonObjectSchema,
+        response: {
+          202: jsonObjectSchema,
+        },
+      }),
+    },
+    (request, reply) =>
+      forwardCommandWithTenant({
+        request,
+        reply,
+        commandName: "billing.cashier.close",
+      }),
+  );
+
   app.get(
     "/v1/billing/*",
     {

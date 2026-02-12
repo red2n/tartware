@@ -1,4 +1,5 @@
 import { buildRouteSchema, jsonObjectSchema, schemaFromZod } from "@tartware/openapi";
+import { LockResponseSchema, ManualReleaseNotificationTestSchema } from "@tartware/schemas";
 import type { FastifyInstance } from "fastify";
 import fastifyPlugin from "fastify-plugin";
 import { z } from "zod";
@@ -24,34 +25,7 @@ import {
   releaseLockSchema,
 } from "../types/lock-types.js";
 
-const LockResponseSchema = schemaFromZod(
-  z.union([
-    z.object({
-      status: z.literal("LOCKED"),
-      lock: z.object({
-        id: z.string().uuid(),
-        reservation_id: z.string().uuid().nullable(),
-        room_type_id: z.string().uuid(),
-        room_id: z.string().uuid().nullable(),
-        stay_start: z.string(),
-        stay_end: z.string(),
-        expires_at: z.string().nullable(),
-      }),
-    }),
-    z.object({
-      status: z.literal("CONFLICT"),
-      conflict: z.object({
-        id: z.string().uuid(),
-        reservation_id: z.string().uuid().nullable(),
-        room_type_id: z.string().uuid(),
-        room_id: z.string().uuid().nullable(),
-        stay_start: z.string(),
-        stay_end: z.string(),
-      }),
-    }),
-  ]),
-  "LockRoomResponse",
-);
+const LockResponseJsonSchema = schemaFromZod(LockResponseSchema, "LockRoomResponse");
 
 const extractAdminToken = (headerValue: string | string[] | undefined): string | undefined => {
   if (!headerValue) {
@@ -97,20 +71,7 @@ const ensureHttpAuthorized = (
   return true;
 };
 
-const manualReleaseNotificationTestSchema = z.object({
-  lockId: z.string().uuid(),
-  tenantId: z.string().uuid(),
-  reservationId: z.string().uuid().optional().nullable(),
-  roomTypeId: z.string().uuid(),
-  roomId: z.string().uuid().optional().nullable(),
-  stayStart: z.coerce.date(),
-  stayEnd: z.coerce.date(),
-  reason: z.string().min(1),
-  actorId: z.string().min(1),
-  actorName: z.string().min(1),
-  actorEmail: z.string().email().optional(),
-  recipients: z.array(z.string().min(3)).nonempty(),
-});
+const manualReleaseNotificationTestSchema = ManualReleaseNotificationTestSchema;
 
 export const locksRoutes = fastifyPlugin((app: FastifyInstance, _opts, done): void => {
   app.addHook("preHandler", async (request, reply) => {
@@ -127,8 +88,8 @@ export const locksRoutes = fastifyPlugin((app: FastifyInstance, _opts, done): vo
         summary: "Create a lock",
         body: schemaFromZod(lockRoomSchema, "LockRoomRequest"),
         response: {
-          200: LockResponseSchema,
-          409: LockResponseSchema,
+          200: LockResponseJsonSchema,
+          409: LockResponseJsonSchema,
         },
       }),
     },

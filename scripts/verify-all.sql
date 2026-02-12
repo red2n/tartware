@@ -69,6 +69,16 @@
 \i :scripts_dir/procedures/verify-procedures.sql
 
 -- =====================================================
+-- PHASE 5: TRIGGERS & EFFICIENCY VERIFICATION
+-- =====================================================
+\echo ''
+\echo '======================================================'
+\echo '  PHASE 5: TRIGGERS & EFFICIENCY VERIFICATION'
+\echo '======================================================'
+\echo ''
+\i :scripts_dir/triggers/verify-triggers.sql
+
+-- =====================================================
 -- FINAL SUMMARY
 -- =====================================================
 \echo ''
@@ -126,7 +136,20 @@ BEGIN
             'sync_rate_plans', 'apply_seasonal_rate_adjustments', 'sync_daily_rate_overrides',
             'copy_rate_plan', 'aggregate_daily_metrics', 'aggregate_monthly_metrics',
             'calculate_revenue_metrics', 'sync_metric_dimensions',
-            'track_reservation_status_change'
+            'track_reservation_status_change',
+            'generate_daily_performance_report',
+            'generate_health_check_report',
+            'check_performance_thresholds',
+            'get_latest_report',
+            'init_report_schedules',
+            'update_performance_baselines',
+            'detect_query_degradation',
+            'detect_connection_spike',
+            'detect_cache_degradation',
+            'monitor_performance_degradation',
+            'get_active_alerts',
+            'acknowledge_alert',
+            'acknowledge_alerts_by_type'
         );
 
     -- Count soft delete implementations (base tables only)
@@ -292,6 +315,7 @@ LIMIT 10;
 \echo '  • psql -U postgres -d tartware -f indexes/verify-indexes.sql'
 \echo '  • psql -U postgres -d tartware -f constraints/verify-constraints.sql'
 \echo '  • psql -U postgres -d tartware -f procedures/verify-procedures.sql'
+\echo '  • psql -U postgres -d tartware -f triggers/verify-triggers.sql'
 \echo ''
 \echo 'Report generated: '`date`
 \echo ''

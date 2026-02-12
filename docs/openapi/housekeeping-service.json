@@ -1,7 +1,7 @@
 {
   "openapi": "3.0.3",
   "info": {
-    "title": "@tartware/housekeeping-service API",
+    "title": "@tartware/core-service API",
     "version": "0.1.0",
     "description": "Housekeeping domain service for Tartware PMS"
   },
@@ -77,6 +77,16 @@
             },
             "in": "query",
             "name": "limit",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            },
+            "in": "query",
+            "name": "offset",
             "required": false
           }
         ],
@@ -193,6 +203,1083 @@
                     ],
                     "additionalProperties": false
                   }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/maintenance/requests": {
+      "get": {
+        "summary": "List maintenance requests",
+        "tags": [
+          "Maintenance"
+        ],
+        "description": "Retrieves maintenance work orders with filtering by status, priority, category, and room",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "in": "query",
+            "name": "tenant_id",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "in": "query",
+            "name": "property_id",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "status",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "priority",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "issue_category",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "in": "query",
+            "name": "room_id",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "room_out_of_service",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "exclusiveMinimum": 0,
+              "maximum": 500,
+              "default": 200
+            },
+            "in": "query",
+            "name": "limit",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            },
+            "in": "query",
+            "name": "offset",
+            "required": false
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "request_id": {
+                        "type": "string",
+                        "format": "uuid"
+                      },
+                      "tenant_id": {
+                        "type": "string",
+                        "format": "uuid"
+                      },
+                      "property_id": {
+                        "type": "string",
+                        "format": "uuid"
+                      },
+                      "property_name": {
+                        "type": "string"
+                      },
+                      "request_number": {
+                        "type": "string",
+                        "nullable": true
+                      },
+                      "request_type": {
+                        "type": "string"
+                      },
+                      "request_type_display": {
+                        "type": "string"
+                      },
+                      "request_status": {
+                        "type": "string"
+                      },
+                      "request_status_display": {
+                        "type": "string"
+                      },
+                      "priority": {
+                        "type": "string"
+                      },
+                      "priority_display": {
+                        "type": "string"
+                      },
+                      "room_id": {
+                        "type": "string",
+                        "format": "uuid"
+                      },
+                      "room_number": {
+                        "type": "string",
+                        "nullable": true
+                      },
+                      "location_description": {
+                        "type": "string",
+                        "nullable": true
+                      },
+                      "location_type": {
+                        "type": "string",
+                        "nullable": true
+                      },
+                      "issue_category": {
+                        "type": "string"
+                      },
+                      "issue_category_display": {
+                        "type": "string"
+                      },
+                      "issue_subcategory": {
+                        "type": "string",
+                        "nullable": true
+                      },
+                      "issue_description": {
+                        "type": "string"
+                      },
+                      "affects_occupancy": {
+                        "type": "boolean"
+                      },
+                      "affects_guest_comfort": {
+                        "type": "boolean"
+                      },
+                      "is_safety_issue": {
+                        "type": "boolean"
+                      },
+                      "is_health_issue": {
+                        "type": "boolean"
+                      },
+                      "reported_at": {
+                        "type": "string"
+                      },
+                      "reported_by": {
+                        "type": "string",
+                        "format": "uuid"
+                      },
+                      "reporter_role": {
+                        "type": "string",
+                        "nullable": true
+                      },
+                      "assigned_to": {
+                        "type": "string",
+                        "format": "uuid"
+                      },
+                      "assigned_at": {
+                        "type": "string"
+                      },
+                      "maintenance_team": {
+                        "type": "string",
+                        "nullable": true
+                      },
+                      "scheduled_date": {
+                        "type": "string",
+                        "nullable": true
+                      },
+                      "estimated_duration_minutes": {
+                        "type": "integer",
+                        "nullable": true
+                      },
+                      "work_started_at": {
+                        "type": "string"
+                      },
+                      "work_completed_at": {
+                        "type": "string"
+                      },
+                      "actual_duration_minutes": {
+                        "type": "integer",
+                        "nullable": true
+                      },
+                      "work_performed": {
+                        "type": "string",
+                        "nullable": true
+                      },
+                      "total_cost": {
+                        "type": "number",
+                        "nullable": true
+                      },
+                      "currency_code": {
+                        "type": "string"
+                      },
+                      "room_out_of_service": {
+                        "type": "boolean"
+                      },
+                      "oos_from": {
+                        "type": "string"
+                      },
+                      "oos_until": {
+                        "type": "string"
+                      },
+                      "response_time_minutes": {
+                        "type": "integer",
+                        "nullable": true
+                      },
+                      "resolution_time_hours": {
+                        "type": "integer",
+                        "nullable": true
+                      },
+                      "is_within_sla": {
+                        "type": "boolean",
+                        "nullable": true
+                      },
+                      "created_at": {
+                        "type": "string"
+                      },
+                      "updated_at": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "request_id",
+                      "tenant_id",
+                      "property_id",
+                      "request_number",
+                      "request_type",
+                      "request_type_display",
+                      "request_status",
+                      "request_status_display",
+                      "priority",
+                      "priority_display",
+                      "room_number",
+                      "location_description",
+                      "location_type",
+                      "issue_category",
+                      "issue_category_display",
+                      "issue_subcategory",
+                      "issue_description",
+                      "affects_occupancy",
+                      "affects_guest_comfort",
+                      "is_safety_issue",
+                      "is_health_issue",
+                      "reported_at",
+                      "reported_by",
+                      "reporter_role",
+                      "maintenance_team",
+                      "scheduled_date",
+                      "estimated_duration_minutes",
+                      "actual_duration_minutes",
+                      "work_performed",
+                      "total_cost",
+                      "currency_code",
+                      "room_out_of_service",
+                      "response_time_minutes",
+                      "resolution_time_hours",
+                      "is_within_sla",
+                      "created_at"
+                    ],
+                    "additionalProperties": false
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/maintenance/requests/{requestId}": {
+      "get": {
+        "summary": "Get maintenance request by ID",
+        "tags": [
+          "Maintenance"
+        ],
+        "description": "Retrieves detailed information for a specific maintenance request",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "in": "query",
+            "name": "tenant_id",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "in": "path",
+            "name": "requestId",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "request_id": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "tenant_id": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "property_id": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "property_name": {
+                      "type": "string"
+                    },
+                    "request_number": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "request_type": {
+                      "type": "string"
+                    },
+                    "request_type_display": {
+                      "type": "string"
+                    },
+                    "request_status": {
+                      "type": "string"
+                    },
+                    "request_status_display": {
+                      "type": "string"
+                    },
+                    "priority": {
+                      "type": "string"
+                    },
+                    "priority_display": {
+                      "type": "string"
+                    },
+                    "room_id": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "room_number": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "location_description": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "location_type": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "issue_category": {
+                      "type": "string"
+                    },
+                    "issue_category_display": {
+                      "type": "string"
+                    },
+                    "issue_subcategory": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "issue_description": {
+                      "type": "string"
+                    },
+                    "affects_occupancy": {
+                      "type": "boolean"
+                    },
+                    "affects_guest_comfort": {
+                      "type": "boolean"
+                    },
+                    "is_safety_issue": {
+                      "type": "boolean"
+                    },
+                    "is_health_issue": {
+                      "type": "boolean"
+                    },
+                    "reported_at": {
+                      "type": "string"
+                    },
+                    "reported_by": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "reporter_role": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "assigned_to": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "assigned_at": {
+                      "type": "string"
+                    },
+                    "maintenance_team": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "scheduled_date": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "estimated_duration_minutes": {
+                      "type": "integer",
+                      "nullable": true
+                    },
+                    "work_started_at": {
+                      "type": "string"
+                    },
+                    "work_completed_at": {
+                      "type": "string"
+                    },
+                    "actual_duration_minutes": {
+                      "type": "integer",
+                      "nullable": true
+                    },
+                    "work_performed": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "total_cost": {
+                      "type": "number",
+                      "nullable": true
+                    },
+                    "currency_code": {
+                      "type": "string"
+                    },
+                    "room_out_of_service": {
+                      "type": "boolean"
+                    },
+                    "oos_from": {
+                      "type": "string"
+                    },
+                    "oos_until": {
+                      "type": "string"
+                    },
+                    "response_time_minutes": {
+                      "type": "integer",
+                      "nullable": true
+                    },
+                    "resolution_time_hours": {
+                      "type": "integer",
+                      "nullable": true
+                    },
+                    "is_within_sla": {
+                      "type": "boolean",
+                      "nullable": true
+                    },
+                    "created_at": {
+                      "type": "string"
+                    },
+                    "updated_at": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "request_id",
+                    "tenant_id",
+                    "property_id",
+                    "request_number",
+                    "request_type",
+                    "request_type_display",
+                    "request_status",
+                    "request_status_display",
+                    "priority",
+                    "priority_display",
+                    "room_number",
+                    "location_description",
+                    "location_type",
+                    "issue_category",
+                    "issue_category_display",
+                    "issue_subcategory",
+                    "issue_description",
+                    "affects_occupancy",
+                    "affects_guest_comfort",
+                    "is_safety_issue",
+                    "is_health_issue",
+                    "reported_at",
+                    "reported_by",
+                    "reporter_role",
+                    "maintenance_team",
+                    "scheduled_date",
+                    "estimated_duration_minutes",
+                    "actual_duration_minutes",
+                    "work_performed",
+                    "total_cost",
+                    "currency_code",
+                    "room_out_of_service",
+                    "response_time_minutes",
+                    "resolution_time_hours",
+                    "is_within_sla",
+                    "created_at"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "message"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/incidents": {
+      "get": {
+        "summary": "List incident reports",
+        "tags": [
+          "Incidents"
+        ],
+        "description": "Retrieves incident reports with filtering by status, severity, type, and date range",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "in": "query",
+            "name": "tenant_id",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "in": "query",
+            "name": "property_id",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "status",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "severity",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "incident_type",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "incident_date",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "date_from",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "date_to",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "exclusiveMinimum": 0,
+              "maximum": 500,
+              "default": 200
+            },
+            "in": "query",
+            "name": "limit",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            },
+            "in": "query",
+            "name": "offset",
+            "required": false
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "incident_id": {
+                        "type": "string",
+                        "format": "uuid"
+                      },
+                      "tenant_id": {
+                        "type": "string",
+                        "format": "uuid"
+                      },
+                      "property_id": {
+                        "type": "string",
+                        "format": "uuid"
+                      },
+                      "property_name": {
+                        "type": "string"
+                      },
+                      "incident_number": {
+                        "type": "string"
+                      },
+                      "incident_title": {
+                        "type": "string"
+                      },
+                      "incident_type": {
+                        "type": "string"
+                      },
+                      "incident_type_display": {
+                        "type": "string"
+                      },
+                      "incident_category": {
+                        "type": "string",
+                        "nullable": true
+                      },
+                      "severity": {
+                        "type": "string"
+                      },
+                      "severity_display": {
+                        "type": "string"
+                      },
+                      "severity_score": {
+                        "type": "integer",
+                        "nullable": true
+                      },
+                      "incident_datetime": {
+                        "type": "string"
+                      },
+                      "incident_date": {
+                        "type": "string"
+                      },
+                      "incident_time": {
+                        "type": "string"
+                      },
+                      "incident_location": {
+                        "type": "string"
+                      },
+                      "room_number": {
+                        "type": "string",
+                        "nullable": true
+                      },
+                      "floor_number": {
+                        "type": "integer",
+                        "nullable": true
+                      },
+                      "area_name": {
+                        "type": "string",
+                        "nullable": true
+                      },
+                      "guest_involved": {
+                        "type": "boolean"
+                      },
+                      "staff_involved": {
+                        "type": "boolean"
+                      },
+                      "third_party_involved": {
+                        "type": "boolean"
+                      },
+                      "witness_count": {
+                        "type": "integer"
+                      },
+                      "injuries_sustained": {
+                        "type": "boolean"
+                      },
+                      "injury_severity": {
+                        "type": "string",
+                        "nullable": true
+                      },
+                      "medical_attention_required": {
+                        "type": "boolean"
+                      },
+                      "property_damage": {
+                        "type": "boolean"
+                      },
+                      "estimated_damage_cost": {
+                        "type": "number",
+                        "nullable": true
+                      },
+                      "incident_status": {
+                        "type": "string"
+                      },
+                      "incident_status_display": {
+                        "type": "string"
+                      },
+                      "investigation_required": {
+                        "type": "boolean"
+                      },
+                      "investigation_completed": {
+                        "type": "boolean"
+                      },
+                      "police_notified": {
+                        "type": "boolean"
+                      },
+                      "police_report_number": {
+                        "type": "string",
+                        "nullable": true
+                      },
+                      "insurance_claim_filed": {
+                        "type": "boolean"
+                      },
+                      "insurance_claim_number": {
+                        "type": "string",
+                        "nullable": true
+                      },
+                      "created_at": {
+                        "type": "string"
+                      },
+                      "updated_at": {
+                        "type": "string"
+                      },
+                      "created_by": {
+                        "type": "string",
+                        "format": "uuid"
+                      }
+                    },
+                    "required": [
+                      "incident_id",
+                      "tenant_id",
+                      "property_id",
+                      "incident_number",
+                      "incident_title",
+                      "incident_type",
+                      "incident_type_display",
+                      "incident_category",
+                      "severity",
+                      "severity_display",
+                      "severity_score",
+                      "incident_datetime",
+                      "incident_date",
+                      "incident_time",
+                      "incident_location",
+                      "room_number",
+                      "floor_number",
+                      "area_name",
+                      "guest_involved",
+                      "staff_involved",
+                      "third_party_involved",
+                      "witness_count",
+                      "injuries_sustained",
+                      "injury_severity",
+                      "medical_attention_required",
+                      "property_damage",
+                      "estimated_damage_cost",
+                      "incident_status",
+                      "incident_status_display",
+                      "investigation_required",
+                      "investigation_completed",
+                      "police_notified",
+                      "police_report_number",
+                      "insurance_claim_filed",
+                      "insurance_claim_number",
+                      "created_at",
+                      "created_by"
+                    ],
+                    "additionalProperties": false
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/incidents/{incidentId}": {
+      "get": {
+        "summary": "Get incident report by ID",
+        "tags": [
+          "Incidents"
+        ],
+        "description": "Retrieves detailed information for a specific incident report",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "in": "query",
+            "name": "tenant_id",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "in": "path",
+            "name": "incidentId",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "incident_id": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "tenant_id": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "property_id": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "property_name": {
+                      "type": "string"
+                    },
+                    "incident_number": {
+                      "type": "string"
+                    },
+                    "incident_title": {
+                      "type": "string"
+                    },
+                    "incident_type": {
+                      "type": "string"
+                    },
+                    "incident_type_display": {
+                      "type": "string"
+                    },
+                    "incident_category": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "severity": {
+                      "type": "string"
+                    },
+                    "severity_display": {
+                      "type": "string"
+                    },
+                    "severity_score": {
+                      "type": "integer",
+                      "nullable": true
+                    },
+                    "incident_datetime": {
+                      "type": "string"
+                    },
+                    "incident_date": {
+                      "type": "string"
+                    },
+                    "incident_time": {
+                      "type": "string"
+                    },
+                    "incident_location": {
+                      "type": "string"
+                    },
+                    "room_number": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "floor_number": {
+                      "type": "integer",
+                      "nullable": true
+                    },
+                    "area_name": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "guest_involved": {
+                      "type": "boolean"
+                    },
+                    "staff_involved": {
+                      "type": "boolean"
+                    },
+                    "third_party_involved": {
+                      "type": "boolean"
+                    },
+                    "witness_count": {
+                      "type": "integer"
+                    },
+                    "injuries_sustained": {
+                      "type": "boolean"
+                    },
+                    "injury_severity": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "medical_attention_required": {
+                      "type": "boolean"
+                    },
+                    "property_damage": {
+                      "type": "boolean"
+                    },
+                    "estimated_damage_cost": {
+                      "type": "number",
+                      "nullable": true
+                    },
+                    "incident_status": {
+                      "type": "string"
+                    },
+                    "incident_status_display": {
+                      "type": "string"
+                    },
+                    "investigation_required": {
+                      "type": "boolean"
+                    },
+                    "investigation_completed": {
+                      "type": "boolean"
+                    },
+                    "police_notified": {
+                      "type": "boolean"
+                    },
+                    "police_report_number": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "insurance_claim_filed": {
+                      "type": "boolean"
+                    },
+                    "insurance_claim_number": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "created_at": {
+                      "type": "string"
+                    },
+                    "updated_at": {
+                      "type": "string"
+                    },
+                    "created_by": {
+                      "type": "string",
+                      "format": "uuid"
+                    }
+                  },
+                  "required": [
+                    "incident_id",
+                    "tenant_id",
+                    "property_id",
+                    "incident_number",
+                    "incident_title",
+                    "incident_type",
+                    "incident_type_display",
+                    "incident_category",
+                    "severity",
+                    "severity_display",
+                    "severity_score",
+                    "incident_datetime",
+                    "incident_date",
+                    "incident_time",
+                    "incident_location",
+                    "room_number",
+                    "floor_number",
+                    "area_name",
+                    "guest_involved",
+                    "staff_involved",
+                    "third_party_involved",
+                    "witness_count",
+                    "injuries_sustained",
+                    "injury_severity",
+                    "medical_attention_required",
+                    "property_damage",
+                    "estimated_damage_cost",
+                    "incident_status",
+                    "incident_status_display",
+                    "investigation_required",
+                    "investigation_completed",
+                    "police_notified",
+                    "police_report_number",
+                    "insurance_claim_filed",
+                    "insurance_claim_number",
+                    "created_at",
+                    "created_by"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "message"
+                  ],
+                  "additionalProperties": false
                 }
               }
             }

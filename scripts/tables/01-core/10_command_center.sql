@@ -187,7 +187,13 @@ WITH seed_commands(command_name, description, default_target_service, required_m
         ('operations.maintenance.request', 'Create maintenance request', 'operations-command-service', ARRAY['facility-maintenance']),
         ('operations.incident.report', 'Report an incident', 'operations-command-service', ARRAY['facility-maintenance']),
         ('operations.asset.update', 'Update asset status or location', 'operations-command-service', ARRAY['facility-maintenance']),
-        ('operations.inventory.adjust', 'Adjust inventory levels', 'operations-command-service', ARRAY['facility-maintenance'])
+        ('operations.inventory.adjust', 'Adjust inventory levels', 'operations-command-service', ARRAY['facility-maintenance']),
+        ('reservation.waitlist_offer', 'Offer a freed room to a waitlisted guest', 'reservations-command-service', ARRAY['core']),
+        ('reservation.waitlist_expire_sweep', 'Sweep and expire stale waitlist offers', 'reservations-command-service', ARRAY['core']),
+        ('reservation.walk_guest', 'Walk a guest to an alternate property or compensation', 'reservations-command-service', ARRAY['core']),
+        ('notification.send', 'Send a templated notification to a guest', 'notification-service', ARRAY['core']),
+        ('billing.cashier.open', 'Open a new cashier/till session', 'billing-service', ARRAY['finance-automation']),
+        ('billing.cashier.close', 'Close and reconcile a cashier session', 'billing-service', ARRAY['finance-automation'])
 )
 INSERT INTO command_templates (command_name, description, default_target_service, required_modules, metadata)
 SELECT

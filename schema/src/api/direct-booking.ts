@@ -8,6 +8,8 @@
 
 import { z } from "zod";
 
+import { uuid } from "../shared/base-schemas.js";
+
 // -----------------------------------------------------------------------------
 // Availability Search Result
 // -----------------------------------------------------------------------------
@@ -78,3 +80,54 @@ export const BookingConfirmationSchema = z.object({
 });
 
 export type BookingConfirmation = z.infer<typeof BookingConfirmationSchema>;
+
+// -----------------------------------------------------------------------------
+// Query / Body Schemas
+// -----------------------------------------------------------------------------
+
+/** Availability search query parameters. */
+export const DirectBookingAvailabilityQuerySchema = z.object({
+	tenant_id: uuid,
+	property_id: uuid,
+	check_in: z.string().refine((v) => !Number.isNaN(Date.parse(v)), "valid ISO date required"),
+	check_out: z.string().refine((v) => !Number.isNaN(Date.parse(v)), "valid ISO date required"),
+	adults: z.coerce.number().int().min(1).optional(),
+	children: z.coerce.number().int().min(0).optional(),
+	room_type_id: uuid.optional(),
+});
+
+export type DirectBookingAvailabilityQuery = z.infer<typeof DirectBookingAvailabilityQuerySchema>;
+
+/** Rate quote query parameters. */
+export const DirectBookingRateQuoteQuerySchema = z.object({
+	tenant_id: uuid,
+	property_id: uuid,
+	room_type_id: uuid,
+	check_in: z.string().refine((v) => !Number.isNaN(Date.parse(v)), "valid ISO date required"),
+	check_out: z.string().refine((v) => !Number.isNaN(Date.parse(v)), "valid ISO date required"),
+	promo_code: z.string().max(50).optional(),
+	rate_code: z.string().max(50).optional(),
+});
+
+export type DirectBookingRateQuoteQuery = z.infer<typeof DirectBookingRateQuoteQuerySchema>;
+
+/** Create booking request body. */
+export const CreateDirectBookingBodySchema = z.object({
+	tenant_id: uuid,
+	property_id: uuid,
+	guest_id: uuid,
+	room_type_id: uuid,
+	check_in: z.string().refine((v) => !Number.isNaN(Date.parse(v)), "valid ISO date required"),
+	check_out: z.string().refine((v) => !Number.isNaN(Date.parse(v)), "valid ISO date required"),
+	total_amount: z.number().min(0),
+	currency: z.string().length(3).optional(),
+	rate_code: z.string().max(50).optional(),
+	promo_code: z.string().max(50).optional(),
+	notes: z.string().max(2000).optional(),
+	eta: z
+		.string()
+		.regex(/^\d{2}:\d{2}$/, "HH:MM format required")
+		.optional(),
+});
+
+export type CreateDirectBookingBody = z.infer<typeof CreateDirectBookingBodySchema>;

@@ -100,8 +100,8 @@ export abstract class BaseScorer<Q extends HasRequestId, C extends HasScore>
    */
   updateAll(candidates: C[], scores: number[]): void {
     for (let i = 0; i < candidates.length; i++) {
-      const candidate = candidates[i];
-      const scoreValue = scores[i];
+      const candidate = candidates[i]!;
+      const scoreValue = scores[i] ?? 0;
 
       // Store individual score
       candidate.scores = candidate.scores ?? {};
@@ -145,7 +145,7 @@ export abstract class WeightedActionScorer<
       const actionScores = predictions[action];
       if (actionScores) {
         for (let i = 0; i < scores.length; i++) {
-          scores[i] += (actionScores[i] ?? 0) * weight;
+          scores[i] = (scores[i] ?? 0) + (actionScores[i] ?? 0) * weight;
         }
       }
     }

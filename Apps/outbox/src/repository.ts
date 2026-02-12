@@ -190,6 +190,31 @@ export const createOutboxRepository = ({
 		);
 	};
 
+	const markOutboxDeliveredByEventId = async (
+		eventId: string,
+	): Promise<void> => {
+		await query(
+			`
+        UPDATE transactional_outbox
+        SET
+          status = 'DELIVERED',
+          delivered_at = NOW(),
+          locked_at = NULL,
+          locked_by = NULL,
+          last_error = NULL,
+          updated_at = NOW(),
+          metadata = COALESCE(metadata, '{}'::jsonb) || jsonb_build_object(
+            'lifecycleState',
+            'PUBLISHED',
+            'publishedAt',
+            NOW()
+          )
+        WHERE event_id = $1
+      `,
+			[eventId],
+		);
+	};
+
 	const markOutboxFailed = async (
 		id: string,
 		error: unknown,
@@ -241,6 +266,57 @@ export const createOutboxRepository = ({
 		return result.rows[0]?.status ?? "FAILED";
 	};
 
+	const markOutboxFailedByEventId = async (
+		eventId: string,
+		error: unknown,
+		retryBackoffMs: number,
+		maxRetries: number,
+	): Promise<OutboxStatus> => {
+		const errorMessage =
+			error instanceof Error
+				? `${error.name}: ${error.message}`
+				: String(error);
+
+		const result = await query<{ status: OutboxStatus }>(
+			`
+        WITH updated AS (
+          UPDATE transactional_outbox
+          SET
+            retry_count = retry_count + 1,
+            status = CASE
+              WHEN retry_count + 1 >= $3 THEN 'DLQ'
+              ELSE 'FAILED'
+            END,
+            last_error = $2,
+            locked_at = NULL,
+            locked_by = NULL,
+            available_at = CASE
+              WHEN retry_count + 1 >= $3 THEN available_at
+              ELSE NOW() + ($4::int * interval '1 millisecond')
+            END,
+            updated_at = NOW(),
+            metadata = COALESCE(metadata, '{}'::jsonb) || jsonb_build_object(
+              'lifecycleState',
+              CASE
+                WHEN retry_count + 1 >= $3 THEN 'DLQ'
+                ELSE 'FAILED'
+              END,
+              'lastError',
+              $2,
+              'updatedAt',
+              NOW()
+            )
+          WHERE event_id = $1
+          RETURNING status
+        )
+        SELECT status FROM updated
+      `,
+			[eventId, errorMessage, maxRetries, retryBackoffMs],
+		);
+
+		return result.rows[0]?.status ?? "FAILED";
+	};
+
 	return {
 		enqueueOutboxRecord,
 		enqueueOutboxRecordWithClient,
@@ -248,7 +324,9 @@ export const createOutboxRepository = ({
 		releaseExpiredLocks,
 		claimOutboxBatch,
 		markOutboxDelivered,
+		markOutboxDeliveredByEventId,
 		markOutboxFailed,
+		markOutboxFailedByEventId,
 	};
 };
 

@@ -1,18 +1,10 @@
 import { buildRouteSchema, schemaFromZod } from "@tartware/openapi";
+import type { HealthResponse } from "@tartware/schemas";
+import { HealthResponseSchema } from "@tartware/schemas";
 import type { FastifyInstance } from "fastify";
-import { z } from "zod";
 
 import { isRedisHealthy } from "../lib/redis.js";
 
-const HealthResponseSchema = z.object({
-  status: z.literal("ok"),
-  redis: z.object({
-    connected: z.boolean(),
-    status: z.enum(["healthy", "unavailable"]),
-  }),
-});
-
-type HealthResponse = z.infer<typeof HealthResponseSchema>;
 const HealthResponseJsonSchema = schemaFromZod(HealthResponseSchema, "CoreHealthResponse");
 
 export const registerHealthRoutes = (app: FastifyInstance): void => {

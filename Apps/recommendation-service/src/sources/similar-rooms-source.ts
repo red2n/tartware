@@ -19,7 +19,7 @@ export class SimilarRoomsSource extends BaseSource<RoomRecommendationQuery, Room
   /**
    * Only enable if we have guest history to base similarity on.
    */
-  enable(queryParams: RoomRecommendationQuery): boolean {
+  override enable(queryParams: RoomRecommendationQuery): boolean {
     return (
       queryParams.guestId !== undefined &&
       queryParams.guestHistory !== undefined &&

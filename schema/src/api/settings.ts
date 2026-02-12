@@ -13,8 +13,10 @@ import {
 	SettingsOptionsSchema,
 	SettingsSectionsSchema,
 	SettingsValuesSchema,
+	SettingsValueStatusEnum,
 } from "../schemas/08-settings/index.js";
 import { uuid } from "../shared/base-schemas.js";
+import { SettingsScopeEnum } from "../shared/enums.js";
 
 export const SettingsCatalogResponseSchema = z.object({
 	data: z.object({
@@ -190,3 +192,106 @@ export const PackageComponentListItemSchema = z.object({
 });
 
 export type PackageComponentListItem = z.infer<typeof PackageComponentListItemSchema>;
+
+// =====================================================
+// CATALOG LIST SCHEMAS
+// =====================================================
+
+/** Category list response wrapper. */
+export const SettingsCategoryListSchema = z.object({
+	data: z.array(SettingsCategoriesSchema),
+	meta: z.object({ count: z.number().int().nonnegative() }),
+});
+export type SettingsCategoryList = z.infer<typeof SettingsCategoryListSchema>;
+
+/** Section list response wrapper. */
+export const SettingsSectionListSchema = z.object({
+	data: z.array(SettingsSectionsSchema),
+	meta: z.object({ count: z.number().int().nonnegative() }),
+});
+export type SettingsSectionList = z.infer<typeof SettingsSectionListSchema>;
+
+/** Definition list response wrapper. */
+export const SettingsDefinitionListSchema = z.object({
+	data: z.array(SettingsDefinitionsSchema),
+	meta: z.object({ count: z.number().int().nonnegative() }),
+});
+export type SettingsDefinitionList = z.infer<typeof SettingsDefinitionListSchema>;
+
+/** Option list response wrapper. */
+export const SettingsOptionListSchema = z.object({
+	data: z.array(SettingsOptionsSchema),
+	meta: z.object({ count: z.number().int().nonnegative() }),
+});
+export type SettingsOptionList = z.infer<typeof SettingsOptionListSchema>;
+
+// =====================================================
+// CATALOG QUERY SCHEMAS
+// =====================================================
+
+/** Base active-only filter used by all catalog queries. */
+export const ActiveOnlyQuerySchema = z.object({
+	active_only: z.coerce.boolean().default(true),
+});
+export type ActiveOnlyQuery = z.infer<typeof ActiveOnlyQuerySchema>;
+
+/** Sections query with optional category filter. */
+export const SectionsQuerySchema = ActiveOnlyQuerySchema.extend({
+	category_id: z.string().uuid().optional(),
+	category_code: z.string().min(2).max(64).optional(),
+});
+export type SectionsQuery = z.infer<typeof SectionsQuerySchema>;
+
+/** Definitions query with optional category/section/search filters. */
+export const DefinitionsQuerySchema = ActiveOnlyQuerySchema.extend({
+	category_id: z.string().uuid().optional(),
+	section_id: z.string().uuid().optional(),
+	category_code: z.string().min(2).max(64).optional(),
+	section_code: z.string().min(2).max(64).optional(),
+	search: z.string().min(2).max(120).optional(),
+});
+export type DefinitionsQuery = z.infer<typeof DefinitionsQuerySchema>;
+
+/** Options query with optional setting filter. */
+export const OptionsQuerySchema = ActiveOnlyQuerySchema.extend({
+	setting_id: z.string().uuid().optional(),
+	setting_code: z.string().min(2).max(160).optional(),
+});
+export type OptionsQuery = z.infer<typeof OptionsQuerySchema>;
+
+/** Values query with scope and entity filters. */
+export const ValuesQuerySchema = ActiveOnlyQuerySchema.extend({
+	scope_level: SettingsScopeEnum.optional(),
+	setting_id: z.string().uuid().optional(),
+	property_id: z.string().uuid().optional(),
+	unit_id: z.string().uuid().optional(),
+	user_id: z.string().uuid().optional(),
+});
+export type ValuesQuery = z.infer<typeof ValuesQuerySchema>;
+
+// =====================================================
+// VALUE MUTATION SCHEMAS
+// =====================================================
+
+/** Body schema for creating a settings value. */
+export const CreateValueSchema = z.object({
+	setting_id: z.string().uuid(),
+	scope_level: SettingsScopeEnum,
+	value: z.unknown().optional(),
+	property_id: z.string().uuid().optional(),
+	unit_id: z.string().uuid().optional(),
+	user_id: z.string().uuid().optional(),
+	status: SettingsValueStatusEnum.optional(),
+	notes: z.string().max(1024).optional(),
+	effective_from: z.string().datetime().optional(),
+	effective_to: z.string().datetime().optional(),
+	context: z.record(z.unknown()).optional(),
+	metadata: z.record(z.unknown()).optional(),
+});
+export type CreateValue = z.infer<typeof CreateValueSchema>;
+
+/** Body schema for updating a settings value. */
+export const UpdateValueSchema = CreateValueSchema.partial().extend({
+	locked_until: z.string().datetime().optional(),
+});
+export type UpdateValue = z.infer<typeof UpdateValueSchema>;

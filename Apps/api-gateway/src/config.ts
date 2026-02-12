@@ -101,6 +101,8 @@ export const serviceTargets = {
   commandCenterServiceUrl: env.COMMAND_CENTER_SERVICE_URL ?? "http://localhost:3035",
   recommendationServiceUrl: env.RECOMMENDATION_SERVICE_URL ?? "http://localhost:3040",
   notificationServiceUrl: env.NOTIFICATION_SERVICE_URL ?? "http://localhost:3055",
+  revenueServiceUrl: env.REVENUE_SERVICE_URL ?? "http://localhost:3060",
+  guestExperienceServiceUrl: env.GUEST_EXPERIENCE_SERVICE_URL ?? "http://localhost:3065",
 };
 
 export const dbConfig = {
@@ -112,6 +114,7 @@ export const dbConfig = {
   ssl: baseConfig.DB_SSL,
   max: baseConfig.DB_POOL_MAX,
   idleTimeoutMillis: baseConfig.DB_POOL_IDLE_TIMEOUT_MS,
+  statementTimeoutMs: baseConfig.DB_STATEMENT_TIMEOUT_MS,
 };
 
 export const authConfig = {

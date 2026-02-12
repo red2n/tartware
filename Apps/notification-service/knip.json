@@ -20,7 +20,8 @@
     "@fastify/helmet",
     "@fastify/sensible",
     "@tartware/fastify-server",
-    "@vitest/coverage-v8"
+    "@vitest/coverage-v8",
+    "pg"
   ],
   "ignoreBinaries": []
 }

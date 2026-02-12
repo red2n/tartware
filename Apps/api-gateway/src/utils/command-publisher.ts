@@ -1,5 +1,3 @@
-import { randomUUID } from "node:crypto";
-
 import { validateCommandPayload } from "@tartware/schemas";
 import type { FastifyReply, FastifyRequest } from "fastify";
 import { ZodError } from "zod";
@@ -104,7 +102,7 @@ export const submitCommand = async ({
   }
 
   const correlationId = (request.headers["x-correlation-id"] as string | undefined) ?? undefined;
-  const requestId = (request.headers["x-request-id"] as string | undefined) ?? randomUUID();
+  const requestId = request.id;
   const initiatedBy =
     request.auth.userId && membership
       ? { userId: request.auth.userId, role: membership.role }

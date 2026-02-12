@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import fastifyCors from "@fastify/cors";
 import fastifyHelmet from "@fastify/helmet";
 import fastifySensible from "@fastify/sensible";
@@ -8,10 +9,19 @@ import {
 } from "@tartware/telemetry";
 import Fastify, {
   type FastifyBaseLogger,
+  type FastifyError,
   type FastifyInstance,
+  type FastifyReply,
+  type FastifyRequest,
   type FastifyServerOptions,
 } from "fastify";
 import type { Registry } from "prom-client";
+
+/** Detect ZodError by duck typing to avoid hard zod dependency. */
+const isZodError = (
+  error: unknown,
+): error is Error & { errors: Array<{ path: (string | number)[]; message: string; code: string }> } =>
+  error instanceof Error && error.name === "ZodError" && Array.isArray((error as { errors?: unknown }).errors);
 
 export interface BuildFastifyServerOptions {
   /**
@@ -88,6 +98,66 @@ export interface BuildFastifyServerOptions {
 }
 
 /**
+ * Centralized error handler for all services.
+ * Produces a consistent JSON error response shape:
+ *   { statusCode, error, message, code?, details? }
+ */
+const defaultErrorHandler = (error: FastifyError, request: FastifyRequest, reply: FastifyReply): void => {
+  request.log.error(
+    { err: error, method: request.method, url: request.url },
+    error.message,
+  );
+
+  // Zod validation errors → 400 with structured details
+  if (isZodError(error)) {
+    reply.status(400).send({
+      statusCode: 400,
+      error: "Bad Request",
+      message: "Validation failed",
+      details: error.errors.map((err) => ({
+        path: err.path.join("."),
+        message: err.message,
+        code: err.code,
+      })),
+    });
+    return;
+  }
+
+  // Fastify/Ajv schema validation errors → 400
+  if (error.validation) {
+    reply.status(400).send({
+      statusCode: 400,
+      error: "Bad Request",
+      message: error.message || "Validation failed",
+      details: error.validation,
+    });
+    return;
+  }
+
+  // Known HTTP errors (from @fastify/sensible or statusCode < 500)
+  if (error.statusCode && error.statusCode < 500) {
+    reply.status(error.statusCode).send({
+      statusCode: error.statusCode,
+      error: error.name,
+      message: error.message,
+      code: error.code,
+    });
+    return;
+  }
+
+  // Unexpected 500 errors — hide details in production
+  const statusCode = error.statusCode ?? 500;
+  reply.status(statusCode).send({
+    statusCode,
+    error: "Internal Server Error",
+    message:
+      process.env.NODE_ENV === "production"
+        ? "An unexpected error occurred"
+        : error.message,
+  });
+};
+
+/**
  * Build a standardized Fastify server with common plugins and configuration
  */
 export const buildFastifyServer = (
@@ -109,10 +179,19 @@ export const buildFastifyServer = (
   } = options;
 
   // Build Fastify instance with logger
+  // Use X-Request-Id header if present, otherwise generate a UUID
   const app = Fastify({
     loggerInstance: logger as FastifyBaseLogger,
     disableRequestLogging: !enableRequestLogging,
+    requestIdHeader: "x-request-id",
+    genReqId: () => randomUUID(),
     ...serverOptions,
+  });
+
+  // Propagate request ID back in response header for client correlation
+  app.addHook("onSend", async (request, reply, payload) => {
+    reply.header("X-Request-Id", request.id);
+    return payload;
   });
 
   // Register request logging if enabled
@@ -125,6 +204,9 @@ export const buildFastifyServer = (
 
   // Register core plugins
   app.register(fastifySensible);
+
+  // Register centralized error handler
+  app.setErrorHandler(defaultErrorHandler);
 
   // Register Helmet with enhanced security headers
   app.register(fastifyHelmet, {

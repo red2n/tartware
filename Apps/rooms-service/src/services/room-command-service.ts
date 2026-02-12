@@ -1,5 +1,6 @@
 import crypto from "node:crypto";
-
+import { config } from "../config.js";
+import { publishEvent } from "../kafka/producer.js";
 import { query } from "../lib/db.js";
 import {
   RoomFeaturesUpdateCommandSchema,
@@ -321,8 +322,14 @@ export const handleRoomMove = async (payload: unknown, context: CommandContext):
          WHERE id = $1 AND tenant_id = $2 AND COALESCE(is_deleted, false) = false LIMIT 1`,
         [toRoom.room_type_id, context.tenantId],
       );
+      const { rows: oldRateRows } = await query<{ base_price: string | number }>(
+        `SELECT base_price FROM public.room_types
+         WHERE id = $1 AND tenant_id = $2 AND COALESCE(is_deleted, false) = false LIMIT 1`,
+        [fromRoom.room_type_id, context.tenantId],
+      );
       if (rateRows[0]) {
         const newRate = Number(rateRows[0].base_price);
+        const oldRate = oldRateRows[0] ? Number(oldRateRows[0].base_price) : 0;
         // Recalculate total_amount based on new nightly rate × nights
         await query(
           `UPDATE public.reservations
@@ -332,6 +339,76 @@ export const handleRoomMove = async (payload: unknown, context: CommandContext):
            WHERE id = $1 AND tenant_id = $2`,
           [command.reservation_id, context.tenantId, newRate],
         );
+
+        // S25: Post rate adjustment charge to billing for the remaining nights
+        const rateDiff = newRate - oldRate;
+        if (rateDiff !== 0) {
+          try {
+            const { rows: stayRows } = await query<{
+              remaining_nights: number;
+              property_id: string;
+            }>(
+              `SELECT GREATEST(0, check_out_date::date - CURRENT_DATE) AS remaining_nights,
+                      property_id
+               FROM public.reservations
+               WHERE id = $1 AND tenant_id = $2`,
+              [command.reservation_id, context.tenantId],
+            );
+            const stay = stayRows[0];
+            if (stay && stay.remaining_nights > 0) {
+              const adjustmentAmount = Math.abs(rateDiff) * stay.remaining_nights;
+              const commandId = crypto.randomUUID();
+              await publishEvent({
+                topic: config.commandCenter.topic,
+                key: commandId,
+                value: JSON.stringify({
+                  metadata: {
+                    commandId,
+                    commandName: "billing.charge.post",
+                    tenantId: context.tenantId,
+                    targetService: "billing-service",
+                    targetTopic: config.commandCenter.topic,
+                    issuedAt: new Date().toISOString(),
+                    route: { id: "system", source: "internal", tenantId: null },
+                    initiatedBy: context.initiatedBy ?? {
+                      userId: "00000000-0000-0000-0000-000000000000",
+                      role: "SYSTEM",
+                    },
+                    featureStatus: "enabled",
+                  },
+                  payload: {
+                    property_id: stay.property_id,
+                    reservation_id: command.reservation_id,
+                    amount: adjustmentAmount,
+                    charge_code: rateDiff > 0 ? "UPGRADE" : "DOWNGRADE_CREDIT",
+                    posting_type: rateDiff > 0 ? "DEBIT" : "CREDIT",
+                    description: `Room move rate adjustment: ${fromRoom.room_number} → ${toRoom.room_number} (${rateDiff > 0 ? "upgrade" : "downgrade"} $${Math.abs(rateDiff).toFixed(2)}/night × ${stay.remaining_nights} nights)`,
+                    idempotency_key: `room-move-rate-${command.reservation_id}-${command.from_room_id}-${command.to_room_id}-${new Date().toISOString().slice(0, 10)}`,
+                  },
+                }),
+                headers: {
+                  "x-command-name": "billing.charge.post",
+                  "x-command-tenant-id": context.tenantId,
+                  "x-command-request-id": commandId,
+                  "x-command-target": "billing-service",
+                },
+              });
+            }
+          } catch (err) {
+            // Non-critical: rate adjustment charge is best-effort but log for reconciliation
+            const { appLogger } = await import("../lib/logger.js");
+            appLogger.warn(
+              {
+                err,
+                reservationId: command.reservation_id,
+                fromRoom: command.from_room_id,
+                toRoom: command.to_room_id,
+                rateDiff,
+              },
+              "Failed to post rate adjustment billing charge during room move",
+            );
+          }
+        }
       }
     }
 

@@ -34,7 +34,20 @@ DECLARE
         'aggregate_monthly_metrics',
         'calculate_revenue_metrics',
         'sync_metric_dimensions',
-        'track_reservation_status_change'
+        'track_reservation_status_change',
+        'generate_daily_performance_report',
+        'generate_health_check_report',
+        'check_performance_thresholds',
+        'get_latest_report',
+        'init_report_schedules',
+        'update_performance_baselines',
+        'detect_query_degradation',
+        'detect_connection_spike',
+        'detect_cache_degradation',
+        'monitor_performance_degradation',
+        'get_active_alerts',
+        'acknowledge_alert',
+        'acknowledge_alerts_by_type'
     ];
     v_proc TEXT;
     v_missing_procs TEXT[] := '{}';
@@ -55,13 +68,13 @@ BEGIN
     END LOOP;
 
     RAISE NOTICE '';
-    RAISE NOTICE 'Expected procedures: 15';
+    RAISE NOTICE 'Expected procedures: 28';
     RAISE NOTICE 'Found procedures: %', v_found_count;
 
     IF array_length(v_missing_procs, 1) > 0 THEN
         RAISE WARNING 'Missing procedures: %', array_to_string(v_missing_procs, ', ');
     ELSE
-        RAISE NOTICE '✓ All 15 procedures/functions exist!';
+        RAISE NOTICE '✓ All 28 procedures/functions exist!';
     END IF;
 END $$;
 
@@ -107,7 +120,20 @@ WHERE n.nspname = 'public'
         'aggregate_monthly_metrics',
         'calculate_revenue_metrics',
         'sync_metric_dimensions',
-        'track_reservation_status_change'
+        'track_reservation_status_change',
+        'generate_daily_performance_report',
+        'generate_health_check_report',
+        'check_performance_thresholds',
+        'get_latest_report',
+        'init_report_schedules',
+        'update_performance_baselines',
+        'detect_query_degradation',
+        'detect_connection_spike',
+        'detect_cache_degradation',
+        'monitor_performance_degradation',
+        'get_active_alerts',
+        'acknowledge_alert',
+        'acknowledge_alerts_by_type'
     )
 ORDER BY p.proname;
 
@@ -128,7 +154,9 @@ WITH proc_categories AS (
             WHEN p.proname LIKE '%rate%' OR p.proname LIKE '%seasonal%' THEN '3. Rate Management'
             WHEN p.proname LIKE '%metric%' OR p.proname LIKE '%aggregate%' OR p.proname LIKE '%revenue%' THEN '4. Analytics'
             WHEN p.proname LIKE '%reservation_status%' THEN '5. Reservation Lifecycle'
-            ELSE '6. Other'
+            WHEN p.proname IN ('generate_daily_performance_report', 'generate_health_check_report', 'check_performance_thresholds', 'get_latest_report', 'init_report_schedules') THEN '6. Performance Reporting'
+            WHEN p.proname IN ('update_performance_baselines', 'detect_query_degradation', 'detect_connection_spike', 'detect_cache_degradation', 'monitor_performance_degradation', 'get_active_alerts', 'acknowledge_alert', 'acknowledge_alerts_by_type') THEN '7. Performance Alerting'
+            ELSE '8. Other'
         END AS category
     FROM pg_proc p
     JOIN pg_namespace n ON p.pronamespace = n.oid
@@ -148,7 +176,20 @@ WITH proc_categories AS (
             'aggregate_monthly_metrics',
             'calculate_revenue_metrics',
             'sync_metric_dimensions',
-            'track_reservation_status_change'
+            'track_reservation_status_change',
+            'generate_daily_performance_report',
+            'generate_health_check_report',
+            'check_performance_thresholds',
+            'get_latest_report',
+            'init_report_schedules',
+            'update_performance_baselines',
+            'detect_query_degradation',
+            'detect_connection_spike',
+            'detect_cache_degradation',
+            'monitor_performance_degradation',
+            'get_active_alerts',
+            'acknowledge_alert',
+            'acknowledge_alerts_by_type'
         )
 )
 SELECT
@@ -190,7 +231,20 @@ WHERE n.nspname = 'public'
         'aggregate_monthly_metrics',
         'calculate_revenue_metrics',
         'sync_metric_dimensions',
-        'track_reservation_status_change'
+        'track_reservation_status_change',
+        'generate_daily_performance_report',
+        'generate_health_check_report',
+        'check_performance_thresholds',
+        'get_latest_report',
+        'init_report_schedules',
+        'update_performance_baselines',
+        'detect_query_degradation',
+        'detect_connection_spike',
+        'detect_cache_degradation',
+        'monitor_performance_degradation',
+        'get_active_alerts',
+        'acknowledge_alert',
+        'acknowledge_alerts_by_type'
     )
 GROUP BY l.lanname
 ORDER BY procedure_count DESC;
@@ -311,7 +365,20 @@ WITH proc_deps AS (
             'aggregate_monthly_metrics',
             'calculate_revenue_metrics',
             'sync_metric_dimensions',
-            'track_reservation_status_change'
+            'track_reservation_status_change',
+            'generate_daily_performance_report',
+            'generate_health_check_report',
+            'check_performance_thresholds',
+            'get_latest_report',
+            'init_report_schedules',
+            'update_performance_baselines',
+            'detect_query_degradation',
+            'detect_connection_spike',
+            'detect_cache_degradation',
+            'monitor_performance_degradation',
+            'get_active_alerts',
+            'acknowledge_alert',
+            'acknowledge_alerts_by_type'
         )
         AND d.deptype = 'n'  -- Normal dependency
         AND d.refobjid IN (SELECT oid FROM pg_class WHERE relkind = 'r')
@@ -361,7 +428,20 @@ WHERE n.nspname = 'public'
         'aggregate_monthly_metrics',
         'calculate_revenue_metrics',
         'sync_metric_dimensions',
-        'track_reservation_status_change'
+        'track_reservation_status_change',
+        'generate_daily_performance_report',
+        'generate_health_check_report',
+        'check_performance_thresholds',
+        'get_latest_report',
+        'init_report_schedules',
+        'update_performance_baselines',
+        'detect_query_degradation',
+        'detect_connection_spike',
+        'detect_cache_degradation',
+        'monitor_performance_degradation',
+        'get_active_alerts',
+        'acknowledge_alert',
+        'acknowledge_alerts_by_type'
     )
 ORDER BY p.proname;
 
@@ -430,7 +510,20 @@ BEGIN
             'aggregate_monthly_metrics',
             'calculate_revenue_metrics',
             'sync_metric_dimensions',
-            'track_reservation_status_change'
+            'track_reservation_status_change',
+            'generate_daily_performance_report',
+            'generate_health_check_report',
+            'check_performance_thresholds',
+            'get_latest_report',
+            'init_report_schedules',
+            'update_performance_baselines',
+            'detect_query_degradation',
+            'detect_connection_spike',
+            'detect_cache_degradation',
+            'monitor_performance_degradation',
+            'get_active_alerts',
+            'acknowledge_alert',
+            'acknowledge_alerts_by_type'
         );
 
     -- Count plpgsql procedures
@@ -455,7 +548,20 @@ BEGIN
             'aggregate_monthly_metrics',
             'calculate_revenue_metrics',
             'sync_metric_dimensions',
-            'track_reservation_status_change'
+            'track_reservation_status_change',
+            'generate_daily_performance_report',
+            'generate_health_check_report',
+            'check_performance_thresholds',
+            'get_latest_report',
+            'init_report_schedules',
+            'update_performance_baselines',
+            'detect_query_degradation',
+            'detect_connection_spike',
+            'detect_cache_degradation',
+            'monitor_performance_degradation',
+            'get_active_alerts',
+            'acknowledge_alert',
+            'acknowledge_alerts_by_type'
         );
 
     -- Count documented procedures
@@ -478,12 +584,25 @@ BEGIN
             'aggregate_monthly_metrics',
             'calculate_revenue_metrics',
             'sync_metric_dimensions',
-            'track_reservation_status_change'
+            'track_reservation_status_change',
+            'generate_daily_performance_report',
+            'generate_health_check_report',
+            'check_performance_thresholds',
+            'get_latest_report',
+            'init_report_schedules',
+            'update_performance_baselines',
+            'detect_query_degradation',
+            'detect_connection_spike',
+            'detect_cache_degradation',
+            'monitor_performance_degradation',
+            'get_active_alerts',
+            'acknowledge_alert',
+            'acknowledge_alerts_by_type'
         )
         AND obj_description(p.oid, 'pg_proc') IS NOT NULL;
 
     RAISE NOTICE '';
-    RAISE NOTICE 'Total Procedures: % (Expected: 15)', v_procedure_count;
+    RAISE NOTICE 'Total Procedures: % (Expected: 28)', v_procedure_count;
     RAISE NOTICE 'PL/pgSQL Procedures: %', v_plpgsql_count;
     RAISE NOTICE 'Documented Procedures: %', v_documented_count;
     RAISE NOTICE '';
@@ -493,13 +612,15 @@ BEGIN
     RAISE NOTICE '  - Rate Management: 4';
     RAISE NOTICE '  - Analytics: 4';
     RAISE NOTICE '  - Reservation Lifecycle: 1';
+    RAISE NOTICE '  - Performance Reporting: 5';
+    RAISE NOTICE '  - Performance Alerting: 8';
     RAISE NOTICE '';
 
-    IF v_procedure_count = 15 THEN
+    IF v_procedure_count = 28 THEN
         RAISE NOTICE '✓✓✓ ALL PROCEDURE VALIDATIONS PASSED ✓✓✓';
     ELSE
         RAISE WARNING '⚠⚠⚠ SOME VALIDATIONS FAILED ⚠⚠⚠';
-        RAISE WARNING 'Expected: 15, Found: %', v_procedure_count;
+        RAISE WARNING 'Expected: 28, Found: %', v_procedure_count;
         RAISE WARNING 'Please review the output above for details.';
     END IF;
 END $$;

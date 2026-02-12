@@ -1,7 +1,7 @@
 {
   "openapi": "3.0.3",
   "info": {
-    "title": "@tartware/billing-service API",
+    "title": "@tartware/core-service API",
     "version": "0.1.0",
     "description": "Billing and payments service for Tartware PMS"
   },
@@ -85,6 +85,16 @@
             },
             "in": "query",
             "name": "limit",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            },
+            "in": "query",
+            "name": "offset",
             "required": false
           }
         ],
@@ -194,6 +204,1793 @@
                     ],
                     "additionalProperties": false
                   }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/billing/invoices": {
+      "get": {
+        "summary": "List invoices with optional filters",
+        "tags": [
+          "Billing"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "in": "query",
+            "name": "tenant_id",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "in": "query",
+            "name": "property_id",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "status",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "in": "query",
+            "name": "reservation_id",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "in": "query",
+            "name": "guest_id",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "exclusiveMinimum": 0,
+              "maximum": 200,
+              "default": 100
+            },
+            "in": "query",
+            "name": "limit",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            },
+            "in": "query",
+            "name": "offset",
+            "required": false
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "format": "uuid"
+                      },
+                      "tenant_id": {
+                        "type": "string",
+                        "format": "uuid"
+                      },
+                      "property_id": {
+                        "type": "string",
+                        "format": "uuid"
+                      },
+                      "property_name": {
+                        "type": "string"
+                      },
+                      "reservation_id": {
+                        "type": "string",
+                        "format": "uuid"
+                      },
+                      "confirmation_number": {
+                        "type": "string"
+                      },
+                      "guest_id": {
+                        "type": "string",
+                        "format": "uuid"
+                      },
+                      "guest_name": {
+                        "type": "string"
+                      },
+                      "invoice_number": {
+                        "type": "string"
+                      },
+                      "invoice_type": {
+                        "type": "string"
+                      },
+                      "invoice_type_display": {
+                        "type": "string"
+                      },
+                      "invoice_date": {
+                        "type": "string"
+                      },
+                      "due_date": {
+                        "type": "string"
+                      },
+                      "subtotal": {
+                        "type": "number"
+                      },
+                      "tax_amount": {
+                        "type": "number"
+                      },
+                      "discount_amount": {
+                        "type": "number"
+                      },
+                      "total_amount": {
+                        "type": "number"
+                      },
+                      "paid_amount": {
+                        "type": "number"
+                      },
+                      "balance_due": {
+                        "type": "number"
+                      },
+                      "currency": {
+                        "type": "string"
+                      },
+                      "status": {
+                        "type": "string"
+                      },
+                      "status_display": {
+                        "type": "string"
+                      },
+                      "sent_at": {
+                        "type": "string"
+                      },
+                      "pdf_url": {
+                        "type": "string"
+                      },
+                      "created_at": {
+                        "type": "string"
+                      },
+                      "updated_at": {
+                        "type": "string"
+                      },
+                      "version": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "id",
+                      "tenant_id",
+                      "property_id",
+                      "reservation_id",
+                      "guest_id",
+                      "invoice_number",
+                      "invoice_type",
+                      "invoice_type_display",
+                      "invoice_date",
+                      "subtotal",
+                      "tax_amount",
+                      "discount_amount",
+                      "total_amount",
+                      "paid_amount",
+                      "balance_due",
+                      "currency",
+                      "status",
+                      "status_display",
+                      "created_at",
+                      "version"
+                    ],
+                    "additionalProperties": false
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/billing/invoices/{invoiceId}": {
+      "get": {
+        "summary": "Get invoice by ID",
+        "tags": [
+          "Billing"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "in": "query",
+            "name": "tenant_id",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "in": "path",
+            "name": "invoiceId",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "tenant_id": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "property_id": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "property_name": {
+                      "type": "string"
+                    },
+                    "reservation_id": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "confirmation_number": {
+                      "type": "string"
+                    },
+                    "guest_id": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "guest_name": {
+                      "type": "string"
+                    },
+                    "invoice_number": {
+                      "type": "string"
+                    },
+                    "invoice_type": {
+                      "type": "string"
+                    },
+                    "invoice_type_display": {
+                      "type": "string"
+                    },
+                    "invoice_date": {
+                      "type": "string"
+                    },
+                    "due_date": {
+                      "type": "string"
+                    },
+                    "subtotal": {
+                      "type": "number"
+                    },
+                    "tax_amount": {
+                      "type": "number"
+                    },
+                    "discount_amount": {
+                      "type": "number"
+                    },
+                    "total_amount": {
+                      "type": "number"
+                    },
+                    "paid_amount": {
+                      "type": "number"
+                    },
+                    "balance_due": {
+                      "type": "number"
+                    },
+                    "currency": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "string"
+                    },
+                    "status_display": {
+                      "type": "string"
+                    },
+                    "sent_at": {
+                      "type": "string"
+                    },
+                    "pdf_url": {
+                      "type": "string"
+                    },
+                    "created_at": {
+                      "type": "string"
+                    },
+                    "updated_at": {
+                      "type": "string"
+                    },
+                    "version": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "tenant_id",
+                    "property_id",
+                    "reservation_id",
+                    "guest_id",
+                    "invoice_number",
+                    "invoice_type",
+                    "invoice_type_display",
+                    "invoice_date",
+                    "subtotal",
+                    "tax_amount",
+                    "discount_amount",
+                    "total_amount",
+                    "paid_amount",
+                    "balance_due",
+                    "currency",
+                    "status",
+                    "status_display",
+                    "created_at",
+                    "version"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/billing/folios": {
+      "get": {
+        "summary": "List folios with optional filters",
+        "tags": [
+          "Billing"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "in": "query",
+            "name": "tenant_id",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "in": "query",
+            "name": "property_id",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "folio_status",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "folio_type",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "in": "query",
+            "name": "reservation_id",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "in": "query",
+            "name": "guest_id",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "exclusiveMinimum": 0,
+              "maximum": 200,
+              "default": 100
+            },
+            "in": "query",
+            "name": "limit",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            },
+            "in": "query",
+            "name": "offset",
+            "required": false
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "format": "uuid"
+                      },
+                      "tenant_id": {
+                        "type": "string",
+                        "format": "uuid"
+                      },
+                      "property_id": {
+                        "type": "string",
+                        "format": "uuid"
+                      },
+                      "property_name": {
+                        "type": "string"
+                      },
+                      "folio_number": {
+                        "type": "string"
+                      },
+                      "folio_type": {
+                        "type": "string"
+                      },
+                      "folio_type_display": {
+                        "type": "string"
+                      },
+                      "folio_status": {
+                        "type": "string"
+                      },
+                      "folio_status_display": {
+                        "type": "string"
+                      },
+                      "reservation_id": {
+                        "type": "string",
+                        "format": "uuid"
+                      },
+                      "confirmation_number": {
+                        "type": "string"
+                      },
+                      "guest_id": {
+                        "type": "string",
+                        "format": "uuid"
+                      },
+                      "guest_name": {
+                        "type": "string"
+                      },
+                      "company_name": {
+                        "type": "string"
+                      },
+                      "balance": {
+                        "type": "number"
+                      },
+                      "total_charges": {
+                        "type": "number"
+                      },
+                      "total_payments": {
+                        "type": "number"
+                      },
+                      "total_credits": {
+                        "type": "number"
+                      },
+                      "currency": {
+                        "type": "string"
+                      },
+                      "opened_at": {
+                        "type": "string"
+                      },
+                      "closed_at": {
+                        "type": "string"
+                      },
+                      "created_at": {
+                        "type": "string"
+                      },
+                      "updated_at": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "id",
+                      "tenant_id",
+                      "property_id",
+                      "folio_number",
+                      "folio_type",
+                      "folio_type_display",
+                      "folio_status",
+                      "folio_status_display",
+                      "balance",
+                      "total_charges",
+                      "total_payments",
+                      "total_credits",
+                      "currency",
+                      "opened_at",
+                      "created_at"
+                    ],
+                    "additionalProperties": false
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/billing/folios/{folioId}": {
+      "get": {
+        "summary": "Get folio by ID",
+        "tags": [
+          "Billing"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "in": "query",
+            "name": "tenant_id",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "in": "path",
+            "name": "folioId",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "tenant_id": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "property_id": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "property_name": {
+                      "type": "string"
+                    },
+                    "folio_number": {
+                      "type": "string"
+                    },
+                    "folio_type": {
+                      "type": "string"
+                    },
+                    "folio_type_display": {
+                      "type": "string"
+                    },
+                    "folio_status": {
+                      "type": "string"
+                    },
+                    "folio_status_display": {
+                      "type": "string"
+                    },
+                    "reservation_id": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "confirmation_number": {
+                      "type": "string"
+                    },
+                    "guest_id": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "guest_name": {
+                      "type": "string"
+                    },
+                    "company_name": {
+                      "type": "string"
+                    },
+                    "balance": {
+                      "type": "number"
+                    },
+                    "total_charges": {
+                      "type": "number"
+                    },
+                    "total_payments": {
+                      "type": "number"
+                    },
+                    "total_credits": {
+                      "type": "number"
+                    },
+                    "currency": {
+                      "type": "string"
+                    },
+                    "opened_at": {
+                      "type": "string"
+                    },
+                    "closed_at": {
+                      "type": "string"
+                    },
+                    "created_at": {
+                      "type": "string"
+                    },
+                    "updated_at": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "tenant_id",
+                    "property_id",
+                    "folio_number",
+                    "folio_type",
+                    "folio_type_display",
+                    "folio_status",
+                    "folio_status_display",
+                    "balance",
+                    "total_charges",
+                    "total_payments",
+                    "total_credits",
+                    "currency",
+                    "opened_at",
+                    "created_at"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/billing/charges": {
+      "get": {
+        "summary": "List charge postings with optional filters",
+        "tags": [
+          "Billing"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "in": "query",
+            "name": "tenant_id",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "in": "query",
+            "name": "property_id",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "in": "query",
+            "name": "folio_id",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "transaction_type",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "charge_code",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "boolean"
+            },
+            "in": "query",
+            "name": "include_voided",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "exclusiveMinimum": 0,
+              "maximum": 200,
+              "default": 100
+            },
+            "in": "query",
+            "name": "limit",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            },
+            "in": "query",
+            "name": "offset",
+            "required": false
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "format": "uuid"
+                      },
+                      "tenant_id": {
+                        "type": "string",
+                        "format": "uuid"
+                      },
+                      "property_id": {
+                        "type": "string",
+                        "format": "uuid"
+                      },
+                      "folio_id": {
+                        "type": "string",
+                        "format": "uuid"
+                      },
+                      "folio_number": {
+                        "type": "string"
+                      },
+                      "reservation_id": {
+                        "type": "string",
+                        "format": "uuid"
+                      },
+                      "guest_id": {
+                        "type": "string",
+                        "format": "uuid"
+                      },
+                      "guest_name": {
+                        "type": "string"
+                      },
+                      "posting_date": {
+                        "type": "string"
+                      },
+                      "business_date": {
+                        "type": "string"
+                      },
+                      "transaction_type": {
+                        "type": "string"
+                      },
+                      "transaction_type_display": {
+                        "type": "string"
+                      },
+                      "posting_type": {
+                        "type": "string"
+                      },
+                      "posting_type_display": {
+                        "type": "string"
+                      },
+                      "charge_code": {
+                        "type": "string"
+                      },
+                      "charge_description": {
+                        "type": "string"
+                      },
+                      "charge_category": {
+                        "type": "string"
+                      },
+                      "quantity": {
+                        "type": "number"
+                      },
+                      "unit_price": {
+                        "type": "number"
+                      },
+                      "subtotal": {
+                        "type": "number"
+                      },
+                      "tax_amount": {
+                        "type": "number"
+                      },
+                      "service_charge": {
+                        "type": "number"
+                      },
+                      "discount_amount": {
+                        "type": "number"
+                      },
+                      "total_amount": {
+                        "type": "number"
+                      },
+                      "currency": {
+                        "type": "string"
+                      },
+                      "payment_method": {
+                        "type": "string"
+                      },
+                      "source_system": {
+                        "type": "string"
+                      },
+                      "outlet": {
+                        "type": "string"
+                      },
+                      "is_voided": {
+                        "type": "boolean"
+                      },
+                      "voided_at": {
+                        "type": "string"
+                      },
+                      "void_reason": {
+                        "type": "string"
+                      },
+                      "created_at": {
+                        "type": "string"
+                      },
+                      "version": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "id",
+                      "tenant_id",
+                      "property_id",
+                      "folio_id",
+                      "posting_date",
+                      "business_date",
+                      "transaction_type",
+                      "transaction_type_display",
+                      "posting_type",
+                      "posting_type_display",
+                      "charge_code",
+                      "charge_description",
+                      "quantity",
+                      "unit_price",
+                      "subtotal",
+                      "tax_amount",
+                      "service_charge",
+                      "discount_amount",
+                      "total_amount",
+                      "currency",
+                      "is_voided",
+                      "created_at",
+                      "version"
+                    ],
+                    "additionalProperties": false
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/billing/cashier-sessions": {
+      "get": {
+        "summary": "List cashier sessions with optional filters",
+        "tags": [
+          "Billing"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "in": "query",
+            "name": "tenant_id",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "in": "query",
+            "name": "property_id",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "session_status",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "shift_type",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "business_date",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "exclusiveMinimum": 0,
+              "maximum": 200,
+              "default": 100
+            },
+            "in": "query",
+            "name": "limit",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            },
+            "in": "query",
+            "name": "offset",
+            "required": false
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "session_id": {
+                        "type": "string",
+                        "format": "uuid"
+                      },
+                      "tenant_id": {
+                        "type": "string",
+                        "format": "uuid"
+                      },
+                      "property_id": {
+                        "type": "string",
+                        "format": "uuid"
+                      },
+                      "property_name": {
+                        "type": "string"
+                      },
+                      "session_number": {
+                        "type": "string"
+                      },
+                      "session_name": {
+                        "type": "string"
+                      },
+                      "cashier_id": {
+                        "type": "string",
+                        "format": "uuid"
+                      },
+                      "cashier_name": {
+                        "type": "string"
+                      },
+                      "terminal_id": {
+                        "type": "string"
+                      },
+                      "terminal_name": {
+                        "type": "string"
+                      },
+                      "location": {
+                        "type": "string"
+                      },
+                      "session_status": {
+                        "type": "string"
+                      },
+                      "session_status_display": {
+                        "type": "string"
+                      },
+                      "opened_at": {
+                        "type": "string"
+                      },
+                      "closed_at": {
+                        "type": "string"
+                      },
+                      "business_date": {
+                        "type": "string"
+                      },
+                      "shift_type": {
+                        "type": "string"
+                      },
+                      "opening_float_declared": {
+                        "type": "string"
+                      },
+                      "total_transactions": {
+                        "type": "integer"
+                      },
+                      "total_revenue": {
+                        "type": "string"
+                      },
+                      "total_refunds": {
+                        "type": "string"
+                      },
+                      "net_revenue": {
+                        "type": "string"
+                      },
+                      "expected_cash_balance": {
+                        "type": "string"
+                      },
+                      "closing_cash_counted": {
+                        "type": "string"
+                      },
+                      "cash_variance": {
+                        "type": "string"
+                      },
+                      "has_variance": {
+                        "type": "boolean"
+                      },
+                      "reconciled": {
+                        "type": "boolean"
+                      },
+                      "approved": {
+                        "type": "boolean"
+                      },
+                      "created_at": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "session_id",
+                      "tenant_id",
+                      "property_id",
+                      "session_number",
+                      "cashier_id",
+                      "session_status",
+                      "session_status_display",
+                      "opened_at",
+                      "business_date",
+                      "opening_float_declared"
+                    ],
+                    "additionalProperties": false
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/billing/cashier-sessions/{sessionId}": {
+      "get": {
+        "summary": "Get cashier session by ID",
+        "tags": [
+          "Billing"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "in": "query",
+            "name": "tenant_id",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "in": "path",
+            "name": "sessionId",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "session_id": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "tenant_id": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "property_id": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "property_name": {
+                      "type": "string"
+                    },
+                    "session_number": {
+                      "type": "string"
+                    },
+                    "session_name": {
+                      "type": "string"
+                    },
+                    "cashier_id": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "cashier_name": {
+                      "type": "string"
+                    },
+                    "terminal_id": {
+                      "type": "string"
+                    },
+                    "terminal_name": {
+                      "type": "string"
+                    },
+                    "location": {
+                      "type": "string"
+                    },
+                    "session_status": {
+                      "type": "string"
+                    },
+                    "session_status_display": {
+                      "type": "string"
+                    },
+                    "opened_at": {
+                      "type": "string"
+                    },
+                    "closed_at": {
+                      "type": "string"
+                    },
+                    "business_date": {
+                      "type": "string"
+                    },
+                    "shift_type": {
+                      "type": "string"
+                    },
+                    "opening_float_declared": {
+                      "type": "string"
+                    },
+                    "total_transactions": {
+                      "type": "integer"
+                    },
+                    "total_revenue": {
+                      "type": "string"
+                    },
+                    "total_refunds": {
+                      "type": "string"
+                    },
+                    "net_revenue": {
+                      "type": "string"
+                    },
+                    "expected_cash_balance": {
+                      "type": "string"
+                    },
+                    "closing_cash_counted": {
+                      "type": "string"
+                    },
+                    "cash_variance": {
+                      "type": "string"
+                    },
+                    "has_variance": {
+                      "type": "boolean"
+                    },
+                    "reconciled": {
+                      "type": "boolean"
+                    },
+                    "approved": {
+                      "type": "boolean"
+                    },
+                    "created_at": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "session_id",
+                    "tenant_id",
+                    "property_id",
+                    "session_number",
+                    "cashier_id",
+                    "session_status",
+                    "session_status_display",
+                    "opened_at",
+                    "business_date",
+                    "opening_float_declared"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/billing/tax-configurations": {
+      "get": {
+        "summary": "List tax configurations with optional filters",
+        "tags": [
+          "Billing"
+        ],
+        "description": "Retrieve tax rules, rates, and configurations by jurisdiction, type, and status",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "in": "query",
+            "name": "tenant_id",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "in": "query",
+            "name": "property_id",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "tax_type",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "boolean"
+            },
+            "in": "query",
+            "name": "is_active",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "string",
+              "maxLength": 3
+            },
+            "in": "query",
+            "name": "country_code",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "jurisdiction_level",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "exclusiveMinimum": 0,
+              "maximum": 500,
+              "default": 200
+            },
+            "in": "query",
+            "name": "limit",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            },
+            "in": "query",
+            "name": "offset",
+            "required": false
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "tax_config_id": {
+                        "type": "string",
+                        "format": "uuid"
+                      },
+                      "tenant_id": {
+                        "type": "string",
+                        "format": "uuid"
+                      },
+                      "property_id": {
+                        "type": "string",
+                        "format": "uuid"
+                      },
+                      "property_name": {
+                        "type": "string"
+                      },
+                      "tax_code": {
+                        "type": "string"
+                      },
+                      "tax_name": {
+                        "type": "string"
+                      },
+                      "tax_description": {
+                        "type": "string",
+                        "nullable": true
+                      },
+                      "tax_type": {
+                        "type": "string"
+                      },
+                      "tax_type_display": {
+                        "type": "string"
+                      },
+                      "tax_category": {
+                        "type": "string",
+                        "nullable": true
+                      },
+                      "country_code": {
+                        "type": "string"
+                      },
+                      "state_province": {
+                        "type": "string",
+                        "nullable": true
+                      },
+                      "city": {
+                        "type": "string",
+                        "nullable": true
+                      },
+                      "jurisdiction_name": {
+                        "type": "string",
+                        "nullable": true
+                      },
+                      "jurisdiction_level": {
+                        "type": "string",
+                        "nullable": true
+                      },
+                      "tax_authority_name": {
+                        "type": "string",
+                        "nullable": true
+                      },
+                      "tax_registration_number": {
+                        "type": "string",
+                        "nullable": true
+                      },
+                      "tax_rate": {
+                        "type": "number"
+                      },
+                      "is_percentage": {
+                        "type": "boolean"
+                      },
+                      "fixed_amount": {
+                        "type": "number",
+                        "nullable": true
+                      },
+                      "effective_from": {
+                        "type": "string"
+                      },
+                      "effective_to": {
+                        "type": "string",
+                        "nullable": true
+                      },
+                      "is_active": {
+                        "type": "boolean"
+                      },
+                      "calculation_method": {
+                        "type": "string",
+                        "nullable": true
+                      },
+                      "calculation_base": {
+                        "type": "string",
+                        "nullable": true
+                      },
+                      "is_compound_tax": {
+                        "type": "boolean"
+                      },
+                      "rounding_method": {
+                        "type": "string",
+                        "nullable": true
+                      },
+                      "rounding_precision": {
+                        "type": "integer"
+                      },
+                      "applies_to": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      "rate_type": {
+                        "type": "string",
+                        "nullable": true
+                      },
+                      "display_on_invoice": {
+                        "type": "boolean"
+                      },
+                      "display_separately": {
+                        "type": "boolean"
+                      },
+                      "display_name": {
+                        "type": "string",
+                        "nullable": true
+                      },
+                      "display_order": {
+                        "type": "integer",
+                        "nullable": true
+                      },
+                      "allows_exemptions": {
+                        "type": "boolean"
+                      },
+                      "exemption_types": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      "tax_gl_account": {
+                        "type": "string",
+                        "nullable": true
+                      },
+                      "remittance_frequency": {
+                        "type": "string",
+                        "nullable": true
+                      },
+                      "times_applied": {
+                        "type": "integer"
+                      },
+                      "total_tax_collected": {
+                        "type": "number"
+                      },
+                      "last_applied_at": {
+                        "type": "string"
+                      },
+                      "created_at": {
+                        "type": "string"
+                      },
+                      "updated_at": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "tax_config_id",
+                      "tenant_id",
+                      "tax_code",
+                      "tax_name",
+                      "tax_description",
+                      "tax_type",
+                      "tax_type_display",
+                      "tax_category",
+                      "country_code",
+                      "state_province",
+                      "city",
+                      "jurisdiction_name",
+                      "jurisdiction_level",
+                      "tax_authority_name",
+                      "tax_registration_number",
+                      "tax_rate",
+                      "is_percentage",
+                      "fixed_amount",
+                      "effective_from",
+                      "effective_to",
+                      "is_active",
+                      "calculation_method",
+                      "calculation_base",
+                      "is_compound_tax",
+                      "rounding_method",
+                      "rounding_precision",
+                      "applies_to",
+                      "rate_type",
+                      "display_on_invoice",
+                      "display_separately",
+                      "display_name",
+                      "display_order",
+                      "allows_exemptions",
+                      "exemption_types",
+                      "tax_gl_account",
+                      "remittance_frequency",
+                      "times_applied",
+                      "total_tax_collected",
+                      "created_at"
+                    ],
+                    "additionalProperties": false
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/billing/tax-configurations/{taxConfigId}": {
+      "get": {
+        "summary": "Get tax configuration by ID",
+        "tags": [
+          "Billing"
+        ],
+        "description": "Retrieve detailed information about a specific tax configuration",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "in": "query",
+            "name": "tenant_id",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "in": "path",
+            "name": "taxConfigId",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "tax_config_id": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "tenant_id": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "property_id": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "property_name": {
+                      "type": "string"
+                    },
+                    "tax_code": {
+                      "type": "string"
+                    },
+                    "tax_name": {
+                      "type": "string"
+                    },
+                    "tax_description": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "tax_type": {
+                      "type": "string"
+                    },
+                    "tax_type_display": {
+                      "type": "string"
+                    },
+                    "tax_category": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "country_code": {
+                      "type": "string"
+                    },
+                    "state_province": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "city": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "jurisdiction_name": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "jurisdiction_level": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "tax_authority_name": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "tax_registration_number": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "tax_rate": {
+                      "type": "number"
+                    },
+                    "is_percentage": {
+                      "type": "boolean"
+                    },
+                    "fixed_amount": {
+                      "type": "number",
+                      "nullable": true
+                    },
+                    "effective_from": {
+                      "type": "string"
+                    },
+                    "effective_to": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "is_active": {
+                      "type": "boolean"
+                    },
+                    "calculation_method": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "calculation_base": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "is_compound_tax": {
+                      "type": "boolean"
+                    },
+                    "rounding_method": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "rounding_precision": {
+                      "type": "integer"
+                    },
+                    "applies_to": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "rate_type": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "display_on_invoice": {
+                      "type": "boolean"
+                    },
+                    "display_separately": {
+                      "type": "boolean"
+                    },
+                    "display_name": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "display_order": {
+                      "type": "integer",
+                      "nullable": true
+                    },
+                    "allows_exemptions": {
+                      "type": "boolean"
+                    },
+                    "exemption_types": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "tax_gl_account": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "remittance_frequency": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "times_applied": {
+                      "type": "integer"
+                    },
+                    "total_tax_collected": {
+                      "type": "number"
+                    },
+                    "last_applied_at": {
+                      "type": "string"
+                    },
+                    "created_at": {
+                      "type": "string"
+                    },
+                    "updated_at": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "tax_config_id",
+                    "tenant_id",
+                    "tax_code",
+                    "tax_name",
+                    "tax_description",
+                    "tax_type",
+                    "tax_type_display",
+                    "tax_category",
+                    "country_code",
+                    "state_province",
+                    "city",
+                    "jurisdiction_name",
+                    "jurisdiction_level",
+                    "tax_authority_name",
+                    "tax_registration_number",
+                    "tax_rate",
+                    "is_percentage",
+                    "fixed_amount",
+                    "effective_from",
+                    "effective_to",
+                    "is_active",
+                    "calculation_method",
+                    "calculation_base",
+                    "is_compound_tax",
+                    "rounding_method",
+                    "rounding_precision",
+                    "applies_to",
+                    "rate_type",
+                    "display_on_invoice",
+                    "display_separately",
+                    "display_name",
+                    "display_order",
+                    "allows_exemptions",
+                    "exemption_types",
+                    "tax_gl_account",
+                    "remittance_frequency",
+                    "times_applied",
+                    "total_tax_collected",
+                    "created_at"
+                  ],
+                  "additionalProperties": false
                 }
               }
             }

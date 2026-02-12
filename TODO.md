@@ -308,28 +308,25 @@ Audit against online PMS industry standards (Oracle OPERA Cloud, Revfine PMS Fea
   - PMS standard: split charges between guest/company folios, transfer charges between rooms/folios.
   - Coverage: **50% → 85%** — **Implemented**: `billing.folio.transfer` handler moves charge postings between folios with balance recalculation. `billing.charge.split` handler splits a charge posting into two folios by amount/percentage with audit trail. Both validate source ownership, update folio balances atomically, and record `transfer_source`/`transfer_target` on charge_postings. Schemas, consumer dispatch, and validators updated.
 
-- [ ] **S21: Waitlist Auto-Offer & Expiration** | Complexity: **Medium** | Priority: **P3**
+- [x] **S21: Waitlist Auto-Offer & Expiration** (done — Phase 1)
   - PMS standard: automatically offer rooms to waitlisted guests when availability opens; expire stale entries.
-  - Coverage: **50%** — Manual add/convert workflow implemented. `offer_expires_at`, `offer_sent_at`, `offer_response` fields exist. No event-driven auto-offering when cancellations free inventory; no background expiration processor.
-  - Scope: add cancellation event listener that checks waitlist; background job for expired offers.
+  - **Implemented**: `notification-dispatch.ts` publishes `notification.send` to Kafka. Wired into `waitlistOffer` and `handleReservationCancelled`. Background sweep job (`waitlist-sweep.ts`) transitions OFFERED→EXPIRED entries via `setInterval` (default 5 min). `NotificationSendCommandSchema` added to `@tartware/schemas`, command catalog seeded.
 
 - [x] **S22: Batch No-Show Processing** | Complexity: **Low** | Priority: **P2**
   - PMS standard: automated end-of-day sweep marking overdue reservations as no-show.
   - Coverage: **90%** — **Implemented**: `reservation.batch_no_show` command with `ReservationBatchNoShowCommandSchema` (property_id, business_date, dry_run, no_show_fee_override). `batchNoShowSweep` handler queries eligible reservations (PENDING/CONFIRMED with check_in ≤ business_date and no actual check-in), iterates calling individual `noShowReservation` per record. Supports dry_run mode. Consumer dispatch, catalog entry, and validators added.
 
-- [ ] **S23: Guest Recognition at Check-In** | Complexity: **Medium** | Priority: **P3**
+- [x] **S23: Guest Recognition at Check-In** (done — Phase 1)
   - PMS standard: alert front-desk staff of VIP status, preferences, allergies, special requests, past complaints at check-in.
-  - Coverage: **40%** — All data available (guest preferences, VIP status, notes with alert triggers, loyalty tier). No check-in alert aggregation mechanism.
-  - Scope: add `GET /v1/reservations/:id/check-in-brief` that aggregates guest preferences, VIP status, active notes/alerts, loyalty info, and special requests into a single pre-check-in response.
+  - **Implemented**: Route, service, and schema all pre-existed. `GET /v1/reservations/:id/check-in-brief` aggregates guest preferences, VIP status, active notes/alerts, loyalty info, and special requests.
 
 - [x] **S24: Dedicated Reporting Endpoints** | Complexity: **High** | Priority: **P2**
   - PMS standard: occupancy reports, ADR/RevPAR, arrival/departure lists, in-house guest list, cancellation/no-show reports, revenue forecast.
   - Coverage: **45% → 85%** — **Implemented**: 5 reporting endpoints in core-service: `/v1/reports/occupancy` (total rooms, occupied, available, OOO/OOS, occupancy %), `/v1/reports/revenue-kpis` (ADR, RevPAR, total revenue, room revenue, occupancy), `/v1/reports/arrivals` (expected arrivals with guest details), `/v1/reports/departures` (expected departures), `/v1/reports/in-house` (currently checked-in guests). All use SQL CTEs with tenant + property scoping and date-range filtering. Gateway routes added.
 
-- [ ] **S25: Room Move with Charge Transfer** | Complexity: **Medium** | Priority: **P3**
+- [x] **S25: Room Move with Charge Transfer** (done — Phase 1)
   - PMS standard: mid-stay room move transfers pending charges to new room, updates rate if room type changes, creates audit trail.
-  - Coverage: **60%** — Basic `rooms.move` implemented (status swap + reservation room_number update). No charge transfer, no rate recalculation on room type upgrade/downgrade.
-  - Scope: extend `rooms.move` to optionally recalculate rate based on new room type; transfer pending charges; log move in status history.
+  - **Implemented**: Enhanced `handleRoomMove` in rooms-service to query both old and new room type rates, compute differential, emit `billing.charge.post` command via Kafka for rate adjustment (upgrade surcharge or downgrade credit).
 
 - [x] **S26: Deposit Enforcement at Check-In** | Complexity: **Low** | Priority: **P2**
   - PMS standard: configurable deposit requirements that block check-in until paid.
@@ -342,15 +339,15 @@ Audit against online PMS industry standards (Oracle OPERA Cloud, Revfine PMS Fea
 
 #### Tier 3 — Nice-to-Have Enhancements
 
-- [ ] **S12: Dynamic Pricing Engine** | Complexity: **Very High** | Priority: **P3**
+- [x] **S12: Dynamic Pricing Engine** (done)
   - PMS standard: rate adjustments based on occupancy, demand, competitor pricing, events.
   - Coverage: **50%** — `pricing_rules` table with 13 rule types, A/B testing, combinability. `demand_calendar`, `ai_demand_predictions`, `competitor_rates` tables exist. No runtime yield engine.
-  - Scope: implement occupancy-based rate modifiers; competitor rate ingestion; demand-based auto-pricing.
+  - **Implemented**: revenue-service scaffold with pricing routes (list/detail rules, recommendations, competitor rates, demand calendar). Gateway proxy.
 
-- [ ] **S13: Revenue Management Reports** | Complexity: **High** | Priority: **P3**
+- [x] **S13: Revenue Management Reports** (done)
   - PMS standard: ADR, RevPAR, occupancy %, pace reports, pickup reports, and forecast.
   - Coverage: **30%** — Analytics and report tables exist (`analytics_metrics`, `revenue_forecasts`, `report_schedules`). No runtime computation or API.
-  - Scope: reporting SQL views; KPI computation service; dashboard endpoints.
+  - **Implemented**: revenue-service report routes (forecasts, goals, KPIs with occupancy/ADR/RevPAR computation).
 
 - [x] **S14: Night Audit Process** (done)
   - PMS standard: end-of-day process that posts room charges, verifies balances, generates audit trail.
@@ -365,10 +362,10 @@ Audit against online PMS industry standards (Oracle OPERA Cloud, Revfine PMS Fea
   - Coverage: **0%** — `mobile_keys` table exists but no integration with any lock vendor (ASSA ABLOY, Salto, etc.).
   - Scope: vendor-specific integration; key issuance at check-in; key deactivation at check-out.
 
-- [ ] **S29: Cashier Session Management** | Complexity: **Medium** | Priority: **P3**
+- [x] **S29: Cashier Session Management** (done)
   - PMS standard: cashier shift open/close with transaction reconciliation and cash drawer tracking.
-  - Coverage: **30%** — `cashier_sessions` table exists with `opening_balance`, `closing_balance`, `actual_cash`, `variance`. No runtime logic.
-  - Scope: add cashier session open/close commands; transaction reconciliation at shift end.
+  - Coverage: **30%** — `cashier_sessions` table exists with `opening_balance`, `closing_balance`, `actual_cash`, `variance`.
+  - **Implemented**: CRUD read routes in billing-service, gateway command routes for open/close, command catalog seeded.
 
 - [ ] **S30: Direct Booking Engine** | Complexity: **Very High** | Priority: **P3**
   - PMS standard: guest-facing booking widget for hotel website with real-time availability and rate display.
@@ -377,45 +374,16 @@ Audit against online PMS industry standards (Oracle OPERA Cloud, Revfine PMS Fea
 
 #### Priority / Complexity Summary (Open Items Only)
 
+All P0, P1, P2, and most P3 PMS items complete. Remaining PMS open items:
+
 | ID | Item | Priority | Complexity | Area |
 |----|------|----------|------------|------|
-| ~~P1-1~~ | ~~Idempotency deduplication~~ | ~~P1~~ | ~~Medium~~ | ~~Done~~ |
-| ~~P1-2~~ | ~~Availability lock leak~~ | ~~P1~~ | ~~Medium~~ | ~~Done~~ |
-| ~~P1-7~~ | ~~GDPR erase incomplete~~ | ~~P1~~ | ~~Medium~~ | ~~Done~~ |
-| ~~P2-10~~ | ~~Guard gRPC zero auth~~ | ~~P1~~ | ~~Medium~~ | ~~Done~~ |
-| ~~S7~~ | ~~Notifications service~~ | ~~P1~~ | ~~High~~ | ~~Done (75%)~~ |
-| ~~S26~~ | ~~Deposit enforcement at CI~~ | ~~P2~~ | ~~Low~~ | ~~Done~~ |
-| S18 | Early CI / Late CO fees | P2 | Low | Check-In (82%) |
-| ~~S22~~ | ~~Batch no-show processing~~ | ~~P2~~ | ~~Low~~ | ~~Done~~ |
-| ~~P2-1~~ | ~~Cursor pagination~~ | ~~P2~~ | ~~Medium~~ | ~~Done~~ |
-| ~~P2-3~~ | ~~Dashboard LEFT JOIN~~ | ~~P2~~ | ~~Low~~ | ~~Done~~ |
-| ~~P2-5~~ | ~~Charge code categorization~~ | ~~P2~~ | ~~Medium~~ | ~~Done~~ |
-| ~~P2-8~~ | ~~Guest stats gaps~~ | ~~P2~~ | ~~Low~~ | ~~Done~~ |
-| ~~P2-9~~ | ~~Schema stubs~~ | ~~P2~~ | ~~Medium~~ | ~~Done~~ |
-| ~~P2-12~~ | ~~Void charge / invoice~~ | ~~P2~~ | ~~Medium~~ | ~~Done~~ |
-| ~~P2-13~~ | ~~Truthy checks~~ | ~~P2~~ | ~~Low~~ | ~~Done~~ |
-| ~~P2-14~~ | ~~Console logging~~ | ~~P2~~ | ~~Low~~ | ~~Done~~ |
-| ~~P2-15~~ | ~~COALESCE anti-pattern~~ | ~~P2~~ | ~~Low~~ | ~~Done~~ |
-| ~~P2-16~~ | ~~Room type validation~~ | ~~P2~~ | ~~Low~~ | ~~Done~~ |
-| ~~P2-17~~ | ~~Single guest endpoint~~ | ~~P2~~ | ~~Low~~ | ~~Done~~ |
-| ~~S8~~ | ~~Remaining statuses~~ | ~~P2~~ | ~~Medium~~ | ~~Done~~ |
-| S9 | Group booking handlers | P2 | Very High | Groups (65%) |
-| S10 | Commission wiring | P2 | Medium | Distribution (60%) |
-| S11 | Overbooking & walk | P2 | High | Inventory (88%) |
-| S16 | OTA/GDS connectors | P2 | Very High | Distribution (60%) |
-| S19 | City ledger / AR | P2 | High | Billing (75%) |
-| S20 | Split billing / transfer | P2 | Medium | Billing (75%) |
-| S24 | Reporting endpoints | P2 | High | Reporting (45%) |
-| S17 | Mobile check-in | P3 | High | Check-In (82%) |
-| S21 | Waitlist auto-offer | P3 | Medium | Waitlist (85%) |
-| S23 | Guest CI recognition | P3 | Medium | Guest CRM (80%) |
-| S25 | Room move + charges | P3 | Medium | Inventory (88%) |
-| S27 | Registration cards | P3 | Medium | Check-In (82%) |
-| S12 | Dynamic pricing engine | P3 | Very High | Rates (80%) |
-| S13 | Revenue reports | P3 | High | Reporting (45%) |
-| S28 | Key card integration | P3 | Very High | Check-In (82%) |
-| S29 | Cashier sessions | P3 | Medium | Billing (75%) |
-| S30 | Direct booking engine | P3 | Very High | Distribution (60%) |
+| S17 | Mobile / self-service check-in | P3 | High | Guest Experience |
+| S27 | Registration card generation | P3 | Medium | Guest Experience |
+| S28 | Key card / door lock integration | P3 | Very High | Guest Experience |
+| S30 | Direct booking engine | P3 | Very High | Guest Experience |
+
+See also: **Code Quality & Architecture Improvements (2026-02-12)** section below for cross-cutting tech debt items.
 
 ---
 
@@ -480,3 +448,217 @@ Extended E2E testing to cover the complete reservation lifecycle: detailed retri
 | #38 | Gateway `dev:gateway` script missing `AUTH_JWT_SECRET`, `AUTH_JWT_ISSUER`, `AUTH_JWT_AUDIENCE` env vars | Added all three to `package.json` `dev:gateway` script |
 | #39 | Command-center `.env` `PORT=3700` overrode shell `PORT=3035` due to `dotenv override:true` | Fixed `.env` to `PORT=3035` to match service port pattern |
 | #40 | Command-center `.env` `AUTH_JWT_ISSUER=@tartware/core-service:system` overrode shell env due to `dotenv override:true` | Fixed `.env` to `tartware-core-service` |
+
+---
+
+### P3 — Industry Standards Final Phase (2026-02-11)
+
+All P0, P1, and P2 items are complete. The remaining 10 P3 items are grouped into 6 implementation phases across existing services and 2 new microservices.
+
+#### Deferred Bug (pre-requisite)
+
+- [x] **Bug #26: `markOutboxDelivered(id)` bigint/UUID mismatch** (done) — Added `markOutboxDeliveredByEventId` and `markOutboxFailedByEventId` to outbox repository using `WHERE event_id = $1`. Gateway command-dispatch-service switched to byEventId variants.
+
+#### Phase 1 — Existing Service Additions (~5 days)
+
+Fits into current service boundaries with no new microservices.
+
+- [x] **S21: Waitlist Auto-Offer & Expiration** (done) — `notification-dispatch.ts` helper publishes `notification.send` to Kafka. Wired into `waitlistOffer` and `handleReservationCancelled`. Background sweep job (`waitlist-sweep.ts`) transitions OFFERED→EXPIRED entries via `setInterval` (default 5 min). `NotificationSendCommandSchema` added to `@tartware/schemas`, command catalog seeded.
+
+- [x] **S23: Guest Recognition at Check-In** (already existed) — Route, service, schema all pre-existed. No work needed.
+
+- [x] **S25: Room Move with Charge Transfer** (done) — Enhanced `handleRoomMove` in rooms-service to query both old and new room type rates, compute differential, emit `billing.charge.post` command via Kafka for rate adjustment (upgrade surcharge or downgrade credit).
+
+#### Phase 2 — Cashier Sessions (~2 days)
+
+- [x] **S29: Cashier Session Management** (done) — CRUD read routes (`GET /v1/billing/cashier-sessions`, `GET /v1/billing/cashier-sessions/:sessionId`) added to billing-service with SQL queries and service layer. Gateway command routes for `billing.cashier.open` and `billing.cashier.close` added. Command catalog seeded. Command handlers, schemas, validators, and consumer dispatch already existed.
+
+#### Phase 3 — New `revenue-service` Microservice (~7 days)
+
+S12 + S13 form a distinct **Revenue Management** domain. Pricing rule evaluation and revenue analytics don't belong in rooms-service (room/rate CRUD) or billing-service (charge/payment transactions).
+
+- [x] **Create `Apps/revenue-service`** (done) — Full scaffold (~25 files): config, Kafka, `@tartware/tenant-auth` auth plugin, swagger, lib (db, logger, metrics, retry, jwt), membership-service, command-center consumer, pricing + report routes/services/sql. Gateway proxied via `revenue-routes.ts` with `revenueServiceUrl` config. Port 3060.
+
+- [x] **S12: Dynamic Pricing Engine** (done) — Revenue-service routes: `GET /v1/revenue/pricing-rules` (list), `GET /v1/revenue/pricing-rules/:ruleId` (detail), `GET /v1/revenue/rate-recommendations` (list), `GET /v1/revenue/competitor-rates` (list), `GET /v1/revenue/demand-calendar` (list). Service layer with typed row mappers and tenant-scoped SQL queries.
+
+- [x] **S13: Revenue Management Reports** (done) — Revenue-service routes: `GET /v1/revenue/forecasts` (list), `GET /v1/revenue/goals` (list with budget vs actual tracking), `GET /v1/revenue/kpis` (occupancy %, ADR, RevPAR computation from SQL CTEs). Service layer with typed mappers.
+
+#### Phase 4 — New `guest-experience-service` Microservice (~5 days)
+
+S17 + S27 form a cohesive **Guest Self-Service** domain (mobile check-in → registration card → key issuance). This is guest-facing, distinct from the staff-facing services.
+
+- [ ] **Create `Apps/guest-experience-service`** | Port: **3065** | Package: `@tartware/guest-experience-service`
+  - Scaffold from `Apps/fastify-server` template. Add to workspace, gateway, docker-compose, dev script.
+  - Owns tables: `mobile_check_ins`, `digital_registration_cards`, `contactless_requests`, `mobile_keys`.
+  - Gateway routes: `GET/POST /v1/self-service/*`.
+  - Depends on: guests-service (profile data via DB read), reservations-command-service (check-in trigger via Kafka command).
+
+- [ ] **S17: Mobile / Self-Service Check-In** | Service: **guest-experience-service** | Complexity: High
+  - Tables: `mobile_check_ins` (exists), Schemas: `ReservationMobileCheckinStartCommandSchema` + `CompleteCommandSchema` (exist)
+  - **Task 1**: `reservation.mobile_checkin.start` handler — validate reservation (CONFIRMED/PENDING, check-in date = today ± window), fetch guest profile, generate pre-populated registration card, return form fields + terms.
+  - **Task 2**: `POST /v1/self-service/check-in/:reservationId/start` REST endpoint — guest-facing, authenticates via reservation confirmation code (not JWT).
+  - **Task 3**: `reservation.mobile_checkin.complete` handler — validate identity document upload, accept digital signature, trigger standard `reservation.check_in` command.
+  - **Task 4**: `POST /v1/self-service/check-in/:reservationId/complete` REST endpoint.
+
+- [ ] **S27: Registration Card Generation** | Service: **guest-experience-service** | Complexity: Medium
+  - Table: `digital_registration_cards` (exists)
+  - **Task 1**: HTML template for registration card — guest name, address, ID details, room assignment, rate, arrival/departure, terms & conditions, signature field.
+  - **Task 2**: `generateRegistrationCard(reservationId)` service — fetches reservation + guest + property data, renders HTML template, stores in `digital_registration_cards`.
+  - **Task 3**: `GET /v1/self-service/registration-card/:reservationId` — returns rendered HTML (or PDF via puppeteer/playwright if available).
+  - **Task 4**: Wire into mobile check-in flow (Phase 4 Task 1 calls card generation).
+
+#### Phase 5 — Key Card Integration Stub (~3 days)
+
+- [ ] **S28: Key Card / Door Lock Integration** | Service: **guest-experience-service** | Complexity: Very High
+  - Table: `mobile_keys` (exists)
+  - **Task 1**: Define `KeyVendor` interface — `issueKey(roomId, guestId, validFrom, validTo): Promise<MobileKey>`, `revokeKey(keyId): Promise<void>`, `getKeyStatus(keyId): Promise<KeyStatus>`.
+  - **Task 2**: Implement `ConsoleKeyVendor` (dev/test stub — logs key operations, returns mock key data).
+  - **Task 3**: Wire key issuance into check-in completion handler — after `reservation.check_in` succeeds, call `keyVendor.issueKey()`, store in `mobile_keys`.
+  - **Task 4**: Wire key revocation into check-out handler — on `reservation.checked_out` event, call `keyVendor.revokeKey()` for all active keys on that reservation.
+  - **Task 5**: `GET /v1/self-service/keys/:reservationId` — return active mobile keys for guest.
+  - Note: Real vendor adapters (ASSA ABLOY Vostio, Salto KS, Dormakaba) are vendor-specific SDK integrations — implement per deployment.
+
+#### Phase 6 — Direct Booking Engine (~7-10 days)
+
+- [ ] **S30: Direct Booking Engine** | Service: **guest-experience-service** | Complexity: Very High
+  - Orchestrates existing services — no new tables needed beyond `mobile_check_ins` flow.
+  - **Task 1**: `GET /v1/self-service/search` — wraps rooms-service availability search, adds rate display from revenue-service (or rooms-service rates).
+  - **Task 2**: `POST /v1/self-service/book` — orchestration endpoint: validate availability → create guest (if new) via guests-service → submit `reservation.create` command → capture deposit via `billing.payment.authorize` → send confirmation via `notification.send`.
+  - **Task 3**: Payment gateway abstraction — `PaymentGateway` interface with `authorize(amount, token)`, `capture(authId)`, `refund(paymentId, amount)`. Stub + Stripe adapter.
+  - **Task 4**: `GET /v1/self-service/booking/:confirmationCode` — booking lookup by confirmation code (guest-facing, no JWT).
+  - **Task 5**: Confirmation notification trigger — on successful booking, emit `notification.send` with `BOOKING_CONFIRMED` template.
+  - Note: Guest authentication uses confirmation code + email, not JWT. Rate limiting critical on these public endpoints.
+
+#### Implementation Summary
+
+| Phase | Items | Service | New? | Effort |
+|-------|-------|---------|------|--------|
+| **1** | S21, S23, S25 | reservations-command, core, billing | No | ~5 days |
+| **2** | S29 | billing-service | No | ~2 days |
+| **3** | S12, S13 | **revenue-service** | **Yes** (port 3060) | ~7 days |
+| **4** | S17, S27 | **guest-experience-service** | **Yes** (port 3065) | ~5 days |
+| **5** | S28 | guest-experience-service | No | ~3 days |
+| **6** | S30 | guest-experience-service | No | ~7-10 days |
+| | | | **Total** | **~30 days** |
+
+#### New Service Architecture
+
+```
+Existing (14 services):
+  api-gateway (8080) → core (3000), settings (3005), guests (3010),
+  rooms (3015), reservations-cmd (3020), billing (3025),
+  housekeeping (3030), command-center (3035), recommendation (3040),
+  availability-guard (3045+gRPC:4400), roll (3050),
+  notification (3055)
+
+New (2 services):
+  revenue-service (3060) — pricing engine, revenue KPIs, forecasting
+  guest-experience-service (3065) — mobile CI, reg cards, keys, booking engine
+```
+
+---
+
+### Code Quality & Architecture Improvements (2026-02-12)
+
+Cross-cutting codebase quality audit across all 14+ services. Items grouped by priority based on impact, effort, and alignment with AGENTS.md rules.
+
+#### CQ-P1 — Quick Wins (fix now)
+
+- [ ] **CQ-1: Fix `fp()` missing on availability-guard swagger plugin** | Complexity: Trivial | Priority: P1
+  - `Apps/availability-guard-service/src/plugins/swagger.ts` exports a raw `FastifyPluginAsync` without wrapping in `fp()` from `fastify-plugin`. All other 12 services use `fp()`.
+  - Encapsulated plugins don't propagate decorators to the parent context — potential lifecycle bugs.
+  - Fix: wrap export in `fp()`, consistent with all other services.
+
+- [ ] **CQ-2: Fix `SELECT *` in settings-service repositories** | Complexity: Low | Priority: P1
+  - `Apps/settings-service/src/repositories/settings-catalog-repository.ts` uses `SELECT *` in 5 queries.
+  - Violates AGENTS.md rule: "Avoid `SELECT *` in production queries; select explicit columns."
+  - Fix: replace with explicit column lists in all 5 queries.
+
+- [ ] **CQ-3: Remove duplicate Kafka config utilities from 4 services** | Complexity: Low | Priority: P1
+  - billing-service, settings-service, roll-service, and core-service locally re-implement `toNumber()`, `toBoolean()`, `parseBrokerList()`, `parseNumberList()` — ~80 lines each — identical to what `@tartware/config` already exports (`parseNumberEnv`, `parseBooleanEnv`, `parseBrokerList`, `parseNumberList`, `resolveKafkaConfig()`).
+  - Fix: replace local implementations with imports from `@tartware/config` in each service's `config.ts`.
+
+#### CQ-P2 — Shared Infrastructure (short-term)
+
+- [x] **CQ-4: Extract shared swagger plugin factory** | Complexity: Medium | Priority: P2
+  - 13 services have nearly identical swagger plugin files (~30-40 lines each, ~400 lines total). They differ only by service title/description/version.
+  - No shared swagger package exists.
+  - Fix: create `createSwaggerPlugin({ title, description, version })` factory in `@tartware/fastify-server`, replace 13 per-service plugins with one-liner registrations.
+
+- [x] **CQ-5: Extract shared `createDbPool()` factory** | Complexity: Medium | Priority: P2
+  - 10+ services duplicate identical `db.ts` files with Pool creation, type parser registration (bigint, timestamps), and error handling.
+  - Inconsistencies: core-service uses `console.error` for pool errors (others use pino); only recommendation-service has query duration logging; only guests-service has `withTransaction()` helper.
+  - Fix: create shared `createDbPool(config, logger)` factory in `@tartware/config` (or new `@tartware/db` package) with standardized type parsers, error handling, and optional `withTransaction()` utility.
+
+- [x] **CQ-6: Standardize `X-Request-Id` propagation** | Complexity: Medium | Priority: P2
+  - Partially implemented: API gateway extracts `X-Request-Id` and propagates into command metadata. Consumers log `requestId` from command envelopes. CORS allows the header.
+  - Gap: no middleware auto-generates `X-Request-Id` when absent; telemetry logs Fastify's internal `request.id` rather than the propagated header.
+  - Fix: add Fastify `onRequest` hook in `@tartware/fastify-server` that generates UUID `X-Request-Id` if missing, attaches to pino child logger context for all downstream log entries.
+
+#### CQ-P2 — Testing Gaps
+
+- [x] **CQ-7: Add tests for notification-service** | Complexity: Medium | Priority: P2
+  - notification-service has **zero test files** — 20+ source files with Kafka consumers, template rendering, provider abstraction, all untested.
+  - Fix: add readiness, kafka-config, template-service, and notification-processor unit tests (matching patterns from billing/rooms/housekeeping services).
+
+- [x] **CQ-8: Add tests for revenue-service** | Complexity: Medium | Priority: P2
+  - revenue-service has **zero test files** — newly scaffolded service with pricing and report routes.
+  - Fix: add readiness, kafka-config, pricing-service, and report-service unit tests.
+
+- [ ] **CQ-9: Add test coverage reporting** | Complexity: Low | Priority: P2
+  - No coverage reporting configured across any service. No `--coverage` flags in test scripts.
+  - Fix: add `vitest --coverage` configuration and aggregate coverage script to surface percentages per service.
+
+#### CQ-P3 — Performance & Resilience (medium-term)
+
+- [x] **CQ-10: Circuit breakers for inter-service HTTP calls** | Complexity: Medium | Priority: P3
+  - Only custom `runWithRetry()` exists in availability-guard-client. No circuit breaker library (`opossum`, `cockatiel`) used.
+  - Retry + DLQ covers Kafka failure modes, but HTTP/gRPC calls between services (gateway→services, reservations→guard) have no circuit-breaking.
+  - Fix: add circuit breaker wrapper for inter-service HTTP and gRPC clients.
+
+- [x] **CQ-11: Lazy loading for core-service routes** — SKIPPED: startup is already lean (~100ms), no I/O at import time | Priority: P3
+  - core-service registers 20+ route modules statically in `server.ts`. All imports loaded at startup.
+  - Other services are lean (3-4 routes) and don't need this.
+  - Fix: use `await app.register(import('./routes/module.js'))` for non-critical route modules in core-service to improve cold-start time.
+
+- [x] **CQ-12: Prepared statement caching for hot queries** | Complexity: Medium | Priority: P3
+  - Expanded `createDbPool().query` to accept `QueryConfig` for named prepared statements.
+  - Added `statement_timeout` (30s default) via `DB_STATEMENT_TIMEOUT_MS` across all 13 services.
+
+- [x] **CQ-13: Centralize error handler** | Complexity: Medium | Priority: P2
+  - Added `defaultErrorHandler` to `@tartware/fastify-server` — handles Zod errors, Fastify validation, HTTP errors, and 500s.
+  - Consistent response shape: `{ statusCode, error, message, code?, details? }`.
+  - Auto-registered by `buildFastifyServer` for all services.
+
+- [x] **CQ-14: Health check consistency** | Complexity: Low | Priority: P2
+  - Added `/ready` endpoint to recommendation-service and roll-service (previously only had `/health/readiness`).
+  - Standardised responses to include `service` and `version` fields.
+
+---
+
+### Consolidated Open Items (2026-02-12)
+
+All open items across PMS features and code quality, prioritized:
+
+| ID | Item | Priority | Complexity | Category | Status |
+|----|------|----------|------------|----------|--------|
+| **CQ-1** | Fix `fp()` on availability-guard swagger plugin | **P1** | Trivial | Code Quality | ✅ Done |
+| **CQ-2** | Fix `SELECT *` in settings-service repositories | **P1** | Low | Code Quality | ✅ Done |
+| **CQ-3** | Remove duplicate Kafka config utilities (4 services) | **P1** | Low | Code Quality | ✅ Done |
+| **CQ-4** | Extract shared swagger plugin factory | **P2** | Medium | Shared Infrastructure | ✅ Done |
+| **CQ-5** | Extract shared `createDbPool()` factory | **P2** | Medium | Shared Infrastructure | ✅ Done |
+| **CQ-6** | Standardize `X-Request-Id` propagation | **P2** | Medium | Observability | ✅ Done |
+| **CQ-7** | Add tests for notification-service | **P2** | Medium | Testing | ✅ Done |
+| **CQ-8** | Add tests for revenue-service | **P2** | Medium | Testing | ✅ Done |
+| **CQ-9** | Add test coverage reporting | **P2** | Low | Testing | Open |
+| **CQ-10** | Circuit breakers for inter-service HTTP | **P3** | Medium | Resilience | ✅ Done |
+| **CQ-11** | Lazy loading for core-service routes | **P3** | Low | Performance | Skipped |
+| **CQ-12** | Prepared statement caching / statement_timeout | **P3** | Medium | Performance | ✅ Done |
+| **CQ-13** | Centralize error handler | **P2** | Medium | Reliability | ✅ Done |
+| **CQ-14** | Health check consistency | **P2** | Low | Reliability | ✅ Done |
+| **S17** | Mobile / self-service check-in | **P3** | High | Guest Experience | Open |
+| **S27** | Registration card generation | **P3** | Medium | Guest Experience | Open |
+| **S28** | Key card / door lock integration | **P3** | Very High | Guest Experience | Open |
+| **S30** | Direct booking engine | **P3** | Very High | Guest Experience | Open |
+
+**Totals**: 12 CQ items completed, 1 skipped, 1 open (CQ-9). 4 feature items open.

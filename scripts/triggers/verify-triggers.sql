@@ -60,6 +60,9 @@ WHERE n.nspname = 'public'
         -- JOIN parallelism (4)
         'check_parallel_settings', 'analyze_join_parallelism',
         'explain_parallel_plan', 'recommend_parallel_tuning',
+        -- Performance extensions (4)
+        'check_performance_extensions', 'analyze_missing_indexes_qualstats',
+        'test_hypothetical_index', 'recommend_indexes_auto',
         -- Optimistic locking (1)
         'enforce_version_lock'
     );
@@ -100,6 +103,9 @@ WHERE n.nspname = 'public'
         -- JOIN parallelism (4)
         'check_parallel_settings', 'analyze_join_parallelism',
         'explain_parallel_plan', 'recommend_parallel_tuning',
+        -- Performance extensions (4)
+        'check_performance_extensions', 'analyze_missing_indexes_qualstats',
+        'test_hypothetical_index', 'recommend_indexes_auto',
         -- Optimistic locking (1)
         'enforce_version_lock'
     )
@@ -117,7 +123,7 @@ ORDER BY p.proname;
 SELECT
     '✅ Views Installed' AS status,
     COUNT(*) AS count,
-    '12 expected' AS expected
+    '14 expected' AS expected
 FROM information_schema.views
 WHERE table_schema = 'public'
     AND table_name IN (
@@ -132,7 +138,9 @@ WHERE table_schema = 'public'
         -- Connection pooling (2)
         'v_connection_dashboard', 'v_application_connections',
         -- Advanced optimization (3)
-        'v_sort_performance', 'v_distinct_performance', 'v_parallel_query_performance'
+        'v_sort_performance', 'v_distinct_performance', 'v_parallel_query_performance',
+        -- Performance extensions (2)
+        'v_index_recommendations', 'v_extension_status'
     );
 
 \echo ''
@@ -155,7 +163,9 @@ WHERE table_schema = 'public'
         -- Connection pooling (2)
         'v_connection_dashboard', 'v_application_connections',
         -- Advanced optimization (3)
-        'v_sort_performance', 'v_distinct_performance', 'v_parallel_query_performance'
+        'v_sort_performance', 'v_distinct_performance', 'v_parallel_query_performance',
+        -- Performance extensions (2)
+        'v_index_recommendations', 'v_extension_status'
     )
 ORDER BY table_name;
 
@@ -463,6 +473,9 @@ BEGIN
             -- JOIN parallelism (4)
             'check_parallel_settings', 'analyze_join_parallelism',
             'explain_parallel_plan', 'recommend_parallel_tuning',
+            -- Performance extensions (4)
+            'check_performance_extensions', 'analyze_missing_indexes_qualstats',
+            'test_hypothetical_index', 'recommend_indexes_auto',
             -- Optimistic locking (1)
             'enforce_version_lock'
         );
@@ -483,7 +496,9 @@ BEGIN
             -- Connection pooling (2)
             'v_connection_dashboard', 'v_application_connections',
             -- Advanced optimization (3)
-            'v_sort_performance', 'v_distinct_performance', 'v_parallel_query_performance'
+            'v_sort_performance', 'v_distinct_performance', 'v_parallel_query_performance',
+            -- Performance extensions (2)
+            'v_index_recommendations', 'v_extension_status'
         );
 
     -- Check audit table
@@ -504,7 +519,7 @@ BEGIN
     RAISE NOTICE '├──────────────────────────────────────────────────────┤';
     RAISE NOTICE '│                                                      │';
     RAISE NOTICE '│  Functions:           % / 40                       │', LPAD(v_function_count::TEXT, 3, ' ');
-    RAISE NOTICE '│  Views:               % / 12                       │', LPAD(v_view_count::TEXT, 3, ' ');
+    RAISE NOTICE '│  Views:               % / 14                       │', LPAD(v_view_count::TEXT, 3, ' ');
     RAISE NOTICE '│  Audit Table:         %                            │',
         CASE WHEN v_audit_table_exists THEN '✅' ELSE '❌' END;
     RAISE NOTICE '│  Extensions:          % / 2                        │', LPAD(v_extension_count::TEXT, 3, ' ');
@@ -526,7 +541,7 @@ BEGIN
 
     -- Calculate score
     IF v_function_count >= 40 THEN v_total_score := v_total_score + 40; END IF;
-    IF v_view_count >= 12 THEN v_total_score := v_total_score + 30; END IF;
+    IF v_view_count >= 14 THEN v_total_score := v_total_score + 30; END IF;
     IF v_audit_table_exists THEN v_total_score := v_total_score + 20; END IF;
     IF v_extension_count >= 2 THEN v_total_score := v_total_score + 10; END IF;
 

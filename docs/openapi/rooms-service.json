@@ -1,7 +1,7 @@
 {
   "openapi": "3.0.3",
   "info": {
-    "title": "@tartware/rooms-service API",
+    "title": "@tartware/core-service API",
     "version": "0.1.0",
     "description": "Rooms domain service for Tartware PMS"
   },
@@ -28,6 +28,301 @@
       }
     },
     "/v1/rooms": {
+      "post": {
+        "summary": "Create a room",
+        "tags": [
+          "Rooms"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "tenant_id": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "property_id": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "room_type_id": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "room_number": {
+                    "type": "string"
+                  },
+                  "room_name": {
+                    "type": "string"
+                  },
+                  "floor": {
+                    "type": "string"
+                  },
+                  "building": {
+                    "type": "string"
+                  },
+                  "wing": {
+                    "type": "string"
+                  },
+                  "status": {
+                    "type": "string"
+                  },
+                  "housekeeping_status": {
+                    "type": "string"
+                  },
+                  "maintenance_status": {
+                    "type": "string"
+                  },
+                  "features": {
+                    "type": "object",
+                    "additionalProperties": {}
+                  },
+                  "amenities": {
+                    "anyOf": [
+                      {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      {
+                        "type": "object",
+                        "additionalProperties": {}
+                      }
+                    ]
+                  },
+                  "is_blocked": {
+                    "type": "boolean"
+                  },
+                  "block_reason": {
+                    "type": "string"
+                  },
+                  "blocked_from": {
+                    "type": "string",
+                    "format": "date-time"
+                  },
+                  "blocked_until": {
+                    "type": "string",
+                    "format": "date-time"
+                  },
+                  "is_out_of_order": {
+                    "type": "boolean"
+                  },
+                  "out_of_order_reason": {
+                    "type": "string"
+                  },
+                  "out_of_order_since": {
+                    "type": "string",
+                    "format": "date-time"
+                  },
+                  "expected_ready_date": {
+                    "type": "string",
+                    "format": "date-time"
+                  },
+                  "notes": {
+                    "type": "string"
+                  },
+                  "housekeeping_notes": {
+                    "type": "string"
+                  },
+                  "metadata": {
+                    "type": "object",
+                    "additionalProperties": {}
+                  }
+                },
+                "required": [
+                  "tenant_id",
+                  "property_id",
+                  "room_type_id",
+                  "room_number"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "room_id": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "tenant_id": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "property_id": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "property_name": {
+                      "type": "string"
+                    },
+                    "room_type_id": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "room_type_name": {
+                      "type": "string"
+                    },
+                    "room_type_amenities": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "room_number": {
+                      "type": "string"
+                    },
+                    "room_name": {
+                      "type": "string"
+                    },
+                    "floor": {
+                      "type": "string"
+                    },
+                    "building": {
+                      "type": "string"
+                    },
+                    "wing": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "string"
+                    },
+                    "status_display": {
+                      "type": "string"
+                    },
+                    "housekeeping_status": {
+                      "type": "string"
+                    },
+                    "housekeeping_display": {
+                      "type": "string"
+                    },
+                    "maintenance_status": {
+                      "type": "string"
+                    },
+                    "maintenance_display": {
+                      "type": "string"
+                    },
+                    "features": {
+                      "type": "object",
+                      "additionalProperties": {}
+                    },
+                    "amenities": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "is_blocked": {
+                      "type": "boolean"
+                    },
+                    "block_reason": {
+                      "type": "string"
+                    },
+                    "is_out_of_order": {
+                      "type": "boolean"
+                    },
+                    "out_of_order_reason": {
+                      "type": "string"
+                    },
+                    "expected_ready_date": {
+                      "type": "string"
+                    },
+                    "housekeeping_notes": {
+                      "type": "string"
+                    },
+                    "updated_at": {
+                      "type": "string"
+                    },
+                    "version": {
+                      "type": "string"
+                    },
+                    "recommendation_rank": {
+                      "type": "integer",
+                      "minimum": 1
+                    },
+                    "recommendation_score": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 1
+                    },
+                    "recommendation_reasons": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "required": [
+                    "room_id",
+                    "tenant_id",
+                    "property_id",
+                    "room_number",
+                    "status",
+                    "status_display",
+                    "housekeeping_status",
+                    "housekeeping_display",
+                    "maintenance_status",
+                    "maintenance_display",
+                    "is_blocked",
+                    "is_out_of_order",
+                    "version"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "message"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "message"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      },
       "get": {
         "summary": "List rooms with housekeeping filters",
         "tags": [
@@ -88,6 +383,63 @@
             "in": "query",
             "name": "limit",
             "required": false
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "in": "query",
+            "name": "guest_id",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+            },
+            "in": "query",
+            "name": "check_in_date",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+            },
+            "in": "query",
+            "name": "check_out_date",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 20
+            },
+            "in": "query",
+            "name": "adults",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 20
+            },
+            "in": "query",
+            "name": "children",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            },
+            "in": "query",
+            "name": "offset",
+            "required": false
           }
         ],
         "responses": {
@@ -100,7 +452,7 @@
                   "items": {
                     "type": "object",
                     "properties": {
-                      "id": {
+                      "room_id": {
                         "type": "string",
                         "format": "uuid"
                       },
@@ -121,6 +473,12 @@
                       },
                       "room_type_name": {
                         "type": "string"
+                      },
+                      "room_type_amenities": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
                       },
                       "room_number": {
                         "type": "string"
@@ -155,6 +513,16 @@
                       "maintenance_display": {
                         "type": "string"
                       },
+                      "features": {
+                        "type": "object",
+                        "additionalProperties": {}
+                      },
+                      "amenities": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
                       "is_blocked": {
                         "type": "boolean"
                       },
@@ -178,10 +546,25 @@
                       },
                       "version": {
                         "type": "string"
+                      },
+                      "recommendation_rank": {
+                        "type": "integer",
+                        "minimum": 1
+                      },
+                      "recommendation_score": {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 1
+                      },
+                      "recommendation_reasons": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
                       }
                     },
                     "required": [
-                      "id",
+                      "room_id",
                       "tenant_id",
                       "property_id",
                       "room_number",
@@ -197,6 +580,2842 @@
                     ],
                     "additionalProperties": false
                   }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/rooms/{roomId}": {
+      "get": {
+        "summary": "Get a room by ID with optional recommendation scoring",
+        "tags": [
+          "Rooms"
+        ],
+        "description": "Returns a single room by ID. When recommendation context (check_in_date, check_out_date) is provided, includes recommendation_score and recommendation_reasons.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "in": "query",
+            "name": "tenant_id",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "in": "query",
+            "name": "guest_id",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+            },
+            "in": "query",
+            "name": "check_in_date",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+            },
+            "in": "query",
+            "name": "check_out_date",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "exclusiveMinimum": 0,
+              "maximum": 20
+            },
+            "in": "query",
+            "name": "adults",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 10
+            },
+            "in": "query",
+            "name": "children",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "in": "path",
+            "name": "roomId",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "room_id": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "tenant_id": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "property_id": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "property_name": {
+                      "type": "string"
+                    },
+                    "room_type_id": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "room_type_name": {
+                      "type": "string"
+                    },
+                    "room_type_amenities": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "room_number": {
+                      "type": "string"
+                    },
+                    "room_name": {
+                      "type": "string"
+                    },
+                    "floor": {
+                      "type": "string"
+                    },
+                    "building": {
+                      "type": "string"
+                    },
+                    "wing": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "string"
+                    },
+                    "status_display": {
+                      "type": "string"
+                    },
+                    "housekeeping_status": {
+                      "type": "string"
+                    },
+                    "housekeeping_display": {
+                      "type": "string"
+                    },
+                    "maintenance_status": {
+                      "type": "string"
+                    },
+                    "maintenance_display": {
+                      "type": "string"
+                    },
+                    "features": {
+                      "type": "object",
+                      "additionalProperties": {}
+                    },
+                    "amenities": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "is_blocked": {
+                      "type": "boolean"
+                    },
+                    "block_reason": {
+                      "type": "string"
+                    },
+                    "is_out_of_order": {
+                      "type": "boolean"
+                    },
+                    "out_of_order_reason": {
+                      "type": "string"
+                    },
+                    "expected_ready_date": {
+                      "type": "string"
+                    },
+                    "housekeeping_notes": {
+                      "type": "string"
+                    },
+                    "updated_at": {
+                      "type": "string"
+                    },
+                    "version": {
+                      "type": "string"
+                    },
+                    "recommendation_rank": {
+                      "type": "integer",
+                      "minimum": 1
+                    },
+                    "recommendation_score": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 1
+                    },
+                    "recommendation_reasons": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "required": [
+                    "room_id",
+                    "tenant_id",
+                    "property_id",
+                    "room_number",
+                    "status",
+                    "status_display",
+                    "housekeeping_status",
+                    "housekeeping_display",
+                    "maintenance_status",
+                    "maintenance_display",
+                    "is_blocked",
+                    "is_out_of_order",
+                    "version"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "message"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "summary": "Update a room",
+        "tags": [
+          "Rooms"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "tenant_id": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "property_id": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "room_type_id": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "room_number": {
+                    "type": "string"
+                  },
+                  "room_name": {
+                    "type": "string"
+                  },
+                  "floor": {
+                    "type": "string"
+                  },
+                  "building": {
+                    "type": "string"
+                  },
+                  "wing": {
+                    "type": "string"
+                  },
+                  "status": {
+                    "type": "string"
+                  },
+                  "housekeeping_status": {
+                    "type": "string"
+                  },
+                  "maintenance_status": {
+                    "type": "string"
+                  },
+                  "features": {
+                    "type": "object",
+                    "additionalProperties": {}
+                  },
+                  "amenities": {
+                    "anyOf": [
+                      {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      {
+                        "type": "object",
+                        "additionalProperties": {}
+                      }
+                    ]
+                  },
+                  "is_blocked": {
+                    "type": "boolean"
+                  },
+                  "block_reason": {
+                    "type": "string"
+                  },
+                  "blocked_from": {
+                    "type": "string",
+                    "format": "date-time"
+                  },
+                  "blocked_until": {
+                    "type": "string",
+                    "format": "date-time"
+                  },
+                  "is_out_of_order": {
+                    "type": "boolean"
+                  },
+                  "out_of_order_reason": {
+                    "type": "string"
+                  },
+                  "out_of_order_since": {
+                    "type": "string",
+                    "format": "date-time"
+                  },
+                  "expected_ready_date": {
+                    "type": "string",
+                    "format": "date-time"
+                  },
+                  "notes": {
+                    "type": "string"
+                  },
+                  "housekeeping_notes": {
+                    "type": "string"
+                  },
+                  "metadata": {
+                    "type": "object",
+                    "additionalProperties": {}
+                  }
+                },
+                "required": [
+                  "tenant_id"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "in": "path",
+            "name": "roomId",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "room_id": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "tenant_id": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "property_id": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "property_name": {
+                      "type": "string"
+                    },
+                    "room_type_id": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "room_type_name": {
+                      "type": "string"
+                    },
+                    "room_type_amenities": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "room_number": {
+                      "type": "string"
+                    },
+                    "room_name": {
+                      "type": "string"
+                    },
+                    "floor": {
+                      "type": "string"
+                    },
+                    "building": {
+                      "type": "string"
+                    },
+                    "wing": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "string"
+                    },
+                    "status_display": {
+                      "type": "string"
+                    },
+                    "housekeeping_status": {
+                      "type": "string"
+                    },
+                    "housekeeping_display": {
+                      "type": "string"
+                    },
+                    "maintenance_status": {
+                      "type": "string"
+                    },
+                    "maintenance_display": {
+                      "type": "string"
+                    },
+                    "features": {
+                      "type": "object",
+                      "additionalProperties": {}
+                    },
+                    "amenities": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "is_blocked": {
+                      "type": "boolean"
+                    },
+                    "block_reason": {
+                      "type": "string"
+                    },
+                    "is_out_of_order": {
+                      "type": "boolean"
+                    },
+                    "out_of_order_reason": {
+                      "type": "string"
+                    },
+                    "expected_ready_date": {
+                      "type": "string"
+                    },
+                    "housekeeping_notes": {
+                      "type": "string"
+                    },
+                    "updated_at": {
+                      "type": "string"
+                    },
+                    "version": {
+                      "type": "string"
+                    },
+                    "recommendation_rank": {
+                      "type": "integer",
+                      "minimum": 1
+                    },
+                    "recommendation_score": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 1
+                    },
+                    "recommendation_reasons": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "required": [
+                    "room_id",
+                    "tenant_id",
+                    "property_id",
+                    "room_number",
+                    "status",
+                    "status_display",
+                    "housekeeping_status",
+                    "housekeeping_display",
+                    "maintenance_status",
+                    "maintenance_display",
+                    "is_blocked",
+                    "is_out_of_order",
+                    "version"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "message"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "message"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "message"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "summary": "Delete a room",
+        "tags": [
+          "Rooms"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "tenant_id": {
+                    "type": "string",
+                    "format": "uuid"
+                  }
+                },
+                "required": [
+                  "tenant_id"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "in": "path",
+            "name": "roomId",
+            "required": true
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Default Response"
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "message"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/rooms/availability": {
+      "get": {
+        "summary": "Search available rooms for a date range",
+        "tags": [
+          "Rooms"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "in": "query",
+            "name": "tenant_id",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "in": "query",
+            "name": "property_id",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+            },
+            "in": "query",
+            "name": "check_in_date",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+            },
+            "in": "query",
+            "name": "check_out_date",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "in": "query",
+            "name": "room_type_id",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 20
+            },
+            "in": "query",
+            "name": "adults",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "exclusiveMinimum": 0,
+              "maximum": 200,
+              "default": 50
+            },
+            "in": "query",
+            "name": "limit",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            },
+            "in": "query",
+            "name": "offset",
+            "required": false
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "available_rooms": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "room_id": {
+                            "type": "string"
+                          },
+                          "room_number": {
+                            "type": "string"
+                          },
+                          "room_type_id": {
+                            "type": "string"
+                          },
+                          "room_type_name": {
+                            "type": "string"
+                          },
+                          "floor": {
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "status": {
+                            "type": "string"
+                          },
+                          "housekeeping_status": {
+                            "type": "string"
+                          },
+                          "max_occupancy": {
+                            "type": "number"
+                          },
+                          "base_rate": {
+                            "type": "number"
+                          },
+                          "currency": {
+                            "type": "string"
+                          },
+                          "features": {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            }
+                          }
+                        },
+                        "required": [
+                          "room_id",
+                          "room_number",
+                          "room_type_id",
+                          "room_type_name",
+                          "floor",
+                          "status",
+                          "housekeeping_status",
+                          "max_occupancy",
+                          "base_rate",
+                          "currency",
+                          "features"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "total_count": {
+                      "type": "number"
+                    },
+                    "check_in_date": {
+                      "type": "string"
+                    },
+                    "check_out_date": {
+                      "type": "string"
+                    },
+                    "nights": {
+                      "type": "number"
+                    },
+                    "offset": {
+                      "type": "number"
+                    }
+                  },
+                  "required": [
+                    "available_rooms",
+                    "total_count",
+                    "check_in_date",
+                    "check_out_date",
+                    "nights",
+                    "offset"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/room-types": {
+      "get": {
+        "summary": "List room types",
+        "tags": [
+          "Room Types"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "in": "query",
+            "name": "tenant_id",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "in": "query",
+            "name": "property_id",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "boolean"
+            },
+            "in": "query",
+            "name": "is_active",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 80
+            },
+            "in": "query",
+            "name": "search",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "exclusiveMinimum": 0,
+              "maximum": 500,
+              "default": 200
+            },
+            "in": "query",
+            "name": "limit",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            },
+            "in": "query",
+            "name": "offset",
+            "required": false
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "room_type_id": {
+                        "type": "string",
+                        "format": "uuid"
+                      },
+                      "tenant_id": {
+                        "type": "string",
+                        "format": "uuid"
+                      },
+                      "property_id": {
+                        "type": "string",
+                        "format": "uuid"
+                      },
+                      "type_name": {
+                        "type": "string"
+                      },
+                      "type_code": {
+                        "type": "string"
+                      },
+                      "description": {
+                        "type": "string"
+                      },
+                      "short_description": {
+                        "type": "string"
+                      },
+                      "category": {
+                        "type": "string"
+                      },
+                      "base_occupancy": {
+                        "type": "integer"
+                      },
+                      "max_occupancy": {
+                        "type": "integer"
+                      },
+                      "max_adults": {
+                        "type": "integer"
+                      },
+                      "max_children": {
+                        "type": "integer"
+                      },
+                      "extra_bed_capacity": {
+                        "type": "integer"
+                      },
+                      "size_sqm": {
+                        "type": "number"
+                      },
+                      "bed_type": {
+                        "type": "string"
+                      },
+                      "number_of_beds": {
+                        "type": "integer"
+                      },
+                      "amenities": {},
+                      "features": {},
+                      "base_price": {
+                        "type": "number"
+                      },
+                      "currency": {
+                        "type": "string"
+                      },
+                      "images": {},
+                      "display_order": {
+                        "type": "integer"
+                      },
+                      "is_active": {
+                        "type": "boolean"
+                      },
+                      "metadata": {},
+                      "created_at": {
+                        "type": "string"
+                      },
+                      "updated_at": {
+                        "type": "string"
+                      },
+                      "version": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "room_type_id",
+                      "tenant_id",
+                      "property_id",
+                      "type_name",
+                      "type_code",
+                      "category",
+                      "base_occupancy",
+                      "max_occupancy",
+                      "max_adults",
+                      "base_price",
+                      "is_active"
+                    ],
+                    "additionalProperties": false
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Create a room type",
+        "tags": [
+          "Room Types"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "tenant_id": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "property_id": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "type_name": {
+                    "type": "string"
+                  },
+                  "type_code": {
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 50,
+                    "pattern": "^[A-Za-z0-9_-]+$"
+                  },
+                  "description": {
+                    "type": "string"
+                  },
+                  "short_description": {
+                    "type": "string"
+                  },
+                  "category": {
+                    "type": "string"
+                  },
+                  "base_occupancy": {
+                    "type": "integer",
+                    "default": 2
+                  },
+                  "max_occupancy": {
+                    "type": "integer",
+                    "default": 2
+                  },
+                  "max_adults": {
+                    "type": "integer",
+                    "default": 2
+                  },
+                  "max_children": {
+                    "type": "integer",
+                    "default": 0
+                  },
+                  "extra_bed_capacity": {
+                    "type": "integer",
+                    "default": 0
+                  },
+                  "size_sqm": {
+                    "type": "number",
+                    "multipleOf": 0.01,
+                    "minimum": 0,
+                    "description": "Monetary amount with 2 decimal precision"
+                  },
+                  "bed_type": {
+                    "type": "string"
+                  },
+                  "number_of_beds": {
+                    "type": "integer",
+                    "default": 1
+                  },
+                  "amenities": {
+                    "anyOf": [
+                      {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      {
+                        "type": "object",
+                        "additionalProperties": {}
+                      }
+                    ]
+                  },
+                  "features": {
+                    "type": "object",
+                    "additionalProperties": {}
+                  },
+                  "base_price": {
+                    "type": "number",
+                    "multipleOf": 0.01,
+                    "minimum": 0,
+                    "description": "Monetary amount with 2 decimal precision"
+                  },
+                  "currency": {
+                    "type": "string",
+                    "default": "USD"
+                  },
+                  "images": {
+                    "type": "object",
+                    "additionalProperties": {}
+                  },
+                  "display_order": {
+                    "type": "integer",
+                    "default": 0
+                  },
+                  "is_active": {
+                    "type": "boolean",
+                    "default": true
+                  },
+                  "metadata": {
+                    "type": "object",
+                    "additionalProperties": {}
+                  }
+                },
+                "required": [
+                  "tenant_id",
+                  "property_id",
+                  "type_name",
+                  "type_code",
+                  "base_price"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "room_type_id": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "tenant_id": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "property_id": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "type_name": {
+                      "type": "string"
+                    },
+                    "type_code": {
+                      "type": "string"
+                    },
+                    "description": {
+                      "type": "string"
+                    },
+                    "short_description": {
+                      "type": "string"
+                    },
+                    "category": {
+                      "type": "string"
+                    },
+                    "base_occupancy": {
+                      "type": "integer"
+                    },
+                    "max_occupancy": {
+                      "type": "integer"
+                    },
+                    "max_adults": {
+                      "type": "integer"
+                    },
+                    "max_children": {
+                      "type": "integer"
+                    },
+                    "extra_bed_capacity": {
+                      "type": "integer"
+                    },
+                    "size_sqm": {
+                      "type": "number"
+                    },
+                    "bed_type": {
+                      "type": "string"
+                    },
+                    "number_of_beds": {
+                      "type": "integer"
+                    },
+                    "amenities": {},
+                    "features": {},
+                    "base_price": {
+                      "type": "number"
+                    },
+                    "currency": {
+                      "type": "string"
+                    },
+                    "images": {},
+                    "display_order": {
+                      "type": "integer"
+                    },
+                    "is_active": {
+                      "type": "boolean"
+                    },
+                    "metadata": {},
+                    "created_at": {
+                      "type": "string"
+                    },
+                    "updated_at": {
+                      "type": "string"
+                    },
+                    "version": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "room_type_id",
+                    "tenant_id",
+                    "property_id",
+                    "type_name",
+                    "type_code",
+                    "category",
+                    "base_occupancy",
+                    "max_occupancy",
+                    "max_adults",
+                    "base_price",
+                    "is_active"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "message"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "message"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/room-types/{roomTypeId}": {
+      "put": {
+        "summary": "Update a room type",
+        "tags": [
+          "Room Types"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "tenant_id": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "property_id": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "type_name": {
+                    "type": "string"
+                  },
+                  "type_code": {
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 50,
+                    "pattern": "^[A-Za-z0-9_-]+$"
+                  },
+                  "description": {
+                    "type": "string"
+                  },
+                  "short_description": {
+                    "type": "string"
+                  },
+                  "category": {
+                    "type": "string"
+                  },
+                  "base_occupancy": {
+                    "type": "integer",
+                    "default": 2
+                  },
+                  "max_occupancy": {
+                    "type": "integer",
+                    "default": 2
+                  },
+                  "max_adults": {
+                    "type": "integer",
+                    "default": 2
+                  },
+                  "max_children": {
+                    "type": "integer",
+                    "default": 0
+                  },
+                  "extra_bed_capacity": {
+                    "type": "integer",
+                    "default": 0
+                  },
+                  "size_sqm": {
+                    "type": "number",
+                    "multipleOf": 0.01,
+                    "minimum": 0,
+                    "description": "Monetary amount with 2 decimal precision"
+                  },
+                  "bed_type": {
+                    "type": "string"
+                  },
+                  "number_of_beds": {
+                    "type": "integer",
+                    "default": 1
+                  },
+                  "amenities": {
+                    "anyOf": [
+                      {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      {
+                        "type": "object",
+                        "additionalProperties": {}
+                      }
+                    ]
+                  },
+                  "features": {
+                    "type": "object",
+                    "additionalProperties": {}
+                  },
+                  "base_price": {
+                    "type": "number",
+                    "multipleOf": 0.01,
+                    "minimum": 0,
+                    "description": "Monetary amount with 2 decimal precision"
+                  },
+                  "currency": {
+                    "type": "string",
+                    "default": "USD"
+                  },
+                  "images": {
+                    "type": "object",
+                    "additionalProperties": {}
+                  },
+                  "display_order": {
+                    "type": "integer",
+                    "default": 0
+                  },
+                  "is_active": {
+                    "type": "boolean",
+                    "default": true
+                  },
+                  "metadata": {
+                    "type": "object",
+                    "additionalProperties": {}
+                  }
+                },
+                "required": [
+                  "tenant_id"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "in": "path",
+            "name": "roomTypeId",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "room_type_id": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "tenant_id": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "property_id": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "type_name": {
+                      "type": "string"
+                    },
+                    "type_code": {
+                      "type": "string"
+                    },
+                    "description": {
+                      "type": "string"
+                    },
+                    "short_description": {
+                      "type": "string"
+                    },
+                    "category": {
+                      "type": "string"
+                    },
+                    "base_occupancy": {
+                      "type": "integer"
+                    },
+                    "max_occupancy": {
+                      "type": "integer"
+                    },
+                    "max_adults": {
+                      "type": "integer"
+                    },
+                    "max_children": {
+                      "type": "integer"
+                    },
+                    "extra_bed_capacity": {
+                      "type": "integer"
+                    },
+                    "size_sqm": {
+                      "type": "number"
+                    },
+                    "bed_type": {
+                      "type": "string"
+                    },
+                    "number_of_beds": {
+                      "type": "integer"
+                    },
+                    "amenities": {},
+                    "features": {},
+                    "base_price": {
+                      "type": "number"
+                    },
+                    "currency": {
+                      "type": "string"
+                    },
+                    "images": {},
+                    "display_order": {
+                      "type": "integer"
+                    },
+                    "is_active": {
+                      "type": "boolean"
+                    },
+                    "metadata": {},
+                    "created_at": {
+                      "type": "string"
+                    },
+                    "updated_at": {
+                      "type": "string"
+                    },
+                    "version": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "room_type_id",
+                    "tenant_id",
+                    "property_id",
+                    "type_name",
+                    "type_code",
+                    "category",
+                    "base_occupancy",
+                    "max_occupancy",
+                    "max_adults",
+                    "base_price",
+                    "is_active"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "message"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "message"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "message"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "summary": "Delete a room type",
+        "tags": [
+          "Room Types"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "tenant_id": {
+                    "type": "string",
+                    "format": "uuid"
+                  }
+                },
+                "required": [
+                  "tenant_id"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "in": "path",
+            "name": "roomTypeId",
+            "required": true
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Default Response"
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "message"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/rates": {
+      "get": {
+        "summary": "List rates",
+        "tags": [
+          "Rates"
+        ],
+        "description": "List rates for a tenant, with optional filters for property, room type, status, and rate type. Results are ordered by priority (ascending).",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "in": "query",
+            "name": "tenant_id",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "in": "query",
+            "name": "property_id",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "in": "query",
+            "name": "room_type_id",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "status",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "rate_type",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 80
+            },
+            "in": "query",
+            "name": "search",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "exclusiveMinimum": 0,
+              "maximum": 500,
+              "default": 200
+            },
+            "in": "query",
+            "name": "limit",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            },
+            "in": "query",
+            "name": "offset",
+            "required": false
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "format": "uuid"
+                      },
+                      "tenant_id": {
+                        "type": "string",
+                        "format": "uuid"
+                      },
+                      "property_id": {
+                        "type": "string",
+                        "format": "uuid"
+                      },
+                      "room_type_id": {
+                        "type": "string",
+                        "format": "uuid"
+                      },
+                      "rate_name": {
+                        "type": "string"
+                      },
+                      "rate_code": {
+                        "type": "string"
+                      },
+                      "description": {
+                        "type": "string"
+                      },
+                      "rate_type": {
+                        "type": "string"
+                      },
+                      "strategy": {
+                        "type": "string"
+                      },
+                      "priority": {
+                        "type": "integer"
+                      },
+                      "base_rate": {
+                        "type": "number"
+                      },
+                      "currency": {
+                        "type": "string"
+                      },
+                      "single_occupancy_rate": {
+                        "type": "number"
+                      },
+                      "double_occupancy_rate": {
+                        "type": "number"
+                      },
+                      "extra_person_rate": {
+                        "type": "number"
+                      },
+                      "extra_child_rate": {
+                        "type": "number"
+                      },
+                      "valid_from": {
+                        "type": "string"
+                      },
+                      "valid_until": {
+                        "type": "string"
+                      },
+                      "advance_booking_days_min": {
+                        "type": "integer"
+                      },
+                      "advance_booking_days_max": {
+                        "type": "integer"
+                      },
+                      "min_length_of_stay": {
+                        "type": "integer"
+                      },
+                      "max_length_of_stay": {
+                        "type": "integer"
+                      },
+                      "closed_to_arrival": {
+                        "type": "boolean"
+                      },
+                      "closed_to_departure": {
+                        "type": "boolean"
+                      },
+                      "meal_plan": {
+                        "type": "string"
+                      },
+                      "meal_plan_cost": {
+                        "type": "number"
+                      },
+                      "cancellation_policy": {},
+                      "modifiers": {},
+                      "channels": {},
+                      "customer_segments": {},
+                      "tax_inclusive": {
+                        "type": "boolean"
+                      },
+                      "tax_rate": {
+                        "type": "number"
+                      },
+                      "early_checkin_fee": {
+                        "type": "number"
+                      },
+                      "late_checkout_fee": {
+                        "type": "number"
+                      },
+                      "early_checkin_cutoff_hour": {
+                        "type": "integer"
+                      },
+                      "late_checkout_cutoff_hour": {
+                        "type": "integer"
+                      },
+                      "status": {
+                        "type": "string"
+                      },
+                      "display_order": {
+                        "type": "integer"
+                      },
+                      "metadata": {},
+                      "created_at": {
+                        "type": "string"
+                      },
+                      "updated_at": {
+                        "type": "string"
+                      },
+                      "version": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "id",
+                      "tenant_id",
+                      "property_id",
+                      "room_type_id",
+                      "rate_name",
+                      "rate_code",
+                      "rate_type",
+                      "strategy",
+                      "priority",
+                      "base_rate",
+                      "valid_from",
+                      "status"
+                    ],
+                    "additionalProperties": false
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Create a rate",
+        "tags": [
+          "Rates"
+        ],
+        "description": "Create a new rate for a room type. Rate code must be unique per property.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "tenant_id": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "property_id": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "room_type_id": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "rate_name": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 255
+                  },
+                  "rate_code": {
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 50,
+                    "pattern": "^[A-Za-z0-9_-]+$"
+                  },
+                  "description": {
+                    "type": "string",
+                    "maxLength": 1000
+                  },
+                  "rate_type": {
+                    "type": "string"
+                  },
+                  "strategy": {
+                    "type": "string"
+                  },
+                  "priority": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 999
+                  },
+                  "base_rate": {
+                    "type": "number",
+                    "minimum": 0
+                  },
+                  "currency": {
+                    "type": "string",
+                    "minLength": 3,
+                    "maxLength": 3
+                  },
+                  "single_occupancy_rate": {
+                    "type": "number",
+                    "minimum": 0
+                  },
+                  "double_occupancy_rate": {
+                    "type": "number",
+                    "minimum": 0
+                  },
+                  "extra_person_rate": {
+                    "type": "number",
+                    "minimum": 0
+                  },
+                  "extra_child_rate": {
+                    "type": "number",
+                    "minimum": 0
+                  },
+                  "valid_from": {
+                    "type": "string",
+                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                  },
+                  "valid_until": {
+                    "type": "string",
+                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                  },
+                  "advance_booking_days_min": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "advance_booking_days_max": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "min_length_of_stay": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "max_length_of_stay": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "closed_to_arrival": {
+                    "type": "boolean"
+                  },
+                  "closed_to_departure": {
+                    "type": "boolean"
+                  },
+                  "meal_plan": {
+                    "type": "string",
+                    "maxLength": 50
+                  },
+                  "meal_plan_cost": {
+                    "type": "number",
+                    "minimum": 0
+                  },
+                  "cancellation_policy": {
+                    "type": "object",
+                    "additionalProperties": {}
+                  },
+                  "modifiers": {
+                    "type": "object",
+                    "additionalProperties": {}
+                  },
+                  "channels": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "customer_segments": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "tax_inclusive": {
+                    "type": "boolean"
+                  },
+                  "tax_rate": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 100
+                  },
+                  "status": {
+                    "type": "string"
+                  },
+                  "display_order": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "metadata": {
+                    "type": "object",
+                    "additionalProperties": {}
+                  }
+                },
+                "required": [
+                  "tenant_id",
+                  "property_id",
+                  "room_type_id",
+                  "rate_name",
+                  "rate_code",
+                  "base_rate",
+                  "valid_from"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "tenant_id": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "property_id": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "room_type_id": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "rate_name": {
+                      "type": "string"
+                    },
+                    "rate_code": {
+                      "type": "string"
+                    },
+                    "description": {
+                      "type": "string"
+                    },
+                    "rate_type": {
+                      "type": "string"
+                    },
+                    "strategy": {
+                      "type": "string"
+                    },
+                    "priority": {
+                      "type": "integer"
+                    },
+                    "base_rate": {
+                      "type": "number"
+                    },
+                    "currency": {
+                      "type": "string"
+                    },
+                    "single_occupancy_rate": {
+                      "type": "number"
+                    },
+                    "double_occupancy_rate": {
+                      "type": "number"
+                    },
+                    "extra_person_rate": {
+                      "type": "number"
+                    },
+                    "extra_child_rate": {
+                      "type": "number"
+                    },
+                    "valid_from": {
+                      "type": "string"
+                    },
+                    "valid_until": {
+                      "type": "string"
+                    },
+                    "advance_booking_days_min": {
+                      "type": "integer"
+                    },
+                    "advance_booking_days_max": {
+                      "type": "integer"
+                    },
+                    "min_length_of_stay": {
+                      "type": "integer"
+                    },
+                    "max_length_of_stay": {
+                      "type": "integer"
+                    },
+                    "closed_to_arrival": {
+                      "type": "boolean"
+                    },
+                    "closed_to_departure": {
+                      "type": "boolean"
+                    },
+                    "meal_plan": {
+                      "type": "string"
+                    },
+                    "meal_plan_cost": {
+                      "type": "number"
+                    },
+                    "cancellation_policy": {},
+                    "modifiers": {},
+                    "channels": {},
+                    "customer_segments": {},
+                    "tax_inclusive": {
+                      "type": "boolean"
+                    },
+                    "tax_rate": {
+                      "type": "number"
+                    },
+                    "early_checkin_fee": {
+                      "type": "number"
+                    },
+                    "late_checkout_fee": {
+                      "type": "number"
+                    },
+                    "early_checkin_cutoff_hour": {
+                      "type": "integer"
+                    },
+                    "late_checkout_cutoff_hour": {
+                      "type": "integer"
+                    },
+                    "status": {
+                      "type": "string"
+                    },
+                    "display_order": {
+                      "type": "integer"
+                    },
+                    "metadata": {},
+                    "created_at": {
+                      "type": "string"
+                    },
+                    "updated_at": {
+                      "type": "string"
+                    },
+                    "version": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "tenant_id",
+                    "property_id",
+                    "room_type_id",
+                    "rate_name",
+                    "rate_code",
+                    "rate_type",
+                    "strategy",
+                    "priority",
+                    "base_rate",
+                    "valid_from",
+                    "status"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "message"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "message"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/rates/{rateId}": {
+      "get": {
+        "summary": "Get rate by ID",
+        "tags": [
+          "Rates"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "in": "query",
+            "name": "tenant_id",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "in": "path",
+            "name": "rateId",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "tenant_id": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "property_id": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "room_type_id": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "rate_name": {
+                      "type": "string"
+                    },
+                    "rate_code": {
+                      "type": "string"
+                    },
+                    "description": {
+                      "type": "string"
+                    },
+                    "rate_type": {
+                      "type": "string"
+                    },
+                    "strategy": {
+                      "type": "string"
+                    },
+                    "priority": {
+                      "type": "integer"
+                    },
+                    "base_rate": {
+                      "type": "number"
+                    },
+                    "currency": {
+                      "type": "string"
+                    },
+                    "single_occupancy_rate": {
+                      "type": "number"
+                    },
+                    "double_occupancy_rate": {
+                      "type": "number"
+                    },
+                    "extra_person_rate": {
+                      "type": "number"
+                    },
+                    "extra_child_rate": {
+                      "type": "number"
+                    },
+                    "valid_from": {
+                      "type": "string"
+                    },
+                    "valid_until": {
+                      "type": "string"
+                    },
+                    "advance_booking_days_min": {
+                      "type": "integer"
+                    },
+                    "advance_booking_days_max": {
+                      "type": "integer"
+                    },
+                    "min_length_of_stay": {
+                      "type": "integer"
+                    },
+                    "max_length_of_stay": {
+                      "type": "integer"
+                    },
+                    "closed_to_arrival": {
+                      "type": "boolean"
+                    },
+                    "closed_to_departure": {
+                      "type": "boolean"
+                    },
+                    "meal_plan": {
+                      "type": "string"
+                    },
+                    "meal_plan_cost": {
+                      "type": "number"
+                    },
+                    "cancellation_policy": {},
+                    "modifiers": {},
+                    "channels": {},
+                    "customer_segments": {},
+                    "tax_inclusive": {
+                      "type": "boolean"
+                    },
+                    "tax_rate": {
+                      "type": "number"
+                    },
+                    "early_checkin_fee": {
+                      "type": "number"
+                    },
+                    "late_checkout_fee": {
+                      "type": "number"
+                    },
+                    "early_checkin_cutoff_hour": {
+                      "type": "integer"
+                    },
+                    "late_checkout_cutoff_hour": {
+                      "type": "integer"
+                    },
+                    "status": {
+                      "type": "string"
+                    },
+                    "display_order": {
+                      "type": "integer"
+                    },
+                    "metadata": {},
+                    "created_at": {
+                      "type": "string"
+                    },
+                    "updated_at": {
+                      "type": "string"
+                    },
+                    "version": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "tenant_id",
+                    "property_id",
+                    "room_type_id",
+                    "rate_name",
+                    "rate_code",
+                    "rate_type",
+                    "strategy",
+                    "priority",
+                    "base_rate",
+                    "valid_from",
+                    "status"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "message"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "summary": "Update a rate",
+        "tags": [
+          "Rates"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "tenant_id": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "property_id": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "room_type_id": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "rate_name": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 255
+                  },
+                  "rate_code": {
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 50,
+                    "pattern": "^[A-Za-z0-9_-]+$"
+                  },
+                  "description": {
+                    "type": "string",
+                    "maxLength": 1000
+                  },
+                  "rate_type": {
+                    "type": "string"
+                  },
+                  "strategy": {
+                    "type": "string"
+                  },
+                  "priority": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 999
+                  },
+                  "base_rate": {
+                    "type": "number",
+                    "minimum": 0
+                  },
+                  "currency": {
+                    "type": "string",
+                    "minLength": 3,
+                    "maxLength": 3
+                  },
+                  "single_occupancy_rate": {
+                    "type": "number",
+                    "minimum": 0
+                  },
+                  "double_occupancy_rate": {
+                    "type": "number",
+                    "minimum": 0
+                  },
+                  "extra_person_rate": {
+                    "type": "number",
+                    "minimum": 0
+                  },
+                  "extra_child_rate": {
+                    "type": "number",
+                    "minimum": 0
+                  },
+                  "valid_from": {
+                    "type": "string",
+                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                  },
+                  "valid_until": {
+                    "type": "string",
+                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                  },
+                  "advance_booking_days_min": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "advance_booking_days_max": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "min_length_of_stay": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "max_length_of_stay": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "closed_to_arrival": {
+                    "type": "boolean"
+                  },
+                  "closed_to_departure": {
+                    "type": "boolean"
+                  },
+                  "meal_plan": {
+                    "type": "string",
+                    "maxLength": 50
+                  },
+                  "meal_plan_cost": {
+                    "type": "number",
+                    "minimum": 0
+                  },
+                  "cancellation_policy": {
+                    "type": "object",
+                    "additionalProperties": {}
+                  },
+                  "modifiers": {
+                    "type": "object",
+                    "additionalProperties": {}
+                  },
+                  "channels": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "customer_segments": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "tax_inclusive": {
+                    "type": "boolean"
+                  },
+                  "tax_rate": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 100
+                  },
+                  "status": {
+                    "type": "string"
+                  },
+                  "display_order": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "metadata": {
+                    "type": "object",
+                    "additionalProperties": {}
+                  }
+                },
+                "required": [
+                  "tenant_id"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "in": "path",
+            "name": "rateId",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "tenant_id": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "property_id": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "room_type_id": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "rate_name": {
+                      "type": "string"
+                    },
+                    "rate_code": {
+                      "type": "string"
+                    },
+                    "description": {
+                      "type": "string"
+                    },
+                    "rate_type": {
+                      "type": "string"
+                    },
+                    "strategy": {
+                      "type": "string"
+                    },
+                    "priority": {
+                      "type": "integer"
+                    },
+                    "base_rate": {
+                      "type": "number"
+                    },
+                    "currency": {
+                      "type": "string"
+                    },
+                    "single_occupancy_rate": {
+                      "type": "number"
+                    },
+                    "double_occupancy_rate": {
+                      "type": "number"
+                    },
+                    "extra_person_rate": {
+                      "type": "number"
+                    },
+                    "extra_child_rate": {
+                      "type": "number"
+                    },
+                    "valid_from": {
+                      "type": "string"
+                    },
+                    "valid_until": {
+                      "type": "string"
+                    },
+                    "advance_booking_days_min": {
+                      "type": "integer"
+                    },
+                    "advance_booking_days_max": {
+                      "type": "integer"
+                    },
+                    "min_length_of_stay": {
+                      "type": "integer"
+                    },
+                    "max_length_of_stay": {
+                      "type": "integer"
+                    },
+                    "closed_to_arrival": {
+                      "type": "boolean"
+                    },
+                    "closed_to_departure": {
+                      "type": "boolean"
+                    },
+                    "meal_plan": {
+                      "type": "string"
+                    },
+                    "meal_plan_cost": {
+                      "type": "number"
+                    },
+                    "cancellation_policy": {},
+                    "modifiers": {},
+                    "channels": {},
+                    "customer_segments": {},
+                    "tax_inclusive": {
+                      "type": "boolean"
+                    },
+                    "tax_rate": {
+                      "type": "number"
+                    },
+                    "early_checkin_fee": {
+                      "type": "number"
+                    },
+                    "late_checkout_fee": {
+                      "type": "number"
+                    },
+                    "early_checkin_cutoff_hour": {
+                      "type": "integer"
+                    },
+                    "late_checkout_cutoff_hour": {
+                      "type": "integer"
+                    },
+                    "status": {
+                      "type": "string"
+                    },
+                    "display_order": {
+                      "type": "integer"
+                    },
+                    "metadata": {},
+                    "created_at": {
+                      "type": "string"
+                    },
+                    "updated_at": {
+                      "type": "string"
+                    },
+                    "version": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "tenant_id",
+                    "property_id",
+                    "room_type_id",
+                    "rate_name",
+                    "rate_code",
+                    "rate_type",
+                    "strategy",
+                    "priority",
+                    "base_rate",
+                    "valid_from",
+                    "status"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "message"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "message"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "message"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "summary": "Delete a rate",
+        "tags": [
+          "Rates"
+        ],
+        "description": "Soft delete a rate by ID.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "tenant_id": {
+                    "type": "string",
+                    "format": "uuid"
+                  }
+                },
+                "required": [
+                  "tenant_id"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "in": "path",
+            "name": "rateId",
+            "required": true
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Default Response"
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "message"
+                  ],
+                  "additionalProperties": false
                 }
               }
             }

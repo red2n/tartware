@@ -24,8 +24,6 @@
     "@fastify/helmet": "^13.0.2",
     "@fastify/rate-limit": "^10.3.0",
     "@fastify/sensible": "^6.0.4",
-    "@fastify/swagger": "^9.6.1",
-    "@fastify/swagger-ui": "^5.2.3",
     "@tartware/command-center-shared": "workspace:*",
     "@tartware/config": "workspace:*",
     "@tartware/fastify-server": "workspace:*",

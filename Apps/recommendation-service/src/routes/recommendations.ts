@@ -1,30 +1,12 @@
+import {
+  type RankRoomsBody,
+  RankRoomsBodySchema,
+  type RecommendationQuery,
+  RecommendationQuerySchema,
+} from "@tartware/schemas";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
-import { z } from "zod";
 
 import { getRecommendations, rankRooms } from "../services/index.js";
-
-const recommendationQuerySchema = z.object({
-  propertyId: z.string().uuid(),
-  guestId: z.string().uuid().optional(),
-  checkInDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-  checkOutDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-  adults: z.coerce.number().int().min(1).max(10).default(1),
-  children: z.coerce.number().int().min(0).max(10).default(0),
-  limit: z.coerce.number().int().min(1).max(50).optional(),
-});
-
-const rankRoomsBodySchema = z.object({
-  propertyId: z.string().uuid(),
-  guestId: z.string().uuid().optional(),
-  checkInDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-  checkOutDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-  adults: z.number().int().min(1).max(10).default(1),
-  children: z.number().int().min(0).max(10).default(0),
-  roomIds: z.array(z.string().uuid()).min(1).max(100),
-});
-
-type RecommendationQuery = z.infer<typeof recommendationQuerySchema>;
-type RankRoomsBody = z.infer<typeof rankRoomsBodySchema>;
 
 export function registerRecommendationRoutes(app: FastifyInstance) {
   /**
@@ -96,7 +78,7 @@ export function registerRecommendationRoutes(app: FastifyInstance) {
         return reply.status(401).send({ error: "Unauthorized" });
       }
 
-      const parsed = recommendationQuerySchema.safeParse(request.query);
+      const parsed = RecommendationQuerySchema.safeParse(request.query);
       if (!parsed.success) {
         return reply.status(400).send({
           error: "Validation failed",
@@ -185,7 +167,7 @@ export function registerRecommendationRoutes(app: FastifyInstance) {
         return reply.status(401).send({ error: "Unauthorized" });
       }
 
-      const parsed = rankRoomsBodySchema.safeParse(request.body);
+      const parsed = RankRoomsBodySchema.safeParse(request.body);
       if (!parsed.success) {
         return reply.status(400).send({
           error: "Validation failed",

@@ -77,6 +77,9 @@ import {
 	InventoryReleaseRoomCommandSchema,
 } from "./events/commands/inventory.js";
 import {
+	NotificationSendCommandSchema,
+} from "./events/commands/notifications.js";
+import {
 	OperationsAssetUpdateCommandSchema,
 	OperationsIncidentReportCommandSchema,
 	OperationsInventoryAdjustCommandSchema,
@@ -520,6 +523,10 @@ const commandPayloadValidators = new Map<string, CommandPayloadValidator>([
 	[
 		"settings.value.revert",
 		(payload) => SettingsValueRevertCommandSchema.parse(payload),
+	],
+	[
+		"notification.send",
+		(payload) => NotificationSendCommandSchema.parse(payload),
 	],
 ]);
 
