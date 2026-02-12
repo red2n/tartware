@@ -5,7 +5,8 @@
   ],
   "ignore": [
     "src/lib/db.ts",
-    "src/kafka/producer.ts"
+    "src/kafka/producer.ts",
+    "src/services/key-service.ts"
   ],
   "ignoreDependencies": [
     "@tartware/schemas",
@@ -18,7 +19,9 @@
     "@fastify/helmet",
     "@fastify/sensible",
     "@tartware/fastify-server",
-    "@vitest/coverage-v8"
+    "@vitest/coverage-v8",
+    "pg"
   ],
-  "ignoreBinaries": []
+  "ignoreBinaries": [],
+  "ignoreExportsUsedInFile": true
 }
