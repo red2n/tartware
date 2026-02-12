@@ -1,11 +1,11 @@
 import { buildRouteSchema, errorResponseSchema, schemaFromZod } from "@tartware/openapi";
 import {
   SystemBootstrapTenantSchema,
-  TenantBootstrapResponseSchema,
   SystemCreateTenantResponseSchema,
   SystemCreateTenantSchema,
   SystemTenantListQuerySchema,
   SystemTenantListResponseSchema,
+  TenantBootstrapResponseSchema,
 } from "@tartware/schemas";
 import type { FastifyInstance } from "fastify";
 
