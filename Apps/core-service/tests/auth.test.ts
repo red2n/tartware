@@ -351,7 +351,7 @@ describe('Authentication Routes', () => {
 
       expect(response.statusCode).toBe(400);
       const payload = JSON.parse(response.payload);
-      expect(payload.error).toBe('Invalid MFA code');
+      expect(payload.message).toBe('The provided MFA code is invalid.');
     });
   });
 
@@ -404,7 +404,7 @@ describe('Authentication Routes', () => {
 
       expect(response.statusCode).toBe(400);
       const payload = JSON.parse(response.payload);
-      expect(payload.error).toBe('Invalid credentials');
+      expect(payload.message).toBe('Invalid credentials');
     });
   });
 });

@@ -201,7 +201,7 @@ export const registerAuthRoutes = (app: FastifyInstance): void => {
     },
     async (request, reply) => {
       if (!request.auth.isAuthenticated || !request.auth.userId) {
-        reply.unauthorized("AUTHENTICATION_REQUIRED");
+        reply.unauthorized("You must be logged in to access this resource.");
         return reply;
       }
 
@@ -257,7 +257,7 @@ export const registerAuthRoutes = (app: FastifyInstance): void => {
     },
     async (request, reply) => {
       if (!request.auth.isAuthenticated || !request.auth.userId) {
-        reply.unauthorized("AUTHENTICATION_REQUIRED");
+        reply.unauthorized("You must be logged in to access this resource.");
         return reply;
       }
 
@@ -303,7 +303,7 @@ export const registerAuthRoutes = (app: FastifyInstance): void => {
     },
     async (request, reply) => {
       if (!request.auth.isAuthenticated || !request.auth.userId) {
-        reply.unauthorized("AUTHENTICATION_REQUIRED");
+        reply.unauthorized("You must be logged in to access this resource.");
         return reply;
       }
 
@@ -356,7 +356,7 @@ export const registerAuthRoutes = (app: FastifyInstance): void => {
     },
     async (request, reply) => {
       if (!request.auth.isAuthenticated || !request.auth.userId) {
-        reply.unauthorized("AUTHENTICATION_REQUIRED");
+        reply.unauthorized("You must be logged in to access this resource.");
         return reply;
       }
 
