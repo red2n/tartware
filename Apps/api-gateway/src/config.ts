@@ -102,6 +102,7 @@ export const serviceTargets = {
   recommendationServiceUrl: env.RECOMMENDATION_SERVICE_URL ?? "http://localhost:3040",
   notificationServiceUrl: env.NOTIFICATION_SERVICE_URL ?? "http://localhost:3055",
   revenueServiceUrl: env.REVENUE_SERVICE_URL ?? "http://localhost:3060",
+  guestExperienceServiceUrl: env.GUEST_EXPERIENCE_SERVICE_URL ?? "http://localhost:3065",
 };
 
 export const dbConfig = {

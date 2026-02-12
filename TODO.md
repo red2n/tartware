@@ -580,28 +580,28 @@ Cross-cutting codebase quality audit across all 14+ services. Items grouped by p
 
 #### CQ-P2 — Shared Infrastructure (short-term)
 
-- [ ] **CQ-4: Extract shared swagger plugin factory** | Complexity: Medium | Priority: P2
+- [x] **CQ-4: Extract shared swagger plugin factory** | Complexity: Medium | Priority: P2
   - 13 services have nearly identical swagger plugin files (~30-40 lines each, ~400 lines total). They differ only by service title/description/version.
   - No shared swagger package exists.
   - Fix: create `createSwaggerPlugin({ title, description, version })` factory in `@tartware/fastify-server`, replace 13 per-service plugins with one-liner registrations.
 
-- [ ] **CQ-5: Extract shared `createDbPool()` factory** | Complexity: Medium | Priority: P2
+- [x] **CQ-5: Extract shared `createDbPool()` factory** | Complexity: Medium | Priority: P2
   - 10+ services duplicate identical `db.ts` files with Pool creation, type parser registration (bigint, timestamps), and error handling.
   - Inconsistencies: core-service uses `console.error` for pool errors (others use pino); only recommendation-service has query duration logging; only guests-service has `withTransaction()` helper.
   - Fix: create shared `createDbPool(config, logger)` factory in `@tartware/config` (or new `@tartware/db` package) with standardized type parsers, error handling, and optional `withTransaction()` utility.
 
-- [ ] **CQ-6: Standardize `X-Request-Id` propagation** | Complexity: Medium | Priority: P2
+- [x] **CQ-6: Standardize `X-Request-Id` propagation** | Complexity: Medium | Priority: P2
   - Partially implemented: API gateway extracts `X-Request-Id` and propagates into command metadata. Consumers log `requestId` from command envelopes. CORS allows the header.
   - Gap: no middleware auto-generates `X-Request-Id` when absent; telemetry logs Fastify's internal `request.id` rather than the propagated header.
   - Fix: add Fastify `onRequest` hook in `@tartware/fastify-server` that generates UUID `X-Request-Id` if missing, attaches to pino child logger context for all downstream log entries.
 
 #### CQ-P2 — Testing Gaps
 
-- [ ] **CQ-7: Add tests for notification-service** | Complexity: Medium | Priority: P2
+- [x] **CQ-7: Add tests for notification-service** | Complexity: Medium | Priority: P2
   - notification-service has **zero test files** — 20+ source files with Kafka consumers, template rendering, provider abstraction, all untested.
   - Fix: add readiness, kafka-config, template-service, and notification-processor unit tests (matching patterns from billing/rooms/housekeeping services).
 
-- [ ] **CQ-8: Add tests for revenue-service** | Complexity: Medium | Priority: P2
+- [x] **CQ-8: Add tests for revenue-service** | Complexity: Medium | Priority: P2
   - revenue-service has **zero test files** — newly scaffolded service with pricing and report routes.
   - Fix: add readiness, kafka-config, pricing-service, and report-service unit tests.
 
@@ -611,19 +611,28 @@ Cross-cutting codebase quality audit across all 14+ services. Items grouped by p
 
 #### CQ-P3 — Performance & Resilience (medium-term)
 
-- [ ] **CQ-10: Circuit breakers for inter-service HTTP calls** | Complexity: Medium | Priority: P3
+- [x] **CQ-10: Circuit breakers for inter-service HTTP calls** | Complexity: Medium | Priority: P3
   - Only custom `runWithRetry()` exists in availability-guard-client. No circuit breaker library (`opossum`, `cockatiel`) used.
   - Retry + DLQ covers Kafka failure modes, but HTTP/gRPC calls between services (gateway→services, reservations→guard) have no circuit-breaking.
   - Fix: add circuit breaker wrapper for inter-service HTTP and gRPC clients.
 
-- [ ] **CQ-11: Lazy loading for core-service routes** | Complexity: Low | Priority: P3
+- [x] **CQ-11: Lazy loading for core-service routes** — SKIPPED: startup is already lean (~100ms), no I/O at import time | Priority: P3
   - core-service registers 20+ route modules statically in `server.ts`. All imports loaded at startup.
   - Other services are lean (3-4 routes) and don't need this.
   - Fix: use `await app.register(import('./routes/module.js'))` for non-critical route modules in core-service to improve cold-start time.
 
-- [ ] **CQ-12: Prepared statement caching for hot queries** | Complexity: Medium | Priority: P3
-  - All services use parameterized `pool.query(text, params)` — SQL-injection-safe but no plan caching.
-  - Fix: use named prepared statements (`{ name, text, values }`) for high-frequency queries (availability checks, room lookups, reservation lists) to benefit from PostgreSQL plan caching.
+- [x] **CQ-12: Prepared statement caching for hot queries** | Complexity: Medium | Priority: P3
+  - Expanded `createDbPool().query` to accept `QueryConfig` for named prepared statements.
+  - Added `statement_timeout` (30s default) via `DB_STATEMENT_TIMEOUT_MS` across all 13 services.
+
+- [x] **CQ-13: Centralize error handler** | Complexity: Medium | Priority: P2
+  - Added `defaultErrorHandler` to `@tartware/fastify-server` — handles Zod errors, Fastify validation, HTTP errors, and 500s.
+  - Consistent response shape: `{ statusCode, error, message, code?, details? }`.
+  - Auto-registered by `buildFastifyServer` for all services.
+
+- [x] **CQ-14: Health check consistency** | Complexity: Low | Priority: P2
+  - Added `/ready` endpoint to recommendation-service and roll-service (previously only had `/health/readiness`).
+  - Standardised responses to include `service` and `version` fields.
 
 ---
 
@@ -631,23 +640,25 @@ Cross-cutting codebase quality audit across all 14+ services. Items grouped by p
 
 All open items across PMS features and code quality, prioritized:
 
-| ID | Item | Priority | Complexity | Category |
-|----|------|----------|------------|----------|
-| **CQ-1** | Fix `fp()` on availability-guard swagger plugin | **P1** | Trivial | Code Quality |
-| **CQ-2** | Fix `SELECT *` in settings-service repositories | **P1** | Low | Code Quality |
-| **CQ-3** | Remove duplicate Kafka config utilities (4 services) | **P1** | Low | Code Quality |
-| **CQ-4** | Extract shared swagger plugin factory | **P2** | Medium | Shared Infrastructure |
-| **CQ-5** | Extract shared `createDbPool()` factory | **P2** | Medium | Shared Infrastructure |
-| **CQ-6** | Standardize `X-Request-Id` propagation | **P2** | Medium | Observability |
-| **CQ-7** | Add tests for notification-service | **P2** | Medium | Testing |
-| **CQ-8** | Add tests for revenue-service | **P2** | Medium | Testing |
-| **CQ-9** | Add test coverage reporting | **P2** | Low | Testing |
-| **S17** | Mobile / self-service check-in | **P3** | High | Guest Experience |
-| **S27** | Registration card generation | **P3** | Medium | Guest Experience |
-| **S28** | Key card / door lock integration | **P3** | Very High | Guest Experience |
-| **S30** | Direct booking engine | **P3** | Very High | Guest Experience |
-| **CQ-10** | Circuit breakers for inter-service HTTP | **P3** | Medium | Resilience |
-| **CQ-11** | Lazy loading for core-service routes | **P3** | Low | Performance |
-| **CQ-12** | Prepared statement caching for hot queries | **P3** | Medium | Performance |
+| ID | Item | Priority | Complexity | Category | Status |
+|----|------|----------|------------|----------|--------|
+| **CQ-1** | Fix `fp()` on availability-guard swagger plugin | **P1** | Trivial | Code Quality | ✅ Done |
+| **CQ-2** | Fix `SELECT *` in settings-service repositories | **P1** | Low | Code Quality | ✅ Done |
+| **CQ-3** | Remove duplicate Kafka config utilities (4 services) | **P1** | Low | Code Quality | ✅ Done |
+| **CQ-4** | Extract shared swagger plugin factory | **P2** | Medium | Shared Infrastructure | ✅ Done |
+| **CQ-5** | Extract shared `createDbPool()` factory | **P2** | Medium | Shared Infrastructure | ✅ Done |
+| **CQ-6** | Standardize `X-Request-Id` propagation | **P2** | Medium | Observability | ✅ Done |
+| **CQ-7** | Add tests for notification-service | **P2** | Medium | Testing | ✅ Done |
+| **CQ-8** | Add tests for revenue-service | **P2** | Medium | Testing | ✅ Done |
+| **CQ-9** | Add test coverage reporting | **P2** | Low | Testing | Open |
+| **CQ-10** | Circuit breakers for inter-service HTTP | **P3** | Medium | Resilience | ✅ Done |
+| **CQ-11** | Lazy loading for core-service routes | **P3** | Low | Performance | Skipped |
+| **CQ-12** | Prepared statement caching / statement_timeout | **P3** | Medium | Performance | ✅ Done |
+| **CQ-13** | Centralize error handler | **P2** | Medium | Reliability | ✅ Done |
+| **CQ-14** | Health check consistency | **P2** | Low | Reliability | ✅ Done |
+| **S17** | Mobile / self-service check-in | **P3** | High | Guest Experience | Open |
+| **S27** | Registration card generation | **P3** | Medium | Guest Experience | Open |
+| **S28** | Key card / door lock integration | **P3** | Very High | Guest Experience | Open |
+| **S30** | Direct booking engine | **P3** | Very High | Guest Experience | Open |
 
-**Totals**: 3 P1 (quick wins), 6 P2 (short-term), 7 P3 (medium-term) — 16 open items.
+**Totals**: 12 CQ items completed, 1 skipped, 1 open (CQ-9). 4 feature items open.

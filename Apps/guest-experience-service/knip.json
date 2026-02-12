@@ -1,0 +1,24 @@
+{
+  "$schema": "https://unpkg.com/knip@5/schema.json",
+  "project": [
+    "src/**/*.ts"
+  ],
+  "ignore": [
+    "src/lib/db.ts",
+    "src/kafka/producer.ts"
+  ],
+  "ignoreDependencies": [
+    "@tartware/schemas",
+    "@tartware/telemetry",
+    "@tartware/openapi",
+    "@tartware/config",
+    "@tartware/tenant-auth",
+    "@tartware/command-consumer-utils",
+    "@fastify/cors",
+    "@fastify/helmet",
+    "@fastify/sensible",
+    "@tartware/fastify-server",
+    "@vitest/coverage-v8"
+  ],
+  "ignoreBinaries": []
+}
