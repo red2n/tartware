@@ -1,8 +1,9 @@
 -- =====================================================
 -- verify-14-system-audit-indexes.sql
 -- Index Verification Script for System & Audit
--- Category: 14-system-audit (3 tables)
+-- Category: 14-system-audit (4 tables)
 -- Date: 2025-10-19
+-- Updated: 2026-02-12
 -- =====================================================
 
 \c tartware
@@ -10,7 +11,7 @@
 \echo ''
 \echo '=============================================='
 \echo '  SYSTEM & AUDIT - INDEX VERIFICATION'
-\echo '  Tables: 3'
+\echo '  Tables: 4'
 \echo '=============================================='
 \echo ''
 
@@ -25,7 +26,7 @@ SELECT
     COUNT(CASE WHEN indexname LIKE '%_pkey' THEN 1 END) AS primary_keys,
     COUNT(CASE WHEN indexname NOT LIKE '%_pkey' THEN 1 END) AS secondary_indexes
 FROM pg_indexes
-WHERE tablename IN ('audit_logs', 'business_dates', 'night_audit_log')
+WHERE tablename IN ('audit_logs', 'business_dates', 'night_audit_log', 'tenant_access_audit')
     AND schemaname = 'public'
 GROUP BY tablename
 ORDER BY tablename;
@@ -45,7 +46,7 @@ WITH fk_columns AS (
     JOIN information_schema.key_column_usage kcu
         ON tc.constraint_name = kcu.constraint_name
     WHERE tc.constraint_type = 'FOREIGN KEY'
-        AND tc.table_name IN ('audit_logs', 'business_dates', 'night_audit_log')
+        AND tc.table_name IN ('audit_logs', 'business_dates', 'night_audit_log', 'tenant_access_audit')
 ),
 indexed_columns AS (
     SELECT
@@ -93,7 +94,7 @@ SELECT
         ELSE 'No partial index'
     END AS partial_index_status
 FROM pg_indexes
-WHERE tablename IN ('audit_logs', 'business_dates', 'night_audit_log')
+WHERE tablename IN ('audit_logs', 'business_dates', 'night_audit_log', 'tenant_access_audit')
     AND schemaname = 'public'
     AND indexdef LIKE '%WHERE%'
 ORDER BY tablename, indexname;
@@ -116,14 +117,14 @@ BEGIN
     -- Count total indexes (excluding primary keys)
     SELECT COUNT(*) INTO v_total_indexes
     FROM pg_indexes
-    WHERE tablename IN ('audit_logs', 'business_dates', 'night_audit_log')
+    WHERE tablename IN ('audit_logs', 'business_dates', 'night_audit_log', 'tenant_access_audit')
         AND schemaname = 'public'
         AND indexname NOT LIKE '%_pkey';
 
     -- Count tables that have at least one secondary index
     SELECT COUNT(DISTINCT tablename) INTO v_tables_with_indexes
     FROM pg_indexes
-    WHERE tablename IN ('audit_logs', 'business_dates', 'night_audit_log')
+    WHERE tablename IN ('audit_logs', 'business_dates', 'night_audit_log', 'tenant_access_audit')
         AND schemaname = 'public'
         AND indexname NOT LIKE '%_pkey';
 
@@ -138,7 +139,7 @@ BEGIN
             ON tc.constraint_name = kcu.constraint_name
             AND tc.table_schema = kcu.table_schema
         WHERE tc.constraint_type = 'FOREIGN KEY'
-            AND tc.table_name IN ('audit_logs', 'business_dates', 'night_audit_log')
+            AND tc.table_name IN ('audit_logs', 'business_dates', 'night_audit_log', 'tenant_access_audit')
     ) fk
     WHERE NOT EXISTS (
         SELECT 1
@@ -157,11 +158,11 @@ BEGIN
     RAISE NOTICE '';
     RAISE NOTICE 'Category: System & Audit';
     RAISE NOTICE 'Total Secondary Indexes: %', v_total_indexes;
-    RAISE NOTICE 'Tables with Indexes: % / 3', v_tables_with_indexes;
+    RAISE NOTICE 'Tables with Indexes: % / 4', v_tables_with_indexes;
     RAISE NOTICE 'Foreign Keys Without Index: %', v_fk_without_index;
     RAISE NOTICE '';
 
-    IF v_fk_without_index = 0 AND v_tables_with_indexes = 3 THEN
+    IF v_fk_without_index = 0 AND v_tables_with_indexes = 4 THEN
         RAISE NOTICE '✓✓✓ SYSTEM & AUDIT INDEX VERIFICATION PASSED ✓✓✓';
     ELSE
         RAISE WARNING '⚠⚠⚠ SYSTEM & AUDIT INDEX VERIFICATION ISSUES FOUND ⚠⚠⚠';

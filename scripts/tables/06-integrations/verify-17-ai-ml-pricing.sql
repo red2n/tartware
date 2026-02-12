@@ -1,8 +1,8 @@
 -- =====================================================
--- verify-09-staff-operations.sql
--- Verification Script for Staff & Operations Tables
--- Category: 09-staff-operations (9 tables)
--- Date: 2025-10-19
+-- verify-17-ai-ml-pricing.sql
+-- Verification Script for AI/ML & Dynamic Pricing Tables
+-- Category: 17-ai-ml-pricing (12 tables)
+-- Date: 2026-02-12
 -- Updated: 2026-02-12
 -- =====================================================
 
@@ -10,19 +10,19 @@
 
 \echo ''
 \echo '=============================================='
-\echo '  CATEGORY: STAFF & OPERATIONS VERIFICATION'
-\echo '  Tables: 9 | Description: Staff scheduling, tasks, handovers, incidents, transportation'
+\echo '  CATEGORY: AI/ML & DYNAMIC PRICING VERIFICATION'
+\echo '  Tables: 12 | Description: AI demand predictions, ML pricing, guest behavior, sentiment, recommendations, model performance'
 \echo '=============================================='
 \echo ''
 
 -- =====================================================
 -- 1. CHECK IF ALL TABLES EXIST
 -- =====================================================
-\echo '1. Checking if all 9 tables exist...'
+\echo '1. Checking if all 12 tables exist...'
 
 DO $$
 DECLARE
-    v_expected_tables TEXT[] := ARRAY['staff_schedules', 'staff_tasks', 'shift_handovers', 'lost_and_found', 'incident_reports', 'vendor_contracts', 'vehicles', 'transportation_requests', 'shuttle_schedules'];
+    v_expected_tables TEXT[] := ARRAY['ai_demand_predictions', 'ai_model_performance', 'demand_scenarios', 'dynamic_pricing_rules_ml', 'guest_behavior_patterns', 'guest_interaction_events', 'personalized_recommendations', 'sentiment_analysis', 'sentiment_trends', 'review_response_templates', 'price_adjustments_history', 'pricing_experiments'];
     v_table TEXT;
     v_missing_tables TEXT[] := '{}'::TEXT[];
     v_found_count INTEGER := 0;
@@ -45,9 +45,9 @@ BEGIN
     RAISE NOTICE '';
     IF array_length(v_missing_tables, 1) > 0 THEN
         RAISE WARNING 'Missing tables: %', array_to_string(v_missing_tables, ', ');
-        RAISE EXCEPTION 'Staff & Operations verification FAILED - missing tables!';
+        RAISE EXCEPTION 'AI/ML & Dynamic Pricing verification FAILED - missing tables!';
     ELSE
-        RAISE NOTICE '✓✓✓ All 9 Staff & Operations tables exist!';
+        RAISE NOTICE '✓✓✓ All 12 AI/ML & Dynamic Pricing tables exist!';
     END IF;
 END $$;
 
@@ -68,7 +68,7 @@ FROM information_schema.tables t
 LEFT JOIN information_schema.columns c
     ON t.table_schema = c.table_schema
     AND t.table_name = c.table_name
-WHERE t.table_name IN ('staff_schedules', 'staff_tasks', 'shift_handovers', 'lost_and_found', 'incident_reports', 'vendor_contracts', 'vehicles', 'transportation_requests', 'shuttle_schedules')
+WHERE t.table_name IN ('ai_demand_predictions', 'ai_model_performance', 'demand_scenarios', 'dynamic_pricing_rules_ml', 'guest_behavior_patterns', 'guest_interaction_events', 'personalized_recommendations', 'sentiment_analysis', 'sentiment_trends', 'review_response_templates', 'price_adjustments_history', 'pricing_experiments')
     AND t.table_schema = 'public'
 GROUP BY t.table_schema, t.table_name
 ORDER BY t.table_name;
@@ -88,23 +88,23 @@ DECLARE
 BEGIN
     SELECT COUNT(*) INTO v_table_count
     FROM information_schema.tables t
-    WHERE t.table_name IN ('staff_schedules', 'staff_tasks', 'shift_handovers', 'lost_and_found', 'incident_reports', 'vendor_contracts', 'vehicles', 'transportation_requests', 'shuttle_schedules')
+    WHERE t.table_name IN ('ai_demand_predictions', 'ai_model_performance', 'demand_scenarios', 'dynamic_pricing_rules_ml', 'guest_behavior_patterns', 'guest_interaction_events', 'personalized_recommendations', 'sentiment_analysis', 'sentiment_trends', 'review_response_templates', 'price_adjustments_history', 'pricing_experiments')
         AND t.table_schema = 'public';
 
     RAISE NOTICE '';
-    RAISE NOTICE 'Category: Staff & Operations';
-    RAISE NOTICE 'Tables Found: % / 9', v_table_count;
+    RAISE NOTICE 'Category: AI/ML & Dynamic Pricing';
+    RAISE NOTICE 'Tables Found: % / 12', v_table_count;
     RAISE NOTICE '';
 
-    IF v_table_count = 9 THEN
-        RAISE NOTICE '✓✓✓ STAFF & OPERATIONS VERIFICATION PASSED ✓✓✓';
+    IF v_table_count = 12 THEN
+        RAISE NOTICE '✓✓✓ AI/ML & DYNAMIC PRICING VERIFICATION PASSED ✓✓✓';
     ELSE
-        RAISE WARNING '⚠⚠⚠ STAFF & OPERATIONS VERIFICATION FAILED ⚠⚠⚠';
-        RAISE WARNING 'Expected 9 tables, found %', v_table_count;
+        RAISE WARNING '⚠⚠⚠ AI/ML & DYNAMIC PRICING VERIFICATION FAILED ⚠⚠⚠';
+        RAISE WARNING 'Expected 12 tables, found %', v_table_count;
     END IF;
 END $$;
 
 \echo ''
 \echo '=============================================='
-\echo 'Staff & Operations verification complete!'
+\echo 'AI/ML & Dynamic Pricing verification complete!'
 \echo '=============================================='

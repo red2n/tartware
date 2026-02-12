@@ -1,17 +1,16 @@
 -- =====================================================
--- verify-12-analytics-reporting-constraints.sql
--- Constraint Verification Script for Analytics & Reporting
--- Category: 12-analytics-reporting (18 tables)
--- Date: 2025-10-19
--- Updated: 2026-02-12
+-- verify-16-commercial-groups-constraints.sql
+-- Constraint Verification Script for Commercial & Group Bookings
+-- Category: 16-commercial-groups (12 tables)
+-- Date: 2026-02-12
 -- =====================================================
 
 \c tartware
 
 \echo ''
 \echo '=============================================='
-\echo '  ANALYTICS & REPORTING - CONSTRAINT VERIFICATION'
-\echo '  Tables: 18'
+\echo '  COMMERCIAL & GROUP BOOKINGS - CONSTRAINT VERIFICATION'
+\echo '  Tables: 12'
 \echo '=============================================='
 \echo ''
 
@@ -25,7 +24,7 @@ SELECT
     COUNT(*) AS fk_count
 FROM information_schema.table_constraints tc
 WHERE tc.constraint_type = 'FOREIGN KEY'
-    AND tc.table_name IN ('analytics_metrics', 'analytics_metric_dimensions', 'analytics_reports', 'report_property_ids', 'performance_reports', 'report_schedules', 'performance_thresholds', 'performance_baselines', 'performance_alerts', 'alert_rules', 'guest_journey_tracking', 'revenue_attribution', 'forecasting_models', 'ab_test_results', 'sustainability_metrics', 'sustainability_initiatives', 'carbon_offset_programs', 'green_certifications')
+    AND tc.table_name IN ('companies', 'group_bookings', 'group_room_blocks', 'packages', 'package_bookings', 'package_components', 'travel_agent_commissions', 'commission_rules', 'commission_statements', 'meeting_rooms', 'event_bookings', 'banquet_event_orders')
     AND tc.table_schema = 'public'
 GROUP BY tc.table_name
 ORDER BY tc.table_name;
@@ -50,7 +49,7 @@ JOIN information_schema.referential_constraints rc
     ON tc.constraint_name = rc.constraint_name
     AND tc.table_schema = rc.constraint_schema
 WHERE tc.constraint_type = 'FOREIGN KEY'
-    AND tc.table_name IN ('analytics_metrics', 'analytics_metric_dimensions', 'analytics_reports', 'report_property_ids', 'performance_reports', 'report_schedules', 'performance_thresholds', 'performance_baselines', 'performance_alerts', 'alert_rules', 'guest_journey_tracking', 'revenue_attribution', 'forecasting_models', 'ab_test_results', 'sustainability_metrics', 'sustainability_initiatives', 'carbon_offset_programs', 'green_certifications')
+    AND tc.table_name IN ('companies', 'group_bookings', 'group_room_blocks', 'packages', 'package_bookings', 'package_components', 'travel_agent_commissions', 'commission_rules', 'commission_statements', 'meeting_rooms', 'event_bookings', 'banquet_event_orders')
     AND tc.table_schema = 'public'
 ORDER BY tc.table_name, tc.constraint_name;
 
@@ -71,7 +70,7 @@ JOIN information_schema.referential_constraints rc
     ON tc.constraint_name = rc.constraint_name
     AND tc.table_schema = rc.constraint_schema
 WHERE tc.constraint_type = 'FOREIGN KEY'
-    AND tc.table_name IN ('analytics_metrics', 'analytics_metric_dimensions', 'analytics_reports', 'report_property_ids', 'performance_reports', 'report_schedules', 'performance_thresholds', 'performance_baselines', 'performance_alerts', 'alert_rules', 'guest_journey_tracking', 'revenue_attribution', 'forecasting_models', 'ab_test_results', 'sustainability_metrics', 'sustainability_initiatives', 'carbon_offset_programs', 'green_certifications')
+    AND tc.table_name IN ('companies', 'group_bookings', 'group_room_blocks', 'packages', 'package_bookings', 'package_components', 'travel_agent_commissions', 'commission_rules', 'commission_statements', 'meeting_rooms', 'event_bookings', 'banquet_event_orders')
     AND tc.table_schema = 'public'
 ORDER BY tc.table_name, tc.constraint_name;
 
@@ -92,7 +91,7 @@ JOIN information_schema.key_column_usage kcu
     AND tc.table_schema = kcu.table_schema
 WHERE tc.constraint_type = 'FOREIGN KEY'
     AND kcu.column_name = 'tenant_id'
-    AND tc.table_name IN ('analytics_metrics', 'analytics_metric_dimensions', 'analytics_reports', 'report_property_ids', 'performance_reports', 'report_schedules', 'performance_thresholds', 'performance_baselines', 'performance_alerts', 'alert_rules', 'guest_journey_tracking', 'revenue_attribution', 'forecasting_models', 'ab_test_results', 'sustainability_metrics', 'sustainability_initiatives', 'carbon_offset_programs', 'green_certifications')
+    AND tc.table_name IN ('companies', 'group_bookings', 'group_room_blocks', 'packages', 'package_bookings', 'package_components', 'travel_agent_commissions', 'commission_rules', 'commission_statements', 'meeting_rooms', 'event_bookings', 'banquet_event_orders')
     AND tc.table_schema = 'public'
 ORDER BY tc.table_name;
 
@@ -112,14 +111,12 @@ DECLARE
     v_cascade_count INTEGER;
     v_tenant_fks INTEGER;
 BEGIN
-    -- Total FKs
     SELECT COUNT(*) INTO v_total_fks
     FROM information_schema.table_constraints tc
     WHERE tc.constraint_type = 'FOREIGN KEY'
-        AND tc.table_name IN ('analytics_metrics', 'analytics_metric_dimensions', 'analytics_reports', 'report_property_ids', 'performance_reports', 'report_schedules', 'performance_thresholds', 'performance_baselines', 'performance_alerts', 'alert_rules', 'guest_journey_tracking', 'revenue_attribution', 'forecasting_models', 'ab_test_results', 'sustainability_metrics', 'sustainability_initiatives', 'carbon_offset_programs', 'green_certifications')
+        AND tc.table_name IN ('companies', 'group_bookings', 'group_room_blocks', 'packages', 'package_bookings', 'package_components', 'travel_agent_commissions', 'commission_rules', 'commission_statements', 'meeting_rooms', 'event_bookings', 'banquet_event_orders')
         AND tc.table_schema = 'public';
 
-    -- RESTRICT deletes
     SELECT COUNT(*) INTO v_restrict_count
     FROM information_schema.table_constraints tc
     JOIN information_schema.referential_constraints rc
@@ -127,10 +124,9 @@ BEGIN
         AND tc.table_schema = rc.constraint_schema
     WHERE tc.constraint_type = 'FOREIGN KEY'
         AND rc.delete_rule = 'RESTRICT'
-        AND tc.table_name IN ('analytics_metrics', 'analytics_metric_dimensions', 'analytics_reports', 'report_property_ids', 'performance_reports', 'report_schedules', 'performance_thresholds', 'performance_baselines', 'performance_alerts', 'alert_rules', 'guest_journey_tracking', 'revenue_attribution', 'forecasting_models', 'ab_test_results', 'sustainability_metrics', 'sustainability_initiatives', 'carbon_offset_programs', 'green_certifications')
+        AND tc.table_name IN ('companies', 'group_bookings', 'group_room_blocks', 'packages', 'package_bookings', 'package_components', 'travel_agent_commissions', 'commission_rules', 'commission_statements', 'meeting_rooms', 'event_bookings', 'banquet_event_orders')
         AND tc.table_schema = 'public';
 
-    -- CASCADE updates
     SELECT COUNT(*) INTO v_cascade_count
     FROM information_schema.table_constraints tc
     JOIN information_schema.referential_constraints rc
@@ -138,21 +134,20 @@ BEGIN
         AND tc.table_schema = rc.constraint_schema
     WHERE tc.constraint_type = 'FOREIGN KEY'
         AND rc.update_rule = 'CASCADE'
-        AND tc.table_name IN ('analytics_metrics', 'analytics_metric_dimensions', 'analytics_reports', 'report_property_ids', 'performance_reports', 'report_schedules', 'performance_thresholds', 'performance_baselines', 'performance_alerts', 'alert_rules', 'guest_journey_tracking', 'revenue_attribution', 'forecasting_models', 'ab_test_results', 'sustainability_metrics', 'sustainability_initiatives', 'carbon_offset_programs', 'green_certifications')
+        AND tc.table_name IN ('companies', 'group_bookings', 'group_room_blocks', 'packages', 'package_bookings', 'package_components', 'travel_agent_commissions', 'commission_rules', 'commission_statements', 'meeting_rooms', 'event_bookings', 'banquet_event_orders')
         AND tc.table_schema = 'public';
 
-    -- Tenant FK count
     SELECT COUNT(*) INTO v_tenant_fks
     FROM information_schema.table_constraints tc
     JOIN information_schema.key_column_usage kcu
         ON tc.constraint_name = kcu.constraint_name
     WHERE tc.constraint_type = 'FOREIGN KEY'
         AND kcu.column_name = 'tenant_id'
-        AND tc.table_name IN ('analytics_metrics', 'analytics_metric_dimensions', 'analytics_reports', 'report_property_ids', 'performance_reports', 'report_schedules', 'performance_thresholds', 'performance_baselines', 'performance_alerts', 'alert_rules', 'guest_journey_tracking', 'revenue_attribution', 'forecasting_models', 'ab_test_results', 'sustainability_metrics', 'sustainability_initiatives', 'carbon_offset_programs', 'green_certifications')
+        AND tc.table_name IN ('companies', 'group_bookings', 'group_room_blocks', 'packages', 'package_bookings', 'package_components', 'travel_agent_commissions', 'commission_rules', 'commission_statements', 'meeting_rooms', 'event_bookings', 'banquet_event_orders')
         AND tc.table_schema = 'public';
 
     RAISE NOTICE '';
-    RAISE NOTICE 'Category: Analytics & Reporting';
+    RAISE NOTICE 'Category: Commercial & Group Bookings';
     RAISE NOTICE 'Total Foreign Keys: %', v_total_fks;
     RAISE NOTICE 'DELETE RESTRICT: % / %', v_restrict_count, v_total_fks;
     RAISE NOTICE 'UPDATE CASCADE: % / %', v_cascade_count, v_total_fks;
@@ -162,11 +157,11 @@ BEGIN
     IF v_total_fks = 0 THEN
         RAISE WARNING '⚠⚠⚠ NO FOREIGN KEYS FOUND ⚠⚠⚠';
     ELSE
-        RAISE NOTICE '✓✓✓ ANALYTICS & REPORTING CONSTRAINT VERIFICATION PASSED ✓✓✓';
+        RAISE NOTICE '✓✓✓ COMMERCIAL & GROUP BOOKINGS CONSTRAINT VERIFICATION PASSED ✓✓✓';
     END IF;
 END $$;
 
 \echo ''
 \echo '=============================================='
-\echo 'Analytics & Reporting constraint verification complete!'
+\echo 'Commercial & Group Bookings constraint verification complete!'
 \echo '=============================================='

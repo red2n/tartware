@@ -19,6 +19,7 @@
 -- Inventory and revenue management
 \i indexes/02-inventory/verify-02-room-inventory-indexes.sql
 \i indexes/02-inventory/verify-08-revenue-management-indexes.sql
+\i indexes/02-inventory/verify-16-commercial-groups-indexes.sql
 
 -- Bookings and guest CRM
 \i indexes/03-bookings/verify-03-reservations-booking-indexes.sql
@@ -36,6 +37,7 @@
 \i indexes/06-integrations/verify-06-channel-ota-indexes.sql
 \i indexes/06-integrations/verify-10-marketing-campaigns-indexes.sql
 \i indexes/06-integrations/verify-15-integration-hub-indexes.sql
+\i indexes/06-integrations/verify-17-ai-ml-pricing-indexes.sql
 
 -- Analytics, compliance, and system health
 \i indexes/07-analytics/verify-11-compliance-legal-indexes.sql

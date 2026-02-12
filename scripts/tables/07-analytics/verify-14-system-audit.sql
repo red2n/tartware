@@ -1,8 +1,9 @@
 -- =====================================================
 -- verify-14-system-audit.sql
 -- Verification Script for System & Audit Tables
--- Category: 14-system-audit (3 tables)
+-- Category: 14-system-audit (4 tables)
 -- Date: 2025-10-19
+-- Updated: 2026-02-12
 -- =====================================================
 
 \c tartware
@@ -10,18 +11,18 @@
 \echo ''
 \echo '=============================================='
 \echo '  CATEGORY: SYSTEM & AUDIT VERIFICATION'
-\echo '  Tables: 3 | Description: Audit logs, business dates, night audit'
+\echo '  Tables: 4 | Description: Audit logs, business dates, night audit, tenant access audit'
 \echo '=============================================='
 \echo ''
 
 -- =====================================================
 -- 1. CHECK IF ALL TABLES EXIST
 -- =====================================================
-\echo '1. Checking if all 3 tables exist...'
+\echo '1. Checking if all 4 tables exist...'
 
 DO $$
 DECLARE
-    v_expected_tables TEXT[] := ARRAY['audit_logs', 'business_dates', 'night_audit_log'];
+    v_expected_tables TEXT[] := ARRAY['audit_logs', 'business_dates', 'night_audit_log', 'tenant_access_audit'];
     v_table TEXT;
     v_missing_tables TEXT[] := '{}'::TEXT[];
     v_found_count INTEGER := 0;
@@ -46,7 +47,7 @@ BEGIN
         RAISE WARNING 'Missing tables: %', array_to_string(v_missing_tables, ', ');
         RAISE EXCEPTION 'System & Audit verification FAILED - missing tables!';
     ELSE
-        RAISE NOTICE '✓✓✓ All 3 System & Audit tables exist!';
+        RAISE NOTICE '✓✓✓ All 4 System & Audit tables exist!';
     END IF;
 END $$;
 
@@ -67,7 +68,7 @@ FROM information_schema.tables t
 LEFT JOIN information_schema.columns c
     ON t.table_schema = c.table_schema
     AND t.table_name = c.table_name
-WHERE t.table_name IN ('audit_logs', 'business_dates', 'night_audit_log')
+WHERE t.table_name IN ('audit_logs', 'business_dates', 'night_audit_log', 'tenant_access_audit')
     AND t.table_schema = 'public'
 GROUP BY t.table_schema, t.table_name
 ORDER BY t.table_name;
@@ -87,19 +88,19 @@ DECLARE
 BEGIN
     SELECT COUNT(*) INTO v_table_count
     FROM information_schema.tables t
-    WHERE t.table_name IN ('audit_logs', 'business_dates', 'night_audit_log')
+    WHERE t.table_name IN ('audit_logs', 'business_dates', 'night_audit_log', 'tenant_access_audit')
         AND t.table_schema = 'public';
 
     RAISE NOTICE '';
     RAISE NOTICE 'Category: System & Audit';
-    RAISE NOTICE 'Tables Found: % / 3', v_table_count;
+    RAISE NOTICE 'Tables Found: % / 4', v_table_count;
     RAISE NOTICE '';
 
-    IF v_table_count = 3 THEN
+    IF v_table_count = 4 THEN
         RAISE NOTICE '✓✓✓ SYSTEM & AUDIT VERIFICATION PASSED ✓✓✓';
     ELSE
         RAISE WARNING '⚠⚠⚠ SYSTEM & AUDIT VERIFICATION FAILED ⚠⚠⚠';
-        RAISE WARNING 'Expected 3 tables, found %', v_table_count;
+        RAISE WARNING 'Expected 4 tables, found %', v_table_count;
     END IF;
 END $$;
 

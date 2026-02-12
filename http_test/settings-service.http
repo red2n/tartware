@@ -1,6 +1,6 @@
 ###############################################################################
 # SETTINGS SERVICE - Configuration & Catalog Management
-# Routes via API Gateway (localhost:8080) -> settings-service (port 3200)
+# Routes via API Gateway (localhost:8080) -> settings-service (port 3005)
 #
 # Content: Settings Catalog, Categories, Sections, Definitions, Options,
 #          Settings Values, Property Amenities, Packages

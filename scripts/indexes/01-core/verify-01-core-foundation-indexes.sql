@@ -1,8 +1,9 @@
 -- =====================================================
 -- verify-01-core-foundation-indexes.sql
 -- Index Verification Script for Core Foundation
--- Category: 01-core-foundation (13 tables)
+-- Category: 01-core-foundation (20 tables)
 -- Date: 2025-11-12
+-- Updated: 2026-02-12
 -- =====================================================
 
 \c tartware
@@ -10,7 +11,7 @@
 \echo ''
 \echo '=============================================='
 \echo '  CORE FOUNDATION - INDEX VERIFICATION'
-\echo '  Tables: 13'
+\echo '  Tables: 20'
 \echo '=============================================='
 \echo ''
 
@@ -33,7 +34,14 @@ WITH core_tables AS (
         'room_settings',
         'user_settings',
         'system_administrators',
-        'system_admin_audit_log'
+        'system_admin_audit_log',
+        'transactional_outbox',
+        'system_admin_break_glass_codes',
+        'command_templates',
+        'command_routes',
+        'command_features',
+        'command_dispatches',
+        'command_idempotency'
     ]) AS table_name
 )
 SELECT
@@ -70,7 +78,14 @@ WITH core_tables AS (
         'room_settings',
         'user_settings',
         'system_administrators',
-        'system_admin_audit_log'
+        'system_admin_audit_log',
+        'transactional_outbox',
+        'system_admin_break_glass_codes',
+        'command_templates',
+        'command_routes',
+        'command_features',
+        'command_dispatches',
+        'command_idempotency'
     ]) AS table_name
 ),
 fk_columns AS (
@@ -143,7 +158,14 @@ WITH core_tables AS (
         'room_settings',
         'user_settings',
         'system_administrators',
-        'system_admin_audit_log'
+        'system_admin_audit_log',
+        'transactional_outbox',
+        'system_admin_break_glass_codes',
+        'command_templates',
+        'command_routes',
+        'command_features',
+        'command_dispatches',
+        'command_idempotency'
     ]) AS table_name
 )
 SELECT
@@ -185,7 +207,14 @@ DECLARE
         'room_settings',
         'user_settings',
         'system_administrators',
-        'system_admin_audit_log'
+        'system_admin_audit_log',
+        'transactional_outbox',
+        'system_admin_break_glass_codes',
+        'command_templates',
+        'command_routes',
+        'command_features',
+        'command_dispatches',
+        'command_idempotency'
     ];
     v_expected_tables INTEGER := array_length(v_tables, 1);
     v_total_indexes INTEGER;

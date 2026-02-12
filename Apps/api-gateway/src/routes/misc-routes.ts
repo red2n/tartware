@@ -110,6 +110,34 @@ export const registerMiscRoutes = (app: FastifyInstance): void => {
     proxySettings,
   );
 
+  app.all(
+    "/v1/packages",
+    {
+      schema: buildRouteSchema({
+        tag: SETTINGS_PROXY_TAG,
+        summary: "Proxy package requests to the settings service.",
+        response: {
+          200: jsonObjectSchema,
+        },
+      }),
+    },
+    proxySettings,
+  );
+
+  app.all(
+    "/v1/packages/*",
+    {
+      schema: buildRouteSchema({
+        tag: SETTINGS_PROXY_TAG,
+        summary: "Proxy package requests to the settings service.",
+        response: {
+          200: jsonObjectSchema,
+        },
+      }),
+    },
+    proxySettings,
+  );
+
   // ─── Recommendation Routes ──────────────────────────────────────
 
   const proxyRecommendations = async (request: FastifyRequest, reply: FastifyReply) =>

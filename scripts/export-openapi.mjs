@@ -167,6 +167,17 @@ const services = [
       return buildServer({ logger });
     },
   },
+  {
+    id: "guest-experience-service",
+    output: "docs/openapi/guest-experience-service.json",
+    modulePath: "Apps/guest-experience-service/dist/Apps/guest-experience-service/src/server.js",
+    build: async () => {
+      const { buildServer } = await import(
+        resolveDistModule("Apps/guest-experience-service/dist/Apps/guest-experience-service/src/server.js")
+      );
+      return buildServer();
+    },
+  },
 ];
 
 const ensureDistExists = async (relativePath) => {

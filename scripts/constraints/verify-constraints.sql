@@ -19,6 +19,7 @@
 -- Inventory and revenue management
 \i constraints/02-inventory/verify-02-room-inventory-constraints.sql
 \i constraints/02-inventory/verify-08-revenue-management-constraints.sql
+\i constraints/02-inventory/verify-16-commercial-groups-constraints.sql
 
 -- Bookings and guest CRM
 \i constraints/03-bookings/verify-03-reservations-booking-constraints.sql
@@ -36,6 +37,7 @@
 \i constraints/06-integrations/verify-06-channel-ota-constraints.sql
 \i constraints/06-integrations/verify-10-marketing-campaigns-constraints.sql
 \i constraints/06-integrations/verify-15-integration-hub-constraints.sql
+\i constraints/06-integrations/verify-17-ai-ml-pricing-constraints.sql
 
 -- Analytics, compliance, and system health
 \i constraints/07-analytics/verify-11-compliance-legal-constraints.sql

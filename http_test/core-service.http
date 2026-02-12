@@ -108,8 +108,11 @@ Authorization: Bearer {{authToken}}
 
 ###
 # Get user by ID
-GET {{baseUrl}}/v1/users/{{userId}}
-Authorization: Bearer {{authToken}}
+# NOTE: No GET /v1/users/:id route exists in core-service currently.
+# Users are listed via GET /v1/users?tenant_id=...
+# Uncomment when endpoint is implemented:
+# GET {{baseUrl}}/v1/users/{{userId}}
+# Authorization: Bearer {{authToken}}
 
 ###
 # Create a new tenant user (requires ADMIN+ role)
@@ -130,14 +133,16 @@ Authorization: Bearer {{authToken}}
 
 ###
 # Update user details
-PUT {{baseUrl}}/v1/users/{{userId}}
-Content-Type: application/json
-Authorization: Bearer {{authToken}}
-
-{
-  "first_name": "Updated",
-  "last_name": "Name"
-}
+# NOTE: No PUT /v1/users/:id route exists in core-service currently.
+# Uncomment when endpoint is implemented:
+# PUT {{baseUrl}}/v1/users/{{userId}}
+# Content-Type: application/json
+# Authorization: Bearer {{authToken}}
+#
+# {
+#   "first_name": "Updated",
+#   "last_name": "Name"
+# }
 
 ###
 # Reset a user's password (requires ADMIN+ role)

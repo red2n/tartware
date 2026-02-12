@@ -1,8 +1,9 @@
 -- =====================================================
 -- verify-12-analytics-reporting-indexes.sql
 -- Index Verification Script for Analytics & Reporting
--- Category: 12-analytics-reporting (14 tables)
+-- Category: 12-analytics-reporting (18 tables)
 -- Date: 2025-10-19
+-- Updated: 2026-02-12
 -- =====================================================
 
 \c tartware
@@ -10,7 +11,7 @@
 \echo ''
 \echo '=============================================='
 \echo '  ANALYTICS & REPORTING - INDEX VERIFICATION'
-\echo '  Tables: 14'
+\echo '  Tables: 18'
 \echo '=============================================='
 \echo ''
 
@@ -25,7 +26,7 @@ SELECT
     COUNT(CASE WHEN indexname LIKE '%_pkey' THEN 1 END) AS primary_keys,
     COUNT(CASE WHEN indexname NOT LIKE '%_pkey' THEN 1 END) AS secondary_indexes
 FROM pg_indexes
-WHERE tablename IN ('analytics_metrics', 'analytics_metric_dimensions', 'analytics_reports', 'report_property_ids', 'performance_reports', 'report_schedules', 'performance_thresholds', 'performance_baselines', 'performance_alerts', 'alert_rules', 'guest_journey_tracking', 'revenue_attribution', 'forecasting_models', 'ab_test_results')
+WHERE tablename IN ('analytics_metrics', 'analytics_metric_dimensions', 'analytics_reports', 'report_property_ids', 'performance_reports', 'report_schedules', 'performance_thresholds', 'performance_baselines', 'performance_alerts', 'alert_rules', 'guest_journey_tracking', 'revenue_attribution', 'forecasting_models', 'ab_test_results', 'sustainability_metrics', 'sustainability_initiatives', 'carbon_offset_programs', 'green_certifications')
     AND schemaname = 'public'
 GROUP BY tablename
 ORDER BY tablename;
@@ -45,7 +46,7 @@ WITH fk_columns AS (
     JOIN information_schema.key_column_usage kcu
         ON tc.constraint_name = kcu.constraint_name
     WHERE tc.constraint_type = 'FOREIGN KEY'
-        AND tc.table_name IN ('analytics_metrics', 'analytics_metric_dimensions', 'analytics_reports', 'report_property_ids', 'performance_reports', 'report_schedules', 'performance_thresholds', 'performance_baselines', 'performance_alerts', 'alert_rules', 'guest_journey_tracking', 'revenue_attribution', 'forecasting_models', 'ab_test_results')
+        AND tc.table_name IN ('analytics_metrics', 'analytics_metric_dimensions', 'analytics_reports', 'report_property_ids', 'performance_reports', 'report_schedules', 'performance_thresholds', 'performance_baselines', 'performance_alerts', 'alert_rules', 'guest_journey_tracking', 'revenue_attribution', 'forecasting_models', 'ab_test_results', 'sustainability_metrics', 'sustainability_initiatives', 'carbon_offset_programs', 'green_certifications')
 ),
 indexed_columns AS (
     SELECT
@@ -93,7 +94,7 @@ SELECT
         ELSE 'No partial index'
     END AS partial_index_status
 FROM pg_indexes
-WHERE tablename IN ('analytics_metrics', 'analytics_metric_dimensions', 'analytics_reports', 'report_property_ids', 'performance_reports', 'report_schedules', 'performance_thresholds', 'performance_baselines', 'performance_alerts', 'alert_rules', 'guest_journey_tracking', 'revenue_attribution', 'forecasting_models', 'ab_test_results')
+WHERE tablename IN ('analytics_metrics', 'analytics_metric_dimensions', 'analytics_reports', 'report_property_ids', 'performance_reports', 'report_schedules', 'performance_thresholds', 'performance_baselines', 'performance_alerts', 'alert_rules', 'guest_journey_tracking', 'revenue_attribution', 'forecasting_models', 'ab_test_results', 'sustainability_metrics', 'sustainability_initiatives', 'carbon_offset_programs', 'green_certifications')
     AND schemaname = 'public'
     AND indexdef LIKE '%WHERE%'
 ORDER BY tablename, indexname;
@@ -116,14 +117,14 @@ BEGIN
     -- Count total indexes (excluding primary keys)
     SELECT COUNT(*) INTO v_total_indexes
     FROM pg_indexes
-    WHERE tablename IN ('analytics_metrics', 'analytics_metric_dimensions', 'analytics_reports', 'report_property_ids', 'performance_reports', 'report_schedules', 'performance_thresholds', 'performance_baselines', 'performance_alerts', 'alert_rules', 'guest_journey_tracking', 'revenue_attribution', 'forecasting_models', 'ab_test_results')
+    WHERE tablename IN ('analytics_metrics', 'analytics_metric_dimensions', 'analytics_reports', 'report_property_ids', 'performance_reports', 'report_schedules', 'performance_thresholds', 'performance_baselines', 'performance_alerts', 'alert_rules', 'guest_journey_tracking', 'revenue_attribution', 'forecasting_models', 'ab_test_results', 'sustainability_metrics', 'sustainability_initiatives', 'carbon_offset_programs', 'green_certifications')
         AND schemaname = 'public'
         AND indexname NOT LIKE '%_pkey';
 
     -- Count tables that have at least one secondary index
     SELECT COUNT(DISTINCT tablename) INTO v_tables_with_indexes
     FROM pg_indexes
-    WHERE tablename IN ('analytics_metrics', 'analytics_metric_dimensions', 'analytics_reports', 'report_property_ids', 'performance_reports', 'report_schedules', 'performance_thresholds', 'performance_baselines', 'performance_alerts', 'alert_rules', 'guest_journey_tracking', 'revenue_attribution', 'forecasting_models', 'ab_test_results')
+    WHERE tablename IN ('analytics_metrics', 'analytics_metric_dimensions', 'analytics_reports', 'report_property_ids', 'performance_reports', 'report_schedules', 'performance_thresholds', 'performance_baselines', 'performance_alerts', 'alert_rules', 'guest_journey_tracking', 'revenue_attribution', 'forecasting_models', 'ab_test_results', 'sustainability_metrics', 'sustainability_initiatives', 'carbon_offset_programs', 'green_certifications')
         AND schemaname = 'public'
         AND indexname NOT LIKE '%_pkey';
 
@@ -138,7 +139,7 @@ BEGIN
             ON tc.constraint_name = kcu.constraint_name
             AND tc.table_schema = kcu.table_schema
         WHERE tc.constraint_type = 'FOREIGN KEY'
-            AND tc.table_name IN ('analytics_metrics', 'analytics_metric_dimensions', 'analytics_reports', 'report_property_ids', 'performance_reports', 'report_schedules', 'performance_thresholds', 'performance_baselines', 'performance_alerts', 'alert_rules', 'guest_journey_tracking', 'revenue_attribution', 'forecasting_models', 'ab_test_results')
+            AND tc.table_name IN ('analytics_metrics', 'analytics_metric_dimensions', 'analytics_reports', 'report_property_ids', 'performance_reports', 'report_schedules', 'performance_thresholds', 'performance_baselines', 'performance_alerts', 'alert_rules', 'guest_journey_tracking', 'revenue_attribution', 'forecasting_models', 'ab_test_results', 'sustainability_metrics', 'sustainability_initiatives', 'carbon_offset_programs', 'green_certifications')
     ) fk
     WHERE NOT EXISTS (
         SELECT 1
@@ -157,11 +158,11 @@ BEGIN
     RAISE NOTICE '';
     RAISE NOTICE 'Category: Analytics & Reporting';
     RAISE NOTICE 'Total Secondary Indexes: %', v_total_indexes;
-    RAISE NOTICE 'Tables with Indexes: % / 14', v_tables_with_indexes;
+    RAISE NOTICE 'Tables with Indexes: % / 18', v_tables_with_indexes;
     RAISE NOTICE 'Foreign Keys Without Index: %', v_fk_without_index;
     RAISE NOTICE '';
 
-    IF v_fk_without_index = 0 AND v_tables_with_indexes = 14 THEN
+    IF v_fk_without_index = 0 AND v_tables_with_indexes = 18 THEN
         RAISE NOTICE '✓✓✓ ANALYTICS & REPORTING INDEX VERIFICATION PASSED ✓✓✓';
     ELSE
         RAISE WARNING '⚠⚠⚠ ANALYTICS & REPORTING INDEX VERIFICATION ISSUES FOUND ⚠⚠⚠';

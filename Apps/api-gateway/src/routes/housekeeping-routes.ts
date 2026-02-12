@@ -205,4 +205,48 @@ export const registerHousekeepingRoutes = (app: FastifyInstance): void => {
     },
     proxyHousekeeping,
   );
+
+  // Incidents routes - proxy to housekeeping service
+  app.all(
+    "/v1/incidents",
+    {
+      schema: buildRouteSchema({
+        tag: CORE_PROXY_TAG,
+        summary: "Proxy incident requests to the housekeeping service.",
+        response: {
+          200: jsonObjectSchema,
+        },
+      }),
+    },
+    proxyHousekeeping,
+  );
+
+  app.all(
+    "/v1/incidents/*",
+    {
+      schema: buildRouteSchema({
+        tag: CORE_PROXY_TAG,
+        summary: "Proxy incident requests to the housekeeping service.",
+        response: {
+          200: jsonObjectSchema,
+        },
+      }),
+    },
+    proxyHousekeeping,
+  );
+
+  // Maintenance routes - proxy to housekeeping service
+  app.all(
+    "/v1/maintenance/*",
+    {
+      schema: buildRouteSchema({
+        tag: CORE_PROXY_TAG,
+        summary: "Proxy maintenance requests to the housekeeping service.",
+        response: {
+          200: jsonObjectSchema,
+        },
+      }),
+    },
+    proxyHousekeeping,
+  );
 };

@@ -1,8 +1,9 @@
 -- =====================================================
 -- verify-13-mobile-digital.sql
 -- Verification Script for Mobile & Digital Tables
--- Category: 13-mobile-digital (4 tables)
+-- Category: 13-mobile-digital (11 tables)
 -- Date: 2025-10-19
+-- Updated: 2026-02-12
 -- =====================================================
 
 \c tartware
@@ -10,18 +11,18 @@
 \echo ''
 \echo '=============================================='
 \echo '  CATEGORY: MOBILE & DIGITAL VERIFICATION'
-\echo '  Tables: 4 | Description: Mobile keys, QR codes, push notifications'
+\echo '  Tables: 11 | Description: Mobile keys, QR codes, push notifications, smart room devices, digital check-in, IoT, energy'
 \echo '=============================================='
 \echo ''
 
 -- =====================================================
 -- 1. CHECK IF ALL TABLES EXIST
 -- =====================================================
-\echo '1. Checking if all 4 tables exist...'
+\echo '1. Checking if all 11 tables exist...'
 
 DO $$
 DECLARE
-    v_expected_tables TEXT[] := ARRAY['mobile_keys', 'qr_codes', 'push_notifications', 'app_usage_analytics'];
+    v_expected_tables TEXT[] := ARRAY['mobile_keys', 'qr_codes', 'push_notifications', 'app_usage_analytics', 'smart_room_devices', 'mobile_check_ins', 'digital_registration_cards', 'contactless_requests', 'guest_room_preferences', 'device_events_log', 'room_energy_usage'];
     v_table TEXT;
     v_missing_tables TEXT[] := '{}'::TEXT[];
     v_found_count INTEGER := 0;
@@ -46,7 +47,7 @@ BEGIN
         RAISE WARNING 'Missing tables: %', array_to_string(v_missing_tables, ', ');
         RAISE EXCEPTION 'Mobile & Digital verification FAILED - missing tables!';
     ELSE
-        RAISE NOTICE '✓✓✓ All 4 Mobile & Digital tables exist!';
+        RAISE NOTICE '✓✓✓ All 11 Mobile & Digital tables exist!';
     END IF;
 END $$;
 
@@ -67,7 +68,7 @@ FROM information_schema.tables t
 LEFT JOIN information_schema.columns c
     ON t.table_schema = c.table_schema
     AND t.table_name = c.table_name
-WHERE t.table_name IN ('mobile_keys', 'qr_codes', 'push_notifications', 'app_usage_analytics')
+WHERE t.table_name IN ('mobile_keys', 'qr_codes', 'push_notifications', 'app_usage_analytics', 'smart_room_devices', 'mobile_check_ins', 'digital_registration_cards', 'contactless_requests', 'guest_room_preferences', 'device_events_log', 'room_energy_usage')
     AND t.table_schema = 'public'
 GROUP BY t.table_schema, t.table_name
 ORDER BY t.table_name;
@@ -87,19 +88,19 @@ DECLARE
 BEGIN
     SELECT COUNT(*) INTO v_table_count
     FROM information_schema.tables t
-    WHERE t.table_name IN ('mobile_keys', 'qr_codes', 'push_notifications', 'app_usage_analytics')
+    WHERE t.table_name IN ('mobile_keys', 'qr_codes', 'push_notifications', 'app_usage_analytics', 'smart_room_devices', 'mobile_check_ins', 'digital_registration_cards', 'contactless_requests', 'guest_room_preferences', 'device_events_log', 'room_energy_usage')
         AND t.table_schema = 'public';
 
     RAISE NOTICE '';
     RAISE NOTICE 'Category: Mobile & Digital';
-    RAISE NOTICE 'Tables Found: % / 4', v_table_count;
+    RAISE NOTICE 'Tables Found: % / 11', v_table_count;
     RAISE NOTICE '';
 
-    IF v_table_count = 4 THEN
+    IF v_table_count = 11 THEN
         RAISE NOTICE '✓✓✓ MOBILE & DIGITAL VERIFICATION PASSED ✓✓✓';
     ELSE
         RAISE WARNING '⚠⚠⚠ MOBILE & DIGITAL VERIFICATION FAILED ⚠⚠⚠';
-        RAISE WARNING 'Expected 4 tables, found %', v_table_count;
+        RAISE WARNING 'Expected 11 tables, found %', v_table_count;
     END IF;
 END $$;
 

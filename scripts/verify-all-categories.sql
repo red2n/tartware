@@ -33,10 +33,13 @@
 \echo '══════════════════════════════════════════════════════'
 \i tables/02-inventory/verify-02-room-inventory.sql
 \i tables/02-inventory/verify-08-revenue-management.sql
+\i tables/02-inventory/verify-16-commercial-groups.sql
 \i indexes/02-inventory/verify-02-room-inventory-indexes.sql
 \i indexes/02-inventory/verify-08-revenue-management-indexes.sql
+\i indexes/02-inventory/verify-16-commercial-groups-indexes.sql
 \i constraints/02-inventory/verify-02-room-inventory-constraints.sql
 \i constraints/02-inventory/verify-08-revenue-management-constraints.sql
+\i constraints/02-inventory/verify-16-commercial-groups-constraints.sql
 
 -- =====================================================
 -- CATEGORY 3: BOOKINGS & GUEST EXPERIENCE
@@ -87,12 +90,15 @@
 \i tables/06-integrations/verify-06-channel-ota.sql
 \i tables/06-integrations/verify-10-marketing-campaigns.sql
 \i tables/06-integrations/verify-15-integration-hub.sql
+\i tables/06-integrations/verify-17-ai-ml-pricing.sql
 \i indexes/06-integrations/verify-06-channel-ota-indexes.sql
 \i indexes/06-integrations/verify-10-marketing-campaigns-indexes.sql
 \i indexes/06-integrations/verify-15-integration-hub-indexes.sql
+\i indexes/06-integrations/verify-17-ai-ml-pricing-indexes.sql
 \i constraints/06-integrations/verify-06-channel-ota-constraints.sql
 \i constraints/06-integrations/verify-10-marketing-campaigns-constraints.sql
 \i constraints/06-integrations/verify-15-integration-hub-constraints.sql
+\i constraints/06-integrations/verify-17-ai-ml-pricing-constraints.sql
 
 -- =====================================================
 -- CATEGORY 7: ANALYTICS, COMPLIANCE & AUDIT

@@ -19,6 +19,7 @@
 -- Inventory and revenue management
 \i tables/02-inventory/verify-02-room-inventory.sql
 \i tables/02-inventory/verify-08-revenue-management.sql
+\i tables/02-inventory/verify-16-commercial-groups.sql
 
 -- Bookings and guest CRM
 \i tables/03-bookings/verify-03-reservations-booking.sql
@@ -37,6 +38,7 @@
 \i tables/06-integrations/verify-06-channel-ota.sql
 \i tables/06-integrations/verify-10-marketing-campaigns.sql
 \i tables/06-integrations/verify-15-integration-hub.sql
+\i tables/06-integrations/verify-17-ai-ml-pricing.sql
 
 -- Analytics, compliance, and system health
 \i tables/07-analytics/verify-11-compliance-legal.sql
