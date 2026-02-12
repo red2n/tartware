@@ -1,5 +1,9 @@
+import {
+  ConfirmationCodeParamsSchema,
+  GuestBookingBodySchema,
+  GuestBookingSearchQuerySchema,
+} from "@tartware/schemas";
 import type { FastifyInstance } from "fastify";
-import { z } from "zod";
 
 import {
   createBooking,
@@ -9,36 +13,6 @@ import {
 } from "../services/booking-service.js";
 
 const BOOKING_TAG = "Direct Booking";
-
-const SearchQuery = z.object({
-  tenant_id: z.string().uuid(),
-  property_id: z.string().uuid(),
-  check_in_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-  check_out_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-  adults: z.coerce.number().int().min(1).default(1),
-  children: z.coerce.number().int().min(0).default(0),
-});
-
-const BookBody = z.object({
-  tenant_id: z.string().uuid(),
-  property_id: z.string().uuid(),
-  guest_email: z.string().email(),
-  guest_first_name: z.string().min(1).max(100),
-  guest_last_name: z.string().min(1).max(100),
-  guest_phone: z.string().max(50).optional(),
-  room_type_id: z.string().uuid(),
-  check_in_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-  check_out_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-  adults: z.number().int().min(1),
-  children: z.number().int().min(0).default(0),
-  payment_token: z.string().optional(),
-  special_requests: z.string().max(1000).optional(),
-  idempotency_key: z.string().max(120).optional(),
-});
-
-const ConfirmationCodeParams = z.object({
-  confirmationCode: z.string().min(1).max(50),
-});
 
 // Dev/test payment gateway stub
 const paymentGateway = new StubPaymentGateway();
@@ -63,7 +37,7 @@ export const registerBookingRoutes = (app: FastifyInstance): void => {
       },
     },
     async (request, reply) => {
-      const queryParams = SearchQuery.parse(request.query);
+      const queryParams = GuestBookingSearchQuerySchema.parse(request.query);
 
       const results = await searchAvailability({
         tenantId: queryParams.tenant_id,
@@ -93,7 +67,7 @@ export const registerBookingRoutes = (app: FastifyInstance): void => {
       },
     },
     async (request, reply) => {
-      const body = BookBody.parse(request.body);
+      const body = GuestBookingBodySchema.parse(request.body);
 
       const result = await createBooking(
         {
@@ -133,7 +107,7 @@ export const registerBookingRoutes = (app: FastifyInstance): void => {
       },
     },
     async (request, reply) => {
-      const params = ConfirmationCodeParams.parse(request.params);
+      const params = ConfirmationCodeParamsSchema.parse(request.params);
 
       const booking = await lookupBooking(params.confirmationCode);
       if (!booking) {

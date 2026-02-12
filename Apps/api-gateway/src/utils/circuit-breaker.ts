@@ -19,7 +19,7 @@ type CircuitBreakerOptions = {
  * States: CLOSED → (failures reach threshold) → OPEN → (resetTimeout expires) → HALF_OPEN
  *   - HALF_OPEN: one probe request; success → CLOSED, failure → OPEN
  */
-export class CircuitBreaker {
+class CircuitBreaker {
   private state: CircuitState = "CLOSED";
   private consecutiveFailures = 0;
   private openedAt = 0;

@@ -11,7 +11,9 @@
     "@tartware/config",
     "@tartware/fastify-server",
     "@tartware/schemas",
-    "@tartware/telemetry"
+    "@tartware/telemetry",
+    "pg",
+    "@types/pg"
   ],
   "ignoreBinaries": [],
   "ignoreExportsUsedInFile": {

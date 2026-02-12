@@ -11,7 +11,8 @@
     "@fastify/cors",
     "@fastify/helmet",
     "@fastify/sensible",
-    "@tartware/fastify-server"
+    "@tartware/fastify-server",
+    "pg"
   ],
   "ignoreBinaries": [],
   "ignoreExportsUsedInFile": true

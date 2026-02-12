@@ -1,5 +1,5 @@
+import { GenerateCardQuerySchema, ReservationIdParamsSchema } from "@tartware/schemas";
 import type { FastifyInstance } from "fastify";
-import { z } from "zod";
 
 import {
   generateRegistrationCard,
@@ -7,15 +7,6 @@ import {
 } from "../services/registration-card-service.js";
 
 const REGISTRATION_CARD_TAG = "Registration Card";
-
-const ReservationIdParams = z.object({
-  reservationId: z.string().uuid(),
-});
-
-const GenerateCardQuery = z.object({
-  tenant_id: z.string().uuid(),
-  mobile_checkin_id: z.string().uuid().optional(),
-});
 
 /**
  * Register registration card endpoints (S27).
@@ -37,8 +28,8 @@ export const registerRegistrationCardRoutes = (app: FastifyInstance): void => {
       },
     },
     async (request, reply) => {
-      const params = ReservationIdParams.parse(request.params);
-      const queryParams = GenerateCardQuery.parse(request.query);
+      const params = ReservationIdParamsSchema.parse(request.params);
+      const queryParams = GenerateCardQuerySchema.parse(request.query);
 
       // Try to find existing card
       const existing = await getRegistrationCard(params.reservationId, queryParams.tenant_id);
@@ -71,8 +62,8 @@ export const registerRegistrationCardRoutes = (app: FastifyInstance): void => {
       },
     },
     async (request, reply) => {
-      const params = ReservationIdParams.parse(request.params);
-      const queryParams = GenerateCardQuery.parse(request.query);
+      const params = ReservationIdParamsSchema.parse(request.params);
+      const queryParams = GenerateCardQuerySchema.parse(request.query);
 
       const card = await generateRegistrationCard({
         reservationId: params.reservationId,

@@ -15,6 +15,7 @@ export * from "./billing.js";
 export * from "./command-center.js";
 export * from "./direct-booking.js";
 export * from "./events.js";
+export * from "./guest-experience.js";
 export * from "./guests.js";
 export * from "./health.js";
 export * from "./housekeeping.js";

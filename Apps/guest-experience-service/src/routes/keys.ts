@@ -1,17 +1,9 @@
+import { MobileKeysQuerySchema, ReservationIdParamsSchema } from "@tartware/schemas";
 import type { FastifyInstance } from "fastify";
-import { z } from "zod";
 
 import { getActiveKeysForReservation } from "../services/key-service.js";
 
 const KEY_TAG = "Mobile Keys";
-
-const ReservationIdParams = z.object({
-  reservationId: z.string().uuid(),
-});
-
-const KeysQuery = z.object({
-  tenant_id: z.string().uuid(),
-});
 
 /**
  * Register mobile key endpoints (S28).
@@ -31,8 +23,8 @@ export const registerKeyRoutes = (app: FastifyInstance): void => {
       },
     },
     async (request, reply) => {
-      const params = ReservationIdParams.parse(request.params);
-      const queryParams = KeysQuery.parse(request.query);
+      const params = ReservationIdParamsSchema.parse(request.params);
+      const queryParams = MobileKeysQuerySchema.parse(request.query);
 
       const keys = await getActiveKeysForReservation(params.reservationId, queryParams.tenant_id);
 

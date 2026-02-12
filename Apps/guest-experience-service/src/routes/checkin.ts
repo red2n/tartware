@@ -1,5 +1,9 @@
+import {
+  CheckinIdParamsSchema,
+  CompleteCheckinBodySchema,
+  StartCheckinBodySchema,
+} from "@tartware/schemas";
 import type { FastifyInstance } from "fastify";
-import { z } from "zod";
 
 import {
   completeMobileCheckin,
@@ -10,47 +14,6 @@ import {
 import { generateRegistrationCard } from "../services/registration-card-service.js";
 
 const SELF_SERVICE_TAG = "Self-Service Check-In";
-
-const StartCheckinBody = z.object({
-  confirmation_code: z.string().min(1).max(50),
-  access_method: z
-    .enum(["mobile_app", "web_browser", "kiosk", "sms_link", "email_link", "qr_code"])
-    .default("mobile_app"),
-  device_type: z.string().max(50).optional(),
-  app_version: z.string().max(20).optional(),
-});
-
-const CompleteCheckinBody = z.object({
-  identity_verification_method: z
-    .enum([
-      "government_id",
-      "passport",
-      "drivers_license",
-      "face_recognition",
-      "biometric",
-      "existing_profile",
-      "manual_verification",
-      "not_required",
-    ])
-    .default("existing_profile"),
-  id_document_verified: z.boolean().default(false),
-  registration_card_signed: z.boolean().default(false),
-  payment_method_verified: z.boolean().default(false),
-  terms_accepted: z.boolean().default(false),
-  room_id: z.string().uuid().optional(),
-  digital_key_type: z
-    .enum(["mobile_app_key", "nfc", "bluetooth", "qr_code", "pin_code", "physical_key_required"])
-    .optional(),
-  guest_signature_url: z.string().url().optional(),
-});
-
-const ReservationIdParams = z.object({
-  reservationId: z.string().uuid(),
-});
-
-const CheckinIdParams = z.object({
-  checkinId: z.string().uuid(),
-});
 
 /**
  * Register mobile check-in REST endpoints (S17).
@@ -72,7 +35,7 @@ export const registerCheckinRoutes = (app: FastifyInstance): void => {
       },
     },
     async (request, reply) => {
-      const body = StartCheckinBody.parse(request.body);
+      const body = StartCheckinBodySchema.parse(request.body);
 
       // Authenticate via confirmation code
       const reservation = await lookupReservationByConfirmation(body.confirmation_code);
@@ -112,8 +75,8 @@ export const registerCheckinRoutes = (app: FastifyInstance): void => {
       },
     },
     async (request, reply) => {
-      const params = CheckinIdParams.parse(request.params);
-      const body = CompleteCheckinBody.parse(request.body);
+      const params = CheckinIdParamsSchema.parse(request.params);
+      const body = CompleteCheckinBodySchema.parse(request.body);
 
       const result = await completeMobileCheckin({
         mobileCheckinId: params.checkinId,
@@ -163,7 +126,7 @@ export const registerCheckinRoutes = (app: FastifyInstance): void => {
       },
     },
     async (request, reply) => {
-      const params = CheckinIdParams.parse(request.params);
+      const params = CheckinIdParamsSchema.parse(request.params);
       const checkin = await getCheckinById(params.checkinId);
 
       if (!checkin) {

@@ -72,13 +72,13 @@ import {
 	IntegrationWebhookRetryCommandSchema,
 } from "./events/commands/integrations.js";
 import {
-	NotificationSendCommandSchema,
-} from "./events/commands/notifications.js";
-import {
 	InventoryBulkReleaseCommandSchema,
 	InventoryLockRoomCommandSchema,
 	InventoryReleaseRoomCommandSchema,
 } from "./events/commands/inventory.js";
+import {
+	NotificationSendCommandSchema,
+} from "./events/commands/notifications.js";
 import {
 	OperationsAssetUpdateCommandSchema,
 	OperationsIncidentReportCommandSchema,

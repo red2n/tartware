@@ -190,7 +190,9 @@ export const createOutboxRepository = ({
 		);
 	};
 
-	const markOutboxDeliveredByEventId = async (eventId: string): Promise<void> => {
+	const markOutboxDeliveredByEventId = async (
+		eventId: string,
+	): Promise<void> => {
 		await query(
 			`
         UPDATE transactional_outbox

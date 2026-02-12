@@ -1,11 +1,6 @@
 import { randomUUID } from "node:crypto";
 
-import {
-  ReservationMobileCheckinCompleteCommandSchema,
-  ReservationMobileCheckinStartCommandSchema,
-} from "@tartware/schemas";
-
-import { query, withTransaction } from "../lib/db.js";
+import { query } from "../lib/db.js";
 import { appLogger } from "../lib/logger.js";
 import { observeCheckinDuration, recordCheckinOutcome } from "../lib/metrics.js";
 
