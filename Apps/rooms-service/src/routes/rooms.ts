@@ -72,7 +72,10 @@ type CreateRoomBody = z.infer<typeof CreateRoomBodySchema>;
 
 const CreateRoomBodyJsonSchema = schemaFromZod(CreateRoomBodySchema, "CreateRoomBody");
 
-const ErrorResponseSchema = schemaFromZod(z.object({ message: z.string() }), "ErrorResponse");
+const ErrorResponseSchema = schemaFromZod(
+  z.object({ type: z.string(), title: z.string(), status: z.number(), detail: z.string() }),
+  "ErrorResponse",
+);
 
 const UpdateRoomBodySchema = CreateRoomBodySchema.partial().extend({
   tenant_id: z.string().uuid(),

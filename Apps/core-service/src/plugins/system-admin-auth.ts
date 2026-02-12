@@ -40,10 +40,16 @@ const rateLimited = (reply: FastifyReply, retryAfterSeconds?: number) => {
     reply.header("Retry-After", Math.max(1, Math.ceil(retryAfterSeconds)));
   }
 
-  return reply.status(429).send({
-    error: "SYSTEM_ADMIN_RATE_LIMITED",
-    message: `System administrator request limit exceeded (${rateLimitSettings.perMinute} req/min, burst up to ${rateLimitSettings.burst}).`,
-  });
+  return reply
+    .status(429)
+    .header("content-type", "application/problem+json")
+    .send({
+      type: "about:blank",
+      title: "Too Many Requests",
+      status: 429,
+      detail: `System administrator request limit exceeded (${rateLimitSettings.perMinute} req/min, burst up to ${rateLimitSettings.burst}).`,
+      code: "SYSTEM_ADMIN_RATE_LIMITED",
+    });
 };
 
 const buildGuard =

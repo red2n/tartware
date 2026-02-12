@@ -1,3 +1,5 @@
+import { STATUS_CODES } from "node:http";
+
 import { validateCommandPayload } from "@tartware/schemas";
 import type { FastifyReply, FastifyRequest } from "fastify";
 
@@ -107,10 +109,17 @@ export const submitCommand = async ({
     });
   } catch (error) {
     if (error instanceof CommandDispatchError) {
-      reply.status(error.statusCode).send({
-        error: error.code,
-        message: error.message,
-      });
+      reply
+        .status(error.statusCode)
+        .header("content-type", "application/problem+json")
+        .send({
+          type: "about:blank",
+          title: STATUS_CODES[error.statusCode] ?? "Error",
+          status: error.statusCode,
+          detail: error.message,
+          instance: request.url,
+          code: error.code,
+        });
       return;
     }
     throw error;

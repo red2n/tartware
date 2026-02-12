@@ -68,7 +68,8 @@ describe('Authentication Routes', () => {
 
       expect(response.statusCode).toBe(401);
       const payload = JSON.parse(response.payload);
-      expect(payload.error).toBe('Invalid credentials');
+      expect(payload.detail).toBe('Invalid username or password.');
+      expect(payload.code).toBe('INVALID_CREDENTIALS');
     });
 
     it('returns 423 when account is locked', async () => {
@@ -85,7 +86,7 @@ describe('Authentication Routes', () => {
 
       expect(response.statusCode).toBe(423);
       const payload = JSON.parse(response.payload);
-      expect(payload.error).toBe('ACCOUNT_LOCKED');
+      expect(payload.code).toBe('ACCOUNT_LOCKED');
       expect(payload.lock_expires_at).toBeDefined();
     });
 
@@ -103,7 +104,7 @@ describe('Authentication Routes', () => {
 
       expect(response.statusCode).toBe(401);
       const payload = JSON.parse(response.payload);
-      expect(payload.error).toBe('MFA_REQUIRED');
+      expect(payload.code).toBe('MFA_REQUIRED');
     });
 
     it('accepts valid MFA code when provided', async () => {
@@ -253,7 +254,7 @@ describe('Authentication Routes', () => {
 
       expect(response.statusCode).toBe(401);
       const payload = JSON.parse(response.payload);
-      expect(payload.message).toBe('You must be logged in to access this resource.');
+      expect(payload.detail).toBe('You must be logged in to access this resource.');
     });
 
     it('allows access with valid tenant scope', async () => {
@@ -278,7 +279,7 @@ describe('Authentication Routes', () => {
 
       expect(response.statusCode).toBe(403);
       const payload = JSON.parse(response.payload);
-      expect(payload.message).toBe(
+      expect(payload.detail).toBe(
         "You don't have permission to access this resource. Admin role is required.",
       );
     });
@@ -351,7 +352,7 @@ describe('Authentication Routes', () => {
 
       expect(response.statusCode).toBe(400);
       const payload = JSON.parse(response.payload);
-      expect(payload.message).toBe('The provided MFA code is invalid.');
+      expect(payload.detail).toBe('The provided MFA code is invalid.');
     });
   });
 
@@ -404,7 +405,7 @@ describe('Authentication Routes', () => {
 
       expect(response.statusCode).toBe(400);
       const payload = JSON.parse(response.payload);
-      expect(payload.message).toBe('Invalid credentials');
+      expect(payload.detail).toBe('Invalid credentials');
     });
   });
 });

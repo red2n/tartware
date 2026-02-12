@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { STATUS_CODES } from "node:http";
 
 import { buildRouteSchema, schemaFromZod } from "@tartware/openapi";
 import {
@@ -77,10 +78,17 @@ export const registerCommandRoutes = (app: FastifyInstance): void => {
         return reply.status(202).send(result);
       } catch (error) {
         if (error instanceof CommandDispatchError) {
-          return reply.status(error.statusCode).send({
-            error: error.code,
-            message: error.message,
-          });
+          return reply
+            .status(error.statusCode)
+            .header("content-type", "application/problem+json")
+            .send({
+              type: "about:blank",
+              title: STATUS_CODES[error.statusCode] ?? "Error",
+              status: error.statusCode,
+              detail: error.message,
+              instance: request.url,
+              code: error.code,
+            });
         }
         throw error;
       }

@@ -1,3 +1,5 @@
+import { STATUS_CODES } from "node:http";
+
 import { buildRouteSchema, errorResponseSchema, schemaFromZod } from "@tartware/openapi";
 import {
   SystemAdminBreakGlassRequestSchema,
@@ -83,12 +85,18 @@ export const registerSystemAuthRoutes = (app: FastifyInstance): void => {
 
       if (!result.ok) {
         const statusCode = ERROR_STATUS[result.reason] ?? 401;
-        const payload = {
-          error: result.reason,
-          message: ERROR_MESSAGES[result.reason] ?? "Unable to complete login request.",
-          lock_expires_at: result.lockExpiresAt?.toISOString(),
-        };
-        return reply.status(statusCode).send(payload);
+        return reply
+          .status(statusCode)
+          .header("content-type", "application/problem+json")
+          .send({
+            type: "about:blank",
+            title: STATUS_CODES[statusCode] ?? "Error",
+            status: statusCode,
+            detail: ERROR_MESSAGES[result.reason] ?? "Unable to complete login request.",
+            instance: request.url,
+            code: result.reason,
+            lock_expires_at: result.lockExpiresAt?.toISOString(),
+          });
       }
 
       const responsePayload = sanitizeForJson({
@@ -132,10 +140,17 @@ export const registerSystemAuthRoutes = (app: FastifyInstance): void => {
 
       if (!result.ok) {
         const statusCode = ERROR_STATUS[result.reason] ?? 401;
-        return reply.status(statusCode).send({
-          error: result.reason,
-          message: ERROR_MESSAGES[result.reason] ?? "Unable to complete break-glass request.",
-        });
+        return reply
+          .status(statusCode)
+          .header("content-type", "application/problem+json")
+          .send({
+            type: "about:blank",
+            title: STATUS_CODES[statusCode] ?? "Error",
+            status: statusCode,
+            detail: ERROR_MESSAGES[result.reason] ?? "Unable to complete break-glass request.",
+            instance: request.url,
+            code: result.reason,
+          });
       }
 
       const responsePayload = sanitizeForJson({

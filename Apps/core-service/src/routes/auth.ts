@@ -1,3 +1,5 @@
+import { STATUS_CODES } from "node:http";
+
 import { buildRouteSchema, errorResponseSchema, schemaFromZod } from "@tartware/openapi";
 import {
   AuthContextResponseSchema,
@@ -27,15 +29,6 @@ const AppChangePasswordRequestSchema = ChangePasswordRequestSchema.refine(
 );
 
 const AUTH_TAG = "Auth";
-const AUTH_ERROR_CODES: Record<string, string> = {
-  INVALID_CREDENTIALS: "Invalid credentials",
-  ACCOUNT_INACTIVE: "ACCOUNT_INACTIVE",
-  ACCOUNT_LOCKED: "ACCOUNT_LOCKED",
-  THROTTLED: "THROTTLED",
-  MFA_REQUIRED: "MFA_REQUIRED",
-  MFA_INVALID: "MFA_INVALID",
-  MFA_NOT_ENROLLED: "MFA_NOT_ENROLLED",
-};
 
 const AUTH_ERROR_MESSAGES: Record<string, string> = {
   INVALID_CREDENTIALS: "Invalid username or password.",
@@ -118,15 +111,20 @@ export const registerAuthRoutes = (app: FastifyInstance): void => {
         }
 
         const errorCode = result.reason;
-        const error = AUTH_ERROR_CODES[errorCode] ?? errorCode;
-        const errorMessage = AUTH_ERROR_MESSAGES[errorCode] ?? error;
+        const errorMessage = AUTH_ERROR_MESSAGES[errorCode] ?? errorCode;
 
-        return reply.status(statusCode).send({
-          error,
-          code: errorCode,
-          message: errorMessage,
-          lock_expires_at: result.lockExpiresAt?.toISOString(),
-        });
+        return reply
+          .status(statusCode)
+          .header("content-type", "application/problem+json")
+          .send({
+            type: "about:blank",
+            title: STATUS_CODES[statusCode] ?? "Error",
+            status: statusCode,
+            detail: errorMessage,
+            instance: request.url,
+            code: errorCode,
+            lock_expires_at: result.lockExpiresAt?.toISOString(),
+          });
       }
 
       const { user, memberships, accessToken, expiresIn } = result.data;

@@ -35,7 +35,10 @@ const RateListResponseJsonSchema = schemaFromZod(RateListResponseSchema, "RateLi
 const CreateRateBodyJsonSchema = schemaFromZod(CreateRateBodySchema, "CreateRateBody");
 const UpdateRateBodyJsonSchema = schemaFromZod(UpdateRateBodySchema, "UpdateRateBody");
 const RateItemJsonSchema = schemaFromZod(RateItemSchema, "RateItem");
-const ErrorResponseSchema = schemaFromZod(z.object({ message: z.string() }), "ErrorResponse");
+const ErrorResponseSchema = schemaFromZod(
+  z.object({ type: z.string(), title: z.string(), status: z.number(), detail: z.string() }),
+  "ErrorResponse",
+);
 
 const RateParamsSchema = z.object({
   rateId: z.string().uuid(),

@@ -102,10 +102,14 @@ export interface BuildFastifyServerOptions {
 	registerRoutes?: (app: FastifyInstance) => void | Promise<void>;
 }
 
+/** Content-Type for RFC 9457 Problem Details responses. */
+const PROBLEM_JSON = "application/problem+json";
+
 /**
  * Centralized error handler for all services.
- * Produces a consistent JSON error response shape:
- *   { statusCode, error, message, code?, details? }
+ * Produces RFC 9457 Problem Details responses:
+ *   { type, title, status, detail, instance?, code?, errors? }
+ * Content-Type: application/problem+json
  */
 const defaultErrorHandler = (
 	error: FastifyError,
@@ -117,60 +121,81 @@ const defaultErrorHandler = (
 		error.message,
 	);
 
-	// Zod validation errors → 400 with structured details
+	const instance = request.url;
+
+	// Zod validation errors → 400 with structured errors
 	if (isZodError(error)) {
-		reply.status(400).send({
-			statusCode: 400,
-			error: "Bad Request",
-			message: "Validation failed",
-			details: error.errors.map((err) => ({
-				path: err.path.join("."),
-				message: err.message,
-				code: err.code,
-			})),
-		});
+		reply
+			.status(400)
+			.header("content-type", PROBLEM_JSON)
+			.send({
+				type: "about:blank",
+				title: "Bad Request",
+				status: 400,
+				detail: "Validation failed",
+				instance,
+				errors: error.errors.map((err) => ({
+					path: err.path.join("."),
+					message: err.message,
+					code: err.code,
+				})),
+			});
 		return;
 	}
 
 	// Fastify/Ajv schema validation errors → 400
 	if (error.validation) {
-		reply.status(400).send({
-			statusCode: 400,
-			error: "Bad Request",
-			message: error.message || "Validation failed",
-			details: error.validation.map((v) => ({
-				path:
-					v.instancePath?.replace(/^\//, "").replace(/\//g, ".") ||
-					v.params?.missingProperty ||
-					"",
-				message: v.message || "Validation error",
-				code: v.keyword,
-			})),
-		});
+		reply
+			.status(400)
+			.header("content-type", PROBLEM_JSON)
+			.send({
+				type: "about:blank",
+				title: "Bad Request",
+				status: 400,
+				detail: error.message || "Validation failed",
+				instance,
+				errors: error.validation.map((v) => ({
+					path:
+						v.instancePath?.replace(/^\//, "").replace(/\//g, ".") ||
+						v.params?.missingProperty ||
+						"",
+					message: v.message || "Validation error",
+					code: v.keyword,
+				})),
+			});
 		return;
 	}
 
 	// Known HTTP errors (from @fastify/sensible or statusCode < 500)
 	if (error.statusCode && error.statusCode < 500) {
-		reply.status(error.statusCode).send({
-			statusCode: error.statusCode,
-			error: STATUS_CODES[error.statusCode] ?? error.name,
-			message: error.message,
-			code: error.code,
-		});
+		reply
+			.status(error.statusCode)
+			.header("content-type", PROBLEM_JSON)
+			.send({
+				type: "about:blank",
+				title: STATUS_CODES[error.statusCode] ?? error.name,
+				status: error.statusCode,
+				detail: error.message,
+				instance,
+			});
 		return;
 	}
 
 	// Unexpected 500 errors — hide details in production
 	const statusCode = error.statusCode ?? 500;
-	reply.status(statusCode).send({
-		statusCode,
-		error: "Internal Server Error",
-		message:
-			process.env.NODE_ENV === "production"
-				? "An unexpected error occurred"
-				: error.message,
-	});
+	reply
+		.status(statusCode)
+		.header("content-type", PROBLEM_JSON)
+		.send({
+			type: "about:blank",
+			title: "Internal Server Error",
+			status: statusCode,
+			detail:
+				process.env.NODE_ENV === "production"
+					? "An unexpected error occurred"
+					: error.message,
+			instance,
+		});
 };
 
 /**
@@ -230,11 +255,16 @@ export const buildFastifyServer = (
 			{ method: request.method, url: request.url },
 			`Route ${request.method}:${request.url} not found`,
 		);
-		reply.status(404).send({
-			statusCode: 404,
-			error: "Not Found",
-			message: `Route ${request.method}:${request.raw.url} not found`,
-		});
+		reply
+			.status(404)
+			.header("content-type", PROBLEM_JSON)
+			.send({
+				type: "about:blank",
+				title: "Not Found",
+				status: 404,
+				detail: `Route ${request.method}:${request.raw.url} not found`,
+				instance: request.url,
+			});
 	});
 
 	// Register Helmet with enhanced security headers

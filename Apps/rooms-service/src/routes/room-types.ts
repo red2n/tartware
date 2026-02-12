@@ -86,7 +86,10 @@ type UpdateRoomTypeBody = z.infer<typeof UpdateRoomTypeBodySchema>;
 const CreateRoomTypeBodyJsonSchema = schemaFromZod(CreateRoomTypeBodySchema, "CreateRoomTypeBody");
 const UpdateRoomTypeBodyJsonSchema = schemaFromZod(UpdateRoomTypeBodySchema, "UpdateRoomTypeBody");
 const RoomTypeItemJsonSchema = schemaFromZod(RoomTypeItemSchema, "RoomTypeItem");
-const ErrorResponseSchema = schemaFromZod(z.object({ message: z.string() }), "ErrorResponse");
+const ErrorResponseSchema = schemaFromZod(
+  z.object({ type: z.string(), title: z.string(), status: z.number(), detail: z.string() }),
+  "ErrorResponse",
+);
 
 const RoomTypeParamsSchema = z.object({
   roomTypeId: z.string().uuid(),

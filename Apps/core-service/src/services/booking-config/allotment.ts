@@ -2,6 +2,7 @@ import { type AllotmentListItem, AllotmentListItemSchema } from "@tartware/schem
 
 import { query } from "../../lib/db.js";
 import { ALLOTMENT_BY_ID_SQL, ALLOTMENT_LIST_SQL } from "../../sql/booking-config/allotment.js";
+
 import { formatDisplayLabel, toIsoString, toNumber } from "./common.js";
 
 // =====================================================

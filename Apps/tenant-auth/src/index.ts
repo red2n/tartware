@@ -1,3 +1,5 @@
+import { STATUS_CODES } from "node:http";
+
 import type {
   FastifyInstance,
   FastifyPluginAsync,
@@ -128,8 +130,18 @@ const buildTenantScopeGuard = <Membership extends TenantMembershipBase>(
   return async (request: FastifyRequest, reply: FastifyReply) => {
     const scopedRequest = request as unknown as RequestWithAuth<Membership>;
 
-    const sendError = (statusCode: number, message: string) => {
-      reply.code(statusCode).send({ error: message });
+    const sendError = (statusCode: number, code: string) => {
+      reply
+        .code(statusCode)
+        .header("content-type", "application/problem+json")
+        .send({
+          type: "about:blank",
+          title: STATUS_CODES[statusCode] ?? "Error",
+          status: statusCode,
+          detail: code,
+          instance: request.url,
+          code,
+        });
     };
 
     if (!allowUnauthenticated && !scopedRequest.auth?.isAuthenticated) {
