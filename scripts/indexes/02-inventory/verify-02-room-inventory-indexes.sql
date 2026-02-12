@@ -1,8 +1,9 @@
 -- =====================================================
 -- verify-02-room-inventory-indexes.sql
 -- Index Verification Script for Room & Inventory Management
--- Category: 02-room-inventory (4 tables)
+-- Category: 02-room-inventory (5 tables)
 -- Date: 2025-10-19
+-- Updated: 2026-02-12
 -- =====================================================
 
 \c tartware
@@ -10,7 +11,7 @@
 \echo ''
 \echo '=============================================='
 \echo '  ROOM & INVENTORY MANAGEMENT - INDEX VERIFICATION'
-\echo '  Tables: 4'
+\echo '  Tables: 5'
 \echo '=============================================='
 \echo ''
 
@@ -25,7 +26,7 @@ SELECT
     COUNT(CASE WHEN indexname LIKE '%_pkey' THEN 1 END) AS primary_keys,
     COUNT(CASE WHEN indexname NOT LIKE '%_pkey' THEN 1 END) AS secondary_indexes
 FROM pg_indexes
-WHERE tablename IN ('room_types', 'rooms', 'rates', 'room_availability')
+WHERE tablename IN ('room_types', 'rooms', 'rates', 'room_availability', 'room_amenity_catalog')
     AND schemaname IN ('public', 'availability')
 GROUP BY tablename
 ORDER BY tablename;
@@ -45,7 +46,7 @@ WITH fk_columns AS (
     JOIN information_schema.key_column_usage kcu
         ON tc.constraint_name = kcu.constraint_name
     WHERE tc.constraint_type = 'FOREIGN KEY'
-        AND tc.table_name IN ('room_types', 'rooms', 'rates', 'room_availability')
+        AND tc.table_name IN ('room_types', 'rooms', 'rates', 'room_availability', 'room_amenity_catalog')
 ),
 indexed_columns AS (
     SELECT
@@ -93,7 +94,7 @@ SELECT
         ELSE 'No partial index'
     END AS partial_index_status
 FROM pg_indexes
-WHERE tablename IN ('room_types', 'rooms', 'rates', 'room_availability')
+WHERE tablename IN ('room_types', 'rooms', 'rates', 'room_availability', 'room_amenity_catalog')
     AND schemaname IN ('public', 'availability')
     AND indexdef LIKE '%WHERE%'
 ORDER BY tablename, indexname;
@@ -116,14 +117,14 @@ BEGIN
     -- Count total indexes (excluding primary keys)
     SELECT COUNT(*) INTO v_total_indexes
     FROM pg_indexes
-    WHERE tablename IN ('room_types', 'rooms', 'rates', 'room_availability')
+    WHERE tablename IN ('room_types', 'rooms', 'rates', 'room_availability', 'room_amenity_catalog')
         AND schemaname IN ('public', 'availability')
         AND indexname NOT LIKE '%_pkey';
 
     -- Count tables that have at least one secondary index
     SELECT COUNT(DISTINCT tablename) INTO v_tables_with_indexes
     FROM pg_indexes
-    WHERE tablename IN ('room_types', 'rooms', 'rates', 'room_availability')
+    WHERE tablename IN ('room_types', 'rooms', 'rates', 'room_availability', 'room_amenity_catalog')
         AND schemaname IN ('public', 'availability')
         AND indexname NOT LIKE '%_pkey';
 
@@ -138,7 +139,7 @@ BEGIN
             ON tc.constraint_name = kcu.constraint_name
             AND tc.table_schema = kcu.table_schema
         WHERE tc.constraint_type = 'FOREIGN KEY'
-            AND tc.table_name IN ('room_types', 'rooms', 'rates', 'room_availability')
+            AND tc.table_name IN ('room_types', 'rooms', 'rates', 'room_availability', 'room_amenity_catalog')
     ) fk
     WHERE NOT EXISTS (
         SELECT 1
@@ -157,11 +158,11 @@ BEGIN
     RAISE NOTICE '';
     RAISE NOTICE 'Category: Room & Inventory Management';
     RAISE NOTICE 'Total Secondary Indexes: %', v_total_indexes;
-    RAISE NOTICE 'Tables with Indexes: % / 4', v_tables_with_indexes;
+    RAISE NOTICE 'Tables with Indexes: % / 5', v_tables_with_indexes;
     RAISE NOTICE 'Foreign Keys Without Index: %', v_fk_without_index;
     RAISE NOTICE '';
 
-    IF v_fk_without_index = 0 AND v_tables_with_indexes = 4 THEN
+    IF v_fk_without_index = 0 AND v_tables_with_indexes = 5 THEN
         RAISE NOTICE '✓✓✓ ROOM & INVENTORY MANAGEMENT INDEX VERIFICATION PASSED ✓✓✓';
     ELSE
         RAISE WARNING '⚠⚠⚠ ROOM & INVENTORY MANAGEMENT INDEX VERIFICATION ISSUES FOUND ⚠⚠⚠';

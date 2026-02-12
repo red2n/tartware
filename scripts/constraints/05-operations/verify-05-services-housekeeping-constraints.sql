@@ -1,8 +1,9 @@
 -- =====================================================
 -- verify-05-services-housekeeping-constraints.sql
 -- Constraint Verification Script for Services & Housekeeping
--- Category: 05-services-housekeeping (6 tables)
+-- Category: 05-services-housekeeping (11 tables)
 -- Date: 2025-10-19
+-- Updated: 2026-02-12
 -- =====================================================
 
 \c tartware
@@ -10,7 +11,7 @@
 \echo ''
 \echo '=============================================='
 \echo '  SERVICES & HOUSEKEEPING - CONSTRAINT VERIFICATION'
-\echo '  Tables: 6'
+\echo '  Tables: 11'
 \echo '=============================================='
 \echo ''
 
@@ -30,7 +31,10 @@ WHERE tc.constraint_type = 'FOREIGN KEY'
         'housekeeping_tasks',
         'maintenance_requests',
         'spa_treatments',
-        'spa_appointments'
+        'spa_appointments',
+        'asset_inventory',
+        'minibar_items',
+        'minibar_consumption'
     )
     AND tc.table_schema = 'public'
 GROUP BY tc.table_name
@@ -62,7 +66,10 @@ WHERE tc.constraint_type = 'FOREIGN KEY'
         'housekeeping_tasks',
         'maintenance_requests',
         'spa_treatments',
-        'spa_appointments'
+        'spa_appointments',
+        'asset_inventory',
+        'minibar_items',
+        'minibar_consumption'
     )
     AND tc.table_schema = 'public'
 ORDER BY tc.table_name, tc.constraint_name;
@@ -90,7 +97,10 @@ WHERE tc.constraint_type = 'FOREIGN KEY'
         'housekeeping_tasks',
         'maintenance_requests',
         'spa_treatments',
-        'spa_appointments'
+        'spa_appointments',
+        'asset_inventory',
+        'minibar_items',
+        'minibar_consumption'
     )
     AND tc.table_schema = 'public'
 ORDER BY tc.table_name, tc.constraint_name;
@@ -118,7 +128,10 @@ WHERE tc.constraint_type = 'FOREIGN KEY'
         'housekeeping_tasks',
         'maintenance_requests',
         'spa_treatments',
-        'spa_appointments'
+        'spa_appointments',
+        'asset_inventory',
+        'minibar_items',
+        'minibar_consumption'
     )
     AND tc.table_schema = 'public'
 ORDER BY tc.table_name;
@@ -149,7 +162,10 @@ BEGIN
             'housekeeping_tasks',
             'maintenance_requests',
             'spa_treatments',
-            'spa_appointments'
+            'spa_appointments',
+            'asset_inventory',
+            'minibar_items',
+            'minibar_consumption'
         )
         AND tc.table_schema = 'public';
 
@@ -167,7 +183,10 @@ BEGIN
             'housekeeping_tasks',
             'maintenance_requests',
             'spa_treatments',
-            'spa_appointments'
+            'spa_appointments',
+            'asset_inventory',
+            'minibar_items',
+            'minibar_consumption'
         )
         AND tc.table_schema = 'public';
 
@@ -185,7 +204,10 @@ BEGIN
             'housekeeping_tasks',
             'maintenance_requests',
             'spa_treatments',
-            'spa_appointments'
+            'spa_appointments',
+            'asset_inventory',
+            'minibar_items',
+            'minibar_consumption'
         )
         AND tc.table_schema = 'public';
 
@@ -202,7 +224,10 @@ BEGIN
             'housekeeping_tasks',
             'maintenance_requests',
             'spa_treatments',
-            'spa_appointments'
+            'spa_appointments',
+            'asset_inventory',
+            'minibar_items',
+            'minibar_consumption'
         )
         AND tc.table_schema = 'public';
 

@@ -1,8 +1,9 @@
 -- =====================================================
 -- verify-09-staff-operations-constraints.sql
 -- Constraint Verification Script for Staff & Operations
--- Category: 09-staff-operations (6 tables)
+-- Category: 09-staff-operations (9 tables)
 -- Date: 2025-10-19
+-- Updated: 2026-02-12
 -- =====================================================
 
 \c tartware
@@ -10,7 +11,7 @@
 \echo ''
 \echo '=============================================='
 \echo '  STAFF & OPERATIONS - CONSTRAINT VERIFICATION'
-\echo '  Tables: 6'
+\echo '  Tables: 9'
 \echo '=============================================='
 \echo ''
 
@@ -24,7 +25,7 @@ SELECT
     COUNT(*) AS fk_count
 FROM information_schema.table_constraints tc
 WHERE tc.constraint_type = 'FOREIGN KEY'
-    AND tc.table_name IN ('staff_schedules', 'staff_tasks', 'shift_handovers', 'lost_and_found', 'incident_reports', 'vendor_contracts')
+    AND tc.table_name IN ('staff_schedules', 'staff_tasks', 'shift_handovers', 'lost_and_found', 'incident_reports', 'vendor_contracts', 'vehicles', 'transportation_requests', 'shuttle_schedules')
     AND tc.table_schema = 'public'
 GROUP BY tc.table_name
 ORDER BY tc.table_name;
@@ -49,7 +50,7 @@ JOIN information_schema.referential_constraints rc
     ON tc.constraint_name = rc.constraint_name
     AND tc.table_schema = rc.constraint_schema
 WHERE tc.constraint_type = 'FOREIGN KEY'
-    AND tc.table_name IN ('staff_schedules', 'staff_tasks', 'shift_handovers', 'lost_and_found', 'incident_reports', 'vendor_contracts')
+    AND tc.table_name IN ('staff_schedules', 'staff_tasks', 'shift_handovers', 'lost_and_found', 'incident_reports', 'vendor_contracts', 'vehicles', 'transportation_requests', 'shuttle_schedules')
     AND tc.table_schema = 'public'
 ORDER BY tc.table_name, tc.constraint_name;
 
@@ -70,7 +71,7 @@ JOIN information_schema.referential_constraints rc
     ON tc.constraint_name = rc.constraint_name
     AND tc.table_schema = rc.constraint_schema
 WHERE tc.constraint_type = 'FOREIGN KEY'
-    AND tc.table_name IN ('staff_schedules', 'staff_tasks', 'shift_handovers', 'lost_and_found', 'incident_reports', 'vendor_contracts')
+    AND tc.table_name IN ('staff_schedules', 'staff_tasks', 'shift_handovers', 'lost_and_found', 'incident_reports', 'vendor_contracts', 'vehicles', 'transportation_requests', 'shuttle_schedules')
     AND tc.table_schema = 'public'
 ORDER BY tc.table_name, tc.constraint_name;
 
@@ -91,7 +92,7 @@ JOIN information_schema.key_column_usage kcu
     AND tc.table_schema = kcu.table_schema
 WHERE tc.constraint_type = 'FOREIGN KEY'
     AND kcu.column_name = 'tenant_id'
-    AND tc.table_name IN ('staff_schedules', 'staff_tasks', 'shift_handovers', 'lost_and_found', 'incident_reports', 'vendor_contracts')
+    AND tc.table_name IN ('staff_schedules', 'staff_tasks', 'shift_handovers', 'lost_and_found', 'incident_reports', 'vendor_contracts', 'vehicles', 'transportation_requests', 'shuttle_schedules')
     AND tc.table_schema = 'public'
 ORDER BY tc.table_name;
 
@@ -115,7 +116,7 @@ BEGIN
     SELECT COUNT(*) INTO v_total_fks
     FROM information_schema.table_constraints tc
     WHERE tc.constraint_type = 'FOREIGN KEY'
-        AND tc.table_name IN ('staff_schedules', 'staff_tasks', 'shift_handovers', 'lost_and_found', 'incident_reports', 'vendor_contracts')
+        AND tc.table_name IN ('staff_schedules', 'staff_tasks', 'shift_handovers', 'lost_and_found', 'incident_reports', 'vendor_contracts', 'vehicles', 'transportation_requests', 'shuttle_schedules')
         AND tc.table_schema = 'public';
 
     -- RESTRICT deletes
@@ -126,7 +127,7 @@ BEGIN
         AND tc.table_schema = rc.constraint_schema
     WHERE tc.constraint_type = 'FOREIGN KEY'
         AND rc.delete_rule = 'RESTRICT'
-        AND tc.table_name IN ('staff_schedules', 'staff_tasks', 'shift_handovers', 'lost_and_found', 'incident_reports', 'vendor_contracts')
+        AND tc.table_name IN ('staff_schedules', 'staff_tasks', 'shift_handovers', 'lost_and_found', 'incident_reports', 'vendor_contracts', 'vehicles', 'transportation_requests', 'shuttle_schedules')
         AND tc.table_schema = 'public';
 
     -- CASCADE updates
@@ -137,7 +138,7 @@ BEGIN
         AND tc.table_schema = rc.constraint_schema
     WHERE tc.constraint_type = 'FOREIGN KEY'
         AND rc.update_rule = 'CASCADE'
-        AND tc.table_name IN ('staff_schedules', 'staff_tasks', 'shift_handovers', 'lost_and_found', 'incident_reports', 'vendor_contracts')
+        AND tc.table_name IN ('staff_schedules', 'staff_tasks', 'shift_handovers', 'lost_and_found', 'incident_reports', 'vendor_contracts', 'vehicles', 'transportation_requests', 'shuttle_schedules')
         AND tc.table_schema = 'public';
 
     -- Tenant FK count
@@ -147,7 +148,7 @@ BEGIN
         ON tc.constraint_name = kcu.constraint_name
     WHERE tc.constraint_type = 'FOREIGN KEY'
         AND kcu.column_name = 'tenant_id'
-        AND tc.table_name IN ('staff_schedules', 'staff_tasks', 'shift_handovers', 'lost_and_found', 'incident_reports', 'vendor_contracts')
+        AND tc.table_name IN ('staff_schedules', 'staff_tasks', 'shift_handovers', 'lost_and_found', 'incident_reports', 'vendor_contracts', 'vehicles', 'transportation_requests', 'shuttle_schedules')
         AND tc.table_schema = 'public';
 
     RAISE NOTICE '';

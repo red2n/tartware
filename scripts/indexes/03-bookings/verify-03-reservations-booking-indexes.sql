@@ -1,8 +1,9 @@
 -- =====================================================
 -- verify-03-reservations-booking-indexes.sql
 -- Index Verification Script for Reservations & Booking
--- Category: 03-reservations-booking (9 tables)
+-- Category: 03-reservations-booking (14 tables)
 -- Date: 2025-10-19
+-- Updated: 2026-02-12
 -- =====================================================
 
 \c tartware
@@ -10,7 +11,7 @@
 \echo ''
 \echo '=============================================='
 \echo '  RESERVATIONS & BOOKING - INDEX VERIFICATION'
-\echo '  Tables: 9'
+\echo '  Tables: 14'
 \echo '=============================================='
 \echo ''
 
@@ -34,7 +35,12 @@ WHERE tablename IN (
     'market_segments',
     'guest_preferences',
     'reservation_traces',
-    'waitlist_entries'
+    'waitlist_entries',
+    'reservation_event_offsets',
+    'reservation_command_lifecycle',
+    'reservation_rate_fallbacks',
+    'overbooking_config',
+    'walk_history'
 )
     AND schemaname = 'public'
 GROUP BY tablename
@@ -64,7 +70,12 @@ WITH fk_columns AS (
             'market_segments',
             'guest_preferences',
             'reservation_traces',
-            'waitlist_entries'
+            'waitlist_entries',
+            'reservation_event_offsets',
+            'reservation_command_lifecycle',
+            'reservation_rate_fallbacks',
+            'overbooking_config',
+            'walk_history'
         )
 ),
 indexed_columns AS (
@@ -122,7 +133,12 @@ WHERE tablename IN (
     'market_segments',
     'guest_preferences',
     'reservation_traces',
-    'waitlist_entries'
+    'waitlist_entries',
+    'reservation_event_offsets',
+    'reservation_command_lifecycle',
+    'reservation_rate_fallbacks',
+    'overbooking_config',
+    'walk_history'
 )
     AND schemaname = 'public'
     AND indexdef LIKE '%WHERE%'
@@ -155,7 +171,12 @@ BEGIN
         'market_segments',
         'guest_preferences',
         'reservation_traces',
-        'waitlist_entries'
+        'waitlist_entries',
+        'reservation_event_offsets',
+        'reservation_command_lifecycle',
+        'reservation_rate_fallbacks',
+        'overbooking_config',
+        'walk_history'
     )
         AND schemaname = 'public'
         AND indexname NOT LIKE '%_pkey';
@@ -163,7 +184,7 @@ BEGIN
     -- Count tables that have at least one secondary index
     SELECT COUNT(DISTINCT tablename) INTO v_tables_with_indexes
     FROM pg_indexes
-    WHERE tablename IN ('reservations', 'reservation_status_history', 'deposit_schedules', 'allotments', 'booking_sources', 'market_segments', 'guest_preferences')
+    WHERE tablename IN ('reservations', 'reservation_status_history', 'deposit_schedules', 'allotments', 'booking_sources', 'market_segments', 'guest_preferences', 'reservation_traces', 'waitlist_entries', 'reservation_event_offsets', 'reservation_command_lifecycle', 'reservation_rate_fallbacks', 'overbooking_config', 'walk_history')
         AND schemaname = 'public'
         AND indexname NOT LIKE '%_pkey';
 
@@ -186,7 +207,12 @@ BEGIN
                 'market_segments',
                 'guest_preferences',
                 'reservation_traces',
-                'waitlist_entries')
+                'waitlist_entries',
+                'reservation_event_offsets',
+                'reservation_command_lifecycle',
+                'reservation_rate_fallbacks',
+                'overbooking_config',
+                'walk_history')
     ) fk
     WHERE NOT EXISTS (
         SELECT 1
@@ -205,11 +231,11 @@ BEGIN
     RAISE NOTICE '';
     RAISE NOTICE 'Category: Reservations & Booking';
     RAISE NOTICE 'Total Secondary Indexes: %', v_total_indexes;
-    RAISE NOTICE 'Tables with Indexes: % / 9', v_tables_with_indexes;
+    RAISE NOTICE 'Tables with Indexes: % / 14', v_tables_with_indexes;
     RAISE NOTICE 'Foreign Keys Without Index: %', v_fk_without_index;
     RAISE NOTICE '';
 
-    IF v_fk_without_index = 0 AND v_tables_with_indexes = 9 THEN
+    IF v_fk_without_index = 0 AND v_tables_with_indexes = 14 THEN
         RAISE NOTICE '✓✓✓ RESERVATIONS & BOOKING INDEX VERIFICATION PASSED ✓✓✓';
     ELSE
         RAISE WARNING '⚠⚠⚠ RESERVATIONS & BOOKING INDEX VERIFICATION ISSUES FOUND ⚠⚠⚠';

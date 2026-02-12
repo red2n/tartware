@@ -1,7 +1,7 @@
 -- =====================================================
 -- verify-14-system-audit-constraints.sql
 -- Constraint Verification Script for System & Audit
--- Category: 14-system-audit (3 tables)
+-- Category: 14-system-audit (4 tables)
 -- Date: 2025-10-19
 -- =====================================================
 
@@ -10,7 +10,7 @@
 \echo ''
 \echo '=============================================='
 \echo '  SYSTEM & AUDIT - CONSTRAINT VERIFICATION'
-\echo '  Tables: 3'
+\echo '  Tables: 4'
 \echo '=============================================='
 \echo ''
 
@@ -24,7 +24,7 @@ SELECT
     COUNT(*) AS fk_count
 FROM information_schema.table_constraints tc
 WHERE tc.constraint_type = 'FOREIGN KEY'
-    AND tc.table_name IN ('audit_logs', 'business_dates', 'night_audit_log')
+    AND tc.table_name IN ('audit_logs', 'business_dates', 'night_audit_log', 'tenant_access_audit')
     AND tc.table_schema = 'public'
 GROUP BY tc.table_name
 ORDER BY tc.table_name;
@@ -49,7 +49,7 @@ JOIN information_schema.referential_constraints rc
     ON tc.constraint_name = rc.constraint_name
     AND tc.table_schema = rc.constraint_schema
 WHERE tc.constraint_type = 'FOREIGN KEY'
-    AND tc.table_name IN ('audit_logs', 'business_dates', 'night_audit_log')
+    AND tc.table_name IN ('audit_logs', 'business_dates', 'night_audit_log', 'tenant_access_audit')
     AND tc.table_schema = 'public'
 ORDER BY tc.table_name, tc.constraint_name;
 
@@ -70,7 +70,7 @@ JOIN information_schema.referential_constraints rc
     ON tc.constraint_name = rc.constraint_name
     AND tc.table_schema = rc.constraint_schema
 WHERE tc.constraint_type = 'FOREIGN KEY'
-    AND tc.table_name IN ('audit_logs', 'business_dates', 'night_audit_log')
+    AND tc.table_name IN ('audit_logs', 'business_dates', 'night_audit_log', 'tenant_access_audit')
     AND tc.table_schema = 'public'
 ORDER BY tc.table_name, tc.constraint_name;
 
@@ -91,7 +91,7 @@ JOIN information_schema.key_column_usage kcu
     AND tc.table_schema = kcu.table_schema
 WHERE tc.constraint_type = 'FOREIGN KEY'
     AND kcu.column_name = 'tenant_id'
-    AND tc.table_name IN ('audit_logs', 'business_dates', 'night_audit_log')
+    AND tc.table_name IN ('audit_logs', 'business_dates', 'night_audit_log', 'tenant_access_audit')
     AND tc.table_schema = 'public'
 ORDER BY tc.table_name;
 
@@ -115,7 +115,7 @@ BEGIN
     SELECT COUNT(*) INTO v_total_fks
     FROM information_schema.table_constraints tc
     WHERE tc.constraint_type = 'FOREIGN KEY'
-        AND tc.table_name IN ('audit_logs', 'business_dates', 'night_audit_log')
+        AND tc.table_name IN ('audit_logs', 'business_dates', 'night_audit_log', 'tenant_access_audit')
         AND tc.table_schema = 'public';
 
     -- RESTRICT deletes
@@ -126,7 +126,7 @@ BEGIN
         AND tc.table_schema = rc.constraint_schema
     WHERE tc.constraint_type = 'FOREIGN KEY'
         AND rc.delete_rule = 'RESTRICT'
-        AND tc.table_name IN ('audit_logs', 'business_dates', 'night_audit_log')
+        AND tc.table_name IN ('audit_logs', 'business_dates', 'night_audit_log', 'tenant_access_audit')
         AND tc.table_schema = 'public';
 
     -- CASCADE updates
@@ -137,7 +137,7 @@ BEGIN
         AND tc.table_schema = rc.constraint_schema
     WHERE tc.constraint_type = 'FOREIGN KEY'
         AND rc.update_rule = 'CASCADE'
-        AND tc.table_name IN ('audit_logs', 'business_dates', 'night_audit_log')
+        AND tc.table_name IN ('audit_logs', 'business_dates', 'night_audit_log', 'tenant_access_audit')
         AND tc.table_schema = 'public';
 
     -- Tenant FK count
@@ -147,7 +147,7 @@ BEGIN
         ON tc.constraint_name = kcu.constraint_name
     WHERE tc.constraint_type = 'FOREIGN KEY'
         AND kcu.column_name = 'tenant_id'
-        AND tc.table_name IN ('audit_logs', 'business_dates', 'night_audit_log')
+        AND tc.table_name IN ('audit_logs', 'business_dates', 'night_audit_log', 'tenant_access_audit')
         AND tc.table_schema = 'public';
 
     RAISE NOTICE '';

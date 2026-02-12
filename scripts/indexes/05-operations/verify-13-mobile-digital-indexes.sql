@@ -1,8 +1,9 @@
 -- =====================================================
 -- verify-13-mobile-digital-indexes.sql
 -- Index Verification Script for Mobile & Digital
--- Category: 13-mobile-digital (4 tables)
+-- Category: 13-mobile-digital (11 tables)
 -- Date: 2025-10-19
+-- Updated: 2026-02-12
 -- =====================================================
 
 \c tartware
@@ -10,7 +11,7 @@
 \echo ''
 \echo '=============================================='
 \echo '  MOBILE & DIGITAL - INDEX VERIFICATION'
-\echo '  Tables: 4'
+\echo '  Tables: 11'
 \echo '=============================================='
 \echo ''
 
@@ -25,7 +26,7 @@ SELECT
     COUNT(CASE WHEN indexname LIKE '%_pkey' THEN 1 END) AS primary_keys,
     COUNT(CASE WHEN indexname NOT LIKE '%_pkey' THEN 1 END) AS secondary_indexes
 FROM pg_indexes
-WHERE tablename IN ('mobile_keys', 'qr_codes', 'push_notifications', 'app_usage_analytics')
+WHERE tablename IN ('mobile_keys', 'qr_codes', 'push_notifications', 'app_usage_analytics', 'smart_room_devices', 'mobile_check_ins', 'digital_registration_cards', 'contactless_requests', 'guest_room_preferences', 'device_events_log', 'room_energy_usage')
     AND schemaname = 'public'
 GROUP BY tablename
 ORDER BY tablename;
@@ -45,7 +46,7 @@ WITH fk_columns AS (
     JOIN information_schema.key_column_usage kcu
         ON tc.constraint_name = kcu.constraint_name
     WHERE tc.constraint_type = 'FOREIGN KEY'
-        AND tc.table_name IN ('mobile_keys', 'qr_codes', 'push_notifications', 'app_usage_analytics')
+        AND tc.table_name IN ('mobile_keys', 'qr_codes', 'push_notifications', 'app_usage_analytics', 'smart_room_devices', 'mobile_check_ins', 'digital_registration_cards', 'contactless_requests', 'guest_room_preferences', 'device_events_log', 'room_energy_usage')
 ),
 indexed_columns AS (
     SELECT
@@ -93,7 +94,7 @@ SELECT
         ELSE 'No partial index'
     END AS partial_index_status
 FROM pg_indexes
-WHERE tablename IN ('mobile_keys', 'qr_codes', 'push_notifications', 'app_usage_analytics')
+WHERE tablename IN ('mobile_keys', 'qr_codes', 'push_notifications', 'app_usage_analytics', 'smart_room_devices', 'mobile_check_ins', 'digital_registration_cards', 'contactless_requests', 'guest_room_preferences', 'device_events_log', 'room_energy_usage')
     AND schemaname = 'public'
     AND indexdef LIKE '%WHERE%'
 ORDER BY tablename, indexname;
@@ -116,14 +117,14 @@ BEGIN
     -- Count total indexes (excluding primary keys)
     SELECT COUNT(*) INTO v_total_indexes
     FROM pg_indexes
-    WHERE tablename IN ('mobile_keys', 'qr_codes', 'push_notifications', 'app_usage_analytics')
+    WHERE tablename IN ('mobile_keys', 'qr_codes', 'push_notifications', 'app_usage_analytics', 'smart_room_devices', 'mobile_check_ins', 'digital_registration_cards', 'contactless_requests', 'guest_room_preferences', 'device_events_log', 'room_energy_usage')
         AND schemaname = 'public'
         AND indexname NOT LIKE '%_pkey';
 
     -- Count tables that have at least one secondary index
     SELECT COUNT(DISTINCT tablename) INTO v_tables_with_indexes
     FROM pg_indexes
-    WHERE tablename IN ('mobile_keys', 'qr_codes', 'push_notifications', 'app_usage_analytics')
+    WHERE tablename IN ('mobile_keys', 'qr_codes', 'push_notifications', 'app_usage_analytics', 'smart_room_devices', 'mobile_check_ins', 'digital_registration_cards', 'contactless_requests', 'guest_room_preferences', 'device_events_log', 'room_energy_usage')
         AND schemaname = 'public'
         AND indexname NOT LIKE '%_pkey';
 
@@ -138,7 +139,7 @@ BEGIN
             ON tc.constraint_name = kcu.constraint_name
             AND tc.table_schema = kcu.table_schema
         WHERE tc.constraint_type = 'FOREIGN KEY'
-            AND tc.table_name IN ('mobile_keys', 'qr_codes', 'push_notifications', 'app_usage_analytics')
+            AND tc.table_name IN ('mobile_keys', 'qr_codes', 'push_notifications', 'app_usage_analytics', 'smart_room_devices', 'mobile_check_ins', 'digital_registration_cards', 'contactless_requests', 'guest_room_preferences', 'device_events_log', 'room_energy_usage')
     ) fk
     WHERE NOT EXISTS (
         SELECT 1
@@ -157,11 +158,11 @@ BEGIN
     RAISE NOTICE '';
     RAISE NOTICE 'Category: Mobile & Digital';
     RAISE NOTICE 'Total Secondary Indexes: %', v_total_indexes;
-    RAISE NOTICE 'Tables with Indexes: % / 4', v_tables_with_indexes;
+    RAISE NOTICE 'Tables with Indexes: % / 11', v_tables_with_indexes;
     RAISE NOTICE 'Foreign Keys Without Index: %', v_fk_without_index;
     RAISE NOTICE '';
 
-    IF v_fk_without_index = 0 AND v_tables_with_indexes = 4 THEN
+    IF v_fk_without_index = 0 AND v_tables_with_indexes = 11 THEN
         RAISE NOTICE '✓✓✓ MOBILE & DIGITAL INDEX VERIFICATION PASSED ✓✓✓';
     ELSE
         RAISE WARNING '⚠⚠⚠ MOBILE & DIGITAL INDEX VERIFICATION ISSUES FOUND ⚠⚠⚠';

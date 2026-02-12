@@ -1,17 +1,16 @@
 -- =====================================================
--- verify-05-services-housekeeping-indexes.sql
--- Index Verification Script for Services & Housekeeping
--- Category: 05-services-housekeeping (11 tables)
--- Date: 2025-10-19
--- Updated: 2026-02-12
+-- verify-16-commercial-groups-indexes.sql
+-- Index Verification Script for Commercial & Group Bookings
+-- Category: 16-commercial-groups (12 tables)
+-- Date: 2026-02-12
 -- =====================================================
 
 \c tartware
 
 \echo ''
 \echo '=============================================='
-\echo '  SERVICES & HOUSEKEEPING - INDEX VERIFICATION'
-\echo '  Tables: 11'
+\echo '  COMMERCIAL & GROUP BOOKINGS - INDEX VERIFICATION'
+\echo '  Tables: 12'
 \echo '=============================================='
 \echo ''
 
@@ -26,19 +25,7 @@ SELECT
     COUNT(CASE WHEN indexname LIKE '%_pkey' THEN 1 END) AS primary_keys,
     COUNT(CASE WHEN indexname NOT LIKE '%_pkey' THEN 1 END) AS secondary_indexes
 FROM pg_indexes
-WHERE tablename IN (
-    'services',
-    'reservation_services',
-    'housekeeping_tasks',
-    'maintenance_requests',
-    'maintenance_history',
-    'predictive_maintenance_alerts',
-    'spa_treatments',
-    'spa_appointments',
-    'asset_inventory',
-    'minibar_items',
-    'minibar_consumption'
-)
+WHERE tablename IN ('companies', 'group_bookings', 'group_room_blocks', 'packages', 'package_bookings', 'package_components', 'travel_agent_commissions', 'commission_rules', 'commission_statements', 'meeting_rooms', 'event_bookings', 'banquet_event_orders')
     AND schemaname = 'public'
 GROUP BY tablename
 ORDER BY tablename;
@@ -58,19 +45,7 @@ WITH fk_columns AS (
     JOIN information_schema.key_column_usage kcu
         ON tc.constraint_name = kcu.constraint_name
     WHERE tc.constraint_type = 'FOREIGN KEY'
-        AND tc.table_name IN (
-            'services',
-            'reservation_services',
-            'housekeeping_tasks',
-            'maintenance_requests',
-            'maintenance_history',
-            'predictive_maintenance_alerts',
-            'spa_treatments',
-            'spa_appointments',
-            'asset_inventory',
-            'minibar_items',
-            'minibar_consumption'
-        )
+        AND tc.table_name IN ('companies', 'group_bookings', 'group_room_blocks', 'packages', 'package_bookings', 'package_components', 'travel_agent_commissions', 'commission_rules', 'commission_statements', 'meeting_rooms', 'event_bookings', 'banquet_event_orders')
 ),
 indexed_columns AS (
     SELECT
@@ -118,19 +93,7 @@ SELECT
         ELSE 'No partial index'
     END AS partial_index_status
 FROM pg_indexes
-WHERE tablename IN (
-    'services',
-    'reservation_services',
-    'housekeeping_tasks',
-    'maintenance_requests',
-    'maintenance_history',
-    'predictive_maintenance_alerts',
-    'spa_treatments',
-    'spa_appointments',
-    'asset_inventory',
-    'minibar_items',
-    'minibar_consumption'
-)
+WHERE tablename IN ('companies', 'group_bookings', 'group_room_blocks', 'packages', 'package_bookings', 'package_components', 'travel_agent_commissions', 'commission_rules', 'commission_statements', 'meeting_rooms', 'event_bookings', 'banquet_event_orders')
     AND schemaname = 'public'
     AND indexdef LIKE '%WHERE%'
 ORDER BY tablename, indexname;
@@ -150,45 +113,18 @@ DECLARE
     v_tables_with_indexes INTEGER;
     v_fk_without_index INTEGER;
 BEGIN
-    -- Count total indexes (excluding primary keys)
     SELECT COUNT(*) INTO v_total_indexes
     FROM pg_indexes
-    WHERE tablename IN (
-        'services',
-        'reservation_services',
-        'housekeeping_tasks',
-        'maintenance_requests',
-        'maintenance_history',
-        'predictive_maintenance_alerts',
-        'spa_treatments',
-        'spa_appointments',
-        'asset_inventory',
-        'minibar_items',
-        'minibar_consumption'
-    )
+    WHERE tablename IN ('companies', 'group_bookings', 'group_room_blocks', 'packages', 'package_bookings', 'package_components', 'travel_agent_commissions', 'commission_rules', 'commission_statements', 'meeting_rooms', 'event_bookings', 'banquet_event_orders')
         AND schemaname = 'public'
         AND indexname NOT LIKE '%_pkey';
 
-    -- Count tables that have at least one secondary index
     SELECT COUNT(DISTINCT tablename) INTO v_tables_with_indexes
     FROM pg_indexes
-    WHERE tablename IN (
-            'services',
-            'reservation_services',
-            'housekeeping_tasks',
-            'maintenance_requests',
-            'maintenance_history',
-            'predictive_maintenance_alerts',
-            'spa_treatments',
-            'spa_appointments',
-            'asset_inventory',
-            'minibar_items',
-            'minibar_consumption'
-        )
+    WHERE tablename IN ('companies', 'group_bookings', 'group_room_blocks', 'packages', 'package_bookings', 'package_components', 'travel_agent_commissions', 'commission_rules', 'commission_statements', 'meeting_rooms', 'event_bookings', 'banquet_event_orders')
         AND schemaname = 'public'
         AND indexname NOT LIKE '%_pkey';
 
-    -- Count FKs without indexes
     SELECT COUNT(*) INTO v_fk_without_index
     FROM (
         SELECT
@@ -199,17 +135,7 @@ BEGIN
             ON tc.constraint_name = kcu.constraint_name
             AND tc.table_schema = kcu.table_schema
         WHERE tc.constraint_type = 'FOREIGN KEY'
-            AND tc.table_name IN ('services',
-                'reservation_services',
-                'housekeeping_tasks',
-                'maintenance_requests',
-                'maintenance_history',
-                'predictive_maintenance_alerts',
-                'spa_treatments',
-                'spa_appointments',
-                'asset_inventory',
-                'minibar_items',
-                'minibar_consumption')
+            AND tc.table_name IN ('companies', 'group_bookings', 'group_room_blocks', 'packages', 'package_bookings', 'package_components', 'travel_agent_commissions', 'commission_rules', 'commission_statements', 'meeting_rooms', 'event_bookings', 'banquet_event_orders')
     ) fk
     WHERE NOT EXISTS (
         SELECT 1
@@ -226,16 +152,16 @@ BEGIN
     );
 
     RAISE NOTICE '';
-    RAISE NOTICE 'Category: Services & Housekeeping';
+    RAISE NOTICE 'Category: Commercial & Group Bookings';
     RAISE NOTICE 'Total Secondary Indexes: %', v_total_indexes;
-    RAISE NOTICE 'Tables with Indexes: % / 11', v_tables_with_indexes;
+    RAISE NOTICE 'Tables with Indexes: % / 12', v_tables_with_indexes;
     RAISE NOTICE 'Foreign Keys Without Index: %', v_fk_without_index;
     RAISE NOTICE '';
 
-    IF v_fk_without_index = 0 AND v_tables_with_indexes = 11 THEN
-        RAISE NOTICE '✓✓✓ SERVICES & HOUSEKEEPING INDEX VERIFICATION PASSED ✓✓✓';
+    IF v_fk_without_index = 0 AND v_tables_with_indexes = 12 THEN
+        RAISE NOTICE '✓✓✓ COMMERCIAL & GROUP BOOKINGS INDEX VERIFICATION PASSED ✓✓✓';
     ELSE
-        RAISE WARNING '⚠⚠⚠ SERVICES & HOUSEKEEPING INDEX VERIFICATION ISSUES FOUND ⚠⚠⚠';
+        RAISE WARNING '⚠⚠⚠ COMMERCIAL & GROUP BOOKINGS INDEX VERIFICATION ISSUES FOUND ⚠⚠⚠';
         IF v_fk_without_index > 0 THEN
             RAISE WARNING 'Found % foreign keys without indexes!', v_fk_without_index;
         END IF;
@@ -244,5 +170,5 @@ END $$;
 
 \echo ''
 \echo '=============================================='
-\echo 'Services & Housekeeping index verification complete!'
+\echo 'Commercial & Group Bookings index verification complete!'
 \echo '=============================================='

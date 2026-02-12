@@ -1,8 +1,9 @@
 -- =====================================================
 -- verify-03-reservations-booking-constraints.sql
 -- Constraint Verification Script for Reservations & Booking
--- Category: 03-reservations-booking (9 tables)
+-- Category: 03-reservations-booking (14 tables)
 -- Date: 2025-10-19
+-- Updated: 2026-02-12
 -- =====================================================
 
 \c tartware
@@ -10,7 +11,7 @@
 \echo ''
 \echo '=============================================='
 \echo '  RESERVATIONS & BOOKING - CONSTRAINT VERIFICATION'
-\echo '  Tables: 9'
+\echo '  Tables: 14'
 \echo '=============================================='
 \echo ''
 
@@ -33,7 +34,12 @@ WHERE tc.constraint_type = 'FOREIGN KEY'
         'market_segments',
         'guest_preferences',
         'reservation_traces',
-        'waitlist_entries'
+        'waitlist_entries',
+        'reservation_event_offsets',
+        'reservation_command_lifecycle',
+        'reservation_rate_fallbacks',
+        'overbooking_config',
+        'walk_history'
     )
     AND tc.table_schema = 'public'
 GROUP BY tc.table_name
@@ -68,7 +74,12 @@ WHERE tc.constraint_type = 'FOREIGN KEY'
         'market_segments',
         'guest_preferences',
         'reservation_traces',
-        'waitlist_entries'
+        'waitlist_entries',
+        'reservation_event_offsets',
+        'reservation_command_lifecycle',
+        'reservation_rate_fallbacks',
+        'overbooking_config',
+        'walk_history'
     )
     AND tc.table_schema = 'public'
 ORDER BY tc.table_name, tc.constraint_name;
@@ -99,7 +110,12 @@ WHERE tc.constraint_type = 'FOREIGN KEY'
         'market_segments',
         'guest_preferences',
         'reservation_traces',
-        'waitlist_entries'
+        'waitlist_entries',
+        'reservation_event_offsets',
+        'reservation_command_lifecycle',
+        'reservation_rate_fallbacks',
+        'overbooking_config',
+        'walk_history'
     )
     AND tc.table_schema = 'public'
 ORDER BY tc.table_name, tc.constraint_name;
@@ -130,7 +146,12 @@ WHERE tc.constraint_type = 'FOREIGN KEY'
         'market_segments',
         'guest_preferences',
         'reservation_traces',
-        'waitlist_entries'
+        'waitlist_entries',
+        'reservation_event_offsets',
+        'reservation_command_lifecycle',
+        'reservation_rate_fallbacks',
+        'overbooking_config',
+        'walk_history'
     )
     AND tc.table_schema = 'public'
 ORDER BY tc.table_name;
@@ -164,7 +185,12 @@ BEGIN
             'market_segments',
             'guest_preferences',
             'reservation_traces',
-            'waitlist_entries'
+            'waitlist_entries',
+            'reservation_event_offsets',
+            'reservation_command_lifecycle',
+            'reservation_rate_fallbacks',
+            'overbooking_config',
+            'walk_history'
         )
         AND tc.table_schema = 'public';
 
@@ -185,7 +211,12 @@ BEGIN
             'market_segments',
             'guest_preferences',
             'reservation_traces',
-            'waitlist_entries'
+            'waitlist_entries',
+            'reservation_event_offsets',
+            'reservation_command_lifecycle',
+            'reservation_rate_fallbacks',
+            'overbooking_config',
+            'walk_history'
         )
         AND tc.table_schema = 'public';
 
@@ -206,7 +237,12 @@ BEGIN
             'market_segments',
             'guest_preferences',
             'reservation_traces',
-            'waitlist_entries'
+            'waitlist_entries',
+            'reservation_event_offsets',
+            'reservation_command_lifecycle',
+            'reservation_rate_fallbacks',
+            'overbooking_config',
+            'walk_history'
         )
         AND tc.table_schema = 'public';
 
@@ -226,7 +262,12 @@ BEGIN
             'market_segments',
             'guest_preferences',
             'reservation_traces',
-            'waitlist_entries'
+            'waitlist_entries',
+            'reservation_event_offsets',
+            'reservation_command_lifecycle',
+            'reservation_rate_fallbacks',
+            'overbooking_config',
+            'walk_history'
         )
         AND tc.table_schema = 'public';
 

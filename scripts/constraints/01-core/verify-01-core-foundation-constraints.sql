@@ -1,8 +1,9 @@
 -- =====================================================
 -- verify-01-core-foundation-constraints.sql
 -- Constraint Verification Script for Core Foundation
--- Category: 01-core-foundation (13 tables)
+-- Category: 01-core-foundation (20 tables)
 -- Date: 2025-10-19
+-- Updated: 2026-02-12
 -- =====================================================
 
 \c tartware
@@ -10,7 +11,7 @@
 \echo ''
 \echo '=============================================='
 \echo '  CORE FOUNDATION - CONSTRAINT VERIFICATION'
-\echo '  Tables: 13'
+\echo '  Tables: 20'
 \echo '=============================================='
 \echo ''
 
@@ -37,7 +38,14 @@ WHERE tc.constraint_type = 'FOREIGN KEY'
         'room_settings',
         'user_settings',
         'system_administrators',
-        'system_admin_audit_log'
+        'system_admin_audit_log',
+        'transactional_outbox',
+        'system_admin_break_glass_codes',
+        'command_templates',
+        'command_routes',
+        'command_features',
+        'command_dispatches',
+        'command_idempotency'
     )
     AND tc.table_schema = 'public'
 GROUP BY tc.table_name
@@ -76,7 +84,14 @@ WHERE tc.constraint_type = 'FOREIGN KEY'
         'room_settings',
         'user_settings',
         'system_administrators',
-        'system_admin_audit_log'
+        'system_admin_audit_log',
+        'transactional_outbox',
+        'system_admin_break_glass_codes',
+        'command_templates',
+        'command_routes',
+        'command_features',
+        'command_dispatches',
+        'command_idempotency'
     )
     AND tc.table_schema = 'public'
 ORDER BY tc.table_name, tc.constraint_name;
@@ -111,7 +126,14 @@ WHERE tc.constraint_type = 'FOREIGN KEY'
         'room_settings',
         'user_settings',
         'system_administrators',
-        'system_admin_audit_log'
+        'system_admin_audit_log',
+        'transactional_outbox',
+        'system_admin_break_glass_codes',
+        'command_templates',
+        'command_routes',
+        'command_features',
+        'command_dispatches',
+        'command_idempotency'
     )
     AND tc.table_schema = 'public'
 ORDER BY tc.table_name, tc.constraint_name;
@@ -140,7 +162,14 @@ WHERE tc.constraint_type = 'FOREIGN KEY'
         'properties',
         'guests',
         'tenant_settings',
-        'system_admin_audit_log'
+        'system_admin_audit_log',
+        'transactional_outbox',
+        'system_admin_break_glass_codes',
+        'command_templates',
+        'command_routes',
+        'command_features',
+        'command_dispatches',
+        'command_idempotency'
     )
     AND tc.table_schema = 'public'
 ORDER BY tc.table_name;
@@ -178,7 +207,14 @@ BEGIN
             'room_settings',
             'user_settings',
             'system_administrators',
-            'system_admin_audit_log'
+            'system_admin_audit_log',
+            'transactional_outbox',
+            'system_admin_break_glass_codes',
+            'command_templates',
+            'command_routes',
+            'command_features',
+            'command_dispatches',
+            'command_idempotency'
         )
         AND tc.table_schema = 'public';
 
@@ -203,7 +239,14 @@ BEGIN
             'room_settings',
             'user_settings',
             'system_administrators',
-            'system_admin_audit_log'
+            'system_admin_audit_log',
+            'transactional_outbox',
+            'system_admin_break_glass_codes',
+            'command_templates',
+            'command_routes',
+            'command_features',
+            'command_dispatches',
+            'command_idempotency'
         )
         AND tc.table_schema = 'public';
 
@@ -228,7 +271,14 @@ BEGIN
             'room_settings',
             'user_settings',
             'system_administrators',
-            'system_admin_audit_log'
+            'system_admin_audit_log',
+            'transactional_outbox',
+            'system_admin_break_glass_codes',
+            'command_templates',
+            'command_routes',
+            'command_features',
+            'command_dispatches',
+            'command_idempotency'
         )
         AND tc.table_schema = 'public';
 
@@ -246,7 +296,14 @@ BEGIN
             'properties',
             'guests',
             'tenant_settings',
-            'system_admin_audit_log'
+            'system_admin_audit_log',
+            'transactional_outbox',
+            'system_admin_break_glass_codes',
+            'command_templates',
+            'command_routes',
+            'command_features',
+            'command_dispatches',
+            'command_idempotency'
         )
         AND tc.table_schema = 'public';
 
