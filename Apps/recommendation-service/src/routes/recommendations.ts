@@ -80,7 +80,7 @@ export function registerRecommendationRoutes(app: FastifyInstance) {
 
       const parsed = RecommendationQuerySchema.safeParse(request.query);
       if (!parsed.success) {
-        return reply.badRequest("Validation failed");
+        throw parsed.error;
       }
 
       const query = parsed.data;
@@ -166,7 +166,7 @@ export function registerRecommendationRoutes(app: FastifyInstance) {
 
       const parsed = RankRoomsBodySchema.safeParse(request.body);
       if (!parsed.success) {
-        return reply.badRequest("Validation failed");
+        throw parsed.error;
       }
 
       const body = parsed.data;

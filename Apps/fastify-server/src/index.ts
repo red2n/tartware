@@ -138,7 +138,14 @@ const defaultErrorHandler = (
 			statusCode: 400,
 			error: "Bad Request",
 			message: error.message || "Validation failed",
-			details: error.validation,
+			details: error.validation.map((v) => ({
+				path:
+					v.instancePath?.replace(/^\//, "").replace(/\//g, ".") ||
+					v.params?.missingProperty ||
+					"",
+				message: v.message || "Validation error",
+				code: v.keyword,
+			})),
 		});
 		return;
 	}

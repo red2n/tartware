@@ -58,10 +58,10 @@ const enforceScope = (
   scope: string,
 ): request is FastifyRequest & { authUser: AuthUser } => {
   if (!request.authUser) {
-    return reply.unauthorized("Unauthorized") as never;
+    throw reply.server.httpErrors.unauthorized("Unauthorized");
   }
   if (!hasScope(request.authUser, scope)) {
-    return reply.forbidden(`Missing scope ${scope}`) as never;
+    throw reply.server.httpErrors.forbidden(`Missing scope ${scope}`);
   }
   return true;
 };

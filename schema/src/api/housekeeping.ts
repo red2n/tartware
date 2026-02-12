@@ -7,7 +7,7 @@
 
 import { z } from "zod";
 
-import { uuid } from "../shared/base-schemas.js";
+import { isoDateString, uuid } from "../shared/base-schemas.js";
 
 // =====================================================
 // HOUSEKEEPING TASKS
@@ -72,18 +72,8 @@ export type HousekeepingTaskListResponse = z.infer<typeof HousekeepingTaskListRe
 export const HousekeepingScheduleListQuerySchema = z.object({
 	tenant_id: uuid,
 	property_id: uuid.optional(),
-	date_from: z
-		.string()
-		.optional()
-		.refine((value) => !value || !Number.isNaN(Date.parse(value)), {
-			message: "date_from must be a valid ISO date string",
-		}),
-	date_to: z
-		.string()
-		.optional()
-		.refine((value) => !value || !Number.isNaN(Date.parse(value)), {
-			message: "date_to must be a valid ISO date string",
-		}),
+	date_from: isoDateString.optional(),
+	date_to: isoDateString.optional(),
 	limit: z.coerce.number().int().positive().max(500).default(200),
 	offset: z.coerce.number().int().min(0).default(0),
 });
@@ -109,21 +99,11 @@ export const HousekeepingInspectionListQuerySchema = z.object({
 	tenant_id: uuid,
 	property_id: uuid.optional(),
 	passed: z
-		.string()
+		.enum(["true", "false"])
 		.optional()
-		.transform((v) => (v === "true" ? true : v === "false" ? false : undefined)),
-	date_from: z
-		.string()
-		.optional()
-		.refine((value) => !value || !Number.isNaN(Date.parse(value)), {
-			message: "date_from must be a valid ISO date string",
-		}),
-	date_to: z
-		.string()
-		.optional()
-		.refine((value) => !value || !Number.isNaN(Date.parse(value)), {
-			message: "date_to must be a valid ISO date string",
-		}),
+		.transform((v) => (v === undefined ? undefined : v === "true")),
+	date_from: isoDateString.optional(),
+	date_to: isoDateString.optional(),
 	limit: z.coerce.number().int().positive().max(500).default(200),
 	offset: z.coerce.number().int().min(0).default(0),
 });

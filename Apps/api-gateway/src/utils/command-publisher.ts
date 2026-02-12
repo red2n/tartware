@@ -1,6 +1,5 @@
 import { validateCommandPayload } from "@tartware/schemas";
 import type { FastifyReply, FastifyRequest } from "fastify";
-import { ZodError } from "zod";
 
 import {
   type AcceptedCommand,
@@ -86,15 +85,7 @@ export const submitCommand = async ({
     return;
   }
 
-  let validatedPayload: Record<string, unknown>;
-  try {
-    validatedPayload = validateCommandPayload(commandName, payload);
-  } catch (error) {
-    if (error instanceof ZodError) {
-      return reply.badRequest(`${commandName} payload failed validation`);
-    }
-    throw error;
-  }
+  const validatedPayload = validateCommandPayload(commandName, payload);
 
   const correlationId = (request.headers["x-correlation-id"] as string | undefined) ?? undefined;
   const requestId = request.id;
