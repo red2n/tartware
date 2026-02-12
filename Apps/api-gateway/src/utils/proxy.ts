@@ -66,10 +66,9 @@ export const proxyRequest = async (
   request: FastifyRequest,
   reply: FastifyReply,
   targetBaseUrl: string,
-): Promise<void> => {
+): Promise<FastifyReply> => {
   if (request.method.toUpperCase() === "OPTIONS") {
-    reply.status(204).send();
-    return;
+    return reply.status(204).send();
   }
 
   const url = request.raw.url ?? "/";
@@ -86,7 +85,7 @@ export const proxyRequest = async (
       error: "SERVICE_UNAVAILABLE",
       message: "Upstream service is temporarily unavailable. Please try again shortly.",
     });
-    return;
+    return reply;
   }
 
   const headers = buildHeaders(request);
@@ -122,7 +121,7 @@ export const proxyRequest = async (
           : "Unable to reach upstream service. Please try again shortly.",
         details: error instanceof Error ? error.message : "Unknown upstream error",
       });
-    return;
+    return reply;
   } finally {
     clearTimeout(timeoutId);
   }
@@ -141,5 +140,5 @@ export const proxyRequest = async (
   });
 
   const buffer = Buffer.from(await response.arrayBuffer());
-  reply.send(buffer);
+  return reply.send(buffer);
 };

@@ -164,6 +164,64 @@ export const registerCoreProxyRoutes = (app: FastifyInstance): void => {
     proxyCore,
   );
 
+  // User management routes - proxy to core service
+  app.all(
+    "/v1/users",
+    {
+      schema: buildRouteSchema({
+        tag: CORE_PROXY_TAG,
+        summary: "Proxy user management calls to core service.",
+        response: {
+          200: jsonObjectSchema,
+        },
+      }),
+    },
+    proxyCore,
+  );
+
+  app.all(
+    "/v1/users/*",
+    {
+      schema: buildRouteSchema({
+        tag: CORE_PROXY_TAG,
+        summary: "Proxy user management calls to core service.",
+        response: {
+          200: jsonObjectSchema,
+        },
+      }),
+    },
+    proxyCore,
+  );
+
+  // User-tenant association routes - proxy to core service
+  app.all(
+    "/v1/user-tenant-associations",
+    {
+      schema: buildRouteSchema({
+        tag: CORE_PROXY_TAG,
+        summary: "Proxy user-tenant association calls to core service.",
+        response: {
+          200: jsonObjectSchema,
+        },
+      }),
+    },
+    proxyCore,
+  );
+
+  app.all(
+    "/v1/user-tenant-associations/*",
+    {
+      schema: buildRouteSchema({
+        tag: CORE_PROXY_TAG,
+        summary: "Proxy user-tenant association calls to core service.",
+        response: {
+          200: jsonObjectSchema,
+        },
+      }),
+    },
+    proxyCore,
+  );
+
   // System routes
   app.all(
     "/v1/system/*",
