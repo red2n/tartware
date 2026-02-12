@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import fastifyCors from "@fastify/cors";
 import fastifyHelmet from "@fastify/helmet";
 import fastifySensible from "@fastify/sensible";
@@ -109,10 +110,19 @@ export const buildFastifyServer = (
   } = options;
 
   // Build Fastify instance with logger
+  // Use X-Request-Id header if present, otherwise generate a UUID
   const app = Fastify({
     loggerInstance: logger as FastifyBaseLogger,
     disableRequestLogging: !enableRequestLogging,
+    requestIdHeader: "x-request-id",
+    genReqId: () => randomUUID(),
     ...serverOptions,
+  });
+
+  // Propagate request ID back in response header for client correlation
+  app.addHook("onSend", async (request, reply, payload) => {
+    reply.header("X-Request-Id", request.id);
+    return payload;
   });
 
   // Register request logging if enabled
