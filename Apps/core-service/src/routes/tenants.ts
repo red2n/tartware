@@ -123,10 +123,7 @@ export const registerTenantRoutes = (app: FastifyInstance): void => {
       if (requiredToken) {
         const providedToken = request.headers[BOOTSTRAP_TOKEN_HEADER] ?? "";
         if (providedToken !== requiredToken) {
-          return reply.status(401).send({
-            error: "Unauthorized",
-            message: "Invalid onboarding token.",
-          });
+          return reply.unauthorized("Invalid onboarding token.");
         }
       }
 

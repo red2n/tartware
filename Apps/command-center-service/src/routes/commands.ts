@@ -67,11 +67,7 @@ export const registerCommandRoutes = (app: FastifyInstance): void => {
         validatedPayload = validateCommandPayload(commandName, body.payload);
       } catch (error) {
         if (error instanceof ZodError) {
-          return reply.status(400).send({
-            error: "COMMAND_PAYLOAD_INVALID",
-            message: `${commandName} payload failed validation`,
-            issues: error.issues,
-          });
+          return reply.badRequest(`${commandName} payload failed validation`);
         }
         throw error;
       }

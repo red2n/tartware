@@ -136,10 +136,7 @@ export function registerCashierSessionRoutes(fastify: FastifyInstance): void {
       });
 
       if (!session) {
-        return reply.status(404).send({
-          error: "Not Found",
-          message: "Cashier session not found",
-        });
+        return reply.notFound("Cashier session not found");
       }
 
       return reply.send({ data: session });
@@ -269,10 +266,7 @@ export function registerShiftHandoverRoutes(fastify: FastifyInstance): void {
       });
 
       if (!handover) {
-        return reply.status(404).send({
-          error: "Not Found",
-          message: "Shift handover not found",
-        });
+        return reply.notFound("Shift handover not found");
       }
 
       return reply.send({ data: handover });
@@ -419,10 +413,7 @@ export function registerLostFoundRoutes(fastify: FastifyInstance): void {
       });
 
       if (!item) {
-        return reply.status(404).send({
-          error: "Not Found",
-          message: "Lost and found item not found",
-        });
+        return reply.notFound("Lost and found item not found");
       }
 
       return reply.send({ data: item });
@@ -545,10 +536,7 @@ export function registerBanquetOrderRoutes(fastify: FastifyInstance): void {
       });
 
       if (!order) {
-        return reply.status(404).send({
-          error: "Not Found",
-          message: "Banquet event order not found",
-        });
+        return reply.notFound("Banquet event order not found");
       }
 
       return reply.send({ data: order });
@@ -664,10 +652,7 @@ export function registerGuestFeedbackRoutes(fastify: FastifyInstance): void {
       });
 
       if (!item) {
-        return reply.status(404).send({
-          error: "Not Found",
-          message: "Guest feedback not found",
-        });
+        return reply.notFound("Guest feedback not found");
       }
 
       return reply.send({ data: item });
@@ -815,10 +800,7 @@ export function registerPoliceReportRoutes(fastify: FastifyInstance): void {
       });
 
       if (!report) {
-        return reply.status(404).send({
-          error: "Not Found",
-          message: "Police report not found",
-        });
+        return reply.notFound("Police report not found");
       }
 
       return reply.send({ data: report });

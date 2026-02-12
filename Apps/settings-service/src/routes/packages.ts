@@ -112,12 +112,10 @@ const enforceScope = (
   scope: string,
 ): request is FastifyRequest & { authUser: AuthUser } => {
   if (!request.authUser) {
-    void reply.status(401).send({ message: "Unauthorized" });
-    return false;
+    return reply.unauthorized("Unauthorized") as never;
   }
   if (!hasScope(request.authUser, scope)) {
-    void reply.status(403).send({ message: `Missing scope ${scope}` });
-    return false;
+    return reply.forbidden(`Missing scope ${scope}`) as never;
   }
   return true;
 };
@@ -210,7 +208,7 @@ const packagesRoutes: FastifyPluginAsync = async (app) => {
       });
 
       if (!pkg) {
-        return reply.status(404).send({ message: "Package not found" });
+        return reply.notFound("Package not found");
       }
 
       return pkg;
@@ -250,7 +248,7 @@ const packagesRoutes: FastifyPluginAsync = async (app) => {
       });
 
       if (!pkg) {
-        return reply.status(404).send({ message: "Package not found" });
+        return reply.notFound("Package not found");
       }
 
       const components = await getPackageComponents({ packageId });

@@ -116,7 +116,7 @@ export const registerRateRoutes = (app: FastifyInstance): void => {
       });
 
       if (!rate) {
-        return reply.status(404).send({ message: "Rate not found" });
+        return reply.notFound("Rate not found");
       }
 
       return rate;
@@ -158,13 +158,11 @@ export const registerRateRoutes = (app: FastifyInstance): void => {
         if (typeof error === "object" && error && "code" in error) {
           const code = (error as { code?: string }).code;
           if (code === "23505") {
-            return reply.status(409).send({
-              message: "Rate code already exists for this property",
-            });
+            return reply.conflict("Rate code already exists for this property");
           }
         }
         request.log.error({ err: error }, "Failed to create rate");
-        return reply.status(500).send({ message: "Failed to create rate" });
+        return reply.internalServerError("Failed to create rate");
       }
     },
   );
@@ -208,7 +206,7 @@ export const registerRateRoutes = (app: FastifyInstance): void => {
         });
 
         if (!updated) {
-          return reply.status(404).send({ message: "Rate not found" });
+          return reply.notFound("Rate not found");
         }
 
         return reply.send(updated);
@@ -216,13 +214,11 @@ export const registerRateRoutes = (app: FastifyInstance): void => {
         if (typeof error === "object" && error && "code" in error) {
           const code = (error as { code?: string }).code;
           if (code === "23505") {
-            return reply.status(409).send({
-              message: "Rate code already exists for this property",
-            });
+            return reply.conflict("Rate code already exists for this property");
           }
         }
         request.log.error({ err: error }, "Failed to update rate");
-        return reply.status(500).send({ message: "Failed to update rate" });
+        return reply.internalServerError("Failed to update rate");
       }
     },
   );
@@ -264,7 +260,7 @@ export const registerRateRoutes = (app: FastifyInstance): void => {
       });
 
       if (!deleted) {
-        return reply.status(404).send({ message: "Rate not found" });
+        return reply.notFound("Rate not found");
       }
 
       return reply.status(204).send();

@@ -91,12 +91,7 @@ export const submitCommand = async ({
     validatedPayload = validateCommandPayload(commandName, payload);
   } catch (error) {
     if (error instanceof ZodError) {
-      reply.status(400).send({
-        error: "COMMAND_PAYLOAD_INVALID",
-        message: `${commandName} payload failed validation`,
-        issues: error.issues,
-      });
-      return;
+      return reply.badRequest(`${commandName} payload failed validation`);
     }
     throw error;
   }
@@ -163,11 +158,7 @@ export const submitCommand = async ({
       },
       "failed to publish command",
     );
-    reply.status(502).send({
-      error: "COMMAND_DISPATCH_FAILED",
-      message: "Unable to publish command to Kafka.",
-    });
-    return;
+    return reply.badGateway("Unable to publish command to Kafka.");
   }
 
   reply.status(202).send({

@@ -58,12 +58,10 @@ const enforceScope = (
   scope: string,
 ): request is FastifyRequest & { authUser: AuthUser } => {
   if (!request.authUser) {
-    void reply.status(401).send({ message: "Unauthorized" });
-    return false;
+    return reply.unauthorized("Unauthorized") as never;
   }
   if (!hasScope(request.authUser, scope)) {
-    void reply.status(403).send({ message: `Missing scope ${scope}` });
-    return false;
+    return reply.forbidden(`Missing scope ${scope}`) as never;
   }
   return true;
 };
@@ -158,13 +156,11 @@ const amenitiesRoutes: FastifyPluginAsync = async (app) => {
         if (typeof error === "object" && error && "code" in error) {
           const code = (error as { code?: string }).code;
           if (code === "23505") {
-            return reply
-              .status(409)
-              .send({ message: `Amenity ${body.amenityCode} already exists` });
+            return reply.conflict(`Amenity ${body.amenityCode} already exists`);
           }
         }
         request.log.error({ err: error }, "Failed to create amenity");
-        return reply.status(500).send({ message: "Failed to create amenity" });
+        return reply.internalServerError("Failed to create amenity");
       }
     },
   );
@@ -204,9 +200,7 @@ const amenitiesRoutes: FastifyPluginAsync = async (app) => {
       });
 
       if (!updated) {
-        return reply
-          .status(404)
-          .send({ message: `Amenity ${amenityCode} not found for property ${propertyId}` });
+        return reply.notFound(`Amenity ${amenityCode} not found for property ${propertyId}`);
       }
 
       return { data: serializeAmenity(updated) };

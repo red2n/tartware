@@ -10,7 +10,6 @@ import { appLogger } from "./lib/logger.js";
 import { metricsRegistry } from "./lib/metrics.js";
 import authContextPlugin from "./plugins/auth-context.js";
 import complianceMonitorPlugin from "./plugins/compliance-monitor.js";
-import errorHandlerPlugin from "./plugins/error-handler.js";
 import swaggerPlugin from "./plugins/swagger.js";
 import systemAdminAuthPlugin from "./plugins/system-admin-auth.js";
 import { registerAuthRoutes } from "./routes/auth.js";
@@ -66,7 +65,6 @@ export const buildServer = (): FastifyInstance => {
     },
     beforeRoutes: (app) => {
       app.register(swaggerPlugin);
-      app.register(errorHandlerPlugin);
       app.register(authContextPlugin);
       app.register(systemAdminAuthPlugin);
       app.register(complianceMonitorPlugin);

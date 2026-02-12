@@ -50,7 +50,7 @@ export const registerNotificationRoutes = (app: FastifyInstance): void => {
       const { tenantId, templateId } = request.params;
       const template = await getTemplate(tenantId, templateId);
       if (!template) {
-        return reply.code(404).send({ error: "TEMPLATE_NOT_FOUND" });
+        return reply.notFound("TEMPLATE_NOT_FOUND");
       }
       return reply.send({ data: template });
     },
@@ -88,7 +88,7 @@ export const registerNotificationRoutes = (app: FastifyInstance): void => {
       const { tenantId, communicationId } = request.params;
       const communication = await getCommunication(tenantId, communicationId);
       if (!communication) {
-        return reply.code(404).send({ error: "COMMUNICATION_NOT_FOUND" });
+        return reply.notFound("COMMUNICATION_NOT_FOUND");
       }
       return reply.send({ data: communication });
     },

@@ -174,7 +174,7 @@ export const registerIncidentRoutes = (app: FastifyInstance): void => {
       });
 
       if (!incident) {
-        return reply.status(404).send({ message: "Incident report not found" });
+        return reply.notFound("Incident report not found");
       }
 
       return IncidentReportListItemSchema.parse(incident);

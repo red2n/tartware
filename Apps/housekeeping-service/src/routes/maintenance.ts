@@ -172,7 +172,7 @@ export const registerMaintenanceRoutes = (app: FastifyInstance): void => {
       });
 
       if (!maintenanceRequest) {
-        return reply.status(404).send({ message: "Maintenance request not found" });
+        return reply.notFound("Maintenance request not found");
       }
 
       return MaintenanceRequestListItemSchema.parse(maintenanceRequest);

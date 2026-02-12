@@ -29,16 +29,9 @@ const hasRequiredRole = (current: SystemAdminRole, minimum: SystemAdminRole): bo
 };
 
 const unauthorized = (reply: FastifyReply) =>
-  reply.status(401).send({
-    error: "SYSTEM_ADMIN_AUTH_REQUIRED",
-    message: "Valid system admin credentials required.",
-  });
+  reply.unauthorized("Valid system admin credentials required.");
 
-const forbidden = (reply: FastifyReply) =>
-  reply.status(403).send({
-    error: "SYSTEM_ADMIN_ROLE_INSUFFICIENT",
-    message: "System admin role is insufficient.",
-  });
+const forbidden = (reply: FastifyReply) => reply.forbidden("System admin role is insufficient.");
 
 const rateLimitSettings = getSystemAdminRateLimitSettings();
 

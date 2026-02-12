@@ -146,7 +146,7 @@ export const registerGroupWaitlistPromoRoutes = (app: FastifyInstance): void => 
       const { tenant_id } = z.object({ tenant_id: z.string().uuid() }).parse(request.query);
       const entry = await getWaitlistEntryById({ waitlistId, tenantId: tenant_id });
       if (!entry) {
-        return reply.status(404).send({ error: "Waitlist entry not found" });
+        return reply.notFound("Waitlist entry not found");
       }
       return WaitlistEntryListItemSchema.parse(entry);
     },
@@ -268,7 +268,7 @@ export const registerGroupWaitlistPromoRoutes = (app: FastifyInstance): void => 
       const { tenant_id } = z.object({ tenant_id: z.string().uuid() }).parse(request.query);
       const booking = await getGroupBookingById({ groupBookingId, tenantId: tenant_id });
       if (!booking) {
-        return reply.status(404).send({ error: "Group booking not found" });
+        return reply.notFound("Group booking not found");
       }
       return GroupBookingListItemSchema.parse(booking);
     },
@@ -382,7 +382,7 @@ export const registerGroupWaitlistPromoRoutes = (app: FastifyInstance): void => 
       const { tenant_id } = z.object({ tenant_id: z.string().uuid() }).parse(request.query);
       const code = await getPromotionalCodeById({ promoId, tenantId: tenant_id });
       if (!code) {
-        return reply.status(404).send({ error: "Promotional code not found" });
+        return reply.notFound("Promotional code not found");
       }
       return PromotionalCodeListItemSchema.parse(code);
     },

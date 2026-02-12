@@ -211,10 +211,7 @@ export const registerAuthRoutes = (app: FastifyInstance): void => {
 
       if (!result.ok) {
         if (result.reason === "ACCOUNT_INACTIVE") {
-          return reply.status(403).send({
-            error: "Account inactive",
-            message: "This account is not active",
-          });
+          return reply.forbidden("This account is not active");
         }
 
         const message =
@@ -222,10 +219,7 @@ export const registerAuthRoutes = (app: FastifyInstance): void => {
             ? "New password cannot be the system default password."
             : "Invalid credentials";
 
-        return reply.status(400).send({
-          error: "Invalid credentials",
-          message,
-        });
+        return reply.badRequest(message);
       }
 
       const { user, memberships, accessToken, expiresIn } = result.data;
@@ -269,24 +263,15 @@ export const registerAuthRoutes = (app: FastifyInstance): void => {
 
       const profile = await loadTenantMfaProfile(request.auth.userId);
       if (!profile) {
-        return reply.status(401).send({
-          error: "Unauthorized",
-          message: "User not found.",
-        });
+        return reply.unauthorized("User not found.");
       }
 
       if (!profile.is_active) {
-        return reply.status(403).send({
-          error: "Account inactive",
-          message: "This account is not active.",
-        });
+        return reply.forbidden("This account is not active.");
       }
 
       if (profile.mfa_enabled) {
-        return reply.status(409).send({
-          error: "MFA already enabled",
-          message: "Multi-factor authentication is already enabled for this user.",
-        });
+        return reply.conflict("Multi-factor authentication is already enabled for this user.");
       }
 
       const secret = authenticator.generateSecret();
@@ -325,39 +310,24 @@ export const registerAuthRoutes = (app: FastifyInstance): void => {
       const { mfa_code } = MfaVerifyRequestSchema.parse(request.body);
       const profile = await loadTenantMfaProfile(request.auth.userId);
       if (!profile) {
-        return reply.status(401).send({
-          error: "Unauthorized",
-          message: "User not found.",
-        });
+        return reply.unauthorized("User not found.");
       }
 
       if (!profile.is_active) {
-        return reply.status(403).send({
-          error: "Account inactive",
-          message: "This account is not active.",
-        });
+        return reply.forbidden("This account is not active.");
       }
 
       if (profile.mfa_enabled) {
-        return reply.status(409).send({
-          error: "MFA already enabled",
-          message: "Multi-factor authentication is already enabled for this user.",
-        });
+        return reply.conflict("Multi-factor authentication is already enabled for this user.");
       }
 
       if (!profile.mfa_secret) {
-        return reply.status(400).send({
-          error: "MFA enrollment missing",
-          message: "Start MFA enrollment before verifying the code.",
-        });
+        return reply.badRequest("Start MFA enrollment before verifying the code.");
       }
 
       const valid = authenticator.check(mfa_code, profile.mfa_secret);
       if (!valid) {
-        return reply.status(400).send({
-          error: "Invalid MFA code",
-          message: "The provided MFA code is invalid.",
-        });
+        return reply.badRequest("The provided MFA code is invalid.");
       }
 
       await pool.query(TENANT_AUTH_UPDATE_MFA_SQL, [profile.mfa_secret, true, profile.id]);
@@ -393,39 +363,24 @@ export const registerAuthRoutes = (app: FastifyInstance): void => {
       const { mfa_code } = MfaVerifyRequestSchema.parse(request.body);
       const profile = await loadTenantMfaProfile(request.auth.userId);
       if (!profile) {
-        return reply.status(401).send({
-          error: "Unauthorized",
-          message: "User not found.",
-        });
+        return reply.unauthorized("User not found.");
       }
 
       if (!profile.is_active) {
-        return reply.status(403).send({
-          error: "Account inactive",
-          message: "This account is not active.",
-        });
+        return reply.forbidden("This account is not active.");
       }
 
       if (!profile.mfa_enabled) {
-        return reply.status(409).send({
-          error: "MFA not enabled",
-          message: "Enable MFA before rotating the secret.",
-        });
+        return reply.conflict("Enable MFA before rotating the secret.");
       }
 
       if (!profile.mfa_secret) {
-        return reply.status(400).send({
-          error: "MFA misconfigured",
-          message: "MFA is enabled without a secret.",
-        });
+        return reply.badRequest("MFA is enabled without a secret.");
       }
 
       const valid = authenticator.check(mfa_code, profile.mfa_secret);
       if (!valid) {
-        return reply.status(400).send({
-          error: "Invalid MFA code",
-          message: "The provided MFA code is invalid.",
-        });
+        return reply.badRequest("The provided MFA code is invalid.");
       }
 
       const secret = authenticator.generateSecret();
