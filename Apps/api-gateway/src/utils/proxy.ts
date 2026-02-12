@@ -1,5 +1,10 @@
 import type { FastifyReply, FastifyRequest } from "fastify";
 
+import { getCircuitBreaker } from "./circuit-breaker.js";
+
+/** Proxy timeout in ms; override via PROXY_TIMEOUT_MS env var. */
+const PROXY_TIMEOUT_MS = Number(process.env.PROXY_TIMEOUT_MS) || 30_000;
+
 const hopByHopHeaders = new Set([
   "connection",
   "keep-alive",
@@ -69,8 +74,29 @@ export const proxyRequest = async (
 
   const url = request.raw.url ?? "/";
   const targetUrl = new URL(url, targetBaseUrl).toString();
+
+  const breaker = getCircuitBreaker(targetBaseUrl, { logger: request.log });
+
+  if (!breaker.allowRequest()) {
+    request.log.warn(
+      { targetUrl, method: request.method, circuitState: breaker.getState() },
+      "circuit open — rejecting proxy request",
+    );
+    reply
+      .header("Content-Type", "application/json")
+      .status(503)
+      .send({
+        error: "SERVICE_UNAVAILABLE",
+        message: "Upstream service is temporarily unavailable. Please try again shortly.",
+      });
+    return;
+  }
+
   const headers = buildHeaders(request);
   const body = serializeBody(request, headers);
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), PROXY_TIMEOUT_MS);
 
   let response: Response;
   try {
@@ -78,19 +104,36 @@ export const proxyRequest = async (
       method: request.method,
       headers,
       body,
+      signal: controller.signal,
     });
   } catch (error) {
-    request.log.error({ err: error, targetUrl, method: request.method }, "proxy fetch failed");
+    breaker.recordFailure();
+    const isTimeout = error instanceof DOMException && error.name === "AbortError";
+
+    request.log.error(
+      { err: error, targetUrl, method: request.method, timedOut: isTimeout },
+      "proxy fetch failed",
+    );
 
     reply
       .header("Content-Type", "application/json")
-      .status(502)
+      .status(isTimeout ? 504 : 502)
       .send({
-        error: "UPSTREAM_UNAVAILABLE",
-        message: "Unable to reach upstream service. Please try again shortly.",
+        error: isTimeout ? "UPSTREAM_TIMEOUT" : "UPSTREAM_UNAVAILABLE",
+        message: isTimeout
+          ? "Upstream service did not respond in time."
+          : "Unable to reach upstream service. Please try again shortly.",
         details: error instanceof Error ? error.message : "Unknown upstream error",
       });
     return;
+  } finally {
+    clearTimeout(timeoutId);
+  }
+
+  if (response.status >= 500) {
+    breaker.recordFailure();
+  } else {
+    breaker.recordSuccess();
   }
 
   reply.status(response.status);

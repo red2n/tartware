@@ -198,6 +198,7 @@ export const registerRoomRoutes = (app: FastifyInstance): void => {
                 children: children ?? 0,
                 roomIds,
               }),
+              signal: AbortSignal.timeout(5_000),
             },
           );
 
@@ -321,6 +322,7 @@ export const registerRoomRoutes = (app: FastifyInstance): void => {
                 children: children ?? 0,
                 roomIds: [room.room_id],
               }),
+              signal: AbortSignal.timeout(5_000),
             },
           );
 
