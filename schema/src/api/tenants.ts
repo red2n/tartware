@@ -203,6 +203,4 @@ export const SystemBootstrapTenantSchema = z.object({
 
 export type SystemBootstrapTenant = z.infer<typeof SystemBootstrapTenantSchema>;
 
-/** System admin bootstrap response (same shape as self-serve). */
-export const SystemBootstrapTenantResponseSchema = TenantBootstrapResponseSchema;
-export type SystemBootstrapTenantResponse = TenantBootstrapResponse;
+

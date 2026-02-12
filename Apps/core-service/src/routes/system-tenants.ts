@@ -1,7 +1,7 @@
 import { buildRouteSchema, errorResponseSchema, schemaFromZod } from "@tartware/openapi";
 import {
-  SystemBootstrapTenantResponseSchema,
   SystemBootstrapTenantSchema,
+  TenantBootstrapResponseSchema,
   SystemCreateTenantResponseSchema,
   SystemCreateTenantSchema,
   SystemTenantListQuerySchema,
@@ -34,7 +34,7 @@ const CreateTenantResponseJsonSchema = schemaFromZod(
 
 const BootstrapTenantJsonSchema = schemaFromZod(SystemBootstrapTenantSchema, "BootstrapTenant");
 const BootstrapTenantResponseJsonSchema = schemaFromZod(
-  SystemBootstrapTenantResponseSchema,
+  TenantBootstrapResponseSchema,
   "BootstrapTenantResponse",
 );
 
@@ -172,7 +172,7 @@ export const registerSystemTenantRoutes = (app: FastifyInstance): void => {
         });
 
         reply.status(201);
-        return SystemBootstrapTenantResponseSchema.parse({
+        return TenantBootstrapResponseSchema.parse({
           tenant,
           property,
           owner,

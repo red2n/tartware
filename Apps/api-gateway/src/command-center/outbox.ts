@@ -4,8 +4,5 @@ import { query, withTransaction } from "../lib/db.js";
 
 const repository = createOutboxRepository({ query, withTransaction });
 
-export const {
-  enqueueOutboxRecord,
-  markOutboxDeliveredByEventId,
-  markOutboxFailedByEventId,
-} = repository;
+export const { enqueueOutboxRecord, markOutboxDeliveredByEventId, markOutboxFailedByEventId } =
+  repository;
