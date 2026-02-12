@@ -42,6 +42,7 @@ export const databaseSchema = z.object({
   DB_SSL: booleanString,
   DB_POOL_MAX: z.coerce.number().int().default(10),
   DB_POOL_IDLE_TIMEOUT_MS: z.coerce.number().int().default(30000),
+  DB_STATEMENT_TIMEOUT_MS: z.coerce.number().int().default(30000),
 });
 
 export const redisSchema = z.object({

@@ -59,6 +59,7 @@ export const config = {
     ssl: configValues.DB_SSL,
     max: configValues.DB_POOL_MAX,
     idleTimeoutMillis: configValues.DB_POOL_IDLE_TIMEOUT_MS,
+    statementTimeoutMs: configValues.DB_STATEMENT_TIMEOUT_MS,
   },
   auth: {
     audience: configValues.JWT_AUDIENCE,

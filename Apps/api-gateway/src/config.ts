@@ -113,6 +113,7 @@ export const dbConfig = {
   ssl: baseConfig.DB_SSL,
   max: baseConfig.DB_POOL_MAX,
   idleTimeoutMillis: baseConfig.DB_POOL_IDLE_TIMEOUT_MS,
+  statementTimeoutMs: baseConfig.DB_STATEMENT_TIMEOUT_MS,
 };
 
 export const authConfig = {

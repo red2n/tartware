@@ -1,4 +1,11 @@
-import { Pool, type PoolClient, type QueryResult, type QueryResultRow, types } from "pg";
+import {
+  Pool,
+  type PoolClient,
+  type QueryConfig,
+  type QueryResult,
+  type QueryResultRow,
+  types,
+} from "pg";
 
 // ── Type parsers (global, idempotent) ──────────────────────────
 let typeParsersRegistered = false;
@@ -28,6 +35,8 @@ export interface DbPoolConfig {
   ssl: boolean;
   max: number;
   idleTimeoutMillis: number;
+  /** PostgreSQL statement_timeout in ms (0 = no limit). Default: 30 000 */
+  statementTimeoutMs?: number;
 }
 
 // ── Logger interface (pino-compatible subset) ──────────────────
@@ -44,16 +53,16 @@ export interface DbPool {
   /** Raw pool for services that need direct access. */
   pool: Pool;
 
-  /** Execute a parameterised query. */
+  /** Execute a parameterised query (text + params, or a QueryConfig with optional `name` for prepared statements). */
   query: <T extends QueryResultRow = QueryResultRow>(
-    text: string,
+    textOrConfig: string | QueryConfig,
     params?: unknown[],
   ) => Promise<QueryResult<T>>;
 
   /** Execute a parameterised query on an existing client (inside a transaction). */
   queryWithClient: <T extends QueryResultRow = QueryResultRow>(
     client: PoolClient,
-    text: string,
+    textOrConfig: string | QueryConfig,
     params?: unknown[],
   ) => Promise<QueryResult<T>>;
 
@@ -82,6 +91,7 @@ export function createDbPool(dbConfig: DbPoolConfig, logger: ParentLogger): DbPo
     ssl: dbConfig.ssl ? { rejectUnauthorized: false } : undefined,
     max: dbConfig.max,
     idleTimeoutMillis: dbConfig.idleTimeoutMillis,
+    statement_timeout: dbConfig.statementTimeoutMs,
   });
 
   pool.on("error", (error: unknown) => {
@@ -89,15 +99,25 @@ export function createDbPool(dbConfig: DbPoolConfig, logger: ParentLogger): DbPo
   });
 
   const query = async <T extends QueryResultRow = QueryResultRow>(
-    text: string,
+    textOrConfig: string | QueryConfig,
     params: unknown[] = [],
-  ): Promise<QueryResult<T>> => pool.query<T>(text, params);
+  ): Promise<QueryResult<T>> => {
+    if (typeof textOrConfig === "string") {
+      return pool.query<T>(textOrConfig, params);
+    }
+    return pool.query<T>(textOrConfig);
+  };
 
   const queryWithClient = async <T extends QueryResultRow = QueryResultRow>(
     client: PoolClient,
-    text: string,
+    textOrConfig: string | QueryConfig,
     params: unknown[] = [],
-  ): Promise<QueryResult<T>> => client.query<T>(text, params);
+  ): Promise<QueryResult<T>> => {
+    if (typeof textOrConfig === "string") {
+      return client.query<T>(textOrConfig, params);
+    }
+    return client.query<T>(textOrConfig);
+  };
 
   const withTransaction = async <T>(fn: (client: PoolClient) => Promise<T>): Promise<T> => {
     const client = await pool.connect();
