@@ -9,6 +9,8 @@ import {
 
 import { query } from "../lib/db.js";
 import {
+  HOUSEKEEPING_INSPECTION_LIST_SQL,
+  HOUSEKEEPING_SCHEDULE_LIST_SQL,
   HOUSEKEEPING_TASK_LIST_SQL,
   INCIDENT_REPORT_BY_ID_SQL,
   INCIDENT_REPORT_LIST_SQL,
@@ -135,6 +137,69 @@ export const listHousekeepingTasks = async (options: {
     propertyId,
     status,
     scheduledDate,
+    offset,
+  ]);
+
+  return rows.map(mapRowToTask);
+};
+
+/**
+ * List housekeeping schedules (tasks with scheduled dates).
+ */
+export const listHousekeepingSchedules = async (options: {
+  limit?: number;
+  tenantId: string;
+  propertyId?: string;
+  dateFrom?: string;
+  dateTo?: string;
+  offset?: number;
+}): Promise<HousekeepingTask[]> => {
+  const limit = options.limit ?? 200;
+  const tenantId = options.tenantId;
+  const propertyId = options.propertyId ?? null;
+  const dateFrom = options.dateFrom ?? null;
+  const dateTo = options.dateTo ?? null;
+  const offset = options.offset ?? 0;
+
+  const { rows } = await query<HousekeepingTaskRow>(HOUSEKEEPING_SCHEDULE_LIST_SQL, [
+    limit,
+    tenantId,
+    propertyId,
+    dateFrom,
+    dateTo,
+    offset,
+  ]);
+
+  return rows.map(mapRowToTask);
+};
+
+/**
+ * List housekeeping inspections (tasks that have been inspected).
+ */
+export const listHousekeepingInspections = async (options: {
+  limit?: number;
+  tenantId: string;
+  propertyId?: string;
+  passed?: boolean;
+  dateFrom?: string;
+  dateTo?: string;
+  offset?: number;
+}): Promise<HousekeepingTask[]> => {
+  const limit = options.limit ?? 200;
+  const tenantId = options.tenantId;
+  const propertyId = options.propertyId ?? null;
+  const passed = options.passed ?? null;
+  const dateFrom = options.dateFrom ?? null;
+  const dateTo = options.dateTo ?? null;
+  const offset = options.offset ?? 0;
+
+  const { rows } = await query<HousekeepingTaskRow>(HOUSEKEEPING_INSPECTION_LIST_SQL, [
+    limit,
+    tenantId,
+    propertyId,
+    passed,
+    dateFrom,
+    dateTo,
     offset,
   ]);
 

@@ -62,6 +62,82 @@ export const HousekeepingTaskListResponseSchema = z.object({
 export type HousekeepingTaskListResponse = z.infer<typeof HousekeepingTaskListResponseSchema>;
 
 // =====================================================
+// HOUSEKEEPING SCHEDULES
+// =====================================================
+
+/**
+ * Query schema for listing housekeeping schedules.
+ * Filters tasks that have a scheduled date, with optional date range.
+ */
+export const HousekeepingScheduleListQuerySchema = z.object({
+	tenant_id: uuid,
+	property_id: uuid.optional(),
+	date_from: z
+		.string()
+		.optional()
+		.refine((value) => !value || !Number.isNaN(Date.parse(value)), {
+			message: "date_from must be a valid ISO date string",
+		}),
+	date_to: z
+		.string()
+		.optional()
+		.refine((value) => !value || !Number.isNaN(Date.parse(value)), {
+			message: "date_to must be a valid ISO date string",
+		}),
+	limit: z.coerce.number().int().positive().max(500).default(200),
+	offset: z.coerce.number().int().min(0).default(0),
+});
+
+export type HousekeepingScheduleListQuery = z.infer<typeof HousekeepingScheduleListQuerySchema>;
+
+/**
+ * Response schema for housekeeping schedule list.
+ */
+export const HousekeepingScheduleListResponseSchema = z.array(HousekeepingTaskListItemSchema);
+
+export type HousekeepingScheduleListResponse = z.infer<typeof HousekeepingScheduleListResponseSchema>;
+
+// =====================================================
+// HOUSEKEEPING INSPECTIONS
+// =====================================================
+
+/**
+ * Query schema for listing housekeeping inspections.
+ * Filters tasks that have been inspected, with optional pass/fail and date range.
+ */
+export const HousekeepingInspectionListQuerySchema = z.object({
+	tenant_id: uuid,
+	property_id: uuid.optional(),
+	passed: z
+		.string()
+		.optional()
+		.transform((v) => (v === "true" ? true : v === "false" ? false : undefined)),
+	date_from: z
+		.string()
+		.optional()
+		.refine((value) => !value || !Number.isNaN(Date.parse(value)), {
+			message: "date_from must be a valid ISO date string",
+		}),
+	date_to: z
+		.string()
+		.optional()
+		.refine((value) => !value || !Number.isNaN(Date.parse(value)), {
+			message: "date_to must be a valid ISO date string",
+		}),
+	limit: z.coerce.number().int().positive().max(500).default(200),
+	offset: z.coerce.number().int().min(0).default(0),
+});
+
+export type HousekeepingInspectionListQuery = z.infer<typeof HousekeepingInspectionListQuerySchema>;
+
+/**
+ * Response schema for housekeeping inspection list.
+ */
+export const HousekeepingInspectionListResponseSchema = z.array(HousekeepingTaskListItemSchema);
+
+export type HousekeepingInspectionListResponse = z.infer<typeof HousekeepingInspectionListResponseSchema>;
+
+// =====================================================
 // MAINTENANCE REQUESTS
 // =====================================================
 
