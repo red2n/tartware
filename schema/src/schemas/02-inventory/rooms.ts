@@ -50,6 +50,8 @@ export const RoomsSchema = z.object({
   out_of_order_reason: z.string().optional(),
   out_of_order_since: z.coerce.date().optional(),
   expected_ready_date: z.coerce.date().optional(),
+  last_deep_clean_date: z.coerce.date().optional(),
+  deep_clean_interval_days: z.number().int().optional(),
   notes: z.string().optional(),
   housekeeping_notes: z.string().optional(),
   metadata: z.record(z.unknown()).optional(),

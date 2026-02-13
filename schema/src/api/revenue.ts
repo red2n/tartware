@@ -117,3 +117,21 @@ export const KpiQuerySchema = z.object({
 });
 
 export type KpiQuery = z.infer<typeof KpiQuerySchema>;
+
+// =====================================================
+// COMPSET BENCHMARKING SCHEMAS (IS-3)
+// =====================================================
+
+/**
+ * Query schema for STR-style competitive set indices.
+ * Computes Occupancy Index, ARI (ADR Index), and RGI (RevPAR Index).
+ */
+export const CompsetIndicesQuerySchema = z.object({
+	tenant_id: tenantId,
+	property_id: propertyId,
+	business_date: z
+		.string()
+		.describe("Business date for compset comparison (YYYY-MM-DD)"),
+});
+
+export type CompsetIndicesQuery = z.infer<typeof CompsetIndicesQuerySchema>;

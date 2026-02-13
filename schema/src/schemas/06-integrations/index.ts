@@ -47,3 +47,5 @@ export * from "./sentiment-analysis.js";
 export * from "./sentiment-trends.js";
 export * from "./social-media-mentions.js";
 export * from "./webhook-subscriptions.js";
+export * from "./metasearch-configurations.js";
+export * from "./metasearch-click-log.js";

@@ -27,7 +27,7 @@ CREATE TABLE IF NOT EXISTS channel_commission_rules (
     rule_type VARCHAR(50) NOT NULL CHECK (rule_type IN ('standard', 'tiered', 'performance_based', 'seasonal', 'promotional', 'volume_based')),
 
     -- Commission Structure
-    commission_model VARCHAR(50) NOT NULL CHECK (commission_model IN ('percentage', 'flat_fee', 'per_room_night', 'hybrid', 'net_rate')),
+    commission_model VARCHAR(50) NOT NULL CHECK (commission_model IN ('percentage', 'flat_fee', 'per_room_night', 'hybrid', 'net_rate', 'cpc', 'cpa')),
     base_commission_percent DECIMAL(5,2),
     base_commission_amount DECIMAL(10,2),
     currency VARCHAR(3) DEFAULT 'USD',

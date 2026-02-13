@@ -509,3 +509,44 @@ export const INCIDENT_REPORT_BY_ID_SQL = `
     AND i.tenant_id = $2
     AND COALESCE(i.is_deleted, false) = false
 `;
+
+export const DEEP_CLEAN_DUE_SQL = `
+  SELECT
+    r.id AS room_id,
+    r.tenant_id,
+    r.property_id,
+    p.property_name,
+    r.room_number,
+    rt.room_type_name,
+    r.floor,
+    r.status,
+    r.housekeeping_status,
+    r.last_deep_clean_date,
+    COALESCE(r.deep_clean_interval_days, 30) AS deep_clean_interval_days,
+    CASE
+      WHEN r.last_deep_clean_date IS NOT NULL
+      THEN (CURRENT_DATE - r.last_deep_clean_date)
+      ELSE NULL
+    END AS days_since_deep_clean,
+    CASE
+      WHEN r.last_deep_clean_date IS NOT NULL
+      THEN (CURRENT_DATE - r.last_deep_clean_date) - COALESCE(r.deep_clean_interval_days, 30)
+      ELSE NULL
+    END AS days_overdue
+  FROM public.rooms r
+  LEFT JOIN public.properties p ON r.property_id = p.id
+  LEFT JOIN public.room_types rt ON r.room_type_id = rt.id
+  WHERE r.tenant_id = $2::uuid
+    AND ($3::uuid IS NULL OR r.property_id = $3::uuid)
+    AND COALESCE(r.is_deleted, false) = false
+    AND r.status NOT IN ('OUT_OF_ORDER', 'OUT_OF_SERVICE')
+    AND (
+      r.last_deep_clean_date IS NULL
+      OR (CURRENT_DATE - r.last_deep_clean_date) >= COALESCE(r.deep_clean_interval_days, 30)
+    )
+  ORDER BY
+    r.last_deep_clean_date ASC NULLS FIRST,
+    r.room_number ASC
+  LIMIT $1
+  OFFSET $4
+`;

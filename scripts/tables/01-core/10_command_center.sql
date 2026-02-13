@@ -193,7 +193,13 @@ WITH seed_commands(command_name, description, default_target_service, required_m
         ('reservation.walk_guest', 'Walk a guest to an alternate property or compensation', 'reservations-command-service', ARRAY['core']),
         ('notification.send', 'Send a templated notification to a guest', 'notification-service', ARRAY['core']),
         ('billing.cashier.open', 'Open a new cashier/till session', 'billing-service', ARRAY['finance-automation']),
-        ('billing.cashier.close', 'Close and reconcile a cashier session', 'billing-service', ARRAY['finance-automation'])
+        ('billing.cashier.close', 'Close and reconcile a cashier session', 'billing-service', ARRAY['finance-automation']),
+        ('operations.schedule.create', 'Create a staff schedule entry', 'housekeeping-service', ARRAY['facility-maintenance']),
+        ('operations.schedule.update', 'Update an existing staff schedule entry', 'housekeeping-service', ARRAY['facility-maintenance']),
+        ('compliance.breach.report', 'Report a data breach incident', 'core-service', ARRAY['core']),
+        ('compliance.breach.notify', 'Notify authority/subjects of a data breach', 'core-service', ARRAY['core']),
+        ('loyalty.points.earn', 'Earn loyalty points for a guest', 'guests-service', ARRAY['loyalty']),
+        ('loyalty.points.redeem', 'Redeem loyalty points for a guest', 'guests-service', ARRAY['loyalty'])
 )
 INSERT INTO command_templates (command_name, description, default_target_service, required_modules, metadata)
 SELECT

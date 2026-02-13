@@ -26,6 +26,7 @@ export * from "./schemas/06-integrations/index.js";
 export * from "./schemas/07-analytics/index.js";
 export * from "./schemas/08-settings/index.js";
 export * from "./schemas/09-reference-data/index.js";
+export * from "./schemas/10-compliance/index.js";
 export * from "./events/availability-guard.js";
 export * from "./events/reservations.js";
 export * from "./events/commands/index.js";

@@ -6,6 +6,7 @@ import { metricsRegistry } from "./lib/metrics.js";
 import authContextPlugin from "./plugins/auth-context.js";
 import swaggerPlugin from "./plugins/swagger.js";
 import { registerHealthRoutes } from "./routes/health.js";
+import { registerDeepCleanRoutes } from "./routes/deep-clean.js";
 import { registerHousekeepingRoutes } from "./routes/housekeeping.js";
 import { registerIncidentRoutes } from "./routes/incidents.js";
 import { registerInspectionRoutes } from "./routes/inspections.js";
@@ -26,6 +27,7 @@ export const buildServer = (): FastifyInstance => {
     registerRoutes: (app) => {
       registerHealthRoutes(app);
       registerHousekeepingRoutes(app);
+      registerDeepCleanRoutes(app);
       registerScheduleRoutes(app);
       registerInspectionRoutes(app);
       registerMaintenanceRoutes(app);

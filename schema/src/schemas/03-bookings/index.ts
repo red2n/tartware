@@ -41,3 +41,5 @@ export * from "./reservation-guard-locks.js";
 export * from "./roll-service-shadow-ledgers.js";
 export * from "./roll-service-backfill-checkpoint.js";
 export * from "./roll-service-consumer-offsets.js";
+export * from "./loyalty-point-transactions.js";
+export * from "./loyalty-tier-rules.js";

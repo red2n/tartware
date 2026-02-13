@@ -24,6 +24,10 @@ import {
   reassignHousekeepingTask,
   reopenHousekeepingTask,
 } from "../services/housekeeping-command-service.js";
+import {
+  createStaffSchedule,
+  updateStaffSchedule,
+} from "../services/schedule-command-service.js";
 
 let consumer: Consumer | null = null;
 const logger = appLogger.child({ module: "housekeeping-command-consumer" });
@@ -151,6 +155,18 @@ const routeHousekeepingCommand = async (
       return;
     case "housekeeping.task.bulk_status":
       await bulkUpdateHousekeepingStatus(envelope.payload, {
+        tenantId: metadata.tenantId,
+        initiatedBy: metadata.initiatedBy ?? null,
+      });
+      return;
+    case "operations.schedule.create":
+      await createStaffSchedule(envelope.payload, {
+        tenantId: metadata.tenantId,
+        initiatedBy: metadata.initiatedBy ?? null,
+      });
+      return;
+    case "operations.schedule.update":
+      await updateStaffSchedule(envelope.payload, {
         tenantId: metadata.tenantId,
         initiatedBy: metadata.initiatedBy ?? null,
       });

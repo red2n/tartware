@@ -118,6 +118,50 @@ export const HousekeepingInspectionListResponseSchema = z.array(HousekeepingTask
 export type HousekeepingInspectionListResponse = z.infer<typeof HousekeepingInspectionListResponseSchema>;
 
 // =====================================================
+// DEEP CLEAN DUE
+// =====================================================
+
+/**
+ * Query schema for listing rooms due for deep cleaning.
+ */
+export const DeepCleanDueQuerySchema = z.object({
+	tenant_id: uuid,
+	property_id: uuid.optional(),
+	limit: z.coerce.number().int().positive().max(500).default(200),
+	offset: z.coerce.number().int().min(0).default(0),
+});
+
+export type DeepCleanDueQuery = z.infer<typeof DeepCleanDueQuerySchema>;
+
+/**
+ * Deep clean due room item schema for API responses.
+ */
+export const DeepCleanDueItemSchema = z.object({
+	room_id: uuid,
+	tenant_id: uuid,
+	property_id: uuid,
+	property_name: z.string().optional(),
+	room_number: z.string(),
+	room_type_name: z.string().optional(),
+	floor: z.string().optional(),
+	status: z.string(),
+	housekeeping_status: z.string(),
+	last_deep_clean_date: z.string().nullable(),
+	deep_clean_interval_days: z.number().int(),
+	days_since_deep_clean: z.number().int().nullable(),
+	days_overdue: z.number().int().nullable(),
+});
+
+export type DeepCleanDueItem = z.infer<typeof DeepCleanDueItemSchema>;
+
+/**
+ * Response schema for deep clean due list.
+ */
+export const DeepCleanDueResponseSchema = z.array(DeepCleanDueItemSchema);
+
+export type DeepCleanDueResponse = z.infer<typeof DeepCleanDueResponseSchema>;
+
+// =====================================================
 // MAINTENANCE REQUESTS
 // =====================================================
 

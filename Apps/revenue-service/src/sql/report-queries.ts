@@ -56,6 +56,49 @@ export const REVENUE_GOAL_LIST_SQL = `
   OFFSET $6
 `;
 
+export const COMPSET_INDICES_SQL = `
+  WITH own_kpis AS (
+    SELECT
+      COUNT(rm.id) AS total_rooms,
+      COUNT(res.id) FILTER (WHERE res.status IN ('CHECKED_IN', 'CHECKED_OUT')) AS occupied_rooms,
+      COALESCE(SUM(cp.total_amount) FILTER (WHERE cp.charge_category = 'ROOM'), 0) AS room_revenue
+    FROM public.rooms rm
+    LEFT JOIN public.reservations res
+      ON res.property_id = rm.property_id
+      AND res.room_number = rm.room_number
+      AND res.status IN ('CHECKED_IN', 'CHECKED_OUT')
+      AND res.check_in_date <= $3::date
+      AND res.check_out_date > $3::date
+    LEFT JOIN public.charge_postings cp
+      ON cp.reservation_id = res.id
+      AND cp.business_date = $3::date
+      AND COALESCE(cp.is_voided, false) = false
+      AND COALESCE(cp.is_deleted, false) = false
+    WHERE rm.property_id = $1::uuid
+      AND rm.tenant_id = $2::uuid
+      AND COALESCE(rm.is_deleted, false) = false
+      AND rm.status NOT IN ('OUT_OF_ORDER', 'OUT_OF_SERVICE')
+  ),
+  compset_avg AS (
+    SELECT
+      AVG(cr.competitor_rate) AS avg_compset_adr,
+      COUNT(DISTINCT cr.competitor_property_name) AS compset_count
+    FROM public.competitor_rates cr
+    WHERE cr.property_id = $1::uuid
+      AND cr.tenant_id = $2::uuid
+      AND cr.stay_date = $3::date
+      AND COALESCE(cr.is_deleted, false) = false
+  )
+  SELECT
+    ok.total_rooms,
+    ok.occupied_rooms,
+    ok.room_revenue,
+    ca.avg_compset_adr,
+    ca.compset_count
+  FROM own_kpis ok
+  CROSS JOIN compset_avg ca
+`;
+
 export const REVENUE_KPI_SQL = `
   SELECT
     COUNT(r.id) FILTER (WHERE r.status IN ('CHECKED_IN', 'CHECKED_OUT')) AS occupied_rooms,

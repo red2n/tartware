@@ -1997,6 +1997,102 @@ X-Idempotency-Key: notif-send-{{$timestamp}}
 }
 
 ###############################################################################
+# 76. operations.schedule.create - Create a staff schedule entry
+###############################################################################
+
+POST {{baseUrl}}/v1/commands/operations.schedule.create/execute
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+X-Request-ID: {{$guid}}
+X-Idempotency-Key: sched-create-{{$timestamp}}
+
+{
+  "tenant_id": "{{tenantId}}",
+  "payload": {
+    "property_id": "{{propertyId}}",
+    "user_id": "{{userId}}",
+    "department": "housekeeping",
+    "schedule_date": "2026-03-10",
+    "shift_type": "morning",
+    "scheduled_start_time": "07:00",
+    "scheduled_end_time": "15:00",
+    "scheduled_hours": 8,
+    "role": "Room Attendant",
+    "shift_name": "Morning Shift A",
+    "work_location": "Main Building",
+    "assigned_area": "Floor 3",
+    "notes": "VIP arrivals expected — extra attention on suites"
+  }
+}
+
+###############################################################################
+# 77. operations.schedule.update - Update a staff schedule entry
+###############################################################################
+
+POST {{baseUrl}}/v1/commands/operations.schedule.update/execute
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+X-Request-ID: {{$guid}}
+X-Idempotency-Key: sched-update-{{$timestamp}}
+
+{
+  "tenant_id": "{{tenantId}}",
+  "payload": {
+    "schedule_id": "{{scheduleId}}",
+    "property_id": "{{propertyId}}",
+    "shift_type": "afternoon",
+    "scheduled_start_time": "14:00",
+    "scheduled_end_time": "22:00",
+    "scheduled_hours": 8,
+    "schedule_status": "confirmed",
+    "assigned_area": "Floor 5",
+    "notes": "Shift swapped with Maria — approved by manager"
+  }
+}
+
+###############################################################################
+# 78. loyalty.points.earn - Earn loyalty points for a guest
+###############################################################################
+
+POST {{baseUrl}}/v1/commands/loyalty.points.earn/execute
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+X-Request-ID: {{$guid}}
+X-Idempotency-Key: loyalty-earn-{{$timestamp}}
+
+{
+  "tenant_id": "{{tenantId}}",
+  "payload": {
+    "guest_id": "33333333-3333-3333-3333-333333333333",
+    "program_id": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+    "points": 500,
+    "reference_type": "reservation",
+    "description": "Points earned for 2-night stay"
+  }
+}
+
+###############################################################################
+# 79. loyalty.points.redeem - Redeem loyalty points for a guest
+###############################################################################
+
+POST {{baseUrl}}/v1/commands/loyalty.points.redeem/execute
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+X-Request-ID: {{$guid}}
+X-Idempotency-Key: loyalty-redeem-{{$timestamp}}
+
+{
+  "tenant_id": "{{tenantId}}",
+  "payload": {
+    "guest_id": "33333333-3333-3333-3333-333333333333",
+    "program_id": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+    "points": 200,
+    "reference_type": "manual",
+    "description": "Redeemed for complimentary breakfast"
+  }
+}
+
+###############################################################################
 # REFERENCE
 ###############################################################################
 #

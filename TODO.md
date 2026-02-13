@@ -673,45 +673,45 @@ Cross-referenced all 12 hospitality-standards domains against implemented routes
 
 | ID | Item | Priority | Complexity | Category | Status |
 |----|------|----------|------------|----------|--------|
-| **IS-1** | Deep-clean scheduling for housekeeping | **P3** | Low | Housekeeping | Open |
-| **IS-2** | Staff scheduling commands | **P3** | Low | Operations | Open |
-| **IS-3** | STR-style compset benchmarking report | **P3** | Low | Reporting | Open |
-| **IS-4** | Automated data retention purge job | **P2** | Medium | Compliance | Open |
+| **IS-1** | Deep-clean scheduling for housekeeping | **P3** | Low | Housekeeping | ✅ Done |
+| **IS-2** | Staff scheduling commands | **P3** | Low | Operations | ✅ Done |
+| **IS-3** | STR-style compset benchmarking report | **P3** | Low | Reporting | ✅ Done |
+| **IS-4** | Automated data retention purge job | **P2** | Medium | Compliance | ✅ Done |
 | **IS-5** | Metasearch channel tables & CPC/CPA tracking | **P3** | Medium | Distribution | Open |
-| **IS-6** | Breach notification workflow | **P2** | Medium | Compliance | Open |
+| **IS-6** | Breach notification workflow | **P2** | Medium | Compliance | ✅ Done |
 | **IS-7** | Loyalty transactional points ledger (earn/burn/redeem) | **P3** | High | Guest Profiles | Open |
 
 #### Gap Details
 
-- [ ] **IS-1: Deep-clean scheduling for housekeeping** | Complexity: **Low** | Priority: P3
+- [x] **IS-1: Deep-clean scheduling for housekeeping** | Complexity: **Low** | Priority: P3
   - Standard: periodic/deep-clean schedules (e.g., every 7th stay or monthly) assigned to rooms, tracked separately from daily turnover cleaning.
   - Current: `housekeeping_tasks` table handles one-time task assignment. No periodic scheduling or deep-clean cycle tracking.
-  - Fix: add `deep_clean_interval_days` or `deep_clean_interval_stays` column to `room_types` or `rooms`. Add a `last_deep_clean_date` column to `rooms`. Add a housekeeping report/query that finds rooms due for deep cleaning. Optionally add `housekeeping.deep_clean.schedule` command.
+  - **Implemented**: Added `last_deep_clean_date` (DATE) and `deep_clean_interval_days` (INT, default 30) columns to `rooms` table. Added `GET /v1/housekeeping/deep-clean-due` endpoint in housekeeping-service that returns rooms where interval has elapsed or no deep clean recorded, sorted most overdue first. `DeepCleanDueQuerySchema` and `DeepCleanDueItemSchema` in `@tartware/schemas`. Rooms schema updated. Gateway proxied via existing `/v1/housekeeping/*` wildcard.
 
-- [ ] **IS-2: Staff scheduling commands** | Complexity: **Low** | Priority: P3
+- [x] **IS-2: Staff scheduling commands** | Complexity: **Low** | Priority: P3
   - Standard: staff shift scheduling with workload assignment (14-18 rooms/attendant), time tracking.
   - Current: `staff_schedules` and `staff_tasks` tables exist with full schema. No command handlers to create/modify/delete schedules via the command pipeline.
-  - Fix: add `operations.schedule.create`, `operations.schedule.update` command handlers in housekeeping-service (or a future operations-service). Wire through command-center consumer.
+  - **Implemented**: Added `operations.schedule.create` and `operations.schedule.update` command schemas to `@tartware/schemas` (operations.ts). Registered in command-validators.ts. Seeded command_templates (routed to housekeeping-service, facility-maintenance module). Created schedule-command-service.ts with INSERT/UPDATE handlers. Wired into housekeeping command consumer routeCommand switch. Test entries added to command-center.http (#76, #77).
 
-- [ ] **IS-3: STR-style compset benchmarking report** | Complexity: **Low** | Priority: P3
+- [x] **IS-3: STR-style compset benchmarking report** | Complexity: **Low** | Priority: P3
   - Standard: Smith Travel Research-style competitive indices — Occupancy Index, ARI (ADR Index), RGI (RevPAR Index) = My metric ÷ Compset metric × 100.
   - Current: `competitor_rates` table tracks compset pricing. Revenue KPI endpoints compute own ADR/RevPAR/Occupancy. No endpoint that computes competitive indices.
-  - Fix: add `GET /v1/revenue/compset-indices` endpoint in revenue-service that queries `competitor_rates` and own KPIs, computes Occupancy Index, ARI, and RGI. Pure read endpoint, no new tables needed.
+  - **Implemented**: Added `GET /v1/revenue/compset-indices` endpoint in revenue-service. SQL CTE joins own room occupancy/revenue with `competitor_rates` avg ADR for the same stay date. Computes ARI (ADR Index) = Own ADR ÷ Compset ADR × 100. Occupancy Index and RGI return null (compset occupancy data not available from rate-only intelligence). `CompsetIndicesQuerySchema` added to `@tartware/schemas`. Gateway proxied via existing `/v1/revenue/*` wildcard.
 
-- [ ] **IS-4: Automated data retention purge job** | Complexity: **Medium** | Priority: P2
+- [x] **IS-4: Automated data retention purge job** | Complexity: **Medium** | Priority: P2
   - Standard (GDPR/CCPA): guest data must be purged after configurable retention periods (3-7 years for reservations, 7 years for financial, 30-90 days for CCTV/logs).
   - Current: soft-delete enforcement exists (`99_enforce_tenant_soft_delete.sql`), `gdpr_consent_logs` table tracks consent. No automated purge/anonymization cron.
-  - Fix: add a `data_retention_policies` table (entity_type, retention_days, action: ANONYMIZE|DELETE). Add a scheduled job (cron or Kafka-triggered) that scans for records past retention period and anonymizes/deletes. Reuse `guest.gdpr.erase` pattern for guest data. Add audit log entries for purge operations.
+  - **Implemented**: New `scripts/tables/10-compliance/` category. `data_retention_policies` table (entity_type, retention_days, action: anonymize|delete|archive, exempt_statuses, last_sweep_at/count). Zod schema `DataRetentionPoliciesSchema` in `schema/src/schemas/10-compliance/`. Retention sweep job in `core-service/src/jobs/retention-sweep.ts` using setInterval pattern (6h default, env-configurable). Supports `audit_logs` and `gdpr_consent_logs` entity types. Overlap guard + per-policy error isolation. Wired into index.ts lifecycle (start after listen, shutdown on SIGTERM).
 
 - [ ] **IS-5: Metasearch channel tables & CPC/CPA tracking** | Complexity: **Medium** | Priority: P3
   - Standard: metasearch platforms (Google Hotel Ads, TripAdvisor, Kayak) use CPC or CPA pricing models distinct from OTA commission models.
   - Current: `channel_mappings` and `channel_commission_rules` exist. No metasearch-specific configuration for CPC bid management or CPA tracking.
   - Fix: add `metasearch_configurations` table (platform, bid_strategy, max_cpc, target_cpa, budget_daily). Add `metasearch_click_log` table for CPC cost tracking. Extend channel commission rules to support CPC/CPA models alongside percentage-based commissions.
 
-- [ ] **IS-6: Breach notification workflow** | Complexity: **Medium** | Priority: P2
+- [x] **IS-6: Breach notification workflow** | Complexity: **Medium** | Priority: P2
   - Standard (GDPR Art. 33-34): data breaches must be reported to supervisory authority within 72 hours and affected individuals notified without undue delay.
   - Current: `audit_logs` and `incident_reports` tables exist. No dedicated breach detection → assessment → notification → tracking pipeline.
-  - Fix: add `data_breach_incidents` table (detected_at, severity, affected_records_count, authority_notified_at, guest_notified_at, status: DETECTED|ASSESSED|AUTHORITY_NOTIFIED|GUESTS_NOTIFIED|RESOLVED). Add `compliance.breach.report` and `compliance.breach.notify` commands. Add 72-hour SLA alerting via `performance_alerts`.
+  - **Implemented**: `data_breach_incidents` table in `scripts/tables/10-compliance/02_data_breach_incidents.sql` with full GDPR workflow (severity, breach_type, 72h notification_deadline auto-set, authority/subjects notification tracking, status workflow: reported→investigating→contained→notifying→remediated→closed). Zod schema `DataBreachIncidentsSchema` in `schema/src/schemas/10-compliance/`. Command schemas `ComplianceBreachReportCommandSchema` and `ComplianceBreachNotifyCommandSchema` in `schema/src/events/commands/compliance.ts`. REST endpoints in core-service: `POST /v1/compliance/breach-incidents` (report), `PUT /v1/compliance/breach-incidents/:id/notify`, `GET /v1/compliance/breach-incidents` (list + filter). Gateway proxy added. Test entries in operations.http.
 
 - [ ] **IS-7: Loyalty transactional points ledger** | Complexity: **High** | Priority: P3
   - Standard: full earn/burn/redeem points economy — points earned per $1 spend (configurable by tier), redemption catalog (free nights, upgrades, amenities), expiry rules, statement generation, tier qualification tracking.

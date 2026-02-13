@@ -10,6 +10,10 @@ import {
 	AnalyticsReportScheduleCommandSchema,
 } from "./events/commands/analytics.js";
 import {
+	ComplianceBreachReportCommandSchema,
+	ComplianceBreachNotifyCommandSchema,
+} from "./events/commands/compliance.js";
+import {
 	BillingPaymentCaptureCommandSchema,
 	BillingPaymentRefundCommandSchema,
 	BillingPaymentAuthorizeCommandSchema,
@@ -77,6 +81,10 @@ import {
 	InventoryReleaseRoomCommandSchema,
 } from "./events/commands/inventory.js";
 import {
+	LoyaltyPointsEarnCommandSchema,
+	LoyaltyPointsRedeemCommandSchema,
+} from "./events/commands/loyalty.js";
+import {
 	NotificationSendCommandSchema,
 } from "./events/commands/notifications.js";
 import {
@@ -84,6 +92,8 @@ import {
 	OperationsIncidentReportCommandSchema,
 	OperationsInventoryAdjustCommandSchema,
 	OperationsMaintenanceRequestCommandSchema,
+	OperationsScheduleCreateCommandSchema,
+	OperationsScheduleUpdateCommandSchema,
 } from "./events/commands/operations.js";
 import {
 	ReservationCancelCommandSchema,
@@ -350,6 +360,30 @@ const commandPayloadValidators = new Map<string, CommandPayloadValidator>([
 	[
 		"operations.inventory.adjust",
 		(payload) => OperationsInventoryAdjustCommandSchema.parse(payload),
+	],
+	[
+		"operations.schedule.create",
+		(payload) => OperationsScheduleCreateCommandSchema.parse(payload),
+	],
+	[
+		"operations.schedule.update",
+		(payload) => OperationsScheduleUpdateCommandSchema.parse(payload),
+	],
+	[
+		"compliance.breach.report",
+		(payload) => ComplianceBreachReportCommandSchema.parse(payload),
+	],
+	[
+		"compliance.breach.notify",
+		(payload) => ComplianceBreachNotifyCommandSchema.parse(payload),
+	],
+	[
+		"loyalty.points.earn",
+		(payload) => LoyaltyPointsEarnCommandSchema.parse(payload),
+	],
+	[
+		"loyalty.points.redeem",
+		(payload) => LoyaltyPointsRedeemCommandSchema.parse(payload),
 	],
 	[
 		"reservation.create",

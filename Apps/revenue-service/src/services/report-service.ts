@@ -1,5 +1,6 @@
 import { query } from "../lib/db.js";
 import {
+  COMPSET_INDICES_SQL,
   REVENUE_FORECAST_LIST_SQL,
   REVENUE_GOAL_LIST_SQL,
   REVENUE_KPI_SQL,
@@ -199,6 +200,80 @@ export type RevenueKpi = {
   total_revenue: number;
   adr: number;
   revpar: number;
+};
+
+// ============================================================================
+// COMPSET INDICES (IS-3: STR-style benchmarking)
+// ============================================================================
+
+type CompsetRow = {
+  total_rooms: string | number;
+  occupied_rooms: string | number;
+  room_revenue: string | number;
+  avg_compset_adr: string | number | null;
+  compset_count: string | number;
+};
+
+export type CompsetIndices = {
+  property_id: string;
+  business_date: string;
+  own_occupancy_percent: number;
+  own_adr: number;
+  own_revpar: number;
+  compset_avg_adr: number | null;
+  compset_count: number;
+  occupancy_index: number | null;
+  ari: number | null;
+  rgi: number | null;
+};
+
+/**
+ * Computes STR-style competitive indices:
+ * - Occupancy Index = Own OCC% / Compset OCC% × 100 (requires compset occupancy data — approximated)
+ * - ARI (ADR Index) = Own ADR / Compset ADR × 100
+ * - RGI (RevPAR Index) = Own RevPAR / Compset RevPAR × 100 (derived from ARI × OCC index)
+ */
+export const getCompsetIndices = async (
+  propertyId: string,
+  tenantId: string,
+  businessDate: string,
+): Promise<CompsetIndices> => {
+  const { rows } = await query<CompsetRow>(COMPSET_INDICES_SQL, [propertyId, tenantId, businessDate]);
+  const row = rows[0];
+
+  const totalRooms = row ? toNumber(row.total_rooms) : 0;
+  const occupiedRooms = row ? toNumber(row.occupied_rooms) : 0;
+  const roomRevenue = row ? toNumber(row.room_revenue) : 0;
+  const compsetAdr = row?.avg_compset_adr != null ? toNumber(row.avg_compset_adr) : null;
+  const compsetCount = row ? toNumber(row.compset_count) : 0;
+
+  const ownOccupancy = totalRooms > 0 ? (occupiedRooms / totalRooms) * 100 : 0;
+  const ownAdr = occupiedRooms > 0 ? roomRevenue / occupiedRooms : 0;
+  const ownRevpar = totalRooms > 0 ? roomRevenue / totalRooms : 0;
+
+  // ARI = Own ADR / Compset ADR × 100
+  const ari = compsetAdr != null && compsetAdr > 0
+    ? Math.round((ownAdr / compsetAdr) * 100 * 100) / 100
+    : null;
+
+  // Without compset occupancy data, we can only compute ARI directly.
+  // Occupancy Index and RGI require compset occupancy which isn't available
+  // from rate-only competitor data. We return null to be honest about data gaps.
+  const occupancyIndex = null;
+  const rgi = null;
+
+  return {
+    property_id: propertyId,
+    business_date: businessDate,
+    own_occupancy_percent: Math.round(ownOccupancy * 100) / 100,
+    own_adr: Math.round(ownAdr * 100) / 100,
+    own_revpar: Math.round(ownRevpar * 100) / 100,
+    compset_avg_adr: compsetAdr != null ? Math.round(compsetAdr * 100) / 100 : null,
+    compset_count: compsetCount,
+    occupancy_index: occupancyIndex,
+    ari,
+    rgi,
+  };
 };
 
 export const getRevenueKpis = async (
