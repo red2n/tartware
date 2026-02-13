@@ -199,11 +199,7 @@ export const forwardReservationCommand = async (
       payload = normalizePayloadObject(request.body);
       break;
     default:
-      reply.status(405).send({
-        error: "METHOD_NOT_ALLOWED",
-        message: `Method ${method} is not supported for reservation commands`,
-      });
-      return;
+      return reply.methodNotAllowed(`Method ${method} is not supported for reservation commands`);
   }
 
   if (commandName !== "reservation.create") {

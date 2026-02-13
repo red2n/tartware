@@ -45,11 +45,11 @@ export const authPlugin = fp(async (app) => {
       const payload = await request.jwtVerify<AuthUser>();
       if (!payload.sub) {
         request.log.warn("Missing subject claim in JWT");
-        return reply.status(401).send({ message: "Unauthorized" });
+        return reply.unauthorized("Unauthorized");
       }
       if (!payload.tenantId || !isValidUuid(payload.tenantId)) {
         request.log.warn("Missing tenantId claim in JWT");
-        return reply.status(403).send({ message: "Tenant context required" });
+        return reply.forbidden("Tenant context required");
       }
       const membership = await getUserTenantMembership(payload.sub, payload.tenantId);
       if (!membership) {
@@ -57,20 +57,20 @@ export const authPlugin = fp(async (app) => {
           { tenantId: payload.tenantId, userId: payload.sub },
           "Tenant membership missing",
         );
-        return reply.status(403).send({ message: "Tenant access denied" });
+        return reply.forbidden("Tenant access denied");
       }
       if (!membership.isActive) {
         request.log.warn(
           { tenantId: payload.tenantId, userId: payload.sub },
           "Tenant membership inactive",
         );
-        return reply.status(403).send({ message: "Tenant access inactive" });
+        return reply.forbidden("Tenant access inactive");
       }
       request.authUser = payload;
       request.tenantMembership = membership;
     } catch (error) {
       request.log.warn({ err: error }, "Authentication failed");
-      return reply.status(401).send({ message: "Unauthorized" });
+      return reply.unauthorized("Unauthorized");
     }
   });
 });

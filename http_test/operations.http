@@ -7,6 +7,7 @@
 # This file contains test requests for operations endpoints:
 # - Maintenance Requests (work orders, repairs, preventive maintenance)
 # - Incident Reports (accidents, security events, investigations)
+# - Data Breach Incidents (compliance, GDPR notification)
 #
 # See housekeeping.http for housekeeping tasks
 # See command-center.http for write operations
@@ -287,6 +288,8 @@ Authorization: Bearer {{authToken}}
 #     POST /v1/commands/incident.report/execute
 #     POST /v1/commands/incident.investigate/execute
 #     POST /v1/commands/incident.resolve/execute
+#     POST /v1/commands/operations.schedule.create/execute
+#     POST /v1/commands/operations.schedule.update/execute
 #
 ###############################################################################
 
@@ -720,6 +723,61 @@ GET {{baseUrl}}/v1/police-reports
     &incident_date_from=2026-01-01
     &limit=50
 Authorization: Bearer {{authToken}}
+
+###############################################################################
+# DATA BREACH INCIDENTS (Compliance)
+###############################################################################
+
+### List all breach incidents
+GET {{baseUrl}}/v1/compliance/breach-incidents
+    ?tenant_id={{tenantId}}
+    &limit=50
+Authorization: Bearer {{authToken}}
+
+### List critical breach incidents
+GET {{baseUrl}}/v1/compliance/breach-incidents
+    ?tenant_id={{tenantId}}
+    &severity=critical
+    &limit=50
+Authorization: Bearer {{authToken}}
+
+### List active (non-closed) breach incidents
+GET {{baseUrl}}/v1/compliance/breach-incidents
+    ?tenant_id={{tenantId}}
+    &status=reported
+    &limit=50
+Authorization: Bearer {{authToken}}
+
+### Report a data breach incident
+POST {{baseUrl}}/v1/compliance/breach-incidents
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+
+{
+  "tenant_id": "{{tenantId}}",
+  "property_id": "{{propertyId}}",
+  "incident_title": "Unauthorized access to guest database",
+  "incident_description": "Security team detected unusual query patterns on the guest database at 02:30 UTC. An expired service account was used to export guest contact details. Access was revoked at 03:15 UTC.",
+  "severity": "high",
+  "breach_type": "unauthorized_access",
+  "discovered_at": "2026-03-10T03:15:00Z",
+  "occurred_at": "2026-03-10T02:30:00Z",
+  "data_categories_affected": ["name", "email", "phone"],
+  "systems_affected": ["guest-database", "api-gateway"],
+  "subjects_affected_count": 1200
+}
+
+### Notify authority of a breach (replace incidentId with actual UUID)
+PUT {{baseUrl}}/v1/compliance/breach-incidents/{{incidentId}}/notify
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+
+{
+  "tenant_id": "{{tenantId}}",
+  "authority_reference": "DPA-2026-0042",
+  "notify_subjects": true,
+  "notification_notes": "Notified national DPA within 48 hours. Affected guests emailed via bulk notification."
+}
 
 ###############################################################################
 # SECONDARY OPERATIONS REFERENCE

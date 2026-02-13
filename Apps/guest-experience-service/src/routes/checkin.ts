@@ -40,11 +40,7 @@ export const registerCheckinRoutes = (app: FastifyInstance): void => {
       // Authenticate via confirmation code
       const reservation = await lookupReservationByConfirmation(body.confirmation_code);
       if (!reservation) {
-        return reply.status(404).send({
-          statusCode: 404,
-          error: "Not Found",
-          message: "No reservation found with the provided confirmation code",
-        });
+        return reply.notFound("No reservation found with the provided confirmation code");
       }
 
       const result = await startMobileCheckin({
@@ -130,11 +126,7 @@ export const registerCheckinRoutes = (app: FastifyInstance): void => {
       const checkin = await getCheckinById(params.checkinId);
 
       if (!checkin) {
-        return reply.status(404).send({
-          statusCode: 404,
-          error: "Not Found",
-          message: "Check-in record not found",
-        });
+        return reply.notFound("Check-in record not found");
       }
 
       return reply.send(checkin);

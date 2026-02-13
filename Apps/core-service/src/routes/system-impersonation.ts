@@ -43,11 +43,9 @@ export const registerSystemImpersonationRoutes = (app: FastifyInstance): void =>
     async (request, reply) => {
       const adminContext = request.systemAdmin;
       if (!adminContext) {
-        return reply.status(401).send({
-          error: "SYSTEM_ADMIN_CONTEXT_MISSING",
-          message:
-            "System admin authentication middleware failed to populate context. Ensure the plugin is registered and a valid system admin token is supplied.",
-        });
+        return reply.unauthorized(
+          "System admin authentication middleware failed to populate context. Ensure the plugin is registered and a valid system admin token is supplied.",
+        );
       }
 
       const body = SystemAdminImpersonationRequestSchema.parse(request.body);
@@ -67,10 +65,7 @@ export const registerSystemImpersonationRoutes = (app: FastifyInstance): void =>
       if (!result.ok) {
         const message =
           IMPERSONATION_ERROR_MESSAGES[result.reason] ?? "Unable to start impersonation session.";
-        return reply.status(400).send({
-          error: result.reason,
-          message,
-        });
+        return reply.badRequest(message);
       }
 
       const payload = sanitizeForJson({

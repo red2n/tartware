@@ -80,7 +80,7 @@ const buildTenantScopeGuard = (options: TenantScopeOptions = {}): preHandlerHook
 
   return async (request: FastifyRequest, reply: FastifyReply) => {
     if (!allowUnauthenticated && !request.auth.isAuthenticated) {
-      reply.unauthorized("AUTHENTICATION_REQUIRED");
+      reply.unauthorized("You must be logged in to access this resource.");
       return reply;
     }
 
@@ -97,7 +97,9 @@ const buildTenantScopeGuard = (options: TenantScopeOptions = {}): preHandlerHook
           return currentPriority >= requiredPriority;
         });
         if (!hasRequiredRole) {
-          reply.forbidden("TENANT_ROLE_INSUFFICIENT");
+          reply.forbidden(
+            "You don't have permission to access this resource. Admin role is required.",
+          );
           return reply;
         }
       }
@@ -105,14 +107,14 @@ const buildTenantScopeGuard = (options: TenantScopeOptions = {}): preHandlerHook
       if (allowMissingTenantId) {
         return;
       }
-      reply.badRequest("TENANT_ID_REQUIRED");
+      reply.badRequest("Tenant ID is required for this operation.");
       return reply;
     }
 
     // Validate UUID format before checking access
     const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
     if (!uuidRegex.test(tenantId)) {
-      reply.badRequest("INVALID_TENANT_ID_FORMAT");
+      reply.badRequest("The provided tenant ID format is invalid.");
       return reply;
     }
 
@@ -122,7 +124,7 @@ const buildTenantScopeGuard = (options: TenantScopeOptions = {}): preHandlerHook
         { tenantId, userId: request.auth.userId },
         "tenant access denied: membership missing",
       );
-      reply.forbidden("TENANT_ACCESS_DENIED");
+      reply.forbidden("You don't have access to this tenant.");
       return reply;
     }
 
@@ -131,7 +133,7 @@ const buildTenantScopeGuard = (options: TenantScopeOptions = {}): preHandlerHook
         { tenantId, userId: request.auth.userId },
         "tenant access denied: membership inactive",
       );
-      reply.forbidden("TENANT_ACCESS_INACTIVE");
+      reply.forbidden("Your access to this tenant is inactive.");
       return reply;
     }
 
@@ -140,7 +142,7 @@ const buildTenantScopeGuard = (options: TenantScopeOptions = {}): preHandlerHook
         { tenantId, userId: request.auth.userId, minRole, role: membership.role },
         "tenant access denied: role insufficient",
       );
-      reply.forbidden("TENANT_ROLE_INSUFFICIENT");
+      reply.forbidden("You don't have permission to access this resource. Admin role is required.");
       return reply;
     }
 

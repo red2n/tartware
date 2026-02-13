@@ -1,6 +1,6 @@
 ###############################################################################
 # RATES SERVICE - Rate Plans & Pricing
-# Routes via API Gateway (localhost:8080) -> rooms-service (port 3400)
+# Routes via API Gateway (localhost:8080) -> rooms-service (port 3015)
 #
 # Content: Rate Plans, Pricing Strategies, Rate Management
 #

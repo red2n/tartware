@@ -111,11 +111,7 @@ export const registerBookingRoutes = (app: FastifyInstance): void => {
 
       const booking = await lookupBooking(params.confirmationCode);
       if (!booking) {
-        return reply.status(404).send({
-          statusCode: 404,
-          error: "Not Found",
-          message: "No booking found with the provided confirmation code",
-        });
+        return reply.notFound("No booking found with the provided confirmation code");
       }
 
       return reply.send({

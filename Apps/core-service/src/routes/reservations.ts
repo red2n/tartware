@@ -84,10 +84,7 @@ export const registerReservationRoutes = (app: FastifyInstance): void => {
       });
 
       if (!reservation) {
-        return reply.code(404).send({
-          error: "RESERVATION_NOT_FOUND",
-          message: `Reservation ${id} not found`,
-        });
+        return reply.notFound(`Reservation ${id} not found`);
       }
 
       return reservation;
@@ -158,10 +155,7 @@ export const registerReservationRoutes = (app: FastifyInstance): void => {
       });
 
       if (!brief) {
-        return reply.code(404).send({
-          error: "RESERVATION_NOT_FOUND",
-          message: `Reservation ${id} not found`,
-        });
+        return reply.notFound(`Reservation ${id} not found`);
       }
 
       return brief;

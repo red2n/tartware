@@ -159,4 +159,29 @@ export const registerOperationsRoutes = (app: FastifyInstance): void => {
     },
     proxyCore,
   );
+
+  // Compliance / Breach Incidents
+  app.all(
+    "/v1/compliance/breach-incidents",
+    {
+      schema: buildRouteSchema({
+        tag: OPERATIONS_TAG,
+        summary: "List or report data breach incidents.",
+        response: { 200: jsonObjectSchema },
+      }),
+    },
+    proxyCore,
+  );
+
+  app.all(
+    "/v1/compliance/breach-incidents/*",
+    {
+      schema: buildRouteSchema({
+        tag: OPERATIONS_TAG,
+        summary: "Proxy breach incident operations to core service.",
+        response: { 200: jsonObjectSchema },
+      }),
+    },
+    proxyCore,
+  );
 };

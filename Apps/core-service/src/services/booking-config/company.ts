@@ -2,6 +2,7 @@ import { type CompanyListItem, CompanyListItemSchema } from "@tartware/schemas";
 
 import { query } from "../../lib/db.js";
 import { COMPANY_BY_ID_SQL, COMPANY_LIST_SQL } from "../../sql/booking-config/company.js";
+
 import { formatDisplayLabel, toIsoString, toNumber } from "./common.js";
 
 // =====================================================

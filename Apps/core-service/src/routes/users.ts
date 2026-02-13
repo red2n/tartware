@@ -87,7 +87,9 @@ export const registerUserRoutes = (app: FastifyInstance): void => {
     async (request, reply) => {
       const authUserId = request.auth.userId;
       if (!authUserId) {
-        throw request.server.httpErrors.unauthorized("AUTHENTICATION_REQUIRED");
+        throw request.server.httpErrors.unauthorized(
+          "You must be logged in to access this resource.",
+        );
       }
 
       const data = CreateTenantUserSchema.parse(request.body);
@@ -235,7 +237,9 @@ export const registerUserRoutes = (app: FastifyInstance): void => {
     async (request) => {
       const authUserId = request.auth.userId;
       if (!authUserId) {
-        throw request.server.httpErrors.unauthorized("AUTHENTICATION_REQUIRED");
+        throw request.server.httpErrors.unauthorized(
+          "You must be logged in to access this resource.",
+        );
       }
 
       const data = ResetTenantUserPasswordSchema.parse(request.body);

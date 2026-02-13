@@ -11,7 +11,7 @@ export const registerModuleRoutes = (app: FastifyInstance): void => {
     {
       preHandler: async (request, reply) => {
         if (!request.auth.isAuthenticated) {
-          reply.unauthorized("AUTHENTICATION_REQUIRED");
+          reply.unauthorized("You must be logged in to access this resource.");
           return reply;
         }
       },

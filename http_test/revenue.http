@@ -111,3 +111,17 @@ Authorization: Bearer {{authToken}}
 # @name getRevenueKpisAltDate
 GET {{baseUrl}}/v1/revenue/kpis?tenant_id={{tenantId}}&property_id={{propertyId}}&business_date=2026-02-11
 Authorization: Bearer {{authToken}}
+
+###############################################################################
+# COMPSET INDICES (IS-3: STR-style benchmarking)
+###############################################################################
+
+### Get competitive set indices (ARI, Occupancy Index, RGI)
+# @name getCompsetIndices
+GET {{baseUrl}}/v1/revenue/compset-indices?tenant_id={{tenantId}}&property_id={{propertyId}}&business_date=2026-02-13
+Authorization: Bearer {{authToken}}
+
+### Get compset indices for previous day
+# @name getCompsetIndicesYesterday
+GET {{baseUrl}}/v1/revenue/compset-indices?tenant_id={{tenantId}}&property_id={{propertyId}}&business_date=2026-02-12
+Authorization: Bearer {{authToken}}

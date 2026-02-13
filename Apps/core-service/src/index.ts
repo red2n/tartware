@@ -4,6 +4,7 @@ import { ensureDependencies, resolveOtelDependency } from "@tartware/config";
 import { initTelemetry } from "@tartware/telemetry";
 
 import { config } from "./config.js";
+import { shutdownRetentionSweep, startRetentionSweep } from "./jobs/retention-sweep.js";
 import { closeRedis, initRedis } from "./lib/redis.js";
 import { buildServer } from "./server.js";
 import { userCacheService } from "./services/user-cache-service.js";
@@ -67,6 +68,9 @@ app
   .then(async () => {
     app.log.info({ port: config.port, host: config.host }, `${config.service.name} listening`);
 
+    // Start retention sweep
+    startRetentionSweep();
+
     // Warm up Bloom filter with existing usernames
     if (redis) {
       try {
@@ -98,6 +102,7 @@ const shutdown = async (signal: string) => {
   isShuttingDown = true;
   app.log.info({ signal }, "Received shutdown signal");
   try {
+    shutdownRetentionSweep();
     await closeRedis();
     await telemetry
       ?.shutdown()

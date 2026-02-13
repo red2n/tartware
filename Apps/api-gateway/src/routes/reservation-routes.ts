@@ -66,6 +66,37 @@ export const registerReservationRoutes = (app: FastifyInstance): void => {
     proxyCore,
   );
 
+  app.get(
+    "/v1/reservations/:id/lifecycle",
+    {
+      preHandler: tenantScopeFromQuery,
+      schema: buildRouteSchema({
+        tag: RESERVATION_PROXY_TAG,
+        summary: "Get reservation lifecycle states (event sourcing inspection).",
+        response: {
+          200: jsonObjectSchema,
+        },
+      }),
+    },
+    async (request: FastifyRequest, reply: FastifyReply) =>
+      proxyRequest(request, reply, serviceTargets.reservationCommandServiceUrl),
+  );
+
+  app.get(
+    "/v1/reservations/:id/check-in-brief",
+    {
+      preHandler: tenantScopeFromQuery,
+      schema: buildRouteSchema({
+        tag: RESERVATION_PROXY_TAG,
+        summary: "Pre-check-in guest recognition brief.",
+        response: {
+          200: jsonObjectSchema,
+        },
+      }),
+    },
+    proxyCore,
+  );
+
   app.all(
     "/v1/tenants/:tenantId/reservations",
     {

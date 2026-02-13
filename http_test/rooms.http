@@ -1,19 +1,19 @@
 ###############################################################################
 # ROOMS SERVICE - Rooms & Room Types
-# Routes via API Gateway (localhost:8080) -> rooms-service (port 3400)
+# Routes via API Gateway (localhost:8080) -> rooms-service (port 3015)
 #
 # Content: Room Types, Rooms (CRUD + STATUS COMMANDS)
 #
 # WRITE OPERATIONS - Room Status via Command Center:
 # See command-center.http for:
-#   - rooms.room.update_status
-#   - rooms.room.update_housekeeping
-#   - rooms.room.block
-#   - rooms.room.release
-#   - rooms.room.out_of_order
-#   - rooms.room.return_to_service
-#   - rooms.room.update_features
-#   - rooms.room_type.update_inventory
+#   - rooms.status.update
+#   - rooms.housekeeping_status.update
+#   - rooms.inventory.block
+#   - rooms.inventory.release
+#   - rooms.out_of_order
+#   - rooms.out_of_service
+#   - rooms.features.update
+#   - rooms.move
 #
 # Related files:
 # - command-center.http - Status commands
@@ -148,8 +148,8 @@ Authorization: Bearer {{authToken}}
 }
 
 ###
-# Partial update via PATCH
-PATCH {{baseUrl}}/v1/room-types/{{roomTypeId}}
+# Update active status and display order
+PUT {{baseUrl}}/v1/room-types/{{roomTypeId}}
 Content-Type: application/json
 Authorization: Bearer {{authToken}}
 
@@ -272,11 +272,11 @@ Authorization: Bearer {{authToken}}
 }
 
 ###############################################################################
-# 7. ROOMS - UPDATE (PATCH)
+# 7B. ROOMS - UPDATE (housekeeping/maintenance)
 ###############################################################################
 
-# Partial update room details
-PATCH {{baseUrl}}/v1/rooms/{{room101Id}}
+# Update room housekeeping and maintenance status
+PUT {{baseUrl}}/v1/rooms/{{room101Id}}
 Content-Type: application/json
 Authorization: Bearer {{authToken}}
 
@@ -472,14 +472,14 @@ X-Idempotency-Key: room-features-{{$timestamp}}
 # COMMAND CENTER OPERATIONS:
 #   All room status updates go through the Command Center.
 #   See command-center.http for full examples of:
-#     POST /v1/commands/rooms.room.update_status/execute
-#     POST /v1/commands/rooms.room.update_housekeeping/execute
-#     POST /v1/commands/rooms.room.block/execute
-#     POST /v1/commands/rooms.room.release/execute
-#     POST /v1/commands/rooms.room.out_of_order/execute
-#     POST /v1/commands/rooms.room.return_to_service/execute
-#     POST /v1/commands/rooms.room.update_features/execute
-#     POST /v1/commands/rooms.room_type.update_inventory/execute
+#     POST /v1/commands/rooms.status.update/execute
+#     POST /v1/commands/rooms.housekeeping_status.update/execute
+#     POST /v1/commands/rooms.inventory.block/execute
+#     POST /v1/commands/rooms.inventory.release/execute
+#     POST /v1/commands/rooms.out_of_order/execute
+#     POST /v1/commands/rooms.out_of_service/execute
+#     POST /v1/commands/rooms.features.update/execute
+#     POST /v1/commands/rooms.move/execute
 #
 # REST-STYLE COMMAND DISPATCH (alternative pattern):
 #   POST /v1/tenants/:tenantId/rooms/:roomId/block

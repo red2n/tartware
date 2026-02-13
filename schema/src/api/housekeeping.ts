@@ -7,7 +7,7 @@
 
 import { z } from "zod";
 
-import { uuid } from "../shared/base-schemas.js";
+import { isoDateString, uuid } from "../shared/base-schemas.js";
 
 // =====================================================
 // HOUSEKEEPING TASKS
@@ -60,6 +60,106 @@ export const HousekeepingTaskListResponseSchema = z.object({
 });
 
 export type HousekeepingTaskListResponse = z.infer<typeof HousekeepingTaskListResponseSchema>;
+
+// =====================================================
+// HOUSEKEEPING SCHEDULES
+// =====================================================
+
+/**
+ * Query schema for listing housekeeping schedules.
+ * Filters tasks that have a scheduled date, with optional date range.
+ */
+export const HousekeepingScheduleListQuerySchema = z.object({
+	tenant_id: uuid,
+	property_id: uuid.optional(),
+	date_from: isoDateString.optional(),
+	date_to: isoDateString.optional(),
+	limit: z.coerce.number().int().positive().max(500).default(200),
+	offset: z.coerce.number().int().min(0).default(0),
+});
+
+export type HousekeepingScheduleListQuery = z.infer<typeof HousekeepingScheduleListQuerySchema>;
+
+/**
+ * Response schema for housekeeping schedule list.
+ */
+export const HousekeepingScheduleListResponseSchema = z.array(HousekeepingTaskListItemSchema);
+
+export type HousekeepingScheduleListResponse = z.infer<typeof HousekeepingScheduleListResponseSchema>;
+
+// =====================================================
+// HOUSEKEEPING INSPECTIONS
+// =====================================================
+
+/**
+ * Query schema for listing housekeeping inspections.
+ * Filters tasks that have been inspected, with optional pass/fail and date range.
+ */
+export const HousekeepingInspectionListQuerySchema = z.object({
+	tenant_id: uuid,
+	property_id: uuid.optional(),
+	passed: z
+		.enum(["true", "false"])
+		.optional()
+		.transform((v) => (v === undefined ? undefined : v === "true")),
+	date_from: isoDateString.optional(),
+	date_to: isoDateString.optional(),
+	limit: z.coerce.number().int().positive().max(500).default(200),
+	offset: z.coerce.number().int().min(0).default(0),
+});
+
+export type HousekeepingInspectionListQuery = z.infer<typeof HousekeepingInspectionListQuerySchema>;
+
+/**
+ * Response schema for housekeeping inspection list.
+ */
+export const HousekeepingInspectionListResponseSchema = z.array(HousekeepingTaskListItemSchema);
+
+export type HousekeepingInspectionListResponse = z.infer<typeof HousekeepingInspectionListResponseSchema>;
+
+// =====================================================
+// DEEP CLEAN DUE
+// =====================================================
+
+/**
+ * Query schema for listing rooms due for deep cleaning.
+ */
+export const DeepCleanDueQuerySchema = z.object({
+	tenant_id: uuid,
+	property_id: uuid.optional(),
+	limit: z.coerce.number().int().positive().max(500).default(200),
+	offset: z.coerce.number().int().min(0).default(0),
+});
+
+export type DeepCleanDueQuery = z.infer<typeof DeepCleanDueQuerySchema>;
+
+/**
+ * Deep clean due room item schema for API responses.
+ */
+export const DeepCleanDueItemSchema = z.object({
+	room_id: uuid,
+	tenant_id: uuid,
+	property_id: uuid,
+	property_name: z.string().optional(),
+	room_number: z.string(),
+	room_type_name: z.string().optional(),
+	floor: z.string().optional(),
+	status: z.string(),
+	housekeeping_status: z.string(),
+	last_deep_clean_date: z.string().nullable(),
+	deep_clean_interval_days: z.number().int(),
+	days_since_deep_clean: z.number().int().nullable(),
+	days_overdue: z.number().int().nullable(),
+});
+
+export type DeepCleanDueItem = z.infer<typeof DeepCleanDueItemSchema>;
+
+/**
+ * Response schema for deep clean due list.
+ */
+export const DeepCleanDueResponseSchema = z.array(DeepCleanDueItemSchema);
+
+export type DeepCleanDueResponse = z.infer<typeof DeepCleanDueResponseSchema>;
 
 // =====================================================
 // MAINTENANCE REQUESTS

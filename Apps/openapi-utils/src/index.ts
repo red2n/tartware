@@ -16,10 +16,13 @@ export const jsonArraySchema: JsonSchema = {
 export const errorResponseSchema: JsonSchema = {
   type: "object",
   properties: {
-    error: { type: "string" },
-    message: { type: "string" },
+    type: { type: "string", description: "URI identifying the problem type" },
+    title: { type: "string", description: "Short human-readable summary" },
+    status: { type: "integer", description: "HTTP status code" },
+    detail: { type: "string", description: "Human-readable explanation" },
+    instance: { type: "string", description: "URI reference for this occurrence" },
   },
-  required: ["error", "message"],
+  required: ["type", "title", "status", "detail"],
   additionalProperties: true,
 } as const satisfies JsonSchema;
 

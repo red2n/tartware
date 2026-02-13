@@ -149,7 +149,7 @@ export const registerAllotmentRoutes = (app: FastifyInstance): void => {
       });
 
       if (!allotment) {
-        return reply.status(404).send({ error: "Allotment not found" });
+        return reply.notFound("Allotment not found");
       }
 
       return AllotmentListItemSchema.parse(allotment);

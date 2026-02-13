@@ -109,7 +109,7 @@ export const registerCompanyRoutes = (app: FastifyInstance): void => {
       const { tenant_id } = z.object({ tenant_id: z.string().uuid() }).parse(request.query);
       const company = await getCompanyById({ companyId, tenantId: tenant_id });
       if (!company) {
-        return reply.status(404).send({ error: "Company not found" });
+        return reply.notFound("Company not found");
       }
       return CompanyListItemSchema.parse(company);
     },

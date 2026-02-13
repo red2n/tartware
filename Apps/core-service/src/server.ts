@@ -10,11 +10,11 @@ import { appLogger } from "./lib/logger.js";
 import { metricsRegistry } from "./lib/metrics.js";
 import authContextPlugin from "./plugins/auth-context.js";
 import complianceMonitorPlugin from "./plugins/compliance-monitor.js";
-import errorHandlerPlugin from "./plugins/error-handler.js";
 import swaggerPlugin from "./plugins/swagger.js";
 import systemAdminAuthPlugin from "./plugins/system-admin-auth.js";
 import { registerAuthRoutes } from "./routes/auth.js";
 import { registerBookingConfigRoutes } from "./routes/booking-config.js";
+import { registerComplianceRoutes } from "./routes/compliance.js";
 import { registerDashboardRoutes } from "./routes/dashboard.js";
 import { registerDirectBookingRoutes } from "./routes/direct-booking.js";
 import { registerHealthRoutes } from "./routes/health.js";
@@ -66,7 +66,6 @@ export const buildServer = (): FastifyInstance => {
     },
     beforeRoutes: (app) => {
       app.register(swaggerPlugin);
-      app.register(errorHandlerPlugin);
       app.register(authContextPlugin);
       app.register(systemAdminAuthPlugin);
       app.register(complianceMonitorPlugin);
@@ -83,6 +82,7 @@ export const buildServer = (): FastifyInstance => {
       registerReportRoutes(app);
       registerModuleRoutes(app);
       registerBookingConfigRoutes(app);
+      registerComplianceRoutes(app);
       registerNightAuditRoutes(app);
       registerOtaRoutes(app);
       registerCashierSessionRoutes(app);

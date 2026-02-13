@@ -237,7 +237,7 @@ export const registerDistributionRoutes = (app: FastifyInstance): void => {
       });
 
       if (!source) {
-        return reply.status(404).send({ error: "Booking source not found" });
+        return reply.notFound("Booking source not found");
       }
 
       return BookingSourceListItemSchema.parse(source);
@@ -321,7 +321,7 @@ export const registerDistributionRoutes = (app: FastifyInstance): void => {
       });
 
       if (!segment) {
-        return reply.status(404).send({ error: "Market segment not found" });
+        return reply.notFound("Market segment not found");
       }
 
       return MarketSegmentListItemSchema.parse(segment);
@@ -405,7 +405,7 @@ export const registerDistributionRoutes = (app: FastifyInstance): void => {
       });
 
       if (!mapping) {
-        return reply.status(404).send({ error: "Channel mapping not found" });
+        return reply.notFound("Channel mapping not found");
       }
 
       return ChannelMappingListItemSchema.parse(mapping);

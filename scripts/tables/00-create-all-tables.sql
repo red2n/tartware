@@ -81,6 +81,8 @@
 \ir 03-bookings/55_reservation_rate_fallbacks.sql
 \ir 03-bookings/56_overbooking_config.sql
 \ir 03-bookings/57_walk_history.sql
+\ir 03-bookings/58_loyalty_point_transactions.sql
+\ir 03-bookings/59_loyalty_tier_rules.sql
 -- Shadow observability (Roll Service parity + Availability Guard metadata)
 \echo '    - Shadow roll ledgers, checkpoints, and guard audit tables'
 \ir 03-bookings/90_roll_service_shadow_ledgers.sql
@@ -170,6 +172,8 @@
 \ir 06-integrations/99_pricing_experiments.sql
 \ir 06-integrations/96_guest_behavior_patterns.sql
 \ir 06-integrations/97_sentiment_analysis.sql
+\ir 06-integrations/47_metasearch_configurations.sql
+\ir 06-integrations/48_metasearch_click_log.sql
 
 -- ============================================================================
 -- CATEGORY 7: ANALYTICS (Reporting, compliance, audit, sustainability)
@@ -219,6 +223,13 @@
 \ir 09-reference-data/05_group_booking_types.sql
 \ir 09-reference-data/06_company_types.sql
 \ir 09-reference-data/07_charge_codes.sql
+
+-- =========================================================================
+-- CATEGORY 10: COMPLIANCE (Data retention, breach tracking)
+-- =========================================================================
+\echo '>>> Category 10: COMPLIANCE'
+\ir 10-compliance/01_data_retention_policies.sql
+\ir 10-compliance/02_data_breach_incidents.sql
 
 \echo '>>> Enforcing tenant_id and soft delete coverage'
 \ir 99_enforce_tenant_soft_delete.sql

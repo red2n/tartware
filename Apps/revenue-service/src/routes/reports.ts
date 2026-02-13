@@ -1,5 +1,7 @@
 import { buildRouteSchema } from "@tartware/openapi";
 import {
+  type CompsetIndicesQuery,
+  CompsetIndicesQuerySchema,
   type ForecastListQuery,
   ForecastListQuerySchema,
   type GoalListQuery,
@@ -10,6 +12,7 @@ import {
 import type { FastifyInstance, FastifyPluginAsync } from "fastify";
 
 import {
+  getCompsetIndices,
   getRevenueKpis,
   listRevenueForecasts,
   listRevenueGoals,
@@ -91,6 +94,26 @@ const reportRoutes: FastifyPluginAsync = async (app: FastifyInstance) => {
       const { tenant_id, property_id, business_date } = KpiQuerySchema.parse(request.query);
 
       return getRevenueKpis(property_id, tenant_id, business_date);
+    },
+  );
+
+  app.get<{ Querystring: CompsetIndicesQuery }>(
+    "/v1/revenue/compset-indices",
+    {
+      preHandler: app.withTenantScope({
+        resolveTenantId: (request) => (request.query as CompsetIndicesQuery).tenant_id,
+        minRole: "ADMIN",
+        requiredModules: "finance-automation",
+      }),
+      schema: buildRouteSchema({
+        tag: REPORTS_TAG,
+        summary: "Get STR-style competitive set indices (ARI, Occupancy Index, RGI)",
+      }),
+    },
+    async (request) => {
+      const { tenant_id, property_id, business_date } = CompsetIndicesQuerySchema.parse(request.query);
+
+      return getCompsetIndices(property_id, tenant_id, business_date);
     },
   );
 };

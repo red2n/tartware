@@ -316,9 +316,7 @@ const catalogRoutes: FastifyPluginAsync = async (app) => {
         : settingsCatalogData.categories.find((item) => item.code === normalized);
 
       if (!category) {
-        return reply.status(404).send({
-          message: `Settings category ${categoryCode} not found`,
-        });
+        return reply.notFound(`Settings category ${categoryCode} not found`);
       }
 
       const sections = isDbEnabled()
@@ -437,8 +435,7 @@ const catalogRoutes: FastifyPluginAsync = async (app) => {
       if (!isDbEnabled()) {
         const tenantId = request.authUser?.tenantId;
         if (!tenantId) {
-          reply.status(403).send({ message: "Tenant context required" });
-          return;
+          return reply.forbidden("Tenant context required");
         }
         const body = CreateValueSchema.parse(request.body);
         const created = createSeedValue({
@@ -462,8 +459,7 @@ const catalogRoutes: FastifyPluginAsync = async (app) => {
       }
       const tenantId = request.authUser?.tenantId;
       if (!tenantId) {
-        reply.status(403).send({ message: "Tenant context required" });
-        return;
+        return reply.forbidden("Tenant context required");
       }
       const body = CreateValueSchema.parse(request.body);
       const created = await createDbValue({
@@ -504,8 +500,7 @@ const catalogRoutes: FastifyPluginAsync = async (app) => {
       if (!isDbEnabled()) {
         const tenantId = request.authUser?.tenantId;
         if (!tenantId) {
-          reply.status(403).send({ message: "Tenant context required" });
-          return;
+          return reply.forbidden("Tenant context required");
         }
         const { valueId } = z.object({ valueId: z.string().uuid() }).parse(request.params);
         const body = UpdateValueSchema.parse(request.body);
@@ -523,16 +518,14 @@ const catalogRoutes: FastifyPluginAsync = async (app) => {
           updatedBy: request.authUser?.sub ?? null,
         });
         if (!updated) {
-          reply.status(404).send({ message: "Settings value not found" });
-          return;
+          return reply.notFound("Settings value not found");
         }
         reply.send({ data: updated });
         return;
       }
       const tenantId = request.authUser?.tenantId;
       if (!tenantId) {
-        reply.status(403).send({ message: "Tenant context required" });
-        return;
+        return reply.forbidden("Tenant context required");
       }
       const { valueId } = z.object({ valueId: z.string().uuid() }).parse(request.params);
       const body = UpdateValueSchema.parse(request.body);
@@ -550,8 +543,7 @@ const catalogRoutes: FastifyPluginAsync = async (app) => {
         updatedBy: request.authUser?.sub ?? null,
       });
       if (!updated) {
-        reply.status(404).send({ message: "Settings value not found" });
-        return;
+        return reply.notFound("Settings value not found");
       }
       reply.send({ data: updated });
     },

@@ -86,7 +86,10 @@ const IncidentReportItemJsonSchema = schemaFromZod(
 );
 const IncidentParamsJsonSchema = schemaFromZod(IncidentParamsSchema, "IncidentParams");
 
-const ErrorResponseSchema = schemaFromZod(z.object({ message: z.string() }), "ErrorResponse");
+const ErrorResponseSchema = schemaFromZod(
+  z.object({ type: z.string(), title: z.string(), status: z.number(), detail: z.string() }),
+  "ErrorResponse",
+);
 
 const INCIDENTS_TAG = "Incidents";
 
@@ -174,7 +177,7 @@ export const registerIncidentRoutes = (app: FastifyInstance): void => {
       });
 
       if (!incident) {
-        return reply.status(404).send({ message: "Incident report not found" });
+        return reply.notFound("Incident report not found");
       }
 
       return IncidentReportListItemSchema.parse(incident);

@@ -123,10 +123,7 @@ export const registerTenantRoutes = (app: FastifyInstance): void => {
       if (requiredToken) {
         const providedToken = request.headers[BOOTSTRAP_TOKEN_HEADER] ?? "";
         if (providedToken !== requiredToken) {
-          return reply.status(401).send({
-            error: "Unauthorized",
-            message: "Invalid onboarding token.",
-          });
+          return reply.unauthorized("Invalid onboarding token.");
         }
       }
 
@@ -135,9 +132,12 @@ export const registerTenantRoutes = (app: FastifyInstance): void => {
         if (rateLimit.retryAfterMs) {
           reply.header("Retry-After", Math.ceil(rateLimit.retryAfterMs / 1000).toString());
         }
-        return reply.status(429).send({
-          error: "Too Many Requests",
-          message: "Onboarding rate limit exceeded.",
+        return reply.status(429).header("content-type", "application/problem+json").send({
+          type: "about:blank",
+          title: "Too Many Requests",
+          status: 429,
+          detail: "Onboarding rate limit exceeded.",
+          instance: request.url,
         });
       }
 

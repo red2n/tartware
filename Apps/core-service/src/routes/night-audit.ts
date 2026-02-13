@@ -4,6 +4,7 @@
  */
 
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
+
 import {
   getBusinessDateStatus,
   getNightAuditRunDetail,
@@ -53,10 +54,7 @@ export function registerNightAuditRoutes(fastify: FastifyInstance): void {
       });
 
       if (!status) {
-        return reply.status(404).send({
-          error: "Not Found",
-          message: "No open business date found for property",
-        });
+        return reply.notFound("No open business date found for property");
       }
 
       return reply.send({ data: status });
@@ -153,10 +151,7 @@ export function registerNightAuditRoutes(fastify: FastifyInstance): void {
       });
 
       if (!runDetail) {
-        return reply.status(404).send({
-          error: "Not Found",
-          message: "Night audit run not found",
-        });
+        return reply.notFound("Night audit run not found");
       }
 
       return reply.send({ data: runDetail });

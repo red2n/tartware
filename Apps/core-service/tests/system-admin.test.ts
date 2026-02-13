@@ -118,7 +118,7 @@ describe('System Administrator Capabilities', () => {
 
     expect(response.statusCode).toBe(401);
     const payload = response.json();
-    expect(payload.error).toBe('MFA_REQUIRED');
+    expect(payload.code).toBe('MFA_REQUIRED');
   });
 
   it('enforces IP whitelist restrictions', async () => {
@@ -137,7 +137,7 @@ describe('System Administrator Capabilities', () => {
 
     expect(response.statusCode).toBe(403);
     const payload = response.json();
-    expect(payload.error).toBe('IP_NOT_ALLOWED');
+    expect(payload.code).toBe('IP_NOT_ALLOWED');
   });
 
   it('enforces device binding rules', async () => {
@@ -156,7 +156,7 @@ describe('System Administrator Capabilities', () => {
 
     expect(response.statusCode).toBe(403);
     const payload = response.json();
-    expect(payload.error).toBe('DEVICE_NOT_TRUSTED');
+    expect(payload.code).toBe('DEVICE_NOT_TRUSTED');
   });
 
   it('allows authorized system admins to list users across tenants', async () => {
@@ -348,7 +348,7 @@ describe('System Administrator Capabilities', () => {
 
     expect(limitedResponse.statusCode).toBe(429);
     const payload = limitedResponse.json();
-    expect(payload.error).toBe('SYSTEM_ADMIN_RATE_LIMITED');
+    expect(payload.code).toBe('SYSTEM_ADMIN_RATE_LIMITED');
   });
 
   it('allows break-glass authentication when a valid unused code is provided', async () => {
@@ -371,7 +371,7 @@ describe('System Administrator Capabilities', () => {
 
     expect(replayResponse.statusCode).toBe(403);
     const replayPayload = replayResponse.json();
-    expect(replayPayload.error).toBe('BREAK_GLASS_UNAVAILABLE');
+    expect(replayPayload.code).toBe('BREAK_GLASS_UNAVAILABLE');
   });
 
   it('rejects break-glass authentication when the code is incorrect', async () => {
@@ -391,7 +391,7 @@ describe('System Administrator Capabilities', () => {
 
     expect(response.statusCode).toBe(401);
     const payload = response.json();
-    expect(payload.error).toBe('BREAK_GLASS_CODE_INVALID');
+    expect(payload.code).toBe('BREAK_GLASS_CODE_INVALID');
   });
 
   it('rejects break-glass authentication when no active codes are available', async () => {
@@ -413,6 +413,6 @@ describe('System Administrator Capabilities', () => {
 
     expect(response.statusCode).toBe(403);
     const payload = response.json();
-    expect(payload.error).toBe('BREAK_GLASS_UNAVAILABLE');
+    expect(payload.code).toBe('BREAK_GLASS_UNAVAILABLE');
   });
 });

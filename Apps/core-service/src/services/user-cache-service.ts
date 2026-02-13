@@ -65,7 +65,7 @@
  *   const result = await userCacheService.getUserWithMemberships(username);
  *
  *   if (!result) {
- *     return reply.code(401).send({ error: 'Invalid credentials' });
+ *     return reply.code(401).send({ type: 'about:blank', title: 'Unauthorized', status: 401, detail: 'Invalid credentials' });
  *   }
  *
  *   // Verify password and generate token
@@ -190,7 +190,7 @@ export type CachedUserWithMemberships = z.infer<typeof CachedUserWithMemberships
  *   const { username } = request.body;
  *   const result = await userCacheService.getUserWithMemberships(username);
  *   if (!result) {
- *     return reply.code(401).send({ error: 'User not found' });
+ *     return reply.code(401).send({ type: 'about:blank', title: 'Unauthorized', status: 401, detail: 'User not found' });
  *   }
  *   // Generate JWT with user.id and memberships
  * });
@@ -414,13 +414,13 @@ export class UserCacheService {
    *
    *   const result = await userCacheService.getUserWithMemberships(username);
    *   if (!result) {
-   *     return reply.code(401).send({ error: 'Invalid credentials' });
+   *     return reply.code(401).send({ type: 'about:blank', title: 'Unauthorized', status: 401, detail: 'Invalid credentials' });
    *   }
    *
    *   // Verify password (bcrypt comparison)
    *   const passwordValid = await bcrypt.compare(password, result.password_hash);
    *   if (!passwordValid) {
-   *     return reply.code(401).send({ error: 'Invalid credentials' });
+   *     return reply.code(401).send({ type: 'about:blank', title: 'Unauthorized', status: 401, detail: 'Invalid credentials' });
    *   }
    *
    *   // Generate JWT with user ID and tenant memberships

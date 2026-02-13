@@ -36,13 +36,13 @@ const extractAdminToken = (headerValue: string | string[] | undefined): string |
 
 const ensureAdminAuthorized = (
   request: { headers: Record<string, unknown> },
-  reply: { code: (statusCode: number) => unknown },
+  reply: { forbidden: (msg?: string) => unknown },
 ): boolean => {
   const token = extractAdminToken(
     request.headers["x-guard-admin-token"] as string | string[] | undefined,
   );
   if (!isManualReleaseAuthorized(token)) {
-    void reply.code(403);
+    reply.forbidden("admin_token_required");
     return false;
   }
   return true;
@@ -53,8 +53,7 @@ const isAdminTokenConfigured = (): boolean => config.guard.manualRelease.tokens.
 const ensureHttpAuthorized = (
   request: { headers: Record<string, unknown> },
   reply: {
-    code: (statusCode: number) => unknown;
-    send: (body: unknown) => unknown;
+    forbidden: (msg?: string) => unknown;
   },
 ): boolean => {
   if (!isAdminTokenConfigured()) {
@@ -64,8 +63,7 @@ const ensureHttpAuthorized = (
     request.headers["x-guard-admin-token"] as string | string[] | undefined,
   );
   if (!token || !config.guard.manualRelease.tokens.includes(token)) {
-    void reply.code(403);
-    void reply.send({ error: "admin_token_required" });
+    reply.forbidden("admin_token_required");
     return false;
   }
   return true;
@@ -129,8 +127,7 @@ export const locksRoutes = fastifyPlugin((app: FastifyInstance, _opts, done): vo
         lockId: params.lockId,
       });
       if (!result) {
-        void reply.code(404);
-        return { status: "not_found" };
+        return reply.notFound("not_found");
       }
       return { status: "released", lockId: result.id };
     },
@@ -178,7 +175,7 @@ export const locksRoutes = fastifyPlugin((app: FastifyInstance, _opts, done): vo
       }
 
       if (!ensureAdminAuthorized(request, reply)) {
-        return { error: "admin_token_required" };
+        return;
       }
 
       const params = z.object({ lockId: z.string().uuid() }).parse(request.params);
@@ -201,8 +198,7 @@ export const locksRoutes = fastifyPlugin((app: FastifyInstance, _opts, done): vo
       );
 
       if (!result) {
-        void reply.code(404);
-        return { status: "not_found" };
+        return reply.notFound("not_found");
       }
 
       return {
@@ -234,7 +230,7 @@ export const locksRoutes = fastifyPlugin((app: FastifyInstance, _opts, done): vo
     },
     async (request, reply) => {
       if (!ensureAdminAuthorized(request, reply)) {
-        return { error: "admin_token_required" };
+        return;
       }
 
       const body = manualReleaseNotificationTestSchema.parse(request.body);
@@ -310,7 +306,7 @@ export const locksRoutes = fastifyPlugin((app: FastifyInstance, _opts, done): vo
     },
     async (request, reply) => {
       if (!ensureAdminAuthorized(request, reply)) {
-        return { error: "admin_token_required" };
+        return;
       }
 
       const params = z.object({ lockId: z.string().uuid() }).parse(request.params);
@@ -345,7 +341,7 @@ export const locksRoutes = fastifyPlugin((app: FastifyInstance, _opts, done): vo
     },
     async (request, reply) => {
       if (!ensureAdminAuthorized(request, reply)) {
-        return { error: "admin_token_required" };
+        return;
       }
 
       const query = AuditQuerySchema.parse(request.query);

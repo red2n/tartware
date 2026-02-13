@@ -86,7 +86,10 @@ const MaintenanceRequestParamsJsonSchema = schemaFromZod(
   "MaintenanceRequestParams",
 );
 
-const ErrorResponseSchema = schemaFromZod(z.object({ message: z.string() }), "ErrorResponse");
+const ErrorResponseSchema = schemaFromZod(
+  z.object({ type: z.string(), title: z.string(), status: z.number(), detail: z.string() }),
+  "ErrorResponse",
+);
 
 const MAINTENANCE_TAG = "Maintenance";
 
@@ -172,7 +175,7 @@ export const registerMaintenanceRoutes = (app: FastifyInstance): void => {
       });
 
       if (!maintenanceRequest) {
-        return reply.status(404).send({ message: "Maintenance request not found" });
+        return reply.notFound("Maintenance request not found");
       }
 
       return MaintenanceRequestListItemSchema.parse(maintenanceRequest);

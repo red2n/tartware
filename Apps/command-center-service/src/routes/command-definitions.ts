@@ -19,17 +19,11 @@ export const registerCommandDefinitionRoutes = (app: FastifyInstance): void => {
       preHandler: async (request, reply) => {
         const token = extractBearerToken(request.headers.authorization);
         if (!token) {
-          return reply.status(401).send({
-            error: "SYSTEM_ADMIN_AUTH_REQUIRED",
-            message: "Authorization token required.",
-          });
+          return reply.unauthorized("Authorization token required.");
         }
         const payload = verifyAccessToken(token);
         if (!payload) {
-          return reply.status(401).send({
-            error: "SYSTEM_ADMIN_AUTH_REQUIRED",
-            message: "Invalid authorization token.",
-          });
+          return reply.unauthorized("Invalid authorization token.");
         }
 
         const scope = payload.scope;
@@ -38,10 +32,7 @@ export const registerCommandDefinitionRoutes = (app: FastifyInstance): void => {
           : scope === "SYSTEM_ADMIN";
 
         if (!hasSystemAdminScope) {
-          return reply.status(403).send({
-            error: "SYSTEM_ADMIN_SCOPE_REQUIRED",
-            message: "System administrator scope required.",
-          });
+          return reply.forbidden("System administrator scope required.");
         }
       },
       schema: buildRouteSchema({

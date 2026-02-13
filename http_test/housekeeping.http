@@ -1,6 +1,6 @@
 ###############################################################################
 # HOUSEKEEPING SERVICE - Task Management
-# Routes via API Gateway (localhost:8080) -> housekeeping-service (port 3500)
+# Routes via API Gateway (localhost:8080) -> housekeeping-service (port 3030)
 #
 # Content: Housekeeping Tasks Listing and Filtering (READ OPERATIONS)
 #
@@ -265,3 +265,17 @@ X-Idempotency-Key: hk-bulk-{{$timestamp}}
 #   Task:     77777777-7777-7777-7777-777777777777
 #
 ###############################################################################
+
+###############################################################################
+# DEEP CLEAN DUE (IS-1)
+###############################################################################
+
+### List rooms due for deep cleaning
+# @name listDeepCleanDue
+GET {{baseUrl}}/v1/housekeeping/deep-clean-due?tenant_id={{tenantId}}&limit=50
+Authorization: Bearer {{authToken}}
+
+### List deep-clean-due rooms for a specific property
+# @name listDeepCleanDueProperty
+GET {{baseUrl}}/v1/housekeeping/deep-clean-due?tenant_id={{tenantId}}&property_id={{propertyId}}&limit=50
+Authorization: Bearer {{authToken}}
