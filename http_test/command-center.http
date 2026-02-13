@@ -1,6 +1,6 @@
 ###############################################################################
 # COMMAND CENTER - Asynchronous Command Execution
-# Routes via API Gateway (localhost:8080) -> command-center-service (port 3600)
+# Routes via API Gateway (localhost:8080) -> command-center-service (port 3035)
 #
 # Content: All write operations in tartware go through the Command Center
 #          for event-driven, idempotent processing via Kafka.

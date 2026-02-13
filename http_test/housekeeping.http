@@ -1,6 +1,6 @@
 ###############################################################################
 # HOUSEKEEPING SERVICE - Task Management
-# Routes via API Gateway (localhost:8080) -> housekeeping-service (port 3500)
+# Routes via API Gateway (localhost:8080) -> housekeeping-service (port 3030)
 #
 # Content: Housekeeping Tasks Listing and Filtering (READ OPERATIONS)
 #
