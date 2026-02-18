@@ -16,9 +16,12 @@ import {
 } from "../lib/metrics.js";
 import { processWithRetry, RetryExhaustedError } from "../lib/retry.js";
 import {
+  handleCreateAutomatedMessage,
   handleCreateTemplate,
+  handleDeleteAutomatedMessage,
   handleDeleteTemplate,
   handleSendNotification,
+  handleUpdateAutomatedMessage,
   handleUpdateTemplate,
 } from "../services/notification-command-service.js";
 
@@ -133,6 +136,24 @@ const routeNotificationCommand = async (
       return;
     case "notification.template.delete":
       await handleDeleteTemplate(envelope.payload as Record<string, unknown>, {
+        tenantId: metadata.tenantId,
+        initiatedBy: metadata.initiatedBy ?? null,
+      });
+      return;
+    case "notification.automated.create":
+      await handleCreateAutomatedMessage(envelope.payload as Record<string, unknown>, {
+        tenantId: metadata.tenantId,
+        initiatedBy: metadata.initiatedBy ?? null,
+      });
+      return;
+    case "notification.automated.update":
+      await handleUpdateAutomatedMessage(envelope.payload as Record<string, unknown>, {
+        tenantId: metadata.tenantId,
+        initiatedBy: metadata.initiatedBy ?? null,
+      });
+      return;
+    case "notification.automated.delete":
+      await handleDeleteAutomatedMessage(envelope.payload as Record<string, unknown>, {
         tenantId: metadata.tenantId,
         initiatedBy: metadata.initiatedBy ?? null,
       });

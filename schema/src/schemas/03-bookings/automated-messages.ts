@@ -1,7 +1,9 @@
 /**
  * DEV DOC
  * Module: schemas/03-bookings/automated-messages.ts
- * Description: AutomatedMessages Schema
+ * Description: Trigger-based automated guest messaging rules — configures when, how, and to whom
+ *   notifications are sent (e.g., pre-arrival emails, checkout reminders, review requests).
+ *   Supports multi-channel delivery, frequency capping, A/B testing, and compliance controls.
  * Table: automated_messages
  * Category: 03-bookings
  * Primary exports: AutomatedMessagesSchema, CreateAutomatedMessagesSchema, UpdateAutomatedMessagesSchema
@@ -11,18 +13,24 @@
  */
 
 /**
- * AutomatedMessages Schema
+ * Automated guest messaging rules.
+ * Each row defines a trigger condition, delivery channel, timing, targeting,
+ * frequency controls, and template linkage for automated guest outreach.
+ *
  * @table automated_messages
  * @category 03-bookings
- * @synchronized 2025-11-03
+ * @synchronized 2026-02-18
  */
 
 import { z } from "zod";
 
 import { money, uuid } from "../../shared/base-schemas.js";
 
+// ─── Full Row Schema ─────────────────────────────────────────────────────────
+
 /**
- * Complete AutomatedMessages schema
+ * Complete automated_messages row including system-managed counters,
+ * rate metrics, timestamps, and soft-delete flags.
  */
 export const AutomatedMessagesSchema = z.object({
 	message_id: uuid,
@@ -117,10 +125,37 @@ export const AutomatedMessagesSchema = z.object({
 export type AutomatedMessages = z.infer<typeof AutomatedMessagesSchema>;
 
 /**
- * Schema for creating a new automated messages
+ * Schema for creating a new automated message rule.
+ * Omits system-generated identifiers, tracking counters, rate metrics,
+ * timestamp fields, and soft-delete flags.
  */
 export const CreateAutomatedMessagesSchema = AutomatedMessagesSchema.omit({
-	// TODO: Add fields to omit for creation
+	message_id: true,
+	sent_count: true,
+	delivered_count: true,
+	opened_count: true,
+	clicked_count: true,
+	converted_count: true,
+	failed_count: true,
+	bounced_count: true,
+	unsubscribed_count: true,
+	delivery_rate: true,
+	open_rate: true,
+	click_rate: true,
+	conversion_rate: true,
+	unsubscribe_rate: true,
+	last_sent_at: true,
+	last_triggered_at: true,
+	last_success_at: true,
+	last_failure_at: true,
+	total_cost: true,
+	created_at: true,
+	updated_at: true,
+	created_by: true,
+	updated_by: true,
+	is_deleted: true,
+	deleted_at: true,
+	deleted_by: true,
 });
 
 export type CreateAutomatedMessages = z.infer<
@@ -128,9 +163,69 @@ export type CreateAutomatedMessages = z.infer<
 >;
 
 /**
- * Schema for updating a automated messages
+ * Schema for updating an automated message rule.
+ * Restricts to user-mutable configuration fields only.
  */
-export const UpdateAutomatedMessagesSchema = AutomatedMessagesSchema.partial();
+export const UpdateAutomatedMessagesSchema = AutomatedMessagesSchema.pick({
+	message_name: true,
+	message_code: true,
+	description: true,
+	trigger_event: true,
+	is_active: true,
+	is_paused: true,
+	priority: true,
+	send_timing: true,
+	delay_minutes: true,
+	delay_hours: true,
+	delay_days: true,
+	send_before_event_hours: true,
+	send_after_event_hours: true,
+	scheduled_time: true,
+	scheduled_timezone: true,
+	respect_quiet_hours: true,
+	quiet_hours_start: true,
+	quiet_hours_end: true,
+	template_id: true,
+	template_version: true,
+	fallback_template_id: true,
+	message_channel: true,
+	secondary_channels: true,
+	channel_priority: true,
+	target_audience: true,
+	guest_segments: true,
+	conditions: true,
+	exclusion_conditions: true,
+	use_guest_name: true,
+	use_property_name: true,
+	personalization_fields: true,
+	dynamic_content_rules: true,
+	default_language: true,
+	multi_language: true,
+	language_detection_method: true,
+	supported_languages: true,
+	max_sends_per_guest_per_day: true,
+	max_sends_per_guest_per_week: true,
+	max_sends_per_guest_per_month: true,
+	min_hours_between_sends: true,
+	respect_unsubscribe: true,
+	respect_preferences: true,
+	is_ab_test: true,
+	ab_test_variant: true,
+	ab_test_percentage: true,
+	ab_test_control_group_percentage: true,
+	retry_on_failure: true,
+	max_retry_attempts: true,
+	retry_delay_minutes: true,
+	requires_consent: true,
+	consent_type: true,
+	gdpr_compliant: true,
+	include_unsubscribe_link: true,
+	estimated_cost_per_send: true,
+	currency: true,
+	metadata: true,
+	tags: true,
+	notes: true,
+}).partial();
 
 export type UpdateAutomatedMessages = z.infer<
 	typeof UpdateAutomatedMessagesSchema
