@@ -31,3 +31,6 @@ export * from "./payment-tokens.js";
 export * from "./payments.js";
 export * from "./refunds.js";
 export * from "./tax-configurations.js";
+export * from "./comp-authorizers.js";
+export * from "./comp-transactions.js";
+export * from "./comp-property-config.js";

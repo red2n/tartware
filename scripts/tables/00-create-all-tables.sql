@@ -31,6 +31,10 @@
 \ir 01-core/11_system_admin_break_glass_codes.sql
 \ir 01-core/12_settings_seed.sql
 \ir 01-core/13_command_idempotency.sql
+\ir 01-core/14_buildings.sql
+\ir 01-core/15_outlets.sql
+\ir 01-core/16_property_feature_flags.sql
+\ir 01-core/17_property_events.sql
 
 -- ============================================================================
 -- CATEGORY 2: INVENTORY (Rooms, rates, availability, revenue management)
@@ -83,6 +87,7 @@
 \ir 03-bookings/57_walk_history.sql
 \ir 03-bookings/58_loyalty_point_transactions.sql
 \ir 03-bookings/59_loyalty_tier_rules.sql
+\ir 03-bookings/60_lost_business.sql
 -- Shadow observability (Roll Service parity + Availability Guard metadata)
 \echo '    - Shadow roll ledgers, checkpoints, and guard audit tables'
 \ir 03-bookings/90_roll_service_shadow_ledgers.sql
@@ -111,6 +116,7 @@
 \ir 04-financial/69_payment_tokens.sql
 \ir 04-financial/70_general_ledger_batches.sql
 \ir 04-financial/71_general_ledger_entries.sql
+\ir 04-financial/72_comp_accounting.sql
 
 -- ============================================================================
 -- CATEGORY 5: OPERATIONS (Services, housekeeping, staff, mobile, assets)
@@ -223,6 +229,8 @@
 \ir 09-reference-data/05_group_booking_types.sql
 \ir 09-reference-data/06_company_types.sql
 \ir 09-reference-data/07_charge_codes.sql
+\ir 09-reference-data/08_reason_codes.sql
+\ir 09-reference-data/09_pet_types.sql
 
 -- =========================================================================
 -- CATEGORY 10: COMPLIANCE (Data retention, breach tracking)

@@ -1,8 +1,9 @@
 -- =====================================================
 -- verify-04-financial-management.sql
 -- Verification Script for Financial Management Tables
--- Category: 04-financial-management (15 tables)
+-- Category: 04-financial-management (18 tables)
 -- Date: 2025-10-19
+-- Updated: 2026-02-18
 -- =====================================================
 
 \c tartware
@@ -10,18 +11,18 @@
 \echo ''
 \echo '=============================================='
 \echo '  CATEGORY: FINANCIAL MANAGEMENT VERIFICATION'
-\echo '  Tables: 15 | Description: Payments, invoices, accounting, receivables, GL exports'
+\echo '  Tables: 18 | Description: Payments, invoices, accounting, receivables, GL exports, comp accounting'
 \echo '=============================================='
 \echo ''
 
 -- =====================================================
 -- 1. CHECK IF ALL TABLES EXIST
 -- =====================================================
-\echo '1. Checking if all 15 tables exist...'
+\echo '1. Checking if all 18 tables exist...'
 
 DO $$
 DECLARE
-    v_expected_tables TEXT[] := ARRAY['payments', 'invoices', 'invoice_items', 'folios', 'charge_postings', 'refunds', 'tax_configurations', 'financial_closures', 'commission_tracking', 'cashier_sessions', 'accounts_receivable', 'credit_limits', 'payment_tokens', 'general_ledger_batches', 'general_ledger_entries'];
+    v_expected_tables TEXT[] := ARRAY['payments', 'invoices', 'invoice_items', 'folios', 'charge_postings', 'refunds', 'tax_configurations', 'financial_closures', 'commission_tracking', 'cashier_sessions', 'accounts_receivable', 'credit_limits', 'payment_tokens', 'general_ledger_batches', 'general_ledger_entries', 'comp_authorizers', 'comp_transactions', 'comp_property_config'];
     v_table TEXT;
     v_missing_tables TEXT[] := '{}'::TEXT[];
     v_found_count INTEGER := 0;
@@ -46,7 +47,7 @@ BEGIN
         RAISE WARNING 'Missing tables: %', array_to_string(v_missing_tables, ', ');
         RAISE EXCEPTION 'Financial Management verification FAILED - missing tables!';
     ELSE
-        RAISE NOTICE '✓✓✓ All 15 Financial Management tables exist!';
+        RAISE NOTICE '✓✓✓ All 18 Financial Management tables exist!';
     END IF;
 END $$;
 
@@ -67,7 +68,7 @@ FROM information_schema.tables t
 LEFT JOIN information_schema.columns c
     ON t.table_schema = c.table_schema
     AND t.table_name = c.table_name
-WHERE t.table_name IN ('payments', 'invoices', 'invoice_items', 'folios', 'charge_postings', 'refunds', 'tax_configurations', 'financial_closures', 'commission_tracking', 'cashier_sessions', 'accounts_receivable', 'credit_limits', 'payment_tokens', 'general_ledger_batches', 'general_ledger_entries')
+WHERE t.table_name IN ('payments', 'invoices', 'invoice_items', 'folios', 'charge_postings', 'refunds', 'tax_configurations', 'financial_closures', 'commission_tracking', 'cashier_sessions', 'accounts_receivable', 'credit_limits', 'payment_tokens', 'general_ledger_batches', 'general_ledger_entries', 'comp_authorizers', 'comp_transactions', 'comp_property_config')
     AND t.table_schema = 'public'
 GROUP BY t.table_schema, t.table_name
 ORDER BY t.table_name;
@@ -87,19 +88,19 @@ DECLARE
 BEGIN
     SELECT COUNT(*) INTO v_table_count
     FROM information_schema.tables t
-    WHERE t.table_name IN ('payments', 'invoices', 'invoice_items', 'folios', 'charge_postings', 'refunds', 'tax_configurations', 'financial_closures', 'commission_tracking', 'cashier_sessions', 'accounts_receivable', 'credit_limits', 'payment_tokens', 'general_ledger_batches', 'general_ledger_entries')
+    WHERE t.table_name IN ('payments', 'invoices', 'invoice_items', 'folios', 'charge_postings', 'refunds', 'tax_configurations', 'financial_closures', 'commission_tracking', 'cashier_sessions', 'accounts_receivable', 'credit_limits', 'payment_tokens', 'general_ledger_batches', 'general_ledger_entries', 'comp_authorizers', 'comp_transactions', 'comp_property_config')
         AND t.table_schema = 'public';
 
     RAISE NOTICE '';
     RAISE NOTICE 'Category: Financial Management';
-    RAISE NOTICE 'Tables Found: % / 15', v_table_count;
+    RAISE NOTICE 'Tables Found: % / 18', v_table_count;
     RAISE NOTICE '';
 
-    IF v_table_count = 15 THEN
+    IF v_table_count = 18 THEN
         RAISE NOTICE '✓✓✓ FINANCIAL MANAGEMENT VERIFICATION PASSED ✓✓✓';
     ELSE
         RAISE WARNING '⚠⚠⚠ FINANCIAL MANAGEMENT VERIFICATION FAILED ⚠⚠⚠';
-        RAISE WARNING 'Expected 15 tables, found %', v_table_count;
+        RAISE WARNING 'Expected 18 tables, found %', v_table_count;
     END IF;
 END $$;
 
