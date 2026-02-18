@@ -117,6 +117,7 @@
 \ir 04-financial/70_general_ledger_batches.sql
 \ir 04-financial/71_general_ledger_entries.sql
 \ir 04-financial/72_comp_accounting.sql
+\ir 04-financial/73_payment_gateway_configurations.sql
 
 -- ============================================================================
 -- CATEGORY 5: OPERATIONS (Services, housekeeping, staff, mobile, assets)
@@ -148,6 +149,7 @@
 \ir 05-operations/106_shuttle_schedules.sql
 \ir 05-operations/107_spa_treatments.sql
 \ir 05-operations/108_spa_appointments.sql
+\ir 05-operations/111_self_service_configurations.sql
 
 -- ============================================================================
 -- CATEGORY 6: INTEGRATIONS (Channels, OTA, marketing, external systems)
@@ -231,6 +233,7 @@
 \ir 09-reference-data/07_charge_codes.sql
 \ir 09-reference-data/08_reason_codes.sql
 \ir 09-reference-data/09_pet_types.sql
+\ir 09-reference-data/10_departments.sql
 
 -- =========================================================================
 -- CATEGORY 10: COMPLIANCE (Data retention, breach tracking)
