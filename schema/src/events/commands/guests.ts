@@ -1,7 +1,9 @@
 /**
  * DEV DOC
  * Module: events/commands/guests.ts
- * Purpose: Shared schema/type definitions and validation helpers.
+ * Description: Guest command schemas for registration, profile updates, loyalty, VIP, blacklist, GDPR, and preferences
+ * Primary exports: GuestRegisterCommandSchema, GuestMergeCommandSchema, GuestUpdateProfileCommandSchema, GuestSetLoyaltyCommandSchema, GuestGdprEraseCommandSchema
+ * @category commands
  * Ownership: Schema package
  */
 

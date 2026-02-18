@@ -1,7 +1,9 @@
 /**
  * DEV DOC
  * Module: events/commands/integrations.ts
- * Purpose: Shared schema/type definitions and validation helpers.
+ * Description: Integration command schemas for OTA sync, rate push, webhook retry, and mapping updates
+ * Primary exports: IntegrationOtaSyncRequestCommandSchema, IntegrationOtaRatePushCommandSchema, IntegrationWebhookRetryCommandSchema, IntegrationMappingUpdateCommandSchema
+ * @category commands
  * Ownership: Schema package
  */
 

@@ -1,7 +1,9 @@
 /**
  * DEV DOC
  * Module: events/commands/inventory.ts
- * Purpose: Shared schema/type definitions and validation helpers.
+ * Description: Inventory command schemas for room locking, releasing, and bulk release via availability guard
+ * Primary exports: InventoryLockRoomCommandSchema, InventoryReleaseRoomCommandSchema, InventoryBulkReleaseCommandSchema
+ * @category commands
  * Ownership: Schema package
  */
 

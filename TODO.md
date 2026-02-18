@@ -2,6 +2,19 @@
 
 ---
 
+### 🔴 HIGH PRIORITY — Template & Communication Infrastructure (NEXT)
+
+The template/communication items are the highest-impact next batch — they're guest-facing, table-stakes PMS features and the infrastructure (`communication_templates` + `automated_messages` + notification-service) already exists.
+
+**Phase 2 from PRO Analysis — Template & Communication:**
+- [ ] Communication templates table & schema (email/SMS/push templates with variable interpolation)
+- [ ] Automated messages table & schema (trigger-based messaging rules: pre-arrival, confirmation, post-stay)
+- [ ] Wire notification-service to use communication_templates for dynamic content rendering
+- [ ] Add command schemas for template CRUD and automated message configuration
+- [ ] Seed default templates (booking confirmation, pre-arrival, checkout, cancellation)
+
+---
+
 ### P0 — Reservation Flow Audit (2026-02-07)
 
 Full end-to-end trace of the reservation lifecycle across api-gateway, reservations-command-service, availability-guard-service, core-service, rooms-service, billing-service, guests-service, and schemas. Findings grouped by severity.

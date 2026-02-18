@@ -1,7 +1,9 @@
 /**
  * DEV DOC
  * Module: events/commands/operations.ts
- * Purpose: Shared schema/type definitions and validation helpers.
+ * Description: Operations command schemas for maintenance requests, incidents, asset tracking, inventory adjustments, and staff scheduling
+ * Primary exports: OperationsMaintenanceRequestCommandSchema, OperationsIncidentReportCommandSchema, OperationsScheduleCreateCommandSchema
+ * @category commands
  * Ownership: Schema package
  */
 

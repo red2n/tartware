@@ -1,7 +1,9 @@
 /**
  * DEV DOC
  * Module: events/commands/rooms.ts
- * Purpose: Shared schema/type definitions and validation helpers.
+ * Description: Room command schemas for status updates, housekeeping, maintenance, room moves, features, and digital key management
+ * Primary exports: RoomStatusUpdateCommandSchema, RoomMoveCommandSchema, RoomKeyIssueCommandSchema, RoomOutOfOrderCommandSchema, RoomInventoryBlockCommandSchema
+ * @category commands
  * Ownership: Schema package
  */
 

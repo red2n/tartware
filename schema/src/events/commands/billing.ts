@@ -1,7 +1,9 @@
 /**
  * DEV DOC
  * Module: events/commands/billing.ts
- * Purpose: Shared schema/type definitions and validation helpers.
+ * Description: Billing command schemas for payments, invoices, folios, commissions, AR, cashier, and dynamic pricing
+ * Primary exports: BillingPaymentCaptureCommandSchema, BillingChargePostCommandSchema, BillingNightAuditCommandSchema, CommissionCalculateCommandSchema, BillingArPostCommandSchema, BillingCashierOpenCommandSchema, BillingPricingEvaluateCommandSchema
+ * @category commands
  * Ownership: Schema package
  */
 

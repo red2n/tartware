@@ -1,7 +1,9 @@
 /**
  * DEV DOC
  * Module: events/commands/reservations.ts
- * Purpose: Shared schema/type definitions and validation helpers.
+ * Description: Reservation command schemas for the full booking lifecycle — create, modify, cancel, check-in/out, deposits, no-show, walk-in, waitlist, registration cards, and mobile check-in
+ * Primary exports: ReservationCreateCommandSchema, ReservationCheckInCommandSchema, ReservationCheckOutCommandSchema, ReservationWalkGuestCommandSchema, ReservationMobileCheckinStartCommandSchema
+ * @category commands
  * Ownership: Schema package
  */
 

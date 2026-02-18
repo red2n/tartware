@@ -1,12 +1,22 @@
 /**
  * DEV DOC
  * Module: events/commands/compliance.ts
- * Purpose: Command schemas for compliance domain (breach reporting, notifications).
+ * Description: Compliance command schemas for data breach reporting and notification
+ * Primary exports: ComplianceBreachReportCommandSchema, ComplianceBreachNotifyCommandSchema
+ * @category commands
  * Ownership: Schema package
  */
 
 import { z } from "zod";
 
+/**
+ * Report a data breach or security incident.
+ * Creates an incident record with severity classification,
+ * affected data categories, and systems for regulatory tracking.
+ *
+ * @category commands
+ * @synchronized 2026-02-18
+ */
 export const ComplianceBreachReportCommandSchema = z.object({
 	property_id: z.string().uuid().optional(),
 	incident_title: z.string().min(1).max(300),
@@ -37,6 +47,14 @@ export type ComplianceBreachReportCommand = z.infer<
 	typeof ComplianceBreachReportCommandSchema
 >;
 
+/**
+ * Notify authorities and affected data subjects about a breach.
+ * Triggers regulatory notifications and optional subject alerts
+ * per GDPR/privacy requirements.
+ *
+ * @category commands
+ * @synchronized 2026-02-18
+ */
 export const ComplianceBreachNotifyCommandSchema = z.object({
 	incident_id: z.string().uuid(),
 	authority_reference: z.string().max(200).optional(),
