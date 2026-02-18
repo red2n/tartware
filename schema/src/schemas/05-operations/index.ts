@@ -18,6 +18,7 @@
 
 export * from "./app-usage-analytics.js";
 export * from "./asset-inventory.js";
+export * from "./call-records.js";
 export * from "./contactless-requests.js";
 export * from "./device-events-log.js";
 export * from "./digital-registration-cards.js";
@@ -31,6 +32,7 @@ export * from "./minibar-consumption.js";
 export * from "./minibar-items.js";
 export * from "./mobile-check-ins.js";
 export * from "./mobile-keys.js";
+export * from "./pbx-configurations.js";
 export * from "./predictive-maintenance-alerts.js";
 export * from "./push-notifications.js";
 export * from "./qr-codes.js";

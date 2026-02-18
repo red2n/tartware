@@ -25,7 +25,7 @@ Reference analysis of a full-featured enterprise PMS (PRO) mapped against Tartwa
 | Housekeeping Services Import | Import housekeeping services data | **COVERED** | core-service | Same `import_export_jobs` table (entity_type=HOUSEKEEPING_SERVICE) |
 | Loyalty programs | Define guest loyalty programs for the property | **COVERED** | guests-service | `guest_loyalty_programs`, `loyalty_point_transactions`, `loyalty_tier_rules` tables exist with full tier/points/benefits support |
 | Profile Preferences | Preferences individually set on guest profiles | **COVERED** | guests-service | `guest_preferences` table with rich preference types and JSONB extensibility |
-| Phone Call Management | Emergency calling, call allowances (domestic/international) | **GAP** | — | PBX/telephony integration not in scope |
+| Phone Call Management | Emergency calling, call allowances (domestic/international) | **COVERED** | core-service | `pbx_configurations` + `call_records` tables in `05-operations/112` with call rates, prefix routing, wake-up calls, auto-posting to folio, and emergency number config |
 | Data Retention Management | Personal data retention policies for guest/company/travel agent profiles | **COVERED** | core-service | `data_retention_policies` + `data_breach_incidents` tables in `10-compliance/`; configurable per entity type with sweep tracking |
 | Feature Settings | Enable/disable features at property level | **COVERED** | core-service | `property_feature_flags` table in `01-core/16_property_feature_flags.sql` with module toggles, rollout control, subscription tiers |
 | Universal Alerts | Rules-based alerts for reservations, guests, groups, loyalty events | **COVERED** | core-service | `performance_alerts` + `alert_rules` tables in `07-analytics/` with severity, acknowledgment, and auto-resolve |
@@ -34,7 +34,7 @@ Reference analysis of a full-featured enterprise PMS (PRO) mapped against Tartwa
 | Guest Self Service | Guest-facing self-service module configuration | **COVERED** | guest-experience-service | `self_service_configurations` table in `05-operations/111` with mobile check-in, digital keys, booking engine, registration cards, and contactless requests |
 | Field Settings | Configure field settings for Profiles, Groups, AR | **COVERED** | core-service | `field_configurations` table in `01-core/18` with per-entity field visibility, validation rules, custom fields, and dependency logic |
 
-### Summary: 14 covered, 0 partial, 1 gap
+### Summary: 15 covered, 0 partial, 0 gaps
 
 ---
 
@@ -140,13 +140,13 @@ Reference analysis of a full-featured enterprise PMS (PRO) mapped against Tartwa
 | AR Statement | Custom footer for AR statements | **COVERED** | notification-service | Seeded `AR_STATEMENT` template in `communication_templates` (Phase 2); `accounts_receivable` tables provide data |
 | Invoices | Custom message for invoices | **COVERED** | notification-service | Seeded `INVOICE` template in `communication_templates` (Phase 2); `invoices` + `invoice_items` tables provide data |
 | Schedule Deposit Due | Deposit due success/failure email templates | **COVERED** | notification-service | Seeded `DEPOSIT_DUE` template in `communication_templates` (Phase 2); `automated_messages` handles trigger dispatch |
-| Routing Rule Templates | Create/edit routing rule templates | **GAP** | — | No folio routing rule templates |
+| Routing Rule Templates | Create/edit routing rule templates | **COVERED** | billing-service | `folio_routing_rules` table in `04-financial/74` with routing type (FULL/PERCENTAGE/FIXED_AMOUNT/REMAINDER), charge category filters, priority evaluation, template vs active rules, 6 industry-standard seeds |
 | Send Payment | Email template for payment link to guests | **COVERED** | notification-service | Seeded `PAYMENT_LINK` template in `communication_templates` (Phase 2) |
 | Reservation Welcome Script | Create/edit welcome scripts | **COVERED** | notification-service | Seeded `WELCOME_SCRIPT` template in `communication_templates` (Phase 2); linked via `automated_messages` pre-arrival trigger |
 | Coupons | Custom verbiage for coupons | **COVERED** | revenue-service | `promotional_codes` table supports coupon-type promos with custom descriptions and redemption tracking |
 | Group Rooming List Templates | Custom group rooming list templates | **COVERED** | notification-service | Seeded `GROUP_ROOMING_LIST` template in `communication_templates` (Phase 2) |
 
-### Summary: 11 covered, 0 partial, 1 gap
+### Summary: 12 covered, 0 partial, 0 gaps
 
 ---
 
@@ -154,7 +154,7 @@ Reference analysis of a full-featured enterprise PMS (PRO) mapped against Tartwa
 
 | Category | Features | Covered | Partial | Gap |
 |----------|----------|---------|---------|-----|
-| General | 15 | 14 | 0 | 1 |
+| General | 15 | 15 | 0 | 0 |
 | Administration | 3 | 3 | 0 | 0 |
 | Reservations | 8 | 8 | 0 | 0 |
 | Accounting | 7 | 7 | 0 | 0 |
@@ -162,8 +162,8 @@ Reference analysis of a full-featured enterprise PMS (PRO) mapped against Tartwa
 | Comp Accounting | 3 | 3 | 0 | 0 |
 | Offers | 1 | 1 | 0 | 0 |
 | Function Rooms | 3 | 3 | 0 | 0 |
-| Templates | 12 | 11 | 0 | 1 |
-| **TOTAL** | **55** | **53 (96%)** | **0 (0%)** | **2 (4%)** |
+| Templates | 12 | 12 | 0 | 0 |
+| **TOTAL** | **55** | **55 (100%)** | **0 (0%)** | **0 (0%)** |
 
 ---
 
@@ -188,7 +188,7 @@ Reference analysis of a full-featured enterprise PMS (PRO) mapped against Tartwa
 | **Pet Management** | Pet types, charges | ~~LOW~~ **COVERED** | `pet_types` + `pet_registrations` tables in `09-reference-data/09_pet_types.sql` |
 | **Guest Satisfaction** | Complaint/compliment categories, dashboard | LOW | Can start as a reporting feature |
 | **Data Retention** | GDPR retention policy engine | ~~LOW~~ **COVERED** | `data_retention_policies` + `data_breach_incidents` in `10-compliance/` |
-| **Phone/PBX** | Emergency calling, call allowances | LOW | Niche integration; most modern properties use cloud PBX |
+| **Phone/PBX** | Emergency calling, call allowances | ~~LOW~~ **COVERED** | `pbx_configurations` + `call_records` tables in `05-operations/112` with call rates, wake-up, emergency numbers, auto-posting to folio |
 
 ---
 
@@ -280,8 +280,11 @@ Templates                → notification-service ✓ (communication_templates +
 - ~~Profile display settings~~ → `user_ui_preferences` table in `01-core/19` with `profile_display_fields`, `profile_history_display`, `default_profile_tab`
 - ~~UI preference storage (home page)~~ → Same `user_ui_preferences` with `home_page`, `home_page_dashboard_layout`, theme, language, timezone
 - ~~Import/export tooling~~ → `import_export_jobs` table in `01-core/20` with async job tracking, progress, error reporting for all entity types
-- Phone/PBX integration — out of scope (cloud PBX, not a PMS concern)
+- ~~Phone/PBX integration~~ → `pbx_configurations` + `call_records` tables in `05-operations/112` with call rates, wake-up calls, emergency numbers, auto-posting
 
-### Remaining Gaps (2 of 55 features)
-- **Phone Call Management** (General) — PBX/telephony integration, out-of-scope for PMS backend
-- **Routing Rule Templates** (Templates) — Folio charge routing rules need a dedicated table
+### Phase 5 — Final Gaps ✅ COMPLETE
+- ~~Phone Call Management~~ → `pbx_configurations` (call rates, allowances, wake-up, emergency) + `call_records` (CDR tracking, billing, folio posting)
+- ~~Routing Rule Templates~~ → `folio_routing_rules` table in `04-financial/74` with template/active rules, charge category routing, priority evaluation, 6 seeds
+
+### Remaining Gaps (0 of 55 features)
+🎉 **100% PRO PMS feature coverage achieved!**

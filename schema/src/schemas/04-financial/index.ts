@@ -25,6 +25,7 @@ export * from "./comp-property-config.js";
 export * from "./comp-transactions.js";
 export * from "./credit-limits.js";
 export * from "./financial-closures.js";
+export * from "./folio-routing-rules.js";
 export * from "./folios.js";
 export * from "./general-ledger-batches.js";
 export * from "./general-ledger-entries.js";
