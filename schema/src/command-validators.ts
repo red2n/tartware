@@ -84,7 +84,15 @@ import {
 	LoyaltyPointsEarnCommandSchema,
 	LoyaltyPointsRedeemCommandSchema,
 } from "./events/commands/loyalty.js";
-import { NotificationSendCommandSchema } from "./events/commands/notifications.js";
+import {
+	NotificationAutomatedMessageCreateCommandSchema,
+	NotificationAutomatedMessageDeleteCommandSchema,
+	NotificationAutomatedMessageUpdateCommandSchema,
+	NotificationSendCommandSchema,
+	NotificationTemplateCreateCommandSchema,
+	NotificationTemplateDeleteCommandSchema,
+	NotificationTemplateUpdateCommandSchema,
+} from "./events/commands/notifications.js";
 import {
 	OperationsAssetUpdateCommandSchema,
 	OperationsIncidentReportCommandSchema,
@@ -538,6 +546,30 @@ const commandPayloadValidators = new Map<string, CommandPayloadValidator>([
 	[
 		"notification.send",
 		(payload) => NotificationSendCommandSchema.parse(payload),
+	],
+	[
+		"notification.template.create",
+		(payload) => NotificationTemplateCreateCommandSchema.parse(payload),
+	],
+	[
+		"notification.template.update",
+		(payload) => NotificationTemplateUpdateCommandSchema.parse(payload),
+	],
+	[
+		"notification.template.delete",
+		(payload) => NotificationTemplateDeleteCommandSchema.parse(payload),
+	],
+	[
+		"notification.automated.create",
+		(payload) => NotificationAutomatedMessageCreateCommandSchema.parse(payload),
+	],
+	[
+		"notification.automated.update",
+		(payload) => NotificationAutomatedMessageUpdateCommandSchema.parse(payload),
+	],
+	[
+		"notification.automated.delete",
+		(payload) => NotificationAutomatedMessageDeleteCommandSchema.parse(payload),
 	],
 ]);
 

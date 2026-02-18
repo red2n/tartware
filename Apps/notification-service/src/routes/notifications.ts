@@ -1,5 +1,9 @@
 import type { FastifyInstance } from "fastify";
 import {
+  getAutomatedMessage,
+  listAutomatedMessages,
+} from "../services/automated-message-service.js";
+import {
   getCommunication,
   listGuestCommunications,
 } from "../services/notification-dispatch-service.js";
@@ -9,6 +13,7 @@ type TenantParams = { tenantId: string };
 type TemplateParams = TenantParams & { templateId: string };
 type GuestParams = TenantParams & { guestId: string };
 type CommunicationParams = TenantParams & { communicationId: string };
+type AutomatedMessageParams = TenantParams & { messageId: string };
 type PaginationQuery = { limit?: string; offset?: string };
 
 /**
@@ -91,6 +96,44 @@ export const registerNotificationRoutes = (app: FastifyInstance): void => {
         return reply.notFound("Communication not found");
       }
       return reply.send({ data: communication });
+    },
+  );
+
+  // ─── Automated Messages (Read) ─────────────────────────────────
+
+  app.get<{ Params: TenantParams; Querystring: PaginationQuery }>(
+    "/v1/tenants/:tenantId/notifications/automated-messages",
+    {
+      preHandler: app.withTenantScope({
+        resolveTenantId: (request) => (request.params as TenantParams).tenantId,
+        minRole: "STAFF",
+      }),
+    },
+    async (request, reply) => {
+      const { tenantId } = request.params;
+      const limit = Math.min(Number(request.query.limit) || 50, 200);
+      const offset = Math.max(Number(request.query.offset) || 0, 0);
+
+      const messages = await listAutomatedMessages(tenantId, limit, offset);
+      return reply.send({ data: messages, limit, offset });
+    },
+  );
+
+  app.get<{ Params: AutomatedMessageParams }>(
+    "/v1/tenants/:tenantId/notifications/automated-messages/:messageId",
+    {
+      preHandler: app.withTenantScope({
+        resolveTenantId: (request) => (request.params as AutomatedMessageParams).tenantId,
+        minRole: "STAFF",
+      }),
+    },
+    async (request, reply) => {
+      const { tenantId, messageId } = request.params;
+      const message = await getAutomatedMessage(tenantId, messageId);
+      if (!message) {
+        return reply.notFound("Automated message not found");
+      }
+      return reply.send({ data: message });
     },
   );
 };

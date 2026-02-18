@@ -339,4 +339,102 @@ export const registerMiscRoutes = (app: FastifyInstance): void => {
     },
     proxyNotifications,
   );
+
+  // ─── Automated Messages (Read + Command) ─────────────────────
+
+  app.get(
+    "/v1/tenants/:tenantId/notifications/automated-messages",
+    {
+      preHandler: tenantScopeFromParams,
+      schema: buildRouteSchema({
+        tag: NOTIFICATION_PROXY_TAG,
+        summary: "List automated message rules for a tenant.",
+        response: {
+          200: jsonObjectSchema,
+        },
+      }),
+    },
+    proxyNotifications,
+  );
+
+  app.get(
+    "/v1/tenants/:tenantId/notifications/automated-messages/:messageId",
+    {
+      preHandler: tenantScopeFromParams,
+      schema: buildRouteSchema({
+        tag: NOTIFICATION_PROXY_TAG,
+        summary: "Get a specific automated message rule.",
+        response: {
+          200: jsonObjectSchema,
+        },
+      }),
+    },
+    proxyNotifications,
+  );
+
+  app.post(
+    "/v1/tenants/:tenantId/notifications/automated-messages",
+    {
+      preHandler: tenantScopeFromParams,
+      schema: buildRouteSchema({
+        tag: NOTIFICATION_COMMAND_TAG,
+        summary: "Create an automated message rule via the Command Center.",
+        body: jsonObjectSchema,
+        response: {
+          202: jsonObjectSchema,
+        },
+      }),
+    },
+    (request, reply) =>
+      forwardCommandWithTenant({
+        request,
+        reply,
+        commandName: "notification.automated.create",
+      }),
+  );
+
+  app.put(
+    "/v1/tenants/:tenantId/notifications/automated-messages/:messageId",
+    {
+      preHandler: tenantScopeFromParams,
+      schema: buildRouteSchema({
+        tag: NOTIFICATION_COMMAND_TAG,
+        summary: "Update an automated message rule via the Command Center.",
+        body: jsonObjectSchema,
+        response: {
+          202: jsonObjectSchema,
+        },
+      }),
+    },
+    (request, reply) =>
+      forwardCommandWithParamId({
+        request,
+        reply,
+        commandName: "notification.automated.update",
+        paramKey: "messageId",
+        payloadKey: "message_id",
+      }),
+  );
+
+  app.delete(
+    "/v1/tenants/:tenantId/notifications/automated-messages/:messageId",
+    {
+      preHandler: tenantScopeFromParams,
+      schema: buildRouteSchema({
+        tag: NOTIFICATION_COMMAND_TAG,
+        summary: "Delete an automated message rule via the Command Center.",
+        response: {
+          202: jsonObjectSchema,
+        },
+      }),
+    },
+    (request, reply) =>
+      forwardCommandWithParamId({
+        request,
+        reply,
+        commandName: "notification.automated.delete",
+        paramKey: "messageId",
+        payloadKey: "message_id",
+      }),
+  );
 };

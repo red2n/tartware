@@ -1,7 +1,9 @@
 /**
  * DEV DOC
  * Module: schemas/03-bookings/guest-communications.ts
- * Description: GuestCommunications Schema
+ * Description: Guest communication log — records every outbound message (email, SMS, push, WhatsApp)
+ *   sent to a guest, linking back to the template used, reservation context, and delivery tracking
+ *   (queued → sent → delivered → opened → clicked / failed).
  * Table: guest_communications
  * Category: 03-bookings
  * Primary exports: GuestCommunicationsSchema, CreateGuestCommunicationsSchema, UpdateGuestCommunicationsSchema
@@ -11,18 +13,24 @@
  */
 
 /**
- * GuestCommunications Schema
+ * Communication delivery log for guest notifications.
+ * Each row tracks one outbound message through its lifecycle
+ * from creation to delivery/failure, with full engagement tracking.
+ *
  * @table guest_communications
  * @category 03-bookings
- * @synchronized 2025-11-03
+ * @synchronized 2026-02-18
  */
 
 import { z } from "zod";
 
 import { uuid } from "../../shared/base-schemas.js";
 
+// ─── Full Row Schema ─────────────────────────────────────────────────────────
+
 /**
- * Complete GuestCommunications schema
+ * Complete guest_communications row including delivery tracking timestamps,
+ * external provider IDs, and audit fields.
  */
 export const GuestCommunicationsSchema = z.object({
 	id: uuid,
@@ -61,8 +69,11 @@ export const GuestCommunicationsSchema = z.object({
 
 export type GuestCommunications = z.infer<typeof GuestCommunicationsSchema>;
 
+// ─── Create / Update Schemas ─────────────────────────────────────────────────
+
 /**
- * Schema for creating a new guest communication
+ * Schema for creating a new guest communication record.
+ * Omits system-generated id, delivery tracking timestamps, and soft-delete flags.
  */
 export const CreateGuestCommunicationsSchema = GuestCommunicationsSchema.omit({
 	id: true,
@@ -85,7 +96,8 @@ export type CreateGuestCommunications = z.infer<
 >;
 
 /**
- * Schema for updating a guest communication
+ * Schema for updating a guest communication record.
+ * Restricts to delivery status and tracking fields only.
  */
 export const UpdateGuestCommunicationsSchema = GuestCommunicationsSchema.pick({
 	status: true,
