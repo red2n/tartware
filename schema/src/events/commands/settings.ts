@@ -1,7 +1,9 @@
 /**
  * DEV DOC
  * Module: events/commands/settings.ts
- * Purpose: Shared schema/type definitions and validation helpers.
+ * Description: Settings command schemas for value set, bulk set, approval, and reversion across tenant/property/user scopes
+ * Primary exports: SettingsValueSetCommandSchema, SettingsValueBulkSetCommandSchema, SettingsValueApproveCommandSchema, SettingsValueRevertCommandSchema
+ * @category commands
  * Ownership: Schema package
  */
 

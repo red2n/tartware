@@ -1,7 +1,9 @@
 /**
  * DEV DOC
  * Module: events/commands/housekeeping.ts
- * Purpose: Shared schema/type definitions and validation helpers.
+ * Description: Housekeeping command schemas for task assignment, completion, reassignment, and bulk status updates
+ * Primary exports: HousekeepingAssignCommandSchema, HousekeepingCompleteCommandSchema, HousekeepingTaskCreateCommandSchema, HousekeepingTaskBulkStatusCommandSchema
+ * @category commands
  * Ownership: Schema package
  */
 

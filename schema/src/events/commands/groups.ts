@@ -1,7 +1,9 @@
 /**
  * DEV DOC
  * Module: events/commands/groups.ts
- * Purpose: Zod schemas for group booking command payloads.
+ * Description: Group booking command schemas for creation, room blocks, rooming lists, cutoff enforcement, and billing setup
+ * Primary exports: GroupCreateCommandSchema, GroupAddRoomsCommandSchema, GroupUploadRoomingListCommandSchema, GroupCutoffEnforceCommandSchema, GroupBillingSetupCommandSchema
+ * @category commands
  * Ownership: Schema package
  */
 

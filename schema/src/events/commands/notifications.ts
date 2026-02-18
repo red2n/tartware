@@ -1,3 +1,12 @@
+/**
+ * DEV DOC
+ * Module: events/commands/notifications.ts
+ * Description: Notification command schemas for guest communication dispatch
+ * Primary exports: NotificationSendCommandSchema
+ * @category commands
+ * Ownership: Schema package
+ */
+
 import { z } from "zod";
 
 /**
