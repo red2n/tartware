@@ -122,40 +122,64 @@ const CREATE_MESSAGE_SQL = `
 const UPDATE_MESSAGE_SQL = `
   UPDATE automated_messages
   SET message_name = COALESCE($3, message_name),
-      description = COALESCE($4, description),
-      is_active = COALESCE($5, is_active),
-      is_paused = COALESCE($6, is_paused),
-      priority = COALESCE($7, priority),
-      send_timing = COALESCE($8, send_timing),
-      delay_minutes = COALESCE($9, delay_minutes),
-      delay_hours = COALESCE($10, delay_hours),
-      delay_days = COALESCE($11, delay_days),
-      send_before_event_hours = COALESCE($12, send_before_event_hours),
-      send_after_event_hours = COALESCE($13, send_after_event_hours),
-      scheduled_time = COALESCE($14, scheduled_time),
-      scheduled_timezone = COALESCE($15, scheduled_timezone),
-      respect_quiet_hours = COALESCE($16, respect_quiet_hours),
-      quiet_hours_start = COALESCE($17, quiet_hours_start),
-      quiet_hours_end = COALESCE($18, quiet_hours_end),
-      template_id = COALESCE($19, template_id),
-      fallback_template_id = COALESCE($20, fallback_template_id),
-      message_channel = COALESCE($21, message_channel),
-      secondary_channels = COALESCE($22, secondary_channels),
-      target_audience = COALESCE($23, target_audience),
-      conditions = COALESCE($24, conditions),
-      exclusion_conditions = COALESCE($25, exclusion_conditions),
-      max_sends_per_guest_per_day = COALESCE($26, max_sends_per_guest_per_day),
-      max_sends_per_guest_per_week = COALESCE($27, max_sends_per_guest_per_week),
-      max_sends_per_guest_per_month = COALESCE($28, max_sends_per_guest_per_month),
-      min_hours_between_sends = COALESCE($29, min_hours_between_sends),
-      respect_unsubscribe = COALESCE($30, respect_unsubscribe),
-      requires_consent = COALESCE($31, requires_consent),
-      consent_type = COALESCE($32, consent_type),
-      include_unsubscribe_link = COALESCE($33, include_unsubscribe_link),
-      metadata = COALESCE($34, metadata),
-      tags = COALESCE($35, tags),
-      notes = COALESCE($36, notes),
-      updated_by = $37::uuid,
+      message_code = COALESCE($4, message_code),
+      description = COALESCE($5, description),
+      trigger_event = COALESCE($6, trigger_event),
+      is_active = COALESCE($7, is_active),
+      is_paused = COALESCE($8, is_paused),
+      priority = COALESCE($9, priority),
+      send_timing = COALESCE($10, send_timing),
+      delay_minutes = COALESCE($11, delay_minutes),
+      delay_hours = COALESCE($12, delay_hours),
+      delay_days = COALESCE($13, delay_days),
+      send_before_event_hours = COALESCE($14, send_before_event_hours),
+      send_after_event_hours = COALESCE($15, send_after_event_hours),
+      scheduled_time = COALESCE($16, scheduled_time),
+      scheduled_timezone = COALESCE($17, scheduled_timezone),
+      respect_quiet_hours = COALESCE($18, respect_quiet_hours),
+      quiet_hours_start = COALESCE($19, quiet_hours_start),
+      quiet_hours_end = COALESCE($20, quiet_hours_end),
+      template_id = COALESCE($21, template_id),
+      template_version = COALESCE($22, template_version),
+      fallback_template_id = COALESCE($23, fallback_template_id),
+      message_channel = COALESCE($24, message_channel),
+      secondary_channels = COALESCE($25, secondary_channels),
+      channel_priority = COALESCE($26, channel_priority),
+      target_audience = COALESCE($27, target_audience),
+      guest_segments = COALESCE($28, guest_segments),
+      conditions = COALESCE($29, conditions),
+      exclusion_conditions = COALESCE($30, exclusion_conditions),
+      use_guest_name = COALESCE($31, use_guest_name),
+      use_property_name = COALESCE($32, use_property_name),
+      personalization_fields = COALESCE($33, personalization_fields),
+      dynamic_content_rules = COALESCE($34, dynamic_content_rules),
+      default_language = COALESCE($35, default_language),
+      multi_language = COALESCE($36, multi_language),
+      language_detection_method = COALESCE($37, language_detection_method),
+      supported_languages = COALESCE($38, supported_languages),
+      max_sends_per_guest_per_day = COALESCE($39, max_sends_per_guest_per_day),
+      max_sends_per_guest_per_week = COALESCE($40, max_sends_per_guest_per_week),
+      max_sends_per_guest_per_month = COALESCE($41, max_sends_per_guest_per_month),
+      min_hours_between_sends = COALESCE($42, min_hours_between_sends),
+      respect_unsubscribe = COALESCE($43, respect_unsubscribe),
+      respect_preferences = COALESCE($44, respect_preferences),
+      is_ab_test = COALESCE($45, is_ab_test),
+      ab_test_variant = COALESCE($46, ab_test_variant),
+      ab_test_percentage = COALESCE($47, ab_test_percentage),
+      ab_test_control_group_percentage = COALESCE($48, ab_test_control_group_percentage),
+      retry_on_failure = COALESCE($49, retry_on_failure),
+      max_retry_attempts = COALESCE($50, max_retry_attempts),
+      retry_delay_minutes = COALESCE($51, retry_delay_minutes),
+      requires_consent = COALESCE($52, requires_consent),
+      consent_type = COALESCE($53, consent_type),
+      gdpr_compliant = COALESCE($54, gdpr_compliant),
+      include_unsubscribe_link = COALESCE($55, include_unsubscribe_link),
+      estimated_cost_per_send = COALESCE($56, estimated_cost_per_send),
+      currency = COALESCE($57, currency),
+      metadata = COALESCE($58, metadata),
+      tags = COALESCE($59, tags),
+      notes = COALESCE($60, notes),
+      updated_by = $61::uuid,
       updated_at = CURRENT_TIMESTAMP
   WHERE tenant_id = $1::uuid AND message_id = $2::uuid
     AND COALESCE(is_deleted, false) = false
@@ -320,7 +344,9 @@ export const updateAutomatedMessage = async (
   messageId: string,
   data: {
     messageName?: string;
+    messageCode?: string;
     description?: string;
+    triggerEvent?: string;
     isActive?: boolean;
     isPaused?: boolean;
     priority?: number;
@@ -336,20 +362,42 @@ export const updateAutomatedMessage = async (
     quietHoursStart?: string;
     quietHoursEnd?: string;
     templateId?: string;
+    templateVersion?: number;
     fallbackTemplateId?: string;
     messageChannel?: string;
     secondaryChannels?: string[];
+    channelPriority?: string[];
     targetAudience?: string[];
+    guestSegments?: string[];
     conditions?: Record<string, unknown>;
     exclusionConditions?: Record<string, unknown>;
+    useGuestName?: boolean;
+    usePropertyName?: boolean;
+    personalizationFields?: Record<string, unknown>;
+    dynamicContentRules?: Record<string, unknown>;
+    defaultLanguage?: string;
+    multiLanguage?: boolean;
+    languageDetectionMethod?: string;
+    supportedLanguages?: string[];
     maxSendsPerGuestPerDay?: number;
     maxSendsPerGuestPerWeek?: number;
     maxSendsPerGuestPerMonth?: number;
     minHoursBetweenSends?: number;
     respectUnsubscribe?: boolean;
+    respectPreferences?: boolean;
+    isAbTest?: boolean;
+    abTestVariant?: string;
+    abTestPercentage?: number;
+    abTestControlGroupPercentage?: number;
+    retryOnFailure?: boolean;
+    maxRetryAttempts?: number;
+    retryDelayMinutes?: number;
     requiresConsent?: boolean;
     consentType?: string;
+    gdprCompliant?: boolean;
     includeUnsubscribeLink?: boolean;
+    estimatedCostPerSend?: number;
+    currency?: string;
     metadata?: Record<string, unknown>;
     tags?: string[];
     notes?: string;
@@ -360,7 +408,9 @@ export const updateAutomatedMessage = async (
     tenantId,
     messageId,
     data.messageName ?? null,
+    data.messageCode ?? null,
     data.description ?? null,
+    data.triggerEvent ?? null,
     data.isActive ?? null,
     data.isPaused ?? null,
     data.priority ?? null,
@@ -376,20 +426,42 @@ export const updateAutomatedMessage = async (
     data.quietHoursStart ?? null,
     data.quietHoursEnd ?? null,
     data.templateId ?? null,
+    data.templateVersion ?? null,
     data.fallbackTemplateId ?? null,
     data.messageChannel ?? null,
     data.secondaryChannels ?? null,
+    data.channelPriority ?? null,
     data.targetAudience ?? null,
+    data.guestSegments ?? null,
     data.conditions ? JSON.stringify(data.conditions) : null,
     data.exclusionConditions ? JSON.stringify(data.exclusionConditions) : null,
+    data.useGuestName ?? null,
+    data.usePropertyName ?? null,
+    data.personalizationFields ? JSON.stringify(data.personalizationFields) : null,
+    data.dynamicContentRules ? JSON.stringify(data.dynamicContentRules) : null,
+    data.defaultLanguage ?? null,
+    data.multiLanguage ?? null,
+    data.languageDetectionMethod ?? null,
+    data.supportedLanguages ?? null,
     data.maxSendsPerGuestPerDay ?? null,
     data.maxSendsPerGuestPerWeek ?? null,
     data.maxSendsPerGuestPerMonth ?? null,
     data.minHoursBetweenSends ?? null,
     data.respectUnsubscribe ?? null,
+    data.respectPreferences ?? null,
+    data.isAbTest ?? null,
+    data.abTestVariant ?? null,
+    data.abTestPercentage ?? null,
+    data.abTestControlGroupPercentage ?? null,
+    data.retryOnFailure ?? null,
+    data.maxRetryAttempts ?? null,
+    data.retryDelayMinutes ?? null,
     data.requiresConsent ?? null,
     data.consentType ?? null,
+    data.gdprCompliant ?? null,
     data.includeUnsubscribeLink ?? null,
+    data.estimatedCostPerSend ?? null,
+    data.currency ?? null,
     data.metadata ? JSON.stringify(data.metadata) : null,
     data.tags ?? null,
     data.notes ?? null,

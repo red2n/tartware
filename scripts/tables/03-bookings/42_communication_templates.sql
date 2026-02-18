@@ -68,6 +68,7 @@ CREATE TABLE IF NOT EXISTS communication_templates (
     -- Soft Delete
     is_deleted BOOLEAN DEFAULT FALSE,
     deleted_at TIMESTAMP WITH TIME ZONE,
+    deleted_by UUID, -- User who performed the soft delete
 
     CONSTRAINT uq_comm_template_code UNIQUE (tenant_id, property_id, template_code, language_code)
 );
