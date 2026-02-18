@@ -232,6 +232,9 @@ WHERE extname IN ('pg_stat_statements', 'uuid-ossp');
 \echo 'Test 1: Validate good query (should pass):'
 \echo '------------------------------------------------------'
 SELECT * FROM validate_query_pattern(
+    'SELECT id, name FROM guests WHERE tenant_id = uuid_generate_v4()'
+);
+
 \echo ''
 \echo 'Test 2: Validate bad query with SELECT * (should fail):'
 \echo '------------------------------------------------------'
@@ -255,6 +258,9 @@ SELECT * FROM suggest_query_optimization(
 \echo 'Test 1: Query WITH tenant filter (should be safe):'
 \echo '------------------------------------------------------'
 SELECT * FROM validate_tenant_isolation(
+    'SELECT id, name FROM guests WHERE tenant_id = uuid_generate_v4()'
+);
+
 \echo ''
 \echo 'Test 2: Query WITHOUT tenant filter (should be unsafe):'
 \echo '------------------------------------------------------'

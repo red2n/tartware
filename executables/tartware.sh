@@ -405,8 +405,7 @@ case "$cmd" in
                     fail "Missing setup script: $setup_script"
                 fi
                 "$setup_script" "$@"
-                # Reset passwords after DB setup
-                reset_default_passwords
+                # setup-database.sh already handles password reset internally
                 exit 0
                 ;;
             *)
