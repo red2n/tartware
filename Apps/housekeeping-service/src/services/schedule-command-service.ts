@@ -197,7 +197,9 @@ const applyUpdate = async (
     idx++;
   }
   if (command.notes !== undefined) {
-    setClauses.push(`notes = CASE WHEN notes IS NULL THEN $${idx} ELSE CONCAT_WS(E'\\n', notes, $${idx}) END`);
+    setClauses.push(
+      `notes = CASE WHEN notes IS NULL THEN $${idx} ELSE CONCAT_WS(E'\\n', notes, $${idx}) END`,
+    );
     params.push(command.notes);
     idx++;
   }

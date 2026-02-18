@@ -388,6 +388,4 @@ export const TenantScopedListQuerySchema = z.object({
 	...paginationFields,
 });
 
-export type TenantScopedListQuery = z.infer<
-	typeof TenantScopedListQuerySchema
->;
+export type TenantScopedListQuery = z.infer<typeof TenantScopedListQuerySchema>;

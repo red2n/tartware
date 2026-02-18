@@ -24,10 +24,7 @@ import {
   reassignHousekeepingTask,
   reopenHousekeepingTask,
 } from "../services/housekeeping-command-service.js";
-import {
-  createStaffSchedule,
-  updateStaffSchedule,
-} from "../services/schedule-command-service.js";
+import { createStaffSchedule, updateStaffSchedule } from "../services/schedule-command-service.js";
 
 let consumer: Consumer | null = null;
 const logger = appLogger.child({ module: "housekeeping-command-consumer" });

@@ -39,10 +39,7 @@ type RetentionPolicy = {
   exempt_statuses: string[] | null;
 };
 
-const SUPPORTED_ENTITY_TYPES = new Map<
-  string,
-  (policy: RetentionPolicy) => Promise<number>
->([
+const SUPPORTED_ENTITY_TYPES = new Map<string, (policy: RetentionPolicy) => Promise<number>>([
   ["audit_logs", purgeAuditLogs],
   ["gdpr_consent_logs", purgeGdprConsentLogs],
 ]);

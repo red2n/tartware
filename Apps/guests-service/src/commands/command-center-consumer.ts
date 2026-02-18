@@ -27,10 +27,7 @@ import {
   updateGuestPreferences,
   updateGuestProfile,
 } from "../services/guest-command-service.js";
-import {
-  earnLoyaltyPoints,
-  redeemLoyaltyPoints,
-} from "../services/loyalty-command-service.js";
+import { earnLoyaltyPoints, redeemLoyaltyPoints } from "../services/loyalty-command-service.js";
 
 const consumerLogger = appLogger.child({
   module: "guests-command-center-consumer",

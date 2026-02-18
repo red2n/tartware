@@ -34,7 +34,9 @@ export const AssociationListResponseSchema = z.array(
 	}),
 );
 
-export type AssociationListResponse = z.infer<typeof AssociationListResponseSchema>;
+export type AssociationListResponse = z.infer<
+	typeof AssociationListResponseSchema
+>;
 
 // -----------------------------------------------------------------------------
 // Role Update
@@ -59,7 +61,9 @@ export const AssociationRoleUpdateResponseSchema = z.object({
 	message: z.string(),
 });
 
-export type AssociationRoleUpdateResponse = z.infer<typeof AssociationRoleUpdateResponseSchema>;
+export type AssociationRoleUpdateResponse = z.infer<
+	typeof AssociationRoleUpdateResponseSchema
+>;
 
 // -----------------------------------------------------------------------------
 // Status Update
@@ -72,7 +76,9 @@ export const AssociationStatusUpdateSchema = z.object({
 	is_active: z.boolean(),
 });
 
-export type AssociationStatusUpdate = z.infer<typeof AssociationStatusUpdateSchema>;
+export type AssociationStatusUpdate = z.infer<
+	typeof AssociationStatusUpdateSchema
+>;
 
 /** Response after updating association status. */
 export const AssociationStatusUpdateResponseSchema = z.object({
@@ -84,4 +90,6 @@ export const AssociationStatusUpdateResponseSchema = z.object({
 	message: z.string(),
 });
 
-export type AssociationStatusUpdateResponse = z.infer<typeof AssociationStatusUpdateResponseSchema>;
+export type AssociationStatusUpdateResponse = z.infer<
+	typeof AssociationStatusUpdateResponseSchema
+>;

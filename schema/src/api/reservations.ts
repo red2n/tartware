@@ -24,7 +24,9 @@ export const ReservationFolioSummarySchema = z.object({
 	total_credits: z.number(),
 	balance: z.number(),
 });
-export type ReservationFolioSummary = z.infer<typeof ReservationFolioSummarySchema>;
+export type ReservationFolioSummary = z.infer<
+	typeof ReservationFolioSummarySchema
+>;
 
 /**
  * Status history entry for reservation audit trail.
@@ -36,7 +38,9 @@ export const ReservationStatusHistoryEntrySchema = z.object({
 	changed_by: z.string(),
 	changed_at: z.string(),
 });
-export type ReservationStatusHistoryEntry = z.infer<typeof ReservationStatusHistoryEntrySchema>;
+export type ReservationStatusHistoryEntry = z.infer<
+	typeof ReservationStatusHistoryEntrySchema
+>;
 
 /**
  * Detail schema for single reservation fetch — richer than list item.
@@ -344,7 +348,9 @@ export const BookingSourceListResponseSchema = z.object({
 	}),
 });
 
-export type BookingSourceListResponse = z.infer<typeof BookingSourceListResponseSchema>;
+export type BookingSourceListResponse = z.infer<
+	typeof BookingSourceListResponseSchema
+>;
 
 // =====================================================
 // MARKET SEGMENTS
@@ -444,7 +450,9 @@ export const MarketSegmentListResponseSchema = z.object({
 	}),
 });
 
-export type MarketSegmentListResponse = z.infer<typeof MarketSegmentListResponseSchema>;
+export type MarketSegmentListResponse = z.infer<
+	typeof MarketSegmentListResponseSchema
+>;
 
 // =====================================================
 // CHANNEL MAPPINGS
@@ -485,7 +493,9 @@ export const ChannelMappingListItemSchema = z.object({
 	updated_at: z.string().optional(),
 });
 
-export type ChannelMappingListItem = z.infer<typeof ChannelMappingListItemSchema>;
+export type ChannelMappingListItem = z.infer<
+	typeof ChannelMappingListItemSchema
+>;
 
 /**
  * Channel mapping list response schema.
@@ -497,7 +507,9 @@ export const ChannelMappingListResponseSchema = z.object({
 	}),
 });
 
-export type ChannelMappingListResponse = z.infer<typeof ChannelMappingListResponseSchema>;
+export type ChannelMappingListResponse = z.infer<
+	typeof ChannelMappingListResponseSchema
+>;
 /**
  * Reservation list item schema for API responses.
  * Includes display fields derived from enum values and computed fields.
@@ -546,4 +558,6 @@ export const ReservationListResponseSchema = z.object({
 	}),
 });
 
-export type ReservationListResponse = z.infer<typeof ReservationListResponseSchema>;
+export type ReservationListResponse = z.infer<
+	typeof ReservationListResponseSchema
+>;

@@ -38,7 +38,8 @@ export const RollServiceShadowLedgersSchema = z.object({
 	updated_at: z.date(),
 });
 
-export type RollServiceShadowLedger = z.infer<	typeof RollServiceShadowLedgersSchema
+export type RollServiceShadowLedger = z.infer<
+	typeof RollServiceShadowLedgersSchema
 >;
 
 export const CreateRollServiceShadowLedgersSchema =

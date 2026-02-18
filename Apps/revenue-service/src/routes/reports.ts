@@ -111,7 +111,9 @@ const reportRoutes: FastifyPluginAsync = async (app: FastifyInstance) => {
       }),
     },
     async (request) => {
-      const { tenant_id, property_id, business_date } = CompsetIndicesQuerySchema.parse(request.query);
+      const { tenant_id, property_id, business_date } = CompsetIndicesQuerySchema.parse(
+        request.query,
+      );
 
       return getCompsetIndices(property_id, tenant_id, business_date);
     },

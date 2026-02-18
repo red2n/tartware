@@ -23,7 +23,7 @@
 
 import { z } from "zod";
 
-import { uuid, money } from "../../shared/base-schemas.js";
+import { money, uuid } from "../../shared/base-schemas.js";
 
 export const ReasonCodesSchema = z.object({
 	// Primary Key

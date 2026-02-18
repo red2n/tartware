@@ -4,9 +4,8 @@
     "src/**/*.ts"
   ],
   "ignoreDependencies": [
-    "@biomejs/biome",
     "@vitest/coverage-v8",
-    "tsx",
+    "zod",
     "@tartware/openapi",
     "@tartware/telemetry",
     "@tartware/config",
@@ -17,13 +16,5 @@
     "@fastify/sensible",
     "@tartware/fastify-server",
     "pg"
-  ],
-  "ignoreBinaries": [
-    "biome",
-    "eslint",
-    "knip",
-    "tsc",
-    "tsx",
-    "vitest"
   ]
 }

@@ -20,53 +20,59 @@
 import { z } from "zod";
 
 import {
-	uuid,
-	email,
-	phoneNumber,
-	url,
-	countryCode,
-	taxId,
 	auditTimestamps,
-	softDelete,
+	countryCode,
+	email,
 	jsonbMetadata,
 	nonEmptyString,
+	phoneNumber,
+	softDelete,
+	taxId,
+	url,
+	uuid,
 } from "../../shared/base-schemas.js";
-import { TenantTypeEnum, TenantStatusEnum } from "../../shared/enums.js";
+import { TenantStatusEnum, TenantTypeEnum } from "../../shared/enums.js";
 
 /**
  * Tenant configuration JSONB schema
  */
-export const TenantConfigSchema = z.object({
-	features: z.array(z.string()).default(["reservations", "payments"]),
-	tenant_id: uuid,
-	is_deleted: z.boolean().optional(),
-	deleted_at: z.coerce.date().optional(),
-	deleted_by: z.string().max(100).optional(),
-	maxUsers: z.number().int().positive().default(10),
-	maxProperties: z.number().int().positive().default(5),
-	defaultCurrency: z.string().length(3).default("USD"),
-	defaultLanguage: z.string().length(2).default("en"),
-	defaultTimezone: z.string().default("UTC"),
-	enableMultiProperty: z.boolean().default(true),
-	enableChannelManager: z.boolean().default(false),
-	enableLoyaltyProgram: z.boolean().default(false),
-	enableAdvancedReporting: z.boolean().default(false),
-	enablePaymentProcessing: z.boolean().default(true),
-	brandingEnabled: z.boolean().default(true),
-}).passthrough();
+export const TenantConfigSchema = z
+	.object({
+		features: z.array(z.string()).default(["reservations", "payments"]),
+		tenant_id: uuid,
+		is_deleted: z.boolean().optional(),
+		deleted_at: z.coerce.date().optional(),
+		deleted_by: z.string().max(100).optional(),
+		maxUsers: z.number().int().positive().default(10),
+		maxProperties: z.number().int().positive().default(5),
+		defaultCurrency: z.string().length(3).default("USD"),
+		defaultLanguage: z.string().length(2).default("en"),
+		defaultTimezone: z.string().default("UTC"),
+		enableMultiProperty: z.boolean().default(true),
+		enableChannelManager: z.boolean().default(false),
+		enableLoyaltyProgram: z.boolean().default(false),
+		enableAdvancedReporting: z.boolean().default(false),
+		enablePaymentProcessing: z.boolean().default(true),
+		brandingEnabled: z.boolean().default(true),
+	})
+	.passthrough();
 
 /**
  * Tenant subscription JSONB schema
  */
-export const TenantSubscriptionSchema = z.object({
-	plan: z.enum(["FREE", "BASIC", "PROFESSIONAL", "ENTERPRISE"]).default("FREE"),
-	amount: z.number().nonnegative().default(0),
-	currency: z.string().length(3).default("USD"),
-	billingCycle: z.enum(["MONTHLY", "YEARLY", "ONE_TIME"]).default("MONTHLY"),
-	startDate: z.coerce.date().optional(),
-	endDate: z.coerce.date().optional(),
-	trialEndDate: z.coerce.date().optional(),
-}).passthrough();
+export const TenantSubscriptionSchema = z
+	.object({
+		plan: z
+			.enum(["FREE", "BASIC", "PROFESSIONAL", "ENTERPRISE"])
+			.default("FREE"),
+		amount: z.number().nonnegative().default(0),
+		currency: z.string().length(3).default("USD"),
+		billingCycle: z.enum(["MONTHLY", "YEARLY", "ONE_TIME"]).default("MONTHLY"),
+		startDate: z.coerce.date().optional(),
+		endDate: z.coerce.date().optional(),
+		trialEndDate: z.coerce.date().optional(),
+	})
+	.passthrough();
 
 /**
  * Complete Tenant schema

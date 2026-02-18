@@ -47,7 +47,9 @@ export const HousekeepingTaskListItemSchema = z.object({
 	version: z.string(),
 });
 
-export type HousekeepingTaskListItem = z.infer<typeof HousekeepingTaskListItemSchema>;
+export type HousekeepingTaskListItem = z.infer<
+	typeof HousekeepingTaskListItemSchema
+>;
 
 /**
  * Housekeeping task list response schema.
@@ -59,7 +61,9 @@ export const HousekeepingTaskListResponseSchema = z.object({
 	}),
 });
 
-export type HousekeepingTaskListResponse = z.infer<typeof HousekeepingTaskListResponseSchema>;
+export type HousekeepingTaskListResponse = z.infer<
+	typeof HousekeepingTaskListResponseSchema
+>;
 
 // =====================================================
 // HOUSEKEEPING SCHEDULES
@@ -78,14 +82,20 @@ export const HousekeepingScheduleListQuerySchema = z.object({
 	offset: z.coerce.number().int().min(0).default(0),
 });
 
-export type HousekeepingScheduleListQuery = z.infer<typeof HousekeepingScheduleListQuerySchema>;
+export type HousekeepingScheduleListQuery = z.infer<
+	typeof HousekeepingScheduleListQuerySchema
+>;
 
 /**
  * Response schema for housekeeping schedule list.
  */
-export const HousekeepingScheduleListResponseSchema = z.array(HousekeepingTaskListItemSchema);
+export const HousekeepingScheduleListResponseSchema = z.array(
+	HousekeepingTaskListItemSchema,
+);
 
-export type HousekeepingScheduleListResponse = z.infer<typeof HousekeepingScheduleListResponseSchema>;
+export type HousekeepingScheduleListResponse = z.infer<
+	typeof HousekeepingScheduleListResponseSchema
+>;
 
 // =====================================================
 // HOUSEKEEPING INSPECTIONS
@@ -108,14 +118,20 @@ export const HousekeepingInspectionListQuerySchema = z.object({
 	offset: z.coerce.number().int().min(0).default(0),
 });
 
-export type HousekeepingInspectionListQuery = z.infer<typeof HousekeepingInspectionListQuerySchema>;
+export type HousekeepingInspectionListQuery = z.infer<
+	typeof HousekeepingInspectionListQuerySchema
+>;
 
 /**
  * Response schema for housekeeping inspection list.
  */
-export const HousekeepingInspectionListResponseSchema = z.array(HousekeepingTaskListItemSchema);
+export const HousekeepingInspectionListResponseSchema = z.array(
+	HousekeepingTaskListItemSchema,
+);
 
-export type HousekeepingInspectionListResponse = z.infer<typeof HousekeepingInspectionListResponseSchema>;
+export type HousekeepingInspectionListResponse = z.infer<
+	typeof HousekeepingInspectionListResponseSchema
+>;
 
 // =====================================================
 // DEEP CLEAN DUE
@@ -191,7 +207,9 @@ export const MaintenanceRequestStatusEnum = z.enum([
 	"CANCELLED",
 	"VERIFIED",
 ]);
-export type MaintenanceRequestStatus = z.infer<typeof MaintenanceRequestStatusEnum>;
+export type MaintenanceRequestStatus = z.infer<
+	typeof MaintenanceRequestStatusEnum
+>;
 
 /**
  * Maintenance priority enum values matching database constraints.
@@ -223,7 +241,9 @@ export const MaintenanceIssueCategoryEnum = z.enum([
 	"TECHNOLOGY",
 	"OTHER",
 ]);
-export type MaintenanceIssueCategory = z.infer<typeof MaintenanceIssueCategoryEnum>;
+export type MaintenanceIssueCategory = z.infer<
+	typeof MaintenanceIssueCategoryEnum
+>;
 
 /**
  * Maintenance request list item schema for API responses.
@@ -298,7 +318,9 @@ export const MaintenanceRequestListItemSchema = z.object({
 	updated_at: z.string().optional(),
 });
 
-export type MaintenanceRequestListItem = z.infer<typeof MaintenanceRequestListItemSchema>;
+export type MaintenanceRequestListItem = z.infer<
+	typeof MaintenanceRequestListItemSchema
+>;
 
 /**
  * Maintenance request list response schema.
@@ -310,7 +332,9 @@ export const MaintenanceRequestListResponseSchema = z.object({
 	}),
 });
 
-export type MaintenanceRequestListResponse = z.infer<typeof MaintenanceRequestListResponseSchema>;
+export type MaintenanceRequestListResponse = z.infer<
+	typeof MaintenanceRequestListResponseSchema
+>;
 
 // =====================================================
 // INCIDENT REPORTS
@@ -434,7 +458,9 @@ export const IncidentReportListItemSchema = z.object({
 	created_by: uuid,
 });
 
-export type IncidentReportListItem = z.infer<typeof IncidentReportListItemSchema>;
+export type IncidentReportListItem = z.infer<
+	typeof IncidentReportListItemSchema
+>;
 
 /**
  * Incident report list response schema.
@@ -446,4 +472,6 @@ export const IncidentReportListResponseSchema = z.object({
 	}),
 });
 
-export type IncidentReportListResponse = z.infer<typeof IncidentReportListResponseSchema>;
+export type IncidentReportListResponse = z.infer<
+	typeof IncidentReportListResponseSchema
+>;

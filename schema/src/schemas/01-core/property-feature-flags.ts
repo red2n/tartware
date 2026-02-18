@@ -81,14 +81,15 @@ export const PropertyFeatureFlagsSchema = z.object({
 
 export type PropertyFeatureFlags = z.infer<typeof PropertyFeatureFlagsSchema>;
 
-export const CreatePropertyFeatureFlagsSchema =
-	PropertyFeatureFlagsSchema.omit({
+export const CreatePropertyFeatureFlagsSchema = PropertyFeatureFlagsSchema.omit(
+	{
 		flag_id: true,
 		created_at: true,
 		updated_at: true,
 		enabled_at: true,
 		disabled_at: true,
-	});
+	},
+);
 
 export type CreatePropertyFeatureFlags = z.infer<
 	typeof CreatePropertyFeatureFlagsSchema

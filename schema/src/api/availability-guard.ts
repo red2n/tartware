@@ -130,4 +130,6 @@ export const ManualReleaseNotificationTestSchema = z.object({
 	recipients: z.array(z.string().min(3)).nonempty(),
 });
 
-export type ManualReleaseNotificationTest = z.infer<typeof ManualReleaseNotificationTestSchema>;
+export type ManualReleaseNotificationTest = z.infer<
+	typeof ManualReleaseNotificationTestSchema
+>;

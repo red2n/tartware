@@ -24,7 +24,9 @@ export const SystemAdminLoginRequestSchema = z.object({
 	mfa_code: z.string().nullable().optional(),
 	device_fingerprint: z.string().min(8),
 });
-export type SystemAdminLoginRequest = z.infer<typeof SystemAdminLoginRequestSchema>;
+export type SystemAdminLoginRequest = z.infer<
+	typeof SystemAdminLoginRequestSchema
+>;
 
 export const SystemAdminLoginResponseSchema = z.object({
 	access_token: z.string(),
@@ -34,7 +36,9 @@ export const SystemAdminLoginResponseSchema = z.object({
 	session_id: z.string(),
 	admin: AdminUserSchema.optional(),
 });
-export type SystemAdminLoginResponse = z.infer<typeof SystemAdminLoginResponseSchema>;
+export type SystemAdminLoginResponse = z.infer<
+	typeof SystemAdminLoginResponseSchema
+>;
 
 export const SystemAdminBreakGlassRequestSchema = z.object({
 	username: nonEmptyString.max(150),
@@ -43,7 +47,9 @@ export const SystemAdminBreakGlassRequestSchema = z.object({
 	ticket_id: z.string().nullable().optional(),
 	device_fingerprint: z.string().min(8),
 });
-export type SystemAdminBreakGlassRequest = z.infer<typeof SystemAdminBreakGlassRequestSchema>;
+export type SystemAdminBreakGlassRequest = z.infer<
+	typeof SystemAdminBreakGlassRequestSchema
+>;
 
 export const SystemAdminBreakGlassResponseSchema = z.object({
 	access_token: z.string(),
@@ -53,7 +59,9 @@ export const SystemAdminBreakGlassResponseSchema = z.object({
 	session_id: z.string(),
 	admin: AdminUserSchema,
 });
-export type SystemAdminBreakGlassResponse = z.infer<typeof SystemAdminBreakGlassResponseSchema>;
+export type SystemAdminBreakGlassResponse = z.infer<
+	typeof SystemAdminBreakGlassResponseSchema
+>;
 
 export const SystemAdminImpersonationRequestSchema = z.object({
 	tenant_id: uuid,
@@ -61,7 +69,9 @@ export const SystemAdminImpersonationRequestSchema = z.object({
 	reason: z.string().min(1),
 	ticket_id: z.string().min(1),
 });
-export type SystemAdminImpersonationRequest = z.infer<typeof SystemAdminImpersonationRequestSchema>;
+export type SystemAdminImpersonationRequest = z.infer<
+	typeof SystemAdminImpersonationRequestSchema
+>;
 
 export const SystemAdminImpersonationResponseSchema = z.object({
 	access_token: z.string(),
@@ -69,4 +79,6 @@ export const SystemAdminImpersonationResponseSchema = z.object({
 	scope: z.literal("TENANT_IMPERSONATION"),
 	expires_in: z.number().int().positive(),
 });
-export type SystemAdminImpersonationResponse = z.infer<typeof SystemAdminImpersonationResponseSchema>;
+export type SystemAdminImpersonationResponse = z.infer<
+	typeof SystemAdminImpersonationResponseSchema
+>;

@@ -238,7 +238,11 @@ export const getCompsetIndices = async (
   tenantId: string,
   businessDate: string,
 ): Promise<CompsetIndices> => {
-  const { rows } = await query<CompsetRow>(COMPSET_INDICES_SQL, [propertyId, tenantId, businessDate]);
+  const { rows } = await query<CompsetRow>(COMPSET_INDICES_SQL, [
+    propertyId,
+    tenantId,
+    businessDate,
+  ]);
   const row = rows[0];
 
   const totalRooms = row ? toNumber(row.total_rooms) : 0;
@@ -252,9 +256,10 @@ export const getCompsetIndices = async (
   const ownRevpar = totalRooms > 0 ? roomRevenue / totalRooms : 0;
 
   // ARI = Own ADR / Compset ADR × 100
-  const ari = compsetAdr != null && compsetAdr > 0
-    ? Math.round((ownAdr / compsetAdr) * 100 * 100) / 100
-    : null;
+  const ari =
+    compsetAdr != null && compsetAdr > 0
+      ? Math.round((ownAdr / compsetAdr) * 100 * 100) / 100
+      : null;
 
   // Without compset occupancy data, we can only compute ARI directly.
   // Occupancy Index and RGI require compset occupancy which isn't available

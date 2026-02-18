@@ -39,7 +39,7 @@ export const RoomAmenityCatalogSchema = z.object({
 		.string()
 		.min(2)
 		.max(80)
-	.regex(/^[A-Z0-9_-]+$/, "Amenity code must be uppercase snake case"),
+		.regex(/^[A-Z0-9_-]+$/, "Amenity code must be uppercase snake case"),
 	display_name: z.string().min(2).max(160),
 	description: z.string().max(1024).nullable().optional(),
 	category: z.string().min(2).max(80).default("GENERAL"),
@@ -80,8 +80,10 @@ export const UpdateRoomAmenitySchema = RoomAmenityCatalogSchema.pick({
 	is_active: true,
 	is_required: true,
 	metadata: true,
-}).partial().extend({
-	updated_by: uuid.optional(),
-});
+})
+	.partial()
+	.extend({
+		updated_by: uuid.optional(),
+	});
 
 export type UpdateRoomAmenity = z.infer<typeof UpdateRoomAmenitySchema>;

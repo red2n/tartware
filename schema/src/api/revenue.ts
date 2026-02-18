@@ -8,8 +8,8 @@
 import { z } from "zod";
 
 import {
-	TenantScopedListQuerySchema,
 	propertyId,
+	TenantScopedListQuerySchema,
 	tenantId,
 } from "../shared/base-schemas.js";
 
@@ -30,14 +30,15 @@ export type PricingRuleListQuery = z.infer<typeof PricingRuleListQuerySchema>;
 /**
  * Query schema for listing rate recommendations.
  */
-export const RecommendationListQuerySchema =
-	TenantScopedListQuerySchema.extend({
+export const RecommendationListQuerySchema = TenantScopedListQuerySchema.extend(
+	{
 		status: z.string().optional().describe("Filter by recommendation status"),
 		recommendation_date: z
 			.string()
 			.optional()
 			.describe("Filter by recommendation date (YYYY-MM-DD)"),
-	});
+	},
+);
 
 export type RecommendationListQuery = z.infer<
 	typeof RecommendationListQuerySchema
@@ -46,13 +47,14 @@ export type RecommendationListQuery = z.infer<
 /**
  * Query schema for listing competitor rates.
  */
-export const CompetitorRateListQuerySchema =
-	TenantScopedListQuerySchema.extend({
+export const CompetitorRateListQuerySchema = TenantScopedListQuerySchema.extend(
+	{
 		rate_date: z
 			.string()
 			.optional()
 			.describe("Filter by rate date (YYYY-MM-DD)"),
-	});
+	},
+);
 
 export type CompetitorRateListQuery = z.infer<
 	typeof CompetitorRateListQuerySchema
@@ -61,14 +63,12 @@ export type CompetitorRateListQuery = z.infer<
 /**
  * Query schema for listing demand calendar entries.
  */
-export const DemandCalendarListQuerySchema =
-	TenantScopedListQuerySchema.extend({
-		date_from: z
-			.string()
-			.optional()
-			.describe("Start date filter (YYYY-MM-DD)"),
+export const DemandCalendarListQuerySchema = TenantScopedListQuerySchema.extend(
+	{
+		date_from: z.string().optional().describe("Start date filter (YYYY-MM-DD)"),
 		date_to: z.string().optional().describe("End date filter (YYYY-MM-DD)"),
-	});
+	},
+);
 
 export type DemandCalendarListQuery = z.infer<
 	typeof DemandCalendarListQuerySchema
@@ -82,10 +82,7 @@ export type DemandCalendarListQuery = z.infer<
  * Query schema for listing revenue forecasts.
  */
 export const ForecastListQuerySchema = TenantScopedListQuerySchema.extend({
-	forecast_period: z
-		.string()
-		.optional()
-		.describe("Filter by forecast period"),
+	forecast_period: z.string().optional().describe("Filter by forecast period"),
 	scenario_type: z
 		.string()
 		.optional()

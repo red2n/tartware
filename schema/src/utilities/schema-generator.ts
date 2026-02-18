@@ -77,8 +77,7 @@ async function discoverCategoryTables(): Promise<CategoryTables> {
 			if (!/^\d+_[\w-]+\.sql$/i.test(file)) continue;
 			const filePath = path.join(domainPath, file);
 			const sql = await fs.readFile(filePath, "utf-8");
-			const regex =
-				/CREATE\s+TABLE(?:\s+IF\s+NOT\s+EXISTS)?\s+([^\s(]+)/gi;
+			const regex = /CREATE\s+TABLE(?:\s+IF\s+NOT\s+EXISTS)?\s+([^\s(]+)/gi;
 
 			for (const match of sql.matchAll(regex)) {
 				const rawName = match[1]?.replace(/["`]/g, "").split(".").pop();
@@ -297,8 +296,8 @@ export const Update${schemaName}Schema = ${schemaName}Schema.partial();
 export type Update${schemaName} = z.infer<typeof Update${schemaName}Schema>;
 `;
 
-		// Write to file
-		const fileName = `${tableName.replace(/_/g, "-")}.ts`;
+	// Write to file
+	const fileName = `${tableName.replace(/_/g, "-")}.ts`;
 	const filePath = path.join(__dirname, "..", "schemas", category, fileName);
 
 	await fs.writeFile(filePath, content, "utf-8");
@@ -325,10 +324,9 @@ async function main() {
 	const preferredDefault = "02-inventory";
 	const categoryArg = process.argv[2];
 	const tableFilterArg = process.argv[3];
-	const fallbackCategory =
-		availableCategories.includes(preferredDefault)
-			? preferredDefault
-			: availableCategories[0];
+	const fallbackCategory = availableCategories.includes(preferredDefault)
+		? preferredDefault
+		: availableCategories[0];
 
 	if (!fallbackCategory) {
 		throw new Error("Unable to determine fallback category");
@@ -351,7 +349,9 @@ async function main() {
 			.filter(Boolean);
 
 		if (requestedTables.length === 0) {
-			throw new Error("Table filter argument provided but no valid names were found.");
+			throw new Error(
+				"Table filter argument provided but no valid names were found.",
+			);
 		}
 
 		const requestedSet = new Set(requestedTables);

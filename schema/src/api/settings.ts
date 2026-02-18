@@ -12,8 +12,8 @@ import {
 	SettingsDefinitionsSchema,
 	SettingsOptionsSchema,
 	SettingsSectionsSchema,
-	SettingsValuesSchema,
 	SettingsValueStatusEnum,
+	SettingsValuesSchema,
 } from "../schemas/08-settings/index.js";
 import { uuid } from "../shared/base-schemas.js";
 import { SettingsScopeEnum } from "../shared/enums.js";
@@ -35,7 +35,9 @@ export const SettingsCatalogResponseSchema = z.object({
 		lastUpdated: z.string().nullable(),
 	}),
 });
-export type SettingsCatalogResponse = z.infer<typeof SettingsCatalogResponseSchema>;
+export type SettingsCatalogResponse = z.infer<
+	typeof SettingsCatalogResponseSchema
+>;
 
 export const SettingsValuesResponseSchema = z.object({
 	data: z.array(SettingsValuesSchema),
@@ -44,7 +46,9 @@ export const SettingsValuesResponseSchema = z.object({
 		sampleTenantId: z.string().nullable(),
 	}),
 });
-export type SettingsValuesResponse = z.infer<typeof SettingsValuesResponseSchema>;
+export type SettingsValuesResponse = z.infer<
+	typeof SettingsValuesResponseSchema
+>;
 
 // =====================================================
 // PACKAGES
@@ -191,7 +195,9 @@ export const PackageComponentListItemSchema = z.object({
 	is_active: z.boolean(),
 });
 
-export type PackageComponentListItem = z.infer<typeof PackageComponentListItemSchema>;
+export type PackageComponentListItem = z.infer<
+	typeof PackageComponentListItemSchema
+>;
 
 // =====================================================
 // CATALOG LIST SCHEMAS
@@ -216,7 +222,9 @@ export const SettingsDefinitionListSchema = z.object({
 	data: z.array(SettingsDefinitionsSchema),
 	meta: z.object({ count: z.number().int().nonnegative() }),
 });
-export type SettingsDefinitionList = z.infer<typeof SettingsDefinitionListSchema>;
+export type SettingsDefinitionList = z.infer<
+	typeof SettingsDefinitionListSchema
+>;
 
 /** Option list response wrapper. */
 export const SettingsOptionListSchema = z.object({

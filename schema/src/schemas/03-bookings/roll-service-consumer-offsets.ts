@@ -36,7 +36,8 @@ export const RollServiceConsumerOffsetsSchema = z.object({
 	updated_at: z.date(),
 });
 
-export type RollServiceConsumerOffset = z.infer<	typeof RollServiceConsumerOffsetsSchema
+export type RollServiceConsumerOffset = z.infer<
+	typeof RollServiceConsumerOffsetsSchema
 >;
 
 export const CreateRollServiceConsumerOffsetsSchema =
@@ -55,5 +56,6 @@ export const UpdateRollServiceConsumerOffsetsSchema =
 		partition: z.number().int(),
 	});
 
-export type UpdateRollServiceConsumerOffset = z.infer<	typeof UpdateRollServiceConsumerOffsetsSchema
+export type UpdateRollServiceConsumerOffset = z.infer<
+	typeof UpdateRollServiceConsumerOffsetsSchema
 >;

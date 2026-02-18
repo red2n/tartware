@@ -41,4 +41,6 @@ export const ManualReleaseNotificationSchema = z.object({
 	recipients: z.array(z.string().min(1)),
 });
 
-export type ManualReleaseNotification = z.infer<typeof ManualReleaseNotificationSchema>;
+export type ManualReleaseNotification = z.infer<
+	typeof ManualReleaseNotificationSchema
+>;

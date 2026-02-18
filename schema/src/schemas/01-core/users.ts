@@ -20,14 +20,14 @@
 import { z } from "zod";
 
 import {
-	uuid,
-	email,
-	phoneNumber,
-	url,
-	jsonbMetadata,
 	auditTimestamps,
-	softDelete,
+	email,
+	jsonbMetadata,
 	nonEmptyString,
+	phoneNumber,
+	softDelete,
+	url,
+	uuid,
 } from "../../shared/base-schemas.js";
 
 const JsonbObject = z.record(z.unknown()).default({});

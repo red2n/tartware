@@ -8,10 +8,7 @@ import type { FastifyInstance } from "fastify";
 
 import { listDeepCleanDueRooms } from "../services/housekeeping-service.js";
 
-const DeepCleanDueQueryJsonSchema = schemaFromZod(
-  DeepCleanDueQuerySchema,
-  "DeepCleanDueQuery",
-);
+const DeepCleanDueQueryJsonSchema = schemaFromZod(DeepCleanDueQuerySchema, "DeepCleanDueQuery");
 const DeepCleanDueResponseJsonSchema = schemaFromZod(
   DeepCleanDueResponseSchema,
   "DeepCleanDueResponse",
@@ -40,8 +37,9 @@ export const registerDeepCleanRoutes = (app: FastifyInstance): void => {
       }),
     },
     async (request) => {
-      const { tenant_id, property_id, limit, offset } =
-        DeepCleanDueQuerySchema.parse(request.query);
+      const { tenant_id, property_id, limit, offset } = DeepCleanDueQuerySchema.parse(
+        request.query,
+      );
 
       return listDeepCleanDueRooms({
         tenantId: tenant_id,

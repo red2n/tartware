@@ -9,8 +9,6 @@
     "@tartware/openapi",
     "@tartware/telemetry",
     "@tartware/command-consumer-utils",
-    "@biomejs/biome",
-    "tsx",
     "@fastify/cors",
     "@fastify/helmet",
     "@fastify/sensible",
@@ -18,14 +16,6 @@
     "@tartware/tenant-auth",
     "pg",
     "zod"
-  ],
-  "ignoreBinaries": [
-    "tsx",
-    "tsc",
-    "biome",
-    "eslint",
-    "knip",
-    "vitest"
   ],
   "ignoreExportsUsedInFile": true
 }

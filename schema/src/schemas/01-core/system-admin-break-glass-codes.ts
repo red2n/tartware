@@ -37,7 +37,9 @@ export const SystemAdminBreakGlassCodeSchema = z.object({
 	metadata: jsonbMetadata,
 });
 
-export type SystemAdminBreakGlassCode = z.infer<typeof SystemAdminBreakGlassCodeSchema>;
+export type SystemAdminBreakGlassCode = z.infer<
+	typeof SystemAdminBreakGlassCodeSchema
+>;
 
 export const CreateSystemAdminBreakGlassCodeSchema =
 	SystemAdminBreakGlassCodeSchema.omit({

@@ -269,7 +269,7 @@ Templates                → notification-service ✓ (communication_templates +
 - ~~Pet management~~ → `09_pet_types.sql`
 - All 13 tables verified in PostgreSQL, verify scripts pass, Zod schemas built
 
-### Phase 2 — Template & Communication Completion (NEXT)
+### Phase 2 — Template & Communication Completion 🔴 HIGH PRIORITY (NEXT)
 - Add AR statement, invoice, deposit due, payment link, welcome script, rooming list template types to `communication_templates`
 - Folio routing rule templates
 - Scheduled deposit due email system

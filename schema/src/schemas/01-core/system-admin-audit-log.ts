@@ -55,9 +55,10 @@ export type CreateSystemAdminAuditLog = z.infer<
 	typeof CreateSystemAdminAuditLogSchema
 >;
 
-export const UpdateSystemAdminAuditLogSchema = SystemAdminAuditLogSchema.partial().extend({
-	id: z.bigint(),
-});
+export const UpdateSystemAdminAuditLogSchema =
+	SystemAdminAuditLogSchema.partial().extend({
+		id: z.bigint(),
+	});
 export type UpdateSystemAdminAuditLog = z.infer<
 	typeof UpdateSystemAdminAuditLogSchema
 >;

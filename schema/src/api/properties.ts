@@ -64,4 +64,6 @@ export const CreatePropertyResponseSchema = z.object({
 	message: z.string(),
 });
 
-export type CreatePropertyResponse = z.infer<typeof CreatePropertyResponseSchema>;
+export type CreatePropertyResponse = z.infer<
+	typeof CreatePropertyResponseSchema
+>;

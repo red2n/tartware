@@ -23,7 +23,9 @@ export const GuestBookingSearchQuerySchema = z.object({
 	children: z.coerce.number().int().min(0).default(0),
 });
 
-export type GuestBookingSearchQuery = z.infer<typeof GuestBookingSearchQuerySchema>;
+export type GuestBookingSearchQuery = z.infer<
+	typeof GuestBookingSearchQuerySchema
+>;
 
 /** Body schema for creating a direct booking (self-service). */
 export const GuestBookingBodySchema = z.object({
@@ -50,7 +52,9 @@ export const ConfirmationCodeParamsSchema = z.object({
 	confirmationCode: z.string().min(1).max(50),
 });
 
-export type ConfirmationCodeParams = z.infer<typeof ConfirmationCodeParamsSchema>;
+export type ConfirmationCodeParams = z.infer<
+	typeof ConfirmationCodeParamsSchema
+>;
 
 // -----------------------------------------------------------------------------
 // S17 — Mobile Check-In
@@ -60,7 +64,14 @@ export type ConfirmationCodeParams = z.infer<typeof ConfirmationCodeParamsSchema
 export const StartCheckinBodySchema = z.object({
 	confirmation_code: z.string().min(1).max(50),
 	access_method: z
-		.enum(["mobile_app", "web_browser", "kiosk", "sms_link", "email_link", "qr_code"])
+		.enum([
+			"mobile_app",
+			"web_browser",
+			"kiosk",
+			"sms_link",
+			"email_link",
+			"qr_code",
+		])
 		.default("mobile_app"),
 	device_type: z.string().max(50).optional(),
 	app_version: z.string().max(20).optional(),
@@ -88,7 +99,14 @@ export const CompleteCheckinBodySchema = z.object({
 	terms_accepted: z.boolean().default(false),
 	room_id: uuid.optional(),
 	digital_key_type: z
-		.enum(["mobile_app_key", "nfc", "bluetooth", "qr_code", "pin_code", "physical_key_required"])
+		.enum([
+			"mobile_app_key",
+			"nfc",
+			"bluetooth",
+			"qr_code",
+			"pin_code",
+			"physical_key_required",
+		])
 		.optional(),
 	guest_signature_url: z.string().url().optional(),
 });

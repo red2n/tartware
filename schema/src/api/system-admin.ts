@@ -13,8 +13,8 @@ import {
 	email,
 	nonEmptyString,
 	phoneNumber,
-	uuid,
 	url,
+	uuid,
 } from "../shared/base-schemas.js";
 import { TenantRoleEnum, TenantTypeEnum } from "../shared/enums.js";
 
@@ -22,7 +22,9 @@ export const TenantCollectionResponseSchema = z.object({
 	tenants: z.array(TenantWithRelationsSchema),
 	count: z.number().int().nonnegative().optional(),
 });
-export type TenantCollectionResponse = z.infer<typeof TenantCollectionResponseSchema>;
+export type TenantCollectionResponse = z.infer<
+	typeof TenantCollectionResponseSchema
+>;
 
 export const TenantListResponseSchema = z.object({
 	tenants: z.array(TenantWithRelationsSchema),

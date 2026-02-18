@@ -112,10 +112,7 @@ export const GuestSetLoyaltyCommandSchema = z
 	})
 	.refine(
 		(value) =>
-			Boolean(
-				value.loyalty_tier ||
-					typeof value.points_delta === "number",
-			),
+			Boolean(value.loyalty_tier || typeof value.points_delta === "number"),
 		"loyalty_tier or points_delta is required",
 	);
 
@@ -153,9 +150,7 @@ export const GuestGdprEraseCommandSchema = z.object({
 	idempotency_key: z.string().max(120).optional(),
 });
 
-export type GuestGdprEraseCommand = z.infer<
-	typeof GuestGdprEraseCommandSchema
->;
+export type GuestGdprEraseCommand = z.infer<typeof GuestGdprEraseCommandSchema>;
 
 export const GuestPreferenceUpdateCommandSchema = z.object({
 	guest_id: z.string().uuid(),

@@ -1,6 +1,4 @@
 export {
-	LoyaltyPointsEarnCommandSchema,
-	type LoyaltyPointsEarnCommand,
-	LoyaltyPointsRedeemCommandSchema,
-	type LoyaltyPointsRedeemCommand,
+  LoyaltyPointsEarnCommandSchema,
+  LoyaltyPointsRedeemCommandSchema,
 } from "@tartware/schemas/events/commands/loyalty";

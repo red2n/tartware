@@ -48,11 +48,18 @@ export type ValidationIssue = z.infer<typeof ValidationIssueSchema>;
  *   - errors:   Validation issue details (for 400 errors)
  */
 export const ProblemDetailSchema = z.object({
-	type: z.string().url().default("about:blank").describe("URI identifying the problem type"),
+	type: z
+		.string()
+		.url()
+		.default("about:blank")
+		.describe("URI identifying the problem type"),
 	title: z.string().describe("Short human-readable summary (e.g. 'Not Found')"),
 	status: z.number().int().min(400).max(599).describe("HTTP status code"),
 	detail: z.string().describe("Human-readable explanation of the problem"),
-	instance: z.string().optional().describe("URI reference for this occurrence (request path)"),
+	instance: z
+		.string()
+		.optional()
+		.describe("URI reference for this occurrence (request path)"),
 	code: z.string().optional().describe("Machine-readable error code"),
 	errors: z
 		.array(ValidationIssueSchema)
@@ -109,24 +116,3 @@ export const InternalServerErrorProblemSchema = ProblemDetailSchema.extend({
 	status: z.literal(500),
 	title: z.literal("Internal Server Error"),
 });
-
-// =====================================================
-// BACKWARD COMPATIBILITY ALIASES
-// =====================================================
-
-/** @deprecated Use ProblemDetailSchema instead */
-export const ErrorResponseSchema = ProblemDetailSchema;
-/** @deprecated Use ProblemDetail instead */
-export type ErrorResponse = ProblemDetail;
-/** @deprecated Use NotFoundProblemSchema instead */
-export const NotFoundErrorSchema = NotFoundProblemSchema;
-/** @deprecated Use BadRequestProblemSchema instead */
-export const BadRequestErrorSchema = BadRequestProblemSchema;
-/** @deprecated Use UnauthorizedProblemSchema instead */
-export const UnauthorizedErrorSchema = UnauthorizedProblemSchema;
-/** @deprecated Use ForbiddenProblemSchema instead */
-export const ForbiddenErrorSchema = ForbiddenProblemSchema;
-/** @deprecated Use ConflictProblemSchema instead */
-export const ConflictErrorSchema = ConflictProblemSchema;
-/** @deprecated Use InternalServerErrorProblemSchema instead */
-export const InternalServerErrorSchema = InternalServerErrorProblemSchema;

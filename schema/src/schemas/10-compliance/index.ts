@@ -6,5 +6,5 @@
  * Ownership: Schema package
  */
 
-export * from "./data-retention-policies.js";
 export * from "./data-breach-incidents.js";
+export * from "./data-retention-policies.js";

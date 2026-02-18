@@ -38,7 +38,9 @@ type BreachListParams = {
 /**
  * Report a new data breach incident. Automatically sets 72-hour notification deadline per GDPR Art. 33.
  */
-export const reportBreach = async (params: BreachReportParams): Promise<{ incident_id: string }> => {
+export const reportBreach = async (
+  params: BreachReportParams,
+): Promise<{ incident_id: string }> => {
   const { rows } = await query<{ incident_id: string }>(
     `
       INSERT INTO public.data_breach_incidents (

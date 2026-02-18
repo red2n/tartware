@@ -9,7 +9,11 @@ import { z } from "zod";
 
 import { RateItemSchema } from "../schemas/02-inventory/rates.js";
 import { uuid } from "../shared/base-schemas.js";
-import { RateStatusEnum, RateStrategyEnum, RateTypeEnum } from "../shared/enums.js";
+import {
+	RateStatusEnum,
+	RateStrategyEnum,
+	RateTypeEnum,
+} from "../shared/enums.js";
 
 // -----------------------------------------------------------------------------
 // Query Schemas

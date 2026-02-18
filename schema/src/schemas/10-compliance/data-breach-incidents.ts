@@ -82,10 +82,15 @@ export const CreateDataBreachIncidentsSchema = DataBreachIncidentsSchema.omit({
 	updated_at: true,
 });
 
-export type CreateDataBreachIncidents = z.infer<typeof CreateDataBreachIncidentsSchema>;
+export type CreateDataBreachIncidents = z.infer<
+	typeof CreateDataBreachIncidentsSchema
+>;
 
-export const UpdateDataBreachIncidentsSchema = DataBreachIncidentsSchema.partial().required({
-	incident_id: true,
-});
+export const UpdateDataBreachIncidentsSchema =
+	DataBreachIncidentsSchema.partial().required({
+		incident_id: true,
+	});
 
-export type UpdateDataBreachIncidents = z.infer<typeof UpdateDataBreachIncidentsSchema>;
+export type UpdateDataBreachIncidents = z.infer<
+	typeof UpdateDataBreachIncidentsSchema
+>;

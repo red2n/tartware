@@ -20,13 +20,13 @@
 import { z } from "zod";
 
 import {
-	uuid,
-	money,
-	jsonbMetadata,
 	auditTimestamps,
-	softDelete,
 	email,
+	jsonbMetadata,
+	money,
 	phoneNumber,
+	softDelete,
+	uuid,
 } from "../../shared/base-schemas.js";
 
 const AddressSchema = z.object({
@@ -44,15 +44,17 @@ const CommunicationPreferencesSchema = z.object({
 	post: z.boolean().default(false),
 });
 
-const GuestPreferencesSchema = z.object({
-	smoking: z.boolean().default(false),
-	language: z.string().length(2).default("en"),
-	dietaryRestrictions: z.array(z.string()).default([]),
-	specialRequests: z.array(z.string()).default([]),
-	roomType: z.string().optional(),
-	floor: z.string().optional(),
-	bedType: z.enum(["KING", "QUEEN", "TWIN", "DOUBLE"]).optional(),
-}).passthrough();
+const GuestPreferencesSchema = z
+	.object({
+		smoking: z.boolean().default(false),
+		language: z.string().length(2).default("en"),
+		dietaryRestrictions: z.array(z.string()).default([]),
+		specialRequests: z.array(z.string()).default([]),
+		roomType: z.string().optional(),
+		floor: z.string().optional(),
+		bedType: z.enum(["KING", "QUEEN", "TWIN", "DOUBLE"]).optional(),
+	})
+	.passthrough();
 
 /**
  * Complete Guest schema

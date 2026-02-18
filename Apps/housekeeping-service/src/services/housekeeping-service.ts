@@ -241,17 +241,14 @@ const mapDeepCleanDueRow = (row: DeepCleanDueRow): DeepCleanDueItem => {
     status: row.status,
     housekeeping_status: row.housekeeping_status,
     last_deep_clean_date: row.last_deep_clean_date
-      ? (row.last_deep_clean_date instanceof Date
-          ? row.last_deep_clean_date.toISOString().split("T")[0]
-          : String(row.last_deep_clean_date).split("T")[0])
+      ? row.last_deep_clean_date instanceof Date
+        ? row.last_deep_clean_date.toISOString().split("T")[0]
+        : String(row.last_deep_clean_date).split("T")[0]
       : null,
     deep_clean_interval_days: toNumberOrFallback(row.deep_clean_interval_days, 30),
-    days_since_deep_clean: row.days_since_deep_clean != null
-      ? toNumberOrFallback(row.days_since_deep_clean, 0)
-      : null,
-    days_overdue: row.days_overdue != null
-      ? toNumberOrFallback(row.days_overdue, 0)
-      : null,
+    days_since_deep_clean:
+      row.days_since_deep_clean != null ? toNumberOrFallback(row.days_since_deep_clean, 0) : null,
+    days_overdue: row.days_overdue != null ? toNumberOrFallback(row.days_overdue, 0) : null,
   });
 };
 

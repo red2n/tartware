@@ -20,12 +20,12 @@
 import { z } from "zod";
 
 import {
-	uuid,
-	money,
-	jsonbMetadata,
 	auditTimestamps,
-	softDelete,
+	jsonbMetadata,
+	money,
 	nonEmptyString,
+	softDelete,
+	uuid,
 } from "../../shared/base-schemas.js";
 
 const JsonbObject = z.record(z.unknown()).default({});

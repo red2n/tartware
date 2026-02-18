@@ -36,18 +36,24 @@ export const DataRetentionPoliciesSchema = z.object({
 
 export type DataRetentionPolicies = z.infer<typeof DataRetentionPoliciesSchema>;
 
-export const CreateDataRetentionPoliciesSchema = DataRetentionPoliciesSchema.omit({
-	policy_id: true,
-	last_sweep_at: true,
-	last_sweep_count: true,
-	created_at: true,
-	updated_at: true,
-});
+export const CreateDataRetentionPoliciesSchema =
+	DataRetentionPoliciesSchema.omit({
+		policy_id: true,
+		last_sweep_at: true,
+		last_sweep_count: true,
+		created_at: true,
+		updated_at: true,
+	});
 
-export type CreateDataRetentionPolicies = z.infer<typeof CreateDataRetentionPoliciesSchema>;
+export type CreateDataRetentionPolicies = z.infer<
+	typeof CreateDataRetentionPoliciesSchema
+>;
 
-export const UpdateDataRetentionPoliciesSchema = DataRetentionPoliciesSchema.partial().required({
-	policy_id: true,
-});
+export const UpdateDataRetentionPoliciesSchema =
+	DataRetentionPoliciesSchema.partial().required({
+		policy_id: true,
+	});
 
-export type UpdateDataRetentionPolicies = z.infer<typeof UpdateDataRetentionPoliciesSchema>;
+export type UpdateDataRetentionPolicies = z.infer<
+	typeof UpdateDataRetentionPoliciesSchema
+>;

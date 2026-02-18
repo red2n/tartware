@@ -65,11 +65,10 @@ export type CreateTransactionalOutbox = z.infer<
 	typeof CreateTransactionalOutboxSchema
 >;
 
-export const UpdateTransactionalOutboxSchema = TransactionalOutboxSchema.partial().extend(
-	{
+export const UpdateTransactionalOutboxSchema =
+	TransactionalOutboxSchema.partial().extend({
 		id: z.bigint(),
-	},
-);
+	});
 export type UpdateTransactionalOutbox = z.infer<
 	typeof UpdateTransactionalOutboxSchema
 >;

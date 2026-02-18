@@ -220,7 +220,8 @@ export const RoomListQuerySchema = z.object({
 		.toLowerCase()
 		.optional()
 		.refine(
-			(v) => !v || RoomStatusEnum.options.map((s) => s.toLowerCase()).includes(v),
+			(v) =>
+				!v || RoomStatusEnum.options.map((s) => s.toLowerCase()).includes(v),
 			{ message: "Invalid room status" },
 		),
 	housekeeping_status: z
@@ -228,7 +229,9 @@ export const RoomListQuerySchema = z.object({
 		.toLowerCase()
 		.optional()
 		.refine(
-			(v) => !v || HousekeepingStatusEnum.options.map((s) => s.toLowerCase()).includes(v),
+			(v) =>
+				!v ||
+				HousekeepingStatusEnum.options.map((s) => s.toLowerCase()).includes(v),
 			{ message: "Invalid housekeeping status" },
 		),
 	search: z.string().min(1).max(50).optional(),
@@ -277,8 +280,12 @@ export type RoomByIdQuery = z.infer<typeof RoomByIdQuerySchema>;
 export const AvailabilityQuerySchema = z.object({
 	tenant_id: uuid,
 	property_id: uuid,
-	check_in_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be YYYY-MM-DD"),
-	check_out_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be YYYY-MM-DD"),
+	check_in_date: z
+		.string()
+		.regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be YYYY-MM-DD"),
+	check_out_date: z
+		.string()
+		.regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be YYYY-MM-DD"),
 	room_type_id: uuid.optional(),
 	adults: z.coerce.number().int().min(1).max(20).optional(),
 	limit: z.coerce.number().int().positive().max(200).default(50),

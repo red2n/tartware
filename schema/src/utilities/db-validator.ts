@@ -6,7 +6,7 @@
  */
 
 import type { Dirent } from "node:fs";
-import { readdir, stat, readFile } from "node:fs/promises";
+import { readdir, readFile, stat } from "node:fs/promises";
 import path from "node:path";
 import process from "node:process";
 import { fileURLToPath } from "node:url";
@@ -27,16 +27,26 @@ const tablesRoot = path.join(scriptsRoot, "tables");
 const indexesRoot = path.join(scriptsRoot, "indexes");
 const constraintsRoot = path.join(scriptsRoot, "constraints");
 
-const REQUIRED_PATHS: Array<{ path: string; kind: PathKind; description: string }> = [
+const REQUIRED_PATHS: Array<{
+	path: string;
+	kind: PathKind;
+	description: string;
+}> = [
 	{
 		path: path.join(schemaRoot, "src", "index.ts"),
 		kind: "file",
 		description: "Schema root export (src/index.ts)",
 	},
 	{
-		path: path.join(repoRoot, "executables", "setup-database", "setup-database.sh"),
+		path: path.join(
+			repoRoot,
+			"executables",
+			"setup-database",
+			"setup-database.sh",
+		),
 		kind: "file",
-		description: "Database bootstrap script (executables/setup-database/setup-database.sh)",
+		description:
+			"Database bootstrap script (executables/setup-database/setup-database.sh)",
 	},
 	{
 		path: path.join(scriptsRoot, "01-database-setup.sql"),
@@ -77,7 +87,11 @@ const successes: CheckResult[] = [];
 const formatError = (error: unknown): string =>
 	error instanceof Error ? error.message : String(error);
 
-async function ensurePathKind(inputPath: string, kind: PathKind, description: string) {
+async function ensurePathKind(
+	inputPath: string,
+	kind: PathKind,
+	description: string,
+) {
 	try {
 		const stats = await stat(inputPath);
 		if (kind === "dir" && !stats.isDirectory()) {
@@ -117,7 +131,9 @@ async function extractTablesFromSql(filePath: string): Promise<string[]> {
 	return Array.from(tables);
 }
 
-async function collectDomainTables(root: string): Promise<Record<string, string[]>> {
+async function collectDomainTables(
+	root: string,
+): Promise<Record<string, string[]>> {
 	const result: Record<string, string[]> = {};
 	let entries: Dirent[];
 
@@ -203,9 +219,7 @@ async function collectSchemaTables(): Promise<Record<string, string[]>> {
 			if (hasTableDoc) {
 				continue;
 			}
-			tables.add(
-				file.replace(/\.ts$/, "").replace(/-/g, "_").toLowerCase(),
-			);
+			tables.add(file.replace(/\.ts$/, "").replace(/-/g, "_").toLowerCase());
 		}
 
 		result[entryName] = Array.from(tables).sort();
@@ -229,8 +243,12 @@ async function validateCoverage(): Promise<void> {
 		const sqlList = sqlTables[domain] ?? [];
 		const schemaList = schemaTables[domain] ?? [];
 
-		const missingSchemas = sqlList.filter((table) => !schemaList.includes(table));
-		const orphanSchemas = schemaList.filter((table) => !sqlList.includes(table));
+		const missingSchemas = sqlList.filter(
+			(table) => !schemaList.includes(table),
+		);
+		const orphanSchemas = schemaList.filter(
+			(table) => !sqlList.includes(table),
+		);
 
 		if (missingSchemas.length === 0) {
 			successes.push({

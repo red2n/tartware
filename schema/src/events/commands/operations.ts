@@ -124,13 +124,7 @@ export const OperationsScheduleUpdateCommandSchema = z.object({
 		.optional(),
 	scheduled_hours: z.coerce.number().positive().optional(),
 	schedule_status: z
-		.enum([
-			"draft",
-			"scheduled",
-			"confirmed",
-			"cancelled",
-			"adjusted",
-		])
+		.enum(["draft", "scheduled", "confirmed", "cancelled", "adjusted"])
 		.optional(),
 	role: z.string().max(100).optional(),
 	shift_name: z.string().max(100).optional(),

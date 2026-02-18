@@ -16,6 +16,11 @@
  * ```
  */
 
+export * from "./api/index.js";
+export * from "./command-validators.js";
+export * from "./events/availability-guard.js";
+export * from "./events/commands/index.js";
+export * from "./events/reservations.js";
 // Re-export all schema categories (will be added as we build them)
 export * from "./schemas/01-core/index.js";
 export * from "./schemas/02-inventory/index.js";
@@ -27,14 +32,8 @@ export * from "./schemas/07-analytics/index.js";
 export * from "./schemas/08-settings/index.js";
 export * from "./schemas/09-reference-data/index.js";
 export * from "./schemas/10-compliance/index.js";
-export * from "./events/availability-guard.js";
-export * from "./events/reservations.js";
-export * from "./events/commands/index.js";
-export * from "./api/index.js";
-
 // Re-export base schemas and validators
 export * from "./shared/base-schemas.js";
-export * from "./command-validators.js";
 
 // Re-export all ENUMs
 export * from "./shared/enums.js";

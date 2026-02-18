@@ -22,7 +22,7 @@
 
 import { z } from "zod";
 
-import { uuid, money } from "../../shared/base-schemas.js";
+import { money, uuid } from "../../shared/base-schemas.js";
 
 export const CompAuthorizersSchema = z.object({
 	// Primary Key
@@ -95,13 +95,14 @@ export const CreateCompAuthorizersSchema = CompAuthorizersSchema.omit({
 
 export type CreateCompAuthorizers = z.infer<typeof CreateCompAuthorizersSchema>;
 
-export const UpdateCompAuthorizersSchema =
-	CompAuthorizersSchema.partial().omit({
+export const UpdateCompAuthorizersSchema = CompAuthorizersSchema.partial().omit(
+	{
 		authorizer_id: true,
 		tenant_id: true,
 		property_id: true,
 		created_at: true,
 		created_by: true,
-	});
+	},
+);
 
 export type UpdateCompAuthorizers = z.infer<typeof UpdateCompAuthorizersSchema>;
