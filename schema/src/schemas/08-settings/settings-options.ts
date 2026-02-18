@@ -56,8 +56,9 @@ export const CreateSettingsOptionSchema = SettingsOptionsSchema.omit({
 
 export type CreateSettingsOption = z.infer<typeof CreateSettingsOptionSchema>;
 
-export const UpdateSettingsOptionSchema = SettingsOptionsSchema.partial().extend({
-	id: uuid,
-});
+export const UpdateSettingsOptionSchema =
+	SettingsOptionsSchema.partial().extend({
+		id: uuid,
+	});
 
 export type UpdateSettingsOption = z.infer<typeof UpdateSettingsOptionSchema>;

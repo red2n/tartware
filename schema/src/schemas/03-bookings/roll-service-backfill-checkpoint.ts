@@ -31,7 +31,8 @@ export const RollServiceBackfillCheckpointSchema = z.object({
 	updated_at: z.date(),
 });
 
-export type RollServiceBackfillCheckpoint = z.infer<	typeof RollServiceBackfillCheckpointSchema
+export type RollServiceBackfillCheckpoint = z.infer<
+	typeof RollServiceBackfillCheckpointSchema
 >;
 
 export const CreateRollServiceBackfillCheckpointSchema =

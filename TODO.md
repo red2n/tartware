@@ -646,3 +646,76 @@ All open items across PMS features and code quality, prioritized:
 | **S30** | Direct booking engine | **P3** | Very High | Guest Experience | ✅ Done |
 
 **Totals**: 12 CQ items completed, 1 skipped, 1 open (CQ-9). 4 feature items completed.
+
+---
+
+### Industry Standards Gap Analysis (2026-02-13)
+
+Cross-referenced all 12 hospitality-standards domains against implemented routes, commands, tables, and schemas. **11 of 11 domains rated FULLY MET or MOSTLY MET.** See below for the remaining gaps, ordered from easiest to hardest.
+
+#### Overall Domain Scorecard
+
+| Domain | Rating | Key Evidence |
+|---|---|---|
+| Reservations | **FULLY MET** | 23 commands, full lifecycle (10 statuses), groups, waitlist, walks, overbooking |
+| Front Desk | **FULLY MET** | Standard + express + mobile check-in, digital keys, registration cards, self-service |
+| Housekeeping | **MOSTLY MET** | 7 commands, bulk status, minibar, lost & found. Gap: deep-clean scheduling |
+| Guest Profiles | **MOSTLY MET** | 9 commands, preferences, documents, VIP, merge, GDPR erase. Gap: points ledger |
+| Rates & Revenue | **FULLY MET** | Dynamic pricing, AI/ML predictions, competitor tracking, revenue KPIs |
+| Financial | **FULLY MET** | Full folio→GL pipeline, night audit, AR, cashier sessions, commission tracking |
+| Distribution | **FULLY MET** | OTA + GDS + direct booking engine, channel mappings, rate parity |
+| Integrations | **FULLY MET** | REST/OpenAPI, webhooks, event-driven Kafka, API logging |
+| Reporting | **FULLY MET** | Operational + financial reports, dashboards, forecasting, alert rules |
+| Compliance | **MOSTLY MET** | GDPR erase + consent logs, PCI tokenization, MFA, audit logs. Gap: retention purge, breach notification |
+| Technical | **FULLY MET** | Exceeds standards — CQRS, event sourcing, gRPC, circuit breakers, DLQ |
+
+#### Open Gaps (Prioritized Easy → Hard)
+
+| ID | Item | Priority | Complexity | Category | Status |
+|----|------|----------|------------|----------|--------|
+| **IS-1** | Deep-clean scheduling for housekeeping | **P3** | Low | Housekeeping | ✅ Done |
+| **IS-2** | Staff scheduling commands | **P3** | Low | Operations | ✅ Done |
+| **IS-3** | STR-style compset benchmarking report | **P3** | Low | Reporting | ✅ Done |
+| **IS-4** | Automated data retention purge job | **P2** | Medium | Compliance | ✅ Done |
+| **IS-5** | Metasearch channel tables & CPC/CPA tracking | **P3** | Medium | Distribution | Open |
+| **IS-6** | Breach notification workflow | **P2** | Medium | Compliance | ✅ Done |
+| **IS-7** | Loyalty transactional points ledger (earn/burn/redeem) | **P3** | High | Guest Profiles | Open |
+
+#### Gap Details
+
+- [x] **IS-1: Deep-clean scheduling for housekeeping** | Complexity: **Low** | Priority: P3
+  - Standard: periodic/deep-clean schedules (e.g., every 7th stay or monthly) assigned to rooms, tracked separately from daily turnover cleaning.
+  - Current: `housekeeping_tasks` table handles one-time task assignment. No periodic scheduling or deep-clean cycle tracking.
+  - **Implemented**: Added `last_deep_clean_date` (DATE) and `deep_clean_interval_days` (INT, default 30) columns to `rooms` table. Added `GET /v1/housekeeping/deep-clean-due` endpoint in housekeeping-service that returns rooms where interval has elapsed or no deep clean recorded, sorted most overdue first. `DeepCleanDueQuerySchema` and `DeepCleanDueItemSchema` in `@tartware/schemas`. Rooms schema updated. Gateway proxied via existing `/v1/housekeeping/*` wildcard.
+
+- [x] **IS-2: Staff scheduling commands** | Complexity: **Low** | Priority: P3
+  - Standard: staff shift scheduling with workload assignment (14-18 rooms/attendant), time tracking.
+  - Current: `staff_schedules` and `staff_tasks` tables exist with full schema. No command handlers to create/modify/delete schedules via the command pipeline.
+  - **Implemented**: Added `operations.schedule.create` and `operations.schedule.update` command schemas to `@tartware/schemas` (operations.ts). Registered in command-validators.ts. Seeded command_templates (routed to housekeeping-service, facility-maintenance module). Created schedule-command-service.ts with INSERT/UPDATE handlers. Wired into housekeeping command consumer routeCommand switch. Test entries added to command-center.http (#76, #77).
+
+- [x] **IS-3: STR-style compset benchmarking report** | Complexity: **Low** | Priority: P3
+  - Standard: Smith Travel Research-style competitive indices — Occupancy Index, ARI (ADR Index), RGI (RevPAR Index) = My metric ÷ Compset metric × 100.
+  - Current: `competitor_rates` table tracks compset pricing. Revenue KPI endpoints compute own ADR/RevPAR/Occupancy. No endpoint that computes competitive indices.
+  - **Implemented**: Added `GET /v1/revenue/compset-indices` endpoint in revenue-service. SQL CTE joins own room occupancy/revenue with `competitor_rates` avg ADR for the same stay date. Computes ARI (ADR Index) = Own ADR ÷ Compset ADR × 100. Occupancy Index and RGI return null (compset occupancy data not available from rate-only intelligence). `CompsetIndicesQuerySchema` added to `@tartware/schemas`. Gateway proxied via existing `/v1/revenue/*` wildcard.
+
+- [x] **IS-4: Automated data retention purge job** | Complexity: **Medium** | Priority: P2
+  - Standard (GDPR/CCPA): guest data must be purged after configurable retention periods (3-7 years for reservations, 7 years for financial, 30-90 days for CCTV/logs).
+  - Current: soft-delete enforcement exists (`99_enforce_tenant_soft_delete.sql`), `gdpr_consent_logs` table tracks consent. No automated purge/anonymization cron.
+  - **Implemented**: New `scripts/tables/10-compliance/` category. `data_retention_policies` table (entity_type, retention_days, action: anonymize|delete|archive, exempt_statuses, last_sweep_at/count). Zod schema `DataRetentionPoliciesSchema` in `schema/src/schemas/10-compliance/`. Retention sweep job in `core-service/src/jobs/retention-sweep.ts` using setInterval pattern (6h default, env-configurable). Supports `audit_logs` and `gdpr_consent_logs` entity types. Overlap guard + per-policy error isolation. Wired into index.ts lifecycle (start after listen, shutdown on SIGTERM).
+
+- [ ] **IS-5: Metasearch channel tables & CPC/CPA tracking** | Complexity: **Medium** | Priority: P3
+  - Standard: metasearch platforms (Google Hotel Ads, TripAdvisor, Kayak) use CPC or CPA pricing models distinct from OTA commission models.
+  - Current: `channel_mappings` and `channel_commission_rules` exist. No metasearch-specific configuration for CPC bid management or CPA tracking.
+  - Fix: add `metasearch_configurations` table (platform, bid_strategy, max_cpc, target_cpa, budget_daily). Add `metasearch_click_log` table for CPC cost tracking. Extend channel commission rules to support CPC/CPA models alongside percentage-based commissions.
+
+- [x] **IS-6: Breach notification workflow** | Complexity: **Medium** | Priority: P2
+  - Standard (GDPR Art. 33-34): data breaches must be reported to supervisory authority within 72 hours and affected individuals notified without undue delay.
+  - Current: `audit_logs` and `incident_reports` tables exist. No dedicated breach detection → assessment → notification → tracking pipeline.
+  - **Implemented**: `data_breach_incidents` table in `scripts/tables/10-compliance/02_data_breach_incidents.sql` with full GDPR workflow (severity, breach_type, 72h notification_deadline auto-set, authority/subjects notification tracking, status workflow: reported→investigating→contained→notifying→remediated→closed). Zod schema `DataBreachIncidentsSchema` in `schema/src/schemas/10-compliance/`. Command schemas `ComplianceBreachReportCommandSchema` and `ComplianceBreachNotifyCommandSchema` in `schema/src/events/commands/compliance.ts`. REST endpoints in core-service: `POST /v1/compliance/breach-incidents` (report), `PUT /v1/compliance/breach-incidents/:id/notify`, `GET /v1/compliance/breach-incidents` (list + filter). Gateway proxy added. Test entries in operations.http.
+
+- [ ] **IS-7: Loyalty transactional points ledger** | Complexity: **High** | Priority: P3
+  - Standard: full earn/burn/redeem points economy — points earned per $1 spend (configurable by tier), redemption catalog (free nights, upgrades, amenities), expiry rules, statement generation, tier qualification tracking.
+  - Current: `guest_loyalty_programs` table stores membership-level data (program, tier, points balance as a single field). `guest.set_loyalty` command updates membership. No transaction-level points tracking.
+  - Fix: add `loyalty_point_transactions` table (guest_id, program_id, type: EARN|REDEEM|EXPIRE|ADJUST|BONUS, points, balance_after, reference_type, reference_id, expires_at). Add `loyalty_tier_rules` table (program_id, tier, min_nights, min_points, benefits JSONB). Add commands: `loyalty.points.earn`, `loyalty.points.redeem`, `loyalty.points.expire_sweep`, `loyalty.tier.evaluate`. Wire earn triggers into check-out event handler. This is a significant new subdomain.
+
+**Totals**: 7 open gaps. 3 Low complexity, 3 Medium complexity, 1 High complexity.

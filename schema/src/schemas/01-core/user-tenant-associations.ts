@@ -19,7 +19,11 @@
 
 import { z } from "zod";
 
-import { uuid, jsonbMetadata, auditTimestamps } from "../../shared/base-schemas.js";
+import {
+	auditTimestamps,
+	jsonbMetadata,
+	uuid,
+} from "../../shared/base-schemas.js";
 import { TenantRoleEnum, TenantStatusEnum } from "../../shared/enums.js";
 
 /**
@@ -45,22 +49,28 @@ export const UserTenantAssociationSchema = z.object({
 
 export type UserTenantAssociation = z.infer<typeof UserTenantAssociationSchema>;
 
-export const CreateUserTenantAssociationSchema = UserTenantAssociationSchema.omit({
-	id: true,
-	created_at: true,
-	updated_at: true,
-	created_by: true,
-	updated_by: true,
-	version: true,
-});
+export const CreateUserTenantAssociationSchema =
+	UserTenantAssociationSchema.omit({
+		id: true,
+		created_at: true,
+		updated_at: true,
+		created_by: true,
+		updated_by: true,
+		version: true,
+	});
 
-export type CreateUserTenantAssociation = z.infer<typeof CreateUserTenantAssociationSchema>;
+export type CreateUserTenantAssociation = z.infer<
+	typeof CreateUserTenantAssociationSchema
+>;
 
-export const UpdateUserTenantAssociationSchema = UserTenantAssociationSchema.partial().extend({
-	id: uuid,
-});
+export const UpdateUserTenantAssociationSchema =
+	UserTenantAssociationSchema.partial().extend({
+		id: uuid,
+	});
 
-export type UpdateUserTenantAssociation = z.infer<typeof UpdateUserTenantAssociationSchema>;
+export type UpdateUserTenantAssociation = z.infer<
+	typeof UpdateUserTenantAssociationSchema
+>;
 
 /**
  * Lightweight summaries for nested responses
@@ -78,10 +88,11 @@ const TenantSummarySchema = z.object({
 	status: TenantStatusEnum,
 });
 
-export const UserTenantAssociationWithDetailsSchema = UserTenantAssociationSchema.extend({
-	user: UserSummarySchema.optional(),
-	tenant: TenantSummarySchema.optional(),
-});
+export const UserTenantAssociationWithDetailsSchema =
+	UserTenantAssociationSchema.extend({
+		user: UserSummarySchema.optional(),
+		tenant: TenantSummarySchema.optional(),
+	});
 
 export type UserTenantAssociationWithDetails = z.infer<
 	typeof UserTenantAssociationWithDetailsSchema

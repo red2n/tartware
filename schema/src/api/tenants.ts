@@ -35,7 +35,9 @@ export const TenantScopedListResponseSchema = z.object({
 	offset: z.number().int().nonnegative(),
 });
 
-export type TenantScopedListResponse = z.infer<typeof TenantScopedListResponseSchema>;
+export type TenantScopedListResponse = z.infer<
+	typeof TenantScopedListResponseSchema
+>;
 
 // -----------------------------------------------------------------------------
 // Self-Serve Bootstrap
@@ -113,7 +115,9 @@ export const TenantBootstrapResponseSchema = z.object({
 	message: z.string(),
 });
 
-export type TenantBootstrapResponse = z.infer<typeof TenantBootstrapResponseSchema>;
+export type TenantBootstrapResponse = z.infer<
+	typeof TenantBootstrapResponseSchema
+>;
 
 // -----------------------------------------------------------------------------
 // System Tenant List
@@ -139,7 +143,9 @@ export const SystemTenantListResponseSchema = z.object({
 	offset: z.number().int().nonnegative(),
 });
 
-export type SystemTenantListResponse = z.infer<typeof SystemTenantListResponseSchema>;
+export type SystemTenantListResponse = z.infer<
+	typeof SystemTenantListResponseSchema
+>;
 
 // -----------------------------------------------------------------------------
 // System Tenant Create (simple)
@@ -169,7 +175,9 @@ export const SystemCreateTenantResponseSchema = z.object({
 	message: z.string(),
 });
 
-export type SystemCreateTenantResponse = z.infer<typeof SystemCreateTenantResponseSchema>;
+export type SystemCreateTenantResponse = z.infer<
+	typeof SystemCreateTenantResponseSchema
+>;
 
 // -----------------------------------------------------------------------------
 // System Bootstrap (admin-initiated)
@@ -202,5 +210,3 @@ export const SystemBootstrapTenantSchema = z.object({
 });
 
 export type SystemBootstrapTenant = z.infer<typeof SystemBootstrapTenantSchema>;
-
-

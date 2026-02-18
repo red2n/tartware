@@ -28,10 +28,16 @@
  * - command_dispatches
  */
 
+export * from "./announcements.js";
+export * from "./buildings.js";
 export * from "./command-center.js";
 export * from "./command-idempotency.js";
 export * from "./guests.js";
+export * from "./meal-periods.js";
+export * from "./outlets.js";
 export * from "./properties.js";
+export * from "./property-events.js";
+export * from "./property-feature-flags.js";
 export * from "./property-settings.js";
 export * from "./room-settings.js";
 export * from "./setting-categories.js";

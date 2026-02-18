@@ -42,12 +42,25 @@ export const ReservationCreateCommandSchema = z.object({
 		.enum(["DIRECT", "WEBSITE", "PHONE", "WALKIN", "OTA", "CORPORATE", "GROUP"])
 		.optional(),
 	reservation_type: z
-		.enum(["TRANSIENT", "CORPORATE", "GROUP", "WHOLESALE", "PACKAGE", "COMPLIMENTARY", "HOUSE_USE", "DAY_USE", "WAITLIST"])
+		.enum([
+			"TRANSIENT",
+			"CORPORATE",
+			"GROUP",
+			"WHOLESALE",
+			"PACKAGE",
+			"COMPLIMENTARY",
+			"HOUSE_USE",
+			"DAY_USE",
+			"WAITLIST",
+		])
 		.optional(),
 	total_amount: z.coerce.number().nonnegative(),
 	currency: z.string().length(3).optional(),
 	notes: z.string().max(2000).optional(),
-	eta: z.string().regex(/^\d{2}:\d{2}$/, "ETA must be HH:MM format").optional(),
+	eta: z
+		.string()
+		.regex(/^\d{2}:\d{2}$/, "ETA must be HH:MM format")
+		.optional(),
 	company_id: z.string().uuid().optional(),
 	travel_agent_id: z.string().uuid().optional(),
 });
@@ -281,7 +294,10 @@ export const ReservationWalkInCheckInCommandSchema = z.object({
 	total_amount: z.coerce.number().nonnegative(),
 	currency: z.string().length(3).optional(),
 	notes: z.string().max(2000).optional(),
-	eta: z.string().regex(/^\d{2}:\d{2}$/, "ETA must be HH:MM format").optional(),
+	eta: z
+		.string()
+		.regex(/^\d{2}:\d{2}$/, "ETA must be HH:MM format")
+		.optional(),
 	company_id: z.string().uuid().optional(),
 	travel_agent_id: z.string().uuid().optional(),
 	metadata: z.record(z.unknown()).optional(),
@@ -402,15 +418,17 @@ export const ReservationWalkGuestCommandSchema = z.object({
 	alternate_confirmation: z.string().max(100).optional(),
 	alternate_rate: z.number().nonnegative().optional(),
 	alternate_nights: z.number().int().min(1).default(1),
-	compensation_type: z.enum([
-		"first_night_covered",
-		"full_stay_covered",
-		"rate_discount",
-		"loyalty_points",
-		"future_credit",
-		"cash",
-		"other",
-	]).optional(),
+	compensation_type: z
+		.enum([
+			"first_night_covered",
+			"full_stay_covered",
+			"rate_discount",
+			"loyalty_points",
+			"future_credit",
+			"cash",
+			"other",
+		])
+		.optional(),
 	compensation_amount: z.number().nonnegative().default(0),
 	compensation_description: z.string().max(500).optional(),
 	transportation_provided: z.boolean().default(false),
@@ -477,9 +495,16 @@ export const ReservationGenerateRegCardCommandSchema = z.object({
 	reservation_id: z.string().uuid(),
 	property_id: z.string().uuid(),
 	/** Override visit purpose (defaults to 'leisure'). */
-	visit_purpose: z.enum([
-		"leisure", "business", "conference", "wedding", "family_event", "other",
-	]).optional(),
+	visit_purpose: z
+		.enum([
+			"leisure",
+			"business",
+			"conference",
+			"wedding",
+			"family_event",
+			"other",
+		])
+		.optional(),
 	company_name: z.string().max(200).optional(),
 	companion_names: z.array(z.string().max(200)).optional(),
 	vehicle_license_plate: z.string().max(30).optional(),
@@ -511,9 +536,16 @@ export const ReservationMobileCheckinStartCommandSchema = z.object({
 	reservation_id: z.string().uuid(),
 	property_id: z.string().uuid(),
 	guest_id: z.string().uuid(),
-	access_method: z.enum([
-		"mobile_app", "web_browser", "kiosk", "sms_link", "email_link", "qr_code",
-	]).default("mobile_app"),
+	access_method: z
+		.enum([
+			"mobile_app",
+			"web_browser",
+			"kiosk",
+			"sms_link",
+			"email_link",
+			"qr_code",
+		])
+		.default("mobile_app"),
 	device_type: z.string().max(50).optional(),
 	device_os: z.string().max(50).optional(),
 	app_version: z.string().max(20).optional(),
@@ -532,18 +564,33 @@ export type ReservationMobileCheckinStartCommand = z.infer<
  */
 export const ReservationMobileCheckinCompleteCommandSchema = z.object({
 	mobile_checkin_id: z.string().uuid(),
-	identity_verification_method: z.enum([
-		"government_id", "passport", "drivers_license", "face_recognition",
-		"biometric", "existing_profile", "manual_verification", "not_required",
-	]).default("existing_profile"),
+	identity_verification_method: z
+		.enum([
+			"government_id",
+			"passport",
+			"drivers_license",
+			"face_recognition",
+			"biometric",
+			"existing_profile",
+			"manual_verification",
+			"not_required",
+		])
+		.default("existing_profile"),
 	id_document_verified: z.boolean().default(false),
 	registration_card_signed: z.boolean().default(false),
 	payment_method_verified: z.boolean().default(false),
 	guest_signature_url: z.string().url().optional(),
 	room_id: z.string().uuid().optional(),
-	digital_key_type: z.enum([
-		"mobile_app_key", "nfc", "bluetooth", "qr_code", "pin_code", "physical_key_required",
-	]).optional(),
+	digital_key_type: z
+		.enum([
+			"mobile_app_key",
+			"nfc",
+			"bluetooth",
+			"qr_code",
+			"pin_code",
+			"physical_key_required",
+		])
+		.optional(),
 	terms_accepted: z.boolean().default(false),
 	metadata: z.record(z.unknown()).optional(),
 	idempotency_key: z.string().max(120).optional(),

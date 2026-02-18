@@ -140,7 +140,9 @@ export const MeetingRoomListResponseSchema = z.object({
 	}),
 });
 
-export type MeetingRoomListResponse = z.infer<typeof MeetingRoomListResponseSchema>;
+export type MeetingRoomListResponse = z.infer<
+	typeof MeetingRoomListResponseSchema
+>;
 
 // =====================================================
 // EVENT BOOKINGS
@@ -297,7 +299,9 @@ export const EventBookingListResponseSchema = z.object({
 	}),
 });
 
-export type EventBookingListResponse = z.infer<typeof EventBookingListResponseSchema>;
+export type EventBookingListResponse = z.infer<
+	typeof EventBookingListResponseSchema
+>;
 
 // =====================================================
 // COMPANIES (B2B Corporate Accounts)
@@ -480,7 +484,9 @@ export const WaitlistEntryListResponseSchema = z.object({
 	}),
 });
 
-export type WaitlistEntryListResponse = z.infer<typeof WaitlistEntryListResponseSchema>;
+export type WaitlistEntryListResponse = z.infer<
+	typeof WaitlistEntryListResponseSchema
+>;
 
 // =====================================================
 // GROUP BOOKINGS
@@ -587,7 +593,9 @@ export const GroupBookingListResponseSchema = z.object({
 	}),
 });
 
-export type GroupBookingListResponse = z.infer<typeof GroupBookingListResponseSchema>;
+export type GroupBookingListResponse = z.infer<
+	typeof GroupBookingListResponseSchema
+>;
 
 // =====================================================
 // PROMOTIONAL CODES
@@ -616,7 +624,9 @@ export const PromotionalCodeDiscountTypeEnum = z.enum([
 	"UPGRADE",
 	"AMENITY",
 ]);
-export type PromotionalCodeDiscountType = z.infer<typeof PromotionalCodeDiscountTypeEnum>;
+export type PromotionalCodeDiscountType = z.infer<
+	typeof PromotionalCodeDiscountTypeEnum
+>;
 
 /**
  * Promotional code list item schema for API responses.
@@ -685,7 +695,9 @@ export const PromotionalCodeListItemSchema = z.object({
 	updated_at: z.string().optional(),
 });
 
-export type PromotionalCodeListItem = z.infer<typeof PromotionalCodeListItemSchema>;
+export type PromotionalCodeListItem = z.infer<
+	typeof PromotionalCodeListItemSchema
+>;
 
 /**
  * Promotional code list response schema.
@@ -697,7 +709,9 @@ export const PromotionalCodeListResponseSchema = z.object({
 	}),
 });
 
-export type PromotionalCodeListResponse = z.infer<typeof PromotionalCodeListResponseSchema>;
+export type PromotionalCodeListResponse = z.infer<
+	typeof PromotionalCodeListResponseSchema
+>;
 
 /**
  * Promotional code validation request schema.
@@ -715,7 +729,9 @@ export const ValidatePromoCodeRequestSchema = z.object({
 	channel: z.string().optional(),
 });
 
-export type ValidatePromoCodeRequest = z.infer<typeof ValidatePromoCodeRequestSchema>;
+export type ValidatePromoCodeRequest = z.infer<
+	typeof ValidatePromoCodeRequestSchema
+>;
 
 /**
  * Promotional code validation response schema.
@@ -732,7 +748,9 @@ export const ValidatePromoCodeResponseSchema = z.object({
 	rejection_reason: z.string().optional(),
 });
 
-export type ValidatePromoCodeResponse = z.infer<typeof ValidatePromoCodeResponseSchema>;
+export type ValidatePromoCodeResponse = z.infer<
+	typeof ValidatePromoCodeResponseSchema
+>;
 
 // =====================================================
 // NIGHT AUDIT / BUSINESS DATES
@@ -760,8 +778,14 @@ export type NightAuditStatus = z.infer<typeof NightAuditStatusEnum>;
 /**
  * Night audit execution mode enum.
  */
-export const NightAuditExecutionModeEnum = z.enum(["MANUAL", "SCHEDULED", "AUTOMATIC"]);
-export type NightAuditExecutionMode = z.infer<typeof NightAuditExecutionModeEnum>;
+export const NightAuditExecutionModeEnum = z.enum([
+	"MANUAL",
+	"SCHEDULED",
+	"AUTOMATIC",
+]);
+export type NightAuditExecutionMode = z.infer<
+	typeof NightAuditExecutionModeEnum
+>;
 
 /**
  * Current business date status API response schema.
@@ -794,7 +818,9 @@ export const BusinessDateStatusResponseSchema = z.object({
 	notes: z.string().optional(),
 });
 
-export type BusinessDateStatusResponse = z.infer<typeof BusinessDateStatusResponseSchema>;
+export type BusinessDateStatusResponse = z.infer<
+	typeof BusinessDateStatusResponseSchema
+>;
 
 /**
  * Night audit run summary for list views.
@@ -845,7 +871,9 @@ export const NightAuditRunListResponseSchema = z.object({
 	}),
 });
 
-export type NightAuditRunListResponse = z.infer<typeof NightAuditRunListResponseSchema>;
+export type NightAuditRunListResponse = z.infer<
+	typeof NightAuditRunListResponseSchema
+>;
 
 /**
  * Night audit step detail for run details.
@@ -876,15 +904,18 @@ export type NightAuditStep = z.infer<typeof NightAuditStepSchema>;
  * Night audit run detail response.
  * Used by: GET /v1/night-audit/runs/:runId
  */
-export const NightAuditRunDetailResponseSchema = NightAuditRunListItemSchema.extend({
-	steps: z.array(NightAuditStepSchema),
-	reports_generated: z.array(z.string()).optional(),
-	actions_taken: z.array(z.string()).optional(),
-	notes: z.string().optional(),
-	resolution_notes: z.string().optional(),
-});
+export const NightAuditRunDetailResponseSchema =
+	NightAuditRunListItemSchema.extend({
+		steps: z.array(NightAuditStepSchema),
+		reports_generated: z.array(z.string()).optional(),
+		actions_taken: z.array(z.string()).optional(),
+		notes: z.string().optional(),
+		resolution_notes: z.string().optional(),
+	});
 
-export type NightAuditRunDetailResponse = z.infer<typeof NightAuditRunDetailResponseSchema>;
+export type NightAuditRunDetailResponse = z.infer<
+	typeof NightAuditRunDetailResponseSchema
+>;
 
 // =====================================================
 // OTA / CHANNEL CONFIGURATION
@@ -955,7 +986,9 @@ export const OtaConnectionListResponseSchema = z.object({
 	}),
 });
 
-export type OtaConnectionListResponse = z.infer<typeof OtaConnectionListResponseSchema>;
+export type OtaConnectionListResponse = z.infer<
+	typeof OtaConnectionListResponseSchema
+>;
 
 /**
  * OTA sync log entry schema.
@@ -991,7 +1024,9 @@ export const OtaSyncLogListResponseSchema = z.object({
 	}),
 });
 
-export type OtaSyncLogListResponse = z.infer<typeof OtaSyncLogListResponseSchema>;
+export type OtaSyncLogListResponse = z.infer<
+	typeof OtaSyncLogListResponseSchema
+>;
 
 // =====================================================
 // CASHIER SESSIONS
@@ -1045,7 +1080,9 @@ export const CashierSessionListItemSchema = z.object({
 	created_at: z.string().optional(),
 });
 
-export type CashierSessionListItem = z.infer<typeof CashierSessionListItemSchema>;
+export type CashierSessionListItem = z.infer<
+	typeof CashierSessionListItemSchema
+>;
 
 // =====================================================
 // SHIFT HANDOVERS

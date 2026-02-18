@@ -79,9 +79,7 @@ export const RoomOutOfOrderCommandSchema = z.object({
 	idempotency_key: z.string().max(120).optional(),
 });
 
-export type RoomOutOfOrderCommand = z.infer<
-	typeof RoomOutOfOrderCommandSchema
->;
+export type RoomOutOfOrderCommand = z.infer<typeof RoomOutOfOrderCommandSchema>;
 
 export const RoomOutOfServiceCommandSchema = z.object({
 	room_id: z.string().uuid(),

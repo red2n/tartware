@@ -33,6 +33,8 @@ export * from "./guest-behavior-patterns.js";
 export * from "./guest-interaction-events.js";
 export * from "./integration-mappings.js";
 export * from "./marketing-campaigns.js";
+export * from "./metasearch-click-log.js";
+export * from "./metasearch-configurations.js";
 export * from "./ota-configurations.js";
 export * from "./ota-inventory-sync.js";
 export * from "./ota-rate-plans.js";

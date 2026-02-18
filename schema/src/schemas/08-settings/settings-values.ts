@@ -19,7 +19,11 @@
 
 import { z } from "zod";
 
-import { jsonbMetadata, jsonbSettings, uuid } from "../../shared/base-schemas.js";
+import {
+	jsonbMetadata,
+	jsonbSettings,
+	uuid,
+} from "../../shared/base-schemas.js";
 import { SettingsScopeEnum } from "../../shared/enums.js";
 
 const SettingsValuePayloadSchema = z.union([

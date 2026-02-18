@@ -81,11 +81,9 @@ export const proxyRequest = async (
       { targetUrl, method: request.method, circuitState: breaker.getState() },
       "circuit open — rejecting proxy request",
     );
-    reply.header("Content-Type", "application/json").status(503).send({
-      error: "SERVICE_UNAVAILABLE",
-      message: "Upstream service is temporarily unavailable. Please try again shortly.",
-    });
-    return reply;
+    return reply.serviceUnavailable(
+      "Upstream service is temporarily unavailable. Please try again shortly.",
+    );
   }
 
   const headers = buildHeaders(request);
@@ -112,14 +110,17 @@ export const proxyRequest = async (
     );
 
     reply
-      .header("Content-Type", "application/json")
+      .header("Content-Type", "application/problem+json")
       .status(isTimeout ? 504 : 502)
       .send({
-        error: isTimeout ? "UPSTREAM_TIMEOUT" : "UPSTREAM_UNAVAILABLE",
-        message: isTimeout
+        type: "about:blank",
+        title: isTimeout ? "Gateway Timeout" : "Bad Gateway",
+        status: isTimeout ? 504 : 502,
+        detail: isTimeout
           ? "Upstream service did not respond in time."
           : "Unable to reach upstream service. Please try again shortly.",
-        details: error instanceof Error ? error.message : "Unknown upstream error",
+        instance: request.url,
+        code: isTimeout ? "UPSTREAM_TIMEOUT" : "UPSTREAM_UNAVAILABLE",
       });
     return reply;
   } finally {

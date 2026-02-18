@@ -23,7 +23,12 @@
 
 import { z } from "zod";
 
-import { uuid, money, percentage, currencyCode } from "../../shared/base-schemas.js";
+import {
+	currencyCode,
+	money,
+	percentage,
+	uuid,
+} from "../../shared/base-schemas.js";
 
 /**
  * Dynamic field validation - actual values enforced by database CHECK constraints.

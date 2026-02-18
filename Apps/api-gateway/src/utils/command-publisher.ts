@@ -1,6 +1,7 @@
+import { STATUS_CODES } from "node:http";
+
 import { validateCommandPayload } from "@tartware/schemas";
 import type { FastifyReply, FastifyRequest } from "fastify";
-import { ZodError } from "zod";
 
 import {
   type AcceptedCommand,
@@ -86,20 +87,7 @@ export const submitCommand = async ({
     return;
   }
 
-  let validatedPayload: Record<string, unknown>;
-  try {
-    validatedPayload = validateCommandPayload(commandName, payload);
-  } catch (error) {
-    if (error instanceof ZodError) {
-      reply.status(400).send({
-        error: "COMMAND_PAYLOAD_INVALID",
-        message: `${commandName} payload failed validation`,
-        issues: error.issues,
-      });
-      return;
-    }
-    throw error;
-  }
+  const validatedPayload = validateCommandPayload(commandName, payload);
 
   const correlationId = (request.headers["x-correlation-id"] as string | undefined) ?? undefined;
   const requestId = request.id;
@@ -121,10 +109,17 @@ export const submitCommand = async ({
     });
   } catch (error) {
     if (error instanceof CommandDispatchError) {
-      reply.status(error.statusCode).send({
-        error: error.code,
-        message: error.message,
-      });
+      reply
+        .status(error.statusCode)
+        .header("content-type", "application/problem+json")
+        .send({
+          type: "about:blank",
+          title: STATUS_CODES[error.statusCode] ?? "Error",
+          status: error.statusCode,
+          detail: error.message,
+          instance: request.url,
+          code: error.code,
+        });
       return;
     }
     throw error;
@@ -163,11 +158,7 @@ export const submitCommand = async ({
       },
       "failed to publish command",
     );
-    reply.status(502).send({
-      error: "COMMAND_DISPATCH_FAILED",
-      message: "Unable to publish command to Kafka.",
-    });
-    return;
+    return reply.badGateway("Unable to publish command to Kafka.");
   }
 
   reply.status(202).send({

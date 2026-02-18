@@ -35,7 +35,9 @@ export const CommandExecuteResponseSchema = z.object({
 	targetService: z.string(),
 	requestedAt: z.string(),
 });
-export type CommandExecuteResponse = z.infer<typeof CommandExecuteResponseSchema>;
+export type CommandExecuteResponse = z.infer<
+	typeof CommandExecuteResponseSchema
+>;
 
 export const CommandDefinitionSchema = z.object({
 	name: z.string(),

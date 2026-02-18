@@ -46,6 +46,99 @@ export const HOUSEKEEPING_TASK_LIST_SQL = `
 `;
 
 // =====================================================
+// HOUSEKEEPING SCHEDULE QUERIES
+// =====================================================
+
+export const HOUSEKEEPING_SCHEDULE_LIST_SQL = `
+  SELECT
+    h.id,
+    h.tenant_id,
+    h.property_id,
+    p.property_name,
+    h.room_number,
+    h.task_type,
+    h.priority,
+    h.status,
+    h.assigned_to,
+    h.assigned_at,
+    h.scheduled_date,
+    h.scheduled_time,
+    h.started_at,
+    h.completed_at,
+    h.inspected_by,
+    h.inspected_at,
+    h.inspection_passed,
+    h.is_guest_request,
+    h.special_instructions,
+    h.notes,
+    h.issues_found,
+    h.metadata,
+    h.created_at,
+    h.updated_at,
+    h.version
+  FROM public.housekeeping_tasks h
+  LEFT JOIN public.properties p
+    ON h.property_id = p.id
+  WHERE COALESCE(h.is_deleted, false) = false
+    AND h.deleted_at IS NULL
+    AND h.scheduled_date IS NOT NULL
+    AND ($2::uuid IS NULL OR h.tenant_id = $2::uuid)
+    AND ($3::uuid IS NULL OR h.property_id = $3::uuid)
+    AND ($4::date IS NULL OR h.scheduled_date >= $4::date)
+    AND ($5::date IS NULL OR h.scheduled_date <= $5::date)
+  ORDER BY h.scheduled_date ASC, h.scheduled_time ASC NULLS LAST, h.created_at DESC
+  LIMIT $1
+  OFFSET $6
+`;
+
+// =====================================================
+// HOUSEKEEPING INSPECTION QUERIES
+// =====================================================
+
+export const HOUSEKEEPING_INSPECTION_LIST_SQL = `
+  SELECT
+    h.id,
+    h.tenant_id,
+    h.property_id,
+    p.property_name,
+    h.room_number,
+    h.task_type,
+    h.priority,
+    h.status,
+    h.assigned_to,
+    h.assigned_at,
+    h.scheduled_date,
+    h.scheduled_time,
+    h.started_at,
+    h.completed_at,
+    h.inspected_by,
+    h.inspected_at,
+    h.inspection_passed,
+    h.is_guest_request,
+    h.special_instructions,
+    h.notes,
+    h.issues_found,
+    h.metadata,
+    h.created_at,
+    h.updated_at,
+    h.version
+  FROM public.housekeeping_tasks h
+  LEFT JOIN public.properties p
+    ON h.property_id = p.id
+  WHERE COALESCE(h.is_deleted, false) = false
+    AND h.deleted_at IS NULL
+    AND h.inspected_by IS NOT NULL
+    AND ($2::uuid IS NULL OR h.tenant_id = $2::uuid)
+    AND ($3::uuid IS NULL OR h.property_id = $3::uuid)
+    AND ($4::boolean IS NULL OR h.inspection_passed = $4::boolean)
+    AND ($5::date IS NULL OR h.inspected_at::date >= $5::date)
+    AND ($6::date IS NULL OR h.inspected_at::date <= $6::date)
+  ORDER BY h.inspected_at DESC NULLS LAST, h.created_at DESC
+  LIMIT $1
+  OFFSET $7
+`;
+
+// =====================================================
 // MAINTENANCE REQUEST QUERIES
 // =====================================================
 
@@ -415,4 +508,45 @@ export const INCIDENT_REPORT_BY_ID_SQL = `
   WHERE i.incident_id = $1
     AND i.tenant_id = $2
     AND COALESCE(i.is_deleted, false) = false
+`;
+
+export const DEEP_CLEAN_DUE_SQL = `
+  SELECT
+    r.id AS room_id,
+    r.tenant_id,
+    r.property_id,
+    p.property_name,
+    r.room_number,
+    rt.room_type_name,
+    r.floor,
+    r.status,
+    r.housekeeping_status,
+    r.last_deep_clean_date,
+    COALESCE(r.deep_clean_interval_days, 30) AS deep_clean_interval_days,
+    CASE
+      WHEN r.last_deep_clean_date IS NOT NULL
+      THEN (CURRENT_DATE - r.last_deep_clean_date)
+      ELSE NULL
+    END AS days_since_deep_clean,
+    CASE
+      WHEN r.last_deep_clean_date IS NOT NULL
+      THEN (CURRENT_DATE - r.last_deep_clean_date) - COALESCE(r.deep_clean_interval_days, 30)
+      ELSE NULL
+    END AS days_overdue
+  FROM public.rooms r
+  LEFT JOIN public.properties p ON r.property_id = p.id
+  LEFT JOIN public.room_types rt ON r.room_type_id = rt.id
+  WHERE r.tenant_id = $2::uuid
+    AND ($3::uuid IS NULL OR r.property_id = $3::uuid)
+    AND COALESCE(r.is_deleted, false) = false
+    AND r.status NOT IN ('OUT_OF_ORDER', 'OUT_OF_SERVICE')
+    AND (
+      r.last_deep_clean_date IS NULL
+      OR (CURRENT_DATE - r.last_deep_clean_date) >= COALESCE(r.deep_clean_interval_days, 30)
+    )
+  ORDER BY
+    r.last_deep_clean_date ASC NULLS FIRST,
+    r.room_number ASC
+  LIMIT $1
+  OFFSET $4
 `;

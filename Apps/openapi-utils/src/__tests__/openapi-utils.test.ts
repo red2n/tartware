@@ -123,14 +123,17 @@ describe("jsonArraySchema", () => {
 });
 
 describe("errorResponseSchema", () => {
-  it("has correct structure for error responses", () => {
+  it("has correct structure for RFC 7807 Problem Details error responses", () => {
     expect(errorResponseSchema).toMatchObject({
       type: "object",
       properties: {
-        error: { type: "string" },
-        message: { type: "string" },
+        type: { type: "string" },
+        title: { type: "string" },
+        status: { type: "integer" },
+        detail: { type: "string" },
+        instance: { type: "string" },
       },
-      required: ["error", "message"],
+      required: ["type", "title", "status", "detail"],
       additionalProperties: true,
     });
   });

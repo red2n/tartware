@@ -86,7 +86,10 @@ type UpdateRoomTypeBody = z.infer<typeof UpdateRoomTypeBodySchema>;
 const CreateRoomTypeBodyJsonSchema = schemaFromZod(CreateRoomTypeBodySchema, "CreateRoomTypeBody");
 const UpdateRoomTypeBodyJsonSchema = schemaFromZod(UpdateRoomTypeBodySchema, "UpdateRoomTypeBody");
 const RoomTypeItemJsonSchema = schemaFromZod(RoomTypeItemSchema, "RoomTypeItem");
-const ErrorResponseSchema = schemaFromZod(z.object({ message: z.string() }), "ErrorResponse");
+const ErrorResponseSchema = schemaFromZod(
+  z.object({ type: z.string(), title: z.string(), status: z.number(), detail: z.string() }),
+  "ErrorResponse",
+);
 
 const RoomTypeParamsSchema = z.object({
   roomTypeId: z.string().uuid(),
@@ -156,13 +159,11 @@ export const registerRoomTypeRoutes = (app: FastifyInstance): void => {
         if (typeof error === "object" && error && "code" in error) {
           const code = (error as { code?: string }).code;
           if (code === "23505") {
-            return reply.status(409).send({
-              message: "Room type code already exists for this property",
-            });
+            return reply.conflict("Room type code already exists for this property");
           }
         }
         request.log.error({ err: error }, "Failed to create room type");
-        return reply.status(500).send({ message: "Failed to create room type" });
+        return reply.internalServerError("Failed to create room type");
       }
     },
   );
@@ -203,7 +204,7 @@ export const registerRoomTypeRoutes = (app: FastifyInstance): void => {
         });
 
         if (!updated) {
-          return reply.status(404).send({ message: "Room type not found" });
+          return reply.notFound("Room type not found");
         }
 
         return reply.send(updated);
@@ -211,13 +212,11 @@ export const registerRoomTypeRoutes = (app: FastifyInstance): void => {
         if (typeof error === "object" && error && "code" in error) {
           const code = (error as { code?: string }).code;
           if (code === "23505") {
-            return reply.status(409).send({
-              message: "Room type code already exists for this property",
-            });
+            return reply.conflict("Room type code already exists for this property");
           }
         }
         request.log.error({ err: error }, "Failed to update room type");
-        return reply.status(500).send({ message: "Failed to update room type" });
+        return reply.internalServerError("Failed to update room type");
       }
     },
   );
@@ -255,7 +254,7 @@ export const registerRoomTypeRoutes = (app: FastifyInstance): void => {
       });
 
       if (!deleted) {
-        return reply.status(404).send({ message: "Room type not found" });
+        return reply.notFound("Room type not found");
       }
 
       return reply.status(204).send();

@@ -1,4 +1,5 @@
 import crypto from "node:crypto";
+
 import { config } from "../config.js";
 import { publishEvent } from "../kafka/producer.js";
 import { query } from "../lib/db.js";

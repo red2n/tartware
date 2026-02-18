@@ -19,7 +19,7 @@
 
 import { z } from "zod";
 
-import { uuid, jsonbMetadata } from "../../shared/base-schemas.js";
+import { jsonbMetadata, uuid } from "../../shared/base-schemas.js";
 
 /**
  * Mid-level grouping of settings within a category (e.g., "Role-Based Access Control")
@@ -59,8 +59,9 @@ export const CreateSettingsSectionSchema = SettingsSectionsSchema.omit({
 
 export type CreateSettingsSection = z.infer<typeof CreateSettingsSectionSchema>;
 
-export const UpdateSettingsSectionSchema = SettingsSectionsSchema.partial().extend({
-	id: uuid,
-});
+export const UpdateSettingsSectionSchema =
+	SettingsSectionsSchema.partial().extend({
+		id: uuid,
+	});
 
 export type UpdateSettingsSection = z.infer<typeof UpdateSettingsSectionSchema>;

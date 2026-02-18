@@ -77,7 +77,9 @@ export const ReservationCreatedEventSchema = z.object({
 	payload: ReservationCreatePayloadSchema,
 });
 
-export type ReservationCreatedEvent = z.infer<typeof ReservationCreatedEventSchema>;
+export type ReservationCreatedEvent = z.infer<
+	typeof ReservationCreatedEventSchema
+>;
 
 /**
  * Reservation Updated Event
@@ -92,7 +94,9 @@ export const ReservationUpdatedEventSchema = z.object({
 	}),
 });
 
-export type ReservationUpdatedEvent = z.infer<typeof ReservationUpdatedEventSchema>;
+export type ReservationUpdatedEvent = z.infer<
+	typeof ReservationUpdatedEventSchema
+>;
 
 /**
  * Reservation Cancelled Event
@@ -111,7 +115,9 @@ export const ReservationCancelledEventSchema = z.object({
 	}),
 });
 
-export type ReservationCancelledEvent = z.infer<typeof ReservationCancelledEventSchema>;
+export type ReservationCancelledEvent = z.infer<
+	typeof ReservationCancelledEventSchema
+>;
 
 export const ReservationEventSchema = z.union([
 	ReservationCreatedEventSchema,

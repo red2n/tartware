@@ -40,7 +40,9 @@ export const BillingPaymentListItemSchema = z.object({
 	gateway_reference: z.string().optional(),
 });
 
-export type BillingPaymentListItem = z.infer<typeof BillingPaymentListItemSchema>;
+export type BillingPaymentListItem = z.infer<
+	typeof BillingPaymentListItemSchema
+>;
 
 /**
  * Billing payment list response schema.
@@ -52,7 +54,9 @@ export const BillingPaymentListResponseSchema = z.object({
 	}),
 });
 
-export type BillingPaymentListResponse = z.infer<typeof BillingPaymentListResponseSchema>;
+export type BillingPaymentListResponse = z.infer<
+	typeof BillingPaymentListResponseSchema
+>;
 
 /**
  * Invoice list item schema for API responses.
@@ -195,7 +199,9 @@ export const ChargePostingListResponseSchema = z.object({
 	}),
 });
 
-export type ChargePostingListResponse = z.infer<typeof ChargePostingListResponseSchema>;
+export type ChargePostingListResponse = z.infer<
+	typeof ChargePostingListResponseSchema
+>;
 
 // =====================================================
 // TAX CONFIGURATIONS
@@ -310,7 +316,9 @@ export const TaxConfigurationListItemSchema = z.object({
 	updated_at: z.string().optional(),
 });
 
-export type TaxConfigurationListItem = z.infer<typeof TaxConfigurationListItemSchema>;
+export type TaxConfigurationListItem = z.infer<
+	typeof TaxConfigurationListItemSchema
+>;
 
 /**
  * Tax configuration list response schema.
@@ -322,4 +330,6 @@ export const TaxConfigurationListResponseSchema = z.object({
 	}),
 });
 
-export type TaxConfigurationListResponse = z.infer<typeof TaxConfigurationListResponseSchema>;
+export type TaxConfigurationListResponse = z.infer<
+	typeof TaxConfigurationListResponseSchema
+>;

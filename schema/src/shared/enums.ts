@@ -117,9 +117,7 @@ export const CommandDispatchStatusEnum = z.enum([
 	"FAILED",
 	"DLQ",
 ]);
-export type CommandDispatchStatus = z.infer<
-	typeof CommandDispatchStatusEnum
->;
+export type CommandDispatchStatus = z.infer<typeof CommandDispatchStatusEnum>;
 
 /**
  * Reservation Command Lifecycle State

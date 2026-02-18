@@ -19,7 +19,11 @@
 
 import { z } from "zod";
 
-import { jsonbMetadata, jsonbSettings, uuid } from "../../shared/base-schemas.js";
+import {
+	jsonbMetadata,
+	jsonbSettings,
+	uuid,
+} from "../../shared/base-schemas.js";
 import {
 	SettingsControlTypeEnum,
 	SettingsDataTypeEnum,
@@ -95,10 +99,15 @@ export const CreateSettingsDefinitionSchema = SettingsDefinitionsSchema.omit({
 	updated_at: true,
 });
 
-export type CreateSettingsDefinition = z.infer<typeof CreateSettingsDefinitionSchema>;
+export type CreateSettingsDefinition = z.infer<
+	typeof CreateSettingsDefinitionSchema
+>;
 
-export const UpdateSettingsDefinitionSchema = SettingsDefinitionsSchema.partial().extend({
-	id: uuid,
-});
+export const UpdateSettingsDefinitionSchema =
+	SettingsDefinitionsSchema.partial().extend({
+		id: uuid,
+	});
 
-export type UpdateSettingsDefinition = z.infer<typeof UpdateSettingsDefinitionSchema>;
+export type UpdateSettingsDefinition = z.infer<
+	typeof UpdateSettingsDefinitionSchema
+>;

@@ -75,15 +75,12 @@ export function registerRecommendationRoutes(app: FastifyInstance) {
       const authContext = (request as unknown as { authContext?: { tenantId: string } })
         .authContext;
       if (!authContext?.tenantId) {
-        return reply.status(401).send({ error: "Unauthorized" });
+        return reply.unauthorized("Unauthorized");
       }
 
       const parsed = RecommendationQuerySchema.safeParse(request.query);
       if (!parsed.success) {
-        return reply.status(400).send({
-          error: "Validation failed",
-          details: parsed.error.issues,
-        });
+        throw parsed.error;
       }
 
       const query = parsed.data;
@@ -164,15 +161,12 @@ export function registerRecommendationRoutes(app: FastifyInstance) {
       const authContext = (request as unknown as { authContext?: { tenantId: string } })
         .authContext;
       if (!authContext?.tenantId) {
-        return reply.status(401).send({ error: "Unauthorized" });
+        return reply.unauthorized("Unauthorized");
       }
 
       const parsed = RankRoomsBodySchema.safeParse(request.body);
       if (!parsed.success) {
-        return reply.status(400).send({
-          error: "Validation failed",
-          details: parsed.error.issues,
-        });
+        throw parsed.error;
       }
 
       const body = parsed.data;

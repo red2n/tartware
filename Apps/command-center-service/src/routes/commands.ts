@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { STATUS_CODES } from "node:http";
 
 import { buildRouteSchema, schemaFromZod } from "@tartware/openapi";
 import {
@@ -8,7 +9,7 @@ import {
   validateCommandPayload,
 } from "@tartware/schemas";
 import type { FastifyInstance } from "fastify";
-import { ZodError, z } from "zod";
+import { z } from "zod";
 
 import { acceptCommand, CommandDispatchError } from "../services/command-dispatch-service.js";
 
@@ -62,19 +63,7 @@ export const registerCommandRoutes = (app: FastifyInstance): void => {
           }
         : null;
 
-      let validatedPayload: Record<string, unknown>;
-      try {
-        validatedPayload = validateCommandPayload(commandName, body.payload);
-      } catch (error) {
-        if (error instanceof ZodError) {
-          return reply.status(400).send({
-            error: "COMMAND_PAYLOAD_INVALID",
-            message: `${commandName} payload failed validation`,
-            issues: error.issues,
-          });
-        }
-        throw error;
-      }
+      const validatedPayload = validateCommandPayload(commandName, body.payload);
 
       try {
         const result = await acceptCommand({
@@ -89,10 +78,17 @@ export const registerCommandRoutes = (app: FastifyInstance): void => {
         return reply.status(202).send(result);
       } catch (error) {
         if (error instanceof CommandDispatchError) {
-          return reply.status(error.statusCode).send({
-            error: error.code,
-            message: error.message,
-          });
+          return reply
+            .status(error.statusCode)
+            .header("content-type", "application/problem+json")
+            .send({
+              type: "about:blank",
+              title: STATUS_CODES[error.statusCode] ?? "Error",
+              status: error.statusCode,
+              detail: error.message,
+              instance: request.url,
+              code: error.code,
+            });
         }
         throw error;
       }

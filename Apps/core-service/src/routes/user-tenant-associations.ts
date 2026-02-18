@@ -101,7 +101,9 @@ export const registerUserTenantAssociationRoutes = (app: FastifyInstance): void 
     async (request) => {
       const authUserId = request.auth.userId;
       if (!authUserId) {
-        throw request.server.httpErrors.unauthorized("AUTHENTICATION_REQUIRED");
+        throw request.server.httpErrors.unauthorized(
+          "You must be logged in to access this resource.",
+        );
       }
 
       const data = AssociationRoleUpdateSchema.parse(request.body);
@@ -168,7 +170,9 @@ export const registerUserTenantAssociationRoutes = (app: FastifyInstance): void 
     async (request) => {
       const authUserId = request.auth.userId;
       if (!authUserId) {
-        throw request.server.httpErrors.unauthorized("AUTHENTICATION_REQUIRED");
+        throw request.server.httpErrors.unauthorized(
+          "You must be logged in to access this resource.",
+        );
       }
 
       const data = AssociationStatusUpdateSchema.parse(request.body);

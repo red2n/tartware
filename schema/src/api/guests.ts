@@ -57,7 +57,9 @@ export const GuestPreferenceListItemSchema = z.object({
 	updated_at: z.string().optional(),
 });
 
-export type GuestPreferenceListItem = z.infer<typeof GuestPreferenceListItemSchema>;
+export type GuestPreferenceListItem = z.infer<
+	typeof GuestPreferenceListItemSchema
+>;
 
 /**
  * Guest document list item schema for API responses.
@@ -123,4 +125,6 @@ export const GuestCommunicationListItemSchema = z.object({
 	created_at: z.string(),
 });
 
-export type GuestCommunicationListItem = z.infer<typeof GuestCommunicationListItemSchema>;
+export type GuestCommunicationListItem = z.infer<
+	typeof GuestCommunicationListItemSchema
+>;

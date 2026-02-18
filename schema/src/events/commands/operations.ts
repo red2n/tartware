@@ -67,3 +67,74 @@ export const OperationsInventoryAdjustCommandSchema = z.object({
 export type OperationsInventoryAdjustCommand = z.infer<
 	typeof OperationsInventoryAdjustCommandSchema
 >;
+
+export const OperationsScheduleCreateCommandSchema = z.object({
+	property_id: z.string().uuid(),
+	user_id: z.string().uuid(),
+	department: z.string().min(1).max(100),
+	schedule_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+	shift_type: z.enum([
+		"morning",
+		"afternoon",
+		"evening",
+		"night",
+		"split",
+		"on_call",
+		"full_day",
+		"custom",
+	]),
+	scheduled_start_time: z.string().regex(/^\d{2}:\d{2}(:\d{2})?$/),
+	scheduled_end_time: z.string().regex(/^\d{2}:\d{2}(:\d{2})?$/),
+	scheduled_hours: z.coerce.number().positive(),
+	role: z.string().max(100).optional(),
+	shift_name: z.string().max(100).optional(),
+	work_location: z.string().max(100).optional(),
+	assigned_area: z.string().max(100).optional(),
+	notes: z.string().max(2000).optional(),
+	metadata: z.record(z.unknown()).optional(),
+	idempotency_key: z.string().max(120).optional(),
+});
+
+export type OperationsScheduleCreateCommand = z.infer<
+	typeof OperationsScheduleCreateCommandSchema
+>;
+
+export const OperationsScheduleUpdateCommandSchema = z.object({
+	schedule_id: z.string().uuid(),
+	property_id: z.string().uuid(),
+	shift_type: z
+		.enum([
+			"morning",
+			"afternoon",
+			"evening",
+			"night",
+			"split",
+			"on_call",
+			"full_day",
+			"custom",
+		])
+		.optional(),
+	scheduled_start_time: z
+		.string()
+		.regex(/^\d{2}:\d{2}(:\d{2})?$/)
+		.optional(),
+	scheduled_end_time: z
+		.string()
+		.regex(/^\d{2}:\d{2}(:\d{2})?$/)
+		.optional(),
+	scheduled_hours: z.coerce.number().positive().optional(),
+	schedule_status: z
+		.enum(["draft", "scheduled", "confirmed", "cancelled", "adjusted"])
+		.optional(),
+	role: z.string().max(100).optional(),
+	shift_name: z.string().max(100).optional(),
+	work_location: z.string().max(100).optional(),
+	assigned_area: z.string().max(100).optional(),
+	notes: z.string().max(2000).optional(),
+	metadata: z.record(z.unknown()).optional(),
+	idempotency_key: z.string().max(120).optional(),
+});
+
+export type OperationsScheduleUpdateCommand = z.infer<
+	typeof OperationsScheduleUpdateCommandSchema
+>;

@@ -202,7 +202,7 @@ export const registerGuestRoutes = (app: FastifyInstance): void => {
       });
 
       if (!guest) {
-        return reply.status(404).send({ error: "Guest not found" });
+        return reply.notFound("Guest not found");
       }
 
       const response = sanitizeForJson(guest);

@@ -100,10 +100,7 @@ const buildDashboardAccessGuard = (
         { path: request.url },
         "Rejected Duplo dashboard request without valid developer token",
       );
-      return reply
-        .code(403)
-        .type("application/json")
-        .send({ error: "DEVELOPER_DASHBOARD_FORBIDDEN" });
+      return reply.forbidden("DEVELOPER_DASHBOARD_FORBIDDEN");
     }
   };
 };
@@ -272,7 +269,7 @@ export const registerDuploDashboard = (
       const html = eta.render("duplo-dashboard", context);
       if (typeof html !== "string") {
         request.log.error("Eta template rendering returned empty output");
-        return reply.code(500).type("text/plain").send("Unable to render Duplo dashboard");
+        return reply.internalServerError("Unable to render Duplo dashboard");
       }
 
       return reply.header("Content-Type", "text/html; charset=utf-8").send(html);

@@ -77,9 +77,10 @@ export type CreateSystemAdministrator = z.infer<
 	typeof CreateSystemAdministratorSchema
 >;
 
-export const UpdateSystemAdministratorSchema = SystemAdministratorSchema.partial().extend({
-	id: uuid,
-});
+export const UpdateSystemAdministratorSchema =
+	SystemAdministratorSchema.partial().extend({
+		id: uuid,
+	});
 export type UpdateSystemAdministrator = z.infer<
 	typeof UpdateSystemAdministratorSchema
 >;

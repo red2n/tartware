@@ -27,6 +27,7 @@ import {
   updateGuestPreferences,
   updateGuestProfile,
 } from "../services/guest-command-service.js";
+import { earnLoyaltyPoints, redeemLoyaltyPoints } from "../services/loyalty-command-service.js";
 
 const consumerLogger = appLogger.child({
   module: "guests-command-center-consumer",
@@ -180,6 +181,22 @@ const routeCommand = async (
       break;
     case "guest.preference.update":
       await updateGuestPreferences({
+        tenantId: metadata.tenantId,
+        payload: envelope.payload,
+        correlationId: metadata.correlationId ?? metadata.requestId,
+        initiatedBy: metadata.initiatedBy ?? null,
+      });
+      break;
+    case "loyalty.points.earn":
+      await earnLoyaltyPoints({
+        tenantId: metadata.tenantId,
+        payload: envelope.payload,
+        correlationId: metadata.correlationId ?? metadata.requestId,
+        initiatedBy: metadata.initiatedBy ?? null,
+      });
+      break;
+    case "loyalty.points.redeem":
+      await redeemLoyaltyPoints({
         tenantId: metadata.tenantId,
         payload: envelope.payload,
         correlationId: metadata.correlationId ?? metadata.requestId,

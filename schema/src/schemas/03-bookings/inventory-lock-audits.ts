@@ -48,9 +48,10 @@ export type CreateInventoryLockAudit = z.infer<
 	typeof CreateInventoryLockAuditsSchema
 >;
 
-export const UpdateInventoryLockAuditsSchema = InventoryLockAuditsSchema.partial().extend({
-	id: uuid,
-});
+export const UpdateInventoryLockAuditsSchema =
+	InventoryLockAuditsSchema.partial().extend({
+		id: uuid,
+	});
 
 export type UpdateInventoryLockAudit = z.infer<
 	typeof UpdateInventoryLockAuditsSchema

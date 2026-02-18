@@ -12,9 +12,7 @@
   "ignoreBinaries": [
     "biome",
     "eslint",
-    "knip",
-    "tsc",
-    "vitest"
+    "knip"
   ],
   "ignoreExportsUsedInFile": {
     "type": true,

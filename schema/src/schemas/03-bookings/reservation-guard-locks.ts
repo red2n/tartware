@@ -35,18 +35,20 @@ export const ReservationGuardLocksSchema = z.object({
 
 export type ReservationGuardLock = z.infer<typeof ReservationGuardLocksSchema>;
 
-export const CreateReservationGuardLocksSchema = ReservationGuardLocksSchema.omit({
-	updated_at: true,
-});
+export const CreateReservationGuardLocksSchema =
+	ReservationGuardLocksSchema.omit({
+		updated_at: true,
+	});
 
 export type CreateReservationGuardLock = z.infer<
 	typeof CreateReservationGuardLocksSchema
 >;
 
-export const UpdateReservationGuardLocksSchema = ReservationGuardLocksSchema.partial().extend({
-	tenant_id: uuid,
-	reservation_id: uuid,
-});
+export const UpdateReservationGuardLocksSchema =
+	ReservationGuardLocksSchema.partial().extend({
+		tenant_id: uuid,
+		reservation_id: uuid,
+	});
 
 export type UpdateReservationGuardLock = z.infer<
 	typeof UpdateReservationGuardLocksSchema

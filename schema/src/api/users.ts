@@ -7,8 +7,10 @@
 
 import { z } from "zod";
 
-import { PublicUserSchema } from "../schemas/01-core/users.js";
-import { UserWithTenantsSchema } from "../schemas/01-core/users.js";
+import {
+	PublicUserSchema,
+	UserWithTenantsSchema,
+} from "../schemas/01-core/users.js";
 import { uuid } from "../shared/base-schemas.js";
 import { TenantRoleEnum } from "../shared/enums.js";
 
@@ -32,7 +34,9 @@ export const TenantUserListResponseSchema = z.array(
 	}),
 );
 
-export type TenantUserListResponse = z.infer<typeof TenantUserListResponseSchema>;
+export type TenantUserListResponse = z.infer<
+	typeof TenantUserListResponseSchema
+>;
 
 // -----------------------------------------------------------------------------
 // Create Tenant User
@@ -60,7 +64,9 @@ export const CreateTenantUserResponseSchema = z.object({
 	message: z.string(),
 });
 
-export type CreateTenantUserResponse = z.infer<typeof CreateTenantUserResponseSchema>;
+export type CreateTenantUserResponse = z.infer<
+	typeof CreateTenantUserResponseSchema
+>;
 
 // -----------------------------------------------------------------------------
 // Reset Password
@@ -73,7 +79,9 @@ export const ResetTenantUserPasswordSchema = z.object({
 	new_password: z.string().min(8).optional(),
 });
 
-export type ResetTenantUserPassword = z.infer<typeof ResetTenantUserPasswordSchema>;
+export type ResetTenantUserPassword = z.infer<
+	typeof ResetTenantUserPasswordSchema
+>;
 
 /** Response after resetting a password. */
 export const ResetTenantUserPasswordResponseSchema = z.object({
@@ -81,7 +89,9 @@ export const ResetTenantUserPasswordResponseSchema = z.object({
 	message: z.string(),
 });
 
-export type ResetTenantUserPasswordResponse = z.infer<typeof ResetTenantUserPasswordResponseSchema>;
+export type ResetTenantUserPasswordResponse = z.infer<
+	typeof ResetTenantUserPasswordResponseSchema
+>;
 
 // -----------------------------------------------------------------------------
 // System User List (system admin scope)
@@ -108,4 +118,6 @@ export const SystemUserListResponseSchema = z.object({
 	offset: z.number().int().nonnegative(),
 });
 
-export type SystemUserListResponse = z.infer<typeof SystemUserListResponseSchema>;
+export type SystemUserListResponse = z.infer<
+	typeof SystemUserListResponseSchema
+>;

@@ -62,6 +62,10 @@ out_of_order_reason TEXT, -- Explanation for out-of-order status
 out_of_order_since TIMESTAMP, -- Timestamp when OOO flag was set
 expected_ready_date TIMESTAMP, -- Planned return-to-service date
 
+-- Deep Clean Tracking
+last_deep_clean_date DATE, -- Date of last deep/periodic clean
+deep_clean_interval_days INTEGER DEFAULT 30, -- Days between deep cleans
+
 -- Notes
 notes TEXT, -- Operational notes visible to staff
 housekeeping_notes TEXT, -- Notes specific to housekeeping staff
@@ -121,5 +125,9 @@ COMMENT ON COLUMN rooms.is_out_of_order IS 'Room out of order/service';
 COMMENT ON COLUMN rooms.out_of_order_reason IS 'Detailed reason for OOO status';
 
 COMMENT ON COLUMN rooms.deleted_at IS 'Soft delete timestamp (NULL = active)';
+
+COMMENT ON COLUMN rooms.last_deep_clean_date IS 'Date of last deep/periodic cleaning cycle';
+
+COMMENT ON COLUMN rooms.deep_clean_interval_days IS 'Interval in days between scheduled deep cleans (default 30)';
 
 \echo 'Rooms table created successfully!'

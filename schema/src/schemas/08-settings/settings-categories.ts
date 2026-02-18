@@ -19,7 +19,7 @@
 
 import { z } from "zod";
 
-import { uuid, jsonbMetadata } from "../../shared/base-schemas.js";
+import { jsonbMetadata, uuid } from "../../shared/base-schemas.js";
 
 /**
  * Catalog of top-level settings categories (e.g., Admin & User Management)
@@ -60,13 +60,18 @@ export const CreateSettingsCategorySchema = SettingsCategoriesSchema.omit({
 	updated_at: true,
 });
 
-export type CreateSettingsCategory = z.infer<typeof CreateSettingsCategorySchema>;
+export type CreateSettingsCategory = z.infer<
+	typeof CreateSettingsCategorySchema
+>;
 
 /**
  * Schema for updating an existing settings category
  */
-export const UpdateSettingsCategorySchema = SettingsCategoriesSchema.partial().extend({
-	id: uuid,
-});
+export const UpdateSettingsCategorySchema =
+	SettingsCategoriesSchema.partial().extend({
+		id: uuid,
+	});
 
-export type UpdateSettingsCategory = z.infer<typeof UpdateSettingsCategorySchema>;
+export type UpdateSettingsCategory = z.infer<
+	typeof UpdateSettingsCategorySchema
+>;

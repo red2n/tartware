@@ -15,6 +15,5 @@
     "@tartware/fastify-server",
     "ast-v8-to-istanbul"
   ],
-  "ignoreBinaries": [],
   "ignoreExportsUsedInFile": true
 }

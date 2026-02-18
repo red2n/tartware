@@ -1,9 +1,9 @@
 -- =====================================================
 -- verify-01-core-foundation.sql
 -- Verification Script for Core Foundation Tables
--- Category: 01-core-foundation (20 tables)
+-- Category: 01-core-foundation (26 tables)
 -- Date: 2025-10-19
--- Updated: 2026-02-12
+-- Updated: 2026-02-18
 -- =====================================================
 
 
@@ -12,14 +12,14 @@
 \echo ''
 \echo '=============================================='
 \echo '  CATEGORY: CORE FOUNDATION VERIFICATION'
-\echo '  Tables: 20 | Description: Multi-tenancy, users, properties, guest management, settings catalogue, command routing, idempotency, outbox'
+\echo '  Tables: 26 | Description: Multi-tenancy, users, properties, guest management, settings catalogue, command routing, idempotency, outbox, buildings, outlets, feature flags, events'
 \echo '=============================================='
 \echo ''
 
 -- =====================================================
 -- 1. CHECK IF ALL TABLES EXIST
 -- =====================================================
-\echo '1. Checking if all 20 tables exist...'
+\echo '1. Checking if all 26 tables exist...'
 
 DO $$
 DECLARE
@@ -43,7 +43,13 @@ DECLARE
         'command_dispatches',
         'command_idempotency',
         'transactional_outbox',
-        'system_admin_break_glass_codes'
+        'system_admin_break_glass_codes',
+        'buildings',
+        'outlets',
+        'meal_periods',
+        'property_feature_flags',
+        'property_events',
+        'announcements'
     ];
     v_table TEXT;
     v_missing_tables TEXT[] := '{}'::TEXT[];
@@ -69,7 +75,7 @@ BEGIN
         RAISE WARNING 'Missing tables: %', array_to_string(v_missing_tables, ', ');
         RAISE EXCEPTION 'Core Foundation verification FAILED - missing tables!';
     ELSE
-        RAISE NOTICE '✓✓✓ All 20 Core Foundation tables exist!';
+        RAISE NOTICE '✓✓✓ All 26 Core Foundation tables exist!';
     END IF;
 END $$;
 
@@ -122,7 +128,13 @@ WHERE
         'command_dispatches',
         'command_idempotency',
         'transactional_outbox',
-        'system_admin_break_glass_codes'
+        'system_admin_break_glass_codes',
+        'buildings',
+        'outlets',
+        'meal_periods',
+        'property_feature_flags',
+        'property_events',
+        'announcements'
     )
     AND t.table_schema = 'public'
 GROUP BY
@@ -165,20 +177,26 @@ BEGIN
         'command_dispatches',
         'command_idempotency',
         'transactional_outbox',
-        'system_admin_break_glass_codes'
+        'system_admin_break_glass_codes',
+        'buildings',
+        'outlets',
+        'meal_periods',
+        'property_feature_flags',
+        'property_events',
+        'announcements'
     )
         AND t.table_schema = 'public';
 
     RAISE NOTICE '';
     RAISE NOTICE 'Category: Core Foundation';
-    RAISE NOTICE 'Tables Found: % / 20', v_table_count;
+    RAISE NOTICE 'Tables Found: % / 26', v_table_count;
     RAISE NOTICE '';
 
-    IF v_table_count = 20 THEN
+    IF v_table_count = 26 THEN
         RAISE NOTICE '✓✓✓ CORE FOUNDATION VERIFICATION PASSED ✓✓✓';
     ELSE
         RAISE WARNING '⚠⚠⚠ CORE FOUNDATION VERIFICATION FAILED ⚠⚠⚠';
-        RAISE WARNING 'Expected 20 tables, found %', v_table_count;
+        RAISE WARNING 'Expected 26 tables, found %', v_table_count;
     END IF;
 END $$;
 

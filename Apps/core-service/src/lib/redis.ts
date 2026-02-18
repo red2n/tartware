@@ -35,6 +35,7 @@
 import Redis from "ioredis";
 
 import { config } from "../config.js";
+
 import { appLogger } from "./logger.js";
 
 const redisLogger = appLogger.child({ module: "redis" });

@@ -7,11 +7,13 @@
 
 export * from "./analytics.js";
 export * from "./billing.js";
+export * from "./compliance.js";
 export * from "./groups.js";
 export * from "./guests.js";
 export * from "./housekeeping.js";
 export * from "./integrations.js";
 export * from "./inventory.js";
+export * from "./loyalty.js";
 export * from "./notifications.js";
 export * from "./operations.js";
 export * from "./reservations.js";

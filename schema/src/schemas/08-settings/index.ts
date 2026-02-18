@@ -22,7 +22,7 @@
  */
 
 export * from "./settings-categories.js";
-export * from "./settings-sections.js";
 export * from "./settings-definitions.js";
 export * from "./settings-options.js";
+export * from "./settings-sections.js";
 export * from "./settings-values.js";

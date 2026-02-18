@@ -1,4 +1,6 @@
 import {
+  type DeepCleanDueItem,
+  DeepCleanDueItemSchema,
   type HousekeepingTaskListItem,
   HousekeepingTaskListItemSchema,
   type IncidentReportListItem,
@@ -9,6 +11,9 @@ import {
 
 import { query } from "../lib/db.js";
 import {
+  DEEP_CLEAN_DUE_SQL,
+  HOUSEKEEPING_INSPECTION_LIST_SQL,
+  HOUSEKEEPING_SCHEDULE_LIST_SQL,
   HOUSEKEEPING_TASK_LIST_SQL,
   INCIDENT_REPORT_BY_ID_SQL,
   INCIDENT_REPORT_LIST_SQL,
@@ -139,6 +144,131 @@ export const listHousekeepingTasks = async (options: {
   ]);
 
   return rows.map(mapRowToTask);
+};
+
+/**
+ * List housekeeping schedules (tasks with scheduled dates).
+ */
+export const listHousekeepingSchedules = async (options: {
+  limit?: number;
+  tenantId: string;
+  propertyId?: string;
+  dateFrom?: string;
+  dateTo?: string;
+  offset?: number;
+}): Promise<HousekeepingTask[]> => {
+  const limit = options.limit ?? 200;
+  const tenantId = options.tenantId;
+  const propertyId = options.propertyId ?? null;
+  const dateFrom = options.dateFrom ?? null;
+  const dateTo = options.dateTo ?? null;
+  const offset = options.offset ?? 0;
+
+  const { rows } = await query<HousekeepingTaskRow>(HOUSEKEEPING_SCHEDULE_LIST_SQL, [
+    limit,
+    tenantId,
+    propertyId,
+    dateFrom,
+    dateTo,
+    offset,
+  ]);
+
+  return rows.map(mapRowToTask);
+};
+
+/**
+ * List housekeeping inspections (tasks that have been inspected).
+ */
+export const listHousekeepingInspections = async (options: {
+  limit?: number;
+  tenantId: string;
+  propertyId?: string;
+  passed?: boolean;
+  dateFrom?: string;
+  dateTo?: string;
+  offset?: number;
+}): Promise<HousekeepingTask[]> => {
+  const limit = options.limit ?? 200;
+  const tenantId = options.tenantId;
+  const propertyId = options.propertyId ?? null;
+  const passed = options.passed ?? null;
+  const dateFrom = options.dateFrom ?? null;
+  const dateTo = options.dateTo ?? null;
+  const offset = options.offset ?? 0;
+
+  const { rows } = await query<HousekeepingTaskRow>(HOUSEKEEPING_INSPECTION_LIST_SQL, [
+    limit,
+    tenantId,
+    propertyId,
+    passed,
+    dateFrom,
+    dateTo,
+    offset,
+  ]);
+
+  return rows.map(mapRowToTask);
+};
+
+// ============================================================================
+// DEEP CLEAN DUE (IS-1)
+// ============================================================================
+
+type DeepCleanDueRow = {
+  room_id: string;
+  tenant_id: string;
+  property_id: string;
+  property_name: string | null;
+  room_number: string;
+  room_type_name: string | null;
+  floor: string | null;
+  status: string;
+  housekeeping_status: string;
+  last_deep_clean_date: string | Date | null;
+  deep_clean_interval_days: number | string;
+  days_since_deep_clean: number | string | null;
+  days_overdue: number | string | null;
+};
+
+const mapDeepCleanDueRow = (row: DeepCleanDueRow): DeepCleanDueItem => {
+  return DeepCleanDueItemSchema.parse({
+    room_id: row.room_id,
+    tenant_id: row.tenant_id,
+    property_id: row.property_id,
+    property_name: row.property_name ?? undefined,
+    room_number: row.room_number,
+    room_type_name: row.room_type_name ?? undefined,
+    floor: row.floor ?? undefined,
+    status: row.status,
+    housekeeping_status: row.housekeeping_status,
+    last_deep_clean_date: row.last_deep_clean_date
+      ? row.last_deep_clean_date instanceof Date
+        ? row.last_deep_clean_date.toISOString().split("T")[0]
+        : String(row.last_deep_clean_date).split("T")[0]
+      : null,
+    deep_clean_interval_days: toNumberOrFallback(row.deep_clean_interval_days, 30),
+    days_since_deep_clean:
+      row.days_since_deep_clean != null ? toNumberOrFallback(row.days_since_deep_clean, 0) : null,
+    days_overdue: row.days_overdue != null ? toNumberOrFallback(row.days_overdue, 0) : null,
+  });
+};
+
+/**
+ * List rooms that are due for deep cleaning based on their configured interval.
+ */
+export const listDeepCleanDueRooms = async (options: {
+  limit?: number;
+  tenantId: string;
+  propertyId?: string;
+  offset?: number;
+}): Promise<DeepCleanDueItem[]> => {
+  const { rows } = await query<DeepCleanDueRow>(DEEP_CLEAN_DUE_SQL, [
+    options.limit ?? 200,
+    options.tenantId,
+    options.propertyId ?? null,
+    options.offset ?? 0,
+  ]);
+
+  return rows.map(mapDeepCleanDueRow);
 };
 
 // =====================================================

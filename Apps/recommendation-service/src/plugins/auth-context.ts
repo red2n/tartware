@@ -37,7 +37,7 @@ async function authContextPluginFn(app: FastifyInstance) {
 
     const authHeader = request.headers.authorization;
     if (!authHeader?.startsWith("Bearer ")) {
-      return reply.status(401).send({ error: "Missing authorization header" });
+      return reply.unauthorized("Missing authorization header");
     }
 
     const token = authHeader.slice(7);
@@ -53,7 +53,7 @@ async function authContextPluginFn(app: FastifyInstance) {
         (Array.isArray(tenantIdHeader) ? tenantIdHeader[0] : tenantIdHeader) || decoded.tenantId;
 
       if (!tenantId) {
-        return reply.status(400).send({ error: "Missing x-tenant-id header" });
+        return reply.badRequest("Missing x-tenant-id header");
       }
 
       request.authContext = {
@@ -63,7 +63,7 @@ async function authContextPluginFn(app: FastifyInstance) {
         role: decoded.role,
       };
     } catch {
-      return reply.status(401).send({ error: "Invalid token" });
+      return reply.unauthorized("Invalid token");
     }
   });
 }

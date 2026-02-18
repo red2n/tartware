@@ -1,6 +1,6 @@
 ###############################################################################
 # BILLING SERVICE - Payments & Invoices
-# Routes via API Gateway (localhost:8080) -> billing-service (port 3600)
+# Routes via API Gateway (localhost:8080) -> billing-service (port 3025)
 #
 # Content: Payment Listing and Filtering (READ OPERATIONS)
 #

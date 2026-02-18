@@ -31,6 +31,10 @@
 \ir 01-core/11_system_admin_break_glass_codes.sql
 \ir 01-core/12_settings_seed.sql
 \ir 01-core/13_command_idempotency.sql
+\ir 01-core/14_buildings.sql
+\ir 01-core/15_outlets.sql
+\ir 01-core/16_property_feature_flags.sql
+\ir 01-core/17_property_events.sql
 
 -- ============================================================================
 -- CATEGORY 2: INVENTORY (Rooms, rates, availability, revenue management)
@@ -81,6 +85,9 @@
 \ir 03-bookings/55_reservation_rate_fallbacks.sql
 \ir 03-bookings/56_overbooking_config.sql
 \ir 03-bookings/57_walk_history.sql
+\ir 03-bookings/58_loyalty_point_transactions.sql
+\ir 03-bookings/59_loyalty_tier_rules.sql
+\ir 03-bookings/60_lost_business.sql
 -- Shadow observability (Roll Service parity + Availability Guard metadata)
 \echo '    - Shadow roll ledgers, checkpoints, and guard audit tables'
 \ir 03-bookings/90_roll_service_shadow_ledgers.sql
@@ -109,6 +116,7 @@
 \ir 04-financial/69_payment_tokens.sql
 \ir 04-financial/70_general_ledger_batches.sql
 \ir 04-financial/71_general_ledger_entries.sql
+\ir 04-financial/72_comp_accounting.sql
 
 -- ============================================================================
 -- CATEGORY 5: OPERATIONS (Services, housekeeping, staff, mobile, assets)
@@ -170,6 +178,8 @@
 \ir 06-integrations/99_pricing_experiments.sql
 \ir 06-integrations/96_guest_behavior_patterns.sql
 \ir 06-integrations/97_sentiment_analysis.sql
+\ir 06-integrations/47_metasearch_configurations.sql
+\ir 06-integrations/48_metasearch_click_log.sql
 
 -- ============================================================================
 -- CATEGORY 7: ANALYTICS (Reporting, compliance, audit, sustainability)
@@ -219,6 +229,15 @@
 \ir 09-reference-data/05_group_booking_types.sql
 \ir 09-reference-data/06_company_types.sql
 \ir 09-reference-data/07_charge_codes.sql
+\ir 09-reference-data/08_reason_codes.sql
+\ir 09-reference-data/09_pet_types.sql
+
+-- =========================================================================
+-- CATEGORY 10: COMPLIANCE (Data retention, breach tracking)
+-- =========================================================================
+\echo '>>> Category 10: COMPLIANCE'
+\ir 10-compliance/01_data_retention_policies.sql
+\ir 10-compliance/02_data_breach_incidents.sql
 
 \echo '>>> Enforcing tenant_id and soft delete coverage'
 \ir 99_enforce_tenant_soft_delete.sql

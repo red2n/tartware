@@ -2,6 +2,7 @@ import process from "node:process";
 
 import { ensureDependencies, parseHostPort, resolveOtelDependency } from "@tartware/config";
 import { createServiceLogger, initTelemetry } from "@tartware/telemetry";
+
 import {
   shutdownRevenueCommandCenterConsumer,
   startRevenueCommandCenterConsumer,

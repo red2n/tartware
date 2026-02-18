@@ -5,10 +5,13 @@ import { appLogger } from "./lib/logger.js";
 import { metricsRegistry } from "./lib/metrics.js";
 import authContextPlugin from "./plugins/auth-context.js";
 import swaggerPlugin from "./plugins/swagger.js";
+import { registerDeepCleanRoutes } from "./routes/deep-clean.js";
 import { registerHealthRoutes } from "./routes/health.js";
 import { registerHousekeepingRoutes } from "./routes/housekeeping.js";
 import { registerIncidentRoutes } from "./routes/incidents.js";
+import { registerInspectionRoutes } from "./routes/inspections.js";
 import { registerMaintenanceRoutes } from "./routes/maintenance.js";
+import { registerScheduleRoutes } from "./routes/schedules.js";
 
 export const buildServer = (): FastifyInstance => {
   const app = buildFastifyServer({
@@ -24,6 +27,9 @@ export const buildServer = (): FastifyInstance => {
     registerRoutes: (app) => {
       registerHealthRoutes(app);
       registerHousekeepingRoutes(app);
+      registerDeepCleanRoutes(app);
+      registerScheduleRoutes(app);
+      registerInspectionRoutes(app);
       registerMaintenanceRoutes(app);
       registerIncidentRoutes(app);
     },

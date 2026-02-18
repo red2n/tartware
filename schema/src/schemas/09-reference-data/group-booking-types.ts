@@ -23,7 +23,7 @@
 
 import { z } from "zod";
 
-import { uuid, percentage } from "../../shared/base-schemas.js";
+import { percentage, uuid } from "../../shared/base-schemas.js";
 
 /**
  * Dynamic field validation - actual values enforced by database CHECK constraints.

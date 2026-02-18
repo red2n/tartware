@@ -136,7 +136,7 @@ export const registerEventRoutes = (app: FastifyInstance): void => {
       const { tenant_id } = z.object({ tenant_id: z.string().uuid() }).parse(request.query);
       const room = await getMeetingRoomById({ roomId, tenantId: tenant_id });
       if (!room) {
-        return reply.status(404).send({ error: "Meeting room not found" });
+        return reply.notFound("Meeting room not found");
       }
       return MeetingRoomListItemSchema.parse(room);
     },
@@ -272,7 +272,7 @@ export const registerEventRoutes = (app: FastifyInstance): void => {
       const { tenant_id } = z.object({ tenant_id: z.string().uuid() }).parse(request.query);
       const event = await getEventBookingById({ eventId, tenantId: tenant_id });
       if (!event) {
-        return reply.status(404).send({ error: "Event booking not found" });
+        return reply.notFound("Event booking not found");
       }
       return EventBookingListItemSchema.parse(event);
     },

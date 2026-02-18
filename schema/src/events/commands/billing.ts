@@ -144,17 +144,19 @@ export type BillingFolioTransferCommand = z.infer<
  * Transfer a specific charge posting from one folio to another.
  * Creates TRANSFER-type audit records on both folios.
  */
-export const BillingChargeTransferCommandSchema = z.object({
-	posting_id: z.string().uuid(),
-	to_folio_id: z.string().uuid().optional(),
-	to_reservation_id: z.string().uuid().optional(),
-	reason: z.string().max(500).optional(),
-	metadata: z.record(z.unknown()).optional(),
-	idempotency_key: z.string().max(120).optional(),
-}).refine(
-	(v) => Boolean(v.to_folio_id || v.to_reservation_id),
-	"to_folio_id or to_reservation_id is required",
-);
+export const BillingChargeTransferCommandSchema = z
+	.object({
+		posting_id: z.string().uuid(),
+		to_folio_id: z.string().uuid().optional(),
+		to_reservation_id: z.string().uuid().optional(),
+		reason: z.string().max(500).optional(),
+		metadata: z.record(z.unknown()).optional(),
+		idempotency_key: z.string().max(120).optional(),
+	})
+	.refine(
+		(v) => Boolean(v.to_folio_id || v.to_reservation_id),
+		"to_folio_id or to_reservation_id is required",
+	);
 
 export type BillingChargeTransferCommand = z.infer<
 	typeof BillingChargeTransferCommandSchema
@@ -166,12 +168,16 @@ export type BillingChargeTransferCommand = z.infer<
  */
 export const BillingFolioSplitCommandSchema = z.object({
 	posting_id: z.string().uuid(),
-	splits: z.array(z.object({
-		folio_id: z.string().uuid().optional(),
-		reservation_id: z.string().uuid().optional(),
-		amount: z.coerce.number().positive(),
-		description: z.string().max(500).optional(),
-	})).min(2, "At least two split targets are required"),
+	splits: z
+		.array(
+			z.object({
+				folio_id: z.string().uuid().optional(),
+				reservation_id: z.string().uuid().optional(),
+				amount: z.coerce.number().positive(),
+				description: z.string().max(500).optional(),
+			}),
+		)
+		.min(2, "At least two split targets are required"),
 	reason: z.string().max(500).optional(),
 	metadata: z.record(z.unknown()).optional(),
 	idempotency_key: z.string().max(120).optional(),
@@ -441,7 +447,9 @@ export const BillingCashierOpenCommandSchema = z.object({
 	cashier_id: z.string().uuid(),
 	cashier_name: z.string().max(200),
 	terminal_id: z.string().max(50).optional(),
-	shift_type: z.enum(["morning", "afternoon", "night", "full_day"]).default("full_day"),
+	shift_type: z
+		.enum(["morning", "afternoon", "night", "full_day"])
+		.default("full_day"),
 	opening_float: z.coerce.number().nonnegative().default(0),
 	business_date: z.coerce.date().optional(),
 	metadata: z.record(z.unknown()).optional(),
@@ -486,9 +494,9 @@ export const BillingPricingEvaluateCommandSchema = z.object({
 	/** Current property occupancy percentage (0-100). */
 	occupancy_percent: z.coerce.number().min(0).max(100).optional(),
 	/** Demand level for the day: very_low to exceptional. */
-	demand_level: z.enum([
-		"very_low", "low", "moderate", "high", "very_high", "exceptional",
-	]).optional(),
+	demand_level: z
+		.enum(["very_low", "low", "moderate", "high", "very_high", "exceptional"])
+		.optional(),
 	/** Days until arrival for advance-purchase / last-minute rules. */
 	days_until_arrival: z.coerce.number().int().nonnegative().optional(),
 	/** Guest's requested length of stay (nights). */
