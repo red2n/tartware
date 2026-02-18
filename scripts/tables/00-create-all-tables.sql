@@ -35,6 +35,9 @@
 \ir 01-core/15_outlets.sql
 \ir 01-core/16_property_feature_flags.sql
 \ir 01-core/17_property_events.sql
+\ir 01-core/18_field_configurations.sql
+\ir 01-core/19_user_ui_preferences.sql
+\ir 01-core/20_import_export_jobs.sql
 
 -- ============================================================================
 -- CATEGORY 2: INVENTORY (Rooms, rates, availability, revenue management)
