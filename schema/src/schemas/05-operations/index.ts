@@ -36,6 +36,7 @@ export * from "./push-notifications.js";
 export * from "./qr-codes.js";
 export * from "./reservation-services.js";
 export * from "./room-energy-usage.js";
+export * from "./self-service-configurations.js";
 export * from "./services.js";
 export * from "./shift-handovers.js";
 export * from "./shuttle-schedules.js";

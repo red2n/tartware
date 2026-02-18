@@ -31,6 +31,7 @@
  */
 
 export * from "./company-types.js";
+export * from "./departments.js";
 export * from "./group-booking-types.js";
 export * from "./payment-methods.js";
 export * from "./pet-registrations.js";

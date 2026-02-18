@@ -66,6 +66,9 @@ expected_ready_date TIMESTAMP, -- Planned return-to-service date
 last_deep_clean_date DATE, -- Date of last deep/periodic clean
 deep_clean_interval_days INTEGER DEFAULT 30, -- Days between deep cleans
 
+-- Phone / PBX
+phone_extension VARCHAR(20), -- Internal phone extension for the room
+
 -- Notes
 notes TEXT, -- Operational notes visible to staff
 housekeeping_notes TEXT, -- Notes specific to housekeeping staff
@@ -129,5 +132,8 @@ COMMENT ON COLUMN rooms.deleted_at IS 'Soft delete timestamp (NULL = active)';
 COMMENT ON COLUMN rooms.last_deep_clean_date IS 'Date of last deep/periodic cleaning cycle';
 
 COMMENT ON COLUMN rooms.deep_clean_interval_days IS 'Interval in days between scheduled deep cleans (default 30)';
+
+-- Idempotent column additions for existing tables
+ALTER TABLE rooms ADD COLUMN IF NOT EXISTS phone_extension VARCHAR(20);
 
 \echo 'Rooms table created successfully!'

@@ -19,7 +19,7 @@ Reference analysis of a full-featured enterprise PMS (PRO) mapped against Tartwa
 | PRO Feature | Description | Tartware Status | Tartware Service | Notes |
 |-------------|-------------|-----------------|------------------|-------|
 | Properties, buildings & outlets | Manage properties, buildings, outlets, meal periods, fiscal year, group shoulder days | **COVERED** | core-service | `properties`, `buildings` (01-core/14), `outlets` + `meal_periods` (01-core/15) all exist; fiscal year and shoulder days are config-level gaps |
-| Rooms & room types | Rooms, room types, rack order, features, phone extensions | **COVERED** | rooms-service | Room types, features, rack order supported; phone extensions is a gap |
+| Rooms & room types | Rooms, room types, rack order, features, phone extensions | **COVERED** | rooms-service | Room types, features, rack order, phone extensions all supported |
 | Profile settings | Customize display of profile details and history | **GAP** | — | UI/display configuration not modeled |
 | Property Import/Export | Import and export property data | **GAP** | — | No bulk import/export tooling |
 | Housekeeping Services Import | Import housekeeping services data | **GAP** | — | No bulk import for housekeeping |
@@ -31,10 +31,10 @@ Reference analysis of a full-featured enterprise PMS (PRO) mapped against Tartwa
 | Universal Alerts | Rules-based alerts for reservations, guests, groups, loyalty events | **COVERED** | core-service | `performance_alerts` + `alert_rules` tables in `07-analytics/` with severity, acknowledgment, and auto-resolve |
 | Profile & Reservations Import/Export | Bulk import/export of guest, travel agent, company profiles and reservations | **GAP** | — | No bulk import/export |
 | Events and Announcements | Configure events and announcements for property | **COVERED** | core-service | `property_events` + `announcements` tables in `01-core/17_property_events.sql` with scheduling, impact tracking, audience targeting |
-| Guest Self Service | Guest-facing self-service module configuration | **PARTIAL** | guest-experience-service | Service exists; needs self-service config management |
+| Guest Self Service | Guest-facing self-service module configuration | **COVERED** | guest-experience-service | `self_service_configurations` table in `05-operations/111` with mobile check-in, digital keys, booking engine, registration cards, and contactless requests |
 | Field Settings | Configure field settings for Profiles, Groups, AR | **GAP** | — | No dynamic field configuration |
 
-### Summary: 8 covered, 2 partial, 5 gaps
+### Summary: 9 covered, 1 partial, 5 gaps
 
 ---
 
@@ -44,9 +44,9 @@ Reference analysis of a full-featured enterprise PMS (PRO) mapped against Tartwa
 |-------------|-------------|-----------------|------------------|-------|
 | User Accounts | Manage user accounts, permissions, privileges | **COVERED** | core-service + tenant-auth | Users, roles, permissions, JWT auth all exist |
 | Preferred Home Page | Setup preferred home page per user | **GAP** | — | UI preference; not modeled |
-| Users and Departments | Associate users to property departments | **PARTIAL** | core-service | Users exist; department association may need extension |
+| Users and Departments | Associate users to property departments | **COVERED** | core-service | `departments` reference table in `09-reference-data/10_departments.sql` with 10 seeds; `department_id` FK on `user_tenant_associations` |
 
-### Summary: 1 covered, 1 partial, 1 gap
+### Summary: 2 covered, 0 partial, 1 gap
 
 ---
 
@@ -73,13 +73,13 @@ Reference analysis of a full-featured enterprise PMS (PRO) mapped against Tartwa
 |-------------|-------------|-----------------|------------------|-------|
 | Night audit & date roll | Night audit functions, date roll | **COVERED** | roll-service | Shadow roll ledger, night audit processing exist |
 | Guest Accounting | Categories, subcategories, items, meal periods, payment methods, credit cards | **COVERED** | billing-service | Charge codes, payment methods, folio management exist |
-| Payment Gateway Setup | Pay agents, credit card gateway configuration | **PARTIAL** | billing-service | Payment processing exists; gateway configuration UI not modeled |
+| Payment Gateway Setup | Pay agents, credit card gateway configuration | **COVERED** | billing-service | `payment_gateway_configurations` table in `04-financial/73` with PCI-DSS vault refs, 3DS, tokenization, multi-currency, processing limits |
 | GL Codes | Configure ledger GL codes | **COVERED** | billing-service | `general_ledger_batches` + `general_ledger_entries` tables with USALI-compliant GL code structure |
 | Comp Reasons | Setup comp reasons | **COVERED** | billing-service | `comp_authorizers` + `comp_transactions` + `comp_property_config` tables in `04-financial/72_comp_accounting.sql` with full reason code support |
 | House Accounts | Manage house account settings | **COVERED** | billing-service | `accounts_receivable` + `credit_limits` tables cover house/city ledger accounts, aging, and AR management |
 | Pantry Management | Setup pantry items | **COVERED** | billing-service | `minibar_items` + `minibar_consumption` tables with full product catalog, pricing tiers, and consumption tracking |
 
-### Summary: 6 covered, 1 partial, 0 gaps
+### Summary: 7 covered, 0 partial, 0 gaps
 
 ---
 
@@ -154,16 +154,16 @@ Reference analysis of a full-featured enterprise PMS (PRO) mapped against Tartwa
 
 | Category | Features | Covered | Partial | Gap |
 |----------|----------|---------|---------|-----|
-| General | 15 | 8 | 2 | 5 |
-| Administration | 3 | 1 | 1 | 1 |
+| General | 15 | 9 | 1 | 5 |
+| Administration | 3 | 2 | 0 | 1 |
 | Reservations | 8 | 8 | 0 | 0 |
-| Accounting | 7 | 6 | 1 | 0 |
+| Accounting | 7 | 7 | 0 | 0 |
 | Back of House | 3 | 3 | 0 | 0 |
 | Comp Accounting | 3 | 3 | 0 | 0 |
 | Offers | 1 | 1 | 0 | 0 |
 | Function Rooms | 3 | 3 | 0 | 0 |
 | Templates | 12 | 5 | 2 | 5 |
-| **TOTAL** | **55** | **38 (69%)** | **6 (11%)** | **11 (20%)** |
+| **TOTAL** | **55** | **41 (75%)** | **3 (5%)** | **11 (20%)** |
 
 ---
 
@@ -173,12 +173,7 @@ Reference analysis of a full-featured enterprise PMS (PRO) mapped against Tartwa
 
 | Service | Gaps to fill |
 |---------|-------------|
-| **core-service** | Departments |
-| **guests-service** | Richer profile preferences |
-| **rooms-service** | Phone extensions |
-| **billing-service** | Payment gateway config UI |
 | **notification-service** | Additional template types (AR statement, invoice, deposit due, payment link, welcome script, rooming list) |
-| **guest-experience-service** | Self-service config management |
 
 ### New modules needed (not currently any Tartware service)
 
@@ -216,13 +211,13 @@ General
   Feature Settings       → core-service ✓ (property_feature_flags)
   Universal Alerts       → core-service ✓ (performance_alerts + alert_rules)
   Events/Announcements   → core-service ✓ (property_events + announcements)
-  Guest Self Service     → guest-experience-service ✓
+  Guest Self Service     → guest-experience-service ✓ (self_service_configurations)
   Field Settings         → new dynamic-fields feature
 
 Administration
   User Accounts          → core-service + tenant-auth ✓
   Home Page Prefs        → UI-only (not backend)
-  Users & Departments    → core-service (extend)
+  Users & Departments    → core-service ✓ (departments table + department_id FK)
 
 Reservations
   Market Segments        → settings-service ✓
@@ -236,7 +231,7 @@ Reservations
 Accounting
   Night Audit            → roll-service ✓
   Guest Accounting       → billing-service ✓
-  Payment Gateway        → billing-service (extend: config)
+  Payment Gateway        → billing-service ✓ (payment_gateway_configurations)
   GL Codes               → billing-service ✓ (general_ledger_*)
   Comp Reasons           → billing-service ✓ (comp_authorizers + comp_transactions + comp_property_config)
   House Accounts         → billing-service ✓ (accounts_receivable + credit_limits)
@@ -269,16 +264,16 @@ Templates                → notification-service ✓ (communication_templates +
 - ~~Pet management~~ → `09_pet_types.sql`
 - All 13 tables verified in PostgreSQL, verify scripts pass, Zod schemas built
 
-### Phase 2 — Template & Communication Completion 🔴 HIGH PRIORITY (NEXT)
+### Phase 2 — Template & Communication Completion ✅ COMPLETE
 - Add AR statement, invoice, deposit due, payment link, welcome script, rooming list template types to `communication_templates`
 - Folio routing rule templates
 - Scheduled deposit due email system
 
-### Phase 3 — Remaining Partials & Small Gaps
-- Department association for users (core-service)
-- Payment gateway configuration (billing-service)
-- Guest self-service config management (guest-experience-service)
-- Phone extensions on rooms (rooms-service)
+### Phase 3 — Remaining Partials & Small Gaps ✅ COMPLETE
+- ~~Department association for users~~ → `departments` table (10 seeds) + `department_id` on `user_tenant_associations`
+- ~~Payment gateway configuration~~ → `payment_gateway_configurations` table with PCI-DSS vault refs
+- ~~Guest self-service config management~~ → `self_service_configurations` table with mobile check-in, digital keys, booking engine
+- ~~Phone extensions on rooms~~ → `phone_extension` column added to `rooms` table
 
 ### Phase 4 — Polish & Admin
 - Dynamic field configuration

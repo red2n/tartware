@@ -36,6 +36,9 @@ permissions JSONB DEFAULT '{
         "restrictions": {}
     }'::jsonb, -- Optional overrides for property-level access
 
+-- Department Assignment
+department_id UUID, -- FK departments.department_id — primary department for this tenant
+
 -- Module Access (which modules user can access for this tenant)
 modules JSONB DEFAULT '["core"]'::jsonb, -- Enabled modules: core, reservations, housekeeping, billing, etc.
 
@@ -84,5 +87,8 @@ COMMENT ON COLUMN user_tenant_associations.permissions IS 'Fine-grained permissi
 COMMENT ON COLUMN user_tenant_associations.valid_from IS 'Access valid from date (optional)';
 
 COMMENT ON COLUMN user_tenant_associations.valid_until IS 'Access valid until date (optional)';
+
+-- Idempotent column additions for existing tables
+ALTER TABLE user_tenant_associations ADD COLUMN IF NOT EXISTS department_id UUID;
 
 \echo 'User_tenant_associations table created successfully!'

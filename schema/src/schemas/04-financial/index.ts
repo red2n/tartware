@@ -30,6 +30,7 @@ export * from "./general-ledger-batches.js";
 export * from "./general-ledger-entries.js";
 export * from "./invoice-items.js";
 export * from "./invoices.js";
+export * from "./payment-gateway-configurations.js";
 export * from "./payment-tokens.js";
 export * from "./payments.js";
 export * from "./refunds.js";

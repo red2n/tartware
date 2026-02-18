@@ -54,6 +54,7 @@ export const RoomsSchema = z.object({
 	expected_ready_date: z.coerce.date().optional(),
 	last_deep_clean_date: z.coerce.date().optional(),
 	deep_clean_interval_days: z.number().int().optional(),
+	phone_extension: z.string().max(20).optional(),
 	notes: z.string().optional(),
 	housekeeping_notes: z.string().optional(),
 	metadata: z.record(z.unknown()).optional(),
