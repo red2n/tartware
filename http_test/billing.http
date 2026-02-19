@@ -343,7 +343,26 @@ GET {{baseUrl}}/v1/billing/tax-configurations/{{taxConfigId}}?tenant_id={{tenant
 Authorization: Bearer {{authToken}}
 
 ###############################################################################
-# 7. REST-STYLE COMMAND DISPATCH
+# 7. BILLING CASHIER SESSIONS - READ
+###############################################################################
+
+# List all cashier sessions (billing-service)
+GET {{baseUrl}}/v1/billing/cashier-sessions?tenant_id={{tenantId}}&limit=50
+Authorization: Bearer {{authToken}}
+
+###
+# List cashier sessions for specific property
+GET {{baseUrl}}/v1/billing/cashier-sessions?tenant_id={{tenantId}}&property_id={{propertyId}}&limit=50
+Authorization: Bearer {{authToken}}
+
+###
+# Get cashier session by ID
+@cashierSessionId = cccccccc-cccc-cccc-cccc-cccccccccccc
+GET {{baseUrl}}/v1/billing/cashier-sessions/{{cashierSessionId}}?tenant_id={{tenantId}}
+Authorization: Bearer {{authToken}}
+
+###############################################################################
+# 8. REST-STYLE COMMAND DISPATCH
 # Alternative to /v1/commands/{name}/execute pattern
 # These routes dispatch commands via the gateway
 ###############################################################################

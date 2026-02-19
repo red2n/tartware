@@ -160,6 +160,32 @@ Authorization: Bearer {{authToken}}
 }
 
 ###############################################################################
+# 4B. ROOM TYPES - PARTIAL UPDATE (PATCH)
+###############################################################################
+
+###
+# Partial update - change only base price
+PATCH {{baseUrl}}/v1/room-types/{{roomTypeId}}
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+
+{
+  "tenant_id": "{{tenantId}}",
+  "base_price": 229.00
+}
+
+###
+# Partial update - update amenities only
+PATCH {{baseUrl}}/v1/room-types/{{roomTypeId}}
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+
+{
+  "tenant_id": "{{tenantId}}",
+  "amenities": ["WIFI", "SMART_TV", "WORK_DESK", "RAIN_SHOWER", "COFFEE_MAKER", "MINIBAR"]
+}
+
+###############################################################################
 # 5. ROOMS - READ
 ###############################################################################
 
@@ -180,6 +206,25 @@ Authorization: Bearer {{authToken}}
 ###
 # Filter rooms by housekeeping status
 GET {{baseUrl}}/v1/rooms?tenant_id={{tenantId}}&housekeeping_status=clean
+Authorization: Bearer {{authToken}}
+
+###############################################################################
+# 5A. ROOM AVAILABILITY SEARCH
+# Search for available rooms across a date range
+###############################################################################
+
+### Search available rooms for dates
+GET {{baseUrl}}/v1/rooms/availability?tenant_id={{tenantId}}&property_id={{propertyId}}&check_in_date=2026-03-15&check_out_date=2026-03-18&adults=2&children=0
+Authorization: Bearer {{authToken}}
+
+###
+# Search available rooms with room type filter
+GET {{baseUrl}}/v1/rooms/availability?tenant_id={{tenantId}}&property_id={{propertyId}}&check_in_date=2026-03-15&check_out_date=2026-03-18&room_type_id={{roomTypeId}}&adults=2&children=0
+Authorization: Bearer {{authToken}}
+
+###
+# Search available rooms for family (with children)
+GET {{baseUrl}}/v1/rooms/availability?tenant_id={{tenantId}}&property_id={{propertyId}}&check_in_date=2026-04-01&check_out_date=2026-04-05&adults=2&children=2
 Authorization: Bearer {{authToken}}
 
 ###############################################################################

@@ -1,0 +1,46 @@
+###############################################################################
+# HEALTH - API Gateway Health & Readiness
+# Direct gateway routes (localhost:8080) - no auth required
+#
+# Content: Gateway liveness, readiness, aggregated backend health, CORS
+#
+# Related files:
+# - core-service.http - Auth and tenant/property endpoints
+###############################################################################
+
+# --- VARIABLES ---
+@baseUrl = http://localhost:8080
+
+###############################################################################
+# 1. GATEWAY LIVENESS
+###############################################################################
+
+# Gateway health check (no auth needed)
+GET {{baseUrl}}/health
+
+###############################################################################
+# 2. GATEWAY READINESS (includes Kafka status)
+###############################################################################
+
+###
+# Readiness check - confirms Kafka connectivity
+GET {{baseUrl}}/ready
+
+###############################################################################
+# 3. AGGREGATED BACKEND HEALTH
+###############################################################################
+
+###
+# Health of all backend services (core, settings, guests, rooms, etc.)
+# Returns 200 if all healthy, 503 if any degraded
+GET {{baseUrl}}/health/all
+
+###############################################################################
+# 4. CORS PRE-FLIGHT
+###############################################################################
+
+###
+# CORS pre-flight for health endpoint
+OPTIONS {{baseUrl}}/health
+Origin: http://localhost:3000
+Access-Control-Request-Method: GET

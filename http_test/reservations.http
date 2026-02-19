@@ -123,10 +123,49 @@ GET {{baseUrl}}/v1/reservations?tenant_id={{tenantId}}&limit=200
 Authorization: Bearer {{authToken}}
 
 ###############################################################################
-# 3. RESERVATION LIFECYCLE - Event Sourcing State Inspection
+# 2B. SINGLE RESERVATION DETAIL
 ###############################################################################
 
 @reservationId = 44444444-4444-4444-4444-444444444444
+
+###
+# Get a single reservation by ID (with folio and status history)
+GET {{baseUrl}}/v1/reservations/{{reservationId}}?tenant_id={{tenantId}}
+Authorization: Bearer {{authToken}}
+
+###############################################################################
+# 2C. TENANT-SCOPED RESERVATION ACCESS
+###############################################################################
+
+###
+# List reservations scoped to tenant (REST-style URL)
+GET {{baseUrl}}/v1/tenants/{{tenantId}}/reservations
+Authorization: Bearer {{authToken}}
+
+###
+# Create reservation via tenant-scoped route
+POST {{baseUrl}}/v1/tenants/{{tenantId}}/reservations
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+X-Request-ID: {{$guid}}
+X-Idempotency-Key: tenant-res-{{$timestamp}}
+
+{
+  "property_id": "{{propertyId}}",
+  "guest_id": "33333333-3333-3333-3333-333333333333",
+  "room_type_id": "{{roomTypeId}}",
+  "rate_code": "BAR",
+  "check_in_date": "2026-04-01",
+  "check_out_date": "2026-04-04",
+  "adults": 2,
+  "children": 0,
+  "source": "DIRECT",
+  "channel": "WEB"
+}
+
+###############################################################################
+# 3. RESERVATION LIFECYCLE - Event Sourcing State Inspection
+###############################################################################
 
 ###
 # Get reservation lifecycle states (event sourcing inspection)

@@ -221,6 +221,60 @@ Authorization: Bearer {{authToken}}
 # These routes dispatch commands via the gateway
 ###############################################################################
 
+###############################################################################
+# 6A. REST-STYLE GUEST CREATION (POST /v1/guests)
+# Forwards to guest.register command via Command Center
+###############################################################################
+
+###
+# Register a new guest (REST shortcut)
+POST {{baseUrl}}/v1/guests
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+X-Request-ID: {{$guid}}
+X-Idempotency-Key: guest-reg-{{$timestamp}}
+
+{
+  "tenant_id": "{{tenantId}}",
+  "property_id": "{{propertyId}}",
+  "first_name": "Alice",
+  "last_name": "Johnson",
+  "email": "alice.johnson@example.com",
+  "phone": "+1-555-0201",
+  "date_of_birth": "1990-04-22",
+  "nationality": "US",
+  "language": "en",
+  "id_type": "PASSPORT",
+  "id_number": "P1234567"
+}
+
+###############################################################################
+# 6B. REST-STYLE GUEST MERGE (POST /v1/guests/merge)
+# Merges duplicate guest profiles via Command Center
+###############################################################################
+
+###
+# Merge duplicate guest profiles (REST shortcut)
+POST {{baseUrl}}/v1/guests/merge
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+X-Request-ID: {{$guid}}
+X-Idempotency-Key: guest-merge-{{$timestamp}}
+
+{
+  "tenant_id": "{{tenantId}}",
+  "primary_guest_id": "{{guestId}}",
+  "duplicate_guest_id": "eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee",
+  "merge_preferences": true,
+  "merge_documents": true,
+  "merge_communications": true,
+  "notes": "Duplicate detected during check-in"
+}
+
+###############################################################################
+# 6C. REST-STYLE PROFILE UPDATES
+###############################################################################
+
 ###
 # Update guest profile
 POST {{baseUrl}}/v1/tenants/{{tenantId}}/guests/{{guestId}}/profile

@@ -298,6 +298,9 @@ SELECT * FROM v_large_tables_monitor
 ORDER BY size_bytes DESC
 LIMIT 10;
 
+-- Suppress verbose CONTEXT messages from pg_stat_statements-based functions on fresh databases
+SET client_min_messages = WARNING;
+
 -- =====================================================
 -- 9. TEST SORTING OPTIMIZATION
 -- =====================================================
@@ -354,6 +357,9 @@ SELECT * FROM check_parallel_settings();
 \echo 'Test: Get parallel tuning recommendations:'
 \echo '------------------------------------------------------'
 SELECT * FROM recommend_parallel_tuning();
+
+-- Restore normal message level after pg_stat_statements tests
+RESET client_min_messages;
 
 -- =====================================================
 -- 12. VERIFY OPTIMISTIC LOCK TRIGGERS
