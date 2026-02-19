@@ -121,40 +121,42 @@ COMMENT ON COLUMN folio_routing_rules.stop_on_match IS 'When TRUE, no further ru
 INSERT INTO folio_routing_rules (
     tenant_id, property_id, rule_name, rule_code, description,
     is_template, transaction_type, charge_category, routing_type,
+    routing_percentage, routing_fixed_amount,
     destination_folio_type, priority, is_active
 )
 SELECT * FROM (VALUES
     ('00000000-0000-0000-0000-000000000001'::UUID, '00000000-0000-0000-0000-000000000001'::UUID,
      'Corporate — Room & Tax to Company', 'CORP_ROOM_TAX',
      'Routes room charges and associated taxes to the company/master folio',
-     TRUE, NULL, 'ACCOMMODATION', 'FULL', 'MASTER', 10, TRUE),
+     TRUE, NULL, 'ACCOMMODATION', 'FULL', NULL, NULL, 'MASTER', 10, TRUE),
 
     ('00000000-0000-0000-0000-000000000001'::UUID, '00000000-0000-0000-0000-000000000001'::UUID,
      'Corporate — Incidentals to Guest', 'CORP_INC_GUEST',
      'Routes incidentals (minibar, phone, laundry) to the guest personal folio',
-     TRUE, NULL, 'INCIDENTALS', 'FULL', 'GUEST', 20, TRUE),
+     TRUE, NULL, 'INCIDENTALS', 'FULL', NULL, NULL, 'GUEST', 20, TRUE),
 
     ('00000000-0000-0000-0000-000000000001'::UUID, '00000000-0000-0000-0000-000000000001'::UUID,
      'Corporate — F&B to Company (capped)', 'CORP_FB_CAP',
      'Routes food & beverage up to a daily allowance to company folio',
-     TRUE, NULL, 'FOOD_BEVERAGE', 'FIXED_AMOUNT', 'MASTER', 30, TRUE),
+     TRUE, NULL, 'FOOD_BEVERAGE', 'FIXED_AMOUNT', NULL, 50.00, 'MASTER', 30, TRUE),
 
     ('00000000-0000-0000-0000-000000000001'::UUID, '00000000-0000-0000-0000-000000000001'::UUID,
      'Group — All Charges to Master', 'GRP_ALL_MASTER',
      'Routes all charges to the group master folio (fully hosted event)',
-     TRUE, NULL, NULL, 'FULL', 'MASTER', 10, TRUE),
+     TRUE, NULL, NULL, 'FULL', NULL, NULL, 'MASTER', 10, TRUE),
 
     ('00000000-0000-0000-0000-000000000001'::UUID, '00000000-0000-0000-0000-000000000001'::UUID,
      'Travel Agent — Room to City Ledger', 'TA_ROOM_CL',
      'Routes room charges to travel agent city ledger for commission billing',
-     TRUE, NULL, 'ACCOMMODATION', 'FULL', 'CITY_LEDGER', 10, TRUE),
+     TRUE, NULL, 'ACCOMMODATION', 'FULL', NULL, NULL, 'CITY_LEDGER', 10, TRUE),
 
     ('00000000-0000-0000-0000-000000000001'::UUID, '00000000-0000-0000-0000-000000000001'::UUID,
      'Split 50/50 — Room Between Two Guests', 'SPLIT_50_50',
      'Splits room charges equally between two guest folios',
-     TRUE, NULL, 'ACCOMMODATION', 'PERCENTAGE', 'GUEST', 10, TRUE)
+     TRUE, NULL, 'ACCOMMODATION', 'PERCENTAGE', 50, NULL, 'GUEST', 10, TRUE)
 ) AS t(tenant_id, property_id, rule_name, rule_code, description,
        is_template, transaction_type, charge_category, routing_type,
+       routing_percentage, routing_fixed_amount,
        destination_folio_type, priority, is_active)
 ON CONFLICT ON CONSTRAINT uq_routing_rule_code DO NOTHING;
 
