@@ -28,54 +28,66 @@ RETURNS TABLE(
 LANGUAGE plpgsql
 AS $$
 BEGIN
-    RETURN QUERY
-    SELECT
-        LEFT(query, 200)::TEXT AS query_sample,
-        calls,
-        ROUND((total_exec_time / calls)::NUMERIC, 2) AS avg_time_ms,
-        ROUND(total_exec_time::NUMERIC, 2) AS total_time_ms,
-        CASE
-            WHEN query ~* 'distinct\s+on' THEN 'DISTINCT ON (optimized)'
-            WHEN query ~* 'select\s+distinct' THEN 'SELECT DISTINCT'
-            ELSE 'Other'
-        END::TEXT AS distinct_type,
-        CASE
-            WHEN total_exec_time > 10000 THEN 'CRITICAL'
-            WHEN total_exec_time > 5000 THEN 'HIGH'
-            WHEN total_exec_time > 1000 THEN 'MEDIUM'
-            ELSE 'LOW'
-        END::TEXT AS severity,
-        CASE
-            WHEN query ~* 'select\s+distinct\s+\w+\s+from' AND query !~ 'where'
-            THEN 'Add WHERE clause to filter before DISTINCT'
-            WHEN query ~* 'select\s+distinct.*order by'
-            THEN 'Consider index on DISTINCT + ORDER BY columns for better performance'
-            WHEN query ~* 'select\s+distinct'
-            THEN 'Consider replacing with GROUP BY or using DISTINCT ON'
-            ELSE 'Query appears optimized'
-        END::TEXT AS recommendation,
-        CASE
-            WHEN query ~* 'select\s+distinct\s+(\w+)\s+from\s+(\w+)'
-            THEN regexp_replace(
-                query,
-                'select\s+distinct\s+(\w+)\s+from',
-                'SELECT \1 FROM',
-                'gi'
-            ) || ' GROUP BY ' ||
-            regexp_replace(
-                query,
-                '.*select\s+distinct\s+(\w+).*',
-                '\1',
-                'gi'
-            )
-            ELSE 'N/A - Complex query requires manual optimization'
-        END::TEXT AS alternative_query
-    FROM pg_stat_statements
-    WHERE query ~* 'distinct'
-        AND query NOT LIKE '%pg_stat_statements%'
-        AND calls > 5
-    ORDER BY total_exec_time DESC
-    LIMIT 20;
+    -- Guard: pg_stat_statements must be loaded via shared_preload_libraries
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_extension WHERE extname = 'pg_stat_statements'
+    ) THEN
+        RETURN;
+    END IF;
+
+    BEGIN
+        RETURN QUERY
+        SELECT
+            LEFT(s.query, 200)::TEXT,
+            s.calls,
+            ROUND((s.total_exec_time / s.calls)::NUMERIC, 2),
+            ROUND(s.total_exec_time::NUMERIC, 2),
+            CASE
+                WHEN s.query ~* 'distinct\s+on' THEN 'DISTINCT ON (optimized)'
+                WHEN s.query ~* 'select\s+distinct' THEN 'SELECT DISTINCT'
+                ELSE 'Other'
+            END::TEXT,
+            CASE
+                WHEN s.total_exec_time > 10000 THEN 'CRITICAL'
+                WHEN s.total_exec_time > 5000 THEN 'HIGH'
+                WHEN s.total_exec_time > 1000 THEN 'MEDIUM'
+                ELSE 'LOW'
+            END::TEXT,
+            CASE
+                WHEN s.query ~* 'select\s+distinct\s+\w+\s+from' AND s.query !~ 'where'
+                THEN 'Add WHERE clause to filter before DISTINCT'
+                WHEN s.query ~* 'select\s+distinct.*order by'
+                THEN 'Consider index on DISTINCT + ORDER BY columns for better performance'
+                WHEN s.query ~* 'select\s+distinct'
+                THEN 'Consider replacing with GROUP BY or using DISTINCT ON'
+                ELSE 'Query appears optimized'
+            END::TEXT,
+            CASE
+                WHEN s.query ~* 'select\s+distinct\s+(\w+)\s+from\s+(\w+)'
+                THEN regexp_replace(
+                    s.query,
+                    'select\s+distinct\s+(\w+)\s+from',
+                    'SELECT \1 FROM',
+                    'gi'
+                ) || ' GROUP BY ' ||
+                regexp_replace(
+                    s.query,
+                    '.*select\s+distinct\s+(\w+).*',
+                    '\1',
+                    'gi'
+                )
+                ELSE 'N/A - Complex query requires manual optimization'
+            END::TEXT
+        FROM pg_stat_statements s
+        WHERE s.query ~* 'distinct'
+            AND s.query NOT LIKE '%pg_stat_statements%'
+            AND s.calls > 5
+        ORDER BY s.total_exec_time DESC
+        LIMIT 20;
+    EXCEPTION WHEN OTHERS THEN
+        -- pg_stat_statements not loaded via shared_preload_libraries
+        RETURN;
+    END;
 END;
 $$;
 

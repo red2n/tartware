@@ -196,6 +196,122 @@ GET {{baseUrl}}/v1/tenants/{{tenantId}}/notifications/communications/{{communica
 Authorization: Bearer {{authToken}}
 
 ###############################################################################
+# 10. AUTOMATED MESSAGES - LIST
+###############################################################################
+
+###
+# List all automated messages for tenant
+GET {{baseUrl}}/v1/tenants/{{tenantId}}/notifications/automated-messages
+Authorization: Bearer {{authToken}}
+
+###
+# List automated messages with pagination
+GET {{baseUrl}}/v1/tenants/{{tenantId}}/notifications/automated-messages?limit=20&offset=0
+Authorization: Bearer {{authToken}}
+
+###############################################################################
+# 11. AUTOMATED MESSAGES - GET BY ID
+###############################################################################
+
+@messageId = REPLACE_WITH_MESSAGE_ID
+
+###
+# Get a specific automated message
+GET {{baseUrl}}/v1/tenants/{{tenantId}}/notifications/automated-messages/{{messageId}}
+Authorization: Bearer {{authToken}}
+
+###############################################################################
+# 12. AUTOMATED MESSAGES - CREATE (Command Dispatch)
+###############################################################################
+
+###
+# Create a pre-arrival automated message
+POST {{baseUrl}}/v1/tenants/{{tenantId}}/notifications/automated-messages
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+X-Request-ID: {{$guid}}
+X-Idempotency-Key: auto-msg-create-{{$timestamp}}
+
+{
+  "message_name": "Pre-Arrival Welcome",
+  "trigger_event": "PRE_ARRIVAL",
+  "trigger_offset_hours": -24,
+  "template_code": "RESERVATION_CONFIRMATION",
+  "channel": "EMAIL",
+  "is_active": true,
+  "property_id": "{{propertyId}}",
+  "description": "Send welcome email 24 hours before check-in"
+}
+
+###
+# Create a post-checkout feedback request
+POST {{baseUrl}}/v1/tenants/{{tenantId}}/notifications/automated-messages
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+X-Request-ID: {{$guid}}
+X-Idempotency-Key: auto-msg-create-feedback-{{$timestamp}}
+
+{
+  "message_name": "Post-Checkout Feedback",
+  "trigger_event": "POST_CHECKOUT",
+  "trigger_offset_hours": 2,
+  "template_code": "FEEDBACK_REQUEST",
+  "channel": "EMAIL",
+  "is_active": true,
+  "property_id": "{{propertyId}}",
+  "description": "Request guest feedback 2 hours after checkout"
+}
+
+###
+# Create a deposit due reminder
+POST {{baseUrl}}/v1/tenants/{{tenantId}}/notifications/automated-messages
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+X-Request-ID: {{$guid}}
+X-Idempotency-Key: auto-msg-create-deposit-{{$timestamp}}
+
+{
+  "message_name": "Deposit Due Reminder",
+  "trigger_event": "DEPOSIT_DUE",
+  "trigger_offset_hours": -48,
+  "template_code": "DEPOSIT_DUE",
+  "channel": "EMAIL",
+  "is_active": true,
+  "property_id": "{{propertyId}}",
+  "description": "Remind guest about deposit 48 hours before due date"
+}
+
+###############################################################################
+# 13. AUTOMATED MESSAGES - UPDATE (Command Dispatch)
+###############################################################################
+
+###
+# Update an automated message
+PUT {{baseUrl}}/v1/tenants/{{tenantId}}/notifications/automated-messages/{{messageId}}
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+X-Request-ID: {{$guid}}
+X-Idempotency-Key: auto-msg-update-{{$timestamp}}
+
+{
+  "message_name": "Pre-Arrival Welcome (Updated)",
+  "trigger_offset_hours": -48,
+  "is_active": true,
+  "description": "Send welcome email 48 hours before check-in"
+}
+
+###############################################################################
+# 14. AUTOMATED MESSAGES - DELETE (Command Dispatch)
+###############################################################################
+
+###
+# Delete an automated message
+DELETE {{baseUrl}}/v1/tenants/{{tenantId}}/notifications/automated-messages/{{messageId}}
+Authorization: Bearer {{authToken}}
+X-Request-ID: {{$guid}}
+X-Idempotency-Key: auto-msg-delete-{{$timestamp}}
+
+###############################################################################
 # REFERENCE
 ###############################################################################
 #
@@ -206,6 +322,15 @@ Authorization: Bearer {{authToken}}
 #   {{guest_name}}, {{property_name}}, {{confirmation_number}},
 #   {{check_in_date}}, {{check_out_date}}, {{room_type}}, {{room_number}}
 #
+# AUTOMATED MESSAGE TRIGGER EVENTS:
+#   PRE_ARRIVAL        - Before guest check-in
+#   POST_CHECKOUT      - After guest check-out
+#   BOOKING_CONFIRMED  - When reservation is confirmed
+#   BOOKING_CANCELLED  - When reservation is cancelled
+#   DEPOSIT_DUE        - Before deposit deadline
+#   PAYMENT_RECEIVED   - After payment captured
+#   NO_SHOW            - When guest marked as no-show
+#
 # WRITE OPERATIONS:
 #   All notification write operations go through the Command Center.
 #   See command-center.http for full examples of:
@@ -213,6 +338,18 @@ Authorization: Bearer {{authToken}}
 #     POST /v1/commands/notification.template.update/execute
 #     POST /v1/commands/notification.template.delete/execute
 #     POST /v1/commands/notification.send/execute
+#     POST /v1/commands/notification.automated.create/execute
+#     POST /v1/commands/notification.automated.update/execute
+#     POST /v1/commands/notification.automated.delete/execute
+#
+# REST-STYLE COMMAND DISPATCH (alternative pattern):
+#   POST   /v1/tenants/:tenantId/notifications/templates
+#   PUT    /v1/tenants/:tenantId/notifications/templates/:templateId
+#   DELETE /v1/tenants/:tenantId/notifications/templates/:templateId
+#   POST   /v1/tenants/:tenantId/notifications/send
+#   POST   /v1/tenants/:tenantId/notifications/automated-messages
+#   PUT    /v1/tenants/:tenantId/notifications/automated-messages/:messageId
+#   DELETE /v1/tenants/:tenantId/notifications/automated-messages/:messageId
 #
 # SAMPLE IDs:
 #   Tenant:    11111111-1111-1111-1111-111111111111

@@ -279,3 +279,31 @@ Authorization: Bearer {{authToken}}
 # @name listDeepCleanDueProperty
 GET {{baseUrl}}/v1/housekeeping/deep-clean-due?tenant_id={{tenantId}}&property_id={{propertyId}}&limit=50
 Authorization: Bearer {{authToken}}
+
+###############################################################################
+# HOUSEKEEPING SCHEDULES
+###############################################################################
+
+### List all housekeeping schedules
+# @name listSchedules
+GET {{baseUrl}}/v1/housekeeping/schedules?tenant_id={{tenantId}}&limit=50
+Authorization: Bearer {{authToken}}
+
+### List schedules for a specific property
+# @name listSchedulesProperty
+GET {{baseUrl}}/v1/housekeeping/schedules?tenant_id={{tenantId}}&property_id={{propertyId}}&limit=50
+Authorization: Bearer {{authToken}}
+
+###############################################################################
+# HOUSEKEEPING INSPECTIONS
+###############################################################################
+
+### List all housekeeping inspections
+# @name listInspections
+GET {{baseUrl}}/v1/housekeeping/inspections?tenant_id={{tenantId}}&limit=50
+Authorization: Bearer {{authToken}}
+
+### List inspections for a specific property
+# @name listInspectionsProperty
+GET {{baseUrl}}/v1/housekeeping/inspections?tenant_id={{tenantId}}&property_id={{propertyId}}&limit=50
+Authorization: Bearer {{authToken}}

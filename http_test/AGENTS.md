@@ -93,11 +93,12 @@ These IDs are pre-populated in the database:
 | `booking-config.http` | Allotments, sources, segments |
 | `command-center.http` | Command dispatch endpoints |
 | `core-service.http` | Auth, tenants, properties, users |
-| `guests.http` | Guest profiles, preferences |
+| `guests.http` | Guest profiles, preferences, registration, merge |
+| `health.http` | Gateway liveness, readiness, aggregated backend health |
 | `housekeeping.http` | Tasks, assignments, status |
 | `modules.http` | Module catalog |
 | `night-audit.http` | Night audit, OTA, group bookings, promos |
-| `notifications.http` | Notification templates, sending, communications |
+| `notifications.http` | Notification templates, sending, communications, automated messages |
 | `operations.http` | Operations endpoints |
 | `rates.http` | Rate plans |
 | `recommendations.http` | Recommendation engine |

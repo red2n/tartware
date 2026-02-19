@@ -121,13 +121,20 @@ BEGIN
         'Minimum index size for parallel scan'::TEXT,
         FALSE
     UNION ALL
-    -- force_parallel_mode
+    -- force_parallel_mode / debug_parallel_query (renamed in PG 16)
     SELECT
-        'force_parallel_mode'::TEXT,
-        current_setting('force_parallel_mode')::TEXT,
+        CASE
+            WHEN current_setting('server_version_num')::INTEGER >= 160000 THEN 'debug_parallel_query'
+            ELSE 'force_parallel_mode'
+        END::TEXT,
+        CASE
+            WHEN current_setting('server_version_num')::INTEGER >= 160000 THEN current_setting('debug_parallel_query')
+            ELSE current_setting('force_parallel_mode')
+        END::TEXT,
         'off (on for testing only)'::TEXT,
         CASE
-            WHEN current_setting('force_parallel_mode') = 'off' THEN '✅ GOOD'
+            WHEN current_setting('server_version_num')::INTEGER >= 160000 AND current_setting('debug_parallel_query') = 'off' THEN '✅ GOOD'
+            WHEN current_setting('server_version_num')::INTEGER < 160000 AND current_setting('force_parallel_mode') = 'off' THEN '✅ GOOD'
             ELSE '⚠️ DEBUG MODE'
         END::TEXT,
         'Forces parallel mode for testing (should be off in production)'::TEXT,

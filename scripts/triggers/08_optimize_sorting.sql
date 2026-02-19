@@ -28,43 +28,55 @@ RETURNS TABLE(
 LANGUAGE plpgsql
 AS $$
 BEGIN
-    RETURN QUERY
-    WITH sort_queries AS (
+    -- Guard: pg_stat_statements must be loaded via shared_preload_libraries
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_extension WHERE extname = 'pg_stat_statements'
+    ) THEN
+        RETURN;
+    END IF;
+
+    BEGIN
+        RETURN QUERY
+        WITH sort_queries AS (
+            SELECT
+                LEFT(s.query, 200) AS q_sample,
+                s.calls AS q_calls,
+                ROUND((s.total_exec_time / s.calls)::NUMERIC, 2) AS q_avg_time_ms,
+                CASE
+                    WHEN s.query ~* 'order by' THEN 1
+                    ELSE 0
+                END AS q_has_sort
+            FROM pg_stat_statements s
+            WHERE s.query NOT LIKE '%pg_stat_statements%'
+                AND s.calls > 10
+                AND s.query ~* 'order by'
+        )
         SELECT
-            LEFT(query, 200) AS query_sample,
-            calls,
-            ROUND((total_exec_time / calls)::NUMERIC, 2) AS avg_time_ms,
+            sq.q_sample::TEXT,
+            sq.q_calls,
+            sq.q_avg_time_ms,
+            sq.q_has_sort,
+            FALSE::BOOLEAN,
+            'Unknown (run EXPLAIN ANALYZE)'::TEXT,
             CASE
-                WHEN query ~* 'order by' THEN 1
-                ELSE 0
-            END AS has_sort
-        FROM pg_stat_statements
-        WHERE query NOT LIKE '%pg_stat_statements%'
-            AND calls > 10
-            AND query ~* 'order by'
-    )
-    SELECT
-        query_sample::TEXT,
-        calls,
-        avg_time_ms,
-        has_sort,
-        FALSE::BOOLEAN AS uses_incremental_sort,  -- Requires EXPLAIN analysis
-        'Unknown (run EXPLAIN ANALYZE)'::TEXT,
-        CASE
-            WHEN avg_time_ms > 1000 THEN 'CRITICAL: Very slow sort - check indexes for ORDER BY columns'
-            WHEN avg_time_ms > 500 THEN 'HIGH: Slow sort - consider composite index for ORDER BY'
-            WHEN avg_time_ms > 100 THEN 'MEDIUM: Review ORDER BY columns and add indexes'
-            ELSE 'GOOD: Sort appears efficient'
-        END::TEXT,
-        CASE
-            WHEN avg_time_ms > 1000 THEN '5-10x speedup possible with proper indexing'
-            WHEN avg_time_ms > 500 THEN '3-5x speedup possible'
-            WHEN avg_time_ms > 100 THEN '2-3x speedup possible'
-            ELSE 'Minimal improvement expected'
-        END::TEXT
-    FROM sort_queries
-    ORDER BY avg_time_ms DESC
-    LIMIT 20;
+                WHEN sq.q_avg_time_ms > 1000 THEN 'CRITICAL: Very slow sort - check indexes for ORDER BY columns'
+                WHEN sq.q_avg_time_ms > 500 THEN 'HIGH: Slow sort - consider composite index for ORDER BY'
+                WHEN sq.q_avg_time_ms > 100 THEN 'MEDIUM: Review ORDER BY columns and add indexes'
+                ELSE 'GOOD: Sort appears efficient'
+            END::TEXT,
+            CASE
+                WHEN sq.q_avg_time_ms > 1000 THEN '5-10x speedup possible with proper indexing'
+                WHEN sq.q_avg_time_ms > 500 THEN '3-5x speedup possible'
+                WHEN sq.q_avg_time_ms > 100 THEN '2-3x speedup possible'
+                ELSE 'Minimal improvement expected'
+            END::TEXT
+        FROM sort_queries sq
+        ORDER BY sq.q_avg_time_ms DESC
+        LIMIT 20;
+    EXCEPTION WHEN OTHERS THEN
+        -- pg_stat_statements not loaded via shared_preload_libraries
+        RETURN;
+    END;
 END;
 $$;
 
