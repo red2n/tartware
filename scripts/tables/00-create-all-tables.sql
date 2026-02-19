@@ -121,6 +121,7 @@
 \ir 04-financial/71_general_ledger_entries.sql
 \ir 04-financial/72_comp_accounting.sql
 \ir 04-financial/73_payment_gateway_configurations.sql
+\ir 04-financial/74_folio_routing_rules.sql
 
 -- ============================================================================
 -- CATEGORY 5: OPERATIONS (Services, housekeeping, staff, mobile, assets)
@@ -153,6 +154,7 @@
 \ir 05-operations/107_spa_treatments.sql
 \ir 05-operations/108_spa_appointments.sql
 \ir 05-operations/111_self_service_configurations.sql
+\ir 05-operations/112_pbx_configurations.sql
 
 -- ============================================================================
 -- CATEGORY 6: INTEGRATIONS (Channels, OTA, marketing, external systems)
