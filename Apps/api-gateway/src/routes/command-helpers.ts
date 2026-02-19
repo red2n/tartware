@@ -22,23 +22,23 @@ import { submitCommand } from "../utils/command-publisher.js";
 export const forwardGuestRegisterCommand = async (
   request: FastifyRequest,
   reply: FastifyReply,
-): Promise<void> => {
+): Promise<FastifyReply> => {
   const body = toPlainObject(request.body);
   if (!body) {
     reply.badRequest("GUEST_PAYLOAD_REQUIRED");
-    return;
+    return reply;
   }
 
   const tenantId = typeof body.tenant_id === "string" ? body.tenant_id : null;
   if (!tenantId) {
     reply.badRequest("TENANT_ID_REQUIRED");
-    return;
+    return reply;
   }
 
   const payload = { ...body };
   delete payload.tenant_id;
 
-  await submitCommand({
+  return submitCommand({
     request,
     reply,
     commandName: "guest.register",
@@ -52,25 +52,25 @@ export const forwardGuestRegisterCommand = async (
 export const forwardGuestMergeCommand = async (
   request: FastifyRequest,
   reply: FastifyReply,
-): Promise<void> => {
+): Promise<FastifyReply> => {
   const body = toPlainObject(request.body);
   if (!body) {
     reply.badRequest("GUEST_MERGE_PAYLOAD_REQUIRED");
-    return;
+    return reply;
   }
   const tenantId = typeof body.tenant_id === "string" ? body.tenant_id : null;
   if (!tenantId) {
     reply.badRequest("TENANT_ID_REQUIRED");
-    return;
+    return reply;
   }
   if (typeof body.primary_guest_id !== "string" || typeof body.duplicate_guest_id !== "string") {
     reply.badRequest("PRIMARY_AND_DUPLICATE_GUEST_IDS_REQUIRED");
-    return;
+    return reply;
   }
   const payload = { ...body };
   delete payload.tenant_id;
 
-  await submitCommand({
+  return submitCommand({
     request,
     reply,
     commandName: "guest.merge",
@@ -95,14 +95,14 @@ export const forwardCommandWithTenant = async ({
   request: FastifyRequest;
   reply: FastifyReply;
   commandName: string;
-}): Promise<void> => {
+}): Promise<FastifyReply> => {
   const tenantId = getParamValue(request, "tenantId");
   if (!tenantId) {
     reply.badRequest("TENANT_ID_REQUIRED");
-    return;
+    return reply;
   }
   const payload = normalizePayloadObject(request.body);
-  await submitCommand({
+  return submitCommand({
     request,
     reply,
     commandName,
@@ -124,18 +124,18 @@ export const forwardCommandWithParamId = async ({
   commandName: string;
   paramKey: string;
   payloadKey: string;
-}): Promise<void> => {
+}): Promise<FastifyReply> => {
   const tenantId = getParamValue(request, "tenantId");
   const paramValue = getParamValue(request, paramKey);
   if (!tenantId || !paramValue) {
     reply.badRequest("TENANT_AND_RESOURCE_ID_REQUIRED");
-    return;
+    return reply;
   }
   const payload = {
     ...normalizePayloadObject(request.body),
     [payloadKey]: paramValue,
   };
-  await submitCommand({
+  return submitCommand({
     request,
     reply,
     commandName,
@@ -148,17 +148,17 @@ export const forwardCommandWithParamId = async ({
 export const forwardGenericCommand = async (
   request: FastifyRequest,
   reply: FastifyReply,
-): Promise<void> => {
+): Promise<FastifyReply> => {
   const params = (request.params ?? {}) as Record<string, unknown>;
   const tenantId = typeof params.tenantId === "string" ? params.tenantId : null;
   const commandName = typeof params.commandName === "string" ? params.commandName : null;
   if (!tenantId || !commandName) {
     reply.badRequest("TENANT_AND_COMMAND_REQUIRED");
-    return;
+    return reply;
   }
 
   const payload = normalizePayloadObject(request.body);
-  await submitCommand({
+  return submitCommand({
     request,
     reply,
     commandName,
@@ -171,13 +171,13 @@ export const forwardGenericCommand = async (
 export const forwardReservationCommand = async (
   request: FastifyRequest,
   reply: FastifyReply,
-): Promise<void> => {
+): Promise<FastifyReply> => {
   const params = (request.params ?? {}) as Record<string, unknown>;
   const tenantId = typeof params.tenantId === "string" ? params.tenantId : null;
 
   if (!tenantId) {
     reply.badRequest("TENANT_ID_REQUIRED");
-    return;
+    return reply;
   }
 
   const method = request.method.toUpperCase();
@@ -206,7 +206,7 @@ export const forwardReservationCommand = async (
     const reservationId = extractReservationId(params);
     if (!reservationId) {
       reply.badRequest("RESERVATION_ID_REQUIRED");
-      return;
+      return reply;
     }
     const payloadObject = payload as Record<string, unknown>;
     if (!payloadObject.reservation_id) {
@@ -215,7 +215,7 @@ export const forwardReservationCommand = async (
     payload = payloadObject;
   }
 
-  await submitCommand({
+  return submitCommand({
     request,
     reply,
     commandName,
@@ -258,23 +258,23 @@ const extractReservationId = (params: Record<string, unknown>): string | null =>
 export const forwardHousekeepingAssignCommand = async (
   request: FastifyRequest,
   reply: FastifyReply,
-): Promise<void> => {
+): Promise<FastifyReply> => {
   const params = (request.params ?? {}) as Record<string, unknown>;
   const tenantId = typeof params.tenantId === "string" ? params.tenantId : null;
   const taskId = typeof params.taskId === "string" ? params.taskId : null;
   if (!tenantId || !taskId) {
     reply.badRequest("TENANT_AND_TASK_ID_REQUIRED");
-    return;
+    return reply;
   }
 
   const body = normalizePayloadObject(request.body);
   if (typeof body.assigned_to !== "string" || body.assigned_to.length === 0) {
     reply.badRequest("ASSIGNED_TO_REQUIRED");
-    return;
+    return reply;
   }
 
   const payload = { ...body, task_id: taskId };
-  await submitCommand({
+  return submitCommand({
     request,
     reply,
     commandName: "housekeeping.task.assign",
@@ -288,16 +288,16 @@ export const forwardHousekeepingAssignCommand = async (
 export const forwardHousekeepingCompleteCommand = async (
   request: FastifyRequest,
   reply: FastifyReply,
-): Promise<void> => {
+): Promise<FastifyReply> => {
   const params = (request.params ?? {}) as Record<string, unknown>;
   const tenantId = typeof params.tenantId === "string" ? params.tenantId : null;
   const taskId = typeof params.taskId === "string" ? params.taskId : null;
   if (!tenantId || !taskId) {
     reply.badRequest("TENANT_AND_TASK_ID_REQUIRED");
-    return;
+    return reply;
   }
   const payload = { ...normalizePayloadObject(request.body), task_id: taskId };
-  await submitCommand({
+  return submitCommand({
     request,
     reply,
     commandName: "housekeeping.task.complete",
@@ -316,13 +316,13 @@ export const forwardRoomInventoryCommand = async ({
   request: FastifyRequest;
   reply: FastifyReply;
   action: "block" | "release";
-}): Promise<void> => {
+}): Promise<FastifyReply> => {
   const params = (request.params ?? {}) as Record<string, unknown>;
   const tenantId = typeof params.tenantId === "string" ? params.tenantId : null;
   const roomId = typeof params.roomId === "string" ? params.roomId : null;
   if (!tenantId || !roomId) {
     reply.badRequest("TENANT_AND_ROOM_ID_REQUIRED");
-    return;
+    return reply;
   }
   const payloadBase = {
     ...normalizePayloadObject(request.body),
@@ -335,7 +335,7 @@ export const forwardRoomInventoryCommand = async ({
           ...payloadBase,
           action,
         };
-  await submitCommand({
+  return submitCommand({
     request,
     reply,
     commandName: action === "release" ? "rooms.inventory.release" : "rooms.inventory.block",
@@ -349,20 +349,20 @@ export const forwardRoomInventoryCommand = async ({
 export const forwardBillingCaptureCommand = async (
   request: FastifyRequest,
   reply: FastifyReply,
-): Promise<void> => {
+): Promise<FastifyReply> => {
   const params = (request.params ?? {}) as Record<string, unknown>;
   const tenantId = typeof params.tenantId === "string" ? params.tenantId : null;
   if (!tenantId) {
     reply.badRequest("TENANT_ID_REQUIRED");
-    return;
+    return reply;
   }
   const body = toPlainObject(request.body);
   if (!body || Object.keys(body).length === 0) {
     reply.badRequest("BILLING_CAPTURE_PAYLOAD_REQUIRED");
-    return;
+    return reply;
   }
   const payload = normalizePayloadObject(request.body);
-  await submitCommand({
+  return submitCommand({
     request,
     reply,
     commandName: "billing.payment.capture",
@@ -376,17 +376,17 @@ export const forwardBillingCaptureCommand = async (
 export const forwardBillingRefundCommand = async (
   request: FastifyRequest,
   reply: FastifyReply,
-): Promise<void> => {
+): Promise<FastifyReply> => {
   const params = (request.params ?? {}) as Record<string, unknown>;
   const tenantId = typeof params.tenantId === "string" ? params.tenantId : null;
   const paymentId = typeof params.paymentId === "string" ? params.paymentId : null;
   if (!tenantId || !paymentId) {
     reply.badRequest("TENANT_AND_PAYMENT_ID_REQUIRED");
-    return;
+    return reply;
   }
   const body = normalizePayloadObject(request.body);
   const payload = { ...body, payment_id: paymentId };
-  await submitCommand({
+  return submitCommand({
     request,
     reply,
     commandName: "billing.payment.refund",

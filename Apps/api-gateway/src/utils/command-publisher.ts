@@ -77,14 +77,14 @@ export const submitCommand = async ({
   payload,
   requiredRole = "MANAGER",
   requiredModules,
-}: SubmitCommandOptions): Promise<void> => {
+}: SubmitCommandOptions): Promise<FastifyReply> => {
   const membership = ensureTenantAccess(request, reply, tenantId, {
     minRole: requiredRole,
     requiredModules,
   });
 
   if (!membership) {
-    return;
+    return reply;
   }
 
   const validatedPayload = validateCommandPayload(commandName, payload);
@@ -109,7 +109,7 @@ export const submitCommand = async ({
     });
   } catch (error) {
     if (error instanceof CommandDispatchError) {
-      reply
+      return reply
         .status(error.statusCode)
         .header("content-type", "application/problem+json")
         .send({
@@ -120,7 +120,6 @@ export const submitCommand = async ({
           instance: request.url,
           code: error.code,
         });
-      return;
     }
     throw error;
   }
@@ -161,7 +160,7 @@ export const submitCommand = async ({
     return reply.badGateway("Unable to publish command to Kafka.");
   }
 
-  reply.status(202).send({
+  return reply.status(202).send({
     status: acceptance.status,
     commandId: acceptance.commandId,
     commandName: acceptance.commandName,

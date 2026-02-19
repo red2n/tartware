@@ -26,7 +26,7 @@ const topics = [
     replicationFactor: 1,
     configEntries: [
       { name: "cleanup.policy", value: "compact" },
-      { name: "compression.type", value: "zstd" },
+      { name: "compression.type", value: "producer" },
     ],
   },
   {
