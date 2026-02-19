@@ -1,5 +1,5 @@
 -- =====================================================
--- 100_pbx_configurations.sql
+-- 112_pbx_configurations.sql
 -- PBX / Telephony System Configuration
 -- Industry Standard: OPERA PMS telephone integration,
 --          Mitel/Avaya PBX interfaces, HTNG call accounting
@@ -168,6 +168,7 @@ CREATE TABLE IF NOT EXISTS call_records (
 -- INDEXES
 -- =====================================================
 
+CREATE INDEX IF NOT EXISTS idx_pbx_config_active ON pbx_configurations (tenant_id, property_id, is_active);
 CREATE INDEX IF NOT EXISTS idx_call_records_room ON call_records (room_id, call_started_at DESC);
 CREATE INDEX IF NOT EXISTS idx_call_records_reservation ON call_records (reservation_id) WHERE reservation_id IS NOT NULL;
 CREATE INDEX IF NOT EXISTS idx_call_records_unposted ON call_records (tenant_id, property_id, is_posted) WHERE is_posted = FALSE AND is_billable = TRUE;
