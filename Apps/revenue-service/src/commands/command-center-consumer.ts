@@ -126,7 +126,10 @@ const routeRevenueCommand = async (
         horizonDays: payload.horizon_days ?? 30,
         trainingDays: payload.training_days ?? 90,
         scenarios: payload.scenarios ?? ["base", "optimistic", "pessimistic"],
-        actorId: metadata.initiatedBy ?? "system",
+        actorId:
+          typeof metadata.initiatedBy === "string"
+            ? metadata.initiatedBy
+            : (metadata.initiatedBy?.userId ?? "system"),
       });
       break;
     }
