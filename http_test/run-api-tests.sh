@@ -242,6 +242,14 @@ GUEST_ID=$(echo "$GUESTS_BODY" | grep -o '"id":"[^"]*"' | head -1 | cut -d'"' -f
 [ -n "$GUEST_ID" ] && log_info "Existing guest: $GUEST_ID"
 
 # =====================================================
+# 8b. LOYALTY (read)
+# =====================================================
+log_header "8b. LOYALTY (Read)"
+
+test_get "/v1/loyalty/transactions?tenant_id=$TENANT_ID&limit=10" "Loyalty transactions" > /dev/null
+test_get "/v1/loyalty/tier-rules?tenant_id=$TENANT_ID" "Loyalty tier rules" > /dev/null
+
+# =====================================================
 # 9. GUEST REGISTRATION (write command)
 # =====================================================
 log_header "9. GUEST REGISTRATION (Write)"
@@ -489,6 +497,8 @@ test_get "/v1/meeting-rooms?$QS" "Meeting rooms" > /dev/null
 test_get "/v1/event-bookings?$QS" "Event bookings" > /dev/null
 test_get "/v1/waitlist?$QS" "Waitlist" > /dev/null
 test_get "/v1/group-bookings?$QS" "Group bookings" > /dev/null
+test_get "/v1/metasearch-configs?$QS" "Metasearch configs" > /dev/null
+test_get "/v1/metasearch-configs/performance?$QS" "Metasearch performance" > /dev/null
 
 # =====================================================
 # 22. SETTINGS SERVICE
