@@ -19,6 +19,12 @@ export {
   IntegrationOtaSyncRequestCommandSchema,
   type IntegrationWebhookRetryCommand,
   IntegrationWebhookRetryCommandSchema,
+  type MetasearchClickRecordCommand,
+  MetasearchClickRecordCommandSchema,
+  type MetasearchConfigCreateCommand,
+  MetasearchConfigCreateCommandSchema,
+  type MetasearchConfigUpdateCommand,
+  MetasearchConfigUpdateCommandSchema,
 } from "@tartware/schemas/events/commands/integrations";
 export {
   type ReservationAssignRoomCommand,

@@ -128,3 +128,25 @@ export const GuestCommunicationListItemSchema = z.object({
 export type GuestCommunicationListItem = z.infer<
 	typeof GuestCommunicationListItemSchema
 >;
+
+// =====================================================
+// PRIVACY & CCPA
+// =====================================================
+
+/** Body schema for toggling the CCPA opt-out-of-sale flag. */
+export const CcpaOptOutBodySchema = z.object({
+	tenant_id: uuid,
+	opt_out: z.boolean(),
+});
+
+export type CcpaOptOutBody = z.infer<typeof CcpaOptOutBodySchema>;
+
+/** Body schema for updating channel communication preferences. */
+export const CommunicationPrefsBodySchema = z.object({
+	tenant_id: uuid,
+	preferences: z.record(z.string(), z.boolean()),
+});
+
+export type CommunicationPrefsBody = z.infer<
+	typeof CommunicationPrefsBodySchema
+>;

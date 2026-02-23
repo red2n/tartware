@@ -428,14 +428,75 @@ export const checkOutReservation = async (
           );
         }
       } else if (command.force) {
-        reservationsLogger.warn(
-          {
-            reservationId: command.reservation_id,
-            folioId: folio.folio_id,
-            balance: folio.balance,
-          },
-          "Check-out forced with unsettled folio balance",
-        );
+        // Auto-transfer unsettled balance to city-ledger AR
+        try {
+          const arNumber = `CL-${command.reservation_id.slice(0, 8)}-${Date.now()}`;
+          await withTransaction(async (client) => {
+            // Create city-ledger AR entry for the outstanding balance
+            await client.query(
+              `INSERT INTO accounts_receivable (
+                 tenant_id, property_id, ar_number,
+                 account_type, account_name, account_code,
+                 guest_id, source_type, source_id, source_reference,
+                 reservation_id, folio_id,
+                 transaction_date, due_date,
+                 original_amount, outstanding_balance,
+                 currency, ar_status, payment_terms, payment_terms_days,
+                 notes, created_by, updated_by
+               ) VALUES (
+                 $1::uuid, $2::uuid, $3,
+                 'city_ledger', 'City Ledger - Checkout Transfer', 'CL-AUTO',
+                 $4::uuid, 'folio', $5::uuid, $6,
+                 $7::uuid, $5::uuid,
+                 CURRENT_DATE, CURRENT_DATE + INTERVAL '30 days',
+                 $8, $8,
+                 'USD', 'open', 'net_30', 30,
+                 'Auto-transferred from folio at forced checkout', $9::uuid, $9::uuid
+               )
+               ON CONFLICT DO NOTHING`,
+              [
+                tenantId,
+                reservation.property_id,
+                arNumber,
+                reservation.guest_id,
+                folio.folio_id,
+                `Reservation ${command.reservation_id}`,
+                command.reservation_id,
+                Number(folio.balance),
+                SYSTEM_ACTOR_ID,
+              ],
+            );
+            // Settle the original folio since balance moved to AR
+            await client.query(
+              `UPDATE folios
+               SET folio_status = 'SETTLED',
+                   settled_at = NOW(),
+                   close_reason = 'CITY_LEDGER_TRANSFER',
+                   updated_at = NOW()
+               WHERE folio_id = $1 AND tenant_id = $2`,
+              [folio.folio_id, tenantId],
+            );
+          });
+          reservationsLogger.info(
+            {
+              reservationId: command.reservation_id,
+              folioId: folio.folio_id,
+              balance: folio.balance,
+              arNumber,
+            },
+            "Check-out forced: unsettled balance transferred to city-ledger AR",
+          );
+        } catch (arError) {
+          reservationsLogger.warn(
+            {
+              reservationId: command.reservation_id,
+              folioId: folio.folio_id,
+              balance: folio.balance,
+              error: arError,
+            },
+            "Check-out forced: failed to create city-ledger AR, proceeding anyway",
+          );
+        }
       } else {
         throw new ReservationCommandError(
           "FOLIO_UNSETTLED",

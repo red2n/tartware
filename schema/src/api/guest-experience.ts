@@ -149,3 +149,16 @@ export const GenerateCardQuerySchema = z.object({
 });
 
 export type GenerateCardQuery = z.infer<typeof GenerateCardQuerySchema>;
+
+// -----------------------------------------------------------------------------
+// Self-Service Checkout
+// -----------------------------------------------------------------------------
+
+/** Body schema for initiating a self-service checkout. */
+export const CheckoutStartBodySchema = z.object({
+	confirmation_code: z.string().min(1),
+	express: z.boolean().default(true),
+	notes: z.string().max(500).optional(),
+});
+
+export type CheckoutStartBody = z.infer<typeof CheckoutStartBodySchema>;

@@ -503,7 +503,16 @@ export interface TelemetryOptions {
   resourceAttributes?: Record<string, unknown>;
 }
 
+let _sdkInstance: NodeSDK | undefined;
+
 export const initTelemetry = async (options: TelemetryOptions): Promise<NodeSDK | undefined> => {
+  if (_sdkInstance) {
+    console.warn(
+      "[telemetry] initTelemetry called more than once — returning existing SDK instance.",
+    );
+    return _sdkInstance;
+  }
+
   if ((process.env.OTEL_SDK_DISABLED ?? "").toLowerCase() === "true") {
     console.info("[telemetry] OTEL_SDK_DISABLED=true. Telemetry disabled.");
     return undefined;
@@ -577,6 +586,7 @@ export const initTelemetry = async (options: TelemetryOptions): Promise<NodeSDK 
 
   try {
     await sdk.start();
+    _sdkInstance = sdk;
     console.info(`[telemetry] OpenTelemetry SDK started for ${options.serviceName}`);
     return sdk;
   } catch (error) {

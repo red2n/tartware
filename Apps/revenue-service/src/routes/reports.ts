@@ -13,6 +13,7 @@ import type { FastifyInstance, FastifyPluginAsync } from "fastify";
 
 import {
   getCompsetIndices,
+  getDisplacementAnalysis,
   getRevenueKpis,
   listRevenueForecasts,
   listRevenueGoals,
@@ -116,6 +117,40 @@ const reportRoutes: FastifyPluginAsync = async (app: FastifyInstance) => {
       );
 
       return getCompsetIndices(property_id, tenant_id, business_date);
+    },
+  );
+
+  app.get(
+    "/v1/revenue/displacement-analysis",
+    {
+      preHandler: app.withTenantScope({
+        resolveTenantId: (request) => (request.query as { tenant_id: string }).tenant_id,
+        minRole: "ADMIN",
+        requiredModules: "finance-automation",
+      }),
+      schema: buildRouteSchema({
+        tag: REPORTS_TAG,
+        summary: "Displacement analysis — group vs transient revenue trade-off",
+      }),
+    },
+    async (request) => {
+      const q = request.query as {
+        tenant_id: string;
+        property_id: string;
+        start_date: string;
+        end_date: string;
+        limit?: string;
+        offset?: string;
+      };
+
+      return getDisplacementAnalysis({
+        tenantId: q.tenant_id,
+        propertyId: q.property_id,
+        startDate: q.start_date,
+        endDate: q.end_date,
+        limit: q.limit ? Number(q.limit) : undefined,
+        offset: q.offset ? Number(q.offset) : undefined,
+      });
     },
   );
 };

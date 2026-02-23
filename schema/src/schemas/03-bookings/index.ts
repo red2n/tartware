@@ -40,6 +40,8 @@ export * from "./reservation-rate-fallbacks.js";
 export * from "./reservation-status-history.js";
 export * from "./reservation-traces.js";
 export * from "./reservations.js";
+export * from "./reward-catalog.js";
+export * from "./reward-redemptions.js";
 export * from "./roll-service-backfill-checkpoint.js";
 export * from "./roll-service-consumer-offsets.js";
 export * from "./roll-service-shadow-ledgers.js";

@@ -475,3 +475,146 @@ export const IncidentReportListResponseSchema = z.object({
 export type IncidentReportListResponse = z.infer<
 	typeof IncidentReportListResponseSchema
 >;
+
+// =====================================================
+// LOST & FOUND ACTIONS
+// =====================================================
+
+/** Body schema for claiming a lost & found item. */
+export const ClaimLostAndFoundBodySchema = z.object({
+	tenant_id: uuid,
+	claimed_by_guest_id: uuid.optional(),
+	claimed_by_name: z.string().min(1).max(200),
+	verification_notes: z.string().optional(),
+});
+
+export type ClaimLostAndFoundBody = z.infer<
+	typeof ClaimLostAndFoundBodySchema
+>;
+
+/** Accepted return methods for lost & found items. */
+export const LostAndFoundReturnMethodEnum = z.enum([
+	"in_person",
+	"shipped",
+	"courier",
+	"picked_up",
+	"mailed",
+]);
+
+/** Body schema for returning a lost & found item. */
+export const ReturnLostAndFoundBodySchema = z.object({
+	tenant_id: uuid,
+	return_method: LostAndFoundReturnMethodEnum,
+	returned_to_name: z.string().min(1).max(200),
+	notes: z.string().optional(),
+});
+
+export type ReturnLostAndFoundBody = z.infer<
+	typeof ReturnLostAndFoundBodySchema
+>;
+
+// =====================================================
+// LOST & FOUND ITEM CATEGORIES & STATUSES
+// =====================================================
+
+/** Status enum for lost & found items. */
+export const LostAndFoundItemStatusEnum = z.enum([
+	"registered",
+	"stored",
+	"claimed",
+	"returned",
+	"shipped",
+	"donated",
+	"disposed",
+	"lost_again",
+	"pending_claim",
+]);
+
+/** Category enum for lost & found items. */
+export const LostAndFoundItemCategoryEnum = z.enum([
+	"electronics",
+	"jewelry",
+	"clothing",
+	"accessories",
+	"documents",
+	"keys",
+	"bags",
+	"wallets",
+	"phones",
+	"laptops",
+	"tablets",
+	"watches",
+	"glasses",
+	"books",
+	"toys",
+	"medical",
+	"other",
+]);
+
+// =====================================================
+// LOST & FOUND CREATE / UPDATE BODIES
+// =====================================================
+
+/** Body schema for creating (registering) a new lost & found item. */
+export const CreateLostAndFoundBodySchema = z.object({
+	tenant_id: uuid,
+	property_id: uuid,
+	item_name: z.string().min(1).max(255),
+	item_description: z.string().min(1),
+	item_category: LostAndFoundItemCategoryEnum,
+	item_subcategory: z.string().max(100).optional(),
+	brand: z.string().max(100).optional(),
+	color: z.string().max(50).optional(),
+	estimated_value: z.number().positive().optional(),
+	found_date: isoDateString,
+	found_time: z.string().optional(),
+	found_by_name: z.string().max(200).optional(),
+	found_location: z.string().min(1).max(255),
+	room_number: z.string().max(20).optional(),
+	area_name: z.string().max(100).optional(),
+	guest_id: uuid.optional(),
+	guest_name: z.string().max(200).optional(),
+	guest_email: z.string().email().optional(),
+	reservation_id: uuid.optional(),
+	storage_location: z.string().max(255).optional(),
+	hold_days: z.number().int().positive().max(365).optional(),
+	is_valuable: z.boolean().optional(),
+	requires_secure_storage: z.boolean().optional(),
+	special_handling_instructions: z.string().optional(),
+	internal_notes: z.string().optional(),
+});
+
+export type CreateLostAndFoundBody = z.infer<
+	typeof CreateLostAndFoundBodySchema
+>;
+
+/** Body schema for updating an existing lost & found item. */
+export const UpdateLostAndFoundBodySchema = z.object({
+	tenant_id: uuid,
+	item_name: z.string().min(1).max(255).optional(),
+	item_description: z.string().min(1).optional(),
+	item_category: LostAndFoundItemCategoryEnum.optional(),
+	item_subcategory: z.string().max(100).optional(),
+	brand: z.string().max(100).optional(),
+	color: z.string().max(50).optional(),
+	estimated_value: z.number().positive().optional(),
+	storage_location: z.string().max(255).optional(),
+	storage_shelf: z.string().max(50).optional(),
+	storage_bin: z.string().max(50).optional(),
+	item_status: LostAndFoundItemStatusEnum.optional(),
+	internal_notes: z.string().optional(),
+	staff_comments: z.string().optional(),
+	guest_name: z.string().max(200).optional(),
+	guest_email: z.string().email().optional(),
+	guest_phone: z.string().max(50).optional(),
+	guest_id: uuid.optional(),
+	reservation_id: uuid.optional(),
+	hold_until_date: isoDateString.optional(),
+	requires_secure_storage: z.boolean().optional(),
+	is_valuable: z.boolean().optional(),
+	fragile: z.boolean().optional(),
+});
+
+export type UpdateLostAndFoundBody = z.infer<
+	typeof UpdateLostAndFoundBodySchema
+>;

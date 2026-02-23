@@ -1,8 +1,9 @@
 -- =====================================================
 -- verify-07-guest-crm.sql
 -- Verification Script for Guest Relations & CRM Tables
--- Category: 07-guest-crm (7 tables)
+-- Category: 07-guest-crm (9 tables)
 -- Date: 2025-10-19
+-- Updated: 2026-02-23
 -- =====================================================
 
 \c tartware
@@ -10,18 +11,18 @@
 \echo ''
 \echo '=============================================='
 \echo '  CATEGORY: GUEST RELATIONS & CRM VERIFICATION'
-\echo '  Tables: 7 | Description: Communications, loyalty, documents, feedback'
+\echo '  Tables: 9 | Description: Communications, loyalty, rewards, documents, feedback'
 \echo '=============================================='
 \echo ''
 
 -- =====================================================
 -- 1. CHECK IF ALL TABLES EXIST
 -- =====================================================
-\echo '1. Checking if all 7 tables exist...'
+\echo '1. Checking if all 9 tables exist...'
 
 DO $$
 DECLARE
-    v_expected_tables TEXT[] := ARRAY['guest_communications', 'communication_templates', 'guest_feedback', 'guest_loyalty_programs', 'guest_documents', 'guest_notes', 'automated_messages'];
+    v_expected_tables TEXT[] := ARRAY['guest_communications', 'communication_templates', 'guest_feedback', 'guest_loyalty_programs', 'guest_documents', 'guest_notes', 'automated_messages', 'reward_catalog', 'reward_redemptions'];
     v_table TEXT;
     v_missing_tables TEXT[] := '{}'::TEXT[];
     v_found_count INTEGER := 0;
@@ -46,7 +47,7 @@ BEGIN
         RAISE WARNING 'Missing tables: %', array_to_string(v_missing_tables, ', ');
         RAISE EXCEPTION 'Guest Relations & CRM verification FAILED - missing tables!';
     ELSE
-        RAISE NOTICE '✓✓✓ All 7 Guest Relations & CRM tables exist!';
+        RAISE NOTICE '✓✓✓ All 9 Guest Relations & CRM tables exist!';
     END IF;
 END $$;
 
@@ -67,7 +68,7 @@ FROM information_schema.tables t
 LEFT JOIN information_schema.columns c
     ON t.table_schema = c.table_schema
     AND t.table_name = c.table_name
-WHERE t.table_name IN ('guest_communications', 'communication_templates', 'guest_feedback', 'guest_loyalty_programs', 'guest_documents', 'guest_notes', 'automated_messages')
+WHERE t.table_name IN ('guest_communications', 'communication_templates', 'guest_feedback', 'guest_loyalty_programs', 'guest_documents', 'guest_notes', 'automated_messages', 'reward_catalog', 'reward_redemptions')
     AND t.table_schema = 'public'
 GROUP BY t.table_schema, t.table_name
 ORDER BY t.table_name;
@@ -87,19 +88,19 @@ DECLARE
 BEGIN
     SELECT COUNT(*) INTO v_table_count
     FROM information_schema.tables t
-    WHERE t.table_name IN ('guest_communications', 'communication_templates', 'guest_feedback', 'guest_loyalty_programs', 'guest_documents', 'guest_notes', 'automated_messages')
+    WHERE t.table_name IN ('guest_communications', 'communication_templates', 'guest_feedback', 'guest_loyalty_programs', 'guest_documents', 'guest_notes', 'automated_messages', 'reward_catalog', 'reward_redemptions')
         AND t.table_schema = 'public';
 
     RAISE NOTICE '';
     RAISE NOTICE 'Category: Guest Relations & CRM';
-    RAISE NOTICE 'Tables Found: % / 7', v_table_count;
+    RAISE NOTICE 'Tables Found: % / 9', v_table_count;
     RAISE NOTICE '';
 
-    IF v_table_count = 7 THEN
+    IF v_table_count = 9 THEN
         RAISE NOTICE '✓✓✓ GUEST RELATIONS & CRM VERIFICATION PASSED ✓✓✓';
     ELSE
         RAISE WARNING '⚠⚠⚠ GUEST RELATIONS & CRM VERIFICATION FAILED ⚠⚠⚠';
-        RAISE WARNING 'Expected 7 tables, found %', v_table_count;
+        RAISE WARNING 'Expected 9 tables, found %', v_table_count;
     END IF;
 END $$;
 

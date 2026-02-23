@@ -17,5 +17,6 @@ export * from "./loyalty.js";
 export * from "./notifications.js";
 export * from "./operations.js";
 export * from "./reservations.js";
+export * from "./revenue.js";
 export * from "./rooms.js";
 export * from "./settings.js";

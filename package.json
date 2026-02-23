@@ -37,6 +37,8 @@
     "biome": "npx nx run-many -t biome",
     "knip": "npx nx run-many -t knip",
     "test": "npx nx run-many -t test --exclude=super-admin-ui",
+    "test:coverage": "npx nx run-many -t test:coverage --exclude=super-admin-ui",
+    "test:coverage:merge": "node scripts/merge-coverage.mjs",
     "test:core": "npx nx run @tartware/core-service:test",
     "test:schema": "npx nx run @tartware/schemas:test",
     "affected:build": "npx nx affected -t build",

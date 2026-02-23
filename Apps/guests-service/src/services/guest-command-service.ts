@@ -421,14 +421,29 @@ export const setGuestLoyalty = async ({
 
   const delta = typeof command.points_delta === "number" ? command.points_delta : null;
 
-  const { rowCount, rows } = await query<{ loyalty_points: number | null }>(
+  // Pre-check: reject deductions that would result in a negative balance
+  if (delta !== null && delta < 0) {
+    const { rows: currentRows } = await query<{ loyalty_points: number | null }>(
+      `SELECT loyalty_points FROM public.guests
+       WHERE tenant_id = $1::uuid AND id = $2::uuid AND COALESCE(is_deleted, false) = false`,
+      [tenantId, command.guest_id],
+    );
+    const currentPoints = Number(currentRows[0]?.loyalty_points ?? 0);
+    if (currentPoints + delta < 0) {
+      throw new Error(
+        `INSUFFICIENT_LOYALTY_POINTS: Cannot deduct ${Math.abs(delta)} points from balance of ${currentPoints}`,
+      );
+    }
+  }
+
+  const { rowCount } = await query<{ loyalty_points: number | null }>(
     `
       UPDATE public.guests
       SET
         loyalty_tier = COALESCE($3, loyalty_tier),
         loyalty_points = CASE
           WHEN $4::numeric IS NULL THEN loyalty_points
-          ELSE GREATEST(0, COALESCE(loyalty_points, 0) + $4::numeric)
+          ELSE COALESCE(loyalty_points, 0) + $4::numeric
         END,
         notes = CASE
           WHEN $5 IS NULL THEN notes
@@ -455,23 +470,6 @@ export const setGuestLoyalty = async ({
 
   if (!rowCount || rowCount === 0) {
     throw new Error("GUEST_NOT_FOUND");
-  }
-
-  if (delta !== null && delta < 0) {
-    const updatedPoints = rows[0]?.loyalty_points ?? null;
-    if (updatedPoints === 0) {
-      guestCommandLogger.warn(
-        {
-          tenantId,
-          guestId: command.guest_id,
-          pointsDelta: delta,
-          updatedPoints,
-          correlationId,
-          initiatedBy,
-        },
-        "guest.set_loyalty clamped negative balance to zero",
-      );
-    }
   }
 
   guestCommandLogger.info(

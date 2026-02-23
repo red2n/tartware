@@ -339,11 +339,11 @@
 | MED-006 | ✅ Done | 2026-01-27 | fix/code-quality-issues |
 | MED-007 | ✅ Done | 2026-01-27 | fix/code-quality-issues |
 | MED-008 | ✅ Done | 2026-01-27 | fix/code-quality-issues |
-| LOW-001 | ⬜ Pending | | |
-| LOW-002 | ⬜ Pending | | |
-| LOW-003 | ⬜ Pending | | |
-| LOW-004 | ⬜ Pending | | |
-| LOW-005 | ⬜ Pending | | |
-| LOW-006 | ⬜ Pending | | |
-| LOW-007 | ⬜ Pending | | |
-| LOW-008 | ⬜ Pending | | |
+| LOW-001 | ✅ Done | 2026-02-23 | Already had `.min(32)` in config |
+| LOW-002 | ✅ Done | 2026-02-23 | Already had throttled `console.warn` |
+| LOW-003 | ✅ Done | 2026-02-23 | Already had `setInterval` cleanup |
+| LOW-004 | ✅ Done | 2026-02-23 | Night-audit + pricing N+1 fixes |
+| LOW-005 | ✅ Done | 2026-02-23 | Already had `maybeCleanup` eviction |
+| LOW-006 | ✅ Done | 2026-02-23 | beforeRoutes moved inside app.after() |
+| LOW-007 | ✅ Done | 2026-02-23 | Added `_sdkInstance` singleton guard |
+| LOW-008 | ✅ Done | 2026-02-23 | Pre-check throws `INSUFFICIENT_LOYALTY_POINTS` |

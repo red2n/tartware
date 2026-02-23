@@ -6,6 +6,7 @@ import {
   startCommandCenterConsumer,
 } from "./commands/command-center-consumer.js";
 import { databaseConfig, kafkaConfig, serviceConfig } from "./config.js";
+import { shutdownAutoCheckoutSweep, startAutoCheckoutSweep } from "./jobs/auto-checkout.js";
 import { shutdownWaitlistSweep, startWaitlistSweep } from "./jobs/waitlist-sweep.js";
 import { shutdownReservationConsumer, startReservationConsumer } from "./kafka/consumer.js";
 import { shutdownProducer } from "./kafka/producer.js";
@@ -48,6 +49,7 @@ const start = async () => {
       await startCommandCenterConsumer();
       startOutboxDispatcher();
       startWaitlistSweep();
+      startAutoCheckoutSweep();
     } else {
       app.log.warn("Kafka disabled via DISABLE_KAFKA; skipping consumers and outbox");
     }
@@ -79,6 +81,7 @@ const shutdown = async () => {
       await shutdownCommandCenterConsumer();
       await shutdownOutboxDispatcher();
       shutdownWaitlistSweep();
+      shutdownAutoCheckoutSweep();
       await shutdownProducer();
     }
     await shutdownAvailabilityGuardClient();

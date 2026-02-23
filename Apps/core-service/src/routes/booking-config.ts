@@ -6,6 +6,7 @@ import { registerCompanyRoutes } from "./booking-config/company.js";
 import { registerDistributionRoutes } from "./booking-config/distribution.js";
 import { registerEventRoutes } from "./booking-config/event.js";
 import { registerGroupWaitlistPromoRoutes } from "./booking-config/group-waitlist-promo.js";
+import { registerMetasearchRoutes } from "./booking-config/metasearch.js";
 
 export const registerBookingConfigRoutes = (app: FastifyInstance): void => {
   registerAllotmentRoutes(app);
@@ -13,4 +14,5 @@ export const registerBookingConfigRoutes = (app: FastifyInstance): void => {
   registerCompanyRoutes(app);
   registerEventRoutes(app);
   registerGroupWaitlistPromoRoutes(app);
+  registerMetasearchRoutes(app);
 };

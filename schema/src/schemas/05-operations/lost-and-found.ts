@@ -160,10 +160,62 @@ export const LostAndFoundSchema = z.object({
 export type LostAndFound = z.infer<typeof LostAndFoundSchema>;
 
 /**
- * Schema for creating a new lost and found
+ * Schema for creating a new lost and found item.
+ * Omits server-generated fields (id, timestamps, status flags, computed fields).
  */
 export const CreateLostAndFoundSchema = LostAndFoundSchema.omit({
-	// TODO: Add fields to omit for creation
+	item_id: true,
+	item_number: true,
+	item_status: true,
+	claim_count: true,
+	claimed: true,
+	claimed_by_guest_id: true,
+	claimed_by_name: true,
+	claim_date: true,
+	claim_time: true,
+	verification_questions: true,
+	verification_passed: true,
+	verified_by: true,
+	verification_notes: true,
+	returned: true,
+	return_date: true,
+	return_time: true,
+	return_method: true,
+	returned_to_name: true,
+	returned_by: true,
+	shipped: true,
+	shipping_date: true,
+	delivery_confirmed: true,
+	delivery_date: true,
+	guest_notified: true,
+	notification_sent_at: true,
+	notification_count: true,
+	last_notification_at: true,
+	guest_contacted: true,
+	contact_attempts: true,
+	last_contact_attempt_at: true,
+	guest_response_received: true,
+	guest_response: true,
+	days_in_storage: true,
+	disposal_date: true,
+	disposed: true,
+	disposed_at: true,
+	disposed_by: true,
+	donated: true,
+	donation_date: true,
+	fees_collected: true,
+	insurance_claim_filed: true,
+	insurance_payout: true,
+	manager_approved: true,
+	approved_by: true,
+	approved_at: true,
+	created_at: true,
+	updated_at: true,
+	created_by: true,
+	updated_by: true,
+	is_deleted: true,
+	deleted_at: true,
+	deleted_by: true,
 });
 
 export type CreateLostAndFound = z.infer<typeof CreateLostAndFoundSchema>;

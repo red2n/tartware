@@ -74,6 +74,9 @@ import {
 	IntegrationOtaRatePushCommandSchema,
 	IntegrationOtaSyncRequestCommandSchema,
 	IntegrationWebhookRetryCommandSchema,
+	MetasearchClickRecordCommandSchema,
+	MetasearchConfigCreateCommandSchema,
+	MetasearchConfigUpdateCommandSchema,
 } from "./events/commands/integrations.js";
 import {
 	InventoryBulkReleaseCommandSchema,
@@ -82,6 +85,7 @@ import {
 } from "./events/commands/inventory.js";
 import {
 	LoyaltyPointsEarnCommandSchema,
+	LoyaltyPointsExpireSweepCommandSchema,
 	LoyaltyPointsRedeemCommandSchema,
 } from "./events/commands/loyalty.js";
 import {
@@ -97,6 +101,9 @@ import {
 	OperationsAssetUpdateCommandSchema,
 	OperationsIncidentReportCommandSchema,
 	OperationsInventoryAdjustCommandSchema,
+	OperationsMaintenanceAssignCommandSchema,
+	OperationsMaintenanceCompleteCommandSchema,
+	OperationsMaintenanceEscalateCommandSchema,
 	OperationsMaintenanceRequestCommandSchema,
 	OperationsScheduleCreateCommandSchema,
 	OperationsScheduleUpdateCommandSchema,
@@ -128,6 +135,7 @@ import {
 	ReservationWalkGuestCommandSchema,
 	ReservationWalkInCheckInCommandSchema,
 } from "./events/commands/reservations.js";
+import { RevenueForecastComputeCommandSchema } from "./events/commands/revenue.js";
 import {
 	RoomFeaturesUpdateCommandSchema,
 	RoomHousekeepingStatusUpdateCommandSchema,
@@ -331,6 +339,18 @@ const commandPayloadValidators = new Map<string, CommandPayloadValidator>([
 		(payload) => IntegrationMappingUpdateCommandSchema.parse(payload),
 	],
 	[
+		"metasearch.config.create",
+		(payload) => MetasearchConfigCreateCommandSchema.parse(payload),
+	],
+	[
+		"metasearch.config.update",
+		(payload) => MetasearchConfigUpdateCommandSchema.parse(payload),
+	],
+	[
+		"metasearch.click.record",
+		(payload) => MetasearchClickRecordCommandSchema.parse(payload),
+	],
+	[
 		"inventory.lock.room",
 		(payload) => InventoryLockRoomCommandSchema.parse(payload),
 	],
@@ -345,6 +365,18 @@ const commandPayloadValidators = new Map<string, CommandPayloadValidator>([
 	[
 		"operations.maintenance.request",
 		(payload) => OperationsMaintenanceRequestCommandSchema.parse(payload),
+	],
+	[
+		"operations.maintenance.assign",
+		(payload) => OperationsMaintenanceAssignCommandSchema.parse(payload),
+	],
+	[
+		"operations.maintenance.complete",
+		(payload) => OperationsMaintenanceCompleteCommandSchema.parse(payload),
+	],
+	[
+		"operations.maintenance.escalate",
+		(payload) => OperationsMaintenanceEscalateCommandSchema.parse(payload),
 	],
 	[
 		"operations.incident.report",
@@ -381,6 +413,10 @@ const commandPayloadValidators = new Map<string, CommandPayloadValidator>([
 	[
 		"loyalty.points.redeem",
 		(payload) => LoyaltyPointsRedeemCommandSchema.parse(payload),
+	],
+	[
+		"loyalty.points.expire_sweep",
+		(payload) => LoyaltyPointsExpireSweepCommandSchema.parse(payload),
 	],
 	[
 		"reservation.create",
@@ -570,6 +606,10 @@ const commandPayloadValidators = new Map<string, CommandPayloadValidator>([
 	[
 		"notification.automated.delete",
 		(payload) => NotificationAutomatedMessageDeleteCommandSchema.parse(payload),
+	],
+	[
+		"revenue.forecast.compute",
+		(payload) => RevenueForecastComputeCommandSchema.parse(payload),
 	],
 ]);
 

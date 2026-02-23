@@ -1,4 +1,5 @@
 import { query } from "../lib/db.js";
+import { DISPLACEMENT_ANALYSIS_SQL } from "../sql/displacement-queries.js";
 import {
   COMPSET_INDICES_SQL,
   REVENUE_FORECAST_LIST_SQL,
@@ -308,5 +309,106 @@ export const getRevenueKpis = async (
     total_revenue: Math.round(totalRev * 100) / 100,
     adr: Math.round(adr * 100) / 100,
     revpar: Math.round(revpar * 100) / 100,
+  };
+};
+
+// ============================================================================
+// DISPLACEMENT ANALYSIS (CG-5: Group vs. Transient Trade-off)
+// ============================================================================
+
+type DisplacementRow = {
+  group_id: string;
+  group_name: string;
+  group_rooms_booked: string | number;
+  group_room_nights: string | number;
+  group_total_revenue: string | number;
+  group_adr: string | number;
+  block_start: string | Date;
+  block_end: string | Date;
+  avg_transient_adr: string | number | null;
+  displaced_transient_revenue: string | number | null;
+  net_displacement_value: string | number | null;
+  adr_differential_pct: string | number | null;
+};
+
+export type DisplacementAnalysisItem = {
+  group_id: string;
+  group_name: string;
+  group_rooms_booked: number;
+  group_room_nights: number;
+  group_total_revenue: number;
+  group_adr: number;
+  block_start: string | undefined;
+  block_end: string | undefined;
+  avg_transient_adr: number;
+  displaced_transient_revenue: number;
+  net_displacement_value: number;
+  adr_differential_pct: number;
+  recommendation: string;
+};
+
+/**
+ * Compute displacement analysis for group blocks vs transient demand.
+ * Positive net_displacement_value = group is worth MORE than displaced transient.
+ * Negative = group is displacing higher-value transient business.
+ */
+export const getDisplacementAnalysis = async (opts: {
+  tenantId: string;
+  propertyId: string;
+  startDate: string;
+  endDate: string;
+  limit?: number;
+  offset?: number;
+}): Promise<{
+  items: DisplacementAnalysisItem[];
+  summary: { total_groups: number; total_net_displacement: number };
+}> => {
+  const limit = Math.min(opts.limit ?? 50, 100);
+  const offset = opts.offset ?? 0;
+
+  const { rows } = await query<DisplacementRow>(DISPLACEMENT_ANALYSIS_SQL, [
+    opts.tenantId,
+    opts.propertyId,
+    opts.startDate,
+    opts.endDate,
+    limit,
+    offset,
+  ]);
+
+  let totalNetDisplacement = 0;
+  const items = rows.map((row) => {
+    const netVal = toNumber(row.net_displacement_value);
+    totalNetDisplacement += netVal;
+
+    const recommendation =
+      netVal > 0
+        ? "ACCEPT — group revenue exceeds displaced transient value"
+        : netVal < -100
+          ? "DECLINE — transient displacement outweighs group contribution"
+          : "REVIEW — marginal displacement, consider ancillary revenue";
+
+    return {
+      group_id: row.group_id,
+      group_name: row.group_name,
+      group_rooms_booked: toNumber(row.group_rooms_booked),
+      group_room_nights: toNumber(row.group_room_nights),
+      group_total_revenue: toNumber(row.group_total_revenue),
+      group_adr: toNumber(row.group_adr),
+      block_start: toDateString(row.block_start as string),
+      block_end: toDateString(row.block_end as string),
+      avg_transient_adr: toNumber(row.avg_transient_adr),
+      displaced_transient_revenue: toNumber(row.displaced_transient_revenue),
+      net_displacement_value: netVal,
+      adr_differential_pct: toNumber(row.adr_differential_pct),
+      recommendation,
+    };
+  });
+
+  return {
+    items,
+    summary: {
+      total_groups: items.length,
+      total_net_displacement: Math.round(totalNetDisplacement * 100) / 100,
+    },
   };
 };

@@ -29,6 +29,9 @@ import {
   IntegrationOtaRatePushCommandSchema,
   IntegrationOtaSyncRequestCommandSchema,
   IntegrationWebhookRetryCommandSchema,
+  MetasearchClickRecordCommandSchema,
+  MetasearchConfigCreateCommandSchema,
+  MetasearchConfigUpdateCommandSchema,
   ReservationAssignRoomCommandSchema,
   ReservationBatchNoShowCommandSchema,
   ReservationCancelCommandSchema,
@@ -66,6 +69,7 @@ import {
   completeMobileCheckin,
   convertQuote,
   createGroupBooking,
+  createMetasearchConfig,
   createReservation,
   enforceGroupCutoff,
   expireReservation,
@@ -77,12 +81,14 @@ import {
   otaSyncRequest,
   overrideRate,
   processOtaReservationQueue,
+  recordMetasearchClick,
   releaseDeposit,
   sendQuote,
   setupGroupBilling,
   startMobileCheckin,
   unassignRoom,
   updateIntegrationMapping,
+  updateMetasearchConfig,
   uploadGroupRoomingList,
   waitlistAdd,
   waitlistConvert,
@@ -355,6 +361,21 @@ const routeReservationCommand = async (
     case "integration.mapping.update": {
       const commandPayload = IntegrationMappingUpdateCommandSchema.parse(envelope.payload);
       await updateIntegrationMapping(metadata.tenantId, commandPayload, context);
+      break;
+    }
+    case "metasearch.config.create": {
+      const commandPayload = MetasearchConfigCreateCommandSchema.parse(envelope.payload);
+      await createMetasearchConfig(metadata.tenantId, commandPayload, context);
+      break;
+    }
+    case "metasearch.config.update": {
+      const commandPayload = MetasearchConfigUpdateCommandSchema.parse(envelope.payload);
+      await updateMetasearchConfig(metadata.tenantId, commandPayload, context);
+      break;
+    }
+    case "metasearch.click.record": {
+      const commandPayload = MetasearchClickRecordCommandSchema.parse(envelope.payload);
+      await recordMetasearchClick(metadata.tenantId, commandPayload, context);
       break;
     }
     default:

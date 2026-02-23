@@ -8,6 +8,8 @@ import authContextPlugin from "./plugins/auth-context.js";
 import swaggerPlugin from "./plugins/swagger.js";
 import { registerGuestRoutes } from "./routes/guests.js";
 import { registerHealthRoutes } from "./routes/health.js";
+import { registerLoyaltyRoutes } from "./routes/loyalty.js";
+import { registerPrivacyRoutes } from "./routes/privacy.js";
 
 export const buildServer = (): FastifyInstance => {
   ensureGuestEncryptionRequirementsMet();
@@ -25,6 +27,8 @@ export const buildServer = (): FastifyInstance => {
     registerRoutes: (app) => {
       registerHealthRoutes(app);
       registerGuestRoutes(app);
+      registerLoyaltyRoutes(app);
+      registerPrivacyRoutes(app);
     },
   });
 

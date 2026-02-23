@@ -359,25 +359,25 @@ export const buildFastifyServer = (
 		});
 	}
 
-	// Call beforeRoutes hook if provided (support async hooks)
-	const beforeRoutesTask = beforeRoutes
-		? Promise.resolve(beforeRoutes(app))
-		: Promise.resolve();
+	// Register beforeRoutes and registerRoutes inside app.after()
+	// to ensure all core plugins (Helmet, CORS, sensible) are fully initialized first.
+	// beforeRoutes registers plugins (e.g. tenant-auth) whose decorators must be ready
+	// before registerRoutes runs, so they go in separate app.after() blocks.
+	if (beforeRoutes) {
+		app.after(async (error) => {
+			if (error) {
+				throw error;
+			}
+			await beforeRoutes(app);
+		});
+	}
 
 	if (registerRoutes) {
 		app.after(async (error) => {
 			if (error) {
 				throw error;
 			}
-			await beforeRoutesTask;
 			await registerRoutes(app);
-		});
-	} else if (beforeRoutes) {
-		app.after(async (error) => {
-			if (error) {
-				throw error;
-			}
-			await beforeRoutesTask;
 		});
 	}
 
