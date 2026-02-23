@@ -360,23 +360,24 @@ export const buildFastifyServer = (
 	}
 
 	// Register beforeRoutes and registerRoutes inside app.after()
-	// to ensure all core plugins (Helmet, CORS, sensible) are fully initialized first
-	if (registerRoutes) {
-		app.after(async (error) => {
-			if (error) {
-				throw error;
-			}
-			if (beforeRoutes) {
-				await beforeRoutes(app);
-			}
-			await registerRoutes(app);
-		});
-	} else if (beforeRoutes) {
+	// to ensure all core plugins (Helmet, CORS, sensible) are fully initialized first.
+	// beforeRoutes registers plugins (e.g. tenant-auth) whose decorators must be ready
+	// before registerRoutes runs, so they go in separate app.after() blocks.
+	if (beforeRoutes) {
 		app.after(async (error) => {
 			if (error) {
 				throw error;
 			}
 			await beforeRoutes(app);
+		});
+	}
+
+	if (registerRoutes) {
+		app.after(async (error) => {
+			if (error) {
+				throw error;
+			}
+			await registerRoutes(app);
 		});
 	}
 
