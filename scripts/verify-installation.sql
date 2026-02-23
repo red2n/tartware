@@ -457,6 +457,78 @@ BEGIN
     END IF;
 
     RAISE NOTICE '';
+    RAISE NOTICE '--- Migration: Reward Catalog & Redemptions (CG-9) ---';
+
+    -- Check reward_catalog table exists
+    IF EXISTS (
+        SELECT 1 FROM information_schema.tables
+        WHERE table_schema = 'public' AND table_name = 'reward_catalog'
+    ) THEN
+        RAISE NOTICE '  ✓ reward_catalog table exists';
+        v_pass := v_pass + 1;
+    ELSE
+        RAISE WARNING '  ✗ reward_catalog table MISSING';
+        v_fail := v_fail + 1;
+    END IF;
+
+    -- Check reward_redemptions table exists
+    IF EXISTS (
+        SELECT 1 FROM information_schema.tables
+        WHERE table_schema = 'public' AND table_name = 'reward_redemptions'
+    ) THEN
+        RAISE NOTICE '  ✓ reward_redemptions table exists';
+        v_pass := v_pass + 1;
+    ELSE
+        RAISE WARNING '  ✗ reward_redemptions table MISSING';
+        v_fail := v_fail + 1;
+    END IF;
+
+    -- Check reward_catalog has key columns
+    IF EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema = 'public' AND table_name = 'reward_catalog'
+        AND column_name = 'points_required'
+    ) THEN
+        RAISE NOTICE '  ✓ reward_catalog.points_required column exists';
+        v_pass := v_pass + 1;
+    ELSE
+        RAISE WARNING '  ✗ reward_catalog.points_required column MISSING';
+        v_fail := v_fail + 1;
+    END IF;
+
+    -- Check reward_redemptions has key columns
+    IF EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema = 'public' AND table_name = 'reward_redemptions'
+        AND column_name = 'points_spent'
+    ) THEN
+        RAISE NOTICE '  ✓ reward_redemptions.points_spent column exists';
+        v_pass := v_pass + 1;
+    ELSE
+        RAISE WARNING '  ✗ reward_redemptions.points_spent column MISSING';
+        v_fail := v_fail + 1;
+    END IF;
+
+    RAISE NOTICE '';
+    RAISE NOTICE '--- Migration: New Command Templates (CG) ---';
+
+    -- Check loyalty.points.expire_sweep command template (may require tenant_id seed)
+    IF EXISTS (SELECT 1 FROM command_templates WHERE command_name = 'loyalty.points.expire_sweep') THEN
+        RAISE NOTICE '  ✓ command_templates has loyalty.points.expire_sweep';
+        v_pass := v_pass + 1;
+    ELSE
+        RAISE NOTICE '  ⊘ command_templates loyalty.points.expire_sweep not seeded (requires tenant_id)';
+    END IF;
+
+    -- Check metasearch.config.create command template (may require tenant_id seed)
+    IF EXISTS (SELECT 1 FROM command_templates WHERE command_name = 'metasearch.config.create') THEN
+        RAISE NOTICE '  ✓ command_templates has metasearch.config.create';
+        v_pass := v_pass + 1;
+    ELSE
+        RAISE NOTICE '  ⊘ command_templates metasearch.config.create not seeded (requires tenant_id)';
+    END IF;
+
+    RAISE NOTICE '';
     RAISE NOTICE '--- Indexes ---';
 
     -- Check idx_reservations_type index exists
