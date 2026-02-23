@@ -24,6 +24,7 @@
     "dev:revenue": "node ./scripts/dev/ensure-otel.mjs && LOG_PRETTY=true DB_NAME=tartware DB_PASSWORD=postgres AUTH_JWT_SECRET=dev-secret-minimum-32-chars-change-me! AUTH_JWT_ISSUER=tartware-core-service AUTH_JWT_AUDIENCE=tartware-core PORT=3060 HOST=0.0.0.0 KAFKA_BROKERS=localhost:29092 OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318/v1 OTEL_EXPORTER_OTLP_LOGS_ENDPOINT=http://localhost:4318/v1/logs OTEL_EXPORTER_OTLP_TRACES_ENDPOINT=http://localhost:4318/v1/traces pnpm --filter @tartware/revenue-service dev",
     "dev:guest-experience": "node ./scripts/dev/ensure-otel.mjs && LOG_PRETTY=true DB_NAME=tartware DB_PASSWORD=postgres AUTH_JWT_SECRET=dev-secret-minimum-32-chars-change-me! AUTH_JWT_ISSUER=tartware-core-service AUTH_JWT_AUDIENCE=tartware-core PORT=3065 HOST=0.0.0.0 KAFKA_BROKERS=localhost:29092 OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318/v1 OTEL_EXPORTER_OTLP_LOGS_ENDPOINT=http://localhost:4318/v1/logs OTEL_EXPORTER_OTLP_TRACES_ENDPOINT=http://localhost:4318/v1/traces pnpm --filter @tartware/guest-experience-service dev",
     "dev:kafka-ui": "docker compose up -d kafka-ui",
+    "dev:ui": "pnpm --filter @tartware/pms-ui start",
     "kafka:topics": "node ./scripts/dev/bootstrap-kafka-topics.mjs",
     "start": "pnpm run dev",
     "build": "pnpm run check && npx nx run-many -t build",

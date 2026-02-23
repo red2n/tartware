@@ -33,7 +33,7 @@ building VARCHAR(100), -- Building or tower designation
 wing VARCHAR(100), -- Wing or section within the property
 
 -- Status
-status room_status NOT NULL DEFAULT 'AVAILABLE', -- Availability state for sales
+status room_status NOT NULL DEFAULT 'SETUP', -- Availability state for sales (new rooms start in SETUP)
 housekeeping_status housekeeping_status NOT NULL DEFAULT 'CLEAN', -- Housekeeping readiness
 maintenance_status maintenance_status NOT NULL DEFAULT 'OPERATIONAL', -- Maintenance state
 

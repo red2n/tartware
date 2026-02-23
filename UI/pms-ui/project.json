@@ -1,0 +1,28 @@
+{
+  "name": "@tartware/pms-ui",
+  "sourceRoot": "UI/pms-ui/src",
+  "projectType": "application",
+  "targets": {
+    "build": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "npx ng build",
+        "cwd": "UI/pms-ui"
+      }
+    },
+    "dev": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "npx ng serve --port 4200 --proxy-config proxy.conf.json",
+        "cwd": "UI/pms-ui"
+      }
+    },
+    "test": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "npx ng test",
+        "cwd": "UI/pms-ui"
+      }
+    }
+  }
+}

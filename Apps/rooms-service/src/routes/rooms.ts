@@ -20,7 +20,10 @@ import {
   createRoom,
   deleteRoom,
   getRoomById,
+  listAmenityCatalog,
   listRooms,
+  activateRoom,
+  deactivateRoom,
   RoomListItemSchema,
   searchAvailableRooms,
   updateRoom,
@@ -89,9 +92,46 @@ const RoomParamsSchema = z.object({
   roomId: z.string().uuid(),
 });
 
+const AmenityCatalogItemSchema = z.object({
+  amenity_code: z.string(),
+  display_name: z.string(),
+  category: z.string(),
+  icon: z.string().nullable(),
+});
+
+const AmenityCatalogResponseSchema = z.array(AmenityCatalogItemSchema);
+const AmenityCatalogResponseJsonSchema = schemaFromZod(AmenityCatalogResponseSchema, "AmenityCatalogResponse");
+
 const ROOMS_TAG = "Rooms";
 
 export const registerRoomRoutes = (app: FastifyInstance): void => {
+  // --- Amenity catalog (must be before /v1/rooms/:roomId to avoid param capture) ---
+
+  app.get<{ Querystring: { tenant_id: string } }>(
+    "/v1/rooms/amenity-catalog",
+    {
+      preHandler: app.withTenantScope({
+        resolveTenantId: (request) => (request.query as { tenant_id: string }).tenant_id,
+        minRole: "STAFF",
+        requiredModules: "core",
+      }),
+      schema: buildRouteSchema({
+        tag: ROOMS_TAG,
+        summary: "List amenity catalog",
+        description: "Returns available amenities that can be assigned to rooms.",
+        querystring: schemaFromZod(z.object({ tenant_id: z.string().uuid() }), "AmenityCatalogQuery"),
+        response: {
+          200: AmenityCatalogResponseJsonSchema,
+        },
+      }),
+    },
+    async (request, reply) => {
+      const { tenant_id } = z.object({ tenant_id: z.string().uuid() }).parse(request.query);
+      const catalog = await listAmenityCatalog(tenant_id);
+      return reply.send(catalog);
+    },
+  );
+
   app.post<{ Body: CreateRoomBody }>(
     "/v1/rooms",
     {
@@ -453,6 +493,102 @@ export const registerRoomRoutes = (app: FastifyInstance): void => {
       }
 
       return reply.status(204).send();
+    },
+  );
+
+  // --- Activate room (transition SETUP → AVAILABLE with rate validation) ---
+
+  app.post<{
+    Params: { roomId: string };
+    Body: { tenant_id: string };
+  }>(
+    "/v1/rooms/:roomId/activate",
+    {
+      preHandler: app.withTenantScope({
+        resolveTenantId: (request) => (request.body as { tenant_id: string }).tenant_id,
+        minRole: "MANAGER",
+        requiredModules: "core",
+      }),
+      schema: buildRouteSchema({
+        tag: ROOMS_TAG,
+        summary: "Activate a room (SETUP → AVAILABLE)",
+        description:
+          "Validates that at least one active rate plan exists for the room type, then transitions the room from SETUP to AVAILABLE.",
+        params: schemaFromZod(RoomParamsSchema, "RoomParams"),
+        body: schemaFromZod(z.object({ tenant_id: z.string().uuid() }), "ActivateRoomBody"),
+        response: {
+          200: RoomListItemJsonSchema,
+          400: ErrorResponseSchema,
+          404: ErrorResponseSchema,
+        },
+      }),
+    },
+    async (request, reply) => {
+      const params = RoomParamsSchema.parse(request.params);
+      const body = z.object({ tenant_id: z.string().uuid() }).parse(request.body);
+
+      const result = await activateRoom({
+        tenantId: body.tenant_id,
+        roomId: params.roomId,
+        activatedBy: request.auth.userId ?? undefined,
+      });
+
+      if (!result.success) {
+        if (result.error?.includes("not found")) {
+          return reply.notFound(result.error);
+        }
+        return reply.badRequest(result.error ?? "Activation failed");
+      }
+
+      return reply.send(result.room);
+    },
+  );
+
+  // --- Deactivate room (transition AVAILABLE → SETUP) ---
+
+  app.post<{
+    Params: { roomId: string };
+    Body: { tenant_id: string };
+  }>(
+    "/v1/rooms/:roomId/deactivate",
+    {
+      preHandler: app.withTenantScope({
+        resolveTenantId: (request) => (request.body as { tenant_id: string }).tenant_id,
+        minRole: "MANAGER",
+        requiredModules: "core",
+      }),
+      schema: buildRouteSchema({
+        tag: ROOMS_TAG,
+        summary: "Deactivate a room (AVAILABLE → SETUP)",
+        description:
+          "Transitions a room from AVAILABLE back to SETUP for reconfiguration. Only vacant (available) rooms can be deactivated.",
+        params: schemaFromZod(RoomParamsSchema, "RoomParams"),
+        body: schemaFromZod(z.object({ tenant_id: z.string().uuid() }), "DeactivateRoomBody"),
+        response: {
+          200: RoomListItemJsonSchema,
+          400: ErrorResponseSchema,
+          404: ErrorResponseSchema,
+        },
+      }),
+    },
+    async (request, reply) => {
+      const params = RoomParamsSchema.parse(request.params);
+      const body = z.object({ tenant_id: z.string().uuid() }).parse(request.body);
+
+      const result = await deactivateRoom({
+        tenantId: body.tenant_id,
+        roomId: params.roomId,
+        deactivatedBy: request.auth.userId ?? undefined,
+      });
+
+      if (!result.success) {
+        if (result.error?.includes("not found")) {
+          return reply.notFound(result.error);
+        }
+        return reply.badRequest(result.error ?? "Deactivation failed");
+      }
+
+      return reply.send(result.room);
     },
   );
 

@@ -1,0 +1,68 @@
+<header class="header">
+  <div class="header-left">
+    <button class="header-btn menu-toggle" (click)="menuToggle.emit()">
+      <mat-icon>menu</mat-icon>
+    </button>
+  </div>
+
+  <span class="spacer"></span>
+
+  <div class="header-right">
+    <!-- Theme toggle -->
+    <button class="header-btn" [matMenuTriggerFor]="themeMenu" matTooltip="Theme">
+      <mat-icon>{{ isDark() ? 'dark_mode' : 'light_mode' }}</mat-icon>
+    </button>
+
+    <mat-menu #themeMenu="matMenu" class="theme-menu">
+      <button mat-menu-item (click)="setTheme('LIGHT')">
+        <mat-icon>light_mode</mat-icon>
+        <span>Light</span>
+        @if (themeMode() === 'LIGHT') {
+          <mat-icon class="check-icon">check</mat-icon>
+        }
+      </button>
+      <button mat-menu-item (click)="setTheme('DARK')">
+        <mat-icon>dark_mode</mat-icon>
+        <span>Dark</span>
+        @if (themeMode() === 'DARK') {
+          <mat-icon class="check-icon">check</mat-icon>
+        }
+      </button>
+      <button mat-menu-item (click)="setTheme('SYSTEM')">
+        <mat-icon>computer</mat-icon>
+        <span>System</span>
+        @if (themeMode() === 'SYSTEM') {
+          <mat-icon class="check-icon">check</mat-icon>
+        }
+      </button>
+    </mat-menu>
+
+    <!-- User menu -->
+    <button class="header-btn avatar-btn" [matMenuTriggerFor]="userMenu">
+      @if (user(); as u) {
+        <span class="avatar avatar-md user-avatar">
+          {{ u.first_name.charAt(0) }}{{ u.last_name.charAt(0) }}
+        </span>
+      } @else {
+        <mat-icon>account_circle</mat-icon>
+      }
+    </button>
+
+    <mat-menu #userMenu="matMenu">
+      @if (user(); as u) {
+        <div class="user-menu-header" mat-menu-item disabled>
+          <span class="avatar avatar-md user-avatar">{{ u.first_name.charAt(0) }}{{ u.last_name.charAt(0) }}</span>
+          <div class="user-menu-info">
+            <strong>{{ u.first_name }} {{ u.last_name }}</strong>
+            <span class="text-muted">{{ u.username }}</span>
+          </div>
+        </div>
+      }
+      <mat-divider></mat-divider>
+      <button mat-menu-item (click)="logout()">
+        <mat-icon>logout</mat-icon>
+        <span>Sign out</span>
+      </button>
+    </mat-menu>
+  </div>
+</header>

@@ -1,0 +1,58 @@
+<div class="page-header">
+  <h1 class="page-title">Dashboard</h1>
+</div>
+
+<div class="dashboard-grid">
+  @defer (on idle) {
+    <mat-card class="stat-card">
+      <mat-card-header>
+        <mat-icon mat-card-avatar>hotel</mat-icon>
+        <mat-card-title>Occupancy</mat-card-title>
+        <mat-card-subtitle>Today</mat-card-subtitle>
+      </mat-card-header>
+      <mat-card-content>
+        <div class="stat-value">--</div>
+      </mat-card-content>
+    </mat-card>
+
+    <mat-card class="stat-card">
+      <mat-card-header>
+        <mat-icon mat-card-avatar>flight_land</mat-icon>
+        <mat-card-title>Arrivals</mat-card-title>
+        <mat-card-subtitle>Today</mat-card-subtitle>
+      </mat-card-header>
+      <mat-card-content>
+        <div class="stat-value">--</div>
+      </mat-card-content>
+    </mat-card>
+
+    <mat-card class="stat-card">
+      <mat-card-header>
+        <mat-icon mat-card-avatar>flight_takeoff</mat-icon>
+        <mat-card-title>Departures</mat-card-title>
+        <mat-card-subtitle>Today</mat-card-subtitle>
+      </mat-card-header>
+      <mat-card-content>
+        <div class="stat-value">--</div>
+      </mat-card-content>
+    </mat-card>
+
+    <mat-card class="stat-card">
+      <mat-card-header>
+        <mat-icon mat-card-avatar>cleaning_services</mat-icon>
+        <mat-card-title>Housekeeping</mat-card-title>
+        <mat-card-subtitle>Pending</mat-card-subtitle>
+      </mat-card-header>
+      <mat-card-content>
+        <div class="stat-value">--</div>
+      </mat-card-content>
+    </mat-card>
+  } @placeholder {
+    <div class="stat-card-placeholder"></div>
+    <div class="stat-card-placeholder"></div>
+    <div class="stat-card-placeholder"></div>
+    <div class="stat-card-placeholder"></div>
+  } @loading (minimum 200ms) {
+    <div class="stat-card-loading">Loading dashboard...</div>
+  }
+</div>

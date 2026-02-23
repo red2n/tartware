@@ -9,6 +9,14 @@ export const RoomListItemSchema = RoomItemSchema;
 // Internal type alias
 type RoomListItem = RoomItem;
 
+/** Amenity catalog item returned by listAmenityCatalog. */
+export type AmenityCatalogItem = {
+  amenity_code: string;
+  display_name: string;
+  category: string;
+  icon: string | null;
+};
+
 type CreateRoomInput = {
   tenant_id: string;
   property_id: string;
@@ -526,4 +534,132 @@ export const searchAvailableRooms = async (options: {
     currency: r.currency ?? "USD",
     features: r.features ? (Array.isArray(r.features) ? r.features : []) : [],
   }));
+};
+
+/**
+ * Activate a room — transition from SETUP to AVAILABLE.
+ * Validates that at least one active rate plan exists for the room type.
+ */
+export const activateRoom = async (input: {
+  tenantId: string;
+  roomId: string;
+  activatedBy?: string;
+}): Promise<{ success: boolean; room?: RoomListItem; error?: string }> => {
+  // 1. Get the room and verify it's in SETUP status
+  const room = await getRoomById({ tenantId: input.tenantId, roomId: input.roomId });
+  if (!room) {
+    return { success: false, error: "Room not found" };
+  }
+  if (room.status !== "setup") {
+    return { success: false, error: `Room is already in ${room.status} status` };
+  }
+
+  if (!room.room_type_id) {
+    return { success: false, error: "Room has no room type assigned" };
+  }
+
+  // 2. Check that at least one active rate exists for this room type
+  const { rows: rateRows } = await query<{ count: string }>(
+    `
+      SELECT COUNT(*)::text AS count
+      FROM public.rates
+      WHERE tenant_id = $1::uuid
+        AND room_type_id = $2::uuid
+        AND status = 'ACTIVE'
+        AND (valid_until IS NULL OR valid_until >= CURRENT_DATE)
+    `,
+    [input.tenantId, room.room_type_id],
+  );
+
+  const rateCount = Number.parseInt(rateRows[0]?.count ?? "0", 10);
+  if (rateCount === 0) {
+    return {
+      success: false,
+      error: "Cannot activate room: no active rate plans exist for this room type. Please configure at least one rate plan first.",
+    };
+  }
+
+  // 3. Transition to AVAILABLE
+  const { rowCount } = await query(
+    `
+      UPDATE public.rooms
+      SET status = 'AVAILABLE',
+          version = version + 1,
+          updated_at = NOW(),
+          updated_by = $3
+      WHERE tenant_id = $1::uuid
+        AND id = $2::uuid
+        AND status = 'SETUP'
+        AND COALESCE(is_deleted, false) = false
+    `,
+    [input.tenantId, input.roomId, input.activatedBy ?? "SYSTEM"],
+  );
+
+  if (!rowCount || rowCount === 0) {
+    return { success: false, error: "Failed to activate room — it may have been modified concurrently" };
+  }
+
+  // 4. Return the updated room
+  const updated = await getRoomById({ tenantId: input.tenantId, roomId: input.roomId });
+  return { success: true, room: updated ?? undefined };
+};
+
+/**
+ * Deactivate a room — transition from AVAILABLE back to SETUP.
+ * This removes the room from booking availability for reconfiguration.
+ */
+export const deactivateRoom = async (input: {
+  tenantId: string;
+  roomId: string;
+  deactivatedBy?: string;
+}): Promise<{ success: boolean; room?: RoomListItem; error?: string }> => {
+  const room = await getRoomById({ tenantId: input.tenantId, roomId: input.roomId });
+  if (!room) {
+    return { success: false, error: "Room not found" };
+  }
+  if (room.status !== "available") {
+    return {
+      success: false,
+      error: `Only rooms in Available status can be deactivated. Current status: ${room.status}`,
+    };
+  }
+
+  const { rowCount } = await query(
+    `
+      UPDATE public.rooms
+      SET status = 'SETUP',
+          version = version + 1,
+          updated_at = NOW(),
+          updated_by = $3
+      WHERE tenant_id = $1::uuid
+        AND id = $2::uuid
+        AND status = 'AVAILABLE'
+        AND COALESCE(is_deleted, false) = false
+    `,
+    [input.tenantId, input.roomId, input.deactivatedBy ?? "SYSTEM"],
+  );
+
+  if (!rowCount || rowCount === 0) {
+    return { success: false, error: "Failed to deactivate room — it may have been modified concurrently" };
+  }
+
+  const updated = await getRoomById({ tenantId: input.tenantId, roomId: input.roomId });
+  return { success: true, room: updated ?? undefined };
+};
+
+/**
+ * List active amenities from the catalog for a given tenant.
+ */
+export const listAmenityCatalog = async (tenantId: string): Promise<AmenityCatalogItem[]> => {
+  const { rows } = await query<AmenityCatalogItem>(
+    `
+      SELECT amenity_code, display_name, category, icon
+      FROM public.room_amenity_catalog
+      WHERE tenant_id = $1::uuid
+        AND is_active = true
+      ORDER BY sort_order, display_name
+    `,
+    [tenantId],
+  );
+  return rows;
 };

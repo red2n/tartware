@@ -1,0 +1,47 @@
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: var(--space-4);
+}
+
+.stat-card {
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-md);
+  background: var(--color-canvas-default);
+  padding: var(--space-4);
+
+  mat-icon[mat-card-avatar] {
+    color: var(--color-accent-fg);
+    font-size: var(--font-size-xl);
+    width: 24px;
+    height: 24px;
+  }
+}
+
+.stat-value {
+  font-size: var(--font-size-2xl);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-fg-default);
+  margin-top: var(--space-3);
+}
+
+/* @defer placeholders */
+.stat-card-placeholder {
+  height: 120px;
+  background: var(--color-canvas-subtle);
+  border: 1px solid var(--color-border-muted);
+  border-radius: var(--radius-lg);
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+.stat-card-loading {
+  grid-column: 1 / -1;
+  text-align: center;
+  color: var(--color-fg-muted);
+  padding: var(--space-8);
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}

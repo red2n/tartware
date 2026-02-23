@@ -1,0 +1,132 @@
+<div class="rooms-page">
+  <div class="page-header">
+    <h1 class="page-title">Rooms</h1>
+    <div class="page-actions">
+      <button class="btn btn-primary btn-sm" (click)="openCreateDialog()">
+        <mat-icon>add</mat-icon>
+        New room
+      </button>
+      <button class="btn btn-invisible" (click)="loadRooms()" matTooltip="Refresh">
+        <mat-icon>refresh</mat-icon>
+      </button>
+    </div>
+  </div>
+
+  <!-- Filter tabs + search -->
+  <div class="filter-bar">
+    <nav class="filter-tabs">
+      @for (f of statusFilters; track f.key) {
+        <button
+          class="filter-tab"
+          [class.filter-tab-active]="activeFilter() === f.key"
+          (click)="setFilter(f.key)">
+          {{ f.label }}
+          <span class="counter">{{ filterCounts()[f.key] }}</span>
+        </button>
+      }
+    </nav>
+
+    <div class="search-box">
+      <mat-icon class="search-icon">search</mat-icon>
+      <input
+        type="text"
+        class="search-input"
+        placeholder="Search rooms..."
+        [ngModel]="searchQuery()"
+        (ngModelChange)="onSearch($event)" />
+    </div>
+  </div>
+
+  <!-- Content -->
+  @if (loading()) {
+    <div class="loading-state">
+      <mat-spinner diameter="32"></mat-spinner>
+      <span class="text-muted">Loading rooms...</span>
+    </div>
+  } @else if (error(); as err) {
+    <div class="error-state">
+      <mat-icon class="error-icon">error_outline</mat-icon>
+      <span>{{ err }}</span>
+      <button class="btn btn-outline" (click)="loadRooms()">Retry</button>
+    </div>
+  } @else if (filteredRooms().length === 0) {
+    <div class="empty-state">
+      <mat-icon class="empty-icon">hotel</mat-icon>
+      @if (rooms().length === 0) {
+        <p>No rooms found</p>
+        <p class="text-muted">Rooms will appear here once they are configured.</p>
+      } @else {
+        <p>No rooms match the current filters</p>
+        <button class="btn btn-outline" (click)="setFilter('ALL'); onSearch('')">Clear filters</button>
+      }
+    </div>
+  } @else {
+    <!-- Defer the heavy table rendering until idle -->
+    @defer (on idle) {
+      <div class="table-container">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Room</th>
+              <th>Type</th>
+              <th>Floor</th>
+              <th>Status</th>
+              <th>Housekeeping</th>
+              <th>Maintenance</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (room of filteredRooms(); track room.room_id) {
+              <tr class="row-clickable" (click)="viewRoom(room.room_id)">
+                <td class="cell-primary">
+                  <span class="room-number">{{ room.room_number }}</span>
+                  @if (room.room_name) {
+                    <span class="room-name text-muted">{{ room.room_name }}</span>
+                  }
+                </td>
+                <td>{{ room.room_type_name ?? '—' }}</td>
+                <td>{{ room.floor ?? '—' }}</td>
+                <td>
+                  <span class="badge" [ngClass]="statusClass(room.status)">
+                    {{ room.status_display }}
+                  </span>
+                  @if (room.is_blocked) {
+                    <span class="badge badge-warning" [matTooltip]="room.block_reason ?? ''">Blocked</span>
+                  }
+                  @if (room.is_out_of_order) {
+                    <span class="badge badge-danger" [matTooltip]="room.out_of_order_reason ?? ''">OOO</span>
+                  }
+                </td>
+                <td>
+                  <span class="badge" [ngClass]="hkClass(room.housekeeping_status)">
+                    {{ room.housekeeping_display }}
+                  </span>
+                </td>
+                <td>{{ room.maintenance_display }}</td>
+                <td class="cell-actions">
+                  <a class="btn btn-invisible btn-sm" [routerLink]="['/rooms', room.room_id]" matTooltip="View details">
+                    <mat-icon>chevron_right</mat-icon>
+                  </a>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    } @placeholder {
+      <div class="placeholder-table">
+        <div class="placeholder-row"></div>
+        <div class="placeholder-row"></div>
+        <div class="placeholder-row"></div>
+        <div class="placeholder-row"></div>
+        <div class="placeholder-row"></div>
+      </div>
+    } @loading (minimum 200ms) {
+      <div class="loading-state">
+        <mat-spinner diameter="24"></mat-spinner>
+        <span class="text-muted">Rendering table...</span>
+      </div>
+    }
+  }
+</div>

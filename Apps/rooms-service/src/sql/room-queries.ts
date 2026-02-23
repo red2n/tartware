@@ -132,7 +132,7 @@ export const ROOM_CREATE_SQL = `
       $6,
       $7,
       $8,
-      COALESCE($9, 'AVAILABLE')::room_status,
+      COALESCE($9, 'SETUP')::room_status,
       COALESCE($10, 'CLEAN')::housekeeping_status,
       COALESCE($11, 'OPERATIONAL')::maintenance_status,
       COALESCE($12, '{}'::jsonb),

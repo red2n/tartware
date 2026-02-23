@@ -82,20 +82,24 @@ export const handleRoomStatusUpdate = async (
         status = COALESCE($3::room_status, status),
         maintenance_status = COALESCE($4::maintenance_status, maintenance_status),
         is_blocked = CASE
-          WHEN $3 = 'AVAILABLE' THEN false
-          WHEN $3 = 'BLOCKED' THEN true
+          WHEN $3::text = 'AVAILABLE' THEN false
           ELSE is_blocked
         END,
         is_out_of_order = CASE
-          WHEN $3 = 'AVAILABLE' THEN false
-          WHEN $3 IN ('OUT_OF_ORDER', 'OUT_OF_SERVICE') THEN true
+          WHEN $3::text = 'AVAILABLE' THEN false
+          WHEN $3::text IN ('OUT_OF_ORDER', 'OUT_OF_SERVICE') THEN true
           ELSE is_out_of_order
         END,
-        notes = CASE
-          WHEN $5 IS NULL THEN notes
-          WHEN notes IS NULL THEN $5
-          ELSE CONCAT_WS(E'\\n', notes, $5)
+        out_of_order_reason = CASE
+          WHEN $3::text = 'AVAILABLE' THEN NULL
+          ELSE out_of_order_reason
         END,
+        notes = CASE
+          WHEN $5::text IS NULL THEN notes
+          WHEN notes IS NULL THEN $5::text
+          ELSE CONCAT_WS(E'\\n', notes, $5::text)
+        END,
+        version = version + 1,
         updated_at = NOW(),
         updated_by = $6
       WHERE tenant_id = $1::uuid
@@ -136,6 +140,7 @@ export const handleRoomHousekeepingStatusUpdate = async (
           WHEN housekeeping_notes IS NULL THEN $4
           ELSE CONCAT_WS(E'\\n', housekeeping_notes, $4)
         END,
+        version = version + 1,
         updated_at = NOW(),
         updated_by = $5
       WHERE tenant_id = $1::uuid
@@ -168,6 +173,7 @@ export const handleRoomOutOfOrder = async (
         out_of_order_reason = $3,
         out_of_order_since = COALESCE($4, NOW()),
         expected_ready_date = $5,
+        version = version + 1,
         updated_at = NOW(),
         updated_by = $6
       WHERE tenant_id = $1::uuid
@@ -207,6 +213,7 @@ export const handleRoomOutOfService = async (
         out_of_order_reason = $3,
         out_of_order_since = COALESCE($4, NOW()),
         expected_ready_date = $5,
+        version = version + 1,
         updated_at = NOW(),
         updated_by = $6
       WHERE tenant_id = $1::uuid
@@ -478,6 +485,7 @@ export const handleRoomFeaturesUpdate = async (
           WHEN notes IS NULL THEN $5
           ELSE CONCAT_WS(E'\\n', notes, $5)
         END,
+        version = version + 1,
         updated_at = NOW(),
         updated_by = $6
       WHERE tenant_id = $1::uuid
@@ -615,6 +623,7 @@ const blockRoom = async (
         blocked_from = $4,
         blocked_until = $5,
         expected_ready_date = $6,
+        version = version + 1,
         updated_at = NOW(),
         updated_by = $7
       WHERE tenant_id = $1::uuid
@@ -660,6 +669,7 @@ const releaseRoomBlock = async (
         blocked_from = NULL,
         blocked_until = NULL,
         expected_ready_date = NULL,
+        version = version + 1,
         updated_at = NOW(),
         updated_by = $3
       WHERE tenant_id = $1::uuid
