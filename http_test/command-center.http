@@ -2092,6 +2092,83 @@ X-Idempotency-Key: loyalty-redeem-{{$timestamp}}
   }
 }
 
+### 80. loyalty.points.expire_sweep - Expire stale loyalty points
+# @name loyaltyExpireSweep
+POST {{baseUrl}}/v1/commands/loyalty.points.expire_sweep/execute
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+X-Request-ID: {{$guid}}
+X-Idempotency-Key: loyalty-sweep-{{$timestamp}}
+
+{
+  "tenant_id": "{{tenantId}}",
+  "payload": {
+    "cutoff_days": 365,
+    "dry_run": true
+  }
+}
+
+### 81. metasearch.config.create - Create a metasearch platform configuration
+# @name metasearchConfigCreate
+POST {{baseUrl}}/v1/commands/metasearch.config.create/execute
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+X-Request-ID: {{$guid}}
+X-Idempotency-Key: metasearch-create-{{$timestamp}}
+
+{
+  "tenant_id": "{{tenantId}}",
+  "payload": {
+    "property_id": "{{propertyId}}",
+    "platform": "GOOGLE_HOTEL_ADS",
+    "bid_type": "CPC",
+    "bid_amount": 1.50,
+    "currency": "USD",
+    "daily_budget": 100.00,
+    "is_active": true
+  }
+}
+
+### 82. metasearch.config.update - Update a metasearch platform configuration
+# @name metasearchConfigUpdate
+POST {{baseUrl}}/v1/commands/metasearch.config.update/execute
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+X-Request-ID: {{$guid}}
+X-Idempotency-Key: metasearch-update-{{$timestamp}}
+
+{
+  "tenant_id": "{{tenantId}}",
+  "payload": {
+    "config_id": "00000000-0000-0000-0000-000000000000",
+    "bid_amount": 2.00,
+    "daily_budget": 150.00
+  }
+}
+
+### 83. metasearch.click.record - Record a metasearch click event
+# @name metasearchClickRecord
+POST {{baseUrl}}/v1/commands/metasearch.click.record/execute
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+X-Request-ID: {{$guid}}
+X-Idempotency-Key: metasearch-click-{{$timestamp}}
+
+{
+  "tenant_id": "{{tenantId}}",
+  "payload": {
+    "property_id": "{{propertyId}}",
+    "platform": "GOOGLE_HOTEL_ADS",
+    "click_cost": 1.25,
+    "currency": "USD",
+    "search_date": "2026-03-15",
+    "check_in_date": "2026-04-01",
+    "check_out_date": "2026-04-03",
+    "device_type": "MOBILE",
+    "market": "US"
+  }
+}
+
 ###############################################################################
 # REFERENCE
 ###############################################################################

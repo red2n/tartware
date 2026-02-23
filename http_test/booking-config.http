@@ -454,6 +454,34 @@ Content-Type: application/json
 
 
 ### -----------------------------------------------
+### METASEARCH CONFIGURATIONS (CPC/CPA Bid Management)
+### -----------------------------------------------
+
+### List All Metasearch Configurations
+# @name listMetasearchConfigs
+GET {{baseUrl}}/v1/metasearch-configs?tenant_id={{tenantId}}&limit=100
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+### List Metasearch Configs for Property
+GET {{baseUrl}}/v1/metasearch-configs?tenant_id={{tenantId}}&property_id={{propertyId}}
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+### Metasearch Click Performance Stats
+# @name metasearchPerformance
+GET {{baseUrl}}/v1/metasearch-configs/performance?tenant_id={{tenantId}}&property_id={{propertyId}}
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+### Get Metasearch Config by ID
+# @name getMetasearchConfigById
+GET {{baseUrl}}/v1/metasearch-configs/{{metasearchConfigId}}?tenant_id={{tenantId}}
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+
+### -----------------------------------------------
 ### VARIABLES (update as needed)
 ### -----------------------------------------------
 # @allotmentId = 00000000-0000-0000-0000-000000000000
@@ -465,3 +493,4 @@ Content-Type: application/json
 # @meetingRoomId = 00000000-0000-0000-0000-000000000000
 # @eventBookingId = 00000000-0000-0000-0000-000000000000
 # @waitlistEntryId = 00000000-0000-0000-0000-000000000000
+# @metasearchConfigId = 00000000-0000-0000-0000-000000000000

@@ -91,6 +91,7 @@ Authorization: Bearer {{authToken}}
 ###############################################################################
 
 @guestId = 33333333-3333-3333-3333-333333333333
+@loyaltyProgramId = aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee
 
 ###
 # List all preferences for a guest
@@ -216,7 +217,29 @@ GET {{baseUrl}}/v1/guests/{{guestId}}/communications?tenant_id={{tenantId}}&stat
 Authorization: Bearer {{authToken}}
 
 ###############################################################################
-# 6. REST-STYLE COMMAND DISPATCH
+# 6. LOYALTY READ ENDPOINTS
+###############################################################################
+
+###
+# List loyalty point transactions
+# @name listLoyaltyTransactions
+GET {{baseUrl}}/v1/loyalty/transactions?tenant_id={{tenantId}}&limit=50
+Authorization: Bearer {{authToken}}
+
+###
+# List loyalty tier rules and benefits
+# @name listLoyaltyTierRules
+GET {{baseUrl}}/v1/loyalty/tier-rules?tenant_id={{tenantId}}
+Authorization: Bearer {{authToken}}
+
+###
+# Get loyalty program balance
+# @name getLoyaltyBalance
+GET {{baseUrl}}/v1/loyalty/programs/{{loyaltyProgramId}}/balance?tenant_id={{tenantId}}
+Authorization: Bearer {{authToken}}
+
+###############################################################################
+# 7. REST-STYLE COMMAND DISPATCH
 # Alternative to /v1/commands/{name}/execute pattern
 # These routes dispatch commands via the gateway
 ###############################################################################
@@ -453,6 +476,11 @@ X-Idempotency-Key: pref-{{$timestamp}}
 #     POST /v1/commands/guest.preference.update/execute
 #
 # REST-STYLE COMMAND DISPATCH (alternative pattern):
+#   GET  /v1/loyalty/transactions
+#   GET  /v1/loyalty/tier-rules
+#   GET  /v1/loyalty/programs/:programId/balance
+#
+# REST-STYLE COMMAND DISPATCH (alternative pattern):
 #   POST /v1/tenants/:tenantId/guests/:guestId/profile
 #   POST /v1/tenants/:tenantId/guests/:guestId/contact
 #   POST /v1/tenants/:tenantId/guests/:guestId/loyalty
@@ -465,5 +493,6 @@ X-Idempotency-Key: pref-{{$timestamp}}
 #   Tenant:   11111111-1111-1111-1111-111111111111
 #   Property: 22222222-2222-2222-2222-222222222222
 #   Guest:    33333333-3333-3333-3333-333333333333
+#   Loyalty:  aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee
 #
 ###############################################################################
