@@ -444,6 +444,7 @@ REQUIRED_SCRIPTS=(
     "$SCRIPTS_DIR/indexes/00-create-all-indexes.sql"
     "$SCRIPTS_DIR/constraints/00-create-all-constraints.sql"
     "$SCRIPTS_DIR/verify-all.sql"
+    "$SCRIPTS_DIR/verify-setup.sql"
 )
 
 for script in "${REQUIRED_SCRIPTS[@]}"; do
@@ -779,6 +780,11 @@ echo ""
 echo -e "${BLUE}[14/14]${NC} Running verification..."
 
 psql -v scripts_dir="$SCRIPTS_DIR" -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -f "$SCRIPTS_DIR/verify-all.sql" 2>&1 | tail -30
+
+echo ""
+echo -e "${BLUE}[14/14]${NC} Running post-setup verification..."
+
+psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -f "$SCRIPTS_DIR/verify-setup.sql" 2>&1 | grep -E 'NOTICE:|WARNING:' | sed 's/.*NOTICE:  //' | sed 's/.*WARNING:  //'
 
 echo ""
 
