@@ -6,14 +6,22 @@ import {
   DemandForecastReportSchema,
   GuestListReportSchema,
   getArrivalsReport,
+  getAuditTrailReport,
   getDemandForecastReport,
   getDeparturesReport,
+  getFlashReport,
+  getGuestStatisticsReport,
+  getHousekeepingProductivityReport,
   getInHouseReport,
+  getMaintenanceSlaReport,
+  getMarketSegmentProductionReport,
+  getNoShowReport,
   getOccupancyReport,
   getPaceReport,
   getPerformanceReport,
   getRevenueForecastReport,
   getRevenueKpiReport,
+  getVipArrivalsReport,
   OccupancyReportSchema,
   PaceReportSchema,
   PerformanceReportSchema,
@@ -371,6 +379,271 @@ export const registerReportRoutes = (app: FastifyInstance): void => {
         startDate: start_date,
         endDate: end_date,
         scenario,
+        limit,
+        offset,
+      });
+    },
+  );
+
+  // ─── Manager's Flash Report ─────────────────────────────────────────────────
+  const FlashReportQuerySchema = z.object({
+    tenant_id: z.string().uuid(),
+    property_id: z.string().uuid().optional(),
+    business_date: z
+      .string()
+      .optional()
+      .refine((v) => !v || !Number.isNaN(Date.parse(v)), {
+        message: "business_date must be a valid ISO date string",
+      }),
+  });
+  type FlashReportQuery = z.infer<typeof FlashReportQuerySchema>;
+  const FlashReportQueryJsonSchema = schemaFromZod(FlashReportQuerySchema, "FlashReportQuery");
+
+  app.get<{ Querystring: FlashReportQuery }>(
+    "/v1/reports/flash",
+    {
+      preHandler: app.withTenantScope({
+        resolveTenantId: (request) => (request.query as FlashReportQuery).tenant_id,
+        minRole: "MANAGER",
+        requiredModules: "analytics-bi",
+      }),
+      schema: buildRouteSchema({
+        tag: REPORTS_TAG,
+        summary: "Manager's flash report — real-time operational snapshot",
+        description:
+          "Returns rooms (sold, available, OOO, OOS, occupancy), revenue (ADR, RevPAR), " +
+          "arrivals/departures, in-house, housekeeping, and maintenance KPIs for the business date.",
+        querystring: FlashReportQueryJsonSchema,
+      }),
+    },
+    async (request) => {
+      const { tenant_id, property_id, business_date } = FlashReportQuerySchema.parse(request.query);
+
+      return getFlashReport({
+        tenantId: tenant_id,
+        propertyId: property_id,
+        businessDate: business_date,
+      });
+    },
+  );
+
+  // ─── No-Show Report ─────────────────────────────────────────────────────────
+  app.get<{ Querystring: DateRangeReportQuery }>(
+    "/v1/reports/no-shows",
+    {
+      preHandler: app.withTenantScope({
+        resolveTenantId: (request) => (request.query as DateRangeReportQuery).tenant_id,
+        minRole: "MANAGER",
+        requiredModules: "analytics-bi",
+      }),
+      schema: buildRouteSchema({
+        tag: REPORTS_TAG,
+        summary: "No-show report — reservations marked as no-show",
+        querystring: DateRangeQueryJsonSchema,
+      }),
+    },
+    async (request) => {
+      const { tenant_id, property_id, start_date, end_date, limit, offset } =
+        DateRangeReportQuerySchema.parse(request.query);
+      return getNoShowReport({
+        tenantId: tenant_id,
+        propertyId: property_id,
+        startDate: start_date,
+        endDate: end_date,
+        limit,
+        offset,
+      });
+    },
+  );
+
+  // ─── VIP Arrivals Report ────────────────────────────────────────────────────
+  app.get<{ Querystring: DateRangeReportQuery }>(
+    "/v1/reports/vip-arrivals",
+    {
+      preHandler: app.withTenantScope({
+        resolveTenantId: (request) => (request.query as DateRangeReportQuery).tenant_id,
+        minRole: "STAFF",
+        requiredModules: "analytics-bi",
+      }),
+      schema: buildRouteSchema({
+        tag: REPORTS_TAG,
+        summary: "VIP arrivals — expected VIP guests for a date range",
+        querystring: DateRangeQueryJsonSchema,
+        response: { 200: GuestListJsonSchema },
+      }),
+    },
+    async (request) => {
+      const { tenant_id, property_id, start_date, end_date, limit, offset } =
+        DateRangeReportQuerySchema.parse(request.query);
+      return getVipArrivalsReport({
+        tenantId: tenant_id,
+        propertyId: property_id,
+        startDate: start_date,
+        endDate: end_date,
+        limit,
+        offset,
+      });
+    },
+  );
+
+  // ─── Guest Statistics Report ────────────────────────────────────────────────
+  const GuestStatsQuerySchema = z.object({
+    tenant_id: z.string().uuid(),
+    property_id: z.string().uuid().optional(),
+  });
+  type GuestStatsQuery = z.infer<typeof GuestStatsQuerySchema>;
+  const GuestStatsQueryJsonSchema = schemaFromZod(GuestStatsQuerySchema, "GuestStatsQuery");
+
+  app.get<{ Querystring: GuestStatsQuery }>(
+    "/v1/reports/guest-statistics",
+    {
+      preHandler: app.withTenantScope({
+        resolveTenantId: (request) => (request.query as GuestStatsQuery).tenant_id,
+        minRole: "MANAGER",
+        requiredModules: "analytics-bi",
+      }),
+      schema: buildRouteSchema({
+        tag: REPORTS_TAG,
+        summary: "Guest statistics — demographics, nationality, loyalty tier breakdown",
+        querystring: GuestStatsQueryJsonSchema,
+      }),
+    },
+    async (request) => {
+      const { tenant_id, property_id } = GuestStatsQuerySchema.parse(request.query);
+      return getGuestStatisticsReport({ tenantId: tenant_id, propertyId: property_id });
+    },
+  );
+
+  // ─── Market Segment Production Report ───────────────────────────────────────
+  app.get<{ Querystring: DateRangeReportQuery }>(
+    "/v1/reports/market-segment-production",
+    {
+      preHandler: app.withTenantScope({
+        resolveTenantId: (request) => (request.query as DateRangeReportQuery).tenant_id,
+        minRole: "ADMIN",
+        requiredModules: "analytics-bi",
+      }),
+      schema: buildRouteSchema({
+        tag: REPORTS_TAG,
+        summary: "Market segment production — room nights and revenue by segment",
+        querystring: DateRangeQueryJsonSchema,
+      }),
+    },
+    async (request) => {
+      const { tenant_id, property_id, start_date, end_date } = DateRangeReportQuerySchema.parse(
+        request.query,
+      );
+      return getMarketSegmentProductionReport({
+        tenantId: tenant_id,
+        propertyId: property_id,
+        startDate: start_date,
+        endDate: end_date,
+      });
+    },
+  );
+
+  // ─── Housekeeping Productivity Report ───────────────────────────────────────
+  const HkProductivityQuerySchema = z.object({
+    tenant_id: z.string().uuid(),
+    property_id: z.string().uuid().optional(),
+    business_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  });
+  type HkProductivityQuery = z.infer<typeof HkProductivityQuerySchema>;
+  const HkProductivityQueryJsonSchema = schemaFromZod(
+    HkProductivityQuerySchema,
+    "HkProductivityQuery",
+  );
+
+  app.get<{ Querystring: HkProductivityQuery }>(
+    "/v1/reports/housekeeping-productivity",
+    {
+      preHandler: app.withTenantScope({
+        resolveTenantId: (request) => (request.query as HkProductivityQuery).tenant_id,
+        minRole: "MANAGER",
+        requiredModules: "analytics-bi",
+      }),
+      schema: buildRouteSchema({
+        tag: REPORTS_TAG,
+        summary: "Housekeeping productivity — task completion and attendant performance",
+        querystring: HkProductivityQueryJsonSchema,
+      }),
+    },
+    async (request) => {
+      const { tenant_id, property_id, business_date } = HkProductivityQuerySchema.parse(
+        request.query,
+      );
+      return getHousekeepingProductivityReport({
+        tenantId: tenant_id,
+        propertyId: property_id,
+        businessDate: business_date,
+      });
+    },
+  );
+
+  // ─── Maintenance SLA Report ─────────────────────────────────────────────────
+  app.get<{ Querystring: DateRangeReportQuery }>(
+    "/v1/reports/maintenance-sla",
+    {
+      preHandler: app.withTenantScope({
+        resolveTenantId: (request) => (request.query as DateRangeReportQuery).tenant_id,
+        minRole: "MANAGER",
+        requiredModules: "analytics-bi",
+      }),
+      schema: buildRouteSchema({
+        tag: REPORTS_TAG,
+        summary: "Maintenance SLA — request resolution, response times, and priority breakdown",
+        querystring: DateRangeQueryJsonSchema,
+      }),
+    },
+    async (request) => {
+      const { tenant_id, property_id, start_date, end_date } = DateRangeReportQuerySchema.parse(
+        request.query,
+      );
+      return getMaintenanceSlaReport({
+        tenantId: tenant_id,
+        propertyId: property_id,
+        startDate: start_date,
+        endDate: end_date,
+      });
+    },
+  );
+
+  // ─── Audit Trail Report ─────────────────────────────────────────────────────
+  const AuditTrailQuerySchema = z.object({
+    tenant_id: z.string().uuid(),
+    start_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+    end_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+    command_name: z.string().optional(),
+    initiated_by: z.string().optional(),
+    limit: z.coerce.number().int().min(1).max(500).optional(),
+    offset: z.coerce.number().int().min(0).optional(),
+  });
+  type AuditTrailQuery = z.infer<typeof AuditTrailQuerySchema>;
+  const AuditTrailQueryJsonSchema = schemaFromZod(AuditTrailQuerySchema, "AuditTrailQuery");
+
+  app.get<{ Querystring: AuditTrailQuery }>(
+    "/v1/reports/audit-trail",
+    {
+      preHandler: app.withTenantScope({
+        resolveTenantId: (request) => (request.query as AuditTrailQuery).tenant_id,
+        minRole: "ADMIN",
+        requiredModules: "analytics-bi",
+      }),
+      schema: buildRouteSchema({
+        tag: REPORTS_TAG,
+        summary: "Audit trail — command history log with filters",
+        querystring: AuditTrailQueryJsonSchema,
+      }),
+    },
+    async (request) => {
+      const { tenant_id, start_date, end_date, command_name, initiated_by, limit, offset } =
+        AuditTrailQuerySchema.parse(request.query);
+      return getAuditTrailReport({
+        tenantId: tenant_id,
+        startDate: start_date,
+        endDate: end_date,
+        commandName: command_name,
+        initiatedBy: initiated_by,
         limit,
         offset,
       });

@@ -91,6 +91,7 @@
 \ir 03-bookings/58_loyalty_point_transactions.sql
 \ir 03-bookings/59_loyalty_tier_rules.sql
 \ir 03-bookings/60_lost_business.sql
+\ir 03-bookings/61_reward_catalog.sql
 -- Shadow observability (Roll Service parity + Availability Guard metadata)
 \echo '    - Shadow roll ledgers, checkpoints, and guard audit tables'
 \ir 03-bookings/90_roll_service_shadow_ledgers.sql

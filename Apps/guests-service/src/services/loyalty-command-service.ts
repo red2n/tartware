@@ -8,6 +8,7 @@ import { query } from "../lib/db.js";
 import { appLogger } from "../lib/logger.js";
 import {
   LoyaltyPointsEarnCommandSchema,
+  LoyaltyPointsExpireSweepCommandSchema,
   LoyaltyPointsRedeemCommandSchema,
 } from "../schemas/loyalty-commands.js";
 
@@ -179,5 +180,82 @@ export const redeemLoyaltyPoints = async ({
       initiatedBy,
     },
     "loyalty.points.redeem command applied",
+  );
+};
+
+/**
+ * Expire sweep: finds un-expired ledger rows where expires_at <= NOW(),
+ * inserts offsetting 'expire' rows, and decrements program balances.
+ * Processes in batches scoped to the tenant.
+ */
+export const expireLoyaltyPoints = async ({
+  tenantId,
+  payload,
+  correlationId,
+}: CommandContext): Promise<void> => {
+  const command = LoyaltyPointsExpireSweepCommandSchema.parse(payload);
+  const batchSize = command.batch_size ?? 500;
+
+  // Atomically: mark expired, insert ledger rows, decrement balances
+  const { rowCount } = await query<{ program_id: string; expired_points: number }>(
+    `
+      WITH expired AS (
+        SELECT transaction_id, tenant_id, program_id, guest_id, points
+        FROM loyalty_point_transactions
+        WHERE tenant_id = $1::uuid
+          AND expired = FALSE
+          AND expires_at IS NOT NULL
+          AND expires_at <= NOW()
+          AND transaction_type IN ('earn', 'bonus', 'adjust', 'transfer_in')
+          AND points > 0
+        ORDER BY expires_at ASC
+        LIMIT $2
+        FOR UPDATE SKIP LOCKED
+      ),
+      mark_expired AS (
+        UPDATE loyalty_point_transactions lpt
+        SET expired = TRUE
+        FROM expired e
+        WHERE lpt.transaction_id = e.transaction_id
+      ),
+      balance_updates AS (
+        UPDATE guest_loyalty_programs glp
+        SET
+          points_balance = GREATEST(COALESCE(glp.points_balance, 0) - agg.total_points, 0),
+          updated_at = NOW()
+        FROM (
+          SELECT program_id, SUM(points) AS total_points
+          FROM expired
+          GROUP BY program_id
+        ) agg
+        WHERE glp.program_id = agg.program_id
+          AND glp.tenant_id = $1::uuid
+        RETURNING glp.program_id, glp.points_balance, agg.total_points
+      )
+      INSERT INTO loyalty_point_transactions (
+        tenant_id, program_id, guest_id,
+        transaction_type, points, balance_after,
+        reference_type, description, performed_by
+      )
+      SELECT
+        e.tenant_id, e.program_id, e.guest_id,
+        'expire', -e.points,
+        COALESCE(bu.points_balance, 0),
+        'sweep', 'Automatic points expiration',
+        'SYSTEM'
+      FROM expired e
+      LEFT JOIN balance_updates bu ON bu.program_id = e.program_id
+    `,
+    [tenantId, batchSize],
+  );
+
+  loyaltyLogger.info(
+    {
+      tenantId,
+      expiredCount: rowCount ?? 0,
+      batchSize,
+      correlationId,
+    },
+    "loyalty.points.expire_sweep completed",
   );
 };

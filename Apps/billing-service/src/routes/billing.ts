@@ -10,6 +10,7 @@ import {
   TaxConfigurationListItemSchema,
   TaxTypeEnum,
   TransactionTypeEnum,
+  TrialBalanceResponseSchema,
 } from "@tartware/schemas";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
@@ -17,9 +18,13 @@ import { z } from "zod";
 import {
   BillingPaymentSchema,
   getCashierSessionById,
+  getCommissionReport,
+  getDepartmentalRevenue,
   getFolioById,
   getInvoiceById,
   getTaxConfigurationById,
+  getTaxSummary,
+  getTrialBalance,
   listBillingPayments,
   listCashierSessions,
   listChargePostings,
@@ -613,6 +618,160 @@ export const registerBillingRoutes = (app: FastifyInstance): void => {
       }
 
       return TaxConfigurationListItemSchema.parse(config);
+    },
+  );
+
+  // ============================================================================
+  // TRIAL BALANCE REPORT
+  // ============================================================================
+
+  const TrialBalanceQuerySchema = z.object({
+    tenant_id: z.string().uuid(),
+    property_id: z.string().uuid().optional(),
+    business_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  });
+
+  type TrialBalanceQuery = z.infer<typeof TrialBalanceQuerySchema>;
+
+  const TrialBalanceResponseJsonSchema = schemaFromZod(
+    TrialBalanceResponseSchema,
+    "TrialBalanceResponse",
+  );
+
+  const TrialBalanceQueryJsonSchema = schemaFromZod(TrialBalanceQuerySchema, "TrialBalanceQuery");
+
+  app.get<{ Querystring: TrialBalanceQuery }>(
+    "/v1/billing/reports/trial-balance",
+    {
+      preHandler: app.withTenantScope({
+        resolveTenantId: (request) => (request.query as TrialBalanceQuery).tenant_id,
+        minRole: "ADMIN",
+        requiredModules: "finance-automation",
+      }),
+      schema: buildRouteSchema({
+        tag: BILLING_TAG,
+        summary: "Trial balance report — debits vs credits verification",
+        description:
+          "Generates a trial balance showing charge postings grouped by department and charge code, with aggregate totals and variance check",
+        querystring: TrialBalanceQueryJsonSchema,
+        response: {
+          200: TrialBalanceResponseJsonSchema,
+        },
+      }),
+    },
+    async (request) => {
+      const { tenant_id, property_id, business_date } = TrialBalanceQuerySchema.parse(
+        request.query,
+      );
+
+      return getTrialBalance({
+        tenantId: tenant_id,
+        propertyId: property_id,
+        businessDate: business_date,
+      });
+    },
+  );
+
+  // ============================================================================
+  // DEPARTMENTAL REVENUE REPORT
+  // ============================================================================
+
+  const DateRangeQuerySchema = z.object({
+    tenant_id: z.string().uuid(),
+    property_id: z.string().uuid().optional(),
+    start_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+    end_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  });
+
+  type DateRangeQuery = z.infer<typeof DateRangeQuerySchema>;
+  const DateRangeQueryJsonSchema = schemaFromZod(DateRangeQuerySchema, "BillingDateRangeQuery");
+
+  app.get<{ Querystring: DateRangeQuery }>(
+    "/v1/billing/reports/departmental-revenue",
+    {
+      preHandler: app.withTenantScope({
+        resolveTenantId: (request) => (request.query as DateRangeQuery).tenant_id,
+        minRole: "ADMIN",
+        requiredModules: "finance-automation",
+      }),
+      schema: buildRouteSchema({
+        tag: BILLING_TAG,
+        summary: "Departmental revenue — gross/net revenue breakdown by department",
+        querystring: DateRangeQueryJsonSchema,
+      }),
+    },
+    async (request) => {
+      const { tenant_id, property_id, start_date, end_date } = DateRangeQuerySchema.parse(
+        request.query,
+      );
+      return getDepartmentalRevenue({
+        tenantId: tenant_id,
+        propertyId: property_id,
+        startDate: start_date,
+        endDate: end_date,
+      });
+    },
+  );
+
+  // ============================================================================
+  // TAX SUMMARY REPORT
+  // ============================================================================
+
+  app.get<{ Querystring: DateRangeQuery }>(
+    "/v1/billing/reports/tax-summary",
+    {
+      preHandler: app.withTenantScope({
+        resolveTenantId: (request) => (request.query as DateRangeQuery).tenant_id,
+        minRole: "ADMIN",
+        requiredModules: "finance-automation",
+      }),
+      schema: buildRouteSchema({
+        tag: BILLING_TAG,
+        summary: "Tax summary — taxes collected by type, jurisdiction, and charge code",
+        querystring: DateRangeQueryJsonSchema,
+      }),
+    },
+    async (request) => {
+      const { tenant_id, property_id, start_date, end_date } = DateRangeQuerySchema.parse(
+        request.query,
+      );
+      return getTaxSummary({
+        tenantId: tenant_id,
+        propertyId: property_id,
+        startDate: start_date,
+        endDate: end_date,
+      });
+    },
+  );
+
+  // ============================================================================
+  // COMMISSION REPORT
+  // ============================================================================
+
+  app.get<{ Querystring: DateRangeQuery }>(
+    "/v1/billing/reports/commissions",
+    {
+      preHandler: app.withTenantScope({
+        resolveTenantId: (request) => (request.query as DateRangeQuery).tenant_id,
+        minRole: "ADMIN",
+        requiredModules: "finance-automation",
+      }),
+      schema: buildRouteSchema({
+        tag: BILLING_TAG,
+        summary: "Commission report — OTA/agent commission accruals by source",
+        querystring: DateRangeQueryJsonSchema,
+      }),
+    },
+    async (request) => {
+      const { tenant_id, property_id, start_date, end_date } = DateRangeQuerySchema.parse(
+        request.query,
+      );
+      return getCommissionReport({
+        tenantId: tenant_id,
+        propertyId: property_id,
+        startDate: start_date,
+        endDate: end_date,
+      });
     },
   );
 };

@@ -51,6 +51,7 @@
     "knip": "^5.67.0",
     "tsx": "^4.7.1",
     "typescript": "^5.3.3",
+    "@vitest/coverage-v8": "^4.0.18",
     "vitest": "^4.0.18"
   },
   "engines": {

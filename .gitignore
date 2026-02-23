@@ -38,6 +38,7 @@ PIPFILE.lock
 *.spec
 
 # Unit test / coverage reports
+coverage/
 htmlcov/
 .tox/
 .nox/

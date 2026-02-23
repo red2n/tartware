@@ -24,6 +24,12 @@ import {
   reassignHousekeepingTask,
   reopenHousekeepingTask,
 } from "../services/housekeeping-command-service.js";
+import {
+  assignMaintenanceRequest,
+  completeMaintenanceRequest,
+  createMaintenanceRequest,
+  escalateMaintenanceRequest,
+} from "../services/maintenance-command-service.js";
 import { createStaffSchedule, updateStaffSchedule } from "../services/schedule-command-service.js";
 
 let consumer: Consumer | null = null;
@@ -164,6 +170,30 @@ const routeHousekeepingCommand = async (
       return;
     case "operations.schedule.update":
       await updateStaffSchedule(envelope.payload, {
+        tenantId: metadata.tenantId,
+        initiatedBy: metadata.initiatedBy ?? null,
+      });
+      return;
+    case "operations.maintenance.request":
+      await createMaintenanceRequest(envelope.payload, {
+        tenantId: metadata.tenantId,
+        initiatedBy: metadata.initiatedBy ?? null,
+      });
+      return;
+    case "operations.maintenance.assign":
+      await assignMaintenanceRequest(envelope.payload, {
+        tenantId: metadata.tenantId,
+        initiatedBy: metadata.initiatedBy ?? null,
+      });
+      return;
+    case "operations.maintenance.complete":
+      await completeMaintenanceRequest(envelope.payload, {
+        tenantId: metadata.tenantId,
+        initiatedBy: metadata.initiatedBy ?? null,
+      });
+      return;
+    case "operations.maintenance.escalate":
+      await escalateMaintenanceRequest(envelope.payload, {
         tenantId: metadata.tenantId,
         initiatedBy: metadata.initiatedBy ?? null,
       });

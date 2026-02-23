@@ -224,8 +224,13 @@ export const BillingNightAuditCommandSchema = z.object({
 	property_id: z.string().uuid(),
 	business_date: z.string().optional(),
 	post_room_charges: z.boolean().optional(),
+	post_package_charges: z.boolean().optional(),
+	post_ota_commissions: z.boolean().optional(),
+	use_compound_taxes: z.boolean().optional(),
 	mark_no_shows: z.boolean().optional(),
 	advance_date: z.boolean().optional(),
+	lock_postings: z.boolean().optional(),
+	generate_trial_balance: z.boolean().optional(),
 	metadata: z.record(z.unknown()).optional(),
 	idempotency_key: z.string().max(120).optional(),
 });

@@ -263,6 +263,38 @@ export const bulkGeneratePricingRecommendations = async (
   );
   const demandMap = new Map(demandRows.map((r) => [String(r.calendar_date), r]));
 
+  // Pre-fetch ALL pricing rules for the property, full date range, and all room types at once
+  const roomTypeIds = roomTypes.map((rt) => rt.id);
+  const { rows: allRules } = await query<
+    PricingRuleRow & {
+      room_type_id: string | null;
+      effective_from_str: string | null;
+      effective_to_str: string | null;
+    }
+  >(
+    `SELECT rule_id, rule_name, rule_type, priority,
+            room_type_id, effective_from::text AS effective_from_str, effective_to::text AS effective_to_str,
+            conditions, adjustment_type,
+            COALESCE(adjustment_value, 0) AS adjustment_value,
+            adjustment_cap_min, adjustment_cap_max,
+            COALESCE(can_combine_with_other_rules, true) AS can_combine_with_other_rules,
+            COALESCE(conflict_resolution, 'highest_priority') AS conflict_resolution
+     FROM pricing_rules
+     WHERE tenant_id = $1 AND property_id = $2
+       AND is_active = true AND is_deleted = false
+       AND (room_type_id IS NULL OR room_type_id = ANY($3::uuid[]))
+       AND (effective_from IS NULL OR effective_from <= $5::date)
+       AND (effective_to IS NULL OR effective_to >= $4::date)
+     ORDER BY priority ASC`,
+    [
+      tenantId,
+      command.property_id,
+      roomTypeIds,
+      startDate.toISOString().slice(0, 10),
+      endDate.toISOString().slice(0, 10),
+    ],
+  );
+
   let generated = 0;
 
   for (const roomType of roomTypes) {
@@ -282,22 +314,12 @@ export const bulkGeneratePricingRecommendations = async (
         day_of_week: date.getDay(),
       };
 
-      // Load and evaluate rules inline (avoid circular command dispatch)
-      const { rows: rules } = await query<PricingRuleRow>(
-        `SELECT rule_id, rule_name, rule_type, priority,
-                conditions, adjustment_type,
-                COALESCE(adjustment_value, 0) AS adjustment_value,
-                adjustment_cap_min, adjustment_cap_max,
-                COALESCE(can_combine_with_other_rules, true) AS can_combine_with_other_rules,
-                COALESCE(conflict_resolution, 'highest_priority') AS conflict_resolution
-         FROM pricing_rules
-         WHERE tenant_id = $1 AND property_id = $2
-           AND is_active = true AND is_deleted = false
-           AND (room_type_id IS NULL OR room_type_id = $3)
-           AND (effective_from IS NULL OR effective_from <= $4::date)
-           AND (effective_to IS NULL OR effective_to >= $4::date)
-         ORDER BY priority ASC`,
-        [tenantId, command.property_id, roomType.id, dateStr],
+      // Filter pre-fetched rules for this room type + date combination
+      const rules = allRules.filter(
+        (r) =>
+          (r.room_type_id === null || r.room_type_id === roomType.id) &&
+          (r.effective_from_str === null || r.effective_from_str <= dateStr) &&
+          (r.effective_to_str === null || r.effective_to_str >= dateStr),
       );
 
       const evalCtx: Record<string, unknown> = {

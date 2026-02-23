@@ -233,6 +233,55 @@ export const registerGuestRoutes = (app: FastifyInstance): void => {
       }),
   );
 
+  // -------------------------------------------------
+  // LOYALTY READ ENDPOINTS (proxied to guests-service)
+  // -------------------------------------------------
+
+  const tenantScopeFromQuery = app.withTenantScope({
+    resolveTenantId: (request) => (request.query as { tenant_id?: string }).tenant_id,
+    minRole: "STAFF",
+    requiredModules: "core",
+  });
+
+  app.get(
+    "/v1/loyalty/transactions",
+    {
+      preHandler: tenantScopeFromQuery,
+      schema: buildRouteSchema({
+        tag: GUESTS_PROXY_TAG,
+        summary: "List loyalty point transactions.",
+        response: { 200: jsonObjectSchema },
+      }),
+    },
+    proxyGuests,
+  );
+
+  app.get(
+    "/v1/loyalty/tier-rules",
+    {
+      preHandler: tenantScopeFromQuery,
+      schema: buildRouteSchema({
+        tag: GUESTS_PROXY_TAG,
+        summary: "List loyalty tier rules and benefits.",
+        response: { 200: jsonObjectSchema },
+      }),
+    },
+    proxyGuests,
+  );
+
+  app.get(
+    "/v1/loyalty/programs/:programId/balance",
+    {
+      preHandler: tenantScopeFromQuery,
+      schema: buildRouteSchema({
+        tag: GUESTS_PROXY_TAG,
+        summary: "Get loyalty program balance.",
+        response: { 200: jsonObjectSchema },
+      }),
+    },
+    proxyGuests,
+  );
+
   app.get(
     "/v1/guests/*",
     {

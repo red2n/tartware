@@ -40,11 +40,15 @@ export {
   uploadGroupRoomingList,
 } from "./group-booking.js";
 export {
+  createMetasearchConfig,
+  recordMetasearchClick,
+  updateMetasearchConfig,
+} from "./metasearch.js";
+export {
   completeMobileCheckin,
   generateRegistrationCard,
   startMobileCheckin,
 } from "./mobile-checkin.js";
-
 export {
   otaRatePush,
   otaSyncRequest,

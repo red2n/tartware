@@ -1,8 +1,8 @@
 /**
  * DEV DOC
  * Module: events/commands/loyalty.ts
- * Description: Loyalty command schemas for point earn/redeem operations
- * Primary exports: LoyaltyPointsEarnCommandSchema, LoyaltyPointsRedeemCommandSchema
+ * Description: Loyalty command schemas for point earn/redeem/expire operations
+ * Primary exports: LoyaltyPointsEarnCommandSchema, LoyaltyPointsRedeemCommandSchema, LoyaltyPointsExpireSweepCommandSchema
  * @category commands
  * Ownership: Schema package
  */
@@ -72,4 +72,28 @@ export const LoyaltyPointsRedeemCommandSchema = z.object({
 
 export type LoyaltyPointsRedeemCommand = z.infer<
 	typeof LoyaltyPointsRedeemCommandSchema
+>;
+
+/**
+ * Sweep and expire loyalty points that have passed their expiry date.
+ * Processes one tenant at a time, expiring un-expired ledger rows
+ * where expires_at <= now, decrementing program balances accordingly.
+ *
+ * @category commands
+ * @synchronized 2026-02-18
+ */
+export const LoyaltyPointsExpireSweepCommandSchema = z.object({
+	// Optionally scope to a single property
+	property_id: uuid.optional(),
+
+	// Batch size for the sweep (default handled by handler)
+	batch_size: z.number().int().positive().max(5000).optional(),
+
+	// Metadata & Idempotency
+	metadata: z.record(z.unknown()).optional(),
+	idempotency_key: z.string().optional(),
+});
+
+export type LoyaltyPointsExpireSweepCommand = z.infer<
+	typeof LoyaltyPointsExpireSweepCommandSchema
 >;

@@ -18,7 +18,9 @@
     "knip": "knip --tsConfig tsconfig.json",
     "knip:fix": "knip --tsConfig tsconfig.json --fix",
     "clean": "rm -rf dist coverage vitest-report *.tsbuildinfo",
-    "test": "vitest run"
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
     "@fastify/helmet": "^13.0.2",
@@ -52,6 +54,7 @@
     "knip": "^5.67.0",
     "tsx": "^4.7.1",
     "typescript": "^5.3.3",
+    "@vitest/coverage-v8": "^4.0.18",
     "vitest": "^4.0.18"
   },
   "engines": {

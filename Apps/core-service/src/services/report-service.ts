@@ -613,3 +613,779 @@ export const getRevenueForecastReport = async (options: {
     total: toNonNegativeInt(countResult[0]?.total, 0),
   });
 };
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Manager's Flash Report
+// ──────────────────────────────────────────────────────────────────────────────
+
+export type FlashReportData = {
+  business_date: string;
+  rooms: {
+    total: number;
+    sold: number;
+    available: number;
+    out_of_order: number;
+    out_of_service: number;
+    complimentary: number;
+    occupancy_percent: number;
+  };
+  revenue: {
+    room_revenue: number;
+    total_revenue: number;
+    adr: number;
+    revpar: number;
+    currency: string;
+  };
+  arrivals: {
+    due_in: number;
+    checked_in: number;
+    vip_arrivals: number;
+    group_arrivals: number;
+  };
+  departures: {
+    due_out: number;
+    checked_out: number;
+    late_checkouts: number;
+  };
+  in_house: {
+    total_guests: number;
+    no_shows_today: number;
+    walk_ins_today: number;
+  };
+  housekeeping: {
+    dirty: number;
+    clean: number;
+    inspected: number;
+    in_progress: number;
+  };
+  maintenance: {
+    open_requests: number;
+    urgent_or_emergency: number;
+    completed_today: number;
+  };
+};
+
+/**
+ * Generate a Manager's Flash Report — a real-time operational snapshot.
+ */
+export const getFlashReport = async (params: {
+  tenantId: string;
+  propertyId?: string;
+  businessDate?: string;
+}): Promise<FlashReportData> => {
+  const baseParams: unknown[] = [params.tenantId];
+  const hasProperty = Boolean(params.propertyId);
+  if (hasProperty) baseParams.push(params.propertyId);
+  if (params.businessDate) baseParams.push(params.businessDate);
+
+  const propFilter = hasProperty ? "AND property_id = $2" : "";
+  const dateIdx = hasProperty ? (params.businessDate ? "$3" : "") : params.businessDate ? "$2" : "";
+  const dateSql = params.businessDate ? `${dateIdx}::date` : "CURRENT_DATE";
+
+  // Total rooms
+  const roomsRes = await query<{ total: string; ooo: string; oos: string }>(
+    `SELECT
+       COUNT(*) AS total,
+       COUNT(*) FILTER (WHERE status = 'OUT_OF_ORDER') AS ooo,
+       COUNT(*) FILTER (WHERE status = 'OUT_OF_SERVICE') AS oos
+     FROM rooms
+     WHERE tenant_id = $1 ${propFilter} AND is_deleted = false`,
+    baseParams.slice(0, hasProperty ? 2 : 1),
+  );
+  const totalRooms = parseInt(roomsRes.rows[0]?.total ?? "0", 10);
+  const ooo = parseInt(roomsRes.rows[0]?.ooo ?? "0", 10);
+  const oos = parseInt(roomsRes.rows[0]?.oos ?? "0", 10);
+
+  // Reservations snapshot
+  const qParams = params.businessDate ? [...baseParams] : baseParams.slice(0, hasProperty ? 2 : 1);
+
+  const reservesRes = await query<{
+    sold: string;
+    comp: string;
+    due_in: string;
+    checked_in: string;
+    vip_arrivals: string;
+    group_arrivals: string;
+    due_out: string;
+    checked_out: string;
+    in_house: string;
+    no_shows: string;
+    walk_ins: string;
+  }>(
+    `SELECT
+       COUNT(*) FILTER (
+         WHERE status IN ('CONFIRMED','CHECKED_IN')
+           AND check_in_date <= ${dateSql} AND check_out_date > ${dateSql}
+       ) AS sold,
+       COUNT(*) FILTER (
+         WHERE status IN ('CONFIRMED','CHECKED_IN')
+           AND check_in_date <= ${dateSql} AND check_out_date > ${dateSql}
+           AND COALESCE((metadata->>'complimentary')::boolean, false) = true
+       ) AS comp,
+       COUNT(*) FILTER (
+         WHERE check_in_date = ${dateSql} AND status = 'CONFIRMED'
+       ) AS due_in,
+       COUNT(*) FILTER (
+         WHERE check_in_date = ${dateSql} AND status = 'CHECKED_IN'
+       ) AS checked_in,
+       COUNT(*) FILTER (
+         WHERE check_in_date = ${dateSql} AND status IN ('CONFIRMED','CHECKED_IN')
+           AND COALESCE((metadata->>'vip')::boolean, false) = true
+       ) AS vip_arrivals,
+       COUNT(*) FILTER (
+         WHERE check_in_date = ${dateSql} AND status IN ('CONFIRMED','CHECKED_IN')
+           AND group_id IS NOT NULL
+       ) AS group_arrivals,
+       COUNT(*) FILTER (
+         WHERE check_out_date = ${dateSql} AND status = 'CHECKED_IN'
+       ) AS due_out,
+       COUNT(*) FILTER (
+         WHERE check_out_date = ${dateSql} AND status = 'CHECKED_OUT'
+       ) AS checked_out,
+       COUNT(*) FILTER (
+         WHERE status = 'CHECKED_IN'
+       ) AS in_house,
+       COUNT(*) FILTER (
+         WHERE check_in_date = ${dateSql} AND status = 'NO_SHOW'
+       ) AS no_shows,
+       COUNT(*) FILTER (
+         WHERE check_in_date = ${dateSql}
+           AND COALESCE((metadata->>'walk_in')::boolean, false) = true
+       ) AS walk_ins
+     FROM reservations
+     WHERE tenant_id = $1 ${propFilter} AND is_deleted = false`,
+    qParams,
+  );
+  const r = reservesRes.rows[0]!;
+  const sold = parseInt(r.sold, 10);
+  const comp = parseInt(r.comp, 10);
+  const available = Math.max(0, totalRooms - sold - ooo - oos);
+  const occupancyPct = totalRooms > 0 ? Math.round((sold / totalRooms) * 100) : 0;
+
+  // Revenue
+  const revenueRes = await query<{ room_rev: string; total_rev: string }>(
+    `SELECT
+       COALESCE(SUM(amount) FILTER (WHERE charge_code IN ('ROOM','ROOM_CHARGE','room_charge')), 0) AS room_rev,
+       COALESCE(SUM(amount), 0) AS total_rev
+     FROM charges
+     WHERE tenant_id = $1 ${propFilter}
+       AND DATE(posted_at) = ${dateSql}
+       AND COALESCE(is_voided, false) = false
+       AND COALESCE(is_deleted, false) = false`,
+    qParams,
+  );
+  const roomRevenue = parseFloat(revenueRes.rows[0]?.room_rev ?? "0");
+  const totalRevenue = parseFloat(revenueRes.rows[0]?.total_rev ?? "0");
+  const adr = sold > 0 ? Math.round((roomRevenue / sold) * 100) / 100 : 0;
+  const revpar = totalRooms > 0 ? Math.round((roomRevenue / totalRooms) * 100) / 100 : 0;
+
+  // Late checkouts (past checkout time but still CHECKED_IN)
+  const lateRes = await query<{ cnt: string }>(
+    `SELECT COUNT(*) AS cnt
+     FROM reservations
+     WHERE tenant_id = $1 ${propFilter} AND is_deleted = false
+       AND check_out_date = ${dateSql}
+       AND status = 'CHECKED_IN'
+       AND NOW()::time > '12:00:00'`,
+    qParams,
+  );
+  const lateCheckouts = parseInt(lateRes.rows[0]?.cnt ?? "0", 10);
+
+  // Housekeeping
+  const hkRes = await query<{
+    dirty: string;
+    clean: string;
+    inspected: string;
+    in_progress: string;
+  }>(
+    `SELECT
+       COUNT(*) FILTER (WHERE status = 'DIRTY') AS dirty,
+       COUNT(*) FILTER (WHERE status = 'CLEAN') AS clean,
+       COUNT(*) FILTER (WHERE status = 'INSPECTED') AS inspected,
+       COUNT(*) FILTER (WHERE status = 'IN_PROGRESS') AS in_progress
+     FROM housekeeping_tasks
+     WHERE tenant_id = $1 ${propFilter}
+       AND scheduled_date = ${dateSql}
+       AND COALESCE(is_deleted, false) = false`,
+    qParams,
+  );
+  const hk = hkRes.rows[0]!;
+
+  // Maintenance
+  const maintRes = await query<{ open_req: string; urgent: string; completed: string }>(
+    `SELECT
+       COUNT(*) FILTER (WHERE request_status IN ('OPEN','ASSIGNED','IN_PROGRESS','ON_HOLD')) AS open_req,
+       COUNT(*) FILTER (WHERE request_status IN ('OPEN','ASSIGNED','IN_PROGRESS') AND priority IN ('URGENT','EMERGENCY')) AS urgent,
+       COUNT(*) FILTER (WHERE request_status = 'COMPLETED' AND DATE(completed_at) = ${dateSql}) AS completed
+     FROM maintenance_requests
+     WHERE tenant_id = $1 ${propFilter} AND is_deleted = false`,
+    qParams,
+  );
+  const mt = maintRes.rows[0]!;
+
+  return {
+    business_date: params.businessDate ?? new Date().toISOString().slice(0, 10),
+    rooms: {
+      total: totalRooms,
+      sold,
+      available,
+      out_of_order: ooo,
+      out_of_service: oos,
+      complimentary: comp,
+      occupancy_percent: occupancyPct,
+    },
+    revenue: {
+      room_revenue: roomRevenue,
+      total_revenue: totalRevenue,
+      adr,
+      revpar,
+      currency: "USD",
+    },
+    arrivals: {
+      due_in: parseInt(r.due_in, 10),
+      checked_in: parseInt(r.checked_in, 10),
+      vip_arrivals: parseInt(r.vip_arrivals, 10),
+      group_arrivals: parseInt(r.group_arrivals, 10),
+    },
+    departures: {
+      due_out: parseInt(r.due_out, 10),
+      checked_out: parseInt(r.checked_out, 10),
+      late_checkouts: lateCheckouts,
+    },
+    in_house: {
+      total_guests: parseInt(r.in_house, 10),
+      no_shows_today: parseInt(r.no_shows, 10),
+      walk_ins_today: parseInt(r.walk_ins, 10),
+    },
+    housekeeping: {
+      dirty: parseInt(hk.dirty, 10),
+      clean: parseInt(hk.clean, 10),
+      inspected: parseInt(hk.inspected, 10),
+      in_progress: parseInt(hk.in_progress, 10),
+    },
+    maintenance: {
+      open_requests: parseInt(mt.open_req, 10),
+      urgent_or_emergency: parseInt(mt.urgent, 10),
+      completed_today: parseInt(mt.completed, 10),
+    },
+  };
+};
+
+// ─── CG-14: No-Show Report ──────────────────────────────────────────────────
+
+export type NoShowReportItem = {
+  reservation_id: string;
+  confirmation_number: string;
+  guest_name: string;
+  room_type: string | null;
+  room_number: string | null;
+  check_in_date: string;
+  check_out_date: string;
+  source: string | null;
+  total_amount: number;
+  deposit_amount: number;
+};
+
+/**
+ * List reservations that were marked as no-show within a date range.
+ */
+export const getNoShowReport = async (params: {
+  tenantId: string;
+  propertyId?: string;
+  startDate: string;
+  endDate: string;
+  limit?: number;
+  offset?: number;
+}): Promise<{ total: number; items: NoShowReportItem[] }> => {
+  const baseParams = [params.tenantId, params.propertyId ?? null, params.startDate, params.endDate];
+
+  const countResult = await query<{ total: string }>(
+    `SELECT COUNT(*)::text AS total
+     FROM reservations
+     WHERE tenant_id = $1::uuid AND ($2::uuid IS NULL OR property_id = $2::uuid)
+       AND check_in_date >= $3::date AND check_in_date <= $4::date
+       AND status = 'NO_SHOW'`,
+    baseParams,
+  );
+
+  const limit = Math.min(Math.max(params.limit ?? 100, 1), 500);
+  const offset = Math.max(params.offset ?? 0, 0);
+
+  const { rows } = await query<{
+    reservation_id: string;
+    confirmation_number: string;
+    guest_name: string;
+    room_type: string | null;
+    room_number: string | null;
+    check_in_date: string;
+    check_out_date: string;
+    source: string | null;
+    total_amount: string;
+    deposit_amount: string;
+  }>(
+    `SELECT r.id AS reservation_id,
+            r.confirmation_number,
+            COALESCE(g.first_name || ' ' || g.last_name, 'Unknown') AS guest_name,
+            r.room_type,
+            r.room_number,
+            r.check_in_date::text,
+            r.check_out_date::text,
+            r.source,
+            COALESCE(r.total_amount, 0)::text AS total_amount,
+            COALESCE(r.deposit_amount, 0)::text AS deposit_amount
+     FROM reservations r
+     LEFT JOIN guests g ON g.id = r.guest_id AND g.tenant_id = r.tenant_id
+     WHERE r.tenant_id = $1::uuid AND ($2::uuid IS NULL OR r.property_id = $2::uuid)
+       AND r.check_in_date >= $3::date AND r.check_in_date <= $4::date
+       AND r.status = 'NO_SHOW'
+     ORDER BY r.check_in_date, r.confirmation_number
+     LIMIT $5 OFFSET $6`,
+    [...baseParams, limit, offset],
+  );
+
+  return {
+    total: parseInt(countResult.rows[0]?.total ?? "0", 10),
+    items: rows.map((row) => ({
+      ...row,
+      total_amount: Number(row.total_amount),
+      deposit_amount: Number(row.deposit_amount),
+    })),
+  };
+};
+
+// ─── CG-14: VIP Arrivals Report ─────────────────────────────────────────────
+
+/**
+ * List VIP guest arrivals for a date range.
+ */
+export const getVipArrivalsReport = async (params: {
+  tenantId: string;
+  propertyId?: string;
+  startDate: string;
+  endDate: string;
+  limit?: number;
+  offset?: number;
+}): Promise<GuestListReport> => {
+  const baseParams = [params.tenantId, params.propertyId ?? null, params.startDate, params.endDate];
+
+  const countResult = await query<{ total: string }>(
+    `SELECT COUNT(*)::text AS total
+     FROM reservations r
+     JOIN guests g ON g.id = r.guest_id AND g.tenant_id = r.tenant_id
+     WHERE r.tenant_id = $1::uuid AND ($2::uuid IS NULL OR r.property_id = $2::uuid)
+       AND r.check_in_date >= $3::date AND r.check_in_date <= $4::date
+       AND r.status IN ('CONFIRMED', 'CHECKED_IN')
+       AND g.vip_status = true`,
+    baseParams,
+  );
+
+  const limit = clampLimit(params.limit);
+  const offset = Math.max(params.offset ?? 0, 0);
+
+  const { rows } = await query<GuestListRow>(
+    `SELECT r.id AS reservation_id,
+            r.confirmation_number,
+            COALESCE(g.first_name || ' ' || g.last_name, 'Unknown') AS guest_name,
+            g.email AS guest_email,
+            g.phone AS guest_phone,
+            r.room_number,
+            r.room_type,
+            r.check_in_date::text,
+            r.check_out_date::text,
+            r.status,
+            r.source,
+            r.special_requests,
+            r.eta,
+            r.number_of_adults,
+            r.number_of_children,
+            true AS vip
+     FROM reservations r
+     JOIN guests g ON g.id = r.guest_id AND g.tenant_id = r.tenant_id
+     WHERE r.tenant_id = $1::uuid AND ($2::uuid IS NULL OR r.property_id = $2::uuid)
+       AND r.check_in_date >= $3::date AND r.check_in_date <= $4::date
+       AND r.status IN ('CONFIRMED', 'CHECKED_IN')
+       AND g.vip_status = true
+     ORDER BY r.check_in_date, g.last_name
+     LIMIT $5 OFFSET $6`,
+    [...baseParams, limit, offset],
+  );
+
+  return GuestListReportSchema.parse({
+    total: parseInt(countResult.rows[0]?.total ?? "0", 10),
+    items: parseGuestListRows(rows),
+  });
+};
+
+// ─── CG-14: Guest Statistics Report ─────────────────────────────────────────
+
+export type GuestStatisticsReport = {
+  total_guests: number;
+  new_guests_period: number;
+  returning_guests: number;
+  vip_count: number;
+  nationality_breakdown: Array<{ nationality: string; count: number }>;
+  loyalty_tier_breakdown: Array<{ tier: string; count: number }>;
+};
+
+/**
+ * Aggregate guest demographics and statistics for the property.
+ */
+export const getGuestStatisticsReport = async (params: {
+  tenantId: string;
+  propertyId?: string;
+}): Promise<GuestStatisticsReport> => {
+  const { tenantId } = params;
+
+  const totals = await query<{
+    total: string;
+    vip: string;
+  }>(
+    `SELECT COUNT(*)::text AS total,
+            COUNT(*) FILTER (WHERE vip_status = true)::text AS vip
+     FROM guests WHERE tenant_id = $1::uuid AND is_deleted = false`,
+    [tenantId],
+  );
+
+  const returning = await query<{ count: string }>(
+    `SELECT COUNT(DISTINCT guest_id)::text AS count
+     FROM reservations
+     WHERE tenant_id = $1::uuid AND status IN ('CHECKED_IN','CHECKED_OUT')
+     GROUP BY guest_id HAVING COUNT(*) > 1`,
+    [tenantId],
+  );
+
+  const nationalities = await query<{ nationality: string; count: string }>(
+    `SELECT COALESCE(nationality, 'Unknown') AS nationality, COUNT(*)::text AS count
+     FROM guests WHERE tenant_id = $1::uuid AND is_deleted = false
+     GROUP BY nationality ORDER BY COUNT(*) DESC LIMIT 20`,
+    [tenantId],
+  );
+
+  const tiers = await query<{ tier: string; count: string }>(
+    `SELECT COALESCE(loyalty_tier, 'NONE') AS tier, COUNT(*)::text AS count
+     FROM guests WHERE tenant_id = $1::uuid AND is_deleted = false
+     GROUP BY loyalty_tier ORDER BY COUNT(*) DESC`,
+    [tenantId],
+  );
+
+  return {
+    total_guests: parseInt(totals.rows[0]?.total ?? "0", 10),
+    new_guests_period: 0,
+    returning_guests: returning.rows.length,
+    vip_count: parseInt(totals.rows[0]?.vip ?? "0", 10),
+    nationality_breakdown: nationalities.rows.map((r) => ({
+      nationality: r.nationality,
+      count: parseInt(r.count, 10),
+    })),
+    loyalty_tier_breakdown: tiers.rows.map((r) => ({
+      tier: r.tier,
+      count: parseInt(r.count, 10),
+    })),
+  };
+};
+
+// ─── CG-14: Market Segment Production Report ────────────────────────────────
+
+export type MarketSegmentProductionItem = {
+  market_segment: string;
+  room_nights: number;
+  revenue: number;
+  avg_rate: number;
+  percentage_of_total: number;
+};
+
+/**
+ * Revenue and room-night production by market segment.
+ */
+export const getMarketSegmentProductionReport = async (params: {
+  tenantId: string;
+  propertyId?: string;
+  startDate: string;
+  endDate: string;
+}): Promise<{
+  items: MarketSegmentProductionItem[];
+  total_room_nights: number;
+  total_revenue: number;
+}> => {
+  const { rows } = await query<{
+    market_segment: string;
+    room_nights: string;
+    revenue: string;
+    avg_rate: string;
+  }>(
+    `SELECT
+       COALESCE(r.market_segment, 'UNCLASSIFIED') AS market_segment,
+       COUNT(*)::text AS room_nights,
+       COALESCE(SUM(r.total_amount), 0)::text AS revenue,
+       CASE WHEN COUNT(*) > 0 THEN (SUM(r.total_amount) / COUNT(*))::text ELSE '0' END AS avg_rate
+     FROM reservations r
+     WHERE r.tenant_id = $1::uuid AND ($2::uuid IS NULL OR r.property_id = $2::uuid)
+       AND r.check_in_date >= $3::date AND r.check_in_date <= $4::date
+       AND r.status IN ('CONFIRMED', 'CHECKED_IN', 'CHECKED_OUT')
+     GROUP BY COALESCE(r.market_segment, 'UNCLASSIFIED')
+     ORDER BY SUM(r.total_amount) DESC`,
+    [params.tenantId, params.propertyId ?? null, params.startDate, params.endDate],
+  );
+
+  const totalNights = rows.reduce((s, r) => s + parseInt(r.room_nights, 10), 0);
+  const totalRev = rows.reduce((s, r) => s + Number(r.revenue), 0);
+
+  return {
+    total_room_nights: totalNights,
+    total_revenue: Math.round(totalRev * 100) / 100,
+    items: rows.map((r) => ({
+      market_segment: r.market_segment,
+      room_nights: parseInt(r.room_nights, 10),
+      revenue: Math.round(Number(r.revenue) * 100) / 100,
+      avg_rate: Math.round(Number(r.avg_rate) * 100) / 100,
+      percentage_of_total:
+        totalNights > 0 ? Math.round((parseInt(r.room_nights, 10) / totalNights) * 10000) / 100 : 0,
+    })),
+  };
+};
+
+// ─── CG-14: Housekeeping Productivity Report ────────────────────────────────
+
+export type HousekeepingProductivityReport = {
+  total_tasks: number;
+  completed: number;
+  in_progress: number;
+  pending: number;
+  completion_rate: number;
+  avg_duration_minutes: number;
+  by_attendant: Array<{
+    attendant_id: string;
+    attendant_name: string;
+    completed_tasks: number;
+    avg_duration_minutes: number;
+  }>;
+};
+
+/**
+ * Housekeeping task productivity statistics for a business date.
+ */
+export const getHousekeepingProductivityReport = async (params: {
+  tenantId: string;
+  propertyId?: string;
+  businessDate: string;
+}): Promise<HousekeepingProductivityReport> => {
+  const qParams = [params.tenantId, params.propertyId ?? null, params.businessDate];
+
+  const summary = await query<{
+    total: string;
+    completed: string;
+    in_progress: string;
+    pending: string;
+    avg_minutes: string;
+  }>(
+    `SELECT
+       COUNT(*)::text AS total,
+       COUNT(*) FILTER (WHERE task_status IN ('COMPLETED', 'INSPECTED'))::text AS completed,
+       COUNT(*) FILTER (WHERE task_status = 'IN_PROGRESS')::text AS in_progress,
+       COUNT(*) FILTER (WHERE task_status IN ('PENDING', 'ASSIGNED'))::text AS pending,
+       COALESCE(AVG(EXTRACT(EPOCH FROM (completed_at - started_at)) / 60)
+         FILTER (WHERE completed_at IS NOT NULL AND started_at IS NOT NULL), 0)::text AS avg_minutes
+     FROM housekeeping_tasks
+     WHERE tenant_id = $1::uuid AND ($2::uuid IS NULL OR property_id = $2::uuid)
+       AND scheduled_date = $3::date`,
+    qParams,
+  );
+
+  const byAttendant = await query<{
+    attendant_id: string;
+    attendant_name: string;
+    completed_tasks: string;
+    avg_dur: string;
+  }>(
+    `SELECT
+       ht.assigned_to AS attendant_id,
+       COALESCE(u.display_name, u.username, ht.assigned_to::text) AS attendant_name,
+       COUNT(*)::text AS completed_tasks,
+       COALESCE(AVG(EXTRACT(EPOCH FROM (ht.completed_at - ht.started_at)) / 60), 0)::text AS avg_dur
+     FROM housekeeping_tasks ht
+     LEFT JOIN users u ON u.id = ht.assigned_to AND u.tenant_id = ht.tenant_id
+     WHERE ht.tenant_id = $1::uuid AND ($2::uuid IS NULL OR ht.property_id = $2::uuid)
+       AND ht.scheduled_date = $3::date
+       AND ht.task_status IN ('COMPLETED', 'INSPECTED')
+       AND ht.assigned_to IS NOT NULL
+     GROUP BY ht.assigned_to, u.display_name, u.username
+     ORDER BY COUNT(*) DESC
+     LIMIT 50`,
+    qParams,
+  );
+
+  const s = summary.rows[0]!;
+  const total = parseInt(s.total, 10);
+  const completed = parseInt(s.completed, 10);
+
+  return {
+    total_tasks: total,
+    completed,
+    in_progress: parseInt(s.in_progress, 10),
+    pending: parseInt(s.pending, 10),
+    completion_rate: total > 0 ? Math.round((completed / total) * 10000) / 100 : 0,
+    avg_duration_minutes: Math.round(Number(s.avg_minutes) * 100) / 100,
+    by_attendant: byAttendant.rows.map((r) => ({
+      attendant_id: r.attendant_id,
+      attendant_name: r.attendant_name,
+      completed_tasks: parseInt(r.completed_tasks, 10),
+      avg_duration_minutes: Math.round(Number(r.avg_dur) * 100) / 100,
+    })),
+  };
+};
+
+// ─── CG-14: Maintenance SLA Report ──────────────────────────────────────────
+
+export type MaintenanceSlaReport = {
+  total_requests: number;
+  completed: number;
+  overdue: number;
+  avg_response_time_minutes: number;
+  avg_resolution_time_hours: number;
+  by_priority: Array<{
+    priority: string;
+    count: number;
+    completed: number;
+    avg_resolution_hours: number;
+  }>;
+};
+
+/**
+ * Maintenance request SLA compliance and resolution metrics.
+ */
+export const getMaintenanceSlaReport = async (params: {
+  tenantId: string;
+  propertyId?: string;
+  startDate: string;
+  endDate: string;
+}): Promise<MaintenanceSlaReport> => {
+  const qParams = [params.tenantId, params.propertyId ?? null, params.startDate, params.endDate];
+
+  const summary = await query<{
+    total: string;
+    completed: string;
+    overdue: string;
+    avg_response: string;
+    avg_resolution: string;
+  }>(
+    `SELECT
+       COUNT(*)::text AS total,
+       COUNT(*) FILTER (WHERE request_status = 'COMPLETED')::text AS completed,
+       COUNT(*) FILTER (WHERE request_status NOT IN ('COMPLETED','CANCELLED') AND scheduled_date < CURRENT_DATE)::text AS overdue,
+       COALESCE(AVG(response_time_minutes) FILTER (WHERE response_time_minutes IS NOT NULL), 0)::text AS avg_response,
+       COALESCE(AVG(resolution_time_hours) FILTER (WHERE resolution_time_hours IS NOT NULL), 0)::text AS avg_resolution
+     FROM maintenance_requests
+     WHERE tenant_id = $1::uuid AND ($2::uuid IS NULL OR property_id = $2::uuid)
+       AND created_at >= $3::date AND created_at < ($4::date + 1)
+       AND is_deleted = false`,
+    qParams,
+  );
+
+  const byPriority = await query<{
+    priority: string;
+    count: string;
+    completed: string;
+    avg_res: string;
+  }>(
+    `SELECT
+       priority,
+       COUNT(*)::text AS count,
+       COUNT(*) FILTER (WHERE request_status = 'COMPLETED')::text AS completed,
+       COALESCE(AVG(resolution_time_hours) FILTER (WHERE resolution_time_hours IS NOT NULL), 0)::text AS avg_res
+     FROM maintenance_requests
+     WHERE tenant_id = $1::uuid AND ($2::uuid IS NULL OR property_id = $2::uuid)
+       AND created_at >= $3::date AND created_at < ($4::date + 1)
+       AND is_deleted = false
+     GROUP BY priority ORDER BY priority`,
+    qParams,
+  );
+
+  const s = summary.rows[0]!;
+  return {
+    total_requests: parseInt(s.total, 10),
+    completed: parseInt(s.completed, 10),
+    overdue: parseInt(s.overdue, 10),
+    avg_response_time_minutes: Math.round(Number(s.avg_response) * 100) / 100,
+    avg_resolution_time_hours: Math.round(Number(s.avg_resolution) * 100) / 100,
+    by_priority: byPriority.rows.map((r) => ({
+      priority: r.priority,
+      count: parseInt(r.count, 10),
+      completed: parseInt(r.completed, 10),
+      avg_resolution_hours: Math.round(Number(r.avg_res) * 100) / 100,
+    })),
+  };
+};
+
+// ─── CG-14: Audit Trail Report ──────────────────────────────────────────────
+
+export type AuditTrailItem = {
+  id: string;
+  command_name: string;
+  initiated_by: string;
+  target_service: string;
+  status: string;
+  created_at: string;
+  payload_summary: string | null;
+};
+
+/**
+ * Query the command outbox for an audit trail of user actions.
+ */
+export const getAuditTrailReport = async (params: {
+  tenantId: string;
+  startDate: string;
+  endDate: string;
+  commandName?: string;
+  initiatedBy?: string;
+  limit?: number;
+  offset?: number;
+}): Promise<{ total: number; items: AuditTrailItem[] }> => {
+  const baseParams = [params.tenantId, params.startDate, params.endDate];
+  const filters: string[] = [];
+  if (params.commandName) {
+    baseParams.push(params.commandName);
+    filters.push(`AND command_name = $${baseParams.length}`);
+  }
+  if (params.initiatedBy) {
+    baseParams.push(params.initiatedBy);
+    filters.push(`AND initiated_by = $${baseParams.length}`);
+  }
+  const filterSql = filters.join(" ");
+
+  const countResult = await query<{ total: string }>(
+    `SELECT COUNT(*)::text AS total
+     FROM command_outbox
+     WHERE tenant_id = $1::uuid
+       AND created_at >= $2::date AND created_at < ($3::date + 1)
+       ${filterSql}`,
+    baseParams,
+  );
+
+  const limit = Math.min(Math.max(params.limit ?? 100, 1), 500);
+  const offset = Math.max(params.offset ?? 0, 0);
+
+  const { rows } = await query<{
+    id: string;
+    command_name: string;
+    initiated_by: string;
+    target_service: string;
+    status: string;
+    created_at: string;
+  }>(
+    `SELECT id, command_name, COALESCE(initiated_by, 'system') AS initiated_by,
+            COALESCE(target_service, '') AS target_service,
+            status, created_at::text
+     FROM command_outbox
+     WHERE tenant_id = $1::uuid
+       AND created_at >= $2::date AND created_at < ($3::date + 1)
+       ${filterSql}
+     ORDER BY created_at DESC
+     LIMIT $${baseParams.length + 1} OFFSET $${baseParams.length + 2}`,
+    [...baseParams, limit, offset],
+  );
+
+  return {
+    total: parseInt(countResult.rows[0]?.total ?? "0", 10),
+    items: rows.map((r) => ({ ...r, payload_summary: null })),
+  };
+};

@@ -40,6 +40,66 @@ type PaymentRow = {
 };
 
 /**
+ * Enforce credit limit for a guest/account before allowing a charge.
+ * Checks `credit_limits` for active limits and compares current_balance + chargeAmount
+ * against the effective limit (including any temporary increase).
+ * Returns a warning string if warning threshold is reached, or throws if blocked.
+ */
+async function enforceCreditLimit(
+  tenantId: string,
+  guestId: string | undefined | null,
+  chargeAmount: number,
+): Promise<string | null> {
+  if (!guestId) return null;
+
+  const { rows } = await query<{
+    credit_limit_id: string;
+    credit_limit_amount: string;
+    current_balance: string;
+    warning_threshold_percent: string;
+    block_threshold_percent: string;
+    temporary_increase_active: boolean;
+    temporary_increase_amount: string | null;
+  }>(
+    `SELECT credit_limit_id, credit_limit_amount, current_balance,
+            warning_threshold_percent, block_threshold_percent,
+            temporary_increase_active, temporary_increase_amount
+     FROM credit_limits
+     WHERE tenant_id = $1::uuid AND guest_id = $2::uuid
+       AND is_active = true AND credit_status = 'active'
+       AND effective_from <= CURRENT_DATE
+       AND (effective_to IS NULL OR effective_to >= CURRENT_DATE)
+     ORDER BY credit_limit_amount DESC LIMIT 1`,
+    [tenantId, guestId],
+  );
+
+  const limit = rows[0];
+  if (!limit) return null; // No credit limit configured — allow
+
+  const effectiveLimit =
+    Number(limit.credit_limit_amount) +
+    (limit.temporary_increase_active ? Number(limit.temporary_increase_amount ?? 0) : 0);
+  const currentBalance = Number(limit.current_balance);
+  const projectedBalance = currentBalance + chargeAmount;
+  const utilizationPct = (projectedBalance / effectiveLimit) * 100;
+
+  const blockPct = Number(limit.block_threshold_percent);
+  if (utilizationPct >= blockPct) {
+    throw new BillingCommandError(
+      "CREDIT_LIMIT_EXCEEDED",
+      `Payment of ${chargeAmount} would push utilization to ${utilizationPct.toFixed(1)}% (block threshold: ${blockPct}%). Available credit: ${(effectiveLimit - currentBalance).toFixed(2)}`,
+    );
+  }
+
+  const warningPct = Number(limit.warning_threshold_percent);
+  if (utilizationPct >= warningPct) {
+    return `Credit utilization at ${utilizationPct.toFixed(1)}% (warning threshold: ${warningPct}%)`;
+  }
+
+  return null;
+}
+
+/**
  * Capture a payment and record it in billing.
  */
 export const captureBillingPayment = async (
@@ -79,6 +139,19 @@ export const authorizePayment = async (
 ): Promise<string> => {
   const command = BillingPaymentAuthorizeCommandSchema.parse(payload);
   const actor = resolveActorId(context.initiatedBy);
+
+  // Enforce credit limit before authorizing
+  const creditWarning = await enforceCreditLimit(
+    context.tenantId,
+    command.guest_id,
+    command.amount,
+  );
+  if (creditWarning) {
+    appLogger.warn(
+      { guestId: command.guest_id, creditWarning },
+      "Credit limit warning on authorize",
+    );
+  }
 
   const currency = command.currency ?? "USD";
   const gatewayResponse = command.gateway?.response ?? {};
@@ -243,6 +316,16 @@ const capturePayment = async (
   const actor = resolveActorId(context.initiatedBy);
   const currency = command.currency ?? "USD";
   const gatewayResponse = command.gateway?.response ?? {};
+
+  // Enforce credit limit before capturing
+  const creditWarning = await enforceCreditLimit(
+    context.tenantId,
+    command.guest_id,
+    command.amount,
+  );
+  if (creditWarning) {
+    appLogger.warn({ guestId: command.guest_id, creditWarning }, "Credit limit warning on capture");
+  }
 
   const result = await query<{ id: string }>(
     `

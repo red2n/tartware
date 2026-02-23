@@ -333,3 +333,32 @@ export const TaxConfigurationListResponseSchema = z.object({
 export type TaxConfigurationListResponse = z.infer<
 	typeof TaxConfigurationListResponseSchema
 >;
+
+// =====================================================
+// TRIAL BALANCE REPORT
+// =====================================================
+
+/** Individual line item in a trial balance report. */
+export const TrialBalanceLineItemSchema = z.object({
+	category: z.string(),
+	charge_code: z.string().nullable(),
+	debit_total: z.number(),
+	credit_total: z.number(),
+	net: z.number(),
+});
+
+export type TrialBalanceLineItem = z.infer<typeof TrialBalanceLineItemSchema>;
+
+/** Trial balance report — debits vs credits with department/charge-code breakdown. */
+export const TrialBalanceResponseSchema = z.object({
+	business_date: z.string(),
+	property_id: z.string().nullable(),
+	line_items: z.array(TrialBalanceLineItemSchema),
+	total_debits: z.number(),
+	total_credits: z.number(),
+	total_payments: z.number(),
+	variance: z.number(),
+	is_balanced: z.boolean(),
+});
+
+export type TrialBalanceResponse = z.infer<typeof TrialBalanceResponseSchema>;

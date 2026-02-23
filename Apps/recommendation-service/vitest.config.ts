@@ -7,6 +7,12 @@ export default defineConfig({
     environment: "node",
     include: ["tests/**/*.test.ts"],
     reporters: ["verbose"],
+    coverage: {
+      provider: "v8",
+      reportsDirectory: "./coverage",
+      reporter: ["text", "text-summary", "lcov", "html"],
+      exclude: ["tests/**", "dist/**", "node_modules/**", "**/*.d.ts", "**/*.config.*"],
+    },
     env: {
       LOG_LEVEL: "fatal",
     },

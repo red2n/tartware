@@ -15,6 +15,7 @@ import {
   setCommandConsumerLag,
 } from "../lib/metrics.js";
 import { processWithRetry, RetryExhaustedError } from "../lib/retry.js";
+import { computeForecasts } from "../services/forecast-engine.js";
 
 let consumer: Consumer | null = null;
 
@@ -106,10 +107,35 @@ const buildDlqPayload = (input: {
 };
 
 const routeRevenueCommand = async (
-  _envelope: CommandEnvelope,
+  envelope: CommandEnvelope,
   metadata: CommandMetadata,
 ): Promise<void> => {
-  logger.debug({ commandName: metadata.commandName }, "no revenue handler registered for command");
+  switch (metadata.commandName) {
+    case "revenue.forecast.compute": {
+      const payload = envelope.payload as {
+        property_id: string;
+        forecast_period?: "daily" | "weekly" | "monthly";
+        horizon_days?: number;
+        training_days?: number;
+        scenarios?: string[];
+      };
+      await computeForecasts({
+        tenantId: metadata.tenantId,
+        propertyId: payload.property_id,
+        forecastPeriod: payload.forecast_period ?? "daily",
+        horizonDays: payload.horizon_days ?? 30,
+        trainingDays: payload.training_days ?? 90,
+        scenarios: payload.scenarios ?? ["base", "optimistic", "pessimistic"],
+        actorId: metadata.initiatedBy ?? "system",
+      });
+      break;
+    }
+    default:
+      logger.debug(
+        { commandName: metadata.commandName },
+        "no revenue handler registered for command",
+      );
+  }
 };
 
 const { handleBatch } = createCommandCenterHandlers({

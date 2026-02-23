@@ -344,4 +344,44 @@ export const registerBookingConfigRoutes = (app: FastifyInstance): void => {
     },
     proxyCore,
   );
+
+  // Metasearch Configurations - CPC/CPA bid management
+  app.get(
+    "/v1/metasearch-configs",
+    {
+      preHandler: tenantScopeFromQuery,
+      schema: buildRouteSchema({
+        tag: BOOKING_CONFIG_TAG,
+        summary: "List metasearch platform configurations.",
+        response: { 200: jsonObjectSchema },
+      }),
+    },
+    proxyCore,
+  );
+
+  app.get(
+    "/v1/metasearch-configs/performance",
+    {
+      preHandler: tenantScopeFromQuery,
+      schema: buildRouteSchema({
+        tag: BOOKING_CONFIG_TAG,
+        summary: "Get metasearch click performance stats.",
+        response: { 200: jsonObjectSchema },
+      }),
+    },
+    proxyCore,
+  );
+
+  app.all(
+    "/v1/metasearch-configs/*",
+    {
+      preHandler: tenantScopeFromQuery,
+      schema: buildRouteSchema({
+        tag: BOOKING_CONFIG_TAG,
+        summary: "Proxy metasearch configuration operations to core service.",
+        response: { 200: jsonObjectSchema },
+      }),
+    },
+    proxyCore,
+  );
 };

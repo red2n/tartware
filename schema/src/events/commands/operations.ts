@@ -12,17 +12,83 @@ import { z } from "zod";
 export const OperationsMaintenanceRequestCommandSchema = z.object({
 	property_id: z.string().uuid(),
 	room_id: z.string().uuid().optional(),
+	room_number: z.string().max(20).optional(),
+	request_type: z
+		.enum([
+			"CORRECTIVE",
+			"PREVENTIVE",
+			"EMERGENCY",
+			"ROUTINE",
+			"INSPECTION",
+			"UPGRADE",
+			"GUEST_REPORTED",
+		])
+		.default("CORRECTIVE"),
 	issue_category: z.string().min(2).max(100),
 	issue_description: z.string().min(2).max(2000),
 	priority: z.string().max(20).optional(),
 	reported_by: z.string().uuid().optional(),
 	reported_at: z.coerce.date().optional(),
+	reporter_role: z.string().max(30).optional(),
+	guest_id: z.string().uuid().optional(),
+	reservation_id: z.string().uuid().optional(),
+	location_description: z.string().max(200).optional(),
+	affects_occupancy: z.boolean().optional(),
+	is_safety_issue: z.boolean().optional(),
 	metadata: z.record(z.unknown()).optional(),
 	idempotency_key: z.string().max(120).optional(),
 });
 
 export type OperationsMaintenanceRequestCommand = z.infer<
 	typeof OperationsMaintenanceRequestCommandSchema
+>;
+
+export const OperationsMaintenanceAssignCommandSchema = z.object({
+	request_id: z.string().uuid(),
+	assigned_to: z.string().uuid(),
+	maintenance_team: z.string().max(50).optional(),
+	scheduled_date: z.string().optional(),
+	scheduled_time: z.string().optional(),
+	estimated_duration_minutes: z.number().int().positive().optional(),
+	notes: z.string().max(2000).optional(),
+	metadata: z.record(z.unknown()).optional(),
+	idempotency_key: z.string().max(120).optional(),
+});
+
+export type OperationsMaintenanceAssignCommand = z.infer<
+	typeof OperationsMaintenanceAssignCommandSchema
+>;
+
+export const OperationsMaintenanceCompleteCommandSchema = z.object({
+	request_id: z.string().uuid(),
+	work_performed: z.string().max(2000),
+	parts_used: z.array(z.string()).optional(),
+	actual_duration_minutes: z.number().int().positive().optional(),
+	labor_cost: z.number().optional(),
+	parts_cost: z.number().optional(),
+	is_satisfactory: z.boolean().optional(),
+	completion_notes: z.string().max(2000).optional(),
+	metadata: z.record(z.unknown()).optional(),
+	idempotency_key: z.string().max(120).optional(),
+});
+
+export type OperationsMaintenanceCompleteCommand = z.infer<
+	typeof OperationsMaintenanceCompleteCommandSchema
+>;
+
+export const OperationsMaintenanceEscalateCommandSchema = z.object({
+	request_id: z.string().uuid(),
+	escalated_to: z.string().uuid(),
+	escalation_reason: z.string().max(2000),
+	new_priority: z
+		.enum(["LOW", "MEDIUM", "HIGH", "URGENT", "EMERGENCY"])
+		.optional(),
+	metadata: z.record(z.unknown()).optional(),
+	idempotency_key: z.string().max(120).optional(),
+});
+
+export type OperationsMaintenanceEscalateCommand = z.infer<
+	typeof OperationsMaintenanceEscalateCommandSchema
 >;
 
 export const OperationsIncidentReportCommandSchema = z.object({

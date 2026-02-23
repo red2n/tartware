@@ -10,6 +10,7 @@ import { registerHealthRoutes } from "./routes/health.js";
 import { registerHousekeepingRoutes } from "./routes/housekeeping.js";
 import { registerIncidentRoutes } from "./routes/incidents.js";
 import { registerInspectionRoutes } from "./routes/inspections.js";
+import { registerLostAndFoundRoutes } from "./routes/lost-and-found.js";
 import { registerMaintenanceRoutes } from "./routes/maintenance.js";
 import { registerScheduleRoutes } from "./routes/schedules.js";
 
@@ -32,6 +33,7 @@ export const buildServer = (): FastifyInstance => {
       registerInspectionRoutes(app);
       registerMaintenanceRoutes(app);
       registerIncidentRoutes(app);
+      registerLostAndFoundRoutes(app);
     },
   });
 
