@@ -36,6 +36,7 @@ import { registerSystemImpersonationRoutes } from "./routes/system-impersonation
 import { registerSystemTenantRoutes } from "./routes/system-tenants.js";
 import { registerSystemUserRoutes } from "./routes/system-users.js";
 import { registerTenantRoutes } from "./routes/tenants.js";
+import { registerUiPreferencesRoutes } from "./routes/ui-preferences.js";
 import { registerUserTenantAssociationRoutes } from "./routes/user-tenant-associations.js";
 import { registerUserRoutes } from "./routes/users.js";
 
@@ -96,6 +97,7 @@ export const buildServer = (): FastifyInstance => {
       registerSystemUserRoutes(app);
       registerSystemImpersonationRoutes(app);
       registerDirectBookingRoutes(app);
+      registerUiPreferencesRoutes(app);
     },
   });
 

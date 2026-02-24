@@ -1,74 +1,18 @@
-import type { Producer, RecordMetadata } from "kafkajs";
+import {
+  createKafkaProducer,
+  type KafkaEventMessage,
+} from "@tartware/command-consumer-utils/producer";
 
 import { commandCenterConfig, kafkaConfig } from "../config.js";
-
 import { kafka } from "./client.js";
 
-let producer: Producer | null = null;
+const producer = createKafkaProducer(kafka, {
+  commandTopic: kafkaConfig.topic,
+  dlqTopic: kafkaConfig.dlqTopic,
+});
 
-const getProducer = async (): Promise<Producer> => {
-  if (producer) {
-    return producer;
-  }
-  producer = kafka.producer();
-  await producer.connect();
-  return producer;
-};
+export const { publishEvent, publishDlqEvent, shutdown: shutdownProducer } = producer;
 
-type KafkaEventMessage = {
-  key: string;
-  value: string;
-  headers?: Record<string, string>;
-  topic?: string;
-};
-
-/**
- * Publishes an event to Kafka, defaulting to the primary reservations topic.
- */
-export const publishEvent = async (message: KafkaEventMessage): Promise<RecordMetadata[]> => {
-  const producerInstance = await getProducer();
-  return producerInstance.send({
-    topic: message.topic ?? kafkaConfig.topic,
-    messages: [
-      {
-        key: message.key,
-        value: message.value,
-        headers: message.headers,
-      },
-    ],
-  });
-};
-
-/**
- * Publishes a payload to the configured dead-letter topic for reservation events.
- */
-export const publishDlqEvent = async (
-  message: Omit<KafkaEventMessage, "topic">,
-): Promise<RecordMetadata[]> => {
-  return publishEvent({
-    ...message,
-    topic: kafkaConfig.dlqTopic,
-  });
-};
-
-/**
- * Publishes a payload to the command-center dead-letter topic.
- */
-export const publishCommandDlqEvent = async (
-  message: Omit<KafkaEventMessage, "topic">,
-): Promise<RecordMetadata[]> => {
-  return publishEvent({
-    ...message,
-    topic: commandCenterConfig.dlqTopic,
-  });
-};
-
-/**
- * Disconnects the shared Kafka producer (used during graceful shutdown).
- */
-export const shutdownProducer = async (): Promise<void> => {
-  if (producer) {
-    await producer.disconnect();
-    producer = null;
-  }
-};
+/** Publishes a payload to the command-center dead-letter topic. */
+export const publishCommandDlqEvent = (message: Omit<KafkaEventMessage, "topic">) =>
+  producer.publishEvent({ ...message, topic: commandCenterConfig.dlqTopic });

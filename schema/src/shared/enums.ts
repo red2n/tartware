@@ -146,6 +146,7 @@ export type ReservationCommandLifecycleState = z.infer<
  * @database room_status
  */
 export const RoomStatusEnum = z.enum([
+	"SETUP",
 	"AVAILABLE",
 	"OCCUPIED",
 	"DIRTY",

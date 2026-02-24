@@ -1,0 +1,41 @@
+/* Rooms page — only component-specific overrides.
+ * All reusable patterns (filter-bar, data-table, states, badges, buttons)
+ * live in styles/shared.scss. */
+
+.rooms-page {
+  max-width: 1200px;
+}
+
+.room-number {
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-accent-fg);
+}
+
+.room-name {
+  font-size: var(--font-size-xs);
+}
+
+.cell-amenities {
+  .tag, .text-muted {
+    display: inline-block;
+    vertical-align: middle;
+    margin: 1px 2px;
+  }
+}
+
+/* ── Responsive ── */
+@media (max-width: 768px) {
+  .filter-bar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .search-input {
+    width: 100%;
+  }
+
+  .table-container {
+    overflow-x: auto;
+  }
+}
+

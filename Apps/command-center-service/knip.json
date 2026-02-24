@@ -4,28 +4,20 @@
     "src/**/*.ts"
   ],
   "ignoreDependencies": [
-    "@biomejs/biome",
     "@tartware/schemas",
     "@tartware/config",
     "@tartware/openapi",
     "@tartware/outbox",
     "@tartware/telemetry",
     "@tartware/command-center-shared",
+    "@tartware/command-consumer-utils",
     "@tartware/tenant-auth",
-    "tsx",
     "@fastify/cors",
     "@fastify/helmet",
     "@fastify/sensible",
     "@tartware/fastify-server",
+    "kafkajs",
     "pg"
-  ],
-  "ignoreBinaries": [
-    "biome",
-    "eslint",
-    "knip",
-    "tsc",
-    "tsx",
-    "vitest"
   ],
   "ignoreExportsUsedInFile": true
 }

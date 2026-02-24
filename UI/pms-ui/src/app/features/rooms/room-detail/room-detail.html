@@ -1,0 +1,315 @@
+<div class="page-header">
+  <div class="breadcrumb">
+    <a routerLink="/rooms" class="breadcrumb-link">
+      <mat-icon class="breadcrumb-icon">arrow_back</mat-icon>
+      Rooms
+    </a>
+    <span class="breadcrumb-sep">/</span>
+    @if (room(); as r) {
+      <span class="breadcrumb-current">{{ r.room_number }}</span>
+    }
+  </div>
+</div>
+
+@if (loading()) {
+  <div class="loading-center">
+    <mat-spinner diameter="32" />
+  </div>
+} @else if (error(); as err) {
+  <div class="flash flash-error">
+    <mat-icon class="flash-icon">error_outline</mat-icon>
+    {{ err }}
+    <button class="btn-invisible" (click)="goBack()">Go back</button>
+  </div>
+} @else if (room(); as r) {
+  <div class="detail-layout">
+    <!-- Info section -->
+    <div class="detail-card">
+      <div class="card-header">
+        <h3 class="card-title">Room Information</h3>
+      </div>
+      <div class="card-body">
+        <dl class="detail-list">
+          @for (row of infoRows(); track row.label) {
+            <div class="detail-row">
+              <dt class="detail-label">{{ row.label }}</dt>
+              <dd class="detail-value">{{ row.value }}</dd>
+            </div>
+          }
+        </dl>
+      </div>
+    </div>
+
+    <!-- Status section -->
+    <div class="detail-card">
+      <div class="card-header">
+        <h3 class="card-title">Status</h3>
+      </div>
+      <div class="card-body">
+        <dl class="detail-list">
+          @for (row of statusRows(); track row.label) {
+            <div class="detail-row">
+              <dt class="detail-label">{{ row.label }}</dt>
+              <dd class="detail-value">
+                @if (row.badge) {
+                  <span class="status-badge" [ngClass]="row.badge">{{ row.value }}</span>
+                } @else {
+                  {{ row.value }}
+                }
+              </dd>
+            </div>
+          }
+        </dl>
+      </div>
+    </div>
+
+    <!-- Amenities section -->
+    <div class="detail-card">
+      <div class="card-header">
+        <h3 class="card-title">Amenities</h3>
+        @if (!editingAmenities()) {
+          <button class="btn btn-invisible btn-sm" (click)="startEditAmenities()">
+            <mat-icon>edit</mat-icon>
+            Edit
+          </button>
+        }
+      </div>
+      <div class="card-body">
+        @if (amenitySuccess(); as msg) {
+          <div class="flash flash-success">
+            <mat-icon class="flash-icon">check_circle</mat-icon>
+            {{ msg }}
+          </div>
+        }
+        @if (amenityError(); as msg) {
+          <div class="flash flash-error">
+            <mat-icon class="flash-icon">error_outline</mat-icon>
+            {{ msg }}
+          </div>
+        }
+
+        @if (editingAmenities()) {
+          <!-- Edit mode: toggleable chips -->
+          <p class="amenity-hint">Click to toggle amenities. Add custom ones below.</p>
+          <div class="tag-list">
+            @for (code of availableAmenities(); track code) {
+              <button
+                class="chip"
+                [class.chip-active]="editAmenities().includes(code)"
+                (click)="toggleAmenity(code)">
+                @if (editAmenities().includes(code)) {
+                  <mat-icon class="chip-icon">check</mat-icon>
+                } @else {
+                  <mat-icon class="chip-icon">add</mat-icon>
+                }
+                {{ amenityDisplayMap().get(code) ?? code }}
+              </button>
+            }
+          </div>
+
+          <!-- Add custom amenity -->
+          <div class="action-row">
+            <input
+              type="text"
+              class="field-input add-amenity-input"
+              placeholder="Add custom amenity..."
+              maxlength="80"
+              [ngModel]="newAmenityInput()"
+              (ngModelChange)="newAmenityInput.set($event)"
+              (keydown.enter)="addCustomAmenity()" />
+            <button
+              class="btn btn-invisible btn-sm"
+              [disabled]="!newAmenityInput().trim()"
+              (click)="addCustomAmenity()">
+              <mat-icon>add_circle</mat-icon>
+              Add
+            </button>
+          </div>
+
+          <!-- Save / Cancel -->
+          <div class="action-row">
+            <button
+              class="btn btn-primary btn-sm"
+              [disabled]="savingAmenities() || !hasAmenityChanges()"
+              (click)="saveAmenities()">
+              @if (savingAmenities()) {
+                <mat-spinner diameter="14"></mat-spinner>
+              }
+              Save amenities
+            </button>
+            <button class="btn btn-invisible btn-sm" (click)="cancelEditAmenities()">
+              Cancel
+            </button>
+          </div>
+        } @else {
+          <!-- Read-only view -->
+          @if (amenitiesList().length > 0) {
+            <div class="tag-list">
+              @for (item of amenitiesList(); track item) {
+                <span class="tag">{{ amenityDisplayMap().get(item) ?? item }}</span>
+              }
+            </div>
+          } @else {
+            <p class="empty-hint">No amenities configured.</p>
+          }
+        }
+      </div>
+    </div>
+
+    <!-- Activation card (shown only for SETUP rooms) -->
+    @if (r.status === 'setup') {
+      <div class="detail-card">
+        <div class="card-header">
+          <h3 class="card-title">Room Activation</h3>
+        </div>
+        <div class="card-body">
+          @if (saveSuccess(); as msg) {
+            <div class="flash flash-success">
+              <mat-icon class="flash-icon">check_circle</mat-icon>
+              {{ msg }}
+            </div>
+          }
+          @if (saveError(); as msg) {
+            <div class="flash flash-error">
+              <mat-icon class="flash-icon">error_outline</mat-icon>
+              {{ msg }}
+            </div>
+          }
+          <p class="notice">
+            <mat-icon class="notice-icon">info</mat-icon>
+            This room is in <strong>Setup</strong> mode and is not yet available for booking.
+            At least one active rate plan must be configured for the room type before activation.
+          </p>
+          <button
+            class="btn btn-primary"
+            [disabled]="activating()"
+            (click)="activateRoom()">
+            @if (activating()) {
+              <mat-spinner diameter="16"></mat-spinner>
+              Activating...
+            } @else {
+              <mat-icon>check_circle</mat-icon>
+              Activate Room
+            }
+          </button>
+        </div>
+      </div>
+    }
+
+    <!-- Deactivate card (shown only for AVAILABLE rooms) -->
+    @if (r.status === 'available') {
+      <div class="detail-card">
+        <div class="card-header">
+          <h3 class="card-title">Room Configuration</h3>
+        </div>
+        <div class="card-body">
+          @if (saveSuccess(); as msg) {
+            <div class="flash flash-success">
+              <mat-icon class="flash-icon">check_circle</mat-icon>
+              {{ msg }}
+            </div>
+          }
+          @if (saveError(); as msg) {
+            <div class="flash flash-error">
+              <mat-icon class="flash-icon">error_outline</mat-icon>
+              {{ msg }}
+            </div>
+          }
+          <p class="notice notice-muted">
+            <mat-icon class="notice-icon">settings</mat-icon>
+            Move this room back to <strong>Setup</strong> mode to reconfigure rate plans or room type settings.
+            The room will be removed from booking availability.
+          </p>
+          <button
+            class="btn btn-danger btn-sm"
+            [disabled]="deactivating()"
+            (click)="deactivateRoom()">
+            @if (deactivating()) {
+              <mat-spinner diameter="16"></mat-spinner>
+              Deactivating...
+            } @else {
+              <mat-icon>settings_backup_restore</mat-icon>
+              Move to Setup
+            }
+          </button>
+        </div>
+      </div>
+    }
+
+    <!-- Out of Order toggle -->
+    <div class="detail-card">
+      <div class="card-header">
+        <h3 class="card-title">Out of Order</h3>
+      </div>
+      <div class="card-body">
+        @if (saveSuccess(); as msg) {
+          <div class="flash flash-success">
+            <mat-icon class="flash-icon">check_circle</mat-icon>
+            {{ msg }}
+          </div>
+        }
+        @if (saveError(); as msg) {
+          <div class="flash flash-error">
+            <mat-icon class="flash-icon">error_outline</mat-icon>
+            {{ msg }}
+          </div>
+        }
+
+        <div class="ooo-toggle-row">
+          <mat-slide-toggle
+            [checked]="editOoo()"
+            (change)="editOoo.set($event.checked)"
+            [disabled]="saving()">
+            Mark room as Out of Order
+          </mat-slide-toggle>
+        </div>
+
+        @if (editOoo()) {
+          <div class="ooo-fields">
+            <div class="field-group">
+              <label class="field-label" for="ooo-reason">Reason</label>
+              <input
+                id="ooo-reason"
+                type="text"
+                class="field-input"
+                placeholder="e.g. Plumbing repair"
+                maxlength="500"
+                [ngModel]="editOooReason()"
+                (ngModelChange)="editOooReason.set($event)" />
+            </div>
+            <div class="field-group">
+              <label class="field-label" for="ooo-ready">Expected ready date</label>
+              <input
+                id="ooo-ready"
+                type="date"
+                class="field-input"
+                [value]="editExpectedReady()"
+                (input)="editExpectedReady.set($any($event.target).value)" />
+            </div>
+          </div>
+        }
+
+        <div class="ooo-actions">
+          <button
+            class="btn btn-primary"
+            [disabled]="saving() || !hasOooChanges()"
+            (click)="saveOooStatus()">
+            @if (saving()) {
+              <mat-spinner diameter="16" />
+              Saving…
+            } @else {
+              Save
+            }
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Meta -->
+    @if (r.updated_at) {
+      <div class="meta-line">
+        Last updated {{ r.updated_at }}
+      </div>
+    }
+  </div>
+}

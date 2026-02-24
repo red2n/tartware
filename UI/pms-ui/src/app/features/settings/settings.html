@@ -1,0 +1,449 @@
+<div class="settings-page">
+  <div class="page-header">
+    <h1 class="page-title">Settings</h1>
+    <div class="page-actions">
+      <button class="btn btn-invisible" (click)="loadCategories()" matTooltip="Refresh">
+        <mat-icon>refresh</mat-icon>
+      </button>
+    </div>
+  </div>
+
+  @if (loadingCategories()) {
+    <div class="loading-state">
+      <mat-spinner diameter="32"></mat-spinner>
+      <span class="text-muted">Loading settings...</span>
+    </div>
+  } @else if (error() && categories().length === 0) {
+    <div class="error-state">
+      <mat-icon class="error-icon">error_outline</mat-icon>
+      <span>{{ error() }}</span>
+      <button class="btn btn-outline" (click)="loadCategories()">Retry</button>
+    </div>
+  } @else {
+    <div class="settings-layout">
+      <!-- Category sidebar -->
+      <nav class="settings-nav">
+        @for (cat of categories(); track cat.id) {
+          <button
+            class="nav-category"
+            [class.nav-category-active]="selectedCategory()?.id === cat.id"
+            (click)="selectCategory(cat)">
+            <mat-icon class="nav-category-icon">{{ categoryIcon(cat) }}</mat-icon>
+            <span class="nav-category-label">{{ cat.name }}</span>
+          </button>
+        }
+      </nav>
+
+      <!-- Content panel -->
+      <div class="settings-content">
+        @if (selectedCategory(); as cat) {
+          <div class="content-header">
+            <div class="content-header-info">
+              <h2 class="content-title">{{ cat.name }}</h2>
+              @if (cat.description) {
+                <p class="content-description text-muted">{{ cat.description }}</p>
+              }
+            </div>
+            <div class="content-header-actions">
+              <div class="search-box">
+                <mat-icon class="search-icon">search</mat-icon>
+                <input
+                  type="text"
+                  class="search-input"
+                  placeholder="Search settings..."
+                  [ngModel]="searchQuery()"
+                  (ngModelChange)="onSearch($event)" />
+              </div>
+            </div>
+          </div>
+
+          @if (loadingCatalog()) {
+            <div class="loading-state">
+              <mat-spinner diameter="24"></mat-spinner>
+              <span class="text-muted">Loading...</span>
+            </div>
+          } @else if (error()) {
+            <div class="error-state">
+              <mat-icon class="error-icon">error_outline</mat-icon>
+              <span>{{ error() }}</span>
+            </div>
+          } @else if (sectionDefinitions().length === 0) {
+            <div class="empty-state">
+              <mat-icon class="empty-icon">tune</mat-icon>
+              @if (searchQuery()) {
+                <p>No settings match "{{ searchQuery() }}"</p>
+                <button class="btn btn-outline" (click)="onSearch('')">Clear search</button>
+              } @else {
+                <p>No settings defined in this category</p>
+              }
+            </div>
+          } @else {
+            @defer (on idle) {
+              <div class="sections-list">
+                @for (group of sectionDefinitions(); track group.section.id) {
+                  <section class="settings-section">
+                    <div class="section-header-row">
+                      @if (group.section.icon) {
+                        <mat-icon class="section-icon text-muted">{{ group.section.icon }}</mat-icon>
+                      }
+                      <h3 class="section-title">{{ group.section.name }}</h3>
+                      <span class="counter">{{ group.definitions.length }}</span>
+                    </div>
+                    @if (group.section.description) {
+                      <p class="section-description text-subtle">{{ group.section.description }}</p>
+                    }
+
+                    <div class="definition-cards">
+                      @for (def of group.definitions; track def.id) {
+                        <div class="definition-card" [class.definition-card-editing]="getEditState(def.id).editing">
+                          <div class="def-header">
+                            <div class="def-title-area">
+                              <span class="def-name">{{ def.name }}</span>
+                              <code class="def-code">{{ def.code }}</code>
+                            </div>
+                            <div class="def-badges">
+                              <span class="badge" [ngClass]="sensitivityClass(def.sensitivity)">
+                                {{ def.sensitivity }}
+                              </span>
+                              <span class="badge badge-muted">
+                                {{ controlTypeLabel(def.control_type) }}
+                              </span>
+                              @if (def.is_required) {
+                                <span class="badge badge-accent">Required</span>
+                              }
+                              @if (def.is_readonly) {
+                                <span class="badge badge-muted">Read-only</span>
+                              }
+                              @if (getEditState(def.id).savedMessage) {
+                                <span class="badge badge-success">
+                                  <mat-icon class="badge-icon">check</mat-icon>
+                                  {{ getEditState(def.id).savedMessage }}
+                                </span>
+                              }
+                            </div>
+                          </div>
+
+                          <p class="def-description text-muted">{{ def.description }}</p>
+
+                          <!-- Value display / editor -->
+                          <div class="def-value-area">
+                            @if (isBooleanValue(def)) {
+                              <!-- Toggle: always inline, no edit mode needed -->
+                              <div class="def-toggle-row">
+                                <mat-slide-toggle
+                                  [checked]="getDisplayValue(def) === true"
+                                  [disabled]="def.is_readonly || getEditState(def.id).saving"
+                                  (change)="onToggleChange(def, $event.checked)">
+                                  {{ getDisplayValue(def) === true ? 'Enabled' : 'Disabled' }}
+                                </mat-slide-toggle>
+                                @if (getEditState(def.id).saving) {
+                                  <mat-spinner diameter="16"></mat-spinner>
+                                }
+                              </div>
+                            } @else if (getEditState(def.id).editing) {
+                              <!-- Edit mode -->
+                              <div class="def-edit-area">
+                                @if (isJsonValue(def)) {
+                                  <div class="json-form json-form-edit">
+                                    @for (group of parseJsonFields(getEditState(def.id).editValue); track group.key) {
+                                      <div class="json-field-group">
+                                        @if (group.type === 'primitive') {
+                                          <div class="json-field-row">
+                                            <label class="json-field-label">{{ group.label }}</label>
+                                            @if (group.valueType === 'boolean') {
+                                              <mat-slide-toggle
+                                                [checked]="group.value === true"
+                                                (change)="onJsonFieldEdit(def.id, group.key, null, $event.checked)">
+                                              </mat-slide-toggle>
+                                            } @else if (group.valueType === 'number') {
+                                              <input type="number" class="field-input json-field-input"
+                                                [ngModel]="group.value"
+                                                (ngModelChange)="onJsonFieldEdit(def.id, group.key, null, $event)" />
+                                            } @else {
+                                              <input type="text" class="field-input json-field-input"
+                                                [ngModel]="group.value"
+                                                (ngModelChange)="onJsonFieldEdit(def.id, group.key, null, $event)" />
+                                            }
+                                          </div>
+                                        } @else if (group.type === 'object') {
+                                          <div class="json-sub-group">
+                                            <span class="json-sub-group-label">{{ group.label }}</span>
+                                            @for (child of group.children; track child.key) {
+                                              <div class="json-field-row json-field-row-indent">
+                                                <label class="json-field-label">{{ child.label }}</label>
+                                                @if (child.valueType === 'boolean') {
+                                                  <mat-slide-toggle
+                                                    [checked]="child.value === true"
+                                                    (change)="onJsonFieldEdit(def.id, group.key, child.key, $event.checked)">
+                                                  </mat-slide-toggle>
+                                                } @else if (child.valueType === 'number') {
+                                                  <input type="number" class="field-input json-field-input"
+                                                    [ngModel]="child.value"
+                                                    (ngModelChange)="onJsonFieldEdit(def.id, group.key, child.key, $event)" />
+                                                } @else {
+                                                  <input type="text" class="field-input json-field-input"
+                                                    [ngModel]="child.value"
+                                                    (ngModelChange)="onJsonFieldEdit(def.id, group.key, child.key, $event)" />
+                                                }
+                                              </div>
+                                            }
+                                          </div>
+                                        } @else if (group.type === 'array-objects') {
+                                          <div class="json-array-group">
+                                            <span class="json-sub-group-label">{{ group.label }}</span>
+                                            @if (group.rows.length > 0) {
+                                              <div class="json-array-table-wrap">
+                                                <table class="json-array-table json-array-table-edit">
+                                                  <thead>
+                                                    <tr>
+                                                      @for (col of group.columns; track col) {
+                                                        <th>{{ humanizeKey(col) }}</th>
+                                                      }
+                                                      <th class="json-array-actions-col"></th>
+                                                    </tr>
+                                                  </thead>
+                                                  <tbody>
+                                                    @for (row of group.rows; track $index; let i = $index) {
+                                                      <tr>
+                                                        @for (col of group.columns; track col) {
+                                                          <td>
+                                                            @if (getCellType(row[col]) === 'boolean') {
+                                                              <input type="checkbox" class="json-cell-checkbox"
+                                                                [ngModel]="row[col]"
+                                                                (ngModelChange)="onArrayCellEdit(def.id, group.key, i, col, $event)" />
+                                                            } @else if (getCellType(row[col]) === 'number') {
+                                                              <input type="number" class="field-input json-cell-input"
+                                                                [ngModel]="row[col]"
+                                                                (ngModelChange)="onArrayCellEdit(def.id, group.key, i, col, $event)" />
+                                                            } @else if (getCellType(row[col]) === 'array') {
+                                                              <input type="text" class="field-input json-cell-input"
+                                                                [ngModel]="joinArray(row[col])"
+                                                                (ngModelChange)="onArrayCellArrayEdit(def.id, group.key, i, col, $event)" />
+                                                            } @else {
+                                                              <input type="text" class="field-input json-cell-input"
+                                                                [ngModel]="row[col]"
+                                                                (ngModelChange)="onArrayCellEdit(def.id, group.key, i, col, $event)" />
+                                                            }
+                                                          </td>
+                                                        }
+                                                        <td class="json-array-actions-col">
+                                                          <button class="btn btn-invisible btn-sm"
+                                                            (click)="removeArrayRow(def.id, group.key, i)"
+                                                            matTooltip="Remove row">
+                                                            <mat-icon>close</mat-icon>
+                                                          </button>
+                                                        </td>
+                                                      </tr>
+                                                    }
+                                                  </tbody>
+                                                </table>
+                                              </div>
+                                            }
+                                            <button class="btn btn-invisible btn-sm json-add-row-btn"
+                                              (click)="addArrayRow(def.id, group.key)">
+                                              <mat-icon>add</mat-icon> Add row
+                                            </button>
+                                          </div>
+                                        } @else if (group.type === 'array-primitive') {
+                                          <div class="json-field-row">
+                                            <label class="json-field-label">{{ group.label }}</label>
+                                            <input type="text" class="field-input json-field-input"
+                                              [ngModel]="joinArray(group.value)"
+                                              (ngModelChange)="onArrayPrimitiveEdit(def.id, group.key, $event)" />
+                                          </div>
+                                        }
+                                      </div>
+                                    }
+                                  </div>
+                                } @else if (isSelectValue(def)) {
+                                  <select
+                                    class="field-input"
+                                    [ngModel]="getEditState(def.id).editValue"
+                                    (ngModelChange)="onEditValueChange(def.id, $event)">
+                                    @for (opt of getOptions(def.id); track opt.id) {
+                                      <option [value]="opt.value">{{ opt.label }}</option>
+                                    }
+                                  </select>
+                                } @else if (isNumberValue(def)) {
+                                  <input
+                                    type="number"
+                                    class="field-input"
+                                    [ngModel]="getEditState(def.id).editValue"
+                                    (ngModelChange)="onEditValueChange(def.id, $event)"
+                                    [attr.placeholder]="def.placeholder ?? ''" />
+                                } @else if (isDateValue(def)) {
+                                  <input
+                                    type="date"
+                                    class="field-input"
+                                    [ngModel]="getEditState(def.id).editValue"
+                                    (ngModelChange)="onEditValueChange(def.id, $event)" />
+                                } @else if (isTextAreaValue(def)) {
+                                  <textarea
+                                    class="field-input"
+                                    [ngModel]="getEditState(def.id).editValue"
+                                    (ngModelChange)="onEditValueChange(def.id, $event)"
+                                    rows="4"
+                                    [attr.placeholder]="def.placeholder ?? ''"></textarea>
+                                } @else {
+                                  <input
+                                    type="text"
+                                    class="field-input"
+                                    [ngModel]="getEditState(def.id).editValue"
+                                    (ngModelChange)="onEditValueChange(def.id, $event)"
+                                    [attr.placeholder]="def.placeholder ?? ''" />
+                                }
+
+                                @if (def.help_text) {
+                                  <p class="text-subtle def-help">{{ def.help_text }}</p>
+                                }
+
+                                @if (getEditState(def.id).errorMessage) {
+                                  <p class="field-hint-error">{{ getEditState(def.id).errorMessage }}</p>
+                                }
+
+                                <div class="def-edit-actions">
+                                  <button
+                                    class="btn btn-primary btn-sm"
+                                    [disabled]="getEditState(def.id).saving || !getEditState(def.id).dirty"
+                                    (click)="saveValue(def)">
+                                    @if (getEditState(def.id).saving) {
+                                      <mat-spinner diameter="14"></mat-spinner>
+                                    }
+                                    Save
+                                  </button>
+                                  <button
+                                    class="btn btn-invisible btn-sm"
+                                    [disabled]="getEditState(def.id).saving"
+                                    (click)="cancelEdit(def.id)">
+                                    Cancel
+                                  </button>
+                                </div>
+                              </div>
+                            } @else {
+                              <!-- Read mode: show current value + edit button -->
+                              <div class="def-value-display">
+                                @if (isJsonValue(def)) {
+                                  <div class="json-form">
+                                    @for (group of parseJsonFields(getDisplayValue(def)); track group.key) {
+                                      <div class="json-field-group">
+                                        @if (group.type === 'primitive') {
+                                          <div class="json-field-row">
+                                            <span class="json-field-label">{{ group.label }}</span>
+                                            @if (group.valueType === 'boolean') {
+                                              <span class="badge" [ngClass]="group.value ? 'badge-success' : 'badge-muted'">
+                                                {{ group.value ? 'Enabled' : 'Disabled' }}
+                                              </span>
+                                            } @else {
+                                              <span class="json-field-value">{{ formatCellValue(group.value) }}</span>
+                                            }
+                                          </div>
+                                        } @else if (group.type === 'object') {
+                                          <div class="json-sub-group">
+                                            <span class="json-sub-group-label">{{ group.label }}</span>
+                                            @for (child of group.children; track child.key) {
+                                              <div class="json-field-row json-field-row-indent">
+                                                <span class="json-field-label">{{ child.label }}</span>
+                                                @if (child.valueType === 'boolean') {
+                                                  <span class="badge" [ngClass]="child.value ? 'badge-success' : 'badge-muted'">
+                                                    {{ child.value ? 'Enabled' : 'Disabled' }}
+                                                  </span>
+                                                } @else {
+                                                  <span class="json-field-value">{{ formatCellValue(child.value) }}</span>
+                                                }
+                                              </div>
+                                            }
+                                          </div>
+                                        } @else if (group.type === 'array-objects') {
+                                          <div class="json-array-group">
+                                            <span class="json-sub-group-label">{{ group.label }}</span>
+                                            @if (group.rows.length > 0) {
+                                              <div class="json-array-table-wrap">
+                                                <table class="json-array-table">
+                                                  <thead>
+                                                    <tr>
+                                                      @for (col of group.columns; track col) {
+                                                        <th>{{ humanizeKey(col) }}</th>
+                                                      }
+                                                    </tr>
+                                                  </thead>
+                                                  <tbody>
+                                                    @for (row of group.rows; track $index) {
+                                                      <tr>
+                                                        @for (col of group.columns; track col) {
+                                                          <td>{{ formatCellValue(row[col]) }}</td>
+                                                        }
+                                                      </tr>
+                                                    }
+                                                  </tbody>
+                                                </table>
+                                              </div>
+                                            } @else {
+                                              <span class="text-muted">No items</span>
+                                            }
+                                          </div>
+                                        } @else if (group.type === 'array-primitive') {
+                                          <div class="json-field-row">
+                                            <span class="json-field-label">{{ group.label }}</span>
+                                            <div class="json-chips">
+                                              @for (item of group.items; track $index) {
+                                                <span class="json-chip">{{ item }}</span>
+                                              } @empty {
+                                                <span class="text-muted">None</span>
+                                              }
+                                            </div>
+                                          </div>
+                                        }
+                                      </div>
+                                    } @empty {
+                                      <span class="text-muted">Not configured</span>
+                                    }
+                                  </div>
+                                } @else {
+                                  <span class="def-value-text" [class.text-muted]="getDisplayValue(def) === null">
+                                    {{ formatDisplayValue(def) }}
+                                  </span>
+                                }
+                                @if (!def.is_readonly) {
+                                  <button
+                                    class="btn btn-invisible btn-sm"
+                                    (click)="startEdit(def)"
+                                    matTooltip="Edit setting">
+                                    <mat-icon>edit</mat-icon>
+                                  </button>
+                                }
+                              </div>
+                            }
+                          </div>
+
+                          <div class="def-meta">
+                            <div class="def-meta-item">
+                              <mat-icon class="def-meta-icon">layers</mat-icon>
+                              <span>Scope: {{ scopeLabel(def.allowed_scopes) }}</span>
+                            </div>
+                            @if (def.module_dependencies?.length) {
+                              <div class="def-meta-item">
+                                <mat-icon class="def-meta-icon">extension</mat-icon>
+                                <span>Requires: {{ def.module_dependencies!.join(', ') }}</span>
+                              </div>
+                            }
+                          </div>
+                        </div>
+                      }
+                    </div>
+                  </section>
+                }
+              </div>
+            } @placeholder {
+              <div class="placeholder-table">
+                <div class="placeholder-row"></div>
+                <div class="placeholder-row"></div>
+                <div class="placeholder-row"></div>
+                <div class="placeholder-row"></div>
+              </div>
+            }
+          }
+        }
+      </div>
+    </div>
+  }
+</div>

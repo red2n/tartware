@@ -3,6 +3,7 @@ import {
   type CommandMetadata,
   createCommandCenterHandlers,
 } from "@tartware/command-consumer-utils";
+import { processWithRetry, RetryExhaustedError } from "@tartware/config/retry";
 import {
   ReservationMobileCheckinCompleteCommandSchema,
   ReservationMobileCheckinStartCommandSchema,
@@ -17,7 +18,6 @@ import {
   recordCommandOutcome,
   setCommandConsumerLag,
 } from "../lib/metrics.js";
-import { processWithRetry, RetryExhaustedError } from "../lib/retry.js";
 import { completeMobileCheckin, startMobileCheckin } from "../services/checkin-service.js";
 
 let consumer: Consumer | null = null;

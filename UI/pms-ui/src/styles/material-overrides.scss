@@ -1,0 +1,98 @@
+/* =====================================================
+ * Angular Material theme overrides
+ * Maps Material components to our design tokens
+ * ===================================================== */
+
+@use '@angular/material' as mat;
+
+/* ── Custom theme built from token palette ── */
+html {
+  @include mat.theme((
+    color: (
+      primary: mat.$blue-palette,
+      tertiary: mat.$green-palette,
+      theme-type: light,
+    ),
+    typography: -apple-system,
+    density: 0,
+  ));
+}
+
+html[data-theme='dark'] {
+  @include mat.theme((
+    color: (
+      primary: mat.$blue-palette,
+      tertiary: mat.$green-palette,
+      theme-type: dark,
+    ),
+    typography: -apple-system,
+    density: 0,
+  ));
+}
+
+/* ── Button overrides ── */
+.mat-mdc-button.mat-primary,
+.mat-mdc-raised-button.mat-primary,
+.mat-mdc-flat-button.mat-primary {
+  --mdc-filled-button-container-color: var(--color-accent-emphasis);
+  --mdc-filled-button-label-text-color: var(--color-fg-on-emphasis);
+}
+
+/* ── Card overrides ── */
+.mat-mdc-card {
+  --mdc-elevated-card-container-color: var(--color-canvas-default);
+  border: 1px solid var(--color-border-default);
+  box-shadow: var(--color-shadow-small) !important;
+}
+
+/* ── Toolbar overrides (legacy — header now uses custom styles) ── */
+.mat-toolbar {
+  background: var(--color-header-bg) !important;
+  color: var(--color-header-text) !important;
+  border-bottom: 1px solid var(--color-header-border);
+}
+
+/* ── Sidebar nav overrides ── */
+.mat-mdc-list-item {
+  --mdc-list-list-item-label-text-color: var(--color-fg-default);
+  border-radius: var(--radius-md);
+}
+
+.mat-mdc-list-item:hover {
+  background: var(--color-canvas-subtle) !important;
+}
+
+/* ── Dialog overrides ── */
+.mat-mdc-dialog-surface {
+  background: var(--color-canvas-overlay) !important;
+  border: 1px solid var(--color-border-default);
+}
+
+/* ── Snackbar overrides ── */
+.mat-mdc-snack-bar-container {
+  --mdc-snackbar-container-color: var(--color-canvas-subtle);
+  --mdc-snackbar-supporting-text-color: var(--color-fg-default);
+  border: 1px solid var(--color-border-default);
+}
+
+/* ── Form field overrides ── */
+.mat-mdc-form-field {
+  --mdc-outlined-text-field-outline-color: var(--color-border-default);
+  --mdc-outlined-text-field-hover-outline-color: var(--color-fg-muted);
+  --mdc-outlined-text-field-focus-outline-color: var(--color-accent-fg);
+  --mdc-outlined-text-field-label-text-color: var(--color-fg-muted);
+  --mdc-outlined-text-field-input-text-color: var(--color-fg-default);
+}
+
+/* ── Menu overrides ── */
+.mat-mdc-menu-panel {
+  background: var(--color-canvas-overlay) !important;
+  border: 1px solid var(--color-border-default);
+  box-shadow: var(--color-shadow-large) !important;
+}
+
+/* ── Tooltip overrides ── */
+.mat-mdc-tooltip {
+  --mdc-plain-tooltip-container-color: var(--color-canvas-subtle);
+  --mdc-plain-tooltip-supporting-text-color: var(--color-fg-default);
+}

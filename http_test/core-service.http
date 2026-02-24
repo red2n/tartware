@@ -328,6 +328,59 @@ Authorization: Bearer {{authToken}}
 }
 
 ###############################################################################
+# 10. USER UI PREFERENCES
+###############################################################################
+
+# Get current user's UI preferences
+GET {{baseUrl}}/v1/users/me/ui-preferences?tenant_id={{tenantId}}
+Authorization: Bearer {{authToken}}
+
+###
+# Update theme to DARK
+PUT {{baseUrl}}/v1/users/me/ui-preferences?tenant_id={{tenantId}}
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+
+{
+  "theme": "DARK"
+}
+
+###
+# Update theme to LIGHT
+PUT {{baseUrl}}/v1/users/me/ui-preferences?tenant_id={{tenantId}}
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+
+{
+  "theme": "LIGHT"
+}
+
+###
+# Update theme to SYSTEM (follow OS preference)
+PUT {{baseUrl}}/v1/users/me/ui-preferences?tenant_id={{tenantId}}
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+
+{
+  "theme": "SYSTEM"
+}
+
+###
+# Update multiple preferences at once
+PUT {{baseUrl}}/v1/users/me/ui-preferences?tenant_id={{tenantId}}
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+
+{
+  "theme": "DARK",
+  "language": "en",
+  "date_format": "MM/DD/YYYY",
+  "time_format": "12H",
+  "default_page_size": 50,
+  "home_page": "/reservations"
+}
+
+###############################################################################
 # REFERENCE
 ###############################################################################
 #

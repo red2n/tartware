@@ -12,6 +12,14 @@
     "./db": {
       "types": "./dist/db.d.ts",
       "import": "./dist/db.js"
+    },
+    "./retry": {
+      "types": "./dist/retry.d.ts",
+      "import": "./dist/retry.js"
+    },
+    "./test-helpers": {
+      "types": "./dist/test-helpers.d.ts",
+      "import": "./dist/test-helpers.js"
     }
   },
   "main": "dist/index.js",
@@ -35,7 +43,8 @@
   "devDependencies": {
     "@types/node": "^20.11.19",
     "@types/pg": "^8.15.4",
-    "typescript": "^5.3.3"
+    "typescript": "^5.3.3",
+    "vitest": "^3.2.4"
   },
   "engines": {
     "node": ">=20.0.0",

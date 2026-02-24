@@ -3,8 +3,8 @@ import {
   type CommandMetadata,
   createCommandCenterHandlers,
 } from "@tartware/command-consumer-utils";
+import { processWithRetry, RetryExhaustedError } from "@tartware/config/retry";
 import type { Consumer } from "kafkajs";
-
 import { config } from "../config.js";
 import { kafka } from "../kafka/client.js";
 import { publishDlqEvent } from "../kafka/producer.js";
@@ -14,7 +14,6 @@ import {
   recordCommandOutcome,
   setCommandConsumerLag,
 } from "../lib/metrics.js";
-import { processWithRetry, RetryExhaustedError } from "../lib/retry.js";
 import {
   handleKeyIssue,
   handleKeyRevoke,

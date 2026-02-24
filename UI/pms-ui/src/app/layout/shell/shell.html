@@ -1,0 +1,21 @@
+<div class="shell" [class.sidebar-collapsed]="sidebarCollapsed()">
+  @defer (on idle) {
+    <app-sidebar
+      [collapsed]="sidebarCollapsed()"
+      (toggleCollapse)="toggleSidebar()" />
+  } @placeholder {
+    <aside class="sidebar-placeholder"></aside>
+  }
+
+  <div class="main-area">
+    @defer (on idle) {
+      <app-topbar (menuToggle)="toggleSidebar()" />
+    } @placeholder {
+      <div class="topbar-placeholder"></div>
+    }
+
+    <main class="content-area scroll-container">
+      <router-outlet />
+    </main>
+  </div>
+</div>

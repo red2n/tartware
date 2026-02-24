@@ -1,10 +1,13 @@
 import { buildRouteSchema, schemaFromZod } from "@tartware/openapi";
 import { CommandDefinitionSchema } from "@tartware/schemas";
+import { createTokenVerifier, extractBearerToken } from "@tartware/tenant-auth/jwt";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 
-import { extractBearerToken, verifyAccessToken } from "../lib/jwt.js";
+import { config } from "../config.js";
 import { listCommandDefinitions } from "../services/command-registry-service.js";
+
+const verifyAccessToken = createTokenVerifier(config.auth.jwt);
 
 const CommandDefinitionListSchema = z.array(CommandDefinitionSchema);
 const CommandDefinitionListJsonSchema = schemaFromZod(

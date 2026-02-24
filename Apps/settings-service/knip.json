@@ -9,20 +9,10 @@
     "@tartware/openapi",
     "@tartware/telemetry",
     "@tartware/command-consumer-utils",
-    "@biomejs/biome",
-    "tsx",
     "@fastify/cors",
     "@fastify/helmet",
     "@fastify/sensible",
     "@tartware/fastify-server"
-  ],
-  "ignoreBinaries": [
-    "tsx",
-    "tsc",
-    "biome",
-    "eslint",
-    "knip",
-    "vitest"
   ],
   "ignoreExportsUsedInFile": true
 }

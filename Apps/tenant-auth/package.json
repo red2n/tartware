@@ -4,6 +4,24 @@
   "description": "Shared Fastify tenant auth context plugin",
   "private": true,
   "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./jwt": {
+      "types": "./dist/jwt.d.ts",
+      "import": "./dist/jwt.js"
+    },
+    "./membership": {
+      "types": "./dist/membership.d.ts",
+      "import": "./dist/membership.js"
+    },
+    "./auth-plugin": {
+      "types": "./dist/auth-plugin.d.ts",
+      "import": "./dist/auth-plugin.js"
+    }
+  },
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {
@@ -17,7 +35,12 @@
     "clean": "rm -rf dist *.tsbuildinfo"
   },
   "dependencies": {
-    "fastify-plugin": "^5.1.0"
+    "@tartware/schemas": "workspace:*",
+    "fastify-plugin": "^5.1.0",
+    "jsonwebtoken": "^9.0.2"
+  },
+  "devDependencies": {
+    "@types/jsonwebtoken": "^9.0.10"
   },
   "peerDependencies": {
     "fastify": "^5.6.2"

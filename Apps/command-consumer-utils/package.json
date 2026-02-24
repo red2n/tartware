@@ -4,6 +4,20 @@
   "description": "Shared command center consumer helpers",
   "private": true,
   "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./producer": {
+      "types": "./dist/producer.d.ts",
+      "import": "./dist/producer.js"
+    },
+    "./dlq": {
+      "types": "./dist/dlq.d.ts",
+      "import": "./dist/dlq.js"
+    }
+  },
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {

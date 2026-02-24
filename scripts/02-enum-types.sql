@@ -100,6 +100,7 @@ CREATE TYPE reservation_command_lifecycle_state AS ENUM (
 -- Room Status (Operational Status)
 -- Standard: OPERA Cloud room status model
 CREATE TYPE room_status AS ENUM (
+    'SETUP',           -- New room, not yet activated for sale (rates/config pending)
     'AVAILABLE',        -- Ready for booking
     'OCCUPIED',         -- Guest checked in
     'DIRTY',           -- Needs cleaning

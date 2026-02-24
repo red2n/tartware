@@ -1,0 +1,86 @@
+/* Rates page — component-specific overrides only.
+ * Reusable patterns live in styles/shared.scss. */
+
+.rates-page {
+  max-width: 1280px;
+}
+
+.rate-code {
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-accent-fg);
+  font-family: var(--font-family-mono, monospace);
+  font-size: var(--font-size-xs);
+}
+
+.rate-name {
+  font-size: var(--font-size-xs);
+}
+
+.col-right {
+  text-align: right;
+}
+
+.cell-amount {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.tax-hint {
+  margin-left: 4px;
+  font-size: var(--font-size-xs);
+}
+
+.cell-status {
+  white-space: nowrap;
+
+  .badge {
+    vertical-align: middle;
+  }
+
+  .btn {
+    vertical-align: middle;
+    margin-left: 0.5rem;
+  }
+}
+
+.btn-activate {
+  color: var(--color-success-fg);
+  border-color: var(--color-success-emphasis);
+
+  &:hover {
+    background: var(--color-success-subtle);
+  }
+}
+
+.filter-controls {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.type-select {
+  padding: 4px var(--space-3);
+  font-size: var(--font-size-xs);
+  min-width: 120px;
+}
+
+/* ── Responsive ── */
+@media (max-width: 768px) {
+  .filter-bar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .filter-controls {
+    flex-direction: column;
+  }
+
+  .search-input {
+    width: 100%;
+  }
+
+  .table-container {
+    overflow-x: auto;
+  }
+}
+

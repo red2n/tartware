@@ -33,7 +33,7 @@ building VARCHAR(100), -- Building or tower designation
 wing VARCHAR(100), -- Wing or section within the property
 
 -- Status
-status room_status NOT NULL DEFAULT 'AVAILABLE', -- Availability state for sales
+status room_status NOT NULL DEFAULT 'SETUP', -- Availability state for sales (new rooms start in SETUP)
 housekeeping_status housekeeping_status NOT NULL DEFAULT 'CLEAN', -- Housekeeping readiness
 maintenance_status maintenance_status NOT NULL DEFAULT 'OPERATIONAL', -- Maintenance state
 
@@ -135,5 +135,8 @@ COMMENT ON COLUMN rooms.deep_clean_interval_days IS 'Interval in days between sc
 
 -- Idempotent column additions for existing tables
 ALTER TABLE rooms ADD COLUMN IF NOT EXISTS phone_extension VARCHAR(20);
+
+-- Ensure status default is SETUP for existing environments (idempotent upgrade)
+ALTER TABLE rooms ALTER COLUMN status SET DEFAULT 'SETUP';
 
 \echo 'Rooms table created successfully!'
