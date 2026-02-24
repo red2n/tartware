@@ -1,17 +1,2 @@
-// Form layout
-.form-fields {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
-  min-width: 400px;
-}
-
-.field-row {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: var(--space-3);
-}
-
-.field-row-3 {
-  grid-template-columns: 1fr 1fr 1fr;
-}
+/* Create room dialog — form layout lives in styles/shared.scss.
+ * Add component-specific overrides here only if needed. */

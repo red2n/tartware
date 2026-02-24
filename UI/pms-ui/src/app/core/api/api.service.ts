@@ -58,6 +58,18 @@ export class ApiService {
     return response.json();
   }
 
+  async patch<T>(path: string, body: unknown, params?: Record<string, string>): Promise<T> {
+    const response = await fetch(this.buildUrl(path, params), {
+      method: 'PATCH',
+      headers: this.getHeaders(),
+      body: JSON.stringify(body),
+    });
+    if (!response.ok) {
+      throw await this.handleError(response);
+    }
+    return response.json();
+  }
+
   private async handleError(response: Response): Promise<Error> {
     let message = `HTTP ${response.status}`;
     try {
@@ -66,6 +78,14 @@ export class ApiService {
     } catch {
       // ignore parse errors
     }
+
+    if (response.status === 401) {
+      localStorage.removeItem('access_token');
+      localStorage.removeItem('tenant_id');
+      localStorage.removeItem('user_info');
+      window.location.assign('/login');
+    }
+
     return new Error(message);
   }
 }

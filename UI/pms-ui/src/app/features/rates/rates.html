@@ -1,0 +1,158 @@
+<div class="rates-page">
+  <div class="page-header">
+    <h1 class="page-title">Rates</h1>
+    <div class="page-actions">
+      <button class="btn btn-primary btn-sm" (click)="openCreateDialog()">
+        <mat-icon>add</mat-icon>
+        New rate
+      </button>
+      <button class="btn btn-invisible" (click)="loadRates()" matTooltip="Refresh">
+        <mat-icon>refresh</mat-icon>
+      </button>
+    </div>
+  </div>
+
+  <!-- Filter tabs + type filter + search -->
+  <div class="filter-bar">
+    <nav class="filter-tabs">
+      @for (f of statusFilters; track f.key) {
+        <button
+          class="filter-tab"
+          [class.filter-tab-active]="activeFilter() === f.key"
+          (click)="setFilter(f.key)">
+          {{ f.label }}
+          <span class="counter">{{ filterCounts()[f.key] }}</span>
+        </button>
+      }
+    </nav>
+
+    <div class="filter-controls">
+      <select class="field-input type-select"
+              [ngModel]="activeTypeFilter()"
+              (ngModelChange)="setTypeFilter($event)">
+        @for (t of rateTypes; track t.key) {
+          <option [value]="t.key">{{ t.label }}</option>
+        }
+      </select>
+
+      <div class="search-box">
+        <mat-icon class="search-icon">search</mat-icon>
+        <input
+          type="text"
+          class="search-input"
+          placeholder="Search rates..."
+          [ngModel]="searchQuery()"
+          (ngModelChange)="onSearch($event)" />
+      </div>
+    </div>
+  </div>
+
+  <!-- Content -->
+  @if (loading()) {
+    <div class="loading-state">
+      <mat-spinner diameter="32"></mat-spinner>
+      <span class="text-muted">Loading rates...</span>
+    </div>
+  } @else if (error(); as err) {
+    <div class="error-state">
+      <mat-icon class="error-icon">error_outline</mat-icon>
+      <span>{{ err }}</span>
+      <button class="btn btn-outline" (click)="loadRates()">Retry</button>
+    </div>
+  } @else if (filteredRates().length === 0) {
+    <div class="empty-state">
+      <mat-icon class="empty-icon">payments</mat-icon>
+      @if (rates().length === 0) {
+        <p>No rates configured</p>
+        <p class="text-muted">Rate plans will appear here once they are created.</p>
+      } @else {
+        <p>No rates match the current filters</p>
+        <button class="btn btn-outline" (click)="setFilter('ALL'); setTypeFilter('ALL'); onSearch('')">Clear filters</button>
+      }
+    </div>
+  } @else {
+    @defer (on idle) {
+      <div class="table-container">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Rate plan</th>
+              <th>Type</th>
+              <th>Strategy</th>
+              <th class="col-right">Base rate</th>
+              <th class="col-right">SGL / DBL</th>
+              <th>Meal plan</th>
+              <th>Validity</th>
+              <th>Cancellation</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (rate of filteredRates(); track rate.id) {
+              <tr>
+                <td class="cell-primary">
+                  <span class="rate-code">{{ rate.rate_code }}</span>
+                  <span class="rate-name text-muted">{{ rate.rate_name }}</span>
+                </td>
+                <td>
+                  <span class="badge badge-muted">{{ typeLabel(rate.rate_type) }}</span>
+                </td>
+                <td>{{ strategyLabel(rate.strategy) }}</td>
+                <td class="col-right cell-amount">
+                  {{ formatCurrency(rate.base_rate, rate.currency) }}
+                  @if (rate.tax_inclusive) {
+                    <span class="text-subtle tax-hint" matTooltip="Tax inclusive">incl.</span>
+                  }
+                </td>
+                <td class="col-right cell-amount">
+                  @if (rate.single_occupancy_rate != null || rate.double_occupancy_rate != null) {
+                    <span>{{ rate.single_occupancy_rate != null ? formatCurrency(rate.single_occupancy_rate, rate.currency) : '—' }}</span>
+                    <span class="text-muted">/</span>
+                    <span>{{ rate.double_occupancy_rate != null ? formatCurrency(rate.double_occupancy_rate, rate.currency) : '—' }}</span>
+                  } @else {
+                    <span class="text-muted">—</span>
+                  }
+                </td>
+                <td>{{ mealPlanLabel(rate.meal_plan) }}</td>
+                <td>
+                  <span [matTooltip]="validityTooltip(rate)">
+                    {{ formatDate(rate.valid_from) }}
+                    @if (rate.valid_until) {
+                      <span class="text-muted"> — {{ formatDate(rate.valid_until) }}</span>
+                    }
+                  </span>
+                </td>
+                <td>{{ cancellationLabel(rate.cancellation_policy) }}</td>
+                <td class="cell-status">
+                  <span class="badge" [ngClass]="statusClass(rate.status)">
+                    {{ rate.status }}
+                  </span>
+                  @if (rate.status === 'INACTIVE') {
+                    <button class="btn btn-sm btn-outline btn-activate"
+                            (click)="toggleStatus(rate, 'ACTIVE'); $event.stopPropagation()"
+                            matTooltip="Activate rate plan">
+                      Activate
+                    </button>
+                  } @else if (rate.status === 'ACTIVE') {
+                    <button class="btn btn-sm btn-invisible"
+                            (click)="toggleStatus(rate, 'INACTIVE'); $event.stopPropagation()"
+                            matTooltip="Deactivate rate plan">
+                      <mat-icon>pause_circle</mat-icon>
+                    </button>
+                  }
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    } @placeholder {
+      <div class="placeholder-table">
+        <div class="placeholder-row"></div>
+        <div class="placeholder-row"></div>
+        <div class="placeholder-row"></div>
+        <div class="placeholder-row"></div>
+      </div>
+    }
+  }
+</div>

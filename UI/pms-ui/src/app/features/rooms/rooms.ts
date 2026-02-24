@@ -10,27 +10,11 @@ import { MatInputModule } from '@angular/material/input';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatTooltipModule } from '@angular/material/tooltip';
 
+import type { RoomItem } from '@tartware/schemas';
+
 import { ApiService } from '../../core/api/api.service';
 import { AuthService } from '../../core/auth/auth.service';
-
-type RoomItem = {
-  room_id: string;
-  room_number: string;
-  room_name?: string;
-  room_type_name?: string;
-  floor?: string;
-  building?: string;
-  status: string;
-  status_display: string;
-  housekeeping_status: string;
-  housekeeping_display: string;
-  maintenance_status: string;
-  maintenance_display: string;
-  is_blocked: boolean;
-  block_reason?: string;
-  is_out_of_order: boolean;
-  out_of_order_reason?: string;
-};
+import { roomStatusClass, housekeepingStatusClass } from '../../shared/badge-utils';
 
 type StatusFilter = 'ALL' | 'SETUP' | 'VACANT' | 'OCCUPIED' | 'OUT_OF_ORDER' | 'BLOCKED';
 
@@ -95,7 +79,8 @@ export class RoomsComponent implements OnInit {
           r.room_number.toLowerCase().includes(query) ||
           (r.room_name?.toLowerCase().includes(query) ?? false) ||
           (r.room_type_name?.toLowerCase().includes(query) ?? false) ||
-          (r.floor?.toLowerCase().includes(query) ?? false),
+          (r.floor?.toLowerCase().includes(query) ?? false) ||
+          (r.amenities?.some((a) => a.toLowerCase().includes(query)) ?? false),
       );
     }
 
@@ -130,37 +115,8 @@ export class RoomsComponent implements OnInit {
     this.router.navigate(['/rooms', roomId]);
   }
 
-  statusClass(status: string): string {
-    switch (status) {
-      case 'setup':
-        return 'badge-muted';
-      case 'available':
-        return 'badge-success';
-      case 'occupied':
-        return 'badge-accent';
-      case 'out_of_order':
-      case 'out_of_service':
-        return 'badge-danger';
-      case 'blocked':
-        return 'badge-warning';
-      default:
-        return '';
-    }
-  }
-
-  hkClass(status: string): string {
-    switch (status) {
-      case 'CLEAN':
-      case 'INSPECTED':
-        return 'badge-success';
-      case 'DIRTY':
-        return 'badge-danger';
-      case 'IN_PROGRESS':
-        return 'badge-warning';
-      default:
-        return '';
-    }
-  }
+  statusClass = roomStatusClass;
+  hkClass = housekeepingStatusClass;
 
   async loadRooms(): Promise<void> {
     const tenantId = this.auth.tenantId();
@@ -191,5 +147,20 @@ export class RoomsComponent implements OnInit {
         }
       });
     });
+  }
+
+  /** Merge room-level + type-level amenities, deduplicated. */
+  roomAmenities(room: RoomItem): string[] {
+    const set = new Set([...(room.amenities ?? []), ...(room.room_type_amenities ?? [])]);
+    return Array.from(set);
+  }
+
+  /** Human-readable label: WIFI → WiFi, AIR_CONDITIONING → Air Conditioning */
+  amenityLabel(code: string): string {
+    return code
+      .replace(/_/g, ' ')
+      .replace(/\b\w/g, (c) => c.toUpperCase())
+      .replace(/\bWifi\b/i, 'WiFi')
+      .replace(/\bTv\b/i, 'TV');
   }
 }

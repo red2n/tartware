@@ -9,6 +9,7 @@ import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 
 import { ApiService } from '../../../core/api/api.service';
 import { AuthService } from '../../../core/auth/auth.service';
+import { roomStatusClass, housekeepingStatusClass } from '../../../shared/badge-utils';
 
 type RoomDetail = {
   room_id: string;
@@ -201,37 +202,8 @@ export class RoomDetailComponent implements OnInit {
     }
   }
 
-  statusClass(status: string): string {
-    switch (status) {
-      case 'setup':
-        return 'badge-muted';
-      case 'available':
-        return 'badge-success';
-      case 'occupied':
-        return 'badge-accent';
-      case 'out_of_order':
-      case 'out_of_service':
-        return 'badge-danger';
-      case 'blocked':
-        return 'badge-warning';
-      default:
-        return '';
-    }
-  }
-
-  hkClass(status: string): string {
-    switch (status) {
-      case 'CLEAN':
-      case 'INSPECTED':
-        return 'badge-success';
-      case 'DIRTY':
-        return 'badge-danger';
-      case 'IN_PROGRESS':
-        return 'badge-warning';
-      default:
-        return '';
-    }
-  }
+  statusClass = roomStatusClass;
+  hkClass = housekeepingStatusClass;
 
   goBack(): void {
     this.router.navigate(['/rooms']);

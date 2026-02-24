@@ -23,9 +23,19 @@ export const routes: Routes = [
           import('./features/rooms/rooms').then((m) => m.RoomsComponent),
       },
       {
+        path: 'rates',
+        loadComponent: () =>
+          import('./features/rates/rates').then((m) => m.RatesComponent),
+      },
+      {
         path: 'rooms/:roomId',
         loadComponent: () =>
           import('./features/rooms/room-detail/room-detail').then((m) => m.RoomDetailComponent),
+      },
+      {
+        path: 'settings',
+        loadComponent: () =>
+          import('./features/settings/settings').then((m) => m.SettingsComponent),
       },
       { path: '', redirectTo: 'dashboard', pathMatch: 'full' },
     ],

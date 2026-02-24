@@ -70,7 +70,10 @@
               <th>Room</th>
               <th>Type</th>
               <th>Floor</th>
-              <th>Status</th>
+              @if (activeFilter() === 'ALL') {
+                <th>Status</th>
+              }
+              <th>Amenities</th>
               <th>Housekeeping</th>
               <th>Maintenance</th>
               <th></th>
@@ -87,15 +90,33 @@
                 </td>
                 <td>{{ room.room_type_name ?? '—' }}</td>
                 <td>{{ room.floor ?? '—' }}</td>
-                <td>
-                  <span class="badge" [ngClass]="statusClass(room.status)">
-                    {{ room.status_display }}
-                  </span>
-                  @if (room.is_blocked) {
-                    <span class="badge badge-warning" [matTooltip]="room.block_reason ?? ''">Blocked</span>
-                  }
-                  @if (room.is_out_of_order) {
-                    <span class="badge badge-danger" [matTooltip]="room.out_of_order_reason ?? ''">OOO</span>
+                @if (activeFilter() === 'ALL') {
+                  <td>
+                    <span class="badge" [ngClass]="statusClass(room.status)"
+                          [matTooltip]="room.is_out_of_order ? (room.out_of_order_reason ?? '') : ''">
+                      {{ room.status_display }}
+                    </span>
+                    @if (room.is_blocked) {
+                      <span class="badge badge-warning" [matTooltip]="room.block_reason ?? ''">Blocked</span>
+                    }
+                    @if (room.is_out_of_order && room.status !== 'out_of_order') {
+                      <span class="badge badge-danger" [matTooltip]="room.out_of_order_reason ?? ''">OOO</span>
+                    }
+                  </td>
+                }
+                <td class="cell-amenities">
+                  @if (roomAmenities(room).length > 0) {
+                    @for (a of roomAmenities(room).slice(0, 3); track a) {
+                      <span class="tag tag-compact">{{ amenityLabel(a) }}</span>
+                    }
+                    @if (roomAmenities(room).length > 3) {
+                      <span class="tag tag-compact tag-more"
+                            [matTooltip]="roomAmenities(room).slice(3).map(amenityLabel).join(', ')">
+                        +{{ roomAmenities(room).length - 3 }}
+                      </span>
+                    }
+                  } @else {
+                    <span class="text-muted">—</span>
                   }
                 </td>
                 <td>

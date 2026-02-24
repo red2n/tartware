@@ -55,6 +55,11 @@ export class LoginComponent {
 
     try {
       await this.auth.login(this.username, this.password);
+      // Signal the browser to save credentials
+      if ('PasswordCredential' in window) {
+        const cred = new (window as any).PasswordCredential({ id: this.username, password: this.password });
+        navigator.credentials.store(cred).catch(() => {});
+      }
       // Load user theme preference after login
       await this.theme.loadPreferences();
       this.router.navigate(['/dashboard']);

@@ -91,11 +91,11 @@
         @if (editingAmenities()) {
           <!-- Edit mode: toggleable chips -->
           <p class="amenity-hint">Click to toggle amenities. Add custom ones below.</p>
-          <div class="amenity-tags">
+          <div class="tag-list">
             @for (code of availableAmenities(); track code) {
               <button
-                class="amenity-chip"
-                [class.amenity-chip-active]="editAmenities().includes(code)"
+                class="chip"
+                [class.chip-active]="editAmenities().includes(code)"
                 (click)="toggleAmenity(code)">
                 @if (editAmenities().includes(code)) {
                   <mat-icon class="chip-icon">check</mat-icon>
@@ -108,7 +108,7 @@
           </div>
 
           <!-- Add custom amenity -->
-          <div class="add-amenity-row">
+          <div class="action-row">
             <input
               type="text"
               class="field-input add-amenity-input"
@@ -127,7 +127,7 @@
           </div>
 
           <!-- Save / Cancel -->
-          <div class="amenity-actions">
+          <div class="action-row">
             <button
               class="btn btn-primary btn-sm"
               [disabled]="savingAmenities() || !hasAmenityChanges()"
@@ -144,9 +144,9 @@
         } @else {
           <!-- Read-only view -->
           @if (amenitiesList().length > 0) {
-            <div class="amenity-tags">
+            <div class="tag-list">
               @for (item of amenitiesList(); track item) {
-                <span class="amenity-tag">{{ amenityDisplayMap().get(item) ?? item }}</span>
+                <span class="tag">{{ amenityDisplayMap().get(item) ?? item }}</span>
               }
             </div>
           } @else {
@@ -175,8 +175,8 @@
               {{ msg }}
             </div>
           }
-          <p class="setup-notice">
-            <mat-icon class="setup-notice-icon">info</mat-icon>
+          <p class="notice">
+            <mat-icon class="notice-icon">info</mat-icon>
             This room is in <strong>Setup</strong> mode and is not yet available for booking.
             At least one active rate plan must be configured for the room type before activation.
           </p>
@@ -215,8 +215,8 @@
               {{ msg }}
             </div>
           }
-          <p class="setup-notice deactivate-notice">
-            <mat-icon class="setup-notice-icon">settings</mat-icon>
+          <p class="notice notice-muted">
+            <mat-icon class="notice-icon">settings</mat-icon>
             Move this room back to <strong>Setup</strong> mode to reconfigure rate plans or room type settings.
             The room will be removed from booking availability.
           </p>

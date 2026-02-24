@@ -11,10 +11,5 @@ export const authGuard: CanActivateFn = () => {
     return true;
   }
 
-  // Check if access_token exists (session might still be valid)
-  if (localStorage.getItem('access_token')) {
-    return true;
-  }
-
   return router.createUrlTree(['/login']);
 };

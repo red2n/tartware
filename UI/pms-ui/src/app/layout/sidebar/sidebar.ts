@@ -25,6 +25,7 @@ export class SidebarComponent {
     { label: 'Reservations', icon: 'book_online', route: '/reservations' },
     { label: 'Guests', icon: 'people', route: '/guests' },
     { label: 'Rooms', icon: 'hotel', route: '/rooms' },
+    { label: 'Rates', icon: 'payments', route: '/rates' },
     { label: 'Housekeeping', icon: 'cleaning_services', route: '/housekeeping' },
     { label: 'Billing', icon: 'receipt_long', route: '/billing' },
     { label: 'Reports', icon: 'assessment', route: '/reports' },

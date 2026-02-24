@@ -1,0 +1,29 @@
+/* Create Rate dialog — component-specific only.
+ * Reusable form/flash styles live in styles/shared.scss. */
+
+.form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-4);
+  padding: var(--space-2) 0;
+}
+
+.full-width {
+  grid-column: 1 / -1;
+}
+
+textarea.field-input {
+  resize: vertical;
+  min-height: 48px;
+}
+
+.status-locked {
+  display: inline-block;
+  margin-bottom: 2px;
+}
+
+.field-value-locked {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-fg-default);
+}
