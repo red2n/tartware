@@ -386,7 +386,7 @@
                                             <span class="json-field-label">{{ group.label }}</span>
                                             <div class="json-chips">
                                               @for (item of group.items; track $index) {
-                                                <span class="json-chip">{{ item }}</span>
+                                                <span class="json-chip">{{ formatCellValue(item) }}</span>
                                               } @empty {
                                                 <span class="text-muted">None</span>
                                               }
@@ -394,6 +394,14 @@
                                           </div>
                                         }
                                       </div>
+                                    } @empty {
+                                      <span class="text-muted">Not configured</span>
+                                    }
+                                  </div>
+                                } @else if (isMultiSelectValue(def) && isArrayDisplayValue(def)) {
+                                  <div class="json-chips">
+                                    @for (chip of getMultiSelectChips(def); track chip) {
+                                      <span class="json-chip">{{ chip }}</span>
                                     } @empty {
                                       <span class="text-muted">Not configured</span>
                                     }

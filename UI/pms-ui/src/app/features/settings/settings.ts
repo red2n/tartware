@@ -217,6 +217,19 @@ export class SettingsComponent implements OnInit {
 		const val = this.getDisplayValue(def);
 		if (val === null || val === undefined) return "Not configured";
 		if (typeof val === "boolean") return val ? "Enabled" : "Disabled";
+		if (Array.isArray(val)) {
+			// For multi-select values, resolve labels from options
+			const opts = this.getOptions(def.id);
+			if (opts.length > 0) {
+				return val
+					.map((v) => {
+						const opt = opts.find((o) => o.value === v);
+						return opt ? opt.label : this.humanizeKey(String(v));
+					})
+					.join(", ");
+			}
+			return val.map((v) => this.humanizeKey(String(v))).join(", ");
+		}
 		if (typeof val === "object") {
 			try {
 				return JSON.stringify(val, null, 2);
@@ -258,6 +271,22 @@ export class SettingsComponent implements OnInit {
 		return (
 			def.control_type === "MULTI_SELECT" || def.data_type === "MULTI_ENUM"
 		);
+	}
+
+	/** Check if the display value is an array (for multi-select chip rendering) */
+	isArrayDisplayValue(def: SettingsDefinition): boolean {
+		return Array.isArray(this.getDisplayValue(def));
+	}
+
+	/** Get multi-select display chips with resolved labels */
+	getMultiSelectChips(def: SettingsDefinition): string[] {
+		const val = this.getDisplayValue(def);
+		if (!Array.isArray(val)) return [];
+		const opts = this.getOptions(def.id);
+		return val.map((v) => {
+			const opt = opts.find((o) => o.value === v);
+			return opt ? opt.label : this.humanizeKey(String(v));
+		});
 	}
 
 	isDateValue(def: SettingsDefinition): boolean {
@@ -353,19 +382,80 @@ export class SettingsComponent implements OnInit {
 				}
 			} else if (typeof v === "object" && v !== null) {
 				const children: JsonFieldGroup["children"] = [];
+				const nestedGroups: JsonFieldGroup[] = [];
 				for (const [ck, cv] of Object.entries(v as Record<string, unknown>)) {
-					const vt: "string" | "number" | "boolean" =
-						typeof cv === "boolean"
-							? "boolean"
-							: typeof cv === "number"
-								? "number"
-								: "string";
-					children.push({
-						key: ck,
-						label: this.humanizeKey(ck),
-						value: cv,
-						valueType: vt,
-					});
+					// Detect arrays-of-objects inside nested objects and emit as sub-groups
+					if (
+						Array.isArray(cv) &&
+						cv.length > 0 &&
+						typeof cv[0] === "object" &&
+						cv[0] !== null &&
+						!Array.isArray(cv[0])
+					) {
+						const colSet = new Set<string>();
+						for (const item of cv) {
+							if (typeof item === "object" && item !== null) {
+								for (const k of Object.keys(item as Record<string, unknown>))
+									colSet.add(k);
+							}
+						}
+						nestedGroups.push({
+							...base,
+							key: ck,
+							label: this.humanizeKey(ck),
+							type: "array-objects",
+							value: cv,
+							valueType: "string",
+							columns: [...colSet],
+							rows: cv as Record<string, unknown>[],
+						});
+				} else if (Array.isArray(cv)) {
+						children.push({
+							key: ck,
+							label: this.humanizeKey(ck),
+							value: cv,
+							valueType: "string",
+						});
+					} else if (typeof cv === "object" && cv !== null) {
+						// Nested sub-object (e.g. quietHours: {start, end}) — emit as separate object group
+						const subChildren: JsonFieldGroup["children"] = [];
+						for (const [sk, sv] of Object.entries(cv as Record<string, unknown>)) {
+							const svt: "string" | "number" | "boolean" =
+								typeof sv === "boolean"
+									? "boolean"
+									: typeof sv === "number"
+										? "number"
+										: "string";
+							subChildren.push({
+								key: sk,
+								label: this.humanizeKey(sk),
+								value: sv,
+								valueType: svt,
+							});
+						}
+						nestedGroups.push({
+							...base,
+							key: ck,
+							label: this.humanizeKey(ck),
+							type: "object",
+							value: cv,
+							valueType: "string",
+							children: subChildren,
+						});
+					} else {
+						const vt: "string" | "number" | "boolean" =
+							typeof cv === "boolean"
+								? "boolean"
+								: typeof cv === "number"
+									? "number"
+									: "string";
+						children.push({
+							key: ck,
+							label: this.humanizeKey(ck),
+							value: cv,
+							valueType: vt,
+						});
+					}
 				}
 				groups.push({
 					...base,
@@ -376,6 +466,8 @@ export class SettingsComponent implements OnInit {
 					valueType: "string",
 					children,
 				});
+				// Append nested array-of-objects groups right after the parent object group
+				groups.push(...nestedGroups);
 			} else {
 				groups.push({
 					...base,
@@ -408,7 +500,15 @@ export class SettingsComponent implements OnInit {
 	formatCellValue(value: unknown): string {
 		if (value === null || value === undefined) return "—";
 		if (typeof value === "boolean") return value ? "Yes" : "No";
-		if (Array.isArray(value)) return value.join(", ");
+		if (Array.isArray(value)) {
+			return value
+				.map((item) =>
+					typeof item === "object" && item !== null
+						? JSON.stringify(item)
+						: String(item),
+				)
+				.join(", ");
+		}
 		if (typeof value === "object") return JSON.stringify(value);
 		return String(value);
 	}
@@ -423,7 +523,14 @@ export class SettingsComponent implements OnInit {
 
 	/** Join an array value to comma-separated string for display */
 	joinArray(value: unknown): string {
-		return Array.isArray(value) ? value.join(", ") : "";
+		if (!Array.isArray(value)) return "";
+		return value
+			.map((item) =>
+				typeof item === "object" && item !== null
+					? JSON.stringify(item)
+					: String(item),
+			)
+			.join(", ");
 	}
 
 	/** Edit a primitive or nested-object field within a JSON setting value */

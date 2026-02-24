@@ -71,7 +71,7 @@ const ensureHttpAuthorized = (
 
 const manualReleaseNotificationTestSchema = ManualReleaseNotificationTestSchema;
 
-export const locksRoutes = fastifyPlugin((app: FastifyInstance, _opts, done): void => {
+export const locksRoutes = fastifyPlugin((app: FastifyInstance, _opts, done) => {
   app.addHook("preHandler", async (request, reply) => {
     if (!ensureHttpAuthorized(request, reply)) {
       return reply;
