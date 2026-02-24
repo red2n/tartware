@@ -4,25 +4,15 @@
     "src/**/*.ts"
   ],
   "ignoreDependencies": [
-    "@biomejs/biome",
     "@tartware/config",
     "@tartware/schemas",
     "@tartware/telemetry",
     "@tartware/openapi",
     "@tartware/outbox",
     "esbuild",
-    "tsx",
     "@fastify/helmet",
     "@fastify/sensible",
     "@tartware/fastify-server",
     "@tartware/command-consumer-utils"
-  ],
-  "ignoreBinaries": [
-    "biome",
-    "eslint",
-    "knip",
-    "tsc",
-    "tsx",
-    "vitest"
   ]
 }

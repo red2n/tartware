@@ -112,9 +112,7 @@ export const upsertUiPreferences = async (
     data.pinned_reports !== undefined ? JSON.stringify(data.pinned_reports) : null,
     data.recent_searches !== undefined ? JSON.stringify(data.recent_searches) : null,
     data.favorite_properties ?? null,
-    data.profile_display_fields !== undefined
-      ? JSON.stringify(data.profile_display_fields)
-      : null,
+    data.profile_display_fields !== undefined ? JSON.stringify(data.profile_display_fields) : null,
     data.profile_history_display ?? null,
     data.default_profile_tab ?? null,
   ]);

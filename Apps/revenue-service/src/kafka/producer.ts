@@ -8,4 +8,4 @@ const producer = createKafkaProducer(kafka, {
   dlqTopic: config.commandCenter.dlqTopic,
 });
 
-export const { publishEvent, publishDlqEvent, shutdown: shutdownProducer } = producer;
+export const { publishDlqEvent, shutdown: shutdownProducer } = producer;

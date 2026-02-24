@@ -4,7 +4,6 @@
     "src/**/*.ts"
   ],
   "ignoreDependencies": [
-    "@biomejs/biome",
     "@tartware/schemas",
     "@tartware/config",
     "@tartware/openapi",
@@ -12,20 +11,12 @@
     "@tartware/telemetry",
     "@tartware/command-center-shared",
     "@tartware/tenant-auth",
-    "tsx",
     "@fastify/cors",
     "@fastify/helmet",
     "@fastify/sensible",
     "@tartware/fastify-server",
+    "kafkajs",
     "pg"
-  ],
-  "ignoreBinaries": [
-    "biome",
-    "eslint",
-    "knip",
-    "tsc",
-    "tsx",
-    "vitest"
   ],
   "ignoreExportsUsedInFile": true
 }
