@@ -136,4 +136,7 @@ COMMENT ON COLUMN rooms.deep_clean_interval_days IS 'Interval in days between sc
 -- Idempotent column additions for existing tables
 ALTER TABLE rooms ADD COLUMN IF NOT EXISTS phone_extension VARCHAR(20);
 
+-- Ensure status default is SETUP for existing environments (idempotent upgrade)
+ALTER TABLE rooms ALTER COLUMN status SET DEFAULT 'SETUP';
+
 \echo 'Rooms table created successfully!'

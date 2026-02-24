@@ -540,7 +540,7 @@ export const registerRoomRoutes = (app: FastifyInstance): void => {
       });
 
       if (!result.success) {
-        if (result.error?.includes("not found")) {
+        if (result.kind === "NOT_FOUND") {
           return reply.notFound(result.error);
         }
         return reply.badRequest(result.error ?? "Activation failed");
@@ -588,7 +588,7 @@ export const registerRoomRoutes = (app: FastifyInstance): void => {
       });
 
       if (!result.success) {
-        if (result.error?.includes("not found")) {
+        if (result.kind === "NOT_FOUND") {
           return reply.notFound(result.error);
         }
         return reply.badRequest(result.error ?? "Deactivation failed");

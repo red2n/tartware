@@ -111,7 +111,10 @@ export class AuthService {
     try {
       const parts = token.split('.');
       if (parts.length !== 3) return true;
-      const payload = JSON.parse(atob(parts[1]));
+      // JWT uses base64url encoding: replace URL-safe chars and add padding
+      const base64 = parts[1].replace(/-/g, '+').replace(/_/g, '/') +
+        '='.repeat((4 - (parts[1].length % 4)) % 4);
+      const payload = JSON.parse(atob(base64));
       if (typeof payload.exp !== 'number') return true;
       // expired if less than 30s remaining
       return payload.exp * 1000 < Date.now() + 30_000;

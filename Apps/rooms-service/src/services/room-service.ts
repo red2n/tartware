@@ -544,18 +544,27 @@ export const activateRoom = async (input: {
   tenantId: string;
   roomId: string;
   activatedBy?: string;
-}): Promise<{ success: boolean; room?: RoomListItem; error?: string }> => {
+}): Promise<{
+  success: boolean;
+  room?: RoomListItem;
+  error?: string;
+  kind?: "NOT_FOUND" | "INVALID_STATE" | "MISSING_RATES" | "CONFLICT";
+}> => {
   // 1. Get the room and verify it's in SETUP status
   const room = await getRoomById({ tenantId: input.tenantId, roomId: input.roomId });
   if (!room) {
-    return { success: false, error: "Room not found" };
+    return { success: false, kind: "NOT_FOUND", error: "Room not found" };
   }
   if (room.status !== "setup") {
-    return { success: false, error: `Room is already in ${room.status} status` };
+    return {
+      success: false,
+      kind: "INVALID_STATE",
+      error: `Room is already in ${room.status} status`,
+    };
   }
 
   if (!room.room_type_id) {
-    return { success: false, error: "Room has no room type assigned" };
+    return { success: false, kind: "INVALID_STATE", error: "Room has no room type assigned" };
   }
 
   // 2. Check that at least one active rate exists for this room type
@@ -575,6 +584,7 @@ export const activateRoom = async (input: {
   if (rateCount === 0) {
     return {
       success: false,
+      kind: "MISSING_RATES",
       error:
         "Cannot activate room: no active rate plans exist for this room type. Please configure at least one rate plan first.",
     };
@@ -599,6 +609,7 @@ export const activateRoom = async (input: {
   if (!rowCount || rowCount === 0) {
     return {
       success: false,
+      kind: "CONFLICT",
       error: "Failed to activate room — it may have been modified concurrently",
     };
   }
@@ -616,14 +627,20 @@ export const deactivateRoom = async (input: {
   tenantId: string;
   roomId: string;
   deactivatedBy?: string;
-}): Promise<{ success: boolean; room?: RoomListItem; error?: string }> => {
+}): Promise<{
+  success: boolean;
+  room?: RoomListItem;
+  error?: string;
+  kind?: "NOT_FOUND" | "INVALID_STATE" | "CONFLICT";
+}> => {
   const room = await getRoomById({ tenantId: input.tenantId, roomId: input.roomId });
   if (!room) {
-    return { success: false, error: "Room not found" };
+    return { success: false, kind: "NOT_FOUND", error: "Room not found" };
   }
   if (room.status !== "available") {
     return {
       success: false,
+      kind: "INVALID_STATE",
       error: `Only rooms in Available status can be deactivated. Current status: ${room.status}`,
     };
   }
@@ -646,6 +663,7 @@ export const deactivateRoom = async (input: {
   if (!rowCount || rowCount === 0) {
     return {
       success: false,
+      kind: "CONFLICT",
       error: "Failed to deactivate room — it may have been modified concurrently",
     };
   }
