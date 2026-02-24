@@ -15,7 +15,7 @@
   },
   "scripts": {
     "build": "tsc",
-    "clean": "rm -rf dist",
+    "clean": "rm -rf dist tsconfig.tsbuildinfo",
     "lint": "echo 'lint skipped'",
     "biome": "echo 'biome skipped'",
     "knip": "echo 'knip skipped'",

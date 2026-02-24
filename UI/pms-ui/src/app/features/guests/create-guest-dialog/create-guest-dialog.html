@@ -1,0 +1,172 @@
+<h2 mat-dialog-title>Create Guest</h2>
+
+<mat-dialog-content>
+  @if (error(); as err) {
+    <div class="flash flash-error">
+      <mat-icon class="flash-icon">error_outline</mat-icon>
+      {{ err }}
+    </div>
+  }
+
+  <div class="form-fields">
+    <!-- Name row -->
+    <div class="field-row">
+      <div class="field-group field-required">
+        <label class="field-label" for="cg-first">First name</label>
+        <input
+          id="cg-first"
+          type="text"
+          class="field-input"
+          placeholder="e.g. John"
+          maxlength="100"
+          [(ngModel)]="firstName"
+          [disabled]="saving()" />
+      </div>
+      <div class="field-group field-required">
+        <label class="field-label" for="cg-last">Last name</label>
+        <input
+          id="cg-last"
+          type="text"
+          class="field-input"
+          placeholder="e.g. Smith"
+          maxlength="100"
+          [(ngModel)]="lastName"
+          [disabled]="saving()" />
+      </div>
+    </div>
+
+    <!-- Email -->
+    <div class="field-group field-required">
+      <label class="field-label" for="cg-email">Email</label>
+      <input
+        id="cg-email"
+        type="email"
+        class="field-input"
+        placeholder="e.g. john.smith@example.com"
+        maxlength="200"
+        [(ngModel)]="email"
+        [disabled]="saving()" />
+    </div>
+
+    <!-- Title + Phone -->
+    <div class="field-row">
+      <div class="field-group">
+        <label class="field-label" for="cg-title">Title</label>
+        <select
+          id="cg-title"
+          class="field-input"
+          [(ngModel)]="title"
+          [disabled]="saving()">
+          <option value="">None</option>
+          @for (t of titles; track t) {
+            <option [value]="t">{{ t }}</option>
+          }
+        </select>
+      </div>
+      <div class="field-group">
+        <label class="field-label" for="cg-phone">Phone</label>
+        <input
+          id="cg-phone"
+          type="tel"
+          class="field-input"
+          placeholder="e.g. +1 555-0123"
+          maxlength="30"
+          [(ngModel)]="phone"
+          [disabled]="saving()" />
+      </div>
+    </div>
+
+    <!-- Nationality + Gender + DOB -->
+    <div class="field-row field-row-3">
+      <div class="field-group">
+        <label class="field-label" for="cg-nationality">Nationality</label>
+        <input
+          id="cg-nationality"
+          type="text"
+          class="field-input"
+          placeholder="e.g. US"
+          maxlength="60"
+          [(ngModel)]="nationality"
+          [disabled]="saving()" />
+      </div>
+      <div class="field-group">
+        <label class="field-label" for="cg-gender">Gender</label>
+        <select
+          id="cg-gender"
+          class="field-input"
+          [(ngModel)]="gender"
+          [disabled]="saving()">
+          <option value="">—</option>
+          <option value="male">Male</option>
+          <option value="female">Female</option>
+          <option value="non-binary">Non-binary</option>
+          <option value="prefer_not_to_say">Prefer not to say</option>
+        </select>
+      </div>
+      <div class="field-group">
+        <label class="field-label" for="cg-dob">Date of birth</label>
+        <input
+          id="cg-dob"
+          type="date"
+          class="field-input"
+          [(ngModel)]="dateOfBirth"
+          [disabled]="saving()" />
+      </div>
+    </div>
+
+    <!-- Company -->
+    <div class="field-group">
+      <label class="field-label" for="cg-company">Company</label>
+      <input
+        id="cg-company"
+        type="text"
+        class="field-input"
+        placeholder="e.g. Acme Corp"
+        maxlength="200"
+        [(ngModel)]="companyName"
+        [disabled]="saving()" />
+    </div>
+
+    <!-- VIP + Loyalty -->
+    <div class="field-row">
+      <div class="field-group">
+        <label class="field-label">VIP status</label>
+        <label class="toggle-label">
+          <input
+            type="checkbox"
+            [(ngModel)]="vipStatus"
+            [disabled]="saving()" />
+          Mark as VIP
+        </label>
+      </div>
+      <div class="field-group">
+        <label class="field-label" for="cg-loyalty">Loyalty tier</label>
+        <select
+          id="cg-loyalty"
+          class="field-input"
+          [(ngModel)]="loyaltyTier"
+          [disabled]="saving()">
+          <option value="">None</option>
+          @for (tier of loyaltyTiers; track tier) {
+            <option [value]="tier">{{ tier }}</option>
+          }
+        </select>
+      </div>
+    </div>
+  </div>
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  <button class="btn btn-outline" (click)="cancel()" [disabled]="saving()">Cancel</button>
+  <button
+    class="btn btn-primary"
+    [disabled]="!isValid || saving()"
+    (click)="save()">
+    @if (saving()) {
+      <mat-spinner diameter="16" />
+      Creating…
+    } @else {
+      Create guest
+    }
+  </button>
+</mat-dialog-actions>

@@ -1,0 +1,152 @@
+<div class="guests-page">
+  <div class="page-header">
+    <h1 class="page-title">Guests</h1>
+    <div class="page-actions">
+      <button class="btn btn-primary btn-sm" (click)="openCreateDialog()">
+        <mat-icon>person_add</mat-icon>
+        New guest
+      </button>
+      <button class="btn btn-invisible" (click)="loadGuests()" matTooltip="Refresh">
+        <mat-icon>refresh</mat-icon>
+      </button>
+    </div>
+  </div>
+
+  <!-- Filter tabs + search -->
+  @if (successMessage(); as msg) {
+    <div class="flash flash-success">
+      <mat-icon class="flash-icon">check_circle</mat-icon>
+      {{ msg }}
+    </div>
+  }
+  <div class="filter-bar">
+    <nav class="filter-tabs">
+      @for (f of guestFilters; track f.key) {
+        <button
+          class="filter-tab"
+          [class.filter-tab-active]="activeFilter() === f.key"
+          (click)="setFilter(f.key)">
+          {{ f.label }}
+          <span class="counter">{{ filterCounts()[f.key] }}</span>
+        </button>
+      }
+    </nav>
+
+    <div class="search-box">
+      <mat-icon class="search-icon">search</mat-icon>
+      <input
+        type="text"
+        class="search-input"
+        placeholder="Search by name, email, phone..."
+        [ngModel]="searchQuery()"
+        (ngModelChange)="onSearch($event)" />
+    </div>
+  </div>
+
+  <!-- Content -->
+  @if (loading()) {
+    <div class="loading-state">
+      <mat-spinner diameter="32"></mat-spinner>
+      <span class="text-muted">Loading guests...</span>
+    </div>
+  } @else if (error(); as err) {
+    <div class="error-state">
+      <mat-icon class="error-icon">error_outline</mat-icon>
+      <span>{{ err }}</span>
+      <button class="btn btn-outline" (click)="loadGuests()">Retry</button>
+    </div>
+  } @else if (filteredGuests().length === 0) {
+    <div class="empty-state">
+      <mat-icon class="empty-icon">people</mat-icon>
+      @if (guests().length === 0) {
+        <p>No guests found</p>
+        <p class="text-muted">Guest profiles will appear here once they are created.</p>
+      } @else {
+        <p>No guests match the current filters</p>
+        <button class="btn btn-outline" (click)="setFilter('ALL'); onSearch('')">Clear filters</button>
+      }
+    </div>
+  } @else {
+    @defer (on idle) {
+      <div class="table-container">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Guest</th>
+              <th>Email</th>
+              <th>Phone</th>
+              <th>Status</th>
+              <th>Bookings</th>
+              <th>Revenue</th>
+              <th>Last Stay</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (guest of filteredGuests(); track guest.id) {
+              <tr class="row-clickable" (click)="viewGuest(guest.id)">
+                <td>
+                  <div class="guest-name-cell">
+                    <span class="avatar avatar-sm guest-avatar">{{ initials(guest) }}</span>
+                    <div class="guest-name-info">
+                      <span class="guest-name">
+                        @if (guest.title) {
+                          <span class="text-muted">{{ guest.title }}</span>
+                        }
+                        {{ guest.first_name }} {{ guest.last_name }}
+                      </span>
+                      @if (guest.nationality) {
+                        <span class="text-muted guest-detail">{{ guest.nationality }}</span>
+                      }
+                    </div>
+                    @if (guest.is_blacklisted) {
+                      <span class="badge badge-danger">BL</span>
+                    }
+                  </div>
+                </td>
+                <td>{{ guest.email || '—' }}</td>
+                <td>{{ guest.phone ?? '—' }}</td>
+                <td>
+                  <div class="status-badges">
+                    @if (guest.vip_status) {
+                      <span class="badge" [ngClass]="vipClass(guest.vip_status)">VIP</span>
+                    }
+                    @if (guest.loyalty_tier) {
+                      <span class="badge" [ngClass]="loyaltyClass(guest.loyalty_tier)">
+                        {{ loyaltyLabel(guest.loyalty_tier) }}
+                      </span>
+                    }
+                    @if (!guest.vip_status && !guest.loyalty_tier) {
+                      <span class="text-muted">—</span>
+                    }
+                  </div>
+                </td>
+                <td class="cell-numeric">{{ guest.total_bookings }}</td>
+                <td class="cell-numeric">{{ formatCurrency(guest.total_revenue) }}</td>
+                <td>{{ formatDate(guest.last_stay_date) }}</td>
+                <td class="cell-actions">
+                  <a class="btn btn-invisible btn-sm" [routerLink]="['/guests', guest.id]" matTooltip="View profile">
+                    <mat-icon>chevron_right</mat-icon>
+                  </a>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    } @placeholder {
+      <div class="placeholder-table">
+        <div class="placeholder-row"></div>
+        <div class="placeholder-row"></div>
+        <div class="placeholder-row"></div>
+        <div class="placeholder-row"></div>
+        <div class="placeholder-row"></div>
+      </div>
+    } @loading (minimum 200ms) {
+      <div class="loading-state">
+        <mat-spinner diameter="24"></mat-spinner>
+        <span class="text-muted">Rendering table...</span>
+      </div>
+    }
+  }
+</div>
