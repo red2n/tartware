@@ -1,4 +1,7 @@
-<h2 mat-dialog-title>Create Room</h2>
+<h2 mat-dialog-title>
+  <mat-icon class="dialog-title-icon">hotel</mat-icon>
+  New Room
+</h2>
 
 <mat-dialog-content>
   @if (error(); as err) {
@@ -9,96 +12,119 @@
   }
 
   <div class="form-fields">
-    <div class="field-row">
-      <div class="field-group field-required">
-        <label class="field-label" for="cr-number">Room number</label>
-        <input
-          id="cr-number"
-          type="text"
-          class="field-input"
-          placeholder="e.g. 101"
-          maxlength="20"
-          [(ngModel)]="roomNumber"
-          [disabled]="saving()" />
-      </div>
-      <div class="field-group">
-        <label class="field-label" for="cr-name">Room name</label>
-        <input
-          id="cr-name"
-          type="text"
-          class="field-input"
-          placeholder="e.g. Ocean Suite"
-          maxlength="100"
-          [(ngModel)]="roomName"
-          [disabled]="saving()" />
-      </div>
-    </div>
+    <!-- Room Details -->
+    <section class="form-section">
+      <span class="form-section-title">Room Details</span>
 
-    <div class="field-group field-required">
-      <label class="field-label" for="cr-type">Room type</label>
-      <select
-        id="cr-type"
-        class="field-input"
-        [(ngModel)]="roomTypeId"
-        [disabled]="saving()">
-        <option value="">Select a room type…</option>
-        @for (rt of roomTypes(); track rt.room_type_id) {
-          <option [value]="rt.room_type_id">{{ rt.type_name }}</option>
-        }
-      </select>
-    </div>
+      <div class="field-row">
+        <div class="field-group field-required" [class.field-error]="touched['roomNumber'] && !roomNumber.trim()">
+          <label class="field-label" for="cr-number">Room number</label>
+          <input
+            id="cr-number"
+            type="text"
+            class="field-input"
+            placeholder="101"
+            maxlength="20"
+            [(ngModel)]="roomNumber"
+            (blur)="markTouched('roomNumber')"
+            [disabled]="saving()" />
+          @if (touched['roomNumber'] && !roomNumber.trim()) {
+            <span class="field-hint-error">Room number is required</span>
+          }
+        </div>
+        <div class="field-group">
+          <label class="field-label" for="cr-name">Room name</label>
+          <input
+            id="cr-name"
+            type="text"
+            class="field-input"
+            placeholder="Ocean Suite"
+            maxlength="100"
+            [(ngModel)]="roomName"
+            [disabled]="saving()" />
+          <span class="field-hint">Optional display name</span>
+        </div>
+      </div>
 
-    @if (properties().length > 1) {
-      <div class="field-group field-required">
-        <label class="field-label" for="cr-property">Property</label>
+      <div class="field-group field-required" [class.field-error]="touched['roomTypeId'] && !roomTypeId">
+        <label class="field-label" for="cr-type">Room type</label>
         <select
-          id="cr-property"
+          id="cr-type"
           class="field-input"
-          [(ngModel)]="propertyId"
+          [(ngModel)]="roomTypeId"
+          (blur)="markTouched('roomTypeId')"
           [disabled]="saving()">
-          <option value="">Select a property…</option>
-          @for (p of properties(); track p.id) {
-            <option [value]="p.id">{{ p.property_name }}</option>
+          <option value="">Select a room type…</option>
+          @for (rt of roomTypes(); track rt.room_type_id) {
+            <option [value]="rt.room_type_id">{{ rt.type_name }}</option>
           }
         </select>
+        @if (touched['roomTypeId'] && !roomTypeId) {
+          <span class="field-hint-error">Room type is required</span>
+        }
       </div>
-    }
 
-    <div class="field-row field-row-3">
-      <div class="field-group">
-        <label class="field-label" for="cr-floor">Floor</label>
-        <input
-          id="cr-floor"
-          type="text"
-          class="field-input"
-          placeholder="e.g. 1"
-          maxlength="10"
-          [(ngModel)]="floor"
-          [disabled]="saving()" />
+      @if (properties().length > 1) {
+        <div class="field-group field-required" [class.field-error]="touched['propertyId'] && !propertyId">
+          <label class="field-label" for="cr-property">Property</label>
+          <select
+            id="cr-property"
+            class="field-input"
+            [(ngModel)]="propertyId"
+            (blur)="markTouched('propertyId')"
+            [disabled]="saving()">
+            <option value="">Select a property…</option>
+            @for (p of properties(); track p.id) {
+              <option [value]="p.id">{{ p.property_name }}</option>
+            }
+          </select>
+          @if (touched['propertyId'] && !propertyId) {
+            <span class="field-hint-error">Property is required</span>
+          }
+        </div>
+      }
+    </section>
+
+    <!-- Location -->
+    <section class="form-section">
+      <span class="form-section-title">Location</span>
+
+      <div class="field-row field-row-3">
+        <div class="field-group">
+          <label class="field-label" for="cr-floor">Floor</label>
+          <input
+            id="cr-floor"
+            type="text"
+            class="field-input"
+            placeholder="1"
+            maxlength="10"
+            [(ngModel)]="floor"
+            [disabled]="saving()" />
+        </div>
+        <div class="field-group">
+          <label class="field-label" for="cr-building">Building</label>
+          <input
+            id="cr-building"
+            type="text"
+            class="field-input"
+            placeholder="Main"
+            maxlength="50"
+            [(ngModel)]="building"
+            [disabled]="saving()" />
+        </div>
+        <div class="field-group">
+          <label class="field-label" for="cr-wing">Wing</label>
+          <input
+            id="cr-wing"
+            type="text"
+            class="field-input"
+            placeholder="East"
+            maxlength="50"
+            [(ngModel)]="wing"
+            [disabled]="saving()" />
+        </div>
       </div>
-      <div class="field-group">
-        <label class="field-label" for="cr-building">Building</label>
-        <input
-          id="cr-building"
-          type="text"
-          class="field-input"
-          placeholder="e.g. Main"
-          maxlength="50"
-          [(ngModel)]="building"
-          [disabled]="saving()" />
-      </div>
-      <div class="field-group">
-        <label class="field-label" for="cr-wing">Wing</label>
-        <input
-          id="cr-wing"
-          type="text"
-          class="field-input"
-          placeholder="e.g. East"
-          maxlength="50"
-          [(ngModel)]="wing"
-          [disabled]="saving()" />
-      </div>
-    </div>
+    </section>
   </div>
 </mat-dialog-content>
 

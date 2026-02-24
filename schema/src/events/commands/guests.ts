@@ -30,11 +30,29 @@ const GuestPreferencesSchema = z
 	.passthrough()
 	.optional();
 
+/** Reusable phone validation: 10–15 digits, optional leading +, with formatting chars. */
+const PhoneSchema = z
+	.string()
+	.trim()
+	.min(7)
+	.max(25)
+	.regex(
+		/^\+?[\d\s()\-.]+$/,
+		"Phone may only contain digits, spaces, +, -, (, ), and .",
+	)
+	.refine(
+		(val) => {
+			const digits = val.replace(/\D/g, "");
+			return digits.length >= 10 && digits.length <= 15;
+		},
+		{ message: "Phone must contain 10–15 digits (e.g. +1 415-555-1234)" },
+	);
+
 export const GuestRegisterCommandSchema = z.object({
 	first_name: z.string().trim().min(1).max(100),
 	last_name: z.string().trim().min(1).max(100),
 	email: z.string().email().max(255),
-	phone: z.string().trim().min(3).max(25).optional(),
+	phone: PhoneSchema.optional(),
 	address: GuestAddressSchema,
 	preferences: GuestPreferencesSchema,
 	metadata: z.record(z.unknown()).optional(),
@@ -62,7 +80,7 @@ export const GuestUpdateProfileCommandSchema = z
 		first_name: z.string().trim().min(1).max(100).optional(),
 		last_name: z.string().trim().min(1).max(100).optional(),
 		email: z.string().email().max(255).optional(),
-		phone: z.string().trim().min(3).max(25).optional(),
+		phone: PhoneSchema.optional(),
 		address: GuestAddressSchema,
 		preferences: GuestPreferencesSchema,
 		metadata: z.record(z.unknown()).optional(),
@@ -89,7 +107,7 @@ export const GuestUpdateContactCommandSchema = z
 	.object({
 		guest_id: z.string().uuid(),
 		email: z.string().email().max(255).optional(),
-		phone: z.string().trim().min(3).max(25).optional(),
+		phone: PhoneSchema.optional(),
 		address: GuestAddressSchema,
 		metadata: z.record(z.unknown()).optional(),
 		idempotency_key: z.string().max(120).optional(),

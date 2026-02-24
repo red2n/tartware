@@ -2,6 +2,21 @@ import { Injectable } from "@angular/core";
 
 const API_BASE = "/v1";
 
+export interface ApiFieldError {
+	path: string;
+	message: string;
+	code?: string;
+}
+
+export class ApiValidationError extends Error {
+	readonly fieldErrors: ApiFieldError[];
+	constructor(message: string, fieldErrors: ApiFieldError[]) {
+		super(message);
+		this.name = "ApiValidationError";
+		this.fieldErrors = fieldErrors;
+	}
+}
+
 @Injectable({ providedIn: "root" })
 export class ApiService {
 	private buildUrl(path: string, params?: Record<string, string>): string {
@@ -85,6 +100,9 @@ export class ApiService {
 		try {
 			const body = await response.json();
 			message = body.detail || body.message || message;
+			if (Array.isArray(body.errors) && body.errors.length > 0) {
+				return new ApiValidationError(message, body.errors);
+			}
 		} catch {
 			// ignore parse errors
 		}

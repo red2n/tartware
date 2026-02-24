@@ -1,4 +1,7 @@
-<h2 mat-dialog-title>Create Guest</h2>
+<h2 mat-dialog-title>
+  <mat-icon class="dialog-title-icon">person_add</mat-icon>
+  New Guest Profile
+</h2>
 
 <mat-dialog-content>
   @if (error(); as err) {
@@ -9,150 +12,194 @@
   }
 
   <div class="form-fields">
-    <!-- Name row -->
-    <div class="field-row">
-      <div class="field-group field-required">
-        <label class="field-label" for="cg-first">First name</label>
-        <input
-          id="cg-first"
-          type="text"
-          class="field-input"
-          placeholder="e.g. John"
-          maxlength="100"
-          [(ngModel)]="firstName"
-          [disabled]="saving()" />
-      </div>
-      <div class="field-group field-required">
-        <label class="field-label" for="cg-last">Last name</label>
-        <input
-          id="cg-last"
-          type="text"
-          class="field-input"
-          placeholder="e.g. Smith"
-          maxlength="100"
-          [(ngModel)]="lastName"
-          [disabled]="saving()" />
-      </div>
-    </div>
+    <!-- Identity -->
+    <section class="form-section">
+      <span class="form-section-title">Identity</span>
 
-    <!-- Email -->
-    <div class="field-group field-required">
-      <label class="field-label" for="cg-email">Email</label>
-      <input
-        id="cg-email"
-        type="email"
-        class="field-input"
-        placeholder="e.g. john.smith@example.com"
-        maxlength="200"
-        [(ngModel)]="email"
-        [disabled]="saving()" />
-    </div>
+      <div class="field-row">
+        <div class="field-group">
+          <label class="field-label" for="cg-title">Title</label>
+          <select
+            id="cg-title"
+            class="field-input"
+            [(ngModel)]="title"
+            [disabled]="saving()">
+            <option value="">—</option>
+            @for (t of titles; track t) {
+              <option [value]="t">{{ t }}</option>
+            }
+          </select>
+        </div>
+        <div class="field-group">&nbsp;</div>
+      </div>
 
-    <!-- Title + Phone -->
-    <div class="field-row">
-      <div class="field-group">
-        <label class="field-label" for="cg-title">Title</label>
-        <select
-          id="cg-title"
-          class="field-input"
-          [(ngModel)]="title"
-          [disabled]="saving()">
-          <option value="">None</option>
-          @for (t of titles; track t) {
-            <option [value]="t">{{ t }}</option>
+      <div class="field-row">
+        <div class="field-group field-required" [class.field-error]="touched['firstName'] && !firstName.trim()">
+          <label class="field-label" for="cg-first">First name</label>
+          <input
+            id="cg-first"
+            type="text"
+            class="field-input"
+            placeholder="John"
+            maxlength="100"
+            [(ngModel)]="firstName"
+            (blur)="markTouched('firstName')"
+            [disabled]="saving()" />
+          @if (touched['firstName'] && !firstName.trim()) {
+            <span class="field-hint-error">First name is required</span>
           }
-        </select>
+        </div>
+        <div class="field-group field-required" [class.field-error]="touched['lastName'] && !lastName.trim()">
+          <label class="field-label" for="cg-last">Last name</label>
+          <input
+            id="cg-last"
+            type="text"
+            class="field-input"
+            placeholder="Smith"
+            maxlength="100"
+            [(ngModel)]="lastName"
+            (blur)="markTouched('lastName')"
+            [disabled]="saving()" />
+          @if (touched['lastName'] && !lastName.trim()) {
+            <span class="field-hint-error">Last name is required</span>
+          }
+        </div>
       </div>
-      <div class="field-group">
-        <label class="field-label" for="cg-phone">Phone</label>
+
+      <div class="field-row">
+        <div class="field-group">
+          <label class="field-label" for="cg-nationality">Nationality</label>
+          <input
+            id="cg-nationality"
+            type="text"
+            class="field-input"
+            placeholder="e.g. United States"
+            maxlength="60"
+            [(ngModel)]="nationality"
+            [disabled]="saving()" />
+        </div>
+        <div class="field-group">
+          <label class="field-label" for="cg-gender">Gender</label>
+          <select
+            id="cg-gender"
+            class="field-input"
+            [(ngModel)]="gender"
+            [disabled]="saving()">
+            <option value="">—</option>
+            <option value="male">Male</option>
+            <option value="female">Female</option>
+            <option value="non-binary">Non-binary</option>
+            <option value="prefer_not_to_say">Prefer not to say</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="field-row">
+        <div class="field-group">
+          <label class="field-label" for="cg-dob">Date of birth</label>
+          <input
+            id="cg-dob"
+            type="date"
+            class="field-input"
+            [(ngModel)]="dateOfBirth"
+            [disabled]="saving()" />
+        </div>
+        <div class="field-group">&nbsp;</div>
+      </div>
+    </section>
+
+    <!-- Contact -->
+    <section class="form-section">
+      <span class="form-section-title">Contact</span>
+
+      <div class="field-group field-required" [class.field-error]="touched['email'] && emailError">
+        <label class="field-label" for="cg-email">Email address</label>
+        <input
+          id="cg-email"
+          type="email"
+          class="field-input"
+          placeholder="john.smith&#64;example.com"
+          maxlength="200"
+          [(ngModel)]="email"
+          (blur)="markTouched('email')"
+          [disabled]="saving()" />
+        @if (touched['email'] && emailError) {
+          <span class="field-hint-error">{{ emailError }}</span>
+        }
+        @if (hasFieldError('email')) {
+          <span class="field-hint-error">{{ getFieldError('email') }}</span>
+        }
+      </div>
+
+      <div class="field-group" [class.field-error]="touched['phone'] && phoneError">
+        <label class="field-label" for="cg-phone">Phone number</label>
         <input
           id="cg-phone"
           type="tel"
           class="field-input"
-          placeholder="e.g. +1 555-0123"
-          maxlength="30"
+          placeholder="+1 (555) 012-3456"
+          maxlength="25"
           [(ngModel)]="phone"
+          (blur)="markTouched('phone')"
           [disabled]="saving()" />
+        @if (touched['phone'] && phoneError) {
+          <span class="field-hint-error">{{ phoneError }}</span>
+        } @else {
+          <span class="field-hint">Include country code (e.g. +1 for US, +44 for UK)</span>
+        }
+        @if (hasFieldError('phone')) {
+          <span class="field-hint-error">{{ getFieldError('phone') }}</span>
+        }
       </div>
-    </div>
-
-    <!-- Nationality + Gender + DOB -->
-    <div class="field-row field-row-3">
-      <div class="field-group">
-        <label class="field-label" for="cg-nationality">Nationality</label>
-        <input
-          id="cg-nationality"
-          type="text"
-          class="field-input"
-          placeholder="e.g. US"
-          maxlength="60"
-          [(ngModel)]="nationality"
-          [disabled]="saving()" />
-      </div>
-      <div class="field-group">
-        <label class="field-label" for="cg-gender">Gender</label>
-        <select
-          id="cg-gender"
-          class="field-input"
-          [(ngModel)]="gender"
-          [disabled]="saving()">
-          <option value="">—</option>
-          <option value="male">Male</option>
-          <option value="female">Female</option>
-          <option value="non-binary">Non-binary</option>
-          <option value="prefer_not_to_say">Prefer not to say</option>
-        </select>
-      </div>
-      <div class="field-group">
-        <label class="field-label" for="cg-dob">Date of birth</label>
-        <input
-          id="cg-dob"
-          type="date"
-          class="field-input"
-          [(ngModel)]="dateOfBirth"
-          [disabled]="saving()" />
-      </div>
-    </div>
+    </section>
 
     <!-- Company -->
-    <div class="field-group">
-      <label class="field-label" for="cg-company">Company</label>
-      <input
-        id="cg-company"
-        type="text"
-        class="field-input"
-        placeholder="e.g. Acme Corp"
-        maxlength="200"
-        [(ngModel)]="companyName"
-        [disabled]="saving()" />
-    </div>
+    <section class="form-section">
+      <span class="form-section-title">Company</span>
 
-    <!-- VIP + Loyalty -->
-    <div class="field-row">
       <div class="field-group">
-        <label class="field-label">VIP status</label>
-        <label class="toggle-label">
-          <input
-            type="checkbox"
-            [(ngModel)]="vipStatus"
-            [disabled]="saving()" />
-          Mark as VIP
-        </label>
-      </div>
-      <div class="field-group">
-        <label class="field-label" for="cg-loyalty">Loyalty tier</label>
-        <select
-          id="cg-loyalty"
+        <label class="field-label" for="cg-company">Company name</label>
+        <input
+          id="cg-company"
+          type="text"
           class="field-input"
-          [(ngModel)]="loyaltyTier"
-          [disabled]="saving()">
-          <option value="">None</option>
-          @for (tier of loyaltyTiers; track tier) {
-            <option [value]="tier">{{ tier }}</option>
-          }
-        </select>
+          placeholder="Acme Corp"
+          maxlength="200"
+          [(ngModel)]="companyName"
+          [disabled]="saving()" />
       </div>
-    </div>
+    </section>
+
+    <!-- Loyalty & VIP -->
+    <section class="form-section">
+      <span class="form-section-title">Loyalty &amp; VIP</span>
+
+      <div class="field-row">
+        <div class="field-group">
+          <label class="field-label">VIP status</label>
+          <label class="toggle-label">
+            <input
+              type="checkbox"
+              [(ngModel)]="vipStatus"
+              [disabled]="saving()" />
+            Mark as VIP guest
+          </label>
+        </div>
+        <div class="field-group">
+          <label class="field-label" for="cg-loyalty">Loyalty tier</label>
+          <select
+            id="cg-loyalty"
+            class="field-input"
+            [(ngModel)]="loyaltyTier"
+            [disabled]="saving()">
+            <option value="">None</option>
+            @for (tier of loyaltyTiers; track tier) {
+              <option [value]="tier">{{ tier }}</option>
+            }
+          </select>
+        </div>
+      </div>
+    </section>
   </div>
 </mat-dialog-content>
 

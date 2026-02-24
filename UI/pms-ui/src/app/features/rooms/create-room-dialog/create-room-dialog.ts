@@ -5,7 +5,7 @@ import { MatDialogModule, MatDialogRef } from "@angular/material/dialog";
 import { MatIconModule } from "@angular/material/icon";
 import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
 
-import { ApiService } from "../../../core/api/api.service";
+import { ApiService, ApiValidationError } from "../../../core/api/api.service";
 import { AuthService } from "../../../core/auth/auth.service";
 
 type RoomType = { room_type_id: string; type_name: string };
@@ -33,6 +33,8 @@ export class CreateRoomDialogComponent implements OnInit {
 	readonly properties = signal<Property[]>([]);
 	readonly saving = signal(false);
 	readonly error = signal<string | null>(null);
+
+	touched: Record<string, boolean> = {};
 
 	// Form fields
 	roomNumber = "";
@@ -72,6 +74,10 @@ export class CreateRoomDialogComponent implements OnInit {
 		return !!(this.roomNumber.trim() && this.roomTypeId && this.propertyId);
 	}
 
+	markTouched(field: string): void {
+		this.touched = { ...this.touched, [field]: true };
+	}
+
 	async save(): Promise<void> {
 		if (!this.isValid) return;
 		const tenantId = this.auth.tenantId();
@@ -93,7 +99,13 @@ export class CreateRoomDialogComponent implements OnInit {
 			});
 			this.dialogRef.close(true);
 		} catch (e) {
-			this.error.set(e instanceof Error ? e.message : "Failed to create room");
+			if (e instanceof ApiValidationError) {
+				this.error.set(e.fieldErrors.map((fe) => fe.message).join("; "));
+			} else {
+				this.error.set(
+					e instanceof Error ? e.message : "Failed to create room",
+				);
+			}
 		} finally {
 			this.saving.set(false);
 		}

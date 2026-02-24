@@ -295,9 +295,11 @@
 }
 
 .field-label {
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-medium);
-  color: var(--color-fg-default);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-fg-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
 }
 
 .field-required .field-label::after {
@@ -306,13 +308,22 @@
 }
 
 .field-input {
-  padding: 6px 10px;
+  padding: 8px 12px;
   font-size: var(--font-size-sm);
   line-height: var(--line-height-normal);
   color: var(--color-fg-default);
   background: var(--color-canvas-default);
   border: 1px solid var(--color-border-default);
   border-radius: var(--radius-md);
+  transition: border-color var(--duration-fast), box-shadow var(--duration-fast);
+
+  &::placeholder {
+    color: var(--color-fg-subtle);
+  }
+
+  &:hover:not(:disabled):not(:focus) {
+    border-color: var(--color-fg-subtle);
+  }
 
   &:focus {
     outline: none;
@@ -323,6 +334,7 @@
   &:disabled {
     opacity: 0.6;
     cursor: not-allowed;
+    background: var(--color-canvas-inset);
   }
 }
 
@@ -331,18 +343,41 @@ select.field-input {
   cursor: pointer;
 }
 
-.field-error {
-  border-color: var(--color-danger-emphasis) !important;
+textarea.field-input {
+  resize: vertical;
+  min-height: 64px;
+}
+
+.field-error .field-input,
+.field-input.field-input-error {
+  border-color: var(--color-danger-emphasis);
 
   &:focus {
-    box-shadow: 0 0 0 3px rgba(207, 34, 46, 0.2);
+    box-shadow: 0 0 0 3px rgba(207, 34, 46, 0.15);
   }
+}
+
+.field-error .field-label {
+  color: var(--color-danger-fg);
+}
+
+.field-hint {
+  font-size: var(--font-size-xs);
+  color: var(--color-fg-subtle);
+  margin-top: 2px;
 }
 
 .field-hint-error {
   font-size: var(--font-size-xs);
   color: var(--color-danger-fg);
   margin-top: 2px;
+}
+
+.field-value-locked {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-fg-default);
+  padding: 8px 0;
 }
 
 /* ── Detail card (header + body) ── */
@@ -813,8 +848,30 @@ select.field-input {
 .form-fields {
   display: flex;
   flex-direction: column;
-  gap: var(--space-3);
+  gap: var(--space-4);
   min-width: 400px;
+}
+
+.form-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.form-section-title {
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-fg-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding-bottom: var(--space-1);
+  border-bottom: 1px solid var(--color-border-muted);
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-3);
 }
 
 .field-row {
@@ -825,6 +882,28 @@ select.field-input {
 
 .field-row-3 {
   grid-template-columns: 1fr 1fr 1fr;
+}
+
+.form-grid .full-width,
+.field-row .full-width {
+  grid-column: 1 / -1;
+}
+
+/* ── Toggle / checkbox field ── */
+.toggle-label {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--font-size-sm);
+  color: var(--color-fg-default);
+  cursor: pointer;
+  padding: 8px 0;
+}
+
+.toggle-label input[type='checkbox'] {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--color-accent-fg);
 }
 
 /* ── Inline action rows ── */

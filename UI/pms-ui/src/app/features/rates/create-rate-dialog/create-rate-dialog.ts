@@ -4,7 +4,7 @@ import { MatDialogModule, MatDialogRef } from "@angular/material/dialog";
 import { MatIconModule } from "@angular/material/icon";
 import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
 
-import { ApiService } from "../../../core/api/api.service";
+import { ApiService, ApiValidationError } from "../../../core/api/api.service";
 import { AuthService } from "../../../core/auth/auth.service";
 
 @Component({
@@ -183,7 +183,13 @@ export class CreateRateDialogComponent {
 			await this.api.post("/rates", body);
 			this.dialogRef.close(true);
 		} catch (e) {
-			this.error.set(e instanceof Error ? e.message : "Failed to create rate");
+			if (e instanceof ApiValidationError) {
+				this.error.set(e.message);
+			} else {
+				this.error.set(
+					e instanceof Error ? e.message : "Failed to create rate",
+				);
+			}
 		} finally {
 			this.saving.set(false);
 		}

@@ -5,7 +5,7 @@ import { MatDialogModule, MatDialogRef } from "@angular/material/dialog";
 import { MatIconModule } from "@angular/material/icon";
 import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
 
-import { ApiService } from "../../../core/api/api.service";
+import { ApiService, ApiValidationError } from "../../../core/api/api.service";
 import { AuthService } from "../../../core/auth/auth.service";
 import { TenantContextService } from "../../../core/context/tenant-context.service";
 
@@ -33,6 +33,9 @@ export class CreateGuestDialogComponent implements OnInit {
 	readonly properties = signal<Property[]>([]);
 	readonly saving = signal(false);
 	readonly error = signal<string | null>(null);
+	readonly fieldErrors = signal<Record<string, string>>({});
+
+	touched: Record<string, boolean> = {};
 
 	// Form fields — required
 	firstName = "";
@@ -74,12 +77,45 @@ export class CreateGuestDialogComponent implements OnInit {
 		}
 	}
 
+	markTouched(field: string): void {
+		this.touched = { ...this.touched, [field]: true };
+	}
+
+	get emailError(): string | null {
+		const val = this.email.trim();
+		if (!val) return "Email is required";
+		if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val))
+			return "Enter a valid email address";
+		return null;
+	}
+
+	get phoneError(): string | null {
+		const val = this.phone.trim();
+		if (!val) return null; // phone is optional
+		if (!/^\+?[\d\s()\-.]+$/.test(val))
+			return "Phone may only contain digits, spaces, +, -, (, ), and .";
+		const digits = val.replace(/\D/g, "");
+		if (digits.length < 10 || digits.length > 15)
+			return "Phone must contain 10\u201315 digits (e.g. +1 415-555-1234)";
+		return null;
+	}
+
 	get isValid(): boolean {
 		return !!(
 			this.firstName.trim() &&
 			this.lastName.trim() &&
-			this.email.trim()
+			this.email.trim() &&
+			!this.emailError &&
+			!this.phoneError
 		);
+	}
+
+	hasFieldError(field: string): boolean {
+		return !!this.fieldErrors()[field];
+	}
+
+	getFieldError(field: string): string {
+		return this.fieldErrors()[field] ?? "";
 	}
 
 	async save(): Promise<void> {
@@ -89,6 +125,7 @@ export class CreateGuestDialogComponent implements OnInit {
 
 		this.saving.set(true);
 		this.error.set(null);
+		this.fieldErrors.set({});
 
 		try {
 			// Build preferences (part of GuestRegisterCommandSchema)
@@ -117,7 +154,18 @@ export class CreateGuestDialogComponent implements OnInit {
 			});
 			this.dialogRef.close(true);
 		} catch (e) {
-			this.error.set(e instanceof Error ? e.message : "Failed to create guest");
+			if (e instanceof ApiValidationError) {
+				const errors: Record<string, string> = {};
+				for (const fe of e.fieldErrors) {
+					errors[fe.path] = fe.message;
+				}
+				this.fieldErrors.set(errors);
+				this.error.set(e.message);
+			} else {
+				this.error.set(
+					e instanceof Error ? e.message : "Failed to create guest",
+				);
+			}
 		} finally {
 			this.saving.set(false);
 		}
