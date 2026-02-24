@@ -2,8 +2,8 @@ import { computed, effect, Injectable, signal } from "@angular/core";
 
 import type { UserUiPreferences } from "@tartware/schemas";
 
-import type { ApiService } from "../api/api.service";
-import type { AuthService } from "../auth/auth.service";
+import { ApiService } from "../api/api.service";
+import { AuthService } from "../auth/auth.service";
 
 export type ThemeMode = "LIGHT" | "DARK" | "SYSTEM";
 

@@ -2,7 +2,7 @@ import { computed, Injectable, signal } from "@angular/core";
 
 import type { AuthMembership, LoginResponse } from "@tartware/schemas";
 
-import type { ApiService } from "../api/api.service";
+import { ApiService } from "../api/api.service";
 
 export type UserInfo = Pick<
 	LoginResponse,
