@@ -1,20 +1,20 @@
-import { Component, signal } from '@angular/core';
-import { RouterOutlet } from '@angular/router';
+import { Component, signal } from "@angular/core";
+import { RouterOutlet } from "@angular/router";
 
-import { SidebarComponent } from '../sidebar/sidebar';
-import { TopbarComponent } from '../topbar/topbar';
+import { SidebarComponent } from "../sidebar/sidebar";
+import { TopbarComponent } from "../topbar/topbar";
 
 @Component({
-  selector: 'app-shell',
-  standalone: true,
-  imports: [RouterOutlet, SidebarComponent, TopbarComponent],
-  templateUrl: './shell.html',
-  styleUrl: './shell.scss',
+	selector: "app-shell",
+	standalone: true,
+	imports: [RouterOutlet, SidebarComponent, TopbarComponent],
+	templateUrl: "./shell.html",
+	styleUrl: "./shell.scss",
 })
 export class ShellComponent {
-  readonly sidebarCollapsed = signal(false);
+	readonly sidebarCollapsed = signal(false);
 
-  toggleSidebar(): void {
-    this.sidebarCollapsed.update((v) => !v);
-  }
+	toggleSidebar(): void {
+		this.sidebarCollapsed.update((v) => !v);
+	}
 }

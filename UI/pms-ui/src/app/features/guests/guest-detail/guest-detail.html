@@ -1,0 +1,417 @@
+<div class="page-header">
+  <div class="breadcrumb">
+    <a routerLink="/guests" class="breadcrumb-link">
+      <mat-icon class="breadcrumb-icon">arrow_back</mat-icon>
+      Guests
+    </a>
+    <span class="breadcrumb-sep">/</span>
+    @if (guest(); as g) {
+      <span class="breadcrumb-current">{{ g.first_name }} {{ g.last_name }}</span>
+    }
+  </div>
+</div>
+
+@if (loading()) {
+  <div class="loading-center">
+    <mat-spinner diameter="32" />
+  </div>
+} @else if (error(); as err) {
+  <div class="flash flash-error">
+    <mat-icon class="flash-icon">error_outline</mat-icon>
+    {{ err }}
+    <button class="btn-invisible" (click)="goBack()">Go back</button>
+  </div>
+} @else if (guest(); as g) {
+  <!-- Guest header card -->
+  <div class="guest-header-card">
+    <div class="guest-header-left">
+      <span class="avatar avatar-lg guest-avatar-lg">{{ initials(g) }}</span>
+      <div class="guest-header-info">
+        <h2 class="guest-header-name">
+          @if (g.title) {
+            <span class="text-muted">{{ g.title }}</span>
+          }
+          {{ g.first_name }} {{ g.last_name }}
+        </h2>
+        <div class="guest-header-meta">
+          @if (g.email) {
+            <span class="meta-item">
+              <mat-icon class="meta-icon">email</mat-icon>
+              {{ g.email }}
+            </span>
+          }
+          @if (g.phone) {
+            <span class="meta-item">
+              <mat-icon class="meta-icon">phone</mat-icon>
+              {{ g.phone }}
+            </span>
+          }
+          @if (g.company_name) {
+            <span class="meta-item">
+              <mat-icon class="meta-icon">business</mat-icon>
+              {{ g.company_name }}
+            </span>
+          }
+        </div>
+        <div class="guest-badges">
+          @if (g.vip_status) {
+            <span class="badge badge-warning">VIP</span>
+          }
+          @if (g.loyalty_tier) {
+            <span class="badge" [ngClass]="loyaltyTierClass(g.loyalty_tier)">
+              {{ tierLabel(g.loyalty_tier) }}
+            </span>
+          }
+          @if (g.is_blacklisted) {
+            <span class="badge badge-danger" [matTooltip]="g.blacklist_reason ?? ''">Blacklisted</span>
+          }
+        </div>
+      </div>
+    </div>
+    <div class="guest-header-stats">
+      <div class="stat-mini">
+        <span class="stat-mini-value">{{ g.total_bookings }}</span>
+        <span class="stat-mini-label">Bookings</span>
+      </div>
+      <div class="stat-mini">
+        <span class="stat-mini-value">{{ g.total_nights }}</span>
+        <span class="stat-mini-label">Nights</span>
+      </div>
+      <div class="stat-mini">
+        <span class="stat-mini-value">{{ formatCurrency(g.total_revenue) }}</span>
+        <span class="stat-mini-label">Revenue</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tab navigation -->
+  <div class="filter-bar detail-tabs">
+    <nav class="filter-tabs">
+      <button class="filter-tab" [class.filter-tab-active]="activeTab() === 'profile'" (click)="setTab('profile')">
+        <mat-icon class="tab-icon">person</mat-icon>
+        Profile
+      </button>
+      <button class="filter-tab" [class.filter-tab-active]="activeTab() === 'preferences'" (click)="setTab('preferences')">
+        <mat-icon class="tab-icon">tune</mat-icon>
+        Preferences
+      </button>
+      <button class="filter-tab" [class.filter-tab-active]="activeTab() === 'documents'" (click)="setTab('documents')">
+        <mat-icon class="tab-icon">description</mat-icon>
+        Documents
+      </button>
+      <button class="filter-tab" [class.filter-tab-active]="activeTab() === 'communications'" (click)="setTab('communications')">
+        <mat-icon class="tab-icon">chat</mat-icon>
+        Communications
+      </button>
+    </nav>
+  </div>
+
+  <!-- Tab content -->
+  @if (activeTab() === 'profile') {
+    <div class="detail-layout">
+      <!-- Personal information -->
+      @if (personalRows().length > 0) {
+        <div class="detail-card">
+          <div class="card-header">
+            <h3 class="card-title">Personal Information</h3>
+          </div>
+          <div class="card-body">
+            <dl class="detail-list">
+              @for (row of personalRows(); track row.label) {
+                <div class="detail-row">
+                  <dt class="detail-label">{{ row.label }}</dt>
+                  <dd class="detail-value">{{ row.value }}</dd>
+                </div>
+              }
+            </dl>
+          </div>
+        </div>
+      }
+
+      <!-- Address -->
+      @if (addressRows().length > 0) {
+        <div class="detail-card">
+          <div class="card-header">
+            <h3 class="card-title">Address</h3>
+          </div>
+          <div class="card-body">
+            <dl class="detail-list">
+              @for (row of addressRows(); track row.label) {
+                <div class="detail-row">
+                  <dt class="detail-label">{{ row.label }}</dt>
+                  <dd class="detail-value">{{ row.value }}</dd>
+                </div>
+              }
+            </dl>
+          </div>
+        </div>
+      }
+
+      <!-- Identity documents -->
+      @if (identityRows().length > 0) {
+        <div class="detail-card">
+          <div class="card-header">
+            <h3 class="card-title">Identity</h3>
+          </div>
+          <div class="card-body">
+            <dl class="detail-list">
+              @for (row of identityRows(); track row.label) {
+                <div class="detail-row">
+                  <dt class="detail-label">{{ row.label }}</dt>
+                  <dd class="detail-value">{{ row.value }}</dd>
+                </div>
+              }
+            </dl>
+          </div>
+        </div>
+      }
+
+      <!-- Company -->
+      @if (companyRows().length > 0) {
+        <div class="detail-card">
+          <div class="card-header">
+            <h3 class="card-title">Company</h3>
+          </div>
+          <div class="card-body">
+            <dl class="detail-list">
+              @for (row of companyRows(); track row.label) {
+                <div class="detail-row">
+                  <dt class="detail-label">{{ row.label }}</dt>
+                  <dd class="detail-value">{{ row.value }}</dd>
+                </div>
+              }
+            </dl>
+          </div>
+        </div>
+      }
+
+      <!-- Loyalty & VIP -->
+      <div class="detail-card">
+        <div class="card-header">
+          <h3 class="card-title">Loyalty & VIP</h3>
+        </div>
+        <div class="card-body">
+          <dl class="detail-list">
+            @for (row of loyaltyRows(); track row.label) {
+              <div class="detail-row">
+                <dt class="detail-label">{{ row.label }}</dt>
+                <dd class="detail-value">
+                  @if (row.badge) {
+                    <span class="badge" [ngClass]="row.badge">{{ row.value }}</span>
+                  } @else {
+                    {{ row.value }}
+                  }
+                </dd>
+              </div>
+            }
+          </dl>
+        </div>
+      </div>
+
+      <!-- Stay statistics -->
+      <div class="detail-card">
+        <div class="card-header">
+          <h3 class="card-title">Stay Statistics</h3>
+        </div>
+        <div class="card-body">
+          <dl class="detail-list">
+            @for (row of stayStats(); track row.label) {
+              <div class="detail-row">
+                <dt class="detail-label">{{ row.label }}</dt>
+                <dd class="detail-value">{{ row.value }}</dd>
+              </div>
+            }
+          </dl>
+        </div>
+      </div>
+
+      <!-- Inline preferences summary -->
+      @if (preferenceSummary().length > 0) {
+        <div class="detail-card">
+          <div class="card-header">
+            <h3 class="card-title">Preferences Summary</h3>
+          </div>
+          <div class="card-body">
+            <dl class="detail-list">
+              @for (row of preferenceSummary(); track row.label) {
+                <div class="detail-row">
+                  <dt class="detail-label">{{ row.label }}</dt>
+                  <dd class="detail-value">{{ row.value }}</dd>
+                </div>
+              }
+            </dl>
+          </div>
+        </div>
+      }
+
+      <!-- Notes -->
+      @if (g.notes) {
+        <div class="detail-card">
+          <div class="card-header">
+            <h3 class="card-title">Notes</h3>
+          </div>
+          <div class="card-body">
+            <p class="guest-notes">{{ g.notes }}</p>
+          </div>
+        </div>
+      }
+    </div>
+  }
+
+  @if (activeTab() === 'preferences') {
+    @if (loadingTab()) {
+      <div class="loading-state">
+        <mat-spinner diameter="24"></mat-spinner>
+        <span class="text-muted">Loading preferences...</span>
+      </div>
+    } @else if (preferences().length === 0) {
+      <div class="empty-state">
+        <mat-icon class="empty-icon">tune</mat-icon>
+        <p>No preferences recorded</p>
+      </div>
+    } @else {
+      <div class="table-container">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Category</th>
+              <th>Type</th>
+              <th>Value</th>
+              <th>Priority</th>
+              <th>Mandatory</th>
+              <th>Status</th>
+              <th>Notes</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (pref of preferences(); track pref.id) {
+              <tr>
+                <td>{{ pref.preference_category_display }}</td>
+                <td>{{ pref.preference_type }}</td>
+                <td>{{ pref.preference_value ?? '—' }}</td>
+                <td class="cell-numeric">{{ pref.priority }}</td>
+                <td>
+                  @if (pref.is_mandatory) {
+                    <span class="badge badge-warning">Required</span>
+                  } @else {
+                    <span class="text-muted">Optional</span>
+                  }
+                </td>
+                <td>
+                  <span class="badge" [ngClass]="pref.is_active ? 'badge-success' : 'badge-muted'">
+                    {{ pref.is_active ? 'Active' : 'Inactive' }}
+                  </span>
+                </td>
+                <td>{{ pref.notes ?? '—' }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  }
+
+  @if (activeTab() === 'documents') {
+    @if (loadingTab()) {
+      <div class="loading-state">
+        <mat-spinner diameter="24"></mat-spinner>
+        <span class="text-muted">Loading documents...</span>
+      </div>
+    } @else if (documents().length === 0) {
+      <div class="empty-state">
+        <mat-icon class="empty-icon">description</mat-icon>
+        <p>No documents on file</p>
+      </div>
+    } @else {
+      <div class="table-container">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Type</th>
+              <th>Number</th>
+              <th>File</th>
+              <th>Verified</th>
+              <th>Expires</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (doc of documents(); track doc.id) {
+              <tr>
+                <td>{{ doc.document_type_display }}</td>
+                <td>{{ doc.document_number ?? '—' }}</td>
+                <td>{{ doc.file_name }}</td>
+                <td>
+                  @if (doc.is_verified) {
+                    <span class="badge badge-success">Verified</span>
+                  } @else {
+                    <span class="badge badge-muted">{{ doc.verification_status_display }}</span>
+                  }
+                </td>
+                <td>
+                  @if (doc.expiry_date) {
+                    <span [ngClass]="doc.is_expired ? 'text-danger' : ''">
+                      {{ formatDate(doc.expiry_date) }}
+                    </span>
+                  } @else {
+                    <span class="text-muted">—</span>
+                  }
+                </td>
+                <td>
+                  @if (doc.is_expired) {
+                    <span class="badge badge-danger">Expired</span>
+                  } @else {
+                    <span class="badge badge-success">Valid</span>
+                  }
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  }
+
+  @if (activeTab() === 'communications') {
+    @if (loadingTab()) {
+      <div class="loading-state">
+        <mat-spinner diameter="24"></mat-spinner>
+        <span class="text-muted">Loading communications...</span>
+      </div>
+    } @else if (communications().length === 0) {
+      <div class="empty-state">
+        <mat-icon class="empty-icon">chat</mat-icon>
+        <p>No communications recorded</p>
+      </div>
+    } @else {
+      <div class="table-container">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Type</th>
+              <th>Direction</th>
+              <th>Subject</th>
+              <th>Status</th>
+              <th>Date</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (comm of communications(); track comm.id) {
+              <tr>
+                <td>{{ comm.communication_type_display }}</td>
+                <td>{{ comm.direction_display }}</td>
+                <td>{{ comm.subject ?? comm.message }}</td>
+                <td>
+                  <span class="badge" [ngClass]="comm.status_display === 'Sent' || comm.status_display === 'Delivered' ? 'badge-success' : 'badge-muted'">
+                    {{ comm.status_display }}
+                  </span>
+                </td>
+                <td>{{ formatDate(comm.created_at) }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  }
+}

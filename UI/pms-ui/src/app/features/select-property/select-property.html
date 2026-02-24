@@ -1,0 +1,77 @@
+<div class="select-property-page">
+  <!-- Header strip matching login style -->
+  <div class="select-property-header">
+    <span class="select-property-logo">tartware</span>
+  </div>
+
+  <div class="select-property-body">
+    <h1 class="select-property-heading">Select a property</h1>
+
+    @if (tenantName()) {
+      <p class="select-property-subtitle">
+        Choose a property for <strong>{{ tenantName() }}</strong> to continue
+      </p>
+    }
+
+    <!-- Search bar -->
+    @if (properties().length > 4) {
+      <div class="select-property-search">
+        <mat-form-field appearance="outline" class="full-width">
+          <mat-icon matPrefix>search</mat-icon>
+          <input matInput
+            placeholder="Search properties…"
+            [ngModel]="search()"
+            (ngModelChange)="search.set($event)"
+            autocomplete="off" />
+          @if (search()) {
+            <button matSuffix mat-icon-button (click)="search.set('')">
+              <mat-icon>close</mat-icon>
+            </button>
+          }
+        </mat-form-field>
+      </div>
+    }
+
+    @if (loading()) {
+      <div class="select-property-loading">
+        <mat-spinner diameter="32"></mat-spinner>
+        <span>Loading properties…</span>
+      </div>
+    } @else {
+      <!-- Property grid -->
+      <div class="select-property-grid">
+        @for (p of filtered(); track p.id) {
+          <button class="property-card" (click)="select(p)">
+            <div class="property-card-icon">
+              <mat-icon>apartment</mat-icon>
+            </div>
+            <div class="property-card-info">
+              <span class="property-card-name">{{ p.property_name }}</span>
+              <span class="property-card-code">{{ p.property_code }}</span>
+            </div>
+            <mat-icon class="property-card-arrow">arrow_forward</mat-icon>
+          </button>
+        } @empty {
+          @if (search()) {
+            <div class="select-property-empty">
+              <mat-icon>search_off</mat-icon>
+              <span>No properties match "{{ search() }}"</span>
+            </div>
+          } @else {
+            <div class="select-property-empty">
+              <mat-icon>apartment</mat-icon>
+              <span>No properties available for this tenant</span>
+            </div>
+          }
+        }
+      </div>
+    }
+
+    <div class="select-property-footer">
+      <button mat-button color="primary" (click)="logout()">
+        <mat-icon>logout</mat-icon>
+        Sign out
+      </button>
+    </div>
+  </div>
+</div>

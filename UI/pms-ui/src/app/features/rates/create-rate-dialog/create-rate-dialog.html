@@ -1,172 +1,213 @@
-<h2 mat-dialog-title>New Rate Plan</h2>
+<h2 mat-dialog-title>
+  <mat-icon class="dialog-title-icon">payments</mat-icon>
+  New Rate Plan
+</h2>
 
 <mat-dialog-content>
   @if (error(); as err) {
     <div class="flash flash-error">
-      <mat-icon class="flash-icon">error</mat-icon>
+      <mat-icon class="flash-icon">error_outline</mat-icon>
       {{ err }}
     </div>
   }
 
-  <div class="form-grid">
-    <!-- Row 1: Name + Code -->
-    <div class="field-group field-required">
-      <label class="field-label" for="rateName">Rate name</label>
-      <input class="field-input" id="rateName" type="text"
-             placeholder="e.g. Best Available Rate"
-             [class.field-error]="validationErrors['rateName']"
-             [(ngModel)]="rateName" />
-      @if (validationErrors['rateName']; as msg) {
-        <span class="field-hint-error">{{ msg }}</span>
-      }
-    </div>
+  <div class="form-fields">
+    <!-- Rate Identity -->
+    <section class="form-section">
+      <span class="form-section-title">Rate Identity</span>
 
-    <div class="field-group field-required">
-      <label class="field-label" for="rateCode">Rate code</label>
-      <input class="field-input" id="rateCode" type="text"
-             placeholder="e.g. BAR"
-             [ngModel]="rateCode"
-             (ngModelChange)="onRateCodeInput($event)"
-             [class.field-error]="validationErrors['rateCode']"
-             maxlength="50"
-             style="text-transform: uppercase" />
-      @if (validationErrors['rateCode']; as msg) {
-        <span class="field-hint-error">{{ msg }}</span>
-      }
-    </div>
+      <div class="field-row">
+        <div class="field-group field-required" [class.field-error]="validationErrors['rateName']">
+          <label class="field-label" for="rateName">Rate name</label>
+          <input class="field-input" id="rateName" type="text"
+                placeholder="Best Available Rate"
+                [(ngModel)]="rateName" />
+          @if (validationErrors['rateName']; as msg) {
+            <span class="field-hint-error">{{ msg }}</span>
+          }
+        </div>
 
-    <!-- Row 2: Type + Strategy -->
-    <div class="field-group">
-      <label class="field-label" for="rateType">Rate type</label>
-      <select class="field-input" id="rateType" [(ngModel)]="rateType">
-        @for (t of rateTypes; track t.key) {
-          <option [value]="t.key">{{ t.label }}</option>
+        <div class="field-group field-required" [class.field-error]="validationErrors['rateCode']">
+          <label class="field-label" for="rateCode">Rate code</label>
+          <input class="field-input" id="rateCode" type="text"
+                placeholder="BAR"
+                [ngModel]="rateCode"
+                (ngModelChange)="onRateCodeInput($event)"
+                maxlength="50"
+                style="text-transform: uppercase" />
+          @if (validationErrors['rateCode']; as msg) {
+            <span class="field-hint-error">{{ msg }}</span>
+          }
+        </div>
+      </div>
+
+      <div class="field-row">
+        <div class="field-group">
+          <label class="field-label" for="rateType">Rate type</label>
+          <select class="field-input" id="rateType" [(ngModel)]="rateType">
+            @for (t of rateTypes; track t.key) {
+              <option [value]="t.key">{{ t.label }}</option>
+            }
+          </select>
+        </div>
+
+        <div class="field-group">
+          <label class="field-label" for="strategy">Pricing strategy</label>
+          <select class="field-input" id="strategy" [(ngModel)]="strategy">
+            @for (s of strategies; track s.key) {
+              <option [value]="s.key">{{ s.label }}</option>
+            }
+          </select>
+        </div>
+      </div>
+
+      <div class="field-group full-width">
+        <label class="field-label" for="description">Description</label>
+        <textarea class="field-input" id="description" rows="2"
+                  placeholder="Optional rate plan description"
+                  [(ngModel)]="description"></textarea>
+      </div>
+
+      <div class="field-group field-required" [class.field-error]="validationErrors['roomType']">
+        <label class="field-label" for="roomType">Room type</label>
+        @if (loadingRoomTypes()) {
+          <span class="field-hint">Loading room types…</span>
+        } @else {
+          <select class="field-input" id="roomType" [(ngModel)]="selectedRoomTypeId">
+            <option value="" disabled>Select a room type</option>
+            @for (rt of roomTypes(); track rt.room_type_id) {
+              <option [value]="rt.room_type_id">{{ rt.type_name }} ({{ rt.type_code }})</option>
+            }
+          </select>
+          @if (validationErrors['roomType']; as msg) {
+            <span class="field-hint-error">{{ msg }}</span>
+          }
+          @if (roomTypes().length === 0) {
+            <span class="field-hint">No room types found for this property</span>
+          }
         }
-      </select>
-    </div>
+      </div>
+    </section>
 
-    <div class="field-group">
-      <label class="field-label" for="strategy">Strategy</label>
-      <select class="field-input" id="strategy" [(ngModel)]="strategy">
-        @for (s of strategies; track s.key) {
-          <option [value]="s.key">{{ s.label }}</option>
-        }
-      </select>
-    </div>
+    <!-- Pricing -->
+    <section class="form-section">
+      <span class="form-section-title">Pricing</span>
 
-    <!-- Row 3: Base rate + Currency -->
-    <div class="field-group field-required">
-      <label class="field-label" for="baseRate">Base rate</label>
-      <input class="field-input" id="baseRate" type="number"
-             min="0" step="0.01"
-             placeholder="0.00"
-             [class.field-error]="validationErrors['baseRate']"
-             [(ngModel)]="baseRate" />
-      @if (validationErrors['baseRate']; as msg) {
-        <span class="field-hint-error">{{ msg }}</span>
-      }
-    </div>
+      <div class="field-row">
+        <div class="field-group field-required" [class.field-error]="validationErrors['baseRate']">
+          <label class="field-label" for="baseRate">Base rate</label>
+          <input class="field-input" id="baseRate" type="number"
+                min="0" step="0.01"
+                placeholder="0.00"
+                [(ngModel)]="baseRate" />
+          @if (validationErrors['baseRate']; as msg) {
+            <span class="field-hint-error">{{ msg }}</span>
+          }
+        </div>
 
-    <div class="field-group">
-      <label class="field-label">Currency</label>
-      <span class="field-value-locked">{{ currency }}</span>
-      <span class="text-subtle">Set at property level</span>
-    </div>
+        <div class="field-group">
+          <label class="field-label">Currency</label>
+          <span class="field-value-locked">{{ currency }}</span>
+          <span class="field-hint">Set at property level</span>
+        </div>
+      </div>
 
-    <!-- Row 4: SGL + DBL -->
-    <div class="field-group">
-      <label class="field-label" for="sglRate">Single occupancy</label>
-      <input class="field-input" id="sglRate" type="number"
-             min="0" step="0.01"
-             placeholder="Optional"
-             [class.field-error]="validationErrors['sglRate']"
-             [(ngModel)]="singleOccupancyRate" />
-      @if (validationErrors['sglRate']; as msg) {
-        <span class="field-hint-error">{{ msg }}</span>
-      }
-    </div>
+      <div class="field-row">
+        <div class="field-group" [class.field-error]="validationErrors['sglRate']">
+          <label class="field-label" for="sglRate">Single occupancy</label>
+          <input class="field-input" id="sglRate" type="number"
+                min="0" step="0.01"
+                placeholder="Optional"
+                [(ngModel)]="singleOccupancyRate" />
+          @if (validationErrors['sglRate']; as msg) {
+            <span class="field-hint-error">{{ msg }}</span>
+          }
+        </div>
 
-    <div class="field-group">
-      <label class="field-label" for="dblRate">Double occupancy</label>
-      <input class="field-input" id="dblRate" type="number"
-             min="0" step="0.01"
-             placeholder="Optional"
-             [class.field-error]="validationErrors['dblRate']"
-             [(ngModel)]="doubleOccupancyRate" />
-      @if (validationErrors['dblRate']; as msg) {
-        <span class="field-hint-error">{{ msg }}</span>
-      }
-    </div>
+        <div class="field-group" [class.field-error]="validationErrors['dblRate']">
+          <label class="field-label" for="dblRate">Double occupancy</label>
+          <input class="field-input" id="dblRate" type="number"
+                min="0" step="0.01"
+                placeholder="Optional"
+                [(ngModel)]="doubleOccupancyRate" />
+          @if (validationErrors['dblRate']; as msg) {
+            <span class="field-hint-error">{{ msg }}</span>
+          }
+        </div>
+      </div>
 
-    <!-- Row 5: Extra person rate + Meal plan -->
-    <div class="field-group">
-      <label class="field-label" for="extraPerson">Extra person rate</label>
-      <input class="field-input" id="extraPerson" type="number"
-             min="0" step="0.01"
-             placeholder="Optional"
-             [(ngModel)]="extraPersonRate" />
-    </div>
+      <div class="field-row">
+        <div class="field-group">
+          <label class="field-label" for="extraPerson">Extra person rate</label>
+          <input class="field-input" id="extraPerson" type="number"
+                min="0" step="0.01"
+                placeholder="Optional"
+                [(ngModel)]="extraPersonRate" />
+        </div>
 
-    <div class="field-group">
-      <label class="field-label" for="mealPlan">Meal plan</label>
-      <select class="field-input" id="mealPlan" [(ngModel)]="mealPlan">
-        @for (mp of mealPlans; track mp.key) {
-          <option [value]="mp.key">{{ mp.label }}</option>
-        }
-      </select>
-    </div>
+        <div class="field-group">
+          <label class="field-label" for="mealPlan">Meal plan</label>
+          <select class="field-input" id="mealPlan" [(ngModel)]="mealPlan">
+            @for (mp of mealPlans; track mp.key) {
+              <option [value]="mp.key">{{ mp.label }}</option>
+            }
+          </select>
+        </div>
+      </div>
+    </section>
 
-    <!-- Row 6: Valid from + Valid until -->
-    <div class="field-group field-required">
-      <label class="field-label" for="validFrom">Valid from</label>
-      <input class="field-input" id="validFrom" type="date"
-             [class.field-error]="validationErrors['validFrom']"
-             [(ngModel)]="validFrom" />
-      @if (validationErrors['validFrom']; as msg) {
-        <span class="field-hint-error">{{ msg }}</span>
-      }
-    </div>
+    <!-- Validity -->
+    <section class="form-section">
+      <span class="form-section-title">Validity &amp; Priority</span>
 
-    <div class="field-group">
-      <label class="field-label" for="validUntil">Valid until</label>
-      <input class="field-input" id="validUntil" type="date"
-             [class.field-error]="validationErrors['validUntil']"
-             [(ngModel)]="validUntil" />
-      @if (validationErrors['validUntil']; as msg) {
-        <span class="field-hint-error">{{ msg }}</span>
-      }
-    </div>
+      <div class="field-row">
+        <div class="field-group field-required" [class.field-error]="validationErrors['validFrom']">
+          <label class="field-label" for="validFrom">Valid from</label>
+          <input class="field-input" id="validFrom" type="date"
+                [(ngModel)]="validFrom" />
+          @if (validationErrors['validFrom']; as msg) {
+            <span class="field-hint-error">{{ msg }}</span>
+          }
+        </div>
 
-    <!-- Row 7: Priority + Status (read-only) -->
-    <div class="field-group">
-      <label class="field-label" for="priority">Priority</label>
-      <input class="field-input" id="priority" type="number"
-             min="0" max="999"
-             [(ngModel)]="priority" />
-    </div>
+        <div class="field-group" [class.field-error]="validationErrors['validUntil']">
+          <label class="field-label" for="validUntil">Valid until</label>
+          <input class="field-input" id="validUntil" type="date"
+                [(ngModel)]="validUntil" />
+          @if (validationErrors['validUntil']; as msg) {
+            <span class="field-hint-error">{{ msg }}</span>
+          }
+          <span class="field-hint">Leave empty for no end date</span>
+        </div>
+      </div>
 
-    <div class="field-group">
-      <label class="field-label">Status</label>
-      <span class="badge badge-muted status-locked">Inactive</span>
-      <span class="text-subtle">Activate after review</span>
-    </div>
+      <div class="field-row">
+        <div class="field-group">
+          <label class="field-label" for="priority">Priority</label>
+          <input class="field-input" id="priority" type="number"
+                min="0" max="999"
+                [(ngModel)]="priority" />
+          <span class="field-hint">Lower number = higher priority (0–999)</span>
+        </div>
 
-    <!-- Full-width description -->
-    <div class="field-group full-width">
-      <label class="field-label" for="description">Description</label>
-      <textarea class="field-input" id="description" rows="2"
-                placeholder="Optional description"
-                [(ngModel)]="description"></textarea>
-    </div>
+        <div class="field-group">
+          <label class="field-label">Initial status</label>
+          <span class="badge badge-muted">Inactive</span>
+          <span class="field-hint">Activate after review</span>
+        </div>
+      </div>
+    </section>
   </div>
 </mat-dialog-content>
 
 <mat-dialog-actions align="end">
-  <button class="btn btn-invisible" (click)="cancel()" [disabled]="saving()">Cancel</button>
+  <button class="btn btn-outline" (click)="cancel()" [disabled]="saving()">Cancel</button>
   <button class="btn btn-primary" (click)="save()" [disabled]="!canSave || saving()">
     @if (saving()) {
       <mat-spinner diameter="16"></mat-spinner>
+      Creating…
+    } @else {
+      Create rate
     }
-    Create rate
   </button>
 </mat-dialog-actions>

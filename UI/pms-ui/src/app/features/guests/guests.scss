@@ -1,0 +1,64 @@
+/* Guests page — only component-specific overrides.
+ * All reusable patterns (filter-bar, data-table, states, badges, buttons)
+ * live in styles/shared.scss. */
+
+.guests-page {
+  max-width: 1400px;
+}
+
+.guest-name-cell {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.guest-avatar {
+  background: var(--color-accent-subtle);
+  color: var(--color-accent-fg);
+  font-weight: var(--font-weight-semibold);
+  font-size: 11px;
+}
+
+.guest-name-info {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.guest-name {
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-accent-fg);
+  white-space: nowrap;
+}
+
+.guest-detail {
+  font-size: var(--font-size-xs);
+}
+
+.status-badges {
+  display: flex;
+  gap: var(--space-1);
+  flex-wrap: wrap;
+}
+
+.cell-numeric {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Responsive ── */
+@media (max-width: 768px) {
+  .filter-bar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .search-input {
+    width: 100%;
+  }
+
+  .table-container {
+    overflow-x: auto;
+  }
+}
