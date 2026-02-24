@@ -82,16 +82,16 @@ export const handleRoomStatusUpdate = async (
         status = COALESCE($3::room_status, status),
         maintenance_status = COALESCE($4::maintenance_status, maintenance_status),
         is_blocked = CASE
-          WHEN $3::text = 'AVAILABLE' THEN false
+          WHEN $3::room_status = 'AVAILABLE' THEN false
           ELSE is_blocked
         END,
         is_out_of_order = CASE
-          WHEN $3::text = 'AVAILABLE' THEN false
-          WHEN $3::text IN ('OUT_OF_ORDER', 'OUT_OF_SERVICE') THEN true
+          WHEN $3::room_status = 'AVAILABLE' THEN false
+          WHEN $3::room_status IN ('OUT_OF_ORDER', 'OUT_OF_SERVICE') THEN true
           ELSE is_out_of_order
         END,
         out_of_order_reason = CASE
-          WHEN $3::text = 'AVAILABLE' THEN NULL
+          WHEN $3::room_status = 'AVAILABLE' THEN NULL
           ELSE out_of_order_reason
         END,
         notes = CASE

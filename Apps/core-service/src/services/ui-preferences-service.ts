@@ -100,17 +100,21 @@ export const upsertUiPreferences = async (
     data.time_format ?? null,
     data.currency_display ?? null,
     data.home_page ?? null,
-    data.home_page_dashboard_layout ? JSON.stringify(data.home_page_dashboard_layout) : null,
+    data.home_page_dashboard_layout !== undefined
+      ? JSON.stringify(data.home_page_dashboard_layout)
+      : null,
     data.default_page_size ?? null,
     data.default_sort_field ?? null,
     data.default_sort_direction ?? null,
     data.notification_sound_enabled ?? null,
     data.notification_desktop_enabled ?? null,
     data.notification_email_digest ?? null,
-    data.pinned_reports ? JSON.stringify(data.pinned_reports) : null,
-    data.recent_searches ? JSON.stringify(data.recent_searches) : null,
+    data.pinned_reports !== undefined ? JSON.stringify(data.pinned_reports) : null,
+    data.recent_searches !== undefined ? JSON.stringify(data.recent_searches) : null,
     data.favorite_properties ?? null,
-    data.profile_display_fields ? JSON.stringify(data.profile_display_fields) : null,
+    data.profile_display_fields !== undefined
+      ? JSON.stringify(data.profile_display_fields)
+      : null,
     data.profile_history_display ?? null,
     data.default_profile_tab ?? null,
   ]);

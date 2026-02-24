@@ -1,4 +1,4 @@
-import { Component, computed, effect, inject, type OnInit, signal } from '@angular/core';
+import { Component, computed, inject, type OnInit, signal } from '@angular/core';
 import { NgClass } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
@@ -84,17 +84,7 @@ export class RoomDetailComponent implements OnInit {
     return this.editOoo() !== r.is_out_of_order || this.editOooReason() !== (r.out_of_order_reason ?? '') || this.editExpectedReady() !== (r.expected_ready_date?.substring(0, 10) ?? '');
   });
 
-  constructor() {
-    // Sync editable signals whenever room data loads
-    effect(() => {
-      const r = this.room();
-      if (r) {
-        this.editOoo.set(r.is_out_of_order);
-        this.editOooReason.set(r.out_of_order_reason ?? '');
-        this.editExpectedReady.set(r.expected_ready_date?.substring(0, 10) ?? '');
-      }
-    });
-  }
+  constructor() {}
 
   readonly infoRows = computed<DetailRow[]>(() => {
     const r = this.room();
@@ -219,6 +209,10 @@ export class RoomDetailComponent implements OnInit {
     try {
       const room = await this.api.get<RoomDetail>(`/rooms/${roomId}`, { tenant_id: tenantId });
       this.room.set(room);
+      // Sync editable OOO state from loaded room data
+      this.editOoo.set(room.is_out_of_order);
+      this.editOooReason.set(room.out_of_order_reason ?? '');
+      this.editExpectedReady.set(room.expected_ready_date?.substring(0, 10) ?? '');
       // Initialize editable amenities from room data
       this.editAmenities.set([...(room.amenities ?? room.room_type_amenities ?? [])]);
     } catch (e) {
@@ -252,9 +246,15 @@ export class RoomDetailComponent implements OnInit {
     }
   }
 
+  private static readonly AMENITY_CODE_PATTERN = /^[A-Z0-9_]{1,50}$/;
+
   addCustomAmenity(): void {
     const raw = this.newAmenityInput().trim().toUpperCase().replace(/\s+/g, '_');
     if (!raw) return;
+    if (!RoomDetailComponent.AMENITY_CODE_PATTERN.test(raw)) {
+      this.amenityError.set('Amenity code must be 1–50 characters: letters, digits, and underscores only.');
+      return;
+    }
     const current = this.editAmenities();
     if (!current.includes(raw)) {
       this.editAmenities.set([...current, raw]);
@@ -326,8 +326,8 @@ export class RoomDetailComponent implements OnInit {
         });
         this.saveSuccess.set('Room restored to Available.');
       }
-      // Reload room data after a short delay (command is async via Kafka)
-      setTimeout(() => this.loadRoom(r.room_id), 1000);
+      // Reload room data — poll until status reflects the change (command is async via Kafka)
+      await this.pollRoomUntilChanged(r.room_id, r.is_out_of_order !== this.editOoo());
     } catch (e) {
       this.saveError.set(e instanceof Error ? e.message : 'Failed to update room');
     } finally {
@@ -356,6 +356,28 @@ export class RoomDetailComponent implements OnInit {
   }
 
   readonly deactivating = signal(false);
+
+  /**
+   * Poll room data until the OOO flag reflects the expected change, with a maximum of 5 attempts.
+   */
+  private async pollRoomUntilChanged(roomId: string, expectOooChanged: boolean): Promise<void> {
+    const maxAttempts = 5;
+    const intervalMs = 800;
+    const previousOoo = this.room()?.is_out_of_order;
+
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      await new Promise((resolve) => setTimeout(resolve, intervalMs));
+      await this.loadRoom(roomId);
+      const current = this.room();
+      if (current && expectOooChanged && current.is_out_of_order !== previousOoo) {
+        return; // Change detected
+      }
+      if (current && !expectOooChanged) {
+        return; // Just needed a reload
+      }
+    }
+    // Final reload even if change wasn't detected
+  }
 
   async deactivateRoom(): Promise<void> {
     const r = this.room();
