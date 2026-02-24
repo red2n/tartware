@@ -4,6 +4,6 @@ import { config } from "../config.js";
 import { query } from "../lib/db.js";
 
 export default createStandardAuthPlugin({
-	jwtConfig: config.auth.jwt,
-	query,
+  jwtConfig: config.auth.jwt,
+  query,
 });

@@ -4,8 +4,8 @@ import { config } from "../config.js";
 import { kafka } from "./client.js";
 
 const producer = createKafkaProducer(kafka, {
-	commandTopic: config.kafka.topic,
-	dlqTopic: config.kafka.dlqTopic,
+  commandTopic: config.kafka.topic,
+  dlqTopic: config.kafka.dlqTopic,
 });
 
 export const publishCommandEvent = producer.publishEvent;

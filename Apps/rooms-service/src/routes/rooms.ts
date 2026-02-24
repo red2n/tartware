@@ -17,13 +17,13 @@ import { z } from "zod";
 
 import { config } from "../config.js";
 import {
+  activateRoom,
   createRoom,
+  deactivateRoom,
   deleteRoom,
   getRoomById,
   listAmenityCatalog,
   listRooms,
-  activateRoom,
-  deactivateRoom,
   RoomListItemSchema,
   searchAvailableRooms,
   updateRoom,
@@ -100,7 +100,10 @@ const AmenityCatalogItemSchema = z.object({
 });
 
 const AmenityCatalogResponseSchema = z.array(AmenityCatalogItemSchema);
-const AmenityCatalogResponseJsonSchema = schemaFromZod(AmenityCatalogResponseSchema, "AmenityCatalogResponse");
+const AmenityCatalogResponseJsonSchema = schemaFromZod(
+  AmenityCatalogResponseSchema,
+  "AmenityCatalogResponse",
+);
 
 const ROOMS_TAG = "Rooms";
 
@@ -119,7 +122,10 @@ export const registerRoomRoutes = (app: FastifyInstance): void => {
         tag: ROOMS_TAG,
         summary: "List amenity catalog",
         description: "Returns available amenities that can be assigned to rooms.",
-        querystring: schemaFromZod(z.object({ tenant_id: z.string().uuid() }), "AmenityCatalogQuery"),
+        querystring: schemaFromZod(
+          z.object({ tenant_id: z.string().uuid() }),
+          "AmenityCatalogQuery",
+        ),
         response: {
           200: AmenityCatalogResponseJsonSchema,
         },

@@ -575,7 +575,8 @@ export const activateRoom = async (input: {
   if (rateCount === 0) {
     return {
       success: false,
-      error: "Cannot activate room: no active rate plans exist for this room type. Please configure at least one rate plan first.",
+      error:
+        "Cannot activate room: no active rate plans exist for this room type. Please configure at least one rate plan first.",
     };
   }
 
@@ -596,7 +597,10 @@ export const activateRoom = async (input: {
   );
 
   if (!rowCount || rowCount === 0) {
-    return { success: false, error: "Failed to activate room — it may have been modified concurrently" };
+    return {
+      success: false,
+      error: "Failed to activate room — it may have been modified concurrently",
+    };
   }
 
   // 4. Return the updated room
@@ -640,7 +644,10 @@ export const deactivateRoom = async (input: {
   );
 
   if (!rowCount || rowCount === 0) {
-    return { success: false, error: "Failed to deactivate room — it may have been modified concurrently" };
+    return {
+      success: false,
+      error: "Failed to deactivate room — it may have been modified concurrently",
+    };
   }
 
   const updated = await getRoomById({ tenantId: input.tenantId, roomId: input.roomId });

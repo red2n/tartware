@@ -1,6 +1,6 @@
 import { buildRouteSchema, schemaFromZod } from "@tartware/openapi";
 import { CommandDefinitionSchema } from "@tartware/schemas";
-import { extractBearerToken, createTokenVerifier } from "@tartware/tenant-auth/jwt";
+import { createTokenVerifier, extractBearerToken } from "@tartware/tenant-auth/jwt";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 

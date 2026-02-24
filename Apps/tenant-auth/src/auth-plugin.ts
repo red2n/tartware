@@ -1,36 +1,36 @@
 import type { FastifyPluginAsync } from "fastify";
 
 import type { AuthContext, TenantScopeDecorator } from "./index.js";
+import { createTenantAuthPlugin } from "./index.js";
 import { createTokenVerifier, extractBearerToken, type JwtConfig } from "./jwt.js";
 import { createMembershipLoader, type TenantMembership } from "./membership.js";
-import { createTenantAuthPlugin } from "./index.js";
 
 type QueryFn = <T extends Record<string, unknown>>(
-	sql: string,
-	params: unknown[],
+  sql: string,
+  params: unknown[],
 ) => Promise<{ rows: T[] }>;
 
 export interface StandardAuthPluginOptions {
-	jwtConfig: JwtConfig;
-	query: QueryFn;
+  jwtConfig: JwtConfig;
+  query: QueryFn;
 }
 
 declare module "fastify" {
-	interface FastifyRequest {
-		auth: AuthContext<TenantMembership>;
-	}
+  interface FastifyRequest {
+    auth: AuthContext<TenantMembership>;
+  }
 
-	interface FastifyInstance {
-		withTenantScope: TenantScopeDecorator<TenantMembership>;
-	}
+  interface FastifyInstance {
+    withTenantScope: TenantScopeDecorator<TenantMembership>;
+  }
 }
 
 const STANDARD_ROLE_PRIORITY: Record<string, number> = {
-	OWNER: 500,
-	ADMIN: 400,
-	MANAGER: 300,
-	STAFF: 200,
-	VIEWER: 100,
+  OWNER: 500,
+  ADMIN: 400,
+  MANAGER: 300,
+  STAFF: 200,
+  VIEWER: 100,
 };
 
 /**
@@ -52,15 +52,15 @@ const STANDARD_ROLE_PRIORITY: Record<string, number> = {
  * ```
  */
 export const createStandardAuthPlugin = (
-	options: StandardAuthPluginOptions,
+  options: StandardAuthPluginOptions,
 ): FastifyPluginAsync => {
-	const verifyAccessToken = createTokenVerifier(options.jwtConfig);
-	const getUserMemberships = createMembershipLoader(options.query);
+  const verifyAccessToken = createTokenVerifier(options.jwtConfig);
+  const getUserMemberships = createMembershipLoader(options.query);
 
-	return createTenantAuthPlugin<TenantMembership>({
-		getUserMemberships,
-		extractBearerToken,
-		verifyAccessToken,
-		rolePriority: STANDARD_ROLE_PRIORITY,
-	});
+  return createTenantAuthPlugin<TenantMembership>({
+    getUserMemberships,
+    extractBearerToken,
+    verifyAccessToken,
+    rolePriority: STANDARD_ROLE_PRIORITY,
+  });
 };

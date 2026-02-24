@@ -3,13 +3,11 @@ import {
   createCommandDispatchService,
   type AcceptCommandInput as SharedAcceptCommandInput,
 } from "@tartware/command-center-shared";
-
+import type { TenantMembership } from "@tartware/tenant-auth/membership";
 import { enqueueOutboxRecord } from "../outbox/repository.js";
 import { findCommandDispatchByRequest, insertCommandDispatch } from "../sql/command-dispatches.js";
-
 import { resolveCommandForTenant } from "./command-registry-service.js";
 import { throttleCommand } from "./command-throttle-service.js";
-import type { TenantMembership } from "@tartware/tenant-auth/membership";
 
 type AcceptCommandInput = SharedAcceptCommandInput<TenantMembership>;
 

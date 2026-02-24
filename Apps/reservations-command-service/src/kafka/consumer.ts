@@ -1,12 +1,11 @@
 import { performance } from "node:perf_hooks";
-
+import { processWithRetry, RetryExhaustedError } from "@tartware/config/retry";
 import {
   type FailureCause,
   type ReservationEvent,
   ReservationEventSchema,
 } from "@tartware/schemas";
 import type { Consumer, EachBatchPayload } from "kafkajs";
-
 import { kafkaConfig } from "../config.js";
 import {
   observeProcessingDuration,
@@ -15,7 +14,6 @@ import {
   setConsumerLag,
 } from "../lib/metrics.js";
 import { upsertReservationEventOffset } from "../lib/reservation-event-offsets.js";
-import { processWithRetry, RetryExhaustedError } from "@tartware/config/retry";
 import { reservationsLogger } from "../logger.js";
 import {
   type ReservationCommandLifecycleState,
