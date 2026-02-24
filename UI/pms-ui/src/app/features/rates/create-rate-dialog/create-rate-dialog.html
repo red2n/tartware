@@ -67,6 +67,26 @@
                   placeholder="Optional rate plan description"
                   [(ngModel)]="description"></textarea>
       </div>
+
+      <div class="field-group field-required" [class.field-error]="validationErrors['roomType']">
+        <label class="field-label" for="roomType">Room type</label>
+        @if (loadingRoomTypes()) {
+          <span class="field-hint">Loading room types…</span>
+        } @else {
+          <select class="field-input" id="roomType" [(ngModel)]="selectedRoomTypeId">
+            <option value="" disabled>Select a room type</option>
+            @for (rt of roomTypes(); track rt.room_type_id) {
+              <option [value]="rt.room_type_id">{{ rt.type_name }} ({{ rt.type_code }})</option>
+            }
+          </select>
+          @if (validationErrors['roomType']; as msg) {
+            <span class="field-hint-error">{{ msg }}</span>
+          }
+          @if (roomTypes().length === 0) {
+            <span class="field-hint">No room types found for this property</span>
+          }
+        }
+      </div>
     </section>
 
     <!-- Pricing -->

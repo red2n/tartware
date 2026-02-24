@@ -57,6 +57,11 @@
               <mat-icon>search_off</mat-icon>
               <span>No properties match "{{ search() }}"</span>
             </div>
+          } @else {
+            <div class="select-property-empty">
+              <mat-icon>apartment</mat-icon>
+              <span>No properties available for this tenant</span>
+            </div>
           }
         }
       </div>

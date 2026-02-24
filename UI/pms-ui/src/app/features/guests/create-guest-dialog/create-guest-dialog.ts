@@ -1,4 +1,4 @@
-import { Component, inject, type OnInit, signal } from "@angular/core";
+import { Component, inject, signal } from "@angular/core";
 import { FormsModule } from "@angular/forms";
 import { MatButtonModule } from "@angular/material/button";
 import { MatDialogModule, MatDialogRef } from "@angular/material/dialog";
@@ -7,9 +7,6 @@ import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
 
 import { ApiService, ApiValidationError } from "../../../core/api/api.service";
 import { AuthService } from "../../../core/auth/auth.service";
-import { TenantContextService } from "../../../core/context/tenant-context.service";
-
-type Property = { id: string; property_name: string };
 
 @Component({
 	selector: "app-create-guest-dialog",
@@ -24,13 +21,11 @@ type Property = { id: string; property_name: string };
 	templateUrl: "./create-guest-dialog.html",
 	styleUrl: "./create-guest-dialog.scss",
 })
-export class CreateGuestDialogComponent implements OnInit {
+export class CreateGuestDialogComponent {
 	private readonly api = inject(ApiService);
 	private readonly auth = inject(AuthService);
-	private readonly ctx = inject(TenantContextService);
 	private readonly dialogRef = inject(MatDialogRef<CreateGuestDialogComponent>);
 
-	readonly properties = signal<Property[]>([]);
 	readonly saving = signal(false);
 	readonly error = signal<string | null>(null);
 	readonly fieldErrors = signal<Record<string, string>>({});
@@ -58,24 +53,6 @@ export class CreateGuestDialogComponent implements OnInit {
 
 	readonly titles = ["Mr.", "Mrs.", "Ms.", "Dr.", "Prof."];
 	readonly loyaltyTiers = ["BASE", "SILVER", "GOLD", "PLATINUM", "ELITE"];
-
-	ngOnInit(): void {
-		this.loadReferenceData();
-	}
-
-	async loadReferenceData(): Promise<void> {
-		const tenantId = this.auth.tenantId();
-		if (!tenantId) return;
-
-		try {
-			const properties = await this.api.get<Property[]>("/properties", {
-				tenant_id: tenantId,
-			});
-			this.properties.set(properties);
-		} catch {
-			this.error.set("Failed to load reference data");
-		}
-	}
 
 	markTouched(field: string): void {
 		this.touched = { ...this.touched, [field]: true };

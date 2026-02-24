@@ -1,4 +1,4 @@
-import { Component, inject, signal } from "@angular/core";
+import { Component, inject, type OnInit, signal } from "@angular/core";
 import { FormsModule } from "@angular/forms";
 import { MatDialogModule, MatDialogRef } from "@angular/material/dialog";
 import { MatIconModule } from "@angular/material/icon";
@@ -6,6 +6,9 @@ import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
 
 import { ApiService, ApiValidationError } from "../../../core/api/api.service";
 import { AuthService } from "../../../core/auth/auth.service";
+import { TenantContextService } from "../../../core/context/tenant-context.service";
+
+type RoomTypeOption = { room_type_id: string; type_name: string; type_code: string };
 
 @Component({
 	selector: "app-create-rate-dialog",
@@ -19,13 +22,16 @@ import { AuthService } from "../../../core/auth/auth.service";
 	templateUrl: "./create-rate-dialog.html",
 	styleUrl: "./create-rate-dialog.scss",
 })
-export class CreateRateDialogComponent {
+export class CreateRateDialogComponent implements OnInit {
 	private readonly api = inject(ApiService);
 	private readonly auth = inject(AuthService);
+	private readonly ctx = inject(TenantContextService);
 	private readonly dialogRef = inject(MatDialogRef<CreateRateDialogComponent>);
 
 	readonly saving = signal(false);
 	readonly error = signal<string | null>(null);
+	readonly roomTypes = signal<RoomTypeOption[]>([]);
+	readonly loadingRoomTypes = signal(false);
 
 	private readonly dateSuffix = new Date()
 		.toISOString()
@@ -39,6 +45,7 @@ export class CreateRateDialogComponent {
 	strategy = "FIXED";
 	baseRate: number | null = 0.01;
 	currency = "USD";
+	selectedRoomTypeId = "";
 	singleOccupancyRate: number | null = 0.01;
 	doubleOccupancyRate: number | null = 0.01;
 	extraPersonRate: number | null = null;
@@ -77,6 +84,33 @@ export class CreateRateDialogComponent {
 		{ key: "FB", label: "Full Board" },
 		{ key: "AI", label: "All Inclusive" },
 	];
+
+	ngOnInit(): void {
+		this.loadRoomTypes();
+	}
+
+	private async loadRoomTypes(): Promise<void> {
+		const tenantId = this.auth.tenantId();
+		const propertyId = this.ctx.propertyId();
+		if (!tenantId || !propertyId) return;
+
+		this.loadingRoomTypes.set(true);
+		try {
+			const types = await this.api.get<RoomTypeOption[]>("/room-types", {
+				tenant_id: tenantId,
+				property_id: propertyId,
+				is_active: "true",
+			});
+			this.roomTypes.set(types);
+			if (types.length === 1) {
+				this.selectedRoomTypeId = types[0].room_type_id;
+			}
+		} catch {
+			this.error.set("Failed to load room types");
+		} finally {
+			this.loadingRoomTypes.set(false);
+		}
+	}
 
 	onRateCodeInput(value: string): void {
 		this.rateCode = value.toUpperCase();
@@ -128,6 +162,10 @@ export class CreateRateDialogComponent {
 			errors["validFrom"] = "Valid from date is required";
 		}
 
+		if (!this.selectedRoomTypeId) {
+			errors["roomType"] = "Room type is required";
+		}
+
 		if (
 			this.validUntil &&
 			this.validFrom &&
@@ -157,12 +195,16 @@ export class CreateRateDialogComponent {
 		this.error.set(null);
 
 		try {
-			// We need property_id and room_type_id — for now use defaults from tenant context
-			// These should ideally be selectable in a more comprehensive form
+			const propertyId = this.ctx.propertyId();
+			if (!propertyId) {
+				this.error.set("No property selected");
+				return;
+			}
+
 			const body: Record<string, unknown> = {
 				tenant_id: tenantId,
-				property_id: "22222222-2222-2222-2222-222222222222",
-				room_type_id: "44444444-4444-4444-4444-444444444444",
+				property_id: propertyId,
+				room_type_id: this.selectedRoomTypeId,
 				rate_name: this.rateName.trim(),
 				rate_code: this.rateCode.trim().toUpperCase(),
 				description: this.description.trim() || undefined,
