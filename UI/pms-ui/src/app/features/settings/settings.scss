@@ -299,6 +299,141 @@
   height: 12px;
 }
 
+/* ── JSON Form Fields ── */
+.json-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  flex: 1;
+  min-width: 0;
+}
+
+.json-form-edit {
+  gap: var(--space-3);
+}
+
+.json-field-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: 32px;
+}
+
+.json-field-row-indent {
+  padding-left: var(--space-4);
+}
+
+.json-field-label {
+  font-size: var(--font-size-sm);
+  color: var(--color-fg-muted);
+  min-width: 180px;
+  flex-shrink: 0;
+}
+
+.json-field-value {
+  font-size: var(--font-size-sm);
+  color: var(--color-fg-default);
+}
+
+.json-field-input {
+  max-width: 320px;
+  flex: 1;
+}
+
+.json-sub-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.json-sub-group-label {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-fg-default);
+  padding-bottom: var(--space-1);
+}
+
+.json-array-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.json-array-table-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--color-border-muted);
+  border-radius: var(--radius-md);
+}
+
+.json-array-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--font-size-xs);
+
+  th {
+    text-align: left;
+    padding: var(--space-2) var(--space-3);
+    background: var(--color-canvas-subtle);
+    color: var(--color-fg-muted);
+    font-weight: var(--font-weight-semibold);
+    white-space: nowrap;
+    border-bottom: 1px solid var(--color-border-muted);
+  }
+
+  td {
+    padding: var(--space-2) var(--space-3);
+    color: var(--color-fg-default);
+    border-bottom: 1px solid var(--color-border-muted);
+    white-space: nowrap;
+  }
+
+  tbody tr:last-child td {
+    border-bottom: none;
+  }
+}
+
+.json-array-table-edit {
+  td {
+    padding: var(--space-1) var(--space-2);
+  }
+}
+
+.json-cell-input {
+  width: 100%;
+  min-width: 80px;
+  font-size: var(--font-size-xs);
+  padding: var(--space-1) var(--space-2);
+}
+
+.json-cell-checkbox {
+  cursor: pointer;
+  width: 16px;
+  height: 16px;
+}
+
+.json-array-actions-col {
+  width: 40px;
+  text-align: center;
+}
+
+.json-add-row-btn {
+  align-self: flex-start;
+}
+
+.json-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+}
+
+.json-chip {
+  font-size: var(--font-size-xs);
+  padding: 2px 8px;
+  border-radius: 9999px;
+  background: var(--color-accent-subtle);
+  color: var(--color-accent-fg);
+}
+
 /* ── Responsive ── */
 @media (max-width: 900px) {
   .settings-layout {

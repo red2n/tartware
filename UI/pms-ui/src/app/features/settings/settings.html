@@ -144,12 +144,117 @@
                               <!-- Edit mode -->
                               <div class="def-edit-area">
                                 @if (isJsonValue(def)) {
-                                  <textarea
-                                    class="field-input def-json-editor"
-                                    [ngModel]="getEditState(def.id).editValue"
-                                    (ngModelChange)="onEditValueChange(def.id, $event)"
-                                    rows="12"
-                                    spellcheck="false"></textarea>
+                                  <div class="json-form json-form-edit">
+                                    @for (group of parseJsonFields(getEditState(def.id).editValue); track group.key) {
+                                      <div class="json-field-group">
+                                        @if (group.type === 'primitive') {
+                                          <div class="json-field-row">
+                                            <label class="json-field-label">{{ group.label }}</label>
+                                            @if (group.valueType === 'boolean') {
+                                              <mat-slide-toggle
+                                                [checked]="group.value === true"
+                                                (change)="onJsonFieldEdit(def.id, group.key, null, $event.checked)">
+                                              </mat-slide-toggle>
+                                            } @else if (group.valueType === 'number') {
+                                              <input type="number" class="field-input json-field-input"
+                                                [ngModel]="group.value"
+                                                (ngModelChange)="onJsonFieldEdit(def.id, group.key, null, $event)" />
+                                            } @else {
+                                              <input type="text" class="field-input json-field-input"
+                                                [ngModel]="group.value"
+                                                (ngModelChange)="onJsonFieldEdit(def.id, group.key, null, $event)" />
+                                            }
+                                          </div>
+                                        } @else if (group.type === 'object') {
+                                          <div class="json-sub-group">
+                                            <span class="json-sub-group-label">{{ group.label }}</span>
+                                            @for (child of group.children; track child.key) {
+                                              <div class="json-field-row json-field-row-indent">
+                                                <label class="json-field-label">{{ child.label }}</label>
+                                                @if (child.valueType === 'boolean') {
+                                                  <mat-slide-toggle
+                                                    [checked]="child.value === true"
+                                                    (change)="onJsonFieldEdit(def.id, group.key, child.key, $event.checked)">
+                                                  </mat-slide-toggle>
+                                                } @else if (child.valueType === 'number') {
+                                                  <input type="number" class="field-input json-field-input"
+                                                    [ngModel]="child.value"
+                                                    (ngModelChange)="onJsonFieldEdit(def.id, group.key, child.key, $event)" />
+                                                } @else {
+                                                  <input type="text" class="field-input json-field-input"
+                                                    [ngModel]="child.value"
+                                                    (ngModelChange)="onJsonFieldEdit(def.id, group.key, child.key, $event)" />
+                                                }
+                                              </div>
+                                            }
+                                          </div>
+                                        } @else if (group.type === 'array-objects') {
+                                          <div class="json-array-group">
+                                            <span class="json-sub-group-label">{{ group.label }}</span>
+                                            @if (group.rows.length > 0) {
+                                              <div class="json-array-table-wrap">
+                                                <table class="json-array-table json-array-table-edit">
+                                                  <thead>
+                                                    <tr>
+                                                      @for (col of group.columns; track col) {
+                                                        <th>{{ humanizeKey(col) }}</th>
+                                                      }
+                                                      <th class="json-array-actions-col"></th>
+                                                    </tr>
+                                                  </thead>
+                                                  <tbody>
+                                                    @for (row of group.rows; track $index; let i = $index) {
+                                                      <tr>
+                                                        @for (col of group.columns; track col) {
+                                                          <td>
+                                                            @if (getCellType(row[col]) === 'boolean') {
+                                                              <input type="checkbox" class="json-cell-checkbox"
+                                                                [ngModel]="row[col]"
+                                                                (ngModelChange)="onArrayCellEdit(def.id, group.key, i, col, $event)" />
+                                                            } @else if (getCellType(row[col]) === 'number') {
+                                                              <input type="number" class="field-input json-cell-input"
+                                                                [ngModel]="row[col]"
+                                                                (ngModelChange)="onArrayCellEdit(def.id, group.key, i, col, $event)" />
+                                                            } @else if (getCellType(row[col]) === 'array') {
+                                                              <input type="text" class="field-input json-cell-input"
+                                                                [ngModel]="joinArray(row[col])"
+                                                                (ngModelChange)="onArrayCellArrayEdit(def.id, group.key, i, col, $event)" />
+                                                            } @else {
+                                                              <input type="text" class="field-input json-cell-input"
+                                                                [ngModel]="row[col]"
+                                                                (ngModelChange)="onArrayCellEdit(def.id, group.key, i, col, $event)" />
+                                                            }
+                                                          </td>
+                                                        }
+                                                        <td class="json-array-actions-col">
+                                                          <button class="btn btn-invisible btn-sm"
+                                                            (click)="removeArrayRow(def.id, group.key, i)"
+                                                            matTooltip="Remove row">
+                                                            <mat-icon>close</mat-icon>
+                                                          </button>
+                                                        </td>
+                                                      </tr>
+                                                    }
+                                                  </tbody>
+                                                </table>
+                                              </div>
+                                            }
+                                            <button class="btn btn-invisible btn-sm json-add-row-btn"
+                                              (click)="addArrayRow(def.id, group.key)">
+                                              <mat-icon>add</mat-icon> Add row
+                                            </button>
+                                          </div>
+                                        } @else if (group.type === 'array-primitive') {
+                                          <div class="json-field-row">
+                                            <label class="json-field-label">{{ group.label }}</label>
+                                            <input type="text" class="field-input json-field-input"
+                                              [ngModel]="joinArray(group.value)"
+                                              (ngModelChange)="onArrayPrimitiveEdit(def.id, group.key, $event)" />
+                                          </div>
+                                        }
+                                      </div>
+                                    }
+                                  </div>
                                 } @else if (isSelectValue(def)) {
                                   <select
                                     class="field-input"
@@ -218,7 +323,81 @@
                               <!-- Read mode: show current value + edit button -->
                               <div class="def-value-display">
                                 @if (isJsonValue(def)) {
-                                  <pre class="def-value-json">{{ formatDisplayValue(def) }}</pre>
+                                  <div class="json-form">
+                                    @for (group of parseJsonFields(getDisplayValue(def)); track group.key) {
+                                      <div class="json-field-group">
+                                        @if (group.type === 'primitive') {
+                                          <div class="json-field-row">
+                                            <span class="json-field-label">{{ group.label }}</span>
+                                            @if (group.valueType === 'boolean') {
+                                              <span class="badge" [ngClass]="group.value ? 'badge-success' : 'badge-muted'">
+                                                {{ group.value ? 'Enabled' : 'Disabled' }}
+                                              </span>
+                                            } @else {
+                                              <span class="json-field-value">{{ formatCellValue(group.value) }}</span>
+                                            }
+                                          </div>
+                                        } @else if (group.type === 'object') {
+                                          <div class="json-sub-group">
+                                            <span class="json-sub-group-label">{{ group.label }}</span>
+                                            @for (child of group.children; track child.key) {
+                                              <div class="json-field-row json-field-row-indent">
+                                                <span class="json-field-label">{{ child.label }}</span>
+                                                @if (child.valueType === 'boolean') {
+                                                  <span class="badge" [ngClass]="child.value ? 'badge-success' : 'badge-muted'">
+                                                    {{ child.value ? 'Enabled' : 'Disabled' }}
+                                                  </span>
+                                                } @else {
+                                                  <span class="json-field-value">{{ formatCellValue(child.value) }}</span>
+                                                }
+                                              </div>
+                                            }
+                                          </div>
+                                        } @else if (group.type === 'array-objects') {
+                                          <div class="json-array-group">
+                                            <span class="json-sub-group-label">{{ group.label }}</span>
+                                            @if (group.rows.length > 0) {
+                                              <div class="json-array-table-wrap">
+                                                <table class="json-array-table">
+                                                  <thead>
+                                                    <tr>
+                                                      @for (col of group.columns; track col) {
+                                                        <th>{{ humanizeKey(col) }}</th>
+                                                      }
+                                                    </tr>
+                                                  </thead>
+                                                  <tbody>
+                                                    @for (row of group.rows; track $index) {
+                                                      <tr>
+                                                        @for (col of group.columns; track col) {
+                                                          <td>{{ formatCellValue(row[col]) }}</td>
+                                                        }
+                                                      </tr>
+                                                    }
+                                                  </tbody>
+                                                </table>
+                                              </div>
+                                            } @else {
+                                              <span class="text-muted">No items</span>
+                                            }
+                                          </div>
+                                        } @else if (group.type === 'array-primitive') {
+                                          <div class="json-field-row">
+                                            <span class="json-field-label">{{ group.label }}</span>
+                                            <div class="json-chips">
+                                              @for (item of group.items; track $index) {
+                                                <span class="json-chip">{{ item }}</span>
+                                              } @empty {
+                                                <span class="text-muted">None</span>
+                                              }
+                                            </div>
+                                          </div>
+                                        }
+                                      </div>
+                                    } @empty {
+                                      <span class="text-muted">Not configured</span>
+                                    }
+                                  </div>
                                 } @else {
                                   <span class="def-value-text" [class.text-muted]="getDisplayValue(def) === null">
                                     {{ formatDisplayValue(def) }}

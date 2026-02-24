@@ -51,6 +51,19 @@ interface EditState {
   errorMessage: string | null;
 }
 
+/** Parsed field from a JSON settings value, for structured form rendering */
+interface JsonFieldGroup {
+  key: string;
+  label: string;
+  type: 'primitive' | 'object' | 'array-primitive' | 'array-objects';
+  value: unknown;
+  valueType: 'string' | 'number' | 'boolean';
+  children: { key: string; label: string; value: unknown; valueType: 'string' | 'number' | 'boolean' }[];
+  columns: string[];
+  rows: Record<string, unknown>[];
+  items: unknown[];
+}
+
 @Component({
   selector: 'app-settings',
   standalone: true,
@@ -234,6 +247,177 @@ export class SettingsComponent implements OnInit {
     return this.options().filter((o) => o.setting_id === defId && o.is_active);
   }
 
+  // ── JSON form helpers ──
+
+  /** Parse a JSON object value into renderable field groups */
+  parseJsonFields(value: unknown): JsonFieldGroup[] {
+    if (value === null || value === undefined || typeof value !== 'object' || Array.isArray(value)) {
+      return [];
+    }
+    const obj = value as Record<string, unknown>;
+    const base: Pick<JsonFieldGroup, 'children' | 'columns' | 'rows' | 'items'> = {
+      children: [],
+      columns: [],
+      rows: [],
+      items: [],
+    };
+    const groups: JsonFieldGroup[] = [];
+
+    for (const [key, v] of Object.entries(obj)) {
+      const label = this.humanizeKey(key);
+      if (typeof v === 'boolean') {
+        groups.push({ ...base, key, label, type: 'primitive', value: v, valueType: 'boolean' });
+      } else if (typeof v === 'number') {
+        groups.push({ ...base, key, label, type: 'primitive', value: v, valueType: 'number' });
+      } else if (Array.isArray(v)) {
+        if (v.length > 0 && typeof v[0] === 'object' && v[0] !== null && !Array.isArray(v[0])) {
+          const colSet = new Set<string>();
+          for (const item of v) {
+            if (typeof item === 'object' && item !== null) {
+              for (const k of Object.keys(item as Record<string, unknown>)) colSet.add(k);
+            }
+          }
+          groups.push({
+            ...base,
+            key,
+            label,
+            type: 'array-objects',
+            value: v,
+            valueType: 'string',
+            columns: [...colSet],
+            rows: v as Record<string, unknown>[],
+          });
+        } else {
+          groups.push({ ...base, key, label, type: 'array-primitive', value: v, valueType: 'string', items: v });
+        }
+      } else if (typeof v === 'object' && v !== null) {
+        const children: JsonFieldGroup['children'] = [];
+        for (const [ck, cv] of Object.entries(v as Record<string, unknown>)) {
+          const vt: 'string' | 'number' | 'boolean' =
+            typeof cv === 'boolean' ? 'boolean' : typeof cv === 'number' ? 'number' : 'string';
+          children.push({ key: ck, label: this.humanizeKey(ck), value: cv, valueType: vt });
+        }
+        groups.push({ ...base, key, label, type: 'object', value: v, valueType: 'string', children });
+      } else {
+        groups.push({ ...base, key, label, type: 'primitive', value: v ?? '', valueType: 'string' });
+      }
+    }
+    return groups;
+  }
+
+  /** Convert camelCase or SCREAMING_CASE key to human-readable label */
+  humanizeKey(key: string): string {
+    if (key === key.toUpperCase() && key.includes('_')) {
+      return key
+        .split('_')
+        .map((w) => w.charAt(0) + w.slice(1).toLowerCase())
+        .join(' ');
+    }
+    return key
+      .replace(/([a-z])([A-Z])/g, '$1 $2')
+      .replace(/([A-Z]+)([A-Z][a-z])/g, '$1 $2')
+      .replace(/^./, (c) => c.toUpperCase());
+  }
+
+  /** Format a table cell or child value for display */
+  formatCellValue(value: unknown): string {
+    if (value === null || value === undefined) return '—';
+    if (typeof value === 'boolean') return value ? 'Yes' : 'No';
+    if (Array.isArray(value)) return value.join(', ');
+    if (typeof value === 'object') return JSON.stringify(value);
+    return String(value);
+  }
+
+  /** Determine the input type for a table cell value */
+  getCellType(value: unknown): 'boolean' | 'number' | 'array' | 'string' {
+    if (typeof value === 'boolean') return 'boolean';
+    if (typeof value === 'number') return 'number';
+    if (Array.isArray(value)) return 'array';
+    return 'string';
+  }
+
+  /** Join an array value to comma-separated string for display */
+  joinArray(value: unknown): string {
+    return Array.isArray(value) ? value.join(', ') : '';
+  }
+
+  /** Edit a primitive or nested-object field within a JSON setting value */
+  onJsonFieldEdit(defId: string, key: string, subKey: string | null, value: unknown): void {
+    this.editStates.update((s) => {
+      const state = this.getEditState(defId);
+      const obj = structuredClone(state.editValue) as Record<string, unknown>;
+      if (subKey !== null) {
+        (obj[key] as Record<string, unknown>)[subKey] = value;
+      } else {
+        obj[key] = value;
+      }
+      return { ...s, [defId]: { ...state, editValue: obj, dirty: true } };
+    });
+  }
+
+  /** Edit a cell within an array-of-objects table */
+  onArrayCellEdit(defId: string, key: string, rowIndex: number, colKey: string, value: unknown): void {
+    this.editStates.update((s) => {
+      const state = this.getEditState(defId);
+      const obj = structuredClone(state.editValue) as Record<string, unknown>;
+      (obj[key] as Record<string, unknown>[])[rowIndex][colKey] = value;
+      return { ...s, [defId]: { ...state, editValue: obj, dirty: true } };
+    });
+  }
+
+  /** Edit an array cell that contains a sub-array (comma-separated text) */
+  onArrayCellArrayEdit(defId: string, key: string, rowIndex: number, colKey: string, text: string): void {
+    const arr = text
+      .split(',')
+      .map((t) => t.trim())
+      .filter((t) => t.length > 0);
+    this.onArrayCellEdit(defId, key, rowIndex, colKey, arr);
+  }
+
+  /** Add a new row to an array-of-objects field */
+  addArrayRow(defId: string, key: string): void {
+    this.editStates.update((s) => {
+      const state = this.getEditState(defId);
+      const obj = structuredClone(state.editValue) as Record<string, unknown>;
+      const arr = (obj[key] as Record<string, unknown>[]) ?? [];
+      const template: Record<string, unknown> = {};
+      if (arr.length > 0) {
+        for (const [k, v] of Object.entries(arr[0])) {
+          if (typeof v === 'boolean') template[k] = false;
+          else if (typeof v === 'number') template[k] = 0;
+          else if (Array.isArray(v)) template[k] = [];
+          else template[k] = '';
+        }
+      }
+      arr.push(template);
+      obj[key] = arr;
+      return { ...s, [defId]: { ...state, editValue: obj, dirty: true } };
+    });
+  }
+
+  /** Remove a row from an array-of-objects field */
+  removeArrayRow(defId: string, key: string, rowIndex: number): void {
+    this.editStates.update((s) => {
+      const state = this.getEditState(defId);
+      const obj = structuredClone(state.editValue) as Record<string, unknown>;
+      (obj[key] as Record<string, unknown>[]).splice(rowIndex, 1);
+      return { ...s, [defId]: { ...state, editValue: obj, dirty: true } };
+    });
+  }
+
+  /** Edit a primitive-array field from comma-separated text */
+  onArrayPrimitiveEdit(defId: string, key: string, text: string): void {
+    this.editStates.update((s) => {
+      const state = this.getEditState(defId);
+      const obj = structuredClone(state.editValue) as Record<string, unknown>;
+      obj[key] = text
+        .split(',')
+        .map((t) => t.trim())
+        .filter((t) => t.length > 0);
+      return { ...s, [defId]: { ...state, editValue: obj, dirty: true } };
+    });
+  }
+
   // ── Edit state ──
 
   getEditState(defId: string): EditState {
@@ -254,7 +438,7 @@ export class SettingsComponent implements OnInit {
     const currentValue = this.getDisplayValue(def);
     let editValue: unknown;
     if (this.isJsonValue(def) && typeof currentValue === 'object' && currentValue !== null) {
-      editValue = JSON.stringify(currentValue, null, 2);
+      editValue = structuredClone(currentValue);
     } else {
       editValue = currentValue;
     }
