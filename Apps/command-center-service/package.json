@@ -28,6 +28,7 @@
     "@fastify/helmet": "^11.1.1",
     "@fastify/sensible": "^5.1.1",
     "@tartware/command-center-shared": "workspace:*",
+    "@tartware/command-consumer-utils": "workspace:*",
     "@tartware/config": "workspace:*",
     "@tartware/fastify-server": "workspace:*",
     "@tartware/openapi": "workspace:*",

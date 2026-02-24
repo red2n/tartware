@@ -390,6 +390,9 @@ importers:
       '@tartware/command-center-shared':
         specifier: workspace:*
         version: link:../command-center-shared
+      '@tartware/command-consumer-utils':
+        specifier: workspace:*
+        version: link:../command-consumer-utils
       '@tartware/config':
         specifier: workspace:*
         version: link:../config

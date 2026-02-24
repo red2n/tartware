@@ -10,6 +10,7 @@
     "@tartware/outbox",
     "@tartware/telemetry",
     "@tartware/command-center-shared",
+    "@tartware/command-consumer-utils",
     "@tartware/tenant-auth",
     "@fastify/cors",
     "@fastify/helmet",
