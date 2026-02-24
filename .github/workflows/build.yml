@@ -88,6 +88,6 @@ jobs:
           name: build-artifacts
           path: |
             Apps/core-service/dist
-            Apps/tartware-ui/dist
+            UI/pms-ui/dist
             schema/dist
           retention-days: 7
