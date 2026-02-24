@@ -1,4 +1,4 @@
-import { Component, computed, inject, type OnInit, signal } from '@angular/core';
+import { Component, computed, effect, inject, signal } from '@angular/core';
 import { NgClass } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
@@ -14,6 +14,7 @@ import type { RoomItem } from '@tartware/schemas';
 
 import { ApiService } from '../../core/api/api.service';
 import { AuthService } from '../../core/auth/auth.service';
+import { TenantContextService } from '../../core/context/tenant-context.service';
 import { roomStatusClass, housekeepingStatusClass } from '../../shared/badge-utils';
 
 type StatusFilter = 'ALL' | 'SETUP' | 'VACANT' | 'OCCUPIED' | 'OUT_OF_ORDER' | 'BLOCKED';
@@ -35,9 +36,10 @@ type StatusFilter = 'ALL' | 'SETUP' | 'VACANT' | 'OCCUPIED' | 'OUT_OF_ORDER' | '
   templateUrl: './rooms.html',
   styleUrl: './rooms.scss',
 })
-export class RoomsComponent implements OnInit {
+export class RoomsComponent {
   private readonly api = inject(ApiService);
   private readonly auth = inject(AuthService);
+  private readonly ctx = inject(TenantContextService);
   private readonly router = inject(Router);
   private readonly dialog = inject(MatDialog);
 
@@ -99,8 +101,13 @@ export class RoomsComponent implements OnInit {
     };
   });
 
-  ngOnInit(): void {
-    this.loadRooms();
+  constructor() {
+    // Reload rooms when property selection changes
+    effect(() => {
+      this.auth.tenantId();
+      this.ctx.propertyId();
+      this.loadRooms();
+    });
   }
 
   setFilter(filter: StatusFilter): void {
@@ -126,7 +133,10 @@ export class RoomsComponent implements OnInit {
     this.error.set(null);
 
     try {
-      const rooms = await this.api.get<RoomItem[]>('/rooms', { tenant_id: tenantId });
+      const params: Record<string, string> = { tenant_id: tenantId };
+      const propertyId = this.ctx.propertyId();
+      if (propertyId) params['property_id'] = propertyId;
+      const rooms = await this.api.get<RoomItem[]>('/rooms', params);
       this.rooms.set(rooms);
     } catch (e) {
       this.error.set(e instanceof Error ? e.message : 'Failed to load rooms');

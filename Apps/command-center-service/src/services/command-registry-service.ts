@@ -21,7 +21,7 @@ const normalizeModuleId = (moduleId: string): string => {
   return LEGACY_MODULE_MAP[normalized] ?? normalized;
 };
 
-import type { TenantMembership } from "./membership-service.js";
+import type { TenantMembership } from "@tartware/tenant-auth/membership";
 
 const registryLogger = appLogger.child({ module: "command-registry" });
 const environment = process.env.NODE_ENV ?? "development";

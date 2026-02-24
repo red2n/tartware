@@ -1,4 +1,4 @@
-import { Component, computed, inject, type OnInit, signal } from '@angular/core';
+import { Component, computed, effect, inject, signal } from '@angular/core';
 import { NgClass } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
@@ -11,6 +11,7 @@ import type { RateItem } from '@tartware/schemas';
 
 import { ApiService } from '../../core/api/api.service';
 import { AuthService } from '../../core/auth/auth.service';
+import { TenantContextService } from '../../core/context/tenant-context.service';
 
 type StatusFilter = 'ALL' | 'ACTIVE' | 'INACTIVE' | 'EXPIRED' | 'FUTURE';
 type TypeFilter = 'ALL' | string;
@@ -29,9 +30,10 @@ type TypeFilter = 'ALL' | string;
   templateUrl: './rates.html',
   styleUrl: './rates.scss',
 })
-export class RatesComponent implements OnInit {
+export class RatesComponent {
   private readonly api = inject(ApiService);
   private readonly auth = inject(AuthService);
+  private readonly ctx = inject(TenantContextService);
   private readonly dialog = inject(MatDialog);
 
   readonly rates = signal<RateItem[]>([]);
@@ -104,8 +106,13 @@ export class RatesComponent implements OnInit {
     };
   });
 
-  ngOnInit(): void {
-    this.loadRates();
+  constructor() {
+    // Reload rates when property selection changes
+    effect(() => {
+      this.auth.tenantId();
+      this.ctx.propertyId();
+      this.loadRates();
+    });
   }
 
   setFilter(filter: StatusFilter): void {
@@ -196,7 +203,10 @@ export class RatesComponent implements OnInit {
     this.error.set(null);
 
     try {
-      const rates = await this.api.get<RateItem[]>('/rates', { tenant_id: tenantId });
+      const params: Record<string, string> = { tenant_id: tenantId };
+      const propertyId = this.ctx.propertyId();
+      if (propertyId) params['property_id'] = propertyId;
+      const rates = await this.api.get<RateItem[]>('/rates', params);
       this.rates.set(rates);
     } catch (e) {
       this.error.set(e instanceof Error ? e.message : 'Failed to load rates');

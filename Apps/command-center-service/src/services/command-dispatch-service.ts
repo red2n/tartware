@@ -9,7 +9,7 @@ import { findCommandDispatchByRequest, insertCommandDispatch } from "../sql/comm
 
 import { resolveCommandForTenant } from "./command-registry-service.js";
 import { throttleCommand } from "./command-throttle-service.js";
-import type { TenantMembership } from "./membership-service.js";
+import type { TenantMembership } from "@tartware/tenant-auth/membership";
 
 type AcceptCommandInput = SharedAcceptCommandInput<TenantMembership>;
 

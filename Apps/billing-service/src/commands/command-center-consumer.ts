@@ -14,7 +14,7 @@ import {
   recordCommandOutcome,
   setCommandConsumerLag,
 } from "../lib/metrics.js";
-import { processWithRetry, RetryExhaustedError } from "../lib/retry.js";
+import { processWithRetry, RetryExhaustedError } from "@tartware/config/retry";
 import {
   adjustInvoice,
   ageArEntries,

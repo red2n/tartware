@@ -17,6 +17,13 @@ export class AuthService {
   readonly memberships = this._memberships.asReadonly();
   readonly isAuthenticated = computed(() => this._user() !== null);
 
+  /** The currently-selected tenant's membership record */
+  readonly activeMembership = computed(() => {
+    const tid = this._tenantId();
+    if (!tid) return null;
+    return this._memberships().find((m) => m.tenant_id === tid) ?? null;
+  });
+
   constructor(private readonly api: ApiService) {
     this.restoreSession();
   }
@@ -35,10 +42,13 @@ export class AuthService {
     localStorage.setItem('access_token', response.access_token);
     localStorage.setItem('user_info', JSON.stringify(userInfo));
     this._user.set(userInfo);
-    this._memberships.set(response.memberships ?? []);
+
+    const memberships = response.memberships ?? [];
+    this._memberships.set(memberships);
+    localStorage.setItem('memberships', JSON.stringify(memberships));
 
     // Auto-select first tenant
-    const firstTenant = response.memberships?.[0];
+    const firstTenant = memberships[0];
     if (firstTenant) {
       this._tenantId.set(firstTenant.tenant_id);
       localStorage.setItem('tenant_id', firstTenant.tenant_id);
@@ -51,6 +61,8 @@ export class AuthService {
     localStorage.removeItem('access_token');
     localStorage.removeItem('tenant_id');
     localStorage.removeItem('user_info');
+    localStorage.removeItem('memberships');
+    localStorage.removeItem('property_id');
     this._user.set(null);
     this._tenantId.set(null);
     this._memberships.set([]);
@@ -59,6 +71,8 @@ export class AuthService {
   selectTenant(tenantId: string): void {
     this._tenantId.set(tenantId);
     localStorage.setItem('tenant_id', tenantId);
+    // Clear property selection when switching tenants
+    localStorage.removeItem('property_id');
   }
 
   private restoreSession(): void {
@@ -81,6 +95,15 @@ export class AuthService {
     const tenantId = localStorage.getItem('tenant_id');
     if (tenantId) {
       this._tenantId.set(tenantId);
+    }
+
+    const membershipsJson = localStorage.getItem('memberships');
+    if (membershipsJson) {
+      try {
+        this._memberships.set(JSON.parse(membershipsJson) as AuthMembership[]);
+      } catch {
+        // Non-critical — memberships will be empty until next login
+      }
     }
   }
 

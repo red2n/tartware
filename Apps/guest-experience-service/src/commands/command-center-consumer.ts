@@ -17,7 +17,7 @@ import {
   recordCommandOutcome,
   setCommandConsumerLag,
 } from "../lib/metrics.js";
-import { processWithRetry, RetryExhaustedError } from "../lib/retry.js";
+import { processWithRetry, RetryExhaustedError } from "@tartware/config/retry";
 import { completeMobileCheckin, startMobileCheckin } from "../services/checkin-service.js";
 
 let consumer: Consumer | null = null;

@@ -15,7 +15,7 @@ import {
   setConsumerLag,
 } from "../lib/metrics.js";
 import { upsertReservationEventOffset } from "../lib/reservation-event-offsets.js";
-import { processWithRetry, RetryExhaustedError } from "../lib/retry.js";
+import { processWithRetry, RetryExhaustedError } from "@tartware/config/retry";
 import { reservationsLogger } from "../logger.js";
 import {
   type ReservationCommandLifecycleState,

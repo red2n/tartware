@@ -1,59 +1,13 @@
-import type { Producer, RecordMetadata } from "kafkajs";
+import { createKafkaProducer } from "@tartware/command-consumer-utils/producer";
 
 import { config } from "../config.js";
-
 import { kafka } from "./client.js";
 
-let producer: Producer | null = null;
+const producer = createKafkaProducer(kafka, {
+	commandTopic: config.commandCenter.topic,
+	dlqTopic: config.commandCenter.dlqTopic,
+});
 
-const getProducer = async (): Promise<Producer> => {
-  if (producer) {
-    return producer;
-  }
-  producer = kafka.producer();
-  await producer.connect();
-  return producer;
-};
-
-type KafkaEventMessage = {
-  key: string;
-  value: string;
-  headers?: Record<string, string>;
-  topic?: string;
-};
-
-/**
- * Publish a command to the command center topic or a custom topic.
- */
-export const publishCommand = async (message: KafkaEventMessage): Promise<RecordMetadata[]> => {
-  const producerInstance = await getProducer();
-  return producerInstance.send({
-    topic: message.topic ?? config.commandCenter.topic,
-    messages: [
-      {
-        key: message.key,
-        value: message.value,
-        headers: message.headers,
-      },
-    ],
-  });
-};
-
-/**
- * Publish a failed message to the command center DLQ topic.
- */
-export const publishDlqEvent = async (
-  message: Omit<KafkaEventMessage, "topic">,
-): Promise<RecordMetadata[]> => {
-  return publishCommand({
-    ...message,
-    topic: config.commandCenter.dlqTopic,
-  });
-};
-
-export const shutdownProducer = async (): Promise<void> => {
-  if (producer) {
-    await producer.disconnect();
-    producer = null;
-  }
-};
+/** Publish a command to the command center topic or a custom topic. */
+export const publishCommand = producer.publishEvent;
+export const { publishDlqEvent, shutdown: shutdownProducer } = producer;

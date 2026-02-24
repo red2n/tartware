@@ -3,6 +3,59 @@
     <button class="header-btn menu-toggle" (click)="menuToggle.emit()">
       <mat-icon>menu</mat-icon>
     </button>
+
+    <!-- Tenant switcher (only if user has multiple tenant memberships) -->
+    @if (showTenantSwitcher) {
+      <button class="context-btn" [matMenuTriggerFor]="tenantMenu" matTooltip="Switch tenant">
+        <mat-icon class="context-icon">business</mat-icon>
+        <span class="context-label">{{ activeMembership()?.tenant_name ?? 'No tenant' }}</span>
+        <mat-icon class="context-caret">arrow_drop_down</mat-icon>
+      </button>
+      <mat-menu #tenantMenu="matMenu">
+        @for (m of memberships(); track m.tenant_id) {
+          <button mat-menu-item
+            [class.active-menu-item]="m.tenant_id === activeMembership()?.tenant_id"
+            (click)="switchTenant(m.tenant_id)">
+            <mat-icon>{{ m.tenant_id === activeMembership()?.tenant_id ? 'check' : 'business' }}</mat-icon>
+            <span>{{ m.tenant_name ?? m.tenant_id }}</span>
+          </button>
+        }
+      </mat-menu>
+    } @else if (activeMembership(); as m) {
+      <span class="context-label-static" matTooltip="Tenant">
+        <mat-icon class="context-icon">business</mat-icon>
+        {{ m.tenant_name ?? 'Tenant' }}
+      </span>
+    }
+
+    <!-- Property selector -->
+    @if (properties().length > 1) {
+      <span class="context-divider"></span>
+      <button class="context-btn" [matMenuTriggerFor]="propertyMenu" matTooltip="Switch property">
+        <mat-icon class="context-icon">apartment</mat-icon>
+        <span class="context-label">{{ activeProperty()?.property_name ?? 'All properties' }}</span>
+        <mat-icon class="context-caret">arrow_drop_down</mat-icon>
+      </button>
+      <mat-menu #propertyMenu="matMenu">
+        @for (p of properties(); track p.id) {
+          <button mat-menu-item
+            [class.active-menu-item]="p.id === activeProperty()?.id"
+            (click)="selectProperty(p.id)">
+            <mat-icon>{{ p.id === activeProperty()?.id ? 'check' : 'apartment' }}</mat-icon>
+            <div class="property-menu-item">
+              <span>{{ p.property_name }}</span>
+              <span class="property-code">{{ p.property_code }}</span>
+            </div>
+          </button>
+        }
+      </mat-menu>
+    } @else if (activeProperty(); as p) {
+      <span class="context-divider"></span>
+      <span class="context-label-static" matTooltip="Property">
+        <mat-icon class="context-icon">apartment</mat-icon>
+        {{ p.property_name }}
+      </span>
+    }
   </div>
 
   <span class="spacer"></span>

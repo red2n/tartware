@@ -1,9 +1,9 @@
-import { Kafka, logLevel } from "kafkajs";
+import { createKafkaClient } from "@tartware/command-consumer-utils/producer";
 
 import { kafkaConfig } from "../config.js";
 
-export const kafka = new Kafka({
-  clientId: kafkaConfig.clientId,
-  brokers: kafkaConfig.brokers,
-  logLevel: logLevel.ERROR,
+export const kafka = createKafkaClient({
+	clientId: kafkaConfig.clientId,
+	brokers: kafkaConfig.brokers,
+	logLevel: "ERROR",
 });
