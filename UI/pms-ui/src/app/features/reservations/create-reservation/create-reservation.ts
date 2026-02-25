@@ -52,11 +52,7 @@ type GuestOption = {
 @Component({
 	selector: "app-create-reservation",
 	standalone: true,
-	imports: [
-		FormsModule,
-		MatIconModule,
-		MatProgressSpinnerModule,
-	],
+	imports: [FormsModule, MatIconModule, MatProgressSpinnerModule],
 	templateUrl: "./create-reservation.html",
 	styleUrl: "./create-reservation.scss",
 })
