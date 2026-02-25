@@ -7,7 +7,7 @@ import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
 import { MatTooltipModule } from "@angular/material/tooltip";
 import { Router } from "@angular/router";
 
-import type { ReservationListItem } from "@tartware/schemas";
+import type { ReservationListItem, ReservationListResponse } from "@tartware/schemas";
 
 import { ApiService } from "../../core/api/api.service";
 import { AuthService } from "../../core/auth/auth.service";
@@ -127,9 +127,8 @@ export class ReservationsComponent {
 			};
 			const propertyId = this.ctx.propertyId();
 			if (propertyId) params["property_id"] = propertyId;
-			const res = await this.api.get<ReservationListItem[]>("/reservations", params);
-			// API may return { data: [...] } or array directly
-			const list = Array.isArray(res) ? res : ((res as { data: ReservationListItem[] }).data ?? []);
+			const res = await this.api.get<ReservationListResponse>("/reservations", params);
+			const list = Array.isArray(res) ? res : (res.data ?? []);
 			this.reservations.set(list);
 		} catch (e) {
 			this.error.set(e instanceof Error ? e.message : "Failed to load reservations");
