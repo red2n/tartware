@@ -1,58 +1,148 @@
-<div class="page-header">
-  <h1 class="page-title">Dashboard</h1>
-</div>
+<div class="dashboard-page">
+  <div class="page-header">
+    <h1 class="page-title">Dashboard</h1>
+    <div class="page-actions">
+      <button class="btn btn-invisible" (click)="loadDashboard()" matTooltip="Refresh">
+        <mat-icon>refresh</mat-icon>
+      </button>
+    </div>
+  </div>
 
-<div class="stat-grid">
-  @defer (on idle) {
-    <mat-card class="stat-card">
-      <mat-card-header>
-        <mat-icon mat-card-avatar>hotel</mat-icon>
-        <mat-card-title>Occupancy</mat-card-title>
-        <mat-card-subtitle>Today</mat-card-subtitle>
-      </mat-card-header>
-      <mat-card-content>
-        <div class="stat-value">--</div>
-      </mat-card-content>
-    </mat-card>
+  @if (loading() && !stats()) {
+    <div class="loading-state">
+      <mat-spinner diameter="32"></mat-spinner>
+      <span class="text-muted">Loading dashboard...</span>
+    </div>
+  } @else if (error(); as err) {
+    <div class="error-state">
+      <mat-icon class="error-icon">error_outline</mat-icon>
+      <span>{{ err }}</span>
+      <button class="btn btn-outline" (click)="loadDashboard()">Retry</button>
+    </div>
+  } @else if (stats(); as s) {
+    @defer (on idle) {
+      <!-- KPI Cards -->
+      <div class="stat-grid">
+        <!-- Occupancy -->
+        <div class="kpi-card">
+          <div class="kpi-header">
+            <mat-icon class="kpi-icon">hotel</mat-icon>
+            <span class="kpi-label">Occupancy</span>
+          </div>
+          <div class="kpi-value">{{ s.occupancy.rate }}%</div>
+          <div class="kpi-trend" [ngClass]="trendClass(s.occupancy.trend)">
+            <mat-icon class="kpi-trend-icon">{{ trendIcon(s.occupancy.trend) }}</mat-icon>
+            <span>{{ s.occupancy.change > 0 ? '+' : '' }}{{ s.occupancy.change }}% vs yesterday</span>
+          </div>
+        </div>
 
-    <mat-card class="stat-card">
-      <mat-card-header>
-        <mat-icon mat-card-avatar>flight_land</mat-icon>
-        <mat-card-title>Arrivals</mat-card-title>
-        <mat-card-subtitle>Today</mat-card-subtitle>
-      </mat-card-header>
-      <mat-card-content>
-        <div class="stat-value">--</div>
-      </mat-card-content>
-    </mat-card>
+        <!-- Revenue -->
+        <div class="kpi-card">
+          <div class="kpi-header">
+            <mat-icon class="kpi-icon kpi-icon-revenue">payments</mat-icon>
+            <span class="kpi-label">Revenue Today</span>
+          </div>
+          <div class="kpi-value">{{ formatCurrency(s.revenue.today, s.revenue.currency) }}</div>
+          <div class="kpi-trend" [ngClass]="trendClass(s.revenue.trend)">
+            <mat-icon class="kpi-trend-icon">{{ trendIcon(s.revenue.trend) }}</mat-icon>
+            <span>{{ s.revenue.change > 0 ? '+' : '' }}{{ s.revenue.change }}% vs yesterday</span>
+          </div>
+        </div>
 
-    <mat-card class="stat-card">
-      <mat-card-header>
-        <mat-icon mat-card-avatar>flight_takeoff</mat-icon>
-        <mat-card-title>Departures</mat-card-title>
-        <mat-card-subtitle>Today</mat-card-subtitle>
-      </mat-card-header>
-      <mat-card-content>
-        <div class="stat-value">--</div>
-      </mat-card-content>
-    </mat-card>
+        <!-- Check-ins -->
+        <div class="kpi-card clickable" (click)="navigateToReservations()">
+          <div class="kpi-header">
+            <mat-icon class="kpi-icon kpi-icon-checkin">flight_land</mat-icon>
+            <span class="kpi-label">Arrivals Today</span>
+          </div>
+          <div class="kpi-value">{{ s.checkIns.total }}</div>
+          <div class="kpi-sub">
+            <span class="badge badge-warning">{{ s.checkIns.pending }} pending</span>
+            @if (s.checkIns.completed) {
+              <span class="badge badge-success">{{ s.checkIns.completed }} done</span>
+            }
+          </div>
+        </div>
 
-    <mat-card class="stat-card">
-      <mat-card-header>
-        <mat-icon mat-card-avatar>cleaning_services</mat-icon>
-        <mat-card-title>Housekeeping</mat-card-title>
-        <mat-card-subtitle>Pending</mat-card-subtitle>
-      </mat-card-header>
-      <mat-card-content>
-        <div class="stat-value">--</div>
-      </mat-card-content>
-    </mat-card>
-  } @placeholder {
-    <div class="stat-card-placeholder"></div>
-    <div class="stat-card-placeholder"></div>
-    <div class="stat-card-placeholder"></div>
-    <div class="stat-card-placeholder"></div>
-  } @loading (minimum 200ms) {
-    <div class="stat-card-loading">Loading dashboard...</div>
+        <!-- Check-outs -->
+        <div class="kpi-card clickable" (click)="navigateToReservations()">
+          <div class="kpi-header">
+            <mat-icon class="kpi-icon kpi-icon-checkout">flight_takeoff</mat-icon>
+            <span class="kpi-label">Departures Today</span>
+          </div>
+          <div class="kpi-value">{{ s.checkOuts.total }}</div>
+          <div class="kpi-sub">
+            <span class="badge badge-warning">{{ s.checkOuts.pending }} pending</span>
+            @if (s.checkOuts.completed) {
+              <span class="badge badge-success">{{ s.checkOuts.completed }} done</span>
+            }
+          </div>
+        </div>
+      </div>
+
+      <!-- Activity & Tasks -->
+      <div class="dashboard-panels">
+        <!-- Recent Activity -->
+        <div class="detail-card">
+          <div class="card-header">
+            <h3 class="card-title">Recent Activity</h3>
+          </div>
+          <div class="card-body">
+            @if (activity().length === 0) {
+              <p class="text-muted empty-hint">No recent activity</p>
+            } @else {
+              <div class="activity-list">
+                @for (item of activity(); track item.id) {
+                  <div class="activity-item">
+                    <mat-icon class="activity-icon">{{ item.icon }}</mat-icon>
+                    <div class="activity-content">
+                      <span class="activity-title">{{ item.title }}</span>
+                      <span class="activity-desc text-muted">{{ item.description }}</span>
+                    </div>
+                    @if (item.urgent) {
+                      <span class="badge badge-danger">Urgent</span>
+                    }
+                  </div>
+                }
+              </div>
+            }
+          </div>
+        </div>
+
+        <!-- Upcoming Tasks -->
+        <div class="detail-card">
+          <div class="card-header">
+            <h3 class="card-title">Upcoming Tasks</h3>
+          </div>
+          <div class="card-body">
+            @if (tasks().length === 0) {
+              <p class="text-muted empty-hint">No upcoming tasks</p>
+            } @else {
+              <div class="task-list">
+                @for (task of tasks(); track task.id) {
+                  <div class="task-item">
+                    <mat-icon class="task-icon">{{ task.icon }}</mat-icon>
+                    <div class="task-content">
+                      <span class="task-title">{{ task.title }}</span>
+                      <span class="task-desc text-muted">{{ task.description }}</span>
+                    </div>
+                    <span class="badge" [ngClass]="priorityClass(task.priority)">{{ task.priority }}</span>
+                  </div>
+                }
+              </div>
+            }
+          </div>
+        </div>
+      </div>
+    } @placeholder {
+      <div class="stat-grid">
+        <div class="stat-card-placeholder"></div>
+        <div class="stat-card-placeholder"></div>
+        <div class="stat-card-placeholder"></div>
+        <div class="stat-card-placeholder"></div>
+      </div>
+    } @loading (minimum 200ms) {
+      <div class="stat-card-loading">Loading dashboard...</div>
+    }
   }
 </div>

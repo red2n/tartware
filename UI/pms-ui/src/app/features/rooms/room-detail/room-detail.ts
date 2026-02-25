@@ -1,11 +1,5 @@
 import { NgClass } from "@angular/common";
-import {
-	Component,
-	computed,
-	inject,
-	type OnInit,
-	signal,
-} from "@angular/core";
+import { Component, computed, inject, type OnInit, signal } from "@angular/core";
 import { FormsModule } from "@angular/forms";
 import { MatIconModule } from "@angular/material/icon";
 import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
@@ -15,10 +9,7 @@ import { ActivatedRoute, Router, RouterLink } from "@angular/router";
 
 import { ApiService } from "../../../core/api/api.service";
 import { AuthService } from "../../../core/auth/auth.service";
-import {
-	housekeepingStatusClass,
-	roomStatusClass,
-} from "../../../shared/badge-utils";
+import { housekeepingStatusClass, roomStatusClass } from "../../../shared/badge-utils";
 
 type RoomDetail = {
 	room_id: string;
@@ -101,8 +92,7 @@ export class RoomDetailComponent implements OnInit {
 		return (
 			this.editOoo() !== r.is_out_of_order ||
 			this.editOooReason() !== (r.out_of_order_reason ?? "") ||
-			this.editExpectedReady() !==
-				(r.expected_ready_date?.substring(0, 10) ?? "")
+			this.editExpectedReady() !== (r.expected_ready_date?.substring(0, 10) ?? "")
 		);
 	});
 
@@ -244,13 +234,9 @@ export class RoomDetailComponent implements OnInit {
 			// Sync editable OOO state from loaded room data
 			this.editOoo.set(room.is_out_of_order);
 			this.editOooReason.set(room.out_of_order_reason ?? "");
-			this.editExpectedReady.set(
-				room.expected_ready_date?.substring(0, 10) ?? "",
-			);
+			this.editExpectedReady.set(room.expected_ready_date?.substring(0, 10) ?? "");
 			// Initialize editable amenities from room data
-			this.editAmenities.set([
-				...(room.amenities ?? room.room_type_amenities ?? []),
-			]);
+			this.editAmenities.set([...(room.amenities ?? room.room_type_amenities ?? [])]);
 		} catch (e) {
 			this.error.set(e instanceof Error ? e.message : "Failed to load room");
 		} finally {
@@ -285,10 +271,7 @@ export class RoomDetailComponent implements OnInit {
 	private static readonly AMENITY_CODE_PATTERN = /^[A-Z0-9_]{1,50}$/;
 
 	addCustomAmenity(): void {
-		const raw = this.newAmenityInput()
-			.trim()
-			.toUpperCase()
-			.replace(/\s+/g, "_");
+		const raw = this.newAmenityInput().trim().toUpperCase().replace(/\s+/g, "_");
 		if (!raw) return;
 		if (!RoomDetailComponent.AMENITY_CODE_PATTERN.test(raw)) {
 			this.amenityError.set(
@@ -312,10 +295,9 @@ export class RoomDetailComponent implements OnInit {
 		const tenantId = this.auth.tenantId();
 		if (!tenantId) return;
 		try {
-			const items = await this.api.get<CatalogItem[]>(
-				"/rooms/amenity-catalog",
-				{ tenant_id: tenantId },
-			);
+			const items = await this.api.get<CatalogItem[]>("/rooms/amenity-catalog", {
+				tenant_id: tenantId,
+			});
 			this.catalog.set(items);
 		} catch {
 			// Catalog load failure is non-critical - editing still works
@@ -340,9 +322,7 @@ export class RoomDetailComponent implements OnInit {
 			this.editingAmenities.set(false);
 			await this.loadRoom(r.room_id);
 		} catch (e) {
-			this.amenityError.set(
-				e instanceof Error ? e.message : "Failed to update amenities",
-			);
+			this.amenityError.set(e instanceof Error ? e.message : "Failed to update amenities");
 		} finally {
 			this.savingAmenities.set(false);
 		}
@@ -360,13 +340,10 @@ export class RoomDetailComponent implements OnInit {
 		try {
 			if (this.editOoo()) {
 				// Mark out of order
-				await this.api.post(
-					`/tenants/${tenantId}/rooms/${r.room_id}/out-of-order`,
-					{
-						reason: this.editOooReason() || undefined,
-						expected_ready_date: this.editExpectedReady() || undefined,
-					},
-				);
+				await this.api.post(`/tenants/${tenantId}/rooms/${r.room_id}/out-of-order`, {
+					reason: this.editOooReason() || undefined,
+					expected_ready_date: this.editExpectedReady() || undefined,
+				});
 				this.saveSuccess.set("Room marked as Out of Order.");
 			} else {
 				// Clear out of order → set status to AVAILABLE
@@ -376,14 +353,9 @@ export class RoomDetailComponent implements OnInit {
 				this.saveSuccess.set("Room restored to Available.");
 			}
 			// Reload room data — poll until status reflects the change (command is async via Kafka)
-			await this.pollRoomUntilChanged(
-				r.room_id,
-				r.is_out_of_order !== this.editOoo(),
-			);
+			await this.pollRoomUntilChanged(r.room_id, r.is_out_of_order !== this.editOoo());
 		} catch (e) {
-			this.saveError.set(
-				e instanceof Error ? e.message : "Failed to update room",
-			);
+			this.saveError.set(e instanceof Error ? e.message : "Failed to update room");
 		} finally {
 			this.saving.set(false);
 		}
@@ -405,9 +377,7 @@ export class RoomDetailComponent implements OnInit {
 			this.saveSuccess.set("Room activated and ready for booking.");
 			await this.loadRoom(r.room_id);
 		} catch (e) {
-			this.saveError.set(
-				e instanceof Error ? e.message : "Failed to activate room",
-			);
+			this.saveError.set(e instanceof Error ? e.message : "Failed to activate room");
 		} finally {
 			this.activating.set(false);
 		}
@@ -418,10 +388,7 @@ export class RoomDetailComponent implements OnInit {
 	/**
 	 * Poll room data until the OOO flag reflects the expected change, with a maximum of 5 attempts.
 	 */
-	private async pollRoomUntilChanged(
-		roomId: string,
-		expectOooChanged: boolean,
-	): Promise<void> {
+	private async pollRoomUntilChanged(roomId: string, expectOooChanged: boolean): Promise<void> {
 		const maxAttempts = 5;
 		const intervalMs = 800;
 		const previousOoo = this.room()?.is_out_of_order;
@@ -430,11 +397,7 @@ export class RoomDetailComponent implements OnInit {
 			await new Promise((resolve) => setTimeout(resolve, intervalMs));
 			await this.loadRoom(roomId);
 			const current = this.room();
-			if (
-				current &&
-				expectOooChanged &&
-				current.is_out_of_order !== previousOoo
-			) {
+			if (current && expectOooChanged && current.is_out_of_order !== previousOoo) {
 				return; // Change detected
 			}
 			if (current && !expectOooChanged) {
@@ -460,9 +423,7 @@ export class RoomDetailComponent implements OnInit {
 			this.saveSuccess.set("Room moved back to Setup mode.");
 			await this.loadRoom(r.room_id);
 		} catch (e) {
-			this.saveError.set(
-				e instanceof Error ? e.message : "Failed to deactivate room",
-			);
+			this.saveError.set(e instanceof Error ? e.message : "Failed to deactivate room");
 		} finally {
 			this.deactivating.set(false);
 		}

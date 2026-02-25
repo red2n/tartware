@@ -8,17 +8,16 @@ import { ApiService, ApiValidationError } from "../../../core/api/api.service";
 import { AuthService } from "../../../core/auth/auth.service";
 import { TenantContextService } from "../../../core/context/tenant-context.service";
 
-type RoomTypeOption = { room_type_id: string; type_name: string; type_code: string };
+type RoomTypeOption = {
+	room_type_id: string;
+	type_name: string;
+	type_code: string;
+};
 
 @Component({
 	selector: "app-create-rate-dialog",
 	standalone: true,
-	imports: [
-		FormsModule,
-		MatDialogModule,
-		MatIconModule,
-		MatProgressSpinnerModule,
-	],
+	imports: [FormsModule, MatDialogModule, MatIconModule, MatProgressSpinnerModule],
 	templateUrl: "./create-rate-dialog.html",
 	styleUrl: "./create-rate-dialog.scss",
 })
@@ -33,10 +32,7 @@ export class CreateRateDialogComponent implements OnInit {
 	readonly roomTypes = signal<RoomTypeOption[]>([]);
 	readonly loadingRoomTypes = signal(false);
 
-	private readonly dateSuffix = new Date()
-		.toISOString()
-		.slice(0, 10)
-		.replace(/-/g, "");
+	private readonly dateSuffix = new Date().toISOString().slice(0, 10).replace(/-/g, "");
 
 	rateName = `New Rate Plan ${this.dateSuffix}`;
 	rateCode = `NRP${this.dateSuffix}`;
@@ -138,8 +134,7 @@ export class CreateRateDialogComponent implements OnInit {
 		if (this.baseRate == null || this.baseRate < 0) {
 			errors["baseRate"] = "Base rate is required";
 		} else if (this.baseRate === 0 && !this.isZeroRateAllowed) {
-			errors["baseRate"] =
-				"Base rate must be greater than 0 (except COMP/HOUSE)";
+			errors["baseRate"] = "Base rate must be greater than 0 (except COMP/HOUSE)";
 		}
 
 		if (
@@ -166,11 +161,7 @@ export class CreateRateDialogComponent implements OnInit {
 			errors["roomType"] = "Room type is required";
 		}
 
-		if (
-			this.validUntil &&
-			this.validFrom &&
-			this.validUntil <= this.validFrom
-		) {
+		if (this.validUntil && this.validFrom && this.validUntil <= this.validFrom) {
 			errors["validUntil"] = "End date must be after start date";
 		}
 
@@ -228,9 +219,7 @@ export class CreateRateDialogComponent implements OnInit {
 			if (e instanceof ApiValidationError) {
 				this.error.set(e.message);
 			} else {
-				this.error.set(
-					e instanceof Error ? e.message : "Failed to create rate",
-				);
+				this.error.set(e instanceof Error ? e.message : "Failed to create rate");
 			}
 		} finally {
 			this.saving.set(false);

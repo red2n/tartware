@@ -144,10 +144,7 @@ export class RatesComponent {
 
 	typeLabel(type: string): string {
 		const found = this.rateTypes.find((t) => t.key === type);
-		return (
-			found?.label ??
-			type.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())
-		);
+		return found?.label ?? type.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 	}
 
 	strategyLabel(strategy: string): string {
@@ -191,24 +188,19 @@ export class RatesComponent {
 
 	validityTooltip(rate: RateItem): string {
 		const from = this.formatDate(rate.valid_from);
-		const until = rate.valid_until
-			? this.formatDate(rate.valid_until)
-			: "No end date";
+		const until = rate.valid_until ? this.formatDate(rate.valid_until) : "No end date";
 		return `${from} — ${until}`;
 	}
 
 	cancellationLabel(policy: unknown): string {
-		if (!policy || typeof policy !== "object" || !("type" in policy))
-			return "—";
+		if (!policy || typeof policy !== "object" || !("type" in policy)) return "—";
 		const type = String((policy as Record<string, unknown>)["type"]);
 		return type.charAt(0).toUpperCase() + type.slice(1).replace(/_/g, " ");
 	}
 
 	channelsLabel(channels: unknown): string {
 		if (Array.isArray(channels)) {
-			return channels
-				.map((c) => String(c).charAt(0).toUpperCase() + String(c).slice(1))
-				.join(", ");
+			return channels.map((c) => String(c).charAt(0).toUpperCase() + String(c).slice(1)).join(", ");
 		}
 		return "—";
 	}
@@ -234,25 +226,20 @@ export class RatesComponent {
 	}
 
 	openCreateDialog(): void {
-		import("./create-rate-dialog/create-rate-dialog").then(
-			({ CreateRateDialogComponent }) => {
-				const ref = this.dialog.open(CreateRateDialogComponent, {
-					width: "600px",
-					disableClose: true,
-				});
-				ref.afterClosed().subscribe((created: boolean) => {
-					if (created) {
-						this.loadRates();
-					}
-				});
-			},
-		);
+		import("./create-rate-dialog/create-rate-dialog").then(({ CreateRateDialogComponent }) => {
+			const ref = this.dialog.open(CreateRateDialogComponent, {
+				width: "600px",
+				disableClose: true,
+			});
+			ref.afterClosed().subscribe((created: boolean) => {
+				if (created) {
+					this.loadRates();
+				}
+			});
+		});
 	}
 
-	async toggleStatus(
-		rate: RateItem,
-		newStatus: "ACTIVE" | "INACTIVE",
-	): Promise<void> {
+	async toggleStatus(rate: RateItem, newStatus: "ACTIVE" | "INACTIVE"): Promise<void> {
 		const tenantId = this.auth.tenantId();
 		if (!tenantId) return;
 
@@ -266,9 +253,7 @@ export class RatesComponent {
 				list.map((r) => (r.id === rate.id ? { ...r, status: newStatus } : r)),
 			);
 		} catch (e) {
-			this.error.set(
-				e instanceof Error ? e.message : "Failed to update rate status",
-			);
+			this.error.set(e instanceof Error ? e.message : "Failed to update rate status");
 		}
 	}
 }

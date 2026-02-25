@@ -1,23 +1,61 @@
 <div class="login-page">
-  <!-- GitHub-style dark header strip -->
-  <div class="login-header">
-    <span class="login-header-logo">Tartware</span>
+  <!-- ── Left: Brand hero panel ── -->
+  <div class="login-hero">
+    <div class="hero-content">
+      <div class="hero-logo">
+        <mat-icon class="hero-logo-icon">hotel</mat-icon>
+        <span class="hero-logo-text">tartware</span>
+      </div>
+
+      <h1 class="hero-headline">Property Management,<br />Reimagined.</h1>
+      <p class="hero-tagline">
+        A modern PMS built for speed, clarity, and scale —
+        powering front desk, reservations, billing, and operations
+        from a single command-driven platform.
+      </p>
+
+      <div class="hero-features">
+        <div class="hero-feature">
+          <mat-icon>speed</mat-icon>
+          <span>20K ops/sec throughput</span>
+        </div>
+        <div class="hero-feature">
+          <mat-icon>domain</mat-icon>
+          <span>Multi-property support</span>
+        </div>
+        <div class="hero-feature">
+          <mat-icon>shield</mat-icon>
+          <span>Enterprise-grade security</span>
+        </div>
+      </div>
+    </div>
+
+    <span class="hero-copyright">&copy; 2026 Tartware Inc.</span>
   </div>
 
-  <div class="login-body">
-    <h1 class="login-heading">Sign in to Tartware PMS</h1>
+  <!-- ── Right: Login form panel ── -->
+  <div class="login-panel">
+    <div class="login-panel-inner">
+      <!-- Mobile logo (visible only on small screens) -->
+      <div class="mobile-logo">
+        <mat-icon class="mobile-logo-icon">hotel</mat-icon>
+        <span class="mobile-logo-text">tartware</span>
+      </div>
 
-    <div class="login-card">
+      <h2 class="login-heading">Welcome back</h2>
+      <p class="login-subheading">Sign in to your account to continue</p>
+
       @if (error(); as err) {
         <div class="login-error">
           <mat-icon class="error-icon">error_outline</mat-icon>
-          {{ err }}
+          <span>{{ err }}</span>
         </div>
       }
 
       <form (ngSubmit)="onSubmit()" method="post" class="login-form">
         <mat-form-field appearance="outline" class="full-width">
           <mat-label>Username</mat-label>
+          <mat-icon matPrefix class="field-icon">person_outline</mat-icon>
           <input matInput
                  [(ngModel)]="username"
                  name="username"
@@ -27,6 +65,7 @@
 
         <mat-form-field appearance="outline" class="full-width">
           <mat-label>Password</mat-label>
+          <mat-icon matPrefix class="field-icon">lock_outline</mat-icon>
           <input matInput
                  [type]="hidePassword() ? 'password' : 'text'"
                  [(ngModel)]="password"
@@ -35,7 +74,8 @@
                  required />
           <button mat-icon-button matSuffix
                   type="button"
-                  (click)="togglePasswordVisibility()">
+                  (click)="togglePasswordVisibility()"
+                  aria-label="Toggle password visibility">
             <mat-icon>{{ hidePassword() ? 'visibility' : 'visibility_off' }}</mat-icon>
           </button>
         </mat-form-field>
@@ -52,6 +92,11 @@
           }
         </button>
       </form>
+
+      <div class="login-footer">
+        <mat-icon class="footer-lock-icon">verified_user</mat-icon>
+        <span>Secured with TLS encryption</span>
+      </div>
     </div>
   </div>
 </div>

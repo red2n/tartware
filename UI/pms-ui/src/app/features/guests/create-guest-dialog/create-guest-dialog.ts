@@ -11,13 +11,7 @@ import { AuthService } from "../../../core/auth/auth.service";
 @Component({
 	selector: "app-create-guest-dialog",
 	standalone: true,
-	imports: [
-		FormsModule,
-		MatButtonModule,
-		MatDialogModule,
-		MatIconModule,
-		MatProgressSpinnerModule,
-	],
+	imports: [FormsModule, MatButtonModule, MatDialogModule, MatIconModule, MatProgressSpinnerModule],
 	templateUrl: "./create-guest-dialog.html",
 	styleUrl: "./create-guest-dialog.scss",
 })
@@ -61,8 +55,7 @@ export class CreateGuestDialogComponent {
 	get emailError(): string | null {
 		const val = this.email.trim();
 		if (!val) return "Email is required";
-		if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val))
-			return "Enter a valid email address";
+		if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val)) return "Enter a valid email address";
 		return null;
 	}
 
@@ -113,12 +106,10 @@ export class CreateGuestDialogComponent {
 			// Extra fields go into metadata for downstream processing
 			const metadata: Record<string, unknown> = {};
 			if (this.title) metadata["title"] = this.title;
-			if (this.nationality.trim())
-				metadata["nationality"] = this.nationality.trim();
+			if (this.nationality.trim()) metadata["nationality"] = this.nationality.trim();
 			if (this.gender) metadata["gender"] = this.gender;
 			if (this.dateOfBirth) metadata["date_of_birth"] = this.dateOfBirth;
-			if (this.companyName.trim())
-				metadata["company_name"] = this.companyName.trim();
+			if (this.companyName.trim()) metadata["company_name"] = this.companyName.trim();
 
 			await this.api.post("/guests", {
 				tenant_id: tenantId,
@@ -139,9 +130,7 @@ export class CreateGuestDialogComponent {
 				this.fieldErrors.set(errors);
 				this.error.set(e.message);
 			} else {
-				this.error.set(
-					e instanceof Error ? e.message : "Failed to create guest",
-				);
+				this.error.set(e instanceof Error ? e.message : "Failed to create guest");
 			}
 		} finally {
 			this.saving.set(false);

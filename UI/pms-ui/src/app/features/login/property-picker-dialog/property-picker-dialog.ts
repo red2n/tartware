@@ -1,10 +1,6 @@
 import { Component, inject } from "@angular/core";
 import { MatButtonModule } from "@angular/material/button";
-import {
-	MAT_DIALOG_DATA,
-	MatDialogModule,
-	MatDialogRef,
-} from "@angular/material/dialog";
+import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from "@angular/material/dialog";
 import { MatIconModule } from "@angular/material/icon";
 
 import type { Property } from "@tartware/schemas";
@@ -23,9 +19,7 @@ export interface PropertyPickerData {
 	templateUrl: "./property-picker-dialog.html",
 })
 export class PropertyPickerDialogComponent {
-	private readonly dialogRef = inject(
-		MatDialogRef<PropertyPickerDialogComponent>,
-	);
+	private readonly dialogRef = inject(MatDialogRef<PropertyPickerDialogComponent>);
 	readonly data: PropertyPickerData = inject(MAT_DIALOG_DATA);
 
 	select(property: PropertyItem): void {

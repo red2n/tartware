@@ -34,9 +34,7 @@ export class SelectPropertyComponent {
 
 	readonly properties = this.ctx.properties;
 	readonly loading = this.ctx.loading;
-	readonly tenantName = computed(
-		() => this.auth.activeMembership()?.tenant_name ?? "",
-	);
+	readonly tenantName = computed(() => this.auth.activeMembership()?.tenant_name ?? "");
 
 	readonly search = signal("");
 

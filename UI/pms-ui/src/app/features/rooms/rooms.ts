@@ -15,18 +15,9 @@ import type { RoomItem } from "@tartware/schemas";
 import { ApiService } from "../../core/api/api.service";
 import { AuthService } from "../../core/auth/auth.service";
 import { TenantContextService } from "../../core/context/tenant-context.service";
-import {
-	housekeepingStatusClass,
-	roomStatusClass,
-} from "../../shared/badge-utils";
+import { housekeepingStatusClass, roomStatusClass } from "../../shared/badge-utils";
 
-type StatusFilter =
-	| "ALL"
-	| "SETUP"
-	| "VACANT"
-	| "OCCUPIED"
-	| "OUT_OF_ORDER"
-	| "BLOCKED";
+type StatusFilter = "ALL" | "SETUP" | "VACANT" | "OCCUPIED" | "OUT_OF_ORDER" | "BLOCKED";
 
 @Component({
 	selector: "app-rooms",
@@ -155,27 +146,22 @@ export class RoomsComponent {
 	}
 
 	openCreateDialog(): void {
-		import("./create-room-dialog/create-room-dialog").then(
-			({ CreateRoomDialogComponent }) => {
-				const ref = this.dialog.open(CreateRoomDialogComponent, {
-					width: "520px",
-					disableClose: true,
-				});
-				ref.afterClosed().subscribe((created: boolean) => {
-					if (created) {
-						this.loadRooms();
-					}
-				});
-			},
-		);
+		import("./create-room-dialog/create-room-dialog").then(({ CreateRoomDialogComponent }) => {
+			const ref = this.dialog.open(CreateRoomDialogComponent, {
+				width: "520px",
+				disableClose: true,
+			});
+			ref.afterClosed().subscribe((created: boolean) => {
+				if (created) {
+					this.loadRooms();
+				}
+			});
+		});
 	}
 
 	/** Merge room-level + type-level amenities, deduplicated. */
 	roomAmenities(room: RoomItem): string[] {
-		const set = new Set([
-			...(room.amenities ?? []),
-			...(room.room_type_amenities ?? []),
-		]);
+		const set = new Set([...(room.amenities ?? []), ...(room.room_type_amenities ?? [])]);
 		return Array.from(set);
 	}
 

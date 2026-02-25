@@ -1,11 +1,5 @@
 import { NgClass } from "@angular/common";
-import {
-	Component,
-	computed,
-	inject,
-	type OnInit,
-	signal,
-} from "@angular/core";
+import { Component, computed, inject, type OnInit, signal } from "@angular/core";
 import { FormsModule } from "@angular/forms";
 import { MatButtonModule } from "@angular/material/button";
 import { MatIconModule } from "@angular/material/icon";
@@ -145,9 +139,7 @@ export class SettingsComponent implements OnInit {
 		this.loadingCategories.set(true);
 		this.error.set(null);
 		try {
-			const res = await this.api.get<CategoryListResponse>(
-				"/settings/categories",
-			);
+			const res = await this.api.get<CategoryListResponse>("/settings/categories");
 			const sorted = res.data
 				.filter((c) => c.is_active)
 				.sort((a, b) => a.sort_order - b.sort_order);
@@ -156,9 +148,7 @@ export class SettingsComponent implements OnInit {
 				this.selectCategory(sorted[0]);
 			}
 		} catch (err) {
-			this.error.set(
-				err instanceof Error ? err.message : "Failed to load settings",
-			);
+			this.error.set(err instanceof Error ? err.message : "Failed to load settings");
 		} finally {
 			this.loadingCategories.set(false);
 		}
@@ -172,17 +162,13 @@ export class SettingsComponent implements OnInit {
 		this.loadingCatalog.set(true);
 		this.error.set(null);
 		try {
-			const res = await this.api.get<CategoryCatalog>(
-				`/settings/catalog/${category.code}`,
-			);
+			const res = await this.api.get<CategoryCatalog>(`/settings/catalog/${category.code}`);
 			this.sections.set(res.data.sections);
 			this.definitions.set(res.data.definitions);
 			this.options.set(res.data.options);
 			await this.loadValues();
 		} catch (err) {
-			this.error.set(
-				err instanceof Error ? err.message : "Failed to load category",
-			);
+			this.error.set(err instanceof Error ? err.message : "Failed to load category");
 		} finally {
 			this.loadingCatalog.set(false);
 		}
@@ -255,9 +241,7 @@ export class SettingsComponent implements OnInit {
 	}
 
 	isMultiSelectValue(def: SettingsDefinition): boolean {
-		return (
-			def.control_type === "MULTI_SELECT" || def.data_type === "MULTI_ENUM"
-		);
+		return def.control_type === "MULTI_SELECT" || def.data_type === "MULTI_ENUM";
 	}
 
 	isDateValue(def: SettingsDefinition): boolean {
@@ -285,10 +269,7 @@ export class SettingsComponent implements OnInit {
 			return [];
 		}
 		const obj = value as Record<string, unknown>;
-		const base: Pick<
-			JsonFieldGroup,
-			"children" | "columns" | "rows" | "items"
-		> = {
+		const base: Pick<JsonFieldGroup, "children" | "columns" | "rows" | "items"> = {
 			children: [],
 			columns: [],
 			rows: [],
@@ -317,17 +298,11 @@ export class SettingsComponent implements OnInit {
 					valueType: "number",
 				});
 			} else if (Array.isArray(v)) {
-				if (
-					v.length > 0 &&
-					typeof v[0] === "object" &&
-					v[0] !== null &&
-					!Array.isArray(v[0])
-				) {
+				if (v.length > 0 && typeof v[0] === "object" && v[0] !== null && !Array.isArray(v[0])) {
 					const colSet = new Set<string>();
 					for (const item of v) {
 						if (typeof item === "object" && item !== null) {
-							for (const k of Object.keys(item as Record<string, unknown>))
-								colSet.add(k);
+							for (const k of Object.keys(item as Record<string, unknown>)) colSet.add(k);
 						}
 					}
 					groups.push({
@@ -355,11 +330,7 @@ export class SettingsComponent implements OnInit {
 				const children: JsonFieldGroup["children"] = [];
 				for (const [ck, cv] of Object.entries(v as Record<string, unknown>)) {
 					const vt: "string" | "number" | "boolean" =
-						typeof cv === "boolean"
-							? "boolean"
-							: typeof cv === "number"
-								? "number"
-								: "string";
+						typeof cv === "boolean" ? "boolean" : typeof cv === "number" ? "number" : "string";
 					children.push({
 						key: ck,
 						label: this.humanizeKey(ck),
@@ -427,12 +398,7 @@ export class SettingsComponent implements OnInit {
 	}
 
 	/** Edit a primitive or nested-object field within a JSON setting value */
-	onJsonFieldEdit(
-		defId: string,
-		key: string,
-		subKey: string | null,
-		value: unknown,
-	): void {
+	onJsonFieldEdit(defId: string, key: string, subKey: string | null, value: unknown): void {
 		this.editStates.update((s) => {
 			const state = this.getEditState(defId);
 			const obj = structuredClone(state.editValue) as Record<string, unknown>;
@@ -539,11 +505,7 @@ export class SettingsComponent implements OnInit {
 		if (def.is_readonly) return;
 		const currentValue = this.getDisplayValue(def);
 		let editValue: unknown;
-		if (
-			this.isJsonValue(def) &&
-			typeof currentValue === "object" &&
-			currentValue !== null
-		) {
+		if (this.isJsonValue(def) && typeof currentValue === "object" && currentValue !== null) {
 			editValue = structuredClone(currentValue);
 		} else {
 			editValue = currentValue;
@@ -634,18 +596,13 @@ export class SettingsComponent implements OnInit {
 					`/settings/values/${existing.id}`,
 					{ value: parsedValue },
 				);
-				this.values.update((vals) =>
-					vals.map((v) => (v.id === existing.id ? updated.data : v)),
-				);
+				this.values.update((vals) => vals.map((v) => (v.id === existing.id ? updated.data : v)));
 			} else {
-				const created = await this.api.post<{ data: SettingsValue }>(
-					"/settings/values",
-					{
-						setting_id: def.id,
-						scope_level: def.default_scope,
-						value: parsedValue,
-					},
-				);
+				const created = await this.api.post<{ data: SettingsValue }>("/settings/values", {
+					setting_id: def.id,
+					scope_level: def.default_scope,
+					value: parsedValue,
+				});
 				this.values.update((vals) => [...vals, created.data]);
 			}
 
@@ -722,8 +679,6 @@ export class SettingsComponent implements OnInit {
 
 	scopeLabel(scopes: string[]): string {
 		if (!scopes?.length) return "—";
-		return scopes
-			.map((s) => s.charAt(0) + s.slice(1).toLowerCase().replace(/_/g, " "))
-			.join(", ");
+		return scopes.map((s) => s.charAt(0) + s.slice(1).toLowerCase().replace(/_/g, " ")).join(", ");
 	}
 }
