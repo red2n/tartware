@@ -6,6 +6,7 @@
  * ===================================================== */
 
 :root {
+	color-scheme: light;
 	/* ── Surface & Background (bgColor-*) ── */
 	--color-canvas-default: #ffffff;
 	--color-canvas-subtle: #f6f8fa;
@@ -127,6 +128,7 @@
 
 /* ── Dark theme (Primer "dark" theme) ── */
 [data-theme="dark"] {
+	color-scheme: dark;
 	--color-canvas-default: #0d1117;
 	--color-canvas-subtle: #151b23;
 	--color-canvas-inset: #010409;

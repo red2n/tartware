@@ -1,0 +1,52 @@
+/* Reservations page — only component-specific overrides.
+ * All reusable patterns (filter-bar, data-table, states, badges, buttons)
+ * live in styles/shared.scss. */
+
+.reservations-page {
+  max-width: 1200px;
+}
+
+.confirmation-number {
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-accent-fg);
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-xs);
+}
+
+.guest-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.guest-name {
+  font-weight: var(--font-weight-medium);
+}
+
+.text-center {
+  text-align: center;
+}
+
+.cell-amount {
+  font-weight: var(--font-weight-medium);
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-xs);
+  text-align: right;
+  white-space: nowrap;
+}
+
+/* ── Responsive ── */
+@media (max-width: 768px) {
+  .filter-bar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .search-input {
+    width: 100%;
+  }
+
+  .table-container {
+    overflow-x: auto;
+  }
+}

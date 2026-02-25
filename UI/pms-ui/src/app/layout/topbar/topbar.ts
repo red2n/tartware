@@ -13,13 +13,7 @@ import { ThemeService } from "../../core/theme/theme.service";
 @Component({
 	selector: "app-topbar",
 	standalone: true,
-	imports: [
-		MatIconModule,
-		MatButtonModule,
-		MatMenuModule,
-		MatDividerModule,
-		MatTooltipModule,
-	],
+	imports: [MatIconModule, MatButtonModule, MatMenuModule, MatDividerModule, MatTooltipModule],
 	templateUrl: "./topbar.html",
 	styleUrl: "./topbar.scss",
 })

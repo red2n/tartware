@@ -52,3 +52,25 @@ export function housekeepingStatusClass(status: string): string {
 			return "";
 	}
 }
+
+export function reservationStatusClass(status: string): string {
+	switch (status?.toUpperCase()) {
+		case "CONFIRMED":
+			return "badge-success";
+		case "CHECKED_IN":
+			return "badge-accent";
+		case "CHECKED_OUT":
+			return "badge-muted";
+		case "PENDING":
+		case "INQUIRY":
+		case "QUOTED":
+		case "WAITLISTED":
+			return "badge-warning";
+		case "CANCELLED":
+		case "NO_SHOW":
+		case "EXPIRED":
+			return "badge-danger";
+		default:
+			return "";
+	}
+}

@@ -14,13 +14,7 @@ type Property = { id: string; property_name: string };
 @Component({
 	selector: "app-create-room-dialog",
 	standalone: true,
-	imports: [
-		FormsModule,
-		MatButtonModule,
-		MatDialogModule,
-		MatIconModule,
-		MatProgressSpinnerModule,
-	],
+	imports: [FormsModule, MatButtonModule, MatDialogModule, MatIconModule, MatProgressSpinnerModule],
 	templateUrl: "./create-room-dialog.html",
 	styleUrl: "./create-room-dialog.scss",
 })
@@ -102,9 +96,7 @@ export class CreateRoomDialogComponent implements OnInit {
 			if (e instanceof ApiValidationError) {
 				this.error.set(e.fieldErrors.map((fe) => fe.message).join("; "));
 			} else {
-				this.error.set(
-					e instanceof Error ? e.message : "Failed to create room",
-				);
+				this.error.set(e instanceof Error ? e.message : "Failed to create room");
 			}
 		} finally {
 			this.saving.set(false);

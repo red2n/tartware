@@ -1,0 +1,354 @@
+<div class="page-header">
+  <div class="flex items-center gap-3">
+    <button class="btn btn-outline btn-sm" (click)="cancel()">
+      <mat-icon>arrow_back</mat-icon>
+    </button>
+    <div>
+      <h1 class="page-title">New Reservation</h1>
+      <p class="text-xs text-muted mt-0.5">Complete each step to create a booking</p>
+    </div>
+  </div>
+</div>
+
+@if (error(); as err) {
+  <div class="flash flash-error mb-4">
+    <mat-icon class="flash-icon">error_outline</mat-icon>
+    {{ err }}
+  </div>
+}
+
+@if (loadingRef()) {
+  <div class="loading-state">
+    <mat-spinner diameter="32"></mat-spinner>
+    <span class="text-muted">Loading reference data…</span>
+  </div>
+} @else {
+
+<!-- Step navigation tabs -->
+<div class="filter-bar detail-tabs">
+  <nav class="filter-tabs">
+    @for (label of steps; track label; let i = $index) {
+      <button class="filter-tab"
+              [class.filter-tab-active]="currentStep === i"
+              [class.filter-tab-done]="i < currentStep"
+              [disabled]="i > completedUpTo() + 1"
+              (click)="goToStep(i)">
+        <span class="step-num">{{ i + 1 }}</span>
+        {{ label }}
+      </button>
+    }
+  </nav>
+</div>
+
+<div class="detail-card">
+
+  <!-- ═══ STEP 1: Stay Details ═══ -->
+  @if (currentStep === 0) {
+    <div class="card-header">
+      <h2 class="card-title flex items-center gap-2">
+        <mat-icon>calendar_month</mat-icon>
+        When is the guest staying?
+      </h2>
+    </div>
+    <div class="card-body">
+      <div class="field-row mb-4">
+        <div class="field-group field-required" [class.field-error]="touched['checkInDate'] && !checkInDate">
+          <label class="field-label" for="cr-checkin">Check-in</label>
+          <input id="cr-checkin" type="date" class="field-input"
+                 [(ngModel)]="checkInDate"
+                 (blur)="markTouched('checkInDate')" />
+        </div>
+        <div class="field-group field-required" [class.field-error]="touched['checkOutDate'] && !checkOutDate">
+          <label class="field-label" for="cr-checkout">Check-out</label>
+          <input id="cr-checkout" type="date" class="field-input"
+                 [(ngModel)]="checkOutDate"
+                 (blur)="markTouched('checkOutDate')" />
+        </div>
+      </div>
+
+      @if (nights > 0) {
+        <div class="nights-pill">
+          <mat-icon>dark_mode</mat-icon>
+          {{ nights }} night{{ nights > 1 ? 's' : '' }}
+        </div>
+      } @else if (checkInDate && checkOutDate) {
+        <span class="field-hint-error">Check-out must be after check-in</span>
+      }
+
+      <h3 class="section-header mt-6">Select room type</h3>
+
+      <div class="room-type-grid">
+        @for (rt of roomTypes(); track rt.room_type_id) {
+          <button class="room-type-card"
+                  [class.selected]="roomTypeId === rt.room_type_id"
+                  (click)="onRoomTypeSelect(rt.room_type_id)">
+            <div class="rt-header">
+              <span class="rt-name">{{ rt.type_name }}</span>
+              <span class="rt-code">{{ rt.type_code }}</span>
+            </div>
+            <div class="rt-details">
+              <span class="rt-detail">
+                <mat-icon>king_bed</mat-icon>
+                {{ rt.number_of_beds }}× {{ rt.bed_type }}
+              </span>
+              <span class="rt-detail">
+                <mat-icon>group</mat-icon>
+                Max {{ rt.max_occupancy }}
+              </span>
+              @if (rt.size_sqm) {
+                <span class="rt-detail">
+                  <mat-icon>square_foot</mat-icon>
+                  {{ rt.size_sqm }} m²
+                </span>
+              }
+            </div>
+            <div class="rt-price">
+              from {{ fmtCurrency(rt.base_price, rt.currency) }}<span class="text-muted">/night</span>
+            </div>
+            @if (roomTypeId === rt.room_type_id) {
+              <mat-icon class="rt-check">check_circle</mat-icon>
+            }
+          </button>
+        } @empty {
+          <div class="empty-hint">
+            <mat-icon>info_outline</mat-icon>
+            No room types configured for this property.
+          </div>
+        }
+      </div>
+
+      <div class="step-actions">
+        <button class="btn btn-outline" (click)="cancel()">Cancel</button>
+        <button class="btn btn-primary" [disabled]="!datesComplete" (click)="nextStep()">
+          See rates <mat-icon>arrow_forward</mat-icon>
+        </button>
+      </div>
+    </div>
+  }
+
+  <!-- ═══ STEP 2: Select Rate ═══ -->
+  @if (currentStep === 1) {
+    <div class="card-header">
+      <h2 class="card-title flex items-center gap-2">
+        <mat-icon>payments</mat-icon>
+        Choose a rate plan
+      </h2>
+      <div class="context-chips">
+        <span class="context-chip">
+          <mat-icon>bed</mat-icon> {{ selectedRoomType?.type_name }}
+        </span>
+        <span class="context-chip">
+          <mat-icon>dark_mode</mat-icon> {{ nights }} night{{ nights > 1 ? 's' : '' }}
+        </span>
+        <span class="context-chip">
+          <mat-icon>calendar_month</mat-icon> {{ checkInDate }} → {{ checkOutDate }}
+        </span>
+      </div>
+    </div>
+    <div class="card-body">
+      <div class="rate-list">
+        @for (r of availableRates(); track r.id) {
+          <button class="rate-card"
+                  [class.selected]="selectedRateCode === r.rate_code"
+                  (click)="selectRate(r)">
+            <div class="rate-info">
+              <div class="rate-title">
+                <span class="rate-name">{{ r.rate_name }}</span>
+                <span class="badge badge-muted">{{ r.rate_type }}</span>
+              </div>
+              <div class="rate-meta">
+                <span class="rate-meta-item">
+                  <mat-icon>restaurant</mat-icon> {{ mealPlanLabel(r.meal_plan) }}
+                </span>
+                <span class="rate-meta-item">
+                  <mat-icon>event_available</mat-icon> {{ cancellationLabel(r.cancellation_policy) }}
+                </span>
+                @if (r.min_length_of_stay > 1) {
+                  <span class="rate-meta-item">
+                    <mat-icon>hotel</mat-icon> Min {{ r.min_length_of_stay }} nights
+                  </span>
+                }
+              </div>
+              <div class="rate-occupancy">
+                <span>Single: {{ fmtCurrency(r.single_occupancy_rate, r.currency) }}</span>
+                <span>Double: {{ fmtCurrency(r.double_occupancy_rate, r.currency) }}</span>
+                @if (r.extra_person_rate > 0) {
+                  <span>Extra person: +{{ fmtCurrency(r.extra_person_rate, r.currency) }}</span>
+                }
+              </div>
+            </div>
+            <div class="rate-pricing">
+              <span class="rate-per-night">{{ fmtCurrency(r.base_rate, r.currency) }}</span>
+              <span class="rate-unit">/night</span>
+              <span class="rate-total">{{ fmtCurrency(r.base_rate * nights, r.currency) }} total</span>
+            </div>
+            @if (selectedRateCode === r.rate_code) {
+              <mat-icon class="rate-check">check_circle</mat-icon>
+            }
+          </button>
+        } @empty {
+          <div class="empty-hint">
+            <mat-icon>info_outline</mat-icon>
+            No active rates available for this room type.
+          </div>
+        }
+      </div>
+
+      <div class="step-actions">
+        <button class="btn btn-outline" (click)="prevStep()">
+          <mat-icon>arrow_back</mat-icon> Back
+        </button>
+        <button class="btn btn-primary" [disabled]="!rateComplete" (click)="nextStep()">
+          Select guest <mat-icon>arrow_forward</mat-icon>
+        </button>
+      </div>
+    </div>
+  }
+
+  <!-- ═══ STEP 3: Guest & Details ═══ -->
+  @if (currentStep === 2) {
+    <div class="card-header">
+      <h2 class="card-title flex items-center gap-2">
+        <mat-icon>person_search</mat-icon>
+        Select guest
+      </h2>
+    </div>
+    <div class="card-body">
+      <div class="field-group mb-3">
+        <input type="text" class="field-input"
+               placeholder="Search by name or email…"
+               [(ngModel)]="guestSearch" />
+      </div>
+
+      <div class="guest-list">
+        @for (g of filteredGuests(); track g.id) {
+          <button class="guest-row"
+                  [class.selected]="guestId === g.id"
+                  (click)="selectGuest(g)">
+            <div class="guest-avatar">
+              {{ g.first_name[0] }}{{ g.last_name[0] }}
+            </div>
+            <div class="guest-info">
+              <span class="guest-name">{{ g.first_name }} {{ g.last_name }}</span>
+              @if (g.email) {
+                <span class="guest-email">{{ g.email }}</span>
+              }
+            </div>
+            @if (guestId === g.id) {
+              <mat-icon class="guest-check">check_circle</mat-icon>
+            }
+          </button>
+        } @empty {
+          <div class="empty-hint">
+            <mat-icon>search_off</mat-icon>
+            @if (guestSearch) {
+              No guests match "{{ guestSearch }}"
+            } @else {
+              No guests found
+            }
+          </div>
+        }
+      </div>
+
+      @if (guestId) {
+        <h3 class="section-header mt-6">Booking details</h3>
+
+        <div class="field-row mb-3">
+          <div class="field-group">
+            <label class="field-label" for="cr-source">Source</label>
+            <select id="cr-source" class="field-input" [(ngModel)]="source">
+              @for (s of sources; track s.value) {
+                <option [value]="s.value">{{ s.label }}</option>
+              }
+            </select>
+          </div>
+          <div class="field-group">
+            <label class="field-label" for="cr-type">Reservation type</label>
+            <select id="cr-type" class="field-input" [(ngModel)]="reservationType">
+              @for (t of reservationTypes; track t.value) {
+                <option [value]="t.value">{{ t.label }}</option>
+              }
+            </select>
+          </div>
+        </div>
+
+        <div class="field-group">
+          <label class="field-label" for="cr-notes">Notes</label>
+          <textarea id="cr-notes" class="field-input" rows="2" maxlength="2000"
+                    placeholder="Special requests, internal notes…"
+                    [(ngModel)]="notes"></textarea>
+        </div>
+      }
+
+      <div class="step-actions">
+        <button class="btn btn-outline" (click)="prevStep()">
+          <mat-icon>arrow_back</mat-icon> Back
+        </button>
+        <button class="btn btn-primary" [disabled]="!guestComplete" (click)="nextStep()">
+          Review <mat-icon>arrow_forward</mat-icon>
+        </button>
+      </div>
+    </div>
+  }
+
+  <!-- ═══ STEP 4: Confirm ═══ -->
+  @if (currentStep === 3) {
+    <div class="card-header">
+      <h2 class="card-title flex items-center gap-2">
+        <mat-icon>fact_check</mat-icon>
+        Review &amp; Confirm
+      </h2>
+    </div>
+    <div class="card-body">
+      <div class="confirm-table">
+        <div class="confirm-row">
+          <span class="confirm-label">Guest</span>
+          <span class="confirm-value">{{ selectedGuest ? guestDisplayName(selectedGuest) : '' }}</span>
+        </div>
+        <div class="confirm-row">
+          <span class="confirm-label">Room type</span>
+          <span class="confirm-value">{{ selectedRoomType?.type_name }}</span>
+        </div>
+        <div class="confirm-row">
+          <span class="confirm-label">Rate plan</span>
+          <span class="confirm-value">{{ selectedRate?.rate_name }} ({{ selectedRate?.rate_code }})</span>
+        </div>
+        <div class="confirm-row">
+          <span class="confirm-label">Stay</span>
+          <span class="confirm-value">{{ checkInDate }} → {{ checkOutDate }} ({{ nights }} night{{ nights > 1 ? 's' : '' }})</span>
+        </div>
+        <div class="confirm-row">
+          <span class="confirm-label">Source / Type</span>
+          <span class="confirm-value">{{ source }} / {{ reservationType }}</span>
+        </div>
+        @if (notes) {
+          <div class="confirm-row">
+            <span class="confirm-label">Notes</span>
+            <span class="confirm-value">{{ notes }}</span>
+          </div>
+        }
+        <div class="confirm-row confirm-total-row">
+          <span class="confirm-label">Total</span>
+          <span class="confirm-total-amount">{{ fmtCurrency(totalAmount, selectedRate?.currency || 'USD') }}</span>
+        </div>
+      </div>
+
+      <div class="step-actions">
+        <button class="btn btn-outline" [disabled]="saving()" (click)="prevStep()">
+          <mat-icon>arrow_back</mat-icon> Back
+        </button>
+        <button class="btn btn-primary" [disabled]="saving()" (click)="save()">
+          @if (saving()) {
+            <mat-spinner diameter="16" />
+            Creating…
+          } @else {
+            <mat-icon>check</mat-icon> Confirm booking
+          }
+        </button>
+      </div>
+    </div>
+  }
+
+</div>
+
+}

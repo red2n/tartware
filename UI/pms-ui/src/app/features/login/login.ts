@@ -82,9 +82,7 @@ export class LoginComponent {
 				this.router.navigate(["/select-property"]);
 			}
 		} catch (e) {
-			this.error.set(
-				e instanceof Error ? e.message : "Login failed. Please try again.",
-			);
+			this.error.set(e instanceof Error ? e.message : "Login failed. Please try again.");
 		} finally {
 			this.loading.set(false);
 		}

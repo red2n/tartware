@@ -11,8 +11,7 @@ export type ThemeMode = "LIGHT" | "DARK" | "SYSTEM";
 export class ThemeService {
 	private readonly _themeMode = signal<ThemeMode>("SYSTEM");
 	private readonly _osPrefersDark = signal(
-		typeof window !== "undefined" &&
-			window.matchMedia("(prefers-color-scheme: dark)").matches,
+		typeof window !== "undefined" && window.matchMedia("(prefers-color-scheme: dark)").matches,
 	);
 
 	readonly themeMode = this._themeMode.asReadonly();
@@ -34,21 +33,16 @@ export class ThemeService {
 	) {
 		// Listen for OS theme changes
 		if (typeof window !== "undefined") {
-			window
-				.matchMedia("(prefers-color-scheme: dark)")
-				.addEventListener("change", (e) => {
-					this._osPrefersDark.set(e.matches);
-				});
+			window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", (e) => {
+				this._osPrefersDark.set(e.matches);
+			});
 		}
 
 		// Apply theme to DOM whenever it changes
 		effect(() => {
 			const theme = this.effectiveTheme();
 			if (typeof document !== "undefined") {
-				document.documentElement.setAttribute(
-					"data-theme",
-					theme.toLowerCase(),
-				);
+				document.documentElement.setAttribute("data-theme", theme.toLowerCase());
 			}
 		});
 	}
@@ -59,12 +53,9 @@ export class ThemeService {
 		if (!tenantId) return;
 
 		try {
-			const prefs = await this.api.get<UserUiPreferences>(
-				"/users/me/ui-preferences",
-				{
-					tenant_id: tenantId,
-				},
-			);
+			const prefs = await this.api.get<UserUiPreferences>("/users/me/ui-preferences", {
+				tenant_id: tenantId,
+			});
 			this._themeMode.set(prefs.theme ?? "SYSTEM");
 		} catch {
 			// Default to SYSTEM if backend unavailable
@@ -80,11 +71,7 @@ export class ThemeService {
 		if (!tenantId) return;
 
 		try {
-			await this.api.put(
-				"/users/me/ui-preferences",
-				{ theme: mode },
-				{ tenant_id: tenantId },
-			);
+			await this.api.put("/users/me/ui-preferences", { theme: mode }, { tenant_id: tenantId });
 		} catch {
 			// Silently fail — local state is already updated
 		}

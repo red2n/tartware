@@ -1,0 +1,28 @@
+/* Reservation detail — component-specific only.
+ * Reusable patterns (detail-card, detail-list, breadcrumb, etc.)
+ * live in styles/shared.scss. */
+
+.notes-section {
+  margin-bottom: var(--space-3);
+
+  &:last-child {
+    margin-bottom: 0;
+  }
+}
+
+.notes-label {
+  display: block;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-fg-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  margin-bottom: var(--space-1);
+}
+
+.notes-text {
+  font-size: var(--font-size-sm);
+  color: var(--color-fg-default);
+  margin: 0;
+  white-space: pre-wrap;
+}

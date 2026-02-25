@@ -63,11 +63,7 @@ export class ApiService {
 		return response.json();
 	}
 
-	async put<T>(
-		path: string,
-		body: unknown,
-		params?: Record<string, string>,
-	): Promise<T> {
+	async put<T>(path: string, body: unknown, params?: Record<string, string>): Promise<T> {
 		const response = await fetch(this.buildUrl(path, params), {
 			method: "PUT",
 			headers: this.getHeaders(),
@@ -79,11 +75,7 @@ export class ApiService {
 		return response.json();
 	}
 
-	async patch<T>(
-		path: string,
-		body: unknown,
-		params?: Record<string, string>,
-	): Promise<T> {
+	async patch<T>(path: string, body: unknown, params?: Record<string, string>): Promise<T> {
 		const response = await fetch(this.buildUrl(path, params), {
 			method: "PATCH",
 			headers: this.getHeaders(),

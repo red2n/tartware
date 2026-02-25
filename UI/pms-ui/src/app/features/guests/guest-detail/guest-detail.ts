@@ -1,11 +1,5 @@
 import { NgClass } from "@angular/common";
-import {
-	Component,
-	computed,
-	inject,
-	type OnInit,
-	signal,
-} from "@angular/core";
+import { Component, computed, inject, type OnInit, signal } from "@angular/core";
 import { MatIconModule } from "@angular/material/icon";
 import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
 import { MatTooltipModule } from "@angular/material/tooltip";
@@ -59,13 +53,7 @@ type DetailTab = "profile" | "preferences" | "documents" | "communications";
 @Component({
 	selector: "app-guest-detail",
 	standalone: true,
-	imports: [
-		NgClass,
-		RouterLink,
-		MatIconModule,
-		MatProgressSpinnerModule,
-		MatTooltipModule,
-	],
+	imports: [NgClass, RouterLink, MatIconModule, MatProgressSpinnerModule, MatTooltipModule],
 	templateUrl: "./guest-detail.html",
 	styleUrl: "./guest-detail.scss",
 })
@@ -93,9 +81,7 @@ export class GuestDetailComponent implements OnInit {
 		return [
 			{
 				label: "Full Name",
-				value: [g.title, g.first_name, g.middle_name, g.last_name]
-					.filter(Boolean)
-					.join(" "),
+				value: [g.title, g.first_name, g.middle_name, g.last_name].filter(Boolean).join(" "),
 			},
 			{ label: "Email", value: g.email ?? "—" },
 			{ label: "Phone", value: g.phone ?? "—" },
@@ -113,9 +99,7 @@ export class GuestDetailComponent implements OnInit {
 		const g = this.guest();
 		if (!g?.address) return [];
 		const a = g.address;
-		const parts = [a.street, a.city, a.state, a.postalCode, a.country].filter(
-			Boolean,
-		);
+		const parts = [a.street, a.city, a.state, a.postalCode, a.country].filter(Boolean);
 		if (parts.length === 0) return [];
 		return [{ label: "Address", value: parts.join(", ") }];
 	});
@@ -178,10 +162,7 @@ export class GuestDetailComponent implements OnInit {
 			{ label: "Lifetime Value", value: this.formatCurrency(g.lifetime_value) },
 			{
 				label: "Avg Stay Length",
-				value:
-					g.average_stay_length != null
-						? `${g.average_stay_length.toFixed(1)} nights`
-						: "—",
+				value: g.average_stay_length != null ? `${g.average_stay_length.toFixed(1)} nights` : "—",
 			},
 			{
 				label: "Last Stay",
@@ -202,8 +183,7 @@ export class GuestDetailComponent implements OnInit {
 		if (p.bedType) rows.push({ label: "Bed Type", value: p.bedType });
 		if (p.floor) rows.push({ label: "Floor", value: p.floor });
 		if (p.smoking) rows.push({ label: "Smoking", value: "Yes" });
-		if (p.language)
-			rows.push({ label: "Language", value: p.language.toUpperCase() });
+		if (p.language) rows.push({ label: "Language", value: p.language.toUpperCase() });
 		if (p.dietaryRestrictions?.length)
 			rows.push({ label: "Dietary", value: p.dietaryRestrictions.join(", ") });
 		if (p.specialRequests?.length)
@@ -269,10 +249,7 @@ export class GuestDetailComponent implements OnInit {
 		try {
 			// Guests are tenant-scoped — don't filter by property
 			const params: Record<string, string> = { tenant_id: tenantId };
-			const guest = await this.api.get<GuestDetail>(
-				`/guests/${guestId}`,
-				params,
-			);
+			const guest = await this.api.get<GuestDetail>(`/guests/${guestId}`, params);
 			this.guest.set(guest);
 		} catch (e) {
 			this.error.set(e instanceof Error ? e.message : "Failed to load guest");
@@ -292,10 +269,7 @@ export class GuestDetailComponent implements OnInit {
 				tenant_id: tenantId,
 				active_only: "true",
 			};
-			const items = await this.api.get<PreferenceItem[]>(
-				`/guests/${guestId}/preferences`,
-				params,
-			);
+			const items = await this.api.get<PreferenceItem[]>(`/guests/${guestId}/preferences`, params);
 			this.preferences.set(items);
 		} catch {
 			/* preferences are supplementary — fail silently */
@@ -312,10 +286,7 @@ export class GuestDetailComponent implements OnInit {
 		this.loadingTab.set(true);
 		try {
 			const params: Record<string, string> = { tenant_id: tenantId };
-			const items = await this.api.get<DocumentItem[]>(
-				`/guests/${guestId}/documents`,
-				params,
-			);
+			const items = await this.api.get<DocumentItem[]>(`/guests/${guestId}/documents`, params);
 			this.documents.set(items);
 		} catch {
 			/* documents are supplementary — fail silently */

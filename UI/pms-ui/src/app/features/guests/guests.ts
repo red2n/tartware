@@ -87,8 +87,7 @@ export class GuestsComponent {
 		return {
 			ALL: all.length,
 			VIP: all.filter((g) => g.vip_status).length,
-			LOYALTY: all.filter((g) => g.loyalty_tier && g.loyalty_tier !== "BASE")
-				.length,
+			LOYALTY: all.filter((g) => g.loyalty_tier && g.loyalty_tier !== "BASE").length,
 			BLACKLISTED: all.filter((g) => g.is_blacklisted).length,
 		};
 	});
@@ -169,23 +168,19 @@ export class GuestsComponent {
 	}
 
 	openCreateDialog(): void {
-		import("./create-guest-dialog/create-guest-dialog").then(
-			({ CreateGuestDialogComponent }) => {
-				const ref = this.dialog.open(CreateGuestDialogComponent, {
-					width: "600px",
-					disableClose: true,
-				});
-				ref.afterClosed().subscribe((created: boolean) => {
-					if (created) {
-						this.successMessage.set(
-							"Guest registration submitted. It may take a moment to appear.",
-						);
-						setTimeout(() => this.successMessage.set(null), 6000);
-						// Kafka consumer processes async — delay refresh
-						setTimeout(() => this.loadGuests(), 1500);
-					}
-				});
-			},
-		);
+		import("./create-guest-dialog/create-guest-dialog").then(({ CreateGuestDialogComponent }) => {
+			const ref = this.dialog.open(CreateGuestDialogComponent, {
+				width: "600px",
+				disableClose: true,
+			});
+			ref.afterClosed().subscribe((created: boolean) => {
+				if (created) {
+					this.successMessage.set("Guest registration submitted. It may take a moment to appear.");
+					setTimeout(() => this.successMessage.set(null), 6000);
+					// Kafka consumer processes async — delay refresh
+					setTimeout(() => this.loadGuests(), 1500);
+				}
+			});
+		});
 	}
 }

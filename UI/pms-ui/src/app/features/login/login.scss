@@ -1,84 +1,234 @@
+/* ── Split-panel login layout ── */
 .login-page {
-  display: flex;
-  flex-direction: column;
-  min-height: 100vh;
-  background: var(--color-canvas-subtle);
+	display: flex;
+	min-height: 100vh;
 }
 
-/* Dark header strip */
-.login-header {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: var(--space-6) 0;
-  background: var(--color-header-bg);
+/* ── Left hero panel ── */
+.login-hero {
+	display: none; /* hidden on mobile, shown on desktop */
+	flex-direction: column;
+	justify-content: space-between;
+	width: 50%;
+	max-width: 640px;
+	padding: var(--space-12) var(--space-10);
+	background: linear-gradient(145deg, #1b2838 0%, #0d1926 50%, #0a1628 100%);
+	color: #f0f6fc;
+	position: relative;
+	overflow: hidden;
+
+	/* Subtle pattern overlay */
+	&::before {
+		content: "";
+		position: absolute;
+		inset: 0;
+		background:
+			radial-gradient(ellipse at 20% 80%, rgba(9, 105, 218, 0.12) 0%, transparent 60%),
+			radial-gradient(ellipse at 80% 20%, rgba(31, 111, 235, 0.08) 0%, transparent 50%);
+		pointer-events: none;
+	}
 }
 
-.login-header-logo {
-  font-size: var(--font-size-2xl);
-  font-weight: var(--font-weight-bold);
-  color: var(--color-header-logo);
-  letter-spacing: -0.5px;
+.hero-content {
+	position: relative;
+	z-index: 1;
 }
 
-.login-body {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: var(--space-6) var(--space-4);
+/* Logo */
+.hero-logo {
+	display: flex;
+	align-items: center;
+	gap: var(--space-3);
+	margin-bottom: var(--space-12);
 }
 
+.hero-logo-icon {
+	font-size: 36px;
+	width: 36px;
+	height: 36px;
+	color: var(--color-accent-fg);
+}
+
+.hero-logo-text {
+	font-size: var(--font-size-xl);
+	font-weight: var(--font-weight-bold);
+	letter-spacing: -0.5px;
+}
+
+/* Headline */
+.hero-headline {
+	font-size: 40px;
+	font-weight: var(--font-weight-bold);
+	line-height: 1.15;
+	margin: 0 0 var(--space-6);
+	letter-spacing: -1px;
+}
+
+.hero-tagline {
+	font-size: var(--font-size-md);
+	line-height: var(--line-height-normal);
+	color: #9198a1;
+	margin: 0 0 var(--space-10);
+	max-width: 440px;
+}
+
+/* Feature pills */
+.hero-features {
+	display: flex;
+	flex-direction: column;
+	gap: var(--space-4);
+}
+
+.hero-feature {
+	display: flex;
+	align-items: center;
+	gap: var(--space-3);
+	font-size: var(--font-size-sm);
+	color: #c9d1d9;
+
+	mat-icon {
+		font-size: 20px;
+		width: 20px;
+		height: 20px;
+		color: var(--color-accent-fg);
+	}
+}
+
+/* Copyright */
+.hero-copyright {
+	position: relative;
+	z-index: 1;
+	font-size: var(--font-size-xs);
+	color: #484f58;
+}
+
+/* ── Right panel ── */
+.login-panel {
+	flex: 1;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: var(--space-8) var(--space-6);
+	background: var(--color-canvas-default);
+}
+
+.login-panel-inner {
+	width: 100%;
+	max-width: 400px;
+}
+
+/* Mobile-only logo */
+.mobile-logo {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: var(--space-2);
+	margin-bottom: var(--space-8);
+}
+
+.mobile-logo-icon {
+	font-size: 32px;
+	width: 32px;
+	height: 32px;
+	color: var(--color-accent-fg);
+}
+
+.mobile-logo-text {
+	font-size: var(--font-size-xl);
+	font-weight: var(--font-weight-bold);
+	color: var(--color-fg-default);
+	letter-spacing: -0.5px;
+}
+
+/* Headings */
 .login-heading {
-  font-size: var(--font-size-xl);
-  font-weight: var(--font-weight-normal);
-  color: var(--color-fg-default);
-  margin: 0 0 var(--space-4);
-  text-align: center;
+	font-size: 28px;
+	font-weight: var(--font-weight-bold);
+	color: var(--color-fg-default);
+	margin: 0 0 var(--space-2);
+	letter-spacing: -0.4px;
 }
 
-.login-card {
-  width: 100%;
-  max-width: 340px;
-  padding: var(--space-4);
-  background: var(--color-canvas-default);
-  border: 1px solid var(--color-border-default);
-  border-radius: var(--radius-md);
+.login-subheading {
+	font-size: var(--font-size-sm);
+	color: var(--color-fg-muted);
+	margin: 0 0 var(--space-8);
 }
 
-.login-form {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
-}
-
-.full-width {
-  width: 100%;
-}
-
-.login-button {
-  height: 40px;
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-medium);
-  margin-top: var(--space-1);
-}
-
+/* Error banner */
 .login-error {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  background: var(--color-danger-subtle);
-  color: var(--color-danger-fg);
-  padding: var(--space-3);
-  border-radius: var(--radius-md);
-  font-size: var(--font-size-sm);
-  border: 1px solid currentColor;
-  margin-bottom: var(--space-3);
+	display: flex;
+	align-items: center;
+	gap: var(--space-2);
+	background: var(--color-danger-subtle);
+	color: var(--color-danger-fg);
+	padding: var(--space-3) var(--space-4);
+	border-radius: var(--radius-md);
+	font-size: var(--font-size-sm);
+	border: 1px solid var(--color-danger-fg);
+	margin-bottom: var(--space-6);
+	line-height: var(--line-height-normal);
 }
 
 .error-icon {
-  font-size: 18px;
-  width: 18px;
-  height: 18px;
-  flex-shrink: 0;
+	font-size: 18px;
+	width: 18px;
+	height: 18px;
+	flex-shrink: 0;
+}
+
+/* Form */
+.login-form {
+	display: flex;
+	flex-direction: column;
+	gap: var(--space-2);
+}
+
+.full-width {
+	width: 100%;
+}
+
+.field-icon {
+	color: var(--color-fg-muted);
+	margin-right: var(--space-1);
+}
+
+.login-button {
+	height: 48px;
+	font-size: var(--font-size-md);
+	font-weight: var(--font-weight-semibold);
+	margin-top: var(--space-3);
+	border-radius: var(--radius-md);
+	letter-spacing: 0.2px;
+}
+
+/* Footer trust indicator */
+.login-footer {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: var(--space-2);
+	margin-top: var(--space-8);
+	padding-top: var(--space-6);
+	border-top: 1px solid var(--color-border-muted);
+	font-size: var(--font-size-xs);
+	color: var(--color-fg-muted);
+}
+
+.footer-lock-icon {
+	font-size: 16px;
+	width: 16px;
+	height: 16px;
+	color: var(--color-success-fg);
+}
+
+/* ── Desktop breakpoint ── */
+@media (min-width: 960px) {
+	.login-hero {
+		display: flex;
+	}
+
+	.mobile-logo {
+		display: none;
+	}
 }
