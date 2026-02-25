@@ -20,12 +20,11 @@
     </div>
   }
   <div class="filter-bar">
-    <nav class="filter-tabs" role="tablist" aria-label="Guest filters">
+    <nav class="filter-tabs" aria-label="Guest filters">
       @for (f of guestFilters; track f.key) {
         <button
           class="filter-tab"
-          role="tab"
-          [attr.aria-selected]="activeFilter() === f.key"
+          [attr.aria-pressed]="activeFilter() === f.key"
           [class.filter-tab-active]="activeFilter() === f.key"
           (click)="setFilter(f.key)">
           {{ f.label }}
@@ -75,16 +74,29 @@
         <table class="data-table">
           <thead>
             <tr>
-              <th class="th-sortable" (click)="onSort('last_name')">Guest <mat-icon class="sort-indicator">{{ sortIcon('last_name') }}</mat-icon></th>
-              <th class="th-sortable" (click)="onSort('email')">Email <mat-icon class="sort-indicator">{{ sortIcon('email') }}</mat-icon></th>
+              <th [attr.aria-sort]="ariaSort('last_name')">
+                <button type="button" class="th-sort-btn" (click)="onSort('last_name')">Guest <mat-icon class="sort-indicator">{{ sortIcon('last_name') }}</mat-icon></button>
+              </th>
+              <th [attr.aria-sort]="ariaSort('email')">
+                <button type="button" class="th-sort-btn" (click)="onSort('email')">Email <mat-icon class="sort-indicator">{{ sortIcon('email') }}</mat-icon></button>
+              </th>
               <th>Phone</th>
               <th>Status</th>
-              <th class="th-sortable" (click)="onSort('total_bookings')">Bookings <mat-icon class="sort-indicator">{{ sortIcon('total_bookings') }}</mat-icon></th>
-              <th class="th-sortable" (click)="onSort('total_revenue')">Revenue <mat-icon class="sort-indicator">{{ sortIcon('total_revenue') }}</mat-icon></th>
-              <th class="th-sortable" (click)="onSort('last_stay_date')">Last Stay <mat-icon class="sort-indicator">{{ sortIcon('last_stay_date') }}</mat-icon></th>
-              <th></th>\n            </tr>\n          </thead>\n          <tbody>
+              <th [attr.aria-sort]="ariaSort('total_bookings')">
+                <button type="button" class="th-sort-btn" (click)="onSort('total_bookings')">Bookings <mat-icon class="sort-indicator">{{ sortIcon('total_bookings') }}</mat-icon></button>
+              </th>
+              <th [attr.aria-sort]="ariaSort('total_revenue')">
+                <button type="button" class="th-sort-btn" (click)="onSort('total_revenue')">Revenue <mat-icon class="sort-indicator">{{ sortIcon('total_revenue') }}</mat-icon></button>
+              </th>
+              <th [attr.aria-sort]="ariaSort('last_stay_date')">
+                <button type="button" class="th-sort-btn" (click)="onSort('last_stay_date')">Last Stay <mat-icon class="sort-indicator">{{ sortIcon('last_stay_date') }}</mat-icon></button>
+              </th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
             @for (guest of paginatedGuests(); track guest.id) {
-              <tr class="row-clickable" tabindex="0" (click)="viewGuest(guest.id)" (keydown.enter)="viewGuest(guest.id)">
+              <tr class="row-clickable" tabindex="0" (click)="viewGuest(guest.id)" (keydown.enter)="$event.preventDefault(); viewGuest(guest.id)" (keydown.space)="$event.preventDefault(); viewGuest(guest.id)">
                 <td>
                   <div class="guest-name-cell">
                     <span class="avatar avatar-sm guest-avatar">{{ initials(guest) }}</span>

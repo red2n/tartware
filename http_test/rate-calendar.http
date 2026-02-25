@@ -42,7 +42,7 @@ GET {{baseUrl}}/v1/rates?tenant_id={{tenantId}}&property_id={{propertyId}}&statu
 Authorization: Bearer {{authToken}}
 
 ### Extract first rate ID
-@rateId = {{listRates.response.body.data[0].id}}
+@rateId = {{listRates.response.body.$[0].id}}
 
 ###############################################################################
 # 3. RATE CALENDAR - READ

@@ -17,7 +17,7 @@ import { AuthService } from "../../core/auth/auth.service";
 import { TenantContextService } from "../../core/context/tenant-context.service";
 import { housekeepingStatusClass, roomStatusClass } from "../../shared/badge-utils";
 import { PaginationComponent } from "../../shared/pagination/pagination";
-import { type SortState, createSortState, sortBy, toggleSort } from "../../shared/sort-utils";
+import { createSortState, sortBy, toggleSort } from "../../shared/sort-utils";
 
 type StatusFilter = "ALL" | "SETUP" | "VACANT" | "OCCUPIED" | "OUT_OF_ORDER" | "BLOCKED";
 
@@ -120,6 +120,14 @@ export class RoomsComponent {
 			this.ctx.propertyId();
 			this.loadRooms();
 		});
+
+		// Clamp currentPage when filtered list shrinks
+		effect(() => {
+			const maxPage = Math.max(1, Math.ceil(this.filteredRooms().length / this.pageSize));
+			if (this.currentPage() > maxPage) {
+				this.currentPage.set(maxPage);
+			}
+		}, { allowSignalWrites: true });
 	}
 
 	setFilter(filter: StatusFilter): void {
@@ -139,8 +147,14 @@ export class RoomsComponent {
 
 	sortIcon(column: string): string {
 		const s = this.sortState();
-		if (s.column !== column) return 'unfold_more';
-		return s.direction === 'asc' ? 'arrow_upward' : 'arrow_downward';
+		if (s.column !== column) return "unfold_more";
+		return s.direction === "asc" ? "arrow_upward" : "arrow_downward";
+	}
+
+	ariaSort(column: string): string | null {
+		const s = this.sortState();
+		if (s.column !== column) return null;
+		return s.direction === "asc" ? "ascending" : "descending";
 	}
 
 	viewRoom(roomId: string): void {

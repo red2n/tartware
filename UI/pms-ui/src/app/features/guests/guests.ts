@@ -14,7 +14,7 @@ import { ApiService } from "../../core/api/api.service";
 import { AuthService } from "../../core/auth/auth.service";
 import { loyaltyTierClass, vipStatusClass } from "../../shared/badge-utils";
 import { PaginationComponent } from "../../shared/pagination/pagination";
-import { type SortState, createSortState, sortBy, toggleSort } from "../../shared/sort-utils";
+import { createSortState, sortBy, toggleSort } from "../../shared/sort-utils";
 
 type GuestFilter = "ALL" | "VIP" | "LOYALTY" | "BLACKLISTED";
 
@@ -110,6 +110,14 @@ export class GuestsComponent {
 			this.auth.tenantId();
 			this.loadGuests();
 		});
+
+		// Clamp currentPage when filtered list shrinks
+		effect(() => {
+			const maxPage = Math.max(1, Math.ceil(this.filteredGuests().length / this.pageSize));
+			if (this.currentPage() > maxPage) {
+				this.currentPage.set(maxPage);
+			}
+		}, { allowSignalWrites: true });
 	}
 
 	setFilter(filter: GuestFilter): void {
@@ -129,8 +137,14 @@ export class GuestsComponent {
 
 	sortIcon(column: string): string {
 		const s = this.sortState();
-		if (s.column !== column) return 'unfold_more';
-		return s.direction === 'asc' ? 'arrow_upward' : 'arrow_downward';
+		if (s.column !== column) return "unfold_more";
+		return s.direction === "asc" ? "arrow_upward" : "arrow_downward";
+	}
+
+	ariaSort(column: string): string | null {
+		const s = this.sortState();
+		if (s.column !== column) return null;
+		return s.direction === "asc" ? "ascending" : "descending";
 	}
 
 	viewGuest(guestId: string): void {

@@ -13,7 +13,7 @@ import { ApiService } from "../../core/api/api.service";
 import { AuthService } from "../../core/auth/auth.service";
 import { TenantContextService } from "../../core/context/tenant-context.service";
 import { PaginationComponent } from "../../shared/pagination/pagination";
-import { type SortState, createSortState, sortBy, toggleSort } from "../../shared/sort-utils";
+import { createSortState, sortBy, toggleSort } from "../../shared/sort-utils";
 
 type StatusFilter = "ALL" | "ACTIVE" | "INACTIVE" | "EXPIRED" | "FUTURE";
 type TypeFilter = "ALL" | string;
@@ -125,6 +125,14 @@ export class RatesComponent {
 			this.ctx.propertyId();
 			this.loadRates();
 		});
+
+		// Clamp currentPage when filtered list shrinks
+		effect(() => {
+			const maxPage = Math.max(1, Math.ceil(this.filteredRates().length / this.pageSize));
+			if (this.currentPage() > maxPage) {
+				this.currentPage.set(maxPage);
+			}
+		}, { allowSignalWrites: true });
 	}
 
 	setFilter(filter: StatusFilter): void {
@@ -149,8 +157,14 @@ export class RatesComponent {
 
 	sortIcon(column: string): string {
 		const s = this.sortState();
-		if (s.column !== column) return 'unfold_more';
-		return s.direction === 'asc' ? 'arrow_upward' : 'arrow_downward';
+		if (s.column !== column) return "unfold_more";
+		return s.direction === "asc" ? "arrow_upward" : "arrow_downward";
+	}
+
+	ariaSort(column: string): string | null {
+		const s = this.sortState();
+		if (s.column !== column) return null;
+		return s.direction === "asc" ? "ascending" : "descending";
 	}
 
 	statusClass(status: string): string {

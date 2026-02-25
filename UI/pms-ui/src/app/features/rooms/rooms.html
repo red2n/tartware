@@ -14,12 +14,11 @@
 
   <!-- Filter tabs + search -->
   <div class="filter-bar">
-    <nav class="filter-tabs" role="tablist" aria-label="Room status filters">
+    <nav class="filter-tabs" aria-label="Room status filters">
       @for (f of statusFilters; track f.key) {
         <button
           class="filter-tab"
-          role="tab"
-          [attr.aria-selected]="activeFilter() === f.key"
+          [attr.aria-pressed]="activeFilter() === f.key"
           [class.filter-tab-active]="activeFilter() === f.key"
           (click)="setFilter(f.key)">
           {{ f.label }}
@@ -70,21 +69,31 @@
         <table class="data-table">
           <thead>
             <tr>
-              <th class="th-sortable" (click)="onSort('room_number')">Room <mat-icon class="sort-indicator">{{ sortIcon('room_number') }}</mat-icon></th>
-              <th class="th-sortable" (click)="onSort('room_type_name')">Type <mat-icon class="sort-indicator">{{ sortIcon('room_type_name') }}</mat-icon></th>
-              <th class="th-sortable" (click)="onSort('floor')">Floor <mat-icon class="sort-indicator">{{ sortIcon('floor') }}</mat-icon></th>
+              <th [attr.aria-sort]="ariaSort('room_number')">
+                <button type="button" class="th-sort-btn" (click)="onSort('room_number')">Room <mat-icon class="sort-indicator">{{ sortIcon('room_number') }}</mat-icon></button>
+              </th>
+              <th [attr.aria-sort]="ariaSort('room_type_name')">
+                <button type="button" class="th-sort-btn" (click)="onSort('room_type_name')">Type <mat-icon class="sort-indicator">{{ sortIcon('room_type_name') }}</mat-icon></button>
+              </th>
+              <th [attr.aria-sort]="ariaSort('floor')">
+                <button type="button" class="th-sort-btn" (click)="onSort('floor')">Floor <mat-icon class="sort-indicator">{{ sortIcon('floor') }}</mat-icon></button>
+              </th>
               @if (activeFilter() === 'ALL') {
-                <th class="th-sortable" (click)="onSort('status')">Status <mat-icon class="sort-indicator">{{ sortIcon('status') }}</mat-icon></th>
+                <th [attr.aria-sort]="ariaSort('status')">
+                  <button type="button" class="th-sort-btn" (click)="onSort('status')">Status <mat-icon class="sort-indicator">{{ sortIcon('status') }}</mat-icon></button>
+                </th>
               }
               <th>Amenities</th>
-              <th class="th-sortable" (click)="onSort('housekeeping_status')">Housekeeping <mat-icon class="sort-indicator">{{ sortIcon('housekeeping_status') }}</mat-icon></th>
+              <th [attr.aria-sort]="ariaSort('housekeeping_status')">
+                <button type="button" class="th-sort-btn" (click)="onSort('housekeeping_status')">Housekeeping <mat-icon class="sort-indicator">{{ sortIcon('housekeeping_status') }}</mat-icon></button>
+              </th>
               <th>Maintenance</th>
               <th></th>
             </tr>
           </thead>
           <tbody>
             @for (room of paginatedRooms(); track room.room_id) {
-              <tr class="row-clickable" tabindex="0" (click)="viewRoom(room.room_id)" (keydown.enter)="viewRoom(room.room_id)">
+              <tr class="row-clickable" tabindex="0" (click)="viewRoom(room.room_id)" (keydown.enter)="viewRoom(room.room_id)" (keydown.space)="$event.preventDefault(); viewRoom(room.room_id)">
                 <td class="cell-primary">
                   <span class="room-number">{{ room.room_number }}</span>
                   @if (room.room_name) {

@@ -26,11 +26,10 @@
 
 <!-- Step navigation tabs -->
 <div class="filter-bar detail-tabs">
-  <nav class="filter-tabs" role="tablist" aria-label="Reservation wizard steps">
+  <nav class="filter-tabs" aria-label="Reservation wizard steps">
     @for (label of steps; track label; let i = $index) {
       <button class="filter-tab"
-              role="tab"
-              [attr.aria-selected]="currentStep === i"
+              [attr.aria-current]="currentStep === i ? 'step' : null"
               [class.filter-tab-active]="currentStep === i"
               [class.filter-tab-done]="i < currentStep"
               [disabled]="i > completedUpTo() + 1"
