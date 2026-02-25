@@ -12,6 +12,8 @@ import type { RateItem } from "@tartware/schemas";
 import { ApiService } from "../../core/api/api.service";
 import { AuthService } from "../../core/auth/auth.service";
 import { TenantContextService } from "../../core/context/tenant-context.service";
+import { PaginationComponent } from "../../shared/pagination/pagination";
+import { type SortState, createSortState, sortBy, toggleSort } from "../../shared/sort-utils";
 
 type StatusFilter = "ALL" | "ACTIVE" | "INACTIVE" | "EXPIRED" | "FUTURE";
 type TypeFilter = "ALL" | string;
@@ -26,6 +28,7 @@ type TypeFilter = "ALL" | string;
 		MatButtonModule,
 		MatProgressSpinnerModule,
 		MatTooltipModule,
+		PaginationComponent,
 	],
 	templateUrl: "./rates.html",
 	styleUrl: "./rates.scss",
@@ -42,6 +45,9 @@ export class RatesComponent {
 	readonly searchQuery = signal("");
 	readonly activeFilter = signal<StatusFilter>("ALL");
 	readonly activeTypeFilter = signal<TypeFilter>("ALL");
+	readonly currentPage = signal(1);
+	readonly pageSize = 25;
+	readonly sortState = createSortState();
 
 	readonly statusFilters: { key: StatusFilter; label: string }[] = [
 		{ key: "ALL", label: "All" },
@@ -95,6 +101,12 @@ export class RatesComponent {
 		return list;
 	});
 
+	readonly paginatedRates = computed(() => {
+		const sorted = sortBy(this.filteredRates(), this.sortState().column, this.sortState().direction);
+		const start = (this.currentPage() - 1) * this.pageSize;
+		return sorted.slice(start, start + this.pageSize);
+	});
+
 	readonly filterCounts = computed(() => {
 		const all = this.rates();
 		return {
@@ -117,14 +129,28 @@ export class RatesComponent {
 
 	setFilter(filter: StatusFilter): void {
 		this.activeFilter.set(filter);
+		this.currentPage.set(1);
 	}
 
 	setTypeFilter(type: string): void {
 		this.activeTypeFilter.set(type);
+		this.currentPage.set(1);
 	}
 
 	onSearch(value: string): void {
 		this.searchQuery.set(value);
+		this.currentPage.set(1);
+	}
+
+	onSort(column: string): void {
+		this.sortState.set(toggleSort(this.sortState(), column));
+		this.currentPage.set(1);
+	}
+
+	sortIcon(column: string): string {
+		const s = this.sortState();
+		if (s.column !== column) return 'unfold_more';
+		return s.direction === 'asc' ? 'arrow_upward' : 'arrow_downward';
 	}
 
 	statusClass(status: string): string {
@@ -242,6 +268,8 @@ export class RatesComponent {
 	async toggleStatus(rate: RateItem, newStatus: "ACTIVE" | "INACTIVE"): Promise<void> {
 		const tenantId = this.auth.tenantId();
 		if (!tenantId) return;
+
+		if (newStatus === 'INACTIVE' && !confirm(`Deactivate rate plan "${rate.rate_name}"? It will no longer be available for new bookings.`)) return;
 
 		try {
 			await this.api.put(`/rates/${rate.id}`, {

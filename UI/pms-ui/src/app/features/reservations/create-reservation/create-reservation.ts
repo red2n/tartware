@@ -7,7 +7,7 @@ import { Router } from "@angular/router";
 import { ApiService, ApiValidationError } from "../../../core/api/api.service";
 import { AuthService } from "../../../core/auth/auth.service";
 import { TenantContextService } from "../../../core/context/tenant-context.service";
-import { formatCurrency } from "../../../shared/format-utils";
+import { formatCurrency, formatShortDate } from "../../../shared/format-utils";
 
 type RoomType = {
 	room_type_id: string;
@@ -242,6 +242,10 @@ export class CreateReservationComponent implements OnInit {
 
 	fmtCurrency(amount: number, currency: string): string {
 		return formatCurrency(amount, currency);
+	}
+
+	fmtDate(dateStr: string): string {
+		return formatShortDate(dateStr);
 	}
 
 	mealPlanLabel(code: string): string {

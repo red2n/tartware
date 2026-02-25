@@ -14,6 +14,8 @@ import { AuthService } from "../../core/auth/auth.service";
 import { TenantContextService } from "../../core/context/tenant-context.service";
 import { reservationStatusClass } from "../../shared/badge-utils";
 import { formatCurrency, formatShortDate } from "../../shared/format-utils";
+import { PaginationComponent } from "../../shared/pagination/pagination";
+import { type SortState, createSortState, sortBy, toggleSort } from "../../shared/sort-utils";
 
 type StatusFilter = "ALL" | "CONFIRMED" | "CHECKED_IN" | "PENDING" | "CANCELLED" | "CHECKED_OUT";
 
@@ -27,6 +29,7 @@ type StatusFilter = "ALL" | "CONFIRMED" | "CHECKED_IN" | "PENDING" | "CANCELLED"
 		MatButtonModule,
 		MatProgressSpinnerModule,
 		MatTooltipModule,
+		PaginationComponent,
 	],
 	templateUrl: "./reservations.html",
 	styleUrl: "./reservations.scss",
@@ -42,6 +45,9 @@ export class ReservationsComponent {
 	readonly error = signal<string | null>(null);
 	readonly searchQuery = signal("");
 	readonly activeFilter = signal<StatusFilter>("ALL");
+	readonly currentPage = signal(1);
+	readonly pageSize = 25;
+	readonly sortState = createSortState();
 
 	readonly statusFilters: { key: StatusFilter; label: string }[] = [
 		{ key: "ALL", label: "All" },
@@ -75,6 +81,12 @@ export class ReservationsComponent {
 		return list;
 	});
 
+	readonly paginatedReservations = computed(() => {
+		const sorted = sortBy(this.filteredReservations(), this.sortState().column, this.sortState().direction);
+		const start = (this.currentPage() - 1) * this.pageSize;
+		return sorted.slice(start, start + this.pageSize);
+	});
+
 	readonly filterCounts = computed(() => {
 		const all = this.reservations();
 		const countByStatus = (status: string) =>
@@ -99,10 +111,23 @@ export class ReservationsComponent {
 
 	setFilter(filter: StatusFilter): void {
 		this.activeFilter.set(filter);
+		this.currentPage.set(1);
 	}
 
 	onSearch(value: string): void {
 		this.searchQuery.set(value);
+		this.currentPage.set(1);
+	}
+
+	onSort(column: string): void {
+		this.sortState.set(toggleSort(this.sortState(), column));
+		this.currentPage.set(1);
+	}
+
+	sortIcon(column: string): string {
+		const s = this.sortState();
+		if (s.column !== column) return 'unfold_more';
+		return s.direction === 'asc' ? 'arrow_upward' : 'arrow_downward';
 	}
 
 	viewReservation(id: string): void {

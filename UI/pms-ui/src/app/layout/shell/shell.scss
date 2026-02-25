@@ -3,6 +3,24 @@
   height: 100vh;
 }
 
+.skip-link {
+  position: absolute;
+  top: -100%;
+  left: var(--space-4);
+  z-index: 1000;
+  padding: var(--space-2) var(--space-4);
+  background: var(--color-accent-fg);
+  color: var(--color-fg-on-emphasis);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  text-decoration: none;
+
+  &:focus {
+    top: var(--space-2);
+  }
+}
+
 .shell {
   display: flex;
   height: 100%;

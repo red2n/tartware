@@ -2,7 +2,7 @@
   <div class="page-header">
     <h1 class="page-title">Settings</h1>
     <div class="page-actions">
-      <button class="btn btn-invisible" (click)="loadCategories()" matTooltip="Refresh">
+      <button class="btn btn-invisible" (click)="loadCategories()" matTooltip="Refresh" aria-label="Refresh settings">
         <mat-icon>refresh</mat-icon>
       </button>
     </div>
@@ -51,6 +51,7 @@
                   type="text"
                   class="search-input"
                   placeholder="Search settings..."
+                  aria-label="Search settings"
                   [ngModel]="searchQuery()"
                   (ngModelChange)="onSearch($event)" />
               </div>

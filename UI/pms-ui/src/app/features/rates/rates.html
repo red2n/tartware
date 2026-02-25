@@ -6,7 +6,7 @@
         <mat-icon>add</mat-icon>
         New rate
       </button>
-      <button class="btn btn-invisible" (click)="loadRates()" matTooltip="Refresh">
+      <button class="btn btn-invisible" (click)="loadRates()" matTooltip="Refresh" aria-label="Refresh rates">
         <mat-icon>refresh</mat-icon>
       </button>
     </div>
@@ -14,10 +14,12 @@
 
   <!-- Filter tabs + type filter + search -->
   <div class="filter-bar">
-    <nav class="filter-tabs">
+    <nav class="filter-tabs" role="tablist" aria-label="Rate status filters">
       @for (f of statusFilters; track f.key) {
         <button
           class="filter-tab"
+          role="tab"
+          [attr.aria-selected]="activeFilter() === f.key"
           [class.filter-tab-active]="activeFilter() === f.key"
           (click)="setFilter(f.key)">
           {{ f.label }}
@@ -41,6 +43,7 @@
           type="text"
           class="search-input"
           placeholder="Search rates..."
+          aria-label="Search rates"
           [ngModel]="searchQuery()"
           (ngModelChange)="onSearch($event)" />
       </div>
@@ -76,19 +79,19 @@
         <table class="data-table">
           <thead>
             <tr>
-              <th>Rate plan</th>
-              <th>Type</th>
+              <th class="th-sortable" (click)="onSort('rate_code')">Rate plan <mat-icon class="sort-indicator">{{ sortIcon('rate_code') }}</mat-icon></th>
+              <th class="th-sortable" (click)="onSort('rate_type')">Type <mat-icon class="sort-indicator">{{ sortIcon('rate_type') }}</mat-icon></th>
               <th>Strategy</th>
-              <th class="col-right">Base rate</th>
+              <th class="col-right th-sortable" (click)="onSort('base_rate')">Base rate <mat-icon class="sort-indicator">{{ sortIcon('base_rate') }}</mat-icon></th>
               <th class="col-right">SGL / DBL</th>
               <th>Meal plan</th>
               <th>Validity</th>
               <th>Cancellation</th>
-              <th>Status</th>
+              <th class="th-sortable" (click)="onSort('status')">Status <mat-icon class="sort-indicator">{{ sortIcon('status') }}</mat-icon></th>
             </tr>
           </thead>
           <tbody>
-            @for (rate of filteredRates(); track rate.id) {
+            @for (rate of paginatedRates(); track rate.id) {
               <tr>
                 <td class="cell-primary">
                   <span class="rate-code">{{ rate.rate_code }}</span>
@@ -146,6 +149,11 @@
           </tbody>
         </table>
       </div>
+      <app-pagination
+        [totalItems]="filteredRates().length"
+        [currentPage]="currentPage()"
+        [pageSize]="pageSize"
+        (pageChange)="currentPage.set($event)" />
     } @placeholder {
       <div class="placeholder-table">
         <div class="placeholder-row"></div>

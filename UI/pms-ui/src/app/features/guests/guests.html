@@ -6,7 +6,7 @@
         <mat-icon>person_add</mat-icon>
         New guest
       </button>
-      <button class="btn btn-invisible" (click)="loadGuests()" matTooltip="Refresh">
+      <button class="btn btn-invisible" (click)="loadGuests()" matTooltip="Refresh" aria-label="Refresh guests">
         <mat-icon>refresh</mat-icon>
       </button>
     </div>
@@ -20,10 +20,12 @@
     </div>
   }
   <div class="filter-bar">
-    <nav class="filter-tabs">
+    <nav class="filter-tabs" role="tablist" aria-label="Guest filters">
       @for (f of guestFilters; track f.key) {
         <button
           class="filter-tab"
+          role="tab"
+          [attr.aria-selected]="activeFilter() === f.key"
           [class.filter-tab-active]="activeFilter() === f.key"
           (click)="setFilter(f.key)">
           {{ f.label }}
@@ -38,6 +40,7 @@
         type="text"
         class="search-input"
         placeholder="Search by name, email, phone..."
+        aria-label="Search guests"
         [ngModel]="searchQuery()"
         (ngModelChange)="onSearch($event)" />
     </div>
@@ -72,19 +75,16 @@
         <table class="data-table">
           <thead>
             <tr>
-              <th>Guest</th>
-              <th>Email</th>
+              <th class="th-sortable" (click)="onSort('last_name')">Guest <mat-icon class="sort-indicator">{{ sortIcon('last_name') }}</mat-icon></th>
+              <th class="th-sortable" (click)="onSort('email')">Email <mat-icon class="sort-indicator">{{ sortIcon('email') }}</mat-icon></th>
               <th>Phone</th>
               <th>Status</th>
-              <th>Bookings</th>
-              <th>Revenue</th>
-              <th>Last Stay</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody>
-            @for (guest of filteredGuests(); track guest.id) {
-              <tr class="row-clickable" (click)="viewGuest(guest.id)">
+              <th class="th-sortable" (click)="onSort('total_bookings')">Bookings <mat-icon class="sort-indicator">{{ sortIcon('total_bookings') }}</mat-icon></th>
+              <th class="th-sortable" (click)="onSort('total_revenue')">Revenue <mat-icon class="sort-indicator">{{ sortIcon('total_revenue') }}</mat-icon></th>
+              <th class="th-sortable" (click)="onSort('last_stay_date')">Last Stay <mat-icon class="sort-indicator">{{ sortIcon('last_stay_date') }}</mat-icon></th>
+              <th></th>\n            </tr>\n          </thead>\n          <tbody>
+            @for (guest of paginatedGuests(); track guest.id) {
+              <tr class="row-clickable" tabindex="0" (click)="viewGuest(guest.id)" (keydown.enter)="viewGuest(guest.id)">
                 <td>
                   <div class="guest-name-cell">
                     <span class="avatar avatar-sm guest-avatar">{{ initials(guest) }}</span>
@@ -125,7 +125,7 @@
                 <td class="cell-numeric">{{ formatCurrency(guest.total_revenue) }}</td>
                 <td>{{ formatDate(guest.last_stay_date) }}</td>
                 <td class="cell-actions">
-                  <a class="btn btn-invisible btn-sm" [routerLink]="['/guests', guest.id]" matTooltip="View profile">
+                  <a class="btn btn-invisible btn-sm" [routerLink]="['/guests', guest.id]" matTooltip="View profile" aria-label="View guest profile">
                     <mat-icon>chevron_right</mat-icon>
                   </a>
                 </td>
@@ -134,6 +134,11 @@
           </tbody>
         </table>
       </div>
+      <app-pagination
+        [totalItems]="filteredGuests().length"
+        [currentPage]="currentPage()"
+        [pageSize]="pageSize"
+        (pageChange)="currentPage.set($event)" />
     } @placeholder {
       <div class="placeholder-table">
         <div class="placeholder-row"></div>
