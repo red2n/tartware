@@ -446,6 +446,12 @@ textarea.field-input {
   &:hover {
     color: var(--color-fg-default);
   }
+
+  &:focus-visible {
+    outline: 2px solid var(--color-accent-fg);
+    outline-offset: -2px;
+    border-radius: var(--radius-sm);
+  }
 }
 
 .filter-tab-active {
@@ -490,7 +496,7 @@ textarea.field-input {
 .table-container {
   border: 1px solid var(--color-border-default);
   border-radius: var(--radius-md);
-  overflow: hidden;
+  overflow-x: auto;
 }
 
 .data-table {
@@ -515,6 +521,56 @@ textarea.field-input {
   white-space: nowrap;
 }
 
+.th-sortable {
+  cursor: pointer;
+  user-select: none;
+
+  &:hover {
+    color: var(--color-fg-default);
+  }
+}
+
+.th-sort-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 0;
+  border: none;
+  background: none;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+
+  &:hover {
+    color: var(--color-fg-default);
+  }
+
+  &:hover .sort-indicator {
+    opacity: 1;
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--color-accent-fg);
+    outline-offset: 2px;
+    border-radius: 2px;
+  }
+}
+
+.sort-indicator {
+  font-size: 14px;
+  width: 14px;
+  height: 14px;
+  vertical-align: middle;
+  margin-left: 2px;
+  opacity: 0.6;
+}
+
+.th-sortable:hover .sort-indicator {
+  opacity: 1;
+}
+
 .data-table td {
   padding: var(--space-2) var(--space-4);
   border-bottom: 1px solid var(--color-border-muted);
@@ -532,6 +588,11 @@ textarea.field-input {
 
 .row-clickable {
   cursor: pointer;
+
+  &:focus-visible {
+    outline: 2px solid var(--color-accent-fg);
+    outline-offset: -2px;
+  }
 }
 
 .cell-primary {

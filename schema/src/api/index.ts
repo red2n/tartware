@@ -22,6 +22,7 @@ export * from "./health.js";
 export * from "./housekeeping.js";
 export * from "./properties.js";
 export * from "./rates.js";
+export * from "./rate-calendar.js";
 export * from "./recommendations.js";
 export * from "./reservations.js";
 export * from "./revenue.js";

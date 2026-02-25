@@ -26,9 +26,10 @@
 
 <!-- Step navigation tabs -->
 <div class="filter-bar detail-tabs">
-  <nav class="filter-tabs">
+  <nav class="filter-tabs" aria-label="Reservation wizard steps">
     @for (label of steps; track label; let i = $index) {
       <button class="filter-tab"
+              [attr.aria-current]="currentStep === i ? 'step' : null"
               [class.filter-tab-active]="currentStep === i"
               [class.filter-tab-done]="i < currentStep"
               [disabled]="i > completedUpTo() + 1"
@@ -55,12 +56,15 @@
         <div class="field-group field-required" [class.field-error]="touched['checkInDate'] && !checkInDate">
           <label class="field-label" for="cr-checkin">Check-in</label>
           <input id="cr-checkin" type="date" class="field-input"
+                 [min]="todayStr"
                  [(ngModel)]="checkInDate"
+                 (ngModelChange)="onCheckInChange()"
                  (blur)="markTouched('checkInDate')" />
         </div>
         <div class="field-group field-required" [class.field-error]="touched['checkOutDate'] && !checkOutDate">
           <label class="field-label" for="cr-checkout">Check-out</label>
           <input id="cr-checkout" type="date" class="field-input"
+                 [min]="minCheckOut"
                  [(ngModel)]="checkOutDate"
                  (blur)="markTouched('checkOutDate')" />
         </div>
@@ -141,7 +145,7 @@
           <mat-icon>dark_mode</mat-icon> {{ nights }} night{{ nights > 1 ? 's' : '' }}
         </span>
         <span class="context-chip">
-          <mat-icon>calendar_month</mat-icon> {{ checkInDate }} → {{ checkOutDate }}
+          <mat-icon>calendar_month</mat-icon> {{ fmtDate(checkInDate) }} → {{ fmtDate(checkOutDate) }}
         </span>
       </div>
     </div>
@@ -315,7 +319,7 @@
         </div>
         <div class="confirm-row">
           <span class="confirm-label">Stay</span>
-          <span class="confirm-value">{{ checkInDate }} → {{ checkOutDate }} ({{ nights }} night{{ nights > 1 ? 's' : '' }})</span>
+          <span class="confirm-value">{{ fmtDate(checkInDate) }} → {{ fmtDate(checkOutDate) }} ({{ nights }} night{{ nights > 1 ? 's' : '' }})</span>
         </div>
         <div class="confirm-row">
           <span class="confirm-label">Source / Type</span>

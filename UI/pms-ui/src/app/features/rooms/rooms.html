@@ -6,7 +6,7 @@
         <mat-icon>add</mat-icon>
         New room
       </button>
-      <button class="btn btn-invisible" (click)="loadRooms()" matTooltip="Refresh">
+      <button class="btn btn-invisible" (click)="loadRooms()" matTooltip="Refresh" aria-label="Refresh rooms">
         <mat-icon>refresh</mat-icon>
       </button>
     </div>
@@ -14,10 +14,11 @@
 
   <!-- Filter tabs + search -->
   <div class="filter-bar">
-    <nav class="filter-tabs">
+    <nav class="filter-tabs" aria-label="Room status filters">
       @for (f of statusFilters; track f.key) {
         <button
           class="filter-tab"
+          [attr.aria-pressed]="activeFilter() === f.key"
           [class.filter-tab-active]="activeFilter() === f.key"
           (click)="setFilter(f.key)">
           {{ f.label }}
@@ -32,6 +33,7 @@
         type="text"
         class="search-input"
         placeholder="Search rooms..."
+        aria-label="Search rooms"
         [ngModel]="searchQuery()"
         (ngModelChange)="onSearch($event)" />
     </div>
@@ -67,21 +69,31 @@
         <table class="data-table">
           <thead>
             <tr>
-              <th>Room</th>
-              <th>Type</th>
-              <th>Floor</th>
+              <th [attr.aria-sort]="ariaSort('room_number')">
+                <button type="button" class="th-sort-btn" (click)="onSort('room_number')">Room <mat-icon class="sort-indicator">{{ sortIcon('room_number') }}</mat-icon></button>
+              </th>
+              <th [attr.aria-sort]="ariaSort('room_type_name')">
+                <button type="button" class="th-sort-btn" (click)="onSort('room_type_name')">Type <mat-icon class="sort-indicator">{{ sortIcon('room_type_name') }}</mat-icon></button>
+              </th>
+              <th [attr.aria-sort]="ariaSort('floor')">
+                <button type="button" class="th-sort-btn" (click)="onSort('floor')">Floor <mat-icon class="sort-indicator">{{ sortIcon('floor') }}</mat-icon></button>
+              </th>
               @if (activeFilter() === 'ALL') {
-                <th>Status</th>
+                <th [attr.aria-sort]="ariaSort('status')">
+                  <button type="button" class="th-sort-btn" (click)="onSort('status')">Status <mat-icon class="sort-indicator">{{ sortIcon('status') }}</mat-icon></button>
+                </th>
               }
               <th>Amenities</th>
-              <th>Housekeeping</th>
+              <th [attr.aria-sort]="ariaSort('housekeeping_status')">
+                <button type="button" class="th-sort-btn" (click)="onSort('housekeeping_status')">Housekeeping <mat-icon class="sort-indicator">{{ sortIcon('housekeeping_status') }}</mat-icon></button>
+              </th>
               <th>Maintenance</th>
               <th></th>
             </tr>
           </thead>
           <tbody>
-            @for (room of filteredRooms(); track room.room_id) {
-              <tr class="row-clickable" (click)="viewRoom(room.room_id)">
+            @for (room of paginatedRooms(); track room.room_id) {
+              <tr class="row-clickable" tabindex="0" (click)="viewRoom(room.room_id)" (keydown.enter)="viewRoom(room.room_id)" (keydown.space)="$event.preventDefault(); viewRoom(room.room_id)">
                 <td class="cell-primary">
                   <span class="room-number">{{ room.room_number }}</span>
                   @if (room.room_name) {
@@ -126,7 +138,7 @@
                 </td>
                 <td>{{ room.maintenance_display }}</td>
                 <td class="cell-actions">
-                  <a class="btn btn-invisible btn-sm" [routerLink]="['/rooms', room.room_id]" matTooltip="View details">
+                  <a class="btn btn-invisible btn-sm" [routerLink]="['/rooms', room.room_id]" matTooltip="View details" aria-label="View room details">
                     <mat-icon>chevron_right</mat-icon>
                   </a>
                 </td>
@@ -135,6 +147,11 @@
           </tbody>
         </table>
       </div>
+      <app-pagination
+        [totalItems]="filteredRooms().length"
+        [currentPage]="currentPage()"
+        [pageSize]="pageSize"
+        (pageChange)="currentPage.set($event)" />
     } @placeholder {
       <div class="placeholder-table">
         <div class="placeholder-row"></div>

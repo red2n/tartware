@@ -412,6 +412,8 @@ export class RoomDetailComponent implements OnInit {
 		const tenantId = this.auth.tenantId();
 		if (!r || !tenantId) return;
 
+		if (!confirm('Move this room back to Setup mode? It will be removed from booking availability.')) return;
+
 		this.deactivating.set(true);
 		this.saveError.set(null);
 		this.saveSuccess.set(null);

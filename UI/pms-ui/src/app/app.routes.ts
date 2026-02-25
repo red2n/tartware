@@ -58,6 +58,14 @@ export const routes: Routes = [
 				loadComponent: () => import("./features/rates/rates").then((m) => m.RatesComponent),
 			},
 			{
+				path: "rate-calendar",
+				canActivate: [propertyGuard],
+				loadComponent: () =>
+					import("./features/rate-calendar/rate-calendar").then(
+						(m) => m.RateCalendarComponent,
+					),
+			},
+			{
 				path: "rooms/:roomId",
 				canActivate: [propertyGuard],
 				loadComponent: () =>

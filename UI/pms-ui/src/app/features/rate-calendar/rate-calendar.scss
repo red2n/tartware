@@ -1,0 +1,309 @@
+/* Rate Calendar — day-level pricing grid */
+
+/* ── Toolbar ── */
+.calendar-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  margin-bottom: var(--space-4);
+  flex-wrap: wrap;
+}
+
+.toolbar-left,
+.toolbar-right {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.toolbar-center {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.field-group-inline {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+
+  .field-label {
+    margin: 0;
+    white-space: nowrap;
+  }
+}
+
+.field-input-sm {
+  padding: 3px var(--space-2);
+  font-size: var(--font-size-xs);
+  line-height: 20px;
+}
+
+.date-nav-input {
+  width: 140px;
+  text-align: center;
+}
+
+/* ── Grid wrapper ── */
+.calendar-grid-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-md);
+  background: var(--color-canvas-default);
+}
+
+/* ── Grid table ── */
+.calendar-grid {
+  width: max-content;
+  min-width: 100%;
+  border-collapse: collapse;
+  font-size: var(--font-size-xs);
+}
+
+/* ── Header row ── */
+.th-rate-plan {
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  background: var(--color-canvas-subtle);
+  min-width: 200px;
+  padding: var(--space-2) var(--space-3);
+  text-align: left;
+  font-weight: var(--font-weight-semibold);
+  border-bottom: 2px solid var(--color-border-default);
+  border-right: 2px solid var(--color-border-default);
+}
+
+.th-date {
+  min-width: 72px;
+  padding: var(--space-1) var(--space-2);
+  text-align: center;
+  font-weight: var(--font-weight-medium);
+  background: var(--color-canvas-subtle);
+  border-bottom: 2px solid var(--color-border-default);
+  border-right: 1px solid var(--color-border-muted);
+  white-space: nowrap;
+
+  .date-dow {
+    display: block;
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--color-fg-muted);
+  }
+
+  .date-num {
+    display: block;
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-semibold);
+    color: var(--color-fg-default);
+  }
+}
+
+.th-weekend {
+  background: color-mix(in srgb, var(--color-canvas-subtle) 50%, var(--color-attention-subtle));
+}
+
+.th-today {
+  background: var(--color-accent-subtle);
+
+  .date-num {
+    color: var(--color-accent-fg);
+  }
+}
+
+/* ── Body cells ── */
+.td-rate-plan {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  background: var(--color-canvas-default);
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 1px solid var(--color-border-muted);
+  border-right: 2px solid var(--color-border-default);
+  white-space: nowrap;
+
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+
+  .rate-code {
+    font-weight: var(--font-weight-semibold);
+    color: var(--color-accent-fg);
+    font-size: var(--font-size-xs);
+  }
+
+  .rate-name {
+    font-size: 11px;
+    line-height: 1.2;
+  }
+
+  .rate-base {
+    font-size: 10px;
+    line-height: 1.2;
+  }
+}
+
+.td-cell {
+  padding: 0;
+  border-bottom: 1px solid var(--color-border-muted);
+  border-right: 1px solid var(--color-border-muted);
+  text-align: center;
+  vertical-align: middle;
+  transition: background var(--duration-fast);
+}
+
+.td-weekend {
+  background: color-mix(in srgb, var(--color-canvas-default) 90%, var(--color-attention-subtle));
+}
+
+.td-today {
+  background: color-mix(in srgb, var(--color-canvas-default) 85%, var(--color-accent-subtle));
+}
+
+/* Cell button (clickable area) */
+.cell-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 44px;
+  padding: var(--space-1);
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background var(--duration-fast);
+
+  &:hover {
+    background: var(--color-canvas-subtle);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--color-accent-fg);
+    outline-offset: -2px;
+    border-radius: 2px;
+  }
+}
+
+.cell-amount {
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-fg-default);
+  line-height: 1.3;
+}
+
+.cell-flag {
+  font-size: 9px;
+  font-weight: var(--font-weight-semibold);
+  padding: 0 3px;
+  border-radius: 2px;
+  background: var(--color-danger-subtle);
+  color: var(--color-danger-fg);
+  line-height: 1.4;
+}
+
+/* ── Cell states ── */
+.cell-premium .cell-amount { color: var(--color-open-fg); }
+.cell-discount .cell-amount { color: var(--color-accent-fg); }
+
+.cell-closed {
+  background: var(--color-neutral-subtle);
+
+  .cell-btn {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .cell-amount {
+    text-decoration: line-through;
+    color: var(--color-fg-muted);
+  }
+}
+
+.cell-dirty {
+  outline: 2px solid var(--color-attention-fg);
+  outline-offset: -2px;
+}
+
+.cell-cta {
+  border-left: 3px solid var(--color-danger-fg);
+}
+
+/* ── Inline editor ── */
+.cell-edit-input {
+  width: 64px;
+  padding: 2px 4px;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  text-align: center;
+  border: 2px solid var(--color-accent-fg);
+  border-radius: var(--radius-sm);
+  background: var(--color-canvas-default);
+  color: var(--color-fg-default);
+  outline: none;
+
+  &:focus {
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-accent-fg) 30%, transparent);
+  }
+}
+
+/* ── Legend ── */
+.calendar-legend {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+  margin-top: var(--space-3);
+  padding: var(--space-2) 0;
+  font-size: var(--font-size-xs);
+  color: var(--color-fg-muted);
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.legend-swatch {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border-radius: 2px;
+  border: 1px solid var(--color-border-muted);
+}
+
+.swatch-base { background: var(--color-canvas-default); }
+.swatch-premium { background: var(--color-open-subtle); }
+.swatch-discount { background: var(--color-accent-subtle); }
+.swatch-closed { background: var(--color-neutral-subtle); }
+.swatch-dirty { outline: 2px solid var(--color-attention-fg); outline-offset: -1px; }
+
+.legend-tip {
+  margin-left: auto;
+  font-style: italic;
+}
+
+/* ── Responsive ── */
+@media (max-width: 768px) {
+  .calendar-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .toolbar-center {
+    justify-content: center;
+  }
+
+  .toolbar-right {
+    justify-content: flex-end;
+  }
+
+  .th-rate-plan,
+  .td-rate-plan {
+    min-width: 140px;
+  }
+}

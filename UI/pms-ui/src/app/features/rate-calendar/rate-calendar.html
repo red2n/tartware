@@ -1,0 +1,163 @@
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Rate Calendar</h1>
+    <p class="text-xs text-muted mt-0.5">View and manage day-level pricing across rate plans</p>
+  </div>
+  <div class="header-actions">
+    @if (hasDirty()) {
+      <button class="btn btn-primary btn-sm" [disabled]="saving()" (click)="saveChanges()">
+        @if (saving()) {
+          <mat-spinner diameter="14"></mat-spinner>
+          Saving…
+        } @else {
+          <mat-icon>save</mat-icon> Save changes
+        }
+      </button>
+    }
+  </div>
+</div>
+
+@if (error(); as err) {
+  <div class="flash flash-error mb-4">
+    <mat-icon class="flash-icon">error_outline</mat-icon>
+    {{ err }}
+  </div>
+}
+@if (success(); as msg) {
+  <div class="flash flash-success mb-4">
+    <mat-icon class="flash-icon">check_circle</mat-icon>
+    {{ msg }}
+  </div>
+}
+
+<!-- Toolbar: filters & navigation -->
+<div class="calendar-toolbar">
+  <div class="toolbar-left">
+    <div class="field-group field-group-inline">
+      <label class="field-label" for="rc-room-type">Room Type</label>
+      <select id="rc-room-type" class="field-input field-input-sm"
+              [ngModel]="selectedRoomType()"
+              (ngModelChange)="onRoomTypeChange($event)">
+        <option value="">All room types</option>
+        @for (rt of roomTypes(); track rt.room_type_id) {
+          <option [value]="rt.room_type_id">{{ rt.type_name }}</option>
+        }
+      </select>
+    </div>
+    <div class="field-group field-group-inline">
+      <label class="field-label" for="rc-view">View</label>
+      <select id="rc-view" class="field-input field-input-sm"
+              [ngModel]="viewDays()"
+              (ngModelChange)="onViewDaysChange(+$event)">
+        <option [value]="7">7 days</option>
+        <option [value]="14">14 days</option>
+        <option [value]="30">30 days</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="toolbar-center">
+    <button class="btn btn-invisible btn-sm" (click)="prevPeriod()" aria-label="Previous period">
+      <mat-icon>chevron_left</mat-icon>
+    </button>
+    <div class="date-nav">
+      <input type="date" class="field-input field-input-sm date-nav-input"
+             [(ngModel)]="startDate"
+             (ngModelChange)="onStartDateChange()" />
+    </div>
+    <button class="btn btn-invisible btn-sm" (click)="nextPeriod()" aria-label="Next period">
+      <mat-icon>chevron_right</mat-icon>
+    </button>
+    <button class="btn btn-outline btn-sm" (click)="goToToday()">Today</button>
+  </div>
+
+  <div class="toolbar-right">
+    <button class="btn btn-outline btn-sm" (click)="loadCalendarData()" aria-label="Refresh">
+      <mat-icon>refresh</mat-icon>
+    </button>
+  </div>
+</div>
+
+@if (loading()) {
+  <div class="loading-state">
+    <mat-spinner diameter="32"></mat-spinner>
+    <span class="text-muted">Loading rate calendar…</span>
+  </div>
+} @else if (filteredRates().length === 0) {
+  <div class="empty-state">
+    <mat-icon class="empty-icon">payments</mat-icon>
+    <h3>No active rate plans</h3>
+    <p class="text-muted">Create rate plans first, then configure day-level pricing here.</p>
+  </div>
+} @else {
+  <!-- Calendar Grid -->
+  <div class="calendar-grid-wrap">
+    <table class="calendar-grid">
+      <thead>
+        <tr>
+          <th class="th-rate-plan">Rate Plan</th>
+          @for (date of dateColumns(); track date) {
+            <th class="th-date"
+                [class.th-weekend]="isWeekend(date)"
+                [class.th-today]="isToday(date)">
+              <span class="date-dow">{{ dayOfWeek(date) }}</span>
+              <span class="date-num">{{ dayNum(date) }}</span>
+            </th>
+          }
+        </tr>
+      </thead>
+      <tbody>
+        @for (rate of filteredRates(); track rate.id) {
+          <tr>
+            <td class="td-rate-plan">
+              <span class="rate-code">{{ rate.rate_code }}</span>
+              <span class="rate-name text-muted">{{ rate.rate_name }}</span>
+              <span class="rate-base text-xs text-muted">
+                Base: {{ fmtCurrency(rate.base_rate, rate.currency) }}
+              </span>
+            </td>
+            @for (date of dateColumns(); track date) {
+              <td class="td-cell"
+                  [ngClass]="cellClass(rate.id, date)"
+                  [class.td-weekend]="isWeekend(date)"
+                  [class.td-today]="isToday(date)"
+                  [matTooltip]="cellTooltip(rate.id, date)"
+                  matTooltipPosition="above">
+                @if (editingKey() === rate.id + '|' + date) {
+                  <input type="number" class="cell-edit-input"
+                         [(ngModel)]="editingAmount"
+                         (keydown.enter)="commitEdit()"
+                         (keydown.escape)="cancelEdit()"
+                         (blur)="commitEdit()"
+                         min="0" step="1" />
+                } @else {
+                  <button class="cell-btn"
+                          (click)="startEdit(rate.id, date)"
+                          (contextmenu)="$event.preventDefault(); toggleCellStatus(rate.id, date)">
+                    <span class="cell-amount">{{ cellDisplay(rate.id, date) }}</span>
+                    @if (getCell(rate.id, date)?.cta) {
+                      <span class="cell-flag">CTA</span>
+                    }
+                    @if (getCell(rate.id, date)?.ctd) {
+                      <span class="cell-flag">CTD</span>
+                    }
+                  </button>
+                }
+              </td>
+            }
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Legend -->
+  <div class="calendar-legend">
+    <span class="legend-item"><span class="legend-swatch swatch-base"></span> Base rate</span>
+    <span class="legend-item"><span class="legend-swatch swatch-premium"></span> Above base</span>
+    <span class="legend-item"><span class="legend-swatch swatch-discount"></span> Below base</span>
+    <span class="legend-item"><span class="legend-swatch swatch-closed"></span> Closed / Stop sell</span>
+    <span class="legend-item"><span class="legend-swatch swatch-dirty"></span> Unsaved change</span>
+    <span class="legend-tip text-muted">Click cell: edit rate. Right-click: toggle open/closed.</span>
+  </div>
+}

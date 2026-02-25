@@ -1,3 +1,4 @@
+<a class="skip-link" href="#main-content">Skip to content</a>
 <div class="shell" [class.sidebar-collapsed]="sidebarCollapsed()">
   @defer (on idle) {
     <app-sidebar
@@ -14,7 +15,7 @@
       <div class="topbar-placeholder"></div>
     }
 
-    <main class="content-area scroll-container">
+    <main id="main-content" class="content-area scroll-container" tabindex="-1">
       <router-outlet />
     </main>
   </div>

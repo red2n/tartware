@@ -7,7 +7,7 @@ import { Router } from "@angular/router";
 import { ApiService, ApiValidationError } from "../../../core/api/api.service";
 import { AuthService } from "../../../core/auth/auth.service";
 import { TenantContextService } from "../../../core/context/tenant-context.service";
-import { formatCurrency } from "../../../shared/format-utils";
+import { formatCurrency, formatShortDate } from "../../../shared/format-utils";
 
 type RoomType = {
 	room_type_id: string;
@@ -78,6 +78,24 @@ export class CreateReservationComponent implements OnInit {
 	checkInDate = "";
 	checkOutDate = "";
 	roomTypeId = "";
+
+	/** Today's date as YYYY-MM-DD — earliest allowed check-in (night audit closes past days). */
+	readonly todayStr = this.toDateString(new Date());
+
+	/** Earliest allowed check-out: day after the selected check-in date. */
+	get minCheckOut(): string {
+		if (!this.checkInDate) return this.todayStr;
+		const d = new Date(this.checkInDate + 'T00:00:00');
+		d.setDate(d.getDate() + 1);
+		return this.toDateString(d);
+	}
+
+	/** When check-in changes, auto-correct check-out if it's now invalid. */
+	onCheckInChange(): void {
+		if (this.checkOutDate && this.checkOutDate <= this.checkInDate) {
+			this.checkOutDate = this.minCheckOut;
+		}
+	}
 
 	// Step 2: Rate selection
 	selectedRateCode = "";
@@ -242,6 +260,10 @@ export class CreateReservationComponent implements OnInit {
 
 	fmtCurrency(amount: number, currency: string): string {
 		return formatCurrency(amount, currency);
+	}
+
+	fmtDate(dateStr: string): string {
+		return formatShortDate(dateStr);
 	}
 
 	mealPlanLabel(code: string): string {

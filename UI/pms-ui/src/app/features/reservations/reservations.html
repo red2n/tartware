@@ -6,7 +6,7 @@
         <mat-icon>add</mat-icon>
         New reservation
       </button>
-      <button class="btn btn-invisible" (click)="loadReservations()" matTooltip="Refresh">
+      <button class="btn btn-invisible" (click)="loadReservations()" matTooltip="Refresh" aria-label="Refresh reservations">
         <mat-icon>refresh</mat-icon>
       </button>
     </div>
@@ -14,10 +14,11 @@
 
   <!-- Filter tabs + search -->
   <div class="filter-bar">
-    <nav class="filter-tabs">
+    <nav class="filter-tabs" aria-label="Reservation status filters">
       @for (f of statusFilters; track f.key) {
         <button
           class="filter-tab"
+          [attr.aria-pressed]="activeFilter() === f.key"
           [class.filter-tab-active]="activeFilter() === f.key"
           (click)="setFilter(f.key)">
           {{ f.label }}
@@ -32,6 +33,7 @@
         type="text"
         class="search-input"
         placeholder="Search reservations..."
+        aria-label="Search reservations"
         [ngModel]="searchQuery()"
         (ngModelChange)="onSearch($event)" />
     </div>
@@ -67,22 +69,34 @@
         <table class="data-table">
           <thead>
             <tr>
-              <th>Confirmation</th>
-              <th>Guest</th>
+              <th [attr.aria-sort]="ariaSort('confirmation_number')">
+                <button type="button" class="th-sort-btn" (click)="onSort('confirmation_number')">Confirmation <mat-icon class="sort-indicator">{{ sortIcon('confirmation_number') }}</mat-icon></button>
+              </th>
+              <th [attr.aria-sort]="ariaSort('guest_name')">
+                <button type="button" class="th-sort-btn" (click)="onSort('guest_name')">Guest <mat-icon class="sort-indicator">{{ sortIcon('guest_name') }}</mat-icon></button>
+              </th>
               <th>Room Type</th>
-              <th>Check-in</th>
-              <th>Check-out</th>
+              <th [attr.aria-sort]="ariaSort('check_in_date')">
+                <button type="button" class="th-sort-btn" (click)="onSort('check_in_date')">Check-in <mat-icon class="sort-indicator">{{ sortIcon('check_in_date') }}</mat-icon></button>
+              </th>
+              <th [attr.aria-sort]="ariaSort('check_out_date')">
+                <button type="button" class="th-sort-btn" (click)="onSort('check_out_date')">Check-out <mat-icon class="sort-indicator">{{ sortIcon('check_out_date') }}</mat-icon></button>
+              </th>
               <th>Nights</th>
               @if (activeFilter() === 'ALL') {
-                <th>Status</th>
+                <th [attr.aria-sort]="ariaSort('status')">
+                  <button type="button" class="th-sort-btn" (click)="onSort('status')">Status <mat-icon class="sort-indicator">{{ sortIcon('status') }}</mat-icon></button>
+                </th>
               }
-              <th>Amount</th>
+              <th [attr.aria-sort]="ariaSort('total_amount')">
+                <button type="button" class="th-sort-btn" (click)="onSort('total_amount')">Amount <mat-icon class="sort-indicator">{{ sortIcon('total_amount') }}</mat-icon></button>
+              </th>
               <th></th>
             </tr>
           </thead>
           <tbody>
-            @for (res of filteredReservations(); track res.id) {
-              <tr class="row-clickable" (click)="viewReservation(res.id)">
+            @for (res of paginatedReservations(); track res.id) {
+              <tr class="row-clickable" tabindex="0" (click)="viewReservation(res.id)" (keydown.enter)="viewReservation(res.id)" (keydown.space)="$event.preventDefault(); viewReservation(res.id)">
                 <td class="cell-primary">
                   <span class="confirmation-number">{{ res.confirmation_number }}</span>
                   @if (res.source) {
@@ -108,7 +122,7 @@
                 }
                 <td class="cell-amount">{{ formatCurrency(res.total_amount, res.currency) }}</td>
                 <td class="cell-actions">
-                  <button class="btn btn-invisible btn-sm" matTooltip="View details">
+                  <button class="btn btn-invisible btn-sm" matTooltip="View details" aria-label="View reservation details">
                     <mat-icon>chevron_right</mat-icon>
                   </button>
                 </td>
@@ -117,6 +131,11 @@
           </tbody>
         </table>
       </div>
+      <app-pagination
+        [totalItems]="filteredReservations().length"
+        [currentPage]="currentPage()"
+        [pageSize]="pageSize"
+        (pageChange)="currentPage.set($event)" />
     } @placeholder {
       <div class="placeholder-table">
         <div class="placeholder-row"></div>

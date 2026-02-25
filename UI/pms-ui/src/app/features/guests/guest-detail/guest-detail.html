@@ -19,7 +19,7 @@
   <div class="flash flash-error">
     <mat-icon class="flash-icon">error_outline</mat-icon>
     {{ err }}
-    <button class="btn-invisible" (click)="goBack()">Go back</button>
+    <button class="btn btn-invisible" (click)="goBack()">Go back</button>
   </div>
 } @else if (guest(); as g) {
   <!-- Guest header card -->
@@ -86,20 +86,20 @@
 
   <!-- Tab navigation -->
   <div class="filter-bar detail-tabs">
-    <nav class="filter-tabs">
-      <button class="filter-tab" [class.filter-tab-active]="activeTab() === 'profile'" (click)="setTab('profile')">
+    <nav class="filter-tabs" aria-label="Guest detail sections">
+      <button class="filter-tab" [attr.aria-pressed]="activeTab() === 'profile'" [class.filter-tab-active]="activeTab() === 'profile'" (click)="setTab('profile')">
         <mat-icon class="tab-icon">person</mat-icon>
         Profile
       </button>
-      <button class="filter-tab" [class.filter-tab-active]="activeTab() === 'preferences'" (click)="setTab('preferences')">
+      <button class="filter-tab" [attr.aria-pressed]="activeTab() === 'preferences'" [class.filter-tab-active]="activeTab() === 'preferences'" (click)="setTab('preferences')">
         <mat-icon class="tab-icon">tune</mat-icon>
         Preferences
       </button>
-      <button class="filter-tab" [class.filter-tab-active]="activeTab() === 'documents'" (click)="setTab('documents')">
+      <button class="filter-tab" [attr.aria-pressed]="activeTab() === 'documents'" [class.filter-tab-active]="activeTab() === 'documents'" (click)="setTab('documents')">
         <mat-icon class="tab-icon">description</mat-icon>
         Documents
       </button>
-      <button class="filter-tab" [class.filter-tab-active]="activeTab() === 'communications'" (click)="setTab('communications')">
+      <button class="filter-tab" [attr.aria-pressed]="activeTab() === 'communications'" [class.filter-tab-active]="activeTab() === 'communications'" (click)="setTab('communications')">
         <mat-icon class="tab-icon">chat</mat-icon>
         Communications
       </button>

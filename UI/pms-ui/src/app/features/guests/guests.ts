@@ -13,6 +13,8 @@ import type { GuestWithStats } from "@tartware/schemas";
 import { ApiService } from "../../core/api/api.service";
 import { AuthService } from "../../core/auth/auth.service";
 import { loyaltyTierClass, vipStatusClass } from "../../shared/badge-utils";
+import { PaginationComponent } from "../../shared/pagination/pagination";
+import { createSortState, sortBy, toggleSort } from "../../shared/sort-utils";
 
 type GuestFilter = "ALL" | "VIP" | "LOYALTY" | "BLACKLISTED";
 
@@ -30,6 +32,7 @@ type GuestListItem = Omit<GuestWithStats, "version"> & { version: string };
 		MatButtonModule,
 		MatProgressSpinnerModule,
 		MatTooltipModule,
+		PaginationComponent,
 	],
 	templateUrl: "./guests.html",
 	styleUrl: "./guests.scss",
@@ -46,6 +49,9 @@ export class GuestsComponent {
 	readonly successMessage = signal<string | null>(null);
 	readonly searchQuery = signal("");
 	readonly activeFilter = signal<GuestFilter>("ALL");
+	readonly currentPage = signal(1);
+	readonly pageSize = 25;
+	readonly sortState = createSortState();
 
 	readonly guestFilters: { key: GuestFilter; label: string }[] = [
 		{ key: "ALL", label: "All" },
@@ -82,6 +88,12 @@ export class GuestsComponent {
 		return list;
 	});
 
+	readonly paginatedGuests = computed(() => {
+		const sorted = sortBy(this.filteredGuests(), this.sortState().column, this.sortState().direction);
+		const start = (this.currentPage() - 1) * this.pageSize;
+		return sorted.slice(start, start + this.pageSize);
+	});
+
 	readonly filterCounts = computed(() => {
 		const all = this.guests();
 		return {
@@ -98,14 +110,41 @@ export class GuestsComponent {
 			this.auth.tenantId();
 			this.loadGuests();
 		});
+
+		// Clamp currentPage when filtered list shrinks
+		effect(() => {
+			const maxPage = Math.max(1, Math.ceil(this.filteredGuests().length / this.pageSize));
+			if (this.currentPage() > maxPage) {
+				this.currentPage.set(maxPage);
+			}
+		}, { allowSignalWrites: true });
 	}
 
 	setFilter(filter: GuestFilter): void {
 		this.activeFilter.set(filter);
+		this.currentPage.set(1);
 	}
 
 	onSearch(value: string): void {
 		this.searchQuery.set(value);
+		this.currentPage.set(1);
+	}
+
+	onSort(column: string): void {
+		this.sortState.set(toggleSort(this.sortState(), column));
+		this.currentPage.set(1);
+	}
+
+	sortIcon(column: string): string {
+		const s = this.sortState();
+		if (s.column !== column) return "unfold_more";
+		return s.direction === "asc" ? "arrow_upward" : "arrow_downward";
+	}
+
+	ariaSort(column: string): string | null {
+		const s = this.sortState();
+		if (s.column !== column) return null;
+		return s.direction === "asc" ? "ascending" : "descending";
 	}
 
 	viewGuest(guestId: string): void {
