@@ -35,16 +35,17 @@ export const startReservationConsumer = async (): Promise<void> => {
     return;
   }
 
-  consumer = kafka.consumer({
+  const c = kafka.consumer({
     groupId: kafkaConfig.consumerGroupId,
     allowAutoTopicCreation: false,
     maxBytesPerPartition: kafkaConfig.maxBatchBytes,
   });
+  consumer = c;
 
-  await consumer.connect();
-  await consumer.subscribe({ topic: kafkaConfig.topic, fromBeginning: false });
+  await c.connect();
+  await c.subscribe({ topic: kafkaConfig.topic, fromBeginning: false });
 
-  await consumer.run({
+  await c.run({
     autoCommit: false,
     eachBatchAutoResolve: false,
     eachBatch: handleBatch,

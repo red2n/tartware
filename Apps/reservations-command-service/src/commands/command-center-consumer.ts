@@ -106,19 +106,20 @@ export const startCommandCenterConsumer = async (): Promise<void> => {
     return;
   }
 
-  commandConsumer = kafka.consumer({
+  const cc = kafka.consumer({
     groupId: commandCenterConfig.consumerGroupId,
     allowAutoTopicCreation: false,
     maxBytesPerPartition: commandCenterConfig.maxBatchBytes,
   });
+  commandConsumer = cc;
 
-  await commandConsumer.connect();
-  await commandConsumer.subscribe({
+  await cc.connect();
+  await cc.subscribe({
     topic: commandCenterConfig.topic,
     fromBeginning: false,
   });
 
-  await commandConsumer.run({
+  await cc.run({
     autoCommit: false,
     eachBatchAutoResolve: false,
     eachBatch: handleBatch,

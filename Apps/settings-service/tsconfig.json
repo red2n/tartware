@@ -12,20 +12,58 @@
     "skipLibCheck": true,
     "baseUrl": "./src",
     "paths": {
-      "@tartware/schemas": ["../../../schema/src/index.ts"],
-      "@tartware/schemas/*": ["../../../schema/src/*"],
-      "@tartware/telemetry": ["../../telemetry/src/index.ts"],
-      "@tartware/telemetry/*": ["../../telemetry/src/*"],
-      "@tartware/config": ["../../config/src/index.ts"],
-      "@tartware/config/*": ["../../config/src/*"],
-      "@tartware/openapi": ["../../openapi-utils/src/index.ts"],
-      "@tartware/openapi/*": ["../../openapi-utils/src/*"],
-      "@tartware/fastify-server": ["../../fastify-server/src/index.ts"],
-      "@tartware/fastify-server/*": ["../../fastify-server/src/*"],
-      "@tartware/command-consumer-utils": ["../../command-consumer-utils/src/index.ts"],
-      "@tartware/command-consumer-utils/*": ["../../command-consumer-utils/src/*"]
-    }
+      "@tartware/schemas": [
+        "../../../schema/src/index.ts"
+      ],
+      "@tartware/schemas/*": [
+        "../../../schema/src/*"
+      ],
+      "@tartware/telemetry": [
+        "../../telemetry/src/index.ts"
+      ],
+      "@tartware/telemetry/*": [
+        "../../telemetry/src/*"
+      ],
+      "@tartware/config": [
+        "../../config/src/index.ts"
+      ],
+      "@tartware/config/*": [
+        "../../config/src/*"
+      ],
+      "@tartware/openapi": [
+        "../../openapi-utils/src/index.ts"
+      ],
+      "@tartware/openapi/*": [
+        "../../openapi-utils/src/*"
+      ],
+      "@tartware/fastify-server": [
+        "../../fastify-server/src/index.ts"
+      ],
+      "@tartware/fastify-server/*": [
+        "../../fastify-server/src/*"
+      ],
+      "@tartware/command-consumer-utils": [
+        "../../command-consumer-utils/src/index.ts"
+      ],
+      "@tartware/command-consumer-utils/*": [
+        "../../command-consumer-utils/src/*"
+      ],
+      "kafkajs": [
+        "../node_modules/kafkajs/types"
+      ]
+    },
+    "types": [
+      "node",
+      "@fastify/sensible",
+      "@fastify/jwt"
+    ]
   },
-  "include": ["src/**/*", "tests/**/*"],
-  "exclude": ["dist", "node_modules"]
+  "include": [
+    "src/**/*",
+    "tests/**/*"
+  ],
+  "exclude": [
+    "dist",
+    "node_modules"
+  ]
 }

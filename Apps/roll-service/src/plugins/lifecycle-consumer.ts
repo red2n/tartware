@@ -1,3 +1,4 @@
+import type { FastifyInstance } from "fastify";
 import fp from "fastify-plugin";
 
 import { config } from "../config.js";
@@ -10,7 +11,7 @@ import { buildLifecycleConsumer } from "../services/lifecycle-consumer.js";
  * blocking Fastify plugin registration. KafkaJS connect + subscribe + run can
  * exceed the default 10 s plugin timeout, causing FST_ERR_PLUGIN_TIMEOUT.
  */
-export default fp(async (app) => {
+export default fp(async (app: FastifyInstance) => {
   if (!config.kafka.consumerEnabled) {
     app.log.info("Roll lifecycle consumer disabled via config");
     return;

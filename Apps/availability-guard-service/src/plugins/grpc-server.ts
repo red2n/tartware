@@ -1,9 +1,10 @@
+import type { FastifyInstance } from "fastify";
 import fp from "fastify-plugin";
 
 import { config } from "../config.js";
 import { startGrpcServer } from "../grpc/server.js";
 
-export default fp((app) => {
+export default fp((app: FastifyInstance) => {
   let controller: Awaited<ReturnType<typeof startGrpcServer>> | null = null;
   const SHUTDOWN_TIMEOUT_MS = 5_000;
 
