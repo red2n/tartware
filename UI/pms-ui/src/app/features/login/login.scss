@@ -197,9 +197,22 @@
 	height: 48px;
 	font-size: var(--font-size-md);
 	font-weight: var(--font-weight-semibold);
-	margin-top: var(--space-3);
+	margin-top: var(--space-2);
 	border-radius: var(--radius-md);
 	letter-spacing: 0.2px;
+}
+
+/* Remember me */
+.remember-me-row {
+	display: flex;
+	align-items: center;
+	margin-top: calc(-1 * var(--space-1));
+	margin-bottom: var(--space-1);
+
+	label {
+		font-size: var(--font-size-sm);
+		color: var(--color-fg-muted);
+	}
 }
 
 /* Footer trust indicator */

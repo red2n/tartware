@@ -1,7 +1,0 @@
-Schema vs SQL field verification
-Generated: 2026-01-23T10:23:44.022Z
-
-Tables checked: 170
-Tables missing in DB: 0
-Tables with mismatches: 0
-Tables matched: 170

@@ -1,6 +1,7 @@
-import { Component, inject, signal } from "@angular/core";
+import { Component, inject, signal, AfterViewInit, ViewChild, ElementRef } from "@angular/core";
 import { FormsModule } from "@angular/forms";
 import { MatButtonModule } from "@angular/material/button";
+import { MatCheckboxModule } from "@angular/material/checkbox";
 import { MatFormFieldModule } from "@angular/material/form-field";
 import { MatIconModule } from "@angular/material/icon";
 import { MatInputModule } from "@angular/material/input";
@@ -16,23 +17,29 @@ import { ThemeService } from "../../core/theme/theme.service";
 	standalone: true,
 	imports: [
 		FormsModule,
-		MatFormFieldModule,
-		MatInputModule,
 		MatButtonModule,
+		MatCheckboxModule,
+		MatFormFieldModule,
 		MatIconModule,
+		MatInputModule,
 		MatProgressSpinnerModule,
 	],
 	templateUrl: "./login.html",
 	styleUrl: "./login.scss",
 })
-export class LoginComponent {
+export class LoginComponent implements AfterViewInit {
+	private static readonly REMEMBER_KEY = "tartware_remember_username";
+
 	private readonly auth = inject(AuthService);
 	private readonly theme = inject(ThemeService);
 	private readonly ctx = inject(TenantContextService);
 	private readonly router = inject(Router);
 
+	@ViewChild("passwordInput") passwordInput!: ElementRef<HTMLInputElement>;
+
 	username = "";
 	password = "";
+	rememberMe = false;
 	hidePassword = signal(true);
 	loading = signal(false);
 	error = signal<string | null>(null);
@@ -44,6 +51,20 @@ export class LoginComponent {
 	constructor() {
 		// Login screen always starts in light mode
 		this.theme.setLoginDefault();
+
+		// Restore saved username if "Remember me" was checked
+		const saved = localStorage.getItem(LoginComponent.REMEMBER_KEY);
+		if (saved) {
+			this.username = saved;
+			this.rememberMe = true;
+		}
+	}
+
+	ngAfterViewInit(): void {
+		// If username was restored, focus the password field for quick entry
+		if (this.username && this.passwordInput) {
+			setTimeout(() => this.passwordInput.nativeElement.focus());
+		}
 	}
 
 	async onSubmit(): Promise<void> {
@@ -57,6 +78,14 @@ export class LoginComponent {
 
 		try {
 			await this.auth.login(this.username, this.password);
+
+			// Persist or clear username based on "Remember me"
+			if (this.rememberMe) {
+				localStorage.setItem(LoginComponent.REMEMBER_KEY, this.username);
+			} else {
+				localStorage.removeItem(LoginComponent.REMEMBER_KEY);
+			}
+
 			// Signal the browser to save credentials
 			if ("PasswordCredential" in window) {
 				const cred = new (window as any).PasswordCredential({
