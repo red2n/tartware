@@ -57,12 +57,15 @@
         <div class="field-group field-required" [class.field-error]="touched['checkInDate'] && !checkInDate">
           <label class="field-label" for="cr-checkin">Check-in</label>
           <input id="cr-checkin" type="date" class="field-input"
+                 [min]="todayStr"
                  [(ngModel)]="checkInDate"
+                 (ngModelChange)="onCheckInChange()"
                  (blur)="markTouched('checkInDate')" />
         </div>
         <div class="field-group field-required" [class.field-error]="touched['checkOutDate'] && !checkOutDate">
           <label class="field-label" for="cr-checkout">Check-out</label>
           <input id="cr-checkout" type="date" class="field-input"
+                 [min]="minCheckOut"
                  [(ngModel)]="checkOutDate"
                  (blur)="markTouched('checkOutDate')" />
         </div>

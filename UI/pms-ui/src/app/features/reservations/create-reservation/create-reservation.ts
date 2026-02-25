@@ -79,6 +79,24 @@ export class CreateReservationComponent implements OnInit {
 	checkOutDate = "";
 	roomTypeId = "";
 
+	/** Today's date as YYYY-MM-DD — earliest allowed check-in (night audit closes past days). */
+	readonly todayStr = this.toDateString(new Date());
+
+	/** Earliest allowed check-out: day after the selected check-in date. */
+	get minCheckOut(): string {
+		if (!this.checkInDate) return this.todayStr;
+		const d = new Date(this.checkInDate + 'T00:00:00');
+		d.setDate(d.getDate() + 1);
+		return this.toDateString(d);
+	}
+
+	/** When check-in changes, auto-correct check-out if it's now invalid. */
+	onCheckInChange(): void {
+		if (this.checkOutDate && this.checkOutDate <= this.checkInDate) {
+			this.checkOutDate = this.minCheckOut;
+		}
+	}
+
 	// Step 2: Rate selection
 	selectedRateCode = "";
 
