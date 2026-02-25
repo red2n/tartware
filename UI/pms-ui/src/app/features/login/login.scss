@@ -209,7 +209,7 @@
 	margin-top: calc(-1 * var(--space-1));
 	margin-bottom: var(--space-1);
 
-	::ng-deep .mdc-label {
+	label {
 		font-size: var(--font-size-sm);
 		color: var(--color-fg-muted);
 	}
