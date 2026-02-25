@@ -399,6 +399,14 @@
                                       <span class="text-muted">Not configured</span>
                                     }
                                   </div>
+                                } @else if (isArrayDisplayValue(def)) {
+                                  <div class="json-chips">
+                                    @for (item of asArray(getDisplayValue(def)); track $index) {
+                                      <span class="json-chip">{{ item }}</span>
+                                    } @empty {
+                                      <span class="text-muted">None</span>
+                                    }
+                                  </div>
                                 } @else {
                                   <span class="def-value-text" [class.text-muted]="getDisplayValue(def) === null">
                                     {{ formatDisplayValue(def) }}
