@@ -101,6 +101,7 @@ These IDs are pre-populated in the database:
 | `notifications.http` | Notification templates, sending, communications, automated messages |
 | `operations.http` | Operations endpoints |
 | `rates.http` | Rate plans |
+| `rate-calendar.http` | Rate calendar: day-level pricing, bulk upsert, range fill |
 | `recommendations.http` | Recommendation engine |
 | `reports.http` | Occupancy, KPIs, arrivals, departures, in-house, forecasts |
 | `reservations.http` | Reservation CRUD + lifecycle |

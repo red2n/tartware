@@ -30,6 +30,7 @@ export * from "./package-bookings.js";
 export * from "./package-components.js";
 export * from "./packages.js";
 export * from "./pricing-rules.js";
+export * from "./rate-calendar.js";
 export * from "./rate-overrides.js";
 export * from "./rate-recommendations.js";
 export * from "./rates.js";

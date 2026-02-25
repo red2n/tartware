@@ -193,6 +193,51 @@ export const registerRoomRoutes = (app: FastifyInstance): void => {
     proxyRooms,
   );
 
+  // Rate Calendar routes - proxy to rooms service
+  app.get(
+    "/v1/rate-calendar",
+    {
+      schema: buildRouteSchema({
+        tag: CORE_PROXY_TAG,
+        summary: "List rate calendar entries for a date range.",
+        response: {
+          200: jsonObjectSchema,
+        },
+      }),
+    },
+    proxyRooms,
+  );
+
+  app.put(
+    "/v1/rate-calendar",
+    {
+      schema: buildRouteSchema({
+        tag: CORE_PROXY_TAG,
+        summary: "Bulk upsert rate calendar day entries.",
+        body: jsonObjectSchema,
+        response: {
+          200: jsonObjectSchema,
+        },
+      }),
+    },
+    proxyRooms,
+  );
+
+  app.post(
+    "/v1/rate-calendar/range-fill",
+    {
+      schema: buildRouteSchema({
+        tag: CORE_PROXY_TAG,
+        summary: "Fill a date range with a uniform rate.",
+        body: jsonObjectSchema,
+        response: {
+          200: jsonObjectSchema,
+        },
+      }),
+    },
+    proxyRooms,
+  );
+
   // Room command routes
   app.post(
     "/v1/tenants/:tenantId/rooms/:roomId/block",

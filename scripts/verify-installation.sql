@@ -529,6 +529,46 @@ BEGIN
     END IF;
 
     RAISE NOTICE '';
+    RAISE NOTICE '--- Rate Calendar Table (Revenue Management) ---';
+
+    -- Check rate_calendar table exists
+    IF EXISTS (
+        SELECT 1 FROM information_schema.tables
+        WHERE table_schema = 'public' AND table_name = 'rate_calendar'
+    ) THEN
+        RAISE NOTICE '  ✓ rate_calendar table exists';
+        v_pass := v_pass + 1;
+    ELSE
+        RAISE WARNING '  ✗ rate_calendar table MISSING';
+        v_fail := v_fail + 1;
+    END IF;
+
+    -- Check rate_calendar has key columns
+    IF EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema = 'public' AND table_name = 'rate_calendar'
+        AND column_name = 'stay_date'
+    ) THEN
+        RAISE NOTICE '  ✓ rate_calendar.stay_date column exists';
+        v_pass := v_pass + 1;
+    ELSE
+        RAISE WARNING '  ✗ rate_calendar.stay_date column MISSING';
+        v_fail := v_fail + 1;
+    END IF;
+
+    IF EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema = 'public' AND table_name = 'rate_calendar'
+        AND column_name = 'closed_to_arrival'
+    ) THEN
+        RAISE NOTICE '  ✓ rate_calendar.closed_to_arrival column exists';
+        v_pass := v_pass + 1;
+    ELSE
+        RAISE WARNING '  ✗ rate_calendar.closed_to_arrival column MISSING';
+        v_fail := v_fail + 1;
+    END IF;
+
+    RAISE NOTICE '';
     RAISE NOTICE '--- Indexes ---';
 
     -- Check idx_reservations_type index exists

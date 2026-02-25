@@ -49,6 +49,7 @@
 \ir 02-inventory/08_rates.sql
 \ir 02-inventory/09_room_availability.sql
 \ir 02-inventory/36_rate_overrides.sql
+\ir 02-inventory/37_rate_calendar.sql
 \ir 02-inventory/51_revenue_forecasts.sql
 \ir 02-inventory/52_competitor_rates.sql
 \ir 02-inventory/53_demand_calendar.sql

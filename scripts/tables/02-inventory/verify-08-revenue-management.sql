@@ -1,7 +1,7 @@
 -- =====================================================
 -- verify-08-revenue-management.sql
 -- Verification Script for Revenue Management Tables
--- Category: 08-revenue-management (7 tables)
+-- Category: 08-revenue-management (8 tables)
 -- Date: 2025-10-19
 -- =====================================================
 
@@ -10,18 +10,18 @@
 \echo ''
 \echo '=============================================='
 \echo '  CATEGORY: REVENUE MANAGEMENT VERIFICATION'
-\echo '  Tables: 7 | Description: Pricing, forecasting, competitor analysis'
+\echo '  Tables: 8 | Description: Pricing, forecasting, competitor analysis, rate calendar'
 \echo '=============================================='
 \echo ''
 
 -- =====================================================
 -- 1. CHECK IF ALL TABLES EXIST
 -- =====================================================
-\echo '1. Checking if all 7 tables exist...'
+\echo '1. Checking if all 8 tables exist...'
 
 DO $$
 DECLARE
-    v_expected_tables TEXT[] := ARRAY['rate_overrides', 'revenue_forecasts', 'competitor_rates', 'demand_calendar', 'pricing_rules', 'rate_recommendations', 'revenue_goals'];
+    v_expected_tables TEXT[] := ARRAY['rate_overrides', 'revenue_forecasts', 'competitor_rates', 'demand_calendar', 'pricing_rules', 'rate_recommendations', 'revenue_goals', 'rate_calendar'];
     v_table TEXT;
     v_missing_tables TEXT[] := '{}'::TEXT[];
     v_found_count INTEGER := 0;
@@ -46,7 +46,7 @@ BEGIN
         RAISE WARNING 'Missing tables: %', array_to_string(v_missing_tables, ', ');
         RAISE EXCEPTION 'Revenue Management verification FAILED - missing tables!';
     ELSE
-        RAISE NOTICE '✓✓✓ All 7 Revenue Management tables exist!';
+        RAISE NOTICE '✓✓✓ All 8 Revenue Management tables exist!';
     END IF;
 END $$;
 
@@ -67,7 +67,7 @@ FROM information_schema.tables t
 LEFT JOIN information_schema.columns c
     ON t.table_schema = c.table_schema
     AND t.table_name = c.table_name
-WHERE t.table_name IN ('rate_overrides', 'revenue_forecasts', 'competitor_rates', 'demand_calendar', 'pricing_rules', 'rate_recommendations', 'revenue_goals')
+WHERE t.table_name IN ('rate_overrides', 'revenue_forecasts', 'competitor_rates', 'demand_calendar', 'pricing_rules', 'rate_recommendations', 'revenue_goals', 'rate_calendar')
     AND t.table_schema = 'public'
 GROUP BY t.table_schema, t.table_name
 ORDER BY t.table_name;
@@ -87,19 +87,19 @@ DECLARE
 BEGIN
     SELECT COUNT(*) INTO v_table_count
     FROM information_schema.tables t
-    WHERE t.table_name IN ('rate_overrides', 'revenue_forecasts', 'competitor_rates', 'demand_calendar', 'pricing_rules', 'rate_recommendations', 'revenue_goals')
+    WHERE t.table_name IN ('rate_overrides', 'revenue_forecasts', 'competitor_rates', 'demand_calendar', 'pricing_rules', 'rate_recommendations', 'revenue_goals', 'rate_calendar')
         AND t.table_schema = 'public';
 
     RAISE NOTICE '';
     RAISE NOTICE 'Category: Revenue Management';
-    RAISE NOTICE 'Tables Found: % / 7', v_table_count;
+    RAISE NOTICE 'Tables Found: % / 8', v_table_count;
     RAISE NOTICE '';
 
-    IF v_table_count = 7 THEN
+    IF v_table_count = 8 THEN
         RAISE NOTICE '✓✓✓ REVENUE MANAGEMENT VERIFICATION PASSED ✓✓✓';
     ELSE
         RAISE WARNING '⚠⚠⚠ REVENUE MANAGEMENT VERIFICATION FAILED ⚠⚠⚠';
-        RAISE WARNING 'Expected 7 tables, found %', v_table_count;
+        RAISE WARNING 'Expected 8 tables, found %', v_table_count;
     END IF;
 END $$;
 
