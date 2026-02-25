@@ -217,7 +217,7 @@ export const checkInReservation = async (
       }>(
         `SELECT early_checkin_fee, early_checkin_cutoff_hour
          FROM rates
-         WHERE id = $1 AND tenant_id = $2 AND is_active = true
+         WHERE id = $1 AND tenant_id = $2 AND status = 'ACTIVE'
          LIMIT 1`,
         [reservation.rate_id, tenantId],
       );
@@ -535,7 +535,7 @@ export const checkOutReservation = async (
       }>(
         `SELECT late_checkout_fee, late_checkout_cutoff_hour
          FROM rates
-         WHERE id = $1 AND tenant_id = $2 AND is_active = true
+         WHERE id = $1 AND tenant_id = $2 AND status = 'ACTIVE'
          LIMIT 1`,
         [reservation.rate_id, tenantId],
       );
