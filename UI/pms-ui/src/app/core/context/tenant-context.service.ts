@@ -5,10 +5,7 @@ import type { Property } from "@tartware/schemas";
 import { ApiService } from "../api/api.service";
 import { AuthService } from "../auth/auth.service";
 
-export type PropertyOption = Pick<
-	Property,
-	"id" | "property_name" | "property_code"
->;
+export type PropertyOption = Pick<Property, "id" | "property_name" | "property_code">;
 
 @Injectable({ providedIn: "root" })
 export class TenantContextService {

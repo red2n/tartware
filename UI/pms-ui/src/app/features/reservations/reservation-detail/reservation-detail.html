@@ -1,0 +1,190 @@
+<div class="page-header">
+  <div class="breadcrumb">
+    <a routerLink="/reservations" class="breadcrumb-link">
+      <mat-icon class="breadcrumb-icon">arrow_back</mat-icon>
+      Reservations
+    </a>
+    <span class="breadcrumb-sep">/</span>
+    @if (reservation(); as r) {
+      <span class="breadcrumb-current">{{ r.confirmation_number }}</span>
+    }
+  </div>
+</div>
+
+@if (loading()) {
+  <div class="loading-center">
+    <mat-spinner diameter="32" />
+  </div>
+} @else if (error(); as err) {
+  <div class="flash flash-error">
+    <mat-icon class="flash-icon">error_outline</mat-icon>
+    {{ err }}
+    <button class="btn btn-invisible" (click)="goBack()">Go back</button>
+  </div>
+} @else if (reservation(); as r) {
+  <div class="detail-layout">
+    <!-- Booking Information -->
+    <div class="detail-card">
+      <div class="card-header">
+        <h3 class="card-title">Booking Information</h3>
+      </div>
+      <div class="card-body">
+        <dl class="detail-list">
+          @for (row of bookingRows(); track row.label) {
+            <div class="detail-row">
+              <dt class="detail-label">{{ row.label }}</dt>
+              <dd class="detail-value">
+                @if (row.badge) {
+                  <span class="badge" [ngClass]="row.badge">{{ row.value }}</span>
+                } @else {
+                  {{ row.value }}
+                }
+              </dd>
+            </div>
+          }
+        </dl>
+      </div>
+    </div>
+
+    <!-- Guest Information -->
+    <div class="detail-card">
+      <div class="card-header">
+        <h3 class="card-title">Guest Information</h3>
+      </div>
+      <div class="card-body">
+        <dl class="detail-list">
+          @for (row of guestRows(); track row.label) {
+            <div class="detail-row">
+              <dt class="detail-label">{{ row.label }}</dt>
+              <dd class="detail-value">{{ row.value }}</dd>
+            </div>
+          }
+        </dl>
+      </div>
+    </div>
+
+    <!-- Financial Summary -->
+    <div class="detail-card">
+      <div class="card-header">
+        <h3 class="card-title">Financial Summary</h3>
+      </div>
+      <div class="card-body">
+        <dl class="detail-list">
+          @for (row of financialRows(); track row.label) {
+            <div class="detail-row">
+              <dt class="detail-label">{{ row.label }}</dt>
+              <dd class="detail-value">
+                @if (row.badge) {
+                  <span class="badge" [ngClass]="row.badge">{{ row.value }}</span>
+                } @else {
+                  {{ row.value }}
+                }
+              </dd>
+            </div>
+          }
+        </dl>
+      </div>
+    </div>
+
+    <!-- Folio Summary -->
+    @if (r.folio) {
+      <div class="detail-card">
+        <div class="card-header">
+          <h3 class="card-title">Folio</h3>
+        </div>
+        <div class="card-body">
+          <dl class="detail-list">
+            <div class="detail-row">
+              <dt class="detail-label">Status</dt>
+              <dd class="detail-value">
+                <span class="badge badge-muted">{{ r.folio.folio_status }}</span>
+              </dd>
+            </div>
+            <div class="detail-row">
+              <dt class="detail-label">Total Charges</dt>
+              <dd class="detail-value">{{ formatCurrency(r.folio.total_charges, r.currency) }}</dd>
+            </div>
+            <div class="detail-row">
+              <dt class="detail-label">Total Payments</dt>
+              <dd class="detail-value">{{ formatCurrency(r.folio.total_payments, r.currency) }}</dd>
+            </div>
+            <div class="detail-row">
+              <dt class="detail-label">Balance</dt>
+              <dd class="detail-value">
+                <span class="badge" [ngClass]="r.folio.balance > 0 ? 'badge-warning' : 'badge-success'">
+                  {{ formatCurrency(r.folio.balance, r.currency) }}
+                </span>
+              </dd>
+            </div>
+          </dl>
+        </div>
+      </div>
+    }
+
+    <!-- Notes -->
+    @if (r.special_requests || r.internal_notes) {
+      <div class="detail-card">
+        <div class="card-header">
+          <h3 class="card-title">Notes</h3>
+        </div>
+        <div class="card-body">
+          @if (r.special_requests) {
+            <div class="notes-section">
+              <span class="notes-label">Special Requests</span>
+              <p class="notes-text">{{ r.special_requests }}</p>
+            </div>
+          }
+          @if (r.internal_notes) {
+            <div class="notes-section">
+              <span class="notes-label">Internal Notes</span>
+              <p class="notes-text">{{ r.internal_notes }}</p>
+            </div>
+          }
+        </div>
+      </div>
+    }
+
+    <!-- Status History -->
+    @if (r.status_history && r.status_history.length > 0) {
+      <div class="detail-card">
+        <div class="card-header">
+          <h3 class="card-title">Status History</h3>
+        </div>
+        <div class="card-body">
+          <div class="table-container">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>From</th>
+                  <th>To</th>
+                  <th>Reason</th>
+                  <th>Changed By</th>
+                  <th>Date</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (h of r.status_history; track h.changed_at) {
+                  <tr>
+                    <td><span class="badge badge-muted">{{ h.previous_status }}</span></td>
+                    <td><span class="badge" [ngClass]="statusClass(h.new_status)">{{ h.new_status }}</span></td>
+                    <td>{{ h.change_reason ?? '—' }}</td>
+                    <td>{{ h.changed_by }}</td>
+                    <td>{{ formatDate(h.changed_at) }}</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    }
+
+    <!-- Meta -->
+    <div class="meta-line">
+      Created {{ formatDate(r.created_at) }}
+      @if (r.updated_at) {
+        · Updated {{ formatDate(r.updated_at) }}
+      }
+    </div>
+  </div>
+}
