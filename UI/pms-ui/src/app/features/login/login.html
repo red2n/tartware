@@ -71,7 +71,8 @@
                  [(ngModel)]="password"
                  name="password"
                  autocomplete="current-password"
-                 required />
+                 required
+                 #passwordInput />
           <button mat-icon-button matSuffix
                   type="button"
                   (click)="togglePasswordVisibility()"
@@ -79,6 +80,12 @@
             <mat-icon>{{ hidePassword() ? 'visibility' : 'visibility_off' }}</mat-icon>
           </button>
         </mat-form-field>
+
+        <div class="remember-me-row">
+          <mat-checkbox [(ngModel)]="rememberMe" name="rememberMe" color="primary">
+            Remember me
+          </mat-checkbox>
+        </div>
 
         <button mat-flat-button
                 color="primary"
