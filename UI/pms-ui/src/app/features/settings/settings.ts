@@ -244,6 +244,14 @@ export class SettingsComponent implements OnInit {
 		return def.control_type === "MULTI_SELECT" || def.data_type === "MULTI_ENUM";
 	}
 
+	isArrayDisplayValue(def: SettingsDefinition): boolean {
+		return Array.isArray(this.getDisplayValue(def));
+	}
+
+	asArray(value: unknown): unknown[] {
+		return Array.isArray(value) ? value : [];
+	}
+
 	isDateValue(def: SettingsDefinition): boolean {
 		return def.control_type === "DATE_PICKER" || def.data_type === "DATE";
 	}
@@ -379,8 +387,28 @@ export class SettingsComponent implements OnInit {
 	formatCellValue(value: unknown): string {
 		if (value === null || value === undefined) return "—";
 		if (typeof value === "boolean") return value ? "Yes" : "No";
-		if (Array.isArray(value)) return value.join(", ");
-		if (typeof value === "object") return JSON.stringify(value);
+		if (Array.isArray(value)) {
+			return value
+				.map((item) => {
+					if (typeof item === "object" && item !== null) {
+						return Object.values(item as Record<string, unknown>)
+							.filter((v) => v !== null && v !== undefined)
+							.map((v) => (Array.isArray(v) ? v.join(", ") : String(v)))
+							.join(" · ");
+					}
+					return String(item);
+				})
+				.join("; ");
+		}
+		if (typeof value === "object") {
+			const entries = Object.entries(value as Record<string, unknown>);
+			return entries
+				.map(
+					([k, v]) =>
+						`${this.humanizeKey(k)}: ${Array.isArray(v) ? v.join(", ") : String(v ?? "—")}`,
+				)
+				.join("; ");
+		}
 		return String(value);
 	}
 

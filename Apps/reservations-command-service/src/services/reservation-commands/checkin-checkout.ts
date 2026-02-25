@@ -42,7 +42,7 @@ export const checkInReservation = async (
   // 1. Validate reservation exists and status allows check-in
   const resResult = await query(
     `SELECT id, status, room_type_id, guest_id, total_amount, check_in_date, check_out_date,
-            property_id, rate_code
+            property_id, rate_id
      FROM reservations WHERE id = $1 AND tenant_id = $2 LIMIT 1`,
     [command.reservation_id, tenantId],
   );
@@ -56,7 +56,7 @@ export const checkInReservation = async (
         check_in_date: Date;
         check_out_date: Date;
         property_id: string;
-        rate_code: string | null;
+        rate_id: string | null;
       }
     | undefined;
 
@@ -210,16 +210,16 @@ export const checkInReservation = async (
   // S18: Post early check-in fee if guest checks in before the cutoff hour
   const actualCheckInTime = command.checked_in_at ?? new Date();
   try {
-    if (reservation.rate_code) {
+    if (reservation.rate_id) {
       const rateResult = await query<{
         early_checkin_fee: number;
         early_checkin_cutoff_hour: number;
       }>(
         `SELECT early_checkin_fee, early_checkin_cutoff_hour
          FROM rates
-         WHERE rate_code = $1 AND tenant_id = $2 AND is_active = true
+         WHERE id = $1 AND tenant_id = $2 AND status = 'ACTIVE'
          LIMIT 1`,
-        [reservation.rate_code, tenantId],
+        [reservation.rate_id, tenantId],
       );
       const rate = rateResult.rows?.[0];
       if (rate && Number(rate.early_checkin_fee) > 0) {
@@ -355,7 +355,7 @@ export const checkOutReservation = async (
   // 1. Validate reservation exists and is CHECKED_IN
   const resResult = await query(
     `SELECT id, status, guest_id, room_number, room_type_id, total_amount,
-            check_in_date, check_out_date, actual_check_in, property_id, rate_code,
+            check_in_date, check_out_date, actual_check_in, property_id, rate_id,
             travel_agent_id, source
      FROM reservations WHERE id = $1 AND tenant_id = $2 LIMIT 1`,
     [command.reservation_id, tenantId],
@@ -372,7 +372,7 @@ export const checkOutReservation = async (
         check_out_date: Date;
         actual_check_in: Date | null;
         property_id: string;
-        rate_code: string | null;
+        rate_id: string | null;
         travel_agent_id: string | null;
         source: string | null;
       }
@@ -528,16 +528,16 @@ export const checkOutReservation = async (
 
   // S18: Post late check-out fee if guest checks out after the cutoff hour
   try {
-    if (reservation.rate_code) {
+    if (reservation.rate_id) {
       const rateResult = await query<{
         late_checkout_fee: number;
         late_checkout_cutoff_hour: number;
       }>(
         `SELECT late_checkout_fee, late_checkout_cutoff_hour
          FROM rates
-         WHERE rate_code = $1 AND tenant_id = $2 AND is_active = true
+         WHERE id = $1 AND tenant_id = $2 AND status = 'ACTIVE'
          LIMIT 1`,
-        [reservation.rate_code, tenantId],
+        [reservation.rate_id, tenantId],
       );
       const rate = rateResult.rows?.[0];
       if (rate && Number(rate.late_checkout_fee) > 0) {

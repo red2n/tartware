@@ -9,7 +9,168 @@
       <span class="breadcrumb-current">{{ r.confirmation_number }}</span>
     }
   </div>
+  @if (reservation(); as r) {
+    <div class="page-actions">
+      @if (canCheckIn()) {
+        <button class="btn btn-primary btn-sm" (click)="showCheckInConfirm()" [disabled]="actionLoading()" matTooltip="Check in guest and assign room">
+          <mat-icon>login</mat-icon>
+          Check In
+        </button>
+      }
+      @if (canCheckOut()) {
+        <button class="btn btn-outline btn-sm" (click)="showCheckOutConfirm()" [disabled]="actionLoading()" matTooltip="Check out guest and release room">
+          <mat-icon>logout</mat-icon>
+          Check Out
+        </button>
+      }
+      @if (canCancel()) {
+        <button class="btn btn-danger btn-sm" (click)="showCancelConfirm()" [disabled]="actionLoading()" matTooltip="Cancel this reservation">
+          <mat-icon>cancel</mat-icon>
+          Cancel
+        </button>
+      }
+    </div>
+  }
 </div>
+
+<!-- Action feedback -->
+@if (actionSuccess(); as msg) {
+  <div class="flash flash-success">
+    <mat-icon class="flash-icon">check_circle</mat-icon>
+    {{ msg }}
+  </div>
+}
+@if (actionError(); as msg) {
+  <div class="flash flash-error">
+    <mat-icon class="flash-icon">error_outline</mat-icon>
+    {{ msg }}
+  </div>
+}
+
+<!-- Check-in confirmation with room selection -->
+@if (confirmingCheckIn()) {
+  <div class="action-confirm-card">
+    <div class="confirm-header">
+      <mat-icon class="confirm-icon confirm-icon-checkin">login</mat-icon>
+      <h3 class="confirm-title">Check-In — Assign Room</h3>
+    </div>
+    <div class="confirm-body">
+      <p>Select a room to assign, or let the system auto-assign the best available room.</p>
+
+      <!-- Room selection -->
+      <div class="room-selection">
+        <button
+          class="room-option"
+          [class.room-option-selected]="useAutoAssign()"
+          (click)="selectAutoAssign()">
+          <mat-icon>auto_awesome</mat-icon>
+          <div class="room-option-info">
+            <span class="room-option-label">Auto-assign</span>
+            <span class="room-option-hint">System picks the best available room</span>
+          </div>
+          @if (useAutoAssign()) {
+            <mat-icon class="room-check">check_circle</mat-icon>
+          }
+        </button>
+
+        @if (loadingRooms()) {
+          <div class="room-loading">
+            <mat-spinner diameter="20"></mat-spinner>
+            <span>Loading available rooms...</span>
+          </div>
+        } @else if (availableRooms().length === 0) {
+          <p class="room-empty-note">No available rooms found for this room type. Auto-assign will attempt to find one.</p>
+        } @else {
+          @for (room of availableRooms(); track room.room_id) {
+            <button
+              class="room-option"
+              [class.room-option-selected]="selectedRoomId() === room.room_id"
+              (click)="selectRoom(room.room_id)">
+              <mat-icon>meeting_room</mat-icon>
+              <div class="room-option-info">
+                <span class="room-option-label">Room {{ room.room_number }}</span>
+                <span class="room-option-hint">
+                  {{ room.room_type_name }}
+                  @if (room.floor) { · Floor {{ room.floor }} }
+                  · {{ room.housekeeping_status }}
+                </span>
+              </div>
+              @if (selectedRoomId() === room.room_id) {
+                <mat-icon class="room-check">check_circle</mat-icon>
+              }
+            </button>
+          }
+        }
+      </div>
+    </div>
+    <div class="confirm-actions">
+      <button class="btn btn-outline btn-sm" (click)="cancelAction()" [disabled]="actionLoading()">Cancel</button>
+      <button class="btn btn-primary btn-sm" (click)="checkIn()" [disabled]="actionLoading()">
+        @if (actionLoading()) {
+          <mat-spinner diameter="16"></mat-spinner>
+          Checking in...
+        } @else {
+          <mat-icon>login</mat-icon>
+          Confirm Check-In
+        }
+      </button>
+    </div>
+  </div>
+}
+
+<!-- Check-out confirmation -->
+@if (confirmingCheckOut()) {
+  <div class="action-confirm-card">
+    <div class="confirm-header">
+      <mat-icon class="confirm-icon confirm-icon-checkout">logout</mat-icon>
+      <h3 class="confirm-title">Confirm Check-Out</h3>
+    </div>
+    <div class="confirm-body">
+      <p>This will:</p>
+      <ul class="confirm-list">
+        <li>Change reservation status to <strong>Checked Out</strong></li>
+        <li>Set room status to <strong>Vacant Dirty</strong> for housekeeping</li>
+      </ul>
+    </div>
+    <div class="confirm-actions">
+      <button class="btn btn-outline btn-sm" (click)="cancelAction()" [disabled]="actionLoading()">Cancel</button>
+      <button class="btn btn-outline btn-sm" (click)="checkOut()" [disabled]="actionLoading()">
+        @if (actionLoading()) {
+          <mat-spinner diameter="16"></mat-spinner>
+          Checking out...
+        } @else {
+          <mat-icon>logout</mat-icon>
+          Confirm Check-Out
+        }
+      </button>
+    </div>
+  </div>
+}
+
+<!-- Cancel confirmation -->
+@if (confirmingCancel()) {
+  <div class="action-confirm-card action-confirm-danger">
+    <div class="confirm-header">
+      <mat-icon class="confirm-icon confirm-icon-cancel">cancel</mat-icon>
+      <h3 class="confirm-title">Cancel Reservation</h3>
+    </div>
+    <div class="confirm-body">
+      <p>Are you sure you want to cancel this reservation? This action cannot be undone.</p>
+    </div>
+    <div class="confirm-actions">
+      <button class="btn btn-outline btn-sm" (click)="cancelAction()" [disabled]="actionLoading()">Go Back</button>
+      <button class="btn btn-danger btn-sm" (click)="cancelReservation()" [disabled]="actionLoading()">
+        @if (actionLoading()) {
+          <mat-spinner diameter="16"></mat-spinner>
+          Cancelling...
+        } @else {
+          <mat-icon>cancel</mat-icon>
+          Confirm Cancel
+        }
+      </button>
+    </div>
+  </div>
+}
 
 @if (loading()) {
   <div class="loading-center">
