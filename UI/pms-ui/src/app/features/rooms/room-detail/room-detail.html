@@ -66,6 +66,51 @@
     <!-- Amenities section -->
     <div class="detail-card">
       <div class="card-header">
+        <h3 class="card-title">Housekeeping</h3>
+      </div>
+      <div class="card-body">
+        @if (housekeepingSuccess(); as msg) {
+          <div class="flash flash-success">
+            <mat-icon class="flash-icon">check_circle</mat-icon>
+            {{ msg }}
+          </div>
+        }
+        @if (housekeepingError(); as msg) {
+          <div class="flash flash-error">
+            <mat-icon class="flash-icon">error_outline</mat-icon>
+            {{ msg }}
+          </div>
+        }
+        <p class="hk-current">
+          Current:
+          <span class="status-badge" [ngClass]="hkClass(r.housekeeping_status)">
+            {{ r.housekeeping_display }}
+          </span>
+        </p>
+        <div class="hk-actions">
+          @for (opt of housekeepingOptions; track opt.value) {
+            <button
+              class="btn btn-sm"
+              [class.btn-primary]="r.housekeeping_status === opt.value"
+              [class.btn-outline]="r.housekeeping_status !== opt.value"
+              [disabled]="updatingHousekeeping() || r.housekeeping_status === opt.value"
+              (click)="updateHousekeepingStatus(opt.value)"
+              [matTooltip]="'Mark as ' + opt.label">
+              @if (updatingHousekeeping()) {
+                <mat-spinner diameter="14"></mat-spinner>
+              } @else {
+                <mat-icon>{{ opt.icon }}</mat-icon>
+              }
+              {{ opt.label }}
+            </button>
+          }
+        </div>
+      </div>
+    </div>
+
+    <!-- Amenities section -->
+    <div class="detail-card">
+      <div class="card-header">
         <h3 class="card-title">Amenities</h3>
         @if (!editingAmenities()) {
           <button class="btn btn-invisible btn-sm" (click)="startEditAmenities()">

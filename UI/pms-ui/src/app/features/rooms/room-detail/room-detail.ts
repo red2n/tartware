@@ -1,6 +1,7 @@
 import { NgClass } from "@angular/common";
 import { Component, computed, inject, type OnInit, signal } from "@angular/core";
 import { FormsModule } from "@angular/forms";
+import { MatButtonModule } from "@angular/material/button";
 import { MatIconModule } from "@angular/material/icon";
 import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
 import { MatSlideToggleModule } from "@angular/material/slide-toggle";
@@ -58,6 +59,7 @@ type DetailRow = { label: string; value: string; badge?: string };
 		NgClass,
 		FormsModule,
 		RouterLink,
+		MatButtonModule,
 		MatIconModule,
 		MatProgressSpinnerModule,
 		MatTooltipModule,
@@ -79,6 +81,19 @@ export class RoomDetailComponent implements OnInit {
 	readonly saveSuccess = signal<string | null>(null);
 	readonly saveError = signal<string | null>(null);
 	readonly activating = signal(false);
+
+	/** Housekeeping status management */
+	readonly updatingHousekeeping = signal(false);
+	readonly housekeepingSuccess = signal<string | null>(null);
+	readonly housekeepingError = signal<string | null>(null);
+
+	readonly housekeepingOptions: { value: string; label: string; icon: string }[] = [
+		{ value: "CLEAN", label: "Clean", icon: "check_circle" },
+		{ value: "DIRTY", label: "Dirty", icon: "warning" },
+		{ value: "INSPECTED", label: "Inspected", icon: "verified" },
+		{ value: "IN_PROGRESS", label: "In Progress", icon: "cleaning_services" },
+		{ value: "DO_NOT_DISTURB", label: "Do Not Disturb", icon: "do_not_disturb" },
+	];
 
 	/** Editable OOO state */
 	readonly editOoo = signal(false);
@@ -385,6 +400,33 @@ export class RoomDetailComponent implements OnInit {
 
 	readonly deactivating = signal(false);
 
+	async updateHousekeepingStatus(newStatus: string): Promise<void> {
+		const r = this.room();
+		const tenantId = this.auth.tenantId();
+		if (!r || !tenantId) return;
+		if (r.housekeeping_status === newStatus) return;
+
+		this.updatingHousekeeping.set(true);
+		this.housekeepingError.set(null);
+		this.housekeepingSuccess.set(null);
+
+		try {
+			await this.api.put(`/rooms/${r.room_id}`, {
+				tenant_id: tenantId,
+				housekeeping_status: newStatus,
+			});
+			const label = this.housekeepingOptions.find((o) => o.value === newStatus)?.label ?? newStatus;
+			this.housekeepingSuccess.set(`Housekeeping status updated to ${label}.`);
+			await this.loadRoom(r.room_id);
+		} catch (e) {
+			this.housekeepingError.set(
+				e instanceof Error ? e.message : "Failed to update housekeeping status",
+			);
+		} finally {
+			this.updatingHousekeeping.set(false);
+		}
+	}
+
 	/**
 	 * Poll room data until the OOO flag reflects the expected change, with a maximum of 5 attempts.
 	 */
@@ -412,7 +454,10 @@ export class RoomDetailComponent implements OnInit {
 		const tenantId = this.auth.tenantId();
 		if (!r || !tenantId) return;
 
-		if (!confirm('Move this room back to Setup mode? It will be removed from booking availability.')) return;
+		if (
+			!confirm("Move this room back to Setup mode? It will be removed from booking availability.")
+		)
+			return;
 
 		this.deactivating.set(true);
 		this.saveError.set(null);
