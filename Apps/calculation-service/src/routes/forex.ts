@@ -17,7 +17,7 @@ export function registerForexRoutes(app: FastifyInstance) {
     async (request: FastifyRequest<{ Body: ForexConvertInput }>, reply: FastifyReply) => {
       const parsed = ForexConvertInputSchema.safeParse(request.body);
       if (!parsed.success) {
-        return reply.badRequest(parsed.error.message);
+        return reply.status(400).send({ error: parsed.error.message });
       }
       const start = performance.now();
       const result = convertCurrency(parsed.data);

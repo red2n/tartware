@@ -25,7 +25,7 @@ export function registerSplitRoutes(app: FastifyInstance) {
     async (request: FastifyRequest<{ Body: SplitByReservationInput }>, reply: FastifyReply) => {
       const parsed = SplitByReservationInputSchema.safeParse(request.body);
       if (!parsed.success) {
-        return reply.badRequest(parsed.error.message);
+        return reply.status(400).send({ error: parsed.error.message });
       }
       const start = performance.now();
       const result = splitByReservation(parsed.data);
@@ -46,7 +46,7 @@ export function registerSplitRoutes(app: FastifyInstance) {
     async (request: FastifyRequest<{ Body: SplitByGuestInput }>, reply: FastifyReply) => {
       const parsed = SplitByGuestInputSchema.safeParse(request.body);
       if (!parsed.success) {
-        return reply.badRequest(parsed.error.message);
+        return reply.status(400).send({ error: parsed.error.message });
       }
       const start = performance.now();
       const result = splitByGuest(parsed.data);
@@ -67,7 +67,7 @@ export function registerSplitRoutes(app: FastifyInstance) {
     async (request: FastifyRequest<{ Body: SplitComponentInput }>, reply: FastifyReply) => {
       const parsed = SplitComponentInputSchema.safeParse(request.body);
       if (!parsed.success) {
-        return reply.badRequest(parsed.error.message);
+        return reply.status(400).send({ error: parsed.error.message });
       }
       const start = performance.now();
       const result = splitComponent(parsed.data);

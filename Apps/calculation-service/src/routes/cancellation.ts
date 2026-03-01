@@ -17,7 +17,7 @@ export function registerCancellationRoutes(app: FastifyInstance) {
     async (request: FastifyRequest<{ Body: CancellationFeeInput }>, reply: FastifyReply) => {
       const parsed = CancellationFeeInputSchema.safeParse(request.body);
       if (!parsed.success) {
-        return reply.badRequest(parsed.error.message);
+        return reply.status(400).send({ error: parsed.error.message });
       }
       const start = performance.now();
       const result = calculateCancellationFee(parsed.data);

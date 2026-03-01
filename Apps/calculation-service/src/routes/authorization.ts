@@ -17,7 +17,7 @@ export function registerAuthorizationRoutes(app: FastifyInstance) {
     async (request: FastifyRequest<{ Body: AuthTdacInput }>, reply: FastifyReply) => {
       const parsed = AuthTdacInputSchema.safeParse(request.body);
       if (!parsed.success) {
-        return reply.badRequest(parsed.error.message);
+        return reply.status(400).send({ error: parsed.error.message });
       }
       const start = performance.now();
       const result = calculateAuthTdac(parsed.data);
@@ -38,7 +38,7 @@ export function registerAuthorizationRoutes(app: FastifyInstance) {
     async (request: FastifyRequest<{ Body: AuthRtdcInput }>, reply: FastifyReply) => {
       const parsed = AuthRtdcInputSchema.safeParse(request.body);
       if (!parsed.success) {
-        return reply.badRequest(parsed.error.message);
+        return reply.status(400).send({ error: parsed.error.message });
       }
       const start = performance.now();
       const result = calculateAuthRtdc(parsed.data);

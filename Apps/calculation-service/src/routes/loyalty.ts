@@ -24,7 +24,7 @@ export function registerLoyaltyRoutes(app: FastifyInstance) {
     },
     async (request: FastifyRequest<{ Body: PointsToMoneyInput }>, reply: FastifyReply) => {
       const parsed = PointsToMoneyInputSchema.safeParse(request.body);
-      if (!parsed.success) return reply.badRequest(parsed.error.message);
+      if (!parsed.success) return reply.status(400).send({ error: parsed.error.message });
       const start = performance.now();
       const result = pointsToMoney(parsed.data);
       observeCalculationDuration("loyalty", "points_to_money", (performance.now() - start) / 1000);
@@ -43,7 +43,7 @@ export function registerLoyaltyRoutes(app: FastifyInstance) {
     },
     async (request: FastifyRequest<{ Body: MoneyToPointsInput }>, reply: FastifyReply) => {
       const parsed = MoneyToPointsInputSchema.safeParse(request.body);
-      if (!parsed.success) return reply.badRequest(parsed.error.message);
+      if (!parsed.success) return reply.status(400).send({ error: parsed.error.message });
       const start = performance.now();
       const result = moneyToPoints(parsed.data);
       observeCalculationDuration("loyalty", "money_to_points", (performance.now() - start) / 1000);
@@ -62,7 +62,7 @@ export function registerLoyaltyRoutes(app: FastifyInstance) {
     },
     async (request: FastifyRequest<{ Body: PointsRedemptionInput }>, reply: FastifyReply) => {
       const parsed = PointsRedemptionInputSchema.safeParse(request.body);
-      if (!parsed.success) return reply.badRequest(parsed.error.message);
+      if (!parsed.success) return reply.status(400).send({ error: parsed.error.message });
       const start = performance.now();
       const result = processRedemption(parsed.data);
       observeCalculationDuration("loyalty", "redemption", (performance.now() - start) / 1000);

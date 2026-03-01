@@ -29,7 +29,7 @@ export function registerDepositRoutes(app: FastifyInstance) {
     async (request: FastifyRequest<{ Body: DepositEntireStayInput }>, reply: FastifyReply) => {
       const parsed = DepositEntireStayInputSchema.safeParse(request.body);
       if (!parsed.success) {
-        return reply.badRequest(parsed.error.message);
+        return reply.status(400).send({ error: parsed.error.message });
       }
       const start = performance.now();
       const result = calculateDepositEntireStay(parsed.data);
@@ -50,7 +50,7 @@ export function registerDepositRoutes(app: FastifyInstance) {
     async (request: FastifyRequest<{ Body: DepositPerGuestInput }>, reply: FastifyReply) => {
       const parsed = DepositPerGuestInputSchema.safeParse(request.body);
       if (!parsed.success) {
-        return reply.badRequest(parsed.error.message);
+        return reply.status(400).send({ error: parsed.error.message });
       }
       const start = performance.now();
       const result = calculateDepositPerGuest(parsed.data);
@@ -71,7 +71,7 @@ export function registerDepositRoutes(app: FastifyInstance) {
     async (request: FastifyRequest<{ Body: DepositCapInput }>, reply: FastifyReply) => {
       const parsed = DepositCapInputSchema.safeParse(request.body);
       if (!parsed.success) {
-        return reply.badRequest(parsed.error.message);
+        return reply.status(400).send({ error: parsed.error.message });
       }
       const start = performance.now();
       const result = calculateDepositCap(parsed.data);
