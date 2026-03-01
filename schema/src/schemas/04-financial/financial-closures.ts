@@ -78,6 +78,26 @@ export const FinancialClosuresSchema = z.object({
 	occupancy_percent: money.optional(),
 	adr: money.optional(),
 	revpar: money.optional(),
+	/** Total Revenue per Available Room (STR standard: includes F&B + other revenue) */
+	trevpar: money.optional(),
+	/** Net Revenue per Available Room (after commissions/fees) */
+	nrevpar: money.optional(),
+	/** Gross Operating Profit per Available Room (HSMAI standard) */
+	goppar: money.optional(),
+	/** Revenue per Available Customer */
+	revpac: money.optional(),
+	/** Comp rooms count for the period */
+	comp_rooms: z.number().int().optional(),
+	/** Rooms sold count for the period */
+	rooms_sold: z.number().int().optional(),
+	/** Total commissions paid */
+	total_commissions: money.optional(),
+	/** Total non-room revenue (F&B + other) */
+	total_non_room_revenue: money.optional(),
+	/** Undistributed operating expenses */
+	undistributed_expenses: money.optional(),
+	/** Gross operating profit */
+	gross_operating_profit: money.optional(),
 	requires_reconciliation: z.boolean().optional(),
 	is_reconciled: z.boolean().optional(),
 	reconciliation_status: z.string().optional(),

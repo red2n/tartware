@@ -13,6 +13,8 @@ import {
 import {
   BILLING_COMMAND_TAG,
   BILLING_PROXY_TAG,
+  commandAcceptedSchema,
+  paginationQuerySchema,
   reservationParamsSchema,
   tenantInvoiceParamsSchema,
   tenantPaymentParamsSchema,
@@ -28,12 +30,20 @@ export const registerBillingRoutes = (app: FastifyInstance): void => {
     requiredModules: "core",
   });
 
+  const tenantScopeFromQuery = app.withTenantScope({
+    resolveTenantId: (request) => (request.query as { tenant_id?: string }).tenant_id,
+    minRole: "VIEWER",
+    requiredModules: "core",
+  });
+
   app.get(
     "/v1/billing/payments",
     {
+      preHandler: tenantScopeFromQuery,
       schema: buildRouteSchema({
         tag: BILLING_PROXY_TAG,
         summary: "Proxy billing payment requests to the billing service.",
+        querystring: paginationQuerySchema,
         response: {
           200: jsonObjectSchema,
         },
@@ -52,7 +62,7 @@ export const registerBillingRoutes = (app: FastifyInstance): void => {
         params: reservationParamsSchema,
         body: jsonObjectSchema,
         response: {
-          202: jsonObjectSchema,
+          202: commandAcceptedSchema,
         },
       }),
     },
@@ -69,7 +79,7 @@ export const registerBillingRoutes = (app: FastifyInstance): void => {
         params: tenantPaymentParamsSchema,
         body: jsonObjectSchema,
         response: {
-          202: jsonObjectSchema,
+          202: commandAcceptedSchema,
         },
       }),
     },
@@ -86,7 +96,7 @@ export const registerBillingRoutes = (app: FastifyInstance): void => {
         params: reservationParamsSchema,
         body: jsonObjectSchema,
         response: {
-          202: jsonObjectSchema,
+          202: commandAcceptedSchema,
         },
       }),
     },
@@ -108,7 +118,7 @@ export const registerBillingRoutes = (app: FastifyInstance): void => {
         params: tenantInvoiceParamsSchema,
         body: jsonObjectSchema,
         response: {
-          202: jsonObjectSchema,
+          202: commandAcceptedSchema,
         },
       }),
     },
@@ -132,7 +142,7 @@ export const registerBillingRoutes = (app: FastifyInstance): void => {
         params: reservationParamsSchema,
         body: jsonObjectSchema,
         response: {
-          202: jsonObjectSchema,
+          202: commandAcceptedSchema,
         },
       }),
     },
@@ -154,7 +164,7 @@ export const registerBillingRoutes = (app: FastifyInstance): void => {
         params: tenantPaymentParamsSchema,
         body: jsonObjectSchema,
         response: {
-          202: jsonObjectSchema,
+          202: commandAcceptedSchema,
         },
       }),
     },
@@ -178,7 +188,7 @@ export const registerBillingRoutes = (app: FastifyInstance): void => {
         params: reservationParamsSchema,
         body: jsonObjectSchema,
         response: {
-          202: jsonObjectSchema,
+          202: commandAcceptedSchema,
         },
       }),
     },
@@ -200,7 +210,7 @@ export const registerBillingRoutes = (app: FastifyInstance): void => {
         params: reservationParamsSchema,
         body: jsonObjectSchema,
         response: {
-          202: jsonObjectSchema,
+          202: commandAcceptedSchema,
         },
       }),
     },
@@ -222,7 +232,7 @@ export const registerBillingRoutes = (app: FastifyInstance): void => {
         params: tenantPaymentParamsSchema,
         body: jsonObjectSchema,
         response: {
-          202: jsonObjectSchema,
+          202: commandAcceptedSchema,
         },
       }),
     },
@@ -246,7 +256,7 @@ export const registerBillingRoutes = (app: FastifyInstance): void => {
         params: reservationParamsSchema,
         body: jsonObjectSchema,
         response: {
-          202: jsonObjectSchema,
+          202: commandAcceptedSchema,
         },
       }),
     },
@@ -268,7 +278,7 @@ export const registerBillingRoutes = (app: FastifyInstance): void => {
         params: reservationParamsSchema,
         body: jsonObjectSchema,
         response: {
-          202: jsonObjectSchema,
+          202: commandAcceptedSchema,
         },
       }),
     },
@@ -283,6 +293,7 @@ export const registerBillingRoutes = (app: FastifyInstance): void => {
   app.get(
     "/v1/billing/*",
     {
+      preHandler: tenantScopeFromQuery,
       schema: buildRouteSchema({
         tag: BILLING_PROXY_TAG,
         summary: "Proxy nested billing routes to the billing service.",

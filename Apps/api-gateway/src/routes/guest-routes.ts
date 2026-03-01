@@ -9,7 +9,13 @@ import {
   forwardGuestMergeCommand,
   forwardGuestRegisterCommand,
 } from "./command-helpers.js";
-import { GUESTS_PROXY_TAG, tenantGuestParamsSchema } from "./schemas.js";
+import {
+  commandAcceptedSchema,
+  GDPR_TAG,
+  GUESTS_PROXY_TAG,
+  paginationQuerySchema,
+  tenantGuestParamsSchema,
+} from "./schemas.js";
 
 export const registerGuestRoutes = (app: FastifyInstance): void => {
   const proxyGuests = async (request: FastifyRequest, reply: FastifyReply) =>
@@ -21,12 +27,20 @@ export const registerGuestRoutes = (app: FastifyInstance): void => {
     requiredModules: "core",
   });
 
+  const tenantScopeFromQuery = app.withTenantScope({
+    resolveTenantId: (request) => (request.query as { tenant_id?: string }).tenant_id,
+    minRole: "STAFF",
+    requiredModules: "core",
+  });
+
   app.get(
     "/v1/guests",
     {
+      preHandler: tenantScopeFromQuery,
       schema: buildRouteSchema({
         tag: GUESTS_PROXY_TAG,
         summary: "Proxy guest queries to the guests service.",
+        querystring: paginationQuerySchema,
         response: {
           200: jsonObjectSchema,
         },
@@ -43,7 +57,7 @@ export const registerGuestRoutes = (app: FastifyInstance): void => {
         summary: "Submit guest creation requests via the Command Center command pipeline.",
         body: jsonObjectSchema,
         response: {
-          202: jsonObjectSchema,
+          202: commandAcceptedSchema,
         },
       }),
     },
@@ -58,7 +72,7 @@ export const registerGuestRoutes = (app: FastifyInstance): void => {
         summary: "Merge duplicate guests via the Command Center pipeline.",
         body: jsonObjectSchema,
         response: {
-          202: jsonObjectSchema,
+          202: commandAcceptedSchema,
         },
       }),
     },
@@ -75,7 +89,7 @@ export const registerGuestRoutes = (app: FastifyInstance): void => {
         params: tenantGuestParamsSchema,
         body: jsonObjectSchema,
         response: {
-          202: jsonObjectSchema,
+          202: commandAcceptedSchema,
         },
       }),
     },
@@ -99,7 +113,7 @@ export const registerGuestRoutes = (app: FastifyInstance): void => {
         params: tenantGuestParamsSchema,
         body: jsonObjectSchema,
         response: {
-          202: jsonObjectSchema,
+          202: commandAcceptedSchema,
         },
       }),
     },
@@ -123,7 +137,7 @@ export const registerGuestRoutes = (app: FastifyInstance): void => {
         params: tenantGuestParamsSchema,
         body: jsonObjectSchema,
         response: {
-          202: jsonObjectSchema,
+          202: commandAcceptedSchema,
         },
       }),
     },
@@ -147,7 +161,7 @@ export const registerGuestRoutes = (app: FastifyInstance): void => {
         params: tenantGuestParamsSchema,
         body: jsonObjectSchema,
         response: {
-          202: jsonObjectSchema,
+          202: commandAcceptedSchema,
         },
       }),
     },
@@ -171,7 +185,7 @@ export const registerGuestRoutes = (app: FastifyInstance): void => {
         params: tenantGuestParamsSchema,
         body: jsonObjectSchema,
         response: {
-          202: jsonObjectSchema,
+          202: commandAcceptedSchema,
         },
       }),
     },
@@ -195,7 +209,7 @@ export const registerGuestRoutes = (app: FastifyInstance): void => {
         params: tenantGuestParamsSchema,
         body: jsonObjectSchema,
         response: {
-          202: jsonObjectSchema,
+          202: commandAcceptedSchema,
         },
       }),
     },
@@ -204,6 +218,104 @@ export const registerGuestRoutes = (app: FastifyInstance): void => {
         request,
         reply,
         commandName: "guest.gdpr.erase",
+        paramKey: "guestId",
+        payloadKey: "guest_id",
+      }),
+  );
+
+  // -------------------------------------------------
+  // GDPR / CCPA COMPLIANCE ENDPOINTS
+  // -------------------------------------------------
+
+  app.get(
+    "/v1/tenants/:tenantId/guests/:guestId/gdpr-export",
+    {
+      preHandler: tenantScopeFromParams,
+      schema: buildRouteSchema({
+        tag: GDPR_TAG,
+        summary: "Subject access request — export all guest data (GDPR Art. 15 / CCPA).",
+        params: tenantGuestParamsSchema,
+        response: { 200: jsonObjectSchema },
+      }),
+    },
+    proxyGuests,
+  );
+
+  app.post(
+    "/v1/tenants/:tenantId/guests/:guestId/gdpr-rectify",
+    {
+      preHandler: tenantScopeFromParams,
+      schema: buildRouteSchema({
+        tag: GDPR_TAG,
+        summary: "Rectify guest personal data (GDPR Art. 16).",
+        params: tenantGuestParamsSchema,
+        body: jsonObjectSchema,
+        response: { 202: commandAcceptedSchema },
+      }),
+    },
+    (request, reply) =>
+      forwardCommandWithParamId({
+        request,
+        reply,
+        commandName: "guest.gdpr.rectify",
+        paramKey: "guestId",
+        payloadKey: "guest_id",
+      }),
+  );
+
+  app.post(
+    "/v1/tenants/:tenantId/guests/:guestId/gdpr-restrict",
+    {
+      preHandler: tenantScopeFromParams,
+      schema: buildRouteSchema({
+        tag: GDPR_TAG,
+        summary: "Restrict processing of guest data (GDPR Art. 18).",
+        params: tenantGuestParamsSchema,
+        body: jsonObjectSchema,
+        response: { 202: commandAcceptedSchema },
+      }),
+    },
+    (request, reply) =>
+      forwardCommandWithParamId({
+        request,
+        reply,
+        commandName: "guest.gdpr.restrict",
+        paramKey: "guestId",
+        payloadKey: "guest_id",
+      }),
+  );
+
+  app.get(
+    "/v1/tenants/:tenantId/guests/:guestId/consent",
+    {
+      preHandler: tenantScopeFromParams,
+      schema: buildRouteSchema({
+        tag: GDPR_TAG,
+        summary: "Get guest consent ledger (marketing, analytics, third-party sharing).",
+        params: tenantGuestParamsSchema,
+        response: { 200: jsonObjectSchema },
+      }),
+    },
+    proxyGuests,
+  );
+
+  app.post(
+    "/v1/tenants/:tenantId/guests/:guestId/consent",
+    {
+      preHandler: tenantScopeFromParams,
+      schema: buildRouteSchema({
+        tag: GDPR_TAG,
+        summary: "Update guest consent preferences.",
+        params: tenantGuestParamsSchema,
+        body: jsonObjectSchema,
+        response: { 202: commandAcceptedSchema },
+      }),
+    },
+    (request, reply) =>
+      forwardCommandWithParamId({
+        request,
+        reply,
+        commandName: "guest.consent.update",
         paramKey: "guestId",
         payloadKey: "guest_id",
       }),
@@ -219,7 +331,7 @@ export const registerGuestRoutes = (app: FastifyInstance): void => {
         params: tenantGuestParamsSchema,
         body: jsonObjectSchema,
         response: {
-          202: jsonObjectSchema,
+          202: commandAcceptedSchema,
         },
       }),
     },
@@ -236,12 +348,6 @@ export const registerGuestRoutes = (app: FastifyInstance): void => {
   // -------------------------------------------------
   // LOYALTY READ ENDPOINTS (proxied to guests-service)
   // -------------------------------------------------
-
-  const tenantScopeFromQuery = app.withTenantScope({
-    resolveTenantId: (request) => (request.query as { tenant_id?: string }).tenant_id,
-    minRole: "STAFF",
-    requiredModules: "core",
-  });
 
   app.get(
     "/v1/loyalty/transactions",
@@ -285,6 +391,7 @@ export const registerGuestRoutes = (app: FastifyInstance): void => {
   app.get(
     "/v1/guests/*",
     {
+      preHandler: tenantScopeFromQuery,
       schema: buildRouteSchema({
         tag: GUESTS_PROXY_TAG,
         summary: "Proxy nested guest routes to the guests service.",

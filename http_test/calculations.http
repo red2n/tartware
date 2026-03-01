@@ -1,0 +1,751 @@
+###############################################################################
+# CALCULATION SERVICE - Stateless Financial Calculation Engine
+# Routes via API Gateway (localhost:8080) -> calculation-service (port 3070)
+#
+# Content: Tax, Rate, Folio, Revenue KPI, Split, Deposit, Commission,
+#          Authorization, Cancellation, Yield, Forex, Proration, Allowance,
+#          Comp, Loyalty/Points, and Revenue Forecast calculations.
+#
+# All endpoints are POST with JSON body (stateless, no DB).
+# Formulas sourced from CORE.md (production Stay PMS system).
+#
+# Related files:
+# - billing.http - Billing read operations
+# - rates.http - Rate configuration
+# - revenue.http - Revenue management
+###############################################################################
+
+# --- VARIABLES ---
+@baseUrl = http://localhost:8080
+@token = {{$dotenv TOKEN}}
+
+###############################################################################
+# TAX CALCULATIONS (CORE.md §1)
+###############################################################################
+
+### Calculate taxable amount
+POST {{baseUrl}}/v1/calculations/tax/taxable-amount
+Content-Type: application/json
+Authorization: Bearer {{token}}
+X-Tenant-Id: 11111111-1111-1111-1111-111111111111
+
+{
+  "amount": 150.00,
+  "quantity": 3,
+  "negate": false
+}
+
+### Reverse tax (find unit amount from total)
+POST {{baseUrl}}/v1/calculations/tax/reverse
+Content-Type: application/json
+Authorization: Bearer {{token}}
+X-Tenant-Id: 11111111-1111-1111-1111-111111111111
+
+{
+  "taxable_amount": 450.00,
+  "quantity": 3,
+  "exempted_tax_amount": 0
+}
+
+### Extract inclusive taxes from gross amount
+POST {{baseUrl}}/v1/calculations/tax/inclusive-extract
+Content-Type: application/json
+Authorization: Bearer {{token}}
+X-Tenant-Id: 11111111-1111-1111-1111-111111111111
+
+{
+  "gross_amount": 236.00,
+  "tax_rules": [
+    { "code": "VAT", "rate": 18, "is_compound": false }
+  ]
+}
+
+### Extract compound inclusive taxes
+POST {{baseUrl}}/v1/calculations/tax/inclusive-extract
+Content-Type: application/json
+Authorization: Bearer {{token}}
+X-Tenant-Id: 11111111-1111-1111-1111-111111111111
+
+{
+  "gross_amount": 1000.00,
+  "tax_rules": [
+    { "code": "STATE_TAX", "rate": 5, "is_compound": false },
+    { "code": "CESS", "rate": 2, "is_compound": true, "compound_order": 1 }
+  ]
+}
+
+### Bulk tax calculation (multiple line items)
+POST {{baseUrl}}/v1/calculations/tax/bulk
+Content-Type: application/json
+Authorization: Bearer {{token}}
+X-Tenant-Id: 11111111-1111-1111-1111-111111111111
+
+{
+  "line_items": [
+    { "amount": 200.00, "quantity": 3, "charge_code": "ROOM" },
+    { "amount": 50.00, "quantity": 1, "charge_code": "MINIBAR" },
+    { "amount": 120.00, "quantity": 2, "charge_code": "SPA" }
+  ],
+  "tax_rules": [
+    { "code": "GST", "rate": 18, "is_compound": false }
+  ]
+}
+
+###############################################################################
+# RATE & PRICING CALCULATIONS (CORE.md §2)
+###############################################################################
+
+### Rate override - UNIT (absolute)
+POST {{baseUrl}}/v1/calculations/rate/override
+Content-Type: application/json
+Authorization: Bearer {{token}}
+X-Tenant-Id: 11111111-1111-1111-1111-111111111111
+
+{
+  "base_price": 200.00,
+  "adjustment_type": "UNIT",
+  "amount": 180.00
+}
+
+### Rate override - ADJUST_PERCENT (+15%)
+POST {{baseUrl}}/v1/calculations/rate/override
+Content-Type: application/json
+Authorization: Bearer {{token}}
+X-Tenant-Id: 11111111-1111-1111-1111-111111111111
+
+{
+  "base_price": 200.00,
+  "adjustment_type": "ADJUST_PERCENT",
+  "amount": 15
+}
+
+### Occupancy-based rate
+POST {{baseUrl}}/v1/calculations/rate/occupancy
+Content-Type: application/json
+Authorization: Bearer {{token}}
+X-Tenant-Id: 11111111-1111-1111-1111-111111111111
+
+{
+  "pre_occupancy_rate": 250.00,
+  "adults": 3,
+  "children": 2,
+  "adults_included": 2,
+  "children_included": 1,
+  "extra_adult_charge": 50.00,
+  "extra_child_charge": 25.00
+}
+
+### Package rate decomposition
+POST {{baseUrl}}/v1/calculations/rate/package
+Content-Type: application/json
+Authorization: Bearer {{token}}
+X-Tenant-Id: 11111111-1111-1111-1111-111111111111
+
+{
+  "base_rate": 350.00,
+  "inclusive_components": [
+    { "amount": 50.00 },
+    { "amount": 30.00 }
+  ],
+  "exclusive_components": [
+    { "amount": 25.00 }
+  ]
+}
+
+### Reservation quote
+POST {{baseUrl}}/v1/calculations/rate/quote
+Content-Type: application/json
+Authorization: Bearer {{token}}
+X-Tenant-Id: 11111111-1111-1111-1111-111111111111
+
+{
+  "nightly_rates": [250.00, 250.00, 275.00],
+  "components": [50.00, 30.00],
+  "recurring_charges": [15.00],
+  "tax_rate": 18,
+  "offer_discount": 50.00,
+  "routed_amount": 0
+}
+
+###############################################################################
+# FOLIO & BALANCE CALCULATIONS (CORE.md §3)
+###############################################################################
+
+### Folio balance
+POST {{baseUrl}}/v1/calculations/folio/balance
+Content-Type: application/json
+Authorization: Bearer {{token}}
+X-Tenant-Id: 11111111-1111-1111-1111-111111111111
+
+{
+  "line_items": [
+    { "amount": 250.00, "quantity": 3, "is_reverse_tax": false },
+    { "amount": -100.00, "quantity": 1, "is_reverse_tax": false }
+  ]
+}
+
+### Credit remaining
+POST {{baseUrl}}/v1/calculations/folio/credit-remaining
+Content-Type: application/json
+Authorization: Bearer {{token}}
+X-Tenant-Id: 11111111-1111-1111-1111-111111111111
+
+{
+  "credit_limit": 10000.00,
+  "account_balance": 3500.00
+}
+
+### AR breakdown
+POST {{baseUrl}}/v1/calculations/folio/ar-breakdown
+Content-Type: application/json
+Authorization: Bearer {{token}}
+X-Tenant-Id: 11111111-1111-1111-1111-111111111111
+
+{
+  "aging_buckets": [1000.00, 500.00, 250.00],
+  "account_balance_total": 2500.00,
+  "deposit_balance": 200.00,
+  "credit_limit": 5000.00
+}
+
+### Estimated checkout
+POST {{baseUrl}}/v1/calculations/folio/estimated-checkout
+Content-Type: application/json
+Authorization: Bearer {{token}}
+X-Tenant-Id: 11111111-1111-1111-1111-111111111111
+
+{
+  "posted_charges": 750.00,
+  "future_charges": 250.00,
+  "posted_taxes": 135.00,
+  "future_taxes": 45.00,
+  "posted_payments": -500.00,
+  "stay_length": 4
+}
+
+###############################################################################
+# REVENUE KPI CALCULATIONS (CORE.md §4 + STR)
+###############################################################################
+
+### KPI Dashboard (ADR, RevPAR, TRevPAR, GOPPAR, competitive indices)
+POST {{baseUrl}}/v1/calculations/revenue/kpi-dashboard
+Content-Type: application/json
+Authorization: Bearer {{token}}
+X-Tenant-Id: 11111111-1111-1111-1111-111111111111
+
+{
+  "room_revenue": 45000.00,
+  "total_revenue": 62000.00,
+  "net_revenue": 58000.00,
+  "rooms_sold": 180,
+  "available_rooms": 250,
+  "comp_rooms": 5,
+  "gross_operating_profit": 25000.00,
+  "compset": {
+    "occupancy": 68.5,
+    "adr": 260.00,
+    "revpar": 178.10
+  }
+}
+
+###############################################################################
+# SPLIT CALCULATIONS (CORE.md §5)
+###############################################################################
+
+### Split by reservation
+POST {{baseUrl}}/v1/calculations/split/by-reservation
+Content-Type: application/json
+Authorization: Bearer {{token}}
+X-Tenant-Id: 11111111-1111-1111-1111-111111111111
+
+{
+  "total": 100.00,
+  "reservation_count": 3
+}
+
+### Split by guest (primary payer)
+POST {{baseUrl}}/v1/calculations/split/by-guest
+Content-Type: application/json
+Authorization: Bearer {{token}}
+X-Tenant-Id: 11111111-1111-1111-1111-111111111111
+
+{
+  "total": 500.00,
+  "overall_guest_count": 4,
+  "my_guests": 2,
+  "is_primary": true
+}
+
+### Split component
+POST {{baseUrl}}/v1/calculations/split/component
+Content-Type: application/json
+Authorization: Bearer {{token}}
+X-Tenant-Id: 11111111-1111-1111-1111-111111111111
+
+{
+  "component_rate": 100.00,
+  "divisor": 3,
+  "is_primary": true
+}
+
+###############################################################################
+# DEPOSIT CALCULATIONS (CORE.md §8)
+###############################################################################
+
+### Deposit entire stay (percentage)
+POST {{baseUrl}}/v1/calculations/deposit/entire-stay
+Content-Type: application/json
+Authorization: Bearer {{token}}
+X-Tenant-Id: 11111111-1111-1111-1111-111111111111
+
+{
+  "percentage_of_stay": 50,
+  "total_reservation_charge": 1500.00
+}
+
+### Deposit per guest
+POST {{baseUrl}}/v1/calculations/deposit/per-guest
+Content-Type: application/json
+Authorization: Bearer {{token}}
+X-Tenant-Id: 11111111-1111-1111-1111-111111111111
+
+{
+  "per_adult_rate": 100.00,
+  "num_adults": 2,
+  "per_child_rate": 50.00,
+  "num_children": 1
+}
+
+### Deposit cap enforcement
+POST {{baseUrl}}/v1/calculations/deposit/cap
+Content-Type: application/json
+Authorization: Bearer {{token}}
+X-Tenant-Id: 11111111-1111-1111-1111-111111111111
+
+{
+  "cumulative_schedule_total": 1200.00,
+  "total_reservation_charge": 1500.00,
+  "due_amount": 500.00
+}
+
+###############################################################################
+# COMMISSION CALCULATIONS (CORE.md §11)
+###############################################################################
+
+### Commission amount
+POST {{baseUrl}}/v1/calculations/commission/amount
+Content-Type: application/json
+Authorization: Bearer {{token}}
+X-Tenant-Id: 11111111-1111-1111-1111-111111111111
+
+{
+  "rate_plan_total": 1200.00,
+  "commission_percent": 10
+}
+
+### Commission back-calculate percentage
+POST {{baseUrl}}/v1/calculations/commission/back-calc
+Content-Type: application/json
+Authorization: Bearer {{token}}
+X-Tenant-Id: 11111111-1111-1111-1111-111111111111
+
+{
+  "commission_amount": 120.00,
+  "room_rate": 1200.00
+}
+
+###############################################################################
+# AUTHORIZATION CALCULATIONS (CORE.md §7)
+###############################################################################
+
+### TDAC (Total Deposit Authorization at Checkin)
+POST {{baseUrl}}/v1/calculations/authorization/tdac
+Content-Type: application/json
+Authorization: Bearer {{token}}
+X-Tenant-Id: 11111111-1111-1111-1111-111111111111
+
+{
+  "estimated_total": 1000.00,
+  "posted_payment": 200.00,
+  "percentage_buffer": 10
+}
+
+### RTDC (Room-Tax-Deposit Credit) - percentage
+POST {{baseUrl}}/v1/calculations/authorization/rtdc
+Content-Type: application/json
+Authorization: Bearer {{token}}
+X-Tenant-Id: 11111111-1111-1111-1111-111111111111
+
+{
+  "type": "percentage",
+  "value": 120,
+  "posted_room_charges": 500.00,
+  "posted_room_taxes": 90.00,
+  "future_room_charge_total": 250.00
+}
+
+### RTDC - per person
+POST {{baseUrl}}/v1/calculations/authorization/rtdc
+Content-Type: application/json
+Authorization: Bearer {{token}}
+X-Tenant-Id: 11111111-1111-1111-1111-111111111111
+
+{
+  "type": "per_person",
+  "value": 100.00,
+  "number_of_persons": 2,
+  "maximum_days_to_authorize": 3
+}
+
+###############################################################################
+# CANCELLATION FEE CALCULATIONS (CORE.md §10)
+###############################################################################
+
+### Cancellation fee - percentage based
+POST {{baseUrl}}/v1/calculations/cancellation/fee
+Content-Type: application/json
+Authorization: Bearer {{token}}
+X-Tenant-Id: 11111111-1111-1111-1111-111111111111
+
+{
+  "policy_type": "percentage",
+  "nightly_rates": [250.00, 250.00, 275.00],
+  "percentage": 50
+}
+
+### Cancellation fee - first N nights
+POST {{baseUrl}}/v1/calculations/cancellation/fee
+Content-Type: application/json
+Authorization: Bearer {{token}}
+X-Tenant-Id: 11111111-1111-1111-1111-111111111111
+
+{
+  "policy_type": "nights",
+  "nightly_rates": [250.00, 250.00, 275.00],
+  "nights": 1
+}
+
+###############################################################################
+# YIELD RATE CALCULATIONS (CORE.md §17)
+###############################################################################
+
+### Yield rate with modifiers
+POST {{baseUrl}}/v1/calculations/yield/rate
+Content-Type: application/json
+Authorization: Bearer {{token}}
+X-Tenant-Id: 11111111-1111-1111-1111-111111111111
+
+{
+  "actual_rate": 200.00,
+  "modifiers": [
+    { "type": "PERCENT", "value": 20 },
+    { "type": "DECREASE_BY", "value": 10 }
+  ],
+  "min_rate": 150.00
+}
+
+###############################################################################
+# FOREX CALCULATIONS (CORE.md §12)
+###############################################################################
+
+### Currency conversion with flat surcharge
+POST {{baseUrl}}/v1/calculations/forex/convert
+Content-Type: application/json
+Authorization: Bearer {{token}}
+X-Tenant-Id: 11111111-1111-1111-1111-111111111111
+
+{
+  "amount": 1000.00,
+  "from_currency": "USD",
+  "to_currency": "EUR",
+  "conversion_rate": 0.92,
+  "surcharge_type": "FLAT",
+  "surcharge_amount": 0.02
+}
+
+### Currency conversion with percentage surcharge
+POST {{baseUrl}}/v1/calculations/forex/convert
+Content-Type: application/json
+Authorization: Bearer {{token}}
+X-Tenant-Id: 11111111-1111-1111-1111-111111111111
+
+{
+  "amount": 500.00,
+  "from_currency": "GBP",
+  "to_currency": "INR",
+  "conversion_rate": 105.50,
+  "surcharge_type": "PERCENTAGE",
+  "surcharge_amount": 2.5
+}
+
+###############################################################################
+# PRORATION CALCULATIONS (Industry Standard)
+###############################################################################
+
+### Prorate daily rate for partial day (6-hour early checkout)
+POST {{baseUrl}}/v1/calculations/proration/daily
+Content-Type: application/json
+Authorization: Bearer {{token}}
+X-Tenant-Id: 11111111-1111-1111-1111-111111111111
+
+{
+  "daily_rate": 200.00,
+  "hours": 6,
+  "rounding": "HALF_UP"
+}
+
+###
+
+### LOS-tiered pricing (Day 1-2: $199, Day 3-5: $179, Day 6+: $159)
+POST {{baseUrl}}/v1/calculations/proration/los-tiered
+Content-Type: application/json
+Authorization: Bearer {{token}}
+X-Tenant-Id: 11111111-1111-1111-1111-111111111111
+
+{
+  "tiers": [
+    { "from_night": 1, "to_night": 2, "rate": 199.00 },
+    { "from_night": 3, "to_night": 5, "rate": 179.00 },
+    { "from_night": 6, "rate": 159.00 }
+  ],
+  "nights": 7
+}
+
+###
+
+### Derived rate (Member rate = BAR - 10%)
+POST {{baseUrl}}/v1/calculations/proration/derived-rate
+Content-Type: application/json
+Authorization: Bearer {{token}}
+X-Tenant-Id: 11111111-1111-1111-1111-111111111111
+
+{
+  "parent_rate": 250.00,
+  "discount_percent": 10
+}
+
+###############################################################################
+# ALLOWANCE & PACKAGE CALCULATIONS (CORE.md §9)
+###############################################################################
+
+### Track allowance consumption (spa credit: $200 allowance, charges: $80, $90, $50)
+POST {{baseUrl}}/v1/calculations/allowance/track
+Content-Type: application/json
+Authorization: Bearer {{token}}
+X-Tenant-Id: 11111111-1111-1111-1111-111111111111
+
+{
+  "total_allowance": 200.00,
+  "charges": [80.00, 90.00, 50.00]
+}
+
+###
+
+### Enhancement item total (room service breakfast: $25 × 2 guests × 4 nights)
+POST {{baseUrl}}/v1/calculations/allowance/enhancement-item
+Content-Type: application/json
+Authorization: Bearer {{token}}
+X-Tenant-Id: 11111111-1111-1111-1111-111111111111
+
+{
+  "default_price": 25.00,
+  "quantity": 2,
+  "number_of_dates": 4
+}
+
+###
+
+### Package revenue allocation (USALI: $299 package → Room, Breakfast, Parking, Spa)
+POST {{baseUrl}}/v1/calculations/allowance/package-allocation
+Content-Type: application/json
+Authorization: Bearer {{token}}
+X-Tenant-Id: 11111111-1111-1111-1111-111111111111
+
+{
+  "package_rate": 299.00,
+  "components": [
+    { "name": "Room", "amount": 229.00 },
+    { "name": "Breakfast", "amount": 40.00 },
+    { "name": "Parking", "amount": 20.00 },
+    { "name": "Spa Credit", "amount": 10.00 }
+  ]
+}
+
+###############################################################################
+# COMP OFFER & ACCOUNTING CALCULATIONS (CORE.md §2.11-2.13, §14)
+###############################################################################
+
+### Comp offer — percentage discount (20% off $250 room)
+POST {{baseUrl}}/v1/calculations/comp/offer
+Content-Type: application/json
+Authorization: Bearer {{token}}
+X-Tenant-Id: 11111111-1111-1111-1111-111111111111
+
+{
+  "applicable_rate": 250.00,
+  "discount_type": "PERCENTAGE",
+  "discount_value": 20
+}
+
+###
+
+### Comp offer — fixed amount discount ($50 off $200 room)
+POST {{baseUrl}}/v1/calculations/comp/offer
+Content-Type: application/json
+Authorization: Bearer {{token}}
+X-Tenant-Id: 11111111-1111-1111-1111-111111111111
+
+{
+  "applicable_rate": 200.00,
+  "discount_type": "AMOUNT",
+  "discount_value": 50
+}
+
+###
+
+### Comp balance update (consume $120 from $500 daily comp)
+POST {{baseUrl}}/v1/calculations/comp/balance
+Content-Type: application/json
+Authorization: Bearer {{token}}
+X-Tenant-Id: 11111111-1111-1111-1111-111111111111
+
+{
+  "current_balance": 500.00,
+  "comp_amount": 120.00
+}
+
+###
+
+### Comp balance recalculation (authorized amount changed from $500 to $600)
+POST {{baseUrl}}/v1/calculations/comp/recalc
+Content-Type: application/json
+Authorization: Bearer {{token}}
+X-Tenant-Id: 11111111-1111-1111-1111-111111111111
+
+{
+  "old_amount_per_stay": 500.00,
+  "old_balance": 350.00,
+  "new_amount_per_stay": 600.00
+}
+
+###############################################################################
+# LOYALTY / POINTS CALCULATIONS (CORE.md §13)
+###############################################################################
+
+### Points to money (10,000 points at $0.05/point = $500)
+POST {{baseUrl}}/v1/calculations/loyalty/points-to-money
+Content-Type: application/json
+Authorization: Bearer {{token}}
+X-Tenant-Id: 11111111-1111-1111-1111-111111111111
+
+{
+  "point_balance": 10000,
+  "conversion_rate": 0.05
+}
+
+###
+
+### Money to points ($100 at $0.05/point = 2000 points)
+POST {{baseUrl}}/v1/calculations/loyalty/money-to-points
+Content-Type: application/json
+Authorization: Bearer {{token}}
+X-Tenant-Id: 11111111-1111-1111-1111-111111111111
+
+{
+  "amount": 100.00,
+  "conversion_rate": 0.05
+}
+
+###
+
+### Points redemption ($150 against $500 authorized, $100 already redeemed)
+POST {{baseUrl}}/v1/calculations/loyalty/redemption
+Content-Type: application/json
+Authorization: Bearer {{token}}
+X-Tenant-Id: 11111111-1111-1111-1111-111111111111
+
+{
+  "authorized_per_stay": 500.00,
+  "redeemed_so_far": 100.00,
+  "redemption_amount": 150.00
+}
+
+###############################################################################
+# REVENUE FORECAST CALCULATIONS (Industry Standard)
+###############################################################################
+
+### Overbooking level (200 rooms, 5% no-show, 8% cancel, 0.8 safety)
+POST {{baseUrl}}/v1/calculations/revenue-forecast/overbooking
+Content-Type: application/json
+Authorization: Bearer {{token}}
+X-Tenant-Id: 11111111-1111-1111-1111-111111111111
+
+{
+  "total_rooms": 200,
+  "no_show_percent": 5,
+  "cancellation_percent": 8,
+  "safety_factor": 0.8
+}
+
+###
+
+### Group revenue forecast (50 rooms blocked at $200, 35 picked up)
+POST {{baseUrl}}/v1/calculations/revenue-forecast/group-forecast
+Content-Type: application/json
+Authorization: Bearer {{token}}
+X-Tenant-Id: 11111111-1111-1111-1111-111111111111
+
+{
+  "base_price": 200.00,
+  "blocked_rooms": 50,
+  "picked_up_rooms": 35
+}
+
+###
+
+### Displacement analysis (should we accept this group?)
+POST {{baseUrl}}/v1/calculations/revenue-forecast/displacement
+Content-Type: application/json
+Authorization: Bearer {{token}}
+X-Tenant-Id: 11111111-1111-1111-1111-111111111111
+
+{
+  "group_rate": 180.00,
+  "group_rooms": 50,
+  "group_ancillary_per_room": 40.00,
+  "transient_adr": 220.00,
+  "transient_ancillary_per_room": 60.00,
+  "expected_transient_occupancy_pct": 75
+}
+
+###
+
+### No-show charge (1 night at $200 + 12% tax)
+POST {{baseUrl}}/v1/calculations/revenue-forecast/no-show-charge
+Content-Type: application/json
+Authorization: Bearer {{token}}
+X-Tenant-Id: 11111111-1111-1111-1111-111111111111
+
+{
+  "first_night_rate": 200.00,
+  "tax_rate": 12,
+  "cancellation_fee": 0
+}
+
+###
+
+### Extra guest charges (3 adults, 1 child; 2 adults + 0 children included)
+POST {{baseUrl}}/v1/calculations/revenue-forecast/extra-guest-charge
+Content-Type: application/json
+Authorization: Bearer {{token}}
+X-Tenant-Id: 11111111-1111-1111-1111-111111111111
+
+{
+  "base_rate": 180.00,
+  "extra_adult_charge": 25.00,
+  "extra_child_charge": 15.00,
+  "adults": 3,
+  "children": 1,
+  "adults_included": 2,
+  "children_included": 0
+}

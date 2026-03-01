@@ -5,28 +5,33 @@ import type { FastifyPluginAsync, FastifyReply, FastifyRequest } from "fastify";
 
 import { devToolsConfig, gatewayConfig } from "./config.js";
 import { registerDuploDashboard } from "./devtools/duplo-dashboard.js";
+import { metricsRegistry } from "./lib/metrics.js";
 import { gatewayLogger } from "./logger.js";
 import authContextPlugin from "./plugins/auth-context.js";
 import swaggerPlugin from "./plugins/swagger.js";
 import { registerBillingRoutes } from "./routes/billing-routes.js";
 import { registerBookingConfigRoutes } from "./routes/booking-config-routes.js";
+import { registerCalculationRoutes } from "./routes/calculation-routes.js";
 import { registerCoreProxyRoutes } from "./routes/core-proxy-routes.js";
 import { registerGuestRoutes } from "./routes/guest-routes.js";
 import { registerHealthRoutes } from "./routes/health-routes.js";
 import { registerHousekeepingRoutes } from "./routes/housekeeping-routes.js";
 import { registerMiscRoutes } from "./routes/misc-routes.js";
 import { registerOperationsRoutes } from "./routes/operations-routes.js";
+import { registerReportingRoutes } from "./routes/reporting-routes.js";
 import { registerReservationRoutes } from "./routes/reservation-routes.js";
 import { registerRevenueRoutes } from "./routes/revenue-routes.js";
 import { registerRoomRoutes } from "./routes/room-routes.js";
 import { registerSelfServiceRoutes } from "./routes/self-service-routes.js";
+import { registerWebhookRoutes } from "./routes/webhook-routes.js";
 
 export const buildServer = () => {
   const app = buildFastifyServer({
     logger: gatewayLogger,
     enableRequestLogging: gatewayConfig.logRequests,
     corsOrigin: false,
-    enableMetricsEndpoint: false,
+    enableMetricsEndpoint: true,
+    metricsRegistry,
   });
 
   app.register(swaggerPlugin);
@@ -58,7 +63,7 @@ export const buildServer = () => {
         .header("Access-Control-Allow-Methods", "GET,POST,PUT,PATCH,DELETE,OPTIONS")
         .header(
           "Access-Control-Allow-Headers",
-          "Accept, Authorization, Content-Type, X-Requested-With, DNT, sec-ch-ua, sec-ch-ua-mobile, sec-ch-ua-platform",
+          "Accept, Authorization, Content-Type, Idempotency-Key, X-Correlation-Id, X-Requested-With, DNT, sec-ch-ua, sec-ch-ua-mobile, sec-ch-ua-platform",
         )
         .header("Access-Control-Max-Age", "600");
 
@@ -81,7 +86,10 @@ export const buildServer = () => {
     registerOperationsRoutes(app);
     registerHousekeepingRoutes(app);
     registerBillingRoutes(app);
+    registerCalculationRoutes(app);
     registerRevenueRoutes(app);
+    registerReportingRoutes(app);
+    registerWebhookRoutes(app);
     registerSelfServiceRoutes(app);
     registerMiscRoutes(app);
   });

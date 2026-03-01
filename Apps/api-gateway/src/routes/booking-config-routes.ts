@@ -4,9 +4,9 @@ import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { serviceTargets } from "../config.js";
 import { proxyRequest } from "../utils/proxy.js";
 
-export const registerBookingConfigRoutes = (app: FastifyInstance): void => {
-  const BOOKING_CONFIG_TAG = "Booking Configuration";
+import { BOOKING_CONFIG_TAG } from "./schemas.js";
 
+export const registerBookingConfigRoutes = (app: FastifyInstance): void => {
   const proxyCore = async (request: FastifyRequest, reply: FastifyReply) =>
     proxyRequest(request, reply, serviceTargets.coreServiceUrl);
 

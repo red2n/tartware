@@ -4,9 +4,9 @@ import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { serviceTargets } from "../config.js";
 import { proxyRequest } from "../utils/proxy.js";
 
-export const registerSelfServiceRoutes = (app: FastifyInstance): void => {
-  const SELF_SERVICE_PROXY_TAG = "Self-Service Proxy";
+import { commandAcceptedSchema, SELF_SERVICE_PROXY_TAG } from "./schemas.js";
 
+export const registerSelfServiceRoutes = (app: FastifyInstance): void => {
   const proxySelfService = async (request: FastifyRequest, reply: FastifyReply) =>
     proxyRequest(request, reply, serviceTargets.guestExperienceServiceUrl);
 
@@ -111,7 +111,7 @@ export const registerSelfServiceRoutes = (app: FastifyInstance): void => {
         tag: SELF_SERVICE_PROXY_TAG,
         summary: "Create a direct booking.",
         body: jsonObjectSchema,
-        response: { 202: jsonObjectSchema },
+        response: { 202: commandAcceptedSchema },
       }),
     },
     proxySelfService,

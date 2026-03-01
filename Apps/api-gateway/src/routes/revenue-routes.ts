@@ -4,9 +4,9 @@ import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { serviceTargets } from "../config.js";
 import { proxyRequest } from "../utils/proxy.js";
 
-export const registerRevenueRoutes = (app: FastifyInstance): void => {
-  const REVENUE_PROXY_TAG = "Revenue Proxy";
+import { REVENUE_PROXY_TAG } from "./schemas.js";
 
+export const registerRevenueRoutes = (app: FastifyInstance): void => {
   const proxyRevenue = async (request: FastifyRequest, reply: FastifyReply) =>
     proxyRequest(request, reply, serviceTargets.revenueServiceUrl);
 

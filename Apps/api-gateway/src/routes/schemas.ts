@@ -24,28 +24,6 @@ export const healthResponseSchema = {
   additionalProperties: false,
 } as const satisfies JsonSchema;
 
-export const readinessResponseSchema = {
-  type: "object",
-  properties: {
-    status: { type: "string" },
-    service: { type: "string" },
-    kafka: {
-      type: "object",
-      properties: {
-        activeCluster: { type: "string" },
-        brokers: { type: "array", items: { type: "string" } },
-        primaryBrokers: { type: "array", items: { type: "string" } },
-        failoverBrokers: { type: "array", items: { type: "string" } },
-        topic: { type: "string" },
-      },
-      required: ["activeCluster", "brokers", "primaryBrokers", "failoverBrokers", "topic"],
-      additionalProperties: false,
-    },
-  },
-  required: ["status", "service", "kafka"],
-  additionalProperties: false,
-} as const satisfies JsonSchema;
-
 export const reservationParamsSchema = {
   type: "object",
   properties: {
@@ -199,5 +177,128 @@ export const tenantCommandParamsSchema = {
     },
   },
   required: ["tenantId", "commandName"],
+  additionalProperties: false,
+} as const satisfies JsonSchema;
+
+// ─── Tags ──────────────────────────────────────────────────────
+
+export const OPERATIONS_TAG = "Operations";
+export const BOOKING_CONFIG_TAG = "Booking Configuration";
+export const REPORTING_TAG = "Reporting";
+export const AVAILABILITY_TAG = "Availability";
+export const WEBHOOK_TAG = "Webhooks";
+export const GDPR_TAG = "GDPR / Privacy";
+export const SELF_SERVICE_PROXY_TAG = "Self-Service Proxy";
+export const REVENUE_PROXY_TAG = "Revenue Proxy";
+export const CALCULATION_PROXY_TAG = "Calculation Proxy";
+
+// ─── Pagination Envelope ────────────────────────────────────────
+
+/** Canonical pagination metadata object. */
+const paginationMetaSchema = {
+  type: "object",
+  properties: {
+    page: { type: "integer", minimum: 1, description: "Current page number." },
+    page_size: { type: "integer", minimum: 1, maximum: 200, description: "Items per page." },
+    total: { type: "integer", minimum: 0, description: "Total matching records." },
+    total_pages: { type: "integer", minimum: 0, description: "Total number of pages." },
+  },
+  required: ["page", "page_size", "total", "total_pages"],
+  additionalProperties: false,
+} as const satisfies JsonSchema;
+
+/** Standard querystring parameters for paginated list endpoints. */
+export const paginationQuerySchema = {
+  type: "object",
+  properties: {
+    page: { type: "integer", minimum: 1, default: 1, description: "Page number." },
+    page_size: {
+      type: "integer",
+      minimum: 1,
+      maximum: 200,
+      default: 25,
+      description: "Items per page.",
+    },
+    tenant_id: {
+      type: "string",
+      format: "uuid",
+      description: "Tenant identifier (required for multi-tenant queries).",
+    },
+  },
+  required: ["tenant_id"],
+  additionalProperties: true,
+} as const satisfies JsonSchema;
+
+/**
+ * Build a paginated list response schema wrapping the given item schema.
+ *
+ * Produces `{ data: T[], pagination: { page, page_size, total, total_pages } }`.
+ */
+export const paginatedListSchema = (itemSchema: JsonSchema): JsonSchema => ({
+  type: "object",
+  properties: {
+    data: { type: "array", items: itemSchema },
+    pagination: paginationMetaSchema,
+  },
+  required: ["data", "pagination"],
+  additionalProperties: false,
+});
+
+// ─── Command Accepted Response ──────────────────────────────────
+
+/** Standard 202 response for asynchronous command dispatch. */
+export const commandAcceptedSchema = {
+  type: "object",
+  properties: {
+    status: { type: "string", enum: ["accepted"], description: "Always 'accepted'." },
+    command_id: { type: "string", format: "uuid", description: "Idempotency key / tracking ID." },
+    command_name: { type: "string", description: "Name of the dispatched command." },
+    accepted_at: { type: "string", format: "date-time", description: "Timestamp of acceptance." },
+  },
+  required: ["status", "command_id", "command_name", "accepted_at"],
+  additionalProperties: true,
+} as const satisfies JsonSchema;
+
+// ─── Webhook Schemas ────────────────────────────────────────────
+
+export const tenantWebhookParamsSchema = {
+  type: "object",
+  properties: {
+    tenantId: { type: "string", format: "uuid", description: "Tenant identifier." },
+    webhookId: { type: "string", format: "uuid", description: "Webhook subscription identifier." },
+  },
+  required: ["tenantId", "webhookId"],
+  additionalProperties: false,
+} as const satisfies JsonSchema;
+
+export const webhookSubscriptionSchema = {
+  type: "object",
+  properties: {
+    id: { type: "string", format: "uuid" },
+    tenant_id: { type: "string", format: "uuid" },
+    url: { type: "string", format: "uri", description: "Target URL for event delivery." },
+    events: { type: "array", items: { type: "string" }, description: "Subscribed event types." },
+    secret: { type: "string", description: "HMAC signing secret (write-only)." },
+    is_active: { type: "boolean" },
+    created_at: { type: "string", format: "date-time" },
+    updated_at: { type: "string", format: "date-time" },
+  },
+  required: ["id", "tenant_id", "url", "events", "is_active"],
+  additionalProperties: false,
+} as const satisfies JsonSchema;
+
+export const webhookDeliverySchema = {
+  type: "object",
+  properties: {
+    id: { type: "string", format: "uuid" },
+    webhook_id: { type: "string", format: "uuid" },
+    event_type: { type: "string" },
+    status: { type: "string", enum: ["pending", "delivered", "failed"] },
+    attempts: { type: "integer", minimum: 0 },
+    last_attempt_at: { type: "string", format: "date-time" },
+    response_status: { type: "integer", nullable: true },
+    created_at: { type: "string", format: "date-time" },
+  },
+  required: ["id", "webhook_id", "event_type", "status", "attempts"],
   additionalProperties: false,
 } as const satisfies JsonSchema;

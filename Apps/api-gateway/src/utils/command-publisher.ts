@@ -12,6 +12,7 @@ import {
 } from "../command-center/index.js";
 import { kafkaConfig } from "../config.js";
 import { publishRecord } from "../kafka/producer.js";
+import { commandsAcceptedTotal } from "../lib/metrics.js";
 import { gatewayLogger } from "../logger.js";
 import type { TenantMembership } from "../services/membership-service.js";
 
@@ -90,7 +91,8 @@ export const submitCommand = async ({
   const validatedPayload = validateCommandPayload(commandName, payload);
 
   const correlationId = (request.headers["x-correlation-id"] as string | undefined) ?? undefined;
-  const requestId = request.id;
+  const idempotencyKey = (request.headers["idempotency-key"] as string | undefined) ?? undefined;
+  const requestId = idempotencyKey ?? request.id;
   const initiatedBy =
     request.auth.userId && membership
       ? { userId: request.auth.userId, role: membership.role }
@@ -139,6 +141,7 @@ export const submitCommand = async ({
       ],
     });
     await markCommandDelivered(acceptance.outboxEventId);
+    commandsAcceptedTotal.inc({ command_name: commandName });
   } catch (error) {
     await markCommandFailed(acceptance.outboxEventId, error).catch((failureError) => {
       logger.error(
@@ -158,6 +161,10 @@ export const submitCommand = async ({
       "failed to publish command",
     );
     return reply.badGateway("Unable to publish command to Kafka.");
+  }
+
+  if (idempotencyKey) {
+    reply.header("Idempotency-Key", idempotencyKey);
   }
 
   return reply.status(202).send({

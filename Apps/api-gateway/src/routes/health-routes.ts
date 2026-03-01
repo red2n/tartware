@@ -2,8 +2,9 @@ import { buildRouteSchema } from "@tartware/openapi";
 import type { FastifyInstance, FastifyReply } from "fastify";
 
 import { gatewayConfig, kafkaConfig, serviceTargets } from "../config.js";
+import { query } from "../lib/db.js";
 
-import { HEALTH_TAG, healthResponseSchema, readinessResponseSchema } from "./schemas.js";
+import { HEALTH_TAG, healthResponseSchema } from "./schemas.js";
 
 /** Timeout (ms) for individual health checks when aggregating. */
 const HEALTH_CHECK_TIMEOUT_MS = 3000;
@@ -38,21 +39,13 @@ async function checkServiceHealth(name: string, baseUrl: string): Promise<Servic
 }
 
 export const registerHealthRoutes = (app: FastifyInstance): void => {
-  const kafkaSummary = {
-    activeCluster: kafkaConfig.activeCluster,
-    brokers: kafkaConfig.brokers,
-    primaryBrokers: kafkaConfig.primaryBrokers,
-    failoverBrokers: kafkaConfig.failoverBrokers,
-    topic: kafkaConfig.commandTopic,
-  } as const;
-
   const allowCorsHeaders = (reply: FastifyReply): FastifyReply =>
     reply
       .header("Access-Control-Allow-Origin", "*")
       .header("Access-Control-Allow-Methods", "GET,POST,PUT,PATCH,DELETE,OPTIONS")
       .header(
         "Access-Control-Allow-Headers",
-        "Accept, Authorization, Content-Type, X-Requested-With, DNT, sec-ch-ua, sec-ch-ua-mobile, sec-ch-ua-platform",
+        "Accept, Authorization, Content-Type, Idempotency-Key, X-Correlation-Id, X-Requested-With, DNT, sec-ch-ua, sec-ch-ua-mobile, sec-ch-ua-platform",
       )
       .header("Access-Control-Max-Age", "600");
 
@@ -102,18 +95,85 @@ export const registerHealthRoutes = (app: FastifyInstance): void => {
     {
       schema: buildRouteSchema({
         tag: HEALTH_TAG,
-        summary: "API gateway readiness status.",
+        summary: "Dependency-aware readiness probe (DB, Kafka, core service).",
         response: {
-          200: readinessResponseSchema,
+          200: {
+            type: "object",
+            properties: {
+              status: { type: "string" },
+              service: { type: "string" },
+              checks: {
+                type: "object",
+                properties: {
+                  database: {
+                    type: "object",
+                    properties: { status: { type: "string" }, latencyMs: { type: "number" } },
+                    required: ["status"],
+                  },
+                  kafka: {
+                    type: "object",
+                    properties: {
+                      status: { type: "string" },
+                      activeCluster: { type: "string" },
+                      brokers: { type: "array", items: { type: "string" } },
+                    },
+                    required: ["status"],
+                  },
+                  coreService: {
+                    type: "object",
+                    properties: { status: { type: "string" }, latencyMs: { type: "number" } },
+                    required: ["status"],
+                  },
+                },
+                required: ["database", "kafka", "coreService"],
+              },
+            },
+            required: ["status", "service", "checks"],
+          } as const,
+          503: {
+            type: "object",
+            properties: {
+              status: { type: "string" },
+              service: { type: "string" },
+              checks: { type: "object", additionalProperties: true },
+            },
+            required: ["status", "service", "checks"],
+          } as const,
         },
       }),
     },
     async (_request, reply) => {
       allowCorsHeaders(reply);
-      return reply.send({
-        status: "ok",
+
+      const dbCheck = await (async () => {
+        const start = performance.now();
+        try {
+          await query("SELECT 1");
+          return { status: "ok" as const, latencyMs: Math.round(performance.now() - start) };
+        } catch {
+          return { status: "error" as const, latencyMs: Math.round(performance.now() - start) };
+        }
+      })();
+
+      const coreCheck = await checkServiceHealth("core-service", serviceTargets.coreServiceUrl);
+
+      const kafkaCheck = {
+        status: kafkaConfig.brokers.length > 0 ? ("ok" as const) : ("error" as const),
+        activeCluster: kafkaConfig.activeCluster,
+        brokers: kafkaConfig.brokers,
+      };
+
+      const allOk =
+        dbCheck.status === "ok" && coreCheck.status === "ok" && kafkaCheck.status === "ok";
+
+      return reply.status(allOk ? 200 : 503).send({
+        status: allOk ? "ok" : "degraded",
         service: gatewayConfig.serviceId,
-        kafka: kafkaSummary,
+        checks: {
+          database: dbCheck,
+          kafka: kafkaCheck,
+          coreService: { status: coreCheck.status, latencyMs: coreCheck.latencyMs },
+        },
       });
     },
   );

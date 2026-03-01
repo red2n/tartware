@@ -4,16 +4,23 @@ import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { serviceTargets } from "../config.js";
 import { proxyRequest } from "../utils/proxy.js";
 
-export const registerOperationsRoutes = (app: FastifyInstance): void => {
-  const OPERATIONS_TAG = "Operations";
+import { OPERATIONS_TAG } from "./schemas.js";
 
+export const registerOperationsRoutes = (app: FastifyInstance): void => {
   const proxyCore = async (request: FastifyRequest, reply: FastifyReply) =>
     proxyRequest(request, reply, serviceTargets.coreServiceUrl);
+
+  const tenantScopeFromQuery = app.withTenantScope({
+    resolveTenantId: (request) => (request.query as { tenant_id?: string }).tenant_id,
+    minRole: "STAFF",
+    requiredModules: "core",
+  });
 
   // Cashier Sessions
   app.get(
     "/v1/cashier-sessions",
     {
+      preHandler: tenantScopeFromQuery,
       schema: buildRouteSchema({
         tag: OPERATIONS_TAG,
         summary: "List cashier sessions.",
@@ -26,6 +33,7 @@ export const registerOperationsRoutes = (app: FastifyInstance): void => {
   app.all(
     "/v1/cashier-sessions/*",
     {
+      preHandler: tenantScopeFromQuery,
       schema: buildRouteSchema({
         tag: OPERATIONS_TAG,
         summary: "Proxy cashier session operations to core service.",
@@ -39,6 +47,7 @@ export const registerOperationsRoutes = (app: FastifyInstance): void => {
   app.get(
     "/v1/shift-handovers",
     {
+      preHandler: tenantScopeFromQuery,
       schema: buildRouteSchema({
         tag: OPERATIONS_TAG,
         summary: "List shift handovers.",
@@ -51,6 +60,7 @@ export const registerOperationsRoutes = (app: FastifyInstance): void => {
   app.all(
     "/v1/shift-handovers/*",
     {
+      preHandler: tenantScopeFromQuery,
       schema: buildRouteSchema({
         tag: OPERATIONS_TAG,
         summary: "Proxy shift handover operations to core service.",
@@ -64,6 +74,7 @@ export const registerOperationsRoutes = (app: FastifyInstance): void => {
   app.get(
     "/v1/lost-and-found",
     {
+      preHandler: tenantScopeFromQuery,
       schema: buildRouteSchema({
         tag: OPERATIONS_TAG,
         summary: "List lost and found items.",
@@ -76,6 +87,7 @@ export const registerOperationsRoutes = (app: FastifyInstance): void => {
   app.all(
     "/v1/lost-and-found/*",
     {
+      preHandler: tenantScopeFromQuery,
       schema: buildRouteSchema({
         tag: OPERATIONS_TAG,
         summary: "Proxy lost and found operations to core service.",
@@ -89,6 +101,7 @@ export const registerOperationsRoutes = (app: FastifyInstance): void => {
   app.get(
     "/v1/banquet-orders",
     {
+      preHandler: tenantScopeFromQuery,
       schema: buildRouteSchema({
         tag: OPERATIONS_TAG,
         summary: "List banquet event orders (BEOs).",
@@ -101,6 +114,7 @@ export const registerOperationsRoutes = (app: FastifyInstance): void => {
   app.all(
     "/v1/banquet-orders/*",
     {
+      preHandler: tenantScopeFromQuery,
       schema: buildRouteSchema({
         tag: OPERATIONS_TAG,
         summary: "Proxy banquet order operations to core service.",
@@ -114,6 +128,7 @@ export const registerOperationsRoutes = (app: FastifyInstance): void => {
   app.get(
     "/v1/guest-feedback",
     {
+      preHandler: tenantScopeFromQuery,
       schema: buildRouteSchema({
         tag: OPERATIONS_TAG,
         summary: "List guest feedback and reviews.",
@@ -126,6 +141,7 @@ export const registerOperationsRoutes = (app: FastifyInstance): void => {
   app.all(
     "/v1/guest-feedback/*",
     {
+      preHandler: tenantScopeFromQuery,
       schema: buildRouteSchema({
         tag: OPERATIONS_TAG,
         summary: "Proxy guest feedback operations to core service.",
@@ -139,6 +155,7 @@ export const registerOperationsRoutes = (app: FastifyInstance): void => {
   app.get(
     "/v1/police-reports",
     {
+      preHandler: tenantScopeFromQuery,
       schema: buildRouteSchema({
         tag: OPERATIONS_TAG,
         summary: "List police/incident reports.",
@@ -151,6 +168,7 @@ export const registerOperationsRoutes = (app: FastifyInstance): void => {
   app.all(
     "/v1/police-reports/*",
     {
+      preHandler: tenantScopeFromQuery,
       schema: buildRouteSchema({
         tag: OPERATIONS_TAG,
         summary: "Proxy police report operations to core service.",
@@ -164,6 +182,7 @@ export const registerOperationsRoutes = (app: FastifyInstance): void => {
   app.all(
     "/v1/compliance/breach-incidents",
     {
+      preHandler: tenantScopeFromQuery,
       schema: buildRouteSchema({
         tag: OPERATIONS_TAG,
         summary: "List or report data breach incidents.",
@@ -176,6 +195,7 @@ export const registerOperationsRoutes = (app: FastifyInstance): void => {
   app.all(
     "/v1/compliance/breach-incidents/*",
     {
+      preHandler: tenantScopeFromQuery,
       schema: buildRouteSchema({
         tag: OPERATIONS_TAG,
         summary: "Proxy breach incident operations to core service.",

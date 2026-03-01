@@ -1,7 +1,7 @@
 import { buildRouteSchema, jsonObjectSchema } from "@tartware/openapi";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 
-import { serviceTargets } from "../config.js";
+import { gatewayConfig, serviceTargets } from "../config.js";
 import { proxyRequest } from "../utils/proxy.js";
 
 import {
@@ -11,6 +11,7 @@ import {
 } from "./command-helpers.js";
 import {
   COMMAND_CENTER_PROXY_TAG,
+  commandAcceptedSchema,
   NOTIFICATION_COMMAND_TAG,
   NOTIFICATION_PROXY_TAG,
   RECOMMENDATION_PROXY_TAG,
@@ -26,6 +27,16 @@ export const registerMiscRoutes = (app: FastifyInstance): void => {
     requiredModules: "core",
   });
 
+  const authenticatedOnly = app.withTenantScope({
+    allowMissingTenantId: true,
+    minRole: "VIEWER",
+  });
+
+  const adminOnly = app.withTenantScope({
+    allowMissingTenantId: true,
+    minRole: "ADMIN",
+  });
+
   // ─── Command Center Routes ──────────────────────────────────────
 
   const proxyCommandCenter = async (request: FastifyRequest, reply: FastifyReply) =>
@@ -34,12 +45,13 @@ export const registerMiscRoutes = (app: FastifyInstance): void => {
   app.all(
     "/v1/commands",
     {
+      preHandler: adminOnly,
       schema: buildRouteSchema({
         tag: COMMAND_CENTER_PROXY_TAG,
         summary: "Proxy command center calls to the command-center service.",
         response: {
           200: jsonObjectSchema,
-          202: jsonObjectSchema,
+          202: commandAcceptedSchema,
         },
       }),
     },
@@ -49,12 +61,13 @@ export const registerMiscRoutes = (app: FastifyInstance): void => {
   app.all(
     "/v1/commands/*",
     {
+      preHandler: adminOnly,
       schema: buildRouteSchema({
         tag: COMMAND_CENTER_PROXY_TAG,
         summary: "Proxy command center calls to the command-center service.",
         response: {
           200: jsonObjectSchema,
-          202: jsonObjectSchema,
+          202: commandAcceptedSchema,
         },
       }),
     },
@@ -64,13 +77,20 @@ export const registerMiscRoutes = (app: FastifyInstance): void => {
   app.post(
     "/v1/tenants/:tenantId/commands/:commandName",
     {
+      preHandler: tenantScopeFromParams,
+      config: {
+        rateLimit: {
+          max: gatewayConfig.rateLimit.commandMax,
+          timeWindow: gatewayConfig.rateLimit.commandTimeWindow,
+        },
+      },
       schema: buildRouteSchema({
         tag: COMMAND_CENTER_PROXY_TAG,
         summary: "Dispatch a command by name via the Command Center.",
         params: tenantCommandParamsSchema,
         body: jsonObjectSchema,
         response: {
-          202: jsonObjectSchema,
+          202: commandAcceptedSchema,
         },
       }),
     },
@@ -85,6 +105,7 @@ export const registerMiscRoutes = (app: FastifyInstance): void => {
   app.all(
     "/v1/settings",
     {
+      preHandler: authenticatedOnly,
       schema: buildRouteSchema({
         tag: SETTINGS_PROXY_TAG,
         summary: "Proxy settings requests to the settings service.",
@@ -99,6 +120,7 @@ export const registerMiscRoutes = (app: FastifyInstance): void => {
   app.all(
     "/v1/settings/*",
     {
+      preHandler: authenticatedOnly,
       schema: buildRouteSchema({
         tag: SETTINGS_PROXY_TAG,
         summary: "Proxy settings requests to the settings service.",
@@ -113,6 +135,7 @@ export const registerMiscRoutes = (app: FastifyInstance): void => {
   app.all(
     "/v1/packages",
     {
+      preHandler: authenticatedOnly,
       schema: buildRouteSchema({
         tag: SETTINGS_PROXY_TAG,
         summary: "Proxy package requests to the settings service.",
@@ -127,6 +150,7 @@ export const registerMiscRoutes = (app: FastifyInstance): void => {
   app.all(
     "/v1/packages/*",
     {
+      preHandler: authenticatedOnly,
       schema: buildRouteSchema({
         tag: SETTINGS_PROXY_TAG,
         summary: "Proxy package requests to the settings service.",
@@ -146,6 +170,7 @@ export const registerMiscRoutes = (app: FastifyInstance): void => {
   app.get(
     "/v1/recommendations",
     {
+      preHandler: authenticatedOnly,
       schema: buildRouteSchema({
         tag: RECOMMENDATION_PROXY_TAG,
         summary: "Get personalized room recommendations for a guest.",
@@ -160,6 +185,7 @@ export const registerMiscRoutes = (app: FastifyInstance): void => {
   app.post(
     "/v1/recommendations/rank",
     {
+      preHandler: authenticatedOnly,
       schema: buildRouteSchema({
         tag: RECOMMENDATION_PROXY_TAG,
         summary: "Rank a list of rooms for a guest (personalized ordering).",
@@ -174,6 +200,7 @@ export const registerMiscRoutes = (app: FastifyInstance): void => {
   app.all(
     "/v1/recommendations/*",
     {
+      preHandler: authenticatedOnly,
       schema: buildRouteSchema({
         tag: RECOMMENDATION_PROXY_TAG,
         summary: "Proxy recommendation requests to the recommendation service.",
@@ -231,7 +258,7 @@ export const registerMiscRoutes = (app: FastifyInstance): void => {
         params: reservationParamsSchema,
         body: jsonObjectSchema,
         response: {
-          202: jsonObjectSchema,
+          202: commandAcceptedSchema,
         },
       }),
     },
@@ -252,7 +279,7 @@ export const registerMiscRoutes = (app: FastifyInstance): void => {
         summary: "Update a notification template via the Command Center.",
         body: jsonObjectSchema,
         response: {
-          202: jsonObjectSchema,
+          202: commandAcceptedSchema,
         },
       }),
     },
@@ -274,7 +301,7 @@ export const registerMiscRoutes = (app: FastifyInstance): void => {
         tag: NOTIFICATION_COMMAND_TAG,
         summary: "Delete a notification template via the Command Center.",
         response: {
-          202: jsonObjectSchema,
+          202: commandAcceptedSchema,
         },
       }),
     },
@@ -298,7 +325,7 @@ export const registerMiscRoutes = (app: FastifyInstance): void => {
         params: reservationParamsSchema,
         body: jsonObjectSchema,
         response: {
-          202: jsonObjectSchema,
+          202: commandAcceptedSchema,
         },
       }),
     },
@@ -381,7 +408,7 @@ export const registerMiscRoutes = (app: FastifyInstance): void => {
         summary: "Create an automated message rule via the Command Center.",
         body: jsonObjectSchema,
         response: {
-          202: jsonObjectSchema,
+          202: commandAcceptedSchema,
         },
       }),
     },
@@ -402,7 +429,7 @@ export const registerMiscRoutes = (app: FastifyInstance): void => {
         summary: "Update an automated message rule via the Command Center.",
         body: jsonObjectSchema,
         response: {
-          202: jsonObjectSchema,
+          202: commandAcceptedSchema,
         },
       }),
     },
@@ -424,7 +451,7 @@ export const registerMiscRoutes = (app: FastifyInstance): void => {
         tag: NOTIFICATION_COMMAND_TAG,
         summary: "Delete an automated message rule via the Command Center.",
         response: {
-          202: jsonObjectSchema,
+          202: commandAcceptedSchema,
         },
       }),
     },
