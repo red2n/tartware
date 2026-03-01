@@ -108,7 +108,7 @@ export const registerRateCalendarRoutes = (app: FastifyInstance): void => {
         return upserted;
       } catch (error) {
         request.log.error({ err: error }, "Failed to upsert rate calendar");
-        return reply.status(500).send({ error: "Failed to update rate calendar" });
+        return reply.internalServerError("Failed to update rate calendar");
       }
     },
   );
@@ -143,7 +143,7 @@ export const registerRateCalendarRoutes = (app: FastifyInstance): void => {
         return filled;
       } catch (error) {
         request.log.error({ err: error }, "Failed to fill rate calendar range");
-        return reply.status(500).send({ error: "Failed to fill rate calendar range" });
+        return reply.internalServerError("Failed to fill rate calendar range");
       }
     },
   );

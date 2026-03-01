@@ -159,13 +159,11 @@ export const registerRoomTypeRoutes = (app: FastifyInstance): void => {
         if (typeof error === "object" && error && "code" in error) {
           const code = (error as { code?: string }).code;
           if (code === "23505") {
-            return reply
-              .status(409)
-              .send({ error: "Room type code already exists for this property" });
+            return reply.conflict("Room type code already exists for this property");
           }
         }
         request.log.error({ err: error }, "Failed to create room type");
-        return reply.status(500).send({ error: "Failed to create room type" });
+        return reply.internalServerError("Failed to create room type");
       }
     },
   );
@@ -206,7 +204,7 @@ export const registerRoomTypeRoutes = (app: FastifyInstance): void => {
         });
 
         if (!updated) {
-          return reply.status(404).send({ error: "Room type not found" });
+          return reply.notFound("Room type not found");
         }
 
         return reply.send(updated);
@@ -214,13 +212,11 @@ export const registerRoomTypeRoutes = (app: FastifyInstance): void => {
         if (typeof error === "object" && error && "code" in error) {
           const code = (error as { code?: string }).code;
           if (code === "23505") {
-            return reply
-              .status(409)
-              .send({ error: "Room type code already exists for this property" });
+            return reply.conflict("Room type code already exists for this property");
           }
         }
         request.log.error({ err: error }, "Failed to update room type");
-        return reply.status(500).send({ error: "Failed to update room type" });
+        return reply.internalServerError("Failed to update room type");
       }
     },
   );
@@ -258,7 +254,7 @@ export const registerRoomTypeRoutes = (app: FastifyInstance): void => {
       });
 
       if (!deleted) {
-        return reply.status(404).send({ error: "Room type not found" });
+        return reply.notFound("Room type not found");
       }
 
       return reply.status(204).send();

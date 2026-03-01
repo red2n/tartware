@@ -160,7 +160,7 @@ export const submitCommand = async ({
       },
       "failed to publish command",
     );
-    return reply.status(502).send({ error: "Unable to publish command to Kafka." });
+    return reply.badGateway("Unable to publish command to Kafka.");
   }
 
   if (idempotencyKey) {
