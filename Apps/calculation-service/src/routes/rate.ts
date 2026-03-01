@@ -32,7 +32,7 @@ export function registerRateRoutes(app: FastifyInstance) {
     async (request: FastifyRequest<{ Body: RateOverrideInput }>, reply: FastifyReply) => {
       const parsed = RateOverrideInputSchema.safeParse(request.body);
       if (!parsed.success) {
-        return reply.badRequest(parsed.error.message);
+        return reply.status(400).send({ error: parsed.error.message });
       }
       const start = performance.now();
       const result = calculateRateOverride(parsed.data);
@@ -53,7 +53,7 @@ export function registerRateRoutes(app: FastifyInstance) {
     async (request: FastifyRequest<{ Body: OccupancyRateInput }>, reply: FastifyReply) => {
       const parsed = OccupancyRateInputSchema.safeParse(request.body);
       if (!parsed.success) {
-        return reply.badRequest(parsed.error.message);
+        return reply.status(400).send({ error: parsed.error.message });
       }
       const start = performance.now();
       const result = calculateOccupancyRate(parsed.data);
@@ -74,7 +74,7 @@ export function registerRateRoutes(app: FastifyInstance) {
     async (request: FastifyRequest<{ Body: PackageRateInput }>, reply: FastifyReply) => {
       const parsed = PackageRateInputSchema.safeParse(request.body);
       if (!parsed.success) {
-        return reply.badRequest(parsed.error.message);
+        return reply.status(400).send({ error: parsed.error.message });
       }
       const start = performance.now();
       const result = calculatePackageRate(parsed.data);
@@ -95,7 +95,7 @@ export function registerRateRoutes(app: FastifyInstance) {
     async (request: FastifyRequest<{ Body: QuoteInput }>, reply: FastifyReply) => {
       const parsed = QuoteInputSchema.safeParse(request.body);
       if (!parsed.success) {
-        return reply.badRequest(parsed.error.message);
+        return reply.status(400).send({ error: parsed.error.message });
       }
       const start = performance.now();
       const result = calculateQuote(parsed.data);

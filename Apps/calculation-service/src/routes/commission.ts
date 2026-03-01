@@ -17,7 +17,7 @@ export function registerCommissionRoutes(app: FastifyInstance) {
     async (request: FastifyRequest<{ Body: CommissionAmountInput }>, reply: FastifyReply) => {
       const parsed = CommissionAmountInputSchema.safeParse(request.body);
       if (!parsed.success) {
-        return reply.badRequest(parsed.error.message);
+        return reply.status(400).send({ error: parsed.error.message });
       }
       const start = performance.now();
       const result = calculateCommissionAmount(parsed.data);
@@ -38,7 +38,7 @@ export function registerCommissionRoutes(app: FastifyInstance) {
     async (request: FastifyRequest<{ Body: CommissionBackCalcInput }>, reply: FastifyReply) => {
       const parsed = CommissionBackCalcInputSchema.safeParse(request.body);
       if (!parsed.success) {
-        return reply.badRequest(parsed.error.message);
+        return reply.status(400).send({ error: parsed.error.message });
       }
       const start = performance.now();
       const result = calculateCommissionBackCalc(parsed.data);

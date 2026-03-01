@@ -20,7 +20,7 @@ export function registerProrationRoutes(app: FastifyInstance) {
     },
     async (request: FastifyRequest<{ Body: ProrationInput }>, reply: FastifyReply) => {
       const parsed = ProrationInputSchema.safeParse(request.body);
-      if (!parsed.success) return reply.badRequest(parsed.error.message);
+      if (!parsed.success) return reply.status(400).send({ error: parsed.error.message });
       const start = performance.now();
       const result = prorateDaily(parsed.data);
       observeCalculationDuration("proration", "daily", (performance.now() - start) / 1000);
@@ -39,7 +39,7 @@ export function registerProrationRoutes(app: FastifyInstance) {
     },
     async (request: FastifyRequest<{ Body: LosTieredInput }>, reply: FastifyReply) => {
       const parsed = LosTieredInputSchema.safeParse(request.body);
-      if (!parsed.success) return reply.badRequest(parsed.error.message);
+      if (!parsed.success) return reply.status(400).send({ error: parsed.error.message });
       const start = performance.now();
       const result = calculateLosTiered(parsed.data);
       observeCalculationDuration("proration", "los_tiered", (performance.now() - start) / 1000);
@@ -59,7 +59,7 @@ export function registerProrationRoutes(app: FastifyInstance) {
     },
     async (request: FastifyRequest<{ Body: DerivedRateInput }>, reply: FastifyReply) => {
       const parsed = DerivedRateInputSchema.safeParse(request.body);
-      if (!parsed.success) return reply.badRequest(parsed.error.message);
+      if (!parsed.success) return reply.status(400).send({ error: parsed.error.message });
       const start = performance.now();
       const result = calculateDerivedRate(parsed.data);
       observeCalculationDuration("proration", "derived_rate", (performance.now() - start) / 1000);

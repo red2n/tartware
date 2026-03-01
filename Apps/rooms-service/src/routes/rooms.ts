@@ -170,11 +170,11 @@ export const registerRoomRoutes = (app: FastifyInstance): void => {
         if (typeof error === "object" && error && "code" in error) {
           const code = (error as { code?: string }).code;
           if (code === "23505") {
-            return reply.conflict("Room already exists for this property");
+            return reply.status(409).send({ error: "Room already exists for this property" });
           }
         }
         request.log.error({ err: error }, "Failed to create room");
-        return reply.internalServerError("Failed to create room");
+        return reply.status(500).send({ error: "Failed to create room" });
       }
     },
   );
@@ -344,7 +344,7 @@ export const registerRoomRoutes = (app: FastifyInstance): void => {
       });
 
       if (!room) {
-        return reply.notFound("Room not found");
+        return reply.status(404).send({ error: "Room not found" });
       }
 
       // If recommendation context is provided, fetch ranking from recommendation service
@@ -445,7 +445,7 @@ export const registerRoomRoutes = (app: FastifyInstance): void => {
         });
 
         if (!updated) {
-          return reply.notFound("Room not found");
+          return reply.status(404).send({ error: "Room not found" });
         }
 
         return reply.send(updated);
@@ -453,11 +453,11 @@ export const registerRoomRoutes = (app: FastifyInstance): void => {
         if (typeof error === "object" && error && "code" in error) {
           const code = (error as { code?: string }).code;
           if (code === "23505") {
-            return reply.conflict("Room already exists for this property");
+            return reply.status(409).send({ error: "Room already exists for this property" });
           }
         }
         request.log.error({ err: error }, "Failed to update room");
-        return reply.internalServerError("Failed to update room");
+        return reply.status(500).send({ error: "Failed to update room" });
       }
     },
   );
@@ -495,7 +495,7 @@ export const registerRoomRoutes = (app: FastifyInstance): void => {
       });
 
       if (!deleted) {
-        return reply.notFound("Room not found");
+        return reply.status(404).send({ error: "Room not found" });
       }
 
       return reply.status(204).send();
@@ -541,9 +541,9 @@ export const registerRoomRoutes = (app: FastifyInstance): void => {
 
       if (!result.success) {
         if (result.kind === "NOT_FOUND") {
-          return reply.notFound(result.error);
+          return reply.status(404).send({ error: result.error });
         }
-        return reply.badRequest(result.error ?? "Activation failed");
+        return reply.status(400).send({ error: result.error ?? "Activation failed" });
       }
 
       return reply.send(result.room);
@@ -589,9 +589,9 @@ export const registerRoomRoutes = (app: FastifyInstance): void => {
 
       if (!result.success) {
         if (result.kind === "NOT_FOUND") {
-          return reply.notFound(result.error);
+          return reply.status(404).send({ error: result.error });
         }
-        return reply.badRequest(result.error ?? "Deactivation failed");
+        return reply.status(400).send({ error: result.error ?? "Deactivation failed" });
       }
 
       return reply.send(result.room);
@@ -627,7 +627,7 @@ export const registerRoomRoutes = (app: FastifyInstance): void => {
       const q = AvailabilityQuerySchema.parse(request.query);
 
       if (q.check_in_date >= q.check_out_date) {
-        return reply.badRequest("check_out_date must be after check_in_date");
+        return reply.status(400).send({ error: "check_out_date must be after check_in_date" });
       }
 
       const rooms = await searchAvailableRooms({

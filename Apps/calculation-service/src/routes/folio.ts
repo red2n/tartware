@@ -32,7 +32,7 @@ export function registerFolioRoutes(app: FastifyInstance) {
     async (request: FastifyRequest<{ Body: FolioBalanceInput }>, reply: FastifyReply) => {
       const parsed = FolioBalanceInputSchema.safeParse(request.body);
       if (!parsed.success) {
-        return reply.badRequest(parsed.error.message);
+        return reply.status(400).send({ error: parsed.error.message });
       }
       const start = performance.now();
       const result = calculateFolioBalance(parsed.data);
@@ -53,7 +53,7 @@ export function registerFolioRoutes(app: FastifyInstance) {
     async (request: FastifyRequest<{ Body: CreditRemainingInput }>, reply: FastifyReply) => {
       const parsed = CreditRemainingInputSchema.safeParse(request.body);
       if (!parsed.success) {
-        return reply.badRequest(parsed.error.message);
+        return reply.status(400).send({ error: parsed.error.message });
       }
       const start = performance.now();
       const result = calculateCreditRemaining(parsed.data);
@@ -74,7 +74,7 @@ export function registerFolioRoutes(app: FastifyInstance) {
     async (request: FastifyRequest<{ Body: ArBreakdownInput }>, reply: FastifyReply) => {
       const parsed = ArBreakdownInputSchema.safeParse(request.body);
       if (!parsed.success) {
-        return reply.badRequest(parsed.error.message);
+        return reply.status(400).send({ error: parsed.error.message });
       }
       const start = performance.now();
       const result = calculateArBreakdown(parsed.data);
@@ -95,7 +95,7 @@ export function registerFolioRoutes(app: FastifyInstance) {
     async (request: FastifyRequest<{ Body: EstimatedCheckoutInput }>, reply: FastifyReply) => {
       const parsed = EstimatedCheckoutInputSchema.safeParse(request.body);
       if (!parsed.success) {
-        return reply.badRequest(parsed.error.message);
+        return reply.status(400).send({ error: parsed.error.message });
       }
       const start = performance.now();
       const result = calculateEstimatedCheckout(parsed.data);

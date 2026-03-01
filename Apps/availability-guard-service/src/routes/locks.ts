@@ -128,7 +128,7 @@ export const locksRoutes = fastifyPlugin(
           lockId: params.lockId,
         });
         if (!result) {
-          return reply.notFound("not_found");
+          return reply.status(404).send({ error: "not_found" });
         }
         return { status: "released", lockId: result.id };
       },
@@ -199,7 +199,7 @@ export const locksRoutes = fastifyPlugin(
         );
 
         if (!result) {
-          return reply.notFound("not_found");
+          return reply.status(404).send({ error: "not_found" });
         }
 
         return {

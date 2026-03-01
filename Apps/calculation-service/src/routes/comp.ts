@@ -20,7 +20,7 @@ export function registerCompRoutes(app: FastifyInstance) {
     },
     async (request: FastifyRequest<{ Body: CompOfferInput }>, reply: FastifyReply) => {
       const parsed = CompOfferInputSchema.safeParse(request.body);
-      if (!parsed.success) return reply.badRequest(parsed.error.message);
+      if (!parsed.success) return reply.status(400).send({ error: parsed.error.message });
       const start = performance.now();
       const result = calculateCompOffer(parsed.data);
       observeCalculationDuration("comp", "offer", (performance.now() - start) / 1000);
@@ -39,7 +39,7 @@ export function registerCompRoutes(app: FastifyInstance) {
     },
     async (request: FastifyRequest<{ Body: CompBalanceInput }>, reply: FastifyReply) => {
       const parsed = CompBalanceInputSchema.safeParse(request.body);
-      if (!parsed.success) return reply.badRequest(parsed.error.message);
+      if (!parsed.success) return reply.status(400).send({ error: parsed.error.message });
       const start = performance.now();
       const result = updateCompBalance(parsed.data);
       observeCalculationDuration("comp", "balance", (performance.now() - start) / 1000);
@@ -58,7 +58,7 @@ export function registerCompRoutes(app: FastifyInstance) {
     },
     async (request: FastifyRequest<{ Body: CompRecalcInput }>, reply: FastifyReply) => {
       const parsed = CompRecalcInputSchema.safeParse(request.body);
-      if (!parsed.success) return reply.badRequest(parsed.error.message);
+      if (!parsed.success) return reply.status(400).send({ error: parsed.error.message });
       const start = performance.now();
       const result = recalculateCompBalance(parsed.data);
       observeCalculationDuration("comp", "recalc", (performance.now() - start) / 1000);

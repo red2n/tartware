@@ -32,7 +32,7 @@ export function registerTaxRoutes(app: FastifyInstance) {
     async (request: FastifyRequest<{ Body: TaxableAmountInput }>, reply: FastifyReply) => {
       const parsed = TaxableAmountInputSchema.safeParse(request.body);
       if (!parsed.success) {
-        return reply.badRequest(parsed.error.message);
+        return reply.status(400).send({ error: parsed.error.message });
       }
       const start = performance.now();
       const result = calculateTaxableAmount(parsed.data);
@@ -53,7 +53,7 @@ export function registerTaxRoutes(app: FastifyInstance) {
     async (request: FastifyRequest<{ Body: ReverseTaxInput }>, reply: FastifyReply) => {
       const parsed = ReverseTaxInputSchema.safeParse(request.body);
       if (!parsed.success) {
-        return reply.badRequest(parsed.error.message);
+        return reply.status(400).send({ error: parsed.error.message });
       }
       const start = performance.now();
       const result = calculateReverseTax(parsed.data);
@@ -74,7 +74,7 @@ export function registerTaxRoutes(app: FastifyInstance) {
     async (request: FastifyRequest<{ Body: InclusiveTaxExtractInput }>, reply: FastifyReply) => {
       const parsed = InclusiveTaxExtractInputSchema.safeParse(request.body);
       if (!parsed.success) {
-        return reply.badRequest(parsed.error.message);
+        return reply.status(400).send({ error: parsed.error.message });
       }
       const start = performance.now();
       const result = extractInclusiveTax(parsed.data);
@@ -95,7 +95,7 @@ export function registerTaxRoutes(app: FastifyInstance) {
     async (request: FastifyRequest<{ Body: BulkTaxInput }>, reply: FastifyReply) => {
       const parsed = BulkTaxInputSchema.safeParse(request.body);
       if (!parsed.success) {
-        return reply.badRequest(parsed.error.message);
+        return reply.status(400).send({ error: parsed.error.message });
       }
       const start = performance.now();
       const result = calculateBulkTax(parsed.data);
