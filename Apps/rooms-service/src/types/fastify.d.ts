@@ -1,3 +1,4 @@
+import "@fastify/sensible"; // Expose FastifyReply augmentations (.unauthorized, .forbidden, etc.)
 import type { AuthContext, TenantScopeDecorator } from "@tartware/tenant-auth";
 
 import type { TenantMembership } from "@tartware/tenant-auth/membership";

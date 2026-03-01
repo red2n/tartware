@@ -1,11 +1,21 @@
+/**
+ * Core service proxy routes.
+ *
+ * Proxies tenant management, property CRUD, dashboard views,
+ * module catalog, authentication, user management, and system
+ * admin endpoints to the core service. Auth routes apply a
+ * stricter rate-limit tier to mitigate brute-force attacks.
+ *
+ * @module core-proxy-routes
+ */
 import { buildRouteSchema, jsonObjectSchema } from "@tartware/openapi";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
-
-import { serviceTargets } from "../config.js";
+import { gatewayConfig, serviceTargets } from "../config.js";
 import { proxyRequest } from "../utils/proxy.js";
 
 import { CORE_PROXY_TAG, reservationParamsSchema } from "./schemas.js";
 
+/** Register core service proxy routes on the gateway. */
 export const registerCoreProxyRoutes = (app: FastifyInstance): void => {
   const proxyCore = async (request: FastifyRequest, reply: FastifyReply) =>
     proxyRequest(request, reply, serviceTargets.coreServiceUrl);
@@ -16,9 +26,26 @@ export const registerCoreProxyRoutes = (app: FastifyInstance): void => {
     requiredModules: "core",
   });
 
+  const tenantScopeFromQuery = app.withTenantScope({
+    resolveTenantId: (request) => (request.query as { tenant_id?: string }).tenant_id,
+    minRole: "STAFF",
+    requiredModules: "core",
+  });
+
+  const authenticatedOnly = app.withTenantScope({
+    allowMissingTenantId: true,
+    minRole: "VIEWER",
+  });
+
+  const adminOnly = app.withTenantScope({
+    allowMissingTenantId: true,
+    minRole: "ADMIN",
+  });
+
   app.get(
     "/v1/tenants",
     {
+      preHandler: authenticatedOnly,
       schema: buildRouteSchema({
         tag: CORE_PROXY_TAG,
         summary: "List tenants accessible to the authenticated user.",
@@ -34,6 +61,7 @@ export const registerCoreProxyRoutes = (app: FastifyInstance): void => {
   app.get(
     "/v1/properties",
     {
+      preHandler: tenantScopeFromQuery,
       schema: buildRouteSchema({
         tag: CORE_PROXY_TAG,
         summary: "List properties for a tenant.",
@@ -48,6 +76,7 @@ export const registerCoreProxyRoutes = (app: FastifyInstance): void => {
   app.post(
     "/v1/properties",
     {
+      preHandler: adminOnly,
       schema: buildRouteSchema({
         tag: CORE_PROXY_TAG,
         summary: "Create a new property.",
@@ -63,6 +92,7 @@ export const registerCoreProxyRoutes = (app: FastifyInstance): void => {
   app.all(
     "/v1/properties/*",
     {
+      preHandler: authenticatedOnly,
       schema: buildRouteSchema({
         tag: CORE_PROXY_TAG,
         summary: "Proxy property operations to core service.",
@@ -78,6 +108,7 @@ export const registerCoreProxyRoutes = (app: FastifyInstance): void => {
   app.all(
     "/v1/dashboard/*",
     {
+      preHandler: tenantScopeFromQuery,
       schema: buildRouteSchema({
         tag: CORE_PROXY_TAG,
         summary: "Proxy dashboard requests to core service.",
@@ -120,25 +151,20 @@ export const registerCoreProxyRoutes = (app: FastifyInstance): void => {
     proxyCore,
   );
 
-  // Reports routes - proxy to core service
-  app.all(
-    "/v1/reports/*",
-    {
-      schema: buildRouteSchema({
-        tag: CORE_PROXY_TAG,
-        summary: "Proxy report requests to core service.",
-        response: {
-          200: jsonObjectSchema,
-        },
-      }),
+  // Auth routes — stricter rate limit to mitigate brute-force
+  const authRateLimit = {
+    config: {
+      rateLimit: {
+        max: gatewayConfig.rateLimit.authMax,
+        timeWindow: gatewayConfig.rateLimit.authTimeWindow,
+      },
     },
-    proxyCore,
-  );
+  };
 
-  // Auth routes
   app.all(
     "/v1/auth",
     {
+      ...authRateLimit,
       schema: buildRouteSchema({
         tag: CORE_PROXY_TAG,
         summary: "Proxy auth calls to core service.",
@@ -153,6 +179,7 @@ export const registerCoreProxyRoutes = (app: FastifyInstance): void => {
   app.all(
     "/v1/auth/*",
     {
+      ...authRateLimit,
       schema: buildRouteSchema({
         tag: CORE_PROXY_TAG,
         summary: "Proxy auth calls to core service.",
@@ -168,6 +195,7 @@ export const registerCoreProxyRoutes = (app: FastifyInstance): void => {
   app.all(
     "/v1/users",
     {
+      preHandler: adminOnly,
       schema: buildRouteSchema({
         tag: CORE_PROXY_TAG,
         summary: "Proxy user management calls to core service.",
@@ -182,6 +210,7 @@ export const registerCoreProxyRoutes = (app: FastifyInstance): void => {
   app.all(
     "/v1/users/*",
     {
+      preHandler: adminOnly,
       schema: buildRouteSchema({
         tag: CORE_PROXY_TAG,
         summary: "Proxy user management calls to core service.",
@@ -197,6 +226,7 @@ export const registerCoreProxyRoutes = (app: FastifyInstance): void => {
   app.all(
     "/v1/user-tenant-associations",
     {
+      preHandler: adminOnly,
       schema: buildRouteSchema({
         tag: CORE_PROXY_TAG,
         summary: "Proxy user-tenant association calls to core service.",
@@ -211,6 +241,7 @@ export const registerCoreProxyRoutes = (app: FastifyInstance): void => {
   app.all(
     "/v1/user-tenant-associations/*",
     {
+      preHandler: adminOnly,
       schema: buildRouteSchema({
         tag: CORE_PROXY_TAG,
         summary: "Proxy user-tenant association calls to core service.",
@@ -226,6 +257,7 @@ export const registerCoreProxyRoutes = (app: FastifyInstance): void => {
   app.all(
     "/v1/system/*",
     {
+      preHandler: adminOnly,
       schema: buildRouteSchema({
         tag: CORE_PROXY_TAG,
         summary: "Proxy system admin calls to core service.",

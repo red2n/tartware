@@ -1,5 +1,6 @@
 import swagger from "@fastify/swagger";
 import swaggerUi from "@fastify/swagger-ui";
+import type { FastifyInstance } from "fastify";
 import fp from "fastify-plugin";
 
 export interface SwaggerPluginOptions {
@@ -21,7 +22,7 @@ export interface SwaggerPluginOptions {
 export const createSwaggerPlugin = (options: SwaggerPluginOptions) => {
 	const { title, description, version, routePrefix = "/docs" } = options;
 
-	return fp(async (app) => {
+	return fp(async (app: FastifyInstance) => {
 		if (process.env.DISABLE_SWAGGER === "true") {
 			app.log.warn("Swagger UI disabled via DISABLE_SWAGGER");
 			return;

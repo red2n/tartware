@@ -1,3 +1,14 @@
+/**
+ * Housekeeping proxy and command routes.
+ *
+ * Read endpoints (GET) proxy to the housekeeping service for task
+ * queries, incidents, and maintenance records. Write endpoints (POST)
+ * dispatch commands through the Command Center for task assignment,
+ * completion, creation, reassignment, reopening, note addition, and
+ * bulk status updates.
+ *
+ * @module housekeeping-routes
+ */
 import { buildRouteSchema, jsonObjectSchema } from "@tartware/openapi";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 
@@ -12,11 +23,14 @@ import {
 } from "./command-helpers.js";
 import {
   CORE_PROXY_TAG,
+  commandAcceptedSchema,
   HOUSEKEEPING_COMMAND_TAG,
+  paginationQuerySchema,
   reservationParamsSchema,
   tenantTaskParamsSchema,
 } from "./schemas.js";
 
+/** Register housekeeping read-proxy and command-dispatch routes on the gateway. */
 export const registerHousekeepingRoutes = (app: FastifyInstance): void => {
   const proxyHousekeeping = async (request: FastifyRequest, reply: FastifyReply) =>
     proxyRequest(request, reply, serviceTargets.housekeepingServiceUrl);
@@ -27,12 +41,20 @@ export const registerHousekeepingRoutes = (app: FastifyInstance): void => {
     requiredModules: "core",
   });
 
+  const tenantScopeFromQuery = app.withTenantScope({
+    resolveTenantId: (request) => (request.query as { tenant_id?: string }).tenant_id,
+    minRole: "VIEWER",
+    requiredModules: "core",
+  });
+
   app.get(
     "/v1/housekeeping/tasks",
     {
+      preHandler: tenantScopeFromQuery,
       schema: buildRouteSchema({
         tag: CORE_PROXY_TAG,
         summary: "Proxy housekeeping task queries to the housekeeping service.",
+        querystring: paginationQuerySchema,
         response: {
           200: jsonObjectSchema,
         },
@@ -51,7 +73,7 @@ export const registerHousekeepingRoutes = (app: FastifyInstance): void => {
         params: tenantTaskParamsSchema,
         body: jsonObjectSchema,
         response: {
-          202: jsonObjectSchema,
+          202: commandAcceptedSchema,
         },
       }),
     },
@@ -68,7 +90,7 @@ export const registerHousekeepingRoutes = (app: FastifyInstance): void => {
         params: tenantTaskParamsSchema,
         body: jsonObjectSchema,
         response: {
-          202: jsonObjectSchema,
+          202: commandAcceptedSchema,
         },
       }),
     },
@@ -85,7 +107,7 @@ export const registerHousekeepingRoutes = (app: FastifyInstance): void => {
         params: reservationParamsSchema,
         body: jsonObjectSchema,
         response: {
-          202: jsonObjectSchema,
+          202: commandAcceptedSchema,
         },
       }),
     },
@@ -107,7 +129,7 @@ export const registerHousekeepingRoutes = (app: FastifyInstance): void => {
         params: tenantTaskParamsSchema,
         body: jsonObjectSchema,
         response: {
-          202: jsonObjectSchema,
+          202: commandAcceptedSchema,
         },
       }),
     },
@@ -131,7 +153,7 @@ export const registerHousekeepingRoutes = (app: FastifyInstance): void => {
         params: tenantTaskParamsSchema,
         body: jsonObjectSchema,
         response: {
-          202: jsonObjectSchema,
+          202: commandAcceptedSchema,
         },
       }),
     },
@@ -155,7 +177,7 @@ export const registerHousekeepingRoutes = (app: FastifyInstance): void => {
         params: tenantTaskParamsSchema,
         body: jsonObjectSchema,
         response: {
-          202: jsonObjectSchema,
+          202: commandAcceptedSchema,
         },
       }),
     },
@@ -179,7 +201,7 @@ export const registerHousekeepingRoutes = (app: FastifyInstance): void => {
         params: reservationParamsSchema,
         body: jsonObjectSchema,
         response: {
-          202: jsonObjectSchema,
+          202: commandAcceptedSchema,
         },
       }),
     },
@@ -195,6 +217,7 @@ export const registerHousekeepingRoutes = (app: FastifyInstance): void => {
   app.get(
     "/v1/housekeeping/*",
     {
+      preHandler: tenantScopeFromQuery,
       schema: buildRouteSchema({
         tag: CORE_PROXY_TAG,
         summary: "Proxy nested housekeeping routes to the service.",
@@ -210,6 +233,7 @@ export const registerHousekeepingRoutes = (app: FastifyInstance): void => {
   app.all(
     "/v1/incidents",
     {
+      preHandler: tenantScopeFromQuery,
       schema: buildRouteSchema({
         tag: CORE_PROXY_TAG,
         summary: "Proxy incident requests to the housekeeping service.",
@@ -224,6 +248,7 @@ export const registerHousekeepingRoutes = (app: FastifyInstance): void => {
   app.all(
     "/v1/incidents/*",
     {
+      preHandler: tenantScopeFromQuery,
       schema: buildRouteSchema({
         tag: CORE_PROXY_TAG,
         summary: "Proxy incident requests to the housekeeping service.",
@@ -239,6 +264,7 @@ export const registerHousekeepingRoutes = (app: FastifyInstance): void => {
   app.all(
     "/v1/maintenance/*",
     {
+      preHandler: tenantScopeFromQuery,
       schema: buildRouteSchema({
         tag: CORE_PROXY_TAG,
         summary: "Proxy maintenance requests to the housekeeping service.",

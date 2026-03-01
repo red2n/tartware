@@ -1,3 +1,5 @@
+import { circuitBreakerStateTotal } from "../lib/metrics.js";
+
 type CircuitState = "CLOSED" | "OPEN" | "HALF_OPEN";
 
 type MinimalLogger = {
@@ -90,6 +92,8 @@ class CircuitBreaker {
       { circuit: this.name, from: previous, to: newState, failures: this.consecutiveFailures },
       "circuit breaker state transition",
     );
+
+    circuitBreakerStateTotal.inc({ target: this.name, state: newState });
   }
 }
 

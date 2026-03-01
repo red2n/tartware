@@ -1,5 +1,5 @@
 import fastifyJwt from "@fastify/jwt";
-import type { FastifyReply, FastifyRequest } from "fastify";
+import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import fp from "fastify-plugin";
 
 import { config } from "../config.js";
@@ -22,7 +22,7 @@ const isValidUuid = (value: string): boolean =>
 
 const normalizePublicKey = (key: string) => key.replace(/\\n/g, "\n").trim();
 
-export const authPlugin = fp(async (app) => {
+export const authPlugin = fp(async (app: FastifyInstance) => {
   if (process.env.DISABLE_AUTH === "true") {
     app.log.warn("Auth disabled via DISABLE_AUTH");
     app.decorate("authenticate", async () => undefined);

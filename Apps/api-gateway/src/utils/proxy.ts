@@ -1,9 +1,17 @@
 import type { FastifyReply, FastifyRequest } from "fastify";
 
+import { proxyDurationHistogram } from "../lib/metrics.js";
+
 import { getCircuitBreaker } from "./circuit-breaker.js";
 
 /** Proxy timeout in ms; override via PROXY_TIMEOUT_MS env var. */
 const PROXY_TIMEOUT_MS = Number(process.env.PROXY_TIMEOUT_MS) || 30_000;
+
+/** Max retries for transient failures (5xx, network errors). Only GET/HEAD are retried. */
+const PROXY_MAX_RETRIES = Number(process.env.PROXY_MAX_RETRIES) || 2;
+
+/** Base delay in ms for exponential backoff between retries. */
+const PROXY_RETRY_BASE_DELAY_MS = Number(process.env.PROXY_RETRY_BASE_DELAY_MS) || 250;
 
 const hopByHopHeaders = new Set([
   "connection",
@@ -71,6 +79,9 @@ export const proxyRequest = async (
     return reply.status(204).send();
   }
 
+  const proxyStart = performance.now();
+  const targetLabel = new URL(targetBaseUrl).host;
+
   const url = request.raw.url ?? "/";
   const targetUrl = new URL(url, targetBaseUrl).toString();
 
@@ -89,23 +100,65 @@ export const proxyRequest = async (
   const headers = buildHeaders(request);
   const body = serializeBody(request, headers);
 
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), PROXY_TIMEOUT_MS);
+  const method = request.method.toUpperCase();
+  const isIdempotent = method === "GET" || method === "HEAD";
+  const maxAttempts = isIdempotent ? 1 + PROXY_MAX_RETRIES : 1;
 
-  let response: Response;
-  try {
-    response = await fetch(targetUrl, {
-      method: request.method,
-      headers,
-      body,
-      signal: controller.signal,
-    });
-  } catch (error) {
-    breaker.recordFailure();
-    const isTimeout = error instanceof DOMException && error.name === "AbortError";
+  let lastError: unknown = null;
+  let response: Response | undefined;
+
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    if (attempt > 0) {
+      const delay = PROXY_RETRY_BASE_DELAY_MS * 2 ** (attempt - 1);
+      const jitter = Math.floor(Math.random() * delay * 0.25);
+      request.log.warn(
+        { targetUrl, method, attempt, delay: delay + jitter },
+        "retrying transient proxy failure",
+      );
+      await new Promise((resolve) => setTimeout(resolve, delay + jitter));
+
+      if (!breaker.allowRequest()) {
+        break;
+      }
+    }
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), PROXY_TIMEOUT_MS);
+
+    try {
+      response = await fetch(targetUrl, {
+        method: request.method,
+        headers,
+        body,
+        signal: controller.signal,
+      });
+    } catch (error) {
+      lastError = error;
+      breaker.recordFailure();
+      clearTimeout(timeoutId);
+      continue;
+    } finally {
+      clearTimeout(timeoutId);
+    }
+
+    if (response.status >= 500) {
+      breaker.recordFailure();
+      if (attempt < maxAttempts - 1) {
+        continue;
+      }
+    } else {
+      breaker.recordSuccess();
+    }
+
+    break;
+  }
+
+  if (!response) {
+    const isTimeout =
+      lastError instanceof DOMException && (lastError as DOMException).name === "AbortError";
 
     request.log.error(
-      { err: error, targetUrl, method: request.method, timedOut: isTimeout },
+      { err: lastError, targetUrl, method: request.method, timedOut: isTimeout },
       "proxy fetch failed",
     );
 
@@ -122,15 +175,11 @@ export const proxyRequest = async (
         instance: request.url,
         code: isTimeout ? "UPSTREAM_TIMEOUT" : "UPSTREAM_UNAVAILABLE",
       });
+    proxyDurationHistogram.observe(
+      { target: targetLabel, method, status: isTimeout ? "504" : "502" },
+      (performance.now() - proxyStart) / 1000,
+    );
     return reply;
-  } finally {
-    clearTimeout(timeoutId);
-  }
-
-  if (response.status >= 500) {
-    breaker.recordFailure();
-  } else {
-    breaker.recordSuccess();
   }
 
   reply.status(response.status);
@@ -141,5 +190,9 @@ export const proxyRequest = async (
   });
 
   const buffer = Buffer.from(await response.arrayBuffer());
+  proxyDurationHistogram.observe(
+    { target: targetLabel, method, status: String(response.status) },
+    (performance.now() - proxyStart) / 1000,
+  );
   return reply.send(buffer);
 };

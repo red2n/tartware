@@ -1,12 +1,23 @@
+/**
+ * Booking configuration proxy routes.
+ *
+ * Proxies CRUD operations for low-velocity booking configuration
+ * entities — allotments, booking sources, market segments, channel
+ * mappings, corporate accounts, meeting rooms, and event bookings —
+ * to the core service.
+ *
+ * @module booking-config-routes
+ */
 import { buildRouteSchema, jsonObjectSchema } from "@tartware/openapi";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 
 import { serviceTargets } from "../config.js";
 import { proxyRequest } from "../utils/proxy.js";
 
-export const registerBookingConfigRoutes = (app: FastifyInstance): void => {
-  const BOOKING_CONFIG_TAG = "Booking Configuration";
+import { BOOKING_CONFIG_TAG } from "./schemas.js";
 
+/** Register booking configuration proxy routes on the gateway. */
+export const registerBookingConfigRoutes = (app: FastifyInstance): void => {
   const proxyCore = async (request: FastifyRequest, reply: FastifyReply) =>
     proxyRequest(request, reply, serviceTargets.coreServiceUrl);
 

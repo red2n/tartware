@@ -1,3 +1,4 @@
+/// <reference types="@fastify/sensible" />
 import { randomUUID } from "node:crypto";
 import { STATUS_CODES } from "node:http";
 import fastifyCors from "@fastify/cors";
@@ -425,3 +426,6 @@ export const createRouteTracker = (app: FastifyInstance) => {
 };
 
 export type { FastifyBaseLogger, FastifyInstance } from "fastify";
+// Re-export @fastify/sensible types so consumers pick up the FastifyReply augmentations
+// (.unauthorized, .forbidden, .notFound, etc.) without needing to import sensible directly.
+export type { HttpError, HttpErrors } from "@fastify/sensible";

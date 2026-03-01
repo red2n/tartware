@@ -16,7 +16,9 @@ const { submitCommandMock, proxyRequestMock } = vi.hoisted(() => {
     submitCommandMock: vi.fn(async ({ reply }) => {
       reply.status(202).send({
         status: "accepted",
-        commandId: "cmd-1",
+        command_id: "00000000-0000-0000-0000-000000000001",
+        command_name: "test.command",
+        accepted_at: new Date().toISOString(),
       });
     }),
     proxyRequestMock: vi.fn(async (_request, reply, targetUrl) => {
@@ -31,6 +33,11 @@ vi.mock("../src/utils/command-publisher.js", () => ({
 
 vi.mock("../src/utils/proxy.js", () => ({
   proxyRequest: proxyRequestMock,
+}));
+
+vi.mock("../src/lib/db.js", () => ({
+  query: vi.fn(async () => ({ rows: [{ "?column?": 1 }] })),
+  pool: { end: vi.fn() },
 }));
 
 vi.mock("../src/services/membership-service.js", () => ({
@@ -51,6 +58,9 @@ vi.mock("../src/lib/jwt.js", () => ({
   verifyAccessToken: vi.fn(() => ({ sub: "user-1" })),
 }));
 
+const fetchMock = vi.fn(async () => new Response(JSON.stringify({ status: "ok" }), { status: 200 }));
+vi.stubGlobal("fetch", fetchMock);
+
 describe("API Gateway server", () => {
   let app: ReturnType<typeof buildServer>;
 
@@ -60,6 +70,7 @@ describe("API Gateway server", () => {
   });
 
   beforeEach(() => {
+    fetchMock.mockClear();
     submitCommandMock.mockClear();
     proxyRequestMock.mockClear();
   });
@@ -91,12 +102,10 @@ describe("API Gateway server", () => {
     expect(response.json()).toMatchObject({
       status: "ok",
       service: expect.any(String),
-      kafka: {
-        activeCluster: kafkaConfig.activeCluster,
-        brokers: kafkaConfig.brokers,
-        primaryBrokers: kafkaConfig.primaryBrokers,
-        failoverBrokers: kafkaConfig.failoverBrokers,
-        topic: kafkaConfig.commandTopic,
+      checks: {
+        database: { status: "ok" },
+        kafka: { status: expect.any(String) },
+        coreService: { status: expect.any(String) },
       },
     });
   });
@@ -128,7 +137,10 @@ describe("API Gateway server", () => {
   it("proxies guest queries to the guests service", async () => {
     const response = await app.inject({
       method: "GET",
-      url: "/v1/guests",
+      url: "/v1/guests?tenant_id=11111111-1111-1111-1111-111111111111",
+      headers: {
+        authorization: "Bearer unit-test-token",
+      },
     });
 
     expect(response.statusCode).toBe(200);
@@ -166,6 +178,9 @@ describe("API Gateway server", () => {
     const response = await app.inject({
       method: "GET",
       url: "/v1/commands/definitions",
+      headers: {
+        authorization: "Bearer unit-test-token",
+      },
     });
 
     expect(response.statusCode).toBe(200);
@@ -183,6 +198,9 @@ describe("API Gateway server", () => {
     const response = await app.inject({
       method: "GET",
       url: "/v1/settings/catalog",
+      headers: {
+        authorization: "Bearer unit-test-token",
+      },
     });
 
     expect(response.statusCode).toBe(200);

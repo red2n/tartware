@@ -75,8 +75,15 @@ export const gatewayConfig = {
   serviceId: env.API_GATEWAY_ID ?? baseConfig.SERVICE_NAME ?? "api-gateway",
   version: env.API_GATEWAY_VERSION ?? baseConfig.SERVICE_VERSION ?? "1.0.0",
   rateLimit: {
+    /** Global default — applies to most read endpoints. */
     max: Number(env.API_GATEWAY_RATE_MAX ?? 200),
     timeWindow: env.API_GATEWAY_RATE_WINDOW ?? "1 minute",
+    /** Tighter limit for command (write) endpoints. */
+    commandMax: Number(env.API_GATEWAY_RATE_COMMAND_MAX ?? 60),
+    commandTimeWindow: env.API_GATEWAY_RATE_COMMAND_WINDOW ?? "1 minute",
+    /** Auth endpoints — stricter to mitigate brute-force. */
+    authMax: Number(env.API_GATEWAY_RATE_AUTH_MAX ?? 20),
+    authTimeWindow: env.API_GATEWAY_RATE_AUTH_WINDOW ?? "1 minute",
   },
   logRequests: parseBoolean(env.API_GATEWAY_LOG_REQUESTS, false),
 };
@@ -103,6 +110,7 @@ export const serviceTargets = {
   notificationServiceUrl: env.NOTIFICATION_SERVICE_URL ?? "http://localhost:3055",
   revenueServiceUrl: env.REVENUE_SERVICE_URL ?? "http://localhost:3060",
   guestExperienceServiceUrl: env.GUEST_EXPERIENCE_SERVICE_URL ?? "http://localhost:3065",
+  calculationServiceUrl: env.CALCULATION_SERVICE_URL ?? "http://localhost:3070",
 };
 
 export const dbConfig = {

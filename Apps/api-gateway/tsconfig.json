@@ -3,8 +3,14 @@
     "target": "ES2022",
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
-    "lib": ["ES2022", "DOM"],
-    "types": ["node"],
+    "lib": [
+      "ES2022",
+      "DOM"
+    ],
+    "types": [
+      "node",
+      "@fastify/sensible"
+    ],
     "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true,
     "strict": true,
@@ -15,26 +21,55 @@
     "resolveJsonModule": true,
     "baseUrl": ".",
     "paths": {
-      "@tartware/openapi": ["../openapi-utils/src/index.ts"],
-      "@tartware/openapi/*": ["../openapi-utils/src/*"],
-      "@tartware/telemetry": ["../telemetry/src/index.ts"],
-      "@tartware/telemetry/*": ["../telemetry/src/*"],
-      "@tartware/config": ["../config/src/index.ts"],
-      "@tartware/config/*": ["../config/src/*"],
+      "@tartware/openapi": [
+        "../openapi-utils/src/index.ts"
+      ],
+      "@tartware/openapi/*": [
+        "../openapi-utils/src/*"
+      ],
+      "@tartware/telemetry": [
+        "../telemetry/src/index.ts"
+      ],
+      "@tartware/telemetry/*": [
+        "../telemetry/src/*"
+      ],
+      "@tartware/config": [
+        "../config/src/index.ts"
+      ],
+      "@tartware/config/*": [
+        "../config/src/*"
+      ],
       "@tartware/schemas": [
         "../../schema/src/index.ts"
       ],
       "@tartware/schemas/*": [
         "../../schema/src/*.ts"
       ],
-      "@tartware/outbox": ["../outbox/src/index.ts"],
-      "@tartware/outbox/*": ["../outbox/src/*"],
-      "@tartware/command-center-shared": ["../command-center-shared/src/index.ts"],
-      "@tartware/command-center-shared/*": ["../command-center-shared/src/*"],
-      "@tartware/fastify-server": ["../fastify-server/src/index.ts"],
-      "@tartware/fastify-server/*": ["../fastify-server/src/*"]
+      "@tartware/outbox": [
+        "../outbox/src/index.ts"
+      ],
+      "@tartware/outbox/*": [
+        "../outbox/src/*"
+      ],
+      "@tartware/command-center-shared": [
+        "../command-center-shared/src/index.ts"
+      ],
+      "@tartware/command-center-shared/*": [
+        "../command-center-shared/src/*"
+      ],
+      "@tartware/fastify-server": [
+        "../fastify-server/src/index.ts"
+      ],
+      "@tartware/fastify-server/*": [
+        "../fastify-server/src/*"
+      ]
     }
   },
-  "include": ["src/**/*.ts"],
-  "exclude": ["dist", "node_modules"]
+  "include": [
+    "src/**/*.ts"
+  ],
+  "exclude": [
+    "dist",
+    "node_modules"
+  ]
 }

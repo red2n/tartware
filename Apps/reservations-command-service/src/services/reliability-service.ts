@@ -132,12 +132,15 @@ const fetchDlqStats = async (): Promise<DlqStats> => {
     await admin.connect();
     const offsets = await admin.fetchTopicOffsets(kafkaConfig.dlqTopic);
 
-    const depth = offsets.reduce((total, partitionOffsets) => {
-      const high = safeBigInt(partitionOffsets.high ?? partitionOffsets.offset ?? "0");
-      const low = safeBigInt(partitionOffsets.low ?? "0");
-      const partitionDepth = high - low;
-      return total + Number(partitionDepth > 0n ? partitionDepth : 0n);
-    }, 0);
+    const depth = offsets.reduce(
+      (total: number, partitionOffsets: { high?: string; low?: string; offset?: string }) => {
+        const high = safeBigInt(partitionOffsets.high ?? partitionOffsets.offset ?? "0");
+        const low = safeBigInt(partitionOffsets.low ?? "0");
+        const partitionDepth = high - low;
+        return total + Number(partitionDepth > 0n ? partitionDepth : 0n);
+      },
+      0,
+    );
 
     return { depth };
   } catch (error) {

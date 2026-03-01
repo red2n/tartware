@@ -1,3 +1,14 @@
+/**
+ * Reservation proxy and command routes.
+ *
+ * GET requests are proxied to the core service for reservation queries
+ * (list, detail, lifecycle, check-in brief). State-changing operations
+ * (create, modify, cancel, check-in, check-out, room assignment, rate
+ * override, deposits, no-show, walk-in, and waitlist management)
+ * dispatch commands through the Command Center pipeline.
+ *
+ * @module reservation-routes
+ */
 import { buildRouteSchema, jsonObjectSchema } from "@tartware/openapi";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 
@@ -7,12 +18,15 @@ import { proxyRequest } from "../utils/proxy.js";
 
 import { forwardCommandWithParamId, forwardReservationCommand } from "./command-helpers.js";
 import {
+  commandAcceptedSchema,
+  paginationQuerySchema,
   RESERVATION_PROXY_TAG,
   reservationParamsSchema,
   tenantReservationParamsSchema,
   waitlistConvertParamsSchema,
 } from "./schemas.js";
 
+/** Register reservation read-proxy and command-dispatch routes on the gateway. */
 export const registerReservationRoutes = (app: FastifyInstance): void => {
   const proxyCore = async (request: FastifyRequest, reply: FastifyReply) =>
     proxyRequest(request, reply, serviceTargets.coreServiceUrl);
@@ -43,6 +57,7 @@ export const registerReservationRoutes = (app: FastifyInstance): void => {
       schema: buildRouteSchema({
         tag: RESERVATION_PROXY_TAG,
         summary: "Proxy reservation queries to core service.",
+        querystring: paginationQuerySchema,
         response: {
           200: jsonObjectSchema,
         },
@@ -108,7 +123,7 @@ export const registerReservationRoutes = (app: FastifyInstance): void => {
         response: {
           200: jsonObjectSchema,
           201: jsonObjectSchema,
-          202: jsonObjectSchema,
+          202: commandAcceptedSchema,
         },
       }),
     },
@@ -125,7 +140,7 @@ export const registerReservationRoutes = (app: FastifyInstance): void => {
         params: tenantReservationParamsSchema,
         body: jsonObjectSchema,
         response: {
-          202: jsonObjectSchema,
+          202: commandAcceptedSchema,
         },
       }),
     },
@@ -149,7 +164,7 @@ export const registerReservationRoutes = (app: FastifyInstance): void => {
         params: tenantReservationParamsSchema,
         body: jsonObjectSchema,
         response: {
-          202: jsonObjectSchema,
+          202: commandAcceptedSchema,
         },
       }),
     },
@@ -173,7 +188,7 @@ export const registerReservationRoutes = (app: FastifyInstance): void => {
         params: tenantReservationParamsSchema,
         body: jsonObjectSchema,
         response: {
-          202: jsonObjectSchema,
+          202: commandAcceptedSchema,
         },
       }),
     },
@@ -197,7 +212,7 @@ export const registerReservationRoutes = (app: FastifyInstance): void => {
         params: tenantReservationParamsSchema,
         body: jsonObjectSchema,
         response: {
-          202: jsonObjectSchema,
+          202: commandAcceptedSchema,
         },
       }),
     },
@@ -221,7 +236,7 @@ export const registerReservationRoutes = (app: FastifyInstance): void => {
         params: tenantReservationParamsSchema,
         body: jsonObjectSchema,
         response: {
-          202: jsonObjectSchema,
+          202: commandAcceptedSchema,
         },
       }),
     },
@@ -245,7 +260,7 @@ export const registerReservationRoutes = (app: FastifyInstance): void => {
         params: tenantReservationParamsSchema,
         body: jsonObjectSchema,
         response: {
-          202: jsonObjectSchema,
+          202: commandAcceptedSchema,
         },
       }),
     },
@@ -269,7 +284,7 @@ export const registerReservationRoutes = (app: FastifyInstance): void => {
         params: tenantReservationParamsSchema,
         body: jsonObjectSchema,
         response: {
-          202: jsonObjectSchema,
+          202: commandAcceptedSchema,
         },
       }),
     },
@@ -293,7 +308,7 @@ export const registerReservationRoutes = (app: FastifyInstance): void => {
         params: tenantReservationParamsSchema,
         body: jsonObjectSchema,
         response: {
-          202: jsonObjectSchema,
+          202: commandAcceptedSchema,
         },
       }),
     },
@@ -317,7 +332,7 @@ export const registerReservationRoutes = (app: FastifyInstance): void => {
         params: tenantReservationParamsSchema,
         body: jsonObjectSchema,
         response: {
-          202: jsonObjectSchema,
+          202: commandAcceptedSchema,
         },
       }),
     },
@@ -341,7 +356,7 @@ export const registerReservationRoutes = (app: FastifyInstance): void => {
         params: tenantReservationParamsSchema,
         body: jsonObjectSchema,
         response: {
-          202: jsonObjectSchema,
+          202: commandAcceptedSchema,
         },
       }),
     },
@@ -366,7 +381,7 @@ export const registerReservationRoutes = (app: FastifyInstance): void => {
         params: reservationParamsSchema,
         body: jsonObjectSchema,
         response: {
-          202: jsonObjectSchema,
+          202: commandAcceptedSchema,
         },
       }),
     },
@@ -393,7 +408,7 @@ export const registerReservationRoutes = (app: FastifyInstance): void => {
         params: reservationParamsSchema,
         body: jsonObjectSchema,
         response: {
-          202: jsonObjectSchema,
+          202: commandAcceptedSchema,
         },
       }),
     },
@@ -420,7 +435,7 @@ export const registerReservationRoutes = (app: FastifyInstance): void => {
         params: waitlistConvertParamsSchema,
         body: jsonObjectSchema,
         response: {
-          202: jsonObjectSchema,
+          202: commandAcceptedSchema,
         },
       }),
     },

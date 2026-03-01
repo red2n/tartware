@@ -4,7 +4,6 @@
     "src/**/*.ts"
   ],
   "ignoreDependencies": [
-    "@vitest/coverage-v8",
     "zod",
     "@tartware/openapi",
     "@tartware/telemetry",
@@ -13,7 +12,6 @@
     "@tartware/schemas",
     "@tartware/command-center-shared",
     "@fastify/helmet",
-    "@fastify/sensible",
     "@tartware/fastify-server",
     "pg"
   ]

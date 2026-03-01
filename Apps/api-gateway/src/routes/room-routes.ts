@@ -1,3 +1,15 @@
+/**
+ * Room, room-type, rate, rate-calendar, and availability proxy routes,
+ * plus room inventory command routes.
+ *
+ * Read endpoints (GET) proxy to the rooms service for room/type/rate
+ * queries and ARI (availability, rates, inventory) lookups.
+ * Write endpoints (POST) dispatch commands through the Command Center
+ * for room blocking/releasing, status updates, and housekeeping
+ * status changes.
+ *
+ * @module room-routes
+ */
 import { buildRouteSchema, jsonObjectSchema } from "@tartware/openapi";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 
@@ -5,8 +17,16 @@ import { serviceTargets } from "../config.js";
 import { proxyRequest } from "../utils/proxy.js";
 
 import { forwardCommandWithParamId, forwardRoomInventoryCommand } from "./command-helpers.js";
-import { CORE_PROXY_TAG, ROOM_COMMAND_TAG, tenantRoomParamsSchema } from "./schemas.js";
+import {
+  AVAILABILITY_TAG,
+  CORE_PROXY_TAG,
+  commandAcceptedSchema,
+  paginationQuerySchema,
+  ROOM_COMMAND_TAG,
+  tenantRoomParamsSchema,
+} from "./schemas.js";
 
+/** Register room/rate/availability proxy and inventory command routes on the gateway. */
 export const registerRoomRoutes = (app: FastifyInstance): void => {
   const proxyRooms = async (request: FastifyRequest, reply: FastifyReply) =>
     proxyRequest(request, reply, serviceTargets.roomsServiceUrl);
@@ -17,12 +37,20 @@ export const registerRoomRoutes = (app: FastifyInstance): void => {
     requiredModules: "core",
   });
 
+  const tenantScopeFromQuery = app.withTenantScope({
+    resolveTenantId: (request) => (request.query as { tenant_id?: string }).tenant_id,
+    minRole: "VIEWER",
+    requiredModules: "core",
+  });
+
   app.get(
     "/v1/rooms",
     {
+      preHandler: tenantScopeFromQuery,
       schema: buildRouteSchema({
         tag: CORE_PROXY_TAG,
         summary: "Proxy room queries to the rooms service.",
+        querystring: paginationQuerySchema,
         response: {
           200: jsonObjectSchema,
         },
@@ -34,6 +62,7 @@ export const registerRoomRoutes = (app: FastifyInstance): void => {
   app.post(
     "/v1/rooms",
     {
+      preHandler: tenantScopeFromQuery,
       schema: buildRouteSchema({
         tag: CORE_PROXY_TAG,
         summary: "Proxy room creation to the rooms service.",
@@ -49,6 +78,7 @@ export const registerRoomRoutes = (app: FastifyInstance): void => {
   app.all(
     "/v1/rooms/*",
     {
+      preHandler: tenantScopeFromQuery,
       schema: buildRouteSchema({
         tag: CORE_PROXY_TAG,
         summary: "Proxy room updates to the rooms service.",
@@ -64,9 +94,11 @@ export const registerRoomRoutes = (app: FastifyInstance): void => {
   app.get(
     "/v1/room-types",
     {
+      preHandler: tenantScopeFromQuery,
       schema: buildRouteSchema({
         tag: CORE_PROXY_TAG,
         summary: "Proxy room type list requests to the rooms service.",
+        querystring: paginationQuerySchema,
         response: {
           200: jsonObjectSchema,
         },
@@ -78,6 +110,7 @@ export const registerRoomRoutes = (app: FastifyInstance): void => {
   app.post(
     "/v1/room-types",
     {
+      preHandler: tenantScopeFromQuery,
       schema: buildRouteSchema({
         tag: CORE_PROXY_TAG,
         summary: "Proxy room type creation to the rooms service.",
@@ -93,6 +126,7 @@ export const registerRoomRoutes = (app: FastifyInstance): void => {
   app.get(
     "/v1/room-types/*",
     {
+      preHandler: tenantScopeFromQuery,
       schema: buildRouteSchema({
         tag: CORE_PROXY_TAG,
         summary: "Proxy room type detail requests to the rooms service.",
@@ -107,6 +141,7 @@ export const registerRoomRoutes = (app: FastifyInstance): void => {
   app.put(
     "/v1/room-types/*",
     {
+      preHandler: tenantScopeFromQuery,
       schema: buildRouteSchema({
         tag: CORE_PROXY_TAG,
         summary: "Proxy room type updates to the rooms service.",
@@ -122,6 +157,7 @@ export const registerRoomRoutes = (app: FastifyInstance): void => {
   app.patch(
     "/v1/room-types/*",
     {
+      preHandler: tenantScopeFromQuery,
       schema: buildRouteSchema({
         tag: CORE_PROXY_TAG,
         summary: "Proxy room type partial updates to the rooms service.",
@@ -137,6 +173,7 @@ export const registerRoomRoutes = (app: FastifyInstance): void => {
   app.delete(
     "/v1/room-types/*",
     {
+      preHandler: tenantScopeFromQuery,
       schema: buildRouteSchema({
         tag: CORE_PROXY_TAG,
         summary: "Proxy room type deletion to the rooms service.",
@@ -152,9 +189,11 @@ export const registerRoomRoutes = (app: FastifyInstance): void => {
   app.get(
     "/v1/rates",
     {
+      preHandler: tenantScopeFromQuery,
       schema: buildRouteSchema({
         tag: CORE_PROXY_TAG,
         summary: "List rates for a tenant.",
+        querystring: paginationQuerySchema,
         response: {
           200: jsonObjectSchema,
         },
@@ -166,6 +205,7 @@ export const registerRoomRoutes = (app: FastifyInstance): void => {
   app.post(
     "/v1/rates",
     {
+      preHandler: tenantScopeFromQuery,
       schema: buildRouteSchema({
         tag: CORE_PROXY_TAG,
         summary: "Create a new rate.",
@@ -181,6 +221,7 @@ export const registerRoomRoutes = (app: FastifyInstance): void => {
   app.all(
     "/v1/rates/*",
     {
+      preHandler: tenantScopeFromQuery,
       schema: buildRouteSchema({
         tag: CORE_PROXY_TAG,
         summary: "Proxy rate operations to rooms service.",
@@ -197,6 +238,7 @@ export const registerRoomRoutes = (app: FastifyInstance): void => {
   app.get(
     "/v1/rate-calendar",
     {
+      preHandler: tenantScopeFromQuery,
       schema: buildRouteSchema({
         tag: CORE_PROXY_TAG,
         summary: "List rate calendar entries for a date range.",
@@ -211,6 +253,7 @@ export const registerRoomRoutes = (app: FastifyInstance): void => {
   app.put(
     "/v1/rate-calendar",
     {
+      preHandler: tenantScopeFromQuery,
       schema: buildRouteSchema({
         tag: CORE_PROXY_TAG,
         summary: "Bulk upsert rate calendar day entries.",
@@ -226,6 +269,7 @@ export const registerRoomRoutes = (app: FastifyInstance): void => {
   app.post(
     "/v1/rate-calendar/range-fill",
     {
+      preHandler: tenantScopeFromQuery,
       schema: buildRouteSchema({
         tag: CORE_PROXY_TAG,
         summary: "Fill a date range with a uniform rate.",
@@ -233,6 +277,47 @@ export const registerRoomRoutes = (app: FastifyInstance): void => {
         response: {
           200: jsonObjectSchema,
         },
+      }),
+    },
+    proxyRooms,
+  );
+
+  // ─── Availability / ARI Endpoints ──────────────────────────
+
+  app.get(
+    "/v1/availability",
+    {
+      preHandler: tenantScopeFromQuery,
+      schema: buildRouteSchema({
+        tag: AVAILABILITY_TAG,
+        summary: "Query room availability for a date range (ARI: availability, rates, inventory).",
+        response: { 200: jsonObjectSchema },
+      }),
+    },
+    proxyRooms,
+  );
+
+  app.get(
+    "/v1/availability/calendar",
+    {
+      preHandler: tenantScopeFromQuery,
+      schema: buildRouteSchema({
+        tag: AVAILABILITY_TAG,
+        summary: "Room availability calendar view by room type and date.",
+        response: { 200: jsonObjectSchema },
+      }),
+    },
+    proxyRooms,
+  );
+
+  app.get(
+    "/v1/availability/room-types",
+    {
+      preHandler: tenantScopeFromQuery,
+      schema: buildRouteSchema({
+        tag: AVAILABILITY_TAG,
+        summary: "Available room types with counts for a date range.",
+        response: { 200: jsonObjectSchema },
       }),
     },
     proxyRooms,
@@ -249,7 +334,7 @@ export const registerRoomRoutes = (app: FastifyInstance): void => {
         params: tenantRoomParamsSchema,
         body: jsonObjectSchema,
         response: {
-          202: jsonObjectSchema,
+          202: commandAcceptedSchema,
         },
       }),
     },
@@ -271,7 +356,7 @@ export const registerRoomRoutes = (app: FastifyInstance): void => {
         params: tenantRoomParamsSchema,
         body: jsonObjectSchema,
         response: {
-          202: jsonObjectSchema,
+          202: commandAcceptedSchema,
         },
       }),
     },
@@ -293,7 +378,7 @@ export const registerRoomRoutes = (app: FastifyInstance): void => {
         params: tenantRoomParamsSchema,
         body: jsonObjectSchema,
         response: {
-          202: jsonObjectSchema,
+          202: commandAcceptedSchema,
         },
       }),
     },
@@ -317,7 +402,7 @@ export const registerRoomRoutes = (app: FastifyInstance): void => {
         params: tenantRoomParamsSchema,
         body: jsonObjectSchema,
         response: {
-          202: jsonObjectSchema,
+          202: commandAcceptedSchema,
         },
       }),
     },
@@ -341,7 +426,7 @@ export const registerRoomRoutes = (app: FastifyInstance): void => {
         params: tenantRoomParamsSchema,
         body: jsonObjectSchema,
         response: {
-          202: jsonObjectSchema,
+          202: commandAcceptedSchema,
         },
       }),
     },
@@ -365,7 +450,7 @@ export const registerRoomRoutes = (app: FastifyInstance): void => {
         params: tenantRoomParamsSchema,
         body: jsonObjectSchema,
         response: {
-          202: jsonObjectSchema,
+          202: commandAcceptedSchema,
         },
       }),
     },
@@ -389,7 +474,7 @@ export const registerRoomRoutes = (app: FastifyInstance): void => {
         params: tenantRoomParamsSchema,
         body: jsonObjectSchema,
         response: {
-          202: jsonObjectSchema,
+          202: commandAcceptedSchema,
         },
       }),
     },

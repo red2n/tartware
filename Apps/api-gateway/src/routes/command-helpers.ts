@@ -19,6 +19,7 @@ import type { FastifyReply, FastifyRequest } from "fastify";
 
 import { submitCommand } from "../utils/command-publisher.js";
 
+/** Register a new guest via the `guest.register` command. Requires `MANAGER` role. */
 export const forwardGuestRegisterCommand = async (
   request: FastifyRequest,
   reply: FastifyReply,
@@ -49,6 +50,7 @@ export const forwardGuestRegisterCommand = async (
   });
 };
 
+/** Merge two duplicate guest profiles via the `guest.merge` command. Requires `MANAGER` role. */
 export const forwardGuestMergeCommand = async (
   request: FastifyRequest,
   reply: FastifyReply,
@@ -87,6 +89,12 @@ const getParamValue = (request: FastifyRequest, key: string): string | null => {
   return typeof value === "string" ? value : null;
 };
 
+/**
+ * Forward a command using the tenant ID from route params.
+ *
+ * Extracts `tenantId` from path parameters and publishes the given
+ * command to Kafka with the request body as payload.
+ */
 export const forwardCommandWithTenant = async ({
   request,
   reply,
@@ -112,6 +120,13 @@ export const forwardCommandWithTenant = async ({
   });
 };
 
+/**
+ * Forward a command using tenant ID and a named resource ID from route params.
+ *
+ * Extracts `tenantId` and the specified `paramKey` from path parameters,
+ * injects the resource ID into the payload under `payloadKey`, and
+ * publishes the command to Kafka.
+ */
 export const forwardCommandWithParamId = async ({
   request,
   reply,
@@ -145,6 +160,10 @@ export const forwardCommandWithParamId = async ({
   });
 };
 
+/**
+ * Dispatch an arbitrary command by name using `tenantId` and `commandName`
+ * from route params. Used by the generic command dispatch endpoint.
+ */
 export const forwardGenericCommand = async (
   request: FastifyRequest,
   reply: FastifyReply,
@@ -168,6 +187,13 @@ export const forwardGenericCommand = async (
   });
 };
 
+/**
+ * Route reservation write requests to the appropriate command based on HTTP method.
+ *
+ * - `POST` → `reservation.create`
+ * - `PUT`/`PATCH` → `reservation.modify`
+ * - `DELETE` → `reservation.cancel`
+ */
 export const forwardReservationCommand = async (
   request: FastifyRequest,
   reply: FastifyReply,
@@ -255,6 +281,7 @@ const extractReservationId = (params: Record<string, unknown>): string | null =>
   return null;
 };
 
+/** Assign a housekeeping task to a staff member via the `housekeeping.task.assign` command. */
 export const forwardHousekeepingAssignCommand = async (
   request: FastifyRequest,
   reply: FastifyReply,
@@ -285,6 +312,7 @@ export const forwardHousekeepingAssignCommand = async (
   });
 };
 
+/** Mark a housekeeping task as completed via the `housekeeping.task.complete` command. */
 export const forwardHousekeepingCompleteCommand = async (
   request: FastifyRequest,
   reply: FastifyReply,
@@ -308,6 +336,10 @@ export const forwardHousekeepingCompleteCommand = async (
   });
 };
 
+/**
+ * Block or release room inventory via `rooms.inventory.block` or
+ * `rooms.inventory.release` commands.
+ */
 export const forwardRoomInventoryCommand = async ({
   request,
   reply,
@@ -346,6 +378,7 @@ export const forwardRoomInventoryCommand = async ({
   });
 };
 
+/** Capture a payment via the `billing.payment.capture` command. */
 export const forwardBillingCaptureCommand = async (
   request: FastifyRequest,
   reply: FastifyReply,
@@ -373,6 +406,7 @@ export const forwardBillingCaptureCommand = async (
   });
 };
 
+/** Refund a specific payment via the `billing.payment.refund` command. */
 export const forwardBillingRefundCommand = async (
   request: FastifyRequest,
   reply: FastifyReply,

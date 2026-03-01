@@ -1,3 +1,4 @@
+import type { FastifyInstance } from "fastify";
 import fp from "fastify-plugin";
 
 import { config } from "../config.js";
@@ -9,7 +10,7 @@ import { buildBackfillJob } from "../jobs/backfill.js";
  * Job startup is deferred to the `onReady` hook to avoid blocking Fastify
  * plugin registration (the first batch hits the database synchronously).
  */
-export default fp(async (app) => {
+export default fp(async (app: FastifyInstance) => {
   if (!config.backfill.enabled) {
     app.log.info("Roll backfill job disabled via config");
     return;
