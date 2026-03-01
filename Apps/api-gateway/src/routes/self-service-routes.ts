@@ -1,3 +1,16 @@
+/**
+ * Self-service (guest-facing) proxy routes.
+ *
+ * Proxies mobile/web self-service flows to the guest-experience
+ * service — mobile check-in, registration card retrieval, mobile
+ * key access, room availability search, direct booking, and
+ * booking lookup by confirmation code.
+ *
+ * These endpoints are typically unauthenticated or use guest tokens
+ * rather than staff JWTs.
+ *
+ * @module self-service-routes
+ */
 import { buildRouteSchema, jsonObjectSchema } from "@tartware/openapi";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 
@@ -6,6 +19,7 @@ import { proxyRequest } from "../utils/proxy.js";
 
 import { commandAcceptedSchema, SELF_SERVICE_PROXY_TAG } from "./schemas.js";
 
+/** Register guest-facing self-service proxy routes on the gateway. */
 export const registerSelfServiceRoutes = (app: FastifyInstance): void => {
   const proxySelfService = async (request: FastifyRequest, reply: FastifyReply) =>
     proxyRequest(request, reply, serviceTargets.guestExperienceServiceUrl);

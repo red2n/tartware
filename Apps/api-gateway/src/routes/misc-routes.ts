@@ -1,3 +1,16 @@
+/**
+ * Miscellaneous proxy and command routes.
+ *
+ * Groups lower-traffic route families that don’t warrant their own file:
+ * - **Command Center** — Admin command browsing and generic command dispatch
+ *   with a command-tier rate limit.
+ * - **Settings** — Tenant settings and package configuration proxy.
+ * - **Recommendations** — Personalized room ranking proxy.
+ * - **Notifications** — Template CRUD, send, communication history, and
+ *   automated message rule management.
+ *
+ * @module misc-routes
+ */
 import { buildRouteSchema, jsonObjectSchema } from "@tartware/openapi";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 
@@ -20,6 +33,7 @@ import {
   tenantCommandParamsSchema,
 } from "./schemas.js";
 
+/** Register command center, settings, recommendation, and notification routes on the gateway. */
 export const registerMiscRoutes = (app: FastifyInstance): void => {
   const tenantScopeFromParams = app.withTenantScope({
     resolveTenantId: (request) => (request.params as { tenantId?: string }).tenantId,

@@ -1,3 +1,13 @@
+/**
+ * Front-desk and back-office operations proxy routes.
+ *
+ * Proxies CRUD operations for operational entities — cashier sessions,
+ * shift handovers, lost-and-found items, banquet event orders, guest
+ * feedback, police/incident reports, and compliance breach incidents —
+ * to the core service.
+ *
+ * @module operations-routes
+ */
 import { buildRouteSchema, jsonObjectSchema } from "@tartware/openapi";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 
@@ -6,6 +16,7 @@ import { proxyRequest } from "../utils/proxy.js";
 
 import { OPERATIONS_TAG } from "./schemas.js";
 
+/** Register front-desk operations proxy routes on the gateway. */
 export const registerOperationsRoutes = (app: FastifyInstance): void => {
   const proxyCore = async (request: FastifyRequest, reply: FastifyReply) =>
     proxyRequest(request, reply, serviceTargets.coreServiceUrl);

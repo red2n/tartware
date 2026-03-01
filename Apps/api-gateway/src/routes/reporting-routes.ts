@@ -1,3 +1,16 @@
+/**
+ * Reporting proxy routes.
+ *
+ * Proxies all report endpoints to the core service. Includes
+ * front-desk reports (arrivals, departures, in-house, no-show),
+ * revenue reports (revenue summary, daily revenue), occupancy
+ * and forecast reports, manager flash and STR metrics, housekeeping
+ * status, and night audit summaries.
+ *
+ * All endpoints require `MANAGER` role and the `core` module.
+ *
+ * @module reporting-routes
+ */
 import { buildRouteSchema, jsonObjectSchema } from "@tartware/openapi";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 
@@ -6,6 +19,7 @@ import { proxyRequest } from "../utils/proxy.js";
 
 import { paginationQuerySchema, REPORTING_TAG } from "./schemas.js";
 
+/** Register reporting proxy routes on the gateway. */
 export const registerReportingRoutes = (app: FastifyInstance): void => {
   const proxyCore = async (request: FastifyRequest, reply: FastifyReply) =>
     proxyRequest(request, reply, serviceTargets.coreServiceUrl);

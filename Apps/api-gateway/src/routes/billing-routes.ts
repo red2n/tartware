@@ -1,3 +1,13 @@
+/**
+ * Billing proxy and command routes.
+ *
+ * Read endpoints (GET) are proxied directly to the billing service.
+ * Write endpoints (POST) dispatch commands through the Command Center
+ * pipeline for asynchronous processing (payment capture, refund,
+ * invoice creation, folio transfer, cashier session management).
+ *
+ * @module billing-routes
+ */
 import { buildRouteSchema, jsonObjectSchema } from "@tartware/openapi";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 
@@ -20,6 +30,7 @@ import {
   tenantPaymentParamsSchema,
 } from "./schemas.js";
 
+/** Register billing read-proxy and command-dispatch routes on the gateway. */
 export const registerBillingRoutes = (app: FastifyInstance): void => {
   const proxyBilling = async (request: FastifyRequest, reply: FastifyReply) =>
     proxyRequest(request, reply, serviceTargets.billingServiceUrl);

@@ -1,3 +1,14 @@
+/**
+ * Housekeeping proxy and command routes.
+ *
+ * Read endpoints (GET) proxy to the housekeeping service for task
+ * queries, incidents, and maintenance records. Write endpoints (POST)
+ * dispatch commands through the Command Center for task assignment,
+ * completion, creation, reassignment, reopening, note addition, and
+ * bulk status updates.
+ *
+ * @module housekeeping-routes
+ */
 import { buildRouteSchema, jsonObjectSchema } from "@tartware/openapi";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 
@@ -19,6 +30,7 @@ import {
   tenantTaskParamsSchema,
 } from "./schemas.js";
 
+/** Register housekeeping read-proxy and command-dispatch routes on the gateway. */
 export const registerHousekeepingRoutes = (app: FastifyInstance): void => {
   const proxyHousekeeping = async (request: FastifyRequest, reply: FastifyReply) =>
     proxyRequest(request, reply, serviceTargets.housekeepingServiceUrl);

@@ -1,3 +1,16 @@
+/**
+ * Gateway health, readiness, and aggregated service-health routes.
+ *
+ * - `/health` — Lightweight liveness probe (always returns 200 when the
+ *   process is running).
+ * - `/ready` — Dependency-aware readiness probe that checks the database,
+ *   Kafka broker list, and core-service connectivity. Returns 503 when any
+ *   dependency is degraded.
+ * - `/health/all` — Fan-out health check against every registered upstream
+ *   service; used by monitoring dashboards.
+ *
+ * @module health-routes
+ */
 import { buildRouteSchema } from "@tartware/openapi";
 import type { FastifyInstance, FastifyReply } from "fastify";
 
@@ -16,6 +29,13 @@ interface ServiceHealthResult {
   error?: string;
 }
 
+/**
+ * Probe a single upstream service’s `/health` endpoint.
+ *
+ * @param name - Human-readable service identifier for reporting.
+ * @param baseUrl - Base URL of the upstream service (e.g. `http://localhost:3000`).
+ * @returns Health check result with status and latency.
+ */
 async function checkServiceHealth(name: string, baseUrl: string): Promise<ServiceHealthResult> {
   const start = performance.now();
   try {
@@ -38,6 +58,7 @@ async function checkServiceHealth(name: string, baseUrl: string): Promise<Servic
   }
 }
 
+/** Register health, readiness, and aggregated health routes on the gateway. */
 export const registerHealthRoutes = (app: FastifyInstance): void => {
   const allowCorsHeaders = (reply: FastifyReply): FastifyReply =>
     reply

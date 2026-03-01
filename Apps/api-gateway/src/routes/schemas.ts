@@ -1,19 +1,49 @@
+/**
+ * Shared JSON schemas and OpenAPI tag constants for gateway routes.
+ *
+ * Centralizes:
+ * - **Tag constants** for Swagger grouping across all route files.
+ * - **Path parameter schemas** (tenant + resource ID combinations).
+ * - **Pagination schemas** (query params and paginated list envelope).
+ * - **Command accepted response** (standard 202 shape).
+ * - **Webhook schemas** (subscription and delivery log).
+ *
+ * Route files import from here to avoid duplicating schema definitions.
+ *
+ * @module schemas
+ */
 import type { JsonSchema } from "@tartware/openapi";
 
+// ─── OpenAPI Tag Constants ──────────────────────────────────────
+
+/** @internal Gateway health check endpoints. */
 export const HEALTH_TAG = "Gateway Health";
+/** @internal Reservation read-proxy and command endpoints. */
 export const RESERVATION_PROXY_TAG = "Reservation Proxy";
+/** @internal Core service proxy endpoints (tenants, properties, auth, users). */
 export const CORE_PROXY_TAG = "Core Proxy";
+/** @internal Command center admin and dispatch endpoints. */
 export const COMMAND_CENTER_PROXY_TAG = "Command Center Proxy";
+/** @internal Settings and package proxy endpoints. */
 export const SETTINGS_PROXY_TAG = "Settings Proxy";
+/** @internal Guest management endpoints. */
 export const GUESTS_PROXY_TAG = "Guests Proxy";
+/** @internal Billing read-proxy endpoints. */
 export const BILLING_PROXY_TAG = "Billing Proxy";
+/** @internal Housekeeping command endpoints. */
 export const HOUSEKEEPING_COMMAND_TAG = "Housekeeping Commands";
+/** @internal Room inventory command endpoints. */
 export const ROOM_COMMAND_TAG = "Room Commands";
+/** @internal Billing command endpoints. */
 export const BILLING_COMMAND_TAG = "Billing Commands";
+/** @internal Recommendation engine endpoints. */
 export const RECOMMENDATION_PROXY_TAG = "Recommendations";
+/** @internal Notification read-proxy endpoints. */
 export const NOTIFICATION_PROXY_TAG = "Notification Proxy";
+/** @internal Notification command endpoints. */
 export const NOTIFICATION_COMMAND_TAG = "Notification Commands";
 
+/** JSON Schema for the `/health` response body. */
 export const healthResponseSchema = {
   type: "object",
   properties: {
@@ -24,6 +54,7 @@ export const healthResponseSchema = {
   additionalProperties: false,
 } as const satisfies JsonSchema;
 
+/** Path params schema for tenant-scoped routes (`/:tenantId`). */
 export const reservationParamsSchema = {
   type: "object",
   properties: {
@@ -37,6 +68,7 @@ export const reservationParamsSchema = {
   additionalProperties: false,
 } as const satisfies JsonSchema;
 
+/** Path params schema for tenant + housekeeping task routes. */
 export const tenantTaskParamsSchema = {
   type: "object",
   properties: {
@@ -55,6 +87,7 @@ export const tenantTaskParamsSchema = {
   additionalProperties: false,
 } as const satisfies JsonSchema;
 
+/** Path params schema for tenant + room routes. */
 export const tenantRoomParamsSchema = {
   type: "object",
   properties: {
@@ -73,6 +106,7 @@ export const tenantRoomParamsSchema = {
   additionalProperties: false,
 } as const satisfies JsonSchema;
 
+/** Path params schema for tenant + guest routes. */
 export const tenantGuestParamsSchema = {
   type: "object",
   properties: {
@@ -91,6 +125,7 @@ export const tenantGuestParamsSchema = {
   additionalProperties: false,
 } as const satisfies JsonSchema;
 
+/** Path params schema for tenant + reservation routes. */
 export const tenantReservationParamsSchema = {
   type: "object",
   properties: {
@@ -109,6 +144,7 @@ export const tenantReservationParamsSchema = {
   additionalProperties: false,
 } as const satisfies JsonSchema;
 
+/** Path params schema for tenant + waitlist entry routes. */
 export const waitlistConvertParamsSchema = {
   type: "object",
   properties: {
@@ -127,6 +163,7 @@ export const waitlistConvertParamsSchema = {
   additionalProperties: false,
 } as const satisfies JsonSchema;
 
+/** Path params schema for tenant + payment routes. */
 export const tenantPaymentParamsSchema = {
   type: "object",
   properties: {
@@ -145,6 +182,7 @@ export const tenantPaymentParamsSchema = {
   additionalProperties: false,
 } as const satisfies JsonSchema;
 
+/** Path params schema for tenant + invoice routes. */
 export const tenantInvoiceParamsSchema = {
   type: "object",
   properties: {
@@ -163,6 +201,7 @@ export const tenantInvoiceParamsSchema = {
   additionalProperties: false,
 } as const satisfies JsonSchema;
 
+/** Path params schema for tenant + generic command dispatch routes. */
 export const tenantCommandParamsSchema = {
   type: "object",
   properties: {
@@ -182,14 +221,23 @@ export const tenantCommandParamsSchema = {
 
 // ─── Tags ──────────────────────────────────────────────────────
 
+/** @internal Front-desk and back-office operations endpoints. */
 export const OPERATIONS_TAG = "Operations";
+/** @internal Booking configuration entity endpoints. */
 export const BOOKING_CONFIG_TAG = "Booking Configuration";
+/** @internal Report and analytics endpoints. */
 export const REPORTING_TAG = "Reporting";
+/** @internal Room availability / ARI query endpoints. */
 export const AVAILABILITY_TAG = "Availability";
+/** @internal Webhook subscription management endpoints. */
 export const WEBHOOK_TAG = "Webhooks";
+/** @internal GDPR / CCPA privacy compliance endpoints. */
 export const GDPR_TAG = "GDPR / Privacy";
+/** @internal Guest-facing self-service endpoints. */
 export const SELF_SERVICE_PROXY_TAG = "Self-Service Proxy";
+/** @internal Revenue management proxy endpoints. */
 export const REVENUE_PROXY_TAG = "Revenue Proxy";
+/** @internal Calculation engine proxy endpoints. */
 export const CALCULATION_PROXY_TAG = "Calculation Proxy";
 
 // ─── Pagination Envelope ────────────────────────────────────────
@@ -261,6 +309,7 @@ export const commandAcceptedSchema = {
 
 // ─── Webhook Schemas ────────────────────────────────────────────
 
+/** Path params schema for tenant + webhook subscription routes. */
 export const tenantWebhookParamsSchema = {
   type: "object",
   properties: {
@@ -271,6 +320,7 @@ export const tenantWebhookParamsSchema = {
   additionalProperties: false,
 } as const satisfies JsonSchema;
 
+/** JSON Schema describing a webhook subscription resource. */
 export const webhookSubscriptionSchema = {
   type: "object",
   properties: {
@@ -287,6 +337,7 @@ export const webhookSubscriptionSchema = {
   additionalProperties: false,
 } as const satisfies JsonSchema;
 
+/** JSON Schema describing a webhook delivery log entry. */
 export const webhookDeliverySchema = {
   type: "object",
   properties: {

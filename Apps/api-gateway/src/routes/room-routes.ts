@@ -1,3 +1,15 @@
+/**
+ * Room, room-type, rate, rate-calendar, and availability proxy routes,
+ * plus room inventory command routes.
+ *
+ * Read endpoints (GET) proxy to the rooms service for room/type/rate
+ * queries and ARI (availability, rates, inventory) lookups.
+ * Write endpoints (POST) dispatch commands through the Command Center
+ * for room blocking/releasing, status updates, and housekeeping
+ * status changes.
+ *
+ * @module room-routes
+ */
 import { buildRouteSchema, jsonObjectSchema } from "@tartware/openapi";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 
@@ -14,6 +26,7 @@ import {
   tenantRoomParamsSchema,
 } from "./schemas.js";
 
+/** Register room/rate/availability proxy and inventory command routes on the gateway. */
 export const registerRoomRoutes = (app: FastifyInstance): void => {
   const proxyRooms = async (request: FastifyRequest, reply: FastifyReply) =>
     proxyRequest(request, reply, serviceTargets.roomsServiceUrl);

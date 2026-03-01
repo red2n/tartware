@@ -1,3 +1,13 @@
+/**
+ * Core service proxy routes.
+ *
+ * Proxies tenant management, property CRUD, dashboard views,
+ * module catalog, authentication, user management, and system
+ * admin endpoints to the core service. Auth routes apply a
+ * stricter rate-limit tier to mitigate brute-force attacks.
+ *
+ * @module core-proxy-routes
+ */
 import { buildRouteSchema, jsonObjectSchema } from "@tartware/openapi";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { gatewayConfig, serviceTargets } from "../config.js";
@@ -5,6 +15,7 @@ import { proxyRequest } from "../utils/proxy.js";
 
 import { CORE_PROXY_TAG, reservationParamsSchema } from "./schemas.js";
 
+/** Register core service proxy routes on the gateway. */
 export const registerCoreProxyRoutes = (app: FastifyInstance): void => {
   const proxyCore = async (request: FastifyRequest, reply: FastifyReply) =>
     proxyRequest(request, reply, serviceTargets.coreServiceUrl);

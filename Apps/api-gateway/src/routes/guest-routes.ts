@@ -1,3 +1,14 @@
+/**
+ * Guest management proxy and command routes.
+ *
+ * Read endpoints (GET) proxy to the guests service for guest search,
+ * loyalty, and compliance queries. Write endpoints (POST) dispatch
+ * commands through the Command Center for guest registration, profile
+ * updates, VIP/blacklist management, GDPR erasure/rectification,
+ * and consent management.
+ *
+ * @module guest-routes
+ */
 import { buildRouteSchema, jsonObjectSchema } from "@tartware/openapi";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 
@@ -17,6 +28,7 @@ import {
   tenantGuestParamsSchema,
 } from "./schemas.js";
 
+/** Register guest read-proxy and command-dispatch routes on the gateway. */
 export const registerGuestRoutes = (app: FastifyInstance): void => {
   const proxyGuests = async (request: FastifyRequest, reply: FastifyReply) =>
     proxyRequest(request, reply, serviceTargets.guestsServiceUrl);

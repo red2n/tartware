@@ -1,3 +1,15 @@
+/**
+ * Webhook subscription management and delivery routes.
+ *
+ * Provides full CRUD for per-tenant webhook subscriptions, HMAC
+ * signing-secret rotation, delivery log inspection, failed-delivery
+ * replay, and test-event dispatch. Write operations flow through
+ * the Command Center pipeline; reads are proxied to the core service.
+ *
+ * All endpoints require `ADMIN` role and the `core` module.
+ *
+ * @module webhook-routes
+ */
 import { buildRouteSchema, jsonObjectSchema } from "@tartware/openapi";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 
@@ -16,6 +28,7 @@ import {
   webhookSubscriptionSchema,
 } from "./schemas.js";
 
+/** Register webhook subscription CRUD, delivery log, and test routes on the gateway. */
 export const registerWebhookRoutes = (app: FastifyInstance): void => {
   const proxyCore = async (request: FastifyRequest, reply: FastifyReply) =>
     proxyRequest(request, reply, serviceTargets.coreServiceUrl);
