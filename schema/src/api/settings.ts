@@ -90,6 +90,68 @@ export const PackagePricingModelEnum = z.enum([
 export type PackagePricingModel = z.infer<typeof PackagePricingModelEnum>;
 
 /**
+ * Create package request body schema.
+ */
+export const CreatePackageBodySchema = z.object({
+	tenant_id: uuid,
+	property_id: uuid.optional(),
+	package_name: z.string().min(1).max(200),
+	package_code: z
+		.string()
+		.min(2)
+		.max(50)
+		.regex(/^[A-Za-z0-9_-]+$/),
+	package_type: z.string().min(1),
+	short_description: z.string().max(500).optional(),
+	valid_from: z.string().refine((v) => !Number.isNaN(Date.parse(v)), "Valid ISO date required"),
+	valid_to: z.string().refine((v) => !Number.isNaN(Date.parse(v)), "Valid ISO date required"),
+	min_nights: z.number().int().min(1).default(1),
+	max_nights: z.number().int().min(1).optional(),
+	min_guests: z.number().int().min(1).default(1),
+	max_guests: z.number().int().min(1).optional(),
+	pricing_model: z.string().min(1).default("per_night"),
+	base_price: z.number().min(0),
+	includes_breakfast: z.boolean().default(false),
+	includes_lunch: z.boolean().default(false),
+	includes_dinner: z.boolean().default(false),
+	includes_parking: z.boolean().default(false),
+	includes_wifi: z.boolean().default(false),
+	includes_airport_transfer: z.boolean().default(false),
+	refundable: z.boolean().default(true),
+	free_cancellation_days: z.number().int().min(0).optional(),
+	total_inventory: z.number().int().min(0).optional(),
+});
+
+export type CreatePackageBody = z.infer<typeof CreatePackageBodySchema>;
+
+/**
+ * Create package response schema.
+ */
+export const CreatePackageResponseSchema = z.object({
+	package_id: uuid,
+	message: z.string(),
+});
+
+export type CreatePackageResponse = z.infer<typeof CreatePackageResponseSchema>;
+
+/**
+ * Update package request body schema.
+ * All fields optional — only provided fields are updated.
+ */
+export const UpdatePackageBodySchema = z.object({
+	tenant_id: uuid,
+	is_active: z.boolean().optional(),
+	includes_breakfast: z.boolean().optional(),
+	includes_lunch: z.boolean().optional(),
+	includes_dinner: z.boolean().optional(),
+	includes_parking: z.boolean().optional(),
+	includes_wifi: z.boolean().optional(),
+	includes_airport_transfer: z.boolean().optional(),
+});
+
+export type UpdatePackageBody = z.infer<typeof UpdatePackageBodySchema>;
+
+/**
  * Package list item schema for API responses.
  */
 export const PackageListItemSchema = z.object({
@@ -197,6 +259,49 @@ export const PackageComponentListItemSchema = z.object({
 
 export type PackageComponentListItem = z.infer<
 	typeof PackageComponentListItemSchema
+>;
+
+/**
+ * Schema for creating a new package component via API.
+ */
+export const CreatePackageComponentBodySchema = z.object({
+	tenant_id: uuid,
+	component_type: z.enum([
+		"service",
+		"amenity",
+		"meal",
+		"activity",
+		"transportation",
+		"upgrade",
+		"credit",
+		"voucher",
+		"other",
+	]),
+	component_name: z.string().min(1).max(255),
+	component_description: z.string().max(1000).optional(),
+	quantity: z.number().int().min(1).default(1),
+	pricing_type: z.enum([
+		"per_night",
+		"per_stay",
+		"per_person",
+		"per_person_per_night",
+		"once",
+		"daily",
+		"included",
+	]),
+	unit_price: z.number().min(0).default(0),
+	is_included: z.boolean().default(true),
+	is_optional: z.boolean().default(false),
+	is_mandatory: z.boolean().default(true),
+	delivery_timing: z
+		.enum(["on_arrival", "on_departure", "daily", "specific_date", "on_request", "anytime"])
+		.optional(),
+	delivery_location: z.string().max(255).optional(),
+	display_order: z.number().int().min(0).default(0),
+});
+
+export type CreatePackageComponentBody = z.infer<
+	typeof CreatePackageComponentBodySchema
 >;
 
 // =====================================================

@@ -1,5 +1,5 @@
 import { buildRouteSchema, errorResponseSchema, schemaFromZod } from "@tartware/openapi";
-import { LoyaltyPointTransactionsSchema, LoyaltyTierRulesSchema } from "@tartware/schemas";
+import { LoyaltyPointTransactionsSchema, LoyaltyTierRulesSchema, ProgramBalanceResponseSchema } from "@tartware/schemas";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 
@@ -49,15 +49,6 @@ const ProgramBalanceQuerySchema = z.object({
   tenant_id: z.string().uuid(),
 });
 
-const ProgramBalanceResponseSchema = z.object({
-  program_id: z.string().uuid(),
-  guest_id: z.string().uuid(),
-  tier_name: z.string().nullable(),
-  points_balance: z.number().int(),
-  points_earned_lifetime: z.number().int(),
-  points_redeemed_lifetime: z.number().int(),
-  last_activity_date: z.coerce.date().nullable(),
-});
 
 const ProgramBalanceResponseJsonSchema = schemaFromZod(
   ProgramBalanceResponseSchema,

@@ -27,6 +27,7 @@ export class SidebarComponent {
 		{ label: "Rooms", icon: "hotel", route: "/rooms" },
 		{ label: "Rates", icon: "payments", route: "/rates" },
 		{ label: "Rate Calendar", icon: "calendar_month", route: "/rate-calendar" },
+		{ label: "Packages", icon: "card_giftcard", route: "/packages" },
 		{
 			label: "Housekeeping",
 			icon: "cleaning_services",

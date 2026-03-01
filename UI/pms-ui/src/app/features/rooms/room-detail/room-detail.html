@@ -91,9 +91,9 @@
           @for (opt of housekeepingOptions; track opt.value) {
             <button
               class="btn btn-sm"
-              [class.btn-primary]="r.housekeeping_status === opt.value"
-              [class.btn-outline]="r.housekeeping_status !== opt.value"
-              [disabled]="updatingHousekeeping() || r.housekeeping_status === opt.value"
+              [class.btn-primary]="r.housekeeping_status.toUpperCase() === opt.value"
+              [class.btn-outline]="r.housekeeping_status.toUpperCase() !== opt.value"
+              [disabled]="updatingHousekeeping() || r.housekeeping_status.toUpperCase() === opt.value"
               (click)="updateHousekeepingStatus(opt.value)"
               [matTooltip]="'Mark as ' + opt.label">
               @if (updatingHousekeeping()) {

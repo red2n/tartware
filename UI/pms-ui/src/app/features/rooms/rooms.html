@@ -39,6 +39,38 @@
     </div>
   </div>
 
+  <!-- ═════════════════════════════════════════════ -->
+  <!-- ROOM RECOMMENDATIONS                         -->
+  <!-- ═════════════════════════════════════════════ -->
+  <div class="rec-bar">
+    <mat-icon class="rec-icon">auto_awesome</mat-icon>
+    <span class="rec-label">Recommendations</span>
+    <label class="rec-field">
+      <span class="rec-field-label">Check-in</span>
+      <input type="date" class="rec-date-input"
+             [ngModel]="checkInDate()"
+             (ngModelChange)="onCheckInDate($event)" />
+    </label>
+    <mat-icon class="rec-arrow">arrow_forward</mat-icon>
+    <label class="rec-field">
+      <span class="rec-field-label">Check-out</span>
+      <input type="date" class="rec-date-input"
+             [ngModel]="checkOutDate()"
+             (ngModelChange)="onCheckOutDate($event)" />
+    </label>
+    @if (hasRecommendations()) {
+      <span class="rec-active-badge">
+        <mat-icon>check_circle</mat-icon>
+        Active
+      </span>
+    }
+    @if (checkInDate() || checkOutDate()) {
+      <button class="btn btn-invisible btn-sm rec-clear-btn" (click)="clearRecommendations()" matTooltip="Clear">
+        <mat-icon>close</mat-icon>
+      </button>
+    }
+  </div>
+
   <!-- Content -->
   @if (loading()) {
     <div class="loading-state">
@@ -69,6 +101,11 @@
         <table class="data-table">
           <thead>
             <tr>
+              @if (hasRecommendations()) {
+                <th [attr.aria-sort]="ariaSort('recommendation_rank')">
+                  <button type="button" class="th-sort-btn" (click)="onSort('recommendation_rank')">Rank <mat-icon class="sort-indicator">{{ sortIcon('recommendation_rank') }}</mat-icon></button>
+                </th>
+              }
               <th [attr.aria-sort]="ariaSort('room_number')">
                 <button type="button" class="th-sort-btn" (click)="onSort('room_number')">Room <mat-icon class="sort-indicator">{{ sortIcon('room_number') }}</mat-icon></button>
               </th>
@@ -83,6 +120,11 @@
                   <button type="button" class="th-sort-btn" (click)="onSort('status')">Status <mat-icon class="sort-indicator">{{ sortIcon('status') }}</mat-icon></button>
                 </th>
               }
+              @if (hasRecommendations()) {
+                <th [attr.aria-sort]="ariaSort('recommendation_score')">
+                  <button type="button" class="th-sort-btn" (click)="onSort('recommendation_score')">Score <mat-icon class="sort-indicator">{{ sortIcon('recommendation_score') }}</mat-icon></button>
+                </th>
+              }
               <th>Amenities</th>
               <th [attr.aria-sort]="ariaSort('housekeeping_status')">
                 <button type="button" class="th-sort-btn" (click)="onSort('housekeeping_status')">Housekeeping <mat-icon class="sort-indicator">{{ sortIcon('housekeeping_status') }}</mat-icon></button>
@@ -94,6 +136,17 @@
           <tbody>
             @for (room of paginatedRooms(); track room.room_id) {
               <tr class="row-clickable" tabindex="0" (click)="viewRoom(room.room_id)" (keydown.enter)="viewRoom(room.room_id)" (keydown.space)="$event.preventDefault(); viewRoom(room.room_id)">
+                @if (hasRecommendations()) {
+                  <td class="cell-rank">
+                    @if (room.recommendation_rank != null) {
+                      <span class="rank-badge" [matTooltip]="(room.recommendation_reasons ?? []).join(', ')">
+                        #{{ room.recommendation_rank }}
+                      </span>
+                    } @else {
+                      <span class="text-muted">—</span>
+                    }
+                  </td>
+                }
                 <td class="cell-primary">
                   <span class="room-number">{{ room.room_number }}</span>
                   @if (room.room_name) {
@@ -113,6 +166,19 @@
                     }
                     @if (room.is_out_of_order && room.status !== 'out_of_order') {
                       <span class="badge badge-danger" [matTooltip]="room.out_of_order_reason ?? ''">OOO</span>
+                    }
+                  </td>
+                }
+                @if (hasRecommendations()) {
+                  <td class="cell-score">
+                    @if (room.recommendation_score != null) {
+                      <div class="score-bar" [matTooltip]="scorePercent(room.recommendation_score) + '% match'">
+                        <div class="score-fill" [ngClass]="scoreClass(room.recommendation_score)"
+                             [style.width.%]="scorePercent(room.recommendation_score)"></div>
+                      </div>
+                      <span class="score-value">{{ scorePercent(room.recommendation_score) }}%</span>
+                    } @else {
+                      <span class="text-muted">—</span>
                     }
                   </td>
                 }

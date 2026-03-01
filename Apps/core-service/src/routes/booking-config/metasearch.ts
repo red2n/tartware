@@ -1,5 +1,5 @@
 import { buildRouteSchema, errorResponseSchema, schemaFromZod } from "@tartware/openapi";
-import { MetasearchConfigurationsSchema } from "@tartware/schemas";
+import { ClickPerformanceItemSchema, MetasearchConfigurationsSchema } from "@tartware/schemas";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 
@@ -58,16 +58,6 @@ const ClickPerformanceQuerySchema = z.object({
 
 type ClickPerformanceQuery = z.infer<typeof ClickPerformanceQuerySchema>;
 
-const ClickPerformanceItemSchema = z.object({
-  config_id: z.string().uuid(),
-  platform: z.string(),
-  total_clicks: z.number(),
-  total_cost: z.number(),
-  total_conversions: z.number(),
-  total_conversion_value: z.number(),
-  conversion_rate_pct: z.number(),
-  roas: z.number(),
-});
 
 const ClickPerformanceResponseSchema = z.array(ClickPerformanceItemSchema);
 const ClickPerformanceQueryJsonSchema = schemaFromZod(

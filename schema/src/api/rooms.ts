@@ -114,6 +114,18 @@ export type RoomTypeResponse = z.infer<typeof RoomTypeResponseSchema>;
 // -----------------------------------------------------------------------------
 
 /**
+ * Amenity catalog item schema for the room amenity catalog endpoint.
+ */
+export const AmenityCatalogItemSchema = z.object({
+	amenity_code: z.string(),
+	display_name: z.string(),
+	category: z.string(),
+	icon: z.string().nullable(),
+});
+
+export type AmenityCatalogItem = z.infer<typeof AmenityCatalogItemSchema>;
+
+/**
  * Room list item schema for API responses.
  * Uses snake_case to match current API output.
  * Note: Uses room_id (not id) for clarity in API responses.

@@ -61,8 +61,20 @@ export const routes: Routes = [
 				path: "rate-calendar",
 				canActivate: [propertyGuard],
 				loadComponent: () =>
-					import("./features/rate-calendar/rate-calendar").then(
-						(m) => m.RateCalendarComponent,
+					import("./features/rate-calendar/rate-calendar").then((m) => m.RateCalendarComponent),
+			},
+			{
+				path: "packages",
+				canActivate: [propertyGuard],
+				loadComponent: () =>
+					import("./features/packages/packages").then((m) => m.PackagesComponent),
+			},
+			{
+				path: "packages/:packageId",
+				canActivate: [propertyGuard],
+				loadComponent: () =>
+					import("./features/packages/package-detail/package-detail").then(
+						(m) => m.PackageDetailComponent,
 					),
 			},
 			{
@@ -79,6 +91,12 @@ export const routes: Routes = [
 				path: "guests/:guestId",
 				loadComponent: () =>
 					import("./features/guests/guest-detail/guest-detail").then((m) => m.GuestDetailComponent),
+			},
+			{
+				path: "housekeeping",
+				canActivate: [propertyGuard],
+				loadComponent: () =>
+					import("./features/housekeeping/housekeeping").then((m) => m.HousekeepingComponent),
 			},
 			{
 				path: "settings",

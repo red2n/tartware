@@ -23,6 +23,170 @@
   }
 }
 
+/* ── Recommendation bar (single compact row) ── */
+.rec-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  padding: 5px var(--space-12);
+  background: var(--color-canvas-subtle);
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-md);
+  margin-bottom: var(--space-4);
+}
+
+.rec-icon {
+  font-size: 16px;
+  width: 16px;
+  height: 16px;
+  color: var(--color-accent-emphasis);
+}
+
+.rec-label {
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-fg-muted);
+  white-space: nowrap;
+  margin-right: var(--space-4);
+}
+
+.rec-field {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding: 3px var(--space-8);
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-md);
+  background: var(--color-canvas-default);
+  cursor: pointer;
+  transition: border-color var(--duration-fast);
+
+  &:hover,
+  &:focus-within {
+    border-color: var(--color-accent-emphasis);
+  }
+}
+
+.rec-field-label {
+  font-size: 10px;
+  font-weight: var(--font-weight-medium);
+  color: var(--color-fg-muted);
+  white-space: nowrap;
+}
+
+.rec-date-input {
+  border: none;
+  outline: none;
+  background: transparent;
+  font-size: var(--font-size-xs);
+  font-family: inherit;
+  color: var(--color-fg-default);
+  padding: 0;
+  width: 105px;
+  height: 18px;
+  line-height: 1;
+
+  &::-webkit-calendar-picker-indicator {
+    opacity: 0.4;
+    cursor: pointer;
+    width: 12px;
+    height: 12px;
+  }
+}
+
+.rec-arrow {
+  font-size: 14px;
+  width: 14px;
+  height: 14px;
+  color: var(--color-fg-muted);
+}
+
+.rec-active-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 1px 6px;
+  border-radius: var(--radius-full);
+  background: var(--color-success-subtle);
+  color: var(--color-success-fg);
+  font-size: 11px;
+  font-weight: var(--font-weight-semibold);
+  white-space: nowrap;
+  margin-left: auto;
+
+  mat-icon {
+    font-size: 12px;
+    width: 12px;
+    height: 12px;
+  }
+}
+
+.rec-clear-btn {
+  color: var(--color-fg-muted);
+  margin-left: auto;
+
+  &:hover {
+    color: var(--color-danger-fg);
+  }
+}
+
+/* ── Recommendation columns ── */
+.cell-rank {
+  width: 60px;
+  text-align: center;
+}
+
+.rank-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 28px;
+  height: 24px;
+  padding: 0 var(--space-4);
+  border-radius: var(--radius-8);
+  background: var(--color-accent-subtle);
+  color: var(--color-accent-fg);
+  font-weight: var(--font-weight-semibold);
+  font-size: var(--font-size-12);
+  cursor: help;
+}
+
+.cell-score {
+  width: 100px;
+}
+
+.score-bar {
+  height: 6px;
+  background: var(--color-neutral-muted);
+  border-radius: 3px;
+  overflow: hidden;
+  margin-bottom: 2px;
+}
+
+.score-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.3s ease;
+}
+
+.score-high {
+  background: var(--color-success-emphasis);
+}
+
+.score-medium {
+  background: var(--color-attention-emphasis);
+}
+
+.score-low {
+  background: var(--color-danger-emphasis);
+}
+
+.score-value {
+  font-size: var(--font-size-xs);
+  color: var(--color-fg-muted);
+  font-weight: var(--font-weight-semibold);
+}
+
 /* ── Responsive ── */
 @media (max-width: 768px) {
   .filter-bar {

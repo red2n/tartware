@@ -1,0 +1,132 @@
+<h2 mat-dialog-title class="dialog-title">
+	<mat-icon class="dialog-title-icon">extension</mat-icon>
+	Add Component
+</h2>
+
+<mat-dialog-content>
+	@if (error()) {
+		<div class="error-banner">{{ error() }}</div>
+	}
+
+	<!-- Component type selector -->
+	<div class="form-section">
+		<h3 class="form-section-title">Type</h3>
+		<div class="type-chips">
+			@for (t of componentTypes; track t.key) {
+				<button
+					type="button"
+					class="type-chip"
+					[class.type-chip-active]="componentType === t.key"
+					(click)="componentType = t.key">
+					<mat-icon>{{ typeIcon(t.key) }}</mat-icon>
+					<span>{{ t.label }}</span>
+				</button>
+			}
+		</div>
+	</div>
+
+	<!-- Name & Description -->
+	<div class="form-section">
+		<h3 class="form-section-title">Details</h3>
+
+		<div class="field-row">
+			<div class="field-group full-width">
+				<label class="field-label" for="componentName">Name <span class="required">*</span></label>
+				<input class="field-input" id="componentName" type="text" [(ngModel)]="componentName" placeholder="e.g. Spa Treatment, Room Upgrade" />
+				@if (validationErrors['componentName']) {
+					<span class="field-error">{{ validationErrors['componentName'] }}</span>
+				}
+			</div>
+		</div>
+
+		<div class="field-row">
+			<div class="field-group full-width">
+				<label class="field-label" for="componentDescription">Description</label>
+				<input class="field-input" id="componentDescription" type="text" [(ngModel)]="componentDescription" placeholder="Brief description (optional)" />
+			</div>
+		</div>
+	</div>
+
+	<!-- Pricing -->
+	<div class="form-section">
+		<h3 class="form-section-title">Pricing</h3>
+
+		<div class="field-row">
+			<div class="field-group">
+				<label class="field-label" for="pricingType">Pricing Model</label>
+				<select class="field-input" id="pricingType" [(ngModel)]="pricingType">
+					@for (p of pricingTypes; track p.key) {
+						<option [value]="p.key">{{ p.label }}</option>
+					}
+				</select>
+			</div>
+			<div class="field-group">
+				<label class="field-label" for="unitPrice">Unit Price</label>
+				<input class="field-input" id="unitPrice" type="number" [(ngModel)]="unitPrice" min="0" step="0.01" placeholder="0.00" />
+				@if (validationErrors['unitPrice']) {
+					<span class="field-error">{{ validationErrors['unitPrice'] }}</span>
+				}
+			</div>
+		</div>
+
+		<div class="field-row">
+			<div class="field-group">
+				<label class="field-label" for="quantity">Quantity</label>
+				<input class="field-input" id="quantity" type="number" [(ngModel)]="quantity" min="1" />
+				@if (validationErrors['quantity']) {
+					<span class="field-error">{{ validationErrors['quantity'] }}</span>
+				}
+			</div>
+			<div class="field-group">
+				<label class="field-label" for="displayOrder">Sort Order</label>
+				<input class="field-input" id="displayOrder" type="number" [(ngModel)]="displayOrder" min="0" />
+			</div>
+		</div>
+	</div>
+
+	<!-- Options & Delivery -->
+	<div class="form-section">
+		<h3 class="form-section-title">Options & Delivery</h3>
+
+		<div class="option-toggles">
+			<label class="toggle-label">
+				<input type="checkbox" [(ngModel)]="isIncluded" />
+				Included in package
+			</label>
+			<label class="toggle-label">
+				<input type="checkbox" [(ngModel)]="isMandatory" />
+				Mandatory
+			</label>
+			<label class="toggle-label">
+				<input type="checkbox" [(ngModel)]="isOptional" />
+				Optional add-on
+			</label>
+		</div>
+
+		<div class="field-row">
+			<div class="field-group">
+				<label class="field-label" for="deliveryTiming">Delivery Timing</label>
+				<select class="field-input" id="deliveryTiming" [(ngModel)]="deliveryTiming">
+					@for (d of deliveryTimings; track d.key) {
+						<option [value]="d.key">{{ d.label }}</option>
+					}
+				</select>
+			</div>
+			<div class="field-group">
+				<label class="field-label" for="deliveryLocation">Location</label>
+				<input class="field-input" id="deliveryLocation" type="text" [(ngModel)]="deliveryLocation" placeholder="e.g. In-room, Lobby" />
+			</div>
+		</div>
+	</div>
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+	<button class="btn btn-text" (click)="cancel()" [disabled]="saving()">Cancel</button>
+	<button class="btn btn-primary" (click)="save()" [disabled]="!canSave || saving()">
+		@if (saving()) {
+			<mat-spinner diameter="18"></mat-spinner>
+		} @else {
+			<mat-icon>add</mat-icon> Add Component
+		}
+	</button>
+</mat-dialog-actions>

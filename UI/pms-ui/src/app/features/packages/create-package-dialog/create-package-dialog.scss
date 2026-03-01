@@ -1,0 +1,36 @@
+.dialog-title {
+	display: flex;
+	align-items: center;
+	gap: var(--space-8);
+}
+
+.dialog-title-icon {
+	color: var(--color-accent-emphasis);
+}
+
+.error-banner {
+	background: var(--color-danger-subtle);
+	color: var(--color-danger-fg);
+	padding: var(--space-8) var(--space-12);
+	border-radius: var(--radius-8);
+	margin-bottom: var(--space-16);
+	font-size: var(--font-size-12);
+}
+
+.checkbox-grid {
+	display: grid;
+	grid-template-columns: repeat(3, 1fr);
+	gap: var(--space-8) var(--space-16);
+}
+
+.checkbox-item {
+	display: flex;
+	align-items: center;
+	gap: var(--space-8);
+	cursor: pointer;
+	font-size: var(--font-size-14);
+
+	input[type="checkbox"] {
+		accent-color: var(--color-accent-emphasis);
+	}
+}

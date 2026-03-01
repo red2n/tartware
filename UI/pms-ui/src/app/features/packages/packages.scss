@@ -1,0 +1,95 @@
+/* Packages page — component-specific overrides only.
+ * Reusable patterns live in styles/shared.scss. */
+
+.packages-page {
+  max-width: 1280px;
+}
+
+.pkg-code {
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-accent-fg);
+  font-family: var(--font-family-mono, monospace);
+  font-size: var(--font-size-xs);
+}
+
+.pkg-name {
+  font-size: var(--font-size-xs);
+}
+
+.col-right {
+  text-align: right;
+}
+
+.cell-amount {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.discount-hint {
+  margin-left: 4px;
+  font-size: var(--font-size-xs);
+  color: var(--color-success-fg);
+  font-weight: var(--font-weight-semibold);
+}
+
+.cell-inclusions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.inclusion-icon {
+  font-size: 18px;
+  width: 18px;
+  height: 18px;
+  color: var(--color-fg-muted);
+}
+
+.cell-status {
+  white-space: nowrap;
+
+  .badge {
+    vertical-align: middle;
+  }
+}
+
+.featured-icon {
+  font-size: 16px;
+  width: 16px;
+  height: 16px;
+  color: var(--color-attention-fg);
+  vertical-align: middle;
+  margin-left: 4px;
+}
+
+.filter-controls {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.type-select {
+  padding: 4px var(--space-3);
+  font-size: var(--font-size-xs);
+  min-width: 120px;
+}
+
+/* ── Responsive ── */
+@media (max-width: 768px) {
+  .filter-bar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .filter-controls {
+    flex-direction: column;
+  }
+
+  .search-input {
+    width: 100%;
+  }
+
+  .table-container {
+    overflow-x: auto;
+  }
+}

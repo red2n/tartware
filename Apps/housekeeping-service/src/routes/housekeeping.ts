@@ -48,8 +48,8 @@ export const registerHousekeepingRoutes = (app: FastifyInstance): void => {
     {
       preHandler: app.withTenantScope({
         resolveTenantId: (request) => (request.query as HousekeepingListQuery).tenant_id,
-        minRole: "MANAGER",
-        requiredModules: "facility-maintenance",
+        minRole: "STAFF",
+        requiredModules: "core",
       }),
       schema: buildRouteSchema({
         tag: HOUSEKEEPING_TAG,

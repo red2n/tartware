@@ -1,0 +1,208 @@
+<div class="page-header">
+  <div class="breadcrumb">
+    <a routerLink="/packages" class="breadcrumb-link">
+      <mat-icon class="breadcrumb-icon">arrow_back</mat-icon>
+      Packages
+    </a>
+    @if (pkg(); as p) {
+      <span class="breadcrumb-sep">/</span>
+      <span class="breadcrumb-current">{{ p.package_name }}</span>
+    }
+  </div>
+</div>
+
+@if (loading()) {
+  <div class="loading-state">
+    <mat-spinner diameter="32"></mat-spinner>
+    <span class="text-muted">Loading package...</span>
+  </div>
+} @else if (error(); as err) {
+  <div class="error-state">
+    <mat-icon class="error-icon">error_outline</mat-icon>
+    <span>{{ err }}</span>
+    <button class="btn btn-outline" (click)="loadDetail()">Retry</button>
+  </div>
+} @else if (pkg(); as p) {
+  <div class="detail-layout">
+    <!-- Header with title + actions -->
+    <div class="pkg-header">
+      <div class="pkg-header-left">
+        <h1 class="pkg-title">{{ p.package_name }}</h1>
+        <span class="pkg-code">{{ p.package_code }}</span>
+        <div class="pkg-badges">
+          <span class="badge" [ngClass]="statusBadge().cls">{{ statusBadge().label }}</span>
+          @if (p.is_featured) {
+            <span class="badge badge-attention"><mat-icon class="badge-icon">star</mat-icon> Featured</span>
+          }
+          @if (p.is_published) {
+            <span class="badge badge-accent">Published</span>
+          }
+          @if (p.badge_text) {
+            <span class="badge badge-accent">{{ p.badge_text }}</span>
+          }
+        </div>
+      </div>
+      <div class="pkg-header-actions">
+        @if (updating()) {
+          <mat-spinner diameter="18"></mat-spinner>
+        } @else {
+          <button
+            class="btn btn-sm"
+            [class.btn-outline]="p.is_active"
+            [class.btn-primary]="!p.is_active"
+            (click)="toggleActive()">
+            <mat-icon>{{ p.is_active ? 'toggle_on' : 'toggle_off' }}</mat-icon>
+            {{ p.is_active ? 'Deactivate' : 'Activate' }}
+          </button>
+        }
+      </div>
+    </div>
+
+    <!-- Info card -->
+    <div class="detail-card">
+      <div class="card-header">
+        <h3 class="card-title">Package Info</h3>
+      </div>
+      <div class="card-body">
+        <dl class="detail-list">
+          @for (row of infoRows(); track row.label) {
+            <div class="detail-row">
+              <dt class="detail-label">{{ row.label }}</dt>
+              <dd class="detail-value">
+                @if (row.badge) {
+                  <span class="badge" [ngClass]="row.badgeClass ?? ''">{{ row.badge }}</span>
+                } @else {
+                  {{ row.value }}
+                }
+              </dd>
+            </div>
+          }
+        </dl>
+      </div>
+    </div>
+
+    <!-- Pricing card -->
+    <div class="detail-card">
+      <div class="card-header">
+        <h3 class="card-title">Pricing & Cancellation</h3>
+      </div>
+      <div class="card-body">
+        <dl class="detail-list">
+          @for (row of pricingRows(); track row.label) {
+            <div class="detail-row">
+              <dt class="detail-label">{{ row.label }}</dt>
+              <dd class="detail-value">
+                @if (row.badge) {
+                  <span class="badge" [ngClass]="row.badgeClass ?? ''">{{ row.badge }}</span>
+                } @else {
+                  {{ row.value }}
+                }
+              </dd>
+            </div>
+          }
+        </dl>
+      </div>
+    </div>
+
+    <!-- Booking requirements card -->
+    <div class="detail-card">
+      <div class="card-header">
+        <h3 class="card-title">Booking Requirements</h3>
+      </div>
+      <div class="card-body">
+        <dl class="detail-list">
+          @for (row of bookingRows(); track row.label) {
+            <div class="detail-row">
+              <dt class="detail-label">{{ row.label }}</dt>
+              <dd class="detail-value">{{ row.value }}</dd>
+            </div>
+          }
+        </dl>
+      </div>
+    </div>
+
+    <!-- Inclusions card -->
+    <div class="detail-card">
+      <div class="card-header">
+        <h3 class="card-title">Inclusions</h3>
+      </div>
+      <div class="card-body">
+        <div class="inclusion-grid">
+          @for (inc of inclusionList(); track inc.key) {
+            <button
+              type="button"
+              class="inclusion-chip"
+              [class.inclusion-on]="inc.included"
+              [class.inclusion-off]="!inc.included"
+              [disabled]="updating()"
+              (click)="toggleInclusion(inc.key, !inc.included)"
+              [matTooltip]="inc.included ? 'Click to remove' : 'Click to add'">
+              <mat-icon>{{ inc.icon }}</mat-icon>
+              <span>{{ inc.label }}</span>
+              <mat-icon class="inc-status-icon">{{ inc.included ? 'check_circle' : 'add_circle_outline' }}</mat-icon>
+            </button>
+          }
+        </div>
+      </div>
+    </div>
+
+    <!-- Performance card -->
+    <div class="detail-card">
+      <div class="card-header">
+        <h3 class="card-title">Performance</h3>
+      </div>
+      <div class="card-body">
+        <dl class="detail-list">
+          @for (row of performanceRows(); track row.label) {
+            <div class="detail-row">
+              <dt class="detail-label">{{ row.label }}</dt>
+              <dd class="detail-value">{{ row.value }}</dd>
+            </div>
+          }
+        </dl>
+      </div>
+    </div>
+
+    <!-- Components section -->
+    <div class="detail-card">
+      <div class="card-header-flex">
+        <h3 class="card-title">Components @if (components().length) { <span class="counter">{{ components().length }}</span> }</h3>
+        <button class="btn btn-sm btn-outline" (click)="openAddComponent()">
+          <mat-icon>add</mat-icon> Add
+        </button>
+      </div>
+      @if (components().length > 0) {
+        <div class="comp-grid">
+          @for (comp of components(); track comp.component_id) {
+            <div class="comp-item">
+              <div class="comp-icon-box">
+                <mat-icon>{{ componentTypeIcon(comp.component_type) }}</mat-icon>
+              </div>
+              <div class="comp-info">
+                <span class="comp-name">{{ comp.component_name }}</span>
+                @if (comp.component_description) {
+                  <span class="comp-desc">{{ comp.component_description }}</span>
+                }
+              </div>
+              <div class="comp-meta">
+                <span class="badge badge-muted">{{ comp.component_type_display }}</span>
+                <span class="badge" [ngClass]="componentBadgeClass(comp)">{{ pricingLabel(comp) }}</span>
+                @if (comp.quantity > 1) {
+                  <span class="text-muted">×{{ comp.quantity }}</span>
+                }
+              </div>
+            </div>
+          }
+        </div>
+      } @else {
+        <div class="card-body">
+          <div class="empty-state empty-state-sm">
+            <mat-icon class="empty-icon">extension</mat-icon>
+            <p>No components configured yet.</p>
+            <p class="empty-hint">Add services, amenities, or meals to this package.</p>
+          </div>
+        </div>
+      }
+    </div>
+  </div>
+}

@@ -410,3 +410,224 @@ export const getPackageComponents = async ({
 
   return result.rows.map(mapPackageComponentRow);
 };
+
+// =====================================================
+// CREATE PACKAGE
+// =====================================================
+
+const CREATE_PACKAGE_SQL = `
+  INSERT INTO public.packages (
+    package_id, tenant_id, property_id,
+    package_name, package_code, package_type, short_description,
+    valid_from, valid_to,
+    min_nights, max_nights, min_guests, max_guests,
+    pricing_model, base_price,
+    includes_breakfast, includes_lunch, includes_dinner,
+    includes_parking, includes_wifi, includes_airport_transfer,
+    refundable, free_cancellation_days,
+    total_inventory,
+    is_active, is_published, is_featured,
+    display_order,
+    created_by
+  ) VALUES (
+    gen_random_uuid(), $1, $2,
+    $3, $4, $5, $6,
+    $7, $8,
+    $9, $10, $11, $12,
+    $13, $14,
+    $15, $16, $17,
+    $18, $19, $20,
+    $21, $22,
+    $23,
+    false, false, false,
+    0,
+    $24
+  )
+  RETURNING package_id
+`;
+
+export type CreatePackageInput = {
+  tenantId: string;
+  propertyId?: string;
+  packageName: string;
+  packageCode: string;
+  packageType: string;
+  shortDescription?: string;
+  validFrom: string;
+  validTo: string;
+  minNights: number;
+  maxNights?: number;
+  minGuests: number;
+  maxGuests?: number;
+  pricingModel: string;
+  basePrice: number;
+  includesBreakfast: boolean;
+  includesLunch: boolean;
+  includesDinner: boolean;
+  includesParking: boolean;
+  includesWifi: boolean;
+  includesAirportTransfer: boolean;
+  refundable: boolean;
+  freeCancellationDays?: number;
+  totalInventory?: number;
+  createdBy?: string;
+};
+
+export const createPackage = async (input: CreatePackageInput): Promise<string> => {
+  const result = await query<{ package_id: string }>(CREATE_PACKAGE_SQL, [
+    input.tenantId,
+    input.propertyId ?? null,
+    input.packageName,
+    input.packageCode,
+    input.packageType.toLowerCase(),
+    input.shortDescription ?? null,
+    input.validFrom,
+    input.validTo,
+    input.minNights,
+    input.maxNights ?? null,
+    input.minGuests,
+    input.maxGuests ?? null,
+    input.pricingModel.toLowerCase(),
+    input.basePrice,
+    input.includesBreakfast,
+    input.includesLunch,
+    input.includesDinner,
+    input.includesParking,
+    input.includesWifi,
+    input.includesAirportTransfer,
+    input.refundable,
+    input.freeCancellationDays ?? null,
+    input.totalInventory ?? null,
+    input.createdBy ?? null,
+  ]);
+
+  const row = result.rows[0];
+  if (!row) {
+    throw new Error("Failed to create package — no row returned");
+  }
+  return row.package_id;
+};
+
+// =====================================================
+// UPDATE PACKAGE
+// =====================================================
+
+const UPDATE_PACKAGE_SQL = `
+  UPDATE public.packages
+  SET
+    is_active = COALESCE($3, is_active),
+    includes_breakfast = COALESCE($4, includes_breakfast),
+    includes_lunch = COALESCE($5, includes_lunch),
+    includes_dinner = COALESCE($6, includes_dinner),
+    includes_parking = COALESCE($7, includes_parking),
+    includes_wifi = COALESCE($8, includes_wifi),
+    includes_airport_transfer = COALESCE($9, includes_airport_transfer),
+    version = version + 1,
+    updated_at = NOW(),
+    updated_by = $10
+  WHERE package_id = $1
+    AND tenant_id = $2
+    AND COALESCE(is_deleted, false) = false
+  RETURNING package_id
+`;
+
+export type UpdatePackageInput = {
+	packageId: string;
+	tenantId: string;
+	isActive?: boolean;
+	includesBreakfast?: boolean;
+	includesLunch?: boolean;
+	includesDinner?: boolean;
+	includesParking?: boolean;
+	includesWifi?: boolean;
+	includesAirportTransfer?: boolean;
+	updatedBy?: string;
+};
+
+export const updatePackage = async (input: UpdatePackageInput): Promise<string | null> => {
+	const result = await query<{ package_id: string }>(UPDATE_PACKAGE_SQL, [
+		input.packageId,
+		input.tenantId,
+		input.isActive ?? null,
+		input.includesBreakfast ?? null,
+		input.includesLunch ?? null,
+		input.includesDinner ?? null,
+		input.includesParking ?? null,
+		input.includesWifi ?? null,
+		input.includesAirportTransfer ?? null,
+		input.updatedBy ?? null,
+	]);
+
+	return result.rows[0]?.package_id ?? null;
+};
+
+// =====================================================
+// CREATE PACKAGE COMPONENT
+// =====================================================
+
+const CREATE_PACKAGE_COMPONENT_SQL = `
+  INSERT INTO public.package_components (
+    package_id,
+    component_type,
+    component_name,
+    component_description,
+    quantity,
+    pricing_type,
+    unit_price,
+    is_included,
+    is_optional,
+    is_mandatory,
+    delivery_timing,
+    delivery_location,
+    display_order,
+    is_active,
+    created_by
+  ) VALUES (
+    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, true, $14
+  )
+  RETURNING component_id
+`;
+
+export type CreatePackageComponentInput = {
+	packageId: string;
+	componentType: string;
+	componentName: string;
+	componentDescription?: string;
+	quantity: number;
+	pricingType: string;
+	unitPrice: number;
+	isIncluded: boolean;
+	isOptional: boolean;
+	isMandatory: boolean;
+	deliveryTiming?: string;
+	deliveryLocation?: string;
+	displayOrder: number;
+	createdBy?: string;
+};
+
+export const createPackageComponent = async (
+	input: CreatePackageComponentInput,
+): Promise<string> => {
+	const result = await query<{ component_id: string }>(CREATE_PACKAGE_COMPONENT_SQL, [
+		input.packageId,
+		input.componentType,
+		input.componentName,
+		input.componentDescription ?? null,
+		input.quantity,
+		input.pricingType,
+		input.unitPrice,
+		input.isIncluded,
+		input.isOptional,
+		input.isMandatory,
+		input.deliveryTiming ?? null,
+		input.deliveryLocation ?? null,
+		input.displayOrder,
+		input.createdBy ?? null,
+	]);
+
+	const row = result.rows[0];
+	if (!row) {
+		throw new Error("Failed to create component — no row returned");
+	}
+	return row.component_id;
+};

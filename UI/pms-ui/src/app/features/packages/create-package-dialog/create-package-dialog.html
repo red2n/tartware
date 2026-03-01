@@ -1,0 +1,196 @@
+<h2 mat-dialog-title class="dialog-title">
+	<mat-icon class="dialog-title-icon">card_giftcard</mat-icon>
+	Create Package
+</h2>
+
+<mat-dialog-content>
+	@if (error()) {
+		<div class="error-banner">{{ error() }}</div>
+	}
+
+	<!-- Package Identity -->
+	<div class="form-section">
+		<h3 class="form-section-title">Package Identity</h3>
+
+		<div class="field-row">
+			<div class="field-group">
+				<label class="field-label" for="packageName">Name <span class="required">*</span></label>
+				<input class="field-input" id="packageName" type="text" [(ngModel)]="packageName" placeholder="e.g. Weekend Getaway" />
+				@if (validationErrors['packageName']) {
+					<span class="field-error">{{ validationErrors['packageName'] }}</span>
+				}
+			</div>
+
+			<div class="field-group">
+				<label class="field-label" for="packageCode">Code <span class="required">*</span></label>
+				<input class="field-input" id="packageCode" type="text" [ngModel]="packageCode" (ngModelChange)="onCodeInput($event)" placeholder="e.g. WKD-GETAWAY" />
+				@if (validationErrors['packageCode']) {
+					<span class="field-error">{{ validationErrors['packageCode'] }}</span>
+				}
+			</div>
+		</div>
+
+		<div class="field-row">
+			<div class="field-group">
+				<label class="field-label" for="packageType">Type</label>
+				<select class="field-input" id="packageType" [(ngModel)]="packageType">
+					@for (t of packageTypes; track t.key) {
+						<option [value]="t.key">{{ t.label }}</option>
+					}
+				</select>
+			</div>
+
+			<div class="field-group">
+				<label class="field-label" for="shortDescription">Description</label>
+				<input class="field-input" id="shortDescription" type="text" [(ngModel)]="shortDescription" placeholder="Brief description" />
+			</div>
+		</div>
+	</div>
+
+	<!-- Pricing -->
+	<div class="form-section">
+		<h3 class="form-section-title">Pricing</h3>
+
+		<div class="field-row">
+			<div class="field-group">
+				<label class="field-label" for="basePrice">Base Price <span class="required">*</span></label>
+				<input class="field-input" id="basePrice" type="number" [(ngModel)]="basePrice" min="0" step="0.01" placeholder="0.00" />
+				@if (validationErrors['basePrice']) {
+					<span class="field-error">{{ validationErrors['basePrice'] }}</span>
+				}
+			</div>
+
+			<div class="field-group">
+				<label class="field-label" for="pricingModel">Pricing Model</label>
+				<select class="field-input" id="pricingModel" [(ngModel)]="pricingModel">
+					@for (m of pricingModels; track m.key) {
+						<option [value]="m.key">{{ m.label }}</option>
+					}
+				</select>
+			</div>
+		</div>
+	</div>
+
+	<!-- Validity Period -->
+	<div class="form-section">
+		<h3 class="form-section-title">Validity Period</h3>
+
+		<div class="field-row">
+			<div class="field-group">
+				<label class="field-label" for="validFrom">Valid From <span class="required">*</span></label>
+				<input class="field-input" id="validFrom" type="date" [(ngModel)]="validFrom" />
+				@if (validationErrors['validFrom']) {
+					<span class="field-error">{{ validationErrors['validFrom'] }}</span>
+				}
+			</div>
+
+			<div class="field-group">
+				<label class="field-label" for="validTo">Valid To <span class="required">*</span></label>
+				<input class="field-input" id="validTo" type="date" [(ngModel)]="validTo" />
+				@if (validationErrors['validTo']) {
+					<span class="field-error">{{ validationErrors['validTo'] }}</span>
+				}
+			</div>
+		</div>
+	</div>
+
+	<!-- Booking Requirements -->
+	<div class="form-section">
+		<h3 class="form-section-title">Booking Requirements</h3>
+
+		<div class="field-row">
+			<div class="field-group">
+				<label class="field-label" for="minNights">Min Nights</label>
+				<input class="field-input" id="minNights" type="number" [(ngModel)]="minNights" min="1" />
+			</div>
+			<div class="field-group">
+				<label class="field-label" for="maxNights">Max Nights</label>
+				<input class="field-input" id="maxNights" type="number" [(ngModel)]="maxNights" min="1" placeholder="No limit" />
+				@if (validationErrors['maxNights']) {
+					<span class="field-error">{{ validationErrors['maxNights'] }}</span>
+				}
+			</div>
+		</div>
+
+		<div class="field-row">
+			<div class="field-group">
+				<label class="field-label" for="minGuests">Min Guests</label>
+				<input class="field-input" id="minGuests" type="number" [(ngModel)]="minGuests" min="1" />
+			</div>
+			<div class="field-group">
+				<label class="field-label" for="maxGuests">Max Guests</label>
+				<input class="field-input" id="maxGuests" type="number" [(ngModel)]="maxGuests" min="1" placeholder="No limit" />
+				@if (validationErrors['maxGuests']) {
+					<span class="field-error">{{ validationErrors['maxGuests'] }}</span>
+				}
+			</div>
+		</div>
+	</div>
+
+	<!-- Inclusions -->
+	<div class="form-section">
+		<h3 class="form-section-title">Inclusions</h3>
+
+		<div class="checkbox-grid">
+			<label class="checkbox-item">
+				<input type="checkbox" [(ngModel)]="includesBreakfast" />
+				<span>Breakfast</span>
+			</label>
+			<label class="checkbox-item">
+				<input type="checkbox" [(ngModel)]="includesLunch" />
+				<span>Lunch</span>
+			</label>
+			<label class="checkbox-item">
+				<input type="checkbox" [(ngModel)]="includesDinner" />
+				<span>Dinner</span>
+			</label>
+			<label class="checkbox-item">
+				<input type="checkbox" [(ngModel)]="includesParking" />
+				<span>Parking</span>
+			</label>
+			<label class="checkbox-item">
+				<input type="checkbox" [(ngModel)]="includesWifi" />
+				<span>Wi-Fi</span>
+			</label>
+			<label class="checkbox-item">
+				<input type="checkbox" [(ngModel)]="includesAirportTransfer" />
+				<span>Airport Transfer</span>
+			</label>
+		</div>
+	</div>
+
+	<!-- Cancellation & Inventory -->
+	<div class="form-section">
+		<h3 class="form-section-title">Cancellation & Inventory</h3>
+
+		<div class="field-row">
+			<label class="checkbox-item">
+				<input type="checkbox" [(ngModel)]="refundable" />
+				<span>Refundable</span>
+			</label>
+		</div>
+
+		<div class="field-row">
+			<div class="field-group">
+				<label class="field-label" for="freeCancellationDays">Free Cancellation (days before)</label>
+				<input class="field-input" id="freeCancellationDays" type="number" [(ngModel)]="freeCancellationDays" min="0" placeholder="e.g. 7" />
+			</div>
+
+			<div class="field-group">
+				<label class="field-label" for="totalInventory">Total Inventory</label>
+				<input class="field-input" id="totalInventory" type="number" [(ngModel)]="totalInventory" min="0" placeholder="Unlimited" />
+			</div>
+		</div>
+	</div>
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+	<button class="btn btn-text" (click)="cancel()" [disabled]="saving()">Cancel</button>
+	<button class="btn btn-primary" (click)="save()" [disabled]="!canSave || saving()">
+		@if (saving()) {
+			<mat-spinner diameter="18"></mat-spinner>
+		} @else {
+			Create Package
+		}
+	</button>
+</mat-dialog-actions>

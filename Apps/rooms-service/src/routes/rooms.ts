@@ -1,5 +1,6 @@
 import { buildRouteSchema, schemaFromZod } from "@tartware/openapi";
 import {
+  AmenityCatalogItemSchema,
   type AvailabilityQuery,
   AvailabilityQuerySchema,
   AvailabilityResponseSchema,
@@ -92,12 +93,6 @@ const RoomParamsSchema = z.object({
   roomId: z.string().uuid(),
 });
 
-const AmenityCatalogItemSchema = z.object({
-  amenity_code: z.string(),
-  display_name: z.string(),
-  category: z.string(),
-  icon: z.string().nullable(),
-});
 
 const AmenityCatalogResponseSchema = z.array(AmenityCatalogItemSchema);
 const AmenityCatalogResponseJsonSchema = schemaFromZod(

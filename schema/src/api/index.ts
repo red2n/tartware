@@ -12,6 +12,7 @@ export * from "./associations.js";
 export * from "./auth.js";
 export * from "./availability-guard.js";
 export * from "./billing.js";
+export * from "./booking-config.js";
 export * from "./calculations.js";
 export * from "./command-center.js";
 export * from "./direct-booking.js";

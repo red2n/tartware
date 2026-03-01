@@ -100,7 +100,7 @@
  * ```
  */
 
-import { TenantRoleEnum, UserSchema } from "@tartware/schemas";
+import { UserSchema, UserTenantAssociationSchema } from "@tartware/schemas";
 import { z } from "zod";
 
 import { config } from "../config.js";
@@ -136,17 +136,18 @@ export const CachedUserSchema = UserSchema.pick({
 export type CachedUser = z.infer<typeof CachedUserSchema>;
 
 /**
- * Cached membership data - manually defined to match database structure.
- * Can't use .pick() on UserTenantAssociationSchema because it has .refine()
+ * Cached membership data - derived from UserTenantAssociationSchema
+ * with cache-specific enrichment (tenant_name) and local module enum.
  */
 const ModuleIdSchema = z.enum(MODULE_IDS);
 
-export const CachedMembershipSchema = z.object({
-  tenant_id: z.string().uuid(),
+export const CachedMembershipSchema = UserTenantAssociationSchema.pick({
+  tenant_id: true,
+  role: true,
+  is_active: true,
+  permissions: true,
+}).extend({
   tenant_name: z.string().min(1).optional(),
-  role: TenantRoleEnum,
-  is_active: z.boolean(),
-  permissions: z.record(z.unknown()),
   modules: z.array(ModuleIdSchema).default(DEFAULT_ENABLED_MODULES),
 });
 

@@ -404,7 +404,7 @@ export class RoomDetailComponent implements OnInit {
 		const r = this.room();
 		const tenantId = this.auth.tenantId();
 		if (!r || !tenantId) return;
-		if (r.housekeeping_status === newStatus) return;
+		if (r.housekeeping_status.toUpperCase() === newStatus) return;
 
 		this.updatingHousekeeping.set(true);
 		this.housekeepingError.set(null);

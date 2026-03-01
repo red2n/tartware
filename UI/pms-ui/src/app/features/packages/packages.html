@@ -1,0 +1,177 @@
+<div class="packages-page">
+  <div class="page-header">
+    <h1 class="page-title">Packages</h1>
+    <div class="page-actions">
+      <button class="btn btn-primary" (click)="openCreateDialog()">
+        <mat-icon>add</mat-icon>
+        New Package
+      </button>
+      <button class="btn btn-invisible" (click)="loadPackages()" matTooltip="Refresh" aria-label="Refresh packages">
+        <mat-icon>refresh</mat-icon>
+      </button>
+    </div>
+  </div>
+
+  <!-- Filter tabs + type filter + search -->
+  <div class="filter-bar">
+    <nav class="filter-tabs" aria-label="Package status filters">
+      @for (f of statusFilters; track f.key) {
+        <button
+          type="button"
+          class="filter-tab"
+          [attr.aria-pressed]="activeFilter() === f.key"
+          [class.filter-tab-active]="activeFilter() === f.key"
+          (click)="setFilter(f.key)">
+          {{ f.label }}
+          <span class="counter">{{ filterCounts()[f.key] }}</span>
+        </button>
+      }
+    </nav>
+
+    <div class="filter-controls">
+      <select class="field-input type-select"
+              [ngModel]="activeTypeFilter()"
+              (ngModelChange)="setTypeFilter($event)">
+        @for (t of packageTypes; track t.key) {
+          <option [value]="t.key">{{ t.label }}</option>
+        }
+      </select>
+
+      <div class="search-box">
+        <mat-icon class="search-icon">search</mat-icon>
+        <input
+          type="text"
+          class="search-input"
+          placeholder="Search packages..."
+          aria-label="Search packages"
+          [ngModel]="searchQuery()"
+          (ngModelChange)="onSearch($event)" />
+      </div>
+    </div>
+  </div>
+
+  <!-- Content -->
+  @if (loading()) {
+    <div class="loading-state">
+      <mat-spinner diameter="32"></mat-spinner>
+      <span class="text-muted">Loading packages...</span>
+    </div>
+  } @else if (error(); as err) {
+    <div class="error-state">
+      <mat-icon class="error-icon">error_outline</mat-icon>
+      <span>{{ err }}</span>
+      <button class="btn btn-outline" (click)="loadPackages()">Retry</button>
+    </div>
+  } @else if (filteredPackages().length === 0) {
+    <div class="empty-state">
+      <mat-icon class="empty-icon">card_giftcard</mat-icon>
+      @if (packages().length === 0) {
+        <p>No packages configured</p>
+        <p class="text-muted">Packages and add-ons will appear here once created.</p>
+      } @else {
+        <p>No packages match the current filters</p>
+        <button class="btn btn-outline" (click)="setFilter('ALL'); setTypeFilter('ALL'); onSearch('')">Clear filters</button>
+      }
+    </div>
+  } @else {
+    @defer (on idle) {
+      <div class="table-container">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th class="col-name" [attr.aria-sort]="ariaSort('package_name')">
+                <button type="button" class="th-sort-btn" (click)="onSort('package_name')">Package <mat-icon class="sort-indicator">{{ sortIcon('package_name') }}</mat-icon></button>
+              </th>
+              <th class="col-type" [attr.aria-sort]="ariaSort('package_type')">
+                <button type="button" class="th-sort-btn" (click)="onSort('package_type')">Type <mat-icon class="sort-indicator">{{ sortIcon('package_type') }}</mat-icon></button>
+              </th>
+              <th class="col-price col-right" [attr.aria-sort]="ariaSort('base_price')">
+                <button type="button" class="th-sort-btn" (click)="onSort('base_price')">Price <mat-icon class="sort-indicator">{{ sortIcon('base_price') }}</mat-icon></button>
+              </th>
+              <th class="col-pricing">Pricing</th>
+              <th class="col-inclusions">Inclusions</th>
+              <th class="col-validity">Validity</th>
+              <th class="col-inventory col-right">Inventory</th>
+              <th class="col-bookings col-right" [attr.aria-sort]="ariaSort('total_bookings')">
+                <button type="button" class="th-sort-btn" (click)="onSort('total_bookings')">Bookings <mat-icon class="sort-indicator">{{ sortIcon('total_bookings') }}</mat-icon></button>
+              </th>
+              <th class="col-status">Status</th>
+              <th class="cell-actions"></th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (pkg of paginatedPackages(); track pkg.package_id) {
+              <tr class="row-clickable"
+                  tabindex="0"
+                  [routerLink]="['/packages', pkg.package_id]"
+                  (keydown.enter)="$event.preventDefault()"
+                  (keydown.space)="$event.preventDefault()">
+                <td class="cell-primary">
+                  <span class="pkg-code">{{ pkg.package_code }}</span>
+                  <span class="pkg-name text-muted">{{ pkg.package_name }}</span>
+                </td>
+                <td>
+                  <span class="badge badge-muted">{{ pkg.package_type_display }}</span>
+                </td>
+                <td class="col-right cell-amount">
+                  {{ formatCurrency(pkg.base_price, pkg.currency_code) }}
+                  @if (pkg.discount_percentage) {
+                    <span class="discount-hint" matTooltip="Discount applied">-{{ pkg.discount_percentage }}%</span>
+                  }
+                </td>
+                <td>
+                  <span class="text-muted">{{ pkg.pricing_model_display }}</span>
+                </td>
+                <td class="cell-inclusions">
+                  @for (inc of inclusionIcons(pkg); track inc.icon) {
+                    <mat-icon class="inclusion-icon" [matTooltip]="inc.label">{{ inc.icon }}</mat-icon>
+                  }
+                  @if (inclusionIcons(pkg).length === 0) {
+                    <span class="text-muted">—</span>
+                  }
+                </td>
+                <td>
+                  <span [matTooltip]="validityTooltip(pkg)" [class.text-danger]="!pkg.is_currently_valid">
+                    {{ formatDate(pkg.valid_from) }}
+                    <span class="text-muted"> — {{ formatDate(pkg.valid_to) }}</span>
+                  </span>
+                </td>
+                <td class="col-right">
+                  {{ inventoryLabel(pkg) }}
+                </td>
+                <td class="col-right cell-amount">
+                  {{ pkg.total_bookings }}
+                </td>
+                <td class="cell-status">
+                  <span class="badge" [ngClass]="statusClass(pkg)">
+                    {{ statusLabel(pkg) }}
+                  </span>
+                  @if (pkg.is_featured) {
+                    <mat-icon class="featured-icon" matTooltip="Featured package">star</mat-icon>
+                  }
+                </td>
+                <td class="cell-actions">
+                  <a class="btn btn-invisible btn-sm" [routerLink]="['/packages', pkg.package_id]" matTooltip="View details" aria-label="View package details">
+                    <mat-icon>chevron_right</mat-icon>
+                  </a>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+      <app-pagination
+        [totalItems]="filteredPackages().length"
+        [currentPage]="currentPage()"
+        [pageSize]="pageSize"
+        (pageChange)="currentPage.set($event)" />
+    } @placeholder {
+      <div class="placeholder-table">
+        <div class="placeholder-row"></div>
+        <div class="placeholder-row"></div>
+        <div class="placeholder-row"></div>
+        <div class="placeholder-row"></div>
+      </div>
+    }
+  }
+</div>
