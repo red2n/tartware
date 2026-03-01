@@ -74,7 +74,9 @@ export function allocatePackageRevenue(input: PackageAllocationInput): PackageAl
     const pct = componentTotal.isZero()
       ? new Decimal(0)
       : new Decimal(comp.amount).div(componentTotal).times(100);
-    const allocated = new Decimal(input.package_rate).times(comp.amount).div(componentTotal);
+    const allocated = componentTotal.isZero()
+      ? new Decimal(0)
+      : new Decimal(input.package_rate).times(comp.amount).div(componentTotal);
     return {
       name: comp.name,
       amount: allocated.toDecimalPlaces(2).toNumber(),

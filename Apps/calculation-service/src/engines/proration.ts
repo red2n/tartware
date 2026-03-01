@@ -47,9 +47,13 @@ export function calculateLosTiered(input: LosTieredInput): LosTieredOutput {
     const rate = tier ? new Decimal(tier.rate) : new Decimal(lastTier?.rate ?? 0);
     amounts.push(rate.toDecimalPlaces(2).toNumber());
   }
-  const total = amounts.reduce((sum, a) => new Decimal(sum).plus(a).toNumber(), 0);
-  const avg = new Decimal(total).div(input.nights).toDecimalPlaces(2).toNumber();
-  return { nightly_amounts: amounts, total, average_nightly: avg };
+  const total = amounts.reduce((sum, a) => sum.plus(a), new Decimal(0));
+  const avg = total.div(input.nights).toDecimalPlaces(2).toNumber();
+  return {
+    nightly_amounts: amounts,
+    total: total.toDecimalPlaces(2).toNumber(),
+    average_nightly: avg,
+  };
 }
 
 /**

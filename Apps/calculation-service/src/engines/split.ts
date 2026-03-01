@@ -25,7 +25,7 @@ import Decimal from "decimal.js";
 export function splitByReservation(input: SplitByReservationInput): SplitByReservationOutput {
   const total = new Decimal(input.total);
   const count = input.reservation_count;
-  const secondary = total.div(count).floor().toDecimalPlaces(2);
+  const secondary = total.div(count).toDecimalPlaces(2, Decimal.ROUND_DOWN);
   const primaryShare = total.minus(secondary.times(count - 1));
   const remainder = primaryShare.minus(secondary);
 

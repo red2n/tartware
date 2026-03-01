@@ -169,11 +169,11 @@ export const submitCommand = async ({
 
   return reply.status(202).send({
     status: acceptance.status,
-    commandId: acceptance.commandId,
-    commandName: acceptance.commandName,
-    tenantId: acceptance.tenantId,
-    correlationId: acceptance.correlationId,
-    targetService: acceptance.targetService,
-    requestedAt: acceptance.requestedAt,
+    command_id: acceptance.commandId,
+    command_name: acceptance.commandName,
+    accepted_at: acceptance.requestedAt,
+    tenant_id: acceptance.tenantId,
+    correlation_id: acceptance.correlationId,
+    target_service: acceptance.targetService,
   });
 };
