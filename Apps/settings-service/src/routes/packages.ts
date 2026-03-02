@@ -71,8 +71,6 @@ const TenantQuerySchema = z.object({
   tenant_id: z.string().uuid(),
 });
 
-
-
 // =====================================================
 // JSON SCHEMAS
 // =====================================================
@@ -100,9 +98,15 @@ const errorResponse: JsonSchema = {
   required: ["message"],
 };
 const createPackageBody: JsonSchema = schemaFromZod(CreatePackageBodySchema, "CreatePackageBody");
-const createdResponse: JsonSchema = schemaFromZod(CreatePackageResponseSchema, "CreatePackageResponse");
+const createdResponse: JsonSchema = schemaFromZod(
+  CreatePackageResponseSchema,
+  "CreatePackageResponse",
+);
 const updatePackageBody: JsonSchema = schemaFromZod(UpdatePackageBodySchema, "UpdatePackageBody");
-const createComponentBody: JsonSchema = schemaFromZod(CreatePackageComponentBodySchema, "CreatePackageComponentBody");
+const createComponentBody: JsonSchema = schemaFromZod(
+  CreatePackageComponentBodySchema,
+  "CreatePackageComponentBody",
+);
 
 // =====================================================
 // AUTH HELPERS

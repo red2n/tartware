@@ -532,33 +532,33 @@ const UPDATE_PACKAGE_SQL = `
 `;
 
 export type UpdatePackageInput = {
-	packageId: string;
-	tenantId: string;
-	isActive?: boolean;
-	includesBreakfast?: boolean;
-	includesLunch?: boolean;
-	includesDinner?: boolean;
-	includesParking?: boolean;
-	includesWifi?: boolean;
-	includesAirportTransfer?: boolean;
-	updatedBy?: string;
+  packageId: string;
+  tenantId: string;
+  isActive?: boolean;
+  includesBreakfast?: boolean;
+  includesLunch?: boolean;
+  includesDinner?: boolean;
+  includesParking?: boolean;
+  includesWifi?: boolean;
+  includesAirportTransfer?: boolean;
+  updatedBy?: string;
 };
 
 export const updatePackage = async (input: UpdatePackageInput): Promise<string | null> => {
-	const result = await query<{ package_id: string }>(UPDATE_PACKAGE_SQL, [
-		input.packageId,
-		input.tenantId,
-		input.isActive ?? null,
-		input.includesBreakfast ?? null,
-		input.includesLunch ?? null,
-		input.includesDinner ?? null,
-		input.includesParking ?? null,
-		input.includesWifi ?? null,
-		input.includesAirportTransfer ?? null,
-		input.updatedBy ?? null,
-	]);
+  const result = await query<{ package_id: string }>(UPDATE_PACKAGE_SQL, [
+    input.packageId,
+    input.tenantId,
+    input.isActive ?? null,
+    input.includesBreakfast ?? null,
+    input.includesLunch ?? null,
+    input.includesDinner ?? null,
+    input.includesParking ?? null,
+    input.includesWifi ?? null,
+    input.includesAirportTransfer ?? null,
+    input.updatedBy ?? null,
+  ]);
 
-	return result.rows[0]?.package_id ?? null;
+  return result.rows[0]?.package_id ?? null;
 };
 
 // =====================================================
@@ -589,45 +589,45 @@ const CREATE_PACKAGE_COMPONENT_SQL = `
 `;
 
 export type CreatePackageComponentInput = {
-	packageId: string;
-	componentType: string;
-	componentName: string;
-	componentDescription?: string;
-	quantity: number;
-	pricingType: string;
-	unitPrice: number;
-	isIncluded: boolean;
-	isOptional: boolean;
-	isMandatory: boolean;
-	deliveryTiming?: string;
-	deliveryLocation?: string;
-	displayOrder: number;
-	createdBy?: string;
+  packageId: string;
+  componentType: string;
+  componentName: string;
+  componentDescription?: string;
+  quantity: number;
+  pricingType: string;
+  unitPrice: number;
+  isIncluded: boolean;
+  isOptional: boolean;
+  isMandatory: boolean;
+  deliveryTiming?: string;
+  deliveryLocation?: string;
+  displayOrder: number;
+  createdBy?: string;
 };
 
 export const createPackageComponent = async (
-	input: CreatePackageComponentInput,
+  input: CreatePackageComponentInput,
 ): Promise<string> => {
-	const result = await query<{ component_id: string }>(CREATE_PACKAGE_COMPONENT_SQL, [
-		input.packageId,
-		input.componentType,
-		input.componentName,
-		input.componentDescription ?? null,
-		input.quantity,
-		input.pricingType,
-		input.unitPrice,
-		input.isIncluded,
-		input.isOptional,
-		input.isMandatory,
-		input.deliveryTiming ?? null,
-		input.deliveryLocation ?? null,
-		input.displayOrder,
-		input.createdBy ?? null,
-	]);
+  const result = await query<{ component_id: string }>(CREATE_PACKAGE_COMPONENT_SQL, [
+    input.packageId,
+    input.componentType,
+    input.componentName,
+    input.componentDescription ?? null,
+    input.quantity,
+    input.pricingType,
+    input.unitPrice,
+    input.isIncluded,
+    input.isOptional,
+    input.isMandatory,
+    input.deliveryTiming ?? null,
+    input.deliveryLocation ?? null,
+    input.displayOrder,
+    input.createdBy ?? null,
+  ]);
 
-	const row = result.rows[0];
-	if (!row) {
-		throw new Error("Failed to create component — no row returned");
-	}
-	return row.component_id;
+  const row = result.rows[0];
+  if (!row) {
+    throw new Error("Failed to create component — no row returned");
+  }
+  return row.component_id;
 };

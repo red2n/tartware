@@ -93,7 +93,6 @@ const RoomParamsSchema = z.object({
   roomId: z.string().uuid(),
 });
 
-
 const AmenityCatalogResponseSchema = z.array(AmenityCatalogItemSchema);
 const AmenityCatalogResponseJsonSchema = schemaFromZod(
   AmenityCatalogResponseSchema,
