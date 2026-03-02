@@ -29,6 +29,7 @@ type PropertyRow = {
   license_number: string | null;
   currency: string | null;
   timezone: string | null;
+  default_language: string | null;
   config: Record<string, unknown>;
   integrations: Record<string, unknown>;
   is_active: boolean | null;
@@ -75,6 +76,7 @@ const mapRowToProperty = (
     license_number: row.license_number ?? undefined,
     currency: row.currency ?? "USD",
     timezone: row.timezone ?? "UTC",
+    default_language: row.default_language ?? "en",
     config: row.config,
     integrations: row.integrations,
     is_active: row.is_active ?? true,

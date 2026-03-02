@@ -1,0 +1,32 @@
+        column_name         |          data_type          
+----------------------------+-----------------------------
+ flag_id                    | uuid
+ tenant_id                  | uuid
+ property_id                | uuid
+ feature_code               | character varying
+ feature_name               | character varying
+ feature_description        | text
+ feature_module             | character varying
+ is_enabled                 | boolean
+ enabled_at                 | timestamp without time zone
+ enabled_by                 | uuid
+ disabled_at                | timestamp without time zone
+ disabled_by                | uuid
+ rollout_percentage         | integer
+ rollout_strategy           | character varying
+ allowed_roles              | ARRAY
+ allowed_user_ids           | ARRAY
+ requires_subscription_tier | character varying
+ is_premium                 | boolean
+ is_beta                    | boolean
+ depends_on                 | ARRAY
+ conflicts_with             | ARRAY
+ config                     | jsonb
+ internal_notes             | text
+ metadata                   | jsonb
+ created_at                 | timestamp without time zone
+ updated_at                 | timestamp without time zone
+ created_by                 | uuid
+ updated_by                 | uuid
+(28 rows)
+

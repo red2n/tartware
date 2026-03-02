@@ -131,6 +131,27 @@ export class PackagesComponent {
 		};
 	});
 
+	readonly summary = computed(() => {
+		const all = this.packages();
+		const active = all.filter((p) => p.is_active);
+		const totalBookings = all.reduce((sum, p) => sum + (p.total_bookings ?? 0), 0);
+		const avgPrice = active.length > 0
+			? active.reduce((sum, p) => sum + p.base_price, 0) / active.length
+			: 0;
+		const currency = all[0]?.currency_code ?? "USD";
+		const topPkg = [...all].sort((a, b) => (b.total_bookings ?? 0) - (a.total_bookings ?? 0))[0];
+		return {
+			total: all.length,
+			activeCount: active.length,
+			featuredCount: all.filter((p) => p.is_featured).length,
+			totalBookings,
+			avgPrice,
+			currency,
+			topPackageName: topPkg?.package_name ?? "\u2014",
+			topPackageBookings: topPkg?.total_bookings ?? 0,
+		};
+	});
+
 	constructor() {
 		effect(() => {
 			this.auth.tenantId();

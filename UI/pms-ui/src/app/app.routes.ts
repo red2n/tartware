@@ -99,6 +99,12 @@ export const routes: Routes = [
 					import("./features/housekeeping/housekeeping").then((m) => m.HousekeepingComponent),
 			},
 			{
+				path: "billing",
+				canActivate: [propertyGuard],
+				loadComponent: () =>
+					import("./features/billing/billing").then((m) => m.BillingComponent),
+			},
+			{
 				path: "settings",
 				loadComponent: () =>
 					import("./features/settings/settings").then((m) => m.SettingsComponent),

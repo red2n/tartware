@@ -223,7 +223,7 @@ const upsertUserTenantAssociations = async (client, associations = []) => {
         association.tenantId,
         association.role ?? "OWNER",
         jsonb(association.permissions),
-        jsonb(association.modules ?? ["core", "reservations", "housekeeping", "billing"]),
+        jsonb(association.modules ?? ["core", "reservations", "housekeeping", "billing", "finance-automation"]),
         jsonb(association.metadata),
         seedActorId,
       ],

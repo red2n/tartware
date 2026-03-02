@@ -6,6 +6,109 @@
   max-width: 1200px;
 }
 
+/* ── Room Occupancy Overview ── */
+.room-overview {
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-md);
+  background: var(--color-canvas-default);
+  padding: var(--space-4) var(--space-5);
+  margin-bottom: var(--space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.room-overview-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.room-overview-title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-fg-default);
+
+  mat-icon {
+    font-size: 18px;
+    width: 18px;
+    height: 18px;
+    color: var(--color-fg-muted);
+  }
+}
+
+.room-overview-pct {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+}
+
+.room-pct-value {
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-accent-fg);
+}
+
+.room-pct-label {
+  font-size: var(--font-size-xs);
+}
+
+.occ-bar {
+  display: flex;
+  height: 10px;
+  border-radius: 5px;
+  overflow: hidden;
+  background: var(--color-canvas-subtle);
+  gap: 2px;
+}
+
+.occ-segment {
+  border-radius: 5px;
+  min-width: 4px;
+  transition: flex var(--duration-fast);
+}
+
+.occ-occupied { background: var(--color-accent-emphasis); }
+.occ-vacant { background: var(--color-success-emphasis); }
+.occ-ooo { background: var(--color-danger-emphasis); }
+.occ-blocked { background: var(--color-warning-emphasis); }
+.occ-setup { background: var(--color-fg-muted); }
+
+.occ-legend {
+  display: flex;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+}
+
+.occ-legend-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: var(--font-size-xs);
+  color: var(--color-fg-muted);
+
+  strong {
+    color: var(--color-fg-default);
+    font-weight: var(--font-weight-semibold);
+  }
+}
+
+.occ-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+
+  &.occ-occupied { background: var(--color-accent-emphasis); }
+  &.occ-vacant { background: var(--color-success-emphasis); }
+  &.occ-ooo { background: var(--color-danger-emphasis); }
+  &.occ-blocked { background: var(--color-warning-emphasis); }
+  &.occ-setup { background: var(--color-fg-muted); }
+}
+
 .room-number {
   font-weight: var(--font-weight-semibold);
   color: var(--color-accent-fg);

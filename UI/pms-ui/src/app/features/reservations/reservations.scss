@@ -6,6 +6,84 @@
   max-width: 1200px;
 }
 
+/* ── Reservation Pipeline Overview ── */
+.res-overview {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-5);
+}
+
+.res-overview-card {
+  flex: 1;
+  display: flex;
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-md);
+  background: var(--color-canvas-default);
+  overflow: hidden;
+  transition: border-color var(--duration-fast), box-shadow var(--duration-fast);
+
+  &:hover {
+    box-shadow: var(--color-shadow-small);
+  }
+}
+
+.res-overview-accent {
+  width: 4px;
+  flex-shrink: 0;
+}
+
+.res-card-arrivals .res-overview-accent { background: var(--color-accent-emphasis); }
+.res-card-inhouse .res-overview-accent { background: var(--color-success-emphasis); }
+.res-card-departures .res-overview-accent { background: var(--color-warning-emphasis); }
+.res-card-revenue .res-overview-accent { background: #8b5cf6; }
+
+.res-card-arrivals .res-overview-label mat-icon { color: var(--color-accent-fg); }
+.res-card-inhouse .res-overview-label mat-icon { color: var(--color-success-fg); }
+.res-card-departures .res-overview-label mat-icon { color: var(--color-warning-fg); }
+.res-card-revenue .res-overview-label mat-icon { color: #8b5cf6; }
+
+.res-overview-body {
+  padding: var(--space-3) var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.res-overview-label {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-fg-muted);
+
+  mat-icon {
+    font-size: 16px;
+    width: 16px;
+    height: 16px;
+  }
+}
+
+.res-overview-value {
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-fg-default);
+}
+
+.res-overview-sub {
+  font-size: var(--font-size-xs);
+}
+
+.res-flow-arrow {
+  color: var(--color-fg-muted);
+  font-size: 18px;
+  width: 18px;
+  height: 18px;
+  opacity: 0.4;
+  flex-shrink: 0;
+}
+
 .confirmation-number {
   font-weight: var(--font-weight-semibold);
   color: var(--color-accent-fg);

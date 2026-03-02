@@ -118,6 +118,32 @@ export class RatesComponent {
 		};
 	});
 
+	readonly summary = computed(() => {
+		const all = this.rates();
+		const active = all.filter((r) => r.status === "ACTIVE");
+		const currency = all[0]?.currency ?? "USD";
+		const activeRates = active.map((r) => r.base_rate).sort((a, b) => a - b);
+		const minRate = activeRates[0] ?? 0;
+		const maxRate = activeRates[activeRates.length - 1] ?? 0;
+		const barRate = active.find((r) => r.rate_type === "BAR");
+		const typeCounts = new Map<string, number>();
+		for (const r of active) {
+			typeCounts.set(r.rate_type, (typeCounts.get(r.rate_type) ?? 0) + 1);
+		}
+		const topTypes = [...typeCounts.entries()]
+			.sort((a, b) => b[1] - a[1])
+			.slice(0, 3)
+			.map(([type, count]) => ({ label: this.typeLabel(type), count }));
+		return {
+			totalPlans: all.length,
+			activePlans: active.length,
+			minRate, maxRate, currency,
+			barRateValue: barRate?.base_rate ?? null,
+			barRateName: barRate?.rate_name ?? null,
+			topTypes,
+		};
+	});
+
 	constructor() {
 		// Reload rates when property selection changes
 		effect(() => {

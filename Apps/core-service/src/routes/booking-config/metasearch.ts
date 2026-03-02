@@ -58,7 +58,6 @@ const ClickPerformanceQuerySchema = z.object({
 
 type ClickPerformanceQuery = z.infer<typeof ClickPerformanceQuerySchema>;
 
-
 const ClickPerformanceResponseSchema = z.array(ClickPerformanceItemSchema);
 const ClickPerformanceQueryJsonSchema = schemaFromZod(
   ClickPerformanceQuerySchema,

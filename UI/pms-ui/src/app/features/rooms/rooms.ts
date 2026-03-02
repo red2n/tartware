@@ -120,6 +120,20 @@ export class RoomsComponent {
 		};
 	});
 
+	readonly summary = computed(() => {
+		const all = this.rooms();
+		const total = all.length;
+		const occupied = all.filter((r) => r.status === "occupied").length;
+		const vacant = all.filter((r) => r.status === "available").length;
+		const ooo = all.filter((r) => r.is_out_of_order).length;
+		const blocked = all.filter((r) => r.is_blocked).length;
+		const setup = all.filter((r) => r.status === "setup").length;
+		return {
+			total, occupied, vacant, ooo, blocked, setup,
+			occupancyPct: total > 0 ? Math.round((occupied / total) * 100) : 0,
+		};
+	});
+
 	constructor() {
 		// Reload rooms when property selection changes
 		effect(() => {

@@ -12,6 +12,54 @@
     </div>
   </div>
 
+  <!-- ═════════════════════════════════════════════ -->
+  <!-- ROOM OCCUPANCY OVERVIEW                      -->
+  <!-- ═════════════════════════════════════════════ -->
+  @if (rooms().length > 0) {
+    <div class="room-overview">
+      <div class="room-overview-header">
+        <div class="room-overview-title">
+          <mat-icon>domain</mat-icon>
+          <span>Room Inventory</span>
+        </div>
+        <div class="room-overview-pct">
+          <span class="room-pct-value">{{ summary().occupancyPct }}%</span>
+          <span class="room-pct-label text-muted">Occupancy</span>
+        </div>
+      </div>
+      <div class="occ-bar">
+        @if (summary().occupied > 0) {
+          <div class="occ-segment occ-occupied" [style.flex]="summary().occupied" matTooltip="Occupied: {{ summary().occupied }}"></div>
+        }
+        @if (summary().vacant > 0) {
+          <div class="occ-segment occ-vacant" [style.flex]="summary().vacant" matTooltip="Vacant: {{ summary().vacant }}"></div>
+        }
+        @if (summary().ooo > 0) {
+          <div class="occ-segment occ-ooo" [style.flex]="summary().ooo" matTooltip="Out of order: {{ summary().ooo }}"></div>
+        }
+        @if (summary().blocked > 0) {
+          <div class="occ-segment occ-blocked" [style.flex]="summary().blocked" matTooltip="Blocked: {{ summary().blocked }}"></div>
+        }
+        @if (summary().setup > 0) {
+          <div class="occ-segment occ-setup" [style.flex]="summary().setup" matTooltip="Setup: {{ summary().setup }}"></div>
+        }
+      </div>
+      <div class="occ-legend">
+        <span class="occ-legend-item"><span class="occ-dot occ-occupied"></span> Occupied <strong>{{ summary().occupied }}</strong></span>
+        <span class="occ-legend-item"><span class="occ-dot occ-vacant"></span> Vacant <strong>{{ summary().vacant }}</strong></span>
+        @if (summary().ooo > 0) {
+          <span class="occ-legend-item"><span class="occ-dot occ-ooo"></span> OOO <strong>{{ summary().ooo }}</strong></span>
+        }
+        @if (summary().blocked > 0) {
+          <span class="occ-legend-item"><span class="occ-dot occ-blocked"></span> Blocked <strong>{{ summary().blocked }}</strong></span>
+        }
+        @if (summary().setup > 0) {
+          <span class="occ-legend-item"><span class="occ-dot occ-setup"></span> Setup <strong>{{ summary().setup }}</strong></span>
+        }
+      </div>
+    </div>
+  }
+
   <!-- Filter tabs + search -->
   <div class="filter-bar">
     <nav class="filter-tabs" aria-label="Room status filters">

@@ -52,6 +52,7 @@ export const CreatePropertyBodySchema = z.object({
 	address: PropertyAddressSchema.optional(),
 	currency: z.string().length(3).optional(),
 	timezone: z.string().optional(),
+	default_language: z.string().max(10).optional(),
 });
 
 export type CreatePropertyBody = z.infer<typeof CreatePropertyBodySchema>;

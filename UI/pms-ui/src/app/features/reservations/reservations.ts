@@ -101,6 +101,20 @@ export class ReservationsComponent {
 		};
 	});
 
+	readonly summary = computed(() => {
+		const all = this.reservations();
+		const today = new Date().toISOString().split("T")[0];
+		const upper = (r: ReservationListItem) => r.status.toUpperCase();
+		return {
+			arrivalsToday: all.filter((r) => r.check_in_date === today && !["CANCELLED", "CHECKED_OUT"].includes(upper(r))).length,
+			inHouse: all.filter((r) => upper(r) === "CHECKED_IN").length,
+			departuresToday: all.filter((r) => r.check_out_date === today && upper(r) === "CHECKED_IN").length,
+			pending: all.filter((r) => upper(r) === "PENDING").length,
+			totalRevenue: all.filter((r) => upper(r) !== "CANCELLED").reduce((sum, r) => sum + r.total_amount, 0),
+			currency: all[0]?.currency ?? "USD",
+		};
+	});
+
 	constructor() {
 		effect(() => {
 			this.auth.tenantId();

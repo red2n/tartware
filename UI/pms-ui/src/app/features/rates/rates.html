@@ -12,6 +12,64 @@
     </div>
   </div>
 
+  <!-- ═════════════════════════════════════════════ -->
+  <!-- RATE ANALYTICS OVERVIEW                      -->
+  <!-- ═════════════════════════════════════════════ -->
+  @if (rates().length > 0) {
+    <div class="rate-overview">
+      <div class="rate-overview-section">
+        <div class="rate-overview-label">
+          <mat-icon>playlist_add_check</mat-icon>
+          Active Plans
+        </div>
+        <div class="rate-overview-value">{{ summary().activePlans }}</div>
+        <div class="rate-overview-sub text-muted">of {{ summary().totalPlans }} total</div>
+      </div>
+      <div class="rate-overview-divider"></div>
+      <div class="rate-overview-section">
+        <div class="rate-overview-label">
+          <mat-icon>swap_vert</mat-icon>
+          Rate Range
+        </div>
+        <div class="rate-overview-value rate-range-value">
+          {{ formatCurrency(summary().minRate, summary().currency) }}
+          <span class="rate-range-sep">—</span>
+          {{ formatCurrency(summary().maxRate, summary().currency) }}
+        </div>
+        <div class="rate-overview-sub text-muted">active pricing corridor</div>
+      </div>
+      <div class="rate-overview-divider"></div>
+      <div class="rate-overview-section rate-section-bar">
+        <div class="rate-overview-label">
+          <mat-icon>star</mat-icon>
+          BAR
+        </div>
+        @if (summary().barRateValue !== null) {
+          <div class="rate-overview-value">{{ formatCurrency(summary().barRateValue!, summary().currency) }}</div>
+          <div class="rate-overview-sub text-muted">{{ summary().barRateName }}</div>
+        } @else {
+          <div class="rate-overview-value text-muted">Not set</div>
+          <div class="rate-overview-sub text-muted">no BAR rate defined</div>
+        }
+      </div>
+      <div class="rate-overview-divider"></div>
+      <div class="rate-overview-section">
+        <div class="rate-overview-label">
+          <mat-icon>category</mat-icon>
+          Top Types
+        </div>
+        <div class="rate-overview-chips">
+          @for (t of summary().topTypes; track t.label) {
+            <span class="rate-type-chip">{{ t.label }} <strong>{{ t.count }}</strong></span>
+          }
+          @if (summary().topTypes.length === 0) {
+            <span class="text-muted">—</span>
+          }
+        </div>
+      </div>
+    </div>
+  }
+
   <!-- Filter tabs + type filter + search -->
   <div class="filter-bar">
     <nav class="filter-tabs" aria-label="Rate status filters">

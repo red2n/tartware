@@ -2,6 +2,9 @@ export const toOptionalNumber = (value: unknown): number | undefined => {
   if (value === null || value === undefined) {
     return undefined;
   }
+  if (typeof value === "bigint") {
+    return Number(value);
+  }
   if (typeof value === "number") {
     return Number.isFinite(value) ? value : undefined;
   }

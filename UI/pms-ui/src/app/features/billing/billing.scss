@@ -1,0 +1,179 @@
+/* Billing page — component-specific overrides only.
+ * Reusable patterns (filter-bar, data-table, states, badges, buttons)
+ * live in styles/shared.scss. */
+
+.billing-page {
+  max-width: 1280px;
+}
+
+/* ── Billing KPI Overview ── */
+.bill-overview {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--space-3);
+  margin-bottom: var(--space-5);
+}
+
+.bill-kpi {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border-default);
+  background: var(--color-canvas-default);
+  transition: box-shadow var(--duration-fast);
+
+  &:hover {
+    box-shadow: var(--color-shadow-small);
+  }
+
+  > mat-icon {
+    font-size: 24px;
+    width: 24px;
+    height: 24px;
+    flex-shrink: 0;
+    color: var(--color-fg-muted);
+  }
+}
+
+.bill-kpi-received > mat-icon { color: var(--color-success-fg); }
+.bill-kpi-outstanding > mat-icon { color: var(--color-warning-fg); }
+.bill-kpi-overdue > mat-icon { color: var(--color-fg-muted); }
+.bill-kpi-folios > mat-icon { color: var(--color-accent-fg); }
+
+.bill-kpi-alert > mat-icon { color: var(--color-danger-fg); }
+.bill-kpi-alert .bill-kpi-value { color: var(--color-danger-fg); }
+
+.bill-kpi-body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.bill-kpi-value {
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-fg-default);
+}
+
+.bill-kpi-label {
+  font-size: var(--font-size-xs);
+  color: var(--color-fg-muted);
+}
+
+/* ── View tab toggle (same pattern as housekeeping) ── */
+.view-tabs {
+  display: flex;
+  gap: var(--space-1);
+  margin-bottom: var(--space-4);
+  border-bottom: 1px solid var(--color-border-muted);
+  padding-bottom: 0;
+}
+
+.view-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-2) var(--space-4);
+  border: none;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  background: none;
+  color: var(--color-fg-muted);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  cursor: pointer;
+  transition: color var(--duration-fast), border-color var(--duration-fast);
+  margin-bottom: -1px;
+
+  mat-icon {
+    font-size: 18px;
+    width: 18px;
+    height: 18px;
+  }
+
+  .counter {
+    font-size: var(--font-size-xs);
+    color: var(--color-fg-muted);
+    margin-left: var(--space-1);
+  }
+
+  &:hover {
+    color: var(--color-fg-default);
+  }
+}
+
+.view-tab-active {
+  color: var(--color-accent-fg);
+  border-bottom-color: var(--color-accent-emphasis);
+
+  .counter {
+    color: var(--color-accent-fg);
+  }
+}
+
+/* ── Table cells ── */
+.ref-code {
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-accent-fg);
+  font-family: var(--font-family-mono, monospace);
+  font-size: var(--font-size-xs);
+}
+
+.charge-code {
+  font-family: var(--font-family-mono, monospace);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+}
+
+.col-right {
+  text-align: right;
+}
+
+.cell-amount {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.guest-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.row-voided {
+  opacity: 0.5;
+  text-decoration: line-through;
+}
+
+.cell-void {
+  white-space: nowrap;
+  text-align: right;
+}
+
+/* ── Responsive ── */
+@media (max-width: 1024px) {
+  .bill-overview {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 768px) {
+  .filter-bar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .bill-overview {
+    grid-template-columns: 1fr;
+  }
+
+  .view-tabs {
+    overflow-x: auto;
+  }
+
+  .table-container {
+    overflow-x: auto;
+  }
+}

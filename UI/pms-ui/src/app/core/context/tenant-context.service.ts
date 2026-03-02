@@ -1,11 +1,27 @@
 import { computed, effect, Injectable, inject, signal } from "@angular/core";
 
-import type { Property } from "@tartware/schemas";
+import type { PropertyWithStats } from "@tartware/schemas";
 
 import { ApiService } from "../api/api.service";
 import { AuthService } from "../auth/auth.service";
 
-export type PropertyOption = Pick<Property, "id" | "property_name" | "property_code">;
+export type PropertyOption = Pick<
+	PropertyWithStats,
+	| "id"
+	| "property_name"
+	| "property_code"
+	| "property_type"
+	| "address"
+	| "currency"
+	| "timezone"
+	| "default_language"
+	| "total_rooms"
+	| "room_count"
+	| "star_rating"
+	| "is_active"
+	| "phone"
+	| "email"
+>;
 
 @Injectable({ providedIn: "root" })
 export class TenantContextService {

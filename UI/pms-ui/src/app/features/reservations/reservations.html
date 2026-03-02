@@ -12,6 +12,61 @@
     </div>
   </div>
 
+  <!-- ═════════════════════════════════════════════ -->
+  <!-- RESERVATION PIPELINE OVERVIEW                -->
+  <!-- ═════════════════════════════════════════════ -->
+  @if (reservations().length > 0) {
+    <div class="res-overview">
+      <div class="res-overview-card res-card-arrivals">
+        <div class="res-overview-accent"></div>
+        <div class="res-overview-body">
+          <div class="res-overview-label">
+            <mat-icon>flight_land</mat-icon>
+            Arrivals Today
+          </div>
+          <div class="res-overview-value">{{ summary().arrivalsToday }}</div>
+          <div class="res-overview-sub text-muted">checking in</div>
+        </div>
+      </div>
+      <mat-icon class="res-flow-arrow">arrow_forward</mat-icon>
+      <div class="res-overview-card res-card-inhouse">
+        <div class="res-overview-accent"></div>
+        <div class="res-overview-body">
+          <div class="res-overview-label">
+            <mat-icon>hotel</mat-icon>
+            In-House
+          </div>
+          <div class="res-overview-value">{{ summary().inHouse }}</div>
+          <div class="res-overview-sub text-muted">guests</div>
+        </div>
+      </div>
+      <mat-icon class="res-flow-arrow">arrow_forward</mat-icon>
+      <div class="res-overview-card res-card-departures">
+        <div class="res-overview-accent"></div>
+        <div class="res-overview-body">
+          <div class="res-overview-label">
+            <mat-icon>flight_takeoff</mat-icon>
+            Departures Today
+          </div>
+          <div class="res-overview-value">{{ summary().departuresToday }}</div>
+          <div class="res-overview-sub text-muted">checking out</div>
+        </div>
+      </div>
+      <mat-icon class="res-flow-arrow">arrow_forward</mat-icon>
+      <div class="res-overview-card res-card-revenue">
+        <div class="res-overview-accent"></div>
+        <div class="res-overview-body">
+          <div class="res-overview-label">
+            <mat-icon>payments</mat-icon>
+            Revenue
+          </div>
+          <div class="res-overview-value">{{ formatCurrency(summary().totalRevenue, summary().currency) }}</div>
+          <div class="res-overview-sub text-muted">{{ summary().pending }} pending</div>
+        </div>
+      </div>
+    </div>
+  }
+
   <!-- Filter tabs + search -->
   <div class="filter-bar">
     <nav class="filter-tabs" aria-label="Reservation status filters">

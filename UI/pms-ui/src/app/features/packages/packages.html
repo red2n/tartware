@@ -12,6 +12,42 @@
     </div>
   </div>
 
+  <!-- ═════════════════════════════════════════════ -->
+  <!-- PACKAGE ENGAGEMENT OVERVIEW                  -->
+  <!-- ═════════════════════════════════════════════ -->
+  @if (packages().length > 0) {
+    <div class="pkg-overview">
+      <div class="pkg-stat pkg-stat-active">
+        <mat-icon>inventory_2</mat-icon>
+        <div class="pkg-stat-content">
+          <div class="pkg-stat-value">{{ summary().activeCount }}</div>
+          <div class="pkg-stat-label">Active Packages</div>
+        </div>
+      </div>
+      <div class="pkg-stat pkg-stat-featured">
+        <mat-icon>star</mat-icon>
+        <div class="pkg-stat-content">
+          <div class="pkg-stat-value">{{ summary().featuredCount }}</div>
+          <div class="pkg-stat-label">Featured</div>
+        </div>
+      </div>
+      <div class="pkg-stat pkg-stat-bookings">
+        <mat-icon>trending_up</mat-icon>
+        <div class="pkg-stat-content">
+          <div class="pkg-stat-value">{{ summary().totalBookings }}</div>
+          <div class="pkg-stat-label">Total Bookings</div>
+        </div>
+      </div>
+      <div class="pkg-stat pkg-stat-price">
+        <mat-icon>sell</mat-icon>
+        <div class="pkg-stat-content">
+          <div class="pkg-stat-value">{{ formatCurrency(summary().avgPrice, summary().currency) }}</div>
+          <div class="pkg-stat-label">Avg Price</div>
+        </div>
+      </div>
+    </div>
+  }
+
   <!-- Filter tabs + type filter + search -->
   <div class="filter-bar">
     <nav class="filter-tabs" aria-label="Package status filters">

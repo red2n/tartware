@@ -1,0 +1,297 @@
+<h2 mat-dialog-title>
+  <mat-icon class="dialog-title-icon">add_business</mat-icon>
+  New Property
+</h2>
+
+<mat-dialog-content>
+  @if (error(); as err) {
+    <div class="flash flash-error">
+      <mat-icon class="flash-icon">error_outline</mat-icon>
+      {{ err }}
+    </div>
+  }
+
+  <div class="form-fields">
+    <!-- Identity -->
+    <section class="form-section">
+      <span class="form-section-title">Identity</span>
+
+      <div class="field-row">
+        <div class="field-group field-required" [class.field-error]="touched['propertyName'] && !propertyName.trim()">
+          <label class="field-label" for="cp-name">Property name</label>
+          <input
+            id="cp-name"
+            type="text"
+            class="field-input"
+            placeholder="Grand Oceanview Hotel"
+            maxlength="200"
+            [(ngModel)]="propertyName"
+            (ngModelChange)="onNameChange()"
+            (blur)="markTouched('propertyName')"
+            [disabled]="saving()" />
+          @if (touched['propertyName'] && !propertyName.trim()) {
+            <span class="field-hint-error">Property name is required</span>
+          }
+        </div>
+
+        <div class="field-group field-required" [class.field-error]="touched['propertyCode'] && !propertyCode.trim()">
+          <label class="field-label" for="cp-code">Property code</label>
+          <input
+            id="cp-code"
+            type="text"
+            class="field-input"
+            placeholder="GRANDOCEAN"
+            maxlength="50"
+            [(ngModel)]="propertyCode"
+            (blur)="markTouched('propertyCode')"
+            [disabled]="saving()" />
+          @if (touched['propertyCode'] && !propertyCode.trim()) {
+            <span class="field-hint-error">Property code is required</span>
+          } @else {
+            <span class="field-hint">Uppercase alphanumeric, used in reports</span>
+          }
+        </div>
+      </div>
+
+      <div class="field-row">
+        <div class="field-group">
+          <label class="field-label" for="cp-type">Property type</label>
+          <select
+            id="cp-type"
+            class="field-input"
+            [(ngModel)]="propertyType"
+            [disabled]="saving()">
+            <option value="">Select type…</option>
+            <option value="hotel">Hotel</option>
+            <option value="resort">Resort</option>
+            <option value="boutique">Boutique Hotel</option>
+            <option value="hostel">Hostel</option>
+            <option value="motel">Motel</option>
+            <option value="apartment">Serviced Apartment</option>
+            <option value="villa">Villa</option>
+            <option value="extended_stay">Extended Stay</option>
+          </select>
+        </div>
+
+        <div class="field-group">
+          <label class="field-label" for="cp-stars">Star rating</label>
+          <select
+            id="cp-stars"
+            class="field-input"
+            [(ngModel)]="starRating"
+            [disabled]="saving()">
+            <option [ngValue]="null">N/A</option>
+            <option [ngValue]="1">1 star</option>
+            <option [ngValue]="2">2 stars</option>
+            <option [ngValue]="3">3 stars</option>
+            <option [ngValue]="4">4 stars</option>
+            <option [ngValue]="5">5 stars</option>
+          </select>
+        </div>
+
+        <div class="field-group">
+          <label class="field-label" for="cp-rooms">Total rooms</label>
+          <input
+            id="cp-rooms"
+            type="number"
+            class="field-input"
+            placeholder="0"
+            min="0"
+            [(ngModel)]="totalRooms"
+            [disabled]="saving()" />
+        </div>
+      </div>
+    </section>
+
+    <!-- Location -->
+    <section class="form-section">
+      <span class="form-section-title">Location</span>
+
+      <div class="field-group">
+        <label class="field-label" for="cp-addr1">Address line 1</label>
+        <input
+          #addressInput
+          id="cp-addr1"
+          type="text"
+          class="field-input"
+          [placeholder]="placesAvailable() ? 'Search hotel or type address…' : '123 Beach Road'"
+          maxlength="255"
+          [(ngModel)]="addressLine1"
+          [disabled]="saving()" />
+        @if (placesAvailable()) {
+          <span class="field-hint">Start typing to search by name or address</span>
+        }
+      </div>
+
+      <div class="field-group">
+        <label class="field-label" for="cp-addr2">Address line 2</label>
+        <input
+          id="cp-addr2"
+          type="text"
+          class="field-input"
+          placeholder="Suite 100"
+          maxlength="255"
+          [(ngModel)]="addressLine2"
+          [disabled]="saving()" />
+      </div>
+
+      <div class="field-row field-row-3">
+        <div class="field-group">
+          <label class="field-label" for="cp-city">City</label>
+          <input
+            id="cp-city"
+            type="text"
+            class="field-input"
+            placeholder="Miami"
+            maxlength="100"
+            [(ngModel)]="city"
+            [disabled]="saving()" />
+        </div>
+        <div class="field-group">
+          <label class="field-label" for="cp-state">State / Province</label>
+          <input
+            id="cp-state"
+            type="text"
+            class="field-input"
+            placeholder="FL"
+            maxlength="100"
+            [(ngModel)]="state"
+            [disabled]="saving()" />
+        </div>
+        <div class="field-group">
+          <label class="field-label" for="cp-postal">Postal code</label>
+          <input
+            id="cp-postal"
+            type="text"
+            class="field-input"
+            placeholder="33101"
+            maxlength="20"
+            [(ngModel)]="postalCode"
+            [disabled]="saving()" />
+        </div>
+      </div>
+
+      <div class="field-row">
+        <div class="field-group">
+          <label class="field-label" for="cp-country">Country</label>
+          <input
+            id="cp-country"
+            type="text"
+            class="field-input"
+            placeholder="US"
+            maxlength="2"
+            [(ngModel)]="country"
+            [disabled]="saving()" />
+          <span class="field-hint">ISO 3166-1 alpha-2 code</span>
+        </div>
+
+        <div class="field-group">
+          <label class="field-label" for="cp-tz">Timezone</label>
+          <input
+            id="cp-tz-filter"
+            type="text"
+            class="field-input field-input-search"
+            placeholder="Search timezones…"
+            [ngModel]="tzFilter()"
+            (ngModelChange)="tzFilter.set($event)"
+            [disabled]="saving()" />
+          <select
+            id="cp-tz"
+            class="field-input"
+            [(ngModel)]="timezone"
+            [disabled]="saving()">
+            @for (tz of filteredTimezones(); track tz.value) {
+              <option [value]="tz.value">{{ tz.label }}</option>
+            }
+          </select>
+        </div>
+      </div>
+    </section>
+
+    <!-- Operations -->
+    <section class="form-section">
+      <span class="form-section-title">Operations</span>
+
+      <div class="field-row field-row-3">
+        <div class="field-group">
+          <label class="field-label" for="cp-currency">Currency</label>
+          <select
+            id="cp-currency"
+            class="field-input"
+            [(ngModel)]="currency"
+            [disabled]="saving()">
+            @for (c of currencies; track c.code) {
+              <option [value]="c.code">{{ c.code }} — {{ c.name }}</option>
+            }
+          </select>
+        </div>
+
+        <div class="field-group">
+          <label class="field-label" for="cp-lang">Default language</label>
+          <select
+            id="cp-lang"
+            class="field-input"
+            [(ngModel)]="defaultLanguage"
+            [disabled]="saving()">
+            @for (l of languages; track l.code) {
+              <option [value]="l.code">{{ l.name }}</option>
+            }
+          </select>
+        </div>
+      </div>
+    </section>
+
+    <!-- Contact -->
+    <section class="form-section">
+      <span class="form-section-title">Contact</span>
+
+      <div class="field-row field-row-3">
+        <div class="field-group">
+          <label class="field-label" for="cp-phone">Phone</label>
+          <input
+            id="cp-phone"
+            type="tel"
+            class="field-input"
+            placeholder="+1-555-123-4567"
+            [(ngModel)]="phone"
+            [disabled]="saving()" />
+        </div>
+        <div class="field-group">
+          <label class="field-label" for="cp-email">Email</label>
+          <input
+            id="cp-email"
+            type="email"
+            class="field-input"
+            placeholder="info@hotel.com"
+            [(ngModel)]="email"
+            [disabled]="saving()" />
+        </div>
+        <div class="field-group">
+          <label class="field-label" for="cp-website">Website</label>
+          <input
+            id="cp-website"
+            type="url"
+            class="field-input"
+            placeholder="https://hotel.com"
+            [(ngModel)]="website"
+            [disabled]="saving()" />
+        </div>
+      </div>
+    </section>
+  </div>
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  <button class="btn btn-outline" (click)="cancel()" [disabled]="saving()">Cancel</button>
+  <button
+    class="btn btn-primary"
+    [disabled]="!isValid || saving()"
+    (click)="save()">
+    @if (saving()) {
+      <mat-spinner diameter="16" />
+      Creating…
+    } @else {
+      Create property
+    }
+  </button>
+</mat-dialog-actions>

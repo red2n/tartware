@@ -49,6 +49,7 @@ export const PropertySchema = z.object({
 	license_number: z.string().optional(),
 	currency: z.string().length(3).default("USD"),
 	timezone: z.string().default("UTC"),
+	default_language: z.string().max(10).default("en"),
 	config: JsonbObject.describe("Property-specific configuration"),
 	integrations: JsonbObject.describe("Integration settings"),
 	is_active: z.boolean().default(true),
