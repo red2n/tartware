@@ -261,7 +261,7 @@ export const CHARGE_POSTING_LIST_SQL = `
     c.is_voided,
     c.voided_at,
     c.void_reason,
-    c.created_at,
+    c.posting_date AS created_at,
     c.version
   FROM public.charge_postings c
   LEFT JOIN public.folios f ON c.folio_id = f.folio_id

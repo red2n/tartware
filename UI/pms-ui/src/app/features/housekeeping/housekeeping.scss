@@ -1,0 +1,242 @@
+/* Housekeeping page — component-specific overrides only.
+ * Reusable patterns (filter-bar, data-table, states, badges, buttons)
+ * live in styles/shared.scss. */
+
+.housekeeping-page {
+  max-width: 1400px;
+}
+
+/* ── KPI Summary Strip ── */
+.hk-summary {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: var(--space-3);
+  margin-bottom: var(--space-5);
+}
+
+.hk-summary-card {
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-md);
+  background: var(--color-canvas-default);
+  padding: var(--space-3) var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  transition: border-color var(--duration-fast), box-shadow var(--duration-fast);
+
+  &.clickable {
+    cursor: pointer;
+
+    &:hover {
+      border-color: var(--color-accent-muted);
+      box-shadow: var(--color-shadow-small);
+    }
+  }
+}
+
+.hk-summary-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-fg-muted);
+
+  mat-icon {
+    font-size: 16px;
+    width: 16px;
+    height: 16px;
+  }
+}
+
+.hk-summary-value {
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-fg-default);
+}
+
+.hk-summary-sub {
+  font-size: var(--font-size-xs);
+}
+
+/* Summary card accent colors */
+.hk-summary-ready .hk-summary-header mat-icon {
+  color: var(--color-success-fg);
+}
+
+.hk-summary-ready .hk-summary-value {
+  color: var(--color-success-fg);
+}
+
+.hk-summary-dirty .hk-summary-header mat-icon {
+  color: var(--color-danger-fg);
+}
+
+.hk-summary-dirty .hk-summary-value {
+  color: var(--color-danger-fg);
+}
+
+.hk-summary-progress .hk-summary-header mat-icon {
+  color: var(--color-warning-fg);
+}
+
+.hk-summary-clean .hk-summary-header mat-icon {
+  color: var(--color-success-fg);
+}
+
+.hk-summary-dnd .hk-summary-header mat-icon {
+  color: var(--color-fg-muted);
+}
+
+/* ── View tab toggle ── */
+.view-tabs {
+  display: flex;
+  gap: var(--space-1);
+  margin-bottom: var(--space-4);
+  border-bottom: 1px solid var(--color-border-muted);
+  padding-bottom: 0;
+}
+
+.view-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-2) var(--space-4);
+  border: none;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  background: none;
+  color: var(--color-fg-muted);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  cursor: pointer;
+  transition: color var(--duration-fast), border-color var(--duration-fast);
+  margin-bottom: -1px;
+
+  mat-icon {
+    font-size: 18px;
+    width: 18px;
+    height: 18px;
+  }
+
+  &:hover {
+    color: var(--color-fg-default);
+  }
+}
+
+.view-tab-active {
+  color: var(--color-accent-fg);
+  border-bottom-color: var(--color-accent-emphasis);
+}
+
+/* ── Room table overrides ── */
+.data-table {
+  table-layout: fixed;
+}
+
+.col-room       { width: 14%; }
+.col-type       { width: 18%; }
+.col-floor       { width: 8%; }
+.col-occupancy  { width: 16%; }
+.col-hk-status  { width: 14%; }
+.col-notes      { width: 22%; }
+.col-actions    { width: 10%; text-align: right; }
+
+.action-btn-group {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 2px;
+}
+
+.hk-room-number {
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-accent-fg);
+}
+
+.hk-room-name {
+  display: block;
+  font-size: var(--font-size-xs);
+}
+
+.cell-notes {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--font-size-xs);
+}
+
+/* Dirty row gets a subtle left accent */
+.row-dirty {
+  border-left: 3px solid var(--color-danger-emphasis);
+}
+
+/* ── Empty state refinement ── */
+.empty-state-icon-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: var(--color-canvas-subtle);
+  border: 1px solid var(--color-border-muted);
+}
+
+.empty-state-title {
+  margin: 0;
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-fg-default);
+}
+
+.empty-state-desc {
+  max-width: 360px;
+  font-size: var(--font-size-sm);
+  line-height: 1.5;
+}
+
+/* ── HK action menu icon colors ── */
+::ng-deep .hk-actions-menu {
+  .hk-icon-clean { color: var(--color-success-fg); }
+  .hk-icon-dirty { color: var(--color-danger-fg); }
+  .hk-icon-in-progress { color: var(--color-warning-fg); }
+  .hk-icon-inspected { color: var(--color-success-fg); }
+  .hk-icon-do-not-disturb { color: var(--color-fg-muted); }
+
+  .occ-icon-available { color: var(--color-success-fg); }
+  .occ-icon-occupied { color: var(--color-accent-fg); }
+  .occ-icon-dirty { color: var(--color-danger-fg); }
+  .occ-icon-out-of-order { color: var(--color-warning-fg); }
+  .occ-icon-out-of-service { color: var(--color-fg-muted); }
+}
+
+/* ── Responsive ── */
+@media (max-width: 768px) {
+  .hk-summary {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .filter-bar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .search-input {
+    width: 100%;
+  }
+
+  .table-container {
+    overflow-x: auto;
+  }
+}
+
+@media (max-width: 480px) {
+  .hk-summary {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .view-tabs {
+    overflow-x: auto;
+  }
+}

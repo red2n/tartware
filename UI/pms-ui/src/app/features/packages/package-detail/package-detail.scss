@@ -1,0 +1,263 @@
+/* Package detail — component-specific overrides only.
+ * Reusable patterns (breadcrumb, detail-card, card-header, card-body,
+ * detail-list, detail-row, detail-label, detail-value, badges, buttons)
+ * all live in styles/shared.scss. */
+
+:host {
+  display: block;
+  max-width: 960px;
+  padding: var(--space-6) var(--space-8);
+}
+
+.page-header {
+  margin-bottom: var(--space-5);
+}
+
+/* ── Package header ── */
+.pkg-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.pkg-header-left {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.pkg-title {
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-semibold);
+  margin: 0;
+}
+
+.pkg-code {
+  font-family: var(--font-family-mono, monospace);
+  font-size: var(--font-size-sm);
+  color: var(--color-fg-muted);
+}
+
+.pkg-badges {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+  flex-wrap: wrap;
+  margin-top: var(--space-1);
+}
+
+.pkg-header-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.badge-icon {
+  font-size: 14px;
+  width: 14px;
+  height: 14px;
+  vertical-align: text-bottom;
+  margin-right: 2px;
+}
+
+.badge-attention {
+  background: var(--color-attention-subtle);
+  color: var(--color-attention-fg);
+}
+
+.badge-accent {
+  background: var(--color-accent-subtle);
+  color: var(--color-accent-fg);
+}
+
+/* ── Inclusions ── */
+.inclusion-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.inclusion-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-full);
+  border: 1px solid var(--color-border-default);
+  background: var(--color-canvas-default);
+  font-size: var(--font-size-sm);
+  cursor: pointer;
+  transition: background var(--duration-fast), border-color var(--duration-fast), color var(--duration-fast);
+
+  mat-icon {
+    font-size: 18px;
+    width: 18px;
+    height: 18px;
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
+
+.inclusion-on {
+  background: var(--color-success-subtle);
+  border-color: var(--color-success-muted);
+  color: var(--color-success-fg);
+
+  .inc-status-icon {
+    color: var(--color-success-fg);
+  }
+
+  &:hover:not(:disabled) {
+    background: var(--color-success-muted);
+  }
+}
+
+.inclusion-off {
+  color: var(--color-fg-muted);
+
+  .inc-status-icon {
+    opacity: 0.4;
+  }
+
+  &:hover:not(:disabled) {
+    border-color: var(--color-accent-emphasis);
+    color: var(--color-fg-default);
+
+    .inc-status-icon {
+      opacity: 0.8;
+      color: var(--color-accent-fg);
+    }
+  }
+}
+
+.inc-status-icon {
+  font-size: 16px;
+  width: 16px;
+  height: 16px;
+  margin-left: auto;
+}
+
+/* ── Flash sm ── */
+.flash-sm {
+  font-size: var(--font-size-xs);
+  padding: var(--space-2) var(--space-3);
+  margin-bottom: var(--space-3);
+}
+
+/* ── Card body flush (no padding for tables) ── */
+.card-body-flush {
+  padding: 0;
+}
+
+/* ── Card header flex (title + action button side-by-side) ── */
+.card-header-flex {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-3) var(--space-4);
+  background: var(--color-canvas-subtle);
+  border-bottom: 1px solid var(--color-border-default);
+}
+
+/* ── Components grid ── */
+.comp-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.comp-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--color-border-muted);
+
+  &:last-child {
+    border-bottom: none;
+  }
+}
+
+.comp-icon-box {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-md);
+  background: var(--color-accent-subtle);
+  color: var(--color-accent-fg);
+  flex-shrink: 0;
+
+  mat-icon {
+    font-size: 18px;
+    width: 18px;
+    height: 18px;
+  }
+}
+
+.comp-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.comp-name {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-fg-default);
+}
+
+.comp-desc {
+  display: block;
+  font-size: var(--font-size-xs);
+  color: var(--color-fg-muted);
+  margin-top: 1px;
+}
+
+.comp-meta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-shrink: 0;
+}
+
+/* ── Components ── */
+.comp-type-icon {
+  font-size: 18px;
+  width: 18px;
+  height: 18px;
+  vertical-align: text-bottom;
+  color: var(--color-fg-muted);
+  margin-right: var(--space-2);
+}
+
+.cell-amount {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.empty-state-sm {
+  padding: var(--space-4) var(--space-3);
+
+  .empty-icon {
+    font-size: 32px;
+    width: 32px;
+    height: 32px;
+  }
+}
+
+/* ── Responsive ── */
+@media (max-width: 768px) {
+  :host {
+    padding: var(--space-3);
+  }
+
+  .pkg-header {
+    flex-direction: column;
+  }
+}

@@ -2,6 +2,8 @@ import { buildRouteSchema, errorResponseSchema, schemaFromZod } from "@tartware/
 import {
   GroupBookingListItemSchema,
   PromotionalCodeListItemSchema,
+  ValidatePromoCodeRequestSchema,
+  ValidatePromoCodeResponseSchema,
   WaitlistEntryListItemSchema,
   WaitlistStatusEnum,
 } from "@tartware/schemas";
@@ -388,33 +390,8 @@ export const registerGroupWaitlistPromoRoutes = (app: FastifyInstance): void => 
     },
   );
 
-  const ValidatePromoCodeBodySchema = z.object({
-    promo_code: z.string().min(1).max(50),
-    tenant_id: z.string().uuid(),
-    property_id: z.string().uuid().optional(),
-    arrival_date: z.string(),
-    departure_date: z.string(),
-    room_type_id: z.string().uuid().optional(),
-    rate_code: z.string().optional(),
-    booking_amount: z.number().positive().optional(),
-    guest_id: z.string().uuid().optional(),
-    channel: z.string().optional(),
-  });
-
-  const ValidatePromoCodeResponseSchema = z.object({
-    valid: z.boolean(),
-    promo_id: z.string().uuid().optional(),
-    promo_code: z.string(),
-    promo_name: z.string().optional(),
-    discount_type: z.string().optional(),
-    discount_value: z.string().optional(),
-    estimated_savings: z.string().optional(),
-    message: z.string().optional(),
-    rejection_reason: z.string().optional(),
-  });
-
   const ValidatePromoCodeBodyJsonSchema = schemaFromZod(
-    ValidatePromoCodeBodySchema,
+    ValidatePromoCodeRequestSchema,
     "ValidatePromoCodeBody",
   );
   const ValidatePromoCodeResponseJsonSchema = schemaFromZod(
@@ -422,12 +399,12 @@ export const registerGroupWaitlistPromoRoutes = (app: FastifyInstance): void => 
     "ValidatePromoCodeResponse",
   );
 
-  app.post<{ Body: z.infer<typeof ValidatePromoCodeBodySchema> }>(
+  app.post<{ Body: z.infer<typeof ValidatePromoCodeRequestSchema> }>(
     "/v1/promo-codes/validate",
     {
       preHandler: app.withTenantScope({
         resolveTenantId: (request) =>
-          (request.body as z.infer<typeof ValidatePromoCodeBodySchema>).tenant_id,
+          (request.body as z.infer<typeof ValidatePromoCodeRequestSchema>).tenant_id,
         minRole: "STAFF",
         requiredModules: "core",
       }),
@@ -441,7 +418,7 @@ export const registerGroupWaitlistPromoRoutes = (app: FastifyInstance): void => 
       }),
     },
     async (request) => {
-      const body = ValidatePromoCodeBodySchema.parse(request.body);
+      const body = ValidatePromoCodeRequestSchema.parse(request.body);
       const result = await validatePromoCode({
         promoCode: body.promo_code,
         tenantId: body.tenant_id,

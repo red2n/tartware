@@ -1,0 +1,389 @@
+<div class="housekeeping-page">
+  <div class="page-header">
+    <h1 class="page-title">Housekeeping</h1>
+    <div class="page-actions">
+      <button class="btn btn-invisible" (click)="refresh()" matTooltip="Refresh" aria-label="Refresh">
+        <mat-icon>refresh</mat-icon>
+      </button>
+    </div>
+  </div>
+
+  <!-- ═════════════════════════════════════════════ -->
+  <!-- KPI SUMMARY STRIP                           -->
+  <!-- ═════════════════════════════════════════════ -->
+  @if (rooms().length > 0) {
+    <div class="hk-summary">
+      <div class="hk-summary-card hk-summary-ready">
+        <div class="hk-summary-header">
+          <mat-icon>verified</mat-icon>
+          <span>Rooms Ready</span>
+        </div>
+        <div class="hk-summary-value">{{ summary().readyPct }}%</div>
+        <div class="hk-summary-sub text-muted">{{ summary().clean + summary().inspected }} of {{ summary().total }}</div>
+      </div>
+      <div class="hk-summary-card hk-summary-dirty clickable" (click)="setView('rooms'); setFilter('DIRTY')">
+        <div class="hk-summary-header">
+          <mat-icon>warning</mat-icon>
+          <span>Dirty</span>
+        </div>
+        <div class="hk-summary-value">{{ summary().dirty }}</div>
+        <div class="hk-summary-sub text-muted">rooms</div>
+      </div>
+      <div class="hk-summary-card hk-summary-progress clickable" (click)="setView('rooms'); setFilter('IN_PROGRESS')">
+        <div class="hk-summary-header">
+          <mat-icon>cleaning_services</mat-icon>
+          <span>In Progress</span>
+        </div>
+        <div class="hk-summary-value">{{ summary().inProgress }}</div>
+        <div class="hk-summary-sub text-muted">rooms</div>
+      </div>
+      <div class="hk-summary-card hk-summary-clean clickable" (click)="setView('rooms'); setFilter('CLEAN')">
+        <div class="hk-summary-header">
+          <mat-icon>check_circle</mat-icon>
+          <span>Clean</span>
+        </div>
+        <div class="hk-summary-value">{{ summary().clean }}</div>
+        <div class="hk-summary-sub text-muted">rooms</div>
+      </div>
+      <div class="hk-summary-card clickable" (click)="setView('rooms'); setFilter('INSPECTED')">
+        <div class="hk-summary-header">
+          <mat-icon>verified</mat-icon>
+          <span>Inspected</span>
+        </div>
+        <div class="hk-summary-value">{{ summary().inspected }}</div>
+        <div class="hk-summary-sub text-muted">rooms</div>
+      </div>
+      @if (summary().dnd > 0) {
+        <div class="hk-summary-card hk-summary-dnd clickable" (click)="setView('rooms'); setFilter('DO_NOT_DISTURB')">
+          <div class="hk-summary-header">
+            <mat-icon>do_not_disturb</mat-icon>
+            <span>DND</span>
+          </div>
+          <div class="hk-summary-value">{{ summary().dnd }}</div>
+          <div class="hk-summary-sub text-muted">rooms</div>
+        </div>
+      }
+    </div>
+  }
+
+  <!-- ═════════════════════════════════════════════ -->
+  <!-- VIEW TABS                                    -->
+  <!-- ═════════════════════════════════════════════ -->
+  <div class="view-tabs">
+    <button
+      class="view-tab"
+      [class.view-tab-active]="activeView() === 'rooms'"
+      (click)="setView('rooms')">
+      <mat-icon>hotel</mat-icon>
+      Room Board
+    </button>
+    <button
+      class="view-tab"
+      [class.view-tab-active]="activeView() === 'tasks'"
+      (click)="setView('tasks')">
+      <mat-icon>task_alt</mat-icon>
+      Tasks
+      @if (tasks().length > 0) {
+        <span class="counter">{{ tasks().length }}</span>
+      }
+    </button>
+  </div>
+
+  <!-- ═════════════════════════════════════════════ -->
+  <!-- ROOM BOARD VIEW (data table)                 -->
+  <!-- ═════════════════════════════════════════════ -->
+  @if (activeView() === 'rooms') {
+    <div class="filter-bar">
+      <nav class="filter-tabs" aria-label="Housekeeping status filters">
+        @for (f of statusFilters; track f.key) {
+          <button
+            class="filter-tab"
+            [attr.aria-pressed]="activeFilter() === f.key"
+            [class.filter-tab-active]="activeFilter() === f.key"
+            (click)="setFilter(f.key)">
+            {{ f.label }}
+            <span class="counter">{{ filterCounts()[f.key] }}</span>
+          </button>
+        }
+      </nav>
+
+      <div class="search-box">
+        <mat-icon class="search-icon">search</mat-icon>
+        <input
+          type="text"
+          class="search-input"
+          placeholder="Search by room, type, floor..."
+          aria-label="Search rooms"
+          [ngModel]="searchQuery()"
+          (ngModelChange)="onSearch($event)" />
+      </div>
+    </div>
+
+    @if (loadingRooms()) {
+      <div class="loading-state">
+        <mat-spinner diameter="32"></mat-spinner>
+        <span class="text-muted">Loading rooms...</span>
+      </div>
+    } @else if (roomError(); as err) {
+      <div class="error-state">
+        <mat-icon class="error-icon">error_outline</mat-icon>
+        <span>{{ err }}</span>
+        <button class="btn btn-outline" (click)="loadRooms()">Retry</button>
+      </div>
+    } @else if (filteredRooms().length === 0) {
+      <div class="empty-state">
+        <div class="empty-state-icon-wrap">
+          <mat-icon class="empty-icon">cleaning_services</mat-icon>
+        </div>
+        @if (rooms().length === 0) {
+          <h3 class="empty-state-title">No rooms found</h3>
+          <p class="text-muted empty-state-desc">Rooms will appear here once they are configured.</p>
+        } @else {
+          <h3 class="empty-state-title">No rooms match the current filters</h3>
+          <button class="btn btn-outline" (click)="setFilter('ALL'); onSearch('')">Clear filters</button>
+        }
+      </div>
+    } @else {
+      @defer (on idle) {
+        <div class="table-container">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th class="col-room" [attr.aria-sort]="ariaSort('room_number')">
+                  <button type="button" class="th-sort-btn" (click)="onSort('room_number')">Room <mat-icon class="sort-indicator">{{ sortIcon('room_number') }}</mat-icon></button>
+                </th>
+                <th class="col-type" [attr.aria-sort]="ariaSort('room_type_name')">
+                  <button type="button" class="th-sort-btn" (click)="onSort('room_type_name')">Type <mat-icon class="sort-indicator">{{ sortIcon('room_type_name') }}</mat-icon></button>
+                </th>
+                <th class="col-floor" [attr.aria-sort]="ariaSort('floor')">
+                  <button type="button" class="th-sort-btn" (click)="onSort('floor')">Floor <mat-icon class="sort-indicator">{{ sortIcon('floor') }}</mat-icon></button>
+                </th>
+                <th class="col-occupancy" [attr.aria-sort]="ariaSort('status')">
+                  <button type="button" class="th-sort-btn" (click)="onSort('status')">Occupancy <mat-icon class="sort-indicator">{{ sortIcon('status') }}</mat-icon></button>
+                </th>
+                <th class="col-hk-status" [attr.aria-sort]="ariaSort('housekeeping_status')">
+                  <button type="button" class="th-sort-btn" (click)="onSort('housekeeping_status')">HK Status <mat-icon class="sort-indicator">{{ sortIcon('housekeeping_status') }}</mat-icon></button>
+                </th>
+                <th class="col-notes">Notes</th>
+                <th class="col-actions"></th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (room of paginatedRooms(); track room.room_id) {
+                <tr
+                  class="row-clickable"
+                  [class.row-dirty]="effectiveHkStatus(room) === 'DIRTY'"
+                  tabindex="0"
+                  (click)="viewRoom(room.room_id)"
+                  (keydown.enter)="viewRoom(room.room_id)">
+                  <td>
+                    <div class="cell-primary">
+                      <span class="hk-room-number">{{ room.room_number }}</span>
+                      @if (room.room_name) {
+                        <span class="hk-room-name text-muted">{{ room.room_name }}</span>
+                      }
+                    </div>
+                  </td>
+                  <td>{{ room.room_type_name ?? '—' }}</td>
+                  <td>{{ room.floor ?? '—' }}</td>
+                  <td>
+                    <span class="badge" [ngClass]="statusClass(room.status)">{{ room.status_display }}</span>
+                    @if (room.is_out_of_order) {
+                      <span class="badge badge-danger" [matTooltip]="room.out_of_order_reason ?? ''">OOO</span>
+                    }
+                    @if (room.is_blocked) {
+                      <span class="badge badge-warning" [matTooltip]="room.block_reason ?? ''">Blocked</span>
+                    }
+                  </td>
+                  <td>
+                    <span class="badge" [ngClass]="hkClass(effectiveHkStatus(room))">{{ effectiveHkStatus(room) === 'DIRTY' && room.housekeeping_status.toUpperCase() !== 'DIRTY' ? 'Dirty' : room.housekeeping_display }}</span>
+                  </td>
+                  <td class="cell-notes">
+                    @if (room.housekeeping_notes) {
+                      <span [matTooltip]="room.housekeeping_notes">
+                        {{ room.housekeeping_notes.length > 30
+                            ? room.housekeeping_notes.substring(0, 30) + '…'
+                            : room.housekeeping_notes }}
+                      </span>
+                    } @else {
+                      <span class="text-muted">—</span>
+                    }
+                  </td>
+                  <td class="cell-actions" (click)="$event.stopPropagation()">
+                    @if (updatingRoomId() === room.room_id) {
+                      <mat-spinner diameter="18"></mat-spinner>
+                    } @else {
+                      <div class="action-btn-group">
+                        <button
+                          class="btn btn-invisible btn-sm"
+                          [matMenuTriggerFor]="occMenu"
+                          matTooltip="Set occupancy"
+                          aria-label="Set occupancy status">
+                          <mat-icon>meeting_room</mat-icon>
+                        </button>
+                        <mat-menu #occMenu="matMenu" class="hk-actions-menu">
+                          @for (action of roomOccupancyActions(room); track action.value) {
+                            <button
+                              mat-menu-item
+                              (click)="updateRoomOccupancy(room, action.value)">
+                              <mat-icon [class]="'occ-icon-' + action.value.toLowerCase().replace('_', '-')">{{ action.icon }}</mat-icon>
+                              <span>{{ action.label }}</span>
+                            </button>
+                          }
+                        </mat-menu>
+                        <button
+                          class="btn btn-invisible btn-sm"
+                          [matMenuTriggerFor]="hkMenu"
+                          matTooltip="Set HK status"
+                          aria-label="Set housekeeping status">
+                          <mat-icon>cleaning_services</mat-icon>
+                        </button>
+                        <mat-menu #hkMenu="matMenu" class="hk-actions-menu">
+                          @for (action of roomActions(room); track action.value) {
+                            <button
+                              mat-menu-item
+                              (click)="updateRoomHousekeeping(room, action.value)">
+                              <mat-icon [class]="'hk-icon-' + action.value.toLowerCase().replace('_', '-')">{{ action.icon }}</mat-icon>
+                              <span>{{ action.label }}</span>
+                            </button>
+                          }
+                        </mat-menu>
+                        <a
+                          class="btn btn-invisible btn-sm"
+                          [routerLink]="['/rooms', room.room_id]"
+                          matTooltip="View details"
+                          aria-label="View room details">
+                          <mat-icon>chevron_right</mat-icon>
+                        </a>
+                      </div>
+                    }
+                  </td>
+              }
+            </tbody>
+          </table>
+        </div>
+        <app-pagination
+          [totalItems]="filteredRooms().length"
+          [currentPage]="currentPage()"
+          [pageSize]="pageSize"
+          (pageChange)="currentPage.set($event)" />
+      } @placeholder {
+        <div class="placeholder-table">
+          <div class="placeholder-row"></div>
+          <div class="placeholder-row"></div>
+          <div class="placeholder-row"></div>
+          <div class="placeholder-row"></div>
+        </div>
+      } @loading (minimum 200ms) {
+        <div class="loading-state">
+          <mat-spinner diameter="24"></mat-spinner>
+        </div>
+      }
+    }
+  }
+
+  <!-- ═════════════════════════════════════════════ -->
+  <!-- TASKS VIEW                                   -->
+  <!-- ═════════════════════════════════════════════ -->
+  @if (activeView() === 'tasks') {
+    <div class="filter-bar">
+      <div class="search-box">
+        <mat-icon class="search-icon">search</mat-icon>
+        <input
+          type="text"
+          class="search-input"
+          placeholder="Search tasks..."
+          aria-label="Search tasks"
+          [ngModel]="searchQuery()"
+          (ngModelChange)="onSearch($event)" />
+      </div>
+    </div>
+
+    @if (loadingTasks()) {
+      <div class="loading-state">
+        <mat-spinner diameter="32"></mat-spinner>
+        <span class="text-muted">Loading tasks...</span>
+      </div>
+    } @else if (taskError(); as err) {
+      <div class="error-state">
+        <mat-icon class="error-icon">error_outline</mat-icon>
+        <span>{{ err }}</span>
+        <button class="btn btn-outline" (click)="loadTasks()">Retry</button>
+      </div>
+    } @else if (filteredTasks().length === 0) {
+      <div class="empty-state">
+        <div class="empty-state-icon-wrap">
+          <mat-icon class="empty-icon">assignment</mat-icon>
+        </div>
+        <h3 class="empty-state-title">No housekeeping tasks</h3>
+        <p class="text-muted empty-state-desc">
+          Tasks are created automatically when rooms are checked out or can be assigned manually by staff.
+        </p>
+      </div>
+    } @else {
+      @defer (on idle) {
+        <div class="table-container">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Room</th>
+                <th>Task Type</th>
+                <th>Priority</th>
+                <th>Status</th>
+                <th>Scheduled</th>
+                <th>Assigned</th>
+                <th>Notes</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (task of paginatedTasks(); track task.id) {
+                <tr>
+                  <td class="cell-primary">{{ task.room_number }}</td>
+                  <td>{{ taskTypeLabel(task.task_type) }}</td>
+                  <td>
+                    @if (task.priority) {
+                      <span class="badge" [ngClass]="priorityClass(task.priority)">{{ task.priority }}</span>
+                    } @else {
+                      <span class="text-muted">—</span>
+                    }
+                  </td>
+                  <td>
+                    <span class="badge" [ngClass]="hkClass(task.status)">{{ task.status_display }}</span>
+                  </td>
+                  <td>{{ task.scheduled_date | date:'shortDate' }}</td>
+                  <td>{{ task.assigned_to ?? '—' }}</td>
+                  <td class="cell-notes">
+                    @if (task.special_instructions) {
+                      <span [matTooltip]="task.special_instructions">
+                        {{ task.special_instructions.length > 40
+                          ? task.special_instructions.substring(0, 40) + '…'
+                          : task.special_instructions }}
+                      </span>
+                    } @else {
+                      <span class="text-muted">—</span>
+                    }
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+        <app-pagination
+          [totalItems]="filteredTasks().length"
+          [currentPage]="currentPage()"
+          [pageSize]="pageSize"
+          (pageChange)="currentPage.set($event)" />
+      } @placeholder {
+        <div class="placeholder-table">
+          <div class="placeholder-row"></div>
+          <div class="placeholder-row"></div>
+          <div class="placeholder-row"></div>
+        </div>
+      } @loading (minimum 200ms) {
+        <div class="loading-state">
+          <mat-spinner diameter="24"></mat-spinner>
+        </div>
+      }
+    }
+  }
+</div>

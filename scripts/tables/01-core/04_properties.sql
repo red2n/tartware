@@ -54,6 +54,7 @@ tax_id VARCHAR(100), -- Property-specific tax identifier
 license_number VARCHAR(100), -- Hospitality licence / registration
 currency VARCHAR(3) DEFAULT 'USD', -- Default transaction currency (ISO 4217)
 timezone VARCHAR(100) DEFAULT 'UTC', -- Operational timezone (Olson format)
+default_language VARCHAR(10) DEFAULT 'en', -- BCP 47 language tag (e.g. en, fr, de, ja)
 
 -- Configuration (JSONB)
 config JSONB DEFAULT '{
@@ -122,6 +123,12 @@ COMMENT ON COLUMN properties.property_type IS 'Type: hotel, resort, hostel, mote
 COMMENT ON COLUMN properties.star_rating IS 'Star rating (0.0 to 5.0)';
 
 COMMENT ON COLUMN properties.total_rooms IS 'Total number of rooms in property';
+
+COMMENT ON COLUMN properties.currency IS 'Operating currency in ISO 4217 format';
+
+COMMENT ON COLUMN properties.timezone IS 'Operational timezone in IANA/Olson format';
+
+COMMENT ON COLUMN properties.default_language IS 'Default language for guest correspondence and reports (BCP 47)';
 
 COMMENT ON COLUMN properties.config IS 'Property configuration (check-in/out times, policies, amenities)';
 

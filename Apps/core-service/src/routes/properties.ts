@@ -52,8 +52,8 @@ export const registerPropertyRoutes = (app: FastifyInstance): void => {
       const { rows } = await query<{ id: string; property_name: string; property_code: string }>(
         `INSERT INTO properties
          (tenant_id, property_name, property_code, property_type, star_rating, total_rooms,
-          phone, email, website, address, currency, timezone, config, integrations, is_active, metadata)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, '{}', '{}', true, '{}')
+          phone, email, website, address, currency, timezone, default_language, config, integrations, is_active, metadata)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, '{}', '{}', true, '{}')
          RETURNING id, property_name, property_code`,
         [
           data.tenant_id,
@@ -68,6 +68,7 @@ export const registerPropertyRoutes = (app: FastifyInstance): void => {
           JSON.stringify(address),
           data.currency || "USD",
           data.timezone || "UTC",
+          data.default_language || "en",
         ],
       );
 

@@ -150,3 +150,24 @@ export const CommunicationPrefsBodySchema = z.object({
 export type CommunicationPrefsBody = z.infer<
 	typeof CommunicationPrefsBodySchema
 >;
+
+// =====================================================
+// LOYALTY PROGRAM BALANCE
+// =====================================================
+
+/**
+ * Loyalty program balance response schema.
+ */
+export const ProgramBalanceResponseSchema = z.object({
+	program_id: uuid,
+	guest_id: uuid,
+	tier_name: z.string().nullable(),
+	points_balance: z.number().int(),
+	points_earned_lifetime: z.number().int(),
+	points_redeemed_lifetime: z.number().int(),
+	last_activity_date: z.coerce.date().nullable(),
+});
+
+export type ProgramBalanceResponse = z.infer<
+	typeof ProgramBalanceResponseSchema
+>;

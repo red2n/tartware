@@ -123,7 +123,7 @@
         "canAccessAll": true,
         "restrictions": {}
       },
-      "modules": ["core", "reservations", "housekeeping", "billing"],
+      "modules": ["core", "reservations", "housekeeping", "billing", "finance-automation"],
       "metadata": {
         "seed": "industry_defaults",
         "description": "Bootstrap owner access"

@@ -5,6 +5,95 @@
   max-width: 1280px;
 }
 
+/* ── Rate Analytics Overview ── */
+.rate-overview {
+  display: flex;
+  align-items: stretch;
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-md);
+  background: var(--color-canvas-default);
+  margin-bottom: var(--space-5);
+  overflow: hidden;
+}
+
+.rate-overview-section {
+  flex: 1;
+  padding: var(--space-4) var(--space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.rate-overview-divider {
+  width: 1px;
+  background: var(--color-border-default);
+  align-self: stretch;
+  margin: var(--space-3) 0;
+}
+
+.rate-overview-label {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-fg-muted);
+
+  mat-icon {
+    font-size: 16px;
+    width: 16px;
+    height: 16px;
+  }
+}
+
+.rate-overview-value {
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-fg-default);
+}
+
+.rate-overview-sub {
+  font-size: var(--font-size-xs);
+}
+
+.rate-range-value {
+  font-size: var(--font-size-lg);
+}
+
+.rate-range-sep {
+  margin: 0 var(--space-1);
+  color: var(--color-fg-muted);
+  font-weight: var(--font-weight-regular);
+}
+
+.rate-section-bar .rate-overview-label mat-icon {
+  color: var(--color-attention-fg, var(--color-warning-fg));
+}
+
+.rate-overview-chips {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+  margin-top: var(--space-1);
+}
+
+.rate-type-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px var(--space-2);
+  background: var(--color-canvas-subtle);
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-full);
+  font-size: var(--font-size-xs);
+  color: var(--color-fg-muted);
+
+  strong {
+    color: var(--color-fg-default);
+    font-weight: var(--font-weight-semibold);
+  }
+}
+
 .rate-code {
   font-weight: var(--font-weight-semibold);
   color: var(--color-accent-fg);

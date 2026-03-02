@@ -1,36 +1,47 @@
 <div class="select-property-page">
-  <!-- Header strip matching login style -->
+  <!-- Header -->
   <div class="select-property-header">
     <span class="select-property-logo">tartware</span>
   </div>
 
   <div class="select-property-body">
-    <h1 class="select-property-heading">Select a property</h1>
-
-    @if (tenantName()) {
-      <p class="select-property-subtitle">
-        Choose a property for <strong>{{ tenantName() }}</strong> to continue
-      </p>
-    }
-
-    <!-- Search bar -->
-    @if (properties().length > 4) {
-      <div class="select-property-search">
-        <mat-form-field appearance="outline" class="full-width">
-          <mat-icon matPrefix>search</mat-icon>
-          <input matInput
-            placeholder="Search properties…"
-            [ngModel]="search()"
-            (ngModelChange)="search.set($event)"
-            autocomplete="off" />
-          @if (search()) {
-            <button matSuffix mat-icon-button (click)="search.set('')">
-              <mat-icon>close</mat-icon>
-            </button>
-          }
-        </mat-form-field>
+    <!-- Title row: heading left, add-button right -->
+    <div class="select-property-title-row">
+      <div>
+        <h1 class="select-property-heading">Select a property</h1>
+        @if (tenantName()) {
+          <p class="select-property-subtitle">
+            Choose a property for <strong>{{ tenantName() }}</strong> to continue
+          </p>
+        }
       </div>
-    }
+      @if (canCreateProperty()) {
+        <button class="btn btn-primary btn-add-property" (click)="openCreateDialog()">
+          <mat-icon>add</mat-icon>
+          Add property
+        </button>
+      }
+    </div>
+
+    <!-- Search bar (always visible) -->
+    <div class="select-property-search">
+      <mat-form-field appearance="outline" class="full-width">
+        <mat-icon matPrefix>search</mat-icon>
+        <input matInput
+          placeholder="Search by name, code, or location…"
+          [ngModel]="search()"
+          (ngModelChange)="search.set($event)"
+          autocomplete="off" />
+        @if (search()) {
+          <button matSuffix mat-icon-button (click)="search.set('')">
+            <mat-icon>close</mat-icon>
+          </button>
+        }
+      </mat-form-field>
+      @if (search() && filtered().length > 0) {
+        <span class="search-count">{{ filtered().length }} of {{ properties().length }}</span>
+      }
+    </div>
 
     @if (loading()) {
       <div class="select-property-loading">
@@ -38,19 +49,77 @@
         <span>Loading properties…</span>
       </div>
     } @else {
-      <!-- Property grid -->
+      <!-- Property list -->
       <div class="select-property-grid">
         @for (p of filtered(); track p.id) {
-          <button class="property-card" (click)="select(p)">
-            <div class="property-card-icon">
-              <mat-icon>apartment</mat-icon>
-            </div>
-            <div class="property-card-info">
-              <span class="property-card-name">{{ p.property_name }}</span>
-              <span class="property-card-code">{{ p.property_code }}</span>
-            </div>
-            <mat-icon class="property-card-arrow">arrow_forward</mat-icon>
-          </button>
+          <div class="property-card-wrapper" [class.expanded]="expandedId() === p.id">
+            <button class="property-card" (click)="toggleExpand(p)">
+              <div class="property-card-icon">
+                <mat-icon>apartment</mat-icon>
+              </div>
+              <div class="property-card-info">
+                <span class="property-card-name">{{ p.property_name }}</span>
+                <span class="property-card-code">{{ p.property_code }}</span>
+              </div>
+              @if (p.address && (p.address['city'] || p.address['country'])) {
+                <span class="property-card-location">{{ formatLocation(p.address) }}</span>
+              }
+              <mat-icon class="property-card-chevron">
+                {{ expandedId() === p.id ? 'expand_less' : 'expand_more' }}
+              </mat-icon>
+            </button>
+
+            <!-- Expand-in-place detail panel -->
+            @if (expandedId() === p.id) {
+              <div class="property-detail-panel">
+                <!-- Identity tags -->
+                <div class="detail-tags">
+                  @if (p.property_type) {
+                    <span class="detail-tag">{{ p.property_type }}</span>
+                  }
+                  @if (p.star_rating) {
+                    <span class="detail-tag">★ {{ p.star_rating }}</span>
+                  }
+                  <span class="detail-tag">{{ p.room_count }} rooms</span>
+                </div>
+
+                <!-- Operational metadata -->
+                <dl class="detail-meta">
+                  <div class="meta-item">
+                    <dt>Timezone</dt>
+                    <dd>{{ p.timezone || 'UTC' }}</dd>
+                  </div>
+                  <div class="meta-item">
+                    <dt>Currency</dt>
+                    <dd>{{ p.currency || 'USD' }}</dd>
+                  </div>
+                  <div class="meta-item">
+                    <dt>Language</dt>
+                    <dd>{{ p.default_language || 'en' }}</dd>
+                  </div>
+                  @if (p.phone) {
+                    <div class="meta-item">
+                      <dt>Phone</dt>
+                      <dd>{{ p.phone }}</dd>
+                    </div>
+                  }
+                  @if (p.email) {
+                    <div class="meta-item">
+                      <dt>Email</dt>
+                      <dd>{{ p.email }}</dd>
+                    </div>
+                  }
+                </dl>
+
+                <div class="detail-actions">
+                  <button class="btn btn-primary" (click)="continueWith(p)">
+                    Continue
+                    <mat-icon>arrow_forward</mat-icon>
+                  </button>
+                </div>
+              </div>
+            }
+          </div>
         } @empty {
           @if (search()) {
             <div class="select-property-empty">

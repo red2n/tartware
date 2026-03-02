@@ -6,6 +6,109 @@
   max-width: 1200px;
 }
 
+/* ── Room Occupancy Overview ── */
+.room-overview {
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-md);
+  background: var(--color-canvas-default);
+  padding: var(--space-4) var(--space-5);
+  margin-bottom: var(--space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.room-overview-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.room-overview-title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-fg-default);
+
+  mat-icon {
+    font-size: 18px;
+    width: 18px;
+    height: 18px;
+    color: var(--color-fg-muted);
+  }
+}
+
+.room-overview-pct {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+}
+
+.room-pct-value {
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-accent-fg);
+}
+
+.room-pct-label {
+  font-size: var(--font-size-xs);
+}
+
+.occ-bar {
+  display: flex;
+  height: 10px;
+  border-radius: 5px;
+  overflow: hidden;
+  background: var(--color-canvas-subtle);
+  gap: 2px;
+}
+
+.occ-segment {
+  border-radius: 5px;
+  min-width: 4px;
+  transition: flex var(--duration-fast);
+}
+
+.occ-occupied { background: var(--color-accent-emphasis); }
+.occ-vacant { background: var(--color-success-emphasis); }
+.occ-ooo { background: var(--color-danger-emphasis); }
+.occ-blocked { background: var(--color-warning-emphasis); }
+.occ-setup { background: var(--color-fg-muted); }
+
+.occ-legend {
+  display: flex;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+}
+
+.occ-legend-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: var(--font-size-xs);
+  color: var(--color-fg-muted);
+
+  strong {
+    color: var(--color-fg-default);
+    font-weight: var(--font-weight-semibold);
+  }
+}
+
+.occ-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+
+  &.occ-occupied { background: var(--color-accent-emphasis); }
+  &.occ-vacant { background: var(--color-success-emphasis); }
+  &.occ-ooo { background: var(--color-danger-emphasis); }
+  &.occ-blocked { background: var(--color-warning-emphasis); }
+  &.occ-setup { background: var(--color-fg-muted); }
+}
+
 .room-number {
   font-weight: var(--font-weight-semibold);
   color: var(--color-accent-fg);
@@ -21,6 +124,170 @@
     vertical-align: middle;
     margin: 1px 2px;
   }
+}
+
+/* ── Recommendation bar (single compact row) ── */
+.rec-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  padding: 5px var(--space-12);
+  background: var(--color-canvas-subtle);
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-md);
+  margin-bottom: var(--space-4);
+}
+
+.rec-icon {
+  font-size: 16px;
+  width: 16px;
+  height: 16px;
+  color: var(--color-accent-emphasis);
+}
+
+.rec-label {
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-fg-muted);
+  white-space: nowrap;
+  margin-right: var(--space-4);
+}
+
+.rec-field {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding: 3px var(--space-8);
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-md);
+  background: var(--color-canvas-default);
+  cursor: pointer;
+  transition: border-color var(--duration-fast);
+
+  &:hover,
+  &:focus-within {
+    border-color: var(--color-accent-emphasis);
+  }
+}
+
+.rec-field-label {
+  font-size: 10px;
+  font-weight: var(--font-weight-medium);
+  color: var(--color-fg-muted);
+  white-space: nowrap;
+}
+
+.rec-date-input {
+  border: none;
+  outline: none;
+  background: transparent;
+  font-size: var(--font-size-xs);
+  font-family: inherit;
+  color: var(--color-fg-default);
+  padding: 0;
+  width: 105px;
+  height: 18px;
+  line-height: 1;
+
+  &::-webkit-calendar-picker-indicator {
+    opacity: 0.4;
+    cursor: pointer;
+    width: 12px;
+    height: 12px;
+  }
+}
+
+.rec-arrow {
+  font-size: 14px;
+  width: 14px;
+  height: 14px;
+  color: var(--color-fg-muted);
+}
+
+.rec-active-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 1px 6px;
+  border-radius: var(--radius-full);
+  background: var(--color-success-subtle);
+  color: var(--color-success-fg);
+  font-size: 11px;
+  font-weight: var(--font-weight-semibold);
+  white-space: nowrap;
+  margin-left: auto;
+
+  mat-icon {
+    font-size: 12px;
+    width: 12px;
+    height: 12px;
+  }
+}
+
+.rec-clear-btn {
+  color: var(--color-fg-muted);
+  margin-left: auto;
+
+  &:hover {
+    color: var(--color-danger-fg);
+  }
+}
+
+/* ── Recommendation columns ── */
+.cell-rank {
+  width: 60px;
+  text-align: center;
+}
+
+.rank-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 28px;
+  height: 24px;
+  padding: 0 var(--space-4);
+  border-radius: var(--radius-8);
+  background: var(--color-accent-subtle);
+  color: var(--color-accent-fg);
+  font-weight: var(--font-weight-semibold);
+  font-size: var(--font-size-12);
+  cursor: help;
+}
+
+.cell-score {
+  width: 100px;
+}
+
+.score-bar {
+  height: 6px;
+  background: var(--color-neutral-muted);
+  border-radius: 3px;
+  overflow: hidden;
+  margin-bottom: 2px;
+}
+
+.score-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.3s ease;
+}
+
+.score-high {
+  background: var(--color-success-emphasis);
+}
+
+.score-medium {
+  background: var(--color-attention-emphasis);
+}
+
+.score-low {
+  background: var(--color-danger-emphasis);
+}
+
+.score-value {
+  font-size: var(--font-size-xs);
+  color: var(--color-fg-muted);
+  font-weight: var(--font-weight-semibold);
 }
 
 /* ── Responsive ── */

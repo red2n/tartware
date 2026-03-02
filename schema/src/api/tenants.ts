@@ -82,6 +82,7 @@ export const TenantBootstrapSchema = z.object({
 		address: PropertyAddressSchema.optional(),
 		currency: z.string().length(3).optional(),
 		timezone: z.string().optional(),
+		default_language: z.string().max(10).optional(),
 	}),
 	owner: z.object({
 		username: z.string().min(3).max(50),
@@ -198,6 +199,7 @@ export const SystemBootstrapTenantSchema = z.object({
 		address: PropertyAddressSchema.optional(),
 		currency: z.string().length(3).optional(),
 		timezone: z.string().optional(),
+		default_language: z.string().max(10).optional(),
 	}),
 	owner: z.object({
 		username: z.string().min(3).max(50),

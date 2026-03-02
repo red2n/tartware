@@ -38,7 +38,9 @@ export const registerRoomRoutes = (app: FastifyInstance): void => {
   });
 
   const tenantScopeFromQuery = app.withTenantScope({
-    resolveTenantId: (request) => (request.query as { tenant_id?: string }).tenant_id,
+    resolveTenantId: (request) =>
+      (request.query as { tenant_id?: string }).tenant_id ??
+      (request.body as { tenant_id?: string } | null)?.tenant_id,
     minRole: "VIEWER",
     requiredModules: "core",
   });

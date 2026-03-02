@@ -55,6 +55,13 @@ export class RoomsComponent {
 	readonly pageSize = 25;
 	readonly sortState = createSortState();
 
+	// Recommendation date filters
+	readonly checkInDate = signal("");
+	readonly checkOutDate = signal("");
+	readonly hasRecommendations = computed(() =>
+		this.rooms().some((r) => r.recommendation_rank != null),
+	);
+
 	readonly statusFilters: { key: StatusFilter; label: string }[] = [
 		{ key: "ALL", label: "All" },
 		{ key: "SETUP", label: "Setup" },
@@ -110,6 +117,20 @@ export class RoomsComponent {
 			OCCUPIED: all.filter((r) => r.status === "occupied").length,
 			OUT_OF_ORDER: all.filter((r) => r.is_out_of_order).length,
 			BLOCKED: all.filter((r) => r.is_blocked).length,
+		};
+	});
+
+	readonly summary = computed(() => {
+		const all = this.rooms();
+		const total = all.length;
+		const occupied = all.filter((r) => r.status === "occupied").length;
+		const vacant = all.filter((r) => r.status === "available").length;
+		const ooo = all.filter((r) => r.is_out_of_order).length;
+		const blocked = all.filter((r) => r.is_blocked).length;
+		const setup = all.filter((r) => r.status === "setup").length;
+		return {
+			total, occupied, vacant, ooo, blocked, setup,
+			occupancyPct: total > 0 ? Math.round((occupied / total) * 100) : 0,
 		};
 	});
 
@@ -175,6 +196,12 @@ export class RoomsComponent {
 			const params: Record<string, string> = { tenant_id: tenantId };
 			const propertyId = this.ctx.propertyId();
 			if (propertyId) params["property_id"] = propertyId;
+			const ciDate = this.checkInDate();
+			const coDate = this.checkOutDate();
+			if (ciDate && coDate) {
+				params["check_in_date"] = ciDate;
+				params["check_out_date"] = coDate;
+			}
 			const rooms = await this.api.get<RoomItem[]>("/rooms", params);
 			this.rooms.set(rooms);
 		} catch (e) {
@@ -211,5 +238,32 @@ export class RoomsComponent {
 			.replace(/\b\w/g, (c) => c.toUpperCase())
 			.replace(/\bWifi\b/i, "WiFi")
 			.replace(/\bTv\b/i, "TV");
+	}
+
+	scorePercent(score: number | undefined): number {
+		return Math.round((score ?? 0) * 100);
+	}
+
+	scoreClass(score: number | undefined): string {
+		const pct = this.scorePercent(score);
+		if (pct >= 80) return "score-high";
+		if (pct >= 50) return "score-medium";
+		return "score-low";
+	}
+
+	onCheckInDate(value: string): void {
+		this.checkInDate.set(value);
+		if (value && this.checkOutDate()) this.loadRooms();
+	}
+
+	onCheckOutDate(value: string): void {
+		this.checkOutDate.set(value);
+		if (this.checkInDate() && value) this.loadRooms();
+	}
+
+	clearRecommendations(): void {
+		this.checkInDate.set("");
+		this.checkOutDate.set("");
+		this.loadRooms();
 	}
 }

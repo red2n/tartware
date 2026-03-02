@@ -40,7 +40,7 @@ export function roomStatusClass(status: string): string {
 }
 
 export function housekeepingStatusClass(status: string): string {
-	switch (status) {
+	switch (status.toUpperCase()) {
 		case "CLEAN":
 		case "INSPECTED":
 			return "badge-success";
@@ -48,6 +48,8 @@ export function housekeepingStatusClass(status: string): string {
 			return "badge-danger";
 		case "IN_PROGRESS":
 			return "badge-warning";
+		case "DO_NOT_DISTURB":
+			return "badge-muted";
 		default:
 			return "";
 	}

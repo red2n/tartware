@@ -15,6 +15,7 @@ export const PROPERTY_LIST_SQL = `
     p.license_number,
     p.currency,
     p.timezone,
+    p.default_language,
     p.config,
     p.integrations,
     p.is_active,
