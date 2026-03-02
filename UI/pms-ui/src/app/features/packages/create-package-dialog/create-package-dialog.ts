@@ -28,9 +28,9 @@ export class CreatePackageDialogComponent {
 
 	packageName = "";
 	packageCode = "";
-	packageType = "room_only";
+	packageType: CreatePackageBody['package_type'] = "room_only";
 	shortDescription = "";
-	pricingModel = "per_night";
+	pricingModel: CreatePackageBody['pricing_model'] = "per_night";
 	basePrice: number | null = null;
 	validFrom = new Date().toISOString().slice(0, 10);
 	validTo = "";
