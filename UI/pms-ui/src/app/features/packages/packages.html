@@ -140,8 +140,8 @@
               <tr class="row-clickable"
                   tabindex="0"
                   [routerLink]="['/packages', pkg.package_id]"
-                  (keydown.enter)="$event.preventDefault()"
-                  (keydown.space)="$event.preventDefault()">
+                  (keydown.enter)="$event.preventDefault(); navigate(pkg.package_id)"
+                  (keydown.space)="$event.preventDefault(); navigate(pkg.package_id)">
                 <td class="cell-primary">
                   <span class="pkg-code">{{ pkg.package_code }}</span>
                   <span class="pkg-name text-muted">{{ pkg.package_name }}</span>

@@ -8,7 +8,7 @@ import {
   SplitByReservationInputSchema,
   SplitComponentInputSchema,
 } from "@tartware/schemas";
-import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
+import type { FastifyInstance, FastifyRequest } from "fastify";
 
 import { splitByGuest, splitByReservation, splitComponent } from "../engines/split.js";
 import { observeCalculationDuration, recordCalculation } from "../lib/metrics.js";
@@ -22,10 +22,10 @@ export function registerSplitRoutes(app: FastifyInstance) {
         tags: ["split"],
       },
     },
-    async (request: FastifyRequest<{ Body: SplitByReservationInput }>, reply: FastifyReply) => {
+    async (request: FastifyRequest<{ Body: SplitByReservationInput }>) => {
       const parsed = SplitByReservationInputSchema.safeParse(request.body);
       if (!parsed.success) {
-        return reply.status(400).send({ error: parsed.error.message });
+        throw app.httpErrors.badRequest(parsed.error.message);
       }
       const start = performance.now();
       const result = splitByReservation(parsed.data);
@@ -43,10 +43,10 @@ export function registerSplitRoutes(app: FastifyInstance) {
         tags: ["split"],
       },
     },
-    async (request: FastifyRequest<{ Body: SplitByGuestInput }>, reply: FastifyReply) => {
+    async (request: FastifyRequest<{ Body: SplitByGuestInput }>) => {
       const parsed = SplitByGuestInputSchema.safeParse(request.body);
       if (!parsed.success) {
-        return reply.status(400).send({ error: parsed.error.message });
+        throw app.httpErrors.badRequest(parsed.error.message);
       }
       const start = performance.now();
       const result = splitByGuest(parsed.data);
@@ -64,10 +64,10 @@ export function registerSplitRoutes(app: FastifyInstance) {
         tags: ["split"],
       },
     },
-    async (request: FastifyRequest<{ Body: SplitComponentInput }>, reply: FastifyReply) => {
+    async (request: FastifyRequest<{ Body: SplitComponentInput }>) => {
       const parsed = SplitComponentInputSchema.safeParse(request.body);
       if (!parsed.success) {
-        return reply.status(400).send({ error: parsed.error.message });
+        throw app.httpErrors.badRequest(parsed.error.message);
       }
       const start = performance.now();
       const result = splitComponent(parsed.data);

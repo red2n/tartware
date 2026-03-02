@@ -8,7 +8,7 @@ import {
   DepositEntireStayInputSchema,
   DepositPerGuestInputSchema,
 } from "@tartware/schemas";
-import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
+import type { FastifyInstance, FastifyRequest } from "fastify";
 
 import {
   calculateDepositCap,
@@ -26,10 +26,10 @@ export function registerDepositRoutes(app: FastifyInstance) {
         tags: ["deposit"],
       },
     },
-    async (request: FastifyRequest<{ Body: DepositEntireStayInput }>, reply: FastifyReply) => {
+    async (request: FastifyRequest<{ Body: DepositEntireStayInput }>) => {
       const parsed = DepositEntireStayInputSchema.safeParse(request.body);
       if (!parsed.success) {
-        return reply.status(400).send({ error: parsed.error.message });
+        throw app.httpErrors.badRequest(parsed.error.message);
       }
       const start = performance.now();
       const result = calculateDepositEntireStay(parsed.data);
@@ -47,10 +47,10 @@ export function registerDepositRoutes(app: FastifyInstance) {
         tags: ["deposit"],
       },
     },
-    async (request: FastifyRequest<{ Body: DepositPerGuestInput }>, reply: FastifyReply) => {
+    async (request: FastifyRequest<{ Body: DepositPerGuestInput }>) => {
       const parsed = DepositPerGuestInputSchema.safeParse(request.body);
       if (!parsed.success) {
-        return reply.status(400).send({ error: parsed.error.message });
+        throw app.httpErrors.badRequest(parsed.error.message);
       }
       const start = performance.now();
       const result = calculateDepositPerGuest(parsed.data);
@@ -68,10 +68,10 @@ export function registerDepositRoutes(app: FastifyInstance) {
         tags: ["deposit"],
       },
     },
-    async (request: FastifyRequest<{ Body: DepositCapInput }>, reply: FastifyReply) => {
+    async (request: FastifyRequest<{ Body: DepositCapInput }>) => {
       const parsed = DepositCapInputSchema.safeParse(request.body);
       if (!parsed.success) {
-        return reply.status(400).send({ error: parsed.error.message });
+        throw app.httpErrors.badRequest(parsed.error.message);
       }
       const start = performance.now();
       const result = calculateDepositCap(parsed.data);

@@ -10,7 +10,7 @@ import {
   EstimatedCheckoutInputSchema,
   FolioBalanceInputSchema,
 } from "@tartware/schemas";
-import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
+import type { FastifyInstance, FastifyRequest } from "fastify";
 
 import {
   calculateArBreakdown,
@@ -29,10 +29,10 @@ export function registerFolioRoutes(app: FastifyInstance) {
         tags: ["folio"],
       },
     },
-    async (request: FastifyRequest<{ Body: FolioBalanceInput }>, reply: FastifyReply) => {
+    async (request: FastifyRequest<{ Body: FolioBalanceInput }>) => {
       const parsed = FolioBalanceInputSchema.safeParse(request.body);
       if (!parsed.success) {
-        return reply.status(400).send({ error: parsed.error.message });
+        throw app.httpErrors.badRequest(parsed.error.message);
       }
       const start = performance.now();
       const result = calculateFolioBalance(parsed.data);
@@ -50,10 +50,10 @@ export function registerFolioRoutes(app: FastifyInstance) {
         tags: ["folio"],
       },
     },
-    async (request: FastifyRequest<{ Body: CreditRemainingInput }>, reply: FastifyReply) => {
+    async (request: FastifyRequest<{ Body: CreditRemainingInput }>) => {
       const parsed = CreditRemainingInputSchema.safeParse(request.body);
       if (!parsed.success) {
-        return reply.status(400).send({ error: parsed.error.message });
+        throw app.httpErrors.badRequest(parsed.error.message);
       }
       const start = performance.now();
       const result = calculateCreditRemaining(parsed.data);
@@ -71,10 +71,10 @@ export function registerFolioRoutes(app: FastifyInstance) {
         tags: ["folio"],
       },
     },
-    async (request: FastifyRequest<{ Body: ArBreakdownInput }>, reply: FastifyReply) => {
+    async (request: FastifyRequest<{ Body: ArBreakdownInput }>) => {
       const parsed = ArBreakdownInputSchema.safeParse(request.body);
       if (!parsed.success) {
-        return reply.status(400).send({ error: parsed.error.message });
+        throw app.httpErrors.badRequest(parsed.error.message);
       }
       const start = performance.now();
       const result = calculateArBreakdown(parsed.data);
@@ -92,10 +92,10 @@ export function registerFolioRoutes(app: FastifyInstance) {
         tags: ["folio"],
       },
     },
-    async (request: FastifyRequest<{ Body: EstimatedCheckoutInput }>, reply: FastifyReply) => {
+    async (request: FastifyRequest<{ Body: EstimatedCheckoutInput }>) => {
       const parsed = EstimatedCheckoutInputSchema.safeParse(request.body);
       if (!parsed.success) {
-        return reply.status(400).send({ error: parsed.error.message });
+        throw app.httpErrors.badRequest(parsed.error.message);
       }
       const start = performance.now();
       const result = calculateEstimatedCheckout(parsed.data);

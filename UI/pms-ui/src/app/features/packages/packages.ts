@@ -6,7 +6,7 @@ import { MatDialog, MatDialogModule } from "@angular/material/dialog";
 import { MatIconModule } from "@angular/material/icon";
 import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
 import { MatTooltipModule } from "@angular/material/tooltip";
-import { RouterLink } from "@angular/router";
+import { Router, RouterLink } from "@angular/router";
 
 import type { PackageListItem } from "@tartware/schemas";
 
@@ -42,6 +42,7 @@ export class PackagesComponent {
 	private readonly auth = inject(AuthService);
 	private readonly ctx = inject(TenantContextService);
 	private readonly dialog = inject(MatDialog);
+	private readonly router = inject(Router);
 	private readonly toast = inject(ToastService);
 
 	readonly packages = signal<PackageListItem[]>([]);
@@ -254,6 +255,10 @@ export class PackagesComponent {
 	inventoryLabel(pkg: PackageListItem): string {
 		if (pkg.total_inventory == null) return "Unlimited";
 		return `${pkg.available_inventory ?? 0} / ${pkg.total_inventory}`;
+	}
+
+	navigate(packageId: string): void {
+		this.router.navigate(["/packages", packageId]);
 	}
 
 	async openCreateDialog(): Promise<void> {

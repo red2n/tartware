@@ -1,6 +1,6 @@
 import type { YieldRateInput } from "@tartware/schemas";
 import { YieldRateInputSchema } from "@tartware/schemas";
-import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
+import type { FastifyInstance, FastifyRequest } from "fastify";
 
 import { calculateYieldRate } from "../engines/yield.js";
 import { observeCalculationDuration, recordCalculation } from "../lib/metrics.js";
@@ -14,10 +14,10 @@ export function registerYieldRoutes(app: FastifyInstance) {
         tags: ["yield"],
       },
     },
-    async (request: FastifyRequest<{ Body: YieldRateInput }>, reply: FastifyReply) => {
+    async (request: FastifyRequest<{ Body: YieldRateInput }>) => {
       const parsed = YieldRateInputSchema.safeParse(request.body);
       if (!parsed.success) {
-        return reply.status(400).send({ error: parsed.error.message });
+        throw app.httpErrors.badRequest(parsed.error.message);
       }
       const start = performance.now();
       const result = calculateYieldRate(parsed.data);

@@ -1,6 +1,6 @@
 import type { AuthRtdcInput, AuthTdacInput } from "@tartware/schemas";
 import { AuthRtdcInputSchema, AuthTdacInputSchema } from "@tartware/schemas";
-import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
+import type { FastifyInstance, FastifyRequest } from "fastify";
 
 import { calculateAuthRtdc, calculateAuthTdac } from "../engines/authorization.js";
 import { observeCalculationDuration, recordCalculation } from "../lib/metrics.js";
@@ -14,10 +14,10 @@ export function registerAuthorizationRoutes(app: FastifyInstance) {
         tags: ["authorization"],
       },
     },
-    async (request: FastifyRequest<{ Body: AuthTdacInput }>, reply: FastifyReply) => {
+    async (request: FastifyRequest<{ Body: AuthTdacInput }>) => {
       const parsed = AuthTdacInputSchema.safeParse(request.body);
       if (!parsed.success) {
-        return reply.status(400).send({ error: parsed.error.message });
+        throw app.httpErrors.badRequest(parsed.error.message);
       }
       const start = performance.now();
       const result = calculateAuthTdac(parsed.data);
@@ -35,10 +35,10 @@ export function registerAuthorizationRoutes(app: FastifyInstance) {
         tags: ["authorization"],
       },
     },
-    async (request: FastifyRequest<{ Body: AuthRtdcInput }>, reply: FastifyReply) => {
+    async (request: FastifyRequest<{ Body: AuthRtdcInput }>) => {
       const parsed = AuthRtdcInputSchema.safeParse(request.body);
       if (!parsed.success) {
-        return reply.status(400).send({ error: parsed.error.message });
+        throw app.httpErrors.badRequest(parsed.error.message);
       }
       const start = performance.now();
       const result = calculateAuthRtdc(parsed.data);

@@ -12,7 +12,7 @@ import {
   NoShowChargeInputSchema,
   OverbookingInputSchema,
 } from "@tartware/schemas";
-import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
+import type { FastifyInstance, FastifyRequest } from "fastify";
 
 import {
   analyzeDisplacement,
@@ -32,9 +32,9 @@ export function registerRevenueForecastRoutes(app: FastifyInstance) {
         tags: ["revenue-forecast"],
       },
     },
-    async (request: FastifyRequest<{ Body: OverbookingInput }>, reply: FastifyReply) => {
+    async (request: FastifyRequest<{ Body: OverbookingInput }>) => {
       const parsed = OverbookingInputSchema.safeParse(request.body);
-      if (!parsed.success) return reply.status(400).send({ error: parsed.error.message });
+      if (!parsed.success) throw app.httpErrors.badRequest(parsed.error.message);
       const start = performance.now();
       const result = calculateOverbookingLevel(parsed.data);
       observeCalculationDuration(
@@ -55,9 +55,9 @@ export function registerRevenueForecastRoutes(app: FastifyInstance) {
         tags: ["revenue-forecast"],
       },
     },
-    async (request: FastifyRequest<{ Body: GroupForecastInput }>, reply: FastifyReply) => {
+    async (request: FastifyRequest<{ Body: GroupForecastInput }>) => {
       const parsed = GroupForecastInputSchema.safeParse(request.body);
-      if (!parsed.success) return reply.status(400).send({ error: parsed.error.message });
+      if (!parsed.success) throw app.httpErrors.badRequest(parsed.error.message);
       const start = performance.now();
       const result = calculateGroupForecast(parsed.data);
       observeCalculationDuration(
@@ -79,9 +79,9 @@ export function registerRevenueForecastRoutes(app: FastifyInstance) {
         tags: ["revenue-forecast"],
       },
     },
-    async (request: FastifyRequest<{ Body: DisplacementInput }>, reply: FastifyReply) => {
+    async (request: FastifyRequest<{ Body: DisplacementInput }>) => {
       const parsed = DisplacementInputSchema.safeParse(request.body);
-      if (!parsed.success) return reply.status(400).send({ error: parsed.error.message });
+      if (!parsed.success) throw app.httpErrors.badRequest(parsed.error.message);
       const start = performance.now();
       const result = analyzeDisplacement(parsed.data);
       observeCalculationDuration(
@@ -102,9 +102,9 @@ export function registerRevenueForecastRoutes(app: FastifyInstance) {
         tags: ["revenue-forecast"],
       },
     },
-    async (request: FastifyRequest<{ Body: NoShowChargeInput }>, reply: FastifyReply) => {
+    async (request: FastifyRequest<{ Body: NoShowChargeInput }>) => {
       const parsed = NoShowChargeInputSchema.safeParse(request.body);
-      if (!parsed.success) return reply.status(400).send({ error: parsed.error.message });
+      if (!parsed.success) throw app.httpErrors.badRequest(parsed.error.message);
       const start = performance.now();
       const result = calculateNoShowCharge(parsed.data);
       observeCalculationDuration(
@@ -126,9 +126,9 @@ export function registerRevenueForecastRoutes(app: FastifyInstance) {
         tags: ["revenue-forecast"],
       },
     },
-    async (request: FastifyRequest<{ Body: ExtraGuestChargeInput }>, reply: FastifyReply) => {
+    async (request: FastifyRequest<{ Body: ExtraGuestChargeInput }>) => {
       const parsed = ExtraGuestChargeInputSchema.safeParse(request.body);
-      if (!parsed.success) return reply.status(400).send({ error: parsed.error.message });
+      if (!parsed.success) throw app.httpErrors.badRequest(parsed.error.message);
       const start = performance.now();
       const result = calculateExtraGuestCharge(parsed.data);
       observeCalculationDuration(

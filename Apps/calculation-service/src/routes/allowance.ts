@@ -8,7 +8,7 @@ import {
   EnhancementItemInputSchema,
   PackageAllocationInputSchema,
 } from "@tartware/schemas";
-import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
+import type { FastifyInstance, FastifyRequest } from "fastify";
 
 import {
   allocatePackageRevenue,
@@ -26,9 +26,9 @@ export function registerAllowanceRoutes(app: FastifyInstance) {
         tags: ["allowance"],
       },
     },
-    async (request: FastifyRequest<{ Body: AllowanceTrackInput }>, reply: FastifyReply) => {
+    async (request: FastifyRequest<{ Body: AllowanceTrackInput }>) => {
       const parsed = AllowanceTrackInputSchema.safeParse(request.body);
-      if (!parsed.success) return reply.status(400).send({ error: parsed.error.message });
+      if (!parsed.success) throw app.httpErrors.badRequest(parsed.error.message);
       const start = performance.now();
       const result = trackAllowance(parsed.data);
       observeCalculationDuration("allowance", "track", (performance.now() - start) / 1000);
@@ -45,9 +45,9 @@ export function registerAllowanceRoutes(app: FastifyInstance) {
         tags: ["allowance"],
       },
     },
-    async (request: FastifyRequest<{ Body: EnhancementItemInput }>, reply: FastifyReply) => {
+    async (request: FastifyRequest<{ Body: EnhancementItemInput }>) => {
       const parsed = EnhancementItemInputSchema.safeParse(request.body);
-      if (!parsed.success) return reply.status(400).send({ error: parsed.error.message });
+      if (!parsed.success) throw app.httpErrors.badRequest(parsed.error.message);
       const start = performance.now();
       const result = calculateEnhancementItem(parsed.data);
       observeCalculationDuration(
@@ -69,9 +69,9 @@ export function registerAllowanceRoutes(app: FastifyInstance) {
         tags: ["allowance"],
       },
     },
-    async (request: FastifyRequest<{ Body: PackageAllocationInput }>, reply: FastifyReply) => {
+    async (request: FastifyRequest<{ Body: PackageAllocationInput }>) => {
       const parsed = PackageAllocationInputSchema.safeParse(request.body);
-      if (!parsed.success) return reply.status(400).send({ error: parsed.error.message });
+      if (!parsed.success) throw app.httpErrors.badRequest(parsed.error.message);
       const start = performance.now();
       const result = allocatePackageRevenue(parsed.data);
       observeCalculationDuration(

@@ -2,6 +2,7 @@ import { buildRouteSchema, type JsonSchema, schemaFromZod } from "@tartware/open
 import {
   CreatePackageBodySchema,
   CreatePackageComponentBodySchema,
+  CreatePackageComponentResponseSchema,
   CreatePackageResponseSchema,
   PackageComponentListItemSchema,
   PackageListItemSchema,
@@ -107,6 +108,10 @@ const createComponentBody: JsonSchema = schemaFromZod(
   CreatePackageComponentBodySchema,
   "CreatePackageComponentBody",
 );
+const createdComponentResponse: JsonSchema = schemaFromZod(
+  CreatePackageComponentResponseSchema,
+  "CreatePackageComponentResponse",
+);
 
 // =====================================================
 // AUTH HELPERS
@@ -129,6 +134,13 @@ const enforceScope = (
   scope: string,
 ): request is FastifyRequest & { authUser: AuthUser } => {
   if (process.env.DISABLE_AUTH === "true") {
+    if (!request.authUser) {
+      (request as FastifyRequest & { authUser: AuthUser }).authUser = {
+        sub: "dev-user",
+        tenantId: "00000000-0000-0000-0000-000000000000",
+        scope: "settings:read settings:write",
+      } as AuthUser;
+    }
     return true;
   }
   if (!request.authUser) {
@@ -168,7 +180,6 @@ const packagesRoutes: FastifyPluginAsync = async (app) => {
       }
 
       const {
-        tenant_id,
         property_id,
         package_type,
         is_active,
@@ -178,8 +189,10 @@ const packagesRoutes: FastifyPluginAsync = async (app) => {
         limit,
       } = PackageListQuerySchema.parse(request.query);
 
+      const tenantId = request.authUser.tenantId;
+
       const packages = await listPackages({
-        tenantId: tenant_id,
+        tenantId,
         propertyId: property_id,
         packageType: package_type,
         isActive: is_active,
@@ -220,11 +233,11 @@ const packagesRoutes: FastifyPluginAsync = async (app) => {
       }
 
       const { packageId } = PackageParamsSchema.parse(request.params);
-      const { tenant_id } = TenantQuerySchema.parse(request.query);
+      TenantQuerySchema.parse(request.query);
 
       const pkg = await getPackageById({
         packageId,
-        tenantId: tenant_id,
+        tenantId: request.authUser.tenantId,
       });
 
       if (!pkg) {
@@ -259,12 +272,12 @@ const packagesRoutes: FastifyPluginAsync = async (app) => {
       }
 
       const { packageId } = PackageParamsSchema.parse(request.params);
-      const { tenant_id } = TenantQuerySchema.parse(request.query);
+      TenantQuerySchema.parse(request.query);
 
       // First verify the package exists and belongs to tenant
       const pkg = await getPackageById({
         packageId,
-        tenantId: tenant_id,
+        tenantId: request.authUser.tenantId,
       });
 
       if (!pkg) {
@@ -305,7 +318,7 @@ const packagesRoutes: FastifyPluginAsync = async (app) => {
 
       const body = CreatePackageBodySchema.parse(request.body);
 
-      if (body.valid_to <= body.valid_from) {
+      if (new Date(body.valid_to).getTime() <= new Date(body.valid_from).getTime()) {
         return reply.badRequest("valid_to must be after valid_from");
       }
 
@@ -319,7 +332,7 @@ const packagesRoutes: FastifyPluginAsync = async (app) => {
 
       try {
         const packageId = await createPackage({
-          tenantId: body.tenant_id,
+          tenantId: request.authUser.tenantId,
           propertyId: body.property_id,
           packageName: body.package_name,
           packageCode: body.package_code,
@@ -372,7 +385,7 @@ const packagesRoutes: FastifyPluginAsync = async (app) => {
         params: packageParamsSchema,
         body: createComponentBody,
         response: {
-          201: createdResponse,
+          201: createdComponentResponse,
           404: errorResponse,
         },
       }),
@@ -388,7 +401,7 @@ const packagesRoutes: FastifyPluginAsync = async (app) => {
       // Verify the package exists and belongs to tenant
       const pkg = await getPackageById({
         packageId,
-        tenantId: body.tenant_id,
+        tenantId: request.authUser.tenantId,
       });
 
       if (!pkg) {
@@ -413,7 +426,7 @@ const packagesRoutes: FastifyPluginAsync = async (app) => {
       });
 
       return reply.status(201).send({
-        package_id: componentId,
+        component_id: componentId,
         message: "Component added successfully",
       });
     },
@@ -447,7 +460,7 @@ const packagesRoutes: FastifyPluginAsync = async (app) => {
 
       const updated = await updatePackage({
         packageId,
-        tenantId: body.tenant_id,
+        tenantId: request.authUser.tenantId,
         isActive: body.is_active,
         includesBreakfast: body.includes_breakfast,
         includesLunch: body.includes_lunch,

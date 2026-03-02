@@ -1,6 +1,6 @@
 import type { KpiDashboardInput } from "@tartware/schemas";
 import { KpiDashboardInputSchema } from "@tartware/schemas";
-import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
+import type { FastifyInstance, FastifyRequest } from "fastify";
 
 import { calculateKpiDashboard } from "../engines/revenue.js";
 import { observeCalculationDuration, recordCalculation } from "../lib/metrics.js";
@@ -15,10 +15,10 @@ export function registerRevenueRoutes(app: FastifyInstance) {
         tags: ["revenue"],
       },
     },
-    async (request: FastifyRequest<{ Body: KpiDashboardInput }>, reply: FastifyReply) => {
+    async (request: FastifyRequest<{ Body: KpiDashboardInput }>) => {
       const parsed = KpiDashboardInputSchema.safeParse(request.body);
       if (!parsed.success) {
-        return reply.status(400).send({ error: parsed.error.message });
+        throw app.httpErrors.badRequest(parsed.error.message);
       }
       const start = performance.now();
       const result = calculateKpiDashboard(parsed.data);

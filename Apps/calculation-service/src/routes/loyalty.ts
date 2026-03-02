@@ -8,7 +8,7 @@ import {
   PointsRedemptionInputSchema,
   PointsToMoneyInputSchema,
 } from "@tartware/schemas";
-import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
+import type { FastifyInstance, FastifyRequest } from "fastify";
 
 import { moneyToPoints, pointsToMoney, processRedemption } from "../engines/loyalty.js";
 import { observeCalculationDuration, recordCalculation } from "../lib/metrics.js";
@@ -22,9 +22,9 @@ export function registerLoyaltyRoutes(app: FastifyInstance) {
         tags: ["loyalty"],
       },
     },
-    async (request: FastifyRequest<{ Body: PointsToMoneyInput }>, reply: FastifyReply) => {
+    async (request: FastifyRequest<{ Body: PointsToMoneyInput }>) => {
       const parsed = PointsToMoneyInputSchema.safeParse(request.body);
-      if (!parsed.success) return reply.status(400).send({ error: parsed.error.message });
+      if (!parsed.success) throw app.httpErrors.badRequest(parsed.error.message);
       const start = performance.now();
       const result = pointsToMoney(parsed.data);
       observeCalculationDuration("loyalty", "points_to_money", (performance.now() - start) / 1000);
@@ -41,9 +41,9 @@ export function registerLoyaltyRoutes(app: FastifyInstance) {
         tags: ["loyalty"],
       },
     },
-    async (request: FastifyRequest<{ Body: MoneyToPointsInput }>, reply: FastifyReply) => {
+    async (request: FastifyRequest<{ Body: MoneyToPointsInput }>) => {
       const parsed = MoneyToPointsInputSchema.safeParse(request.body);
-      if (!parsed.success) return reply.status(400).send({ error: parsed.error.message });
+      if (!parsed.success) throw app.httpErrors.badRequest(parsed.error.message);
       const start = performance.now();
       const result = moneyToPoints(parsed.data);
       observeCalculationDuration("loyalty", "money_to_points", (performance.now() - start) / 1000);
@@ -60,9 +60,9 @@ export function registerLoyaltyRoutes(app: FastifyInstance) {
         tags: ["loyalty"],
       },
     },
-    async (request: FastifyRequest<{ Body: PointsRedemptionInput }>, reply: FastifyReply) => {
+    async (request: FastifyRequest<{ Body: PointsRedemptionInput }>) => {
       const parsed = PointsRedemptionInputSchema.safeParse(request.body);
-      if (!parsed.success) return reply.status(400).send({ error: parsed.error.message });
+      if (!parsed.success) throw app.httpErrors.badRequest(parsed.error.message);
       const start = performance.now();
       const result = processRedemption(parsed.data);
       observeCalculationDuration("loyalty", "redemption", (performance.now() - start) / 1000);

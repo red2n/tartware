@@ -1,6 +1,6 @@
 import type { CancellationFeeInput } from "@tartware/schemas";
 import { CancellationFeeInputSchema } from "@tartware/schemas";
-import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
+import type { FastifyInstance, FastifyRequest } from "fastify";
 
 import { calculateCancellationFee } from "../engines/cancellation.js";
 import { observeCalculationDuration, recordCalculation } from "../lib/metrics.js";
@@ -14,10 +14,10 @@ export function registerCancellationRoutes(app: FastifyInstance) {
         tags: ["cancellation"],
       },
     },
-    async (request: FastifyRequest<{ Body: CancellationFeeInput }>, reply: FastifyReply) => {
+    async (request: FastifyRequest<{ Body: CancellationFeeInput }>) => {
       const parsed = CancellationFeeInputSchema.safeParse(request.body);
       if (!parsed.success) {
-        return reply.status(400).send({ error: parsed.error.message });
+        throw app.httpErrors.badRequest(parsed.error.message);
       }
       const start = performance.now();
       const result = calculateCancellationFee(parsed.data);

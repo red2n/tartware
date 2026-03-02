@@ -1,6 +1,6 @@
 import type { ForexConvertInput } from "@tartware/schemas";
 import { ForexConvertInputSchema } from "@tartware/schemas";
-import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
+import type { FastifyInstance, FastifyRequest } from "fastify";
 
 import { convertCurrency } from "../engines/forex.js";
 import { observeCalculationDuration, recordCalculation } from "../lib/metrics.js";
@@ -14,10 +14,10 @@ export function registerForexRoutes(app: FastifyInstance) {
         tags: ["forex"],
       },
     },
-    async (request: FastifyRequest<{ Body: ForexConvertInput }>, reply: FastifyReply) => {
+    async (request: FastifyRequest<{ Body: ForexConvertInput }>) => {
       const parsed = ForexConvertInputSchema.safeParse(request.body);
       if (!parsed.success) {
-        return reply.status(400).send({ error: parsed.error.message });
+        throw app.httpErrors.badRequest(parsed.error.message);
       }
       const start = performance.now();
       const result = convertCurrency(parsed.data);

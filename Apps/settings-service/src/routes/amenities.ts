@@ -58,6 +58,13 @@ const enforceScope = (
   scope: string,
 ): request is FastifyRequest & { authUser: AuthUser } => {
   if (process.env.DISABLE_AUTH === "true") {
+    if (!request.authUser) {
+      (request as FastifyRequest & { authUser: AuthUser }).authUser = {
+        sub: "dev-user",
+        tenantId: "00000000-0000-0000-0000-000000000000",
+        scope: "settings:read settings:write",
+      } as AuthUser;
+    }
     return true;
   }
   if (!request.authUser) {

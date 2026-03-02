@@ -182,17 +182,17 @@ export class PackageDetailComponent {
 			amenity: "spa",
 			meal: "restaurant",
 			activity: "directions_run",
-			transport: "directions_car",
-			equipment: "build",
-			entertainment: "celebration",
-			beverage: "local_bar",
+			transportation: "directions_car",
+			upgrade: "upgrade",
+			credit: "payments",
+			voucher: "card_giftcard",
 		};
 		return map[type] ?? "category";
 	}
 
 	pricingLabel(comp: PackageComponentListItem): string {
 		if (comp.is_included) return "Included";
-		return this.formatCurrency(comp.unit_price, this.pkg()?.currency_code) + (comp.quantity > 1 ? ` × ${comp.quantity}` : "");
+		return this.formatCurrency(comp.unit_price, this.pkg()?.currency_code);
 	}
 
 	componentBadgeClass(comp: PackageComponentListItem): string {

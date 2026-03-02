@@ -101,7 +101,7 @@ export const CreatePackageBodySchema = z.object({
 		.min(2)
 		.max(50)
 		.regex(/^[A-Za-z0-9_-]+$/),
-	package_type: z.string().min(1),
+	package_type: PackageTypeEnum,
 	short_description: z.string().max(500).optional(),
 	valid_from: z.string().refine((v) => !Number.isNaN(Date.parse(v)), "Valid ISO date required"),
 	valid_to: z.string().refine((v) => !Number.isNaN(Date.parse(v)), "Valid ISO date required"),
@@ -109,7 +109,7 @@ export const CreatePackageBodySchema = z.object({
 	max_nights: z.number().int().min(1).optional(),
 	min_guests: z.number().int().min(1).default(1),
 	max_guests: z.number().int().min(1).optional(),
-	pricing_model: z.string().min(1).default("per_night"),
+	pricing_model: PackagePricingModelEnum.default("per_night"),
 	base_price: z.number().min(0),
 	includes_breakfast: z.boolean().default(false),
 	includes_lunch: z.boolean().default(false),
@@ -133,6 +133,16 @@ export const CreatePackageResponseSchema = z.object({
 });
 
 export type CreatePackageResponse = z.infer<typeof CreatePackageResponseSchema>;
+
+/**
+ * Create package component response schema.
+ */
+export const CreatePackageComponentResponseSchema = z.object({
+	component_id: uuid,
+	message: z.string(),
+});
+
+export type CreatePackageComponentResponse = z.infer<typeof CreatePackageComponentResponseSchema>;
 
 /**
  * Update package request body schema.

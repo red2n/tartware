@@ -175,7 +175,8 @@
                   [class.row-dirty]="effectiveHkStatus(room) === 'DIRTY'"
                   tabindex="0"
                   (click)="viewRoom(room.room_id)"
-                  (keydown.enter)="viewRoom(room.room_id)">
+                  (keydown.enter)="viewRoom(room.room_id)"
+                  (keydown.space)="$event.preventDefault(); viewRoom(room.room_id)">
                   <td>
                     <div class="cell-primary">
                       <span class="hk-room-number">{{ room.room_number }}</span>

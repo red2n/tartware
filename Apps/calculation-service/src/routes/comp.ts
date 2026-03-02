@@ -4,7 +4,7 @@ import {
   CompOfferInputSchema,
   CompRecalcInputSchema,
 } from "@tartware/schemas";
-import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
+import type { FastifyInstance, FastifyRequest } from "fastify";
 
 import { calculateCompOffer, recalculateCompBalance, updateCompBalance } from "../engines/comp.js";
 import { observeCalculationDuration, recordCalculation } from "../lib/metrics.js";
@@ -18,9 +18,9 @@ export function registerCompRoutes(app: FastifyInstance) {
         tags: ["comp"],
       },
     },
-    async (request: FastifyRequest<{ Body: CompOfferInput }>, reply: FastifyReply) => {
+    async (request: FastifyRequest<{ Body: CompOfferInput }>) => {
       const parsed = CompOfferInputSchema.safeParse(request.body);
-      if (!parsed.success) return reply.status(400).send({ error: parsed.error.message });
+      if (!parsed.success) throw app.httpErrors.badRequest(parsed.error.message);
       const start = performance.now();
       const result = calculateCompOffer(parsed.data);
       observeCalculationDuration("comp", "offer", (performance.now() - start) / 1000);
@@ -37,9 +37,9 @@ export function registerCompRoutes(app: FastifyInstance) {
         tags: ["comp"],
       },
     },
-    async (request: FastifyRequest<{ Body: CompBalanceInput }>, reply: FastifyReply) => {
+    async (request: FastifyRequest<{ Body: CompBalanceInput }>) => {
       const parsed = CompBalanceInputSchema.safeParse(request.body);
-      if (!parsed.success) return reply.status(400).send({ error: parsed.error.message });
+      if (!parsed.success) throw app.httpErrors.badRequest(parsed.error.message);
       const start = performance.now();
       const result = updateCompBalance(parsed.data);
       observeCalculationDuration("comp", "balance", (performance.now() - start) / 1000);
@@ -56,9 +56,9 @@ export function registerCompRoutes(app: FastifyInstance) {
         tags: ["comp"],
       },
     },
-    async (request: FastifyRequest<{ Body: CompRecalcInput }>, reply: FastifyReply) => {
+    async (request: FastifyRequest<{ Body: CompRecalcInput }>) => {
       const parsed = CompRecalcInputSchema.safeParse(request.body);
-      if (!parsed.success) return reply.status(400).send({ error: parsed.error.message });
+      if (!parsed.success) throw app.httpErrors.badRequest(parsed.error.message);
       const start = performance.now();
       const result = recalculateCompBalance(parsed.data);
       observeCalculationDuration("comp", "recalc", (performance.now() - start) / 1000);

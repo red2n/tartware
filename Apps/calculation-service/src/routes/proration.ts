@@ -4,7 +4,7 @@ import {
   LosTieredInputSchema,
   ProrationInputSchema,
 } from "@tartware/schemas";
-import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
+import type { FastifyInstance, FastifyRequest } from "fastify";
 
 import { calculateDerivedRate, calculateLosTiered, prorateDaily } from "../engines/proration.js";
 import { observeCalculationDuration, recordCalculation } from "../lib/metrics.js";
@@ -18,9 +18,9 @@ export function registerProrationRoutes(app: FastifyInstance) {
         tags: ["proration"],
       },
     },
-    async (request: FastifyRequest<{ Body: ProrationInput }>, reply: FastifyReply) => {
+    async (request: FastifyRequest<{ Body: ProrationInput }>) => {
       const parsed = ProrationInputSchema.safeParse(request.body);
-      if (!parsed.success) return reply.status(400).send({ error: parsed.error.message });
+      if (!parsed.success) throw app.httpErrors.badRequest(parsed.error.message);
       const start = performance.now();
       const result = prorateDaily(parsed.data);
       observeCalculationDuration("proration", "daily", (performance.now() - start) / 1000);
@@ -37,9 +37,9 @@ export function registerProrationRoutes(app: FastifyInstance) {
         tags: ["proration"],
       },
     },
-    async (request: FastifyRequest<{ Body: LosTieredInput }>, reply: FastifyReply) => {
+    async (request: FastifyRequest<{ Body: LosTieredInput }>) => {
       const parsed = LosTieredInputSchema.safeParse(request.body);
-      if (!parsed.success) return reply.status(400).send({ error: parsed.error.message });
+      if (!parsed.success) throw app.httpErrors.badRequest(parsed.error.message);
       const start = performance.now();
       const result = calculateLosTiered(parsed.data);
       observeCalculationDuration("proration", "los_tiered", (performance.now() - start) / 1000);
@@ -57,9 +57,9 @@ export function registerProrationRoutes(app: FastifyInstance) {
         tags: ["proration"],
       },
     },
-    async (request: FastifyRequest<{ Body: DerivedRateInput }>, reply: FastifyReply) => {
+    async (request: FastifyRequest<{ Body: DerivedRateInput }>) => {
       const parsed = DerivedRateInputSchema.safeParse(request.body);
-      if (!parsed.success) return reply.status(400).send({ error: parsed.error.message });
+      if (!parsed.success) throw app.httpErrors.badRequest(parsed.error.message);
       const start = performance.now();
       const result = calculateDerivedRate(parsed.data);
       observeCalculationDuration("proration", "derived_rate", (performance.now() - start) / 1000);
