@@ -1,0 +1,109 @@
+<!-- backdrop + slide-up panel -->
+<div
+  class="dashboard-backdrop"
+  (click)="onBackdropClick($event)"
+  (keydown)="onBackdropKeydown($event)"
+  tabindex="-1">
+  <div class="dashboard-panel" role="dialog" aria-label="Service Dashboard">
+    <!-- Header -->
+    <div class="dashboard-header">
+      <div class="dashboard-title-area">
+        <mat-icon class="dashboard-title-icon">dns</mat-icon>
+        <h2 class="dashboard-title">Service Dashboard</h2>
+        <span class="dashboard-counter">{{ summary().total }} services</span>
+      </div>
+      <div class="dashboard-actions">
+        <button class="btn btn-invisible btn-sm" (click)="refresh()" matTooltip="Refresh">
+          <mat-icon [class.spin]="loading()">refresh</mat-icon>
+        </button>
+        <button class="btn btn-invisible btn-sm" (click)="close.emit()" matTooltip="Close" aria-label="Close dashboard">
+          <mat-icon>close</mat-icon>
+        </button>
+      </div>
+    </div>
+
+    <!-- Summary cards -->
+    <div class="summary-row">
+      <div class="summary-card summary-total">
+        <span class="summary-value">{{ summary().total }}</span>
+        <span class="summary-label">Total</span>
+      </div>
+      <div class="summary-card summary-up">
+        <span class="summary-value">{{ summary().up }}</span>
+        <span class="summary-label">Healthy</span>
+      </div>
+      <div class="summary-card summary-down">
+        <span class="summary-value">{{ summary().down }}</span>
+        <span class="summary-label">Down</span>
+      </div>
+    </div>
+
+    @if (error()) {
+      <div class="dashboard-error">
+        <mat-icon>cloud_off</mat-icon>
+        <span>{{ error() }}</span>
+        <button class="btn btn-outline btn-sm" (click)="refresh()">Retry</button>
+      </div>
+    }
+
+    <!-- Service list -->
+    <div class="service-list scroll-container">
+      @if (downServices().length > 0) {
+        <div class="service-group">
+          <h3 class="service-group-title service-group-danger">
+            <mat-icon class="group-icon">error</mat-icon>
+            Down ({{ downServices().length }})
+          </h3>
+          @for (svc of downServices(); track svc.instanceId) {
+            <div class="service-row service-row-down">
+              <div class="service-status-dot service-dot-down" matTooltip="DOWN"></div>
+              <div class="service-info">
+                <span class="service-name">{{ svc.name }}</span>
+                <span class="service-meta">
+                  <code class="service-port">{{ formatPort(svc) }}</code>
+                  <span class="service-version">v{{ svc.version }}</span>
+                </span>
+              </div>
+              <div class="service-heartbeat">
+                <mat-icon class="heartbeat-icon">schedule</mat-icon>
+                <span>{{ relativeTime(svc.lastHeartbeat) }}</span>
+              </div>
+            </div>
+          }
+        </div>
+      }
+
+      @if (upServices().length > 0) {
+        <div class="service-group">
+          <h3 class="service-group-title service-group-success">
+            <mat-icon class="group-icon">check_circle</mat-icon>
+            Healthy ({{ upServices().length }})
+          </h3>
+          @for (svc of upServices(); track svc.instanceId) {
+            <div class="service-row">
+              <div class="service-status-dot service-dot-up" matTooltip="UP"></div>
+              <div class="service-info">
+                <span class="service-name">{{ svc.name }}</span>
+                <span class="service-meta">
+                  <code class="service-port">{{ formatPort(svc) }}</code>
+                  <span class="service-version">v{{ svc.version }}</span>
+                </span>
+              </div>
+              <div class="service-heartbeat">
+                <mat-icon class="heartbeat-icon">favorite</mat-icon>
+                <span>{{ relativeTime(svc.lastHeartbeat) }}</span>
+              </div>
+            </div>
+          }
+        </div>
+      }
+
+      @if (services().length === 0 && !loading() && !error()) {
+        <div class="dashboard-empty">
+          <mat-icon class="empty-icon">dns</mat-icon>
+          <p>No services registered</p>
+        </div>
+      }
+    </div>
+  </div>
+</div>

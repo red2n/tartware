@@ -1,0 +1,40 @@
+<div class="status-bar">
+  <div class="status-bar-left">
+    <button
+      class="status-bar-item status-bar-services"
+      [class.status-bar-item-warning]="registry.hasIssues()"
+      [class.status-bar-item-active]="dashboardOpen()"
+      (click)="toggleDashboard()"
+      [matTooltip]="'Services: ' + registry.summary().up + ' up, ' + registry.summary().down + ' down'">
+      @if (registry.loading() && !registry.lastUpdated()) {
+        <mat-icon class="status-bar-icon spin">sync</mat-icon>
+      } @else if (registry.error()) {
+        <mat-icon class="status-bar-icon">cloud_off</mat-icon>
+      } @else if (registry.hasIssues()) {
+        <mat-icon class="status-bar-icon">warning</mat-icon>
+      } @else {
+        <mat-icon class="status-bar-icon">check_circle</mat-icon>
+      }
+      <span class="status-bar-text">
+        {{ registry.summary().up }}/{{ registry.summary().total }} Services
+      </span>
+    </button>
+  </div>
+
+  <div class="status-bar-right">
+    @if (registry.error()) {
+      <span class="status-bar-item status-bar-item-warning" matTooltip="Registry connection error">
+        <mat-icon class="status-bar-icon">error_outline</mat-icon>
+        <span class="status-bar-text">Registry Offline</span>
+      </span>
+    }
+    <span class="status-bar-item" [matTooltip]="'Last updated: ' + formatLastUpdated()">
+      <mat-icon class="status-bar-icon">schedule</mat-icon>
+      <span class="status-bar-text">{{ formatLastUpdated() }}</span>
+    </span>
+  </div>
+</div>
+
+@if (dashboardOpen()) {
+  <app-service-dashboard (close)="closeDashboard()" />
+}
