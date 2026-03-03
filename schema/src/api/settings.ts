@@ -103,8 +103,12 @@ export const CreatePackageBodySchema = z.object({
 		.regex(/^[A-Za-z0-9_-]+$/),
 	package_type: z.string().min(1),
 	short_description: z.string().max(500).optional(),
-	valid_from: z.string().refine((v) => !Number.isNaN(Date.parse(v)), "Valid ISO date required"),
-	valid_to: z.string().refine((v) => !Number.isNaN(Date.parse(v)), "Valid ISO date required"),
+	valid_from: z
+		.string()
+		.refine((v) => !Number.isNaN(Date.parse(v)), "Valid ISO date required"),
+	valid_to: z
+		.string()
+		.refine((v) => !Number.isNaN(Date.parse(v)), "Valid ISO date required"),
 	min_nights: z.number().int().min(1).default(1),
 	max_nights: z.number().int().min(1).optional(),
 	min_guests: z.number().int().min(1).default(1),
@@ -133,6 +137,18 @@ export const CreatePackageResponseSchema = z.object({
 });
 
 export type CreatePackageResponse = z.infer<typeof CreatePackageResponseSchema>;
+
+/**
+ * Create package component response schema.
+ */
+export const CreatePackageComponentResponseSchema = z.object({
+	component_id: uuid,
+	message: z.string(),
+});
+
+export type CreatePackageComponentResponse = z.infer<
+	typeof CreatePackageComponentResponseSchema
+>;
 
 /**
  * Update package request body schema.
@@ -294,7 +310,14 @@ export const CreatePackageComponentBodySchema = z.object({
 	is_optional: z.boolean().default(false),
 	is_mandatory: z.boolean().default(true),
 	delivery_timing: z
-		.enum(["on_arrival", "on_departure", "daily", "specific_date", "on_request", "anytime"])
+		.enum([
+			"on_arrival",
+			"on_departure",
+			"daily",
+			"specific_date",
+			"on_request",
+			"anytime",
+		])
 		.optional(),
 	delivery_location: z.string().max(255).optional(),
 	display_order: z.number().int().min(0).default(0),

@@ -6,6 +6,76 @@
   max-width: 1400px;
 }
 
+/* ── KPI Legend Strip (compact single-row, mirrors rooms .occ-legend pattern) ── */
+.guest-legend {
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-md);
+  background: var(--color-canvas-default);
+  padding: var(--space-3) var(--space-5);
+  margin-bottom: var(--space-5);
+  display: flex;
+  gap: var(--space-5);
+  flex-wrap: wrap;
+}
+
+.guest-legend-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: var(--font-size-xs);
+  color: var(--color-fg-muted);
+
+  strong {
+    color: var(--color-fg-default);
+    font-weight: var(--font-weight-semibold);
+  }
+
+  &.clickable {
+    cursor: pointer;
+
+    &:hover {
+      color: var(--color-fg-default);
+    }
+  }
+}
+
+.guest-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.guest-dot-total { background: var(--color-fg-muted); }
+.guest-dot-new { background: var(--color-success-emphasis); }
+.guest-dot-returning { background: var(--color-accent-emphasis); }
+.guest-dot-longstay { background: var(--color-warning-emphasis); }
+.guest-dot-vip { background: var(--color-attention-emphasis); }
+.guest-dot-revenue { background: var(--color-success-emphasis); }
+
+/* ── Activity Sparkline (GitHub-style) ── */
+.guest-sparkline {
+  margin-left: auto;
+}
+
+.sparkline-svg {
+  width: 120px;
+  height: 28px;
+  display: block;
+}
+
+.sparkline-area {
+  fill: var(--color-accent-subtle);
+}
+
+.sparkline-line {
+  fill: none;
+  stroke: var(--color-accent-emphasis);
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
 .guest-name-cell {
   display: flex;
   align-items: center;

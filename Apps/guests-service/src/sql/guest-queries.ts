@@ -29,6 +29,8 @@ export const GUEST_LIST_SQL = `
     g.total_nights,
     g.total_revenue,
     g.last_stay_date,
+    g.member_since,
+    g.first_stay_date,
     g.is_blacklisted,
     g.blacklist_reason,
     g.notes,
@@ -96,6 +98,8 @@ export const GUEST_BY_ID_SQL = `
     g.total_nights,
     g.total_revenue,
     g.last_stay_date,
+    g.member_since,
+    g.first_stay_date,
     g.is_blacklisted,
     g.blacklist_reason,
     g.notes,
@@ -306,4 +310,70 @@ export const GUEST_COMMUNICATIONS_LIST_SQL = `
   ORDER BY gc.created_at DESC
   LIMIT $1
   OFFSET $7
+`;
+
+export const GUEST_SUMMARY_STATS_SQL = `
+  WITH active_guests AS (
+    SELECT
+      g.id,
+      g.tenant_id,
+      g.member_since,
+      g.total_bookings,
+      g.total_nights,
+      g.total_revenue,
+      g.vip_status,
+      g.loyalty_tier,
+      g.is_blacklisted,
+      g.nationality
+    FROM public.guests g
+    WHERE g.tenant_id = $1::uuid
+      AND COALESCE(g.is_deleted, false) = false
+      AND g.deleted_at IS NULL
+      AND ($2::uuid IS NULL OR EXISTS (
+        SELECT 1 FROM public.reservations r
+        WHERE r.guest_id = g.id AND r.tenant_id = g.tenant_id
+          AND r.property_id = $2::uuid
+          AND COALESCE(r.is_deleted, false) = false
+          AND r.deleted_at IS NULL
+      ))
+  ),
+  value_segments AS (
+    SELECT
+      CASE
+        WHEN total_revenue >= (SELECT COALESCE(PERCENTILE_CONT(0.90) WITHIN GROUP (ORDER BY total_revenue), 0) FROM active_guests WHERE total_revenue > 0) AND total_revenue > 0
+          THEN 'HIGH'
+        WHEN total_revenue >= (SELECT COALESCE(PERCENTILE_CONT(0.60) WITHIN GROUP (ORDER BY total_revenue), 0) FROM active_guests WHERE total_revenue > 0) AND total_revenue > 0
+          THEN 'MEDIUM'
+        ELSE 'LOW'
+      END AS segment,
+      COUNT(*) AS count,
+      COALESCE(SUM(total_revenue), 0) AS total_revenue
+    FROM active_guests
+    GROUP BY 1
+  ),
+  top_nat AS (
+    SELECT nationality
+    FROM active_guests
+    WHERE nationality IS NOT NULL AND nationality <> ''
+    GROUP BY nationality
+    ORDER BY COUNT(*) DESC
+    LIMIT 1
+  )
+  SELECT
+    COUNT(*)::int AS total_guests,
+    COUNT(*) FILTER (WHERE member_since >= date_trunc('month', CURRENT_DATE))::int AS new_guests_this_month,
+    COUNT(*) FILTER (WHERE total_bookings > 1)::int AS returning_guests,
+    COUNT(*) FILTER (WHERE vip_status = true)::int AS vip_guests,
+    COUNT(*) FILTER (WHERE loyalty_tier IS NOT NULL AND loyalty_tier <> '')::int AS loyalty_members,
+    COUNT(*) FILTER (WHERE is_blacklisted = true)::int AS blacklisted_guests,
+    COUNT(*) FILTER (WHERE total_nights > 0 AND total_bookings > 0 AND (total_nights::numeric / total_bookings) >= 3)::int AS long_stay_guests,
+    COALESCE(AVG(total_revenue) FILTER (WHERE total_revenue > 0), 0)::numeric(15,2) AS average_lifetime_value,
+    COALESCE(AVG(CASE WHEN total_bookings > 0 AND total_nights > 0 THEN total_nights::numeric / total_bookings END), 0)::numeric(5,1) AS average_stay_length,
+    (SELECT nationality FROM top_nat) AS top_nationality,
+    COALESCE(
+      (SELECT jsonb_agg(jsonb_build_object('segment', vs.segment, 'count', vs.count, 'total_revenue', vs.total_revenue) ORDER BY vs.segment)
+       FROM value_segments vs),
+      '[]'::jsonb
+    ) AS value_segments
+  FROM active_guests
 `;

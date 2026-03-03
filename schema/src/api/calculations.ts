@@ -16,7 +16,10 @@ import { z } from "zod";
 
 /** Monetary amount (signed — allows negatives for credits/refunds) */
 const amt = z.number().describe("Monetary amount");
-const posAmt = z.number().nonnegative().describe("Non-negative monetary amount");
+const posAmt = z
+	.number()
+	.nonnegative()
+	.describe("Non-negative monetary amount");
 const pct = z.number().min(0).max(100).describe("Percentage (0-100)");
 const posInt = z.number().int().nonnegative().describe("Non-negative integer");
 
@@ -27,7 +30,10 @@ const posInt = z.number().int().nonnegative().describe("Non-negative integer");
 export const TaxableAmountInputSchema = z.object({
 	amount: posAmt,
 	quantity: posInt,
-	negate: z.boolean().default(false).describe("Negate for refund/allowance types"),
+	negate: z
+		.boolean()
+		.default(false)
+		.describe("Negate for refund/allowance types"),
 });
 export type TaxableAmountInput = z.infer<typeof TaxableAmountInputSchema>;
 
@@ -63,7 +69,9 @@ export const InclusiveTaxExtractInputSchema = z.object({
 	gross_amount: posAmt,
 	tax_rules: z.array(TaxRuleInputSchema).min(1),
 });
-export type InclusiveTaxExtractInput = z.infer<typeof InclusiveTaxExtractInputSchema>;
+export type InclusiveTaxExtractInput = z.infer<
+	typeof InclusiveTaxExtractInputSchema
+>;
 
 export const InclusiveTaxExtractOutputSchema = z.object({
 	net_amount: amt,
@@ -71,7 +79,9 @@ export const InclusiveTaxExtractOutputSchema = z.object({
 	total_tax: amt,
 	formula: z.string(),
 });
-export type InclusiveTaxExtractOutput = z.infer<typeof InclusiveTaxExtractOutputSchema>;
+export type InclusiveTaxExtractOutput = z.infer<
+	typeof InclusiveTaxExtractOutputSchema
+>;
 
 export const BulkTaxLineItemSchema = z.object({
 	amount: posAmt,
@@ -86,12 +96,14 @@ export const BulkTaxInputSchema = z.object({
 export type BulkTaxInput = z.infer<typeof BulkTaxInputSchema>;
 
 export const BulkTaxOutputSchema = z.object({
-	line_items: z.array(z.object({
-		charge_code: z.string(),
-		subtotal: amt,
-		taxes: z.array(z.object({ code: z.string(), amount: amt })),
-		total: amt,
-	})),
+	line_items: z.array(
+		z.object({
+			charge_code: z.string(),
+			subtotal: amt,
+			taxes: z.array(z.object({ code: z.string(), amount: amt })),
+			total: amt,
+		}),
+	),
 	grand_total: amt,
 	total_tax: amt,
 });
@@ -101,7 +113,11 @@ export type BulkTaxOutput = z.infer<typeof BulkTaxOutputSchema>;
 // RATE & PRICING SCHEMAS (CORE.md §2)
 // =====================================================
 
-export const RateAdjustmentTypeEnum = z.enum(["UNIT", "ADJUST_UNIT", "ADJUST_PERCENT"]);
+export const RateAdjustmentTypeEnum = z.enum([
+	"UNIT",
+	"ADJUST_UNIT",
+	"ADJUST_PERCENT",
+]);
 
 export const RateOverrideInputSchema = z.object({
 	base_price: posAmt,
@@ -192,11 +208,13 @@ export const KpiDashboardInputSchema = z.object({
 	available_rooms: posInt.min(1),
 	comp_rooms: posInt.default(0),
 	gross_operating_profit: posAmt.optional(),
-	compset: z.object({
-		occupancy: z.number().min(0).max(100),
-		adr: posAmt,
-		revpar: posAmt,
-	}).optional(),
+	compset: z
+		.object({
+			occupancy: z.number().min(0).max(100),
+			adr: posAmt,
+			revpar: posAmt,
+		})
+		.optional(),
 });
 export type KpiDashboardInput = z.infer<typeof KpiDashboardInputSchema>;
 
@@ -214,11 +232,13 @@ export const KpiDashboardOutputSchema = z.object({
 	goppar: amt.optional(),
 	occupancy_percent: z.number(),
 	avg_revenue_per_room: amt,
-	competitive_indices: z.object({
-		occupancy_index: CompetitiveIndexSchema,
-		ari: CompetitiveIndexSchema,
-		rgi: CompetitiveIndexSchema,
-	}).optional(),
+	competitive_indices: z
+		.object({
+			occupancy_index: CompetitiveIndexSchema,
+			ari: CompetitiveIndexSchema,
+			rgi: CompetitiveIndexSchema,
+		})
+		.optional(),
 });
 export type KpiDashboardOutput = z.infer<typeof KpiDashboardOutputSchema>;
 
@@ -281,7 +301,9 @@ export const EstimatedCheckoutInputSchema = z.object({
 	posted_payments: amt.describe("Negative for payments received"),
 	stay_length: posInt.min(1),
 });
-export type EstimatedCheckoutInput = z.infer<typeof EstimatedCheckoutInputSchema>;
+export type EstimatedCheckoutInput = z.infer<
+	typeof EstimatedCheckoutInputSchema
+>;
 
 export const EstimatedCheckoutOutputSchema = z.object({
 	estimated_charges: amt,
@@ -290,7 +312,9 @@ export const EstimatedCheckoutOutputSchema = z.object({
 	avg_nightly_rate: amt,
 	estimated_at_checkout: amt,
 });
-export type EstimatedCheckoutOutput = z.infer<typeof EstimatedCheckoutOutputSchema>;
+export type EstimatedCheckoutOutput = z.infer<
+	typeof EstimatedCheckoutOutputSchema
+>;
 
 // =====================================================
 // SPLIT CALCULATION SCHEMAS (CORE.md §5)
@@ -300,14 +324,18 @@ export const SplitByReservationInputSchema = z.object({
 	total: posAmt,
 	reservation_count: posInt.min(2),
 });
-export type SplitByReservationInput = z.infer<typeof SplitByReservationInputSchema>;
+export type SplitByReservationInput = z.infer<
+	typeof SplitByReservationInputSchema
+>;
 
 export const SplitByReservationOutputSchema = z.object({
 	primary_share: amt,
 	secondary_share: amt,
 	remainder: amt,
 });
-export type SplitByReservationOutput = z.infer<typeof SplitByReservationOutputSchema>;
+export type SplitByReservationOutput = z.infer<
+	typeof SplitByReservationOutputSchema
+>;
 
 export const SplitByGuestInputSchema = z.object({
 	total: posAmt,
@@ -344,12 +372,16 @@ export const DepositEntireStayInputSchema = z.object({
 	percentage_of_stay: pct,
 	total_reservation_charge: posAmt,
 });
-export type DepositEntireStayInput = z.infer<typeof DepositEntireStayInputSchema>;
+export type DepositEntireStayInput = z.infer<
+	typeof DepositEntireStayInputSchema
+>;
 
 export const DepositEntireStayOutputSchema = z.object({
 	deposit_amount: amt,
 });
-export type DepositEntireStayOutput = z.infer<typeof DepositEntireStayOutputSchema>;
+export type DepositEntireStayOutput = z.infer<
+	typeof DepositEntireStayOutputSchema
+>;
 
 export const DepositPerGuestInputSchema = z.object({
 	per_adult_rate: posAmt,
@@ -391,18 +423,24 @@ export type CommissionAmountInput = z.infer<typeof CommissionAmountInputSchema>;
 export const CommissionAmountOutputSchema = z.object({
 	commission_amount: amt,
 });
-export type CommissionAmountOutput = z.infer<typeof CommissionAmountOutputSchema>;
+export type CommissionAmountOutput = z.infer<
+	typeof CommissionAmountOutputSchema
+>;
 
 export const CommissionBackCalcInputSchema = z.object({
 	commission_amount: posAmt,
-	room_rate: posAmt.refine(v => v > 0, "Room rate must be positive"),
+	room_rate: posAmt.refine((v) => v > 0, "Room rate must be positive"),
 });
-export type CommissionBackCalcInput = z.infer<typeof CommissionBackCalcInputSchema>;
+export type CommissionBackCalcInput = z.infer<
+	typeof CommissionBackCalcInputSchema
+>;
 
 export const CommissionBackCalcOutputSchema = z.object({
 	commission_percent: z.number(),
 });
-export type CommissionBackCalcOutput = z.infer<typeof CommissionBackCalcOutputSchema>;
+export type CommissionBackCalcOutput = z.infer<
+	typeof CommissionBackCalcOutputSchema
+>;
 
 // =====================================================
 // AUTHORIZATION SCHEMAS (CORE.md §7)
@@ -442,7 +480,11 @@ export type AuthRtdcOutput = z.infer<typeof AuthRtdcOutputSchema>;
 // CANCELLATION FEE SCHEMAS (CORE.md §10)
 // =====================================================
 
-export const CancellationPolicyTypeEnum = z.enum(["percentage", "nights", "flat"]);
+export const CancellationPolicyTypeEnum = z.enum([
+	"percentage",
+	"nights",
+	"flat",
+]);
 
 export const CancellationFeeInputSchema = z.object({
 	policy_type: CancellationPolicyTypeEnum,
@@ -463,7 +505,11 @@ export type CancellationFeeOutput = z.infer<typeof CancellationFeeOutputSchema>;
 // YIELD RATE SCHEMAS (CORE.md §17)
 // =====================================================
 
-export const YieldModifierTypeEnum = z.enum(["PERCENT", "FLAT_RATE", "DECREASE_BY"]);
+export const YieldModifierTypeEnum = z.enum([
+	"PERCENT",
+	"FLAT_RATE",
+	"DECREASE_BY",
+]);
 
 export const YieldModifierSchema = z.object({
 	type: YieldModifierTypeEnum,
@@ -560,7 +606,10 @@ export type DerivedRateOutput = z.infer<typeof DerivedRateOutputSchema>;
 
 export const AllowanceTrackInputSchema = z.object({
 	total_allowance: posAmt,
-	charges: z.array(posAmt).min(1).describe("Sequential charges against allowance"),
+	charges: z
+		.array(posAmt)
+		.min(1)
+		.describe("Sequential charges against allowance"),
 });
 export type AllowanceTrackInput = z.infer<typeof AllowanceTrackInputSchema>;
 
@@ -599,7 +648,9 @@ export const PackageAllocationInputSchema = z.object({
 	package_rate: posAmt,
 	components: z.array(PackageAllocationComponentSchema).min(1),
 });
-export type PackageAllocationInput = z.infer<typeof PackageAllocationInputSchema>;
+export type PackageAllocationInput = z.infer<
+	typeof PackageAllocationInputSchema
+>;
 
 export const PackageAllocationOutputSchema = z.object({
 	allocations: z.array(
@@ -611,7 +662,9 @@ export const PackageAllocationOutputSchema = z.object({
 	),
 	total: amt,
 });
-export type PackageAllocationOutput = z.infer<typeof PackageAllocationOutputSchema>;
+export type PackageAllocationOutput = z.infer<
+	typeof PackageAllocationOutputSchema
+>;
 
 // =====================================================
 // COMP OFFER & ACCOUNTING SCHEMAS (CORE.md §2.11-2.13, §14)
@@ -695,7 +748,9 @@ export const PointsRedemptionOutputSchema = z.object({
 	remaining_authorized: amt,
 	over_limit: z.boolean(),
 });
-export type PointsRedemptionOutput = z.infer<typeof PointsRedemptionOutputSchema>;
+export type PointsRedemptionOutput = z.infer<
+	typeof PointsRedemptionOutputSchema
+>;
 
 // =====================================================
 // REVENUE FORECAST SCHEMAS (Industry Standard)
@@ -779,4 +834,6 @@ export const ExtraGuestChargeOutputSchema = z.object({
 	total_surcharge: amt,
 	total_rate: amt,
 });
-export type ExtraGuestChargeOutput = z.infer<typeof ExtraGuestChargeOutputSchema>;
+export type ExtraGuestChargeOutput = z.infer<
+	typeof ExtraGuestChargeOutputSchema
+>;

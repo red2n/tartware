@@ -14,6 +14,7 @@ import { AuthService } from "../../core/auth/auth.service";
 import { TenantContextService } from "../../core/context/tenant-context.service";
 import { PaginationComponent } from "../../shared/pagination/pagination";
 import { createSortState, sortBy, toggleSort } from "../../shared/sort-utils";
+import { ToastService } from "../../shared/toast/toast.service";
 
 type StatusFilter = "ALL" | "ACTIVE" | "INACTIVE" | "EXPIRED" | "FUTURE";
 type TypeFilter = "ALL" | string;
@@ -38,6 +39,7 @@ export class RatesComponent {
 	private readonly auth = inject(AuthService);
 	private readonly ctx = inject(TenantContextService);
 	private readonly dialog = inject(MatDialog);
+	private readonly toast = inject(ToastService);
 
 	readonly rates = signal<RateItem[]>([]);
 	readonly loading = signal(false);
@@ -102,7 +104,11 @@ export class RatesComponent {
 	});
 
 	readonly paginatedRates = computed(() => {
-		const sorted = sortBy(this.filteredRates(), this.sortState().column, this.sortState().direction);
+		const sorted = sortBy(
+			this.filteredRates(),
+			this.sortState().column,
+			this.sortState().direction,
+		);
 		const start = (this.currentPage() - 1) * this.pageSize;
 		return sorted.slice(start, start + this.pageSize);
 	});
@@ -137,7 +143,9 @@ export class RatesComponent {
 		return {
 			totalPlans: all.length,
 			activePlans: active.length,
-			minRate, maxRate, currency,
+			minRate,
+			maxRate,
+			currency,
 			barRateValue: barRate?.base_rate ?? null,
 			barRateName: barRate?.rate_name ?? null,
 			topTypes,
@@ -153,12 +161,15 @@ export class RatesComponent {
 		});
 
 		// Clamp currentPage when filtered list shrinks
-		effect(() => {
-			const maxPage = Math.max(1, Math.ceil(this.filteredRates().length / this.pageSize));
-			if (this.currentPage() > maxPage) {
-				this.currentPage.set(maxPage);
-			}
-		}, { allowSignalWrites: true });
+		effect(
+			() => {
+				const maxPage = Math.max(1, Math.ceil(this.filteredRates().length / this.pageSize));
+				if (this.currentPage() > maxPage) {
+					this.currentPage.set(maxPage);
+				}
+			},
+			{ allowSignalWrites: true },
+		);
 	}
 
 	setFilter(filter: StatusFilter): void {
@@ -299,6 +310,7 @@ export class RatesComponent {
 			});
 			ref.afterClosed().subscribe((created: boolean) => {
 				if (created) {
+					this.toast.success("Rate plan created successfully.");
 					this.loadRates();
 				}
 			});
@@ -309,7 +321,13 @@ export class RatesComponent {
 		const tenantId = this.auth.tenantId();
 		if (!tenantId) return;
 
-		if (newStatus === 'INACTIVE' && !confirm(`Deactivate rate plan "${rate.rate_name}"? It will no longer be available for new bookings.`)) return;
+		if (
+			newStatus === "INACTIVE" &&
+			!confirm(
+				`Deactivate rate plan "${rate.rate_name}"? It will no longer be available for new bookings.`,
+			)
+		)
+			return;
 
 		try {
 			await this.api.put(`/rates/${rate.id}`, {
@@ -320,8 +338,11 @@ export class RatesComponent {
 			this.rates.update((list) =>
 				list.map((r) => (r.id === rate.id ? { ...r, status: newStatus } : r)),
 			);
+			this.toast.success(
+				`Rate "${rate.rate_name}" ${newStatus === "ACTIVE" ? "activated" : "deactivated"}.`,
+			);
 		} catch (e) {
-			this.error.set(e instanceof Error ? e.message : "Failed to update rate status");
+			this.toast.error(e instanceof Error ? e.message : "Failed to update rate status");
 		}
 	}
 }

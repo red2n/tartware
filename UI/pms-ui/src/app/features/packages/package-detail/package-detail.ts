@@ -14,7 +14,13 @@ import { AuthService } from "../../../core/auth/auth.service";
 import { ToastService } from "../../../shared/toast/toast.service";
 
 type DetailRow = { label: string; value: string; badge?: string; badgeClass?: string };
-type InclusionKey = "includes_breakfast" | "includes_lunch" | "includes_dinner" | "includes_parking" | "includes_wifi" | "includes_airport_transfer";
+type InclusionKey =
+	| "includes_breakfast"
+	| "includes_lunch"
+	| "includes_dinner"
+	| "includes_parking"
+	| "includes_wifi"
+	| "includes_airport_transfer";
 
 @Component({
 	selector: "app-package-detail",
@@ -51,9 +57,17 @@ export class PackageDetailComponent {
 		if (!p) return [];
 		return [
 			{ label: "Code", value: p.package_code },
-			{ label: "Type", value: p.package_type_display, badge: p.package_type_display, badgeClass: "badge-muted" },
+			{
+				label: "Type",
+				value: p.package_type_display,
+				badge: p.package_type_display,
+				badgeClass: "badge-muted",
+			},
 			{ label: "Description", value: p.short_description ?? "—" },
-			{ label: "Validity", value: `${this.formatDate(p.valid_from)} — ${this.formatDate(p.valid_to)}` },
+			{
+				label: "Validity",
+				value: `${this.formatDate(p.valid_from)} — ${this.formatDate(p.valid_to)}`,
+			},
 		];
 	});
 
@@ -66,11 +80,19 @@ export class PackageDetailComponent {
 			{ label: "Currency", value: p.currency_code },
 		];
 		if (p.discount_percentage) {
-			rows.push({ label: "Discount", value: `${p.discount_percentage}%`, badge: `-${p.discount_percentage}%`, badgeClass: "badge-success" });
+			rows.push({
+				label: "Discount",
+				value: `${p.discount_percentage}%`,
+				badge: `-${p.discount_percentage}%`,
+				badgeClass: "badge-success",
+			});
 		}
 		rows.push({ label: "Refundable", value: p.refundable ? "Yes" : "No" });
 		if (p.free_cancellation_days != null) {
-			rows.push({ label: "Free cancellation", value: `${p.free_cancellation_days} days before arrival` });
+			rows.push({
+				label: "Free cancellation",
+				value: `${p.free_cancellation_days} days before arrival`,
+			});
 		}
 		return rows;
 	});
@@ -86,16 +108,43 @@ export class PackageDetailComponent {
 		];
 	});
 
-	readonly inclusionList = computed<{ key: InclusionKey; icon: string; label: string; included: boolean }[]>(() => {
+	readonly inclusionList = computed<
+		{ key: InclusionKey; icon: string; label: string; included: boolean }[]
+	>(() => {
 		const p = this.pkg();
 		if (!p) return [];
 		return [
-			{ key: "includes_breakfast" as const, icon: "free_breakfast", label: "Breakfast", included: p.includes_breakfast },
-			{ key: "includes_lunch" as const, icon: "lunch_dining", label: "Lunch", included: p.includes_lunch },
-			{ key: "includes_dinner" as const, icon: "dinner_dining", label: "Dinner", included: p.includes_dinner },
-			{ key: "includes_parking" as const, icon: "local_parking", label: "Parking", included: p.includes_parking },
+			{
+				key: "includes_breakfast" as const,
+				icon: "free_breakfast",
+				label: "Breakfast",
+				included: p.includes_breakfast,
+			},
+			{
+				key: "includes_lunch" as const,
+				icon: "lunch_dining",
+				label: "Lunch",
+				included: p.includes_lunch,
+			},
+			{
+				key: "includes_dinner" as const,
+				icon: "dinner_dining",
+				label: "Dinner",
+				included: p.includes_dinner,
+			},
+			{
+				key: "includes_parking" as const,
+				icon: "local_parking",
+				label: "Parking",
+				included: p.includes_parking,
+			},
 			{ key: "includes_wifi" as const, icon: "wifi", label: "WiFi", included: p.includes_wifi },
-			{ key: "includes_airport_transfer" as const, icon: "airport_shuttle", label: "Airport transfer", included: p.includes_airport_transfer },
+			{
+				key: "includes_airport_transfer" as const,
+				icon: "airport_shuttle",
+				label: "Airport transfer",
+				included: p.includes_airport_transfer,
+			},
 		];
 	});
 
@@ -107,12 +156,18 @@ export class PackageDetailComponent {
 			{ label: "Sold", value: String(p.sold_count) },
 		];
 		if (p.total_inventory != null) {
-			rows.push({ label: "Inventory", value: `${p.available_inventory ?? 0} available / ${p.total_inventory} total` });
+			rows.push({
+				label: "Inventory",
+				value: `${p.available_inventory ?? 0} available / ${p.total_inventory} total`,
+			});
 		} else {
 			rows.push({ label: "Inventory", value: "Unlimited" });
 		}
 		if (p.total_revenue != null) {
-			rows.push({ label: "Total revenue", value: this.formatCurrency(p.total_revenue, p.currency_code) });
+			rows.push({
+				label: "Total revenue",
+				value: this.formatCurrency(p.total_revenue, p.currency_code),
+			});
 		}
 		if (p.average_rating != null) {
 			rows.push({ label: "Avg. rating", value: `${p.average_rating.toFixed(1)} / 5` });
@@ -143,7 +198,9 @@ export class PackageDetailComponent {
 		try {
 			const [pkgRes, compRes] = await Promise.all([
 				this.api.get<PackageListItem>(`/packages/${packageId}`, { tenant_id: tenantId }),
-				this.api.get<{ data: PackageComponentListItem[] }>(`/packages/${packageId}/components`, { tenant_id: tenantId }),
+				this.api.get<{ data: PackageComponentListItem[] }>(`/packages/${packageId}/components`, {
+					tenant_id: tenantId,
+				}),
 			]);
 			this.pkg.set(pkgRes);
 			this.components.set(compRes.data);
@@ -192,7 +249,10 @@ export class PackageDetailComponent {
 
 	pricingLabel(comp: PackageComponentListItem): string {
 		if (comp.is_included) return "Included";
-		return this.formatCurrency(comp.unit_price, this.pkg()?.currency_code) + (comp.quantity > 1 ? ` × ${comp.quantity}` : "");
+		return (
+			this.formatCurrency(comp.unit_price, this.pkg()?.currency_code) +
+			(comp.quantity > 1 ? ` × ${comp.quantity}` : "")
+		);
 	}
 
 	componentBadgeClass(comp: PackageComponentListItem): string {
@@ -225,6 +285,7 @@ export class PackageDetailComponent {
 
 		ref.afterClosed().subscribe((created) => {
 			if (created) {
+				this.toast.success("Component added to package.");
 				this.loadDetail();
 			}
 		});

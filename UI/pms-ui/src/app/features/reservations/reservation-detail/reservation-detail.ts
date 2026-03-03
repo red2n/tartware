@@ -11,6 +11,7 @@ import { ApiService } from "../../../core/api/api.service";
 import { AuthService } from "../../../core/auth/auth.service";
 import { reservationStatusClass } from "../../../shared/badge-utils";
 import { formatCurrency, formatLongDate } from "../../../shared/format-utils";
+import { ToastService } from "../../../shared/toast/toast.service";
 
 type DetailRow = { label: string; value: string; badge?: string };
 
@@ -33,6 +34,7 @@ export class ReservationDetailComponent implements OnInit {
 	private readonly auth = inject(AuthService);
 	private readonly route = inject(ActivatedRoute);
 	private readonly router = inject(Router);
+	private readonly toast = inject(ToastService);
 
 	readonly reservation = signal<ReservationDetail | null>(null);
 	readonly loading = signal(false);
@@ -237,11 +239,11 @@ export class ReservationDetailComponent implements OnInit {
 				? (this.availableRooms().find((rm) => rm.room_id === roomId)?.room_number ??
 					"selected room")
 				: "auto-assigned room";
-			this.actionSuccess.set(`Guest checked in successfully. Room: ${roomLabel}.`);
+			this.toast.success(`Guest checked in successfully. Room: ${roomLabel}.`);
 			this.confirmingCheckIn.set(false);
 			await this.pollUntilStatusChanged(r.id, r.status);
 		} catch (e) {
-			this.actionError.set(e instanceof Error ? e.message : "Check-in failed");
+			this.toast.error(e instanceof Error ? e.message : "Check-in failed");
 		} finally {
 			this.actionLoading.set(false);
 		}
@@ -258,11 +260,11 @@ export class ReservationDetailComponent implements OnInit {
 
 		try {
 			await this.api.post(`/tenants/${tenantId}/reservations/${r.id}/check-out`, {});
-			this.actionSuccess.set("Guest checked out. Room status set to Vacant Dirty.");
+			this.toast.success("Guest checked out. Room status set to Vacant Dirty.");
 			this.confirmingCheckOut.set(false);
 			await this.pollUntilStatusChanged(r.id, r.status);
 		} catch (e) {
-			this.actionError.set(e instanceof Error ? e.message : "Check-out failed");
+			this.toast.error(e instanceof Error ? e.message : "Check-out failed");
 		} finally {
 			this.actionLoading.set(false);
 		}
@@ -279,11 +281,11 @@ export class ReservationDetailComponent implements OnInit {
 
 		try {
 			await this.api.post(`/tenants/${tenantId}/reservations/${r.id}/cancel`, {});
-			this.actionSuccess.set("Reservation cancelled.");
+			this.toast.success("Reservation cancelled.");
 			this.confirmingCancel.set(false);
 			await this.pollUntilStatusChanged(r.id, r.status);
 		} catch (e) {
-			this.actionError.set(e instanceof Error ? e.message : "Cancellation failed");
+			this.toast.error(e instanceof Error ? e.message : "Cancellation failed");
 		} finally {
 			this.actionLoading.set(false);
 		}

@@ -80,6 +80,8 @@ communication_preferences JSONB DEFAULT '{
     }'::jsonb, -- Channel-specific opt-ins
 
 -- Guest History
+member_since TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, -- Immutable join date; never updated after creation
+first_stay_date DATE, -- Date of the guest's earliest check-in
 total_bookings INTEGER DEFAULT 0, -- Historical bookings count
 total_nights INTEGER DEFAULT 0, -- Total nights stayed
 total_revenue DECIMAL(15, 2) DEFAULT 0.00, -- Lifetime spend
@@ -139,6 +141,10 @@ COMMENT ON COLUMN guests.vip_status IS 'VIP guest flag';
 
 COMMENT ON COLUMN guests.preferences IS 'Guest preferences (JSONB)';
 
+COMMENT ON COLUMN guests.member_since IS 'Immutable guest join date set at profile creation; never updated';
+
+COMMENT ON COLUMN guests.first_stay_date IS 'Date of the guest earliest check-in';
+
 COMMENT ON COLUMN guests.total_bookings IS 'Total number of bookings made';
 
 COMMENT ON COLUMN guests.total_nights IS 'Total nights stayed';
@@ -148,5 +154,16 @@ COMMENT ON COLUMN guests.total_revenue IS 'Total revenue generated';
 COMMENT ON COLUMN guests.is_blacklisted IS 'Blacklist flag';
 
 COMMENT ON COLUMN guests.deleted_at IS 'Soft delete timestamp (NULL = active)';
+
+-- =====================================================
+-- IDEMPOTENT COLUMN ADDITIONS
+-- Safe to re-run on an existing table
+-- =====================================================
+
+ALTER TABLE guests ADD COLUMN IF NOT EXISTS member_since TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP;
+ALTER TABLE guests ADD COLUMN IF NOT EXISTS first_stay_date DATE;
+
+-- Backfill member_since from created_at for any existing rows where it was not set
+UPDATE guests SET member_since = created_at WHERE member_since = CURRENT_TIMESTAMP AND created_at < CURRENT_TIMESTAMP;
 
 \echo 'Guests table created successfully!'

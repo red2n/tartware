@@ -22,7 +22,15 @@ export const RevenueForecastComputeCommandSchema = z.object({
 	horizon_days: z.number().int().min(1).max(365).default(30),
 	training_days: z.number().int().min(30).max(730).default(90),
 	scenarios: z
-		.array(z.enum(["base", "optimistic", "pessimistic", "conservative", "aggressive"]))
+		.array(
+			z.enum([
+				"base",
+				"optimistic",
+				"pessimistic",
+				"conservative",
+				"aggressive",
+			]),
+		)
 		.default(["base", "optimistic", "pessimistic"]),
 	metadata: z.record(z.unknown()).optional(),
 	idempotency_key: z.string().max(120).optional(),

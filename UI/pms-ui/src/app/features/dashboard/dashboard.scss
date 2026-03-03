@@ -94,6 +94,42 @@
   gap: var(--space-2);
 }
 
+/* ── Activity Sparkline ── */
+.dashboard-sparkline {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-md);
+  background: var(--color-canvas-default);
+  padding: var(--space-3) var(--space-4);
+  margin-top: var(--space-4);
+}
+
+.sparkline-label {
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  white-space: nowrap;
+}
+
+.sparkline-svg {
+  width: 120px;
+  height: 28px;
+  display: block;
+}
+
+.sparkline-area {
+  fill: var(--color-accent-subtle);
+}
+
+.sparkline-line {
+  fill: none;
+  stroke: var(--color-accent-emphasis);
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
 /* ── Dashboard panels ── */
 .dashboard-panels {
   display: grid;

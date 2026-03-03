@@ -171,3 +171,49 @@ export const ProgramBalanceResponseSchema = z.object({
 export type ProgramBalanceResponse = z.infer<
 	typeof ProgramBalanceResponseSchema
 >;
+
+// =====================================================
+// GUEST SUMMARY STATISTICS (legend/KPI strip)
+// =====================================================
+
+const GuestValueSegmentSchema = z.object({
+	segment: z.enum(["HIGH", "MEDIUM", "LOW"]),
+	count: z.number().int().nonnegative(),
+	total_revenue: z.number().nonnegative(),
+});
+
+/**
+ * Aggregate guest statistics returned by GET /v1/guests/stats.
+ */
+export const GuestSummaryStatsSchema = z.object({
+	total_guests: z.number().int().nonnegative(),
+	new_guests_this_month: z.number().int().nonnegative(),
+	returning_guests: z.number().int().nonnegative(),
+	vip_guests: z.number().int().nonnegative(),
+	loyalty_members: z.number().int().nonnegative(),
+	blacklisted_guests: z.number().int().nonnegative(),
+	long_stay_guests: z.number().int().nonnegative(),
+	average_lifetime_value: z.number().nonnegative(),
+	average_stay_length: z.number().nonnegative(),
+	top_nationality: z.string().nullable(),
+	value_segments: z.array(GuestValueSegmentSchema),
+});
+
+export type GuestSummaryStats = z.infer<typeof GuestSummaryStatsSchema>;
+
+/** Raw PostgreSQL row shape for guest summary stats query results. */
+export type GuestSummaryStatsRow = {
+	total_guests: number;
+	new_guests_this_month: number;
+	returning_guests: number;
+	vip_guests: number;
+	loyalty_members: number;
+	blacklisted_guests: number;
+	long_stay_guests: number;
+	average_lifetime_value: string | number;
+	average_stay_length: string | number;
+	top_nationality: string | null;
+	value_segments:
+		| Array<{ segment: string; count: number; total_revenue: number }>
+		| string;
+};

@@ -5,6 +5,8 @@ import {
   GuestDocumentListItemSchema,
   type GuestPreferenceListItem,
   GuestPreferenceListItemSchema,
+  type GuestSummaryStats,
+  type GuestSummaryStatsRow,
   type GuestWithStats,
   GuestWithStatsSchema,
 } from "@tartware/schemas";
@@ -18,6 +20,7 @@ import {
   GUEST_LIST_SQL,
   GUEST_PREFERENCES_LIST_SQL,
   GUEST_RESERVATION_STATS_SQL,
+  GUEST_SUMMARY_STATS_SQL,
 } from "../sql/guest-queries.js";
 import { toNonNegativeInt, toNumberOrFallback } from "../utils/numbers.js";
 import { normalizePhoneNumber } from "../utils/phone.js";
@@ -150,6 +153,8 @@ type GuestRow = {
   total_nights: number | null;
   total_revenue: string | number | null;
   last_stay_date: Date | null;
+  member_since: Date;
+  first_stay_date: Date | null;
   is_blacklisted: boolean | null;
   blacklist_reason: string | null;
   notes: string | null;
@@ -202,6 +207,8 @@ const mapRowToGuest = (row: GuestRow, stats?: GuestReservationStats): GuestWithS
     total_nights: row.total_nights ?? 0,
     total_revenue: toNumberOrFallback(row.total_revenue),
     last_stay_date: row.last_stay_date ?? undefined,
+    member_since: row.member_since,
+    first_stay_date: row.first_stay_date ?? undefined,
     is_blacklisted: row.is_blacklisted ?? false,
     blacklist_reason: row.blacklist_reason ?? undefined,
     notes: row.notes ?? undefined,
@@ -327,6 +334,59 @@ export const getGuestById = async (options: {
   );
 
   return applyGuestRetentionPolicy(mapRowToGuest(rows[0], statsMap.get(rows[0].id)));
+};
+
+// ============================================================================
+// GUEST SUMMARY STATISTICS
+// ============================================================================
+
+/**
+ * Fetch aggregate guest statistics for the summary/legend strip.
+ */
+export const getGuestSummaryStats = async (options: {
+  tenantId: string;
+  propertyId?: string;
+}): Promise<GuestSummaryStats> => {
+  const { rows } = await query<GuestSummaryStatsRow>(GUEST_SUMMARY_STATS_SQL, [
+    options.tenantId,
+    options.propertyId ?? null,
+  ]);
+
+  const row = rows[0];
+  if (!row) {
+    return {
+      total_guests: 0,
+      new_guests_this_month: 0,
+      returning_guests: 0,
+      vip_guests: 0,
+      loyalty_members: 0,
+      blacklisted_guests: 0,
+      long_stay_guests: 0,
+      average_lifetime_value: 0,
+      average_stay_length: 0,
+      top_nationality: null,
+      value_segments: [],
+    };
+  }
+
+  const segments =
+    typeof row.value_segments === "string"
+      ? JSON.parse(row.value_segments)
+      : (row.value_segments ?? []);
+
+  return {
+    total_guests: row.total_guests,
+    new_guests_this_month: row.new_guests_this_month,
+    returning_guests: row.returning_guests,
+    vip_guests: row.vip_guests,
+    loyalty_members: row.loyalty_members,
+    blacklisted_guests: row.blacklisted_guests,
+    long_stay_guests: row.long_stay_guests,
+    average_lifetime_value: toNumberOrFallback(row.average_lifetime_value),
+    average_stay_length: toNumberOrFallback(row.average_stay_length),
+    top_nationality: row.top_nationality,
+    value_segments: segments,
+  };
 };
 
 // ============================================================================
