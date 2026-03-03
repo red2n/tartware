@@ -9,7 +9,6 @@ import type { BuildingItem } from "@tartware/schemas";
 
 import { ApiService, ApiValidationError } from "../../../../core/api/api.service";
 import { AuthService } from "../../../../core/auth/auth.service";
-import { TenantContextService } from "../../../../core/context/tenant-context.service";
 
 type Property = { id: string; property_name: string };
 
@@ -39,7 +38,6 @@ const BUILDING_STATUSES = ["OPERATIONAL", "RENOVATION", "CLOSED", "SEASONAL"];
 export class CreateBuildingDialogComponent implements OnInit {
 	private readonly api = inject(ApiService);
 	private readonly auth = inject(AuthService);
-	private readonly ctx = inject(TenantContextService);
 	private readonly dialogRef = inject(MatDialogRef<CreateBuildingDialogComponent>);
 	private readonly data = inject<BuildingItem | null>(MAT_DIALOG_DATA, { optional: true });
 

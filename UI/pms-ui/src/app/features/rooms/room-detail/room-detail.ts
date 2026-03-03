@@ -126,8 +126,6 @@ export class RoomDetailComponent implements OnInit {
 		);
 	});
 
-	constructor() {}
-
 	readonly infoRows = computed<DetailRow[]>(() => {
 		const r = this.room();
 		if (!r) return [];

@@ -209,12 +209,12 @@ export class RoomsComponent {
 		try {
 			const params: Record<string, string> = { tenant_id: tenantId };
 			const propertyId = this.ctx.propertyId();
-			if (propertyId) params["property_id"] = propertyId;
+			if (propertyId) params.property_id = propertyId;
 			const ciDate = this.checkInDate();
 			const coDate = this.checkOutDate();
 			if (ciDate && coDate) {
-				params["check_in_date"] = ciDate;
-				params["check_out_date"] = coDate;
+				params.check_in_date = ciDate;
+				params.check_out_date = coDate;
 			}
 			const rooms = await this.api.get<RoomItem[]>("/rooms", params);
 			this.rooms.set(rooms);

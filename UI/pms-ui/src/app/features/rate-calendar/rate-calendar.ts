@@ -92,7 +92,7 @@ export class RateCalendarComponent {
 	/** Date strings in the visible range. */
 	readonly dateColumns = computed(() => {
 		const dates: string[] = [];
-		const start = new Date(this.startDate + "T00:00:00");
+		const start = new Date(`${this.startDate}T00:00:00`);
 		const days = this.viewDays();
 		for (let i = 0; i < days; i++) {
 			const d = new Date(start);
@@ -364,14 +364,14 @@ export class RateCalendarComponent {
 	// ── Navigation ──
 
 	prevPeriod(): void {
-		const d = new Date(this.startDate + "T00:00:00");
+		const d = new Date(`${this.startDate}T00:00:00`);
 		d.setDate(d.getDate() - this.viewDays());
 		this.startDate = this.toDateStr(d);
 		this.loadCalendarData();
 	}
 
 	nextPeriod(): void {
-		const d = new Date(this.startDate + "T00:00:00");
+		const d = new Date(`${this.startDate}T00:00:00`);
 		d.setDate(d.getDate() + this.viewDays());
 		this.startDate = this.toDateStr(d);
 		this.loadCalendarData();
@@ -403,7 +403,7 @@ export class RateCalendarComponent {
 	}
 
 	dayOfWeek(dateStr: string): string {
-		const d = new Date(dateStr + "T00:00:00");
+		const d = new Date(`${dateStr}T00:00:00`);
 		return d.toLocaleDateString("en-US", { weekday: "short" });
 	}
 
@@ -412,7 +412,7 @@ export class RateCalendarComponent {
 	}
 
 	isWeekend(dateStr: string): boolean {
-		const d = new Date(dateStr + "T00:00:00");
+		const d = new Date(`${dateStr}T00:00:00`);
 		const day = d.getDay();
 		return day === 0 || day === 6;
 	}
