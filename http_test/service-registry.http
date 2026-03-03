@@ -1,0 +1,62 @@
+### Service Registry — Dashboard & Registration Endpoints
+### All requests go directly to registry (port 3075) — not through gateway
+
+### List all registered services (dashboard)
+GET http://localhost:3075/v1/registry/services
+Content-Type: application/json
+
+###
+
+### Get instances of a specific service
+GET http://localhost:3075/v1/registry/services/core-service
+Content-Type: application/json
+
+###
+
+### Manually register a service
+POST http://localhost:3075/v1/registry/register
+Content-Type: application/json
+
+{
+  "name": "test-service",
+  "version": "0.1.0",
+  "host": "localhost",
+  "port": 9999
+}
+
+###
+
+### Send heartbeat
+PUT http://localhost:3075/v1/registry/heartbeat
+Content-Type: application/json
+
+{
+  "name": "test-service",
+  "port": 9999
+}
+
+###
+
+### Deregister a service
+DELETE http://localhost:3075/v1/registry/deregister
+Content-Type: application/json
+
+{
+  "name": "test-service",
+  "port": 9999
+}
+
+###
+
+### Health check
+GET http://localhost:3075/health
+
+###
+
+### Readiness check
+GET http://localhost:3075/ready
+
+###
+
+### Swagger docs
+GET http://localhost:3075/docs

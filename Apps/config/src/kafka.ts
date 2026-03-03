@@ -45,18 +45,48 @@ type KafkaConfigInput = {
   defaultPrimaryBroker?: string;
   env?: NodeJS.ProcessEnv;
   runtimeEnv?: string;
+  /**
+   * Override the default env var names (KAFKA_BROKERS, KAFKA_FAILOVER_BROKERS, etc.)
+   * to support services that use a prefix (e.g. COMMAND_CENTER_KAFKA_BROKERS).
+   * Each key can be a single name or an array of names tried in order (first defined wins).
+   */
+  envKeys?: {
+    brokers?: string | string[];
+    failoverBrokers?: string | string[];
+    activeCluster?: string | string[];
+    failoverEnabled?: string | string[];
+  };
+};
+
+/** Resolve a value from one or more env key names, returning the first defined. */
+const resolveEnvKey = (
+  env: NodeJS.ProcessEnv,
+  keys: string | string[] | undefined,
+  defaultKey: string,
+): string | undefined => {
+  const candidates = keys ? (Array.isArray(keys) ? keys : [keys]) : [defaultKey];
+  for (const key of candidates) {
+    if (env[key] !== undefined) return env[key];
+  }
+  return undefined;
 };
 
 export const resolveKafkaConfig = (input: KafkaConfigInput) => {
   const env = input.env ?? process.env;
   const runtimeEnv = (input.runtimeEnv ?? env.NODE_ENV ?? "development").toLowerCase();
   const isProduction = runtimeEnv === "production";
+  const ek = input.envKeys;
 
-  const primaryKafkaBrokers = parseBrokerList(env.KAFKA_BROKERS, input.defaultPrimaryBroker);
-  const usedDefaultPrimary = (env.KAFKA_BROKERS ?? "").trim().length === 0;
-  const failoverKafkaBrokers = parseBrokerList(env.KAFKA_FAILOVER_BROKERS);
-  const requestedCluster = (env.KAFKA_ACTIVE_CLUSTER ?? "primary").toLowerCase();
-  const failoverToggle = parseBooleanEnv(env.KAFKA_FAILOVER_ENABLED, false);
+  const brokersRaw = resolveEnvKey(env, ek?.brokers, "KAFKA_BROKERS");
+  const failoverBrokersRaw = resolveEnvKey(env, ek?.failoverBrokers, "KAFKA_FAILOVER_BROKERS");
+  const activeClusterRaw = resolveEnvKey(env, ek?.activeCluster, "KAFKA_ACTIVE_CLUSTER");
+  const failoverEnabledRaw = resolveEnvKey(env, ek?.failoverEnabled, "KAFKA_FAILOVER_ENABLED");
+
+  const primaryKafkaBrokers = parseBrokerList(brokersRaw, input.defaultPrimaryBroker);
+  const usedDefaultPrimary = (brokersRaw ?? "").trim().length === 0;
+  const failoverKafkaBrokers = parseBrokerList(failoverBrokersRaw);
+  const requestedCluster = (activeClusterRaw ?? "primary").toLowerCase();
+  const failoverToggle = parseBooleanEnv(failoverEnabledRaw, false);
   const useFailover =
     (requestedCluster === "failover" || failoverToggle) && failoverKafkaBrokers.length > 0;
 
