@@ -106,12 +106,14 @@ export function heartbeat(name: string, port: number): ServiceInstance | undefin
 
 export function deregister(name: string, port: number): boolean {
   const instanceId = buildInstanceId(name, port);
-  const deleted = store.delete(instanceId);
-  if (deleted) {
+  const instance = store.get(instanceId);
+  if (instance) {
+    instance.status = "DOWN";
     registrationCounter.inc({ action: "deregister" });
     updateMetrics();
+    return true;
   }
-  return deleted;
+  return false;
 }
 
 export function getAllServices(): { services: ServiceInstance[]; summary: RegistrySummary } {

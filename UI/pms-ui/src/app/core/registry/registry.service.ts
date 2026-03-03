@@ -30,7 +30,6 @@ const STATUSBAR_STORAGE_KEY = "statusbar_visible";
 
 @Injectable({ providedIn: "root" })
 export class RegistryService {
-	private readonly api = new ApiService();
 	private pollTimer: ReturnType<typeof setInterval> | null = null;
 
 	private readonly _services = signal<ServiceInstance[]>([]);
