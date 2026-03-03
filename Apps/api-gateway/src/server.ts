@@ -8,6 +8,7 @@ import { registerDuploDashboard } from "./devtools/duplo-dashboard.js";
 import { metricsRegistry } from "./lib/metrics.js";
 import { gatewayLogger } from "./logger.js";
 import authContextPlugin from "./plugins/auth-context.js";
+import sseTokenPlugin from "./plugins/sse-token.js";
 import swaggerPlugin from "./plugins/swagger.js";
 import { registerBillingRoutes } from "./routes/billing-routes.js";
 import { registerBookingConfigRoutes } from "./routes/booking-config-routes.js";
@@ -36,6 +37,7 @@ export const buildServer = () => {
   });
 
   app.register(swaggerPlugin);
+  app.register(sseTokenPlugin);
   app.register(authContextPlugin);
 
   app.register(

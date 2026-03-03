@@ -4,6 +4,7 @@ import { config } from "../config.js";
 import { kafka } from "../kafka/client.js";
 import { appLogger } from "../lib/logger.js";
 import { getMessagesByTrigger } from "../services/automated-message-service.js";
+import { createInAppNotification } from "../services/in-app-notification-service.js";
 import { sendNotification } from "../services/notification-dispatch-service.js";
 import { getTemplate } from "../services/template-service.js";
 
@@ -33,6 +34,40 @@ const EVENT_TO_TRIGGER_TYPE: Record<string, string> = {
   "reservation.cancelled": "booking_cancelled",
   "reservation.checked_in": "checkin_completed",
   "reservation.checked_out": "checkout_completed",
+};
+
+/**
+ * Map reservation event types to in-app notification properties.
+ */
+const EVENT_TO_IN_APP: Record<
+  string,
+  { title: (e: ReservationEvent) => string; category: string; priority: string }
+> = {
+  "reservation.confirmed": {
+    title: (e) => `New reservation ${e.confirmationNumber ?? e.reservationId}`,
+    category: "reservation",
+    priority: "normal",
+  },
+  "reservation.modified": {
+    title: (e) => `Reservation ${e.confirmationNumber ?? e.reservationId} modified`,
+    category: "reservation",
+    priority: "normal",
+  },
+  "reservation.cancelled": {
+    title: (e) => `Reservation ${e.confirmationNumber ?? e.reservationId} cancelled`,
+    category: "reservation",
+    priority: "high",
+  },
+  "reservation.checked_in": {
+    title: (e) => `Guest ${e.guestName ?? "Guest"} checked in — Room ${e.roomNumber ?? "N/A"}`,
+    category: "checkin",
+    priority: "normal",
+  },
+  "reservation.checked_out": {
+    title: (e) => `Guest ${e.guestName ?? "Guest"} checked out — Room ${e.roomNumber ?? "N/A"}`,
+    category: "checkout",
+    priority: "normal",
+  },
 };
 
 type ReservationEvent = {
@@ -168,6 +203,43 @@ const processReservationEvent = async (event: ReservationEvent): Promise<void> =
       { err, triggerType, reservationId: event.reservationId },
       "Failed to look up automated messages",
     );
+  }
+
+  // Step 3: Create in-app notification for staff
+  const inAppConfig = EVENT_TO_IN_APP[event.eventType];
+  if (inAppConfig) {
+    try {
+      const guestName = event.guestName ?? "Guest";
+      const confNum = event.confirmationNumber ?? event.reservationId;
+      const room = event.roomNumber ? ` — Room ${event.roomNumber}` : "";
+      const dates =
+        event.checkInDate && event.checkOutDate
+          ? `${event.checkInDate} to ${event.checkOutDate}`
+          : "";
+
+      await createInAppNotification({
+        tenant_id: event.tenantId,
+        property_id: event.propertyId,
+        title: inAppConfig.title(event),
+        message: `${guestName} (${confNum})${room}${dates ? `. ${dates}` : ""}`,
+        category: inAppConfig.category as "reservation" | "checkin" | "checkout",
+        priority: inAppConfig.priority as "normal" | "high",
+        source_type: "reservation",
+        source_id: event.reservationId,
+        action_url: `/reservations/${event.reservationId}`,
+        metadata: {
+          event_type: event.eventType,
+          guest_name: guestName,
+          confirmation_number: confNum,
+          room_number: event.roomNumber,
+        },
+      });
+    } catch (err) {
+      logger.error(
+        { err, eventType: event.eventType, reservationId: event.reservationId },
+        "Failed to create in-app notification",
+      );
+    }
   }
 };
 
