@@ -1,0 +1,31 @@
+/* Buildings page — component-specific only.
+ * Reusable patterns live in styles/shared.scss. */
+
+.buildings-page {
+  max-width: 1200px;
+}
+
+.building-name {
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-fg-default);
+}
+
+.building-desc {
+  display: block;
+  font-size: var(--font-size-xs);
+  margin-top: 2px;
+}
+
+.amenity-icon {
+  font-size: 18px;
+  width: 18px;
+  height: 18px;
+  color: var(--color-fg-muted);
+  margin-right: 4px;
+}
+
+.cell-amenities {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
