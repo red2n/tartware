@@ -40,7 +40,10 @@ async function registryFetch(
 
 export function startServiceRegistration(
 	config: RegistryConfig,
-	logger: { info: (...args: unknown[]) => void; warn: (...args: unknown[]) => void },
+	logger: {
+		info: (...args: unknown[]) => void;
+		warn: (...args: unknown[]) => void;
+	},
 ): { stop: () => Promise<void> } {
 	const { registryUrl, serviceName, serviceVersion, host, port } = config;
 	let heartbeatTimer: NodeJS.Timeout | undefined;
@@ -53,22 +56,31 @@ export function startServiceRegistration(
 	};
 
 	// Register immediately
-	registryFetch(`${registryUrl}/v1/registry/register`, "POST", registerPayload).then(
-		(ok) => {
-			if (ok) {
-				logger.info(
-					{ registryUrl, instanceId: `${serviceName}:${port}` },
-					"registered with service registry",
-				);
-			} else {
-				logger.warn({ registryUrl }, "service registry unavailable — skipping registration");
-			}
-		},
-	);
+	registryFetch(
+		`${registryUrl}/v1/registry/register`,
+		"POST",
+		registerPayload,
+	).then((ok) => {
+		if (ok) {
+			logger.info(
+				{ registryUrl, instanceId: `${serviceName}:${port}` },
+				"registered with service registry",
+			);
+		} else {
+			logger.warn(
+				{ registryUrl },
+				"service registry unavailable — skipping registration",
+			);
+		}
+	});
 
 	// Start heartbeat (re-sends full registration so late-starting registries still discover us)
 	heartbeatTimer = setInterval(() => {
-		registryFetch(`${registryUrl}/v1/registry/register`, "POST", registerPayload).catch(() => {
+		registryFetch(
+			`${registryUrl}/v1/registry/register`,
+			"POST",
+			registerPayload,
+		).catch(() => {
 			/* intentionally swallowed */
 		});
 	}, HEARTBEAT_INTERVAL_MS);

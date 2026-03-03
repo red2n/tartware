@@ -397,18 +397,18 @@ export const buildFastifyServer = (
 		});
 	}
 
-	// Auto-register with service registry if configured
-	const registryConfig = serviceRegistry ?? (process.env.REGISTRY_URL
-		? {
-				registryUrl: process.env.REGISTRY_URL,
-				serviceName: process.env.SERVICE_NAME ?? "unknown",
-				serviceVersion: process.env.SERVICE_VERSION ?? "0.0.0",
-				host: process.env.HOST ?? "localhost",
-				port: Number(process.env.PORT) || 0,
-			}
-		: undefined);
+	// Auto-register with service registry.
+	// REGISTRY_URL defaults to http://localhost:3075 — every service must
+	// participate in the registry for health/status visibility.
+	const registryConfig = serviceRegistry ?? {
+		registryUrl: process.env.REGISTRY_URL ?? "http://localhost:3075",
+		serviceName: process.env.SERVICE_NAME ?? "unknown",
+		serviceVersion: process.env.SERVICE_VERSION ?? "0.0.0",
+		host: process.env.HOST ?? "localhost",
+		port: Number(process.env.PORT) || 0,
+	};
 
-	if (registryConfig?.registryUrl) {
+	if (registryConfig.registryUrl) {
 		let registration: { stop: () => Promise<void> } | undefined;
 
 		app.addHook("onReady", async () => {
@@ -463,7 +463,7 @@ export const createRouteTracker = (app: FastifyInstance) => {
 	};
 };
 
-export type { FastifyBaseLogger, FastifyInstance } from "fastify";
 // Re-export @fastify/sensible types so consumers pick up the FastifyReply augmentations
 // (.unauthorized, .forbidden, .notFound, etc.) without needing to import sensible directly.
 export type { HttpError, HttpErrors } from "@fastify/sensible";
+export type { FastifyBaseLogger, FastifyInstance } from "fastify";

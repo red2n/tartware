@@ -31,6 +31,7 @@ import {
 import { registerPropertyRoutes } from "./routes/properties.js";
 import { registerReportRoutes } from "./routes/reports.js";
 import { registerReservationRoutes } from "./routes/reservations.js";
+import { registerServiceStatusRoutes } from "./routes/service-status.js";
 import { registerSystemAuthRoutes } from "./routes/system-auth.js";
 import { registerSystemImpersonationRoutes } from "./routes/system-impersonation.js";
 import { registerSystemTenantRoutes } from "./routes/system-tenants.js";
@@ -98,6 +99,7 @@ export const buildServer = (): FastifyInstance => {
       registerSystemImpersonationRoutes(app);
       registerDirectBookingRoutes(app);
       registerUiPreferencesRoutes(app);
+      registerServiceStatusRoutes(app);
     },
   });
 

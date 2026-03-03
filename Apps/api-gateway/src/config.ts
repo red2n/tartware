@@ -95,6 +95,7 @@ export const serviceTargets = {
   revenueServiceUrl: env.REVENUE_SERVICE_URL ?? "http://localhost:3060",
   guestExperienceServiceUrl: env.GUEST_EXPERIENCE_SERVICE_URL ?? "http://localhost:3065",
   calculationServiceUrl: env.CALCULATION_SERVICE_URL ?? "http://localhost:3070",
+  serviceRegistryUrl: env.SERVICE_REGISTRY_URL ?? "http://localhost:3075",
 };
 
 export const dbConfig = {
