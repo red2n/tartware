@@ -102,7 +102,13 @@ export class CreateBuildingDialogComponent implements OnInit {
 	}
 
 	get isValid(): boolean {
-		return !!(this.buildingCode.trim() && this.buildingName.trim() && this.ctx.propertyId());
+		const hasRequiredFields = !!(this.buildingCode.trim() && this.buildingName.trim());
+
+		if (this.isEditMode) {
+			return hasRequiredFields;
+		}
+
+		return hasRequiredFields && !!this.ctx.propertyId();
 	}
 
 	markTouched(field: string): void {
