@@ -89,6 +89,8 @@ export const GuestSchema = z.object({
 	total_nights: z.number().int().nonnegative().default(0),
 	total_revenue: money.default(0),
 	last_stay_date: z.coerce.date().optional(),
+	member_since: z.coerce.date(),
+	first_stay_date: z.coerce.date().optional(),
 	is_blacklisted: z.boolean().default(false),
 	blacklist_reason: z.string().optional(),
 	notes: z.string().optional(),

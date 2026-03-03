@@ -80,6 +80,17 @@
         </div>
       </div>
 
+      <!-- Reservation Activity Sparkline -->
+      @if (sparkline(); as spark) {
+        <div class="dashboard-sparkline" matTooltip="Reservations · last 12 weeks">
+          <span class="sparkline-label text-muted">Booking Activity</span>
+          <svg [attr.viewBox]="'0 0 ' + spark.width + ' ' + spark.height" class="sparkline-svg" aria-hidden="true">
+            <path [attr.d]="spark.area" class="sparkline-area" />
+            <path [attr.d]="spark.line" class="sparkline-line" />
+          </svg>
+        </div>
+      }
+
       <!-- Activity & Tasks -->
       <div class="dashboard-panels">
         <!-- Recent Activity -->

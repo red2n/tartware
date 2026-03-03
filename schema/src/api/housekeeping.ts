@@ -488,9 +488,7 @@ export const ClaimLostAndFoundBodySchema = z.object({
 	verification_notes: z.string().optional(),
 });
 
-export type ClaimLostAndFoundBody = z.infer<
-	typeof ClaimLostAndFoundBodySchema
->;
+export type ClaimLostAndFoundBody = z.infer<typeof ClaimLostAndFoundBodySchema>;
 
 /** Accepted return methods for lost & found items. */
 export const LostAndFoundReturnMethodEnum = z.enum([

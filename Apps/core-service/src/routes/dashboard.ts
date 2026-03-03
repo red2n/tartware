@@ -58,6 +58,34 @@ const resolveTrend = (change: number): "up" | "down" | "neutral" => {
   return "neutral";
 };
 
+const buildSparklineQuery = (withPropertyFilter: boolean): string =>
+  withPropertyFilter
+    ? `SELECT w.week_start, COUNT(r.id)::int as cnt
+       FROM generate_series(
+         date_trunc('week', CURRENT_DATE - INTERVAL '11 weeks'),
+         date_trunc('week', CURRENT_DATE),
+         '1 week'
+       ) AS w(week_start)
+       LEFT JOIN reservations r
+         ON r.tenant_id = $1
+         AND r.property_id = $2
+         AND r.is_deleted = false
+         AND date_trunc('week', r.created_at) = w.week_start
+       GROUP BY w.week_start
+       ORDER BY w.week_start`
+    : `SELECT w.week_start, COUNT(r.id)::int as cnt
+       FROM generate_series(
+         date_trunc('week', CURRENT_DATE - INTERVAL '11 weeks'),
+         date_trunc('week', CURRENT_DATE),
+         '1 week'
+       ) AS w(week_start)
+       LEFT JOIN reservations r
+         ON r.tenant_id = $1
+         AND r.is_deleted = false
+         AND date_trunc('week', r.created_at) = w.week_start
+       GROUP BY w.week_start
+       ORDER BY w.week_start`;
+
 const DASHBOARD_TAG = "Dashboard";
 const DashboardStatsQueryJsonSchema = schemaFromZod(
   DashboardStatsQuerySchema,
@@ -197,6 +225,15 @@ export const registerDashboardRoutes = (app: FastifyInstance): void => {
       const checkOutsPending = parseInt(checkOutsResult.rows[0]?.pending || "0", 10);
       const checkOutsCompleted = Math.max(0, checkOutsTotal - checkOutsPending);
 
+      // Get reservation sparkline (12 weekly buckets)
+      const sparklineQuery = buildSparklineQuery(Boolean(effectivePropertyId));
+      const sparklineParams = effectivePropertyId ? [tenant_id, effectivePropertyId] : [tenant_id];
+      const sparklineResult = await query<{ week_start: string; cnt: number }>(
+        sparklineQuery,
+        sparklineParams,
+      );
+      const reservationSparkline = sparklineResult.rows.map((r) => Number(r.cnt));
+
       return {
         occupancy: { rate: occupancyRate, change: occupancyChange, trend: occupancyTrend },
         revenue: {
@@ -211,6 +248,7 @@ export const registerDashboardRoutes = (app: FastifyInstance): void => {
           pending: checkOutsPending,
           completed: checkOutsCompleted,
         },
+        reservation_sparkline: reservationSparkline,
       };
     },
   );

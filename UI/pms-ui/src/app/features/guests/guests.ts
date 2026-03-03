@@ -8,7 +8,7 @@ import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
 import { MatTooltipModule } from "@angular/material/tooltip";
 import { Router, RouterLink } from "@angular/router";
 
-import type { GuestWithStats } from "@tartware/schemas";
+import type { GuestSummaryStats, GuestWithStats } from "@tartware/schemas";
 
 import { ApiService } from "../../core/api/api.service";
 import { AuthService } from "../../core/auth/auth.service";
@@ -44,6 +44,7 @@ export class GuestsComponent {
 	private readonly dialog = inject(MatDialog);
 
 	readonly guests = signal<GuestListItem[]>([]);
+	readonly guestStats = signal<GuestSummaryStats | null>(null);
 	readonly loading = signal(false);
 	readonly error = signal<string | null>(null);
 	readonly successMessage = signal<string | null>(null);
@@ -104,11 +105,47 @@ export class GuestsComponent {
 		};
 	});
 
+	/** SVG sparkline path — guest registrations grouped into 12 weekly buckets. */
+	readonly sparkline = computed(() => {
+		const all = this.guests();
+		if (all.length === 0) return null;
+
+		const weeks = 12;
+		const now = Date.now();
+		const msPerWeek = 7 * 24 * 60 * 60 * 1000;
+		const buckets = new Array<number>(weeks).fill(0);
+
+		for (const g of all) {
+			const ts = new Date(g.member_since).getTime();
+			const weeksAgo = Math.floor((now - ts) / msPerWeek);
+			if (weeksAgo >= 0 && weeksAgo < weeks) {
+				buckets[weeks - 1 - weeksAgo]++;
+			}
+		}
+
+		const w = 120;
+		const h = 28;
+		const max = Math.max(...buckets, 1);
+		const step = w / (weeks - 1);
+
+		const points = buckets.map((v, i) => {
+			const x = Math.round(i * step * 100) / 100;
+			const y = Math.round((1 - v / max) * h * 100) / 100;
+			return `${x},${y}`;
+		});
+
+		const line = `M${points.join(" L")}`;
+		const area = `${line} L${w},${h} L0,${h} Z`;
+
+		return { line, area, width: w, height: h };
+	});
+
 	constructor() {
 		// Guests are tenant-scoped (not property-scoped) — reload on tenant change only
 		effect(() => {
 			this.auth.tenantId();
 			this.loadGuests();
+			this.loadGuestStats();
 		});
 
 		// Clamp currentPage when filtered list shrinks
@@ -217,9 +254,24 @@ export class GuestsComponent {
 					this.successMessage.set("Guest registration submitted. It may take a moment to appear.");
 					setTimeout(() => this.successMessage.set(null), 6000);
 					// Kafka consumer processes async — delay refresh
-					setTimeout(() => this.loadGuests(), 1500);
+					setTimeout(() => {
+						this.loadGuests();
+						this.loadGuestStats();
+					}, 1500);
 				}
 			});
 		});
+	}
+
+	private async loadGuestStats(): Promise<void> {
+		const tenantId = this.auth.tenantId();
+		if (!tenantId) return;
+
+		try {
+			const stats = await this.api.get<GuestSummaryStats>("/guests/stats", { tenant_id: tenantId });
+			this.guestStats.set(stats);
+		} catch {
+			// Stats are non-critical — silently ignore errors
+		}
 	}
 }

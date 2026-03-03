@@ -3,6 +3,7 @@ import {
   GuestCommunicationListItemSchema,
   GuestDocumentListItemSchema,
   GuestPreferenceListItemSchema,
+  GuestSummaryStatsSchema,
   GuestWithStatsSchema,
 } from "@tartware/schemas";
 import type { FastifyInstance } from "fastify";
@@ -10,6 +11,7 @@ import { z } from "zod";
 
 import {
   getGuestById,
+  getGuestSummaryStats,
   listGuestCommunications,
   listGuestDocuments,
   listGuestPreferences,
@@ -45,6 +47,15 @@ const GuestByIdQuerySchema = z.object({
   property_id: z.string().uuid().optional(),
 });
 type GuestByIdQuery = z.infer<typeof GuestByIdQuerySchema>;
+
+// Guest summary stats schemas
+const GuestStatsQuerySchema = z.object({
+  tenant_id: z.string().uuid(),
+  property_id: z.string().uuid().optional(),
+});
+
+const GuestStatsQueryJsonSchema = schemaFromZod(GuestStatsQuerySchema, "GuestStatsQuery");
+const GuestStatsResponseJsonSchema = schemaFromZod(GuestSummaryStatsSchema, "GuestSummaryStats");
 
 const GuestItemResponseSchema = GuestWithStatsSchema.extend({ version: z.string() });
 const GuestIdParamJsonSchema = schemaFromZod(GuestIdParamSchema, "GuestIdParam");
@@ -163,6 +174,43 @@ export const registerGuestRoutes = (app: FastifyInstance): void => {
 
       const response = sanitizeForJson(guests);
       return GuestListResponseSchema.parse(response);
+    },
+  );
+
+  // ============================================================================
+  // GUEST SUMMARY STATISTICS (legend/KPI strip)
+  // Must be registered BEFORE /:guestId to avoid "stats" matching as a UUID
+  // ============================================================================
+
+  app.get<{
+    Querystring: z.infer<typeof GuestStatsQuerySchema>;
+  }>(
+    "/v1/guests/stats",
+    {
+      preHandler: app.withTenantScope({
+        resolveTenantId: (request) =>
+          (request.query as z.infer<typeof GuestStatsQuerySchema>).tenant_id,
+        minRole: "MANAGER",
+        requiredModules: "core",
+      }),
+      schema: buildRouteSchema({
+        tag: GUESTS_TAG,
+        summary: "Get aggregate guest statistics for the summary legend",
+        querystring: GuestStatsQueryJsonSchema,
+        response: {
+          200: GuestStatsResponseJsonSchema,
+        },
+      }),
+    },
+    async (request) => {
+      const { tenant_id, property_id } = GuestStatsQuerySchema.parse(request.query);
+
+      const stats = await getGuestSummaryStats({
+        tenantId: tenant_id,
+        propertyId: property_id,
+      });
+
+      return stats;
     },
   );
 

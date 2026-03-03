@@ -1,5 +1,5 @@
 import { NgClass } from "@angular/common";
-import { Component, effect, inject, signal } from "@angular/core";
+import { Component, computed, effect, inject, signal } from "@angular/core";
 import { MatIconModule } from "@angular/material/icon";
 import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
 import { MatTooltipModule } from "@angular/material/tooltip";
@@ -30,6 +30,30 @@ export class DashboardComponent {
 	readonly tasks = signal<TaskItem[]>([]);
 	readonly loading = signal(false);
 	readonly error = signal<string | null>(null);
+
+	/** SVG sparkline path from reservation_sparkline weekly buckets. */
+	readonly sparkline = computed(() => {
+		const s = this.stats();
+		if (!s?.reservation_sparkline?.length) return null;
+
+		const buckets = s.reservation_sparkline;
+		const weeks = buckets.length;
+		const w = 120;
+		const h = 28;
+		const max = Math.max(...buckets, 1);
+		const step = w / (weeks - 1);
+
+		const points = buckets.map((v, i) => {
+			const x = Math.round(i * step * 100) / 100;
+			const y = Math.round((1 - v / max) * h * 100) / 100;
+			return `${x},${y}`;
+		});
+
+		const line = `M${points.join(" L")}`;
+		const area = `${line} L${w},${h} L0,${h} Z`;
+
+		return { line, area, width: w, height: h };
+	});
 
 	constructor() {
 		effect(() => {

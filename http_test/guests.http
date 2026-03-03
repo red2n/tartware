@@ -87,7 +87,20 @@ GET {{baseUrl}}/v1/guests?tenant_id={{tenantId}}&vip_status=true&loyalty_tier=PL
 Authorization: Bearer {{authToken}}
 
 ###############################################################################
-# 3. GUEST PREFERENCES - LIST BY GUEST
+# 3. GUEST SUMMARY STATISTICS (legend/KPI strip)
+###############################################################################
+
+# Get guest summary stats for the tenant
+GET {{baseUrl}}/v1/guests/stats?tenant_id={{tenantId}}
+Authorization: Bearer {{authToken}}
+
+###
+# Get guest summary stats filtered by property
+GET {{baseUrl}}/v1/guests/stats?tenant_id={{tenantId}}&property_id={{propertyId}}
+Authorization: Bearer {{authToken}}
+
+###############################################################################
+# 4. GUEST PREFERENCES - LIST BY GUEST
 ###############################################################################
 
 @guestId = 33333333-3333-3333-3333-333333333333

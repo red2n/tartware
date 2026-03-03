@@ -56,7 +56,8 @@ BEGIN
         preferences,
         created_by,
         created_at,
-        updated_at
+        updated_at,
+        member_since
     )
     VALUES (
         p_tenant_id,
@@ -67,6 +68,7 @@ BEGIN
         v_address_jsonb,
         p_preferences,
         p_created_by,
+        CURRENT_TIMESTAMP,
         CURRENT_TIMESTAMP,
         CURRENT_TIMESTAMP
     )

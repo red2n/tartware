@@ -83,6 +83,9 @@ export const DashboardStatsSchema = z.object({
 	revenue: RevenueStatsSchema,
 	checkIns: CheckInStatsSchema,
 	checkOuts: CheckOutStatsSchema,
+	reservation_sparkline: z
+		.array(z.number().int().nonnegative())
+		.describe("Weekly reservation counts for the last 12 weeks (oldest first)"),
 });
 
 export type DashboardStats = z.infer<typeof DashboardStatsSchema>;

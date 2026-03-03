@@ -12,6 +12,40 @@
     </div>
   </div>
 
+  <!-- ═════════════════════════════════════════════ -->
+  <!-- KPI LEGEND STRIP                            -->
+  <!-- ═════════════════════════════════════════════ -->
+  @if (guestStats(); as stats) {
+    <div class="guest-legend">
+      <span class="guest-legend-item">
+        <span class="guest-dot guest-dot-total"></span> Total <strong>{{ stats.total_guests }}</strong>
+      </span>
+      <span class="guest-legend-item">
+        <span class="guest-dot guest-dot-new"></span> New <strong>{{ stats.new_guests_this_month }}</strong>
+      </span>
+      <span class="guest-legend-item">
+        <span class="guest-dot guest-dot-returning"></span> Returning <strong>{{ stats.returning_guests }}</strong>
+      </span>
+      <span class="guest-legend-item">
+        <span class="guest-dot guest-dot-longstay"></span> Long Stay <strong>{{ stats.long_stay_guests }}</strong>
+      </span>
+      <span class="guest-legend-item clickable" (click)="setFilter('VIP')">
+        <span class="guest-dot guest-dot-vip"></span> VIP <strong>{{ stats.vip_guests }}</strong>
+      </span>
+      <span class="guest-legend-item">
+        <span class="guest-dot guest-dot-revenue"></span> Avg Value <strong>{{ formatCurrency(stats.average_lifetime_value) }}</strong>
+      </span>
+      @if (sparkline(); as spark) {
+        <span class="guest-legend-item guest-sparkline" matTooltip="Registrations · last 12 weeks">
+          <svg [attr.viewBox]="'0 0 ' + spark.width + ' ' + spark.height" class="sparkline-svg" aria-hidden="true">
+            <path [attr.d]="spark.area" class="sparkline-area" />
+            <path [attr.d]="spark.line" class="sparkline-line" />
+          </svg>
+        </span>
+      }
+    </div>
+  }
+
   <!-- Filter tabs + search -->
   @if (successMessage(); as msg) {
     <div class="flash flash-success">

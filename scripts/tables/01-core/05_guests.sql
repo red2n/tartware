@@ -80,6 +80,8 @@ communication_preferences JSONB DEFAULT '{
     }'::jsonb, -- Channel-specific opt-ins
 
 -- Guest History
+member_since TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, -- Immutable join date; never updated after creation
+first_stay_date DATE, -- Date of the guest's earliest check-in
 total_bookings INTEGER DEFAULT 0, -- Historical bookings count
 total_nights INTEGER DEFAULT 0, -- Total nights stayed
 total_revenue DECIMAL(15, 2) DEFAULT 0.00, -- Lifetime spend
@@ -138,6 +140,10 @@ COMMENT ON COLUMN guests.loyalty_points IS 'Accumulated loyalty points';
 COMMENT ON COLUMN guests.vip_status IS 'VIP guest flag';
 
 COMMENT ON COLUMN guests.preferences IS 'Guest preferences (JSONB)';
+
+COMMENT ON COLUMN guests.member_since IS 'Immutable guest join date set at profile creation; never updated';
+
+COMMENT ON COLUMN guests.first_stay_date IS 'Date of the guest earliest check-in';
 
 COMMENT ON COLUMN guests.total_bookings IS 'Total number of bookings made';
 
