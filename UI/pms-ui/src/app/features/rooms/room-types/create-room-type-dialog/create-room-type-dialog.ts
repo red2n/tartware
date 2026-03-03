@@ -99,12 +99,13 @@ export class CreateRoomTypeDialogComponent implements OnInit {
 	}
 
 	get isValid(): boolean {
-		return !!(
-			this.typeName.trim() &&
-			this.typeCode.trim() &&
-			this.ctx.propertyId() &&
-			this.basePrice >= 0
-		);
+		const hasRequiredFields = !!(this.typeName.trim() && this.typeCode.trim() && this.basePrice >= 0);
+
+		if (this.isEditMode) {
+			return hasRequiredFields;
+		}
+
+		return hasRequiredFields && !!this.ctx.propertyId();
 	}
 
 	markTouched(field: string): void {
@@ -121,7 +122,7 @@ export class CreateRoomTypeDialogComponent implements OnInit {
 
 		const body = {
 			tenant_id: tenantId,
-			property_id: this.ctx.propertyId(),
+			property_id: this.isEditMode && this.data ? this.data.property_id : this.ctx.propertyId(),
 			type_name: this.typeName.trim(),
 			type_code: this.typeCode.trim(),
 			description: this.description.trim() || undefined,
