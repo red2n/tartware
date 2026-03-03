@@ -398,17 +398,22 @@ export const buildFastifyServer = (
 	}
 
 	// Auto-register with service registry.
-	// REGISTRY_URL defaults to http://localhost:3075 — every service must
-	// participate in the registry for health/status visibility.
-	const registryConfig = serviceRegistry ?? {
-		registryUrl: process.env.REGISTRY_URL ?? "http://localhost:3075",
-		serviceName: process.env.SERVICE_NAME ?? "unknown",
-		serviceVersion: process.env.SERVICE_VERSION ?? "0.0.0",
-		host: process.env.HOST ?? "localhost",
-		port: Number(process.env.PORT) || 0,
-	};
+	// Only registers when REGISTRY_URL is explicitly set or serviceRegistry option is provided.
+	const registryUrl = process.env.REGISTRY_URL;
+	const registryPort = Number(process.env.PORT) || 0;
+	const registryConfig =
+		serviceRegistry ??
+		(registryUrl && registryPort
+			? {
+					registryUrl,
+					serviceName: process.env.SERVICE_NAME ?? "unknown",
+					serviceVersion: process.env.SERVICE_VERSION ?? "0.0.0",
+					host: process.env.HOST ?? "localhost",
+					port: registryPort,
+				}
+			: undefined);
 
-	if (registryConfig.registryUrl) {
+	if (registryConfig?.registryUrl) {
 		let registration: { stop: () => Promise<void> } | undefined;
 
 		app.addHook("onReady", async () => {

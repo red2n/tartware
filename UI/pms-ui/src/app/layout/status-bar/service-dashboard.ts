@@ -52,8 +52,4 @@ export class ServiceDashboardComponent {
 	formatPort(instance: ServiceInstance): string {
 		return `${instance.host}:${instance.port}`;
 	}
-
-	trackByInstanceId(_index: number, instance: ServiceInstance): string {
-		return instance.instanceId;
-	}
 }

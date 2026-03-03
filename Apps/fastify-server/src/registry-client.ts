@@ -74,13 +74,12 @@ export function startServiceRegistration(
 		}
 	});
 
-	// Start heartbeat (re-sends full registration so late-starting registries still discover us)
+	// Send periodic heartbeats via the dedicated heartbeat endpoint
 	heartbeatTimer = setInterval(() => {
-		registryFetch(
-			`${registryUrl}/v1/registry/register`,
-			"POST",
-			registerPayload,
-		).catch(() => {
+		registryFetch(`${registryUrl}/v1/registry/heartbeat`, "PUT", {
+			name: serviceName,
+			port,
+		}).catch(() => {
 			/* intentionally swallowed */
 		});
 	}, HEARTBEAT_INTERVAL_MS);

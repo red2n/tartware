@@ -68,9 +68,9 @@ BEGIN
         v_address_jsonb,
         p_preferences,
         p_created_by,
-        CURRENT_TIMESTAMP,
-        CURRENT_TIMESTAMP,
-        CURRENT_TIMESTAMP
+        CURRENT_TIMESTAMP, -- created_at
+        CURRENT_TIMESTAMP, -- updated_at
+        CURRENT_TIMESTAMP  -- member_since
     )
     ON CONFLICT (tenant_id, email)
     WHERE deleted_at IS NULL

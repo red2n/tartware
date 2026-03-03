@@ -43,6 +43,7 @@ const loadKafkaConfig = async (
         DB_SSL: false,
         DB_POOL_MAX: 10,
         DB_POOL_IDLE_TIMEOUT_MS: 1000,
+        DB_STATEMENT_TIMEOUT_MS: 30000,
       }),
       validateProductionSecrets: () => {},
     };

@@ -1,19 +1,24 @@
 ### Service Registry — Dashboard & Registration Endpoints
-### All requests go directly to registry (port 3075) — not through gateway
+### Read endpoints go through the API gateway (port 8080) per AGENTS.md
+### Registration/heartbeat/deregister are internal (service-to-service on port 3075)
 
-### List all registered services (dashboard)
-GET http://localhost:3075/v1/registry/services
+### List all registered services (via gateway — requires admin auth)
+GET http://localhost:8080/v1/registry/services
+Authorization: Bearer {{token}}
 Content-Type: application/json
 
 ###
 
-### Get instances of a specific service
-GET http://localhost:3075/v1/registry/services/core-service
+### Get instances of a specific service (via gateway — requires admin auth)
+GET http://localhost:8080/v1/registry/services/core-service
+Authorization: Bearer {{token}}
 Content-Type: application/json
 
 ###
 
-### Manually register a service
+### --- Internal endpoints (service-to-service, not through gateway) ---
+
+### Manually register a service (internal)
 POST http://localhost:3075/v1/registry/register
 Content-Type: application/json
 
@@ -26,7 +31,7 @@ Content-Type: application/json
 
 ###
 
-### Send heartbeat
+### Send heartbeat (internal)
 PUT http://localhost:3075/v1/registry/heartbeat
 Content-Type: application/json
 
@@ -37,7 +42,7 @@ Content-Type: application/json
 
 ###
 
-### Deregister a service
+### Deregister a service (internal)
 DELETE http://localhost:3075/v1/registry/deregister
 Content-Type: application/json
 
@@ -48,15 +53,15 @@ Content-Type: application/json
 
 ###
 
-### Health check
+### Health check (internal — not proxied)
 GET http://localhost:3075/health
 
 ###
 
-### Readiness check
+### Readiness check (internal — not proxied)
 GET http://localhost:3075/ready
 
 ###
 
-### Swagger docs
+### Swagger docs (internal — not proxied)
 GET http://localhost:3075/docs

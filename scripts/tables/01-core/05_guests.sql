@@ -160,10 +160,16 @@ COMMENT ON COLUMN guests.deleted_at IS 'Soft delete timestamp (NULL = active)';
 -- Safe to re-run on an existing table
 -- =====================================================
 
-ALTER TABLE guests ADD COLUMN IF NOT EXISTS member_since TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP;
+-- Add member_since as nullable first, backfill, then set NOT NULL + default
+-- (avoids full table rewrite + non-deterministic backfill predicate)
+ALTER TABLE guests ADD COLUMN IF NOT EXISTS member_since TIMESTAMP;
 ALTER TABLE guests ADD COLUMN IF NOT EXISTS first_stay_date DATE;
 
 -- Backfill member_since from created_at for any existing rows where it was not set
-UPDATE guests SET member_since = created_at WHERE member_since = CURRENT_TIMESTAMP AND created_at < CURRENT_TIMESTAMP;
+UPDATE guests SET member_since = created_at WHERE member_since IS NULL;
+
+-- Now safe to set default and NOT NULL constraint
+ALTER TABLE guests ALTER COLUMN member_since SET DEFAULT CURRENT_TIMESTAMP;
+ALTER TABLE guests ALTER COLUMN member_since SET NOT NULL;
 
 \echo 'Guests table created successfully!'

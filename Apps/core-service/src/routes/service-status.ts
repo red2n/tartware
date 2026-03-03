@@ -39,20 +39,14 @@ export const registerServiceStatusRoutes = (app: FastifyInstance): void => {
             { status: response.status },
             "Failed to fetch service status from registry",
           );
-          return reply.status(502).send({
-            error: "Bad Gateway",
-            message: "Could not retrieve service status from the registry",
-          });
+          return reply.badGateway("Could not retrieve service status from the registry");
         }
 
         const data = await response.json();
         return reply.send(data);
       } catch (err) {
         app.log.error({ err }, "Service registry unreachable");
-        return reply.status(503).send({
-          error: "Service Unavailable",
-          message: "Service registry is not reachable",
-        });
+        return reply.serviceUnavailable("Service registry is not reachable");
       }
     },
   });

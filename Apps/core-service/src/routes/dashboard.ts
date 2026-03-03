@@ -69,7 +69,7 @@ const buildSparklineQuery = (withPropertyFilter: boolean): string =>
        LEFT JOIN reservations r
          ON r.tenant_id = $1
          AND r.property_id = $2
-         AND r.is_deleted = false
+         AND COALESCE(r.is_deleted, false) = false
          AND date_trunc('week', r.created_at) = w.week_start
        GROUP BY w.week_start
        ORDER BY w.week_start`
@@ -81,7 +81,7 @@ const buildSparklineQuery = (withPropertyFilter: boolean): string =>
        ) AS w(week_start)
        LEFT JOIN reservations r
          ON r.tenant_id = $1
-         AND r.is_deleted = false
+         AND COALESCE(r.is_deleted, false) = false
          AND date_trunc('week', r.created_at) = w.week_start
        GROUP BY w.week_start
        ORDER BY w.week_start`;
