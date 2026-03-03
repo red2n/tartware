@@ -103,14 +103,16 @@
         </div>
         <div class="field-group">
           <label class="field-label" for="cr-building">Building</label>
-          <input
+          <select
             id="cr-building"
-            type="text"
             class="field-input"
-            placeholder="Main"
-            maxlength="50"
-            [(ngModel)]="building"
-            [disabled]="saving()" />
+            [(ngModel)]="buildingId"
+            [disabled]="saving()">
+            <option value="">No building</option>
+            @for (b of buildings(); track b.building_id) {
+              <option [value]="b.building_id">{{ b.building_name }} ({{ b.building_code }})</option>
+            }
+          </select>
         </div>
         <div class="field-group">
           <label class="field-label" for="cr-wing">Wing</label>

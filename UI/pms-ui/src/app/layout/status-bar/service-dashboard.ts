@@ -1,6 +1,7 @@
 import { Component, computed, inject, output } from "@angular/core";
 import { MatButtonModule } from "@angular/material/button";
 import { MatIconModule } from "@angular/material/icon";
+import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
 import { MatTooltipModule } from "@angular/material/tooltip";
 
 import { RegistryService, type ServiceInstance } from "../../core/registry/registry.service";
@@ -8,7 +9,7 @@ import { RegistryService, type ServiceInstance } from "../../core/registry/regis
 @Component({
 	selector: "app-service-dashboard",
 	standalone: true,
-	imports: [MatIconModule, MatButtonModule, MatTooltipModule],
+	imports: [MatIconModule, MatButtonModule, MatProgressSpinnerModule, MatTooltipModule],
 	templateUrl: "./service-dashboard.html",
 	styleUrl: "./service-dashboard.scss",
 })

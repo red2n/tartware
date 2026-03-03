@@ -121,10 +121,12 @@
       </div>
     </div>
 
-    <!-- Inclusions card -->
-    <div class="detail-card">
-      <div class="card-header">
-        <h3 class="card-title">Inclusions</h3>
+    <!-- Defer lower detail cards until idle -->
+    @defer (on idle) {
+      <!-- Inclusions card -->
+      <div class="detail-card">
+        <div class="card-header">
+          <h3 class="card-title">Inclusions</h3>
       </div>
       <div class="card-body">
         <div class="inclusion-grid">
@@ -203,6 +205,18 @@
           </div>
         </div>
       }
-    </div>
+      </div>
+    } @placeholder {
+      <div class="placeholder-table">
+        <div class="placeholder-row"></div>
+        <div class="placeholder-row"></div>
+        <div class="placeholder-row"></div>
+      </div>
+    } @loading (minimum 200ms) {
+      <div class="loading-state">
+        <mat-spinner diameter="24"></mat-spinner>
+        <span class="text-muted">Rendering details…</span>
+      </div>
+    }
   </div>
 }

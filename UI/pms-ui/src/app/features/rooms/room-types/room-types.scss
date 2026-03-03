@@ -1,0 +1,17 @@
+/* Room types page — component-specific only.
+ * Reusable patterns live in styles/shared.scss. */
+
+.room-types-page {
+  max-width: 1200px;
+}
+
+.rt-name {
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-fg-default);
+}
+
+.rt-desc {
+  display: block;
+  font-size: var(--font-size-xs);
+  margin-top: 2px;
+}

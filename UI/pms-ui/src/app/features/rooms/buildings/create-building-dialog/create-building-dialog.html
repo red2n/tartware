@@ -1,0 +1,253 @@
+<h2 mat-dialog-title>
+  <mat-icon class="dialog-title-icon">domain</mat-icon>
+  {{ isEditMode ? 'Edit Building' : 'New Building' }}
+</h2>
+
+<mat-dialog-content>
+  @if (error(); as err) {
+    <div class="flash flash-error">
+      <mat-icon class="flash-icon">error_outline</mat-icon>
+      {{ err }}
+    </div>
+  }
+
+  <div class="form-fields">
+    <!-- Basic Info -->
+    <section class="form-section">
+      <span class="form-section-title">Building Details</span>
+
+      <div class="field-row">
+        <div class="field-group field-required" [class.field-error]="touched['buildingCode'] && !buildingCode.trim()">
+          <label class="field-label" for="b-code">Building code</label>
+          <input
+            id="b-code"
+            type="text"
+            class="field-input"
+            placeholder="MAIN"
+            maxlength="50"
+            [(ngModel)]="buildingCode"
+            (blur)="markTouched('buildingCode')"
+            [disabled]="saving() || isEditMode" />
+          @if (touched['buildingCode'] && !buildingCode.trim()) {
+            <span class="field-hint-error">Code is required</span>
+          }
+          <span class="field-hint">Alphanumeric, uppercase</span>
+        </div>
+        <div class="field-group field-required" [class.field-error]="touched['buildingName'] && !buildingName.trim()">
+          <label class="field-label" for="b-name">Building name</label>
+          <input
+            id="b-name"
+            type="text"
+            class="field-input"
+            placeholder="Main Building"
+            maxlength="200"
+            [(ngModel)]="buildingName"
+            (blur)="markTouched('buildingName')"
+            [disabled]="saving()" />
+          @if (touched['buildingName'] && !buildingName.trim()) {
+            <span class="field-hint-error">Name is required</span>
+          }
+        </div>
+      </div>
+
+      <div class="field-row">
+        <div class="field-group">
+          <label class="field-label" for="b-type">Building type</label>
+          <select
+            id="b-type"
+            class="field-input"
+            [(ngModel)]="buildingType"
+            [disabled]="saving()">
+            @for (type of buildingTypes; track type) {
+              <option [value]="type">{{ type }}</option>
+            }
+          </select>
+        </div>
+        <div class="field-group">
+          <label class="field-label" for="b-status">Status</label>
+          <select
+            id="b-status"
+            class="field-input"
+            [(ngModel)]="buildingStatus"
+            [disabled]="saving()">
+            @for (status of buildingStatuses; track status) {
+              <option [value]="status">{{ status }}</option>
+            }
+          </select>
+        </div>
+      </div>
+
+      @if (properties().length > 1) {
+        <div class="field-group field-required" [class.field-error]="touched['propertyId'] && !propertyId">
+          <label class="field-label" for="b-property">Property</label>
+          <select
+            id="b-property"
+            class="field-input"
+            [(ngModel)]="propertyId"
+            (blur)="markTouched('propertyId')"
+            [disabled]="saving() || isEditMode">
+            <option value="">Select a property…</option>
+            @for (p of properties(); track p.id) {
+              <option [value]="p.id">{{ p.property_name }}</option>
+            }
+          </select>
+          @if (touched['propertyId'] && !propertyId) {
+            <span class="field-hint-error">Property is required</span>
+          }
+        </div>
+      }
+
+      <div class="field-group">
+        <label class="field-label" for="b-guest-desc">Guest description</label>
+        <textarea
+          id="b-guest-desc"
+          class="field-input field-textarea"
+          placeholder="Description visible to guests..."
+          rows="2"
+          [(ngModel)]="guestDescription"
+          [disabled]="saving()"></textarea>
+      </div>
+    </section>
+
+    <!-- Structure -->
+    <section class="form-section">
+      <span class="form-section-title">Structure</span>
+
+      <div class="field-row field-row-3">
+        <div class="field-group">
+          <label class="field-label" for="b-floors">Floor count</label>
+          <input
+            id="b-floors"
+            type="number"
+            class="field-input"
+            min="1"
+            max="200"
+            [(ngModel)]="floorCount"
+            [disabled]="saving()" />
+        </div>
+        <div class="field-group">
+          <label class="field-label" for="b-basement">Basement floors</label>
+          <input
+            id="b-basement"
+            type="number"
+            class="field-input"
+            min="0"
+            max="20"
+            [(ngModel)]="basementFloors"
+            [disabled]="saving()" />
+        </div>
+        <div class="field-group">
+          <label class="field-label" for="b-rooms">Total rooms</label>
+          <input
+            id="b-rooms"
+            type="number"
+            class="field-input"
+            min="0"
+            [(ngModel)]="totalRooms"
+            [disabled]="saving()" />
+        </div>
+      </div>
+
+      <div class="field-row field-row-3">
+        <div class="field-group">
+          <label class="field-label" for="b-elevators">Elevators</label>
+          <input
+            id="b-elevators"
+            type="number"
+            class="field-input"
+            min="0"
+            max="50"
+            [(ngModel)]="elevatorCount"
+            [disabled]="saving()" />
+        </div>
+        <div class="field-group">
+          <label class="field-label" for="b-year">Year built</label>
+          <input
+            id="b-year"
+            type="number"
+            class="field-input"
+            min="1800"
+            max="2100"
+            [(ngModel)]="yearBuilt"
+            [disabled]="saving()" />
+        </div>
+        <div class="field-group">
+          <label class="field-label" for="b-reno">Last renovation</label>
+          <input
+            id="b-reno"
+            type="number"
+            class="field-input"
+            min="1800"
+            max="2100"
+            [(ngModel)]="lastRenovationYear"
+            [disabled]="saving()" />
+        </div>
+      </div>
+    </section>
+
+    <!-- Amenities -->
+    <section class="form-section">
+      <span class="form-section-title">Amenities & Features</span>
+
+      <div class="checkbox-grid">
+        <label class="checkbox-field">
+          <input type="checkbox" [(ngModel)]="wheelchairAccessible" [disabled]="saving()" />
+          Wheelchair accessible
+        </label>
+        <label class="checkbox-field">
+          <input type="checkbox" [(ngModel)]="hasLobby" [disabled]="saving()" />
+          Lobby
+        </label>
+        <label class="checkbox-field">
+          <input type="checkbox" [(ngModel)]="hasPool" [disabled]="saving()" />
+          Pool
+        </label>
+        <label class="checkbox-field">
+          <input type="checkbox" [(ngModel)]="hasGym" [disabled]="saving()" />
+          Gym
+        </label>
+        <label class="checkbox-field">
+          <input type="checkbox" [(ngModel)]="hasSpa" [disabled]="saving()" />
+          Spa
+        </label>
+        <label class="checkbox-field">
+          <input type="checkbox" [(ngModel)]="hasRestaurant" [disabled]="saving()" />
+          Restaurant
+        </label>
+        <label class="checkbox-field">
+          <input type="checkbox" [(ngModel)]="hasParking" [disabled]="saving()" />
+          Parking
+        </label>
+      </div>
+
+      @if (hasParking) {
+        <div class="field-group" style="margin-top: var(--space-3);">
+          <label class="field-label" for="b-parking">Parking spaces</label>
+          <input
+            id="b-parking"
+            type="number"
+            class="field-input"
+            min="0"
+            style="max-width: 120px;"
+            [(ngModel)]="parkingSpaces"
+            [disabled]="saving()" />
+        </div>
+      }
+    </section>
+  </div>
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  <button class="btn btn-outline" (click)="cancel()" [disabled]="saving()">Cancel</button>
+  <button
+    class="btn btn-primary"
+    [disabled]="!isValid || saving()"
+    (click)="save()">
+    @if (saving()) {
+      <mat-spinner diameter="16" />
+      {{ isEditMode ? 'Saving…' : 'Creating…' }}
+    } @else {
+      {{ isEditMode ? 'Save changes' : 'Create building' }}
+    }
+  </button>
+</mat-dialog-actions>

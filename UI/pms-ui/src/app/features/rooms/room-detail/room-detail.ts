@@ -13,6 +13,9 @@ import { AuthService } from "../../../core/auth/auth.service";
 import { housekeepingStatusClass, roomStatusClass } from "../../../shared/badge-utils";
 import { ToastService } from "../../../shared/toast/toast.service";
 
+type RoomTypeRef = { room_type_id: string; type_name: string };
+type BuildingRef = { building_id: string; building_code: string; building_name: string };
+
 type RoomDetail = {
 	room_id: string;
 	tenant_id: string;
@@ -84,6 +87,16 @@ export class RoomDetailComponent implements OnInit {
 	readonly saveError = signal<string | null>(null);
 	readonly activating = signal(false);
 
+	/** Room info editing */
+	readonly editingInfo = signal(false);
+	readonly savingInfo = signal(false);
+	readonly roomTypes = signal<RoomTypeRef[]>([]);
+	readonly buildings = signal<BuildingRef[]>([]);
+	readonly editRoomTypeId = signal("");
+	readonly editBuilding = signal("");
+	readonly editFloor = signal("");
+	readonly editWing = signal("");
+
 	/** Housekeeping status management */
 	readonly updatingHousekeeping = signal(false);
 	readonly housekeepingSuccess = signal<string | null>(null);
@@ -112,8 +125,6 @@ export class RoomDetailComponent implements OnInit {
 			this.editExpectedReady() !== (r.expected_ready_date?.substring(0, 10) ?? "")
 		);
 	});
-
-	constructor() {}
 
 	readonly infoRows = computed<DetailRow[]>(() => {
 		const r = this.room();
@@ -222,6 +233,17 @@ export class RoomDetailComponent implements OnInit {
 		return current.some((a) => !origSet.has(a));
 	});
 
+	readonly hasInfoChanges = computed(() => {
+		const r = this.room();
+		if (!r) return false;
+		return (
+			this.editRoomTypeId() !== (r.room_type_id ?? "") ||
+			this.editBuilding() !== (r.building ?? "") ||
+			this.editFloor() !== (r.floor ?? "") ||
+			this.editWing() !== (r.wing ?? "")
+		);
+	});
+
 	ngOnInit(): void {
 		const roomId = this.route.snapshot.paramMap.get("roomId");
 		if (roomId) {
@@ -234,6 +256,60 @@ export class RoomDetailComponent implements OnInit {
 
 	goBack(): void {
 		this.router.navigate(["/rooms"]);
+	}
+
+	async startEditInfo(): Promise<void> {
+		const r = this.room();
+		if (!r) return;
+		this.editRoomTypeId.set(r.room_type_id ?? "");
+		this.editBuilding.set(r.building ?? "");
+		this.editFloor.set(r.floor ?? "");
+		this.editWing.set(r.wing ?? "");
+		this.editingInfo.set(true);
+		await this.loadReferenceData();
+	}
+
+	cancelEditInfo(): void {
+		this.editingInfo.set(false);
+	}
+
+	async saveRoomInfo(): Promise<void> {
+		const r = this.room();
+		const tenantId = this.auth.tenantId();
+		if (!r || !tenantId) return;
+
+		this.savingInfo.set(true);
+		try {
+			await this.api.put(`/rooms/${r.room_id}`, {
+				tenant_id: tenantId,
+				room_type_id: this.editRoomTypeId() || undefined,
+				building: this.editBuilding() || undefined,
+				floor: this.editFloor() || undefined,
+				wing: this.editWing() || undefined,
+			});
+			this.toast.success("Room information updated.");
+			this.editingInfo.set(false);
+			await this.loadRoom(r.room_id);
+		} catch (e) {
+			this.toast.error(e instanceof Error ? e.message : "Failed to update room");
+		} finally {
+			this.savingInfo.set(false);
+		}
+	}
+
+	private async loadReferenceData(): Promise<void> {
+		const tenantId = this.auth.tenantId();
+		if (!tenantId) return;
+		try {
+			const [roomTypes, buildings] = await Promise.all([
+				this.api.get<RoomTypeRef[]>("/room-types", { tenant_id: tenantId }),
+				this.api.get<BuildingRef[]>("/buildings", { tenant_id: tenantId }),
+			]);
+			this.roomTypes.set(roomTypes);
+			this.buildings.set(buildings);
+		} catch {
+			// Non-critical — dropdowns will be empty
+		}
 	}
 
 	async loadRoom(roomId: string): Promise<void> {

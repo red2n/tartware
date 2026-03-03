@@ -78,6 +78,7 @@
   </div>
 </div>
 
+@defer (on idle) {
 @if (loading()) {
   <div class="loading-state">
     <mat-spinner diameter="32"></mat-spinner>
@@ -90,74 +91,87 @@
     <p class="text-muted">Create rate plans first, then configure day-level pricing here.</p>
   </div>
 } @else {
-  <!-- Calendar Grid -->
-  <div class="calendar-grid-wrap">
-    <table class="calendar-grid">
-      <thead>
-        <tr>
-          <th class="th-rate-plan">Rate Plan</th>
-          @for (date of dateColumns(); track date) {
-            <th class="th-date"
-                [class.th-weekend]="isWeekend(date)"
-                [class.th-today]="isToday(date)">
-              <span class="date-dow">{{ dayOfWeek(date) }}</span>
-              <span class="date-num">{{ dayNum(date) }}</span>
-            </th>
-          }
-        </tr>
-      </thead>
-      <tbody>
-        @for (rate of filteredRates(); track rate.id) {
+    <div class="calendar-grid-wrap">
+      <table class="calendar-grid">
+        <thead>
           <tr>
-            <td class="td-rate-plan">
-              <span class="rate-code">{{ rate.rate_code }}</span>
-              <span class="rate-name text-muted">{{ rate.rate_name }}</span>
-              <span class="rate-base text-xs text-muted">
-                Base: {{ fmtCurrency(rate.base_rate, rate.currency) }}
-              </span>
-            </td>
+            <th class="th-rate-plan">Rate Plan</th>
             @for (date of dateColumns(); track date) {
-              <td class="td-cell"
-                  [ngClass]="cellClass(rate.id, date)"
-                  [class.td-weekend]="isWeekend(date)"
-                  [class.td-today]="isToday(date)"
-                  [matTooltip]="cellTooltip(rate.id, date)"
-                  matTooltipPosition="above">
-                @if (editingKey() === rate.id + '|' + date) {
-                  <input type="number" class="cell-edit-input"
-                         [(ngModel)]="editingAmount"
-                         (keydown.enter)="commitEdit()"
-                         (keydown.escape)="cancelEdit()"
-                         (blur)="commitEdit()"
-                         min="0" step="1" />
-                } @else {
-                  <button class="cell-btn"
-                          (click)="startEdit(rate.id, date)"
-                          (contextmenu)="$event.preventDefault(); toggleCellStatus(rate.id, date)">
-                    <span class="cell-amount">{{ cellDisplay(rate.id, date) }}</span>
-                    @if (getCell(rate.id, date)?.cta) {
-                      <span class="cell-flag">CTA</span>
-                    }
-                    @if (getCell(rate.id, date)?.ctd) {
-                      <span class="cell-flag">CTD</span>
-                    }
-                  </button>
-                }
-              </td>
+              <th class="th-date"
+                  [class.th-weekend]="isWeekend(date)"
+                  [class.th-today]="isToday(date)">
+                <span class="date-dow">{{ dayOfWeek(date) }}</span>
+                <span class="date-num">{{ dayNum(date) }}</span>
+              </th>
             }
           </tr>
-        }
-      </tbody>
-    </table>
-  </div>
+        </thead>
+        <tbody>
+          @for (rate of filteredRates(); track rate.id) {
+            <tr>
+              <td class="td-rate-plan">
+                <span class="rate-code">{{ rate.rate_code }}</span>
+                <span class="rate-name text-muted">{{ rate.rate_name }}</span>
+                <span class="rate-base text-xs text-muted">
+                  Base: {{ fmtCurrency(rate.base_rate, rate.currency) }}
+                </span>
+              </td>
+              @for (date of dateColumns(); track date) {
+                <td class="td-cell"
+                    [ngClass]="cellClass(rate.id, date)"
+                    [class.td-weekend]="isWeekend(date)"
+                    [class.td-today]="isToday(date)"
+                    [matTooltip]="cellTooltip(rate.id, date)"
+                    matTooltipPosition="above">
+                  @if (editingKey() === rate.id + '|' + date) {
+                    <input type="number" class="cell-edit-input"
+                           [(ngModel)]="editingAmount"
+                           (keydown.enter)="commitEdit()"
+                           (keydown.escape)="cancelEdit()"
+                           (blur)="commitEdit()"
+                           min="0" step="1" />
+                  } @else {
+                    <button class="cell-btn"
+                            (click)="startEdit(rate.id, date)"
+                            (contextmenu)="$event.preventDefault(); toggleCellStatus(rate.id, date)">
+                      <span class="cell-amount">{{ cellDisplay(rate.id, date) }}</span>
+                      @if (getCell(rate.id, date)?.cta) {
+                        <span class="cell-flag">CTA</span>
+                      }
+                      @if (getCell(rate.id, date)?.ctd) {
+                        <span class="cell-flag">CTD</span>
+                      }
+                    </button>
+                  }
+                </td>
+              }
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
 
-  <!-- Legend -->
-  <div class="calendar-legend">
-    <span class="legend-item"><span class="legend-swatch swatch-base"></span> Base rate</span>
-    <span class="legend-item"><span class="legend-swatch swatch-premium"></span> Above base</span>
-    <span class="legend-item"><span class="legend-swatch swatch-discount"></span> Below base</span>
-    <span class="legend-item"><span class="legend-swatch swatch-closed"></span> Closed / Stop sell</span>
-    <span class="legend-item"><span class="legend-swatch swatch-dirty"></span> Unsaved change</span>
-    <span class="legend-tip text-muted">Click cell: edit rate. Right-click: toggle open/closed.</span>
+    <!-- Legend -->
+    <div class="calendar-legend">
+      <span class="legend-item"><span class="legend-swatch swatch-base"></span> Base rate</span>
+      <span class="legend-item"><span class="legend-swatch swatch-premium"></span> Above base</span>
+      <span class="legend-item"><span class="legend-swatch swatch-discount"></span> Below base</span>
+      <span class="legend-item"><span class="legend-swatch swatch-closed"></span> Closed / Stop sell</span>
+      <span class="legend-item"><span class="legend-swatch swatch-dirty"></span> Unsaved change</span>
+      <span class="legend-tip text-muted">Click cell: edit rate. Right-click: toggle open/closed.</span>
+    </div>
+  }
+} @placeholder {
+  <div class="placeholder-table">
+    <div class="placeholder-row"></div>
+    <div class="placeholder-row"></div>
+    <div class="placeholder-row"></div>
+    <div class="placeholder-row"></div>
+    <div class="placeholder-row"></div>
+  </div>
+} @loading (minimum 200ms) {
+  <div class="loading-state">
+    <mat-spinner diameter="24"></mat-spinner>
+    <span class="text-muted">Rendering calendar…</span>
   </div>
 }

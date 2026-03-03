@@ -1,0 +1,270 @@
+<h2 mat-dialog-title>
+  <mat-icon class="dialog-title-icon">category</mat-icon>
+  {{ isEditMode ? 'Edit Room Type' : 'New Room Type' }}
+</h2>
+
+<mat-dialog-content>
+  @if (error(); as err) {
+    <div class="flash flash-error">
+      <mat-icon class="flash-icon">error_outline</mat-icon>
+      {{ err }}
+    </div>
+  }
+
+  <div class="form-fields">
+    <!-- Basic Info -->
+    <section class="form-section">
+      <span class="form-section-title">Basic Information</span>
+
+      <div class="field-row">
+        <div class="field-group field-required" [class.field-error]="touched['typeName'] && !typeName.trim()">
+          <label class="field-label" for="rt-name">Type name</label>
+          <input
+            id="rt-name"
+            type="text"
+            class="field-input"
+            placeholder="Deluxe Room"
+            maxlength="160"
+            [(ngModel)]="typeName"
+            (blur)="markTouched('typeName')"
+            [disabled]="saving()" />
+          @if (touched['typeName'] && !typeName.trim()) {
+            <span class="field-hint-error">Name is required</span>
+          }
+        </div>
+        <div class="field-group field-required" [class.field-error]="touched['typeCode'] && !typeCode.trim()">
+          <label class="field-label" for="rt-code">Type code</label>
+          <input
+            id="rt-code"
+            type="text"
+            class="field-input"
+            placeholder="DLX"
+            maxlength="50"
+            [(ngModel)]="typeCode"
+            (blur)="markTouched('typeCode')"
+            [disabled]="saving() || isEditMode" />
+          @if (touched['typeCode'] && !typeCode.trim()) {
+            <span class="field-hint-error">Code is required</span>
+          }
+          <span class="field-hint">Alphanumeric, uppercase</span>
+        </div>
+      </div>
+
+      <div class="field-group">
+        <label class="field-label" for="rt-short-desc">Short description</label>
+        <input
+          id="rt-short-desc"
+          type="text"
+          class="field-input"
+          placeholder="Brief description for listings"
+          maxlength="500"
+          [(ngModel)]="shortDescription"
+          [disabled]="saving()" />
+      </div>
+
+      <div class="field-group">
+        <label class="field-label" for="rt-desc">Description</label>
+        <textarea
+          id="rt-desc"
+          class="field-input field-textarea"
+          placeholder="Full room type description..."
+          maxlength="2000"
+          rows="3"
+          [(ngModel)]="description"
+          [disabled]="saving()"></textarea>
+      </div>
+
+      <div class="field-row">
+        <div class="field-group">
+          <label class="field-label" for="rt-category">Category</label>
+          <select
+            id="rt-category"
+            class="field-input"
+            [(ngModel)]="category"
+            [disabled]="saving()">
+            @for (cat of categories; track cat) {
+              <option [value]="cat">{{ cat }}</option>
+            }
+          </select>
+        </div>
+        @if (properties().length > 1) {
+          <div class="field-group field-required" [class.field-error]="touched['propertyId'] && !propertyId">
+            <label class="field-label" for="rt-property">Property</label>
+            <select
+              id="rt-property"
+              class="field-input"
+              [(ngModel)]="propertyId"
+              (blur)="markTouched('propertyId')"
+              [disabled]="saving() || isEditMode">
+              <option value="">Select a property…</option>
+              @for (p of properties(); track p.id) {
+                <option [value]="p.id">{{ p.property_name }}</option>
+              }
+            </select>
+            @if (touched['propertyId'] && !propertyId) {
+              <span class="field-hint-error">Property is required</span>
+            }
+          </div>
+        }
+      </div>
+    </section>
+
+    <!-- Occupancy -->
+    <section class="form-section">
+      <span class="form-section-title">Occupancy</span>
+
+      <div class="field-row field-row-3">
+        <div class="field-group">
+          <label class="field-label" for="rt-base-occ">Base occupancy</label>
+          <input
+            id="rt-base-occ"
+            type="number"
+            class="field-input"
+            min="1"
+            max="20"
+            [(ngModel)]="baseOccupancy"
+            [disabled]="saving()" />
+        </div>
+        <div class="field-group">
+          <label class="field-label" for="rt-max-occ">Max occupancy</label>
+          <input
+            id="rt-max-occ"
+            type="number"
+            class="field-input"
+            min="1"
+            max="20"
+            [(ngModel)]="maxOccupancy"
+            [disabled]="saving()" />
+        </div>
+        <div class="field-group">
+          <label class="field-label" for="rt-max-adults">Max adults</label>
+          <input
+            id="rt-max-adults"
+            type="number"
+            class="field-input"
+            min="1"
+            max="20"
+            [(ngModel)]="maxAdults"
+            [disabled]="saving()" />
+        </div>
+      </div>
+
+      <div class="field-row field-row-3">
+        <div class="field-group">
+          <label class="field-label" for="rt-max-children">Max children</label>
+          <input
+            id="rt-max-children"
+            type="number"
+            class="field-input"
+            min="0"
+            max="20"
+            [(ngModel)]="maxChildren"
+            [disabled]="saving()" />
+        </div>
+        <div class="field-group">
+          <label class="field-label" for="rt-extra-beds">Extra bed capacity</label>
+          <input
+            id="rt-extra-beds"
+            type="number"
+            class="field-input"
+            min="0"
+            max="10"
+            [(ngModel)]="extraBedCapacity"
+            [disabled]="saving()" />
+        </div>
+        <div class="field-group">
+          <label class="field-label" for="rt-size">Size (sqm)</label>
+          <input
+            id="rt-size"
+            type="number"
+            class="field-input"
+            min="0"
+            step="0.1"
+            [(ngModel)]="sizeSqm"
+            [disabled]="saving()" />
+        </div>
+      </div>
+    </section>
+
+    <!-- Bedding & Pricing -->
+    <section class="form-section">
+      <span class="form-section-title">Bedding & Pricing</span>
+
+      <div class="field-row field-row-3">
+        <div class="field-group">
+          <label class="field-label" for="rt-bed-type">Bed type</label>
+          <input
+            id="rt-bed-type"
+            type="text"
+            class="field-input"
+            placeholder="King, Twin, etc."
+            maxlength="80"
+            [(ngModel)]="bedType"
+            [disabled]="saving()" />
+        </div>
+        <div class="field-group">
+          <label class="field-label" for="rt-num-beds">Number of beds</label>
+          <input
+            id="rt-num-beds"
+            type="number"
+            class="field-input"
+            min="0"
+            max="20"
+            [(ngModel)]="numberOfBeds"
+            [disabled]="saving()" />
+        </div>
+        <div class="field-group">
+          <label class="field-label" for="rt-display-order">Display order</label>
+          <input
+            id="rt-display-order"
+            type="number"
+            class="field-input"
+            min="0"
+            [(ngModel)]="displayOrder"
+            [disabled]="saving()" />
+        </div>
+      </div>
+
+      <div class="field-row">
+        <div class="field-group field-required" [class.field-error]="touched['basePrice'] && basePrice < 0">
+          <label class="field-label" for="rt-price">Base price</label>
+          <input
+            id="rt-price"
+            type="number"
+            class="field-input"
+            min="0"
+            step="0.01"
+            [(ngModel)]="basePrice"
+            (blur)="markTouched('basePrice')"
+            [disabled]="saving()" />
+        </div>
+        <div class="field-group">
+          <label class="field-label" for="rt-currency">Currency</label>
+          <input
+            id="rt-currency"
+            type="text"
+            class="field-input"
+            placeholder="USD"
+            maxlength="3"
+            [(ngModel)]="currency"
+            [disabled]="saving()" />
+        </div>
+      </div>
+    </section>
+  </div>
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  <button class="btn btn-outline" (click)="cancel()" [disabled]="saving()">Cancel</button>
+  <button
+    class="btn btn-primary"
+    [disabled]="!isValid || saving()"
+    (click)="save()">
+    @if (saving()) {
+      <mat-spinner diameter="16" />
+      {{ isEditMode ? 'Saving…' : 'Creating…' }}
+    } @else {
+      {{ isEditMode ? 'Save changes' : 'Create room type' }}
+    }
+  </button>
+</mat-dialog-actions>

@@ -1,0 +1,134 @@
+<div class="room-types-page">
+  <div class="page-header">
+    <h1 class="page-title">Room Types</h1>
+    <div class="page-actions">
+      <button class="btn btn-primary btn-sm" (click)="openCreateDialog()">
+        <mat-icon>add</mat-icon>
+        New room type
+      </button>
+      <button class="btn btn-invisible" (click)="loadRoomTypes()" matTooltip="Refresh" aria-label="Refresh room types">
+        <mat-icon>refresh</mat-icon>
+      </button>
+    </div>
+  </div>
+
+  <!-- Search -->
+  <div class="filter-bar">
+    <div class="search-box">
+      <mat-icon class="search-icon">search</mat-icon>
+      <input
+        type="text"
+        class="search-input"
+        placeholder="Search room types..."
+        aria-label="Search room types"
+        [ngModel]="searchQuery()"
+        (ngModelChange)="onSearch($event)" />
+    </div>
+    <span class="text-muted">{{ filteredRoomTypes().length }} room types</span>
+  </div>
+
+  <!-- Content -->
+  @if (loading()) {
+    <div class="loading-state">
+      <mat-spinner diameter="32"></mat-spinner>
+      <span class="text-muted">Loading room types...</span>
+    </div>
+  } @else if (error(); as err) {
+    <div class="error-state">
+      <mat-icon class="error-icon">error_outline</mat-icon>
+      <span>{{ err }}</span>
+      <button class="btn btn-outline" (click)="loadRoomTypes()">Retry</button>
+    </div>
+  } @else if (filteredRoomTypes().length === 0) {
+    <div class="empty-state">
+      <mat-icon class="empty-icon">category</mat-icon>
+      @if (roomTypes().length === 0) {
+        <p>No room types found</p>
+        <p class="text-muted">Room types define the categories of rooms in your property.</p>
+        <button class="btn btn-primary" (click)="openCreateDialog()">Create first room type</button>
+      } @else {
+        <p>No room types match your search</p>
+        <button class="btn btn-outline" (click)="onSearch('')">Clear search</button>
+      }
+    </div>
+  } @else {
+    <div class="table-container">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th [attr.aria-sort]="ariaSort('type_code')">
+              <button type="button" class="th-sort-btn" (click)="onSort('type_code')">
+                Code <mat-icon class="sort-indicator">{{ sortIcon('type_code') }}</mat-icon>
+              </button>
+            </th>
+            <th [attr.aria-sort]="ariaSort('type_name')">
+              <button type="button" class="th-sort-btn" (click)="onSort('type_name')">
+                Name <mat-icon class="sort-indicator">{{ sortIcon('type_name') }}</mat-icon>
+              </button>
+            </th>
+            <th [attr.aria-sort]="ariaSort('category')">
+              <button type="button" class="th-sort-btn" (click)="onSort('category')">
+                Category <mat-icon class="sort-indicator">{{ sortIcon('category') }}</mat-icon>
+              </button>
+            </th>
+            <th [attr.aria-sort]="ariaSort('max_occupancy')">
+              <button type="button" class="th-sort-btn" (click)="onSort('max_occupancy')">
+                Max Occ. <mat-icon class="sort-indicator">{{ sortIcon('max_occupancy') }}</mat-icon>
+              </button>
+            </th>
+            <th [attr.aria-sort]="ariaSort('base_price')">
+              <button type="button" class="th-sort-btn" (click)="onSort('base_price')">
+                Base Price <mat-icon class="sort-indicator">{{ sortIcon('base_price') }}</mat-icon>
+              </button>
+            </th>
+            <th>Status</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (rt of paginatedRoomTypes(); track rt.room_type_id) {
+            <tr class="row-clickable" tabindex="0"
+                (click)="openEditDialog(rt)"
+                (keydown.enter)="openEditDialog(rt)"
+                (keydown.space)="$event.preventDefault(); openEditDialog(rt)">
+              <td>
+                <span class="badge badge-accent">{{ rt.type_code }}</span>
+              </td>
+              <td class="cell-primary">
+                <span class="rt-name">{{ rt.type_name }}</span>
+                @if (rt.short_description) {
+                  <span class="text-muted rt-desc">{{ rt.short_description }}</span>
+                }
+              </td>
+              <td>{{ rt.category || '—' }}</td>
+              <td>{{ rt.max_occupancy }}</td>
+              <td>{{ currencyLabel(rt.base_price, rt.currency) }}</td>
+              <td>
+                @if (rt.is_active) {
+                  <span class="badge badge-success">Active</span>
+                } @else {
+                  <span class="badge badge-danger">Inactive</span>
+                }
+              </td>
+              <td class="cell-actions">
+                <button class="btn btn-invisible btn-sm" matTooltip="Edit"
+                        (click)="openEditDialog(rt); $event.stopPropagation()">
+                  <mat-icon>edit</mat-icon>
+                </button>
+                <button class="btn btn-invisible btn-sm" matTooltip="Delete"
+                        (click)="deleteRoomType(rt, $event)">
+                  <mat-icon>delete</mat-icon>
+                </button>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+    <app-pagination
+      [totalItems]="filteredRoomTypes().length"
+      [currentPage]="currentPage()"
+      [pageSize]="pageSize"
+      (pageChange)="currentPage.set($event)" />
+  }
+</div>
