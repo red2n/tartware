@@ -77,25 +77,7 @@
         </div>
       </div>
 
-      @if (properties().length > 1) {
-        <div class="field-group field-required" [class.field-error]="touched['propertyId'] && !propertyId">
-          <label class="field-label" for="b-property">Property</label>
-          <select
-            id="b-property"
-            class="field-input"
-            [(ngModel)]="propertyId"
-            (blur)="markTouched('propertyId')"
-            [disabled]="saving() || isEditMode">
-            <option value="">Select a property…</option>
-            @for (p of properties(); track p.id) {
-              <option [value]="p.id">{{ p.property_name }}</option>
-            }
-          </select>
-          @if (touched['propertyId'] && !propertyId) {
-            <span class="field-hint-error">Property is required</span>
-          }
-        </div>
-      }
+
 
       <div class="field-group">
         <label class="field-label" for="b-guest-desc">Guest description</label>
