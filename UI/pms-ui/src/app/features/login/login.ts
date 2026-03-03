@@ -1,4 +1,4 @@
-import { Component, inject, signal, AfterViewInit, ViewChild, ElementRef } from "@angular/core";
+import { AfterViewInit, Component, ElementRef, inject, signal, ViewChild } from "@angular/core";
 import { FormsModule } from "@angular/forms";
 import { MatButtonModule } from "@angular/material/button";
 import { MatCheckboxModule } from "@angular/material/checkbox";

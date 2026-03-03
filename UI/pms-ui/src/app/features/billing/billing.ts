@@ -87,7 +87,11 @@ export class BillingComponent {
 	});
 
 	readonly paginatedPayments = computed(() => {
-		const sorted = sortBy(this.filteredPayments(), this.paymentSort().column, this.paymentSort().direction);
+		const sorted = sortBy(
+			this.filteredPayments(),
+			this.paymentSort().column,
+			this.paymentSort().direction,
+		);
 		const start = (this.paymentPage() - 1) * this.pageSize;
 		return sorted.slice(start, start + this.pageSize);
 	});
@@ -137,7 +141,11 @@ export class BillingComponent {
 	});
 
 	readonly paginatedInvoices = computed(() => {
-		const sorted = sortBy(this.filteredInvoices(), this.invoiceSort().column, this.invoiceSort().direction);
+		const sorted = sortBy(
+			this.filteredInvoices(),
+			this.invoiceSort().column,
+			this.invoiceSort().direction,
+		);
 		const start = (this.invoicePage() - 1) * this.pageSize;
 		return sorted.slice(start, start + this.pageSize);
 	});
@@ -187,7 +195,11 @@ export class BillingComponent {
 	});
 
 	readonly paginatedFolios = computed(() => {
-		const sorted = sortBy(this.filteredFolios(), this.folioSort().column, this.folioSort().direction);
+		const sorted = sortBy(
+			this.filteredFolios(),
+			this.folioSort().column,
+			this.folioSort().direction,
+		);
 		const start = (this.folioPage() - 1) * this.pageSize;
 		return sorted.slice(start, start + this.pageSize);
 	});
@@ -236,7 +248,11 @@ export class BillingComponent {
 	});
 
 	readonly paginatedCharges = computed(() => {
-		const sorted = sortBy(this.filteredCharges(), this.chargeSort().column, this.chargeSort().direction);
+		const sorted = sortBy(
+			this.filteredCharges(),
+			this.chargeSort().column,
+			this.chargeSort().direction,
+		);
 		const start = (this.chargePage() - 1) * this.pageSize;
 		return sorted.slice(start, start + this.pageSize);
 	});
@@ -354,42 +370,64 @@ export class BillingComponent {
 	// ── Display helpers ──
 	paymentStatusClass(status: string): string {
 		switch (status) {
-			case "completed": return "badge-success";
-			case "pending": return "badge-warning";
-			case "failed": return "badge-danger";
-			case "refunded": return "badge-accent";
-			case "authorized": return "badge-muted";
-			default: return "";
+			case "completed":
+				return "badge-success";
+			case "pending":
+				return "badge-warning";
+			case "failed":
+				return "badge-danger";
+			case "refunded":
+				return "badge-accent";
+			case "authorized":
+				return "badge-muted";
+			default:
+				return "";
 		}
 	}
 
 	invoiceStatusClass(status: string): string {
 		switch (status) {
-			case "paid": return "badge-success";
-			case "issued": return "badge-accent";
-			case "overdue": return "badge-danger";
-			case "draft": return "badge-muted";
-			case "cancelled": case "void": return "badge-danger";
-			default: return "";
+			case "paid":
+				return "badge-success";
+			case "issued":
+				return "badge-accent";
+			case "overdue":
+				return "badge-danger";
+			case "draft":
+				return "badge-muted";
+			case "cancelled":
+			case "void":
+				return "badge-danger";
+			default:
+				return "";
 		}
 	}
 
 	folioStatusClass(status: string): string {
 		switch (status) {
-			case "open": return "badge-accent";
-			case "closed": return "badge-muted";
-			case "settled": return "badge-success";
-			default: return "";
+			case "open":
+				return "badge-accent";
+			case "closed":
+				return "badge-muted";
+			case "settled":
+				return "badge-success";
+			default:
+				return "";
 		}
 	}
 
 	chargeTypeClass(type: string): string {
 		switch (type) {
-			case "charge": return "badge-danger";
-			case "payment": return "badge-success";
-			case "adjustment": return "badge-warning";
-			case "refund": return "badge-accent";
-			default: return "";
+			case "charge":
+				return "badge-danger";
+			case "payment":
+				return "badge-success";
+			case "adjustment":
+				return "badge-warning";
+			case "refund":
+				return "badge-accent";
+			default:
+				return "";
 		}
 	}
 

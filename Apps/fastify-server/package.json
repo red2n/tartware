@@ -11,6 +11,10 @@
     "./swagger": {
       "types": "./dist/swagger.d.ts",
       "import": "./dist/swagger.js"
+    },
+    "./registry-client": {
+      "types": "./dist/registry-client.d.ts",
+      "import": "./dist/registry-client.js"
     }
   },
   "scripts": {

@@ -43,7 +43,8 @@ import { MatIconModule } from "@angular/material/icon";
 			</nav>
 		}
 	`,
-	styles: [`
+	styles: [
+		`
 		.pagination {
 			display: flex;
 			align-items: center;
@@ -68,7 +69,8 @@ import { MatIconModule } from "@angular/material/icon";
 			font-weight: var(--font-weight-medium);
 			white-space: nowrap;
 		}
-	`],
+	`,
+	],
 })
 export class PaginationComponent {
 	readonly totalItems = input.required<number>();
@@ -76,13 +78,9 @@ export class PaginationComponent {
 	readonly pageSize = input<number>(25);
 	readonly pageChange = output<number>();
 
-	readonly totalPages = computed(() =>
-		Math.ceil(this.totalItems() / this.pageSize()),
-	);
+	readonly totalPages = computed(() => Math.ceil(this.totalItems() / this.pageSize()));
 
-	readonly startItem = computed(() =>
-		(this.currentPage() - 1) * this.pageSize() + 1,
-	);
+	readonly startItem = computed(() => (this.currentPage() - 1) * this.pageSize() + 1);
 
 	readonly endItem = computed(() =>
 		Math.min(this.currentPage() * this.pageSize(), this.totalItems()),

@@ -61,9 +61,7 @@ export class SelectPropertyComponent {
 	});
 
 	formatLocation(address: Record<string, unknown>): string {
-		return [address["city"], address["state"], address["country"]]
-			.filter((v) => !!v)
-			.join(", ");
+		return [address["city"], address["state"], address["country"]].filter((v) => !!v).join(", ");
 	}
 
 	toggleExpand(property: PropertyOption): void {

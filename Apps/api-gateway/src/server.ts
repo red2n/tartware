@@ -18,6 +18,7 @@ import { registerHealthRoutes } from "./routes/health-routes.js";
 import { registerHousekeepingRoutes } from "./routes/housekeeping-routes.js";
 import { registerMiscRoutes } from "./routes/misc-routes.js";
 import { registerOperationsRoutes } from "./routes/operations-routes.js";
+import { registerRegistryProxyRoutes } from "./routes/registry-proxy-routes.js";
 import { registerReportingRoutes } from "./routes/reporting-routes.js";
 import { registerReservationRoutes } from "./routes/reservation-routes.js";
 import { registerRevenueRoutes } from "./routes/revenue-routes.js";
@@ -91,6 +92,7 @@ export const buildServer = () => {
     registerReportingRoutes(app);
     registerWebhookRoutes(app);
     registerSelfServiceRoutes(app);
+    registerRegistryProxyRoutes(app);
     registerMiscRoutes(app);
   });
 

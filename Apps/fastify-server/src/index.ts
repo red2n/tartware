@@ -18,6 +18,7 @@ import Fastify, {
 	type FastifyServerOptions,
 } from "fastify";
 import type { Registry } from "prom-client";
+import { startServiceRegistration } from "./registry-client.js";
 
 /** Detect ZodError by duck typing to avoid hard zod dependency. */
 const isZodError = (
@@ -101,6 +102,19 @@ export interface BuildFastifyServerOptions {
 	 * Called inside app.after() to register routes
 	 */
 	registerRoutes?: (app: FastifyInstance) => void | Promise<void>;
+
+	/**
+	 * Service registry configuration for auto-registration.
+	 * When provided, the server registers with the service registry on ready
+	 * and deregisters on close, with periodic heartbeats.
+	 */
+	serviceRegistry?: {
+		registryUrl: string;
+		serviceName: string;
+		serviceVersion: string;
+		host: string;
+		port: number;
+	};
 }
 
 /** Content-Type for RFC 9457 Problem Details responses. */
@@ -218,6 +232,7 @@ export const buildFastifyServer = (
 		requestLoggingOptions,
 		beforeRoutes,
 		registerRoutes,
+		serviceRegistry,
 	} = options;
 
 	// Build Fastify instance with logger
@@ -382,6 +397,34 @@ export const buildFastifyServer = (
 		});
 	}
 
+	// Auto-register with service registry.
+	// Only registers when REGISTRY_URL is explicitly set or serviceRegistry option is provided.
+	const registryUrl = process.env.REGISTRY_URL;
+	const registryPort = Number(process.env.PORT) || 0;
+	const registryConfig =
+		serviceRegistry ??
+		(registryUrl && registryPort
+			? {
+					registryUrl,
+					serviceName: process.env.SERVICE_NAME ?? "unknown",
+					serviceVersion: process.env.SERVICE_VERSION ?? "0.0.0",
+					host: process.env.HOST ?? "localhost",
+					port: registryPort,
+				}
+			: undefined);
+
+	if (registryConfig?.registryUrl) {
+		let registration: { stop: () => Promise<void> } | undefined;
+
+		app.addHook("onReady", async () => {
+			registration = startServiceRegistration(registryConfig, logger);
+		});
+
+		app.addHook("onClose", async () => {
+			await registration?.stop();
+		});
+	}
+
 	return app;
 };
 
@@ -425,7 +468,7 @@ export const createRouteTracker = (app: FastifyInstance) => {
 	};
 };
 
-export type { FastifyBaseLogger, FastifyInstance } from "fastify";
 // Re-export @fastify/sensible types so consumers pick up the FastifyReply augmentations
 // (.unauthorized, .forbidden, .notFound, etc.) without needing to import sensible directly.
 export type { HttpError, HttpErrors } from "@fastify/sensible";
+export type { FastifyBaseLogger, FastifyInstance } from "fastify";

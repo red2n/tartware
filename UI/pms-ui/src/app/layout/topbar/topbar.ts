@@ -8,6 +8,7 @@ import { Router } from "@angular/router";
 
 import { AuthService } from "../../core/auth/auth.service";
 import { TenantContextService } from "../../core/context/tenant-context.service";
+import { RegistryService } from "../../core/registry/registry.service";
 import { ThemeService } from "../../core/theme/theme.service";
 
 @Component({
@@ -23,6 +24,7 @@ export class TopbarComponent {
 	private readonly auth = inject(AuthService);
 	private readonly theme = inject(ThemeService);
 	private readonly ctx = inject(TenantContextService);
+	private readonly registry = inject(RegistryService);
 	private readonly router = inject(Router);
 
 	readonly user = this.auth.user;
@@ -34,6 +36,7 @@ export class TopbarComponent {
 	readonly properties = this.ctx.properties;
 	readonly activeProperty = this.ctx.activeProperty;
 	readonly propertiesLoading = this.ctx.loading;
+	readonly statusBarVisible = this.registry.statusBarVisible;
 
 	/** Whether tenant switcher should be shown (multi-tenant user) */
 	get showTenantSwitcher(): boolean {
@@ -57,6 +60,10 @@ export class TopbarComponent {
 
 	async setTheme(mode: "LIGHT" | "DARK" | "SYSTEM"): Promise<void> {
 		await this.theme.setTheme(mode);
+	}
+
+	toggleStatusBar(): void {
+		this.registry.toggleStatusBar();
 	}
 
 	logout(): void {

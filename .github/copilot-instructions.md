@@ -57,7 +57,7 @@ Use idempotent SQL patterns (`IF NOT EXISTS`, `ON CONFLICT DO NOTHING`). New tab
 
 ## Service Port Map
 
-Ports increment by 5 starting at 3000. API gateway is **8080**. Next available: **3070**.
+Ports increment by 5 starting at 3000. API gateway is **8080**. Next available: **3080**.
 
 When adding a new service: assign the next port, add `dev:<name>` script in root `package.json`, update `dev:backend`/`dev:stack`, and add `<SERVICE>_SERVICE_URL` to `dev:gateway`.
 

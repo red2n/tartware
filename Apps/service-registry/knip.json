@@ -1,0 +1,15 @@
+{
+  "$schema": "https://unpkg.com/knip@5/schema.json",
+  "project": [
+    "src/**/*.ts"
+  ],
+  "ignoreDependencies": [
+    "@tartware/telemetry",
+    "@tartware/openapi",
+    "@tartware/config",
+    "@fastify/cors",
+    "@fastify/helmet",
+    "@fastify/sensible",
+    "@tartware/fastify-server"
+  ]
+}

@@ -1,11 +1,11 @@
 import {
 	type AfterViewInit,
 	Component,
+	computed,
 	type ElementRef,
+	inject,
 	NgZone,
 	type OnDestroy,
-	computed,
-	inject,
 	signal,
 	viewChild,
 } from "@angular/core";
@@ -17,9 +17,8 @@ import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
 
 import { ApiService, ApiValidationError } from "../../../core/api/api.service";
 import { AuthService } from "../../../core/auth/auth.service";
-
-import { COMMON_CURRENCIES, COMMON_LANGUAGES, COMMON_TIMEZONES } from "./reference-data.js";
 import { loadGooglePlaces, parsePlaceResult } from "./google-places.js";
+import { COMMON_CURRENCIES, COMMON_LANGUAGES, COMMON_TIMEZONES } from "./reference-data.js";
 
 @Component({
 	selector: "app-create-property-dialog",

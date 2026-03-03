@@ -196,7 +196,7 @@
                     }
                   </td>
                   <td>
-                    <span class="badge" [ngClass]="hkClass(effectiveHkStatus(room))">{{ effectiveHkStatus(room) === 'DIRTY' && room.housekeeping_status.toUpperCase() !== 'DIRTY' ? 'Dirty' : room.housekeeping_display }}</span>
+                    <span class="badge" [ngClass]="hkClass(effectiveHkStatus(room))">{{ room.housekeeping_display }}</span>
                   </td>
                   <td class="cell-notes">
                     @if (room.housekeeping_notes) {

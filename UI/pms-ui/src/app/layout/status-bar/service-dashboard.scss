@@ -1,0 +1,323 @@
+:host {
+  display: block;
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+}
+
+.dashboard-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.35);
+  display: flex;
+  align-items: flex-end;
+}
+
+/* Slide-up panel anchored to bottom, above the 24px status bar */
+.dashboard-panel {
+  width: 100%;
+  max-height: 60vh;
+  background: var(--color-canvas-default);
+  border-top: 1px solid var(--color-border-default);
+  box-shadow: var(--color-shadow-extra-large);
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 24px; /* height of the status bar */
+  animation: slideUp 200ms ease-out;
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(100%);
+    opacity: 0.6;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+/* ── Header ── */
+.dashboard-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--color-border-muted);
+  flex-shrink: 0;
+}
+
+.dashboard-title-area {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.dashboard-title-icon {
+  font-size: 20px;
+  width: 20px;
+  height: 20px;
+  color: var(--color-accent-fg);
+}
+
+.dashboard-title {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-fg-default);
+  margin: 0;
+}
+
+.dashboard-counter {
+  font-size: var(--font-size-xs);
+  color: var(--color-fg-muted);
+  background: var(--color-canvas-subtle);
+  padding: 1px 8px;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--color-border-default);
+}
+
+.dashboard-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+/* ── Summary cards ── */
+.summary-row {
+  display: flex;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--color-border-muted);
+  flex-shrink: 0;
+}
+
+.summary-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-md);
+  min-width: 80px;
+  border: 1px solid var(--color-border-default);
+}
+
+.summary-value {
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-bold);
+  line-height: 1.2;
+}
+
+.summary-label {
+  font-size: var(--font-size-xs);
+  color: var(--color-fg-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.summary-total {
+  .summary-value { color: var(--color-fg-default); }
+}
+
+.summary-up {
+  background: var(--color-success-subtle);
+  border-color: var(--color-success-emphasis);
+
+  .summary-value { color: var(--color-success-fg); }
+}
+
+.summary-down {
+  background: var(--color-danger-subtle);
+  border-color: var(--color-danger-emphasis);
+
+  .summary-value { color: var(--color-danger-fg); }
+}
+
+/* ── Error banner ── */
+.dashboard-error {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-4);
+  background: var(--color-danger-subtle);
+  color: var(--color-danger-fg);
+  font-size: var(--font-size-sm);
+  border-bottom: 1px solid var(--color-border-muted);
+
+  mat-icon {
+    font-size: 16px;
+    width: 16px;
+    height: 16px;
+  }
+}
+
+/* ── Service list ── */
+.service-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--space-2) 0;
+}
+
+.service-group {
+  padding: 0 var(--space-4);
+  margin-bottom: var(--space-2);
+}
+
+.service-group-title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: var(--space-1) 0;
+  margin: 0 0 var(--space-1);
+}
+
+.service-group-danger {
+  color: var(--color-danger-fg);
+}
+
+.service-group-success {
+  color: var(--color-success-fg);
+}
+
+.group-icon {
+  font-size: 14px;
+  width: 14px;
+  height: 14px;
+}
+
+/* ── Service row ── */
+.service-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+  transition: background var(--duration-fast);
+
+  &:hover {
+    background: var(--color-canvas-subtle);
+  }
+}
+
+.service-row-down {
+  background: var(--color-danger-subtle);
+
+  &:hover {
+    background: var(--color-danger-subtle);
+  }
+}
+
+/* Status dot */
+.service-status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.service-dot-up {
+  background: var(--color-success-emphasis);
+  box-shadow: 0 0 0 2px var(--color-success-subtle);
+}
+
+.service-dot-down {
+  background: var(--color-danger-emphasis);
+  box-shadow: 0 0 0 2px var(--color-danger-subtle);
+  animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+/* Service info */
+.service-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.service-name {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-fg-default);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.service-meta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--font-size-xs);
+  color: var(--color-fg-muted);
+}
+
+.service-port {
+  font-family: var(--font-family-mono);
+  font-size: 11px;
+  background: var(--color-canvas-subtle);
+  padding: 0 4px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border-default);
+}
+
+.service-version {
+  color: var(--color-fg-subtle);
+}
+
+/* Heartbeat */
+.service-heartbeat {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: var(--font-size-xs);
+  color: var(--color-fg-muted);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.heartbeat-icon {
+  font-size: 12px;
+  width: 12px;
+  height: 12px;
+}
+
+/* ── Empty state ── */
+.dashboard-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-8) 0;
+  color: var(--color-fg-muted);
+
+  .empty-icon {
+    font-size: 32px;
+    width: 32px;
+    height: 32px;
+    opacity: 0.4;
+  }
+
+  p {
+    margin: 0;
+    font-size: var(--font-size-sm);
+  }
+}
+
+/* spinning refresh icon */
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.spin {
+  animation: spin 1s linear infinite;
+}

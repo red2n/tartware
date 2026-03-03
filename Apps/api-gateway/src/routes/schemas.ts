@@ -42,6 +42,8 @@ export const RECOMMENDATION_PROXY_TAG = "Recommendations";
 export const NOTIFICATION_PROXY_TAG = "Notification Proxy";
 /** @internal Notification command endpoints. */
 export const NOTIFICATION_COMMAND_TAG = "Notification Commands";
+/** @internal Service registry proxy endpoints. */
+export const REGISTRY_PROXY_TAG = "Service Registry";
 
 /** JSON Schema for the `/health` response body. */
 export const healthResponseSchema = {

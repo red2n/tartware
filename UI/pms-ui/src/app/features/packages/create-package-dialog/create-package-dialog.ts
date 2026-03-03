@@ -137,7 +137,7 @@ export class CreatePackageDialogComponent {
 		this.error.set(null);
 
 		try {
-			const body: Omit<CreatePackageBody, 'tenant_id'> & { tenant_id: string } = {
+			const body: Omit<CreatePackageBody, "tenant_id"> & { tenant_id: string } = {
 				tenant_id: tenantId,
 				property_id: propertyId ?? undefined,
 				package_name: this.packageName.trim(),

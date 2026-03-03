@@ -112,6 +112,13 @@
         </div>
       }
       <mat-divider></mat-divider>
+      <button mat-menu-item (click)="toggleStatusBar()">
+        <mat-icon>{{ statusBarVisible() ? 'toggle_on' : 'toggle_off' }}</mat-icon>
+        <span>Status Bar</span>
+        @if (statusBarVisible()) {
+          <mat-icon class="check-icon">check</mat-icon>
+        }
+      </button>
       <button mat-menu-item (click)="logout()">
         <mat-icon>logout</mat-icon>
         <span>Sign out</span>

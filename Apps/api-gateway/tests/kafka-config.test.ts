@@ -25,24 +25,29 @@ const loadKafkaConfig = async (
     process.env[key] = value;
   });
 
-  vi.doMock("@tartware/config", () => ({
-    databaseSchema: {},
-    loadServiceConfig: () => ({
-      PORT: 3000,
-      HOST: "0.0.0.0",
-      SERVICE_NAME: "api-gateway",
-      SERVICE_VERSION: "1.0.0",
-      DB_HOST: "localhost",
-      DB_PORT: 5432,
-      DB_NAME: "tartware",
-      DB_USER: "postgres",
-      DB_PASSWORD: "password",
-      DB_SSL: false,
-      DB_POOL_MAX: 10,
-      DB_POOL_IDLE_TIMEOUT_MS: 1000,
-    }),
-    validateProductionSecrets: () => {},
-  }));
+  vi.doMock("@tartware/config", async () => {
+    const actual = await vi.importActual<typeof import("@tartware/config")>("@tartware/config");
+    return {
+      ...actual,
+      databaseSchema: {},
+      loadServiceConfig: () => ({
+        PORT: 3000,
+        HOST: "0.0.0.0",
+        SERVICE_NAME: "api-gateway",
+        SERVICE_VERSION: "1.0.0",
+        DB_HOST: "localhost",
+        DB_PORT: 5432,
+        DB_NAME: "tartware",
+        DB_USER: "postgres",
+        DB_PASSWORD: "password",
+        DB_SSL: false,
+        DB_POOL_MAX: 10,
+        DB_POOL_IDLE_TIMEOUT_MS: 1000,
+        DB_STATEMENT_TIMEOUT_MS: 30000,
+      }),
+      validateProductionSecrets: () => {},
+    };
+  });
 
   const module = await import("../src/config.js");
   return module.kafkaConfig;
