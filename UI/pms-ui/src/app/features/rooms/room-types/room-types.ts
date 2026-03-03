@@ -121,7 +121,7 @@ export class RoomTypesComponent {
 		try {
 			const params: Record<string, string> = { tenant_id: tenantId };
 			const propertyId = this.ctx.propertyId();
-			if (propertyId) params.property_id = propertyId;
+			if (propertyId) params["property_id"] = propertyId;
 			const roomTypes = await this.api.get<RoomTypeItem[]>("/room-types", params);
 			this.roomTypes.set(roomTypes);
 		} catch (e) {

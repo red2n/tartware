@@ -122,7 +122,7 @@ export class BuildingsComponent {
 		try {
 			const params: Record<string, string> = { tenant_id: tenantId };
 			const propertyId = this.ctx.propertyId();
-			if (propertyId) params.property_id = propertyId;
+			if (propertyId) params["property_id"] = propertyId;
 			const buildings = await this.api.get<BuildingItem[]>("/buildings", params);
 			this.buildings.set(buildings);
 		} catch (e) {
