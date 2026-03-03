@@ -4,10 +4,24 @@ import { config } from "../config.js";
 import { kafka } from "../kafka/client.js";
 import { appLogger } from "../lib/logger.js";
 import { getMessagesByTrigger } from "../services/automated-message-service.js";
+import { createInAppNotification } from "../services/in-app-notification-service.js";
 import { sendNotification } from "../services/notification-dispatch-service.js";
 import { getTemplate } from "../services/template-service.js";
 
 const logger = appLogger.child({ module: "reservation-event-consumer" });
+
+/** Format an ISO date string to a short human-readable form (e.g. "Mar 3, 2026"). */
+const formatDate = (iso: string): string => {
+  try {
+    return new Date(iso).toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    });
+  } catch {
+    return iso;
+  }
+};
 
 let consumer: Consumer | null = null;
 
@@ -17,24 +31,45 @@ let consumer: Consumer | null = null;
  * Templates must be pre-seeded in `communication_templates` with matching `template_code` values.
  */
 const EVENT_TO_TEMPLATE: Record<string, string> = {
-  "reservation.confirmed": "BOOKING_CONFIRMED",
-  "reservation.modified": "BOOKING_MODIFIED",
+  "reservation.created": "BOOKING_CONFIRMED",
+  "reservation.updated": "BOOKING_MODIFIED",
   "reservation.cancelled": "BOOKING_CANCELLED",
-  "reservation.checked_in": "CHECK_IN_CONFIRMATION",
-  "reservation.checked_out": "CHECK_OUT_CONFIRMATION",
 };
 
 /**
  * Map reservation event types to automated_messages trigger_type values.
  */
 const EVENT_TO_TRIGGER_TYPE: Record<string, string> = {
-  "reservation.confirmed": "booking_confirmed",
-  "reservation.modified": "booking_modified",
+  "reservation.created": "booking_confirmed",
+  "reservation.updated": "booking_modified",
   "reservation.cancelled": "booking_cancelled",
-  "reservation.checked_in": "checkin_completed",
-  "reservation.checked_out": "checkout_completed",
 };
 
+/**
+ * Map reservation event types to in-app notification properties.
+ */
+const EVENT_TO_IN_APP: Record<
+  string,
+  { title: (e: ReservationEvent) => string; category: string; priority: string }
+> = {
+  "reservation.created": {
+    title: (e) => `New reservation ${e.confirmationNumber ?? e.reservationId}`,
+    category: "reservation",
+    priority: "normal",
+  },
+  "reservation.updated": {
+    title: (e) => `Reservation ${e.confirmationNumber ?? e.reservationId} modified`,
+    category: "reservation",
+    priority: "normal",
+  },
+  "reservation.cancelled": {
+    title: (e) => `Reservation ${e.confirmationNumber ?? e.reservationId} cancelled`,
+    category: "reservation",
+    priority: "high",
+  },
+};
+
+/** Internal flat format used by the consumer handlers. */
 type ReservationEvent = {
   eventType: string;
   tenantId: string;
@@ -51,8 +86,52 @@ type ReservationEvent = {
   roomType?: string;
   totalAmount?: number;
   currency?: string;
-  [key: string]: unknown;
 };
+
+/** Kafka envelope: { metadata: {...}, payload: {...} } */
+type ReservationEventEnvelope = {
+  metadata: {
+    type: string;
+    tenantId: string;
+    id: string;
+    correlationId?: string;
+    [key: string]: unknown;
+  };
+  payload: {
+    id: string;
+    property_id: string;
+    guest_id: string;
+    confirmation_number?: string;
+    check_in_date?: string;
+    check_out_date?: string;
+    room_number?: string;
+    room_type_id?: string;
+    total_amount?: number;
+    currency?: string;
+    tenant_id?: string;
+    [key: string]: unknown;
+  };
+};
+
+/** Transform Kafka envelope into internal flat format. */
+const toReservationEvent = (envelope: ReservationEventEnvelope): ReservationEvent => ({
+  eventType: envelope.metadata.type,
+  tenantId: envelope.metadata.tenantId,
+  propertyId: String(envelope.payload.property_id ?? ""),
+  reservationId: String(envelope.payload.id ?? envelope.metadata.id ?? ""),
+  guestId: String(envelope.payload.guest_id ?? ""),
+  confirmationNumber: envelope.payload.confirmation_number
+    ? String(envelope.payload.confirmation_number)
+    : undefined,
+  checkInDate: envelope.payload.check_in_date ? String(envelope.payload.check_in_date) : undefined,
+  checkOutDate: envelope.payload.check_out_date
+    ? String(envelope.payload.check_out_date)
+    : undefined,
+  roomNumber: envelope.payload.room_number ? String(envelope.payload.room_number) : undefined,
+  totalAmount:
+    typeof envelope.payload.total_amount === "number" ? envelope.payload.total_amount : undefined,
+  currency: envelope.payload.currency ? String(envelope.payload.currency) : undefined,
+});
 
 /**
  * Process a single reservation event and trigger notifications.
@@ -169,6 +248,43 @@ const processReservationEvent = async (event: ReservationEvent): Promise<void> =
       "Failed to look up automated messages",
     );
   }
+
+  // Step 3: Create in-app notification for staff
+  const inAppConfig = EVENT_TO_IN_APP[event.eventType];
+  if (inAppConfig) {
+    try {
+      const guestName = event.guestName ?? "Guest";
+      const confNum = event.confirmationNumber ?? event.reservationId.slice(0, 8);
+      const room = event.roomNumber ? ` — Room ${event.roomNumber}` : "";
+      const dates =
+        event.checkInDate && event.checkOutDate
+          ? `${formatDate(event.checkInDate)} to ${formatDate(event.checkOutDate)}`
+          : "";
+
+      await createInAppNotification({
+        tenant_id: event.tenantId,
+        property_id: event.propertyId,
+        title: inAppConfig.title(event),
+        message: `${guestName} (${confNum})${room}${dates ? `. ${dates}` : ""}`,
+        category: inAppConfig.category as "reservation" | "checkin" | "checkout",
+        priority: inAppConfig.priority as "normal" | "high",
+        source_type: "reservation",
+        source_id: event.reservationId,
+        action_url: `/reservations/${event.reservationId}`,
+        metadata: {
+          event_type: event.eventType,
+          guest_name: guestName,
+          confirmation_number: confNum,
+          room_number: event.roomNumber,
+        },
+      });
+    } catch (err) {
+      logger.error(
+        { err, eventType: event.eventType, reservationId: event.reservationId },
+        "Failed to create in-app notification",
+      );
+    }
+  }
 };
 
 /**
@@ -197,7 +313,12 @@ export const startReservationEventConsumer = async (): Promise<void> => {
       }
 
       try {
-        const event = JSON.parse(message.value.toString()) as ReservationEvent;
+        const envelope = JSON.parse(message.value.toString()) as ReservationEventEnvelope;
+        if (!envelope.metadata?.type || !envelope.payload) {
+          logger.warn({ offset: message.offset }, "Skipping malformed reservation event");
+          return;
+        }
+        const event = toReservationEvent(envelope);
         await processReservationEvent(event);
       } catch (err) {
         logger.error({ err, offset: message.offset }, "Failed to parse reservation event message");

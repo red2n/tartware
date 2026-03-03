@@ -529,6 +529,46 @@ BEGIN
     END IF;
 
     RAISE NOTICE '';
+    RAISE NOTICE '--- In-App Notifications Table ---';
+
+    -- Check in_app_notifications table exists
+    IF EXISTS (
+        SELECT 1 FROM information_schema.tables
+        WHERE table_schema = 'public' AND table_name = 'in_app_notifications'
+    ) THEN
+        RAISE NOTICE '  ✓ in_app_notifications table exists';
+        v_pass := v_pass + 1;
+    ELSE
+        RAISE WARNING '  ✗ in_app_notifications table MISSING';
+        v_fail := v_fail + 1;
+    END IF;
+
+    -- Check in_app_notifications has key columns
+    IF EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema = 'public' AND table_name = 'in_app_notifications'
+        AND column_name = 'category'
+    ) THEN
+        RAISE NOTICE '  ✓ in_app_notifications.category column exists';
+        v_pass := v_pass + 1;
+    ELSE
+        RAISE WARNING '  ✗ in_app_notifications.category column MISSING';
+        v_fail := v_fail + 1;
+    END IF;
+
+    IF EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema = 'public' AND table_name = 'in_app_notifications'
+        AND column_name = 'is_read'
+    ) THEN
+        RAISE NOTICE '  ✓ in_app_notifications.is_read column exists';
+        v_pass := v_pass + 1;
+    ELSE
+        RAISE WARNING '  ✗ in_app_notifications.is_read column MISSING';
+        v_fail := v_fail + 1;
+    END IF;
+
+    RAISE NOTICE '';
     RAISE NOTICE '--- Rate Calendar Table (Revenue Management) ---';
 
     -- Check rate_calendar table exists

@@ -24,6 +24,7 @@ export * from "./device-events-log.js";
 export * from "./digital-registration-cards.js";
 export * from "./guest-room-preferences.js";
 export * from "./housekeeping-tasks.js";
+export * from "./in-app-notifications.js";
 export * from "./incident-reports.js";
 export * from "./lost-and-found.js";
 export * from "./maintenance-history.js";

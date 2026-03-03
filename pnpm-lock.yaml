@@ -1038,6 +1038,9 @@ importers:
       fastify:
         specifier: ^5.6.2
         version: 5.7.4
+      fastify-plugin:
+        specifier: ^5.0.0
+        version: 5.1.0
       kafkajs:
         specifier: ^2.2.4
         version: 2.2.4
@@ -10034,7 +10037,7 @@ snapshots:
       sirv: 3.0.2
       tinyglobby: 0.2.15
       tinyrainbow: 3.0.3
-      vitest: 4.0.18(@opentelemetry/api@1.9.0)(@types/node@25.2.3)(@vitest/ui@4.0.18)(jiti@2.6.1)(jsdom@27.4.0)(sass@1.97.1)(tsx@4.21.0)(yaml@2.8.2)
+      vitest: 4.0.18(@opentelemetry/api@1.9.0)(@types/node@20.19.33)(@vitest/ui@4.0.18)(jiti@2.6.1)(jsdom@27.4.0)(sass@1.97.1)(tsx@4.21.0)(yaml@2.8.2)
 
   '@vitest/utils@3.2.4':
     dependencies:

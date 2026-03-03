@@ -23,6 +23,7 @@ export * from "./guest-experience.js";
 export * from "./guests.js";
 export * from "./health.js";
 export * from "./housekeeping.js";
+export * from "./notifications.js";
 export * from "./properties.js";
 export * from "./rate-calendar.js";
 export * from "./rates.js";

@@ -4,8 +4,10 @@ import { config } from "./config.js";
 import { appLogger } from "./lib/logger.js";
 import { metricsRegistry } from "./lib/metrics.js";
 import authContextPlugin from "./plugins/auth-context.js";
+import sseTokenPlugin from "./plugins/sse-token.js";
 import swaggerPlugin from "./plugins/swagger.js";
 import { registerHealthRoutes } from "./routes/health.js";
+import { registerInAppNotificationRoutes } from "./routes/in-app-notifications.js";
 import { registerNotificationRoutes } from "./routes/notifications.js";
 
 export const buildServer = (): FastifyInstance => {
@@ -16,12 +18,14 @@ export const buildServer = (): FastifyInstance => {
     enableMetricsEndpoint: true,
     metricsRegistry,
     beforeRoutes: (app) => {
+      app.register(sseTokenPlugin);
       app.register(authContextPlugin);
       app.register(swaggerPlugin);
     },
     registerRoutes: (app) => {
       registerHealthRoutes(app);
       registerNotificationRoutes(app);
+      registerInAppNotificationRoutes(app);
     },
   });
 
