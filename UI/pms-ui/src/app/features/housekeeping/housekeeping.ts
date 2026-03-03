@@ -96,16 +96,18 @@ export class HousekeepingComponent {
 	];
 
 	/**
-	 * Effective HK status: if the room occupancy status is "dirty" (Vacant Dirty / post-checkout),
-	 * treat it as needing cleaning regardless of the housekeeping_status field.
-	 * This aligns with PMS industry semantics: VD rooms need housekeeping attention.
+	 * Effective HK status for display and filtering.
+	 *
+	 * The room's actual housekeeping_status is always authoritative — if a
+	 * housekeeper marks a room CLEAN or INSPECTED, that must be reflected
+	 * regardless of the occupancy status.  Occupancy "DIRTY" (Vacant Dirty)
+	 * is a separate concern managed by front desk when making a room
+	 * AVAILABLE.  Overriding CLEAN→DIRTY here would create a deadlock
+	 * where the HK team can never advance a room past DIRTY while
+	 * occupancy remains in post-checkout state.
 	 */
 	effectiveHkStatus(room: RoomItem): string {
-		const hk = room.housekeeping_status.toUpperCase();
-		const roomStatus = room.status.toUpperCase();
-		// If room is Vacant Dirty but HK says clean, the room still needs cleaning
-		if (roomStatus === "DIRTY" && hk === "CLEAN") return "DIRTY";
-		return hk;
+		return room.housekeeping_status.toUpperCase();
 	}
 
 	// ── KPI summary computed from room data ──
@@ -296,8 +298,11 @@ export class HousekeepingComponent {
 
 	roomOccupancyActions(room: RoomItem): { value: string; label: string; icon: string }[] {
 		const currentStatus = room.status.toUpperCase();
-		const hk = this.effectiveHkStatus(room);
-		const isClean = hk === "CLEAN" || hk === "INSPECTED";
+		// Use actual HK status (not effective) to decide if AVAILABLE is allowed,
+		// because effectiveHkStatus overrides clean→dirty when occupancy is DIRTY,
+		// which would create a deadlock preventing the room from ever becoming available.
+		const actualHk = room.housekeeping_status.toUpperCase();
+		const isClean = actualHk === "CLEAN" || actualHk === "INSPECTED";
 		const allowed = this.validOccupancyTransitions[currentStatus] ?? [];
 
 		return this.occupancyActions.filter((a) => {
