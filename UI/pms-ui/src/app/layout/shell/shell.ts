@@ -21,11 +21,21 @@ import { TopbarComponent } from "../topbar/topbar";
 	styleUrl: "./shell.scss",
 })
 export class ShellComponent {
+	private static readonly SIDEBAR_KEY = "sidebar-collapsed";
 	private readonly registry = inject(RegistryService);
-	readonly sidebarCollapsed = signal(false);
+	readonly sidebarCollapsed = signal(this.loadSidebarState());
 	readonly statusBarVisible = this.registry.statusBarVisible;
 
 	toggleSidebar(): void {
-		this.sidebarCollapsed.update((v) => !v);
+		this.sidebarCollapsed.update((v) => {
+			const next = !v;
+			localStorage.setItem(ShellComponent.SIDEBAR_KEY, String(next));
+			return next;
+		});
+	}
+
+	private loadSidebarState(): boolean {
+		const stored = localStorage.getItem(ShellComponent.SIDEBAR_KEY);
+		return stored === null ? true : stored === "true";
 	}
 }

@@ -7,9 +7,9 @@ import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
 
 import { ApiService, ApiValidationError } from "../../../core/api/api.service";
 import { AuthService } from "../../../core/auth/auth.service";
+import { TenantContextService } from "../../../core/context/tenant-context.service";
 
 type RoomType = { room_type_id: string; type_name: string };
-type Property = { id: string; property_name: string };
 type Building = { building_id: string; building_code: string; building_name: string };
 
 @Component({
@@ -22,10 +22,10 @@ type Building = { building_id: string; building_code: string; building_name: str
 export class CreateRoomDialogComponent implements OnInit {
 	private readonly api = inject(ApiService);
 	private readonly auth = inject(AuthService);
+	private readonly ctx = inject(TenantContextService);
 	private readonly dialogRef = inject(MatDialogRef<CreateRoomDialogComponent>);
 
 	readonly roomTypes = signal<RoomType[]>([]);
-	readonly properties = signal<Property[]>([]);
 	readonly buildings = signal<Building[]>([]);
 	readonly saving = signal(false);
 	readonly error = signal<string | null>(null);
@@ -36,7 +36,6 @@ export class CreateRoomDialogComponent implements OnInit {
 	roomNumber = "";
 	roomName = "";
 	roomTypeId = "";
-	propertyId = "";
 	floor = "";
 	buildingId = "";
 	wing = "";
@@ -50,26 +49,19 @@ export class CreateRoomDialogComponent implements OnInit {
 		if (!tenantId) return;
 
 		try {
-			const [roomTypes, properties, buildings] = await Promise.all([
+			const [roomTypes, buildings] = await Promise.all([
 				this.api.get<RoomType[]>("/room-types", { tenant_id: tenantId }),
-				this.api.get<Property[]>("/properties", { tenant_id: tenantId }),
 				this.api.get<Building[]>("/buildings", { tenant_id: tenantId }),
 			]);
 			this.roomTypes.set(roomTypes);
-			this.properties.set(properties);
 			this.buildings.set(buildings);
-
-			// Auto-select if only one property
-			if (properties.length === 1) {
-				this.propertyId = properties[0].id;
-			}
 		} catch {
 			this.error.set("Failed to load reference data");
 		}
 	}
 
 	get isValid(): boolean {
-		return !!(this.roomNumber.trim() && this.roomTypeId && this.propertyId);
+		return !!(this.roomNumber.trim() && this.roomTypeId && this.ctx.propertyId());
 	}
 
 	markTouched(field: string): void {
@@ -88,7 +80,7 @@ export class CreateRoomDialogComponent implements OnInit {
 			const selectedBuilding = this.buildings().find((b) => b.building_id === this.buildingId);
 			await this.api.post("/rooms", {
 				tenant_id: tenantId,
-				property_id: this.propertyId,
+				property_id: this.ctx.propertyId(),
 				room_type_id: this.roomTypeId,
 				room_number: this.roomNumber.trim(),
 				room_name: this.roomName.trim() || undefined,

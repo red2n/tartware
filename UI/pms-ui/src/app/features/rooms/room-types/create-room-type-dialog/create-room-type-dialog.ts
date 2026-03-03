@@ -9,8 +9,7 @@ import type { RoomTypeItem } from "@tartware/schemas";
 
 import { ApiService, ApiValidationError } from "../../../../core/api/api.service";
 import { AuthService } from "../../../../core/auth/auth.service";
-
-type Property = { id: string; property_name: string };
+import { TenantContextService } from "../../../../core/context/tenant-context.service";
 
 const ROOM_CATEGORIES = [
 	"STANDARD",
@@ -44,10 +43,10 @@ const ROOM_CATEGORIES = [
 export class CreateRoomTypeDialogComponent implements OnInit {
 	private readonly api = inject(ApiService);
 	private readonly auth = inject(AuthService);
+	private readonly ctx = inject(TenantContextService);
 	private readonly dialogRef = inject(MatDialogRef<CreateRoomTypeDialogComponent>);
 	private readonly data = inject<RoomTypeItem | null>(MAT_DIALOG_DATA, { optional: true });
 
-	readonly properties = signal<Property[]>([]);
 	readonly saving = signal(false);
 	readonly error = signal<string | null>(null);
 	readonly categories = ROOM_CATEGORIES;
@@ -64,7 +63,6 @@ export class CreateRoomTypeDialogComponent implements OnInit {
 	description = "";
 	shortDescription = "";
 	category = "STANDARD";
-	propertyId = "";
 	baseOccupancy = 2;
 	maxOccupancy = 2;
 	maxAdults = 2;
@@ -79,15 +77,12 @@ export class CreateRoomTypeDialogComponent implements OnInit {
 	isActive = true;
 
 	ngOnInit(): void {
-		this.loadProperties();
-
 		if (this.data) {
 			this.typeName = this.data.type_name;
 			this.typeCode = this.data.type_code;
 			this.description = this.data.description ?? "";
 			this.shortDescription = this.data.short_description ?? "";
 			this.category = this.data.category ?? "STANDARD";
-			this.propertyId = this.data.property_id;
 			this.baseOccupancy = this.data.base_occupancy;
 			this.maxOccupancy = this.data.max_occupancy;
 			this.maxAdults = this.data.max_adults;
@@ -103,31 +98,14 @@ export class CreateRoomTypeDialogComponent implements OnInit {
 		}
 	}
 
-	async loadProperties(): Promise<void> {
-		const tenantId = this.auth.tenantId();
-		if (!tenantId) return;
-
-		try {
-			const properties = await this.api.get<Property[]>("/properties", {
-				tenant_id: tenantId,
-			});
-			this.properties.set(properties);
-
-			if (!this.isEditMode && properties.length === 1) {
-				this.propertyId = properties[0].id;
-			}
-		} catch {
-			this.error.set("Failed to load properties");
-		}
-	}
-
 	get isValid(): boolean {
-		return !!(
-			this.typeName.trim() &&
-			this.typeCode.trim() &&
-			this.propertyId &&
-			this.basePrice >= 0
-		);
+		const hasRequiredFields = !!(this.typeName.trim() && this.typeCode.trim() && this.basePrice >= 0);
+
+		if (this.isEditMode) {
+			return hasRequiredFields;
+		}
+
+		return hasRequiredFields && !!this.ctx.propertyId();
 	}
 
 	markTouched(field: string): void {
@@ -144,7 +122,7 @@ export class CreateRoomTypeDialogComponent implements OnInit {
 
 		const body = {
 			tenant_id: tenantId,
-			property_id: this.propertyId,
+			property_id: this.isEditMode && this.data ? this.data.property_id : this.ctx.propertyId(),
 			type_name: this.typeName.trim(),
 			type_code: this.typeCode.trim(),
 			description: this.description.trim() || undefined,

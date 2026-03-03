@@ -20,7 +20,7 @@ export class SidebarComponent {
 	readonly collapsed = input(false);
 	readonly toggleCollapse = output<void>();
 
-	readonly navItems: NavItem[] = [
+	readonly primaryNavItems: NavItem[] = [
 		{ label: "Dashboard", icon: "dashboard", route: "/dashboard" },
 		{ label: "Reservations", icon: "book_online", route: "/reservations" },
 		{ label: "Guests", icon: "people", route: "/guests" },
@@ -36,6 +36,9 @@ export class SidebarComponent {
 			route: "/housekeeping",
 		},
 		{ label: "Billing", icon: "receipt_long", route: "/billing" },
+	];
+
+	readonly secondaryNavItems: NavItem[] = [
 		{ label: "Reports", icon: "assessment", route: "/reports" },
 		{ label: "Settings", icon: "settings", route: "/settings" },
 	];

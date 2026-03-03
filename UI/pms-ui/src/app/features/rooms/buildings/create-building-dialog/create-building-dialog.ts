@@ -9,8 +9,7 @@ import type { BuildingItem } from "@tartware/schemas";
 
 import { ApiService, ApiValidationError } from "../../../../core/api/api.service";
 import { AuthService } from "../../../../core/auth/auth.service";
-
-type Property = { id: string; property_name: string };
+import { TenantContextService } from "../../../../core/context/tenant-context.service";
 
 const BUILDING_TYPES = [
 	"MAIN",
@@ -38,10 +37,10 @@ const BUILDING_STATUSES = ["OPERATIONAL", "RENOVATION", "CLOSED", "SEASONAL"];
 export class CreateBuildingDialogComponent implements OnInit {
 	private readonly api = inject(ApiService);
 	private readonly auth = inject(AuthService);
+	private readonly ctx = inject(TenantContextService);
 	private readonly dialogRef = inject(MatDialogRef<CreateBuildingDialogComponent>);
 	private readonly data = inject<BuildingItem | null>(MAT_DIALOG_DATA, { optional: true });
 
-	readonly properties = signal<Property[]>([]);
 	readonly saving = signal(false);
 	readonly error = signal<string | null>(null);
 	readonly buildingTypes = BUILDING_TYPES;
@@ -58,7 +57,6 @@ export class CreateBuildingDialogComponent implements OnInit {
 	buildingName = "";
 	buildingType = "MAIN";
 	buildingStatus = "OPERATIONAL";
-	propertyId = "";
 	floorCount: number | null = null;
 	basementFloors = 0;
 	totalRooms = 0;
@@ -78,14 +76,11 @@ export class CreateBuildingDialogComponent implements OnInit {
 	isActive = true;
 
 	ngOnInit(): void {
-		this.loadProperties();
-
 		if (this.data) {
 			this.buildingCode = this.data.building_code;
 			this.buildingName = this.data.building_name;
 			this.buildingType = this.data.building_type ?? "MAIN";
 			this.buildingStatus = this.data.building_status ?? "OPERATIONAL";
-			this.propertyId = this.data.property_id;
 			this.floorCount = this.data.floor_count ?? null;
 			this.basementFloors = this.data.basement_floors ?? 0;
 			this.totalRooms = this.data.total_rooms ?? 0;
@@ -106,26 +101,14 @@ export class CreateBuildingDialogComponent implements OnInit {
 		}
 	}
 
-	async loadProperties(): Promise<void> {
-		const tenantId = this.auth.tenantId();
-		if (!tenantId) return;
-
-		try {
-			const properties = await this.api.get<Property[]>("/properties", {
-				tenant_id: tenantId,
-			});
-			this.properties.set(properties);
-
-			if (!this.isEditMode && properties.length === 1) {
-				this.propertyId = properties[0].id;
-			}
-		} catch {
-			this.error.set("Failed to load properties");
-		}
-	}
-
 	get isValid(): boolean {
-		return !!(this.buildingCode.trim() && this.buildingName.trim() && this.propertyId);
+		const hasRequiredFields = !!(this.buildingCode.trim() && this.buildingName.trim());
+
+		if (this.isEditMode) {
+			return hasRequiredFields;
+		}
+
+		return hasRequiredFields && !!this.ctx.propertyId();
 	}
 
 	markTouched(field: string): void {
@@ -142,7 +125,7 @@ export class CreateBuildingDialogComponent implements OnInit {
 
 		const body = {
 			tenant_id: tenantId,
-			property_id: this.propertyId,
+			property_id: this.isEditMode && this.data ? this.data.property_id : this.ctx.propertyId(),
 			building_code: this.buildingCode.trim(),
 			building_name: this.buildingName.trim(),
 			building_type: this.buildingType,

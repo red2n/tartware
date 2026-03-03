@@ -8,7 +8,22 @@
   </div>
 
   <nav class="sidebar-nav">
-    @for (item of navItems; track item.route) {
+    @for (item of primaryNavItems; track item.route) {
+      <a class="nav-item"
+         [routerLink]="item.route"
+         routerLinkActive="nav-item-active"
+         [matTooltip]="collapsed() ? item.label : ''"
+         matTooltipPosition="right">
+        <mat-icon class="nav-icon">{{ item.icon }}</mat-icon>
+        @if (!collapsed()) {
+          <span class="nav-label">{{ item.label }}</span>
+        }
+      </a>
+    }
+  </nav>
+
+  <nav class="sidebar-nav-secondary">
+    @for (item of secondaryNavItems; track item.route) {
       <a class="nav-item"
          [routerLink]="item.route"
          routerLinkActive="nav-item-active"
