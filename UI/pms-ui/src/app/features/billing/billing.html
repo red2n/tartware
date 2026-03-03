@@ -90,6 +90,7 @@
       </div>
     </div>
 
+    @defer (on idle) {
     @if (paymentsLoading()) {
       <div class="loading-state"><mat-spinner diameter="32"></mat-spinner><span class="text-muted">Loading payments...</span></div>
     } @else if (paymentsError(); as err) {
@@ -97,7 +98,6 @@
     } @else if (filteredPayments().length === 0) {
       <div class="empty-state"><mat-icon class="empty-icon">credit_card_off</mat-icon><p>No payments found</p></div>
     } @else {
-      @defer (on idle) {
         <div class="table-container">
           <table class="data-table">
             <thead>
@@ -140,9 +140,9 @@
           </table>
         </div>
         <app-pagination [totalItems]="filteredPayments().length" [currentPage]="paymentPage()" [pageSize]="pageSize" (pageChange)="paymentPage.set($event)" />
-      } @placeholder {
-        <div class="placeholder-table"><div class="placeholder-row"></div><div class="placeholder-row"></div><div class="placeholder-row"></div></div>
       }
+    } @placeholder {
+      <div class="placeholder-table"><div class="placeholder-row"></div><div class="placeholder-row"></div><div class="placeholder-row"></div></div>
     }
   }
 
@@ -166,6 +166,7 @@
       </div>
     </div>
 
+    @defer (on idle) {
     @if (invoicesLoading()) {
       <div class="loading-state"><mat-spinner diameter="32"></mat-spinner><span class="text-muted">Loading invoices...</span></div>
     } @else if (invoicesError(); as err) {
@@ -173,7 +174,6 @@
     } @else if (filteredInvoices().length === 0) {
       <div class="empty-state"><mat-icon class="empty-icon">receipt</mat-icon><p>No invoices found</p></div>
     } @else {
-      @defer (on idle) {
         <div class="table-container">
           <table class="data-table">
             <thead>
@@ -218,9 +218,9 @@
           </table>
         </div>
         <app-pagination [totalItems]="filteredInvoices().length" [currentPage]="invoicePage()" [pageSize]="pageSize" (pageChange)="invoicePage.set($event)" />
-      } @placeholder {
-        <div class="placeholder-table"><div class="placeholder-row"></div><div class="placeholder-row"></div><div class="placeholder-row"></div></div>
       }
+    } @placeholder {
+      <div class="placeholder-table"><div class="placeholder-row"></div><div class="placeholder-row"></div><div class="placeholder-row"></div></div>
     }
   }
 
@@ -244,6 +244,7 @@
       </div>
     </div>
 
+    @defer (on idle) {
     @if (foliosLoading()) {
       <div class="loading-state"><mat-spinner diameter="32"></mat-spinner><span class="text-muted">Loading folios...</span></div>
     } @else if (foliosError(); as err) {
@@ -251,7 +252,6 @@
     } @else if (filteredFolios().length === 0) {
       <div class="empty-state"><mat-icon class="empty-icon">folder_off</mat-icon><p>No folios found</p></div>
     } @else {
-      @defer (on idle) {
         <div class="table-container">
           <table class="data-table">
             <thead>
@@ -301,9 +301,9 @@
           </table>
         </div>
         <app-pagination [totalItems]="filteredFolios().length" [currentPage]="folioPage()" [pageSize]="pageSize" (pageChange)="folioPage.set($event)" />
-      } @placeholder {
-        <div class="placeholder-table"><div class="placeholder-row"></div><div class="placeholder-row"></div><div class="placeholder-row"></div></div>
       }
+    } @placeholder {
+      <div class="placeholder-table"><div class="placeholder-row"></div><div class="placeholder-row"></div><div class="placeholder-row"></div></div>
     }
   }
 
@@ -327,6 +327,7 @@
       </div>
     </div>
 
+    @defer (on idle) {
     @if (chargesLoading()) {
       <div class="loading-state"><mat-spinner diameter="32"></mat-spinner><span class="text-muted">Loading charges...</span></div>
     } @else if (chargesError(); as err) {
@@ -334,7 +335,6 @@
     } @else if (filteredCharges().length === 0) {
       <div class="empty-state"><mat-icon class="empty-icon">receipt_long</mat-icon><p>No charges found</p></div>
     } @else {
-      @defer (on idle) {
         <div class="table-container">
           <table class="data-table">
             <thead>
@@ -376,9 +376,9 @@
           </table>
         </div>
         <app-pagination [totalItems]="filteredCharges().length" [currentPage]="chargePage()" [pageSize]="pageSize" (pageChange)="chargePage.set($event)" />
-      } @placeholder {
-        <div class="placeholder-table"><div class="placeholder-row"></div><div class="placeholder-row"></div><div class="placeholder-row"></div></div>
       }
+    } @placeholder {
+      <div class="placeholder-table"><div class="placeholder-row"></div><div class="placeholder-row"></div><div class="placeholder-row"></div></div>
     }
   }
 </div>

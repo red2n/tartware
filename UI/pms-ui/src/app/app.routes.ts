@@ -53,6 +53,18 @@ export const routes: Routes = [
 				loadComponent: () => import("./features/rooms/rooms").then((m) => m.RoomsComponent),
 			},
 			{
+				path: "room-types",
+				canActivate: [propertyGuard],
+				loadComponent: () =>
+					import("./features/rooms/room-types/room-types").then((m) => m.RoomTypesComponent),
+			},
+			{
+				path: "buildings",
+				canActivate: [propertyGuard],
+				loadComponent: () =>
+					import("./features/rooms/buildings/buildings").then((m) => m.BuildingsComponent),
+			},
+			{
 				path: "rates",
 				canActivate: [propertyGuard],
 				loadComponent: () => import("./features/rates/rates").then((m) => m.RatesComponent),

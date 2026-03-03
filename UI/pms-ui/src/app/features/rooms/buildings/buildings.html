@@ -1,0 +1,141 @@
+<div class="buildings-page">
+  <div class="page-header">
+    <h1 class="page-title">Buildings</h1>
+    <div class="page-actions">
+      <button class="btn btn-primary btn-sm" (click)="openCreateDialog()">
+        <mat-icon>add</mat-icon>
+        New building
+      </button>
+      <button class="btn btn-invisible" (click)="loadBuildings()" matTooltip="Refresh" aria-label="Refresh buildings">
+        <mat-icon>refresh</mat-icon>
+      </button>
+    </div>
+  </div>
+
+  <!-- Search -->
+  <div class="filter-bar">
+    <div class="search-box">
+      <mat-icon class="search-icon">search</mat-icon>
+      <input
+        type="text"
+        class="search-input"
+        placeholder="Search buildings..."
+        aria-label="Search buildings"
+        [ngModel]="searchQuery()"
+        (ngModelChange)="onSearch($event)" />
+    </div>
+    <span class="text-muted">{{ filteredBuildings().length }} buildings</span>
+  </div>
+
+  <!-- Content -->
+  @if (loading()) {
+    <div class="loading-state">
+      <mat-spinner diameter="32"></mat-spinner>
+      <span class="text-muted">Loading buildings...</span>
+    </div>
+  } @else if (error(); as err) {
+    <div class="error-state">
+      <mat-icon class="error-icon">error_outline</mat-icon>
+      <span>{{ err }}</span>
+      <button class="btn btn-outline" (click)="loadBuildings()">Retry</button>
+    </div>
+  } @else if (filteredBuildings().length === 0) {
+    <div class="empty-state">
+      <mat-icon class="empty-icon">domain</mat-icon>
+      @if (buildings().length === 0) {
+        <p>No buildings found</p>
+        <p class="text-muted">Buildings define the physical structures in your property.</p>
+        <button class="btn btn-primary" (click)="openCreateDialog()">Create first building</button>
+      } @else {
+        <p>No buildings match your search</p>
+        <button class="btn btn-outline" (click)="onSearch('')">Clear search</button>
+      }
+    </div>
+  } @else {
+    <div class="table-container">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th [attr.aria-sort]="ariaSort('building_code')">
+              <button type="button" class="th-sort-btn" (click)="onSort('building_code')">
+                Code <mat-icon class="sort-indicator">{{ sortIcon('building_code') }}</mat-icon>
+              </button>
+            </th>
+            <th [attr.aria-sort]="ariaSort('building_name')">
+              <button type="button" class="th-sort-btn" (click)="onSort('building_name')">
+                Name <mat-icon class="sort-indicator">{{ sortIcon('building_name') }}</mat-icon>
+              </button>
+            </th>
+            <th [attr.aria-sort]="ariaSort('building_type')">
+              <button type="button" class="th-sort-btn" (click)="onSort('building_type')">
+                Type <mat-icon class="sort-indicator">{{ sortIcon('building_type') }}</mat-icon>
+              </button>
+            </th>
+            <th [attr.aria-sort]="ariaSort('floor_count')">
+              <button type="button" class="th-sort-btn" (click)="onSort('floor_count')">
+                Floors <mat-icon class="sort-indicator">{{ sortIcon('floor_count') }}</mat-icon>
+              </button>
+            </th>
+            <th [attr.aria-sort]="ariaSort('total_rooms')">
+              <button type="button" class="th-sort-btn" (click)="onSort('total_rooms')">
+                Rooms <mat-icon class="sort-indicator">{{ sortIcon('total_rooms') }}</mat-icon>
+              </button>
+            </th>
+            <th>Amenities</th>
+            <th>Status</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (b of paginatedBuildings(); track b.building_id) {
+            <tr class="row-clickable" tabindex="0"
+                (click)="openEditDialog(b)"
+                (keydown.enter)="openEditDialog(b)"
+                (keydown.space)="$event.preventDefault(); openEditDialog(b)">
+              <td>
+                <span class="badge badge-accent">{{ b.building_code }}</span>
+              </td>
+              <td class="cell-primary">
+                <span class="building-name">{{ b.building_name }}</span>
+                @if (b.guest_description) {
+                  <span class="text-muted building-desc">{{ b.guest_description }}</span>
+                }
+              </td>
+              <td>{{ b.building_type }}</td>
+              <td>{{ b.floor_count ?? '—' }}</td>
+              <td>{{ b.total_rooms ?? 0 }}</td>
+              <td class="cell-amenities">
+                @for (icon of amenityIcons(b); track icon) {
+                  <mat-icon class="amenity-icon" [matTooltip]="icon">{{ icon }}</mat-icon>
+                }
+                @if (amenityIcons(b).length === 0) {
+                  <span class="text-muted">—</span>
+                }
+              </td>
+              <td>
+                <span class="badge" [ngClass]="statusClass(b.building_status)">
+                  {{ b.building_status }}
+                </span>
+              </td>
+              <td class="cell-actions">
+                <button class="btn btn-invisible btn-sm" matTooltip="Edit"
+                        (click)="openEditDialog(b); $event.stopPropagation()">
+                  <mat-icon>edit</mat-icon>
+                </button>
+                <button class="btn btn-invisible btn-sm" matTooltip="Delete"
+                        (click)="deleteBuilding(b, $event)">
+                  <mat-icon>delete</mat-icon>
+                </button>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+    <app-pagination
+      [totalItems]="filteredBuildings().length"
+      [currentPage]="currentPage()"
+      [pageSize]="pageSize"
+      (pageChange)="currentPage.set($event)" />
+  }
+</div>

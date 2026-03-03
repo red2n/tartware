@@ -119,6 +119,7 @@
       </div>
     </div>
 
+    @defer (on idle) {
     @if (loadingRooms()) {
       <div class="loading-state">
         <mat-spinner diameter="32"></mat-spinner>
@@ -144,7 +145,6 @@
         }
       </div>
     } @else {
-      @defer (on idle) {
         <div class="table-container">
           <table class="data-table">
             <thead>
@@ -267,22 +267,21 @@
           [currentPage]="currentPage()"
           [pageSize]="pageSize"
           (pageChange)="currentPage.set($event)" />
-      } @placeholder {
-        <div class="placeholder-table">
-          <div class="placeholder-row"></div>
-          <div class="placeholder-row"></div>
-          <div class="placeholder-row"></div>
-          <div class="placeholder-row"></div>
-        </div>
-      } @loading (minimum 200ms) {
-        <div class="loading-state">
-          <mat-spinner diameter="24"></mat-spinner>
-        </div>
       }
+    } @placeholder {
+      <div class="placeholder-table">
+        <div class="placeholder-row"></div>
+        <div class="placeholder-row"></div>
+        <div class="placeholder-row"></div>
+        <div class="placeholder-row"></div>
+      </div>
+    } @loading (minimum 200ms) {
+      <div class="loading-state">
+        <mat-spinner diameter="24"></mat-spinner>
+      </div>
     }
   }
 
-  <!-- ═════════════════════════════════════════════ -->
   <!-- TASKS VIEW                                   -->
   <!-- ═════════════════════════════════════════════ -->
   @if (activeView() === 'tasks') {
@@ -299,6 +298,7 @@
       </div>
     </div>
 
+    @defer (on idle) {
     @if (loadingTasks()) {
       <div class="loading-state">
         <mat-spinner diameter="32"></mat-spinner>
@@ -321,7 +321,6 @@
         </p>
       </div>
     } @else {
-      @defer (on idle) {
         <div class="table-container">
           <table class="data-table">
             <thead>
@@ -373,17 +372,17 @@
           [currentPage]="currentPage()"
           [pageSize]="pageSize"
           (pageChange)="currentPage.set($event)" />
-      } @placeholder {
-        <div class="placeholder-table">
-          <div class="placeholder-row"></div>
-          <div class="placeholder-row"></div>
-          <div class="placeholder-row"></div>
-        </div>
-      } @loading (minimum 200ms) {
-        <div class="loading-state">
-          <mat-spinner diameter="24"></mat-spinner>
-        </div>
       }
+    } @placeholder {
+      <div class="placeholder-table">
+        <div class="placeholder-row"></div>
+        <div class="placeholder-row"></div>
+        <div class="placeholder-row"></div>
+      </div>
+    } @loading (minimum 200ms) {
+      <div class="loading-state">
+        <mat-spinner diameter="24"></mat-spinner>
+      </div>
     }
   }
 </div>

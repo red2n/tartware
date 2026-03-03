@@ -33,6 +33,8 @@ export interface DynamicUpdateOptions {
   fields: UpdateField[];
   /** Columns to SELECT in the final read-back CTE. */
   selectColumns: readonly string[];
+  /** Primary key column name (defaults to `id`). */
+  pkColumn?: string;
 }
 
 /** Generated SQL text and bound parameter values. */
@@ -53,7 +55,7 @@ export interface DynamicUpdateResult {
  * @returns The parameterised SQL string and the ordered parameter array.
  */
 export function buildDynamicUpdate(options: DynamicUpdateOptions): DynamicUpdateResult {
-  const { table, alias, id, tenantId, fields, selectColumns } = options;
+  const { table, alias, id, tenantId, fields, selectColumns, pkColumn = "id" } = options;
 
   const params: unknown[] = [id, tenantId];
   let paramIndex = 3;
@@ -77,7 +79,7 @@ export function buildDynamicUpdate(options: DynamicUpdateOptions): DynamicUpdate
     UPDATE ${table} ${alias}
     SET
       ${setClauses.join(",\n      ")}
-    WHERE ${alias}.id = $1::uuid
+    WHERE ${alias}.${pkColumn} = $1::uuid
       AND ${alias}.tenant_id = $2::uuid
       AND COALESCE(${alias}.is_deleted, false) = false
       AND ${alias}.deleted_at IS NULL

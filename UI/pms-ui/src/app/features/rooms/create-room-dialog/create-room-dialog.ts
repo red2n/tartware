@@ -10,6 +10,7 @@ import { AuthService } from "../../../core/auth/auth.service";
 
 type RoomType = { room_type_id: string; type_name: string };
 type Property = { id: string; property_name: string };
+type Building = { building_id: string; building_code: string; building_name: string };
 
 @Component({
 	selector: "app-create-room-dialog",
@@ -25,6 +26,7 @@ export class CreateRoomDialogComponent implements OnInit {
 
 	readonly roomTypes = signal<RoomType[]>([]);
 	readonly properties = signal<Property[]>([]);
+	readonly buildings = signal<Building[]>([]);
 	readonly saving = signal(false);
 	readonly error = signal<string | null>(null);
 
@@ -36,7 +38,7 @@ export class CreateRoomDialogComponent implements OnInit {
 	roomTypeId = "";
 	propertyId = "";
 	floor = "";
-	building = "";
+	buildingId = "";
 	wing = "";
 
 	ngOnInit(): void {
@@ -48,12 +50,14 @@ export class CreateRoomDialogComponent implements OnInit {
 		if (!tenantId) return;
 
 		try {
-			const [roomTypes, properties] = await Promise.all([
+			const [roomTypes, properties, buildings] = await Promise.all([
 				this.api.get<RoomType[]>("/room-types", { tenant_id: tenantId }),
 				this.api.get<Property[]>("/properties", { tenant_id: tenantId }),
+				this.api.get<Building[]>("/buildings", { tenant_id: tenantId }),
 			]);
 			this.roomTypes.set(roomTypes);
 			this.properties.set(properties);
+			this.buildings.set(buildings);
 
 			// Auto-select if only one property
 			if (properties.length === 1) {
@@ -81,6 +85,9 @@ export class CreateRoomDialogComponent implements OnInit {
 		this.error.set(null);
 
 		try {
+			const selectedBuilding = this.buildings().find(
+				(b) => b.building_id === this.buildingId,
+			);
 			await this.api.post("/rooms", {
 				tenant_id: tenantId,
 				property_id: this.propertyId,
@@ -88,7 +95,7 @@ export class CreateRoomDialogComponent implements OnInit {
 				room_number: this.roomNumber.trim(),
 				room_name: this.roomName.trim() || undefined,
 				floor: this.floor.trim() || undefined,
-				building: this.building.trim() || undefined,
+				building: selectedBuilding?.building_name || undefined,
 				wing: this.wing.trim() || undefined,
 			});
 			this.dialogRef.close(true);

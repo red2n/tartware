@@ -87,6 +87,17 @@ export class ApiService {
 		return response.json();
 	}
 
+	async delete(path: string, body?: unknown): Promise<void> {
+		const response = await fetch(this.buildUrl(path), {
+			method: "DELETE",
+			headers: this.getHeaders(),
+			body: body ? JSON.stringify(body) : undefined,
+		});
+		if (!response.ok) {
+			throw await this.handleError(response);
+		}
+	}
+
 	private async handleError(response: Response): Promise<Error> {
 		let message = `HTTP ${response.status}`;
 		try {

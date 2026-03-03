@@ -1,0 +1,29 @@
+/* Create/Edit building dialog — component-specific only.
+ * Reusable form patterns live in styles/shared.scss. */
+
+.dialog-title-icon {
+  vertical-align: middle;
+  margin-right: 6px;
+  font-size: 22px;
+}
+
+.checkbox-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: var(--space-2) var(--space-4);
+}
+
+.checkbox-field {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--font-size-sm);
+  color: var(--color-fg-default);
+  cursor: pointer;
+
+  input[type="checkbox"] {
+    accent-color: var(--color-accent-emphasis);
+    width: 16px;
+    height: 16px;
+  }
+}

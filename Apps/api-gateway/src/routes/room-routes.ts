@@ -187,6 +187,55 @@ export const registerRoomRoutes = (app: FastifyInstance): void => {
     proxyRooms,
   );
 
+  // Buildings routes - proxy to rooms service
+  app.get(
+    "/v1/buildings",
+    {
+      preHandler: tenantScopeFromQuery,
+      schema: buildRouteSchema({
+        tag: CORE_PROXY_TAG,
+        summary: "Proxy building list requests to the rooms service.",
+        querystring: paginationQuerySchema,
+        response: {
+          200: jsonObjectSchema,
+        },
+      }),
+    },
+    proxyRooms,
+  );
+
+  app.post(
+    "/v1/buildings",
+    {
+      preHandler: tenantScopeFromQuery,
+      schema: buildRouteSchema({
+        tag: CORE_PROXY_TAG,
+        summary: "Proxy building creation to the rooms service.",
+        body: jsonObjectSchema,
+        response: {
+          201: jsonObjectSchema,
+        },
+      }),
+    },
+    proxyRooms,
+  );
+
+  app.all(
+    "/v1/buildings/*",
+    {
+      preHandler: tenantScopeFromQuery,
+      schema: buildRouteSchema({
+        tag: CORE_PROXY_TAG,
+        summary: "Proxy building operations to the rooms service.",
+        response: {
+          200: jsonObjectSchema,
+          204: { type: "null" },
+        },
+      }),
+    },
+    proxyRooms,
+  );
+
   // Rates routes - proxy to rooms service
   app.get(
     "/v1/rates",

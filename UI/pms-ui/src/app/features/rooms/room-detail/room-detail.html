@@ -108,10 +108,12 @@
       </div>
     </div>
 
-    <!-- Amenities section -->
-    <div class="detail-card">
-      <div class="card-header">
-        <h3 class="card-title">Amenities</h3>
+    <!-- Defer amenities and lower sections until idle -->
+    @defer (on idle) {
+      <!-- Amenities section -->
+      <div class="detail-card">
+        <div class="card-header">
+          <h3 class="card-title">Amenities</h3>
         @if (!editingAmenities()) {
           <button class="btn btn-invisible btn-sm" (click)="startEditAmenities()">
             <mat-icon>edit</mat-icon>
@@ -349,6 +351,19 @@
         </div>
       </div>
     </div>
+
+    } @placeholder {
+      <div class="placeholder-table">
+        <div class="placeholder-row"></div>
+        <div class="placeholder-row"></div>
+        <div class="placeholder-row"></div>
+      </div>
+    } @loading (minimum 200ms) {
+      <div class="loading-state">
+        <mat-spinner diameter="24"></mat-spinner>
+        <span class="text-muted">Rendering details…</span>
+      </div>
+    }
 
     <!-- Meta -->
     @if (r.updated_at) {

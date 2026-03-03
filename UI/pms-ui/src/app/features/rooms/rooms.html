@@ -120,6 +120,7 @@
   </div>
 
   <!-- Content -->
+  @defer (on idle) {
   @if (loading()) {
     <div class="loading-state">
       <mat-spinner diameter="32"></mat-spinner>
@@ -143,8 +144,6 @@
       }
     </div>
   } @else {
-    <!-- Defer the heavy table rendering until idle -->
-    @defer (on idle) {
       <div class="table-container">
         <table class="data-table">
           <thead>
@@ -266,19 +265,19 @@
         [currentPage]="currentPage()"
         [pageSize]="pageSize"
         (pageChange)="currentPage.set($event)" />
-    } @placeholder {
-      <div class="placeholder-table">
-        <div class="placeholder-row"></div>
-        <div class="placeholder-row"></div>
-        <div class="placeholder-row"></div>
-        <div class="placeholder-row"></div>
-        <div class="placeholder-row"></div>
-      </div>
-    } @loading (minimum 200ms) {
-      <div class="loading-state">
-        <mat-spinner diameter="24"></mat-spinner>
-        <span class="text-muted">Rendering table...</span>
-      </div>
     }
+  } @placeholder {
+    <div class="placeholder-table">
+      <div class="placeholder-row"></div>
+      <div class="placeholder-row"></div>
+      <div class="placeholder-row"></div>
+      <div class="placeholder-row"></div>
+      <div class="placeholder-row"></div>
+    </div>
+  } @loading (minimum 200ms) {
+    <div class="loading-state">
+      <mat-spinner diameter="24"></mat-spinner>
+      <span class="text-muted">Rendering table...</span>
+    </div>
   }
 </div>
