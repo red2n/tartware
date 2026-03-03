@@ -80,10 +80,7 @@ export class RoomTypesComponent {
 
 		effect(
 			() => {
-				const maxPage = Math.max(
-					1,
-					Math.ceil(this.filteredRoomTypes().length / this.pageSize),
-				);
+				const maxPage = Math.max(1, Math.ceil(this.filteredRoomTypes().length / this.pageSize));
 				if (this.currentPage() > maxPage) {
 					this.currentPage.set(maxPage);
 				}

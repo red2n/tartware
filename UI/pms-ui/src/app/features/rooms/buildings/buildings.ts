@@ -81,10 +81,7 @@ export class BuildingsComponent {
 
 		effect(
 			() => {
-				const maxPage = Math.max(
-					1,
-					Math.ceil(this.filteredBuildings().length / this.pageSize),
-				);
+				const maxPage = Math.max(1, Math.ceil(this.filteredBuildings().length / this.pageSize));
 				if (this.currentPage() > maxPage) {
 					this.currentPage.set(maxPage);
 				}

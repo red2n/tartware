@@ -85,9 +85,7 @@ export class CreateRoomDialogComponent implements OnInit {
 		this.error.set(null);
 
 		try {
-			const selectedBuilding = this.buildings().find(
-				(b) => b.building_id === this.buildingId,
-			);
+			const selectedBuilding = this.buildings().find((b) => b.building_id === this.buildingId);
 			await this.api.post("/rooms", {
 				tenant_id: tenantId,
 				property_id: this.propertyId,
