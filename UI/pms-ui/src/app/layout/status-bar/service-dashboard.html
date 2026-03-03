@@ -46,9 +46,10 @@
       </div>
     }
 
-    <!-- Service list -->
-    <div class="service-list scroll-container">
-      @if (downServices().length > 0) {
+    <!-- Defer the service list rendering until idle -->
+    @defer (on idle) {
+      <div class="service-list scroll-container">
+        @if (downServices().length > 0) {
         <div class="service-group">
           <h3 class="service-group-title service-group-danger">
             <mat-icon class="group-icon">error</mat-icon>
@@ -103,7 +104,19 @@
           <mat-icon class="empty-icon">dns</mat-icon>
           <p>No services registered</p>
         </div>
-      }
-    </div>
+        }
+      </div>
+    } @placeholder {
+      <div class="placeholder-table">
+        <div class="placeholder-row"></div>
+        <div class="placeholder-row"></div>
+        <div class="placeholder-row"></div>
+      </div>
+    } @loading (minimum 200ms) {
+      <div class="loading-state">
+        <mat-spinner diameter="24"></mat-spinner>
+        <span class="text-muted">Loading services…</span>
+      </div>
+    }
   </div>
 </div>

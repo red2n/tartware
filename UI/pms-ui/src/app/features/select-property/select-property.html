@@ -43,14 +43,14 @@
       }
     </div>
 
+    @defer (on idle) {
     @if (loading()) {
       <div class="select-property-loading">
         <mat-spinner diameter="32"></mat-spinner>
         <span>Loading properties…</span>
       </div>
     } @else {
-      <!-- Property list -->
-      <div class="select-property-grid">
+        <div class="select-property-grid">
         @for (p of filtered(); track p.id) {
           <div class="property-card-wrapper" [class.expanded]="expandedId() === p.id">
             <button class="property-card" (click)="toggleExpand(p)">
@@ -133,6 +133,18 @@
             </div>
           }
         }
+        </div>
+      }
+    } @placeholder {
+      <div class="placeholder-table">
+        <div class="placeholder-row"></div>
+        <div class="placeholder-row"></div>
+        <div class="placeholder-row"></div>
+      </div>
+    } @loading (minimum 200ms) {
+      <div class="loading-state">
+        <mat-spinner diameter="24"></mat-spinner>
+        <span class="text-muted">Loading properties…</span>
       </div>
     }
 

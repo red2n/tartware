@@ -8,6 +8,7 @@
     </div>
   </div>
 
+  @defer (on idle) {
   @if (loading() && !stats()) {
     <div class="loading-state">
       <mat-spinner diameter="32"></mat-spinner>
@@ -20,7 +21,6 @@
       <button class="btn btn-outline" (click)="loadDashboard()">Retry</button>
     </div>
   } @else if (stats(); as s) {
-    @defer (on idle) {
       <!-- KPI Cards -->
       <div class="stat-grid">
         <!-- Occupancy -->
@@ -145,15 +145,15 @@
           </div>
         </div>
       </div>
-    } @placeholder {
-      <div class="stat-grid">
-        <div class="stat-card-placeholder"></div>
-        <div class="stat-card-placeholder"></div>
-        <div class="stat-card-placeholder"></div>
-        <div class="stat-card-placeholder"></div>
-      </div>
-    } @loading (minimum 200ms) {
-      <div class="stat-card-loading">Loading dashboard...</div>
     }
+  } @placeholder {
+    <div class="stat-grid">
+      <div class="stat-card-placeholder"></div>
+      <div class="stat-card-placeholder"></div>
+      <div class="stat-card-placeholder"></div>
+      <div class="stat-card-placeholder"></div>
+    </div>
+  } @loading (minimum 200ms) {
+    <div class="stat-card-loading">Loading dashboard...</div>
   }
 </div>
