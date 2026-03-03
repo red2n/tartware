@@ -101,8 +101,7 @@ export const routes: Routes = [
 			{
 				path: "billing",
 				canActivate: [propertyGuard],
-				loadComponent: () =>
-					import("./features/billing/billing").then((m) => m.BillingComponent),
+				loadComponent: () => import("./features/billing/billing").then((m) => m.BillingComponent),
 			},
 			{
 				path: "settings",

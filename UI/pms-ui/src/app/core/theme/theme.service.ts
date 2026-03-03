@@ -10,7 +10,8 @@ export type ThemeMode = "LIGHT" | "DARK" | "SYSTEM";
 const THEME_STORAGE_KEY = "theme_mode";
 
 function restoreTheme(): ThemeMode {
-	const stored = typeof localStorage !== "undefined" ? localStorage.getItem(THEME_STORAGE_KEY) : null;
+	const stored =
+		typeof localStorage !== "undefined" ? localStorage.getItem(THEME_STORAGE_KEY) : null;
 	if (stored === "LIGHT" || stored === "DARK" || stored === "SYSTEM") return stored;
 	return "SYSTEM";
 }

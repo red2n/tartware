@@ -83,7 +83,10 @@ const manualReleaseConfig = {
       groupId:
         process.env.AVAILABILITY_GUARD_NOTIFICATION_CONSUMER_GROUP ??
         "availability-guard-notification-worker",
-      maxRetries: parseNumberEnv(process.env.AVAILABILITY_GUARD_NOTIFICATION_CONSUMER_MAX_RETRIES, 3),
+      maxRetries: parseNumberEnv(
+        process.env.AVAILABILITY_GUARD_NOTIFICATION_CONSUMER_MAX_RETRIES,
+        3,
+      ),
       retryBackoffMs: parseNumberEnv(
         process.env.AVAILABILITY_GUARD_NOTIFICATION_CONSUMER_RETRY_BACKOFF_MS,
         2000,

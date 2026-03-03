@@ -79,7 +79,10 @@ export const config = {
       guestDataDays: parseNumberEnv(process.env.COMPLIANCE_GUEST_DATA_RETENTION_DAYS, 1095),
     },
     encryption: {
-      requireGuestEncryption: parseBooleanEnv(process.env.COMPLIANCE_REQUIRE_GUEST_ENCRYPTION, true),
+      requireGuestEncryption: parseBooleanEnv(
+        process.env.COMPLIANCE_REQUIRE_GUEST_ENCRYPTION,
+        true,
+      ),
       guestDataKey: process.env.GUEST_DATA_ENCRYPTION_KEY ?? "local-dev-guest-key",
     },
   },

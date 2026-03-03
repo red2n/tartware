@@ -13,9 +13,9 @@ import type { PackageListItem } from "@tartware/schemas";
 import { ApiService } from "../../core/api/api.service";
 import { AuthService } from "../../core/auth/auth.service";
 import { TenantContextService } from "../../core/context/tenant-context.service";
-import { ToastService } from "../../shared/toast/toast.service";
 import { PaginationComponent } from "../../shared/pagination/pagination";
 import { createSortState, sortBy, toggleSort } from "../../shared/sort-utils";
+import { ToastService } from "../../shared/toast/toast.service";
 
 type StatusFilter = "ALL" | "ACTIVE" | "INACTIVE" | "FEATURED";
 type TypeFilter = "ALL" | string;
@@ -135,9 +135,8 @@ export class PackagesComponent {
 		const all = this.packages();
 		const active = all.filter((p) => p.is_active);
 		const totalBookings = all.reduce((sum, p) => sum + (p.total_bookings ?? 0), 0);
-		const avgPrice = active.length > 0
-			? active.reduce((sum, p) => sum + p.base_price, 0) / active.length
-			: 0;
+		const avgPrice =
+			active.length > 0 ? active.reduce((sum, p) => sum + p.base_price, 0) / active.length : 0;
 		const currency = all[0]?.currency_code ?? "USD";
 		const topPkg = [...all].sort((a, b) => (b.total_bookings ?? 0) - (a.total_bookings ?? 0))[0];
 		return {
@@ -161,10 +160,7 @@ export class PackagesComponent {
 
 		effect(
 			() => {
-				const maxPage = Math.max(
-					1,
-					Math.ceil(this.filteredPackages().length / this.pageSize),
-				);
+				const maxPage = Math.max(1, Math.ceil(this.filteredPackages().length / this.pageSize));
 				if (this.currentPage() > maxPage) {
 					this.currentPage.set(maxPage);
 				}
@@ -226,7 +222,8 @@ export class PackagesComponent {
 		if (pkg.includes_dinner) icons.push({ icon: "dinner_dining", label: "Dinner" });
 		if (pkg.includes_parking) icons.push({ icon: "local_parking", label: "Parking" });
 		if (pkg.includes_wifi) icons.push({ icon: "wifi", label: "WiFi" });
-		if (pkg.includes_airport_transfer) icons.push({ icon: "airport_shuttle", label: "Airport transfer" });
+		if (pkg.includes_airport_transfer)
+			icons.push({ icon: "airport_shuttle", label: "Airport transfer" });
 		return icons;
 	}
 

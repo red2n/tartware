@@ -1,7 +1,5 @@
 import { environment } from "../../../../environments/environment";
 
-
-
 let loadPromise: Promise<void> | null = null;
 
 function isGooglePlacesLoaded(): boolean {
@@ -93,9 +91,11 @@ export interface ParsedPlace {
 export function parsePlaceResult(place: google.maps.places.PlaceResult): ParsedPlace {
 	const components = place.address_components ?? [];
 	const get = (type: string): string =>
-		components.find((c: google.maps.GeocoderAddressComponent) => c.types.includes(type))?.long_name ?? "";
+		components.find((c: google.maps.GeocoderAddressComponent) => c.types.includes(type))
+			?.long_name ?? "";
 	const getShort = (type: string): string =>
-		components.find((c: google.maps.GeocoderAddressComponent) => c.types.includes(type))?.short_name ?? "";
+		components.find((c: google.maps.GeocoderAddressComponent) => c.types.includes(type))
+			?.short_name ?? "";
 
 	const streetNumber = get("street_number");
 	const route = get("route");
