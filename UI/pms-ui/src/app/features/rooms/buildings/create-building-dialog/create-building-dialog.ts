@@ -125,7 +125,7 @@ export class CreateBuildingDialogComponent implements OnInit {
 
 		const body = {
 			tenant_id: tenantId,
-			property_id: this.ctx.propertyId(),
+			property_id: this.isEditMode && this.data ? this.data.property_id : this.ctx.propertyId(),
 			building_code: this.buildingCode.trim(),
 			building_name: this.buildingName.trim(),
 			building_type: this.buildingType,
