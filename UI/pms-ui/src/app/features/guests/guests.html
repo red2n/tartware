@@ -47,12 +47,6 @@
   }
 
   <!-- Filter tabs + search -->
-  @if (successMessage(); as msg) {
-    <div class="flash flash-success">
-      <mat-icon class="flash-icon">check_circle</mat-icon>
-      {{ msg }}
-    </div>
-  }
   <div class="filter-bar">
     <nav class="filter-tabs" aria-label="Guest filters">
       @for (f of guestFilters; track f.key) {

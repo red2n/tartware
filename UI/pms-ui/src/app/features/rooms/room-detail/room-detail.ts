@@ -11,6 +11,7 @@ import { ActivatedRoute, Router, RouterLink } from "@angular/router";
 import { ApiService } from "../../../core/api/api.service";
 import { AuthService } from "../../../core/auth/auth.service";
 import { housekeepingStatusClass, roomStatusClass } from "../../../shared/badge-utils";
+import { ToastService } from "../../../shared/toast/toast.service";
 
 type RoomDetail = {
 	room_id: string;
@@ -73,6 +74,7 @@ export class RoomDetailComponent implements OnInit {
 	private readonly auth = inject(AuthService);
 	private readonly route = inject(ActivatedRoute);
 	private readonly router = inject(Router);
+	private readonly toast = inject(ToastService);
 
 	readonly room = signal<RoomDetail | null>(null);
 	readonly loading = signal(false);
@@ -333,11 +335,11 @@ export class RoomDetailComponent implements OnInit {
 				tenant_id: tenantId,
 				amenities: this.editAmenities(),
 			});
-			this.amenitySuccess.set("Amenities updated.");
+			this.toast.success("Amenities updated.");
 			this.editingAmenities.set(false);
 			await this.loadRoom(r.room_id);
 		} catch (e) {
-			this.amenityError.set(e instanceof Error ? e.message : "Failed to update amenities");
+			this.toast.error(e instanceof Error ? e.message : "Failed to update amenities");
 		} finally {
 			this.savingAmenities.set(false);
 		}
@@ -359,18 +361,18 @@ export class RoomDetailComponent implements OnInit {
 					reason: this.editOooReason() || undefined,
 					expected_ready_date: this.editExpectedReady() || undefined,
 				});
-				this.saveSuccess.set("Room marked as Out of Order.");
+				this.toast.success("Room marked as Out of Order.");
 			} else {
 				// Clear out of order → set status to AVAILABLE
 				await this.api.post(`/tenants/${tenantId}/rooms/${r.room_id}/status`, {
 					status: "AVAILABLE",
 				});
-				this.saveSuccess.set("Room restored to Available.");
+				this.toast.success("Room restored to Available.");
 			}
 			// Reload room data — poll until status reflects the change (command is async via Kafka)
 			await this.pollRoomUntilChanged(r.room_id, r.is_out_of_order !== this.editOoo());
 		} catch (e) {
-			this.saveError.set(e instanceof Error ? e.message : "Failed to update room");
+			this.toast.error(e instanceof Error ? e.message : "Failed to update room");
 		} finally {
 			this.saving.set(false);
 		}
@@ -389,10 +391,10 @@ export class RoomDetailComponent implements OnInit {
 			await this.api.post(`/rooms/${r.room_id}/activate`, {
 				tenant_id: tenantId,
 			});
-			this.saveSuccess.set("Room activated and ready for booking.");
+			this.toast.success("Room activated and ready for booking.");
 			await this.loadRoom(r.room_id);
 		} catch (e) {
-			this.saveError.set(e instanceof Error ? e.message : "Failed to activate room");
+			this.toast.error(e instanceof Error ? e.message : "Failed to activate room");
 		} finally {
 			this.activating.set(false);
 		}
@@ -416,12 +418,10 @@ export class RoomDetailComponent implements OnInit {
 				housekeeping_status: newStatus,
 			});
 			const label = this.housekeepingOptions.find((o) => o.value === newStatus)?.label ?? newStatus;
-			this.housekeepingSuccess.set(`Housekeeping status updated to ${label}.`);
+			this.toast.success(`Housekeeping status updated to ${label}.`);
 			await this.loadRoom(r.room_id);
 		} catch (e) {
-			this.housekeepingError.set(
-				e instanceof Error ? e.message : "Failed to update housekeeping status",
-			);
+			this.toast.error(e instanceof Error ? e.message : "Failed to update housekeeping status");
 		} finally {
 			this.updatingHousekeeping.set(false);
 		}
@@ -467,10 +467,10 @@ export class RoomDetailComponent implements OnInit {
 			await this.api.post(`/rooms/${r.room_id}/deactivate`, {
 				tenant_id: tenantId,
 			});
-			this.saveSuccess.set("Room moved back to Setup mode.");
+			this.toast.success("Room moved back to Setup mode.");
 			await this.loadRoom(r.room_id);
 		} catch (e) {
-			this.saveError.set(e instanceof Error ? e.message : "Failed to deactivate room");
+			this.toast.error(e instanceof Error ? e.message : "Failed to deactivate room");
 		} finally {
 			this.deactivating.set(false);
 		}

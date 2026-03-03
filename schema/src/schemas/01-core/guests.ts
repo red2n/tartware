@@ -115,6 +115,7 @@ export type GuestWithStats = z.infer<typeof GuestWithStatsSchema>;
 
 export const CreateGuestSchema = GuestSchema.omit({
 	id: true,
+	member_since: true,
 	created_at: true,
 	updated_at: true,
 	created_by: true,

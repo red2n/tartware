@@ -210,7 +210,8 @@ export const registerGuestRoutes = (app: FastifyInstance): void => {
         propertyId: property_id,
       });
 
-      return stats;
+      const response = sanitizeForJson(stats);
+      return GuestSummaryStatsSchema.parse(response);
     },
   );
 

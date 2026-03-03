@@ -15,6 +15,7 @@ import { AuthService } from "../../core/auth/auth.service";
 import { loyaltyTierClass, vipStatusClass } from "../../shared/badge-utils";
 import { PaginationComponent } from "../../shared/pagination/pagination";
 import { createSortState, sortBy, toggleSort } from "../../shared/sort-utils";
+import { ToastService } from "../../shared/toast/toast.service";
 
 type GuestFilter = "ALL" | "VIP" | "LOYALTY" | "BLACKLISTED";
 
@@ -42,12 +43,12 @@ export class GuestsComponent {
 	private readonly auth = inject(AuthService);
 	private readonly router = inject(Router);
 	private readonly dialog = inject(MatDialog);
+	private readonly toast = inject(ToastService);
 
 	readonly guests = signal<GuestListItem[]>([]);
 	readonly guestStats = signal<GuestSummaryStats | null>(null);
 	readonly loading = signal(false);
 	readonly error = signal<string | null>(null);
-	readonly successMessage = signal<string | null>(null);
 	readonly searchQuery = signal("");
 	readonly activeFilter = signal<GuestFilter>("ALL");
 	readonly currentPage = signal(1);
@@ -90,7 +91,11 @@ export class GuestsComponent {
 	});
 
 	readonly paginatedGuests = computed(() => {
-		const sorted = sortBy(this.filteredGuests(), this.sortState().column, this.sortState().direction);
+		const sorted = sortBy(
+			this.filteredGuests(),
+			this.sortState().column,
+			this.sortState().direction,
+		);
 		const start = (this.currentPage() - 1) * this.pageSize;
 		return sorted.slice(start, start + this.pageSize);
 	});
@@ -149,12 +154,15 @@ export class GuestsComponent {
 		});
 
 		// Clamp currentPage when filtered list shrinks
-		effect(() => {
-			const maxPage = Math.max(1, Math.ceil(this.filteredGuests().length / this.pageSize));
-			if (this.currentPage() > maxPage) {
-				this.currentPage.set(maxPage);
-			}
-		}, { allowSignalWrites: true });
+		effect(
+			() => {
+				const maxPage = Math.max(1, Math.ceil(this.filteredGuests().length / this.pageSize));
+				if (this.currentPage() > maxPage) {
+					this.currentPage.set(maxPage);
+				}
+			},
+			{ allowSignalWrites: true },
+		);
 	}
 
 	setFilter(filter: GuestFilter): void {
@@ -251,8 +259,7 @@ export class GuestsComponent {
 			});
 			ref.afterClosed().subscribe((created: boolean) => {
 				if (created) {
-					this.successMessage.set("Guest registration submitted. It may take a moment to appear.");
-					setTimeout(() => this.successMessage.set(null), 6000);
+					this.toast.success("Guest registration submitted. It may take a moment to appear.");
 					// Kafka consumer processes async — delay refresh
 					setTimeout(() => {
 						this.loadGuests();
@@ -265,13 +272,18 @@ export class GuestsComponent {
 
 	private async loadGuestStats(): Promise<void> {
 		const tenantId = this.auth.tenantId();
-		if (!tenantId) return;
+		if (!tenantId) {
+			this.guestStats.set(null);
+			return;
+		}
+
+		this.guestStats.set(null);
 
 		try {
 			const stats = await this.api.get<GuestSummaryStats>("/guests/stats", { tenant_id: tenantId });
 			this.guestStats.set(stats);
 		} catch {
-			// Stats are non-critical — silently ignore errors
+			// Stats are non-critical — on error, leave cleared so stale data is not displayed
 		}
 	}
 }

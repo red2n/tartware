@@ -334,6 +334,7 @@ export const GUEST_SUMMARY_STATS_SQL = `
         WHERE r.guest_id = g.id AND r.tenant_id = g.tenant_id
           AND r.property_id = $2::uuid
           AND COALESCE(r.is_deleted, false) = false
+          AND r.deleted_at IS NULL
       ))
   ),
   value_segments AS (

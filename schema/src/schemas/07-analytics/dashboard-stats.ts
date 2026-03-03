@@ -85,6 +85,7 @@ export const DashboardStatsSchema = z.object({
 	checkOuts: CheckOutStatsSchema,
 	reservation_sparkline: z
 		.array(z.number().int().nonnegative())
+		.length(12)
 		.describe("Weekly reservation counts for the last 12 weeks (oldest first)"),
 });
 

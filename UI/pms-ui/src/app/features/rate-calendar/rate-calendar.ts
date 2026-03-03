@@ -9,6 +9,7 @@ import { ApiService } from "../../core/api/api.service";
 import { AuthService } from "../../core/auth/auth.service";
 import { TenantContextService } from "../../core/context/tenant-context.service";
 import { formatCurrency, formatShortDate } from "../../shared/format-utils";
+import { ToastService } from "../../shared/toast/toast.service";
 
 /** Minimal rate plan reference. */
 type RatePlan = {
@@ -67,6 +68,7 @@ export class RateCalendarComponent {
 	private readonly api = inject(ApiService);
 	private readonly auth = inject(AuthService);
 	private readonly ctx = inject(TenantContextService);
+	private readonly toast = inject(ToastService);
 
 	readonly loading = signal(false);
 	readonly saving = signal(false);
@@ -350,10 +352,10 @@ export class RateCalendarComponent {
 				});
 			}
 
-			this.success.set(`Saved ${dirtyCells.length} day(s) successfully.`);
+			this.toast.success(`Saved ${dirtyCells.length} day(s) successfully.`);
 			await this.loadCalendarData();
 		} catch (e) {
-			this.error.set(e instanceof Error ? e.message : "Failed to save changes");
+			this.toast.error(e instanceof Error ? e.message : "Failed to save changes");
 		} finally {
 			this.saving.set(false);
 		}

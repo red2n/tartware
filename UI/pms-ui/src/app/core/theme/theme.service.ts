@@ -7,9 +7,17 @@ import { AuthService } from "../auth/auth.service";
 
 export type ThemeMode = "LIGHT" | "DARK" | "SYSTEM";
 
+const THEME_STORAGE_KEY = "theme_mode";
+
+function restoreTheme(): ThemeMode {
+	const stored = typeof localStorage !== "undefined" ? localStorage.getItem(THEME_STORAGE_KEY) : null;
+	if (stored === "LIGHT" || stored === "DARK" || stored === "SYSTEM") return stored;
+	return "SYSTEM";
+}
+
 @Injectable({ providedIn: "root" })
 export class ThemeService {
-	private readonly _themeMode = signal<ThemeMode>("SYSTEM");
+	private readonly _themeMode = signal<ThemeMode>(restoreTheme());
 	private readonly _osPrefersDark = signal(
 		typeof window !== "undefined" && window.matchMedia("(prefers-color-scheme: dark)").matches,
 	);
@@ -56,7 +64,9 @@ export class ThemeService {
 			const prefs = await this.api.get<UserUiPreferences>("/users/me/ui-preferences", {
 				tenant_id: tenantId,
 			});
-			this._themeMode.set(prefs.theme ?? "SYSTEM");
+			const mode = prefs.theme ?? "SYSTEM";
+			this._themeMode.set(mode);
+			localStorage.setItem(THEME_STORAGE_KEY, mode);
 		} catch {
 			// Default to SYSTEM if backend unavailable
 			this._themeMode.set("SYSTEM");
@@ -66,6 +76,7 @@ export class ThemeService {
 	/** Set theme and persist to backend */
 	async setTheme(mode: ThemeMode): Promise<void> {
 		this._themeMode.set(mode);
+		localStorage.setItem(THEME_STORAGE_KEY, mode);
 
 		const tenantId = this.auth.tenantId();
 		if (!tenantId) return;

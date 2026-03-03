@@ -8,6 +8,7 @@ import { ApiService, ApiValidationError } from "../../../core/api/api.service";
 import { AuthService } from "../../../core/auth/auth.service";
 import { TenantContextService } from "../../../core/context/tenant-context.service";
 import { formatCurrency, formatShortDate } from "../../../shared/format-utils";
+import { ToastService } from "../../../shared/toast/toast.service";
 
 type RoomType = {
 	room_type_id: string;
@@ -64,6 +65,7 @@ export class CreateReservationComponent implements OnInit {
 	private readonly auth = inject(AuthService);
 	private readonly ctx = inject(TenantContextService);
 	private readonly router = inject(Router);
+	private readonly toast = inject(ToastService);
 
 	readonly roomTypes = signal<RoomType[]>([]);
 	readonly allRates = signal<RateDetail[]>([]);
@@ -85,7 +87,7 @@ export class CreateReservationComponent implements OnInit {
 	/** Earliest allowed check-out: day after the selected check-in date. */
 	get minCheckOut(): string {
 		if (!this.checkInDate) return this.todayStr;
-		const d = new Date(this.checkInDate + 'T00:00:00');
+		const d = new Date(this.checkInDate + "T00:00:00");
 		d.setDate(d.getDate() + 1);
 		return this.toDateString(d);
 	}
@@ -311,6 +313,7 @@ export class CreateReservationComponent implements OnInit {
 				reservation_type: this.reservationType,
 				notes: this.notes.trim() || undefined,
 			});
+			this.toast.success("Reservation created successfully.");
 			this.router.navigate(["/reservations"]);
 		} catch (e) {
 			if (e instanceof ApiValidationError) {

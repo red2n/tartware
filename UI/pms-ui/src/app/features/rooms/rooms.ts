@@ -18,6 +18,7 @@ import { TenantContextService } from "../../core/context/tenant-context.service"
 import { housekeepingStatusClass, roomStatusClass } from "../../shared/badge-utils";
 import { PaginationComponent } from "../../shared/pagination/pagination";
 import { createSortState, sortBy, toggleSort } from "../../shared/sort-utils";
+import { ToastService } from "../../shared/toast/toast.service";
 
 type StatusFilter = "ALL" | "SETUP" | "VACANT" | "OCCUPIED" | "OUT_OF_ORDER" | "BLOCKED";
 
@@ -45,6 +46,7 @@ export class RoomsComponent {
 	private readonly ctx = inject(TenantContextService);
 	private readonly router = inject(Router);
 	private readonly dialog = inject(MatDialog);
+	private readonly toast = inject(ToastService);
 
 	readonly rooms = signal<RoomItem[]>([]);
 	readonly loading = signal(false);
@@ -103,7 +105,11 @@ export class RoomsComponent {
 	});
 
 	readonly paginatedRooms = computed(() => {
-		const sorted = sortBy(this.filteredRooms(), this.sortState().column, this.sortState().direction);
+		const sorted = sortBy(
+			this.filteredRooms(),
+			this.sortState().column,
+			this.sortState().direction,
+		);
 		const start = (this.currentPage() - 1) * this.pageSize;
 		return sorted.slice(start, start + this.pageSize);
 	});
@@ -129,7 +135,12 @@ export class RoomsComponent {
 		const blocked = all.filter((r) => r.is_blocked).length;
 		const setup = all.filter((r) => r.status === "setup").length;
 		return {
-			total, occupied, vacant, ooo, blocked, setup,
+			total,
+			occupied,
+			vacant,
+			ooo,
+			blocked,
+			setup,
 			occupancyPct: total > 0 ? Math.round((occupied / total) * 100) : 0,
 		};
 	});
@@ -143,12 +154,15 @@ export class RoomsComponent {
 		});
 
 		// Clamp currentPage when filtered list shrinks
-		effect(() => {
-			const maxPage = Math.max(1, Math.ceil(this.filteredRooms().length / this.pageSize));
-			if (this.currentPage() > maxPage) {
-				this.currentPage.set(maxPage);
-			}
-		}, { allowSignalWrites: true });
+		effect(
+			() => {
+				const maxPage = Math.max(1, Math.ceil(this.filteredRooms().length / this.pageSize));
+				if (this.currentPage() > maxPage) {
+					this.currentPage.set(maxPage);
+				}
+			},
+			{ allowSignalWrites: true },
+		);
 	}
 
 	setFilter(filter: StatusFilter): void {
@@ -219,6 +233,7 @@ export class RoomsComponent {
 			});
 			ref.afterClosed().subscribe((created: boolean) => {
 				if (created) {
+					this.toast.success("Room created successfully.");
 					this.loadRooms();
 				}
 			});
