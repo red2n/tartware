@@ -22,6 +22,7 @@ export const RESERVATION_LIST_SQL = `
     r.currency,
     r.status,
     r.source,
+    r.reservation_type,
     r.guest_name,
     r.guest_email,
     r.guest_phone,

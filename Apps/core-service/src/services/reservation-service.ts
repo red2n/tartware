@@ -175,6 +175,7 @@ type ReservationListRow = {
   currency: string | null;
   status: string | null;
   source: string | null;
+  reservation_type: string | null;
   guest_name: string;
   guest_email: string;
   guest_phone: string | null;
@@ -236,6 +237,7 @@ const mapRowToReservation = (row: ReservationListRow): ReservationListItem => {
     status,
     status_display: display,
     source: normalizeSource(row.source),
+    reservation_type: row.reservation_type ?? undefined,
     guest_name: row.guest_name,
     guest_email: row.guest_email,
     guest_phone: row.guest_phone ?? undefined,

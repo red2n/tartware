@@ -1,0 +1,47 @@
+/* Group detail — component-specific only.
+ * Reusable patterns (detail-card, detail-list, breadcrumb, etc.)
+ * live in styles/shared.scss. */
+
+.card-title-icon {
+  font-size: 18px;
+  width: 18px;
+  height: 18px;
+  vertical-align: text-bottom;
+  margin-right: var(--space-1);
+  color: var(--color-fg-muted);
+}
+
+/* ── Preferred floor input (group check-in specific) ── */
+.preferred-floor-input {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin-top: var(--space-3);
+  max-width: 240px;
+}
+
+.floor-label {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-fg-default);
+}
+
+.floor-input {
+  padding: var(--space-1) var(--space-2);
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-sm);
+  background: var(--color-canvas-default);
+  color: var(--color-fg-default);
+
+  &:focus {
+    border-color: var(--color-accent-fg);
+    outline: none;
+    box-shadow: 0 0 0 1px var(--color-accent-fg);
+  }
+}
+
+.floor-hint {
+  font-size: var(--font-size-xs);
+  color: var(--color-fg-muted);
+}

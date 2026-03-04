@@ -76,3 +76,22 @@ export function reservationStatusClass(status: string): string {
 			return "";
 	}
 }
+
+export function groupBlockStatusClass(status: string): string {
+	switch (status?.toUpperCase()) {
+		case "DEFINITE":
+		case "CONFIRMED":
+			return "badge-success";
+		case "TENTATIVE":
+			return "badge-accent";
+		case "INQUIRY":
+		case "WAITLISTED":
+			return "badge-warning";
+		case "CANCELLED":
+			return "badge-danger";
+		case "COMPLETED":
+			return "badge-muted";
+		default:
+			return "";
+	}
+}

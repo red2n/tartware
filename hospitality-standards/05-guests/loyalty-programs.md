@@ -6,10 +6,12 @@
 
 | Tier Structure | Description | Example Brands |
 |----------------|-------------|----------------|
-| **4-tier** | Base, Silver, Gold, Platinum | Marriott Bonvoy |
-| **5-tier** | Base through Ambassador | Hilton Honors |
-| **3-tier** | Member, Elite, Premier | IHG Rewards |
+| **6-tier** | Member through Ambassador Elite | Marriott Bonvoy (Member, Silver, Gold, Platinum, Titanium, Ambassador) |
+| **4-tier** | Base through Diamond | Hilton Honors (Member, Silver, Gold, Diamond) |
+| **6-tier** | Club through Spire Ambassador | IHG One Rewards (Club, Silver, Gold, Platinum, Diamond, Spire Ambassador) |
+| **4-tier** | Member through Globalist | World of Hyatt (Member, Discoverist, Explorist, Globalist) |
 | **Status match** | Cross-program recognition | Industry practice |
+| **Lifetime status** | Permanent tier based on cumulative activity | Marriott (Lifetime Gold/Platinum/Titanium), Hilton (Lifetime Diamond) |
 
 ### Qualification Methods
 
@@ -47,12 +49,14 @@
 
 ### Points Valuation
 
-| Brand | Approx. Value (USD) |
-|-------|---------------------|
-| Marriott Bonvoy | 0.7 - 1.0¢/point |
-| Hilton Honors | 0.4 - 0.6¢/point |
-| IHG Rewards | 0.5 - 0.7¢/point |
-| World of Hyatt | 1.5 - 2.0¢/point |
+| Brand | Approx. Value (USD) | Notable Changes (2025-2026) |
+|-------|---------------------|------------------------------|
+| Marriott Bonvoy | 0.7 - 1.0¢/point | Dynamic award pricing fully rolled out |
+| Hilton Honors | 0.4 - 0.6¢/point | Points + money flexibility |
+| IHG One Rewards | 0.5 - 0.7¢/point | Rebranded from IHG Rewards Club; added Spire Ambassador tier |
+| World of Hyatt | 1.5 - 2.0¢/point | Highest value per point; Mr & Mrs Smith integration |
+| Wyndham Rewards | 0.8 - 1.1¢/point | Flat award chart (simpler) |
+| Accor ALL | 2.0 - 2.2¢/point (€) | Status-based earning multipliers |
 
 ## Member Benefits by Tier
 
@@ -123,12 +127,26 @@
 
 ### Revenue Impact
 
-| Metric | Impact |
-|--------|--------|
+| Metric | Impact (2025-2026 Industry Data) |
+|--------|----------------------------------|
 | Member booking premium | +10-20% ADR willingness |
 | Return frequency | +30% repeat stays |
 | Ancillary spend | +25% F&B/spa spend |
 | Direct booking | +40% direct vs. OTA |
+| Loyalty member share of revenue | 50-60% at major chains (Marriott, Hilton) |
+| Cost of loyalty point liability | 0.5-1.0¢ per point issued |
+
+## Loyalty Program Trends (2025-2026)
+
+| Trend | Description | Example |
+|-------|-------------|---------|
+| **Dynamic award pricing** | Points required varies by demand (no fixed charts) | Marriott Bonvoy, Hilton Honors |
+| **Experience rewards** | Points for non-hotel experiences (concerts, dining, tours) | Marriott Moments, World of Hyatt Experiences |
+| **Co-brand card acceleration** | Credit cards earning 2-6x points; major revenue driver | All major brands |
+| **Points + cash** | Flexible redemption mixing points and payment | Industry standard |
+| **Instant status match** | Automated competitive status recognition via apps | Growing adoption |
+| **Personalization at scale** | AI-driven offer targeting based on stay patterns | Oracle OPERA Cloud Loyalty module |
+| **OPERA Cloud Loyalty** | Flexible membership programs with configurable tiers, points, and direct booking incentives | Oracle native PMS integration |
 
 ## Data & Personalization
 

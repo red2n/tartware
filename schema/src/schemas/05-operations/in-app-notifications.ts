@@ -30,7 +30,12 @@ export const InAppNotificationCategoryEnum = z.enum([
 ]);
 
 /** Notification priority enum */
-export const InAppNotificationPriorityEnum = z.enum(["low", "normal", "high", "urgent"]);
+export const InAppNotificationPriorityEnum = z.enum([
+	"low",
+	"normal",
+	"high",
+	"urgent",
+]);
 
 /**
  * Full in-app notification schema (DB row shape).
@@ -76,4 +81,6 @@ export const CreateInAppNotificationSchema = z.object({
 	expires_at: z.coerce.date().optional(),
 });
 
-export type CreateInAppNotification = z.infer<typeof CreateInAppNotificationSchema>;
+export type CreateInAppNotification = z.infer<
+	typeof CreateInAppNotificationSchema
+>;

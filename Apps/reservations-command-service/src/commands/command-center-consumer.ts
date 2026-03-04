@@ -21,6 +21,7 @@ import {
 import {
   GroupAddRoomsCommandSchema,
   GroupBillingSetupCommandSchema,
+  GroupCheckInCommandSchema,
   GroupCreateCommandSchema,
   GroupCutoffEnforceCommandSchema,
   GroupUploadRoomingListCommandSchema,
@@ -74,6 +75,7 @@ import {
   expireReservation,
   extendStay,
   generateRegistrationCard,
+  groupCheckIn,
   markNoShow,
   modifyReservation,
   otaRatePush,
@@ -340,6 +342,11 @@ const routeReservationCommand = async (
     case "group.billing.setup": {
       const commandPayload = GroupBillingSetupCommandSchema.parse(envelope.payload);
       await setupGroupBilling(metadata.tenantId, commandPayload, context);
+      break;
+    }
+    case "group.check_in": {
+      const commandPayload = GroupCheckInCommandSchema.parse(envelope.payload);
+      await groupCheckIn(metadata.tenantId, commandPayload, context);
       break;
     }
     case "integration.ota.sync_request": {

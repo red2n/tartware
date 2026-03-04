@@ -3,6 +3,8 @@ export {
   GroupAddRoomsCommandSchema,
   type GroupBillingSetupCommand,
   GroupBillingSetupCommandSchema,
+  type GroupCheckInCommand,
+  GroupCheckInCommandSchema,
   type GroupCreateCommand,
   GroupCreateCommandSchema,
   type GroupCutoffEnforceCommand,

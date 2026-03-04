@@ -45,6 +45,7 @@ import {
 import {
 	GroupAddRoomsCommandSchema,
 	GroupBillingSetupCommandSchema,
+	GroupCheckInCommandSchema,
 	GroupCreateCommandSchema,
 	GroupCutoffEnforceCommandSchema,
 	GroupUploadRoomingListCommandSchema,
@@ -532,6 +533,7 @@ const commandPayloadValidators = new Map<string, CommandPayloadValidator>([
 		"group.billing.setup",
 		(payload) => GroupBillingSetupCommandSchema.parse(payload),
 	],
+	["group.check_in", (payload) => GroupCheckInCommandSchema.parse(payload)],
 	[
 		"rooms.inventory.block",
 		(payload) => RoomInventoryBlockCommandSchema.parse(payload),

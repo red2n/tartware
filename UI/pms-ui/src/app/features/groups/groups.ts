@@ -7,22 +7,22 @@ import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
 import { MatTooltipModule } from "@angular/material/tooltip";
 import { Router } from "@angular/router";
 
-import type { ReservationListItem, ReservationListResponse } from "@tartware/schemas";
+import type { GroupBookingListItem } from "@tartware/schemas";
 
 import { ApiService } from "../../core/api/api.service";
 import { AuthService } from "../../core/auth/auth.service";
 import { TenantContextService } from "../../core/context/tenant-context.service";
 import { TranslatePipe } from "../../core/i18n/translate.pipe";
-import { reservationStatusClass } from "../../shared/badge-utils";
+import { groupBlockStatusClass } from "../../shared/badge-utils";
 import { PageHeaderComponent } from "../../shared/components/page-header/page-header";
 import { formatCurrency, formatShortDate } from "../../shared/format-utils";
 import { PaginationComponent } from "../../shared/pagination/pagination";
 import { createSortState, sortBy, toggleSort } from "../../shared/sort-utils";
 
-type StatusFilter = "ALL" | "CONFIRMED" | "CHECKED_IN" | "PENDING" | "CANCELLED" | "CHECKED_OUT";
+type StatusFilter = "ALL" | "TENTATIVE" | "DEFINITE" | "INQUIRY" | "CONFIRMED" | "CANCELLED";
 
 @Component({
-	selector: "app-reservations",
+	selector: "app-groups",
 	standalone: true,
 	imports: [
 		NgClass,
@@ -35,16 +35,16 @@ type StatusFilter = "ALL" | "CONFIRMED" | "CHECKED_IN" | "PENDING" | "CANCELLED"
 		PageHeaderComponent,
 		TranslatePipe,
 	],
-	templateUrl: "./reservations.html",
-	styleUrl: "./reservations.scss",
+	templateUrl: "./groups.html",
+	styleUrl: "./groups.scss",
 })
-export class ReservationsComponent {
+export class GroupsComponent {
 	private readonly api = inject(ApiService);
 	private readonly auth = inject(AuthService);
 	private readonly ctx = inject(TenantContextService);
 	private readonly router = inject(Router);
 
-	readonly reservations = signal<ReservationListItem[]>([]);
+	readonly groups = signal<GroupBookingListItem[]>([]);
 	readonly loading = signal(false);
 	readonly error = signal<string | null>(null);
 	readonly searchQuery = signal("");
@@ -55,39 +55,53 @@ export class ReservationsComponent {
 
 	readonly statusFilters: { key: StatusFilter; label: string }[] = [
 		{ key: "ALL", label: "All" },
+		{ key: "TENTATIVE", label: "Tentative" },
+		{ key: "DEFINITE", label: "Definite" },
 		{ key: "CONFIRMED", label: "Confirmed" },
-		{ key: "CHECKED_IN", label: "Checked In" },
-		{ key: "PENDING", label: "Pending" },
-		{ key: "CHECKED_OUT", label: "Checked Out" },
+		{ key: "INQUIRY", label: "Inquiry" },
 		{ key: "CANCELLED", label: "Cancelled" },
 	];
 
-	readonly filteredReservations = computed(() => {
-		let list = this.reservations();
+	readonly groupTypeIcon: Record<string, { icon: string; tooltip: string }> = {
+		CONFERENCE: { icon: "groups", tooltip: "Conference" },
+		WEDDING: { icon: "favorite", tooltip: "Wedding" },
+		CORPORATE: { icon: "business", tooltip: "Corporate" },
+		TOUR_GROUP: { icon: "tour", tooltip: "Tour Group" },
+		SPORTS_TEAM: { icon: "sports", tooltip: "Sports Team" },
+		REUNION: { icon: "celebration", tooltip: "Reunion" },
+		CONVENTION: { icon: "location_city", tooltip: "Convention" },
+		GOVERNMENT: { icon: "account_balance", tooltip: "Government" },
+		AIRLINE_CREW: { icon: "flight", tooltip: "Airline Crew" },
+		EDUCATIONAL: { icon: "school", tooltip: "Educational" },
+		OTHER: { icon: "more_horiz", tooltip: "Other" },
+	};
+
+	readonly filteredGroups = computed(() => {
+		let list = this.groups();
 		const filter = this.activeFilter();
 		const query = this.searchQuery().toLowerCase().trim();
 
 		if (filter !== "ALL") {
-			list = list.filter((r) => r.status.toUpperCase() === filter);
+			list = list.filter((g) => g.block_status.toUpperCase() === filter);
 		}
 
 		if (query) {
 			list = list.filter(
-				(r) =>
-					r.guest_name.toLowerCase().includes(query) ||
-					r.confirmation_number.toLowerCase().includes(query) ||
-					(r.room_number?.toLowerCase().includes(query) ?? false) ||
-					(r.guest_email?.toLowerCase().includes(query) ?? false) ||
-					(r.room_type_name?.toLowerCase().includes(query) ?? false),
+				(g) =>
+					g.group_name.toLowerCase().includes(query) ||
+					(g.group_code?.toLowerCase().includes(query) ?? false) ||
+					g.contact_name.toLowerCase().includes(query) ||
+					(g.contact_email?.toLowerCase().includes(query) ?? false) ||
+					(g.organization_name?.toLowerCase().includes(query) ?? false),
 			);
 		}
 
 		return list;
 	});
 
-	readonly paginatedReservations = computed(() => {
+	readonly paginatedGroups = computed(() => {
 		const sorted = sortBy(
-			this.filteredReservations(),
+			this.filteredGroups(),
 			this.sortState().column,
 			this.sortState().direction,
 		);
@@ -96,35 +110,30 @@ export class ReservationsComponent {
 	});
 
 	readonly filterCounts = computed(() => {
-		const all = this.reservations();
+		const all = this.groups();
 		const countByStatus = (status: string) =>
-			all.filter((r) => r.status.toUpperCase() === status).length;
+			all.filter((g) => g.block_status.toUpperCase() === status).length;
 		return {
 			ALL: all.length,
+			TENTATIVE: countByStatus("TENTATIVE"),
+			DEFINITE: countByStatus("DEFINITE"),
 			CONFIRMED: countByStatus("CONFIRMED"),
-			CHECKED_IN: countByStatus("CHECKED_IN"),
-			PENDING: countByStatus("PENDING"),
-			CHECKED_OUT: countByStatus("CHECKED_OUT"),
+			INQUIRY: countByStatus("INQUIRY"),
 			CANCELLED: countByStatus("CANCELLED"),
 		};
 	});
 
 	readonly summary = computed(() => {
-		const all = this.reservations();
-		const today = new Date().toISOString().split("T")[0];
-		const upper = (r: ReservationListItem) => r.status.toUpperCase();
+		const all = this.groups();
+		const active = all.filter((g) => g.is_active);
 		return {
-			arrivalsToday: all.filter(
-				(r) => r.check_in_date === today && !["CANCELLED", "CHECKED_OUT"].includes(upper(r)),
-			).length,
-			inHouse: all.filter((r) => upper(r) === "CHECKED_IN").length,
-			departuresToday: all.filter((r) => r.check_out_date === today && upper(r) === "CHECKED_IN")
-				.length,
-			pending: all.filter((r) => upper(r) === "PENDING").length,
-			totalRevenue: all
-				.filter((r) => upper(r) !== "CANCELLED")
-				.reduce((sum, r) => sum + r.total_amount, 0),
-			currency: all[0]?.currency ?? "USD",
+			totalGroups: all.length,
+			activeGroups: active.length,
+			totalRoomsBlocked: active.reduce((sum, g) => sum + g.total_rooms_blocked, 0),
+			avgPickup:
+				active.length > 0
+					? Math.round(active.reduce((sum, g) => sum + g.pickup_percentage, 0) / active.length)
+					: 0,
 		};
 	});
 
@@ -132,13 +141,12 @@ export class ReservationsComponent {
 		effect(() => {
 			this.auth.tenantId();
 			this.ctx.propertyId();
-			this.loadReservations();
+			this.loadGroups();
 		});
 
-		// Clamp currentPage when filtered list shrinks
 		effect(
 			() => {
-				const maxPage = Math.max(1, Math.ceil(this.filteredReservations().length / this.pageSize));
+				const maxPage = Math.max(1, Math.ceil(this.filteredGroups().length / this.pageSize));
 				if (this.currentPage() > maxPage) {
 					this.currentPage.set(maxPage);
 				}
@@ -174,27 +182,25 @@ export class ReservationsComponent {
 		return s.direction === "asc" ? "ascending" : "descending";
 	}
 
-	viewReservation(id: string): void {
-		this.router.navigate(["/reservations", id]);
+	viewGroup(id: string): void {
+		this.router.navigate(["/groups", id]);
 	}
 
-	statusClass = reservationStatusClass;
+	openCreateGroup(): void {
+		this.router.navigate(["/groups/new"]);
+	}
+
+	statusClass = groupBlockStatusClass;
 	formatDate = formatShortDate;
 	formatCurrency = formatCurrency;
 
-	readonly reservationTypeIcon: Record<string, { icon: string; tooltip: string }> = {
-		TRANSIENT: { icon: "person", tooltip: "Transient" },
-		CORPORATE: { icon: "business", tooltip: "Corporate" },
-		GROUP: { icon: "groups", tooltip: "Group" },
-		WHOLESALE: { icon: "inventory_2", tooltip: "Wholesale" },
-		PACKAGE: { icon: "card_giftcard", tooltip: "Package" },
-		COMPLIMENTARY: { icon: "redeem", tooltip: "Complimentary" },
-		HOUSE_USE: { icon: "home_work", tooltip: "House Use" },
-		DAY_USE: { icon: "wb_sunny", tooltip: "Day Use" },
-		WAITLIST: { icon: "hourglass_empty", tooltip: "Waitlist" },
-	};
+	pickupClass(percentage: number): string {
+		if (percentage >= 80) return "badge-success";
+		if (percentage >= 50) return "badge-warning";
+		return "badge-danger";
+	}
 
-	async loadReservations(): Promise<void> {
+	async loadGroups(): Promise<void> {
 		const tenantId = this.auth.tenantId();
 		if (!tenantId) return;
 
@@ -208,17 +214,13 @@ export class ReservationsComponent {
 			};
 			const propertyId = this.ctx.propertyId();
 			if (propertyId) params["property_id"] = propertyId;
-			const res = await this.api.get<ReservationListResponse>("/reservations", params);
-			const list = Array.isArray(res) ? res : (res.data ?? []);
-			this.reservations.set(list);
+			const res = await this.api.get<GroupBookingListItem[]>("/group-bookings", params);
+			const list = Array.isArray(res) ? res : [];
+			this.groups.set(list);
 		} catch (e) {
-			this.error.set(e instanceof Error ? e.message : "Failed to load reservations");
+			this.error.set(e instanceof Error ? e.message : "Failed to load group bookings");
 		} finally {
 			this.loading.set(false);
 		}
-	}
-
-	openCreateReservation(): void {
-		this.router.navigate(["/reservations/new"]);
 	}
 }

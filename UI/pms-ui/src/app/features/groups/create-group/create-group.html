@@ -1,0 +1,285 @@
+<div class="create-group-page">
+  <div class="page-header">
+    <div class="breadcrumb">
+      <a routerLink="/groups" class="breadcrumb-link">
+        <mat-icon class="breadcrumb-icon">arrow_back</mat-icon>
+        {{ 'Group Bookings' | translate }}
+      </a>
+      <span class="breadcrumb-sep">/</span>
+      <span class="breadcrumb-current">{{ 'New Group Booking' | translate }}</span>
+    </div>
+  </div>
+
+  <h2 class="page-title">{{ 'New Group Booking' | translate }}</h2>
+
+  @if (error(); as err) {
+    <div class="flash flash-error">
+      <mat-icon class="flash-icon">error_outline</mat-icon>
+      {{ err }}
+    </div>
+  }
+
+  <form (ngSubmit)="save()" #groupForm="ngForm" class="create-form">
+    <!-- Group Details -->
+    <section class="form-section">
+      <h3 class="section-header">{{ 'Group Details' | translate }}</h3>
+      <div class="form-grid">
+        <div class="field-group" [class.field-error]="touched['groupName'] && !groupName.trim()">
+          <label class="field-label" for="groupName">{{ 'Group Name' | translate }} <span class="required">*</span></label>
+          <input
+            id="groupName"
+            type="text"
+            class="field-input"
+            [(ngModel)]="groupName"
+            name="groupName"
+            required
+            maxlength="255"
+            placeholder="e.g. Acme Corp Annual Meeting 2025"
+            (blur)="markTouched('groupName')" />
+          @if (touched['groupName'] && !groupName.trim()) {
+            <span class="field-hint field-hint-error">{{ 'Group name is required' | translate }}</span>
+          }
+        </div>
+
+        <div class="field-group">
+          <label class="field-label" for="groupType">{{ 'Group Type' | translate }} <span class="required">*</span></label>
+          <select id="groupType" class="field-input" [(ngModel)]="groupType" name="groupType">
+            @for (t of groupTypes; track t.value) {
+              <option [value]="t.value">{{ t.label }}</option>
+            }
+          </select>
+        </div>
+
+        <div class="field-group">
+          <label class="field-label" for="organizationName">{{ 'Organization' | translate }}</label>
+          <input
+            id="organizationName"
+            type="text"
+            class="field-input"
+            [(ngModel)]="organizationName"
+            name="organizationName"
+            maxlength="255"
+            placeholder="Company or organization name" />
+        </div>
+
+        <div class="field-group">
+          <label class="field-label" for="blockStatus">{{ 'Initial Status' | translate }}</label>
+          <select id="blockStatus" class="field-input" [(ngModel)]="blockStatus" name="blockStatus">
+            @for (s of blockStatuses; track s.value) {
+              <option [value]="s.value">{{ s.label }}</option>
+            }
+          </select>
+        </div>
+      </div>
+    </section>
+
+    <!-- Stay Dates -->
+    <section class="form-section">
+      <h3 class="section-header">{{ 'Stay Dates' | translate }}</h3>
+      <div class="form-grid">
+        <div class="field-group" [class.field-error]="touched['arrivalDate'] && !arrivalDate">
+          <label class="field-label" for="arrivalDate">{{ 'Arrival Date' | translate }} <span class="required">*</span></label>
+          <input
+            id="arrivalDate"
+            type="date"
+            class="field-input"
+            [(ngModel)]="arrivalDate"
+            name="arrivalDate"
+            required
+            [min]="todayStr"
+            (change)="onArrivalChange()"
+            (blur)="markTouched('arrivalDate')" />
+          @if (touched['arrivalDate'] && !arrivalDate) {
+            <span class="field-hint field-hint-error">{{ 'Arrival date is required' | translate }}</span>
+          }
+        </div>
+
+        <div class="field-group" [class.field-error]="touched['departureDate'] && !departureDate">
+          <label class="field-label" for="departureDate">{{ 'Departure Date' | translate }} <span class="required">*</span></label>
+          <input
+            id="departureDate"
+            type="date"
+            class="field-input"
+            [(ngModel)]="departureDate"
+            name="departureDate"
+            required
+            [min]="minDeparture"
+            (blur)="markTouched('departureDate')" />
+          @if (touched['departureDate'] && !departureDate) {
+            <span class="field-hint field-hint-error">{{ 'Departure date is required' | translate }}</span>
+          }
+        </div>
+
+        <div class="field-group" [class.field-error]="touched['totalRoomsRequested'] && totalRoomsRequested < 1">
+          <label class="field-label" for="totalRoomsRequested">{{ 'Rooms Requested' | translate }} <span class="required">*</span></label>
+          <input
+            id="totalRoomsRequested"
+            type="number"
+            class="field-input"
+            [(ngModel)]="totalRoomsRequested"
+            name="totalRoomsRequested"
+            required
+            min="1"
+            (blur)="markTouched('totalRoomsRequested')" />
+          @if (touched['totalRoomsRequested'] && totalRoomsRequested < 1) {
+            <span class="field-hint field-hint-error">{{ 'At least 1 room is required' | translate }}</span>
+          }
+        </div>
+
+        <div class="field-group">
+          <label class="field-label" for="cutoffDate">{{ 'Cutoff Date' | translate }}</label>
+          <input
+            id="cutoffDate"
+            type="date"
+            class="field-input"
+            [(ngModel)]="cutoffDate"
+            name="cutoffDate" />
+          <span class="field-hint">{{ 'Rooms released after this date' | translate }}</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Contact Information -->
+    <section class="form-section">
+      <h3 class="section-header">{{ 'Contact Information' | translate }}</h3>
+      <div class="form-grid">
+        <div class="field-group" [class.field-error]="touched['contactName'] && !contactName.trim()">
+          <label class="field-label" for="contactName">{{ 'Contact Name' | translate }} <span class="required">*</span></label>
+          <input
+            id="contactName"
+            type="text"
+            class="field-input"
+            [(ngModel)]="contactName"
+            name="contactName"
+            required
+            maxlength="255"
+            placeholder="Primary contact person"
+            (blur)="markTouched('contactName')" />
+          @if (touched['contactName'] && !contactName.trim()) {
+            <span class="field-hint field-hint-error">{{ 'Contact name is required' | translate }}</span>
+          }
+        </div>
+
+        <div class="field-group">
+          <label class="field-label" for="contactEmail">{{ 'Email' | translate }}</label>
+          <input
+            id="contactEmail"
+            type="email"
+            class="field-input"
+            [(ngModel)]="contactEmail"
+            name="contactEmail"
+            maxlength="255"
+            placeholder="contact@example.com" />
+        </div>
+
+        <div class="field-group">
+          <label class="field-label" for="contactPhone">{{ 'Phone' | translate }}</label>
+          <input
+            id="contactPhone"
+            type="tel"
+            class="field-input"
+            [(ngModel)]="contactPhone"
+            name="contactPhone"
+            maxlength="50"
+            placeholder="+1 (555) 000-0000" />
+        </div>
+      </div>
+    </section>
+
+    <!-- Financial (Optional) -->
+    <section class="form-section">
+      <h3 class="section-header">{{ 'Financial' | translate }}</h3>
+      <div class="form-grid">
+        <div class="field-group">
+          <label class="field-label" for="rateType">{{ 'Rate Type' | translate }}</label>
+          <select id="rateType" class="field-input" [(ngModel)]="rateType" name="rateType">
+            @for (r of rateTypes; track r.value) {
+              <option [value]="r.value">{{ r.label }}</option>
+            }
+          </select>
+        </div>
+
+        <div class="field-group">
+          <label class="field-label" for="negotiatedRate">{{ 'Negotiated Rate' | translate }}</label>
+          <input
+            id="negotiatedRate"
+            type="number"
+            class="field-input"
+            [(ngModel)]="negotiatedRate"
+            name="negotiatedRate"
+            min="0"
+            step="0.01"
+            placeholder="0.00" />
+        </div>
+
+        <div class="field-group">
+          <label class="field-label" for="paymentMethod">{{ 'Payment Method' | translate }}</label>
+          <select id="paymentMethod" class="field-input" [(ngModel)]="paymentMethod" name="paymentMethod">
+            @for (p of paymentMethods; track p.value) {
+              <option [value]="p.value">{{ p.label }}</option>
+            }
+          </select>
+        </div>
+
+        <div class="field-group">
+          <label class="field-label" for="depositAmount">{{ 'Deposit Amount' | translate }}</label>
+          <input
+            id="depositAmount"
+            type="number"
+            class="field-input"
+            [(ngModel)]="depositAmount"
+            name="depositAmount"
+            min="0"
+            step="0.01"
+            placeholder="0.00" />
+        </div>
+      </div>
+    </section>
+
+    <!-- Additional Options -->
+    <section class="form-section">
+      <h3 class="section-header">{{ 'Additional Options' | translate }}</h3>
+      <div class="form-grid">
+        <div class="field-group field-checkbox">
+          <label class="checkbox-label">
+            <input type="checkbox" [(ngModel)]="meetingSpaceRequired" name="meetingSpaceRequired" />
+            {{ 'Meeting space required' | translate }}
+          </label>
+        </div>
+
+        <div class="field-group field-checkbox">
+          <label class="checkbox-label">
+            <input type="checkbox" [(ngModel)]="cateringRequired" name="cateringRequired" />
+            {{ 'Catering required' | translate }}
+          </label>
+        </div>
+
+        <div class="field-group field-full">
+          <label class="field-label" for="notes">{{ 'Notes' | translate }}</label>
+          <textarea
+            id="notes"
+            class="field-input field-textarea"
+            [(ngModel)]="notes"
+            name="notes"
+            maxlength="2000"
+            rows="3"
+            placeholder="Special requests, setup requirements, etc."></textarea>
+        </div>
+      </div>
+    </section>
+
+    <!-- Actions -->
+    <div class="form-actions">
+      <button type="button" class="btn btn-outline" (click)="cancel()">{{ 'Cancel' | translate }}</button>
+      <button type="submit" class="btn btn-primary" [disabled]="!isValid || saving()">
+        @if (saving()) {
+          <mat-spinner diameter="16"></mat-spinner>
+          {{ 'Creating...' | translate }}
+        } @else {
+          <mat-icon>add</mat-icon>
+          {{ 'Create Group Booking' | translate }}
+        }
+      </button>
+    </div>
+  </form>
+</div>

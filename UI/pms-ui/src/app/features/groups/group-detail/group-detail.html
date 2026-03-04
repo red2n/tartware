@@ -1,0 +1,222 @@
+<div class="page-header">
+  <div class="breadcrumb">
+    <a routerLink="/groups" class="breadcrumb-link">
+      <mat-icon class="breadcrumb-icon">arrow_back</mat-icon>
+      {{ 'Group Bookings' | translate }}
+    </a>
+    <span class="breadcrumb-sep">/</span>
+    @if (group(); as g) {
+      <span class="breadcrumb-current">{{ g.group_name }}</span>
+    }
+  </div>
+  @if (group(); as g) {
+    <div class="page-actions">
+      @if (canCheckIn()) {
+        <button class="btn btn-primary btn-sm" (click)="showCheckInConfirm()" [disabled]="actionLoading()" matTooltip="Batch check-in all picked reservations with proximity-based room assignment">
+          <mat-icon>login</mat-icon>
+          {{ 'Check In Group' | translate }}
+        </button>
+      }
+    </div>
+  }
+</div>
+
+<!-- Action feedback -->
+@if (actionSuccess(); as msg) {
+  <div class="flash flash-success">
+    <mat-icon class="flash-icon">check_circle</mat-icon>
+    {{ msg }}
+  </div>
+}
+@if (actionError(); as msg) {
+  <div class="flash flash-error">
+    <mat-icon class="flash-icon">error_outline</mat-icon>
+    {{ msg }}
+  </div>
+}
+
+<!-- Group check-in confirmation -->
+@if (confirmingCheckIn()) {
+  <div class="action-confirm-card">
+    <div class="confirm-header">
+      <mat-icon class="confirm-icon confirm-icon-checkin">login</mat-icon>
+      <h3 class="confirm-title">{{ 'Group Check-In' | translate }}</h3>
+    </div>
+    <div class="confirm-body">
+      <p>{{ 'This will batch check-in all picked reservations in this group with proximity-based room assignment.' | translate }}</p>
+      <ul class="confirm-list">
+        <li>{{ 'Rooms will be assigned on the same floor when possible' | translate }}</li>
+        <li>{{ 'Adjacent/contiguous rooms are preferred for the group' | translate }}</li>
+        <li>{{ 'Reservations without sufficient deposits will be skipped' | translate }}</li>
+      </ul>
+
+      <div class="preferred-floor-input">
+        <label for="preferredFloor" class="floor-label">{{ 'Preferred Floor (optional)' | translate }}</label>
+        <input
+          id="preferredFloor"
+          type="number"
+          class="floor-input"
+          [ngModel]="preferredFloor()"
+          (ngModelChange)="preferredFloor.set($event)"
+          placeholder="e.g. 3"
+          min="1" />
+        <span class="floor-hint">{{ 'Leave empty for best available floor' | translate }}</span>
+      </div>
+    </div>
+    <div class="confirm-actions">
+      <button class="btn btn-outline btn-sm" (click)="cancelAction()" [disabled]="actionLoading()">{{ 'Cancel' | translate }}</button>
+      <button class="btn btn-primary btn-sm" (click)="checkInGroup()" [disabled]="actionLoading()">
+        @if (actionLoading()) {
+          <mat-spinner diameter="16"></mat-spinner>
+          {{ 'Checking in...' | translate }}
+        } @else {
+          <mat-icon>login</mat-icon>
+          {{ 'Confirm Group Check-In' | translate }}
+        }
+      </button>
+    </div>
+  </div>
+}
+
+@if (loading()) {
+  <div class="loading-center">
+    <mat-spinner diameter="32" />
+  </div>
+} @else if (error(); as err) {
+  <div class="flash flash-error">
+    <mat-icon class="flash-icon">error_outline</mat-icon>
+    {{ err }}
+    <button class="btn btn-invisible" (click)="goBack()">{{ 'Go back' | translate }}</button>
+  </div>
+} @else if (group(); as g) {
+  <div class="detail-layout">
+    <!-- Group Information -->
+    <div class="detail-card">
+      <div class="card-header">
+        <h3 class="card-title">
+          @if (groupTypeIcon[g.group_type.toUpperCase()]; as typeInfo) {
+            <mat-icon class="card-title-icon" [matTooltip]="typeInfo.tooltip">{{ typeInfo.icon }}</mat-icon>
+          }
+          {{ 'Group Information' | translate }}
+        </h3>
+      </div>
+      <div class="card-body">
+        <dl class="detail-list">
+          @for (row of groupInfoRows(); track row.label) {
+            <div class="detail-row">
+              <dt class="detail-label">{{ row.label }}</dt>
+              <dd class="detail-value">
+                @if (row.badge) {
+                  <span class="badge" [ngClass]="row.badge">{{ row.value }}</span>
+                } @else {
+                  {{ row.value }}
+                }
+              </dd>
+            </div>
+          }
+        </dl>
+      </div>
+    </div>
+
+    <!-- Stay Details -->
+    <div class="detail-card">
+      <div class="card-header">
+        <h3 class="card-title">{{ 'Stay Details' | translate }}</h3>
+      </div>
+      <div class="card-body">
+        <dl class="detail-list">
+          @for (row of stayRows(); track row.label) {
+            <div class="detail-row">
+              <dt class="detail-label">{{ row.label }}</dt>
+              <dd class="detail-value">{{ row.value }}</dd>
+            </div>
+          }
+        </dl>
+      </div>
+    </div>
+
+    <!-- Contact Information -->
+    <div class="detail-card">
+      <div class="card-header">
+        <h3 class="card-title">{{ 'Contact Information' | translate }}</h3>
+      </div>
+      <div class="card-body">
+        <dl class="detail-list">
+          @for (row of contactRows(); track row.label) {
+            <div class="detail-row">
+              <dt class="detail-label">{{ row.label }}</dt>
+              <dd class="detail-value">{{ row.value }}</dd>
+            </div>
+          }
+        </dl>
+      </div>
+    </div>
+
+    @defer (on idle) {
+      <!-- Room Block Summary -->
+      <div class="detail-card">
+        <div class="card-header">
+          <h3 class="card-title">{{ 'Room Block Summary' | translate }}</h3>
+        </div>
+        <div class="card-body">
+          <dl class="detail-list">
+            @for (row of roomRows(); track row.label) {
+              <div class="detail-row">
+                <dt class="detail-label">{{ row.label }}</dt>
+                <dd class="detail-value">
+                  @if (row.badge) {
+                    <span class="badge" [ngClass]="row.badge">{{ row.value }}</span>
+                  } @else {
+                    {{ row.value }}
+                  }
+                </dd>
+              </div>
+            }
+          </dl>
+        </div>
+      </div>
+
+      <!-- Financial Summary -->
+      <div class="detail-card">
+        <div class="card-header">
+          <h3 class="card-title">{{ 'Financial Summary' | translate }}</h3>
+        </div>
+        <div class="card-body">
+          <dl class="detail-list">
+            @for (row of financialRows(); track row.label) {
+              <div class="detail-row">
+                <dt class="detail-label">{{ row.label }}</dt>
+                <dd class="detail-value">
+                  @if (row.badge) {
+                    <span class="badge" [ngClass]="row.badge">{{ row.value }}</span>
+                  } @else {
+                    {{ row.value }}
+                  }
+                </dd>
+              </div>
+            }
+          </dl>
+        </div>
+      </div>
+    } @placeholder {
+      <div class="placeholder-table">
+        <div class="placeholder-row"></div>
+        <div class="placeholder-row"></div>
+        <div class="placeholder-row"></div>
+      </div>
+    } @loading (minimum 200ms) {
+      <div class="loading-state">
+        <mat-spinner diameter="24"></mat-spinner>
+        <span class="text-muted">{{ 'Rendering details…' | translate }}</span>
+      </div>
+    }
+
+    <!-- Meta -->
+    <div class="meta-line">
+      Created {{ formatDate(g.created_at) }}
+      @if (g.updated_at) {
+        · Updated {{ formatDate(g.updated_at) }}
+      }
+    </div>
+  </div>
+}

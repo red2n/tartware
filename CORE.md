@@ -114,13 +114,14 @@ rateSnapshot.setRate(new BigDecimal(rateSnapshot.getRate()).subtract(taxAmount).
 - **File:** `stay-pms-common/common-interface/src/main/java/com/agilysys/pms/account/model/LineItemView.java`
 - **Formula:** `taxAmount = Σ(unitTaxAmount × quantity)` per tax line
 ```java
-taxAmount += unitAmount * quantity;
+taxAmount = taxAmount.add(tax.getUnitAmount().multiply(new BigDecimal(tax.getQuantity())));
 ```
 
 > **📊 Example:** Tax line 1: unitTax = $5.00, qty = 2; Tax line 2: unitTax = $3.00, qty = 2
 > ```
 > taxAmount = (5.00 × 2) + (3.00 × 2) = 10.00 + 6.00 = $16.00
 > ```
+> **Note:** For reverse-tax line items, the code uses `getReverseTaxTotalChargeAmount()` directly instead of the `unitAmount × quantity` formula.
 
 ### 1.7 Reverse Tax Display — Unit Amount
 - **Service:** `stay-account-service`
@@ -140,9 +141,10 @@ unitAmount = lineItem.getReverseTaxTotalChargeAmount().add(lineItem.getTaxAmount
 ### 1.8 Component Taxable Amount
 - **Service:** `stay-property-service`
 - **File:** `stay-property-service/ServiceImplementation/src/main/java/com/agilysys/pms/property/service/handler/AvailabilityHandler.java`
-- **Formula:** `taxableAmount = componentAmount × totalQuantity`
+- **Formula:** `taxableAmount = (componentAmount − routedAmount) × totalQuantity`
 ```java
-taxableComponentItem.setTaxableAmount(component.getAmount().multiply(BigDecimal.valueOf(totalQuantity)));
+BigDecimal effectiveAmount = component.getAmount().subtract(defaulted(component.getRoutedAmount()));
+taxableComponentItem.setTaxableAmount(effectiveAmount.multiply(BigDecimal.valueOf(totalQuantity)));
 ```
 
 > **📊 Example:** componentAmount = $25.00, totalQuantity = 3
@@ -208,7 +210,7 @@ node.setRate(node.getRate().multiply(BigDecimal.ONE.add(
 - **Service:** `stay-rate-service`
 - **File:** `stay-rate-service/ServiceImplementation/src/main/java/com/agilysys/pms/rates/engine/DateNodeProcessor.java`
 - **Method:** `computeSurcharge()`
-- **Formula:** `rate = rate + singlePersonAdultCharge` (when `guestTotal < minAdults`)
+- **Formula:** `rate = rate + singlePersonAdultCharge` (when `isPricePerPerson` is true and `guestTotal < minAdults`)
 ```java
 surCharge = surCharge.add(ratePlanSurcharge.getSinglePersonAdultCharge());
 node.setRate(node.getRate().add(surCharge));
@@ -225,18 +227,19 @@ node.setRate(node.getRate().add(surCharge));
 - **File:** `stay-rate-service/ServiceImplementation/src/main/java/com/agilysys/pms/rates/engine/DateNode.java`
 - **Method:** `toModel()`
 - **Formula:**
-  - `roomRate = max(0, baseRate − inclusiveComponents + extras)`
-  - `totalRate = roomRate + inclusiveComponents + exclusiveComponents`
+  - `roomRate = rate` (rate already includes surcharges from upstream)
+  - `totalRate = roomRate + totalComponentsRate`
 ```java
-BigDecimal roomRate = baseRate.subtract(includedComponentsRate).add(rateWithoutBaseRate);
-model.setRate(roomRate.add(includedComponentsRate).add(excludedComponentsRate));
+model.setRoomRate(this.getRate());
+model.setRate(model.getRoomRate().add(totalComponentsRate));
 ```
 
-> **📊 Example:** baseRate = $200.00, inclusiveComponents = $30.00, extras = $10.00, exclusiveComponents = $25.00
+> **📊 Example:** rate = $200.00, totalComponentsRate = $55.00 (inclusive $30 + exclusive $25)
 > ```
-> roomRate = max(0, 200.00 − 30.00 + 10.00) = $180.00
-> totalRate = 180.00 + 30.00 + 25.00 = $235.00
+> roomRate  = $200.00
+> totalRate = 200.00 + 55.00 = $255.00
 > ```
+> **Note:** The inclusive/exclusive component split is handled upstream in `ComponentDomain.toComponentRateModel()`, not in `toModel()` itself.
 
 ### 2.5 Strike-Through Price
 - **Service:** `stay-rate-service`
@@ -254,7 +257,7 @@ strikeThroughByPriceId.put(key, rate.getRoomRate().add(componentRate));
 
 ### 2.6 Extra Guest Charge
 - **Service:** `stay-rate-service`
-- **File:** `stay-rate-service/ServiceImplementation/src/main/java/com/agilysys/pms/rates/service/handler/sharedreservation/util/SharedReservationCalculationUtils.java`
+- **File:** ⚠️ Source file not available in workspace (compiled `.class` only)
 - **Method:** `getExtraChargeForCategory()`
 - **Formula:** `extraChargeTotal = extraCharge × (totalGuests − includedGuests)`
 ```java
@@ -272,7 +275,7 @@ return extraCharge.multiply(BigDecimal.valueOf(applicableCount));
 - **Service:** `stay-pms-common`
 - **File:** `stay-pms-common/common-interface/src/main/java/com/agilysys/common/model/rate/DailyRateView.java`
 - **Method:** `getCalculatedRate()`
-- **Formula:** `totalRate = preOccupancyRate + Σ(extraCategoryCharge × max(categoryCount − categoryIncluded, 0))` for adults, children, ageCategory1..8
+- **Formula:** `totalRate = preOccupancyRate + Σ(extraCategoryCharge × (categoryCount − categoryIncluded))` for adults, children, ageCategory1..8
 ```java
 total = preOccupancyRate
     + extraAdultCharge * (adults - adultsIncluded)
@@ -282,9 +285,10 @@ total = preOccupancyRate
 
 > **📊 Example:** preOccupancyRate = $180.00, adults = 3 (included = 2), children = 1 (included = 1), extraAdultCharge = $25.00, extraChildCharge = $15.00
 > ```
-> totalRate = 180.00 + (25.00 × max(3−2, 0)) + (15.00 × max(1−1, 0))
+> totalRate = 180.00 + (25.00 × (3−2)) + (15.00 × (1−1))
 >          = 180.00 + 25.00 + 0.00 = $205.00
 > ```
+> **Note:** `getCalculatedRate()` does NOT clamp negative surcharges to zero. A separate `findExtraRate()` method guards with `if (count - included > 0)` checks.
 
 ### 2.8 Add-On / Component Rate
 - **Service:** `stay-rate-service`
@@ -315,7 +319,7 @@ groupAddOnsCharge.setTotalCharges(component.getAmount().multiply(new BigDecimal(
 ### 2.10 Occupancy Percentage
 - **Service:** `stay-rate-service`
 - **File:** `stay-rate-service/ServiceImplementation/src/main/java/com/agilysys/pms/rates/engine/DateNodeProcessor.java`
-- **Method:** `applyYielding()`
+- **Method:** `yieldAndSetRatesIfRequired()`
 - **Formula:** `occupancy% = ⌈(granted × 100) ÷ (granted + available)⌉`
 ```java
 BigDecimal total = new BigDecimal(granted + available);
@@ -332,7 +336,7 @@ roomTypeOccupancyPercent = diff.divide(total, RoundingMode.CEILING);
 ### 2.11 Comp Offer Percentage Discount
 - **Service:** `stay-rate-service`
 - **File:** `stay-rate-service/ServiceImplementation/src/main/java/com/agilysys/pms/rates/engine/RoomTypeNode.java`
-- **Method:** `applyCompOffers()`
+- **Method:** `setOfferAmountInNode()`
 - **Formula:** `discountAmount = (discount / 100) × remainingRate`
 ```java
 BigDecimal discountAmount = discount.divide(BigDecimal.valueOf(100))
@@ -347,7 +351,7 @@ BigDecimal discountAmount = discount.divide(BigDecimal.valueOf(100))
 ### 2.12 Routing Rule — Percentage Discount
 - **Service:** `stay-rate-service`
 - **File:** `stay-rate-service/ServiceImplementation/src/main/java/com/agilysys/pms/rates/engine/RoutingRuleHandler.java`
-- **Method:** `getCompRate()`
+- **Method:** `computeRoutingRules()`
 - **Formula:** `discountValue = (discount / 100) × remainingRate`; `compRate = applicableRate − Σ discountValues`
 ```java
 BigDecimal discountValue = discount.divide(BigDecimal.valueOf(100))
@@ -366,8 +370,11 @@ compRate = applicableRate.subtract(discountAmount);
 - **File:** `stay-rate-service/ServiceImplementation/src/main/java/com/agilysys/pms/rates/engine/RoutingRuleHandler.java`
 - **Formula:** `compRate = max(0, applicableRate − Σ fixedDiscountAmounts)`
 ```java
-compRate = applicableRate.subtract(discountAmount);
-if (compRate.compareTo(BigDecimal.ZERO) < 0) compRate = BigDecimal.ZERO;
+if (applicableRate.compareTo(discountAmount) > 0) {
+    compRate = applicableRate.subtract(discountAmount);
+} else {
+    compRate = BigDecimal.ZERO;
+}
 ```
 
 > **📊 Example:** applicableRate = $200.00, fixedDiscountAmount = $50.00
@@ -378,7 +385,7 @@ if (compRate.compareTo(BigDecimal.ZERO) < 0) compRate = BigDecimal.ZERO;
 ### 2.14 Last Room Value (LRV) Comparison
 - **Service:** `stay-rate-service`
 - **File:** `stay-rate-service/ServiceImplementation/src/main/java/com/agilysys/pms/rates/engine/RoomTypeNodeProcessor.java`
-- **Method:** `applyLastRoomValue()`
+- **Method:** `applyAvailability()`
 - **Formula:** If `Σ LRV > Σ dailyRate` → room is UNAVAILABLE
 ```java
 lrvTotal = lrvTotal.add(lastRoomValueResponse.getAmount());
@@ -395,7 +402,7 @@ if (lrvTotal.compareTo(totalDailyRate) > 0) node.setStatus(AvailabilityStatus.UN
 
 ### 2.15 Auto-Recurring Charge as Percentage of Room Rate
 - **Service:** `stay-account-service`
-- **File:** `stay-account-service/ServiceDomain/src/main/java/com/agilysys/pms/account/data/domain/RecurringCharge.java`
+- **File:** `stay-account-service/ServiceImplementation/src/main/java/com/agilysys/pms/account/recurringcharges/AutoRecurringManager.java`
 - **Method:** `updateAutoRecurringItemAmount()`
 - **Formula:** `baseAmount = roomRate × (value / 100)`
 ```java
@@ -461,40 +468,37 @@ BigDecimal baseAmount = rate.multiply(percentage);
 - **Service:** `stay-integration-core`
 - **File:** `stay-integration-core/mediator/src/main/java/com/agilysys/pms/integration/mediator/processors/AvailableRatePlansDetailProcessor.java`
 - **Formulas:**
-  - `roomCharge = originalAmount − offerAmount + routedAmount`
-  - `roomTax = totalTax − offerTax + routedTax`
+  - `roomCharge = originalAmount − offerAmount − routedAmount`
+  - `roomTax = totalTax − offerTax − routedTax`
   - `roomRate = roomCharge + componentCharge`
   - `quoteTotal = roomTotal + recurringChargeTotal`
   - `quoteGrandTotal = quoteTotal + quoteTotalTax`
 ```java
+roomCharge = originalAmount.subtract(offerAmount.add(routedAmount));
 quoteGrandTotal = (quoteTotal + quoteTotalTax).setScale(2, HALF_UP);
 ```
 
 > **📊 Example:** originalAmount = $200, offerAmount = $20, routedAmount = $15, totalTax = $25, offerTax = $3, routedTax = $2, componentCharge = $40, recurringChargeTotal = $45
 > ```
-> roomCharge  = 200 − 20 + 15 = $195.00
-> roomTax     = 25 − 3 + 2 = $24.00
-> roomRate    = 195 + 40 = $235.00
-> quoteTotal  = (195 × 3 nights) + 45 = 585 + 45 = $630.00  (example 3-night stay)
-> quoteTotalTax = 24 × 3 = $72.00
-> quoteGrandTotal = 630.00 + 72.00 = $702.00
+> roomCharge  = 200 − 20 − 15 = $165.00
+> roomTax     = 25 − 3 − 2 = $20.00
+> roomRate    = 165 + 40 = $205.00
+> quoteTotal  = (165 × 3 nights) + 45 = 495 + 45 = $540.00  (example 3-night stay)
+> quoteTotalTax = 20 × 3 = $60.00
+> quoteGrandTotal = 540.00 + 60.00 = $600.00
 > ```
 
 ### 2.20 Group Revenue Forecasting
 - **Service:** `stay-profile-service`
 - **File:** `stay-profile-service/ServiceImplementation/src/main/java/com/agilysys/pms/profile/service/handler/GroupHandler.java`
-- **Formulas:**
-  - `forecastRevenue = basePrice × roomCount`
-  - `actualRevenue = basePrice × pickUp`
+- **Formula:** `roomRevenue = basePrice × roomCount`
 ```java
-forecastRevenue = forecastRevenue.add(basePrice.multiply(BigDecimal.valueOf(roomCount)));
-actualRevenue = actualRevenue.add(basePrice.multiply(BigDecimal.valueOf(pickUp)));
+roomRevenue = roomTypeBlock.getBasePrice().multiply(new BigDecimal(roomTypeBlock.getRoomCount()));
 ```
 
-> **📊 Example:** basePrice = $200.00, roomCount = 50 (forecast), pickUp = 35 (actual)
+> **📊 Example:** basePrice = $200.00, roomCount = 50
 > ```
-> forecastRevenue = 200.00 × 50 = $10,000.00
-> actualRevenue   = 200.00 × 35 = $7,000.00
+> roomRevenue = 200.00 × 50 = $10,000.00
 > ```
 
 ---
@@ -581,7 +585,7 @@ availableCredit = creditLimitBalance.subtract(invoiceTotal);
 ### 3.6 Auto-Settlement Total Balance
 - **Service:** `stay-account-service`
 - **File:** `stay-account-service/ServiceImplementation/src/main/java/com/agilysys/pms/account/autosettlementrule/AutoSettlementRuleHandler.java`
-- **Method:** `getBalanceForAutoSettlement()`
+- **Method:** Inline logic (no named method — logic is within the auto-settlement rule processing block)
 - **Formula:** `totalBalance = Σ(folioBalances) + Σ(unpostedRecurringCharge amounts + estimatedTaxes)`
 ```java
 totalBalance = totalBalance.add(folio.getValue().getBalance().getTotal());
@@ -657,6 +661,7 @@ limit = authAmountCC.subtract(expenses);
 > Cash limit: 500 − 320 = $180.00
 > CC limit:   2,000 − 320 = $1,680.00
 > ```
+> **Note:** Credit card path has additional branching: when `isAllowAuthorizationIncreases()` is false, it first tries `authorizedOnFile` amount before falling back to `authAmountCC`.
 
 ---
 
@@ -729,6 +734,7 @@ return totalRoomRate.divide(new BigDecimal(stayDuration), 2, RoundingMode.HALF_U
 > ```
 > ADR = 900.00 ÷ 5 = $180.00
 > ```
+> **Note:** `stayDuration` is computed as `Days.daysBetween(firstKey, lastKey).getDays() + 1` (inclusive of both endpoints), and `totalRoomRate` sums `preOccupancyRate` values.
 
 ### 4.6 Average Room Rate for Guest History
 - **Service:** `stay-reservation-service`
@@ -777,7 +783,7 @@ return getAmount().divide(getRoomsSold().add(getCompRooms()), 2, RoundingMode.HA
 - **Service:** `stay-profile-service`
 - **File:** `stay-profile-service/ServiceImplementation/src/main/java/com/agilysys/pms/profile/data/domain/grc/Revenue.java`
 - **Formulas:**
-  - `totalRevenue = unitPrice × actual`
+  - `totalRevenue = unitPrice × actual` (where `actual = max(pickup, target)`)
   - `realizedRevenue = unitPrice × pickup`
   - `unrealizedRevenue = unitPrice × remaining`
 
@@ -821,7 +827,7 @@ afterCalculationItem.put(NET, postingsAmount.add(adjustmentsAmount).add(correcti
 
 ### 5.1 Split by Reservation Count
 - **Services:** `stay-rate-service`, `stay-reservation-service`
-- **Files:** `SplitByReservationCountStrategy.java`, `ShareOccupancyHandler.java`, `SharedReservationManager.java`
+- **Files:** `SplitByReservationCountStrategy.java` (⚠️ source not in workspace — compiled `.class` only), `SharedReservationManager.java`
 - **Formula:** `share = total ÷ reservationCount`; `primaryShare = share + (total − share × count)` (remainder to primary)
 ```java
 BigDecimal share = total.divide(BigDecimal.valueOf(size), 2, RoundingMode.HALF_UP);
@@ -839,7 +845,7 @@ primaryShare = share.add(remaining);
 
 ### 5.2 Split by Guest Count
 - **Services:** `stay-rate-service`, `stay-reservation-service`
-- **Files:** `SplitByGuestCountStrategy.java`, `ShareOccupancyHandler.java`, `SharedReservationManager.java`
+- **Files:** `SplitByGuestCountStrategy.java` (⚠️ source not in workspace — compiled `.class` only), `SharedReservationManager.java`
 - **Formula:** `perGuest = ⌊total ÷ guestCount⌋`; `share = perGuest × myGuests`; `primaryShare += remainder`
 ```java
 BigDecimal perGuestCharge = total.divide(BigDecimal.valueOf(overallGuestCount), 2, RoundingMode.DOWN);
@@ -856,7 +862,7 @@ BigDecimal remainder = total.subtract(perGuestCharge.multiply(BigDecimal.valueOf
 
 ### 5.3 Component Rate Splitting
 - **Services:** `stay-rate-service`, `stay-reservation-service`
-- **Files:** `SharedReservationCalculationUtils.java`, `SharedReservationPackageComponentHandler.java`, `SharedReservationUtils.java`
+- **Files:** `SharedReservationUtils.java` (⚠️ source in `target/` only)
 - **Formula:** `componentShare = componentRate ÷ reservationCount`; primary absorbs remainder
 ```java
 BigDecimal amountPerRate = amount.divide(divisor, 2, RoundingMode.HALF_UP);
@@ -875,7 +881,7 @@ return isPrimary ? amountPerRate.add(remainingAmount) : amountPerRate;
 ### 5.4 Alpha/Delta Split (Shared Reservations)
 - **Service:** `stay-reservation-service`
 - **File:** `stay-reservation-service/ServiceImplementation/src/main/java/com/agilysys/pms/reservation/manager/SharedReservationManager.java`
-- **Method:** `computeSplitRateSnapshots()`
+- **Method:** `splitRateAndDeducePerReservationCharges()`
 - **Formula:** `alpha = rate ÷ divisor`; `delta = rate − (alpha × divisor)` (rounding correction)
 ```java
 alphaRateSnapshot.setBaseRate(baseRate.divide(splitDivisor, 2, RoundingMode.HALF_UP));
@@ -1039,6 +1045,7 @@ value * (postedRoomCharges + postedRoomTaxes + futureRoomChargeTotal) / 100;
 > ```
 > auth = 15% × (600 + 90 + 300) = 0.15 × 990 = $148.50
 > ```
+> **Note:** This formula is split across two methods: `calculateRoomChargesAuthValue()` returns the sum, and `calculatePerDiems()` applies the percentage.
 
 ### 7.3 RTDC Per-Person
 - **Formula:** `auth = value × numberOfPersons × maximumDaysToAuthorize`
@@ -1054,9 +1061,10 @@ value * numberOfPersons * maximumDaysToAuthorize;
 ### 7.4 Percentage Authorization with Per-Person
 - **Service:** `stay-account-service`
 - **File:** `stay-account-service/ServiceImplementation/src/main/java/com/agilysys/pms/account/recurringcharges/RecurringChargesHandler.java`
-- **Formula:** `roomCharge = value% × (RTDC + ARC revenue + packageComponents) ÷ 100 + perPersonValue`
+- **Formula:** `roomCharge = value% × (RTDC + ARC revenue + packageComponents + romRevenueRecurringCharges) ÷ 100 + perPersonValue`
 ```java
-roomCharge = value.multiply(rtdcCharges.add(arcRoomRevenue).add(packageComponentCharges))
+roomCharge = value.multiply(rtdcCharges.add(arcRoomRevenue).add(packageComponentCharges)
+    .add(romRevenueRecurringCharges))
     .divide(ONE_HUNDRED, 2, BigDecimal.ROUND_HALF_UP).add(perPersonValue);
 ```
 
@@ -1183,13 +1191,13 @@ split.setAmount(splitAmount.subtract(toCollect).max(BigDecimal.ZERO));
 - **File:** `stay-account-service/ServiceImplementation/src/main/java/com/agilysys/pms/account/recurringcharges/PackageFolioChargesHandler.java`
 - **Methods:** `calculateRemainingAllowance()` / `calculateLineItemAllowanceAmount()`
 - **Formulas:**
-  - `remainingAllowance = lineItemAmount < remaining ? remaining − lineItemAmount : 0`
-  - `lineItemExcess = lineItemAmount > remaining ? lineItemAmount − remaining : 0`
+  - `remainingAllowance = lineItemAllowanceAmount < remaining ? remaining − lineItemAllowanceAmount : 0`
+  - `lineItemExcess = lineItemAllowanceAmount > remaining ? lineItemAllowanceAmount − remaining : 0`
   - `spent = totalAllowance − remainingAllowance`
   - `breakageCharge = allowanceCharge − spent`
 ```java
-remainingAllowance = lineItemAmount < remainingAllowance
-    ? remainingAllowance.subtract(lineItemAmount) : BigDecimal.ZERO;
+remainingAllowance = lineItemAllowanceAmount.compareTo(remainingAllowance) < 0
+    ? remainingAllowance.subtract(lineItemAllowanceAmount) : BigDecimal.ZERO;
 breakageCharge = allowanceCharge.subtract(spent);
 ```
 
@@ -1259,9 +1267,14 @@ fee = fee.add(rate);  // for up to N nights
 
 ### 10.3 Override Cancellation Fee
 - **Method:** `calculateFee()`
-- **Formula:** `overrideFee = overridePercentage% × originalFee`
+- **Formulas:**
+  - Percentage override: `overrideFee = overridePercentage% × originalFee`
+  - Flat override: `overrideFee = overrideAmount` (fixed value)
+  - Both set → throws exception (mutually exclusive)
 ```java
 fee = overridePercentage.movePointLeft(2).multiply(fee);
+// or
+fee = overrideAmount;
 ```
 
 > **📊 Example:** originalFee = $190.00, overridePercentage = 75%
@@ -1332,7 +1345,7 @@ return conversionRate.add(surchargeValue);
 ### 13.1 Points to Monetary Value Conversion
 - **Service:** `stay-integration-core`
 - **File:** `stay-integration-core/mediator/src/main/java/com/agilysys/pms/integration/mediator/handlers/CmsHandler.java`
-- **Method:** `calculateConversionRate()`
+- **Method:** Inline logic in `fetchPlayerPoints()`
 - **Formula:** `balanceAmount = conversionRate × pointBalance`
 ```java
 balanceAmount = conversionRate * balance;
@@ -1425,6 +1438,7 @@ BigDecimal amountPerDayBalance = newAmountPerStay.subtract(redeemedAmount);
 > redeemed   = 500 − 350 = $150.00
 > newBalance = 600 − 150 = $450.00
 > ```
+> **Note:** Actual code also applies a zero-floor guard: `amountPerDayBalance = max(amountPerDayBalance, 0)`.
 
 ### 14.3 Comp Restriction Consecutive Window
 - **Service:** `stay-rate-service`
@@ -1639,11 +1653,11 @@ if (rate.compareTo(ruleSet.getMinimumRate()) < 0) rate = ruleSet.getMinimumRate(
 
 ### 17.2 Yield Modifier Values
 - **Service:** `stay-pms-common`
-- **File:** `stay-pms-common/common-interface/src/main/java/com/agilysys/pms/rates/model/YieldApplyOnLevelBy.java`
+- **Files:** `stay-pms-common/common-interface/src/main/java/com/agilysys/pms/rates/model/YieldApplyOnLevelBy.java` (`PERCENT`, `FLAT_RATE`), `stay-pms-common/common-interface/src/main/java/com/agilysys/pms/rates/model/YieldLevelResult.java` (`DECREASE_BY`)
 - **Formulas:**
   - `PERCENT`: `modifier = resultValue × rate × 0.01`
   - `FLAT_RATE`: `modifier = resultValue` (passthrough)
-  - `DECREASE_BY`: modifier is negated
+  - `DECREASE_BY`: modifier is negated (in `YieldLevelResult`)
 
 > **📊 Example:** resultValue = 1.10, rate = $200.00
 > ```
@@ -1697,11 +1711,15 @@ estimatedCharges = estimatedRoomRate.multiply(new BigDecimal(getDaysBetweenDates
 ### 18.3 Balance Due (SMS)
 - **Service:** `stay-reservation-service`
 - **File:** `stay-reservation-service/ServiceImplementation/src/main/java/com/agilysys/pms/reservation/handler/helper/SMSMessageManagerHelper.java`
-- **Formula:** `balanceDue = estimatedCharges − postedPayments`
+- **Formula:** `balanceDue = estimatedTotal − postedPayment` (note: `estimatedTotal` includes taxes)
+```java
+balanceDue = estimatedChargesSummaryView.getEstimatedTotal()
+    .subtract(estimatedChargesSummaryView.getPostedPayment());
+```
 
-> **📊 Example:** estimatedCharges = $900.00, postedPayments = $350.00
+> **📊 Example:** estimatedTotal = $1,020.00 (charges $900 + taxes $120), postedPayment = $350.00
 > ```
-> balanceDue = 900 − 350 = $550.00
+> balanceDue = 1,020 − 350 = $670.00
 > ```
 
 ---

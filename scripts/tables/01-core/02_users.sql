@@ -112,4 +112,27 @@ COMMENT ON COLUMN users.preferences IS 'User preferences (JSONB)';
 
 COMMENT ON COLUMN users.deleted_at IS 'Soft delete timestamp (NULL = active)';
 
+-- =====================================================
+-- SYSTEM ACTOR USER
+-- Used by background services, Kafka consumers, and command
+-- handlers as the created_by / updated_by audit actor.
+-- =====================================================
+INSERT INTO users (
+    id, username, email, password_hash,
+    first_name, last_name, is_active, is_verified
+)
+SELECT
+    '00000000-0000-0000-0000-000000000000',
+    'system.actor',
+    'system@internal.tartware',
+    'NO_LOGIN',
+    'System',
+    'Actor',
+    TRUE,
+    TRUE
+WHERE NOT EXISTS (
+    SELECT 1 FROM users WHERE id = '00000000-0000-0000-0000-000000000000'
+)
+ON CONFLICT (id) DO NOTHING;
+
 \echo 'Users table created successfully!'

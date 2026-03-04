@@ -111,10 +111,7 @@ export class ApiService {
 		}
 
 		if (response.status === 401) {
-			localStorage.removeItem("access_token");
-			localStorage.removeItem("tenant_id");
-			localStorage.removeItem("user_info");
-			window.location.assign("/login");
+			window.dispatchEvent(new CustomEvent("auth:unauthorized"));
 		}
 
 		return new Error(message);

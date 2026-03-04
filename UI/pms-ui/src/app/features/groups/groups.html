@@ -1,0 +1,217 @@
+<div class="groups-page">
+  <app-page-header title="Group Bookings" description="Manage group blocks, room allocations, and rooming lists">
+    <button class="btn btn-primary btn-sm" (click)="openCreateGroup()">
+      <mat-icon>add</mat-icon>
+      {{ 'New group booking' | translate }}
+    </button>
+    <button class="btn btn-invisible" (click)="loadGroups()" [matTooltip]="'Refresh' | translate" [attr.aria-label]="'Refresh group bookings' | translate">
+      <mat-icon>refresh</mat-icon>
+    </button>
+  </app-page-header>
+
+  <!-- ═════════════════════════════════════════════ -->
+  <!-- GROUP OVERVIEW CARDS                         -->
+  <!-- ═════════════════════════════════════════════ -->
+  <h3 class="section-header">{{ 'Overview' | translate }}</h3>
+  <div class="grp-overview">
+    <div class="grp-overview-card grp-card-total">
+      <div class="grp-overview-accent"></div>
+      <div class="grp-overview-body">
+        <div class="grp-overview-label">
+          <mat-icon>groups</mat-icon>
+          {{ 'Total Groups' | translate }}
+        </div>
+        <div class="grp-overview-value">{{ summary().totalGroups }}</div>
+        <div class="grp-overview-sub text-muted">{{ 'all bookings' | translate }}</div>
+      </div>
+    </div>
+    <div class="grp-overview-card grp-card-active">
+      <div class="grp-overview-accent"></div>
+      <div class="grp-overview-body">
+        <div class="grp-overview-label">
+          <mat-icon>check_circle</mat-icon>
+          {{ 'Active' | translate }}
+        </div>
+        <div class="grp-overview-value">{{ summary().activeGroups }}</div>
+        <div class="grp-overview-sub text-muted">{{ 'current blocks' | translate }}</div>
+      </div>
+    </div>
+    <div class="grp-overview-card grp-card-rooms">
+      <div class="grp-overview-accent"></div>
+      <div class="grp-overview-body">
+        <div class="grp-overview-label">
+          <mat-icon>hotel</mat-icon>
+          {{ 'Rooms Blocked' | translate }}
+        </div>
+        <div class="grp-overview-value">{{ summary().totalRoomsBlocked }}</div>
+        <div class="grp-overview-sub text-muted">{{ 'across groups' | translate }}</div>
+      </div>
+    </div>
+    <div class="grp-overview-card grp-card-pickup">
+      <div class="grp-overview-accent"></div>
+      <div class="grp-overview-body">
+        <div class="grp-overview-label">
+          <mat-icon>trending_up</mat-icon>
+          {{ 'Avg Pickup' | translate }}
+        </div>
+        <div class="grp-overview-value">{{ summary().avgPickup }}%</div>
+        <div class="grp-overview-sub text-muted">{{ 'room pickup rate' | translate }}</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Filter tabs + search -->
+  <div class="filter-bar">
+    <nav class="filter-tabs" aria-label="Group booking status filters">
+      @for (f of statusFilters; track f.key) {
+        <button
+          class="filter-tab"
+          [attr.aria-pressed]="activeFilter() === f.key"
+          [class.filter-tab-active]="activeFilter() === f.key"
+          (click)="setFilter(f.key)">
+          {{ f.label }}
+          <span class="counter">{{ filterCounts()[f.key] }}</span>
+        </button>
+      }
+    </nav>
+
+    <div class="search-box">
+      <mat-icon class="search-icon">search</mat-icon>
+      <input
+        type="text"
+        class="search-input"
+        [placeholder]="'Search groups...' | translate"
+        [attr.aria-label]="'Search group bookings' | translate"
+        [ngModel]="searchQuery()"
+        (ngModelChange)="onSearch($event)" />
+    </div>
+  </div>
+
+  <!-- Content -->
+  @defer (on idle) {
+  @if (loading()) {
+    <div class="loading-state">
+      <mat-spinner diameter="32"></mat-spinner>
+      <span class="text-muted">{{ 'Loading group bookings...' | translate }}</span>
+    </div>
+  } @else if (error(); as err) {
+    <div class="error-state">
+      <mat-icon class="error-icon">error_outline</mat-icon>
+      <span>{{ err }}</span>
+      <button class="btn btn-outline" (click)="loadGroups()">{{ 'Retry' | translate }}</button>
+    </div>
+  } @else if (filteredGroups().length === 0) {
+    <div class="empty-state">
+      <mat-icon class="empty-icon">groups</mat-icon>
+      @if (groups().length === 0) {
+        <p>{{ 'No group bookings found' | translate }}</p>
+        <p class="text-muted">{{ 'Create a new group booking to get started.' | translate }}</p>
+        <button class="btn btn-primary" (click)="openCreateGroup()">{{ 'Create first group booking' | translate }}</button>
+      } @else {
+        <p>{{ 'No group bookings match the current filters' | translate }}</p>
+        <button class="btn btn-outline" (click)="setFilter('ALL'); onSearch('')">{{ 'Clear filters' | translate }}</button>
+      }
+    </div>
+  } @else {
+      <div class="table-container">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th [attr.aria-sort]="ariaSort('group_name')">
+                <button type="button" class="th-sort-btn" (click)="onSort('group_name')">{{ 'Group' | translate }} <mat-icon class="sort-indicator">{{ sortIcon('group_name') }}</mat-icon></button>
+              </th>
+              <th [attr.aria-sort]="ariaSort('contact_name')">
+                <button type="button" class="th-sort-btn" (click)="onSort('contact_name')">{{ 'Contact' | translate }} <mat-icon class="sort-indicator">{{ sortIcon('contact_name') }}</mat-icon></button>
+              </th>
+              <th [attr.aria-sort]="ariaSort('arrival_date')">
+                <button type="button" class="th-sort-btn" (click)="onSort('arrival_date')">{{ 'Arrival' | translate }} <mat-icon class="sort-indicator">{{ sortIcon('arrival_date') }}</mat-icon></button>
+              </th>
+              <th [attr.aria-sort]="ariaSort('departure_date')">
+                <button type="button" class="th-sort-btn" (click)="onSort('departure_date')">{{ 'Departure' | translate }} <mat-icon class="sort-indicator">{{ sortIcon('departure_date') }}</mat-icon></button>
+              </th>
+              <th>{{ 'Rooms' | translate }}</th>
+              <th>{{ 'Pickup' | translate }}</th>
+              @if (activeFilter() === 'ALL') {
+                <th [attr.aria-sort]="ariaSort('block_status')">
+                  <button type="button" class="th-sort-btn" (click)="onSort('block_status')">{{ 'Status' | translate }} <mat-icon class="sort-indicator">{{ sortIcon('block_status') }}</mat-icon></button>
+                </th>
+              }
+              <th>{{ 'Revenue' | translate }}</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (grp of paginatedGroups(); track grp.group_booking_id) {
+              <tr class="row-clickable" tabindex="0" (click)="viewGroup(grp.group_booking_id)" (keydown.enter)="viewGroup(grp.group_booking_id)" (keydown.space)="$event.preventDefault(); viewGroup(grp.group_booking_id)">
+                <td class="cell-primary">
+                  <div class="group-name-cell">
+                    @if (groupTypeIcon[grp.group_type.toUpperCase()]; as typeInfo) {
+                      <mat-icon class="grp-type-icon" [matTooltip]="typeInfo.tooltip">{{ typeInfo.icon }}</mat-icon>
+                    }
+                    <span class="group-name">{{ grp.group_name }}</span>
+                  </div>
+                  @if (grp.group_code) {
+                    <span class="text-subtle">{{ grp.group_code }}</span>
+                  }
+                </td>
+                <td>
+                  <div class="contact-cell">
+                    <span class="contact-name">{{ grp.contact_name }}</span>
+                    @if (grp.contact_email) {
+                      <span class="text-subtle">{{ grp.contact_email }}</span>
+                    }
+                  </div>
+                </td>
+                <td>{{ formatDate(grp.arrival_date) }}</td>
+                <td>{{ formatDate(grp.departure_date) }}</td>
+                <td class="text-center">
+                  <span class="rooms-fraction">{{ grp.total_rooms_picked }}/{{ grp.total_rooms_blocked }}</span>
+                </td>
+                <td class="text-center">
+                  <span class="badge" [ngClass]="pickupClass(grp.pickup_percentage)">{{ grp.pickup_percentage }}%</span>
+                </td>
+                @if (activeFilter() === 'ALL') {
+                  <td>
+                    <span class="badge" [ngClass]="statusClass(grp.block_status)">
+                      {{ grp.block_status_display }}
+                    </span>
+                  </td>
+                }
+                <td class="cell-amount">
+                  @if (grp.estimated_total_revenue) {
+                    {{ formatCurrency(+grp.estimated_total_revenue, 'USD') }}
+                  } @else {
+                    <span class="text-muted">—</span>
+                  }
+                </td>
+                <td class="cell-actions">
+                  <button class="btn btn-invisible btn-sm" [matTooltip]="'View details' | translate" [attr.aria-label]="'View group booking details' | translate">
+                    <mat-icon>chevron_right</mat-icon>
+                  </button>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+      <app-pagination
+        [totalItems]="filteredGroups().length"
+        [currentPage]="currentPage()"
+        [pageSize]="pageSize"
+        (pageChange)="currentPage.set($event)" />
+    }
+  } @placeholder {
+    <div class="placeholder-table">
+      <div class="placeholder-row"></div>
+      <div class="placeholder-row"></div>
+      <div class="placeholder-row"></div>
+      <div class="placeholder-row"></div>
+      <div class="placeholder-row"></div>
+    </div>
+  } @loading (minimum 200ms) {
+    <div class="loading-state">
+      <mat-spinner diameter="24"></mat-spinner>
+      <span class="text-muted">{{ 'Rendering table...' | translate }}</span>
+    </div>
+  }
+</div>

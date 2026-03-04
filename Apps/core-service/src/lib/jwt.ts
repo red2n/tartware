@@ -95,6 +95,39 @@ export const verifyAccessToken = (token: string): AccessTokenPayload | null => {
   }
 };
 
+/** Verify a token allowing up to `graceSeconds` past expiration (for refresh). */
+export const verifyAccessTokenWithGrace = (
+  token: string,
+  graceSeconds: number,
+): AccessTokenPayload | null => {
+  const secret = getJwtSecret();
+  if (!secret) {
+    return null;
+  }
+
+  try {
+    const options = getJwtOptions();
+    const decoded = jwt.verify(token, secret, { ...options, ignoreExpiration: true });
+    if (typeof decoded === "string") {
+      return null;
+    }
+    if ((decoded as { type?: string }).type !== "access") {
+      return null;
+    }
+    const payload = decoded as AccessTokenPayload;
+    if (payload.exp) {
+      const now = Math.floor(Date.now() / 1000);
+      if (now > payload.exp + graceSeconds) {
+        return null;
+      }
+    }
+    return payload;
+  } catch (error) {
+    appLogger.debug({ err: error }, "Failed to verify access token with grace window");
+    return null;
+  }
+};
+
 const getSystemAdminJwtOptions = () => {
   const options: jwt.SignOptions & jwt.VerifyOptions = {
     issuer: config.systemAdmin.jwt.issuer,

@@ -79,21 +79,23 @@ When guest folio is $0.00 or pre-settled:
 
 ### Mobile Key Technology
 
-| Technology | Range | Battery Impact |
-|------------|-------|----------------|
-| **Bluetooth Low Energy (BLE)** | 1-10 meters | Low |
-| **NFC** | < 10 cm | Minimal |
-| **WiFi** | Room proximity | Moderate |
+| Technology | Range | Battery Impact | Industry Status (2026) |
+|------------|-------|----------------|------------------------|
+| **Bluetooth Low Energy (BLE)** | 1-10 meters | Low | Dominant standard |
+| **NFC** | < 10 cm | Minimal | Growing (Apple Wallet integration) |
+| **WiFi** | Room proximity | Moderate | Limited adoption |
+| **Ultra-Wideband (UWB)** | Precise (<30cm) | Low | Emerging for premium properties |
 
 ### Lock Vendor Integration
 
-| Vendor | Protocol |
-|--------|----------|
-| ASSA ABLOY | Mobile Access |
-| Salto | JustIN Mobile |
-| dormakaba | Mobile Access |
-| MIWA | Mobile Key |
-| Onity | DirectKey |
+| Vendor | Protocol | Cloud-Ready |
+|--------|----------|-------------|
+| ASSA ABLOY | Mobile Access (Vostio) | Yes |
+| Salto | JustIN Mobile / Nebula | Yes |
+| dormakaba | Mobile Access | Yes |
+| MIWA | Mobile Key | Yes |
+| Onity | DirectKey | Yes |
+| OpenKey | Platform-agnostic | Yes |
 
 ## Virtual Front Desk
 
@@ -119,12 +121,13 @@ For extended hours or limited-service properties:
 
 ## Performance Metrics
 
-| Metric | Express Target | Standard Target |
-|--------|---------------|-----------------|
-| Check-in time | < 90 seconds | < 3 minutes |
-| Check-out time | < 60 seconds | < 2 minutes |
-| Adoption rate | > 30% | N/A |
-| Guest satisfaction | > 4.5/5 | > 4.0/5 |
+| Metric | Express Target | Standard Target | AI-Assisted Target |
+|--------|---------------|-----------------|---------------------|
+| Check-in time | < 90 seconds | < 3 minutes | < 60 seconds |
+| Check-out time | < 60 seconds | < 2 minutes | < 30 seconds |
+| Adoption rate | > 40% (2026 benchmark) | N/A | > 15% |
+| Guest satisfaction | > 4.5/5 | > 4.0/5 | > 4.3/5 |
+| Pre-arrival completion | > 50% of reservations | N/A | N/A |
 
 ---
 

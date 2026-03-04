@@ -70,22 +70,23 @@
 
 ### Automated Triggers
 
-| Event | Communication | Timing |
-|-------|---------------|--------|
-| Booking confirmed | Confirmation email | Immediate |
-| Pre-arrival | Upsell, info request | 3-7 days before |
-| Day of arrival | Welcome, directions | Morning of |
-| During stay | Service offers | Based on stay |
-| Checkout | Folio, thank you | At departure |
-| Post-stay | Review request | 1-3 days after |
-| Birthday | Special offer | Annual |
-| Anniversary | Return offer | Annual |
+| Event | Communication | Timing | Channel (2026 Best Practice) |
+|-------|---------------|--------|------------------------------|
+| Booking confirmed | Confirmation email | Immediate | Email + app push |
+| Pre-arrival | Upsell, info request, mobile check-in link | 3-7 days before | Email + app (Nor1 upsell integration) |
+| Day of arrival | Welcome, directions, room ready | Morning of | App push + SMS |
+| During stay | Service offers, satisfaction check | Based on stay | App push |
+| Checkout | Folio, thank you | At departure | Email + app |
+| Post-stay | Review request | 1-3 days after | Email |
+| Birthday | Special offer | Annual | Email + app |
+| Anniversary | Return offer | Annual | Email |
+| Win-back | Re-engagement offer | After inactivity (90-180 days) | Email + targeted ads |
 
 ### Communication Preferences
 
 | Preference | Options |
 |------------|---------|
-| Channel | Email, SMS, app push, none |
+| Channel | Email, SMS, app push, WhatsApp, none |
 | Frequency | Every booking, monthly, quarterly |
 | Content | Offers, info only, none |
 | Language | Based on profile or property default |
@@ -102,6 +103,8 @@
 | Room type pattern | Preference prediction |
 | Length of stay pattern | Package offers |
 | Booking source | Channel attribution |
+| Ancillary spend | Total guest value (TRevPAR contribution) |
+| Review history | Service recovery & sentiment tracking |
 
 ### Guest Score/Value
 
@@ -124,6 +127,17 @@
 | Erasure | Right to be forgotten |
 | Portability | Export in machine-readable |
 | Object | Opt-out of marketing |
+
+### Global Privacy Landscape (2025-2026)
+
+| Regulation | Scope | Key Impact |
+|------------|-------|------------|
+| GDPR | EU residents | Consent-based, up to 4% global revenue fine |
+| CCPA/CPRA | California | Opt-out model, right to delete |
+| PIPL | China | Data localization requirements |
+| LGPD | Brazil | GDPR-aligned |
+| DPDP Act | India | Enacted 2023, enforcement 2025+ |
+| DSA/DMA | EU digital platforms | New OTA disclosure requirements |
 
 ### Consent Management
 
