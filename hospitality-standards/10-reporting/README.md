@@ -70,49 +70,65 @@
 
 ### Revenue Metrics
 
-| Metric | Formula | Benchmark |
-|--------|---------|-----------|
-| Occupancy | Sold ÷ Available | Market dependent |
-| ADR | Room Rev ÷ Sold | Compset comparison |
-| RevPAR | Room Rev ÷ Available | Primary KPI |
-| TRevPAR | Total Rev ÷ Available | Holistic view |
-| NRevPAR | Net Rev ÷ Available | After commission |
-| GOPPAR | GOP ÷ Available | Profitability |
+| Metric | Formula | Benchmark (2026) |
+|--------|---------|------------------|
+| Occupancy | Sold ÷ Available | 66-73% global average |
+| ADR | Room Rev ÷ Sold | $130-160 global average |
+| RevPAR | Room Rev ÷ Available | $85-115 global average |
+| TRevPAR | Total Rev ÷ Available | Holistic view (emerging primary) |
+| NRevPAR | Net Rev ÷ Available | After commission (critical as costs rise) |
+| GOPPAR | GOP ÷ Available | Profitability (#1 metric per Cornell study) |
+| CostPAR | Total Cost ÷ Available | Cost efficiency |
+| EBITDAR | Earnings before I/T/D/A/R | Hotel valuation metric |
 
 ### Operational Metrics
 
-| Metric | Formula | Target |
-|--------|---------|--------|
-| Check-in time | Avg processing time | < 3 min |
+| Metric | Formula | Target (2026) |
+|--------|---------|---------------|
+| Check-in time | Avg processing time | < 3 min (< 90s express) |
 | OTA mix | OTA bookings ÷ Total | < 30% |
-| Direct booking % | Direct ÷ Total | > 40% |
+| Direct booking % | Direct ÷ Total | > 40% (trending > 50%) |
 | Repeat guest % | Return guests ÷ Total | > 35% |
 | Guest satisfaction | Survey average | > 4.5/5 |
 | Review score | Aggregate OTA rating | > 8.5/10 |
+| Mobile check-in adoption | Mobile ÷ Total check-ins | > 30% (growing) |
+| Net CostPAR ratio | Cost per booking ÷ RevPAR | Minimize |
 
-## STR Reporting (Smith Travel Research)
+## STR Reporting (CoStar with STR Benchmark)
+
+STR has been rebranded as **CoStar with STR Benchmark** following CoStar Group's acquisition. It remains the industry standard for hotel performance benchmarking with **94,000 hotels and 12 million rooms** in its directly-sourced sample.
 
 ### Weekly/Monthly Benchmarking
 
 | Report | Content |
 |--------|---------|
-| **STAR Report** | Compset performance comparison |
-| **Trend Report** | Historical performance |
+| **STAR Report** | Compset performance comparison (OCC, ADR, RevPAR indices) |
+| **Trend Report** | Historical performance trends |
 | **Response Report** | Same-day preliminary data |
-| **Demand 360** | Forward-looking demand data |
+| **Demand 360** | Forward-looking demand data (search, booking pace) |
+| **Profit & Loss (HotStats integration)** | Bottom-line benchmarking (GOPPAR, CostPAR) |
 
 ### Index Calculations
 
 | Index | Formula | Meaning |
 |-------|---------|---------|
-| Occupancy Index | My OCC ÷ Compset OCC × 100 | Fair share |
-| ARI (ADR Index) | My ADR ÷ Compset ADR × 100 | Rate position |
-| RGI (RevPAR Index) | My RevPAR ÷ Compset RevPAR × 100 | Overall performance |
+| Occupancy Index | My OCC ÷ Compset OCC × 100 | Fair share of demand |
+| ARI (ADR Index) | My ADR ÷ Compset ADR × 100 | Rate position vs. market |
+| RGI (RevPAR Index) | My RevPAR ÷ Compset RevPAR × 100 | Overall market performance |
 
 Index interpretation:
 - 100 = Fair share
-- >100 = Outperforming market
-- <100 = Underperforming market
+- >100 = Outperforming market (gaining share)
+- <100 = Underperforming market (losing share)
+
+### CoStar Benchmark Enhanced Capabilities (2026)
+
+| Feature | Description |
+|---------|-------------|
+| Competitive intelligence | Integrated top-line and bottom-line benchmarking |
+| Portfolio analysis | Configurable methodologies for multi-property operators |
+| Corporate lead sourcing | Tenant database for B2B demand identification |
+| Profit benchmarking | GOPPAR, CostPAR via HotStats data integration |
 
 ## Business Intelligence
 
@@ -120,11 +136,23 @@ Index interpretation:
 
 | Layer | Content |
 |-------|---------|
-| Source | PMS, POS, CRM, CM, RMS |
+| Source | PMS, POS, CRM, CM, RMS, HotStats, Reputation |
 | Staging | Extracted raw data |
 | Warehouse | Transformed, star schema |
 | Marts | Department-specific views |
-| Presentation | Dashboards, reports |
+| Presentation | Dashboards, reports, AI-driven insights |
+
+### OPERA Cloud Reporting & Analytics
+
+Oracle Hospitality Reporting and Analytics provides integrated BI:
+
+| Feature | Description |
+|---------|-------------|
+| Property-specific or groupwide | Flexible reporting scope |
+| Graphical dashboards | KPIs visible at a glance without spreadsheets |
+| Custom report builder | Data from any business area |
+| Drill-down capability | High-level metrics to individual transactions |
+| Cross-department | Rooms, F&B, operations, revenue in one system |
 
 ### Common Dimensions
 

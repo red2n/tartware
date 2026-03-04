@@ -16,15 +16,39 @@
 
 ### Rate Categories
 
-| Category | Description | Yield Impact |
-|----------|-------------|--------------|
-| **Rack** | Published maximum rate | Baseline |
-| **BAR** | Dynamic best available | Demand-based |
-| **Corporate** | Negotiated company rate | Volume commitment |
-| **Wholesale** | Net rate for packages | Marked up by seller |
-| **Promotional** | Limited-time offer | Demand generation |
-| **Package** | Rate + inclusions | Bundled value |
-| **Member** | Loyalty program rate | Direct booking incentive |
+| Category | Description | Yield Impact | Pricing Model |
+|----------|-------------|--------------|---------------|
+| **Rack** | Published maximum rate | Baseline | Fixed |
+| **BAR** | Dynamic best available | Demand-based | Dynamic (RMS-driven) |
+| **Open Price** | Independent per segment/channel/room type | Maximum flexibility | AI-optimized (Duetto GameChanger) |
+| **Corporate** | Negotiated company rate | Volume commitment | Fixed/LRA |
+| **Wholesale** | Net rate for packages | Marked up by seller | Net |
+| **Promotional** | Limited-time offer | Demand generation | Dynamic |
+| **Package** | Rate + inclusions | Bundled value | Component-based |
+| **Member/Loyalty** | Loyalty program rate | Direct booking incentive | Derived (BAR - 5-15%) |
+
+## Pricing Strategy Evolution (2025-2026)
+
+### BAR vs. Open Pricing
+
+| Aspect | Traditional BAR | Open Pricing (Duetto/IDeaS) |
+|--------|-----------------|------------------------------|
+| Rate structure | Fixed price tiers with modifiers | Independent pricing per dimension |
+| Channel pricing | Same rate across channels (parity) | Different rates per channel allowed |
+| Segment flexibility | Limited (% off BAR) | Full control per segment |
+| Room type pricing | Fixed differentials | Dynamic differentials by demand |
+| Revenue impact | Baseline | +6% RevPAR uplift in year one (Duetto) |
+| Adoption | Still dominant | 83.9% of hotels now use an RMS (Duetto 2024 survey) |
+
+### AI-Powered Pricing Systems
+
+| System | Vendor | Key Capability |
+|--------|--------|----------------|
+| **G3 RMS** | IDeaS (SAS) | Automated pricing decisions, demand forecasting, inventory optimization |
+| **GameChanger** | Duetto | Open pricing, real-time rate distribution, multi-property management |
+| **Atomize** | Atomize (Mews) | Real-time dynamic pricing, AI-driven rate recommendations |
+| **OPERA Cloud Rate Management** | Oracle | Integrated PMS rate configuration, derived rates, restrictions |
+| **Nor1 Upsell** | Oracle | AI-powered pre-arrival room upgrade offers |
 
 ## Rate Structures
 

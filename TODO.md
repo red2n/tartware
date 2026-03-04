@@ -846,3 +846,333 @@ Trivial/low-complexity mechanical fixes from the AI-TASKS.md backlog:
 - [x] **IS-7**: Loyalty transactional points ledger — expire sweep command + handler, loyalty read routes (transactions/tier-rules/balance) + gateway proxy
 - [x] **LOW-004**: N+1 query patterns — Fixed night-audit (hoisted tax config + batch folio JOIN) and pricing (batch-fetch all rules once). See analysis in session notes for 13 more patterns.
 - [x] **LOW-006**: Promise ordering race in fastify-server — Moved `beforeRoutes` call inside `app.after()` so core plugins are initialized first
+
+---
+
+### 🔵 Broadcast Notification Per-User Read Receipts (2026-03-04)
+
+**Branch:** `fix/broadcast-notification-read-receipts`
+**Origin:** PR #110 review — Thread 6 (PRRT_kwDOQCOrtc5x1m6Q), the only unresolved comment.
+
+**Problem:**
+Broadcast notifications (`user_id IS NULL` on `in_app_notifications`) store `is_read` / `read_at` on the notification row itself. This means:
+1. One user marking a broadcast notification as read marks it read for **all** users in the tenant.
+2. The current `MARK_READ_SQL` uses `AND user_id = $3::uuid`, which will **never match** broadcast rows (`user_id IS NULL`), so users can't mark broadcast notifications as read at all.
+
+**Design:**
+- Create a `notification_read_receipts` table keyed by `(notification_id, user_id)` to track per-user read state independently of the notification row.
+- For user-scoped notifications (where `user_id` is set), continue using the existing `is_read` column on `in_app_notifications`.
+- For broadcast notifications (`user_id IS NULL`), check/insert into `notification_read_receipts` instead.
+- Update `listInAppNotifications` query to LEFT JOIN `notification_read_receipts` and derive `is_read` status per-user for broadcast rows.
+- Update `markNotificationsRead` / `markAllNotificationsRead` to INSERT into `notification_read_receipts` for broadcast rows.
+- Update `unreadCount` query to account for broadcast read receipts.
+
+**Files to change:**
+- `scripts/tables/05-operations/114_notification_read_receipts.sql` — new table DDL
+- `scripts/tables/00-create-all-tables.sql` — add new table
+- `scripts/tables/05-operations/verify-05-services-housekeeping.sql` — add verification check for new table
+- `scripts/verify-installation.sql` — add `notification_read_receipts` existence check
+- `Apps/notification-service/src/services/in-app-notification-service.ts` — update SQL queries
+- `Apps/notification-service/src/routes/in-app-notifications.ts` — pass `userId` where needed
+
+---
+
+### 🔴 NEXT PRIORITY — Revenue Service Full Activation (PMS Industry Standard)
+
+The `revenue-service` (port 3060) exists but is largely **read-only scaffolding**. It has 1 command handler (`revenue.forecast.compute`), 5 read endpoints proxied through the gateway, and a basic EMA forecast engine. The underlying SQL tables (`pricing_rules`, `rate_recommendations`, `revenue_forecasts`, `revenue_goals`, `competitor_rates`, `demand_calendar`, `dynamic_pricing_rules_ml`, `pricing_experiments`, `ai_demand_predictions`, `revenue_attribution`) are all created but **no write commands populate them** beyond the single forecast compute.
+
+Per PMS industry standards (Oracle OPERA Cloud RMS, IDeaS G3, Duetto GameChanger, Atomize; Revfine PMS Feature Guide 2026; HTNG Revenue Management Standards; STR Benchmarking), a Revenue Management System must provide:
+
+1. **Dynamic Pricing Engine** — real-time rate optimization based on demand, occupancy, comp set, and booking pace
+2. **Demand Forecasting** — multi-horizon forecasting (tactical 0–7d, operational 8–30d, strategic 31–90d, budget 91–365d) with pickup pace and event-driven adjustments
+3. **Competitive Intelligence** — automated rate shopping, comp set tracking, STR-style indices (ARI, OCC Index, RGI)
+4. **Inventory Controls & Restrictions** — CTA/CTD, min/max LOS, advance purchase, day-of-week, hurdle rates
+5. **Revenue Budgeting & Goal Tracking** — budget vs actual variance at property/department level, USALI-aligned
+6. **Segment & Channel Optimization** — segment mix optimization, net ADR by channel, displacement analysis for group vs transient
+7. **Rate Recommendation Workflow** — generate → review → approve → apply lifecycle for pricing changes
+8. **Total Revenue Management** — extend KPIs beyond rooms to F&B, spa, parking, ancillary revenue streams
+
+#### Current State Inventory
+
+| Asset | Status | Notes |
+|-------|--------|-------|
+| SQL: `revenue_forecasts` | Created | Full schema with scenarios, confidence intervals, accuracy tracking |
+| SQL: `competitor_rates` | Created | Rate shopping schema with source channel, inclusions, availability |
+| SQL: `demand_calendar` | Created | Daily demand levels, booking pace, event markers |
+| SQL: `pricing_rules` | Created | Rule-based pricing with conditions, adjustments, min/max rate |
+| SQL: `rate_recommendations` | Created | Recommendations with confidence scores, approve/reject status |
+| SQL: `revenue_goals` | Created | Budget vs actual with variance tracking |
+| SQL: `dynamic_pricing_rules_ml` | Created | ML model backed pricing rules |
+| SQL: `pricing_experiments` | Created | A/B testing framework for rate strategies |
+| SQL: `ai_demand_predictions` | Created | ML demand prediction outputs |
+| SQL: `revenue_attribution` | Created | Revenue source attribution |
+| Schema: Zod types | Created | For all above tables in `schema/src/schemas/` |
+| Service: forecast engine | Functional | EMA-based forecasting with 5 scenarios |
+| Service: read endpoints | Functional | List pricing rules, recommendations, competitor rates, demand calendar, forecasts, goals, KPIs, comp set indices, displacement analysis |
+| Gateway: proxy routes | Functional | `/v1/revenue/*` proxied to revenue-service |
+| Command: `revenue.forecast.compute` | Functional | Single write command registered in schema + consumer |
+
+---
+
+#### Phase 1 — Core Pricing Engine & Write Commands (Priority: Critical)
+
+Industry standard: Revenue managers must be able to create, update, and activate pricing rules; the system must auto-generate rate recommendations based on demand signals. This is table-stakes for any PMS RMS module (Oracle OPERA, IDeaS, Duetto).
+
+- [ ] **R1: Pricing Rule CRUD Commands** | Complexity: Medium
+  - `revenue.pricing_rule.create` — create a new pricing rule (occupancy-based, day-of-week, event-driven, competitor-response, LOS-based)
+  - `revenue.pricing_rule.update` — update rule parameters (adjustment value, conditions, priority, effective dates)
+  - `revenue.pricing_rule.activate` / `revenue.pricing_rule.deactivate` — toggle rule `is_active` flag
+  - `revenue.pricing_rule.delete` — soft-delete a pricing rule
+  - Add Zod schemas in `schema/src/events/commands/revenue.ts`, register in `command-validators.ts`
+  - Add command handlers in `revenue-service/src/commands/command-center-consumer.ts`
+  - Seed command_templates entries in `scripts/tables/01-core/10_command_center.sql`
+
+- [ ] **R2: Rate Recommendation Engine** | Complexity: High
+  - `revenue.recommendation.generate` — batch-generate rate recommendations per property for a date range
+  - Engine logic: analyze current occupancy vs forecast, booking pace vs historical, competitor rates, active pricing rules, demand calendar signals
+  - Output: one `rate_recommendations` row per room_type × rate_plan × date with `current_rate`, `recommended_rate`, `confidence_score`, `recommendation_reason`
+  - Industry standard reasons: "High demand + low pickup pace", "Competitor X $20 below", "Event: Convention Center +15%", "Occupancy forecast 92% → raise rate"
+  - Add service function in `revenue-service/src/services/recommendation-engine.ts`
+
+- [ ] **R3: Rate Recommendation Approval Workflow** | Complexity: Medium
+  - `revenue.recommendation.approve` — approve a recommendation (status → APPROVED, sets `applied_at`)
+  - `revenue.recommendation.reject` — reject with reason (status → REJECTED)
+  - `revenue.recommendation.apply` — apply approved recommendation: update the actual rate in `rates` table via internal HTTP call or Kafka event to settings/rooms service
+  - `revenue.recommendation.bulk_approve` — approve multiple recommendations in one command
+  - Industry standard: revenue managers review recommendations daily, approve/reject, then batch-apply to live rates
+
+- [ ] **R4: Demand Calendar Management Commands** | Complexity: Medium
+  - `revenue.demand.update` — update demand level for specific dates (LOW/MODERATE/HIGH/PEAK/BLACKOUT)
+  - `revenue.demand.import_events` — bulk import local events (conferences, holidays, concerts, sports) with impact multipliers
+  - `revenue.demand.set_season` — mark date ranges as peak/shoulder/off-peak/blackout with default pricing behavior
+  - Industry standard: demand calendar is the foundation for pricing decisions; revenue managers annotate it with local market intelligence
+
+- [ ] **R5: Competitor Rate Ingestion Commands** | Complexity: Medium
+  - `revenue.competitor.record` — manually record a competitor rate observation
+  - `revenue.competitor.bulk_import` — bulk import from rate shopping tool export (CSV/JSON)
+  - `revenue.competitor.configure_compset` — define competitive set (which competitor properties to track, weighting by star rating/location)
+  - Industry standard: comp set is typically 5-8 properties; rates collected daily via OTA scraping or vendor API (RateGain, OTA Insight)
+
+---
+
+#### Phase 2 — Inventory Controls & Restrictions (Priority: High)
+
+Industry standard: yield management requires real-time controls on booking availability beyond just price. OPERA Cloud, Mews, and Cloudbeds all provide restriction management as core RMS functionality.
+
+- [ ] **R6: Rate Restriction Commands** | Complexity: High
+  - `revenue.restriction.set` — set inventory controls per room_type × rate_plan × date range:
+    - CTA (Closed to Arrival) — prevent arrivals on specific dates
+    - CTD (Closed to Departure) — prevent departures on specific dates
+    - Min LOS / Max LOS — minimum/maximum length of stay requirements
+    - Min Advance Purchase — minimum days before arrival to book
+    - Max Advance Purchase — maximum days before arrival (inventory horizon)
+    - Closed — completely close rate code for dates
+  - `revenue.restriction.remove` — remove specific restrictions
+  - `revenue.restriction.bulk_set` — bulk set restrictions across date ranges (e.g., "set Min LOS 3 for all weekends in Q4")
+  - New SQL table: `rate_restrictions` (tenant_id, property_id, room_type_id, rate_plan_id, restriction_date, restriction_type, restriction_value)
+  - New Zod schema in `schema/src/schemas/02-inventory/rate-restrictions.ts`
+  - **Integration**: reservations-command-service must check active restrictions before confirming bookings
+
+- [ ] **R7: Hurdle Rate Management** | Complexity: Medium
+  - `revenue.hurdle_rate.set` — set minimum acceptable rate (hurdle/floor) per room_type × date
+  - `revenue.hurdle_rate.calculate` — auto-calculate hurdle rates based on displacement analysis (opportunity cost of selling a room at a given rate vs holding for higher-value demand)
+  - Industry standard: hurdle rates are the minimum rate below which a room should not be sold; driven by segment displacement analysis and marginal cost of unsold room
+
+---
+
+#### Phase 3 — Budgeting & Financial Analytics (Priority: High)
+
+Industry standard: revenue managers set annual revenue budgets broken down by month/segment and track performance vs budget daily. All major PMS platforms (OPERA, Mews, Cloudbeds) provide budget vs actual reporting aligned with USALI department structure.
+
+- [ ] **R8: Revenue Goal/Budget CRUD Commands** | Complexity: Medium
+  - `revenue.goal.create` — create a revenue goal/budget target (by property, period, goal_type: room_revenue/total_revenue/occupancy/adr/revpar)
+  - `revenue.goal.update` — update target amounts or period
+  - `revenue.goal.delete` — soft-delete a goal
+  - `revenue.goal.track_actual` — scheduled command to snapshot actual performance data into `actual_amount` / `variance_amount` / `variance_percent`
+  - Industry standard: property controllers set annual budgets during Q4 for next year; monthly/weekly targets derived from seasonal patterns
+
+- [ ] **R9: Revenue Budget Variance Reporting** | Complexity: Medium
+  - New report endpoint: `GET /v1/revenue/budget-variance` — compare budget vs actual vs last year for a date range
+  - Breakdowns by: department (USALI), market segment (transient/corporate/group/wholesale), booking source, room type
+  - Industry standard KPIs per report row: budgeted revenue, actual revenue, variance ($), variance (%), same period last year, YoY growth %
+  - Add to `report-service.ts` and `routes/reports.ts`
+
+- [ ] **R10: Manager's Daily Report** | Complexity: High
+  - `GET /v1/revenue/managers-report` — the single most important daily report in hotel operations
+  - Sections (per industry standard):
+    - **Occupancy**: rooms sold, rooms available, OCC%, vs budget, vs last year
+    - **Revenue**: room revenue, F&B revenue, other revenue, total revenue, vs budget, vs LY
+    - **Rate metrics**: ADR, RevPAR, TRevPAR (total revenue per available room), NRevPAR (net of commissions)
+    - **Forecast**: next 7/14/30 day occupancy + ADR forecast
+    - **Segment mix**: revenue breakdown by segment (transient/corporate/group)
+    - **Pace report**: booking pace vs same time last year for upcoming periods
+  - Aggregate data from reservations, charge_postings, revenue_forecasts, revenue_goals tables
+
+---
+
+#### Phase 4 — Advanced Forecasting & Demand Intelligence (Priority: Medium)
+
+Industry standard: modern RMS platforms use machine learning and multi-signal demand intelligence. The forecast engine should evolve beyond simple EMA to incorporate booking pace, event signals, and market data (IDeaS G3, Duetto, Atomize patterns).
+
+- [ ] **R11: Enhanced Forecast Engine — Booking Pace Analysis** | Complexity: High
+  - Add booking pace tracking to forecast model: compare current on-the-books (OTB) reservations for future dates vs same time prior year
+  - Pickup = new bookings received for a future date within a lookback window
+  - Pace report: for each future date, show OTB rooms, OTB revenue + pace vs LY pace → earlier/faster indicators trigger rate increases
+  - New endpoint: `GET /v1/revenue/booking-pace` with property_id, date range
+  - Industry standard: pace is the #1 tactical demand signal; Oracle OPERA computes OTB daily
+
+- [ ] **R12: Enhanced Forecast Engine — Event & Market Signals** | Complexity: Medium
+  - Integrate demand_calendar events into forecast model with configurable impact multipliers
+  - Event types: local convention, holiday, sports event, concert, weather (hurricane/snow), competitor closure
+  - Forecast adjustment: base forecast × event_impact_multiplier
+  - `revenue.forecast.adjust` command — manual one-time forecast override by revenue manager
+  - Industry standard: revenue managers should be able to "tell the system" about events the algorithm hasn't seen
+
+- [ ] **R13: Forecast Accuracy Tracking** | Complexity: Low
+  - Scheduled command: `revenue.forecast.evaluate` — compare forecasted values vs actual for completed periods
+  - Update `actual_value`, `variance`, `variance_percent`, `accuracy_score` in `revenue_forecasts`
+  - Track model accuracy over time to detect drift
+  - Industry standard: MAPE (Mean Absolute Percentage Error) < 5% for next-day, < 10% for next-week is good; > 15% triggers model retraining
+
+---
+
+#### Phase 5 — Competitive Intelligence & Market Positioning (Priority: Medium)
+
+Industry standard: STR (Smith Travel Research) benchmarking is the global standard for hotel competitive performance measurement. Every major chain and management company subscribes to STR data. The PMS must compute STR-equivalent indices locally from comp set data.
+
+- [ ] **R14: Full Comp Set Index Computation** | Complexity: Medium
+  - Current gap: `getCompsetIndices()` computes ARI (ADR Index) but returns `null` for Occupancy Index and RGI because comp set occupancy data isn't available from rate-only competitor data
+  - Solution: add comp set occupancy estimation based on OTA availability signals (rooms_left → estimated occupancy) or direct comp set occupancy input
+  - New field on `competitor_rates`: `estimated_occupancy_percent` (from OTA "X rooms left" signals)
+  - Full STR-style indices:
+    - **MPI (Market Penetration Index)** = Own OCC% / Comp Set OCC% × 100 (>100 = gaining share)
+    - **ARI (Average Rate Index)** = Own ADR / Comp Set ADR × 100 (>100 = rate premium)
+    - **RGI (Revenue Generation Index)** = Own RevPAR / Comp Set RevPAR × 100 (>100 = outperforming)
+  - Industry standard: RGI is the single most important competitive metric; a hotel with RGI < 100 is underperforming its fair share
+
+- [ ] **R15: Rate Shopping Automation** | Complexity: High
+  - Background scheduled task: `revenue.competitor.auto_collect` — periodic automated rate collection
+  - Pluggable provider interface (similar to notification-service providers):
+    - Console provider (dev): generates synthetic competitor rates
+    - Webhook provider: POST to external rate shopping API (RateGain, OTA Insight, Fornova)
+    - Future: direct OTA API scrapers
+  - Rate comparison dashboard endpoint: `GET /v1/revenue/rate-shopping` — own rate vs each competitor for date range, showing rate positioning (premium/parity/undercut)
+  - Industry standard: rate shopping runs 2-4x daily; alerts when competitor drops rate >10% or when own rate is >20% above comp set average
+
+- [ ] **R16: Competitive Response Pricing Rules** | Complexity: Medium
+  - New pricing rule type: `competitor_response` — auto-adjust own rate when competitor rates change
+  - Configuration: track_competitor, response_strategy (match, undercut_by_$, undercut_by_%, maintain_premium_$, maintain_premium_%)
+  - Example: "If CompetitorHotel drops Standard Room rate below $180, auto-set our BAR to $175"
+  - Safety: min_rate and max_rate guardrails always apply; changes create recommendations for review (not auto-applied unless configured)
+
+---
+
+#### Phase 6 — Segment & Channel Optimization (Priority: Medium)
+
+Industry standard: revenue management extends to optimizing the mix of business segments and distribution channels. The RMS must provide visibility into net contribution by segment and channel to inform allocation decisions.
+
+- [ ] **R17: Segment Performance Analytics** | Complexity: Medium
+  - New endpoint: `GET /v1/revenue/segment-analysis` — revenue, ADR, occupancy contribution by market segment
+  - Segment breakdown: TRANSIENT, CORPORATE, GROUP, WHOLESALE, PACKAGE, HOUSE_USE, OTA, DIRECT
+  - Metrics per segment: rooms sold, room nights, revenue, ADR, % of total revenue, % of total rooms, cost of acquisition
+  - Trend comparison: current period vs prior period vs same period LY
+  - Industry standard: segment mix optimization is core to revenue strategy; high-ADR segments should be protected over low-ADR segments during peak periods
+
+- [ ] **R18: Channel Profitability Analysis** | Complexity: Medium
+  - New endpoint: `GET /v1/revenue/channel-profitability` — net revenue by distribution channel
+  - For each channel: gross revenue, commission %, commission $, net revenue, net ADR, booking count
+  - Channel types: Direct Website, Voice/Phone, GDS (Amadeus/Sabre), OTA (Booking.com/Expedia), Wholesale, Metasearch
+  - Industry standard channel costs: Direct 2-5%, GDS $10-20 + commission, OTA 15-25%, Wholesale net rate + margin
+  - Insight: a $200 OTA booking at 20% commission nets $160 — worse than a $180 direct booking netting $171
+
+- [ ] **R19: Group Displacement Analysis Enhancement** | Complexity: Medium
+  - Enhance existing `displacement-queries.ts` with:
+    - Include displaced demand estimation (how many transient bookings were turned away during group block dates)
+    - Add ancillary revenue comparison (group F&B spend vs average transient F&B spend)
+    - Include cost of servicing (group needs meeting rooms, AV, dedicated staff)
+    - Net displacement value = group total contribution - (displaced room revenue + displaced ancillary revenue)
+  - `revenue.group.evaluate` command — run displacement analysis on a proposed group block before accepting it
+  - Industry standard: "Should we take this group?" is the highest-impact revenue decision; the analysis should include total contribution, not just room revenue
+
+---
+
+#### Phase 7 — Pricing Experimentation & ML (Priority: Low)
+
+Industry standard: leading RMS platforms (Duetto GameChanger, Atomize) use A/B testing and machine learning for continuous price optimization. This is aspirational/differentiating functionality beyond table-stakes.
+
+- [ ] **R20: Pricing Experiment Framework** | Complexity: High
+  - `revenue.experiment.create` — create an A/B price test (control rate vs variant rate for a segment or date range)
+  - `revenue.experiment.start` / `revenue.experiment.stop` — lifecycle management
+  - `revenue.experiment.evaluate` — compute statistical significance of conversion rate and revenue difference
+  - Leverages existing `pricing_experiments` table
+  - Industry standard: test $199 vs $209 for the same room type; measure conversion rate × revenue lift to determine optimal price point
+
+- [ ] **R21: ML Demand Prediction Pipeline** | Complexity: Very High
+  - Wire `ai_demand_predictions` and `dynamic_pricing_rules_ml` tables into the forecast engine
+  - ML features: day of week, month, holiday flag, event proximity, booking pace, competitor rates, weather, historical same-date
+  - Pluggable model interface: built-in linear regression baseline, webhook for external ML service (AWS SageMaker, Google AutoML)
+  - Model output: predicted occupancy, recommended rate, confidence interval
+  - Industry standard: IDeaS G3 uses proprietary ML; smaller PMS platforms often use regression + rule-based hybrid
+
+- [ ] **R22: Revenue Attribution & ROI Tracking** | Complexity: Medium
+  - Wire `revenue_attribution` table: attribute each booking's revenue to the pricing action/campaign/channel that drove it
+  - Track ROI of pricing decisions: "Raising BAR by $15 on March 14 generated $2,400 incremental revenue with 97% confidence"
+  - Attribution types: pricing_rule, promotion, channel_campaign, comp_response, event_pricing
+  - Industry standard: close the loop between pricing decisions and revenue outcomes to continuously improve strategy
+
+---
+
+#### Phase 8 — Total Revenue Management (TRevPAR) (Priority: Low)
+
+Industry standard: Total Revenue Management extends yield optimization from rooms to ALL revenue streams — F&B, spa, parking, events, ancillary. This is the emerging frontier in hospitality revenue management (Revfine 2026, IDeaS Total Profit Optimization).
+
+- [ ] **R23: Non-Room Revenue KPIs** | Complexity: Medium
+  - Extend `GET /v1/revenue/kpis` to include:
+    - **TRevPAR** = Total Revenue / Available Rooms (rooms + F&B + spa + parking + misc)
+    - **GOPPAR** = Gross Operating Profit / Available Rooms (revenue - operating costs)
+    - **RevPAC** = Total Revenue / Available Customers (per-guest value)
+    - **ARPC** = Ancillary Revenue / Covers (non-room revenue per guest)
+    - **NRevPAR** = Net Revenue / Available Rooms (after commissions + acquisition costs)
+    - **Flow-through** = % of incremental revenue that converts to profit
+  - Break down total revenue by department (rooms, F&B, spa, parking, other) per USALI standard
+  - Industry standard: TRevPAR is the primary KPI for total revenue management; it captures the full guest spend
+
+- [ ] **R24: Ancillary Revenue Optimization** | Complexity: High
+  - Pricing rules that cover non-room products: parking rates, spa rates, F&B upsell bundles
+  - Package builder: dynamically price room + F&B + activity bundles based on demand
+  - Revenue allocation for packages (room 76.6%, breakfast 13.4%, parking 6.7%, spa 3.3% per USALI)
+  - Track ancillary spend by guest segment to identify high-value guests beyond room revenue
+
+---
+
+#### Phase 9 — Integration & API Wiring (Priority: Must-do alongside each phase)
+
+These are cross-cutting tasks that must be completed to make the revenue-service a first-class citizen in the system.
+
+- [ ] **R25: Seed All Revenue Commands in Command Catalog** | Complexity: Low
+  - Add INSERT statements for all new commands (R1–R22) in `scripts/tables/01-core/10_command_center.sql`
+  - Set `default_target_service = 'revenue-service'`, `required_modules = '{finance-automation}'`
+  - Ensure command-center-service routes all `revenue.*` commands to revenue-service
+
+- [ ] **R26: Kafka Event Consumer — Reservation Events** | Complexity: Medium
+  - Revenue-service should consume `reservations.events` topic (like roll-service and notification-service do)
+  - On `reservation.created` → update booking pace / OTB counts in demand_calendar
+  - On `reservation.cancelled` → decrement OTB and trigger re-evaluation of rate recommendations
+  - On `reservation.checked_out` → update actual revenue figures for forecast accuracy tracking and goal tracking
+  - Industry standard: revenue metrics must update in near-real-time with booking activity
+
+- [ ] **R27: Night Audit Integration** | Complexity: Medium
+  - During night audit (`billing.night_audit.execute`), trigger `revenue.forecast.evaluate` for the closing business date
+  - Update revenue_goals `actual_amount` with day's actual revenue
+  - Generate next-day rate recommendations if auto-recommend is enabled
+  - Industry standard: night audit is the natural sync point for revenue reporting and next-day pricing
+
+- [ ] **R28: Gateway Auth Guards for Revenue Endpoints** | Complexity: Low
+  - Currently `/v1/revenue/*` gateway routes have no `preHandler` auth guard
+  - Add `tenantScopeFromQuery` preHandler to all revenue proxy routes (consistent with other gateway routes)
+  - Revenue endpoints require `ADMIN` role and `finance-automation` module
+
+- [ ] **R29: HTTP Test Files** | Complexity: Low
+  - Create `http_test/revenue.http` with test requests for all revenue endpoints
+  - Include GET requests for all read endpoints and POST command executions for all write commands
+  - Follow existing `http_test/` patterns with `@token` and `@base_url` variables

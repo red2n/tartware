@@ -57,28 +57,39 @@
 
 ### Payment Methods
 
-| Method | Processing | Settlement |
-|--------|------------|------------|
-| Credit card | Authorization → Capture | T+1 to T+3 |
-| Debit card | Real-time | T+1 |
-| Cash | Manual | Immediate |
-| Direct bill | Invoice | Net 30/60 |
-| Gift card | Prepaid redemption | Immediate |
-| Mobile wallet | NFC/digital | Same as card |
-| Wire transfer | Bank | 1-3 days |
-| Check | Deposit | Clear time |
+| Method | Processing | Settlement | Adoption Trend (2026) |
+|--------|------------|------------|------------------------|
+| Credit card | Authorization → Capture | T+1 to T+3 | Dominant |
+| Debit card | Real-time | T+1 | Growing |
+| Cash | Manual | Immediate | Declining |
+| Direct bill | Invoice | Net 30/60 | Stable (corporate) |
+| Gift card | Prepaid redemption | Immediate | Stable |
+| Mobile wallet (Apple Pay, Google Pay, Samsung Pay) | NFC/digital | Same as card | Rapidly growing |
+| Wire transfer | Bank | 1-3 days | Large groups/corporate |
+| Check | Deposit | Clear time | Declining |
+| Virtual card (OTA) | OTA-generated payment | Various | Standard for OTA payments |
+| BNPL (Buy Now Pay Later) | Third-party financing | Partner settlement | Emerging |
+
+### Payment Processing (OPERA Cloud)
+
+Oracle offers two integrated payment options:
+
+| Solution | Scope | Model |
+|----------|-------|-------|
+| **Oracle Payment Interface (OPI)** | Global (200+ countries) | Multi-PSP, tokenization, P2PE |
+| **Oracle Payment Cloud Service** | US (currently) | Flat-rate, pay-as-you-go, no long-term contracts |
 
 ### Credit Card Operations
 
-| Operation | When | Purpose |
-|-----------|------|---------|
-| **Authorization** | Check-in | Guarantee payment |
-| **Pre-authorization** | Check-in | Hold estimated total |
-| **Incremental auth** | During stay | Increase hold |
-| **Capture** | Checkout | Collect payment |
-| **Void** | Before settle | Cancel auth |
-| **Refund** | Post-settle | Return payment |
-| **Chargeback** | Dispute | Bank reversal |
+| Operation | When | Purpose | PCI DSS v4.0 Requirement |
+|-----------|------|---------|--------------------------|
+| **Authorization** | Check-in | Guarantee payment | Encrypted transmission |
+| **Pre-authorization** | Check-in | Hold estimated total | Tokenized storage |
+| **Incremental auth** | During stay | Increase hold | Re-authorization |
+| **Capture** | Checkout | Collect payment | EMV/chip preferred |
+| **Void** | Before settle | Cancel auth | Audit trail required |
+| **Refund** | Post-settle | Return payment | Logged and traceable |
+| **Chargeback** | Dispute | Bank reversal | Compelling evidence response |
 
 ### Authorization Amounts
 

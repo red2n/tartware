@@ -31,15 +31,18 @@
 
 ## Channel Types
 
-| Channel | Description | Cost Structure |
-|---------|-------------|----------------|
-| **Direct** | Hotel website, call center | 2-5% (payment processing) |
-| **Brand.com** | Chain central reservation | 5-10% (reservation fee) |
-| **GDS** | Amadeus, Sabre, Travelport | $10-20 + travel agent commission |
-| **OTA** | Booking.com, Expedia | 15-18% commission |
-| **Metasearch** | Google, TripAdvisor, Kayak | CPC or CPA |
-| **Wholesale** | Bedbanks (Hotelbeds) | Net rate (20-30% margin to reseller) |
-| **Opaque** | Hotwire, Priceline | Discounted, brand hidden |
+| Channel | Description | Cost Structure | Net ADR Impact |
+|---------|-------------|----------------|----------------|
+| **Direct** | Hotel website, call center | 2-5% (payment processing) | Highest margin |
+| **Brand.com** | Chain central reservation | 5-10% (reservation fee) | High margin |
+| **GDS** | Amadeus, Sabre, Travelport | $10-20 + travel agent commission | Medium |
+| **OTA** | Booking.com, Expedia | 15-18% commission | Lower margin |
+| **Metasearch** | Google, TripAdvisor, Kayak, Trivago | CPC or CPA | Medium (lower than OTA) |
+| **Wholesale** | Bedbanks (Hotelbeds, WebBeds) | Net rate (20-30% margin to reseller) | Lowest margin |
+| **Opaque** | Hotwire, Priceline | Discounted, brand hidden | Rock bottom |
+| **Google Free Booking Links** | Free organic listing | 0% (organic) | High margin |
+
+> **Key Trend**: Since 2019, global RevPAR grew 19% but booking costs per available room surged 25% (Duetto/HotStats 2025). Optimizing channel mix toward direct and lower-cost channels is critical for margin preservation.
 
 ## Channel Manager Function
 
@@ -66,14 +69,18 @@
 
 ### Major OTAs
 
-| OTA | Markets | Business Model |
-|-----|---------|----------------|
-| Booking.com | Global | Agency (merchant of record = hotel) |
-| Expedia | Global | Merchant + agency |
-| Hotels.com | Global | Expedia group, merchant |
-| Agoda | Asia-Pacific | Booking Holdings, merchant |
-| Trip.com | Asia | Both models |
-| Airbnb | Global (vacation rental focus) | Service fee |
+| OTA | Markets | Business Model | Parent Company |
+|-----|---------|----------------|----------------|
+| Booking.com | Global | Agency (merchant of record = hotel) | Booking Holdings |
+| Expedia | Global | Merchant + agency | Expedia Group |
+| Hotels.com | Global | Merchant | Expedia Group |
+| Agoda | Asia-Pacific | Both models | Booking Holdings |
+| Trip.com | Asia/Global | Both models | Trip.com Group |
+| Airbnb | Global (vacation rental + hotel) | Service fee (split model) | Airbnb Inc. |
+| Vrbo | Global (vacation rental) | Service fee | Expedia Group |
+| MakeMyTrip | India | Both models | MakeMyTrip (Booking Holdings invested) |
+
+> **Consolidation Note**: Booking Holdings (Booking.com, Agoda, Kayak, Priceline) and Expedia Group (Expedia, Hotels.com, Vrbo, Trivago) dominate global OTA distribution. The EU Digital Markets Act (DMA) and Digital Services Act (DSA) are impacting rate parity and transparency requirements for OTAs operating in Europe.
 
 ### OTA Extranet Functions
 
@@ -100,12 +107,15 @@
 
 ### Parity Strategies
 
-| Strategy | Description | Legality |
-|----------|-------------|----------|
-| Full parity | Same rate everywhere | EU ruled anti-competitive |
-| Narrow parity | Same rate on other OTAs | Common in EU |
-| No parity | Different rates allowed | Some markets |
-| Member rates | Lower for logged-in users | Generally allowed |
+| Strategy | Description | Legality | Notes (2026) |
+|----------|-------------|----------|--------------|
+| Full parity | Same rate everywhere | EU ruled anti-competitive | Banned in many EU countries |
+| Narrow parity | Same rate on other OTAs, but can undercut on direct | Common in EU | Standard post-EU rulings |
+| No parity | Different rates allowed | Some markets | Growing (Germany, France, Italy, Austria) |
+| Member rates | Lower for logged-in users | Generally allowed | Industry standard practice |
+| Loyalty pricing | Exclusive rates for program members | Allowed | OPERA Cloud Loyalty encourages direct booking incentives |
+
+> **Regulatory Trend**: The EU Digital Markets Act (DMA) and national laws in Germany, France, Italy, and Austria have weakened OTA rate parity clauses. Hotels increasingly offer lower direct rates legally.
 
 ## Metasearch
 
@@ -118,13 +128,25 @@ Guest searches → Metasearch aggregates rates → Guest clicks →
 
 ### Major Metasearch Engines
 
-| Platform | Model | Notes |
-|----------|-------|-------|
-| Google Hotel Ads | CPC/CPA | Largest volume |
-| TripAdvisor | CPC/CPA | Review integration |
-| Kayak | CPC | Booking Holdings |
-| Trivago | CPC | Expedia Group |
-| Skyscanner | CPC | Trip.com Group |
+| Platform | Model | Notes | Parent Company |
+|----------|-------|-------|----------------|
+| Google Hotel Ads | CPC/CPA + Free Booking Links | Largest volume; free links since 2021 | Alphabet |
+| TripAdvisor | CPC/CPA | Review integration | TripAdvisor Inc. |
+| Kayak | CPC | Multi-platform | Booking Holdings |
+| Trivago | CPC | Hotel-focused comparison | Expedia Group |
+| Skyscanner | CPC | Flights + hotels | Trip.com Group |
+
+### OPERA Cloud Distribution
+
+Oracle OPERA Cloud Distribution provides integrated channel management:
+
+| Feature | Description |
+|---------|-------------|
+| Rate management | Consistent yield and rate management across channels |
+| Inventory sync | Real-time availability distribution |
+| Restriction management | CTA, CTD, MinLOS controls |
+| Multi-property | Centralized distribution for hotel portfolios |
+| GDS connectivity | Native Amadeus, Sabre, Travelport integration |
 
 ## GDS Distribution
 

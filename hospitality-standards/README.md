@@ -87,12 +87,20 @@ This documentation serves as:
 
 ## Industry Context
 
-| Metric | Value (2025) |
-|--------|--------------|
-| Global hotel rooms | ~18.5 million |
-| PMS market size | $8.5B (8% CAGR) |
-| ADR (global average) | $120-150 USD |
-| Occupancy (global average) | 65-72% |
+| Metric | Value (2026) | Source |
+|--------|-------------|--------|
+| Global hotel rooms | ~19 million | STR/CoStar Global |
+| Global hotel market | $785B (2023) → $1.13T by 2030 | Revfine / Statista |
+| PMS market size | $9.2B (9% CAGR) | Industry estimates |
+| RMS market size | $1.2B (2024) → $3.4B by 2033 (12.3% CAGR) | Revfine 2026 |
+| RMS adoption rate | 83.9% of hotels | Revfine / SnapShot 2024 survey |
+| ADR (global average) | $130-160 USD | CoStar with STR Benchmark |
+| Occupancy (global average) | 66-73% | CoStar with STR Benchmark |
+| RevPAR leaders | Hyatt +5.7%, Marriott +4.1% Q1 2025 | Brand earnings reports |
+| AI pricing revenue uplift | ~15% from AI-powered RMS | Revfine 2026 |
+| Guest eco-friendly preference | 78% prefer sustainable stays | Booking.com / Revfine |
+| PCI DSS version | v4.0 mandatory (March 31, 2025) | PCI SSC |
+| Leading PMS platform | Oracle OPERA Cloud (IDC MarketScape 2025 Leader) | IDC/Oracle |
 
 ---
 
@@ -130,6 +138,7 @@ When updating:
 
 ---
 
-**Version**: 1.0
-**Last Updated**: February 2026
-**Next Review**: Q2 2026 (Compliance section)
+**Version**: 2.0
+**Last Updated**: June 2025
+**Standards Referenced**: Oracle OPERA Cloud Release 26.1, IDeaS G3, Duetto GameChanger/RP-OS, Atomize, Revfine 2026 Guides, CoStar with STR Benchmark, PCI DSS v4.0
+**Next Review**: Q4 2025 (Compliance + Distribution sections)

@@ -62,14 +62,15 @@
 
 ## Staffing Standards
 
-| Metric | Industry Standard |
-|--------|-------------------|
-| Rooms per attendant per shift | 14-18 rooms |
+| Metric | Industry Standard (2026) |
+|--------|--------------------------|
+| Rooms per attendant per shift | 14-18 rooms (varies by service level) |
 | Square feet per hour | 1,500-2,000 sq ft |
 | Turn-time (checkout) | 25-35 minutes |
 | Stayover time | 15-20 minutes |
 | Supervisor ratio | 1 supervisor : 10-15 attendants |
 | Inspection rate | 100% checkouts, 20% stayovers |
+| Mobile device usage | Increasing - OPERA Cloud enables mobile room status updates (phone/tablet) |
 
 ## Cleaning Standards
 
@@ -84,14 +85,19 @@
 | **Desk/Work** | Clean surfaces, check supplies |
 | **Minibar** | Inventory, restock, clean |
 | **Final** | Check lights, AC, drapes, overall appearance |
+| **Sustainability** | Verify eco-friendly amenity dispensers, recycling bins, energy settings |
 
 ### Green/Opt-out Programs
 
-| Program | Guest Benefit | Hotel Benefit |
-|---------|---------------|---------------|
-| Skip service | Points/credit | Labor savings |
-| Reuse towels | Environmental credit | Laundry savings |
-| Reuse linens | Environmental credit | Laundry savings |
+| Program | Guest Benefit | Hotel Benefit | Adoption (2026) |
+|---------|---------------|---------------|-----------------|
+| Skip service | Points/credit ($5-10 value) | Labor savings (~$20/room) | 30-40% guest opt-in |
+| Reuse towels | Environmental credit | Laundry savings (15-25%) | Industry standard |
+| Reuse linens | Environmental credit | Laundry savings | Growing (every 3 days default) |
+| Refillable amenity dispensers | Reduced plastic waste | 50-70% amenity cost reduction | Rapidly growing |
+| Digital DND/service requests | App-based convenience | Real-time task routing | OPERA Cloud Mobile standard |
+
+> **ESG Note**: 78% of travelers prefer eco-friendly stays (2025 research). Properties with visible sustainability programs can command 5-15% rate premiums while reducing operational costs.
 
 ## Minibar Management
 

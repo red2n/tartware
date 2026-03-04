@@ -38,13 +38,27 @@
 
 ## Check-in Types
 
-| Type | Description | Requirements |
-|------|-------------|--------------|
-| **Standard** | Traditional desk check-in | Staff assistance |
-| **Express** | Pre-registered, key ready | Confirmation only |
-| **Kiosk** | Self-service terminal | ID scan, card swipe |
-| **Mobile** | App-based check-in | Digital key capable locks |
-| **Curbside** | Vehicle check-in | Bell staff assistance |
+| Type | Description | Requirements | Industry Adoption (2026) |
+|------|-------------|--------------|--------------------------|
+| **Standard** | Traditional desk check-in | Staff assistance | Universal |
+| **Express** | Pre-registered, key ready | Confirmation only | Widely adopted |
+| **Kiosk** | Self-service terminal | ID scan, card swipe | Growing (Oracle Kiosk Services) |
+| **Mobile** | App-based pre-arrival + digital key | BLE/NFC capable locks | Rapidly growing (OPERA Cloud Mobile Guest Experience) |
+| **Curbside** | Vehicle check-in | Bell staff assistance | Luxury/resort |
+| **Contactless** | Fully digital end-to-end | Mobile app + digital key | Standard post-2024 |
+| **AI-assisted** | Chatbot/virtual agent guided check-in | NLP chat + human escalation | Emerging |
+
+### Mobile Guest Experience (OPERA Cloud Standard)
+
+Oracle's Mobile Guest Experience is now a core component of OPERA Cloud PMS:
+
+| Feature | Description |
+|---------|-------------|
+| Pre-arrival registration | Secure link for address, ID, preferences |
+| Reservation review | Guest confirms/updates details before arrival |
+| Nor1 upsell offers | AI-powered room upgrade offers during mobile journey |
+| Branded experience | Customizable branding, welcome message, policies |
+| Reduced front desk load | Guests complete arrival tasks in advance |
 
 ## Check-out Process
 
