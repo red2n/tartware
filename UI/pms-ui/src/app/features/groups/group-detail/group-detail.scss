@@ -1,0 +1,12 @@
+/* Group detail — component-specific only.
+ * Reusable patterns (detail-card, detail-list, breadcrumb, etc.)
+ * live in styles/shared.scss. */
+
+.card-title-icon {
+  font-size: 18px;
+  width: 18px;
+  height: 18px;
+  vertical-align: text-bottom;
+  margin-right: var(--space-1);
+  color: var(--color-fg-muted);
+}

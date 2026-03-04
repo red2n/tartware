@@ -9,13 +9,22 @@ import {
   MfaEnrollResponseSchema,
   MfaVerifyRequestSchema,
   MfaVerifyResponseSchema,
+  TokenRefreshResponseSchema,
 } from "@tartware/schemas";
 import type { FastifyInstance } from "fastify";
 import { authenticator } from "otplib";
 
 import { config } from "../config.js";
 import { pool } from "../lib/db.js";
-import { authenticateUser, changeUserPassword } from "../services/auth-service.js";
+import {
+  authenticateUser,
+  changeUserPassword,
+} from "../services/auth-service.js";
+import {
+  extractBearerToken,
+  signAccessToken,
+  verifyAccessToken,
+} from "../lib/jwt.js";
 import {
   TENANT_AUTH_MFA_PROFILE_SQL,
   TENANT_AUTH_UPDATE_MFA_SQL,
@@ -64,6 +73,10 @@ const ChangePasswordRequestJsonSchema = schemaFromZod(
 const MfaEnrollResponseJsonSchema = schemaFromZod(MfaEnrollResponseSchema, "AuthMfaEnrollResponse");
 const MfaVerifyRequestJsonSchema = schemaFromZod(MfaVerifyRequestSchema, "AuthMfaVerifyRequest");
 const MfaVerifyResponseJsonSchema = schemaFromZod(MfaVerifyResponseSchema, "AuthMfaVerifyResponse");
+const TokenRefreshResponseJsonSchema = schemaFromZod(
+  TokenRefreshResponseSchema,
+  "TokenRefreshResponse",
+);
 
 type TenantMfaProfile = {
   id: string;
@@ -388,6 +401,42 @@ export const registerAuthRoutes = (app: FastifyInstance): void => {
         secret,
         otpauth_url: buildOtpAuthUrl(profile.username, secret),
         message: "MFA rotation started. Verify the new code to re-enable MFA.",
+      });
+    },
+  );
+
+  app.post(
+    "/v1/auth/refresh",
+    {
+      schema: buildRouteSchema({
+        tag: AUTH_TAG,
+        summary: "Refresh an access token before it expires",
+        response: {
+          200: TokenRefreshResponseJsonSchema,
+          401: errorResponseSchema,
+        },
+      }),
+    },
+    async (request, reply) => {
+      if (!request.auth.isAuthenticated || !request.auth.userId) {
+        reply.unauthorized("You must be logged in to refresh your token.");
+        return reply;
+      }
+
+      const token = extractBearerToken(request.headers.authorization);
+      const payload = token ? verifyAccessToken(token) : null;
+      const username = payload?.username ?? "";
+
+      const accessToken = signAccessToken({
+        sub: request.auth.userId,
+        username,
+        type: "access",
+      });
+
+      return TokenRefreshResponseSchema.parse({
+        access_token: accessToken,
+        token_type: "Bearer",
+        expires_in: config.auth.jwt.expiresInSeconds,
       });
     },
   );

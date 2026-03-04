@@ -1,0 +1,148 @@
+/* Groups page — component-specific overrides only.
+ * All reusable patterns (filter-bar, data-table, states, badges, buttons)
+ * live in styles/shared.scss. */
+
+.groups-page {
+  max-width: 1600px;
+}
+
+/* ── Group Overview Cards ── */
+.grp-overview {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-bottom: var(--space-5);
+}
+
+.grp-overview-card {
+  flex: 1;
+  display: flex;
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-md);
+  background: var(--color-canvas-default);
+  overflow: hidden;
+  transition: border-color var(--duration-fast), box-shadow var(--duration-fast);
+
+  &:hover {
+    box-shadow: var(--color-shadow-small);
+  }
+}
+
+.grp-overview-accent {
+  width: 4px;
+  flex-shrink: 0;
+}
+
+.grp-card-total .grp-overview-accent { background: var(--color-accent-emphasis); }
+.grp-card-active .grp-overview-accent { background: var(--color-success-emphasis); }
+.grp-card-rooms .grp-overview-accent { background: var(--color-warning-emphasis); }
+.grp-card-pickup .grp-overview-accent { background: #8b5cf6; }
+
+.grp-card-total .grp-overview-label mat-icon { color: var(--color-accent-fg); }
+.grp-card-active .grp-overview-label mat-icon { color: var(--color-success-fg); }
+.grp-card-rooms .grp-overview-label mat-icon { color: var(--color-warning-fg); }
+.grp-card-pickup .grp-overview-label mat-icon { color: #8b5cf6; }
+
+.grp-overview-body {
+  padding: var(--space-3) var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.grp-overview-label {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-fg-muted);
+
+  mat-icon {
+    font-size: 16px;
+    width: 16px;
+    height: 16px;
+  }
+}
+
+.grp-overview-value {
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-fg-default);
+}
+
+.grp-overview-sub {
+  font-size: var(--font-size-xs);
+}
+
+/* ── Table cells ── */
+.group-name-cell {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.grp-type-icon {
+  font-size: 16px;
+  width: 16px;
+  height: 16px;
+  color: var(--color-fg-muted);
+  flex-shrink: 0;
+}
+
+.group-name {
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-accent-fg);
+}
+
+.contact-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.contact-name {
+  font-weight: var(--font-weight-medium);
+}
+
+.text-center {
+  text-align: center;
+}
+
+.rooms-fraction {
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+}
+
+.cell-amount {
+  font-weight: var(--font-weight-medium);
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-xs);
+  text-align: right;
+  white-space: nowrap;
+}
+
+/* ── Responsive ── */
+@media (max-width: 768px) {
+  .grp-overview {
+    flex-direction: column;
+  }
+
+  .grp-overview-card {
+    width: 100%;
+  }
+
+  .filter-bar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .search-input {
+    width: 100%;
+  }
+
+  .table-container {
+    overflow-x: auto;
+  }
+}

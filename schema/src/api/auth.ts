@@ -74,6 +74,15 @@ export const LoginResponseSchema = PublicUserSchema.pick({
 
 export type LoginResponse = z.infer<typeof LoginResponseSchema>;
 
+/** Response for token refresh — returns only the new access token and expiry. */
+export const TokenRefreshResponseSchema = z.object({
+	access_token: z.string(),
+	token_type: z.literal("Bearer"),
+	expires_in: z.number().positive(),
+});
+
+export type TokenRefreshResponse = z.infer<typeof TokenRefreshResponseSchema>;
+
 // -----------------------------------------------------------------------------
 // Password Change
 // -----------------------------------------------------------------------------

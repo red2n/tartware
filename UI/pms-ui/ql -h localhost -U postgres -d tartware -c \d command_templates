@@ -1,0 +1,29 @@
+                                          Table "public.command_templates"
+         Column         |            Type             | Collation | Nullable |                Default                
+------------------------+-----------------------------+-----------+----------+---------------------------------------
+ id                     | uuid                        |           | not null | uuid_generate_v4()
+ command_name           | character varying(150)      |           | not null | 
+ version                | character varying(20)       |           | not null | '1.0'::character varying
+ description            | text                        |           |          | 
+ default_target_service | character varying(150)      |           | not null | 
+ default_topic          | character varying(150)      |           | not null | 'commands.primary'::character varying
+ required_modules       | text[]                      |           | not null | ARRAY[]::text[]
+ payload_schema         | jsonb                       |           | not null | '{}'::jsonb
+ sample_payload         | jsonb                       |           | not null | '{}'::jsonb
+ metadata               | jsonb                       |           | not null | '{}'::jsonb
+ created_at             | timestamp with time zone    |           | not null | now()
+ updated_at             | timestamp with time zone    |           | not null | now()
+ tenant_id              | uuid                        |           | not null | 
+ is_deleted             | boolean                     |           | not null | false
+ deleted_at             | timestamp without time zone |           |          | 
+ deleted_by             | character varying(100)      |           |          | 
+Indexes:
+    "command_templates_pkey" PRIMARY KEY, btree (id)
+    "command_templates_command_name_key" UNIQUE CONSTRAINT, btree (command_name)
+Referenced by:
+    TABLE "command_dispatches" CONSTRAINT "command_dispatches_command_name_fkey" FOREIGN KEY (command_name) REFERENCES command_templates(command_name) ON DELETE CASCADE
+    TABLE "command_features" CONSTRAINT "command_features_command_name_fkey" FOREIGN KEY (command_name) REFERENCES command_templates(command_name) ON DELETE CASCADE
+    TABLE "command_routes" CONSTRAINT "command_routes_command_name_fkey" FOREIGN KEY (command_name) REFERENCES command_templates(command_name) ON DELETE CASCADE
+Triggers:
+    trg_command_templates_version_lock BEFORE INSERT OR UPDATE ON command_templates FOR EACH ROW EXECUTE FUNCTION enforce_version_lock()
+

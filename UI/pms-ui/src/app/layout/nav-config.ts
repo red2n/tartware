@@ -16,8 +16,21 @@ export const PRIMARY_NAV_ITEMS: NavItem[] = [
 	{
 		label: "Reservations",
 		icon: "book_online",
-		route: "/reservations",
 		description: "Manage bookings, check-ins, check-outs, and guest stays",
+		children: [
+			{
+				label: "All Reservations",
+				icon: "list_alt",
+				route: "/reservations",
+				description: "Individual bookings, check-ins, check-outs, and guest stays",
+			},
+			{
+				label: "Group Bookings",
+				icon: "groups",
+				route: "/groups",
+				description: "Group blocks, room allocations, and rooming lists",
+			},
+		],
 	},
 	{
 		label: "Guests",

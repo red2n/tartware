@@ -209,16 +209,23 @@ WITH seed_commands(command_name, description, default_target_service, required_m
         ('loyalty.points.expire_sweep', 'Sweep and expire stale loyalty points', 'guests-service', ARRAY['loyalty']),
         ('metasearch.config.create', 'Create a metasearch platform configuration', 'reservations-command-service', ARRAY['distribution']),
         ('metasearch.config.update', 'Update a metasearch platform configuration', 'reservations-command-service', ARRAY['distribution']),
-        ('metasearch.click.record', 'Record a click from a metasearch platform', 'reservations-command-service', ARRAY['distribution'])
+        ('metasearch.click.record', 'Record a click from a metasearch platform', 'reservations-command-service', ARRAY['distribution']),
+        ('group.create', 'Create a new group booking with initial block request', 'reservations-command-service', ARRAY['core']),
+        ('group.add_rooms', 'Add room block allocations to a group booking', 'reservations-command-service', ARRAY['core']),
+        ('group.upload_rooming_list', 'Upload rooming list for a group booking', 'reservations-command-service', ARRAY['core']),
+        ('group.cutoff_enforce', 'Enforce cutoff date for a group block', 'reservations-command-service', ARRAY['core']),
+        ('group.billing.setup', 'Configure billing for a group booking', 'reservations-command-service', ARRAY['core'])
 )
-INSERT INTO command_templates (command_name, description, default_target_service, required_modules, metadata)
+INSERT INTO command_templates (command_name, description, default_target_service, required_modules, metadata, tenant_id)
 SELECT
     sc.command_name,
     sc.description,
     sc.default_target_service,
     sc.required_modules,
-    jsonb_build_object('seeded', true)
+    jsonb_build_object('seeded', true),
+    t.id
 FROM seed_commands sc
+CROSS JOIN tenants t
 ON CONFLICT (command_name) DO UPDATE
 SET
     description = EXCLUDED.description,
