@@ -1,16 +1,13 @@
 <div class="room-types-page">
-  <div class="page-header">
-    <h1 class="page-title">Room Types</h1>
-    <div class="page-actions">
-      <button class="btn btn-primary btn-sm" (click)="openCreateDialog()">
-        <mat-icon>add</mat-icon>
-        New room type
-      </button>
-      <button class="btn btn-invisible" (click)="loadRoomTypes()" matTooltip="Refresh" aria-label="Refresh room types">
-        <mat-icon>refresh</mat-icon>
-      </button>
-    </div>
-  </div>
+  <app-page-header title="Room Types" description="Room categories, configurations, and amenity packages">
+    <button class="btn btn-primary btn-sm" (click)="openCreateDialog()">
+      <mat-icon>add</mat-icon>
+      New room type
+    </button>
+    <button class="btn btn-invisible" (click)="loadRoomTypes()" matTooltip="Refresh" aria-label="Refresh room types">
+      <mat-icon>refresh</mat-icon>
+    </button>
+  </app-page-header>
 
   <!-- Search -->
   <div class="filter-bar">

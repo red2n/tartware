@@ -13,6 +13,7 @@ import {
 	type PropertyOption,
 	TenantContextService,
 } from "../../core/context/tenant-context.service";
+import { TranslatePipe } from "../../core/i18n/translate.pipe";
 
 @Component({
 	selector: "app-select-property",
@@ -25,6 +26,7 @@ import {
 		MatFormFieldModule,
 		MatInputModule,
 		MatProgressSpinnerModule,
+		TranslatePipe,
 	],
 	templateUrl: "./select-property.html",
 	styleUrl: "./select-property.scss",

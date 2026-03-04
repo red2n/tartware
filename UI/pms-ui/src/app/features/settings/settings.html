@@ -1,23 +1,20 @@
 <div class="settings-page">
-  <div class="page-header">
-    <h1 class="page-title">Settings</h1>
-    <div class="page-actions">
-      <button class="btn btn-invisible" (click)="loadCategories()" matTooltip="Refresh" aria-label="Refresh settings">
-        <mat-icon>refresh</mat-icon>
-      </button>
-    </div>
-  </div>
+  <app-page-header title="Settings" description="Property configuration, user preferences, and system setup">
+    <button class="btn btn-invisible" (click)="loadCategories()" [matTooltip]="'Refresh' | translate" [attr.aria-label]="'Refresh settings' | translate">
+      <mat-icon>refresh</mat-icon>
+    </button>
+  </app-page-header>
 
   @if (loadingCategories()) {
     <div class="loading-state">
       <mat-spinner diameter="32"></mat-spinner>
-      <span class="text-muted">Loading settings...</span>
+      <span class="text-muted">{{ 'Loading settings...' | translate }}</span>
     </div>
   } @else if (error() && categories().length === 0) {
     <div class="error-state">
       <mat-icon class="error-icon">error_outline</mat-icon>
       <span>{{ error() }}</span>
-      <button class="btn btn-outline" (click)="loadCategories()">Retry</button>
+      <button class="btn btn-outline" (click)="loadCategories()">{{ 'Retry' | translate }}</button>
     </div>
   } @else {
     <div class="settings-layout">
@@ -50,8 +47,8 @@
                 <input
                   type="text"
                   class="search-input"
-                  placeholder="Search settings..."
-                  aria-label="Search settings"
+                  [placeholder]="'Search settings...' | translate"
+                  [attr.aria-label]="'Search settings' | translate"
                   [ngModel]="searchQuery()"
                   (ngModelChange)="onSearch($event)" />
               </div>
@@ -62,7 +59,7 @@
           @if (loadingCatalog()) {
             <div class="loading-state">
               <mat-spinner diameter="24"></mat-spinner>
-              <span class="text-muted">Loading...</span>
+              <span class="text-muted">{{ 'Loading...' | translate }}</span>
             </div>
           } @else if (error()) {
             <div class="error-state">
@@ -73,10 +70,10 @@
             <div class="empty-state">
               <mat-icon class="empty-icon">tune</mat-icon>
               @if (searchQuery()) {
-                <p>No settings match "{{ searchQuery() }}"</p>
-                <button class="btn btn-outline" (click)="onSearch('')">Clear search</button>
+                <p>{{ 'No settings match "' | translate }}{{ searchQuery() }}{{ '"' }}</p>
+                <button class="btn btn-outline" (click)="onSearch('')">{{ 'Clear search' | translate }}</button>
               } @else {
-                <p>No settings defined in this category</p>
+                <p>{{ 'No settings defined in this category' | translate }}</p>
               }
             </div>
           } @else {
@@ -110,10 +107,10 @@
                                 {{ controlTypeLabel(def.control_type) }}
                               </span>
                               @if (def.is_required) {
-                                <span class="badge badge-accent">Required</span>
+                                <span class="badge badge-accent">{{ 'Required' | translate }}</span>
                               }
                               @if (def.is_readonly) {
-                                <span class="badge badge-muted">Read-only</span>
+                                <span class="badge badge-muted">{{ 'Read-only' | translate }}</span>
                               }
                               @if (getEditState(def.id).savedMessage) {
                                 <span class="badge badge-success">
@@ -135,7 +132,7 @@
                                   [checked]="getDisplayValue(def) === true"
                                   [disabled]="def.is_readonly || getEditState(def.id).saving"
                                   (change)="onToggleChange(def, $event.checked)">
-                                  {{ getDisplayValue(def) === true ? 'Enabled' : 'Disabled' }}
+                                  {{ getDisplayValue(def) === true ? ('Enabled' | translate) : ('Disabled' | translate) }}
                                 </mat-slide-toggle>
                                 @if (getEditState(def.id).saving) {
                                   <mat-spinner diameter="16"></mat-spinner>
@@ -242,7 +239,7 @@
                                             }
                                             <button class="btn btn-invisible btn-sm json-add-row-btn"
                                               (click)="addArrayRow(def.id, group.key)">
-                                              <mat-icon>add</mat-icon> Add row
+                                              <mat-icon>add</mat-icon> {{ 'Add row' | translate }}
                                             </button>
                                           </div>
                                         } @else if (group.type === 'array-primitive') {
@@ -310,13 +307,13 @@
                                     @if (getEditState(def.id).saving) {
                                       <mat-spinner diameter="14"></mat-spinner>
                                     }
-                                    Save
+                                    {{ 'Save' | translate }}
                                   </button>
                                   <button
                                     class="btn btn-invisible btn-sm"
                                     [disabled]="getEditState(def.id).saving"
                                     (click)="cancelEdit(def.id)">
-                                    Cancel
+                                    {{ 'Cancel' | translate }}
                                   </button>
                                 </div>
                               </div>
@@ -332,7 +329,7 @@
                                             <span class="json-field-label">{{ group.label }}</span>
                                             @if (group.valueType === 'boolean') {
                                               <span class="badge" [ngClass]="group.value ? 'badge-success' : 'badge-muted'">
-                                                {{ group.value ? 'Enabled' : 'Disabled' }}
+                                                {{ group.value ? ('Enabled' | translate) : ('Disabled' | translate) }}
                                               </span>
                                             } @else {
                                               <span class="json-field-value">{{ formatCellValue(group.value) }}</span>
@@ -346,7 +343,7 @@
                                                 <span class="json-field-label">{{ child.label }}</span>
                                                 @if (child.valueType === 'boolean') {
                                                   <span class="badge" [ngClass]="child.value ? 'badge-success' : 'badge-muted'">
-                                                    {{ child.value ? 'Enabled' : 'Disabled' }}
+                                                    {{ child.value ? ('Enabled' | translate) : ('Disabled' | translate) }}
                                                   </span>
                                                 } @else {
                                                   <span class="json-field-value">{{ formatCellValue(child.value) }}</span>
@@ -379,7 +376,7 @@
                                                 </table>
                                               </div>
                                             } @else {
-                                              <span class="text-muted">No items</span>
+                                              <span class="text-muted">{{ 'No items' | translate }}</span>
                                             }
                                           </div>
                                         } @else if (group.type === 'array-primitive') {
@@ -389,14 +386,14 @@
                                               @for (item of group.items; track $index) {
                                                 <span class="json-chip">{{ item }}</span>
                                               } @empty {
-                                                <span class="text-muted">None</span>
+                                                <span class="text-muted">{{ 'None' | translate }}</span>
                                               }
                                             </div>
                                           </div>
                                         }
                                       </div>
                                     } @empty {
-                                      <span class="text-muted">Not configured</span>
+                                      <span class="text-muted">{{ 'Not configured' | translate }}</span>
                                     }
                                   </div>
                                 } @else if (isArrayDisplayValue(def)) {
@@ -404,7 +401,7 @@
                                     @for (item of asArray(getDisplayValue(def)); track $index) {
                                       <span class="json-chip">{{ item }}</span>
                                     } @empty {
-                                      <span class="text-muted">None</span>
+                                      <span class="text-muted">{{ 'None' | translate }}</span>
                                     }
                                   </div>
                                 } @else {
@@ -416,7 +413,7 @@
                                   <button
                                     class="btn btn-invisible btn-sm"
                                     (click)="startEdit(def)"
-                                    matTooltip="Edit setting">
+                                    [matTooltip]="'Edit setting' | translate">
                                     <mat-icon>edit</mat-icon>
                                   </button>
                                 }

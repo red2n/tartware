@@ -99,7 +99,11 @@ export class CreateRoomTypeDialogComponent implements OnInit {
 	}
 
 	get isValid(): boolean {
-		const hasRequiredFields = !!(this.typeName.trim() && this.typeCode.trim() && this.basePrice >= 0);
+		const hasRequiredFields = !!(
+			this.typeName.trim() &&
+			this.typeCode.trim() &&
+			this.basePrice >= 0
+		);
 
 		if (this.isEditMode) {
 			return hasRequiredFields;

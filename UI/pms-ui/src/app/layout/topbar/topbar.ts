@@ -8,6 +8,8 @@ import { Router } from "@angular/router";
 
 import { AuthService } from "../../core/auth/auth.service";
 import { TenantContextService } from "../../core/context/tenant-context.service";
+import { I18nService, type LangCode, SUPPORTED_LANGUAGES } from "../../core/i18n/i18n.service";
+import { TranslatePipe } from "../../core/i18n/translate.pipe";
 import {
 	type InAppNotification,
 	NotificationService,
@@ -26,6 +28,7 @@ import { RelativeTimePipe } from "../../shared/pipes/relative-time.pipe";
 		MatDividerModule,
 		MatTooltipModule,
 		RelativeTimePipe,
+		TranslatePipe,
 	],
 	templateUrl: "./topbar.html",
 	styleUrl: "./topbar.scss",
@@ -36,9 +39,13 @@ export class TopbarComponent {
 	private readonly auth = inject(AuthService);
 	private readonly theme = inject(ThemeService);
 	private readonly ctx = inject(TenantContextService);
+	private readonly i18n = inject(I18nService);
 	private readonly registry = inject(RegistryService);
 	private readonly router = inject(Router);
 	readonly notifications = inject(NotificationService);
+
+	readonly supportedLanguages = SUPPORTED_LANGUAGES;
+	readonly currentLang = this.i18n.currentLang;
 
 	private readonly notifPanel = viewChild<ElementRef>("notifPanel");
 
@@ -75,6 +82,10 @@ export class TopbarComponent {
 
 	async setTheme(mode: "LIGHT" | "DARK" | "SYSTEM"): Promise<void> {
 		await this.theme.setTheme(mode);
+	}
+
+	setLanguage(lang: LangCode): void {
+		this.i18n.setLanguage(lang);
 	}
 
 	toggleStatusBar(): void {
@@ -117,7 +128,8 @@ export class TopbarComponent {
 	onDocumentClick(event: MouseEvent): void {
 		if (!this.notifications.panelOpen()) return;
 		const panel = this.notifPanel();
-		if (panel && !panel.nativeElement.contains(event.target)) {
+		const target = event.target;
+		if (panel && target instanceof Node && !panel.nativeElement.contains(target)) {
 			this.notifications.closePanel();
 		}
 	}

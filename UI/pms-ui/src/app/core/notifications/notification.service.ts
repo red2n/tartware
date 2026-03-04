@@ -1,7 +1,6 @@
-import { computed, inject, Injectable, signal, type OnDestroy } from "@angular/core";
-
-import { AuthService } from "../auth/auth.service";
+import { computed, Injectable, inject, type OnDestroy, signal } from "@angular/core";
 import { ApiService } from "../api/api.service";
+import { AuthService } from "../auth/auth.service";
 
 export interface InAppNotification {
 	notification_id: string;
@@ -72,9 +71,7 @@ export class NotificationService implements OnDestroy {
 	readonly connected = this._connected.asReadonly();
 
 	/** Unread notifications only */
-	readonly unreadNotifications = computed(() =>
-		this._notifications().filter((n) => !n.is_read),
-	);
+	readonly unreadNotifications = computed(() => this._notifications().filter((n) => !n.is_read));
 
 	/** Get the Material icon for a notification category */
 	static categoryIcon(category: string): string {

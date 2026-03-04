@@ -15,7 +15,9 @@ import type { RoomItem } from "@tartware/schemas";
 import { ApiService } from "../../core/api/api.service";
 import { AuthService } from "../../core/auth/auth.service";
 import { TenantContextService } from "../../core/context/tenant-context.service";
+import { TranslatePipe } from "../../core/i18n/translate.pipe";
 import { housekeepingStatusClass, roomStatusClass } from "../../shared/badge-utils";
+import { PageHeaderComponent } from "../../shared/components/page-header/page-header";
 import { PaginationComponent } from "../../shared/pagination/pagination";
 import { createSortState, sortBy, toggleSort } from "../../shared/sort-utils";
 import { ToastService } from "../../shared/toast/toast.service";
@@ -36,6 +38,8 @@ type StatusFilter = "ALL" | "SETUP" | "VACANT" | "OCCUPIED" | "OUT_OF_ORDER" | "
 		MatProgressSpinnerModule,
 		MatTooltipModule,
 		PaginationComponent,
+		PageHeaderComponent,
+		TranslatePipe,
 	],
 	templateUrl: "./rooms.html",
 	styleUrl: "./rooms.scss",

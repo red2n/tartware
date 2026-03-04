@@ -1,7 +1,7 @@
 import { Component, inject, type OnDestroy, type OnInit, signal } from "@angular/core";
 import { NavigationEnd, Router, RouterOutlet } from "@angular/router";
 import { filter, type Subscription } from "rxjs";
-
+import { TranslatePipe } from "../../core/i18n/translate.pipe";
 import { NotificationService } from "../../core/notifications/notification.service";
 import { RegistryService } from "../../core/registry/registry.service";
 import { ToastContainerComponent } from "../../shared/toast/toast-container";
@@ -22,6 +22,7 @@ import { TopbarComponent } from "../topbar/topbar";
 		TopbarComponent,
 		ToastContainerComponent,
 		StatusBarComponent,
+		TranslatePipe,
 	],
 	templateUrl: "./shell.html",
 	styleUrl: "./shell.scss",

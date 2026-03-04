@@ -10,6 +10,8 @@ import { Router } from "@angular/router";
 
 import { AuthService } from "../../core/auth/auth.service";
 import { TenantContextService } from "../../core/context/tenant-context.service";
+import { I18nService } from "../../core/i18n/i18n.service";
+import { TranslatePipe } from "../../core/i18n/translate.pipe";
 import { ThemeService } from "../../core/theme/theme.service";
 
 @Component({
@@ -23,6 +25,7 @@ import { ThemeService } from "../../core/theme/theme.service";
 		MatIconModule,
 		MatInputModule,
 		MatProgressSpinnerModule,
+		TranslatePipe,
 	],
 	templateUrl: "./login.html",
 	styleUrl: "./login.scss",
@@ -31,6 +34,7 @@ export class LoginComponent implements AfterViewInit {
 	private static readonly REMEMBER_KEY = "tartware_remember_username";
 
 	private readonly auth = inject(AuthService);
+	private readonly i18n = inject(I18nService);
 	private readonly theme = inject(ThemeService);
 	private readonly ctx = inject(TenantContextService);
 	private readonly router = inject(Router);
@@ -69,7 +73,7 @@ export class LoginComponent implements AfterViewInit {
 
 	async onSubmit(): Promise<void> {
 		if (!this.username || !this.password) {
-			this.error.set("Username and password are required.");
+			this.error.set(this.i18n.t("Username and password are required."));
 			return;
 		}
 
@@ -111,7 +115,9 @@ export class LoginComponent implements AfterViewInit {
 				this.router.navigate(["/select-property"]);
 			}
 		} catch (e) {
-			this.error.set(e instanceof Error ? e.message : "Login failed. Please try again.");
+			this.error.set(
+				e instanceof Error ? e.message : this.i18n.t("Login failed. Please try again."),
+			);
 		} finally {
 			this.loading.set(false);
 		}

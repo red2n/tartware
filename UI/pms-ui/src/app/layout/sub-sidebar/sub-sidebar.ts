@@ -3,12 +3,13 @@ import { MatIconModule } from "@angular/material/icon";
 import { MatTooltipModule } from "@angular/material/tooltip";
 import { RouterLink, RouterLinkActive } from "@angular/router";
 
+import { TranslatePipe } from "../../core/i18n/translate.pipe";
 import type { NavItem } from "../nav-config";
 
 @Component({
 	selector: "app-sub-sidebar",
 	standalone: true,
-	imports: [RouterLink, RouterLinkActive, MatIconModule, MatTooltipModule],
+	imports: [RouterLink, RouterLinkActive, MatIconModule, MatTooltipModule, TranslatePipe],
 	templateUrl: "./sub-sidebar.html",
 	styleUrl: "./sub-sidebar.scss",
 })

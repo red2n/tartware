@@ -20,6 +20,8 @@ import type {
 import { ApiService } from "../../core/api/api.service";
 import { AuthService } from "../../core/auth/auth.service";
 import { TenantContextService } from "../../core/context/tenant-context.service";
+import { TranslatePipe } from "../../core/i18n/translate.pipe";
+import { PageHeaderComponent } from "../../shared/components/page-header/page-header";
 import { formatCurrency, formatShortDate } from "../../shared/format-utils";
 import { PaginationComponent } from "../../shared/pagination/pagination";
 import { createSortState, sortBy, toggleSort } from "../../shared/sort-utils";
@@ -41,6 +43,8 @@ type ChargeTypeFilter = "ALL" | "charge" | "payment" | "adjustment";
 		MatProgressSpinnerModule,
 		MatTooltipModule,
 		PaginationComponent,
+		PageHeaderComponent,
+		TranslatePipe,
 	],
 	templateUrl: "./billing.html",
 	styleUrl: "./billing.scss",

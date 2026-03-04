@@ -11,11 +11,19 @@ import fp from "fastify-plugin";
  */
 const sseTokenPlugin: FastifyPluginAsync = async (fastify) => {
   fastify.addHook("onRequest", async (request) => {
+    // Only apply to SSE requests to avoid enabling query-param auth globally
+    if (request.method !== "GET") return;
+    const acceptHeader = request.headers.accept;
+    if (!acceptHeader || !acceptHeader.includes("text/event-stream")) return;
+
     if (request.headers.authorization) return;
 
-    const token = (request.query as Record<string, string>)?.token;
+    const query = request.query as Record<string, unknown> | undefined;
+    const token = query && typeof query.token === "string" ? query.token : undefined;
     if (token) {
       request.headers.authorization = `Bearer ${token}`;
+      // Remove token from parsed query to reduce logging/leakage risk
+      delete (query as Record<string, unknown>).token;
     }
   });
 };

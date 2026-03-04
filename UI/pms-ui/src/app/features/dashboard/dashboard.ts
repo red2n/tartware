@@ -10,12 +10,21 @@ import type { ActivityItem, DashboardStats, TaskItem } from "@tartware/schemas";
 import { ApiService } from "../../core/api/api.service";
 import { AuthService } from "../../core/auth/auth.service";
 import { TenantContextService } from "../../core/context/tenant-context.service";
+import { TranslatePipe } from "../../core/i18n/translate.pipe";
+import { PageHeaderComponent } from "../../shared/components/page-header/page-header";
 import { formatCurrency as fmtCurrency, formatTime as fmtTime } from "../../shared/format-utils";
 
 @Component({
 	selector: "app-dashboard",
 	standalone: true,
-	imports: [NgClass, MatIconModule, MatProgressSpinnerModule, MatTooltipModule],
+	imports: [
+		NgClass,
+		MatIconModule,
+		MatProgressSpinnerModule,
+		MatTooltipModule,
+		PageHeaderComponent,
+		TranslatePipe,
+	],
 	templateUrl: "./dashboard.html",
 	styleUrl: "./dashboard.scss",
 })

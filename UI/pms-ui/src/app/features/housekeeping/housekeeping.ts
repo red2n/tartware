@@ -13,7 +13,9 @@ import type { HousekeepingTaskListItem, RoomItem } from "@tartware/schemas";
 import { ApiService } from "../../core/api/api.service";
 import { AuthService } from "../../core/auth/auth.service";
 import { TenantContextService } from "../../core/context/tenant-context.service";
+import { TranslatePipe } from "../../core/i18n/translate.pipe";
 import { housekeepingStatusClass, roomStatusClass } from "../../shared/badge-utils";
+import { PageHeaderComponent } from "../../shared/components/page-header/page-header";
 import { PaginationComponent } from "../../shared/pagination/pagination";
 import { ToastService } from "../../shared/toast/toast.service";
 
@@ -36,6 +38,8 @@ type SortDir = "asc" | "desc";
 		MatTooltipModule,
 		RouterLink,
 		PaginationComponent,
+		PageHeaderComponent,
+		TranslatePipe,
 	],
 	templateUrl: "./housekeeping.html",
 	styleUrl: "./housekeeping.scss",

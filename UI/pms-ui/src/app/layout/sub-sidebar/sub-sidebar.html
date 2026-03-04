@@ -1,9 +1,9 @@
 <aside class="sub-sidebar" [class.collapsed]="collapsed()">
   <div class="sub-sidebar-header">
     @if (!collapsed()) {
-      <span class="sub-sidebar-title">{{ parentLabel() }}</span>
+      <span class="sub-sidebar-title">{{ parentLabel() | translate }}</span>
     } @else {
-      <mat-icon class="header-icon" [matTooltip]="parentLabel()" matTooltipPosition="left">{{ parentIcon() }}</mat-icon>
+      <mat-icon class="header-icon" [matTooltip]="parentLabel() | translate" matTooltipPosition="left">{{ parentIcon() }}</mat-icon>
     }
   </div>
 
@@ -12,11 +12,11 @@
       <a class="nav-item"
          [routerLink]="item.route"
          routerLinkActive="nav-item-active"
-         [matTooltip]="collapsed() ? item.label : ''"
+         [matTooltip]="collapsed() ? (item.label | translate) : ''"
          matTooltipPosition="left">
         <mat-icon class="nav-icon">{{ item.icon }}</mat-icon>
         @if (!collapsed()) {
-          <span class="nav-label">{{ item.label }}</span>
+          <span class="nav-label">{{ item.label | translate }}</span>
         }
       </a>
     }

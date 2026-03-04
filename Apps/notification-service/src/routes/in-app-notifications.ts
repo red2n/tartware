@@ -96,10 +96,14 @@ export const registerInAppNotificationRoutes = (app: FastifyInstance): void => {
         return reply.badRequest("Cannot mark more than 100 notifications at once");
       }
 
-      const updated = await markNotificationsRead(tenantId, notification_ids);
+      const userId = request.auth.userId;
+      if (!userId) {
+        return reply.unauthorized("Missing user id");
+      }
+
+      const updated = await markNotificationsRead(tenantId, notification_ids, userId);
 
       // Push updated unread count via SSE
-      const userId = request.auth.userId;
       if (userId) {
         const unread = await getUnreadCount(tenantId, userId);
         sseManager.sendUnreadCount(tenantId, userId, unread);
@@ -121,13 +125,16 @@ export const registerInAppNotificationRoutes = (app: FastifyInstance): void => {
     },
     async (request, reply) => {
       const { tenantId } = request.params;
-      const updated = await markAllNotificationsRead(tenantId);
+      const userId = request.auth.userId;
+
+      if (!userId) {
+        return reply.unauthorized("Missing user id");
+      }
+
+      const updated = await markAllNotificationsRead(tenantId, userId);
 
       // Push updated unread count via SSE
-      const userId = request.auth.userId;
-      if (userId) {
-        sseManager.sendUnreadCount(tenantId, userId, 0);
-      }
+      sseManager.sendUnreadCount(tenantId, userId, 0);
 
       return reply.send({ data: { updated } });
     },
@@ -150,6 +157,9 @@ export const registerInAppNotificationRoutes = (app: FastifyInstance): void => {
       if (!userId) {
         return reply.unauthorized("User context required for SSE stream");
       }
+
+      // Hijack the reply so Fastify does not auto-finalize
+      reply.hijack();
 
       // Set SSE headers
       reply.raw.writeHead(200, {
@@ -177,8 +187,7 @@ export const registerInAppNotificationRoutes = (app: FastifyInstance): void => {
         sseManager.removeClient(client);
       });
 
-      // Don't end the response — keep the stream open
-      // Returning void after hijacking the response
+      // Stream is hijacked — Fastify will not auto-close it
     },
   );
 };

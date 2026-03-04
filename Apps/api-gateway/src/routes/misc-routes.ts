@@ -549,10 +549,7 @@ export const registerMiscRoutes = (app: FastifyInstance): void => {
       preHandler: tenantScopeFromParams,
       schema: buildRouteSchema({
         tag: NOTIFICATION_PROXY_TAG,
-        summary: "SSE stream for real-time in-app notifications.",
-        response: {
-          200: jsonObjectSchema,
-        },
+        summary: "SSE stream for real-time in-app notifications (text/event-stream).",
       }),
     },
     async (request: FastifyRequest, reply: FastifyReply) => {
@@ -576,8 +573,11 @@ export const registerMiscRoutes = (app: FastifyInstance): void => {
         });
 
         if (!response.ok || !response.body) {
-          return reply.status(response.status).send({ error: "SSE connection failed" });
+          return reply.badGateway("SSE connection failed");
         }
+
+        // Hijack the reply so Fastify does not auto-finalize
+        reply.hijack();
 
         reply.raw.writeHead(200, {
           "Content-Type": "text/event-stream",
@@ -610,7 +610,7 @@ export const registerMiscRoutes = (app: FastifyInstance): void => {
 
         void pump();
       } catch {
-        return reply.status(502).send({ error: "Failed to connect to notification service" });
+        return reply.badGateway("Failed to connect to notification service");
       }
     },
   );

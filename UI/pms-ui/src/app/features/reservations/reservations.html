@@ -1,16 +1,13 @@
 <div class="reservations-page">
-  <div class="page-header">
-    <h1 class="page-title">Reservations</h1>
-    <div class="page-actions">
-      <button class="btn btn-primary btn-sm" (click)="openCreateReservation()">
-        <mat-icon>add</mat-icon>
-        New reservation
-      </button>
-      <button class="btn btn-invisible" (click)="loadReservations()" matTooltip="Refresh" aria-label="Refresh reservations">
-        <mat-icon>refresh</mat-icon>
-      </button>
-    </div>
-  </div>
+  <app-page-header title="Reservations" description="Manage bookings, check-ins, check-outs, and guest stays">
+    <button class="btn btn-primary btn-sm" (click)="openCreateReservation()">
+      <mat-icon>add</mat-icon>
+      {{ 'New reservation' | translate }}
+    </button>
+    <button class="btn btn-invisible" (click)="loadReservations()" [matTooltip]="'Refresh' | translate" [attr.aria-label]="'Refresh reservations' | translate">
+      <mat-icon>refresh</mat-icon>
+    </button>
+  </app-page-header>
 
   <!-- ═════════════════════════════════════════════ -->
   <!-- RESERVATION PIPELINE OVERVIEW                -->
@@ -22,10 +19,10 @@
         <div class="res-overview-body">
           <div class="res-overview-label">
             <mat-icon>flight_land</mat-icon>
-            Arrivals Today
+            {{ 'Arrivals Today' | translate }}
           </div>
           <div class="res-overview-value">{{ summary().arrivalsToday }}</div>
-          <div class="res-overview-sub text-muted">checking in</div>
+          <div class="res-overview-sub text-muted">{{ 'checking in' | translate }}</div>
         </div>
       </div>
       <mat-icon class="res-flow-arrow">arrow_forward</mat-icon>
@@ -34,10 +31,10 @@
         <div class="res-overview-body">
           <div class="res-overview-label">
             <mat-icon>hotel</mat-icon>
-            In-House
+            {{ 'In-House' | translate }}
           </div>
           <div class="res-overview-value">{{ summary().inHouse }}</div>
-          <div class="res-overview-sub text-muted">guests</div>
+          <div class="res-overview-sub text-muted">{{ 'guests' | translate }}</div>
         </div>
       </div>
       <mat-icon class="res-flow-arrow">arrow_forward</mat-icon>
@@ -46,10 +43,10 @@
         <div class="res-overview-body">
           <div class="res-overview-label">
             <mat-icon>flight_takeoff</mat-icon>
-            Departures Today
+            {{ 'Departures Today' | translate }}
           </div>
           <div class="res-overview-value">{{ summary().departuresToday }}</div>
-          <div class="res-overview-sub text-muted">checking out</div>
+          <div class="res-overview-sub text-muted">{{ 'checking out' | translate }}</div>
         </div>
       </div>
       <mat-icon class="res-flow-arrow">arrow_forward</mat-icon>
@@ -58,10 +55,10 @@
         <div class="res-overview-body">
           <div class="res-overview-label">
             <mat-icon>payments</mat-icon>
-            Revenue
+            {{ 'Revenue' | translate }}
           </div>
           <div class="res-overview-value">{{ formatCurrency(summary().totalRevenue, summary().currency) }}</div>
-          <div class="res-overview-sub text-muted">{{ summary().pending }} pending</div>
+          <div class="res-overview-sub text-muted">{{ summary().pending }} {{ 'pending' | translate }}</div>
         </div>
       </div>
     </div>
@@ -87,8 +84,8 @@
       <input
         type="text"
         class="search-input"
-        placeholder="Search reservations..."
-        aria-label="Search reservations"
+        [placeholder]="'Search reservations...' | translate"
+        [attr.aria-label]="'Search reservations' | translate"
         [ngModel]="searchQuery()"
         (ngModelChange)="onSearch($event)" />
     </div>
@@ -99,24 +96,24 @@
   @if (loading()) {
     <div class="loading-state">
       <mat-spinner diameter="32"></mat-spinner>
-      <span class="text-muted">Loading reservations...</span>
+      <span class="text-muted">{{ 'Loading reservations...' | translate }}</span>
     </div>
   } @else if (error(); as err) {
     <div class="error-state">
       <mat-icon class="error-icon">error_outline</mat-icon>
       <span>{{ err }}</span>
-      <button class="btn btn-outline" (click)="loadReservations()">Retry</button>
+      <button class="btn btn-outline" (click)="loadReservations()">{{ 'Retry' | translate }}</button>
     </div>
   } @else if (filteredReservations().length === 0) {
     <div class="empty-state">
       <mat-icon class="empty-icon">book_online</mat-icon>
       @if (reservations().length === 0) {
-        <p>No reservations found</p>
-        <p class="text-muted">Reservations will appear here once they are created.</p>
-        <button class="btn btn-primary" (click)="openCreateReservation()">Create first reservation</button>
+        <p>{{ 'No reservations found' | translate }}</p>
+        <p class="text-muted">{{ 'Reservations will appear here once they are created.' | translate }}</p>
+        <button class="btn btn-primary" (click)="openCreateReservation()">{{ 'Create first reservation' | translate }}</button>
       } @else {
-        <p>No reservations match the current filters</p>
-        <button class="btn btn-outline" (click)="setFilter('ALL'); onSearch('')">Clear filters</button>
+        <p>{{ 'No reservations match the current filters' | translate }}</p>
+        <button class="btn btn-outline" (click)="setFilter('ALL'); onSearch('')">{{ 'Clear filters' | translate }}</button>
       }
     </div>
   } @else {
@@ -125,26 +122,26 @@
           <thead>
             <tr>
               <th [attr.aria-sort]="ariaSort('confirmation_number')">
-                <button type="button" class="th-sort-btn" (click)="onSort('confirmation_number')">Confirmation <mat-icon class="sort-indicator">{{ sortIcon('confirmation_number') }}</mat-icon></button>
+                <button type="button" class="th-sort-btn" (click)="onSort('confirmation_number')">{{ 'Confirmation' | translate }} <mat-icon class="sort-indicator">{{ sortIcon('confirmation_number') }}</mat-icon></button>
               </th>
               <th [attr.aria-sort]="ariaSort('guest_name')">
-                <button type="button" class="th-sort-btn" (click)="onSort('guest_name')">Guest <mat-icon class="sort-indicator">{{ sortIcon('guest_name') }}</mat-icon></button>
+                <button type="button" class="th-sort-btn" (click)="onSort('guest_name')">{{ 'Guest' | translate }} <mat-icon class="sort-indicator">{{ sortIcon('guest_name') }}</mat-icon></button>
               </th>
-              <th>Room Type</th>
+              <th>{{ 'Room Type' | translate }}</th>
               <th [attr.aria-sort]="ariaSort('check_in_date')">
-                <button type="button" class="th-sort-btn" (click)="onSort('check_in_date')">Check-in <mat-icon class="sort-indicator">{{ sortIcon('check_in_date') }}</mat-icon></button>
+                <button type="button" class="th-sort-btn" (click)="onSort('check_in_date')">{{ 'Check-in' | translate }} <mat-icon class="sort-indicator">{{ sortIcon('check_in_date') }}</mat-icon></button>
               </th>
               <th [attr.aria-sort]="ariaSort('check_out_date')">
-                <button type="button" class="th-sort-btn" (click)="onSort('check_out_date')">Check-out <mat-icon class="sort-indicator">{{ sortIcon('check_out_date') }}</mat-icon></button>
+                <button type="button" class="th-sort-btn" (click)="onSort('check_out_date')">{{ 'Check-out' | translate }} <mat-icon class="sort-indicator">{{ sortIcon('check_out_date') }}</mat-icon></button>
               </th>
-              <th>Nights</th>
+              <th>{{ 'Nights' | translate }}</th>
               @if (activeFilter() === 'ALL') {
                 <th [attr.aria-sort]="ariaSort('status')">
-                  <button type="button" class="th-sort-btn" (click)="onSort('status')">Status <mat-icon class="sort-indicator">{{ sortIcon('status') }}</mat-icon></button>
+                  <button type="button" class="th-sort-btn" (click)="onSort('status')">{{ 'Status' | translate }} <mat-icon class="sort-indicator">{{ sortIcon('status') }}</mat-icon></button>
                 </th>
               }
               <th [attr.aria-sort]="ariaSort('total_amount')">
-                <button type="button" class="th-sort-btn" (click)="onSort('total_amount')">Amount <mat-icon class="sort-indicator">{{ sortIcon('total_amount') }}</mat-icon></button>
+                <button type="button" class="th-sort-btn" (click)="onSort('total_amount')">{{ 'Amount' | translate }} <mat-icon class="sort-indicator">{{ sortIcon('total_amount') }}</mat-icon></button>
               </th>
               <th></th>
             </tr>
@@ -177,7 +174,7 @@
                 }
                 <td class="cell-amount">{{ formatCurrency(res.total_amount, res.currency) }}</td>
                 <td class="cell-actions">
-                  <button class="btn btn-invisible btn-sm" matTooltip="View details" aria-label="View reservation details">
+                  <button class="btn btn-invisible btn-sm" [matTooltip]="'View details' | translate" [attr.aria-label]="'View reservation details' | translate">
                     <mat-icon>chevron_right</mat-icon>
                   </button>
                 </td>

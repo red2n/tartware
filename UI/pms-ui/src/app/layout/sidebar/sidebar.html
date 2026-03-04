@@ -12,12 +12,12 @@
       @if (item.children) {
         <button class="nav-item nav-parent"
                 [class.nav-item-active]="isParentActive(item)"
-                [matTooltip]="collapsed() ? item.label : ''"
+                [matTooltip]="collapsed() ? (item.label | translate) : ''"
                 matTooltipPosition="right"
                 (click)="onParentClick(item)">
           <mat-icon class="nav-icon">{{ item.icon }}</mat-icon>
           @if (!collapsed()) {
-            <span class="nav-label">{{ item.label }}</span>
+            <span class="nav-label">{{ item.label | translate }}</span>
             <mat-icon class="nav-chevron" [class.expanded]="isParentActive(item)">chevron_right</mat-icon>
           }
         </button>
@@ -25,11 +25,11 @@
         <a class="nav-item"
            [routerLink]="item.route"
            routerLinkActive="nav-item-active"
-           [matTooltip]="collapsed() ? item.label : ''"
+           [matTooltip]="collapsed() ? (item.label | translate) : ''"
            matTooltipPosition="right">
           <mat-icon class="nav-icon">{{ item.icon }}</mat-icon>
           @if (!collapsed()) {
-            <span class="nav-label">{{ item.label }}</span>
+            <span class="nav-label">{{ item.label | translate }}</span>
           }
         </a>
       }
@@ -41,11 +41,11 @@
       <a class="nav-item"
          [routerLink]="item.route"
          routerLinkActive="nav-item-active"
-         [matTooltip]="collapsed() ? item.label : ''"
+         [matTooltip]="collapsed() ? (item.label | translate) : ''"
          matTooltipPosition="right">
         <mat-icon class="nav-icon">{{ item.icon }}</mat-icon>
         @if (!collapsed()) {
-          <span class="nav-label">{{ item.label }}</span>
+          <span class="nav-label">{{ item.label | translate }}</span>
         }
       </a>
     }

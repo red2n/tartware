@@ -55,13 +55,16 @@ const MARK_READ_SQL = `
   SET is_read = TRUE, read_at = CURRENT_TIMESTAMP
   WHERE tenant_id = $1::uuid
     AND notification_id = ANY($2::uuid[])
+    AND user_id = $3::uuid
     AND is_read = FALSE
+    AND is_deleted = FALSE
 `;
 
 const MARK_ALL_READ_SQL = `
   UPDATE in_app_notifications
   SET is_read = TRUE, read_at = CURRENT_TIMESTAMP
   WHERE tenant_id = $1::uuid
+    AND user_id = $2::uuid
     AND is_read = FALSE
     AND is_deleted = FALSE
 `;
@@ -76,15 +79,15 @@ const MARK_ALL_READ_SQL = `
 export const createInAppNotification = async (input: CreateInAppNotification): Promise<unknown> => {
   const { rows } = await query(INSERT_SQL, [
     input.tenant_id,
-    input.property_id ?? null,
-    input.user_id ?? null,
+    input.property_id || null,
+    input.user_id || null,
     input.title,
     input.message,
     input.category ?? "info",
     input.priority ?? "normal",
-    input.source_type ?? null,
-    input.source_id ?? null,
-    input.action_url ?? null,
+    input.source_type || null,
+    input.source_id || null,
+    input.action_url || null,
     input.metadata ? JSON.stringify(input.metadata) : null,
     input.expires_at ?? null,
   ]);
@@ -202,15 +205,19 @@ export const getUnreadCount = async (tenantId: string, userId?: string): Promise
 export const markNotificationsRead = async (
   tenantId: string,
   notificationIds: string[],
+  userId: string,
 ): Promise<number> => {
-  const result = await query(MARK_READ_SQL, [tenantId, notificationIds]);
+  const result = await query(MARK_READ_SQL, [tenantId, notificationIds, userId]);
   return result.rowCount ?? 0;
 };
 
 /**
  * Mark all notifications as read for a tenant.
  */
-export const markAllNotificationsRead = async (tenantId: string): Promise<number> => {
-  const result = await query(MARK_ALL_READ_SQL, [tenantId]);
+export const markAllNotificationsRead = async (
+  tenantId: string,
+  userId: string,
+): Promise<number> => {
+  const result = await query(MARK_ALL_READ_SQL, [tenantId, userId]);
   return result.rowCount ?? 0;
 };
