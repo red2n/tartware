@@ -150,7 +150,12 @@
             @for (res of paginatedReservations(); track res.id) {
               <tr class="row-clickable" tabindex="0" (click)="viewReservation(res.id)" (keydown.enter)="viewReservation(res.id)" (keydown.space)="$event.preventDefault(); viewReservation(res.id)">
                 <td class="cell-primary">
-                  <span class="confirmation-number">{{ res.confirmation_number }}</span>
+                  <div class="confirmation-cell">
+                    @if (res.reservation_type && reservationTypeIcon[res.reservation_type]; as typeInfo) {
+                      <mat-icon class="res-type-icon" [matTooltip]="typeInfo.tooltip">{{ typeInfo.icon }}</mat-icon>
+                    }
+                    <span class="confirmation-number">{{ res.confirmation_number }}</span>
+                  </div>
                   @if (res.source) {
                     <span class="text-subtle">{{ res.source }}</span>
                   }

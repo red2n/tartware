@@ -529,6 +529,7 @@ export const ReservationListItemSchema = z.object({
 	status: z.string(),
 	status_display: z.string(),
 	source: z.string().optional(),
+	reservation_type: z.string().optional(),
 	guest_name: z.string(),
 	guest_email: z.string(),
 	guest_phone: z.string().optional(),

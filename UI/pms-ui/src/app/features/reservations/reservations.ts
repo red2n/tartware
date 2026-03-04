@@ -182,6 +182,18 @@ export class ReservationsComponent {
 	formatDate = formatShortDate;
 	formatCurrency = formatCurrency;
 
+	readonly reservationTypeIcon: Record<string, { icon: string; tooltip: string }> = {
+		TRANSIENT: { icon: "person", tooltip: "Transient" },
+		CORPORATE: { icon: "business", tooltip: "Corporate" },
+		GROUP: { icon: "groups", tooltip: "Group" },
+		WHOLESALE: { icon: "inventory_2", tooltip: "Wholesale" },
+		PACKAGE: { icon: "card_giftcard", tooltip: "Package" },
+		COMPLIMENTARY: { icon: "redeem", tooltip: "Complimentary" },
+		HOUSE_USE: { icon: "home_work", tooltip: "House Use" },
+		DAY_USE: { icon: "wb_sunny", tooltip: "Day Use" },
+		WAITLIST: { icon: "hourglass_empty", tooltip: "Waitlist" },
+	};
+
 	async loadReservations(): Promise<void> {
 		const tenantId = this.auth.tenantId();
 		if (!tenantId) return;
