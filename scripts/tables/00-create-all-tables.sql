@@ -157,6 +157,7 @@
 \ir 05-operations/108_spa_appointments.sql
 \ir 05-operations/111_self_service_configurations.sql
 \ir 05-operations/112_pbx_configurations.sql
+\ir 05-operations/113_in_app_notifications.sql
 
 -- ============================================================================
 -- CATEGORY 6: INTEGRATIONS (Channels, OTA, marketing, external systems)

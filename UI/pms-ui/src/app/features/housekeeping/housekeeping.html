@@ -1,12 +1,9 @@
 <div class="housekeeping-page">
-  <div class="page-header">
-    <h1 class="page-title">Housekeeping</h1>
-    <div class="page-actions">
-      <button class="btn btn-invisible" (click)="refresh()" matTooltip="Refresh" aria-label="Refresh">
-        <mat-icon>refresh</mat-icon>
-      </button>
-    </div>
-  </div>
+  <app-page-header title="Housekeeping" description="Room cleaning schedules, task assignments, and inspections">
+    <button class="btn btn-invisible" (click)="refresh()" [matTooltip]="'Refresh' | translate" [attr.aria-label]="'Refresh' | translate">
+      <mat-icon>refresh</mat-icon>
+    </button>
+  </app-page-header>
 
   <!-- ═════════════════════════════════════════════ -->
   <!-- KPI SUMMARY STRIP                           -->
@@ -16,42 +13,42 @@
       <div class="hk-summary-card hk-summary-ready">
         <div class="hk-summary-header">
           <mat-icon>verified</mat-icon>
-          <span>Rooms Ready</span>
+          <span>{{ 'Rooms Ready' | translate }}</span>
         </div>
         <div class="hk-summary-value">{{ summary().readyPct }}%</div>
-        <div class="hk-summary-sub text-muted">{{ summary().clean + summary().inspected }} of {{ summary().total }}</div>
+        <div class="hk-summary-sub text-muted">{{ summary().clean + summary().inspected }} {{ 'of' | translate }} {{ summary().total }}</div>
       </div>
       <div class="hk-summary-card hk-summary-dirty clickable" (click)="setView('rooms'); setFilter('DIRTY')">
         <div class="hk-summary-header">
           <mat-icon>warning</mat-icon>
-          <span>Dirty</span>
+          <span>{{ 'Dirty' | translate }}</span>
         </div>
         <div class="hk-summary-value">{{ summary().dirty }}</div>
-        <div class="hk-summary-sub text-muted">rooms</div>
+        <div class="hk-summary-sub text-muted">{{ 'rooms' | translate }}</div>
       </div>
       <div class="hk-summary-card hk-summary-progress clickable" (click)="setView('rooms'); setFilter('IN_PROGRESS')">
         <div class="hk-summary-header">
           <mat-icon>cleaning_services</mat-icon>
-          <span>In Progress</span>
+          <span>{{ 'In Progress' | translate }}</span>
         </div>
         <div class="hk-summary-value">{{ summary().inProgress }}</div>
-        <div class="hk-summary-sub text-muted">rooms</div>
+        <div class="hk-summary-sub text-muted">{{ 'rooms' | translate }}</div>
       </div>
       <div class="hk-summary-card hk-summary-clean clickable" (click)="setView('rooms'); setFilter('CLEAN')">
         <div class="hk-summary-header">
           <mat-icon>check_circle</mat-icon>
-          <span>Clean</span>
+          <span>{{ 'Clean' | translate }}</span>
         </div>
         <div class="hk-summary-value">{{ summary().clean }}</div>
-        <div class="hk-summary-sub text-muted">rooms</div>
+        <div class="hk-summary-sub text-muted">{{ 'rooms' | translate }}</div>
       </div>
       <div class="hk-summary-card clickable" (click)="setView('rooms'); setFilter('INSPECTED')">
         <div class="hk-summary-header">
           <mat-icon>verified</mat-icon>
-          <span>Inspected</span>
+          <span>{{ 'Inspected' | translate }}</span>
         </div>
         <div class="hk-summary-value">{{ summary().inspected }}</div>
-        <div class="hk-summary-sub text-muted">rooms</div>
+        <div class="hk-summary-sub text-muted">{{ 'rooms' | translate }}</div>
       </div>
       @if (summary().dnd > 0) {
         <div class="hk-summary-card hk-summary-dnd clickable" (click)="setView('rooms'); setFilter('DO_NOT_DISTURB')">
@@ -75,14 +72,14 @@
       [class.view-tab-active]="activeView() === 'rooms'"
       (click)="setView('rooms')">
       <mat-icon>hotel</mat-icon>
-      Room Board
+      {{ 'Room Board' | translate }}
     </button>
     <button
       class="view-tab"
       [class.view-tab-active]="activeView() === 'tasks'"
       (click)="setView('tasks')">
       <mat-icon>task_alt</mat-icon>
-      Tasks
+      {{ 'Tasks' | translate }}
       @if (tasks().length > 0) {
         <span class="counter">{{ tasks().length }}</span>
       }
@@ -94,7 +91,7 @@
   <!-- ═════════════════════════════════════════════ -->
   @if (activeView() === 'rooms') {
     <div class="filter-bar">
-      <nav class="filter-tabs" aria-label="Housekeeping status filters">
+      <nav class="filter-tabs" [attr.aria-label]="'Housekeeping status filters' | translate">
         @for (f of statusFilters; track f.key) {
           <button
             class="filter-tab"
@@ -112,8 +109,8 @@
         <input
           type="text"
           class="search-input"
-          placeholder="Search by room, type, floor..."
-          aria-label="Search rooms"
+          [placeholder]="'Search by room, type, floor...' | translate"
+          [attr.aria-label]="'Search rooms' | translate"
           [ngModel]="searchQuery()"
           (ngModelChange)="onSearch($event)" />
       </div>
@@ -123,13 +120,13 @@
     @if (loadingRooms()) {
       <div class="loading-state">
         <mat-spinner diameter="32"></mat-spinner>
-        <span class="text-muted">Loading rooms...</span>
+        <span class="text-muted">{{ 'Loading rooms...' | translate }}</span>
       </div>
     } @else if (roomError(); as err) {
       <div class="error-state">
         <mat-icon class="error-icon">error_outline</mat-icon>
         <span>{{ err }}</span>
-        <button class="btn btn-outline" (click)="loadRooms()">Retry</button>
+        <button class="btn btn-outline" (click)="loadRooms()">{{ 'Retry' | translate }}</button>
       </div>
     } @else if (filteredRooms().length === 0) {
       <div class="empty-state">
@@ -137,11 +134,11 @@
           <mat-icon class="empty-icon">cleaning_services</mat-icon>
         </div>
         @if (rooms().length === 0) {
-          <h3 class="empty-state-title">No rooms found</h3>
-          <p class="text-muted empty-state-desc">Rooms will appear here once they are configured.</p>
+          <h3 class="empty-state-title">{{ 'No rooms found' | translate }}</h3>
+          <p class="text-muted empty-state-desc">{{ 'Rooms will appear here once they are configured.' | translate }}</p>
         } @else {
-          <h3 class="empty-state-title">No rooms match the current filters</h3>
-          <button class="btn btn-outline" (click)="setFilter('ALL'); onSearch('')">Clear filters</button>
+          <h3 class="empty-state-title">{{ 'No rooms match the current filters' | translate }}</h3>
+          <button class="btn btn-outline" (click)="setFilter('ALL'); onSearch('')">{{ 'Clear filters' | translate }}</button>
         }
       </div>
     } @else {
@@ -150,21 +147,21 @@
             <thead>
               <tr>
                 <th class="col-room" [attr.aria-sort]="ariaSort('room_number')">
-                  <button type="button" class="th-sort-btn" (click)="onSort('room_number')">Room <mat-icon class="sort-indicator">{{ sortIcon('room_number') }}</mat-icon></button>
+                  <button type="button" class="th-sort-btn" (click)="onSort('room_number')">{{ 'Room' | translate }} <mat-icon class="sort-indicator">{{ sortIcon('room_number') }}</mat-icon></button>
                 </th>
                 <th class="col-type" [attr.aria-sort]="ariaSort('room_type_name')">
-                  <button type="button" class="th-sort-btn" (click)="onSort('room_type_name')">Type <mat-icon class="sort-indicator">{{ sortIcon('room_type_name') }}</mat-icon></button>
+                  <button type="button" class="th-sort-btn" (click)="onSort('room_type_name')">{{ 'Type' | translate }} <mat-icon class="sort-indicator">{{ sortIcon('room_type_name') }}</mat-icon></button>
                 </th>
                 <th class="col-floor" [attr.aria-sort]="ariaSort('floor')">
-                  <button type="button" class="th-sort-btn" (click)="onSort('floor')">Floor <mat-icon class="sort-indicator">{{ sortIcon('floor') }}</mat-icon></button>
+                  <button type="button" class="th-sort-btn" (click)="onSort('floor')">{{ 'Floor' | translate }} <mat-icon class="sort-indicator">{{ sortIcon('floor') }}</mat-icon></button>
                 </th>
                 <th class="col-occupancy" [attr.aria-sort]="ariaSort('status')">
-                  <button type="button" class="th-sort-btn" (click)="onSort('status')">Occupancy <mat-icon class="sort-indicator">{{ sortIcon('status') }}</mat-icon></button>
+                  <button type="button" class="th-sort-btn" (click)="onSort('status')">{{ 'Occupancy' | translate }} <mat-icon class="sort-indicator">{{ sortIcon('status') }}</mat-icon></button>
                 </th>
                 <th class="col-hk-status" [attr.aria-sort]="ariaSort('housekeeping_status')">
-                  <button type="button" class="th-sort-btn" (click)="onSort('housekeeping_status')">HK Status <mat-icon class="sort-indicator">{{ sortIcon('housekeeping_status') }}</mat-icon></button>
+                  <button type="button" class="th-sort-btn" (click)="onSort('housekeeping_status')">{{ 'HK Status' | translate }} <mat-icon class="sort-indicator">{{ sortIcon('housekeeping_status') }}</mat-icon></button>
                 </th>
-                <th class="col-notes">Notes</th>
+                <th class="col-notes">{{ 'Notes' | translate }}</th>
                 <th class="col-actions"></th>
               </tr>
             </thead>
@@ -189,10 +186,10 @@
                   <td>
                     <span class="badge" [ngClass]="statusClass(room.status)">{{ room.status_display }}</span>
                     @if (room.is_out_of_order) {
-                      <span class="badge badge-danger" [matTooltip]="room.out_of_order_reason ?? ''">OOO</span>
+                      <span class="badge badge-danger" [matTooltip]="room.out_of_order_reason ?? ''">{{ 'OOO' | translate }}</span>
                     }
                     @if (room.is_blocked) {
-                      <span class="badge badge-warning" [matTooltip]="room.block_reason ?? ''">Blocked</span>
+                      <span class="badge badge-warning" [matTooltip]="room.block_reason ?? ''">{{ 'Blocked' | translate }}</span>
                     }
                   </td>
                   <td>
@@ -217,8 +214,8 @@
                         <button
                           class="btn btn-invisible btn-sm"
                           [matMenuTriggerFor]="occMenu"
-                          matTooltip="Set occupancy"
-                          aria-label="Set occupancy status">
+                          [matTooltip]="'Set occupancy' | translate"
+                          [attr.aria-label]="'Set occupancy status' | translate">
                           <mat-icon>meeting_room</mat-icon>
                         </button>
                         <mat-menu #occMenu="matMenu" class="hk-actions-menu">
@@ -234,8 +231,8 @@
                         <button
                           class="btn btn-invisible btn-sm"
                           [matMenuTriggerFor]="hkMenu"
-                          matTooltip="Set HK status"
-                          aria-label="Set housekeeping status">
+                          [matTooltip]="'Set HK status' | translate"
+                          [attr.aria-label]="'Set housekeeping status' | translate">
                           <mat-icon>cleaning_services</mat-icon>
                         </button>
                         <mat-menu #hkMenu="matMenu" class="hk-actions-menu">
@@ -251,8 +248,8 @@
                         <a
                           class="btn btn-invisible btn-sm"
                           [routerLink]="['/rooms', room.room_id]"
-                          matTooltip="View details"
-                          aria-label="View room details">
+                          [matTooltip]="'View details' | translate"
+                          [attr.aria-label]="'View room details' | translate">
                           <mat-icon>chevron_right</mat-icon>
                         </a>
                       </div>
@@ -291,8 +288,8 @@
         <input
           type="text"
           class="search-input"
-          placeholder="Search tasks..."
-          aria-label="Search tasks"
+          [placeholder]="'Search tasks...' | translate"
+          [attr.aria-label]="'Search tasks' | translate"
           [ngModel]="searchQuery()"
           (ngModelChange)="onSearch($event)" />
       </div>
@@ -302,22 +299,22 @@
     @if (loadingTasks()) {
       <div class="loading-state">
         <mat-spinner diameter="32"></mat-spinner>
-        <span class="text-muted">Loading tasks...</span>
+        <span class="text-muted">{{ 'Loading tasks...' | translate }}</span>
       </div>
     } @else if (taskError(); as err) {
       <div class="error-state">
         <mat-icon class="error-icon">error_outline</mat-icon>
         <span>{{ err }}</span>
-        <button class="btn btn-outline" (click)="loadTasks()">Retry</button>
+        <button class="btn btn-outline" (click)="loadTasks()">{{ 'Retry' | translate }}</button>
       </div>
     } @else if (filteredTasks().length === 0) {
       <div class="empty-state">
         <div class="empty-state-icon-wrap">
           <mat-icon class="empty-icon">assignment</mat-icon>
         </div>
-        <h3 class="empty-state-title">No housekeeping tasks</h3>
+        <h3 class="empty-state-title">{{ 'No housekeeping tasks' | translate }}</h3>
         <p class="text-muted empty-state-desc">
-          Tasks are created automatically when rooms are checked out or can be assigned manually by staff.
+          {{ 'Tasks are created automatically when rooms are checked out or can be assigned manually by staff.' | translate }}
         </p>
       </div>
     } @else {
@@ -325,13 +322,13 @@
           <table class="data-table">
             <thead>
               <tr>
-                <th>Room</th>
-                <th>Task Type</th>
-                <th>Priority</th>
-                <th>Status</th>
-                <th>Scheduled</th>
-                <th>Assigned</th>
-                <th>Notes</th>
+                <th>{{ 'Room' | translate }}</th>
+                <th>{{ 'Task Type' | translate }}</th>
+                <th>{{ 'Priority' | translate }}</th>
+                <th>{{ 'Status' | translate }}</th>
+                <th>{{ 'Scheduled' | translate }}</th>
+                <th>{{ 'Assigned' | translate }}</th>
+                <th>{{ 'Notes' | translate }}</th>
               </tr>
             </thead>
             <tbody>

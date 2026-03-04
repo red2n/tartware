@@ -17,6 +17,8 @@ import type {
 
 import { ApiService } from "../../core/api/api.service";
 import { AuthService } from "../../core/auth/auth.service";
+import { TranslatePipe } from "../../core/i18n/translate.pipe";
+import { PageHeaderComponent } from "../../shared/components/page-header/page-header";
 
 /** Shape returned by GET /v1/settings/catalog/:code */
 interface CategoryCatalog {
@@ -80,6 +82,8 @@ interface JsonFieldGroup {
 		MatProgressSpinnerModule,
 		MatTooltipModule,
 		MatSlideToggleModule,
+		PageHeaderComponent,
+		TranslatePipe,
 	],
 	templateUrl: "./settings.html",
 	styleUrl: "./settings.scss",

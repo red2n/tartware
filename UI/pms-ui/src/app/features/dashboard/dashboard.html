@@ -1,24 +1,21 @@
 <div class="dashboard-page">
-  <div class="page-header">
-    <h1 class="page-title">Dashboard</h1>
-    <div class="page-actions">
-      <button class="btn btn-invisible" (click)="loadDashboard()" matTooltip="Refresh">
-        <mat-icon>refresh</mat-icon>
-      </button>
-    </div>
-  </div>
+  <app-page-header title="Dashboard" description="Real-time overview of property operations and key metrics">
+    <button class="btn btn-invisible" (click)="loadDashboard()" [matTooltip]="'Refresh' | translate">
+      <mat-icon>refresh</mat-icon>
+    </button>
+  </app-page-header>
 
   @defer (on idle) {
   @if (loading() && !stats()) {
     <div class="loading-state">
       <mat-spinner diameter="32"></mat-spinner>
-      <span class="text-muted">Loading dashboard...</span>
+      <span class="text-muted">{{ 'Loading dashboard...' | translate }}</span>
     </div>
   } @else if (error(); as err) {
     <div class="error-state">
       <mat-icon class="error-icon">error_outline</mat-icon>
       <span>{{ err }}</span>
-      <button class="btn btn-outline" (click)="loadDashboard()">Retry</button>
+      <button class="btn btn-outline" (click)="loadDashboard()">{{ 'Retry' | translate }}</button>
     </div>
   } @else if (stats(); as s) {
       <!-- KPI Cards -->
@@ -27,12 +24,12 @@
         <div class="kpi-card">
           <div class="kpi-header">
             <mat-icon class="kpi-icon">hotel</mat-icon>
-            <span class="kpi-label">Occupancy</span>
+            <span class="kpi-label">{{ 'Occupancy' | translate }}</span>
           </div>
           <div class="kpi-value">{{ s.occupancy.rate }}%</div>
           <div class="kpi-trend" [ngClass]="trendClass(s.occupancy.trend)">
             <mat-icon class="kpi-trend-icon">{{ trendIcon(s.occupancy.trend) }}</mat-icon>
-            <span>{{ s.occupancy.change > 0 ? '+' : '' }}{{ s.occupancy.change }}% vs yesterday</span>
+            <span>{{ s.occupancy.change > 0 ? '+' : '' }}{{ s.occupancy.change }}% {{ 'vs yesterday' | translate }}</span>
           </div>
         </div>
 
@@ -40,12 +37,12 @@
         <div class="kpi-card">
           <div class="kpi-header">
             <mat-icon class="kpi-icon kpi-icon-revenue">payments</mat-icon>
-            <span class="kpi-label">Revenue Today</span>
+            <span class="kpi-label">{{ 'Revenue Today' | translate }}</span>
           </div>
           <div class="kpi-value">{{ formatCurrency(s.revenue.today, s.revenue.currency) }}</div>
           <div class="kpi-trend" [ngClass]="trendClass(s.revenue.trend)">
             <mat-icon class="kpi-trend-icon">{{ trendIcon(s.revenue.trend) }}</mat-icon>
-            <span>{{ s.revenue.change > 0 ? '+' : '' }}{{ s.revenue.change }}% vs yesterday</span>
+            <span>{{ s.revenue.change > 0 ? '+' : '' }}{{ s.revenue.change }}% {{ 'vs yesterday' | translate }}</span>
           </div>
         </div>
 
@@ -53,13 +50,13 @@
         <div class="kpi-card clickable" (click)="navigateToReservations()">
           <div class="kpi-header">
             <mat-icon class="kpi-icon kpi-icon-checkin">flight_land</mat-icon>
-            <span class="kpi-label">Arrivals Today</span>
+            <span class="kpi-label">{{ 'Arrivals Today' | translate }}</span>
           </div>
           <div class="kpi-value">{{ s.checkIns.total }}</div>
           <div class="kpi-sub">
-            <span class="badge badge-warning">{{ s.checkIns.pending }} pending</span>
+            <span class="badge badge-warning">{{ s.checkIns.pending }} {{ 'pending' | translate }}</span>
             @if (s.checkIns.completed) {
-              <span class="badge badge-success">{{ s.checkIns.completed }} done</span>
+              <span class="badge badge-success">{{ s.checkIns.completed }} {{ 'done' | translate }}</span>
             }
           </div>
         </div>
@@ -68,13 +65,13 @@
         <div class="kpi-card clickable" (click)="navigateToReservations()">
           <div class="kpi-header">
             <mat-icon class="kpi-icon kpi-icon-checkout">flight_takeoff</mat-icon>
-            <span class="kpi-label">Departures Today</span>
+            <span class="kpi-label">{{ 'Departures Today' | translate }}</span>
           </div>
           <div class="kpi-value">{{ s.checkOuts.total }}</div>
           <div class="kpi-sub">
-            <span class="badge badge-warning">{{ s.checkOuts.pending }} pending</span>
+            <span class="badge badge-warning">{{ s.checkOuts.pending }} {{ 'pending' | translate }}</span>
             @if (s.checkOuts.completed) {
-              <span class="badge badge-success">{{ s.checkOuts.completed }} done</span>
+              <span class="badge badge-success">{{ s.checkOuts.completed }} {{ 'done' | translate }}</span>
             }
           </div>
         </div>
@@ -83,7 +80,7 @@
       <!-- Reservation Activity Sparkline -->
       @if (sparkline(); as spark) {
         <div class="dashboard-sparkline" matTooltip="Reservations · last 12 weeks">
-          <span class="sparkline-label text-muted">Booking Activity</span>
+          <span class="sparkline-label text-muted">{{ 'Booking Activity' | translate }}</span>
           <svg [attr.viewBox]="'0 0 ' + spark.width + ' ' + spark.height" class="sparkline-svg" aria-hidden="true">
             <path [attr.d]="spark.area" class="sparkline-area" />
             <path [attr.d]="spark.line" class="sparkline-line" />
@@ -96,11 +93,11 @@
         <!-- Recent Activity -->
         <div class="detail-card">
           <div class="card-header">
-            <h3 class="card-title">Recent Activity</h3>
+            <h3 class="card-title">{{ 'Recent Activity' | translate }}</h3>
           </div>
           <div class="card-body">
             @if (activity().length === 0) {
-              <p class="text-muted empty-hint">No recent activity</p>
+              <p class="text-muted empty-hint">{{ 'No recent activity' | translate }}</p>
             } @else {
               <div class="activity-list">
                 @for (item of activity(); track item.id) {
@@ -111,7 +108,7 @@
                       <span class="activity-desc text-muted">{{ item.description }}</span>
                     </div>
                     @if (item.urgent) {
-                      <span class="badge badge-danger">Urgent</span>
+                      <span class="badge badge-danger">{{ 'Urgent' | translate }}</span>
                     }
                   </div>
                 }
@@ -123,11 +120,11 @@
         <!-- Upcoming Tasks -->
         <div class="detail-card">
           <div class="card-header">
-            <h3 class="card-title">Upcoming Tasks</h3>
+            <h3 class="card-title">{{ 'Upcoming Tasks' | translate }}</h3>
           </div>
           <div class="card-body">
             @if (tasks().length === 0) {
-              <p class="text-muted empty-hint">No upcoming tasks</p>
+              <p class="text-muted empty-hint">{{ 'No upcoming tasks' | translate }}</p>
             } @else {
               <div class="task-list">
                 @for (task of tasks(); track task.id) {
@@ -154,6 +151,6 @@
       <div class="stat-card-placeholder"></div>
     </div>
   } @loading (minimum 200ms) {
-    <div class="stat-card-loading">Loading dashboard...</div>
+    <div class="stat-card-loading">{{ 'Loading dashboard...' | translate }}</div>
   }
 </div>

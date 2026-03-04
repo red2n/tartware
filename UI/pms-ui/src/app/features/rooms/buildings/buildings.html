@@ -1,16 +1,13 @@
 <div class="buildings-page">
-  <div class="page-header">
-    <h1 class="page-title">Buildings</h1>
-    <div class="page-actions">
-      <button class="btn btn-primary btn-sm" (click)="openCreateDialog()">
-        <mat-icon>add</mat-icon>
-        New building
-      </button>
-      <button class="btn btn-invisible" (click)="loadBuildings()" matTooltip="Refresh" aria-label="Refresh buildings">
-        <mat-icon>refresh</mat-icon>
-      </button>
-    </div>
-  </div>
+  <app-page-header title="Buildings" description="Property structures, wings, and floor plans">
+    <button class="btn btn-primary btn-sm" (click)="openCreateDialog()">
+      <mat-icon>add</mat-icon>
+      New building
+    </button>
+    <button class="btn btn-invisible" (click)="loadBuildings()" matTooltip="Refresh" aria-label="Refresh buildings">
+      <mat-icon>refresh</mat-icon>
+    </button>
+  </app-page-header>
 
   <!-- Search -->
   <div class="filter-bar">

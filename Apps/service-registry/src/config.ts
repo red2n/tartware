@@ -6,10 +6,10 @@ process.env.SERVICE_VERSION = process.env.SERVICE_VERSION ?? "0.1.0";
 const configValues = loadServiceConfig();
 
 /** Heartbeat TTL — mark service DOWN if no heartbeat within this window. */
-const heartbeatTtlMs = Number(process.env.REGISTRY_HEARTBEAT_TTL_MS) || 45_000;
+const heartbeatTtlMs = Number(process.env.REGISTRY_HEARTBEAT_TTL_MS) || 120_000;
 
 /** How often the registry sweeps for stale instances. */
-const sweepIntervalMs = Number(process.env.REGISTRY_SWEEP_INTERVAL_MS) || 10_000;
+const sweepIntervalMs = Number(process.env.REGISTRY_SWEEP_INTERVAL_MS) || 30_000;
 
 export const config = {
   service: {

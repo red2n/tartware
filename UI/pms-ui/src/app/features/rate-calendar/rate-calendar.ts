@@ -8,6 +8,8 @@ import { MatTooltipModule } from "@angular/material/tooltip";
 import { ApiService } from "../../core/api/api.service";
 import { AuthService } from "../../core/auth/auth.service";
 import { TenantContextService } from "../../core/context/tenant-context.service";
+import { TranslatePipe } from "../../core/i18n/translate.pipe";
+import { PageHeaderComponent } from "../../shared/components/page-header/page-header";
 import { formatCurrency, formatShortDate } from "../../shared/format-utils";
 import { ToastService } from "../../shared/toast/toast.service";
 
@@ -60,7 +62,15 @@ type GridCell = {
 @Component({
 	selector: "app-rate-calendar",
 	standalone: true,
-	imports: [NgClass, FormsModule, MatIconModule, MatProgressSpinnerModule, MatTooltipModule],
+	imports: [
+		NgClass,
+		FormsModule,
+		MatIconModule,
+		MatProgressSpinnerModule,
+		MatTooltipModule,
+		PageHeaderComponent,
+		TranslatePipe,
+	],
 	templateUrl: "./rate-calendar.html",
 	styleUrl: "./rate-calendar.scss",
 })

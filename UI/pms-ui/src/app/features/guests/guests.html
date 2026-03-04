@@ -1,16 +1,13 @@
 <div class="guests-page">
-  <div class="page-header">
-    <h1 class="page-title">Guests</h1>
-    <div class="page-actions">
-      <button class="btn btn-primary btn-sm" (click)="openCreateDialog()">
-        <mat-icon>person_add</mat-icon>
-        New guest
-      </button>
-      <button class="btn btn-invisible" (click)="loadGuests()" matTooltip="Refresh" aria-label="Refresh guests">
-        <mat-icon>refresh</mat-icon>
-      </button>
-    </div>
-  </div>
+  <app-page-header title="Guests" description="Guest profiles, preferences, and loyalty history">
+    <button class="btn btn-primary btn-sm" (click)="openCreateDialog()">
+      <mat-icon>person_add</mat-icon>
+      {{ 'New guest' | translate }}
+    </button>
+    <button class="btn btn-invisible" (click)="loadGuests()" [matTooltip]="'Refresh' | translate" [attr.aria-label]="'Refresh guests' | translate">
+      <mat-icon>refresh</mat-icon>
+    </button>
+  </app-page-header>
 
   <!-- ═════════════════════════════════════════════ -->
   <!-- KPI LEGEND STRIP                            -->
@@ -18,25 +15,25 @@
   @if (guestStats(); as stats) {
     <div class="guest-legend">
       <span class="guest-legend-item">
-        <span class="guest-dot guest-dot-total"></span> Total <strong>{{ stats.total_guests }}</strong>
+        <span class="guest-dot guest-dot-total"></span> {{ 'Total' | translate }} <strong>{{ stats.total_guests }}</strong>
       </span>
       <span class="guest-legend-item">
-        <span class="guest-dot guest-dot-new"></span> New <strong>{{ stats.new_guests_this_month }}</strong>
+        <span class="guest-dot guest-dot-new"></span> {{ 'New' | translate }} <strong>{{ stats.new_guests_this_month }}</strong>
       </span>
       <span class="guest-legend-item">
-        <span class="guest-dot guest-dot-returning"></span> Returning <strong>{{ stats.returning_guests }}</strong>
+        <span class="guest-dot guest-dot-returning"></span> {{ 'Returning' | translate }} <strong>{{ stats.returning_guests }}</strong>
       </span>
       <span class="guest-legend-item">
-        <span class="guest-dot guest-dot-longstay"></span> Long Stay <strong>{{ stats.long_stay_guests }}</strong>
+        <span class="guest-dot guest-dot-longstay"></span> {{ 'Long Stay' | translate }} <strong>{{ stats.long_stay_guests }}</strong>
       </span>
       <span class="guest-legend-item clickable" (click)="setFilter('VIP')">
-        <span class="guest-dot guest-dot-vip"></span> VIP <strong>{{ stats.vip_guests }}</strong>
+        <span class="guest-dot guest-dot-vip"></span> {{ 'VIP' | translate }} <strong>{{ stats.vip_guests }}</strong>
       </span>
       <span class="guest-legend-item">
-        <span class="guest-dot guest-dot-revenue"></span> Avg Value <strong>{{ formatCurrency(stats.average_lifetime_value) }}</strong>
+        <span class="guest-dot guest-dot-revenue"></span> {{ 'Avg Value' | translate }} <strong>{{ formatCurrency(stats.average_lifetime_value) }}</strong>
       </span>
       @if (sparkline(); as spark) {
-        <span class="guest-legend-item guest-sparkline" matTooltip="Registrations · last 12 weeks">
+        <span class="guest-legend-item guest-sparkline" [matTooltip]="'Registrations · last 12 weeks' | translate">
           <svg [attr.viewBox]="'0 0 ' + spark.width + ' ' + spark.height" class="sparkline-svg" aria-hidden="true">
             <path [attr.d]="spark.area" class="sparkline-area" />
             <path [attr.d]="spark.line" class="sparkline-line" />
@@ -66,8 +63,8 @@
       <input
         type="text"
         class="search-input"
-        placeholder="Search by name, email, phone..."
-        aria-label="Search guests"
+        [placeholder]="'Search by name, email, phone...' | translate"
+        [attr.aria-label]="'Search guests' | translate"
         [ngModel]="searchQuery()"
         (ngModelChange)="onSearch($event)" />
     </div>
@@ -78,23 +75,23 @@
   @if (loading()) {
     <div class="loading-state">
       <mat-spinner diameter="32"></mat-spinner>
-      <span class="text-muted">Loading guests...</span>
+      <span class="text-muted">{{ 'Loading guests...' | translate }}</span>
     </div>
   } @else if (error(); as err) {
     <div class="error-state">
       <mat-icon class="error-icon">error_outline</mat-icon>
       <span>{{ err }}</span>
-      <button class="btn btn-outline" (click)="loadGuests()">Retry</button>
+      <button class="btn btn-outline" (click)="loadGuests()">{{ 'Retry' | translate }}</button>
     </div>
   } @else if (filteredGuests().length === 0) {
     <div class="empty-state">
       <mat-icon class="empty-icon">people</mat-icon>
       @if (guests().length === 0) {
-        <p>No guests found</p>
-        <p class="text-muted">Guest profiles will appear here once they are created.</p>
+        <p>{{ 'No guests found' | translate }}</p>
+        <p class="text-muted">{{ 'Guest profiles will appear here once they are created.' | translate }}</p>
       } @else {
-        <p>No guests match the current filters</p>
-        <button class="btn btn-outline" (click)="setFilter('ALL'); onSearch('')">Clear filters</button>
+        <p>{{ 'No guests match the current filters' | translate }}</p>
+        <button class="btn btn-outline" (click)="setFilter('ALL'); onSearch('')">{{ 'Clear filters' | translate }}</button>
       }
     </div>
   } @else {
@@ -103,21 +100,21 @@
           <thead>
             <tr>
               <th [attr.aria-sort]="ariaSort('last_name')">
-                <button type="button" class="th-sort-btn" (click)="onSort('last_name')">Guest <mat-icon class="sort-indicator">{{ sortIcon('last_name') }}</mat-icon></button>
+                <button type="button" class="th-sort-btn" (click)="onSort('last_name')">{{ 'Guest' | translate }} <mat-icon class="sort-indicator">{{ sortIcon('last_name') }}</mat-icon></button>
               </th>
               <th [attr.aria-sort]="ariaSort('email')">
-                <button type="button" class="th-sort-btn" (click)="onSort('email')">Email <mat-icon class="sort-indicator">{{ sortIcon('email') }}</mat-icon></button>
+                <button type="button" class="th-sort-btn" (click)="onSort('email')">{{ 'Email' | translate }} <mat-icon class="sort-indicator">{{ sortIcon('email') }}</mat-icon></button>
               </th>
-              <th>Phone</th>
-              <th>Status</th>
+              <th>{{ 'Phone' | translate }}</th>
+              <th>{{ 'Status' | translate }}</th>
               <th [attr.aria-sort]="ariaSort('total_bookings')">
-                <button type="button" class="th-sort-btn" (click)="onSort('total_bookings')">Bookings <mat-icon class="sort-indicator">{{ sortIcon('total_bookings') }}</mat-icon></button>
+                <button type="button" class="th-sort-btn" (click)="onSort('total_bookings')">{{ 'Bookings' | translate }} <mat-icon class="sort-indicator">{{ sortIcon('total_bookings') }}</mat-icon></button>
               </th>
               <th [attr.aria-sort]="ariaSort('total_revenue')">
-                <button type="button" class="th-sort-btn" (click)="onSort('total_revenue')">Revenue <mat-icon class="sort-indicator">{{ sortIcon('total_revenue') }}</mat-icon></button>
+                <button type="button" class="th-sort-btn" (click)="onSort('total_revenue')">{{ 'Revenue' | translate }} <mat-icon class="sort-indicator">{{ sortIcon('total_revenue') }}</mat-icon></button>
               </th>
               <th [attr.aria-sort]="ariaSort('last_stay_date')">
-                <button type="button" class="th-sort-btn" (click)="onSort('last_stay_date')">Last Stay <mat-icon class="sort-indicator">{{ sortIcon('last_stay_date') }}</mat-icon></button>
+                <button type="button" class="th-sort-btn" (click)="onSort('last_stay_date')">{{ 'Last Stay' | translate }} <mat-icon class="sort-indicator">{{ sortIcon('last_stay_date') }}</mat-icon></button>
               </th>
               <th></th>
             </tr>
@@ -165,7 +162,7 @@
                 <td class="cell-numeric">{{ formatCurrency(guest.total_revenue) }}</td>
                 <td>{{ formatDate(guest.last_stay_date) }}</td>
                 <td class="cell-actions">
-                  <a class="btn btn-invisible btn-sm" [routerLink]="['/guests', guest.id]" matTooltip="View profile" aria-label="View guest profile">
+                  <a class="btn btn-invisible btn-sm" [routerLink]="['/guests', guest.id]" [matTooltip]="'View profile' | translate" [attr.aria-label]="'View guest profile' | translate">
                     <mat-icon>chevron_right</mat-icon>
                   </a>
                 </td>
@@ -191,7 +188,7 @@
   } @loading (minimum 200ms) {
     <div class="loading-state">
       <mat-spinner diameter="24"></mat-spinner>
-      <span class="text-muted">Rendering table...</span>
+      <span class="text-muted">{{ 'Rendering table...' | translate }}</span>
     </div>
   }
 </div>

@@ -4,7 +4,6 @@ import type {
   ReservationEvent,
   ReservationUpdatedEvent,
 } from "@tartware/schemas";
-import { v4 as uuid } from "uuid";
 
 import { query } from "../lib/db.js";
 import { reservationsLogger } from "../logger.js";
@@ -75,7 +74,9 @@ export const processReservationEvent = async (
 const handleReservationCreated = async (event: ReservationCreatedEvent): Promise<string> => {
   const payload = event.payload;
   const tenantId = event.metadata.tenantId;
-  const reservationId = payload.id ?? uuid();
+  // Use metadata.id as fallback — core.ts sets aggregateId = payload.id ?? eventId,
+  // and eventId === metadata.id, so this keeps the reservation ID consistent across services.
+  const reservationId = payload.id ?? event.metadata.id;
   const confirmation =
     (payload as { confirmation_number?: string }).confirmation_number ??
     `TW-${reservationId.slice(0, 8).toUpperCase()}`;

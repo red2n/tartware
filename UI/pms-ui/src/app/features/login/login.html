@@ -7,25 +7,23 @@
         <span class="hero-logo-text">tartware</span>
       </div>
 
-      <h1 class="hero-headline">Property Management,<br />Reimagined.</h1>
+      <h1 class="hero-headline">{{ 'Property Management,' | translate }}<br />{{ 'Reimagined.' | translate }}</h1>
       <p class="hero-tagline">
-        A modern PMS built for speed, clarity, and scale —
-        powering front desk, reservations, billing, and operations
-        from a single command-driven platform.
+        {{ 'A modern PMS built for speed, clarity, and scale — powering front desk, reservations, billing, and operations from a single command-driven platform.' | translate }}
       </p>
 
       <div class="hero-features">
         <div class="hero-feature">
           <mat-icon>speed</mat-icon>
-          <span>20K ops/sec throughput</span>
+          <span>{{ '20K ops/sec throughput' | translate }}</span>
         </div>
         <div class="hero-feature">
           <mat-icon>domain</mat-icon>
-          <span>Multi-property support</span>
+          <span>{{ 'Multi-property support' | translate }}</span>
         </div>
         <div class="hero-feature">
           <mat-icon>shield</mat-icon>
-          <span>Enterprise-grade security</span>
+          <span>{{ 'Enterprise-grade security' | translate }}</span>
         </div>
       </div>
     </div>
@@ -42,8 +40,8 @@
         <span class="mobile-logo-text">tartware</span>
       </div>
 
-      <h2 class="login-heading">Welcome back</h2>
-      <p class="login-subheading">Sign in to your account to continue</p>
+      <h2 class="login-heading">{{ 'Welcome back' | translate }}</h2>
+      <p class="login-subheading">{{ 'Sign in to your account to continue' | translate }}</p>
 
       @if (error(); as err) {
         <div class="login-error">
@@ -54,7 +52,7 @@
 
       <form (ngSubmit)="onSubmit()" method="post" class="login-form">
         <mat-form-field appearance="outline" class="full-width">
-          <mat-label>Username</mat-label>
+          <mat-label>{{ 'Username' | translate }}</mat-label>
           <mat-icon matPrefix class="field-icon">person_outline</mat-icon>
           <input matInput
                  [(ngModel)]="username"
@@ -64,7 +62,7 @@
         </mat-form-field>
 
         <mat-form-field appearance="outline" class="full-width">
-          <mat-label>Password</mat-label>
+          <mat-label>{{ 'Password' | translate }}</mat-label>
           <mat-icon matPrefix class="field-icon">lock_outline</mat-icon>
           <input matInput
                  [type]="hidePassword() ? 'password' : 'text'"
@@ -76,14 +74,14 @@
           <button mat-icon-button matSuffix
                   type="button"
                   (click)="togglePasswordVisibility()"
-                  aria-label="Toggle password visibility">
+                  [attr.aria-label]="'Toggle password visibility' | translate">
             <mat-icon>{{ hidePassword() ? 'visibility' : 'visibility_off' }}</mat-icon>
           </button>
         </mat-form-field>
 
         <div class="remember-me-row">
           <mat-checkbox [(ngModel)]="rememberMe" name="rememberMe" color="primary">
-            Remember me
+            {{ 'Remember me' | translate }}
           </mat-checkbox>
         </div>
 
@@ -95,14 +93,14 @@
           @if (loading()) {
             <mat-spinner diameter="20"></mat-spinner>
           } @else {
-            Sign in
+            {{ 'Sign in' | translate }}
           }
         </button>
       </form>
 
       <div class="login-footer">
         <mat-icon class="footer-lock-icon">verified_user</mat-icon>
-        <span>Secured with TLS encryption</span>
+        <span>{{ 'Secured with TLS encryption' | translate }}</span>
       </div>
     </div>
   </div>

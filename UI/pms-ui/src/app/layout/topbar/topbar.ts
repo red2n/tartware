@@ -1,4 +1,4 @@
-import { Component, inject, output } from "@angular/core";
+import { Component, type ElementRef, HostListener, inject, output, viewChild } from "@angular/core";
 import { MatButtonModule } from "@angular/material/button";
 import { MatDividerModule } from "@angular/material/divider";
 import { MatIconModule } from "@angular/material/icon";
@@ -8,13 +8,28 @@ import { Router } from "@angular/router";
 
 import { AuthService } from "../../core/auth/auth.service";
 import { TenantContextService } from "../../core/context/tenant-context.service";
+import { I18nService, type LangCode, SUPPORTED_LANGUAGES } from "../../core/i18n/i18n.service";
+import { TranslatePipe } from "../../core/i18n/translate.pipe";
+import {
+	type InAppNotification,
+	NotificationService,
+} from "../../core/notifications/notification.service";
 import { RegistryService } from "../../core/registry/registry.service";
 import { ThemeService } from "../../core/theme/theme.service";
+import { RelativeTimePipe } from "../../shared/pipes/relative-time.pipe";
 
 @Component({
 	selector: "app-topbar",
 	standalone: true,
-	imports: [MatIconModule, MatButtonModule, MatMenuModule, MatDividerModule, MatTooltipModule],
+	imports: [
+		MatIconModule,
+		MatButtonModule,
+		MatMenuModule,
+		MatDividerModule,
+		MatTooltipModule,
+		RelativeTimePipe,
+		TranslatePipe,
+	],
 	templateUrl: "./topbar.html",
 	styleUrl: "./topbar.scss",
 })
@@ -24,8 +39,15 @@ export class TopbarComponent {
 	private readonly auth = inject(AuthService);
 	private readonly theme = inject(ThemeService);
 	private readonly ctx = inject(TenantContextService);
+	private readonly i18n = inject(I18nService);
 	private readonly registry = inject(RegistryService);
 	private readonly router = inject(Router);
+	readonly notifications = inject(NotificationService);
+
+	readonly supportedLanguages = SUPPORTED_LANGUAGES;
+	readonly currentLang = this.i18n.currentLang;
+
+	private readonly notifPanel = viewChild<ElementRef>("notifPanel");
 
 	readonly user = this.auth.user;
 	readonly isDark = this.theme.isDark;
@@ -62,12 +84,53 @@ export class TopbarComponent {
 		await this.theme.setTheme(mode);
 	}
 
+	setLanguage(lang: LangCode): void {
+		this.i18n.setLanguage(lang);
+	}
+
 	toggleStatusBar(): void {
 		this.registry.toggleStatusBar();
 	}
 
 	logout(): void {
 		this.auth.logout();
+		this.notifications.disconnect();
 		this.router.navigate(["/login"]);
+	}
+
+	toggleNotifications(): void {
+		this.notifications.togglePanel();
+	}
+
+	markAsRead(notification: InAppNotification): void {
+		if (!notification.is_read) {
+			this.notifications.markAsRead([notification.notification_id]);
+		}
+	}
+
+	markAllRead(): void {
+		this.notifications.markAllAsRead();
+	}
+
+	notificationIcon(category: string): string {
+		return NotificationService.categoryIcon(category);
+	}
+
+	onNotificationClick(notification: InAppNotification): void {
+		this.markAsRead(notification);
+		if (notification.action_url) {
+			this.notifications.closePanel();
+			this.router.navigateByUrl(notification.action_url);
+		}
+	}
+
+	@HostListener("document:click", ["$event"])
+	onDocumentClick(event: MouseEvent): void {
+		if (!this.notifications.panelOpen()) return;
+		const panel = this.notifPanel();
+		const target = event.target;
+		if (panel && target instanceof Node && !panel.nativeElement.contains(target)) {
+			this.notifications.closePanel();
+		}
 	}
 }

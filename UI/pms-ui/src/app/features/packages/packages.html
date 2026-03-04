@@ -1,16 +1,13 @@
 <div class="packages-page">
-  <div class="page-header">
-    <h1 class="page-title">Packages</h1>
-    <div class="page-actions">
-      <button class="btn btn-primary" (click)="openCreateDialog()">
-        <mat-icon>add</mat-icon>
-        New Package
-      </button>
-      <button class="btn btn-invisible" (click)="loadPackages()" matTooltip="Refresh" aria-label="Refresh packages">
-        <mat-icon>refresh</mat-icon>
-      </button>
-    </div>
-  </div>
+  <app-page-header title="Packages" description="Bundled offerings with services and add-on inclusions">
+    <button class="btn btn-primary" (click)="openCreateDialog()">
+      <mat-icon>add</mat-icon>
+      {{ 'New Package' | translate }}
+    </button>
+    <button class="btn btn-invisible" (click)="loadPackages()" [matTooltip]="'Refresh' | translate" [attr.aria-label]="'Refresh packages' | translate">
+      <mat-icon>refresh</mat-icon>
+    </button>
+  </app-page-header>
 
   <!-- ═════════════════════════════════════════════ -->
   <!-- PACKAGE ENGAGEMENT OVERVIEW                  -->
@@ -21,28 +18,28 @@
         <mat-icon>inventory_2</mat-icon>
         <div class="pkg-stat-content">
           <div class="pkg-stat-value">{{ summary().activeCount }}</div>
-          <div class="pkg-stat-label">Active Packages</div>
+          <div class="pkg-stat-label">{{ 'Active Packages' | translate }}</div>
         </div>
       </div>
       <div class="pkg-stat pkg-stat-featured">
         <mat-icon>star</mat-icon>
         <div class="pkg-stat-content">
           <div class="pkg-stat-value">{{ summary().featuredCount }}</div>
-          <div class="pkg-stat-label">Featured</div>
+          <div class="pkg-stat-label">{{ 'Featured' | translate }}</div>
         </div>
       </div>
       <div class="pkg-stat pkg-stat-bookings">
         <mat-icon>trending_up</mat-icon>
         <div class="pkg-stat-content">
           <div class="pkg-stat-value">{{ summary().totalBookings }}</div>
-          <div class="pkg-stat-label">Total Bookings</div>
+          <div class="pkg-stat-label">{{ 'Total Bookings' | translate }}</div>
         </div>
       </div>
       <div class="pkg-stat pkg-stat-price">
         <mat-icon>sell</mat-icon>
         <div class="pkg-stat-content">
           <div class="pkg-stat-value">{{ formatCurrency(summary().avgPrice, summary().currency) }}</div>
-          <div class="pkg-stat-label">Avg Price</div>
+          <div class="pkg-stat-label">{{ 'Avg Price' | translate }}</div>
         </div>
       </div>
     </div>
@@ -78,8 +75,8 @@
         <input
           type="text"
           class="search-input"
-          placeholder="Search packages..."
-          aria-label="Search packages"
+          [placeholder]="'Search packages...' | translate"
+          [attr.aria-label]="'Search packages' | translate"
           [ngModel]="searchQuery()"
           (ngModelChange)="onSearch($event)" />
       </div>
@@ -91,23 +88,23 @@
   @if (loading()) {
     <div class="loading-state">
       <mat-spinner diameter="32"></mat-spinner>
-      <span class="text-muted">Loading packages...</span>
+      <span class="text-muted">{{ 'Loading packages...' | translate }}</span>
     </div>
   } @else if (error(); as err) {
     <div class="error-state">
       <mat-icon class="error-icon">error_outline</mat-icon>
       <span>{{ err }}</span>
-      <button class="btn btn-outline" (click)="loadPackages()">Retry</button>
+      <button class="btn btn-outline" (click)="loadPackages()">{{ 'Retry' | translate }}</button>
     </div>
   } @else if (filteredPackages().length === 0) {
     <div class="empty-state">
       <mat-icon class="empty-icon">card_giftcard</mat-icon>
       @if (packages().length === 0) {
-        <p>No packages configured</p>
-        <p class="text-muted">Packages and add-ons will appear here once created.</p>
+        <p>{{ 'No packages configured' | translate }}</p>
+        <p class="text-muted">{{ 'Packages and add-ons will appear here once created.' | translate }}</p>
       } @else {
-        <p>No packages match the current filters</p>
-        <button class="btn btn-outline" (click)="setFilter('ALL'); setTypeFilter('ALL'); onSearch('')">Clear filters</button>
+        <p>{{ 'No packages match the current filters' | translate }}</p>
+        <button class="btn btn-outline" (click)="setFilter('ALL'); setTypeFilter('ALL'); onSearch('')">{{ 'Clear filters' | translate }}</button>
       }
     </div>
   } @else {
@@ -116,22 +113,22 @@
           <thead>
             <tr>
               <th class="col-name" [attr.aria-sort]="ariaSort('package_name')">
-                <button type="button" class="th-sort-btn" (click)="onSort('package_name')">Package <mat-icon class="sort-indicator">{{ sortIcon('package_name') }}</mat-icon></button>
+                <button type="button" class="th-sort-btn" (click)="onSort('package_name')">{{ 'Package' | translate }} <mat-icon class="sort-indicator">{{ sortIcon('package_name') }}</mat-icon></button>
               </th>
               <th class="col-type" [attr.aria-sort]="ariaSort('package_type')">
-                <button type="button" class="th-sort-btn" (click)="onSort('package_type')">Type <mat-icon class="sort-indicator">{{ sortIcon('package_type') }}</mat-icon></button>
+                <button type="button" class="th-sort-btn" (click)="onSort('package_type')">{{ 'Type' | translate }} <mat-icon class="sort-indicator">{{ sortIcon('package_type') }}</mat-icon></button>
               </th>
               <th class="col-price col-right" [attr.aria-sort]="ariaSort('base_price')">
-                <button type="button" class="th-sort-btn" (click)="onSort('base_price')">Price <mat-icon class="sort-indicator">{{ sortIcon('base_price') }}</mat-icon></button>
+                <button type="button" class="th-sort-btn" (click)="onSort('base_price')">{{ 'Price' | translate }} <mat-icon class="sort-indicator">{{ sortIcon('base_price') }}</mat-icon></button>
               </th>
-              <th class="col-pricing">Pricing</th>
-              <th class="col-inclusions">Inclusions</th>
-              <th class="col-validity">Validity</th>
-              <th class="col-inventory col-right">Inventory</th>
+              <th class="col-pricing">{{ 'Pricing' | translate }}</th>
+              <th class="col-inclusions">{{ 'Inclusions' | translate }}</th>
+              <th class="col-validity">{{ 'Validity' | translate }}</th>
+              <th class="col-inventory col-right">{{ 'Inventory' | translate }}</th>
               <th class="col-bookings col-right" [attr.aria-sort]="ariaSort('total_bookings')">
-                <button type="button" class="th-sort-btn" (click)="onSort('total_bookings')">Bookings <mat-icon class="sort-indicator">{{ sortIcon('total_bookings') }}</mat-icon></button>
+                <button type="button" class="th-sort-btn" (click)="onSort('total_bookings')">{{ 'Bookings' | translate }} <mat-icon class="sort-indicator">{{ sortIcon('total_bookings') }}</mat-icon></button>
               </th>
-              <th class="col-status">Status</th>
+              <th class="col-status">{{ 'Status' | translate }}</th>
               <th class="cell-actions"></th>
             </tr>
           </thead>
@@ -152,7 +149,7 @@
                 <td class="col-right cell-amount">
                   {{ formatCurrency(pkg.base_price, pkg.currency_code) }}
                   @if (pkg.discount_percentage) {
-                    <span class="discount-hint" matTooltip="Discount applied">-{{ pkg.discount_percentage }}%</span>
+                    <span class="discount-hint" [matTooltip]="'Discount applied' | translate">-{{ pkg.discount_percentage }}%</span>
                   }
                 </td>
                 <td>
@@ -183,11 +180,11 @@
                     {{ statusLabel(pkg) }}
                   </span>
                   @if (pkg.is_featured) {
-                    <mat-icon class="featured-icon" matTooltip="Featured package">star</mat-icon>
+                    <mat-icon class="featured-icon" [matTooltip]="'Featured package' | translate">star</mat-icon>
                   }
                 </td>
                 <td class="cell-actions">
-                  <a class="btn btn-invisible btn-sm" [routerLink]="['/packages', pkg.package_id]" matTooltip="View details" aria-label="View package details">
+                  <a class="btn btn-invisible btn-sm" [routerLink]="['/packages', pkg.package_id]" [matTooltip]="'View details' | translate" [attr.aria-label]="'View package details' | translate">
                     <mat-icon>chevron_right</mat-icon>
                   </a>
                 </td>

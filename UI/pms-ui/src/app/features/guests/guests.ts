@@ -12,7 +12,9 @@ import type { GuestSummaryStats, GuestWithStats } from "@tartware/schemas";
 
 import { ApiService } from "../../core/api/api.service";
 import { AuthService } from "../../core/auth/auth.service";
+import { TranslatePipe } from "../../core/i18n/translate.pipe";
 import { loyaltyTierClass, vipStatusClass } from "../../shared/badge-utils";
+import { PageHeaderComponent } from "../../shared/components/page-header/page-header";
 import { PaginationComponent } from "../../shared/pagination/pagination";
 import { createSortState, sortBy, toggleSort } from "../../shared/sort-utils";
 import { ToastService } from "../../shared/toast/toast.service";
@@ -34,6 +36,8 @@ type GuestListItem = Omit<GuestWithStats, "version"> & { version: string };
 		MatProgressSpinnerModule,
 		MatTooltipModule,
 		PaginationComponent,
+		PageHeaderComponent,
+		TranslatePipe,
 	],
 	templateUrl: "./guests.html",
 	styleUrl: "./guests.scss",

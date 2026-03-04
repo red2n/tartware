@@ -121,6 +121,28 @@
   bottom: 6px;
 }
 
+/* Parent nav item (button with children) */
+.nav-parent {
+  width: 100%;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.nav-chevron {
+  font-size: 16px;
+  width: 16px;
+  height: 16px;
+  color: var(--color-fg-muted);
+  margin-left: auto;
+  transition: transform var(--duration-fast);
+
+  &.expanded {
+    transform: rotate(90deg);
+  }
+}
+
 .sidebar-nav-secondary {
   flex-shrink: 0;
   padding: var(--space-2) var(--space-3);

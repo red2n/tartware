@@ -123,6 +123,7 @@
 	/* ── Layout ── */
 	--sidebar-width: 260px;
 	--sidebar-collapsed-width: 64px;
+	--sub-sidebar-width: 220px;
 	--topbar-height: 56px;
 }
 

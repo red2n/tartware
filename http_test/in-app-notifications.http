@@ -1,0 +1,117 @@
+###############################################################################
+# IN-APP NOTIFICATIONS - Real-time staff notification system
+# Routes via API Gateway (localhost:8080) -> notification-service (port 3055)
+#
+# Content:
+#   - List in-app notifications (with filters)
+#   - Get unread count
+#   - Mark specific notifications as read
+#   - Mark all notifications as read
+#   - SSE stream (use curl — see instructions below)
+#
+# Related files:
+#   - notifications.http (email/SMS templates and guest communications)
+#   - reservations.http (triggers reservation lifecycle notifications)
+#   - _environment.http (shared variables)
+#
+###############################################################################
+
+@baseUrl = http://localhost:8080
+@tenantId = 11111111-1111-1111-1111-111111111111
+@notificationId = REPLACE_WITH_NOTIFICATION_ID
+
+###############################################################################
+# 1. LOGIN - Get Access Token
+###############################################################################
+
+# @name login
+POST {{baseUrl}}/v1/auth/login
+Content-Type: application/json
+
+{
+  "username": "setup.admin",
+  "password": "TempPass123"
+}
+
+###
+
+@authToken = {{login.response.body.access_token}}
+
+###############################################################################
+# 2. LIST IN-APP NOTIFICATIONS
+###############################################################################
+
+### List all notifications (default: 50, offset 0)
+GET {{baseUrl}}/v1/tenants/{{tenantId}}/in-app-notifications
+Authorization: Bearer {{authToken}}
+
+### List with pagination
+GET {{baseUrl}}/v1/tenants/{{tenantId}}/in-app-notifications?limit=10&offset=0
+Authorization: Bearer {{authToken}}
+
+### Filter by category (reservation, checkin, checkout, payment, housekeeping, etc.)
+GET {{baseUrl}}/v1/tenants/{{tenantId}}/in-app-notifications?category=reservation
+Authorization: Bearer {{authToken}}
+
+### Filter unread only
+GET {{baseUrl}}/v1/tenants/{{tenantId}}/in-app-notifications?is_read=false
+Authorization: Bearer {{authToken}}
+
+### Filter by priority (low, normal, high, urgent)
+GET {{baseUrl}}/v1/tenants/{{tenantId}}/in-app-notifications?priority=high
+Authorization: Bearer {{authToken}}
+
+### Combined filters
+GET {{baseUrl}}/v1/tenants/{{tenantId}}/in-app-notifications?category=reservation&is_read=false&priority=normal&limit=20
+Authorization: Bearer {{authToken}}
+
+###############################################################################
+# 3. UNREAD COUNT
+###############################################################################
+
+### Get unread notification count
+GET {{baseUrl}}/v1/tenants/{{tenantId}}/in-app-notifications/unread
+Authorization: Bearer {{authToken}}
+
+###############################################################################
+# 4. MARK AS READ
+###############################################################################
+
+### Mark specific notifications as read
+PUT {{baseUrl}}/v1/tenants/{{tenantId}}/in-app-notifications/read
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+  "notification_ids": ["{{notificationId}}"]
+}
+
+### Mark all notifications as read
+PUT {{baseUrl}}/v1/tenants/{{tenantId}}/in-app-notifications/read-all
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{}
+
+###############################################################################
+# 5. SSE STREAM (Real-time)
+#
+# VS Code REST Client does not support SSE streams. Use curl instead:
+#
+#   TOKEN=$(./http_test/get-token.sh)
+#   curl -N -H "Authorization: Bearer $TOKEN" \
+#     "http://localhost:8080/v1/tenants/11111111-1111-1111-1111-111111111111/in-app-notifications/stream"
+#
+# Or with query-param auth (for EventSource compatibility):
+#
+#   TOKEN=$(./http_test/get-token.sh)
+#   curl -N "http://localhost:8080/v1/tenants/11111111-1111-1111-1111-111111111111/in-app-notifications/stream?token=$TOKEN"
+#
+# Expected output:
+#   event: unread_count
+#   data: {"unread":3}
+#
+#   event: notification
+#   data: {"notification_id":"...","title":"New Reservation","message":"..."}
+#
+###############################################################################

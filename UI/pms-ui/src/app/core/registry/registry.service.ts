@@ -25,7 +25,7 @@ export interface RegistryResponse {
 	summary: RegistrySummary;
 }
 
-const POLL_INTERVAL_MS = 10_000;
+const POLL_INTERVAL_MS = 60_000;
 const STATUSBAR_STORAGE_KEY = "statusbar_visible";
 
 @Injectable({ providedIn: "root" })

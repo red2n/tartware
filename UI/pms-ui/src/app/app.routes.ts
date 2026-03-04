@@ -116,6 +116,32 @@ export const routes: Routes = [
 				loadComponent: () => import("./features/billing/billing").then((m) => m.BillingComponent),
 			},
 			{
+				path: "accounts-receivable",
+				canActivate: [propertyGuard],
+				loadComponent: () =>
+					import("./features/accounts/accounts-receivable/accounts-receivable").then(
+						(m) => m.AccountsReceivableComponent,
+					),
+			},
+			{
+				path: "cashiering",
+				canActivate: [propertyGuard],
+				loadComponent: () =>
+					import("./features/accounts/cashiering/cashiering").then((m) => m.CashieringComponent),
+			},
+			{
+				path: "night-audit",
+				canActivate: [propertyGuard],
+				loadComponent: () =>
+					import("./features/accounts/night-audit/night-audit").then((m) => m.NightAuditComponent),
+			},
+			{
+				path: "tax-config",
+				canActivate: [propertyGuard],
+				loadComponent: () =>
+					import("./features/accounts/tax-config/tax-config").then((m) => m.TaxConfigComponent),
+			},
+			{
 				path: "settings",
 				loadComponent: () =>
 					import("./features/settings/settings").then((m) => m.SettingsComponent),

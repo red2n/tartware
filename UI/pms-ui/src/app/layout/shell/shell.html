@@ -1,9 +1,11 @@
-<a class="skip-link" href="#main-content">Skip to content</a>
+<a class="skip-link" href="#main-content">{{ 'Skip to content' | translate }}</a>
 <div class="shell" [class.sidebar-collapsed]="sidebarCollapsed()">
   @defer (on idle) {
     <app-sidebar
       [collapsed]="sidebarCollapsed()"
-      (toggleCollapse)="toggleSidebar()" />
+      [activeParentLabel]="activeParent()?.label ?? null"
+      (toggleCollapse)="toggleSidebar()"
+      (parentSelect)="onParentSelect($event)" />
   } @placeholder {
     <aside class="sidebar-placeholder"></aside>
   }
@@ -23,5 +25,14 @@
       <app-status-bar />
     }
   </div>
+
+  @if (activeParent(); as parent) {
+    <app-sub-sidebar
+      [parentLabel]="parent.label"
+      [parentIcon]="parent.icon"
+      [items]="parent.children!"
+      [collapsed]="rightDockCollapsed()"
+      (toggleCollapse)="toggleRightDock()" />
+  }
 </div>
 <app-toast-container />

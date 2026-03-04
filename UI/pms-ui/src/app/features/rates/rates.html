@@ -1,16 +1,13 @@
 <div class="rates-page">
-  <div class="page-header">
-    <h1 class="page-title">Rates</h1>
-    <div class="page-actions">
-      <button class="btn btn-primary btn-sm" (click)="openCreateDialog()">
-        <mat-icon>add</mat-icon>
-        New rate
-      </button>
-      <button class="btn btn-invisible" (click)="loadRates()" matTooltip="Refresh" aria-label="Refresh rates">
-        <mat-icon>refresh</mat-icon>
-      </button>
-    </div>
-  </div>
+  <app-page-header title="Rates" description="Rate plans, pricing strategies, and seasonal adjustments">
+    <button class="btn btn-primary btn-sm" (click)="openCreateDialog()">
+      <mat-icon>add</mat-icon>
+      {{ 'New rate' | translate }}
+    </button>
+    <button class="btn btn-invisible" (click)="loadRates()" [matTooltip]="'Refresh' | translate" [attr.aria-label]="'Refresh rates' | translate">
+      <mat-icon>refresh</mat-icon>
+    </button>
+  </app-page-header>
 
   <!-- ═════════════════════════════════════════════ -->
   <!-- RATE ANALYTICS OVERVIEW                      -->
@@ -20,43 +17,43 @@
       <div class="rate-overview-section">
         <div class="rate-overview-label">
           <mat-icon>playlist_add_check</mat-icon>
-          Active Plans
+          {{ 'Active Plans' | translate }}
         </div>
         <div class="rate-overview-value">{{ summary().activePlans }}</div>
-        <div class="rate-overview-sub text-muted">of {{ summary().totalPlans }} total</div>
+        <div class="rate-overview-sub text-muted">{{ 'of' | translate }} {{ summary().totalPlans }} {{ 'total' | translate }}</div>
       </div>
       <div class="rate-overview-divider"></div>
       <div class="rate-overview-section">
         <div class="rate-overview-label">
           <mat-icon>swap_vert</mat-icon>
-          Rate Range
+          {{ 'Rate Range' | translate }}
         </div>
         <div class="rate-overview-value rate-range-value">
           {{ formatCurrency(summary().minRate, summary().currency) }}
           <span class="rate-range-sep">—</span>
           {{ formatCurrency(summary().maxRate, summary().currency) }}
         </div>
-        <div class="rate-overview-sub text-muted">active pricing corridor</div>
+        <div class="rate-overview-sub text-muted">{{ 'active pricing corridor' | translate }}</div>
       </div>
       <div class="rate-overview-divider"></div>
       <div class="rate-overview-section rate-section-bar">
         <div class="rate-overview-label">
           <mat-icon>star</mat-icon>
-          BAR
+          {{ 'BAR' | translate }}
         </div>
         @if (summary().barRateValue !== null) {
           <div class="rate-overview-value">{{ formatCurrency(summary().barRateValue!, summary().currency) }}</div>
           <div class="rate-overview-sub text-muted">{{ summary().barRateName }}</div>
         } @else {
-          <div class="rate-overview-value text-muted">Not set</div>
-          <div class="rate-overview-sub text-muted">no BAR rate defined</div>
+          <div class="rate-overview-value text-muted">{{ 'Not set' | translate }}</div>
+          <div class="rate-overview-sub text-muted">{{ 'no BAR rate defined' | translate }}</div>
         }
       </div>
       <div class="rate-overview-divider"></div>
       <div class="rate-overview-section">
         <div class="rate-overview-label">
           <mat-icon>category</mat-icon>
-          Top Types
+          {{ 'Top Types' | translate }}
         </div>
         <div class="rate-overview-chips">
           @for (t of summary().topTypes; track t.label) {
@@ -100,8 +97,8 @@
         <input
           type="text"
           class="search-input"
-          placeholder="Search rates..."
-          aria-label="Search rates"
+          [placeholder]="'Search rates...' | translate"
+          [attr.aria-label]="'Search rates' | translate"
           [ngModel]="searchQuery()"
           (ngModelChange)="onSearch($event)" />
       </div>
@@ -113,23 +110,23 @@
   @if (loading()) {
     <div class="loading-state">
       <mat-spinner diameter="32"></mat-spinner>
-      <span class="text-muted">Loading rates...</span>
+      <span class="text-muted">{{ 'Loading rates...' | translate }}</span>
     </div>
   } @else if (error(); as err) {
     <div class="error-state">
       <mat-icon class="error-icon">error_outline</mat-icon>
       <span>{{ err }}</span>
-      <button class="btn btn-outline" (click)="loadRates()">Retry</button>
+      <button class="btn btn-outline" (click)="loadRates()">{{ 'Retry' | translate }}</button>
     </div>
   } @else if (filteredRates().length === 0) {
     <div class="empty-state">
       <mat-icon class="empty-icon">payments</mat-icon>
       @if (rates().length === 0) {
-        <p>No rates configured</p>
-        <p class="text-muted">Rate plans will appear here once they are created.</p>
+        <p>{{ 'No rates configured' | translate }}</p>
+        <p class="text-muted">{{ 'Rate plans will appear here once they are created.' | translate }}</p>
       } @else {
-        <p>No rates match the current filters</p>
-        <button class="btn btn-outline" (click)="setFilter('ALL'); setTypeFilter('ALL'); onSearch('')">Clear filters</button>
+        <p>{{ 'No rates match the current filters' | translate }}</p>
+        <button class="btn btn-outline" (click)="setFilter('ALL'); setTypeFilter('ALL'); onSearch('')">{{ 'Clear filters' | translate }}</button>
       }
     </div>
   } @else {
@@ -138,21 +135,21 @@
           <thead>
             <tr>
               <th [attr.aria-sort]="ariaSort('rate_code')">
-                <button type="button" class="th-sort-btn" (click)="onSort('rate_code')">Rate plan <mat-icon class="sort-indicator">{{ sortIcon('rate_code') }}</mat-icon></button>
+                <button type="button" class="th-sort-btn" (click)="onSort('rate_code')">{{ 'Rate plan' | translate }} <mat-icon class="sort-indicator">{{ sortIcon('rate_code') }}</mat-icon></button>
               </th>
               <th [attr.aria-sort]="ariaSort('rate_type')">
-                <button type="button" class="th-sort-btn" (click)="onSort('rate_type')">Type <mat-icon class="sort-indicator">{{ sortIcon('rate_type') }}</mat-icon></button>
+                <button type="button" class="th-sort-btn" (click)="onSort('rate_type')">{{ 'Type' | translate }} <mat-icon class="sort-indicator">{{ sortIcon('rate_type') }}</mat-icon></button>
               </th>
-              <th>Strategy</th>
+              <th>{{ 'Strategy' | translate }}</th>
               <th class="col-right" [attr.aria-sort]="ariaSort('base_rate')">
-                <button type="button" class="th-sort-btn" (click)="onSort('base_rate')">Base rate <mat-icon class="sort-indicator">{{ sortIcon('base_rate') }}</mat-icon></button>
+                <button type="button" class="th-sort-btn" (click)="onSort('base_rate')">{{ 'Base rate' | translate }} <mat-icon class="sort-indicator">{{ sortIcon('base_rate') }}</mat-icon></button>
               </th>
-              <th class="col-right">SGL / DBL</th>
-              <th>Meal plan</th>
-              <th>Validity</th>
-              <th>Cancellation</th>
+              <th class="col-right">{{ 'SGL / DBL' | translate }}</th>
+              <th>{{ 'Meal plan' | translate }}</th>
+              <th>{{ 'Validity' | translate }}</th>
+              <th>{{ 'Cancellation' | translate }}</th>
               <th [attr.aria-sort]="ariaSort('status')">
-                <button type="button" class="th-sort-btn" (click)="onSort('status')">Status <mat-icon class="sort-indicator">{{ sortIcon('status') }}</mat-icon></button>
+                <button type="button" class="th-sort-btn" (click)="onSort('status')">{{ 'Status' | translate }} <mat-icon class="sort-indicator">{{ sortIcon('status') }}</mat-icon></button>
               </th>
             </tr>
           </thead>
@@ -170,7 +167,7 @@
                 <td class="col-right cell-amount">
                   {{ formatCurrency(rate.base_rate, rate.currency) }}
                   @if (rate.tax_inclusive) {
-                    <span class="text-subtle tax-hint" matTooltip="Tax inclusive">incl.</span>
+                    <span class="text-subtle tax-hint" [matTooltip]="'Tax inclusive' | translate">{{ 'incl.' | translate }}</span>
                   }
                 </td>
                 <td class="col-right cell-amount">
@@ -199,13 +196,13 @@
                   @if (rate.status === 'INACTIVE') {
                     <button class="btn btn-sm btn-outline btn-activate"
                             (click)="toggleStatus(rate, 'ACTIVE'); $event.stopPropagation()"
-                            matTooltip="Activate rate plan">
-                      Activate
+                            [matTooltip]="'Activate rate plan' | translate">
+                      {{ 'Activate' | translate }}
                     </button>
                   } @else if (rate.status === 'ACTIVE') {
                     <button class="btn btn-sm btn-invisible"
                             (click)="toggleStatus(rate, 'INACTIVE'); $event.stopPropagation()"
-                            matTooltip="Deactivate rate plan">
+                            [matTooltip]="'Deactivate rate plan' | translate">
                       <mat-icon>pause_circle</mat-icon>
                     </button>
                   }

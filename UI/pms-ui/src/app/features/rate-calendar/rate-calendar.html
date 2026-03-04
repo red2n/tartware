@@ -1,21 +1,15 @@
-<div class="page-header">
-  <div>
-    <h1 class="page-title">Rate Calendar</h1>
-    <p class="text-xs text-muted mt-0.5">View and manage day-level pricing across rate plans</p>
-  </div>
-  <div class="header-actions">
-    @if (hasDirty()) {
-      <button class="btn btn-primary btn-sm" [disabled]="saving()" (click)="saveChanges()">
-        @if (saving()) {
-          <mat-spinner diameter="14"></mat-spinner>
-          Saving…
-        } @else {
-          <mat-icon>save</mat-icon> Save changes
-        }
-      </button>
-    }
-  </div>
-</div>
+<app-page-header title="Rate Calendar" description="Day-level pricing management across rate plans">
+  @if (hasDirty()) {
+    <button class="btn btn-primary btn-sm" [disabled]="saving()" (click)="saveChanges()">
+      @if (saving()) {
+        <mat-spinner diameter="14"></mat-spinner>
+        {{ 'Saving…' | translate }}
+      } @else {
+        <mat-icon>save</mat-icon> {{ 'Save changes' | translate }}
+      }
+    </button>
+  }
+</app-page-header>
 
 @if (error(); as err) {
   <div class="flash flash-error mb-4">
@@ -34,30 +28,30 @@
 <div class="calendar-toolbar">
   <div class="toolbar-left">
     <div class="field-group field-group-inline">
-      <label class="field-label" for="rc-room-type">Room Type</label>
+      <label class="field-label" for="rc-room-type">{{ 'Room Type' | translate }}</label>
       <select id="rc-room-type" class="field-input field-input-sm"
               [ngModel]="selectedRoomType()"
               (ngModelChange)="onRoomTypeChange($event)">
-        <option value="">All room types</option>
+        <option value="">{{ 'All room types' | translate }}</option>
         @for (rt of roomTypes(); track rt.room_type_id) {
           <option [value]="rt.room_type_id">{{ rt.type_name }}</option>
         }
       </select>
     </div>
     <div class="field-group field-group-inline">
-      <label class="field-label" for="rc-view">View</label>
+      <label class="field-label" for="rc-view">{{ 'View' | translate }}</label>
       <select id="rc-view" class="field-input field-input-sm"
               [ngModel]="viewDays()"
               (ngModelChange)="onViewDaysChange(+$event)">
-        <option [value]="7">7 days</option>
-        <option [value]="14">14 days</option>
-        <option [value]="30">30 days</option>
+        <option [value]="7">{{ '7 days' | translate }}</option>
+        <option [value]="14">{{ '14 days' | translate }}</option>
+        <option [value]="30">{{ '30 days' | translate }}</option>
       </select>
     </div>
   </div>
 
   <div class="toolbar-center">
-    <button class="btn btn-invisible btn-sm" (click)="prevPeriod()" aria-label="Previous period">
+    <button class="btn btn-invisible btn-sm" (click)="prevPeriod()" [attr.aria-label]="'Previous period' | translate">
       <mat-icon>chevron_left</mat-icon>
     </button>
     <div class="date-nav">
@@ -65,14 +59,14 @@
              [(ngModel)]="startDate"
              (ngModelChange)="onStartDateChange()" />
     </div>
-    <button class="btn btn-invisible btn-sm" (click)="nextPeriod()" aria-label="Next period">
+    <button class="btn btn-invisible btn-sm" (click)="nextPeriod()" [attr.aria-label]="'Next period' | translate">
       <mat-icon>chevron_right</mat-icon>
     </button>
-    <button class="btn btn-outline btn-sm" (click)="goToToday()">Today</button>
+    <button class="btn btn-outline btn-sm" (click)="goToToday()">{{ 'Today' | translate }}</button>
   </div>
 
   <div class="toolbar-right">
-    <button class="btn btn-outline btn-sm" (click)="loadCalendarData()" aria-label="Refresh">
+    <button class="btn btn-outline btn-sm" (click)="loadCalendarData()" [attr.aria-label]="'Refresh' | translate">
       <mat-icon>refresh</mat-icon>
     </button>
   </div>
@@ -82,20 +76,20 @@
 @if (loading()) {
   <div class="loading-state">
     <mat-spinner diameter="32"></mat-spinner>
-    <span class="text-muted">Loading rate calendar…</span>
+    <span class="text-muted">{{ 'Loading rate calendar…' | translate }}</span>
   </div>
 } @else if (filteredRates().length === 0) {
   <div class="empty-state">
     <mat-icon class="empty-icon">payments</mat-icon>
-    <h3>No active rate plans</h3>
-    <p class="text-muted">Create rate plans first, then configure day-level pricing here.</p>
+    <h3>{{ 'No active rate plans' | translate }}</h3>
+    <p class="text-muted">{{ 'Create rate plans first, then configure day-level pricing here.' | translate }}</p>
   </div>
 } @else {
     <div class="calendar-grid-wrap">
       <table class="calendar-grid">
         <thead>
           <tr>
-            <th class="th-rate-plan">Rate Plan</th>
+            <th class="th-rate-plan">{{ 'Rate Plan' | translate }}</th>
             @for (date of dateColumns(); track date) {
               <th class="th-date"
                   [class.th-weekend]="isWeekend(date)"
@@ -153,12 +147,12 @@
 
     <!-- Legend -->
     <div class="calendar-legend">
-      <span class="legend-item"><span class="legend-swatch swatch-base"></span> Base rate</span>
-      <span class="legend-item"><span class="legend-swatch swatch-premium"></span> Above base</span>
-      <span class="legend-item"><span class="legend-swatch swatch-discount"></span> Below base</span>
-      <span class="legend-item"><span class="legend-swatch swatch-closed"></span> Closed / Stop sell</span>
-      <span class="legend-item"><span class="legend-swatch swatch-dirty"></span> Unsaved change</span>
-      <span class="legend-tip text-muted">Click cell: edit rate. Right-click: toggle open/closed.</span>
+      <span class="legend-item"><span class="legend-swatch swatch-base"></span> {{ 'Base rate' | translate }}</span>
+      <span class="legend-item"><span class="legend-swatch swatch-premium"></span> {{ 'Above base' | translate }}</span>
+      <span class="legend-item"><span class="legend-swatch swatch-discount"></span> {{ 'Below base' | translate }}</span>
+      <span class="legend-item"><span class="legend-swatch swatch-closed"></span> {{ 'Closed / Stop sell' | translate }}</span>
+      <span class="legend-item"><span class="legend-swatch swatch-dirty"></span> {{ 'Unsaved change' | translate }}</span>
+      <span class="legend-tip text-muted">{{ 'Click cell: edit rate. Right-click: toggle open/closed.' | translate }}</span>
     </div>
   }
 } @placeholder {
@@ -172,6 +166,6 @@
 } @loading (minimum 200ms) {
   <div class="loading-state">
     <mat-spinner diameter="24"></mat-spinner>
-    <span class="text-muted">Rendering calendar…</span>
+    <span class="text-muted">{{ 'Rendering calendar…' | translate }}</span>
   </div>
 }

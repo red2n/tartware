@@ -6,9 +6,9 @@
 
     <!-- Tenant switcher (only if user has multiple tenant memberships) -->
     @if (showTenantSwitcher) {
-      <button class="context-btn" [matMenuTriggerFor]="tenantMenu" matTooltip="Switch tenant">
+      <button class="context-btn" [matMenuTriggerFor]="tenantMenu" [matTooltip]="'Switch tenant' | translate">
         <mat-icon class="context-icon">business</mat-icon>
-        <span class="context-label">{{ activeMembership()?.tenant_name ?? 'No tenant' }}</span>
+        <span class="context-label">{{ activeMembership()?.tenant_name ?? ('No tenant' | translate) }}</span>
         <mat-icon class="context-caret">arrow_drop_down</mat-icon>
       </button>
       <mat-menu #tenantMenu="matMenu">
@@ -22,18 +22,18 @@
         }
       </mat-menu>
     } @else if (activeMembership(); as m) {
-      <span class="context-label-static" matTooltip="Tenant">
+      <span class="context-label-static" [matTooltip]="'Tenant' | translate">
         <mat-icon class="context-icon">business</mat-icon>
-        {{ m.tenant_name ?? 'Tenant' }}
+        {{ m.tenant_name ?? ('Tenant' | translate) }}
       </span>
     }
 
     <!-- Property selector -->
     @if (properties().length > 1) {
       <span class="context-divider"></span>
-      <button class="context-btn" [matMenuTriggerFor]="propertyMenu" matTooltip="Switch property">
+      <button class="context-btn" [matMenuTriggerFor]="propertyMenu" [matTooltip]="'Switch property' | translate">
         <mat-icon class="context-icon">apartment</mat-icon>
-        <span class="context-label">{{ activeProperty()?.property_name ?? 'All properties' }}</span>
+        <span class="context-label">{{ activeProperty()?.property_name ?? ('All properties' | translate) }}</span>
         <mat-icon class="context-caret">arrow_drop_down</mat-icon>
       </button>
       <mat-menu #propertyMenu="matMenu">
@@ -51,7 +51,7 @@
       </mat-menu>
     } @else if (activeProperty(); as p) {
       <span class="context-divider"></span>
-      <span class="context-label-static" matTooltip="Property">
+      <span class="context-label-static" [matTooltip]="'Property' | translate">
         <mat-icon class="context-icon">apartment</mat-icon>
         {{ p.property_name }}
       </span>
@@ -61,29 +61,100 @@
   <span class="spacer"></span>
 
   <div class="header-right">
+    <!-- Notification bell -->
+    <div class="notification-wrapper" #notifPanel>
+      <button class="header-btn notification-btn"
+              (click)="toggleNotifications(); $event.stopPropagation()"
+              [matTooltip]="'Notifications' | translate">
+        <mat-icon>notifications</mat-icon>
+        @if (notifications.unreadCount() > 0) {
+          <span class="notification-badge">
+            {{ notifications.unreadCount() > 99 ? '99+' : notifications.unreadCount() }}
+          </span>
+        }
+      </button>
+
+      @if (notifications.panelOpen()) {
+        <div class="notification-panel" (click)="$event.stopPropagation()">
+          <div class="notification-panel-header">
+            <span class="notification-panel-title">{{ 'Notifications' | translate }}</span>
+            @if (notifications.unreadCount() > 0) {
+              <button class="btn-mark-all" (click)="markAllRead()">{{ 'Mark all read' | translate }}</button>
+            }
+          </div>
+
+          <div class="notification-panel-list">
+            @if (notifications.loading()) {
+              <div class="notification-empty">{{ 'Loading...' | translate }}</div>
+            } @else if (notifications.notifications().length === 0) {
+              <div class="notification-empty">
+                <mat-icon>notifications_none</mat-icon>
+                <span>{{ 'No notifications' | translate }}</span>
+              </div>
+            } @else {
+              @for (n of notifications.notifications(); track n.notification_id) {
+                <button class="notification-item"
+                        [class.notification-unread]="!n.is_read"
+                        (click)="onNotificationClick(n)">
+                  <mat-icon class="notification-item-icon"
+                            [class.notification-icon-urgent]="n.priority === 'urgent' || n.priority === 'high'">
+                    {{ notificationIcon(n.category) }}
+                  </mat-icon>
+                  <div class="notification-item-body">
+                    <span class="notification-item-title">{{ n.title }}</span>
+                    <span class="notification-item-message">{{ n.message }}</span>
+                    <span class="notification-item-time">{{ n.created_at | relativeTime }}</span>
+                  </div>
+                  @if (!n.is_read) {
+                    <span class="notification-dot"></span>
+                  }
+                </button>
+              }
+            }
+          </div>
+        </div>
+      }
+    </div>
+
+    <!-- Language selector -->
+    <button class="header-btn" [matMenuTriggerFor]="langMenu" [matTooltip]="'Language' | translate">
+      <mat-icon>translate</mat-icon>
+    </button>
+
+    <mat-menu #langMenu="matMenu" class="theme-menu">
+      @for (lang of supportedLanguages; track lang.code) {
+        <button mat-menu-item (click)="setLanguage(lang.code)">
+          <span>{{ lang.label }}</span>
+          @if (currentLang() === lang.code) {
+            <mat-icon class="check-icon">check</mat-icon>
+          }
+        </button>
+      }
+    </mat-menu>
+
     <!-- Theme toggle -->
-    <button class="header-btn" [matMenuTriggerFor]="themeMenu" matTooltip="Theme">
+    <button class="header-btn" [matMenuTriggerFor]="themeMenu" [matTooltip]="'Theme' | translate">
       <mat-icon>{{ isDark() ? 'dark_mode' : 'light_mode' }}</mat-icon>
     </button>
 
     <mat-menu #themeMenu="matMenu" class="theme-menu">
       <button mat-menu-item (click)="setTheme('LIGHT')">
         <mat-icon>light_mode</mat-icon>
-        <span>Light</span>
+        <span>{{ 'Light' | translate }}</span>
         @if (themeMode() === 'LIGHT') {
           <mat-icon class="check-icon">check</mat-icon>
         }
       </button>
       <button mat-menu-item (click)="setTheme('DARK')">
         <mat-icon>dark_mode</mat-icon>
-        <span>Dark</span>
+        <span>{{ 'Dark' | translate }}</span>
         @if (themeMode() === 'DARK') {
           <mat-icon class="check-icon">check</mat-icon>
         }
       </button>
       <button mat-menu-item (click)="setTheme('SYSTEM')">
         <mat-icon>computer</mat-icon>
-        <span>System</span>
+        <span>{{ 'System' | translate }}</span>
         @if (themeMode() === 'SYSTEM') {
           <mat-icon class="check-icon">check</mat-icon>
         }
@@ -114,14 +185,14 @@
       <mat-divider></mat-divider>
       <button mat-menu-item (click)="toggleStatusBar()">
         <mat-icon>{{ statusBarVisible() ? 'toggle_on' : 'toggle_off' }}</mat-icon>
-        <span>Status Bar</span>
+        <span>{{ 'Status Bar' | translate }}</span>
         @if (statusBarVisible()) {
           <mat-icon class="check-icon">check</mat-icon>
         }
       </button>
       <button mat-menu-item (click)="logout()">
         <mat-icon>logout</mat-icon>
-        <span>Sign out</span>
+        <span>{{ 'Sign out' | translate }}</span>
       </button>
     </mat-menu>
   </div>

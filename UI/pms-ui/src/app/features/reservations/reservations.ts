@@ -12,7 +12,9 @@ import type { ReservationListItem, ReservationListResponse } from "@tartware/sch
 import { ApiService } from "../../core/api/api.service";
 import { AuthService } from "../../core/auth/auth.service";
 import { TenantContextService } from "../../core/context/tenant-context.service";
+import { TranslatePipe } from "../../core/i18n/translate.pipe";
 import { reservationStatusClass } from "../../shared/badge-utils";
+import { PageHeaderComponent } from "../../shared/components/page-header/page-header";
 import { formatCurrency, formatShortDate } from "../../shared/format-utils";
 import { PaginationComponent } from "../../shared/pagination/pagination";
 import { createSortState, sortBy, toggleSort } from "../../shared/sort-utils";
@@ -30,6 +32,8 @@ type StatusFilter = "ALL" | "CONFIRMED" | "CHECKED_IN" | "PENDING" | "CANCELLED"
 		MatProgressSpinnerModule,
 		MatTooltipModule,
 		PaginationComponent,
+		PageHeaderComponent,
+		TranslatePipe,
 	],
 	templateUrl: "./reservations.html",
 	styleUrl: "./reservations.scss",

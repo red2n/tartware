@@ -10,7 +10,7 @@
  * service startup or shutdown.
  */
 
-const HEARTBEAT_INTERVAL_MS = 15_000;
+const HEARTBEAT_INTERVAL_MS = 60_000;
 
 export interface RegistryConfig {
 	registryUrl: string;

@@ -478,4 +478,140 @@ export const registerMiscRoutes = (app: FastifyInstance): void => {
         payloadKey: "message_id",
       }),
   );
+
+  // ─── In-App Notifications ──────────────────────────────────────
+
+  app.get(
+    "/v1/tenants/:tenantId/in-app-notifications",
+    {
+      preHandler: tenantScopeFromParams,
+      schema: buildRouteSchema({
+        tag: NOTIFICATION_PROXY_TAG,
+        summary: "List in-app notifications for the current user.",
+        params: reservationParamsSchema,
+        response: {
+          200: jsonObjectSchema,
+        },
+      }),
+    },
+    proxyNotifications,
+  );
+
+  app.get(
+    "/v1/tenants/:tenantId/in-app-notifications/unread",
+    {
+      preHandler: tenantScopeFromParams,
+      schema: buildRouteSchema({
+        tag: NOTIFICATION_PROXY_TAG,
+        summary: "Get unread notification count.",
+        response: {
+          200: jsonObjectSchema,
+        },
+      }),
+    },
+    proxyNotifications,
+  );
+
+  app.put(
+    "/v1/tenants/:tenantId/in-app-notifications/read",
+    {
+      preHandler: tenantScopeFromParams,
+      schema: buildRouteSchema({
+        tag: NOTIFICATION_PROXY_TAG,
+        summary: "Mark specific notifications as read.",
+        body: jsonObjectSchema,
+        response: {
+          200: jsonObjectSchema,
+        },
+      }),
+    },
+    proxyNotifications,
+  );
+
+  app.put(
+    "/v1/tenants/:tenantId/in-app-notifications/read-all",
+    {
+      preHandler: tenantScopeFromParams,
+      schema: buildRouteSchema({
+        tag: NOTIFICATION_PROXY_TAG,
+        summary: "Mark all notifications as read.",
+        response: {
+          200: jsonObjectSchema,
+        },
+      }),
+    },
+    proxyNotifications,
+  );
+
+  app.get(
+    "/v1/tenants/:tenantId/in-app-notifications/stream",
+    {
+      preHandler: tenantScopeFromParams,
+      schema: buildRouteSchema({
+        tag: NOTIFICATION_PROXY_TAG,
+        summary: "SSE stream for real-time in-app notifications (text/event-stream).",
+      }),
+    },
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      // SSE requires special proxy handling — stream the response
+      const target = `${serviceTargets.notificationServiceUrl}${request.url}`;
+      const headers: Record<string, string> = {
+        Accept: "text/event-stream",
+      };
+      const authHeader = request.headers.authorization;
+      if (authHeader) {
+        headers["Authorization"] = authHeader;
+      }
+      const tenantHeader = request.headers["x-tenant-id"];
+      if (tenantHeader) {
+        headers["x-tenant-id"] = String(tenantHeader);
+      }
+
+      try {
+        const response = await fetch(target, {
+          headers,
+        });
+
+        if (!response.ok || !response.body) {
+          return reply.badGateway("SSE connection failed");
+        }
+
+        // Hijack the reply so Fastify does not auto-finalize
+        reply.hijack();
+
+        reply.raw.writeHead(200, {
+          "Content-Type": "text/event-stream",
+          "Cache-Control": "no-cache",
+          Connection: "keep-alive",
+          "X-Accel-Buffering": "no",
+        });
+
+        const reader = response.body.getReader();
+        const pump = async () => {
+          try {
+            let done = false;
+            while (!done) {
+              const result = await reader.read();
+              done = result.done;
+              if (!done) {
+                reply.raw.write(result.value);
+              }
+            }
+          } catch {
+            // Client disconnected
+          } finally {
+            reply.raw.end();
+          }
+        };
+
+        request.raw.on("close", () => {
+          reader.cancel().catch(() => {});
+        });
+
+        void pump();
+      } catch {
+        return reply.badGateway("Failed to connect to notification service");
+      }
+    },
+  );
 };
