@@ -27,6 +27,7 @@
 @paymentId = 88888888-8888-8888-8888-888888888888
 @invoiceId = 99999999-9999-9999-9999-999999999999
 @folioId = aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa
+@groupBookingId = bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb
 
 ###############################################################################
 # 1. LOGIN
@@ -2166,6 +2167,91 @@ X-Idempotency-Key: metasearch-click-{{$timestamp}}
     "check_out_date": "2026-04-03",
     "device_type": "MOBILE",
     "market": "US"
+  }
+}
+
+###############################################################################
+# GROUP BOOKING COMMANDS
+###############################################################################
+
+### Create a group booking
+# @name groupCreate
+POST {{baseUrl}}/v1/commands/group.create/execute
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+X-Request-ID: {{$guid}}
+X-Idempotency-Key: group-create-{{$timestamp}}
+
+{
+  "tenant_id": "{{tenantId}}",
+  "payload": {
+    "property_id": "{{propertyId}}",
+    "group_name": "Acme Corp Annual Meeting",
+    "group_type": "corporate",
+    "contact_name": "Jane Smith",
+    "contact_email": "jane.smith@acme.com",
+    "contact_phone": "+1-555-0100",
+    "arrival_date": "2026-04-15",
+    "departure_date": "2026-04-18",
+    "total_rooms_requested": 20,
+    "block_status": "definite",
+    "rate_type": "group_rate",
+    "negotiated_rate": 149.00,
+    "payment_method": "direct_bill"
+  }
+}
+
+### Batch check-in all group reservations (proximity-based room assignment)
+# @name groupCheckInAll
+POST {{baseUrl}}/v1/commands/group.check_in/execute
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+X-Request-ID: {{$guid}}
+X-Idempotency-Key: group-checkin-all-{{$timestamp}}
+
+{
+  "tenant_id": "{{tenantId}}",
+  "payload": {
+    "group_booking_id": "{{groupBookingId}}",
+    "preferred_floor": 3,
+    "notes": "Tour bus arrived — batch check-in all guests"
+  }
+}
+
+### Batch check-in subset of group reservations
+# @name groupCheckInSubset
+POST {{baseUrl}}/v1/commands/group.check_in/execute
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+X-Request-ID: {{$guid}}
+X-Idempotency-Key: group-checkin-subset-{{$timestamp}}
+
+{
+  "tenant_id": "{{tenantId}}",
+  "payload": {
+    "group_booking_id": "{{groupBookingId}}",
+    "reservation_ids": [
+      "{{reservationId}}"
+    ],
+    "preferred_floor": 2,
+    "notes": "Early arrivals — partial group check-in"
+  }
+}
+
+### Batch check-in with force (bypass deposit enforcement)
+# @name groupCheckInForce
+POST {{baseUrl}}/v1/commands/group.check_in/execute
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+X-Request-ID: {{$guid}}
+X-Idempotency-Key: group-checkin-force-{{$timestamp}}
+
+{
+  "tenant_id": "{{tenantId}}",
+  "payload": {
+    "group_booking_id": "{{groupBookingId}}",
+    "force": true,
+    "notes": "VIP group — override deposit requirements"
   }
 }
 

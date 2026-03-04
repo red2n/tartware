@@ -214,7 +214,8 @@ WITH seed_commands(command_name, description, default_target_service, required_m
         ('group.add_rooms', 'Add room block allocations to a group booking', 'reservations-command-service', ARRAY['core']),
         ('group.upload_rooming_list', 'Upload rooming list for a group booking', 'reservations-command-service', ARRAY['core']),
         ('group.cutoff_enforce', 'Enforce cutoff date for a group block', 'reservations-command-service', ARRAY['core']),
-        ('group.billing.setup', 'Configure billing for a group booking', 'reservations-command-service', ARRAY['core'])
+        ('group.billing.setup', 'Configure billing for a group booking', 'reservations-command-service', ARRAY['core']),
+        ('group.check_in', 'Batch check-in group reservations with proximity-based room assignment', 'reservations-command-service', ARRAY['core'])
 )
 INSERT INTO command_templates (command_name, description, default_target_service, required_modules, metadata, tenant_id)
 SELECT

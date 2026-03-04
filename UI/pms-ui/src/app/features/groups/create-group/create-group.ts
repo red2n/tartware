@@ -155,9 +155,11 @@ export class CreateGroupComponent {
 		if (this.contactPhone.trim()) payload["contact_phone"] = this.contactPhone.trim();
 		if (this.cutoffDate) payload["cutoff_date"] = this.cutoffDate;
 		if (this.rateType) payload["rate_type"] = this.rateType;
-		if (this.negotiatedRate != null && this.negotiatedRate > 0) payload["negotiated_rate"] = this.negotiatedRate;
+		if (this.negotiatedRate != null && this.negotiatedRate > 0)
+			payload["negotiated_rate"] = this.negotiatedRate;
 		if (this.paymentMethod) payload["payment_method"] = this.paymentMethod;
-		if (this.depositAmount != null && this.depositAmount > 0) payload["deposit_amount"] = this.depositAmount;
+		if (this.depositAmount != null && this.depositAmount > 0)
+			payload["deposit_amount"] = this.depositAmount;
 		if (this.meetingSpaceRequired) payload["meeting_space_required"] = true;
 		if (this.cateringRequired) payload["catering_required"] = true;
 		if (this.notes.trim()) payload["notes"] = this.notes.trim();

@@ -7,6 +7,7 @@ import { enqueueOutboxRecordWithClient } from "../../outbox/repository.js";
 import type {
   GroupAddRoomsCommand,
   GroupBillingSetupCommand,
+  GroupCheckInCommand,
   GroupCreateCommand,
   GroupCutoffEnforceCommand,
   GroupUploadRoomingListCommand,
@@ -14,7 +15,9 @@ import type {
 
 import {
   type CreateReservationResult,
+  enqueueReservationUpdate,
   ReservationCommandError,
+  type ReservationUpdatePayload,
   SYSTEM_ACTOR_ID,
 } from "./common.js";
 
@@ -705,4 +708,330 @@ export const setupGroupBilling = async (
   );
 
   return { eventId, correlationId: options.correlationId, status: "accepted" };
+};
+
+/* ================================================================== */
+/*  GROUP CHECK-IN                                                    */
+/* ================================================================== */
+
+interface GroupCheckInSummary extends CreateReservationResult {
+  checked_in: number;
+  skipped: number;
+  failed: number;
+  details: Array<{
+    reservation_id: string;
+    outcome: "checked_in" | "skipped" | "failed";
+    room_number?: string;
+    reason?: string;
+  }>;
+}
+
+/**
+ * Batch check-in for group reservations with proximity-based room assignment.
+ *
+ * Industry-standard group arrival workflow:
+ *  1. Fetches all PENDING/CONFIRMED reservations linked to the group.
+ *  2. If reservation_ids supplied, filters to that subset.
+ *  3. Finds available rooms matching each reservation's room type, preferring
+ *     same-floor / adjacent rooms (proximity allocation).
+ *  4. Auto-assigns rooms, marks them OCCUPIED, enqueues reservation updates.
+ *  5. Returns per-reservation result summary.
+ */
+export const groupCheckIn = async (
+  tenantId: string,
+  command: GroupCheckInCommand,
+  options: { correlationId?: string } = {},
+): Promise<GroupCheckInSummary> => {
+  const eventId = uuid();
+
+  // 1. Verify group booking exists
+  const { rows: groupRows } = await query<{
+    group_booking_id: string;
+    property_id: string;
+    block_status: string;
+    group_name: string;
+  }>(
+    `SELECT group_booking_id, property_id, block_status, group_name
+     FROM group_bookings
+     WHERE group_booking_id = $1 AND tenant_id = $2 AND is_deleted = FALSE`,
+    [command.group_booking_id, tenantId],
+  );
+  if (groupRows.length === 0) {
+    throw new ReservationCommandError(
+      "GROUP_NOT_FOUND",
+      `Group booking ${command.group_booking_id} not found`,
+    );
+  }
+  const group = groupRows[0];
+  if (group.block_status === "cancelled") {
+    throw new ReservationCommandError(
+      "GROUP_CANCELLED",
+      "Cannot check in a cancelled group booking",
+    );
+  }
+
+  // 2. Fetch eligible reservations (PENDING / CONFIRMED) for the group
+  const { rows: reservations } = await query<{
+    id: string;
+    status: string;
+    room_type_id: string;
+    room_number: string | null;
+    guest_id: string | null;
+    check_in_date: Date;
+    check_out_date: Date;
+  }>(
+    `SELECT id, status, room_type_id, room_number, guest_id,
+            check_in_date, check_out_date
+     FROM reservations
+     WHERE group_booking_id = $1 AND tenant_id = $2
+       AND status IN ('PENDING', 'CONFIRMED')
+     ORDER BY room_type_id, check_in_date`,
+    [command.group_booking_id, tenantId],
+  );
+
+  if (reservations.length === 0) {
+    throw new ReservationCommandError(
+      "NO_ELIGIBLE_RESERVATIONS",
+      "No PENDING or CONFIRMED reservations found for this group",
+    );
+  }
+
+  // 3. Filter to requested subset if reservation_ids provided
+  const targetReservations = command.reservation_ids
+    ? reservations.filter((r) => command.reservation_ids?.includes(r.id))
+    : reservations;
+
+  if (targetReservations.length === 0) {
+    throw new ReservationCommandError(
+      "NO_MATCHING_RESERVATIONS",
+      "None of the specified reservation_ids match eligible group reservations",
+    );
+  }
+
+  // 4. Fetch available rooms for proximity-based assignment, grouped by room type.
+  //    Prefer rooms on the same floor (preferred_floor first, then cluster on the
+  //    most-available floor). Sort by floor then room_number for contiguous assignment.
+  const roomTypeIds = [...new Set(targetReservations.map((r) => r.room_type_id))];
+  const earliestCheckIn = new Date(
+    Math.min(...targetReservations.map((r) => new Date(r.check_in_date).getTime())),
+  );
+  const latestCheckOut = new Date(
+    Math.max(...targetReservations.map((r) => new Date(r.check_out_date).getTime())),
+  );
+
+  const { rows: availableRooms } = await query<{
+    room_id: string;
+    room_number: string;
+    room_type_id: string;
+    floor: string | null;
+  }>(
+    `SELECT r.id AS room_id, r.room_number, r.room_type_id, r.floor
+     FROM rooms r
+     WHERE r.tenant_id = $1::uuid
+       AND r.property_id = $2::uuid
+       AND r.room_type_id = ANY($3::uuid[])
+       AND r.status = 'AVAILABLE'
+       AND r.housekeeping_status IN ('CLEAN', 'INSPECTED')
+       AND COALESCE(r.is_blocked, false) = false
+       AND COALESCE(r.is_out_of_order, false) = false
+       AND COALESCE(r.is_deleted, false) = false
+       AND NOT EXISTS (
+         SELECT 1 FROM inventory_locks_shadow ils
+         WHERE ils.room_id = r.id AND ils.tenant_id = r.tenant_id
+           AND ils.status = 'ACTIVE'
+           AND ils.stay_start < $5::date AND ils.stay_end > $4::date
+       )
+       AND NOT EXISTS (
+         SELECT 1 FROM reservations res
+         WHERE res.room_number = r.room_number AND res.tenant_id = r.tenant_id
+           AND res.status IN ('PENDING', 'CONFIRMED', 'CHECKED_IN')
+           AND res.check_in_date < $5::date AND res.check_out_date > $4::date
+       )
+     ORDER BY
+       CASE WHEN r.floor = $6 THEN 0 ELSE 1 END,
+       r.floor, r.room_number`,
+    [
+      tenantId,
+      group.property_id,
+      roomTypeIds,
+      earliestCheckIn.toISOString(),
+      latestCheckOut.toISOString(),
+      command.preferred_floor?.toString() ?? "",
+    ],
+  );
+
+  // Index available rooms by room_type_id (preserves proximity sort order)
+  const roomPoolByType = new Map<string, typeof availableRooms>();
+  for (const room of availableRooms) {
+    const pool = roomPoolByType.get(room.room_type_id) ?? [];
+    pool.push(room);
+    roomPoolByType.set(room.room_type_id, pool);
+  }
+
+  // 5. Process each reservation: assign room → enqueue update → mark OCCUPIED
+  const details: GroupCheckInSummary["details"] = [];
+  let checkedIn = 0;
+  let skipped = 0;
+  let failed = 0;
+  const actualCheckInTime = command.checked_in_at ?? new Date();
+
+  // Track rooms consumed during this batch to prevent double-assignment
+  const consumedRoomIds = new Set<string>();
+
+  for (const res of targetReservations) {
+    try {
+      // Check blocking deposits unless force=true
+      if (!command.force) {
+        const { rows: blockingDeposits } = await query<{ schedule_id: string }>(
+          `SELECT schedule_id
+           FROM public.deposit_schedules
+           WHERE reservation_id = $1::uuid
+             AND tenant_id = $2::uuid
+             AND blocks_check_in = TRUE
+             AND schedule_status NOT IN ('PAID', 'WAIVED', 'CANCELLED')
+             AND COALESCE(is_deleted, false) = false
+           LIMIT 1`,
+          [res.id, tenantId],
+        );
+        if (blockingDeposits.length > 0) {
+          skipped++;
+          details.push({
+            reservation_id: res.id,
+            outcome: "skipped",
+            reason: "Blocking deposit outstanding",
+          });
+          continue;
+        }
+      }
+
+      // Find next available room from the proximity-sorted pool
+      const pool = roomPoolByType.get(res.room_type_id) ?? [];
+      const nextRoom = pool.find((r) => !consumedRoomIds.has(r.room_id));
+
+      if (!nextRoom) {
+        skipped++;
+        details.push({
+          reservation_id: res.id,
+          outcome: "skipped",
+          reason: `No available room for room type ${res.room_type_id}`,
+        });
+        continue;
+      }
+
+      // Consume the room
+      consumedRoomIds.add(nextRoom.room_id);
+
+      // Enqueue reservation update via outbox
+      const updatePayload: ReservationUpdatePayload = {
+        id: res.id,
+        tenant_id: tenantId,
+        status: "CHECKED_IN",
+        actual_check_in: actualCheckInTime,
+        room_number: nextRoom.room_number,
+        internal_notes: command.notes,
+        metadata: {
+          room_id: nextRoom.room_id,
+          guest_id: res.guest_id,
+          room_type_id: res.room_type_id,
+          auto_assigned: true,
+          group_booking_id: command.group_booking_id,
+          floor: nextRoom.floor,
+        },
+      };
+      await enqueueReservationUpdate(tenantId, "group.check_in", updatePayload, options);
+
+      // Mark room OCCUPIED (best-effort)
+      try {
+        await query(
+          `UPDATE rooms SET status = 'OCCUPIED', version = version + 1, updated_at = NOW()
+           WHERE id = $1 AND tenant_id = $2`,
+          [nextRoom.room_id, tenantId],
+        );
+      } catch (roomErr) {
+        reservationsLogger.warn(
+          { roomId: nextRoom.room_id, error: roomErr },
+          "Failed to mark room OCCUPIED during group check-in",
+        );
+      }
+
+      checkedIn++;
+      details.push({
+        reservation_id: res.id,
+        outcome: "checked_in",
+        room_number: nextRoom.room_number,
+      });
+    } catch (err) {
+      failed++;
+      details.push({
+        reservation_id: res.id,
+        outcome: "failed",
+        reason: err instanceof Error ? err.message : "Unknown error",
+      });
+      reservationsLogger.error(
+        { reservationId: res.id, error: err },
+        "Failed to check in group reservation",
+      );
+    }
+  }
+
+  // 6. Emit aggregate group.checked_in event
+  await withTransaction(async (client) => {
+    await enqueueOutboxRecordWithClient(client, {
+      eventId,
+      tenantId,
+      aggregateId: command.group_booking_id,
+      aggregateType: "group_booking",
+      eventType: "group.checked_in",
+      payload: {
+        metadata: {
+          id: eventId,
+          source: serviceConfig.serviceId,
+          type: "group.checked_in",
+          timestamp: new Date().toISOString(),
+          version: "1.0",
+          correlationId: options.correlationId,
+          tenantId,
+          retryCount: 0,
+        },
+        payload: {
+          group_booking_id: command.group_booking_id,
+          group_name: group.group_name,
+          checked_in: checkedIn,
+          skipped,
+          failed,
+          total_eligible: targetReservations.length,
+        },
+      },
+      headers: {
+        tenantId,
+        eventId,
+        ...(options.correlationId ? { correlationId: options.correlationId } : {}),
+      },
+      correlationId: options.correlationId,
+      partitionKey: command.group_booking_id,
+      metadata: { source: serviceConfig.serviceId, action: "group.check_in" },
+    });
+  });
+
+  reservationsLogger.info(
+    {
+      groupBookingId: command.group_booking_id,
+      groupName: group.group_name,
+      checkedIn,
+      skipped,
+      failed,
+      total: targetReservations.length,
+    },
+    "Group batch check-in completed",
+  );
+
+  return {
+    eventId,
+    correlationId: options.correlationId,
+    status: "accepted",
+    checked_in: checkedIn,
+    skipped,
+    failed,
+    details,
+  };
 };

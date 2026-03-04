@@ -1,5 +1,6 @@
 import { NgClass } from "@angular/common";
 import { Component, computed, inject, type OnInit, signal } from "@angular/core";
+import { FormsModule } from "@angular/forms";
 import { MatIconModule } from "@angular/material/icon";
 import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
 import { MatTooltipModule } from "@angular/material/tooltip";
@@ -12,13 +13,22 @@ import { AuthService } from "../../../core/auth/auth.service";
 import { TranslatePipe } from "../../../core/i18n/translate.pipe";
 import { groupBlockStatusClass } from "../../../shared/badge-utils";
 import { formatCurrency, formatLongDate } from "../../../shared/format-utils";
+import { ToastService } from "../../../shared/toast/toast.service";
 
 type DetailRow = { label: string; value: string; badge?: string };
 
 @Component({
 	selector: "app-group-detail",
 	standalone: true,
-	imports: [NgClass, RouterLink, MatIconModule, MatProgressSpinnerModule, MatTooltipModule, TranslatePipe],
+	imports: [
+		NgClass,
+		FormsModule,
+		RouterLink,
+		MatIconModule,
+		MatProgressSpinnerModule,
+		MatTooltipModule,
+		TranslatePipe,
+	],
 	templateUrl: "./group-detail.html",
 	styleUrl: "./group-detail.scss",
 })
@@ -27,14 +37,31 @@ export class GroupDetailComponent implements OnInit {
 	private readonly auth = inject(AuthService);
 	private readonly route = inject(ActivatedRoute);
 	private readonly router = inject(Router);
+	private readonly toast = inject(ToastService);
 
 	readonly group = signal<GroupBookingListItem | null>(null);
 	readonly loading = signal(false);
 	readonly error = signal<string | null>(null);
 
+	/* ── Action state ── */
+	readonly actionLoading = signal(false);
+	readonly actionSuccess = signal<string | null>(null);
+	readonly actionError = signal<string | null>(null);
+	readonly confirmingCheckIn = signal(false);
+	readonly preferredFloor = signal<number | null>(null);
+
 	statusClass = groupBlockStatusClass;
 	formatDate = formatLongDate;
 	formatCurrency = formatCurrency;
+
+	/** Group can be checked in when status is active (not cancelled) and rooms have been picked. */
+	readonly canCheckIn = computed(() => {
+		const g = this.group();
+		if (!g) return false;
+		const status = g.block_status.toUpperCase();
+		const blocked = new Set(["CANCELLED", "CHECKED_IN"]);
+		return !blocked.has(status) && g.total_rooms_picked > 0;
+	});
 
 	readonly groupTypeIcon: Record<string, { icon: string; tooltip: string }> = {
 		CONFERENCE: { icon: "groups", tooltip: "Conference" },
@@ -189,6 +216,70 @@ export class GroupDetailComponent implements OnInit {
 
 	goBack(): void {
 		this.router.navigate(["/groups"]);
+	}
+
+	/* ── Check-in action flow ── */
+
+	showCheckInConfirm(): void {
+		this.clearActionState();
+		this.confirmingCheckIn.set(true);
+		this.preferredFloor.set(null);
+	}
+
+	cancelAction(): void {
+		this.confirmingCheckIn.set(false);
+	}
+
+	/**
+	 * Dispatch the `group.check_in` command via Command Center.
+	 * Uses proximity-based room assignment on the backend.
+	 */
+	async checkInGroup(): Promise<void> {
+		const g = this.group();
+		const tenantId = this.auth.tenantId();
+		if (!g || !tenantId) return;
+
+		this.actionLoading.set(true);
+		this.actionError.set(null);
+		this.actionSuccess.set(null);
+
+		try {
+			const payload: Record<string, unknown> = {
+				group_booking_id: g.group_booking_id,
+			};
+			const floor = this.preferredFloor();
+			if (floor != null) payload["preferred_floor"] = floor;
+
+			await this.api.post(`/tenants/${tenantId}/commands/group.check_in`, payload);
+
+			this.toast.success(`Group "${g.group_name}" check-in initiated. Rooms are being assigned.`);
+			this.confirmingCheckIn.set(false);
+			await this.pollGroupUntilChanged(g.group_booking_id);
+		} catch (e) {
+			this.toast.error(e instanceof Error ? e.message : "Group check-in failed");
+		} finally {
+			this.actionLoading.set(false);
+		}
+	}
+
+	private clearActionState(): void {
+		this.actionSuccess.set(null);
+		this.actionError.set(null);
+		this.confirmingCheckIn.set(false);
+	}
+
+	/**
+	 * Commands are async (Kafka). Poll the group booking until we detect
+	 * a state change so the UI refreshes automatically.
+	 */
+	private async pollGroupUntilChanged(id: string): Promise<void> {
+		const previousStatus = this.group()?.block_status;
+		for (let i = 0; i < 8; i++) {
+			await new Promise((r) => setTimeout(r, 800));
+			await this.loadGroup(id);
+			const current = this.group();
+			if (current && current.block_status !== previousStatus) return;
+		}
 	}
 
 	private pickupBadge(percentage: number): string {

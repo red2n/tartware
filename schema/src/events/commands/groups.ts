@@ -1,8 +1,8 @@
 /**
  * DEV DOC
  * Module: events/commands/groups.ts
- * Description: Group booking command schemas for creation, room blocks, rooming lists, cutoff enforcement, and billing setup
- * Primary exports: GroupCreateCommandSchema, GroupAddRoomsCommandSchema, GroupUploadRoomingListCommandSchema, GroupCutoffEnforceCommandSchema, GroupBillingSetupCommandSchema
+ * Description: Group booking command schemas for creation, room blocks, rooming lists, cutoff enforcement, billing setup, and batch check-in
+ * Primary exports: GroupCreateCommandSchema, GroupAddRoomsCommandSchema, GroupUploadRoomingListCommandSchema, GroupCutoffEnforceCommandSchema, GroupBillingSetupCommandSchema, GroupCheckInCommandSchema
  * @category commands
  * Ownership: Schema package
  */
@@ -195,3 +195,34 @@ export const GroupBillingSetupCommandSchema = z.object({
 export type GroupBillingSetupCommand = z.infer<
 	typeof GroupBillingSetupCommandSchema
 >;
+
+/* ------------------------------------------------------------------ */
+/*  group.check_in                                                    */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Batch check-in for group reservations.
+ *
+ * Industry standard (PMS group arrival workflow):
+ *  - All PENDING/CONFIRMED reservations in the group are eligible.
+ *  - Rooms are auto-assigned from the same floor / adjacent rooms when
+ *    possible (proximity allocation), matching each reservation's room type.
+ *  - Optionally accepts a subset of reservation_ids for partial check-in.
+ *  - Returns a per-reservation result summary (checked_in / skipped / failed).
+ *  - Supports force flag to bypass deposit enforcement on all reservations.
+ */
+export const GroupCheckInCommandSchema = z.object({
+	group_booking_id: z.string().uuid(),
+	/** Optional subset — when omitted, all eligible reservations are checked in. */
+	reservation_ids: z.array(z.string().uuid()).min(1).max(500).optional(),
+	/** Preferred floor for proximity-based room allocation. */
+	preferred_floor: z.coerce.number().int().positive().optional(),
+	/** Override check-in timestamp (defaults to now). */
+	checked_in_at: z.coerce.date().optional(),
+	/** Bypass blocking deposit enforcement on all reservations. */
+	force: z.boolean().optional(),
+	notes: z.string().max(2000).optional(),
+	idempotency_key: z.string().max(120).optional(),
+});
+
+export type GroupCheckInCommand = z.infer<typeof GroupCheckInCommandSchema>;

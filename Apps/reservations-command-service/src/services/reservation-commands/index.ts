@@ -36,6 +36,7 @@ export {
   addGroupRooms,
   createGroupBooking,
   enforceGroupCutoff,
+  groupCheckIn,
   setupGroupBilling,
   uploadGroupRoomingList,
 } from "./group-booking.js";

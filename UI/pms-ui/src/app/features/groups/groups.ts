@@ -130,9 +130,10 @@ export class GroupsComponent {
 			totalGroups: all.length,
 			activeGroups: active.length,
 			totalRoomsBlocked: active.reduce((sum, g) => sum + g.total_rooms_blocked, 0),
-			avgPickup: active.length > 0
-				? Math.round(active.reduce((sum, g) => sum + g.pickup_percentage, 0) / active.length)
-				: 0,
+			avgPickup:
+				active.length > 0
+					? Math.round(active.reduce((sum, g) => sum + g.pickup_percentage, 0) / active.length)
+					: 0,
 		};
 	});
 

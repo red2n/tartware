@@ -50,24 +50,19 @@ export const routes: Routes = [
 			{
 				path: "groups",
 				canActivate: [propertyGuard],
-				loadComponent: () =>
-					import("./features/groups/groups").then((m) => m.GroupsComponent),
+				loadComponent: () => import("./features/groups/groups").then((m) => m.GroupsComponent),
 			},
 			{
 				path: "groups/new",
 				canActivate: [propertyGuard],
 				loadComponent: () =>
-					import("./features/groups/create-group/create-group").then(
-						(m) => m.CreateGroupComponent,
-					),
+					import("./features/groups/create-group/create-group").then((m) => m.CreateGroupComponent),
 			},
 			{
 				path: "groups/:groupId",
 				canActivate: [propertyGuard],
 				loadComponent: () =>
-					import("./features/groups/group-detail/group-detail").then(
-						(m) => m.GroupDetailComponent,
-					),
+					import("./features/groups/group-detail/group-detail").then((m) => m.GroupDetailComponent),
 			},
 			{
 				path: "rooms",
