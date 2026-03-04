@@ -7,12 +7,12 @@
 
 import { z } from "zod";
 
-import { uuid } from "../shared/base-schemas.js";
 import {
 	InAppNotificationCategoryEnum,
 	InAppNotificationPriorityEnum,
 	InAppNotificationSchema,
 } from "../schemas/05-operations/in-app-notifications.js";
+import { uuid } from "../shared/base-schemas.js";
 
 /** Single notification item returned from list endpoints */
 export const NotificationItemSchema = InAppNotificationSchema.pick({

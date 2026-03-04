@@ -589,10 +589,13 @@ export const registerMiscRoutes = (app: FastifyInstance): void => {
         const reader = response.body.getReader();
         const pump = async () => {
           try {
-            while (true) {
-              const { done, value } = await reader.read();
-              if (done) break;
-              reply.raw.write(value);
+            let done = false;
+            while (!done) {
+              const result = await reader.read();
+              done = result.done;
+              if (!done) {
+                reply.raw.write(result.value);
+              }
             }
           } catch {
             // Client disconnected
