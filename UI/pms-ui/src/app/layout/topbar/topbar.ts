@@ -9,8 +9,8 @@ import { Router } from "@angular/router";
 import { AuthService } from "../../core/auth/auth.service";
 import { TenantContextService } from "../../core/context/tenant-context.service";
 import {
-	NotificationService,
 	type InAppNotification,
+	NotificationService,
 } from "../../core/notifications/notification.service";
 import { RegistryService } from "../../core/registry/registry.service";
 import { ThemeService } from "../../core/theme/theme.service";
@@ -19,7 +19,14 @@ import { RelativeTimePipe } from "../../shared/pipes/relative-time.pipe";
 @Component({
 	selector: "app-topbar",
 	standalone: true,
-	imports: [MatIconModule, MatButtonModule, MatMenuModule, MatDividerModule, MatTooltipModule, RelativeTimePipe],
+	imports: [
+		MatIconModule,
+		MatButtonModule,
+		MatMenuModule,
+		MatDividerModule,
+		MatTooltipModule,
+		RelativeTimePipe,
+	],
 	templateUrl: "./topbar.html",
 	styleUrl: "./topbar.scss",
 })

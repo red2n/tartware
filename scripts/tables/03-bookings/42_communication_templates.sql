@@ -157,12 +157,122 @@ SELECT * FROM (VALUES
      'en', true, false, NULL,
      '{"contact_name": "Invoice recipient", "invoice_number": "Invoice number", "invoice_date": "Invoice date", "due_date": "Payment due date", "invoice_amount": "Invoice total", "currency": "Currency code", "guest_name": "Guest name", "confirmation_number": "Confirmation number", "check_in_date": "Check-in date", "check_out_date": "Check-out date", "property_name": "Property name", "payment_terms": "Payment terms"}'::JSONB),
 
+    -- No-Show Notification
+    ('00000000-0000-0000-0000-000000000001'::UUID, 'No-Show Notification', 'NO_SHOW_NOTIFICATION', 'EMAIL', 'BOOKING',
+     'Missed Reservation - {{confirmation_number}}',
+     E'Dear {{guest_name}},\n\nWe noticed you did not arrive for your reservation {{confirmation_number}} on {{check_in_date}}.\n\nIf you would like to rebook or if this was in error, please contact us as soon as possible.\n\nNo-show fees may apply per your cancellation policy.',
+     'en', true, true, 'reservation.no_show',
+     '{"guest_name": "Guest full name", "confirmation_number": "Reservation confirmation number", "check_in_date": "Original check-in date"}'::JSONB),
+
+    -- Pre-Arrival Reminder (automated, sent before arrival)
+    ('00000000-0000-0000-0000-000000000001'::UUID, 'Pre-Arrival Reminder', 'PRE_ARRIVAL_REMINDER', 'EMAIL', 'ARRIVAL',
+     'Your Stay Begins Soon - {{confirmation_number}}',
+     E'Dear {{guest_name}},\n\nYour stay is approaching! Here are your reservation details:\n\nConfirmation: {{confirmation_number}}\nCheck-in: {{check_in_date}}\nCheck-out: {{check_out_date}}\nRoom Type: {{room_type}}\n\nCheck-in time: {{check_in_time | 3:00 PM}}\nSpecial requests: {{special_requests | None noted}}\n\nWe look forward to welcoming you!',
+     'en', true, true, 'pre_arrival',
+     '{"guest_name": "Guest full name", "confirmation_number": "Confirmation number", "check_in_date": "Check-in date", "check_out_date": "Check-out date", "room_type": "Room type", "check_in_time": "Check-in time", "special_requests": "Guest special requests"}'::JSONB),
+
+    -- Post-Stay Review Request
+    ('00000000-0000-0000-0000-000000000001'::UUID, 'Post-Stay Review Request', 'POST_STAY_REVIEW', 'EMAIL', 'DEPARTURE',
+     'How Was Your Stay?',
+     E'Dear {{guest_name}},\n\nThank you for staying with us! We hope you enjoyed your visit.\n\nConfirmation: {{confirmation_number}}\nStay: {{check_in_date}} to {{check_out_date}}\nRoom: {{room_number}}\n\nYour feedback helps us improve. We would love to hear about your experience.\n\n{{review_link | Please contact us with your feedback.}}\n\nWe hope to welcome you back soon!',
+     'en', true, true, 'post_departure',
+     '{"guest_name": "Guest full name", "confirmation_number": "Confirmation number", "check_in_date": "Check-in date", "check_out_date": "Check-out date", "room_number": "Room number", "review_link": "Review/feedback URL"}'::JSONB),
+
+    -- Room Ready Notification
+    ('00000000-0000-0000-0000-000000000001'::UUID, 'Room Ready Notification', 'ROOM_READY', 'EMAIL', 'ARRIVAL',
+     'Your Room Is Ready!',
+     E'Dear {{guest_name}},\n\nGreat news! Your room is ready for you.\n\nRoom: {{room_number}}\nRoom Type: {{room_type}}\nConfirmation: {{confirmation_number}}\n\nYou may proceed to the front desk or use mobile check-in at your convenience.\n\nWelcome!',
+     'en', true, true, 'room_ready',
+     '{"guest_name": "Guest full name", "room_number": "Assigned room number", "room_type": "Room type name", "confirmation_number": "Confirmation number"}'::JSONB),
+
+    -- Room Move Notification (guest communication)
+    ('00000000-0000-0000-0000-000000000001'::UUID, 'Room Move Notification', 'ROOM_MOVE_NOTIFICATION', 'EMAIL', 'STAY',
+     'Room Change - {{confirmation_number}}',
+     E'Dear {{guest_name}},\n\nYou have been moved to a new room.\n\nPrevious Room: {{from_room_number}}\nNew Room: {{to_room_number}}\nConfirmation: {{confirmation_number}}\n\nReason: {{move_reason | Operational adjustment}}\n\nIf you have any questions, please contact the front desk.',
+     'en', true, true, 'room_move',
+     '{"guest_name": "Guest full name", "from_room_number": "Previous room number", "to_room_number": "New room number", "confirmation_number": "Confirmation number", "move_reason": "Reason for room move"}'::JSONB),
+
+    -- Mobile Key Issued
+    ('00000000-0000-0000-0000-000000000001'::UUID, 'Mobile Key Issued', 'MOBILE_KEY_ISSUED', 'EMAIL', 'ARRIVAL',
+     'Your Mobile Key Is Ready',
+     E'Dear {{guest_name}},\n\nYour mobile key has been issued.\n\nRoom: {{room_number}}\nKey Type: {{key_type | Mobile Key}}\nValid From: {{valid_from}}\nValid Until: {{valid_to}}\n\nOpen the app and hold your phone near the door lock to enter your room.\n\nEnjoy your stay!',
+     'en', true, true, 'key_issued',
+     '{"guest_name": "Guest full name", "room_number": "Room number", "key_type": "Key type (bluetooth, NFC, QR code)", "valid_from": "Key validity start", "valid_to": "Key validity end"}'::JSONB),
+
+    -- Room Out of Order Staff Alert
+    ('00000000-0000-0000-0000-000000000001'::UUID, 'Room Out of Order Alert', 'ROOM_OUT_OF_ORDER', 'EMAIL', 'OPERATIONAL',
+     'Room {{room_number}} - Out of Order',
+     E'Room {{room_number}} has been marked OUT OF ORDER.\n\nReason: {{out_of_order_reason | Not specified}}\nSince: {{out_of_order_since}}\nExpected Ready: {{expected_ready_date | TBD}}\n\nThis room has been removed from available inventory until further notice.',
+     'en', true, true, 'room_out_of_order',
+     '{"room_number": "Room number", "out_of_order_reason": "Reason for out of order", "out_of_order_since": "Date marked OOO", "expected_ready_date": "Expected ready date"}'::JSONB),
+
+    -- Room Back in Service Alert
+    ('00000000-0000-0000-0000-000000000001'::UUID, 'Room Back in Service', 'ROOM_BACK_IN_SERVICE', 'EMAIL', 'OPERATIONAL',
+     'Room {{room_number}} - Back in Service',
+     E'Room {{room_number}} is now back in service and available for assignment.\n\nPrevious Status: {{previous_status | Out of Order}}\nCleared By: {{cleared_by | System}}\n\nThe room has been returned to available inventory.',
+     'en', true, true, 'room_back_in_service',
+     '{"room_number": "Room number", "previous_status": "Previous room status", "cleared_by": "User who cleared the room"}'::JSONB),
+
+    -- Payment Received Confirmation
+    ('00000000-0000-0000-0000-000000000001'::UUID, 'Payment Confirmation', 'PAYMENT_CONFIRMATION', 'EMAIL', 'FINANCIAL',
+     'Payment Received - {{confirmation_number}}',
+     E'Dear {{guest_name}},\n\nWe have received your payment.\n\nAmount: {{currency}} {{payment_amount}}\nPayment Method: {{payment_method | Credit Card}}\nReservation: {{confirmation_number}}\nDate: {{payment_date}}\n\nThank you for your prompt payment.',
+     'en', true, true, 'payment_received',
+     '{"guest_name": "Guest full name", "confirmation_number": "Confirmation number", "payment_amount": "Payment amount", "currency": "Currency code", "payment_method": "Payment method", "payment_date": "Payment date"}'::JSONB),
+
+    -- Quote Sent
+    ('00000000-0000-0000-0000-000000000001'::UUID, 'Quote Sent', 'QUOTE_SENT', 'EMAIL', 'BOOKING',
+     'Your Quote - {{confirmation_number}}',
+     E'Dear {{guest_name}},\n\nThank you for your interest. Here is your quote:\n\nReference: {{confirmation_number}}\nCheck-in: {{check_in_date}}\nCheck-out: {{check_out_date}}\nRoom Type: {{room_type}}\nQuoted Rate: {{currency}} {{total_amount}}\n\nThis quote is valid until {{expiry_date | 48 hours from now}}.\n\nTo confirm your reservation, please reply or book online.',
+     'en', true, true, 'reservation.quoted',
+     '{"guest_name": "Guest full name", "confirmation_number": "Confirmation number", "check_in_date": "Check-in date", "check_out_date": "Check-out date", "room_type": "Room type", "total_amount": "Quoted amount", "currency": "Currency code", "expiry_date": "Quote expiry date"}'::JSONB),
+
+    -- Reservation Expired
+    ('00000000-0000-0000-0000-000000000001'::UUID, 'Reservation Expired', 'RESERVATION_EXPIRED', 'EMAIL', 'BOOKING',
+     'Reservation Expired - {{confirmation_number}}',
+     E'Dear {{guest_name}},\n\nYour reservation or quote {{confirmation_number}} has expired.\n\nOriginal Check-in: {{check_in_date}}\nOriginal Check-out: {{check_out_date}}\n\nIf you would still like to book, please create a new reservation. Rates and availability may have changed.\n\nWe hope to welcome you soon.',
+     'en', true, true, 'reservation.expired',
+     '{"guest_name": "Guest full name", "confirmation_number": "Confirmation number", "check_in_date": "Original check-in date", "check_out_date": "Original check-out date"}'::JSONB),
+
+    -- Early Check-In Approval
+    ('00000000-0000-0000-0000-000000000001'::UUID, 'Early Check-In Approved', 'EARLY_CHECKIN_APPROVED', 'EMAIL', 'ARRIVAL',
+     'Early Check-In Approved - {{confirmation_number}}',
+     E'Dear {{guest_name}},\n\nGood news! Your early check-in request has been approved.\n\nRoom: {{room_number}}\nEarly Check-in Time: {{early_checkin_time}}\nConfirmation: {{confirmation_number}}\n\nPlease proceed to the front desk upon arrival.',
+     'en', true, false, NULL,
+     '{"guest_name": "Guest full name", "room_number": "Room number", "early_checkin_time": "Approved early check-in time", "confirmation_number": "Confirmation number"}'::JSONB),
+
+    -- Express Checkout Ready
+    ('00000000-0000-0000-0000-000000000001'::UUID, 'Express Checkout Ready', 'EXPRESS_CHECKOUT_READY', 'EMAIL', 'DEPARTURE',
+     'Express Checkout Available - {{confirmation_number}}',
+     E'Dear {{guest_name}},\n\nYour folio is ready for express checkout.\n\nRoom: {{room_number}}\nConfirmation: {{confirmation_number}}\nTotal Charges: {{currency}} {{total_amount}}\n\nSimply drop your key at the front desk or use the express checkout kiosk. A final folio will be emailed to you.\n\nThank you for your stay!',
+     'en', true, false, NULL,
+     '{"guest_name": "Guest full name", "room_number": "Room number", "confirmation_number": "Confirmation number", "total_amount": "Total charges", "currency": "Currency code"}'::JSONB),
+
     -- Group Operations
+    ('00000000-0000-0000-0000-000000000001'::UUID, 'Group Booking Confirmation', 'GROUP_BOOKING_CONFIRMED', 'EMAIL', 'GROUP',
+     'Group Booking Confirmed - {{group_name}}',
+     E'Dear {{contact_name}},\n\nYour group booking has been confirmed.\n\nGroup Name: {{group_name}}\nBooking Code: {{booking_code}}\nArrival: {{check_in_date}}\nDeparture: {{check_out_date}}\nTotal Rooms: {{total_rooms}}\n\nCutoff Date: {{cutoff_date | TBD}}\n\nPlease submit your rooming list before the cutoff date.',
+     'en', true, true, 'group.created',
+     '{"contact_name": "Group coordinator", "group_name": "Group block name", "booking_code": "Group booking code", "check_in_date": "Group check-in date", "check_out_date": "Group check-out date", "total_rooms": "Total rooms reserved", "cutoff_date": "Cutoff date for room list"}'::JSONB),
+
+    ('00000000-0000-0000-0000-000000000001'::UUID, 'Group Cutoff Notice', 'GROUP_CUTOFF_NOTICE', 'EMAIL', 'GROUP',
+     'Group Cutoff Enforced - {{group_name}}',
+     E'Dear {{contact_name}},\n\nThe cutoff date for group {{group_name}} has been enforced.\n\nCutoff Date: {{cutoff_date}}\nRooms Released: {{rooms_released}}\nRooms Remaining: {{rooms_remaining}}\n\nUnassigned rooms have been released back to general inventory. Please contact us if you need to make changes.',
+     'en', true, true, 'group.cutoff_enforced',
+     '{"contact_name": "Group coordinator", "group_name": "Group block name", "cutoff_date": "Cutoff date enforced", "rooms_released": "Number of rooms released", "rooms_remaining": "Rooms retained for group"}'::JSONB),
+
     ('00000000-0000-0000-0000-000000000001'::UUID, 'Group Rooming List', 'GROUP_ROOMING_LIST', 'EMAIL', 'GROUP',
      'Rooming List - {{group_name}}',
      E'Dear {{contact_name}},\n\nPlease find the rooming list for {{group_name}}.\n\nEvent: {{event_name | N/A}}\nArrival: {{check_in_date}}\nDeparture: {{check_out_date}}\nTotal Rooms: {{total_rooms}}\nRooms Assigned: {{rooms_assigned}}\nRooms Remaining: {{rooms_remaining}}\n\nCutoff Date: {{cutoff_date | N/A}}\n\nPlease review and confirm room assignments.',
      'en', true, false, NULL,
-     '{"contact_name": "Group coordinator", "group_name": "Group block name", "event_name": "Event name", "check_in_date": "Group check-in date", "check_out_date": "Group check-out date", "total_rooms": "Total rooms in block", "rooms_assigned": "Rooms assigned so far", "rooms_remaining": "Remaining unassigned rooms", "cutoff_date": "Cutoff date for group block"}'::JSONB)
+     '{"contact_name": "Group coordinator", "group_name": "Group block name", "event_name": "Event name", "check_in_date": "Group check-in date", "check_out_date": "Group check-out date", "total_rooms": "Total rooms in block", "rooms_assigned": "Rooms assigned so far", "rooms_remaining": "Remaining unassigned rooms", "cutoff_date": "Cutoff date for group block"}'::JSONB),
+
+    -- OTA Booking Confirmation
+    ('00000000-0000-0000-0000-000000000001'::UUID, 'OTA Booking Confirmation', 'OTA_BOOKING_CONFIRMED', 'EMAIL', 'BOOKING',
+     'Booking Confirmation - {{confirmation_number}} (via {{ota_channel | Online}})' ,
+     E'Dear {{guest_name}},\n\nYour booking made via {{ota_channel | our online channel}} has been confirmed.\n\nConfirmation: {{confirmation_number}}\nCheck-in: {{check_in_date}}\nCheck-out: {{check_out_date}}\nRoom Type: {{room_type}}\nTotal: {{currency}} {{total_amount}}\n\nWe look forward to welcoming you!',
+     'en', true, true, 'reservation.created_from_ota',
+     '{"guest_name": "Guest full name", "confirmation_number": "Confirmation number", "check_in_date": "Check-in date", "check_out_date": "Check-out date", "room_type": "Room type", "total_amount": "Total amount", "currency": "Currency code", "ota_channel": "OTA channel name"}'::JSONB)
 ) AS t(tenant_id, template_name, template_code, communication_type, category,
        subject, body, language_code, is_active, is_automated, trigger_event, variables)
 ON CONFLICT ON CONSTRAINT uq_comm_template_code DO NOTHING;

@@ -8,17 +8,31 @@
   </div>
 
   <nav class="sidebar-nav">
-    @for (item of primaryNavItems; track item.route) {
-      <a class="nav-item"
-         [routerLink]="item.route"
-         routerLinkActive="nav-item-active"
-         [matTooltip]="collapsed() ? item.label : ''"
-         matTooltipPosition="right">
-        <mat-icon class="nav-icon">{{ item.icon }}</mat-icon>
-        @if (!collapsed()) {
-          <span class="nav-label">{{ item.label }}</span>
-        }
-      </a>
+    @for (item of primaryNavItems; track item.label) {
+      @if (item.children) {
+        <button class="nav-item nav-parent"
+                [class.nav-item-active]="isParentActive(item)"
+                [matTooltip]="collapsed() ? item.label : ''"
+                matTooltipPosition="right"
+                (click)="onParentClick(item)">
+          <mat-icon class="nav-icon">{{ item.icon }}</mat-icon>
+          @if (!collapsed()) {
+            <span class="nav-label">{{ item.label }}</span>
+            <mat-icon class="nav-chevron" [class.expanded]="isParentActive(item)">chevron_right</mat-icon>
+          }
+        </button>
+      } @else {
+        <a class="nav-item"
+           [routerLink]="item.route"
+           routerLinkActive="nav-item-active"
+           [matTooltip]="collapsed() ? item.label : ''"
+           matTooltipPosition="right">
+          <mat-icon class="nav-icon">{{ item.icon }}</mat-icon>
+          @if (!collapsed()) {
+            <span class="nav-label">{{ item.label }}</span>
+          }
+        </a>
+      }
     }
   </nav>
 

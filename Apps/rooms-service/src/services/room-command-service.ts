@@ -3,6 +3,7 @@ import crypto from "node:crypto";
 import { config } from "../config.js";
 import { publishEvent } from "../kafka/producer.js";
 import { query } from "../lib/db.js";
+import { appLogger } from "../lib/logger.js";
 import {
   RoomFeaturesUpdateCommandSchema,
   RoomHousekeepingStatusUpdateCommandSchema,
@@ -16,6 +17,9 @@ import {
   RoomOutOfServiceCommandSchema,
   RoomStatusUpdateCommandSchema,
 } from "../schemas/room-commands.js";
+import { findArrivingReservation, publishNotificationCommand } from "./room-notification-helper.js";
+
+const logger = appLogger.child({ module: "room-command-service" });
 
 type CommandContext = {
   tenantId: string;
@@ -119,6 +123,45 @@ export const handleRoomStatusUpdate = async (
   if (!rowCount || rowCount === 0) {
     throw new RoomCommandError("ROOM_NOT_FOUND", "Unable to update room status.");
   }
+
+  // Room back-in-service notification: when status transitions to AVAILABLE
+  // the room is returned to inventory, check for awaiting guests.
+  if (command.status === "AVAILABLE") {
+    try {
+      const { rows: roomRows } = await query<{ room_number: string }>(
+        `SELECT room_number FROM public.rooms WHERE id = $1 AND tenant_id = $2::uuid LIMIT 1`,
+        [command.room_id, context.tenantId],
+      );
+      const roomNumber = roomRows[0]?.room_number;
+      if (roomNumber) {
+        const reservation = await findArrivingReservation(context.tenantId, roomNumber);
+        if (reservation) {
+          await publishNotificationCommand({
+            tenantId: context.tenantId,
+            propertyId: reservation.property_id,
+            guestId: reservation.guest_id,
+            reservationId: reservation.id,
+            templateCode: "ROOM_READY",
+            recipientName: reservation.guest_name,
+            recipientEmail: reservation.guest_email ?? undefined,
+            context: {
+              guest_name: reservation.guest_name,
+              room_number: roomNumber,
+              room_type: reservation.room_type_name,
+              confirmation_number: reservation.confirmation_number,
+            },
+            idempotencyKey: `room-ready-${reservation.id}-${new Date().toISOString().slice(0, 10)}`,
+            initiatedBy: context.initiatedBy,
+          });
+        }
+      }
+    } catch (err) {
+      logger.warn(
+        { err, roomId: command.room_id },
+        "Failed to send room-ready notification (best-effort)",
+      );
+    }
+  }
 };
 
 /**
@@ -152,6 +195,45 @@ export const handleRoomHousekeepingStatusUpdate = async (
 
   if (!rowCount || rowCount === 0) {
     throw new RoomCommandError("ROOM_NOT_FOUND", "Unable to update housekeeping status.");
+  }
+
+  // Room-ready notification: when housekeeping marks a room as CLEAN or
+  // INSPECTED, check if a guest is arriving today for this room.
+  if (command.housekeeping_status === "CLEAN" || command.housekeeping_status === "INSPECTED") {
+    try {
+      const { rows: roomRows } = await query<{ room_number: string }>(
+        `SELECT room_number FROM public.rooms WHERE id = $1 AND tenant_id = $2::uuid LIMIT 1`,
+        [command.room_id, context.tenantId],
+      );
+      const roomNumber = roomRows[0]?.room_number;
+      if (roomNumber) {
+        const reservation = await findArrivingReservation(context.tenantId, roomNumber);
+        if (reservation) {
+          await publishNotificationCommand({
+            tenantId: context.tenantId,
+            propertyId: reservation.property_id,
+            guestId: reservation.guest_id,
+            reservationId: reservation.id,
+            templateCode: "ROOM_READY",
+            recipientName: reservation.guest_name,
+            recipientEmail: reservation.guest_email ?? undefined,
+            context: {
+              guest_name: reservation.guest_name,
+              room_number: roomNumber,
+              room_type: reservation.room_type_name,
+              confirmation_number: reservation.confirmation_number,
+            },
+            idempotencyKey: `room-ready-${reservation.id}-${new Date().toISOString().slice(0, 10)}`,
+            initiatedBy: context.initiatedBy,
+          });
+        }
+      }
+    } catch (err) {
+      logger.warn(
+        { err, roomId: command.room_id },
+        "Failed to send room-ready notification (best-effort)",
+      );
+    }
   }
 };
 
@@ -462,6 +544,58 @@ export const handleRoomMove = async (payload: unknown, context: CommandContext):
         }),
       ],
     );
+
+    // Room move notification to the guest
+    try {
+      const { rows: resRows } = await query<{
+        guest_id: string;
+        property_id: string;
+        confirmation_number: string;
+      }>(
+        `SELECT guest_id, property_id, confirmation_number
+         FROM public.reservations
+         WHERE id = $1 AND tenant_id = $2::uuid
+         LIMIT 1`,
+        [command.reservation_id, context.tenantId],
+      );
+      const res = resRows[0];
+      if (res) {
+        const { rows: guestRows } = await query<{
+          guest_name: string;
+          email: string | null;
+        }>(
+          `SELECT COALESCE(first_name || ' ' || last_name, 'Guest') AS guest_name, email
+           FROM public.guests
+           WHERE id = $1 AND tenant_id = $2::uuid
+           LIMIT 1`,
+          [res.guest_id, context.tenantId],
+        );
+        const guest = guestRows[0];
+        await publishNotificationCommand({
+          tenantId: context.tenantId,
+          propertyId: res.property_id,
+          guestId: res.guest_id,
+          reservationId: command.reservation_id,
+          templateCode: "ROOM_MOVE_NOTIFICATION",
+          recipientName: guest?.guest_name ?? "Guest",
+          recipientEmail: guest?.email ?? undefined,
+          context: {
+            guest_name: guest?.guest_name ?? "Guest",
+            from_room_number: fromRoom.room_number,
+            to_room_number: toRoom.room_number,
+            confirmation_number: res.confirmation_number ?? "",
+            move_reason: command.reason ?? "Operational adjustment",
+          },
+          idempotencyKey: `room-move-${command.reservation_id}-${command.from_room_id}-${command.to_room_id}`,
+          initiatedBy: context.initiatedBy,
+        });
+      }
+    } catch (err) {
+      logger.warn(
+        { err, reservationId: command.reservation_id },
+        "Failed to send room-move notification (best-effort)",
+      );
+    }
   }
 };
 
@@ -564,6 +698,44 @@ export const handleKeyIssue = async (payload: unknown, context: CommandContext):
       actor,
     ],
   );
+
+  // Mobile key issued notification to the guest
+  try {
+    const { rows: guestRows } = await query<{
+      guest_name: string;
+      email: string | null;
+    }>(
+      `SELECT COALESCE(first_name || ' ' || last_name, 'Guest') AS guest_name, email
+       FROM public.guests
+       WHERE id = $1 AND tenant_id = $2::uuid
+       LIMIT 1`,
+      [command.guest_id, context.tenantId],
+    );
+    const guest = guestRows[0];
+    await publishNotificationCommand({
+      tenantId: context.tenantId,
+      propertyId: command.property_id,
+      guestId: command.guest_id,
+      reservationId: command.reservation_id,
+      templateCode: "MOBILE_KEY_ISSUED",
+      recipientName: guest?.guest_name ?? "Guest",
+      recipientEmail: guest?.email ?? undefined,
+      context: {
+        guest_name: guest?.guest_name ?? "Guest",
+        room_number: roomRows[0].room_number,
+        key_type: command.key_type,
+        valid_from: validFrom.toISOString(),
+        valid_to: validTo.toISOString(),
+      },
+      idempotencyKey: `mobile-key-${keyCode}`,
+      initiatedBy: context.initiatedBy,
+    });
+  } catch (err) {
+    logger.warn(
+      { err, guestId: command.guest_id, roomId: command.room_id },
+      "Failed to send mobile-key notification (best-effort)",
+    );
+  }
 };
 
 /**

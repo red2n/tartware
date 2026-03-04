@@ -1,0 +1,30 @@
+<aside class="sub-sidebar" [class.collapsed]="collapsed()">
+  <div class="sub-sidebar-header">
+    @if (!collapsed()) {
+      <span class="sub-sidebar-title">{{ parentLabel() }}</span>
+    } @else {
+      <mat-icon class="header-icon" [matTooltip]="parentLabel()" matTooltipPosition="left">{{ parentIcon() }}</mat-icon>
+    }
+  </div>
+
+  <nav class="sub-sidebar-nav">
+    @for (item of items(); track item.route) {
+      <a class="nav-item"
+         [routerLink]="item.route"
+         routerLinkActive="nav-item-active"
+         [matTooltip]="collapsed() ? item.label : ''"
+         matTooltipPosition="left">
+        <mat-icon class="nav-icon">{{ item.icon }}</mat-icon>
+        @if (!collapsed()) {
+          <span class="nav-label">{{ item.label }}</span>
+        }
+      </a>
+    }
+  </nav>
+
+  <div class="sub-sidebar-footer">
+    <button class="collapse-toggle" (click)="toggleCollapse.emit()">
+      <mat-icon>{{ collapsed() ? 'chevron_left' : 'chevron_right' }}</mat-icon>
+    </button>
+  </div>
+</aside>
