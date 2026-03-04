@@ -16,15 +16,8 @@ import { authenticator } from "otplib";
 
 import { config } from "../config.js";
 import { pool } from "../lib/db.js";
-import {
-  authenticateUser,
-  changeUserPassword,
-} from "../services/auth-service.js";
-import {
-  extractBearerToken,
-  signAccessToken,
-  verifyAccessToken,
-} from "../lib/jwt.js";
+import { extractBearerToken, signAccessToken, verifyAccessToken } from "../lib/jwt.js";
+import { authenticateUser, changeUserPassword } from "../services/auth-service.js";
 import {
   TENANT_AUTH_MFA_PROFILE_SQL,
   TENANT_AUTH_UPDATE_MFA_SQL,
