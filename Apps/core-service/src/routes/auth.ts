@@ -16,7 +16,7 @@ import { authenticator } from "otplib";
 
 import { config } from "../config.js";
 import { pool } from "../lib/db.js";
-import { extractBearerToken, signAccessToken, verifyAccessToken } from "../lib/jwt.js";
+import { extractBearerToken, signAccessToken, verifyAccessTokenWithGrace } from "../lib/jwt.js";
 import { authenticateUser, changeUserPassword } from "../services/auth-service.js";
 import {
   TENANT_AUTH_MFA_PROFILE_SQL,
@@ -411,18 +411,19 @@ export const registerAuthRoutes = (app: FastifyInstance): void => {
       }),
     },
     async (request, reply) => {
-      if (!request.auth.isAuthenticated || !request.auth.userId) {
+      const token = extractBearerToken(request.headers.authorization);
+      // Allow tokens expired up to 5 minutes ago so browser timer throttling doesn't force logout
+      const REFRESH_GRACE_SECONDS = 300;
+      const payload = token ? verifyAccessTokenWithGrace(token, REFRESH_GRACE_SECONDS) : null;
+
+      if (!payload?.sub) {
         reply.unauthorized("You must be logged in to refresh your token.");
         return reply;
       }
 
-      const token = extractBearerToken(request.headers.authorization);
-      const payload = token ? verifyAccessToken(token) : null;
-      const username = payload?.username ?? "";
-
       const accessToken = signAccessToken({
-        sub: request.auth.userId,
-        username,
+        sub: payload.sub,
+        username: payload.username ?? "",
         type: "access",
       });
 

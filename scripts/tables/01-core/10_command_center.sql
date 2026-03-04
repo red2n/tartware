@@ -217,16 +217,14 @@ WITH seed_commands(command_name, description, default_target_service, required_m
         ('group.billing.setup', 'Configure billing for a group booking', 'reservations-command-service', ARRAY['core']),
         ('group.check_in', 'Batch check-in group reservations with proximity-based room assignment', 'reservations-command-service', ARRAY['core'])
 )
-INSERT INTO command_templates (command_name, description, default_target_service, required_modules, metadata, tenant_id)
+INSERT INTO command_templates (command_name, description, default_target_service, required_modules, metadata)
 SELECT
     sc.command_name,
     sc.description,
     sc.default_target_service,
     sc.required_modules,
-    jsonb_build_object('seeded', true),
-    t.id
+    jsonb_build_object('seeded', true)
 FROM seed_commands sc
-CROSS JOIN tenants t
 ON CONFLICT (command_name) DO UPDATE
 SET
     description = EXCLUDED.description,

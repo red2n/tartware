@@ -54,12 +54,12 @@ export class GroupDetailComponent implements OnInit {
 	formatDate = formatLongDate;
 	formatCurrency = formatCurrency;
 
-	/** Group can be checked in when status is active (not cancelled) and rooms have been picked. */
+	/** Group can be checked in when status is active (not cancelled/completed) and rooms have been picked. */
 	readonly canCheckIn = computed(() => {
 		const g = this.group();
 		if (!g) return false;
 		const status = g.block_status.toUpperCase();
-		const blocked = new Set(["CANCELLED", "CHECKED_IN"]);
+		const blocked = new Set(["CANCELLED", "COMPLETED"]);
 		return !blocked.has(status) && g.total_rooms_picked > 0;
 	});
 

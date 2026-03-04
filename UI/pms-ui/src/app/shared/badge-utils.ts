@@ -87,7 +87,7 @@ export function groupBlockStatusClass(status: string): string {
 		case "INQUIRY":
 		case "WAITLISTED":
 			return "badge-warning";
-		case "CANCELED":
+		case "CANCELLED":
 			return "badge-danger";
 		case "COMPLETED":
 			return "badge-muted";

@@ -878,30 +878,36 @@ export const groupCheckIn = async (
   // Track rooms consumed during this batch to prevent double-assignment
   const consumedRoomIds = new Set<string>();
 
+  // Preload blocking deposit reservations to avoid N+1 queries
+  const blockingDepositReservationIds = new Set<string>();
+  if (!command.force && targetReservations.length > 0) {
+    const reservationIds = targetReservations.map((r) => r.id);
+    const { rows } = await query<{ reservation_id: string }>(
+      `SELECT DISTINCT reservation_id
+       FROM public.deposit_schedules
+       WHERE reservation_id = ANY($1::uuid[])
+         AND tenant_id = $2::uuid
+         AND blocks_check_in = TRUE
+         AND schedule_status NOT IN ('PAID', 'WAIVED', 'CANCELLED')
+         AND COALESCE(is_deleted, false) = false`,
+      [reservationIds, tenantId],
+    );
+    for (const row of rows) {
+      blockingDepositReservationIds.add(row.reservation_id);
+    }
+  }
+
   for (const res of targetReservations) {
     try {
       // Check blocking deposits unless force=true
-      if (!command.force) {
-        const { rows: blockingDeposits } = await query<{ schedule_id: string }>(
-          `SELECT schedule_id
-           FROM public.deposit_schedules
-           WHERE reservation_id = $1::uuid
-             AND tenant_id = $2::uuid
-             AND blocks_check_in = TRUE
-             AND schedule_status NOT IN ('PAID', 'WAIVED', 'CANCELLED')
-             AND COALESCE(is_deleted, false) = false
-           LIMIT 1`,
-          [res.id, tenantId],
-        );
-        if (blockingDeposits.length > 0) {
-          skipped++;
-          details.push({
-            reservation_id: res.id,
-            outcome: "skipped",
-            reason: "Blocking deposit outstanding",
-          });
-          continue;
-        }
+      if (!command.force && blockingDepositReservationIds.has(res.id)) {
+        skipped++;
+        details.push({
+          reservation_id: res.id,
+          outcome: "skipped",
+          reason: "Blocking deposit outstanding",
+        });
+        continue;
       }
 
       // Find next available room from the proximity-sorted pool

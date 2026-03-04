@@ -19,7 +19,7 @@ import { formatCurrency, formatShortDate } from "../../shared/format-utils";
 import { PaginationComponent } from "../../shared/pagination/pagination";
 import { createSortState, sortBy, toggleSort } from "../../shared/sort-utils";
 
-type StatusFilter = "ALL" | "TENTATIVE" | "DEFINITE" | "INQUIRY" | "CONFIRMED" | "CANCELED";
+type StatusFilter = "ALL" | "TENTATIVE" | "DEFINITE" | "INQUIRY" | "CONFIRMED" | "CANCELLED";
 
 @Component({
 	selector: "app-groups",
@@ -59,7 +59,7 @@ export class GroupsComponent {
 		{ key: "DEFINITE", label: "Definite" },
 		{ key: "CONFIRMED", label: "Confirmed" },
 		{ key: "INQUIRY", label: "Inquiry" },
-		{ key: "CANCELED", label: "Canceled" },
+		{ key: "CANCELLED", label: "Cancelled" },
 	];
 
 	readonly groupTypeIcon: Record<string, { icon: string; tooltip: string }> = {
@@ -119,7 +119,7 @@ export class GroupsComponent {
 			DEFINITE: countByStatus("DEFINITE"),
 			CONFIRMED: countByStatus("CONFIRMED"),
 			INQUIRY: countByStatus("INQUIRY"),
-			CANCELED: countByStatus("CANCELED"),
+			CANCELLED: countByStatus("CANCELLED"),
 		};
 	});
 
