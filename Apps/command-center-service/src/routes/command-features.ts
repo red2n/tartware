@@ -83,11 +83,19 @@ export const registerCommandFeatureRoutes = (app: FastifyInstance): void => {
       const { commandName } = CommandParamSchema.parse(request.params);
       const { status } = UpdateCommandFeatureRequestSchema.parse(request.body);
 
-      const result = await updateCommandFeatureStatus(commandName, environment, status);
-      if (!result) {
-        return reply.notFound(`Command "${commandName}" not found.`);
+      try {
+        const result = await updateCommandFeatureStatus(commandName, environment, status);
+        if (!result) {
+          return reply.notFound(`Command "${commandName}" not found.`);
+        }
+        return UpdateCommandFeatureResponseSchema.parse(result);
+      } catch (error) {
+        const err = error as { code?: string } | undefined;
+        if (err?.code === "23503") {
+          return reply.notFound(`Command "${commandName}" not found.`);
+        }
+        throw error;
       }
-      return UpdateCommandFeatureResponseSchema.parse(result);
     },
   );
 

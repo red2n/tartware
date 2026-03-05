@@ -100,7 +100,7 @@
       "passwordHash": "$2a$10$erzSav5dzulZWAtge.vtmexT.PryHC4S7.Fd2jzxI8R1Kg3biyrwq",
       "role": "SYSTEM_ADMIN",
       "mfaEnabled": false,
-      "ipWhitelist": ["0.0.0.0/0"],
+      "ipWhitelist": ["127.0.0.1/32", "::1/128"],
       "isActive": true,
       "metadata": {
         "seed": "industry_defaults",

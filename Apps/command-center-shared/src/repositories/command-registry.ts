@@ -207,21 +207,29 @@ export const createCommandFeatureRepository = (query: QueryExecutor) => {
     commandName: string,
     environment: string,
     status: CommandFeatureStatus,
-  ): Promise<CommandFeatureUpdateRow> => {
+  ): Promise<CommandFeatureUpdateRow | null> => {
     const updated = await query<CommandFeatureUpdateRow>(UPDATE_COMMAND_FEATURE_SQL, [
       status,
       commandName,
       environment,
     ]);
     if (updated.rows.length > 0) {
-      return updated.rows[0];
+      return updated.rows[0] ?? null;
     }
-    const inserted = await query<CommandFeatureUpdateRow>(INSERT_COMMAND_FEATURE_SQL, [
-      commandName,
-      environment,
-      status,
-    ]);
-    return inserted.rows[0];
+    try {
+      const inserted = await query<CommandFeatureUpdateRow>(INSERT_COMMAND_FEATURE_SQL, [
+        commandName,
+        environment,
+        status,
+      ]);
+      return inserted.rows[0] ?? null;
+    } catch (error) {
+      const err = error as { code?: string } | undefined;
+      if (err?.code === "23503") {
+        return null;
+      }
+      throw error;
+    }
   };
 
   /** Batch-update multiple command feature statuses. */
@@ -238,9 +246,27 @@ export const createCommandFeatureRepository = (query: QueryExecutor) => {
     for (const { command_name, status } of updates) {
       try {
         const row = await updateCommandFeatureStatus(command_name, environment, status);
+        if (!row) {
+          failures.push({
+            command_name,
+            error: "Unknown command (not found in command_templates)",
+          });
+          continue;
+        }
         results.push(row);
-      } catch {
-        failures.push({ command_name, error: "Failed to update" });
+      } catch (error) {
+        let message = "Failed to update";
+        if (error && typeof error === "object") {
+          const code = (error as { code?: string }).code;
+          if (code === "23503") {
+            message = "Failed to update: unknown or invalid command (foreign key violation)";
+          } else if (code === "23505") {
+            message = "Failed to update: duplicate entry (unique constraint violation)";
+          } else if (code) {
+            message = `Failed to update: database error (${code})`;
+          }
+        }
+        failures.push({ command_name, error: message });
       }
     }
 
