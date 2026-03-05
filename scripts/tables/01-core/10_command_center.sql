@@ -19,6 +19,7 @@ CREATE TABLE IF NOT EXISTS command_templates (
     payload_schema JSONB NOT NULL DEFAULT '{}'::jsonb,               -- JSON Schema for payload validation
     sample_payload JSONB NOT NULL DEFAULT '{}'::jsonb,               -- Example payload for docs/testing
     metadata JSONB NOT NULL DEFAULT '{}'::jsonb,                     -- Arbitrary extension metadata
+    tenant_id UUID NOT NULL DEFAULT '11111111-1111-1111-1111-111111111111', -- Owning tenant (default: seed tenant)
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),                   -- Row creation timestamp
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()                    -- Row last-update timestamp
 );
@@ -31,6 +32,7 @@ COMMENT ON COLUMN command_templates.default_topic IS 'Kafka topic for command ro
 COMMENT ON COLUMN command_templates.required_modules IS 'Modules that must be licensed to use this command';
 COMMENT ON COLUMN command_templates.payload_schema IS 'JSON Schema for command payload validation';
 COMMENT ON COLUMN command_templates.sample_payload IS 'Example payload for documentation/testing';
+COMMENT ON COLUMN command_templates.tenant_id IS 'Owning tenant; defaults to seed tenant for system-level command definitions';
 
 CREATE TABLE IF NOT EXISTS command_routes (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),                                                    -- Unique route identifier
@@ -254,8 +256,8 @@ SELECT
     ct.command_name,
     'development',
     NULL,
-    'enabled',
-    jsonb_build_object('seeded', true)
+    'disabled',
+    jsonb_build_object('seeded', true, 'requires_activation', true)
 FROM command_templates ct
 WHERE NOT EXISTS (
     SELECT 1

@@ -146,6 +146,12 @@ export const SECONDARY_NAV_ITEMS: NavItem[] = [
 		route: "/settings",
 		description: "Property configuration, user preferences, and system setup",
 	},
+	{
+		label: "Command Management",
+		icon: "terminal",
+		route: "/command-management",
+		description: "Enable, disable, and monitor system commands",
+	},
 ];
 
 /** Find the parent NavItem whose children contain a route matching the given URL. */

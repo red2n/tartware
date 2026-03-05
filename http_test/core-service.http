@@ -208,7 +208,7 @@ POST {{baseUrl}}/v1/system/auth/login
 Content-Type: application/json
 
 {
-  "username": "setup.admin",
+  "username": "system.admin",
   "password": "TempPass123",
   "device_fingerprint": "test-device-001"
 }
@@ -219,7 +219,7 @@ POST {{baseUrl}}/v1/system/auth/break-glass
 Content-Type: application/json
 
 {
-  "username": "setup.admin",
+  "username": "system.admin",
   "break_glass_code": "EMERGENCY-CODE",
   "reason": "Production incident requiring immediate system access",
   "ticket_id": "TICKET-2026-001",

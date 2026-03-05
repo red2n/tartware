@@ -659,6 +659,12 @@ if [ "$TABLE_COUNT" -ne "$EXPECTED_TABLES" ]; then
 fi
 
 echo -e "${GREEN}✓ Created $TABLE_COUNT tables${NC}"
+
+# Re-run command template seeding after 99_enforce_tenant_soft_delete.sql has run
+# (ensures command_templates.tenant_id is populated via DEFAULT)
+psql -q -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -f "$SCRIPTS_DIR/tables/01-core/10_command_center.sql" > /dev/null 2>&1
+CMD_TEMPLATE_COUNT=$(psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -tAc "SELECT COUNT(*) FROM command_templates;" 2>/dev/null)
+echo -e "${GREEN}✓ Command templates: $CMD_TEMPLATE_COUNT commands registered${NC}"
 echo ""
 
 # ============================================================================
@@ -785,6 +791,25 @@ echo ""
 echo -e "${BLUE}[14/14]${NC} Running post-setup verification..."
 
 psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -f "$SCRIPTS_DIR/verify-setup.sql" 2>&1 | grep -E 'NOTICE:|WARNING:' | sed 's/.*NOTICE:  //' | sed 's/.*WARNING:  //'
+
+echo ""
+
+# ============================================================================
+# STEP 15: Bootstrap Kafka Topics (if Kafka is reachable)
+# ============================================================================
+
+KAFKA_TOPIC_SCRIPT="$REPO_ROOT/scripts/dev/bootstrap-kafka-topics.mjs"
+if [ -f "$KAFKA_TOPIC_SCRIPT" ]; then
+    echo -e "${BLUE}[15/15]${NC} Bootstrapping Kafka topics..."
+    if (cd "$REPO_ROOT" && node "$KAFKA_TOPIC_SCRIPT" 2>/dev/null); then
+        echo -e "${GREEN}✓ Kafka topics bootstrapped${NC}"
+    else
+        echo -e "${YELLOW}⚠  Kafka not reachable — topics will be created when Kafka starts${NC}"
+        echo -e "${YELLOW}   Run: pnpm run kafka:topics${NC}"
+    fi
+else
+    echo -e "${YELLOW}⚠  Kafka topic bootstrap script not found — skipping${NC}"
+fi
 
 echo ""
 

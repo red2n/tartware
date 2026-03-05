@@ -253,7 +253,23 @@ export const registerCoreProxyRoutes = (app: FastifyInstance): void => {
     proxyCore,
   );
 
-  // System routes
+  // System admin authentication — unauthenticated (login endpoints)
+  app.all(
+    "/v1/system/auth/*",
+    {
+      ...authRateLimit,
+      schema: buildRouteSchema({
+        tag: CORE_PROXY_TAG,
+        summary: "Proxy system admin auth calls to core service.",
+        response: {
+          200: jsonObjectSchema,
+        },
+      }),
+    },
+    proxyCore,
+  );
+
+  // System routes (authenticated, admin-only)
   app.all(
     "/v1/system/*",
     {

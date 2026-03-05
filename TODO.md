@@ -2,6 +2,25 @@
 
 ---
 
+### 🔴 HIGH PRIORITY — User Management UI
+
+There is **no UI for user management** in the PMS. The default `setup.admin` user (role: `OWNER`) cannot:
+- Create or invite new users
+- Assign roles (OWNER, ADMIN, MANAGER, STAFF, VIEWER) to users
+- Manage user-tenant associations or module access
+- Deactivate or remove users
+
+The backend APIs for user CRUD exist in `core-service` (e.g., `/v1/users`, `/v1/tenants/:tenantId/users`), but no Angular UI has been built to expose these operations. This is a table-stakes feature for any multi-user PMS.
+
+**Scope:**
+- [ ] User list page (view all users for a tenant with role, status, last login)
+- [ ] Create/invite user form (username, email, role assignment, module access)
+- [ ] Edit user (update role, modules, active status)
+- [ ] Deactivate/reactivate user
+- [ ] Role-based access control in UI (only OWNER/ADMIN can manage users)
+
+---
+
 ### 🔴 HIGH PRIORITY — Template & Communication Infrastructure (NEXT)
 
 The template/communication items are the highest-impact next batch — they're guest-facing, table-stakes PMS features and the infrastructure (`communication_templates` + `automated_messages` + notification-service) already exists.
