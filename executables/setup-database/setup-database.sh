@@ -487,7 +487,7 @@ echo ""
 # STEP 1: Check PostgreSQL Connection
 # ============================================================================
 
-echo -e "${BLUE}[1/14]${NC} Checking PostgreSQL connection..."
+echo -e "${BLUE}[1/15]${NC} Checking PostgreSQL connection..."
 
 if ! pg_isready -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" &> /dev/null; then
     echo -e "${YELLOW}⚠  PostgreSQL is not accessible on $DB_HOST:$DB_PORT${NC}"
@@ -565,7 +565,7 @@ echo ""
 # STEP 2: Drop Existing Database (Automatic Fresh Install)
 # ============================================================================
 
-echo -e "${BLUE}[2/14]${NC} Checking if database exists..."
+echo -e "${BLUE}[2/15]${NC} Checking if database exists..."
 
 DB_EXISTS=$(psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d postgres -tAc "SELECT 1 FROM pg_database WHERE datname='$DB_NAME'" 2>/dev/null || echo "")
 
@@ -598,7 +598,7 @@ echo ""
 # STEP 3: Create Database
 # ============================================================================
 
-echo -e "${BLUE}[3/14]${NC} Creating database '$DB_NAME'..."
+echo -e "${BLUE}[3/15]${NC} Creating database '$DB_NAME'..."
 
 psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d postgres -c "
     CREATE DATABASE $DB_NAME
@@ -619,7 +619,7 @@ echo ""
 # STEP 4: Create Extensions & Schemas
 # ============================================================================
 
-echo -e "${BLUE}[4/14]${NC} Creating extensions and schemas..."
+echo -e "${BLUE}[4/15]${NC} Creating extensions and schemas..."
 
 psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -f "$SCRIPTS_DIR/01-database-setup.sql" &> /dev/null
 
@@ -631,7 +631,7 @@ echo ""
 # STEP 5: Create ENUM Types
 # ============================================================================
 
-echo -e "${BLUE}[5/14]${NC} Creating ${EXPECTED_ENUMS} ENUM types..."
+echo -e "${BLUE}[5/15]${NC} Creating ${EXPECTED_ENUMS} ENUM types..."
 
 psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -f "$SCRIPTS_DIR/02-enum-types.sql" &> /dev/null
 
@@ -644,7 +644,7 @@ echo ""
 # STEP 6: Create Tables
 # ============================================================================
 
-echo -e "${BLUE}[6/14]${NC} Creating ${EXPECTED_TABLES} tables (${TABLE_FILES} files, some create multiple tables)..."
+echo -e "${BLUE}[6/15]${NC} Creating ${EXPECTED_TABLES} tables (${TABLE_FILES} files, some create multiple tables)..."
 
 cd "$SCRIPTS_DIR"
 psql -q -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -f "$SCRIPTS_DIR/tables/00-create-all-tables.sql" > /dev/null 2>&1
@@ -659,13 +659,26 @@ if [ "$TABLE_COUNT" -ne "$EXPECTED_TABLES" ]; then
 fi
 
 echo -e "${GREEN}✓ Created $TABLE_COUNT tables${NC}"
+
+# Re-run command template seeding after 99_enforce_tenant_soft_delete.sql has run
+# (ensures command_templates.tenant_id is populated via DEFAULT)
+if ! psql -q -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -f "$SCRIPTS_DIR/tables/01-core/10_command_center.sql" > /dev/null; then
+    echo -e "${RED}✗ Failed to reseed command templates from 10_command_center.sql${NC}"
+    echo -e "${YELLOW}Check the PostgreSQL error output above for details.${NC}"
+    exit 1
+fi
+CMD_TEMPLATE_COUNT=$(psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -tAc "SELECT COUNT(*) FROM command_templates;" 2>/dev/null) || {
+    echo -e "${RED}✗ Failed to read command_templates count after reseeding${NC}"
+    exit 1
+}
+echo -e "${GREEN}✓ Command templates: $CMD_TEMPLATE_COUNT commands registered${NC}"
 echo ""
 
 # ============================================================================
 # STEP 7: Create Indexes
 # ============================================================================
 
-echo -e "${BLUE}[7/14]${NC} Creating indexes..."
+echo -e "${BLUE}[7/15]${NC} Creating indexes..."
 
 psql -q -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -f "$SCRIPTS_DIR/indexes/00-create-all-indexes.sql" > /dev/null 2>&1
 
@@ -678,7 +691,7 @@ echo ""
 # STEP 8: Create Constraints
 # ============================================================================
 
-echo -e "${BLUE}[8/14]${NC} Creating foreign key constraints..."
+echo -e "${BLUE}[8/15]${NC} Creating foreign key constraints..."
 
 cd "$SCRIPTS_DIR/constraints"
 psql -q -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -f "00-create-all-constraints.sql" > /dev/null 2>&1
@@ -693,7 +706,7 @@ echo ""
 # STEP 9: Auto-generate Missing FK Indexes
 # ============================================================================
 
-echo -e "${BLUE}[9/14]${NC} Creating missing foreign key indexes..."
+echo -e "${BLUE}[9/15]${NC} Creating missing foreign key indexes..."
 
 psql -q -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -f "$SCRIPTS_DIR/indexes/99_auto_fk_indexes.sql" > /dev/null 2>&1
 
@@ -705,7 +718,7 @@ echo ""
 # ============================================================================
 
 if [ "$LOAD_DEFAULT_DATA" = true ]; then
-    echo -e "${BLUE}[10/14]${NC} Seeding industry-standard default data..."
+    echo -e "${BLUE}[10/15]${NC} Seeding industry-standard default data..."
     DEFAULT_DATA_SCRIPT="$SCRIPTS_DIR/data/defaults/seed-default-data.mjs"
 
     if [ -f "$DEFAULT_DATA_SCRIPT" ]; then
@@ -733,7 +746,7 @@ if [ "$LOAD_DEFAULT_DATA" = true ]; then
         fi
     fi
 else
-    echo -e "${BLUE}[10/14]${NC} Skipping default data seed (mode does not require it)${NC}"
+    echo -e "${BLUE}[10/15]${NC} Skipping default data seed (mode does not require it)${NC}"
 fi
 
 echo ""
@@ -742,7 +755,7 @@ echo ""
 # STEP 11: Create Stored Procedures
 # ============================================================================
 
-echo -e "${BLUE}[11/14]${NC} Creating stored procedures..."
+echo -e "${BLUE}[11/15]${NC} Creating stored procedures..."
 
 psql -q -v scripts_dir="$SCRIPTS_DIR" -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -f "$SCRIPTS_DIR/procedures/00-create-all-procedures.sql" > /dev/null 2>&1
 
@@ -755,7 +768,7 @@ echo ""
 # STEP 12: Install Trigger & Monitoring Suite
 # ============================================================================
 
-echo -e "${BLUE}[12/14]${NC} Installing trigger suite (query safety & optimistic locking)..."
+echo -e "${BLUE}[12/15]${NC} Installing trigger suite (query safety & optimistic locking)..."
 
 psql -q -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -f "$SCRIPTS_DIR/triggers/00-create-all-efficiency-triggers.sql" > /dev/null 2>&1
 
@@ -766,7 +779,7 @@ echo ""
 # STEP 13: Add User-Friendly Constraint Messages
 # ============================================================================
 
-echo -e "${BLUE}[13/14]${NC} Adding user-friendly constraint error messages..."
+echo -e "${BLUE}[13/15]${NC} Adding user-friendly constraint error messages..."
 
 psql -q -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -f "$SCRIPTS_DIR/add_friendly_constraint_messages.sql" > /dev/null 2>&1
 
@@ -777,14 +790,33 @@ echo ""
 # STEP 14: Verification
 # ============================================================================
 
-echo -e "${BLUE}[14/14]${NC} Running verification..."
+echo -e "${BLUE}[14/15]${NC} Running verification..."
 
 psql -v scripts_dir="$SCRIPTS_DIR" -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -f "$SCRIPTS_DIR/verify-all.sql" 2>&1 | tail -30
 
 echo ""
-echo -e "${BLUE}[14/14]${NC} Running post-setup verification..."
+echo -e "${BLUE}[14/15]${NC} Running post-setup verification..."
 
 psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -f "$SCRIPTS_DIR/verify-setup.sql" 2>&1 | grep -E 'NOTICE:|WARNING:' | sed 's/.*NOTICE:  //' | sed 's/.*WARNING:  //'
+
+echo ""
+
+# ============================================================================
+# STEP 15: Bootstrap Kafka Topics (if Kafka is reachable)
+# ============================================================================
+
+KAFKA_TOPIC_SCRIPT="$REPO_ROOT/scripts/dev/bootstrap-kafka-topics.mjs"
+if [ -f "$KAFKA_TOPIC_SCRIPT" ]; then
+    echo -e "${BLUE}[15/15]${NC} Bootstrapping Kafka topics..."
+    if (cd "$REPO_ROOT" && node "$KAFKA_TOPIC_SCRIPT" 2>/dev/null); then
+        echo -e "${GREEN}✓ Kafka topics bootstrapped${NC}"
+    else
+        echo -e "${YELLOW}⚠  Kafka not reachable — topics will be created when Kafka starts${NC}"
+        echo -e "${YELLOW}   Run: pnpm run kafka:topics${NC}"
+    fi
+else
+    echo -e "${YELLOW}⚠  Kafka topic bootstrap script not found — skipping${NC}"
+fi
 
 echo ""
 

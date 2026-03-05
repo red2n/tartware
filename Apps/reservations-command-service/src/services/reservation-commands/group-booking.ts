@@ -33,10 +33,11 @@ import {
 export const createGroupBooking = async (
   tenantId: string,
   command: GroupCreateCommand,
-  options: { correlationId?: string } = {},
+  options: { correlationId?: string; actorId?: string } = {},
 ): Promise<CreateReservationResult> => {
   const eventId = uuid();
   const groupBookingId = uuid();
+  const actorId = options.actorId ?? SYSTEM_ACTOR_ID;
 
   const arrivalDate = new Date(command.arrival_date);
   const departureDate = new Date(command.departure_date);
@@ -118,7 +119,7 @@ export const createGroupBooking = async (
           ? new Date(command.cancellation_deadline).toISOString().slice(0, 10)
           : null,
         command.notes ?? null,
-        SYSTEM_ACTOR_ID,
+        actorId,
       ],
     );
 

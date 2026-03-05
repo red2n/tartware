@@ -30,6 +30,21 @@ const run = async (): Promise<void> => {
       "ℹ️  Each user will be prompted to change their password on next login (must_change_password flag).",
     );
 
+    const sysAdminResult = await pool.query(
+      `
+        UPDATE public.system_administrators
+           SET password_hash = $1,
+               failed_login_attempts = 0,
+               account_locked_until = NULL,
+               updated_at = NOW()
+         WHERE COALESCE(is_active, true) = true
+      `,
+      [hashed],
+    );
+    console.log(
+      `✅ Reset ${sysAdminResult.rowCount} system administrator password(s) to the default password.`,
+    );
+
     const deletedKeys = await userCacheService.invalidateAllUsers();
     console.log(`🧹 Cleared ${deletedKeys} cached user entries after password reset.`);
   } catch (error) {

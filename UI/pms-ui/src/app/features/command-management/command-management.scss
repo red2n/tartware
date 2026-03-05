@@ -1,0 +1,56 @@
+/* Command Management page — minimal custom styles; leverages shared.scss */
+
+.command-management-page {
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+/* Command name cell — name + code stacked */
+.command-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.command-name {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-fg-default);
+}
+
+.command-code {
+  font-size: var(--font-size-xs);
+  font-family: var(--font-family-mono, "SFMono-Regular", Consolas, monospace);
+  color: var(--color-accent-fg);
+  background: var(--color-accent-subtle);
+  padding: 1px 6px;
+  border-radius: var(--radius-sm);
+  width: fit-content;
+}
+
+/* Actions column */
+.th-actions,
+.td-actions {
+  text-align: center;
+  width: 80px;
+}
+
+/* Modified row highlight */
+.row-modified {
+  background-color: var(--color-attention-subtle, #fff8c5) !important;
+}
+
+.modified-icon {
+  font-size: 14px;
+  width: 14px;
+  height: 14px;
+  color: var(--color-attention-fg, #9a6700);
+  vertical-align: middle;
+  margin-left: 4px;
+}
+
+/* Pending badge in header */
+.pending-badge {
+  font-size: var(--font-size-xs);
+  margin-right: var(--space-2);
+}

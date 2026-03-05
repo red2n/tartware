@@ -1,0 +1,136 @@
+<div class="command-management-page">
+  <app-page-header title="Command Management" description="Enable or disable system commands for your environment">
+    <span class="counter" [matTooltip]="'Enabled commands' | translate">{{ enabledCount() }} / {{ totalCount() }}</span>
+
+    @if (hasChanges()) {
+      <span class="badge badge-warning pending-badge">{{ pendingCount() }} {{ 'changes pending' | translate }}</span>
+      <button class="btn btn-outline" (click)="discardChanges()">
+        <mat-icon>undo</mat-icon>
+        {{ 'Discard' | translate }}
+      </button>
+      <button class="btn btn-primary" (click)="saveChanges()" [disabled]="saving()">
+        @if (saving()) {
+          <mat-spinner diameter="16"></mat-spinner>
+        } @else {
+          <mat-icon>save</mat-icon>
+        }
+        {{ 'Save Changes' | translate }}
+      </button>
+    }
+
+    <button class="btn btn-invisible" (click)="loadCommands()" [disabled]="saving()" [matTooltip]="'Refresh' | translate">
+      <mat-icon>refresh</mat-icon>
+    </button>
+  </app-page-header>
+
+  @if (loading()) {
+    <div class="loading-state">
+      <mat-spinner diameter="32"></mat-spinner>
+      <span class="text-muted">{{ 'Loading commands...' | translate }}</span>
+    </div>
+  } @else if (error() && commands().length === 0) {
+    <div class="error-state">
+      <mat-icon class="error-icon">error_outline</mat-icon>
+      <span>{{ error() }}</span>
+      <button class="btn btn-outline" (click)="loadCommands()">{{ 'Retry' | translate }}</button>
+    </div>
+  } @else {
+    <!-- Filter bar -->
+    <div class="filter-bar">
+      <div class="filter-tabs">
+        @for (tab of serviceTabs(); track tab) {
+          <button
+            class="filter-tab"
+            [class.filter-tab-active]="activeTab() === tab"
+            (click)="setTab(tab)">
+            {{ formatTabLabel(tab) | translate }}
+          </button>
+        }
+      </div>
+      <div class="search-box">
+        <mat-icon class="search-icon">search</mat-icon>
+        <input
+          type="text"
+          class="search-input"
+          [placeholder]="'Search commands...' | translate"
+          [ngModel]="searchQuery()"
+          (ngModelChange)="onSearch($event)" />
+      </div>
+    </div>
+
+    @if (error()) {
+      <div class="error-state" style="margin-bottom: var(--space-4)">
+        <mat-icon class="error-icon">error_outline</mat-icon>
+        <span>{{ error() }}</span>
+      </div>
+    }
+
+    @defer (on idle) {
+      @if (filteredCommands().length === 0) {
+        <div class="empty-state">
+          <mat-icon class="empty-icon">terminal</mat-icon>
+          @if (searchQuery()) {
+            <p>{{ 'No commands match "' | translate }}{{ searchQuery() }}{{ '"' }}</p>
+            <button class="btn btn-outline" (click)="onSearch('')">{{ 'Clear search' | translate }}</button>
+          } @else {
+            <p>{{ 'No commands found' | translate }}</p>
+          }
+        </div>
+      } @else {
+        <div class="table-container">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>{{ 'Command' | translate }}</th>
+                <th>{{ 'Service' | translate }}</th>
+                <th>{{ 'Modules' | translate }}</th>
+                <th>{{ 'Status' | translate }}</th>
+                <th class="th-actions">{{ 'Toggle' | translate }}</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (cmd of filteredCommands(); track cmd.command_name) {
+                <tr [class.row-modified]="isModified(cmd.command_name)">
+                  <td>
+                    <div class="command-cell">
+                      <span class="command-name">{{ cmd.label }}</span>
+                      <code class="command-code">{{ cmd.command_name }}</code>
+                    </div>
+                  </td>
+                  <td>
+                    <span class="badge badge-muted">{{ formatServiceName(cmd.default_target_service) }}</span>
+                  </td>
+                  <td>
+                    @for (mod of cmd.required_modules; track mod) {
+                      <span class="badge badge-accent">{{ mod }}</span>
+                    }
+                  </td>
+                  <td>
+                    <span class="badge" [ngClass]="statusBadgeClass(getEffectiveStatus(cmd))">
+                      {{ getEffectiveStatus(cmd) | translate }}
+                    </span>
+                    @if (isModified(cmd.command_name)) {
+                      <mat-icon class="modified-icon" [matTooltip]="'Unsaved change' | translate">edit</mat-icon>
+                    }
+                  </td>
+                  <td class="td-actions">
+                    <mat-slide-toggle
+                      [checked]="getEffectiveStatus(cmd) === 'enabled'"
+                      [disabled]="saving()"
+                      (change)="toggleStatus(cmd)"
+                      color="primary">
+                    </mat-slide-toggle>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+    } @placeholder {
+      <div class="loading-state">
+        <mat-spinner diameter="24"></mat-spinner>
+      </div>
+    }
+  }
+</div>

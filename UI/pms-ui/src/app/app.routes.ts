@@ -163,6 +163,13 @@ export const routes: Routes = [
 				loadComponent: () =>
 					import("./features/settings/settings").then((m) => m.SettingsComponent),
 			},
+			{
+				path: "command-management",
+				loadComponent: () =>
+					import("./features/command-management/command-management").then(
+						(m) => m.CommandManagementComponent,
+					),
+			},
 			{ path: "", redirectTo: "dashboard", pathMatch: "full" },
 		],
 	},

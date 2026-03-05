@@ -632,6 +632,46 @@ const upsertServices = async (client, services = []) => {
   }
 };
 
+const upsertSystemAdministrators = async (client, admins = []) => {
+  for (const admin of admins) {
+    await client.query(
+      `
+        INSERT INTO system_administrators AS sa (
+          id, username, email, password_hash, role,
+          mfa_enabled, ip_whitelist, is_active,
+          metadata, tenant_id, created_at
+        )
+        VALUES (
+          $1, $2, $3, $4, $5::system_admin_role,
+          COALESCE($6, false), $7::inet[], COALESCE($8, true),
+          COALESCE($9::jsonb, '{}'::jsonb), $10, NOW()
+        )
+        ON CONFLICT (id) DO UPDATE SET
+          username = EXCLUDED.username,
+          email = EXCLUDED.email,
+          role = EXCLUDED.role,
+          mfa_enabled = EXCLUDED.mfa_enabled,
+          ip_whitelist = EXCLUDED.ip_whitelist,
+          is_active = EXCLUDED.is_active,
+          metadata = COALESCE(sa.metadata, '{}'::jsonb) || EXCLUDED.metadata,
+          updated_at = NOW();
+      `,
+      [
+        admin.id,
+        admin.username,
+        admin.email,
+        admin.passwordHash,
+        admin.role,
+        admin.mfaEnabled ?? false,
+        admin.ipWhitelist ?? ["127.0.0.1/32", "::1/128"],
+        admin.isActive ?? true,
+        jsonb(admin.metadata),
+        defaultTenantId,
+      ],
+    );
+  }
+};
+
 const seed = async () => {
   console.log("→ Loading industry-standard default dataset (JSON)...");
   const dataset = loadDataset();
@@ -642,6 +682,7 @@ const seed = async () => {
     await client.query("BEGIN");
     await upsertTenants(client, dataset.tenants);
     await upsertProperties(client, dataset.properties);
+    await upsertSystemAdministrators(client, dataset.systemAdministrators);
     await upsertUsers(client, dataset.users);
     await upsertUserTenantAssociations(client, dataset.userTenantAssociations);
     await upsertRoomTypes(client, dataset.roomTypes);
