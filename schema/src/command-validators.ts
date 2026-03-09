@@ -136,7 +136,23 @@ import {
 	ReservationWalkGuestCommandSchema,
 	ReservationWalkInCheckInCommandSchema,
 } from "./events/commands/reservations.js";
-import { RevenueForecastComputeCommandSchema } from "./events/commands/revenue.js";
+import {
+	RevenueCompetitorBulkImportCommandSchema,
+	RevenueCompetitorRecordCommandSchema,
+	RevenueDemandImportEventsCommandSchema,
+	RevenueDemandUpdateCommandSchema,
+	RevenueForecastComputeCommandSchema,
+	RevenueHurdleRateCalculateCommandSchema,
+	RevenueHurdleRateSetCommandSchema,
+	RevenuePricingRuleActivateCommandSchema,
+	RevenuePricingRuleCreateCommandSchema,
+	RevenuePricingRuleDeactivateCommandSchema,
+	RevenuePricingRuleDeleteCommandSchema,
+	RevenuePricingRuleUpdateCommandSchema,
+	RevenueRestrictionBulkSetCommandSchema,
+	RevenueRestrictionRemoveCommandSchema,
+	RevenueRestrictionSetCommandSchema,
+} from "./events/commands/revenue.js";
 import {
 	RoomFeaturesUpdateCommandSchema,
 	RoomHousekeepingStatusUpdateCommandSchema,
@@ -612,6 +628,62 @@ const commandPayloadValidators = new Map<string, CommandPayloadValidator>([
 	[
 		"revenue.forecast.compute",
 		(payload) => RevenueForecastComputeCommandSchema.parse(payload),
+	],
+	[
+		"revenue.pricing_rule.create",
+		(payload) => RevenuePricingRuleCreateCommandSchema.parse(payload),
+	],
+	[
+		"revenue.pricing_rule.update",
+		(payload) => RevenuePricingRuleUpdateCommandSchema.parse(payload),
+	],
+	[
+		"revenue.pricing_rule.activate",
+		(payload) => RevenuePricingRuleActivateCommandSchema.parse(payload),
+	],
+	[
+		"revenue.pricing_rule.deactivate",
+		(payload) => RevenuePricingRuleDeactivateCommandSchema.parse(payload),
+	],
+	[
+		"revenue.pricing_rule.delete",
+		(payload) => RevenuePricingRuleDeleteCommandSchema.parse(payload),
+	],
+	[
+		"revenue.demand.update",
+		(payload) => RevenueDemandUpdateCommandSchema.parse(payload),
+	],
+	[
+		"revenue.demand.import_events",
+		(payload) => RevenueDemandImportEventsCommandSchema.parse(payload),
+	],
+	[
+		"revenue.competitor.record",
+		(payload) => RevenueCompetitorRecordCommandSchema.parse(payload),
+	],
+	[
+		"revenue.competitor.bulk_import",
+		(payload) => RevenueCompetitorBulkImportCommandSchema.parse(payload),
+	],
+	[
+		"revenue.restriction.set",
+		(payload) => RevenueRestrictionSetCommandSchema.parse(payload),
+	],
+	[
+		"revenue.restriction.remove",
+		(payload) => RevenueRestrictionRemoveCommandSchema.parse(payload),
+	],
+	[
+		"revenue.restriction.bulk_set",
+		(payload) => RevenueRestrictionBulkSetCommandSchema.parse(payload),
+	],
+	[
+		"revenue.hurdle_rate.set",
+		(payload) => RevenueHurdleRateSetCommandSchema.parse(payload),
+	],
+	[
+		"revenue.hurdle_rate.calculate",
+		(payload) => RevenueHurdleRateCalculateCommandSchema.parse(payload),
 	],
 ]);
 

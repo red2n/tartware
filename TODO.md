@@ -868,10 +868,11 @@ Trivial/low-complexity mechanical fixes from the AI-TASKS.md backlog:
 
 ---
 
-### 🔵 Broadcast Notification Per-User Read Receipts (2026-03-04)
+### ~~🔵 Broadcast Notification Per-User Read Receipts (2026-03-04)~~ ✅
 
 **Branch:** `fix/broadcast-notification-read-receipts`
 **Origin:** PR #110 review — Thread 6 (PRRT_kwDOQCOrtc5x1m6Q), the only unresolved comment.
+**Status:** Implemented — `notification_read_receipts` table created, Zod schema added to `@tartware/schemas`, all SQL queries updated for dual-path read tracking.
 
 **Problem:**
 Broadcast notifications (`user_id IS NULL` on `in_app_notifications`) store `is_read` / `read_at` on the notification row itself. This means:

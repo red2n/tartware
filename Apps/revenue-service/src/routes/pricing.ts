@@ -4,8 +4,12 @@ import {
   CompetitorRateListQuerySchema,
   type DemandCalendarListQuery,
   DemandCalendarListQuerySchema,
+  type HurdleRateListQuery,
+  HurdleRateListQuerySchema,
   type PricingRuleListQuery,
   PricingRuleListQuerySchema,
+  type RateRestrictionListQuery,
+  RateRestrictionListQuerySchema,
   type RecommendationListQuery,
   RecommendationListQuerySchema,
 } from "@tartware/schemas";
@@ -15,8 +19,10 @@ import {
   getPricingRuleById,
   listCompetitorRates,
   listDemandCalendar,
+  listHurdleRates,
   listPricingRules,
   listRateRecommendations,
+  listRateRestrictions,
 } from "../services/pricing-service.js";
 
 const PRICING_TAG = "Dynamic Pricing";
@@ -153,6 +159,88 @@ const pricingRoutes: FastifyPluginAsync = async (app: FastifyInstance) => {
         propertyId: property_id,
         dateFrom: date_from,
         dateTo: date_to,
+        limit,
+        offset,
+      });
+    },
+  );
+
+  app.get<{ Querystring: RateRestrictionListQuery }>(
+    "/v1/revenue/rate-restrictions",
+    {
+      preHandler: app.withTenantScope({
+        resolveTenantId: (request) => (request.query as RateRestrictionListQuery).tenant_id,
+        minRole: "ADMIN",
+        requiredModules: "finance-automation",
+      }),
+      schema: buildRouteSchema({
+        tag: PRICING_TAG,
+        summary: "List rate restrictions (CTA/CTD/LOS/Closed)",
+      }),
+    },
+    async (request) => {
+      const {
+        tenant_id,
+        property_id,
+        room_type_id,
+        rate_plan_id,
+        restriction_type,
+        date_from,
+        date_to,
+        is_active,
+        limit,
+        offset,
+      } = RateRestrictionListQuerySchema.parse(request.query);
+
+      return listRateRestrictions({
+        tenantId: tenant_id,
+        propertyId: property_id,
+        roomTypeId: room_type_id,
+        ratePlanId: rate_plan_id,
+        restrictionType: restriction_type,
+        dateFrom: date_from,
+        dateTo: date_to,
+        isActive: is_active,
+        limit,
+        offset,
+      });
+    },
+  );
+
+  app.get<{ Querystring: HurdleRateListQuery }>(
+    "/v1/revenue/hurdle-rates",
+    {
+      preHandler: app.withTenantScope({
+        resolveTenantId: (request) => (request.query as HurdleRateListQuery).tenant_id,
+        minRole: "ADMIN",
+        requiredModules: "finance-automation",
+      }),
+      schema: buildRouteSchema({
+        tag: PRICING_TAG,
+        summary: "List hurdle rates (minimum acceptable rates)",
+      }),
+    },
+    async (request) => {
+      const {
+        tenant_id,
+        property_id,
+        room_type_id,
+        segment,
+        date_from,
+        date_to,
+        source,
+        limit,
+        offset,
+      } = HurdleRateListQuerySchema.parse(request.query);
+
+      return listHurdleRates({
+        tenantId: tenant_id,
+        propertyId: property_id,
+        roomTypeId: room_type_id,
+        segment,
+        dateFrom: date_from,
+        dateTo: date_to,
+        source,
         limit,
         offset,
       });

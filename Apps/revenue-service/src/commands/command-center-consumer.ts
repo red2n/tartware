@@ -14,7 +14,25 @@ import {
   recordCommandOutcome,
   setCommandConsumerLag,
 } from "../lib/metrics.js";
-import { computeForecasts } from "../services/forecast-engine.js";
+import {
+  handleCompetitorBulkImport,
+  handleCompetitorRecord,
+} from "./handlers/competitor-handlers.js";
+import { handleDemandImportEvents, handleDemandUpdate } from "./handlers/demand-handlers.js";
+import { handleForecastCompute, resolveActorId } from "./handlers/forecast-handlers.js";
+import { handleHurdleRateSet } from "./handlers/hurdle-rate-handlers.js";
+import {
+  handlePricingRuleActivate,
+  handlePricingRuleCreate,
+  handlePricingRuleDeactivate,
+  handlePricingRuleDelete,
+  handlePricingRuleUpdate,
+} from "./handlers/pricing-rule-handlers.js";
+import {
+  handleRestrictionBulkSet,
+  handleRestrictionRemove,
+  handleRestrictionSet,
+} from "./handlers/restriction-handlers.js";
 
 let consumer: Consumer | null = null;
 
@@ -109,29 +127,141 @@ const routeRevenueCommand = async (
   envelope: CommandEnvelope,
   metadata: CommandMetadata,
 ): Promise<void> => {
+  const actorId = resolveActorId(metadata.initiatedBy);
+  const payload = envelope.payload as Record<string, unknown>;
+
   switch (metadata.commandName) {
     case "revenue.forecast.compute": {
-      const payload = envelope.payload as {
-        property_id: string;
-        forecast_period?: "daily" | "weekly" | "monthly";
-        horizon_days?: number;
-        training_days?: number;
-        scenarios?: string[];
-      };
-      await computeForecasts({
-        tenantId: metadata.tenantId,
-        propertyId: payload.property_id,
-        forecastPeriod: payload.forecast_period ?? "daily",
-        horizonDays: payload.horizon_days ?? 30,
-        trainingDays: payload.training_days ?? 90,
-        scenarios: payload.scenarios ?? ["base", "optimistic", "pessimistic"],
-        actorId:
-          typeof metadata.initiatedBy === "string"
-            ? metadata.initiatedBy
-            : (metadata.initiatedBy?.userId ?? "system"),
-      });
+      await handleForecastCompute(payload, metadata, actorId);
       break;
     }
+
+    case "revenue.pricing_rule.create": {
+      const result = await handlePricingRuleCreate(payload, metadata, actorId);
+      logger.info({ ruleId: result.ruleId, tenantId: metadata.tenantId }, "pricing rule created");
+      break;
+    }
+
+    case "revenue.pricing_rule.update": {
+      const result = await handlePricingRuleUpdate(payload, metadata, actorId);
+      logger.info({ ruleId: result.ruleId, tenantId: metadata.tenantId }, "pricing rule updated");
+      break;
+    }
+
+    case "revenue.pricing_rule.activate": {
+      const result = await handlePricingRuleActivate(payload, metadata, actorId);
+      logger.info({ ruleId: result.ruleId, tenantId: metadata.tenantId }, "pricing rule activated");
+      break;
+    }
+
+    case "revenue.pricing_rule.deactivate": {
+      const result = await handlePricingRuleDeactivate(payload, metadata, actorId);
+      logger.info(
+        { ruleId: result.ruleId, tenantId: metadata.tenantId },
+        "pricing rule deactivated",
+      );
+      break;
+    }
+
+    case "revenue.pricing_rule.delete": {
+      const result = await handlePricingRuleDelete(payload, metadata, actorId);
+      logger.info({ ruleId: result.ruleId, tenantId: metadata.tenantId }, "pricing rule deleted");
+      break;
+    }
+
+    case "revenue.demand.update": {
+      const result = await handleDemandUpdate(payload, metadata, actorId);
+      logger.info({ count: result.count, tenantId: metadata.tenantId }, "demand calendar updated");
+      break;
+    }
+
+    case "revenue.demand.import_events": {
+      const result = await handleDemandImportEvents(payload, metadata, actorId);
+      logger.info(
+        { events: result.events, upserted: result.upserted, tenantId: metadata.tenantId },
+        "demand events imported",
+      );
+      break;
+    }
+
+    case "revenue.competitor.record": {
+      const result = await handleCompetitorRecord(payload, metadata, actorId);
+      logger.info(
+        { competitorRateId: result.competitorRateId, tenantId: metadata.tenantId },
+        "competitor rate recorded",
+      );
+      break;
+    }
+
+    case "revenue.competitor.bulk_import": {
+      const result = await handleCompetitorBulkImport(payload, metadata, actorId);
+      logger.info(
+        { imported: result.imported, tenantId: metadata.tenantId },
+        "competitor rates bulk imported",
+      );
+      break;
+    }
+
+    case "revenue.restriction.set": {
+      const result = await handleRestrictionSet(payload, metadata, actorId);
+      logger.info(
+        {
+          upserted: result.upserted,
+          restrictionType: result.restrictionType,
+          tenantId: metadata.tenantId,
+        },
+        "rate restrictions set",
+      );
+      break;
+    }
+
+    case "revenue.restriction.remove": {
+      const result = await handleRestrictionRemove(payload, metadata, actorId);
+      logger.info(
+        {
+          removed: result.removed,
+          restrictionType: result.restrictionType,
+          tenantId: metadata.tenantId,
+        },
+        "rate restrictions removed",
+      );
+      break;
+    }
+
+    case "revenue.restriction.bulk_set": {
+      const result = await handleRestrictionBulkSet(payload, metadata, actorId);
+      logger.info(
+        {
+          restrictions: result.restrictions,
+          totalUpserted: result.totalUpserted,
+          tenantId: metadata.tenantId,
+        },
+        "bulk rate restrictions set",
+      );
+      break;
+    }
+
+    case "revenue.hurdle_rate.set": {
+      const result = await handleHurdleRateSet(payload, metadata, actorId);
+      logger.info(
+        { upserted: result.upserted, roomTypeId: result.roomTypeId, tenantId: metadata.tenantId },
+        "hurdle rates set",
+      );
+      break;
+    }
+
+    case "revenue.hurdle_rate.calculate": {
+      logger.info(
+        {
+          propertyId: payload.property_id,
+          roomTypeId: payload.room_type_id,
+          tenantId: metadata.tenantId,
+        },
+        "hurdle rate calculation requested — placeholder implementation",
+      );
+      break;
+    }
+
     default:
       logger.debug(
         { commandName: metadata.commandName },

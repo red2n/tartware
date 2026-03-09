@@ -56,6 +56,8 @@
 \ir 02-inventory/54_pricing_rules.sql
 \ir 02-inventory/55_rate_recommendations.sql
 \ir 02-inventory/56_revenue_goals.sql
+\ir 02-inventory/57_rate_restrictions.sql
+\ir 02-inventory/58_hurdle_rates.sql
 \ir 02-inventory/90_companies.sql
 \ir 02-inventory/91_group_bookings.sql
 \ir 02-inventory/92_packages.sql
@@ -158,6 +160,7 @@
 \ir 05-operations/111_self_service_configurations.sql
 \ir 05-operations/112_pbx_configurations.sql
 \ir 05-operations/113_in_app_notifications.sql
+\ir 05-operations/114_notification_read_receipts.sql
 
 -- ============================================================================
 -- CATEGORY 6: INTEGRATIONS (Channels, OTA, marketing, external systems)

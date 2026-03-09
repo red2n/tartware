@@ -33,6 +33,7 @@ export * from "./minibar-consumption.js";
 export * from "./minibar-items.js";
 export * from "./mobile-check-ins.js";
 export * from "./mobile-keys.js";
+export * from "./notification-read-receipts.js";
 export * from "./pbx-configurations.js";
 export * from "./predictive-maintenance-alerts.js";
 export * from "./push-notifications.js";

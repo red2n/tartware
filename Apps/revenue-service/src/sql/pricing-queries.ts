@@ -147,3 +147,291 @@ export const DEMAND_CALENDAR_LIST_SQL = `
   LIMIT $1
   OFFSET $6
 `;
+
+// ── Pricing Rule Write Queries ──────────────────────
+
+export const PRICING_RULE_INSERT_SQL = `
+  INSERT INTO public.pricing_rules (
+    tenant_id, property_id, rule_name, description, rule_type, rule_category,
+    priority, is_active, effective_from, effective_until,
+    applies_to_room_types, applies_to_rate_plans, applies_to_channels, applies_to_segments,
+    applies_monday, applies_tuesday, applies_wednesday, applies_thursday,
+    applies_friday, applies_saturday, applies_sunday,
+    conditions, adjustment_type, adjustment_value,
+    adjustment_cap_min, adjustment_cap_max, min_rate, max_rate,
+    min_length_of_stay, max_length_of_stay,
+    apply_closed_to_arrival, apply_closed_to_departure, apply_stop_sell,
+    can_combine_with_other_rules, requires_approval,
+    approval_status, metadata, created_by, updated_by
+  ) VALUES (
+    $1::uuid, $2::uuid, $3, $4, $5, $6,
+    $7, $8, $9::date, $10::date,
+    $11::uuid[], $12::uuid[], $13::varchar[], $14::varchar[],
+    $15, $16, $17, $18,
+    $19, $20, $21,
+    $22::jsonb, $23, $24,
+    $25, $26, $27, $28,
+    $29, $30,
+    $31, $32, $33,
+    $34, $35,
+    $36, $37::jsonb, $38::uuid, $38::uuid
+  )
+  RETURNING rule_id, created_at, updated_at
+`;
+
+export const PRICING_RULE_UPDATE_SQL = `
+  UPDATE public.pricing_rules
+  SET
+    rule_name = COALESCE($3, rule_name),
+    description = COALESCE($4, description),
+    priority = COALESCE($5, priority),
+    effective_from = COALESCE($6::date, effective_from),
+    effective_until = COALESCE($7::date, effective_until),
+    applies_to_room_types = COALESCE($8::uuid[], applies_to_room_types),
+    applies_to_rate_plans = COALESCE($9::uuid[], applies_to_rate_plans),
+    applies_to_channels = COALESCE($10::varchar[], applies_to_channels),
+    applies_to_segments = COALESCE($11::varchar[], applies_to_segments),
+    applies_monday = COALESCE($12, applies_monday),
+    applies_tuesday = COALESCE($13, applies_tuesday),
+    applies_wednesday = COALESCE($14, applies_wednesday),
+    applies_thursday = COALESCE($15, applies_thursday),
+    applies_friday = COALESCE($16, applies_friday),
+    applies_saturday = COALESCE($17, applies_saturday),
+    applies_sunday = COALESCE($18, applies_sunday),
+    conditions = COALESCE($19::jsonb, conditions),
+    adjustment_type = COALESCE($20, adjustment_type),
+    adjustment_value = COALESCE($21, adjustment_value),
+    adjustment_cap_min = COALESCE($22, adjustment_cap_min),
+    adjustment_cap_max = COALESCE($23, adjustment_cap_max),
+    min_rate = COALESCE($24, min_rate),
+    max_rate = COALESCE($25, max_rate),
+    min_length_of_stay = COALESCE($26, min_length_of_stay),
+    max_length_of_stay = COALESCE($27, max_length_of_stay),
+    apply_closed_to_arrival = COALESCE($28, apply_closed_to_arrival),
+    apply_closed_to_departure = COALESCE($29, apply_closed_to_departure),
+    apply_stop_sell = COALESCE($30, apply_stop_sell),
+    can_combine_with_other_rules = COALESCE($31, can_combine_with_other_rules),
+    requires_approval = COALESCE($32, requires_approval),
+    last_modified_reason = COALESCE($33, last_modified_reason),
+    metadata = COALESCE($34::jsonb, metadata),
+    updated_by = $35::uuid,
+    updated_at = CURRENT_TIMESTAMP
+  WHERE rule_id = $1::uuid
+    AND tenant_id = $2::uuid
+    AND COALESCE(is_deleted, false) = false
+  RETURNING rule_id, updated_at
+`;
+
+export const PRICING_RULE_ACTIVATE_SQL = `
+  UPDATE public.pricing_rules
+  SET is_active = true,
+      is_paused = false,
+      updated_by = $3::uuid,
+      updated_at = CURRENT_TIMESTAMP
+  WHERE rule_id = $1::uuid
+    AND tenant_id = $2::uuid
+    AND COALESCE(is_deleted, false) = false
+  RETURNING rule_id, updated_at
+`;
+
+export const PRICING_RULE_DEACTIVATE_SQL = `
+  UPDATE public.pricing_rules
+  SET is_active = false,
+      updated_by = $3::uuid,
+      updated_at = CURRENT_TIMESTAMP
+  WHERE rule_id = $1::uuid
+    AND tenant_id = $2::uuid
+    AND COALESCE(is_deleted, false) = false
+  RETURNING rule_id, updated_at
+`;
+
+export const PRICING_RULE_SOFT_DELETE_SQL = `
+  UPDATE public.pricing_rules
+  SET is_deleted = true,
+      is_active = false,
+      deleted_at = CURRENT_TIMESTAMP,
+      deleted_by = $3::uuid,
+      updated_at = CURRENT_TIMESTAMP
+  WHERE rule_id = $1::uuid
+    AND tenant_id = $2::uuid
+    AND COALESCE(is_deleted, false) = false
+  RETURNING rule_id
+`;
+
+// ── Demand Calendar Write Queries ───────────────────
+
+export const DEMAND_CALENDAR_UPSERT_SQL = `
+  INSERT INTO public.demand_calendar (tenant_id, property_id, calendar_date, day_of_week, demand_level, notes, created_by, updated_by)
+  VALUES ($1::uuid, $2::uuid, $3::date, EXTRACT(DOW FROM $3::date)::int, $4, $5, $6::uuid, $6::uuid)
+  ON CONFLICT (tenant_id, property_id, calendar_date)
+  DO UPDATE SET
+    demand_level = EXCLUDED.demand_level,
+    notes = COALESCE(EXCLUDED.notes, demand_calendar.notes),
+    updated_by = EXCLUDED.updated_by,
+    updated_at = CURRENT_TIMESTAMP
+  RETURNING calendar_id
+`;
+
+// ── Competitor Rate Write Queries ───────────────────
+
+export const COMPETITOR_RATE_INSERT_SQL = `
+  INSERT INTO public.competitor_rates (
+    tenant_id, property_id, competitor_name, competitor_property_name,
+    room_type_category, rate_date, rate_amount, currency, source,
+    includes_breakfast, includes_parking, includes_wifi, taxes_included,
+    notes, collected_at, created_by, updated_by
+  ) VALUES (
+    $1::uuid, $2::uuid, $3, $4,
+    $5, $6::date, $7, $8, $9,
+    $10, $11, $12, $13,
+    $14, CURRENT_TIMESTAMP, $15::uuid, $15::uuid
+  )
+  RETURNING competitor_rate_id, created_at
+`;
+
+// ── Rate Restriction Read Queries ───────────────────
+
+export const RATE_RESTRICTION_LIST_SQL = `
+  SELECT
+    rr.restriction_id,
+    rr.tenant_id,
+    rr.property_id,
+    p.property_name,
+    rr.room_type_id,
+    rt.type_name AS room_type_name,
+    rr.rate_plan_id,
+    rr.restriction_date,
+    rr.restriction_type,
+    rr.restriction_value,
+    rr.is_active,
+    rr.source,
+    rr.reason,
+    rr.created_at,
+    rr.updated_at
+  FROM public.rate_restrictions rr
+  LEFT JOIN public.properties p ON rr.property_id = p.id
+  LEFT JOIN public.room_types rt ON rr.room_type_id = rt.id
+  WHERE COALESCE(rr.is_deleted, false) = false
+    AND ($2::uuid IS NULL OR rr.tenant_id = $2::uuid)
+    AND ($3::uuid IS NULL OR rr.property_id = $3::uuid)
+    AND ($4::uuid IS NULL OR rr.room_type_id = $4::uuid)
+    AND ($5::uuid IS NULL OR rr.rate_plan_id = $5::uuid)
+    AND ($6::text IS NULL OR rr.restriction_type = $6::text)
+    AND ($7::date IS NULL OR rr.restriction_date >= $7::date)
+    AND ($8::date IS NULL OR rr.restriction_date <= $8::date)
+    AND ($9::boolean IS NULL OR rr.is_active = $9::boolean)
+  ORDER BY rr.restriction_date ASC, rr.restriction_type ASC
+  LIMIT $1
+  OFFSET $10
+`;
+
+// ── Rate Restriction Write Queries ──────────────────
+
+export const RATE_RESTRICTION_UPSERT_SQL = `
+  INSERT INTO public.rate_restrictions (
+    tenant_id, property_id, room_type_id, rate_plan_id,
+    restriction_date, restriction_type, restriction_value,
+    is_active, source, reason, metadata, created_by, updated_by
+  ) VALUES (
+    $1::uuid, $2::uuid, $3::uuid, $4::uuid,
+    $5::date, $6, $7,
+    $8, $9, $10, $11::jsonb, $12::uuid, $12::uuid
+  )
+  ON CONFLICT ON CONSTRAINT uq_rate_restrictions_composite
+  DO UPDATE SET
+    restriction_value = EXCLUDED.restriction_value,
+    is_active = EXCLUDED.is_active,
+    source = EXCLUDED.source,
+    reason = COALESCE(EXCLUDED.reason, rate_restrictions.reason),
+    metadata = COALESCE(EXCLUDED.metadata, rate_restrictions.metadata),
+    updated_by = EXCLUDED.updated_by,
+    updated_at = CURRENT_TIMESTAMP,
+    is_deleted = false,
+    deleted_at = NULL,
+    deleted_by = NULL
+  RETURNING restriction_id, created_at
+`;
+
+export const RATE_RESTRICTION_REMOVE_SQL = `
+  UPDATE public.rate_restrictions
+  SET is_deleted = true,
+      is_active = false,
+      deleted_at = CURRENT_TIMESTAMP,
+      deleted_by = $5::uuid,
+      updated_at = CURRENT_TIMESTAMP
+  WHERE tenant_id = $1::uuid
+    AND property_id = $2::uuid
+    AND restriction_date = $3::date
+    AND restriction_type = $4
+    AND COALESCE(is_deleted, false) = false
+  RETURNING restriction_id
+`;
+
+// ── Hurdle Rate Read Queries ────────────────────────
+
+export const HURDLE_RATE_LIST_SQL = `
+  SELECT
+    hr.hurdle_rate_id,
+    hr.tenant_id,
+    hr.property_id,
+    p.property_name,
+    hr.room_type_id,
+    rt.type_name AS room_type_name,
+    hr.hurdle_date,
+    hr.hurdle_rate,
+    hr.currency,
+    hr.segment,
+    hr.source,
+    hr.displacement_analysis,
+    hr.confidence_score,
+    hr.is_active,
+    hr.notes,
+    hr.created_at,
+    hr.updated_at
+  FROM public.hurdle_rates hr
+  LEFT JOIN public.properties p ON hr.property_id = p.id
+  LEFT JOIN public.room_types rt ON hr.room_type_id = rt.id
+  WHERE COALESCE(hr.is_deleted, false) = false
+    AND ($2::uuid IS NULL OR hr.tenant_id = $2::uuid)
+    AND ($3::uuid IS NULL OR hr.property_id = $3::uuid)
+    AND ($4::uuid IS NULL OR hr.room_type_id = $4::uuid)
+    AND ($5::text IS NULL OR hr.segment = $5::text)
+    AND ($6::date IS NULL OR hr.hurdle_date >= $6::date)
+    AND ($7::date IS NULL OR hr.hurdle_date <= $7::date)
+    AND ($8::text IS NULL OR hr.source = $8::text)
+  ORDER BY hr.hurdle_date ASC, hr.room_type_id ASC
+  LIMIT $1
+  OFFSET $9
+`;
+
+// ── Hurdle Rate Write Queries ───────────────────────
+
+export const HURDLE_RATE_UPSERT_SQL = `
+  INSERT INTO public.hurdle_rates (
+    tenant_id, property_id, room_type_id,
+    hurdle_date, hurdle_rate, currency, segment,
+    source, displacement_analysis, confidence_score,
+    is_active, notes, metadata, created_by, updated_by
+  ) VALUES (
+    $1::uuid, $2::uuid, $3::uuid,
+    $4::date, $5, $6, $7,
+    $8, $9::jsonb, $10,
+    $11, $12, $13::jsonb, $14::uuid, $14::uuid
+  )
+  ON CONFLICT ON CONSTRAINT uq_hurdle_rates_composite
+  DO UPDATE SET
+    hurdle_rate = EXCLUDED.hurdle_rate,
+    currency = EXCLUDED.currency,
+    source = EXCLUDED.source,
+    displacement_analysis = COALESCE(EXCLUDED.displacement_analysis, hurdle_rates.displacement_analysis),
+    confidence_score = EXCLUDED.confidence_score,
+    is_active = EXCLUDED.is_active,
+    notes = COALESCE(EXCLUDED.notes, hurdle_rates.notes),
+    metadata = COALESCE(EXCLUDED.metadata, hurdle_rates.metadata),
+    updated_by = EXCLUDED.updated_by,
+    updated_at = CURRENT_TIMESTAMP,
+    is_deleted = false,
+    deleted_at = NULL,
+    deleted_by = NULL
+  RETURNING hurdle_rate_id, created_at
+`;

@@ -105,6 +105,30 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 SCRIPTS_DIR="${REPO_ROOT}/scripts"
 
+count_expected_tables() {
+    awk '/^\\ir[[:space:]]+/ { print $2 }' "$SCRIPTS_DIR/tables/00-create-all-tables.sql" |
+        while read -r include_path; do
+            [ -z "$include_path" ] && continue
+            awk '
+                BEGIN { IGNORECASE = 1 }
+                /^[[:space:]]*--/ { next }
+                {
+                    line = $0
+                    if (match(line, /CREATE[[:space:]]+TABLE[[:space:]]+(IF[[:space:]]+NOT[[:space:]]+EXISTS[[:space:]]+)?"?([a-zA-Z0-9_]+)"?(\."?([a-zA-Z0-9_]+)"?)?/, m)) {
+                        if (m[4] != "") {
+                            print tolower(m[2] "." m[4])
+                        } else {
+                            print "public." tolower(m[2])
+                        }
+                    }
+                }
+            ' "$SCRIPTS_DIR/tables/$include_path"
+        done |
+        sort -u |
+        wc -l |
+        tr -d ' '
+}
+
 # ============================================================================
 # Docker Mode Handler
 # ============================================================================
@@ -190,7 +214,7 @@ if [ "$DEPLOY_MODE" == "docker" ]; then
 
     echo "Monitoring initialization..."
     # Count expected tables from scripts
-    EXPECTED_TABLES=$(grep -r "CREATE TABLE" "$SCRIPTS_DIR/tables/" --include="*.sql" 2>/dev/null | grep -v "00-create-all-tables.sql" | wc -l)
+    EXPECTED_TABLES=$(count_expected_tables)
 
     for i in {1..60}; do
         TABLE_COUNT=$(docker exec tartware-postgres psql -U postgres -d tartware -t -c "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema IN ('public', 'availability');" 2>/dev/null | xargs || echo "0")
@@ -430,7 +454,7 @@ echo ""
 echo -e "${CYAN}Analyzing database scripts...${NC}"
 
 # Count definitively countable objects from scripts
-EXPECTED_TABLES=$(rg --no-filename 'CREATE TABLE' "$SCRIPTS_DIR/tables/" 2>/dev/null | wc -l)
+EXPECTED_TABLES=$(count_expected_tables)
 EXPECTED_ENUMS=$(rg 'CREATE TYPE' "$SCRIPTS_DIR/02-enum-types.sql" 2>/dev/null | wc -l)
 
 # Count table files
@@ -647,7 +671,15 @@ echo ""
 echo -e "${BLUE}[6/15]${NC} Creating ${EXPECTED_TABLES} tables (${TABLE_FILES} files, some create multiple tables)..."
 
 cd "$SCRIPTS_DIR"
-psql -q -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -f "$SCRIPTS_DIR/tables/00-create-all-tables.sql" > /dev/null 2>&1
+TABLE_CREATE_LOG="$(mktemp)"
+if ! psql -v ON_ERROR_STOP=1 -q -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -f "$SCRIPTS_DIR/tables/00-create-all-tables.sql" > "$TABLE_CREATE_LOG" 2>&1; then
+    echo -e "${RED}✗ Failed while creating tables${NC}"
+    echo -e "${YELLOW}Last SQL output:${NC}"
+    tail -n 40 "$TABLE_CREATE_LOG"
+    rm -f "$TABLE_CREATE_LOG"
+    exit 1
+fi
+rm -f "$TABLE_CREATE_LOG"
 
 TABLE_COUNT=$(psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -tAc "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema IN ('public', 'availability');" 2>/dev/null)
 

@@ -97,6 +97,57 @@ export async function computeForecasts(params: {
 
   let forecastsGenerated = 0;
 
+  const FORECAST_INSERT_SQL = `INSERT INTO revenue_forecasts (
+       tenant_id, property_id, forecast_date, forecast_period,
+       period_start_date, period_end_date,
+       forecast_type, forecast_scenario,
+       forecasted_value, confidence_level,
+       room_revenue_forecast, total_revenue_forecast,
+       forecasted_occupancy_percent, forecasted_adr, forecasted_revpar,
+       model_name, model_version,
+       created_by, updated_by
+     ) VALUES (
+       $1::uuid, $2::uuid, $3::date, $4,
+       $5::date, $6::date,
+       'revenue', $7,
+       $8, $9,
+       $10, $11,
+       $12, $13, $14,
+       'ema-baseline', '1.0',
+       $15::uuid, $15::uuid
+     )
+     ON CONFLICT DO NOTHING`;
+
+  const insertForecastPeriod = async (period: {
+    start: Date;
+    end: Date;
+    scenario: string;
+    roomRev: number;
+    confidence: number;
+    occPct: number;
+    adr: number;
+    revpar: number;
+  }) => {
+    await query(FORECAST_INSERT_SQL, [
+      params.tenantId,
+      params.propertyId,
+      forecastDate,
+      params.forecastPeriod,
+      period.start.toISOString().slice(0, 10),
+      period.end.toISOString().slice(0, 10),
+      period.scenario,
+      period.roomRev,
+      period.confidence,
+      period.roomRev,
+      period.roomRev * 1.15,
+      Math.round(period.occPct * 100) / 100,
+      Math.round(period.adr * 100) / 100,
+      Math.round(period.revpar * 100) / 100,
+      params.actorId,
+    ]);
+    forecastsGenerated++;
+  };
+
   for (const scenario of params.scenarios) {
     const mult = scenarioMultipliers[scenario] ?? { occ: 1.0, adr: 1.0 };
 
@@ -113,46 +164,16 @@ export async function computeForecasts(params: {
         const revpar = (occPct / 100) * adr;
         const roomRev = baseRoomRevenue * mult.occ * mult.adr;
 
-        await query(
-          `INSERT INTO revenue_forecasts (
-             tenant_id, property_id, forecast_date, forecast_period,
-             period_start_date, period_end_date,
-             forecast_type, forecast_scenario,
-             forecasted_value, confidence_level,
-             room_revenue_forecast, total_revenue_forecast,
-             forecasted_occupancy_percent, forecasted_adr, forecasted_revpar,
-             model_name, model_version,
-             created_by, updated_by
-           ) VALUES (
-             $1::uuid, $2::uuid, $3::date, $4,
-             $5::date, $6::date,
-             'revenue', $7,
-             $8, $9,
-             $10, $11,
-             $12, $13, $14,
-             'ema-baseline', '1.0',
-             $15::uuid, $15::uuid
-           )
-           ON CONFLICT DO NOTHING`,
-          [
-            params.tenantId,
-            params.propertyId,
-            forecastDate,
-            params.forecastPeriod,
-            periodStart.toISOString().slice(0, 10),
-            periodEnd.toISOString().slice(0, 10),
-            scenario,
-            roomRev,
-            Math.max(60, 95 - d * 0.5), // Confidence decays with distance
-            roomRev,
-            roomRev * 1.15, // Total = room * 1.15 (ancillary estimate)
-            Math.round(occPct * 100) / 100,
-            Math.round(adr * 100) / 100,
-            Math.round(revpar * 100) / 100,
-            params.actorId,
-          ],
-        );
-        forecastsGenerated++;
+        await insertForecastPeriod({
+          start: periodStart,
+          end: periodEnd,
+          scenario,
+          roomRev,
+          confidence: Math.max(60, 95 - d * 0.5),
+          occPct,
+          adr,
+          revpar,
+        });
       }
     } else {
       // Weekly or monthly: aggregate into period buckets
@@ -170,46 +191,16 @@ export async function computeForecasts(params: {
         const revpar = (occPct / 100) * adr;
         const roomRev = baseRoomRevenue * mult.occ * mult.adr * periodDays;
 
-        await query(
-          `INSERT INTO revenue_forecasts (
-             tenant_id, property_id, forecast_date, forecast_period,
-             period_start_date, period_end_date,
-             forecast_type, forecast_scenario,
-             forecasted_value, confidence_level,
-             room_revenue_forecast, total_revenue_forecast,
-             forecasted_occupancy_percent, forecasted_adr, forecasted_revpar,
-             model_name, model_version,
-             created_by, updated_by
-           ) VALUES (
-             $1::uuid, $2::uuid, $3::date, $4,
-             $5::date, $6::date,
-             'revenue', $7,
-             $8, $9,
-             $10, $11,
-             $12, $13, $14,
-             'ema-baseline', '1.0',
-             $15::uuid, $15::uuid
-           )
-           ON CONFLICT DO NOTHING`,
-          [
-            params.tenantId,
-            params.propertyId,
-            forecastDate,
-            params.forecastPeriod,
-            periodStart.toISOString().slice(0, 10),
-            periodEnd.toISOString().slice(0, 10),
-            scenario,
-            roomRev,
-            Math.max(55, 90 - p * 2),
-            roomRev,
-            roomRev * 1.15,
-            Math.round(occPct * 100) / 100,
-            Math.round(adr * 100) / 100,
-            Math.round(revpar * 100) / 100,
-            params.actorId,
-          ],
-        );
-        forecastsGenerated++;
+        await insertForecastPeriod({
+          start: periodStart,
+          end: periodEnd,
+          scenario,
+          roomRev,
+          confidence: Math.max(55, 90 - p * 2),
+          occPct,
+          adr,
+          revpar,
+        });
       }
     }
   }

@@ -125,3 +125,529 @@ Authorization: Bearer {{authToken}}
 # @name getCompsetIndicesYesterday
 GET {{baseUrl}}/v1/revenue/compset-indices?tenant_id={{tenantId}}&property_id={{propertyId}}&business_date=2026-02-12
 Authorization: Bearer {{authToken}}
+
+###############################################################################
+# PRICING RULE COMMANDS (via Command Center)
+###############################################################################
+
+### Create a pricing rule — occupancy-based, 10% increase when occ >= 80%
+# @name createPricingRule
+POST {{baseUrl}}/v1/commands/revenue.pricing_rule.create/execute
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+X-Request-ID: {{$guid}}
+X-Idempotency-Key: create-rule-{{$timestamp}}
+
+{
+  "tenant_id": "{{tenantId}}",
+  "payload": {
+    "property_id": "{{propertyId}}",
+    "rule_name": "High Occupancy Surge — 10% increase",
+    "rule_type": "occupancy_based",
+    "rule_category": "dynamic",
+    "description": "Increase rates 10% when occupancy reaches 80% or above",
+    "priority": 50,
+    "is_active": false,
+    "effective_from": "2026-03-15",
+    "effective_until": "2026-12-31",
+    "conditions": {
+      "occupancy_percent": { "operator": ">=", "value": 80 }
+    },
+    "adjustment_type": "percentage_increase",
+    "adjustment_value": 10.00,
+    "min_rate": 89.00,
+    "max_rate": 499.00,
+    "can_combine_with_other_rules": true,
+    "requires_approval": false
+  }
+}
+
+### Create a day-of-week pricing rule — weekend premium
+# @name createWeekendRule
+POST {{baseUrl}}/v1/commands/revenue.pricing_rule.create/execute
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+X-Request-ID: {{$guid}}
+X-Idempotency-Key: create-weekend-rule-{{$timestamp}}
+
+{
+  "tenant_id": "{{tenantId}}",
+  "payload": {
+    "property_id": "{{propertyId}}",
+    "rule_name": "Weekend Premium — 15% uplift",
+    "rule_type": "day_of_week",
+    "rule_category": "yield",
+    "description": "Apply 15% premium on Friday and Saturday nights",
+    "priority": 60,
+    "is_active": false,
+    "effective_from": "2026-03-15",
+    "applies_monday": false,
+    "applies_tuesday": false,
+    "applies_wednesday": false,
+    "applies_thursday": false,
+    "applies_friday": true,
+    "applies_saturday": true,
+    "applies_sunday": false,
+    "conditions": {},
+    "adjustment_type": "percentage_increase",
+    "adjustment_value": 15.00,
+    "adjustment_cap_max": 599.00,
+    "can_combine_with_other_rules": true,
+    "requires_approval": false
+  }
+}
+
+### Create a last-minute discount rule
+# @name createLastMinuteRule
+POST {{baseUrl}}/v1/commands/revenue.pricing_rule.create/execute
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+X-Request-ID: {{$guid}}
+X-Idempotency-Key: create-lastmin-rule-{{$timestamp}}
+
+{
+  "tenant_id": "{{tenantId}}",
+  "payload": {
+    "property_id": "{{propertyId}}",
+    "rule_name": "Last Minute Discount — 20% off within 48h",
+    "rule_type": "last_minute",
+    "rule_category": "promotional",
+    "description": "Offer 20% discount for bookings made within 48 hours of arrival when occupancy is below 60%",
+    "priority": 80,
+    "is_active": false,
+    "effective_from": "2026-03-15",
+    "conditions": {
+      "days_until_arrival": { "operator": "<=", "value": 2 },
+      "occupancy_percent": { "operator": "<", "value": 60 }
+    },
+    "adjustment_type": "percentage_decrease",
+    "adjustment_value": 20.00,
+    "min_rate": 69.00,
+    "min_length_of_stay": 1,
+    "max_length_of_stay": 3,
+    "can_combine_with_other_rules": false,
+    "requires_approval": true
+  }
+}
+
+### Update a pricing rule (change adjustment value and priority)
+# @name updatePricingRule
+POST {{baseUrl}}/v1/commands/revenue.pricing_rule.update/execute
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+X-Request-ID: {{$guid}}
+X-Idempotency-Key: update-rule-{{$timestamp}}
+
+{
+  "tenant_id": "{{tenantId}}",
+  "payload": {
+    "property_id": "{{propertyId}}",
+    "rule_id": "{{ruleId}}",
+    "adjustment_value": 12.50,
+    "priority": 45,
+    "last_modified_reason": "Adjusted from 10% to 12.5% based on Q1 performance review"
+  }
+}
+
+### Activate a pricing rule
+# @name activatePricingRule
+POST {{baseUrl}}/v1/commands/revenue.pricing_rule.activate/execute
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+X-Request-ID: {{$guid}}
+X-Idempotency-Key: activate-rule-{{$timestamp}}
+
+{
+  "tenant_id": "{{tenantId}}",
+  "payload": {
+    "property_id": "{{propertyId}}",
+    "rule_id": "{{ruleId}}"
+  }
+}
+
+### Deactivate a pricing rule
+# @name deactivatePricingRule
+POST {{baseUrl}}/v1/commands/revenue.pricing_rule.deactivate/execute
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+X-Request-ID: {{$guid}}
+X-Idempotency-Key: deactivate-rule-{{$timestamp}}
+
+{
+  "tenant_id": "{{tenantId}}",
+  "payload": {
+    "property_id": "{{propertyId}}",
+    "rule_id": "{{ruleId}}"
+  }
+}
+
+### Delete a pricing rule (soft-delete)
+# @name deletePricingRule
+POST {{baseUrl}}/v1/commands/revenue.pricing_rule.delete/execute
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+X-Request-ID: {{$guid}}
+X-Idempotency-Key: delete-rule-{{$timestamp}}
+
+{
+  "tenant_id": "{{tenantId}}",
+  "payload": {
+    "property_id": "{{propertyId}}",
+    "rule_id": "{{ruleId}}"
+  }
+}
+
+###############################################################################
+# DEMAND CALENDAR COMMANDS (via Command Center)
+###############################################################################
+
+### Update demand levels for specific dates
+# @name updateDemandCalendar
+POST {{baseUrl}}/v1/commands/revenue.demand.update/execute
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+X-Request-ID: {{$guid}}
+X-Idempotency-Key: demand-update-{{$timestamp}}
+
+{
+  "tenant_id": "{{tenantId}}",
+  "payload": {
+    "property_id": "{{propertyId}}",
+    "dates": ["2026-04-15", "2026-04-16", "2026-04-17"],
+    "demand_level": "PEAK",
+    "notes": "City Marathon weekend — expect 95%+ occupancy"
+  }
+}
+
+### Import local market events into demand calendar
+# @name importDemandEvents
+POST {{baseUrl}}/v1/commands/revenue.demand.import_events/execute
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+X-Request-ID: {{$guid}}
+X-Idempotency-Key: demand-events-{{$timestamp}}
+
+{
+  "tenant_id": "{{tenantId}}",
+  "payload": {
+    "property_id": "{{propertyId}}",
+    "events": [
+      {
+        "event_name": "Tech Conference 2026",
+        "event_type": "convention",
+        "start_date": "2026-05-10",
+        "end_date": "2026-05-13",
+        "impact_multiplier": 1.5,
+        "demand_level": "HIGH",
+        "notes": "Expected 5000 attendees at convention center"
+      },
+      {
+        "event_name": "Summer Music Festival",
+        "event_type": "festival",
+        "start_date": "2026-06-20",
+        "end_date": "2026-06-22",
+        "impact_multiplier": 2.0,
+        "demand_level": "PEAK"
+      }
+    ]
+  }
+}
+
+###############################################################################
+# COMPETITOR RATE COMMANDS (via Command Center)
+###############################################################################
+
+### Record a single competitor rate observation
+# @name recordCompetitorRate
+POST {{baseUrl}}/v1/commands/revenue.competitor.record/execute
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+X-Request-ID: {{$guid}}
+X-Idempotency-Key: comp-rate-{{$timestamp}}
+
+{
+  "tenant_id": "{{tenantId}}",
+  "payload": {
+    "property_id": "{{propertyId}}",
+    "competitor_name": "Grand Hyatt Downtown",
+    "competitor_property_name": "Grand Hyatt City Center",
+    "room_type_category": "Standard King",
+    "rate_date": "2026-03-15",
+    "rate_amount": 189.00,
+    "currency": "USD",
+    "source": "booking.com",
+    "includes_breakfast": false,
+    "includes_wifi": true,
+    "taxes_included": false
+  }
+}
+
+### Bulk import competitor rates
+# @name bulkImportCompetitorRates
+POST {{baseUrl}}/v1/commands/revenue.competitor.bulk_import/execute
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+X-Request-ID: {{$guid}}
+X-Idempotency-Key: comp-bulk-{{$timestamp}}
+
+{
+  "tenant_id": "{{tenantId}}",
+  "payload": {
+    "property_id": "{{propertyId}}",
+    "source": "rate_shopping_tool",
+    "rates": [
+      {
+        "competitor_name": "Grand Hyatt Downtown",
+        "room_type_category": "Standard King",
+        "rate_date": "2026-03-15",
+        "rate_amount": 189.00,
+        "currency": "USD",
+        "includes_breakfast": false
+      },
+      {
+        "competitor_name": "Marriott City Center",
+        "room_type_category": "Deluxe Queen",
+        "rate_date": "2026-03-15",
+        "rate_amount": 175.00,
+        "currency": "USD",
+        "includes_breakfast": true
+      },
+      {
+        "competitor_name": "Hilton Riverside",
+        "room_type_category": "Standard King",
+        "rate_date": "2026-03-15",
+        "rate_amount": 165.00,
+        "currency": "USD",
+        "includes_breakfast": false,
+        "includes_wifi": true
+      }
+    ]
+  }
+}
+
+###############################################################################
+# FORECAST COMMAND (via Command Center)
+###############################################################################
+
+### Compute revenue forecasts
+# @name computeForecasts
+POST {{baseUrl}}/v1/commands/revenue.forecast.compute/execute
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+X-Request-ID: {{$guid}}
+X-Idempotency-Key: forecast-{{$timestamp}}
+
+{
+  "tenant_id": "{{tenantId}}",
+  "payload": {
+    "property_id": "{{propertyId}}",
+    "forecast_period": "daily",
+    "horizon_days": 30,
+    "training_days": 90,
+    "scenarios": ["base", "optimistic", "pessimistic"]
+  }
+}
+
+###############################################################################
+# RATE RESTRICTIONS — R6 (CTA/CTD/LOS/Closed)
+###############################################################################
+
+### List rate restrictions
+# @name listRateRestrictions
+GET {{baseUrl}}/v1/revenue/rate-restrictions?tenant_id={{tenantId}}&limit=50
+Authorization: Bearer {{authToken}}
+
+###
+
+### List rate restrictions with filters
+# @name listRateRestrictionsFiltered
+GET {{baseUrl}}/v1/revenue/rate-restrictions?tenant_id={{tenantId}}&property_id={{propertyId}}&restriction_type=CTA&date_from=2025-07-01&date_to=2025-07-31&is_active=true&limit=50
+Authorization: Bearer {{authToken}}
+
+###
+
+### Set CTA restriction (Closed to Arrival)
+# @name setRestrictionCTA
+POST {{baseUrl}}/v1/commands/revenue.restriction.set/execute
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+X-Request-ID: {{$guid}}
+X-Idempotency-Key: restriction-cta-{{$timestamp}}
+
+{
+  "tenant_id": "{{tenantId}}",
+  "payload": {
+    "property_id": "{{propertyId}}",
+    "start_date": "2025-07-04",
+    "end_date": "2025-07-06",
+    "restriction_type": "CTA",
+    "restriction_value": 1,
+    "is_active": true,
+    "source": "manual",
+    "reason": "Independence Day weekend — block arrivals to preserve group block"
+  }
+}
+
+###
+
+### Set Min LOS restriction
+# @name setRestrictionMinLOS
+POST {{baseUrl}}/v1/commands/revenue.restriction.set/execute
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+X-Request-ID: {{$guid}}
+X-Idempotency-Key: restriction-minlos-{{$timestamp}}
+
+{
+  "tenant_id": "{{tenantId}}",
+  "payload": {
+    "property_id": "{{propertyId}}",
+    "start_date": "2025-12-20",
+    "end_date": "2025-12-31",
+    "restriction_type": "MIN_LOS",
+    "restriction_value": 3,
+    "is_active": true,
+    "source": "manual",
+    "reason": "Holiday season — minimum 3-night stay for all room types"
+  }
+}
+
+###
+
+### Set CLOSED restriction for a specific rate plan
+# @name setRestrictionClosed
+POST {{baseUrl}}/v1/commands/revenue.restriction.set/execute
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+X-Request-ID: {{$guid}}
+X-Idempotency-Key: restriction-closed-{{$timestamp}}
+
+{
+  "tenant_id": "{{tenantId}}",
+  "payload": {
+    "property_id": "{{propertyId}}",
+    "start_date": "2025-08-15",
+    "end_date": "2025-08-17",
+    "restriction_type": "CLOSED",
+    "restriction_value": 1,
+    "is_active": true,
+    "source": "manual",
+    "reason": "Convention weekend — close discounted rate codes"
+  }
+}
+
+###
+
+### Remove a restriction
+# @name removeRestriction
+POST {{baseUrl}}/v1/commands/revenue.restriction.remove/execute
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+X-Request-ID: {{$guid}}
+X-Idempotency-Key: restriction-rm-{{$timestamp}}
+
+{
+  "tenant_id": "{{tenantId}}",
+  "payload": {
+    "property_id": "{{propertyId}}",
+    "start_date": "2025-07-04",
+    "end_date": "2025-07-06",
+    "restriction_type": "CTA"
+  }
+}
+
+###
+
+### Bulk set restrictions (Min LOS 2 for weekends, Max Advance 90 days)
+# @name bulkSetRestrictions
+POST {{baseUrl}}/v1/commands/revenue.restriction.bulk_set/execute
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+X-Request-ID: {{$guid}}
+X-Idempotency-Key: restriction-bulk-{{$timestamp}}
+
+{
+  "tenant_id": "{{tenantId}}",
+  "payload": {
+    "property_id": "{{propertyId}}",
+    "restrictions": [
+      {
+        "start_date": "2025-10-01",
+        "end_date": "2025-10-31",
+        "restriction_type": "MIN_LOS",
+        "restriction_value": 2,
+        "reason": "Q4 weekends — minimum 2-night stay"
+      },
+      {
+        "start_date": "2025-11-01",
+        "end_date": "2025-12-31",
+        "restriction_type": "MAX_ADVANCE",
+        "restriction_value": 90,
+        "reason": "Holiday season — max 90 days advance booking"
+      }
+    ],
+    "is_active": true,
+    "source": "manual"
+  }
+}
+
+###############################################################################
+# HURDLE RATES — R7 (Minimum Acceptable Rates)
+###############################################################################
+
+### List hurdle rates
+# @name listHurdleRates
+GET {{baseUrl}}/v1/revenue/hurdle-rates?tenant_id={{tenantId}}&limit=50
+Authorization: Bearer {{authToken}}
+
+###
+
+### List hurdle rates with filters
+# @name listHurdleRatesFiltered
+GET {{baseUrl}}/v1/revenue/hurdle-rates?tenant_id={{tenantId}}&property_id={{propertyId}}&date_from=2025-07-01&date_to=2025-07-31&source=manual&limit=50
+Authorization: Bearer {{authToken}}
+
+###
+
+### Set hurdle rate — Standard King for July
+# @name setHurdleRate
+POST {{baseUrl}}/v1/commands/revenue.hurdle_rate.set/execute
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+X-Request-ID: {{$guid}}
+X-Idempotency-Key: hurdle-set-{{$timestamp}}
+
+{
+  "tenant_id": "{{tenantId}}",
+  "payload": {
+    "property_id": "{{propertyId}}",
+    "room_type_id": "33333333-3333-3333-3333-333333333333",
+    "start_date": "2025-07-01",
+    "end_date": "2025-07-31",
+    "hurdle_rate": 149.99,
+    "currency": "USD",
+    "segment": "transient",
+    "source": "manual",
+    "notes": "July floor rate for transient segment — do not sell below"
+  }
+}
+
+###
+
+### Calculate hurdle rates from displacement analysis
+# @name calculateHurdleRates
+POST {{baseUrl}}/v1/commands/revenue.hurdle_rate.calculate/execute
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+X-Request-ID: {{$guid}}
+X-Idempotency-Key: hurdle-calc-{{$timestamp}}
+
+{
+  "tenant_id": "{{tenantId}}",
+  "payload": {
+    "property_id": "{{propertyId}}",
+    "start_date": "2025-08-01",
+    "end_date": "2025-08-31",
+    "confidence_threshold": 75
+  }
+}

@@ -22,35 +22,63 @@ const INSERT_SQL = `
 `;
 
 const LIST_SQL = `
-  SELECT notification_id, tenant_id, property_id, user_id, title, message,
-         category, priority, source_type, source_id, action_url,
-         is_read, read_at, metadata, created_at
-  FROM in_app_notifications
-  WHERE tenant_id = $1::uuid
-    AND is_deleted = FALSE
-    AND (expires_at IS NULL OR expires_at > CURRENT_TIMESTAMP)
+  SELECT n.notification_id, n.tenant_id, n.property_id, n.user_id, n.title, n.message,
+         n.category, n.priority, n.source_type, n.source_id, n.action_url,
+         CASE
+           WHEN n.user_id IS NOT NULL THEN n.is_read
+           ELSE (nrr.receipt_id IS NOT NULL)
+         END AS is_read,
+         CASE
+           WHEN n.user_id IS NOT NULL THEN n.read_at
+           ELSE nrr.read_at
+         END AS read_at,
+         n.metadata, n.created_at
+  FROM in_app_notifications n
+  LEFT JOIN notification_read_receipts nrr
+    ON n.notification_id = nrr.notification_id
+    AND n.user_id IS NULL
+    AND nrr.user_id = $2::uuid
+  WHERE n.tenant_id = $1::uuid
+    AND n.is_deleted = FALSE
+    AND (n.expires_at IS NULL OR n.expires_at > CURRENT_TIMESTAMP)
 `;
 
 const COUNT_SQL = `
   SELECT
     COUNT(*)::int AS total,
-    COUNT(*) FILTER (WHERE is_read = FALSE)::int AS unread
-  FROM in_app_notifications
-  WHERE tenant_id = $1::uuid
-    AND is_deleted = FALSE
-    AND (expires_at IS NULL OR expires_at > CURRENT_TIMESTAMP)
+    COUNT(*) FILTER (WHERE
+      CASE
+        WHEN n.user_id IS NOT NULL THEN n.is_read = FALSE
+        ELSE nrr.receipt_id IS NULL
+      END
+    )::int AS unread
+  FROM in_app_notifications n
+  LEFT JOIN notification_read_receipts nrr
+    ON n.notification_id = nrr.notification_id
+    AND n.user_id IS NULL
+    AND nrr.user_id = $2::uuid
+  WHERE n.tenant_id = $1::uuid
+    AND n.is_deleted = FALSE
+    AND (n.expires_at IS NULL OR n.expires_at > CURRENT_TIMESTAMP)
 `;
 
 const UNREAD_COUNT_SQL = `
   SELECT COUNT(*)::int AS unread
-  FROM in_app_notifications
-  WHERE tenant_id = $1::uuid
-    AND is_read = FALSE
-    AND is_deleted = FALSE
-    AND (expires_at IS NULL OR expires_at > CURRENT_TIMESTAMP)
+  FROM in_app_notifications n
+  LEFT JOIN notification_read_receipts nrr
+    ON n.notification_id = nrr.notification_id
+    AND n.user_id IS NULL
+    AND nrr.user_id = $2::uuid
+  WHERE n.tenant_id = $1::uuid
+    AND n.is_deleted = FALSE
+    AND (n.expires_at IS NULL OR n.expires_at > CURRENT_TIMESTAMP)
+    AND CASE
+          WHEN n.user_id IS NOT NULL THEN n.is_read = FALSE
+          ELSE nrr.receipt_id IS NULL
+        END
 `;
 
-const MARK_READ_SQL = `
+const MARK_READ_USER_SCOPED_SQL = `
   UPDATE in_app_notifications
   SET is_read = TRUE, read_at = CURRENT_TIMESTAMP
   WHERE tenant_id = $1::uuid
@@ -60,13 +88,38 @@ const MARK_READ_SQL = `
     AND is_deleted = FALSE
 `;
 
-const MARK_ALL_READ_SQL = `
+const MARK_READ_BROADCAST_SQL = `
+  INSERT INTO notification_read_receipts (notification_id, user_id, tenant_id)
+  SELECT n.notification_id, $3::uuid, n.tenant_id
+  FROM in_app_notifications n
+  WHERE n.tenant_id = $1::uuid
+    AND n.notification_id = ANY($2::uuid[])
+    AND n.user_id IS NULL
+    AND n.is_deleted = FALSE
+  ON CONFLICT (notification_id, user_id) DO NOTHING
+`;
+
+const MARK_ALL_READ_USER_SCOPED_SQL = `
   UPDATE in_app_notifications
   SET is_read = TRUE, read_at = CURRENT_TIMESTAMP
   WHERE tenant_id = $1::uuid
     AND user_id = $2::uuid
     AND is_read = FALSE
     AND is_deleted = FALSE
+`;
+
+const MARK_ALL_READ_BROADCAST_SQL = `
+  INSERT INTO notification_read_receipts (notification_id, user_id, tenant_id)
+  SELECT n.notification_id, $2::uuid, n.tenant_id
+  FROM in_app_notifications n
+  LEFT JOIN notification_read_receipts nrr
+    ON n.notification_id = nrr.notification_id AND nrr.user_id = $2::uuid
+  WHERE n.tenant_id = $1::uuid
+    AND n.user_id IS NULL
+    AND n.is_deleted = FALSE
+    AND (n.expires_at IS NULL OR n.expires_at > CURRENT_TIMESTAMP)
+    AND nrr.receipt_id IS NULL
+  ON CONFLICT (notification_id, user_id) DO NOTHING
 `;
 
 /**
@@ -139,27 +192,30 @@ export const listInAppNotifications = async (
   const offset = Math.max(options.offset ?? 0, 0);
 
   // Build dynamic WHERE clauses
+  // $1 = tenantId, $2 = userId (for LEFT JOIN on read receipts)
   const conditions: string[] = [];
-  const params: unknown[] = [tenantId];
-  let paramIndex = 2;
+  const params: unknown[] = [tenantId, options.userId ?? null];
+  let paramIndex = 3;
 
   if (options.userId) {
-    conditions.push(`(user_id = $${paramIndex}::uuid OR user_id IS NULL)`);
-    params.push(options.userId);
-    paramIndex++;
+    conditions.push(`(n.user_id = $2::uuid OR n.user_id IS NULL)`);
   }
   if (options.category) {
-    conditions.push(`category = $${paramIndex}`);
+    conditions.push(`n.category = $${paramIndex}`);
     params.push(options.category);
     paramIndex++;
   }
   if (options.is_read === "true") {
-    conditions.push("is_read = TRUE");
+    conditions.push(
+      `((n.user_id IS NOT NULL AND n.is_read = TRUE) OR (n.user_id IS NULL AND nrr.receipt_id IS NOT NULL))`,
+    );
   } else if (options.is_read === "false") {
-    conditions.push("is_read = FALSE");
+    conditions.push(
+      `((n.user_id IS NOT NULL AND n.is_read = FALSE) OR (n.user_id IS NULL AND nrr.receipt_id IS NULL))`,
+    );
   }
   if (options.priority) {
-    conditions.push(`priority = $${paramIndex}`);
+    conditions.push(`n.priority = $${paramIndex}`);
     params.push(options.priority);
     paramIndex++;
   }
@@ -176,7 +232,7 @@ export const listInAppNotifications = async (
   // Data query
   const listParams = [...params, limit, offset];
   const { rows } = await query(
-    `${LIST_SQL}${whereExtra} ORDER BY created_at DESC LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`,
+    `${LIST_SQL}${whereExtra} ORDER BY n.created_at DESC LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`,
     listParams,
   );
 
@@ -188,11 +244,10 @@ export const listInAppNotifications = async (
  */
 export const getUnreadCount = async (tenantId: string, userId?: string): Promise<number> => {
   let sql = UNREAD_COUNT_SQL;
-  const params: unknown[] = [tenantId];
+  const params: unknown[] = [tenantId, userId ?? null];
 
   if (userId) {
-    sql += " AND (user_id = $2::uuid OR user_id IS NULL)";
-    params.push(userId);
+    sql += " AND (n.user_id = $2::uuid OR n.user_id IS NULL)";
   }
 
   const { rows } = await query<{ unread: number }>(sql, params);
@@ -201,23 +256,31 @@ export const getUnreadCount = async (tenantId: string, userId?: string): Promise
 
 /**
  * Mark specific notifications as read.
+ * User-scoped notifications: UPDATE is_read on the row.
+ * Broadcast notifications: INSERT into notification_read_receipts.
  */
 export const markNotificationsRead = async (
   tenantId: string,
   notificationIds: string[],
   userId: string,
 ): Promise<number> => {
-  const result = await query(MARK_READ_SQL, [tenantId, notificationIds, userId]);
-  return result.rowCount ?? 0;
+  const params = [tenantId, notificationIds, userId];
+  const userResult = await query(MARK_READ_USER_SCOPED_SQL, params);
+  const broadcastResult = await query(MARK_READ_BROADCAST_SQL, params);
+  return (userResult.rowCount ?? 0) + (broadcastResult.rowCount ?? 0);
 };
 
 /**
- * Mark all notifications as read for a tenant.
+ * Mark all notifications as read for a tenant user.
+ * User-scoped notifications: UPDATE is_read on the row.
+ * Broadcast notifications: INSERT into notification_read_receipts.
  */
 export const markAllNotificationsRead = async (
   tenantId: string,
   userId: string,
 ): Promise<number> => {
-  const result = await query(MARK_ALL_READ_SQL, [tenantId, userId]);
-  return result.rowCount ?? 0;
+  const params = [tenantId, userId];
+  const userResult = await query(MARK_ALL_READ_USER_SCOPED_SQL, params);
+  const broadcastResult = await query(MARK_ALL_READ_BROADCAST_SQL, params);
+  return (userResult.rowCount ?? 0) + (broadcastResult.rowCount ?? 0);
 };
