@@ -5,6 +5,15 @@
   margin: 0 auto;
 }
 
+/* Tab icons */
+.tab-icon {
+  font-size: 18px;
+  width: 18px;
+  height: 18px;
+  margin-right: 4px;
+  vertical-align: middle;
+}
+
 /* Command name cell — name + code stacked */
 .command-cell {
   display: flex;
@@ -26,6 +35,12 @@
   padding: 1px 6px;
   border-radius: var(--radius-sm);
   width: fit-content;
+}
+
+.command-description {
+  font-size: var(--font-size-xs);
+  color: var(--color-fg-muted);
+  margin-top: 2px;
 }
 
 /* Actions column */
