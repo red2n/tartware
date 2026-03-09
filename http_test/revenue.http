@@ -828,3 +828,82 @@ X-Idempotency-Key: daily-close-goals-{{$timestamp}}
     "skip_forecast": true
   }
 }
+
+###############################################################################
+# BOOKING PACE
+###############################################################################
+
+### List booking pace report
+# @name getBookingPace
+GET {{baseUrl}}/v1/revenue/booking-pace?tenant_id={{tenantId}}&property_id={{propertyId}}&start_date=2026-03-01&end_date=2026-03-31
+Authorization: Bearer {{authToken}}
+
+### Snapshot booking pace into demand calendar
+# @name snapshotBookingPace
+POST {{baseUrl}}/v1/commands/revenue.booking_pace.snapshot/execute
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+X-Request-ID: {{$guid}}
+X-Idempotency-Key: pace-snap-{{$timestamp}}
+
+{
+  "tenant_id": "{{tenantId}}",
+  "payload": {
+    "property_id": "{{propertyId}}",
+    "horizon_days": 90
+  }
+}
+
+###############################################################################
+# FORECAST ACCURACY & ADJUSTMENT
+###############################################################################
+
+### Get forecast accuracy report
+# @name getForecastAccuracy
+GET {{baseUrl}}/v1/revenue/forecast-accuracy?tenant_id={{tenantId}}&property_id={{propertyId}}&start_date=2026-03-01&end_date=2026-03-31
+Authorization: Bearer {{authToken}}
+
+### Get forecast accuracy filtered by scenario
+# @name getForecastAccuracyByScenario
+GET {{baseUrl}}/v1/revenue/forecast-accuracy?tenant_id={{tenantId}}&property_id={{propertyId}}&start_date=2026-03-01&end_date=2026-03-31&forecast_scenario=base
+Authorization: Bearer {{authToken}}
+
+### Evaluate forecast accuracy against actuals
+# @name evaluateForecastAccuracy
+POST {{baseUrl}}/v1/commands/revenue.forecast.evaluate/execute
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+X-Request-ID: {{$guid}}
+X-Idempotency-Key: fc-eval-{{$timestamp}}
+
+{
+  "tenant_id": "{{tenantId}}",
+  "payload": {
+    "property_id": "{{propertyId}}",
+    "business_date": "2026-03-09"
+  }
+}
+
+### Manually adjust a forecast
+# @name adjustForecast
+POST {{baseUrl}}/v1/commands/revenue.forecast.adjust/execute
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+X-Request-ID: {{$guid}}
+X-Idempotency-Key: fc-adjust-{{$timestamp}}
+
+{
+  "tenant_id": "{{tenantId}}",
+  "payload": {
+    "property_id": "{{propertyId}}",
+    "forecast_date": "2026-03-09",
+    "period": "daily",
+    "scenario": "base",
+    "adjustments": {
+      "occupancy_percent": 85.0,
+      "adr": 210.00,
+      "room_revenue": 17850.00
+    },
+    "reason": "Large conference booked — expecting higher occupancy"
+  }
+}

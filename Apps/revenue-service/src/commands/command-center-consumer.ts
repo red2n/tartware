@@ -20,7 +20,13 @@ import {
 } from "./handlers/competitor-handlers.js";
 import { handleDailyCloseProcess } from "./handlers/daily-close-handler.js";
 import { handleDemandImportEvents, handleDemandUpdate } from "./handlers/demand-handlers.js";
-import { handleForecastCompute, resolveActorId } from "./handlers/forecast-handlers.js";
+import {
+  handleBookingPaceSnapshot,
+  handleForecastAdjust,
+  handleForecastCompute,
+  handleForecastEvaluate,
+  resolveActorId,
+} from "./handlers/forecast-handlers.js";
 import {
   handleGoalCreate,
   handleGoalDelete,
@@ -305,6 +311,33 @@ const routeRevenueCommand = async (
           tenantId: metadata.tenantId,
         },
         "daily close processing completed",
+      );
+      break;
+    }
+
+    case "revenue.booking_pace.snapshot": {
+      const result = await handleBookingPaceSnapshot(payload, metadata, actorId);
+      logger.info(
+        { daysUpdated: result.daysUpdated, tenantId: metadata.tenantId },
+        "booking pace snapshot completed",
+      );
+      break;
+    }
+
+    case "revenue.forecast.adjust": {
+      const result = await handleForecastAdjust(payload, metadata, actorId);
+      logger.info(
+        { adjusted: result.adjusted, tenantId: metadata.tenantId },
+        "forecast manually adjusted",
+      );
+      break;
+    }
+
+    case "revenue.forecast.evaluate": {
+      const result = await handleForecastEvaluate(payload, metadata, actorId);
+      logger.info(
+        { evaluated: result.evaluated, tenantId: metadata.tenantId },
+        "forecast accuracy evaluated",
       );
       break;
     }

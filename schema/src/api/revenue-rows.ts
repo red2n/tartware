@@ -306,3 +306,44 @@ export type LastYearRow = {
     ly_room_revenue: string | number;
     ly_total_revenue: string | number;
 };
+
+// =====================================================
+// BOOKING PACE ROW TYPES
+// =====================================================
+
+/** Raw row shape from the booking pace report query. */
+export type BookingPaceRow = {
+    calendar_date: string | Date;
+    day_of_week: string | number;
+    otb_rooms: string | number;
+    otb_revenue: string | number | null;
+    ly_otb_rooms: string | number | null;
+    ly_otb_revenue: string | number | null;
+    pickup_last_7_days: string | number | null;
+    pickup_last_30_days: string | number | null;
+    rooms_available: string | number | null;
+    occupancy_forecast_percent: string | number | null;
+};
+
+// =====================================================
+// FORECAST ACCURACY ROW TYPES
+// =====================================================
+
+/** Raw row shape from the forecast accuracy query. */
+export type ForecastAccuracyRow = {
+    forecast_id: string;
+    forecast_date: string | Date;
+    period_start_date: string | Date;
+    period_end_date: string | Date;
+    forecast_scenario: string;
+    forecasted_occupancy_percent: string | number | null;
+    forecasted_adr: string | number | null;
+    forecasted_revpar: string | number | null;
+    room_revenue_forecast: string | number | null;
+    actual_occupancy: string | number | null;
+    actual_adr: string | number | null;
+    actual_revpar: string | number | null;
+    actual_room_revenue: string | number | null;
+    variance_percent: string | number | null;
+    accuracy_score: string | number | null;
+};

@@ -603,3 +603,73 @@ export const RevenueDailyCloseCommandSchema = z.object({
 export type RevenueDailyCloseCommand = z.infer<
 	typeof RevenueDailyCloseCommandSchema
 >;
+
+// ── Booking Pace Commands (R11) ──────────────────────
+
+/**
+ * Snapshot current booking pace metrics for a property.
+ * Computes OTB rooms/revenue vs same-time-last-year for each future date
+ * and writes pickup_last_7_days, pickup_last_30_days, pace_vs_last_year
+ * into the demand_calendar.
+ */
+export const RevenueBookingPaceSnapshotCommandSchema = z.object({
+	property_id: z.string().uuid(),
+	/** Number of future days to snapshot pace for (default 90). */
+	horizon_days: z.number().int().min(1).max(365).default(90),
+	metadata: z.record(z.unknown()).optional(),
+	idempotency_key: z.string().max(120).optional(),
+});
+
+export type RevenueBookingPaceSnapshotCommand = z.infer<
+	typeof RevenueBookingPaceSnapshotCommandSchema
+>;
+
+// ── Forecast Adjust Command (R12) ────────────────────
+
+/**
+ * Manual one-time forecast override by revenue manager.
+ * Allows a revenue manager to adjust a forecasted value for a specific
+ * date, period, and scenario. Records the original value and reason.
+ */
+export const RevenueForecastAdjustCommandSchema = z.object({
+	property_id: z.string().uuid(),
+	/** The date of the forecast to adjust. */
+	forecast_date: z.string().date(),
+	forecast_period: z.enum(["daily", "weekly", "monthly"]).default("daily"),
+	forecast_scenario: z
+		.enum(["base", "optimistic", "pessimistic", "conservative", "aggressive"])
+		.default("base"),
+	/** Fields to override — only provided fields are updated. */
+	adjustments: z.object({
+		occupancy_percent: z.number().min(0).max(100).optional(),
+		adr: z.number().min(0).optional(),
+		room_revenue: z.number().min(0).optional(),
+	}),
+	/** Reason for the adjustment (required for audit). */
+	reason: z.string().min(1).max(2000),
+	metadata: z.record(z.unknown()).optional(),
+	idempotency_key: z.string().max(120).optional(),
+});
+
+export type RevenueForecastAdjustCommand = z.infer<
+	typeof RevenueForecastAdjustCommandSchema
+>;
+
+// ── Forecast Evaluate Command (R13) ──────────────────
+
+/**
+ * Compare forecasted values vs actuals for completed periods.
+ * Updates actual_value, variance, variance_percent, and accuracy_score
+ * in revenue_forecasts for all forecasts covering the given business date.
+ */
+export const RevenueForecastEvaluateCommandSchema = z.object({
+	property_id: z.string().uuid(),
+	/** The past business date to evaluate forecasts for. */
+	business_date: z.string().date(),
+	metadata: z.record(z.unknown()).optional(),
+	idempotency_key: z.string().max(120).optional(),
+});
+
+export type RevenueForecastEvaluateCommand = z.infer<
+	typeof RevenueForecastEvaluateCommandSchema
+>;

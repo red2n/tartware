@@ -1034,21 +1034,21 @@ Industry standard: revenue managers set annual revenue budgets broken down by mo
 
 Industry standard: modern RMS platforms use machine learning and multi-signal demand intelligence. The forecast engine should evolve beyond simple EMA to incorporate booking pace, event signals, and market data (IDeaS G3, Duetto, Atomize patterns).
 
-- [ ] **R11: Enhanced Forecast Engine — Booking Pace Analysis** | Complexity: High
+- [x] **R11: Enhanced Forecast Engine — Booking Pace Analysis** | Complexity: High
   - Add booking pace tracking to forecast model: compare current on-the-books (OTB) reservations for future dates vs same time prior year
   - Pickup = new bookings received for a future date within a lookback window
   - Pace report: for each future date, show OTB rooms, OTB revenue + pace vs LY pace → earlier/faster indicators trigger rate increases
   - New endpoint: `GET /v1/revenue/booking-pace` with property_id, date range
   - Industry standard: pace is the #1 tactical demand signal; Oracle OPERA computes OTB daily
 
-- [ ] **R12: Enhanced Forecast Engine — Event & Market Signals** | Complexity: Medium
+- [x] **R12: Enhanced Forecast Engine — Event & Market Signals** | Complexity: Medium
   - Integrate demand_calendar events into forecast model with configurable impact multipliers
   - Event types: local convention, holiday, sports event, concert, weather (hurricane/snow), competitor closure
   - Forecast adjustment: base forecast × event_impact_multiplier
   - `revenue.forecast.adjust` command — manual one-time forecast override by revenue manager
   - Industry standard: revenue managers should be able to "tell the system" about events the algorithm hasn't seen
 
-- [ ] **R13: Forecast Accuracy Tracking** | Complexity: Low
+- [x] **R13: Forecast Accuracy Tracking** | Complexity: Low
   - Scheduled command: `revenue.forecast.evaluate` — compare forecasted values vs actual for completed periods
   - Update `actual_value`, `variance`, `variance_percent`, `accuracy_score` in `revenue_forecasts`
   - Track model accuracy over time to detect drift

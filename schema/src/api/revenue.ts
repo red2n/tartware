@@ -625,3 +625,98 @@ export const ManagersDailyReportSchema = z.object({
 		})
 		.nullable(),
 });
+
+// =====================================================
+// BOOKING PACE REPORT SCHEMAS (R11)
+// =====================================================
+
+/**
+ * Query schema for the booking pace report endpoint.
+ */
+export const BookingPaceQuerySchema = z.object({
+	tenant_id: tenantId,
+	property_id: propertyId,
+	start_date: z.string().date().describe("Start of date range (YYYY-MM-DD)"),
+	end_date: z.string().date().describe("End of date range (YYYY-MM-DD)"),
+});
+
+export type BookingPaceQuery = z.infer<typeof BookingPaceQuerySchema>;
+
+/**
+ * Single-date booking pace item returned by the pace report.
+ */
+export const BookingPaceItemSchema = z.object({
+	calendar_date: z.string(),
+	day_of_week: z.number(),
+	otb_rooms: z.number(),
+	otb_revenue: z.number().nullable(),
+	ly_otb_rooms: z.number().nullable(),
+	ly_otb_revenue: z.number().nullable(),
+	pace_diff_rooms: z.number().nullable(),
+	pace_diff_revenue: z.number().nullable(),
+	pickup_last_7_days: z.number().nullable(),
+	pickup_last_30_days: z.number().nullable(),
+	pace_status: z
+		.enum(["ahead", "on_track", "behind", "significantly_behind"])
+		.nullable(),
+	rooms_available: z.number().nullable(),
+	occupancy_forecast_percent: z.number().nullable(),
+});
+
+export type BookingPaceItem = z.infer<typeof BookingPaceItemSchema>;
+
+// =====================================================
+// FORECAST ACCURACY SCHEMAS (R13)
+// =====================================================
+
+/**
+ * Query schema for the forecast accuracy endpoint.
+ */
+export const ForecastAccuracyQuerySchema = z.object({
+	tenant_id: tenantId,
+	property_id: propertyId,
+	start_date: z.string().date().describe("Start of evaluation period"),
+	end_date: z.string().date().describe("End of evaluation period"),
+	forecast_scenario: z
+		.enum(["base", "optimistic", "pessimistic", "conservative", "aggressive"])
+		.optional()
+		.describe("Filter by scenario"),
+});
+
+export type ForecastAccuracyQuery = z.infer<typeof ForecastAccuracyQuerySchema>;
+
+/**
+ * Single forecast accuracy record showing forecast vs actual.
+ */
+export const ForecastAccuracyItemSchema = z.object({
+	forecast_id: z.string(),
+	forecast_date: z.string(),
+	period_start: z.string(),
+	period_end: z.string(),
+	forecast_scenario: z.string(),
+	forecasted_occupancy: z.number().nullable(),
+	forecasted_adr: z.number().nullable(),
+	forecasted_revpar: z.number().nullable(),
+	forecasted_room_revenue: z.number().nullable(),
+	actual_occupancy: z.number().nullable(),
+	actual_adr: z.number().nullable(),
+	actual_revpar: z.number().nullable(),
+	actual_room_revenue: z.number().nullable(),
+	variance_percent: z.number().nullable(),
+	accuracy_score: z.number().nullable(),
+});
+
+export type ForecastAccuracyItem = z.infer<typeof ForecastAccuracyItemSchema>;
+
+/**
+ * Summary accuracy metrics across a date range.
+ */
+export const ForecastAccuracySummarySchema = z.object({
+	period_start: z.string(),
+	period_end: z.string(),
+	total_evaluated: z.number(),
+	mape: z.number().nullable(),
+	bias: z.number().nullable(),
+	avg_accuracy_score: z.number().nullable(),
+	items: z.array(ForecastAccuracyItemSchema),
+});

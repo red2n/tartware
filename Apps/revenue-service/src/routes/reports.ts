@@ -1,9 +1,13 @@
 import { buildRouteSchema } from "@tartware/openapi";
 import {
+  type BookingPaceQuery,
+  BookingPaceQuerySchema,
   type BudgetVarianceQuery,
   BudgetVarianceQuerySchema,
   type CompsetIndicesQuery,
   CompsetIndicesQuerySchema,
+  type ForecastAccuracyQuery,
+  ForecastAccuracyQuerySchema,
   type ForecastListQuery,
   ForecastListQuerySchema,
   type GoalListQuery,
@@ -15,10 +19,12 @@ import {
 } from "@tartware/schemas";
 import type { FastifyInstance, FastifyPluginAsync } from "fastify";
 
+import { getBookingPaceReport } from "../services/booking-pace-service.js";
 import {
   getBudgetVarianceReport,
   getManagersDailyReport,
 } from "../services/budget-report-service.js";
+import { getForecastAccuracyReport } from "../services/forecast-accuracy-service.js";
 import {
   getCompsetIndices,
   getDisplacementAnalysis,
@@ -212,6 +218,65 @@ const reportRoutes: FastifyPluginAsync = async (app: FastifyInstance) => {
       );
 
       return getManagersDailyReport(property_id, tenant_id, business_date);
+    },
+  );
+
+  // ── Booking Pace Report (R11) ─────────────────────────
+
+  app.get<{ Querystring: BookingPaceQuery }>(
+    "/v1/revenue/booking-pace",
+    {
+      preHandler: app.withTenantScope({
+        resolveTenantId: (request) => (request.query as BookingPaceQuery).tenant_id,
+        minRole: "ADMIN",
+        requiredModules: "revenue-management",
+      }),
+      schema: buildRouteSchema({
+        tag: REPORTS_TAG,
+        summary:
+          "Booking pace report — OTB rooms/revenue vs same-time last year for each future date",
+      }),
+    },
+    async (request) => {
+      const { tenant_id, property_id, start_date, end_date } = BookingPaceQuerySchema.parse(
+        request.query,
+      );
+
+      return getBookingPaceReport({
+        tenantId: tenant_id,
+        propertyId: property_id,
+        startDate: start_date,
+        endDate: end_date,
+      });
+    },
+  );
+
+  // ── Forecast Accuracy Report (R13) ────────────────────
+
+  app.get<{ Querystring: ForecastAccuracyQuery }>(
+    "/v1/revenue/forecast-accuracy",
+    {
+      preHandler: app.withTenantScope({
+        resolveTenantId: (request) => (request.query as ForecastAccuracyQuery).tenant_id,
+        minRole: "ADMIN",
+        requiredModules: "revenue-management",
+      }),
+      schema: buildRouteSchema({
+        tag: REPORTS_TAG,
+        summary: "Forecast accuracy — MAPE, bias, and per-date forecast vs actual comparison",
+      }),
+    },
+    async (request) => {
+      const { tenant_id, property_id, start_date, end_date, forecast_scenario } =
+        ForecastAccuracyQuerySchema.parse(request.query);
+
+      return getForecastAccuracyReport({
+        tenantId: tenant_id,
+        propertyId: property_id,
+        startDate: start_date,
+        endDate: end_date,
+        forecastScenario: forecast_scenario,
+      });
     },
   );
 };

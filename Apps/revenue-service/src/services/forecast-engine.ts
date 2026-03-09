@@ -95,6 +95,32 @@ export async function computeForecasts(params: {
     aggressive: { occ: 1.2, adr: 1.15 },
   };
 
+  // Load demand calendar event/season data for the forecast horizon
+  const horizonEnd = new Date();
+  horizonEnd.setDate(horizonEnd.getDate() + params.horizonDays);
+  const eventDataResult = await query<{
+    calendar_date: string;
+    event_impact_score: string | null;
+    season_factor: string | null;
+    events: unknown;
+  }>(
+    `SELECT calendar_date::text, event_impact_score, season_factor, events
+     FROM demand_calendar
+     WHERE tenant_id = $1::uuid AND property_id = $2::uuid
+       AND calendar_date >= CURRENT_DATE
+       AND calendar_date < $3::date`,
+    [params.tenantId, params.propertyId, horizonEnd.toISOString().slice(0, 10)],
+  );
+
+  const eventDataByDate = new Map<string, { eventFactor: number; seasonFactor: number }>();
+  for (const row of eventDataResult.rows) {
+    const impact = row.event_impact_score ? Number(row.event_impact_score) : 0;
+    const season = row.season_factor ? Number(row.season_factor) : 1.0;
+    // event_impact_score 0-100 maps to 1.0-1.5 multiplier (50 = 1.25x boost)
+    const eventFactor = 1 + impact / 200;
+    eventDataByDate.set(row.calendar_date, { eventFactor, seasonFactor: season });
+  }
+
   let forecastsGenerated = 0;
 
   const FORECAST_INSERT_SQL = `INSERT INTO revenue_forecasts (
@@ -113,7 +139,7 @@ export async function computeForecasts(params: {
        $8, $9,
        $10, $11,
        $12, $13, $14,
-       'ema-baseline', '1.0',
+       'ema-demand-aware', '1.1',
        $15::uuid, $15::uuid
      )
      ON CONFLICT DO NOTHING`;
@@ -159,10 +185,15 @@ export async function computeForecasts(params: {
         const periodEnd = new Date(periodStart);
         periodEnd.setDate(periodEnd.getDate() + 1);
 
-        const occPct = Math.min(baseOccPct * mult.occ, 100);
-        const adr = baseAdr * mult.adr;
+        const dateKey = periodStart.toISOString().slice(0, 10);
+        const demandData = eventDataByDate.get(dateKey);
+        const ef = demandData?.eventFactor ?? 1.0;
+        const sf = demandData?.seasonFactor ?? 1.0;
+
+        const occPct = Math.min(baseOccPct * sf * ef * mult.occ, 100);
+        const adr = baseAdr * sf * ef * mult.adr;
         const revpar = (occPct / 100) * adr;
-        const roomRev = baseRoomRevenue * mult.occ * mult.adr;
+        const roomRev = baseRoomRevenue * sf * ef * mult.occ * mult.adr;
 
         await insertForecastPeriod({
           start: periodStart,
@@ -186,10 +217,25 @@ export async function computeForecasts(params: {
         const periodEnd = new Date(periodStart);
         periodEnd.setDate(periodEnd.getDate() + periodDays);
 
-        const occPct = Math.min(baseOccPct * mult.occ, 100);
-        const adr = baseAdr * mult.adr;
+        // Average event/season factors across the period
+        let efSum = 0;
+        let sfSum = 0;
+        let daysWithData = 0;
+        for (let dd = 0; dd < periodDays; dd++) {
+          const dt = new Date(periodStart);
+          dt.setDate(dt.getDate() + dd);
+          const demandData = eventDataByDate.get(dt.toISOString().slice(0, 10));
+          efSum += demandData?.eventFactor ?? 1.0;
+          sfSum += demandData?.seasonFactor ?? 1.0;
+          daysWithData++;
+        }
+        const ef = daysWithData > 0 ? efSum / daysWithData : 1.0;
+        const sf = daysWithData > 0 ? sfSum / daysWithData : 1.0;
+
+        const occPct = Math.min(baseOccPct * sf * ef * mult.occ, 100);
+        const adr = baseAdr * sf * ef * mult.adr;
         const revpar = (occPct / 100) * adr;
-        const roomRev = baseRoomRevenue * mult.occ * mult.adr * periodDays;
+        const roomRev = baseRoomRevenue * sf * ef * mult.occ * mult.adr * periodDays;
 
         await insertForecastPeriod({
           start: periodStart,

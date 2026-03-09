@@ -237,7 +237,10 @@ WITH seed_commands(command_name, description, default_target_service, required_m
         ('revenue.goal.update', 'Update a revenue goal or budget target', 'revenue-service', ARRAY['revenue-management']),
         ('revenue.goal.delete', 'Soft-delete a revenue goal', 'revenue-service', ARRAY['revenue-management']),
         ('revenue.goal.track_actual', 'Snapshot actual performance against revenue goals', 'revenue-service', ARRAY['revenue-management']),
-        ('revenue.daily_close.process', 'End-of-day revenue processing triggered after night audit', 'revenue-service', ARRAY['revenue-management'])
+        ('revenue.daily_close.process', 'End-of-day revenue processing triggered after night audit', 'revenue-service', ARRAY['revenue-management']),
+        ('revenue.booking_pace.snapshot', 'Snapshot booking pace data into demand calendar', 'revenue-service', ARRAY['revenue-management']),
+        ('revenue.forecast.adjust', 'Manually adjust a forecast with override values', 'revenue-service', ARRAY['revenue-management']),
+        ('revenue.forecast.evaluate', 'Evaluate forecast accuracy against actuals', 'revenue-service', ARRAY['revenue-management'])
 )
 INSERT INTO command_templates (command_name, description, default_target_service, required_modules, metadata)
 SELECT

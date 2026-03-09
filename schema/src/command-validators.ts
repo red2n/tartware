@@ -137,12 +137,15 @@ import {
 	ReservationWalkInCheckInCommandSchema,
 } from "./events/commands/reservations.js";
 import {
+	RevenueBookingPaceSnapshotCommandSchema,
 	RevenueCompetitorBulkImportCommandSchema,
 	RevenueCompetitorRecordCommandSchema,
 	RevenueDailyCloseCommandSchema,
 	RevenueDemandImportEventsCommandSchema,
 	RevenueDemandUpdateCommandSchema,
+	RevenueForecastAdjustCommandSchema,
 	RevenueForecastComputeCommandSchema,
+	RevenueForecastEvaluateCommandSchema,
 	RevenueGoalCreateCommandSchema,
 	RevenueGoalDeleteCommandSchema,
 	RevenueGoalTrackActualCommandSchema,
@@ -709,6 +712,18 @@ const commandPayloadValidators = new Map<string, CommandPayloadValidator>([
 	[
 		"revenue.daily_close.process",
 		(payload) => RevenueDailyCloseCommandSchema.parse(payload),
+	],
+	[
+		"revenue.booking_pace.snapshot",
+		(payload) => RevenueBookingPaceSnapshotCommandSchema.parse(payload),
+	],
+	[
+		"revenue.forecast.adjust",
+		(payload) => RevenueForecastAdjustCommandSchema.parse(payload),
+	],
+	[
+		"revenue.forecast.evaluate",
+		(payload) => RevenueForecastEvaluateCommandSchema.parse(payload),
 	],
 ]);
 
