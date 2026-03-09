@@ -1091,21 +1091,21 @@ Industry standard: STR (Smith Travel Research) benchmarking is the global standa
 
 Industry standard: revenue management extends to optimizing the mix of business segments and distribution channels. The RMS must provide visibility into net contribution by segment and channel to inform allocation decisions.
 
-- [ ] **R17: Segment Performance Analytics** | Complexity: Medium
+- [x] **R17: Segment Performance Analytics** | Complexity: Medium
   - New endpoint: `GET /v1/revenue/segment-analysis` — revenue, ADR, occupancy contribution by market segment
   - Segment breakdown: TRANSIENT, CORPORATE, GROUP, WHOLESALE, PACKAGE, HOUSE_USE, OTA, DIRECT
   - Metrics per segment: rooms sold, room nights, revenue, ADR, % of total revenue, % of total rooms, cost of acquisition
   - Trend comparison: current period vs prior period vs same period LY
   - Industry standard: segment mix optimization is core to revenue strategy; high-ADR segments should be protected over low-ADR segments during peak periods
 
-- [ ] **R18: Channel Profitability Analysis** | Complexity: Medium
+- [x] **R18: Channel Profitability Analysis** | Complexity: Medium
   - New endpoint: `GET /v1/revenue/channel-profitability` — net revenue by distribution channel
   - For each channel: gross revenue, commission %, commission $, net revenue, net ADR, booking count
   - Channel types: Direct Website, Voice/Phone, GDS (Amadeus/Sabre), OTA (Booking.com/Expedia), Wholesale, Metasearch
   - Industry standard channel costs: Direct 2-5%, GDS $10-20 + commission, OTA 15-25%, Wholesale net rate + margin
   - Insight: a $200 OTA booking at 20% commission nets $160 — worse than a $180 direct booking netting $171
 
-- [ ] **R19: Group Displacement Analysis Enhancement** | Complexity: Medium
+- [x] **R19: Group Displacement Analysis Enhancement** | Complexity: Medium
   - Enhance existing `displacement-queries.ts` with:
     - Include displaced demand estimation (how many transient bookings were turned away during group block dates)
     - Add ancillary revenue comparison (group F&B spend vs average transient F&B spend)

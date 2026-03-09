@@ -240,6 +240,34 @@ export type DisplacementRow = {
 };
 
 // =====================================================
+// ENHANCED GROUP EVALUATION ROW TYPES (R19)
+// =====================================================
+
+/** Raw row shape from the enhanced group displacement evaluation query. */
+export type GroupEvaluateRow = {
+    group_id: string;
+    group_name: string;
+    group_rooms_booked: string | number;
+    group_room_nights: string | number;
+    group_room_revenue: string | number;
+    group_adr: string | number;
+    block_start: string | Date;
+    block_end: string | Date;
+    avg_transient_adr: string | number | null;
+    transient_bookings: string | number;
+    estimated_denied_demand: string | number;
+    group_ancillary_revenue: string | number;
+    avg_transient_ancillary_per_booking: string | number;
+    total_rooms: string | number;
+    occupied_rooms: string | number;
+    occupancy_pct: string | number;
+    displaced_room_revenue: string | number | null;
+    displaced_ancillary_revenue: string | number | null;
+    group_total_contribution: string | number;
+    net_displacement_value: string | number | null;
+};
+
+// =====================================================
 // BUDGET & DAILY REPORT ROW TYPES
 // =====================================================
 
@@ -346,4 +374,34 @@ export type ForecastAccuracyRow = {
     actual_room_revenue: string | number | null;
     variance_percent: string | number | null;
     accuracy_score: string | number | null;
+};
+
+// =====================================================
+// SEGMENT ANALYSIS ROW TYPES (R17)
+// =====================================================
+
+/** Raw row shape from the segment performance SQL query. */
+export type SegmentAnalysisRow = {
+    segment: string;
+    rooms_sold: string | number;
+    room_nights: string | number;
+    revenue: string | number;
+    adr: string | number;
+    pct_of_total_revenue: string | number;
+    pct_of_total_rooms: string | number;
+    ly_rooms_sold: string | number | null;
+    ly_revenue: string | number | null;
+    ly_adr: string | number | null;
+};
+
+// =====================================================
+// CHANNEL PROFITABILITY ROW TYPES (R18)
+// =====================================================
+
+/** Raw row shape from the channel profitability SQL query. */
+export type ChannelProfitabilityRow = {
+    channel: string;
+    booking_count: string | number;
+    room_nights: string | number;
+    gross_revenue: string | number;
 };

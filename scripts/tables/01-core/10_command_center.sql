@@ -240,7 +240,8 @@ WITH seed_commands(command_name, description, default_target_service, required_m
         ('revenue.daily_close.process', 'End-of-day revenue processing triggered after night audit', 'revenue-service', ARRAY['revenue-management']),
         ('revenue.booking_pace.snapshot', 'Snapshot booking pace data into demand calendar', 'revenue-service', ARRAY['revenue-management']),
         ('revenue.forecast.adjust', 'Manually adjust a forecast with override values', 'revenue-service', ARRAY['revenue-management']),
-        ('revenue.forecast.evaluate', 'Evaluate forecast accuracy against actuals', 'revenue-service', ARRAY['revenue-management'])
+        ('revenue.forecast.evaluate', 'Evaluate forecast accuracy against actuals', 'revenue-service', ARRAY['revenue-management']),
+        ('revenue.group.evaluate', 'Evaluate group block displacement with ancillary and denied demand analysis', 'revenue-service', ARRAY['revenue-management'])
 )
 INSERT INTO command_templates (command_name, description, default_target_service, required_modules, metadata)
 SELECT

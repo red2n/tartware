@@ -673,3 +673,25 @@ export const RevenueForecastEvaluateCommandSchema = z.object({
 export type RevenueForecastEvaluateCommand = z.infer<
 	typeof RevenueForecastEvaluateCommandSchema
 >;
+
+// ── Group Displacement Evaluate Command (R19) ────────
+
+/**
+ * Evaluate whether to accept or decline a proposed group block.
+ * Computes displaced transient revenue, ancillary comparison, and
+ * net displacement value with a recommendation.
+ */
+export const RevenueGroupEvaluateCommandSchema = z.object({
+	property_id: z.string().uuid(),
+	/** The group booking ID to evaluate. */
+	group_id: z.string().uuid(),
+	/** Optional date range override — defaults to the group's block dates. */
+	start_date: z.string().date().optional(),
+	end_date: z.string().date().optional(),
+	metadata: z.record(z.unknown()).optional(),
+	idempotency_key: z.string().max(120).optional(),
+});
+
+export type RevenueGroupEvaluateCommand = z.infer<
+	typeof RevenueGroupEvaluateCommandSchema
+>;

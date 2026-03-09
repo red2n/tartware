@@ -33,6 +33,7 @@ import {
   handleGoalTrackActual,
   handleGoalUpdate,
 } from "./handlers/goal-handlers.js";
+import { handleGroupEvaluate } from "./handlers/group-handlers.js";
 import { handleHurdleRateSet } from "./handlers/hurdle-rate-handlers.js";
 import {
   handlePricingRuleActivate,
@@ -338,6 +339,15 @@ const routeRevenueCommand = async (
       logger.info(
         { evaluated: result.evaluated, tenantId: metadata.tenantId },
         "forecast accuracy evaluated",
+      );
+      break;
+    }
+
+    case "revenue.group.evaluate": {
+      await handleGroupEvaluate(payload, metadata, actorId);
+      logger.info(
+        { groupId: (payload as Record<string, unknown>).group_id, tenantId: metadata.tenantId },
+        "group displacement evaluated",
       );
       break;
     }

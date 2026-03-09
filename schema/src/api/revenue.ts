@@ -720,3 +720,81 @@ export const ForecastAccuracySummarySchema = z.object({
 	avg_accuracy_score: z.number().nullable(),
 	items: z.array(ForecastAccuracyItemSchema),
 });
+
+// =====================================================
+// SEGMENT ANALYSIS SCHEMAS (R17)
+// =====================================================
+
+/**
+ * Query params for the segment performance analytics endpoint.
+ */
+export const SegmentAnalysisQuerySchema = z.object({
+	tenant_id: tenantId,
+	property_id: propertyId,
+	start_date: z.string().date().describe("Period start date"),
+	end_date: z.string().date().describe("Period end date"),
+	compare_ly: z
+		.enum(["true", "false"])
+		.optional()
+		.default("true")
+		.describe("Include last year comparison"),
+});
+
+export type SegmentAnalysisQuery = z.infer<typeof SegmentAnalysisQuerySchema>;
+
+/**
+ * Single segment performance record.
+ */
+export const SegmentAnalysisItemSchema = z.object({
+	segment: z.string(),
+	rooms_sold: z.number(),
+	room_nights: z.number(),
+	revenue: z.number(),
+	adr: z.number(),
+	pct_of_total_revenue: z.number(),
+	pct_of_total_rooms: z.number(),
+	ly_rooms_sold: z.number().nullable(),
+	ly_revenue: z.number().nullable(),
+	ly_adr: z.number().nullable(),
+	revenue_change_pct: z.number().nullable(),
+	adr_change_pct: z.number().nullable(),
+});
+
+export type SegmentAnalysisItem = z.infer<typeof SegmentAnalysisItemSchema>;
+
+// =====================================================
+// CHANNEL PROFITABILITY SCHEMAS (R18)
+// =====================================================
+
+/**
+ * Query params for the channel profitability endpoint.
+ */
+export const ChannelProfitabilityQuerySchema = z.object({
+	tenant_id: tenantId,
+	property_id: propertyId,
+	start_date: z.string().date().describe("Period start date"),
+	end_date: z.string().date().describe("Period end date"),
+});
+
+export type ChannelProfitabilityQuery = z.infer<
+	typeof ChannelProfitabilityQuerySchema
+>;
+
+/**
+ * Single channel profitability record.
+ */
+export const ChannelProfitabilityItemSchema = z.object({
+	channel: z.string(),
+	booking_count: z.number(),
+	room_nights: z.number(),
+	gross_revenue: z.number(),
+	commission_pct: z.number(),
+	commission_amount: z.number(),
+	net_revenue: z.number(),
+	net_adr: z.number(),
+	pct_of_total_revenue: z.number(),
+});
+
+export type ChannelProfitabilityItem = z.infer<
+	typeof ChannelProfitabilityItemSchema
+>;

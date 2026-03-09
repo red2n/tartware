@@ -150,6 +150,7 @@ import {
 	RevenueGoalDeleteCommandSchema,
 	RevenueGoalTrackActualCommandSchema,
 	RevenueGoalUpdateCommandSchema,
+	RevenueGroupEvaluateCommandSchema,
 	RevenueHurdleRateCalculateCommandSchema,
 	RevenueHurdleRateSetCommandSchema,
 	RevenuePricingRuleActivateCommandSchema,
@@ -724,6 +725,10 @@ const commandPayloadValidators = new Map<string, CommandPayloadValidator>([
 	[
 		"revenue.forecast.evaluate",
 		(payload) => RevenueForecastEvaluateCommandSchema.parse(payload),
+	],
+	[
+		"revenue.group.evaluate",
+		(payload) => RevenueGroupEvaluateCommandSchema.parse(payload),
 	],
 ]);
 
