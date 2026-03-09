@@ -9,8 +9,8 @@ import { z } from "zod";
 
 import {
 	propertyId,
-	TenantScopedListQuerySchema,
 	tenantId,
+	TenantScopedListQuerySchema,
 } from "../shared/base-schemas.js";
 
 // =====================================================
@@ -478,3 +478,150 @@ export const DisplacementAnalysisItemSchema = z.object({
 export type DisplacementAnalysisItem = z.infer<
 	typeof DisplacementAnalysisItemSchema
 >;
+
+// =====================================================
+// BUDGET VARIANCE QUERY & RESPONSE SCHEMAS (R9)
+// =====================================================
+
+/** Query schema for budget vs actual variance report. */
+export const BudgetVarianceQuerySchema = z.object({
+	tenant_id: tenantId,
+	property_id: propertyId,
+	start_date: z
+		.string()
+		.describe("Start date for variance period (YYYY-MM-DD)"),
+	end_date: z
+		.string()
+		.describe("End date for variance period (YYYY-MM-DD)"),
+	department: z.string().optional().describe("Filter by USALI department"),
+	goal_type: z.string().optional().describe("Filter by goal type"),
+	limit: z.coerce.number().int().min(1).max(200).default(100),
+	offset: z.coerce.number().int().min(0).default(0),
+});
+
+export type BudgetVarianceQuery = z.infer<typeof BudgetVarianceQuerySchema>;
+
+/** API response shape for a budget variance row. */
+export const BudgetVarianceItemSchema = z.object({
+	goal_id: z.string(),
+	goal_name: z.string(),
+	goal_type: z.string(),
+	goal_period: z.string(),
+	goal_category: z.string().optional(),
+	department: z.string().optional(),
+	period_start: z.string(),
+	period_end: z.string(),
+	budgeted_amount: z.number().nullable(),
+	actual_amount: z.number().nullable(),
+	variance_amount: z.number().nullable(),
+	variance_percent: z.number().nullable(),
+	variance_status: z.string().optional(),
+	progress_percent: z.number().nullable(),
+	last_year_actual: z.number().nullable(),
+	yoy_growth_percent: z.number().nullable(),
+	daily_run_rate_required: z.number().nullable(),
+	daily_run_rate_actual: z.number().nullable(),
+});
+
+export type BudgetVarianceItem = z.infer<typeof BudgetVarianceItemSchema>;
+
+// =====================================================
+// MANAGER'S DAILY REPORT SCHEMAS (R10)
+// =====================================================
+
+/** Query schema for Manager's Daily Report. */
+export const ManagersDailyReportQuerySchema = z.object({
+	tenant_id: tenantId,
+	property_id: propertyId,
+	business_date: z
+		.string()
+		.describe("Business date for the report (YYYY-MM-DD)"),
+});
+
+export type ManagersDailyReportQuery = z.infer<
+	typeof ManagersDailyReportQuerySchema
+>;
+
+/** Segment mix entry in the Manager's Daily Report. */
+export const SegmentMixItemSchema = z.object({
+	segment: z.string(),
+	reservations: z.number(),
+	revenue: z.number(),
+});
+
+/** Budget comparison entry in the Manager's Daily Report. */
+export const BudgetComparisonItemSchema = z.object({
+	goal_type: z.string(),
+	budgeted: z.number().nullable(),
+	actual: z.number().nullable(),
+	variance_pct: z.number().nullable(),
+});
+
+/** Forecast item in the Manager's Daily Report. */
+export const ForecastItemSchema = z.object({
+	forecast_date: z.string(),
+	occupancy_forecast: z.number().nullable(),
+	adr_forecast: z.number().nullable(),
+	revpar_forecast: z.number().nullable(),
+	room_revenue_forecast: z.number().nullable(),
+	confidence_level: z.number().nullable(),
+});
+
+/** Full Manager's Daily Report response. */
+export const ManagersDailyReportSchema = z.object({
+	property_id: z.string(),
+	business_date: z.string(),
+	// Occupancy section
+	occupancy: z.object({
+		total_rooms: z.number(),
+		rooms_sold: z.number(),
+		rooms_available: z.number(),
+		rooms_ooo: z.number(),
+		rooms_oos: z.number(),
+		occupancy_percent: z.number(),
+	}),
+	// Revenue section
+	revenue: z.object({
+		room_revenue: z.number(),
+		fb_revenue: z.number(),
+		other_revenue: z.number(),
+		total_revenue: z.number(),
+	}),
+	// Rate metrics
+	rate_metrics: z.object({
+		adr: z.number(),
+		revpar: z.number(),
+		trevpar: z.number(),
+	}),
+	// Movements section
+	movements: z.object({
+		expected_arrivals: z.number(),
+		actual_arrivals: z.number(),
+		expected_departures: z.number(),
+		actual_departures: z.number(),
+		in_house_guests: z.number(),
+		no_shows: z.number(),
+	}),
+	// Segment mix
+	segment_mix: z.array(SegmentMixItemSchema),
+	// Budget comparison
+	budget_comparison: z.array(BudgetComparisonItemSchema),
+	// Forecast (next 7 / 14 / 30 days)
+	forecast: z.object({
+		next_7_days: z.array(ForecastItemSchema),
+		next_14_days: z.array(ForecastItemSchema),
+		next_30_days: z.array(ForecastItemSchema),
+	}),
+	// Last year comparison
+	last_year: z
+		.object({
+			rooms_sold: z.number(),
+			total_rooms: z.number(),
+			occupancy_percent: z.number(),
+			room_revenue: z.number(),
+			total_revenue: z.number(),
+			adr: z.number(),
+			revpar: z.number(),
+		})
+		.nullable(),
+});

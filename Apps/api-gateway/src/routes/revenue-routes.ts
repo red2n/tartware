@@ -20,9 +20,16 @@ export const registerRevenueRoutes = (app: FastifyInstance): void => {
   const proxyRevenue = async (request: FastifyRequest, reply: FastifyReply) =>
     proxyRequest(request, reply, serviceTargets.revenueServiceUrl);
 
+  const tenantScopeFromQuery = app.withTenantScope({
+    resolveTenantId: (request) => (request.query as { tenant_id?: string }).tenant_id,
+    minRole: "VIEWER",
+    requiredModules: "revenue-management",
+  });
+
   app.get(
     "/v1/revenue/pricing-rules",
     {
+      preHandler: tenantScopeFromQuery,
       schema: buildRouteSchema({
         tag: REVENUE_PROXY_TAG,
         summary: "Proxy pricing rules to the revenue service.",
@@ -35,6 +42,7 @@ export const registerRevenueRoutes = (app: FastifyInstance): void => {
   app.all(
     "/v1/revenue/*",
     {
+      preHandler: tenantScopeFromQuery,
       schema: buildRouteSchema({
         tag: REVENUE_PROXY_TAG,
         summary: "Proxy revenue service requests.",

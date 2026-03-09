@@ -1,5 +1,7 @@
 import { buildRouteSchema } from "@tartware/openapi";
 import {
+  type BudgetVarianceQuery,
+  BudgetVarianceQuerySchema,
   type CompsetIndicesQuery,
   CompsetIndicesQuerySchema,
   type ForecastListQuery,
@@ -8,9 +10,15 @@ import {
   GoalListQuerySchema,
   type KpiQuery,
   KpiQuerySchema,
+  type ManagersDailyReportQuery,
+  ManagersDailyReportQuerySchema,
 } from "@tartware/schemas";
 import type { FastifyInstance, FastifyPluginAsync } from "fastify";
 
+import {
+  getBudgetVarianceReport,
+  getManagersDailyReport,
+} from "../services/budget-report-service.js";
 import {
   getCompsetIndices,
   getDisplacementAnalysis,
@@ -151,6 +159,59 @@ const reportRoutes: FastifyPluginAsync = async (app: FastifyInstance) => {
         limit: q.limit ? Number(q.limit) : undefined,
         offset: q.offset ? Number(q.offset) : undefined,
       });
+    },
+  );
+
+  app.get<{ Querystring: BudgetVarianceQuery }>(
+    "/v1/revenue/budget-variance",
+    {
+      preHandler: app.withTenantScope({
+        resolveTenantId: (request) => (request.query as BudgetVarianceQuery).tenant_id,
+        minRole: "ADMIN",
+        requiredModules: "finance-automation",
+      }),
+      schema: buildRouteSchema({
+        tag: REPORTS_TAG,
+        summary: "Budget vs actual variance report by department, segment, and goal type",
+      }),
+    },
+    async (request) => {
+      const { tenant_id, property_id, start_date, end_date, department, goal_type, limit, offset } =
+        BudgetVarianceQuerySchema.parse(request.query);
+
+      return getBudgetVarianceReport({
+        tenantId: tenant_id,
+        propertyId: property_id,
+        startDate: start_date,
+        endDate: end_date,
+        department,
+        goalType: goal_type,
+        limit,
+        offset,
+      });
+    },
+  );
+
+  app.get<{ Querystring: ManagersDailyReportQuery }>(
+    "/v1/revenue/managers-report",
+    {
+      preHandler: app.withTenantScope({
+        resolveTenantId: (request) => (request.query as ManagersDailyReportQuery).tenant_id,
+        minRole: "ADMIN",
+        requiredModules: "finance-automation",
+      }),
+      schema: buildRouteSchema({
+        tag: REPORTS_TAG,
+        summary:
+          "Manager's Daily Report — occupancy, revenue, rate metrics, segment mix, budget, forecast",
+      }),
+    },
+    async (request) => {
+      const { tenant_id, property_id, business_date } = ManagersDailyReportQuerySchema.parse(
+        request.query,
+      );
+
+      return getManagersDailyReport(property_id, tenant_id, business_date);
     },
   );
 };

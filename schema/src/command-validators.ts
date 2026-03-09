@@ -139,9 +139,14 @@ import {
 import {
 	RevenueCompetitorBulkImportCommandSchema,
 	RevenueCompetitorRecordCommandSchema,
+	RevenueDailyCloseCommandSchema,
 	RevenueDemandImportEventsCommandSchema,
 	RevenueDemandUpdateCommandSchema,
 	RevenueForecastComputeCommandSchema,
+	RevenueGoalCreateCommandSchema,
+	RevenueGoalDeleteCommandSchema,
+	RevenueGoalTrackActualCommandSchema,
+	RevenueGoalUpdateCommandSchema,
 	RevenueHurdleRateCalculateCommandSchema,
 	RevenueHurdleRateSetCommandSchema,
 	RevenuePricingRuleActivateCommandSchema,
@@ -684,6 +689,26 @@ const commandPayloadValidators = new Map<string, CommandPayloadValidator>([
 	[
 		"revenue.hurdle_rate.calculate",
 		(payload) => RevenueHurdleRateCalculateCommandSchema.parse(payload),
+	],
+	[
+		"revenue.goal.create",
+		(payload) => RevenueGoalCreateCommandSchema.parse(payload),
+	],
+	[
+		"revenue.goal.update",
+		(payload) => RevenueGoalUpdateCommandSchema.parse(payload),
+	],
+	[
+		"revenue.goal.delete",
+		(payload) => RevenueGoalDeleteCommandSchema.parse(payload),
+	],
+	[
+		"revenue.goal.track_actual",
+		(payload) => RevenueGoalTrackActualCommandSchema.parse(payload),
+	],
+	[
+		"revenue.daily_close.process",
+		(payload) => RevenueDailyCloseCommandSchema.parse(payload),
 	],
 ]);
 

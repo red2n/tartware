@@ -89,9 +89,9 @@ type RevenueGoalRow = {
   property_name: string | null;
   goal_name: string;
   goal_type: string | null;
-  period_start: string | Date;
-  period_end: string | Date;
-  target_amount: number | string;
+  period_start_date: string | Date;
+  period_end_date: string | Date;
+  goal_amount: number | string;
   actual_amount: number | string | null;
   variance_amount: number | string | null;
   variance_percent: number | string | null;
@@ -109,9 +109,9 @@ const mapRowToGoal = (row: RevenueGoalRow): RevenueGoalListItem => ({
   property_name: row.property_name ?? undefined,
   goal_name: row.goal_name,
   goal_type: row.goal_type ?? undefined,
-  period_start: toDateString(row.period_start) ?? "",
-  period_end: toDateString(row.period_end) ?? "",
-  target_amount: toNumber(row.target_amount),
+  period_start: toDateString(row.period_start_date) ?? "",
+  period_end: toDateString(row.period_end_date) ?? "",
+  target_amount: toNumber(row.goal_amount),
   actual_amount: row.actual_amount != null ? toNumber(row.actual_amount) : undefined,
   variance_amount: row.variance_amount != null ? toNumber(row.variance_amount) : undefined,
   variance_percent: row.variance_percent != null ? toNumber(row.variance_percent) : undefined,

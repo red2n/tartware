@@ -8,6 +8,10 @@ import {
   startRevenueCommandCenterConsumer,
 } from "./commands/command-center-consumer.js";
 import { config } from "./config.js";
+import {
+  shutdownReservationEventConsumer,
+  startReservationEventConsumer,
+} from "./consumers/reservation-event-consumer.js";
 import { shutdownProducer } from "./kafka/producer.js";
 import { buildServer } from "./server.js";
 
@@ -62,6 +66,7 @@ try {
   }
   if (kafkaEnabled) {
     await startRevenueCommandCenterConsumer();
+    await startReservationEventConsumer();
   } else {
     logger.warn("Kafka disabled via DISABLE_KAFKA; skipping consumer start");
   }
@@ -89,6 +94,7 @@ const shutdown = async (signal: string) => {
   try {
     if (kafkaEnabled) {
       await shutdownRevenueCommandCenterConsumer();
+      await shutdownReservationEventConsumer();
       await shutdownProducer();
     }
     await server.close();

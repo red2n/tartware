@@ -10,6 +10,7 @@
 @tenantId = 11111111-1111-1111-1111-111111111111
 @propertyId = 22222222-2222-2222-2222-222222222222
 @ruleId = aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa
+@goalId = bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb
 
 # --- Authentication ---
 # @name login
@@ -649,5 +650,181 @@ X-Idempotency-Key: hurdle-calc-{{$timestamp}}
     "start_date": "2025-08-01",
     "end_date": "2025-08-31",
     "confidence_threshold": 75
+  }
+}
+
+###############################################################################
+# REVENUE GOAL COMMANDS — R8 (Budget CRUD + Track Actuals)
+###############################################################################
+
+### Create a monthly room revenue goal
+# @name createRevenueGoal
+POST {{baseUrl}}/v1/commands/revenue.goal.create/execute
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+X-Request-ID: {{$guid}}
+X-Idempotency-Key: goal-create-{{$timestamp}}
+
+{
+  "tenant_id": "{{tenantId}}",
+  "payload": {
+    "property_id": "{{propertyId}}",
+    "goal_name": "March 2026 Room Revenue Budget",
+    "goal_type": "room_revenue",
+    "goal_period": "monthly",
+    "goal_category": "budget",
+    "period_start_date": "2026-03-01",
+    "period_end_date": "2026-03-31",
+    "fiscal_year": 2026,
+    "fiscal_quarter": 1,
+    "goal_amount": 250000.00,
+    "currency": "USD",
+    "department": "rooms",
+    "notes": "Q1 budget target based on 78% occupancy at $165 ADR"
+  }
+}
+
+### Create a quarterly total revenue goal
+# @name createQuarterlyGoal
+POST {{baseUrl}}/v1/commands/revenue.goal.create/execute
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+X-Request-ID: {{$guid}}
+X-Idempotency-Key: goal-q1-{{$timestamp}}
+
+{
+  "tenant_id": "{{tenantId}}",
+  "payload": {
+    "property_id": "{{propertyId}}",
+    "goal_name": "Q1 2026 Total Revenue Target",
+    "goal_type": "total_revenue",
+    "goal_period": "quarterly",
+    "goal_category": "target",
+    "period_start_date": "2026-01-01",
+    "period_end_date": "2026-03-31",
+    "fiscal_year": 2026,
+    "fiscal_quarter": 1,
+    "goal_amount": 900000.00,
+    "currency": "USD"
+  }
+}
+
+### Update a revenue goal (adjust target amount)
+# @name updateRevenueGoal
+POST {{baseUrl}}/v1/commands/revenue.goal.update/execute
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+X-Request-ID: {{$guid}}
+X-Idempotency-Key: goal-update-{{$timestamp}}
+
+{
+  "tenant_id": "{{tenantId}}",
+  "payload": {
+    "property_id": "{{propertyId}}",
+    "goal_id": "{{goalId}}",
+    "goal_amount": 275000.00,
+    "notes": "Revised upward based on strong February pace"
+  }
+}
+
+### Delete a revenue goal (soft-delete)
+# @name deleteRevenueGoal
+POST {{baseUrl}}/v1/commands/revenue.goal.delete/execute
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+X-Request-ID: {{$guid}}
+X-Idempotency-Key: goal-delete-{{$timestamp}}
+
+{
+  "tenant_id": "{{tenantId}}",
+  "payload": {
+    "property_id": "{{propertyId}}",
+    "goal_id": "{{goalId}}"
+  }
+}
+
+### Track actual performance against goals
+# @name trackGoalActuals
+POST {{baseUrl}}/v1/commands/revenue.goal.track_actual/execute
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+X-Request-ID: {{$guid}}
+X-Idempotency-Key: goal-track-{{$timestamp}}
+
+{
+  "tenant_id": "{{tenantId}}",
+  "payload": {
+    "property_id": "{{propertyId}}",
+    "business_date": "2026-03-09"
+  }
+}
+
+###############################################################################
+# BUDGET VARIANCE REPORT — R9
+###############################################################################
+
+### Get budget variance report (all goals for date range)
+# @name getBudgetVarianceReport
+GET {{baseUrl}}/v1/revenue/budget-variance?tenant_id={{tenantId}}&property_id={{propertyId}}&from_date=2026-03-01&to_date=2026-03-31
+Authorization: Bearer {{authToken}}
+
+### Budget variance filtered by department
+# @name getBudgetVarianceDept
+GET {{baseUrl}}/v1/revenue/budget-variance?tenant_id={{tenantId}}&property_id={{propertyId}}&from_date=2026-01-01&to_date=2026-03-31&department=rooms
+Authorization: Bearer {{authToken}}
+
+### Budget variance filtered by goal type
+# @name getBudgetVarianceType
+GET {{baseUrl}}/v1/revenue/budget-variance?tenant_id={{tenantId}}&property_id={{propertyId}}&from_date=2026-01-01&to_date=2026-03-31&goal_type=room_revenue
+Authorization: Bearer {{authToken}}
+
+###############################################################################
+# MANAGER'S DAILY REPORT — R10
+###############################################################################
+
+### Get Manager's Daily Report for today
+# @name getManagersDailyReport
+GET {{baseUrl}}/v1/revenue/managers-report?tenant_id={{tenantId}}&property_id={{propertyId}}&business_date=2026-03-09
+Authorization: Bearer {{authToken}}
+
+### Manager's report for a previous day
+# @name getManagersReportYesterday
+GET {{baseUrl}}/v1/revenue/managers-report?tenant_id={{tenantId}}&property_id={{propertyId}}&business_date=2026-03-08
+Authorization: Bearer {{authToken}}
+
+###############################################################################
+# DAILY CLOSE — R27 (Night Audit Integration)
+###############################################################################
+
+### Run end-of-day revenue processing after night audit
+# @name runDailyClose
+POST {{baseUrl}}/v1/commands/revenue.daily_close.process/execute
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+X-Request-ID: {{$guid}}
+X-Idempotency-Key: daily-close-{{$timestamp}}
+
+{
+  "tenant_id": "{{tenantId}}",
+  "payload": {
+    "property_id": "{{propertyId}}",
+    "business_date": "2026-03-09"
+  }
+}
+
+### Daily close — skip forecast recompute (goals only)
+# @name runDailyCloseGoalsOnly
+POST {{baseUrl}}/v1/commands/revenue.daily_close.process/execute
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+X-Request-ID: {{$guid}}
+X-Idempotency-Key: daily-close-goals-{{$timestamp}}
+
+{
+  "tenant_id": "{{tenantId}}",
+  "payload": {
+    "property_id": "{{propertyId}}",
+    "business_date": "2026-03-09",
+    "skip_forecast": true
   }
 }

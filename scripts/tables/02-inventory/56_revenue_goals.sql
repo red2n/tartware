@@ -18,6 +18,7 @@ tenant_id UUID NOT NULL, -- FK tenants.id
 property_id UUID NOT NULL, -- FK properties.id
 
 -- Goal Period
+goal_name VARCHAR(200) NOT NULL DEFAULT '', -- Human-readable goal label
 goal_period VARCHAR(50) NOT NULL CHECK (
     goal_period IN (
         'daily',

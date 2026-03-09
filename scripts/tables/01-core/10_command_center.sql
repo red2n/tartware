@@ -232,7 +232,12 @@ WITH seed_commands(command_name, description, default_target_service, required_m
         ('revenue.restriction.remove', 'Remove a restriction for room type × rate plan × date range', 'revenue-service', ARRAY['revenue-management']),
         ('revenue.restriction.bulk_set', 'Bulk set restrictions across multiple date ranges', 'revenue-service', ARRAY['revenue-management']),
         ('revenue.hurdle_rate.set', 'Set minimum acceptable hurdle rate per room type × date', 'revenue-service', ARRAY['revenue-management']),
-        ('revenue.hurdle_rate.calculate', 'Auto-calculate hurdle rates from displacement analysis', 'revenue-service', ARRAY['revenue-management'])
+        ('revenue.hurdle_rate.calculate', 'Auto-calculate hurdle rates from displacement analysis', 'revenue-service', ARRAY['revenue-management']),
+        ('revenue.goal.create', 'Create a revenue goal or budget target', 'revenue-service', ARRAY['revenue-management']),
+        ('revenue.goal.update', 'Update a revenue goal or budget target', 'revenue-service', ARRAY['revenue-management']),
+        ('revenue.goal.delete', 'Soft-delete a revenue goal', 'revenue-service', ARRAY['revenue-management']),
+        ('revenue.goal.track_actual', 'Snapshot actual performance against revenue goals', 'revenue-service', ARRAY['revenue-management']),
+        ('revenue.daily_close.process', 'End-of-day revenue processing triggered after night audit', 'revenue-service', ARRAY['revenue-management'])
 )
 INSERT INTO command_templates (command_name, description, default_target_service, required_modules, metadata)
 SELECT

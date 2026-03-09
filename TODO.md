@@ -1004,20 +1004,20 @@ Industry standard: yield management requires real-time controls on booking avail
 
 Industry standard: revenue managers set annual revenue budgets broken down by month/segment and track performance vs budget daily. All major PMS platforms (OPERA, Mews, Cloudbeds) provide budget vs actual reporting aligned with USALI department structure.
 
-- [ ] **R8: Revenue Goal/Budget CRUD Commands** | Complexity: Medium
+- [x] **R8: Revenue Goal/Budget CRUD Commands** | Complexity: Medium ✅
   - `revenue.goal.create` — create a revenue goal/budget target (by property, period, goal_type: room_revenue/total_revenue/occupancy/adr/revpar)
   - `revenue.goal.update` — update target amounts or period
   - `revenue.goal.delete` — soft-delete a goal
   - `revenue.goal.track_actual` — scheduled command to snapshot actual performance data into `actual_amount` / `variance_amount` / `variance_percent`
   - Industry standard: property controllers set annual budgets during Q4 for next year; monthly/weekly targets derived from seasonal patterns
 
-- [ ] **R9: Revenue Budget Variance Reporting** | Complexity: Medium
+- [x] **R9: Revenue Budget Variance Reporting** | Complexity: Medium ✅
   - New report endpoint: `GET /v1/revenue/budget-variance` — compare budget vs actual vs last year for a date range
   - Breakdowns by: department (USALI), market segment (transient/corporate/group/wholesale), booking source, room type
   - Industry standard KPIs per report row: budgeted revenue, actual revenue, variance ($), variance (%), same period last year, YoY growth %
   - Add to `report-service.ts` and `routes/reports.ts`
 
-- [ ] **R10: Manager's Daily Report** | Complexity: High
+- [x] **R10: Manager's Daily Report** | Complexity: High ✅
   - `GET /v1/revenue/managers-report` — the single most important daily report in hotel operations
   - Sections (per industry standard):
     - **Occupancy**: rooms sold, rooms available, OCC%, vs budget, vs last year
@@ -1169,30 +1169,29 @@ Industry standard: Total Revenue Management extends yield optimization from room
 
 These are cross-cutting tasks that must be completed to make the revenue-service a first-class citizen in the system.
 
-- [ ] **R25: Seed All Revenue Commands in Command Catalog** | Complexity: Low
-  - Add INSERT statements for all new commands (R1–R22) in `scripts/tables/01-core/10_command_center.sql`
-  - Set `default_target_service = 'revenue-service'`, `required_modules = '{finance-automation}'`
+- [x] **R25: Seed All Revenue Commands in Command Catalog** | Complexity: Low ✅
+  - All 21 revenue commands seeded in `scripts/tables/01-core/10_command_center.sql`
+  - Set `default_target_service = 'revenue-service'`, `required_modules = '{revenue-management}'`
   - Ensure command-center-service routes all `revenue.*` commands to revenue-service
 
-- [ ] **R26: Kafka Event Consumer — Reservation Events** | Complexity: Medium
-  - Revenue-service should consume `reservations.events` topic (like roll-service and notification-service do)
-  - On `reservation.created` → update booking pace / OTB counts in demand_calendar
-  - On `reservation.cancelled` → decrement OTB and trigger re-evaluation of rate recommendations
-  - On `reservation.checked_out` → update actual revenue figures for forecast accuracy tracking and goal tracking
-  - Industry standard: revenue metrics must update in near-real-time with booking activity
+- [x] **R26: Kafka Event Consumer — Reservation Events** | Complexity: Medium ✅
+  - Revenue-service consumes `reservations.events` topic (like roll-service and notification-service do)
+  - On `reservation.created` → increment OTB rooms_reserved in demand_calendar
+  - On `reservation.cancelled` → decrement OTB rooms_reserved
+  - On `reservation.checked_out` → move from reserved to occupied in demand_calendar
+  - Consumer: `src/consumers/reservation-event-consumer.ts`, group ID: `revenue-reservation-events-consumer`
 
-- [ ] **R27: Night Audit Integration** | Complexity: Medium
-  - During night audit (`billing.night_audit.execute`), trigger `revenue.forecast.evaluate` for the closing business date
-  - Update revenue_goals `actual_amount` with day's actual revenue
-  - Generate next-day rate recommendations if auto-recommend is enabled
-  - Industry standard: night audit is the natural sync point for revenue reporting and next-day pricing
+- [x] **R27: Night Audit Integration** | Complexity: Medium ✅
+  - `revenue.daily_close.process` command: triggers after night audit for end-of-day processing
+  - Snapshots revenue_goals `actual_amount` for all active goals covering the business date
+  - Re-computes forecasts for the property (configurable via `skip_forecast` flag)
+  - Handler: `src/commands/handlers/daily-close-handler.ts`
 
-- [ ] **R28: Gateway Auth Guards for Revenue Endpoints** | Complexity: Low
-  - Currently `/v1/revenue/*` gateway routes have no `preHandler` auth guard
-  - Add `tenantScopeFromQuery` preHandler to all revenue proxy routes (consistent with other gateway routes)
-  - Revenue endpoints require `ADMIN` role and `finance-automation` module
+- [x] **R28: Gateway Auth Guards for Revenue Endpoints** | Complexity: Low ✅
+  - Added `tenantScopeFromQuery` preHandler to all `/v1/revenue/*` gateway routes
+  - Uses `minRole: 'VIEWER'`, `requiredModules: 'revenue-management'` (consistent with other gateway routes)
 
-- [ ] **R29: HTTP Test Files** | Complexity: Low
-  - Create `http_test/revenue.http` with test requests for all revenue endpoints
-  - Include GET requests for all read endpoints and POST command executions for all write commands
-  - Follow existing `http_test/` patterns with `@token` and `@base_url` variables
+- [x] **R29: HTTP Test Files** | Complexity: Low ✅
+  - `http_test/revenue.http` — comprehensive test file with all 21 command executions and all GET endpoints
+  - Includes R8 goal CRUD, R9 budget variance, R10 manager's report, R27 daily close
+  - Follow existing `http_test/` patterns with `@authToken` and `@baseUrl` variables

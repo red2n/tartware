@@ -75,4 +75,9 @@ export const config = {
   },
   kafka,
   commandCenter,
+  reservationEvents: {
+    topic: process.env.RESERVATION_EVENTS_TOPIC ?? "reservations.events",
+    consumerGroupId:
+      process.env.RESERVATION_EVENTS_CONSUMER_GROUP ?? "revenue-reservation-events-consumer",
+  },
 };

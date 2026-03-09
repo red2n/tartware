@@ -458,3 +458,148 @@ export const RevenueHurdleRateCalculateCommandSchema = z.object({
 export type RevenueHurdleRateCalculateCommand = z.infer<
 	typeof RevenueHurdleRateCalculateCommandSchema
 >;
+
+// ── Revenue Goal/Budget Commands ─────────────────────
+
+/** Goal type enum aligned with revenue_goals table CHECK constraint */
+const GoalTypeEnum = z.enum([
+	"total_revenue",
+	"room_revenue",
+	"fb_revenue",
+	"other_revenue",
+	"occupancy",
+	"adr",
+	"revpar",
+	"rooms_sold",
+	"arr",
+]);
+
+/** Goal period enum aligned with revenue_goals table CHECK constraint */
+const GoalPeriodEnum = z.enum([
+	"daily",
+	"weekly",
+	"monthly",
+	"quarterly",
+	"annual",
+	"custom",
+]);
+
+/** Goal category enum aligned with revenue_goals table CHECK constraint */
+const GoalCategoryEnum = z.enum([
+	"budget",
+	"forecast",
+	"stretch",
+	"minimum",
+	"target",
+]);
+
+/**
+ * Create a revenue goal/budget target.
+ * Industry standard: property controllers set annual budgets during Q4
+ * for next year; monthly/weekly targets derived from seasonal patterns.
+ */
+export const RevenueGoalCreateCommandSchema = z.object({
+	property_id: z.string().uuid(),
+	goal_name: z.string().min(1).max(200),
+	goal_type: GoalTypeEnum,
+	goal_period: GoalPeriodEnum.default("monthly"),
+	goal_category: GoalCategoryEnum.default("budget"),
+	period_start_date: z.string().date(),
+	period_end_date: z.string().date(),
+	fiscal_year: z.number().int().min(2000).max(2100).optional(),
+	fiscal_quarter: z.number().int().min(1).max(4).optional(),
+	goal_amount: z.number().min(0).optional(),
+	goal_percent: z.number().min(0).max(100).optional(),
+	goal_count: z.number().int().min(0).optional(),
+	currency: z.string().length(3).default("USD"),
+	baseline_amount: z.number().optional(),
+	baseline_source: z.string().max(100).optional(),
+	segment_goals: z.record(z.unknown()).optional(),
+	channel_goals: z.record(z.unknown()).optional(),
+	room_type_goals: z.record(z.unknown()).optional(),
+	department: z.string().max(100).optional(),
+	responsible_user_id: z.string().uuid().optional(),
+	notes: z.string().max(2000).optional(),
+	metadata: z.record(z.unknown()).optional(),
+	idempotency_key: z.string().max(120).optional(),
+});
+
+export type RevenueGoalCreateCommand = z.infer<
+	typeof RevenueGoalCreateCommandSchema
+>;
+
+/**
+ * Update an existing revenue goal/budget target.
+ */
+export const RevenueGoalUpdateCommandSchema = z.object({
+	property_id: z.string().uuid(),
+	goal_id: z.string().uuid(),
+	goal_name: z.string().min(1).max(200).optional(),
+	goal_amount: z.number().min(0).optional(),
+	goal_percent: z.number().min(0).max(100).optional(),
+	goal_count: z.number().int().min(0).optional(),
+	period_start_date: z.string().date().optional(),
+	period_end_date: z.string().date().optional(),
+	status: z
+		.enum(["draft", "pending_approval", "active", "completed", "cancelled", "revised"])
+		.optional(),
+	baseline_amount: z.number().optional(),
+	segment_goals: z.record(z.unknown()).optional(),
+	channel_goals: z.record(z.unknown()).optional(),
+	room_type_goals: z.record(z.unknown()).optional(),
+	department: z.string().max(100).optional(),
+	notes: z.string().max(2000).optional(),
+	metadata: z.record(z.unknown()).optional(),
+	idempotency_key: z.string().max(120).optional(),
+});
+
+export type RevenueGoalUpdateCommand = z.infer<
+	typeof RevenueGoalUpdateCommandSchema
+>;
+
+/**
+ * Soft-delete a revenue goal.
+ */
+export const RevenueGoalDeleteCommandSchema = z.object({
+	property_id: z.string().uuid(),
+	goal_id: z.string().uuid(),
+	idempotency_key: z.string().max(120).optional(),
+});
+
+export type RevenueGoalDeleteCommand = z.infer<
+	typeof RevenueGoalDeleteCommandSchema
+>;
+
+/**
+ * Scheduled command to snapshot actual performance data into revenue goals.
+ * Reads from reservations/charge_postings for the goal period and updates
+ * actual_amount, variance_amount, variance_percent, and progress tracking.
+ */
+export const RevenueGoalTrackActualCommandSchema = z.object({
+	property_id: z.string().uuid(),
+	business_date: z.string().date(),
+	goal_ids: z.array(z.string().uuid()).optional(),
+	metadata: z.record(z.unknown()).optional(),
+	idempotency_key: z.string().max(120).optional(),
+});
+
+export type RevenueGoalTrackActualCommand = z.infer<
+	typeof RevenueGoalTrackActualCommandSchema
+>;
+
+/**
+ * End-of-day revenue processing triggered after night audit.
+ * Snapshots goal actuals, re-evaluates forecasts, and updates
+ * demand calendar with final day metrics.
+ */
+export const RevenueDailyCloseCommandSchema = z.object({
+	property_id: z.string().uuid(),
+	business_date: z.string().date(),
+	skip_forecast: z.boolean().optional(),
+	skip_goal_tracking: z.boolean().optional(),
+	idempotency_key: z.string().max(120).optional(),
+});
+
+export type RevenueDailyCloseCommand = z.infer<
+	typeof RevenueDailyCloseCommandSchema
+>;

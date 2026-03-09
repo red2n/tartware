@@ -18,8 +18,15 @@ import {
   handleCompetitorBulkImport,
   handleCompetitorRecord,
 } from "./handlers/competitor-handlers.js";
+import { handleDailyCloseProcess } from "./handlers/daily-close-handler.js";
 import { handleDemandImportEvents, handleDemandUpdate } from "./handlers/demand-handlers.js";
 import { handleForecastCompute, resolveActorId } from "./handlers/forecast-handlers.js";
+import {
+  handleGoalCreate,
+  handleGoalDelete,
+  handleGoalTrackActual,
+  handleGoalUpdate,
+} from "./handlers/goal-handlers.js";
 import { handleHurdleRateSet } from "./handlers/hurdle-rate-handlers.js";
 import {
   handlePricingRuleActivate,
@@ -258,6 +265,46 @@ const routeRevenueCommand = async (
           tenantId: metadata.tenantId,
         },
         "hurdle rate calculation requested — placeholder implementation",
+      );
+      break;
+    }
+
+    case "revenue.goal.create": {
+      const result = await handleGoalCreate(payload, metadata, actorId ?? metadata.tenantId);
+      logger.info({ goalId: result.goalId, tenantId: metadata.tenantId }, "revenue goal created");
+      break;
+    }
+
+    case "revenue.goal.update": {
+      const result = await handleGoalUpdate(payload, metadata, actorId ?? metadata.tenantId);
+      logger.info({ goalId: result.goalId, tenantId: metadata.tenantId }, "revenue goal updated");
+      break;
+    }
+
+    case "revenue.goal.delete": {
+      const result = await handleGoalDelete(payload, metadata, actorId ?? metadata.tenantId);
+      logger.info({ goalId: result.goalId, tenantId: metadata.tenantId }, "revenue goal deleted");
+      break;
+    }
+
+    case "revenue.goal.track_actual": {
+      const result = await handleGoalTrackActual(payload, metadata, actorId ?? metadata.tenantId);
+      logger.info(
+        { updated: result.updated, tenantId: metadata.tenantId },
+        "revenue goal actuals tracked",
+      );
+      break;
+    }
+
+    case "revenue.daily_close.process": {
+      const result = await handleDailyCloseProcess(payload, metadata, actorId);
+      logger.info(
+        {
+          goalsUpdated: result.goalsUpdated,
+          forecastRun: result.forecastRun,
+          tenantId: metadata.tenantId,
+        },
+        "daily close processing completed",
       );
       break;
     }
