@@ -1,4 +1,10 @@
-import type { BudgetVarianceItem } from "@tartware/schemas";
+import type {
+  BudgetVarianceItem,
+  BudgetVarianceRow,
+  DailyReportRow,
+  ForecastRow,
+  LastYearRow,
+} from "@tartware/schemas";
 import { query } from "../lib/db.js";
 import { toDateString, toNumber } from "../lib/row-mappers.js";
 import {
@@ -11,30 +17,6 @@ import {
 // ============================================================================
 // BUDGET VARIANCE REPORT (R9)
 // ============================================================================
-
-type BudgetVarianceRow = {
-  goal_id: string;
-  goal_name: string;
-  goal_type: string;
-  goal_period: string;
-  goal_category: string | null;
-  department: string | null;
-  period_start_date: string | Date;
-  period_end_date: string | Date;
-  budgeted_amount: number | string | null;
-  actual_amount: number | string | null;
-  variance_amount: number | string | null;
-  variance_percent: number | string | null;
-  variance_status: string | null;
-  progress_percent: number | string | null;
-  last_year_actual: number | string | null;
-  yoy_growth_actual_percent: number | string | null;
-  segment_goals: unknown;
-  channel_goals: unknown;
-  room_type_goals: unknown;
-  daily_run_rate_required: number | string | null;
-  daily_run_rate_actual: number | string | null;
-};
 
 const mapRowToVariance = (row: BudgetVarianceRow): BudgetVarianceItem => ({
   goal_id: row.goal_id,
@@ -86,42 +68,6 @@ export const getBudgetVarianceReport = async (opts: {
 // ============================================================================
 // MANAGER'S DAILY REPORT (R10)
 // ============================================================================
-
-type DailyReportRow = {
-  total_rooms: string | number;
-  rooms_sold: string | number;
-  rooms_available: string | number;
-  rooms_ooo: string | number;
-  rooms_oos: string | number;
-  room_revenue: string | number;
-  fb_revenue: string | number;
-  other_revenue: string | number;
-  total_revenue: string | number;
-  expected_arrivals: string | number;
-  actual_arrivals: string | number;
-  expected_departures: string | number;
-  actual_departures: string | number;
-  in_house_guests: string | number;
-  no_shows: string | number;
-  segment_mix: unknown;
-  budget_comparison: unknown;
-};
-
-type ForecastRow = {
-  forecast_date: string | Date;
-  occupancy_forecast: string | number | null;
-  adr_forecast: string | number | null;
-  revpar_forecast: string | number | null;
-  room_revenue_forecast: string | number | null;
-  confidence_level: string | number | null;
-};
-
-type LastYearRow = {
-  ly_rooms_sold: string | number;
-  ly_total_rooms: string | number;
-  ly_room_revenue: string | number;
-  ly_total_revenue: string | number;
-};
 
 const mapForecastRow = (row: ForecastRow) => ({
   forecast_date: toDateString(row.forecast_date) ?? "",

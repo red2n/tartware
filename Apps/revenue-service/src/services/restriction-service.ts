@@ -1,4 +1,4 @@
-import type { RateRestrictionListItem } from "@tartware/schemas";
+import type { RateRestrictionListItem, RateRestrictionRow } from "@tartware/schemas";
 import { query } from "../lib/db.js";
 import { toDateString, toIsoString } from "../lib/row-mappers.js";
 import {
@@ -10,24 +10,6 @@ import {
 // ============================================================================
 // RATE RESTRICTIONS
 // ============================================================================
-
-type RateRestrictionRow = {
-  restriction_id: string;
-  tenant_id: string;
-  property_id: string;
-  property_name: string | null;
-  room_type_id: string | null;
-  room_type_name: string | null;
-  rate_plan_id: string | null;
-  restriction_date: string | Date;
-  restriction_type: string;
-  restriction_value: number;
-  is_active: boolean;
-  source: string | null;
-  reason: string | null;
-  created_at: string | Date;
-  updated_at: string | Date | null;
-};
 
 export type { RateRestrictionListItem };
 

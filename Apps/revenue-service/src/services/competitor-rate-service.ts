@@ -1,4 +1,8 @@
-import type { CompetitorRateListItem, CreateCompetitorRateInput } from "@tartware/schemas";
+import type {
+  CompetitorRateListItem,
+  CompetitorRateRow,
+  CreateCompetitorRateInput,
+} from "@tartware/schemas";
 import { query } from "../lib/db.js";
 import { toDateString, toIsoString, toNumber } from "../lib/row-mappers.js";
 import { COMPETITOR_RATE_INSERT_SQL, COMPETITOR_RATE_LIST_SQL } from "../sql/pricing-queries.js";
@@ -6,22 +10,6 @@ import { COMPETITOR_RATE_INSERT_SQL, COMPETITOR_RATE_LIST_SQL } from "../sql/pri
 // ============================================================================
 // COMPETITOR RATES
 // ============================================================================
-
-type CompetitorRateRow = {
-  competitor_rate_id: string;
-  tenant_id: string;
-  property_id: string;
-  property_name: string | null;
-  competitor_name: string;
-  competitor_property_name: string | null;
-  room_type_category: string | null;
-  rate_date: string | Date;
-  rate_amount: number | string;
-  currency: string | null;
-  source: string | null;
-  collected_at: string | Date | null;
-  created_at: string | Date;
-};
 
 export type { CompetitorRateListItem, CreateCompetitorRateInput };
 

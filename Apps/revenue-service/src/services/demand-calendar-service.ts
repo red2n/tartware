@@ -1,4 +1,4 @@
-import type { DemandCalendarListItem } from "@tartware/schemas";
+import type { DemandCalendarListItem, DemandCalendarRow } from "@tartware/schemas";
 import { query } from "../lib/db.js";
 import { toDateString, toIsoString, toNumber } from "../lib/row-mappers.js";
 import { DEMAND_CALENDAR_LIST_SQL, DEMAND_CALENDAR_UPSERT_SQL } from "../sql/pricing-queries.js";
@@ -6,22 +6,6 @@ import { DEMAND_CALENDAR_LIST_SQL, DEMAND_CALENDAR_UPSERT_SQL } from "../sql/pri
 // ============================================================================
 // DEMAND CALENDAR
 // ============================================================================
-
-type DemandCalendarRow = {
-  calendar_id: string;
-  tenant_id: string;
-  property_id: string;
-  property_name: string | null;
-  calendar_date: string | Date;
-  day_of_week: string | null;
-  demand_level: string | null;
-  occupancy_forecast: number | string | null;
-  booking_pace: number | string | null;
-  events: unknown;
-  notes: string | null;
-  created_at: string | Date;
-  updated_at: string | Date | null;
-};
 
 export type { DemandCalendarListItem };
 

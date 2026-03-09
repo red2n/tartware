@@ -1,6 +1,7 @@
 import type {
   CreatePricingRuleInput,
   PricingRuleListItem,
+  PricingRuleRow,
   UpdatePricingRuleInput,
 } from "@tartware/schemas";
 import { query } from "../lib/db.js";
@@ -18,33 +19,6 @@ import {
 // ============================================================================
 // PRICING RULES
 // ============================================================================
-
-type PricingRuleRow = {
-  rule_id: string;
-  tenant_id: string;
-  property_id: string;
-  property_name: string | null;
-  rule_name: string;
-  rule_description?: string | null;
-  rule_type: string;
-  priority: number;
-  is_active: boolean;
-  effective_from: string | Date | null;
-  effective_to: string | Date | null;
-  applies_to_room_types: string[] | null;
-  applies_to_rate_plans: string[] | null;
-  condition_type: string | null;
-  condition_value: unknown;
-  condition_operator?: string | null;
-  adjustment_type: string | null;
-  adjustment_value: number | string | null;
-  min_rate: number | string | null;
-  max_rate: number | string | null;
-  compound_with?: string[] | null;
-  metadata?: Record<string, unknown> | null;
-  created_at: string | Date;
-  updated_at: string | Date | null;
-};
 
 export type { CreatePricingRuleInput, PricingRuleListItem, UpdatePricingRuleInput };
 

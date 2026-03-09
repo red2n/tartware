@@ -1,4 +1,4 @@
-import type { RateRecommendationListItem } from "@tartware/schemas";
+import type { RateRecommendationListItem, RateRecommendationRow } from "@tartware/schemas";
 import { query } from "../lib/db.js";
 import { toDateString, toIsoString, toNumber } from "../lib/row-mappers.js";
 import { RATE_RECOMMENDATION_LIST_SQL } from "../sql/pricing-queries.js";
@@ -6,24 +6,6 @@ import { RATE_RECOMMENDATION_LIST_SQL } from "../sql/pricing-queries.js";
 // ============================================================================
 // RATE RECOMMENDATIONS
 // ============================================================================
-
-type RateRecommendationRow = {
-  recommendation_id: string;
-  tenant_id: string;
-  property_id: string;
-  property_name: string | null;
-  room_type_id: string | null;
-  room_type_name: string | null;
-  rate_plan_id: string | null;
-  recommendation_date: string | Date;
-  current_rate: number | string;
-  recommended_rate: number | string;
-  confidence_score: number | string | null;
-  recommendation_reason: string | null;
-  status: string | null;
-  applied_at: string | Date | null;
-  created_at: string | Date;
-};
 
 export type { RateRecommendationListItem };
 

@@ -9,6 +9,7 @@
  * - `reservation.updated` (checkout) → move from reserved to occupied
  */
 
+import type { ReservationEventEnvelope } from "@tartware/schemas";
 import { createServiceLogger } from "@tartware/telemetry";
 import type { Consumer, EachMessagePayload } from "kafkajs";
 import { config } from "../config.js";
@@ -28,29 +29,6 @@ const logger = createServiceLogger({
 }).child({ module: "reservation-event-consumer" });
 
 let consumer: Consumer | null = null;
-
-// ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
-
-type ReservationEventEnvelope = {
-  metadata: {
-    type: string;
-    tenantId: string;
-    id: string;
-    [key: string]: unknown;
-  };
-  payload: {
-    id: string;
-    property_id: string;
-    check_in_date?: string;
-    check_out_date?: string;
-    status?: string;
-    actual_check_out?: string;
-    metadata?: Record<string, unknown>;
-    [key: string]: unknown;
-  };
-};
 
 // ---------------------------------------------------------------------------
 // Event classification

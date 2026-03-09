@@ -1,4 +1,4 @@
-import type { HurdleRateListItem } from "@tartware/schemas";
+import type { HurdleRateListItem, HurdleRateRow } from "@tartware/schemas";
 import { query } from "../lib/db.js";
 import { toDateString, toIsoString, toNumber } from "../lib/row-mappers.js";
 import { HURDLE_RATE_LIST_SQL, HURDLE_RATE_UPSERT_SQL } from "../sql/pricing-queries.js";
@@ -6,26 +6,6 @@ import { HURDLE_RATE_LIST_SQL, HURDLE_RATE_UPSERT_SQL } from "../sql/pricing-que
 // ============================================================================
 // HURDLE RATES
 // ============================================================================
-
-type HurdleRateRow = {
-  hurdle_rate_id: string;
-  tenant_id: string;
-  property_id: string;
-  property_name: string | null;
-  room_type_id: string;
-  room_type_name: string | null;
-  hurdle_date: string | Date;
-  hurdle_rate: number | string;
-  currency: string | null;
-  segment: string | null;
-  source: string | null;
-  displacement_analysis: Record<string, unknown> | null;
-  confidence_score: number | string | null;
-  is_active: boolean;
-  notes: string | null;
-  created_at: string | Date;
-  updated_at: string | Date | null;
-};
 
 export type { HurdleRateListItem };
 
