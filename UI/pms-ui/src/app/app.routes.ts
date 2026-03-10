@@ -170,6 +170,10 @@ export const routes: Routes = [
 						(m) => m.CommandManagementComponent,
 					),
 			},
+			{
+				path: "users",
+				loadComponent: () => import("./features/users/users").then((m) => m.UsersComponent),
+			},
 			{ path: "", redirectTo: "dashboard", pathMatch: "full" },
 		],
 	},

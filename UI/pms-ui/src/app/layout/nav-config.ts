@@ -152,6 +152,12 @@ export const SECONDARY_NAV_ITEMS: NavItem[] = [
 		route: "/command-management",
 		description: "Enable, disable, and monitor system commands",
 	},
+	{
+		label: "User Management",
+		icon: "manage_accounts",
+		route: "/users",
+		description: "Manage team members, roles, and access permissions",
+	},
 ];
 
 /** Find the parent NavItem whose children contain a route matching the given URL. */
