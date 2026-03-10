@@ -541,7 +541,14 @@ export const RevenueGoalUpdateCommandSchema = z.object({
 	period_start_date: z.string().date().optional(),
 	period_end_date: z.string().date().optional(),
 	status: z
-		.enum(["draft", "pending_approval", "active", "completed", "cancelled", "revised"])
+		.enum([
+			"draft",
+			"pending_approval",
+			"active",
+			"completed",
+			"cancelled",
+			"revised",
+		])
 		.optional(),
 	baseline_amount: z.number().optional(),
 	segment_goals: z.record(z.unknown()).optional(),
@@ -694,4 +701,157 @@ export const RevenueGroupEvaluateCommandSchema = z.object({
 
 export type RevenueGroupEvaluateCommand = z.infer<
 	typeof RevenueGroupEvaluateCommandSchema
+>;
+
+// ── Rate Recommendation Engine Commands (R2) ─────────
+
+/**
+ * Batch-generate rate recommendations per property for a date range.
+ * Analyzes occupancy vs forecast, booking pace, competitor rates, active
+ * pricing rules, and demand calendar signals to produce one recommendation
+ * per room_type × date with confidence scoring.
+ *
+ * @category commands
+ */
+export const RevenueRecommendationGenerateCommandSchema = z.object({
+	property_id: z.string().uuid(),
+	/** Start of the date range to generate recommendations for. */
+	start_date: z.string().date(),
+	/** End of the date range (inclusive). */
+	end_date: z.string().date(),
+	/** Room types to evaluate. If omitted, evaluates all room types for the property. */
+	room_type_ids: z.array(z.string().uuid()).optional(),
+	/** Minimum confidence score to include in results (0-100). Default 50. */
+	min_confidence: z.number().min(0).max(100).default(50),
+	/** Whether to auto-apply recommendations above the auto_apply_threshold. Default false. */
+	auto_apply: z.boolean().default(false),
+	/** Confidence threshold above which recommendations can be auto-applied (0-100). Default 85. */
+	auto_apply_threshold: z.number().min(0).max(100).default(85),
+	/** Whether to supersede existing pending recommendations for the same date range. Default true. */
+	supersede_existing: z.boolean().default(true),
+	metadata: z.record(z.unknown()).optional(),
+	idempotency_key: z.string().max(120).optional(),
+});
+
+export type RevenueRecommendationGenerateCommand = z.infer<
+	typeof RevenueRecommendationGenerateCommandSchema
+>;
+
+// ── Rate Recommendation Approval Workflow Commands (R3) ──
+
+/**
+ * Approve a single rate recommendation.
+ * Transitions status from pending/reviewed → accepted.
+ */
+export const RevenueRecommendationApproveCommandSchema = z.object({
+	property_id: z.string().uuid(),
+	recommendation_id: z.string().uuid(),
+	/** Optional notes from the reviewer. */
+	review_notes: z.string().max(2000).optional(),
+	metadata: z.record(z.unknown()).optional(),
+	idempotency_key: z.string().max(120).optional(),
+});
+
+export type RevenueRecommendationApproveCommand = z.infer<
+	typeof RevenueRecommendationApproveCommandSchema
+>;
+
+/**
+ * Reject a rate recommendation with a reason.
+ * Transitions status from pending/reviewed → rejected.
+ */
+export const RevenueRecommendationRejectCommandSchema = z.object({
+	property_id: z.string().uuid(),
+	recommendation_id: z.string().uuid(),
+	/** Reason for rejection (required for audit trail). */
+	rejection_reason: z.string().min(1).max(500),
+	metadata: z.record(z.unknown()).optional(),
+	idempotency_key: z.string().max(120).optional(),
+});
+
+export type RevenueRecommendationRejectCommand = z.infer<
+	typeof RevenueRecommendationRejectCommandSchema
+>;
+
+/**
+ * Apply an accepted recommendation — updates the actual rate in the rates table.
+ * Only recommendations with status = 'accepted' can be applied.
+ */
+export const RevenueRecommendationApplyCommandSchema = z.object({
+	property_id: z.string().uuid(),
+	recommendation_id: z.string().uuid(),
+	/** Optional override rate — if omitted, uses the recommendation's recommended_rate. */
+	override_rate: z.number().min(0).optional(),
+	/** Implementation notes. */
+	implementation_notes: z.string().max(2000).optional(),
+	metadata: z.record(z.unknown()).optional(),
+	idempotency_key: z.string().max(120).optional(),
+});
+
+export type RevenueRecommendationApplyCommand = z.infer<
+	typeof RevenueRecommendationApplyCommandSchema
+>;
+
+/**
+ * Bulk-approve multiple recommendations in one command.
+ * Transitions all specified recommendations from pending/reviewed → accepted.
+ */
+export const RevenueRecommendationBulkApproveCommandSchema = z.object({
+	property_id: z.string().uuid(),
+	recommendation_ids: z.array(z.string().uuid()).min(1).max(500),
+	/** Optional notes applied to all approved recommendations. */
+	review_notes: z.string().max(2000).optional(),
+	metadata: z.record(z.unknown()).optional(),
+	idempotency_key: z.string().max(120).optional(),
+});
+
+export type RevenueRecommendationBulkApproveCommand = z.infer<
+	typeof RevenueRecommendationBulkApproveCommandSchema
+>;
+
+// ── Competitor Comp Set Configuration Command (R5) ───
+
+/**
+ * Define or update the competitive set for a property.
+ * Upserts competitor property entries — the set of hotels tracked
+ * for rate shopping and STR-style benchmarking (ARI, MPI, RGI).
+ *
+ * @category commands
+ */
+export const RevenueCompetitorConfigureCompsetCommandSchema = z.object({
+	property_id: z.string().uuid(),
+	/** List of competitors to add/update in the comp set. */
+	competitors: z
+		.array(
+			z.object({
+				competitor_name: z.string().min(1).max(255),
+				competitor_external_id: z.string().max(100).optional(),
+				competitor_brand: z.string().max(100).optional(),
+				competitor_address: z.string().max(500).optional(),
+				competitor_city: z.string().max(100).optional(),
+				competitor_country: z.string().max(3).optional(),
+				competitor_star_rating: z.number().min(1).max(5).optional(),
+				competitor_total_rooms: z.number().int().min(1).optional(),
+				competitor_url: z.string().max(500).optional(),
+				/** Weighting factor for index calculations. Default 1.0. */
+				weight: z.number().min(0.01).max(5).default(1.0),
+				distance_km: z.number().min(0).optional(),
+				market_segment: z.string().max(50).optional(),
+				rate_shopping_source: z
+					.enum(["manual", "ota_scrape", "rate_shopping_api", "str", "direct"])
+					.optional(),
+				is_primary: z.boolean().default(false),
+				is_active: z.boolean().default(true),
+				sort_order: z.number().int().min(0).default(0),
+				notes: z.string().max(2000).optional(),
+			}),
+		)
+		.min(1)
+		.max(20),
+	metadata: z.record(z.unknown()).optional(),
+	idempotency_key: z.string().max(120).optional(),
+});
+
+export type RevenueCompetitorConfigureCompsetCommand = z.infer<
+	typeof RevenueCompetitorConfigureCompsetCommandSchema
 >;

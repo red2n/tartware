@@ -139,6 +139,7 @@ import {
 import {
 	RevenueBookingPaceSnapshotCommandSchema,
 	RevenueCompetitorBulkImportCommandSchema,
+	RevenueCompetitorConfigureCompsetCommandSchema,
 	RevenueCompetitorRecordCommandSchema,
 	RevenueDailyCloseCommandSchema,
 	RevenueDemandImportEventsCommandSchema,
@@ -158,6 +159,11 @@ import {
 	RevenuePricingRuleDeactivateCommandSchema,
 	RevenuePricingRuleDeleteCommandSchema,
 	RevenuePricingRuleUpdateCommandSchema,
+	RevenueRecommendationApplyCommandSchema,
+	RevenueRecommendationApproveCommandSchema,
+	RevenueRecommendationBulkApproveCommandSchema,
+	RevenueRecommendationGenerateCommandSchema,
+	RevenueRecommendationRejectCommandSchema,
 	RevenueRestrictionBulkSetCommandSchema,
 	RevenueRestrictionRemoveCommandSchema,
 	RevenueRestrictionSetCommandSchema,
@@ -675,6 +681,10 @@ const commandPayloadValidators = new Map<string, CommandPayloadValidator>([
 		(payload) => RevenueCompetitorBulkImportCommandSchema.parse(payload),
 	],
 	[
+		"revenue.competitor.configure_compset",
+		(payload) => RevenueCompetitorConfigureCompsetCommandSchema.parse(payload),
+	],
+	[
 		"revenue.restriction.set",
 		(payload) => RevenueRestrictionSetCommandSchema.parse(payload),
 	],
@@ -729,6 +739,26 @@ const commandPayloadValidators = new Map<string, CommandPayloadValidator>([
 	[
 		"revenue.group.evaluate",
 		(payload) => RevenueGroupEvaluateCommandSchema.parse(payload),
+	],
+	[
+		"revenue.recommendation.generate",
+		(payload) => RevenueRecommendationGenerateCommandSchema.parse(payload),
+	],
+	[
+		"revenue.recommendation.approve",
+		(payload) => RevenueRecommendationApproveCommandSchema.parse(payload),
+	],
+	[
+		"revenue.recommendation.reject",
+		(payload) => RevenueRecommendationRejectCommandSchema.parse(payload),
+	],
+	[
+		"revenue.recommendation.apply",
+		(payload) => RevenueRecommendationApplyCommandSchema.parse(payload),
+	],
+	[
+		"revenue.recommendation.bulk_approve",
+		(payload) => RevenueRecommendationBulkApproveCommandSchema.parse(payload),
 	],
 ]);
 

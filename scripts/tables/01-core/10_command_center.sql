@@ -228,6 +228,7 @@ WITH seed_commands(command_name, description, default_target_service, required_m
         ('revenue.demand.import_events', 'Bulk import local events into demand calendar', 'revenue-service', ARRAY['revenue-management']),
         ('revenue.competitor.record', 'Record a competitor rate observation', 'revenue-service', ARRAY['revenue-management']),
         ('revenue.competitor.bulk_import', 'Bulk import competitor rates', 'revenue-service', ARRAY['revenue-management']),
+        ('revenue.competitor.configure_compset', 'Define or update the competitive set for a property', 'revenue-service', ARRAY['revenue-management']),
         ('revenue.restriction.set', 'Set inventory restriction per room type × rate plan × date range', 'revenue-service', ARRAY['revenue-management']),
         ('revenue.restriction.remove', 'Remove a restriction for room type × rate plan × date range', 'revenue-service', ARRAY['revenue-management']),
         ('revenue.restriction.bulk_set', 'Bulk set restrictions across multiple date ranges', 'revenue-service', ARRAY['revenue-management']),
@@ -241,7 +242,12 @@ WITH seed_commands(command_name, description, default_target_service, required_m
         ('revenue.booking_pace.snapshot', 'Snapshot booking pace data into demand calendar', 'revenue-service', ARRAY['revenue-management']),
         ('revenue.forecast.adjust', 'Manually adjust a forecast with override values', 'revenue-service', ARRAY['revenue-management']),
         ('revenue.forecast.evaluate', 'Evaluate forecast accuracy against actuals', 'revenue-service', ARRAY['revenue-management']),
-        ('revenue.group.evaluate', 'Evaluate group block displacement with ancillary and denied demand analysis', 'revenue-service', ARRAY['revenue-management'])
+        ('revenue.group.evaluate', 'Evaluate group block displacement with ancillary and denied demand analysis', 'revenue-service', ARRAY['revenue-management']),
+        ('revenue.recommendation.generate', 'Batch-generate rate recommendations for a property date range', 'revenue-service', ARRAY['revenue-management']),
+        ('revenue.recommendation.approve', 'Approve a rate recommendation', 'revenue-service', ARRAY['revenue-management']),
+        ('revenue.recommendation.reject', 'Reject a rate recommendation with reason', 'revenue-service', ARRAY['revenue-management']),
+        ('revenue.recommendation.apply', 'Apply an accepted recommendation to live rates', 'revenue-service', ARRAY['revenue-management']),
+        ('revenue.recommendation.bulk_approve', 'Bulk-approve multiple rate recommendations', 'revenue-service', ARRAY['revenue-management'])
 )
 INSERT INTO command_templates (command_name, description, default_target_service, required_modules, metadata)
 SELECT

@@ -16,6 +16,7 @@ import {
 } from "../lib/metrics.js";
 import {
   handleCompetitorBulkImport,
+  handleCompetitorConfigureCompset,
   handleCompetitorRecord,
 } from "./handlers/competitor-handlers.js";
 import { handleDailyCloseProcess } from "./handlers/daily-close-handler.js";
@@ -34,7 +35,7 @@ import {
   handleGoalUpdate,
 } from "./handlers/goal-handlers.js";
 import { handleGroupEvaluate } from "./handlers/group-handlers.js";
-import { handleHurdleRateSet } from "./handlers/hurdle-rate-handlers.js";
+import { handleHurdleRateCalculate, handleHurdleRateSet } from "./handlers/hurdle-rate-handlers.js";
 import {
   handlePricingRuleActivate,
   handlePricingRuleCreate,
@@ -42,6 +43,13 @@ import {
   handlePricingRuleDelete,
   handlePricingRuleUpdate,
 } from "./handlers/pricing-rule-handlers.js";
+import {
+  handleRecommendationApply,
+  handleRecommendationApprove,
+  handleRecommendationBulkApprove,
+  handleRecommendationGenerate,
+  handleRecommendationReject,
+} from "./handlers/recommendation-handlers.js";
 import {
   handleRestrictionBulkSet,
   handleRestrictionRemove,
@@ -216,6 +224,15 @@ const routeRevenueCommand = async (
       break;
     }
 
+    case "revenue.competitor.configure_compset": {
+      const result = await handleCompetitorConfigureCompset(payload, metadata, actorId);
+      logger.info(
+        { upserted: result.upserted, tenantId: metadata.tenantId },
+        "competitive set configured",
+      );
+      break;
+    }
+
     case "revenue.restriction.set": {
       const result = await handleRestrictionSet(payload, metadata, actorId);
       logger.info(
@@ -265,13 +282,14 @@ const routeRevenueCommand = async (
     }
 
     case "revenue.hurdle_rate.calculate": {
+      const result = await handleHurdleRateCalculate(payload, metadata, actorId);
       logger.info(
         {
-          propertyId: payload.property_id,
-          roomTypeId: payload.room_type_id,
+          calculated: result.calculated,
+          roomTypes: result.roomTypes,
           tenantId: metadata.tenantId,
         },
-        "hurdle rate calculation requested — placeholder implementation",
+        "hurdle rates auto-calculated",
       );
       break;
     }
@@ -348,6 +366,59 @@ const routeRevenueCommand = async (
       logger.info(
         { groupId: (payload as Record<string, unknown>).group_id, tenantId: metadata.tenantId },
         "group displacement evaluated",
+      );
+      break;
+    }
+
+    case "revenue.recommendation.generate": {
+      const result = await handleRecommendationGenerate(payload, metadata, actorId);
+      logger.info(
+        {
+          generated: result.generated,
+          autoApplied: result.autoApplied,
+          tenantId: metadata.tenantId,
+        },
+        "rate recommendations generated",
+      );
+      break;
+    }
+
+    case "revenue.recommendation.approve": {
+      const result = await handleRecommendationApprove(payload, metadata, actorId);
+      logger.info(
+        { recommendationId: result.recommendationId, tenantId: metadata.tenantId },
+        "rate recommendation approved",
+      );
+      break;
+    }
+
+    case "revenue.recommendation.reject": {
+      const result = await handleRecommendationReject(payload, metadata, actorId);
+      logger.info(
+        { recommendationId: result.recommendationId, tenantId: metadata.tenantId },
+        "rate recommendation rejected",
+      );
+      break;
+    }
+
+    case "revenue.recommendation.apply": {
+      const result = await handleRecommendationApply(payload, metadata, actorId);
+      logger.info(
+        {
+          recommendationId: result.recommendationId,
+          implementedRate: result.implementedRate,
+          tenantId: metadata.tenantId,
+        },
+        "rate recommendation applied",
+      );
+      break;
+    }
+
+    case "revenue.recommendation.bulk_approve": {
+      const result = await handleRecommendationBulkApprove(payload, metadata, actorId);
+      logger.info(
+        { approved: result.approved, tenantId: metadata.tenantId },
+        "rate recommendations bulk approved",
       );
       break;
     }
