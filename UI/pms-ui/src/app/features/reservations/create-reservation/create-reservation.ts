@@ -8,6 +8,7 @@ import { ApiService, ApiValidationError } from "../../../core/api/api.service";
 import { AuthService } from "../../../core/auth/auth.service";
 import { TenantContextService } from "../../../core/context/tenant-context.service";
 import { formatCurrency, formatShortDate } from "../../../shared/format-utils";
+import { PaginationComponent } from "../../../shared/pagination/pagination";
 import { ToastService } from "../../../shared/toast/toast.service";
 
 type RoomType = {
@@ -48,12 +49,13 @@ type GuestOption = {
 	first_name: string;
 	last_name: string;
 	email?: string;
+	created_at?: string;
 };
 
 @Component({
 	selector: "app-create-reservation",
 	standalone: true,
-	imports: [FormsModule, MatIconModule, MatProgressSpinnerModule],
+	imports: [FormsModule, MatIconModule, MatProgressSpinnerModule, PaginationComponent],
 	templateUrl: "./create-reservation.html",
 	styleUrl: "./create-reservation.scss",
 })
@@ -73,6 +75,8 @@ export class CreateReservationComponent implements OnInit {
 	readonly saving = signal(false);
 	readonly error = signal<string | null>(null);
 	readonly loadingRef = signal(false);
+	readonly guestPage = signal(1);
+	readonly guestPageSize = 5;
 
 	touched: Record<string, boolean> = {};
 
@@ -137,14 +141,29 @@ export class CreateReservationComponent implements OnInit {
 
 	/** Guests filtered by search term */
 	filteredGuests(): GuestOption[] {
+		const sorted = [...this.guests()].sort((a, b) => {
+			const da = a.created_at ? new Date(a.created_at).getTime() : 0;
+			const db = b.created_at ? new Date(b.created_at).getTime() : 0;
+			return db - da;
+		});
 		const q = this.guestSearch.toLowerCase().trim();
-		if (!q) return this.guests();
-		return this.guests().filter(
+		if (!q) return sorted;
+		return sorted.filter(
 			(g) =>
 				g.first_name.toLowerCase().includes(q) ||
 				g.last_name.toLowerCase().includes(q) ||
 				g.email?.toLowerCase().includes(q),
 		);
+	}
+
+	paginatedGuests(): GuestOption[] {
+		const all = this.filteredGuests();
+		const start = (this.guestPage() - 1) * this.guestPageSize;
+		return all.slice(start, start + this.guestPageSize);
+	}
+
+	onGuestSearch(): void {
+		this.guestPage.set(1);
 	}
 
 	get selectedRoomType(): RoomType | undefined {

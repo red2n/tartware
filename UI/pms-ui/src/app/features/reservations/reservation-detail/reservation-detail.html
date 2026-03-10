@@ -81,9 +81,9 @@
         } @else if (availableRooms().length === 0) {
           <p class="room-empty-note">No available rooms found for this room type. Auto-assign will attempt to find one.</p>
         } @else {
-          @for (room of availableRooms(); track room.room_id) {
+          @for (room of paginatedRooms(); track room.room_id) {
             <button
-              class="room-option"
+              class="room-option room-option-detailed"
               [class.room-option-selected]="selectedRoomId() === room.room_id"
               (click)="selectRoom(room.room_id)">
               <mat-icon>meeting_room</mat-icon>
@@ -94,11 +94,35 @@
                   @if (room.floor) { · Floor {{ room.floor }} }
                   · {{ room.housekeeping_status }}
                 </span>
+                <span class="room-option-details">
+                  @if (room.bed_type) { {{ room.bed_type }} · {{ room.number_of_beds }} bed{{ room.number_of_beds > 1 ? 's' : '' }} }
+                  · Max {{ room.max_occupancy }} guests
+                  @if (room.size_sqm) { · {{ room.size_sqm }} m² }
+                  · {{ formatCurrency(room.base_rate, room.currency) }}/night
+                </span>
+                @if (room.features.length) {
+                  <span class="room-option-features">
+                    @for (f of room.features.slice(0, 6); track f) {
+                      <span class="room-feature-tag">{{ f }}</span>
+                    }
+                    @if (room.features.length > 6) {
+                      <span class="room-feature-tag room-feature-more">+{{ room.features.length - 6 }}</span>
+                    }
+                  </span>
+                }
               </div>
               @if (selectedRoomId() === room.room_id) {
                 <mat-icon class="room-check">check_circle</mat-icon>
               }
             </button>
+          }
+
+          @if (availableRooms().length > roomPageSize) {
+            <app-pagination
+              [totalItems]="availableRooms().length"
+              [currentPage]="roomPage()"
+              [pageSize]="roomPageSize"
+              (pageChange)="roomPage.set($event)" />
           }
         }
       </div>

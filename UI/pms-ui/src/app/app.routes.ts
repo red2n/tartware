@@ -160,11 +160,21 @@ export const routes: Routes = [
 			},
 			{
 				path: "settings",
+				pathMatch: "full",
+				redirectTo: "settings/ADMIN_USER_MANAGEMENT",
+			},
+			{
+				path: "settings/:categoryCode",
 				loadComponent: () =>
 					import("./features/settings/settings").then((m) => m.SettingsComponent),
 			},
 			{
 				path: "command-management",
+				pathMatch: "full",
+				redirectTo: "command-management/all",
+			},
+			{
+				path: "command-management/:serviceTab",
 				loadComponent: () =>
 					import("./features/command-management/command-management").then(
 						(m) => m.CommandManagementComponent,

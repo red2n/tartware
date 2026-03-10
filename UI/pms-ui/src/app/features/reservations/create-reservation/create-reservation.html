@@ -223,11 +223,11 @@
       <div class="field-group mb-3">
         <input type="text" class="field-input"
                placeholder="Search by name or email…"
-               [(ngModel)]="guestSearch" />
+               [(ngModel)]="guestSearch" (ngModelChange)="onGuestSearch()" />
       </div>
 
       <div class="guest-list">
-        @for (g of filteredGuests(); track g.id) {
+        @for (g of paginatedGuests(); track g.id) {
           <button class="guest-row"
                   [class.selected]="guestId === g.id"
                   (click)="selectGuest(g)">
@@ -255,6 +255,14 @@
           </div>
         }
       </div>
+
+      @if (filteredGuests().length > guestPageSize) {
+        <app-pagination
+          [totalItems]="filteredGuests().length"
+          [currentPage]="guestPage()"
+          [pageSize]="guestPageSize"
+          (pageChange)="guestPage.set($event)" />
+      }
 
       @if (guestId) {
         <h3 class="section-header mt-6">Booking details</h3>

@@ -87,6 +87,35 @@
   color: var(--color-fg-muted);
 }
 
+.room-option-details {
+  font-size: var(--font-size-xs);
+  color: var(--color-fg-muted);
+}
+
+.room-option-features {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 2px;
+}
+
+.room-feature-tag {
+  display: inline-block;
+  font-size: 10px;
+  padding: 1px 6px;
+  border-radius: var(--radius-full);
+  background: var(--color-neutral-subtle);
+  color: var(--color-fg-muted);
+}
+
+.room-feature-more {
+  font-weight: var(--font-weight-semibold);
+}
+
+.room-option-detailed .room-option-info {
+  gap: 2px;
+}
+
 .room-check {
   color: var(--color-accent-fg);
   font-size: 20px;

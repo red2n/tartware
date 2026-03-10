@@ -1,6 +1,8 @@
 import { NgClass } from "@angular/common";
-import { Component, computed, inject, type OnInit, signal } from "@angular/core";
+import { Component, computed, inject, type OnDestroy, type OnInit, signal } from "@angular/core";
 import { FormsModule } from "@angular/forms";
+import { ActivatedRoute } from "@angular/router";
+import { type Subscription } from "rxjs";
 import { MatButtonModule } from "@angular/material/button";
 import { MatIconModule } from "@angular/material/icon";
 import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
@@ -36,8 +38,10 @@ type ServiceTab = "all" | string;
 	templateUrl: "./command-management.html",
 	styleUrl: "./command-management.scss",
 })
-export class CommandManagementComponent implements OnInit {
+export class CommandManagementComponent implements OnInit, OnDestroy {
 	private readonly api = inject(ApiService);
+	private readonly route = inject(ActivatedRoute);
+	private paramSub?: Subscription;
 
 	/** Server state — the last-known saved statuses. */
 	private serverStatuses = new Map<string, CommandFeatureStatus>();
@@ -54,12 +58,6 @@ export class CommandManagementComponent implements OnInit {
 
 	readonly hasChanges = computed(() => this.pendingChanges().size > 0);
 	readonly pendingCount = computed(() => this.pendingChanges().size);
-
-	/** Unique target services for tab filtering. */
-	readonly serviceTabs = computed<ServiceTab[]>(() => {
-		const services = new Set(this.commands().map((c) => c.default_target_service));
-		return ["all", ...Array.from(services).sort()];
-	});
 
 	/** Filtered commands based on active tab and search query. */
 	readonly filteredCommands = computed(() => {
@@ -91,6 +89,14 @@ export class CommandManagementComponent implements OnInit {
 
 	ngOnInit(): void {
 		this.loadCommands();
+		this.paramSub = this.route.params.subscribe((params) => {
+			const tab = (params["serviceTab"] as string) ?? "all";
+			this.activeTab.set(tab);
+		});
+	}
+
+	ngOnDestroy(): void {
+		this.paramSub?.unsubscribe();
 	}
 
 	/** Get the effective status (pending override or server state). */
@@ -116,10 +122,6 @@ export class CommandManagementComponent implements OnInit {
 		} finally {
 			this.loading.set(false);
 		}
-	}
-
-	setTab(tab: ServiceTab): void {
-		this.activeTab.set(tab);
 	}
 
 	onSearch(value: string): void {
@@ -221,29 +223,5 @@ export class CommandManagementComponent implements OnInit {
 			.replace(/-service$/, "")
 			.replace(/-/g, " ")
 			.replace(/\b\w/g, (c) => c.toUpperCase());
-	}
-
-	formatTabLabel(tab: ServiceTab): string {
-		if (tab === "all") return "All";
-		return this.formatServiceName(tab);
-	}
-
-	/** Material icon name for each service tab. */
-	getTabIcon(tab: ServiceTab): string {
-		const icons: Record<string, string> = {
-			all: "apps",
-			"reservations-command-service": "event",
-			"guests-service": "people",
-			"rooms-service": "hotel",
-			"housekeeping-service": "cleaning_services",
-			"billing-service": "receipt_long",
-			"settings-service": "settings",
-			"notification-service": "notifications",
-			"core-service": "hub",
-			"revenue-service": "trending_up",
-			"analytics-command-service": "analytics",
-			"operations-command-service": "build",
-		};
-		return icons[tab] ?? "terminal";
 	}
 }

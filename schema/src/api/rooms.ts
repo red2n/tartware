@@ -319,6 +319,9 @@ export const AvailableRoomSchema = z.object({
 	base_rate: z.number(),
 	currency: z.string(),
 	features: z.array(z.string()),
+	bed_type: z.string().nullable(),
+	number_of_beds: z.number(),
+	size_sqm: z.number().nullable(),
 });
 
 export type AvailableRoom = z.infer<typeof AvailableRoomSchema>;
