@@ -1,4 +1,17 @@
+import type {
+  CompsetIndices,
+  CompsetRow,
+  DisplacementAnalysisItem,
+  DisplacementRow,
+  KpiRow,
+  RevenueForecastListItem,
+  RevenueForecastRow,
+  RevenueGoalListItem,
+  RevenueGoalRow,
+  RevenueKpi,
+} from "@tartware/schemas";
 import { query } from "../lib/db.js";
+import { toDateString, toIsoString, toNumber } from "../lib/row-mappers.js";
 import { DISPLACEMENT_ANALYSIS_SQL } from "../sql/displacement-queries.js";
 import {
   COMPSET_INDICES_SQL,
@@ -7,62 +20,11 @@ import {
   REVENUE_KPI_SQL,
 } from "../sql/report-queries.js";
 
-const toIsoString = (value: string | Date | null | undefined): string | undefined => {
-  if (!value) return undefined;
-  return value instanceof Date ? value.toISOString() : value;
-};
-
-const toDateString = (value: string | Date | null | undefined): string | undefined => {
-  if (!value) return undefined;
-  if (value instanceof Date) return value.toISOString().split("T")[0];
-  return String(value).split("T")[0];
-};
-
-const toNumber = (value: unknown, fallback = 0): number => {
-  if (value == null) return fallback;
-  const n = Number(value);
-  return Number.isFinite(n) ? n : fallback;
-};
-
 // ============================================================================
 // REVENUE FORECASTS
 // ============================================================================
 
-type RevenueForecastRow = {
-  forecast_id: string;
-  tenant_id: string;
-  property_id: string;
-  property_name: string | null;
-  forecast_date: string | Date;
-  forecast_period: string | null;
-  room_revenue_forecast: number | string | null;
-  total_revenue_forecast: number | string | null;
-  occupancy_forecast: number | string | null;
-  adr_forecast: number | string | null;
-  revpar_forecast: number | string | null;
-  confidence_level: number | string | null;
-  scenario_type: string | null;
-  created_at: string | Date;
-  updated_at: string | Date | null;
-};
-
-export type RevenueForecastListItem = {
-  forecast_id: string;
-  tenant_id: string;
-  property_id: string;
-  property_name?: string;
-  forecast_date: string;
-  forecast_period?: string;
-  room_revenue_forecast?: number;
-  total_revenue_forecast?: number;
-  occupancy_forecast?: number;
-  adr_forecast?: number;
-  revpar_forecast?: number;
-  confidence_level?: number;
-  scenario_type?: string;
-  created_at: string;
-  updated_at?: string;
-};
+export type { RevenueForecastListItem };
 
 const mapRowToForecast = (row: RevenueForecastRow): RevenueForecastListItem => ({
   forecast_id: row.forecast_id,
@@ -107,41 +69,7 @@ export const listRevenueForecasts = async (options: {
 // REVENUE GOALS
 // ============================================================================
 
-type RevenueGoalRow = {
-  goal_id: string;
-  tenant_id: string;
-  property_id: string;
-  property_name: string | null;
-  goal_name: string;
-  goal_type: string | null;
-  period_start: string | Date;
-  period_end: string | Date;
-  target_amount: number | string;
-  actual_amount: number | string | null;
-  variance_amount: number | string | null;
-  variance_percent: number | string | null;
-  status: string | null;
-  created_at: string | Date;
-  updated_at: string | Date | null;
-};
-
-export type RevenueGoalListItem = {
-  goal_id: string;
-  tenant_id: string;
-  property_id: string;
-  property_name?: string;
-  goal_name: string;
-  goal_type?: string;
-  period_start: string;
-  period_end: string;
-  target_amount: number;
-  actual_amount?: number;
-  variance_amount?: number;
-  variance_percent?: number;
-  status?: string;
-  created_at: string;
-  updated_at?: string;
-};
+export type { RevenueGoalListItem };
 
 const mapRowToGoal = (row: RevenueGoalRow): RevenueGoalListItem => ({
   goal_id: row.goal_id,
@@ -150,9 +78,9 @@ const mapRowToGoal = (row: RevenueGoalRow): RevenueGoalListItem => ({
   property_name: row.property_name ?? undefined,
   goal_name: row.goal_name,
   goal_type: row.goal_type ?? undefined,
-  period_start: toDateString(row.period_start) ?? "",
-  period_end: toDateString(row.period_end) ?? "",
-  target_amount: toNumber(row.target_amount),
+  period_start: toDateString(row.period_start_date) ?? "",
+  period_end: toDateString(row.period_end_date) ?? "",
+  target_amount: toNumber(row.goal_amount),
   actual_amount: row.actual_amount != null ? toNumber(row.actual_amount) : undefined,
   variance_amount: row.variance_amount != null ? toNumber(row.variance_amount) : undefined,
   variance_percent: row.variance_percent != null ? toNumber(row.variance_percent) : undefined,
@@ -184,49 +112,13 @@ export const listRevenueGoals = async (options: {
 // REVENUE KPIs
 // ============================================================================
 
-type KpiRow = {
-  occupied_rooms: string | number;
-  total_rooms: string | number;
-  room_revenue: string | number;
-  total_revenue: string | number;
-};
-
-export type RevenueKpi = {
-  property_id: string;
-  business_date: string;
-  occupied_rooms: number;
-  total_rooms: number;
-  occupancy_percent: number;
-  room_revenue: number;
-  total_revenue: number;
-  adr: number;
-  revpar: number;
-};
+export type { RevenueKpi };
 
 // ============================================================================
 // COMPSET INDICES (IS-3: STR-style benchmarking)
 // ============================================================================
 
-type CompsetRow = {
-  total_rooms: string | number;
-  occupied_rooms: string | number;
-  room_revenue: string | number;
-  avg_compset_adr: string | number | null;
-  compset_count: string | number;
-};
-
-export type CompsetIndices = {
-  property_id: string;
-  business_date: string;
-  own_occupancy_percent: number;
-  own_adr: number;
-  own_revpar: number;
-  compset_avg_adr: number | null;
-  compset_count: number;
-  occupancy_index: number | null;
-  ari: number | null;
-  rgi: number | null;
-};
+export type { CompsetIndices };
 
 /**
  * Computes STR-style competitive indices:
@@ -316,36 +208,7 @@ export const getRevenueKpis = async (
 // DISPLACEMENT ANALYSIS (CG-5: Group vs. Transient Trade-off)
 // ============================================================================
 
-type DisplacementRow = {
-  group_id: string;
-  group_name: string;
-  group_rooms_booked: string | number;
-  group_room_nights: string | number;
-  group_total_revenue: string | number;
-  group_adr: string | number;
-  block_start: string | Date;
-  block_end: string | Date;
-  avg_transient_adr: string | number | null;
-  displaced_transient_revenue: string | number | null;
-  net_displacement_value: string | number | null;
-  adr_differential_pct: string | number | null;
-};
-
-export type DisplacementAnalysisItem = {
-  group_id: string;
-  group_name: string;
-  group_rooms_booked: number;
-  group_room_nights: number;
-  group_total_revenue: number;
-  group_adr: number;
-  block_start: string | undefined;
-  block_end: string | undefined;
-  avg_transient_adr: number;
-  displaced_transient_revenue: number;
-  net_displacement_value: number;
-  adr_differential_pct: number;
-  recommendation: string;
-};
+export type { DisplacementAnalysisItem };
 
 /**
  * Compute displacement analysis for group blocks vs transient demand.

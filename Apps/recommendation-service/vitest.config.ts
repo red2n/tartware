@@ -15,6 +15,7 @@ export default defineConfig({
     },
     env: {
       LOG_LEVEL: "fatal",
+      DB_PASSWORD: "test",
     },
   },
   resolve: {

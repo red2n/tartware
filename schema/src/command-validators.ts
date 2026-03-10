@@ -136,7 +136,38 @@ import {
 	ReservationWalkGuestCommandSchema,
 	ReservationWalkInCheckInCommandSchema,
 } from "./events/commands/reservations.js";
-import { RevenueForecastComputeCommandSchema } from "./events/commands/revenue.js";
+import {
+	RevenueBookingPaceSnapshotCommandSchema,
+	RevenueCompetitorBulkImportCommandSchema,
+	RevenueCompetitorConfigureCompsetCommandSchema,
+	RevenueCompetitorRecordCommandSchema,
+	RevenueDailyCloseCommandSchema,
+	RevenueDemandImportEventsCommandSchema,
+	RevenueDemandUpdateCommandSchema,
+	RevenueForecastAdjustCommandSchema,
+	RevenueForecastComputeCommandSchema,
+	RevenueForecastEvaluateCommandSchema,
+	RevenueGoalCreateCommandSchema,
+	RevenueGoalDeleteCommandSchema,
+	RevenueGoalTrackActualCommandSchema,
+	RevenueGoalUpdateCommandSchema,
+	RevenueGroupEvaluateCommandSchema,
+	RevenueHurdleRateCalculateCommandSchema,
+	RevenueHurdleRateSetCommandSchema,
+	RevenuePricingRuleActivateCommandSchema,
+	RevenuePricingRuleCreateCommandSchema,
+	RevenuePricingRuleDeactivateCommandSchema,
+	RevenuePricingRuleDeleteCommandSchema,
+	RevenuePricingRuleUpdateCommandSchema,
+	RevenueRecommendationApplyCommandSchema,
+	RevenueRecommendationApproveCommandSchema,
+	RevenueRecommendationBulkApproveCommandSchema,
+	RevenueRecommendationGenerateCommandSchema,
+	RevenueRecommendationRejectCommandSchema,
+	RevenueRestrictionBulkSetCommandSchema,
+	RevenueRestrictionRemoveCommandSchema,
+	RevenueRestrictionSetCommandSchema,
+} from "./events/commands/revenue.js";
 import {
 	RoomFeaturesUpdateCommandSchema,
 	RoomHousekeepingStatusUpdateCommandSchema,
@@ -612,6 +643,122 @@ const commandPayloadValidators = new Map<string, CommandPayloadValidator>([
 	[
 		"revenue.forecast.compute",
 		(payload) => RevenueForecastComputeCommandSchema.parse(payload),
+	],
+	[
+		"revenue.pricing_rule.create",
+		(payload) => RevenuePricingRuleCreateCommandSchema.parse(payload),
+	],
+	[
+		"revenue.pricing_rule.update",
+		(payload) => RevenuePricingRuleUpdateCommandSchema.parse(payload),
+	],
+	[
+		"revenue.pricing_rule.activate",
+		(payload) => RevenuePricingRuleActivateCommandSchema.parse(payload),
+	],
+	[
+		"revenue.pricing_rule.deactivate",
+		(payload) => RevenuePricingRuleDeactivateCommandSchema.parse(payload),
+	],
+	[
+		"revenue.pricing_rule.delete",
+		(payload) => RevenuePricingRuleDeleteCommandSchema.parse(payload),
+	],
+	[
+		"revenue.demand.update",
+		(payload) => RevenueDemandUpdateCommandSchema.parse(payload),
+	],
+	[
+		"revenue.demand.import_events",
+		(payload) => RevenueDemandImportEventsCommandSchema.parse(payload),
+	],
+	[
+		"revenue.competitor.record",
+		(payload) => RevenueCompetitorRecordCommandSchema.parse(payload),
+	],
+	[
+		"revenue.competitor.bulk_import",
+		(payload) => RevenueCompetitorBulkImportCommandSchema.parse(payload),
+	],
+	[
+		"revenue.competitor.configure_compset",
+		(payload) => RevenueCompetitorConfigureCompsetCommandSchema.parse(payload),
+	],
+	[
+		"revenue.restriction.set",
+		(payload) => RevenueRestrictionSetCommandSchema.parse(payload),
+	],
+	[
+		"revenue.restriction.remove",
+		(payload) => RevenueRestrictionRemoveCommandSchema.parse(payload),
+	],
+	[
+		"revenue.restriction.bulk_set",
+		(payload) => RevenueRestrictionBulkSetCommandSchema.parse(payload),
+	],
+	[
+		"revenue.hurdle_rate.set",
+		(payload) => RevenueHurdleRateSetCommandSchema.parse(payload),
+	],
+	[
+		"revenue.hurdle_rate.calculate",
+		(payload) => RevenueHurdleRateCalculateCommandSchema.parse(payload),
+	],
+	[
+		"revenue.goal.create",
+		(payload) => RevenueGoalCreateCommandSchema.parse(payload),
+	],
+	[
+		"revenue.goal.update",
+		(payload) => RevenueGoalUpdateCommandSchema.parse(payload),
+	],
+	[
+		"revenue.goal.delete",
+		(payload) => RevenueGoalDeleteCommandSchema.parse(payload),
+	],
+	[
+		"revenue.goal.track_actual",
+		(payload) => RevenueGoalTrackActualCommandSchema.parse(payload),
+	],
+	[
+		"revenue.daily_close.process",
+		(payload) => RevenueDailyCloseCommandSchema.parse(payload),
+	],
+	[
+		"revenue.booking_pace.snapshot",
+		(payload) => RevenueBookingPaceSnapshotCommandSchema.parse(payload),
+	],
+	[
+		"revenue.forecast.adjust",
+		(payload) => RevenueForecastAdjustCommandSchema.parse(payload),
+	],
+	[
+		"revenue.forecast.evaluate",
+		(payload) => RevenueForecastEvaluateCommandSchema.parse(payload),
+	],
+	[
+		"revenue.group.evaluate",
+		(payload) => RevenueGroupEvaluateCommandSchema.parse(payload),
+	],
+	[
+		"revenue.recommendation.generate",
+		(payload) => RevenueRecommendationGenerateCommandSchema.parse(payload),
+	],
+	[
+		"revenue.recommendation.approve",
+		(payload) => RevenueRecommendationApproveCommandSchema.parse(payload),
+	],
+	[
+		"revenue.recommendation.reject",
+		(payload) => RevenueRecommendationRejectCommandSchema.parse(payload),
+	],
+	[
+		"revenue.recommendation.apply",
+		(payload) => RevenueRecommendationApplyCommandSchema.parse(payload),
+	],
+	[
+		"revenue.recommendation.bulk_approve",
+		(payload) => RevenueRecommendationBulkApproveCommandSchema.parse(payload),
 	],
 ]);
 

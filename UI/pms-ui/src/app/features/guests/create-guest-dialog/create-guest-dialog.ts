@@ -7,6 +7,7 @@ import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
 
 import { ApiService, ApiValidationError } from "../../../core/api/api.service";
 import { AuthService } from "../../../core/auth/auth.service";
+import { ToastService } from "../../../shared/toast/toast.service";
 
 @Component({
 	selector: "app-create-guest-dialog",
@@ -19,6 +20,7 @@ export class CreateGuestDialogComponent {
 	private readonly api = inject(ApiService);
 	private readonly auth = inject(AuthService);
 	private readonly dialogRef = inject(MatDialogRef<CreateGuestDialogComponent>);
+	private readonly toast = inject(ToastService);
 
 	readonly saving = signal(false);
 	readonly error = signal<string | null>(null);
@@ -130,7 +132,8 @@ export class CreateGuestDialogComponent {
 				this.fieldErrors.set(errors);
 				this.error.set(e.message);
 			} else {
-				this.error.set(e instanceof Error ? e.message : "Failed to create guest");
+				this.toast.error(e instanceof Error ? e.message : "Failed to create guest");
+				this.dialogRef.close(false);
 			}
 		} finally {
 			this.saving.set(false);

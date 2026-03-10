@@ -227,4 +227,23 @@ export class CommandManagementComponent implements OnInit {
 		if (tab === "all") return "All";
 		return this.formatServiceName(tab);
 	}
+
+	/** Material icon name for each service tab. */
+	getTabIcon(tab: ServiceTab): string {
+		const icons: Record<string, string> = {
+			all: "apps",
+			"reservations-command-service": "event",
+			"guests-service": "people",
+			"rooms-service": "hotel",
+			"housekeeping-service": "cleaning_services",
+			"billing-service": "receipt_long",
+			"settings-service": "settings",
+			"notification-service": "notifications",
+			"core-service": "hub",
+			"revenue-service": "trending_up",
+			"analytics-command-service": "analytics",
+			"operations-command-service": "build",
+		};
+		return icons[tab] ?? "terminal";
+	}
 }

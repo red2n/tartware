@@ -175,33 +175,7 @@ type ReservationEvent = {
 };
 
 /** Kafka envelope: { metadata: {...}, payload: {...} } */
-type ReservationEventEnvelope = {
-  metadata: {
-    type: string;
-    tenantId: string;
-    id: string;
-    correlationId?: string;
-    [key: string]: unknown;
-  };
-  payload: {
-    id: string;
-    property_id: string;
-    guest_id: string;
-    confirmation_number?: string;
-    check_in_date?: string;
-    check_out_date?: string;
-    room_number?: string;
-    room_type_id?: string;
-    total_amount?: number;
-    currency?: string;
-    tenant_id?: string;
-    status?: string;
-    actual_check_in?: string;
-    actual_check_out?: string;
-    metadata?: Record<string, unknown>;
-    [key: string]: unknown;
-  };
-};
+import type { ReservationEventEnvelope } from "@tartware/schemas";
 
 // ---------------------------------------------------------------------------
 // Event classification helpers

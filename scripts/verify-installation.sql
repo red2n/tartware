@@ -569,6 +569,46 @@ BEGIN
     END IF;
 
     RAISE NOTICE '';
+    RAISE NOTICE '--- Notification Read Receipts Table ---';
+
+    -- Check notification_read_receipts table exists
+    IF EXISTS (
+        SELECT 1 FROM information_schema.tables
+        WHERE table_schema = 'public' AND table_name = 'notification_read_receipts'
+    ) THEN
+        RAISE NOTICE '  ✓ notification_read_receipts table exists';
+        v_pass := v_pass + 1;
+    ELSE
+        RAISE WARNING '  ✗ notification_read_receipts table MISSING';
+        v_fail := v_fail + 1;
+    END IF;
+
+    -- Check notification_read_receipts has key columns
+    IF EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema = 'public' AND table_name = 'notification_read_receipts'
+        AND column_name = 'notification_id'
+    ) THEN
+        RAISE NOTICE '  ✓ notification_read_receipts.notification_id column exists';
+        v_pass := v_pass + 1;
+    ELSE
+        RAISE WARNING '  ✗ notification_read_receipts.notification_id column MISSING';
+        v_fail := v_fail + 1;
+    END IF;
+
+    IF EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema = 'public' AND table_name = 'notification_read_receipts'
+        AND column_name = 'user_id'
+    ) THEN
+        RAISE NOTICE '  ✓ notification_read_receipts.user_id column exists';
+        v_pass := v_pass + 1;
+    ELSE
+        RAISE WARNING '  ✗ notification_read_receipts.user_id column MISSING';
+        v_fail := v_fail + 1;
+    END IF;
+
+    RAISE NOTICE '';
     RAISE NOTICE '--- Rate Calendar Table (Revenue Management) ---';
 
     -- Check rate_calendar table exists

@@ -1,7 +1,7 @@
 -- =====================================================
 -- verify-05-services-housekeeping.sql
 -- Verification Script for Services & Housekeeping Tables
--- Category: 05-services-housekeeping (11 tables)
+-- Category: 05-services-housekeeping (12 tables)
 -- Date: 2025-10-19
 -- Updated: 2026-02-12
 -- =====================================================
@@ -11,18 +11,18 @@
 \echo ''
 \echo '=============================================='
 \echo '  CATEGORY: SERVICES & HOUSEKEEPING VERIFICATION'
-\echo '  Tables: 11 | Description: Service delivery, housekeeping operations, spa, assets, minibar, maintenance'
+\echo '  Tables: 12 | Description: Service delivery, housekeeping operations, spa, assets, minibar, maintenance, notifications'
 \echo '=============================================='
 \echo ''
 
 -- =====================================================
 -- 1. CHECK IF ALL TABLES EXIST
 -- =====================================================
-\echo '1. Checking if all 11 tables exist...'
+\echo '1. Checking if all 12 tables exist...'
 
 DO $$
 DECLARE
-    v_expected_tables TEXT[] := ARRAY['services', 'reservation_services', 'housekeeping_tasks', 'maintenance_requests', 'maintenance_history', 'predictive_maintenance_alerts', 'spa_treatments', 'spa_appointments', 'asset_inventory', 'minibar_items', 'minibar_consumption'];
+    v_expected_tables TEXT[] := ARRAY['services', 'reservation_services', 'housekeeping_tasks', 'maintenance_requests', 'maintenance_history', 'predictive_maintenance_alerts', 'spa_treatments', 'spa_appointments', 'asset_inventory', 'minibar_items', 'minibar_consumption', 'notification_read_receipts'];
     v_table TEXT;
     v_missing_tables TEXT[] := '{}'::TEXT[];
     v_found_count INTEGER := 0;
@@ -47,7 +47,7 @@ BEGIN
         RAISE WARNING 'Missing tables: %', array_to_string(v_missing_tables, ', ');
         RAISE EXCEPTION 'Services & Housekeeping verification FAILED - missing tables!';
     ELSE
-        RAISE NOTICE '✓✓✓ All 11 Services & Housekeeping tables exist!';
+        RAISE NOTICE '✓✓✓ All 12 Services & Housekeeping tables exist!';
     END IF;
 END $$;
 
@@ -68,7 +68,7 @@ FROM information_schema.tables t
 LEFT JOIN information_schema.columns c
     ON t.table_schema = c.table_schema
     AND t.table_name = c.table_name
-WHERE t.table_name IN ('services', 'reservation_services', 'housekeeping_tasks', 'maintenance_requests', 'maintenance_history', 'predictive_maintenance_alerts', 'spa_treatments', 'spa_appointments', 'asset_inventory', 'minibar_items', 'minibar_consumption')
+WHERE t.table_name IN ('services', 'reservation_services', 'housekeeping_tasks', 'maintenance_requests', 'maintenance_history', 'predictive_maintenance_alerts', 'spa_treatments', 'spa_appointments', 'asset_inventory', 'minibar_items', 'minibar_consumption', 'notification_read_receipts')
     AND t.table_schema = 'public'
 GROUP BY t.table_schema, t.table_name
 ORDER BY t.table_name;
@@ -88,19 +88,19 @@ DECLARE
 BEGIN
     SELECT COUNT(*) INTO v_table_count
     FROM information_schema.tables t
-    WHERE t.table_name IN ('services', 'reservation_services', 'housekeeping_tasks', 'maintenance_requests', 'maintenance_history', 'predictive_maintenance_alerts', 'spa_treatments', 'spa_appointments', 'asset_inventory', 'minibar_items', 'minibar_consumption')
+    WHERE t.table_name IN ('services', 'reservation_services', 'housekeeping_tasks', 'maintenance_requests', 'maintenance_history', 'predictive_maintenance_alerts', 'spa_treatments', 'spa_appointments', 'asset_inventory', 'minibar_items', 'minibar_consumption', 'notification_read_receipts')
         AND t.table_schema = 'public';
 
     RAISE NOTICE '';
     RAISE NOTICE 'Category: Services & Housekeeping';
-    RAISE NOTICE 'Tables Found: % / 11', v_table_count;
+    RAISE NOTICE 'Tables Found: % / 12', v_table_count;
     RAISE NOTICE '';
 
-    IF v_table_count = 11 THEN
+    IF v_table_count = 12 THEN
         RAISE NOTICE '✓✓✓ SERVICES & HOUSEKEEPING VERIFICATION PASSED ✓✓✓';
     ELSE
         RAISE WARNING '⚠⚠⚠ SERVICES & HOUSEKEEPING VERIFICATION FAILED ⚠⚠⚠';
-        RAISE WARNING 'Expected 11 tables, found %', v_table_count;
+        RAISE WARNING 'Expected 12 tables, found %', v_table_count;
     END IF;
 END $$;
 

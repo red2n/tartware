@@ -217,7 +217,37 @@ WITH seed_commands(command_name, description, default_target_service, required_m
         ('group.upload_rooming_list', 'Upload rooming list for a group booking', 'reservations-command-service', ARRAY['core']),
         ('group.cutoff_enforce', 'Enforce cutoff date for a group block', 'reservations-command-service', ARRAY['core']),
         ('group.billing.setup', 'Configure billing for a group booking', 'reservations-command-service', ARRAY['core']),
-        ('group.check_in', 'Batch check-in group reservations with proximity-based room assignment', 'reservations-command-service', ARRAY['core'])
+        ('group.check_in', 'Batch check-in group reservations with proximity-based room assignment', 'reservations-command-service', ARRAY['core']),
+        ('revenue.forecast.compute', 'Compute revenue forecasts for a property', 'revenue-service', ARRAY['revenue-management']),
+        ('revenue.pricing_rule.create', 'Create a new pricing rule', 'revenue-service', ARRAY['revenue-management']),
+        ('revenue.pricing_rule.update', 'Update an existing pricing rule', 'revenue-service', ARRAY['revenue-management']),
+        ('revenue.pricing_rule.activate', 'Activate a pricing rule', 'revenue-service', ARRAY['revenue-management']),
+        ('revenue.pricing_rule.deactivate', 'Deactivate a pricing rule', 'revenue-service', ARRAY['revenue-management']),
+        ('revenue.pricing_rule.delete', 'Soft-delete a pricing rule', 'revenue-service', ARRAY['revenue-management']),
+        ('revenue.demand.update', 'Update demand level for specific dates', 'revenue-service', ARRAY['revenue-management']),
+        ('revenue.demand.import_events', 'Bulk import local events into demand calendar', 'revenue-service', ARRAY['revenue-management']),
+        ('revenue.competitor.record', 'Record a competitor rate observation', 'revenue-service', ARRAY['revenue-management']),
+        ('revenue.competitor.bulk_import', 'Bulk import competitor rates', 'revenue-service', ARRAY['revenue-management']),
+        ('revenue.competitor.configure_compset', 'Define or update the competitive set for a property', 'revenue-service', ARRAY['revenue-management']),
+        ('revenue.restriction.set', 'Set inventory restriction per room type × rate plan × date range', 'revenue-service', ARRAY['revenue-management']),
+        ('revenue.restriction.remove', 'Remove a restriction for room type × rate plan × date range', 'revenue-service', ARRAY['revenue-management']),
+        ('revenue.restriction.bulk_set', 'Bulk set restrictions across multiple date ranges', 'revenue-service', ARRAY['revenue-management']),
+        ('revenue.hurdle_rate.set', 'Set minimum acceptable hurdle rate per room type × date', 'revenue-service', ARRAY['revenue-management']),
+        ('revenue.hurdle_rate.calculate', 'Auto-calculate hurdle rates from displacement analysis', 'revenue-service', ARRAY['revenue-management']),
+        ('revenue.goal.create', 'Create a revenue goal or budget target', 'revenue-service', ARRAY['revenue-management']),
+        ('revenue.goal.update', 'Update a revenue goal or budget target', 'revenue-service', ARRAY['revenue-management']),
+        ('revenue.goal.delete', 'Soft-delete a revenue goal', 'revenue-service', ARRAY['revenue-management']),
+        ('revenue.goal.track_actual', 'Snapshot actual performance against revenue goals', 'revenue-service', ARRAY['revenue-management']),
+        ('revenue.daily_close.process', 'End-of-day revenue processing triggered after night audit', 'revenue-service', ARRAY['revenue-management']),
+        ('revenue.booking_pace.snapshot', 'Snapshot booking pace data into demand calendar', 'revenue-service', ARRAY['revenue-management']),
+        ('revenue.forecast.adjust', 'Manually adjust a forecast with override values', 'revenue-service', ARRAY['revenue-management']),
+        ('revenue.forecast.evaluate', 'Evaluate forecast accuracy against actuals', 'revenue-service', ARRAY['revenue-management']),
+        ('revenue.group.evaluate', 'Evaluate group block displacement with ancillary and denied demand analysis', 'revenue-service', ARRAY['revenue-management']),
+        ('revenue.recommendation.generate', 'Batch-generate rate recommendations for a property date range', 'revenue-service', ARRAY['revenue-management']),
+        ('revenue.recommendation.approve', 'Approve a rate recommendation', 'revenue-service', ARRAY['revenue-management']),
+        ('revenue.recommendation.reject', 'Reject a rate recommendation with reason', 'revenue-service', ARRAY['revenue-management']),
+        ('revenue.recommendation.apply', 'Apply an accepted recommendation to live rates', 'revenue-service', ARRAY['revenue-management']),
+        ('revenue.recommendation.bulk_approve', 'Bulk-approve multiple rate recommendations', 'revenue-service', ARRAY['revenue-management'])
 )
 INSERT INTO command_templates (command_name, description, default_target_service, required_modules, metadata)
 SELECT
@@ -227,12 +257,11 @@ SELECT
     sc.required_modules,
     jsonb_build_object('seeded', true)
 FROM seed_commands sc
-ON CONFLICT (command_name) DO UPDATE
-SET
+ON CONFLICT (command_name) DO UPDATE SET
     description = EXCLUDED.description,
     default_target_service = EXCLUDED.default_target_service,
-    required_modules = EXCLUDED.required_modules,
-    metadata = command_templates.metadata || jsonb_build_object('seeded', true);
+    required_modules = EXCLUDED.required_modules
+WHERE command_templates.metadata->>'seeded' = 'true';
 
 INSERT INTO command_routes (command_name, environment, tenant_id, service_id, topic, metadata)
 SELECT

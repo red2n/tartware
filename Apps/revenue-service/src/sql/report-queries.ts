@@ -35,9 +35,9 @@ export const REVENUE_GOAL_LIST_SQL = `
     p.property_name,
     rg.goal_name,
     rg.goal_type,
-    rg.period_start,
-    rg.period_end,
-    rg.target_amount,
+    rg.period_start_date,
+    rg.period_end_date,
+    rg.goal_amount,
     rg.actual_amount,
     rg.variance_amount,
     rg.variance_percent,
@@ -51,7 +51,7 @@ export const REVENUE_GOAL_LIST_SQL = `
     AND ($3::uuid IS NULL OR rg.property_id = $3::uuid)
     AND ($4::text IS NULL OR rg.goal_type = LOWER($4::text))
     AND ($5::text IS NULL OR rg.status = LOWER($5::text))
-  ORDER BY rg.period_start DESC
+  ORDER BY rg.period_start_date DESC
   LIMIT $1
   OFFSET $6
 `;
