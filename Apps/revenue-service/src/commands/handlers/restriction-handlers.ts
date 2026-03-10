@@ -1,9 +1,13 @@
 import type { CommandMetadata } from "@tartware/command-consumer-utils";
+import type { UpsertRateRestrictionInput } from "@tartware/schemas";
 import { forEachDateInRange } from "../../lib/date-range.js";
 import {
   removeRateRestriction,
   upsertRateRestriction,
 } from "../../services/restriction-service.js";
+
+type RestrictionType = UpsertRateRestrictionInput["restrictionType"];
+type RestrictionSource = UpsertRateRestrictionInput["source"];
 
 export const handleRestrictionSet = async (
   payload: Record<string, unknown>,
@@ -21,10 +25,10 @@ export const handleRestrictionSet = async (
           roomTypeId: (payload.room_type_id as string) ?? null,
           ratePlanId: (payload.rate_plan_id as string) ?? null,
           restrictionDate: dateStr,
-          restrictionType: payload.restriction_type as string,
+          restrictionType: payload.restriction_type as RestrictionType,
           restrictionValue: (payload.restriction_value as number) ?? 1,
           isActive: (payload.is_active as boolean) ?? true,
-          source: (payload.source as string) ?? "manual",
+          source: (payload.source as RestrictionSource) ?? "manual",
           reason: (payload.reason as string) ?? null,
           metadata: (payload.metadata as Record<string, unknown>) ?? null,
         },
@@ -87,10 +91,10 @@ export const handleRestrictionBulkSet = async (
             roomTypeId: restriction.room_type_id ?? null,
             ratePlanId: restriction.rate_plan_id ?? null,
             restrictionDate: dateStr,
-            restrictionType: restriction.restriction_type,
+            restrictionType: restriction.restriction_type as RestrictionType,
             restrictionValue: restriction.restriction_value ?? 1,
             isActive: (payload.is_active as boolean) ?? true,
-            source: (payload.source as string) ?? "manual",
+            source: (payload.source as RestrictionSource) ?? "manual",
             reason: restriction.reason ?? null,
             metadata: (payload.metadata as Record<string, unknown>) ?? null,
           },

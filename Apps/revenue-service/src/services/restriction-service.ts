@@ -1,4 +1,9 @@
-import type { RateRestrictionListItem, RateRestrictionRow } from "@tartware/schemas";
+import type {
+  ListRateRestrictionsOptions,
+  RateRestrictionListItem,
+  RateRestrictionRow,
+  UpsertRateRestrictionInput,
+} from "@tartware/schemas";
 import { query } from "../lib/db.js";
 import { toDateString, toIsoString } from "../lib/row-mappers.js";
 import {
@@ -31,18 +36,9 @@ const mapRowToRestriction = (row: RateRestrictionRow): RateRestrictionListItem =
   updated_at: toIsoString(row.updated_at),
 });
 
-export const listRateRestrictions = async (options: {
-  limit?: number;
-  tenantId: string;
-  propertyId?: string;
-  roomTypeId?: string;
-  ratePlanId?: string;
-  restrictionType?: string;
-  dateFrom?: string;
-  dateTo?: string;
-  isActive?: boolean;
-  offset?: number;
-}): Promise<RateRestrictionListItem[]> => {
+export const listRateRestrictions = async (
+  options: ListRateRestrictionsOptions,
+): Promise<RateRestrictionListItem[]> => {
   const { rows } = await query<RateRestrictionRow>(RATE_RESTRICTION_LIST_SQL, [
     options.limit ?? 100,
     options.tenantId,
@@ -61,17 +57,7 @@ export const listRateRestrictions = async (options: {
 export const upsertRateRestriction = async (
   tenantId: string,
   propertyId: string,
-  data: {
-    roomTypeId?: string | null;
-    ratePlanId?: string | null;
-    restrictionDate: string;
-    restrictionType: string;
-    restrictionValue: number;
-    isActive: boolean;
-    source: string;
-    reason?: string | null;
-    metadata?: Record<string, unknown> | null;
-  },
+  data: UpsertRateRestrictionInput,
   actorId: string | null,
 ): Promise<{ restrictionId: string; createdAt: Date }> => {
   const { rows } = await query<{ restriction_id: string; created_at: Date }>(

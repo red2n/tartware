@@ -128,11 +128,11 @@ export const handleRecommendationApply = async (
     recommended_rate: string;
   }>(RECOMMENDATION_BY_ID_SQL, [recommendationId, metadata.tenantId]);
 
-  if (rows.length === 0) {
+  const rec = rows[0];
+  if (!rec) {
     throw new Error(`Recommendation ${recommendationId} not found`);
   }
 
-  const rec = rows[0];
   if (rec.status !== "accepted") {
     throw new Error(
       `Recommendation ${recommendationId} must be accepted before applying (current: ${rec.status})`,

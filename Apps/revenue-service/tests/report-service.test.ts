@@ -4,12 +4,12 @@ vi.mock("../src/lib/db.js", () => ({
   query: vi.fn(),
 }));
 
+import { query } from "../src/lib/db.js";
 import {
   getRevenueKpis,
   listRevenueForecasts,
   listRevenueGoals,
 } from "../src/services/report-service.js";
-import { query } from "../src/lib/db.js";
 
 const TENANT_ID = "11111111-1111-1111-1111-111111111111";
 const PROPERTY_ID = "22222222-2222-2222-2222-222222222222";
@@ -133,9 +133,9 @@ describe("report-service", () => {
             property_name: "City Center Hotel",
             goal_name: "Q1 Room Revenue",
             goal_type: "ROOM_REVENUE",
-            period_start: "2026-01-01",
-            period_end: "2026-03-31",
-            target_amount: "500000.00",
+            period_start_date: "2026-01-01",
+            period_end_date: "2026-03-31",
+            goal_amount: "500000.00",
             actual_amount: "420000.00",
             variance_amount: "-80000.00",
             variance_percent: "-16.00",

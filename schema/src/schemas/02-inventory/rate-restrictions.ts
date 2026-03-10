@@ -112,3 +112,42 @@ export const RateRestrictionListQuerySchema = z.object({
 export type RateRestrictionListQuery = z.infer<
 	typeof RateRestrictionListQuerySchema
 >;
+
+/**
+ * Service-level options for listing rate restrictions (camelCase keys)
+ */
+export const ListRateRestrictionsOptionsSchema = z.object({
+	tenantId: z.string().uuid(),
+	propertyId: z.string().uuid().optional(),
+	roomTypeId: z.string().uuid().optional(),
+	ratePlanId: z.string().uuid().optional(),
+	restrictionType: z.string().optional(),
+	dateFrom: z.string().date().optional(),
+	dateTo: z.string().date().optional(),
+	isActive: z.boolean().optional(),
+	limit: z.number().int().min(1).max(1000).default(100),
+	offset: z.number().int().min(0).default(0),
+});
+
+export type ListRateRestrictionsOptions = z.infer<
+	typeof ListRateRestrictionsOptionsSchema
+>;
+
+/**
+ * Input data for upserting a single rate restriction
+ */
+export const UpsertRateRestrictionInputSchema = z.object({
+	roomTypeId: z.string().uuid().nullable().optional(),
+	ratePlanId: z.string().uuid().nullable().optional(),
+	restrictionDate: z.string().date(),
+	restrictionType: RateRestrictionTypeEnum,
+	restrictionValue: z.number().int(),
+	isActive: z.boolean(),
+	source: RateRestrictionSourceEnum,
+	reason: z.string().nullable().optional(),
+	metadata: z.record(z.unknown()).nullable().optional(),
+});
+
+export type UpsertRateRestrictionInput = z.infer<
+	typeof UpsertRateRestrictionInputSchema
+>;
