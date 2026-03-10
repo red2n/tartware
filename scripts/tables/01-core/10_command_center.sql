@@ -229,6 +229,8 @@ WITH seed_commands(command_name, description, default_target_service, required_m
         ('revenue.competitor.record', 'Record a competitor rate observation', 'revenue-service', ARRAY['revenue-management']),
         ('revenue.competitor.bulk_import', 'Bulk import competitor rates', 'revenue-service', ARRAY['revenue-management']),
         ('revenue.competitor.configure_compset', 'Define or update the competitive set for a property', 'revenue-service', ARRAY['revenue-management']),
+        ('revenue.competitor.auto_collect', 'Trigger automated rate shopping collection from configured providers', 'revenue-service', ARRAY['revenue-management']),
+        ('revenue.competitive_response.configure', 'Create or update a competitive response pricing rule', 'revenue-service', ARRAY['revenue-management']),
         ('revenue.restriction.set', 'Set inventory restriction per room type × rate plan × date range', 'revenue-service', ARRAY['revenue-management']),
         ('revenue.restriction.remove', 'Remove a restriction for room type × rate plan × date range', 'revenue-service', ARRAY['revenue-management']),
         ('revenue.restriction.bulk_set', 'Bulk set restrictions across multiple date ranges', 'revenue-service', ARRAY['revenue-management']),

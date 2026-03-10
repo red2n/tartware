@@ -17,7 +17,7 @@
 
 ## Schema-First Development
 - Always use the `schema/` package for data shapes and validation.
-- **Never define Zod schemas locally in App services**—import from `@tartware/schemas` instead.
+- **Never define sharable types locally in App services** — this includes Zod schemas, TypeScript `interface` declarations, `type` aliases, input/output shapes, provider contracts, and options objects. Import from `@tartware/schemas` instead.
 - Add or update schemas in `schema/src/schemas/...` before wiring new command handlers.
 - Keep command payloads aligned with schema definitions and enums.
 - Keep schema changes and SQL migrations in lockstep; never change one without the other.

@@ -122,9 +122,9 @@ export type { CompsetIndices };
 
 /**
  * Computes STR-style competitive indices:
- * - Occupancy Index = Own OCC% / Compset OCC% × 100 (requires compset occupancy data — approximated)
- * - ARI (ADR Index) = Own ADR / Compset ADR × 100
- * - RGI (RevPAR Index) = Own RevPAR / Compset RevPAR × 100 (derived from ARI × OCC index)
+ * - MPI (Market Penetration Index) = Own OCC% / Compset OCC% × 100
+ * - ARI (Average Rate Index) = Own ADR / Compset ADR × 100
+ * - RGI (Revenue Generation Index) = Own RevPAR / Compset RevPAR × 100
  */
 export const getCompsetIndices = async (
   propertyId: string,
@@ -142,6 +142,8 @@ export const getCompsetIndices = async (
   const occupiedRooms = row ? toNumber(row.occupied_rooms) : 0;
   const roomRevenue = row ? toNumber(row.room_revenue) : 0;
   const compsetAdr = row?.avg_compset_adr != null ? toNumber(row.avg_compset_adr) : null;
+  const compsetOccupancy =
+    row?.avg_compset_occupancy != null ? toNumber(row.avg_compset_occupancy) : null;
   const compsetCount = row ? toNumber(row.compset_count) : 0;
 
   const ownOccupancy = totalRooms > 0 ? (occupiedRooms / totalRooms) * 100 : 0;
@@ -154,11 +156,14 @@ export const getCompsetIndices = async (
       ? Math.round((ownAdr / compsetAdr) * 100 * 100) / 100
       : null;
 
-  // Without compset occupancy data, we can only compute ARI directly.
-  // Occupancy Index and RGI require compset occupancy which isn't available
-  // from rate-only competitor data. We return null to be honest about data gaps.
-  const occupancyIndex = null;
-  const rgi = null;
+  // MPI = Own OCC% / Compset OCC% × 100
+  const mpi =
+    compsetOccupancy != null && compsetOccupancy > 0
+      ? Math.round((ownOccupancy / compsetOccupancy) * 100 * 100) / 100
+      : null;
+
+  // RGI = MPI × ARI / 100 (equivalent to Own RevPAR / Compset RevPAR × 100)
+  const rgi = mpi != null && ari != null ? Math.round(((mpi * ari) / 100) * 100) / 100 : null;
 
   return {
     property_id: propertyId,
@@ -167,8 +172,10 @@ export const getCompsetIndices = async (
     own_adr: Math.round(ownAdr * 100) / 100,
     own_revpar: Math.round(ownRevpar * 100) / 100,
     compset_avg_adr: compsetAdr != null ? Math.round(compsetAdr * 100) / 100 : null,
+    compset_avg_occupancy:
+      compsetOccupancy != null ? Math.round(compsetOccupancy * 100) / 100 : null,
     compset_count: compsetCount,
-    occupancy_index: occupancyIndex,
+    mpi,
     ari,
     rgi,
   };

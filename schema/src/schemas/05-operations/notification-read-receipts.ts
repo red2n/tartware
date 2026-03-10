@@ -18,13 +18,13 @@ import { uuid } from "../../shared/base-schemas.js";
  * (where `in_app_notifications.user_id IS NULL`).
  */
 export const NotificationReadReceiptSchema = z.object({
-    receipt_id: uuid,
-    notification_id: uuid,
-    user_id: uuid,
-    tenant_id: uuid,
-    read_at: z.coerce.date(),
+	receipt_id: uuid,
+	notification_id: uuid,
+	user_id: uuid,
+	tenant_id: uuid,
+	read_at: z.coerce.date(),
 });
 
 export type NotificationReadReceipt = z.infer<
-    typeof NotificationReadReceiptSchema
+	typeof NotificationReadReceiptSchema
 >;

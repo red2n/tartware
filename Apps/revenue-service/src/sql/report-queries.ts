@@ -82,6 +82,7 @@ export const COMPSET_INDICES_SQL = `
   compset_avg AS (
     SELECT
       AVG(cr.competitor_rate) AS avg_compset_adr,
+      AVG(cr.estimated_occupancy_percent) FILTER (WHERE cr.estimated_occupancy_percent IS NOT NULL) AS avg_compset_occupancy,
       COUNT(DISTINCT cr.competitor_property_name) AS compset_count
     FROM public.competitor_rates cr
     WHERE cr.property_id = $1::uuid
@@ -94,6 +95,7 @@ export const COMPSET_INDICES_SQL = `
     ok.occupied_rooms,
     ok.room_revenue,
     ca.avg_compset_adr,
+    ca.avg_compset_occupancy,
     ca.compset_count
   FROM own_kpis ok
   CROSS JOIN compset_avg ca

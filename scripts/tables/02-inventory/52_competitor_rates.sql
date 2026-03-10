@@ -134,6 +134,7 @@ location_area VARCHAR(200), -- Neighborhood descriptor
 is_same_neighborhood BOOLEAN, -- Flag for direct comp set
 
 -- Demand Indicators
+estimated_occupancy_percent DECIMAL(5, 2) CHECK (estimated_occupancy_percent BETWEEN 0 AND 100), -- Estimated competitor occupancy from OTA signals
 booking_urgency_indicator VARCHAR(50), -- "Only 2 rooms left", "In high demand"
 viewed_count INTEGER, -- OTA view count when available
 booking_trend VARCHAR(50) CHECK (

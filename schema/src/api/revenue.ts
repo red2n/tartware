@@ -372,6 +372,8 @@ export const CreateCompetitorRateInputSchema = z.object({
 	includesParking: z.boolean().nullish(),
 	includesWifi: z.boolean().nullish(),
 	taxesIncluded: z.boolean().nullish(),
+	roomsLeft: z.number().int().min(0).nullish(),
+	estimatedOccupancyPercent: z.number().min(0).max(100).nullish(),
 	notes: z.string().nullish(),
 });
 
@@ -450,9 +452,13 @@ export const CompsetIndicesSchema = z.object({
 	own_adr: z.number(),
 	own_revpar: z.number(),
 	compset_avg_adr: z.number().nullable(),
+	compset_avg_occupancy: z.number().nullable(),
 	compset_count: z.number(),
-	occupancy_index: z.number().nullable(),
+	/** Market Penetration Index = Own OCC% / Comp Set OCC% × 100 */
+	mpi: z.number().nullable(),
+	/** Average Rate Index = Own ADR / Comp Set ADR × 100 */
 	ari: z.number().nullable(),
+	/** Revenue Generation Index = Own RevPAR / Comp Set RevPAR × 100 */
 	rgi: z.number().nullable(),
 });
 
@@ -490,9 +496,7 @@ export const BudgetVarianceQuerySchema = z.object({
 	start_date: z
 		.string()
 		.describe("Start date for variance period (YYYY-MM-DD)"),
-	end_date: z
-		.string()
-		.describe("End date for variance period (YYYY-MM-DD)"),
+	end_date: z.string().describe("End date for variance period (YYYY-MM-DD)"),
 	department: z.string().optional().describe("Filter by USALI department"),
 	goal_type: z.string().optional().describe("Filter by goal type"),
 	limit: z.coerce.number().int().min(1).max(200).default(100),
@@ -797,4 +801,130 @@ export const ChannelProfitabilityItemSchema = z.object({
 
 export type ChannelProfitabilityItem = z.infer<
 	typeof ChannelProfitabilityItemSchema
+>;
+
+// =====================================================
+// RATE SHOPPING — Comparison view (R15)
+// =====================================================
+
+/** Query for rate shopping comparison endpoint. */
+export const RateShoppingQuerySchema = z.object({
+	tenant_id: tenantId,
+	property_id: propertyId,
+	start_date: z.string().describe("Start of date range (YYYY-MM-DD)"),
+	end_date: z.string().describe("End of date range (YYYY-MM-DD)"),
+	competitor_name: z.string().optional(),
+	limit: z.coerce.number().int().min(1).max(200).default(100),
+	offset: z.coerce.number().int().min(0).default(0),
+});
+
+export type RateShoppingQuery = z.infer<typeof RateShoppingQuerySchema>;
+
+/** Single date row in the rate shopping comparison grid. */
+export const RateShoppingItemSchema = z.object({
+	rate_date: z.string(),
+	own_rate: z.number().nullable(),
+	competitor_name: z.string(),
+	competitor_rate: z.number().nullable(),
+	rate_difference: z.number().nullable(),
+	rate_difference_pct: z.number().nullable(),
+	competitor_rooms_left: z.number().nullable(),
+	competitor_occupancy_pct: z.number().nullable(),
+	source: z.string().nullable(),
+	collected_at: z.string().nullable(),
+});
+
+export type RateShoppingItem = z.infer<typeof RateShoppingItemSchema>;
+
+// =====================================================
+// COMPETITIVE RESPONSE RULES (R16)
+// =====================================================
+
+/** Query for listing competitive response rules. */
+export const CompetitiveResponseRuleQuerySchema =
+	TenantScopedListQuerySchema.extend({
+		property_id: propertyId.optional(),
+		is_active: z.coerce.boolean().optional(),
+	});
+
+export type CompetitiveResponseRuleQuery = z.infer<
+	typeof CompetitiveResponseRuleQuerySchema
+>;
+
+/** API response item for a competitive response rule. */
+export const CompetitiveResponseRuleItemSchema = z.object({
+	rule_id: z.string(),
+	tenant_id: z.string(),
+	property_id: z.string(),
+	property_name: z.string().optional(),
+	rule_name: z.string(),
+	rule_type: z.string(),
+	track_competitor: z.string(),
+	response_strategy: z.string(),
+	response_value: z.number(),
+	min_rate: z.number(),
+	max_rate: z.number(),
+	auto_apply: z.boolean(),
+	trigger_threshold_percent: z.number(),
+	is_active: z.boolean(),
+	notes: z.string().nullable(),
+	created_at: z.string(),
+	updated_at: z.string().nullable(),
+});
+
+export type CompetitiveResponseRuleItem = z.infer<
+	typeof CompetitiveResponseRuleItemSchema
+>;
+
+// =====================================================
+// RATE SHOPPING PROVIDER TYPES (R15)
+// =====================================================
+
+/** Shape of a single competitor rate collected by a rate shopping provider. */
+export const CollectedRateSchema = z.object({
+	competitor_name: z.string(),
+	competitor_property_name: z.string().optional(),
+	room_type_category: z.string().optional(),
+	rate_date: z.string(),
+	rate_amount: z.number(),
+	currency: z.string().optional(),
+	rooms_left: z.number().int().min(0).optional(),
+	estimated_occupancy_percent: z.number().min(0).max(100).optional(),
+	source: z.string().optional(),
+});
+
+export type CollectedRate = z.infer<typeof CollectedRateSchema>;
+
+/** Contract for a pluggable rate shopping provider. */
+export interface RateShoppingProvider {
+	readonly name: string;
+	/** Collect rates from an external source for the given property and date range. */
+	collectRates(
+		tenantId: string,
+		propertyId: string,
+		startDate: string,
+		endDate: string,
+	): Promise<CollectedRate[]>;
+}
+
+// =====================================================
+// COMPETITIVE RESPONSE RULE INPUT (R16)
+// =====================================================
+
+/** Input for creating/updating a competitive response rule. */
+export const CompetitiveResponseRuleInputSchema = z.object({
+	trackCompetitor: z.string(),
+	roomTypeId: z.string().uuid().optional(),
+	responseStrategy: z.string(),
+	responseValue: z.number(),
+	minRate: z.number(),
+	maxRate: z.number(),
+	autoApply: z.boolean(),
+	triggerThresholdPercent: z.number(),
+	isActive: z.boolean(),
+	notes: z.string().optional(),
+});
+
+export type CompetitiveResponseRuleInput = z.infer<
+	typeof CompetitiveResponseRuleInputSchema
 >;
