@@ -46,7 +46,8 @@ rule_category VARCHAR(100) CHECK (
         'promotional',
         'restriction',
         'yield',
-        'strategic'
+        'strategic',
+        'competitive'
     )
 ),
 
@@ -111,6 +112,8 @@ adjustment_type VARCHAR(50) NOT NULL CHECK (
 adjustment_value DECIMAL(10, 2) NOT NULL, -- Magnitude of adjustment
 adjustment_cap_min DECIMAL(10, 2), -- Minimum rate after adjustment
 adjustment_cap_max DECIMAL(10, 2), -- Maximum rate after adjustment
+min_rate DECIMAL(10, 2), -- Absolute rate floor (lowest allowed rate)
+max_rate DECIMAL(10, 2), -- Absolute rate ceiling (highest allowed rate)
 
 -- Rounding
 round_to_nearest DECIMAL(5, 2), -- e.g., 0.99 for $99.99
@@ -217,6 +220,15 @@ is_deleted BOOLEAN DEFAULT FALSE, -- Soft delete flag
     deleted_at TIMESTAMP WITH TIME ZONE, -- Deletion timestamp
     deleted_by UUID -- Deleting user
 );
+
+-- ── Idempotent Column Additions ──
+ALTER TABLE pricing_rules ADD COLUMN IF NOT EXISTS min_rate DECIMAL(10, 2);
+ALTER TABLE pricing_rules ADD COLUMN IF NOT EXISTS max_rate DECIMAL(10, 2);
+
+-- Update rule_category CHECK to include 'competitive'
+ALTER TABLE pricing_rules DROP CONSTRAINT IF EXISTS pricing_rules_rule_category_check;
+ALTER TABLE pricing_rules ADD CONSTRAINT pricing_rules_rule_category_check
+  CHECK (rule_category IN ('dynamic', 'promotional', 'restriction', 'yield', 'strategic', 'competitive'));
 
 -- Comments
 COMMENT ON TABLE pricing_rules IS 'Dynamic pricing rules engine for automated rate adjustments based on conditions';

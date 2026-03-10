@@ -426,6 +426,9 @@ type AvailableRoomItem = {
   base_rate: number;
   currency: string;
   features: string[];
+  bed_type: string | null;
+  number_of_beds: number;
+  size_sqm: number | null;
 };
 
 /**
@@ -458,11 +461,14 @@ export const searchAvailableRooms = async (options: {
     base_rate: number | string | null;
     currency: string | null;
     features: string | null;
+    bed_type: string | null;
+    number_of_beds: number | string | null;
+    size_sqm: number | string | null;
   }>(
     `SELECT
        r.id AS room_id, r.room_number, r.room_type_id,
        rt.type_name, r.floor, r.status, r.housekeeping_status,
-       rt.max_occupancy,
+       rt.max_occupancy, rt.bed_type, rt.number_of_beds, rt.size_sqm,
        COALESCE(rp.base_rate, rt.base_price, 0) AS base_rate,
        COALESCE(rp.currency, 'USD') AS currency,
        r.features
@@ -533,6 +539,9 @@ export const searchAvailableRooms = async (options: {
     base_rate: Number(r.base_rate ?? 0),
     currency: r.currency ?? "USD",
     features: r.features ? (Array.isArray(r.features) ? r.features : []) : [],
+    bed_type: r.bed_type ?? null,
+    number_of_beds: Number(r.number_of_beds ?? 1),
+    size_sqm: r.size_sqm != null ? Number(r.size_sqm) : null,
   }));
 };
 

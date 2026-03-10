@@ -138,6 +138,8 @@ import {
 } from "./events/commands/reservations.js";
 import {
 	RevenueBookingPaceSnapshotCommandSchema,
+	RevenueCompetitiveResponseRuleCommandSchema,
+	RevenueCompetitorAutoCollectCommandSchema,
 	RevenueCompetitorBulkImportCommandSchema,
 	RevenueCompetitorConfigureCompsetCommandSchema,
 	RevenueCompetitorRecordCommandSchema,
@@ -683,6 +685,14 @@ const commandPayloadValidators = new Map<string, CommandPayloadValidator>([
 	[
 		"revenue.competitor.configure_compset",
 		(payload) => RevenueCompetitorConfigureCompsetCommandSchema.parse(payload),
+	],
+	[
+		"revenue.competitor.auto_collect",
+		(payload) => RevenueCompetitorAutoCollectCommandSchema.parse(payload),
+	],
+	[
+		"revenue.competitive_response.configure",
+		(payload) => RevenueCompetitiveResponseRuleCommandSchema.parse(payload),
 	],
 	[
 		"revenue.restriction.set",

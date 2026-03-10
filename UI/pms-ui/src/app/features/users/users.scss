@@ -1,0 +1,34 @@
+.users-page {
+  max-width: 1200px;
+}
+
+.user-name-cell {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.user-avatar {
+  background: var(--color-accent-subtle);
+  color: var(--color-accent-fg);
+  font-weight: var(--font-weight-semibold);
+}
+
+.user-name {
+  font-weight: var(--font-weight-medium);
+  color: var(--color-fg-default);
+}
+
+@media (max-width: 768px) {
+  .filter-bar {
+    flex-direction: column;
+  }
+
+  .search-input {
+    width: 100%;
+  }
+
+  .table-container {
+    overflow-x: auto;
+  }
+}

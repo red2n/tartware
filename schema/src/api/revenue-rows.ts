@@ -220,6 +220,7 @@ export type CompsetRow = {
     occupied_rooms: string | number;
     room_revenue: string | number;
     avg_compset_adr: string | number | null;
+    avg_compset_occupancy: string | number | null;
     compset_count: string | number;
 };
 
@@ -404,4 +405,47 @@ export type ChannelProfitabilityRow = {
     booking_count: string | number;
     room_nights: string | number;
     gross_revenue: string | number;
+};
+
+// =====================================================
+// RATE SHOPPING ROW TYPES (R15)
+// =====================================================
+
+/** Raw row from the rate shopping comparison SQL query. */
+export type RateShoppingRow = {
+    rate_date: string | Date;
+    own_rate: string | number | null;
+    competitor_name: string;
+    competitor_rate: string | number | null;
+    rate_difference: string | number | null;
+    rate_difference_pct: string | number | null;
+    competitor_rooms_left: string | number | null;
+    competitor_occupancy_pct: string | number | null;
+    source: string | null;
+    collected_at: string | Date | null;
+};
+
+// =====================================================
+// COMPETITIVE RESPONSE RULE ROW TYPES (R16)
+// =====================================================
+
+/** Raw row from competitive response rule list SQL query. */
+export type CompetitiveResponseRuleRow = {
+    rule_id: string;
+    tenant_id: string;
+    property_id: string;
+    property_name: string | null;
+    rule_name: string;
+    rule_type: string;
+    track_competitor: string | null;
+    response_strategy: string | null;
+    response_value: string | number | null;
+    min_rate: string | number | null;
+    max_rate: string | number | null;
+    auto_apply: boolean | null;
+    trigger_threshold_percent: string | number | null;
+    is_active: boolean;
+    notes: string | null;
+    created_at: string | Date;
+    updated_at: string | Date | null;
 };

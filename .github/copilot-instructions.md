@@ -39,9 +39,9 @@ Client → API Gateway (:8080) → Command Center → Kafka → Domain Services
 
 ## Schema Ownership — `schema/` is the Single Source of Truth
 
-- **NEVER define sharable Zod schemas inside `Apps/`** — import from `@tartware/schemas`.
+- **NEVER define sharable types inside `Apps/`** — this includes Zod schemas, TypeScript `interface` declarations, `type` aliases, input/output shapes, provider contracts, and options objects. ALL sharable data shapes MUST live in `schema/` and be imported from `@tartware/schemas`.
 - API response schemas → `schema/src/api/`; command schemas → `schema/src/events/commands/`; table schemas → `schema/src/schemas/`.
-- **Allowed locally in `Apps/`:** route-specific query/param schemas, `.pick()`/`.omit().extend()` derivations, env/config schemas, and thin `z.array()` wrappers.
+- **Allowed locally in `Apps/`:** route-specific query/param schemas, `.pick()`/`.omit().extend()` derivations, env/config schemas, thin `z.array()` wrappers, and `export type { X }` re-exports.
 - After any schema change: `npx nx run @tartware/schemas:build`.
 
 ## Schema-First Development

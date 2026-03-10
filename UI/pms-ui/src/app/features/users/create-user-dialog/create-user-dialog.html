@@ -1,0 +1,134 @@
+<h2 mat-dialog-title>
+  <mat-icon class="dialog-title-icon">person_add</mat-icon>
+  Invite User
+</h2>
+
+<mat-dialog-content>
+  @if (error(); as err) {
+    <div class="flash flash-error">
+      <mat-icon class="flash-icon">error_outline</mat-icon>
+      {{ err }}
+    </div>
+  }
+
+  <div class="form-fields">
+    <section class="form-section">
+      <span class="form-section-title">Account</span>
+
+      <div class="field-row">
+        <div class="field-group field-required" [class.field-error]="touched['username'] && usernameError">
+          <label class="field-label" for="cu-username">Username</label>
+          <input
+            id="cu-username"
+            type="text"
+            class="field-input"
+            placeholder="jane.doe"
+            maxlength="50"
+            autocomplete="off"
+            [(ngModel)]="username"
+            (blur)="markTouched('username')"
+            [disabled]="saving()" />
+          @if (touched['username'] && usernameError) {
+            <span class="field-hint-error">{{ usernameError }}</span>
+          }
+          @if (hasFieldError('username')) {
+            <span class="field-hint-error">{{ getFieldError('username') }}</span>
+          }
+        </div>
+        <div class="field-group field-required" [class.field-error]="touched['email'] && emailError">
+          <label class="field-label" for="cu-email">Email</label>
+          <input
+            id="cu-email"
+            type="email"
+            class="field-input"
+            placeholder="jane@example.com"
+            autocomplete="off"
+            [(ngModel)]="email"
+            (blur)="markTouched('email')"
+            [disabled]="saving()" />
+          @if (touched['email'] && emailError) {
+            <span class="field-hint-error">{{ emailError }}</span>
+          }
+          @if (hasFieldError('email')) {
+            <span class="field-hint-error">{{ getFieldError('email') }}</span>
+          }
+        </div>
+      </div>
+    </section>
+
+    <section class="form-section">
+      <span class="form-section-title">Profile</span>
+
+      <div class="field-row">
+        <div class="field-group field-required" [class.field-error]="touched['firstName'] && !firstName.trim()">
+          <label class="field-label" for="cu-first">First name</label>
+          <input
+            id="cu-first"
+            type="text"
+            class="field-input"
+            placeholder="Jane"
+            maxlength="100"
+            [(ngModel)]="firstName"
+            (blur)="markTouched('firstName')"
+            [disabled]="saving()" />
+          @if (touched['firstName'] && !firstName.trim()) {
+            <span class="field-hint-error">First name is required</span>
+          }
+        </div>
+        <div class="field-group field-required" [class.field-error]="touched['lastName'] && !lastName.trim()">
+          <label class="field-label" for="cu-last">Last name</label>
+          <input
+            id="cu-last"
+            type="text"
+            class="field-input"
+            placeholder="Doe"
+            maxlength="100"
+            [(ngModel)]="lastName"
+            (blur)="markTouched('lastName')"
+            [disabled]="saving()" />
+          @if (touched['lastName'] && !lastName.trim()) {
+            <span class="field-hint-error">Last name is required</span>
+          }
+        </div>
+      </div>
+
+      <div class="field-row">
+        <div class="field-group">
+          <label class="field-label" for="cu-phone">Phone</label>
+          <input
+            id="cu-phone"
+            type="tel"
+            class="field-input"
+            placeholder="+1 555-555-5555"
+            [(ngModel)]="phone"
+            [disabled]="saving()" />
+        </div>
+        <div class="field-group field-required">
+          <label class="field-label" for="cu-role">Role</label>
+          <select
+            id="cu-role"
+            class="field-input"
+            [(ngModel)]="role"
+            [disabled]="saving()">
+            @for (r of roles; track r.value) {
+              <option [value]="r.value">{{ r.label }}</option>
+            }
+          </select>
+          <span class="field-hint">Determines what this user can access</span>
+        </div>
+      </div>
+    </section>
+  </div>
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  <button class="btn btn-outline" (click)="cancel()" [disabled]="saving()">Cancel</button>
+  <button class="btn btn-primary" (click)="save()" [disabled]="!isValid || saving()">
+    @if (saving()) {
+      <mat-spinner diameter="16"></mat-spinner>
+    } @else {
+      <mat-icon>person_add</mat-icon>
+    }
+    Invite User
+  </button>
+</mat-dialog-actions>

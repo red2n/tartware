@@ -13,11 +13,11 @@ There is **no UI for user management** in the PMS. The default `setup.admin` use
 The backend APIs for user CRUD exist in `core-service` (e.g., `/v1/users`, `/v1/tenants/:tenantId/users`), but no Angular UI has been built to expose these operations. This is a table-stakes feature for any multi-user PMS.
 
 **Scope:**
-- [ ] User list page (view all users for a tenant with role, status, last login)
-- [ ] Create/invite user form (username, email, role assignment, module access)
-- [ ] Edit user (update role, modules, active status)
-- [ ] Deactivate/reactivate user
-- [ ] Role-based access control in UI (only OWNER/ADMIN can manage users)
+- [x] User list page (view all users for a tenant with role, status, last login)
+- [x] Create/invite user form (username, email, role assignment, module access)
+- [x] Edit user (update role, modules, active status)
+- [x] Deactivate/reactivate user
+- [x] Role-based access control in UI (only OWNER/ADMIN can manage users)
 
 ---
 
@@ -1067,7 +1067,7 @@ Industry standard: modern RMS platforms use machine learning and multi-signal de
 
 Industry standard: STR (Smith Travel Research) benchmarking is the global standard for hotel competitive performance measurement. Every major chain and management company subscribes to STR data. The PMS must compute STR-equivalent indices locally from comp set data.
 
-- [ ] **R14: Full Comp Set Index Computation** | Complexity: Medium
+- [x] **R14: Full Comp Set Index Computation** | Complexity: Medium
   - Current gap: `getCompsetIndices()` computes ARI (ADR Index) but returns `null` for Occupancy Index and RGI because comp set occupancy data isn't available from rate-only competitor data
   - Solution: add comp set occupancy estimation based on OTA availability signals (rooms_left → estimated occupancy) or direct comp set occupancy input
   - New field on `competitor_rates`: `estimated_occupancy_percent` (from OTA "X rooms left" signals)
@@ -1077,7 +1077,7 @@ Industry standard: STR (Smith Travel Research) benchmarking is the global standa
     - **RGI (Revenue Generation Index)** = Own RevPAR / Comp Set RevPAR × 100 (>100 = outperforming)
   - Industry standard: RGI is the single most important competitive metric; a hotel with RGI < 100 is underperforming its fair share
 
-- [ ] **R15: Rate Shopping Automation** | Complexity: High
+- [x] **R15: Rate Shopping Automation** | Complexity: High
   - Background scheduled task: `revenue.competitor.auto_collect` — periodic automated rate collection
   - Pluggable provider interface (similar to notification-service providers):
     - Console provider (dev): generates synthetic competitor rates
@@ -1086,7 +1086,7 @@ Industry standard: STR (Smith Travel Research) benchmarking is the global standa
   - Rate comparison dashboard endpoint: `GET /v1/revenue/rate-shopping` — own rate vs each competitor for date range, showing rate positioning (premium/parity/undercut)
   - Industry standard: rate shopping runs 2-4x daily; alerts when competitor drops rate >10% or when own rate is >20% above comp set average
 
-- [ ] **R16: Competitive Response Pricing Rules** | Complexity: Medium
+- [x] **R16: Competitive Response Pricing Rules** | Complexity: Medium
   - New pricing rule type: `competitor_response` — auto-adjust own rate when competitor rates change
   - Configuration: track_competitor, response_strategy (match, undercut_by_$, undercut_by_%, maintain_premium_$, maintain_premium_%)
   - Example: "If CompetitorHotel drops Standard Room rate below $180, auto-set our BAR to $175"
@@ -1123,25 +1123,25 @@ Industry standard: revenue management extends to optimizing the mix of business 
 
 ---
 
-#### Phase 7 — Pricing Experimentation & ML (Priority: Low)
+#### Phase 7 — Pricing Experimentation & ML (OUT OF SCOPE)
 
-Industry standard: leading RMS platforms (Duetto GameChanger, Atomize) use A/B testing and machine learning for continuous price optimization. This is aspirational/differentiating functionality beyond table-stakes.
+Deferred indefinitely — aspirational ML/experimentation features are not on the roadmap.
 
-- [ ] **R20: Pricing Experiment Framework** | Complexity: High
+- [x] **R20: Pricing Experiment Framework** | ~~Complexity: High~~ — OUT OF SCOPE
   - `revenue.experiment.create` — create an A/B price test (control rate vs variant rate for a segment or date range)
   - `revenue.experiment.start` / `revenue.experiment.stop` — lifecycle management
   - `revenue.experiment.evaluate` — compute statistical significance of conversion rate and revenue difference
   - Leverages existing `pricing_experiments` table
   - Industry standard: test $199 vs $209 for the same room type; measure conversion rate × revenue lift to determine optimal price point
 
-- [ ] **R21: ML Demand Prediction Pipeline** | Complexity: Very High
+- [x] **R21: ML Demand Prediction Pipeline** | ~~Complexity: Very High~~ — OUT OF SCOPE
   - Wire `ai_demand_predictions` and `dynamic_pricing_rules_ml` tables into the forecast engine
   - ML features: day of week, month, holiday flag, event proximity, booking pace, competitor rates, weather, historical same-date
   - Pluggable model interface: built-in linear regression baseline, webhook for external ML service (AWS SageMaker, Google AutoML)
   - Model output: predicted occupancy, recommended rate, confidence interval
   - Industry standard: IDeaS G3 uses proprietary ML; smaller PMS platforms often use regression + rule-based hybrid
 
-- [ ] **R22: Revenue Attribution & ROI Tracking** | Complexity: Medium
+- [x] **R22: Revenue Attribution & ROI Tracking** | ~~Complexity: Medium~~ — OUT OF SCOPE
   - Wire `revenue_attribution` table: attribute each booking's revenue to the pricing action/campaign/channel that drove it
   - Track ROI of pricing decisions: "Raising BAR by $15 on March 14 generated $2,400 incremental revenue with 97% confidence"
   - Attribution types: pricing_rule, promotion, channel_campaign, comp_response, event_pricing
@@ -1149,11 +1149,11 @@ Industry standard: leading RMS platforms (Duetto GameChanger, Atomize) use A/B t
 
 ---
 
-#### Phase 8 — Total Revenue Management (TRevPAR) (Priority: Low)
+#### Phase 8 — Total Revenue Management (TRevPAR) (OUT OF SCOPE)
 
-Industry standard: Total Revenue Management extends yield optimization from rooms to ALL revenue streams — F&B, spa, parking, events, ancillary. This is the emerging frontier in hospitality revenue management (Revfine 2026, IDeaS Total Profit Optimization).
+Deferred indefinitely — total revenue management beyond rooms is not on the roadmap.
 
-- [ ] **R23: Non-Room Revenue KPIs** | Complexity: Medium
+- [x] **R23: Non-Room Revenue KPIs** | ~~Complexity: Medium~~ — OUT OF SCOPE
   - Extend `GET /v1/revenue/kpis` to include:
     - **TRevPAR** = Total Revenue / Available Rooms (rooms + F&B + spa + parking + misc)
     - **GOPPAR** = Gross Operating Profit / Available Rooms (revenue - operating costs)
@@ -1164,7 +1164,7 @@ Industry standard: Total Revenue Management extends yield optimization from room
   - Break down total revenue by department (rooms, F&B, spa, parking, other) per USALI standard
   - Industry standard: TRevPAR is the primary KPI for total revenue management; it captures the full guest spend
 
-- [ ] **R24: Ancillary Revenue Optimization** | Complexity: High
+- [x] **R24: Ancillary Revenue Optimization** | ~~Complexity: High~~ — OUT OF SCOPE
   - Pricing rules that cover non-room products: parking rates, spa rates, F&B upsell bundles
   - Package builder: dynamically price room + F&B + activity bundles based on demand
   - Revenue allocation for packages (room 76.6%, breakfast 13.4%, parking 6.7%, spa 3.3% per USALI)

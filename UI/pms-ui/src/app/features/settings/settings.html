@@ -17,30 +17,14 @@
       <button class="btn btn-outline" (click)="loadCategories()">{{ 'Retry' | translate }}</button>
     </div>
   } @else {
-    <div class="settings-layout">
-      <!-- Category sidebar -->
-      <nav class="settings-nav">
-        @for (cat of categories(); track cat.id) {
-          <button
-            class="nav-category"
-            [class.nav-category-active]="selectedCategory()?.id === cat.id"
-            (click)="selectCategory(cat)">
-            <mat-icon class="nav-category-icon">{{ categoryIcon(cat) }}</mat-icon>
-            <span class="nav-category-label">{{ cat.name }}</span>
-          </button>
-        }
-      </nav>
-
-      <!-- Content panel -->
-      <div class="settings-content">
-        @if (selectedCategory(); as cat) {
-          <div class="content-header">
-            <div class="content-header-info">
-              <h2 class="content-title">{{ cat.name }}</h2>
-              @if (cat.description) {
-                <p class="content-description text-muted">{{ cat.description }}</p>
-              }
-            </div>
+    @if (selectedCategory(); as cat) {
+      <div class="content-header">
+        <div class="content-header-info">
+          <h2 class="content-title">{{ cat.name }}</h2>
+          @if (cat.description) {
+            <p class="content-description text-muted">{{ cat.description }}</p>
+          }
+        </div>
             <div class="content-header-actions">
               <div class="search-box">
                 <mat-icon class="search-icon">search</mat-icon>
@@ -449,7 +433,5 @@
             </div>
           }
         }
-      </div>
-    </div>
-  }
+    }
 </div>

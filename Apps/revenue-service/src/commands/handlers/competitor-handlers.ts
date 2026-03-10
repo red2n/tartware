@@ -1,7 +1,9 @@
 import type { CommandMetadata } from "@tartware/command-consumer-utils";
-import type { CompsetCompetitorInput } from "@tartware/schemas";
+import type { CompetitiveResponseRuleInput, CompsetCompetitorInput } from "@tartware/schemas";
+import { upsertCompetitiveResponseRule } from "../../services/competitive-response-service.js";
 import { createCompetitorRate } from "../../services/competitor-rate-service.js";
 import { configureCompset } from "../../services/compset-service.js";
+import { getProvider } from "../../services/rate-shopping-service.js";
 
 export const handleCompetitorRecord = async (
   payload: Record<string, unknown>,
@@ -23,6 +25,8 @@ export const handleCompetitorRecord = async (
       includesParking: payload.includes_parking as boolean | undefined,
       includesWifi: payload.includes_wifi as boolean | undefined,
       taxesIncluded: payload.taxes_included as boolean | undefined,
+      roomsLeft: payload.rooms_left as number | undefined,
+      estimatedOccupancyPercent: payload.estimated_occupancy_percent as number | undefined,
       notes: (payload.notes as string) ?? null,
     },
     actorId,
@@ -46,6 +50,8 @@ export const handleCompetitorBulkImport = async (
     includes_parking?: boolean;
     includes_wifi?: boolean;
     taxes_included?: boolean;
+    rooms_left?: number;
+    estimated_occupancy_percent?: number;
   }>;
   let imported = 0;
   for (const rate of rates) {
@@ -64,6 +70,8 @@ export const handleCompetitorBulkImport = async (
         includesParking: rate.includes_parking,
         includesWifi: rate.includes_wifi,
         taxesIncluded: rate.taxes_included,
+        roomsLeft: rate.rooms_left,
+        estimatedOccupancyPercent: rate.estimated_occupancy_percent,
       },
       actorId,
     );
@@ -105,5 +113,71 @@ export const handleCompetitorConfigureCompset = async (
     competitors,
     actorId,
     (payload.metadata as Record<string, unknown>) ?? null,
+  );
+};
+
+// ── R15: Rate Shopping Auto-Collect ─────────────────
+
+export const handleCompetitorAutoCollect = async (
+  payload: Record<string, unknown>,
+  metadata: CommandMetadata,
+  actorId: string | null,
+): Promise<{ collected: number }> => {
+  const propertyId = payload.property_id as string;
+  const startDate = payload.start_date as string;
+  const endDate = payload.end_date as string;
+  const providerName = payload.provider as string | undefined;
+
+  const provider = getProvider(providerName);
+  const rates = await provider.collectRates(metadata.tenantId, propertyId, startDate, endDate);
+
+  let collected = 0;
+  for (const rate of rates) {
+    await createCompetitorRate(
+      metadata.tenantId,
+      propertyId,
+      {
+        competitorName: rate.competitor_name,
+        competitorPropertyName: rate.competitor_property_name ?? null,
+        roomTypeCategory: rate.room_type_category ?? null,
+        rateDate: rate.rate_date,
+        rateAmount: rate.rate_amount,
+        currency: rate.currency ?? "USD",
+        source: rate.source ?? provider.name,
+        roomsLeft: rate.rooms_left,
+        estimatedOccupancyPercent: rate.estimated_occupancy_percent,
+      },
+      actorId,
+    );
+    collected++;
+  }
+  return { collected };
+};
+
+// ── R16: Competitive Response Rule Configure ────────
+
+export const handleCompetitiveResponseConfigure = async (
+  payload: Record<string, unknown>,
+  metadata: CommandMetadata,
+  actorId: string | null,
+): Promise<{ ruleId: string }> => {
+  const data: CompetitiveResponseRuleInput = {
+    trackCompetitor: payload.track_competitor as string,
+    roomTypeId: payload.room_type_id as string | undefined,
+    responseStrategy: payload.response_strategy as string,
+    responseValue: (payload.response_value as number) ?? 0,
+    minRate: payload.min_rate as number,
+    maxRate: payload.max_rate as number,
+    autoApply: (payload.auto_apply as boolean) ?? false,
+    triggerThresholdPercent: (payload.trigger_threshold_percent as number) ?? 5,
+    isActive: (payload.is_active as boolean) ?? true,
+    notes: payload.notes as string | undefined,
+  };
+
+  return upsertCompetitiveResponseRule(
+    metadata.tenantId,
+    payload.property_id as string,
+    data,
+    actorId,
   );
 };

@@ -29,12 +29,11 @@ export * from "./rate-calendar.js";
 export * from "./rates.js";
 export * from "./recommendations.js";
 export * from "./reservations.js";
-export * from "./revenue-rows.js";
 export * from "./revenue.js";
+export * from "./revenue-rows.js";
 export * from "./rooms.js";
 export * from "./settings.js";
 export * from "./system-admin.js";
 export * from "./system-session.js";
 export * from "./tenants.js";
 export * from "./users.js";
-

@@ -143,22 +143,55 @@ export const SECONDARY_NAV_ITEMS: NavItem[] = [
 	{
 		label: "Settings",
 		icon: "settings",
-		route: "/settings",
 		description: "Property configuration, user preferences, and system setup",
+		children: [
+			{ label: "Admin & Users", icon: "admin_panel_settings", route: "/settings/ADMIN_USER_MANAGEMENT" },
+			{ label: "Property & Tenant", icon: "apartment", route: "/settings/PROPERTY_TENANT_PROFILE" },
+			{ label: "Rooms & Inventory", icon: "meeting_room", route: "/settings/ROOM_UNIT_INVENTORY" },
+			{ label: "Rates & Pricing", icon: "request_quote", route: "/settings/RATE_PRICING_FINANCIAL" },
+			{ label: "Approvals", icon: "approval", route: "/settings/APPROVAL_WORKFLOWS" },
+			{ label: "Integrations", icon: "sync_alt", route: "/settings/INTEGRATION_CHANNEL_MANAGEMENT" },
+			{ label: "Booking & Guests", icon: "travel_explore", route: "/settings/BOOKING_ENGINE_GUEST" },
+			{ label: "Operations", icon: "cleaning_services", route: "/settings/HOUSEKEEPING_MAINTENANCE_OPERATIONS" },
+			{ label: "Reporting", icon: "analytics", route: "/settings/REPORTING_ANALYTICS_NIGHT_AUDIT" },
+			{ label: "Notifications", icon: "notifications", route: "/settings/COMMUNICATION_NOTIFICATIONS" },
+			{ label: "Security", icon: "shield", route: "/settings/SECURITY_COMPLIANCE_BACKUP" },
+			{ label: "UI & Localization", icon: "palette", route: "/settings/UI_LOCALIZATION_CUSTOM" },
+			{ label: "Advanced", icon: "rocket_launch", route: "/settings/ADVANCED_TRENDING" },
+		],
 	},
 	{
 		label: "Command Management",
 		icon: "terminal",
-		route: "/command-management",
 		description: "Enable, disable, and monitor system commands",
+		children: [
+			{ label: "All Commands", icon: "apps", route: "/command-management/all" },
+			{ label: "Reservations", icon: "event", route: "/command-management/reservations-command-service" },
+			{ label: "Guests", icon: "people", route: "/command-management/guests-service" },
+			{ label: "Rooms", icon: "hotel", route: "/command-management/rooms-service" },
+			{ label: "Housekeeping", icon: "cleaning_services", route: "/command-management/housekeeping-service" },
+			{ label: "Billing", icon: "receipt_long", route: "/command-management/billing-service" },
+			{ label: "Settings", icon: "settings", route: "/command-management/settings-service" },
+			{ label: "Notifications", icon: "notifications", route: "/command-management/notification-service" },
+			{ label: "Core", icon: "hub", route: "/command-management/core-service" },
+			{ label: "Revenue", icon: "trending_up", route: "/command-management/revenue-service" },
+		],
+	},
+	{
+		label: "User Management",
+		icon: "manage_accounts",
+		route: "/users",
+		description: "Manage team members, roles, and access permissions",
 	},
 ];
 
 /** Find the parent NavItem whose children contain a route matching the given URL. */
 export function findActiveParent(url: string): NavItem | null {
-	for (const item of PRIMARY_NAV_ITEMS) {
-		if (item.children?.some((child) => child.route && url.startsWith(child.route))) {
-			return item;
+	for (const items of [PRIMARY_NAV_ITEMS, SECONDARY_NAV_ITEMS]) {
+		for (const item of items) {
+			if (item.children?.some((child) => child.route && url.startsWith(child.route))) {
+				return item;
+			}
 		}
 	}
 	return null;

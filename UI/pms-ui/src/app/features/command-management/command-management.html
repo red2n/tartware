@@ -36,16 +36,8 @@
     <button class="btn btn-outline" (click)="loadCommands()">{{ 'Retry' | translate }}</button>
   </div>
   } @else {
-  <!-- Filter bar -->
+  <!-- Search bar -->
   <div class="filter-bar">
-    <div class="filter-tabs">
-      @for (tab of serviceTabs(); track tab) {
-      <button class="filter-tab" [class.filter-tab-active]="activeTab() === tab" (click)="setTab(tab)">
-        <mat-icon class="tab-icon">{{ getTabIcon(tab) }}</mat-icon>
-        {{ formatTabLabel(tab) | translate }}
-      </button>
-      }
-    </div>
     <div class="search-box">
       <mat-icon class="search-icon">search</mat-icon>
       <input type="text" class="search-input" [placeholder]="'Search commands...' | translate" [ngModel]="searchQuery()"

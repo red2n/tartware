@@ -1,5 +1,7 @@
 import { buildRouteSchema } from "@tartware/openapi";
 import {
+  type CompetitiveResponseRuleQuery,
+  CompetitiveResponseRuleQuerySchema,
   type CompetitorRateListQuery,
   CompetitorRateListQuerySchema,
   type DemandCalendarListQuery,
@@ -10,11 +12,13 @@ import {
   PricingRuleListQuerySchema,
   type RateRestrictionListQuery,
   RateRestrictionListQuerySchema,
+  type RateShoppingQuery,
+  RateShoppingQuerySchema,
   type RecommendationListQuery,
   RecommendationListQuerySchema,
 } from "@tartware/schemas";
 import type { FastifyInstance, FastifyPluginAsync } from "fastify";
-
+import { listCompetitiveResponseRules } from "../services/competitive-response-service.js";
 import {
   getPricingRuleById,
   listCompetitorRates,
@@ -24,6 +28,7 @@ import {
   listRateRecommendations,
   listRateRestrictions,
 } from "../services/pricing-service.js";
+import { getRateShoppingComparison } from "../services/rate-shopping-service.js";
 
 const PRICING_TAG = "Dynamic Pricing";
 
@@ -241,6 +246,66 @@ const pricingRoutes: FastifyPluginAsync = async (app: FastifyInstance) => {
         dateFrom: date_from,
         dateTo: date_to,
         source,
+        limit,
+        offset,
+      });
+    },
+  );
+
+  // ── R15: Rate Shopping Comparison ───────────────────
+
+  app.get<{ Querystring: RateShoppingQuery }>(
+    "/v1/revenue/rate-shopping",
+    {
+      preHandler: app.withTenantScope({
+        resolveTenantId: (request) => (request.query as RateShoppingQuery).tenant_id,
+        minRole: "ADMIN",
+        requiredModules: "finance-automation",
+      }),
+      schema: buildRouteSchema({
+        tag: PRICING_TAG,
+        summary: "Rate shopping comparison — own vs competitor rates",
+      }),
+    },
+    async (request) => {
+      const { tenant_id, property_id, start_date, end_date, competitor_name, limit, offset } =
+        RateShoppingQuerySchema.parse(request.query);
+
+      return getRateShoppingComparison({
+        tenantId: tenant_id,
+        propertyId: property_id,
+        startDate: start_date,
+        endDate: end_date,
+        competitorName: competitor_name,
+        limit,
+        offset,
+      });
+    },
+  );
+
+  // ── R16: Competitive Response Rules ────────────────
+
+  app.get<{ Querystring: CompetitiveResponseRuleQuery }>(
+    "/v1/revenue/competitive-response-rules",
+    {
+      preHandler: app.withTenantScope({
+        resolveTenantId: (request) => (request.query as CompetitiveResponseRuleQuery).tenant_id,
+        minRole: "ADMIN",
+        requiredModules: "finance-automation",
+      }),
+      schema: buildRouteSchema({
+        tag: PRICING_TAG,
+        summary: "List competitive response pricing rules",
+      }),
+    },
+    async (request) => {
+      const { tenant_id, property_id, is_active, limit, offset } =
+        CompetitiveResponseRuleQuerySchema.parse(request.query);
+
+      return listCompetitiveResponseRules({
+        tenantId: tenant_id,
+        propertyId: property_id,
+        isActive: is_active,
         limit,
         offset,
       });

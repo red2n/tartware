@@ -1,6 +1,8 @@
 import { NgClass } from "@angular/common";
-import { Component, computed, inject, type OnInit, signal } from "@angular/core";
+import { Component, computed, inject, type OnDestroy, type OnInit, signal } from "@angular/core";
 import { FormsModule } from "@angular/forms";
+import { ActivatedRoute, Router } from "@angular/router";
+import { type Subscription } from "rxjs";
 import { MatButtonModule } from "@angular/material/button";
 import { MatIconModule } from "@angular/material/icon";
 import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
@@ -88,9 +90,12 @@ interface JsonFieldGroup {
 	templateUrl: "./settings.html",
 	styleUrl: "./settings.scss",
 })
-export class SettingsComponent implements OnInit {
+export class SettingsComponent implements OnInit, OnDestroy {
 	private readonly api = inject(ApiService);
 	private readonly auth = inject(AuthService);
+	private readonly route = inject(ActivatedRoute);
+	private readonly router = inject(Router);
+	private paramSub?: Subscription;
 
 	readonly categories = signal<SettingsCategory[]>([]);
 	readonly selectedCategory = signal<SettingsCategory | null>(null);
@@ -137,6 +142,16 @@ export class SettingsComponent implements OnInit {
 
 	ngOnInit(): void {
 		this.loadCategories();
+		this.paramSub = this.route.params.subscribe((params) => {
+			const code = params["categoryCode"] as string | undefined;
+			if (code) {
+				this.selectCategoryByCode(code);
+			}
+		});
+	}
+
+	ngOnDestroy(): void {
+		this.paramSub?.unsubscribe();
 	}
 
 	async loadCategories(): Promise<void> {
@@ -148,8 +163,10 @@ export class SettingsComponent implements OnInit {
 				.filter((c) => c.is_active)
 				.sort((a, b) => a.sort_order - b.sort_order);
 			this.categories.set(sorted);
-			if (sorted.length > 0) {
-				this.selectCategory(sorted[0]);
+			// Select the category from route param (if categories loaded after param subscription fires)
+			const code = this.route.snapshot.params["categoryCode"] as string | undefined;
+			if (code) {
+				this.selectCategoryByCode(code);
 			}
 		} catch (err) {
 			this.error.set(err instanceof Error ? err.message : "Failed to load settings");
@@ -158,11 +175,20 @@ export class SettingsComponent implements OnInit {
 		}
 	}
 
-	async selectCategory(category: SettingsCategory): Promise<void> {
-		if (this.selectedCategory()?.id === category.id) return;
-		this.selectedCategory.set(category);
+	selectCategory(category: SettingsCategory): void {
+		this.router.navigate(["/settings", category.code]);
+	}
+
+	private selectCategoryByCode(code: string): void {
+		const cat = this.categories().find((c) => c.code === code);
+		if (!cat || this.selectedCategory()?.code === code) return;
+		this.selectedCategory.set(cat);
 		this.searchQuery.set("");
 		this.editStates.set({});
+		this.loadCatalog(cat);
+	}
+
+	private async loadCatalog(category: SettingsCategory): Promise<void> {
 		this.loadingCatalog.set(true);
 		this.error.set(null);
 		try {

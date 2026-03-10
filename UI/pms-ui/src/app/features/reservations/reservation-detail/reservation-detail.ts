@@ -11,6 +11,7 @@ import { ApiService } from "../../../core/api/api.service";
 import { AuthService } from "../../../core/auth/auth.service";
 import { reservationStatusClass } from "../../../shared/badge-utils";
 import { formatCurrency, formatLongDate } from "../../../shared/format-utils";
+import { PaginationComponent } from "../../../shared/pagination/pagination";
 import { ToastService } from "../../../shared/toast/toast.service";
 
 type DetailRow = { label: string; value: string; badge?: string };
@@ -25,7 +26,7 @@ const CANCEL_ALLOWED = new Set(["PENDING", "CONFIRMED", "WAITLISTED"]);
 @Component({
 	selector: "app-reservation-detail",
 	standalone: true,
-	imports: [NgClass, RouterLink, MatIconModule, MatProgressSpinnerModule, MatTooltipModule],
+	imports: [NgClass, RouterLink, MatIconModule, MatProgressSpinnerModule, MatTooltipModule, PaginationComponent],
 	templateUrl: "./reservation-detail.html",
 	styleUrl: "./reservation-detail.scss",
 })
@@ -53,6 +54,8 @@ export class ReservationDetailComponent implements OnInit {
 	readonly loadingRooms = signal(false);
 	readonly selectedRoomId = signal<string | null>(null);
 	readonly useAutoAssign = signal(true);
+	readonly roomPage = signal(1);
+	readonly roomPageSize = 5;
 
 	statusClass = reservationStatusClass;
 
@@ -159,6 +162,7 @@ export class ReservationDetailComponent implements OnInit {
 		this.confirmingCheckIn.set(true);
 		this.selectedRoomId.set(null);
 		this.useAutoAssign.set(true);
+		this.roomPage.set(1);
 		this.loadAvailableRooms();
 	}
 
@@ -211,6 +215,12 @@ export class ReservationDetailComponent implements OnInit {
 	selectAutoAssign(): void {
 		this.selectedRoomId.set(null);
 		this.useAutoAssign.set(true);
+	}
+
+	paginatedRooms(): AvailableRoom[] {
+		const all = this.availableRooms();
+		const start = (this.roomPage() - 1) * this.roomPageSize;
+		return all.slice(start, start + this.roomPageSize);
 	}
 
 	/**

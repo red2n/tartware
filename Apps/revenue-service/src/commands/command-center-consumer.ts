@@ -15,6 +15,8 @@ import {
   setCommandConsumerLag,
 } from "../lib/metrics.js";
 import {
+  handleCompetitiveResponseConfigure,
+  handleCompetitorAutoCollect,
   handleCompetitorBulkImport,
   handleCompetitorConfigureCompset,
   handleCompetitorRecord,
@@ -229,6 +231,24 @@ const routeRevenueCommand = async (
       logger.info(
         { upserted: result.upserted, tenantId: metadata.tenantId },
         "competitive set configured",
+      );
+      break;
+    }
+
+    case "revenue.competitor.auto_collect": {
+      const result = await handleCompetitorAutoCollect(payload, metadata, actorId);
+      logger.info(
+        { collected: result.collected, tenantId: metadata.tenantId },
+        "rate shopping auto-collect completed",
+      );
+      break;
+    }
+
+    case "revenue.competitive_response.configure": {
+      const result = await handleCompetitiveResponseConfigure(payload, metadata, actorId);
+      logger.info(
+        { ruleId: result.ruleId, tenantId: metadata.tenantId },
+        "competitive response rule configured",
       );
       break;
     }

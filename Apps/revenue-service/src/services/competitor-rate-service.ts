@@ -68,8 +68,10 @@ export const createCompetitorRate = async (
       data.includesParking ?? null, // $11
       data.includesWifi ?? null, // $12
       data.taxesIncluded ?? null, // $13
-      data.notes ?? null, // $14
-      createdBy, // $15
+      data.roomsLeft ?? null, // $14
+      data.estimatedOccupancyPercent ?? null, // $15
+      data.notes ?? null, // $16
+      createdBy, // $17
     ],
   );
   const row = rows[0];

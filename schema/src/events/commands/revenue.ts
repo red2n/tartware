@@ -282,6 +282,8 @@ export const RevenueCompetitorRecordCommandSchema = z.object({
 	includes_parking: z.boolean().optional(),
 	includes_wifi: z.boolean().optional(),
 	taxes_included: z.boolean().optional(),
+	rooms_left: z.number().int().min(0).optional(),
+	estimated_occupancy_percent: z.number().min(0).max(100).optional(),
 	notes: z.string().max(500).optional(),
 	idempotency_key: z.string().max(120).optional(),
 });
@@ -309,6 +311,8 @@ export const RevenueCompetitorBulkImportCommandSchema = z.object({
 				includes_parking: z.boolean().optional(),
 				includes_wifi: z.boolean().optional(),
 				taxes_included: z.boolean().optional(),
+				rooms_left: z.number().int().min(0).optional(),
+				estimated_occupancy_percent: z.number().min(0).max(100).optional(),
 			}),
 		)
 		.min(1)
@@ -318,6 +322,61 @@ export const RevenueCompetitorBulkImportCommandSchema = z.object({
 
 export type RevenueCompetitorBulkImportCommand = z.infer<
 	typeof RevenueCompetitorBulkImportCommandSchema
+>;
+
+/**
+ * R15: Trigger automated rate shopping collection from configured providers.
+ * Runs against the property's comp set to collect current competitor rates.
+ */
+export const RevenueCompetitorAutoCollectCommandSchema = z.object({
+	property_id: z.string().uuid(),
+	/** Date range to shop rates for. */
+	start_date: z.string().date(),
+	end_date: z.string().date(),
+	/** Override the configured provider (e.g. 'console', 'webhook'). */
+	provider: z.string().max(50).optional(),
+	idempotency_key: z.string().max(120).optional(),
+});
+
+export type RevenueCompetitorAutoCollectCommand = z.infer<
+	typeof RevenueCompetitorAutoCollectCommandSchema
+>;
+
+/**
+ * R16: Create or update a competitive response pricing rule.
+ * Auto-adjusts own rate when a tracked competitor's rate changes.
+ */
+export const RevenueCompetitiveResponseRuleCommandSchema = z.object({
+	property_id: z.string().uuid(),
+	/** Competitor name to track. */
+	track_competitor: z.string().min(1).max(255),
+	/** Room type this rule applies to (optional — null means all room types). */
+	room_type_id: z.string().uuid().optional(),
+	/** How to react when the tracked competitor changes rate. */
+	response_strategy: z.enum([
+		"match",
+		"undercut_by_amount",
+		"undercut_by_percent",
+		"maintain_premium_amount",
+		"maintain_premium_percent",
+	]),
+	/** Dollar or percent value for the strategy. */
+	response_value: z.number().min(0).default(0),
+	/** Floor rate — never set below this. */
+	min_rate: z.number().min(0),
+	/** Ceiling rate — never set above this. */
+	max_rate: z.number().min(0),
+	/** If true, auto-apply the price change without creating a recommendation. */
+	auto_apply: z.boolean().default(false),
+	/** Only trigger when competitor rate changes by more than this percent. */
+	trigger_threshold_percent: z.number().min(0).max(100).default(5),
+	is_active: z.boolean().default(true),
+	notes: z.string().max(2000).optional(),
+	idempotency_key: z.string().max(120).optional(),
+});
+
+export type RevenueCompetitiveResponseRuleCommand = z.infer<
+	typeof RevenueCompetitiveResponseRuleCommandSchema
 >;
 
 // ── Rate Restriction Commands ────────────────────────
