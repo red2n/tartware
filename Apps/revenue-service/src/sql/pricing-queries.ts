@@ -97,26 +97,26 @@ export const RATE_RECOMMENDATION_LIST_SQL = `
 
 export const COMPETITOR_RATE_LIST_SQL = `
   SELECT
-    cr.competitor_rate_id,
+    cr.rate_id AS competitor_rate_id,
     cr.tenant_id,
     cr.property_id,
     p.property_name,
     cr.competitor_name,
     cr.competitor_property_name,
     cr.room_type_category,
-    cr.rate_date,
-    cr.rate_amount,
+    cr.stay_date AS rate_date,
+    cr.competitor_rate AS rate_amount,
     cr.currency,
-    cr.source,
-    cr.collected_at,
+    cr.source_channel AS source,
+    cr.scrape_timestamp AS collected_at,
     cr.created_at
   FROM public.competitor_rates cr
   LEFT JOIN public.properties p ON cr.property_id = p.id
   WHERE COALESCE(cr.is_deleted, false) = false
     AND ($2::uuid IS NULL OR cr.tenant_id = $2::uuid)
     AND ($3::uuid IS NULL OR cr.property_id = $3::uuid)
-    AND ($4::date IS NULL OR cr.rate_date = $4::date)
-  ORDER BY cr.rate_date DESC, cr.competitor_name ASC
+    AND ($4::date IS NULL OR cr.stay_date = $4::date)
+  ORDER BY cr.stay_date DESC, cr.competitor_name ASC
   LIMIT $1
   OFFSET $5
 `;
@@ -277,10 +277,10 @@ export const DEMAND_CALENDAR_UPSERT_SQL = `
 export const COMPETITOR_RATE_INSERT_SQL = `
   INSERT INTO public.competitor_rates (
     tenant_id, property_id, competitor_name, competitor_property_name,
-    room_type_category, rate_date, rate_amount, currency, source,
+    room_type_category, stay_date, competitor_rate, currency, source_channel,
     includes_breakfast, includes_parking, includes_wifi, taxes_included,
     rooms_left, estimated_occupancy_percent,
-    notes, collected_at, created_by, updated_by
+    notes, scrape_timestamp, created_by, updated_by
   ) VALUES (
     $1::uuid, $2::uuid, $3, $4,
     $5, $6::date, $7, $8, $9,
@@ -288,7 +288,7 @@ export const COMPETITOR_RATE_INSERT_SQL = `
     $14, $15,
     $16, CURRENT_TIMESTAMP, $17::uuid, $17::uuid
   )
-  RETURNING competitor_rate_id, created_at
+  RETURNING rate_id AS competitor_rate_id, created_at
 `;
 
 // ── Rate Restriction Read Queries ───────────────────
@@ -453,37 +453,48 @@ export const HURDLE_RATE_UPSERT_SQL = `
 export const RATE_SHOPPING_COMPARISON_SQL = `
   WITH own_rates AS (
     SELECT
-      rc.rate_date,
+      rc.stay_date AS rate_date,
       ROUND(AVG(rc.rate_amount)::numeric, 2) AS own_rate
     FROM public.rate_calendar rc
     WHERE rc.tenant_id = $1::uuid
       AND rc.property_id = $2::uuid
-      AND rc.rate_date BETWEEN $3::date AND $4::date
-      AND COALESCE(rc.is_deleted, false) = false
-    GROUP BY rc.rate_date
+      AND rc.stay_date BETWEEN $3::date AND $4::date
+    GROUP BY rc.stay_date
+  ),
+  latest_competitor_rates AS (
+    SELECT DISTINCT ON (stay_date, competitor_name)
+      stay_date,
+      competitor_name,
+      competitor_rate,
+      rooms_left,
+      estimated_occupancy_percent,
+      source_channel,
+      scrape_timestamp
+    FROM public.competitor_rates
+    WHERE tenant_id = $1::uuid
+      AND property_id = $2::uuid
+      AND stay_date BETWEEN $3::date AND $4::date
+      AND COALESCE(is_deleted, false) = false
+      AND ($5::text IS NULL OR competitor_name = $5::text)
+    ORDER BY stay_date, competitor_name, scrape_timestamp DESC
   )
   SELECT
-    cr.rate_date,
+    cr.stay_date AS rate_date,
     owr.own_rate,
     cr.competitor_name,
-    cr.rate_amount AS competitor_rate,
-    ROUND((owr.own_rate - cr.rate_amount)::numeric, 2) AS rate_difference,
-    CASE WHEN cr.rate_amount > 0
-      THEN ROUND(((owr.own_rate - cr.rate_amount) / cr.rate_amount * 100)::numeric, 1)
+    cr.competitor_rate,
+    ROUND((owr.own_rate - cr.competitor_rate)::numeric, 2) AS rate_difference,
+    CASE WHEN cr.competitor_rate > 0
+      THEN ROUND(((owr.own_rate - cr.competitor_rate) / cr.competitor_rate * 100)::numeric, 1)
       ELSE NULL
     END AS rate_difference_pct,
     cr.rooms_left AS competitor_rooms_left,
     cr.estimated_occupancy_percent AS competitor_occupancy_pct,
-    cr.source,
-    cr.collected_at
-  FROM public.competitor_rates cr
-  LEFT JOIN own_rates owr ON owr.rate_date = cr.rate_date
-  WHERE cr.tenant_id = $1::uuid
-    AND cr.property_id = $2::uuid
-    AND cr.rate_date BETWEEN $3::date AND $4::date
-    AND COALESCE(cr.is_deleted, false) = false
-    AND ($5::text IS NULL OR cr.competitor_name = $5::text)
-  ORDER BY cr.rate_date ASC, cr.competitor_name ASC
+    cr.source_channel AS source,
+    cr.scrape_timestamp AS collected_at
+  FROM latest_competitor_rates cr
+  LEFT JOIN own_rates owr ON owr.rate_date = cr.stay_date
+  ORDER BY cr.stay_date ASC, cr.competitor_name ASC
   LIMIT $6
   OFFSET $7
 `;
@@ -540,17 +551,36 @@ export const COMPETITIVE_RESPONSE_RULE_LIST_SQL = `
 export const COMPETITIVE_RESPONSE_RULE_UPSERT_SQL = `
   INSERT INTO public.pricing_rules (
     tenant_id, property_id, rule_name, description,
-    rule_type, rule_category, priority,
-    is_active, conditions, min_rate, max_rate,
+    rule_type, rule_category, rule_code, priority,
+    is_active, conditions,
+    effective_from, adjustment_type, adjustment_value,
+    min_rate, max_rate,
     applies_to_room_types, metadata,
     created_by, updated_by
   ) VALUES (
     $1::uuid, $2::uuid, $3, $8,
-    'competitor_based', 'competitive', 100,
-    $7, $4::jsonb, $5, $6,
+    'competitor_based', 'competitive', $12, 100,
+    $7, $4::jsonb,
+    CURRENT_DATE, 'match_competitor', COALESCE(($4::jsonb->>'response_value')::numeric, 0),
+    $5, $6,
     CASE WHEN $10::uuid IS NOT NULL THEN ARRAY[$10::uuid] ELSE NULL END,
     $9::jsonb,
     $11::uuid, $11::uuid
   )
+  ON CONFLICT (rule_code) DO UPDATE SET
+    rule_name = EXCLUDED.rule_name,
+    description = EXCLUDED.description,
+    is_active = EXCLUDED.is_active,
+    conditions = EXCLUDED.conditions,
+    adjustment_value = EXCLUDED.adjustment_value,
+    min_rate = EXCLUDED.min_rate,
+    max_rate = EXCLUDED.max_rate,
+    applies_to_room_types = EXCLUDED.applies_to_room_types,
+    metadata = EXCLUDED.metadata,
+    updated_by = EXCLUDED.updated_by,
+    updated_at = CURRENT_TIMESTAMP,
+    is_deleted = false,
+    deleted_at = NULL,
+    deleted_by = NULL
   RETURNING rule_id, created_at
 `;

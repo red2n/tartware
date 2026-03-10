@@ -811,8 +811,8 @@ export type ChannelProfitabilityItem = z.infer<
 export const RateShoppingQuerySchema = z.object({
 	tenant_id: tenantId,
 	property_id: propertyId,
-	start_date: z.string().describe("Start of date range (YYYY-MM-DD)"),
-	end_date: z.string().describe("End of date range (YYYY-MM-DD)"),
+	start_date: z.string().date().describe("Start of date range (YYYY-MM-DD)"),
+	end_date: z.string().date().describe("End of date range (YYYY-MM-DD)"),
 	competitor_name: z.string().optional(),
 	limit: z.coerce.number().int().min(1).max(200).default(100),
 	offset: z.coerce.number().int().min(0).default(0),

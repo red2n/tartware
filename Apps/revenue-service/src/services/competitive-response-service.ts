@@ -69,6 +69,7 @@ export const upsertCompetitiveResponseRule = async (
   actorId: string | null,
 ): Promise<{ ruleId: string }> => {
   const ruleName = `Competitive response: ${data.trackCompetitor}`;
+  const ruleCode = `comp_resp:${propertyId}:${data.trackCompetitor}`;
 
   const conditions = {
     track_competitor: data.trackCompetitor,
@@ -95,6 +96,7 @@ export const upsertCompetitiveResponseRule = async (
       JSON.stringify(metadata), // $9
       data.roomTypeId ?? null, // $10
       actorId, // $11
+      ruleCode, // $12
     ],
   );
 

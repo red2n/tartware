@@ -11,9 +11,12 @@ import type {
   RateShoppingProvider,
   RateShoppingRow,
 } from "@tartware/schemas";
+import { createServiceLogger } from "@tartware/telemetry";
 import { query } from "../lib/db.js";
 import { toDateString, toIsoString, toNumber } from "../lib/row-mappers.js";
 import { RATE_SHOPPING_COMPARISON_SQL } from "../sql/pricing-queries.js";
+
+const logger = createServiceLogger({ serviceName: "revenue-service:rate-shopping" });
 
 export type { CollectedRate, RateShoppingProvider };
 
@@ -34,8 +37,9 @@ export class ConsoleRateShoppingProvider implements RateShoppingProvider {
   ): Promise<CollectedRate[]> {
     // In production, this would be replaced by a real provider
     // that calls RateGain, OTA Insight, or a webhook endpoint.
-    console.log(
-      `[RateShopping:console] Would collect rates for tenant=${tenantId} property=${propertyId} range=${startDate}..${endDate}`,
+    logger.debug(
+      { tenantId, propertyId, startDate, endDate },
+      "Console provider: would collect rates (no-op)",
     );
     return [];
   }

@@ -18,6 +18,8 @@ type DialogData = {
 	currentRole: string;
 };
 
+const VALID_ROLES = new Set<string>(["VIEWER", "STAFF", "MANAGER", "ADMIN", "OWNER"]);
+
 const ROLES: { value: TenantRole; label: string }[] = [
 	{ value: "VIEWER", label: "Viewer" },
 	{ value: "STAFF", label: "Staff" },
@@ -48,7 +50,8 @@ export class EditUserDialogComponent {
 	isActive: boolean;
 
 	constructor() {
-		this.selectedRole = (this.data.currentRole as TenantRole) || "STAFF";
+		const role = this.data.currentRole;
+		this.selectedRole = VALID_ROLES.has(role) ? (role as TenantRole) : "STAFF";
 		this.isActive = this.data.user.is_active ?? true;
 	}
 

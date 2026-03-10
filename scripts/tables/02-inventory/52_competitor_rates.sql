@@ -18,9 +18,10 @@ tenant_id UUID NOT NULL, -- FK tenants.id
 property_id UUID NOT NULL, -- FK properties.id
 
 -- Competitor Information
+competitor_name VARCHAR(255), -- Brand / chain name used in rate shopping queries
 competitor_property_name VARCHAR(255) NOT NULL, -- Name of competitor property
 competitor_property_id VARCHAR(100), -- External identifier from channel/vendor
-competitor_brand VARCHAR(100), -- Brand/chain name
+competitor_brand VARCHAR(100), -- Brand/chain name (legacy, prefer competitor_name)
 competitor_star_rating DECIMAL(2, 1), -- Star rating for weighting comparisons
 
 -- Rate Details
@@ -195,12 +196,18 @@ is_deleted BOOLEAN DEFAULT FALSE, -- Soft delete flag
     deleted_by UUID -- Soft delete actor
 );
 
+-- ── Idempotent Column Additions ──
+ALTER TABLE competitor_rates ADD COLUMN IF NOT EXISTS competitor_name VARCHAR(255);
+ALTER TABLE competitor_rates ADD COLUMN IF NOT EXISTS estimated_occupancy_percent DECIMAL(5, 2) CHECK (estimated_occupancy_percent BETWEEN 0 AND 100);
+
 -- Indexes for competitor_rates
 
 -- Composite Indexes for Common Queries
 
 -- Comments
 COMMENT ON TABLE competitor_rates IS 'Tracks competitor pricing for rate shopping and market positioning analysis';
+
+COMMENT ON COLUMN competitor_rates.competitor_name IS 'Brand or chain name of the competitor (e.g. Marriott), used in rate shopping comparison queries';
 
 COMMENT ON COLUMN competitor_rates.scrape_method IS 'Method used to collect competitor rate: api, web_scraping, manual, third_party_service';
 
