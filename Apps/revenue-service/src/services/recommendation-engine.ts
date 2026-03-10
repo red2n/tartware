@@ -310,7 +310,7 @@ export async function generateRecommendations(params: {
       const expectedRevparImpact =
         roomType.total_rooms > 0
           ? (recommendation.rate * (occPercent + expectedOccImpact)) / 100 -
-          (currentRate * occPercent) / 100
+            (currentRate * occPercent) / 100
           : 0;
 
       // Alternatives: ±5% from recommended

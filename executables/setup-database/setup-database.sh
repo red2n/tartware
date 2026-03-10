@@ -109,7 +109,7 @@ count_expected_tables() {
     awk '/^\\ir[[:space:]]+/ { print $2 }' "$SCRIPTS_DIR/tables/00-create-all-tables.sql" |
         while read -r include_path; do
             [ -z "$include_path" ] && continue
-            awk '
+            gawk '
                 BEGIN { IGNORECASE = 1 }
                 /^[[:space:]]*--/ { next }
                 {

@@ -42,14 +42,13 @@ export const handleDailyCloseProcess = async (
       businessDate,
     ]);
 
-    for (const goal of goals) {
-      await query(REVENUE_GOAL_TRACK_ACTUAL_SQL, [
-        goal.goal_id,
-        metadata.tenantId,
-        actorId ?? metadata.tenantId,
-      ]);
-      goalsUpdated++;
-    }
+    await query(REVENUE_GOAL_TRACK_ACTUAL_SQL, [
+      propertyId,
+      metadata.tenantId,
+      businessDate,
+      actorId ?? metadata.tenantId,
+    ]);
+    goalsUpdated = goals.length;
   }
 
   // Step 2: Re-compute forecasts for the property

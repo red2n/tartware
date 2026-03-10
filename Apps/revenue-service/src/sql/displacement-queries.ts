@@ -10,7 +10,7 @@ export const DISPLACEMENT_ANALYSIS_SQL = `
   WITH group_blocks AS (
     SELECT
       r.property_id,
-      r.group_id,
+      r.group_booking_id,
       g.group_name,
       COUNT(DISTINCT r.id) AS group_rooms_booked,
       SUM(r.room_rate) AS group_total_revenue,
@@ -19,15 +19,15 @@ export const DISPLACEMENT_ANALYSIS_SQL = `
       MAX(r.check_out_date) AS block_end,
       SUM(EXTRACT(DAY FROM (r.check_out_date::timestamp - r.check_in_date::timestamp))) AS group_room_nights
     FROM reservations r
-    INNER JOIN groups g ON g.id = r.group_id AND g.tenant_id = r.tenant_id
+    INNER JOIN group_bookings g ON g.group_booking_id = r.group_booking_id AND g.tenant_id = r.tenant_id
     WHERE r.tenant_id = $1::uuid
       AND r.property_id = $2::uuid
-      AND r.group_id IS NOT NULL
+      AND r.group_booking_id IS NOT NULL
       AND r.status IN ('CONFIRMED', 'CHECKED_IN', 'CHECKED_OUT')
       AND r.is_deleted = false
       AND r.check_in_date >= $3::date
       AND r.check_out_date <= $4::date
-    GROUP BY r.property_id, r.group_id, g.group_name
+    GROUP BY r.property_id, r.group_booking_id, g.group_name
   ),
   transient_avg AS (
     SELECT
@@ -36,14 +36,14 @@ export const DISPLACEMENT_ANALYSIS_SQL = `
     FROM reservations r
     WHERE r.tenant_id = $1::uuid
       AND r.property_id = $2::uuid
-      AND r.group_id IS NULL
+      AND r.group_booking_id IS NULL
       AND r.status IN ('CONFIRMED', 'CHECKED_IN', 'CHECKED_OUT')
       AND r.is_deleted = false
       AND r.check_in_date >= $3::date
       AND r.check_out_date <= $4::date
   )
   SELECT
-    gb.group_id,
+    gb.group_booking_id AS group_id,
     gb.group_name,
     gb.group_rooms_booked,
     gb.group_room_nights,
@@ -77,7 +77,7 @@ export const DISPLACEMENT_ANALYSIS_SQL = `
 export const GROUP_EVALUATE_SQL = `
   WITH group_block AS (
     SELECT
-      r.group_id,
+      r.group_booking_id,
       g.group_name,
       COUNT(DISTINCT r.id)          AS group_rooms_booked,
       SUM(r.room_rate)              AS group_room_revenue,
@@ -87,13 +87,13 @@ export const GROUP_EVALUATE_SQL = `
       SUM(EXTRACT(DAY FROM (r.check_out_date::timestamp - r.check_in_date::timestamp)))
                                     AS group_room_nights
     FROM reservations r
-    INNER JOIN groups g ON g.id = r.group_id AND g.tenant_id = r.tenant_id
+    INNER JOIN group_bookings g ON g.group_booking_id = r.group_booking_id AND g.tenant_id = r.tenant_id
     WHERE r.tenant_id = $1::uuid
       AND r.property_id = $2::uuid
-      AND r.group_id = $3::uuid
+      AND r.group_booking_id = $3::uuid
       AND r.status IN ('CONFIRMED', 'CHECKED_IN', 'CHECKED_OUT')
       AND r.is_deleted = false
-    GROUP BY r.group_id, g.group_name
+    GROUP BY r.group_booking_id, g.group_name
   ),
   block_dates AS (
     SELECT block_start, block_end FROM group_block
@@ -105,7 +105,7 @@ export const GROUP_EVALUATE_SQL = `
     FROM reservations r, block_dates bd
     WHERE r.tenant_id = $1::uuid
       AND r.property_id = $2::uuid
-      AND r.group_id IS NULL
+      AND r.group_booking_id IS NULL
       AND r.status IN ('CONFIRMED', 'CHECKED_IN', 'CHECKED_OUT')
       AND r.is_deleted = false
       AND r.check_in_date >= bd.block_start
@@ -116,7 +116,7 @@ export const GROUP_EVALUATE_SQL = `
     FROM reservations r, block_dates bd
     WHERE r.tenant_id = $1::uuid
       AND r.property_id = $2::uuid
-      AND r.group_id IS NULL
+      AND r.group_booking_id IS NULL
       AND r.status IN ('CANCELLED', 'NO_SHOW')
       AND r.is_deleted = false
       AND r.check_in_date >= bd.block_start
@@ -129,7 +129,7 @@ export const GROUP_EVALUATE_SQL = `
     INNER JOIN reservations r ON cp.reservation_id = r.id AND cp.tenant_id = r.tenant_id
     WHERE r.tenant_id = $1::uuid
       AND r.property_id = $2::uuid
-      AND r.group_id = $3::uuid
+      AND r.group_booking_id = $3::uuid
       AND cp.charge_category != 'ROOM'
       AND COALESCE(cp.is_deleted, false) = false
   ),
@@ -143,7 +143,7 @@ export const GROUP_EVALUATE_SQL = `
     , block_dates bd
     WHERE r.tenant_id = $1::uuid
       AND r.property_id = $2::uuid
-      AND r.group_id IS NULL
+      AND r.group_booking_id IS NULL
       AND r.status IN ('CHECKED_IN', 'CHECKED_OUT')
       AND r.is_deleted = false
       AND r.check_in_date >= bd.block_start
@@ -159,7 +159,7 @@ export const GROUP_EVALUATE_SQL = `
     LEFT JOIN reservations res
       ON res.tenant_id = rm.tenant_id
       AND res.property_id = rm.property_id
-      AND res.room_id = rm.id
+      AND res.room_number = rm.room_number
       AND res.status = 'CHECKED_IN'
       AND res.is_deleted = false
     , block_dates bd
@@ -169,7 +169,7 @@ export const GROUP_EVALUATE_SQL = `
       AND rm.status NOT IN ('OUT_OF_ORDER')
   )
   SELECT
-    gb.group_id,
+    gb.group_booking_id AS group_id,
     gb.group_name,
     gb.group_rooms_booked,
     gb.group_room_nights,

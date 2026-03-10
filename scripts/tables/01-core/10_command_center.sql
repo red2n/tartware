@@ -257,7 +257,11 @@ SELECT
     sc.required_modules,
     jsonb_build_object('seeded', true)
 FROM seed_commands sc
-ON CONFLICT (command_name) DO NOTHING;
+ON CONFLICT (command_name) DO UPDATE SET
+    description = EXCLUDED.description,
+    default_target_service = EXCLUDED.default_target_service,
+    required_modules = EXCLUDED.required_modules
+WHERE command_templates.metadata->>'seeded' = 'true';
 
 INSERT INTO command_routes (command_name, environment, tenant_id, service_id, topic, metadata)
 SELECT

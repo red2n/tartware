@@ -102,6 +102,8 @@ export const removeRateRestriction = async (
   restrictionDate: string,
   restrictionType: string,
   actorId: string | null,
+  roomTypeId?: string | null,
+  ratePlanId?: string | null,
 ): Promise<{ restrictionId: string } | null> => {
   const { rows } = await query<{ restriction_id: string }>(RATE_RESTRICTION_REMOVE_SQL, [
     tenantId,
@@ -109,6 +111,8 @@ export const removeRateRestriction = async (
     restrictionDate,
     restrictionType,
     actorId,
+    roomTypeId ?? null,
+    ratePlanId ?? null,
   ]);
   const row = rows[0];
   return row ? { restrictionId: row.restriction_id } : null;

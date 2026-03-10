@@ -51,6 +51,8 @@ export const handleRestrictionRemove = async (
         dateStr,
         payload.restriction_type as string,
         actorId,
+        (payload.room_type_id as string) ?? null,
+        (payload.rate_plan_id as string) ?? null,
       );
       if (result) removed++;
     },

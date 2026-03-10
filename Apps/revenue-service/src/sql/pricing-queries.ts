@@ -263,7 +263,7 @@ export const PRICING_RULE_SOFT_DELETE_SQL = `
 export const DEMAND_CALENDAR_UPSERT_SQL = `
   INSERT INTO public.demand_calendar (tenant_id, property_id, calendar_date, day_of_week, demand_level, notes, created_by, updated_by)
   VALUES ($1::uuid, $2::uuid, $3::date, EXTRACT(DOW FROM $3::date)::int, $4, $5, $6::uuid, $6::uuid)
-  ON CONFLICT (tenant_id, property_id, calendar_date)
+  ON CONFLICT (property_id, calendar_date)
   DO UPDATE SET
     demand_level = EXCLUDED.demand_level,
     notes = COALESCE(EXCLUDED.notes, demand_calendar.notes),
@@ -363,6 +363,8 @@ export const RATE_RESTRICTION_REMOVE_SQL = `
     AND property_id = $2::uuid
     AND restriction_date = $3::date
     AND restriction_type = $4
+    AND ($6::uuid IS NULL OR room_type_id = $6::uuid)
+    AND ($7::uuid IS NULL OR rate_plan_id = $7::uuid)
     AND COALESCE(is_deleted, false) = false
   RETURNING restriction_id
 `;

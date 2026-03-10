@@ -35,7 +35,7 @@ export const HurdleRatesSchema = z.object({
 	segment: z.string().nullable().optional(),
 	source: HurdleRateSourceEnum,
 	displacement_analysis: z.record(z.unknown()).optional(),
-	confidence_score: money.nullable().optional(),
+	confidence_score: z.number().min(0).max(100).nullable().optional(),
 	is_active: z.boolean(),
 	notes: z.string().nullable().optional(),
 	metadata: z.record(z.unknown()).optional(),
