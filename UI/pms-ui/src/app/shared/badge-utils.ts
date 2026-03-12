@@ -1,7 +1,9 @@
 /** Shared badge-class helpers for room status, housekeeping status, guest VIP & loyalty. */
 
-export function vipStatusClass(isVip: boolean): string {
-	return isVip ? "badge-warning" : "";
+export function vipStatusClass(status: string | null | undefined): string {
+	if (!status || status === "NONE") return "";
+	if (status === "VVIP") return "badge-danger";
+	return "badge-warning";
 }
 
 export function loyaltyTierClass(tier: string | null | undefined): string {
