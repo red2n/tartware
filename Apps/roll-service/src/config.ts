@@ -30,6 +30,12 @@ const backfill = {
   intervalMs: parseNumberEnv(process.env.ROLL_SERVICE_BACKFILL_INTERVAL_MS, 60000),
 };
 
+const dateRollScheduler = {
+  enabled: parseBooleanEnv(process.env.DATE_ROLL_SCHEDULER_ENABLED, true),
+  checkIntervalMs: parseNumberEnv(process.env.DATE_ROLL_CHECK_INTERVAL_MS, 60000),
+  commandTopic: process.env.COMMAND_TOPIC ?? "commands.primary",
+};
+
 export const config = {
   service: {
     name: configValues.SERVICE_NAME,
@@ -55,5 +61,6 @@ export const config = {
   },
   kafka,
   backfill,
+  dateRollScheduler,
   shadowMode: parseBooleanEnv(process.env.SHADOW_MODE, true),
 };

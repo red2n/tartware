@@ -798,20 +798,20 @@ Full codebase audit against all 12 hospitality-standards domains. Gaps categoriz
 
 | ID | Domain | Gap | Status |
 |---|---|---|---|
-| **MG-1** | Guest Profiles | VIP is boolean, not multi-level VIP1-VIP5+VVIP enum | [ ] |
-| **MG-2** | Guest Profiles | No GDPR data portability / Subject Access Request endpoint | [ ] |
-| **MG-3** | Loyalty | Single `points_per_dollar` rate per tier — no category differentiation (room vs F&B) | [ ] |
-| **MG-4** | Loyalty | No program economics tracking (aggregate point liability, benefit delivery costs) | [ ] |
-| **MG-5** | Financial | Folio types limited to 3 (GUEST, MASTER, CITY_LEDGER) — missing INCIDENTAL, HOUSE_ACCOUNT | [ ] |
-| **MG-6** | Financial | No folio windows for split billing within a single stay | [ ] |
-| **MG-7** | Financial | Payment enum missing DIRECT_BILL, LOYALTY_POINTS, GIFT_CARD | [ ] |
-| **MG-8** | Financial | No incremental authorization for extended stays | [ ] |
-| **MG-9** | Financial | No chargeback workflow (field exists, no handler) | [ ] |
-| **MG-10** | Financial | Compound/cascading taxes not calculated (schema fields exist, unused in night audit) | [ ] |
-| **MG-11** | Financial | No financial closure execution service | [ ] |
-| **MG-12** | Rates | No dedicated rate seasons configuration table (seasons embedded in demand_calendar) | [ ] |
-| **MG-13** | Revenue | Revenue command consumer is a no-op stub | [ ] |
-| **MG-14** | Distribution | No OTA content syndication model (photo/description push to OTAs) | [ ] |
+| **MG-1** | Guest Profiles | VIP is boolean, not multi-level VIP1-VIP5+VVIP enum | [x] |
+| **MG-2** | Guest Profiles | No GDPR data portability / Subject Access Request endpoint | [x] |
+| **MG-3** | Loyalty | Single `points_per_dollar` rate per tier — no category differentiation (room vs F&B) | [x] |
+| **MG-4** | Loyalty | No program economics tracking (aggregate point liability, benefit delivery costs) | [x] |
+| **MG-5** | Financial | Folio types limited to 3 (GUEST, MASTER, CITY_LEDGER) — missing INCIDENTAL, HOUSE_ACCOUNT | [x] |
+| **MG-6** | Financial | No folio windows for split billing within a single stay | [x] |
+| **MG-7** | Financial | Payment enum missing DIRECT_BILL, LOYALTY_POINTS, GIFT_CARD | [x] |
+| **MG-8** | Financial | No incremental authorization for extended stays | [x] |
+| **MG-9** | Financial | No chargeback workflow (field exists, no handler) | [x] |
+| **MG-10** | Financial | Compound/cascading taxes not calculated (schema fields exist, unused in night audit) | [x] |
+| **MG-11** | Financial | No financial closure execution service | [x] |
+| **MG-12** | Rates | No dedicated rate seasons configuration table (seasons embedded in demand_calendar) | [x] |
+| **MG-13** | Revenue | Revenue command consumer is a no-op stub | [x] |
+| **MG-14** | Distribution | No OTA content syndication model (photo/description push to OTAs) | [x] |
 | **MG-15** | Integrations | Payment gateway, key vendor, POS — stub implementations only | [ ] |
 
 #### Low Gaps (12 items)
@@ -1202,3 +1202,44 @@ These are cross-cutting tasks that must be completed to make the revenue-service
   - `http_test/revenue.http` — comprehensive test file with all 21 command executions and all GET endpoints
   - Includes R8 goal CRUD, R9 budget variance, R10 manager's report, R27 daily close
   - Follow existing `http_test/` patterns with `@authToken` and `@baseUrl` variables
+
+---
+
+### 🔴 HIGH PRIORITY — Business Calendar & Accounts Operations (2026-03-12)
+
+Core PMS daily operations infrastructure. The night audit backend exists but the UI only shows trial balance. AR commands are wired via Kafka but have no read endpoints. No auto date roll scheduler exists.
+
+#### Phase 1 — Night Audit UI Enhancements | Priority: P0 | Complexity: Low
+
+All backend APIs already exist (`GET /v1/night-audit/status`, `/history`, `/runs/:runId`). Wire them into the Angular night-audit component.
+
+- [x] **BC-1: Business date status display** — Show current business date, status (OPEN/CLOSED/IN_AUDIT), and property info at top of night audit page. Uses `GET /v1/night-audit/status`.
+- [x] **BC-2: Execute Night Audit button** — Add "Run Night Audit" button that dispatches `billing.night_audit.execute` command via `POST /v1/commands/billing.night_audit.execute/execute`. Show progress/result feedback.
+- [x] **BC-3: Night audit history table** — Display past audit runs with date, status, duration, steps completed. Uses `GET /v1/night-audit/history`. Link to detail view.
+- [x] **BC-4: Night audit run detail view** — Show individual audit run with step-by-step breakdown (charges posted, no-shows marked, date advanced). Uses `GET /v1/night-audit/runs/:runId`.
+
+#### Phase 2 — Accounts Receivable Read Endpoints | Priority: P0 | Complexity: Medium
+
+AR write commands exist (`billing.ar.post`, `billing.ar.apply_payment`, `billing.ar.age`, `billing.ar.write_off`) but no read endpoints. The `accounts_receivable` table (100+ columns) is fully defined.
+
+- [x] **BC-5: AR list schema** — Add `AccountsReceivableListItemSchema` and `AccountsReceivableDetailSchema` to `schema/src/api/billing.ts`.
+- [x] **BC-6: AR list endpoint** — `GET /v1/billing/ar` in billing-service with tenant/property scoping, status filter, pagination. No gateway changes needed (wildcard proxy).
+- [x] **BC-7: AR detail endpoint** — `GET /v1/billing/ar/:arId` in billing-service with full AR record + payment history.
+- [x] **BC-8: AR aging summary endpoint** — `GET /v1/billing/ar/aging-summary` returning current/30/60/90+ day buckets per property.
+- [x] **BC-9: AR UI component** — Replace static stub with real data from AR endpoints. Show aging KPIs, filterable AR list, detail drill-down.
+
+#### Phase 3 — Business Calendar Configuration | Priority: P1 | Complexity: Medium
+
+Property-level business day settings. Currently `business_dates` table exists but properties have no configurable business day start time or auto-roll settings.
+
+- [x] **BC-10: Property business calendar settings** — Add `business_day_start_time`, `auto_roll_enabled`, `auto_roll_time` to property settings. SQL + Zod schema updates.
+- [x] **BC-11: Business calendar API** — `GET /v1/night-audit/business-calendar` endpoint showing business date history with open/close times per property.
+- [x] **BC-12: Fiscal period tables** — Add `fiscal_periods` and `accounting_periods` tables for month-end close and financial reporting alignment.
+
+#### Phase 4 — Auto Date Roll Scheduler | Priority: P1 | Complexity: High
+
+Automated nightly business date advancement. Currently the night audit must be triggered manually via command. Industry standard is configurable auto-roll at a set time per property.
+
+- [x] **BC-13: Auto date roll scheduler** — Implement scheduler in roll-service (already runs 24/7 as Kafka consumer) using setInterval. Query properties with `auto_roll_enabled = true`, dispatch `billing.night_audit.execute` at their configured `auto_roll_time`.
+- [x] **BC-14: Scheduler status endpoint** — `GET /v1/roll/scheduler-status` showing next scheduled runs per property, last execution results.
+- [x] **BC-15: Manual date roll override** — `billing.date_roll.manual` command schema + validator for manual business date advancement without running full night audit.

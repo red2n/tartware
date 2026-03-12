@@ -20,6 +20,7 @@
 import { z } from "zod";
 
 import { money, uuid } from "../../shared/base-schemas.js";
+import { SeasonTypeEnum } from "../../shared/enums.js";
 
 /**
  * Complete DemandCalendar schema
@@ -39,7 +40,7 @@ export const DemandCalendarSchema = z.object({
 	holiday_name: z.string().optional(),
 	is_local_holiday: z.boolean().optional(),
 	is_national_holiday: z.boolean().optional(),
-	season: z.string().optional(),
+	season: SeasonTypeEnum.optional(),
 	season_factor: money.optional(),
 	is_peak_season: z.boolean().optional(),
 	is_special_period: z.boolean().optional(),

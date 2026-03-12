@@ -41,6 +41,7 @@ export * from "./properties.js";
 export * from "./property-events.js";
 export * from "./property-feature-flags.js";
 export * from "./property-settings.js";
+export * from "./role-screen-permissions.js";
 export * from "./room-settings.js";
 export * from "./setting-categories.js";
 export * from "./setting-definitions.js";

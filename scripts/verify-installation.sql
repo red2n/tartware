@@ -287,6 +287,43 @@ BEGIN
         v_fail := v_fail + 1;
     END IF;
 
+    -- Check fiscal_periods table exists (BC-12)
+    IF EXISTS (
+        SELECT 1 FROM information_schema.tables
+        WHERE table_schema = 'public' AND table_name = 'fiscal_periods'
+    ) THEN
+        RAISE NOTICE '  ✓ fiscal_periods table exists';
+        v_pass := v_pass + 1;
+    ELSE
+        RAISE WARNING '  ✗ fiscal_periods table MISSING';
+        v_fail := v_fail + 1;
+    END IF;
+
+    -- Check fiscal_periods has key columns
+    IF EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema = 'public' AND table_name = 'fiscal_periods'
+        AND column_name = 'period_status'
+    ) THEN
+        RAISE NOTICE '  ✓ fiscal_periods.period_status column exists';
+        v_pass := v_pass + 1;
+    ELSE
+        RAISE WARNING '  ✗ fiscal_periods.period_status column MISSING';
+        v_fail := v_fail + 1;
+    END IF;
+
+    IF EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema = 'public' AND table_name = 'fiscal_periods'
+        AND column_name = 'period_number'
+    ) THEN
+        RAISE NOTICE '  ✓ fiscal_periods.period_number column exists';
+        v_pass := v_pass + 1;
+    ELSE
+        RAISE WARNING '  ✗ fiscal_periods.period_number column MISSING';
+        v_fail := v_fail + 1;
+    END IF;
+
     RAISE NOTICE '';
     RAISE NOTICE '--- Reference Data ---';
 
@@ -645,6 +682,70 @@ BEGIN
         v_pass := v_pass + 1;
     ELSE
         RAISE WARNING '  ✗ rate_calendar.closed_to_arrival column MISSING';
+        v_fail := v_fail + 1;
+    END IF;
+
+    RAISE NOTICE '';
+    RAISE NOTICE '--- Role Screen Permissions Table ---';
+
+    -- Check role_screen_permissions table exists
+    IF EXISTS (
+        SELECT 1 FROM information_schema.tables
+        WHERE table_schema = 'public' AND table_name = 'role_screen_permissions'
+    ) THEN
+        RAISE NOTICE '  ✓ role_screen_permissions table exists';
+        v_pass := v_pass + 1;
+    ELSE
+        RAISE WARNING '  ✗ role_screen_permissions table MISSING';
+        v_fail := v_fail + 1;
+    END IF;
+
+    -- Check role_screen_permissions has key columns
+    IF EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema = 'public' AND table_name = 'role_screen_permissions'
+        AND column_name = 'screen_key'
+    ) THEN
+        RAISE NOTICE '  ✓ role_screen_permissions.screen_key column exists';
+        v_pass := v_pass + 1;
+    ELSE
+        RAISE WARNING '  ✗ role_screen_permissions.screen_key column MISSING';
+        v_fail := v_fail + 1;
+    END IF;
+
+    IF EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema = 'public' AND table_name = 'role_screen_permissions'
+        AND column_name = 'is_visible'
+    ) THEN
+        RAISE NOTICE '  ✓ role_screen_permissions.is_visible column exists';
+        v_pass := v_pass + 1;
+    ELSE
+        RAISE WARNING '  ✗ role_screen_permissions.is_visible column MISSING';
+        v_fail := v_fail + 1;
+    END IF;
+
+    -- Check role_screen_permissions has seed data
+    IF EXISTS (SELECT 1 FROM role_screen_permissions LIMIT 1) THEN
+        RAISE NOTICE '  ✓ role_screen_permissions has seed data';
+        v_pass := v_pass + 1;
+    ELSE
+        RAISE WARNING '  ✗ role_screen_permissions seed data MISSING';
+        v_fail := v_fail + 1;
+    END IF;
+
+    RAISE NOTICE '';
+    RAISE NOTICE '--- Competitor Properties Table ---';
+
+    -- Check competitor_properties table exists
+    IF EXISTS (
+        SELECT 1 FROM information_schema.tables
+        WHERE table_schema = 'public' AND table_name = 'competitor_properties'
+    ) THEN
+        RAISE NOTICE '  ✓ competitor_properties table exists';
+        v_pass := v_pass + 1;
+    ELSE
+        RAISE WARNING '  ✗ competitor_properties table MISSING';
         v_fail := v_fail + 1;
     END IF;
 

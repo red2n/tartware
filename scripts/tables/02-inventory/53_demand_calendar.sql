@@ -35,11 +35,12 @@ is_national_holiday BOOLEAN DEFAULT FALSE, -- National holiday flag
 -- Seasonality
 season VARCHAR(50) CHECK (
     season IN (
-        'peak',
-        'high',
-        'shoulder',
-        'low',
-        'off'
+        'PEAK',
+        'HIGH',
+        'SHOULDER',
+        'LOW',
+        'OFF',
+        'SPECIAL_EVENT'
     )
 ),
 season_factor DECIMAL(5, 4) DEFAULT 1.0000, -- Multiplier used in forecasts

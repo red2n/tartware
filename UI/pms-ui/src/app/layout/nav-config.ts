@@ -1,33 +1,80 @@
+import type { TenantRole } from "@tartware/schemas";
+
 export type NavItem = {
 	label: string;
 	icon: string;
 	route?: string;
 	description?: string;
+	/** Screen key used to look up visibility in role_screen_permissions table. */
+	screenKey?: string;
 	children?: NavItem[];
 };
+
+/** Maps roles to numeric priority for comparison. Higher = more access. */
+const ROLE_PRIORITY: Record<TenantRole, number> = {
+	VIEWER: 100,
+	STAFF: 200,
+	MANAGER: 300,
+	ADMIN: 400,
+	OWNER: 500,
+};
+
+/** Returns true if the user's role meets or exceeds the required minimum role. */
+export function hasMinRole(userRole: TenantRole, minRole: TenantRole): boolean {
+	return ROLE_PRIORITY[userRole] >= ROLE_PRIORITY[minRole];
+}
+
+/** Filter nav items the user can access based on their allowed screen keys. */
+export function filterNavByAllowedScreens(
+	items: readonly NavItem[],
+	allowedScreens: ReadonlySet<string>,
+): NavItem[] {
+	// If no permissions loaded (empty set), show all items (fail-open)
+	if (allowedScreens.size === 0) return [...items];
+
+	return items
+		.filter((item) => {
+			// Items without a screenKey are always visible (e.g. Dashboard)
+			if (!item.screenKey) return true;
+			return allowedScreens.has(item.screenKey);
+		})
+		.map((item) => {
+			if (!item.children) return item;
+			const children = item.children.filter((child) => {
+				if (!child.screenKey) return true;
+				return allowedScreens.has(child.screenKey);
+			});
+			return children.length > 0 ? { ...item, children } : null;
+		})
+		.filter((item): item is NavItem => item !== null);
+}
 
 export const PRIMARY_NAV_ITEMS: NavItem[] = [
 	{
 		label: "Dashboard",
 		icon: "dashboard",
 		route: "/dashboard",
+		screenKey: "dashboard",
 		description: "Real-time overview of property operations and key metrics",
 	},
 	{
 		label: "Reservations",
 		icon: "book_online",
 		description: "Manage bookings, check-ins, check-outs, and guest stays",
+		screenKey: "reservations",
 		children: [
 			{
 				label: "All Reservations",
 				icon: "list_alt",
 				route: "/reservations",
+				screenKey: "reservations",
 				description: "Individual bookings, check-ins, check-outs, and guest stays",
 			},
 			{
 				label: "Group Bookings",
 				icon: "groups",
 				route: "/groups",
+				screenKey: "groups",
 				description: "Group blocks, room allocations, and rooming lists",
 			},
 		],
@@ -36,29 +83,34 @@ export const PRIMARY_NAV_ITEMS: NavItem[] = [
 		label: "Guests",
 		icon: "people",
 		route: "/guests",
+		screenKey: "guests",
 		description: "Guest profiles, preferences, and loyalty history",
 	},
 	{
 		label: "Availability",
 		icon: "inventory_2",
 		description: "Room inventory and property configuration",
+		screenKey: "rooms",
 		children: [
 			{
 				label: "Rooms",
 				icon: "hotel",
 				route: "/rooms",
+				screenKey: "rooms",
 				description: "Room inventory, status tracking, and assignments",
 			},
 			{
 				label: "Room Types",
 				icon: "category",
 				route: "/room-types",
+				screenKey: "room-types",
 				description: "Room categories, configurations, and amenity packages",
 			},
 			{
 				label: "Buildings",
 				icon: "apartment",
 				route: "/buildings",
+				screenKey: "buildings",
 				description: "Property structures, wings, and floor plans",
 			},
 		],
@@ -67,23 +119,27 @@ export const PRIMARY_NAV_ITEMS: NavItem[] = [
 		label: "Revenue",
 		icon: "payments",
 		description: "Rate management and revenue optimization",
+		screenKey: "rates",
 		children: [
 			{
 				label: "Rates",
 				icon: "sell",
 				route: "/rates",
+				screenKey: "rates",
 				description: "Rate plans, pricing strategies, and seasonal adjustments",
 			},
 			{
 				label: "Rate Calendar",
 				icon: "calendar_month",
 				route: "/rate-calendar",
+				screenKey: "rate-calendar",
 				description: "Day-level pricing management across rate plans",
 			},
 			{
 				label: "Packages",
 				icon: "card_giftcard",
 				route: "/packages",
+				screenKey: "packages",
 				description: "Bundled offerings with services and add-on inclusions",
 			},
 		],
@@ -92,41 +148,48 @@ export const PRIMARY_NAV_ITEMS: NavItem[] = [
 		label: "Housekeeping",
 		icon: "cleaning_services",
 		route: "/housekeeping",
+		screenKey: "housekeeping",
 		description: "Room cleaning schedules, task assignments, and inspections",
 	},
 	{
 		label: "Accounts",
 		icon: "account_balance",
 		description: "Financial operations and accounting management",
+		screenKey: "billing",
 		children: [
 			{
 				label: "Billing",
 				icon: "receipt_long",
 				route: "/billing",
+				screenKey: "billing",
 				description: "Folios, charges, payments, and invoice management",
 			},
 			{
 				label: "Accounts Receivable",
 				icon: "request_quote",
 				route: "/accounts-receivable",
+				screenKey: "accounts-receivable",
 				description: "City ledger, direct billing, and AR aging management",
 			},
 			{
 				label: "Cashiering",
 				icon: "point_of_sale",
 				route: "/cashiering",
+				screenKey: "cashiering",
 				description: "Cashier sessions, shift management, and float reconciliation",
 			},
 			{
 				label: "Night Audit",
 				icon: "nightlight",
 				route: "/night-audit",
+				screenKey: "night-audit",
 				description: "End-of-day processing, trial balance, and revenue posting",
 			},
 			{
 				label: "Tax Config",
 				icon: "gavel",
 				route: "/tax-config",
+				screenKey: "tax-config",
 				description: "Tax rules, jurisdictions, and rate configuration",
 			},
 		],
@@ -138,12 +201,14 @@ export const SECONDARY_NAV_ITEMS: NavItem[] = [
 		label: "Reports",
 		icon: "assessment",
 		route: "/reports",
+		screenKey: "reports",
 		description: "Operational reports, analytics, and data exports",
 	},
 	{
 		label: "Settings",
 		icon: "settings",
 		description: "Property configuration, user preferences, and system setup",
+		screenKey: "settings",
 		children: [
 			{ label: "Admin & Users", icon: "admin_panel_settings", route: "/settings/ADMIN_USER_MANAGEMENT" },
 			{ label: "Property & Tenant", icon: "apartment", route: "/settings/PROPERTY_TENANT_PROFILE" },
@@ -164,6 +229,7 @@ export const SECONDARY_NAV_ITEMS: NavItem[] = [
 		label: "Command Management",
 		icon: "terminal",
 		description: "Enable, disable, and monitor system commands",
+		screenKey: "command-management",
 		children: [
 			{ label: "All Commands", icon: "apps", route: "/command-management/all" },
 			{ label: "Reservations", icon: "event", route: "/command-management/reservations-command-service" },
@@ -180,8 +246,12 @@ export const SECONDARY_NAV_ITEMS: NavItem[] = [
 	{
 		label: "User Management",
 		icon: "manage_accounts",
-		route: "/users",
 		description: "Manage team members, roles, and access permissions",
+		screenKey: "users",
+		children: [
+			{ label: "Users", icon: "people", route: "/users", screenKey: "users" },
+			{ label: "Screen Permissions", icon: "shield", route: "/screen-permissions", screenKey: "users" },
+		],
 	},
 ];
 

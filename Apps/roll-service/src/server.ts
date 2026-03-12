@@ -11,6 +11,7 @@ import {
   replayDeltaCounter,
 } from "./lib/metrics.js";
 import backfillJobPlugin from "./plugins/backfill-job.js";
+import dateRollSchedulerPlugin from "./plugins/date-roll-scheduler.js";
 import lifecycleConsumerPlugin from "./plugins/lifecycle-consumer.js";
 
 export const buildServer = () => {
@@ -24,6 +25,7 @@ export const buildServer = () => {
 
   void app.register(lifecycleConsumerPlugin);
   void app.register(backfillJobPlugin);
+  void app.register(dateRollSchedulerPlugin);
 
   app.after(() => {
     replayDeltaCounter.inc(0);
@@ -132,6 +134,25 @@ export const buildServer = () => {
         void reply.header("Content-Type", metricsRegistry.contentType);
         const metrics = await metricsRegistry.metrics();
         return metrics;
+      },
+    );
+
+    app.get(
+      "/v1/roll/scheduler-status",
+      {
+        schema: buildRouteSchema({
+          tag: "Roll",
+          summary: "Date roll scheduler status",
+          response: { 200: jsonObjectSchema },
+        }),
+      },
+      () => {
+        if (!app.hasDecorator("dateRollScheduler")) {
+          return { enabled: false, running: false };
+        }
+        return (
+          app as unknown as { dateRollScheduler: { getStatus: () => unknown } }
+        ).dateRollScheduler.getStatus();
       },
     );
   });

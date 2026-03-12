@@ -2316,3 +2316,69 @@ textarea.field-input {
   gap: var(--space-2);
   justify-content: flex-end;
 }
+
+/* ═══════════════════════════════════════════
+   KPI cards — metric summary grid
+   ═══════════════════════════════════════════ */
+.kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--space-3);
+  margin-bottom: var(--space-5);
+}
+
+.kpi-card {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border-default);
+  background: var(--color-canvas-default);
+  transition: box-shadow var(--duration-fast);
+
+  &:hover { box-shadow: var(--color-shadow-small); }
+
+  > mat-icon {
+    font-size: 24px;
+    width: 24px;
+    height: 24px;
+    flex-shrink: 0;
+    color: var(--color-fg-muted);
+  }
+}
+
+.kpi-body  { display: flex; flex-direction: column; gap: 2px; }
+.kpi-value { font-size: var(--font-size-lg); font-weight: var(--font-weight-bold); color: var(--color-fg-default); }
+.kpi-label { font-size: var(--font-size-xs); color: var(--color-fg-muted); }
+
+.kpi-alert > mat-icon      { color: var(--color-danger-fg); }
+.kpi-alert .kpi-value       { color: var(--color-danger-fg); }
+
+@media (max-width: 1024px) { .kpi-grid { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 768px)  { .kpi-grid { grid-template-columns: 1fr; } }
+
+/* ═══════════════════════════════════════════
+   Table cell utilities
+   ═══════════════════════════════════════════ */
+.ref-code {
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-accent-fg);
+  font-family: var(--font-family-mono, monospace);
+  font-size: var(--font-size-xs);
+}
+
+.col-right    { text-align: right; }
+.cell-amount  { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.cell-positive { color: var(--color-success-fg); }
+.cell-negative { color: var(--color-danger-fg); }
+.text-xs       { font-size: var(--font-size-xs); }
+
+/* ═══════════════════════════════════════════
+   Notice variants
+   ═══════════════════════════════════════════ */
+.notice-info {
+  color: var(--color-accent-fg);
+  background: var(--color-accent-subtle);
+  border-color: var(--color-accent-emphasis);
+}

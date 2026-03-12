@@ -1,0 +1,95 @@
+<div class="screen-permissions-page">
+  <app-page-header title="Screen Permissions" description="Control which screens each role can access across the application">
+    @if (hasChanges()) {
+      <span class="badge badge-warning pending-badge">{{ pendingCount() }} {{ 'changes pending' | translate }}</span>
+      <button class="btn btn-outline" (click)="discardChanges()">
+        <mat-icon>undo</mat-icon>
+        {{ 'Discard' | translate }}
+      </button>
+      <button class="btn btn-primary" (click)="saveChanges()" [disabled]="saving()">
+        @if (saving()) {
+          <mat-spinner diameter="16"></mat-spinner>
+        } @else {
+          <mat-icon>save</mat-icon>
+        }
+        {{ 'Save Changes' | translate }}
+      </button>
+    }
+
+    <button class="btn btn-invisible" (click)="loadPermissions()" [disabled]="saving()"
+      [matTooltip]="'Refresh' | translate">
+      <mat-icon>refresh</mat-icon>
+    </button>
+  </app-page-header>
+
+  @if (loading()) {
+    <div class="loading-state">
+      <mat-spinner diameter="32"></mat-spinner>
+      <span class="text-muted">{{ 'Loading screen permissions...' | translate }}</span>
+    </div>
+  } @else if (error() && screenRows().length === 0) {
+    <div class="error-state">
+      <mat-icon class="error-icon">error_outline</mat-icon>
+      <span>{{ error() }}</span>
+      <button class="btn btn-outline" (click)="loadPermissions()">{{ 'Retry' | translate }}</button>
+    </div>
+  } @else {
+    @if (error()) {
+      <div class="error-state" style="margin-bottom: var(--space-4)">
+        <mat-icon class="error-icon">error_outline</mat-icon>
+        <span>{{ error() }}</span>
+      </div>
+    }
+
+    <div class="table-container">
+      <table class="data-table permissions-matrix">
+        <thead>
+          <tr>
+            <th class="th-screen">{{ 'Screen' | translate }}</th>
+            @for (role of roles; track role) {
+              <th class="th-role">
+                <div class="role-header">
+                  <span class="role-name">{{ role }}</span>
+                  <div class="role-actions">
+                    <button class="btn btn-invisible btn-xs"
+                      [matTooltip]="'Enable all for ' + role"
+                      (click)="enableAll(role)">
+                      <mat-icon>check_circle</mat-icon>
+                    </button>
+                    <button class="btn btn-invisible btn-xs"
+                      [matTooltip]="'Disable all for ' + role"
+                      (click)="disableAll(role)">
+                      <mat-icon>cancel</mat-icon>
+                    </button>
+                  </div>
+                </div>
+              </th>
+            }
+          </tr>
+        </thead>
+        <tbody>
+          @for (row of screenRows(); track row.screen_key) {
+            <tr>
+              <td class="td-screen">
+                <div class="screen-cell">
+                  <mat-icon class="screen-icon">{{ row.icon }}</mat-icon>
+                  <span class="screen-label">{{ row.label }}</span>
+                </div>
+              </td>
+              @for (role of roles; track role) {
+                <td class="td-toggle">
+                  <mat-slide-toggle
+                    [checked]="row.visibility[role]"
+                    [disabled]="saving()"
+                    (change)="toggle(row.screen_key, role)"
+                    color="primary">
+                  </mat-slide-toggle>
+                </td>
+              }
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+</div>

@@ -38,6 +38,8 @@
 \ir 01-core/18_field_configurations.sql
 \ir 01-core/19_user_ui_preferences.sql
 \ir 01-core/20_import_export_jobs.sql
+\ir 01-core/21_role_screen_permissions.sql
+\ir 01-core/22_role_screen_permissions_seed.sql
 
 -- ============================================================================
 -- CATEGORY 2: INVENTORY (Rooms, rates, availability, revenue management)
@@ -58,6 +60,8 @@
 \ir 02-inventory/56_revenue_goals.sql
 \ir 02-inventory/57_rate_restrictions.sql
 \ir 02-inventory/58_hurdle_rates.sql
+\ir 02-inventory/59_competitor_properties.sql
+\ir 02-inventory/60_rate_seasons.sql
 \ir 02-inventory/90_companies.sql
 \ir 02-inventory/91_group_bookings.sql
 \ir 02-inventory/92_packages.sql
@@ -93,6 +97,7 @@
 \ir 03-bookings/57_walk_history.sql
 \ir 03-bookings/58_loyalty_point_transactions.sql
 \ir 03-bookings/59_loyalty_tier_rules.sql
+\ir 03-bookings/60_loyalty_program_economics.sql
 \ir 03-bookings/60_lost_business.sql
 \ir 03-bookings/61_reward_catalog.sql
 -- Shadow observability (Roll Service parity + Availability Guard metadata)
@@ -126,6 +131,8 @@
 \ir 04-financial/72_comp_accounting.sql
 \ir 04-financial/73_payment_gateway_configurations.sql
 \ir 04-financial/74_folio_routing_rules.sql
+\ir 04-financial/75_fiscal_periods.sql
+\ir 04-financial/76_folio_windows.sql
 
 -- ============================================================================
 -- CATEGORY 5: OPERATIONS (Services, housekeeping, staff, mobile, assets)

@@ -9,6 +9,8 @@
 
 import { z } from "zod";
 
+import { VipLevelEnum } from "../../shared/enums.js";
+
 const GuestAddressSchema = z
 	.object({
 		street: z.string().max(255).optional(),
@@ -23,7 +25,7 @@ const GuestPreferencesSchema = z
 	.object({
 		loyalty_tier: z.string().max(100).optional(),
 		marketing_consent: z.boolean().optional(),
-		vip_status: z.boolean().optional(),
+		vip_status: VipLevelEnum.optional(),
 		tags: z.array(z.string().max(50)).max(20).optional(),
 		notes: z.string().max(2000).optional(),
 	})
@@ -142,7 +144,7 @@ export type GuestSetLoyaltyCommand = z.infer<
 
 export const GuestSetVipCommandSchema = z.object({
 	guest_id: z.string().uuid(),
-	vip_status: z.boolean(),
+	vip_level: VipLevelEnum,
 	reason: z.string().max(500).optional(),
 	metadata: z.record(z.unknown()).optional(),
 	idempotency_key: z.string().max(120).optional(),
@@ -171,6 +173,26 @@ export const GuestGdprEraseCommandSchema = z.object({
 });
 
 export type GuestGdprEraseCommand = z.infer<typeof GuestGdprEraseCommandSchema>;
+
+/**
+ * GDPR Subject Access Request — export all guest data.
+ * Returns a JSON document with all PII and related records
+ * per GDPR Article 15 / Article 20 data portability.
+ */
+export const GuestGdprExportCommandSchema = z.object({
+	guest_id: z.string().uuid(),
+	requested_by: z.string().uuid().optional(),
+	format: z.enum(["JSON", "CSV"]).default("JSON"),
+	include_reservations: z.boolean().default(true),
+	include_transactions: z.boolean().default(true),
+	include_communications: z.boolean().default(true),
+	metadata: z.record(z.unknown()).optional(),
+	idempotency_key: z.string().max(120).optional(),
+});
+
+export type GuestGdprExportCommand = z.infer<
+	typeof GuestGdprExportCommandSchema
+>;
 
 export const GuestPreferenceUpdateCommandSchema = z.object({
 	guest_id: z.string().uuid(),

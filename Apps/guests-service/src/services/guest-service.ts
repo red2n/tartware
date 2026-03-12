@@ -145,7 +145,7 @@ type GuestRow = {
   company_tax_id: string | null;
   loyalty_tier: string | null;
   loyalty_points: number | null;
-  vip_status: boolean | null;
+  vip_status: string | null;
   preferences: Record<string, unknown> | null;
   marketing_consent: boolean | null;
   communication_preferences: Record<string, unknown> | null;
@@ -199,7 +199,7 @@ const mapRowToGuest = (row: GuestRow, stats?: GuestReservationStats): GuestWithS
     company_tax_id: row.company_tax_id ?? undefined,
     loyalty_tier: row.loyalty_tier ?? undefined,
     loyalty_points: row.loyalty_points ?? 0,
-    vip_status: row.vip_status ?? false,
+    vip_status: row.vip_status ?? "NONE",
     preferences: normalizePreferences(row.preferences),
     marketing_consent: row.marketing_consent ?? false,
     communication_preferences: normalizeCommunicationPreferences(row.communication_preferences),

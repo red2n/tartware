@@ -31,6 +31,7 @@ export * from "./inventory-lock-audits.js";
 export * from "./inventory-locks-shadow.js";
 export * from "./lost-business.js";
 export * from "./loyalty-point-transactions.js";
+export * from "./loyalty-program-economics.js";
 export * from "./loyalty-tier-rules.js";
 export * from "./market-segments.js";
 export * from "./reservation-command-lifecycle.js";

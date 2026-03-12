@@ -217,6 +217,32 @@ export type BillingPaymentAuthorizeCommand = z.infer<
 >;
 
 /**
+ * Increment an existing pre-authorization by a specified amount.
+ * Used when a guest extends their stay or incurs additional charges
+ * that exceed the original authorization hold.
+ */
+export const BillingPaymentIncrementAuthCommandSchema = z.object({
+	payment_reference: z.string().trim().min(3).max(100),
+	property_id: z.string().uuid(),
+	reservation_id: z.string().uuid(),
+	additional_amount: z.coerce.number().positive(),
+	reason: z.string().max(500).optional(),
+	gateway: z
+		.object({
+			name: z.string().max(100).optional(),
+			reference: z.string().max(150).optional(),
+			response: z.record(z.unknown()).optional(),
+		})
+		.optional(),
+	metadata: z.record(z.unknown()).optional(),
+	idempotency_key: z.string().max(120).optional(),
+});
+
+export type BillingPaymentIncrementAuthCommand = z.infer<
+	typeof BillingPaymentIncrementAuthCommandSchema
+>;
+
+/**
  * Execute night audit: post room charges for in-house guests,
  * mark no-shows, and advance the business date.
  */
@@ -237,6 +263,24 @@ export const BillingNightAuditCommandSchema = z.object({
 
 export type BillingNightAuditCommand = z.infer<
 	typeof BillingNightAuditCommandSchema
+>;
+
+/**
+ * Manually advance the business date without running the full night audit.
+ * Skips charge posting and reconciliation — just advances the date.
+ * Useful for correcting date issues or initial property setup.
+ */
+export const BillingDateRollManualCommandSchema = z.object({
+	property_id: z.string().uuid(),
+	target_date: z.string().date().optional(),
+	reason: z.string().max(2000),
+	skip_validation: z.boolean().optional(),
+	metadata: z.record(z.unknown()).optional(),
+	idempotency_key: z.string().max(120).optional(),
+});
+
+export type BillingDateRollManualCommand = z.infer<
+	typeof BillingDateRollManualCommandSchema
 >;
 
 /**
@@ -540,4 +584,97 @@ export const BillingPricingBulkRecommendCommandSchema = z.object({
 
 export type BillingPricingBulkRecommendCommand = z.infer<
 	typeof BillingPricingBulkRecommendCommandSchema
+>;
+
+// ─── Chargeback Commands ─────────────────────────────────────────────────────
+
+/**
+ * Record a processor-initiated chargeback against a completed payment.
+ * Updates the refunds table with chargeback fields and adjusts folio balance.
+ */
+export const BillingChargebackRecordCommandSchema = z.object({
+	property_id: z.string().uuid(),
+	payment_reference: z.string().trim().min(3).max(100),
+	chargeback_amount: z.coerce.number().positive(),
+	chargeback_reason: z.string().max(200),
+	chargeback_reference: z.string().max(100).optional(),
+	chargeback_date: z.coerce.date().optional(),
+	metadata: z.record(z.unknown()).optional(),
+	idempotency_key: z.string().max(120).optional(),
+});
+
+export type BillingChargebackRecordCommand = z.infer<
+	typeof BillingChargebackRecordCommandSchema
+>;
+
+// ─── Fiscal Period Commands ──────────────────────────────────────────────────
+
+/**
+ * Close a fiscal period, transitioning it from OPEN to SOFT_CLOSE.
+ * Prevents new postings to journal entries for the period.
+ */
+export const BillingFiscalPeriodCloseCommandSchema = z.object({
+	property_id: z.string().uuid(),
+	period_id: z.string().uuid(),
+	close_reason: z.string().max(500).optional(),
+	metadata: z.record(z.unknown()).optional(),
+	idempotency_key: z.string().max(120).optional(),
+});
+
+export type BillingFiscalPeriodCloseCommand = z.infer<
+	typeof BillingFiscalPeriodCloseCommandSchema
+>;
+
+/**
+ * Lock a fiscal period, transitioning from SOFT_CLOSE to LOCKED.
+ * Fully immutable — no postings, adjustments, or reversals allowed.
+ */
+export const BillingFiscalPeriodLockCommandSchema = z.object({
+	property_id: z.string().uuid(),
+	period_id: z.string().uuid(),
+	approved_by: z.string().uuid().optional(),
+	metadata: z.record(z.unknown()).optional(),
+	idempotency_key: z.string().max(120).optional(),
+});
+
+export type BillingFiscalPeriodLockCommand = z.infer<
+	typeof BillingFiscalPeriodLockCommandSchema
+>;
+
+/**
+ * Reopen a soft-closed fiscal period (cannot reopen LOCKED).
+ */
+export const BillingFiscalPeriodReopenCommandSchema = z.object({
+	property_id: z.string().uuid(),
+	period_id: z.string().uuid(),
+	reason: z.string().max(500),
+	metadata: z.record(z.unknown()).optional(),
+	idempotency_key: z.string().max(120).optional(),
+});
+
+export type BillingFiscalPeriodReopenCommand = z.infer<
+	typeof BillingFiscalPeriodReopenCommandSchema
+>;
+
+// ─── Folio Window Commands ───────────────────────────────────────────────────
+
+/**
+ * Create a folio window for date-based split billing within a single stay.
+ * E.g., "company pays Mon-Fri, guest pays Sat-Sun".
+ */
+export const BillingFolioWindowCreateCommandSchema = z.object({
+	property_id: z.string().uuid(),
+	reservation_id: z.string().uuid(),
+	folio_id: z.string().uuid(),
+	window_start: z.coerce.date(),
+	window_end: z.coerce.date(),
+	billed_to: z.string().max(255),
+	billed_to_type: z.enum(["GUEST", "CORPORATE", "TRAVEL_AGENT", "OTHER"]),
+	notes: z.string().max(500).optional(),
+	metadata: z.record(z.unknown()).optional(),
+	idempotency_key: z.string().max(120).optional(),
+});
+
+export type BillingFolioWindowCreateCommand = z.infer<
+	typeof BillingFolioWindowCreateCommandSchema
 >;

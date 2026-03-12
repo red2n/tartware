@@ -6,6 +6,7 @@ import {
   type BillingPaymentApplyCommand,
   BillingPaymentApplyCommandSchema,
   BillingPaymentAuthorizeCommandSchema,
+  BillingPaymentIncrementAuthCommandSchema,
   type BillingPaymentCaptureCommand,
   BillingPaymentCaptureCommandSchema,
   type BillingPaymentRefundCommand,
@@ -676,4 +677,79 @@ const loadPaymentById = async (
     [tenantId, paymentId],
   );
   return rows[0] ?? null;
+};
+
+/**
+ * Increment an existing pre-authorization by adding an additional amount.
+ * Only AUTHORIZED payments can be incremented. Updates the total authorization amount.
+ */
+export const incrementAuthorization = async (
+  payload: unknown,
+  context: CommandContext,
+): Promise<string> => {
+  const command = BillingPaymentIncrementAuthCommandSchema.parse(payload);
+  const actor = resolveActorId(context.initiatedBy);
+
+  const { rows } = await query<{ id: string; amount: string; status: string }>(
+    `SELECT id, amount, status FROM public.payments
+     WHERE tenant_id = $1::uuid AND payment_reference = $2
+     ORDER BY created_at DESC LIMIT 1`,
+    [context.tenantId, command.payment_reference],
+  );
+
+  const existing = rows[0];
+  if (!existing) {
+    throw new BillingCommandError(
+      "PAYMENT_NOT_FOUND",
+      `No payment found with reference ${command.payment_reference}`,
+    );
+  }
+  if (existing.status !== "AUTHORIZED") {
+    throw new BillingCommandError(
+      "INVALID_PAYMENT_STATUS",
+      `Cannot increment authorization on payment with status ${existing.status}`,
+    );
+  }
+
+  const newAmount = Number(existing.amount) + command.additional_amount;
+
+  await query(
+    `UPDATE public.payments
+     SET amount = $3,
+         metadata = jsonb_set(
+           COALESCE(metadata, '{}'::jsonb),
+           '{incremental_auth_history}',
+           COALESCE(metadata->'incremental_auth_history', '[]'::jsonb) ||
+           jsonb_build_object(
+             'previous_amount', amount,
+             'increment', $4,
+             'new_amount', $3,
+             'reason', $5,
+             'timestamp', NOW()
+           )::jsonb
+         ),
+         updated_at = NOW(),
+         updated_by = $6
+     WHERE tenant_id = $1::uuid AND id = $2::uuid`,
+    [
+      context.tenantId,
+      existing.id,
+      newAmount,
+      command.additional_amount,
+      command.reason ?? null,
+      actor,
+    ],
+  );
+
+  appLogger.info(
+    {
+      paymentId: existing.id,
+      previousAmount: Number(existing.amount),
+      increment: command.additional_amount,
+      newAmount,
+    },
+    "Payment authorization incremented",
+  );
+
+  return existing.id;
 };

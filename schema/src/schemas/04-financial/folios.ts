@@ -21,6 +21,8 @@ import { z } from "zod";
 
 import { money, uuid } from "../../shared/base-schemas.js";
 
+const folioTypeEnum = z.enum(["GUEST", "MASTER", "CITY_LEDGER", "INCIDENTAL", "HOUSE_ACCOUNT"]);
+
 /**
  * Complete Folios schema
  */
@@ -29,7 +31,7 @@ export const FoliosSchema = z.object({
 	tenant_id: uuid,
 	property_id: uuid,
 	folio_number: z.string(),
-	folio_type: z.string(),
+	folio_type: folioTypeEnum,
 	folio_status: z.string(),
 	reservation_id: uuid.optional(),
 	guest_id: uuid.optional(),

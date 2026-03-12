@@ -46,6 +46,8 @@ export const destinationFolioTypeEnum = z.enum([
 	"GUEST",
 	"MASTER",
 	"CITY_LEDGER",
+	"INCIDENTAL",
+	"HOUSE_ACCOUNT",
 ]);
 export type DestinationFolioType = z.infer<typeof destinationFolioTypeEnum>;
 

@@ -34,6 +34,7 @@ export * from "./packages.js";
 export * from "./pricing-rules.js";
 export * from "./rate-calendar.js";
 export * from "./rate-overrides.js";
+export * from "./rate-seasons.js";
 export * from "./rate-recommendations.js";
 export * from "./rate-restrictions.js";
 export * from "./rates.js";

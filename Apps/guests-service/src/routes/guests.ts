@@ -26,7 +26,7 @@ const GuestListQuerySchema = z.object({
   email: z.string().min(3).max(255).optional(),
   phone: z.string().min(3).max(20).optional(),
   loyalty_tier: z.string().min(1).max(50).optional(),
-  vip_status: z.coerce.boolean().optional(),
+  vip_status: z.enum(["NONE", "VIP1", "VIP2", "VIP3", "VIP4", "VIP5", "VVIP"]).optional(),
   is_blacklisted: z.coerce.boolean().optional(),
   offset: z.coerce.number().int().min(0).default(0),
 });

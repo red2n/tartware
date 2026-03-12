@@ -1,4 +1,10 @@
 import {
+  type AccountsReceivableDetail,
+  AccountsReceivableDetailSchema,
+  type AccountsReceivableListItem,
+  AccountsReceivableListItemSchema,
+  type ArAgingSummary,
+  ArAgingSummarySchema,
   type BillingPaymentListItem,
   BillingPaymentListItemSchema,
   type CashierSessionListItem,
@@ -16,6 +22,9 @@ import {
 import { applyBillingRetentionPolicy } from "../lib/compliance-policies.js";
 import { query } from "../lib/db.js";
 import {
+  AR_AGING_SUMMARY_SQL,
+  AR_BY_ID_SQL,
+  AR_LIST_SQL,
   BILLING_PAYMENT_LIST_SQL,
   CASHIER_SESSION_BY_ID_SQL,
   CASHIER_SESSION_LIST_SQL,
@@ -869,19 +878,19 @@ export const getTrialBalance = async (options: {
     net: string;
   }>(
     `SELECT
-       COALESCE(cc.department, 'UNCATEGORIZED') AS department,
+       COALESCE(cc.department_name, 'UNCATEGORIZED') AS department,
        cp.charge_code,
        COALESCE(SUM(CASE WHEN cp.posting_type = 'DEBIT' THEN cp.total_amount ELSE 0 END), 0) AS total_debits,
        COALESCE(SUM(CASE WHEN cp.posting_type = 'CREDIT' THEN cp.total_amount ELSE 0 END), 0) AS total_credits,
        COALESCE(SUM(CASE WHEN cp.posting_type = 'DEBIT' THEN cp.total_amount ELSE 0 END), 0) -
        COALESCE(SUM(CASE WHEN cp.posting_type = 'CREDIT' THEN cp.total_amount ELSE 0 END), 0) AS net
      FROM charge_postings cp
-     LEFT JOIN charge_codes cc ON cc.code = cp.charge_code AND cc.tenant_id = cp.tenant_id
+     LEFT JOIN charge_codes cc ON cc.code = cp.charge_code
      WHERE cp.tenant_id = $1::uuid
        AND cp.business_date = $2::date
        AND COALESCE(cp.is_voided, false) = false
        ${propFilter}
-     GROUP BY COALESCE(cc.department, 'UNCATEGORIZED'), cp.charge_code
+     GROUP BY COALESCE(cc.department_name, 'UNCATEGORIZED'), cp.charge_code
      ORDER BY department, cp.charge_code`,
     params,
   );
@@ -917,7 +926,7 @@ export const getTrialBalance = async (options: {
     `SELECT COALESCE(SUM(amount), 0) AS total_payments
      FROM payments
      WHERE tenant_id = $1::uuid
-       AND business_date = $2::date
+       AND COALESCE(processed_at, created_at)::date = $2::date
        AND status = 'COMPLETED'
        AND transaction_type IN ('CAPTURE', 'REFUND', 'PARTIAL_REFUND')
        ${payPropFilter}`,
@@ -981,19 +990,19 @@ export const getDepartmentalRevenue = async (options: {
     net_revenue: string;
   }>(
     `SELECT
-       COALESCE(cc.department, 'UNCATEGORIZED') AS department,
+       COALESCE(cc.department_name, 'UNCATEGORIZED') AS department,
        COUNT(*)::text AS charge_count,
        COALESCE(SUM(CASE WHEN cp.posting_type = 'DEBIT' THEN cp.total_amount ELSE 0 END), 0)::text AS gross_revenue,
        COALESCE(SUM(CASE WHEN cp.posting_type = 'CREDIT' THEN cp.total_amount ELSE 0 END), 0)::text AS adjustments,
        (COALESCE(SUM(CASE WHEN cp.posting_type = 'DEBIT' THEN cp.total_amount ELSE 0 END), 0)
         - COALESCE(SUM(CASE WHEN cp.posting_type = 'CREDIT' THEN cp.total_amount ELSE 0 END), 0))::text AS net_revenue
      FROM charge_postings cp
-     LEFT JOIN charge_codes cc ON cc.code = cp.charge_code AND cc.tenant_id = cp.tenant_id
+     LEFT JOIN charge_codes cc ON cc.code = cp.charge_code
      WHERE cp.tenant_id = $1::uuid
        AND cp.business_date >= $2::date AND cp.business_date <= $3::date
        AND COALESCE(cp.is_voided, false) = false
        ${propFilter}
-     GROUP BY COALESCE(cc.department, 'UNCATEGORIZED')
+     GROUP BY COALESCE(cc.department_name, 'UNCATEGORIZED')
      ORDER BY net_revenue DESC`,
     params,
   );
@@ -1120,10 +1129,10 @@ export const getCommissionReport = async (options: {
     `SELECT
        COALESCE(r.source, 'DIRECT') AS source,
        COUNT(DISTINCT r.id)::text AS reservation_count,
-       COALESCE(SUM(CASE WHEN cc.department = 'ROOMS' THEN cp.total_amount ELSE 0 END), 0)::text AS room_revenue,
-       COALESCE(SUM(CASE WHEN cc.department = 'COMMISSION' OR cp.charge_code LIKE '%COMM%' THEN cp.total_amount ELSE 0 END), 0)::text AS commission_amount
+       COALESCE(SUM(CASE WHEN cc.department_name = 'Rooms Division' THEN cp.total_amount ELSE 0 END), 0)::text AS room_revenue,
+       COALESCE(SUM(CASE WHEN cc.department_code = 'COMMISSION' OR cp.charge_code LIKE '%COMM%' THEN cp.total_amount ELSE 0 END), 0)::text AS commission_amount
      FROM charge_postings cp
-     LEFT JOIN charge_codes cc ON cc.code = cp.charge_code AND cc.tenant_id = cp.tenant_id
+     LEFT JOIN charge_codes cc ON cc.code = cp.charge_code
      LEFT JOIN folios f ON f.id = cp.folio_id AND f.tenant_id = cp.tenant_id
      LEFT JOIN reservations r ON r.id = f.reservation_id AND r.tenant_id = cp.tenant_id
      WHERE cp.tenant_id = $1::uuid
@@ -1151,4 +1160,206 @@ export const getCommissionReport = async (options: {
       };
     }),
   };
+};
+
+// =====================================================
+// ACCOUNTS RECEIVABLE
+// =====================================================
+
+const formatDisplayLabel = (value: string | null | undefined): string => {
+  if (!value || typeof value !== "string") return "Unknown";
+  return value
+    .toLowerCase()
+    .split("_")
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+};
+
+const toIso = (val: string | Date | null | undefined): string | undefined => {
+  if (!val) return undefined;
+  return val instanceof Date ? val.toISOString() : val;
+};
+
+export const listAccountsReceivable = async (options: {
+  tenantId: string;
+  propertyId?: string;
+  status?: string;
+  accountType?: string;
+  agingBucket?: string;
+  limit?: number;
+  offset?: number;
+}): Promise<AccountsReceivableListItem[]> => {
+  const { rows } = await query(AR_LIST_SQL, [
+    options.limit ?? 100,
+    options.tenantId,
+    options.propertyId ?? null,
+    options.status ?? null,
+    options.accountType ?? null,
+    options.agingBucket ?? null,
+    options.offset ?? 0,
+  ]);
+
+  return rows.map((r: Record<string, unknown>) =>
+    AccountsReceivableListItemSchema.parse({
+      ar_id: r.ar_id,
+      tenant_id: r.tenant_id,
+      property_id: r.property_id,
+      property_name: r.property_name ?? undefined,
+      ar_number: r.ar_number,
+      ar_reference: r.ar_reference ?? undefined,
+      account_type: r.account_type,
+      account_type_display: formatDisplayLabel(r.account_type as string),
+      account_name: r.account_name,
+      guest_id: r.guest_id ?? undefined,
+      guest_name: r.guest_name ?? undefined,
+      company_id: r.company_id ?? undefined,
+      source_type: r.source_type ?? undefined,
+      source_reference: r.source_reference ?? undefined,
+      reservation_id: r.reservation_id ?? undefined,
+      invoice_id: r.invoice_id ?? undefined,
+      folio_id: r.folio_id ?? undefined,
+      transaction_date: toIso(r.transaction_date as string | Date) ?? "",
+      due_date: toIso(r.due_date as string | Date) ?? undefined,
+      original_amount: String(r.original_amount ?? "0"),
+      outstanding_balance: String(r.outstanding_balance ?? "0"),
+      paid_amount: String(r.paid_amount ?? "0"),
+      currency: (r.currency as string) ?? "USD",
+      ar_status: r.ar_status as string,
+      ar_status_display: formatDisplayLabel(r.ar_status as string),
+      aging_bucket: r.aging_bucket ?? undefined,
+      aging_bucket_display: r.aging_bucket
+        ? formatDisplayLabel(r.aging_bucket as string)
+        : undefined,
+      aging_days: r.aging_days != null ? Number(r.aging_days) : undefined,
+      is_overdue: r.is_overdue ?? false,
+      payment_terms: r.payment_terms ?? undefined,
+      payment_count: r.payment_count != null ? Number(r.payment_count) : undefined,
+      last_payment_date: toIso(r.last_payment_date as string | Date) ?? undefined,
+      priority: r.priority ?? undefined,
+      created_at: toIso(r.created_at as string | Date) ?? "",
+    }),
+  );
+};
+
+export const getAccountsReceivableById = async (options: {
+  arId: string;
+  tenantId: string;
+}): Promise<AccountsReceivableDetail | null> => {
+  const { rows } = await query(AR_BY_ID_SQL, [options.arId, options.tenantId]);
+
+  if (rows.length === 0) return null;
+
+  const r = rows[0] as Record<string, unknown>;
+  return AccountsReceivableDetailSchema.parse({
+    ar_id: r.ar_id,
+    tenant_id: r.tenant_id,
+    property_id: r.property_id,
+    property_name: r.property_name ?? undefined,
+    ar_number: r.ar_number,
+    ar_reference: r.ar_reference ?? undefined,
+    account_type: r.account_type,
+    account_type_display: formatDisplayLabel(r.account_type as string),
+    account_name: r.account_name,
+    account_id: r.account_id ?? undefined,
+    account_code: r.account_code ?? undefined,
+    guest_id: r.guest_id ?? undefined,
+    guest_name: r.guest_name ?? undefined,
+    company_id: r.company_id ?? undefined,
+    contact_name: r.contact_name ?? undefined,
+    contact_email: r.contact_email ?? undefined,
+    contact_phone: r.contact_phone ?? undefined,
+    billing_address: r.billing_address ?? undefined,
+    source_type: r.source_type ?? undefined,
+    source_reference: r.source_reference ?? undefined,
+    reservation_id: r.reservation_id ?? undefined,
+    invoice_id: r.invoice_id ?? undefined,
+    folio_id: r.folio_id ?? undefined,
+    transaction_date: toIso(r.transaction_date as string | Date) ?? "",
+    due_date: toIso(r.due_date as string | Date) ?? undefined,
+    original_amount: String(r.original_amount ?? "0"),
+    outstanding_balance: String(r.outstanding_balance ?? "0"),
+    paid_amount: String(r.paid_amount ?? "0"),
+    currency: (r.currency as string) ?? "USD",
+    ar_status: r.ar_status as string,
+    ar_status_display: formatDisplayLabel(r.ar_status as string),
+    aging_bucket: r.aging_bucket ?? undefined,
+    aging_bucket_display: r.aging_bucket
+      ? formatDisplayLabel(r.aging_bucket as string)
+      : undefined,
+    aging_days: r.aging_days != null ? Number(r.aging_days) : undefined,
+    days_overdue: r.days_overdue != null ? Number(r.days_overdue) : undefined,
+    is_overdue: r.is_overdue ?? false,
+    payment_terms: r.payment_terms ?? undefined,
+    payment_terms_days:
+      r.payment_terms_days != null ? Number(r.payment_terms_days) : undefined,
+    early_payment_discount_percent:
+      r.early_payment_discount_percent != null
+        ? String(r.early_payment_discount_percent)
+        : undefined,
+    early_payment_discount_days:
+      r.early_payment_discount_days != null
+        ? Number(r.early_payment_discount_days)
+        : undefined,
+    discount_deadline: toIso(r.discount_deadline as string | Date) ?? undefined,
+    late_fee_applicable: r.late_fee_applicable ?? undefined,
+    late_fees_charged:
+      r.late_fees_charged != null ? String(r.late_fees_charged) : undefined,
+    interest_applicable: r.interest_applicable ?? undefined,
+    interest_accrued:
+      r.interest_accrued != null ? String(r.interest_accrued) : undefined,
+    payment_count: r.payment_count != null ? Number(r.payment_count) : undefined,
+    last_payment_date: toIso(r.last_payment_date as string | Date) ?? undefined,
+    last_payment_amount:
+      r.last_payment_amount != null ? String(r.last_payment_amount) : undefined,
+    payments: r.payments ?? undefined,
+    in_collection: r.in_collection ?? undefined,
+    collection_notes: r.collection_notes ?? undefined,
+    disputed: r.disputed ?? undefined,
+    dispute_reason: r.dispute_reason ?? undefined,
+    dispute_amount:
+      r.dispute_amount != null ? String(r.dispute_amount) : undefined,
+    written_off: r.written_off ?? undefined,
+    write_off_amount:
+      r.write_off_amount != null ? String(r.write_off_amount) : undefined,
+    write_off_reason: r.write_off_reason ?? undefined,
+    write_off_date: toIso(r.write_off_date as string | Date) ?? undefined,
+    is_bad_debt: r.is_bad_debt ?? undefined,
+    has_payment_plan: r.has_payment_plan ?? undefined,
+    installment_count:
+      r.installment_count != null ? Number(r.installment_count) : undefined,
+    next_installment_due_date:
+      toIso(r.next_installment_due_date as string | Date) ?? undefined,
+    priority: r.priority ?? undefined,
+    notes: r.notes ?? undefined,
+    internal_notes: r.internal_notes ?? undefined,
+    tags: r.tags ?? undefined,
+    created_at: toIso(r.created_at as string | Date) ?? "",
+    updated_at: toIso(r.updated_at as string | Date) ?? undefined,
+  });
+};
+
+export const getArAgingSummary = async (options: {
+  tenantId: string;
+  propertyId?: string;
+}): Promise<ArAgingSummary[]> => {
+  const { rows } = await query(AR_AGING_SUMMARY_SQL, [
+    options.tenantId,
+    options.propertyId ?? null,
+  ]);
+
+  return rows.map((r: Record<string, unknown>) =>
+    ArAgingSummarySchema.parse({
+      property_id: r.property_id,
+      property_name: r.property_name ?? undefined,
+      current: String(r.current_amount ?? "0"),
+      days_1_30: String(r.days_1_30 ?? "0"),
+      days_31_60: String(r.days_31_60 ?? "0"),
+      days_61_90: String(r.days_61_90 ?? "0"),
+      days_91_120: String(r.days_91_120 ?? "0"),
+      over_120: String(r.over_120 ?? "0"),
+      total_outstanding: String(r.total_outstanding ?? "0"),
+      total_accounts: Number(r.total_accounts ?? 0),
+      currency: (r.currency as string) ?? "USD",
+    }),
+  );
 };

@@ -918,6 +918,46 @@ export type NightAuditRunDetailResponse = z.infer<
 >;
 
 // =====================================================
+// BUSINESS CALENDAR
+// =====================================================
+
+/**
+ * Business calendar entry — a single business date record with
+ * open/close times and summary statistics.
+ * Used by: GET /v1/night-audit/business-calendar
+ */
+export const BusinessCalendarEntrySchema = z.object({
+	business_date_id: uuid,
+	tenant_id: uuid,
+	property_id: uuid,
+	property_name: z.string().optional(),
+	business_date: z.string(),
+	system_date: z.string(),
+	date_status: BusinessDateStatusEnum,
+	date_status_display: z.string(),
+	date_opened_at: z.string().optional(),
+	date_closed_at: z.string().optional(),
+	date_rolled_at: z.string().optional(),
+	night_audit_status: z.string().optional(),
+	night_audit_started_at: z.string().optional(),
+	night_audit_completed_at: z.string().optional(),
+	is_locked: z.boolean(),
+	is_reconciled: z.boolean(),
+	arrivals_count: z.number().int().nonnegative().optional(),
+	departures_count: z.number().int().nonnegative().optional(),
+	stayovers_count: z.number().int().nonnegative().optional(),
+	total_revenue: z.string().optional(),
+	total_payments: z.string().optional(),
+	audit_errors: z.number().int().nonnegative().optional(),
+	audit_warnings: z.number().int().nonnegative().optional(),
+	notes: z.string().optional(),
+});
+
+export type BusinessCalendarEntry = z.infer<
+	typeof BusinessCalendarEntrySchema
+>;
+
+// =====================================================
 // OTA / CHANNEL CONFIGURATION
 // =====================================================
 
@@ -1082,6 +1122,18 @@ export const CashierSessionListItemSchema = z.object({
 
 export type CashierSessionListItem = z.infer<
 	typeof CashierSessionListItemSchema
+>;
+
+/** Cashier session list response schema. */
+export const CashierSessionListResponseSchema = z.object({
+	data: z.array(CashierSessionListItemSchema),
+	meta: z.object({
+		count: z.number().int().nonnegative(),
+	}),
+});
+
+export type CashierSessionListResponse = z.infer<
+	typeof CashierSessionListResponseSchema
 >;
 
 // =====================================================

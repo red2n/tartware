@@ -1,0 +1,55 @@
+###############################################################################
+# Screen Permissions — Role-based screen visibility management
+# Uses settings-service via API Gateway
+###############################################################################
+
+@baseUrl = http://localhost:8080
+@tenantId = 11111111-1111-1111-1111-111111111111
+@token = {{$dotenv TOKEN}}
+
+### Get all role screen permissions
+GET {{baseUrl}}/v1/settings/screen-permissions?tenant_id={{tenantId}}
+Authorization: Bearer {{token}}
+
+### Get screen permissions for STAFF role
+GET {{baseUrl}}/v1/settings/screen-permissions/STAFF?tenant_id={{tenantId}}
+Authorization: Bearer {{token}}
+
+### Get screen permissions for VIEWER role
+GET {{baseUrl}}/v1/settings/screen-permissions/VIEWER?tenant_id={{tenantId}}
+Authorization: Bearer {{token}}
+
+### Get screen permissions for MANAGER role
+GET {{baseUrl}}/v1/settings/screen-permissions/MANAGER?tenant_id={{tenantId}}
+Authorization: Bearer {{token}}
+
+### Update STAFF screen permissions (grant access to billing)
+PUT {{baseUrl}}/v1/settings/screen-permissions?tenant_id={{tenantId}}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "role": "STAFF",
+  "screens": [
+    { "screen_key": "dashboard", "is_visible": true },
+    { "screen_key": "reservations", "is_visible": true },
+    { "screen_key": "guests", "is_visible": true },
+    { "screen_key": "rooms", "is_visible": true },
+    { "screen_key": "housekeeping", "is_visible": true },
+    { "screen_key": "billing", "is_visible": true },
+    { "screen_key": "groups", "is_visible": false },
+    { "screen_key": "room-types", "is_visible": false },
+    { "screen_key": "buildings", "is_visible": false },
+    { "screen_key": "rates", "is_visible": false },
+    { "screen_key": "rate-calendar", "is_visible": false },
+    { "screen_key": "packages", "is_visible": false },
+    { "screen_key": "accounts-receivable", "is_visible": false },
+    { "screen_key": "cashiering", "is_visible": false },
+    { "screen_key": "night-audit", "is_visible": false },
+    { "screen_key": "tax-config", "is_visible": false },
+    { "screen_key": "reports", "is_visible": false },
+    { "screen_key": "settings", "is_visible": false },
+    { "screen_key": "command-management", "is_visible": false },
+    { "screen_key": "users", "is_visible": false }
+  ]
+}

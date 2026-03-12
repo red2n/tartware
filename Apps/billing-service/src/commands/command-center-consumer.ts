@@ -31,10 +31,12 @@ import {
   executeNightAudit,
   finalizeInvoice,
   generateCommissionStatement,
+  incrementAuthorization,
   markCommissionPaid,
   openCashierSession,
   postArEntry,
   postCharge,
+  recordChargeback,
   refundBillingPayment,
   splitCharge,
   transferCharge,
@@ -43,6 +45,8 @@ import {
   voidPayment,
   writeOffAr,
 } from "../services/billing-command-service.js";
+import { closeFiscalPeriod, lockFiscalPeriod, reopenFiscalPeriod } from "../services/billing-commands/fiscal-period.js";
+import { createFolioWindow } from "../services/billing-commands/folio-window.js";
 
 let consumer: Consumer | null = null;
 const logger = appLogger.child({ module: "billing-command-consumer" });
@@ -180,6 +184,12 @@ const routeBillingCommand = async (
         initiatedBy: metadata.initiatedBy ?? null,
       });
       return;
+    case "billing.payment.authorize_increment":
+      await incrementAuthorization(envelope.payload, {
+        tenantId: metadata.tenantId,
+        initiatedBy: metadata.initiatedBy ?? null,
+      });
+      return;
     case "billing.night_audit.execute":
       await executeNightAudit(envelope.payload, {
         tenantId: metadata.tenantId,
@@ -290,6 +300,36 @@ const routeBillingCommand = async (
       return;
     case "billing.pricing.bulk_recommend":
       await bulkGeneratePricingRecommendations(envelope.payload, {
+        tenantId: metadata.tenantId,
+        initiatedBy: metadata.initiatedBy ?? null,
+      });
+      return;
+    case "billing.chargeback.record":
+      await recordChargeback(envelope.payload, {
+        tenantId: metadata.tenantId,
+        initiatedBy: metadata.initiatedBy ?? null,
+      });
+      return;
+    case "billing.fiscal_period.close":
+      await closeFiscalPeriod(envelope.payload, {
+        tenantId: metadata.tenantId,
+        initiatedBy: metadata.initiatedBy ?? null,
+      });
+      return;
+    case "billing.fiscal_period.lock":
+      await lockFiscalPeriod(envelope.payload, {
+        tenantId: metadata.tenantId,
+        initiatedBy: metadata.initiatedBy ?? null,
+      });
+      return;
+    case "billing.fiscal_period.reopen":
+      await reopenFiscalPeriod(envelope.payload, {
+        tenantId: metadata.tenantId,
+        initiatedBy: metadata.initiatedBy ?? null,
+      });
+      return;
+    case "billing.folio_window.create":
+      await createFolioWindow(envelope.payload, {
         tenantId: metadata.tenantId,
         initiatedBy: metadata.initiatedBy ?? null,
       });

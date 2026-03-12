@@ -1,0 +1,281 @@
+<div class="ar-page">
+  <app-page-header title="Accounts Receivable" description="City ledger, direct billing, and AR aging management" />
+
+  <!-- ═══ AGING KPIs ═══ -->
+  <div class="aging-kpis">
+    <div class="kpi-card">
+      <span class="kpi-label">{{ 'Total Outstanding' | translate }}</span>
+      <span class="kpi-value kpi-total">{{ fmtMoney(agingTotals().total) }}</span>
+      <span class="kpi-sub">{{ summary().total }} {{ 'accounts' | translate }}</span>
+    </div>
+    <div class="kpi-card">
+      <span class="kpi-label">{{ 'Current' | translate }}</span>
+      <span class="kpi-value">{{ fmtMoney(agingTotals().current) }}</span>
+    </div>
+    <div class="kpi-card">
+      <span class="kpi-label">{{ '1–30 days' | translate }}</span>
+      <span class="kpi-value">{{ fmtMoney(agingTotals().days_1_30) }}</span>
+    </div>
+    <div class="kpi-card">
+      <span class="kpi-label">{{ '31–60 days' | translate }}</span>
+      <span class="kpi-value kpi-warning">{{ fmtMoney(agingTotals().days_31_60) }}</span>
+    </div>
+    <div class="kpi-card">
+      <span class="kpi-label">{{ '61–90 days' | translate }}</span>
+      <span class="kpi-value kpi-danger">{{ fmtMoney(agingTotals().days_61_90) }}</span>
+    </div>
+    <div class="kpi-card">
+      <span class="kpi-label">{{ '91–120 days' | translate }}</span>
+      <span class="kpi-value kpi-danger">{{ fmtMoney(agingTotals().days_91_120) }}</span>
+    </div>
+    <div class="kpi-card">
+      <span class="kpi-label">{{ '120+ days' | translate }}</span>
+      <span class="kpi-value kpi-critical">{{ fmtMoney(agingTotals().over_120) }}</span>
+    </div>
+  </div>
+
+  <!-- ═══ QUICK STATS ═══ -->
+  <div class="quick-stats">
+    <span class="stat"><mat-icon>warning</mat-icon> {{ summary().overdueCount }} {{ 'overdue' | translate }}</span>
+    <span class="stat"><mat-icon>pending</mat-icon> {{ summary().openCount }} {{ 'open / partial' | translate }}</span>
+  </div>
+
+  <!-- ═══ FILTERS ═══ -->
+  <div class="ar-filters">
+    <div class="filter-row">
+      <div class="filter-group">
+        <label>{{ 'Status' | translate }}</label>
+        <div class="filter-chips">
+          @for (f of statusFilters; track f.key) {
+            <button class="chip" [class.active]="activeStatusFilter() === f.key" (click)="setStatusFilter(f.key)">
+              {{ f.label | translate }}
+            </button>
+          }
+        </div>
+      </div>
+      <div class="filter-group">
+        <label>{{ 'Account Type' | translate }}</label>
+        <div class="filter-chips">
+          @for (f of typeFilters; track f.key) {
+            <button class="chip" [class.active]="activeTypeFilter() === f.key" (click)="setTypeFilter(f.key)">
+              {{ f.label | translate }}
+            </button>
+          }
+        </div>
+      </div>
+    </div>
+    <div class="filter-row">
+      <div class="filter-group">
+        <label>{{ 'Aging Bucket' | translate }}</label>
+        <div class="filter-chips">
+          @for (f of agingFilters; track f.key) {
+            <button class="chip" [class.active]="activeAgingFilter() === f.key" (click)="setAgingFilter(f.key)">
+              {{ f.label | translate }}
+            </button>
+          }
+        </div>
+      </div>
+      <div class="search-box">
+        <mat-icon>search</mat-icon>
+        <input type="text" [ngModel]="searchQuery()" (ngModelChange)="onSearch($event)"
+               placeholder="Search AR number, name..." />
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ LOADING / ERROR ═══ -->
+  @if (loading()) {
+    <div class="loading-state">
+      <mat-progress-spinner mode="indeterminate" diameter="40" />
+    </div>
+  }
+
+  @if (error(); as err) {
+    <div class="notice notice-error">
+      <mat-icon>error</mat-icon>
+      <span>{{ err }}</span>
+      <button mat-button (click)="loadArData()">{{ 'Retry' | translate }}</button>
+    </div>
+  }
+
+  <!-- ═══ AR TABLE ═══ -->
+  @if (!loading() && !error()) {
+    @if (filtered().length === 0) {
+      <div class="empty-state">
+        <mat-icon>request_quote</mat-icon>
+        <p>{{ 'No accounts receivable entries found' | translate }}</p>
+      </div>
+    } @else {
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th (click)="onSort('ar_number')" [attr.aria-sort]="ariaSort('ar_number')">
+                {{ 'AR #' | translate }} <mat-icon>{{ sortIcon('ar_number') }}</mat-icon>
+              </th>
+              <th (click)="onSort('account_name')" [attr.aria-sort]="ariaSort('account_name')">
+                {{ 'Account' | translate }} <mat-icon>{{ sortIcon('account_name') }}</mat-icon>
+              </th>
+              <th>{{ 'Type' | translate }}</th>
+              <th (click)="onSort('original_amount')" [attr.aria-sort]="ariaSort('original_amount')">
+                {{ 'Original' | translate }} <mat-icon>{{ sortIcon('original_amount') }}</mat-icon>
+              </th>
+              <th (click)="onSort('outstanding_balance')" [attr.aria-sort]="ariaSort('outstanding_balance')">
+                {{ 'Outstanding' | translate }} <mat-icon>{{ sortIcon('outstanding_balance') }}</mat-icon>
+              </th>
+              <th (click)="onSort('transaction_date')" [attr.aria-sort]="ariaSort('transaction_date')">
+                {{ 'Date' | translate }} <mat-icon>{{ sortIcon('transaction_date') }}</mat-icon>
+              </th>
+              <th>{{ 'Aging' | translate }}</th>
+              <th (click)="onSort('ar_status')" [attr.aria-sort]="ariaSort('ar_status')">
+                {{ 'Status' | translate }} <mat-icon>{{ sortIcon('ar_status') }}</mat-icon>
+              </th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (ar of paginated(); track ar.ar_id) {
+              <tr [class.overdue]="ar.is_overdue" (click)="selectAr(ar)">
+                <td class="mono">{{ ar.ar_number }}</td>
+                <td>
+                  <div class="account-cell">
+                    <span class="account-name">{{ ar.account_name }}</span>
+                    @if (ar.guest_name) {
+                      <span class="account-sub">{{ ar.guest_name }}</span>
+                    }
+                  </div>
+                </td>
+                <td><span class="type-badge">{{ ar.account_type_display }}</span></td>
+                <td class="mono right">{{ fmtMoney(+ar.original_amount) }}</td>
+                <td class="mono right bold">{{ fmtMoney(+ar.outstanding_balance) }}</td>
+                <td>{{ formatDate(ar.transaction_date) }}</td>
+                <td>
+                  @if (ar.aging_bucket_display) {
+                    <span class="aging-badge" [ngClass]="'aging-' + ar.aging_bucket">{{ ar.aging_bucket_display }}</span>
+                  }
+                </td>
+                <td><span class="status-badge" [ngClass]="statusClass(ar.ar_status)">{{ ar.ar_status_display }}</span></td>
+                <td><mat-icon class="row-action">chevron_right</mat-icon></td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+
+      <app-pagination [currentPage]="page()" [pageSize]="pageSize" [totalItems]="filtered().length"
+                      (pageChange)="page.set($event)" />
+    }
+  }
+
+  <!-- ═══ DETAIL PANEL ═══ -->
+  @if (selectedAr(); as detail) {
+    <div class="detail-overlay" (click)="closeDetail()">
+      <div class="detail-panel" (click)="$event.stopPropagation()">
+        <div class="detail-header">
+          <h2>{{ detail.ar_number }}</h2>
+          <button mat-icon-button (click)="closeDetail()"><mat-icon>close</mat-icon></button>
+        </div>
+
+        <div class="detail-grid">
+          <div class="detail-field">
+            <label>{{ 'Account' | translate }}</label>
+            <span>{{ detail.account_name }}</span>
+          </div>
+          <div class="detail-field">
+            <label>{{ 'Type' | translate }}</label>
+            <span>{{ detail.account_type_display }}</span>
+          </div>
+          <div class="detail-field">
+            <label>{{ 'Status' | translate }}</label>
+            <span class="status-badge" [ngClass]="statusClass(detail.ar_status)">{{ detail.ar_status_display }}</span>
+          </div>
+          <div class="detail-field">
+            <label>{{ 'Original Amount' | translate }}</label>
+            <span class="mono">{{ fmtMoney(+detail.original_amount) }}</span>
+          </div>
+          <div class="detail-field">
+            <label>{{ 'Paid' | translate }}</label>
+            <span class="mono">{{ fmtMoney(+detail.paid_amount) }}</span>
+          </div>
+          <div class="detail-field">
+            <label>{{ 'Outstanding' | translate }}</label>
+            <span class="mono bold">{{ fmtMoney(+detail.outstanding_balance) }}</span>
+          </div>
+          <div class="detail-field">
+            <label>{{ 'Transaction Date' | translate }}</label>
+            <span>{{ formatDate(detail.transaction_date) }}</span>
+          </div>
+          <div class="detail-field">
+            <label>{{ 'Due Date' | translate }}</label>
+            <span>{{ detail.due_date ? formatDate(detail.due_date) : '—' }}</span>
+          </div>
+          @if (detail.aging_bucket_display) {
+            <div class="detail-field">
+              <label>{{ 'Aging' | translate }}</label>
+              <span class="aging-badge" [ngClass]="'aging-' + detail.aging_bucket">{{ detail.aging_bucket_display }}</span>
+            </div>
+          }
+          @if (detail.days_overdue != null) {
+            <div class="detail-field">
+              <label>{{ 'Days Overdue' | translate }}</label>
+              <span>{{ detail.days_overdue }}</span>
+            </div>
+          }
+          @if (detail.payment_terms) {
+            <div class="detail-field">
+              <label>{{ 'Payment Terms' | translate }}</label>
+              <span>{{ detail.payment_terms }}</span>
+            </div>
+          }
+          @if (detail.contact_name) {
+            <div class="detail-field">
+              <label>{{ 'Contact' | translate }}</label>
+              <span>{{ detail.contact_name }}</span>
+            </div>
+          }
+          @if (detail.contact_email) {
+            <div class="detail-field">
+              <label>{{ 'Email' | translate }}</label>
+              <span>{{ detail.contact_email }}</span>
+            </div>
+          }
+        </div>
+
+        <!-- Flags -->
+        <div class="detail-flags">
+          @if (detail.in_collection) {
+            <span class="flag flag-danger"><mat-icon>gavel</mat-icon> {{ 'In Collection' | translate }}</span>
+          }
+          @if (detail.disputed) {
+            <span class="flag flag-warning"><mat-icon>report_problem</mat-icon> {{ 'Disputed' | translate }}
+              @if (detail.dispute_amount) { — {{ fmtMoney(+detail.dispute_amount) }} }
+            </span>
+          }
+          @if (detail.written_off) {
+            <span class="flag flag-muted"><mat-icon>delete_sweep</mat-icon> {{ 'Written Off' | translate }}
+              @if (detail.write_off_amount) { — {{ fmtMoney(+detail.write_off_amount) }} }
+            </span>
+          }
+          @if (detail.has_payment_plan) {
+            <span class="flag flag-info"><mat-icon>event_repeat</mat-icon> {{ 'Payment Plan' | translate }}
+              @if (detail.installment_count) { ({{ detail.installment_count }} {{ 'installments' | translate }}) }
+            </span>
+          }
+          @if (detail.late_fee_applicable) {
+            <span class="flag flag-warning"><mat-icon>attach_money</mat-icon> {{ 'Late Fee' | translate }}: {{ fmtMoney(+(detail.late_fees_charged ?? '0')) }}</span>
+          }
+          @if (detail.interest_applicable) {
+            <span class="flag flag-warning"><mat-icon>trending_up</mat-icon> {{ 'Interest Accrued' | translate }}: {{ fmtMoney(+(detail.interest_accrued ?? '0')) }}</span>
+          }
+        </div>
+
+        @if (detail.notes) {
+          <div class="detail-notes">
+            <label>{{ 'Notes' | translate }}</label>
+            <p>{{ detail.notes }}</p>
+          </div>
+        }
+      </div>
+    </div>
+  }
+</div>

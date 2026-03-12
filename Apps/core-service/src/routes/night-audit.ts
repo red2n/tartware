@@ -8,6 +8,7 @@ import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import {
   getBusinessDateStatus,
   getNightAuditRunDetail,
+  listBusinessCalendar,
   listNightAuditHistory,
   listOtaConnections,
   listOtaSyncLogs,
@@ -274,6 +275,54 @@ export function registerOtaRoutes(fastify: FastifyInstance): void {
         data: logs,
         meta: { count: logs.length },
         offset: offset ?? 0,
+      });
+    },
+  );
+
+  // ---------------------------------------------------
+  // GET /v1/night-audit/business-calendar - Business date history
+  // ---------------------------------------------------
+  fastify.get(
+    "/v1/night-audit/business-calendar",
+    {
+      schema: {
+        summary: "List business date history for a property",
+        tags: ["Night Audit"],
+        querystring: {
+          type: "object",
+          required: ["tenant_id"],
+          properties: {
+            tenant_id: { type: "string", format: "uuid" },
+            property_id: { type: "string", format: "uuid" },
+            limit: { type: "integer", minimum: 1, maximum: 365, default: 90 },
+            offset: { type: "integer", minimum: 0, default: 0 },
+          },
+        },
+      },
+    },
+    async (
+      request: FastifyRequest<{
+        Querystring: {
+          tenant_id: string;
+          property_id?: string;
+          limit?: number;
+          offset?: number;
+        };
+      }>,
+      reply: FastifyReply,
+    ) => {
+      const { tenant_id, property_id, limit, offset } = request.query;
+
+      const entries = await listBusinessCalendar({
+        tenantId: tenant_id,
+        propertyId: property_id,
+        limit,
+        offset,
+      });
+
+      return reply.send({
+        data: entries,
+        meta: { count: entries.length },
       });
     },
   );

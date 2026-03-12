@@ -60,7 +60,7 @@ export const GUEST_LIST_SQL = `
     AND ($4::text IS NULL OR g.email ILIKE $4)
     AND ($5::text IS NULL OR g.phone ILIKE $5)
     AND ($6::text IS NULL OR g.loyalty_tier = $6)
-    AND ($7::boolean IS NULL OR g.vip_status = $7)
+    AND ($7::text IS NULL OR g.vip_status = $7)
     AND ($8::boolean IS NULL OR g.is_blacklisted = $8)
   ORDER BY g.created_at DESC
   LIMIT $1
@@ -363,7 +363,7 @@ export const GUEST_SUMMARY_STATS_SQL = `
     COUNT(*)::int AS total_guests,
     COUNT(*) FILTER (WHERE member_since >= date_trunc('month', CURRENT_DATE))::int AS new_guests_this_month,
     COUNT(*) FILTER (WHERE total_bookings > 1)::int AS returning_guests,
-    COUNT(*) FILTER (WHERE vip_status = true)::int AS vip_guests,
+    COUNT(*) FILTER (WHERE vip_status != 'NONE')::int AS vip_guests,
     COUNT(*) FILTER (WHERE loyalty_tier IS NOT NULL AND loyalty_tier <> '')::int AS loyalty_members,
     COUNT(*) FILTER (WHERE is_blacklisted = true)::int AS blacklisted_guests,
     COUNT(*) FILTER (WHERE total_nights > 0 AND total_bookings > 0 AND (total_nights::numeric / total_bookings) >= 3)::int AS long_stay_guests,
