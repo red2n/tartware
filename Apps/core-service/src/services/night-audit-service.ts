@@ -526,8 +526,10 @@ export const listBusinessCalendar = async (
       date_closed_at: toIsoString(row.date_closed_at as string | Date | null) ?? undefined,
       date_rolled_at: toIsoString(row.date_rolled_at as string | Date | null) ?? undefined,
       night_audit_status: row.night_audit_status ?? undefined,
-      night_audit_started_at: toIsoString(row.night_audit_started_at as string | Date | null) ?? undefined,
-      night_audit_completed_at: toIsoString(row.night_audit_completed_at as string | Date | null) ?? undefined,
+      night_audit_started_at:
+        toIsoString(row.night_audit_started_at as string | Date | null) ?? undefined,
+      night_audit_completed_at:
+        toIsoString(row.night_audit_completed_at as string | Date | null) ?? undefined,
       is_locked: row.is_locked ?? false,
       is_reconciled: row.is_reconciled ?? false,
       arrivals_count: row.arrivals_count ?? undefined,

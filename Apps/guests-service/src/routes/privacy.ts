@@ -2,13 +2,12 @@ import { buildRouteSchema, schemaFromZod } from "@tartware/openapi";
 import { CcpaOptOutBodySchema, CommunicationPrefsBodySchema } from "@tartware/schemas";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
-
+import { exportGuestData } from "../services/gdpr-export-service.js";
 import {
   getGuestPrivacyState,
   setCcpaOptOut,
   updateCommunicationPreferences,
 } from "../services/privacy-service.js";
-import { exportGuestData } from "../services/gdpr-export-service.js";
 
 const PRIVACY_TAG = "Privacy & Compliance";
 

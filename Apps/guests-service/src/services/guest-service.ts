@@ -277,7 +277,7 @@ export const listGuests = async (options: {
   email?: string;
   phone?: string;
   loyaltyTier?: string;
-  vipStatus?: boolean;
+  vipStatus?: string;
   isBlacklisted?: boolean;
   offset?: number;
 }): Promise<GuestWithStats[]> => {

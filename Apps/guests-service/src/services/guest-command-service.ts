@@ -73,7 +73,7 @@ export const registerGuestProfile = async ({
 }: RegisterGuestOptions): Promise<string | undefined> => {
   const normalizedPhone = normalizePhoneNumber(payload.phone ?? undefined);
   const address = payload.address ?? {};
-  const vipStatus = payload.preferences?.vip_status ?? \"NONE\";
+  const vipStatus = payload.preferences?.vip_status ?? "NONE";
   const preferences =
     payload.preferences !== undefined ? JSON.stringify(payload.preferences) : null;
 

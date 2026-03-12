@@ -29,13 +29,7 @@ export const closeFiscalPeriod = async (
        AND id = $2::uuid
        AND property_id = $3::uuid
        AND period_status = 'OPEN'`,
-    [
-      context.tenantId,
-      command.period_id,
-      command.property_id,
-      actor,
-      command.close_reason ?? null,
-    ],
+    [context.tenantId, command.period_id, command.property_id, actor, command.close_reason ?? null],
   );
 
   if (!rowCount || rowCount === 0) {
@@ -72,13 +66,7 @@ export const lockFiscalPeriod = async (
        AND id = $2::uuid
        AND property_id = $3::uuid
        AND period_status = 'SOFT_CLOSE'`,
-    [
-      context.tenantId,
-      command.period_id,
-      command.property_id,
-      command.approved_by ?? null,
-      actor,
-    ],
+    [context.tenantId, command.period_id, command.property_id, command.approved_by ?? null, actor],
   );
 
   if (!rowCount || rowCount === 0) {
@@ -116,13 +104,7 @@ export const reopenFiscalPeriod = async (
        AND id = $2::uuid
        AND property_id = $3::uuid
        AND period_status = 'SOFT_CLOSE'`,
-    [
-      context.tenantId,
-      command.period_id,
-      command.property_id,
-      actor,
-      command.reason,
-    ],
+    [context.tenantId, command.period_id, command.property_id, actor, command.reason],
   );
 
   if (!rowCount || rowCount === 0) {

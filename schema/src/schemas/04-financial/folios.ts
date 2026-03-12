@@ -21,7 +21,13 @@ import { z } from "zod";
 
 import { money, uuid } from "../../shared/base-schemas.js";
 
-const folioTypeEnum = z.enum(["GUEST", "MASTER", "CITY_LEDGER", "INCIDENTAL", "HOUSE_ACCOUNT"]);
+const folioTypeEnum = z.enum([
+	"GUEST",
+	"MASTER",
+	"CITY_LEDGER",
+	"INCIDENTAL",
+	"HOUSE_ACCOUNT",
+]);
 
 /**
  * Complete Folios schema

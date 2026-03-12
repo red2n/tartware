@@ -1283,52 +1283,40 @@ export const getAccountsReceivableById = async (options: {
     ar_status: r.ar_status as string,
     ar_status_display: formatDisplayLabel(r.ar_status as string),
     aging_bucket: r.aging_bucket ?? undefined,
-    aging_bucket_display: r.aging_bucket
-      ? formatDisplayLabel(r.aging_bucket as string)
-      : undefined,
+    aging_bucket_display: r.aging_bucket ? formatDisplayLabel(r.aging_bucket as string) : undefined,
     aging_days: r.aging_days != null ? Number(r.aging_days) : undefined,
     days_overdue: r.days_overdue != null ? Number(r.days_overdue) : undefined,
     is_overdue: r.is_overdue ?? false,
     payment_terms: r.payment_terms ?? undefined,
-    payment_terms_days:
-      r.payment_terms_days != null ? Number(r.payment_terms_days) : undefined,
+    payment_terms_days: r.payment_terms_days != null ? Number(r.payment_terms_days) : undefined,
     early_payment_discount_percent:
       r.early_payment_discount_percent != null
         ? String(r.early_payment_discount_percent)
         : undefined,
     early_payment_discount_days:
-      r.early_payment_discount_days != null
-        ? Number(r.early_payment_discount_days)
-        : undefined,
+      r.early_payment_discount_days != null ? Number(r.early_payment_discount_days) : undefined,
     discount_deadline: toIso(r.discount_deadline as string | Date) ?? undefined,
     late_fee_applicable: r.late_fee_applicable ?? undefined,
-    late_fees_charged:
-      r.late_fees_charged != null ? String(r.late_fees_charged) : undefined,
+    late_fees_charged: r.late_fees_charged != null ? String(r.late_fees_charged) : undefined,
     interest_applicable: r.interest_applicable ?? undefined,
-    interest_accrued:
-      r.interest_accrued != null ? String(r.interest_accrued) : undefined,
+    interest_accrued: r.interest_accrued != null ? String(r.interest_accrued) : undefined,
     payment_count: r.payment_count != null ? Number(r.payment_count) : undefined,
     last_payment_date: toIso(r.last_payment_date as string | Date) ?? undefined,
-    last_payment_amount:
-      r.last_payment_amount != null ? String(r.last_payment_amount) : undefined,
+    last_payment_amount: r.last_payment_amount != null ? String(r.last_payment_amount) : undefined,
     payments: r.payments ?? undefined,
     in_collection: r.in_collection ?? undefined,
     collection_notes: r.collection_notes ?? undefined,
     disputed: r.disputed ?? undefined,
     dispute_reason: r.dispute_reason ?? undefined,
-    dispute_amount:
-      r.dispute_amount != null ? String(r.dispute_amount) : undefined,
+    dispute_amount: r.dispute_amount != null ? String(r.dispute_amount) : undefined,
     written_off: r.written_off ?? undefined,
-    write_off_amount:
-      r.write_off_amount != null ? String(r.write_off_amount) : undefined,
+    write_off_amount: r.write_off_amount != null ? String(r.write_off_amount) : undefined,
     write_off_reason: r.write_off_reason ?? undefined,
     write_off_date: toIso(r.write_off_date as string | Date) ?? undefined,
     is_bad_debt: r.is_bad_debt ?? undefined,
     has_payment_plan: r.has_payment_plan ?? undefined,
-    installment_count:
-      r.installment_count != null ? Number(r.installment_count) : undefined,
-    next_installment_due_date:
-      toIso(r.next_installment_due_date as string | Date) ?? undefined,
+    installment_count: r.installment_count != null ? Number(r.installment_count) : undefined,
+    next_installment_due_date: toIso(r.next_installment_due_date as string | Date) ?? undefined,
     priority: r.priority ?? undefined,
     notes: r.notes ?? undefined,
     internal_notes: r.internal_notes ?? undefined,

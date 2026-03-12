@@ -45,7 +45,11 @@ import {
   voidPayment,
   writeOffAr,
 } from "../services/billing-command-service.js";
-import { closeFiscalPeriod, lockFiscalPeriod, reopenFiscalPeriod } from "../services/billing-commands/fiscal-period.js";
+import {
+  closeFiscalPeriod,
+  lockFiscalPeriod,
+  reopenFiscalPeriod,
+} from "../services/billing-commands/fiscal-period.js";
 import { createFolioWindow } from "../services/billing-commands/folio-window.js";
 
 let consumer: Consumer | null = null;

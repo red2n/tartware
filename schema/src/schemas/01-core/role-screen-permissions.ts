@@ -49,7 +49,9 @@ export const UpsertScreenPermissionsSchema = z.object({
 	role: TenantRoleEnum,
 	screens: z.array(ScreenPermissionEntrySchema).min(1),
 });
-export type UpsertScreenPermissions = z.infer<typeof UpsertScreenPermissionsSchema>;
+export type UpsertScreenPermissions = z.infer<
+	typeof UpsertScreenPermissionsSchema
+>;
 
 /**
  * Response shape: list of screen permissions for a given role.
@@ -58,7 +60,9 @@ export const RoleScreenPermissionsResponseSchema = z.object({
 	role: TenantRoleEnum,
 	screens: z.array(ScreenPermissionEntrySchema),
 });
-export type RoleScreenPermissionsResponse = z.infer<typeof RoleScreenPermissionsResponseSchema>;
+export type RoleScreenPermissionsResponse = z.infer<
+	typeof RoleScreenPermissionsResponseSchema
+>;
 
 /**
  * Response shape: all roles' screen permissions (for admin overview).
@@ -66,4 +70,6 @@ export type RoleScreenPermissionsResponse = z.infer<typeof RoleScreenPermissions
 export const AllRoleScreenPermissionsResponseSchema = z.object({
 	permissions: z.array(RoleScreenPermissionsResponseSchema),
 });
-export type AllRoleScreenPermissionsResponse = z.infer<typeof AllRoleScreenPermissionsResponseSchema>;
+export type AllRoleScreenPermissionsResponse = z.infer<
+	typeof AllRoleScreenPermissionsResponseSchema
+>;

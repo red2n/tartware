@@ -506,6 +506,4 @@ export const FiscalPeriodListItemSchema = z.object({
 	notes: z.string().optional(),
 });
 
-export type FiscalPeriodListItem = z.infer<
-	typeof FiscalPeriodListItemSchema
->;
+export type FiscalPeriodListItem = z.infer<typeof FiscalPeriodListItemSchema>;

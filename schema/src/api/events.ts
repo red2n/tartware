@@ -953,9 +953,7 @@ export const BusinessCalendarEntrySchema = z.object({
 	notes: z.string().optional(),
 });
 
-export type BusinessCalendarEntry = z.infer<
-	typeof BusinessCalendarEntrySchema
->;
+export type BusinessCalendarEntry = z.infer<typeof BusinessCalendarEntrySchema>;
 
 // =====================================================
 // OTA / CHANNEL CONFIGURATION
