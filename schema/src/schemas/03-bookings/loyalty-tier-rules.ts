@@ -57,6 +57,18 @@ export const LoyaltyTierRulesSchema = z.object({
 	bonus_multiplier: z.number().optional(),
 	points_expiry_months: z.number().int().optional(),
 
+	// Category-specific earning rates (MG-3)
+	category_earning_rates: z
+		.object({
+			room: z.number().nonnegative().optional(),
+			food_and_beverage: z.number().nonnegative().optional(),
+			spa: z.number().nonnegative().optional(),
+			retail: z.number().nonnegative().optional(),
+			parking: z.number().nonnegative().optional(),
+			other: z.number().nonnegative().optional(),
+		})
+		.optional(),
+
 	// Benefits & Bonuses
 	benefits: z.record(z.unknown()).optional(),
 	welcome_bonus_points: z.number().int().optional(),

@@ -1,25 +1,395 @@
-import { Component } from "@angular/core";
+import { NgClass } from "@angular/common";
+import { Component, computed, effect, inject, signal } from "@angular/core";
+import { FormsModule } from "@angular/forms";
+import { MatButtonModule } from "@angular/material/button";
+import { MatIconModule } from "@angular/material/icon";
+import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
+import { MatTooltipModule } from "@angular/material/tooltip";
+
+import type {
+	BusinessDateStatusResponse,
+	NightAuditRunDetailResponse,
+	NightAuditRunListItem,
+	TrialBalanceResponse,
+} from "@tartware/schemas";
+
+import { ApiService } from "../../../core/api/api.service";
+import { AuthService } from "../../../core/auth/auth.service";
+import { TenantContextService } from "../../../core/context/tenant-context.service";
 import { TranslatePipe } from "../../../core/i18n/translate.pipe";
 import { PageHeaderComponent } from "../../../shared/components/page-header/page-header";
+import { formatCurrency, formatShortDate } from "../../../shared/format-utils";
+import { createSortState, sortBy, toggleSort } from "../../../shared/sort-utils";
+import { ToastService } from "../../../shared/toast/toast.service";
+
+/** Tabs for the main content area. */
+type AuditTab = "status" | "trial-balance" | "history";
 
 @Component({
 	selector: "app-night-audit",
 	standalone: true,
-	imports: [PageHeaderComponent, TranslatePipe],
-	template: `
-		<app-page-header title="Night Audit" description="End-of-day processing, trial balance, and revenue posting" />
-		<div class="empty-state">
-			<span class="empty-icon">🌙</span>
-			<p>{{ 'Night Audit module coming soon' | translate }}</p>
-		</div>
-	`,
-	styles: `
-		:host { display: block; }
-		.page-header { margin-bottom: var(--space-6); }
-		.page-header h1 { font-size: var(--font-size-xl); font-weight: var(--font-weight-semibold); color: var(--color-fg-default); margin: 0 0 var(--space-1); }
-		.page-description { font-size: var(--font-size-sm); color: var(--color-fg-muted); margin: 0; }
-		.empty-state { text-align: center; padding: var(--space-12) var(--space-6); color: var(--color-fg-muted); }
-		.empty-icon { font-size: 48px; display: block; margin-bottom: var(--space-4); }
-	`,
+	imports: [
+		NgClass,
+		FormsModule,
+		MatIconModule,
+		MatButtonModule,
+		MatProgressSpinnerModule,
+		MatTooltipModule,
+		PageHeaderComponent,
+		TranslatePipe,
+	],
+	templateUrl: "./night-audit.html",
+	styleUrl: "./night-audit.scss",
 })
-export class NightAuditComponent {}
+export class NightAuditComponent {
+	private readonly api = inject(ApiService);
+	private readonly auth = inject(AuthService);
+	private readonly ctx = inject(TenantContextService);
+	private readonly toast = inject(ToastService);
+
+	// ── Tab state ──
+	readonly activeTab = signal<AuditTab>("status");
+
+	// ── Business Date Status (BC-1) ──
+	readonly businessDateStatus = signal<BusinessDateStatusResponse | null>(null);
+	readonly statusLoading = signal(false);
+
+	// ── Night Audit Execution (BC-2) ──
+	readonly executing = signal(false);
+	readonly confirmingExecute = signal(false);
+
+	// ── Trial Balance ──
+	readonly trialBalance = signal<TrialBalanceResponse | null>(null);
+	readonly loading = signal(false);
+	readonly error = signal<string | null>(null);
+	readonly businessDate = signal(this.todayString());
+	readonly sort = createSortState();
+
+	// ── History (BC-3) ──
+	readonly auditHistory = signal<NightAuditRunListItem[]>([]);
+	readonly historyLoading = signal(false);
+	readonly historySort = createSortState();
+
+	// ── Run Detail (BC-4) ──
+	readonly selectedRun = signal<NightAuditRunDetailResponse | null>(null);
+	readonly runDetailLoading = signal(false);
+	readonly expandedRunId = signal<string | null>(null);
+
+	// ── Computed ──
+	readonly lineItems = computed(() => this.trialBalance()?.line_items ?? []);
+
+	readonly sortedLineItems = computed(() =>
+		sortBy(this.lineItems(), this.sort().column, this.sort().direction),
+	);
+
+	readonly sortedHistory = computed(() =>
+		sortBy(this.auditHistory(), this.historySort().column, this.historySort().direction),
+	);
+
+	readonly summary = computed(() => {
+		const tb = this.trialBalance();
+		if (!tb) return null;
+		return {
+			totalDebits: tb.total_debits,
+			totalCredits: tb.total_credits,
+			totalPayments: tb.total_payments,
+			variance: tb.variance,
+			isBalanced: tb.is_balanced,
+			businessDate: tb.business_date,
+		};
+	});
+
+	readonly statusDisplay = computed(() => {
+		const s = this.businessDateStatus();
+		if (!s) return null;
+		return {
+			businessDate: s.business_date,
+			dateStatus: s.date_status,
+			dateStatusDisplay: s.date_status_display,
+			propertyName: s.property_name,
+			nightAuditStatus: s.night_audit_status,
+			nightAuditStatusDisplay: s.night_audit_status_display,
+			isLocked: s.is_locked,
+			allowPostings: s.allow_postings,
+			allowCheckIns: s.allow_check_ins,
+			allowCheckOuts: s.allow_check_outs,
+			arrivalsCount: s.arrivals_count,
+			departuresCount: s.departures_count,
+			stayoversCount: s.stayovers_count,
+			totalRevenue: s.total_revenue,
+			isReconciled: s.is_reconciled,
+		};
+	});
+
+	/** Whether the current business date is in a state where night audit can run */
+	readonly canExecuteAudit = computed(() => {
+		const s = this.businessDateStatus();
+		if (!s) return false;
+		return s.date_status === "OPEN" && !s.is_locked;
+	});
+
+	constructor() {
+		effect(() => {
+			this.auth.tenantId();
+			this.ctx.propertyId();
+			this.loadBusinessDateStatus();
+			this.loadTrialBalance();
+			this.loadHistory();
+		});
+	}
+
+	// ── Tab Navigation ──
+	setTab(tab: AuditTab): void {
+		this.activeTab.set(tab);
+	}
+
+	// ── Actions ──
+	onDateChange(date: string): void {
+		this.businessDate.set(date);
+		this.loadTrialBalance();
+	}
+
+	onSort(col: string): void {
+		this.sort.set(toggleSort(this.sort(), col));
+	}
+
+	onHistorySort(col: string): void {
+		this.historySort.set(toggleSort(this.historySort(), col));
+	}
+
+	sortIcon(col: string): string {
+		const s = this.sort();
+		if (s.column !== col) return "unfold_more";
+		return s.direction === "asc" ? "arrow_upward" : "arrow_downward";
+	}
+
+	historySortIcon(col: string): string {
+		const s = this.historySort();
+		if (s.column !== col) return "unfold_more";
+		return s.direction === "asc" ? "arrow_upward" : "arrow_downward";
+	}
+
+	ariaSort(col: string): string | null {
+		const s = this.sort();
+		if (s.column !== col) return null;
+		return s.direction === "asc" ? "ascending" : "descending";
+	}
+
+	formatDate = formatShortDate;
+	formatCurrency = formatCurrency;
+
+	statusBadgeClass(status: string): string {
+		switch (status) {
+			case "OPEN":
+				return "badge badge-success";
+			case "CLOSED":
+				return "badge badge-muted";
+			case "IN_AUDIT":
+				return "badge badge-warning";
+			case "COMPLETED":
+				return "badge badge-success";
+			case "FAILED":
+				return "badge badge-danger";
+			case "IN_PROGRESS":
+				return "badge badge-warning";
+			default:
+				return "badge";
+		}
+	}
+
+	stepStatusIcon(status: string): string {
+		switch (status) {
+			case "COMPLETED":
+				return "check_circle";
+			case "FAILED":
+				return "error";
+			case "SKIPPED":
+				return "skip_next";
+			case "IN_PROGRESS":
+				return "hourglass_top";
+			default:
+				return "radio_button_unchecked";
+		}
+	}
+
+	stepStatusColor(status: string): string {
+		switch (status) {
+			case "COMPLETED":
+				return "step-success";
+			case "FAILED":
+				return "step-danger";
+			case "SKIPPED":
+				return "step-muted";
+			case "IN_PROGRESS":
+				return "step-warning";
+			default:
+				return "";
+		}
+	}
+
+	formatDuration(seconds: number | undefined): string {
+		if (seconds == null) return "—";
+		if (seconds < 60) return `${seconds}s`;
+		const mins = Math.floor(seconds / 60);
+		const secs = seconds % 60;
+		return `${mins}m ${secs}s`;
+	}
+
+	formatDurationMs(ms: number | undefined): string {
+		if (ms == null) return "—";
+		if (ms < 1000) return `${ms}ms`;
+		return `${(ms / 1000).toFixed(1)}s`;
+	}
+
+	// ── BC-2: Execute Night Audit ──
+	showExecuteConfirm(): void {
+		this.confirmingExecute.set(true);
+	}
+
+	cancelExecute(): void {
+		this.confirmingExecute.set(false);
+	}
+
+	async executeNightAudit(): Promise<void> {
+		const tenantId = this.auth.tenantId();
+		const propertyId = this.ctx.propertyId();
+		if (!tenantId || !propertyId) return;
+
+		this.executing.set(true);
+		this.confirmingExecute.set(false);
+
+		try {
+			await this.api.post(`/tenants/${tenantId}/commands/billing.night_audit.execute`, {
+				property_id: propertyId,
+			});
+			this.toast.success("Night audit initiated. Processing in background...");
+			// Poll for status changes
+			await this.pollAuditCompletion();
+		} catch (e) {
+			this.toast.error(e instanceof Error ? e.message : "Failed to execute night audit");
+		} finally {
+			this.executing.set(false);
+		}
+	}
+
+	// ── BC-4: Toggle Run Detail ──
+	async toggleRunDetail(runId: string): Promise<void> {
+		if (this.expandedRunId() === runId) {
+			this.expandedRunId.set(null);
+			this.selectedRun.set(null);
+			return;
+		}
+		this.expandedRunId.set(runId);
+		await this.loadRunDetail(runId);
+	}
+
+	// ── Data loading ──
+	async loadBusinessDateStatus(): Promise<void> {
+		const tenantId = this.auth.tenantId();
+		const propertyId = this.ctx.propertyId();
+		if (!tenantId || !propertyId) return;
+
+		this.statusLoading.set(true);
+		try {
+			const res = await this.api.get<{ data: BusinessDateStatusResponse }>(
+				"/night-audit/status",
+				{ tenant_id: tenantId, property_id: propertyId },
+			);
+			this.businessDateStatus.set(res.data);
+		} catch {
+			this.businessDateStatus.set(null);
+		} finally {
+			this.statusLoading.set(false);
+		}
+	}
+
+	async loadTrialBalance(): Promise<void> {
+		const tenantId = this.auth.tenantId();
+		if (!tenantId) return;
+		this.loading.set(true);
+		this.error.set(null);
+		try {
+			const params: Record<string, string> = {
+				tenant_id: tenantId,
+				business_date: this.businessDate(),
+			};
+			const propertyId = this.ctx.propertyId();
+			if (propertyId) params["property_id"] = propertyId;
+			const res = await this.api.get<TrialBalanceResponse>(
+				"/billing/reports/trial-balance",
+				params,
+			);
+			this.trialBalance.set(res);
+		} catch (e) {
+			this.error.set(e instanceof Error ? e.message : "Failed to load trial balance");
+		} finally {
+			this.loading.set(false);
+		}
+	}
+
+	async loadHistory(): Promise<void> {
+		const tenantId = this.auth.tenantId();
+		if (!tenantId) return;
+
+		this.historyLoading.set(true);
+		try {
+			const params: Record<string, string> = {
+				tenant_id: tenantId,
+				limit: "50",
+			};
+			const propertyId = this.ctx.propertyId();
+			if (propertyId) params["property_id"] = propertyId;
+
+			const res = await this.api.get<{ data: NightAuditRunListItem[] }>(
+				"/night-audit/history",
+				params,
+			);
+			this.auditHistory.set(res.data);
+		} catch {
+			this.auditHistory.set([]);
+		} finally {
+			this.historyLoading.set(false);
+		}
+	}
+
+	async loadRunDetail(runId: string): Promise<void> {
+		const tenantId = this.auth.tenantId();
+		if (!tenantId) return;
+
+		this.runDetailLoading.set(true);
+		try {
+			const res = await this.api.get<{ data: NightAuditRunDetailResponse }>(
+				`/night-audit/runs/${runId}`,
+				{ tenant_id: tenantId },
+			);
+			this.selectedRun.set(res.data);
+		} catch {
+			this.selectedRun.set(null);
+		} finally {
+			this.runDetailLoading.set(false);
+		}
+	}
+
+	private async pollAuditCompletion(): Promise<void> {
+		for (let i = 0; i < 10; i++) {
+			await new Promise((r) => setTimeout(r, 1500));
+			await this.loadBusinessDateStatus();
+			await this.loadHistory();
+			const status = this.businessDateStatus();
+			if (status?.date_status === "CLOSED" || status?.night_audit_status === "COMPLETED") {
+				this.toast.success("Night audit completed successfully.");
+				await this.loadTrialBalance();
+				return;
+			}
+			if (status?.night_audit_status === "FAILED") {
+				this.toast.error("Night audit failed. Check history for details.");
+				return;
+			}
+		}
+	}
+
+	private todayString(): string {
+		const d = new Date();
+		return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+	}
+}

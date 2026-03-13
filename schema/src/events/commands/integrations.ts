@@ -170,3 +170,34 @@ export const MetasearchClickRecordCommandSchema = z.object({
 export type MetasearchClickRecordCommand = z.infer<
 	typeof MetasearchClickRecordCommandSchema
 >;
+
+// ─── OTA Content Syndication ─────────────────────────────────────────────────
+
+/**
+ * Push property content (photos, descriptions, amenities, policies) to OTA channels.
+ * Enables maintaining consistent listing content across distribution platforms.
+ */
+export const IntegrationOtaContentSyncCommandSchema = z.object({
+	property_id: z.string().uuid(),
+	ota_config_id: z.string().uuid(),
+	content_types: z
+		.array(
+			z.enum([
+				"PHOTOS",
+				"DESCRIPTIONS",
+				"AMENITIES",
+				"POLICIES",
+				"ROOM_TYPES",
+				"ALL",
+			]),
+		)
+		.min(1),
+	language: z.string().length(2).default("en"),
+	force_full_sync: z.boolean().default(false),
+	metadata: z.record(z.unknown()).optional(),
+	idempotency_key: z.string().max(120).optional(),
+});
+
+export type IntegrationOtaContentSyncCommand = z.infer<
+	typeof IntegrationOtaContentSyncCommandSchema
+>;

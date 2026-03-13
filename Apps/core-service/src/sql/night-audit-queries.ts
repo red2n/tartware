@@ -240,3 +240,42 @@ ORDER BY csl.started_at DESC
 LIMIT $3
 OFFSET $4
 `;
+
+// =====================================================
+// BUSINESS CALENDAR HISTORY
+// =====================================================
+
+export const BUSINESS_CALENDAR_SQL = `
+SELECT
+    bd.business_date_id,
+    bd.tenant_id,
+    bd.property_id,
+    p.property_name,
+    bd.business_date,
+    bd.system_date,
+    bd.date_status,
+    bd.date_opened_at,
+    bd.date_closed_at,
+    bd.date_rolled_at,
+    bd.night_audit_status,
+    bd.night_audit_started_at,
+    bd.night_audit_completed_at,
+    bd.is_locked,
+    bd.is_reconciled,
+    bd.arrivals_count,
+    bd.departures_count,
+    bd.stayovers_count,
+    bd.total_revenue,
+    bd.total_payments,
+    bd.audit_errors,
+    bd.audit_warnings,
+    bd.notes
+FROM business_dates bd
+LEFT JOIN properties p ON p.id = bd.property_id
+WHERE bd.tenant_id = $2
+  AND ($3::UUID IS NULL OR bd.property_id = $3)
+  AND COALESCE(bd.is_deleted, false) = false
+ORDER BY bd.business_date DESC
+LIMIT $1
+OFFSET $4
+`;

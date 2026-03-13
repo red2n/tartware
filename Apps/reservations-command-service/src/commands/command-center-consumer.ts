@@ -26,6 +26,7 @@ import {
   GroupCutoffEnforceCommandSchema,
   GroupUploadRoomingListCommandSchema,
   IntegrationMappingUpdateCommandSchema,
+  IntegrationOtaContentSyncCommandSchema,
   IntegrationOtaRatePushCommandSchema,
   IntegrationOtaSyncRequestCommandSchema,
   IntegrationWebhookRetryCommandSchema,
@@ -78,6 +79,7 @@ import {
   groupCheckIn,
   markNoShow,
   modifyReservation,
+  otaContentSync,
   otaRatePush,
   otaSyncRequest,
   overrideRate,
@@ -370,6 +372,11 @@ const routeReservationCommand = async (
     case "integration.mapping.update": {
       const commandPayload = IntegrationMappingUpdateCommandSchema.parse(envelope.payload);
       await updateIntegrationMapping(metadata.tenantId, commandPayload, context);
+      break;
+    }
+    case "integration.ota.content_sync": {
+      const commandPayload = IntegrationOtaContentSyncCommandSchema.parse(envelope.payload);
+      await otaContentSync(metadata.tenantId, commandPayload, context);
       break;
     }
     case "metasearch.config.create": {

@@ -15,6 +15,8 @@ export {
 export {
   type IntegrationMappingUpdateCommand,
   IntegrationMappingUpdateCommandSchema,
+  type IntegrationOtaContentSyncCommand,
+  IntegrationOtaContentSyncCommandSchema,
   type IntegrationOtaRatePushCommand,
   IntegrationOtaRatePushCommandSchema,
   type IntegrationOtaSyncRequestCommand,

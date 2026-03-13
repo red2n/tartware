@@ -1,0 +1,136 @@
+<div class="tax-config-page">
+  <app-page-header title="Tax Configuration" description="Tax rules, jurisdictions, and rate configuration">
+    <button class="btn btn-invisible" (click)="loadTaxConfigs()" [matTooltip]="'Refresh' | translate" [attr.aria-label]="'Refresh tax configurations' | translate">
+      <mat-icon>refresh</mat-icon>
+    </button>
+  </app-page-header>
+
+  <!-- ═══ KPI OVERVIEW ═══ -->
+  @if (taxConfigs().length > 0) {
+    <div class="kpi-grid">
+      <div class="kpi-card tax-kpi-total">
+        <mat-icon>gavel</mat-icon>
+        <div class="kpi-body">
+          <div class="kpi-value">{{ summary().total }}</div>
+          <div class="kpi-label">{{ 'Total Configurations' | translate }}</div>
+        </div>
+      </div>
+      <div class="kpi-card tax-kpi-active">
+        <mat-icon>check_circle</mat-icon>
+        <div class="kpi-body">
+          <div class="kpi-value">{{ summary().activeCount }}</div>
+          <div class="kpi-label">{{ 'Active Rules' | translate }}</div>
+        </div>
+      </div>
+      <div class="kpi-card tax-kpi-jurisdictions">
+        <mat-icon>public</mat-icon>
+        <div class="kpi-body">
+          <div class="kpi-value">{{ summary().jurisdictions }}</div>
+          <div class="kpi-label">{{ 'Jurisdictions' | translate }}</div>
+        </div>
+      </div>
+      <div class="kpi-card">
+        <mat-icon>percent</mat-icon>
+        <div class="kpi-body">
+          <div class="kpi-value">{{ summary().avgRate.toFixed(2) }}%</div>
+          <div class="kpi-label">{{ 'Avg Rate' | translate }}</div>
+        </div>
+      </div>
+    </div>
+  }
+
+  <!-- ═══ FILTERS ═══ -->
+  <div class="filter-bar">
+    <nav class="filter-tabs" aria-label="Tax type filters">
+      @for (f of taxTypeFilters; track f.key) {
+        <button class="filter-tab" [class.filter-tab-active]="activeTaxTypeFilter() === f.key" (click)="setTaxTypeFilter(f.key)">
+          {{ f.label | translate }}
+          <span class="counter">{{ filterCounts()[f.key] }}</span>
+        </button>
+      }
+    </nav>
+    <div class="filter-right">
+      <nav class="filter-tabs" aria-label="Status filters">
+        @for (f of statusFilters; track f.key) {
+          <button class="filter-tab" [class.filter-tab-active]="activeStatusFilter() === f.key" (click)="setStatusFilter(f.key)">
+            {{ f.label | translate }}
+          </button>
+        }
+      </nav>
+      <div class="search-box">
+        <mat-icon class="search-icon">search</mat-icon>
+        <input type="text" class="search-input" [placeholder]="'Search tax rules...' | translate" [attr.aria-label]="'Search tax configurations' | translate"
+               [ngModel]="searchQuery()" (ngModelChange)="onSearch($event)" />
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ DATA TABLE ═══ -->
+  @defer (on idle) {
+  @if (loading()) {
+    <div class="loading-state"><mat-spinner diameter="32"></mat-spinner><span class="text-muted">{{ 'Loading tax configurations...' | translate }}</span></div>
+  } @else if (error(); as err) {
+    <div class="error-state"><mat-icon class="error-icon">error_outline</mat-icon><span>{{ err }}</span><button class="btn btn-outline" (click)="loadTaxConfigs()">{{ 'Retry' | translate }}</button></div>
+  } @else if (filtered().length === 0) {
+    <div class="empty-state"><mat-icon class="empty-icon">gavel</mat-icon><p>{{ 'No tax configurations found' | translate }}</p></div>
+  } @else {
+    <div class="table-container">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th [attr.aria-sort]="ariaSort('tax_code')">
+              <button type="button" class="th-sort-btn" (click)="onSort('tax_code')">{{ 'Code' | translate }} <mat-icon class="sort-indicator">{{ sortIcon('tax_code') }}</mat-icon></button>
+            </th>
+            <th [attr.aria-sort]="ariaSort('tax_name')">
+              <button type="button" class="th-sort-btn" (click)="onSort('tax_name')">{{ 'Name' | translate }} <mat-icon class="sort-indicator">{{ sortIcon('tax_name') }}</mat-icon></button>
+            </th>
+            <th>{{ 'Type' | translate }}</th>
+            <th>{{ 'Jurisdiction' | translate }}</th>
+            <th class="col-right" [attr.aria-sort]="ariaSort('tax_rate')">
+              <button type="button" class="th-sort-btn" (click)="onSort('tax_rate')">{{ 'Rate' | translate }} <mat-icon class="sort-indicator">{{ sortIcon('tax_rate') }}</mat-icon></button>
+            </th>
+            <th>{{ 'Method' | translate }}</th>
+            <th [attr.aria-sort]="ariaSort('effective_from')">
+              <button type="button" class="th-sort-btn" (click)="onSort('effective_from')">{{ 'Effective From' | translate }} <mat-icon class="sort-indicator">{{ sortIcon('effective_from') }}</mat-icon></button>
+            </th>
+            <th>{{ 'Status' | translate }}</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (tax of paginated(); track tax.tax_config_id) {
+            <tr>
+              <td><span class="ref-code">{{ tax.tax_code }}</span></td>
+              <td>
+                <div class="tax-name-cell">
+                  <span>{{ tax.tax_name }}</span>
+                  @if (tax.tax_description) {
+                    <span class="text-muted text-xs">{{ tax.tax_description }}</span>
+                  }
+                </div>
+              </td>
+              <td><span class="badge badge-muted">{{ tax.tax_type_display }}</span></td>
+              <td>
+                <div class="jurisdiction-cell">
+                  <span>{{ tax.jurisdiction_name ?? tax.country_code }}</span>
+                  @if (tax.state_province) {
+                    <span class="text-muted text-xs">{{ tax.state_province }}</span>
+                  }
+                </div>
+              </td>
+              <td class="col-right cell-amount">{{ formatRate(tax) }}</td>
+              <td>{{ tax.calculation_method ?? '—' }}</td>
+              <td>{{ formatDate(tax.effective_from) }}</td>
+              <td>
+                <span class="badge" [ngClass]="tax.is_active ? 'badge-success' : 'badge-muted'">
+                  {{ tax.is_active ? 'Active' : 'Inactive' }}
+                </span>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+    <app-pagination [totalItems]="filtered().length" [pageSize]="pageSize" [currentPage]="page()" (pageChange)="page.set($event)" />
+  }
+  }
+</div>

@@ -73,6 +73,7 @@ export const registerGuestProfile = async ({
 }: RegisterGuestOptions): Promise<string | undefined> => {
   const normalizedPhone = normalizePhoneNumber(payload.phone ?? undefined);
   const address = payload.address ?? {};
+  const vipStatus = payload.preferences?.vip_status ?? "NONE";
   const preferences =
     payload.preferences !== undefined ? JSON.stringify(payload.preferences) : null;
 
@@ -92,7 +93,8 @@ export const registerGuestProfile = async ({
         $9,
         $10,
         $11::jsonb,
-        $12
+        $12,
+        $13
       ) AS guest_id
     `,
     [
@@ -108,6 +110,7 @@ export const registerGuestProfile = async ({
       address?.postal_code ?? null,
       preferences,
       createdBy,
+      vipStatus,
     ],
   );
 
@@ -151,7 +154,7 @@ type GuestRow = {
   last_stay_date: string | Date | null;
   loyalty_points: number | null;
   loyalty_tier: string | null;
-  vip_status: boolean | null;
+  vip_status: string | null;
   is_blacklisted: boolean | null;
 };
 
@@ -479,7 +482,7 @@ export const setGuestLoyalty = async ({
 };
 
 /**
- * Set guest VIP status and optional reason.
+ * Set guest VIP level and optional reason.
  */
 export const setGuestVip = async ({
   tenantId,
@@ -507,7 +510,7 @@ export const setGuestVip = async ({
         AND id = $2::uuid
         AND COALESCE(is_deleted, false) = false
     `,
-    [tenantId, command.guest_id, command.vip_status, command.reason ?? null, actor],
+    [tenantId, command.guest_id, command.vip_level, command.reason ?? null, actor],
   );
 
   if (!rowCount || rowCount === 0) {
@@ -885,10 +888,14 @@ const mergeGuestRows = (primary: GuestRow, duplicate: GuestRow, payload: GuestMe
   // MED-005: Handle VIP+blacklist conflict - blacklist takes precedence
   // If either profile is blacklisted, the merged profile is blacklisted and NOT VIP
   const eitherBlacklisted = Boolean(primary.is_blacklisted || duplicate.is_blacklisted);
-  const eitherVip = Boolean(primary.vip_status || duplicate.vip_status);
+  // Pick the higher VIP level between primary and duplicate
+  const vipLevels = ["NONE", "VIP1", "VIP2", "VIP3", "VIP4", "VIP5", "VVIP"];
+  const primaryIdx = vipLevels.indexOf(primary.vip_status ?? "NONE");
+  const duplicateIdx = vipLevels.indexOf(duplicate.vip_status ?? "NONE");
+  const higherVip = vipLevels[Math.max(primaryIdx, duplicateIdx)] ?? "NONE";
 
   // Log conflict for audit trail
-  if (eitherBlacklisted && eitherVip) {
+  if (eitherBlacklisted && higherVip !== "NONE") {
     guestCommandLogger.warn(
       {
         primaryGuestId: primary.id,
@@ -915,8 +922,8 @@ const mergeGuestRows = (primary: GuestRow, duplicate: GuestRow, payload: GuestMe
     last_stay_date: pickLatestDate(primary.last_stay_date, duplicate.last_stay_date),
     loyalty_points: Number(primary.loyalty_points ?? 0) + Number(duplicate.loyalty_points ?? 0),
     loyalty_tier: primary.loyalty_tier ?? duplicate.loyalty_tier ?? null,
-    // Blacklist takes precedence: if blacklisted, cannot be VIP
-    vip_status: eitherBlacklisted ? false : eitherVip,
+    // Blacklist takes precedence: if blacklisted, VIP is reset to NONE
+    vip_status: eitherBlacklisted ? "NONE" : higherVip,
     is_blacklisted: eitherBlacklisted,
   };
 };

@@ -82,7 +82,7 @@ export const applyGuestRetentionPolicy = (guest: GuestWithStats): GuestWithStats
     company_tax_id: undefined,
     loyalty_tier: undefined,
     loyalty_points: 0,
-    vip_status: false,
+    vip_status: "NONE",
     communication_preferences: {
       ...guest.communication_preferences,
       email: false,

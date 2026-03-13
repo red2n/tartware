@@ -196,6 +196,25 @@ export const MaintenanceStatusEnum = z.enum([
 export type MaintenanceStatus = z.infer<typeof MaintenanceStatusEnum>;
 
 // =====================================================
+// GUEST ENUMS
+// =====================================================
+
+/**
+ * VIP Level - Multi-tier VIP classification
+ * @database vip_level
+ */
+export const VipLevelEnum = z.enum([
+	"NONE",
+	"VIP1",
+	"VIP2",
+	"VIP3",
+	"VIP4",
+	"VIP5",
+	"VVIP",
+]);
+export type VipLevel = z.infer<typeof VipLevelEnum>;
+
+// =====================================================
 // RATE MANAGEMENT ENUMS
 // =====================================================
 
@@ -259,6 +278,7 @@ export const SeasonTypeEnum = z.enum([
 	"HIGH",
 	"PEAK",
 	"SPECIAL_EVENT",
+	"OFF",
 ]);
 export type SeasonType = z.infer<typeof SeasonTypeEnum>;
 
@@ -332,6 +352,9 @@ export const PaymentMethodEnum = z.enum([
 	"CHECK",
 	"DIGITAL_WALLET",
 	"CRYPTOCURRENCY",
+	"DIRECT_BILL",
+	"LOYALTY_POINTS",
+	"GIFT_CARD",
 ]);
 export type PaymentMethod = z.infer<typeof PaymentMethodEnum>;
 

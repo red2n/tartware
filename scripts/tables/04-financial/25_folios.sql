@@ -33,7 +33,7 @@ CREATE TABLE folios (
 
     -- Folio Information
     folio_number VARCHAR(50) NOT NULL, -- Human-readable folio number
-    folio_type VARCHAR(20) NOT NULL CHECK (folio_type IN ('GUEST', 'MASTER', 'CITY_LEDGER')),
+    folio_type VARCHAR(20) NOT NULL CHECK (folio_type IN ('GUEST', 'MASTER', 'CITY_LEDGER', 'INCIDENTAL', 'HOUSE_ACCOUNT')),
     folio_status VARCHAR(20) NOT NULL DEFAULT 'OPEN' CHECK (folio_status IN ('OPEN', 'CLOSED', 'TRANSFERRED', 'SETTLED')),
 
     -- Associated Reservation (optional - may be city ledger without reservation)

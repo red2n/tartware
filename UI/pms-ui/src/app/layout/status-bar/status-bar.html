@@ -28,9 +28,9 @@
         <span class="status-bar-text">Registry Offline</span>
       </span>
     }
-    <span class="status-bar-item" [matTooltip]="'Last updated: ' + formatLastUpdated()">
+    <span class="status-bar-item" [matTooltip]="'Last updated: ' + lastUpdatedText()">
       <mat-icon class="status-bar-icon">schedule</mat-icon>
-      <span class="status-bar-text">{{ formatLastUpdated() }}</span>
+      <span class="status-bar-text">{{ lastUpdatedText() }}</span>
     </span>
   </div>
 </div>

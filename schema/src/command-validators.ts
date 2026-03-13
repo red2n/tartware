@@ -16,12 +16,18 @@ import {
 	BillingArWriteOffCommandSchema,
 	BillingCashierCloseCommandSchema,
 	BillingCashierOpenCommandSchema,
+	BillingChargebackRecordCommandSchema,
 	BillingChargePostCommandSchema,
 	BillingChargeTransferCommandSchema,
 	BillingChargeVoidCommandSchema,
+	BillingDateRollManualCommandSchema,
+	BillingFiscalPeriodCloseCommandSchema,
+	BillingFiscalPeriodLockCommandSchema,
+	BillingFiscalPeriodReopenCommandSchema,
 	BillingFolioCloseCommandSchema,
 	BillingFolioSplitCommandSchema,
 	BillingFolioTransferCommandSchema,
+	BillingFolioWindowCreateCommandSchema,
 	BillingInvoiceAdjustCommandSchema,
 	BillingInvoiceCreateCommandSchema,
 	BillingInvoiceFinalizeCommandSchema,
@@ -29,6 +35,7 @@ import {
 	BillingPaymentApplyCommandSchema,
 	BillingPaymentAuthorizeCommandSchema,
 	BillingPaymentCaptureCommandSchema,
+	BillingPaymentIncrementAuthCommandSchema,
 	BillingPaymentRefundCommandSchema,
 	BillingPaymentVoidCommandSchema,
 	BillingPricingBulkRecommendCommandSchema,
@@ -52,6 +59,7 @@ import {
 } from "./events/commands/groups.js";
 import {
 	GuestGdprEraseCommandSchema,
+	GuestGdprExportCommandSchema,
 	GuestMergeCommandSchema,
 	GuestPreferenceUpdateCommandSchema,
 	GuestRegisterCommandSchema,
@@ -72,6 +80,7 @@ import {
 } from "./events/commands/housekeeping.js";
 import {
 	IntegrationMappingUpdateCommandSchema,
+	IntegrationOtaContentSyncCommandSchema,
 	IntegrationOtaRatePushCommandSchema,
 	IntegrationOtaSyncRequestCommandSchema,
 	IntegrationWebhookRetryCommandSchema,
@@ -243,8 +252,16 @@ const commandPayloadValidators = new Map<string, CommandPayloadValidator>([
 		(payload) => BillingPaymentAuthorizeCommandSchema.parse(payload),
 	],
 	[
+		"billing.payment.authorize_increment",
+		(payload) => BillingPaymentIncrementAuthCommandSchema.parse(payload),
+	],
+	[
 		"billing.night_audit.execute",
 		(payload) => BillingNightAuditCommandSchema.parse(payload),
+	],
+	[
+		"billing.date_roll.manual",
+		(payload) => BillingDateRollManualCommandSchema.parse(payload),
 	],
 	[
 		"billing.folio.close",
@@ -304,6 +321,26 @@ const commandPayloadValidators = new Map<string, CommandPayloadValidator>([
 		"billing.pricing.bulk_recommend",
 		(payload) => BillingPricingBulkRecommendCommandSchema.parse(payload),
 	],
+	[
+		"billing.chargeback.record",
+		(payload) => BillingChargebackRecordCommandSchema.parse(payload),
+	],
+	[
+		"billing.fiscal_period.close",
+		(payload) => BillingFiscalPeriodCloseCommandSchema.parse(payload),
+	],
+	[
+		"billing.fiscal_period.lock",
+		(payload) => BillingFiscalPeriodLockCommandSchema.parse(payload),
+	],
+	[
+		"billing.fiscal_period.reopen",
+		(payload) => BillingFiscalPeriodReopenCommandSchema.parse(payload),
+	],
+	[
+		"billing.folio_window.create",
+		(payload) => BillingFolioWindowCreateCommandSchema.parse(payload),
+	],
 	["guest.register", (payload) => GuestRegisterCommandSchema.parse(payload)],
 	["guest.merge", (payload) => GuestMergeCommandSchema.parse(payload)],
 	[
@@ -324,6 +361,10 @@ const commandPayloadValidators = new Map<string, CommandPayloadValidator>([
 		(payload) => GuestSetBlacklistCommandSchema.parse(payload),
 	],
 	["guest.gdpr.erase", (payload) => GuestGdprEraseCommandSchema.parse(payload)],
+	[
+		"guest.gdpr.export",
+		(payload) => GuestGdprExportCommandSchema.parse(payload),
+	],
 	[
 		"guest.preference.update",
 		(payload) => GuestPreferenceUpdateCommandSchema.parse(payload),
@@ -371,6 +412,10 @@ const commandPayloadValidators = new Map<string, CommandPayloadValidator>([
 	[
 		"integration.mapping.update",
 		(payload) => IntegrationMappingUpdateCommandSchema.parse(payload),
+	],
+	[
+		"integration.ota.content_sync",
+		(payload) => IntegrationOtaContentSyncCommandSchema.parse(payload),
 	],
 	[
 		"metasearch.config.create",

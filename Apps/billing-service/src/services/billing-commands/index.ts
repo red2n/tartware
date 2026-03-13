@@ -3,10 +3,13 @@
  *
  * Domain-grouped command handlers for the billing service.
  *
- *  ├─ Payment       — capture, refund, apply, authorize, void
+ *  ├─ Payment       — capture, refund, apply, authorize, void, increment auth
  *  ├─ Invoice       — create, adjust, finalize
  *  ├─ Charge        — post, void, transfer, split
+ *  ├─ Chargeback    — record processor-initiated chargebacks
  *  ├─ Folio         — transfer, close
+ *  ├─ Folio Window  — date-based split billing windows
+ *  ├─ Fiscal Period — close, lock, reopen
  *  ├─ Night Audit   — execute nightly reconciliation
  *  ├─ Commission    — calculate, approve, pay, statement
  *  ├─ AR            — post, apply, age, write-off
@@ -30,6 +33,7 @@ export {
   transferCharge,
   voidCharge,
 } from "./charge.js";
+export { recordChargeback } from "./chargeback.js";
 export {
   approveCommission,
   calculateCommission,
@@ -50,6 +54,7 @@ export {
   applyPayment,
   authorizePayment,
   captureBillingPayment,
+  incrementAuthorization,
   refundBillingPayment,
   voidPayment,
 } from "./payment.js";

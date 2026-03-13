@@ -28,6 +28,7 @@ import {
 	softDelete,
 	uuid,
 } from "../../shared/base-schemas.js";
+import { VipLevelEnum } from "../../shared/enums.js";
 
 const AddressSchema = z.object({
 	street: z.string().optional(),
@@ -81,7 +82,7 @@ export const GuestSchema = z.object({
 	company_tax_id: z.string().optional(),
 	loyalty_tier: z.string().optional(),
 	loyalty_points: z.number().int().nonnegative().default(0),
-	vip_status: z.boolean().default(false),
+	vip_status: VipLevelEnum.default("NONE"),
 	preferences: GuestPreferencesSchema.default({}),
 	marketing_consent: z.boolean().default(false),
 	communication_preferences: CommunicationPreferencesSchema.default({}),

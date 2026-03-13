@@ -140,6 +140,22 @@ CREATE TYPE maintenance_status AS ENUM (
 );
 
 -- =====================================================
+-- GUEST ENUMS
+-- =====================================================
+
+-- VIP Level (Multi-tier VIP classification)
+-- Standard: OPERA Cloud VIP levels (VIP1-VIP5, VVIP for heads of state / celebrities)
+CREATE TYPE vip_level AS ENUM (
+    'NONE',         -- No VIP status
+    'VIP1',         -- Basic VIP (frequent guest)
+    'VIP2',         -- Silver VIP (corporate executive)
+    'VIP3',         -- Gold VIP (loyalty elite)
+    'VIP4',         -- Platinum VIP (celebrity / high-profile)
+    'VIP5',         -- Diamond VIP (ownership / board)
+    'VVIP'          -- Very VIP (heads of state / royalty)
+);
+
+-- =====================================================
 -- RATE MANAGEMENT ENUMS
 -- =====================================================
 
@@ -252,7 +268,10 @@ CREATE TYPE payment_method AS ENUM (
     'BANK_TRANSFER',    -- Bank transfer (SEPA, ACH)
     'CHECK',            -- Check/cheque
     'DIGITAL_WALLET',   -- PayPal, Apple Pay, Google Pay
-    'CRYPTOCURRENCY'    -- Bitcoin, Ethereum
+    'CRYPTOCURRENCY',   -- Bitcoin, Ethereum
+    'DIRECT_BILL',      -- Direct billing to company/agent
+    'LOYALTY_POINTS',   -- Loyalty point redemption
+    'GIFT_CARD'         -- Gift card/voucher
 );
 
 -- Payment Status (Transaction Status)

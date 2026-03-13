@@ -1,25 +1,254 @@
-import { Component } from "@angular/core";
+import { NgClass } from "@angular/common";
+import { Component, computed, effect, inject, signal } from "@angular/core";
+import { FormsModule } from "@angular/forms";
+import { MatButtonModule } from "@angular/material/button";
+import { MatIconModule } from "@angular/material/icon";
+import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
+import { MatTooltipModule } from "@angular/material/tooltip";
+
+import type {
+	AccountsReceivableDetail,
+	AccountsReceivableListItem,
+	ArAgingSummary,
+} from "@tartware/schemas";
+
+import { ApiService } from "../../../core/api/api.service";
+import { AuthService } from "../../../core/auth/auth.service";
+import { TenantContextService } from "../../../core/context/tenant-context.service";
 import { TranslatePipe } from "../../../core/i18n/translate.pipe";
 import { PageHeaderComponent } from "../../../shared/components/page-header/page-header";
+import { formatCurrency, formatShortDate } from "../../../shared/format-utils";
+import { PaginationComponent } from "../../../shared/pagination/pagination";
+import { createSortState, sortBy, toggleSort } from "../../../shared/sort-utils";
+
+type StatusFilter = "ALL" | "open" | "partial" | "paid" | "overdue" | "in_collection" | "written_off" | "disputed";
+type AccountTypeFilter = "ALL" | "guest" | "corporate" | "travel_agent" | "group" | "direct_bill" | "city_ledger";
+type AgingFilter = "ALL" | "current" | "1_30_days" | "31_60_days" | "61_90_days" | "91_120_days" | "over_120_days";
 
 @Component({
 	selector: "app-accounts-receivable",
 	standalone: true,
-	imports: [PageHeaderComponent, TranslatePipe],
-	template: `
-		<app-page-header title="Accounts Receivable" description="City ledger, direct billing, and AR aging management" />
-		<div class="empty-state">
-			<span class="empty-icon">📋</span>
-			<p>{{ 'Accounts Receivable module coming soon' | translate }}</p>
-		</div>
-	`,
-	styles: `
-		:host { display: block; }
-		.page-header { margin-bottom: var(--space-6); }
-		.page-header h1 { font-size: var(--font-size-xl); font-weight: var(--font-weight-semibold); color: var(--color-fg-default); margin: 0 0 var(--space-1); }
-		.page-description { font-size: var(--font-size-sm); color: var(--color-fg-muted); margin: 0; }
-		.empty-state { text-align: center; padding: var(--space-12) var(--space-6); color: var(--color-fg-muted); }
-		.empty-icon { font-size: 48px; display: block; margin-bottom: var(--space-4); }
-	`,
+	imports: [
+		NgClass,
+		FormsModule,
+		MatIconModule,
+		MatButtonModule,
+		MatProgressSpinnerModule,
+		MatTooltipModule,
+		PaginationComponent,
+		PageHeaderComponent,
+		TranslatePipe,
+	],
+	templateUrl: "./accounts-receivable.html",
+	styleUrl: "./accounts-receivable.scss",
 })
-export class AccountsReceivableComponent {}
+export class AccountsReceivableComponent {
+	private readonly api = inject(ApiService);
+	private readonly auth = inject(AuthService);
+	private readonly ctx = inject(TenantContextService);
+
+	// ── State ──
+	readonly arItems = signal<AccountsReceivableListItem[]>([]);
+	readonly agingSummary = signal<ArAgingSummary[]>([]);
+	readonly selectedAr = signal<AccountsReceivableDetail | null>(null);
+	readonly loading = signal(false);
+	readonly error = signal<string | null>(null);
+	readonly searchQuery = signal("");
+	readonly activeStatusFilter = signal<StatusFilter>("ALL");
+	readonly activeTypeFilter = signal<AccountTypeFilter>("ALL");
+	readonly activeAgingFilter = signal<AgingFilter>("ALL");
+	readonly page = signal(1);
+	readonly sort = createSortState();
+	readonly pageSize = 25;
+
+	readonly statusFilters: { key: StatusFilter; label: string }[] = [
+		{ key: "ALL", label: "All" },
+		{ key: "open", label: "Open" },
+		{ key: "partial", label: "Partial" },
+		{ key: "overdue", label: "Overdue" },
+		{ key: "in_collection", label: "In Collection" },
+		{ key: "disputed", label: "Disputed" },
+		{ key: "written_off", label: "Written Off" },
+		{ key: "paid", label: "Paid" },
+	];
+
+	readonly typeFilters: { key: AccountTypeFilter; label: string }[] = [
+		{ key: "ALL", label: "All Types" },
+		{ key: "guest", label: "Guest" },
+		{ key: "corporate", label: "Corporate" },
+		{ key: "city_ledger", label: "City Ledger" },
+		{ key: "direct_bill", label: "Direct Bill" },
+		{ key: "travel_agent", label: "Travel Agent" },
+		{ key: "group", label: "Group" },
+	];
+
+	readonly agingFilters: { key: AgingFilter; label: string }[] = [
+		{ key: "ALL", label: "All" },
+		{ key: "current", label: "Current" },
+		{ key: "1_30_days", label: "1–30 days" },
+		{ key: "31_60_days", label: "31–60 days" },
+		{ key: "61_90_days", label: "61–90 days" },
+		{ key: "91_120_days", label: "91–120 days" },
+		{ key: "over_120_days", label: "120+ days" },
+	];
+
+	readonly filtered = computed(() => {
+		let list = this.arItems();
+		const status = this.activeStatusFilter();
+		const type = this.activeTypeFilter();
+		const aging = this.activeAgingFilter();
+		const query = this.searchQuery().toLowerCase().trim();
+		if (status !== "ALL") list = list.filter((a) => a.ar_status === status);
+		if (type !== "ALL") list = list.filter((a) => a.account_type === type);
+		if (aging !== "ALL") list = list.filter((a) => a.aging_bucket === aging);
+		if (query) {
+			list = list.filter(
+				(a) =>
+					a.ar_number.toLowerCase().includes(query) ||
+					a.account_name.toLowerCase().includes(query) ||
+					(a.guest_name?.toLowerCase().includes(query) ?? false) ||
+					(a.ar_reference?.toLowerCase().includes(query) ?? false),
+			);
+		}
+		return list;
+	});
+
+	readonly paginated = computed(() => {
+		const sorted = sortBy(this.filtered(), this.sort().column, this.sort().direction);
+		const start = (this.page() - 1) * this.pageSize;
+		return sorted.slice(start, start + this.pageSize);
+	});
+
+	readonly summary = computed(() => {
+		const all = this.arItems();
+		const totalOutstanding = all.reduce(
+			(sum, a) => sum + Number.parseFloat(a.outstanding_balance || "0"),
+			0,
+		);
+		const overdueCount = all.filter((a) => a.is_overdue).length;
+		const openCount = all.filter((a) => a.ar_status === "open" || a.ar_status === "partial").length;
+		return { total: all.length, totalOutstanding, overdueCount, openCount };
+	});
+
+	readonly agingTotals = computed(() => {
+		const summaries = this.agingSummary();
+		if (summaries.length === 0)
+			return { current: 0, days_1_30: 0, days_31_60: 0, days_61_90: 0, days_91_120: 0, over_120: 0, total: 0 };
+		return summaries.reduce(
+			(acc, s) => ({
+				current: acc.current + Number.parseFloat(s.current || "0"),
+				days_1_30: acc.days_1_30 + Number.parseFloat(s.days_1_30 || "0"),
+				days_31_60: acc.days_31_60 + Number.parseFloat(s.days_31_60 || "0"),
+				days_61_90: acc.days_61_90 + Number.parseFloat(s.days_61_90 || "0"),
+				days_91_120: acc.days_91_120 + Number.parseFloat(s.days_91_120 || "0"),
+				over_120: acc.over_120 + Number.parseFloat(s.over_120 || "0"),
+				total: acc.total + Number.parseFloat(s.total_outstanding || "0"),
+			}),
+			{ current: 0, days_1_30: 0, days_31_60: 0, days_61_90: 0, days_91_120: 0, over_120: 0, total: 0 },
+		);
+	});
+
+	constructor() {
+		effect(() => {
+			this.auth.tenantId();
+			this.ctx.propertyId();
+			this.loadArData();
+		});
+	}
+
+	// ── Filter actions ──
+	setStatusFilter(f: StatusFilter): void {
+		this.activeStatusFilter.set(f);
+		this.page.set(1);
+	}
+	setTypeFilter(f: AccountTypeFilter): void {
+		this.activeTypeFilter.set(f);
+		this.page.set(1);
+	}
+	setAgingFilter(f: AgingFilter): void {
+		this.activeAgingFilter.set(f);
+		this.page.set(1);
+	}
+	onSearch(v: string): void {
+		this.searchQuery.set(v);
+		this.page.set(1);
+	}
+	onSort(col: string): void {
+		this.sort.set(toggleSort(this.sort(), col));
+		this.page.set(1);
+	}
+
+	sortIcon(col: string): string {
+		const s = this.sort();
+		if (s.column !== col) return "unfold_more";
+		return s.direction === "asc" ? "arrow_upward" : "arrow_downward";
+	}
+	ariaSort(col: string): string | null {
+		const s = this.sort();
+		if (s.column !== col) return null;
+		return s.direction === "asc" ? "ascending" : "descending";
+	}
+
+	formatDate = formatShortDate;
+
+	fmtMoney(amount: number, currency = "USD"): string {
+		return formatCurrency(amount, currency);
+	}
+
+	statusClass(status: string): string {
+		const map: Record<string, string> = {
+			open: "status-open",
+			partial: "status-warning",
+			paid: "status-success",
+			overdue: "status-danger",
+			in_collection: "status-danger",
+			written_off: "status-muted",
+			disputed: "status-warning",
+			cancelled: "status-muted",
+		};
+		return map[status] ?? "";
+	}
+
+	// ── Detail ──
+	async selectAr(item: AccountsReceivableListItem): Promise<void> {
+		const tenantId = this.auth.tenantId();
+		if (!tenantId) return;
+		try {
+			const detail = await this.api.get<AccountsReceivableDetail>(
+				`/billing/accounts-receivable/${item.ar_id}`,
+				{ tenant_id: tenantId },
+			);
+			this.selectedAr.set(detail);
+		} catch {
+			this.selectedAr.set(null);
+		}
+	}
+
+	closeDetail(): void {
+		this.selectedAr.set(null);
+	}
+
+	// ── Data loading ──
+	async loadArData(): Promise<void> {
+		const tenantId = this.auth.tenantId();
+		if (!tenantId) return;
+		this.loading.set(true);
+		this.error.set(null);
+		try {
+			const params: Record<string, string> = { tenant_id: tenantId, limit: "500" };
+			const propertyId = this.ctx.propertyId();
+			if (propertyId) params["property_id"] = propertyId;
+
+			const [items, aging] = await Promise.all([
+				this.api.get<AccountsReceivableListItem[]>("/billing/accounts-receivable", params),
+				this.api.get<ArAgingSummary[]>("/billing/accounts-receivable/aging-summary", params),
+			]);
+			this.arItems.set(items);
+			this.agingSummary.set(aging);
+		} catch (e) {
+			this.error.set(e instanceof Error ? e.message : "Failed to load AR data");
+		} finally {
+			this.loading.set(false);
+		}
+	}
+}

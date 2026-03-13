@@ -362,3 +362,148 @@ export const TrialBalanceResponseSchema = z.object({
 });
 
 export type TrialBalanceResponse = z.infer<typeof TrialBalanceResponseSchema>;
+
+// =====================================================
+// ACCOUNTS RECEIVABLE RESPONSE SCHEMAS
+// =====================================================
+
+/** AR list item — summary view for list endpoints. */
+export const AccountsReceivableListItemSchema = z.object({
+	ar_id: uuid,
+	tenant_id: uuid,
+	property_id: uuid,
+	property_name: z.string().optional(),
+	ar_number: z.string(),
+	ar_reference: z.string().optional(),
+	account_type: z.string(),
+	account_type_display: z.string(),
+	account_name: z.string(),
+	guest_id: uuid.optional(),
+	guest_name: z.string().optional(),
+	company_id: uuid.optional(),
+	source_type: z.string().optional(),
+	source_reference: z.string().optional(),
+	reservation_id: uuid.optional(),
+	invoice_id: uuid.optional(),
+	folio_id: uuid.optional(),
+	transaction_date: z.string(),
+	due_date: z.string().optional(),
+	original_amount: z.string(),
+	outstanding_balance: z.string(),
+	paid_amount: z.string(),
+	currency: z.string(),
+	ar_status: z.string(),
+	ar_status_display: z.string(),
+	aging_bucket: z.string().optional(),
+	aging_bucket_display: z.string().optional(),
+	aging_days: z.number().int().optional(),
+	is_overdue: z.boolean(),
+	payment_terms: z.string().optional(),
+	payment_count: z.number().int().optional(),
+	last_payment_date: z.string().optional(),
+	priority: z.string().optional(),
+	created_at: z.string(),
+});
+
+export type AccountsReceivableListItem = z.infer<
+	typeof AccountsReceivableListItemSchema
+>;
+
+/** AR detail — full record with payment history and extended fields. */
+export const AccountsReceivableDetailSchema =
+	AccountsReceivableListItemSchema.extend({
+		account_id: uuid.optional(),
+		account_code: z.string().optional(),
+		contact_name: z.string().optional(),
+		contact_email: z.string().optional(),
+		contact_phone: z.string().optional(),
+		billing_address: z.unknown().optional(),
+		days_overdue: z.number().int().optional(),
+		payment_terms_days: z.number().int().optional(),
+		early_payment_discount_percent: z.string().optional(),
+		early_payment_discount_days: z.number().int().optional(),
+		discount_deadline: z.string().optional(),
+		late_fee_applicable: z.boolean().optional(),
+		late_fees_charged: z.string().optional(),
+		interest_applicable: z.boolean().optional(),
+		interest_accrued: z.string().optional(),
+		last_payment_amount: z.string().optional(),
+		payments: z.unknown().optional(),
+		in_collection: z.boolean().optional(),
+		collection_notes: z.string().optional(),
+		disputed: z.boolean().optional(),
+		dispute_reason: z.string().optional(),
+		dispute_amount: z.string().optional(),
+		written_off: z.boolean().optional(),
+		write_off_amount: z.string().optional(),
+		write_off_reason: z.string().optional(),
+		write_off_date: z.string().optional(),
+		is_bad_debt: z.boolean().optional(),
+		has_payment_plan: z.boolean().optional(),
+		installment_count: z.number().int().optional(),
+		next_installment_due_date: z.string().optional(),
+		notes: z.string().optional(),
+		internal_notes: z.string().optional(),
+		tags: z.array(z.string()).optional(),
+		updated_at: z.string().optional(),
+	});
+
+export type AccountsReceivableDetail = z.infer<
+	typeof AccountsReceivableDetailSchema
+>;
+
+/** AR aging summary — bucket totals for a property. */
+export const ArAgingSummarySchema = z.object({
+	property_id: uuid,
+	property_name: z.string().optional(),
+	current: z.string(),
+	days_1_30: z.string(),
+	days_31_60: z.string(),
+	days_61_90: z.string(),
+	days_91_120: z.string(),
+	over_120: z.string(),
+	total_outstanding: z.string(),
+	total_accounts: z.number().int(),
+	currency: z.string(),
+});
+
+export type ArAgingSummary = z.infer<typeof ArAgingSummarySchema>;
+
+// =====================================================
+// FISCAL PERIODS
+// =====================================================
+
+export const FiscalPeriodStatusEnum = z.enum([
+	"FUTURE",
+	"OPEN",
+	"SOFT_CLOSE",
+	"CLOSED",
+	"LOCKED",
+]);
+export type FiscalPeriodStatus = z.infer<typeof FiscalPeriodStatusEnum>;
+
+export const FiscalPeriodListItemSchema = z.object({
+	fiscal_period_id: uuid,
+	tenant_id: uuid,
+	property_id: uuid,
+	property_name: z.string().optional(),
+	fiscal_year: z.number().int(),
+	fiscal_year_start: z.string(),
+	fiscal_year_end: z.string(),
+	period_number: z.number().int(),
+	period_name: z.string(),
+	period_start: z.string(),
+	period_end: z.string(),
+	period_status: FiscalPeriodStatusEnum,
+	period_status_display: z.string(),
+	is_reconciled: z.boolean(),
+	closed_at: z.string().optional(),
+	soft_closed_at: z.string().optional(),
+	locked_at: z.string().optional(),
+	total_revenue: z.string().optional(),
+	total_expenses: z.string().optional(),
+	net_income: z.string().optional(),
+	notes: z.string().optional(),
+});
+
+export type FiscalPeriodListItem = z.infer<typeof FiscalPeriodListItemSchema>;

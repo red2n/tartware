@@ -9,6 +9,13 @@
 
 \echo 'Creating guest management procedures...'
 
+-- Drop old 12-param signature, replaced by 13-param version with p_vip_status
+DROP FUNCTION IF EXISTS upsert_guest(
+    UUID, VARCHAR, VARCHAR, VARCHAR, VARCHAR,
+    TEXT, VARCHAR, VARCHAR, VARCHAR, VARCHAR,
+    JSONB, VARCHAR
+);
+
 -- =====================================================
 -- Function: upsert_guest
 -- Purpose: Insert or update guest, preventing duplicates
@@ -27,7 +34,8 @@ CREATE OR REPLACE FUNCTION upsert_guest(
     p_country VARCHAR(100) DEFAULT NULL,
     p_postal_code VARCHAR(20) DEFAULT NULL,
     p_preferences JSONB DEFAULT NULL,
-    p_created_by VARCHAR(100) DEFAULT 'SYSTEM'
+    p_created_by VARCHAR(100) DEFAULT 'SYSTEM',
+    p_vip_status VARCHAR(10) DEFAULT 'NONE'
 )
 RETURNS UUID
 LANGUAGE plpgsql
@@ -54,6 +62,7 @@ BEGIN
         phone,
         address,
         preferences,
+        vip_status,
         created_by,
         created_at,
         updated_at,
@@ -67,6 +76,7 @@ BEGIN
         p_phone,
         v_address_jsonb,
         p_preferences,
+        COALESCE(p_vip_status, 'NONE'),
         p_created_by,
         CURRENT_TIMESTAMP, -- created_at
         CURRENT_TIMESTAMP, -- updated_at
@@ -80,6 +90,7 @@ BEGIN
         phone = COALESCE(EXCLUDED.phone, guests.phone),
         address = COALESCE(EXCLUDED.address, guests.address),
         preferences = COALESCE(EXCLUDED.preferences, guests.preferences),
+        vip_status = EXCLUDED.vip_status,
         updated_at = CURRENT_TIMESTAMP,
         updated_by = p_created_by,
         version = guests.version + 1
@@ -216,7 +227,8 @@ BEGIN
             v_guest->>'country',
             v_guest->>'postal_code',
             (v_guest->'preferences')::JSONB,
-            p_created_by
+            p_created_by,
+            COALESCE(v_guest->'preferences'->>'vip_status', 'NONE')
         ) INTO v_guest_id;
 
         -- Return result

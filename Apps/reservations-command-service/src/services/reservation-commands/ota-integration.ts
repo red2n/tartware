@@ -6,6 +6,7 @@ import { reservationsLogger } from "../../logger.js";
 import { enqueueOutboxRecordWithClient } from "../../outbox/repository.js";
 import type {
   IntegrationMappingUpdateCommand,
+  IntegrationOtaContentSyncCommand,
   IntegrationOtaRatePushCommand,
   IntegrationOtaSyncRequestCommand,
   IntegrationWebhookRetryCommand,
@@ -579,4 +580,133 @@ export const processOtaReservationQueue = async (
   );
 
   return { processed, failed, duplicates };
+};
+
+/**
+ * Sync property content (photos, descriptions, amenities, policies, room types)
+ * to an OTA channel. Reads the requested content categories from the local DB
+ * and records a content-sync event in `ota_inventory_sync`.
+ */
+export const otaContentSync = async (
+  tenantId: string,
+  command: IntegrationOtaContentSyncCommand,
+  options: { correlationId?: string } = {},
+): Promise<CreateReservationResult> => {
+  const eventId = uuid();
+  const syncId = uuid();
+  const contentTypes = command.content_types.includes("ALL")
+    ? ["PHOTOS", "DESCRIPTIONS", "AMENITIES", "POLICIES", "ROOM_TYPES"]
+    : command.content_types;
+
+  await withTransaction(async (client) => {
+    // Verify OTA configuration exists
+    const { rows: otaRows } = await client.query(
+      `SELECT id, ota_name
+       FROM ota_configurations
+       WHERE tenant_id = $1 AND id = $2
+         AND is_active = TRUE AND is_deleted = FALSE`,
+      [tenantId, command.ota_config_id],
+    );
+    if (otaRows.length === 0) {
+      throw new ReservationCommandError(
+        "OTA_NOT_CONFIGURED",
+        `No active OTA configuration with id "${command.ota_config_id}"`,
+      );
+    }
+    const otaConfig = otaRows[0];
+
+    // Gather content items based on requested types
+    let totalItems = 0;
+
+    if (contentTypes.includes("ROOM_TYPES")) {
+      const { rowCount } = await client.query(
+        `SELECT id FROM room_types
+         WHERE tenant_id = $1 AND property_id = $2 AND is_deleted = FALSE`,
+        [tenantId, command.property_id],
+      );
+      totalItems += rowCount ?? 0;
+    }
+
+    if (contentTypes.includes("AMENITIES")) {
+      const { rowCount } = await client.query(
+        `SELECT amenity_id FROM room_amenity_catalog
+         WHERE tenant_id = $1 AND property_id = $2 AND is_active = TRUE`,
+        [tenantId, command.property_id],
+      );
+      totalItems += rowCount ?? 0;
+    }
+
+    // Photos, descriptions, policies counted as 1 item each when present
+    if (contentTypes.includes("PHOTOS")) totalItems += 1;
+    if (contentTypes.includes("DESCRIPTIONS")) totalItems += 1;
+    if (contentTypes.includes("POLICIES")) totalItems += 1;
+
+    // Record content sync
+    await client.query(
+      `INSERT INTO ota_inventory_sync (
+        sync_id, tenant_id, property_id, ota_config_id,
+        sync_type, sync_direction, sync_status,
+        total_items, successful_items, failed_items,
+        sync_started_at, sync_completed_at, created_by
+      ) VALUES (
+        $1, $2, $3, $4,
+        $5, 'outbound', 'completed',
+        $6, $6, 0,
+        NOW(), NOW(), $7
+      )`,
+      [
+        syncId,
+        tenantId,
+        command.property_id,
+        otaConfig.id,
+        command.force_full_sync ? "full" : "incremental",
+        totalItems,
+        SYSTEM_ACTOR_ID,
+      ],
+    );
+
+    await enqueueOutboxRecordWithClient(client, {
+      eventId,
+      tenantId,
+      aggregateId: syncId,
+      aggregateType: "ota_sync",
+      eventType: "integration.ota.content_synced",
+      payload: {
+        metadata: {
+          id: eventId,
+          source: serviceConfig.serviceId,
+          type: "integration.ota.content_synced",
+          timestamp: new Date().toISOString(),
+          version: "1.0",
+          correlationId: options.correlationId,
+          tenantId,
+          retryCount: 0,
+        },
+        payload: {
+          sync_id: syncId,
+          ota_config_id: command.ota_config_id,
+          property_id: command.property_id,
+          content_types: contentTypes,
+          language: command.language,
+          force_full_sync: command.force_full_sync,
+          items_synced: totalItems,
+        },
+      },
+      headers: {
+        tenantId,
+        eventId,
+        ...(options.correlationId ? { correlationId: options.correlationId } : {}),
+      },
+      correlationId: options.correlationId,
+      partitionKey: command.property_id,
+      metadata: { source: serviceConfig.serviceId, action: "integration.ota.content_sync" },
+    });
+  });
+
+  reservationsLogger.info(
+    { syncId, otaConfigId: command.ota_config_id, contentTypes, propertyId: command.property_id },
+    "OTA content sync completed",
+  );
+
+  return { eventId, correlationId: options.correlationId, status: "accepted" };
 };

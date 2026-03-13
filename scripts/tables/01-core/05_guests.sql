@@ -57,7 +57,7 @@ company_tax_id VARCHAR(100), -- Corporate tax ID for invoicing
 -- Loyalty Program
 loyalty_tier VARCHAR(50), -- Loyalty tier name
 loyalty_points INTEGER DEFAULT 0, -- Accumulated points
-vip_status BOOLEAN DEFAULT false, -- VIP flag
+vip_status VARCHAR(10) DEFAULT 'NONE' CHECK (vip_status IN ('NONE', 'VIP1', 'VIP2', 'VIP3', 'VIP4', 'VIP5', 'VVIP')), -- VIP level (OPERA-style multi-tier)
 
 -- Preferences (JSONB)
 preferences JSONB DEFAULT '{

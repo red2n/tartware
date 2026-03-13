@@ -134,8 +134,8 @@ export class GuestDetailComponent implements OnInit {
 		if (g.vip_status) {
 			rows.push({
 				label: "VIP Status",
-				value: "VIP",
-				badge: vipStatusClass(true),
+				value: g.vip_status,
+				badge: vipStatusClass(g.vip_status),
 			});
 		}
 		if (g.loyalty_tier) {

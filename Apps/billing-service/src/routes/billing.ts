@@ -1,5 +1,8 @@
 import { buildRouteSchema, schemaFromZod } from "@tartware/openapi";
 import {
+  AccountsReceivableDetailSchema,
+  AccountsReceivableListItemSchema,
+  ArAgingSummarySchema,
   CashierSessionListItemSchema,
   ChargePostingListItemSchema,
   FolioListItemSchema,
@@ -17,6 +20,8 @@ import { z } from "zod";
 
 import {
   BillingPaymentSchema,
+  getAccountsReceivableById,
+  getArAgingSummary,
   getCashierSessionById,
   getCommissionReport,
   getDepartmentalRevenue,
@@ -25,6 +30,7 @@ import {
   getTaxConfigurationById,
   getTaxSummary,
   getTrialBalance,
+  listAccountsReceivable,
   listBillingPayments,
   listCashierSessions,
   listChargePostings,
@@ -146,6 +152,29 @@ const ChargePostingListQueryJsonSchema = schemaFromZod(
 const ChargePostingListResponseJsonSchema = schemaFromZod(
   ChargePostingListResponseSchema,
   "ChargePostingListResponse",
+);
+
+// Accounts receivable schemas
+const ArListQuerySchema = z.object({
+  tenant_id: z.string().uuid(),
+  property_id: z.string().uuid().optional(),
+  status: z.string().optional(),
+  account_type: z.string().optional(),
+  aging_bucket: z.string().optional(),
+  limit: z.coerce.number().int().positive().max(200).default(100),
+  offset: z.coerce.number().int().min(0).default(0),
+});
+
+type ArListQuery = z.infer<typeof ArListQuerySchema>;
+
+const ArListResponseSchema = z.array(AccountsReceivableListItemSchema);
+const ArListQueryJsonSchema = schemaFromZod(ArListQuerySchema, "ArListQuery");
+const ArListResponseJsonSchema = schemaFromZod(ArListResponseSchema, "ArListResponse");
+const ArDetailJsonSchema = schemaFromZod(AccountsReceivableDetailSchema, "ArDetail");
+const ArAgingSummaryResponseSchema = z.array(ArAgingSummarySchema);
+const ArAgingSummaryResponseJsonSchema = schemaFromZod(
+  ArAgingSummaryResponseSchema,
+  "ArAgingSummaryResponse",
 );
 
 const BILLING_TAG = "Billing";
@@ -772,6 +801,111 @@ export const registerBillingRoutes = (app: FastifyInstance): void => {
         startDate: start_date,
         endDate: end_date,
       });
+    },
+  );
+
+  // ============================================================================
+  // Accounts Receivable
+  // ============================================================================
+
+  app.get<{ Querystring: ArListQuery }>(
+    "/v1/billing/accounts-receivable",
+    {
+      preHandler: app.withTenantScope({
+        resolveTenantId: (request) => (request.query as ArListQuery).tenant_id,
+        minRole: "ADMIN",
+        requiredModules: "finance-automation",
+      }),
+      schema: buildRouteSchema({
+        tag: BILLING_TAG,
+        summary: "List accounts receivable with optional filters",
+        querystring: ArListQueryJsonSchema,
+        response: {
+          200: ArListResponseJsonSchema,
+        },
+      }),
+    },
+    async (request) => {
+      const { tenant_id, property_id, status, account_type, aging_bucket, limit, offset } =
+        ArListQuerySchema.parse(request.query);
+      return listAccountsReceivable({
+        tenantId: tenant_id,
+        propertyId: property_id,
+        status,
+        accountType: account_type,
+        agingBucket: aging_bucket,
+        limit,
+        offset,
+      });
+    },
+  );
+
+  // ============================================================================
+
+  app.get<{ Querystring: { tenant_id: string; property_id?: string } }>(
+    "/v1/billing/accounts-receivable/aging-summary",
+    {
+      preHandler: app.withTenantScope({
+        resolveTenantId: (request) => (request.query as { tenant_id: string }).tenant_id,
+        minRole: "ADMIN",
+        requiredModules: "finance-automation",
+      }),
+      schema: buildRouteSchema({
+        tag: BILLING_TAG,
+        summary: "Accounts receivable aging summary by property",
+        querystring: schemaFromZod(
+          z.object({
+            tenant_id: z.string().uuid(),
+            property_id: z.string().uuid().optional(),
+          }),
+          "ArAgingSummaryQuery",
+        ),
+        response: {
+          200: ArAgingSummaryResponseJsonSchema,
+        },
+      }),
+    },
+    async (request) => {
+      const { tenant_id, property_id } = request.query;
+      return getArAgingSummary({ tenantId: tenant_id, propertyId: property_id });
+    },
+  );
+
+  // ============================================================================
+
+  app.get<{
+    Params: { arId: string };
+    Querystring: { tenant_id: string };
+  }>(
+    "/v1/billing/accounts-receivable/:arId",
+    {
+      preHandler: app.withTenantScope({
+        resolveTenantId: (request) => (request.query as { tenant_id: string }).tenant_id,
+        minRole: "ADMIN",
+        requiredModules: "finance-automation",
+      }),
+      schema: buildRouteSchema({
+        tag: BILLING_TAG,
+        summary: "Get accounts receivable detail by ID",
+        params: schemaFromZod(z.object({ arId: z.string().uuid() }), "ArIdParam"),
+        querystring: schemaFromZod(z.object({ tenant_id: z.string().uuid() }), "TenantIdQueryAr"),
+        response: {
+          200: ArDetailJsonSchema,
+        },
+      }),
+    },
+    async (request, reply) => {
+      const { arId } = request.params;
+      const { tenant_id } = request.query;
+
+      const ar = await getAccountsReceivableById({ arId, tenantId: tenant_id });
+
+      if (!ar) {
+        reply.notFound("AR_ACCOUNT_NOT_FOUND");
+        return;
+      }
+
+      return ar;
     },
   );
 };

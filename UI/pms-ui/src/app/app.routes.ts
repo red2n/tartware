@@ -2,6 +2,7 @@ import type { Routes } from "@angular/router";
 
 import { authGuard } from "./core/auth/auth.guard";
 import { propertyGuard } from "./core/auth/property.guard";
+import { screenGuard } from "./core/auth/role.guard";
 
 export const routes: Routes = [
 	{
@@ -21,19 +22,19 @@ export const routes: Routes = [
 		children: [
 			{
 				path: "dashboard",
-				canActivate: [propertyGuard],
+				canActivate: [propertyGuard, screenGuard("dashboard")],
 				loadComponent: () =>
 					import("./features/dashboard/dashboard").then((m) => m.DashboardComponent),
 			},
 			{
 				path: "reservations",
-				canActivate: [propertyGuard],
+				canActivate: [propertyGuard, screenGuard("reservations")],
 				loadComponent: () =>
 					import("./features/reservations/reservations").then((m) => m.ReservationsComponent),
 			},
 			{
 				path: "reservations/new",
-				canActivate: [propertyGuard],
+				canActivate: [propertyGuard, screenGuard("reservations")],
 				loadComponent: () =>
 					import("./features/reservations/create-reservation/create-reservation").then(
 						(m) => m.CreateReservationComponent,
@@ -41,7 +42,7 @@ export const routes: Routes = [
 			},
 			{
 				path: "reservations/:reservationId",
-				canActivate: [propertyGuard],
+				canActivate: [propertyGuard, screenGuard("reservations")],
 				loadComponent: () =>
 					import("./features/reservations/reservation-detail/reservation-detail").then(
 						(m) => m.ReservationDetailComponent,
@@ -49,58 +50,58 @@ export const routes: Routes = [
 			},
 			{
 				path: "groups",
-				canActivate: [propertyGuard],
+				canActivate: [propertyGuard, screenGuard("groups")],
 				loadComponent: () => import("./features/groups/groups").then((m) => m.GroupsComponent),
 			},
 			{
 				path: "groups/new",
-				canActivate: [propertyGuard],
+				canActivate: [propertyGuard, screenGuard("groups")],
 				loadComponent: () =>
 					import("./features/groups/create-group/create-group").then((m) => m.CreateGroupComponent),
 			},
 			{
 				path: "groups/:groupId",
-				canActivate: [propertyGuard],
+				canActivate: [propertyGuard, screenGuard("groups")],
 				loadComponent: () =>
 					import("./features/groups/group-detail/group-detail").then((m) => m.GroupDetailComponent),
 			},
 			{
 				path: "rooms",
-				canActivate: [propertyGuard],
+				canActivate: [propertyGuard, screenGuard("rooms")],
 				loadComponent: () => import("./features/rooms/rooms").then((m) => m.RoomsComponent),
 			},
 			{
 				path: "room-types",
-				canActivate: [propertyGuard],
+				canActivate: [propertyGuard, screenGuard("room-types")],
 				loadComponent: () =>
 					import("./features/rooms/room-types/room-types").then((m) => m.RoomTypesComponent),
 			},
 			{
 				path: "buildings",
-				canActivate: [propertyGuard],
+				canActivate: [propertyGuard, screenGuard("buildings")],
 				loadComponent: () =>
 					import("./features/rooms/buildings/buildings").then((m) => m.BuildingsComponent),
 			},
 			{
 				path: "rates",
-				canActivate: [propertyGuard],
+				canActivate: [propertyGuard, screenGuard("rates")],
 				loadComponent: () => import("./features/rates/rates").then((m) => m.RatesComponent),
 			},
 			{
 				path: "rate-calendar",
-				canActivate: [propertyGuard],
+				canActivate: [propertyGuard, screenGuard("rate-calendar")],
 				loadComponent: () =>
 					import("./features/rate-calendar/rate-calendar").then((m) => m.RateCalendarComponent),
 			},
 			{
 				path: "packages",
-				canActivate: [propertyGuard],
+				canActivate: [propertyGuard, screenGuard("packages")],
 				loadComponent: () =>
 					import("./features/packages/packages").then((m) => m.PackagesComponent),
 			},
 			{
 				path: "packages/:packageId",
-				canActivate: [propertyGuard],
+				canActivate: [propertyGuard, screenGuard("packages")],
 				loadComponent: () =>
 					import("./features/packages/package-detail/package-detail").then(
 						(m) => m.PackageDetailComponent,
@@ -108,33 +109,35 @@ export const routes: Routes = [
 			},
 			{
 				path: "rooms/:roomId",
-				canActivate: [propertyGuard],
+				canActivate: [propertyGuard, screenGuard("rooms")],
 				loadComponent: () =>
 					import("./features/rooms/room-detail/room-detail").then((m) => m.RoomDetailComponent),
 			},
 			{
 				path: "guests",
+				canActivate: [propertyGuard, screenGuard("guests")],
 				loadComponent: () => import("./features/guests/guests").then((m) => m.GuestsComponent),
 			},
 			{
 				path: "guests/:guestId",
+				canActivate: [propertyGuard, screenGuard("guests")],
 				loadComponent: () =>
 					import("./features/guests/guest-detail/guest-detail").then((m) => m.GuestDetailComponent),
 			},
 			{
 				path: "housekeeping",
-				canActivate: [propertyGuard],
+				canActivate: [propertyGuard, screenGuard("housekeeping")],
 				loadComponent: () =>
 					import("./features/housekeeping/housekeeping").then((m) => m.HousekeepingComponent),
 			},
 			{
 				path: "billing",
-				canActivate: [propertyGuard],
+				canActivate: [propertyGuard, screenGuard("billing")],
 				loadComponent: () => import("./features/billing/billing").then((m) => m.BillingComponent),
 			},
 			{
 				path: "accounts-receivable",
-				canActivate: [propertyGuard],
+				canActivate: [propertyGuard, screenGuard("accounts-receivable")],
 				loadComponent: () =>
 					import("./features/accounts/accounts-receivable/accounts-receivable").then(
 						(m) => m.AccountsReceivableComponent,
@@ -142,19 +145,19 @@ export const routes: Routes = [
 			},
 			{
 				path: "cashiering",
-				canActivate: [propertyGuard],
+				canActivate: [propertyGuard, screenGuard("cashiering")],
 				loadComponent: () =>
 					import("./features/accounts/cashiering/cashiering").then((m) => m.CashieringComponent),
 			},
 			{
 				path: "night-audit",
-				canActivate: [propertyGuard],
+				canActivate: [propertyGuard, screenGuard("night-audit")],
 				loadComponent: () =>
 					import("./features/accounts/night-audit/night-audit").then((m) => m.NightAuditComponent),
 			},
 			{
 				path: "tax-config",
-				canActivate: [propertyGuard],
+				canActivate: [propertyGuard, screenGuard("tax-config")],
 				loadComponent: () =>
 					import("./features/accounts/tax-config/tax-config").then((m) => m.TaxConfigComponent),
 			},
@@ -165,6 +168,7 @@ export const routes: Routes = [
 			},
 			{
 				path: "settings/:categoryCode",
+				canActivate: [screenGuard("settings")],
 				loadComponent: () =>
 					import("./features/settings/settings").then((m) => m.SettingsComponent),
 			},
@@ -175,6 +179,7 @@ export const routes: Routes = [
 			},
 			{
 				path: "command-management/:serviceTab",
+				canActivate: [screenGuard("command-management")],
 				loadComponent: () =>
 					import("./features/command-management/command-management").then(
 						(m) => m.CommandManagementComponent,
@@ -182,7 +187,16 @@ export const routes: Routes = [
 			},
 			{
 				path: "users",
+				canActivate: [screenGuard("users")],
 				loadComponent: () => import("./features/users/users").then((m) => m.UsersComponent),
+			},
+			{
+				path: "screen-permissions",
+				canActivate: [screenGuard("users")],
+				loadComponent: () =>
+					import("./features/screen-permissions/screen-permissions").then(
+						(m) => m.ScreenPermissionsComponent,
+					),
 			},
 			{ path: "", redirectTo: "dashboard", pathMatch: "full" },
 		],

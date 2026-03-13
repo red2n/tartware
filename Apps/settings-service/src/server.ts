@@ -8,6 +8,7 @@ import swaggerPlugin from "./plugins/swagger.js";
 import amenitiesRoutes from "./routes/amenities.js";
 import catalogRoutes from "./routes/catalog.js";
 import packagesRoutes from "./routes/packages.js";
+import screenPermissionsRoutes from "./routes/screen-permissions.js";
 
 type BuildServerOptions = {
   logger: PinoLogger;
@@ -40,6 +41,7 @@ export const buildServer = ({ logger }: BuildServerOptions): FastifyInstance => 
     await secureRoutes.register(catalogRoutes);
     await secureRoutes.register(amenitiesRoutes);
     await secureRoutes.register(packagesRoutes);
+    await secureRoutes.register(screenPermissionsRoutes);
 
     secureRoutes.get("/v1/settings/ping", async () => ({
       status: "ok",

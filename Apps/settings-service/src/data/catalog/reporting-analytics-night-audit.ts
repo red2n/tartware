@@ -129,5 +129,66 @@ export const REPORTING_ANALYTICS_NIGHT_AUDIT: RawCategory = {
         },
       ],
     },
+    {
+      code: "BUSINESS_CALENDAR",
+      name: "Business Calendar",
+      description:
+        "Business day start time, auto date-roll, and operational calendar settings per property.",
+      icon: "event",
+      definitions: [
+        {
+          code: "FINANCE.BUSINESS_CALENDAR.DAY_START_TIME",
+          name: "Business Day Start Time",
+          description:
+            "The time-of-day when a new business date begins. Revenue, arrivals, and postings before this time belong to the previous business date. Typical hotel default is 03:00 (after night audit).",
+          controlType: "TIME_PICKER",
+          dataType: "STRING",
+          defaultScope: "PROPERTY",
+          allowedScopes: ["TENANT", "PROPERTY"],
+          defaultValue: "03:00",
+          valueConstraints: {
+            format: "HH:mm",
+            minTime: "00:00",
+            maxTime: "12:00",
+          },
+          tags: ["finance", "operations"],
+          moduleDependencies: ["finance"],
+          referenceDocs: ["https://docs.tartware.com/settings/finance/business-calendar"],
+        },
+        {
+          code: "FINANCE.BUSINESS_CALENDAR.AUTO_ROLL_ENABLED",
+          name: "Auto Date Roll",
+          description:
+            "When enabled, the system automatically advances the business date after a successful night audit. When disabled, a manager must manually roll the date.",
+          controlType: "TOGGLE",
+          dataType: "BOOLEAN",
+          defaultScope: "PROPERTY",
+          allowedScopes: ["TENANT", "PROPERTY"],
+          defaultValue: true,
+          tags: ["finance", "operations"],
+          moduleDependencies: ["finance"],
+          referenceDocs: ["https://docs.tartware.com/settings/finance/business-calendar"],
+        },
+        {
+          code: "FINANCE.BUSINESS_CALENDAR.AUTO_ROLL_TIME",
+          name: "Auto Roll Scheduled Time",
+          description:
+            "The time at which the automatic date roll (night audit + date advance) should be triggered. Only applies when auto date roll is enabled.",
+          controlType: "TIME_PICKER",
+          dataType: "STRING",
+          defaultScope: "PROPERTY",
+          allowedScopes: ["TENANT", "PROPERTY"],
+          defaultValue: "03:00",
+          valueConstraints: {
+            format: "HH:mm",
+            minTime: "00:00",
+            maxTime: "06:00",
+          },
+          tags: ["finance", "operations"],
+          moduleDependencies: ["finance"],
+          referenceDocs: ["https://docs.tartware.com/settings/finance/business-calendar"],
+        },
+      ],
+    },
   ],
 };

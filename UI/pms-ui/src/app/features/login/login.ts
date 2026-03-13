@@ -9,6 +9,7 @@ import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
 import { Router } from "@angular/router";
 
 import { AuthService } from "../../core/auth/auth.service";
+import { ScreenPermissionsService } from "../../core/auth/screen-permissions.service";
 import { TenantContextService } from "../../core/context/tenant-context.service";
 import { I18nService } from "../../core/i18n/i18n.service";
 import { TranslatePipe } from "../../core/i18n/translate.pipe";
@@ -34,6 +35,7 @@ export class LoginComponent implements AfterViewInit {
 	private static readonly REMEMBER_KEY = "tartware_remember_username";
 
 	private readonly auth = inject(AuthService);
+	private readonly screenPerms = inject(ScreenPermissionsService);
 	private readonly i18n = inject(I18nService);
 	private readonly theme = inject(ThemeService);
 	private readonly ctx = inject(TenantContextService);
@@ -100,6 +102,9 @@ export class LoginComponent implements AfterViewInit {
 			}
 			// Load user theme preference after login
 			await this.theme.loadPreferences();
+
+			// Load role-based screen permissions from DB
+			await this.screenPerms.loadPermissions();
 
 			// Load properties and handle selection
 			const properties = await this.ctx.fetchProperties();

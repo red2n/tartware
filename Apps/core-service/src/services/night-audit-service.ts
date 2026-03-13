@@ -4,6 +4,8 @@
  */
 
 import {
+  type BusinessCalendarEntry,
+  BusinessCalendarEntrySchema,
   type BusinessDateStatusResponse,
   BusinessDateStatusResponseSchema,
   type NightAuditRunDetailResponse,
@@ -20,6 +22,7 @@ import {
 
 import { query } from "../lib/db.js";
 import {
+  BUSINESS_CALENDAR_SQL,
   BUSINESS_DATE_STATUS_SQL,
   NIGHT_AUDIT_HISTORY_SQL,
   NIGHT_AUDIT_RUN_DETAIL_SQL,
@@ -484,6 +487,59 @@ export const listOtaSyncLogs = async (options: ListOtaSyncLogsInput): Promise<Ot
       records_failed: row.records_failed ?? undefined,
       error_message: row.error_message ?? undefined,
       triggered_by: row.triggered_by ?? undefined,
+    }),
+  );
+};
+
+// =====================================================
+// BUSINESS CALENDAR HISTORY
+// =====================================================
+
+export type ListBusinessCalendarInput = {
+  tenantId: string;
+  propertyId?: string;
+  limit?: number;
+  offset?: number;
+};
+
+export const listBusinessCalendar = async (
+  options: ListBusinessCalendarInput,
+): Promise<BusinessCalendarEntry[]> => {
+  const { rows } = await query(BUSINESS_CALENDAR_SQL, [
+    options.limit ?? 90,
+    options.tenantId,
+    options.propertyId ?? null,
+    options.offset ?? 0,
+  ]);
+
+  return rows.map((row: Record<string, unknown>) =>
+    BusinessCalendarEntrySchema.parse({
+      business_date_id: row.business_date_id,
+      tenant_id: row.tenant_id,
+      property_id: row.property_id,
+      property_name: row.property_name ?? undefined,
+      business_date: toIsoString(row.business_date as string | Date) ?? "",
+      system_date: toIsoString(row.system_date as string | Date) ?? "",
+      date_status: row.date_status ?? "OPEN",
+      date_status_display: formatDisplayLabel(row.date_status as string),
+      date_opened_at: toIsoString(row.date_opened_at as string | Date | null) ?? undefined,
+      date_closed_at: toIsoString(row.date_closed_at as string | Date | null) ?? undefined,
+      date_rolled_at: toIsoString(row.date_rolled_at as string | Date | null) ?? undefined,
+      night_audit_status: row.night_audit_status ?? undefined,
+      night_audit_started_at:
+        toIsoString(row.night_audit_started_at as string | Date | null) ?? undefined,
+      night_audit_completed_at:
+        toIsoString(row.night_audit_completed_at as string | Date | null) ?? undefined,
+      is_locked: row.is_locked ?? false,
+      is_reconciled: row.is_reconciled ?? false,
+      arrivals_count: row.arrivals_count ?? undefined,
+      departures_count: row.departures_count ?? undefined,
+      stayovers_count: row.stayovers_count ?? undefined,
+      total_revenue: row.total_revenue != null ? String(row.total_revenue) : undefined,
+      total_payments: row.total_payments != null ? String(row.total_payments) : undefined,
+      audit_errors: row.audit_errors ?? undefined,
+      audit_warnings: row.audit_warnings ?? undefined,
+      notes: row.notes ?? undefined,
     }),
   );
 };

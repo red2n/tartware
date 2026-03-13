@@ -51,6 +51,7 @@ export {
   startMobileCheckin,
 } from "./mobile-checkin.js";
 export {
+  otaContentSync,
   otaRatePush,
   otaSyncRequest,
   processOtaReservationQueue,

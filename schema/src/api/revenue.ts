@@ -9,8 +9,8 @@ import { z } from "zod";
 
 import {
 	propertyId,
-	tenantId,
 	TenantScopedListQuerySchema,
+	tenantId,
 } from "../shared/base-schemas.js";
 
 // =====================================================

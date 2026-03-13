@@ -34,6 +34,7 @@ CREATE TABLE IF NOT EXISTS loyalty_tier_rules (
     points_per_dollar DECIMAL(6,2) NOT NULL DEFAULT 1.00,            -- Base earning rate
     bonus_multiplier DECIMAL(4,2) NOT NULL DEFAULT 1.00,             -- Multiplier on base earn rate
     points_expiry_months INTEGER,                                    -- Months until earned points expire (NULL = no expiry)
+    category_earning_rates JSONB DEFAULT '{}'::jsonb,                -- Per-category earning rates: {"room":2,"food_and_beverage":1.5,"spa":1,"retail":1,"parking":0.5}
 
     -- Benefits
     benefits JSONB NOT NULL DEFAULT '{}'::jsonb,                     -- Structured benefits JSON

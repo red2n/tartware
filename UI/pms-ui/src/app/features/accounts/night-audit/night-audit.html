@@ -1,0 +1,347 @@
+<div class="night-audit-page">
+  <app-page-header title="Night Audit" description="End-of-day processing, trial balance, and revenue posting">
+    <button class="btn btn-invisible" (click)="loadBusinessDateStatus(); loadTrialBalance(); loadHistory()" [matTooltip]="'Refresh' | translate" [attr.aria-label]="'Refresh' | translate">
+      <mat-icon>refresh</mat-icon>
+    </button>
+  </app-page-header>
+
+  <!-- ═══ BC-1: BUSINESS DATE STATUS BANNER ═══ -->
+  @if (statusLoading()) {
+    <div class="status-banner status-loading">
+      <mat-spinner diameter="20"></mat-spinner>
+      <span>{{ 'Loading business date status...' | translate }}</span>
+    </div>
+  } @else if (statusDisplay(); as sd) {
+    <div class="status-banner" [ngClass]="'status-' + sd.dateStatus.toLowerCase()">
+      <div class="status-banner-main">
+        <div class="status-date-block">
+          <mat-icon>calendar_today</mat-icon>
+          <div>
+            <div class="status-date">{{ formatDate(sd.businessDate) }}</div>
+            <div class="status-property">{{ sd.propertyName ?? 'Current Property' }}</div>
+          </div>
+        </div>
+        <div class="status-badges">
+          <span [class]="statusBadgeClass(sd.dateStatus)">{{ sd.dateStatusDisplay }}</span>
+          @if (sd.nightAuditStatus) {
+            <span [class]="statusBadgeClass(sd.nightAuditStatus)">{{ sd.nightAuditStatusDisplay }}</span>
+          }
+          @if (sd.isLocked) {
+            <span class="badge badge-danger"><mat-icon class="badge-icon">lock</mat-icon> {{ 'Locked' | translate }}</span>
+          }
+        </div>
+        <!-- ═══ BC-2: EXECUTE NIGHT AUDIT ═══ -->
+        @if (canExecuteAudit()) {
+          @if (confirmingExecute()) {
+            <div class="execute-confirm">
+              <span class="confirm-text">{{ 'Run night audit for this date?' | translate }}</span>
+              <button class="btn btn-danger btn-sm" (click)="executeNightAudit()" [disabled]="executing()">
+                @if (executing()) { <mat-spinner diameter="16"></mat-spinner> }
+                {{ 'Confirm' | translate }}
+              </button>
+              <button class="btn btn-outline btn-sm" (click)="cancelExecute()">{{ 'Cancel' | translate }}</button>
+            </div>
+          } @else {
+            <button class="btn btn-primary btn-sm" (click)="showExecuteConfirm()" [disabled]="executing()">
+              @if (executing()) { <mat-spinner diameter="16"></mat-spinner> }
+              <mat-icon>nightlight</mat-icon>
+              {{ 'Run Night Audit' | translate }}
+            </button>
+          }
+        }
+      </div>
+
+      @if (sd.arrivalsCount != null || sd.departuresCount != null || sd.stayoversCount != null) {
+        <div class="status-stats">
+          @if (sd.arrivalsCount != null) {
+            <div class="status-stat">
+              <span class="status-stat-value">{{ sd.arrivalsCount }}</span>
+              <span class="status-stat-label">{{ 'Arrivals' | translate }}</span>
+            </div>
+          }
+          @if (sd.departuresCount != null) {
+            <div class="status-stat">
+              <span class="status-stat-value">{{ sd.departuresCount }}</span>
+              <span class="status-stat-label">{{ 'Departures' | translate }}</span>
+            </div>
+          }
+          @if (sd.stayoversCount != null) {
+            <div class="status-stat">
+              <span class="status-stat-value">{{ sd.stayoversCount }}</span>
+              <span class="status-stat-label">{{ 'Stayovers' | translate }}</span>
+            </div>
+          }
+          @if (sd.totalRevenue) {
+            <div class="status-stat">
+              <span class="status-stat-value">{{ formatCurrency(+sd.totalRevenue, 'USD') }}</span>
+              <span class="status-stat-label">{{ 'Revenue' | translate }}</span>
+            </div>
+          }
+          <div class="status-stat">
+            <mat-icon class="status-stat-icon" [ngClass]="sd.allowPostings ? 'icon-success' : 'icon-danger'">{{ sd.allowPostings ? 'check' : 'close' }}</mat-icon>
+            <span class="status-stat-label">{{ 'Postings' | translate }}</span>
+          </div>
+          <div class="status-stat">
+            <mat-icon class="status-stat-icon" [ngClass]="sd.allowCheckIns ? 'icon-success' : 'icon-danger'">{{ sd.allowCheckIns ? 'check' : 'close' }}</mat-icon>
+            <span class="status-stat-label">{{ 'Check-ins' | translate }}</span>
+          </div>
+        </div>
+      }
+    </div>
+  }
+
+  <!-- ═══ TAB NAVIGATION ═══ -->
+  <div class="filter-bar">
+    <button class="filter-tab" [class.active]="activeTab() === 'status'" (click)="setTab('status')">{{ 'Overview' | translate }}</button>
+    <button class="filter-tab" [class.active]="activeTab() === 'trial-balance'" (click)="setTab('trial-balance')">{{ 'Trial Balance' | translate }}</button>
+    <button class="filter-tab" [class.active]="activeTab() === 'history'" (click)="setTab('history')">{{ 'Audit History' | translate }}</button>
+  </div>
+
+  <!-- ═══ TAB: OVERVIEW (KPIs) ═══ -->
+  @if (activeTab() === 'status') {
+    @if (summary(); as s) {
+      <div class="kpi-grid">
+        <div class="kpi-card audit-kpi-debits">
+          <mat-icon>arrow_upward</mat-icon>
+          <div class="kpi-body">
+            <div class="kpi-value">{{ formatCurrency(s.totalDebits, 'USD') }}</div>
+            <div class="kpi-label">{{ 'Total Debits' | translate }}</div>
+          </div>
+        </div>
+        <div class="kpi-card audit-kpi-credits">
+          <mat-icon>arrow_downward</mat-icon>
+          <div class="kpi-body">
+            <div class="kpi-value">{{ formatCurrency(s.totalCredits, 'USD') }}</div>
+            <div class="kpi-label">{{ 'Total Credits' | translate }}</div>
+          </div>
+        </div>
+        <div class="kpi-card audit-kpi-payments">
+          <mat-icon>payments</mat-icon>
+          <div class="kpi-body">
+            <div class="kpi-value">{{ formatCurrency(s.totalPayments, 'USD') }}</div>
+            <div class="kpi-label">{{ 'Total Payments' | translate }}</div>
+          </div>
+        </div>
+        <div class="kpi-card" [ngClass]="s.isBalanced ? 'audit-kpi-balanced' : 'audit-kpi-unbalanced'">
+          <mat-icon>{{ s.isBalanced ? 'check_circle' : 'warning' }}</mat-icon>
+          <div class="kpi-body">
+            <div class="kpi-value">{{ formatCurrency(s.variance, 'USD') }}</div>
+            <div class="kpi-label">{{ s.isBalanced ? 'Balanced' : 'Variance' | translate }}</div>
+          </div>
+        </div>
+      </div>
+    } @else if (!loading()) {
+      <div class="empty-state"><mat-icon class="empty-icon">nightlight</mat-icon><p>{{ 'No data for current business date' | translate }}</p></div>
+    }
+  }
+
+  <!-- ═══ TAB: TRIAL BALANCE ═══ -->
+  @if (activeTab() === 'trial-balance') {
+    <div class="audit-controls">
+      <div class="date-selector">
+        <label class="date-label" for="businessDate">{{ 'Business Date' | translate }}</label>
+        <input type="date" id="businessDate" class="field-input"
+               [ngModel]="businessDate()" (ngModelChange)="onDateChange($event)" />
+      </div>
+    </div>
+
+    @defer (on idle) {
+    @if (loading()) {
+      <div class="loading-state"><mat-spinner diameter="32"></mat-spinner><span class="text-muted">{{ 'Loading trial balance...' | translate }}</span></div>
+    } @else if (error(); as err) {
+      <div class="error-state"><mat-icon class="error-icon">error_outline</mat-icon><span>{{ err }}</span><button class="btn btn-outline" (click)="loadTrialBalance()">{{ 'Retry' | translate }}</button></div>
+    } @else if (lineItems().length === 0) {
+      <div class="empty-state"><mat-icon class="empty-icon">nightlight</mat-icon><p>{{ 'No trial balance data for this date' | translate }}</p></div>
+    } @else {
+      <div class="audit-section-header">
+        <h2 class="section-title">{{ 'Trial Balance' | translate }}</h2>
+        @if (summary(); as s) {
+          <span class="section-subtitle">{{ formatDate(s.businessDate) }}</span>
+        }
+      </div>
+      <div class="table-container">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th [attr.aria-sort]="ariaSort('category')">
+                <button type="button" class="th-sort-btn" (click)="onSort('category')">{{ 'Category' | translate }} <mat-icon class="sort-indicator">{{ sortIcon('category') }}</mat-icon></button>
+              </th>
+              <th>{{ 'Charge Code' | translate }}</th>
+              <th class="col-right" [attr.aria-sort]="ariaSort('debit_total')">
+                <button type="button" class="th-sort-btn" (click)="onSort('debit_total')">{{ 'Debits' | translate }} <mat-icon class="sort-indicator">{{ sortIcon('debit_total') }}</mat-icon></button>
+              </th>
+              <th class="col-right" [attr.aria-sort]="ariaSort('credit_total')">
+                <button type="button" class="th-sort-btn" (click)="onSort('credit_total')">{{ 'Credits' | translate }} <mat-icon class="sort-indicator">{{ sortIcon('credit_total') }}</mat-icon></button>
+              </th>
+              <th class="col-right" [attr.aria-sort]="ariaSort('net')">
+                <button type="button" class="th-sort-btn" (click)="onSort('net')">{{ 'Net' | translate }} <mat-icon class="sort-indicator">{{ sortIcon('net') }}</mat-icon></button>
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (item of sortedLineItems(); track item.category + (item.charge_code ?? '')) {
+              <tr>
+                <td><span class="category-label">{{ item.category }}</span></td>
+                <td>
+                  @if (item.charge_code) {
+                    <span class="ref-code">{{ item.charge_code }}</span>
+                  } @else {
+                    <span class="text-muted">—</span>
+                  }
+                </td>
+                <td class="col-right cell-amount">{{ formatCurrency(item.debit_total, 'USD') }}</td>
+                <td class="col-right cell-amount">{{ formatCurrency(item.credit_total, 'USD') }}</td>
+                <td class="col-right cell-amount" [ngClass]="item.net >= 0 ? 'cell-positive' : 'cell-negative'">
+                  {{ formatCurrency(item.net, 'USD') }}
+                </td>
+              </tr>
+            }
+          </tbody>
+          @if (summary(); as s) {
+            <tfoot>
+              <tr class="totals-row">
+                <td colspan="2"><strong>{{ 'Totals' | translate }}</strong></td>
+                <td class="col-right cell-amount"><strong>{{ formatCurrency(s.totalDebits, 'USD') }}</strong></td>
+                <td class="col-right cell-amount"><strong>{{ formatCurrency(s.totalCredits, 'USD') }}</strong></td>
+                <td class="col-right cell-amount" [ngClass]="s.isBalanced ? 'cell-positive' : 'cell-negative'">
+                  <strong>{{ formatCurrency(s.variance, 'USD') }}</strong>
+                </td>
+              </tr>
+            </tfoot>
+          }
+        </table>
+      </div>
+    }
+    }
+  }
+
+  <!-- ═══ BC-3: TAB: AUDIT HISTORY ═══ -->
+  @if (activeTab() === 'history') {
+    @if (historyLoading()) {
+      <div class="loading-state"><mat-spinner diameter="32"></mat-spinner><span class="text-muted">{{ 'Loading audit history...' | translate }}</span></div>
+    } @else if (auditHistory().length === 0) {
+      <div class="empty-state"><mat-icon class="empty-icon">history</mat-icon><p>{{ 'No audit history found' | translate }}</p></div>
+    } @else {
+      <div class="table-container">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th></th>
+              <th>
+                <button type="button" class="th-sort-btn" (click)="onHistorySort('business_date')">{{ 'Business Date' | translate }} <mat-icon class="sort-indicator">{{ historySortIcon('business_date') }}</mat-icon></button>
+              </th>
+              <th>{{ 'Status' | translate }}</th>
+              <th>
+                <button type="button" class="th-sort-btn" (click)="onHistorySort('started_at')">{{ 'Started' | translate }} <mat-icon class="sort-indicator">{{ historySortIcon('started_at') }}</mat-icon></button>
+              </th>
+              <th>{{ 'Duration' | translate }}</th>
+              <th>{{ 'Steps' | translate }}</th>
+              <th>{{ 'Initiated By' | translate }}</th>
+              <th class="col-right">{{ 'Revenue' | translate }}</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (run of sortedHistory(); track run.audit_run_id) {
+              <tr class="history-row" [class.expanded]="expandedRunId() === run.audit_run_id" (click)="toggleRunDetail(run.audit_run_id)">
+                <td class="expand-cell">
+                  <mat-icon class="expand-icon" [class.rotated]="expandedRunId() === run.audit_run_id">expand_more</mat-icon>
+                </td>
+                <td>{{ formatDate(run.business_date) }}</td>
+                <td><span [class]="statusBadgeClass(run.audit_status)">{{ run.audit_status_display }}</span></td>
+                <td>{{ formatDate(run.started_at) }}</td>
+                <td>{{ formatDuration(run.duration_seconds) }}</td>
+                <td>
+                  <span class="steps-summary">{{ run.steps_completed }}/{{ run.total_steps }}</span>
+                  @if (run.steps_failed > 0) {
+                    <span class="badge badge-danger badge-sm">{{ run.steps_failed }} {{ 'failed' | translate }}</span>
+                  }
+                </td>
+                <td>{{ run.initiated_by_name ?? '—' }}</td>
+                <td class="col-right cell-amount">{{ run.total_revenue ? formatCurrency(+run.total_revenue, 'USD') : '—' }}</td>
+              </tr>
+
+              <!-- ═══ BC-4: EXPANDED RUN DETAIL ═══ -->
+              @if (expandedRunId() === run.audit_run_id) {
+                <tr class="detail-row">
+                  <td colspan="8">
+                    @if (runDetailLoading()) {
+                      <div class="loading-state"><mat-spinner diameter="24"></mat-spinner><span class="text-muted">{{ 'Loading details...' | translate }}</span></div>
+                    } @else if (selectedRun(); as detail) {
+                      <div class="run-detail">
+                        <!-- KPI summary for run -->
+                        <div class="run-kpis">
+                          @if (detail.occupancy_percent) {
+                            <div class="run-kpi">
+                              <span class="run-kpi-value">{{ detail.occupancy_percent }}%</span>
+                              <span class="run-kpi-label">{{ 'Occupancy' | translate }}</span>
+                            </div>
+                          }
+                          @if (detail.adr) {
+                            <div class="run-kpi">
+                              <span class="run-kpi-value">{{ formatCurrency(+detail.adr, 'USD') }}</span>
+                              <span class="run-kpi-label">{{ 'ADR' | translate }}</span>
+                            </div>
+                          }
+                          @if (detail.revpar) {
+                            <div class="run-kpi">
+                              <span class="run-kpi-value">{{ formatCurrency(+detail.revpar, 'USD') }}</span>
+                              <span class="run-kpi-label">{{ 'RevPAR' | translate }}</span>
+                            </div>
+                          }
+                          @if (detail.total_rooms_sold != null) {
+                            <div class="run-kpi">
+                              <span class="run-kpi-value">{{ detail.total_rooms_sold }}</span>
+                              <span class="run-kpi-label">{{ 'Rooms Sold' | translate }}</span>
+                            </div>
+                          }
+                        </div>
+
+                        <!-- Step breakdown -->
+                        <div class="steps-list">
+                          @for (step of detail.steps; track step.step_number) {
+                            <div class="step-item" [ngClass]="stepStatusColor(step.step_status)">
+                              <mat-icon class="step-icon">{{ stepStatusIcon(step.step_status) }}</mat-icon>
+                              <div class="step-info">
+                                <div class="step-name">
+                                  <span>{{ 'Step' | translate }} {{ step.step_number }}: {{ step.step_name }}</span>
+                                  <span class="step-duration">{{ formatDurationMs(step.step_duration_ms) }}</span>
+                                </div>
+                                @if (step.records_processed != null) {
+                                  <div class="step-meta">
+                                    <span>{{ step.records_processed }} {{ 'processed' | translate }}</span>
+                                    @if (step.records_succeeded != null) {
+                                      <span class="text-success">{{ step.records_succeeded }} {{ 'succeeded' | translate }}</span>
+                                    }
+                                    @if (step.records_failed != null && step.records_failed > 0) {
+                                      <span class="text-danger">{{ step.records_failed }} {{ 'failed' | translate }}</span>
+                                    }
+                                    @if (step.amount_posted) {
+                                      <span>{{ formatCurrency(+step.amount_posted, 'USD') }} {{ 'posted' | translate }}</span>
+                                    }
+                                  </div>
+                                }
+                                @if (step.error_message) {
+                                  <div class="step-error">{{ step.error_message }}</div>
+                                }
+                              </div>
+                            </div>
+                          }
+                        </div>
+
+                        @if (detail.notes) {
+                          <div class="run-notes">
+                            <strong>{{ 'Notes' | translate }}:</strong> {{ detail.notes }}
+                          </div>
+                        }
+                      </div>
+                    }
+                  </td>
+                </tr>
+              }
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  }
+</div>

@@ -2,7 +2,7 @@ import { buildRouteSchema, schemaFromZod } from "@tartware/openapi";
 import { CcpaOptOutBodySchema, CommunicationPrefsBodySchema } from "@tartware/schemas";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
-
+import { exportGuestData } from "../services/gdpr-export-service.js";
 import {
   getGuestPrivacyState,
   setCcpaOptOut,
@@ -130,6 +130,46 @@ export const registerPrivacyRoutes = (app: FastifyInstance): void => {
       return reply.status(200).send({
         guest_id: guestId,
         communication_preferences: body.preferences,
+      });
+    },
+  );
+
+  /**
+   * GET /v1/guests/:guestId/gdpr-export
+   * GDPR Article 15 / Article 20: Subject Access Request — export all guest data.
+   */
+  app.get<{
+    Params: { guestId: string };
+    Querystring: { tenant_id: string };
+  }>(
+    "/v1/guests/:guestId/gdpr-export",
+    {
+      preHandler: app.withTenantScope({
+        resolveTenantId: (request) => (request.query as { tenant_id: string }).tenant_id,
+        minRole: "MANAGER",
+        requiredModules: "core",
+      }),
+      schema: buildRouteSchema({
+        tag: PRIVACY_TAG,
+        summary: "GDPR Subject Access Request — Export guest data",
+        description:
+          "Returns all personal data held for a guest (profile, reservations, transactions, communications) in JSON format per GDPR Art. 15/20",
+        params: GuestIdParamJsonSchema,
+        querystring: TenantQueryJsonSchema,
+      }),
+    },
+    async (request, reply) => {
+      const { guestId } = GuestIdParamSchema.parse(request.params);
+      const { tenant_id } = TenantQuerySchema.parse(request.query);
+
+      const exportData = await exportGuestData({ guestId, tenantId: tenant_id });
+      if (!exportData) return reply.notFound("Guest not found");
+
+      return reply.status(200).send({
+        export_date: new Date().toISOString(),
+        format: "JSON",
+        subject_id: guestId,
+        ...exportData,
       });
     },
   );
