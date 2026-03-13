@@ -1,0 +1,152 @@
+###############################################################################
+# Guest Portal API Tests
+#
+# End-to-end test flow for the guest-facing self-service portal.
+# These endpoints do NOT require JWT auth — they use confirmation codes.
+#
+# Routes are proxied via API Gateway → guest-experience-service (port 3065).
+#
+# Test flow:
+#   1. Search available rooms
+#   2. Create a booking
+#   3. Look up the booking by confirmation code
+#   4. Start mobile check-in
+#   5. Complete mobile check-in
+###############################################################################
+
+@baseUrl = http://localhost:8080
+@tenantId = 11111111-1111-1111-1111-111111111111
+@propertyId = 22222222-2222-2222-2222-222222222222
+@roomTypeId = 44444444-4444-4444-4444-444444444444
+
+# --- Dynamic values (populate from responses) ---
+# @confirmationCode =
+# @reservationId =
+# @checkinId =
+
+###############################################################################
+# 1. AVAILABILITY SEARCH
+###############################################################################
+
+### Search available rooms — 2 adults, no children
+# @name search
+GET {{baseUrl}}/v1/self-service/search?tenant_id={{tenantId}}&property_id={{propertyId}}&check_in_date=2026-06-01&check_out_date=2026-06-03&adults=2&children=0
+
+### Search available rooms — family with children
+# @name searchFamily
+GET {{baseUrl}}/v1/self-service/search?tenant_id={{tenantId}}&property_id={{propertyId}}&check_in_date=2026-06-10&check_out_date=2026-06-15&adults=2&children=2
+
+### Search with single occupancy
+# @name searchSingle
+GET {{baseUrl}}/v1/self-service/search?tenant_id={{tenantId}}&property_id={{propertyId}}&check_in_date=2026-07-01&check_out_date=2026-07-02&adults=1&children=0
+
+###############################################################################
+# 2. CREATE BOOKING
+###############################################################################
+
+### Book a room
+# @name book
+POST {{baseUrl}}/v1/self-service/book
+Content-Type: application/json
+
+{
+  "tenant_id": "{{tenantId}}",
+  "property_id": "{{propertyId}}",
+  "guest_email": "portal.test@example.com",
+  "guest_first_name": "Portal",
+  "guest_last_name": "TestGuest",
+  "guest_phone": "+1-555-0199",
+  "room_type_id": "{{roomTypeId}}",
+  "check_in_date": "2026-06-01",
+  "check_out_date": "2026-06-03",
+  "adults": 2,
+  "children": 0,
+  "payment_token": "tok_test_visa_4242",
+  "special_requests": "High floor, quiet room",
+  "idempotency_key": "portal-test-001"
+}
+
+### Book without payment token (no deposit)
+# @name bookNoPay
+POST {{baseUrl}}/v1/self-service/book
+Content-Type: application/json
+
+{
+  "tenant_id": "{{tenantId}}",
+  "property_id": "{{propertyId}}",
+  "guest_email": "nopay.test@example.com",
+  "guest_first_name": "NoPay",
+  "guest_last_name": "Guest",
+  "room_type_id": "{{roomTypeId}}",
+  "check_in_date": "2026-07-01",
+  "check_out_date": "2026-07-03",
+  "adults": 1,
+  "children": 0,
+  "idempotency_key": "portal-test-002"
+}
+
+###############################################################################
+# 3. BOOKING LOOKUP
+###############################################################################
+
+### Look up booking by confirmation code (replace with actual code from book response)
+# @name lookup
+GET {{baseUrl}}/v1/self-service/booking/{{confirmationCode}}
+
+###############################################################################
+# 4. MOBILE CHECK-IN
+###############################################################################
+
+### Start mobile check-in
+# @name startCheckin
+POST {{baseUrl}}/v1/self-service/check-in/start
+Content-Type: application/json
+
+{
+  "tenant_id": "{{tenantId}}",
+  "confirmation_code": "{{confirmationCode}}",
+  "guest_email": "portal.test@example.com"
+}
+
+### Complete mobile check-in
+# @name completeCheckin
+POST {{baseUrl}}/v1/self-service/check-in/{{checkinId}}/complete
+Content-Type: application/json
+
+{
+  "tenant_id": "{{tenantId}}",
+  "identity_verified": true,
+  "terms_accepted": true,
+  "digital_signature": "data:image/png;base64,iVBORw0KGgo..."
+}
+
+### Get check-in status
+# @name checkinStatus
+GET {{baseUrl}}/v1/self-service/check-in/{{checkinId}}?tenant_id={{tenantId}}
+
+###############################################################################
+# 5. SELF-SERVICE CHECKOUT
+###############################################################################
+
+### Initiate express checkout
+# @name checkout
+POST {{baseUrl}}/v1/self-service/checkout
+Content-Type: application/json
+
+{
+  "confirmation_code": "{{confirmationCode}}",
+  "express": true,
+  "notes": "Testing express checkout via portal"
+}
+
+### Get folio summary before checkout
+# @name folioSummary
+GET {{baseUrl}}/v1/self-service/checkout/folio?confirmation_code={{confirmationCode}}
+
+###############################################################################
+# 6. REGISTRATION CARD
+###############################################################################
+
+### Get registration card
+# @name regCard
+GET {{baseUrl}}/v1/self-service/registration-card/{{reservationId}}?tenant_id={{tenantId}}

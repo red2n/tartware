@@ -1,6 +1,5 @@
-import { CheckoutStartBodySchema } from "@tartware/schemas";
+import { CheckoutPreviewQuerySchema, CheckoutStartBodySchema } from "@tartware/schemas";
 import type { FastifyInstance } from "fastify";
-import { z } from "zod";
 import {
   CheckoutServiceError,
   initiateSelfServiceCheckout,
@@ -91,7 +90,7 @@ export const registerCheckoutRoutes = (app: FastifyInstance): void => {
       },
     },
     async (request, reply) => {
-      const queryParams = z.object({ confirmation_code: z.string().min(1) }).parse(request.query);
+      const queryParams = CheckoutPreviewQuerySchema.parse(request.query);
 
       const reservation = await lookupCheckedInReservation(queryParams.confirmation_code);
       if (!reservation) {

@@ -8,7 +8,8 @@ import { MatButtonModule } from "@angular/material/button";
 import { MatCardModule } from "@angular/material/card";
 import { MatIconModule } from "@angular/material/icon";
 import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
-import { GuestApiService, type BookingRequest } from "../../services/guest-api.service";
+import type { GuestBookingBody } from "@tartware/schemas";
+import { GuestApiService } from "../../services/guest-api.service";
 
 @Component({
 	selector: "gp-booking",
@@ -133,7 +134,7 @@ export class BookingPage implements OnInit {
 		this.loading.set(true);
 		this.error.set("");
 		try {
-			const body: BookingRequest = {
+			const body: GuestBookingBody = {
 				tenant_id: portalConfig.tenantId,
 				property_id: portalConfig.propertyId,
 				guest_first_name: this.firstName,
@@ -144,7 +145,7 @@ export class BookingPage implements OnInit {
 				check_in_date: this.checkIn(),
 				check_out_date: this.checkOut(),
 				adults: this.adults,
-				children: this.children || undefined,
+				children: this.children || 0,
 				special_requests: this.specialRequests || undefined,
 				idempotency_key: crypto.randomUUID(),
 			};

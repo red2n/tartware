@@ -798,9 +798,6 @@ importers:
       stripe:
         specifier: ^20.4.1
         version: 20.4.1(@types/node@20.19.33)
-      zod:
-        specifier: ^3.23.8
-        version: 3.25.76
     devDependencies:
       '@biomejs/biome':
         specifier: ^2.2.5
@@ -1809,6 +1806,9 @@ importers:
       '@angular/router':
         specifier: ^21.1.0
         version: 21.1.5(@angular/common@21.1.5(@angular/core@21.1.5(@angular/compiler@21.1.5)(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@21.1.5(@angular/compiler@21.1.5)(rxjs@7.8.2)(zone.js@0.15.1))(@angular/platform-browser@21.1.5(@angular/animations@21.1.5(@angular/core@21.1.5(@angular/compiler@21.1.5)(rxjs@7.8.2)(zone.js@0.15.1)))(@angular/common@21.1.5(@angular/core@21.1.5(@angular/compiler@21.1.5)(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@21.1.5(@angular/compiler@21.1.5)(rxjs@7.8.2)(zone.js@0.15.1)))(rxjs@7.8.2)
+      '@tartware/schemas':
+        specifier: workspace:^
+        version: link:../../schema
       rxjs:
         specifier: 7.8.2
         version: 7.8.2

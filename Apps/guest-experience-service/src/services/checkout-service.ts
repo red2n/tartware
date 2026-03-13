@@ -49,7 +49,7 @@ export async function lookupCheckedInReservation(confirmationCode: string): Prom
          AND COALESCE(is_deleted, false) = false
        ORDER BY created_at DESC LIMIT 1
      ) f ON true
-     WHERE r.confirmation_code = $1
+     WHERE r.confirmation_number = $1
        AND r.status = 'CHECKED_IN'
        AND r.is_deleted = false
      LIMIT 1`,

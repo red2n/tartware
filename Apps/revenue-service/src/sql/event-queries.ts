@@ -14,17 +14,16 @@
 export const DEMAND_CALENDAR_INCREMENT_OTB_SQL = `
   INSERT INTO public.demand_calendar (
     tenant_id, property_id, calendar_date, day_of_week,
-    rooms_reserved, updated_by, updated_at
+    demand_level, rooms_available, rooms_reserved, updated_at
   )
   VALUES (
     $1::uuid, $2::uuid, $3::date,
-    EXTRACT(DOW FROM $3::date)::int,
-    1, $4::uuid, CURRENT_TIMESTAMP
+    trim(to_char($3::date, 'Day')),
+    'moderate', 0, 1, CURRENT_TIMESTAMP
   )
   ON CONFLICT (property_id, calendar_date)
   DO UPDATE SET
     rooms_reserved = COALESCE(demand_calendar.rooms_reserved, 0) + 1,
-    updated_by = EXCLUDED.updated_by,
     updated_at = CURRENT_TIMESTAMP
 `;
 
@@ -36,7 +35,6 @@ export const DEMAND_CALENDAR_DECREMENT_OTB_SQL = `
   UPDATE public.demand_calendar
   SET
     rooms_reserved = GREATEST(COALESCE(rooms_reserved, 0) - 1, 0),
-    updated_by = $4::uuid,
     updated_at = CURRENT_TIMESTAMP
   WHERE property_id = $2::uuid
     AND calendar_date = $3::date
@@ -52,7 +50,6 @@ export const DEMAND_CALENDAR_CHECKOUT_SQL = `
   SET
     rooms_occupied = COALESCE(rooms_occupied, 0) + 1,
     rooms_reserved = GREATEST(COALESCE(rooms_reserved, 0) - 1, 0),
-    updated_by = $4::uuid,
     updated_at = CURRENT_TIMESTAMP
   WHERE property_id = $2::uuid
     AND calendar_date = $3::date

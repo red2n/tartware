@@ -4,7 +4,8 @@ import { MatCardModule } from "@angular/material/card";
 import { MatIconModule } from "@angular/material/icon";
 import { MatButtonModule } from "@angular/material/button";
 import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
-import { GuestApiService, type BookingDetail } from "../../services/guest-api.service";
+import type { BookingLookupResponse } from "@tartware/schemas";
+import { GuestApiService } from "../../services/guest-api.service";
 
 @Component({
 	selector: "gp-confirmation",
@@ -65,7 +66,7 @@ export class ConfirmationPage implements OnInit {
 	private readonly api = new GuestApiService();
 
 	loading = signal(true);
-	booking = signal<BookingDetail | null>(null);
+	booking = signal<BookingLookupResponse | null>(null);
 
 	async ngOnInit() {
 		const code = this.route.snapshot.paramMap.get("confirmationCode") ?? "";

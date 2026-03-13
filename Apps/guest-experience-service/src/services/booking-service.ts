@@ -1,31 +1,27 @@
 import { randomUUID } from "node:crypto";
+import type {
+  AuthorizationResult,
+  AvailabilityResponse,
+  AvailableRoomType,
+  BookingLookupResult,
+  BookingResult,
+  CaptureResult,
+  CreateBookingInput,
+  RefundResult,
+  SearchAvailabilityInput,
+} from "@tartware/schemas";
+
 import { config } from "../config.js";
 import { publishCommand } from "../kafka/producer.js";
 import { query } from "../lib/db.js";
+import { internalGet } from "../lib/internal-api.js";
 import { appLogger } from "../lib/logger.js";
+
+export type { AuthorizationResult, CaptureResult, RefundResult };
 
 const logger = appLogger.child({ module: "booking-service" });
 
 // ─── PaymentGateway Interface ──────────────────────────────────────
-
-export type AuthorizationResult = {
-  authorizationId: string;
-  status: "authorized" | "declined";
-  amount: number;
-  currency: string;
-};
-
-export type CaptureResult = {
-  paymentId: string;
-  status: "captured" | "failed";
-  amount: number;
-};
-
-export type RefundResult = {
-  refundId: string;
-  status: "refunded" | "failed";
-  amount: number;
-};
 
 /**
  * Payment gateway abstraction. Real implementations connect to Stripe, Adyen, etc.
@@ -81,117 +77,56 @@ export class StubPaymentGateway implements PaymentGateway {
 
 // ─── Availability Search ──────────────────────────────────────
 
-const AVAILABILITY_SEARCH_SQL = `
-  SELECT
-    rt.id AS room_type_id,
-    rt.name AS room_type_name,
-    rt.description,
-    rt.max_occupancy,
-    rt.base_rate,
-    COUNT(r.id) AS available_count
-  FROM room_types rt
-  JOIN rooms r ON r.room_type_id = rt.id
-    AND r.property_id = $2
-    AND r.status = 'AVAILABLE'
-    AND r.is_deleted = FALSE
-    AND r.id NOT IN (
-      SELECT ri.id FROM rooms ri
-      JOIN reservations res ON res.room_number = ri.room_number
-        AND res.property_id = ri.property_id
-      WHERE res.property_id = $2
-        AND res.status IN ('CONFIRMED', 'CHECKED_IN', 'GUARANTEED')
-        AND res.check_in_date < $4
-        AND res.check_out_date > $3
-        AND res.room_number IS NOT NULL
-    )
-  WHERE rt.property_id = $2
-    AND rt.tenant_id = $1
-    AND rt.is_deleted = FALSE
-  GROUP BY rt.id, rt.name, rt.description, rt.max_occupancy, rt.base_rate
-  HAVING COUNT(r.id) > 0
-  ORDER BY rt.base_rate ASC
-`;
-
-type AvailabilityRow = {
-  room_type_id: string;
-  room_type_name: string;
-  description: string | null;
-  max_occupancy: number;
-  base_rate: string;
-  available_count: string;
-};
-
-export type SearchAvailabilityInput = {
-  tenantId: string;
-  propertyId: string;
-  checkInDate: string;
-  checkOutDate: string;
-  adults?: number;
-  children?: number;
-};
-
-export type AvailableRoomType = {
-  roomTypeId: string;
-  roomTypeName: string;
-  description: string | null;
-  maxOccupancy: number;
-  baseRate: number;
-  availableCount: number;
-};
-
 /**
  * Search for available room types for given dates.
+ * Delegates to rooms-service and aggregates individual rooms by room type.
  */
 export const searchAvailability = async (
   input: SearchAvailabilityInput,
 ): Promise<AvailableRoomType[]> => {
-  const { rows } = await query<AvailabilityRow>(AVAILABILITY_SEARCH_SQL, [
-    input.tenantId,
-    input.propertyId,
-    input.checkInDate,
-    input.checkOutDate,
-  ]);
+  const totalOccupancy = (input.adults ?? 1) + (input.children ?? 0);
 
-  const minOccupancy = (input.adults ?? 1) + (input.children ?? 0);
+  const response = await internalGet<AvailabilityResponse>(
+    config.internalServices.roomsServiceUrl,
+    "/v1/rooms/availability",
+    {
+      tenant_id: input.tenantId,
+      property_id: input.propertyId,
+      check_in_date: input.checkInDate,
+      check_out_date: input.checkOutDate,
+      adults: totalOccupancy,
+      limit: 200,
+    },
+  );
 
-  return rows
-    .filter((row) => row.max_occupancy >= minOccupancy)
-    .map((row) => ({
-      roomTypeId: row.room_type_id,
-      roomTypeName: row.room_type_name,
-      description: row.description,
-      maxOccupancy: row.max_occupancy,
-      baseRate: Number(row.base_rate),
-      availableCount: Number(row.available_count),
-    }));
+  // Aggregate individual rooms by room type
+  const typeMap = new Map<string, AvailableRoomType>();
+
+  for (const room of response.available_rooms) {
+    const existing = typeMap.get(room.room_type_id);
+    if (existing) {
+      existing.availableCount++;
+      if (room.base_rate < existing.baseRate) {
+        existing.baseRate = room.base_rate;
+      }
+    } else {
+      typeMap.set(room.room_type_id, {
+        roomTypeId: room.room_type_id,
+        roomTypeName: room.room_type_name,
+        description: null,
+        maxOccupancy: room.max_occupancy,
+        baseRate: room.base_rate,
+        currency: room.currency,
+        amenities: room.features,
+        availableCount: 1,
+      });
+    }
+  }
+
+  return Array.from(typeMap.values()).sort((a, b) => a.baseRate - b.baseRate);
 };
 
 // ─── Booking Orchestration ──────────────────────────────────────
-
-export type CreateBookingInput = {
-  tenantId: string;
-  propertyId: string;
-  guestEmail: string;
-  guestFirstName: string;
-  guestLastName: string;
-  guestPhone?: string;
-  roomTypeId: string;
-  checkInDate: string;
-  checkOutDate: string;
-  adults: number;
-  children?: number;
-  paymentToken?: string;
-  specialRequests?: string;
-  idempotencyKey?: string;
-};
-
-export type BookingResult = {
-  reservationId: string;
-  confirmationCode: string;
-  status: string;
-  guestId: string;
-  paymentAuthorization?: AuthorizationResult;
-};
 
 /**
  * Orchestrate a direct booking:
@@ -209,12 +144,35 @@ export const createBooking = async (
   // 1. Find or create guest
   const guestId = await findOrCreateGuest(input);
 
-  // 2. Generate reservation IDs
+  // 2. Verify availability and look up rate for total_amount
+  const availableTypes = await searchAvailability({
+    tenantId: input.tenantId,
+    propertyId: input.propertyId,
+    checkInDate: input.checkInDate,
+    checkOutDate: input.checkOutDate,
+    adults: input.adults,
+    children: input.children,
+  });
+  const selectedType = availableTypes.find((r) => r.roomTypeId === input.roomTypeId);
+  if (!selectedType) {
+    throw new Error(`Room type ${input.roomTypeId} is not available for the selected dates`);
+  }
+  const nights = Math.max(
+    1,
+    Math.ceil(
+      (new Date(input.checkOutDate).getTime() - new Date(input.checkInDate).getTime()) /
+        (1000 * 60 * 60 * 24),
+    ),
+  );
+  const totalAmount = selectedType.baseRate * nights;
+
+  // 3. Generate reservation IDs
   const reservationId = randomUUID();
-  const confirmationCode = generateConfirmationCode();
+  // Must match the format used by reservation-event-handler.ts
+  const confirmationCode = `TW-${reservationId.slice(0, 8).toUpperCase()}`;
   const commandId = randomUUID();
 
-  // 3. Submit reservation.create command via Kafka
+  // 4. Submit reservation.create command via Kafka
   await publishCommand({
     key: reservationId,
     value: JSON.stringify({
@@ -237,14 +195,16 @@ export const createBooking = async (
         adults: input.adults,
         children: input.children ?? 0,
         confirmation_code: confirmationCode,
-        source: "direct_booking",
+        source: "WEBSITE",
+        total_amount: totalAmount,
+        currency: selectedType.currency,
         special_requests: input.specialRequests ?? null,
       },
     }),
     topic: config.commandCenter.topic,
   });
 
-  // 4. Optionally authorize payment
+  // 5. Optionally authorize payment
   let paymentAuth: AuthorizationResult | undefined;
   if (input.paymentToken) {
     try {
@@ -257,7 +217,7 @@ export const createBooking = async (
     }
   }
 
-  // 5. Emit confirmation notification command
+  // 6. Emit confirmation notification command
   await publishCommand({
     key: reservationId,
     value: JSON.stringify({
@@ -269,14 +229,12 @@ export const createBooking = async (
         timestamp: new Date().toISOString(),
       },
       payload: {
-        tenant_id: input.tenantId,
-        template_name: "BOOKING_CONFIRMED",
-        channel: "email",
-        recipient: {
-          guest_id: guestId,
-          email: input.guestEmail,
-          name: `${input.guestFirstName} ${input.guestLastName}`,
-        },
+        guest_id: guestId,
+        property_id: input.propertyId,
+        template_code: "BOOKING_CONFIRMED",
+        reservation_id: reservationId,
+        recipient_name: `${input.guestFirstName} ${input.guestLastName}`,
+        recipient_email: input.guestEmail,
         context: {
           confirmation_code: confirmationCode,
           check_in_date: input.checkInDate,
@@ -303,55 +261,42 @@ export const createBooking = async (
 const BOOKING_LOOKUP_SQL = `
   SELECT
     r.id, r.tenant_id, r.property_id, r.guest_id,
-    r.confirmation_code, r.status,
+    r.confirmation_number, r.status,
     r.check_in_date, r.check_out_date,
-    r.room_id, r.adults, r.children,
+    r.room_number, r.number_of_adults, r.number_of_children,
     g.first_name, g.last_name, g.email,
-    p.name AS property_name
+    p.property_name
   FROM reservations r
   JOIN guests g ON g.id = r.guest_id
   JOIN properties p ON p.id = r.property_id
-  WHERE r.confirmation_code = $1
+  WHERE r.confirmation_number = $1
 `;
-
-type BookingLookupRow = {
-  id: string;
-  tenant_id: string;
-  property_id: string;
-  guest_id: string;
-  confirmation_code: string;
-  status: string;
-  check_in_date: string;
-  check_out_date: string;
-  room_id: string | null;
-  adults: number;
-  children: number;
-  first_name: string;
-  last_name: string;
-  email: string;
-  property_name: string;
-};
 
 /**
  * Look up a booking by confirmation code (guest-facing, no JWT).
+ * Retries with short delays to handle async Kafka processing lag.
  */
-export const lookupBooking = async (confirmationCode: string): Promise<BookingLookupRow | null> => {
-  const { rows } = await query<BookingLookupRow>(BOOKING_LOOKUP_SQL, [confirmationCode]);
-  return rows[0] ?? null;
+export const lookupBooking = async (
+  confirmationCode: string,
+): Promise<BookingLookupResult | null> => {
+  const maxAttempts = 5;
+  const delayMs = 500;
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    const { rows } = await query<BookingLookupResult>(BOOKING_LOOKUP_SQL, [confirmationCode]);
+    if (rows[0]) return rows[0];
+    if (attempt < maxAttempts) {
+      await new Promise((resolve) => setTimeout(resolve, delayMs));
+    }
+  }
+  return null;
 };
 
 // ─── Helpers ──────────────────────────────────────
 
-const FIND_GUEST_SQL = `
-  SELECT id FROM guests
-  WHERE email = $1 AND tenant_id = $2
-  LIMIT 1
-`;
-
 const INSERT_GUEST_SQL = `
-  INSERT INTO guests (id, tenant_id, first_name, last_name, email, phone, source)
-  VALUES ($1, $2, $3, $4, $5, $6, 'online_booking')
-  ON CONFLICT (email, tenant_id) DO UPDATE SET updated_at = NOW()
+  INSERT INTO guests (id, tenant_id, first_name, last_name, email, phone)
+  VALUES ($1, $2, $3, $4, $5, $6)
+  ON CONFLICT (tenant_id, email) WHERE deleted_at IS NULL DO UPDATE SET updated_at = NOW(), version = guests.version + 1
   RETURNING id
 `;
 
@@ -362,16 +307,25 @@ const findOrCreateGuest = async (input: {
   guestLastName: string;
   guestPhone?: string;
 }): Promise<string> => {
-  // Try to find existing guest
-  const { rows: existing } = await query<{ id: string }>(FIND_GUEST_SQL, [
-    input.guestEmail,
-    input.tenantId,
-  ]);
-  if (existing.length > 0 && existing[0]) {
-    return existing[0].id;
+  // Look up existing guest via guests-service
+  try {
+    const guests = await internalGet<Array<{ id: string }>>(
+      config.internalServices.guestsServiceUrl,
+      "/v1/guests",
+      {
+        tenant_id: input.tenantId,
+        email: input.guestEmail,
+        limit: 1,
+      },
+    );
+    if (guests.length > 0 && guests[0]) {
+      return guests[0].id;
+    }
+  } catch (error) {
+    logger.warn({ err: error }, "guest lookup via guests-service failed, falling back to DB");
   }
 
-  // Create new guest
+  // Create new guest (no sync create endpoint in guests-service)
   const guestId = randomUUID();
   const { rows } = await query<{ id: string }>(INSERT_GUEST_SQL, [
     guestId,
@@ -383,15 +337,4 @@ const findOrCreateGuest = async (input: {
   ]);
 
   return rows[0]?.id ?? guestId;
-};
-
-const generateConfirmationCode = (): string => {
-  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-  let code = "";
-  const bytes = new Uint8Array(8);
-  globalThis.crypto.getRandomValues(bytes);
-  for (const byte of bytes) {
-    code += chars[byte % chars.length];
-  }
-  return code;
 };

@@ -29,6 +29,7 @@ const ReservationStatusEnum = z.enum([
 ]);
 
 export const ReservationCreateCommandSchema = z.object({
+	reservation_id: z.string().uuid().optional(),
 	property_id: z.string().uuid(),
 	guest_id: z.string().uuid(),
 	room_type_id: z.string().uuid(),

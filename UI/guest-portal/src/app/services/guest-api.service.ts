@@ -1,4 +1,10 @@
 import { Injectable } from "@angular/core";
+import type {
+	AvailableRoomType,
+	BookingLookupResponse,
+	BookingResult,
+	GuestBookingBody,
+} from "@tartware/schemas";
 
 /**
  * Lightweight API client for the guest self-service endpoints.
@@ -15,7 +21,7 @@ export class GuestApiService {
 		check_out_date: string;
 		adults: number;
 		children?: number;
-	}): Promise<{ roomTypes: RoomTypeResult[] }> {
+	}): Promise<{ roomTypes: AvailableRoomType[] }> {
 		const qs = new URLSearchParams({
 			tenant_id: params.tenant_id,
 			property_id: params.property_id,
@@ -30,7 +36,7 @@ export class GuestApiService {
 		return res.json();
 	}
 
-	async createBooking(body: BookingRequest): Promise<BookingResponse> {
+	async createBooking(body: GuestBookingBody): Promise<BookingResult> {
 		const res = await fetch(`${this.baseUrl}/book`, {
 			method: "POST",
 			headers: { "Content-Type": "application/json" },
@@ -43,7 +49,7 @@ export class GuestApiService {
 		return res.json();
 	}
 
-	async lookupBooking(confirmationCode: string): Promise<BookingDetail | null> {
+	async lookupBooking(confirmationCode: string): Promise<BookingLookupResponse | null> {
 		const res = await fetch(`${this.baseUrl}/booking/${encodeURIComponent(confirmationCode)}`);
 		if (res.status === 404) return null;
 		if (!res.ok) throw new Error(`Lookup failed: ${res.statusText}`);
@@ -84,54 +90,7 @@ export class GuestApiService {
 	}
 }
 
-// ── View-model types (UI-only, not shared with backend) ──
-
-export interface RoomTypeResult {
-	room_type_id: string;
-	name: string;
-	description: string;
-	base_rate: number;
-	currency: string;
-	max_occupancy: number;
-	amenities: string[];
-	available_count: number;
-}
-
-export interface BookingRequest {
-	tenant_id: string;
-	property_id: string;
-	guest_email: string;
-	guest_first_name: string;
-	guest_last_name: string;
-	guest_phone?: string;
-	room_type_id: string;
-	check_in_date: string;
-	check_out_date: string;
-	adults: number;
-	children?: number;
-	payment_token?: string;
-	special_requests?: string;
-	idempotency_key?: string;
-}
-
-export interface BookingResponse {
-	reservationId: string;
-	confirmationCode: string;
-	status: string;
-	guestEmail: string;
-}
-
-export interface BookingDetail {
-	reservationId: string;
-	confirmationCode: string;
-	status: string;
-	propertyName: string;
-	guestName: string;
-	checkInDate: string;
-	checkOutDate: string;
-	adults: number;
-	children: number;
-}
+// ── Checkin view-model types (UI display shapes — not yet aligned with backend) ──
 
 export interface CheckinStartResult {
 	checkinId: string;

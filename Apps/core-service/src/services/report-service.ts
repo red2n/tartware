@@ -975,7 +975,7 @@ export const getVipArrivalsReport = async (params: {
      WHERE r.tenant_id = $1::uuid AND ($2::uuid IS NULL OR r.property_id = $2::uuid)
        AND r.check_in_date >= $3::date AND r.check_in_date <= $4::date
        AND r.status IN ('CONFIRMED', 'CHECKED_IN')
-       AND g.vip_status = true`,
+       AND g.vip_status != 'NONE'`,
     baseParams,
   );
 
@@ -1004,7 +1004,7 @@ export const getVipArrivalsReport = async (params: {
      WHERE r.tenant_id = $1::uuid AND ($2::uuid IS NULL OR r.property_id = $2::uuid)
        AND r.check_in_date >= $3::date AND r.check_in_date <= $4::date
        AND r.status IN ('CONFIRMED', 'CHECKED_IN')
-       AND g.vip_status = true
+       AND g.vip_status != 'NONE'
      ORDER BY r.check_in_date, g.last_name
      LIMIT $5 OFFSET $6`,
     [...baseParams, limit, offset],
@@ -1041,7 +1041,7 @@ export const getGuestStatisticsReport = async (params: {
     vip: string;
   }>(
     `SELECT COUNT(*)::text AS total,
-            COUNT(*) FILTER (WHERE vip_status = true)::text AS vip
+            COUNT(*) FILTER (WHERE vip_status != 'NONE')::text AS vip
      FROM guests WHERE tenant_id = $1::uuid AND is_deleted = false`,
     [tenantId],
   );

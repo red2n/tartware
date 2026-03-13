@@ -7,7 +7,8 @@ import { MatButtonModule } from "@angular/material/button";
 import { MatCardModule } from "@angular/material/card";
 import { MatIconModule } from "@angular/material/icon";
 import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
-import { GuestApiService, type BookingDetail } from "../../services/guest-api.service";
+import type { BookingLookupResponse } from "@tartware/schemas";
+import { GuestApiService } from "../../services/guest-api.service";
 
 @Component({
 	selector: "gp-lookup",
@@ -85,7 +86,7 @@ export class LookupPage {
 	loading = signal(false);
 	notFound = signal(false);
 	searched = signal("");
-	booking = signal<BookingDetail | null>(null);
+	booking = signal<BookingLookupResponse | null>(null);
 
 	constructor(router: Router) {
 		this.router = router;

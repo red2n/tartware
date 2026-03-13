@@ -10,7 +10,8 @@ import { MatButtonModule } from "@angular/material/button";
 import { MatCardModule } from "@angular/material/card";
 import { MatIconModule } from "@angular/material/icon";
 import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
-import { GuestApiService, type RoomTypeResult } from "../../services/guest-api.service";
+import type { AvailableRoomType } from "@tartware/schemas";
+import { GuestApiService } from "../../services/guest-api.service";
 
 @Component({
 	selector: "gp-search",
@@ -72,12 +73,12 @@ import { GuestApiService, type RoomTypeResult } from "../../services/guest-api.s
 			<section class="results">
 				<h3>Available Rooms</h3>
 				<div class="cards">
-					@for (room of results(); track room.room_type_id) {
+					@for (room of results(); track room.roomTypeId) {
 						<mat-card class="room-card">
 							<mat-card-header>
 								<mat-icon matCardAvatar>hotel</mat-icon>
-								<mat-card-title>{{ room.name }}</mat-card-title>
-								<mat-card-subtitle>Up to {{ room.max_occupancy }} guests</mat-card-subtitle>
+								<mat-card-title>{{ room.roomTypeName }}</mat-card-title>
+								<mat-card-subtitle>Up to {{ room.maxOccupancy }} guests</mat-card-subtitle>
 							</mat-card-header>
 							<mat-card-content>
 								<p>{{ room.description }}</p>
@@ -86,10 +87,10 @@ import { GuestApiService, type RoomTypeResult } from "../../services/guest-api.s
 										<span class="chip">{{ a }}</span>
 									}
 								</p>
-								<p class="availability">{{ room.available_count }} rooms left</p>
+								<p class="availability">{{ room.availableCount }} rooms left</p>
 							</mat-card-content>
 							<mat-card-actions>
-								<span class="price">{{ room.currency }} {{ room.base_rate }} / night</span>
+								<span class="price">{{ room.currency }} {{ room.baseRate }} / night</span>
 								<button mat-flat-button color="primary" (click)="selectRoom(room)">
 									Book Now
 								</button>
@@ -135,7 +136,7 @@ export class SearchPage {
 
 	loading = signal(false);
 	error = signal("");
-	results = signal<RoomTypeResult[]>([]);
+	results = signal<AvailableRoomType[]>([]);
 
 	constructor(router: Router) {
 		this.router = router;
@@ -162,15 +163,15 @@ export class SearchPage {
 		}
 	}
 
-	selectRoom(room: RoomTypeResult) {
-		this.router.navigate(["/book", room.room_type_id], {
+	selectRoom(room: AvailableRoomType) {
+		this.router.navigate(["/book", room.roomTypeId], {
 			queryParams: {
 				check_in: this.checkIn.toISOString().slice(0, 10),
 				check_out: this.checkOut.toISOString().slice(0, 10),
 				adults: this.adults,
 				children: this.children,
-				name: room.name,
-				rate: room.base_rate,
+				name: room.roomTypeName,
+				rate: room.baseRate,
 				currency: room.currency,
 			},
 		});

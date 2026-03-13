@@ -130,14 +130,14 @@ export const registerBookingRoutes = (app: FastifyInstance): void => {
 
       return reply.send({
         reservationId: booking.id,
-        confirmationCode: booking.confirmation_code,
+        confirmationCode: booking.confirmation_number,
         status: booking.status,
         propertyName: booking.property_name,
         guestName: `${booking.first_name} ${booking.last_name}`,
         checkInDate: booking.check_in_date,
         checkOutDate: booking.check_out_date,
-        adults: booking.adults,
-        children: booking.children,
+        adults: booking.number_of_adults,
+        children: booking.number_of_children,
       });
     },
   );
