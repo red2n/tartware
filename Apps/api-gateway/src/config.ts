@@ -69,6 +69,14 @@ export const gatewayConfig = {
     authMax: Number(env.API_GATEWAY_RATE_AUTH_MAX ?? 20),
     authTimeWindow: env.API_GATEWAY_RATE_AUTH_WINDOW ?? "1 minute",
   },
+  redis: {
+    host: env.REDIS_HOST ?? "127.0.0.1",
+    port: parseNumberEnv(env.REDIS_PORT, 6379),
+    password: env.REDIS_PASSWORD,
+    db: parseNumberEnv(env.REDIS_DB, 0),
+    keyPrefix: env.REDIS_KEY_PREFIX ?? "tartware:gateway:",
+    enabled: parseBooleanEnv(env.REDIS_ENABLED, true),
+  },
   logRequests: parseBooleanEnv(env.API_GATEWAY_LOG_REQUESTS, false),
 };
 export const devToolsConfig = {

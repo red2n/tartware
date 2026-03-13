@@ -2,6 +2,7 @@ import type { RateLimitPluginOptions } from "@fastify/rate-limit";
 import rateLimit from "@fastify/rate-limit";
 import { buildFastifyServer } from "@tartware/fastify-server";
 import type { FastifyPluginAsync, FastifyReply, FastifyRequest } from "fastify";
+import { Redis } from "ioredis";
 
 import { devToolsConfig, gatewayConfig } from "./config.js";
 import { registerDuploDashboard } from "./devtools/duplo-dashboard.js";
@@ -40,15 +41,40 @@ export const buildServer = () => {
   app.register(sseTokenPlugin);
   app.register(authContextPlugin);
 
+  const rateLimitOptions: RateLimitPluginOptions = {
+    max: gatewayConfig.rateLimit.max,
+    timeWindow: gatewayConfig.rateLimit.timeWindow,
+    keyGenerator: (request: FastifyRequest) =>
+      (request.headers["x-api-key"] as string | undefined) ?? request.ip ?? "anonymous",
+    ban: 0,
+  };
+
+  if (gatewayConfig.redis.enabled) {
+    const redisClient = new Redis({
+      host: gatewayConfig.redis.host,
+      port: gatewayConfig.redis.port,
+      password: gatewayConfig.redis.password,
+      db: gatewayConfig.redis.db,
+      keyPrefix: gatewayConfig.redis.keyPrefix,
+      maxRetriesPerRequest: 3,
+      lazyConnect: true,
+      enableOfflineQueue: false,
+    });
+
+    redisClient.on("error", (err: Error) => {
+      gatewayLogger.warn({ err }, "Redis rate-limit client error; falling back to in-memory");
+    });
+
+    void redisClient.connect().catch(() => {
+      gatewayLogger.warn("Redis rate-limit client failed to connect; using in-memory store");
+    });
+
+    (rateLimitOptions as RateLimitPluginOptions & { redis: unknown }).redis = redisClient;
+  }
+
   app.register(
     rateLimit as unknown as FastifyPluginAsync,
-    {
-      max: gatewayConfig.rateLimit.max,
-      timeWindow: gatewayConfig.rateLimit.timeWindow,
-      keyGenerator: (request: FastifyRequest) =>
-        (request.headers["x-api-key"] as string | undefined) ?? request.ip ?? "anonymous",
-      ban: 0,
-    } as unknown as RateLimitPluginOptions,
+    rateLimitOptions as unknown as RateLimitPluginOptions,
   );
 
   app.after(() => {
