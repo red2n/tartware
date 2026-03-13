@@ -472,3 +472,5 @@ export const createRouteTracker = (app: FastifyInstance) => {
 // (.unauthorized, .forbidden, .notFound, etc.) without needing to import sensible directly.
 export type { HttpError, HttpErrors } from "@fastify/sensible";
 export type { FastifyBaseLogger, FastifyInstance } from "fastify";
+export type { CreateHealthRoutesOptions, HealthDependency } from "./health.js";
+export { createHealthRoutes } from "./health.js";

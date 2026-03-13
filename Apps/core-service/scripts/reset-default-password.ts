@@ -13,7 +13,7 @@ const run = async (): Promise<void> => {
   console.log("🔐 Resetting user passwords to default value...");
 
   try {
-    const hashed = await bcrypt.hash(config.auth.defaultPassword, 10);
+    const hashed = await bcrypt.hash(config.auth.defaultPassword, 12);
     const result = await pool.query(
       `
         UPDATE public.users

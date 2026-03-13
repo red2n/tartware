@@ -84,7 +84,7 @@ export const commandCenterConfig = {
 
 export const availabilityGuardConfig = {
   address: process.env.AVAILABILITY_GUARD_ADDRESS ?? "localhost:4400",
-  timeoutMs: parseNumberEnv(process.env.AVAILABILITY_GUARD_TIMEOUT_MS, 1500),
+  timeoutMs: parseNumberEnv(process.env.AVAILABILITY_GUARD_TIMEOUT_MS, 5000),
   enabled: parseBooleanEnv(process.env.AVAILABILITY_GUARD_ENABLED, true),
   shadowMode: parseBooleanEnv(process.env.AVAILABILITY_GUARD_SHADOW_MODE, true),
   failOpen: parseBooleanEnv(process.env.AVAILABILITY_GUARD_FAIL_OPEN, true),

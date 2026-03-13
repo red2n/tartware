@@ -14,6 +14,7 @@ import protoLoader from "@grpc/proto-loader";
 import type { FastifyBaseLogger } from "fastify";
 
 import { config } from "../config.js";
+import { checkDatabaseHealth } from "../lib/health-checks.js";
 import type { InventoryLock } from "../repositories/lock-repository.js";
 import { lockRoom, releaseLock, releaseLocksInBulk } from "../services/lock-service.js";
 import { bulkReleaseSchema, lockRoomSchema, releaseLockSchema } from "../types/lock-types.js";
@@ -100,6 +101,9 @@ const grpcDescriptor = loadPackageDefinition(packageDefinition) as unknown as {
   availabilityguard: {
     v1: {
       AvailabilityGuard: {
+        service: Record<string, unknown>;
+      };
+      Health: {
         service: Record<string, unknown>;
       };
     };
@@ -236,6 +240,32 @@ const buildBulkReleaseHandler =
     }
   };
 
+type HealthCheckRequestMessage = {
+  service: string;
+};
+
+type HealthCheckResponseMessage = {
+  status: number;
+};
+
+type HealthHandlers = {
+  check: ReturnType<typeof buildHealthCheckHandler>;
+};
+
+const buildHealthCheckHandler =
+  (
+    logger: FastifyBaseLogger,
+  ): handleUnaryCall<HealthCheckRequestMessage, HealthCheckResponseMessage> =>
+  async (_call, callback) => {
+    try {
+      await checkDatabaseHealth();
+      callback(null, { status: 1 }); // SERVING
+    } catch (error) {
+      logger.warn({ err: error }, "Health check failed: database unreachable");
+      callback(null, { status: 2 }); // NOT_SERVING
+    }
+  };
+
 export const startGrpcServer = async (logger: FastifyBaseLogger) => {
   logger.info("Initializing Availability Guard gRPC server");
 
@@ -278,6 +308,12 @@ export const startGrpcServer = async (logger: FastifyBaseLogger) => {
     lockRoom: withGrpcAuth(buildLockRoomHandler(logger)),
     releaseRoom: withGrpcAuth(buildReleaseRoomHandler(logger)),
     bulkRelease: withGrpcAuth(buildBulkReleaseHandler(logger)),
+  });
+
+  const healthService = grpcDescriptor.availabilityguard.v1.Health
+    .service as ServiceDefinition<HealthHandlers>;
+  server.addService(healthService, {
+    check: buildHealthCheckHandler(logger),
   });
 
   const address = `${config.grpc.host}:${config.grpc.port}`;

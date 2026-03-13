@@ -115,6 +115,13 @@ const loaderOptions: protoLoader.Options = {
   oneofs: true,
 };
 
+type HealthCheckClient = Client & {
+  check(
+    request: { service: string },
+    callback: (error: ServiceError | null, response: { status: number }) => void,
+  ): void;
+};
+
 const packageDefinition = protoLoader.loadSync(PROTO_PATH, loaderOptions);
 const descriptor = loadPackageDefinition(packageDefinition) as unknown as {
   availabilityguard: {
@@ -124,6 +131,13 @@ const descriptor = loadPackageDefinition(packageDefinition) as unknown as {
           address: string,
           connectionCredentials: ReturnType<typeof credentials.createInsecure>,
         ): AvailabilityGuardGrpcClient;
+        service: unknown;
+      };
+      Health: {
+        new (
+          address: string,
+          connectionCredentials: ReturnType<typeof credentials.createInsecure>,
+        ): HealthCheckClient;
         service: unknown;
       };
     };
@@ -157,16 +171,19 @@ const callGrpc = <TMethod extends keyof GrpcMethodMap>(
     meta.set("authorization", `Bearer ${availabilityGuardConfig.grpcAuthToken}`);
   }
 
+  const deadline = Date.now() + availabilityGuardConfig.timeoutMs;
+
   return new Promise<GrpcMethodMap[TMethod][1]>((resolve, reject) => {
-    // gRPC client methods accept (request, metadata, callback) overloads at runtime
+    // gRPC client methods accept (request, metadata, options, callback) overloads at runtime
     // but the generated types only expose the 2-arg form; use unknown bridge cast.
     const handler = grpcClient[method].bind(grpcClient) as unknown as (
       grpcRequest: GrpcMethodMap[TMethod][0],
       grpcMeta: Metadata,
+      grpcOptions: { deadline: number },
       callback: (error: ServiceError | null, response: GrpcMethodMap[TMethod][1]) => void,
     ) => void;
 
-    handler(request, meta, (error: ServiceError | null, response) => {
+    handler(request, meta, { deadline }, (error: ServiceError | null, response) => {
       if (error) {
         reject(error);
         return;
@@ -332,9 +349,47 @@ export const releaseReservationHold = async (input: ReleaseReservationInput): Pr
   }
 };
 
+let healthClient: HealthCheckClient | null = null;
+
+/**
+ * Probes the Availability Guard gRPC Health service.
+ * Returns `true` if SERVING, `false` otherwise.
+ */
+export const checkGuardHealth = async (): Promise<boolean> => {
+  if (!availabilityGuardConfig.enabled) {
+    return false;
+  }
+
+  if (!healthClient) {
+    const ctor = descriptor.availabilityguard.v1.Health;
+    healthClient = new ctor(availabilityGuardConfig.address, credentials.createInsecure());
+  }
+
+  return new Promise<boolean>((resolve) => {
+    const deadline = Date.now() + 3000;
+    const handler = healthClient!.check.bind(healthClient!) as unknown as (
+      req: { service: string },
+      opts: { deadline: number },
+      cb: (error: ServiceError | null, response: { status: number }) => void,
+    ) => void;
+
+    handler({ service: "" }, { deadline }, (error, response) => {
+      if (error) {
+        resolve(false);
+        return;
+      }
+      resolve(response.status === 1); // SERVING
+    });
+  });
+};
+
 export const shutdownAvailabilityGuardClient = async (): Promise<void> => {
   if (client) {
     client.close();
     client = null;
+  }
+  if (healthClient) {
+    healthClient.close();
+    healthClient = null;
   }
 };
