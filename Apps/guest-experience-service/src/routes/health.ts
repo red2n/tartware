@@ -15,4 +15,13 @@ export const registerHealthRoutes: (app: FastifyInstance) => void = createHealth
       },
     },
   ],
+  readyExtras: {
+    kafka: {
+      activeCluster: config.kafka.activeCluster,
+      brokers: config.kafka.brokers,
+      primaryBrokers: config.kafka.primaryBrokers,
+      failoverBrokers: config.kafka.failoverBrokers,
+      topic: config.commandCenter.topic,
+    },
+  },
 });

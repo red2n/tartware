@@ -9,6 +9,8 @@ export type CreateHealthRoutesOptions = {
 	serviceName: string;
 	serviceVersion: string;
 	dependencies?: HealthDependency[];
+	/** Extra fields merged into the /ready response (e.g. kafka cluster info). */
+	readyExtras?: Record<string, unknown>;
 };
 
 /**
@@ -27,12 +29,14 @@ export function createHealthRoutes(options: CreateHealthRoutesOptions) {
 
 		app.get("/ready", async (_request: unknown, reply: FastifyReply) => {
 			const deps = options.dependencies ?? [];
+			const extras = options.readyExtras ?? {};
 
 			if (deps.length === 0) {
 				return {
 					status: "ready",
 					service: options.serviceName,
 					version: options.serviceVersion,
+					...extras,
 				};
 			}
 
@@ -60,6 +64,7 @@ export function createHealthRoutes(options: CreateHealthRoutesOptions) {
 				service: options.serviceName,
 				version: options.serviceVersion,
 				dependencies: checks,
+				...extras,
 			};
 
 			if (!allHealthy) {

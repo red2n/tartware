@@ -8,6 +8,11 @@ import {
   vi,
 } from "vitest";
 
+// Disable Redis before config loads so rate-limiter uses in-memory store
+vi.hoisted(() => {
+  process.env.REDIS_ENABLED = "false";
+});
+
 import { buildServer } from "../src/server.js";
 import { kafkaConfig, serviceTargets } from "../src/config.js";
 
