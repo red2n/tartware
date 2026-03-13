@@ -33,7 +33,7 @@ CREATE INDEX IF NOT EXISTS idx_guests_passport ON guests(passport_number) WHERE 
 -- Loyalty program
 CREATE INDEX IF NOT EXISTS idx_guests_loyalty_tier ON guests(loyalty_tier) WHERE deleted_at IS NULL;
 CREATE INDEX IF NOT EXISTS idx_guests_loyalty_points ON guests(loyalty_points DESC) WHERE deleted_at IS NULL;
-CREATE INDEX IF NOT EXISTS idx_guests_vip_status ON guests(vip_status) WHERE vip_status = true AND deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS idx_guests_vip_status ON guests(vip_status) WHERE vip_status != 'NONE' AND deleted_at IS NULL;
 
 -- Blacklist (important for security)
 CREATE INDEX IF NOT EXISTS idx_guests_blacklisted ON guests(is_blacklisted) WHERE is_blacklisted = true AND deleted_at IS NULL;

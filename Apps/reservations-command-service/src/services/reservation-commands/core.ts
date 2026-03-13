@@ -114,6 +114,7 @@ export const createReservation = async (
     },
     payload: {
       ...command,
+      id: command.reservation_id ?? eventId,
       rate_code: rateResolution.appliedRateCode,
       check_in_date: stayStart,
       check_out_date: stayEnd,

@@ -1,4 +1,9 @@
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
+
+vi.mock("../src/lib/db.js", () => ({
+  query: vi.fn(async () => ({ rows: [{ "?column?": 1 }] })),
+  pool: { end: vi.fn() },
+}));
 
 import { buildServer } from "../src/server.js";
 import { appLogger } from "../src/lib/logger.js";

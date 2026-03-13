@@ -353,7 +353,7 @@ export const registerDashboardRoutes = (app: FastifyInstance): void => {
                ELSE r.check_out_date
              END as due_time,
              CASE
-               WHEN g.vip_status = true THEN 'urgent'
+               WHEN g.vip_status != 'NONE' THEN 'urgent'
                WHEN r.check_in_date = CURRENT_DATE OR r.check_out_date = CURRENT_DATE THEN 'high'
                ELSE 'medium'
              END as priority,
@@ -387,7 +387,7 @@ export const registerDashboardRoutes = (app: FastifyInstance): void => {
                ELSE r.check_out_date
              END as due_time,
              CASE
-               WHEN g.vip_status = true THEN 'urgent'
+               WHEN g.vip_status != 'NONE' THEN 'urgent'
                WHEN r.check_in_date = CURRENT_DATE OR r.check_out_date = CURRENT_DATE THEN 'high'
                ELSE 'medium'
              END as priority,

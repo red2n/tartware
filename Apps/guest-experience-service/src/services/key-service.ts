@@ -1,5 +1,7 @@
 import { randomUUID } from "node:crypto";
 
+import type { KeyRow, KeyStatus, MobileKey } from "@tartware/schemas";
+
 import { query } from "../lib/db.js";
 import { appLogger } from "../lib/logger.js";
 
@@ -7,21 +9,7 @@ const logger = appLogger.child({ module: "key-service" });
 
 // ─── KeyVendor Interface ──────────────────────────────────────
 
-export type MobileKey = {
-  keyId: string;
-  keyCode: string;
-  keyType: "bluetooth" | "nfc" | "qr_code" | "pin";
-  status: "pending" | "active" | "expired" | "revoked" | "used";
-  validFrom: Date;
-  validTo: Date;
-};
-
-export type KeyStatus = {
-  keyId: string;
-  status: MobileKey["status"];
-  lastUsedAt: Date | null;
-  usageCount: number;
-};
+export type { MobileKey, KeyStatus };
 
 /**
  * Vendor interface for key card / mobile key operations.
@@ -129,18 +117,6 @@ const GET_ACTIVE_KEYS_SQL = `
     AND is_deleted = FALSE
   ORDER BY created_at DESC
 `;
-
-type KeyRow = {
-  key_id: string;
-  key_code: string;
-  key_type: string;
-  status: string;
-  valid_from: string;
-  valid_to: string;
-  last_used_at: string | null;
-  usage_count: number;
-  room_id: string;
-};
 
 /**
  * Issue a key via the vendor and persist it in the database.

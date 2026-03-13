@@ -72,3 +72,27 @@ service AvailabilityGuard {
   rpc ReleaseRoom (ReleaseRoomRequest) returns (ReleaseRoomResponse);
   rpc BulkRelease (BulkReleaseRequest) returns (BulkReleaseResponse);
 }
+
+// =====================================================
+// Health Checking (custom health probe under availabilityguard.v1)
+// Not the canonical grpc.health.v1 — uses the same message
+// shape for compatibility but lives in this package.
+// =====================================================
+
+message HealthCheckRequest {
+  string service = 1;
+}
+
+message HealthCheckResponse {
+  enum ServingStatus {
+    UNKNOWN = 0;
+    SERVING = 1;
+    NOT_SERVING = 2;
+  }
+
+  ServingStatus status = 1;
+}
+
+service Health {
+  rpc Check (HealthCheckRequest) returns (HealthCheckResponse);
+}

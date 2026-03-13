@@ -5,17 +5,31 @@ import {
 } from "@tartware/schemas";
 import type { FastifyInstance } from "fastify";
 
+import { config } from "../config.js";
+import { appLogger } from "../lib/logger.js";
 import {
   createBooking,
   lookupBooking,
+  type PaymentGateway,
   StubPaymentGateway,
   searchAvailability,
 } from "../services/booking-service.js";
+import { StripePaymentGateway } from "../services/stripe-payment-gateway.js";
 
 const BOOKING_TAG = "Direct Booking";
 
-// Dev/test payment gateway stub
-const paymentGateway = new StubPaymentGateway();
+/** Resolve payment gateway based on config. Stripe when configured, otherwise stub. */
+const resolvePaymentGateway = (): PaymentGateway => {
+  if (config.stripe.enabled && config.stripe.secretKey) {
+    return new StripePaymentGateway(
+      config.stripe.secretKey,
+      appLogger.child({ module: "stripe-payment" }),
+    );
+  }
+  return new StubPaymentGateway();
+};
+
+const paymentGateway = resolvePaymentGateway();
 
 /**
  * Register direct booking endpoints (S30).
@@ -116,14 +130,14 @@ export const registerBookingRoutes = (app: FastifyInstance): void => {
 
       return reply.send({
         reservationId: booking.id,
-        confirmationCode: booking.confirmation_code,
+        confirmationCode: booking.confirmation_number,
         status: booking.status,
         propertyName: booking.property_name,
         guestName: `${booking.first_name} ${booking.last_name}`,
         checkInDate: booking.check_in_date,
         checkOutDate: booking.check_out_date,
-        adults: booking.adults,
-        children: booking.children,
+        adults: booking.number_of_adults,
+        children: booking.number_of_children,
       });
     },
   );

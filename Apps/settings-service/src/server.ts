@@ -1,7 +1,12 @@
-import { buildFastifyServer, type FastifyInstance } from "@tartware/fastify-server";
+import {
+  buildFastifyServer,
+  createHealthRoutes,
+  type FastifyInstance,
+} from "@tartware/fastify-server";
 import type { PinoLogger } from "@tartware/telemetry";
 
 import { config } from "./config.js";
+import { query } from "./lib/db.js";
 import { metricsRegistry } from "./lib/metrics.js";
 import { authPlugin } from "./plugins/auth.js";
 import swaggerPlugin from "./plugins/swagger.js";
@@ -26,14 +31,19 @@ export const buildServer = ({ logger }: BuildServerOptions): FastifyInstance => 
   void app.register(authPlugin);
   void app.register(swaggerPlugin);
 
-  app.get("/health", async () => ({
-    status: "ok",
-    service: config.service.name,
-    version: config.service.version,
-    uptime: process.uptime(),
-  }));
-
-  app.get("/ready", async () => ({ status: "ready" }));
+  const registerHealthRoutes = createHealthRoutes({
+    serviceName: config.service.name,
+    serviceVersion: config.service.version,
+    dependencies: [
+      {
+        name: "database",
+        check: async () => {
+          await query("SELECT 1");
+        },
+      },
+    ],
+  });
+  registerHealthRoutes(app);
 
   app.register(async (secureRoutes) => {
     secureRoutes.addHook("onRequest", secureRoutes.authenticate);

@@ -1243,3 +1243,60 @@ Automated nightly business date advancement. Currently the night audit must be t
 - [x] **BC-13: Auto date roll scheduler** — Implement scheduler in roll-service (already runs 24/7 as Kafka consumer) using setInterval. Query properties with `auto_roll_enabled = true`, dispatch `billing.night_audit.execute` at their configured `auto_roll_time`.
 - [x] **BC-14: Scheduler status endpoint** — `GET /v1/roll/scheduler-status` showing next scheduled runs per property, last execution results.
 - [x] **BC-15: Manual date roll override** — `billing.date_roll.manual` command schema + validator for manual business date advancement without running full night audit.
+
+---
+
+### 🟡 Production Readiness — Path to 9.0+ (2026-03-13)
+
+Current overall score: **8.3/10**. Items from README "Path to 9.0+" section, prioritized by effort-to-impact ratio.
+
+#### Item 2 — gRPC Deadlines + Health Service | Priority: 1st | Current: ~~50%~~ 100% ✅
+
+Retry logic exists (3 attempts, exponential backoff), but NO explicit deadline/timeout on gRPC calls. No `grpc.health.v1.Health` service in proto.
+
+- [x] **P9-1: Add 5s deadline to all gRPC calls** — Set `deadline` option on every `callGrpc()` invocation in `availability-guard-client.ts`. Configurable via `AVAILABILITY_GUARD_TIMEOUT_MS` (default 5000ms).
+- [x] **P9-2: Add gRPC Health service** — Added `Health` service to `availability-guard.proto` with `Check` RPC. Server probes DB health (SERVING/NOT_SERVING). Client exports `checkGuardHealth()` with 3s timeout.
+
+#### Item 6 — Deep Health Checks Across Services | Priority: 2nd | Current: ~~40%~~ 100% ✅
+
+Gateway has comprehensive `/ready` (DB + Kafka + core-service probe). Core-service checks Redis. Reservations/guard check DB+Kafka. But rooms, billing, guests, housekeeping, notification, revenue, settings, guest-experience all return static 200.
+
+- [x] **P9-3: Create shared health check utility** — Added `createHealthRoutes()` to `@tartware/fastify-server` with `/health` (liveness, static 200) + `/ready` (readiness, `Promise.allSettled` dependency probes, 503 on failure).
+- [x] **P9-4: Wire deep health checks** — Replaced static health routes in 8 services (rooms, billing, guests, housekeeping, notification, revenue, settings, guest-experience) with shared utility + DB `SELECT 1` check.
+
+#### Item 4 — Redis-Backed Distributed Rate Limiting | Priority: 3rd | Current: ~~15%~~ 100% ✅
+
+`@fastify/rate-limit` configured (200/60/20 req/min tiers), but IN-MEMORY ONLY. No Redis backing for distributed deployments.
+
+- [x] **P9-5: Switch rate limiting to Redis store** — Configured `@fastify/rate-limit` with `ioredis` Redis client (`lazyConnect`, `enableOfflineQueue: false`, `maxRetriesPerRequest: 3`). Config via `REDIS_HOST/PORT/PASSWORD/DB/KEY_PREFIX/ENABLED`. Graceful fallback on Redis connection error.
+
+#### Item 1 — Stripe + SendGrid Adapters | Priority: 4th | Current: ~~20%~~ 100% ✅
+
+Provider interfaces exist (`PaymentGateway`, `NotificationProvider`), stub implementations in place. No real adapters.
+
+- [x] **P9-6: Implement Stripe payment adapter** — `StripePaymentGateway` using PaymentIntents with manual capture (authorize → capture → refund), idempotency keys, error handling. Feature-flagged via `STRIPE_SECRET_KEY` / `STRIPE_ENABLED`.
+- [x] **P9-7: Implement SendGrid email adapter** — `SendGridNotificationProvider` via `@sendgrid/mail` for EMAIL channel. Feature-flagged via `NOTIFICATION_DEFAULT_CHANNEL=sendgrid` + `SENDGRID_API_KEY`. Provider resolution: sendgrid → webhook → console.
+
+#### Item 5 — 20K ops/sec k6 Validation | Priority: 5th | Current: 25%
+
+k6 framework exists with 5 scenarios (smoke, load, stress, spike, booking-flow) + command-pipeline targeting 30K. Missing explicit 20K ops/sec threshold validation.
+
+- [ ] **P9-8: Add 20K ops/sec validation scenario** — New k6 scenario that ramps to exactly 20K sustained ops/sec, holds for 10 minutes, validates p95 < 500ms + error rate < 1%.
+
+#### Item 3 — E2E Cross-Service Test Suite | Priority: 6th | Current: 10%
+
+72 unit tests + 28 .http files exist, but NO automated cross-service integration tests.
+
+- [ ] **P9-9: Build E2E test suite** — Automated Vitest E2E tests for top 5 workflows: (1) booking lifecycle, (2) check-in → charge → check-out, (3) group booking with rooming list, (4) cancellation with refund, (5) night audit cycle.
+
+#### Item 7 — SLI / SLO Metrics + Grafana Alerting | Priority: 7th | Current: 100% ✅
+
+Prometheus v2.53.0 scrapes all 17 services. Grafana OSS 11.1.0 with auto-provisioned dashboards (command-pipeline, http-latency) and 10 Prometheus alert rules. Added to docker-compose.
+
+- [x] **P9-10: Create Grafana dashboards + alerting rules** — JSON dashboard for command pipeline SLOs + HTTP latency. Alert rules for error budget burn rate. ✅
+
+#### Item 8 — Guest Self-Service Portal UI | Priority: 8th | Current: 100% ✅
+
+Angular 21 guest portal in `UI/guest-portal/` (port 4300). 5 pages: room search, booking, confirmation, lookup, online check-in. Material Design, API proxy to gateway.
+
+- [x] **P9-11: Build guest portal Angular UI** — Self-service booking, check-in, key retrieval frontend using existing API endpoints. ✅

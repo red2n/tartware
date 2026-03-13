@@ -61,7 +61,7 @@ export const GUEST_LIST_SQL = `
     AND ($5::text IS NULL OR g.phone ILIKE $5)
     AND ($6::text IS NULL OR g.loyalty_tier = $6)
     AND ($7::text IS NULL OR g.vip_status = $7)
-    AND ($8::boolean IS NULL OR g.is_blacklisted = $8)
+    AND ($8::boolean IS NULL OR g.is_blacklisted = $8::boolean)
   ORDER BY g.created_at DESC
   LIMIT $1
   OFFSET $9

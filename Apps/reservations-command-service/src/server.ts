@@ -4,6 +4,7 @@ import { ReservationCommandLifecycleSchema } from "@tartware/schemas";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 
+import { checkGuardHealth } from "./clients/availability-guard-client.js";
 import { kafkaConfig, serviceConfig } from "./config.js";
 import { checkDatabaseHealth, checkKafkaHealth } from "./lib/health-checks.js";
 import { metricsRegistry } from "./lib/metrics.js";
@@ -138,11 +139,16 @@ export const buildServer = (): FastifyInstance => {
       },
       async (_request, reply) => {
         try {
-          await Promise.all([checkDatabaseHealth(), checkKafkaHealth()]);
+          const [, , guardHealthy] = await Promise.all([
+            checkDatabaseHealth(),
+            checkKafkaHealth(),
+            checkGuardHealth().catch(() => false),
+          ]);
           return {
             status: "ready",
             service: serviceConfig.serviceId,
             kafka: kafkaSummary,
+            availabilityGuard: guardHealthy ? "serving" : "unavailable",
           };
         } catch (error) {
           app.log.error(error, "Readiness check failed");

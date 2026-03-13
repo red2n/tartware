@@ -1,0 +1,265 @@
+{
+  "annotations": { "list": [] },
+  "description": "Tartware PMS — Command pipeline throughput, latency, error rates, and Kafka consumer health",
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [],
+  "panels": [
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 },
+      "id": 100,
+      "title": "Overview",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "thresholds": {
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 100 },
+              { "color": "red", "value": 500 }
+            ]
+          },
+          "unit": "ops"
+        }
+      },
+      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 1 },
+      "id": 1,
+      "options": { "colorMode": "background", "graphMode": "area", "reduceOptions": { "calcs": ["lastNotNull"] } },
+      "title": "Commands / sec (Total)",
+      "type": "stat",
+      "targets": [
+        {
+          "expr": "sum(rate(billing_command_outcomes_total[5m])) + sum(rate(housekeeping_command_outcomes_total[5m])) + sum(rate(revenue_command_outcomes_total[5m])) + sum(rate(guest_experience_command_outcomes_total[5m])) + sum(rate(reservation_command_outcome_total[5m]))",
+          "legendFormat": "total"
+        }
+      ]
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "thresholds": {
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 0.02 },
+              { "color": "red", "value": 0.05 }
+            ]
+          },
+          "unit": "percentunit"
+        }
+      },
+      "gridPos": { "h": 4, "w": 6, "x": 6, "y": 1 },
+      "id": 2,
+      "options": { "colorMode": "background", "graphMode": "area", "reduceOptions": { "calcs": ["lastNotNull"] } },
+      "title": "Command Error Rate",
+      "type": "stat",
+      "targets": [
+        {
+          "expr": "(sum(rate(billing_command_outcomes_total{status=\"error\"}[5m])) + sum(rate(housekeeping_command_outcomes_total{status=\"error\"}[5m])) + sum(rate(revenue_command_outcomes_total{status=\"error\"}[5m])) + sum(rate(guest_experience_command_outcomes_total{status=\"error\"}[5m]))) / clamp_min(sum(rate(billing_command_outcomes_total[5m])) + sum(rate(housekeeping_command_outcomes_total[5m])) + sum(rate(revenue_command_outcomes_total[5m])) + sum(rate(guest_experience_command_outcomes_total[5m])), 1)",
+          "legendFormat": "error rate"
+        }
+      ]
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "thresholds": {
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 500 },
+              { "color": "red", "value": 1000 }
+            ]
+          },
+          "unit": "none"
+        }
+      },
+      "gridPos": { "h": 4, "w": 6, "x": 12, "y": 1 },
+      "id": 3,
+      "options": { "colorMode": "background", "graphMode": "area", "reduceOptions": { "calcs": ["lastNotNull"] } },
+      "title": "Outbox Pending Records",
+      "type": "stat",
+      "targets": [
+        {
+          "expr": "command_center_outbox_pending_records",
+          "legendFormat": "pending"
+        }
+      ]
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "thresholds": {
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 16 },
+              { "color": "red", "value": 17 }
+            ]
+          },
+          "unit": "none"
+        }
+      },
+      "gridPos": { "h": 4, "w": 6, "x": 18, "y": 1 },
+      "id": 4,
+      "options": { "colorMode": "background", "graphMode": "none", "reduceOptions": { "calcs": ["lastNotNull"] } },
+      "title": "Services Up",
+      "type": "stat",
+      "targets": [
+        {
+          "expr": "count(up == 1)",
+          "legendFormat": "up"
+        }
+      ]
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 5 },
+      "id": 101,
+      "title": "Command Throughput by Service",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "fieldConfig": {
+        "defaults": { "color": { "mode": "palette-classic" }, "unit": "ops", "custom": { "lineWidth": 2, "fillOpacity": 15 } }
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 6 },
+      "id": 10,
+      "options": { "legend": { "displayMode": "table", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
+      "title": "Command Throughput by Service",
+      "type": "timeseries",
+      "targets": [
+        { "expr": "sum(rate(billing_command_outcomes_total[5m]))", "legendFormat": "billing" },
+        { "expr": "sum(rate(housekeeping_command_outcomes_total[5m]))", "legendFormat": "housekeeping" },
+        { "expr": "sum(rate(revenue_command_outcomes_total[5m]))", "legendFormat": "revenue" },
+        { "expr": "sum(rate(guest_experience_command_outcomes_total[5m]))", "legendFormat": "guest-experience" },
+        { "expr": "sum(rate(reservation_command_outcome_total[5m]))", "legendFormat": "reservations" }
+      ]
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "fieldConfig": {
+        "defaults": { "color": { "mode": "palette-classic" }, "unit": "s", "custom": { "lineWidth": 2, "fillOpacity": 10 } }
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 6 },
+      "id": 11,
+      "options": { "legend": { "displayMode": "table", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
+      "title": "Command Processing Duration (P95)",
+      "type": "timeseries",
+      "targets": [
+        { "expr": "histogram_quantile(0.95, sum(rate(billing_command_processing_duration_seconds_bucket[5m])) by (le))", "legendFormat": "billing P95" },
+        { "expr": "histogram_quantile(0.95, sum(rate(housekeeping_command_processing_duration_seconds_bucket[5m])) by (le))", "legendFormat": "housekeeping P95" },
+        { "expr": "histogram_quantile(0.95, sum(rate(revenue_command_processing_duration_seconds_bucket[5m])) by (le))", "legendFormat": "revenue P95" },
+        { "expr": "histogram_quantile(0.95, sum(rate(guest_experience_command_processing_duration_seconds_bucket[5m])) by (le))", "legendFormat": "guest-experience P95" }
+      ]
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 14 },
+      "id": 102,
+      "title": "Kafka Consumer Lag",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "fieldConfig": {
+        "defaults": { "color": { "mode": "palette-classic" }, "unit": "none", "custom": { "lineWidth": 2, "fillOpacity": 20 } }
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 15 },
+      "id": 20,
+      "options": { "legend": { "displayMode": "table", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
+      "title": "Consumer Lag by Service",
+      "type": "timeseries",
+      "targets": [
+        { "expr": "billing_command_consumer_lag", "legendFormat": "billing" },
+        { "expr": "housekeeping_command_consumer_lag", "legendFormat": "housekeeping" },
+        { "expr": "revenue_command_consumer_lag", "legendFormat": "revenue" },
+        { "expr": "guest_experience_command_consumer_lag", "legendFormat": "guest-experience" }
+      ]
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "fieldConfig": {
+        "defaults": { "color": { "mode": "palette-classic" }, "unit": "s", "custom": { "lineWidth": 2, "fillOpacity": 10 } }
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 15 },
+      "id": 21,
+      "options": { "legend": { "displayMode": "table", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
+      "title": "Roll Service Processing Lag",
+      "type": "timeseries",
+      "targets": [
+        { "expr": "roll_service_processing_lag_seconds", "legendFormat": "processing lag" },
+        { "expr": "roll_service_batch_duration_seconds", "legendFormat": "batch duration" }
+      ]
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 23 },
+      "id": 103,
+      "title": "Command Center Outbox",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "fieldConfig": {
+        "defaults": { "color": { "mode": "palette-classic" }, "unit": "s", "custom": { "lineWidth": 2, "fillOpacity": 10 } }
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 24 },
+      "id": 30,
+      "options": { "legend": { "displayMode": "table", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
+      "title": "Outbox Publish Duration",
+      "type": "timeseries",
+      "targets": [
+        { "expr": "command_center_outbox_publish_duration_seconds", "legendFormat": "publish duration" },
+        { "expr": "command_center_outbox_throttle_wait_seconds", "legendFormat": "throttle wait" }
+      ]
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "fieldConfig": {
+        "defaults": { "color": { "mode": "palette-classic" }, "unit": "none", "custom": { "lineWidth": 2, "fillOpacity": 15 } }
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 24 },
+      "id": 31,
+      "options": { "legend": { "displayMode": "table", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
+      "title": "Outbox Pending Records",
+      "type": "timeseries",
+      "targets": [
+        { "expr": "command_center_outbox_pending_records", "legendFormat": "pending" }
+      ]
+    }
+  ],
+  "refresh": "10s",
+  "schemaVersion": 39,
+  "tags": ["tartware", "commands", "kafka", "slo"],
+  "templating": {
+    "list": [
+      {
+        "current": { "selected": false, "text": "Prometheus", "value": "Prometheus" },
+        "hide": 0,
+        "includeAll": false,
+        "name": "datasource",
+        "options": [],
+        "query": "prometheus",
+        "type": "datasource"
+      }
+    ]
+  },
+  "time": { "from": "now-1h", "to": "now" },
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "Tartware — Command Pipeline SLOs",
+  "uid": "tartware-command-pipeline",
+  "version": 1
+}

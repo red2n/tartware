@@ -77,7 +77,7 @@ const handleReservationCreated = async (
 ): Promise<void> => {
   const dates = stayDates(checkIn, checkOut);
   for (const date of dates) {
-    await query(DEMAND_CALENDAR_INCREMENT_OTB_SQL, [tenantId, propertyId, date, tenantId]);
+    await query(DEMAND_CALENDAR_INCREMENT_OTB_SQL, [tenantId, propertyId, date]);
   }
   logger.debug(
     { tenantId, propertyId, checkIn, checkOut, nights: dates.length },
@@ -93,7 +93,7 @@ const handleReservationCancelled = async (
 ): Promise<void> => {
   const dates = stayDates(checkIn, checkOut);
   for (const date of dates) {
-    await query(DEMAND_CALENDAR_DECREMENT_OTB_SQL, [tenantId, propertyId, date, tenantId]);
+    await query(DEMAND_CALENDAR_DECREMENT_OTB_SQL, [tenantId, propertyId, date]);
   }
   logger.debug(
     { tenantId, propertyId, checkIn, checkOut, nights: dates.length },
@@ -109,7 +109,7 @@ const handleReservationCheckedOut = async (
 ): Promise<void> => {
   const dates = stayDates(checkIn, checkOut);
   for (const date of dates) {
-    await query(DEMAND_CALENDAR_CHECKOUT_SQL, [tenantId, propertyId, date, tenantId]);
+    await query(DEMAND_CALENDAR_CHECKOUT_SQL, [tenantId, propertyId, date]);
   }
   logger.debug(
     { tenantId, propertyId, checkIn, checkOut, nights: dates.length },

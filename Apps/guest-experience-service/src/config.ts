@@ -43,6 +43,22 @@ const commandCenter = {
   retryScheduleMs: parseNumberList(process.env.KAFKA_RETRY_SCHEDULE_MS),
 };
 
+const stripe = {
+  secretKey: process.env.STRIPE_SECRET_KEY ?? "",
+  enabled: process.env.STRIPE_ENABLED === "true" || !!process.env.STRIPE_SECRET_KEY,
+};
+
+const internalServices = {
+  coreServiceUrl: process.env.CORE_SERVICE_URL ?? "http://localhost:3000",
+  guestsServiceUrl: process.env.GUESTS_SERVICE_URL ?? "http://localhost:3010",
+  roomsServiceUrl: process.env.ROOMS_SERVICE_URL ?? "http://localhost:3015",
+};
+
+const serviceAuth = {
+  username: process.env.SERVICE_AUTH_USERNAME ?? "setup.admin",
+  password: process.env.SERVICE_AUTH_PASSWORD ?? "TempPass123",
+};
+
 export const config = {
   service: {
     name: configValues.SERVICE_NAME,
@@ -75,4 +91,7 @@ export const config = {
   },
   kafka,
   commandCenter,
+  stripe,
+  internalServices,
+  serviceAuth,
 };

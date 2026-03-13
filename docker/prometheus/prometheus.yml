@@ -1,0 +1,126 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+rule_files:
+  - /etc/prometheus/rules/*.yml
+
+scrape_configs:
+  # ── API Gateway ──
+  - job_name: tartware-api-gateway
+    static_configs:
+      - targets: ["host.docker.internal:8080"]
+        labels:
+          service: api-gateway
+
+  # ── Core Service ──
+  - job_name: tartware-core-service
+    static_configs:
+      - targets: ["host.docker.internal:3000"]
+        labels:
+          service: core-service
+
+  # ── Settings Service ──
+  - job_name: tartware-settings-service
+    static_configs:
+      - targets: ["host.docker.internal:3005"]
+        labels:
+          service: settings-service
+
+  # ── Guests Service ──
+  - job_name: tartware-guests-service
+    static_configs:
+      - targets: ["host.docker.internal:3010"]
+        labels:
+          service: guests-service
+
+  # ── Rooms Service ──
+  - job_name: tartware-rooms-service
+    static_configs:
+      - targets: ["host.docker.internal:3015"]
+        labels:
+          service: rooms-service
+
+  # ── Reservations Command Service ──
+  - job_name: tartware-reservations-command-service
+    static_configs:
+      - targets: ["host.docker.internal:3020"]
+        labels:
+          service: reservations-command-service
+
+  # ── Billing Service ──
+  - job_name: tartware-billing-service
+    static_configs:
+      - targets: ["host.docker.internal:3025"]
+        labels:
+          service: billing-service
+
+  # ── Housekeeping Service ──
+  - job_name: tartware-housekeeping-service
+    static_configs:
+      - targets: ["host.docker.internal:3030"]
+        labels:
+          service: housekeeping-service
+
+  # ── Command Center Service ──
+  - job_name: tartware-command-center-service
+    static_configs:
+      - targets: ["host.docker.internal:3035"]
+        labels:
+          service: command-center-service
+
+  # ── Recommendation Service ──
+  - job_name: tartware-recommendation-service
+    static_configs:
+      - targets: ["host.docker.internal:3040"]
+        labels:
+          service: recommendation-service
+
+  # ── Availability Guard Service ──
+  - job_name: tartware-availability-guard-service
+    static_configs:
+      - targets: ["host.docker.internal:3045"]
+        labels:
+          service: availability-guard-service
+
+  # ── Roll Service ──
+  - job_name: tartware-roll-service
+    static_configs:
+      - targets: ["host.docker.internal:3050"]
+        labels:
+          service: roll-service
+
+  # ── Notification Service ──
+  - job_name: tartware-notification-service
+    static_configs:
+      - targets: ["host.docker.internal:3055"]
+        labels:
+          service: notification-service
+
+  # ── Revenue Service ──
+  - job_name: tartware-revenue-service
+    static_configs:
+      - targets: ["host.docker.internal:3060"]
+        labels:
+          service: revenue-service
+
+  # ── Guest Experience Service ──
+  - job_name: tartware-guest-experience-service
+    static_configs:
+      - targets: ["host.docker.internal:3065"]
+        labels:
+          service: guest-experience-service
+
+  # ── Calculation Service ──
+  - job_name: tartware-calculation-service
+    static_configs:
+      - targets: ["host.docker.internal:3070"]
+        labels:
+          service: calculation-service
+
+  # ── Service Registry ──
+  - job_name: tartware-service-registry
+    static_configs:
+      - targets: ["host.docker.internal:3075"]
+        labels:
+          service: service-registry

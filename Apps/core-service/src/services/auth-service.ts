@@ -6,6 +6,7 @@ import { pool } from "../lib/db.js";
 import { signAccessToken } from "../lib/jwt.js";
 import { appLogger } from "../lib/logger.js";
 import { TENANT_AUTH_UPDATE_PASSWORD_SQL } from "../sql/tenant-auth-queries.js";
+import { hashPassword } from "../utils/password.js";
 
 const authLogger = appLogger.child({ module: "auth-service" });
 
@@ -245,7 +246,7 @@ export const changeUserPassword = async (
     return { ok: false, reason: "PASSWORD_REUSE_NOT_ALLOWED" };
   }
 
-  const newHash = await bcrypt.hash(newPassword, 10);
+  const newHash = await hashPassword(newPassword);
 
   try {
     await pool.query(TENANT_AUTH_UPDATE_PASSWORD_SQL, [newHash, userId]);

@@ -1,3 +1,8 @@
+import {
+  GuestRedemptionsQuerySchema,
+  RedeemRewardBodySchema,
+  RewardCatalogQuerySchema,
+} from "@tartware/schemas";
 import type { FastifyInstance } from "fastify";
 import {
   listGuestRedemptions,
@@ -26,7 +31,7 @@ export const registerRewardRoutes = (app: FastifyInstance): void => {
       },
     },
     async (request, reply) => {
-      const q = request.query as Record<string, string>;
+      const q = RewardCatalogQuerySchema.parse(request.query);
       const tenantId = (request as { tenantId?: string }).tenantId ?? q.tenant_id;
       if (!tenantId) {
         return reply.status(400).send({ error: "tenant_id is required" });
@@ -37,8 +42,8 @@ export const registerRewardRoutes = (app: FastifyInstance): void => {
         propertyId: q.property_id,
         guestTier: q.tier,
         category: q.category,
-        limit: q.limit ? Number(q.limit) : undefined,
-        offset: q.offset ? Number(q.offset) : undefined,
+        limit: q.limit,
+        offset: q.offset,
       });
 
       return reply.send(result);
@@ -59,13 +64,7 @@ export const registerRewardRoutes = (app: FastifyInstance): void => {
       },
     },
     async (request, reply) => {
-      const body = request.body as {
-        tenant_id?: string;
-        property_id: string;
-        guest_id: string;
-        reward_id: string;
-        reservation_id?: string;
-      };
+      const body = RedeemRewardBodySchema.parse(request.body);
       const tenantId = (request as { tenantId?: string }).tenantId ?? body.tenant_id;
       if (!tenantId || !body.property_id || !body.guest_id || !body.reward_id) {
         return reply
@@ -106,7 +105,7 @@ export const registerRewardRoutes = (app: FastifyInstance): void => {
       },
     },
     async (request, reply) => {
-      const q = request.query as Record<string, string>;
+      const q = GuestRedemptionsQuerySchema.parse(request.query);
       const tenantId = (request as { tenantId?: string }).tenantId ?? q.tenant_id;
       if (!tenantId || !q.guest_id) {
         return reply.status(400).send({ error: "tenant_id and guest_id are required" });
@@ -115,8 +114,8 @@ export const registerRewardRoutes = (app: FastifyInstance): void => {
       const result = await listGuestRedemptions({
         tenantId,
         guestId: q.guest_id,
-        limit: q.limit ? Number(q.limit) : undefined,
-        offset: q.offset ? Number(q.offset) : undefined,
+        limit: q.limit,
+        offset: q.offset,
       });
 
       return reply.send(result);

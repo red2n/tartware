@@ -1,84 +1,30 @@
 import { randomUUID } from "node:crypto";
 
+import type {
+  CardTemplateData,
+  GenerateCardInput,
+  GuestRow,
+  PropertyRow,
+  RegistrationCardData,
+  RegistrationCardRow,
+  ReservationDetailRow,
+} from "@tartware/schemas";
+
+import { config } from "../config.js";
 import { query } from "../lib/db.js";
+import { internalGet } from "../lib/internal-api.js";
 import { appLogger } from "../lib/logger.js";
 
 const logger = appLogger.child({ module: "registration-card-service" });
 
-type GuestRow = {
-  id: string;
-  first_name: string;
-  last_name: string;
-  email: string | null;
-  phone: string | null;
-  date_of_birth: string | null;
-  nationality: string | null;
-  address_line_1: string | null;
-  city: string | null;
-  state: string | null;
-  country: string | null;
-  postal_code: string | null;
-};
-
-type ReservationDetailRow = {
-  id: string;
-  tenant_id: string;
-  property_id: string;
-  guest_id: string;
-  confirmation_code: string;
-  check_in_date: string;
-  check_out_date: string;
-  room_number: string | null;
-  room_type: string | null;
-  rate_code: string | null;
-  adults: number;
-  children: number;
-  number_of_nights: number;
-};
-
-type PropertyRow = {
-  id: string;
-  name: string;
-  address_line_1: string | null;
-  city: string | null;
-  state: string | null;
-  country: string | null;
-  postal_code: string | null;
-  phone: string | null;
-};
-
-type RegistrationCardRow = {
-  registration_id: string;
-  registration_number: string;
-  pdf_url: string | null;
-};
-
-const GUEST_LOOKUP_SQL = `
-  SELECT
-    g.id, g.first_name, g.last_name, g.email, g.phone,
-    g.date_of_birth, g.nationality,
-    g.address_line_1, g.city, g.state, g.country, g.postal_code
-  FROM guests g
-  WHERE g.id = $1
-`;
-
-const RESERVATION_DETAIL_SQL = `
-  SELECT
-    r.id, r.tenant_id, r.property_id, r.guest_id,
-    r.confirmation_code, r.check_in_date, r.check_out_date,
-    rm.room_number, rt.name AS room_type,
-    r.rate_code, r.adults, r.children,
-    (r.check_out_date::date - r.check_in_date::date) AS number_of_nights
-  FROM reservations r
-  LEFT JOIN rooms rm ON rm.id = r.room_id
-  LEFT JOIN room_types rt ON rt.id = rm.room_type_id
-  WHERE r.id = $1 AND r.tenant_id = $2
-`;
-
 const PROPERTY_LOOKUP_SQL = `
   SELECT
-    p.id, p.name,
-    p.address_line_1, p.city, p.state, p.country, p.postal_code,
+    p.id, p.property_name,
+    p.address->>'street' AS address_line_1,
+    p.address->>'city' AS city,
+    p.address->>'state' AS state,
+    p.address->>'country' AS country,
+    p.address->>'postalCode' AS postal_code,
     p.phone
   FROM properties p
   WHERE p.id = $1
@@ -126,42 +72,7 @@ const GET_REGISTRATION_CARD_SQL = `
   LIMIT 1
 `;
 
-export type GenerateCardInput = {
-  reservationId: string;
-  tenantId: string;
-  mobileCheckinId?: string | null;
-  initiatedBy?: string | null;
-};
-
-export type RegistrationCardData = {
-  registrationId: string;
-  registrationNumber: string;
-  property: {
-    name: string;
-    address: string | null;
-    phone: string | null;
-  };
-  guest: {
-    fullName: string;
-    email: string | null;
-    phone: string | null;
-    dateOfBirth: string | null;
-    nationality: string | null;
-    address: string | null;
-  };
-  stay: {
-    confirmationCode: string;
-    arrivalDate: string;
-    departureDate: string;
-    numberOfNights: number;
-    adults: number;
-    children: number;
-    roomNumber: string | null;
-    roomType: string | null;
-    rateCode: string | null;
-  };
-  html: string;
-};
+export type { GenerateCardInput, RegistrationCardData };
 
 /**
  * Generate a registration card for a reservation.
@@ -170,22 +81,89 @@ export type RegistrationCardData = {
 export const generateRegistrationCard = async (
   input: GenerateCardInput,
 ): Promise<RegistrationCardData> => {
-  // Fetch reservation
-  const { rows: reservations } = await query<ReservationDetailRow>(RESERVATION_DETAIL_SQL, [
-    input.reservationId,
-    input.tenantId,
-  ]);
-  if (reservations.length === 0) {
-    throw Object.assign(new Error("Reservation not found"), { statusCode: 404 });
+  // Fetch reservation via core-service
+  let reservation: ReservationDetailRow;
+  try {
+    const resResp = await internalGet<{
+      id: string;
+      tenant_id: string;
+      property_id: string;
+      guest_id: string;
+      confirmation_number: string;
+      check_in_date: string;
+      check_out_date: string;
+      room_number?: string;
+      room_type_name?: string;
+      rate_id?: string;
+      number_of_adults: number;
+      number_of_children: number;
+      nights: number;
+    }>(config.internalServices.coreServiceUrl, `/v1/reservations/${input.reservationId}`, {
+      tenant_id: input.tenantId,
+    });
+    reservation = {
+      id: resResp.id,
+      tenant_id: resResp.tenant_id,
+      property_id: resResp.property_id,
+      guest_id: resResp.guest_id,
+      confirmation_number: resResp.confirmation_number,
+      check_in_date: resResp.check_in_date,
+      check_out_date: resResp.check_out_date,
+      room_number: resResp.room_number ?? null,
+      room_type: resResp.room_type_name ?? null,
+      rate_id: resResp.rate_id ?? null,
+      number_of_adults: resResp.number_of_adults,
+      number_of_children: resResp.number_of_children,
+      number_of_nights: resResp.nights,
+    };
+  } catch (error) {
+    if ((error as { statusCode?: number }).statusCode === 404) {
+      throw Object.assign(new Error("Reservation not found"), { statusCode: 404 });
+    }
+    throw error;
   }
-  const reservation = reservations[0]!;
 
-  // Fetch guest
-  const { rows: guests } = await query<GuestRow>(GUEST_LOOKUP_SQL, [reservation.guest_id]);
-  if (guests.length === 0) {
-    throw Object.assign(new Error("Guest not found"), { statusCode: 404 });
+  // Fetch guest via guests-service
+  let guest: GuestRow;
+  try {
+    const guestResp = await internalGet<{
+      id: string;
+      first_name: string;
+      last_name: string;
+      email: string;
+      phone?: string;
+      date_of_birth?: string;
+      nationality?: string;
+      address?: {
+        street?: string;
+        city?: string;
+        state?: string;
+        country?: string;
+        postalCode?: string;
+      };
+    }>(config.internalServices.guestsServiceUrl, `/v1/guests/${reservation.guest_id}`, {
+      tenant_id: input.tenantId,
+    });
+    guest = {
+      id: guestResp.id,
+      first_name: guestResp.first_name,
+      last_name: guestResp.last_name,
+      email: guestResp.email ?? null,
+      phone: guestResp.phone ?? null,
+      date_of_birth: guestResp.date_of_birth ?? null,
+      nationality: guestResp.nationality ?? null,
+      address_line_1: guestResp.address?.street ?? null,
+      city: guestResp.address?.city ?? null,
+      state: guestResp.address?.state ?? null,
+      country: guestResp.address?.country ?? null,
+      postal_code: guestResp.address?.postalCode ?? null,
+    };
+  } catch (error) {
+    if ((error as { statusCode?: number }).statusCode === 404) {
+      throw Object.assign(new Error("Guest not found"), { statusCode: 404 });
+    }
+    throw error;
   }
-  const guest = guests[0]!;
 
   // Fetch property
   const { rows: properties } = await query<PropertyRow>(PROPERTY_LOOKUP_SQL, [
@@ -208,7 +186,7 @@ export const generateRegistrationCard = async (
 
   const html = renderRegistrationCardHtml({
     registrationNumber,
-    propertyName: property?.name ?? "Unknown Property",
+    propertyName: property?.property_name ?? "Unknown Property",
     propertyAddress,
     propertyPhone: property?.phone ?? null,
     guestName: fullName,
@@ -217,15 +195,15 @@ export const generateRegistrationCard = async (
     guestDob: guest.date_of_birth,
     guestNationality: guest.nationality,
     guestAddress,
-    confirmationCode: reservation.confirmation_code,
+    confirmationCode: reservation.confirmation_number,
     arrivalDate: reservation.check_in_date,
     departureDate: reservation.check_out_date,
     numberOfNights: reservation.number_of_nights,
-    adults: reservation.adults,
-    children: reservation.children,
+    adults: reservation.number_of_adults,
+    children: reservation.number_of_children,
     roomNumber: reservation.room_number,
     roomType: reservation.room_type,
-    rateCode: reservation.rate_code,
+    rateCode: reservation.rate_id,
   });
 
   // Store in DB
@@ -250,11 +228,11 @@ export const generateRegistrationCard = async (
     reservation.check_in_date,
     reservation.check_out_date,
     reservation.number_of_nights,
-    reservation.adults,
-    reservation.children,
+    reservation.number_of_adults,
+    reservation.number_of_children,
     reservation.room_number,
     reservation.room_type,
-    reservation.rate_code,
+    reservation.rate_id,
     input.initiatedBy ?? null,
   ]);
 
@@ -267,7 +245,7 @@ export const generateRegistrationCard = async (
     registrationId,
     registrationNumber,
     property: {
-      name: property?.name ?? "Unknown Property",
+      name: property?.property_name ?? "Unknown Property",
       address: propertyAddress,
       phone: property?.phone ?? null,
     },
@@ -280,15 +258,15 @@ export const generateRegistrationCard = async (
       address: guestAddress,
     },
     stay: {
-      confirmationCode: reservation.confirmation_code,
+      confirmationCode: reservation.confirmation_number,
       arrivalDate: reservation.check_in_date,
       departureDate: reservation.check_out_date,
       numberOfNights: reservation.number_of_nights,
-      adults: reservation.adults,
-      children: reservation.children,
+      adults: reservation.number_of_adults,
+      children: reservation.number_of_children,
       roomNumber: reservation.room_number,
       roomType: reservation.room_type,
-      rateCode: reservation.rate_code,
+      rateCode: reservation.rate_id,
     },
     html,
   };
@@ -309,28 +287,6 @@ export const getRegistrationCard = async (
 };
 
 // ─── HTML Template ──────────────────────────────────────
-
-type CardTemplateData = {
-  registrationNumber: string;
-  propertyName: string;
-  propertyAddress: string | null;
-  propertyPhone: string | null;
-  guestName: string;
-  guestEmail: string | null;
-  guestPhone: string | null;
-  guestDob: string | null;
-  guestNationality: string | null;
-  guestAddress: string | null;
-  confirmationCode: string;
-  arrivalDate: string;
-  departureDate: string;
-  numberOfNights: number;
-  adults: number;
-  children: number;
-  roomNumber: string | null;
-  roomType: string | null;
-  rateCode: string | null;
-};
 
 const escapeHtml = (str: string | null | undefined): string => {
   if (!str) return "";

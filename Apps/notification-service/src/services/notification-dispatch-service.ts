@@ -6,17 +6,37 @@ import { appLogger } from "../lib/logger.js";
 import { observeDispatchDuration, recordDispatch } from "../lib/metrics.js";
 import { ConsoleNotificationProvider } from "../providers/console-provider.js";
 import type { NotificationProvider } from "../providers/provider-interface.js";
+import { SendGridNotificationProvider } from "../providers/sendgrid-provider.js";
 import { WebhookNotificationProvider } from "../providers/webhook-provider.js";
 import { renderTemplateByCode } from "./template-service.js";
 
 const logger: PinoLogger = appLogger.child({ module: "notification-dispatch" });
 
-/** Resolve the active provider based on config. */
+/** Memoized provider instance — created once, reused across dispatches. */
+let cachedProvider: NotificationProvider | null = null;
+let cachedProviderKey: string | null = null;
+
+/** Resolve the active provider based on config. Memoizes the instance. */
 const resolveProvider = (): NotificationProvider => {
-  if (config.providers.defaultChannel === "webhook" && config.providers.webhookUrl) {
-    return new WebhookNotificationProvider(logger, config.providers.webhookUrl);
+  const key = `${config.providers.defaultChannel}`;
+  if (cachedProvider && cachedProviderKey === key) {
+    return cachedProvider;
   }
-  return new ConsoleNotificationProvider(logger);
+
+  if (config.providers.defaultChannel === "sendgrid" && config.providers.sendgridApiKey) {
+    cachedProvider = new SendGridNotificationProvider(
+      logger,
+      config.providers.sendgridApiKey,
+      config.providers.defaultSenderEmail,
+      config.providers.defaultSenderName,
+    );
+  } else if (config.providers.defaultChannel === "webhook" && config.providers.webhookUrl) {
+    cachedProvider = new WebhookNotificationProvider(logger, config.providers.webhookUrl);
+  } else {
+    cachedProvider = new ConsoleNotificationProvider(logger);
+  }
+  cachedProviderKey = key;
+  return cachedProvider;
 };
 
 const INSERT_COMMUNICATION_SQL = `

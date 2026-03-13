@@ -48,8 +48,8 @@ SELECT
     p.timezone,
     COALESCE(
       (SELECT sv.value->>'value'
-       FROM setting_values sv
-       JOIN setting_definitions sd ON sd.id = sv.setting_id
+       FROM settings_values sv
+       JOIN settings_definitions sd ON sd.id = sv.setting_id
        WHERE sd.code = 'FINANCE.BUSINESS_CALENDAR.AUTO_ROLL_TIME'
          AND sv.property_id = p.id
          AND sv.scope_level = 'PROPERTY'
@@ -61,8 +61,8 @@ SELECT
     bd.date_status,
     bd.night_audit_status
 FROM properties p
-JOIN setting_values sv_enabled ON sv_enabled.property_id = p.id
-JOIN setting_definitions sd_enabled ON sd_enabled.id = sv_enabled.setting_id
+JOIN settings_values sv_enabled ON sv_enabled.property_id = p.id
+JOIN settings_definitions sd_enabled ON sd_enabled.id = sv_enabled.setting_id
     AND sd_enabled.code = 'FINANCE.BUSINESS_CALENDAR.AUTO_ROLL_ENABLED'
 LEFT JOIN business_dates bd ON bd.property_id = p.id
     AND bd.tenant_id = p.tenant_id

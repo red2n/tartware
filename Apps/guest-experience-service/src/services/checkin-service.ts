@@ -1,53 +1,21 @@
 import { randomUUID } from "node:crypto";
 
+import type {
+  CompleteCheckinInput,
+  CompleteCheckinResult,
+  MobileCheckinRow,
+  ReservationRow,
+  StartCheckinInput,
+  StartCheckinResult,
+} from "@tartware/schemas";
+
+import { config } from "../config.js";
 import { query } from "../lib/db.js";
+import { internalGet } from "../lib/internal-api.js";
 import { appLogger } from "../lib/logger.js";
 import { observeCheckinDuration, recordCheckinOutcome } from "../lib/metrics.js";
 
 const logger = appLogger.child({ module: "checkin-service" });
-
-type MobileCheckinRow = {
-  mobile_checkin_id: string;
-  tenant_id: string;
-  property_id: string;
-  reservation_id: string;
-  guest_id: string;
-  checkin_status: string;
-  access_method: string;
-  checkin_started_at: string | null;
-  checkin_completed_at: string | null;
-  room_id: string | null;
-  digital_key_type: string | null;
-  digital_key_id: string | null;
-};
-
-type ReservationRow = {
-  id: string;
-  tenant_id: string;
-  property_id: string;
-  guest_id: string;
-  confirmation_code: string;
-  status: string;
-  check_in_date: string;
-  check_out_date: string;
-  room_id: string | null;
-};
-
-const RESERVATION_LOOKUP_SQL = `
-  SELECT
-    r.id,
-    r.tenant_id,
-    r.property_id,
-    r.guest_id,
-    r.confirmation_code,
-    r.status,
-    r.check_in_date,
-    r.check_out_date,
-    r.room_id
-  FROM reservations r
-  WHERE r.id = $1
-    AND r.tenant_id = $2
-`;
 
 const RESERVATION_BY_CONFIRMATION_SQL = `
   SELECT
@@ -55,13 +23,13 @@ const RESERVATION_BY_CONFIRMATION_SQL = `
     r.tenant_id,
     r.property_id,
     r.guest_id,
-    r.confirmation_code,
+    r.confirmation_number,
     r.status,
     r.check_in_date,
     r.check_out_date,
-    r.room_id
+    r.room_number
   FROM reservations r
-  WHERE r.confirmation_code = $1
+  WHERE r.confirmation_number = $1
 `;
 
 const INSERT_MOBILE_CHECKIN_SQL = `
@@ -105,23 +73,7 @@ const COMPLETE_CHECKIN_SQL = `
             room_id, digital_key_type, digital_key_id
 `;
 
-export type StartCheckinInput = {
-  reservationId: string;
-  tenantId: string;
-  guestId: string;
-  accessMethod?: string;
-  deviceType?: string;
-  appVersion?: string;
-  initiatedBy?: string | null;
-};
-
-export type StartCheckinResult = {
-  mobileCheckinId: string;
-  reservationId: string;
-  status: string;
-  accessMethod: string;
-  startedAt: string | null;
-};
+export type { StartCheckinInput, StartCheckinResult };
 
 /**
  * Start a mobile check-in flow.
@@ -130,18 +82,23 @@ export type StartCheckinResult = {
 export const startMobileCheckin = async (input: StartCheckinInput): Promise<StartCheckinResult> => {
   const startTime = performance.now();
   try {
-    const { rows: reservations } = await query<ReservationRow>(RESERVATION_LOOKUP_SQL, [
-      input.reservationId,
-      input.tenantId,
-    ]);
-
-    if (reservations.length === 0) {
-      recordCheckinOutcome("start", "invalid");
-      throw Object.assign(new Error("Reservation not found"), { statusCode: 404 });
+    // Look up reservation via core-service
+    let reservation: ReservationRow;
+    try {
+      reservation = await internalGet<ReservationRow>(
+        config.internalServices.coreServiceUrl,
+        `/v1/reservations/${input.reservationId}`,
+        { tenant_id: input.tenantId },
+      );
+    } catch (error) {
+      if ((error as { statusCode?: number }).statusCode === 404) {
+        recordCheckinOutcome("start", "invalid");
+        throw Object.assign(new Error("Reservation not found"), { statusCode: 404 });
+      }
+      throw error;
     }
 
-    const reservation = reservations[0]!;
-    const validStatuses = ["CONFIRMED", "PENDING", "GUARANTEED"];
+    const validStatuses = ["confirmed", "pending"];
     if (!validStatuses.includes(reservation.status)) {
       recordCheckinOutcome("start", "invalid");
       throw Object.assign(
@@ -209,25 +166,7 @@ export const startMobileCheckin = async (input: StartCheckinInput): Promise<Star
   }
 };
 
-export type CompleteCheckinInput = {
-  mobileCheckinId: string;
-  identityVerificationMethod?: string;
-  idDocumentVerified?: boolean;
-  registrationCardSigned?: boolean;
-  paymentMethodVerified?: boolean;
-  termsAccepted?: boolean;
-  roomId?: string | null;
-  digitalKeyType?: string | null;
-  guestSignatureUrl?: string;
-};
-
-export type CompleteCheckinResult = {
-  mobileCheckinId: string;
-  reservationId: string;
-  status: string;
-  completedAt: string | null;
-  roomId: string | null;
-};
+export type { CompleteCheckinInput, CompleteCheckinResult };
 
 /**
  * Complete a mobile check-in flow. Marks the check-in as completed,

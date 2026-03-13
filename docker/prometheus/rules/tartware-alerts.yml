@@ -1,0 +1,146 @@
+groups:
+  # ── Command Pipeline SLOs ──
+  - name: tartware_command_pipeline
+    interval: 15s
+    rules:
+      # Command error rate > 5% for 2 minutes
+      - alert: CommandErrorRateHigh
+        expr: |
+          (
+            sum(rate(billing_command_outcomes_total{status="error"}[5m]))
+            + sum(rate(housekeeping_command_outcomes_total{status="error"}[5m]))
+            + sum(rate(revenue_command_outcomes_total{status="error"}[5m]))
+            + sum(rate(guest_experience_command_outcomes_total{status="error"}[5m]))
+          ) / clamp_min(
+            sum(rate(billing_command_outcomes_total[5m]))
+            + sum(rate(housekeeping_command_outcomes_total[5m]))
+            + sum(rate(revenue_command_outcomes_total[5m]))
+            + sum(rate(guest_experience_command_outcomes_total[5m]))
+          , 1) > 0.05
+        for: 2m
+        labels:
+          severity: critical
+          component: command-pipeline
+        annotations:
+          summary: "Command pipeline error rate exceeds 5%"
+          description: "Combined command error rate is {{ $value | humanizePercentage }}"
+
+      # Command processing P95 > 2s
+      - alert: CommandProcessingLatencyHigh
+        expr: |
+          histogram_quantile(0.95,
+            sum(rate(billing_command_processing_duration_seconds_bucket[5m])) by (le)
+          ) > 2
+        for: 2m
+        labels:
+          severity: warning
+          component: billing-service
+        annotations:
+          summary: "Billing command P95 latency exceeds 2s"
+          description: "P95 command processing latency is {{ $value }}s"
+
+      # Outbox pending records > 1000 (backlog building up)
+      - alert: OutboxBacklogHigh
+        expr: command_center_outbox_pending_records > 1000
+        for: 5m
+        labels:
+          severity: warning
+          component: command-center
+        annotations:
+          summary: "Command center outbox has {{ $value }} pending records"
+          description: "Outbox backlog exceeds 1000; Kafka publishing may be stalled."
+
+  # ── HTTP Latency SLOs ──
+  - name: tartware_http_latency
+    interval: 15s
+    rules:
+      # Gateway proxy latency P95 > 500ms
+      - alert: GatewayProxyLatencyHigh
+        expr: |
+          histogram_quantile(0.95,
+            sum(rate(gateway_proxy_duration_seconds_bucket[5m])) by (le)
+          ) > 0.5
+        for: 2m
+        labels:
+          severity: warning
+          component: api-gateway
+        annotations:
+          summary: "API Gateway proxy P95 latency exceeds 500ms"
+          description: "Gateway proxy P95 is {{ $value }}s"
+
+      # Circuit breaker opened
+      - alert: CircuitBreakerOpen
+        expr: increase(gateway_circuit_breaker_state_total{state="open"}[5m]) > 0
+        for: 1m
+        labels:
+          severity: critical
+          component: api-gateway
+        annotations:
+          summary: "Circuit breaker opened for a backend service"
+          description: "Gateway circuit breaker tripped; backend may be unhealthy."
+
+  # ── Kafka Consumer Lag ──
+  - name: tartware_kafka_lag
+    interval: 15s
+    rules:
+      - alert: BillingConsumerLagHigh
+        expr: billing_command_consumer_lag > 5000
+        for: 5m
+        labels:
+          severity: warning
+          component: billing-service
+        annotations:
+          summary: "Billing consumer lag is {{ $value }} messages"
+
+      - alert: HousekeepingConsumerLagHigh
+        expr: housekeeping_command_consumer_lag > 5000
+        for: 5m
+        labels:
+          severity: warning
+          component: housekeeping-service
+        annotations:
+          summary: "Housekeeping consumer lag is {{ $value }} messages"
+
+      - alert: RevenueConsumerLagHigh
+        expr: revenue_command_consumer_lag > 5000
+        for: 5m
+        labels:
+          severity: warning
+          component: revenue-service
+        annotations:
+          summary: "Revenue consumer lag is {{ $value }} messages"
+
+      - alert: RollServiceLagHigh
+        expr: max(roll_service_processing_lag_seconds) > 60
+        for: 2m
+        labels:
+          severity: warning
+          component: roll-service
+        annotations:
+          summary: "Roll service is {{ $value }}s behind"
+
+  # ── Service Health ──
+  - name: tartware_service_health
+    interval: 15s
+    rules:
+      - alert: ServiceDown
+        expr: up == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "{{ $labels.job }} is unreachable"
+          description: "Prometheus cannot scrape {{ $labels.instance }}"
+
+      # Availability guard gRPC latency
+      - alert: AvailabilityGuardLatencyHigh
+        expr: |
+          histogram_quantile(0.95,
+            sum(rate(availability_guard_request_duration_seconds_bucket[5m])) by (le)
+          ) > 0.1
+        for: 2m
+        labels:
+          severity: warning
+          component: availability-guard
+        annotations:
+          summary: "Availability guard P95 latency exceeds 100ms"
