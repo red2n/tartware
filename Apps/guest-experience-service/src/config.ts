@@ -43,6 +43,11 @@ const commandCenter = {
   retryScheduleMs: parseNumberList(process.env.KAFKA_RETRY_SCHEDULE_MS),
 };
 
+const stripe = {
+  secretKey: process.env.STRIPE_SECRET_KEY ?? "",
+  enabled: process.env.STRIPE_ENABLED === "true" || !!process.env.STRIPE_SECRET_KEY,
+};
+
 export const config = {
   service: {
     name: configValues.SERVICE_NAME,
@@ -75,4 +80,5 @@ export const config = {
   },
   kafka,
   commandCenter,
+  stripe,
 };

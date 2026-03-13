@@ -5,17 +5,31 @@ import {
 } from "@tartware/schemas";
 import type { FastifyInstance } from "fastify";
 
+import { config } from "../config.js";
+import { appLogger } from "../lib/logger.js";
 import {
   createBooking,
   lookupBooking,
+  type PaymentGateway,
   StubPaymentGateway,
   searchAvailability,
 } from "../services/booking-service.js";
+import { StripePaymentGateway } from "../services/stripe-payment-gateway.js";
 
 const BOOKING_TAG = "Direct Booking";
 
-// Dev/test payment gateway stub
-const paymentGateway = new StubPaymentGateway();
+/** Resolve payment gateway based on config. Stripe when configured, otherwise stub. */
+const resolvePaymentGateway = (): PaymentGateway => {
+  if (config.stripe.enabled && config.stripe.secretKey) {
+    return new StripePaymentGateway(
+      config.stripe.secretKey,
+      appLogger.child({ module: "stripe-payment" }),
+    );
+  }
+  return new StubPaymentGateway();
+};
+
+const paymentGateway = resolvePaymentGateway();
 
 /**
  * Register direct booking endpoints (S30).

@@ -6,6 +6,7 @@ import { appLogger } from "../lib/logger.js";
 import { observeDispatchDuration, recordDispatch } from "../lib/metrics.js";
 import { ConsoleNotificationProvider } from "../providers/console-provider.js";
 import type { NotificationProvider } from "../providers/provider-interface.js";
+import { SendGridNotificationProvider } from "../providers/sendgrid-provider.js";
 import { WebhookNotificationProvider } from "../providers/webhook-provider.js";
 import { renderTemplateByCode } from "./template-service.js";
 
@@ -13,6 +14,9 @@ const logger: PinoLogger = appLogger.child({ module: "notification-dispatch" });
 
 /** Resolve the active provider based on config. */
 const resolveProvider = (): NotificationProvider => {
+  if (config.providers.defaultChannel === "sendgrid" && config.providers.sendgridApiKey) {
+    return new SendGridNotificationProvider(logger, config.providers.sendgridApiKey);
+  }
   if (config.providers.defaultChannel === "webhook" && config.providers.webhookUrl) {
     return new WebhookNotificationProvider(logger, config.providers.webhookUrl);
   }
