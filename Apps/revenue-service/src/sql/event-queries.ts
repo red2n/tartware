@@ -10,6 +10,8 @@
  * Increment rooms_reserved for a single date when a new reservation is created.
  * Also updates booking_pace to 'ahead' if rooms_reserved increased.
  * Uses UPSERT: creates the calendar row if it does not yet exist.
+ * rooms_available is left NULL on insert — it is populated by the periodic
+ * inventory sync job that knows the property's sellable room count.
  */
 export const DEMAND_CALENDAR_INCREMENT_OTB_SQL = `
   INSERT INTO public.demand_calendar (
@@ -19,7 +21,7 @@ export const DEMAND_CALENDAR_INCREMENT_OTB_SQL = `
   VALUES (
     $1::uuid, $2::uuid, $3::date,
     trim(to_char($3::date, 'Day')),
-    'moderate', 0, 1, CURRENT_TIMESTAMP
+    'moderate', NULL, 1, CURRENT_TIMESTAMP
   )
   ON CONFLICT (property_id, calendar_date)
   DO UPDATE SET

@@ -103,9 +103,10 @@ POST {{baseUrl}}/v1/self-service/check-in/start
 Content-Type: application/json
 
 {
-  "tenant_id": "{{tenantId}}",
   "confirmation_code": "{{confirmationCode}}",
-  "guest_email": "portal.test@example.com"
+  "access_method": "mobile_app",
+  "device_type": "iPhone 15",
+  "app_version": "1.0.0"
 }
 
 ### Complete mobile check-in
@@ -114,10 +115,11 @@ POST {{baseUrl}}/v1/self-service/check-in/{{checkinId}}/complete
 Content-Type: application/json
 
 {
-  "tenant_id": "{{tenantId}}",
-  "identity_verified": true,
-  "terms_accepted": true,
-  "digital_signature": "data:image/png;base64,iVBORw0KGgo..."
+  "identity_verification_method": "government_id",
+  "id_document_verified": true,
+  "registration_card_signed": true,
+  "payment_method_verified": true,
+  "terms_accepted": true
 }
 
 ### Get check-in status
@@ -130,7 +132,7 @@ GET {{baseUrl}}/v1/self-service/check-in/{{checkinId}}?tenant_id={{tenantId}}
 
 ### Initiate express checkout
 # @name checkout
-POST {{baseUrl}}/v1/self-service/checkout
+POST {{baseUrl}}/v1/self-service/check-out
 Content-Type: application/json
 
 {
@@ -141,7 +143,7 @@ Content-Type: application/json
 
 ### Get folio summary before checkout
 # @name folioSummary
-GET {{baseUrl}}/v1/self-service/checkout/folio?confirmation_code={{confirmationCode}}
+GET {{baseUrl}}/v1/self-service/check-out/preview?confirmation_code={{confirmationCode}}
 
 ###############################################################################
 # 6. REGISTRATION CARD

@@ -62,14 +62,27 @@ export const buildServer = () => {
     });
 
     redisClient.on("error", (err: Error) => {
-      gatewayLogger.warn({ err }, "Redis rate-limit client error; falling back to in-memory");
+      gatewayLogger.warn({ err }, "Redis rate-limit client error");
     });
 
-    void redisClient.connect().catch(() => {
-      gatewayLogger.warn("Redis rate-limit client failed to connect; using in-memory store");
+    void redisClient
+      .connect()
+      .then(() => {
+        gatewayLogger.info("Redis rate-limit client connected; using distributed store");
+        (rateLimitOptions as RateLimitPluginOptions & { redis: unknown }).redis = redisClient;
+      })
+      .catch(() => {
+        gatewayLogger.warn("Redis rate-limit client failed to connect; using in-memory store");
+      });
+
+    // Gracefully close the Redis client on shutdown
+    app.addHook("onClose", async () => {
+      await redisClient.quit().catch(() => {});
     });
 
-    (rateLimitOptions as RateLimitPluginOptions & { redis: unknown }).redis = redisClient;
+    // skipOnError: true → if Redis is transiently unavailable the rate limiter
+    // allows the request through instead of throwing a 500.
+    (rateLimitOptions as RateLimitPluginOptions & { skipOnError: boolean }).skipOnError = true;
   }
 
   app.register(

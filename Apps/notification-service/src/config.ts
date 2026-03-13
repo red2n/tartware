@@ -58,6 +58,8 @@ const providers = {
   defaultChannel: process.env.NOTIFICATION_DEFAULT_CHANNEL ?? "console",
   webhookUrl: process.env.NOTIFICATION_WEBHOOK_URL ?? "",
   sendgridApiKey: process.env.SENDGRID_API_KEY ?? "",
+  defaultSenderEmail: process.env.NOTIFICATION_DEFAULT_SENDER_EMAIL ?? "noreply@tartware.com",
+  defaultSenderName: process.env.NOTIFICATION_DEFAULT_SENDER_NAME ?? "Tartware PMS",
 };
 
 export const config = {

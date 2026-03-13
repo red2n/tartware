@@ -118,7 +118,7 @@ const loaderOptions: protoLoader.Options = {
 type HealthCheckClient = Client & {
   check(
     request: { service: string },
-    callback: (error: ServiceError | null, response: { status: number }) => void,
+    callback: (error: ServiceError | null, response: { status: string }) => void,
   ): void;
 };
 
@@ -370,7 +370,7 @@ export const checkGuardHealth = async (): Promise<boolean> => {
     const handler = healthClient!.check.bind(healthClient!) as unknown as (
       req: { service: string },
       opts: { deadline: number },
-      cb: (error: ServiceError | null, response: { status: number }) => void,
+      cb: (error: ServiceError | null, response: { status: string }) => void,
     ) => void;
 
     handler({ service: "" }, { deadline }, (error, response) => {
@@ -378,7 +378,7 @@ export const checkGuardHealth = async (): Promise<boolean> => {
         resolve(false);
         return;
       }
-      resolve(response.status === 1); // SERVING
+      resolve(response.status === "SERVING");
     });
   });
 };

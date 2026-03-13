@@ -48,12 +48,12 @@ export function createHealthRoutes(options: CreateHealthRoutesOptions) {
 			);
 
 			const checks: Record<string, "up" | "down"> = {};
-			for (const result of results) {
+			for (let i = 0; i < results.length; i++) {
+				const result = results[i]!;
 				if (result.status === "fulfilled") {
 					checks[result.value] = "up";
 				} else {
-					const name = deps[results.indexOf(result)]?.name ?? "unknown";
-					checks[name] = "down";
+					checks[deps[i]?.name ?? "unknown"] = "down";
 				}
 			}
 

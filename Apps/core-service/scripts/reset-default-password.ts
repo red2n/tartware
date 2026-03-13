@@ -1,8 +1,7 @@
-import bcrypt from "bcryptjs";
-
 import { config } from "../src/config.js";
 import { pool } from "../src/lib/db.js";
 import { userCacheService } from "../src/services/user-cache-service.js";
+import { hashPassword } from "../src/utils/password.js";
 
 const run = async (): Promise<void> => {
   if (process.env.NODE_ENV === "production") {
@@ -13,7 +12,7 @@ const run = async (): Promise<void> => {
   console.log("🔐 Resetting user passwords to default value...");
 
   try {
-    const hashed = await bcrypt.hash(config.auth.defaultPassword, 12);
+    const hashed = await hashPassword(config.auth.defaultPassword);
     const result = await pool.query(
       `
         UPDATE public.users

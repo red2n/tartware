@@ -12,15 +12,31 @@ import { renderTemplateByCode } from "./template-service.js";
 
 const logger: PinoLogger = appLogger.child({ module: "notification-dispatch" });
 
-/** Resolve the active provider based on config. */
+/** Memoized provider instance — created once, reused across dispatches. */
+let cachedProvider: NotificationProvider | null = null;
+let cachedProviderKey: string | null = null;
+
+/** Resolve the active provider based on config. Memoizes the instance. */
 const resolveProvider = (): NotificationProvider => {
+  const key = `${config.providers.defaultChannel}`;
+  if (cachedProvider && cachedProviderKey === key) {
+    return cachedProvider;
+  }
+
   if (config.providers.defaultChannel === "sendgrid" && config.providers.sendgridApiKey) {
-    return new SendGridNotificationProvider(logger, config.providers.sendgridApiKey);
+    cachedProvider = new SendGridNotificationProvider(
+      logger,
+      config.providers.sendgridApiKey,
+      config.providers.defaultSenderEmail,
+      config.providers.defaultSenderName,
+    );
+  } else if (config.providers.defaultChannel === "webhook" && config.providers.webhookUrl) {
+    cachedProvider = new WebhookNotificationProvider(logger, config.providers.webhookUrl);
+  } else {
+    cachedProvider = new ConsoleNotificationProvider(logger);
   }
-  if (config.providers.defaultChannel === "webhook" && config.providers.webhookUrl) {
-    return new WebhookNotificationProvider(logger, config.providers.webhookUrl);
-  }
-  return new ConsoleNotificationProvider(logger);
+  cachedProviderKey = key;
+  return cachedProvider;
 };
 
 const INSERT_COMMUNICATION_SQL = `

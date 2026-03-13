@@ -245,7 +245,7 @@ type HealthCheckRequestMessage = {
 };
 
 type HealthCheckResponseMessage = {
-  status: number;
+  status: string;
 };
 
 type HealthHandlers = {
@@ -259,10 +259,10 @@ const buildHealthCheckHandler =
   async (_call, callback) => {
     try {
       await checkDatabaseHealth();
-      callback(null, { status: 1 }); // SERVING
+      callback(null, { status: "SERVING" });
     } catch (error) {
       logger.warn({ err: error }, "Health check failed: database unreachable");
-      callback(null, { status: 2 }); // NOT_SERVING
+      callback(null, { status: "NOT_SERVING" });
     }
   };
 

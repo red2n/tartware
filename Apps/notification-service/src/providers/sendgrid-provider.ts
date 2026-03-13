@@ -12,15 +12,28 @@ import type {
  *
  * Dispatches email notifications via the SendGrid v3 API.
  * Only supports the EMAIL channel; SMS/push notifications should use other providers.
+ *
+ * The provider creates a single instance and configures the SendGrid module-level
+ * API key once at construction. Callers should memoize the instance (single provider
+ * per process) to avoid redundant global-state mutation.
  */
 export class SendGridNotificationProvider implements NotificationProvider {
   readonly name = "sendgrid";
   readonly supportedChannels = ["EMAIL"] as const;
 
   private readonly logger: PinoLogger;
+  private readonly defaultSenderEmail: string;
+  private readonly defaultSenderName: string;
 
-  constructor(logger: PinoLogger, apiKey: string) {
+  constructor(
+    logger: PinoLogger,
+    apiKey: string,
+    defaultSenderEmail = "noreply@tartware.com",
+    defaultSenderName = "Tartware PMS",
+  ) {
     this.logger = logger.child({ provider: "sendgrid" });
+    this.defaultSenderEmail = defaultSenderEmail;
+    this.defaultSenderName = defaultSenderName;
     sgMail.setApiKey(apiKey);
   }
 
@@ -37,8 +50,8 @@ export class SendGridNotificationProvider implements NotificationProvider {
       const [response] = await sgMail.send({
         to: payload.recipientEmail,
         from: {
-          email: payload.senderEmail ?? "noreply@tartware.com",
-          name: payload.senderName ?? "Tartware PMS",
+          email: payload.senderEmail ?? this.defaultSenderEmail,
+          name: payload.senderName ?? this.defaultSenderName,
         },
         subject: payload.subject,
         text: payload.body,
