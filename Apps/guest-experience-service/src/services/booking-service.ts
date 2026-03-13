@@ -95,12 +95,14 @@ const AVAILABILITY_SEARCH_SQL = `
     AND r.status = 'AVAILABLE'
     AND r.is_deleted = FALSE
     AND r.id NOT IN (
-      SELECT res.room_id FROM reservations res
+      SELECT ri.id FROM rooms ri
+      JOIN reservations res ON res.room_number = ri.room_number
+        AND res.property_id = ri.property_id
       WHERE res.property_id = $2
         AND res.status IN ('CONFIRMED', 'CHECKED_IN', 'GUARANTEED')
         AND res.check_in_date < $4
         AND res.check_out_date > $3
-        AND res.room_id IS NOT NULL
+        AND res.room_number IS NOT NULL
     )
   WHERE rt.property_id = $2
     AND rt.tenant_id = $1
