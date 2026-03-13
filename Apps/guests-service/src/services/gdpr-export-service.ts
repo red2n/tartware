@@ -80,7 +80,9 @@ export async function exportGuestData(params: {
   const { rows: notifications } = await query<Record<string, unknown>>(
     `SELECT id, channel, subject, status, sent_at, created_at
      FROM public.in_app_notifications
-     WHERE tenant_id = $1::uuid AND user_id = $2::uuid
+     WHERE tenant_id = $1::uuid
+       AND source_type = 'guest'
+       AND source_id = $2::uuid
      ORDER BY created_at DESC`,
     [tenantId, guestId],
   );

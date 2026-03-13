@@ -21,12 +21,12 @@ export const closeFiscalPeriod = async (
   const { rowCount } = await query(
     `UPDATE public.fiscal_periods
      SET period_status = 'SOFT_CLOSE',
-         closed_at = NOW(),
-         closed_by = $4,
-         close_reason = $5,
+         soft_closed_at = NOW(),
+         soft_closed_by = $4,
+         close_notes = $5,
          updated_at = NOW()
      WHERE tenant_id = $1::uuid
-       AND id = $2::uuid
+       AND fiscal_period_id = $2::uuid
        AND property_id = $3::uuid
        AND period_status = 'OPEN'`,
     [context.tenantId, command.period_id, command.property_id, actor, command.close_reason ?? null],
@@ -63,7 +63,7 @@ export const lockFiscalPeriod = async (
          locked_by = COALESCE($4, $5),
          updated_at = NOW()
      WHERE tenant_id = $1::uuid
-       AND id = $2::uuid
+       AND fiscal_period_id = $2::uuid
        AND property_id = $3::uuid
        AND period_status = 'SOFT_CLOSE'`,
     [context.tenantId, command.period_id, command.property_id, command.approved_by ?? null, actor],
@@ -96,12 +96,12 @@ export const reopenFiscalPeriod = async (
   const { rowCount } = await query(
     `UPDATE public.fiscal_periods
      SET period_status = 'OPEN',
-         closed_at = NULL,
-         closed_by = NULL,
-         close_reason = $5,
+         soft_closed_at = NULL,
+         soft_closed_by = NULL,
+         close_notes = $5,
          updated_at = NOW()
      WHERE tenant_id = $1::uuid
-       AND id = $2::uuid
+       AND fiscal_period_id = $2::uuid
        AND property_id = $3::uuid
        AND period_status = 'SOFT_CLOSE'`,
     [context.tenantId, command.period_id, command.property_id, actor, command.reason],

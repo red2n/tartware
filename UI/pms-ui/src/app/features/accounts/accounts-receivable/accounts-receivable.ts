@@ -23,7 +23,7 @@ import { createSortState, sortBy, toggleSort } from "../../../shared/sort-utils"
 
 type StatusFilter = "ALL" | "open" | "partial" | "paid" | "overdue" | "in_collection" | "written_off" | "disputed";
 type AccountTypeFilter = "ALL" | "guest" | "corporate" | "travel_agent" | "group" | "direct_bill" | "city_ledger";
-type AgingFilter = "ALL" | "current" | "1_30" | "31_60" | "61_90" | "91_120" | "over_120";
+type AgingFilter = "ALL" | "current" | "1_30_days" | "31_60_days" | "61_90_days" | "91_120_days" | "over_120_days";
 
 @Component({
 	selector: "app-accounts-receivable",
@@ -85,11 +85,11 @@ export class AccountsReceivableComponent {
 	readonly agingFilters: { key: AgingFilter; label: string }[] = [
 		{ key: "ALL", label: "All" },
 		{ key: "current", label: "Current" },
-		{ key: "1_30", label: "1–30 days" },
-		{ key: "31_60", label: "31–60 days" },
-		{ key: "61_90", label: "61–90 days" },
-		{ key: "91_120", label: "91–120 days" },
-		{ key: "over_120", label: "120+ days" },
+		{ key: "1_30_days", label: "1–30 days" },
+		{ key: "31_60_days", label: "31–60 days" },
+		{ key: "61_90_days", label: "61–90 days" },
+		{ key: "91_120_days", label: "91–120 days" },
+		{ key: "over_120_days", label: "120+ days" },
 	];
 
 	readonly filtered = computed(() => {

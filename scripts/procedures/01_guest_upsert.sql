@@ -35,7 +35,7 @@ CREATE OR REPLACE FUNCTION upsert_guest(
     p_postal_code VARCHAR(20) DEFAULT NULL,
     p_preferences JSONB DEFAULT NULL,
     p_created_by VARCHAR(100) DEFAULT 'SYSTEM',
-    p_vip_status BOOLEAN DEFAULT FALSE
+    p_vip_status VARCHAR(10) DEFAULT 'NONE'
 )
 RETURNS UUID
 LANGUAGE plpgsql
@@ -76,7 +76,7 @@ BEGIN
         p_phone,
         v_address_jsonb,
         p_preferences,
-        COALESCE(p_vip_status, FALSE),
+        COALESCE(p_vip_status, 'NONE'),
         p_created_by,
         CURRENT_TIMESTAMP, -- created_at
         CURRENT_TIMESTAMP, -- updated_at
@@ -228,7 +228,7 @@ BEGIN
             v_guest->>'postal_code',
             (v_guest->'preferences')::JSONB,
             p_created_by,
-            COALESCE((v_guest->'preferences'->>'vip_status')::BOOLEAN, FALSE)
+            COALESCE(v_guest->'preferences'->>'vip_status', 'NONE')
         ) INTO v_guest_id;
 
         -- Return result

@@ -93,13 +93,21 @@ export const recordChargeback = async (
   // Adjust the folio balance if a reservation is linked
   if (payment.reservation_id) {
     await query(
-      `UPDATE public.folios
-       SET balance = balance + $3,
-           total_payments = total_payments - $3,
+      `WITH target_folio AS (
+         SELECT id
+         FROM public.folios
+         WHERE tenant_id = $1::uuid
+           AND reservation_id = $2::uuid
+           AND folio_status != 'CLOSED'
+         ORDER BY created_at DESC
+         LIMIT 1
+       )
+       UPDATE public.folios AS f
+       SET balance = f.balance + $3,
+           total_payments = f.total_payments - $3,
            updated_at = NOW()
-       WHERE tenant_id = $1::uuid AND reservation_id = $2::uuid
-         AND folio_status != 'CLOSED'
-       LIMIT 1`,
+       FROM target_folio tf
+       WHERE f.id = tf.id`,
       [context.tenantId, payment.reservation_id, command.chargeback_amount],
     );
   }
