@@ -1,6 +1,7 @@
 import { Component, OnInit, signal, inject } from "@angular/core";
 import { ActivatedRoute, Router } from "@angular/router";
 import { FormsModule } from "@angular/forms";
+import { portalConfig } from "../../portal-config";
 import { MatFormFieldModule } from "@angular/material/form-field";
 import { MatInputModule } from "@angular/material/input";
 import { MatButtonModule } from "@angular/material/button";
@@ -133,8 +134,8 @@ export class BookingPage implements OnInit {
 		this.error.set("");
 		try {
 			const body: BookingRequest = {
-				tenant_id: "default",
-				property_id: "default",
+				tenant_id: portalConfig.tenantId,
+				property_id: portalConfig.propertyId,
 				guest_first_name: this.firstName,
 				guest_last_name: this.lastName,
 				guest_email: this.email,

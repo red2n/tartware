@@ -1,6 +1,7 @@
 import { Component, signal, inject } from "@angular/core";
 import { Router } from "@angular/router";
 import { FormsModule } from "@angular/forms";
+import { portalConfig } from "../../portal-config";
 import { MatFormFieldModule } from "@angular/material/form-field";
 import { MatInputModule } from "@angular/material/input";
 import { MatButtonModule } from "@angular/material/button";
@@ -163,7 +164,7 @@ export class CheckinPage {
 			const result = await this.api.startCheckin({
 				confirmation_code: this.confirmationCode.trim(),
 				last_name: this.lastName.trim(),
-				tenant_id: "default",
+				tenant_id: portalConfig.tenantId,
 			});
 			this.startResult.set(result);
 			stepper.next();
@@ -181,7 +182,7 @@ export class CheckinPage {
 		this.completeError.set("");
 		try {
 			const result = await this.api.completeCheckin(sr.checkinId, {
-				tenant_id: "default",
+				tenant_id: portalConfig.tenantId,
 				accepted_terms: this.acceptedTerms,
 			});
 			this.completeResult.set(result);

@@ -1,6 +1,7 @@
 import { Component, signal } from "@angular/core";
 import { FormsModule } from "@angular/forms";
 import { Router } from "@angular/router";
+import { portalConfig } from "../../portal-config";
 import { MatFormFieldModule } from "@angular/material/form-field";
 import { MatInputModule } from "@angular/material/input";
 import { MatDatepickerModule } from "@angular/material/datepicker";
@@ -146,8 +147,8 @@ export class SearchPage {
 		try {
 			const fmt = (d: Date) => d.toISOString().slice(0, 10);
 			const data = await this.api.searchRooms({
-				tenant_id: "default",
-				property_id: "default",
+				tenant_id: portalConfig.tenantId,
+				property_id: portalConfig.propertyId,
 				check_in_date: fmt(this.checkIn),
 				check_out_date: fmt(this.checkOut),
 				adults: this.adults,
