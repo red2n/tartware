@@ -1289,14 +1289,14 @@ k6 framework exists with 5 scenarios (smoke, load, stress, spike, booking-flow) 
 
 - [ ] **P9-9: Build E2E test suite** — Automated Vitest E2E tests for top 5 workflows: (1) booking lifecycle, (2) check-in → charge → check-out, (3) group booking with rooming list, (4) cancellation with refund, (5) night audit cycle.
 
-#### Item 7 — SLI / SLO Metrics + Grafana Alerting | Priority: 7th | Current: 30%
+#### Item 7 — SLI / SLO Metrics + Grafana Alerting | Priority: 7th | Current: 100% ✅
 
-Prometheus metrics exist on command consumers (outcome counters, duration histograms, lag gauges). SLO targets documented in `docs/observability/command-consumer-slos.md`. No Grafana dashboards or alert rules.
+Prometheus v2.53.0 scrapes all 17 services. Grafana OSS 11.1.0 with auto-provisioned dashboards (command-pipeline, http-latency) and 10 Prometheus alert rules. Added to docker-compose.
 
-- [ ] **P9-10: Create Grafana dashboards + alerting rules** — JSON dashboard for command pipeline SLOs + HTTP latency. Alert rules for error budget burn rate.
+- [x] **P9-10: Create Grafana dashboards + alerting rules** — JSON dashboard for command pipeline SLOs + HTTP latency. Alert rules for error budget burn rate. ✅
 
-#### Item 8 — Guest Self-Service Portal UI | Priority: 8th | Current: 70%
+#### Item 8 — Guest Self-Service Portal UI | Priority: 8th | Current: 100% ✅
 
-Backend APIs complete in `guest-experience-service` (search, book, check-in, keys, registration card). No Angular UI.
+Angular 21 guest portal in `UI/guest-portal/` (port 4300). 5 pages: room search, booking, confirmation, lookup, online check-in. Material Design, API proxy to gateway.
 
-- [ ] **P9-11: Build guest portal Angular UI** — Self-service booking, check-in, key retrieval frontend using existing API endpoints.
+- [x] **P9-11: Build guest portal Angular UI** — Self-service booking, check-in, key retrieval frontend using existing API endpoints. ✅

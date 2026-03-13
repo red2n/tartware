@@ -27,6 +27,7 @@
     "dev:registry": "LOG_PRETTY=true PORT=3075 HOST=0.0.0.0 pnpm --filter @tartware/service-registry dev",
     "dev:kafka-ui": "docker compose up -d kafka-ui",
     "dev:ui": "pnpm --filter @tartware/pms-ui start",
+    "dev:guest-portal": "cd UI/guest-portal && npx ng serve",
     "dev:full": "FORCE_COLOR=1 concurrently --raw -n backend,ui \"pnpm run dev:backend\" \"pnpm run dev:ui\"",
     "kafka:topics": "node ./scripts/dev/bootstrap-kafka-topics.mjs",
     "start": "pnpm run dev",

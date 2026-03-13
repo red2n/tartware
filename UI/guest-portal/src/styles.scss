@@ -1,0 +1,48 @@
+@use '@angular/material' as mat;
+
+@include mat.core();
+
+$theme: mat.define-theme((
+  color: (
+    theme-type: light,
+    primary: mat.$azure-palette,
+    tertiary: mat.$blue-palette,
+  ),
+  typography: (
+    brand-family: 'Roboto',
+    plain-family: 'Roboto',
+  ),
+));
+
+html {
+  @include mat.all-component-themes($theme);
+}
+
+/* ── Global resets ── */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  font-family: 'Roboto', sans-serif;
+  font-size: 16px;
+  line-height: 1.5;
+  color: #1f2328;
+  background: #f6f8fa;
+  -webkit-font-smoothing: antialiased;
+}
+
+a {
+  color: #0969da;
+  text-decoration: none;
+
+  &:hover {
+    text-decoration: underline;
+  }
+}
