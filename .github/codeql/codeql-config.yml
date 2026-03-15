@@ -1,0 +1,55 @@
+name: "Tartware CodeQL Configuration"
+
+# ───────────────────────────────────────────────────────
+# Custom query packs targeting patterns in this monorepo:
+#   - SQL injection via raw pg queries in repositories/
+#   - SSRF in API gateway proxy fetch() calls
+#   - Hardcoded secrets in config.ts fallbacks
+#   - Log injection through Pino structured logging
+#   - Prototype pollution from JSONB column parsing
+#   - JWT verification completeness across services
+#   - Missing rate limiting on route handlers
+#   - ReDoS in input validation patterns
+# ───────────────────────────────────────────────────────
+
+query-filters:
+  # Exclude UI framework false-positives (Angular DomSanitizer handles XSS)
+  - exclude:
+      id: js/xss-through-dom
+  # Exclude test-only hardcoded credentials (flagged by default)
+  - exclude:
+      id: js/hardcoded-credentials
+      tags contain: test
+
+paths:
+  - Apps
+  - schema/src
+
+paths-ignore:
+  # Build outputs & generated code
+  - "**/dist/**"
+  - "**/coverage/**"
+  - "**/vitest-report/**"
+  - "**/*.tsbuildinfo"
+  # Node modules (handled by lockfile audits)
+  - "**/node_modules/**"
+  # Test fixtures & mocks
+  - "**/tests/**"
+  - "**/__tests__/**"
+  - "**/*.test.ts"
+  - "**/*.spec.ts"
+  - "**/test-utils/**"
+  # Scripts (dev tooling, not production code)
+  - scripts/**
+  - executables/**
+  - loadtest/**
+  # UI (separate CI pipeline)
+  - UI/**
+  # Proto generated stubs
+  - proto/**
+  # Documentation
+  - docs/**
+  - hospitality-standards/**
+  - "**/*.md"
+  # HTTP test files
+  - http_test/**

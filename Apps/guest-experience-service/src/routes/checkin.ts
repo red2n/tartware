@@ -52,7 +52,18 @@ export const registerCheckinRoutes = (app: FastifyInstance): void => {
         appVersion: body.app_version,
       });
 
-      return reply.status(201).send(result);
+      return reply.status(201).send({
+        ...result,
+        checkinId: result.mobileCheckinId,
+        guestName:
+          reservation.guest_first_name && reservation.guest_last_name
+            ? `${reservation.guest_first_name} ${reservation.guest_last_name}`
+            : null,
+        roomNumber: reservation.room_number ?? null,
+        checkInDate: reservation.check_in_date,
+        checkOutDate: reservation.check_out_date,
+        requiresTerms: true,
+      });
     },
   );
 
@@ -105,7 +116,12 @@ export const registerCheckinRoutes = (app: FastifyInstance): void => {
         }
       }
 
-      return reply.status(200).send(result);
+      return reply.status(200).send({
+        ...result,
+        checkinId: result.mobileCheckinId,
+        roomNumber: result.roomId ?? null,
+        keyCode: null,
+      });
     },
   );
 

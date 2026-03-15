@@ -14,8 +14,18 @@ $theme: mat.define-theme((
   ),
 ));
 
+/* Only include themes for components actually used in guest-portal */
 html {
-  @include mat.all-component-themes($theme);
+  @include mat.button-theme($theme);
+  @include mat.card-theme($theme);
+  @include mat.checkbox-theme($theme);
+  @include mat.datepicker-theme($theme);
+  @include mat.form-field-theme($theme);
+  @include mat.icon-theme($theme);
+  @include mat.input-theme($theme);
+  @include mat.progress-spinner-theme($theme);
+  @include mat.stepper-theme($theme);
+  @include mat.toolbar-theme($theme);
 }
 
 /* ── Global resets ── */
