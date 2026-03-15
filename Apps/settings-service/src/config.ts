@@ -1,6 +1,5 @@
 import {
   databaseSchema,
-  jwtVerificationSchema,
   loadServiceConfig,
   parseNumberEnv,
   parseNumberList,
@@ -10,8 +9,16 @@ import {
 
 process.env.SERVICE_NAME = process.env.SERVICE_NAME ?? "@tartware/settings-service";
 process.env.SERVICE_VERSION = process.env.SERVICE_VERSION ?? "0.1.0";
+if (!process.env.AUTH_JWT_SECRET) {
+  if (process.env.NODE_ENV === "production") {
+    throw new Error("AUTH_JWT_SECRET must be set in production and cannot use a default value.");
+  }
+  process.env.AUTH_JWT_SECRET = "dev-secret-minimum-32-chars-change-me!";
+}
+process.env.AUTH_JWT_ISSUER = process.env.AUTH_JWT_ISSUER ?? "tartware-core-service";
+process.env.AUTH_JWT_AUDIENCE = process.env.AUTH_JWT_AUDIENCE ?? "tartware-core";
 
-const configValues = loadServiceConfig(databaseSchema.merge(jwtVerificationSchema));
+const configValues = loadServiceConfig(databaseSchema);
 validateProductionSecrets({
   ...configValues,
   NODE_ENV: process.env.NODE_ENV,
@@ -62,9 +69,11 @@ export const config = {
     statementTimeoutMs: configValues.DB_STATEMENT_TIMEOUT_MS,
   },
   auth: {
-    audience: configValues.JWT_AUDIENCE,
-    issuer: configValues.JWT_ISSUER,
-    publicKey: configValues.JWT_PUBLIC_KEY,
+    jwt: {
+      secret: process.env.AUTH_JWT_SECRET ?? "dev-secret-minimum-32-chars-change-me!",
+      issuer: process.env.AUTH_JWT_ISSUER ?? "tartware-core-service",
+      audience: process.env.AUTH_JWT_AUDIENCE ?? "tartware-core",
+    },
   },
   kafka,
   commandCenter,

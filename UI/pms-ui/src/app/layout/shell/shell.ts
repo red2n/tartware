@@ -1,6 +1,7 @@
-import { Component, inject, type OnDestroy, type OnInit, signal } from "@angular/core";
+import { Component, computed, inject, type OnDestroy, type OnInit, signal } from "@angular/core";
 import { NavigationEnd, Router, RouterOutlet } from "@angular/router";
 import { filter, type Subscription } from "rxjs";
+import { ScreenPermissionsService } from "../../core/auth/screen-permissions.service";
 import { TranslatePipe } from "../../core/i18n/translate.pipe";
 import { NotificationService } from "../../core/notifications/notification.service";
 import { RegistryService } from "../../core/registry/registry.service";
@@ -33,10 +34,23 @@ export class ShellComponent implements OnInit, OnDestroy {
 	private readonly router = inject(Router);
 	private readonly registry = inject(RegistryService);
 	private readonly notificationService = inject(NotificationService);
+	private readonly screenPerms = inject(ScreenPermissionsService);
 	readonly sidebarCollapsed = signal(this.loadSidebarState());
 	readonly rightDockCollapsed = signal(this.loadRightDockState());
 	readonly statusBarVisible = this.registry.statusBarVisible;
 	readonly activeParent = signal<NavItem | null>(null);
+
+	/** Active parent's children filtered by screen permissions. */
+	readonly filteredActiveChildren = computed(() => {
+		const parent = this.activeParent();
+		if (!parent?.children) return [];
+		const allowed = this.screenPerms.allowedScreens();
+		if (allowed.size === 0) return [];
+		return parent.children.filter((child) => {
+			if (!child.screenKey) return true;
+			return allowed.has(child.screenKey);
+		});
+	});
 
 	private routerSub?: Subscription;
 

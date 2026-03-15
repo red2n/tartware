@@ -27,12 +27,16 @@
   </div>
 
   @if (activeParent(); as parent) {
-    <app-sub-sidebar
-      [parentLabel]="parent.label"
-      [parentIcon]="parent.icon"
-      [items]="parent.children!"
-      [collapsed]="rightDockCollapsed()"
-      (toggleCollapse)="toggleRightDock()" />
+    @if (filteredActiveChildren(); as children) {
+      @if (children.length > 0) {
+        <app-sub-sidebar
+          [parentLabel]="parent.label"
+          [parentIcon]="parent.icon"
+          [items]="children"
+          [collapsed]="rightDockCollapsed()"
+          (toggleCollapse)="toggleRightDock()" />
+      }
+    }
   }
 </div>
 <app-toast-container />

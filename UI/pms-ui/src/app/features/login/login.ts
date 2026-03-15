@@ -14,6 +14,7 @@ import { TenantContextService } from "../../core/context/tenant-context.service"
 import { I18nService } from "../../core/i18n/i18n.service";
 import { TranslatePipe } from "../../core/i18n/translate.pipe";
 import { ThemeService } from "../../core/theme/theme.service";
+import { findFirstAllowedRoute } from "../../layout/nav-config";
 
 @Component({
 	selector: "app-login",
@@ -109,12 +110,14 @@ export class LoginComponent implements AfterViewInit {
 			// Load properties and handle selection
 			const properties = await this.ctx.fetchProperties();
 
+			const landingRoute = findFirstAllowedRoute(this.screenPerms.allowedScreens());
+
 			if (this.ctx.hasPropertySelected()) {
 				// Returning user — saved property still valid, go straight in
-				this.router.navigate(["/dashboard"]);
+				this.router.navigate([landingRoute]);
 			} else if (properties.length <= 1) {
 				// 0 or 1 property — auto-selected by service, no picker needed
-				this.router.navigate(["/dashboard"]);
+				this.router.navigate([landingRoute]);
 			} else {
 				// Multiple properties, none saved — navigate to selection screen
 				this.router.navigate(["/select-property"]);

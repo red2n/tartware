@@ -20,24 +20,9 @@ declare module "fastify" {
 const isValidUuid = (value: string): boolean =>
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
 
-const normalizePublicKey = (key: string) => key.replace(/\\n/g, "\n").trim();
-
 export const authPlugin = fp(async (app: FastifyInstance) => {
-  if (process.env.DISABLE_AUTH === "true") {
-    app.log.warn("Auth disabled via DISABLE_AUTH");
-    app.decorate("authenticate", async () => undefined);
-    return;
-  }
-
   await app.register(fastifyJwt, {
-    secret: {
-      public: normalizePublicKey(config.auth.publicKey),
-    },
-    verify: {
-      algorithms: ["RS256"],
-      allowedAud: config.auth.audience,
-      allowedIss: config.auth.issuer,
-    },
+    secret: config.auth.jwt.secret,
   });
 
   app.decorate("authenticate", async (request: FastifyRequest, reply: FastifyReply) => {
@@ -47,26 +32,29 @@ export const authPlugin = fp(async (app: FastifyInstance) => {
         request.log.warn("Missing subject claim in JWT");
         return reply.unauthorized("Unauthorized");
       }
-      if (!payload.tenantId || !isValidUuid(payload.tenantId)) {
-        request.log.warn("Missing tenantId claim in JWT");
-        return reply.forbidden("Tenant context required");
+
+      // Resolve tenantId from JWT claims or query parameter
+      const tenantId =
+        (payload.tenantId && isValidUuid(payload.tenantId) ? payload.tenantId : undefined) ??
+        (request.query as Record<string, string>).tenant_id ??
+        undefined;
+
+      if (!tenantId || !isValidUuid(tenantId)) {
+        // Set authUser without membership — read-only endpoints can proceed
+        request.authUser = { ...payload, tenantId: "" };
+        return;
       }
-      const membership = await getUserTenantMembership(payload.sub, payload.tenantId);
+
+      const membership = await getUserTenantMembership(payload.sub, tenantId);
       if (!membership) {
-        request.log.warn(
-          { tenantId: payload.tenantId, userId: payload.sub },
-          "Tenant membership missing",
-        );
+        request.log.warn({ tenantId, userId: payload.sub }, "Tenant membership missing");
         return reply.forbidden("Tenant access denied");
       }
       if (!membership.isActive) {
-        request.log.warn(
-          { tenantId: payload.tenantId, userId: payload.sub },
-          "Tenant membership inactive",
-        );
+        request.log.warn({ tenantId, userId: payload.sub }, "Tenant membership inactive");
         return reply.forbidden("Tenant access inactive");
       }
-      request.authUser = payload;
+      request.authUser = { ...payload, tenantId };
       request.tenantMembership = membership;
     } catch (error) {
       request.log.warn({ err: error }, "Authentication failed");

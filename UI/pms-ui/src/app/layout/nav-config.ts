@@ -29,8 +29,8 @@ export function filterNavByAllowedScreens(
 	items: readonly NavItem[],
 	allowedScreens: ReadonlySet<string>,
 ): NavItem[] {
-	// If no permissions loaded (empty set), show all items (fail-open)
-	if (allowedScreens.size === 0) return [...items];
+	// If no permissions loaded (empty set), hide all items (fail-closed)
+	if (allowedScreens.size === 0) return [];
 
 	return items
 		.filter((item) => {
@@ -265,4 +265,27 @@ export function findActiveParent(url: string): NavItem | null {
 		}
 	}
 	return null;
+}
+
+/**
+ * Find the first route the user is allowed to access based on their screen permissions.
+ * Walks PRIMARY then SECONDARY nav items, returning the first matching route.
+ * Falls back to "/dashboard" if no allowed route is found.
+ */
+export function findFirstAllowedRoute(allowedScreens: ReadonlySet<string>): string {
+	for (const items of [PRIMARY_NAV_ITEMS, SECONDARY_NAV_ITEMS]) {
+		for (const item of items) {
+			if (item.route && item.screenKey && allowedScreens.has(item.screenKey)) {
+				return item.route;
+			}
+			if (item.children) {
+				for (const child of item.children) {
+					if (child.route && child.screenKey && allowedScreens.has(child.screenKey)) {
+						return child.route;
+					}
+				}
+			}
+		}
+	}
+	return "/dashboard";
 }
