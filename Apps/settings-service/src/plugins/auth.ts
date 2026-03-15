@@ -23,6 +23,10 @@ const isValidUuid = (value: string): boolean =>
 export const authPlugin = fp(async (app: FastifyInstance) => {
   await app.register(fastifyJwt, {
     secret: config.auth.jwt.secret,
+    verify: {
+      allowedIss: config.auth.jwt.issuer,
+      allowedAud: config.auth.jwt.audience,
+    },
   });
 
   app.decorate("authenticate", async (request: FastifyRequest, reply: FastifyReply) => {
@@ -40,8 +44,8 @@ export const authPlugin = fp(async (app: FastifyInstance) => {
         undefined;
 
       if (!tenantId || !isValidUuid(tenantId)) {
-        // Set authUser without membership — read-only endpoints can proceed
-        request.authUser = { ...payload, tenantId: "" };
+        request.log.debug("No valid tenant context — tenant-scoped routes will reject");
+        request.authUser = { ...payload, tenantId: undefined as unknown as string };
         return;
       }
 

@@ -28,9 +28,10 @@ export function hasMinRole(userRole: TenantRole, minRole: TenantRole): boolean {
 export function filterNavByAllowedScreens(
 	items: readonly NavItem[],
 	allowedScreens: ReadonlySet<string>,
+	permissionsLoaded: boolean,
 ): NavItem[] {
-	// If no permissions loaded (empty set), hide all items (fail-closed)
-	if (allowedScreens.size === 0) return [];
+	// If permissions haven't loaded or are empty (API error/first deploy), show all items (fail-open)
+	if (!permissionsLoaded || allowedScreens.size === 0) return [...items];
 
 	return items
 		.filter((item) => {
@@ -273,14 +274,19 @@ export function findActiveParent(url: string): NavItem | null {
  * Falls back to "/dashboard" if no allowed route is found.
  */
 export function findFirstAllowedRoute(allowedScreens: ReadonlySet<string>): string {
+	// If no permissions loaded, default to dashboard (guards are fail-open anyway)
+	if (allowedScreens.size === 0) return "/dashboard";
+
 	for (const items of [PRIMARY_NAV_ITEMS, SECONDARY_NAV_ITEMS]) {
 		for (const item of items) {
 			if (item.route && item.screenKey && allowedScreens.has(item.screenKey)) {
 				return item.route;
 			}
 			if (item.children) {
+				const effectiveKey = item.screenKey;
 				for (const child of item.children) {
-					if (child.route && child.screenKey && allowedScreens.has(child.screenKey)) {
+					const childKey = child.screenKey ?? effectiveKey;
+					if (child.route && childKey && allowedScreens.has(childKey)) {
 						return child.route;
 					}
 				}

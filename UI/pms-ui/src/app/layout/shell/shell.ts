@@ -40,12 +40,13 @@ export class ShellComponent implements OnInit, OnDestroy {
 	readonly statusBarVisible = this.registry.statusBarVisible;
 	readonly activeParent = signal<NavItem | null>(null);
 
-	/** Active parent's children filtered by screen permissions. */
+	/** Active parent's children filtered by screen permissions (fail-open when not loaded). */
 	readonly filteredActiveChildren = computed(() => {
 		const parent = this.activeParent();
 		if (!parent?.children) return [];
 		const allowed = this.screenPerms.allowedScreens();
-		if (allowed.size === 0) return [];
+		// Fail-open: show all children when permissions haven't loaded or are empty
+		if (!this.screenPerms.loaded() || allowed.size === 0) return parent.children;
 		return parent.children.filter((child) => {
 			if (!child.screenKey) return true;
 			return allowed.has(child.screenKey);
