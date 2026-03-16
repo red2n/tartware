@@ -465,7 +465,19 @@ export const searchAvailableRooms = async (options: {
     number_of_beds: number | string | null;
     size_sqm: number | string | null;
   }>(
-    `WITH available_rooms AS (
+    `WITH unassigned_reservations AS (
+       -- Pre-aggregate unassigned reservation counts per room type
+       SELECT ures.room_type_id, COUNT(*) AS unassigned_count
+       FROM public.reservations ures
+       WHERE ures.tenant_id = $1::uuid
+         AND ures.property_id = $2::uuid
+         AND (ures.room_number IS NULL OR ures.room_number = '')
+         AND ures.status IN ('PENDING', 'CONFIRMED', 'CHECKED_IN')
+         AND ures.check_in_date < $4::date
+         AND ures.check_out_date > $3::date
+       GROUP BY ures.room_type_id
+     ),
+     available_rooms AS (
        SELECT
          r.id AS room_id, r.room_number, r.room_type_id,
          rt.type_name, r.floor, r.status, r.housekeeping_status,
@@ -521,19 +533,8 @@ export const searchAvailableRooms = async (options: {
             status, housekeeping_status, max_occupancy, bed_type,
             number_of_beds, size_sqm, base_rate, currency, features
      FROM available_rooms ar
-     WHERE ar.rn > (
-       -- Count unassigned reservations for this room type in the date range.
-       -- These consume inventory at the type level even without a room number.
-       SELECT COUNT(*)
-       FROM public.reservations ures
-       WHERE ures.room_type_id = ar.room_type_id
-         AND ures.tenant_id = $1::uuid
-         AND ures.property_id = $2::uuid
-         AND (ures.room_number IS NULL OR ures.room_number = '')
-         AND ures.status IN ('PENDING', 'CONFIRMED', 'CHECKED_IN')
-         AND ures.check_in_date < $4::date
-         AND ures.check_out_date > $3::date
-     )
+     LEFT JOIN unassigned_reservations ur ON ur.room_type_id = ar.room_type_id
+     WHERE ar.rn > COALESCE(ur.unassigned_count, 0)
      ORDER BY type_name, room_number
      LIMIT $7
      OFFSET $8`,

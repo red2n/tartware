@@ -119,7 +119,7 @@ export const registerCheckinRoutes = (app: FastifyInstance): void => {
       return reply.status(200).send({
         ...result,
         checkinId: result.mobileCheckinId,
-        roomNumber: result.roomId ?? null,
+        roomId: result.roomId ?? null,
         keyCode: null,
       });
     },

@@ -1,5 +1,3 @@
-import { generateKeyPairSync } from "node:crypto";
-
 import { vi } from "vitest";
 
 process.env.NODE_ENV = process.env.NODE_ENV ?? "test";
@@ -10,6 +8,11 @@ process.env.LOG_PRETTY = process.env.LOG_PRETTY ?? "false";
 process.env.LOG_REQUESTS = process.env.LOG_REQUESTS ?? "false";
 process.env.SERVICE_NAME = process.env.SERVICE_NAME ?? "@tartware/settings-service";
 process.env.SERVICE_VERSION = process.env.SERVICE_VERSION ?? "test";
+
+// Auth env — must match config.ts AUTH_JWT_* env vars so @fastify/jwt HS256 verification succeeds
+process.env.AUTH_JWT_SECRET = process.env.AUTH_JWT_SECRET ?? "test-settings-secret-minimum-32-chars!!";
+process.env.AUTH_JWT_ISSUER = process.env.AUTH_JWT_ISSUER ?? "https://auth.tartware.test";
+process.env.AUTH_JWT_AUDIENCE = process.env.AUTH_JWT_AUDIENCE ?? "test-audience";
 
 const TEST_TENANT_ID = "11111111-1111-1111-1111-111111111111";
 
@@ -22,25 +25,7 @@ vi.mock("../src/services/membership-service.js", () => ({
     modules: ["settings"],
   })),
 }));
-process.env.JWT_AUDIENCE = process.env.JWT_AUDIENCE ?? "test-audience";
-process.env.JWT_ISSUER = process.env.JWT_ISSUER ?? "https://auth.tartware.test";
 process.env.SETTINGS_DATA_SOURCE = process.env.SETTINGS_DATA_SOURCE ?? "seed";
-if (!process.env.JWT_PUBLIC_KEY || !process.env.JWT_PRIVATE_KEY) {
-  const { publicKey, privateKey } = generateKeyPairSync("rsa", {
-    modulusLength: 2048,
-    publicKeyEncoding: {
-      type: "spki",
-      format: "pem",
-    },
-    privateKeyEncoding: {
-      type: "pkcs8",
-      format: "pem",
-    },
-  });
-
-  process.env.JWT_PUBLIC_KEY = publicKey;
-  process.env.JWT_PRIVATE_KEY = privateKey;
-}
 process.env.DB_HOST = process.env.DB_HOST ?? "127.0.0.1";
 process.env.DB_PORT = process.env.DB_PORT ?? "5432";
 process.env.DB_NAME = process.env.DB_NAME ?? "tartware";
