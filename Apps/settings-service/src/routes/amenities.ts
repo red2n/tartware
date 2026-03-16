@@ -69,6 +69,20 @@ const enforceScope = (
   return true;
 };
 
+const enforceTenantScope = (
+  request: FastifyRequest,
+  reply: FastifyReply,
+  scope: string,
+): request is FastifyRequest & { authUser: AuthUser & { tenantId: string } } => {
+  if (!enforceScope(request, reply, scope)) {
+    return false;
+  }
+  if (!request.authUser.tenantId) {
+    throw reply.server.httpErrors.forbidden("Tenant context required");
+  }
+  return true;
+};
+
 const toIsoString = (value?: Date | string | null) => {
   if (!value) {
     return undefined;
@@ -100,7 +114,7 @@ const amenitiesRoutes: FastifyPluginAsync = async (app) => {
       }),
     },
     async (request, reply) => {
-      if (!enforceScope(request, reply, "settings:read")) {
+      if (!enforceTenantScope(request, reply, "settings:read")) {
         return;
       }
 
@@ -136,7 +150,7 @@ const amenitiesRoutes: FastifyPluginAsync = async (app) => {
       }),
     },
     async (request, reply) => {
-      if (!enforceScope(request, reply, "settings:write")) {
+      if (!enforceTenantScope(request, reply, "settings:write")) {
         return;
       }
 
@@ -187,7 +201,7 @@ const amenitiesRoutes: FastifyPluginAsync = async (app) => {
       }),
     },
     async (request, reply) => {
-      if (!enforceScope(request, reply, "settings:write")) {
+      if (!enforceTenantScope(request, reply, "settings:write")) {
         return;
       }
 

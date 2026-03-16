@@ -1,4 +1,5 @@
 import {
+  coreAuthSchema,
   databaseSchema,
   loadServiceConfig,
   parseNumberEnv,
@@ -17,14 +18,10 @@ if (!process.env.AUTH_JWT_SECRET) {
 }
 process.env.AUTH_JWT_ISSUER = process.env.AUTH_JWT_ISSUER ?? "tartware-core-service";
 process.env.AUTH_JWT_AUDIENCE = process.env.AUTH_JWT_AUDIENCE ?? "tartware-core";
+process.env.AUTH_DEFAULT_PASSWORD = process.env.AUTH_DEFAULT_PASSWORD ?? "TempPass123";
 
-const configValues = loadServiceConfig(databaseSchema);
-validateProductionSecrets({
-  ...configValues,
-  NODE_ENV: process.env.NODE_ENV,
-  AUTH_DEFAULT_PASSWORD: process.env.AUTH_DEFAULT_PASSWORD,
-  AUTH_JWT_SECRET: process.env.AUTH_JWT_SECRET,
-});
+const configValues = loadServiceConfig(databaseSchema.merge(coreAuthSchema));
+validateProductionSecrets(configValues);
 
 const kafka = resolveKafkaConfig({
   clientId: process.env.KAFKA_CLIENT_ID ?? "tartware-settings-service",
@@ -70,9 +67,9 @@ export const config = {
   },
   auth: {
     jwt: {
-      secret: process.env.AUTH_JWT_SECRET ?? "dev-secret-minimum-32-chars-change-me!",
-      issuer: process.env.AUTH_JWT_ISSUER ?? "tartware-core-service",
-      audience: process.env.AUTH_JWT_AUDIENCE ?? "tartware-core",
+      secret: configValues.AUTH_JWT_SECRET,
+      issuer: configValues.AUTH_JWT_ISSUER,
+      audience: configValues.AUTH_JWT_AUDIENCE,
     },
   },
   kafka,
