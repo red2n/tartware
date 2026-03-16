@@ -104,6 +104,9 @@ CREATE TABLE IF NOT EXISTS reservations (
     -- Group Booking Link (S12)
     group_booking_id UUID,  -- FK to group_bookings for reservations picked up from a group block
 
+    -- Shared Reservation Link
+    share_unique_identifier UUID,  -- Shared group identifier for multiple reservations linked in a share arrangement
+
     -- Marketing
     promo_code VARCHAR(50),
 
@@ -165,5 +168,14 @@ COMMENT ON COLUMN reservations.quote_expires_at IS 'When the quote validity expi
 COMMENT ON COLUMN reservations.expired_at IS 'When the reservation was transitioned to EXPIRED';
 COMMENT ON COLUMN reservations.group_booking_id IS 'FK to group_bookings for reservations picked up from a group block';
 COMMENT ON COLUMN reservations.deleted_at IS 'Soft delete timestamp (NULL = active)';
+
+-- =====================================================
+-- IDEMPOTENT UPGRADES
+-- =====================================================
+
+ALTER TABLE reservations
+    ADD COLUMN IF NOT EXISTS share_unique_identifier UUID;
+
+COMMENT ON COLUMN reservations.share_unique_identifier IS 'Shared group identifier that allows multiple reservations to participate in the same share arrangement';
 
 \echo 'Reservations table created successfully!'

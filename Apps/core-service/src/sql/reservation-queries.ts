@@ -13,6 +13,7 @@ export const RESERVATION_LIST_SQL = `
     r.booking_date,
     r.actual_check_in,
     r.actual_check_out,
+    r.share_unique_identifier,
     r.room_number,
     r.number_of_adults,
     r.number_of_children,

@@ -166,6 +166,7 @@ type ReservationListRow = {
   booking_date: string | Date | null;
   actual_check_in: string | Date | null;
   actual_check_out: string | Date | null;
+  share_unique_identifier: string | null;
   room_number: string | null;
   number_of_adults: number | string | null;
   number_of_children: number | string | null;
@@ -233,6 +234,7 @@ const mapRowToReservation = (row: ReservationListRow): ReservationListItem => {
     booking_date: toStringDate(row.booking_date),
     actual_check_in: toStringDate(row.actual_check_in),
     actual_check_out: toStringDate(row.actual_check_out),
+    share_unique_identifier: row.share_unique_identifier ?? undefined,
     nights: toNonNegativeInt(row.nights, 1) || 1,
     status,
     status_display: display,
@@ -298,6 +300,7 @@ export const getReservationById = async (options: {
        r.guest_id, r.guest_name, r.guest_email, r.guest_phone,
        r.room_type_id, rt.type_name AS room_type_name,
        r.rate_id, r.confirmation_number, r.reservation_type,
+       r.share_unique_identifier,
        r.check_in_date, r.check_out_date, r.booking_date,
        r.actual_check_in, r.actual_check_out,
        r.room_number, r.number_of_adults, r.number_of_children,
@@ -378,6 +381,7 @@ export const getReservationById = async (options: {
     rate_id: row.rate_id ?? undefined,
     confirmation_number: row.confirmation_number,
     reservation_type: row.reservation_type ?? undefined,
+    share_unique_identifier: (row.share_unique_identifier as string | null) ?? undefined,
     check_in_date: toStringDate(row.check_in_date as string | Date | null) ?? "",
     check_out_date: toStringDate(row.check_out_date as string | Date | null) ?? "",
     booking_date: toStringDate(row.booking_date as string | Date | null),

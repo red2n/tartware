@@ -64,6 +64,7 @@ export const ReservationCreateCommandSchema = z.object({
 		.string()
 		.regex(/^\d{2}:\d{2}$/, "ETA must be HH:MM format")
 		.optional(),
+	share_unique_identifier: z.string().uuid().optional(),
 	company_id: z.string().uuid().optional(),
 	travel_agent_id: z.string().uuid().optional(),
 });
