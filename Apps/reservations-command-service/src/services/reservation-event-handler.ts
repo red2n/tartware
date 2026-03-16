@@ -127,6 +127,7 @@ const handleReservationCreated = async (event: ReservationCreatedEvent): Promise
         guest_name,
         guest_email,
         confirmation_number,
+        share_unique_identifier,
         created_at,
         updated_at
       ) VALUES (
@@ -134,7 +135,7 @@ const handleReservationCreated = async (event: ReservationCreatedEvent): Promise
         $6, $7, $8,
         $9, $10, $11, $12,
         $13, $14, $15,
-        $16, $17, NOW(), NOW()
+        $16, $17, $18, NOW(), NOW()
       )
       ON CONFLICT (id) DO UPDATE
         SET
@@ -153,6 +154,7 @@ const handleReservationCreated = async (event: ReservationCreatedEvent): Promise
           guest_name = EXCLUDED.guest_name,
           guest_email = EXCLUDED.guest_email,
           confirmation_number = EXCLUDED.confirmation_number,
+          share_unique_identifier = EXCLUDED.share_unique_identifier,
           updated_at = NOW();
     `,
     [
@@ -173,6 +175,7 @@ const handleReservationCreated = async (event: ReservationCreatedEvent): Promise
       guestName,
       guestEmail,
       confirmation,
+      payload.share_unique_identifier ?? null,
     ],
   );
 
@@ -222,6 +225,9 @@ const handleReservationUpdated = async (event: ReservationUpdatedEvent): Promise
     addField("total_amount", Number(payload.total_amount ?? 0));
   if (payload.currency !== undefined) addField("currency", payload.currency);
   if (payload.internal_notes !== undefined) addField("internal_notes", payload.internal_notes);
+  if (payload.share_unique_identifier !== undefined) {
+    addField("share_unique_identifier", payload.share_unique_identifier);
+  }
   if (payload.metadata !== undefined) {
     const index = fields.length + 3;
     fields.push(`metadata = COALESCE(metadata, '{}'::jsonb) || $${index}::jsonb`);
