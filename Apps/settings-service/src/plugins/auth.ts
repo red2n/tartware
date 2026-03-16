@@ -24,6 +24,7 @@ export const authPlugin = fp(async (app: FastifyInstance) => {
   await app.register(fastifyJwt, {
     secret: config.auth.jwt.secret,
     verify: {
+      algorithms: ["HS256"],
       allowedIss: config.auth.jwt.issuer,
       allowedAud: config.auth.jwt.audience,
     },
@@ -44,8 +45,7 @@ export const authPlugin = fp(async (app: FastifyInstance) => {
         undefined;
 
       if (!tenantId || !isValidUuid(tenantId)) {
-        request.log.debug("No valid tenant context — tenant-scoped routes will reject");
-        request.authUser = { ...payload, tenantId: undefined as unknown as string };
+        request.log.debug("No valid tenant context — skipping authUser assignment");
         return;
       }
 

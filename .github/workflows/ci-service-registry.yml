@@ -1,0 +1,21 @@
+name: CI · Service Registry
+
+on:
+  push:
+    branches: [main, develop, deployment]
+    paths:
+      - 'Apps/service-registry/**'
+      - 'schema/**'
+      - 'package.json'
+      - 'nx.json'
+  pull_request:
+    paths:
+      - 'Apps/service-registry/**'
+      - 'schema/**'
+  workflow_dispatch:
+
+jobs:
+  ci:
+    uses: ./.github/workflows/package-ci.yml
+    with:
+      package-scope: '@tartware/service-registry'

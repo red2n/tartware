@@ -15,6 +15,7 @@ Client → API Gateway (:8080) → Command Center → Kafka → Domain Services
 
 [![Build](https://github.com/red2n/tartware/actions/workflows/build.yml/badge.svg)](https://github.com/red2n/tartware/actions/workflows/build.yml)
 [![Duplo Duplicate Scan](https://github.com/red2n/tartware/actions/workflows/duplo.yml/badge.svg)](https://github.com/red2n/tartware/actions/workflows/duplo.yml)
+[![CodeQL](https://github.com/red2n/tartware/actions/workflows/codeql.yml/badge.svg)](https://github.com/red2n/tartware/actions/workflows/codeql.yml)
 
 ### Services
 
@@ -35,12 +36,15 @@ Client → API Gateway (:8080) → Command Center → Kafka → Domain Services
 | Notification Service | [![CI · Notification Service](https://github.com/red2n/tartware/actions/workflows/ci-notification-service.yml/badge.svg)](https://github.com/red2n/tartware/actions/workflows/ci-notification-service.yml) |
 | Revenue Service | [![CI · Revenue Service](https://github.com/red2n/tartware/actions/workflows/ci-revenue-service.yml/badge.svg)](https://github.com/red2n/tartware/actions/workflows/ci-revenue-service.yml) |
 | Guest Experience Service | [![CI · Guest Experience Service](https://github.com/red2n/tartware/actions/workflows/ci-guest-experience-service.yml/badge.svg)](https://github.com/red2n/tartware/actions/workflows/ci-guest-experience-service.yml) |
+| Calculation Service | [![CI · Calculation Service](https://github.com/red2n/tartware/actions/workflows/ci-calculation-service.yml/badge.svg)](https://github.com/red2n/tartware/actions/workflows/ci-calculation-service.yml) |
+| Service Registry | [![CI · Service Registry](https://github.com/red2n/tartware/actions/workflows/ci-service-registry.yml/badge.svg)](https://github.com/red2n/tartware/actions/workflows/ci-service-registry.yml) |
 
 ### UI
 
 | Package | Status |
 |---------|--------|
 | PMS UI | [![CI · PMS UI](https://github.com/red2n/tartware/actions/workflows/ci-pms-ui.yml/badge.svg)](https://github.com/red2n/tartware/actions/workflows/ci-pms-ui.yml) |
+| Guest Portal | [![CI · Guest Portal](https://github.com/red2n/tartware/actions/workflows/ci-guest-portal.yml/badge.svg)](https://github.com/red2n/tartware/actions/workflows/ci-guest-portal.yml) |
 
 ### Shared Libraries
 
