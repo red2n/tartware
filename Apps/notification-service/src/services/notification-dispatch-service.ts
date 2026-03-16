@@ -4,40 +4,10 @@ import { config } from "../config.js";
 import { query } from "../lib/db.js";
 import { appLogger } from "../lib/logger.js";
 import { observeDispatchDuration, recordDispatch } from "../lib/metrics.js";
-import { ConsoleNotificationProvider } from "../providers/console-provider.js";
-import type { NotificationProvider } from "../providers/provider-interface.js";
-import { SendGridNotificationProvider } from "../providers/sendgrid-provider.js";
-import { WebhookNotificationProvider } from "../providers/webhook-provider.js";
+import { resolveThirdPartyProvider } from "../providers/third-party-provider-resolver.js";
 import { renderTemplateByCode } from "./template-service.js";
 
 const logger: PinoLogger = appLogger.child({ module: "notification-dispatch" });
-
-/** Memoized provider instance — created once, reused across dispatches. */
-let cachedProvider: NotificationProvider | null = null;
-let cachedProviderKey: string | null = null;
-
-/** Resolve the active provider based on config. Memoizes the instance. */
-const resolveProvider = (): NotificationProvider => {
-  const key = `${config.providers.defaultChannel}`;
-  if (cachedProvider && cachedProviderKey === key) {
-    return cachedProvider;
-  }
-
-  if (config.providers.defaultChannel === "sendgrid" && config.providers.sendgridApiKey) {
-    cachedProvider = new SendGridNotificationProvider(
-      logger,
-      config.providers.sendgridApiKey,
-      config.providers.defaultSenderEmail,
-      config.providers.defaultSenderName,
-    );
-  } else if (config.providers.defaultChannel === "webhook" && config.providers.webhookUrl) {
-    cachedProvider = new WebhookNotificationProvider(logger, config.providers.webhookUrl);
-  } else {
-    cachedProvider = new ConsoleNotificationProvider(logger);
-  }
-  cachedProviderKey = key;
-  return cachedProvider;
-};
 
 const INSERT_COMMUNICATION_SQL = `
   INSERT INTO guest_communications (
@@ -140,7 +110,17 @@ export const sendNotification = async (
   }
 
   // 3. Dispatch via provider
-  const provider = resolveProvider();
+  const provider = resolveThirdPartyProvider(
+    logger,
+    config.providers.defaultChannel,
+    config.providers.sendgridApiKey,
+    config.providers.resendApiKey,
+    config.providers.resendSenderDomain,
+    config.providers.resendSenderEmail,
+    config.providers.webhookUrl,
+    config.providers.defaultSenderEmail,
+    config.providers.defaultSenderName,
+  );
   const result = await provider.dispatch({
     recipientName: params.recipientName,
     recipientEmail: params.recipientEmail ?? undefined,

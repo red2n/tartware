@@ -280,6 +280,28 @@ const extractExtraContext = (
   return extra;
 };
 
+const readNonEmptyString = (value: unknown): string | undefined => {
+  if (typeof value !== "string") {
+    return undefined;
+  }
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : undefined;
+};
+
+const readFromPayloadOrMetadata = (
+  payload: ReservationEventEnvelope["payload"],
+  key: string,
+): string | undefined => {
+  const payloadRecord = payload as Record<string, unknown>;
+  const fromPayload = readNonEmptyString(payloadRecord[key]);
+  if (fromPayload) {
+    return fromPayload;
+  }
+
+  const metadataRecord = payload.metadata as Record<string, unknown> | undefined;
+  return readNonEmptyString(metadataRecord?.[key]);
+};
+
 /** Transform Kafka envelope into internal flat format. */
 const toReservationEvent = (envelope: ReservationEventEnvelope): ReservationEvent => {
   // Classify reservation.updated into a specific sub-type
@@ -295,6 +317,9 @@ const toReservationEvent = (envelope: ReservationEventEnvelope): ReservationEven
     propertyId: String(envelope.payload.property_id ?? ""),
     reservationId: String(envelope.payload.id ?? envelope.metadata.id ?? ""),
     guestId: String(envelope.payload.guest_id ?? ""),
+    guestName: readFromPayloadOrMetadata(envelope.payload, "guest_name"),
+    guestEmail: readFromPayloadOrMetadata(envelope.payload, "guest_email"),
+    guestPhone: readFromPayloadOrMetadata(envelope.payload, "guest_phone"),
     confirmationNumber: envelope.payload.confirmation_number
       ? String(envelope.payload.confirmation_number)
       : undefined,
@@ -305,6 +330,9 @@ const toReservationEvent = (envelope: ReservationEventEnvelope): ReservationEven
       ? String(envelope.payload.check_out_date)
       : undefined,
     roomNumber: envelope.payload.room_number ? String(envelope.payload.room_number) : undefined,
+    roomType:
+      readFromPayloadOrMetadata(envelope.payload, "room_type") ??
+      readFromPayloadOrMetadata(envelope.payload, "room_type_name"),
     totalAmount:
       typeof envelope.payload.total_amount === "number" ? envelope.payload.total_amount : undefined,
     currency: envelope.payload.currency ? String(envelope.payload.currency) : undefined,
