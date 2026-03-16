@@ -1,6 +1,6 @@
 ARG SERVICE=api-gateway
 
-FROM node:20-alpine AS builder
+FROM node:24-alpine AS builder
 ARG SERVICE=api-gateway
 RUN corepack enable && corepack prepare pnpm@latest --activate
 WORKDIR /app
@@ -26,7 +26,7 @@ RUN pnpm --filter @tartware/telemetry run build \
 	&& pnpm --filter @tartware/${SERVICE} run build \
 	&& pnpm prune --prod
 
-FROM node:20-alpine AS runtime
+FROM node:24-alpine AS runtime
 ARG SERVICE=api-gateway
 WORKDIR /app
 ENV SERVICE=${SERVICE}

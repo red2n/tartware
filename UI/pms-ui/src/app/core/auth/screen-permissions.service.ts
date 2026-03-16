@@ -66,9 +66,9 @@ export class ScreenPermissionsService {
 
 	/** Check if a specific screen is allowed for the current user. */
 	isScreenAllowed(screenKey: string): boolean {
-		// If permissions haven't loaded yet, allow all (fail-open for UX)
+		// If permissions haven't loaded yet, allow access (fail-open to prevent redirect loops)
 		if (!this._loaded()) return true;
-		// If no permissions returned (empty set), allow all (backwards compat)
+		// If no permissions returned (API error or first deploy), allow all screens
 		if (this._screens().length === 0) return true;
 		return this.allowedScreens().has(screenKey);
 	}

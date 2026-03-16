@@ -24,11 +24,11 @@ export class SidebarComponent {
 	readonly parentSelect = output<NavItem>();
 
 	readonly primaryNavItems = computed(() => {
-		return filterNavByAllowedScreens(PRIMARY_NAV_ITEMS, this.screenPerms.allowedScreens());
+		return filterNavByAllowedScreens(PRIMARY_NAV_ITEMS, this.screenPerms.allowedScreens(), this.screenPerms.loaded());
 	});
 
 	readonly secondaryNavItems = computed(() => {
-		return filterNavByAllowedScreens(SECONDARY_NAV_ITEMS, this.screenPerms.allowedScreens());
+		return filterNavByAllowedScreens(SECONDARY_NAV_ITEMS, this.screenPerms.allowedScreens(), this.screenPerms.loaded());
 	});
 
 	isParentActive(item: NavItem): boolean {

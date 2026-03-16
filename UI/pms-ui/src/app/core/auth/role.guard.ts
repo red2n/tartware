@@ -3,7 +3,7 @@ import { type CanActivateFn, Router } from "@angular/router";
 
 import type { TenantRole } from "@tartware/schemas";
 
-import { hasMinRole } from "../../layout/nav-config";
+import { hasMinRole, findFirstAllowedRoute } from "../../layout/nav-config";
 import { AuthService } from "./auth.service";
 import { ScreenPermissionsService } from "./screen-permissions.service";
 
@@ -15,6 +15,7 @@ export function roleGuard(minRole: TenantRole): CanActivateFn {
 	return () => {
 		const auth = inject(AuthService);
 		const router = inject(Router);
+		const screenPerms = inject(ScreenPermissionsService);
 
 		const membership = auth.activeMembership();
 		if (!membership) {
@@ -25,7 +26,8 @@ export function roleGuard(minRole: TenantRole): CanActivateFn {
 			return true;
 		}
 
-		return router.createUrlTree(["/dashboard"]);
+		const fallback = findFirstAllowedRoute(screenPerms.allowedScreens());
+		return router.createUrlTree([fallback]);
 	};
 }
 
@@ -48,6 +50,7 @@ export function screenGuard(screenKey: string): CanActivateFn {
 			return true;
 		}
 
-		return router.createUrlTree(["/dashboard"]);
+		const fallback = findFirstAllowedRoute(screenPerms.allowedScreens());
+		return router.createUrlTree([fallback]);
 	};
 }

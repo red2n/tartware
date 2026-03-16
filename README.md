@@ -15,6 +15,7 @@ Client → API Gateway (:8080) → Command Center → Kafka → Domain Services
 
 [![Build](https://github.com/red2n/tartware/actions/workflows/build.yml/badge.svg)](https://github.com/red2n/tartware/actions/workflows/build.yml)
 [![Duplo Duplicate Scan](https://github.com/red2n/tartware/actions/workflows/duplo.yml/badge.svg)](https://github.com/red2n/tartware/actions/workflows/duplo.yml)
+[![CodeQL](https://github.com/red2n/tartware/actions/workflows/codeql.yml/badge.svg)](https://github.com/red2n/tartware/actions/workflows/codeql.yml)
 
 ### Services
 
@@ -32,6 +33,18 @@ Client → API Gateway (:8080) → Command Center → Kafka → Domain Services
 | Availability Guard Service | [![CI · Availability Guard Service](https://github.com/red2n/tartware/actions/workflows/ci-availability-guard-service.yml/badge.svg)](https://github.com/red2n/tartware/actions/workflows/ci-availability-guard-service.yml) |
 | Roll Service | [![CI · Roll Service](https://github.com/red2n/tartware/actions/workflows/ci-roll-service.yml/badge.svg)](https://github.com/red2n/tartware/actions/workflows/ci-roll-service.yml) |
 | Recommendation Service | [![CI · Recommendation Service](https://github.com/red2n/tartware/actions/workflows/ci-recommendation-service.yml/badge.svg)](https://github.com/red2n/tartware/actions/workflows/ci-recommendation-service.yml) |
+| Notification Service | [![CI · Notification Service](https://github.com/red2n/tartware/actions/workflows/ci-notification-service.yml/badge.svg)](https://github.com/red2n/tartware/actions/workflows/ci-notification-service.yml) |
+| Revenue Service | [![CI · Revenue Service](https://github.com/red2n/tartware/actions/workflows/ci-revenue-service.yml/badge.svg)](https://github.com/red2n/tartware/actions/workflows/ci-revenue-service.yml) |
+| Guest Experience Service | [![CI · Guest Experience Service](https://github.com/red2n/tartware/actions/workflows/ci-guest-experience-service.yml/badge.svg)](https://github.com/red2n/tartware/actions/workflows/ci-guest-experience-service.yml) |
+| Calculation Service | [![CI · Calculation Service](https://github.com/red2n/tartware/actions/workflows/ci-calculation-service.yml/badge.svg)](https://github.com/red2n/tartware/actions/workflows/ci-calculation-service.yml) |
+| Service Registry | [![CI · Service Registry](https://github.com/red2n/tartware/actions/workflows/ci-service-registry.yml/badge.svg)](https://github.com/red2n/tartware/actions/workflows/ci-service-registry.yml) |
+
+### UI
+
+| Package | Status |
+|---------|--------|
+| PMS UI | [![CI · PMS UI](https://github.com/red2n/tartware/actions/workflows/ci-pms-ui.yml/badge.svg)](https://github.com/red2n/tartware/actions/workflows/ci-pms-ui.yml) |
+| Guest Portal | [![CI · Guest Portal](https://github.com/red2n/tartware/actions/workflows/ci-guest-portal.yml/badge.svg)](https://github.com/red2n/tartware/actions/workflows/ci-guest-portal.yml) |
 
 ### Shared Libraries
 
@@ -91,6 +104,11 @@ pnpm run clean:all    # Remove all build artifacts
 | 3040 | Recommendation Service |
 | 3045 | Availability Guard Service |
 | 3050 | Roll Service |
+| 3055 | Notification Service |
+| 3060 | Revenue Service |
+| 3065 | Guest Experience Service |
+| 3070 | Calculation Service |
+| 3075 | Service Registry |
 
 ## Production Readiness Scorecard
 

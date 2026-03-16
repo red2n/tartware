@@ -1,16 +1,16 @@
-name: CI · PMS UI
+name: CI · Guest Portal
 
 on:
   push:
     branches: [main, develop, deployment]
     paths:
-      - 'UI/pms-ui/**'
+      - 'UI/guest-portal/**'
       - 'schema/**'
       - 'package.json'
       - 'nx.json'
   pull_request:
     paths:
-      - 'UI/pms-ui/**'
+      - 'UI/guest-portal/**'
       - 'schema/**'
   workflow_dispatch:
 
@@ -60,5 +60,5 @@ jobs:
       - name: Build schemas (dependency)
         run: npx nx run @tartware/schemas:build
 
-      - name: Build UI
-        run: npx nx run @tartware/pms-ui:build
+      - name: Build Guest Portal
+        run: npx nx run @tartware/guest-portal:build

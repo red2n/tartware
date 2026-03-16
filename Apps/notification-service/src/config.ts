@@ -54,10 +54,16 @@ const notificationEvents = {
   topic: process.env.NOTIFICATION_EVENTS_TOPIC ?? "notifications.events",
 };
 
+const resendSenderDomain = process.env.RESEND_SENDER_DOMAIN ?? "swaas.tech";
+const resendSenderEmail = process.env.RESEND_SENDER_EMAIL ?? `noreply@${resendSenderDomain}`;
+
 const providers = {
   defaultChannel: process.env.NOTIFICATION_DEFAULT_CHANNEL ?? "console",
   webhookUrl: process.env.NOTIFICATION_WEBHOOK_URL ?? "",
   sendgridApiKey: process.env.SENDGRID_API_KEY ?? "",
+  resendApiKey: process.env.RESEND_API_KEY ?? "",
+  resendSenderDomain,
+  resendSenderEmail,
   defaultSenderEmail: process.env.NOTIFICATION_DEFAULT_SENDER_EMAIL ?? "noreply@tartware.com",
   defaultSenderName: process.env.NOTIFICATION_DEFAULT_SENDER_NAME ?? "Tartware PMS",
 };

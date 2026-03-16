@@ -1,4 +1,4 @@
-import { createPrivateKey, createSign } from "node:crypto";
+import { createHmac } from "node:crypto";
 
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -25,30 +25,16 @@ vi.mock("../src/repositories/amenity-catalog-repository.js", async () => {
   };
 });
 
-const PRIVATE_KEY = process.env.JWT_PRIVATE_KEY;
-if (!PRIVATE_KEY) {
-  throw new Error("Missing JWT_PRIVATE_KEY for tests");
-}
-
-const PRIVATE_KEY_OBJECT = createPrivateKey({
-  key: PRIVATE_KEY,
-  format: "pem",
-  type: "pkcs8",
-});
-
 const TEST_TENANT_ID = "11111111-1111-1111-1111-111111111111";
 const TEST_PROPERTY_ID = "22222222-2222-2222-2222-222222222222";
 
 const buildToken = (scopes: string[]) => {
   const now = Math.floor(Date.now() / 1000);
-  const header = {
-    alg: "RS256",
-    typ: "JWT",
-  };
+  const header = { alg: "HS256", typ: "JWT" };
   const payload = {
     sub: "317edc15-bd7b-4fec-afbd-be6a8f316f56",
-    iss: process.env.JWT_ISSUER,
-    aud: process.env.JWT_AUDIENCE,
+    iss: config.auth.jwt.issuer,
+    aud: config.auth.jwt.audience,
     scope: scopes,
     tenantId: TEST_TENANT_ID,
     iat: now,
@@ -56,12 +42,9 @@ const buildToken = (scopes: string[]) => {
   };
   const encode = (segment: unknown) => Buffer.from(JSON.stringify(segment)).toString("base64url");
   const signingInput = `${encode(header)}.${encode(payload)}`;
-  const signatureBuffer = createSign("RSA-SHA256").update(signingInput).sign(PRIVATE_KEY_OBJECT);
-  const signature = signatureBuffer
-    .toString("base64")
-    .replace(/=/g, "")
-    .replace(/\+/g, "-")
-    .replace(/\//g, "_");
+  const signature = createHmac("sha256", config.auth.jwt.secret)
+    .update(signingInput)
+    .digest("base64url");
   return `${signingInput}.${signature}`;
 };
 

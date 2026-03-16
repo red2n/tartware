@@ -32,7 +32,7 @@ type LockRoomRequestMessage = {
 };
 
 type LockRoomResponseMessage = {
-  status: number;
+  status: string;
   lock?: { id?: string } | null;
   conflict?: { id?: string } | null;
 };
@@ -265,7 +265,12 @@ export const lockReservationHold = async (
       },
     );
 
-    const status = response.status === 1 ? "LOCKED" : response.status === 2 ? "CONFLICT" : "ERROR";
+    const status =
+      response.status === "STATUS_LOCKED"
+        ? "LOCKED"
+        : response.status === "STATUS_CONFLICT"
+          ? "CONFLICT"
+          : "ERROR";
 
     recordAvailabilityGuardRequest(method, status);
     observeAvailabilityGuardDuration(method, secondsSince(startedAt));

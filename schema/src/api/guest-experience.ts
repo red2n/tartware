@@ -240,6 +240,8 @@ export const ReservationRowSchema = z.object({
 	check_in_date: z.string(),
 	check_out_date: z.string(),
 	room_number: z.string().nullable(),
+	guest_first_name: z.string().nullable().optional(),
+	guest_last_name: z.string().nullable().optional(),
 });
 
 export type ReservationRow = z.infer<typeof ReservationRowSchema>;

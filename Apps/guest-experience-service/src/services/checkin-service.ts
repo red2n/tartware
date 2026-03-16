@@ -27,8 +27,11 @@ const RESERVATION_BY_CONFIRMATION_SQL = `
     r.status,
     r.check_in_date,
     r.check_out_date,
-    r.room_number
+    r.room_number,
+    g.first_name AS guest_first_name,
+    g.last_name AS guest_last_name
   FROM reservations r
+  LEFT JOIN guests g ON g.id = r.guest_id AND g.tenant_id = r.tenant_id AND g.is_deleted = false
   WHERE r.confirmation_number = $1
 `;
 
