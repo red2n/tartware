@@ -1,11 +1,4 @@
 <aside class="sidebar" [class.collapsed]="collapsed()">
-  <div class="sidebar-header">
-    @if (!collapsed()) {
-      <span class="logo-text">Tartware</span>
-    } @else {
-      <span class="logo-icon">T</span>
-    }
-  </div>
 
   <nav class="sidebar-nav">
     @for (item of primaryNavItems(); track item.label) {

@@ -23,6 +23,12 @@
   min-width: 0;
 }
 
+.app-logo {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+}
+
 .app-title {
   font-size: var(--font-size-sm);
   font-weight: var(--font-weight-bold);

@@ -68,6 +68,12 @@
         </div>
       </div>
     </div>
+    <div class="guest-header-actions">
+      <button class="btn btn-outline btn-sm" (click)="openEditDialog()" matTooltip="Edit guest profile">
+        <mat-icon>edit</mat-icon>
+        Edit
+      </button>
+    </div>
     <div class="guest-header-stats">
       <div class="stat-mini">
         <span class="stat-mini-value">{{ g.total_bookings }}</span>

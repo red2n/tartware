@@ -42,11 +42,10 @@
 	margin-bottom: var(--space-12);
 }
 
-.hero-logo-icon {
-	font-size: 36px;
-	width: 36px;
-	height: 36px;
-	color: var(--color-accent-fg);
+.hero-logo-img {
+	width: 40px;
+	height: 40px;
+	flex-shrink: 0;
 }
 
 .hero-logo-text {
@@ -126,11 +125,10 @@
 	margin-bottom: var(--space-8);
 }
 
-.mobile-logo-icon {
-	font-size: 32px;
+.mobile-logo-img {
 	width: 32px;
 	height: 32px;
-	color: var(--color-accent-fg);
+	flex-shrink: 0;
 }
 
 .mobile-logo-text {

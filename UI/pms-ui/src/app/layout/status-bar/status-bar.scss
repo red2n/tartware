@@ -9,6 +9,7 @@
   height: 24px;
   background: var(--color-statusbar-bg);
   color: var(--color-statusbar-text);
+  border-top: 1px solid var(--color-border-default);
   font-size: var(--font-size-xs);
   font-family: var(--font-family);
   padding: 0 var(--space-2);

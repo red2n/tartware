@@ -1,6 +1,6 @@
 <h2 mat-dialog-title>
-  <mat-icon class="dialog-title-icon">person_add</mat-icon>
-  New Guest Profile
+  <mat-icon class="dialog-title-icon">edit</mat-icon>
+  Edit Guest Profile
 </h2>
 
 <mat-dialog-content>
@@ -18,9 +18,9 @@
 
       <div class="field-row">
         <div class="field-group">
-          <label class="field-label" for="cg-title">Title</label>
+          <label class="field-label" for="eg-title">Title</label>
           <select
-            id="cg-title"
+            id="eg-title"
             class="field-input"
             [(ngModel)]="title"
             [disabled]="saving()">
@@ -35,9 +35,9 @@
 
       <div class="field-row">
         <div class="field-group field-required" [class.field-error]="touched['firstName'] && !firstName.trim()">
-          <label class="field-label" for="cg-first">First name</label>
+          <label class="field-label" for="eg-first">First name</label>
           <input
-            id="cg-first"
+            id="eg-first"
             type="text"
             class="field-input"
             placeholder="John"
@@ -50,9 +50,9 @@
           }
         </div>
         <div class="field-group field-required" [class.field-error]="touched['lastName'] && !lastName.trim()">
-          <label class="field-label" for="cg-last">Last name</label>
+          <label class="field-label" for="eg-last">Last name</label>
           <input
-            id="cg-last"
+            id="eg-last"
             type="text"
             class="field-input"
             placeholder="Smith"
@@ -68,9 +68,9 @@
 
       <div class="field-row">
         <div class="field-group">
-          <label class="field-label" for="cg-nationality">Nationality</label>
+          <label class="field-label" for="eg-nationality">Nationality</label>
           <input
-            id="cg-nationality"
+            id="eg-nationality"
             type="text"
             class="field-input"
             placeholder="e.g. United States"
@@ -79,9 +79,9 @@
             [disabled]="saving()" />
         </div>
         <div class="field-group">
-          <label class="field-label" for="cg-gender">Gender</label>
+          <label class="field-label" for="eg-gender">Gender</label>
           <select
-            id="cg-gender"
+            id="eg-gender"
             class="field-input"
             [(ngModel)]="gender"
             [disabled]="saving()">
@@ -96,9 +96,9 @@
 
       <div class="field-row">
         <div class="field-group">
-          <label class="field-label" for="cg-dob">Date of birth</label>
+          <label class="field-label" for="eg-dob">Date of birth</label>
           <input
-            id="cg-dob"
+            id="eg-dob"
             type="date"
             class="field-input"
             [(ngModel)]="dateOfBirth"
@@ -113,9 +113,9 @@
       <span class="form-section-title">Contact</span>
 
       <div class="field-group field-required" [class.field-error]="touched['email'] && emailError">
-        <label class="field-label" for="cg-email">Email address</label>
+        <label class="field-label" for="eg-email">Email address</label>
         <input
-          id="cg-email"
+          id="eg-email"
           type="email"
           class="field-input"
           placeholder="john.smith&#64;example.com"
@@ -132,9 +132,9 @@
       </div>
 
       <div class="field-group" [class.field-error]="touched['phone'] && phoneError">
-        <label class="field-label" for="cg-phone">Phone number</label>
+        <label class="field-label" for="eg-phone">Phone number</label>
         <input
-          id="cg-phone"
+          id="eg-phone"
           type="tel"
           class="field-input"
           placeholder="+1 (555) 012-3456"
@@ -158,9 +158,9 @@
       <span class="form-section-title">Company</span>
 
       <div class="field-group">
-        <label class="field-label" for="cg-company">Company name</label>
+        <label class="field-label" for="eg-company">Company name</label>
         <input
-          id="cg-company"
+          id="eg-company"
           type="text"
           class="field-input"
           placeholder="Acme Corp"
@@ -176,9 +176,9 @@
 
       <div class="field-row">
         <div class="field-group">
-          <label class="field-label" for="cg-vip">VIP status</label>
+          <label class="field-label" for="eg-vip">VIP status</label>
           <select
-            id="cg-vip"
+            id="eg-vip"
             class="field-input"
             [(ngModel)]="vipStatus"
             [disabled]="saving()">
@@ -189,9 +189,9 @@
           </select>
         </div>
         <div class="field-group">
-          <label class="field-label" for="cg-loyalty">Loyalty tier</label>
+          <label class="field-label" for="eg-loyalty">Loyalty tier</label>
           <select
-            id="cg-loyalty"
+            id="eg-loyalty"
             class="field-input"
             [(ngModel)]="loyaltyTier"
             [disabled]="saving()">
@@ -214,9 +214,9 @@
     (click)="save()">
     @if (saving()) {
       <mat-spinner diameter="16" />
-      Creating…
+      Saving…
     } @else {
-      Create guest
+      Save changes
     }
   </button>
 </mat-dialog-actions>

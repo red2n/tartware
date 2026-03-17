@@ -27,19 +27,24 @@
   flex-shrink: 0;
 }
 
+.sidebar-brand {
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-fg-default);
+  flex-shrink: 0;
+  letter-spacing: 0.5px;
+}
+
+.sidebar-brand-sm {
+  margin: 0 auto;
+}
+
 .logo-text {
   font-size: var(--font-size-sm);
   font-weight: var(--font-weight-bold);
   color: var(--color-fg-default);
   white-space: nowrap;
   letter-spacing: 0.3px;
-}
-
-.logo-icon {
-  font-size: var(--font-size-xl);
-  font-weight: var(--font-weight-bold);
-  color: var(--color-accent-fg);
-  margin: 0 auto;
 }
 
 .sidebar-nav {

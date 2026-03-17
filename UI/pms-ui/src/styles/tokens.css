@@ -60,10 +60,10 @@
 	--color-activity-bar-bg: #f5f4f1;
 	--color-activity-bar-border: #d8d4ce;
 
-	/* ── Status Bar (VS Code-style accent) ── */
-	--color-statusbar-bg: #0969da;
-	--color-statusbar-text: #ffffff;
-	--color-statusbar-hover-bg: rgba(255, 255, 255, 0.12);
+	/* ── Status Bar ── */
+	--color-statusbar-bg: #f5f4f1;
+	--color-statusbar-text: var(--color-fg-muted);
+	--color-statusbar-hover-bg: rgba(0, 0, 0, 0.06);
 
 	/* ── Header (Primer header-*) ── */
 	--color-header-bg: var(--color-sidebar-bg);
@@ -183,9 +183,9 @@
 	--color-activity-bar-bg: #151b23;
 	--color-activity-bar-border: #3d444d;
 
-	--color-statusbar-bg: #1f6feb;
-	--color-statusbar-text: #ffffff;
-	--color-statusbar-hover-bg: rgba(255, 255, 255, 0.12);
+	--color-statusbar-bg: #151b23;
+	--color-statusbar-text: var(--color-fg-muted);
+	--color-statusbar-hover-bg: rgba(255, 255, 255, 0.08);
 
 	--color-header-bg: var(--color-sidebar-bg);
 	--color-header-text: var(--color-fg-default);

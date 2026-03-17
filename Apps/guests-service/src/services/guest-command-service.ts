@@ -319,18 +319,23 @@ export const updateGuestProfile = async ({
         last_name = COALESCE($4, last_name),
         email = COALESCE($5, email),
         phone = COALESCE($6, phone),
+        title = COALESCE($7, title),
+        nationality = COALESCE($8, nationality),
+        gender = COALESCE($9, gender),
+        date_of_birth = COALESCE($10::date, date_of_birth),
+        company_name = COALESCE($11, company_name),
         address = CASE
-          WHEN $7::jsonb IS NULL THEN address
-          ELSE COALESCE(address, '{}'::jsonb) || $7::jsonb
+          WHEN $12::jsonb IS NULL THEN address
+          ELSE COALESCE(address, '{}'::jsonb) || $12::jsonb
         END,
         preferences = CASE
-          WHEN $8::jsonb IS NULL THEN preferences
-          ELSE COALESCE(preferences, '{}'::jsonb) || $8::jsonb
+          WHEN $13::jsonb IS NULL THEN preferences
+          ELSE COALESCE(preferences, '{}'::jsonb) || $13::jsonb
         END,
-        marketing_consent = COALESCE($9, marketing_consent),
+        marketing_consent = COALESCE($14, marketing_consent),
         version = version + 1,
         updated_at = NOW(),
-        updated_by = $10
+        updated_by = $15
       WHERE tenant_id = $1::uuid
         AND id = $2::uuid
         AND COALESCE(is_deleted, false) = false
@@ -342,6 +347,11 @@ export const updateGuestProfile = async ({
       command.last_name ?? null,
       command.email ?? null,
       normalizedPhone ?? null,
+      command.title ?? null,
+      command.nationality ?? null,
+      command.gender ?? null,
+      command.date_of_birth ?? null,
+      command.company_name ?? null,
       address ? JSON.stringify(address) : null,
       preferences ? JSON.stringify(preferences) : null,
       marketingConsent ?? null,
