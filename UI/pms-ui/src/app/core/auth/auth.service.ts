@@ -117,7 +117,10 @@ export class AuthService implements OnDestroy {
 		// If it's expired but within grace, try a silent refresh instead of logging out.
 		if (this.isTokenExpired(token)) {
 			if (this.isWithinRefreshGrace(token)) {
-				this.restoreLocalState();
+				if (!this.restoreLocalState()) {
+					this.logout();
+					return;
+				}
 				this.refreshToken();
 				return;
 			}
@@ -125,7 +128,10 @@ export class AuthService implements OnDestroy {
 			return;
 		}
 
-		this.restoreLocalState();
+		if (!this.restoreLocalState()) {
+			this.logout();
+			return;
+		}
 		this.scheduleTokenRefresh(token);
 	}
 

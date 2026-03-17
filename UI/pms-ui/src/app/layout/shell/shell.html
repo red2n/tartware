@@ -2,7 +2,7 @@
 <div class="shell" [class.sidebar-collapsed]="sidebarCollapsed()">
   <!-- Title Bar (full width, top — VS Code style) -->
   @defer (on idle) {
-    <app-topbar />
+    <app-topbar (menuToggle)="toggleSidebar()" />
   } @placeholder {
     <div class="topbar-placeholder"></div>
   }

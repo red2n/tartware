@@ -322,7 +322,7 @@ export const updateGuestProfile = async ({
         title = COALESCE($7, title),
         nationality = COALESCE($8, nationality),
         gender = COALESCE($9, gender),
-        date_of_birth = COALESCE($10::date, date_of_birth),
+        date_of_birth = COALESCE(NULLIF($10,'')::date, date_of_birth),
         company_name = COALESCE($11, company_name),
         address = CASE
           WHEN $12::jsonb IS NULL THEN address

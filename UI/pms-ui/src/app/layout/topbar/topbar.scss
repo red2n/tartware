@@ -445,8 +445,28 @@
   margin-top: 6px;
 }
 
+/* ── Mobile menu toggle ── */
+.mobile-menu-toggle {
+  display: none;
+  background: none;
+  border: none;
+  color: var(--color-header-text);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: var(--radius-sm);
+  line-height: 0;
+
+  &:hover {
+    background: var(--color-header-hover);
+  }
+}
+
 /* ── Responsive ── */
 @media (max-width: 768px) {
+  .mobile-menu-toggle {
+    display: inline-flex;
+  }
+
   .title-bar-center {
     display: none;
   }

@@ -1,4 +1,4 @@
-import { Component, type ElementRef, HostListener, inject, viewChild } from "@angular/core";
+import { Component, type ElementRef, HostListener, inject, output, viewChild } from "@angular/core";
 import { FormsModule } from "@angular/forms";
 import { MatButtonModule } from "@angular/material/button";
 import { MatDividerModule } from "@angular/material/divider";
@@ -45,6 +45,8 @@ export class TopbarComponent {
 	private readonly router = inject(Router);
 	readonly notifications = inject(NotificationService);
 	readonly globalSearch = inject(GlobalSearchService);
+
+	readonly menuToggle = output<void>();
 
 	readonly supportedLanguages = SUPPORTED_LANGUAGES;
 	readonly currentLang = this.i18n.currentLang;

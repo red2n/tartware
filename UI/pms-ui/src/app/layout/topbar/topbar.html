@@ -1,5 +1,8 @@
 <header class="title-bar">
   <div class="title-bar-left">
+    <button class="mobile-menu-toggle" (click)="menuToggle.emit()" aria-label="Toggle sidebar">
+      <mat-icon>menu</mat-icon>
+    </button>
     <img src="assets/logo.svg" class="app-logo" alt="Tartware" />
     <span class="app-title">Tartware</span>
 
