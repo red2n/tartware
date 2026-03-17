@@ -1,4 +1,7 @@
 import { randomUUID } from "node:crypto";
+import { mkdtempSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { stdin as input, stdout as output } from "node:process";
 import { createInterface } from "node:readline/promises";
 
@@ -429,12 +432,13 @@ const bootstrapAdmin = async () => {
     !SUPPRESS_BOOTSTRAP_PASSWORD &&
     (SHOW_BOOTSTRAP_PASSWORD || process.stdout.isTTY)
   ) {
-    const pw = adminDetails.plaintextPassword;
-    const masked = pw.length > 4 ? `${pw.slice(0, 2)}${"*".repeat(pw.length - 4)}${pw.slice(-2)}` : "****";
-    console.log(`   • Temp Pass: ${masked}`);
+    const credDir = mkdtempSync(join(tmpdir(), "tartware-bootstrap-"));
+    const credFile = join(credDir, "credentials.txt");
+    writeFileSync(credFile, `password=${adminDetails.plaintextPassword}\n`, { mode: 0o600 });
+    console.log(`   • Temp Pass: written to ${credFile}`);
     console.log(
-      "   ⚠️  WARNING: A partially masked password is displayed above. " +
-      "If running in a CI/CD or logged environment, clear logs and rotate the password immediately."
+      "   ⚠️  WARNING: The plaintext password was written to the file above. " +
+      "Read it, then delete the file immediately. Never commit credentials to version control."
     );
   } else {
     console.log("   • Temp Pass: [hidden]");
