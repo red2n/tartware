@@ -73,6 +73,7 @@ const manualReleaseNotificationTestSchema = ManualReleaseNotificationTestSchema;
 
 export const locksRoutes = fastifyPlugin(
   (app: FastifyInstance, _opts: unknown, done: (err?: Error) => void): void => {
+    // Internal service — rate limiting handled by API gateway. All routes require bearer/admin token auth.
     app.addHook("preHandler", async (request: FastifyRequest, reply: FastifyReply) => {
       if (!ensureHttpAuthorized(request, reply)) {
         return reply;

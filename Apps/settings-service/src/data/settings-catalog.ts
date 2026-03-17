@@ -28,7 +28,8 @@ function deterministicUuid(name: string): string {
   const namespaceBytes = Buffer.from(UUID_NAMESPACE.replace(/-/g, ""), "hex");
   const nameBytes = Buffer.from(name);
 
-  const hash = createHash("sha1");
+  // UUID v5 (RFC 4122) mandates SHA-1 — not used for security, only deterministic ID generation.
+  const hash = createHash("sha1"); // lgtm[js/weak-cryptographic-algorithm]
   hash.update(namespaceBytes);
   hash.update(nameBytes);
   const digest = hash.digest();

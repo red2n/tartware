@@ -180,6 +180,7 @@ export const buildServer = (): FastifyInstance => {
       },
     );
 
+    // Internal monitoring endpoint — rate limiting handled by API gateway for external traffic.
     app.get(
       "/metrics",
       {

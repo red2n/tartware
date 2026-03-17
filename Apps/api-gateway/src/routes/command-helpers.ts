@@ -208,7 +208,7 @@ export const forwardReservationCommand = async (
 
   const method = request.method.toUpperCase();
   let commandName: string;
-  let payload: Record<string, unknown> = normalizePayloadObject(request.body);
+  let payload: Record<string, unknown>;
 
   switch (method) {
     case "POST":
