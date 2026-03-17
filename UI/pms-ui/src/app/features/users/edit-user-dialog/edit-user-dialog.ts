@@ -8,6 +8,7 @@ import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
 import type { TenantRole, UserWithTenants } from "@tartware/schemas";
 
 import { ApiService } from "../../../core/api/api.service";
+import { TENANT_ROLES } from "../../../shared/user-roles";
 import { ToastService } from "../../../shared/toast/toast.service";
 
 type UserRow = UserWithTenants & { version: string };
@@ -19,14 +20,6 @@ type DialogData = {
 };
 
 const VALID_ROLES = new Set<string>(["VIEWER", "STAFF", "MANAGER", "ADMIN", "OWNER"]);
-
-const ROLES: { value: TenantRole; label: string }[] = [
-	{ value: "VIEWER", label: "Viewer" },
-	{ value: "STAFF", label: "Staff" },
-	{ value: "MANAGER", label: "Manager" },
-	{ value: "ADMIN", label: "Admin" },
-	{ value: "OWNER", label: "Owner" },
-];
 
 @Component({
 	selector: "app-edit-user-dialog",
@@ -44,7 +37,7 @@ export class EditUserDialogComponent {
 	readonly saving = signal(false);
 	readonly error = signal<string | null>(null);
 
-	readonly roles = ROLES;
+	readonly roles = TENANT_ROLES;
 
 	selectedRole: TenantRole;
 	isActive: boolean;

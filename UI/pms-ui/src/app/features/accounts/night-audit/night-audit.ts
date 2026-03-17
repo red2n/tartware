@@ -19,7 +19,7 @@ import { TenantContextService } from "../../../core/context/tenant-context.servi
 import { TranslatePipe } from "../../../core/i18n/translate.pipe";
 import { PageHeaderComponent } from "../../../shared/components/page-header/page-header";
 import { formatCurrency, formatShortDate } from "../../../shared/format-utils";
-import { createSortState, sortBy, toggleSort } from "../../../shared/sort-utils";
+import { createSortState, getAriaSort, getSortIcon, sortBy, toggleSort } from "../../../shared/sort-utils";
 import { ToastService } from "../../../shared/toast/toast.service";
 
 /** Tabs for the main content area. */
@@ -157,23 +157,9 @@ export class NightAuditComponent {
 		this.historySort.set(toggleSort(this.historySort(), col));
 	}
 
-	sortIcon(col: string): string {
-		const s = this.sort();
-		if (s.column !== col) return "unfold_more";
-		return s.direction === "asc" ? "arrow_upward" : "arrow_downward";
-	}
-
-	historySortIcon(col: string): string {
-		const s = this.historySort();
-		if (s.column !== col) return "unfold_more";
-		return s.direction === "asc" ? "arrow_upward" : "arrow_downward";
-	}
-
-	ariaSort(col: string): string | null {
-		const s = this.sort();
-		if (s.column !== col) return null;
-		return s.direction === "asc" ? "ascending" : "descending";
-	}
+	sortIcon = (col: string) => getSortIcon(this.sort(), col);
+	historySortIcon = (col: string) => getSortIcon(this.historySort(), col);
+	ariaSort = (col: string) => getAriaSort(this.sort(), col);
 
 	formatDate = formatShortDate;
 	formatCurrency = formatCurrency;

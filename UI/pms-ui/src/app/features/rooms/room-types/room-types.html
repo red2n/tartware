@@ -9,18 +9,8 @@
     </button>
   </app-page-header>
 
-  <!-- Search -->
+  <!-- Filter bar -->
   <div class="filter-bar">
-    <div class="search-box">
-      <mat-icon class="search-icon">search</mat-icon>
-      <input
-        type="text"
-        class="search-input"
-        placeholder="Search room types..."
-        aria-label="Search room types"
-        [ngModel]="searchQuery()"
-        (ngModelChange)="onSearch($event)" />
-    </div>
     <span class="text-muted">{{ filteredRoomTypes().length }} room types</span>
   </div>
 
@@ -45,7 +35,7 @@
         <button class="btn btn-primary" (click)="openCreateDialog()">Create first room type</button>
       } @else {
         <p>No room types match your search</p>
-        <button class="btn btn-outline" (click)="onSearch('')">Clear search</button>
+        <button class="btn btn-outline" (click)="globalSearch.clear()">Clear search</button>
       }
     </div>
   } @else {

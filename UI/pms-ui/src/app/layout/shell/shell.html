@@ -1,42 +1,46 @@
 <a class="skip-link" href="#main-content">{{ 'Skip to content' | translate }}</a>
 <div class="shell" [class.sidebar-collapsed]="sidebarCollapsed()">
+  <!-- Title Bar (full width, top — VS Code style) -->
   @defer (on idle) {
-    <app-sidebar
-      [collapsed]="sidebarCollapsed()"
-      [activeParentLabel]="activeParent()?.label ?? null"
-      (toggleCollapse)="toggleSidebar()"
-      (parentSelect)="onParentSelect($event)" />
+    <app-topbar />
   } @placeholder {
-    <aside class="sidebar-placeholder"></aside>
+    <div class="topbar-placeholder"></div>
   }
 
-  <div class="main-area">
+  <!-- Body: Sidebar + Content -->
+  <div class="shell-body">
     @defer (on idle) {
-      <app-topbar (menuToggle)="toggleSidebar()" />
+      <app-sidebar
+        [collapsed]="sidebarCollapsed()"
+        [activeParentLabel]="activeParent()?.label ?? null"
+        (toggleCollapse)="toggleSidebar()"
+        (parentSelect)="onParentSelect($event)" />
     } @placeholder {
-      <div class="topbar-placeholder"></div>
+      <aside class="sidebar-placeholder"></aside>
     }
 
     <main id="main-content" class="content-area scroll-container" tabindex="-1">
       <router-outlet />
     </main>
 
-    @if (statusBarVisible()) {
-      <app-status-bar />
+    <!-- Right dock: sub-menu sidebar -->
+    @if (activeParent(); as parent) {
+      @if (filteredActiveChildren(); as children) {
+        @if (children.length > 0) {
+          <app-sub-sidebar
+            [parentLabel]="parent.label"
+            [parentIcon]="parent.icon"
+            [items]="children"
+            [collapsed]="rightDockCollapsed()"
+            (toggleCollapse)="toggleRightDock()" />
+        }
+      }
     }
   </div>
 
-  @if (activeParent(); as parent) {
-    @if (filteredActiveChildren(); as children) {
-      @if (children.length > 0) {
-        <app-sub-sidebar
-          [parentLabel]="parent.label"
-          [parentIcon]="parent.icon"
-          [items]="children"
-          [collapsed]="rightDockCollapsed()"
-          (toggleCollapse)="toggleRightDock()" />
-      }
-    }
+  <!-- Status Bar (full width, bottom — VS Code style) -->
+  @if (statusBarVisible()) {
+    <app-status-bar />
   }
 </div>
 <app-toast-container />

@@ -79,16 +79,6 @@
       }
     </nav>
 
-    <div class="search-box">
-      <mat-icon class="search-icon">search</mat-icon>
-      <input
-        type="text"
-        class="search-input"
-        [placeholder]="'Search reservations...' | translate"
-        [attr.aria-label]="'Search reservations' | translate"
-        [ngModel]="searchQuery()"
-        (ngModelChange)="onSearch($event)" />
-    </div>
   </div>
 
   <!-- Content -->
@@ -113,7 +103,7 @@
         <button class="btn btn-primary" (click)="openCreateReservation()">{{ 'Create first reservation' | translate }}</button>
       } @else {
         <p>{{ 'No reservations match the current filters' | translate }}</p>
-        <button class="btn btn-outline" (click)="setFilter('ALL'); onSearch('')">{{ 'Clear filters' | translate }}</button>
+        <button class="btn btn-outline" (click)="setFilter('ALL'); globalSearch.clear()">{{ 'Clear filters' | translate }}</button>
       }
     </div>
   } @else {

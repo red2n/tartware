@@ -7,12 +7,11 @@
   align-items: center;
   justify-content: space-between;
   height: 24px;
-  background: var(--color-header-bg);
-  color: var(--color-header-text);
+  background: var(--color-statusbar-bg);
+  color: var(--color-statusbar-text);
   font-size: var(--font-size-xs);
   font-family: var(--font-family);
   padding: 0 var(--space-2);
-  border-top: 1px solid var(--color-header-border);
   user-select: none;
   z-index: 100;
   flex-shrink: 0;
@@ -33,7 +32,7 @@
   height: 22px;
   border: none;
   background: transparent;
-  color: var(--color-header-text);
+  color: var(--color-statusbar-text);
   font-size: var(--font-size-xs);
   font-family: inherit;
   cursor: default;
@@ -46,7 +45,7 @@ button.status-bar-item {
   cursor: pointer;
 
   &:hover {
-    background: rgba(255, 255, 255, 0.12);
+    background: var(--color-statusbar-hover-bg);
   }
 
   &:active {

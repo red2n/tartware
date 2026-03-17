@@ -268,6 +268,21 @@ export function findActiveParent(url: string): NavItem | null {
 	return null;
 }
 
+/** Find the NavItem (parent or direct) whose route or child route matches the URL. */
+export function findActiveNavItem(url: string): NavItem | null {
+	for (const items of [PRIMARY_NAV_ITEMS, SECONDARY_NAV_ITEMS]) {
+		for (const item of items) {
+			if (item.children?.some((child) => child.route && url.startsWith(child.route))) {
+				return item;
+			}
+			if (item.route && url.startsWith(item.route)) {
+				return item;
+			}
+		}
+	}
+	return null;
+}
+
 /**
  * Find the first route the user is allowed to access based on their screen permissions.
  * Walks PRIMARY then SECONDARY nav items, returning the first matching route.

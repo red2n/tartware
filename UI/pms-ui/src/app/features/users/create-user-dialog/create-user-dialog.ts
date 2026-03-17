@@ -8,19 +8,12 @@ import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
 import type { TenantRole } from "@tartware/schemas";
 
 import { ApiService, ApiValidationError } from "../../../core/api/api.service";
+import { TENANT_ROLES } from "../../../shared/user-roles";
 import { ToastService } from "../../../shared/toast/toast.service";
 
 type DialogData = {
 	tenantId: string;
 };
-
-const ROLES: { value: TenantRole; label: string }[] = [
-	{ value: "VIEWER", label: "Viewer" },
-	{ value: "STAFF", label: "Staff" },
-	{ value: "MANAGER", label: "Manager" },
-	{ value: "ADMIN", label: "Admin" },
-	{ value: "OWNER", label: "Owner" },
-];
 
 @Component({
 	selector: "app-create-user-dialog",
@@ -41,7 +34,7 @@ export class CreateUserDialogComponent {
 
 	touched: Record<string, boolean> = {};
 
-	readonly roles = ROLES;
+	readonly roles = TENANT_ROLES;
 
 	// Form fields
 	username = "";

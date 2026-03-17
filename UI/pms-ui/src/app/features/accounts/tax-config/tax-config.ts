@@ -12,10 +12,11 @@ import { ApiService } from "../../../core/api/api.service";
 import { AuthService } from "../../../core/auth/auth.service";
 import { TenantContextService } from "../../../core/context/tenant-context.service";
 import { TranslatePipe } from "../../../core/i18n/translate.pipe";
+import { GlobalSearchService } from "../../../core/search/global-search.service";
 import { PageHeaderComponent } from "../../../shared/components/page-header/page-header";
 import { formatShortDate } from "../../../shared/format-utils";
 import { PaginationComponent } from "../../../shared/pagination/pagination";
-import { createSortState, sortBy, toggleSort } from "../../../shared/sort-utils";
+import { createSortState, getAriaSort, getSortIcon, sortBy, toggleSort } from "../../../shared/sort-utils";
 
 type TaxTypeFilter =
 	| "ALL"
@@ -47,17 +48,21 @@ export class TaxConfigComponent {
 	private readonly api = inject(ApiService);
 	private readonly auth = inject(AuthService);
 	private readonly ctx = inject(TenantContextService);
+	readonly globalSearch = inject(GlobalSearchService);
 
 	// ── State ──
 	readonly taxConfigs = signal<TaxConfigurationListItem[]>([]);
 	readonly loading = signal(false);
 	readonly error = signal<string | null>(null);
-	readonly searchQuery = signal("");
 	readonly activeTaxTypeFilter = signal<TaxTypeFilter>("ALL");
 	readonly activeStatusFilter = signal<ActiveFilter>("ALL");
 	readonly page = signal(1);
 	readonly sort = createSortState();
 	readonly pageSize = 25;
+	private readonly _resetPage = effect(() => {
+		this.globalSearch.query();
+		this.page.set(1);
+	});
 
 	readonly taxTypeFilters: { key: TaxTypeFilter; label: string }[] = [
 		{ key: "ALL", label: "All Types" },
@@ -78,7 +83,7 @@ export class TaxConfigComponent {
 		let list = this.taxConfigs();
 		const type = this.activeTaxTypeFilter();
 		const status = this.activeStatusFilter();
-		const query = this.searchQuery().toLowerCase().trim();
+		const query = this.globalSearch.query().toLowerCase().trim();
 		if (type !== "ALL") list = list.filter((t) => t.tax_type === type);
 		if (status !== "ALL")
 			list = list.filter((t) => (status === "active" ? t.is_active : !t.is_active));
@@ -137,25 +142,13 @@ export class TaxConfigComponent {
 		this.activeStatusFilter.set(f);
 		this.page.set(1);
 	}
-	onSearch(v: string): void {
-		this.searchQuery.set(v);
-		this.page.set(1);
-	}
 	onSort(col: string): void {
 		this.sort.set(toggleSort(this.sort(), col));
 		this.page.set(1);
 	}
 
-	sortIcon(col: string): string {
-		const s = this.sort();
-		if (s.column !== col) return "unfold_more";
-		return s.direction === "asc" ? "arrow_upward" : "arrow_downward";
-	}
-	ariaSort(col: string): string | null {
-		const s = this.sort();
-		if (s.column !== col) return null;
-		return s.direction === "asc" ? "ascending" : "descending";
-	}
+	sortIcon = (col: string) => getSortIcon(this.sort(), col);
+	ariaSort = (col: string) => getAriaSort(this.sort(), col);
 
 	formatDate = formatShortDate;
 

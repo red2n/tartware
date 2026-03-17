@@ -56,3 +56,13 @@ function getNestedValue(obj: unknown, path: string): unknown {
 	}
 	return current;
 }
+
+export function getSortIcon(state: SortState, column: string): string {
+	if (state.column !== column) return "unfold_more";
+	return state.direction === "asc" ? "arrow_upward" : "arrow_downward";
+}
+
+export function getAriaSort(state: SortState, column: string): string | null {
+	if (state.column !== column) return null;
+	return state.direction === "asc" ? "ascending" : "descending";
+}

@@ -39,18 +39,12 @@ export class ShellComponent implements OnInit, OnDestroy {
 	readonly rightDockCollapsed = signal(this.loadRightDockState());
 	readonly statusBarVisible = this.registry.statusBarVisible;
 	readonly activeParent = signal<NavItem | null>(null);
-
-	/** Active parent's children filtered by screen permissions (fail-open when not loaded). */
 	readonly filteredActiveChildren = computed(() => {
 		const parent = this.activeParent();
 		if (!parent?.children) return [];
 		const allowed = this.screenPerms.allowedScreens();
-		// Fail-open: show all children when permissions haven't loaded or are empty
 		if (!this.screenPerms.loaded() || allowed.size === 0) return parent.children;
-		return parent.children.filter((child) => {
-			if (!child.screenKey) return true;
-			return allowed.has(child.screenKey);
-		});
+		return parent.children.filter((c) => (c.screenKey ? allowed.has(c.screenKey) : true));
 	});
 
 	private routerSub?: Subscription;
@@ -79,14 +73,11 @@ export class ShellComponent implements OnInit, OnDestroy {
 	onParentSelect(item: NavItem): void {
 		const current = this.activeParent();
 		if (current?.label === item.label) {
-			// Don't close if we're currently on a child route
-			const urlParent = findActiveParent(this.router.url);
-			if (urlParent?.label !== item.label) {
-				this.activeParent.set(null);
-			}
+			// Toggle: collapse children if same parent clicked
+			this.activeParent.set(null);
 		} else {
 			this.activeParent.set(item);
-			// Navigate to first child so the old routerLinkActive clears
+			// Navigate to first child
 			const firstChild = item.children?.[0];
 			if (firstChild?.route) {
 				this.router.navigate([firstChild.route]);
@@ -108,7 +99,7 @@ export class ShellComponent implements OnInit, OnDestroy {
 
 	private loadSidebarState(): boolean {
 		const stored = localStorage.getItem(ShellComponent.SIDEBAR_KEY);
-		return stored === null ? true : stored === "true";
+		return stored === "true";
 	}
 
 	private loadRightDockState(): boolean {

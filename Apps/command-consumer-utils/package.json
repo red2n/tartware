@@ -16,6 +16,10 @@
     "./dlq": {
       "types": "./dist/dlq.d.ts",
       "import": "./dist/dlq.js"
+    },
+    "./metrics": {
+      "types": "./dist/metrics.d.ts",
+      "import": "./dist/metrics.js"
     }
   },
   "main": "dist/index.js",
@@ -31,7 +35,8 @@
     "clean": "rm -rf dist *.tsbuildinfo"
   },
   "dependencies": {
-    "kafkajs": "^2.2.4"
+    "kafkajs": "^2.2.4",
+    "prom-client": "^15.1.3"
   },
   "engines": {
     "node": ">=22.0.0",

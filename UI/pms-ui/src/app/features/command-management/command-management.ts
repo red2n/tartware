@@ -17,6 +17,7 @@ import type {
 
 import { ApiService } from "../../core/api/api.service";
 import { TranslatePipe } from "../../core/i18n/translate.pipe";
+import { GlobalSearchService } from "../../core/search/global-search.service";
 import { PageHeaderComponent } from "../../shared/components/page-header/page-header";
 
 type ServiceTab = "all" | string;
@@ -41,6 +42,7 @@ type ServiceTab = "all" | string;
 export class CommandManagementComponent implements OnInit, OnDestroy {
 	private readonly api = inject(ApiService);
 	private readonly route = inject(ActivatedRoute);
+	readonly globalSearch = inject(GlobalSearchService);
 	private paramSub?: Subscription;
 
 	/** Server state — the last-known saved statuses. */
@@ -50,7 +52,6 @@ export class CommandManagementComponent implements OnInit, OnDestroy {
 	readonly loading = signal(false);
 	readonly saving = signal(false);
 	readonly error = signal<string | null>(null);
-	readonly searchQuery = signal("");
 	readonly activeTab = signal<ServiceTab>("all");
 
 	/** Local overrides not yet saved. Maps command_name → desired status. */
@@ -62,7 +63,7 @@ export class CommandManagementComponent implements OnInit, OnDestroy {
 	/** Filtered commands based on active tab and search query. */
 	readonly filteredCommands = computed(() => {
 		const tab = this.activeTab();
-		const query = this.searchQuery().toLowerCase().trim();
+		const query = this.globalSearch.query().toLowerCase().trim();
 		let items = this.commands();
 
 		if (tab !== "all") {
@@ -122,10 +123,6 @@ export class CommandManagementComponent implements OnInit, OnDestroy {
 		} finally {
 			this.loading.set(false);
 		}
-	}
-
-	onSearch(value: string): void {
-		this.searchQuery.set(value);
 	}
 
 	/** Toggle locally — no API call, just track the change. */

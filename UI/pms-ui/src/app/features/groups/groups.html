@@ -75,16 +75,6 @@
       }
     </nav>
 
-    <div class="search-box">
-      <mat-icon class="search-icon">search</mat-icon>
-      <input
-        type="text"
-        class="search-input"
-        [placeholder]="'Search groups...' | translate"
-        [attr.aria-label]="'Search group bookings' | translate"
-        [ngModel]="searchQuery()"
-        (ngModelChange)="onSearch($event)" />
-    </div>
   </div>
 
   <!-- Content -->
@@ -109,7 +99,7 @@
         <button class="btn btn-primary" (click)="openCreateGroup()">{{ 'Create first group booking' | translate }}</button>
       } @else {
         <p>{{ 'No group bookings match the current filters' | translate }}</p>
-        <button class="btn btn-outline" (click)="setFilter('ALL'); onSearch('')">{{ 'Clear filters' | translate }}</button>
+        <button class="btn btn-outline" (click)="setFilter('ALL'); globalSearch.clear()">{{ 'Clear filters' | translate }}</button>
       }
     </div>
   } @else {

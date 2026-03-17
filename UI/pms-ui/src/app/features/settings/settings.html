@@ -25,18 +25,6 @@
             <p class="content-description text-muted">{{ cat.description }}</p>
           }
         </div>
-            <div class="content-header-actions">
-              <div class="search-box">
-                <mat-icon class="search-icon">search</mat-icon>
-                <input
-                  type="text"
-                  class="search-input"
-                  [placeholder]="'Search settings...' | translate"
-                  [attr.aria-label]="'Search settings' | translate"
-                  [ngModel]="searchQuery()"
-                  (ngModelChange)="onSearch($event)" />
-              </div>
-            </div>
           </div>
 
           @defer (on idle) {
@@ -53,9 +41,9 @@
           } @else if (sectionDefinitions().length === 0) {
             <div class="empty-state">
               <mat-icon class="empty-icon">tune</mat-icon>
-              @if (searchQuery()) {
-                <p>{{ 'No settings match "' | translate }}{{ searchQuery() }}{{ '"' }}</p>
-                <button class="btn btn-outline" (click)="onSearch('')">{{ 'Clear search' | translate }}</button>
+              @if (globalSearch.query()) {
+                <p>{{ 'No settings match "' | translate }}{{ globalSearch.query() }}{{ '"' }}</p>
+                <button class="btn btn-outline" (click)="globalSearch.clear()">{{ 'Clear search' | translate }}</button>
               } @else {
                 <p>{{ 'No settings defined in this category' | translate }}</p>
               }

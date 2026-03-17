@@ -13,10 +13,11 @@ import type { GuestSummaryStats, GuestWithStats } from "@tartware/schemas";
 import { ApiService } from "../../core/api/api.service";
 import { AuthService } from "../../core/auth/auth.service";
 import { TranslatePipe } from "../../core/i18n/translate.pipe";
+import { GlobalSearchService } from "../../core/search/global-search.service";
 import { loyaltyTierClass, vipStatusClass } from "../../shared/badge-utils";
 import { PageHeaderComponent } from "../../shared/components/page-header/page-header";
 import { PaginationComponent } from "../../shared/pagination/pagination";
-import { createSortState, sortBy, toggleSort } from "../../shared/sort-utils";
+import { createSortState, getAriaSort, getSortIcon, sortBy, toggleSort } from "../../shared/sort-utils";
 import { ToastService } from "../../shared/toast/toast.service";
 
 type GuestFilter = "ALL" | "VIP" | "LOYALTY" | "BLACKLISTED";
@@ -48,16 +49,20 @@ export class GuestsComponent {
 	private readonly router = inject(Router);
 	private readonly dialog = inject(MatDialog);
 	private readonly toast = inject(ToastService);
+	readonly globalSearch = inject(GlobalSearchService);
 
 	readonly guests = signal<GuestListItem[]>([]);
 	readonly guestStats = signal<GuestSummaryStats | null>(null);
 	readonly loading = signal(false);
 	readonly error = signal<string | null>(null);
-	readonly searchQuery = signal("");
 	readonly activeFilter = signal<GuestFilter>("ALL");
 	readonly currentPage = signal(1);
 	readonly pageSize = 25;
 	readonly sortState = createSortState();
+	private readonly _resetPage = effect(() => {
+		this.globalSearch.query();
+		this.currentPage.set(1);
+	});
 
 	readonly guestFilters: { key: GuestFilter; label: string }[] = [
 		{ key: "ALL", label: "All" },
@@ -69,7 +74,7 @@ export class GuestsComponent {
 	readonly filteredGuests = computed(() => {
 		let list = this.guests();
 		const filter = this.activeFilter();
-		const query = this.searchQuery().toLowerCase().trim();
+		const query = this.globalSearch.query().toLowerCase().trim();
 
 		if (filter === "VIP") {
 			list = list.filter((g) => g.vip_status);
@@ -174,27 +179,13 @@ export class GuestsComponent {
 		this.currentPage.set(1);
 	}
 
-	onSearch(value: string): void {
-		this.searchQuery.set(value);
-		this.currentPage.set(1);
-	}
-
 	onSort(column: string): void {
 		this.sortState.set(toggleSort(this.sortState(), column));
 		this.currentPage.set(1);
 	}
 
-	sortIcon(column: string): string {
-		const s = this.sortState();
-		if (s.column !== column) return "unfold_more";
-		return s.direction === "asc" ? "arrow_upward" : "arrow_downward";
-	}
-
-	ariaSort(column: string): string | null {
-		const s = this.sortState();
-		if (s.column !== column) return null;
-		return s.direction === "asc" ? "ascending" : "descending";
-	}
+	sortIcon = (column: string) => getSortIcon(this.sortState(), column);
+	ariaSort = (column: string) => getAriaSort(this.sortState(), column);
 
 	viewGuest(guestId: string): void {
 		this.router.navigate(["/guests", guestId]);

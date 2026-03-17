@@ -13,11 +13,12 @@ import { ApiService } from "../../core/api/api.service";
 import { AuthService } from "../../core/auth/auth.service";
 import { TenantContextService } from "../../core/context/tenant-context.service";
 import { TranslatePipe } from "../../core/i18n/translate.pipe";
+import { GlobalSearchService } from "../../core/search/global-search.service";
 import { reservationStatusClass } from "../../shared/badge-utils";
 import { PageHeaderComponent } from "../../shared/components/page-header/page-header";
 import { formatCurrency, formatShortDate } from "../../shared/format-utils";
 import { PaginationComponent } from "../../shared/pagination/pagination";
-import { createSortState, sortBy, toggleSort } from "../../shared/sort-utils";
+import { createSortState, getAriaSort, getSortIcon, sortBy, toggleSort } from "../../shared/sort-utils";
 
 type StatusFilter = "ALL" | "CONFIRMED" | "CHECKED_IN" | "PENDING" | "CANCELLED" | "CHECKED_OUT";
 
@@ -43,15 +44,19 @@ export class ReservationsComponent {
 	private readonly auth = inject(AuthService);
 	private readonly ctx = inject(TenantContextService);
 	private readonly router = inject(Router);
+	readonly globalSearch = inject(GlobalSearchService);
 
 	readonly reservations = signal<ReservationListItem[]>([]);
 	readonly loading = signal(false);
 	readonly error = signal<string | null>(null);
-	readonly searchQuery = signal("");
 	readonly activeFilter = signal<StatusFilter>("ALL");
 	readonly currentPage = signal(1);
 	readonly pageSize = 25;
 	readonly sortState = createSortState();
+	private readonly _resetPage = effect(() => {
+		this.globalSearch.query();
+		this.currentPage.set(1);
+	});
 
 	readonly statusFilters: { key: StatusFilter; label: string }[] = [
 		{ key: "ALL", label: "All" },
@@ -65,7 +70,7 @@ export class ReservationsComponent {
 	readonly filteredReservations = computed(() => {
 		let list = this.reservations();
 		const filter = this.activeFilter();
-		const query = this.searchQuery().toLowerCase().trim();
+		const query = this.globalSearch.query().toLowerCase().trim();
 
 		if (filter !== "ALL") {
 			list = list.filter((r) => r.status.toUpperCase() === filter);
@@ -152,27 +157,13 @@ export class ReservationsComponent {
 		this.currentPage.set(1);
 	}
 
-	onSearch(value: string): void {
-		this.searchQuery.set(value);
-		this.currentPage.set(1);
-	}
-
 	onSort(column: string): void {
 		this.sortState.set(toggleSort(this.sortState(), column));
 		this.currentPage.set(1);
 	}
 
-	sortIcon(column: string): string {
-		const s = this.sortState();
-		if (s.column !== column) return "unfold_more";
-		return s.direction === "asc" ? "arrow_upward" : "arrow_downward";
-	}
-
-	ariaSort(column: string): string | null {
-		const s = this.sortState();
-		if (s.column !== column) return null;
-		return s.direction === "asc" ? "ascending" : "descending";
-	}
+	sortIcon = (column: string) => getSortIcon(this.sortState(), column);
+	ariaSort = (column: string) => getAriaSort(this.sortState(), column);
 
 	viewReservation(id: string): void {
 		this.router.navigate(["/reservations", id]);

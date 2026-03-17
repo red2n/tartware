@@ -3,6 +3,7 @@ import {
   type CommandMetadata,
   createCommandCenterHandlers,
 } from "@tartware/command-consumer-utils";
+import { buildDlqPayload } from "@tartware/command-consumer-utils/dlq";
 import { processWithRetry, RetryExhaustedError } from "@tartware/config/retry";
 import {
   ReservationMobileCheckinCompleteCommandSchema,
@@ -66,41 +67,6 @@ export const shutdownGuestExperienceCommandConsumer = async (): Promise<void> =>
   } finally {
     consumer = null;
   }
-};
-
-const buildDlqPayload = (input: {
-  envelope?: CommandEnvelope;
-  rawValue: string;
-  topic: string;
-  partition: number;
-  offset: string;
-  attempts: number;
-  failureReason: "PARSING_ERROR" | "HANDLER_FAILURE";
-  error: unknown;
-}) => {
-  const error =
-    input.error instanceof Error
-      ? { name: input.error.name, message: input.error.message }
-      : { name: "Error", message: String(input.error) };
-
-  return {
-    metadata: {
-      failureReason: input.failureReason,
-      attempts: input.attempts,
-      topic: input.topic,
-      partition: input.partition,
-      offset: input.offset,
-      commandId: input.envelope?.metadata?.commandId,
-      commandName: input.envelope?.metadata?.commandName,
-      tenantId: input.envelope?.metadata?.tenantId,
-      requestId: input.envelope?.metadata?.requestId,
-      targetService: input.envelope?.metadata?.targetService,
-    },
-    error,
-    payload: input.envelope?.payload ?? null,
-    raw: input.rawValue,
-    emittedAt: new Date().toISOString(),
-  };
 };
 
 /**

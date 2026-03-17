@@ -1,40 +1,8 @@
-import { Counter, Gauge, Histogram, Registry } from "prom-client";
+import { createCommandConsumerMetrics } from "@tartware/command-consumer-utils/metrics";
 
-export const metricsRegistry = new Registry();
-
-const commandOutcomeCounter = new Counter({
-  name: "rooms_command_outcomes_total",
-  help: "Count of rooms commands processed by outcome",
-  labelNames: ["command", "status"] as const,
-  registers: [metricsRegistry],
-});
-
-const commandDurationHistogram = new Histogram({
-  name: "rooms_command_processing_duration_seconds",
-  help: "Duration of rooms command processing",
-  labelNames: ["command"] as const,
-  registers: [metricsRegistry],
-  buckets: [0.01, 0.05, 0.1, 0.25, 0.5, 1, 2, 5],
-});
-
-const commandConsumerLagGauge = new Gauge({
-  name: "rooms_command_consumer_lag",
-  help: "Approximate number of messages between current offset and the latest Kafka high watermark",
-  labelNames: ["topic", "partition"] as const,
-  registers: [metricsRegistry],
-});
-
-export const recordCommandOutcome = (
-  commandName: string,
-  status: "success" | "parse_error" | "handler_error" | "duplicate",
-): void => {
-  commandOutcomeCounter.labels(commandName, status).inc();
-};
-
-export const observeCommandDuration = (commandName: string, durationSeconds: number): void => {
-  commandDurationHistogram.observe({ command: commandName }, durationSeconds);
-};
-
-export const setCommandConsumerLag = (topic: string, partition: number, lag: number): void => {
-  commandConsumerLagGauge.set({ topic, partition: String(partition) }, lag);
-};
+export const {
+  metricsRegistry,
+  recordCommandOutcome,
+  observeCommandDuration,
+  setCommandConsumerLag,
+} = createCommandConsumerMetrics("rooms");

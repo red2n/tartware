@@ -36,14 +36,6 @@
     <button class="btn btn-outline" (click)="loadCommands()">{{ 'Retry' | translate }}</button>
   </div>
   } @else {
-  <!-- Search bar -->
-  <div class="filter-bar">
-    <div class="search-box">
-      <mat-icon class="search-icon">search</mat-icon>
-      <input type="text" class="search-input" [placeholder]="'Search commands...' | translate" [ngModel]="searchQuery()"
-        (ngModelChange)="onSearch($event)" />
-    </div>
-  </div>
 
   @if (error()) {
   <div class="error-state" style="margin-bottom: var(--space-4)">
@@ -56,9 +48,9 @@
   @if (filteredCommands().length === 0) {
   <div class="empty-state">
     <mat-icon class="empty-icon">terminal</mat-icon>
-    @if (searchQuery()) {
-    <p>{{ 'No commands match "' | translate }}{{ searchQuery() }}{{ '"' }}</p>
-    <button class="btn btn-outline" (click)="onSearch('')">{{ 'Clear search' | translate }}</button>
+    @if (globalSearch.query()) {
+    <p>{{ 'No commands match "' | translate }}{{ globalSearch.query() }}{{ '"' }}</p>
+    <button class="btn btn-outline" (click)="globalSearch.clear()">{{ 'Clear search' | translate }}</button>
     } @else {
     <p>{{ 'No commands found' | translate }}</p>
     }
