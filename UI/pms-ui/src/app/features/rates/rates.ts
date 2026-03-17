@@ -10,12 +10,13 @@ import { MatTooltipModule } from "@angular/material/tooltip";
 import type { RateItem } from "@tartware/schemas";
 
 import { ApiService } from "../../core/api/api.service";
+import { GlobalSearchService } from "../../core/search/global-search.service";
 import { AuthService } from "../../core/auth/auth.service";
 import { TenantContextService } from "../../core/context/tenant-context.service";
 import { TranslatePipe } from "../../core/i18n/translate.pipe";
 import { PageHeaderComponent } from "../../shared/components/page-header/page-header";
 import { PaginationComponent } from "../../shared/pagination/pagination";
-import { createSortState, sortBy, toggleSort } from "../../shared/sort-utils";
+import { createSortState, getAriaSort, getSortIcon, sortBy, toggleSort } from "../../shared/sort-utils";
 import { ToastService } from "../../shared/toast/toast.service";
 
 type StatusFilter = "ALL" | "ACTIVE" | "INACTIVE" | "EXPIRED" | "FUTURE";
@@ -44,16 +45,20 @@ export class RatesComponent {
 	private readonly ctx = inject(TenantContextService);
 	private readonly dialog = inject(MatDialog);
 	private readonly toast = inject(ToastService);
+	readonly globalSearch = inject(GlobalSearchService);
 
 	readonly rates = signal<RateItem[]>([]);
 	readonly loading = signal(false);
 	readonly error = signal<string | null>(null);
-	readonly searchQuery = signal("");
 	readonly activeFilter = signal<StatusFilter>("ALL");
 	readonly activeTypeFilter = signal<TypeFilter>("ALL");
 	readonly currentPage = signal(1);
 	readonly pageSize = 25;
 	readonly sortState = createSortState();
+	private readonly _resetPage = effect(() => {
+		this.globalSearch.query();
+		this.currentPage.set(1);
+	});
 
 	readonly statusFilters: { key: StatusFilter; label: string }[] = [
 		{ key: "ALL", label: "All" },
@@ -84,7 +89,7 @@ export class RatesComponent {
 		let list = this.rates();
 		const status = this.activeFilter();
 		const type = this.activeTypeFilter();
-		const query = this.searchQuery().toLowerCase().trim();
+		const query = this.globalSearch.query().toLowerCase().trim();
 
 		if (status !== "ALL") {
 			list = list.filter((r) => r.status === status);
@@ -186,27 +191,13 @@ export class RatesComponent {
 		this.currentPage.set(1);
 	}
 
-	onSearch(value: string): void {
-		this.searchQuery.set(value);
-		this.currentPage.set(1);
-	}
-
 	onSort(column: string): void {
 		this.sortState.set(toggleSort(this.sortState(), column));
 		this.currentPage.set(1);
 	}
 
-	sortIcon(column: string): string {
-		const s = this.sortState();
-		if (s.column !== column) return "unfold_more";
-		return s.direction === "asc" ? "arrow_upward" : "arrow_downward";
-	}
-
-	ariaSort(column: string): string | null {
-		const s = this.sortState();
-		if (s.column !== column) return null;
-		return s.direction === "asc" ? "ascending" : "descending";
-	}
+	sortIcon = (column: string) => getSortIcon(this.sortState(), column);
+	ariaSort = (column: string) => getAriaSort(this.sortState(), column);
 
 	statusClass(status: string): string {
 		switch (status) {

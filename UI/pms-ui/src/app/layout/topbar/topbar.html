@@ -1,15 +1,17 @@
-<header class="header">
-  <div class="header-left">
-    <button class="header-btn menu-toggle" (click)="menuToggle.emit()">
+<header class="title-bar">
+  <div class="title-bar-left">
+    <button class="mobile-menu-toggle" (click)="menuToggle.emit()" aria-label="Toggle sidebar">
       <mat-icon>menu</mat-icon>
     </button>
+    <img src="assets/logo.svg" class="app-logo" alt="Tartware" />
+    <span class="app-title">Tartware</span>
 
-    <!-- Tenant switcher (only if user has multiple tenant memberships) -->
+    <!-- Tenant switcher -->
     @if (showTenantSwitcher) {
+      <span class="context-separator">/</span>
       <button class="context-btn" [matMenuTriggerFor]="tenantMenu" [matTooltip]="'Switch tenant' | translate">
-        <mat-icon class="context-icon">business</mat-icon>
         <span class="context-label">{{ activeMembership()?.tenant_name ?? ('No tenant' | translate) }}</span>
-        <mat-icon class="context-caret">arrow_drop_down</mat-icon>
+        <mat-icon class="context-caret">expand_more</mat-icon>
       </button>
       <mat-menu #tenantMenu="matMenu">
         @for (m of memberships(); track m.tenant_id) {
@@ -22,19 +24,16 @@
         }
       </mat-menu>
     } @else if (activeMembership(); as m) {
-      <span class="context-label-static" [matTooltip]="'Tenant' | translate">
-        <mat-icon class="context-icon">business</mat-icon>
-        {{ m.tenant_name ?? ('Tenant' | translate) }}
-      </span>
+      <span class="context-separator">/</span>
+      <span class="context-label-static">{{ m.tenant_name ?? ('Tenant' | translate) }}</span>
     }
 
     <!-- Property selector -->
     @if (properties().length > 1) {
-      <span class="context-divider"></span>
+      <span class="context-separator">/</span>
       <button class="context-btn" [matMenuTriggerFor]="propertyMenu" [matTooltip]="'Switch property' | translate">
-        <mat-icon class="context-icon">apartment</mat-icon>
         <span class="context-label">{{ activeProperty()?.property_name ?? ('All properties' | translate) }}</span>
-        <mat-icon class="context-caret">arrow_drop_down</mat-icon>
+        <mat-icon class="context-caret">expand_more</mat-icon>
       </button>
       <mat-menu #propertyMenu="matMenu">
         @for (p of properties(); track p.id) {
@@ -50,20 +49,35 @@
         }
       </mat-menu>
     } @else if (activeProperty(); as p) {
-      <span class="context-divider"></span>
-      <span class="context-label-static" [matTooltip]="'Property' | translate">
-        <mat-icon class="context-icon">apartment</mat-icon>
-        {{ p.property_name }}
-      </span>
+      <span class="context-separator">/</span>
+      <span class="context-label-static">{{ p.property_name }}</span>
     }
   </div>
 
-  <span class="spacer"></span>
+  <!-- Center: Search widget (VS Code command palette style) -->
+  <div class="title-bar-center">
+    <div class="search-widget" (click)="focusSearch()">
+      <mat-icon class="search-icon">search</mat-icon>
+      <input #searchInputEl
+             type="text"
+             class="search-input"
+             [placeholder]="'Search...' | translate"
+             [ngModel]="globalSearch.query()"
+             (ngModelChange)="globalSearch.setQuery($event)" />
+      @if (globalSearch.query()) {
+        <button class="search-clear" (click)="globalSearch.clear(); $event.stopPropagation()">
+          <mat-icon>close</mat-icon>
+        </button>
+      } @else {
+        <kbd class="search-kbd">Ctrl+K</kbd>
+      }
+    </div>
+  </div>
 
-  <div class="header-right">
+  <div class="title-bar-right">
     <!-- Notification bell -->
     <div class="notification-wrapper" #notifPanel>
-      <button class="header-btn notification-btn"
+      <button class="title-bar-btn notification-btn"
               (click)="toggleNotifications(); $event.stopPropagation()"
               [matTooltip]="'Notifications' | translate">
         <mat-icon>notifications</mat-icon>
@@ -117,11 +131,11 @@
     </div>
 
     <!-- Language selector -->
-    <button class="header-btn" [matMenuTriggerFor]="langMenu" [matTooltip]="'Language' | translate">
+    <button class="title-bar-btn" [matMenuTriggerFor]="langMenu" [matTooltip]="'Language' | translate">
       <mat-icon>translate</mat-icon>
     </button>
 
-    <mat-menu #langMenu="matMenu" class="theme-menu">
+    <mat-menu #langMenu="matMenu">
       @for (lang of supportedLanguages; track lang.code) {
         <button mat-menu-item (click)="setLanguage(lang.code)">
           <span>{{ lang.label }}</span>
@@ -133,11 +147,11 @@
     </mat-menu>
 
     <!-- Theme toggle -->
-    <button class="header-btn" [matMenuTriggerFor]="themeMenu" [matTooltip]="'Theme' | translate">
+    <button class="title-bar-btn" [matMenuTriggerFor]="themeMenu" [matTooltip]="'Theme' | translate">
       <mat-icon>{{ isDark() ? 'dark_mode' : 'light_mode' }}</mat-icon>
     </button>
 
-    <mat-menu #themeMenu="matMenu" class="theme-menu">
+    <mat-menu #themeMenu="matMenu">
       <button mat-menu-item (click)="setTheme('LIGHT')">
         <mat-icon>light_mode</mat-icon>
         <span>{{ 'Light' | translate }}</span>
@@ -162,9 +176,9 @@
     </mat-menu>
 
     <!-- User menu -->
-    <button class="header-btn avatar-btn" [matMenuTriggerFor]="userMenu">
+    <button class="title-bar-btn avatar-btn" [matMenuTriggerFor]="userMenu">
       @if (user(); as u) {
-        <span class="avatar avatar-md user-avatar">
+        <span class="avatar avatar-sm user-avatar">
           {{ u.first_name.charAt(0) }}{{ u.last_name.charAt(0) }}
         </span>
       } @else {
@@ -175,7 +189,7 @@
     <mat-menu #userMenu="matMenu">
       @if (user(); as u) {
         <div class="user-menu-header" mat-menu-item disabled>
-          <span class="avatar avatar-md user-avatar">{{ u.first_name.charAt(0) }}{{ u.last_name.charAt(0) }}</span>
+          <span class="avatar avatar-sm user-avatar">{{ u.first_name.charAt(0) }}{{ u.last_name.charAt(0) }}</span>
           <div class="user-menu-info">
             <strong>{{ u.first_name }} {{ u.last_name }}</strong>
             <span class="text-muted">{{ u.username }}</span>

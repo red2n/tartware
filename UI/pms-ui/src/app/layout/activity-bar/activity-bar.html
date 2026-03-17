@@ -1,0 +1,25 @@
+<div class="activity-bar">
+  <nav class="activity-bar-top">
+    @for (item of primaryNavItems(); track item.label) {
+      <button class="activity-bar-item"
+              [class.active]="isActive(item)"
+              [matTooltip]="item.label | translate"
+              matTooltipPosition="right"
+              (click)="onItemClick(item)">
+        <mat-icon>{{ item.icon }}</mat-icon>
+      </button>
+    }
+  </nav>
+
+  <nav class="activity-bar-bottom">
+    @for (item of secondaryNavItems(); track item.label) {
+      <button class="activity-bar-item"
+              [class.active]="isActive(item)"
+              [matTooltip]="item.label | translate"
+              matTooltipPosition="right"
+              (click)="onItemClick(item)">
+        <mat-icon>{{ item.icon }}</mat-icon>
+      </button>
+    }
+  </nav>
+</div>

@@ -176,14 +176,17 @@
 
       <div class="field-row">
         <div class="field-group">
-          <label class="field-label">VIP status</label>
-          <label class="toggle-label">
-            <input
-              type="checkbox"
-              [(ngModel)]="vipStatus"
-              [disabled]="saving()" />
-            Mark as VIP guest
-          </label>
+          <label class="field-label" for="cg-vip">VIP status</label>
+          <select
+            id="cg-vip"
+            class="field-input"
+            [(ngModel)]="vipStatus"
+            [disabled]="saving()">
+            <option value="">None</option>
+            @for (v of vipStatuses; track v) {
+              <option [value]="v">{{ v }}</option>
+            }
+          </select>
         </div>
         <div class="field-group">
           <label class="field-label" for="cg-loyalty">Loyalty tier</label>

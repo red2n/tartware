@@ -20,6 +20,7 @@ import type {
 import { ApiService } from "../../core/api/api.service";
 import { AuthService } from "../../core/auth/auth.service";
 import { TranslatePipe } from "../../core/i18n/translate.pipe";
+import { GlobalSearchService } from "../../core/search/global-search.service";
 import { PageHeaderComponent } from "../../shared/components/page-header/page-header";
 
 /** Shape returned by GET /v1/settings/catalog/:code */
@@ -95,6 +96,7 @@ export class SettingsComponent implements OnInit, OnDestroy {
 	private readonly auth = inject(AuthService);
 	private readonly route = inject(ActivatedRoute);
 	private readonly router = inject(Router);
+	readonly globalSearch = inject(GlobalSearchService);
 	private paramSub?: Subscription;
 
 	readonly categories = signal<SettingsCategory[]>([]);
@@ -110,13 +112,12 @@ export class SettingsComponent implements OnInit, OnDestroy {
 	readonly loadingCategories = signal(false);
 	readonly loadingCatalog = signal(false);
 	readonly error = signal<string | null>(null);
-	readonly searchQuery = signal("");
 
 	/** Definitions grouped by section_id for display */
 	readonly sectionDefinitions = computed(() => {
 		const defs = this.definitions();
 		const sects = this.sections();
-		const query = this.searchQuery().toLowerCase().trim();
+		const query = this.globalSearch.query().toLowerCase().trim();
 
 		return sects
 			.filter((s) => s.is_active)
@@ -183,7 +184,7 @@ export class SettingsComponent implements OnInit, OnDestroy {
 		const cat = this.categories().find((c) => c.code === code);
 		if (!cat || this.selectedCategory()?.code === code) return;
 		this.selectedCategory.set(cat);
-		this.searchQuery.set("");
+		this.globalSearch.clear();
 		this.editStates.set({});
 		this.loadCatalog(cat);
 	}
@@ -211,10 +212,6 @@ export class SettingsComponent implements OnInit, OnDestroy {
 		} catch {
 			this.values.set([]);
 		}
-	}
-
-	onSearch(value: string): void {
-		this.searchQuery.set(value);
 	}
 
 	// ── Value access ──

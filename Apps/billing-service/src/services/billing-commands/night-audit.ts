@@ -289,15 +289,11 @@ async function postRoomChargesAndTaxes(
 
         // Post applicable taxes — compound taxes apply sequentially on base + prior taxes
         let totalTaxAmount = 0;
-        let taxableBase = roomRate;
         for (const tax of taxes) {
           const taxRate = Number(tax.tax_rate);
           // Compound taxes apply on (room rate + all prior tax amounts)
-          if (useCompoundTaxes && tax.is_compound_tax) {
-            taxableBase = roomRate + totalTaxAmount;
-          } else {
-            taxableBase = roomRate;
-          }
+          const taxableBase =
+            useCompoundTaxes && tax.is_compound_tax ? roomRate + totalTaxAmount : roomRate;
           const taxAmount = Number(((taxableBase * taxRate) / 100).toFixed(2));
           if (taxAmount <= 0) continue;
 

@@ -9,8 +9,14 @@ export type UserInfo = Pick<
 	"id" | "username" | "email" | "first_name" | "last_name"
 >;
 
-/** Refresh the token 2 minutes before it expires. */
-const REFRESH_BUFFER_MS = 2 * 60 * 1000;
+/** Refresh the token 5 minutes before it expires. */
+const REFRESH_BUFFER_MS = 5 * 60 * 1000;
+
+/**
+ * Maximum age (ms) of an expired token that can still be refreshed.
+ * Must match the server-side REFRESH_GRACE_SECONDS (600s = 10 min).
+ */
+const REFRESH_GRACE_MS = 10 * 60 * 1000;
 
 @Injectable({ providedIn: "root" })
 export class AuthService implements OnDestroy {
@@ -102,18 +108,41 @@ export class AuthService implements OnDestroy {
 
 	private restoreSession(): void {
 		const token = localStorage.getItem("access_token");
-		if (!token || this.isTokenExpired(token)) {
+		if (!token) {
 			this.logout();
 			return;
 		}
 
+		// If the token is expired beyond the grace window, force logout.
+		// If it's expired but within grace, try a silent refresh instead of logging out.
+		if (this.isTokenExpired(token)) {
+			if (this.isWithinRefreshGrace(token)) {
+				if (!this.restoreLocalState()) {
+					this.logout();
+					return;
+				}
+				this.refreshToken();
+				return;
+			}
+			this.logout();
+			return;
+		}
+
+		if (!this.restoreLocalState()) {
+			this.logout();
+			return;
+		}
+		this.scheduleTokenRefresh(token);
+	}
+
+	/** Restore user, tenant, and membership signals from localStorage. */
+	private restoreLocalState(): boolean {
 		const stored = localStorage.getItem("user_info");
 		if (stored) {
 			try {
 				this._user.set(JSON.parse(stored) as UserInfo);
 			} catch {
-				this.logout();
-				return;
+				return false;
 			}
 		}
 
@@ -131,7 +160,7 @@ export class AuthService implements OnDestroy {
 			}
 		}
 
-		this.scheduleTokenRefresh(token);
+		return true;
 	}
 
 	/**
@@ -266,5 +295,12 @@ export class AuthService implements OnDestroy {
 		if (!expiresAt) return true;
 		// expired if less than 30s remaining
 		return expiresAt < Date.now() + 30_000;
+	}
+
+	/** True if the token is expired but the server would still accept it for refresh. */
+	private isWithinRefreshGrace(token: string): boolean {
+		const expiresAt = this.getTokenExpiry(token);
+		if (!expiresAt) return false;
+		return Date.now() < expiresAt + REFRESH_GRACE_MS;
 	}
 }

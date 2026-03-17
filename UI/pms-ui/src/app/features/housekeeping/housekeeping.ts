@@ -11,6 +11,7 @@ import { Router, RouterLink } from "@angular/router";
 import type { HousekeepingTaskListItem, RoomItem } from "@tartware/schemas";
 
 import { ApiService } from "../../core/api/api.service";
+import { GlobalSearchService } from "../../core/search/global-search.service";
 import { AuthService } from "../../core/auth/auth.service";
 import { TenantContextService } from "../../core/context/tenant-context.service";
 import { TranslatePipe } from "../../core/i18n/translate.pipe";
@@ -50,13 +51,17 @@ export class HousekeepingComponent {
 	private readonly ctx = inject(TenantContextService);
 	private readonly router = inject(Router);
 	private readonly toastService = inject(ToastService);
+	readonly globalSearch = inject(GlobalSearchService);
 
 	// ── View state ──
 	readonly activeView = signal<ViewTab>("rooms");
 	readonly activeFilter = signal<HkFilter>("ALL");
-	readonly searchQuery = signal("");
 	readonly currentPage = signal(1);
 	readonly pageSize = 30;
+	private readonly _resetPage = effect(() => {
+		this.globalSearch.query();
+		this.currentPage.set(1);
+	});
 	readonly sortField = signal<SortField>("room_number");
 	readonly sortDir = signal<SortDir>("asc");
 
@@ -142,7 +147,7 @@ export class HousekeepingComponent {
 	readonly filteredRooms = computed(() => {
 		let list = this.rooms();
 		const filter = this.activeFilter();
-		const query = this.searchQuery().toLowerCase().trim();
+		const query = this.globalSearch.query().toLowerCase().trim();
 
 		if (filter !== "ALL") {
 			list = list.filter((r) => this.effectiveHkStatus(r) === filter);
@@ -174,7 +179,7 @@ export class HousekeepingComponent {
 	});
 
 	readonly filteredTasks = computed(() => {
-		const query = this.searchQuery().toLowerCase().trim();
+		const query = this.globalSearch.query().toLowerCase().trim();
 		if (!query) return this.tasks();
 		return this.tasks().filter(
 			(t) =>
@@ -215,16 +220,11 @@ export class HousekeepingComponent {
 	setView(view: ViewTab): void {
 		this.activeView.set(view);
 		this.currentPage.set(1);
-		this.searchQuery.set("");
+		this.globalSearch.clear();
 	}
 
 	setFilter(filter: HkFilter): void {
 		this.activeFilter.set(filter);
-		this.currentPage.set(1);
-	}
-
-	onSearch(value: string): void {
-		this.searchQuery.set(value);
 		this.currentPage.set(1);
 	}
 

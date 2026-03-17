@@ -11,7 +11,7 @@ import { RouterLink } from "@angular/router";
 	template: `
 		<mat-toolbar color="primary" class="portal-header">
 			<a routerLink="/" class="logo">
-				<mat-icon>hotel</mat-icon>
+				<img src="assets/logo.png" class="logo-img" alt="Tartware" />
 				<span class="logo-text">tartware</span>
 			</a>
 			<span class="spacer"></span>
@@ -29,6 +29,11 @@ import { RouterLink } from "@angular/router";
 		.portal-header {
 			background: #25292e;
 			color: #fff;
+		}
+		.logo-img {
+			width: 24px;
+			height: 24px;
+			flex-shrink: 0;
 		}
 		.logo {
 			display: flex;

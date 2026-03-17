@@ -1,11 +1,4 @@
 <aside class="sidebar" [class.collapsed]="collapsed()">
-  <div class="sidebar-header">
-    @if (!collapsed()) {
-      <span class="logo-text">Tartware PMS</span>
-    } @else {
-      <span class="logo-icon">T</span>
-    }
-  </div>
 
   <nav class="sidebar-nav">
     @for (item of primaryNavItems(); track item.label) {
@@ -18,7 +11,6 @@
           <mat-icon class="nav-icon">{{ item.icon }}</mat-icon>
           @if (!collapsed()) {
             <span class="nav-label">{{ item.label | translate }}</span>
-            <mat-icon class="nav-chevron" [class.expanded]="isParentActive(item)">chevron_right</mat-icon>
           }
         </button>
       } @else {
@@ -47,7 +39,6 @@
           <mat-icon class="nav-icon">{{ item.icon }}</mat-icon>
           @if (!collapsed()) {
             <span class="nav-label">{{ item.label | translate }}</span>
-            <mat-icon class="nav-chevron" [class.expanded]="isParentActive(item)">chevron_right</mat-icon>
           }
         </button>
       } @else {

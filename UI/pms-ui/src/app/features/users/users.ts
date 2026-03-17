@@ -12,9 +12,10 @@ import type { UserWithTenants } from "@tartware/schemas";
 import { ApiService } from "../../core/api/api.service";
 import { AuthService } from "../../core/auth/auth.service";
 import { TranslatePipe } from "../../core/i18n/translate.pipe";
+import { GlobalSearchService } from "../../core/search/global-search.service";
 import { PageHeaderComponent } from "../../shared/components/page-header/page-header";
 import { PaginationComponent } from "../../shared/pagination/pagination";
-import { createSortState, sortBy, toggleSort } from "../../shared/sort-utils";
+import { createSortState, getSortIcon, sortBy, toggleSort } from "../../shared/sort-utils";
 import { ToastService } from "../../shared/toast/toast.service";
 
 type UserRow = UserWithTenants & { version: string };
@@ -41,15 +42,19 @@ export class UsersComponent {
 	private readonly auth = inject(AuthService);
 	private readonly dialog = inject(MatDialog);
 	private readonly toast = inject(ToastService);
+	readonly globalSearch = inject(GlobalSearchService);
 
 	readonly users = signal<UserRow[]>([]);
 	readonly loading = signal(false);
 	readonly error = signal<string | null>(null);
-	readonly searchQuery = signal("");
 	readonly activeFilter = signal<"all" | "active" | "inactive">("all");
 	readonly sortState = createSortState();
 	readonly currentPage = signal(1);
 	readonly pageSize = 25;
+	private readonly _resetPage = effect(() => {
+		this.globalSearch.query();
+		this.currentPage.set(1);
+	});
 
 	readonly roleFilters: { key: "all" | "active" | "inactive"; label: string }[] = [
 		{ key: "all", label: "All" },
@@ -59,7 +64,7 @@ export class UsersComponent {
 
 	readonly filteredUsers = computed(() => {
 		const filter = this.activeFilter();
-		const query = this.searchQuery().toLowerCase().trim();
+		const query = this.globalSearch.query().toLowerCase().trim();
 		let items = this.users();
 
 		if (filter === "active") {
@@ -137,20 +142,11 @@ export class UsersComponent {
 		this.currentPage.set(1);
 	}
 
-	onSearch(value: string): void {
-		this.searchQuery.set(value);
-		this.currentPage.set(1);
-	}
-
 	onSort(column: string): void {
 		this.sortState.update((current) => toggleSort(current, column));
 	}
 
-	sortIcon(column: string): string {
-		const state = this.sortState();
-		if (state.column !== column) return "unfold_more";
-		return state.direction === "asc" ? "arrow_upward" : "arrow_downward";
-	}
+	sortIcon = (column: string) => getSortIcon(this.sortState(), column);
 
 	initials(user: UserRow): string {
 		const f = user.first_name?.[0] ?? "";

@@ -1,4 +1,5 @@
 import { Component, type ElementRef, HostListener, inject, output, viewChild } from "@angular/core";
+import { FormsModule } from "@angular/forms";
 import { MatButtonModule } from "@angular/material/button";
 import { MatDividerModule } from "@angular/material/divider";
 import { MatIconModule } from "@angular/material/icon";
@@ -15,6 +16,7 @@ import {
 	NotificationService,
 } from "../../core/notifications/notification.service";
 import { RegistryService } from "../../core/registry/registry.service";
+import { GlobalSearchService } from "../../core/search/global-search.service";
 import { ThemeService } from "../../core/theme/theme.service";
 import { RelativeTimePipe } from "../../shared/pipes/relative-time.pipe";
 
@@ -27,6 +29,7 @@ import { RelativeTimePipe } from "../../shared/pipes/relative-time.pipe";
 		MatMenuModule,
 		MatDividerModule,
 		MatTooltipModule,
+		FormsModule,
 		RelativeTimePipe,
 		TranslatePipe,
 	],
@@ -34,8 +37,6 @@ import { RelativeTimePipe } from "../../shared/pipes/relative-time.pipe";
 	styleUrl: "./topbar.scss",
 })
 export class TopbarComponent {
-	readonly menuToggle = output<void>();
-
 	private readonly auth = inject(AuthService);
 	private readonly theme = inject(ThemeService);
 	private readonly ctx = inject(TenantContextService);
@@ -43,11 +44,15 @@ export class TopbarComponent {
 	private readonly registry = inject(RegistryService);
 	private readonly router = inject(Router);
 	readonly notifications = inject(NotificationService);
+	readonly globalSearch = inject(GlobalSearchService);
+
+	readonly menuToggle = output<void>();
 
 	readonly supportedLanguages = SUPPORTED_LANGUAGES;
 	readonly currentLang = this.i18n.currentLang;
 
 	private readonly notifPanel = viewChild<ElementRef>("notifPanel");
+	private readonly searchInput = viewChild<ElementRef>("searchInputEl");
 
 	readonly user = this.auth.user;
 	readonly isDark = this.theme.isDark;
@@ -121,6 +126,18 @@ export class TopbarComponent {
 		if (notification.action_url) {
 			this.notifications.closePanel();
 			this.router.navigateByUrl(notification.action_url);
+		}
+	}
+
+	focusSearch(): void {
+		this.searchInput()?.nativeElement?.focus();
+	}
+
+	@HostListener("document:keydown", ["$event"])
+	onKeydown(event: KeyboardEvent): void {
+		if ((event.ctrlKey || event.metaKey) && event.key === "k") {
+			event.preventDefault();
+			this.focusSearch();
 		}
 	}
 

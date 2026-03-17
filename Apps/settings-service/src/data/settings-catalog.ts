@@ -28,7 +28,8 @@ function deterministicUuid(name: string): string {
   const namespaceBytes = Buffer.from(UUID_NAMESPACE.replace(/-/g, ""), "hex");
   const nameBytes = Buffer.from(name);
 
-  const hash = createHash("sha1");
+  // Deterministic UUID generation for settings catalog IDs (not for security).
+  const hash = createHash("sha256");
   hash.update(namespaceBytes);
   hash.update(nameBytes);
   const digest = hash.digest();

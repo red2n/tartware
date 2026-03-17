@@ -70,7 +70,7 @@ export const coreAuthSchema = z.object({
     .min(32, "AUTH_JWT_SECRET must be at least 32 characters in production"),
   AUTH_JWT_ISSUER: z.string().default("tartware-core-service"),
   AUTH_JWT_AUDIENCE: z.string().optional(),
-  AUTH_JWT_EXPIRES_IN_SECONDS: z.coerce.number().int().default(900),
+  AUTH_JWT_EXPIRES_IN_SECONDS: z.coerce.number().int().default(3600),
   AUTH_DEFAULT_PASSWORD: z.string().min(8),
   SYSTEM_ADMIN_JWT_SECRET: z.string().min(32).optional(),
   SYSTEM_ADMIN_JWT_ISSUER: z.string().optional(),

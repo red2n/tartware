@@ -21,15 +21,6 @@
         </button>
       }
     </nav>
-    <div class="search-box">
-      <mat-icon class="search-icon">search</mat-icon>
-      <input
-        type="text"
-        class="search-input"
-        [placeholder]="'Search users...' | translate"
-        [ngModel]="searchQuery()"
-        (ngModelChange)="onSearch($event)" />
-    </div>
   </div>
 
   <!-- Content -->
@@ -51,7 +42,7 @@
     } @else if (sortedUsers().length === 0) {
       <div class="empty-state">
         <mat-icon class="empty-icon">group</mat-icon>
-        @if (searchQuery() || activeFilter() !== 'all') {
+        @if (globalSearch.query() || activeFilter() !== 'all') {
           <p>{{ 'No users match your search or filter.' | translate }}</p>
         } @else {
           <p>{{ 'No users found. Invite your first team member to get started.' | translate }}</p>

@@ -70,16 +70,6 @@
         }
       </select>
 
-      <div class="search-box">
-        <mat-icon class="search-icon">search</mat-icon>
-        <input
-          type="text"
-          class="search-input"
-          [placeholder]="'Search packages...' | translate"
-          [attr.aria-label]="'Search packages' | translate"
-          [ngModel]="searchQuery()"
-          (ngModelChange)="onSearch($event)" />
-      </div>
     </div>
   </div>
 
@@ -104,7 +94,7 @@
         <p class="text-muted">{{ 'Packages and add-ons will appear here once created.' | translate }}</p>
       } @else {
         <p>{{ 'No packages match the current filters' | translate }}</p>
-        <button class="btn btn-outline" (click)="setFilter('ALL'); setTypeFilter('ALL'); onSearch('')">{{ 'Clear filters' | translate }}</button>
+        <button class="btn btn-outline" (click)="setFilter('ALL'); setTypeFilter('ALL'); globalSearch.clear()">{{ 'Clear filters' | translate }}</button>
       }
     </div>
   } @else {

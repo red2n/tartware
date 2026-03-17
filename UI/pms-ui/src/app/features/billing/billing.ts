@@ -21,6 +21,7 @@ import { ApiService } from "../../core/api/api.service";
 import { AuthService } from "../../core/auth/auth.service";
 import { TenantContextService } from "../../core/context/tenant-context.service";
 import { TranslatePipe } from "../../core/i18n/translate.pipe";
+import { GlobalSearchService } from "../../core/search/global-search.service";
 import { PageHeaderComponent } from "../../shared/components/page-header/page-header";
 import { formatCurrency, formatShortDate } from "../../shared/format-utils";
 import { PaginationComponent } from "../../shared/pagination/pagination";
@@ -53,6 +54,7 @@ export class BillingComponent {
 	private readonly api = inject(ApiService);
 	private readonly auth = inject(AuthService);
 	private readonly ctx = inject(TenantContextService);
+	readonly globalSearch = inject(GlobalSearchService);
 
 	readonly activeView = signal<BillingView>("payments");
 
@@ -60,7 +62,6 @@ export class BillingComponent {
 	readonly payments = signal<BillingPaymentListItem[]>([]);
 	readonly paymentsLoading = signal(false);
 	readonly paymentsError = signal<string | null>(null);
-	readonly paymentSearchQuery = signal("");
 	readonly activePaymentFilter = signal<PaymentStatusFilter>("ALL");
 	readonly paymentPage = signal(1);
 	readonly paymentSort = createSortState();
@@ -76,7 +77,7 @@ export class BillingComponent {
 	readonly filteredPayments = computed(() => {
 		let list = this.payments();
 		const status = this.activePaymentFilter();
-		const query = this.paymentSearchQuery().toLowerCase().trim();
+		const query = this.globalSearch.query().toLowerCase().trim();
 		if (status !== "ALL") list = list.filter((p) => p.status === status);
 		if (query) {
 			list = list.filter(
@@ -115,7 +116,6 @@ export class BillingComponent {
 	readonly invoices = signal<InvoiceListItem[]>([]);
 	readonly invoicesLoading = signal(false);
 	readonly invoicesError = signal<string | null>(null);
-	readonly invoiceSearchQuery = signal("");
 	readonly activeInvoiceFilter = signal<InvoiceStatusFilter>("ALL");
 	readonly invoicePage = signal(1);
 	readonly invoiceSort = createSortState();
@@ -131,7 +131,7 @@ export class BillingComponent {
 	readonly filteredInvoices = computed(() => {
 		let list = this.invoices();
 		const status = this.activeInvoiceFilter();
-		const query = this.invoiceSearchQuery().toLowerCase().trim();
+		const query = this.globalSearch.query().toLowerCase().trim();
 		if (status !== "ALL") list = list.filter((i) => i.status === status);
 		if (query) {
 			list = list.filter(
@@ -169,7 +169,6 @@ export class BillingComponent {
 	readonly folios = signal<FolioListItem[]>([]);
 	readonly foliosLoading = signal(false);
 	readonly foliosError = signal<string | null>(null);
-	readonly folioSearchQuery = signal("");
 	readonly activeFolioFilter = signal<FolioStatusFilter>("ALL");
 	readonly folioPage = signal(1);
 	readonly folioSort = createSortState();
@@ -184,7 +183,7 @@ export class BillingComponent {
 	readonly filteredFolios = computed(() => {
 		let list = this.folios();
 		const status = this.activeFolioFilter();
-		const query = this.folioSearchQuery().toLowerCase().trim();
+		const query = this.globalSearch.query().toLowerCase().trim();
 		if (status !== "ALL") list = list.filter((f) => f.folio_status === status);
 		if (query) {
 			list = list.filter(
@@ -222,10 +221,16 @@ export class BillingComponent {
 	readonly charges = signal<ChargePostingListItem[]>([]);
 	readonly chargesLoading = signal(false);
 	readonly chargesError = signal<string | null>(null);
-	readonly chargeSearchQuery = signal("");
 	readonly activeChargeFilter = signal<ChargeTypeFilter>("ALL");
 	readonly chargePage = signal(1);
 	readonly chargeSort = createSortState();
+	private readonly _resetPage = effect(() => {
+		this.globalSearch.query();
+		this.paymentPage.set(1);
+		this.invoicePage.set(1);
+		this.folioPage.set(1);
+		this.chargePage.set(1);
+	});
 
 	readonly chargeTypeFilters: { key: ChargeTypeFilter; label: string }[] = [
 		{ key: "ALL", label: "All" },
@@ -237,7 +242,7 @@ export class BillingComponent {
 	readonly filteredCharges = computed(() => {
 		let list = this.charges();
 		const type = this.activeChargeFilter();
-		const query = this.chargeSearchQuery().toLowerCase().trim();
+		const query = this.globalSearch.query().toLowerCase().trim();
 		if (type !== "ALL") list = list.filter((c) => c.transaction_type === type);
 		if (query) {
 			list = list.filter(
@@ -307,10 +312,6 @@ export class BillingComponent {
 		this.activePaymentFilter.set(f);
 		this.paymentPage.set(1);
 	}
-	onPaymentSearch(v: string): void {
-		this.paymentSearchQuery.set(v);
-		this.paymentPage.set(1);
-	}
 	onPaymentSort(col: string): void {
 		this.paymentSort.set(toggleSort(this.paymentSort(), col));
 		this.paymentPage.set(1);
@@ -319,10 +320,6 @@ export class BillingComponent {
 	// ── Invoice actions ──
 	setInvoiceFilter(f: InvoiceStatusFilter): void {
 		this.activeInvoiceFilter.set(f);
-		this.invoicePage.set(1);
-	}
-	onInvoiceSearch(v: string): void {
-		this.invoiceSearchQuery.set(v);
 		this.invoicePage.set(1);
 	}
 	onInvoiceSort(col: string): void {
@@ -335,10 +332,6 @@ export class BillingComponent {
 		this.activeFolioFilter.set(f);
 		this.folioPage.set(1);
 	}
-	onFolioSearch(v: string): void {
-		this.folioSearchQuery.set(v);
-		this.folioPage.set(1);
-	}
 	onFolioSort(col: string): void {
 		this.folioSort.set(toggleSort(this.folioSort(), col));
 		this.folioPage.set(1);
@@ -347,10 +340,6 @@ export class BillingComponent {
 	// ── Charge actions ──
 	setChargeFilter(f: ChargeTypeFilter): void {
 		this.activeChargeFilter.set(f);
-		this.chargePage.set(1);
-	}
-	onChargeSearch(v: string): void {
-		this.chargeSearchQuery.set(v);
 		this.chargePage.set(1);
 	}
 	onChargeSort(col: string): void {

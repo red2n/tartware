@@ -225,6 +225,8 @@ export const createTenantAuthPlugin = <Membership extends TenantMembershipBase>(
 
     fastify.decorate(TENANT_SCOPE_DECORATOR_KEY, tenantScopeDecorator);
 
+    // Rate limiting is the responsibility of the consuming service (e.g. api-gateway's @fastify/rate-limit).
+    // This hook only decorates auth context on requests.
     fastify.addHook("onRequest", async (request) => {
       const scopedRequest = request as unknown as RequestWithAuth<Membership>;
 

@@ -1,5 +1,7 @@
 import { NgClass } from "@angular/common";
 import { Component, computed, inject, type OnInit, signal } from "@angular/core";
+import { MatButtonModule } from "@angular/material/button";
+import { MatDialog } from "@angular/material/dialog";
 import { MatIconModule } from "@angular/material/icon";
 import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
 import { MatTooltipModule } from "@angular/material/tooltip";
@@ -9,6 +11,7 @@ import type { GuestWithStats } from "@tartware/schemas";
 
 import { ApiService } from "../../../core/api/api.service";
 import { AuthService } from "../../../core/auth/auth.service";
+import { ToastService } from "../../../shared/toast/toast.service";
 import { loyaltyTierClass, vipStatusClass } from "../../../shared/badge-utils";
 
 /** API returns version as string instead of bigint. */
@@ -53,15 +56,17 @@ type DetailTab = "profile" | "preferences" | "documents" | "communications";
 @Component({
 	selector: "app-guest-detail",
 	standalone: true,
-	imports: [NgClass, RouterLink, MatIconModule, MatProgressSpinnerModule, MatTooltipModule],
+	imports: [NgClass, RouterLink, MatIconModule, MatButtonModule, MatProgressSpinnerModule, MatTooltipModule],
 	templateUrl: "./guest-detail.html",
 	styleUrl: "./guest-detail.scss",
 })
 export class GuestDetailComponent implements OnInit {
 	private readonly api = inject(ApiService);
 	private readonly auth = inject(AuthService);
+	private readonly dialog = inject(MatDialog);
 	private readonly route = inject(ActivatedRoute);
 	private readonly router = inject(Router);
+	private readonly toast = inject(ToastService);
 
 	readonly guest = signal<GuestDetail | null>(null);
 	readonly loading = signal(false);
@@ -236,6 +241,38 @@ export class GuestDetailComponent implements OnInit {
 
 	initials(guest: GuestDetail): string {
 		return `${guest.first_name.charAt(0)}${guest.last_name.charAt(0)}`.toUpperCase();
+	}
+
+	openEditDialog(): void {
+		const g = this.guest();
+		if (!g) return;
+
+		import("../edit-guest-dialog/edit-guest-dialog").then(({ EditGuestDialogComponent }) => {
+			const ref = this.dialog.open(EditGuestDialogComponent, {
+				width: "600px",
+				disableClose: true,
+				data: {
+					id: g.id,
+					first_name: g.first_name,
+					last_name: g.last_name,
+					email: g.email,
+					phone: g.phone,
+					title: g.title,
+					nationality: g.nationality,
+					gender: g.gender,
+					date_of_birth: g.date_of_birth,
+					company_name: g.company_name,
+					vip_status: g.vip_status,
+					loyalty_tier: g.loyalty_tier,
+				},
+			});
+			ref.afterClosed().subscribe((updated: boolean) => {
+				if (updated) {
+					this.toast.success("Guest profile update submitted. It may take a moment to apply.");
+					setTimeout(() => this.loadGuest(), 1500);
+				}
+			});
+		});
 	}
 
 	async loadGuest(): Promise<void> {

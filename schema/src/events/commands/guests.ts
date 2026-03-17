@@ -83,6 +83,15 @@ export const GuestUpdateProfileCommandSchema = z
 		last_name: z.string().trim().min(1).max(100).optional(),
 		email: z.string().email().max(255).optional(),
 		phone: PhoneSchema.optional(),
+		title: z.string().trim().min(1).max(20).optional(),
+		nationality: z.string().trim().min(1).max(3).optional(),
+		gender: z.string().trim().min(1).max(20).optional(),
+		date_of_birth: z
+			.string()
+			.trim()
+			.regex(/^\d{4}-\d{2}-\d{2}$/, "Expected YYYY-MM-DD")
+			.optional(),
+		company_name: z.string().trim().min(1).max(200).optional(),
 		address: GuestAddressSchema,
 		preferences: GuestPreferencesSchema,
 		metadata: z.record(z.unknown()).optional(),
@@ -95,6 +104,11 @@ export const GuestUpdateProfileCommandSchema = z
 					value.last_name ||
 					value.email ||
 					value.phone ||
+					value.title ||
+					value.nationality ||
+					value.gender ||
+					value.date_of_birth ||
+					value.company_name ||
 					value.address ||
 					value.preferences,
 			),

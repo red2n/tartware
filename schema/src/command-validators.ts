@@ -822,5 +822,6 @@ export const validateCommandPayload = (
 	payload: Record<string, unknown>,
 ): Record<string, unknown> => {
 	const validator = commandPayloadValidators.get(commandName);
-	return validator ? validator(payload) : payload;
+	if (typeof validator !== "function") return payload;
+	return validator(payload);
 };

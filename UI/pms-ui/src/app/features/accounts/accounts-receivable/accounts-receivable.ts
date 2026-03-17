@@ -16,10 +16,11 @@ import { ApiService } from "../../../core/api/api.service";
 import { AuthService } from "../../../core/auth/auth.service";
 import { TenantContextService } from "../../../core/context/tenant-context.service";
 import { TranslatePipe } from "../../../core/i18n/translate.pipe";
+import { GlobalSearchService } from "../../../core/search/global-search.service";
 import { PageHeaderComponent } from "../../../shared/components/page-header/page-header";
 import { formatCurrency, formatShortDate } from "../../../shared/format-utils";
 import { PaginationComponent } from "../../../shared/pagination/pagination";
-import { createSortState, sortBy, toggleSort } from "../../../shared/sort-utils";
+import { createSortState, getAriaSort, getSortIcon, sortBy, toggleSort } from "../../../shared/sort-utils";
 
 type StatusFilter = "ALL" | "open" | "partial" | "paid" | "overdue" | "in_collection" | "written_off" | "disputed";
 type AccountTypeFilter = "ALL" | "guest" | "corporate" | "travel_agent" | "group" | "direct_bill" | "city_ledger";
@@ -46,6 +47,7 @@ export class AccountsReceivableComponent {
 	private readonly api = inject(ApiService);
 	private readonly auth = inject(AuthService);
 	private readonly ctx = inject(TenantContextService);
+	readonly globalSearch = inject(GlobalSearchService);
 
 	// ── State ──
 	readonly arItems = signal<AccountsReceivableListItem[]>([]);
@@ -53,13 +55,16 @@ export class AccountsReceivableComponent {
 	readonly selectedAr = signal<AccountsReceivableDetail | null>(null);
 	readonly loading = signal(false);
 	readonly error = signal<string | null>(null);
-	readonly searchQuery = signal("");
 	readonly activeStatusFilter = signal<StatusFilter>("ALL");
 	readonly activeTypeFilter = signal<AccountTypeFilter>("ALL");
 	readonly activeAgingFilter = signal<AgingFilter>("ALL");
 	readonly page = signal(1);
 	readonly sort = createSortState();
 	readonly pageSize = 25;
+	private readonly _resetPage = effect(() => {
+		this.globalSearch.query();
+		this.page.set(1);
+	});
 
 	readonly statusFilters: { key: StatusFilter; label: string }[] = [
 		{ key: "ALL", label: "All" },
@@ -97,7 +102,7 @@ export class AccountsReceivableComponent {
 		const status = this.activeStatusFilter();
 		const type = this.activeTypeFilter();
 		const aging = this.activeAgingFilter();
-		const query = this.searchQuery().toLowerCase().trim();
+		const query = this.globalSearch.query().toLowerCase().trim();
 		if (status !== "ALL") list = list.filter((a) => a.ar_status === status);
 		if (type !== "ALL") list = list.filter((a) => a.account_type === type);
 		if (aging !== "ALL") list = list.filter((a) => a.aging_bucket === aging);
@@ -169,25 +174,13 @@ export class AccountsReceivableComponent {
 		this.activeAgingFilter.set(f);
 		this.page.set(1);
 	}
-	onSearch(v: string): void {
-		this.searchQuery.set(v);
-		this.page.set(1);
-	}
 	onSort(col: string): void {
 		this.sort.set(toggleSort(this.sort(), col));
 		this.page.set(1);
 	}
 
-	sortIcon(col: string): string {
-		const s = this.sort();
-		if (s.column !== col) return "unfold_more";
-		return s.direction === "asc" ? "arrow_upward" : "arrow_downward";
-	}
-	ariaSort(col: string): string | null {
-		const s = this.sort();
-		if (s.column !== col) return null;
-		return s.direction === "asc" ? "ascending" : "descending";
-	}
+	sortIcon = (col: string) => getSortIcon(this.sort(), col);
+	ariaSort = (col: string) => getAriaSort(this.sort(), col);
 
 	formatDate = formatShortDate;
 

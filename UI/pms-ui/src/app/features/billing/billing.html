@@ -80,11 +80,6 @@
           </button>
         }
       </nav>
-      <div class="search-box">
-        <mat-icon class="search-icon">search</mat-icon>
-        <input type="text" class="search-input" [placeholder]="'Search payments...' | translate" [attr.aria-label]="'Search payments' | translate"
-               [ngModel]="paymentSearchQuery()" (ngModelChange)="onPaymentSearch($event)" />
-      </div>
     </div>
 
     @defer (on idle) {
@@ -156,11 +151,6 @@
           </button>
         }
       </nav>
-      <div class="search-box">
-        <mat-icon class="search-icon">search</mat-icon>
-        <input type="text" class="search-input" [placeholder]="'Search invoices...' | translate" [attr.aria-label]="'Search invoices' | translate"
-               [ngModel]="invoiceSearchQuery()" (ngModelChange)="onInvoiceSearch($event)" />
-      </div>
     </div>
 
     @defer (on idle) {
@@ -234,11 +224,6 @@
           </button>
         }
       </nav>
-      <div class="search-box">
-        <mat-icon class="search-icon">search</mat-icon>
-        <input type="text" class="search-input" [placeholder]="'Search folios...' | translate" [attr.aria-label]="'Search folios' | translate"
-               [ngModel]="folioSearchQuery()" (ngModelChange)="onFolioSearch($event)" />
-      </div>
     </div>
 
     @defer (on idle) {
@@ -317,11 +302,6 @@
           </button>
         }
       </nav>
-      <div class="search-box">
-        <mat-icon class="search-icon">search</mat-icon>
-        <input type="text" class="search-input" [placeholder]="'Search charges...' | translate" [attr.aria-label]="'Search charges' | translate"
-               [ngModel]="chargeSearchQuery()" (ngModelChange)="onChargeSearch($event)" />
-      </div>
     </div>
 
     @defer (on idle) {

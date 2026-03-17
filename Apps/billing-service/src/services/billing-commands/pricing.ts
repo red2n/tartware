@@ -59,7 +59,7 @@ const applyAdjustment = (
   capMin: number | null,
   capMax: number | null,
 ): number => {
-  let adjusted = baseRate;
+  let adjusted: number;
   switch (adjustmentType) {
     case "percentage_increase":
       adjusted = baseRate * (1 + adjustmentValue / 100);

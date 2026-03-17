@@ -1,4 +1,7 @@
 import { randomUUID } from "node:crypto";
+import { mkdtempSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { stdin as input, stdout as output } from "node:process";
 import { createInterface } from "node:readline/promises";
 
@@ -184,7 +187,7 @@ const parseIpList = (value: string): string[] => {
     .split(",")
     .map((entry) => entry.trim())
     .filter((entry) => entry.length > 0);
-  
+
   // Validate each IP/CIDR entry
   const invalidEntries: string[] = [];
   const validEntries = entries.filter((entry) => {
@@ -194,11 +197,11 @@ const parseIpList = (value: string): string[] => {
     }
     return valid;
   });
-  
+
   if (invalidEntries.length > 0) {
     console.log(`⚠️  Invalid IP/CIDR entries ignored: ${invalidEntries.join(", ")}`);
   }
-  
+
   // Return defaults if no valid entries
   return validEntries.length > 0 ? validEntries : ["127.0.0.1/32", "::1/128"];
 };
@@ -213,23 +216,23 @@ const isValidEmail = (email: string): boolean => {
   if (!email) {
     return false;
   }
-  
+
   // Check basic structure and length
   if (email.length > 254) {
     return false;
   }
-  
+
   // Split into local and domain parts
   const parts = email.split('@');
   if (parts.length !== 2) {
     return false;
   }
-  
+
   const [local, domain] = parts;
   if (!local || !domain) {
     return false;
   }
-  
+
   // Validate local part: alphanumeric start/end, can contain _, -, dots (no consecutive dots)
   if (!/^[a-zA-Z0-9]/.test(local) || !/[a-zA-Z0-9]$/.test(local)) {
     return false;
@@ -240,7 +243,7 @@ const isValidEmail = (email: string): boolean => {
   if (!/^[a-zA-Z0-9._-]+$/.test(local)) {
     return false;  // Only allowed characters
   }
-  
+
   // Validate domain part: alphanumeric labels separated by dots, no underscores, no trailing hyphens
   if (!/^[a-zA-Z0-9]/.test(domain) || !/[a-zA-Z0-9]$/.test(domain)) {
     return false;
@@ -254,7 +257,7 @@ const isValidEmail = (email: string): boolean => {
   if (!/^[a-zA-Z0-9.-]+$/.test(domain)) {
     return false;  // Only allowed characters
   }
-  
+
   // Each domain label must not start or end with hyphen
   const domainLabels = domain.split('.');
   for (const label of domainLabels) {
@@ -262,7 +265,7 @@ const isValidEmail = (email: string): boolean => {
       return false;
     }
   }
-  
+
   // Ensure domain has valid TLD (at least 2 chars after last dot)
   const tldMatch = domain.match(/\.([a-zA-Z0-9]{2,})$/);
   return tldMatch !== null;
@@ -277,18 +280,18 @@ const isValidIpOrCidr = (value: string): boolean => {
       if (parts.length !== 2) {
         return false;
       }
-      
+
       const [ip, prefixStr] = parts;
       const prefix = Number.parseInt(prefixStr, 10);
-      
+
       // Check for NaN
       if (Number.isNaN(prefix)) {
         return false;
       }
-      
+
       // Parse the IP part
       const addr = ipaddr.process(ip);
-      
+
       // Validate prefix length based on IP version
       const kind = addr.kind();
       if (kind === "ipv4") {
@@ -429,10 +432,13 @@ const bootstrapAdmin = async () => {
     !SUPPRESS_BOOTSTRAP_PASSWORD &&
     (SHOW_BOOTSTRAP_PASSWORD || process.stdout.isTTY)
   ) {
-    console.log(`   • Temp Pass: ${adminDetails.plaintextPassword}`);
+    const credDir = mkdtempSync(join(tmpdir(), "tartware-bootstrap-"));
+    const credFile = join(credDir, "credentials.txt");
+    writeFileSync(credFile, `password=${adminDetails.plaintextPassword}\n`, { mode: 0o600 });
+    console.log(`   • Temp Pass: written to ${credFile}`);
     console.log(
-      "   ⚠️  WARNING: The plaintext password is displayed above. " +
-      "If running in a CI/CD or logged environment, clear logs and rotate the password immediately."
+      "   ⚠️  WARNING: The plaintext password was written to the file above. " +
+      "Read it, then delete the file immediately. Never commit credentials to version control."
     );
   } else {
     console.log("   • Temp Pass: [hidden]");

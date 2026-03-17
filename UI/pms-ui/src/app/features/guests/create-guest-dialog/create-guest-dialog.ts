@@ -44,10 +44,11 @@ export class CreateGuestDialogComponent {
 	companyName = "";
 
 	// Form fields — optional preferences
-	vipStatus = false;
+	vipStatus = "";
 	loyaltyTier = "";
 
 	readonly titles = ["Mr.", "Mrs.", "Ms.", "Dr.", "Prof."];
+	readonly vipStatuses = ["VIP1", "VIP2", "VIP3", "VIP4", "VIP5", "VVIP"];
 	readonly loyaltyTiers = ["BASE", "SILVER", "GOLD", "PLATINUM", "ELITE"];
 
 	markTouched(field: string): void {
@@ -102,7 +103,7 @@ export class CreateGuestDialogComponent {
 		try {
 			// Build preferences (part of GuestRegisterCommandSchema)
 			const preferences: Record<string, unknown> = {};
-			if (this.vipStatus) preferences["vip_status"] = true;
+			if (this.vipStatus) preferences["vip_status"] = this.vipStatus;
 			if (this.loyaltyTier) preferences["loyalty_tier"] = this.loyaltyTier;
 
 			// Extra fields go into metadata for downstream processing
