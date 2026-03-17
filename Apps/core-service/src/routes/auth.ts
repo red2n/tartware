@@ -412,8 +412,9 @@ export const registerAuthRoutes = (app: FastifyInstance): void => {
     },
     async (request, reply) => {
       const token = extractBearerToken(request.headers.authorization);
-      // Allow tokens expired up to 5 minutes ago so browser timer throttling doesn't force logout
-      const REFRESH_GRACE_SECONDS = 300;
+      // Allow tokens expired up to 10 minutes ago so browser timer throttling
+      // and backgrounded tabs don't force logout on returning users.
+      const REFRESH_GRACE_SECONDS = 600;
       const payload = token ? verifyAccessTokenWithGrace(token, REFRESH_GRACE_SECONDS) : null;
 
       if (!payload?.sub) {
