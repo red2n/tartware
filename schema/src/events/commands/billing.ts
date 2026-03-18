@@ -805,13 +805,15 @@ export type BillingTaxConfigDeleteCommand = z.infer<
 // ─── Express Checkout Command ────────────────────────────────────────────────
 
 /**
- * Express checkout: auto-settle zero-balance folios, update room status,
- * and trigger folio email delivery for departing guests.
+ * Express checkout: auto-settle zero-balance folios and update room status.
+ * `send_folio_email` is an advisory flag reserved for downstream
+ * notification integration and does not itself dispatch an email.
  */
 export const BillingExpressCheckoutCommandSchema = z.object({
 	property_id: z.string().uuid(),
 	reservation_id: z.string().uuid(),
 	folio_id: z.string().uuid().optional(),
+	// Advisory flag for a future notification workflow.
 	send_folio_email: z.boolean().default(true),
 	skip_balance_check: z.boolean().default(false),
 	notes: z.string().max(500).optional(),

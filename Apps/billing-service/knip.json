@@ -16,7 +16,6 @@
     "@fastify/cors",
     "@fastify/helmet",
     "@fastify/sensible",
-    "@tartware/fastify-server",
-    "pg"
+    "@tartware/fastify-server"
   ]
 }

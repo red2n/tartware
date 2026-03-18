@@ -10,8 +10,7 @@
     "@tartware/command-consumer-utils",
     "@tartware/fastify-server",
     "@fastify/cors",
-    "@fastify/helmet",
-    "pg"
+    "@fastify/helmet"
   ],
   "ignore": ["src/lib/db.ts"],
   "ignoreBinaries": [],

@@ -1,6 +1,8 @@
 import { randomUUID } from "node:crypto";
 
-import { query } from "../../lib/db.js";
+import type { PoolClient, QueryResult, QueryResultRow } from "pg";
+
+import { query, queryWithClient } from "../../lib/db.js";
 import { appLogger } from "../../lib/logger.js";
 import {
   BillingCashierCloseCommandSchema,
@@ -14,6 +16,16 @@ import {
   SYSTEM_ACTOR_ID,
 } from "./common.js";
 
+const buildSessionNumber = (businessDate: string, sessionId: string): string =>
+  `CS-${businessDate.replace(/-/g, "")}-${sessionId.replace(/-/g, "").slice(0, 8).toUpperCase()}`;
+
+const runQuery = async <T extends QueryResultRow = QueryResultRow>(
+  client: PoolClient | undefined,
+  text: string,
+  params: unknown[],
+): Promise<QueryResult<T>> =>
+  client ? queryWithClient<T>(client, text, params) : query<T>(text, params);
+
 /**
  * Open a new cashier session (shift start).
  * Generates session_number, records opening float, and marks session OPEN.
@@ -21,6 +33,7 @@ import {
 export const openCashierSession = async (
   payload: unknown,
   context: CommandContext,
+  client?: PoolClient,
 ): Promise<string> => {
   const command = BillingCashierOpenCommandSchema.parse(payload);
   const tenantId = context.tenantId;
@@ -30,16 +43,10 @@ export const openCashierSession = async (
     ? new Date(command.business_date).toISOString().slice(0, 10)
     : new Date().toISOString().slice(0, 10);
 
-  // Generate session number: CS-YYYYMMDD-XXXX
-  const { rows: countRows } = await query<{ cnt: string }>(
-    `SELECT COUNT(*)::int AS cnt FROM cashier_sessions
-     WHERE tenant_id = $1 AND property_id = $2 AND business_date = $3`,
-    [tenantId, command.property_id, businessDate],
-  );
-  const seq = (Number(countRows[0]?.cnt ?? 0) + 1).toString().padStart(4, "0");
-  const sessionNumber = `CS-${businessDate.replace(/-/g, "")}-${seq}`;
+  const sessionNumber = buildSessionNumber(businessDate, sessionId);
 
-  await query(
+  await runQuery(
+    client,
     `INSERT INTO cashier_sessions (
        session_id, tenant_id, property_id, session_number,
        cashier_id, cashier_name, terminal_id,
@@ -87,13 +94,15 @@ export const openCashierSession = async (
 export const closeCashierSession = async (
   payload: unknown,
   context: CommandContext,
+  client?: PoolClient,
 ): Promise<string> => {
   const command = BillingCashierCloseCommandSchema.parse(payload);
   const tenantId = context.tenantId;
   const actorId = asUuid(resolveActorId(context.initiatedBy)) ?? SYSTEM_ACTOR_ID;
 
   // 1. Verify session exists and is open
-  const { rows: sessionRows } = await query<Record<string, unknown>>(
+  const { rows: sessionRows } = await runQuery<Record<string, unknown>>(
+    client,
     `SELECT session_id, session_status, property_id, cashier_id, business_date, opening_float_declared
      FROM cashier_sessions
      WHERE session_id = $1 AND tenant_id = $2`,
@@ -114,7 +123,8 @@ export const closeCashierSession = async (
   }
 
   // 2. Aggregate transactions for this session's property + business date
-  const { rows: aggRows } = await query<Record<string, unknown>>(
+  const { rows: aggRows } = await runQuery<Record<string, unknown>>(
+    client,
     `SELECT
        COUNT(*) AS total_transactions,
        COUNT(*) FILTER (WHERE payment_method = 'CASH') AS cash_transactions,
@@ -137,7 +147,8 @@ export const closeCashierSession = async (
   const hasVariance = Math.abs(cashVariance) > 0.01;
 
   // 3. Update session with reconciliation data
-  await query(
+  await runQuery(
+    client,
     `UPDATE cashier_sessions SET
        session_status = 'closed',
        closed_at = NOW(),

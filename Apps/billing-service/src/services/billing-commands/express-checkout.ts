@@ -14,6 +14,8 @@ const logger = appLogger.child({ module: "express-checkout" });
 /**
  * Express checkout: verify zero/near-zero balance, close the folio,
  * update room status to dirty, and mark the reservation checked-out.
+ * The `send_folio_email` flag is currently advisory only and reserved
+ * for downstream notification integration.
  */
 export const expressCheckout = async (payload: unknown, context: CommandContext): Promise<void> => {
   const command = BillingExpressCheckoutCommandSchema.parse(payload);

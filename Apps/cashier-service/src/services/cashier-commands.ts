@@ -1,6 +1,8 @@
 import { randomUUID } from "node:crypto";
 
-import { query } from "../lib/db.js";
+import type { PoolClient, QueryResult, QueryResultRow } from "pg";
+
+import { query, queryWithClient, withTransaction } from "../lib/db.js";
 import { appLogger } from "../lib/logger.js";
 import {
   BillingCashierCloseCommandSchema,
@@ -16,6 +18,16 @@ import {
   SYSTEM_ACTOR_ID,
 } from "./common.js";
 
+const buildSessionNumber = (businessDate: string, sessionId: string): string =>
+  `CS-${businessDate.replace(/-/g, "")}-${sessionId.replace(/-/g, "").slice(0, 8).toUpperCase()}`;
+
+const runQuery = async <T extends QueryResultRow = QueryResultRow>(
+  client: PoolClient | undefined,
+  text: string,
+  params: unknown[],
+): Promise<QueryResult<T>> =>
+  client ? queryWithClient<T>(client, text, params) : query<T>(text, params);
+
 /**
  * Open a new cashier session (shift start).
  * Generates session_number, records opening float, and marks session OPEN.
@@ -23,6 +35,7 @@ import {
 export const openCashierSession = async (
   payload: unknown,
   context: CommandContext,
+  client?: PoolClient,
 ): Promise<string> => {
   const command = BillingCashierOpenCommandSchema.parse(payload);
   const tenantId = context.tenantId;
@@ -32,16 +45,10 @@ export const openCashierSession = async (
     ? new Date(command.business_date).toISOString().slice(0, 10)
     : new Date().toISOString().slice(0, 10);
 
-  // Generate session number: CS-YYYYMMDD-XXXX
-  const { rows: countRows } = await query<{ cnt: string }>(
-    `SELECT COUNT(*)::int AS cnt FROM cashier_sessions
-     WHERE tenant_id = $1 AND property_id = $2 AND business_date = $3`,
-    [tenantId, command.property_id, businessDate],
-  );
-  const seq = (Number(countRows[0]?.cnt ?? 0) + 1).toString().padStart(4, "0");
-  const sessionNumber = `CS-${businessDate.replace(/-/g, "")}-${seq}`;
+  const sessionNumber = buildSessionNumber(businessDate, sessionId);
 
-  await query(
+  await runQuery(
+    client,
     `INSERT INTO cashier_sessions (
        session_id, tenant_id, property_id, session_number,
        cashier_id, cashier_name, terminal_id,
@@ -88,6 +95,7 @@ export const openCashierSession = async (
 export const closeCashierSession = async (
   payload: unknown,
   context: CommandContext,
+  client?: PoolClient,
 ): Promise<void> => {
   const command = BillingCashierCloseCommandSchema.parse(payload);
   const actorId = asUuid(resolveActorId(context.initiatedBy)) ?? SYSTEM_ACTOR_ID;
@@ -95,7 +103,8 @@ export const closeCashierSession = async (
   const cashDeclared = command.closing_cash_declared ?? command.closing_cash_counted;
   const cashCounted = command.closing_cash_counted;
 
-  const { rowCount } = await query(
+  const { rowCount } = await runQuery(
+    client,
     `UPDATE cashier_sessions
      SET session_status = 'closed',
          closed_at = NOW(),
@@ -140,54 +149,55 @@ export const cashierHandover = async (
   context: CommandContext,
 ): Promise<{ closed_session_id: string; opened_session_id: string }> => {
   const command = BillingCashierHandoverCommandSchema.parse(payload);
-
-  // 1. Close the outgoing session (includes cash reconciliation)
-  await closeCashierSession(
-    {
-      session_id: command.outgoing_session_id,
-      closing_cash_declared: command.closing_cash_declared,
-      closing_cash_counted: command.closing_cash_counted,
-      notes: command.handover_notes ?? undefined,
-    },
-    context,
-  );
-
-  // 2. Persist handover notes on the closed session for audit trail
-  if (command.handover_notes) {
-    await query(
-      `UPDATE cashier_sessions
-       SET metadata = COALESCE(metadata, '{}'::jsonb) || jsonb_build_object('handover_notes', $2::text)
-       WHERE session_id = $1`,
-      [command.outgoing_session_id, command.handover_notes],
+  return withTransaction(async (client) => {
+    await closeCashierSession(
+      {
+        session_id: command.outgoing_session_id,
+        closing_cash_declared: command.closing_cash_declared,
+        closing_cash_counted: command.closing_cash_counted,
+        notes: command.handover_notes ?? undefined,
+      },
+      context,
+      client,
     );
-  }
 
-  // 3. Open the incoming session
-  const incomingFloat = command.incoming_opening_float ?? command.closing_cash_counted;
+    if (command.handover_notes) {
+      await queryWithClient(
+        client,
+        `UPDATE cashier_sessions
+         SET metadata = COALESCE(metadata, '{}'::jsonb) || jsonb_build_object('handover_notes', $2::text)
+         WHERE session_id = $1::uuid
+           AND tenant_id = $3::uuid`,
+        [command.outgoing_session_id, command.handover_notes, context.tenantId],
+      );
+    }
 
-  const newSessionId = await openCashierSession(
-    {
-      property_id: command.property_id,
-      cashier_id: command.incoming_cashier_id,
-      cashier_name: command.incoming_cashier_name,
-      terminal_id: command.incoming_terminal_id ?? undefined,
-      shift_type: command.incoming_shift_type,
-      opening_float: incomingFloat,
-    },
-    context,
-  );
+    const incomingFloat = command.incoming_opening_float ?? command.closing_cash_counted;
+    const newSessionId = await openCashierSession(
+      {
+        property_id: command.property_id,
+        cashier_id: command.incoming_cashier_id,
+        cashier_name: command.incoming_cashier_name,
+        terminal_id: command.incoming_terminal_id ?? undefined,
+        shift_type: command.incoming_shift_type,
+        opening_float: incomingFloat,
+      },
+      context,
+      client,
+    );
 
-  appLogger.info(
-    {
-      closedSessionId: command.outgoing_session_id,
-      openedSessionId: newSessionId,
-      incomingCashier: command.incoming_cashier_name,
-    },
-    "Cashier shift handover completed",
-  );
+    appLogger.info(
+      {
+        closedSessionId: command.outgoing_session_id,
+        openedSessionId: newSessionId,
+        incomingCashier: command.incoming_cashier_name,
+      },
+      "Cashier shift handover completed",
+    );
 
-  return {
-    closed_session_id: command.outgoing_session_id,
-    opened_session_id: newSessionId,
-  };
+    return {
+      closed_session_id: command.outgoing_session_id,
+      opened_session_id: newSessionId,
+    };
+  });
 };

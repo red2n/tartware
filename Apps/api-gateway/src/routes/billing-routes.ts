@@ -56,6 +56,12 @@ export const registerBillingRoutes = (app: FastifyInstance): void => {
     requiredModules: "core",
   });
 
+  const financeTenantScopeFromQuery = app.withTenantScope({
+    resolveTenantId: (request) => (request.query as { tenant_id?: string }).tenant_id,
+    minRole: "ADMIN",
+    requiredModules: "finance-automation",
+  });
+
   app.get(
     "/v1/billing/payments",
     {
@@ -317,7 +323,7 @@ export const registerBillingRoutes = (app: FastifyInstance): void => {
   app.get(
     "/v1/billing/cashier-sessions",
     {
-      preHandler: tenantScopeFromQuery,
+      preHandler: financeTenantScopeFromQuery,
       schema: buildRouteSchema({
         tag: BILLING_PROXY_TAG,
         summary: "Proxy cashier session list to the cashier service.",
@@ -330,7 +336,7 @@ export const registerBillingRoutes = (app: FastifyInstance): void => {
   app.get(
     "/v1/billing/cashier-sessions/:sessionId",
     {
-      preHandler: tenantScopeFromQuery,
+      preHandler: financeTenantScopeFromQuery,
       schema: buildRouteSchema({
         tag: BILLING_PROXY_TAG,
         summary: "Proxy cashier session detail to the cashier service.",
@@ -343,7 +349,7 @@ export const registerBillingRoutes = (app: FastifyInstance): void => {
   app.get(
     "/v1/billing/cashier-sessions/:sessionId/shift-summary",
     {
-      preHandler: tenantScopeFromQuery,
+      preHandler: financeTenantScopeFromQuery,
       schema: buildRouteSchema({
         tag: BILLING_PROXY_TAG,
         summary: "Proxy shift summary to the cashier service.",
@@ -360,7 +366,7 @@ export const registerBillingRoutes = (app: FastifyInstance): void => {
   app.get(
     "/v1/billing/invoices",
     {
-      preHandler: tenantScopeFromQuery,
+      preHandler: financeTenantScopeFromQuery,
       schema: buildRouteSchema({
         tag: BILLING_PROXY_TAG,
         summary: "Proxy invoice list to the accounts service.",
@@ -373,7 +379,7 @@ export const registerBillingRoutes = (app: FastifyInstance): void => {
   app.get(
     "/v1/billing/invoices/:invoiceId",
     {
-      preHandler: tenantScopeFromQuery,
+      preHandler: financeTenantScopeFromQuery,
       schema: buildRouteSchema({
         tag: BILLING_PROXY_TAG,
         summary: "Proxy invoice detail to the accounts service.",
@@ -386,7 +392,7 @@ export const registerBillingRoutes = (app: FastifyInstance): void => {
   app.get(
     "/v1/billing/accounts-receivable",
     {
-      preHandler: tenantScopeFromQuery,
+      preHandler: financeTenantScopeFromQuery,
       schema: buildRouteSchema({
         tag: BILLING_PROXY_TAG,
         summary: "Proxy AR list to the accounts service.",
@@ -399,7 +405,7 @@ export const registerBillingRoutes = (app: FastifyInstance): void => {
   app.get(
     "/v1/billing/accounts-receivable/aging-summary",
     {
-      preHandler: tenantScopeFromQuery,
+      preHandler: financeTenantScopeFromQuery,
       schema: buildRouteSchema({
         tag: BILLING_PROXY_TAG,
         summary: "Proxy AR aging summary to the accounts service.",
@@ -412,7 +418,7 @@ export const registerBillingRoutes = (app: FastifyInstance): void => {
   app.get(
     "/v1/billing/accounts-receivable/:arId",
     {
-      preHandler: tenantScopeFromQuery,
+      preHandler: financeTenantScopeFromQuery,
       schema: buildRouteSchema({
         tag: BILLING_PROXY_TAG,
         summary: "Proxy AR detail to the accounts service.",
@@ -429,7 +435,7 @@ export const registerBillingRoutes = (app: FastifyInstance): void => {
   app.get(
     "/v1/billing/tax-configurations",
     {
-      preHandler: tenantScopeFromQuery,
+      preHandler: financeTenantScopeFromQuery,
       schema: buildRouteSchema({
         tag: BILLING_PROXY_TAG,
         summary: "Proxy tax configuration list to the finance admin service.",
@@ -442,7 +448,7 @@ export const registerBillingRoutes = (app: FastifyInstance): void => {
   app.get(
     "/v1/billing/tax-configurations/:taxConfigId",
     {
-      preHandler: tenantScopeFromQuery,
+      preHandler: financeTenantScopeFromQuery,
       schema: buildRouteSchema({
         tag: BILLING_PROXY_TAG,
         summary: "Proxy tax configuration detail to the finance admin service.",
@@ -455,7 +461,7 @@ export const registerBillingRoutes = (app: FastifyInstance): void => {
   app.get(
     "/v1/billing/reports/trial-balance",
     {
-      preHandler: tenantScopeFromQuery,
+      preHandler: financeTenantScopeFromQuery,
       schema: buildRouteSchema({
         tag: BILLING_PROXY_TAG,
         summary: "Proxy trial balance report to the finance admin service.",
@@ -468,7 +474,7 @@ export const registerBillingRoutes = (app: FastifyInstance): void => {
   app.get(
     "/v1/billing/reports/departmental-revenue",
     {
-      preHandler: tenantScopeFromQuery,
+      preHandler: financeTenantScopeFromQuery,
       schema: buildRouteSchema({
         tag: BILLING_PROXY_TAG,
         summary: "Proxy departmental revenue report to the finance admin service.",
@@ -481,7 +487,7 @@ export const registerBillingRoutes = (app: FastifyInstance): void => {
   app.get(
     "/v1/billing/reports/tax-summary",
     {
-      preHandler: tenantScopeFromQuery,
+      preHandler: financeTenantScopeFromQuery,
       schema: buildRouteSchema({
         tag: BILLING_PROXY_TAG,
         summary: "Proxy tax summary report to the finance admin service.",
@@ -494,7 +500,7 @@ export const registerBillingRoutes = (app: FastifyInstance): void => {
   app.get(
     "/v1/billing/reports/commissions",
     {
-      preHandler: tenantScopeFromQuery,
+      preHandler: financeTenantScopeFromQuery,
       schema: buildRouteSchema({
         tag: BILLING_PROXY_TAG,
         summary: "Proxy commission report to the finance admin service.",
