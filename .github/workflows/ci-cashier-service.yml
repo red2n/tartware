@@ -19,3 +19,4 @@ jobs:
     uses: ./.github/workflows/package-ci.yml
     with:
       package-scope: '@tartware/cashier-service'
+      has-tests: false

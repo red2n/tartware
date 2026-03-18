@@ -59,7 +59,7 @@
     "validate:env": "node ./scripts/validate-env.mjs",
     "postinstall": "echo 'Monorepo dependencies installed successfully'",
     "bootstrap:modules": "pnpm --filter @tartware/core-service run bootstrap:modules",
-    "duplo:templates": "bash ./scripts/tools/run-duplo.sh",
+    "duplo:templates": "bash ./executables/run-duplo/run-duplo.sh",
     "telemetry:start": "docker compose up -d opensearch-node otel-collector",
     "telemetry:stop": "docker compose stop otel-collector opensearch-node",
     "export:openapi": "node scripts/export-openapi.mjs",

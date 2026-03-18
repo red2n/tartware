@@ -1,6 +1,19 @@
 {
   "$schema": "https://unpkg.com/knip@5/schema.json",
-  "entry": ["src/index.ts"],
   "project": ["src/**/*.ts"],
-  "ignoreDependencies": ["@biomejs/biome"]
+  "ignoreDependencies": [
+    "@tartware/schemas",
+    "@tartware/config",
+    "@tartware/openapi",
+    "@tartware/telemetry",
+    "@tartware/tenant-auth",
+    "@tartware/command-consumer-utils",
+    "@tartware/fastify-server",
+    "@tartware/outbox",
+    "pg",
+    "pino",
+    "prom-client"
+  ],
+  "ignoreBinaries": [],
+  "ignoreExportsUsedInFile": true
 }

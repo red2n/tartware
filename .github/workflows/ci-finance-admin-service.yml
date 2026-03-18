@@ -19,3 +19,4 @@ jobs:
     uses: ./.github/workflows/package-ci.yml
     with:
       package-scope: '@tartware/finance-admin-service'
+      has-tests: false

@@ -9,7 +9,13 @@
     "dev": "tsx watch src/index.ts",
     "start": "tsx src/index.ts",
     "lint": "npx eslint src/",
-    "format": "npx biome check --write src/"
+    "lint:fix": "npx eslint src/ --fix",
+    "format": "npx biome check --write src/",
+    "biome": "biome check src",
+    "biome:fix": "biome format src --write",
+    "knip": "knip --tsConfig tsconfig.json",
+    "typecheck": "tsc --noEmit",
+    "clean": "rm -rf dist coverage vitest-report *.tsbuildinfo"
   },
   "dependencies": {
     "@tartware/command-consumer-utils": "workspace:*",
