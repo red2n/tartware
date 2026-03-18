@@ -28,6 +28,9 @@ Client → API Gateway (:8080) → Command Center → Kafka → Domain Services
 | Guests Service | [![CI · Guests Service](https://github.com/red2n/tartware/actions/workflows/ci-guests-service.yml/badge.svg)](https://github.com/red2n/tartware/actions/workflows/ci-guests-service.yml) |
 | Rooms Service | [![CI · Rooms Service](https://github.com/red2n/tartware/actions/workflows/ci-rooms-service.yml/badge.svg)](https://github.com/red2n/tartware/actions/workflows/ci-rooms-service.yml) |
 | Billing Service | [![CI · Billing Service](https://github.com/red2n/tartware/actions/workflows/ci-billing-service.yml/badge.svg)](https://github.com/red2n/tartware/actions/workflows/ci-billing-service.yml) |
+| Cashier Service | [![CI · Cashier Service](https://github.com/red2n/tartware/actions/workflows/ci-cashier-service.yml/badge.svg)](https://github.com/red2n/tartware/actions/workflows/ci-cashier-service.yml) |
+| Accounts Service | [![CI · Accounts Service](https://github.com/red2n/tartware/actions/workflows/ci-accounts-service.yml/badge.svg)](https://github.com/red2n/tartware/actions/workflows/ci-accounts-service.yml) |
+| Finance Admin Service | [![CI · Finance Admin Service](https://github.com/red2n/tartware/actions/workflows/ci-finance-admin-service.yml/badge.svg)](https://github.com/red2n/tartware/actions/workflows/ci-finance-admin-service.yml) |
 | Housekeeping Service | [![CI · Housekeeping Service](https://github.com/red2n/tartware/actions/workflows/ci-housekeeping-service.yml/badge.svg)](https://github.com/red2n/tartware/actions/workflows/ci-housekeeping-service.yml) |
 | Settings Service | [![CI · Settings Service](https://github.com/red2n/tartware/actions/workflows/ci-settings-service.yml/badge.svg)](https://github.com/red2n/tartware/actions/workflows/ci-settings-service.yml) |
 | Availability Guard Service | [![CI · Availability Guard Service](https://github.com/red2n/tartware/actions/workflows/ci-availability-guard-service.yml/badge.svg)](https://github.com/red2n/tartware/actions/workflows/ci-availability-guard-service.yml) |
@@ -109,6 +112,9 @@ pnpm run clean:all    # Remove all build artifacts
 | 3065 | Guest Experience Service |
 | 3070 | Calculation Service |
 | 3075 | Service Registry |
+| 3080 | Cashier Service |
+| 3085 | Accounts Service |
+| 3090 | Finance Admin Service |
 
 ## Production Readiness Scorecard
 
@@ -118,7 +124,7 @@ pnpm run clean:all    # Remove all build artifacts
 
 | Metric | Count |
 |--------|-------|
-| Microservices | 17 + API Gateway |
+| Microservices | 20 + API Gateway |
 | SQL Tables | 201 |
 | Registered Commands | 162 |
 | Zod Schemas | 250+ |

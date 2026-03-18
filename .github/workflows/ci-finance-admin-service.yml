@@ -1,0 +1,21 @@
+name: CI · Finance Admin Service
+
+on:
+  push:
+    branches: [main, develop, deployment]
+    paths:
+      - 'Apps/finance-admin-service/**'
+      - 'schema/**'
+      - 'package.json'
+      - 'nx.json'
+  pull_request:
+    paths:
+      - 'Apps/finance-admin-service/**'
+      - 'schema/**'
+  workflow_dispatch:
+
+jobs:
+  ci:
+    uses: ./.github/workflows/package-ci.yml
+    with:
+      package-scope: '@tartware/finance-admin-service'
