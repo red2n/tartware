@@ -69,14 +69,16 @@
       <div class="field-row">
         <div class="field-group">
           <label class="field-label" for="eg-nationality">Nationality</label>
-          <input
+          <select
             id="eg-nationality"
-            type="text"
             class="field-input"
-            placeholder="e.g. United States"
-            maxlength="60"
             [(ngModel)]="nationality"
-            [disabled]="saving()" />
+            [disabled]="saving()">
+            <option value="">—</option>
+            @for (n of nationalities; track n.code) {
+              <option [value]="n.code">{{ n.label }}</option>
+            }
+          </select>
         </div>
         <div class="field-group">
           <label class="field-label" for="eg-gender">Gender</label>

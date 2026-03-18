@@ -3,6 +3,7 @@ import {
   AccountsReceivableDetailSchema,
   AccountsReceivableListItemSchema,
   ArAgingSummarySchema,
+  BucketCheckResponseSchema,
   CashierSessionListItemSchema,
   ChargePostingListItemSchema,
   FolioListItemSchema,
@@ -10,6 +11,8 @@ import {
   InvoiceStatusEnum,
   PaymentMethodEnum,
   PaymentStatusEnum,
+  PreAuditResponseSchema,
+  ShiftSummaryResponseSchema,
   TaxConfigurationListItemSchema,
   TaxTypeEnum,
   TransactionTypeEnum,
@@ -22,11 +25,14 @@ import {
   BillingPaymentSchema,
   getAccountsReceivableById,
   getArAgingSummary,
+  getBucketCheck,
   getCashierSessionById,
   getCommissionReport,
   getDepartmentalRevenue,
   getFolioById,
   getInvoiceById,
+  getPreAuditChecklist,
+  getShiftSummary,
   getTaxConfigurationById,
   getTaxSummary,
   getTrialBalance,
@@ -527,6 +533,49 @@ export const registerBillingRoutes = (app: FastifyInstance): void => {
   );
 
   // ============================================================================
+  // SHIFT HANDOVER SUMMARY
+  // ============================================================================
+
+  app.get<{
+    Params: { sessionId: string };
+    Querystring: { tenant_id: string };
+  }>(
+    "/v1/billing/cashier-sessions/:sessionId/shift-summary",
+    {
+      preHandler: app.withTenantScope({
+        resolveTenantId: (request) => (request.query as { tenant_id: string }).tenant_id,
+        minRole: "ADMIN",
+        requiredModules: "finance-automation",
+      }),
+      schema: buildRouteSchema({
+        tag: BILLING_TAG,
+        summary: "Get shift handover summary for a cashier session",
+        params: schemaFromZod(z.object({ sessionId: z.string().uuid() }), "ShiftSessionIdParam"),
+        querystring: schemaFromZod(
+          z.object({ tenant_id: z.string().uuid() }),
+          "TenantIdQueryShift",
+        ),
+        response: {
+          200: schemaFromZod(ShiftSummaryResponseSchema, "ShiftSummaryResponse"),
+        },
+      }),
+    },
+    async (request, reply) => {
+      const { sessionId } = request.params;
+      const { tenant_id } = request.query;
+
+      const summary = await getShiftSummary(sessionId, tenant_id);
+
+      if (!summary) {
+        reply.notFound("CASHIER_SESSION_NOT_FOUND");
+        return;
+      }
+
+      return ShiftSummaryResponseSchema.parse(summary);
+    },
+  );
+
+  // ============================================================================
   // TAX CONFIGURATIONS
   // ============================================================================
 
@@ -906,6 +955,79 @@ export const registerBillingRoutes = (app: FastifyInstance): void => {
       }
 
       return ar;
+    },
+  );
+
+  // ============================================================================
+  // PRE-AUDIT CHECKLIST
+  // ============================================================================
+
+  const PreAuditQuerySchema = z.object({
+    tenant_id: z.string().uuid(),
+    property_id: z.string().uuid(),
+  });
+
+  type PreAuditQuery = z.infer<typeof PreAuditQuerySchema>;
+
+  app.get<{ Querystring: PreAuditQuery }>(
+    "/v1/billing/pre-audit-checklist",
+    {
+      preHandler: app.withTenantScope({
+        resolveTenantId: (request) => (request.query as PreAuditQuery).tenant_id,
+        minRole: "ADMIN",
+        requiredModules: "finance-automation",
+      }),
+      schema: buildRouteSchema({
+        tag: BILLING_TAG,
+        summary: "Run pre-audit checklist for a property",
+        description:
+          "Verify all prerequisites before starting the night audit: cashier sessions, pending arrivals/departures, folio balances, and room statuses",
+        querystring: schemaFromZod(PreAuditQuerySchema, "PreAuditQuery"),
+        response: { 200: schemaFromZod(PreAuditResponseSchema, "PreAuditResponse") },
+      }),
+    },
+    async (request) => {
+      const { tenant_id, property_id } = PreAuditQuerySchema.parse(request.query);
+      return getPreAuditChecklist({ tenantId: tenant_id, propertyId: property_id });
+    },
+  );
+
+  // ============================================================================
+  // BUCKET CHECK (OCCUPANCY VERIFICATION)
+  // ============================================================================
+
+  const BucketCheckQuerySchema = z.object({
+    tenant_id: z.string().uuid(),
+    property_id: z.string().uuid(),
+    business_date: z.string().optional(),
+  });
+
+  type BucketCheckQuery = z.infer<typeof BucketCheckQuerySchema>;
+
+  app.get<{ Querystring: BucketCheckQuery }>(
+    "/v1/billing/bucket-check",
+    {
+      preHandler: app.withTenantScope({
+        resolveTenantId: (request) => (request.query as BucketCheckQuery).tenant_id,
+        minRole: "ADMIN",
+        requiredModules: "finance-automation",
+      }),
+      schema: buildRouteSchema({
+        tag: BILLING_TAG,
+        summary: "Run bucket check (occupancy verification)",
+        description:
+          "Compare system occupancy against expected room states (stayovers, due-outs, arrivals) for a given business date",
+        querystring: schemaFromZod(BucketCheckQuerySchema, "BucketCheckQuery"),
+        response: { 200: schemaFromZod(BucketCheckResponseSchema, "BucketCheckResponse") },
+      }),
+    },
+    async (request) => {
+      const { tenant_id, property_id, business_date } = BucketCheckQuerySchema.parse(request.query);
+      return getBucketCheck({
+        tenantId: tenant_id,
+        propertyId: property_id,
+        businessDate: business_date,
+      });
     },
   );
 };

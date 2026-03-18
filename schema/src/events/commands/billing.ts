@@ -678,3 +678,180 @@ export const BillingFolioWindowCreateCommandSchema = z.object({
 export type BillingFolioWindowCreateCommand = z.infer<
 	typeof BillingFolioWindowCreateCommandSchema
 >;
+
+// ─── Tax Configuration Commands ──────────────────────────────────────────────
+
+/**
+ * Create a new tax configuration rule.
+ */
+export const BillingTaxConfigCreateCommandSchema = z.object({
+	property_id: z.string().uuid(),
+	tax_code: z.string().trim().min(1).max(50),
+	tax_name: z.string().trim().min(1).max(255),
+	tax_description: z.string().max(2000).optional(),
+	tax_type: z.enum([
+		"sales_tax",
+		"vat",
+		"gst",
+		"occupancy_tax",
+		"tourism_tax",
+		"city_tax",
+		"state_tax",
+		"federal_tax",
+		"resort_fee",
+		"service_charge",
+		"excise_tax",
+		"customs_duty",
+		"other",
+	]),
+	country_code: z.string().min(2).max(3),
+	state_province: z.string().max(100).optional(),
+	city: z.string().max(100).optional(),
+	jurisdiction_name: z.string().max(200).optional(),
+	jurisdiction_level: z
+		.enum(["federal", "state", "county", "city", "district", "special"])
+		.optional(),
+	tax_rate: z.coerce.number().min(0).max(100),
+	is_percentage: z.boolean().default(true),
+	fixed_amount: z.coerce.number().nonnegative().optional(),
+	effective_from: z.coerce.date(),
+	effective_to: z.coerce.date().optional(),
+	is_active: z.boolean().default(true),
+	applies_to: z.array(z.string().max(100)).optional(),
+	excluded_items: z.array(z.string().max(100)).optional(),
+	is_compound_tax: z.boolean().default(false),
+	compound_order: z.coerce.number().int().min(0).optional(),
+	compound_on_tax_codes: z.array(z.string().max(50)).optional(),
+	calculation_method: z
+		.enum(["standard", "reverse", "inclusive", "tiered"])
+		.default("standard"),
+	rounding_method: z
+		.enum(["round_half_up", "round_half_down", "round_up", "round_down", "bankers"])
+		.default("round_half_up"),
+	metadata: z.record(z.unknown()).optional(),
+	idempotency_key: z.string().max(120).optional(),
+});
+
+export type BillingTaxConfigCreateCommand = z.infer<
+	typeof BillingTaxConfigCreateCommandSchema
+>;
+
+/**
+ * Update an existing tax configuration rule.
+ */
+export const BillingTaxConfigUpdateCommandSchema = z.object({
+	tax_config_id: z.string().uuid(),
+	property_id: z.string().uuid(),
+	tax_code: z.string().trim().min(1).max(50).optional(),
+	tax_name: z.string().trim().min(1).max(255).optional(),
+	tax_description: z.string().max(2000).optional(),
+	tax_type: z
+		.enum([
+			"sales_tax",
+			"vat",
+			"gst",
+			"occupancy_tax",
+			"tourism_tax",
+			"city_tax",
+			"state_tax",
+			"federal_tax",
+			"resort_fee",
+			"service_charge",
+			"excise_tax",
+			"customs_duty",
+			"other",
+		])
+		.optional(),
+	tax_rate: z.coerce.number().min(0).max(100).optional(),
+	is_percentage: z.boolean().optional(),
+	fixed_amount: z.coerce.number().nonnegative().optional(),
+	effective_from: z.coerce.date().optional(),
+	effective_to: z.coerce.date().optional(),
+	is_active: z.boolean().optional(),
+	applies_to: z.array(z.string().max(100)).optional(),
+	excluded_items: z.array(z.string().max(100)).optional(),
+	is_compound_tax: z.boolean().optional(),
+	compound_order: z.coerce.number().int().min(0).optional(),
+	compound_on_tax_codes: z.array(z.string().max(50)).optional(),
+	calculation_method: z
+		.enum(["standard", "reverse", "inclusive", "tiered"])
+		.optional(),
+	rounding_method: z
+		.enum(["round_half_up", "round_half_down", "round_up", "round_down", "bankers"])
+		.optional(),
+	metadata: z.record(z.unknown()).optional(),
+	idempotency_key: z.string().max(120).optional(),
+});
+
+export type BillingTaxConfigUpdateCommand = z.infer<
+	typeof BillingTaxConfigUpdateCommandSchema
+>;
+
+/**
+ * Deactivate (soft-delete) a tax configuration.
+ */
+export const BillingTaxConfigDeleteCommandSchema = z.object({
+	tax_config_id: z.string().uuid(),
+	property_id: z.string().uuid(),
+	reason: z.string().max(500).optional(),
+	metadata: z.record(z.unknown()).optional(),
+	idempotency_key: z.string().max(120).optional(),
+});
+
+export type BillingTaxConfigDeleteCommand = z.infer<
+	typeof BillingTaxConfigDeleteCommandSchema
+>;
+
+// ─── Express Checkout Command ────────────────────────────────────────────────
+
+/**
+ * Express checkout: auto-settle zero-balance folios, update room status,
+ * and trigger folio email delivery for departing guests.
+ */
+export const BillingExpressCheckoutCommandSchema = z.object({
+	property_id: z.string().uuid(),
+	reservation_id: z.string().uuid(),
+	folio_id: z.string().uuid().optional(),
+	send_folio_email: z.boolean().default(true),
+	skip_balance_check: z.boolean().default(false),
+	notes: z.string().max(500).optional(),
+	metadata: z.record(z.unknown()).optional(),
+	idempotency_key: z.string().max(120).optional(),
+});
+
+export type BillingExpressCheckoutCommand = z.infer<
+	typeof BillingExpressCheckoutCommandSchema
+>;
+
+// ─── Shift Handover Command ──────────────────────────────────────────────────
+
+/**
+ * Atomically close the current cashier session and open the next one,
+ * recording cash count, open issues, and notes for the incoming shift.
+ */
+export const BillingCashierHandoverCommandSchema = z.object({
+	/** Session being closed (outgoing cashier). */
+	outgoing_session_id: z.string().uuid(),
+	/** Cash declared by the outgoing cashier. */
+	closing_cash_declared: z.coerce.number().nonnegative(),
+	/** Cash physically counted during handover. */
+	closing_cash_counted: z.coerce.number().nonnegative(),
+	/** Notes from the outgoing shift about pending items, issues, etc. */
+	handover_notes: z.string().max(4000).optional(),
+	/** Incoming cashier details — used to open the next session. */
+	incoming_cashier_id: z.string().uuid(),
+	incoming_cashier_name: z.string().max(200),
+	incoming_terminal_id: z.string().max(50).optional(),
+	incoming_shift_type: z
+		.enum(["morning", "afternoon", "night", "full_day"])
+		.default("full_day"),
+	/** Opening float for the incoming session (defaults to counted cash). */
+	incoming_opening_float: z.coerce.number().nonnegative().optional(),
+	property_id: z.string().uuid(),
+	metadata: z.record(z.unknown()).optional(),
+	idempotency_key: z.string().max(120).optional(),
+});
+
+export type BillingCashierHandoverCommand = z.infer<
+	typeof BillingCashierHandoverCommandSchema
+>;

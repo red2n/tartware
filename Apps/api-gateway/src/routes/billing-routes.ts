@@ -35,6 +35,15 @@ export const registerBillingRoutes = (app: FastifyInstance): void => {
   const proxyBilling = async (request: FastifyRequest, reply: FastifyReply) =>
     proxyRequest(request, reply, serviceTargets.billingServiceUrl);
 
+  const proxyCashier = async (request: FastifyRequest, reply: FastifyReply) =>
+    proxyRequest(request, reply, serviceTargets.cashierServiceUrl);
+
+  const proxyAccounts = async (request: FastifyRequest, reply: FastifyReply) =>
+    proxyRequest(request, reply, serviceTargets.accountsServiceUrl);
+
+  const proxyFinanceAdmin = async (request: FastifyRequest, reply: FastifyReply) =>
+    proxyRequest(request, reply, serviceTargets.financeAdminServiceUrl);
+
   const tenantScopeFromParams = app.withTenantScope({
     resolveTenantId: (request) => (request.params as { tenantId?: string }).tenantId,
     minRole: "STAFF",
@@ -300,6 +309,204 @@ export const registerBillingRoutes = (app: FastifyInstance): void => {
         commandName: "billing.cashier.close",
       }),
   );
+
+  // ============================================================================
+  // CASHIER SERVICE PROXY (cashier-sessions → cashier-service :3080)
+  // ============================================================================
+
+  app.get(
+    "/v1/billing/cashier-sessions",
+    {
+      preHandler: tenantScopeFromQuery,
+      schema: buildRouteSchema({
+        tag: BILLING_PROXY_TAG,
+        summary: "Proxy cashier session list to the cashier service.",
+        response: { 200: jsonObjectSchema },
+      }),
+    },
+    proxyCashier,
+  );
+
+  app.get(
+    "/v1/billing/cashier-sessions/:sessionId",
+    {
+      preHandler: tenantScopeFromQuery,
+      schema: buildRouteSchema({
+        tag: BILLING_PROXY_TAG,
+        summary: "Proxy cashier session detail to the cashier service.",
+        response: { 200: jsonObjectSchema },
+      }),
+    },
+    proxyCashier,
+  );
+
+  app.get(
+    "/v1/billing/cashier-sessions/:sessionId/shift-summary",
+    {
+      preHandler: tenantScopeFromQuery,
+      schema: buildRouteSchema({
+        tag: BILLING_PROXY_TAG,
+        summary: "Proxy shift summary to the cashier service.",
+        response: { 200: jsonObjectSchema },
+      }),
+    },
+    proxyCashier,
+  );
+
+  // ============================================================================
+  // ACCOUNTS SERVICE PROXY (invoices, AR → accounts-service :3085)
+  // ============================================================================
+
+  app.get(
+    "/v1/billing/invoices",
+    {
+      preHandler: tenantScopeFromQuery,
+      schema: buildRouteSchema({
+        tag: BILLING_PROXY_TAG,
+        summary: "Proxy invoice list to the accounts service.",
+        response: { 200: jsonObjectSchema },
+      }),
+    },
+    proxyAccounts,
+  );
+
+  app.get(
+    "/v1/billing/invoices/:invoiceId",
+    {
+      preHandler: tenantScopeFromQuery,
+      schema: buildRouteSchema({
+        tag: BILLING_PROXY_TAG,
+        summary: "Proxy invoice detail to the accounts service.",
+        response: { 200: jsonObjectSchema },
+      }),
+    },
+    proxyAccounts,
+  );
+
+  app.get(
+    "/v1/billing/accounts-receivable",
+    {
+      preHandler: tenantScopeFromQuery,
+      schema: buildRouteSchema({
+        tag: BILLING_PROXY_TAG,
+        summary: "Proxy AR list to the accounts service.",
+        response: { 200: jsonObjectSchema },
+      }),
+    },
+    proxyAccounts,
+  );
+
+  app.get(
+    "/v1/billing/accounts-receivable/aging-summary",
+    {
+      preHandler: tenantScopeFromQuery,
+      schema: buildRouteSchema({
+        tag: BILLING_PROXY_TAG,
+        summary: "Proxy AR aging summary to the accounts service.",
+        response: { 200: jsonObjectSchema },
+      }),
+    },
+    proxyAccounts,
+  );
+
+  app.get(
+    "/v1/billing/accounts-receivable/:arId",
+    {
+      preHandler: tenantScopeFromQuery,
+      schema: buildRouteSchema({
+        tag: BILLING_PROXY_TAG,
+        summary: "Proxy AR detail to the accounts service.",
+        response: { 200: jsonObjectSchema },
+      }),
+    },
+    proxyAccounts,
+  );
+
+  // ============================================================================
+  // FINANCE ADMIN SERVICE PROXY (tax configs, reports → finance-admin-service :3090)
+  // ============================================================================
+
+  app.get(
+    "/v1/billing/tax-configurations",
+    {
+      preHandler: tenantScopeFromQuery,
+      schema: buildRouteSchema({
+        tag: BILLING_PROXY_TAG,
+        summary: "Proxy tax configuration list to the finance admin service.",
+        response: { 200: jsonObjectSchema },
+      }),
+    },
+    proxyFinanceAdmin,
+  );
+
+  app.get(
+    "/v1/billing/tax-configurations/:taxConfigId",
+    {
+      preHandler: tenantScopeFromQuery,
+      schema: buildRouteSchema({
+        tag: BILLING_PROXY_TAG,
+        summary: "Proxy tax configuration detail to the finance admin service.",
+        response: { 200: jsonObjectSchema },
+      }),
+    },
+    proxyFinanceAdmin,
+  );
+
+  app.get(
+    "/v1/billing/reports/trial-balance",
+    {
+      preHandler: tenantScopeFromQuery,
+      schema: buildRouteSchema({
+        tag: BILLING_PROXY_TAG,
+        summary: "Proxy trial balance report to the finance admin service.",
+        response: { 200: jsonObjectSchema },
+      }),
+    },
+    proxyFinanceAdmin,
+  );
+
+  app.get(
+    "/v1/billing/reports/departmental-revenue",
+    {
+      preHandler: tenantScopeFromQuery,
+      schema: buildRouteSchema({
+        tag: BILLING_PROXY_TAG,
+        summary: "Proxy departmental revenue report to the finance admin service.",
+        response: { 200: jsonObjectSchema },
+      }),
+    },
+    proxyFinanceAdmin,
+  );
+
+  app.get(
+    "/v1/billing/reports/tax-summary",
+    {
+      preHandler: tenantScopeFromQuery,
+      schema: buildRouteSchema({
+        tag: BILLING_PROXY_TAG,
+        summary: "Proxy tax summary report to the finance admin service.",
+        response: { 200: jsonObjectSchema },
+      }),
+    },
+    proxyFinanceAdmin,
+  );
+
+  app.get(
+    "/v1/billing/reports/commissions",
+    {
+      preHandler: tenantScopeFromQuery,
+      schema: buildRouteSchema({
+        tag: BILLING_PROXY_TAG,
+        summary: "Proxy commission report to the finance admin service.",
+        response: { 200: jsonObjectSchema },
+      }),
+    },
+    proxyFinanceAdmin,
+  );
+
+  // ============================================================================
+  // BILLING SERVICE CATCH-ALL (remaining routes → billing-service :3025)
+  // ============================================================================
 
   app.get(
     "/v1/billing/*",

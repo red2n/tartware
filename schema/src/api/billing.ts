@@ -507,3 +507,81 @@ export const FiscalPeriodListItemSchema = z.object({
 });
 
 export type FiscalPeriodListItem = z.infer<typeof FiscalPeriodListItemSchema>;
+
+// =====================================================
+// SHIFT SUMMARY (CASHIER HANDOVER)
+// =====================================================
+
+/** Shift handover summary for a cashier session. */
+export const ShiftSummaryResponseSchema = z.object({
+	session_id: z.string().uuid(),
+	session_number: z.string(),
+	cashier_name: z.string(),
+	terminal_id: z.string().nullable(),
+	shift_type: z.string(),
+	session_status: z.string(),
+	business_date: z.string(),
+	opened_at: z.string(),
+	closed_at: z.string().nullable(),
+	opening_float: z.number(),
+	closing_cash_counted: z.number().nullable(),
+	cash_variance: z.number().nullable(),
+	has_variance: z.boolean(),
+	reconciled: z.boolean(),
+	total_transactions: z.number(),
+	total_revenue: z.number(),
+	total_refunds: z.number(),
+	net_revenue: z.number(),
+	charge_count: z.number(),
+	charge_total: z.number(),
+	payment_count: z.number(),
+	payment_total: z.number(),
+	handover_notes: z.string().nullable(),
+});
+
+export type ShiftSummaryResponse = z.infer<typeof ShiftSummaryResponseSchema>;
+
+// =====================================================
+// PRE-AUDIT CHECKLIST
+// =====================================================
+
+/** Single check item in a pre-audit checklist. */
+export const PreAuditCheckItemSchema = z.object({
+	check: z.string(),
+	passed: z.boolean(),
+	detail: z.string(),
+});
+
+export type PreAuditCheckItem = z.infer<typeof PreAuditCheckItemSchema>;
+
+/** Pre-audit checklist response — all checks for a property/business date. */
+export const PreAuditResponseSchema = z.object({
+	business_date: z.string(),
+	checks: z.array(PreAuditCheckItemSchema),
+});
+
+export type PreAuditResponse = z.infer<typeof PreAuditResponseSchema>;
+
+// =====================================================
+// BUCKET CHECK (OCCUPANCY VERIFICATION)
+// =====================================================
+
+/** Single bucket check line item. */
+export const BucketCheckItemSchema = z.object({
+	category: z.string(),
+	expected: z.number(),
+	actual: z.number(),
+	matched: z.boolean(),
+	detail: z.string(),
+});
+
+export type BucketCheckItem = z.infer<typeof BucketCheckItemSchema>;
+
+/** Bucket check (occupancy verification) response. */
+export const BucketCheckResponseSchema = z.object({
+	business_date: z.string(),
+	items: z.array(BucketCheckItemSchema),
+	is_balanced: z.boolean(),
+});
+
+export type BucketCheckResponse = z.infer<typeof BucketCheckResponseSchema>;

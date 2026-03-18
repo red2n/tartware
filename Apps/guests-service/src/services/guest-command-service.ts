@@ -94,7 +94,12 @@ export const registerGuestProfile = async ({
         $10,
         $11::jsonb,
         $12,
-        $13
+        $13,
+        $14,
+        $15,
+        $16,
+        $17::date,
+        $18
       ) AS guest_id
     `,
     [
@@ -111,6 +116,11 @@ export const registerGuestProfile = async ({
       preferences,
       createdBy,
       vipStatus,
+      payload.title ?? null,
+      payload.nationality ?? null,
+      payload.gender ?? null,
+      payload.date_of_birth ?? null,
+      payload.loyalty_tier ?? null,
     ],
   );
 

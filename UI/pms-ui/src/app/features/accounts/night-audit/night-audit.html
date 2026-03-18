@@ -35,18 +35,40 @@
           @if (confirmingExecute()) {
             <div class="execute-confirm">
               <span class="confirm-text">{{ 'Run night audit for this date?' | translate }}</span>
+              <label class="toggle-option">
+                <input type="checkbox" [checked]="advanceDate()" (change)="advanceDate.set(!advanceDate())" />
+                <span>{{ 'Advance date after audit' | translate }}</span>
+              </label>
               <button class="btn btn-danger btn-sm" (click)="executeNightAudit()" [disabled]="executing()">
                 @if (executing()) { <mat-spinner diameter="16"></mat-spinner> }
                 {{ 'Confirm' | translate }}
               </button>
               <button class="btn btn-outline btn-sm" (click)="cancelExecute()">{{ 'Cancel' | translate }}</button>
             </div>
+          } @else if (confirmingDateRoll()) {
+            <div class="execute-confirm">
+              <span class="confirm-text">{{ 'Advance business date without audit?' | translate }}</span>
+              <input type="text" class="field-input field-sm" placeholder="Reason (required)"
+                     [ngModel]="dateRollReason()" (ngModelChange)="dateRollReason.set($event)" />
+              <button class="btn btn-warning btn-sm" (click)="manualDateRoll()" [disabled]="dateRolling() || !dateRollReason()">
+                @if (dateRolling()) { <mat-spinner diameter="16"></mat-spinner> }
+                {{ 'Advance Date' | translate }}
+              </button>
+              <button class="btn btn-outline btn-sm" (click)="cancelDateRoll()">{{ 'Cancel' | translate }}</button>
+            </div>
           } @else {
-            <button class="btn btn-primary btn-sm" (click)="showExecuteConfirm()" [disabled]="executing()">
-              @if (executing()) { <mat-spinner diameter="16"></mat-spinner> }
-              <mat-icon>nightlight</mat-icon>
-              {{ 'Run Night Audit' | translate }}
-            </button>
+            <div class="action-buttons">
+              <button class="btn btn-primary btn-sm" (click)="showExecuteConfirm()" [disabled]="executing()">
+                @if (executing()) { <mat-spinner diameter="16"></mat-spinner> }
+                <mat-icon>nightlight</mat-icon>
+                {{ 'Run Night Audit' | translate }}
+              </button>
+              <button class="btn btn-outline btn-sm" (click)="showDateRollConfirm()" [disabled]="dateRolling()" [matTooltip]="'Advance date without running full audit' | translate">
+                @if (dateRolling()) { <mat-spinner diameter="16"></mat-spinner> }
+                <mat-icon>skip_next</mat-icon>
+                {{ 'Advance Date' | translate }}
+              </button>
+            </div>
           }
         }
       </div>

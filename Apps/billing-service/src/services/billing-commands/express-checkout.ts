@@ -1,0 +1,118 @@
+import { query } from "../../lib/db.js";
+import { appLogger } from "../../lib/logger.js";
+import { BillingExpressCheckoutCommandSchema } from "../../schemas/billing-commands.js";
+import {
+  asUuid,
+  BillingCommandError,
+  type CommandContext,
+  resolveActorId,
+  resolveFolioId,
+} from "./common.js";
+
+const logger = appLogger.child({ module: "express-checkout" });
+
+/**
+ * Express checkout: verify zero/near-zero balance, close the folio,
+ * update room status to dirty, and mark the reservation checked-out.
+ */
+export const expressCheckout = async (payload: unknown, context: CommandContext): Promise<void> => {
+  const command = BillingExpressCheckoutCommandSchema.parse(payload);
+  const actorId = resolveActorId(context.initiatedBy);
+  const tenantId = context.tenantId;
+
+  logger.info({ tenantId, reservationId: command.reservation_id }, "starting express checkout");
+
+  // 1. Resolve folio
+  const folioId = command.folio_id ?? (await resolveFolioId(tenantId, command.reservation_id));
+
+  if (!folioId) {
+    throw new BillingCommandError(
+      "FOLIO_NOT_FOUND",
+      `No folio found for reservation ${command.reservation_id}`,
+    );
+  }
+
+  // 2. Check folio balance
+  if (!command.skip_balance_check) {
+    const { rows: balanceRows } = await query<{ balance_due: number }>(
+      `SELECT COALESCE(balance_due, 0) AS balance_due
+			 FROM folios
+			 WHERE tenant_id = $1::uuid AND folio_id = $2::uuid
+			   AND COALESCE(is_deleted, false) = false`,
+      [tenantId, folioId],
+    );
+
+    const balance = balanceRows[0]?.balance_due ?? 0;
+    if (balance > 0) {
+      throw new BillingCommandError(
+        "BALANCE_NOT_ZERO",
+        `Folio ${folioId} has outstanding balance of ${balance}. Settle before express checkout.`,
+      );
+    }
+  }
+
+  // 3. Close the folio
+  await query(
+    `UPDATE folios
+		 SET status = 'closed',
+		     closed_at = NOW(),
+		     closed_by = $3::uuid,
+		     updated_at = NOW(),
+		     updated_by = $3::uuid
+		 WHERE tenant_id = $1::uuid
+		   AND folio_id = $2::uuid
+		   AND status != 'closed'`,
+    [tenantId, folioId, asUuid(actorId)],
+  );
+
+  // 4. Get the room number from the reservation to update room status
+  const { rows: resRows } = await query<{ room_number: string | null }>(
+    `SELECT room_number
+		 FROM reservations
+		 WHERE tenant_id = $1::uuid
+		   AND id = $2::uuid`,
+    [tenantId, command.reservation_id],
+  );
+
+  const roomNumber = resRows[0]?.room_number;
+
+  // 5. Update reservation status to checked_out
+  await query(
+    `UPDATE reservations
+		 SET status = 'checked_out',
+		     actual_check_out = NOW(),
+		     updated_at = NOW(),
+		     updated_by = $3::uuid
+		 WHERE tenant_id = $1::uuid
+		   AND id = $2::uuid
+		   AND status = 'checked_in'`,
+    [tenantId, command.reservation_id, asUuid(actorId)],
+  );
+
+  // 6. Update room status to dirty (needs housekeeping)
+  if (roomNumber) {
+    await query(
+      `UPDATE rooms
+			 SET housekeeping_status = 'dirty',
+			     occupancy_status = 'vacant',
+			     updated_at = NOW(),
+			     updated_by = $3::uuid
+			 WHERE tenant_id = $1::uuid
+			   AND property_id = $2::uuid
+			   AND room_number = $4
+			   AND COALESCE(is_deleted, false) = false`,
+      [tenantId, command.property_id, asUuid(actorId), roomNumber],
+    );
+  }
+
+  logger.info(
+    {
+      tenantId,
+      reservationId: command.reservation_id,
+      folioId,
+      roomNumber,
+      sendEmail: command.send_folio_email,
+    },
+    "express checkout completed",
+  );
+};

@@ -33,6 +33,7 @@ import {
   FOLIO_LIST_SQL,
   INVOICE_BY_ID_SQL,
   INVOICE_LIST_SQL,
+  SHIFT_SUMMARY_SQL,
   TAX_CONFIGURATION_BY_ID_SQL,
   TAX_CONFIGURATION_LIST_SQL,
 } from "../sql/billing-queries.js";
@@ -1350,4 +1351,367 @@ export const getArAgingSummary = async (options: {
       currency: (r.currency as string) ?? "USD",
     }),
   );
+};
+
+// ============================================================================
+// PRE-AUDIT CHECKLIST
+// ============================================================================
+
+type PreAuditCheckItem = {
+  check: string;
+  passed: boolean;
+  detail: string;
+};
+
+/**
+ * Run pre-audit checks for a property's current business date.
+ * Returns a checklist with pass/fail per item that front-desk staff
+ * should review before starting the night audit.
+ */
+export const getPreAuditChecklist = async (options: {
+  tenantId: string;
+  propertyId: string;
+}): Promise<{ business_date: string; checks: PreAuditCheckItem[] }> => {
+  const { tenantId, propertyId } = options;
+
+  // 1. Get current business date
+  const { rows: dateRows } = await query<{
+    business_date: string;
+    date_status: string;
+    night_audit_status: string;
+  }>(
+    `SELECT business_date::text, date_status, night_audit_status
+     FROM business_dates
+     WHERE tenant_id = $1::uuid AND property_id = $2::uuid
+       AND date_status = 'OPEN' AND COALESCE(deleted_at, '9999-12-31'::timestamp) > NOW()
+     ORDER BY business_date DESC LIMIT 1`,
+    [tenantId, propertyId],
+  );
+
+  const businessDate = dateRows[0]?.business_date ?? new Date().toISOString().slice(0, 10);
+  const checks: PreAuditCheckItem[] = [];
+
+  // 2. Check no audit already in progress
+  const auditStatus = dateRows[0]?.night_audit_status ?? "PENDING";
+  checks.push({
+    check: "No audit in progress",
+    passed: auditStatus === "PENDING" || auditStatus === "FAILED",
+    detail:
+      auditStatus === "IN_PROGRESS"
+        ? "Night audit is currently running"
+        : auditStatus === "COMPLETED"
+          ? "Night audit already completed for this date"
+          : "Ready for audit",
+  });
+
+  // 3. Open cashier sessions — all should be closed
+  const { rows: openSessions } = await query<{ cnt: string }>(
+    `SELECT COUNT(*)::text AS cnt FROM cashier_sessions
+     WHERE tenant_id = $1::uuid AND property_id = $2::uuid
+       AND status = 'OPEN' AND COALESCE(deleted_at, '9999-12-31'::timestamp) > NOW()`,
+    [tenantId, propertyId],
+  );
+  const openCount = Number(openSessions[0]?.cnt ?? 0);
+  checks.push({
+    check: "All cashier sessions closed",
+    passed: openCount === 0,
+    detail: openCount > 0 ? `${openCount} cashier session(s) still open` : "All sessions closed",
+  });
+
+  // 4. Pending arrivals — expected today that haven't checked in
+  const { rows: pendingArrivals } = await query<{ cnt: string }>(
+    `SELECT COUNT(*)::text AS cnt FROM reservations
+     WHERE tenant_id = $1::uuid AND property_id = $2::uuid
+       AND check_in_date = $3::date AND status = 'confirmed'
+       AND COALESCE(is_deleted, false) = false`,
+    [tenantId, propertyId, businessDate],
+  );
+  const arrivalCount = Number(pendingArrivals[0]?.cnt ?? 0);
+  checks.push({
+    check: "No pending arrivals",
+    passed: arrivalCount === 0,
+    detail:
+      arrivalCount > 0
+        ? `${arrivalCount} reservation(s) expected today not yet checked in`
+        : "All expected arrivals processed",
+  });
+
+  // 5. Pending departures — expected today that haven't checked out
+  const { rows: pendingDepartures } = await query<{ cnt: string }>(
+    `SELECT COUNT(*)::text AS cnt FROM reservations
+     WHERE tenant_id = $1::uuid AND property_id = $2::uuid
+       AND check_out_date = $3::date AND status = 'checked_in'
+       AND COALESCE(is_deleted, false) = false`,
+    [tenantId, propertyId, businessDate],
+  );
+  const departureCount = Number(pendingDepartures[0]?.cnt ?? 0);
+  checks.push({
+    check: "No pending departures",
+    passed: departureCount === 0,
+    detail:
+      departureCount > 0
+        ? `${departureCount} guest(s) due out today still checked in`
+        : "All departures processed",
+  });
+
+  // 6. Unbalanced folios — open folios with unsettled charges
+  const { rows: unbalancedFolios } = await query<{ cnt: string }>(
+    `SELECT COUNT(*)::text AS cnt FROM folios
+     WHERE tenant_id = $1::uuid AND property_id = $2::uuid
+       AND status = 'open' AND COALESCE(balance_due, 0) != 0
+       AND COALESCE(is_deleted, false) = false`,
+    [tenantId, propertyId],
+  );
+  const unbalancedCount = Number(unbalancedFolios[0]?.cnt ?? 0);
+  checks.push({
+    check: "No unbalanced open folios",
+    passed: unbalancedCount === 0,
+    detail:
+      unbalancedCount > 0
+        ? `${unbalancedCount} open folio(s) with non-zero balance`
+        : "All open folios balanced",
+  });
+
+  // 7. Room status verified — no rooms in 'out_of_order' that are occupied
+  const { rows: conflictRooms } = await query<{ cnt: string }>(
+    `SELECT COUNT(*)::text AS cnt FROM rooms
+     WHERE tenant_id = $1::uuid AND property_id = $2::uuid
+       AND room_status = 'out_of_order' AND occupancy_status = 'occupied'
+       AND COALESCE(is_deleted, false) = false`,
+    [tenantId, propertyId],
+  );
+  const conflictCount = Number(conflictRooms[0]?.cnt ?? 0);
+  checks.push({
+    check: "Room statuses consistent",
+    passed: conflictCount === 0,
+    detail:
+      conflictCount > 0
+        ? `${conflictCount} room(s) marked out-of-order but occupied`
+        : "All room statuses consistent",
+  });
+
+  return { business_date: businessDate, checks };
+};
+
+// ============================================================================
+// BUCKET CHECK (OCCUPANCY VERIFICATION)
+// ============================================================================
+
+type BucketCheckItem = {
+  category: string;
+  expected: number;
+  actual: number;
+  matched: boolean;
+  detail: string;
+};
+
+/**
+ * Bucket check: compare system occupancy counts against expected
+ * room states for a given business date. Helps front desk verify
+ * stayover, due-out, and arrival counts match physical reality.
+ */
+export const getBucketCheck = async (options: {
+  tenantId: string;
+  propertyId: string;
+  businessDate?: string;
+}): Promise<{ business_date: string; items: BucketCheckItem[]; is_balanced: boolean }> => {
+  const { tenantId, propertyId } = options;
+
+  // Resolve business date
+  const bdParam = options.businessDate ?? null;
+  const { rows: dateRows } = await query<{ business_date: string }>(
+    bdParam
+      ? `SELECT $3::date::text AS business_date`
+      : `SELECT business_date::text
+         FROM business_dates
+         WHERE tenant_id = $1::uuid AND property_id = $2::uuid
+           AND date_status = 'OPEN' AND COALESCE(deleted_at, '9999-12-31'::timestamp) > NOW()
+         ORDER BY business_date DESC LIMIT 1`,
+    bdParam ? [tenantId, propertyId, bdParam] : [tenantId, propertyId],
+  );
+  const businessDate = dateRows[0]?.business_date ?? new Date().toISOString().slice(0, 10);
+
+  const items: BucketCheckItem[] = [];
+
+  // 1. Total sellable rooms
+  const { rows: totalRooms } = await query<{ cnt: string }>(
+    `SELECT COUNT(*)::text AS cnt FROM rooms
+     WHERE tenant_id = $1::uuid AND property_id = $2::uuid
+       AND room_status != 'out_of_order' AND COALESCE(is_deleted, false) = false`,
+    [tenantId, propertyId],
+  );
+  const totalSellable = Number(totalRooms[0]?.cnt ?? 0);
+
+  // 2. Rooms physically occupied (occupancy_status = 'occupied')
+  const { rows: occupiedRooms } = await query<{ cnt: string }>(
+    `SELECT COUNT(*)::text AS cnt FROM rooms
+     WHERE tenant_id = $1::uuid AND property_id = $2::uuid
+       AND occupancy_status = 'occupied' AND COALESCE(is_deleted, false) = false`,
+    [tenantId, propertyId],
+  );
+  const physicalOccupied = Number(occupiedRooms[0]?.cnt ?? 0);
+
+  // 3. Reservation-based stayovers (checked in, not departing today)
+  const { rows: stayovers } = await query<{ cnt: string }>(
+    `SELECT COUNT(*)::text AS cnt FROM reservations
+     WHERE tenant_id = $1::uuid AND property_id = $2::uuid
+       AND status = 'checked_in' AND check_out_date > $3::date
+       AND COALESCE(is_deleted, false) = false`,
+    [tenantId, propertyId, businessDate],
+  );
+  const stayoverCount = Number(stayovers[0]?.cnt ?? 0);
+
+  // 4. Due-outs (checked in, departing today)
+  const { rows: dueOuts } = await query<{ cnt: string }>(
+    `SELECT COUNT(*)::text AS cnt FROM reservations
+     WHERE tenant_id = $1::uuid AND property_id = $2::uuid
+       AND status = 'checked_in' AND check_out_date = $3::date
+       AND COALESCE(is_deleted, false) = false`,
+    [tenantId, propertyId, businessDate],
+  );
+  const dueOutCount = Number(dueOuts[0]?.cnt ?? 0);
+
+  // 5. Expected arrivals (confirmed, arriving today)
+  const { rows: arrivals } = await query<{ cnt: string }>(
+    `SELECT COUNT(*)::text AS cnt FROM reservations
+     WHERE tenant_id = $1::uuid AND property_id = $2::uuid
+       AND check_in_date = $3::date AND status = 'confirmed'
+       AND COALESCE(is_deleted, false) = false`,
+    [tenantId, propertyId, businessDate],
+  );
+  const arrivalCount = Number(arrivals[0]?.cnt ?? 0);
+
+  // 6. Already checked-in today
+  const { rows: checkedInToday } = await query<{ cnt: string }>(
+    `SELECT COUNT(*)::text AS cnt FROM reservations
+     WHERE tenant_id = $1::uuid AND property_id = $2::uuid
+       AND check_in_date = $3::date AND status = 'checked_in'
+       AND COALESCE(is_deleted, false) = false`,
+    [tenantId, propertyId, businessDate],
+  );
+  const checkedInTodayCount = Number(checkedInToday[0]?.cnt ?? 0);
+
+  // Expected occupied = stayovers + due-outs (still in-house)
+  const expectedOccupied = stayoverCount + dueOutCount;
+  const occupancyMatch = physicalOccupied === expectedOccupied;
+
+  items.push(
+    {
+      category: "Total Sellable Rooms",
+      expected: totalSellable,
+      actual: totalSellable,
+      matched: true,
+      detail: `${totalSellable} rooms available (excludes out-of-order)`,
+    },
+    {
+      category: "Occupied Rooms (Physical)",
+      expected: expectedOccupied,
+      actual: physicalOccupied,
+      matched: occupancyMatch,
+      detail: occupancyMatch
+        ? "Physical occupancy matches reservation count"
+        : `Mismatch: ${physicalOccupied} physical vs ${expectedOccupied} expected (${stayoverCount} stayovers + ${dueOutCount} due-outs)`,
+    },
+    {
+      category: "Stayovers",
+      expected: stayoverCount,
+      actual: stayoverCount,
+      matched: true,
+      detail: `${stayoverCount} guest(s) staying through tonight`,
+    },
+    {
+      category: "Due-Outs",
+      expected: dueOutCount,
+      actual: dueOutCount,
+      matched: true,
+      detail: `${dueOutCount} guest(s) due to depart today`,
+    },
+    {
+      category: "Expected Arrivals",
+      expected: arrivalCount,
+      actual: checkedInTodayCount,
+      matched: arrivalCount === checkedInTodayCount,
+      detail:
+        arrivalCount === checkedInTodayCount
+          ? `All ${arrivalCount} expected arrival(s) checked in`
+          : `${checkedInTodayCount} of ${arrivalCount} expected arrival(s) checked in`,
+    },
+  );
+
+  const isBalanced = items.every((i) => i.matched);
+
+  return { business_date: businessDate, items, is_balanced: isBalanced };
+};
+
+// ============================================================================
+// SHIFT HANDOVER SUMMARY
+// ============================================================================
+
+type ShiftSummary = {
+  session_id: string;
+  session_number: string;
+  cashier_name: string;
+  terminal_id: string | null;
+  shift_type: string;
+  session_status: string;
+  business_date: string;
+  opened_at: string;
+  closed_at: string | null;
+  opening_float: number;
+  closing_cash_counted: number | null;
+  cash_variance: number | null;
+  has_variance: boolean;
+  reconciled: boolean;
+  total_transactions: number;
+  total_revenue: number;
+  total_refunds: number;
+  net_revenue: number;
+  charge_count: number;
+  charge_total: number;
+  payment_count: number;
+  payment_total: number;
+  handover_notes: string | null;
+};
+
+/**
+ * Get a shift summary for a cashier session — transaction totals,
+ * cash reconciliation, and handover notes.
+ */
+export const getShiftSummary = async (
+  sessionId: string,
+  tenantId: string,
+): Promise<ShiftSummary | null> => {
+  const { rows } = await query<Record<string, unknown>>(SHIFT_SUMMARY_SQL, [sessionId, tenantId]);
+
+  const row = rows[0];
+  if (!row) return null;
+
+  const metadata = row.metadata as Record<string, unknown> | null;
+
+  return {
+    session_id: row.session_id as string,
+    session_number: row.session_number as string,
+    cashier_name: row.cashier_name as string,
+    terminal_id: (row.terminal_id as string) ?? null,
+    shift_type: row.shift_type as string,
+    session_status: row.session_status as string,
+    business_date: String(row.business_date).slice(0, 10),
+    opened_at: String(row.opened_at),
+    closed_at: row.closed_at ? String(row.closed_at) : null,
+    opening_float: toNumberOrFallback(row.opening_float_declared, 0),
+    closing_cash_counted:
+      row.closing_cash_counted != null ? toNumberOrFallback(row.closing_cash_counted, 0) : null,
+    cash_variance: row.cash_variance != null ? toNumberOrFallback(row.cash_variance, 0) : null,
+    has_variance: Boolean(row.has_variance),
+    reconciled: Boolean(row.reconciled),
+    total_transactions: Number(row.total_transactions ?? 0),
+    total_revenue: toNumberOrFallback(row.total_revenue, 0),
+    total_refunds: toNumberOrFallback(row.total_refunds, 0),
+    net_revenue: toNumberOrFallback(row.net_revenue, 0),
+    charge_count: Number(row.charge_count ?? 0),
+    charge_total: toNumberOrFallback(row.charge_total, 0),
+    payment_count: Number(row.payment_count ?? 0),
+    payment_total: toNumberOrFallback(row.payment_total, 0),
+    handover_notes: (metadata?.handover_notes as string) ?? null,
+  };
 };

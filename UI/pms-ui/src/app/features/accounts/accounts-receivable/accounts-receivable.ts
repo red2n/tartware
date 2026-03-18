@@ -21,6 +21,7 @@ import { PageHeaderComponent } from "../../../shared/components/page-header/page
 import { formatCurrency, formatShortDate } from "../../../shared/format-utils";
 import { PaginationComponent } from "../../../shared/pagination/pagination";
 import { createSortState, getAriaSort, getSortIcon, sortBy, toggleSort } from "../../../shared/sort-utils";
+import { ToastService } from "../../../shared/toast/toast.service";
 
 type StatusFilter = "ALL" | "open" | "partial" | "paid" | "overdue" | "in_collection" | "written_off" | "disputed";
 type AccountTypeFilter = "ALL" | "guest" | "corporate" | "travel_agent" | "group" | "direct_bill" | "city_ledger";
@@ -47,6 +48,7 @@ export class AccountsReceivableComponent {
 	private readonly api = inject(ApiService);
 	private readonly auth = inject(AuthService);
 	private readonly ctx = inject(TenantContextService);
+	private readonly toast = inject(ToastService);
 	readonly globalSearch = inject(GlobalSearchService);
 
 	// ── State ──
@@ -65,6 +67,25 @@ export class AccountsReceivableComponent {
 		this.globalSearch.query();
 		this.page.set(1);
 	});
+
+	// ── Action state ──
+	readonly showPaymentForm = signal(false);
+	readonly applyingPayment = signal(false);
+	readonly paymentForm = signal({
+		amount: 0,
+		payment_reference: "",
+		payment_method: "check",
+		notes: "",
+	});
+
+	readonly showWriteOffForm = signal(false);
+	readonly writingOff = signal(false);
+	readonly writeOffForm = signal({
+		write_off_amount: 0,
+		reason: "",
+	});
+
+	readonly recalculatingAging = signal(false);
 
 	readonly statusFilters: { key: StatusFilter; label: string }[] = [
 		{ key: "ALL", label: "All" },
@@ -219,6 +240,114 @@ export class AccountsReceivableComponent {
 
 	closeDetail(): void {
 		this.selectedAr.set(null);
+		this.showPaymentForm.set(false);
+		this.showWriteOffForm.set(false);
+	}
+
+	// ── Apply Payment ──
+	togglePaymentForm(): void {
+		this.showPaymentForm.set(!this.showPaymentForm());
+		this.showWriteOffForm.set(false);
+		const detail = this.selectedAr();
+		if (detail && this.showPaymentForm()) {
+			this.paymentForm.set({
+				amount: Number.parseFloat(detail.outstanding_balance || "0"),
+				payment_reference: "",
+				payment_method: "check",
+				notes: "",
+			});
+		}
+	}
+
+	updatePaymentForm(partial: Partial<typeof this.paymentForm extends () => infer T ? T : never>): void {
+		this.paymentForm.set({ ...this.paymentForm(), ...partial });
+	}
+
+	async applyPayment(): Promise<void> {
+		const tenantId = this.auth.tenantId();
+		const detail = this.selectedAr();
+		if (!tenantId || !detail) return;
+
+		this.applyingPayment.set(true);
+		try {
+			const form = this.paymentForm();
+			await this.api.post(`/tenants/${tenantId}/commands/billing.ar.apply_payment`, {
+				ar_id: detail.ar_id,
+				amount: form.amount,
+				payment_reference: form.payment_reference,
+				payment_method: form.payment_method || undefined,
+				notes: form.notes || undefined,
+			});
+			this.toast.success("Payment applied successfully.");
+			this.showPaymentForm.set(false);
+			this.closeDetail();
+			await this.loadArData();
+		} catch (e) {
+			this.toast.error(e instanceof Error ? e.message : "Failed to apply payment");
+		} finally {
+			this.applyingPayment.set(false);
+		}
+	}
+
+	// ── Write Off ──
+	toggleWriteOffForm(): void {
+		this.showWriteOffForm.set(!this.showWriteOffForm());
+		this.showPaymentForm.set(false);
+		const detail = this.selectedAr();
+		if (detail && this.showWriteOffForm()) {
+			this.writeOffForm.set({
+				write_off_amount: Number.parseFloat(detail.outstanding_balance || "0"),
+				reason: "",
+			});
+		}
+	}
+
+	updateWriteOffForm(partial: Partial<typeof this.writeOffForm extends () => infer T ? T : never>): void {
+		this.writeOffForm.set({ ...this.writeOffForm(), ...partial });
+	}
+
+	async writeOff(): Promise<void> {
+		const tenantId = this.auth.tenantId();
+		const detail = this.selectedAr();
+		if (!tenantId || !detail) return;
+
+		this.writingOff.set(true);
+		try {
+			const form = this.writeOffForm();
+			await this.api.post(`/tenants/${tenantId}/commands/billing.ar.write_off`, {
+				ar_id: detail.ar_id,
+				write_off_amount: form.write_off_amount,
+				reason: form.reason,
+			});
+			this.toast.success("AR entry written off.");
+			this.showWriteOffForm.set(false);
+			this.closeDetail();
+			await this.loadArData();
+		} catch (e) {
+			this.toast.error(e instanceof Error ? e.message : "Failed to write off AR");
+		} finally {
+			this.writingOff.set(false);
+		}
+	}
+
+	// ── Recalculate Aging ──
+	async recalculateAging(): Promise<void> {
+		const tenantId = this.auth.tenantId();
+		const propertyId = this.ctx.propertyId();
+		if (!tenantId || !propertyId) return;
+
+		this.recalculatingAging.set(true);
+		try {
+			await this.api.post(`/tenants/${tenantId}/commands/billing.ar.age`, {
+				property_id: propertyId,
+			});
+			this.toast.success("Aging recalculation initiated.");
+			await this.loadArData();
+		} catch (e) {
+			this.toast.error(e instanceof Error ? e.message : "Failed to recalculate aging");
+		} finally {
+			this.recalculatingAging.set(false);
+		}
 	}
 
 	// ── Data loading ──

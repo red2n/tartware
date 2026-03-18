@@ -57,6 +57,12 @@ export class NightAuditComponent {
 	// ── Night Audit Execution (BC-2) ──
 	readonly executing = signal(false);
 	readonly confirmingExecute = signal(false);
+	readonly advanceDate = signal(true);
+
+	// ── Manual Date Roll ──
+	readonly dateRolling = signal(false);
+	readonly confirmingDateRoll = signal(false);
+	readonly dateRollReason = signal("");
 
 	// ── Trial Balance ──
 	readonly trialBalance = signal<TrialBalanceResponse | null>(null);
@@ -247,14 +253,48 @@ export class NightAuditComponent {
 		try {
 			await this.api.post(`/tenants/${tenantId}/commands/billing.night_audit.execute`, {
 				property_id: propertyId,
+				advance_date: this.advanceDate(),
 			});
 			this.toast.success("Night audit initiated. Processing in background...");
-			// Poll for status changes
 			await this.pollAuditCompletion();
 		} catch (e) {
 			this.toast.error(e instanceof Error ? e.message : "Failed to execute night audit");
 		} finally {
 			this.executing.set(false);
+		}
+	}
+
+	// ── Manual Date Roll ──
+	showDateRollConfirm(): void {
+		this.confirmingDateRoll.set(true);
+	}
+
+	cancelDateRoll(): void {
+		this.confirmingDateRoll.set(false);
+		this.dateRollReason.set("");
+	}
+
+	async manualDateRoll(): Promise<void> {
+		const tenantId = this.auth.tenantId();
+		const propertyId = this.ctx.propertyId();
+		if (!tenantId || !propertyId) return;
+
+		this.dateRolling.set(true);
+		this.confirmingDateRoll.set(false);
+
+		try {
+			await this.api.post(`/tenants/${tenantId}/commands/billing.date_roll.manual`, {
+				property_id: propertyId,
+				reason: this.dateRollReason() || "Manual date advance from UI",
+			});
+			this.toast.success("Business date advanced successfully.");
+			this.dateRollReason.set("");
+			await this.loadBusinessDateStatus();
+			await this.loadTrialBalance();
+		} catch (e) {
+			this.toast.error(e instanceof Error ? e.message : "Failed to advance date");
+		} finally {
+			this.dateRolling.set(false);
 		}
 	}
 
