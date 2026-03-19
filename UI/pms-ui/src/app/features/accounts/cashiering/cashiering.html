@@ -1,9 +1,52 @@
 <div class="cashiering-page">
   <app-page-header title="Cashiering" description="Cashier sessions, shift management, and float reconciliation">
+    <button class="btn btn-primary btn-sm" (click)="toggleOpenForm()" [matTooltip]="'Open new cashier session' | translate">
+      <mat-icon>add</mat-icon> {{ 'Open Session' | translate }}
+    </button>
     <button class="btn btn-invisible" (click)="loadSessions()" [matTooltip]="'Refresh' | translate" [attr.aria-label]="'Refresh cashier sessions' | translate">
       <mat-icon>refresh</mat-icon>
     </button>
   </app-page-header>
+
+  <!-- ═══ OPEN SESSION FORM ═══ -->
+  @if (showOpenForm()) {
+    <div class="action-form">
+      <h3>{{ 'Open Cashier Session' | translate }}</h3>
+      <div class="form-grid">
+        <div class="form-field">
+          <label>{{ 'Cashier Name' | translate }}</label>
+          <input type="text" class="field-input" placeholder="Your name"
+                 [ngModel]="openForm().cashier_name" (ngModelChange)="updateOpenForm({ cashier_name: $event })" />
+        </div>
+        <div class="form-field">
+          <label>{{ 'Terminal ID' | translate }}</label>
+          <input type="text" class="field-input" placeholder="e.g. POS-01"
+                 [ngModel]="openForm().terminal_id" (ngModelChange)="updateOpenForm({ terminal_id: $event })" />
+        </div>
+        <div class="form-field">
+          <label>{{ 'Shift' | translate }}</label>
+          <select class="field-input" [ngModel]="openForm().shift_type" (ngModelChange)="updateOpenForm({ shift_type: $event })">
+            <option value="morning">{{ 'Morning' | translate }}</option>
+            <option value="afternoon">{{ 'Afternoon' | translate }}</option>
+            <option value="night">{{ 'Night' | translate }}</option>
+            <option value="full_day">{{ 'Full Day' | translate }}</option>
+          </select>
+        </div>
+        <div class="form-field">
+          <label>{{ 'Opening Float' | translate }}</label>
+          <input type="number" class="field-input" min="0" step="0.01"
+                 [ngModel]="openForm().opening_float" (ngModelChange)="updateOpenForm({ opening_float: +$event })" />
+        </div>
+      </div>
+      <div class="form-actions">
+        <button class="btn btn-primary btn-sm" (click)="openSession()" [disabled]="openingSession() || !openForm().cashier_name">
+          @if (openingSession()) { <mat-spinner diameter="16"></mat-spinner> }
+          {{ 'Open Session' | translate }}
+        </button>
+        <button class="btn btn-outline btn-sm" (click)="toggleOpenForm()">{{ 'Cancel' | translate }}</button>
+      </div>
+    </div>
+  }
 
   <!-- ═══ KPI OVERVIEW ═══ -->
   @if (sessions().length > 0) {
@@ -79,6 +122,7 @@
             <th [attr.aria-sort]="ariaSort('session_status')">
               <button type="button" class="th-sort-btn" (click)="onSort('session_status')">{{ 'Status' | translate }} <mat-icon class="sort-indicator">{{ sortIcon('session_status') }}</mat-icon></button>
             </th>
+            <th></th>
           </tr>
         </thead>
         <tbody>
@@ -103,7 +147,48 @@
               <td>
                 <span class="badge" [ngClass]="statusClass(session.session_status)">{{ session.session_status_display }}</span>
               </td>
+              <td>
+                @if (session.session_status === 'OPEN') {
+                  <button class="btn btn-outline btn-xs" (click)="showCloseForm(session.session_id); $event.stopPropagation()">
+                    <mat-icon>lock</mat-icon> {{ 'Close' | translate }}
+                  </button>
+                }
+              </td>
             </tr>
+            <!-- Inline close form for this session -->
+            @if (closingSessionId() === session.session_id) {
+              <tr class="close-form-row">
+                <td colspan="10">
+                  <div class="inline-close-form">
+                    <span class="form-label">{{ 'Close session' | translate }} {{ session.session_number }}</span>
+                    <div class="form-inline-fields">
+                      <div class="form-field">
+                        <label>{{ 'Cash Declared' | translate }}</label>
+                        <input type="number" class="field-input field-sm" min="0" step="0.01"
+                               [ngModel]="closeForm().closing_cash_declared" (ngModelChange)="updateCloseForm({ closing_cash_declared: +$event })" />
+                      </div>
+                      <div class="form-field">
+                        <label>{{ 'Cash Counted' | translate }}</label>
+                        <input type="number" class="field-input field-sm" min="0" step="0.01"
+                               [ngModel]="closeForm().closing_cash_counted" (ngModelChange)="updateCloseForm({ closing_cash_counted: +$event })" />
+                      </div>
+                      <div class="form-field">
+                        <label>{{ 'Notes' | translate }}</label>
+                        <input type="text" class="field-input field-sm" placeholder="Optional reconciliation notes"
+                               [ngModel]="closeForm().notes" (ngModelChange)="updateCloseForm({ notes: $event })" />
+                      </div>
+                    </div>
+                    <div class="form-actions">
+                      <button class="btn btn-danger btn-sm" (click)="closeSession()" [disabled]="closingSession()">
+                        @if (closingSession()) { <mat-spinner diameter="16"></mat-spinner> }
+                        {{ 'Close & Reconcile' | translate }}
+                      </button>
+                      <button class="btn btn-outline btn-sm" (click)="cancelClose()">{{ 'Cancel' | translate }}</button>
+                    </div>
+                  </div>
+                </td>
+              </tr>
+            }
           }
         </tbody>
       </table>

@@ -1,5 +1,10 @@
 <div class="ar-page">
-  <app-page-header title="Accounts Receivable" description="City ledger, direct billing, and AR aging management" />
+  <app-page-header title="Accounts Receivable" description="City ledger, direct billing, and AR aging management">
+    <button class="btn btn-outline btn-sm" (click)="recalculateAging()" [disabled]="recalculatingAging()" [matTooltip]="'Recalculate aging buckets' | translate">
+      @if (recalculatingAging()) { <mat-spinner diameter="16"></mat-spinner> }
+      <mat-icon>update</mat-icon> {{ 'Recalculate Aging' | translate }}
+    </button>
+  </app-page-header>
 
   <!-- ═══ AGING KPIs ═══ -->
   <div class="aging-kpis">
@@ -269,6 +274,84 @@
             <label>{{ 'Notes' | translate }}</label>
             <p>{{ detail.notes }}</p>
           </div>
+        }
+
+        <!-- ═══ AR ACTIONS ═══ -->
+        @if (detail.ar_status !== 'paid' && detail.ar_status !== 'written_off' && detail.ar_status !== 'cancelled') {
+          <div class="detail-actions">
+            <button class="btn btn-primary btn-sm" (click)="togglePaymentForm()">
+              <mat-icon>payment</mat-icon> {{ 'Apply Payment' | translate }}
+            </button>
+            <button class="btn btn-outline btn-sm" (click)="toggleWriteOffForm()">
+              <mat-icon>delete_sweep</mat-icon> {{ 'Write Off' | translate }}
+            </button>
+          </div>
+
+          @if (showPaymentForm()) {
+            <div class="action-form">
+              <h4>{{ 'Apply Payment' | translate }}</h4>
+              <div class="form-grid">
+                <div class="form-field">
+                  <label>{{ 'Amount' | translate }}</label>
+                  <input type="number" class="field-input" min="0.01" step="0.01"
+                         [ngModel]="paymentForm().amount" (ngModelChange)="updatePaymentForm({ amount: +$event })" />
+                </div>
+                <div class="form-field">
+                  <label>{{ 'Payment Reference' | translate }}</label>
+                  <input type="text" class="field-input" placeholder="Check #, Wire ref, etc."
+                         [ngModel]="paymentForm().payment_reference" (ngModelChange)="updatePaymentForm({ payment_reference: $event })" />
+                </div>
+                <div class="form-field">
+                  <label>{{ 'Payment Method' | translate }}</label>
+                  <select class="field-input" [ngModel]="paymentForm().payment_method" (ngModelChange)="updatePaymentForm({ payment_method: $event })">
+                    <option value="check">{{ 'Check' | translate }}</option>
+                    <option value="wire_transfer">{{ 'Wire Transfer' | translate }}</option>
+                    <option value="credit_card">{{ 'Credit Card' | translate }}</option>
+                    <option value="ach">{{ 'ACH' | translate }}</option>
+                    <option value="cash">{{ 'Cash' | translate }}</option>
+                    <option value="other">{{ 'Other' | translate }}</option>
+                  </select>
+                </div>
+                <div class="form-field">
+                  <label>{{ 'Notes' | translate }}</label>
+                  <input type="text" class="field-input" placeholder="Optional"
+                         [ngModel]="paymentForm().notes" (ngModelChange)="updatePaymentForm({ notes: $event })" />
+                </div>
+              </div>
+              <div class="form-actions">
+                <button class="btn btn-primary btn-sm" (click)="applyPayment()" [disabled]="applyingPayment() || !paymentForm().payment_reference || paymentForm().amount <= 0">
+                  @if (applyingPayment()) { <mat-spinner diameter="16"></mat-spinner> }
+                  {{ 'Apply Payment' | translate }}
+                </button>
+                <button class="btn btn-outline btn-sm" (click)="togglePaymentForm()">{{ 'Cancel' | translate }}</button>
+              </div>
+            </div>
+          }
+
+          @if (showWriteOffForm()) {
+            <div class="action-form">
+              <h4>{{ 'Write Off AR' | translate }}</h4>
+              <div class="form-grid">
+                <div class="form-field">
+                  <label>{{ 'Write Off Amount' | translate }}</label>
+                  <input type="number" class="field-input" min="0.01" step="0.01"
+                         [ngModel]="writeOffForm().write_off_amount" (ngModelChange)="updateWriteOffForm({ write_off_amount: +$event })" />
+                </div>
+                <div class="form-field">
+                  <label>{{ 'Reason' | translate }}</label>
+                  <input type="text" class="field-input" placeholder="Reason for write-off (required)"
+                         [ngModel]="writeOffForm().reason" (ngModelChange)="updateWriteOffForm({ reason: $event })" />
+                </div>
+              </div>
+              <div class="form-actions">
+                <button class="btn btn-danger btn-sm" (click)="writeOff()" [disabled]="writingOff() || !writeOffForm().reason">
+                  @if (writingOff()) { <mat-spinner diameter="16"></mat-spinner> }
+                  {{ 'Write Off' | translate }}
+                </button>
+                <button class="btn btn-outline btn-sm" (click)="toggleWriteOffForm()">{{ 'Cancel' | translate }}</button>
+              </div>
+            </div>
+          }
         }
       </div>
     </div>

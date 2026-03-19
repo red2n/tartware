@@ -1300,3 +1300,86 @@ Prometheus v2.53.0 scrapes all 17 services. Grafana OSS 11.1.0 with auto-provisi
 Angular 21 guest portal in `UI/guest-portal/` (port 4300). 5 pages: room search, booking, confirmation, lookup, online check-in. Material Design, API proxy to gateway.
 
 - [x] **P9-11: Build guest portal Angular UI** — Self-service booking, check-in, key retrieval frontend using existing API endpoints. ✅
+
+---
+
+### Accounts Module — Billing Service Decomposition & UI Gaps (2026-03-18)
+
+Decomposed `billing-service` into 4 domain services. API side is 100% complete for all 16 items. UI has 9 remaining gaps.
+
+#### Service Decomposition (done)
+
+| Service | Port | Domain | Status |
+|---------|------|--------|--------|
+| billing-service | 3025 | Core billing (charges, payments, folios, night audit) | Existing — updated |
+| cashier-service | 3080 | Cashier sessions (open/close/handover) | ✅ New — 23 files |
+| accounts-service | 3085 | AR posting, invoicing, aging, write-offs | ✅ New — 25 files |
+| finance-admin-service | 3090 | Tax config, fiscal periods, commissions, pricing, reports | ✅ New — 22 files |
+
+#### API + Schema + Command Completion Matrix (all done)
+
+| # | Feature | Schema | Validator | Seed | API Cmd | API Read | Status |
+|---|---------|--------|-----------|------|---------|----------|--------|
+| 1 | AR Aging Buckets | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ Done |
+| 2 | Manual Date Roll | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ Done |
+| 3 | Cashier Open/Close | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ Done |
+| 4 | AR Write-off/Adjust | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ Done |
+| 5 | Tax Config CRUD | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ Done |
+| 6 | Express Checkout | ✅ | ✅ | ✅ | ✅ | — | ✅ Done |
+| 7 | Pre-Audit Checklist | — | — | — | — | ✅ | ✅ Done |
+| 8 | Bucket Check | — | — | — | — | ✅ | ✅ Done |
+| 9 | Shift Handover | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ Done |
+| 10 | AR Post Charge/Pay | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ Done |
+| 11 | Invoice CRUD | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ Done |
+| 12 | Fiscal Period Mgmt | ✅ | ✅ | ✅ | ✅ | — | ✅ Done |
+| 13 | Commission Cmds | ✅ | ✅ | ✅ | ✅ | — | ✅ Done |
+| 14 | Pricing Evaluate | ✅ | ✅ | ✅ | ✅ | — | ✅ Done |
+| 15 | Financial Reports | — | — | — | — | ✅ | ✅ Done |
+| 16 | Commission Reports | — | — | — | — | ✅ | ✅ Done |
+
+#### UI Gaps (9 of 16 items need work)
+
+- [ ] **UI-1: Tax Config — Add create/edit/delete forms** | Complexity: Medium | Priority: P2
+  - Existing `tax-config` component lists/filters/sorts tax configs but has no write actions.
+  - Need: Create dialog (tax_name, rate, type, jurisdiction, effective dates), Edit dialog, Delete confirmation.
+  - API: `billing.tax_config.create`, `billing.tax_config.update`, `billing.tax_config.delete` commands exist.
+
+- [ ] **UI-2: Express Checkout — Add checkout flow** | Complexity: Medium | Priority: P2
+  - No express checkout button/flow in any UI component.
+  - Need: Button on reservation detail or front-desk view → confirms folio balance → executes `billing.express_checkout` command.
+  - API: `billing.express_checkout` command exists (resolves folio, checks balance, closes folio, marks checkout, sets room dirty).
+
+- [ ] **UI-3: Pre-Audit Checklist — Add to night-audit screen** | Complexity: Low | Priority: P2
+  - Night-audit component shows business date status and trial balance but not the pre-audit checklist.
+  - Need: New tab or section calling `GET /v1/billing/pre-audit-checklist` and displaying checklist items with pass/fail status.
+  - API: Endpoint exists with real SQL.
+
+- [ ] **UI-4: Bucket Check — Add view** | Complexity: Low | Priority: P3
+  - No bucket check UI in any component.
+  - Need: Section in night-audit or standalone view calling `GET /v1/billing/bucket-check` and showing rate bucket discrepancies.
+  - API: Endpoint exists with real SQL.
+
+- [ ] **UI-5: Shift Handover — Add to cashiering screen** | Complexity: Medium | Priority: P2
+  - Cashiering component has open/close session but no handover action.
+  - Need: Handover button → dialog (outgoing session ID, incoming cashier name, terminal, float, notes) → calls `billing.cashier.handover` command.
+  - API: Command exists (atomically closes outgoing + opens incoming session).
+
+- [ ] **UI-6: Invoice Management — Add CRUD UI** | Complexity: High | Priority: P2
+  - No invoice management UI anywhere in accounts module.
+  - Need: Invoice list view, create dialog (guest/reservation/line items), adjust dialog (amount/notes), finalize action.
+  - API: `billing.invoice.create`, `billing.invoice.adjust`, `billing.invoice.finalize` commands + GET list/detail endpoints exist.
+
+- [ ] **UI-7: Fiscal Period Management — Add UI** | Complexity: Medium | Priority: P2
+  - No fiscal period management UI.
+  - Need: Fiscal period list, close/lock/reopen actions with confirmation dialogs and state machine guards.
+  - API: `billing.fiscal_period.close`, `.lock`, `.reopen` commands exist (OPEN→SOFT_CLOSE→LOCKED with reopen path).
+
+- [ ] **UI-8: Commission Management — Add UI** | Complexity: High | Priority: P3
+  - No commission management UI or commission reports view.
+  - Need: Commission list, calculate/approve/mark-paid actions, statement generation, commission report view.
+  - API: 4 commission commands + `GET /v1/billing/reports/commissions` exist.
+
+- [ ] **UI-9: Financial Reports — Add departmental revenue & tax summary views** | Complexity: Medium | Priority: P2
+  - Night-audit shows trial balance but not departmental revenue or tax summary.
+  - Need: Two additional report views/tabs calling `GET /v1/billing/reports/departmental-revenue` and `GET /v1/billing/reports/tax-summary`.
+  - API: Both endpoints exist with real SQL.

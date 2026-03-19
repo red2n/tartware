@@ -17,6 +17,7 @@ import { PageHeaderComponent } from "../../../shared/components/page-header/page
 import { formatCurrency, formatShortDate } from "../../../shared/format-utils";
 import { PaginationComponent } from "../../../shared/pagination/pagination";
 import { createSortState, getAriaSort, getSortIcon, sortBy, toggleSort } from "../../../shared/sort-utils";
+import { ToastService } from "../../../shared/toast/toast.service";
 
 type SessionStatusFilter = "ALL" | "OPEN" | "CLOSED" | "RECONCILED" | "PENDING_APPROVAL";
 
@@ -41,6 +42,7 @@ export class CashieringComponent {
 	private readonly api = inject(ApiService);
 	private readonly auth = inject(AuthService);
 	private readonly ctx = inject(TenantContextService);
+	private readonly toast = inject(ToastService);
 	readonly globalSearch = inject(GlobalSearchService);
 
 	// ── State ──
@@ -54,6 +56,25 @@ export class CashieringComponent {
 	private readonly _resetPage = effect(() => {
 		this.globalSearch.query();
 		this.page.set(1);
+	});
+
+	// ── Open Session Form ──
+	readonly showOpenForm = signal(false);
+	readonly openingSession = signal(false);
+	readonly openForm = signal({
+		cashier_name: "",
+		terminal_id: "",
+		shift_type: "full_day" as "morning" | "afternoon" | "night" | "full_day",
+		opening_float: 0,
+	});
+
+	// ── Close Session ──
+	readonly closingSessionId = signal<string | null>(null);
+	readonly closingSession = signal(false);
+	readonly closeForm = signal({
+		closing_cash_declared: 0,
+		closing_cash_counted: 0,
+		notes: "",
 	});
 
 	readonly statusFilters: { key: SessionStatusFilter; label: string }[] = [
@@ -146,6 +167,80 @@ export class CashieringComponent {
 
 	formatDate = formatShortDate;
 	formatCurrency = formatCurrency;
+
+	// ── Open Session ──
+	toggleOpenForm(): void {
+		this.showOpenForm.set(!this.showOpenForm());
+	}
+
+	updateOpenForm(partial: Partial<typeof this.openForm extends () => infer T ? T : never>): void {
+		this.openForm.set({ ...this.openForm(), ...partial });
+	}
+
+	async openSession(): Promise<void> {
+		const tenantId = this.auth.tenantId();
+		const propertyId = this.ctx.propertyId();
+		if (!tenantId || !propertyId) return;
+
+		this.openingSession.set(true);
+		try {
+			const form = this.openForm();
+			await this.api.post(`/tenants/${tenantId}/commands/billing.cashier.open`, {
+				property_id: propertyId,
+				cashier_id: this.auth.user()?.id,
+				cashier_name: form.cashier_name,
+				terminal_id: form.terminal_id || undefined,
+				shift_type: form.shift_type,
+				opening_float: form.opening_float,
+			});
+			this.toast.success("Cashier session opened.");
+			this.showOpenForm.set(false);
+			this.openForm.set({ cashier_name: "", terminal_id: "", shift_type: "full_day", opening_float: 0 });
+			await this.loadSessions();
+		} catch (e) {
+			this.toast.error(e instanceof Error ? e.message : "Failed to open session");
+		} finally {
+			this.openingSession.set(false);
+		}
+	}
+
+	// ── Close Session ──
+	showCloseForm(sessionId: string): void {
+		this.closingSessionId.set(sessionId);
+		this.closeForm.set({ closing_cash_declared: 0, closing_cash_counted: 0, notes: "" });
+	}
+
+	cancelClose(): void {
+		this.closingSessionId.set(null);
+	}
+
+	updateCloseForm(partial: Partial<typeof this.closeForm extends () => infer T ? T : never>): void {
+		this.closeForm.set({ ...this.closeForm(), ...partial });
+	}
+
+	async closeSession(): Promise<void> {
+		const tenantId = this.auth.tenantId();
+		const sessionId = this.closingSessionId();
+		if (!tenantId || !sessionId) return;
+
+		this.closingSession.set(true);
+		try {
+			const form = this.closeForm();
+			await this.api.post(`/tenants/${tenantId}/commands/billing.cashier.close`, {
+				session_id: sessionId,
+				closing_cash_declared: form.closing_cash_declared,
+				closing_cash_counted: form.closing_cash_counted,
+				notes: form.notes || undefined,
+			});
+			this.toast.success("Cashier session closed.");
+			this.closingSessionId.set(null);
+			await this.loadSessions();
+		} catch (e) {
+			this.toast.error(e instanceof Error ? e.message : "Failed to close session");
+		} finally {
+			this.closingSession.set(false);
+		}
+	}
 
 	// ── Data loading ──
 	async loadSessions(): Promise<void> {

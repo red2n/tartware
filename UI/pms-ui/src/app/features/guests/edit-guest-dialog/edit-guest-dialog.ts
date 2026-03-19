@@ -7,6 +7,7 @@ import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
 
 import { ApiService, ApiValidationError } from "../../../core/api/api.service";
 import { AuthService } from "../../../core/auth/auth.service";
+import { GUEST_TITLES, LOYALTY_TIERS, NATIONALITIES, VIP_STATUSES } from "../../../shared/guest-constants";
 import { ToastService } from "../../../shared/toast/toast.service";
 
 export interface EditGuestDialogData {
@@ -63,9 +64,10 @@ export class EditGuestDialogComponent {
 	vipStatus = this.data.vip_status ?? "";
 	loyaltyTier = this.data.loyalty_tier ?? "";
 
-	readonly titles = ["Mr.", "Mrs.", "Ms.", "Dr.", "Prof."];
-	readonly vipStatuses = ["VIP1", "VIP2", "VIP3", "VIP4", "VIP5", "VVIP"];
-	readonly loyaltyTiers = ["BASE", "SILVER", "GOLD", "PLATINUM", "ELITE"];
+	readonly titles = GUEST_TITLES;
+	readonly vipStatuses = VIP_STATUSES;
+	readonly loyaltyTiers = LOYALTY_TIERS;
+	readonly nationalities = NATIONALITIES;
 
 	private formatDateForInput(value: string | Date | null | undefined): string {
 		if (!value) return "";

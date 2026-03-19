@@ -55,6 +55,15 @@ export const GuestRegisterCommandSchema = z.object({
 	last_name: z.string().trim().min(1).max(100),
 	email: z.string().email().max(255),
 	phone: PhoneSchema.optional(),
+	title: z.string().trim().min(1).max(20).optional(),
+	nationality: z.string().trim().min(1).max(3).optional(),
+	gender: z.string().trim().min(1).max(20).optional(),
+	date_of_birth: z
+		.string()
+		.trim()
+		.regex(/^\d{4}-\d{2}-\d{2}$/, "Expected YYYY-MM-DD")
+		.optional(),
+	loyalty_tier: z.string().trim().min(1).max(50).optional(),
 	address: GuestAddressSchema,
 	preferences: GuestPreferencesSchema,
 	metadata: z.record(z.unknown()).optional(),

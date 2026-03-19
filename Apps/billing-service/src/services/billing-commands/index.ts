@@ -14,7 +14,9 @@
  *  ├─ Commission    — calculate, approve, pay, statement
  *  ├─ AR            — post, apply, age, write-off
  *  ├─ Cashier       — open/close sessions
- *  └─ Pricing       — evaluate rules, bulk recommendations
+ *  ├─ Pricing       — evaluate rules, bulk recommendations
+ *  ├─ Tax Config    — create, update, delete tax rules
+ *  └─ Express CO    — auto-settle + checkout
  */
 
 export {
@@ -40,10 +42,18 @@ export {
   generateCommissionStatement,
   markCommissionPaid,
 } from "./commission.js";
+export { manualDateRoll } from "./date-roll.js";
+export { expressCheckout } from "./express-checkout.js";
+export {
+  closeFiscalPeriod,
+  lockFiscalPeriod,
+  reopenFiscalPeriod,
+} from "./fiscal-period.js";
 export {
   closeFolio,
   transferFolio,
 } from "./folio.js";
+export { createFolioWindow } from "./folio-window.js";
 export {
   adjustInvoice,
   createInvoice,
@@ -63,3 +73,9 @@ export {
   bulkGeneratePricingRecommendations,
   evaluatePricingRules,
 } from "./pricing.js";
+export { cashierHandover } from "./shift-handover.js";
+export {
+  createTaxConfig,
+  deleteTaxConfig,
+  updateTaxConfig,
+} from "./tax-config.js";

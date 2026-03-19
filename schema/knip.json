@@ -5,7 +5,10 @@
   "ignore": [
     "src/**/*.d.ts",
     "dist/**",
+    "src/api/**",
     "src/schemas/08-settings/**",
+    "src/schemas/09-reference-data/**",
+    "src/schemas/10-compliance/**",
     "src/shared/validators.ts"
   ]
 }

@@ -33,6 +33,7 @@ import {
   finalizeInvoice,
   generateCommissionStatement,
   incrementAuthorization,
+  manualDateRoll,
   markCommissionPaid,
   openCashierSession,
   postArEntry,
@@ -47,11 +48,16 @@ import {
   writeOffAr,
 } from "../services/billing-command-service.js";
 import {
+  cashierHandover,
   closeFiscalPeriod,
+  createFolioWindow,
+  createTaxConfig,
+  deleteTaxConfig,
+  expressCheckout,
   lockFiscalPeriod,
   reopenFiscalPeriod,
-} from "../services/billing-commands/fiscal-period.js";
-import { createFolioWindow } from "../services/billing-commands/folio-window.js";
+  updateTaxConfig,
+} from "../services/billing-commands/index.js";
 
 let consumer: Consumer | null = null;
 const logger = appLogger.child({ module: "billing-command-consumer" });
@@ -162,6 +168,12 @@ const routeBillingCommand = async (
       return;
     case "billing.night_audit.execute":
       await executeNightAudit(envelope.payload, {
+        tenantId: metadata.tenantId,
+        initiatedBy: metadata.initiatedBy ?? null,
+      });
+      return;
+    case "billing.date_roll.manual":
+      await manualDateRoll(envelope.payload, {
         tenantId: metadata.tenantId,
         initiatedBy: metadata.initiatedBy ?? null,
       });
@@ -300,6 +312,36 @@ const routeBillingCommand = async (
       return;
     case "billing.folio_window.create":
       await createFolioWindow(envelope.payload, {
+        tenantId: metadata.tenantId,
+        initiatedBy: metadata.initiatedBy ?? null,
+      });
+      return;
+    case "billing.tax_config.create":
+      await createTaxConfig(envelope.payload, {
+        tenantId: metadata.tenantId,
+        initiatedBy: metadata.initiatedBy ?? null,
+      });
+      return;
+    case "billing.tax_config.update":
+      await updateTaxConfig(envelope.payload, {
+        tenantId: metadata.tenantId,
+        initiatedBy: metadata.initiatedBy ?? null,
+      });
+      return;
+    case "billing.tax_config.delete":
+      await deleteTaxConfig(envelope.payload, {
+        tenantId: metadata.tenantId,
+        initiatedBy: metadata.initiatedBy ?? null,
+      });
+      return;
+    case "billing.express_checkout":
+      await expressCheckout(envelope.payload, {
+        tenantId: metadata.tenantId,
+        initiatedBy: metadata.initiatedBy ?? null,
+      });
+      return;
+    case "billing.cashier.handover":
+      await cashierHandover(envelope.payload, {
         tenantId: metadata.tenantId,
         initiatedBy: metadata.initiatedBy ?? null,
       });

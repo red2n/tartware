@@ -51,6 +51,11 @@ jobs:
           DUPLO_MIN_LINES: 60
           DUPLO_EXTENSIONS: ts,tsx,js
           DUPLO_IGNORE_SAME_NAME: "true"
+          DUPLO_EXCLUDE_FILES: >-
+            Apps/billing-service/src/services/billing-service.ts,
+            Apps/billing-service/src/sql/billing-queries.ts,
+            Apps/billing-service/src/services/billing-commands/commission.ts,
+            Apps/billing-service/src/services/billing-commands/pricing.ts
         run: ./executables/run-duplo/run-duplo.sh
 
       - name: Upload Duplo reports

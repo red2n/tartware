@@ -7,6 +7,7 @@ import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
 
 import { ApiService, ApiValidationError } from "../../../core/api/api.service";
 import { AuthService } from "../../../core/auth/auth.service";
+import { GUEST_TITLES, LOYALTY_TIERS, NATIONALITIES, VIP_STATUSES } from "../../../shared/guest-constants";
 import { ToastService } from "../../../shared/toast/toast.service";
 
 @Component({
@@ -47,9 +48,10 @@ export class CreateGuestDialogComponent {
 	vipStatus = "";
 	loyaltyTier = "";
 
-	readonly titles = ["Mr.", "Mrs.", "Ms.", "Dr.", "Prof."];
-	readonly vipStatuses = ["VIP1", "VIP2", "VIP3", "VIP4", "VIP5", "VVIP"];
-	readonly loyaltyTiers = ["BASE", "SILVER", "GOLD", "PLATINUM", "ELITE"];
+	readonly titles = GUEST_TITLES;
+	readonly vipStatuses = VIP_STATUSES;
+	readonly loyaltyTiers = LOYALTY_TIERS;
+	readonly nationalities = NATIONALITIES;
 
 	markTouched(field: string): void {
 		this.touched = { ...this.touched, [field]: true };
@@ -106,22 +108,18 @@ export class CreateGuestDialogComponent {
 			if (this.vipStatus) preferences["vip_status"] = this.vipStatus;
 			if (this.loyaltyTier) preferences["loyalty_tier"] = this.loyaltyTier;
 
-			// Extra fields go into metadata for downstream processing
-			const metadata: Record<string, unknown> = {};
-			if (this.title) metadata["title"] = this.title;
-			if (this.nationality.trim()) metadata["nationality"] = this.nationality.trim();
-			if (this.gender) metadata["gender"] = this.gender;
-			if (this.dateOfBirth) metadata["date_of_birth"] = this.dateOfBirth;
-			if (this.companyName.trim()) metadata["company_name"] = this.companyName.trim();
-
 			await this.api.post("/guests", {
 				tenant_id: tenantId,
 				first_name: this.firstName.trim(),
 				last_name: this.lastName.trim(),
 				email: this.email.trim(),
 				phone: this.phone.trim() || undefined,
+				title: this.title || undefined,
+				nationality: this.nationality.trim() || undefined,
+				gender: this.gender || undefined,
+				date_of_birth: this.dateOfBirth || undefined,
+				loyalty_tier: this.loyaltyTier || undefined,
 				...(Object.keys(preferences).length > 0 ? { preferences } : {}),
-				...(Object.keys(metadata).length > 0 ? { metadata } : {}),
 			});
 			this.dialogRef.close(true);
 		} catch (e) {

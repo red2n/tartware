@@ -30,6 +30,7 @@ export * from "./rates.js";
 export * from "./recommendations.js";
 export * from "./reservations.js";
 export * from "./revenue.js";
+// eslint-disable-next-line import/export -- type-only re-exports not detected by plugin
 export * from "./revenue-rows.js";
 export * from "./rooms.js";
 export * from "./settings.js";

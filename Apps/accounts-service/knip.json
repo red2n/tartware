@@ -1,0 +1,21 @@
+{
+  "$schema": "https://unpkg.com/knip@5/schema.json",
+  "project": ["src/**/*.ts"],
+  "ignore": ["src/services/common.ts"],
+  "ignoreDependencies": [
+    "@tartware/schemas",
+    "@tartware/config",
+    "@tartware/openapi",
+    "@tartware/telemetry",
+    "@tartware/tenant-auth",
+    "@tartware/command-consumer-utils",
+    "@tartware/fastify-server",
+    "@fastify/cors",
+    "@fastify/helmet",
+    "@fastify/sensible",
+    "pg",
+    "@vitest/coverage-v8"
+  ],
+  "ignoreBinaries": [],
+  "ignoreExportsUsedInFile": true
+}

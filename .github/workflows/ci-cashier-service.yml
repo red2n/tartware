@@ -1,0 +1,22 @@
+name: CI · Cashier Service
+
+on:
+  push:
+    branches: [main, develop, deployment]
+    paths:
+      - 'Apps/cashier-service/**'
+      - 'schema/**'
+      - 'package.json'
+      - 'nx.json'
+  pull_request:
+    paths:
+      - 'Apps/cashier-service/**'
+      - 'schema/**'
+  workflow_dispatch:
+
+jobs:
+  ci:
+    uses: ./.github/workflows/package-ci.yml
+    with:
+      package-scope: '@tartware/cashier-service'
+      has-tests: false

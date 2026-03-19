@@ -16,6 +16,13 @@ DROP FUNCTION IF EXISTS upsert_guest(
     JSONB, VARCHAR
 );
 
+-- Drop old 13-param signature, replaced by 18-param version with title/nationality/gender/dob/loyalty_tier
+DROP FUNCTION IF EXISTS upsert_guest(
+    UUID, VARCHAR, VARCHAR, VARCHAR, VARCHAR,
+    TEXT, VARCHAR, VARCHAR, VARCHAR, VARCHAR,
+    JSONB, VARCHAR, VARCHAR
+);
+
 -- =====================================================
 -- Function: upsert_guest
 -- Purpose: Insert or update guest, preventing duplicates
@@ -35,7 +42,12 @@ CREATE OR REPLACE FUNCTION upsert_guest(
     p_postal_code VARCHAR(20) DEFAULT NULL,
     p_preferences JSONB DEFAULT NULL,
     p_created_by VARCHAR(100) DEFAULT 'SYSTEM',
-    p_vip_status VARCHAR(10) DEFAULT 'NONE'
+    p_vip_status VARCHAR(10) DEFAULT 'NONE',
+    p_title VARCHAR(20) DEFAULT NULL,
+    p_nationality VARCHAR(3) DEFAULT NULL,
+    p_gender VARCHAR(20) DEFAULT NULL,
+    p_date_of_birth DATE DEFAULT NULL,
+    p_loyalty_tier VARCHAR(50) DEFAULT NULL
 )
 RETURNS UUID
 LANGUAGE plpgsql
@@ -63,6 +75,11 @@ BEGIN
         address,
         preferences,
         vip_status,
+        title,
+        nationality,
+        gender,
+        date_of_birth,
+        loyalty_tier,
         created_by,
         created_at,
         updated_at,
@@ -77,6 +94,11 @@ BEGIN
         v_address_jsonb,
         p_preferences,
         COALESCE(p_vip_status, 'NONE'),
+        p_title,
+        p_nationality,
+        p_gender,
+        p_date_of_birth,
+        p_loyalty_tier,
         p_created_by,
         CURRENT_TIMESTAMP, -- created_at
         CURRENT_TIMESTAMP, -- updated_at
@@ -91,6 +113,11 @@ BEGIN
         address = COALESCE(EXCLUDED.address, guests.address),
         preferences = COALESCE(EXCLUDED.preferences, guests.preferences),
         vip_status = EXCLUDED.vip_status,
+        title = COALESCE(EXCLUDED.title, guests.title),
+        nationality = COALESCE(EXCLUDED.nationality, guests.nationality),
+        gender = COALESCE(EXCLUDED.gender, guests.gender),
+        date_of_birth = COALESCE(EXCLUDED.date_of_birth, guests.date_of_birth),
+        loyalty_tier = COALESCE(EXCLUDED.loyalty_tier, guests.loyalty_tier),
         updated_at = CURRENT_TIMESTAMP,
         updated_by = p_created_by,
         version = guests.version + 1

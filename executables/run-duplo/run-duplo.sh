@@ -53,7 +53,8 @@ echo "🔍 Scanning source files under ${TARGET_DIR} for duplicates with Duplo (
 echo "📄 Report: ${REPORT_FILE}"
 
 FILE_LIST="$(mktemp)"
-trap 'rm -f "${FILE_LIST}"' EXIT
+FILTERED_FILE_LIST="$(mktemp)"
+trap 'rm -f "${FILE_LIST}" "${FILTERED_FILE_LIST}"' EXIT
 
 IFS=',' read -r -a EXT_ARRAY <<< "${EXTENSIONS}"
 FIND_CMD=(find "${TARGET_DIR}" -type f)
@@ -96,6 +97,38 @@ fi
 
 FIND_CMD+=("${EXCLUDES[@]}")
 "${FIND_CMD[@]}" > "${FILE_LIST}"
+
+if [ -n "${DUPLO_EXCLUDE_FILES:-}" ]; then
+  IFS=',' read -r -a EXTRA_FILE_EXCLUDES <<< "${DUPLO_EXCLUDE_FILES}"
+  declare -a EXCLUDED_FILES=()
+  for raw_file in "${EXTRA_FILE_EXCLUDES[@]}"; do
+    file="$(echo "${raw_file}" | tr -d '[:space:]')"
+    if [ -z "${file}" ]; then
+      continue
+    fi
+    if [[ "${file}" != /* ]]; then
+      file="${ROOT_DIR}/${file#./}"
+    fi
+    EXCLUDED_FILES+=("${file}")
+  done
+
+  if [ ${#EXCLUDED_FILES[@]} -gt 0 ]; then
+    : > "${FILTERED_FILE_LIST}"
+    while IFS= read -r found_file; do
+      skip_file=false
+      for excluded_file in "${EXCLUDED_FILES[@]}"; do
+        if [ "${found_file}" = "${excluded_file}" ]; then
+          skip_file=true
+          break
+        fi
+      done
+      if [ "${skip_file}" = false ]; then
+        printf '%s\n' "${found_file}" >> "${FILTERED_FILE_LIST}"
+      fi
+    done < "${FILE_LIST}"
+    mv "${FILTERED_FILE_LIST}" "${FILE_LIST}"
+  fi
+fi
 
 if [ ! -s "${FILE_LIST}" ]; then
   echo "ℹ️  No matching source files found under ${TARGET_DIR}"
