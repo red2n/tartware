@@ -726,7 +726,13 @@ export const BillingTaxConfigCreateCommandSchema = z.object({
 		.enum(["standard", "reverse", "inclusive", "tiered"])
 		.default("standard"),
 	rounding_method: z
-		.enum(["round_half_up", "round_half_down", "round_up", "round_down", "bankers"])
+		.enum([
+			"round_half_up",
+			"round_half_down",
+			"round_up",
+			"round_down",
+			"bankers",
+		])
 		.default("round_half_up"),
 	metadata: z.record(z.unknown()).optional(),
 	idempotency_key: z.string().max(120).optional(),
@@ -777,7 +783,13 @@ export const BillingTaxConfigUpdateCommandSchema = z.object({
 		.enum(["standard", "reverse", "inclusive", "tiered"])
 		.optional(),
 	rounding_method: z
-		.enum(["round_half_up", "round_half_down", "round_up", "round_down", "bankers"])
+		.enum([
+			"round_half_up",
+			"round_half_down",
+			"round_up",
+			"round_down",
+			"bankers",
+		])
 		.optional(),
 	metadata: z.record(z.unknown()).optional(),
 	idempotency_key: z.string().max(120).optional(),

@@ -1,4 +1,4 @@
-import { type RoomTypeItem, RoomTypeItemSchema } from "@tartware/schemas";
+import { type RoomTypeItem, RoomTypeItemSchema, type RoomTypeRow } from "@tartware/schemas";
 
 import { query } from "../lib/db.js";
 import { buildDynamicUpdate, type UpdateField } from "../sql/dynamic-update-builder.js";
@@ -11,35 +11,7 @@ import {
 // Re-export schema for consumers that import from this module
 export { RoomTypeItemSchema };
 
-type RoomTypeRow = {
-  id: string;
-  tenant_id: string;
-  property_id: string;
-  type_name: string;
-  type_code: string;
-  description: string | null;
-  short_description: string | null;
-  category: string | null;
-  base_occupancy: number | null;
-  max_occupancy: number | null;
-  max_adults: number | null;
-  max_children: number | null;
-  extra_bed_capacity: number | null;
-  size_sqm: string | number | null; // PostgreSQL numeric returns string
-  bed_type: string | null;
-  number_of_beds: number | null;
-  amenities: unknown | null;
-  features: unknown | null;
-  base_price: string | number | null; // PostgreSQL numeric returns string
-  currency: string | null;
-  images: unknown | null;
-  display_order: number | null;
-  is_active: boolean | null;
-  metadata: unknown | null;
-  created_at: string | Date | null;
-  updated_at: string | Date | null;
-  version: bigint | null;
-};
+// RoomTypeRow imported from @tartware/schemas
 
 /**
  * Convert PostgreSQL numeric (returned as string) to number.

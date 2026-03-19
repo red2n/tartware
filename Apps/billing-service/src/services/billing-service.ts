@@ -1,10 +1,19 @@
 import {
   type BillingPaymentListItem,
   BillingPaymentListItemSchema,
+  type BillingPaymentRow,
+  type BucketCheckItem,
   type ChargePostingListItem,
   ChargePostingListItemSchema,
+  type ChargePostingRow,
+  type CommissionReportItem,
+  type DepartmentalRevenueItem,
   type FolioListItem,
   FolioListItemSchema,
+  type FolioRow,
+  type PreAuditCheckItem,
+  type TaxSummaryItem,
+  type TrialBalanceResponse,
 } from "@tartware/schemas";
 
 import { applyBillingRetentionPolicy } from "../lib/compliance-policies.js";
@@ -22,33 +31,6 @@ import { toNumberOrFallback } from "../utils/numbers.js";
  */
 export const BillingPaymentSchema = BillingPaymentListItemSchema;
 export type BillingPayment = BillingPaymentListItem;
-
-type BillingPaymentRow = {
-  id: string;
-  tenant_id: string;
-  property_id: string;
-  property_name: string | null;
-  reservation_id: string | null;
-  confirmation_number: string | null;
-  guest_id: string | null;
-  reservation_guest_name: string | null;
-  reservation_guest_email: string | null;
-  guest_first_name: string | null;
-  guest_last_name: string | null;
-  payment_reference: string;
-  external_transaction_id: string | null;
-  transaction_type: string | null;
-  payment_method: string | null;
-  amount: number | string | null;
-  currency: string | null;
-  status: string | null;
-  gateway_name: string | null;
-  gateway_reference: string | null;
-  processed_at: string | Date | null;
-  created_at: string | Date;
-  updated_at: string | Date | null;
-  version: bigint | null;
-};
 
 const formatEnumDisplay = (
   value: string | null,
@@ -164,30 +146,6 @@ export const listBillingPayments = async (options: {
 // FOLIOS
 // ============================================================================
 
-type FolioRow = {
-  id: string;
-  tenant_id: string;
-  property_id: string;
-  property_name: string | null;
-  folio_number: string;
-  folio_type: string;
-  folio_status: string;
-  reservation_id: string | null;
-  confirmation_number: string | null;
-  guest_id: string | null;
-  guest_name: string | null;
-  company_name: string | null;
-  balance: number | string;
-  total_charges: number | string;
-  total_payments: number | string;
-  total_credits: number | string;
-  currency: string | null;
-  opened_at: string | Date;
-  closed_at: string | Date | null;
-  created_at: string | Date;
-  updated_at: string | Date | null;
-};
-
 const mapRowToFolio = (row: FolioRow): FolioListItem => {
   const { value: folioType, display: folioTypeDisplay } = formatEnumDisplay(
     row.folio_type,
@@ -282,40 +240,6 @@ export const getFolioById = async (
 // CHARGE POSTINGS
 // ============================================================================
 
-type ChargePostingRow = {
-  id: string;
-  tenant_id: string;
-  property_id: string;
-  folio_id: string;
-  folio_number: string | null;
-  reservation_id: string | null;
-  guest_id: string | null;
-  guest_name: string | null;
-  posting_date: string | Date;
-  business_date: string | Date;
-  transaction_type: string;
-  posting_type: string;
-  charge_code: string;
-  charge_description: string;
-  charge_category: string | null;
-  quantity: number | string;
-  unit_price: number | string;
-  subtotal: number | string;
-  tax_amount: number | string | null;
-  service_charge: number | string | null;
-  discount_amount: number | string | null;
-  total_amount: number | string;
-  currency: string | null;
-  payment_method: string | null;
-  source_system: string | null;
-  outlet: string | null;
-  is_voided: boolean;
-  voided_at: string | Date | null;
-  void_reason: string | null;
-  created_at: string | Date;
-  version: bigint | null;
-};
-
 const mapRowToChargePosting = (row: ChargePostingRow): ChargePostingListItem => {
   const { value: transactionType, display: transactionTypeDisplay } = formatEnumDisplay(
     row.transaction_type,
@@ -405,25 +329,6 @@ export const listChargePostings = async (options: {
 // TRIAL BALANCE
 // ============================================================================
 
-type TrialBalanceLineItem = {
-  category: string;
-  charge_code: string | null;
-  debit_total: number;
-  credit_total: number;
-  net: number;
-};
-
-type TrialBalanceReport = {
-  business_date: string;
-  property_id: string | null;
-  line_items: TrialBalanceLineItem[];
-  total_debits: number;
-  total_credits: number;
-  total_payments: number;
-  variance: number;
-  is_balanced: boolean;
-};
-
 /**
  * Generate a trial balance report for a given business date.
  * Verifies that total debits equal total credits + payments collected.
@@ -432,7 +337,7 @@ export const getTrialBalance = async (options: {
   tenantId: string;
   propertyId?: string;
   businessDate: string;
-}): Promise<TrialBalanceReport> => {
+}): Promise<TrialBalanceResponse> => {
   const { tenantId, propertyId, businessDate } = options;
 
   const params: unknown[] = [tenantId, businessDate];
@@ -531,14 +436,6 @@ export const getTrialBalance = async (options: {
 // DEPARTMENTAL REVENUE REPORT
 // ============================================================================
 
-type DepartmentalRevenueItem = {
-  department: string;
-  charge_count: number;
-  gross_revenue: number;
-  adjustments: number;
-  net_revenue: number;
-};
-
 /**
  * Revenue breakdown by department for a business date range.
  */
@@ -597,15 +494,6 @@ export const getDepartmentalRevenue = async (options: {
 // ============================================================================
 // TAX SUMMARY REPORT
 // ============================================================================
-
-type TaxSummaryItem = {
-  tax_name: string;
-  tax_type: string;
-  jurisdiction: string;
-  taxable_amount: number;
-  tax_collected: number;
-  transaction_count: number;
-};
 
 /**
  * Tax collections summary grouped by tax name / jurisdiction.
@@ -669,14 +557,6 @@ export const getTaxSummary = async (options: {
 // COMMISSION REPORT
 // ============================================================================
 
-type CommissionReportItem = {
-  source: string;
-  reservation_count: number;
-  room_revenue: number;
-  commission_amount: number;
-  commission_rate_avg: number;
-};
-
 /**
  * OTA / agent commission accruals for a date range.
  */
@@ -736,12 +616,6 @@ export const getCommissionReport = async (options: {
 // ============================================================================
 // PRE-AUDIT CHECKLIST
 // ============================================================================
-
-type PreAuditCheckItem = {
-  check: string;
-  passed: boolean;
-  detail: string;
-};
 
 /**
  * Run pre-audit checks for a property's current business date.
@@ -876,14 +750,6 @@ export const getPreAuditChecklist = async (options: {
 // ============================================================================
 // BUCKET CHECK (OCCUPANCY VERIFICATION)
 // ============================================================================
-
-type BucketCheckItem = {
-  category: string;
-  expected: number;
-  actual: number;
-  matched: boolean;
-  detail: string;
-};
 
 /**
  * Bucket check: compare system occupancy counts against expected

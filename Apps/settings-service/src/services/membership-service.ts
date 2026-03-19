@@ -1,14 +1,16 @@
-import { TenantRoleEnum } from "@tartware/schemas";
+import {
+  type TenantMembership as FullTenantMembership,
+  type TenantMembershipRow,
+  TenantRoleEnum,
+} from "@tartware/schemas";
 
 import { query } from "../lib/db.js";
 
-type TenantMembershipRow = {
-  tenant_id: string;
-  role: string;
-  is_active: boolean;
-  permissions: Record<string, unknown> | null;
-  modules: string[] | null;
-};
+/** Subset of TenantMembershipRow for single-tenant lookup (no tenant_name join). */
+type SettingsMembershipRow = Omit<TenantMembershipRow, "tenant_name">;
+
+/** Tenant membership without tenant name (looked up by specific tenant_id). */
+export type TenantMembership = Omit<FullTenantMembership, "tenantName">;
 
 const USER_TENANT_MEMBERSHIP_SQL = `
   SELECT
@@ -27,19 +29,6 @@ const USER_TENANT_MEMBERSHIP_SQL = `
     AND t.deleted_at IS NULL
 `;
 
-type TenantRole = (typeof TenantRoleEnum)["_type"];
-
-/**
- * Tenant membership view for a user within a tenant.
- */
-export type TenantMembership = {
-  tenantId: string;
-  role: TenantRole;
-  isActive: boolean;
-  permissions: Record<string, unknown>;
-  modules: string[];
-};
-
 /**
  * Fetch a user's membership for a specific tenant.
  */
@@ -47,7 +36,10 @@ export const getUserTenantMembership = async (
   userId: string,
   tenantId: string,
 ): Promise<TenantMembership | null> => {
-  const { rows } = await query<TenantMembershipRow>(USER_TENANT_MEMBERSHIP_SQL, [userId, tenantId]);
+  const { rows } = await query<SettingsMembershipRow>(USER_TENANT_MEMBERSHIP_SQL, [
+    userId,
+    tenantId,
+  ]);
   const row = rows[0];
   if (!row) {
     return null;

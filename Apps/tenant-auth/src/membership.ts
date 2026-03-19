@@ -1,27 +1,6 @@
-import { TenantRoleEnum } from "@tartware/schemas";
+import { type TenantMembership, type TenantMembershipRow, TenantRoleEnum } from "@tartware/schemas";
 
-type TenantMembershipRow = {
-  tenant_id: string;
-  tenant_name: string;
-  role: string;
-  is_active: boolean;
-  permissions: Record<string, unknown> | null;
-  modules: string[] | null;
-};
-
-type TenantRole = (typeof TenantRoleEnum)["_type"];
-
-/**
- * Tenant membership view for a user.
- */
-export type TenantMembership = {
-  tenantId: string;
-  tenantName: string;
-  role: TenantRole;
-  isActive: boolean;
-  permissions: Record<string, unknown>;
-  modules: string[];
-};
+export type { TenantMembership };
 
 type QueryFn = <T extends Record<string, unknown>>(
   sql: string,

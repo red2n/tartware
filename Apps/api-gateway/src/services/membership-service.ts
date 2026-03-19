@@ -1,15 +1,8 @@
-import { TenantRoleEnum } from "@tartware/schemas";
+import { type TenantMembership, type TenantMembershipRow, TenantRoleEnum } from "@tartware/schemas";
+
+export type { TenantMembership } from "@tartware/schemas";
 
 import { query } from "../lib/db.js";
-
-type TenantMembershipRow = {
-  tenant_id: string;
-  tenant_name: string;
-  role: string;
-  is_active: boolean;
-  permissions: Record<string, unknown> | null;
-  modules: string[] | null;
-};
 
 const USER_MEMBERSHIP_SQL = `
   SELECT
@@ -25,20 +18,6 @@ const USER_MEMBERSHIP_SQL = `
     AND COALESCE(uta.is_deleted, false) = false
     AND uta.deleted_at IS NULL
 `;
-
-type TenantRole = (typeof TenantRoleEnum)["_type"];
-
-/**
- * Tenant membership view for a user.
- */
-export type TenantMembership = {
-  tenantId: string;
-  tenantName: string;
-  role: TenantRole;
-  isActive: boolean;
-  permissions: Record<string, unknown>;
-  modules: string[];
-};
 
 /**
  * Fetch tenant memberships for a user.

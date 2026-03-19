@@ -1,5 +1,7 @@
 import { randomUUID } from "node:crypto";
 
+import type { PaymentRow } from "@tartware/schemas";
+
 import { query, queryWithClient, withTransaction } from "../../lib/db.js";
 import { appLogger } from "../../lib/logger.js";
 import {
@@ -30,15 +32,6 @@ import {
   resolveInvoiceId,
   SYSTEM_ACTOR_ID,
 } from "./common.js";
-
-type PaymentRow = {
-  id: string;
-  amount: number;
-  refund_amount: number | null;
-  payment_method: string;
-  currency: string | null;
-  payment_reference: string;
-};
 
 /**
  * Enforce credit limit for a guest/account before allowing a charge.

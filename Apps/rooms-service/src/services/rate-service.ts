@@ -5,7 +5,7 @@
  * Ownership: rooms-service
  */
 
-import { type RateItem, RateItemSchema } from "@tartware/schemas";
+import { type RateItem, RateItemSchema, type RateRow } from "@tartware/schemas";
 
 import { query } from "../lib/db.js";
 import { buildDynamicUpdate, type UpdateField } from "../sql/dynamic-update-builder.js";
@@ -16,46 +16,7 @@ import {
   RATE_LIST_SQL,
 } from "../sql/rate-queries.js";
 
-type RateRow = {
-  id: string;
-  tenant_id: string;
-  property_id: string;
-  room_type_id: string;
-  rate_name: string;
-  rate_code: string;
-  description: string | null;
-  rate_type: string | null;
-  strategy: string | null;
-  priority: number | null;
-  base_rate: number | null;
-  currency: string | null;
-  single_occupancy_rate: number | null;
-  double_occupancy_rate: number | null;
-  extra_person_rate: number | null;
-  extra_child_rate: number | null;
-  valid_from: string | Date | null;
-  valid_until: string | Date | null;
-  advance_booking_days_min: number | null;
-  advance_booking_days_max: number | null;
-  min_length_of_stay: number | null;
-  max_length_of_stay: number | null;
-  closed_to_arrival: boolean | null;
-  closed_to_departure: boolean | null;
-  meal_plan: string | null;
-  meal_plan_cost: number | null;
-  cancellation_policy: unknown | null;
-  modifiers: unknown | null;
-  channels: unknown | null;
-  customer_segments: unknown | null;
-  tax_inclusive: boolean | null;
-  tax_rate: number | null;
-  status: string | null;
-  display_order: number | null;
-  metadata: unknown | null;
-  created_at: string | Date | null;
-  updated_at: string | Date | null;
-  version: bigint | null;
-};
+// RateRow imported from @tartware/schemas
 
 const toStringDate = (value: string | Date | null): string | undefined => {
   if (!value) {

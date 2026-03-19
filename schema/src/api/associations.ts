@@ -93,3 +93,27 @@ export const AssociationStatusUpdateResponseSchema = z.object({
 export type AssociationStatusUpdateResponse = z.infer<
 	typeof AssociationStatusUpdateResponseSchema
 >;
+
+// -----------------------------------------------------------------------------
+// Tenant Membership Row / Mapped Shape
+// -----------------------------------------------------------------------------
+
+/** Raw row shape from user_tenant_associations + tenants join query. */
+export type TenantMembershipRow = {
+	tenant_id: string;
+	tenant_name: string;
+	role: string;
+	is_active: boolean;
+	permissions: Record<string, unknown> | null;
+	modules: string[] | null;
+};
+
+/** Mapped tenant membership for a user (camelCase, non-nullable). */
+export type TenantMembership = {
+	tenantId: string;
+	tenantName: string;
+	role: z.infer<typeof TenantRoleEnum>;
+	isActive: boolean;
+	permissions: Record<string, unknown>;
+	modules: string[];
+};
