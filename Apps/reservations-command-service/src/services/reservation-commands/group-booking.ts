@@ -149,7 +149,7 @@ export const createGroupBooking = async (
           arrival_date: arrivalDate.toISOString().slice(0, 10),
           departure_date: departureDate.toISOString().slice(0, 10),
           total_rooms_requested: command.total_rooms_requested,
-          block_status: command.block_status ?? "tentative",
+          block_status: command.block_status ?? "inquiry",
         },
       },
       headers: {

@@ -73,7 +73,6 @@ export class CreateReservationComponent implements OnInit {
 	readonly allRates = signal<RateDetail[]>([]);
 	readonly guests = signal<GuestOption[]>([]);
 	readonly saving = signal(false);
-	readonly error = signal<string | null>(null);
 	readonly loadingRef = signal(false);
 	readonly guestPage = signal(1);
 	readonly guestPageSize = 5;
@@ -317,7 +316,6 @@ export class CreateReservationComponent implements OnInit {
 		}
 
 		this.saving.set(true);
-		this.error.set(null);
 
 		try {
 			await this.api.post(`/tenants/${tenantId}/reservations`, {

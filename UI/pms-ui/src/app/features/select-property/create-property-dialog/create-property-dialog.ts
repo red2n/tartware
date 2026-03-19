@@ -41,7 +41,6 @@ export class CreatePropertyDialogComponent implements AfterViewInit, OnDestroy {
 	readonly addressInput = viewChild<ElementRef<HTMLInputElement>>("addressInput");
 
 	readonly saving = signal(false);
-	readonly error = signal<string | null>(null);
 	readonly placesAvailable = signal(false);
 	touched: Record<string, boolean> = {};
 
@@ -152,7 +151,6 @@ export class CreatePropertyDialogComponent implements AfterViewInit, OnDestroy {
 	async save(): Promise<void> {
 		if (!this.isValid) return;
 		this.saving.set(true);
-		this.error.set(null);
 
 		const tenantId = this.auth.tenantId();
 		if (!tenantId) {

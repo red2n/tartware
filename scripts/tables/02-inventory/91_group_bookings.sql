@@ -65,14 +65,15 @@ cutoff_days_before_arrival INTEGER, -- Days prior for cutoff reference
 release_unsold_rooms BOOLEAN DEFAULT TRUE, -- Auto release flag
 
 -- Room Block Status
-block_status VARCHAR(50) DEFAULT 'tentative' CHECK (
+block_status VARCHAR(50) DEFAULT 'inquiry' CHECK (
     block_status IN (
         'inquiry',
+        'prospect',
         'tentative',
         'definite',
         'confirmed',
-        'partial',
         'cancelled',
+        'turndown',
         'completed'
     )
 ), -- Overall block status

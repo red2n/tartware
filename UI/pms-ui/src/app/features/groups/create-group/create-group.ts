@@ -27,7 +27,6 @@ export class CreateGroupComponent {
 	private readonly toast = inject(ToastService);
 
 	readonly saving = signal(false);
-	readonly error = signal<string | null>(null);
 
 	touched: Record<string, boolean> = {};
 
@@ -144,7 +143,6 @@ export class CreateGroupComponent {
 		}
 
 		this.saving.set(true);
-		this.error.set(null);
 
 		const payload: Record<string, unknown> = {
 			property_id: propertyId,

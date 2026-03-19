@@ -30,7 +30,6 @@ export class CreateRoomDialogComponent implements OnInit {
 	readonly roomTypes = signal<RoomType[]>([]);
 	readonly buildings = signal<Building[]>([]);
 	readonly saving = signal(false);
-	readonly error = signal<string | null>(null);
 
 	touched: Record<string, boolean> = {};
 
@@ -76,7 +75,6 @@ export class CreateRoomDialogComponent implements OnInit {
 		if (!tenantId) return;
 
 		this.saving.set(true);
-		this.error.set(null);
 
 		try {
 			const selectedBuilding = this.buildings().find((b) => b.building_id === this.buildingId);

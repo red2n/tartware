@@ -50,7 +50,6 @@ export class CreateRoomTypeDialogComponent implements OnInit {
 	private readonly data = inject<RoomTypeItem | null>(MAT_DIALOG_DATA, { optional: true });
 
 	readonly saving = signal(false);
-	readonly error = signal<string | null>(null);
 	readonly categories = ROOM_CATEGORIES;
 
 	touched: Record<string, boolean> = {};
@@ -124,7 +123,6 @@ export class CreateRoomTypeDialogComponent implements OnInit {
 		if (!tenantId) return;
 
 		this.saving.set(true);
-		this.error.set(null);
 
 		const body = {
 			tenant_id: tenantId,

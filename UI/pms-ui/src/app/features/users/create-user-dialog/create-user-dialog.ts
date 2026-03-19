@@ -29,7 +29,6 @@ export class CreateUserDialogComponent {
 	private readonly toast = inject(ToastService);
 
 	readonly saving = signal(false);
-	readonly error = signal<string | null>(null);
 	readonly fieldErrors = signal<Record<string, string>>({});
 
 	touched: Record<string, boolean> = {};
@@ -87,7 +86,6 @@ export class CreateUserDialogComponent {
 		if (!this.isValid) return;
 
 		this.saving.set(true);
-		this.error.set(null);
 		this.fieldErrors.set({});
 
 		try {
@@ -108,14 +106,14 @@ export class CreateUserDialogComponent {
 					errors[fe.path] = fe.message;
 				}
 				this.fieldErrors.set(errors);
-				this.error.set(e.message);
+				this.toast.error(e.message);
 			} else if (e instanceof Error) {
 				if (e.message.includes("USER_ALREADY_EXISTS")) {
-					this.error.set("A user with this username or email already exists.");
+					this.toast.error("A user with this username or email already exists.");
 				} else if (e.message.includes("USER_ALREADY_ASSOCIATED")) {
-					this.error.set("This user is already associated with your organization.");
+					this.toast.error("This user is already associated with your organization.");
 				} else {
-					this.error.set(e.message);
+					this.toast.error(e.message);
 				}
 			} else {
 				this.toast.error("Failed to create user");

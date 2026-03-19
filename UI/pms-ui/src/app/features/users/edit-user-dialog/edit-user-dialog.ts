@@ -35,7 +35,6 @@ export class EditUserDialogComponent {
 	readonly data: DialogData = inject(MAT_DIALOG_DATA);
 
 	readonly saving = signal(false);
-	readonly error = signal<string | null>(null);
 
 	readonly roles = TENANT_ROLES;
 
@@ -70,7 +69,6 @@ export class EditUserDialogComponent {
 		if (!this.hasChanges) return;
 
 		this.saving.set(true);
-		this.error.set(null);
 
 		try {
 			if (this.roleChanged) {
@@ -103,7 +101,6 @@ export class EditUserDialogComponent {
 
 	async resetPassword(): Promise<void> {
 		this.saving.set(true);
-		this.error.set(null);
 
 		try {
 			await this.api.post("/users/reset-password", {

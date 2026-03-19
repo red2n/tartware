@@ -44,7 +44,6 @@ export class CreateBuildingDialogComponent implements OnInit {
 	private readonly data = inject<BuildingItem | null>(MAT_DIALOG_DATA, { optional: true });
 
 	readonly saving = signal(false);
-	readonly error = signal<string | null>(null);
 	readonly buildingTypes = BUILDING_TYPES;
 	readonly buildingStatuses = BUILDING_STATUSES;
 
@@ -123,7 +122,6 @@ export class CreateBuildingDialogComponent implements OnInit {
 		if (!tenantId) return;
 
 		this.saving.set(true);
-		this.error.set(null);
 
 		const body = {
 			tenant_id: tenantId,

@@ -30,7 +30,6 @@ export class CreateRateDialogComponent implements OnInit {
 	private readonly toast = inject(ToastService);
 
 	readonly saving = signal(false);
-	readonly error = signal<string | null>(null);
 	readonly roomTypes = signal<RoomTypeOption[]>([]);
 	readonly loadingRoomTypes = signal(false);
 
@@ -185,7 +184,6 @@ export class CreateRateDialogComponent implements OnInit {
 		if (!tenantId) return;
 
 		this.saving.set(true);
-		this.error.set(null);
 
 		try {
 			const propertyId = this.ctx.propertyId();

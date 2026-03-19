@@ -1229,7 +1229,6 @@ export const AllEnums = {
 	CreditStatusEnum,
 	GroupBookingTypeEnum,
 	GroupBlockStatusEnum,
-	GroupBlockStatusDescriptions,
 	MLModelTypeEnum,
 	PricingActionEnum,
 	ScenarioTypeEnum,

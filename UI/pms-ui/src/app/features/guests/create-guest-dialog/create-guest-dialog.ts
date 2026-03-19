@@ -24,7 +24,6 @@ export class CreateGuestDialogComponent {
 	private readonly toast = inject(ToastService);
 
 	readonly saving = signal(false);
-	readonly error = signal<string | null>(null);
 	readonly fieldErrors = signal<Record<string, string>>({});
 
 	touched: Record<string, boolean> = {};
@@ -99,7 +98,6 @@ export class CreateGuestDialogComponent {
 		if (!tenantId) return;
 
 		this.saving.set(true);
-		this.error.set(null);
 		this.fieldErrors.set({});
 
 		try {
@@ -129,7 +127,7 @@ export class CreateGuestDialogComponent {
 					errors[fe.path] = fe.message;
 				}
 				this.fieldErrors.set(errors);
-				this.error.set(e.message);
+				this.toast.error(e.message);
 			} else {
 				this.toast.error(e instanceof Error ? e.message : "Failed to create guest");
 				this.dialogRef.close(false);
