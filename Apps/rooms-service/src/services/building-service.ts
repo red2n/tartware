@@ -1,4 +1,4 @@
-import { type BuildingItem, BuildingItemSchema } from "@tartware/schemas";
+import { type BuildingItem, BuildingItemSchema, type BuildingRow } from "@tartware/schemas";
 
 import { query } from "../lib/db.js";
 import {
@@ -11,37 +11,7 @@ import { buildDynamicUpdate, type UpdateField } from "../sql/dynamic-update-buil
 // Re-export schema for consumers that import from this module
 export { BuildingItemSchema };
 
-type BuildingRow = {
-  building_id: string;
-  tenant_id: string;
-  property_id: string;
-  building_code: string;
-  building_name: string;
-  building_type: string;
-  floor_count: number | null;
-  basement_floors: number | null;
-  total_rooms: number | null;
-  wheelchair_accessible: boolean | null;
-  elevator_count: number | null;
-  has_lobby: boolean | null;
-  has_pool: boolean | null;
-  has_gym: boolean | null;
-  has_spa: boolean | null;
-  has_restaurant: boolean | null;
-  has_parking: boolean | null;
-  parking_spaces: number | null;
-  year_built: number | null;
-  last_renovation_year: number | null;
-  is_active: boolean | null;
-  building_status: string | null;
-  photo_url: string | null;
-  guest_description: string | null;
-  internal_notes: string | null;
-  metadata: unknown | null;
-  created_at: string | Date | null;
-  updated_at: string | Date | null;
-  version: bigint | null;
-};
+// BuildingRow imported from @tartware/schemas
 
 const toStringDate = (value: string | Date | null): string | undefined => {
   if (!value) return undefined;

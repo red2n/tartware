@@ -585,3 +585,80 @@ export const BucketCheckResponseSchema = z.object({
 });
 
 export type BucketCheckResponse = z.infer<typeof BucketCheckResponseSchema>;
+
+// =====================================================
+// DEPARTMENTAL REVENUE REPORT
+// =====================================================
+
+/** Single department line item in a departmental revenue report. */
+export const DepartmentalRevenueItemSchema = z.object({
+	department: z.string(),
+	charge_count: z.number().int(),
+	gross_revenue: z.number(),
+	adjustments: z.number(),
+	net_revenue: z.number(),
+});
+
+export type DepartmentalRevenueItem = z.infer<
+	typeof DepartmentalRevenueItemSchema
+>;
+
+/** Departmental revenue report response. */
+export const DepartmentalRevenueResponseSchema = z.object({
+	items: z.array(DepartmentalRevenueItemSchema),
+	total_gross: z.number(),
+	total_net: z.number(),
+});
+
+export type DepartmentalRevenueResponse = z.infer<
+	typeof DepartmentalRevenueResponseSchema
+>;
+
+// =====================================================
+// TAX SUMMARY REPORT
+// =====================================================
+
+/** Single tax line item in a tax summary report. */
+export const TaxSummaryItemSchema = z.object({
+	tax_name: z.string(),
+	tax_type: z.string(),
+	jurisdiction: z.string(),
+	taxable_amount: z.number(),
+	tax_collected: z.number(),
+	transaction_count: z.number().int(),
+});
+
+export type TaxSummaryItem = z.infer<typeof TaxSummaryItemSchema>;
+
+/** Tax summary report response. */
+export const TaxSummaryResponseSchema = z.object({
+	items: z.array(TaxSummaryItemSchema),
+	total_tax_collected: z.number(),
+});
+
+export type TaxSummaryResponse = z.infer<typeof TaxSummaryResponseSchema>;
+
+// =====================================================
+// COMMISSION REPORT
+// =====================================================
+
+/** Single source line item in a commission report. */
+export const CommissionReportItemSchema = z.object({
+	source: z.string(),
+	reservation_count: z.number().int(),
+	room_revenue: z.number(),
+	commission_amount: z.number(),
+	commission_rate_avg: z.number(),
+});
+
+export type CommissionReportItem = z.infer<typeof CommissionReportItemSchema>;
+
+/** Commission report response. */
+export const CommissionReportResponseSchema = z.object({
+	items: z.array(CommissionReportItemSchema),
+	total_commission: z.number(),
+});
+
+export type CommissionReportResponse = z.infer<
+	typeof CommissionReportResponseSchema
+>;

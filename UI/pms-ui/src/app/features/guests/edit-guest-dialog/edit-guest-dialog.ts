@@ -7,7 +7,12 @@ import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
 
 import { ApiService, ApiValidationError } from "../../../core/api/api.service";
 import { AuthService } from "../../../core/auth/auth.service";
-import { GUEST_TITLES, LOYALTY_TIERS, NATIONALITIES, VIP_STATUSES } from "../../../shared/guest-constants";
+import {
+	GUEST_TITLES,
+	LOYALTY_TIERS,
+	NATIONALITIES,
+	VIP_STATUSES,
+} from "../../../shared/guest-constants";
 import { ToastService } from "../../../shared/toast/toast.service";
 
 export interface EditGuestDialogData {
@@ -40,7 +45,6 @@ export class EditGuestDialogComponent {
 	private readonly data = inject<EditGuestDialogData>(MAT_DIALOG_DATA);
 
 	readonly saving = signal(false);
-	readonly error = signal<string | null>(null);
 	readonly fieldErrors = signal<Record<string, string>>({});
 
 	touched: Record<string, boolean> = {};
@@ -122,7 +126,6 @@ export class EditGuestDialogComponent {
 		if (!tenantId) return;
 
 		this.saving.set(true);
-		this.error.set(null);
 		this.fieldErrors.set({});
 
 		try {
@@ -150,7 +153,7 @@ export class EditGuestDialogComponent {
 					errors[fe.path] = fe.message;
 				}
 				this.fieldErrors.set(errors);
-				this.error.set(e.message);
+				this.toast.error(e.message);
 			} else {
 				this.toast.error(e instanceof Error ? e.message : "Failed to update guest");
 				this.dialogRef.close(false);

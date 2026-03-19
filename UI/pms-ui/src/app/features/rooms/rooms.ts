@@ -20,7 +20,13 @@ import { GlobalSearchService } from "../../core/search/global-search.service";
 import { housekeepingStatusClass, roomStatusClass } from "../../shared/badge-utils";
 import { PageHeaderComponent } from "../../shared/components/page-header/page-header";
 import { PaginationComponent } from "../../shared/pagination/pagination";
-import { createSortState, getAriaSort, getSortIcon, sortBy, toggleSort } from "../../shared/sort-utils";
+import {
+	createSortState,
+	getAriaSort,
+	getSortIcon,
+	sortBy,
+	toggleSort,
+} from "../../shared/sort-utils";
 import { ToastService } from "../../shared/toast/toast.service";
 
 type StatusFilter = "ALL" | "SETUP" | "VACANT" | "OCCUPIED" | "OUT_OF_ORDER" | "BLOCKED";

@@ -1,50 +1,7 @@
+import type { AutomatedMessageRow } from "@tartware/schemas";
 import { query } from "../lib/db.js";
 
-type AutomatedMessageRow = {
-  message_id: string;
-  tenant_id: string;
-  property_id: string | null;
-  message_name: string;
-  message_code: string | null;
-  description: string | null;
-  trigger_type: string;
-  trigger_event: string | null;
-  is_active: boolean;
-  is_paused: boolean;
-  priority: number;
-  send_timing: string;
-  delay_minutes: number | null;
-  delay_hours: number | null;
-  delay_days: number | null;
-  send_before_event_hours: number | null;
-  send_after_event_hours: number | null;
-  scheduled_time: string | null;
-  scheduled_timezone: string | null;
-  respect_quiet_hours: boolean;
-  quiet_hours_start: string | null;
-  quiet_hours_end: string | null;
-  template_id: string | null;
-  fallback_template_id: string | null;
-  message_channel: string;
-  secondary_channels: string[] | null;
-  target_audience: string[] | null;
-  conditions: Record<string, unknown> | null;
-  exclusion_conditions: Record<string, unknown> | null;
-  max_sends_per_guest_per_day: number | null;
-  max_sends_per_guest_per_week: number | null;
-  max_sends_per_guest_per_month: number | null;
-  min_hours_between_sends: number | null;
-  respect_unsubscribe: boolean;
-  requires_consent: boolean;
-  consent_type: string | null;
-  include_unsubscribe_link: boolean;
-  metadata: Record<string, unknown> | null;
-  tags: string[] | null;
-  notes: string | null;
-  sent_count: number;
-  created_at: Date;
-  updated_at: Date;
-};
+// AutomatedMessageRow imported from @tartware/schemas
 
 const SELECT_COLUMNS = `
   message_id, tenant_id, property_id, message_name, message_code, description,

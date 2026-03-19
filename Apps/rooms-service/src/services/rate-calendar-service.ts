@@ -6,6 +6,7 @@
  */
 
 import type {
+  CalendarRow,
   RateCalendarBulkUpsertBody,
   RateCalendarItem,
   RateCalendarRangeFillBody,
@@ -14,30 +15,7 @@ import type {
 import { query } from "../lib/db.js";
 import { RATE_CALENDAR_LIST_SQL, RATE_CALENDAR_UPSERT_SQL } from "../sql/rate-calendar-queries.js";
 
-type CalendarRow = {
-  id: string;
-  tenant_id: string;
-  property_id: string;
-  room_type_id: string;
-  rate_id: string;
-  stay_date: string | Date;
-  rate_amount: string | number;
-  currency: string;
-  single_rate: string | number | null;
-  double_rate: string | number | null;
-  extra_person: string | number | null;
-  extra_child: string | number | null;
-  status: string;
-  closed_to_arrival: boolean;
-  closed_to_departure: boolean;
-  min_length_of_stay: number | null;
-  max_length_of_stay: number | null;
-  min_advance_days: number | null;
-  max_advance_days: number | null;
-  rooms_to_sell: number | null;
-  rooms_sold: number;
-  source: string;
-};
+// CalendarRow imported from @tartware/schemas
 
 function toDateStr(value: string | Date): string {
   if (value instanceof Date) {

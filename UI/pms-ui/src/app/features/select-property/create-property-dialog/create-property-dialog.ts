@@ -17,6 +17,7 @@ import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
 
 import { ApiService, ApiValidationError } from "../../../core/api/api.service";
 import { AuthService } from "../../../core/auth/auth.service";
+import { ToastService } from "../../../shared/toast/toast.service";
 import { loadGooglePlaces, parsePlaceResult } from "./google-places.js";
 import { COMMON_CURRENCIES, COMMON_LANGUAGES, COMMON_TIMEZONES } from "./reference-data.js";
 
@@ -31,6 +32,7 @@ export class CreatePropertyDialogComponent implements AfterViewInit, OnDestroy {
 	private readonly api = inject(ApiService);
 	private readonly auth = inject(AuthService);
 	private readonly dialogRef = inject(MatDialogRef<CreatePropertyDialogComponent>);
+	private readonly toast = inject(ToastService);
 	private readonly zone = inject(NgZone);
 
 	private autocomplete: google.maps.places.Autocomplete | null = null;
@@ -39,7 +41,6 @@ export class CreatePropertyDialogComponent implements AfterViewInit, OnDestroy {
 	readonly addressInput = viewChild<ElementRef<HTMLInputElement>>("addressInput");
 
 	readonly saving = signal(false);
-	readonly error = signal<string | null>(null);
 	readonly placesAvailable = signal(false);
 	touched: Record<string, boolean> = {};
 
@@ -150,11 +151,10 @@ export class CreatePropertyDialogComponent implements AfterViewInit, OnDestroy {
 	async save(): Promise<void> {
 		if (!this.isValid) return;
 		this.saving.set(true);
-		this.error.set(null);
 
 		const tenantId = this.auth.tenantId();
 		if (!tenantId) {
-			this.error.set("No tenant context available");
+			this.toast.error("No tenant context available");
 			this.saving.set(false);
 			return;
 		}
@@ -185,9 +185,9 @@ export class CreatePropertyDialogComponent implements AfterViewInit, OnDestroy {
 			this.dialogRef.close(true);
 		} catch (err) {
 			if (err instanceof ApiValidationError) {
-				this.error.set(err.fieldErrors.map((e) => e.message).join(", "));
+				this.toast.error(err.fieldErrors.map((e) => e.message).join(", "));
 			} else {
-				this.error.set(err instanceof Error ? err.message : "Failed to create property");
+				this.toast.error(err instanceof Error ? err.message : "Failed to create property");
 			}
 		} finally {
 			this.saving.set(false);

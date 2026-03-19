@@ -3,7 +3,6 @@ export {
   type GuestMergeCommand,
   GuestMergeCommandSchema,
   GuestPreferenceUpdateCommandSchema,
-  type GuestRegisterCommand,
   GuestRegisterCommandSchema,
   GuestSetBlacklistCommandSchema,
   GuestSetLoyaltyCommandSchema,

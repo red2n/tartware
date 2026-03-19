@@ -45,3 +45,11 @@
   font-size: var(--font-size-xs);
   color: var(--color-fg-muted);
 }
+
+/* ── Status description hint shown below the badge ── */
+.detail-hint {
+  display: block;
+  font-size: var(--font-size-xs);
+  margin-top: var(--space-1);
+  line-height: 1.4;
+}

@@ -12,13 +12,6 @@
 
   <h2 class="page-title">{{ 'New Group Booking' | translate }}</h2>
 
-  @if (error(); as err) {
-    <div class="flash flash-error">
-      <mat-icon class="flash-icon">error_outline</mat-icon>
-      {{ err }}
-    </div>
-  }
-
   <form (ngSubmit)="save()" #groupForm="ngForm" class="create-form">
     <!-- Group Details -->
     <section class="form-section">
@@ -69,6 +62,7 @@
               <option [value]="s.value">{{ s.label }}</option>
             }
           </select>
+          <span class="field-hint field-hint-muted">{{ selectedStatusDescription }}</span>
         </div>
       </div>
     </section>

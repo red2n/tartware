@@ -31,7 +31,6 @@ import {
   evaluatePricingRules,
   executeNightAudit,
   finalizeInvoice,
-  generateCommissionStatement,
   incrementAuthorization,
   manualDateRoll,
   markCommissionPaid,
@@ -216,12 +215,6 @@ const routeBillingCommand = async (
       return;
     case "commission.mark_paid":
       await markCommissionPaid(envelope.payload, {
-        tenantId: metadata.tenantId,
-        initiatedBy: metadata.initiatedBy ?? null,
-      });
-      return;
-    case "commission.statement.generate":
-      await generateCommissionStatement(envelope.payload, {
         tenantId: metadata.tenantId,
         initiatedBy: metadata.initiatedBy ?? null,
       });

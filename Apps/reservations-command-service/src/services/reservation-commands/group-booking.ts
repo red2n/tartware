@@ -27,7 +27,7 @@ import {
 
 /**
  * Create a new group booking.
- * Inserts into `group_bookings` with status INQUIRY/TENTATIVE and
+ * Inserts into `group_bookings` with status INQUIRY/PROSPECT/TENTATIVE/DEFINITE and
  * generates a unique group_code.
  */
 export const createGroupBooking = async (
@@ -102,7 +102,7 @@ export const createGroupBooking = async (
         command.total_rooms_requested,
         cutoffDate.toISOString().slice(0, 10),
         cutoffDays,
-        command.block_status ?? "tentative",
+        command.block_status ?? "inquiry",
         command.rate_type ?? null,
         command.negotiated_rate ?? null,
         command.payment_method ?? null,
@@ -149,7 +149,7 @@ export const createGroupBooking = async (
           arrival_date: arrivalDate.toISOString().slice(0, 10),
           departure_date: departureDate.toISOString().slice(0, 10),
           total_rooms_requested: command.total_rooms_requested,
-          block_status: command.block_status ?? "tentative",
+          block_status: command.block_status ?? "inquiry",
         },
       },
       headers: {
@@ -513,7 +513,6 @@ export const enforceGroupCutoff = async (
         `UPDATE group_bookings
          SET block_status = CASE
            WHEN total_rooms_picked >= total_rooms_requested THEN 'confirmed'
-           WHEN total_rooms_picked > 0 THEN 'partial'
            ELSE block_status
          END,
          updated_at = NOW(), updated_by = $2, version = version + 1

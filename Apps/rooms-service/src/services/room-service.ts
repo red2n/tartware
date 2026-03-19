@@ -1,4 +1,4 @@
-import { type RoomItem, RoomItemSchema } from "@tartware/schemas";
+import { type RoomItem, RoomItemSchema, type RoomListRow } from "@tartware/schemas";
 
 import { query } from "../lib/db.js";
 import { ROOM_CREATE_SQL, ROOM_GET_BY_ID_SQL, ROOM_LIST_SQL } from "../sql/room-queries.js";
@@ -74,34 +74,7 @@ type UpdateRoomInput = {
   updated_by?: string;
 };
 
-type RoomListRow = {
-  id: string;
-  tenant_id: string;
-  property_id: string;
-  property_name: string | null;
-  room_type_id: string | null;
-  room_type_name: string | null;
-  room_type_amenities: string[] | null;
-  room_number: string;
-  room_name: string | null;
-  floor: string | null;
-  building: string | null;
-  wing: string | null;
-  status: string | null;
-  housekeeping_status: string | null;
-  maintenance_status: string | null;
-  features: Record<string, unknown> | null;
-  amenities: string[] | null;
-  is_blocked: boolean | null;
-  block_reason: string | null;
-  is_out_of_order: boolean | null;
-  out_of_order_reason: string | null;
-  expected_ready_date: string | Date | null;
-  housekeeping_notes: string | null;
-  metadata: Record<string, unknown> | null;
-  updated_at: string | Date | null;
-  version: bigint | null;
-};
+// RoomListRow imported from @tartware/schemas
 
 const toJson = (value: unknown): string | null => {
   if (value === undefined || value === null) {

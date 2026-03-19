@@ -7,7 +7,7 @@ import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
 import { MatTooltipModule } from "@angular/material/tooltip";
 import { Router } from "@angular/router";
 
-import type { GroupBookingListItem } from "@tartware/schemas";
+import { type GroupBlockStatus, GroupBlockStatusDescriptions, type GroupBookingListItem } from "@tartware/schemas";
 
 import { ApiService } from "../../core/api/api.service";
 import { AuthService } from "../../core/auth/auth.service";
@@ -20,7 +20,7 @@ import { formatCurrency, formatShortDate } from "../../shared/format-utils";
 import { PaginationComponent } from "../../shared/pagination/pagination";
 import { createSortState, getAriaSort, getSortIcon, sortBy, toggleSort } from "../../shared/sort-utils";
 
-type StatusFilter = "ALL" | "TENTATIVE" | "DEFINITE" | "INQUIRY" | "CONFIRMED" | "CANCELLED";
+type StatusFilter = "ALL" | GroupBlockStatus;
 
 @Component({
 	selector: "app-groups",
@@ -58,13 +58,16 @@ export class GroupsComponent {
 		this.currentPage.set(1);
 	});
 
-	readonly statusFilters: { key: StatusFilter; label: string }[] = [
-		{ key: "ALL", label: "All" },
-		{ key: "TENTATIVE", label: "Tentative" },
-		{ key: "DEFINITE", label: "Definite" },
-		{ key: "CONFIRMED", label: "Confirmed" },
-		{ key: "INQUIRY", label: "Inquiry" },
-		{ key: "CANCELLED", label: "Cancelled" },
+	readonly statusFilters: { key: StatusFilter; label: string; description: string }[] = [
+		{ key: "ALL", label: "All", description: "All group bookings regardless of status" },
+		{ key: "INQUIRY", label: "Inquiry", description: "Initial contact — guest or planner is asking about availability" },
+		{ key: "PROSPECT", label: "Prospect", description: "Qualified lead — sales team is actively working the deal" },
+		{ key: "TENTATIVE", label: "Tentative", description: "Space held with a cutoff date, pending a signed contract" },
+		{ key: "DEFINITE", label: "Definite", description: "Contract signed — the group booking is confirmed" },
+		{ key: "CONFIRMED", label: "Confirmed", description: "Rooms have been picked and assigned to the group" },
+		{ key: "CANCELLED", label: "Cancelled", description: "Group booking was cancelled by the guest or planner" },
+		{ key: "TURNDOWN", label: "Turndown", description: "Hotel declined the business (capacity, rate, or fit)" },
+		{ key: "COMPLETED", label: "Completed", description: "Group stay is finished and all folios are closed" },
 	];
 
 	readonly groupTypeIcon: Record<string, { icon: string; tooltip: string }> = {
@@ -120,11 +123,14 @@ export class GroupsComponent {
 			all.filter((g) => g.block_status.toUpperCase() === status).length;
 		return {
 			ALL: all.length,
+			INQUIRY: countByStatus("INQUIRY"),
+			PROSPECT: countByStatus("PROSPECT"),
 			TENTATIVE: countByStatus("TENTATIVE"),
 			DEFINITE: countByStatus("DEFINITE"),
 			CONFIRMED: countByStatus("CONFIRMED"),
-			INQUIRY: countByStatus("INQUIRY"),
 			CANCELLED: countByStatus("CANCELLED"),
+			TURNDOWN: countByStatus("TURNDOWN"),
+			COMPLETED: countByStatus("COMPLETED"),
 		};
 	});
 
@@ -184,6 +190,8 @@ export class GroupsComponent {
 	statusClass = groupBlockStatusClass;
 	formatDate = formatShortDate;
 	formatCurrency = formatCurrency;
+	statusDescription = (status: string) =>
+		GroupBlockStatusDescriptions[status.toUpperCase() as GroupBlockStatus] ?? "";
 
 	pickupClass(percentage: number): string {
 		if (percentage >= 80) return "badge-success";

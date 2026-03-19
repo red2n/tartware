@@ -1,42 +1,11 @@
+import type { TemplateRow } from "@tartware/schemas";
 import { query } from "../lib/db.js";
 import { appLogger } from "../lib/logger.js";
 import { renderTemplate } from "../utils/template-renderer.js";
 
 const logger = appLogger.child({ module: "template-service" });
 
-type TemplateRow = {
-  id: string;
-  tenant_id: string;
-  property_id: string | null;
-  template_name: string;
-  template_code: string;
-  communication_type: string;
-  category: string | null;
-  subject: string | null;
-  body: string;
-  html_body: string | null;
-  language_code: string | null;
-  variables: Record<string, unknown> | null;
-  is_active: boolean;
-  is_automated: boolean;
-  trigger_event: string | null;
-  trigger_offset_hours: number | null;
-  send_priority: number | null;
-  from_name: string | null;
-  from_email: string | null;
-  from_phone: string | null;
-  reply_to_email: string | null;
-  cc_emails: string | null;
-  bcc_emails: string | null;
-  attachments: Record<string, unknown> | null;
-  metadata: Record<string, unknown> | null;
-  usage_count: number;
-  last_used_at: Date | null;
-  created_by: string | null;
-  updated_by: string | null;
-  created_at: Date;
-  updated_at: Date;
-};
+// TemplateRow imported from @tartware/schemas
 
 const LIST_TEMPLATES_SQL = `
   SELECT id, tenant_id, property_id, template_name, template_code,

@@ -4,6 +4,8 @@ import { MatIconModule } from "@angular/material/icon";
 import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
 import { Router, RouterLink } from "@angular/router";
 
+import { GroupBlockStatusDescriptions } from "@tartware/schemas";
+
 import { ApiService, ApiValidationError } from "../../../core/api/api.service";
 import { AuthService } from "../../../core/auth/auth.service";
 import { TenantContextService } from "../../../core/context/tenant-context.service";
@@ -25,7 +27,6 @@ export class CreateGroupComponent {
 	private readonly toast = inject(ToastService);
 
 	readonly saving = signal(false);
-	readonly error = signal<string | null>(null);
 
 	touched: Record<string, boolean> = {};
 
@@ -33,7 +34,7 @@ export class CreateGroupComponent {
 	groupName = "";
 	groupType = "conference";
 	organizationName = "";
-	blockStatus = "tentative";
+	blockStatus = "inquiry";
 
 	/* ── Stay Dates ── */
 	arrivalDate = "";
@@ -72,10 +73,15 @@ export class CreateGroupComponent {
 	];
 
 	readonly blockStatuses = [
-		{ value: "inquiry", label: "Inquiry" },
-		{ value: "tentative", label: "Tentative" },
-		{ value: "definite", label: "Definite" },
+		{ value: "inquiry", label: "Inquiry", description: GroupBlockStatusDescriptions.INQUIRY },
+		{ value: "prospect", label: "Prospect", description: GroupBlockStatusDescriptions.PROSPECT },
+		{ value: "tentative", label: "Tentative", description: GroupBlockStatusDescriptions.TENTATIVE },
+		{ value: "definite", label: "Definite", description: GroupBlockStatusDescriptions.DEFINITE },
 	];
+
+	get selectedStatusDescription(): string {
+		return this.blockStatuses.find((s) => s.value === this.blockStatus)?.description ?? "";
+	}
 
 	readonly rateTypes = [
 		{ value: "", label: "— Select —" },
@@ -132,12 +138,11 @@ export class CreateGroupComponent {
 		const tenantId = this.auth.tenantId();
 		const propertyId = this.ctx.propertyId();
 		if (!tenantId || !propertyId) {
-			this.error.set("No property selected");
+			this.toast.error("No property selected");
 			return;
 		}
 
 		this.saving.set(true);
-		this.error.set(null);
 
 		const payload: Record<string, unknown> = {
 			property_id: propertyId,
@@ -170,9 +175,9 @@ export class CreateGroupComponent {
 			this.router.navigate(["/groups"]);
 		} catch (e) {
 			if (e instanceof ApiValidationError) {
-				this.error.set(e.fieldErrors.map((fe) => fe.message).join("; "));
+				this.toast.error(e.fieldErrors.map((fe) => fe.message).join("; "));
 			} else {
-				this.error.set(e instanceof Error ? e.message : "Failed to create group booking");
+				this.toast.error(e instanceof Error ? e.message : "Failed to create group booking");
 			}
 		} finally {
 			this.saving.set(false);

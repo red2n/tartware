@@ -1,20 +1,11 @@
 import { buildRouteSchema, schemaFromZod } from "@tartware/openapi";
 import {
-  AccountsReceivableDetailSchema,
-  AccountsReceivableListItemSchema,
-  ArAgingSummarySchema,
   BucketCheckResponseSchema,
-  CashierSessionListItemSchema,
   ChargePostingListItemSchema,
   FolioListItemSchema,
-  InvoiceListItemSchema,
-  InvoiceStatusEnum,
   PaymentMethodEnum,
   PaymentStatusEnum,
   PreAuditResponseSchema,
-  ShiftSummaryResponseSchema,
-  TaxConfigurationListItemSchema,
-  TaxTypeEnum,
   TransactionTypeEnum,
   TrialBalanceResponseSchema,
 } from "@tartware/schemas";
@@ -23,26 +14,16 @@ import { z } from "zod";
 
 import {
   BillingPaymentSchema,
-  getAccountsReceivableById,
-  getArAgingSummary,
   getBucketCheck,
-  getCashierSessionById,
   getCommissionReport,
   getDepartmentalRevenue,
   getFolioById,
-  getInvoiceById,
   getPreAuditChecklist,
-  getShiftSummary,
-  getTaxConfigurationById,
   getTaxSummary,
   getTrialBalance,
-  listAccountsReceivable,
   listBillingPayments,
-  listCashierSessions,
   listChargePostings,
   listFolios,
-  listInvoices,
-  listTaxConfigurations,
 } from "../services/billing-service.js";
 
 const BillingListQuerySchema = z.object({
@@ -89,34 +70,6 @@ const BillingListResponseJsonSchema = schemaFromZod(
   "BillingPaymentsResponse",
 );
 
-// Invoice schemas
-const InvoiceListQuerySchema = z.object({
-  tenant_id: z.string().uuid(),
-  property_id: z.string().uuid().optional(),
-  status: z
-    .string()
-    .toLowerCase()
-    .optional()
-    .refine(
-      (value) => !value || InvoiceStatusEnum.options.map((s) => s.toLowerCase()).includes(value),
-      { message: "Invalid invoice status" },
-    ),
-  reservation_id: z.string().uuid().optional(),
-  guest_id: z.string().uuid().optional(),
-  limit: z.coerce.number().int().positive().max(200).default(100),
-  offset: z.coerce.number().int().min(0).default(0),
-});
-
-type InvoiceListQuery = z.infer<typeof InvoiceListQuerySchema>;
-
-const InvoiceListResponseSchema = z.array(InvoiceListItemSchema);
-const InvoiceListQueryJsonSchema = schemaFromZod(InvoiceListQuerySchema, "InvoiceListQuery");
-const InvoiceListResponseJsonSchema = schemaFromZod(
-  InvoiceListResponseSchema,
-  "InvoiceListResponse",
-);
-const InvoiceDetailJsonSchema = schemaFromZod(InvoiceListItemSchema, "InvoiceDetail");
-
 // Folio schemas
 const FolioListQuerySchema = z.object({
   tenant_id: z.string().uuid(),
@@ -160,29 +113,6 @@ const ChargePostingListResponseJsonSchema = schemaFromZod(
   "ChargePostingListResponse",
 );
 
-// Accounts receivable schemas
-const ArListQuerySchema = z.object({
-  tenant_id: z.string().uuid(),
-  property_id: z.string().uuid().optional(),
-  status: z.string().optional(),
-  account_type: z.string().optional(),
-  aging_bucket: z.string().optional(),
-  limit: z.coerce.number().int().positive().max(200).default(100),
-  offset: z.coerce.number().int().min(0).default(0),
-});
-
-type ArListQuery = z.infer<typeof ArListQuerySchema>;
-
-const ArListResponseSchema = z.array(AccountsReceivableListItemSchema);
-const ArListQueryJsonSchema = schemaFromZod(ArListQuerySchema, "ArListQuery");
-const ArListResponseJsonSchema = schemaFromZod(ArListResponseSchema, "ArListResponse");
-const ArDetailJsonSchema = schemaFromZod(AccountsReceivableDetailSchema, "ArDetail");
-const ArAgingSummaryResponseSchema = z.array(ArAgingSummarySchema);
-const ArAgingSummaryResponseJsonSchema = schemaFromZod(
-  ArAgingSummaryResponseSchema,
-  "ArAgingSummaryResponse",
-);
-
 const BILLING_TAG = "Billing";
 
 export const registerBillingRoutes = (app: FastifyInstance): void => {
@@ -218,81 +148,6 @@ export const registerBillingRoutes = (app: FastifyInstance): void => {
       });
 
       return BillingListResponseSchema.parse(payments);
-    },
-  );
-
-  // ============================================================================
-  // INVOICES
-  // ============================================================================
-
-  app.get<{ Querystring: InvoiceListQuery }>(
-    "/v1/billing/invoices",
-    {
-      preHandler: app.withTenantScope({
-        resolveTenantId: (request) => (request.query as InvoiceListQuery).tenant_id,
-        minRole: "ADMIN",
-        requiredModules: "finance-automation",
-      }),
-      schema: buildRouteSchema({
-        tag: BILLING_TAG,
-        summary: "List invoices with optional filters",
-        querystring: InvoiceListQueryJsonSchema,
-        response: {
-          200: InvoiceListResponseJsonSchema,
-        },
-      }),
-    },
-    async (request) => {
-      const { tenant_id, property_id, status, reservation_id, guest_id, limit, offset } =
-        InvoiceListQuerySchema.parse(request.query);
-
-      const invoices = await listInvoices({
-        tenantId: tenant_id,
-        propertyId: property_id,
-        status,
-        reservationId: reservation_id,
-        guestId: guest_id,
-        limit,
-        offset,
-      });
-
-      return InvoiceListResponseSchema.parse(invoices);
-    },
-  );
-
-  app.get<{
-    Params: { invoiceId: string };
-    Querystring: { tenant_id: string };
-  }>(
-    "/v1/billing/invoices/:invoiceId",
-    {
-      preHandler: app.withTenantScope({
-        resolveTenantId: (request) => (request.query as { tenant_id: string }).tenant_id,
-        minRole: "ADMIN",
-        requiredModules: "finance-automation",
-      }),
-      schema: buildRouteSchema({
-        tag: BILLING_TAG,
-        summary: "Get invoice by ID",
-        params: schemaFromZod(z.object({ invoiceId: z.string().uuid() }), "InvoiceIdParam"),
-        querystring: schemaFromZod(z.object({ tenant_id: z.string().uuid() }), "TenantIdQuery"),
-        response: {
-          200: InvoiceDetailJsonSchema,
-        },
-      }),
-    },
-    async (request, reply) => {
-      const { invoiceId } = request.params;
-      const { tenant_id } = request.query;
-
-      const invoice = await getInvoiceById(invoiceId, tenant_id);
-
-      if (!invoice) {
-        reply.notFound("INVOICE_NOT_FOUND");
-        return;
-      }
-
-      return InvoiceListItemSchema.parse(invoice);
     },
   );
 
@@ -425,277 +280,6 @@ export const registerBillingRoutes = (app: FastifyInstance): void => {
       });
 
       return ChargePostingListResponseSchema.parse(charges);
-    },
-  );
-
-  // ============================================================================
-  // CASHIER SESSIONS
-  // ============================================================================
-
-  const CashierSessionListQuerySchema = z.object({
-    tenant_id: z.string().uuid(),
-    property_id: z.string().uuid().optional(),
-    session_status: z.string().optional(),
-    shift_type: z.string().optional(),
-    business_date: z.string().optional(),
-    limit: z.coerce.number().int().positive().max(200).default(100),
-    offset: z.coerce.number().int().min(0).default(0),
-  });
-
-  type CashierSessionListQuery = z.infer<typeof CashierSessionListQuerySchema>;
-
-  const CashierSessionListResponseSchema = z.array(CashierSessionListItemSchema);
-  const CashierSessionListQueryJsonSchema = schemaFromZod(
-    CashierSessionListQuerySchema,
-    "CashierSessionListQuery",
-  );
-  const CashierSessionListResponseJsonSchema = schemaFromZod(
-    CashierSessionListResponseSchema,
-    "CashierSessionListResponse",
-  );
-  const CashierSessionDetailJsonSchema = schemaFromZod(
-    CashierSessionListItemSchema,
-    "CashierSessionDetail",
-  );
-
-  app.get<{ Querystring: CashierSessionListQuery }>(
-    "/v1/billing/cashier-sessions",
-    {
-      preHandler: app.withTenantScope({
-        resolveTenantId: (request) => (request.query as CashierSessionListQuery).tenant_id,
-        minRole: "ADMIN",
-        requiredModules: "finance-automation",
-      }),
-      schema: buildRouteSchema({
-        tag: BILLING_TAG,
-        summary: "List cashier sessions with optional filters",
-        querystring: CashierSessionListQueryJsonSchema,
-        response: {
-          200: CashierSessionListResponseJsonSchema,
-        },
-      }),
-    },
-    async (request) => {
-      const { tenant_id, property_id, session_status, shift_type, business_date, limit, offset } =
-        CashierSessionListQuerySchema.parse(request.query);
-
-      const sessions = await listCashierSessions({
-        tenantId: tenant_id,
-        propertyId: property_id,
-        sessionStatus: session_status,
-        shiftType: shift_type,
-        businessDate: business_date,
-        limit,
-        offset,
-      });
-
-      return CashierSessionListResponseSchema.parse(sessions);
-    },
-  );
-
-  app.get<{
-    Params: { sessionId: string };
-    Querystring: { tenant_id: string };
-  }>(
-    "/v1/billing/cashier-sessions/:sessionId",
-    {
-      preHandler: app.withTenantScope({
-        resolveTenantId: (request) => (request.query as { tenant_id: string }).tenant_id,
-        minRole: "ADMIN",
-        requiredModules: "finance-automation",
-      }),
-      schema: buildRouteSchema({
-        tag: BILLING_TAG,
-        summary: "Get cashier session by ID",
-        params: schemaFromZod(z.object({ sessionId: z.string().uuid() }), "SessionIdParam"),
-        querystring: schemaFromZod(
-          z.object({ tenant_id: z.string().uuid() }),
-          "TenantIdQuerySession",
-        ),
-        response: {
-          200: CashierSessionDetailJsonSchema,
-        },
-      }),
-    },
-    async (request, reply) => {
-      const { sessionId } = request.params;
-      const { tenant_id } = request.query;
-
-      const session = await getCashierSessionById(sessionId, tenant_id);
-
-      if (!session) {
-        reply.notFound("CASHIER_SESSION_NOT_FOUND");
-        return;
-      }
-
-      return CashierSessionListItemSchema.parse(session);
-    },
-  );
-
-  // ============================================================================
-  // SHIFT HANDOVER SUMMARY
-  // ============================================================================
-
-  app.get<{
-    Params: { sessionId: string };
-    Querystring: { tenant_id: string };
-  }>(
-    "/v1/billing/cashier-sessions/:sessionId/shift-summary",
-    {
-      preHandler: app.withTenantScope({
-        resolveTenantId: (request) => (request.query as { tenant_id: string }).tenant_id,
-        minRole: "ADMIN",
-        requiredModules: "finance-automation",
-      }),
-      schema: buildRouteSchema({
-        tag: BILLING_TAG,
-        summary: "Get shift handover summary for a cashier session",
-        params: schemaFromZod(z.object({ sessionId: z.string().uuid() }), "ShiftSessionIdParam"),
-        querystring: schemaFromZod(
-          z.object({ tenant_id: z.string().uuid() }),
-          "TenantIdQueryShift",
-        ),
-        response: {
-          200: schemaFromZod(ShiftSummaryResponseSchema, "ShiftSummaryResponse"),
-        },
-      }),
-    },
-    async (request, reply) => {
-      const { sessionId } = request.params;
-      const { tenant_id } = request.query;
-
-      const summary = await getShiftSummary(sessionId, tenant_id);
-
-      if (!summary) {
-        reply.notFound("CASHIER_SESSION_NOT_FOUND");
-        return;
-      }
-
-      return ShiftSummaryResponseSchema.parse(summary);
-    },
-  );
-
-  // ============================================================================
-  // TAX CONFIGURATIONS
-  // ============================================================================
-
-  const TaxConfigListQuerySchema = z.object({
-    tenant_id: z.string().uuid(),
-    property_id: z.string().uuid().optional(),
-    tax_type: z
-      .string()
-      .toLowerCase()
-      .optional()
-      .refine(
-        (value) => !value || TaxTypeEnum.options.map((t) => t.toLowerCase()).includes(value),
-        { message: "Invalid tax type" },
-      ),
-    is_active: z.coerce.boolean().optional(),
-    country_code: z.string().max(3).optional(),
-    jurisdiction_level: z.string().optional(),
-    limit: z.coerce.number().int().positive().max(500).default(200),
-    offset: z.coerce.number().int().min(0).default(0),
-  });
-
-  type TaxConfigListQuery = z.infer<typeof TaxConfigListQuerySchema>;
-
-  const TaxConfigListResponseSchema = z.array(TaxConfigurationListItemSchema);
-  const TaxConfigListQueryJsonSchema = schemaFromZod(
-    TaxConfigListQuerySchema,
-    "TaxConfigListQuery",
-  );
-  const TaxConfigListResponseJsonSchema = schemaFromZod(
-    TaxConfigListResponseSchema,
-    "TaxConfigListResponse",
-  );
-  const TaxConfigDetailJsonSchema = schemaFromZod(
-    TaxConfigurationListItemSchema,
-    "TaxConfigDetail",
-  );
-
-  app.get<{ Querystring: TaxConfigListQuery }>(
-    "/v1/billing/tax-configurations",
-    {
-      preHandler: app.withTenantScope({
-        resolveTenantId: (request) => (request.query as TaxConfigListQuery).tenant_id,
-        minRole: "ADMIN",
-        requiredModules: "finance-automation",
-      }),
-      schema: buildRouteSchema({
-        tag: BILLING_TAG,
-        summary: "List tax configurations with optional filters",
-        description:
-          "Retrieve tax rules, rates, and configurations by jurisdiction, type, and status",
-        querystring: TaxConfigListQueryJsonSchema,
-        response: {
-          200: TaxConfigListResponseJsonSchema,
-        },
-      }),
-    },
-    async (request) => {
-      const {
-        tenant_id,
-        property_id,
-        tax_type,
-        is_active,
-        country_code,
-        jurisdiction_level,
-        limit,
-        offset,
-      } = TaxConfigListQuerySchema.parse(request.query);
-
-      const configs = await listTaxConfigurations({
-        tenantId: tenant_id,
-        propertyId: property_id,
-        taxType: tax_type,
-        isActive: is_active,
-        countryCode: country_code,
-        jurisdictionLevel: jurisdiction_level,
-        limit,
-        offset,
-      });
-
-      return TaxConfigListResponseSchema.parse(configs);
-    },
-  );
-
-  app.get<{
-    Params: { taxConfigId: string };
-    Querystring: { tenant_id: string };
-  }>(
-    "/v1/billing/tax-configurations/:taxConfigId",
-    {
-      preHandler: app.withTenantScope({
-        resolveTenantId: (request) => (request.query as { tenant_id: string }).tenant_id,
-        minRole: "ADMIN",
-        requiredModules: "finance-automation",
-      }),
-      schema: buildRouteSchema({
-        tag: BILLING_TAG,
-        summary: "Get tax configuration by ID",
-        description: "Retrieve detailed information about a specific tax configuration",
-        params: schemaFromZod(z.object({ taxConfigId: z.string().uuid() }), "TaxConfigIdParam"),
-        querystring: schemaFromZod(z.object({ tenant_id: z.string().uuid() }), "TenantIdQueryTax"),
-        response: {
-          200: TaxConfigDetailJsonSchema,
-        },
-      }),
-    },
-    async (request, reply) => {
-      const { taxConfigId } = request.params;
-      const { tenant_id } = request.query;
-
-      const config = await getTaxConfigurationById({
-        taxConfigId,
-        tenantId: tenant_id,
-      });
-
-      if (!config) {
-        reply.notFound("TAX_CONFIGURATION_NOT_FOUND");
-        return;
-      }
-
-      return TaxConfigurationListItemSchema.parse(config);
     },
   );
 
@@ -850,111 +434,6 @@ export const registerBillingRoutes = (app: FastifyInstance): void => {
         startDate: start_date,
         endDate: end_date,
       });
-    },
-  );
-
-  // ============================================================================
-  // Accounts Receivable
-  // ============================================================================
-
-  app.get<{ Querystring: ArListQuery }>(
-    "/v1/billing/accounts-receivable",
-    {
-      preHandler: app.withTenantScope({
-        resolveTenantId: (request) => (request.query as ArListQuery).tenant_id,
-        minRole: "ADMIN",
-        requiredModules: "finance-automation",
-      }),
-      schema: buildRouteSchema({
-        tag: BILLING_TAG,
-        summary: "List accounts receivable with optional filters",
-        querystring: ArListQueryJsonSchema,
-        response: {
-          200: ArListResponseJsonSchema,
-        },
-      }),
-    },
-    async (request) => {
-      const { tenant_id, property_id, status, account_type, aging_bucket, limit, offset } =
-        ArListQuerySchema.parse(request.query);
-      return listAccountsReceivable({
-        tenantId: tenant_id,
-        propertyId: property_id,
-        status,
-        accountType: account_type,
-        agingBucket: aging_bucket,
-        limit,
-        offset,
-      });
-    },
-  );
-
-  // ============================================================================
-
-  app.get<{ Querystring: { tenant_id: string; property_id?: string } }>(
-    "/v1/billing/accounts-receivable/aging-summary",
-    {
-      preHandler: app.withTenantScope({
-        resolveTenantId: (request) => (request.query as { tenant_id: string }).tenant_id,
-        minRole: "ADMIN",
-        requiredModules: "finance-automation",
-      }),
-      schema: buildRouteSchema({
-        tag: BILLING_TAG,
-        summary: "Accounts receivable aging summary by property",
-        querystring: schemaFromZod(
-          z.object({
-            tenant_id: z.string().uuid(),
-            property_id: z.string().uuid().optional(),
-          }),
-          "ArAgingSummaryQuery",
-        ),
-        response: {
-          200: ArAgingSummaryResponseJsonSchema,
-        },
-      }),
-    },
-    async (request) => {
-      const { tenant_id, property_id } = request.query;
-      return getArAgingSummary({ tenantId: tenant_id, propertyId: property_id });
-    },
-  );
-
-  // ============================================================================
-
-  app.get<{
-    Params: { arId: string };
-    Querystring: { tenant_id: string };
-  }>(
-    "/v1/billing/accounts-receivable/:arId",
-    {
-      preHandler: app.withTenantScope({
-        resolveTenantId: (request) => (request.query as { tenant_id: string }).tenant_id,
-        minRole: "ADMIN",
-        requiredModules: "finance-automation",
-      }),
-      schema: buildRouteSchema({
-        tag: BILLING_TAG,
-        summary: "Get accounts receivable detail by ID",
-        params: schemaFromZod(z.object({ arId: z.string().uuid() }), "ArIdParam"),
-        querystring: schemaFromZod(z.object({ tenant_id: z.string().uuid() }), "TenantIdQueryAr"),
-        response: {
-          200: ArDetailJsonSchema,
-        },
-      }),
-    },
-    async (request, reply) => {
-      const { arId } = request.params;
-      const { tenant_id } = request.query;
-
-      const ar = await getAccountsReceivableById({ arId, tenantId: tenant_id });
-
-      if (!ar) {
-        reply.notFound("AR_ACCOUNT_NOT_FOUND");
-        return;
-      }
-
-      return ar;
     },
   );
 

@@ -82,8 +82,6 @@ export class RateCalendarComponent {
 
 	readonly loading = signal(false);
 	readonly saving = signal(false);
-	readonly error = signal<string | null>(null);
-	readonly success = signal<string | null>(null);
 
 	readonly roomTypes = signal<RoomType[]>([]);
 	readonly ratePlans = signal<RatePlan[]>([]);
@@ -147,7 +145,6 @@ export class RateCalendarComponent {
 		if (propertyId) params["property_id"] = propertyId;
 
 		this.loading.set(true);
-		this.error.set(null);
 		try {
 			const [roomTypes, rates] = await Promise.all([
 				this.api.get<RoomType[]>("/room-types", params),
@@ -157,7 +154,7 @@ export class RateCalendarComponent {
 			this.ratePlans.set(Array.isArray(rates) ? rates : []);
 			await this.loadCalendarData();
 		} catch {
-			this.error.set("Failed to load reference data");
+			this.toast.error("Failed to load reference data");
 		} finally {
 			this.loading.set(false);
 		}
@@ -188,7 +185,7 @@ export class RateCalendarComponent {
 			this.calendarEntries.set(Array.isArray(entries) ? entries : []);
 			this.rebuildGrid();
 		} catch {
-			this.error.set("Failed to load rate calendar");
+			this.toast.error("Failed to load rate calendar");
 		}
 	}
 
@@ -338,8 +335,6 @@ export class RateCalendarComponent {
 		}
 
 		this.saving.set(true);
-		this.error.set(null);
-		this.success.set(null);
 
 		try {
 			for (const [, groupCells] of groups) {

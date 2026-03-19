@@ -1,3 +1,11 @@
+import type {
+  GuestAddress,
+  GuestCommandRow,
+  GuestMergeResult,
+  GuestUpdateOptions,
+  MergeGuestOptions,
+  RegisterGuestOptions,
+} from "@tartware/schemas";
 import { query, queryWithClient, withTransaction } from "../lib/db.js";
 import { appLogger } from "../lib/logger.js";
 import {
@@ -5,7 +13,6 @@ import {
   type GuestMergeCommand,
   GuestMergeCommandSchema,
   GuestPreferenceUpdateCommandSchema,
-  type GuestRegisterCommand,
   GuestSetBlacklistCommandSchema,
   GuestSetLoyaltyCommandSchema,
   GuestSetVipCommandSchema,
@@ -23,13 +30,7 @@ const APP_ACTOR = "COMMAND_CENTER";
 const resolveActorId = (initiatedBy?: { userId?: string } | null): string =>
   initiatedBy?.userId ?? APP_ACTOR;
 
-type GuestAddress = {
-  street?: string;
-  city?: string;
-  state?: string;
-  country?: string;
-  postal_code?: string;
-};
+// GuestAddress imported from @tartware/schemas
 
 const normalizeAddress = (address?: GuestAddress | null): Record<string, unknown> | null => {
   if (!address) {
@@ -52,15 +53,7 @@ const appendMetadata = (
   ...extra,
 });
 
-type RegisterGuestOptions = {
-  tenantId: string;
-  payload: GuestRegisterCommand;
-  correlationId?: string;
-  initiatedBy?: {
-    userId?: string;
-    role?: string;
-  } | null;
-};
+// RegisterGuestOptions imported from @tartware/schemas
 
 /**
  * Register or update a guest profile (idempotent upsert).
@@ -137,40 +130,11 @@ export const registerGuestProfile = async ({
   return guestId;
 };
 
-type MergeGuestOptions = {
-  tenantId: string;
-  payload: unknown;
-  correlationId?: string;
-  initiatedBy?: {
-    userId?: string;
-    role?: string;
-  } | null;
-};
+// MergeGuestOptions imported from @tartware/schemas
 
-type GuestRow = {
-  id: string;
-  first_name: string;
-  last_name: string;
-  email: string;
-  phone: string | null;
-  secondary_phone: string | null;
-  address: Record<string, unknown> | null;
-  preferences: Record<string, unknown> | null;
-  notes: string | null;
-  metadata: Record<string, unknown> | null;
-  total_bookings: number | null;
-  total_nights: number | null;
-  total_revenue: number | string | null;
-  last_stay_date: string | Date | null;
-  loyalty_points: number | null;
-  loyalty_tier: string | null;
-  vip_status: string | null;
-  is_blacklisted: boolean | null;
-};
+type GuestRow = GuestCommandRow;
 
-type GuestMergeResult = {
-  primaryGuestId: string;
-};
+// GuestMergeResult imported from @tartware/schemas
 
 /**
  * Merge two guest profiles into a primary profile.
@@ -295,15 +259,7 @@ export const mergeGuestProfiles = async ({
   return { primaryGuestId: primary.id };
 };
 
-type GuestUpdateOptions = {
-  tenantId: string;
-  payload: unknown;
-  correlationId?: string;
-  initiatedBy?: {
-    userId?: string;
-    role?: string;
-  } | null;
-};
+// GuestUpdateOptions imported from @tartware/schemas
 
 /**
  * Update guest profile attributes with partial fields.

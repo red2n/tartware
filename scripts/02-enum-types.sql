@@ -417,15 +417,16 @@ CREATE TYPE group_booking_type AS ENUM (
 );
 
 -- Group Block Status
--- Standard: Group inventory management
+-- Standard: Group sales pipeline + inventory lifecycle (OPERA-aligned)
 CREATE TYPE group_block_status AS ENUM (
-    'INQUIRY',
-    'TENTATIVE',
-    'DEFINITE',
-    'CONFIRMED',
-    'PARTIAL',
-    'CANCELLED',
-    'COMPLETED'
+    'INQUIRY',       -- Initial contact — guest/planner asks about availability
+    'PROSPECT',      -- Qualified lead — sales is actively working the deal
+    'TENTATIVE',     -- Space held with cutoff date, pending contract
+    'DEFINITE',      -- Contract signed, group confirmed
+    'CONFIRMED',     -- Rooms picked and assigned
+    'CANCELLED',     -- Group cancelled (by guest/planner)
+    'TURNDOWN',      -- Hotel declined the business (capacity, rate, fit)
+    'COMPLETED'      -- Group stay finished, all folios closed
 );
 
 -- =====================================================

@@ -1,4 +1,12 @@
-import { type TaxConfigurationListItem, TaxConfigurationListItemSchema } from "@tartware/schemas";
+import {
+  type CommissionReportItem,
+  type DepartmentalRevenueItem,
+  type TaxConfigurationListItem,
+  TaxConfigurationListItemSchema,
+  type TaxConfigurationRow,
+  type TaxSummaryItem,
+  type TrialBalanceResponse,
+} from "@tartware/schemas";
 
 import { query } from "../lib/db.js";
 import {
@@ -27,51 +35,6 @@ const toIsoString = (value: string | Date | null): string | undefined => {
   if (!value) return undefined;
   if (value instanceof Date) return value.toISOString();
   return value;
-};
-
-type TaxConfigurationRow = {
-  tax_config_id: string;
-  tenant_id: string;
-  property_id: string | null;
-  property_name: string | null;
-  tax_code: string;
-  tax_name: string;
-  tax_description: string | null;
-  tax_type: string;
-  tax_category: string | null;
-  country_code: string;
-  state_province: string | null;
-  city: string | null;
-  jurisdiction_name: string | null;
-  jurisdiction_level: string | null;
-  tax_authority_name: string | null;
-  tax_registration_number: string | null;
-  tax_rate: number | string;
-  is_percentage: boolean;
-  fixed_amount: number | string | null;
-  effective_from: string | Date;
-  effective_to: string | Date | null;
-  is_active: boolean;
-  calculation_method: string | null;
-  calculation_base: string | null;
-  is_compound_tax: boolean;
-  rounding_method: string | null;
-  rounding_precision: number;
-  applies_to: string[];
-  rate_type: string | null;
-  display_on_invoice: boolean;
-  display_separately: boolean;
-  display_name: string | null;
-  display_order: number | null;
-  allows_exemptions: boolean;
-  exemption_types: string[];
-  tax_gl_account: string | null;
-  remittance_frequency: string | null;
-  times_applied: number;
-  total_tax_collected: number | string;
-  last_applied_at: string | Date | null;
-  created_at: string | Date;
-  updated_at: string | Date | null;
 };
 
 const mapRowToTaxConfiguration = (row: TaxConfigurationRow): TaxConfigurationListItem => {
@@ -176,30 +139,11 @@ export const getTaxConfigurationById = async (options: {
 // TRIAL BALANCE
 // ============================================================================
 
-type TrialBalanceLineItem = {
-  category: string;
-  charge_code: string | null;
-  debit_total: number;
-  credit_total: number;
-  net: number;
-};
-
-type TrialBalanceReport = {
-  business_date: string;
-  property_id: string | null;
-  line_items: TrialBalanceLineItem[];
-  total_debits: number;
-  total_credits: number;
-  total_payments: number;
-  variance: number;
-  is_balanced: boolean;
-};
-
 export const getTrialBalance = async (options: {
   tenantId: string;
   propertyId?: string;
   businessDate: string;
-}): Promise<TrialBalanceReport> => {
+}): Promise<TrialBalanceResponse> => {
   const { tenantId, propertyId, businessDate } = options;
 
   const params: unknown[] = [tenantId, businessDate];
@@ -295,14 +239,6 @@ export const getTrialBalance = async (options: {
 // DEPARTMENTAL REVENUE REPORT
 // ============================================================================
 
-type DepartmentalRevenueItem = {
-  department: string;
-  charge_count: number;
-  gross_revenue: number;
-  adjustments: number;
-  net_revenue: number;
-};
-
 export const getDepartmentalRevenue = async (options: {
   tenantId: string;
   propertyId?: string;
@@ -358,15 +294,6 @@ export const getDepartmentalRevenue = async (options: {
 // ============================================================================
 // TAX SUMMARY REPORT
 // ============================================================================
-
-type TaxSummaryItem = {
-  tax_name: string;
-  tax_type: string;
-  jurisdiction: string;
-  taxable_amount: number;
-  tax_collected: number;
-  transaction_count: number;
-};
 
 export const getTaxSummary = async (options: {
   tenantId: string;
@@ -426,14 +353,6 @@ export const getTaxSummary = async (options: {
 // ============================================================================
 // COMMISSION REPORT
 // ============================================================================
-
-type CommissionReportItem = {
-  source: string;
-  reservation_count: number;
-  room_revenue: number;
-  commission_amount: number;
-  commission_rate_avg: number;
-};
 
 export const getCommissionReport = async (options: {
   tenantId: string;

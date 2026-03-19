@@ -122,18 +122,6 @@
         <h3 class="card-title">Housekeeping</h3>
       </div>
       <div class="card-body">
-        @if (housekeepingSuccess(); as msg) {
-          <div class="flash flash-success">
-            <mat-icon class="flash-icon">check_circle</mat-icon>
-            {{ msg }}
-          </div>
-        }
-        @if (housekeepingError(); as msg) {
-          <div class="flash flash-error">
-            <mat-icon class="flash-icon">error_outline</mat-icon>
-            {{ msg }}
-          </div>
-        }
         <p class="hk-current">
           Current:
           <span class="status-badge" [ngClass]="hkClass(r.housekeeping_status)">
@@ -175,19 +163,6 @@
         }
       </div>
       <div class="card-body">
-        @if (amenitySuccess(); as msg) {
-          <div class="flash flash-success">
-            <mat-icon class="flash-icon">check_circle</mat-icon>
-            {{ msg }}
-          </div>
-        }
-        @if (amenityError(); as msg) {
-          <div class="flash flash-error">
-            <mat-icon class="flash-icon">error_outline</mat-icon>
-            {{ msg }}
-          </div>
-        }
-
         @if (editingAmenities()) {
           <!-- Edit mode: toggleable chips -->
           <p class="amenity-hint">Click to toggle amenities. Add custom ones below.</p>
@@ -263,18 +238,6 @@
           <h3 class="card-title">Room Activation</h3>
         </div>
         <div class="card-body">
-          @if (saveSuccess(); as msg) {
-            <div class="flash flash-success">
-              <mat-icon class="flash-icon">check_circle</mat-icon>
-              {{ msg }}
-            </div>
-          }
-          @if (saveError(); as msg) {
-            <div class="flash flash-error">
-              <mat-icon class="flash-icon">error_outline</mat-icon>
-              {{ msg }}
-            </div>
-          }
           <p class="notice">
             <mat-icon class="notice-icon">info</mat-icon>
             This room is in <strong>Setup</strong> mode and is not yet available for booking.
@@ -303,18 +266,6 @@
           <h3 class="card-title">Room Configuration</h3>
         </div>
         <div class="card-body">
-          @if (saveSuccess(); as msg) {
-            <div class="flash flash-success">
-              <mat-icon class="flash-icon">check_circle</mat-icon>
-              {{ msg }}
-            </div>
-          }
-          @if (saveError(); as msg) {
-            <div class="flash flash-error">
-              <mat-icon class="flash-icon">error_outline</mat-icon>
-              {{ msg }}
-            </div>
-          }
           <p class="notice notice-muted">
             <mat-icon class="notice-icon">settings</mat-icon>
             Move this room back to <strong>Setup</strong> mode to reconfigure rate plans or room type settings.
@@ -342,18 +293,6 @@
         <h3 class="card-title">Out of Order</h3>
       </div>
       <div class="card-body">
-        @if (saveSuccess(); as msg) {
-          <div class="flash flash-success">
-            <mat-icon class="flash-icon">check_circle</mat-icon>
-            {{ msg }}
-          </div>
-        }
-        @if (saveError(); as msg) {
-          <div class="flash flash-error">
-            <mat-icon class="flash-icon">error_outline</mat-icon>
-            {{ msg }}
-          </div>
-        }
 
         <div class="ooo-toggle-row">
           <mat-slide-toggle

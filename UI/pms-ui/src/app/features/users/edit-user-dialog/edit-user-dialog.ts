@@ -8,8 +8,8 @@ import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
 import type { TenantRole, UserWithTenants } from "@tartware/schemas";
 
 import { ApiService } from "../../../core/api/api.service";
-import { TENANT_ROLES } from "../../../shared/user-roles";
 import { ToastService } from "../../../shared/toast/toast.service";
+import { TENANT_ROLES } from "../../../shared/user-roles";
 
 type UserRow = UserWithTenants & { version: string };
 
@@ -35,7 +35,6 @@ export class EditUserDialogComponent {
 	readonly data: DialogData = inject(MAT_DIALOG_DATA);
 
 	readonly saving = signal(false);
-	readonly error = signal<string | null>(null);
 
 	readonly roles = TENANT_ROLES;
 
@@ -70,7 +69,6 @@ export class EditUserDialogComponent {
 		if (!this.hasChanges) return;
 
 		this.saving.set(true);
-		this.error.set(null);
 
 		try {
 			if (this.roleChanged) {
@@ -95,7 +93,7 @@ export class EditUserDialogComponent {
 			this.toast.success(`User ${changes.join(" and ")}`);
 			this.dialogRef.close(true);
 		} catch (e) {
-			this.error.set(e instanceof Error ? e.message : "Failed to update user");
+			this.toast.error(e instanceof Error ? e.message : "Failed to update user");
 		} finally {
 			this.saving.set(false);
 		}
@@ -103,7 +101,6 @@ export class EditUserDialogComponent {
 
 	async resetPassword(): Promise<void> {
 		this.saving.set(true);
-		this.error.set(null);
 
 		try {
 			await this.api.post("/users/reset-password", {
@@ -112,7 +109,7 @@ export class EditUserDialogComponent {
 			});
 			this.toast.success("Password reset to default. User will need to change it on next login.");
 		} catch (e) {
-			this.error.set(e instanceof Error ? e.message : "Failed to reset password");
+			this.toast.error(e instanceof Error ? e.message : "Failed to reset password");
 		} finally {
 			this.saving.set(false);
 		}

@@ -73,7 +73,6 @@ export class CreateReservationComponent implements OnInit {
 	readonly allRates = signal<RateDetail[]>([]);
 	readonly guests = signal<GuestOption[]>([]);
 	readonly saving = signal(false);
-	readonly error = signal<string | null>(null);
 	readonly loadingRef = signal(false);
 	readonly guestPage = signal(1);
 	readonly guestPageSize = 5;
@@ -255,7 +254,7 @@ export class CreateReservationComponent implements OnInit {
 			);
 			this.allRates.set(Array.isArray(rates) ? rates : []);
 		} catch {
-			this.error.set("Failed to load reference data");
+			this.toast.error("Failed to load reference data");
 		} finally {
 			this.loadingRef.set(false);
 		}
@@ -312,12 +311,11 @@ export class CreateReservationComponent implements OnInit {
 		const tenantId = this.auth.tenantId();
 		const propertyId = this.ctx.propertyId();
 		if (!tenantId || !propertyId) {
-			this.error.set("No property selected");
+			this.toast.error("No property selected");
 			return;
 		}
 
 		this.saving.set(true);
-		this.error.set(null);
 
 		try {
 			await this.api.post(`/tenants/${tenantId}/reservations`, {
@@ -336,9 +334,9 @@ export class CreateReservationComponent implements OnInit {
 			this.router.navigate(["/reservations"]);
 		} catch (e) {
 			if (e instanceof ApiValidationError) {
-				this.error.set(e.fieldErrors.map((fe) => fe.message).join("; "));
+				this.toast.error(e.fieldErrors.map((fe) => fe.message).join("; "));
 			} else {
-				this.error.set(e instanceof Error ? e.message : "Failed to create reservation");
+				this.toast.error(e instanceof Error ? e.message : "Failed to create reservation");
 			}
 		} finally {
 			this.saving.set(false);

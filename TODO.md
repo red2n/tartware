@@ -1383,3 +1383,236 @@ Decomposed `billing-service` into 4 domain services. API side is 100% complete f
   - Night-audit shows trial balance but not departmental revenue or tax summary.
   - Need: Two additional report views/tabs calling `GET /v1/billing/reports/departmental-revenue` and `GET /v1/billing/reports/tax-summary`.
   - API: Both endpoints exist with real SQL.
+
+---
+
+### Folio Routing Engine — Runtime Charge Routing & AR Integration (2026-03-19)
+
+**Priority: P1 — Next implementation target**
+
+The folio routing data model is 90% complete (`folio_routing_rules` table, Zod schemas, 6 seed templates, AR tables, folio types). The critical gap is the **runtime routing engine** — when a charge is posted, it currently goes to whichever folio the caller specifies. There is no automatic rule evaluation, no auto-apply on check-in, no folio windows, and no direct-bill-to-AR checkout flow.
+
+#### Industry Standard (OPERA / Protel / Mews)
+
+In enterprise PMS systems, **folio routing instructions** are the mechanism that automatically directs charges to the correct folio or AR account at post-time. This is how corporate billing, group billing, and split billing work without manual intervention.
+
+##### How OPERA Implements It
+
+1. **Each reservation has 1–8 folio windows** (Window 1 = guest personal, Window 2 = company, Window 3 = travel agent, etc.)
+2. **Routing instructions** are rules that say: "Route charges matching transaction code X from Window 1 → Window 2" or "Route to AR account Y"
+3. Rules match by **transaction code** (exact: RM101), **transaction group** (wildcard: RM%), or **charge category** (ACCOMMODATION, FOOD_BEVERAGE, etc.)
+4. Rules can route **FULL** (100% of charge), a **PERCENTAGE** (split), or a **FIXED AMOUNT** (cap with remainder to source)
+5. Rules are evaluated **by priority order** when any charge is posted — the first matching rule with `stop_on_match=true` wins
+6. **Auto-routing templates** are linked to companies, rate codes, or groups — when a matching reservation checks in, the template is cloned into active rules on the guest's folios
+
+##### Standard Routing Patterns
+
+```
+Corporate Guest:
+  ┌─────────────────┐   ┌─────────────────────┐
+  │ Room + Tax      │──►│ Company Master Folio │──► AR Account (Direct Bill)
+  └─────────────────┘   └─────────────────────┘
+  ┌─────────────────┐   ┌─────────────────────┐
+  │ Incidentals     │──►│ Guest Personal Card  │
+  └─────────────────┘   └─────────────────────┘
+
+Group Attendee:
+  ┌─────────────────┐   ┌─────────────────────┐
+  │ Room + Tax +    │──►│ Group Master Folio   │──► AR Account (Direct Bill)
+  │ Breakfast       │   └─────────────────────┘
+  └─────────────────┘
+  ┌─────────────────┐   ┌─────────────────────┐
+  │ All Other       │──►│ Individual Guest     │
+  └─────────────────┘   └─────────────────────┘
+
+Travel Agent:
+  ┌─────────────────┐   ┌─────────────────────┐
+  │ Room Revenue    │──►│ TA City Ledger       │──► Commission Payout
+  └─────────────────┘   └─────────────────────┘
+
+Split Stay (50/50):
+  ┌─────────────────┐   ┌───────────────┐
+  │ Room Charge     │──►│ 50% → Guest A │
+  │ $200/night      │   │ 50% → Guest B │
+  └─────────────────┘   └───────────────┘
+
+Direct Bill Checkout:
+  ┌─────────────────┐   ┌─────────────────────┐   ┌──────────────────┐
+  │ Outstanding     │──►│ Folio (SETTLED)      │──►│ accounts_receivable│
+  │ Balance         │   └─────────────────────┘   │ (Net 30/60 terms)│
+  └─────────────────┘                             └──────────────────┘
+```
+
+##### City Ledger / AR Account Types
+
+| Type | Examples | Payment Terms |
+|------|----------|---------------|
+| Corporate | Company direct bill accounts | Net 30/60 |
+| Travel Agency | Commission and receivables | Net 30 |
+| Group | Post-event billing | Net 15–30 |
+| Employee | Staff charges | Payroll deduction |
+| Bad Debt | Uncollectible accounts | Write-off |
+
+##### AR Aging Standard
+
+| Bucket | Days Outstanding | Action |
+|--------|------------------|--------|
+| Current | 0–30 days | Normal collection |
+| 30 days | 31–60 days | First reminder statement |
+| 60 days | 61–90 days | Escalated collection |
+| 90+ days | 91+ days | Write-off consideration |
+
+#### Current State in Tartware
+
+| Layer | Status | Details |
+|-------|--------|---------|
+| `folio_routing_rules` table | ✅ Done | `scripts/tables/04-financial/74_folio_routing_rules.sql` — full schema with source/destination folios, routing type (FULL/PERCENTAGE/FIXED_AMOUNT/REMAINDER), charge category filters, priority evaluation, template vs active rules, auto-apply flags, company/group associations, schedule dates |
+| Zod schema | ✅ Done | `schema/src/schemas/04-financial/folio-routing-rules.ts` — `routingTypeEnum`, `chargeCategoryEnum`, `destinationFolioTypeEnum` (GUEST/MASTER/CITY_LEDGER/INCIDENTAL/HOUSE_ACCOUNT) |
+| 6 seed templates | ✅ Done | CORP_ROOM_TAX, CORP_INC_GUEST, CORP_FB_CAP (capped at $50), GRP_ALL_MASTER, TA_ROOM_CL, SPLIT_50_50 |
+| Folio types | ✅ Done | GUEST, MASTER, CITY_LEDGER, HOUSE, INCIDENTAL in folios table |
+| Group billing setup | ✅ Done | `group.billing.setup` command creates master folio + stores routing rules as JSON in folio notes |
+| AR system | ✅ Done | `billing.ar.post_to_ledger`, `billing.ar.apply_payment`, `billing.ar.generate_statement`, `billing.ar.aging_report` |
+| Charge posting | ✅ Done | `billing.charge.post` posts to a specified folio with balance update |
+| Charge transfer | ✅ Done | `billing.folio.transfer` + `billing.charge.split` for manual routing |
+| Commission tracking | ✅ Done | `billing.commission.calculate` + `billing.commission.generate_statement` |
+
+#### Gaps — Implementation Checklist
+
+##### FR-1: Routing Rule Evaluation Engine | Complexity: High | Priority: P1
+
+The core missing piece. When `billing.charge.post` is called, the billing-service must evaluate active routing rules before inserting the charge.
+
+- [ ] **FR-1a: Create `evaluateRoutingRules()` service in billing-service**
+  - Input: `{ tenantId, propertyId, folioId, chargeCode, transactionType, chargeCategory, amount }`
+  - Queries `folio_routing_rules WHERE is_template = FALSE AND source_folio_id = $folioId AND is_active = TRUE AND is_deleted = FALSE` ordered by `priority ASC, created_at ASC`
+  - For each rule: match charge against `charge_code_pattern` (exact, wildcard with SQL LIKE, CSV list), `transaction_type`, `charge_category`, `min_amount`/`max_amount`
+  - Apply `routing_type`: FULL (move entire charge), PERCENTAGE (split by %), FIXED_AMOUNT (cap then remainder to source), REMAINDER (leftover after other rules)
+  - Respect `stop_on_match` flag — stop evaluation after first match if true
+  - Respect `effective_from`/`effective_until` date window
+  - Return: `{ destinationFolioId, routedAmount, remainderAmount, ruleId }[]`
+
+- [ ] **FR-1b: Wire `evaluateRoutingRules()` into `postCharge` handler**
+  - Before inserting `charge_postings`, call `evaluateRoutingRules()` for the source folio
+  - If rules match: insert charge on destination folio(s) instead of (or in addition to) source folio
+  - Update `total_charges` / `balance` on all affected folios atomically
+  - Record `routing_rule_id` on `charge_postings` for audit trail (may need column addition)
+
+- [ ] **FR-1c: Add `routing_rule_id` column to `charge_postings` table**
+  - `ALTER TABLE charge_postings ADD COLUMN routing_rule_id UUID REFERENCES folio_routing_rules(rule_id)`
+  - Update Zod schema for charge_postings
+  - Enables audit: "this charge was routed here because of rule X"
+
+##### FR-2: CRUD API for Routing Rules | Complexity: Medium | Priority: P1
+
+Templates exist in the DB but there's no API to create/edit/delete/list routing rules for a reservation.
+
+- [ ] **FR-2a: Add routing rule command schemas to `@tartware/schemas`**
+  - `billing.routing_rule.create` — create a new rule (template or active)
+  - `billing.routing_rule.update` — update rule criteria, priority, routing type
+  - `billing.routing_rule.delete` — soft-delete a rule
+  - `billing.routing_rule.clone_template` — clone a template into active rules for a specific folio pair
+
+- [ ] **FR-2b: Add read endpoints to billing-service (or finance-admin-service)**
+  - `GET /v1/billing/routing-rules/templates` — list all templates for a property
+  - `GET /v1/billing/routing-rules?folio_id=X` — list active rules for a folio
+  - `GET /v1/billing/routing-rules/:ruleId` — single rule detail
+
+- [ ] **FR-2c: Add command handlers in billing-service**
+  - Implement create/update/delete/clone handlers
+  - Clone handler: copies template fields, sets `is_template=false`, binds `source_folio_id` + `destination_folio_id`, links `template_id`
+
+- [ ] **FR-2d: Register in command catalog + validators + consumer dispatch**
+  - Seed `command_templates` entries
+  - Add to `commandPayloadValidators` map
+  - Add cases to billing-service `routeCommand()` switch
+
+##### FR-3: Auto-Apply Routing Templates at Check-In | Complexity: Medium | Priority: P1
+
+When a guest checks in, their reservation's company/group/rate-code should trigger automatic cloning of matching routing templates.
+
+- [ ] **FR-3a: On reservation check-in event, evaluate auto-apply rules**
+  - Listen for `reservation.checked_in` event in billing-service (or reservation-event-handler)
+  - Query `folio_routing_rules WHERE is_template = TRUE AND is_active = TRUE` filtered by:
+    - `auto_apply_to_company = TRUE AND company_id = reservation.company_id`
+    - `auto_apply_to_group = TRUE AND group_booking_id = reservation.group_booking_id`
+  - Clone matching templates into active rules: set `source_folio_id` = guest folio, `destination_folio_id` = master/company folio
+
+- [ ] **FR-3b: Resolve destination folio from `destination_folio_type`**
+  - GUEST → guest's personal folio (already created at reservation time)
+  - MASTER → group master folio (from `group_bookings.master_folio_id`)
+  - CITY_LEDGER → company's city ledger folio (may need lookup by `company_id`)
+  - Create destination folio if it doesn't exist (e.g., company has no city ledger folio yet)
+
+##### FR-4: Folio Windows (Multi-Folio per Reservation) | Complexity: Medium | Priority: P2
+
+Industry standard is 1–8 folio windows per reservation. Currently each reservation has one auto-created GUEST folio.
+
+- [ ] **FR-4a: Add `folio_window` column to folios table**
+  - `ALTER TABLE folios ADD COLUMN folio_window SMALLINT DEFAULT 1`
+  - Window 1 = personal guest, Window 2+ = company/agent/split
+  - Unique constraint: `(reservation_id, folio_window)` where `reservation_id IS NOT NULL`
+
+- [ ] **FR-4b: Add `billing.folio.create_window` command**
+  - Create additional folio window for a reservation
+  - Accepts: `reservation_id`, `folio_window` (2–8), `folio_type`, `guest_name`/`company_name`
+  - Used when front desk sets up split billing or company routing
+
+- [ ] **FR-4c: Update folio list/detail endpoints to return window info**
+  - `GET /v1/billing/reservations/:id/folios` — list all windows for a reservation
+  - Include `folio_window` in response schema
+
+##### FR-5: Direct-Bill-to-AR Checkout Flow | Complexity: Medium | Priority: P1
+
+When a direct-bill guest checks out, the outstanding balance should transfer to `accounts_receivable` instead of being collected at the desk.
+
+- [ ] **FR-5a: Add `billing.checkout.direct_bill` command schema**
+  - Input: `{ reservation_id, folio_id, ar_account_id, payment_terms, notes }`
+  - Or detect automatically when reservation's `payment_method = 'direct_bill'`
+
+- [ ] **FR-5b: Implement direct-bill checkout handler**
+  - Close folio (status → SETTLED)
+  - Transfer outstanding balance to `accounts_receivable` table (existing `billing.ar.post_to_ledger` logic)
+  - Set `ar_status = 'open'`, `payment_terms` from company profile
+  - Link AR entry to company via `company_id`
+  - Emit event for statement generation
+
+- [ ] **FR-5c: Wire into checkout flow**
+  - In `handleCheckOut` (reservations-command-service): detect `payment_method = 'direct_bill'`
+  - Emit `billing.checkout.direct_bill` command instead of requiring manual payment
+  - Or: add to express-checkout path for direct-bill reservations
+
+##### FR-6: Group Billing — Proper Routing Rule Rows | Complexity: Low | Priority: P2
+
+Currently `group.billing.setup` stores routing rules as JSON in folio notes instead of creating proper `folio_routing_rules` rows.
+
+- [ ] **FR-6a: Update `setupGroupBilling` handler**
+  - After creating master folio, INSERT `folio_routing_rules` rows (not JSON in notes)
+  - Each `routing_rule` from command → one row with `is_template=false`, `source_folio_id=NULL` (applied to all group member folios), `destination_folio_id=masterFolioId`, `group_booking_id`
+  - This enables FR-3 auto-apply: when group members check in, their routing activates via the engine
+
+##### FR-7: Routing Rule UI | Complexity: High | Priority: P2
+
+- [ ] **FR-7a: Routing Rules Management page**
+  - List templates for the property with filter/sort
+  - Create/edit template dialog: rule name, charge category, transaction type, routing type (FULL/PERCENTAGE/FIXED_AMOUNT/REMAINDER), percentage/amount, priority, schedule dates
+  - Delete with confirmation
+  - Clone template to active rule (select source + destination folio)
+
+- [ ] **FR-7b: Reservation Folio Detail — Active routing rules section**
+  - Show active routing rules on reservation folio detail view
+  - Allow adding/removing rules per folio
+  - Visual indicator: "Room charges → Company Folio (FULL)" with rule name and priority
+
+- [ ] **FR-7c: Checkout — Direct-bill flow in UI**
+  - When reservation payment_method is 'direct_bill', checkout screen shows AR transfer summary
+  - Confirm dialog: "Transfer $X,XXX.XX balance to AR account [Company Name] with Net 30 terms?"
+  - Post-checkout: link to AR account detail
+
+#### Implementation Order
+
+| Phase | Items | Complexity | Depends On |
+|-------|-------|------------|------------|
+| **Phase 1** | FR-1 (routing engine) + FR-2 (CRUD API) | High + Medium | None |
+| **Phase 2** | FR-3 (auto-apply at check-in) + FR-5 (direct-bill checkout) | Medium + Medium | FR-1 |
+| **Phase 3** | FR-4 (folio windows) + FR-6 (group billing fix) | Medium + Low | FR-1 |
+| **Phase 4** | FR-7 (UI) | High | FR-1, FR-2, FR-5 |

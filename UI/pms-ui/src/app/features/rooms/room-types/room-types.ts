@@ -14,7 +14,13 @@ import { TenantContextService } from "../../../core/context/tenant-context.servi
 import { GlobalSearchService } from "../../../core/search/global-search.service";
 import { PageHeaderComponent } from "../../../shared/components/page-header/page-header";
 import { PaginationComponent } from "../../../shared/pagination/pagination";
-import { createSortState, getAriaSort, getSortIcon, sortBy, toggleSort } from "../../../shared/sort-utils";
+import {
+	createSortState,
+	getAriaSort,
+	getSortIcon,
+	sortBy,
+	toggleSort,
+} from "../../../shared/sort-utils";
 import { ToastService } from "../../../shared/toast/toast.service";
 
 @Component({

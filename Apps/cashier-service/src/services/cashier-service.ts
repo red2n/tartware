@@ -1,4 +1,9 @@
-import { type CashierSessionListItem, CashierSessionListItemSchema } from "@tartware/schemas";
+import {
+  type CashierSessionListItem,
+  CashierSessionListItemSchema,
+  type CashierSessionRow,
+  type ShiftSummaryResponse,
+} from "@tartware/schemas";
 
 import { query } from "../lib/db.js";
 import {
@@ -38,36 +43,7 @@ const toIsoString = (value: string | Date | null): string | undefined => {
 // CASHIER SESSIONS
 // ============================================================================
 
-type CashierSessionRow = {
-  session_id: string;
-  tenant_id: string;
-  property_id: string;
-  property_name: string | null;
-  session_number: string;
-  session_name: string | null;
-  cashier_id: string;
-  cashier_name: string | null;
-  terminal_id: string | null;
-  terminal_name: string | null;
-  location: string | null;
-  session_status: string;
-  opened_at: string | Date;
-  closed_at: string | Date | null;
-  business_date: string | Date;
-  shift_type: string | null;
-  opening_float_declared: number | string;
-  total_transactions: number | null;
-  total_revenue: number | string | null;
-  total_refunds: number | string | null;
-  net_revenue: number | string | null;
-  expected_cash_balance: number | string | null;
-  closing_cash_counted: number | string | null;
-  cash_variance: number | string | null;
-  has_variance: boolean | null;
-  reconciled: boolean | null;
-  approved: boolean | null;
-  created_at: string | Date | null;
-};
+// CashierSessionRow imported from @tartware/schemas
 
 const mapRowToCashierSession = (row: CashierSessionRow): CashierSessionListItem => {
   const { display: statusDisplay } = formatEnumDisplay(row.session_status, "Open");
@@ -171,31 +147,7 @@ export const getCashierSessionById = async (
 // SHIFT HANDOVER SUMMARY
 // ============================================================================
 
-type ShiftSummary = {
-  session_id: string;
-  session_number: string;
-  cashier_name: string;
-  terminal_id: string | null;
-  shift_type: string;
-  session_status: string;
-  business_date: string;
-  opened_at: string;
-  closed_at: string | null;
-  opening_float: number;
-  closing_cash_counted: number | null;
-  cash_variance: number | null;
-  has_variance: boolean;
-  reconciled: boolean;
-  total_transactions: number;
-  total_revenue: number;
-  total_refunds: number;
-  net_revenue: number;
-  charge_count: number;
-  charge_total: number;
-  payment_count: number;
-  payment_total: number;
-  handover_notes: string | null;
-};
+type ShiftSummary = ShiftSummaryResponse;
 
 /**
  * Get a shift summary for a cashier session — transaction totals,

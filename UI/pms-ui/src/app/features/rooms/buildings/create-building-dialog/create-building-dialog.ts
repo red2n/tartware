@@ -10,6 +10,7 @@ import type { BuildingItem } from "@tartware/schemas";
 import { ApiService, ApiValidationError } from "../../../../core/api/api.service";
 import { AuthService } from "../../../../core/auth/auth.service";
 import { TenantContextService } from "../../../../core/context/tenant-context.service";
+import { ToastService } from "../../../../shared/toast/toast.service";
 
 const BUILDING_TYPES = [
 	"MAIN",
@@ -39,10 +40,10 @@ export class CreateBuildingDialogComponent implements OnInit {
 	private readonly auth = inject(AuthService);
 	private readonly ctx = inject(TenantContextService);
 	private readonly dialogRef = inject(MatDialogRef<CreateBuildingDialogComponent>);
+	private readonly toast = inject(ToastService);
 	private readonly data = inject<BuildingItem | null>(MAT_DIALOG_DATA, { optional: true });
 
 	readonly saving = signal(false);
-	readonly error = signal<string | null>(null);
 	readonly buildingTypes = BUILDING_TYPES;
 	readonly buildingStatuses = BUILDING_STATUSES;
 
@@ -121,7 +122,6 @@ export class CreateBuildingDialogComponent implements OnInit {
 		if (!tenantId) return;
 
 		this.saving.set(true);
-		this.error.set(null);
 
 		const body = {
 			tenant_id: tenantId,
@@ -158,9 +158,9 @@ export class CreateBuildingDialogComponent implements OnInit {
 			this.dialogRef.close(true);
 		} catch (e) {
 			if (e instanceof ApiValidationError) {
-				this.error.set(e.fieldErrors.map((fe) => fe.message).join("; "));
+				this.toast.error(e.fieldErrors.map((fe) => fe.message).join("; "));
 			} else {
-				this.error.set(
+				this.toast.error(
 					e instanceof Error
 						? e.message
 						: `Failed to ${this.isEditMode ? "update" : "create"} building`,

@@ -605,19 +605,32 @@ export const GroupBookingTypeEnum = z.enum([
 export type GroupBookingType = z.infer<typeof GroupBookingTypeEnum>;
 
 /**
- * Group Block Status - Group inventory management
+ * Group Block Status - Group sales pipeline + inventory lifecycle (OPERA-aligned)
  * @database group_block_status
  */
 export const GroupBlockStatusEnum = z.enum([
 	"INQUIRY",
+	"PROSPECT",
 	"TENTATIVE",
 	"DEFINITE",
 	"CONFIRMED",
-	"PARTIAL",
 	"CANCELLED",
+	"TURNDOWN",
 	"COMPLETED",
 ]);
 export type GroupBlockStatus = z.infer<typeof GroupBlockStatusEnum>;
+
+/** Human-readable descriptions for each group block status — intended for UI tooltips / help text. */
+export const GroupBlockStatusDescriptions: Record<GroupBlockStatus, string> = {
+	INQUIRY: "Initial contact — guest or planner is asking about availability.",
+	PROSPECT: "Qualified lead — sales team is actively working the deal.",
+	TENTATIVE: "Space held with a cutoff date, pending a signed contract.",
+	DEFINITE: "Contract signed — the group booking is confirmed.",
+	CONFIRMED: "Rooms have been picked and assigned to the group.",
+	CANCELLED: "Group booking was cancelled by the guest or planner.",
+	TURNDOWN: "Hotel declined the business (capacity, rate, or fit).",
+	COMPLETED: "Group stay is finished and all folios are closed.",
+};
 
 // =====================================================
 // AI/ML & REVENUE MANAGEMENT ENUMS

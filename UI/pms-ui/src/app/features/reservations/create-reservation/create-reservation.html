@@ -10,13 +10,6 @@
   </div>
 </div>
 
-@if (error(); as err) {
-  <div class="flash flash-error mb-4">
-    <mat-icon class="flash-icon">error_outline</mat-icon>
-    {{ err }}
-  </div>
-}
-
 @if (loadingRef()) {
   <div class="loading-state">
     <mat-spinner diameter="32"></mat-spinner>
