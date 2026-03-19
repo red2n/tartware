@@ -11,8 +11,8 @@ import type { GuestWithStats } from "@tartware/schemas";
 
 import { ApiService } from "../../../core/api/api.service";
 import { AuthService } from "../../../core/auth/auth.service";
-import { ToastService } from "../../../shared/toast/toast.service";
 import { loyaltyTierClass, vipStatusClass } from "../../../shared/badge-utils";
+import { ToastService } from "../../../shared/toast/toast.service";
 
 /** API returns version as string instead of bigint. */
 type GuestDetail = Omit<GuestWithStats, "version"> & { version: string };
@@ -56,7 +56,14 @@ type DetailTab = "profile" | "preferences" | "documents" | "communications";
 @Component({
 	selector: "app-guest-detail",
 	standalone: true,
-	imports: [NgClass, RouterLink, MatIconModule, MatButtonModule, MatProgressSpinnerModule, MatTooltipModule],
+	imports: [
+		NgClass,
+		RouterLink,
+		MatIconModule,
+		MatButtonModule,
+		MatProgressSpinnerModule,
+		MatTooltipModule,
+	],
 	templateUrl: "./guest-detail.html",
 	styleUrl: "./guest-detail.scss",
 })

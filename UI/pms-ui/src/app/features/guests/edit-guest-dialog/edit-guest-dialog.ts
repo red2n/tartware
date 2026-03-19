@@ -7,7 +7,12 @@ import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
 
 import { ApiService, ApiValidationError } from "../../../core/api/api.service";
 import { AuthService } from "../../../core/auth/auth.service";
-import { GUEST_TITLES, LOYALTY_TIERS, NATIONALITIES, VIP_STATUSES } from "../../../shared/guest-constants";
+import {
+	GUEST_TITLES,
+	LOYALTY_TIERS,
+	NATIONALITIES,
+	VIP_STATUSES,
+} from "../../../shared/guest-constants";
 import { ToastService } from "../../../shared/toast/toast.service";
 
 export interface EditGuestDialogData {

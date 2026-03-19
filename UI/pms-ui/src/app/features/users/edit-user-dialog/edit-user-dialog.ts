@@ -8,8 +8,8 @@ import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
 import type { TenantRole, UserWithTenants } from "@tartware/schemas";
 
 import { ApiService } from "../../../core/api/api.service";
-import { TENANT_ROLES } from "../../../shared/user-roles";
 import { ToastService } from "../../../shared/toast/toast.service";
+import { TENANT_ROLES } from "../../../shared/user-roles";
 
 type UserRow = UserWithTenants & { version: string };
 
