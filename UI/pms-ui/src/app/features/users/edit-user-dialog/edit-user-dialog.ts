@@ -95,7 +95,7 @@ export class EditUserDialogComponent {
 			this.toast.success(`User ${changes.join(" and ")}`);
 			this.dialogRef.close(true);
 		} catch (e) {
-			this.error.set(e instanceof Error ? e.message : "Failed to update user");
+			this.toast.error(e instanceof Error ? e.message : "Failed to update user");
 		} finally {
 			this.saving.set(false);
 		}
@@ -112,7 +112,7 @@ export class EditUserDialogComponent {
 			});
 			this.toast.success("Password reset to default. User will need to change it on next login.");
 		} catch (e) {
-			this.error.set(e instanceof Error ? e.message : "Failed to reset password");
+			this.toast.error(e instanceof Error ? e.message : "Failed to reset password");
 		} finally {
 			this.saving.set(false);
 		}

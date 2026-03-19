@@ -157,7 +157,7 @@ export class RateCalendarComponent {
 			this.ratePlans.set(Array.isArray(rates) ? rates : []);
 			await this.loadCalendarData();
 		} catch {
-			this.error.set("Failed to load reference data");
+			this.toast.error("Failed to load reference data");
 		} finally {
 			this.loading.set(false);
 		}
@@ -188,7 +188,7 @@ export class RateCalendarComponent {
 			this.calendarEntries.set(Array.isArray(entries) ? entries : []);
 			this.rebuildGrid();
 		} catch {
-			this.error.set("Failed to load rate calendar");
+			this.toast.error("Failed to load rate calendar");
 		}
 	}
 

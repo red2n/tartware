@@ -15,7 +15,7 @@ import { z } from "zod";
 
 /**
  * Create a new group booking with initial block request.
- * Inserts into `group_bookings` with status INQUIRY or TENTATIVE.
+ * Inserts into `group_bookings` with status INQUIRY, PROSPECT, TENTATIVE, or DEFINITE.
  */
 export const GroupCreateCommandSchema = z.object({
 	property_id: z.string().uuid(),
@@ -44,9 +44,9 @@ export const GroupCreateCommandSchema = z.object({
 	cutoff_date: z.coerce.date().optional(),
 	cutoff_days_before_arrival: z.coerce.number().int().min(0).optional(),
 	block_status: z
-		.enum(["inquiry", "tentative", "definite"])
+		.enum(["inquiry", "prospect", "tentative", "definite"])
 		.optional()
-		.default("tentative"),
+		.default("inquiry"),
 	rate_type: z
 		.enum(["group_rate", "negotiated", "contracted", "special", "rack"])
 		.optional(),

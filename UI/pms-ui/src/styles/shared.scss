@@ -391,6 +391,11 @@ textarea.field-input {
   margin-top: 2px;
 }
 
+.field-hint-muted {
+  font-style: italic;
+  opacity: 0.75;
+}
+
 .field-value-locked {
   font-size: var(--font-size-sm);
   font-weight: var(--font-weight-semibold);

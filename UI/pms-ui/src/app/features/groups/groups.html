@@ -68,6 +68,7 @@
           class="filter-tab"
           [attr.aria-pressed]="activeFilter() === f.key"
           [class.filter-tab-active]="activeFilter() === f.key"
+          [matTooltip]="f.description"
           (click)="setFilter(f.key)">
           {{ f.label }}
           <span class="counter">{{ filterCounts()[f.key] }}</span>
@@ -162,7 +163,7 @@
                 </td>
                 @if (activeFilter() === 'ALL') {
                   <td>
-                    <span class="badge" [ngClass]="statusClass(grp.block_status)">
+                    <span class="badge" [ngClass]="statusClass(grp.block_status)" [matTooltip]="statusDescription(grp.block_status)">
                       {{ grp.block_status_display }}
                     </span>
                   </td>

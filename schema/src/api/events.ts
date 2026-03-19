@@ -496,12 +496,14 @@ export type WaitlistEntryListResponse = z.infer<
  * Group booking status enum matching database constraints.
  */
 export const GroupBookingStatusEnum = z.enum([
+	"INQUIRY",
+	"PROSPECT",
 	"TENTATIVE",
-	"CONFIRMED",
 	"DEFINITE",
-	"CANCELED",
+	"CONFIRMED",
+	"CANCELLED",
+	"TURNDOWN",
 	"COMPLETED",
-	"WAITLISTED",
 ]);
 export type GroupBookingStatus = z.infer<typeof GroupBookingStatusEnum>;
 

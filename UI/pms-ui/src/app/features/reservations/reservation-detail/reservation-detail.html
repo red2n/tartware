@@ -33,20 +33,6 @@
   }
 </div>
 
-<!-- Action feedback -->
-@if (actionSuccess(); as msg) {
-  <div class="flash flash-success">
-    <mat-icon class="flash-icon">check_circle</mat-icon>
-    {{ msg }}
-  </div>
-}
-@if (actionError(); as msg) {
-  <div class="flash flash-error">
-    <mat-icon class="flash-icon">error_outline</mat-icon>
-    {{ msg }}
-  </div>
-}
-
 <!-- Check-in confirmation with room selection -->
 @if (confirmingCheckIn()) {
   <div class="action-confirm-card">

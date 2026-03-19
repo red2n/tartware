@@ -45,5 +45,4 @@ export {
   CommissionApproveCommandSchema,
   CommissionCalculateCommandSchema,
   CommissionMarkPaidCommandSchema,
-  CommissionStatementGenerateCommandSchema,
 } from "@tartware/schemas/events/commands/billing";

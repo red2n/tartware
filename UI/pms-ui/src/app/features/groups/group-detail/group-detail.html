@@ -21,20 +21,6 @@
   }
 </div>
 
-<!-- Action feedback -->
-@if (actionSuccess(); as msg) {
-  <div class="flash flash-success">
-    <mat-icon class="flash-icon">check_circle</mat-icon>
-    {{ msg }}
-  </div>
-}
-@if (actionError(); as msg) {
-  <div class="flash flash-error">
-    <mat-icon class="flash-icon">error_outline</mat-icon>
-    {{ msg }}
-  </div>
-}
-
 <!-- Group check-in confirmation -->
 @if (confirmingCheckIn()) {
   <div class="action-confirm-card">
@@ -107,7 +93,10 @@
               <dt class="detail-label">{{ row.label }}</dt>
               <dd class="detail-value">
                 @if (row.badge) {
-                  <span class="badge" [ngClass]="row.badge">{{ row.value }}</span>
+                  <span class="badge" [ngClass]="row.badge" [matTooltip]="row.description ?? ''">{{ row.value }}</span>
+                  @if (row.description) {
+                    <span class="detail-hint text-muted">{{ row.description }}</span>
+                  }
                 } @else {
                   {{ row.value }}
                 }

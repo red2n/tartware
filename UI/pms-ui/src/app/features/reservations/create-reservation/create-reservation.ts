@@ -255,7 +255,7 @@ export class CreateReservationComponent implements OnInit {
 			);
 			this.allRates.set(Array.isArray(rates) ? rates : []);
 		} catch {
-			this.error.set("Failed to load reference data");
+			this.toast.error("Failed to load reference data");
 		} finally {
 			this.loadingRef.set(false);
 		}
@@ -312,7 +312,7 @@ export class CreateReservationComponent implements OnInit {
 		const tenantId = this.auth.tenantId();
 		const propertyId = this.ctx.propertyId();
 		if (!tenantId || !propertyId) {
-			this.error.set("No property selected");
+			this.toast.error("No property selected");
 			return;
 		}
 
@@ -336,9 +336,9 @@ export class CreateReservationComponent implements OnInit {
 			this.router.navigate(["/reservations"]);
 		} catch (e) {
 			if (e instanceof ApiValidationError) {
-				this.error.set(e.fieldErrors.map((fe) => fe.message).join("; "));
+				this.toast.error(e.fieldErrors.map((fe) => fe.message).join("; "));
 			} else {
-				this.error.set(e instanceof Error ? e.message : "Failed to create reservation");
+				this.toast.error(e instanceof Error ? e.message : "Failed to create reservation");
 			}
 		} finally {
 			this.saving.set(false);

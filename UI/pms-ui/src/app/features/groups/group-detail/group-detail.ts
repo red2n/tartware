@@ -6,7 +6,7 @@ import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
 import { MatTooltipModule } from "@angular/material/tooltip";
 import { ActivatedRoute, Router, RouterLink } from "@angular/router";
 
-import type { GroupBookingListItem } from "@tartware/schemas";
+import { type GroupBlockStatus, GroupBlockStatusDescriptions, type GroupBookingListItem } from "@tartware/schemas";
 
 import { ApiService } from "../../../core/api/api.service";
 import { AuthService } from "../../../core/auth/auth.service";
@@ -15,7 +15,7 @@ import { groupBlockStatusClass } from "../../../shared/badge-utils";
 import { formatCurrency, formatLongDate } from "../../../shared/format-utils";
 import { ToastService } from "../../../shared/toast/toast.service";
 
-type DetailRow = { label: string; value: string; badge?: string };
+type DetailRow = { label: string; value: string; badge?: string; description?: string };
 
 @Component({
 	selector: "app-group-detail",
@@ -91,6 +91,7 @@ export class GroupDetailComponent implements OnInit {
 				label: "Status",
 				value: g.block_status_display,
 				badge: this.statusClass(g.block_status),
+				description: GroupBlockStatusDescriptions[g.block_status.toUpperCase() as GroupBlockStatus] ?? "",
 			},
 			{ label: "Organization", value: g.organization_name ?? "—" },
 			{ label: "Event", value: g.event_name ?? "—" },

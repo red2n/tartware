@@ -7,6 +7,7 @@ import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
 import { ApiService, ApiValidationError } from "../../../core/api/api.service";
 import { AuthService } from "../../../core/auth/auth.service";
 import { TenantContextService } from "../../../core/context/tenant-context.service";
+import { ToastService } from "../../../shared/toast/toast.service";
 
 type RoomTypeOption = {
 	room_type_id: string;
@@ -26,6 +27,7 @@ export class CreateRateDialogComponent implements OnInit {
 	private readonly auth = inject(AuthService);
 	private readonly ctx = inject(TenantContextService);
 	private readonly dialogRef = inject(MatDialogRef<CreateRateDialogComponent>);
+	private readonly toast = inject(ToastService);
 
 	readonly saving = signal(false);
 	readonly error = signal<string | null>(null);
@@ -102,7 +104,7 @@ export class CreateRateDialogComponent implements OnInit {
 				this.selectedRoomTypeId = types[0].room_type_id;
 			}
 		} catch {
-			this.error.set("Failed to load room types");
+			this.toast.error("Failed to load room types");
 		} finally {
 			this.loadingRoomTypes.set(false);
 		}
@@ -188,7 +190,7 @@ export class CreateRateDialogComponent implements OnInit {
 		try {
 			const propertyId = this.ctx.propertyId();
 			if (!propertyId) {
-				this.error.set("No property selected");
+				this.toast.error("No property selected");
 				return;
 			}
 
@@ -217,9 +219,9 @@ export class CreateRateDialogComponent implements OnInit {
 			this.dialogRef.close(true);
 		} catch (e) {
 			if (e instanceof ApiValidationError) {
-				this.error.set(e.message);
+				this.toast.error(e.message);
 			} else {
-				this.error.set(e instanceof Error ? e.message : "Failed to create rate");
+				this.toast.error(e instanceof Error ? e.message : "Failed to create rate");
 			}
 		} finally {
 			this.saving.set(false);

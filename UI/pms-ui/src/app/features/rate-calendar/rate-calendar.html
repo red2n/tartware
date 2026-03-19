@@ -11,19 +11,6 @@
   }
 </app-page-header>
 
-@if (error(); as err) {
-  <div class="flash flash-error mb-4">
-    <mat-icon class="flash-icon">error_outline</mat-icon>
-    {{ err }}
-  </div>
-}
-@if (success(); as msg) {
-  <div class="flash flash-success mb-4">
-    <mat-icon class="flash-icon">check_circle</mat-icon>
-    {{ msg }}
-  </div>
-}
-
 <!-- Toolbar: filters & navigation -->
 <div class="calendar-toolbar">
   <div class="toolbar-left">
