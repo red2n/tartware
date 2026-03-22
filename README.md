@@ -1,13 +1,9 @@
-# Tartware PMS
+e# Tartware PMS
 
 A command-driven property management platform built as a TypeScript monorepo. All write traffic flows through a central Command Center into Kafka; domain services consume commands asynchronously. Read traffic stays HTTP-based via the API Gateway.
 
 ## Architecture
-
-```
-Client → API Gateway (:8080) → Command Center → Kafka → Domain Services
-                             → Proxy reads to domain services
-```
+<img width="2752" height="1536" alt="unnamed" src="https://github.com/user-attachments/assets/fc3212e2-17e9-408c-a82b-4d7921c826e0" />
 
 ## Build Status
 
