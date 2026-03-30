@@ -248,6 +248,27 @@ services:
       timeout: 5s
       retries: 5
 
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: tartware-pgadmin
+    restart: always
+    # Expose PGAdmin UI on host port (override with PGADMIN_PORT env); default 5555 -> container 80
+    ports:
+      - "${PGADMIN_PORT:-5555}:80"
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL:-admin@admin.com}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD:-admin}
+    # Persistent storage for PGAdmin (keeps settings/sessions)
+    volumes:
+      - tartware_pgadmin_data:/var/lib/pgadmin
+    networks:
+      - tartware_network
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:80/ || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
 volumes:
   tartware_postgres_data:
     name: tartware_postgres_data
@@ -272,6 +293,9 @@ volumes:
     driver: local
   tartware_grafana_data:
     name: tartware_grafana_data
+    driver: local
+  tartware_pgadmin_data:
+    name: tartware_pgadmin_data
     driver: local
 
 networks:

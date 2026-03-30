@@ -754,11 +754,36 @@ if [ "$LOAD_DEFAULT_DATA" = true ]; then
     DEFAULT_DATA_SCRIPT="$SCRIPTS_DIR/data/defaults/seed-default-data.mjs"
 
     if [ -f "$DEFAULT_DATA_SCRIPT" ]; then
-        if node "$DEFAULT_DATA_SCRIPT"; then
-            echo -e "${GREEN}✓ Default baseline data inserted${NC}"
-        else
-            echo -e "${RED}✗ Failed to seed default data via $DEFAULT_DATA_SCRIPT${NC}"
-            exit 1
+        seeded=false
+        if command -v node >/dev/null 2>&1; then
+            if node "$DEFAULT_DATA_SCRIPT"; then
+                echo -e "${GREEN}✓ Default baseline data inserted${NC}"
+                seeded=true
+            else
+                echo -e "${YELLOW}⚠  Failed to insert default baseline data using $DEFAULT_DATA_SCRIPT in current environment${NC}"
+            fi
+        fi
+
+        # If not seeded and running under sudo, try the original user's environment (nvm installs)
+        if [ "$seeded" = false ] && [ -n "${SUDO_USER:-}" ]; then
+            echo -e "${CYAN}Attempting to seed defaults as user '${SUDO_USER}' (to use user's Node/npm environment)...${NC}"
+            seed_cmd='export NVM_DIR="$HOME/.nvm"; [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"; if command -v node >/dev/null 2>&1; then node "'"$DEFAULT_DATA_SCRIPT"'"; else exit 2; fi'
+            if sudo -u "$SUDO_USER" -H bash -lc "$seed_cmd"; then
+                echo -e "${GREEN}✓ Default baseline data inserted (using ${SUDO_USER}'s Node environment)${NC}"
+                seeded=true
+            else
+                rc=$?
+                if [ $rc -eq 2 ]; then
+                    echo -e "${YELLOW}⚠  Node.js not found in ${SUDO_USER}'s environment; skipping default data seeding.${NC}"
+                else
+                    echo -e "${YELLOW}⚠  Failed to insert default baseline data using $DEFAULT_DATA_SCRIPT as ${SUDO_USER}${NC}"
+                fi
+            fi
+        fi
+
+        if [ "$seeded" = false ]; then
+            echo -e "${YELLOW}⚠  Default data script not executed. You can run it manually when Node.js is available:${NC}"
+            echo -e "  node $DEFAULT_DATA_SCRIPT"
         fi
     else
         echo -e "${YELLOW}⚠  Default data script not found at $DEFAULT_DATA_SCRIPT - skipping${NC}"
@@ -768,13 +793,38 @@ if [ "$LOAD_DEFAULT_DATA" = true ]; then
     RESET_PASSWORD_SCRIPT="$REPO_ROOT/Apps/core-service/scripts/reset-default-password.ts"
     DEFAULT_PASSWORD="${AUTH_DEFAULT_PASSWORD:-TempPass123}"
     if [ -f "$RESET_PASSWORD_SCRIPT" ]; then
-        echo -e "${CYAN}Resetting user passwords to default...${NC}"
-        if DB_HOST="$DB_HOST" DB_PORT="$DB_PORT" DB_USER="$DB_USER" DB_PASSWORD="$DB_PASSWORD" DB_NAME="$DB_NAME" \
-            AUTH_DEFAULT_PASSWORD="$DEFAULT_PASSWORD" NODE_ENV=development \
-            npx tsx --tsconfig "$REPO_ROOT/Apps/core-service/tsconfig.json" "$RESET_PASSWORD_SCRIPT"; then
-            echo -e "${GREEN}✓ Default passwords reset to '$DEFAULT_PASSWORD'${NC}"
-        else
-            echo -e "${YELLOW}⚠  Failed to reset default passwords${NC}"
+        reset_ok=false
+        if command -v npx >/dev/null 2>&1; then
+            echo -e "${CYAN}Resetting user passwords to default...${NC}"
+            if DB_HOST="$DB_HOST" DB_PORT="$DB_PORT" DB_USER="$DB_USER" DB_PASSWORD="$DB_PASSWORD" DB_NAME="$DB_NAME" \
+                AUTH_DEFAULT_PASSWORD="$DEFAULT_PASSWORD" NODE_ENV=development \
+                npx tsx --tsconfig "$REPO_ROOT/Apps/core-service/tsconfig.json" "$RESET_PASSWORD_SCRIPT"; then
+                echo -e "${GREEN}✓ Default passwords reset to '$DEFAULT_PASSWORD'${NC}"
+                reset_ok=true
+            else
+                echo -e "${YELLOW}⚠  Failed to reset default passwords in current environment${NC}"
+            fi
+        fi
+
+        if [ "$reset_ok" = false ] && [ -n "${SUDO_USER:-}" ]; then
+            echo -e "${CYAN}Attempting to reset passwords as user '${SUDO_USER}' (to use user's Node/npm environment)...${NC}"
+            reset_cmd="export NVM_DIR=\"\$HOME/.nvm\"; [ -s \"\$NVM_DIR/nvm.sh\" ] && . \"\$NVM_DIR/nvm.sh\"; if command -v npx >/dev/null 2>&1; then DB_HOST=\"$DB_HOST\" DB_PORT=\"$DB_PORT\" DB_USER=\"$DB_USER\" DB_PASSWORD=\"$DB_PASSWORD\" DB_NAME=\"$DB_NAME\" AUTH_DEFAULT_PASSWORD=\"$DEFAULT_PASSWORD\" NODE_ENV=development npx tsx --tsconfig '$REPO_ROOT/Apps/core-service/tsconfig.json' '$RESET_PASSWORD_SCRIPT'; else exit 2; fi"
+            if sudo -u "$SUDO_USER" -H bash -lc "$reset_cmd"; then
+                echo -e "${GREEN}✓ Default passwords reset to '$DEFAULT_PASSWORD' (using ${SUDO_USER}'s npx)${NC}"
+                reset_ok=true
+            else
+                rc=$?
+                if [ $rc -eq 2 ]; then
+                    echo -e "${YELLOW}⚠  npx/Node.js not found in ${SUDO_USER}'s environment; skipping password reset.${NC}"
+                else
+                    echo -e "${YELLOW}⚠  Failed to reset default passwords as ${SUDO_USER}${NC}"
+                fi
+            fi
+        fi
+
+        if [ "$reset_ok" = false ]; then
+            echo -e "${YELLOW}⚠  Password reset skipped. Run manually when Node.js/npx available:${NC}"
+            echo -e "  DB_HOST=... DB_PORT=... DB_USER=... DB_PASSWORD=... DB_NAME=... AUTH_DEFAULT_PASSWORD=... NODE_ENV=development npx tsx --tsconfig $REPO_ROOT/Apps/core-service/tsconfig.json $RESET_PASSWORD_SCRIPT"
         fi
     fi
 else
