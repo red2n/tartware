@@ -4,6 +4,7 @@ import { fileURLToPath } from "node:url";
 import {
   type Client,
   credentials,
+  status as GrpcStatusCode,
   loadPackageDefinition,
   Metadata,
   type ServiceError,
@@ -146,6 +147,18 @@ const descriptor = loadPackageDefinition(packageDefinition) as unknown as {
 
 let client: AvailabilityGuardGrpcClient | null = null;
 
+const GRPC_DEADLINE_MS = 5000;
+const GRPC_RETRY_ATTEMPTS = 3;
+const GRPC_RETRY_BASE_DELAY_MS = 200;
+const GRPC_RETRY_FACTOR = 2;
+
+const RETRYABLE_GRPC_CODES = new Set<number>([
+  GrpcStatusCode.UNAVAILABLE,
+  GrpcStatusCode.DEADLINE_EXCEEDED,
+  GrpcStatusCode.RESOURCE_EXHAUSTED,
+  GrpcStatusCode.ABORTED,
+]);
+
 const getClient = (): AvailabilityGuardGrpcClient | null => {
   if (!availabilityGuardConfig.enabled) {
     return null;
@@ -171,7 +184,7 @@ const callGrpc = <TMethod extends keyof GrpcMethodMap>(
     meta.set("authorization", `Bearer ${availabilityGuardConfig.grpcAuthToken}`);
   }
 
-  const deadline = Date.now() + availabilityGuardConfig.timeoutMs;
+  const deadline = Date.now() + GRPC_DEADLINE_MS;
 
   return new Promise<GrpcMethodMap[TMethod][1]>((resolve, reject) => {
     // gRPC client methods accept (request, metadata, options, callback) overloads at runtime
@@ -196,6 +209,8 @@ const callGrpc = <TMethod extends keyof GrpcMethodMap>(
 type RetryOptions = {
   retries?: number;
   baseDelayMs?: number;
+  factor?: number;
+  shouldRetry?: (error: unknown) => boolean;
   onFailedAttempt?: (error: unknown, attempt: number) => void;
 };
 
@@ -204,18 +219,37 @@ const sleep = (ms: number): Promise<void> =>
     setTimeout(resolve, ms);
   });
 
+const isRetryableGrpcError = (error: unknown): boolean => {
+  if (!error || typeof error !== "object") {
+    return false;
+  }
+
+  const code = (error as { code?: number }).code;
+  if (typeof code !== "number") {
+    return false;
+  }
+
+  return RETRYABLE_GRPC_CODES.has(code);
+};
+
 const runWithRetry = async <T>(fn: () => Promise<T>, options: RetryOptions = {}): Promise<T> => {
-  const { retries = 0, baseDelayMs = 200, onFailedAttempt } = options;
+  const {
+    retries = 0,
+    baseDelayMs = 200,
+    factor = 2,
+    shouldRetry = () => true,
+    onFailedAttempt,
+  } = options;
 
   for (let attempt = 0; ; attempt += 1) {
     try {
       return await fn();
     } catch (error) {
-      if (attempt >= retries) {
+      if (attempt >= retries || !shouldRetry(error)) {
         throw error;
       }
       onFailedAttempt?.(error, attempt + 1);
-      await sleep(baseDelayMs * (attempt + 1));
+      await sleep(baseDelayMs * factor ** attempt);
     }
   }
 };
@@ -255,7 +289,10 @@ export const lockReservationHold = async (
           ttlSeconds: input.ttlSeconds,
         }),
       {
-        retries: 2,
+        retries: GRPC_RETRY_ATTEMPTS,
+        baseDelayMs: GRPC_RETRY_BASE_DELAY_MS,
+        factor: GRPC_RETRY_FACTOR,
+        shouldRetry: isRetryableGrpcError,
         onFailedAttempt: (error, attempt) => {
           reservationsLogger.warn(
             { err: error, method, attempt },
@@ -331,13 +368,28 @@ export const releaseReservationHold = async (input: ReleaseReservationInput): Pr
   const method = "releaseRoom";
   const startedAt = performance.now();
   try {
-    await callGrpc("releaseRoom", {
-      tenantId: input.tenantId,
-      lockId: input.lockId,
-      reservationId: input.reservationId ?? null,
-      reason: input.reason,
-      correlationId: input.correlationId ?? null,
-    });
+    await runWithRetry(
+      () =>
+        callGrpc("releaseRoom", {
+          tenantId: input.tenantId,
+          lockId: input.lockId,
+          reservationId: input.reservationId ?? null,
+          reason: input.reason,
+          correlationId: input.correlationId ?? null,
+        }),
+      {
+        retries: GRPC_RETRY_ATTEMPTS,
+        baseDelayMs: GRPC_RETRY_BASE_DELAY_MS,
+        factor: GRPC_RETRY_FACTOR,
+        shouldRetry: isRetryableGrpcError,
+        onFailedAttempt: (error, attempt) => {
+          reservationsLogger.warn(
+            { err: error, method, attempt },
+            "Availability Guard releaseRoom attempt failed",
+          );
+        },
+      },
+    );
     recordAvailabilityGuardRequest(method, "SUCCESS");
   } catch (error) {
     recordAvailabilityGuardRequest(method, "ERROR");
@@ -370,9 +422,14 @@ export const checkGuardHealth = async (): Promise<boolean> => {
     healthClient = new ctor(availabilityGuardConfig.address, credentials.createInsecure());
   }
 
+  const grpcHealthClient = healthClient;
+  if (!grpcHealthClient) {
+    return false;
+  }
+
   return new Promise<boolean>((resolve) => {
     const deadline = Date.now() + 3000;
-    const handler = healthClient!.check.bind(healthClient!) as unknown as (
+    const handler = grpcHealthClient.check.bind(grpcHealthClient) as unknown as (
       req: { service: string },
       opts: { deadline: number },
       cb: (error: ServiceError | null, response: { status: string }) => void,

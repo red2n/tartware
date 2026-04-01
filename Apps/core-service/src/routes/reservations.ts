@@ -129,7 +129,7 @@ export const registerReservationRoutes = (app: FastifyInstance): void => {
   const CheckInBriefJsonSchema = schemaFromZod(CheckInBriefSchema, "CheckInBrief");
 
   app.get<{ Params: { id: string }; Querystring: ReservationGetQuery }>(
-    "/v1/reservations/:id/check-in-brief",
+    "/v1/reservations/:id/summary",
     {
       preHandler: app.withTenantScope({
         resolveTenantId: (request) => (request.query as ReservationGetQuery).tenant_id,
@@ -138,7 +138,7 @@ export const registerReservationRoutes = (app: FastifyInstance): void => {
       }),
       schema: buildRouteSchema({
         tag: RESERVATIONS_TAG,
-        summary: "Pre-check-in guest recognition brief (VIP status, preferences, alerts, loyalty)",
+        summary: "Reservation summary (VIP status, preferences, alerts, loyalty)",
         querystring: ReservationGetQueryJsonSchema,
         response: {
           200: CheckInBriefJsonSchema,

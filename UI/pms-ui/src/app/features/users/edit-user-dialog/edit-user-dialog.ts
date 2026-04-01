@@ -72,7 +72,7 @@ export class EditUserDialogComponent {
 
 		try {
 			if (this.roleChanged) {
-				await this.api.post("/user-tenant-associations/role", {
+				await this.api.post("/user-tenant-role-assignments", {
 					tenant_id: this.data.tenantId,
 					user_id: this.data.user.id,
 					role: this.selectedRole,
@@ -80,7 +80,7 @@ export class EditUserDialogComponent {
 			}
 
 			if (this.statusChanged) {
-				await this.api.post("/user-tenant-associations/status", {
+				await this.api.post("/user-tenant-access-statuses", {
 					tenant_id: this.data.tenantId,
 					user_id: this.data.user.id,
 					is_active: this.isActive,
@@ -103,7 +103,7 @@ export class EditUserDialogComponent {
 		this.saving.set(true);
 
 		try {
-			await this.api.post("/users/reset-password", {
+			await this.api.post("/user-password-resets", {
 				tenant_id: this.data.tenantId,
 				user_id: this.data.user.id,
 			});

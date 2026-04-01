@@ -20,7 +20,7 @@ export const registerServiceStatusRoutes = (app: FastifyInstance): void => {
     minRole: "ADMIN",
   });
 
-  app.get("/v1/services/status", {
+  app.get("/v1/services", {
     preHandler: adminOnly,
     schema: {
       tags: ["System"],

@@ -9,6 +9,10 @@ import {
 } from "./commands/command-center-consumer.js";
 import { config } from "./config.js";
 import { shutdownProducer } from "./kafka/producer.js";
+import {
+  shutdownHostedCashierCommandCenterConsumer,
+  startHostedCashierCommandCenterConsumer,
+} from "./modules/cashier-service/commands/command-center-consumer.js";
 import { buildServer } from "./server.js";
 
 const telemetry = await initTelemetry({
@@ -62,6 +66,7 @@ const start = async () => {
 
     if (kafkaEnabled) {
       await startBillingCommandCenterConsumer();
+      await startHostedCashierCommandCenterConsumer();
     } else {
       app.log.warn("Kafka disabled via DISABLE_KAFKA; skipping consumer start");
     }
@@ -88,6 +93,7 @@ const shutdown = async (signal: NodeJS.Signals) => {
   app.log.info({ signal }, "shutdown signal received");
   try {
     if (kafkaEnabled) {
+      await shutdownHostedCashierCommandCenterConsumer();
       await shutdownBillingCommandCenterConsumer();
       await shutdownProducer();
     }

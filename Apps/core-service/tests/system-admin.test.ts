@@ -69,7 +69,7 @@ const performBreakGlassLogin = async (
 ) => {
   const response = await app.inject({
     method: 'POST',
-    url: '/v1/system/auth/break-glass',
+    url: '/v1/system/auth/emergency-sessions',
     payload: {
       username: TEST_SYSTEM_ADMIN_USERNAME,
       break_glass_code: 'SAFE-CODE-0001',
@@ -261,7 +261,7 @@ describe('System Administrator Capabilities', () => {
 
     const response = await app.inject({
       method: 'POST',
-      url: '/v1/system/tenants/bootstrap',
+      url: '/v1/system/tenant-onboardings',
       headers: {
         Authorization: `Bearer ${access_token}`,
       },
@@ -298,7 +298,7 @@ describe('System Administrator Capabilities', () => {
 
     const response = await app.inject({
       method: 'POST',
-      url: '/v1/system/impersonate',
+      url: '/v1/system/impersonation-sessions',
       headers: {
         Authorization: `Bearer ${access_token}`,
       },
@@ -359,7 +359,7 @@ describe('System Administrator Capabilities', () => {
     // Same code cannot be replayed after first use
     const replayResponse = await app.inject({
       method: 'POST',
-      url: '/v1/system/auth/break-glass',
+      url: '/v1/system/auth/emergency-sessions',
       payload: {
         username: TEST_SYSTEM_ADMIN_USERNAME,
         break_glass_code: 'SAFE-CODE-0001',
@@ -379,7 +379,7 @@ describe('System Administrator Capabilities', () => {
 
     const response = await app.inject({
       method: 'POST',
-      url: '/v1/system/auth/break-glass',
+      url: '/v1/system/auth/emergency-sessions',
       payload: {
         username: TEST_SYSTEM_ADMIN_USERNAME,
         break_glass_code: 'WRONG-CODE-0000',
@@ -401,7 +401,7 @@ describe('System Administrator Capabilities', () => {
 
     const response = await app.inject({
       method: 'POST',
-      url: '/v1/system/auth/break-glass',
+      url: '/v1/system/auth/emergency-sessions',
       payload: {
         username: TEST_SYSTEM_ADMIN_USERNAME,
         break_glass_code: 'EXPIRED-CODE-0001',

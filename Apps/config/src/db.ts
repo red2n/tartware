@@ -34,7 +34,11 @@ export interface DbPoolConfig {
   password: string;
   ssl: boolean;
   max: number;
+  min?: number;
   idleTimeoutMillis: number;
+  connectionTimeoutMillis?: number;
+  maxUses?: number;
+  allowExitOnIdle?: boolean;
   /** PostgreSQL statement_timeout in ms (0 = no limit). Default: 30 000 */
   statementTimeoutMs?: number;
 }
@@ -47,6 +51,35 @@ interface DbLogger {
 interface ParentLogger {
   child: (bindings: Record<string, unknown>) => DbLogger;
 }
+
+const parseNumberEnv = (value: string | undefined, fallback: number): number => {
+  if (!value) {
+    return fallback;
+  }
+
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) {
+    return fallback;
+  }
+
+  return parsed;
+};
+
+const parseBooleanEnv = (value: string | undefined, fallback: boolean): boolean => {
+  if (!value) {
+    return fallback;
+  }
+
+  const normalized = value.toLowerCase();
+  if (["1", "true", "yes", "on"].includes(normalized)) {
+    return true;
+  }
+  if (["0", "false", "no", "off"].includes(normalized)) {
+    return false;
+  }
+
+  return fallback;
+};
 
 // ── Return type ────────────────────────────────────────────────
 export interface DbPool {
@@ -82,6 +115,16 @@ export function createDbPool(dbConfig: DbPoolConfig, logger: ParentLogger): DbPo
 
   const dbLogger = logger.child({ module: "db" });
 
+  const poolMax = dbConfig.max;
+  const poolMin = dbConfig.min ?? parseNumberEnv(process.env.DB_POOL_MIN, 0);
+  const idleTimeoutMillis = dbConfig.idleTimeoutMillis;
+  const connectionTimeoutMillis =
+    dbConfig.connectionTimeoutMillis ??
+    parseNumberEnv(process.env.DB_POOL_CONNECTION_TIMEOUT_MS, 2000);
+  const maxUses = dbConfig.maxUses ?? parseNumberEnv(process.env.DB_POOL_MAX_USES, 0);
+  const allowExitOnIdle =
+    dbConfig.allowExitOnIdle ?? parseBooleanEnv(process.env.DB_POOL_ALLOW_EXIT_ON_IDLE, false);
+
   const pool = new Pool({
     host: dbConfig.host,
     port: dbConfig.port,
@@ -89,8 +132,12 @@ export function createDbPool(dbConfig: DbPoolConfig, logger: ParentLogger): DbPo
     user: dbConfig.user,
     password: dbConfig.password,
     ssl: dbConfig.ssl ? { rejectUnauthorized: false } : undefined,
-    max: dbConfig.max,
-    idleTimeoutMillis: dbConfig.idleTimeoutMillis,
+    max: poolMax,
+    min: poolMin,
+    idleTimeoutMillis,
+    connectionTimeoutMillis,
+    maxUses,
+    allowExitOnIdle,
     statement_timeout: dbConfig.statementTimeoutMs,
   });
 

@@ -98,12 +98,12 @@ export const registerReservationRoutes = (app: FastifyInstance): void => {
   );
 
   app.get(
-    "/v1/reservations/:id/check-in-brief",
+    "/v1/reservations/:id/summary",
     {
       preHandler: tenantScopeFromQuery,
       schema: buildRouteSchema({
         tag: RESERVATION_PROXY_TAG,
-        summary: "Pre-check-in guest recognition brief.",
+        summary: "Reservation summary for guest recognition and operational context.",
         response: {
           200: jsonObjectSchema,
         },

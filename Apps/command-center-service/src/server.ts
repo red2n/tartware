@@ -3,6 +3,8 @@ import { buildFastifyServer, type FastifyInstance } from "@tartware/fastify-serv
 import { config } from "./config.js";
 import { appLogger } from "./lib/logger.js";
 import { metricsRegistry } from "./lib/metrics.js";
+import { registerRollModule } from "./modules/roll-service/register.js";
+import { registerRegistryRoutes } from "./modules/service-registry/routes/registry.js";
 import authContextPlugin from "./plugins/auth-context.js";
 import swaggerPlugin from "./plugins/swagger.js";
 import { registerCommandDefinitionRoutes } from "./routes/command-definitions.js";
@@ -23,9 +25,11 @@ export const buildServer = (): FastifyInstance => {
     },
     registerRoutes: (app) => {
       registerHealthRoutes(app);
+      registerRegistryRoutes(app);
       registerCommandDefinitionRoutes(app);
       registerCommandFeatureRoutes(app);
       registerCommandRoutes(app);
+      registerRollModule(app);
     },
   });
 

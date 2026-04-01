@@ -13,6 +13,20 @@ const PROXY_MAX_RETRIES = Number(process.env.PROXY_MAX_RETRIES) || 2;
 /** Base delay in ms for exponential backoff between retries. */
 const PROXY_RETRY_BASE_DELAY_MS = Number(process.env.PROXY_RETRY_BASE_DELAY_MS) || 250;
 
+const guestPortalRedactedFields = new Set([
+  "id_number",
+  "passport_number",
+  "passport_expiry",
+  "company_tax_id",
+  "blacklist_reason",
+  "notes",
+  "metadata",
+  "created_by",
+  "updated_by",
+  "deleted_at",
+  "version",
+]);
+
 const hopByHopHeaders = new Set([
   "connection",
   "keep-alive",
@@ -70,10 +84,33 @@ const serializeBody = (request: FastifyRequest, headers: Headers): BodyInit | un
   return JSON.stringify(body);
 };
 
+const redactGuestPortalSensitiveFields = (payload: unknown): unknown => {
+  if (Array.isArray(payload)) {
+    return payload.map((item) => redactGuestPortalSensitiveFields(item));
+  }
+
+  if (payload && typeof payload === "object") {
+    const input = payload as Record<string, unknown>;
+    const output: Record<string, unknown> = {};
+
+    for (const [key, value] of Object.entries(input)) {
+      if (guestPortalRedactedFields.has(key)) {
+        continue;
+      }
+      output[key] = redactGuestPortalSensitiveFields(value);
+    }
+
+    return output;
+  }
+
+  return payload;
+};
+
 export const proxyRequest = async (
   request: FastifyRequest,
   reply: FastifyReply,
   targetBaseUrl: string,
+  redactGuestPortalResponse = false,
 ): Promise<FastifyReply> => {
   if (request.method.toUpperCase() === "OPTIONS") {
     return reply.status(204).send();
@@ -182,12 +219,47 @@ export const proxyRequest = async (
     return reply;
   }
 
+  const contentType = (response.headers.get("content-type") ?? "").toLowerCase();
+  const shouldTransformGuestPortalJson =
+    redactGuestPortalResponse && contentType.includes("application/json");
+
   reply.status(response.status);
   response.headers.forEach((value, key) => {
-    if (!hopByHopHeaders.has(key.toLowerCase())) {
+    const normalizedKey = key.toLowerCase();
+    if (
+      !hopByHopHeaders.has(normalizedKey) &&
+      !(shouldTransformGuestPortalJson && normalizedKey === "etag")
+    ) {
       reply.header(key, value);
     }
   });
+
+  if (shouldTransformGuestPortalJson) {
+    const rawBody = await response.text();
+    if (rawBody.trim().length > 0) {
+      try {
+        const parsed = JSON.parse(rawBody) as unknown;
+        const redacted = redactGuestPortalSensitiveFields(parsed);
+
+        proxyDurationHistogram.observe(
+          { target: targetLabel, method, status: String(response.status) },
+          (performance.now() - proxyStart) / 1000,
+        );
+        return reply.send(redacted);
+      } catch (error) {
+        request.log.warn(
+          { err: error, targetUrl, method: request.method },
+          "failed to parse upstream JSON for guest portal redaction; returning raw payload",
+        );
+      }
+    }
+
+    proxyDurationHistogram.observe(
+      { target: targetLabel, method, status: String(response.status) },
+      (performance.now() - proxyStart) / 1000,
+    );
+    return reply.send(rawBody);
+  }
 
   const buffer = Buffer.from(await response.arrayBuffer());
   proxyDurationHistogram.observe(

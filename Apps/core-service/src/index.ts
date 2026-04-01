@@ -1,11 +1,17 @@
 import process from "node:process";
 
-import { ensureDependencies, resolveOtelDependency } from "@tartware/config";
+import { ensureDependencies, parseHostPort, resolveOtelDependency } from "@tartware/config";
 import { initTelemetry } from "@tartware/telemetry";
 
 import { config } from "./config.js";
 import { shutdownRetentionSweep, startRetentionSweep } from "./jobs/retention-sweep.js";
 import { closeRedis, initRedis } from "./lib/redis.js";
+import {
+  shutdownSettingsCommandCenterConsumer,
+  startSettingsCommandCenterConsumer,
+} from "./modules/settings-service/commands/command-center-consumer.js";
+import { config as settingsConfig } from "./modules/settings-service/config.js";
+import { shutdownProducer as shutdownSettingsProducer } from "./modules/settings-service/kafka/producer.js";
 import { buildServer } from "./server.js";
 import { userCacheService } from "./services/user-cache-service.js";
 
@@ -30,6 +36,8 @@ const telemetry = await initTelemetry({
 const app = buildServer();
 const proc: typeof process | undefined = process;
 let isShuttingDown = false;
+const settingsKafkaEnabled = process.env.DISABLE_KAFKA !== "true";
+const settingsKafkaBroker = settingsConfig.kafka.brokers[0];
 
 const otelDependency = resolveOtelDependency(true);
 const dependenciesOk = await ensureDependencies(
@@ -43,6 +51,9 @@ const dependenciesOk = await ensureDependencies(
             port: config.redis.port,
           },
         ]
+      : []),
+    ...(settingsKafkaEnabled && settingsKafkaBroker
+      ? [{ name: "Kafka broker", ...parseHostPort(settingsKafkaBroker, 9092) }]
       : []),
     ...(otelDependency ? [otelDependency] : []),
   ],
@@ -62,6 +73,12 @@ if (!dependenciesOk) {
 
 // Initialize Redis
 const redis = initRedis();
+
+if (settingsKafkaEnabled) {
+  await startSettingsCommandCenterConsumer();
+} else {
+  app.log.warn("Kafka disabled via DISABLE_KAFKA; skipping hosted settings consumer startup");
+}
 
 app
   .listen({ port: config.port, host: config.host })
@@ -83,6 +100,10 @@ app
   })
   .catch(async (error: unknown) => {
     app.log.error(error, `failed to start ${config.service.name}`);
+    if (settingsKafkaEnabled) {
+      await shutdownSettingsCommandCenterConsumer();
+      await shutdownSettingsProducer();
+    }
     await closeRedis();
     await app.close();
     await telemetry
@@ -102,6 +123,10 @@ const shutdown = async (signal: string) => {
   isShuttingDown = true;
   app.log.info({ signal }, "Received shutdown signal");
   try {
+    if (settingsKafkaEnabled) {
+      await shutdownSettingsCommandCenterConsumer();
+      await shutdownSettingsProducer();
+    }
     shutdownRetentionSweep();
     await closeRedis();
     await telemetry

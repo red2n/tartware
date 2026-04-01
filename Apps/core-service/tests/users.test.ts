@@ -342,7 +342,7 @@ describe("Users Endpoint", () => {
 
       const response = await app.inject({
         method: "POST",
-        url: "/v1/users/reset-password",
+        url: "/v1/user-password-resets",
         headers: buildAuthHeader(adminUserId),
         payload: {
           tenant_id: adminTenantId,

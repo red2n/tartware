@@ -207,6 +207,37 @@ export const registerCoreProxyRoutes = (app: FastifyInstance): void => {
     proxyCore,
   );
 
+  // User self-service routes (must be available to authenticated non-admin users)
+  app.all(
+    "/v1/users/me",
+    {
+      preHandler: authenticatedOnly,
+      schema: buildRouteSchema({
+        tag: CORE_PROXY_TAG,
+        summary: "Proxy authenticated user self-service calls to core service.",
+        response: {
+          200: jsonObjectSchema,
+        },
+      }),
+    },
+    proxyCore,
+  );
+
+  app.all(
+    "/v1/users/me/*",
+    {
+      preHandler: authenticatedOnly,
+      schema: buildRouteSchema({
+        tag: CORE_PROXY_TAG,
+        summary: "Proxy authenticated user self-service calls to core service.",
+        response: {
+          200: jsonObjectSchema,
+        },
+      }),
+    },
+    proxyCore,
+  );
+
   app.all(
     "/v1/users/*",
     {
@@ -222,14 +253,14 @@ export const registerCoreProxyRoutes = (app: FastifyInstance): void => {
     proxyCore,
   );
 
-  // User-tenant association routes - proxy to core service
+  // Tenant membership routes - proxy to core service
   app.all(
-    "/v1/user-tenant-associations",
+    "/v1/tenant-user-memberships",
     {
       preHandler: adminOnly,
       schema: buildRouteSchema({
         tag: CORE_PROXY_TAG,
-        summary: "Proxy user-tenant association calls to core service.",
+        summary: "Proxy tenant membership listing calls to core service.",
         response: {
           200: jsonObjectSchema,
         },
@@ -239,12 +270,42 @@ export const registerCoreProxyRoutes = (app: FastifyInstance): void => {
   );
 
   app.all(
-    "/v1/user-tenant-associations/*",
+    "/v1/user-password-resets",
     {
       preHandler: adminOnly,
       schema: buildRouteSchema({
         tag: CORE_PROXY_TAG,
-        summary: "Proxy user-tenant association calls to core service.",
+        summary: "Proxy admin password reset calls to core service.",
+        response: {
+          200: jsonObjectSchema,
+        },
+      }),
+    },
+    proxyCore,
+  );
+
+  app.all(
+    "/v1/user-tenant-role-assignments",
+    {
+      preHandler: adminOnly,
+      schema: buildRouteSchema({
+        tag: CORE_PROXY_TAG,
+        summary: "Proxy tenant role assignment mutations to core service.",
+        response: {
+          200: jsonObjectSchema,
+        },
+      }),
+    },
+    proxyCore,
+  );
+
+  app.all(
+    "/v1/user-tenant-access-statuses",
+    {
+      preHandler: adminOnly,
+      schema: buildRouteSchema({
+        tag: CORE_PROXY_TAG,
+        summary: "Proxy tenant access status mutations to core service.",
         response: {
           200: jsonObjectSchema,
         },

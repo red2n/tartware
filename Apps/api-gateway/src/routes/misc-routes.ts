@@ -560,7 +560,7 @@ export const registerMiscRoutes = (app: FastifyInstance): void => {
       };
       const authHeader = request.headers.authorization;
       if (authHeader) {
-        headers["Authorization"] = authHeader;
+        headers.Authorization = authHeader;
       }
       const tenantHeader = request.headers["x-tenant-id"];
       if (tenantHeader) {

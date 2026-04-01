@@ -9,6 +9,51 @@
 \c tartware
 
 \echo ''
+
+-- =====================================================
+-- 4. CHECK TENANT ISOLATION & DOUBLE-BOOKING GUARDS
+-- =====================================================
+\echo '4. Checking tenant-scoped uniqueness and overlap guards...'
+
+SELECT
+    'idx_uk_reservations_tenant_confirmation' AS artifact,
+    CASE
+        WHEN EXISTS (
+            SELECT 1
+            FROM pg_indexes
+            WHERE schemaname = 'public'
+              AND tablename = 'reservations'
+              AND indexname = 'idx_uk_reservations_tenant_confirmation'
+        ) THEN '✓ Present'
+        ELSE '✗ Missing'
+    END AS status
+UNION ALL
+SELECT
+    'idx_reservations_active_room_stay_window' AS artifact,
+    CASE
+        WHEN EXISTS (
+            SELECT 1
+            FROM pg_indexes
+            WHERE schemaname = 'public'
+              AND tablename = 'reservations'
+              AND indexname = 'idx_reservations_active_room_stay_window'
+        ) THEN '✓ Present'
+        ELSE '✗ Missing'
+    END AS status
+UNION ALL
+SELECT
+    'reservations_no_double_booked_room' AS artifact,
+    CASE
+        WHEN EXISTS (
+            SELECT 1
+            FROM pg_constraint
+            WHERE conname = 'reservations_no_double_booked_room'
+              AND conrelid = 'public.reservations'::regclass
+        ) THEN '✓ Present'
+        ELSE '✗ Missing'
+    END AS status;
+
+\echo ''
 \echo '=============================================='
 \echo '  RESERVATIONS & BOOKING - INDEX VERIFICATION'
 \echo '  Tables: 14'
@@ -158,6 +203,7 @@ DECLARE
     v_total_indexes INTEGER;
     v_tables_with_indexes INTEGER;
     v_fk_without_index INTEGER;
+    v_missing_reservation_guards INTEGER;
 BEGIN
     -- Count total indexes (excluding primary keys)
     SELECT COUNT(*) INTO v_total_indexes
@@ -228,19 +274,52 @@ BEGIN
             AND att.attname = fk.column_name
     );
 
+        SELECT COUNT(*) INTO v_missing_reservation_guards
+        FROM (
+                SELECT 'idx_uk_reservations_tenant_confirmation' AS name
+                WHERE NOT EXISTS (
+                        SELECT 1
+                        FROM pg_indexes
+                        WHERE schemaname = 'public'
+                            AND tablename = 'reservations'
+                            AND indexname = 'idx_uk_reservations_tenant_confirmation'
+                )
+                UNION ALL
+                SELECT 'idx_reservations_active_room_stay_window' AS name
+                WHERE NOT EXISTS (
+                        SELECT 1
+                        FROM pg_indexes
+                        WHERE schemaname = 'public'
+                            AND tablename = 'reservations'
+                            AND indexname = 'idx_reservations_active_room_stay_window'
+                )
+                UNION ALL
+                SELECT 'reservations_no_double_booked_room' AS name
+                WHERE NOT EXISTS (
+                        SELECT 1
+                        FROM pg_constraint
+                        WHERE conname = 'reservations_no_double_booked_room'
+                            AND conrelid = 'public.reservations'::regclass
+                )
+        ) missing;
+
     RAISE NOTICE '';
     RAISE NOTICE 'Category: Reservations & Booking';
     RAISE NOTICE 'Total Secondary Indexes: %', v_total_indexes;
     RAISE NOTICE 'Tables with Indexes: % / 14', v_tables_with_indexes;
     RAISE NOTICE 'Foreign Keys Without Index: %', v_fk_without_index;
+    RAISE NOTICE 'Missing Reservation Isolation Guards: %', v_missing_reservation_guards;
     RAISE NOTICE '';
 
-    IF v_fk_without_index = 0 AND v_tables_with_indexes = 14 THEN
+    IF v_fk_without_index = 0 AND v_tables_with_indexes = 14 AND v_missing_reservation_guards = 0 THEN
         RAISE NOTICE '✓✓✓ RESERVATIONS & BOOKING INDEX VERIFICATION PASSED ✓✓✓';
     ELSE
         RAISE WARNING '⚠⚠⚠ RESERVATIONS & BOOKING INDEX VERIFICATION ISSUES FOUND ⚠⚠⚠';
         IF v_fk_without_index > 0 THEN
             RAISE WARNING 'Found % foreign keys without indexes!', v_fk_without_index;
+        END IF;
+        IF v_missing_reservation_guards > 0 THEN
+            RAISE WARNING 'Missing % reservation tenant-isolation/double-booking guards!', v_missing_reservation_guards;
         END IF;
     END IF;
 END $$;

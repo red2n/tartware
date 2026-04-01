@@ -165,7 +165,7 @@ Full end-to-end trace of the reservation lifecycle across api-gateway, reservati
 9. **SaaS tenant bootstrap (industry standard)** (done)
    - Standard: create tenant + primary property + owner user in one transaction; assign OWNER via `user_tenant_associations`.
    - Standard: owner manages managers/department heads and module access; system admin only for platform tasks.
-   - Implemented: `POST /v1/system/tenants/bootstrap` in core-service for tenant + property + owner bootstrap.
+   - Implemented: `POST /v1/system/tenant-onboardings` in core-service for tenant + property + owner bootstrap.
    - Optional next: add self-serve onboarding (invite code or billing signup) that calls the same bootstrap flow.
 
 10. **Tenant admin access management (industry standard)** (done)
@@ -349,7 +349,7 @@ Audit against online PMS industry standards (Oracle OPERA Cloud, Revfine PMS Fea
 
 - [x] **S23: Guest Recognition at Check-In** (done — Phase 1)
   - PMS standard: alert front-desk staff of VIP status, preferences, allergies, special requests, past complaints at check-in.
-  - **Implemented**: Route, service, and schema all pre-existed. `GET /v1/reservations/:id/check-in-brief` aggregates guest preferences, VIP status, active notes/alerts, loyalty info, and special requests.
+  - **Implemented**: Route, service, and schema all pre-existed. `GET /v1/reservations/:id/arrival-brief` aggregates guest preferences, VIP status, active notes/alerts, loyalty info, and special requests.
 
 - [x] **S24: Dedicated Reporting Endpoints** | Complexity: **High** | Priority: **P2**
   - PMS standard: occupancy reports, ADR/RevPAR, arrival/departure lists, in-house guest list, cancellation/no-show reports, revenue forecast.
@@ -743,7 +743,7 @@ Cross-referenced all 12 hospitality-standards domains against implemented routes
 - [x] **IS-6: Breach notification workflow** | Complexity: **Medium** | Priority: P2
   - Standard (GDPR Art. 33-34): data breaches must be reported to supervisory authority within 72 hours and affected individuals notified without undue delay.
   - Current: `audit_logs` and `incident_reports` tables exist. No dedicated breach detection → assessment → notification → tracking pipeline.
-  - **Implemented**: `data_breach_incidents` table in `scripts/tables/10-compliance/02_data_breach_incidents.sql` with full GDPR workflow (severity, breach_type, 72h notification_deadline auto-set, authority/subjects notification tracking, status workflow: reported→investigating→contained→notifying→remediated→closed). Zod schema `DataBreachIncidentsSchema` in `schema/src/schemas/10-compliance/`. Command schemas `ComplianceBreachReportCommandSchema` and `ComplianceBreachNotifyCommandSchema` in `schema/src/events/commands/compliance.ts`. REST endpoints in core-service: `POST /v1/compliance/breach-incidents` (report), `PUT /v1/compliance/breach-incidents/:id/notify`, `GET /v1/compliance/breach-incidents` (list + filter). Gateway proxy added. Test entries in operations.http.
+  - **Implemented**: `data_breach_incidents` table in `scripts/tables/10-compliance/02_data_breach_incidents.sql` with full GDPR workflow (severity, breach_type, 72h notification_deadline auto-set, authority/subjects notification tracking, status workflow: reported→investigating→contained→notifying→remediated→closed). Zod schema `DataBreachIncidentsSchema` in `schema/src/schemas/10-compliance/`. Command schemas `ComplianceBreachReportCommandSchema` and `ComplianceBreachNotifyCommandSchema` in `schema/src/events/commands/compliance.ts`. REST endpoints in core-service: `POST /v1/compliance/breach-incidents` (report), `PUT /v1/compliance/breach-incidents/:id/notifications`, `GET /v1/compliance/breach-incidents` (list + filter). Gateway proxy added. Test entries in operations.http.
 
 - [x] **IS-7: Loyalty transactional points ledger** | Complexity: **High** | Priority: P3
   - Standard: full earn/burn/redeem points economy — points earned per $1 spend (configurable by tier), redemption catalog (free nights, upgrades, amenities), expiry rules, statement generation, tier qualification tracking.

@@ -52,6 +52,7 @@ export class ReservationDetailComponent implements OnInit {
 	/* ── Room selection for check-in ── */
 	readonly availableRooms = signal<AvailableRoom[]>([]);
 	readonly loadingRooms = signal(false);
+	readonly roomLoadError = signal<string | null>(null);
 	readonly selectedRoomId = signal<string | null>(null);
 	readonly useAutoAssign = signal(true);
 	readonly roomPage = signal(1);
@@ -189,6 +190,7 @@ export class ReservationDetailComponent implements OnInit {
 		if (!r || !tenantId) return;
 
 		this.loadingRooms.set(true);
+		this.roomLoadError.set(null);
 		try {
 			const params: Record<string, string> = {
 				tenant_id: tenantId,
@@ -200,8 +202,11 @@ export class ReservationDetailComponent implements OnInit {
 
 			const res = await this.api.get<AvailabilityResponse>("/rooms/availability", params);
 			this.availableRooms.set(res.available_rooms ?? []);
-		} catch {
+		} catch (e) {
 			this.availableRooms.set([]);
+			this.roomLoadError.set(
+				e instanceof Error ? e.message : "Unable to load available rooms for this reservation.",
+			);
 		} finally {
 			this.loadingRooms.set(false);
 		}

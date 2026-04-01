@@ -103,7 +103,7 @@ export const registerTenantRoutes = (app: FastifyInstance): void => {
   );
 
   app.post(
-    "/v1/tenants/bootstrap",
+    "/v1/tenant-onboardings",
     {
       schema: buildRouteSchema({
         tag: TENANTS_TAG,

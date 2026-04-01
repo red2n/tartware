@@ -400,7 +400,7 @@ export const registerGroupWaitlistPromoRoutes = (app: FastifyInstance): void => 
   );
 
   app.post<{ Body: z.infer<typeof ValidatePromoCodeRequestSchema> }>(
-    "/v1/promo-codes/validate",
+    "/v1/promo-code-validations",
     {
       preHandler: app.withTenantScope({
         resolveTenantId: (request) =>

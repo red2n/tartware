@@ -113,7 +113,7 @@ export const registerSystemAuthRoutes = (app: FastifyInstance): void => {
   );
 
   app.post(
-    "/v1/system/auth/break-glass",
+    "/v1/system/auth/emergency-sessions",
     {
       schema: buildRouteSchema({
         tag: SYSTEM_AUTH_TAG,

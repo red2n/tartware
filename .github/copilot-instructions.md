@@ -57,7 +57,7 @@ Use idempotent SQL patterns (`IF NOT EXISTS`, `ON CONFLICT DO NOTHING`). New tab
 
 ## Service Port Map
 
-Ports increment by 5 starting at 3000. API gateway is **8080**. Next available: **3080**.
+After consolidation, 10 standalone services have been merged into host services (see `docs/SERVICE_CONSOLIDATION_TRACKER.md`). API gateway is **8080**. Next available: **3095**.
 
 When adding a new service: assign the next port, add `dev:<name>` script in root `package.json`, update `dev:backend`/`dev:stack`, and add `<SERVICE>_SERVICE_URL` to `dev:gateway`.
 
@@ -84,9 +84,9 @@ src/
 |---------|-----------|---------|
 | **HTTP Proxy** | api-gateway → all services | `fetch()` with circuit breaker (5-fail threshold, 30s reset), 30s timeout. Reads only. |
 | **Kafka Commands** | api-gateway → `commands.primary` → domain services | Writes go through transactional outbox; consumers filter by `metadata.targetService`. |
-| **Kafka Events** | reservations → `reservations.events` → roll-service, notification-service | Fan-out; each consumer uses its own group ID. |
+| **Kafka Events** | reservations → `reservations.events` → command-center-service (roll module), guests-service (notification module), finance-admin-service (revenue module) | Fan-out; each consumer uses its own group ID. |
 | **gRPC** | reservations-command-service → availability-guard (:4400) | Room inventory locks. Bearer token auth via `GRPC_AUTH_TOKEN`. Retry + fail-open + shadow mode by default. |
-| **HTTP Direct** | rooms-service → recommendation-service | Room ranking calls with 5s timeout via `RECOMMENDATION_SERVICE_URL`. |
+| **HTTP Direct** | rooms-service → recommendation module (in-process) | Room ranking calls; in-process after consolidation. |
 
 ### Kafka Topics (from `scripts/dev/bootstrap-kafka-topics.mjs`)
 | Topic | Purpose |
@@ -99,9 +99,10 @@ src/
 | `roll.events.shadow` / `inventory.events.shadow` | Shadow ledger events |
 
 ### Special Service Roles
-- **roll-service** — Internal Kafka consumer only (no command center). Builds a shadow roll ledger from `reservations.events` + DB backfill polling. Used for night audit / end-of-day processing.
-- **notification-service** — Dual consumer: standard command center commands + `reservations.events` listener that auto-sends booking confirmations/cancellations.
+- **roll-service** (hosted in command-center-service) — Internal Kafka consumer only (no command center). Builds a shadow roll ledger from `reservations.events` + DB backfill polling. Used for night audit / end-of-day processing.
+- **notification-service** (hosted in guests-service) — Dual consumer: standard command center commands + `reservations.events` listener that auto-sends booking confirmations/cancellations.
 - **availability-guard-service** — HTTP + gRPC dual-protocol. gRPC for sub-ms inventory locks from reservations pipeline. Proto: `proto/availability-guard.proto`.
+- **revenue-service** (hosted in finance-admin-service) — Kafka consumer for reservation events (demand calendar updates) + command center commands for pricing/forecasting.
 
 ## Wiring a New Command (End-to-End Checklist)
 
@@ -124,7 +125,7 @@ pnpm run dev                    # Start all services (concurrently)
 ```
 
 ### Testing — Always through the API Gateway
-- **Always route requests through `localhost:8080`** — never call services directly on ports 3000–3065.
+- **Always route requests through `localhost:8080`** — never call services directly on ports 3000–3090.
 - Use `http_test/*.http` files or `curl` against the gateway.
 - Auth: `TOKEN=$(./http_test/get-token.sh)` then `curl -H "Authorization: Bearer $TOKEN" http://localhost:8080/v1/...`
 - Default credentials: `setup.admin` / `TempPass123`.

@@ -189,8 +189,8 @@ export const registerAuthRoutes = (app: FastifyInstance): void => {
     },
   );
 
-  app.post(
-    "/v1/auth/change-password",
+  app.put(
+    "/v1/users/me/password",
     {
       schema: buildRouteSchema({
         tag: AUTH_TAG,

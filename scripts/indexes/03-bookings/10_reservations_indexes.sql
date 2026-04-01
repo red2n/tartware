@@ -17,7 +17,10 @@ CREATE INDEX IF NOT EXISTS idx_reservations_room_type_id ON reservations(room_ty
 CREATE INDEX IF NOT EXISTS idx_reservations_rate_id ON reservations(rate_id) WHERE deleted_at IS NULL;
 
 -- Confirmation number lookup (critical for guest queries)
-CREATE UNIQUE INDEX IF NOT EXISTS idx_reservations_confirmation ON reservations(confirmation_number) WHERE deleted_at IS NULL;
+DROP INDEX IF EXISTS idx_reservations_confirmation;
+CREATE UNIQUE INDEX IF NOT EXISTS idx_uk_reservations_tenant_confirmation
+    ON reservations(tenant_id, confirmation_number)
+    WHERE deleted_at IS NULL;
 
 -- Date range queries (most common queries)
 CREATE INDEX IF NOT EXISTS idx_reservations_check_in ON reservations(check_in_date) WHERE deleted_at IS NULL;
@@ -29,6 +32,11 @@ CREATE INDEX IF NOT EXISTS idx_reservations_booking_date ON reservations(booking
 
 -- Room assignment
 CREATE INDEX IF NOT EXISTS idx_reservations_room_number ON reservations(room_number) WHERE room_number IS NOT NULL AND deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS idx_reservations_active_room_stay_window
+        ON reservations(tenant_id, property_id, room_number, check_in_date, check_out_date)
+        WHERE room_number IS NOT NULL
+            AND deleted_at IS NULL
+            AND status IN ('PENDING', 'CONFIRMED', 'CHECKED_IN');
 
 -- Status queries (critical for operational views)
 CREATE INDEX IF NOT EXISTS idx_reservations_status ON reservations(status) WHERE deleted_at IS NULL;

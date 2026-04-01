@@ -4,6 +4,7 @@ import { config } from "./config.js";
 import { ensureBillingEncryptionRequirementsMet } from "./lib/compliance-policies.js";
 import { appLogger } from "./lib/logger.js";
 import { metricsRegistry } from "./lib/metrics.js";
+import { registerCashierRoutes } from "./modules/cashier-service/routes/cashier.js";
 import authContextPlugin from "./plugins/auth-context.js";
 import swaggerPlugin from "./plugins/swagger.js";
 import { registerBillingRoutes } from "./routes/billing.js";
@@ -25,6 +26,7 @@ export const buildServer = (): FastifyInstance => {
     registerRoutes: (app) => {
       registerHealthRoutes(app);
       registerBillingRoutes(app);
+      registerCashierRoutes(app);
     },
   });
 

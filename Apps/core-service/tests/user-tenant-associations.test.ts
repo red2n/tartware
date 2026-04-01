@@ -106,7 +106,7 @@ describe("User-Tenant Associations Endpoint", () => {
     }
   });
 
-  describe("GET /v1/user-tenant-associations - Positive Cases", () => {
+  describe("GET /v1/tenant-user-memberships - Positive Cases", () => {
     it("should return associations for ADMIN with valid tenant_id", async () => {
       if (!adminUserId || !adminTenantId) {
         console.warn("⚠ Skipping test: no ADMIN users with tenants");
@@ -115,7 +115,7 @@ describe("User-Tenant Associations Endpoint", () => {
 
       const response = await app.inject({
         method: "GET",
-        url: `/v1/user-tenant-associations?tenant_id=${adminTenantId}&limit=10`,
+        url: `/v1/tenant-user-memberships?tenant_id=${adminTenantId}&limit=10`,
         headers: buildAuthHeader(adminUserId),
       });
 
@@ -132,7 +132,7 @@ describe("User-Tenant Associations Endpoint", () => {
 
       const response = await app.inject({
         method: "GET",
-        url: `/v1/user-tenant-associations?tenant_id=${ownerTenantId}&limit=10`,
+        url: `/v1/tenant-user-memberships?tenant_id=${ownerTenantId}&limit=10`,
         headers: buildAuthHeader(ownerUserId),
       });
 
@@ -149,7 +149,7 @@ describe("User-Tenant Associations Endpoint", () => {
 
       const response = await app.inject({
         method: "GET",
-        url: `/v1/user-tenant-associations?tenant_id=${adminTenantId}&user_id=${adminUserId}`,
+        url: `/v1/tenant-user-memberships?tenant_id=${adminTenantId}&user_id=${adminUserId}`,
         headers: buildAuthHeader(adminUserId),
       });
 
@@ -170,7 +170,7 @@ describe("User-Tenant Associations Endpoint", () => {
 
       const response = await app.inject({
         method: "GET",
-        url: `/v1/user-tenant-associations?tenant_id=${adminTenantId}&role=STAFF`,
+        url: `/v1/tenant-user-memberships?tenant_id=${adminTenantId}&role=STAFF`,
         headers: buildAuthHeader(adminUserId),
       });
 
@@ -191,7 +191,7 @@ describe("User-Tenant Associations Endpoint", () => {
 
       const response = await app.inject({
         method: "GET",
-        url: `/v1/user-tenant-associations?tenant_id=${adminTenantId}&is_active=true`,
+        url: `/v1/tenant-user-memberships?tenant_id=${adminTenantId}&is_active=true`,
         headers: buildAuthHeader(adminUserId),
       });
 
@@ -208,7 +208,7 @@ describe("User-Tenant Associations Endpoint", () => {
 
       const response = await app.inject({
         method: "GET",
-        url: `/v1/user-tenant-associations?tenant_id=${adminTenantId}&limit=1`,
+        url: `/v1/tenant-user-memberships?tenant_id=${adminTenantId}&limit=1`,
         headers: buildAuthHeader(adminUserId),
       });
 
@@ -235,7 +235,7 @@ describe("User-Tenant Associations Endpoint", () => {
 
       const response = await app.inject({
         method: "GET",
-        url: `/v1/user-tenant-associations?tenant_id=${adminTenantId}&limit=1`,
+        url: `/v1/tenant-user-memberships?tenant_id=${adminTenantId}&limit=1`,
         headers: buildAuthHeader(adminUserId),
       });
 
@@ -257,7 +257,7 @@ describe("User-Tenant Associations Endpoint", () => {
 
       const response = await app.inject({
         method: "GET",
-        url: `/v1/user-tenant-associations?tenant_id=${adminTenantId}&limit=2`,
+        url: `/v1/tenant-user-memberships?tenant_id=${adminTenantId}&limit=2`,
         headers: buildAuthHeader(adminUserId),
       });
 
@@ -267,11 +267,11 @@ describe("User-Tenant Associations Endpoint", () => {
     });
   });
 
-  describe("GET /v1/user-tenant-associations - Negative Cases", () => {
+  describe("GET /v1/tenant-user-memberships - Negative Cases", () => {
     it("should reject unauthenticated request", async () => {
       const response = await app.inject({
         method: "GET",
-        url: "/v1/user-tenant-associations?tenant_id=00000000-0000-0000-0000-000000000000",
+        url: "/v1/tenant-user-memberships?tenant_id=00000000-0000-0000-0000-000000000000",
       });
 
       expect(response.statusCode).toBe(401);
@@ -285,7 +285,7 @@ describe("User-Tenant Associations Endpoint", () => {
 
       const response = await app.inject({
         method: "GET",
-        url: "/v1/user-tenant-associations",
+        url: "/v1/tenant-user-memberships",
         headers: buildAuthHeader(adminUserId),
       });
 
@@ -300,7 +300,7 @@ describe("User-Tenant Associations Endpoint", () => {
 
       const response = await app.inject({
         method: "GET",
-        url: "/v1/user-tenant-associations?tenant_id=invalid-format",
+        url: "/v1/tenant-user-memberships?tenant_id=invalid-format",
         headers: buildAuthHeader(adminUserId),
       });
 
@@ -315,7 +315,7 @@ describe("User-Tenant Associations Endpoint", () => {
 
       const response = await app.inject({
         method: "GET",
-        url: `/v1/user-tenant-associations?tenant_id=${adminTenantId}`,
+        url: `/v1/tenant-user-memberships?tenant_id=${adminTenantId}`,
         headers: buildAuthHeader(managerUserId),
       });
 
@@ -330,7 +330,7 @@ describe("User-Tenant Associations Endpoint", () => {
 
       const response = await app.inject({
         method: "GET",
-        url: `/v1/user-tenant-associations?tenant_id=${otherTenantId}`,
+        url: `/v1/tenant-user-memberships?tenant_id=${otherTenantId}`,
         headers: buildAuthHeader(adminUserId),
       });
 
@@ -345,7 +345,7 @@ describe("User-Tenant Associations Endpoint", () => {
 
       const response = await app.inject({
         method: "GET",
-        url: `/v1/user-tenant-associations?tenant_id=${adminTenantId}&role=INVALID_ROLE`,
+        url: `/v1/tenant-user-memberships?tenant_id=${adminTenantId}&role=INVALID_ROLE`,
         headers: buildAuthHeader(adminUserId),
       });
 
@@ -360,7 +360,7 @@ describe("User-Tenant Associations Endpoint", () => {
 
       const response = await app.inject({
         method: "GET",
-        url: `/v1/user-tenant-associations?tenant_id=${adminTenantId}&user_id=not-a-uuid`,
+        url: `/v1/tenant-user-memberships?tenant_id=${adminTenantId}&user_id=not-a-uuid`,
         headers: buildAuthHeader(adminUserId),
       });
 
@@ -375,7 +375,7 @@ describe("User-Tenant Associations Endpoint", () => {
 
       const response = await app.inject({
         method: "GET",
-        url: `/v1/user-tenant-associations?tenant_id=${adminTenantId}&limit=-5`,
+        url: `/v1/tenant-user-memberships?tenant_id=${adminTenantId}&limit=-5`,
         headers: buildAuthHeader(adminUserId),
       });
 
@@ -390,7 +390,7 @@ describe("User-Tenant Associations Endpoint", () => {
 
       const response = await app.inject({
         method: "GET",
-        url: `/v1/user-tenant-associations?tenant_id=${adminTenantId}&limit=0`,
+        url: `/v1/tenant-user-memberships?tenant_id=${adminTenantId}&limit=0`,
         headers: buildAuthHeader(adminUserId),
       });
 
@@ -405,7 +405,7 @@ describe("User-Tenant Associations Endpoint", () => {
 
       const response = await app.inject({
         method: "GET",
-        url: `/v1/user-tenant-associations?tenant_id=${adminTenantId}&limit=150`,
+        url: `/v1/tenant-user-memberships?tenant_id=${adminTenantId}&limit=150`,
         headers: buildAuthHeader(adminUserId),
       });
 
@@ -413,7 +413,7 @@ describe("User-Tenant Associations Endpoint", () => {
     });
   });
 
-  describe("POST /v1/user-tenant-associations - Tenant Admin Cases", () => {
+  describe("POST membership mutation routes - Tenant Admin Cases", () => {
     it("should allow ADMIN to update a user's role", async () => {
       if (!adminUserId || !adminTenantId || !managedUserId) {
         console.warn("⚠ Skipping test: missing admin or managed user");
@@ -422,7 +422,7 @@ describe("User-Tenant Associations Endpoint", () => {
 
       const response = await app.inject({
         method: "POST",
-        url: "/v1/user-tenant-associations/role",
+        url: "/v1/user-tenant-role-assignments",
         headers: buildAuthHeader(adminUserId),
         payload: {
           tenant_id: adminTenantId,
@@ -444,7 +444,7 @@ describe("User-Tenant Associations Endpoint", () => {
 
       const response = await app.inject({
         method: "POST",
-        url: "/v1/user-tenant-associations/status",
+        url: "/v1/user-tenant-access-statuses",
         headers: buildAuthHeader(adminUserId),
         payload: {
           tenant_id: adminTenantId,

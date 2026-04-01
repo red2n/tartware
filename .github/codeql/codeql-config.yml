@@ -19,7 +19,8 @@ query-filters:
   # Exclude test-only hardcoded credentials (flagged by default)
   - exclude:
       id: js/hardcoded-credentials
-      tags: test
+    tags contain:
+      - test
 
 paths:
   - Apps

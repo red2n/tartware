@@ -26,8 +26,12 @@ const { submitCommandMock, proxyRequestMock } = vi.hoisted(() => {
         accepted_at: new Date().toISOString(),
       });
     }),
-    proxyRequestMock: vi.fn(async (_request, reply, targetUrl) => {
-      reply.send({ proxied: true, targetUrl });
+    proxyRequestMock: vi.fn(async (_request, reply, targetUrl, redactGuestPortalResponse) => {
+      reply.send({
+        proxied: true,
+        targetUrl,
+        redacted: Boolean(redactGuestPortalResponse),
+      });
     }),
   };
 });
@@ -156,6 +160,7 @@ describe("API Gateway server", () => {
     expect(response.json()).toEqual({
       proxied: true,
       targetUrl: serviceTargets.guestsServiceUrl,
+      redacted: false,
     });
   });
 
@@ -176,6 +181,7 @@ describe("API Gateway server", () => {
     expect(response.json()).toEqual({
       proxied: true,
       targetUrl: serviceTargets.coreServiceUrl,
+      redacted: false,
     });
   });
 
@@ -196,6 +202,7 @@ describe("API Gateway server", () => {
     expect(response.json()).toEqual({
       proxied: true,
       targetUrl: serviceTargets.commandCenterServiceUrl,
+      redacted: false,
     });
   });
 
@@ -216,6 +223,26 @@ describe("API Gateway server", () => {
     expect(response.json()).toEqual({
       proxied: true,
       targetUrl: serviceTargets.settingsServiceUrl,
+      redacted: false,
+    });
+  });
+
+  it("enables response redaction for self-service guest portal routes", async () => {
+    const response = await app.inject({
+      method: "GET",
+      url: "/v1/self-service/booking/ABC123",
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(proxyRequestMock).toHaveBeenCalledTimes(1);
+    expect(proxyRequestMock.mock.calls[0][2]).toBe(
+      serviceTargets.guestExperienceServiceUrl,
+    );
+    expect(proxyRequestMock.mock.calls[0][3]).toBe(true);
+    expect(response.json()).toEqual({
+      proxied: true,
+      targetUrl: serviceTargets.guestExperienceServiceUrl,
+      redacted: true,
     });
   });
 });

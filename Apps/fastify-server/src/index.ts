@@ -1,8 +1,9 @@
-/// <reference types="@fastify/sensible" />
 import { randomUUID } from "node:crypto";
 import { STATUS_CODES } from "node:http";
+
 import fastifyCors from "@fastify/cors";
 import fastifyHelmet from "@fastify/helmet";
+import "@fastify/sensible";
 import fastifySensible from "@fastify/sensible";
 import {
 	buildSecureRequestLoggingOptions,
@@ -17,7 +18,9 @@ import Fastify, {
 	type FastifyRequest,
 	type FastifyServerOptions,
 } from "fastify";
+
 import type { Registry } from "prom-client";
+
 import { startServiceRegistration } from "./registry-client.js";
 
 /** Detect ZodError by duck typing to avoid hard zod dependency. */
@@ -371,7 +374,9 @@ export const buildFastifyServer = (
 	if (enableMetricsEndpoint && metricsRegistry) {
 		app.get("/metrics", async (_request, reply) => {
 			const body = await metricsRegistry.metrics();
-			reply.header("Content-Type", metricsRegistry.contentType).send(body);
+			return reply
+				.header("Content-Type", metricsRegistry.contentType)
+				.send(body);
 		});
 	}
 

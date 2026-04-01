@@ -1377,7 +1377,7 @@
         }
       }
     },
-    "/v1/tenants/bootstrap": {
+    "/v1/tenant-onboardings": {
       "post": {
         "summary": "Self-serve tenant onboarding (tenant + property + owner user)",
         "tags": [
@@ -2475,7 +2475,7 @@
         }
       }
     },
-    "/v1/users/reset-password": {
+    "/v1/user-password-resets": {
       "post": {
         "summary": "Reset a tenant user's password",
         "tags": [
@@ -2866,7 +2866,7 @@
         }
       }
     },
-    "/v1/user-tenant-associations/role": {
+    "/v1/user-tenant-role-assignments": {
       "post": {
         "summary": "Update a user's role within a tenant",
         "tags": [
@@ -3053,7 +3053,7 @@
         }
       }
     },
-    "/v1/user-tenant-associations/status": {
+    "/v1/user-tenant-access-statuses": {
       "post": {
         "summary": "Activate or deactivate a user's tenant access",
         "tags": [
@@ -4036,7 +4036,7 @@
         }
       }
     },
-    "/v1/reservations/{id}/check-in-brief": {
+    "/v1/reservations/{id}/arrival-brief": {
       "get": {
         "summary": "Pre-check-in guest recognition brief (VIP status, preferences, alerts, loyalty)",
         "tags": [
@@ -10850,7 +10850,7 @@
         }
       }
     },
-    "/v1/promo-codes/validate": {
+    "/v1/promo-code-validations": {
       "post": {
         "summary": "Validate promotional code",
         "tags": [
@@ -12166,7 +12166,7 @@
         }
       }
     },
-    "/v1/system/auth/break-glass": {
+    "/v1/system/auth/emergency-sessions": {
       "post": {
         "summary": "Emergency break-glass login for system administrators",
         "tags": [
@@ -12333,7 +12333,7 @@
         }
       }
     },
-    "/v1/system/tenants/bootstrap": {
+    "/v1/system/tenant-onboardings": {
       "post": {
         "summary": "Bootstrap a tenant with a primary property and owner user",
         "tags": [
@@ -13562,7 +13562,7 @@
         }
       }
     },
-    "/v1/system/impersonate": {
+    "/v1/system/impersonation-sessions": {
       "post": {
         "summary": "Start a tenant impersonation session",
         "tags": [
@@ -13828,7 +13828,7 @@
         }
       }
     },
-    "/v1/direct-booking/rate-quote": {
+    "/v1/direct-booking/rate-quotes": {
       "get": {
         "summary": "Get rate quote",
         "tags": [
@@ -13987,7 +13987,7 @@
         }
       }
     },
-    "/v1/direct-booking/book": {
+    "/v1/direct-booking/bookings": {
       "post": {
         "summary": "Create direct booking",
         "tags": [

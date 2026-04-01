@@ -9,6 +9,22 @@ import {
 } from "./commands/command-center-consumer.js";
 import { config } from "./config.js";
 import { shutdownProducer } from "./kafka/producer.js";
+import {
+  shutdownGuestExperienceCommandConsumer,
+  startGuestExperienceCommandConsumer,
+} from "./modules/guest-experience-service/commands/command-center-consumer.js";
+import { config as guestExperienceConfig } from "./modules/guest-experience-service/config.js";
+import { shutdownProducer as shutdownGuestExperienceProducer } from "./modules/guest-experience-service/kafka/producer.js";
+import {
+  shutdownNotificationCommandCenterConsumer,
+  startNotificationCommandCenterConsumer,
+} from "./modules/notification-service/commands/command-center-consumer.js";
+import { config as notificationConfig } from "./modules/notification-service/config.js";
+import {
+  shutdownReservationEventConsumer,
+  startReservationEventConsumer,
+} from "./modules/notification-service/consumers/reservation-event-consumer.js";
+import { shutdownProducer as shutdownNotificationProducer } from "./modules/notification-service/kafka/producer.js";
 import { buildServer } from "./server.js";
 
 const telemetry = await initTelemetry({
@@ -35,12 +51,25 @@ const kafkaEnabled = process.env.DISABLE_KAFKA !== "true";
 const start = async () => {
   try {
     const kafkaBroker = config.kafka.brokers[0];
+    const guestExperienceKafkaBroker = guestExperienceConfig.kafka.brokers[0];
+    const notificationKafkaBroker = notificationConfig.kafka.brokers[0];
     const telemetryDependency = resolveOtelDependency(true);
     const dependenciesOk = await ensureDependencies(
       [
         { name: "PostgreSQL", host: config.db.host, port: config.db.port },
         ...(kafkaEnabled && kafkaBroker
           ? [{ name: "Kafka broker", ...parseHostPort(kafkaBroker, 9092) }]
+          : []),
+        ...(kafkaEnabled && guestExperienceKafkaBroker
+          ? [
+              {
+                name: "Guest experience Kafka broker",
+                ...parseHostPort(guestExperienceKafkaBroker, 9092),
+              },
+            ]
+          : []),
+        ...(kafkaEnabled && notificationKafkaBroker
+          ? [{ name: "Notification Kafka broker", ...parseHostPort(notificationKafkaBroker, 9092) }]
           : []),
         ...(telemetryDependency ? [telemetryDependency] : []),
       ],
@@ -62,6 +91,9 @@ const start = async () => {
 
     if (kafkaEnabled) {
       await startGuestsCommandCenterConsumer();
+      await startGuestExperienceCommandConsumer();
+      await startNotificationCommandCenterConsumer();
+      await startReservationEventConsumer();
     } else {
       app.log.warn("Kafka disabled via DISABLE_KAFKA; skipping consumer start");
     }
@@ -76,6 +108,15 @@ const start = async () => {
     );
   } catch (error) {
     app.log.error(error, `Failed to start ${config.service.name}`);
+    if (kafkaEnabled) {
+      await shutdownReservationEventConsumer();
+      await shutdownNotificationCommandCenterConsumer();
+      await shutdownNotificationProducer();
+      await shutdownGuestExperienceCommandConsumer();
+      await shutdownGuestExperienceProducer();
+      await shutdownGuestsCommandCenterConsumer();
+      await shutdownProducer();
+    }
     await app.close();
     await telemetry
       ?.shutdown()
@@ -90,6 +131,11 @@ const shutdown = async (signal: NodeJS.Signals) => {
   app.log.info({ signal }, "shutdown signal received");
   try {
     if (kafkaEnabled) {
+      await shutdownReservationEventConsumer();
+      await shutdownNotificationCommandCenterConsumer();
+      await shutdownNotificationProducer();
+      await shutdownGuestExperienceCommandConsumer();
+      await shutdownGuestExperienceProducer();
       await shutdownGuestsCommandCenterConsumer();
       await shutdownProducer();
     }

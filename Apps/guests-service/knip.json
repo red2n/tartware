@@ -15,5 +15,22 @@
     "@fastify/sensible",
     "@tartware/fastify-server",
     "pg"
+  ],
+  "ignore": [
+    "src/modules/guest-experience-service/plugins/auth-context.ts",
+    "src/modules/guest-experience-service/plugins/swagger.ts",
+    "src/modules/guest-experience-service/routes/health.ts",
+    "src/modules/guest-experience-service/lib/metrics.ts",
+    "src/modules/guest-experience-service/services/checkin-service.ts",
+    "src/modules/guest-experience-service/services/key-service.ts",
+    "src/modules/guest-experience-service/services/registration-card-service.ts",
+    "src/modules/notification-service/plugins/auth-context.ts",
+    "src/modules/notification-service/plugins/swagger.ts",
+    "src/modules/notification-service/routes/health.ts",
+    "src/modules/notification-service/kafka/producer.ts",
+    "src/modules/notification-service/lib/db.ts",
+    "src/modules/notification-service/lib/metrics.ts",
+    "src/modules/notification-service/services/template-service.ts",
+    "src/modules/notification-service/utils/template-renderer.ts"
   ]
 }

@@ -41,7 +41,11 @@ export const databaseSchema = z.object({
     ),
   DB_SSL: booleanString,
   DB_POOL_MAX: z.coerce.number().int().default(10),
+  DB_POOL_MIN: z.coerce.number().int().default(0),
   DB_POOL_IDLE_TIMEOUT_MS: z.coerce.number().int().default(30000),
+  DB_POOL_CONNECTION_TIMEOUT_MS: z.coerce.number().int().default(2000),
+  DB_POOL_MAX_USES: z.coerce.number().int().default(0),
+  DB_POOL_ALLOW_EXIT_ON_IDLE: booleanString.default(false),
   DB_STATEMENT_TIMEOUT_MS: z.coerce.number().int().default(30000),
 });
 

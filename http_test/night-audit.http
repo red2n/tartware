@@ -246,7 +246,7 @@ GET {{baseUrl}}/v1/promo-codes/{{promoId}}
 Authorization: Bearer {{authToken}}
 
 ### Validate promotional code
-POST {{baseUrl}}/v1/promo-codes/validate
+POST {{baseUrl}}/v1/promo-code-validations
 Content-Type: application/json
 Authorization: Bearer {{authToken}}
 

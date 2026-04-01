@@ -124,13 +124,13 @@ describe('Tenants Endpoint', () => {
   // TODO: These tests fail due to a pre-existing email validation issue in Fastify/AJV
   // The email format "owner-xxx@example.com" is valid per RFC but being rejected.
   // Skip for now until root cause is identified.
-  describe.skip('POST /v1/tenants/bootstrap - Self Serve Onboarding', () => {
+  describe.skip('POST /v1/tenant-onboardings - Self Serve Onboarding', () => {
     it('creates a tenant, property, and owner without authentication', async () => {
       const unique = randomUUID().slice(0, 8);
       const slug = `onboarding-${unique}`;
       const response = await app.inject({
         method: 'POST',
-        url: '/v1/tenants/bootstrap',
+        url: '/v1/tenant-onboardings',
         payload: buildBootstrapPayload(unique, {
           tenant: { slug },
         }),
@@ -149,7 +149,7 @@ describe('Tenants Endpoint', () => {
       const slug = `onboarding-${unique}`;
       const firstResponse = await app.inject({
         method: 'POST',
-        url: '/v1/tenants/bootstrap',
+        url: '/v1/tenant-onboardings',
         payload: buildBootstrapPayload(unique, {
           tenant: { slug },
         }),
@@ -158,7 +158,7 @@ describe('Tenants Endpoint', () => {
 
       const response = await app.inject({
         method: 'POST',
-        url: '/v1/tenants/bootstrap',
+        url: '/v1/tenant-onboardings',
         payload: buildBootstrapPayload(`${unique}-two`, {
           tenant: {
             name: `Onboarding Tenant ${unique} Two`,
@@ -184,7 +184,7 @@ describe('Tenants Endpoint', () => {
       const unique = randomUUID().slice(0, 8);
       const response = await app.inject({
         method: 'POST',
-        url: '/v1/tenants/bootstrap',
+        url: '/v1/tenant-onboardings',
         payload: buildBootstrapPayload(unique, {
           owner: {
             username: TEST_USER_USERNAME,
@@ -202,14 +202,14 @@ describe('Tenants Endpoint', () => {
       try {
         const missingToken = await app.inject({
           method: 'POST',
-          url: '/v1/tenants/bootstrap',
+          url: '/v1/tenant-onboardings',
           payload: buildBootstrapPayload(randomUUID().slice(0, 8)),
         });
         expect(missingToken.statusCode).toBe(401);
 
         const okResponse = await app.inject({
           method: 'POST',
-          url: '/v1/tenants/bootstrap',
+          url: '/v1/tenant-onboardings',
           headers: {
             'x-onboarding-token': 'test-onboarding-token',
           },
@@ -232,7 +232,7 @@ describe('Tenants Endpoint', () => {
       for (let index = 0; index < 11; index += 1) {
         lastResponse = await app.inject({
           method: 'POST',
-          url: '/v1/tenants/bootstrap',
+          url: '/v1/tenant-onboardings',
           remoteAddress: rateLimitedIp,
           payload: buildBootstrapPayload(randomUUID().slice(0, 8)),
         });

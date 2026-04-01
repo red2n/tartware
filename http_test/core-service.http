@@ -61,7 +61,7 @@ Authorization: Bearer {{authToken}}
 
 ###
 # Change password (requires valid current password)
-POST {{baseUrl}}/v1/auth/change-password
+PUT {{baseUrl}}/v1/users/me/password
 Content-Type: application/json
 Authorization: Bearer {{authToken}}
 
@@ -146,7 +146,7 @@ Authorization: Bearer {{authToken}}
 
 ###
 # Reset a user's password (requires ADMIN+ role)
-POST {{baseUrl}}/v1/users/reset-password
+POST {{baseUrl}}/v1/user-password-resets
 Content-Type: application/json
 Authorization: Bearer {{authToken}}
 
@@ -157,26 +157,26 @@ Authorization: Bearer {{authToken}}
 }
 
 ###############################################################################
-# 5. USER-TENANT ASSOCIATIONS
+# 5. TENANT USER MEMBERSHIPS
 ###############################################################################
 
-# List user-tenant associations
-GET {{baseUrl}}/v1/user-tenant-associations?tenant_id={{tenantId}}&limit=50
+# List tenant user memberships
+GET {{baseUrl}}/v1/tenant-user-memberships?tenant_id={{tenantId}}&limit=50
 Authorization: Bearer {{authToken}}
 
 ###
-# Filter associations by role
-GET {{baseUrl}}/v1/user-tenant-associations?tenant_id={{tenantId}}&role=OWNER
+# Filter memberships by role
+GET {{baseUrl}}/v1/tenant-user-memberships?tenant_id={{tenantId}}&role=OWNER
 Authorization: Bearer {{authToken}}
 
 ###
-# Filter associations by active status
-GET {{baseUrl}}/v1/user-tenant-associations?tenant_id={{tenantId}}&is_active=true
+# Filter memberships by active status
+GET {{baseUrl}}/v1/tenant-user-memberships?tenant_id={{tenantId}}&is_active=true
 Authorization: Bearer {{authToken}}
 
 ###
 # Update user's tenant role
-POST {{baseUrl}}/v1/user-tenant-associations/role
+POST {{baseUrl}}/v1/user-tenant-role-assignments
 Content-Type: application/json
 Authorization: Bearer {{authToken}}
 
@@ -188,7 +188,7 @@ Authorization: Bearer {{authToken}}
 
 ###
 # Toggle user's tenant access status
-POST {{baseUrl}}/v1/user-tenant-associations/status
+POST {{baseUrl}}/v1/user-tenant-access-statuses
 Content-Type: application/json
 Authorization: Bearer {{authToken}}
 
@@ -215,7 +215,7 @@ Content-Type: application/json
 
 ###
 # Emergency break-glass login
-POST {{baseUrl}}/v1/system/auth/break-glass
+POST {{baseUrl}}/v1/system/auth/emergency-sessions
 Content-Type: application/json
 
 {
@@ -251,7 +251,7 @@ Authorization: Bearer {{authToken}}
 
 ###
 # Bootstrap tenant with property and owner (system admin)
-POST {{baseUrl}}/v1/system/tenants/bootstrap
+POST {{baseUrl}}/v1/system/tenant-onboardings
 Content-Type: application/json
 Authorization: Bearer {{authToken}}
 
@@ -316,7 +316,7 @@ Authorization: Bearer {{authToken}}
 ###############################################################################
 
 # Start tenant impersonation session
-POST {{baseUrl}}/v1/system/impersonate
+POST {{baseUrl}}/v1/system/impersonation-sessions
 Content-Type: application/json
 Authorization: Bearer {{authToken}}
 

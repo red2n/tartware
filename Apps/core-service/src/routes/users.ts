@@ -215,7 +215,7 @@ export const registerUserRoutes = (app: FastifyInstance): void => {
   );
 
   app.post(
-    "/v1/users/reset-password",
+    "/v1/user-password-resets",
     {
       preHandler: app.withTenantScope({
         resolveTenantId: (request) => (request.body as { tenant_id: string }).tenant_id,

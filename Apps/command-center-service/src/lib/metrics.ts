@@ -1,4 +1,4 @@
-import { collectDefaultMetrics, Gauge, Histogram, Registry } from "prom-client";
+import { Counter, collectDefaultMetrics, Gauge, Histogram, Registry } from "prom-client";
 
 export const metricsRegistry = new Registry();
 
@@ -26,6 +26,20 @@ const outboxThrottleWait = new Histogram({
   buckets: [0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1],
 });
 
+const registryServicesGauge = new Gauge({
+  name: "registry_services_total",
+  help: "Number of registered service instances by status",
+  labelNames: ["status"] as const,
+  registers: [metricsRegistry],
+});
+
+const registryRegistrationsCounter = new Counter({
+  name: "registry_registrations_total",
+  help: "Total service registration lifecycle events",
+  labelNames: ["action"] as const,
+  registers: [metricsRegistry],
+});
+
 export const setOutboxQueueSize = (size: number): void => {
   outboxQueueGauge.set(size);
 };
@@ -36,4 +50,12 @@ export const observeOutboxPublishDuration = (durationSeconds: number): void => {
 
 export const observeOutboxThrottleWait = (durationSeconds: number): void => {
   outboxThrottleWait.observe(durationSeconds);
+};
+
+export const setRegistryServiceCount = (status: "UP" | "DOWN", count: number): void => {
+  registryServicesGauge.set({ status }, count);
+};
+
+export const incrementRegistryAction = (action: "register" | "heartbeat" | "deregister"): void => {
+  registryRegistrationsCounter.inc({ action });
 };

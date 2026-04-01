@@ -94,10 +94,10 @@ export const registerDirectBookingRoutes = (app: FastifyInstance): void => {
   );
 
   // -------------------------------------------------------------------------
-  // GET /v1/direct-booking/rate-quote
+  // GET /v1/direct-booking/rate-quotes
   // -------------------------------------------------------------------------
   app.get<{ Querystring: z.infer<typeof DirectBookingRateQuoteQuerySchema> }>(
-    "/v1/direct-booking/rate-quote",
+    "/v1/direct-booking/rate-quotes",
     {
       preHandler: app.withTenantScope({
         resolveTenantId: (request) =>
@@ -130,10 +130,10 @@ export const registerDirectBookingRoutes = (app: FastifyInstance): void => {
   );
 
   // -------------------------------------------------------------------------
-  // POST /v1/direct-booking/book
+  // POST /v1/direct-booking/bookings
   // -------------------------------------------------------------------------
   app.post<{ Body: z.infer<typeof CreateDirectBookingBodySchema> }>(
-    "/v1/direct-booking/book",
+    "/v1/direct-booking/bookings",
     {
       preHandler: app.withTenantScope({
         resolveTenantId: (request) =>

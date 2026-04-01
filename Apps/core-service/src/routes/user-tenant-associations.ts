@@ -45,7 +45,7 @@ const ASSOCIATIONS_TAG = "User Tenant Associations";
 
 export const registerUserTenantAssociationRoutes = (app: FastifyInstance): void => {
   app.get<{ Querystring: AssociationListQuery }>(
-    "/v1/user-tenant-associations",
+    "/v1/tenant-user-memberships",
     {
       preHandler: app.withTenantScope({
         resolveTenantId: (request) => (request.query as AssociationListQuery).tenant_id,
@@ -79,7 +79,7 @@ export const registerUserTenantAssociationRoutes = (app: FastifyInstance): void 
   );
 
   app.post(
-    "/v1/user-tenant-associations/role",
+    "/v1/user-tenant-role-assignments",
     {
       preHandler: app.withTenantScope({
         resolveTenantId: (request) => (request.body as { tenant_id: string }).tenant_id,
@@ -148,7 +148,7 @@ export const registerUserTenantAssociationRoutes = (app: FastifyInstance): void 
   );
 
   app.post(
-    "/v1/user-tenant-associations/status",
+    "/v1/user-tenant-access-statuses",
     {
       preHandler: app.withTenantScope({
         resolveTenantId: (request) => (request.body as { tenant_id: string }).tenant_id,
