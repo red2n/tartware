@@ -1,4 +1,4 @@
-import { buildFastifyServer } from "@tartware/fastify-server";
+import { buildFastifyServer, resolveServiceRegistryConfig } from "@tartware/fastify-server";
 import { buildRouteSchema, jsonObjectSchema, schemaFromZod } from "@tartware/openapi";
 import { ReservationCommandLifecycleSchema } from "@tartware/schemas";
 import type { FastifyInstance } from "fastify";
@@ -73,6 +73,12 @@ export const buildServer = (): FastifyInstance => {
     enableRequestLogging: serviceConfig.requestLogging,
     corsOrigin: false,
     enableMetricsEndpoint: false, // Custom metrics endpoint below
+    serviceRegistry: resolveServiceRegistryConfig({
+      serviceName: serviceConfig.serviceId,
+      serviceVersion: serviceConfig.version,
+      host: serviceConfig.host,
+      port: serviceConfig.port,
+    }),
   });
 
   app.register(swaggerPlugin);

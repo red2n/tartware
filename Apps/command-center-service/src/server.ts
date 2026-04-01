@@ -1,4 +1,8 @@
-import { buildFastifyServer, type FastifyInstance } from "@tartware/fastify-server";
+import {
+  buildFastifyServer,
+  type FastifyInstance,
+  resolveServiceRegistryConfig,
+} from "@tartware/fastify-server";
 
 import { config } from "./config.js";
 import { appLogger } from "./lib/logger.js";
@@ -19,6 +23,12 @@ export const buildServer = (): FastifyInstance => {
     corsOrigin: false,
     enableMetricsEndpoint: true,
     metricsRegistry,
+    serviceRegistry: resolveServiceRegistryConfig({
+      serviceName: "command-center-service",
+      serviceVersion: config.service.version,
+      host: config.host,
+      port: config.port,
+    }),
     beforeRoutes: (app) => {
       app.register(authContextPlugin);
       app.register(swaggerPlugin);

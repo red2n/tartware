@@ -23,6 +23,7 @@ export const serviceConfig = {
   port: configValues.PORT,
   host: configValues.HOST,
   serviceId: process.env.RESERVATION_COMMAND_ID ?? "reservations-command-service",
+  version: configValues.SERVICE_VERSION,
   requestLogging: parseBooleanEnv(process.env.RESERVATION_COMMAND_LOG_REQUESTS, false),
 };
 

@@ -140,20 +140,6 @@ CREATE TABLE IF NOT EXISTS reservations (
     CONSTRAINT reservations_email_format CHECK (guest_email ~* '^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$')
 );
 
--- Normalize legacy global uniqueness to tenant-scoped uniqueness managed via indexes script.
-DO $$
-BEGIN
-    IF EXISTS (
-        SELECT 1
-        FROM pg_constraint
-        WHERE conname = 'reservations_confirmation_number_key'
-          AND conrelid = 'public.reservations'::regclass
-    ) THEN
-        ALTER TABLE public.reservations
-            DROP CONSTRAINT reservations_confirmation_number_key;
-    END IF;
-END $$;
-
 -- Prevent overlapping active stays for the same room in the same tenant/property.
 DO $$
 BEGIN

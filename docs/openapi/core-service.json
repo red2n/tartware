@@ -4036,9 +4036,9 @@
         }
       }
     },
-    "/v1/reservations/{id}/arrival-brief": {
+    "/v1/reservations/{id}/summary": {
       "get": {
-        "summary": "Pre-check-in guest recognition brief (VIP status, preferences, alerts, loyalty)",
+        "summary": "Reservation summary (VIP status, preferences, alerts, loyalty)",
         "tags": [
           "Reservations"
         ],

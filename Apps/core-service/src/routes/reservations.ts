@@ -4,7 +4,7 @@ import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 
 import {
-  CheckInBriefSchema,
+  ReservationSummarySchema,
   getCheckInBrief,
   getReservationById,
   listReservations,
@@ -126,7 +126,10 @@ export const registerReservationRoutes = (app: FastifyInstance): void => {
   );
 
   // ─── S23: Check-In Brief (Guest Recognition) ──────────────────────────────
-  const CheckInBriefJsonSchema = schemaFromZod(CheckInBriefSchema, "CheckInBrief");
+  const ReservationSummaryJsonSchema = schemaFromZod(
+    ReservationSummarySchema,
+    "ReservationSummary",
+  );
 
   app.get<{ Params: { id: string }; Querystring: ReservationGetQuery }>(
     "/v1/reservations/:id/summary",
@@ -141,7 +144,7 @@ export const registerReservationRoutes = (app: FastifyInstance): void => {
         summary: "Reservation summary (VIP status, preferences, alerts, loyalty)",
         querystring: ReservationGetQueryJsonSchema,
         response: {
-          200: CheckInBriefJsonSchema,
+          200: ReservationSummaryJsonSchema,
         },
       }),
     },

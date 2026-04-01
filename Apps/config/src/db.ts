@@ -81,6 +81,14 @@ const parseBooleanEnv = (value: string | undefined, fallback: boolean): boolean 
   return fallback;
 };
 
+const normalizePoolSize = (value: number, fallback: number, minimum: number): number => {
+  if (!Number.isFinite(value)) {
+    return fallback;
+  }
+
+  return Math.max(minimum, Math.trunc(value));
+};
+
 // ── Return type ────────────────────────────────────────────────
 export interface DbPool {
   /** Raw pool for services that need direct access. */
@@ -124,6 +132,11 @@ export function createDbPool(dbConfig: DbPoolConfig, logger: ParentLogger): DbPo
   const maxUses = dbConfig.maxUses ?? parseNumberEnv(process.env.DB_POOL_MAX_USES, 0);
   const allowExitOnIdle =
     dbConfig.allowExitOnIdle ?? parseBooleanEnv(process.env.DB_POOL_ALLOW_EXIT_ON_IDLE, false);
+  const normalizedPoolMax = normalizePoolSize(poolMax, 10, 1);
+  const normalizedPoolMin = Math.min(
+    normalizedPoolMax,
+    normalizePoolSize(poolMin, 0, 0),
+  );
 
   const pool = new Pool({
     host: dbConfig.host,
@@ -132,8 +145,8 @@ export function createDbPool(dbConfig: DbPoolConfig, logger: ParentLogger): DbPo
     user: dbConfig.user,
     password: dbConfig.password,
     ssl: dbConfig.ssl ? { rejectUnauthorized: false } : undefined,
-    max: poolMax,
-    min: poolMin,
+    max: normalizedPoolMax,
+    min: normalizedPoolMin,
     idleTimeoutMillis,
     connectionTimeoutMillis,
     maxUses,

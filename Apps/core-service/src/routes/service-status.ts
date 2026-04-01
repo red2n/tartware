@@ -10,7 +10,6 @@
  */
 import type { FastifyInstance } from "fastify";
 
-const REGISTRY_URL = process.env.REGISTRY_URL ?? "http://localhost:3075";
 const FETCH_TIMEOUT_MS = 5_000;
 
 /** Register service-status routes on the core-service. */
@@ -29,8 +28,14 @@ export const registerServiceStatusRoutes = (app: FastifyInstance): void => {
         "Fetches the current service registry state and returns a summary of all registered services, their instances, and health status.",
     },
     handler: async (_request, reply) => {
+      const registryUrl = process.env.SERVICE_REGISTRY_URL ?? process.env.REGISTRY_URL;
+      if (!registryUrl) {
+        app.log.error("Service registry URL is not configured");
+        return reply.serviceUnavailable("Service registry is not configured");
+      }
+
       try {
-        const response = await fetch(`${REGISTRY_URL}/v1/registry/services`, {
+        const response = await fetch(`${registryUrl}/v1/registry/services`, {
           signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
         });
 

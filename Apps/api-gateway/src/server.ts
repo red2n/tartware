@@ -1,6 +1,6 @@
 import type { RateLimitPluginOptions } from "@fastify/rate-limit";
 import rateLimit from "@fastify/rate-limit";
-import { buildFastifyServer } from "@tartware/fastify-server";
+import { buildFastifyServer, resolveServiceRegistryConfig } from "@tartware/fastify-server";
 import type { FastifyPluginAsync, FastifyReply, FastifyRequest } from "fastify";
 import { Redis } from "ioredis";
 
@@ -35,6 +35,12 @@ export const buildServer = () => {
     corsOrigin: false,
     enableMetricsEndpoint: true,
     metricsRegistry,
+    serviceRegistry: resolveServiceRegistryConfig({
+      serviceName: "api-gateway",
+      serviceVersion: gatewayConfig.version,
+      host: gatewayConfig.host,
+      port: gatewayConfig.port,
+    }),
   });
 
   app.register(swaggerPlugin);

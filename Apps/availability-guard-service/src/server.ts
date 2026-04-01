@@ -1,4 +1,4 @@
-import { buildFastifyServer } from "@tartware/fastify-server";
+import { buildFastifyServer, resolveServiceRegistryConfig } from "@tartware/fastify-server";
 import { buildRouteSchema, jsonObjectSchema } from "@tartware/openapi";
 
 import { config } from "./config.js";
@@ -25,6 +25,12 @@ export const buildServer = () => {
     corsOrigin: false,
     enableMetricsEndpoint: true,
     metricsRegistry,
+    serviceRegistry: resolveServiceRegistryConfig({
+      serviceName: "availability-guard-service",
+      serviceVersion: config.service.version,
+      host: config.host,
+      port: config.port,
+    }),
     serverOptions: {
       // Disable plugin timeout during dev to allow Kafka/GRPC startup without failing fast
       pluginTimeout: 0,

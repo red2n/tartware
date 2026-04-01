@@ -413,6 +413,10 @@ const processReservationEvent = async (event: ReservationEvent): Promise<void> =
     );
   }
 
+  if (!propertyId || !guestId) {
+    return;
+  }
+
   const context: Record<string, string | number | boolean | null> = {
     guest_name: event.guestName ?? "Guest",
     confirmation_number: event.confirmationNumber ?? "",
@@ -423,7 +427,7 @@ const processReservationEvent = async (event: ReservationEvent): Promise<void> =
     total_amount: event.totalAmount ?? 0,
     currency: event.currency ?? "USD",
     reservation_id: event.reservationId,
-    property_id: propertyId ?? "",
+    property_id: propertyId,
     // Merge any extra context extracted from the payload (no-show fee, group name, etc.)
     ...event.extraContext,
   };
@@ -432,7 +436,7 @@ const processReservationEvent = async (event: ReservationEvent): Promise<void> =
   const templateCode = EVENT_TO_TEMPLATE[event.eventType];
   const sentTemplateCodes = new Set<string>();
 
-  if (templateCode && propertyId && guestId) {
+  if (templateCode) {
     try {
       const result = await sendNotification({
         tenantId: event.tenantId,
@@ -467,19 +471,11 @@ const processReservationEvent = async (event: ReservationEvent): Promise<void> =
         "Failed to process reservation event notification",
       );
     }
-  } else if (templateCode) {
-    logger.warn(
-      {
-        eventType: event.eventType,
-        reservationId: event.reservationId,
-      },
-      "Skipping direct template notification due to missing UUID context",
-    );
   }
 
   // Step 2: Automated messages lookup
   const triggerType = EVENT_TO_TRIGGER_TYPE[event.eventType];
-  if (triggerType && propertyId && guestId) {
+  if (triggerType) {
     try {
       const automatedMessages = await getMessagesByTrigger(event.tenantId, triggerType);
       for (const msg of automatedMessages) {
@@ -529,15 +525,6 @@ const processReservationEvent = async (event: ReservationEvent): Promise<void> =
         "Failed to look up automated messages",
       );
     }
-  } else if (triggerType) {
-    logger.warn(
-      {
-        eventType: event.eventType,
-        triggerType,
-        reservationId: event.reservationId,
-      },
-      "Skipping automated-message dispatch due to missing UUID context",
-    );
   }
 
   // Step 3: Create in-app notification for staff
@@ -554,7 +541,7 @@ const processReservationEvent = async (event: ReservationEvent): Promise<void> =
 
       await createInAppNotification({
         tenant_id: event.tenantId,
-        property_id: propertyId ?? undefined,
+        property_id: propertyId,
         title: inAppConfig.title(event),
         message: `${guestName} (${confNum})${room}${dates ? `. ${dates}` : ""}`,
         category: inAppConfig.category as

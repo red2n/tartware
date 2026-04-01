@@ -100,7 +100,7 @@ export const ReservationDetailSchema = z.object({
 export type ReservationDetail = z.infer<typeof ReservationDetailSchema>;
 
 // =====================================================
-// S23: CHECK-IN BRIEF (Guest Recognition)
+// S23: RESERVATION SUMMARY (Guest Recognition)
 // =====================================================
 
 /** Schema for a single guest note shown at check-in. */
@@ -127,8 +127,8 @@ export const CheckInPreferenceSchema = z.object({
 
 export type CheckInPreference = z.infer<typeof CheckInPreferenceSchema>;
 
-/** Schema for the full check-in brief response. */
-export const CheckInBriefSchema = z.object({
+/** Schema for the full reservation summary response. */
+export const ReservationSummarySchema = z.object({
 	reservation_id: z.string(),
 	guest_id: z.string().nullable().optional(),
 	guest_name: z.string(),
@@ -154,7 +154,17 @@ export const CheckInBriefSchema = z.object({
 	notes: z.array(CheckInNoteSchema),
 });
 
-export type CheckInBrief = z.infer<typeof CheckInBriefSchema>;
+export type ReservationSummary = z.infer<typeof ReservationSummarySchema>;
+
+/**
+ * @deprecated Use ReservationSummarySchema.
+ */
+export const CheckInBriefSchema = ReservationSummarySchema;
+
+/**
+ * @deprecated Use ReservationSummary.
+ */
+export type CheckInBrief = ReservationSummary;
 
 // =====================================================
 // ALLOTMENTS (Room Blocks)

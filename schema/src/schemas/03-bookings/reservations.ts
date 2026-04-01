@@ -36,6 +36,7 @@ export const ReservationsSchema = z.object({
 	guest_id: uuid,
 	room_type_id: uuid,
 	rate_id: uuid.optional(),
+	/** Globally unique human-readable confirmation number shown to guests and staff. */
 	confirmation_number: z.string(),
 	check_in_date: z.coerce.date(),
 	check_out_date: z.coerce.date(),

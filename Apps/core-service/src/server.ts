@@ -2,6 +2,7 @@ import {
   buildFastifyServer,
   createRouteTracker,
   type FastifyInstance,
+  resolveServiceRegistryConfig,
 } from "@tartware/fastify-server";
 
 import { config } from "./config.js";
@@ -55,6 +56,12 @@ export const buildServer = (): FastifyInstance => {
     corsOrigin: true,
     enableMetricsEndpoint: true,
     metricsRegistry,
+    serviceRegistry: resolveServiceRegistryConfig({
+      serviceName: "core-service",
+      serviceVersion: config.service.version,
+      host: config.host,
+      port: config.port,
+    }),
     requestLoggingOptions: {
       includeRequestHeaders: false,
       includeResponseHeaders: false,
