@@ -1,10 +1,76 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("@tartware/schemas/api/registry", async () => import("../../../schema/dist/api/registry.js"));
-vi.mock(
-  "@tartware/schemas/api/reservations",
-  async () => import("../../../schema/dist/api/reservations.js"),
-);
+vi.mock("@tartware/schemas/api/registry", async () => ({
+  SERVICE_REGISTRY_CATALOG: {
+    "reservations-command-service": {
+      serviceName: "Reservation Commands API",
+      description: "Test registry metadata.",
+      tag: "reservations-command-service",
+    },
+  },
+}));
+
+vi.mock("@tartware/schemas/api/reservations", async () => {
+  const { z } = await import("zod");
+
+  const ReservationLifecycleParamsSchema = z.object({
+    reservationId: z.string().uuid(),
+  });
+  const ReservationLifecycleQuerySchema = z.object({
+    tenant_id: z.string().uuid(),
+  });
+  const ReservationLifecycleResponseSchema = z.array(
+    z.object({
+      event_id: z.string(),
+      tenant_id: z.string().uuid(),
+      reservation_id: z.string().uuid(),
+      command_name: z.string(),
+      correlation_id: z.string(),
+      partition_key: z.string(),
+      current_state: z.string(),
+      state_transitions: z.array(z.unknown()),
+      metadata: z.record(z.unknown()),
+      created_at: z.date(),
+      updated_at: z.date(),
+    }),
+  );
+  const ReservationReliabilitySnapshotSchema = z.object({
+    status: z.enum(["healthy", "degraded", "critical"]),
+    generatedAt: z.string(),
+    issues: z.array(z.string()),
+    outbox: z.object({
+      pending: z.number(),
+      warnThreshold: z.number(),
+      criticalThreshold: z.number(),
+    }),
+    consumer: z.object({
+      partitions: z.number(),
+      stalePartitions: z.number(),
+      maxSecondsSinceCommit: z.number().nullable(),
+      staleThresholdSeconds: z.number(),
+    }),
+    lifecycle: z.object({
+      stalledCommands: z.number(),
+      oldestStuckSeconds: z.number().nullable(),
+      dlqTotal: z.number(),
+      stalledThresholdSeconds: z.number(),
+    }),
+    dlq: z.object({
+      depth: z.number().nullable(),
+      warnThreshold: z.number(),
+      criticalThreshold: z.number(),
+      topic: z.string(),
+      error: z.string().nullable(),
+    }),
+  });
+
+  return {
+    ReservationLifecycleParamsSchema,
+    ReservationLifecycleQuerySchema,
+    ReservationLifecycleResponseSchema,
+    ReservationReliabilitySnapshotSchema,
+  };
+});
 
 import { buildServer } from "../src/server.js";
 import { kafkaConfig } from "../src/config.js";

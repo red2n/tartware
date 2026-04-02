@@ -11,6 +11,42 @@ import {
 // Disable Redis before config loads so rate-limiter uses in-memory store
 vi.hoisted(() => {
   process.env.REDIS_ENABLED = "false";
+  process.env.API_GATEWAY_RATE_MAX = "1000";
+  process.env.API_GATEWAY_RATE_COMMAND_MAX = "1000";
+  process.env.API_GATEWAY_RATE_AUTH_MAX = "1000";
+});
+
+vi.mock("@tartware/schemas", () => ({
+  SERVICE_REGISTRY_CATALOG: {
+    "api-gateway": {
+      serviceName: "Gateway API",
+      description: "Test gateway registry metadata.",
+      tag: "api-gateway",
+    },
+  },
+}));
+
+vi.mock("../src/plugins/auth-context.js", async () => {
+  const { default: fp } = await import("fastify-plugin");
+
+  return {
+    default: fp(async (fastify) => {
+      fastify.decorateRequest("auth", null);
+      fastify.decorate("withTenantScope", () => async () => {});
+
+      fastify.addHook("onRequest", async (request) => {
+        request.auth = {
+          userId: "user-1",
+          isAuthenticated: true,
+          memberships: [],
+          membershipMap: new Map(),
+          hasRole: () => true,
+          getMembership: () => undefined,
+          authorizedTenantIds: new Set<string>(),
+        };
+      });
+    }),
+  };
 });
 
 import { buildServer } from "../src/server.js";
@@ -130,6 +166,7 @@ describe("API Gateway server", () => {
       },
       headers: {
         authorization: "Bearer unit-test-token",
+        "x-api-key": "gateway-test-create",
       },
     });
 
@@ -149,6 +186,7 @@ describe("API Gateway server", () => {
       url: "/v1/guests?tenant_id=11111111-1111-1111-1111-111111111111",
       headers: {
         authorization: "Bearer unit-test-token",
+        "x-api-key": "gateway-test-guests",
       },
     });
 
@@ -170,6 +208,7 @@ describe("API Gateway server", () => {
       url: "/v1/reservations?tenant_id=11111111-1111-1111-1111-111111111111",
       headers: {
         authorization: "Bearer unit-test-token",
+        "x-api-key": "gateway-test-reservations",
       },
     });
 
@@ -191,6 +230,7 @@ describe("API Gateway server", () => {
       url: "/v1/commands/definitions",
       headers: {
         authorization: "Bearer unit-test-token",
+        "x-api-key": "gateway-test-commands",
       },
     });
 
@@ -212,6 +252,7 @@ describe("API Gateway server", () => {
       url: "/v1/settings/catalog",
       headers: {
         authorization: "Bearer unit-test-token",
+        "x-api-key": "gateway-test-settings",
       },
     });
 

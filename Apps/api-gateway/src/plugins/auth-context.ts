@@ -13,6 +13,29 @@ const ROLE_PRIORITY: Record<TenantMembership["role"], number> = {
   VIEWER: 100,
 };
 
+const PUBLIC_ROUTE_PATTERNS = new Set([
+  "/health",
+  "/ready",
+  "/health/all",
+  "/v1/modules/catalog",
+  "/v1/auth",
+  "/v1/auth/*",
+  "/v1/system/auth/*",
+  "/v1/self-service/check-in/start",
+  "/v1/self-service/check-in/:checkinId/complete",
+  "/v1/self-service/check-in/:checkinId",
+  "/v1/self-service/registration-card/:reservationId",
+  "/v1/self-service/registration-card/:reservationId/html",
+  "/v1/self-service/keys/:reservationId",
+  "/v1/self-service/search",
+  "/v1/self-service/book",
+  "/v1/self-service/booking/:confirmationCode",
+  "/v1/self-service/*",
+]);
+
+const isPublicRoute = (routePattern: string | undefined): boolean =>
+  routePattern !== undefined && PUBLIC_ROUTE_PATTERNS.has(routePattern);
+
 type AuthContext = {
   userId: string | null;
   isAuthenticated: boolean;
@@ -136,6 +159,7 @@ const authContextPlugin = fp(async (fastify: FastifyInstance) => {
     timeWindow: gatewayConfig.rateLimit.authTimeWindow,
     keyGenerator: (request) =>
       (request.headers["x-api-key"] as string | undefined) ?? request.ip ?? "anonymous",
+    ban: 0,
   });
 
   fastify.decorateRequest<AuthContext>("auth", {
@@ -153,16 +177,13 @@ const authContextPlugin = fp(async (fastify: FastifyInstance) => {
   fastify.decorate("withTenantScope", tenantScopeDecorator);
 
   fastify.addHook("onRequest", async (request, reply) => {
-    const isPublicRoute = request.routeOptions?.config?.authContextPublic === true;
-
-    if (isPublicRoute) {
-      request.auth = createAuthContext(null, []);
-    }
+    const allowAnonymous = isPublicRoute(request.routeOptions?.url);
+    request.auth = createAuthContext(null, []);
 
     const token = extractBearerToken(request.headers.authorization);
 
     if (!token) {
-      if (isPublicRoute) {
+      if (allowAnonymous) {
         return;
       }
       reply.unauthorized("AUTHENTICATION_REQUIRED");
@@ -182,10 +203,6 @@ const authContextPlugin = fp(async (fastify: FastifyInstance) => {
 
     const payload = verifyAccessToken(token);
     if (!payload?.sub) {
-      if (isPublicRoute) {
-        request.auth = createAuthContext(null, []);
-        return;
-      }
       reply.unauthorized("INVALID_ACCESS_TOKEN");
       return;
     }
