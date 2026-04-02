@@ -48,11 +48,12 @@ export class ConsoleRateShoppingProvider implements RateShoppingProvider {
 // ── Provider registry ───────────────────────────────
 
 const providers = new Map<string, RateShoppingProvider>();
-providers.set("console", new ConsoleRateShoppingProvider());
+const defaultProvider = new ConsoleRateShoppingProvider();
+providers.set("console", defaultProvider);
 
 /** Get the provider by name, falling back to console. */
 export const getProvider = (name?: string): RateShoppingProvider => {
-  return providers.get(name ?? "console") ?? providers.get("console")!;
+  return providers.get(name ?? "console") ?? defaultProvider;
 };
 
 // ── Rate Shopping comparison view ───────────────────

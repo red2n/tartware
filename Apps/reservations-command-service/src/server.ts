@@ -94,24 +94,6 @@ export const buildServer = (): FastifyInstance => {
 
   app.register(swaggerPlugin);
 
-  const readRateLimitConfig = {
-    config: {
-      rateLimit: {
-        max: serviceConfig.rateLimit.readMax,
-        timeWindow: serviceConfig.rateLimit.readTimeWindow,
-      },
-    },
-  };
-
-  const metricsRateLimitConfig = {
-    config: {
-      rateLimit: {
-        max: serviceConfig.rateLimit.metricsMax,
-        timeWindow: serviceConfig.rateLimit.metricsTimeWindow,
-      },
-    },
-  };
-
   app.after(() => {
     app.get(
       "/health",
@@ -163,7 +145,12 @@ export const buildServer = (): FastifyInstance => {
     app.get(
       "/health/readiness",
       {
-        ...readRateLimitConfig,
+        config: {
+          rateLimit: {
+            max: serviceConfig.rateLimit.readMax,
+            timeWindow: serviceConfig.rateLimit.readTimeWindow,
+          },
+        },
         schema: buildRouteSchema({
           tag: "Health",
           summary: "Readiness probe (DB + Kafka)",
@@ -202,7 +189,12 @@ export const buildServer = (): FastifyInstance => {
     app.get(
       "/health/reliability",
       {
-        ...readRateLimitConfig,
+        config: {
+          rateLimit: {
+            max: serviceConfig.rateLimit.readMax,
+            timeWindow: serviceConfig.rateLimit.readTimeWindow,
+          },
+        },
         schema: buildRouteSchema({
           tag: "Health",
           summary: "Command pipeline reliability snapshot",
@@ -220,7 +212,12 @@ export const buildServer = (): FastifyInstance => {
     app.get(
       "/metrics",
       {
-        ...metricsRateLimitConfig,
+        config: {
+          rateLimit: {
+            max: serviceConfig.rateLimit.metricsMax,
+            timeWindow: serviceConfig.rateLimit.metricsTimeWindow,
+          },
+        },
         schema: buildRouteSchema({
           tag: "Metrics",
           summary: "Prometheus metrics endpoint",
@@ -241,7 +238,12 @@ export const buildServer = (): FastifyInstance => {
     app.get(
       "/v1/reservations/:reservationId/lifecycle",
       {
-        ...readRateLimitConfig,
+        config: {
+          rateLimit: {
+            max: serviceConfig.rateLimit.readMax,
+            timeWindow: serviceConfig.rateLimit.readTimeWindow,
+          },
+        },
         schema: buildRouteSchema({
           tag: "Reservation Lifecycle",
           summary: "Inspect lifecycle states for a reservation",

@@ -19,7 +19,10 @@ export class BudgetFilter extends PredicateFilter<RoomRecommendationQuery, RoomC
   }
 
   shouldKeep(query: RoomRecommendationQuery, candidate: RoomCandidate): boolean {
-    const budget = query.budgetRange!;
+    const budget = query.budgetRange;
+    if (!budget) {
+      return true;
+    }
     const rate = candidate.dynamicRate ?? candidate.baseRate;
 
     // Allow some flexibility (10% over budget for upgrades)

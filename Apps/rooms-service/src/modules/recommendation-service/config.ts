@@ -47,8 +47,8 @@ export const config = {
   auth: {
     jwt: {
       secret: process.env.AUTH_JWT_SECRET,
-      issuer: process.env.AUTH_JWT_ISSUER!,
-      audience: process.env.AUTH_JWT_AUDIENCE!,
+      issuer: process.env.AUTH_JWT_ISSUER ?? "tartware-core-service",
+      audience: process.env.AUTH_JWT_AUDIENCE ?? "tartware-core",
     },
   },
   recommendation: {

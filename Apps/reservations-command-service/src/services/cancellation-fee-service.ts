@@ -88,7 +88,6 @@ const computeFeeByType = (
       // Inside deadline → 1-night room rate; outside → free
       return withinPenaltyWindow ? reservation.roomRate : 0;
 
-    case "flexible":
     default:
       // Inside deadline → policy.penalty flat fee; outside → free
       return withinPenaltyWindow ? (policy.penalty ?? 0) : 0;

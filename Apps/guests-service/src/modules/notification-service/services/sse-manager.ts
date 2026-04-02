@@ -27,10 +27,12 @@ class SseConnectionManager {
   /** Add a new SSE client connection */
   addClient(client: SseClient): void {
     const k = this.key(client.tenantId, client.userId);
-    if (!this.clients.has(k)) {
-      this.clients.set(k, new Set());
+    let clientSet = this.clients.get(k);
+    if (!clientSet) {
+      clientSet = new Set();
+      this.clients.set(k, clientSet);
     }
-    this.clients.get(k)!.add(client);
+    clientSet.add(client);
 
     if (!this.heartbeatInterval) {
       this.startHeartbeat();

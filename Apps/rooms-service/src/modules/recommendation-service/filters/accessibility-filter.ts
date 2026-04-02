@@ -31,7 +31,10 @@ export class AccessibilityFilter extends BaseFilter<RoomRecommendationQuery, Roo
       return { kept: [], removed: [] };
     }
 
-    const requiredFeatures = queryParams.guestPreferences!.accessibilityNeeds!;
+    const requiredFeatures = queryParams.guestPreferences?.accessibilityNeeds;
+    if (!requiredFeatures || requiredFeatures.length === 0) {
+      return { kept: candidates, removed: [] };
+    }
     const roomIds = candidates.map((c) => c.roomId);
 
     context.logger.debug(

@@ -31,7 +31,10 @@ export class SimilarRoomsSource extends BaseSource<RoomRecommendationQuery, Room
     queryParams: RoomRecommendationQuery,
     context: PipelineContext,
   ): Promise<RoomCandidate[]> {
-    const history = queryParams.guestHistory!;
+    const history = queryParams.guestHistory;
+    if (!history) {
+      return [];
+    }
 
     context.logger.debug(
       {
