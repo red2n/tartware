@@ -1,4 +1,4 @@
-e# Tartware PMS
+# Tartware PMS
 
 A command-driven property management platform built as a TypeScript monorepo. All write traffic flows through a central Command Center into Kafka; domain services consume commands asynchronously. Read traffic stays HTTP-based via the API Gateway.
 
@@ -12,6 +12,15 @@ A command-driven property management platform built as a TypeScript monorepo. Al
 [![Build](https://github.com/red2n/tartware/actions/workflows/build.yml/badge.svg)](https://github.com/red2n/tartware/actions/workflows/build.yml)
 [![Duplo Duplicate Scan](https://github.com/red2n/tartware/actions/workflows/duplo.yml/badge.svg)](https://github.com/red2n/tartware/actions/workflows/duplo.yml)
 [![CodeQL](https://github.com/red2n/tartware/actions/workflows/codeql.yml/badge.svg)](https://github.com/red2n/tartware/actions/workflows/codeql.yml)
+
+### Status Legend
+
+| Check | What it covers |
+|-------|-----------------|
+| `security/snyk (red2n)` | External dependency and container vulnerability scan reported by Snyk in pull requests. This is a PR check, not a local GitHub Actions badge in this repository. |
+| `Build` | Monorepo validation pipeline for install, compile, and shared build verification across the workspace. |
+| `Duplo Duplicate Scan` | Duplicate-code detection for templates and repeated code blocks that may increase maintenance risk. |
+| `CodeQL` | GitHub Advanced Security static analysis for security issues such as missing rate limits, unsafe data flows, and vulnerable code patterns. |
 
 ### Services
 
