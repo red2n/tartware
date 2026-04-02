@@ -1,17 +1,22 @@
 /**
- * Auth Context Plugin — Identity extraction and tenant-scoped authorization.
+ * Auth Context Plugin — Credential extraction and tenant-scoped authorization.
  *
  * Architecture:
  *   ┌─────────────────────────────────────────────────────────────────────┐
  *   │ @fastify/rate-limit (server.ts) — global rate limit on ALL routes  │
- *   │   └─► onRequest: identityExtractor — extracts JWT identity        │
- *   │         └─► preHandler: withTenantScope() — enforces authz        │
+ *   │   └─► onRequest — extracts bearer token string from header        │
+ *   │         └─► preHandler: withTenantScope() — verifies JWT + authz  │
  *   └─────────────────────────────────────────────────────────────────────┘
  *
- * The onRequest hook only performs identity extraction (who is calling?).
- * It never rejects requests — unauthenticated callers get an anonymous
- * context. Authorization (can this caller do this?) happens exclusively
- * in the withTenantScope preHandler, which routes opt into.
+ * The onRequest hook only extracts the raw bearer token from the
+ * Authorization header and stores it on the request. It does NOT call
+ * jwt.verify() or make any authorization decisions. Every request is
+ * allowed through with an anonymous auth context.
+ *
+ * JWT verification and authorization enforcement happen exclusively in
+ * the withTenantScope preHandler, which routes opt into. This preHandler
+ * verifies the token, populates request.auth, and then checks tenant
+ * membership, role hierarchy, and module access.
  *
  * Rate limiting is applied globally via @fastify/rate-limit registered
  * before this plugin in server.ts. Auth routes additionally configure
@@ -116,7 +121,7 @@ export const ensureAuthMembershipsLoaded = async (request: FastifyRequest): Prom
   await request.auth.ensureMembershipsLoaded();
 };
 
-// ─── Tenant scope guard (preHandler — enforces authorization) ──────────────────
+// ─── Tenant scope guard (preHandler — verifies JWT + enforces authorization) ──
 
 type TenantScopeOptions = {
   minRole?: TenantMembership["role"];
@@ -128,6 +133,30 @@ type TenantScopeOptions = {
 };
 
 type TenantScopeDecorator = (options?: TenantScopeOptions) => preHandlerHookHandler;
+
+/**
+ * Verify the bearer token stored on the request and populate request.auth.
+ * Called once per request — subsequent calls are no-ops (idempotent).
+ */
+const verifyRequestIdentity = (request: FastifyRequest): void => {
+  if (request.auth.isAuthenticated) {
+    return;
+  }
+
+  const token = (request as RequestWithToken).bearerToken;
+  if (!token) {
+    return;
+  }
+
+  const payload = verifyAccessToken(token);
+  if (!payload?.sub) {
+    return;
+  }
+
+  request.auth = createAuthContext(payload.sub, [], () =>
+    loadMembershipsForRequest(request, payload.sub),
+  );
+};
 
 const buildTenantScopeGuard = (options: TenantScopeOptions = {}): preHandlerHookHandler => {
   const {
@@ -147,6 +176,9 @@ const buildTenantScopeGuard = (options: TenantScopeOptions = {}): preHandlerHook
   const resolver = resolveTenantId ?? (() => undefined);
 
   return async (request: FastifyRequest, reply: FastifyReply) => {
+    // Verify JWT and populate request.auth (idempotent — only runs once)
+    verifyRequestIdentity(request);
+
     if (!allowUnauthenticated && !request.auth.isAuthenticated) {
       reply.unauthorized("AUTHENTICATION_REQUIRED");
       return reply;
@@ -194,6 +226,9 @@ const buildTenantScopeGuard = (options: TenantScopeOptions = {}): preHandlerHook
 
 // ─── Fastify augmentation ──────────────────────────────────────────────────────
 
+/** Internal type for accessing the raw bearer token stored by onRequest. */
+type RequestWithToken = FastifyRequest & { bearerToken: string | null };
+
 declare module "fastify" {
   interface FastifyRequest {
     auth: AuthContext;
@@ -209,16 +244,16 @@ declare module "fastify" {
 /**
  * Fastify plugin that decorates every request with an `auth` context.
  *
- * Identity extraction (onRequest):
- *   Reads the Authorization header, verifies the JWT, and populates
- *   `request.auth` with the caller's identity. It never rejects — callers
- *   without a valid token receive an anonymous context.
+ * Credential extraction (onRequest):
+ *   Extracts the raw bearer token from the Authorization header and stores
+ *   it on the request. Does NOT call jwt.verify() or make authorization
+ *   decisions. Every request passes through with an anonymous context.
  *
- * Authorization enforcement (withTenantScope preHandler):
+ * Token verification + authorization (withTenantScope preHandler):
  *   Routes that require auth call `app.withTenantScope(...)` as a preHandler.
- *   That preHandler checks authentication, tenant membership, role, and module
- *   access. This separation keeps the global hook free of authorization
- *   decisions.
+ *   The preHandler verifies the JWT (first call only, idempotent), populates
+ *   request.auth, then checks tenant membership, role hierarchy, and module
+ *   access.
  */
 const authContextPlugin = fp(async (fastify: FastifyInstance) => {
   const authContextKey = Symbol("authContext");
@@ -232,42 +267,20 @@ const authContextPlugin = fp(async (fastify: FastifyInstance) => {
     },
   });
 
+  // Raw bearer token — stored by onRequest, consumed by withTenantScope.
+  fastify.decorateRequest("bearerToken", null);
+
   fastify.decorate("withTenantScope", ((options?: TenantScopeOptions) =>
     buildTenantScopeGuard(options)) as TenantScopeDecorator);
 
-  // ── Identity extraction hook ─────────────────────────────────────────────
-  // This hook ONLY extracts caller identity from the JWT. It does NOT
-  // perform authorization — every request is allowed through. Authorization
-  // is enforced per-route via the withTenantScope preHandler.
-  //
-  // Rate limiting is handled globally by @fastify/rate-limit registered in
-  // server.ts before this plugin (Fastify processes hooks in registration
-  // order). Auth routes additionally override with stricter per-route limits.
+  // ── Credential extraction hook ───────────────────────────────────────────
+  // Extracts the bearer token string from the Authorization header and
+  // stores it on the request. Does NOT verify the token — that happens in
+  // the withTenantScope preHandler. Every request passes through.
 
   fastify.addHook("onRequest", async (request) => {
     request.auth = ANONYMOUS_CONTEXT();
-
-    // Public routes (health, self-service, auth) skip token extraction entirely.
-    if (request.routeOptions?.config?.authContextPublic === true) {
-      return;
-    }
-
-    const token = extractBearerToken(request.headers.authorization);
-    if (!token) {
-      return;
-    }
-
-    // Decode the JWT to extract caller identity. Invalid/expired tokens
-    // result in an anonymous context — the withTenantScope preHandler will
-    // reject the request at the authorization layer if auth is required.
-    const identity = verifyAccessToken(token);
-    if (!identity?.sub) {
-      return;
-    }
-
-    request.auth = createAuthContext(identity.sub, [], () =>
-      loadMembershipsForRequest(request, identity.sub),
-    );
+    (request as RequestWithToken).bearerToken = extractBearerToken(request.headers.authorization);
   });
 });
 
