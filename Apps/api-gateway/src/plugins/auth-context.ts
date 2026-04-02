@@ -1,7 +1,6 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest, preHandlerHookHandler } from "fastify";
 import fp from "fastify-plugin";
 
-import { gatewayConfig } from "../config.js";
 import { extractBearerToken, verifyAccessToken } from "../lib/jwt.js";
 import { getUserMemberships, type TenantMembership } from "../services/membership-service.js";
 
@@ -12,29 +11,6 @@ const ROLE_PRIORITY: Record<TenantMembership["role"], number> = {
   STAFF: 200,
   VIEWER: 100,
 };
-
-const PUBLIC_ROUTE_PATTERNS = new Set([
-  "/health",
-  "/ready",
-  "/health/all",
-  "/v1/modules/catalog",
-  "/v1/auth",
-  "/v1/auth/*",
-  "/v1/system/auth/*",
-  "/v1/self-service/check-in/start",
-  "/v1/self-service/check-in/:checkinId/complete",
-  "/v1/self-service/check-in/:checkinId",
-  "/v1/self-service/registration-card/:reservationId",
-  "/v1/self-service/registration-card/:reservationId/html",
-  "/v1/self-service/keys/:reservationId",
-  "/v1/self-service/search",
-  "/v1/self-service/book",
-  "/v1/self-service/booking/:confirmationCode",
-  "/v1/self-service/*",
-]);
-
-const isPublicRoute = (routePattern: string | undefined): boolean =>
-  routePattern !== undefined && PUBLIC_ROUTE_PATTERNS.has(routePattern);
 
 type AuthContext = {
   userId: string | null;
@@ -154,13 +130,6 @@ const buildTenantScopeGuard = (options: TenantScopeOptions = {}): preHandlerHook
 
 const authContextPlugin = fp(async (fastify: FastifyInstance) => {
   const authContextKey = Symbol("authContext");
-  const checkAuthContextRateLimit = fastify.createRateLimit({
-    max: gatewayConfig.rateLimit.authMax,
-    timeWindow: gatewayConfig.rateLimit.authTimeWindow,
-    keyGenerator: (request) =>
-      (request.headers["x-api-key"] as string | undefined) ?? request.ip ?? "anonymous",
-    ban: 0,
-  });
 
   fastify.decorateRequest<AuthContext>("auth", {
     getter() {
@@ -176,34 +145,20 @@ const authContextPlugin = fp(async (fastify: FastifyInstance) => {
 
   fastify.decorate("withTenantScope", tenantScopeDecorator);
 
-  fastify.addHook("onRequest", async (request, reply) => {
-    const allowAnonymous = isPublicRoute(request.routeOptions?.url);
+  fastify.addHook("onRequest", async (request) => {
     request.auth = createAuthContext(null, []);
 
-    const token = extractBearerToken(request.headers.authorization);
-
-    if (!token) {
-      if (allowAnonymous) {
-        return;
-      }
-      reply.unauthorized("AUTHENTICATION_REQUIRED");
+    if (request.routeOptions?.config?.authContextPublic === true) {
       return;
     }
 
-    const rateLimit = await checkAuthContextRateLimit(request);
-    if (!rateLimit.isAllowed) {
-      void reply.code(429).send({
-        type: "about:blank",
-        title: "Too Many Requests",
-        status: 429,
-        detail: "Too many authenticated requests. Please try again later.",
-      });
+    const token = extractBearerToken(request.headers.authorization);
+    if (!token) {
       return;
     }
 
     const payload = verifyAccessToken(token);
     if (!payload?.sub) {
-      reply.unauthorized("INVALID_ACCESS_TOKEN");
       return;
     }
 

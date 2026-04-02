@@ -32,15 +32,37 @@ vi.mock("../src/plugins/auth-context.js", async () => {
   return {
     default: fp(async (fastify) => {
       fastify.decorateRequest("auth", null);
-      fastify.decorate("withTenantScope", () => async () => {});
+      fastify.decorate("withTenantScope", (options?: { allowUnauthenticated?: boolean }) =>
+        async (request, reply) => {
+          if (options?.allowUnauthenticated || request.auth?.isAuthenticated) {
+            return;
+          }
+
+          reply.unauthorized("AUTHENTICATION_REQUIRED");
+          return reply;
+        });
 
       fastify.addHook("onRequest", async (request) => {
+        if (request.routeOptions?.config?.authContextPublic === true) {
+          request.auth = {
+            userId: null,
+            isAuthenticated: false,
+            memberships: [],
+            membershipMap: new Map(),
+            hasRole: () => false,
+            getMembership: () => undefined,
+            authorizedTenantIds: new Set<string>(),
+          };
+          return;
+        }
+
+        const hasToken = typeof request.headers.authorization === "string";
         request.auth = {
-          userId: "user-1",
-          isAuthenticated: true,
+          userId: hasToken ? "user-1" : null,
+          isAuthenticated: hasToken,
           memberships: [],
           membershipMap: new Map(),
-          hasRole: () => true,
+          hasRole: () => hasToken,
           getMembership: () => undefined,
           authorizedTenantIds: new Set<string>(),
         };
@@ -222,6 +244,16 @@ describe("API Gateway server", () => {
       targetUrl: serviceTargets.coreServiceUrl,
       redacted: false,
     });
+  });
+
+  it("rejects protected routes when no bearer token is present", async () => {
+    const response = await app.inject({
+      method: "GET",
+      url: "/v1/reservations?tenant_id=11111111-1111-1111-1111-111111111111",
+    });
+
+    expect(response.statusCode).toBe(401);
+    expect(proxyRequestMock).not.toHaveBeenCalled();
   });
 
   it("proxies command definitions to the command-center service", async () => {
