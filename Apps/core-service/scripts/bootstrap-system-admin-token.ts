@@ -26,6 +26,7 @@ import process from "node:process";
 import bcrypt from "bcryptjs";
 import { Client } from "pg";
 
+import { writeSecureJsonOutput } from "./secure-output.js";
 import { config } from "../src/config.js";
 import { signSystemAdminToken } from "../src/lib/jwt.js";
 
@@ -54,6 +55,8 @@ const settings = {
     .filter(Boolean),
   resetPassword: toBool(process.env.RESET_PASSWORD, false),
   mfaSecret: process.env.ADMIN_MFA_SECRET ?? null,
+  outputPath: process.env.SYSTEM_ADMIN_TOKEN_OUTPUT_PATH,
+  allowStdoutSecrets: process.env.ALLOW_STDOUT_SECRET_OUTPUT === "true",
 };
 
 const buildClientConfig = () => {
@@ -175,20 +178,23 @@ const main = async () => {
     const expirySeconds = config.systemAdmin.jwt.expiresInSeconds;
 
     log("System admin token ready. Export and use as Authorization: Bearer <token>");
-    process.stdout.write(
-      `${JSON.stringify(
-        {
-          username: settings.username,
-          email: settings.email,
-          role: settings.role,
-          session_id: sessionId,
-          token,
-          expires_in: expirySeconds,
-          scope: "SYSTEM_ADMIN",
-        },
-        null,
-        2,
-      )}\n`,
+    writeSecureJsonOutput(
+      {
+        username: settings.username,
+        email: settings.email,
+        role: settings.role,
+        session_id: sessionId,
+        token,
+        expires_in: expirySeconds,
+        scope: "SYSTEM_ADMIN",
+      },
+      {
+        allowStdoutSecrets: settings.allowStdoutSecrets,
+        outputPath: settings.outputPath,
+        outputFileName: "system-admin-token.json",
+        tempDirPrefix: "tartware-system-admin-token-",
+        log,
+      },
     );
   } finally {
     await client.end();
@@ -196,5 +202,5 @@ const main = async () => {
 };
 
 main().catch((error) => {
-	fail(error instanceof Error ? error.message : String(error));
+  fail(error instanceof Error ? error.message : String(error));
 });
