@@ -69,10 +69,12 @@ export const registerHealthRoutes = (app: FastifyInstance): void => {
         "Accept, Authorization, Content-Type, Idempotency-Key, X-Correlation-Id, X-Requested-With, DNT, sec-ch-ua, sec-ch-ua-mobile, sec-ch-ua-platform",
       )
       .header("Access-Control-Max-Age", "600");
+  const publicRouteConfig = { authContextPublic: true } as const;
 
   app.options(
     "/health",
     {
+      config: publicRouteConfig,
       schema: {
         tags: [HEALTH_TAG],
         summary: "Pre-flight health request (CORS).",
@@ -94,6 +96,7 @@ export const registerHealthRoutes = (app: FastifyInstance): void => {
   app.get(
     "/health",
     {
+      config: publicRouteConfig,
       schema: buildRouteSchema({
         tag: HEALTH_TAG,
         summary: "API gateway health status.",
@@ -114,6 +117,7 @@ export const registerHealthRoutes = (app: FastifyInstance): void => {
   app.get(
     "/ready",
     {
+      config: publicRouteConfig,
       schema: buildRouteSchema({
         tag: HEALTH_TAG,
         summary: "Dependency-aware readiness probe (DB, Kafka, core service).",
@@ -202,6 +206,7 @@ export const registerHealthRoutes = (app: FastifyInstance): void => {
   app.get(
     "/health/all",
     {
+      config: publicRouteConfig,
       schema: buildRouteSchema({
         tag: HEALTH_TAG,
         summary: "Aggregated health status of all backend services.",

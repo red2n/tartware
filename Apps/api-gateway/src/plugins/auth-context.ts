@@ -1,6 +1,7 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest, preHandlerHookHandler } from "fastify";
 import fp from "fastify-plugin";
 
+import { gatewayConfig } from "../config.js";
 import { extractBearerToken, verifyAccessToken } from "../lib/jwt.js";
 import { getUserMemberships, type TenantMembership } from "../services/membership-service.js";
 
@@ -130,6 +131,12 @@ const buildTenantScopeGuard = (options: TenantScopeOptions = {}): preHandlerHook
 
 const authContextPlugin = fp(async (fastify: FastifyInstance) => {
   const authContextKey = Symbol("authContext");
+  const checkAuthContextRateLimit = fastify.createRateLimit({
+    max: gatewayConfig.rateLimit.authMax,
+    timeWindow: gatewayConfig.rateLimit.authTimeWindow,
+    keyGenerator: (request) =>
+      (request.headers["x-api-key"] as string | undefined) ?? request.ip ?? "anonymous",
+  });
 
   fastify.decorateRequest<AuthContext>("auth", {
     getter() {
@@ -145,26 +152,41 @@ const authContextPlugin = fp(async (fastify: FastifyInstance) => {
 
   fastify.decorate("withTenantScope", tenantScopeDecorator);
 
-  // Rate limiting is applied globally via @fastify/rate-limit in server.ts — this hook only decorates auth context.
-  fastify.addHook("onRequest", async (request) => {
-    // Health and readiness endpoints should stay unauthenticated for infra probes.
-    // Use the registered route pattern (not request.url) to prevent query-string bypass.
-    const routePath = request.routeOptions?.url ?? request.url;
-    if (routePath === "/health" || routePath === "/ready") {
+  fastify.addHook("onRequest", async (request, reply) => {
+    const isPublicRoute = request.routeOptions?.config?.authContextPublic === true;
+
+    if (isPublicRoute) {
       request.auth = createAuthContext(null, []);
-      return;
     }
 
     const token = extractBearerToken(request.headers.authorization);
 
     if (!token) {
-      request.auth = createAuthContext(null, []);
+      if (isPublicRoute) {
+        return;
+      }
+      reply.unauthorized("AUTHENTICATION_REQUIRED");
+      return;
+    }
+
+    const rateLimit = await checkAuthContextRateLimit(request);
+    if (!rateLimit.isAllowed) {
+      void reply.code(429).send({
+        type: "about:blank",
+        title: "Too Many Requests",
+        status: 429,
+        detail: "Too many authenticated requests. Please try again later.",
+      });
       return;
     }
 
     const payload = verifyAccessToken(token);
     if (!payload?.sub) {
-      request.auth = createAuthContext(null, []);
+      if (isPublicRoute) {
+        request.auth = createAuthContext(null, []);
+        return;
+      }
+      reply.unauthorized("INVALID_ACCESS_TOKEN");
       return;
     }
 

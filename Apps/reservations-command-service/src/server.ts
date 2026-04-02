@@ -2,6 +2,7 @@ import type { RateLimitPluginOptions } from "@fastify/rate-limit";
 import rateLimit from "@fastify/rate-limit";
 import { buildFastifyServer, resolveServiceRegistryConfig } from "@tartware/fastify-server";
 import { buildRouteSchema, jsonObjectSchema, schemaFromZod } from "@tartware/openapi";
+import { SERVICE_REGISTRY_CATALOG } from "@tartware/schemas/api/registry";
 import {
   type ReservationReliabilitySnapshot as ReliabilitySnapshot,
   ReservationLifecycleParamsSchema,
@@ -9,7 +10,6 @@ import {
   ReservationLifecycleResponseSchema,
   ReservationReliabilitySnapshotSchema,
 } from "@tartware/schemas/api/reservations";
-import { SERVICE_REGISTRY_CATALOG } from "@tartware/schemas/api/registry";
 import type { FastifyInstance, FastifyPluginAsync } from "fastify";
 
 import { checkGuardHealth } from "./clients/availability-guard-client.js";

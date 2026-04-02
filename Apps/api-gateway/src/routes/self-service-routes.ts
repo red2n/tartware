@@ -23,12 +23,14 @@ import { commandAcceptedSchema, SELF_SERVICE_PROXY_TAG } from "./schemas.js";
 export const registerSelfServiceRoutes = (app: FastifyInstance): void => {
   const proxySelfService = async (request: FastifyRequest, reply: FastifyReply) =>
     proxyRequest(request, reply, serviceTargets.guestExperienceServiceUrl, true);
+  const publicRouteConfig = { authContextPublic: true } as const;
 
   // ─── Check-In Routes ──────────────────────────────────────
 
   app.post(
     "/v1/self-service/check-in/start",
     {
+      config: publicRouteConfig,
       schema: buildRouteSchema({
         tag: SELF_SERVICE_PROXY_TAG,
         summary: "Start mobile check-in for a reservation.",
@@ -42,6 +44,7 @@ export const registerSelfServiceRoutes = (app: FastifyInstance): void => {
   app.post(
     "/v1/self-service/check-in/:checkinId/complete",
     {
+      config: publicRouteConfig,
       schema: buildRouteSchema({
         tag: SELF_SERVICE_PROXY_TAG,
         summary: "Complete a mobile check-in.",
@@ -55,6 +58,7 @@ export const registerSelfServiceRoutes = (app: FastifyInstance): void => {
   app.get(
     "/v1/self-service/check-in/:checkinId",
     {
+      config: publicRouteConfig,
       schema: buildRouteSchema({
         tag: SELF_SERVICE_PROXY_TAG,
         summary: "Get mobile check-in status.",
@@ -69,6 +73,7 @@ export const registerSelfServiceRoutes = (app: FastifyInstance): void => {
   app.get(
     "/v1/self-service/registration-card/:reservationId",
     {
+      config: publicRouteConfig,
       schema: buildRouteSchema({
         tag: SELF_SERVICE_PROXY_TAG,
         summary: "Get registration card for a reservation.",
@@ -81,6 +86,7 @@ export const registerSelfServiceRoutes = (app: FastifyInstance): void => {
   app.get(
     "/v1/self-service/registration-card/:reservationId/html",
     {
+      config: publicRouteConfig,
       schema: buildRouteSchema({
         tag: SELF_SERVICE_PROXY_TAG,
         summary: "Get registration card as HTML.",
@@ -95,6 +101,7 @@ export const registerSelfServiceRoutes = (app: FastifyInstance): void => {
   app.get(
     "/v1/self-service/keys/:reservationId",
     {
+      config: publicRouteConfig,
       schema: buildRouteSchema({
         tag: SELF_SERVICE_PROXY_TAG,
         summary: "Get active mobile keys for a reservation.",
@@ -109,6 +116,7 @@ export const registerSelfServiceRoutes = (app: FastifyInstance): void => {
   app.get(
     "/v1/self-service/search",
     {
+      config: publicRouteConfig,
       schema: buildRouteSchema({
         tag: SELF_SERVICE_PROXY_TAG,
         summary: "Search available room types.",
@@ -121,6 +129,7 @@ export const registerSelfServiceRoutes = (app: FastifyInstance): void => {
   app.post(
     "/v1/self-service/book",
     {
+      config: publicRouteConfig,
       schema: buildRouteSchema({
         tag: SELF_SERVICE_PROXY_TAG,
         summary: "Create a direct booking.",
@@ -134,6 +143,7 @@ export const registerSelfServiceRoutes = (app: FastifyInstance): void => {
   app.get(
     "/v1/self-service/booking/:confirmationCode",
     {
+      config: publicRouteConfig,
       schema: buildRouteSchema({
         tag: SELF_SERVICE_PROXY_TAG,
         summary: "Look up a booking by confirmation code.",
@@ -148,6 +158,7 @@ export const registerSelfServiceRoutes = (app: FastifyInstance): void => {
   app.all(
     "/v1/self-service/*",
     {
+      config: publicRouteConfig,
       schema: buildRouteSchema({
         tag: SELF_SERVICE_PROXY_TAG,
         summary: "Proxy self-service requests to the guest-experience service.",

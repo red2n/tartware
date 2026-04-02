@@ -10,6 +10,7 @@
  */
 import { buildRouteSchema, jsonObjectSchema } from "@tartware/openapi";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
+
 import { gatewayConfig, serviceTargets } from "../config.js";
 import { proxyRequest } from "../utils/proxy.js";
 
@@ -19,6 +20,7 @@ import { CORE_PROXY_TAG, reservationParamsSchema } from "./schemas.js";
 export const registerCoreProxyRoutes = (app: FastifyInstance): void => {
   const proxyCore = async (request: FastifyRequest, reply: FastifyReply) =>
     proxyRequest(request, reply, serviceTargets.coreServiceUrl);
+  const publicRouteConfig = { authContextPublic: true } as const;
 
   const tenantScopeFromParams = app.withTenantScope({
     resolveTenantId: (request) => (request.params as { tenantId?: string }).tenantId,
@@ -124,6 +126,7 @@ export const registerCoreProxyRoutes = (app: FastifyInstance): void => {
   app.get(
     "/v1/modules/catalog",
     {
+      config: publicRouteConfig,
       schema: buildRouteSchema({
         tag: CORE_PROXY_TAG,
         summary: "List available platform modules.",
@@ -154,6 +157,7 @@ export const registerCoreProxyRoutes = (app: FastifyInstance): void => {
   // Auth routes — stricter rate limit to mitigate brute-force
   const authRateLimit = {
     config: {
+      authContextPublic: true,
       rateLimit: {
         max: gatewayConfig.rateLimit.authMax,
         timeWindow: gatewayConfig.rateLimit.authTimeWindow,
