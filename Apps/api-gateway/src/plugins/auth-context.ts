@@ -1,6 +1,7 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest, preHandlerHookHandler } from "fastify";
 import fp from "fastify-plugin";
 
+import { gatewayConfig } from "../config.js";
 import { extractBearerToken, verifyAccessToken } from "../lib/jwt.js";
 import { getUserMemberships, type TenantMembership } from "../services/membership-service.js";
 
@@ -174,6 +175,13 @@ declare module "fastify" {
 
 const authContextPlugin = fp(async (fastify: FastifyInstance) => {
   const authContextKey = Symbol("authContext");
+  const checkTokenRateLimit = fastify.createRateLimit({
+    max: gatewayConfig.rateLimit.authMax,
+    timeWindow: gatewayConfig.rateLimit.authTimeWindow,
+    keyGenerator: (request) =>
+      (request.headers["x-api-key"] as string | undefined) ?? request.ip ?? "anonymous",
+    ban: 0,
+  });
 
   fastify.decorateRequest<AuthContext>("auth", {
     getter() {
@@ -189,7 +197,7 @@ const authContextPlugin = fp(async (fastify: FastifyInstance) => {
 
   fastify.decorate("withTenantScope", tenantScopeDecorator);
 
-  fastify.addHook("onRequest", async (request) => {
+  fastify.addHook("onRequest", async (request, reply) => {
     request.auth = createAuthContext(null, []);
 
     if (request.routeOptions?.config?.authContextPublic === true) {
@@ -198,6 +206,17 @@ const authContextPlugin = fp(async (fastify: FastifyInstance) => {
 
     const token = extractBearerToken(request.headers.authorization);
     if (!token) {
+      return;
+    }
+
+    const tokenRateLimit = await checkTokenRateLimit(request);
+    if (!tokenRateLimit.isAllowed) {
+      void reply.code(429).send({
+        type: "about:blank",
+        title: "Too Many Requests",
+        status: 429,
+        detail: "Too many authentication attempts. Please try again later.",
+      });
       return;
     }
 
