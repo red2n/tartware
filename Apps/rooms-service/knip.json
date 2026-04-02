@@ -7,12 +7,16 @@
     "@tartware/openapi",
     "@tartware/telemetry",
     "@tartware/tenant-auth",
+    "@tartware/candidate-pipeline",
     "@tartware/command-consumer-utils",
     "@fastify/cors",
     "@fastify/helmet",
     "@fastify/sensible",
     "@tartware/fastify-server",
     "pg"
+  ],
+  "ignore": [
+    "src/modules/recommendation-service/lib/db.ts"
   ],
   "ignoreBinaries": [],
   "ignoreExportsUsedInFile": true

@@ -2477,7 +2477,7 @@
         }
       }
     },
-    "/v1/settings/ping": {
+    "/v1/settings/health": {
       "get": {
         "responses": {
           "200": {

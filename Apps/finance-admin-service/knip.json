@@ -14,6 +14,16 @@
     "pino",
     "prom-client"
   ],
+  "ignore": [
+    "src/modules/accounts-service/plugins/auth-context.ts",
+    "src/modules/accounts-service/plugins/swagger.ts",
+    "src/modules/accounts-service/routes/health.ts",
+    "src/modules/accounts-service/lib/metrics.ts",
+    "src/modules/accounts-service/services/common.ts",
+    "src/modules/revenue-service/plugins/auth.ts",
+    "src/modules/revenue-service/plugins/swagger.ts",
+    "src/modules/revenue-service/lib/metrics.ts"
+  ],
   "ignoreBinaries": [],
   "ignoreExportsUsedInFile": true
 }

@@ -33,7 +33,7 @@ Content-Type: application/json
 ###############################################################################
 
 # Ping endpoint
-GET {{baseUrl}}/v1/settings/ping
+GET {{baseUrl}}/v1/settings/health
 Authorization: Bearer {{authToken}}
 
 ###############################################################################

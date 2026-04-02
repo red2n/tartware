@@ -229,10 +229,10 @@ export function registerComplianceRoutes(fastify: FastifyInstance): void {
   );
 
   // ---------------------------------------------------
-  // PUT /v1/compliance/breach-incidents/:incidentId/notify
+  // POST /v1/compliance/breach-incidents/:incidentId/notifications
   // ---------------------------------------------------
-  fastify.put(
-    "/v1/compliance/breach-incidents/:incidentId/notify",
+  fastify.post(
+    "/v1/compliance/breach-incidents/:incidentId/notifications",
     {
       schema: {
         summary: "Notify authority/subjects of a data breach",
@@ -276,7 +276,7 @@ export function registerComplianceRoutes(fastify: FastifyInstance): void {
         updatedBy: (request as unknown as { tenantContext?: { userId?: string } }).tenantContext
           ?.userId,
       });
-      return reply.send({
+      return reply.status(201).send({
         message: "Breach notification recorded.",
       });
     },

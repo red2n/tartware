@@ -14,7 +14,6 @@
  *  ├─ Commission    — calculate, approve, pay, statement
  *  ├─ AR            — post, apply, age, write-off
  *  ├─ Cashier       — open/close sessions
- *  ├─ Pricing       — evaluate rules, bulk recommendations
  *  ├─ Tax Config    — create, update, delete tax rules
  *  └─ Express CO    — auto-settle + checkout
  */
@@ -68,10 +67,6 @@ export {
   voidPayment,
 } from "./payment.js";
 
-export {
-  bulkGeneratePricingRecommendations,
-  evaluatePricingRules,
-} from "./pricing.js";
 export { cashierHandover } from "./shift-handover.js";
 export {
   createTaxConfig,

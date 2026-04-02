@@ -124,6 +124,14 @@ export const config = {
     pretty: configValues.LOG_PRETTY,
     requestLogging: configValues.LOG_REQUESTS,
   },
+  rateLimit: {
+    max: parseNumberEnv(process.env.AVAILABILITY_GUARD_RATE_MAX, 120),
+    timeWindow: process.env.AVAILABILITY_GUARD_RATE_WINDOW ?? "1 minute",
+    writeMax: parseNumberEnv(process.env.AVAILABILITY_GUARD_RATE_WRITE_MAX, 60),
+    writeTimeWindow: process.env.AVAILABILITY_GUARD_RATE_WRITE_WINDOW ?? "1 minute",
+    adminMax: parseNumberEnv(process.env.AVAILABILITY_GUARD_RATE_ADMIN_MAX, 20),
+    adminTimeWindow: process.env.AVAILABILITY_GUARD_RATE_ADMIN_WINDOW ?? "1 minute",
+  },
   db: {
     host: configValues.DB_HOST,
     port: configValues.DB_PORT,

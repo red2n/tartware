@@ -22,7 +22,7 @@ import { commandAcceptedSchema, SELF_SERVICE_PROXY_TAG } from "./schemas.js";
 /** Register guest-facing self-service proxy routes on the gateway. */
 export const registerSelfServiceRoutes = (app: FastifyInstance): void => {
   const proxySelfService = async (request: FastifyRequest, reply: FastifyReply) =>
-    proxyRequest(request, reply, serviceTargets.guestExperienceServiceUrl);
+    proxyRequest(request, reply, serviceTargets.guestExperienceServiceUrl, true);
 
   // ─── Check-In Routes ──────────────────────────────────────
 

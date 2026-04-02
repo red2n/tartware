@@ -637,7 +637,7 @@ export const authenticateSystemAdministratorWithBreakGlass = async (
     adminId: admin.id,
     action: "SYSTEM_BREAK_GLASS_LOGIN_SUCCESS",
     requestMethod: "POST",
-    requestPath: "/v1/system/auth/break-glass",
+    requestPath: "/v1/system/auth/emergency-sessions",
     ipAddress: input.ipAddress,
     userAgent: input.userAgent,
     sessionId,

@@ -56,6 +56,8 @@ const outbox = {
 
 const registry = {
   refreshIntervalMs: parseNumberEnv(process.env.COMMAND_REGISTRY_REFRESH_MS, 30000),
+  heartbeatTtlMs: parseNumberEnv(process.env.REGISTRY_HEARTBEAT_TTL_MS, 120_000),
+  sweepIntervalMs: parseNumberEnv(process.env.REGISTRY_SWEEP_INTERVAL_MS, 30_000),
 };
 
 export const config = {

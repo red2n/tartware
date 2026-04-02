@@ -1,5 +1,9 @@
-import { buildFastifyServer } from "@tartware/fastify-server";
+import type { RateLimitPluginOptions } from "@fastify/rate-limit";
+import rateLimit from "@fastify/rate-limit";
+import { buildFastifyServer, resolveServiceRegistryConfig } from "@tartware/fastify-server";
 import { buildRouteSchema, jsonObjectSchema } from "@tartware/openapi";
+import { SERVICE_REGISTRY_CATALOG } from "@tartware/schemas";
+import type { FastifyPluginAsync } from "fastify";
 
 import { config } from "./config.js";
 import { checkDatabaseHealth } from "./lib/health-checks.js";
@@ -19,17 +23,32 @@ import {
 } from "./workers/manual-release-notification-consumer.js";
 
 export const buildServer = () => {
+  const registryMetadata = SERVICE_REGISTRY_CATALOG["availability-guard-service"];
   const app = buildFastifyServer({
     logger: appLogger,
     enableRequestLogging: config.log.requestLogging,
     corsOrigin: false,
     enableMetricsEndpoint: true,
     metricsRegistry,
+    serviceRegistry: resolveServiceRegistryConfig({
+      ...registryMetadata,
+      serviceVersion: config.service.version,
+      host: config.host,
+      port: config.port,
+    }),
     serverOptions: {
       // Disable plugin timeout during dev to allow Kafka/GRPC startup without failing fast
       pluginTimeout: 0,
     },
   });
+
+  void app.register(
+    rateLimit as unknown as FastifyPluginAsync,
+    {
+      max: config.rateLimit.max,
+      timeWindow: config.rateLimit.timeWindow,
+    } as RateLimitPluginOptions,
+  );
 
   const SHUTDOWN_STEP_TIMEOUT_MS = 5_000;
 

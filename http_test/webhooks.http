@@ -1,0 +1,145 @@
+###############################################################################
+# WEBHOOKS - Subscription Management & Delivery Operations
+# Routes via API Gateway (localhost:8080) -> core-service reads + Command Center
+# writes for webhook subscription lifecycle management.
+###############################################################################
+
+# --- VARIABLES ---
+@baseUrl = http://localhost:8080
+@tenantId = 11111111-1111-1111-1111-111111111111
+@webhookId = eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee
+
+###############################################################################
+# 1. LOGIN
+###############################################################################
+
+# @name login
+POST {{baseUrl}}/v1/auth/login
+Content-Type: application/json
+
+{
+  "username": "setup.admin",
+  "password": "TempPass123"
+}
+
+### Extract token
+@authToken = {{login.response.body.access_token}}
+
+###############################################################################
+# 2. WEBHOOK SUBSCRIPTIONS - READ
+###############################################################################
+
+### List webhook subscriptions for tenant
+GET {{baseUrl}}/v1/tenants/{{tenantId}}/webhooks
+Authorization: Bearer {{authToken}}
+
+###
+### Get a single webhook subscription
+GET {{baseUrl}}/v1/tenants/{{tenantId}}/webhooks/{{webhookId}}
+Authorization: Bearer {{authToken}}
+
+###
+### List webhook delivery attempts
+GET {{baseUrl}}/v1/tenants/{{tenantId}}/webhooks/{{webhookId}}/deliveries?limit=20&offset=0
+Authorization: Bearer {{authToken}}
+
+###############################################################################
+# 3. WEBHOOK SUBSCRIPTIONS - WRITE
+###############################################################################
+
+### Create webhook subscription
+POST {{baseUrl}}/v1/tenants/{{tenantId}}/webhooks
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+X-Request-ID: {{$guid}}
+X-Idempotency-Key: webhook-create-{{$timestamp}}
+
+{
+  "name": "Reservation Events",
+  "target_url": "https://example.test/webhooks/reservations",
+  "event_types": [
+    "reservation.created",
+    "reservation.modified",
+    "reservation.cancelled"
+  ],
+  "signing_algorithm": "HMAC_SHA256",
+  "is_active": true,
+  "retry_policy": {
+    "max_attempts": 5,
+    "backoff_strategy": "EXPONENTIAL"
+  }
+}
+
+###
+### Update webhook subscription
+PUT {{baseUrl}}/v1/tenants/{{tenantId}}/webhooks/{{webhookId}}
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+X-Request-ID: {{$guid}}
+X-Idempotency-Key: webhook-update-{{$timestamp}}
+
+{
+  "name": "Reservation + Billing Events",
+  "target_url": "https://example.test/webhooks/reservations",
+  "event_types": [
+    "reservation.created",
+    "reservation.modified",
+    "billing.payment.captured"
+  ],
+  "is_active": true
+}
+
+###
+### Delete webhook subscription
+DELETE {{baseUrl}}/v1/tenants/{{tenantId}}/webhooks/{{webhookId}}
+Authorization: Bearer {{authToken}}
+X-Request-ID: {{$guid}}
+X-Idempotency-Key: webhook-delete-{{$timestamp}}
+
+###############################################################################
+# 4. SECRET ROTATION, REPLAY, AND TEST
+###############################################################################
+
+### Rotate webhook secret
+POST {{baseUrl}}/v1/tenants/{{tenantId}}/webhooks/{{webhookId}}/rotate-secret
+Authorization: Bearer {{authToken}}
+X-Request-ID: {{$guid}}
+X-Idempotency-Key: webhook-rotate-{{$timestamp}}
+
+###
+### Replay failed deliveries
+POST {{baseUrl}}/v1/tenants/{{tenantId}}/webhooks/{{webhookId}}/replay
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+X-Request-ID: {{$guid}}
+X-Idempotency-Key: webhook-replay-{{$timestamp}}
+
+{
+  "from_status": "FAILED",
+  "limit": 10,
+  "reason": "Receiver endpoint recovered"
+}
+
+###
+### Send test event
+POST {{baseUrl}}/v1/tenants/{{tenantId}}/webhooks/{{webhookId}}/test
+Authorization: Bearer {{authToken}}
+
+###############################################################################
+# REFERENCE
+###############################################################################
+#
+# READ ROUTES:
+#   GET /v1/tenants/:tenantId/webhooks
+#   GET /v1/tenants/:tenantId/webhooks/:webhookId
+#   GET /v1/tenants/:tenantId/webhooks/:webhookId/deliveries
+#
+# WRITE ROUTES:
+#   POST   /v1/tenants/:tenantId/webhooks
+#   PUT    /v1/tenants/:tenantId/webhooks/:webhookId
+#   DELETE /v1/tenants/:tenantId/webhooks/:webhookId
+#   POST   /v1/tenants/:tenantId/webhooks/:webhookId/rotate-secret
+#   POST   /v1/tenants/:tenantId/webhooks/:webhookId/replay
+#   POST   /v1/tenants/:tenantId/webhooks/:webhookId/test
+#
+###############################################################################

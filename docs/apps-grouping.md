@@ -1,0 +1,26 @@
+# Apps Grouping Proposal
+
+Date: 2026-03-19
+
+This document records a proposed logical grouping of projects under `Apps/`.
+
+Note: the repository has since consolidated several standalone services into host services. See `docs/SERVICE_CONSOLIDATION_TRACKER.md` for the current hosted-module layout.
+
+## Proposed Grouping
+
+- **Core PMS:** [Apps/guests-service](Apps/guests-service), [Apps/reservations-command-service](Apps/reservations-command-service), [Apps/rooms-service](Apps/rooms-service), [Apps/availability-guard-service](Apps/availability-guard-service), [Apps/roll-service](Apps/roll-service), [Apps/core-service](Apps/core-service), [Apps/calculation-service](Apps/calculation-service)
+- **Operations:** [Apps/billing-service](Apps/billing-service), [Apps/housekeeping-service](Apps/housekeeping-service)
+- **Revenue:** [Apps/revenue-service](Apps/revenue-service), [Apps/recommendation-service](Apps/recommendation-service)
+- **Experience:** [Apps/guest-experience-service](Apps/guest-experience-service), [Apps/notification-service](Apps/notification-service)
+- **Platform:** [Apps/api-gateway](Apps/api-gateway), [Apps/service-registry](Apps/service-registry), [Apps/command-center-service](Apps/command-center-service), [Apps/outbox](Apps/outbox), [Apps/openapi-utils](Apps/openapi-utils), [Apps/command-center-shared](Apps/command-center-shared), [Apps/command-consumer-utils](Apps/command-consumer-utils), [Apps/fastify-server](Apps/fastify-server), [Apps/config](Apps/config), [Apps/tenant-auth](Apps/tenant-auth), [Apps/telemetry](Apps/telemetry), [schema](schema), [proto](proto)
+
+## Notes & Suggestions
+
+- `reservations-command-service` is command-only; consider a clear name or add a read/proxy service for REST reads.
+- Infra libraries (`openapi-utils`, `command-center-shared`, `command-consumer-utils`, `fastify-server`, `config`) could be grouped under `platform/libs` to separate them from runnable services.
+- Additional services to assign after review: [Apps/cashier-service](Apps/cashier-service), [Apps/finance-admin-service](Apps/finance-admin-service), [Apps/accounts-service](Apps/accounts-service), [Apps/candidate-pipeline](Apps/candidate-pipeline), [Apps/settings-service](Apps/settings-service).
+
+## Next Steps
+
+- Confirm domain ownership for ambiguous services and decide whether to physically reorganize repository folders or keep logical groupings documented.
+- If desired, generate a follow-up PR that moves infra libraries into `Apps/platform-libs/` and adds README grouping indexes.

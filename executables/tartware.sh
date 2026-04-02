@@ -12,13 +12,99 @@ ENV_FILE_DEFAULT="${REPO_ROOT}/.env"
 ENV_TEMPLATE_DEFAULT="${REPO_ROOT}/.env.example"
 LAST_CMD_FILE="${REPO_ROOT}/.tartware-last-command"
 
+# Logging settings: by default show detailed step-by-step command output.
+# Override with TARTWARE_QUIET=true to suppress non-essential console output.
+# Set TARTWARE_VERBOSE=false to hide live command output (send to .tartware.log only).
+TARTWARE_QUIET=${TARTWARE_QUIET:-false}
+TARTWARE_VERBOSE=${TARTWARE_VERBOSE:-true}
+TARTWARE_LOG_FILE=${TARTWARE_LOG_FILE:-${REPO_ROOT}/.tartware.log}
+
+# Ensure log file exists
+mkdir -p "$(dirname "$TARTWARE_LOG_FILE")"
+touch "$TARTWARE_LOG_FILE"
+
 log() {
-    echo "[tartware] $*"
+    # primary informational messages; always logged, optionally printed
+    echo "[tartware] $*" >> "$TARTWARE_LOG_FILE"
+    if [ "${TARTWARE_QUIET}" != "true" ]; then
+        printf '%s\n' "[tartware] $*"
+    fi
+}
+
+# Run a command, capture full output to log file, but show a compact, filtered
+# summary to the console. Useful for commands like `docker compose up` which
+# emit verbose layer progress lines we want to hide while keeping full logs.
+# Usage: run_and_log_filtered "Description" <shell-command-string>
+run_and_log_filtered() {
+    local desc="$1"; shift
+    local cmd="$*"
+
+    printf '\n==> %s START %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$desc" >> "$TARTWARE_LOG_FILE"
+
+    if [ "${TARTWARE_QUIET}" != "true" ]; then
+        printf '%s\n' "[tartware] ${desc}..."
+    fi
+
+    # Run the command, append full output to the log, but print a filtered
+    # summary to stdout (only show Image/Container/Volume/Network status and
+    # key keywords like Pulled/Created/Removed/Running/Healthy).
+    if bash -lc "$cmd" 2>&1 | tee -a "$TARTWARE_LOG_FILE" | awk '/^Container|^Image|^Volume|^Network|Pulled|Created|Removed|Running|Starting|Started|Healthy|\[\+\]/{print}' ; then
+        :
+    else
+        printf '==> %s FAIL %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$desc" >> "$TARTWARE_LOG_FILE"
+        printf '%s\n' "[tartware] ERROR: ${desc} failed. See ${TARTWARE_LOG_FILE} for details." >&2
+        tail -n 80 "$TARTWARE_LOG_FILE" >&2 || true
+        exit 1
+    fi
+
+    printf '==> %s SUCCESS %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$desc" >> "$TARTWARE_LOG_FILE"
+    if [ "${TARTWARE_QUIET}" != "true" ]; then
+        printf '%s\n' "[tartware] ${desc} - done"
+    fi
 }
 
 fail() {
-    echo "[tartware] ERROR: $*" >&2
+    echo "[tartware] ERROR: $*" >> "$TARTWARE_LOG_FILE"
+    printf '%s\n' "[tartware] ERROR: $*" >&2
     exit 1
+}
+
+info() { log "$*"; }
+ok() { echo "[tartware] OK: $*" >> "$TARTWARE_LOG_FILE"; [ "${TARTWARE_QUIET}" != "true" ] && printf '%s\n' "[tartware] OK: $*"; }
+warn() { echo "[tartware] WARN: $*" >> "$TARTWARE_LOG_FILE"; [ "${TARTWARE_QUIET}" != "true" ] && printf '%s\n' "[tartware] WARN: $*"; }
+
+# Run a command, capture full output to log file, and show concise status to user.
+# Usage: run_and_log "Description" <shell-command-string>
+run_and_log() {
+    local desc="$1"; shift
+    local cmd="$*"
+
+    # Header in log
+    printf '\n==> %s START %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$desc" >> "$TARTWARE_LOG_FILE"
+
+    if [ "${TARTWARE_QUIET}" != "true" ]; then
+        printf '%s\n' "[tartware] ${desc}..."
+    fi
+
+    if [ "${TARTWARE_VERBOSE}" = "true" ]; then
+        # show live output to console and also append to log
+        bash -lc "$cmd" 2>&1 | tee -a "$TARTWARE_LOG_FILE"
+    else
+        # quiet mode: redirect command output to log only
+        if bash -lc "$cmd" >> "$TARTWARE_LOG_FILE" 2>&1; then
+            :
+        else
+            printf '==> %s FAIL %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$desc" >> "$TARTWARE_LOG_FILE"
+            printf '%s\n' "[tartware] ERROR: ${desc} failed. See ${TARTWARE_LOG_FILE} for details." >&2
+            tail -n 80 "$TARTWARE_LOG_FILE" >&2 || true
+            exit 1
+        fi
+    fi
+
+    printf '==> %s SUCCESS %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$desc" >> "$TARTWARE_LOG_FILE"
+    if [ "${TARTWARE_QUIET}" != "true" ]; then
+        printf '%s\n' "[tartware] ${desc} - done"
+    fi
 }
 
 ensure_env_vars() {
@@ -64,17 +150,15 @@ reset_default_passwords() {
     local default_password="${AUTH_DEFAULT_PASSWORD:-TempPass123}"
 
     if [ -f "$reset_script" ]; then
-        log "Resetting user passwords to default..."
-        if DB_HOST="${DB_HOST:-127.0.0.1}" DB_PORT="${DB_PORT:-5432}" DB_USER="${DB_USER:-postgres}" \
-            DB_PASSWORD="${DB_PASSWORD:-postgres}" DB_NAME="${DB_NAME:-tartware}" \
-            AUTH_DEFAULT_PASSWORD="$default_password" NODE_ENV=development \
-            npx tsx --tsconfig "$REPO_ROOT/Apps/core-service/tsconfig.json" "$reset_script"; then
-            log "Default passwords reset to '$default_password'"
+        if command -v npx >/dev/null 2>&1; then
+            info "Resetting user passwords to default"
+            run_and_log "Reset default passwords" "DB_HOST='${DB_HOST:-127.0.0.1}' DB_PORT='${DB_PORT:-5432}' DB_USER='${DB_USER:-postgres}' DB_PASSWORD='${DB_PASSWORD:-postgres}' DB_NAME='${DB_NAME:-tartware}' AUTH_DEFAULT_PASSWORD='${default_password}' NODE_ENV=development npx tsx --tsconfig '$REPO_ROOT/Apps/core-service/tsconfig.json' '$reset_script'"
+            ok "Default passwords reset to '${default_password}'"
         else
-            log "Warning: Failed to reset default passwords"
+            warn "npx (Node.js) not installed; skipping password reset. Install Node.js and npm (npx) to enable this step. Script path: $reset_script"
         fi
     else
-        log "Warning: Password reset script not found at $reset_script"
+        warn "Password reset script not found at $reset_script"
     fi
 }
 
@@ -96,47 +180,108 @@ docker_compose_cmd() {
     fi
 }
 
+# Install NVM for a user and install Node LTS.
+# Usage: install_nvm_for_user <username>
+install_nvm_for_user() {
+    local target_user="$1"
+    if [ -z "$target_user" ]; then
+        fail "install_nvm_for_user requires a username"
+    fi
+
+    # Decide command runner: prefer sudo -u to run as the target user
+    local runner="sudo -u '$target_user' -H bash -lc"
+
+    # Check if nvm already available for that user
+    if $runner 'command -v nvm >/dev/null 2>&1'; then
+        info "nvm already installed for $target_user"
+        return 0
+    fi
+
+    info "Installing nvm for $target_user"
+    run_and_log "Install nvm for $target_user" "$runner 'curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.4/install.sh | bash'"
+
+    info "Installing Node.js LTS via nvm for $target_user"
+    # Source nvm and install LTS; set alias default to lts/*
+    run_and_log "Install Node LTS for $target_user" "$runner 'export NVM_DIR=\"\$HOME/.nvm\"; [ -s \"\$NVM_DIR/nvm.sh\" ] && . \"\$NVM_DIR/nvm.sh\" && nvm install --lts && nvm alias default lts/*'"
+}
+
 usage() {
-    cat <<'USAGE'
+        cat <<'USAGE'
 Tartware CLI
 
 Usage:
-  ./executables/tartware.sh <command> [subcommand] [options]
-  ./executables/tartware.sh              # interactive mode
+    ./executables/tartware.sh <command> [subcommand] [options]
+    ./executables/tartware.sh              # interactive mode
 
 Commands:
-  env      Environment file helpers
-  db       Database setup helpers
-  docker   Docker compose helpers
-  dev      Developer helpers
-  deploy   Deployment helpers
-  help     Show this help
-  exit     Exit immediately
-  retry    Re-run the last tartware command
-  interactive  Launch interactive mode
+    env      Environment file helpers
+    db       Database setup helpers
+    docker   Docker compose helpers
+    dev      Developer helpers
+    deploy   Deployment helpers
+    help     Show this help
+    exit     Exit immediately
+    retry    Re-run the last tartware command
+    interactive  Launch interactive mode
 
 Env:
-  env init [--template PATH] [--output PATH] [--force]
-  env run -- <command>
-  env show
+    env init [--template PATH] [--output PATH] [--force]
+    env run -- <command>
+    env show
 
 DB:
-  db setup [--mode=direct|docker] [extra setup-database args]
+        db setup [--mode=direct|docker] [extra setup-database args]
+        db verify   Run verification SQL scripts (verify-installation, verify-setup, tables)
 
 Docker:
-  docker up|down|restart|ps|logs|purge
+    docker up|down|restart|ps|logs|purge
 
 Dev:
-  dev ui
-  dev otel <app> <command>
-  dev duplo
-  dev loadtest
-  dev mfa-generate
-  dev mfa-show
+    dev ui
+    dev otel <app> <command>
+    dev duplo
+    dev loadtest
+    dev mfa-generate
+    dev mfa-show
 
 Deploy:
-  deploy kubernetes
-  deploy duplo
+    deploy kubernetes
+    deploy duplo
+
+# Short options (convenience):
+    -d, -du        Docker up (default)
+    -dd            Docker down
+    -dr            Docker restart
+    -ds            Docker ps
+    -dl            Docker logs -f
+    -dp            Docker purge (custom purge script)
+    -da            Docker purge-all (down -v + system prune)
+    -dg            Docker postgres (start only + follow logs)
+
+    -e, -ei        Env init
+    -er            Env run
+    -es            Env show
+
+    -db            DB setup (default)
+    -dbv           DB verify
+
+    -devu          Dev UI
+    -devo          Dev otel
+    -devd          Dev duplo
+    -devl          Dev loadtest
+    -devg          Dev mfa-generate
+    -devs          Dev mfa-show
+
+    -h, --help     Show this help
+
+Examples:
+    ./executables/tartware.sh -du          # docker up
+    ./executables/tartware.sh -dbs         # db setup
+    ./executables/tartware.sh env init --force
+
+        # Environment:
+        #   TARTWARE_QUIET=true     # suppress non-essential console output (logs still written to .tartware.log)
+        #   TARTWARE_VERBOSE=true   # show live command output (otherwise outputs go to .tartware.log)
 USAGE
 }
 
@@ -206,8 +351,9 @@ interactive_db() {
     echo ""
     echo "DB"
     echo "1) setup"
+    echo "2) verify"
     echo "0) back"
-    read -r -p "Select option [0-1]: " choice
+    read -r -p "Select option [0-2]: " choice
     case "$choice" in
         1)
             read -r -p "Mode (direct/docker) [direct]: " mode
@@ -219,6 +365,9 @@ interactive_db() {
                 extra_args=($extra)
             fi
             "$EXEC_DIR/tartware.sh" db setup --mode="$mode" "${extra_args[@]}"
+            ;;
+        2)
+            "$EXEC_DIR/tartware.sh" db verify
             ;;
         0) return ;;
         *) echo "Invalid option" ;;
@@ -234,8 +383,10 @@ interactive_docker() {
     echo "4) ps"
     echo "5) logs"
     echo "6) purge"
+    echo "7) purge-all"
+    echo "8) postgres"
     echo "0) back"
-    read -r -p "Select option [0-6]: " choice
+    read -r -p "Select option [0-8]: " choice
     case "$choice" in
         1) "$EXEC_DIR/tartware.sh" docker up ;;
         2) "$EXEC_DIR/tartware.sh" docker down ;;
@@ -243,6 +394,8 @@ interactive_docker() {
         4) "$EXEC_DIR/tartware.sh" docker ps ;;
         5) "$EXEC_DIR/tartware.sh" docker logs ;;
         6) "$EXEC_DIR/tartware.sh" docker purge ;;
+        7) "$EXEC_DIR/tartware.sh" docker purge-all ;;
+        8) "$EXEC_DIR/tartware.sh" docker postgres ;;
         0) return ;;
         *) echo "Invalid option" ;;
     esac
@@ -292,6 +445,88 @@ interactive_deploy() {
     esac
 }
 
+# Support compact short options like `-du` -> `docker up`.
+# If the first argument starts with a single '-', translate it into the full
+# command/subcommand and replace positional parameters accordingly. Leave
+# long `--` options (e.g. `--help`) untouched so they are handled by the
+# normal command dispatch below.
+if [ $# -ge 1 ]; then
+    if [[ "$1" == --* ]]; then
+        # long option passed (e.g. --help) -> leave as-is
+        :
+    elif [[ "$1" == -?* ]]; then
+        short_opt="${1#-}"
+        # preserve remaining args
+        shift || true
+
+        # Support multi-letter short groups used in usage: `db*` and `dev*`.
+        # Check these prefixes first so they don't collide with single-letter
+        # groups (e.g., `-db` should map to `db setup`, not `docker b`).
+        if [[ "$short_opt" == db* ]]; then
+            rest="${short_opt#db}"
+            subch="${rest:0:1}"
+            case "$subch" in
+                v) set -- db verify "$@" ;;   # -dbv
+                s) set -- db setup "$@" ;;    # -dbs
+                "") set -- db setup "$@" ;;  # -db defaults to setup
+                *) fail "Unknown short option: -${short_opt}" ;;
+            esac
+        elif [[ "$short_opt" == dev* ]]; then
+            rest="${short_opt#dev}"
+            subch="${rest:0:1}"
+            case "$subch" in
+                u) set -- dev ui "$@" ;;           # -devu
+                o) set -- dev otel "$@" ;;         # -devo
+                d) set -- dev duplo "$@" ;;        # -devd
+                l) set -- dev loadtest "$@" ;;     # -devl
+                g) set -- dev mfa-generate "$@" ;; # -devg
+                s) set -- dev mfa-show "$@" ;;     # -devs
+                "") set -- dev help "$@" ;;       # -dev defaults to help
+                *) fail "Unknown short option: -${short_opt}" ;;
+            esac
+        else
+            case "${short_opt:0:1}" in
+                d)
+                    # docker group: map second char to subcommands
+                    sub="${short_opt:1}"
+                    subch="${sub:0:1}"
+                    case "$subch" in
+                        u) set -- docker up "$@" ;;        # -du
+                        d) set -- docker down "$@" ;;      # -dd
+                        r) set -- docker restart "$@" ;;   # -dr
+                        p) set -- docker purge "$@" ;;     # -dp
+                        a) set -- docker purge-all "$@" ;; # -da
+                        s) set -- docker ps "$@" ;;        # -ds
+                        l) set -- docker logs "$@" ;;      # -dl
+                        g) set -- docker postgres "$@" ;;  # -dg (postgres start+logs)
+                        "") set -- docker up "$@" ;;      # -d defaults to up
+                        *) fail "Unknown short option: -${short_opt}" ;;
+                    esac
+                    ;;
+                e)
+                    # env group: e.g. -ei -> env init (map commonly used)
+                    sub="${short_opt:1}"
+                    case "${sub:0:1}" in
+                        i) set -- env init "$@" ;; # -ei
+                        r) set -- env run "$@" ;;  # -er
+                        s) set -- env show "$@" ;; # -es
+                        "") set -- env show "$@" ;; # -e defaults to show
+                        *) fail "Unknown short option: -${short_opt}" ;;
+                    esac
+                    ;;
+                h)
+                    # -h -> help
+                    set -- help "$@"
+                    ;;
+                *)
+                    fail "Unknown short option group: -${short_opt}"
+                    ;;
+            esac
+        fi
+    fi
+fi
+
+# Determine command from positional args (after any short-opt translation)
 if [ $# -eq 0 ]; then
     cmd="interactive"
 else
@@ -380,6 +615,26 @@ case "$cmd" in
                     log "Env file not found: $ENV_FILE_DEFAULT"
                 fi
                 ;;
+            nvm)
+                # env nvm install
+                sub2="${1:-install}"
+                shift || true
+                case "$sub2" in
+                    install)
+                        # Install nvm for the interactive user. If running under sudo,
+                        # prefer to install for the original sudo user (SUDO_USER).
+                        if [ "$(id -u)" -eq 0 ]; then
+                            target_user="${SUDO_USER:-$(logname 2>/dev/null || echo root)}"
+                        else
+                            target_user="$(id -un)"
+                        fi
+                        install_nvm_for_user "$target_user"
+                        ;;
+                    *)
+                        fail "Unknown env nvm subcommand: $sub2"
+                        ;;
+                esac
+                ;;
             *)
                 fail "Unknown env subcommand: $sub"
                 ;;
@@ -390,6 +645,25 @@ case "$cmd" in
         sub="${1:-setup}"
         shift || true
         case "$sub" in
+            verify)
+                # Ensure env vars exist before verification
+                ensure_env_vars
+                # Source .env for DB connection values if present
+                if [ -f "$ENV_FILE_DEFAULT" ]; then
+                    set -a
+                    # shellcheck disable=SC1090
+                    source "$ENV_FILE_DEFAULT"
+                    set +a
+                fi
+                verify_script="$REPO_ROOT/scripts/tools/run-verifications.sh"
+                if [ -f "$verify_script" ]; then
+                    run_and_log "Run DB verification" "bash '$verify_script' $*"
+                else
+                    fail "Missing verification script: $verify_script"
+                fi
+                exit 0
+                ;;
+
             setup)
                 # Ensure env vars exist before setup
                 ensure_env_vars
@@ -401,10 +675,10 @@ case "$cmd" in
                     set +a
                 fi
                 setup_script="$EXEC_DIR/setup-database/setup-database.sh"
-                if [ ! -x "$setup_script" ]; then
+                if [ ! -f "$setup_script" ]; then
                     fail "Missing setup script: $setup_script"
                 fi
-                "$setup_script" "$@"
+                run_and_log "Database setup" "bash '$setup_script' $*"
                 # setup-database.sh already handles password reset internally
                 exit 0
                 ;;
@@ -430,21 +704,28 @@ case "$cmd" in
                     source "$ENV_FILE_DEFAULT"
                     set +a
                 fi
-                $compose_cmd -f "$REPO_ROOT/docker-compose.yml" up -d
-                log "Bootstrapping Kafka topics"
-                if (cd "$REPO_ROOT" && pnpm run kafka:topics); then
-                    log "Kafka topics created successfully"
+                run_and_log_filtered "Start Docker Compose" "$compose_cmd -f '$REPO_ROOT/docker-compose.yml' up -d"
+
+                # By default, skip post-setup Node/pnpm tasks during docker up to
+                # avoid noisy warnings on machines without Node/npm/pnpm. Set
+                # TARTWARE_SKIP_POST_SETUP=false to enable these steps.
+                if [ "${TARTWARE_SKIP_POST_SETUP:-true}" != "true" ]; then
+                    if command -v pnpm >/dev/null 2>&1; then
+                        run_and_log "Bootstrapping Kafka topics" "cd '$REPO_ROOT' && pnpm run kafka:topics"
+                    else
+                        warn "pnpm not installed; skipping Kafka bootstrap. Install pnpm to run 'pnpm run kafka:topics' or run it manually: cd $REPO_ROOT && pnpm run kafka:topics"
+                    fi
+
+                    if command -v node >/dev/null 2>&1; then
+                        run_and_log "Seeding default data" "DB_HOST=127.0.0.1 DB_PORT=5432 DB_USER=postgres DB_PASSWORD=postgres DB_NAME=tartware node '$REPO_ROOT/scripts/data/defaults/seed-default-data.mjs'"
+                    else
+                        warn "node not installed; skipping default data seeding. Install Node.js to run seed script: $REPO_ROOT/scripts/data/defaults/seed-default-data.mjs"
+                    fi
+
+                    reset_default_passwords
                 else
-                    fail "Failed to create Kafka topics"
+                    info "Skipping post-setup tasks (Kafka bootstrap, data seeding, password reset). Set TARTWARE_SKIP_POST_SETUP=false to enable."
                 fi
-                log "Seeding default data"
-                if DB_HOST=127.0.0.1 DB_PORT=5432 DB_USER=postgres DB_PASSWORD=postgres DB_NAME=tartware \
-                    node "$REPO_ROOT/scripts/data/defaults/seed-default-data.mjs"; then
-                    log "Default data seeded successfully"
-                else
-                    fail "Failed to seed default data"
-                fi
-                reset_default_passwords
                 ;;
             down)
                 $compose_cmd -f "$REPO_ROOT/docker-compose.yml" down
@@ -461,6 +742,16 @@ case "$cmd" in
                 ;;
             purge)
                 exec "$EXEC_DIR/docker-purge/docker-purge.sh" "$@"
+                ;;
+            purge-all)
+                # Full tear-down and prune of Docker resources (images, volumes, networks)
+                run_and_log_filtered "Tear down Docker Compose and remove images" "$compose_cmd -f '$REPO_ROOT/docker-compose.yml' down -v --rmi all --remove-orphans"
+                run_and_log_filtered "Prune Docker system" "docker system prune -a --volumes -f"
+                ;;
+            postgres)
+                # Start only postgres and follow logs
+                run_and_log_filtered "Start Postgres" "$compose_cmd -f '$REPO_ROOT/docker-compose.yml' up -d postgres"
+                run_and_log "Follow Postgres logs" "$compose_cmd -f '$REPO_ROOT/docker-compose.yml' logs -f postgres"
                 ;;
             *)
                 fail "Unknown docker subcommand: $sub"

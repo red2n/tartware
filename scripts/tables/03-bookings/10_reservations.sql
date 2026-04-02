@@ -10,6 +10,9 @@
 
 \echo 'Creating reservations table...'
 
+-- Required for tenant-scoped room overlap exclusion constraints.
+CREATE EXTENSION IF NOT EXISTS btree_gist;
+
 -- =====================================================
 -- RESERVATIONS TABLE
 -- Guest bookings (core transaction table)
@@ -30,7 +33,7 @@ CREATE TABLE IF NOT EXISTS reservations (
     rate_id UUID,
 
     -- Reservation Number (human-readable)
-    confirmation_number VARCHAR(50) UNIQUE NOT NULL,
+    confirmation_number VARCHAR(50) NOT NULL,
 
     -- Dates
     check_in_date DATE NOT NULL,
@@ -136,6 +139,31 @@ CREATE TABLE IF NOT EXISTS reservations (
     ),
     CONSTRAINT reservations_email_format CHECK (guest_email ~* '^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$')
 );
+
+-- Prevent overlapping active stays for the same room in the same tenant/property.
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1
+        FROM pg_constraint
+        WHERE conname = 'reservations_no_double_booked_room'
+          AND conrelid = 'public.reservations'::regclass
+    ) THEN
+        ALTER TABLE public.reservations
+            ADD CONSTRAINT reservations_no_double_booked_room
+            EXCLUDE USING gist (
+                tenant_id WITH =,
+                property_id WITH =,
+                room_number WITH =,
+                daterange(check_in_date, check_out_date, '[)') WITH &&
+            )
+            WHERE (
+                room_number IS NOT NULL
+                AND deleted_at IS NULL
+                AND status IN ('PENDING', 'CONFIRMED', 'CHECKED_IN')
+            );
+    END IF;
+END $$;
 
 -- =====================================================
 -- TABLE COMMENTS

@@ -502,7 +502,7 @@ export const searchAvailableRooms = async (options: {
              AND res.check_out_date > $3::date
          )
      )
-     SELECT room_id, room_number, room_type_id, type_name, floor,
+         SELECT room_id, room_number, ar.room_type_id AS room_type_id, type_name, floor,
             status, housekeeping_status, max_occupancy, bed_type,
             number_of_beds, size_sqm, base_rate, currency, features
      FROM available_rooms ar

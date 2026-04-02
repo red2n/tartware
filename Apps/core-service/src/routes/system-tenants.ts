@@ -40,7 +40,7 @@ const BootstrapTenantResponseJsonSchema = schemaFromZod(
 
 export const registerSystemTenantRoutes = (app: FastifyInstance): void => {
   app.post(
-    "/v1/system/tenants/bootstrap",
+    "/v1/system/tenant-onboardings",
     {
       preHandler: app.withSystemAdminScope({ minRole: "SYSTEM_ADMIN" }),
       schema: buildRouteSchema({

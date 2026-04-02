@@ -360,7 +360,7 @@ export const registerBillingRoutes = (app: FastifyInstance): void => {
   );
 
   // ============================================================================
-  // ACCOUNTS SERVICE PROXY (invoices, AR → accounts-service :3085)
+  // ACCOUNTS SERVICE PROXY (invoices, AR → accounts-service hosted on finance-admin :3090)
   // ============================================================================
 
   app.get(

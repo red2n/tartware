@@ -1,6 +1,8 @@
 ###############################################################################
 # RESERVATIONS SERVICE - Booking Management
-# Routes via API Gateway (localhost:8080) -> core-service (port 3000)
+# Routes via API Gateway (localhost:8080).
+# List/detail/summary reads proxy to core-service; lifecycle inspection proxies
+# to reservations-command-service.
 #
 # Content: Reservation Listing and Filtering (READ OPERATIONS)
 #
@@ -165,6 +167,8 @@ X-Idempotency-Key: tenant-res-{{$timestamp}}
 
 ###############################################################################
 # 3. RESERVATION LIFECYCLE - Event Sourcing State Inspection
+# These reads flow through the gateway to reservations-command-service and use
+# the read rate-limit tier there.
 ###############################################################################
 
 ###
@@ -173,9 +177,9 @@ GET {{baseUrl}}/v1/reservations/{{reservationId}}/lifecycle?tenant_id={{tenantId
 Authorization: Bearer {{authToken}}
 
 ###
-# Pre-check-in guest recognition brief (S23)
+# Reservation summary (S23)
 # Returns VIP status, preferences, allergies, notes, loyalty, special requests
-GET {{baseUrl}}/v1/reservations/{{reservationId}}/check-in-brief?tenant_id={{tenantId}}
+GET {{baseUrl}}/v1/reservations/{{reservationId}}/summary?tenant_id={{tenantId}}
 Authorization: Bearer {{authToken}}
 
 ###############################################################################

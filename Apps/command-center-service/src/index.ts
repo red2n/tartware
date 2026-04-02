@@ -5,6 +5,7 @@ import { initTelemetry } from "@tartware/telemetry";
 
 import { config } from "./config.js";
 import { shutdownProducer } from "./kafka/producer.js";
+import { startSweep, stopSweep } from "./modules/service-registry/services/registry-store.js";
 import { buildServer } from "./server.js";
 import {
   shutdownCommandRegistry,
@@ -69,6 +70,7 @@ const start = async () => {
     }
 
     await startCommandRegistry();
+    startSweep();
     startCommandOutboxDispatcher();
     await app.listen({ port: config.port, host: config.host });
     app.log.info(
@@ -85,6 +87,7 @@ const start = async () => {
     await shutdownCommandRegistry().catch((registryError) =>
       app.log.error(registryError, "failed to shutdown command registry"),
     );
+    stopSweep();
     await shutdownCommandOutboxDispatcher().catch((dispatcherError) =>
       app.log.error(dispatcherError, "failed to stop outbox dispatcher"),
     );
@@ -104,6 +107,7 @@ const shutdown = async (signal: NodeJS.Signals) => {
     await shutdownCommandRegistry().catch((error) =>
       app.log.error(error, "failed to shutdown command registry"),
     );
+    stopSweep();
     await shutdownCommandOutboxDispatcher().catch((error) =>
       app.log.error(error, "failed to stop outbox dispatcher"),
     );

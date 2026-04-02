@@ -356,13 +356,13 @@ describe('Authentication Routes', () => {
     });
   });
 
-  describe('POST /v1/auth/change-password', () => {
+  describe('PUT /v1/users/me/password', () => {
     const NEW_PASSWORD = 'Password456!';
 
     afterAll(async () => {
       const revertResponse = await app.inject({
-        method: 'POST',
-        url: '/v1/auth/change-password',
+        method: 'PUT',
+        url: '/v1/users/me/password',
         headers: buildAuthHeader(TEST_USER_ID),
         payload: {
           current_password: NEW_PASSWORD,
@@ -377,8 +377,8 @@ describe('Authentication Routes', () => {
 
     it('updates password and returns new token', async () => {
       const response = await app.inject({
-        method: 'POST',
-        url: '/v1/auth/change-password',
+        method: 'PUT',
+        url: '/v1/users/me/password',
         headers: buildAuthHeader(TEST_USER_ID),
         payload: {
           current_password: VALID_PASSWORD,
@@ -394,8 +394,8 @@ describe('Authentication Routes', () => {
 
     it('rejects invalid current password', async () => {
       const response = await app.inject({
-        method: 'POST',
-        url: '/v1/auth/change-password',
+        method: 'PUT',
+        url: '/v1/users/me/password',
         headers: buildAuthHeader(TEST_USER_ID),
         payload: {
           current_password: 'IncorrectPassword!',

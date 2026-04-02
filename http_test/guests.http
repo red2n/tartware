@@ -442,6 +442,68 @@ X-Idempotency-Key: pref-{{$timestamp}}
 }
 
 ###############################################################################
+# 8. GDPR / CONSENT ROUTES CURRENTLY REGISTERED ON THE GATEWAY
+###############################################################################
+
+###
+# Export guest data (subject access request)
+GET {{baseUrl}}/v1/tenants/{{tenantId}}/guests/{{guestId}}/gdpr-export
+Authorization: Bearer {{authToken}}
+
+###
+# Rectify guest data
+POST {{baseUrl}}/v1/tenants/{{tenantId}}/guests/{{guestId}}/gdpr-rectify
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+X-Request-ID: {{$guid}}
+X-Idempotency-Key: gdpr-rectify-{{$timestamp}}
+
+{
+  "request_reference": "GDPR-RECTIFY-2026-001",
+  "changes": {
+    "last_name": "Doe",
+    "email": "jane.corrected@example.com"
+  },
+  "reason": "Guest corrected legal surname and preferred email"
+}
+
+###
+# Restrict processing of guest data
+POST {{baseUrl}}/v1/tenants/{{tenantId}}/guests/{{guestId}}/gdpr-restrict
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+X-Request-ID: {{$guid}}
+X-Idempotency-Key: gdpr-restrict-{{$timestamp}}
+
+{
+  "request_reference": "GDPR-RESTRICT-2026-001",
+  "restriction_scope": ["MARKETING", "PROFILING"],
+  "reason": "Guest opted out pending compliance review"
+}
+
+###
+# Get consent ledger
+GET {{baseUrl}}/v1/tenants/{{tenantId}}/guests/{{guestId}}/consent
+Authorization: Bearer {{authToken}}
+
+###
+# Update consent preferences
+POST {{baseUrl}}/v1/tenants/{{tenantId}}/guests/{{guestId}}/consent
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+X-Request-ID: {{$guid}}
+X-Idempotency-Key: consent-{{$timestamp}}
+
+{
+  "marketing_email": false,
+  "marketing_sms": false,
+  "analytics_tracking": true,
+  "third_party_sharing": false,
+  "effective_at": "2026-02-01T10:00:00Z",
+  "source": "GUEST_PORTAL"
+}
+
+###############################################################################
 # REFERENCE
 ###############################################################################
 #
@@ -500,6 +562,11 @@ X-Idempotency-Key: pref-{{$timestamp}}
 #   POST /v1/tenants/:tenantId/guests/:guestId/vip
 #   POST /v1/tenants/:tenantId/guests/:guestId/blacklist
 #   POST /v1/tenants/:tenantId/guests/:guestId/gdpr-erase
+#   GET  /v1/tenants/:tenantId/guests/:guestId/gdpr-export
+#   POST /v1/tenants/:tenantId/guests/:guestId/gdpr-rectify
+#   POST /v1/tenants/:tenantId/guests/:guestId/gdpr-restrict
+#   GET  /v1/tenants/:tenantId/guests/:guestId/consent
+#   POST /v1/tenants/:tenantId/guests/:guestId/consent
 #   POST /v1/tenants/:tenantId/guests/:guestId/preferences
 #
 # SAMPLE IDs:

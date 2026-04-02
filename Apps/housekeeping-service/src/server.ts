@@ -1,4 +1,9 @@
-import { buildFastifyServer, type FastifyInstance } from "@tartware/fastify-server";
+import {
+  buildFastifyServer,
+  type FastifyInstance,
+  resolveServiceRegistryConfig,
+} from "@tartware/fastify-server";
+import { SERVICE_REGISTRY_CATALOG } from "@tartware/schemas";
 
 import { config } from "./config.js";
 import { appLogger } from "./lib/logger.js";
@@ -15,12 +20,19 @@ import { registerMaintenanceRoutes } from "./routes/maintenance.js";
 import { registerScheduleRoutes } from "./routes/schedules.js";
 
 export const buildServer = (): FastifyInstance => {
+  const registryMetadata = SERVICE_REGISTRY_CATALOG["housekeeping-service"];
   const app = buildFastifyServer({
     logger: appLogger,
     enableRequestLogging: config.log.requestLogging,
     corsOrigin: false,
     enableMetricsEndpoint: true,
     metricsRegistry,
+    serviceRegistry: resolveServiceRegistryConfig({
+      ...registryMetadata,
+      serviceVersion: config.service.version,
+      host: config.host,
+      port: config.port,
+    }),
     beforeRoutes: (app) => {
       app.register(authContextPlugin);
       app.register(swaggerPlugin);

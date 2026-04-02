@@ -9,6 +9,22 @@ import {
 } from "./commands/command-center-consumer.js";
 import { config } from "./config.js";
 import { shutdownProducer } from "./kafka/producer.js";
+import {
+  shutdownAccountsCommandCenterConsumer,
+  startAccountsCommandCenterConsumer,
+} from "./modules/accounts-service/commands/command-center-consumer.js";
+import { config as accountsConfig } from "./modules/accounts-service/config.js";
+import { shutdownProducer as shutdownAccountsProducer } from "./modules/accounts-service/kafka/producer.js";
+import {
+  shutdownRevenueCommandCenterConsumer,
+  startRevenueCommandCenterConsumer,
+} from "./modules/revenue-service/commands/command-center-consumer.js";
+import { config as revenueConfig } from "./modules/revenue-service/config.js";
+import {
+  shutdownReservationEventConsumer,
+  startReservationEventConsumer,
+} from "./modules/revenue-service/consumers/reservation-event-consumer.js";
+import { shutdownProducer as shutdownRevenueProducer } from "./modules/revenue-service/kafka/producer.js";
 import { buildServer } from "./server.js";
 
 const telemetry = await initTelemetry({
@@ -35,12 +51,20 @@ const kafkaEnabled = process.env.DISABLE_KAFKA !== "true";
 const start = async () => {
   try {
     const kafkaBroker = config.kafka.brokers[0];
+    const accountsKafkaBroker = accountsConfig.kafka.brokers[0];
+    const revenueKafkaBroker = revenueConfig.kafka.brokers[0];
     const telemetryDependency = resolveOtelDependency(true);
     const dependenciesOk = await ensureDependencies(
       [
         { name: "PostgreSQL", host: config.db.host, port: config.db.port },
         ...(kafkaEnabled && kafkaBroker
           ? [{ name: "Kafka broker", ...parseHostPort(kafkaBroker, 9092) }]
+          : []),
+        ...(kafkaEnabled && accountsKafkaBroker
+          ? [{ name: "Accounts Kafka broker", ...parseHostPort(accountsKafkaBroker, 9092) }]
+          : []),
+        ...(kafkaEnabled && revenueKafkaBroker
+          ? [{ name: "Revenue Kafka broker", ...parseHostPort(revenueKafkaBroker, 9092) }]
           : []),
         ...(telemetryDependency ? [telemetryDependency] : []),
       ],
@@ -62,6 +86,9 @@ const start = async () => {
 
     if (kafkaEnabled) {
       await startFinanceAdminCommandCenterConsumer();
+      await startAccountsCommandCenterConsumer();
+      await startRevenueCommandCenterConsumer();
+      await startReservationEventConsumer();
     } else {
       app.log.warn("Kafka disabled via DISABLE_KAFKA; skipping consumer start");
     }
@@ -76,6 +103,15 @@ const start = async () => {
     );
   } catch (error) {
     app.log.error(error, `Failed to start ${config.service.name}`);
+    if (kafkaEnabled) {
+      await shutdownReservationEventConsumer();
+      await shutdownRevenueCommandCenterConsumer();
+      await shutdownRevenueProducer();
+      await shutdownAccountsCommandCenterConsumer();
+      await shutdownAccountsProducer();
+      await shutdownFinanceAdminCommandCenterConsumer();
+      await shutdownProducer();
+    }
     await app.close();
     await telemetry
       ?.shutdown()
@@ -88,6 +124,11 @@ const shutdown = async (signal: NodeJS.Signals) => {
   app.log.info({ signal }, "shutdown signal received");
   try {
     if (kafkaEnabled) {
+      await shutdownReservationEventConsumer();
+      await shutdownRevenueCommandCenterConsumer();
+      await shutdownRevenueProducer();
+      await shutdownAccountsCommandCenterConsumer();
+      await shutdownAccountsProducer();
       await shutdownFinanceAdminCommandCenterConsumer();
       await shutdownProducer();
     }

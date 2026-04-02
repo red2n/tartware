@@ -11,6 +11,7 @@ overrides:
   '@fastify/swagger': ^9.6.1
   '@fastify/swagger-ui': ^5.2.3
   esbuild: 0.27.2
+  bn.js: 4.12.3
 
 importers:
 
@@ -51,8 +52,8 @@ importers:
         specifier: ^4.17.23
         version: 4.17.23
       nx:
-        specifier: ^22.4.5
-        version: 22.5.0
+        specifier: ^22.6.4
+        version: 22.6.4
       resolve-pkg-maps:
         specifier: ^1.0.0
         version: 1.0.0
@@ -65,85 +66,6 @@ importers:
       typescript:
         specifier: ^5.9.3
         version: 5.9.3
-
-  Apps/accounts-service:
-    dependencies:
-      '@fastify/cors':
-        specifier: ^9.0.1
-        version: 9.0.1
-      '@fastify/helmet':
-        specifier: ^11.1.1
-        version: 11.1.1
-      '@fastify/sensible':
-        specifier: ^5.1.1
-        version: 5.6.0
-      '@tartware/command-consumer-utils':
-        specifier: workspace:*
-        version: link:../command-consumer-utils
-      '@tartware/config':
-        specifier: workspace:*
-        version: link:../config
-      '@tartware/fastify-server':
-        specifier: workspace:*
-        version: link:../fastify-server
-      '@tartware/openapi':
-        specifier: workspace:*
-        version: link:../openapi-utils
-      '@tartware/schemas':
-        specifier: workspace:*
-        version: link:../../schema
-      '@tartware/telemetry':
-        specifier: workspace:*
-        version: link:../telemetry
-      '@tartware/tenant-auth':
-        specifier: workspace:*
-        version: link:../tenant-auth
-      fastify:
-        specifier: ^5.6.2
-        version: 5.7.4
-      kafkajs:
-        specifier: ^2.2.4
-        version: 2.2.4
-      pg:
-        specifier: ^8.11.3
-        version: 8.18.0
-      zod:
-        specifier: ^3.23.8
-        version: 3.25.76
-    devDependencies:
-      '@biomejs/biome':
-        specifier: ^2.2.5
-        version: 2.3.14
-      '@types/node':
-        specifier: ^22.0.0
-        version: 22.19.15
-      '@typescript-eslint/eslint-plugin':
-        specifier: ^7.0.1
-        version: 7.18.0(@typescript-eslint/parser@7.18.0(eslint@8.57.0)(typescript@5.9.3))(eslint@8.57.0)(typescript@5.9.3)
-      '@typescript-eslint/parser':
-        specifier: ^7.0.1
-        version: 7.18.0(eslint@8.57.0)(typescript@5.9.3)
-      eslint:
-        specifier: 8.57.0
-        version: 8.57.0
-      eslint-config-prettier:
-        specifier: ^9.1.0
-        version: 9.1.2(eslint@8.57.0)
-      eslint-plugin-import:
-        specifier: ^2.29.1
-        version: 2.32.0(@typescript-eslint/parser@7.18.0(eslint@8.57.0)(typescript@5.9.3))(eslint@8.57.0)
-      knip:
-        specifier: ^5.30.0
-        version: 5.83.1(@types/node@22.19.15)(typescript@5.9.3)
-      tsx:
-        specifier: ^4.19.4
-        version: 4.21.0
-      typescript:
-        specifier: ^5.8.3
-        version: 5.9.3
-      vitest:
-        specifier: ^3.2.1
-        version: 3.2.4(@types/node@22.19.15)(jiti@2.6.1)(jsdom@27.4.0)(sass@1.97.1)(tsx@4.21.0)(yaml@2.8.2)
 
   Apps/api-gateway:
     dependencies:
@@ -187,8 +109,8 @@ importers:
         specifier: ^4.5.0
         version: 4.5.1
       fastify:
-        specifier: ^5.6.2
-        version: 5.7.4
+        specifier: ^5.8.4
+        version: 5.8.4
       fastify-plugin:
         specifier: ^5.1.0
         version: 5.1.0
@@ -256,6 +178,9 @@ importers:
       '@fastify/helmet':
         specifier: ^11.1.1
         version: 11.1.1
+      '@fastify/rate-limit':
+        specifier: ^10.3.0
+        version: 10.3.0
       '@fastify/sensible':
         specifier: ^5.1.1
         version: 5.6.0
@@ -281,8 +206,8 @@ importers:
         specifier: workspace:*
         version: link:../telemetry
       fastify:
-        specifier: ^5.6.2
-        version: 5.7.4
+        specifier: ^5.8.4
+        version: 5.8.4
       fastify-plugin:
         specifier: ^4.5.1
         version: 4.5.1
@@ -372,14 +297,17 @@ importers:
         specifier: workspace:*
         version: link:../tenant-auth
       fastify:
-        specifier: ^5.6.2
-        version: 5.7.4
+        specifier: ^5.8.4
+        version: 5.8.4
       kafkajs:
         specifier: ^2.2.4
         version: 2.2.4
       pg:
         specifier: ^8.11.3
         version: 8.18.0
+      prom-client:
+        specifier: ^15.1.3
+        version: 15.1.3
       zod:
         specifier: ^3.23.8
         version: 3.25.76
@@ -387,91 +315,6 @@ importers:
       '@biomejs/biome':
         specifier: ^2.2.5
         version: 2.3.14
-      '@types/node':
-        specifier: ^20.11.19
-        version: 20.19.33
-      '@typescript-eslint/eslint-plugin':
-        specifier: ^7.0.1
-        version: 7.18.0(@typescript-eslint/parser@7.18.0(eslint@8.57.0)(typescript@5.9.3))(eslint@8.57.0)(typescript@5.9.3)
-      '@typescript-eslint/parser':
-        specifier: ^7.0.1
-        version: 7.18.0(eslint@8.57.0)(typescript@5.9.3)
-      '@vitest/coverage-v8':
-        specifier: ^4.0.18
-        version: 4.0.18(vitest@4.0.18)
-      eslint:
-        specifier: 8.57.0
-        version: 8.57.0
-      eslint-config-prettier:
-        specifier: ^9.1.0
-        version: 9.1.2(eslint@8.57.0)
-      eslint-plugin-import:
-        specifier: ^2.29.1
-        version: 2.32.0(@typescript-eslint/parser@7.18.0(eslint@8.57.0)(typescript@5.9.3))(eslint@8.57.0)
-      knip:
-        specifier: ^5.67.0
-        version: 5.83.1(@types/node@20.19.33)(typescript@5.9.3)
-      tsx:
-        specifier: ^4.7.1
-        version: 4.21.0
-      typescript:
-        specifier: ^5.3.3
-        version: 5.9.3
-      vitest:
-        specifier: ^4.0.18
-        version: 4.0.18(@opentelemetry/api@1.9.0)(@types/node@20.19.33)(@vitest/ui@4.0.18)(jiti@2.6.1)(jsdom@27.4.0)(sass@1.97.1)(tsx@4.21.0)(yaml@2.8.2)
-
-  Apps/calculation-service:
-    dependencies:
-      '@fastify/cors':
-        specifier: ^9.0.1
-        version: 9.0.1
-      '@fastify/helmet':
-        specifier: ^11.1.1
-        version: 11.1.1
-      '@fastify/sensible':
-        specifier: ^5.1.1
-        version: 5.6.0
-      '@tartware/config':
-        specifier: workspace:*
-        version: link:../config
-      '@tartware/fastify-server':
-        specifier: workspace:*
-        version: link:../fastify-server
-      '@tartware/openapi':
-        specifier: workspace:*
-        version: link:../openapi-utils
-      '@tartware/schemas':
-        specifier: workspace:*
-        version: link:../../schema
-      '@tartware/telemetry':
-        specifier: workspace:*
-        version: link:../telemetry
-      '@tartware/tenant-auth':
-        specifier: workspace:*
-        version: link:../tenant-auth
-      decimal.js:
-        specifier: ^10.5.0
-        version: 10.6.0
-      fastify:
-        specifier: ^5.6.2
-        version: 5.7.4
-      fastify-plugin:
-        specifier: ^5.1.0
-        version: 5.1.0
-      jsonwebtoken:
-        specifier: ^9.0.2
-        version: 9.0.3
-      prom-client:
-        specifier: ^15.1.3
-        version: 15.1.3
-    devDependencies:
-      '@biomejs/biome':
-        specifier: ^2.2.5
-        version: 2.3.14
-      '@types/jsonwebtoken':
-        specifier: ^9.0.6
-        version: 9.0.10
       '@types/node':
         specifier: ^20.11.19
         version: 20.19.33
@@ -543,88 +386,6 @@ importers:
         specifier: ^4.0.18
         version: 4.0.18(@opentelemetry/api@1.9.0)(@types/node@20.19.33)(@vitest/ui@4.0.18)(jiti@2.6.1)(jsdom@27.4.0)(sass@1.97.1)(tsx@4.21.0)(yaml@2.8.2)
 
-  Apps/cashier-service:
-    dependencies:
-      '@fastify/cors':
-        specifier: ^9.0.1
-        version: 9.0.1
-      '@fastify/helmet':
-        specifier: ^11.1.1
-        version: 11.1.1
-      '@fastify/sensible':
-        specifier: ^5.1.1
-        version: 5.6.0
-      '@tartware/command-consumer-utils':
-        specifier: workspace:*
-        version: link:../command-consumer-utils
-      '@tartware/config':
-        specifier: workspace:*
-        version: link:../config
-      '@tartware/fastify-server':
-        specifier: workspace:*
-        version: link:../fastify-server
-      '@tartware/openapi':
-        specifier: workspace:*
-        version: link:../openapi-utils
-      '@tartware/schemas':
-        specifier: workspace:*
-        version: link:../../schema
-      '@tartware/telemetry':
-        specifier: workspace:*
-        version: link:../telemetry
-      '@tartware/tenant-auth':
-        specifier: workspace:*
-        version: link:../tenant-auth
-      fastify:
-        specifier: ^5.6.2
-        version: 5.7.4
-      kafkajs:
-        specifier: ^2.2.4
-        version: 2.2.4
-      pg:
-        specifier: ^8.11.3
-        version: 8.18.0
-      zod:
-        specifier: ^3.23.8
-        version: 3.25.76
-    devDependencies:
-      '@biomejs/biome':
-        specifier: ^2.2.5
-        version: 2.3.14
-      '@types/node':
-        specifier: ^20.11.19
-        version: 20.19.33
-      '@typescript-eslint/eslint-plugin':
-        specifier: ^7.0.1
-        version: 7.18.0(@typescript-eslint/parser@7.18.0(eslint@8.57.0)(typescript@5.9.3))(eslint@8.57.0)(typescript@5.9.3)
-      '@typescript-eslint/parser':
-        specifier: ^7.0.1
-        version: 7.18.0(eslint@8.57.0)(typescript@5.9.3)
-      '@vitest/coverage-v8':
-        specifier: ^4.0.18
-        version: 4.0.18(vitest@4.0.18)
-      eslint:
-        specifier: 8.57.0
-        version: 8.57.0
-      eslint-config-prettier:
-        specifier: ^9.1.0
-        version: 9.1.2(eslint@8.57.0)
-      eslint-plugin-import:
-        specifier: ^2.29.1
-        version: 2.32.0(@typescript-eslint/parser@7.18.0(eslint@8.57.0)(typescript@5.9.3))(eslint@8.57.0)
-      knip:
-        specifier: ^5.67.0
-        version: 5.83.1(@types/node@20.19.33)(typescript@5.9.3)
-      tsx:
-        specifier: ^4.21.0
-        version: 4.21.0
-      typescript:
-        specifier: ^5.3.3
-        version: 5.9.3
-      vitest:
-        specifier: ^4.0.18
-        version: 4.0.18(@opentelemetry/api@1.9.0)(@types/node@20.19.33)(@vitest/ui@4.0.18)(jiti@2.6.1)(jsdom@27.4.0)(sass@1.97.1)(tsx@4.21.0)(yaml@2.8.2)
-
   Apps/command-center-service:
     dependencies:
       '@fastify/cors':
@@ -636,6 +397,9 @@ importers:
       '@fastify/sensible':
         specifier: ^5.1.1
         version: 5.6.0
+      '@opentelemetry/api':
+        specifier: ^1.9.0
+        version: 1.9.0
       '@tartware/command-center-shared':
         specifier: workspace:*
         version: link:../command-center-shared
@@ -664,8 +428,11 @@ importers:
         specifier: workspace:*
         version: link:../tenant-auth
       fastify:
-        specifier: ^5.6.2
-        version: 5.7.4
+        specifier: ^5.8.4
+        version: 5.8.4
+      fastify-plugin:
+        specifier: ^4.5.1
+        version: 4.5.1
       kafkajs:
         specifier: ^2.2.4
         version: 2.2.4
@@ -722,8 +489,8 @@ importers:
         specifier: workspace:*
         version: link:../../schema
       fastify:
-        specifier: ^5.6.2
-        version: 5.7.4
+        specifier: ^5.8.4
+        version: 5.8.4
     devDependencies:
       pg:
         specifier: ^8.11.3
@@ -744,8 +511,8 @@ importers:
         specifier: ^17.2.3
         version: 17.2.4
       fastify:
-        specifier: ^5.6.2
-        version: 5.7.4
+        specifier: ^5.8.4
+        version: 5.8.4
       pg:
         specifier: ^8.16.0
         version: 8.18.0
@@ -774,9 +541,15 @@ importers:
       '@fastify/helmet':
         specifier: ^11.1.1
         version: 11.1.1
+      '@fastify/jwt':
+        specifier: ^10.0.0
+        version: 10.0.0
       '@fastify/sensible':
         specifier: ^5.1.1
         version: 5.6.0
+      '@tartware/command-consumer-utils':
+        specifier: workspace:*
+        version: link:../command-consumer-utils
       '@tartware/config':
         specifier: workspace:*
         version: link:../config
@@ -796,8 +569,8 @@ importers:
         specifier: ^2.4.3
         version: 2.4.3
       fastify:
-        specifier: ^5.6.2
-        version: 5.7.4
+        specifier: ^5.8.4
+        version: 5.8.4
       fastify-plugin:
         specifier: ^4.5.1
         version: 4.5.1
@@ -810,6 +583,9 @@ importers:
       jsonwebtoken:
         specifier: ^9.0.2
         version: 9.0.3
+      kafkajs:
+        specifier: ^2.2.4
+        version: 2.2.4
       otplib:
         specifier: ^12.0.1
         version: 12.0.1
@@ -899,11 +675,14 @@ importers:
         specifier: workspace:*
         version: link:../telemetry
       fastify:
-        specifier: ^5.2.0
-        version: 5.7.4
+        specifier: ^5.8.4
+        version: 5.8.4
       fastify-plugin:
         specifier: ^4.5.1
         version: 4.5.1
+      prom-client:
+        specifier: ^15.1.3
+        version: 15.1.3
     devDependencies:
       '@types/node':
         specifier: ^20.11.16
@@ -939,8 +718,8 @@ importers:
         specifier: workspace:*
         version: link:../tenant-auth
       fastify:
-        specifier: ^5.3.3
-        version: 5.7.4
+        specifier: ^5.8.4
+        version: 5.8.4
       kafkajs:
         specifier: ^2.2.4
         version: 2.2.4
@@ -988,91 +767,6 @@ importers:
         specifier: ^5.8.3
         version: 5.9.3
 
-  Apps/guest-experience-service:
-    dependencies:
-      '@fastify/cors':
-        specifier: ^9.0.1
-        version: 9.0.1
-      '@fastify/helmet':
-        specifier: ^11.1.1
-        version: 11.1.1
-      '@fastify/sensible':
-        specifier: ^5.1.1
-        version: 5.6.0
-      '@tartware/command-consumer-utils':
-        specifier: workspace:*
-        version: link:../command-consumer-utils
-      '@tartware/config':
-        specifier: workspace:*
-        version: link:../config
-      '@tartware/fastify-server':
-        specifier: workspace:*
-        version: link:../fastify-server
-      '@tartware/openapi':
-        specifier: workspace:*
-        version: link:../openapi-utils
-      '@tartware/schemas':
-        specifier: workspace:*
-        version: link:../../schema
-      '@tartware/telemetry':
-        specifier: workspace:*
-        version: link:../telemetry
-      '@tartware/tenant-auth':
-        specifier: workspace:*
-        version: link:../tenant-auth
-      fastify:
-        specifier: ^5.6.2
-        version: 5.7.4
-      kafkajs:
-        specifier: ^2.2.4
-        version: 2.2.4
-      pg:
-        specifier: ^8.11.3
-        version: 8.18.0
-      prom-client:
-        specifier: ^15.1.3
-        version: 15.1.3
-      stripe:
-        specifier: ^20.4.1
-        version: 20.4.1(@types/node@20.19.33)
-    devDependencies:
-      '@biomejs/biome':
-        specifier: ^2.2.5
-        version: 2.3.14
-      '@types/node':
-        specifier: ^20.11.19
-        version: 20.19.33
-      '@typescript-eslint/eslint-plugin':
-        specifier: ^7.0.1
-        version: 7.18.0(@typescript-eslint/parser@7.18.0(eslint@8.57.0)(typescript@5.9.3))(eslint@8.57.0)(typescript@5.9.3)
-      '@typescript-eslint/parser':
-        specifier: ^7.0.1
-        version: 7.18.0(eslint@8.57.0)(typescript@5.9.3)
-      '@vitest/coverage-v8':
-        specifier: ^4.0.18
-        version: 4.0.18(vitest@4.0.18)
-      eslint:
-        specifier: 8.57.0
-        version: 8.57.0
-      eslint-config-prettier:
-        specifier: ^9.1.0
-        version: 9.1.2(eslint@8.57.0)
-      eslint-plugin-import:
-        specifier: ^2.29.1
-        version: 2.32.0(@typescript-eslint/parser@7.18.0(eslint@8.57.0)(typescript@5.9.3))(eslint@8.57.0)
-      knip:
-        specifier: ^5.67.0
-        version: 5.83.1(@types/node@20.19.33)(typescript@5.9.3)
-      tsx:
-        specifier: ^4.7.1
-        version: 4.21.0
-      typescript:
-        specifier: ^5.3.3
-        version: 5.9.3
-      vitest:
-        specifier: ^4.0.18
-        version: 4.0.18(@opentelemetry/api@1.9.0)(@types/node@20.19.33)(@vitest/ui@4.0.18)(jiti@2.6.1)(jsdom@27.4.0)(sass@1.97.1)(tsx@4.21.0)(yaml@2.8.2)
-
   Apps/guests-service:
     dependencies:
       '@fastify/cors':
@@ -1084,6 +778,9 @@ importers:
       '@fastify/sensible':
         specifier: ^5.1.1
         version: 5.6.0
+      '@sendgrid/mail':
+        specifier: ^8.1.6
+        version: 8.1.6
       '@tartware/command-consumer-utils':
         specifier: workspace:*
         version: link:../command-consumer-utils
@@ -1106,14 +803,26 @@ importers:
         specifier: workspace:*
         version: link:../tenant-auth
       fastify:
-        specifier: ^5.6.2
-        version: 5.7.4
+        specifier: ^5.8.4
+        version: 5.8.4
+      fastify-plugin:
+        specifier: ^5.0.0
+        version: 5.1.0
       kafkajs:
         specifier: ^2.2.4
         version: 2.2.4
       pg:
         specifier: ^8.11.3
         version: 8.18.0
+      prom-client:
+        specifier: ^15.1.3
+        version: 15.1.3
+      resend:
+        specifier: ^4.6.0
+        version: 4.8.0(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+      stripe:
+        specifier: ^20.4.1
+        version: 20.4.1(@types/node@20.19.33)
       zod:
         specifier: ^3.23.8
         version: 3.25.76
@@ -1188,96 +897,8 @@ importers:
         specifier: workspace:*
         version: link:../tenant-auth
       fastify:
-        specifier: ^5.6.2
-        version: 5.7.4
-      kafkajs:
-        specifier: ^2.2.4
-        version: 2.2.4
-      pg:
-        specifier: ^8.11.3
-        version: 8.18.0
-      zod:
-        specifier: ^3.23.8
-        version: 3.25.76
-    devDependencies:
-      '@biomejs/biome':
-        specifier: ^2.2.5
-        version: 2.3.14
-      '@types/node':
-        specifier: ^20.11.19
-        version: 20.19.33
-      '@typescript-eslint/eslint-plugin':
-        specifier: ^7.0.1
-        version: 7.18.0(@typescript-eslint/parser@7.18.0(eslint@8.57.0)(typescript@5.9.3))(eslint@8.57.0)(typescript@5.9.3)
-      '@typescript-eslint/parser':
-        specifier: ^7.0.1
-        version: 7.18.0(eslint@8.57.0)(typescript@5.9.3)
-      '@vitest/coverage-v8':
-        specifier: ^4.0.18
-        version: 4.0.18(vitest@4.0.18)
-      eslint:
-        specifier: 8.57.0
-        version: 8.57.0
-      eslint-config-prettier:
-        specifier: ^9.1.0
-        version: 9.1.2(eslint@8.57.0)
-      eslint-plugin-import:
-        specifier: ^2.29.1
-        version: 2.32.0(@typescript-eslint/parser@7.18.0(eslint@8.57.0)(typescript@5.9.3))(eslint@8.57.0)
-      knip:
-        specifier: ^5.67.0
-        version: 5.83.1(@types/node@20.19.33)(typescript@5.9.3)
-      tsx:
-        specifier: ^4.7.1
-        version: 4.21.0
-      typescript:
-        specifier: ^5.3.3
-        version: 5.9.3
-      vitest:
-        specifier: ^4.0.18
-        version: 4.0.18(@opentelemetry/api@1.9.0)(@types/node@20.19.33)(@vitest/ui@4.0.18)(jiti@2.6.1)(jsdom@27.4.0)(sass@1.97.1)(tsx@4.21.0)(yaml@2.8.2)
-
-  Apps/notification-service:
-    dependencies:
-      '@fastify/cors':
-        specifier: ^9.0.1
-        version: 9.0.1
-      '@fastify/helmet':
-        specifier: ^11.1.1
-        version: 11.1.1
-      '@fastify/sensible':
-        specifier: ^5.1.1
-        version: 5.6.0
-      '@sendgrid/mail':
-        specifier: ^8.1.6
-        version: 8.1.6
-      '@tartware/command-consumer-utils':
-        specifier: workspace:*
-        version: link:../command-consumer-utils
-      '@tartware/config':
-        specifier: workspace:*
-        version: link:../config
-      '@tartware/fastify-server':
-        specifier: workspace:*
-        version: link:../fastify-server
-      '@tartware/openapi':
-        specifier: workspace:*
-        version: link:../openapi-utils
-      '@tartware/schemas':
-        specifier: workspace:*
-        version: link:../../schema
-      '@tartware/telemetry':
-        specifier: workspace:*
-        version: link:../telemetry
-      '@tartware/tenant-auth':
-        specifier: workspace:*
-        version: link:../tenant-auth
-      fastify:
-        specifier: ^5.6.2
-        version: 5.7.4
-      fastify-plugin:
-        specifier: ^5.0.0
-        version: 5.1.0
+        specifier: ^5.8.4
+        version: 5.8.4
       kafkajs:
         specifier: ^2.2.4
         version: 2.2.4
@@ -1287,9 +908,9 @@ importers:
       prom-client:
         specifier: ^15.1.3
         version: 15.1.3
-      resend:
-        specifier: ^4.6.0
-        version: 4.8.0(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+      zod:
+        specifier: ^3.23.8
+        version: 3.25.76
     devDependencies:
       '@biomejs/biome':
         specifier: ^2.2.5
@@ -1331,8 +952,8 @@ importers:
   Apps/openapi-utils:
     dependencies:
       fastify:
-        specifier: ^5.6.2
-        version: 5.7.4
+        specifier: ^5.8.4
+        version: 5.8.4
       zod:
         specifier: ^3.23.8
         version: 3.25.76
@@ -1363,87 +984,14 @@ importers:
         specifier: ^5.3.3
         version: 5.9.3
 
-  Apps/recommendation-service:
-    dependencies:
-      '@tartware/candidate-pipeline':
-        specifier: workspace:*
-        version: link:../candidate-pipeline
-      '@tartware/config':
-        specifier: workspace:*
-        version: link:../config
-      '@tartware/fastify-server':
-        specifier: workspace:*
-        version: link:../fastify-server
-      '@tartware/schemas':
-        specifier: workspace:*
-        version: link:../../schema
-      '@tartware/telemetry':
-        specifier: workspace:*
-        version: link:../telemetry
-      fastify:
-        specifier: ^5.6.2
-        version: 5.7.4
-      fastify-plugin:
-        specifier: ^5.1.0
-        version: 5.1.0
-      jsonwebtoken:
-        specifier: ^9.0.2
-        version: 9.0.3
-      pg:
-        specifier: ^8.11.3
-        version: 8.18.0
-      prom-client:
-        specifier: ^15.1.3
-        version: 15.1.3
-    devDependencies:
-      '@biomejs/biome':
-        specifier: ^2.2.5
-        version: 2.3.14
-      '@types/jsonwebtoken':
-        specifier: ^9.0.6
-        version: 9.0.10
-      '@types/node':
-        specifier: ^20.11.19
-        version: 20.19.33
-      '@types/pg':
-        specifier: ^8.16.0
-        version: 8.16.0
-      '@typescript-eslint/eslint-plugin':
-        specifier: ^7.0.1
-        version: 7.18.0(@typescript-eslint/parser@7.18.0(eslint@8.57.0)(typescript@5.9.3))(eslint@8.57.0)(typescript@5.9.3)
-      '@typescript-eslint/parser':
-        specifier: ^7.0.1
-        version: 7.18.0(eslint@8.57.0)(typescript@5.9.3)
-      '@vitest/coverage-v8':
-        specifier: ^4.0.18
-        version: 4.0.18(vitest@4.0.18)
-      eslint:
-        specifier: 8.57.0
-        version: 8.57.0
-      eslint-config-prettier:
-        specifier: ^9.1.0
-        version: 9.1.2(eslint@8.57.0)
-      eslint-plugin-import:
-        specifier: ^2.29.1
-        version: 2.32.0(@typescript-eslint/parser@7.18.0(eslint@8.57.0)(typescript@5.9.3))(eslint@8.57.0)
-      knip:
-        specifier: ^5.67.0
-        version: 5.83.1(@types/node@20.19.33)(typescript@5.9.3)
-      tsx:
-        specifier: ^4.21.0
-        version: 4.21.0
-      typescript:
-        specifier: ^5.3.3
-        version: 5.9.3
-      vitest:
-        specifier: ^4.0.18
-        version: 4.0.18(@opentelemetry/api@1.9.0)(@types/node@20.19.33)(@vitest/ui@4.0.18)(jiti@2.6.1)(jsdom@27.4.0)(sass@1.97.1)(tsx@4.21.0)(yaml@2.8.2)
-
   Apps/reservations-command-service:
     dependencies:
       '@fastify/helmet':
         specifier: ^13.0.2
         version: 13.0.2
+      '@fastify/rate-limit':
+        specifier: ^10.3.0
+        version: 10.3.0
       '@fastify/sensible':
         specifier: ^6.0.4
         version: 6.0.4
@@ -1475,8 +1023,8 @@ importers:
         specifier: workspace:*
         version: link:../telemetry
       fastify:
-        specifier: ^5.6.2
-        version: 5.7.4
+        specifier: ^5.8.4
+        version: 5.8.4
       kafkajs:
         specifier: ^2.2.4
         version: 2.2.4
@@ -1539,173 +1087,6 @@ importers:
         specifier: ^4.0.18
         version: 4.0.18(@opentelemetry/api@1.9.0)(@types/node@20.19.33)(@vitest/ui@4.0.18)(jiti@2.6.1)(jsdom@27.4.0)(sass@1.97.1)(tsx@4.21.0)(yaml@2.8.2)
 
-  Apps/revenue-service:
-    dependencies:
-      '@fastify/cors':
-        specifier: ^8.3.0
-        version: 8.5.0
-      '@fastify/helmet':
-        specifier: ^11.1.1
-        version: 11.1.1
-      '@fastify/sensible':
-        specifier: ^5.1.1
-        version: 5.6.0
-      '@tartware/command-consumer-utils':
-        specifier: workspace:*
-        version: link:../command-consumer-utils
-      '@tartware/config':
-        specifier: workspace:*
-        version: link:../config
-      '@tartware/fastify-server':
-        specifier: workspace:*
-        version: link:../fastify-server
-      '@tartware/openapi':
-        specifier: workspace:*
-        version: link:../openapi-utils
-      '@tartware/schemas':
-        specifier: workspace:*
-        version: link:../../schema
-      '@tartware/telemetry':
-        specifier: workspace:*
-        version: link:../telemetry
-      '@tartware/tenant-auth':
-        specifier: workspace:*
-        version: link:../tenant-auth
-      fastify:
-        specifier: ^5.6.2
-        version: 5.7.4
-      kafkajs:
-        specifier: ^2.2.4
-        version: 2.2.4
-      pg:
-        specifier: ^8.11.3
-        version: 8.18.0
-      zod:
-        specifier: ^3.23.8
-        version: 3.25.76
-    devDependencies:
-      '@biomejs/biome':
-        specifier: ^2.2.5
-        version: 2.3.14
-      '@types/node':
-        specifier: ^20.11.19
-        version: 20.19.33
-      '@typescript-eslint/eslint-plugin':
-        specifier: ^7.0.1
-        version: 7.18.0(@typescript-eslint/parser@7.18.0(eslint@8.57.0)(typescript@5.9.3))(eslint@8.57.0)(typescript@5.9.3)
-      '@typescript-eslint/parser':
-        specifier: ^7.0.1
-        version: 7.18.0(eslint@8.57.0)(typescript@5.9.3)
-      '@vitest/coverage-v8':
-        specifier: ^4.0.18
-        version: 4.0.18(vitest@4.0.18)
-      eslint:
-        specifier: 8.57.0
-        version: 8.57.0
-      eslint-config-prettier:
-        specifier: ^9.1.0
-        version: 9.1.2(eslint@8.57.0)
-      eslint-plugin-import:
-        specifier: ^2.29.1
-        version: 2.32.0(@typescript-eslint/parser@7.18.0(eslint@8.57.0)(typescript@5.9.3))(eslint@8.57.0)
-      knip:
-        specifier: ^5.67.0
-        version: 5.83.1(@types/node@20.19.33)(typescript@5.9.3)
-      tsx:
-        specifier: ^4.7.1
-        version: 4.21.0
-      typescript:
-        specifier: ^5.3.3
-        version: 5.9.3
-      vitest:
-        specifier: ^4.0.18
-        version: 4.0.18(@opentelemetry/api@1.9.0)(@types/node@20.19.33)(@vitest/ui@4.0.18)(jiti@2.6.1)(jsdom@27.4.0)(sass@1.97.1)(tsx@4.21.0)(yaml@2.8.2)
-
-  Apps/roll-service:
-    dependencies:
-      '@fastify/helmet':
-        specifier: ^11.1.1
-        version: 11.1.1
-      '@fastify/sensible':
-        specifier: ^5.1.1
-        version: 5.6.0
-      '@opentelemetry/api':
-        specifier: ^1.9.0
-        version: 1.9.0
-      '@tartware/config':
-        specifier: workspace:*
-        version: link:../config
-      '@tartware/fastify-server':
-        specifier: workspace:*
-        version: link:../fastify-server
-      '@tartware/openapi':
-        specifier: workspace:*
-        version: link:../openapi-utils
-      '@tartware/schemas':
-        specifier: workspace:*
-        version: link:../../schema
-      '@tartware/telemetry':
-        specifier: workspace:*
-        version: link:../telemetry
-      fastify:
-        specifier: ^5.6.2
-        version: 5.7.4
-      fastify-plugin:
-        specifier: ^4.5.1
-        version: 4.5.1
-      kafkajs:
-        specifier: ^2.2.4
-        version: 2.2.4
-      p-retry:
-        specifier: ^6.0.1
-        version: 6.2.1
-      pg:
-        specifier: ^8.11.3
-        version: 8.18.0
-      prom-client:
-        specifier: ^15.1.3
-        version: 15.1.3
-      zod:
-        specifier: ^3.23.8
-        version: 3.25.76
-    devDependencies:
-      '@biomejs/biome':
-        specifier: ^2.2.5
-        version: 2.3.14
-      '@types/node':
-        specifier: ^20.11.19
-        version: 20.19.33
-      '@typescript-eslint/eslint-plugin':
-        specifier: ^7.0.1
-        version: 7.18.0(@typescript-eslint/parser@7.18.0(eslint@8.57.0)(typescript@5.9.3))(eslint@8.57.0)(typescript@5.9.3)
-      '@typescript-eslint/parser':
-        specifier: ^7.0.1
-        version: 7.18.0(eslint@8.57.0)(typescript@5.9.3)
-      '@vitest/coverage-v8':
-        specifier: ^4.0.18
-        version: 4.0.18(vitest@4.0.18)
-      eslint:
-        specifier: 8.57.0
-        version: 8.57.0
-      eslint-config-prettier:
-        specifier: ^9.1.0
-        version: 9.1.2(eslint@8.57.0)
-      eslint-plugin-import:
-        specifier: ^2.29.1
-        version: 2.32.0(@typescript-eslint/parser@7.18.0(eslint@8.57.0)(typescript@5.9.3))(eslint@8.57.0)
-      knip:
-        specifier: ^5.67.0
-        version: 5.83.1(@types/node@20.19.33)(typescript@5.9.3)
-      tsx:
-        specifier: ^4.7.1
-        version: 4.21.0
-      typescript:
-        specifier: ^5.3.3
-        version: 5.9.3
-      vitest:
-        specifier: ^4.0.18
-        version: 4.0.18(@opentelemetry/api@1.9.0)(@types/node@20.19.33)(@vitest/ui@4.0.18)(jiti@2.6.1)(jsdom@27.4.0)(sass@1.97.1)(tsx@4.21.0)(yaml@2.8.2)
-
   Apps/rooms-service:
     dependencies:
       '@fastify/cors':
@@ -1717,6 +1098,9 @@ importers:
       '@fastify/sensible':
         specifier: ^5.1.1
         version: 5.6.0
+      '@tartware/candidate-pipeline':
+        specifier: workspace:*
+        version: link:../candidate-pipeline
       '@tartware/command-consumer-utils':
         specifier: workspace:*
         version: link:../command-consumer-utils
@@ -1738,15 +1122,21 @@ importers:
       '@tartware/tenant-auth':
         specifier: workspace:*
         version: link:../tenant-auth
+      decimal.js:
+        specifier: ^10.5.0
+        version: 10.6.0
       fastify:
-        specifier: ^5.6.2
-        version: 5.7.4
+        specifier: ^5.8.4
+        version: 5.8.4
       kafkajs:
         specifier: ^2.2.4
         version: 2.2.4
       pg:
         specifier: ^8.11.3
         version: 8.18.0
+      prom-client:
+        specifier: ^15.1.3
+        version: 15.1.3
       zod:
         specifier: ^3.23.8
         version: 3.25.76
@@ -1780,155 +1170,6 @@ importers:
         version: 5.83.1(@types/node@20.19.33)(typescript@5.9.3)
       tsx:
         specifier: ^4.21.0
-        version: 4.21.0
-      typescript:
-        specifier: ^5.3.3
-        version: 5.9.3
-      vitest:
-        specifier: ^4.0.18
-        version: 4.0.18(@opentelemetry/api@1.9.0)(@types/node@20.19.33)(@vitest/ui@4.0.18)(jiti@2.6.1)(jsdom@27.4.0)(sass@1.97.1)(tsx@4.21.0)(yaml@2.8.2)
-
-  Apps/service-registry:
-    dependencies:
-      '@fastify/cors':
-        specifier: ^9.0.1
-        version: 9.0.1
-      '@fastify/helmet':
-        specifier: ^11.1.1
-        version: 11.1.1
-      '@fastify/sensible':
-        specifier: ^5.1.1
-        version: 5.6.0
-      '@tartware/config':
-        specifier: workspace:*
-        version: link:../config
-      '@tartware/fastify-server':
-        specifier: workspace:*
-        version: link:../fastify-server
-      '@tartware/openapi':
-        specifier: workspace:*
-        version: link:../openapi-utils
-      '@tartware/telemetry':
-        specifier: workspace:*
-        version: link:../telemetry
-      fastify:
-        specifier: ^5.6.2
-        version: 5.7.4
-      prom-client:
-        specifier: ^15.1.3
-        version: 15.1.3
-    devDependencies:
-      '@biomejs/biome':
-        specifier: ^2.2.5
-        version: 2.3.14
-      '@types/node':
-        specifier: ^20.11.19
-        version: 20.19.33
-      '@typescript-eslint/eslint-plugin':
-        specifier: ^7.0.1
-        version: 7.18.0(@typescript-eslint/parser@7.18.0(eslint@8.57.0)(typescript@5.9.3))(eslint@8.57.0)(typescript@5.9.3)
-      '@typescript-eslint/parser':
-        specifier: ^7.0.1
-        version: 7.18.0(eslint@8.57.0)(typescript@5.9.3)
-      eslint:
-        specifier: 8.57.0
-        version: 8.57.0
-      eslint-config-prettier:
-        specifier: ^9.1.0
-        version: 9.1.2(eslint@8.57.0)
-      eslint-plugin-import:
-        specifier: ^2.29.1
-        version: 2.32.0(@typescript-eslint/parser@7.18.0(eslint@8.57.0)(typescript@5.9.3))(eslint@8.57.0)
-      knip:
-        specifier: ^5.67.0
-        version: 5.83.1(@types/node@20.19.33)(typescript@5.9.3)
-      tsx:
-        specifier: ^4.7.1
-        version: 4.21.0
-      typescript:
-        specifier: ^5.3.3
-        version: 5.9.3
-      vitest:
-        specifier: ^4.0.18
-        version: 4.0.18(@opentelemetry/api@1.9.0)(@types/node@20.19.33)(@vitest/ui@4.0.18)(jiti@2.6.1)(jsdom@27.4.0)(sass@1.97.1)(tsx@4.21.0)(yaml@2.8.2)
-
-  Apps/settings-service:
-    dependencies:
-      '@fastify/cors':
-        specifier: ^8.3.0
-        version: 8.5.0
-      '@fastify/helmet':
-        specifier: ^11.1.1
-        version: 11.1.1
-      '@fastify/jwt':
-        specifier: ^10.0.0
-        version: 10.0.0
-      '@fastify/sensible':
-        specifier: ^5.1.1
-        version: 5.6.0
-      '@tartware/command-consumer-utils':
-        specifier: workspace:*
-        version: link:../command-consumer-utils
-      '@tartware/config':
-        specifier: workspace:*
-        version: link:../config
-      '@tartware/fastify-server':
-        specifier: workspace:*
-        version: link:../fastify-server
-      '@tartware/openapi':
-        specifier: workspace:*
-        version: link:../openapi-utils
-      '@tartware/schemas':
-        specifier: workspace:*
-        version: link:../../schema
-      '@tartware/telemetry':
-        specifier: workspace:*
-        version: link:../telemetry
-      fastify:
-        specifier: ^5.6.2
-        version: 5.7.4
-      fastify-plugin:
-        specifier: ^4.5.1
-        version: 4.5.1
-      kafkajs:
-        specifier: ^2.2.4
-        version: 2.2.4
-      pg:
-        specifier: ^8.11.3
-        version: 8.18.0
-      zod:
-        specifier: ^3.23.8
-        version: 3.25.76
-    devDependencies:
-      '@biomejs/biome':
-        specifier: ^2.2.5
-        version: 2.3.14
-      '@types/node':
-        specifier: ^20.11.19
-        version: 20.19.33
-      '@typescript-eslint/eslint-plugin':
-        specifier: ^7.0.1
-        version: 7.18.0(@typescript-eslint/parser@7.18.0(eslint@8.57.0)(typescript@5.9.3))(eslint@8.57.0)(typescript@5.9.3)
-      '@typescript-eslint/parser':
-        specifier: ^7.0.1
-        version: 7.18.0(eslint@8.57.0)(typescript@5.9.3)
-      '@vitest/coverage-v8':
-        specifier: ^4.0.18
-        version: 4.0.18(vitest@4.0.18)
-      eslint:
-        specifier: 8.57.0
-        version: 8.57.0
-      eslint-config-prettier:
-        specifier: ^9.1.0
-        version: 9.1.2(eslint@8.57.0)
-      eslint-plugin-import:
-        specifier: ^2.29.1
-        version: 2.32.0(@typescript-eslint/parser@7.18.0(eslint@8.57.0)(typescript@5.9.3))(eslint@8.57.0)
-      knip:
-        specifier: ^5.67.0
-        version: 5.83.1(@types/node@20.19.33)(typescript@5.9.3)
-      tsx:
-        specifier: ^4.7.1
         version: 4.21.0
       typescript:
         specifier: ^5.3.3
@@ -1977,8 +1218,8 @@ importers:
         specifier: ^20.11.19
         version: 20.19.33
       fastify:
-        specifier: ^5.6.2
-        version: 5.7.4
+        specifier: ^5.8.4
+        version: 5.8.4
       typescript:
         specifier: ^5.3.3
         version: 5.9.3
@@ -1989,8 +1230,8 @@ importers:
         specifier: workspace:*
         version: link:../../schema
       fastify:
-        specifier: ^5.6.2
-        version: 5.7.4
+        specifier: ^5.8.4
+        version: 5.8.4
       fastify-plugin:
         specifier: ^5.1.0
         version: 5.1.0
@@ -3095,6 +2336,9 @@ packages:
     cpu: [x64]
     os: [win32]
 
+  '@ltd/j-toml@1.38.0':
+    resolution: {integrity: sha512-lYtBcmvHustHQtg4X7TXUu1Xa/tbLC3p2wLvgQI+fWVySguVZJF60Snxijw5EiohumxZbR10kWYFFebh1zotiw==}
+
   '@lukeed/ms@2.0.2':
     resolution: {integrity: sha512-9I2Zn6+NJLfaGoz9jN3lpwDgAYvfGeNYdbAIjJOqzs4Tpc+VU3Jqq4IofSUBKajiDS8k9fZIg18/z13mpk1bsA==}
     engines: {node: '>=8'}
@@ -3300,53 +2544,53 @@ packages:
     resolution: {integrity: sha512-ER2N6itRkzWbbtVmZ9WKaWxVlKlOeBFF1/7xx+KA5J1xKa4JjUwBdb6tDpk0v1qA+d+VDwHI9qmLcXSWcmi+Rw==}
     engines: {node: ^20.17.0 || >=22.9.0}
 
-  '@nx/nx-darwin-arm64@22.5.0':
-    resolution: {integrity: sha512-MHnzv6tzucvLsh4oS9FTepj+ct/o8/DPXrQow+9Jid7GSgY59xrDX/8CleJOrwL5lqKEyGW7vv8TR+4wGtEWTA==}
+  '@nx/nx-darwin-arm64@22.6.4':
+    resolution: {integrity: sha512-KuUQ9t8pxIO+Px1kbjA0XDLOU6XoAsijl0ssIMRYN1w5ly+0k/KglWt7qgwDockkaLRHkQ3YSR8I2LJXJE+Vig==}
     cpu: [arm64]
     os: [darwin]
 
-  '@nx/nx-darwin-x64@22.5.0':
-    resolution: {integrity: sha512-/0w43hbR5Kia0XeCDZHDt/18FHhpwQs+Y+8TO8/ZsF1RgCI0knJDCyJieYk1yEZAq6E8dStAJnuzxK9uvETs4A==}
+  '@nx/nx-darwin-x64@22.6.4':
+    resolution: {integrity: sha512-FB2XL2+ixbRI1fddz4oW+9MhoJASoTD8Ai4q5+B1OUPftgarIPLxaqI8TWba30Bos2AiYDofMJPf9uhBmLDH5Q==}
     cpu: [x64]
     os: [darwin]
 
-  '@nx/nx-freebsd-x64@22.5.0':
-    resolution: {integrity: sha512-d4Pd1VFpD272R7kJTWm/Pj49BIz44GZ+QIVSfxlx3GWxyaPd25X9GBanUngL6qpactS+aLTwcoBmnSbZ4PEcEQ==}
+  '@nx/nx-freebsd-x64@22.6.4':
+    resolution: {integrity: sha512-qNsXhlflc77afjcRKCn7bqI8l/HPEjKhQRFs8wfKbAfNw3XEASc0EZtBV/TStLGV6PEZQldVBaId5FBMp8GW6Q==}
     cpu: [x64]
     os: [freebsd]
 
-  '@nx/nx-linux-arm-gnueabihf@22.5.0':
-    resolution: {integrity: sha512-cCyG23PikIlqE7I6s9j0aHJSqIxnpdOjFOXyRd224XmFyAB8tOyKl7vDD/WugcpAceos28i+Rgz4na189zm48A==}
+  '@nx/nx-linux-arm-gnueabihf@22.6.4':
+    resolution: {integrity: sha512-rjfnii0xGe8SQqsO/DDHeJSjbqp2H5fOEgZlaYXDGOwQeLZ1TQplEdx8hyI/ErAUwVO3YHnzoMtmachBQOlspw==}
     cpu: [arm]
     os: [linux]
 
-  '@nx/nx-linux-arm64-gnu@22.5.0':
-    resolution: {integrity: sha512-vkQw8737fpta6oVEEqskzwq+d0GeZkGhtyl+U3pAcuUcYTdqbsZaofSQACFnGfngsqpYmlJCWJGU5Te00qcPQw==}
+  '@nx/nx-linux-arm64-gnu@22.6.4':
+    resolution: {integrity: sha512-x6Zim1STewCXuHBCgoy2TO0586UlwH4RNCobn0mTiPd1jt7nU+fNqo3SpY8RzY1KmBfgcO48BBrfykPE9YWMpg==}
     cpu: [arm64]
     os: [linux]
 
-  '@nx/nx-linux-arm64-musl@22.5.0':
-    resolution: {integrity: sha512-BkEsFBsnKrDK11N914rr5YKyIJwYoSVItJ7VzsQZIqAX0C7PdJeQ7KzqOGwoezbabdLmzFOBNg6s/o1ujoEYxw==}
+  '@nx/nx-linux-arm64-musl@22.6.4':
+    resolution: {integrity: sha512-vYOqdgXIhtHFWdtnonp/jFfmfkyNPTu1JEdXuJpSxwUQdV2dWqS/l3HVPVWHXDrVKofPafK3M72jMvoWoaOQ6g==}
     cpu: [arm64]
     os: [linux]
 
-  '@nx/nx-linux-x64-gnu@22.5.0':
-    resolution: {integrity: sha512-Dsqoz4hWmqehMMm8oJY6Q0ckEUeeHz4+T/C8nHyDaaj/REKCSmqYf/+QV6f2Z5Up/CsQ/hoAsWYEhCHZ0tcSFg==}
+  '@nx/nx-linux-x64-gnu@22.6.4':
+    resolution: {integrity: sha512-UfWUDlOzlvQNVa1mnqOFxzvUwoGfM2o9ruhwYRoFm3XJbVYnjINyQsdcHwwDJItJP04LZzLPxA1+O8sU+Oqg6A==}
     cpu: [x64]
     os: [linux]
 
-  '@nx/nx-linux-x64-musl@22.5.0':
-    resolution: {integrity: sha512-Lcj/61BpsT85Qhm3hNTwQFrqGtsjLC+y4Kk21dh22d1/E5pOdVAwPXBuWrSPNo4lX+ESNoKmwxWjfgW3uoB05g==}
+  '@nx/nx-linux-x64-musl@22.6.4':
+    resolution: {integrity: sha512-dwXpcyin4ScD5gH9FdhiNnOqFXclXLFBDTyRCEOlRUbOPayF9YEcH0PPIf9uWmwP3tshhAdr5sg9DLN+r7M3xg==}
     cpu: [x64]
     os: [linux]
 
-  '@nx/nx-win32-arm64-msvc@22.5.0':
-    resolution: {integrity: sha512-0DlnBDLvqNtseCyBBoBst0gwux+N91RBc4E41JDDcLcWpfntcwCQM39D6lA5qdma/0L7U0PUM7MYV9Q6igJMkQ==}
+  '@nx/nx-win32-arm64-msvc@22.6.4':
+    resolution: {integrity: sha512-KqjJbFWhKJaKjET3Ep8hltXPizO0EstF4yfmp3oepWVn11poagc2MT1pf/tnRf6cdD88wd0bmw/83Ng6WUQ3Uw==}
     cpu: [arm64]
     os: [win32]
 
-  '@nx/nx-win32-x64-msvc@22.5.0':
-    resolution: {integrity: sha512-kMMsU4PxKQ76NvmPFKT0/RlzRTiuUfuNWVJUmsWF1onVcBkXgQNKkmLcSJk3wGwML5/tHChjtlI7Hpo705Uv/g==}
+  '@nx/nx-win32-x64-msvc@22.6.4':
+    resolution: {integrity: sha512-CIL9m6uilGGr/eU+41/+aVWUnEcq+j1EDynUX2A4InLTbAN0ylte4Af+72mvipNiqJgDkjKaNzOCQDnp8QBjEQ==}
     cpu: [x64]
     os: [win32]
 
@@ -4503,9 +3747,6 @@ packages:
   '@types/node@20.19.33':
     resolution: {integrity: sha512-Rs1bVAIdBs5gbTIKza/tgpMuG1k3U/UMJLWecIMxNdJFDMzcM5LOiLVRYh3PilWEYDIeUDv7bpiHPLPsbydGcw==}
 
-  '@types/node@22.19.15':
-    resolution: {integrity: sha512-F0R/h2+dsy5wJAUe3tAU6oqa2qbWY5TpNfL/RGmo1y38hiyO1w3x2jPtt76wmuaJI4DQnOBu21cNXQ2STIUUWg==}
-
   '@types/node@25.2.3':
     resolution: {integrity: sha512-m0jEgYlYz+mDJZ2+F4v8D1AyQb+QzsNqRuI7xg1VQX/KlKS0qT9r1Mo16yo5F/MtifXFgaofIFsdFMox2SxIbQ==}
 
@@ -4822,11 +4063,18 @@ packages:
   avvio@9.1.0:
     resolution: {integrity: sha512-fYASnYi600CsH/j9EQov7lECAniYiBFiiAtBNuZYLA2leLe9qOvZzqYHFjtIj6gD2VMoMLP14834LFWvr4IfDw==}
 
+  axios@1.12.0:
+    resolution: {integrity: sha512-oXTDccv8PcfjZmPGlWsPSwtOJCZ/b6W5jAMCNcfwJbCzDckwG0jrYJFaWH1yvivfCXjVzV/SPDEhMB3Q+DSurg==}
+
   axios@1.13.5:
     resolution: {integrity: sha512-cz4ur7Vb0xS4/KUN0tPWe44eqxrIu31me+fbang3ijiNscE129POzipJJA6zniq2C/Z6sJCjMimjS8Lc/GAs8Q==}
 
   balanced-match@1.0.2:
     resolution: {integrity: sha512-3oSeUO0TMV67hN1AmbXsK4yaqU7tjiHlbxRDZOpH0KW9+CeX4bRAaX0Anxt0tx2MrpRpWwQaPwIlISEJhYU5Pw==}
+
+  balanced-match@4.0.4:
+    resolution: {integrity: sha512-BLrgEcRTwX2o6gGxGOCNyMvGSp35YofuYzw9h1IMTRmKqttAZZVU67bdb9Pr2vUHA8+j3i2tJfjO6C6+4myGTA==}
+    engines: {node: 18 || 20 || >=22}
 
   base64-js@1.5.1:
     resolution: {integrity: sha512-AKpaYlHn8t4SVbOHCy+b5+KKgvR4vrsD8vbvrbiQJps7fKDTkjkDry6ji0rUJjC0kzbNePLwzxq8iypo41qeWA==}
@@ -4855,8 +4103,8 @@ packages:
   bl@4.1.0:
     resolution: {integrity: sha512-1W07cM9gS6DcLperZfFSj+bWLtaPGSOHWhPiGzXmvVJbRLdG82sH/Kn8EtW1VqWVA54AKf2h5k5BbnIbwF3h6w==}
 
-  bn.js@4.12.2:
-    resolution: {integrity: sha512-n4DSx829VRTRByMRGdjQ9iqsN0Bh4OolPsFnaZBLcbi8iXcB+kJ9s7EnRt4wILZNV3kPLHkRVfOc/HvhC3ovDw==}
+  bn.js@4.12.3:
+    resolution: {integrity: sha512-fGTi3gxV/23FTYdAoUtLYp6qySe2KE3teyZitipKNRuVYcBkoP/bB3guXN/XVKUe9mxCHXnc9C4ocyz8OmgN0g==}
 
   body-parser@2.2.2:
     resolution: {integrity: sha512-oP5VkATKlNwcgvxi0vM0p/D3n2C3EReYVX+DNYs5TjZFn/oQt2j+4sVJtSMr18pdRr8wjTcBl6LoV+FUwzPmNA==}
@@ -4870,6 +4118,10 @@ packages:
 
   brace-expansion@2.0.2:
     resolution: {integrity: sha512-Jt0vHyM+jmUBqojB7E1NIYadt0vI0Qxjxd2TErW94wDz+E2LAm5vKMXXwg6ZZBTHPuUlDgQHKXvjGBdfcF1ZDQ==}
+
+  brace-expansion@5.0.5:
+    resolution: {integrity: sha512-VZznLgtwhn+Mact9tfiwx64fA9erHH/MCXEUfB/0bX/6Fz6ny5EGTXYltMocqg4xFAQZtnO3DHWWXi8RiuN7cQ==}
+    engines: {node: 18 || 20 || >=22}
 
   braces@3.0.3:
     resolution: {integrity: sha512-yQbXgO/OSZVD2IsiLlro+7Hf6Q18EJrKSEsdoMzKePKXct3gvD8oLcOQdIzGupr5Fj+EDe8gO/lxc1BzfMpxvA==}
@@ -5478,8 +4730,8 @@ packages:
   fastify-plugin@5.1.0:
     resolution: {integrity: sha512-FAIDA8eovSt5qcDgcBvDuX/v0Cjz0ohGhENZ/wpc3y+oZCY2afZ9Baqql3g/lC+OHRnciQol4ww7tuthOb9idw==}
 
-  fastify@5.7.4:
-    resolution: {integrity: sha512-e6l5NsRdaEP8rdD8VR0ErJASeyaRbzXYpmkrpr2SuvuMq6Si3lvsaVy5C+7gLanEkvjpMDzBXWE5HPeb/hgTxA==}
+  fastify@5.8.4:
+    resolution: {integrity: sha512-sa42J1xylbBAYUWALSBoyXKPDUvM3OoNOibIefA+Oha57FryXKKCZarA1iDntOCWp3O35voZLuDg2mdODXtPzQ==}
 
   fastparallel@2.4.1:
     resolution: {integrity: sha512-qUmhxPgNHmvRjZKBFUNI0oZuuH9OlSIOXmJ98lhKPxMZZ7zS/Fi0wRHOihDSz0R1YiIOjxzOY4bq65YTcdBi2Q==}
@@ -6303,13 +5555,13 @@ packages:
   minimalistic-assert@1.0.1:
     resolution: {integrity: sha512-UtJcAD4yEaGtjPezWuO9wC4nwUnVH/8/Im3yEHQP4b67cXlD/Qr9hdITCU1xDbSEXg2XKNaP8jsReV7vQd00/A==}
 
-  minimatch@10.1.1:
-    resolution: {integrity: sha512-enIvLvRAFZYXJzkCYG5RKmPfrFArdLv+R+lbQ53BmIMLIry74bjKzX6iHAm8WYamJkhSSEabrWN5D97XnKObjQ==}
-    engines: {node: 20 || >=22}
-
   minimatch@10.1.2:
     resolution: {integrity: sha512-fu656aJ0n2kcXwsnwnv9g24tkU5uSmOlTjd6WyyaKm2Z+h1qmY6bAjrcaIxF/BslFqbZ8UBtbJi7KgQOZD2PTw==}
     engines: {node: 20 || >=22}
+
+  minimatch@10.2.4:
+    resolution: {integrity: sha512-oRjTw/97aTBN0RHbYCdtF1MQfvusSIBQM0IZEgzl6426+8jSC0nF1a/GmnVLpfB9yyr6g6FTqWqiZVbxrtaCIg==}
+    engines: {node: 18 || 20 || >=22}
 
   minimatch@3.1.2:
     resolution: {integrity: sha512-J7p63hRiAjw1NDEww1W7i37+ByIrOWO5XQQAzZ3VOcL0PNybwpfmV/N05zFAzwQ9USyEcX6t3UO+K5aqBQOIHw==}
@@ -6423,9 +5675,6 @@ packages:
     engines: {node: ^20.17.0 || >=22.9.0}
     hasBin: true
 
-  node-machine-id@1.1.12:
-    resolution: {integrity: sha512-QNABxbrPa3qEIfrE6GOJ7BYIuignnJw7iQ2YPbc3Nla1HzRJjXzZOiikfF8m7eAMfichLt3M4VgLOetqgDmgGQ==}
-
   node-releases@2.0.27:
     resolution: {integrity: sha512-nmh3lCkYZ3grZvqcCH+fjmQ7X+H0OeZgP40OierEaAptX4XofMh5kwNbWh7lBduUzCcV/8kZ+NDLCwm2iorIlA==}
 
@@ -6469,12 +5718,12 @@ packages:
   nth-check@2.1.1:
     resolution: {integrity: sha512-lqjrjmaOoAnWfMmBPL+XNnynZh2+swxiX3WUE0s4yEHI6m+AwrK2UZOimIRl3X/4QctVqS8AiZjFqyOGrMXb/w==}
 
-  nx@22.5.0:
-    resolution: {integrity: sha512-GOHhDHXvuscD28Hpj1bP38oVrCgZ/+5UWjA8R/VkpbtkfMHgRZ0uHlfKLYXQAZIsjmTq7Tr+e4QchJt0e76n0w==}
+  nx@22.6.4:
+    resolution: {integrity: sha512-WEaCnLKeO9RhQAOBMfXgYO/Lx5wL4ARCtRGiYCjJtAJIZ5kcVn4uPKL2Xz1xekpF7ef/+YNrUQSrblx47Ms9Rg==}
     hasBin: true
     peerDependencies:
-      '@swc-node/register': 1.11.1
-      '@swc/core': 1.15.8
+      '@swc-node/register': ^1.11.1
+      '@swc/core': ^1.15.8
     peerDependenciesMeta:
       '@swc-node/register':
         optional: true
@@ -6691,19 +5940,12 @@ packages:
   pino-abstract-transport@2.0.0:
     resolution: {integrity: sha512-F63x5tizV6WCh4R6RHyi2Ml+M70DNRXt/+HANowMflpgGFMAym/VKm6G7ZOQRjqN7XbGxK1Lg9t6ZrtzOaivMw==}
 
-  pino-abstract-transport@3.0.0:
-    resolution: {integrity: sha512-wlfUczU+n7Hy/Ha5j9a/gZNy7We5+cXp8YL+X+PG8S0KXxw7n/JXA3c46Y0zQznIJ83URJiwy7Lh56WLokNuxg==}
-
   pino-pretty@11.3.0:
     resolution: {integrity: sha512-oXwn7ICywaZPHmu3epHGU2oJX4nPmKvHvB/bwrJHlGcbEWaVcotkpyVHMKLKmiVryWYByNp0jpgAcXpFJDXJzA==}
     hasBin: true
 
   pino-std-serializers@7.1.0:
     resolution: {integrity: sha512-BndPH67/JxGExRgiX1dX0w1FvZck5Wa4aal9198SrRhZjH3GxKQUKIBnYJTdj2HDN3UQAS06HlfcSbQj2OHmaw==}
-
-  pino@10.3.1:
-    resolution: {integrity: sha512-r34yH/GlQpKZbU1BvFFqOjhISRo1MNx1tWYsYvmj6KIRHSPMT2+yHOEb1SG6NMvRoHRF0a07kCOox/9yakl1vg==}
-    hasBin: true
 
   pino@9.14.0:
     resolution: {integrity: sha512-8OEwKp5juEvb/MjpIc4hjqfgCNysrS94RIOMXYvpYCdm/jglrKEiAYmiumbmGhCvs+IcInsphYDFwqrjr7398w==}
@@ -7276,10 +6518,6 @@ packages:
 
   thread-stream@3.1.0:
     resolution: {integrity: sha512-OqyPZ9u96VohAyMfJykzmivOrY2wfMSf3C5TtFJVgN+Hm6aj+voFhlK+kZEIv2FBh1X6Xp3DlnCOfEQ3B2J86A==}
-
-  thread-stream@4.0.0:
-    resolution: {integrity: sha512-4iMVL6HAINXWf1ZKZjIPcz5wYaOdPhtO8ATvZ+Xqp3BTdaqtAwQkNmKORqcIo5YkQqGXq5cwfswDwMqqQNrpJA==}
-    engines: {node: '>=20'}
 
   tinybench@2.9.0:
     resolution: {integrity: sha512-0+DUvqWMValLmha6lr4kD8iAMK1HzV0/aKnCtWb9v9641TnP/MFb7Pc2bxoxQjTXAErryXVgUOfv2YqNllqGeg==}
@@ -8737,6 +7975,8 @@ snapshots:
   '@lmdb/lmdb-win32-x64@3.4.4':
     optional: true
 
+  '@ltd/j-toml@1.38.0': {}
+
   '@lukeed/ms@2.0.2': {}
 
   '@modelcontextprotocol/sdk@1.26.0(zod@4.3.5)':
@@ -8935,34 +8175,34 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@nx/nx-darwin-arm64@22.5.0':
+  '@nx/nx-darwin-arm64@22.6.4':
     optional: true
 
-  '@nx/nx-darwin-x64@22.5.0':
+  '@nx/nx-darwin-x64@22.6.4':
     optional: true
 
-  '@nx/nx-freebsd-x64@22.5.0':
+  '@nx/nx-freebsd-x64@22.6.4':
     optional: true
 
-  '@nx/nx-linux-arm-gnueabihf@22.5.0':
+  '@nx/nx-linux-arm-gnueabihf@22.6.4':
     optional: true
 
-  '@nx/nx-linux-arm64-gnu@22.5.0':
+  '@nx/nx-linux-arm64-gnu@22.6.4':
     optional: true
 
-  '@nx/nx-linux-arm64-musl@22.5.0':
+  '@nx/nx-linux-arm64-musl@22.6.4':
     optional: true
 
-  '@nx/nx-linux-x64-gnu@22.5.0':
+  '@nx/nx-linux-x64-gnu@22.6.4':
     optional: true
 
-  '@nx/nx-linux-x64-musl@22.5.0':
+  '@nx/nx-linux-x64-musl@22.6.4':
     optional: true
 
-  '@nx/nx-win32-arm64-msvc@22.5.0':
+  '@nx/nx-win32-arm64-msvc@22.6.4':
     optional: true
 
-  '@nx/nx-win32-x64-msvc@22.5.0':
+  '@nx/nx-win32-x64-msvc@22.6.4':
     optional: true
 
   '@opentelemetry/api-logs@0.52.1':
@@ -10219,10 +9459,6 @@ snapshots:
     dependencies:
       undici-types: 6.21.0
 
-  '@types/node@22.19.15':
-    dependencies:
-      undici-types: 6.21.0
-
   '@types/node@25.2.3':
     dependencies:
       undici-types: 7.16.0
@@ -10378,14 +9614,6 @@ snapshots:
       magic-string: 0.30.21
     optionalDependencies:
       vite: 7.3.0(@types/node@20.19.33)(jiti@2.6.1)(sass@1.97.1)(tsx@4.21.0)(yaml@2.8.2)
-
-  '@vitest/mocker@3.2.4(vite@7.3.0(@types/node@22.19.15)(jiti@2.6.1)(sass@1.97.1)(tsx@4.21.0)(yaml@2.8.2))':
-    dependencies:
-      '@vitest/spy': 3.2.4
-      estree-walker: 3.0.3
-      magic-string: 0.30.21
-    optionalDependencies:
-      vite: 7.3.0(@types/node@22.19.15)(jiti@2.6.1)(sass@1.97.1)(tsx@4.21.0)(yaml@2.8.2)
 
   '@vitest/mocker@4.0.18(vite@6.4.1(@types/node@20.19.33)(jiti@2.6.1)(sass@1.97.1)(tsx@4.21.0)(yaml@2.8.2))':
     dependencies:
@@ -10607,7 +9835,7 @@ snapshots:
 
   asn1.js@5.4.1:
     dependencies:
-      bn.js: 4.12.2
+      bn.js: 4.12.3
       inherits: 2.0.4
       minimalistic-assert: 1.0.1
       safer-buffer: 2.1.2
@@ -10637,6 +9865,14 @@ snapshots:
       '@fastify/error': 4.2.0
       fastq: 1.20.1
 
+  axios@1.12.0:
+    dependencies:
+      follow-redirects: 1.15.11
+      form-data: 4.0.5
+      proxy-from-env: 1.1.0
+    transitivePeerDependencies:
+      - debug
+
   axios@1.13.5:
     dependencies:
       follow-redirects: 1.15.11
@@ -10646,6 +9882,8 @@ snapshots:
       - debug
 
   balanced-match@1.0.2: {}
+
+  balanced-match@4.0.4: {}
 
   base64-js@1.5.1: {}
 
@@ -10678,7 +9916,7 @@ snapshots:
       inherits: 2.0.4
       readable-stream: 3.6.2
 
-  bn.js@4.12.2: {}
+  bn.js@4.12.3: {}
 
   body-parser@2.2.2:
     dependencies:
@@ -10704,6 +9942,10 @@ snapshots:
   brace-expansion@2.0.2:
     dependencies:
       balanced-match: 1.0.2
+
+  brace-expansion@5.0.5:
+    dependencies:
+      balanced-match: 4.0.4
 
   braces@3.0.3:
     dependencies:
@@ -11421,7 +10663,7 @@ snapshots:
 
   fastify-plugin@5.1.0: {}
 
-  fastify@5.7.4:
+  fastify@5.8.4:
     dependencies:
       '@fastify/ajv-compiler': 4.0.5
       '@fastify/error': 4.2.0
@@ -11432,7 +10674,7 @@ snapshots:
       fast-json-stringify: 6.3.0
       find-my-way: 9.4.0
       light-my-request: 6.6.0
-      pino: 10.3.1
+      pino: 9.14.0
       process-warning: 5.0.0
       rfdc: 1.4.1
       secure-json-parse: 4.1.0
@@ -12147,23 +11389,6 @@ snapshots:
       typescript: 5.9.3
       zod: 4.3.6
 
-  knip@5.83.1(@types/node@22.19.15)(typescript@5.9.3):
-    dependencies:
-      '@nodelib/fs.walk': 1.2.8
-      '@types/node': 22.19.15
-      fast-glob: 3.3.3
-      formatly: 0.3.0
-      jiti: 2.6.1
-      js-yaml: 4.1.1
-      minimist: 1.2.8
-      oxc-resolver: 11.17.1
-      picocolors: 1.1.1
-      picomatch: 4.0.3
-      smol-toml: 1.6.0
-      strip-json-comments: 5.0.3
-      typescript: 5.9.3
-      zod: 4.3.6
-
   leac@0.6.0: {}
 
   levn@0.4.1:
@@ -12328,13 +11553,13 @@ snapshots:
 
   minimalistic-assert@1.0.1: {}
 
-  minimatch@10.1.1:
-    dependencies:
-      '@isaacs/brace-expansion': 5.0.1
-
   minimatch@10.1.2:
     dependencies:
       '@isaacs/brace-expansion': 5.0.1
+
+  minimatch@10.2.4:
+    dependencies:
+      brace-expansion: 5.0.5
 
   minimatch@3.1.2:
     dependencies:
@@ -12459,8 +11684,6 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  node-machine-id@1.1.12: {}
-
   node-releases@2.0.27: {}
 
   nopt@9.0.0:
@@ -12517,13 +11740,14 @@ snapshots:
     dependencies:
       boolbase: 1.0.0
 
-  nx@22.5.0:
+  nx@22.6.4:
     dependencies:
+      '@ltd/j-toml': 1.38.0
       '@napi-rs/wasm-runtime': 0.2.4
       '@yarnpkg/lockfile': 1.1.0
       '@yarnpkg/parsers': 3.0.2
       '@zkochan/js-yaml': 0.0.7
-      axios: 1.13.5
+      axios: 1.12.0
       cli-cursor: 3.1.0
       cli-spinners: 2.6.1
       cliui: 8.0.1
@@ -12538,8 +11762,7 @@ snapshots:
       jest-diff: 30.2.0
       jsonc-parser: 3.2.0
       lines-and-columns: 2.0.3
-      minimatch: 10.1.1
-      node-machine-id: 1.1.12
+      minimatch: 10.2.4
       npm-run-path: 4.0.1
       open: 8.4.2
       ora: 5.3.0
@@ -12556,16 +11779,16 @@ snapshots:
       yargs: 17.7.2
       yargs-parser: 21.1.1
     optionalDependencies:
-      '@nx/nx-darwin-arm64': 22.5.0
-      '@nx/nx-darwin-x64': 22.5.0
-      '@nx/nx-freebsd-x64': 22.5.0
-      '@nx/nx-linux-arm-gnueabihf': 22.5.0
-      '@nx/nx-linux-arm64-gnu': 22.5.0
-      '@nx/nx-linux-arm64-musl': 22.5.0
-      '@nx/nx-linux-x64-gnu': 22.5.0
-      '@nx/nx-linux-x64-musl': 22.5.0
-      '@nx/nx-win32-arm64-msvc': 22.5.0
-      '@nx/nx-win32-x64-msvc': 22.5.0
+      '@nx/nx-darwin-arm64': 22.6.4
+      '@nx/nx-darwin-x64': 22.6.4
+      '@nx/nx-freebsd-x64': 22.6.4
+      '@nx/nx-linux-arm-gnueabihf': 22.6.4
+      '@nx/nx-linux-arm64-gnu': 22.6.4
+      '@nx/nx-linux-arm64-musl': 22.6.4
+      '@nx/nx-linux-x64-gnu': 22.6.4
+      '@nx/nx-linux-x64-musl': 22.6.4
+      '@nx/nx-win32-arm64-msvc': 22.6.4
+      '@nx/nx-win32-x64-msvc': 22.6.4
     transitivePeerDependencies:
       - debug
 
@@ -12835,10 +12058,6 @@ snapshots:
     dependencies:
       split2: 4.2.0
 
-  pino-abstract-transport@3.0.0:
-    dependencies:
-      split2: 4.2.0
-
   pino-pretty@11.3.0:
     dependencies:
       colorette: 2.0.20
@@ -12857,20 +12076,6 @@ snapshots:
       strip-json-comments: 3.1.1
 
   pino-std-serializers@7.1.0: {}
-
-  pino@10.3.1:
-    dependencies:
-      '@pinojs/redact': 0.4.0
-      atomic-sleep: 1.0.0
-      on-exit-leak-free: 2.1.2
-      pino-abstract-transport: 3.0.0
-      pino-std-serializers: 7.1.0
-      process-warning: 5.0.0
-      quick-format-unescaped: 4.0.4
-      real-require: 0.2.0
-      safe-stable-stringify: 2.5.0
-      sonic-boom: 4.2.1
-      thread-stream: 4.0.0
 
   pino@9.14.0:
     dependencies:
@@ -13536,10 +12741,6 @@ snapshots:
     dependencies:
       real-require: 0.2.0
 
-  thread-stream@4.0.0:
-    dependencies:
-      real-require: 0.2.0
-
   tinybench@2.9.0: {}
 
   tinyexec@0.3.2: {}
@@ -13737,27 +12938,6 @@ snapshots:
       - tsx
       - yaml
 
-  vite-node@3.2.4(@types/node@22.19.15)(jiti@2.6.1)(sass@1.97.1)(tsx@4.21.0)(yaml@2.8.2):
-    dependencies:
-      cac: 6.7.14
-      debug: 4.4.3
-      es-module-lexer: 1.7.0
-      pathe: 2.0.3
-      vite: 7.3.0(@types/node@22.19.15)(jiti@2.6.1)(sass@1.97.1)(tsx@4.21.0)(yaml@2.8.2)
-    transitivePeerDependencies:
-      - '@types/node'
-      - jiti
-      - less
-      - lightningcss
-      - sass
-      - sass-embedded
-      - stylus
-      - sugarss
-      - supports-color
-      - terser
-      - tsx
-      - yaml
-
   vite@6.4.1(@types/node@20.19.33)(jiti@2.6.1)(sass@1.97.1)(tsx@4.21.0)(yaml@2.8.2):
     dependencies:
       esbuild: 0.27.2
@@ -13800,22 +12980,6 @@ snapshots:
       tinyglobby: 0.2.15
     optionalDependencies:
       '@types/node': 20.19.33
-      fsevents: 2.3.3
-      jiti: 2.6.1
-      sass: 1.97.1
-      tsx: 4.21.0
-      yaml: 2.8.2
-
-  vite@7.3.0(@types/node@22.19.15)(jiti@2.6.1)(sass@1.97.1)(tsx@4.21.0)(yaml@2.8.2):
-    dependencies:
-      esbuild: 0.27.2
-      fdir: 6.5.0(picomatch@4.0.3)
-      picomatch: 4.0.3
-      postcss: 8.5.6
-      rollup: 4.57.1
-      tinyglobby: 0.2.15
-    optionalDependencies:
-      '@types/node': 22.19.15
       fsevents: 2.3.3
       jiti: 2.6.1
       sass: 1.97.1
@@ -13865,48 +13029,6 @@ snapshots:
       why-is-node-running: 2.3.0
     optionalDependencies:
       '@types/node': 20.19.33
-      jsdom: 27.4.0
-    transitivePeerDependencies:
-      - jiti
-      - less
-      - lightningcss
-      - msw
-      - sass
-      - sass-embedded
-      - stylus
-      - sugarss
-      - supports-color
-      - terser
-      - tsx
-      - yaml
-
-  vitest@3.2.4(@types/node@22.19.15)(jiti@2.6.1)(jsdom@27.4.0)(sass@1.97.1)(tsx@4.21.0)(yaml@2.8.2):
-    dependencies:
-      '@types/chai': 5.2.3
-      '@vitest/expect': 3.2.4
-      '@vitest/mocker': 3.2.4(vite@7.3.0(@types/node@22.19.15)(jiti@2.6.1)(sass@1.97.1)(tsx@4.21.0)(yaml@2.8.2))
-      '@vitest/pretty-format': 3.2.4
-      '@vitest/runner': 3.2.4
-      '@vitest/snapshot': 3.2.4
-      '@vitest/spy': 3.2.4
-      '@vitest/utils': 3.2.4
-      chai: 5.3.3
-      debug: 4.4.3
-      expect-type: 1.3.0
-      magic-string: 0.30.21
-      pathe: 2.0.3
-      picomatch: 4.0.3
-      std-env: 3.10.0
-      tinybench: 2.9.0
-      tinyexec: 0.3.2
-      tinyglobby: 0.2.15
-      tinypool: 1.1.1
-      tinyrainbow: 2.0.0
-      vite: 7.3.0(@types/node@22.19.15)(jiti@2.6.1)(sass@1.97.1)(tsx@4.21.0)(yaml@2.8.2)
-      vite-node: 3.2.4(@types/node@22.19.15)(jiti@2.6.1)(sass@1.97.1)(tsx@4.21.0)(yaml@2.8.2)
-      why-is-node-running: 2.3.0
-    optionalDependencies:
-      '@types/node': 22.19.15
       jsdom: 27.4.0
     transitivePeerDependencies:
       - jiti

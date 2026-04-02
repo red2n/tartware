@@ -1,11 +1,13 @@
-import { buildFastifyServer } from "@tartware/fastify-server";
+import type { RateLimitPluginOptions } from "@fastify/rate-limit";
+import rateLimit from "@fastify/rate-limit";
+import { buildFastifyServer, resolveServiceRegistryConfig } from "@tartware/fastify-server";
 import { buildRouteSchema, jsonObjectSchema, schemaFromZod } from "@tartware/openapi";
-import { ReservationCommandLifecycleSchema } from "@tartware/schemas";
-import type { FastifyInstance } from "fastify";
+import { ReservationCommandLifecycleSchema, SERVICE_REGISTRY_CATALOG } from "@tartware/schemas";
+import type { FastifyInstance, FastifyPluginAsync } from "fastify";
 import { z } from "zod";
 
 import { checkGuardHealth } from "./clients/availability-guard-client.js";
-import { kafkaConfig, serviceConfig } from "./config.js";
+import { kafkaConfig, reliabilityConfig, serviceConfig } from "./config.js";
 import { checkDatabaseHealth, checkKafkaHealth } from "./lib/health-checks.js";
 import { metricsRegistry } from "./lib/metrics.js";
 import { reservationsLogger } from "./logger.js";
@@ -66,16 +68,94 @@ const ReliabilitySnapshotJsonSchema = schemaFromZod(
   ReliabilitySnapshotSchema,
   "ReliabilitySnapshot",
 );
+const RELIABILITY_SNAPSHOT_REFRESH_MS = 30_000;
+
+const createUnavailableReliabilitySnapshot = (issue: string): ReliabilitySnapshot => ({
+  status: "degraded",
+  generatedAt: new Date().toISOString(),
+  issues: [issue],
+  outbox: {
+    pending: 0,
+    warnThreshold: reliabilityConfig.outboxWarnThreshold,
+    criticalThreshold: reliabilityConfig.outboxCriticalThreshold,
+  },
+  consumer: {
+    partitions: 0,
+    stalePartitions: 0,
+    maxSecondsSinceCommit: null,
+    staleThresholdSeconds: reliabilityConfig.consumerStaleSeconds,
+  },
+  lifecycle: {
+    stalledCommands: 0,
+    oldestStuckSeconds: null,
+    dlqTotal: 0,
+    stalledThresholdSeconds: reliabilityConfig.stalledThresholdSeconds,
+  },
+  dlq: {
+    depth: null,
+    warnThreshold: reliabilityConfig.dlqWarnThreshold,
+    criticalThreshold: reliabilityConfig.dlqCriticalThreshold,
+    topic: kafkaConfig.dlqTopic,
+    error: issue,
+  },
+});
 
 export const buildServer = (): FastifyInstance => {
+  const registryMetadata = SERVICE_REGISTRY_CATALOG["reservations-command-service"];
+  let reliabilitySnapshot = createUnavailableReliabilitySnapshot("snapshot_pending");
+  let reliabilitySnapshotRefreshTimer: ReturnType<typeof setInterval> | null = null;
   const app = buildFastifyServer({
     logger: reservationsLogger,
     enableRequestLogging: serviceConfig.requestLogging,
     corsOrigin: false,
     enableMetricsEndpoint: false, // Custom metrics endpoint below
+    serviceRegistry: resolveServiceRegistryConfig({
+      ...registryMetadata,
+      serviceVersion: serviceConfig.version,
+      host: serviceConfig.host,
+      port: serviceConfig.port,
+    }),
   });
 
+  app.register(
+    rateLimit as unknown as FastifyPluginAsync,
+    {
+      max: serviceConfig.rateLimit.max,
+      timeWindow: serviceConfig.rateLimit.timeWindow,
+    } as RateLimitPluginOptions,
+  );
+
   app.register(swaggerPlugin);
+
+  const refreshReliabilitySnapshot = async () => {
+    try {
+      reliabilitySnapshot = await getReliabilitySnapshot();
+    } catch (error) {
+      app.log.error(error, "Failed to refresh reliability snapshot");
+      reliabilitySnapshot = createUnavailableReliabilitySnapshot(
+        error instanceof Error ? error.message : "snapshot_refresh_failed",
+      );
+    }
+  };
+
+  const refreshReliabilitySnapshotInBackground = () => {
+    void refreshReliabilitySnapshot();
+  };
+
+  app.addHook("onReady", () => {
+    setImmediate(refreshReliabilitySnapshotInBackground);
+    reliabilitySnapshotRefreshTimer = setInterval(() => {
+      refreshReliabilitySnapshotInBackground();
+    }, RELIABILITY_SNAPSHOT_REFRESH_MS);
+    reliabilitySnapshotRefreshTimer.unref();
+  });
+
+  app.addHook("onClose", async () => {
+    if (reliabilitySnapshotRefreshTimer) {
+      clearInterval(reliabilitySnapshotRefreshTimer);
+      reliabilitySnapshotRefreshTimer = null;
+    }
+  });
 
   app.after(() => {
     app.get(
@@ -128,6 +208,10 @@ export const buildServer = (): FastifyInstance => {
     app.get(
       "/health/readiness",
       {
+        preHandler: app.rateLimit({
+          max: serviceConfig.rateLimit.readMax,
+          timeWindow: serviceConfig.rateLimit.readTimeWindow,
+        }),
         schema: buildRouteSchema({
           tag: "Health",
           summary: "Readiness probe (DB + Kafka)",
@@ -166,6 +250,10 @@ export const buildServer = (): FastifyInstance => {
     app.get(
       "/health/reliability",
       {
+        preHandler: app.rateLimit({
+          max: serviceConfig.rateLimit.readMax,
+          timeWindow: serviceConfig.rateLimit.readTimeWindow,
+        }),
         schema: buildRouteSchema({
           tag: "Health",
           summary: "Command pipeline reliability snapshot",
@@ -174,16 +262,16 @@ export const buildServer = (): FastifyInstance => {
           },
         }),
       },
-      async () => {
-        const snapshot: ReliabilitySnapshot = await getReliabilitySnapshot();
-        return snapshot;
-      },
+      async () => reliabilitySnapshot,
     );
 
-    // Internal monitoring endpoint — rate limiting handled by API gateway for external traffic.
     app.get(
       "/metrics",
       {
+        preHandler: app.rateLimit({
+          max: serviceConfig.rateLimit.metricsMax,
+          timeWindow: serviceConfig.rateLimit.metricsTimeWindow,
+        }),
         schema: buildRouteSchema({
           tag: "Metrics",
           summary: "Prometheus metrics endpoint",
@@ -204,6 +292,10 @@ export const buildServer = (): FastifyInstance => {
     app.get(
       "/v1/reservations/:reservationId/lifecycle",
       {
+        preHandler: app.rateLimit({
+          max: serviceConfig.rateLimit.readMax,
+          timeWindow: serviceConfig.rateLimit.readTimeWindow,
+        }),
         schema: buildRouteSchema({
           tag: "Reservation Lifecycle",
           summary: "Inspect lifecycle states for a reservation",

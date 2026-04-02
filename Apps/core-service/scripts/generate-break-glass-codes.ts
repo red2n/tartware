@@ -20,11 +20,12 @@ import process from "node:process";
 import bcrypt from "bcryptjs";
 import { Client } from "pg";
 
+import { writeSecureJsonOutput } from "./secure-output.js";
 import { SYSTEM_ADMIN_BREAK_GLASS_INSERT_SQL } from "../src/sql/system-admin-queries.js";
 
-const log = (message: string) => console.log(`[break-glass] ${message}`);
+const log = (message: string) => process.stdout.write(`[break-glass] ${message}\n`);
 const fail = (message: string): never => {
-  console.error(`[break-glass][error] ${message}`);
+  process.stderr.write(`[break-glass][error] ${message}\n`);
   process.exit(1);
 };
 
@@ -34,6 +35,8 @@ const settings = {
   label: process.env.BREAK_GLASS_LABEL ?? "vault-envelope",
   expiresHours: Number(process.env.BREAK_GLASS_EXPIRES_HOURS ?? "0"),
   metadataRaw: process.env.BREAK_GLASS_METADATA,
+  outputPath: process.env.BREAK_GLASS_OUTPUT_PATH,
+  allowStdoutSecrets: process.env.ALLOW_STDOUT_SECRET_OUTPUT === "true",
 };
 
 if (!settings.username) {
@@ -123,17 +126,20 @@ const main = async () => {
     }
 
     log(`Issued ${codes.length} break-glass codes for ${settings.username}`);
-    console.log(
-      JSON.stringify(
-        {
-          username: settings.username,
-          label: settings.label,
-          expires_at: expiresAt?.toISOString() ?? null,
-          codes: codes.map((entry) => entry.code),
-        },
-        null,
-        2,
-      ),
+    writeSecureJsonOutput(
+      {
+        username: settings.username,
+        label: settings.label,
+        expires_at: expiresAt?.toISOString() ?? null,
+        codes: codes.map((entry) => entry.code),
+      },
+      {
+        allowStdoutSecrets: settings.allowStdoutSecrets,
+        outputPath: settings.outputPath,
+        outputFileName: "break-glass-codes.json",
+        tempDirPrefix: "tartware-break-glass-",
+        log,
+      },
     );
   } finally {
     await client.end();

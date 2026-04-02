@@ -2,12 +2,19 @@ import {
   buildFastifyServer,
   createRouteTracker,
   type FastifyInstance,
+  resolveServiceRegistryConfig,
 } from "@tartware/fastify-server";
+import { SERVICE_REGISTRY_CATALOG } from "@tartware/schemas";
 
 import { config } from "./config.js";
 import { ensureEncryptionRequirementsMet } from "./lib/compliance-policies.js";
 import { appLogger } from "./lib/logger.js";
 import { metricsRegistry } from "./lib/metrics.js";
+import { authPlugin as settingsAuthPlugin } from "./modules/settings-service/plugins/auth.js";
+import settingsAmenitiesRoutes from "./modules/settings-service/routes/amenities.js";
+import settingsCatalogRoutes from "./modules/settings-service/routes/catalog.js";
+import settingsPackagesRoutes from "./modules/settings-service/routes/packages.js";
+import settingsScreenPermissionsRoutes from "./modules/settings-service/routes/screen-permissions.js";
 import authContextPlugin from "./plugins/auth-context.js";
 import complianceMonitorPlugin from "./plugins/compliance-monitor.js";
 import swaggerPlugin from "./plugins/swagger.js";
@@ -43,6 +50,7 @@ import { registerUserRoutes } from "./routes/users.js";
 
 export const buildServer = (): FastifyInstance => {
   ensureEncryptionRequirementsMet();
+  const registryMetadata = SERVICE_REGISTRY_CATALOG["core-service"];
 
   const app = buildFastifyServer({
     logger: appLogger,
@@ -50,6 +58,12 @@ export const buildServer = (): FastifyInstance => {
     corsOrigin: true,
     enableMetricsEndpoint: true,
     metricsRegistry,
+    serviceRegistry: resolveServiceRegistryConfig({
+      ...registryMetadata,
+      serviceVersion: config.service.version,
+      host: config.host,
+      port: config.port,
+    }),
     requestLoggingOptions: {
       includeRequestHeaders: false,
       includeResponseHeaders: false,
@@ -100,6 +114,26 @@ export const buildServer = (): FastifyInstance => {
       registerDirectBookingRoutes(app);
       registerUiPreferencesRoutes(app);
       registerServiceStatusRoutes(app);
+
+      // Host settings-service routes in core-service to reduce physical service count
+      // without changing the underlying settings route/repository logic.
+      app.register(async (settingsApp) => {
+        await settingsApp.register(settingsAuthPlugin);
+
+        await settingsApp.register(async (secureSettingsRoutes) => {
+          secureSettingsRoutes.addHook("onRequest", secureSettingsRoutes.authenticate);
+
+          await secureSettingsRoutes.register(settingsCatalogRoutes);
+          await secureSettingsRoutes.register(settingsAmenitiesRoutes);
+          await secureSettingsRoutes.register(settingsPackagesRoutes);
+          await secureSettingsRoutes.register(settingsScreenPermissionsRoutes);
+
+          secureSettingsRoutes.get("/v1/settings/health", async () => ({
+            status: "ok",
+            scope: "protected",
+          }));
+        });
+      });
     },
   });
 

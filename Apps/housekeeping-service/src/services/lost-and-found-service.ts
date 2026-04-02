@@ -162,7 +162,12 @@ export async function createLostAndFoundItem(params: {
     ],
   );
 
-  return result.rows[0]!;
+  const createdItem = result.rows[0];
+  if (!createdItem) {
+    throw new Error("Lost and found item insert did not return an item_id");
+  }
+
+  return createdItem;
 }
 
 /**

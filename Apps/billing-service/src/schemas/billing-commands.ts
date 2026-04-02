@@ -37,8 +37,6 @@ export {
   type BillingPaymentRefundCommand,
   BillingPaymentRefundCommandSchema,
   BillingPaymentVoidCommandSchema,
-  BillingPricingBulkRecommendCommandSchema,
-  BillingPricingEvaluateCommandSchema,
   BillingTaxConfigCreateCommandSchema,
   BillingTaxConfigDeleteCommandSchema,
   BillingTaxConfigUpdateCommandSchema,

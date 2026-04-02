@@ -756,7 +756,19 @@ export const getFlashReport = async (params: {
      WHERE tenant_id = $1 ${propFilter} AND is_deleted = false`,
     qParams,
   );
-  const r = reservesRes.rows[0]!;
+  const r = reservesRes.rows[0] ?? {
+    sold: "0",
+    comp: "0",
+    due_in: "0",
+    checked_in: "0",
+    vip_arrivals: "0",
+    group_arrivals: "0",
+    due_out: "0",
+    checked_out: "0",
+    in_house: "0",
+    no_shows: "0",
+    walk_ins: "0",
+  };
   const sold = parseInt(r.sold, 10);
   const comp = parseInt(r.comp, 10);
   const available = Math.max(0, totalRooms - sold - ooo - oos);
@@ -809,7 +821,12 @@ export const getFlashReport = async (params: {
        AND COALESCE(is_deleted, false) = false`,
     qParams,
   );
-  const hk = hkRes.rows[0]!;
+  const hk = hkRes.rows[0] ?? {
+    dirty: "0",
+    clean: "0",
+    inspected: "0",
+    in_progress: "0",
+  };
 
   // Maintenance
   const maintRes = await query<{ open_req: string; urgent: string; completed: string }>(
@@ -821,7 +838,11 @@ export const getFlashReport = async (params: {
      WHERE tenant_id = $1 ${propFilter} AND is_deleted = false`,
     qParams,
   );
-  const mt = maintRes.rows[0]!;
+  const mt = maintRes.rows[0] ?? {
+    open_req: "0",
+    urgent: "0",
+    completed: "0",
+  };
 
   return {
     business_date: params.businessDate ?? new Date().toISOString().slice(0, 10),
@@ -1214,7 +1235,13 @@ export const getHousekeepingProductivityReport = async (params: {
     qParams,
   );
 
-  const s = summary.rows[0]!;
+  const s = summary.rows[0] ?? {
+    total: "0",
+    completed: "0",
+    in_progress: "0",
+    pending: "0",
+    avg_minutes: "0",
+  };
   const total = parseInt(s.total, 10);
   const completed = parseInt(s.completed, 10);
 
@@ -1300,7 +1327,13 @@ export const getMaintenanceSlaReport = async (params: {
     qParams,
   );
 
-  const s = summary.rows[0]!;
+  const s = summary.rows[0] ?? {
+    total: "0",
+    completed: "0",
+    overdue: "0",
+    avg_response: "0",
+    avg_resolution: "0",
+  };
   return {
     total_requests: parseInt(s.total, 10),
     completed: parseInt(s.completed, 10),

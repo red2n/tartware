@@ -54,7 +54,7 @@ export class RegistryService {
 		this._loading.set(true);
 		this._error.set(null);
 		try {
-			const res = await this.apiService.get<RegistryResponse>("/registry/services");
+			const res = await this.apiService.get<RegistryResponse>("/services");
 			this._services.set(res.services);
 			this._summary.set(res.summary);
 			this._lastUpdated.set(new Date());

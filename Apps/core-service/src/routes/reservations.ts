@@ -4,12 +4,12 @@ import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 
 import {
-  CheckInBriefSchema,
   getCheckInBrief,
   getReservationById,
   listReservations,
   ReservationDetailSchema,
   ReservationListItemSchema,
+  ReservationSummarySchema,
 } from "../services/reservation-service.js";
 
 const ReservationListQuerySchema = z.object({
@@ -126,10 +126,13 @@ export const registerReservationRoutes = (app: FastifyInstance): void => {
   );
 
   // ─── S23: Check-In Brief (Guest Recognition) ──────────────────────────────
-  const CheckInBriefJsonSchema = schemaFromZod(CheckInBriefSchema, "CheckInBrief");
+  const ReservationSummaryJsonSchema = schemaFromZod(
+    ReservationSummarySchema,
+    "ReservationSummary",
+  );
 
   app.get<{ Params: { id: string }; Querystring: ReservationGetQuery }>(
-    "/v1/reservations/:id/check-in-brief",
+    "/v1/reservations/:id/summary",
     {
       preHandler: app.withTenantScope({
         resolveTenantId: (request) => (request.query as ReservationGetQuery).tenant_id,
@@ -138,10 +141,10 @@ export const registerReservationRoutes = (app: FastifyInstance): void => {
       }),
       schema: buildRouteSchema({
         tag: RESERVATIONS_TAG,
-        summary: "Pre-check-in guest recognition brief (VIP status, preferences, alerts, loyalty)",
+        summary: "Reservation summary (VIP status, preferences, alerts, loyalty)",
         querystring: ReservationGetQueryJsonSchema,
         response: {
-          200: CheckInBriefJsonSchema,
+          200: ReservationSummaryJsonSchema,
         },
       }),
     },

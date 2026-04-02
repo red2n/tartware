@@ -50,7 +50,7 @@ Authorization: Bearer {{authToken}}
 # Self-serve tenant onboarding (creates tenant + property + owner user)
 # NOTE: May require x-onboarding-token header if TENANT_BOOTSTRAP_TOKEN is set
 # @name bootstrapTenant
-POST {{baseUrl}}/v1/tenants/bootstrap
+POST {{baseUrl}}/v1/tenant-onboardings
 Content-Type: application/json
 
 {
@@ -242,7 +242,7 @@ Authorization: Bearer {{systemAdminToken}}
 
 ###
 # Bootstrap tenant with property and owner (system admin)
-POST {{baseUrl}}/v1/system/tenants/bootstrap
+POST {{baseUrl}}/v1/system/tenant-onboardings
 Content-Type: application/json
 Authorization: Bearer {{systemAdminToken}}
 

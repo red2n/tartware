@@ -1,25 +1,54 @@
-### Service Registry — Dashboard & Registration Endpoints
-### Read endpoints go through the API gateway (port 8080) per AGENTS.md
-### Registration/heartbeat/deregister are internal (service-to-service on port 3075)
+###############################################################################
+# SERVICE REGISTRY - Discovery & Internal Registration
+# Read endpoints go through the API Gateway (localhost:8080).
+# Internal register/heartbeat/deregister diagnostics are hosted by
+# command-center-service on localhost:3035.
+###############################################################################
 
-### List all registered services (via gateway — requires admin auth)
-GET http://localhost:8080/v1/registry/services
-Authorization: Bearer {{token}}
+# --- VARIABLES ---
+@baseUrl = http://localhost:8080
+@commandCenterUrl = http://localhost:3035
+
+###############################################################################
+# 1. LOGIN
+###############################################################################
+
+# @name login
+POST {{baseUrl}}/v1/auth/login
+Content-Type: application/json
+
+{
+  "username": "setup.admin",
+  "password": "TempPass123"
+}
+
+### Extract token
+@authToken = {{login.response.body.access_token}}
+
+###############################################################################
+# 2. GATEWAY READS
+###############################################################################
+
+### List all registered services (via gateway - requires admin auth)
+GET {{baseUrl}}/v1/registry/services
+Authorization: Bearer {{authToken}}
 Content-Type: application/json
 
 ###
 
-### Get instances of a specific service (via gateway — requires admin auth)
-GET http://localhost:8080/v1/registry/services/core-service
-Authorization: Bearer {{token}}
+### Get instances of a specific service (via gateway - requires admin auth)
+GET {{baseUrl}}/v1/registry/services/core-service
+Authorization: Bearer {{authToken}}
 Content-Type: application/json
 
-###
-
-### --- Internal endpoints (service-to-service, not through gateway) ---
+###############################################################################
+# 3. INTERNAL DIAGNOSTICS
+# These are service-to-service registry endpoints and are not proxied by the
+# gateway. Use them only for local diagnostics.
+###############################################################################
 
 ### Manually register a service (internal)
-POST http://localhost:3075/v1/registry/register
+POST {{commandCenterUrl}}/v1/registry/register
 Content-Type: application/json
 
 {
@@ -32,7 +61,7 @@ Content-Type: application/json
 ###
 
 ### Send heartbeat (internal)
-PUT http://localhost:3075/v1/registry/heartbeat
+PUT {{commandCenterUrl}}/v1/registry/heartbeat
 Content-Type: application/json
 
 {
@@ -43,7 +72,7 @@ Content-Type: application/json
 ###
 
 ### Deregister a service (internal)
-DELETE http://localhost:3075/v1/registry/deregister
+DELETE {{commandCenterUrl}}/v1/registry/deregister
 Content-Type: application/json
 
 {
@@ -53,15 +82,15 @@ Content-Type: application/json
 
 ###
 
-### Health check (internal — not proxied)
-GET http://localhost:3075/health
+### Health check (internal - not proxied)
+GET {{commandCenterUrl}}/health
 
 ###
 
-### Readiness check (internal — not proxied)
-GET http://localhost:3075/ready
+### Readiness check (internal - not proxied)
+GET {{commandCenterUrl}}/ready
 
 ###
 
-### Swagger docs (internal — not proxied)
-GET http://localhost:3075/docs
+### Swagger docs (internal - not proxied)
+GET {{commandCenterUrl}}/docs

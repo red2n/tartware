@@ -1,9 +1,18 @@
-import { buildFastifyServer, type FastifyInstance } from "@tartware/fastify-server";
+import {
+  buildFastifyServer,
+  type FastifyInstance,
+  resolveServiceRegistryConfig,
+} from "@tartware/fastify-server";
+import { SERVICE_REGISTRY_CATALOG } from "@tartware/schemas";
 
 import { config } from "./config.js";
 import { ensureGuestEncryptionRequirementsMet } from "./lib/compliance.js";
 import { appLogger } from "./lib/logger.js";
 import { metricsRegistry } from "./lib/metrics.js";
+import { registerSelfServiceRoutes } from "./modules/guest-experience-service/routes/self-service.js";
+import sseTokenPlugin from "./modules/notification-service/plugins/sse-token.js";
+import { registerInAppNotificationRoutes } from "./modules/notification-service/routes/in-app-notifications.js";
+import { registerNotificationRoutes } from "./modules/notification-service/routes/notifications.js";
 import authContextPlugin from "./plugins/auth-context.js";
 import swaggerPlugin from "./plugins/swagger.js";
 import { registerGuestRoutes } from "./routes/guests.js";
@@ -13,6 +22,7 @@ import { registerPrivacyRoutes } from "./routes/privacy.js";
 
 export const buildServer = (): FastifyInstance => {
   ensureGuestEncryptionRequirementsMet();
+  const registryMetadata = SERVICE_REGISTRY_CATALOG["guests-service"];
 
   const app = buildFastifyServer({
     logger: appLogger,
@@ -20,7 +30,14 @@ export const buildServer = (): FastifyInstance => {
     corsOrigin: false,
     enableMetricsEndpoint: true,
     metricsRegistry,
+    serviceRegistry: resolveServiceRegistryConfig({
+      ...registryMetadata,
+      serviceVersion: config.service.version,
+      host: config.host,
+      port: config.port,
+    }),
     beforeRoutes: (app) => {
+      app.register(sseTokenPlugin);
       app.register(authContextPlugin);
       app.register(swaggerPlugin);
     },
@@ -29,6 +46,9 @@ export const buildServer = (): FastifyInstance => {
       registerGuestRoutes(app);
       registerLoyaltyRoutes(app);
       registerPrivacyRoutes(app);
+      registerSelfServiceRoutes(app);
+      registerNotificationRoutes(app);
+      registerInAppNotificationRoutes(app);
     },
   });
 

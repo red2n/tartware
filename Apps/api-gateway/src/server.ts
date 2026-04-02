@@ -1,6 +1,7 @@
 import type { RateLimitPluginOptions } from "@fastify/rate-limit";
 import rateLimit from "@fastify/rate-limit";
-import { buildFastifyServer } from "@tartware/fastify-server";
+import { buildFastifyServer, resolveServiceRegistryConfig } from "@tartware/fastify-server";
+import { SERVICE_REGISTRY_CATALOG } from "@tartware/schemas";
 import type { FastifyPluginAsync, FastifyReply, FastifyRequest } from "fastify";
 import { Redis } from "ioredis";
 
@@ -29,17 +30,23 @@ import { registerSelfServiceRoutes } from "./routes/self-service-routes.js";
 import { registerWebhookRoutes } from "./routes/webhook-routes.js";
 
 export const buildServer = () => {
+  const registryMetadata = SERVICE_REGISTRY_CATALOG["api-gateway"];
   const app = buildFastifyServer({
     logger: gatewayLogger,
     enableRequestLogging: gatewayConfig.logRequests,
     corsOrigin: false,
     enableMetricsEndpoint: true,
     metricsRegistry,
+    serviceRegistry: resolveServiceRegistryConfig({
+      ...registryMetadata,
+      serviceVersion: gatewayConfig.version,
+      host: gatewayConfig.host,
+      port: gatewayConfig.port,
+    }),
   });
 
   app.register(swaggerPlugin);
   app.register(sseTokenPlugin);
-  app.register(authContextPlugin);
 
   const rateLimitOptions: RateLimitPluginOptions = {
     max: gatewayConfig.rateLimit.max,
@@ -89,6 +96,7 @@ export const buildServer = () => {
     rateLimit as unknown as FastifyPluginAsync,
     rateLimitOptions as unknown as RateLimitPluginOptions,
   );
+  app.register(authContextPlugin);
 
   app.after(() => {
     if (devToolsConfig.duploDashboard.enabled) {

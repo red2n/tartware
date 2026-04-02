@@ -9,6 +9,8 @@ import {
 } from "./commands/command-center-consumer.js";
 import { config } from "./config.js";
 import { shutdownProducer } from "./kafka/producer.js";
+import { closePool as closeRecommendationPool } from "./modules/recommendation-service/lib/db.js";
+import { initializePipeline } from "./modules/recommendation-service/services/index.js";
 import { buildServer } from "./server.js";
 
 const telemetry = await initTelemetry({
@@ -31,6 +33,28 @@ const telemetry = await initTelemetry({
 const app = buildServer();
 const proc = process;
 const kafkaEnabled = process.env.DISABLE_KAFKA !== "true";
+let isShuttingDown = false;
+let recommendationPoolClosed = false;
+
+const isPoolAlreadyClosedError = (error: unknown): boolean =>
+  error instanceof Error && error.message.includes("Called end on pool more than once");
+
+const closeRecommendationPoolSafely = async () => {
+  if (recommendationPoolClosed) {
+    return;
+  }
+  try {
+    await closeRecommendationPool();
+    recommendationPoolClosed = true;
+  } catch (error) {
+    if (isPoolAlreadyClosedError(error)) {
+      recommendationPoolClosed = true;
+      app.log.warn("Recommendation pool was already closed");
+      return;
+    }
+    throw error;
+  }
+};
 
 const start = async () => {
   try {
@@ -60,6 +84,8 @@ const start = async () => {
       }
     }
 
+    initializePipeline();
+
     if (kafkaEnabled) {
       await startRoomsCommandCenterConsumer();
     } else {
@@ -76,6 +102,7 @@ const start = async () => {
     );
   } catch (error) {
     app.log.error(error, `Failed to start ${config.service.name}`);
+    await closeRecommendationPoolSafely();
     await app.close();
     await telemetry
       ?.shutdown()
@@ -85,12 +112,19 @@ const start = async () => {
 };
 
 const shutdown = async (signal: NodeJS.Signals) => {
+  if (isShuttingDown) {
+    app.log.info({ signal }, "shutdown already in progress");
+    return;
+  }
+  isShuttingDown = true;
+
   app.log.info({ signal }, "shutdown signal received");
   try {
     if (kafkaEnabled) {
       await shutdownRoomsCommandCenterConsumer();
       await shutdownProducer();
     }
+    await closeRecommendationPoolSafely();
     await app.close();
     await telemetry
       ?.shutdown()

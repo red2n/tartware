@@ -26,7 +26,7 @@ const SystemImpersonationResponseJsonSchema = schemaFromZod(
 
 export const registerSystemImpersonationRoutes = (app: FastifyInstance): void => {
   app.post(
-    "/v1/system/impersonate",
+    "/v1/system/impersonation-sessions",
     {
       preHandler: app.withSystemAdminScope({ minRole: "SYSTEM_SUPPORT" }),
       schema: buildRouteSchema({

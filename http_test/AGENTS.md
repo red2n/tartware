@@ -59,6 +59,13 @@ When using `.http` files directly in VS Code:
 3. The `@authToken` variable will be populated automatically
 4. Other `.http` files reference `{{authToken}}` from this shared response
 
+## Gateway vs Service-Local Tests
+
+- Default rule: test through the API Gateway at `http://localhost:8080`
+- Current exception: `availability-guard.http` uses `http://localhost:3045` because `/v1/locks` routes are not proxied by the gateway yet
+- Current internal diagnostic exception: `service-registry.http` includes command-center-hosted registry diagnostics on `http://localhost:3035`; those requests are for local service-to-service troubleshooting, not normal end-to-end API testing
+- If `AVAILABILITY_GUARD_ADMIN_TOKENS` is configured locally, include `x-guard-admin-token` on availability-guard requests
+
 ## Seed Data IDs
 
 These IDs are pre-populated in the database:
@@ -107,6 +114,7 @@ These IDs are pre-populated in the database:
 | `reservations.http` | Reservation CRUD + lifecycle |
 | `revenue.http` | Pricing rules, demand calendar, revenue KPIs |
 | `rooms.http` | Room management |
+| `webhooks.http` | Webhook subscriptions, delivery logs, replay, testing |
 | `self-service.http` | Guest self-service: check-in, booking, keys, reg cards |
 | `settings-service.http` | Settings and amenities |
 | `tenantandproperty.http` | Tenant/property management |
@@ -130,3 +138,22 @@ cd /path/to/tartware && npm run dev
 ### Token Expired
 - Tokens expire after 15 minutes
 - Re-run `./get-token.sh` to get a fresh token
+
+### Rate-Limit Verification
+
+Use `rate-limits.http` with temporary low thresholds so `429` is reachable quickly during local testing.
+
+Example env overrides before `npm run dev`:
+```bash
+API_GATEWAY_RATE_AUTH_MAX=2 \
+API_GATEWAY_RATE_MAX=2 \
+RESERVATION_COMMAND_RATE_READ_MAX=2 \
+AVAILABILITY_GUARD_RATE_ADMIN_MAX=2 \
+npm run dev
+```
+
+Notes:
+- `API_GATEWAY_RATE_AUTH_MAX` covers `/v1/auth/login`
+- `API_GATEWAY_RATE_MAX` covers gateway read routes such as `/v1/registry/services`
+- `RESERVATION_COMMAND_RATE_READ_MAX` covers `/v1/reservations/:id/lifecycle`
+- `AVAILABILITY_GUARD_RATE_ADMIN_MAX` covers manual-release and audit routes on port `3045`

@@ -8,12 +8,17 @@
     "@tartware/config",
     "@tartware/telemetry",
     "@tartware/openapi",
+    "@tartware/command-consumer-utils",
     "redis",
     "@fastify/cors",
     "@fastify/helmet",
     "@fastify/sensible",
     "@tartware/fastify-server",
     "ast-v8-to-istanbul"
+  ],
+  "ignore": [
+    "src/modules/settings-service/plugins/swagger.ts",
+    "src/modules/settings-service/lib/metrics.ts"
   ],
   "ignoreExportsUsedInFile": true
 }

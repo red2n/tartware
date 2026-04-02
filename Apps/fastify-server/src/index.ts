@@ -1,6 +1,6 @@
-/// <reference types="@fastify/sensible" />
 import { randomUUID } from "node:crypto";
 import { STATUS_CODES } from "node:http";
+
 import fastifyCors from "@fastify/cors";
 import fastifyHelmet from "@fastify/helmet";
 import fastifySensible from "@fastify/sensible";
@@ -17,8 +17,13 @@ import Fastify, {
 	type FastifyRequest,
 	type FastifyServerOptions,
 } from "fastify";
+
 import type { Registry } from "prom-client";
-import { startServiceRegistration } from "./registry-client.js";
+
+import {
+	resolveServiceRegistryConfig,
+	startServiceRegistration,
+} from "./registry-client.js";
 
 /** Detect ZodError by duck typing to avoid hard zod dependency. */
 const isZodError = (
@@ -111,6 +116,8 @@ export interface BuildFastifyServerOptions {
 	serviceRegistry?: {
 		registryUrl: string;
 		serviceName: string;
+		description: string;
+		tag: string;
 		serviceVersion: string;
 		host: string;
 		port: number;
@@ -371,7 +378,9 @@ export const buildFastifyServer = (
 	if (enableMetricsEndpoint && metricsRegistry) {
 		app.get("/metrics", async (_request, reply) => {
 			const body = await metricsRegistry.metrics();
-			reply.header("Content-Type", metricsRegistry.contentType).send(body);
+			return reply
+				.header("Content-Type", metricsRegistry.contentType)
+				.send(body);
 		});
 	}
 
@@ -399,24 +408,30 @@ export const buildFastifyServer = (
 
 	// Auto-register with service registry.
 	// Only registers when REGISTRY_URL is explicitly set or serviceRegistry option is provided.
-	const registryUrl = process.env.REGISTRY_URL;
+	const registryUrl =
+		process.env.SERVICE_REGISTRY_URL ?? process.env.REGISTRY_URL;
 	const registryPort = Number(process.env.PORT) || 0;
 	const registryConfig =
 		serviceRegistry ??
-		(registryUrl && registryPort
-			? {
-					registryUrl,
-					serviceName: process.env.SERVICE_NAME ?? "unknown",
-					serviceVersion: process.env.SERVICE_VERSION ?? "0.0.0",
-					host: process.env.HOST ?? "localhost",
-					port: registryPort,
-				}
-			: undefined);
+		resolveServiceRegistryConfig({
+			registryUrl,
+			serviceName:
+				process.env.SERVICE_DISPLAY_NAME ??
+				process.env.SERVICE_NAME ??
+				"Unknown Service",
+			description:
+				process.env.SERVICE_DESCRIPTION ??
+				"Tartware service instance registered for discovery and health tracking.",
+			tag: process.env.SERVICE_TAG ?? process.env.SERVICE_NAME ?? "unknown-service",
+			serviceVersion: process.env.SERVICE_VERSION ?? "0.0.0",
+			host: process.env.HOST ?? "localhost",
+			port: registryPort,
+		});
 
 	if (registryConfig?.registryUrl) {
 		let registration: { stop: () => Promise<void> } | undefined;
 
-		app.addHook("onReady", async () => {
+		app.addHook("onListen", async () => {
 			registration = startServiceRegistration(registryConfig, logger);
 		});
 
@@ -474,3 +489,4 @@ export type { HttpError, HttpErrors } from "@fastify/sensible";
 export type { FastifyBaseLogger, FastifyInstance } from "fastify";
 export type { CreateHealthRoutesOptions, HealthDependency } from "./health.js";
 export { createHealthRoutes } from "./health.js";
+export { resolveServiceRegistryConfig } from "./registry-client.js";

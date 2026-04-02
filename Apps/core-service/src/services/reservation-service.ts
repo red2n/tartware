@@ -1,8 +1,8 @@
 import {
-  type CheckInBrief,
-  CheckInBriefSchema,
   type ReservationDetail,
   ReservationDetailSchema,
+  type ReservationSummary,
+  ReservationSummarySchema,
   type ReservationListItem as SchemaReservationListItem,
   ReservationListItemSchema as SchemaReservationListItemSchema,
 } from "@tartware/schemas";
@@ -12,7 +12,7 @@ import { RESERVATION_LIST_SQL } from "../sql/reservation-queries.js";
 import { toNonNegativeInt, toNumberOrFallback } from "../utils/numbers.js";
 
 export { ReservationDetailSchema, type ReservationDetail };
-export { CheckInBriefSchema, type CheckInBrief };
+export { ReservationSummarySchema, type ReservationSummary };
 
 /**
  * S23: Aggregate pre-check-in guest recognition data.
@@ -22,7 +22,7 @@ export { CheckInBriefSchema, type CheckInBrief };
 export const getCheckInBrief = async (options: {
   tenantId: string;
   reservationId: string;
-}): Promise<CheckInBrief | null> => {
+}): Promise<ReservationSummary | null> => {
   // 1. Fetch reservation + guest in one join
   const { rows } = await query<Record<string, unknown>>(
     `SELECT
@@ -61,7 +61,7 @@ export const getCheckInBrief = async (options: {
   const guestId = row.guest_id as string | null;
 
   // 2. Fetch guest preferences (if guest exists)
-  let preferences: CheckInBrief["preferences"] = [];
+  let preferences: ReservationSummary["preferences"] = [];
   if (guestId) {
     const { rows: prefRows } = await query<Record<string, unknown>>(
       `SELECT preference_category, preference_type, preference_value,
@@ -84,8 +84,8 @@ export const getCheckInBrief = async (options: {
   }
 
   // 3. Fetch guest notes — separate alerts from informational notes
-  const alerts: CheckInBrief["alerts"] = [];
-  const notes: CheckInBrief["notes"] = [];
+  const alerts: ReservationSummary["alerts"] = [];
+  const notes: ReservationSummary["notes"] = [];
   if (guestId) {
     const { rows: noteRows } = await query<Record<string, unknown>>(
       `SELECT note_id, note_type, note_text, is_alert, alert_level, status
@@ -115,7 +115,7 @@ export const getCheckInBrief = async (options: {
     }
   }
 
-  return CheckInBriefSchema.parse({
+  return ReservationSummarySchema.parse({
     reservation_id: String(row.reservation_id),
     guest_id: guestId,
     guest_name: String(row.guest_name ?? "Unknown Guest"),
