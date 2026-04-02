@@ -14,6 +14,7 @@ import { kafkaConfig } from "../config.js";
 import { publishRecord } from "../kafka/producer.js";
 import { commandsAcceptedTotal } from "../lib/metrics.js";
 import { gatewayLogger } from "../logger.js";
+import { ensureAuthMembershipsLoaded } from "../plugins/auth-context.js";
 import type { TenantMembership } from "../services/membership-service.js";
 
 const logger = gatewayLogger.child({ module: "command-publisher" });
@@ -28,7 +29,7 @@ type SubmitCommandOptions = {
   requiredModules?: string | string[];
 };
 
-const ensureTenantAccess = (
+const ensureTenantAccess = async (
   request: FastifyRequest,
   reply: FastifyReply,
   tenantId: string,
@@ -36,11 +37,13 @@ const ensureTenantAccess = (
     minRole?: TenantMembership["role"];
     requiredModules?: string | string[];
   } = {},
-): TenantMembership | null => {
+): Promise<TenantMembership | null> => {
   if (!request.auth.isAuthenticated) {
     reply.unauthorized("AUTHENTICATION_REQUIRED");
     return null;
   }
+
+  await ensureAuthMembershipsLoaded(request);
 
   const membership = request.auth.getMembership(tenantId);
   if (!membership) {
@@ -79,7 +82,7 @@ export const submitCommand = async ({
   requiredRole = "MANAGER",
   requiredModules,
 }: SubmitCommandOptions): Promise<FastifyReply> => {
-  const membership = ensureTenantAccess(request, reply, tenantId, {
+  const membership = await ensureTenantAccess(request, reply, tenantId, {
     minRole: requiredRole,
     requiredModules,
   });

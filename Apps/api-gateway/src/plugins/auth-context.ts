@@ -1,7 +1,6 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest, preHandlerHookHandler } from "fastify";
 import fp from "fastify-plugin";
 
-import { gatewayConfig } from "../config.js";
 import { extractBearerToken, verifyAccessToken } from "../lib/jwt.js";
 import { getUserMemberships, type TenantMembership } from "../services/membership-service.js";
 
@@ -18,53 +17,75 @@ type AuthContext = {
   isAuthenticated: boolean;
   memberships: TenantMembership[];
   membershipMap: Map<string, TenantMembership>;
+  ensureMembershipsLoaded: () => Promise<void>;
   hasRole: (tenantId: string, role: TenantMembership["role"]) => boolean;
   getMembership: (tenantId: string) => TenantMembership | undefined;
   authorizedTenantIds: Set<string>;
 };
 
-const createAuthContext = (userId: string | null, memberships: TenantMembership[]): AuthContext => {
-  const membershipMap = new Map(memberships.map((membership) => [membership.tenantId, membership]));
+const createAuthContext = (
+  userId: string | null,
+  memberships: TenantMembership[],
+  membershipLoader?: () => Promise<TenantMembership[]>,
+): AuthContext => {
+  let loadPromise: Promise<void> | null = null;
+  let membershipsLoaded = membershipLoader === undefined;
 
-  const hasRole = (tenantId: string, requiredRole: TenantMembership["role"]): boolean => {
-    const membership = membershipMap.get(tenantId);
-    if (!membership) {
-      return false;
-    }
-    return (ROLE_PRIORITY[membership.role] ?? 0) >= (ROLE_PRIORITY[requiredRole] ?? 0);
-  };
-
-  return {
+  const context: AuthContext = {
     userId,
     isAuthenticated: Boolean(userId),
     memberships,
-    membershipMap,
-    hasRole,
-    getMembership: (tenantId: string) => membershipMap.get(tenantId),
+    membershipMap: new Map(memberships.map((membership) => [membership.tenantId, membership])),
+    ensureMembershipsLoaded: async () => {
+      if (membershipsLoaded || !membershipLoader || loadPromise) {
+        await loadPromise;
+        return;
+      }
+
+      loadPromise = (async () => {
+        const loadedMemberships = await membershipLoader();
+        context.memberships = loadedMemberships;
+        context.membershipMap = new Map(
+          loadedMemberships.map((membership) => [membership.tenantId, membership]),
+        );
+        membershipsLoaded = true;
+      })();
+
+      try {
+        await loadPromise;
+      } finally {
+        loadPromise = null;
+      }
+    },
+    hasRole: (tenantId: string, requiredRole: TenantMembership["role"]): boolean => {
+      const membership = context.membershipMap.get(tenantId);
+      if (!membership) {
+        return false;
+      }
+      return (ROLE_PRIORITY[membership.role] ?? 0) >= (ROLE_PRIORITY[requiredRole] ?? 0);
+    },
+    getMembership: (tenantId: string) => context.membershipMap.get(tenantId),
     authorizedTenantIds: new Set<string>(),
   };
+
+  return context;
 };
 
-type TenantScopeOptions = {
-  minRole?: TenantMembership["role"];
-  resolveTenantId?: (request: FastifyRequest) => string | undefined;
-  allowMissingTenantId?: boolean;
-  allowUnauthenticated?: boolean;
-  requireActiveMembership?: boolean;
-  requiredModules?: string | string[];
+const loadMembershipsForRequest = async (
+  request: FastifyRequest,
+  userId: string,
+): Promise<TenantMembership[]> => {
+  try {
+    return await getUserMemberships(userId);
+  } catch (error) {
+    request.log.error(error, "failed to load tenant memberships");
+    return [];
+  }
 };
 
-type TenantScopeDecorator = (options?: TenantScopeOptions) => preHandlerHookHandler;
-
-declare module "fastify" {
-  interface FastifyRequest {
-    auth: AuthContext;
-  }
-
-  interface FastifyInstance {
-    withTenantScope: TenantScopeDecorator;
-  }
-}
+export const ensureAuthMembershipsLoaded = async (request: FastifyRequest): Promise<void> => {
+  await request.auth.ensureMembershipsLoaded();
+};
 
 const buildTenantScopeGuard = (options: TenantScopeOptions = {}): preHandlerHookHandler => {
   const {
@@ -85,7 +106,6 @@ const buildTenantScopeGuard = (options: TenantScopeOptions = {}): preHandlerHook
     }
 
     const tenantId = resolver(request) ?? undefined;
-
     if (!tenantId) {
       if (allowMissingTenantId) {
         return;
@@ -93,6 +113,8 @@ const buildTenantScopeGuard = (options: TenantScopeOptions = {}): preHandlerHook
       reply.badRequest("TENANT_ID_REQUIRED");
       return reply;
     }
+
+    await ensureAuthMembershipsLoaded(request);
 
     const membership = request.auth.getMembership(tenantId);
     if (!membership) {
@@ -129,15 +151,29 @@ const buildTenantScopeGuard = (options: TenantScopeOptions = {}): preHandlerHook
   };
 };
 
+type TenantScopeOptions = {
+  minRole?: TenantMembership["role"];
+  resolveTenantId?: (request: FastifyRequest) => string | undefined;
+  allowMissingTenantId?: boolean;
+  allowUnauthenticated?: boolean;
+  requireActiveMembership?: boolean;
+  requiredModules?: string | string[];
+};
+
+type TenantScopeDecorator = (options?: TenantScopeOptions) => preHandlerHookHandler;
+
+declare module "fastify" {
+  interface FastifyRequest {
+    auth: AuthContext;
+  }
+
+  interface FastifyInstance {
+    withTenantScope: TenantScopeDecorator;
+  }
+}
+
 const authContextPlugin = fp(async (fastify: FastifyInstance) => {
   const authContextKey = Symbol("authContext");
-  const checkAuthenticatedRequestRateLimit = fastify.createRateLimit({
-    max: gatewayConfig.rateLimit.authMax,
-    timeWindow: gatewayConfig.rateLimit.authTimeWindow,
-    keyGenerator: (request) =>
-      (request.headers["x-api-key"] as string | undefined) ?? request.ip ?? "anonymous",
-    ban: 0,
-  });
 
   fastify.decorateRequest<AuthContext>("auth", {
     getter() {
@@ -153,7 +189,7 @@ const authContextPlugin = fp(async (fastify: FastifyInstance) => {
 
   fastify.decorate("withTenantScope", tenantScopeDecorator);
 
-  fastify.addHook("onRequest", async (request, reply) => {
+  fastify.addHook("onRequest", async (request) => {
     request.auth = createAuthContext(null, []);
 
     if (request.routeOptions?.config?.authContextPublic === true) {
@@ -165,29 +201,14 @@ const authContextPlugin = fp(async (fastify: FastifyInstance) => {
       return;
     }
 
-    const rateLimit = await checkAuthenticatedRequestRateLimit(request);
-    if (!rateLimit.isAllowed) {
-      void reply.code(429).send({
-        type: "about:blank",
-        title: "Too Many Requests",
-        status: 429,
-        detail: "Too many authenticated requests. Please try again later.",
-      });
-      return;
-    }
-
     const payload = verifyAccessToken(token);
     if (!payload?.sub) {
       return;
     }
 
-    try {
-      const memberships = await getUserMemberships(payload.sub);
-      request.auth = createAuthContext(payload.sub, memberships);
-    } catch (error) {
-      request.log.error(error, "failed to load tenant memberships");
-      request.auth = createAuthContext(payload.sub, []);
-    }
+    request.auth = createAuthContext(payload.sub, [], () =>
+      loadMembershipsForRequest(request, payload.sub),
+    );
   });
 });
 
