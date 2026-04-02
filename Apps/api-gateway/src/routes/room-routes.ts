@@ -46,6 +46,22 @@ export const registerRoomRoutes = (app: FastifyInstance): void => {
   });
 
   app.get(
+    "/v1/reference-data/room-categories",
+    {
+      preHandler: tenantScopeFromQuery,
+      schema: buildRouteSchema({
+        tag: CORE_PROXY_TAG,
+        summary: "Proxy room category reference-data requests to the rooms service.",
+        querystring: paginationQuerySchema,
+        response: {
+          200: jsonObjectSchema,
+        },
+      }),
+    },
+    proxyRooms,
+  );
+
+  app.get(
     "/v1/rooms",
     {
       preHandler: tenantScopeFromQuery,

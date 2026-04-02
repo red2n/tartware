@@ -9,11 +9,8 @@ import { z } from "zod";
 
 import { RateItemSchema } from "../schemas/02-inventory/rates.js";
 import { uuid } from "../shared/base-schemas.js";
-import {
-	RateStatusEnum,
-	RateStrategyEnum,
-	RateTypeEnum,
-} from "../shared/enums.js";
+import { RateStatusEnum, RateStrategyEnum } from "../shared/enums.js";
+import { RateTypeCodeSchema } from "../shared/reference-data-types.js";
 
 // -----------------------------------------------------------------------------
 // Query Schemas
@@ -36,18 +33,7 @@ export const RateListQuerySchema = z.object({
 				),
 			{ message: "Invalid rate status" },
 		),
-	rate_type: z
-		.string()
-		.toUpperCase()
-		.optional()
-		.refine(
-			(value) =>
-				!value ||
-				RateTypeEnum.options.includes(
-					value as (typeof RateTypeEnum.options)[number],
-				),
-			{ message: "Invalid rate type" },
-		),
+	rate_type: RateTypeCodeSchema.optional(),
 	search: z.string().min(1).max(80).optional(),
 	limit: z.coerce.number().int().positive().max(500).default(200),
 	offset: z.coerce.number().int().min(0).default(0),
@@ -78,18 +64,7 @@ export const CreateRateBodySchema = z.object({
 		})
 		.transform((value) => value.toUpperCase()),
 	description: z.string().max(1000).optional(),
-	rate_type: z
-		.string()
-		.toUpperCase()
-		.optional()
-		.refine(
-			(value) =>
-				!value ||
-				RateTypeEnum.options.includes(
-					value as (typeof RateTypeEnum.options)[number],
-				),
-			{ message: "Invalid rate type" },
-		),
+	rate_type: RateTypeCodeSchema.optional(),
 	strategy: z
 		.string()
 		.toUpperCase()

@@ -1128,6 +1128,9 @@ importers:
       fastify:
         specifier: ^5.8.4
         version: 5.8.4
+      ioredis:
+        specifier: ^5.9.2
+        version: 5.9.2
       kafkajs:
         specifier: ^2.2.4
         version: 2.2.4

@@ -1,9 +1,20 @@
 import { buildRouteSchema, schemaFromZod } from "@tartware/openapi";
-import type { FastifyInstance } from "fastify";
-import { z } from "zod";
-
 import {
   BuildingItemSchema,
+  type BuildingListQuery,
+  BuildingListQuerySchema,
+  BuildingListResponseSchema,
+  BuildingParamsSchema,
+  type CreateBuildingBody,
+  CreateBuildingBodySchema,
+  DeleteBuildingBodySchema,
+  ProblemDetailSchema,
+  type UpdateBuildingBody,
+  UpdateBuildingBodySchema,
+} from "@tartware/schemas";
+import type { FastifyInstance } from "fastify";
+
+import {
   createBuilding,
   deleteBuilding,
   listBuildings,
@@ -11,118 +22,15 @@ import {
 } from "../services/building-service.js";
 
 const BUILDINGS_TAG = "Buildings";
-
-const BUILDING_TYPES = [
-  "MAIN",
-  "WING",
-  "TOWER",
-  "ANNEX",
-  "VILLA",
-  "COTTAGE",
-  "BUNGALOW",
-  "CONFERENCE",
-  "SPA",
-  "RECREATION",
-  "OTHER",
-] as const;
-
-const BuildingListQuerySchema = z.object({
-  tenant_id: z.string().uuid(),
-  property_id: z.string().uuid().optional(),
-  is_active: z.coerce.boolean().optional(),
-  building_type: z.string().optional(),
-  search: z.string().min(1).max(80).optional(),
-  limit: z.coerce.number().int().positive().max(500).default(200),
-  offset: z.coerce.number().int().min(0).default(0),
-});
-
-type BuildingListQuery = z.infer<typeof BuildingListQuerySchema>;
-
-const BuildingListResponseSchema = z.array(BuildingItemSchema);
 const BuildingListQueryJsonSchema = schemaFromZod(BuildingListQuerySchema, "BuildingListQuery");
 const BuildingListResponseJsonSchema = schemaFromZod(
   BuildingListResponseSchema,
   "BuildingListResponse",
 );
-
-const CreateBuildingBodySchema = z.object({
-  tenant_id: z.string().uuid(),
-  property_id: z.string().uuid(),
-  building_code: z
-    .string()
-    .min(1)
-    .max(50)
-    .regex(/^[A-Za-z0-9_-]+$/, {
-      message: "Building code must be alphanumeric (with _ or -)",
-    })
-    .transform((value) => value.toUpperCase()),
-  building_name: z.string().min(1).max(200),
-  building_type: z
-    .string()
-    .toUpperCase()
-    .optional()
-    .refine(
-      (value) => !value || BUILDING_TYPES.includes(value as (typeof BUILDING_TYPES)[number]),
-      { message: "Invalid building type" },
-    ),
-  floor_count: z.number().int().positive().optional(),
-  basement_floors: z.number().int().min(0).optional(),
-  total_rooms: z.number().int().min(0).optional(),
-  wheelchair_accessible: z.boolean().optional(),
-  elevator_count: z.number().int().min(0).optional(),
-  has_lobby: z.boolean().optional(),
-  has_pool: z.boolean().optional(),
-  has_gym: z.boolean().optional(),
-  has_spa: z.boolean().optional(),
-  has_restaurant: z.boolean().optional(),
-  has_parking: z.boolean().optional(),
-  parking_spaces: z.number().int().min(0).optional(),
-  year_built: z.number().int().optional(),
-  last_renovation_year: z.number().int().optional(),
-  is_active: z.boolean().optional(),
-  building_status: z.string().max(20).optional(),
-  photo_url: z.string().max(500).optional(),
-  guest_description: z.string().optional(),
-  internal_notes: z.string().optional(),
-  metadata: z.unknown().optional(),
-});
-
-type CreateBuildingBody = z.infer<typeof CreateBuildingBodySchema>;
-
-const UpdateBuildingBodySchema = CreateBuildingBodySchema.partial().extend({
-  tenant_id: z.string().uuid(),
-  building_code: z
-    .string()
-    .min(1)
-    .max(50)
-    .regex(/^[A-Za-z0-9_-]+$/, {
-      message: "Building code must be alphanumeric (with _ or -)",
-    })
-    .transform((value) => value.toUpperCase())
-    .optional(),
-  building_type: z
-    .string()
-    .toUpperCase()
-    .optional()
-    .refine(
-      (value) => !value || BUILDING_TYPES.includes(value as (typeof BUILDING_TYPES)[number]),
-      { message: "Invalid building type" },
-    ),
-});
-
-type UpdateBuildingBody = z.infer<typeof UpdateBuildingBodySchema>;
-
 const CreateBuildingBodyJsonSchema = schemaFromZod(CreateBuildingBodySchema, "CreateBuildingBody");
 const UpdateBuildingBodyJsonSchema = schemaFromZod(UpdateBuildingBodySchema, "UpdateBuildingBody");
 const BuildingItemJsonSchema = schemaFromZod(BuildingItemSchema, "BuildingItem");
-const ErrorResponseSchema = schemaFromZod(
-  z.object({ type: z.string(), title: z.string(), status: z.number(), detail: z.string() }),
-  "ErrorResponse",
-);
-
-const BuildingParamsSchema = z.object({
-  buildingId: z.string().uuid(),
-});
+const ErrorResponseSchema = schemaFromZod(ProblemDetailSchema, "BuildingErrorResponse");
 
 export const registerBuildingRoutes = (app: FastifyInstance): void => {
   app.get<{ Querystring: BuildingListQuery }>(
@@ -266,7 +174,7 @@ export const registerBuildingRoutes = (app: FastifyInstance): void => {
         tag: BUILDINGS_TAG,
         summary: "Delete a building",
         params: schemaFromZod(BuildingParamsSchema, "BuildingParams"),
-        body: schemaFromZod(z.object({ tenant_id: z.string().uuid() }), "DeleteBuildingBody"),
+        body: schemaFromZod(DeleteBuildingBodySchema, "DeleteBuildingBody"),
         response: {
           204: { type: "null" },
           404: ErrorResponseSchema,
@@ -275,7 +183,7 @@ export const registerBuildingRoutes = (app: FastifyInstance): void => {
     },
     async (request, reply) => {
       const params = BuildingParamsSchema.parse(request.params);
-      const body = z.object({ tenant_id: z.string().uuid() }).parse(request.body);
+      const body = DeleteBuildingBodySchema.parse(request.body);
 
       const deleted = await deleteBuilding({
         tenant_id: body.tenant_id,

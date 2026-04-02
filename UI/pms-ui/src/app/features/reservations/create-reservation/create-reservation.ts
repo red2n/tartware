@@ -2,6 +2,7 @@ import { Component, inject, type OnInit, signal } from "@angular/core";
 import { FormsModule } from "@angular/forms";
 import { MatIconModule } from "@angular/material/icon";
 import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
+import type { GuestWithStats, RateItem, RoomTypeItem } from "@tartware/schemas";
 import { Router } from "@angular/router";
 
 import { ApiService, ApiValidationError } from "../../../core/api/api.service";
@@ -11,46 +12,57 @@ import { formatCurrency, formatShortDate } from "../../../shared/format-utils";
 import { PaginationComponent } from "../../../shared/pagination/pagination";
 import { ToastService } from "../../../shared/toast/toast.service";
 
-type RoomType = {
-	room_type_id: string;
-	type_name: string;
-	type_code: string;
-	category: string;
-	base_price: number;
-	base_occupancy: number;
-	max_occupancy: number;
+type RoomType = Pick<
+	RoomTypeItem,
+	| "room_type_id"
+	| "type_name"
+	| "type_code"
+	| "category"
+	| "base_price"
+	| "base_occupancy"
+	| "max_occupancy"
+	| "bed_type"
+	| "number_of_beds"
+	| "size_sqm"
+	| "currency"
+	| "is_active"
+> & {
 	bed_type: string;
 	number_of_beds: number;
-	size_sqm?: number;
 	currency: string;
-	is_active: boolean;
 };
 
-type RateDetail = {
-	id: string;
-	rate_code: string;
-	rate_name: string;
-	rate_type: string;
-	base_rate: number;
+type RateDetail = Pick<
+	RateItem,
+	| "id"
+	| "rate_code"
+	| "rate_name"
+	| "rate_type"
+	| "base_rate"
+	| "single_occupancy_rate"
+	| "double_occupancy_rate"
+	| "extra_person_rate"
+	| "room_type_id"
+	| "valid_from"
+	| "status"
+	| "currency"
+	| "meal_plan"
+	| "min_length_of_stay"
+	| "cancellation_policy"
+> & {
 	single_occupancy_rate: number;
 	double_occupancy_rate: number;
 	extra_person_rate: number;
-	room_type_id: string;
-	valid_from: string;
-	status: string;
 	currency: string;
 	meal_plan: string;
 	min_length_of_stay: number;
 	cancellation_policy: { type: string; hours: number; penalty: number };
 };
 
-type GuestOption = {
-	id: string;
-	first_name: string;
-	last_name: string;
-	email?: string;
-	created_at?: string;
-};
+type GuestOption = Pick<
+	GuestWithStats,
+	"id" | "first_name" | "last_name" | "email" | "created_at"
+>;
 
 @Component({
 	selector: "app-create-reservation",

@@ -15,22 +15,22 @@ import {
 import { uuid } from "../shared/base-schemas.js";
 
 /** Single notification item returned from list endpoints */
-export const NotificationItemSchema = InAppNotificationSchema.pick({
-	notification_id: true,
-	tenant_id: true,
-	property_id: true,
-	user_id: true,
-	title: true,
-	message: true,
-	category: true,
-	priority: true,
-	source_type: true,
-	source_id: true,
-	action_url: true,
-	is_read: true,
-	read_at: true,
-	metadata: true,
-	created_at: true,
+export const NotificationItemSchema = z.object({
+	notification_id: InAppNotificationSchema.shape.notification_id,
+	tenant_id: InAppNotificationSchema.shape.tenant_id,
+	property_id: InAppNotificationSchema.shape.property_id,
+	user_id: InAppNotificationSchema.shape.user_id,
+	title: InAppNotificationSchema.shape.title,
+	message: InAppNotificationSchema.shape.message,
+	category: InAppNotificationCategoryEnum,
+	priority: InAppNotificationPriorityEnum,
+	source_type: z.string().max(50).nullish(),
+	source_id: uuid.nullish(),
+	action_url: z.string().max(500).nullish(),
+	is_read: z.boolean(),
+	read_at: z.string().nullish(),
+	metadata: z.record(z.unknown()).nullish(),
+	created_at: z.string().nullish(),
 });
 
 export type NotificationItem = z.infer<typeof NotificationItemSchema>;
@@ -54,6 +54,7 @@ export const NotificationListResponseSchema = z.object({
 		offset: z.number(),
 	}),
 });
+export type NotificationListResponse = z.infer<typeof NotificationListResponseSchema>;
 
 /** Mark as read request body */
 export const MarkNotificationsReadBodySchema = z.object({
@@ -63,11 +64,16 @@ export const MarkNotificationsReadBodySchema = z.object({
 /** Mark all as read (no body needed - uses tenant/user context) */
 
 /** Unread count response */
-export const UnreadCountResponseSchema = z.object({
-	data: z.object({
-		unread: z.number(),
-	}),
+export const UnreadCountPayloadSchema = z.object({
+	unread: z.number(),
 });
+export type UnreadCountPayload = z.infer<typeof UnreadCountPayloadSchema>;
+
+/** Unread count response */
+export const UnreadCountResponseSchema = z.object({
+	data: UnreadCountPayloadSchema,
+});
+export type UnreadCountResponse = z.infer<typeof UnreadCountResponseSchema>;
 
 /** SSE notification event — sent over the real-time stream */
 export const SseNotificationEventSchema = z.object({

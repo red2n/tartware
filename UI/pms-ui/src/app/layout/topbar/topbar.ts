@@ -5,6 +5,7 @@ import { MatDividerModule } from "@angular/material/divider";
 import { MatIconModule } from "@angular/material/icon";
 import { MatMenuModule } from "@angular/material/menu";
 import { MatTooltipModule } from "@angular/material/tooltip";
+import type { NotificationItem } from "@tartware/schemas";
 import { Router } from "@angular/router";
 
 import { AuthService } from "../../core/auth/auth.service";
@@ -12,7 +13,6 @@ import { TenantContextService } from "../../core/context/tenant-context.service"
 import { I18nService, type LangCode, SUPPORTED_LANGUAGES } from "../../core/i18n/i18n.service";
 import { TranslatePipe } from "../../core/i18n/translate.pipe";
 import {
-	type InAppNotification,
 	NotificationService,
 } from "../../core/notifications/notification.service";
 import { RegistryService } from "../../core/registry/registry.service";
@@ -107,7 +107,7 @@ export class TopbarComponent {
 		this.notifications.togglePanel();
 	}
 
-	markAsRead(notification: InAppNotification): void {
+	markAsRead(notification: NotificationItem): void {
 		if (!notification.is_read) {
 			this.notifications.markAsRead([notification.notification_id]);
 		}
@@ -121,7 +121,7 @@ export class TopbarComponent {
 		return NotificationService.categoryIcon(category);
 	}
 
-	onNotificationClick(notification: InAppNotification): void {
+	onNotificationClick(notification: NotificationItem): void {
 		this.markAsRead(notification);
 		if (notification.action_url) {
 			this.notifications.closePanel();

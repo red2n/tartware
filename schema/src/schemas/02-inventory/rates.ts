@@ -20,11 +20,8 @@
 import { z } from "zod";
 
 import { money, uuid } from "../../shared/base-schemas.js";
-import {
-	RateStatusEnum,
-	RateStrategyEnum,
-	RateTypeEnum,
-} from "../../shared/enums.js";
+import { RateStatusEnum, RateStrategyEnum } from "../../shared/enums.js";
+import { RateTypeCodeSchema } from "../../shared/reference-data-types.js";
 
 /**
  * Complete Rates schema
@@ -37,7 +34,7 @@ export const RatesSchema = z.object({
 	rate_name: z.string(),
 	rate_code: z.string(),
 	description: z.string().optional(),
-	rate_type: RateTypeEnum.default("BAR"),
+	rate_type: RateTypeCodeSchema.default("BAR"),
 	strategy: RateStrategyEnum,
 	priority: z.number().int().min(0).max(999).default(100),
 	base_rate: money,

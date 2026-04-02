@@ -4,6 +4,7 @@ import { FormsModule } from "@angular/forms";
 import { MatIconModule } from "@angular/material/icon";
 import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
 import { MatTooltipModule } from "@angular/material/tooltip";
+import type { RateCalendarItem, RateItem, RoomTypeItem } from "@tartware/schemas";
 
 import { ApiService } from "../../core/api/api.service";
 import { AuthService } from "../../core/auth/auth.service";
@@ -14,35 +15,16 @@ import { formatCurrency, formatShortDate } from "../../shared/format-utils";
 import { ToastService } from "../../shared/toast/toast.service";
 
 /** Minimal rate plan reference. */
-type RatePlan = {
-	id: string;
-	rate_code: string;
-	rate_name: string;
-	base_rate: number;
-	currency: string;
-	room_type_id: string;
-};
+type RatePlan = Pick<
+	RateItem,
+	"id" | "rate_code" | "rate_name" | "base_rate" | "currency" | "room_type_id"
+> & { currency: string };
 
 /** Minimal room-type reference. */
-type RoomType = {
-	room_type_id: string;
-	type_name: string;
-	type_code: string;
-};
+type RoomType = Pick<RoomTypeItem, "room_type_id" | "type_name" | "type_code">;
 
 /** A single day cell from the API. */
-type CalendarEntry = {
-	id: string;
-	rate_id: string;
-	room_type_id: string;
-	stay_date: string;
-	rate_amount: number;
-	currency: string;
-	status: string;
-	closed_to_arrival: boolean;
-	closed_to_departure: boolean;
-	min_length_of_stay?: number;
-};
+type CalendarEntry = RateCalendarItem;
 
 /** Internal model for a grid cell. */
 type GridCell = {
@@ -212,7 +194,7 @@ export class RateCalendarComponent {
 					roomTypeId: rate.room_type_id,
 					amount: entry ? entry.rate_amount : null,
 					baseRate: rate.base_rate,
-					currency: entry?.currency ?? rate.currency,
+					currency: entry?.currency ?? rate.currency ?? "USD",
 					status: entry?.status ?? "OPEN",
 					cta: entry?.closed_to_arrival ?? false,
 					ctd: entry?.closed_to_departure ?? false,

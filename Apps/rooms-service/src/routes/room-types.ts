@@ -1,99 +1,36 @@
 import { buildRouteSchema, schemaFromZod } from "@tartware/openapi";
-import { CreateRoomTypesSchema, RoomCategoryEnum } from "@tartware/schemas";
+import {
+  type CreateRoomTypeBody,
+  CreateRoomTypeBodySchema,
+  DeleteRoomTypeBodySchema,
+  ProblemDetailSchema,
+  RoomTypeItemSchema,
+  type RoomTypeListQuery,
+  RoomTypeListQuerySchema,
+  RoomTypeListResponseSchema,
+  RoomTypeParamsSchema,
+  type UpdateRoomTypeBody,
+  UpdateRoomTypeBodySchema,
+} from "@tartware/schemas";
 import type { FastifyInstance } from "fastify";
-import { z } from "zod";
-
+import { ReferenceDataCompatibilityError } from "../services/reference-data-service.js";
 import {
   createRoomType,
   deleteRoomType,
   listRoomTypes,
-  RoomTypeItemSchema,
   updateRoomType,
 } from "../services/room-type-service.js";
 
 const ROOM_TYPES_TAG = "Room Types";
-
-const RoomTypeListQuerySchema = z.object({
-  tenant_id: z.string().uuid(),
-  property_id: z.string().uuid().optional(),
-  is_active: z.coerce.boolean().optional(),
-  search: z.string().min(1).max(80).optional(),
-  limit: z.coerce.number().int().positive().max(500).default(200),
-  offset: z.coerce.number().int().min(0).default(0),
-});
-
-type RoomTypeListQuery = z.infer<typeof RoomTypeListQuerySchema>;
-
-const RoomTypeListResponseSchema = z.array(RoomTypeItemSchema);
 const RoomTypeListQueryJsonSchema = schemaFromZod(RoomTypeListQuerySchema, "RoomTypeListQuery");
 const RoomTypeListResponseJsonSchema = schemaFromZod(
   RoomTypeListResponseSchema,
   "RoomTypeListResponse",
 );
-
-const CreateRoomTypeBodySchema = CreateRoomTypesSchema.extend({
-  type_code: z
-    .string()
-    .min(2)
-    .max(50)
-    .regex(/^[A-Za-z0-9_-]+$/, {
-      message: "Type code must be alphanumeric (with _ or -)",
-    })
-    .transform((value) => value.toUpperCase()),
-  category: z
-    .string()
-    .toUpperCase()
-    .optional()
-    .refine(
-      (value) =>
-        !value ||
-        RoomCategoryEnum.options.includes(value as (typeof RoomCategoryEnum.options)[number]),
-      {
-        message: "Invalid room category",
-      },
-    ),
-});
-
-type CreateRoomTypeBody = z.infer<typeof CreateRoomTypeBodySchema>;
-
-const UpdateRoomTypeBodySchema = CreateRoomTypeBodySchema.partial().extend({
-  tenant_id: z.string().uuid(),
-  type_code: z
-    .string()
-    .min(2)
-    .max(50)
-    .regex(/^[A-Za-z0-9_-]+$/, {
-      message: "Type code must be alphanumeric (with _ or -)",
-    })
-    .transform((value) => value.toUpperCase())
-    .optional(),
-  category: z
-    .string()
-    .toUpperCase()
-    .optional()
-    .refine(
-      (value) =>
-        !value ||
-        RoomCategoryEnum.options.includes(value as (typeof RoomCategoryEnum.options)[number]),
-      {
-        message: "Invalid room category",
-      },
-    ),
-});
-
-type UpdateRoomTypeBody = z.infer<typeof UpdateRoomTypeBodySchema>;
-
 const CreateRoomTypeBodyJsonSchema = schemaFromZod(CreateRoomTypeBodySchema, "CreateRoomTypeBody");
 const UpdateRoomTypeBodyJsonSchema = schemaFromZod(UpdateRoomTypeBodySchema, "UpdateRoomTypeBody");
 const RoomTypeItemJsonSchema = schemaFromZod(RoomTypeItemSchema, "RoomTypeItem");
-const ErrorResponseSchema = schemaFromZod(
-  z.object({ type: z.string(), title: z.string(), status: z.number(), detail: z.string() }),
-  "ErrorResponse",
-);
-
-const RoomTypeParamsSchema = z.object({
-  roomTypeId: z.string().uuid(),
-});
+const ErrorResponseSchema = schemaFromZod(ProblemDetailSchema, "RoomTypeErrorResponse");
 
 export const registerRoomTypeRoutes = (app: FastifyInstance): void => {
   app.get<{ Querystring: RoomTypeListQuery }>(
@@ -156,6 +93,9 @@ export const registerRoomTypeRoutes = (app: FastifyInstance): void => {
         });
         return reply.status(201).send(created);
       } catch (error) {
+        if (error instanceof ReferenceDataCompatibilityError) {
+          return reply.badRequest(error.message);
+        }
         if (typeof error === "object" && error && "code" in error) {
           const code = (error as { code?: string }).code;
           if (code === "23505") {
@@ -209,6 +149,9 @@ export const registerRoomTypeRoutes = (app: FastifyInstance): void => {
 
         return reply.send(updated);
       } catch (error) {
+        if (error instanceof ReferenceDataCompatibilityError) {
+          return reply.badRequest(error.message);
+        }
         if (typeof error === "object" && error && "code" in error) {
           const code = (error as { code?: string }).code;
           if (code === "23505") {
@@ -236,7 +179,7 @@ export const registerRoomTypeRoutes = (app: FastifyInstance): void => {
         tag: ROOM_TYPES_TAG,
         summary: "Delete a room type",
         params: schemaFromZod(RoomTypeParamsSchema, "RoomTypeParams"),
-        body: schemaFromZod(z.object({ tenant_id: z.string().uuid() }), "DeleteRoomTypeBody"),
+        body: schemaFromZod(DeleteRoomTypeBodySchema, "DeleteRoomTypeBody"),
         response: {
           204: { type: "null" },
           404: ErrorResponseSchema,
@@ -245,7 +188,7 @@ export const registerRoomTypeRoutes = (app: FastifyInstance): void => {
     },
     async (request, reply) => {
       const params = RoomTypeParamsSchema.parse(request.params);
-      const body = z.object({ tenant_id: z.string().uuid() }).parse(request.body);
+      const body = DeleteRoomTypeBodySchema.parse(request.body);
 
       const deleted = await deleteRoomType({
         tenant_id: body.tenant_id,

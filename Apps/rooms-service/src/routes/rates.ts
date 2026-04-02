@@ -9,6 +9,7 @@ import { buildRouteSchema, schemaFromZod } from "@tartware/openapi";
 import {
   type CreateRateBody,
   CreateRateBodySchema,
+  ProblemDetailSchema,
   RateItemSchema,
   type RateListQuery,
   RateListQuerySchema,
@@ -26,6 +27,7 @@ import {
   listRates,
   updateRate,
 } from "../services/rate-service.js";
+import { ReferenceDataCompatibilityError } from "../services/reference-data-service.js";
 
 const RATES_TAG = "Rates";
 
@@ -35,10 +37,7 @@ const RateListResponseJsonSchema = schemaFromZod(RateListResponseSchema, "RateLi
 const CreateRateBodyJsonSchema = schemaFromZod(CreateRateBodySchema, "CreateRateBody");
 const UpdateRateBodyJsonSchema = schemaFromZod(UpdateRateBodySchema, "UpdateRateBody");
 const RateItemJsonSchema = schemaFromZod(RateItemSchema, "RateItem");
-const ErrorResponseSchema = schemaFromZod(
-  z.object({ type: z.string(), title: z.string(), status: z.number(), detail: z.string() }),
-  "ErrorResponse",
-);
+const ErrorResponseSchema = schemaFromZod(ProblemDetailSchema, "RateErrorResponse");
 
 const RateParamsSchema = z.object({
   rateId: z.string().uuid(),
@@ -158,6 +157,9 @@ export const registerRateRoutes = (app: FastifyInstance): void => {
         });
         return reply.status(201).send(created);
       } catch (error) {
+        if (error instanceof ReferenceDataCompatibilityError) {
+          return reply.badRequest(error.message);
+        }
         if (typeof error === "object" && error && "code" in error) {
           const code = (error as { code?: string }).code;
           if (code === "23505") {
@@ -214,6 +216,9 @@ export const registerRateRoutes = (app: FastifyInstance): void => {
 
         return reply.send(updated);
       } catch (error) {
+        if (error instanceof ReferenceDataCompatibilityError) {
+          return reply.badRequest(error.message);
+        }
         if (typeof error === "object" && error && "code" in error) {
           const code = (error as { code?: string }).code;
           if (code === "23505") {

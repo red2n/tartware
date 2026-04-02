@@ -4,6 +4,7 @@ import {
   MaintenancePriorityEnum,
   MaintenanceRequestListItemSchema,
   MaintenanceRequestStatusEnum,
+  ProblemDetailSchema,
 } from "@tartware/schemas";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
@@ -86,10 +87,7 @@ const MaintenanceRequestParamsJsonSchema = schemaFromZod(
   "MaintenanceRequestParams",
 );
 
-const ErrorResponseSchema = schemaFromZod(
-  z.object({ type: z.string(), title: z.string(), status: z.number(), detail: z.string() }),
-  "ErrorResponse",
-);
+const ErrorResponseSchema = schemaFromZod(ProblemDetailSchema, "MaintenanceErrorResponse");
 
 const MAINTENANCE_TAG = "Maintenance";
 

@@ -3,8 +3,9 @@ import { MatButtonModule } from "@angular/material/button";
 import { MatIconModule } from "@angular/material/icon";
 import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
 import { MatTooltipModule } from "@angular/material/tooltip";
+import type { ServiceRegistryInstance } from "@tartware/schemas";
 
-import { RegistryService, type ServiceInstance } from "../../core/registry/registry.service";
+import { RegistryService } from "../../core/registry/registry.service";
 
 @Component({
 	selector: "app-service-dashboard",
@@ -50,7 +51,7 @@ export class ServiceDashboardComponent {
 		return `${Math.floor(secs / 3600)}h ago`;
 	}
 
-	formatPort(instance: ServiceInstance): string {
+	formatPort(instance: ServiceRegistryInstance): string {
 		return `${instance.host}:${instance.port}`;
 	}
 }

@@ -47,7 +47,15 @@ Content-Type: application/json
 @authToken = {{login.response.body.access_token}}
 
 ###############################################################################
-# 2. ROOM TYPES - READ
+# 2. REFERENCE DATA - READ
+###############################################################################
+
+# List room categories from lookup-table-backed reference data
+GET {{baseUrl}}/v1/reference-data/room-categories?tenant_id={{tenantId}}&property_id={{propertyId}}
+Authorization: Bearer {{authToken}}
+
+###############################################################################
+# 3. ROOM TYPES - READ
 ###############################################################################
 
 # List all room types for property
@@ -60,7 +68,7 @@ GET {{baseUrl}}/v1/room-types/{{roomTypeId}}?tenant_id={{tenantId}}
 Authorization: Bearer {{authToken}}
 
 ###############################################################################
-# 3. ROOM TYPES - CREATE
+# 4. ROOM TYPES - CREATE
 ###############################################################################
 
 # @name createRoomType
@@ -132,7 +140,7 @@ Authorization: Bearer {{authToken}}
 }
 
 ###############################################################################
-# 4. ROOM TYPES - UPDATE
+# 5. ROOM TYPES - UPDATE
 ###############################################################################
 
 # Update room type details
@@ -160,7 +168,7 @@ Authorization: Bearer {{authToken}}
 }
 
 ###############################################################################
-# 4B. ROOM TYPES - PARTIAL UPDATE (PATCH)
+# 5B. ROOM TYPES - PARTIAL UPDATE (PATCH)
 ###############################################################################
 
 ###
@@ -186,7 +194,7 @@ Authorization: Bearer {{authToken}}
 }
 
 ###############################################################################
-# 5. ROOMS - READ
+# 6. ROOMS - READ
 ###############################################################################
 
 # List all rooms for tenant

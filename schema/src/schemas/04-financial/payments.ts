@@ -20,11 +20,8 @@
 import { z } from "zod";
 
 import { money, uuid } from "../../shared/base-schemas.js";
-import {
-	PaymentMethodEnum,
-	PaymentStatusEnum,
-	TransactionTypeEnum,
-} from "../../shared/enums.js";
+import { PaymentStatusEnum, TransactionTypeEnum } from "../../shared/enums.js";
+import { PaymentMethodCodeSchema } from "../../shared/reference-data-types.js";
 
 /**
  * Complete Payments schema
@@ -38,7 +35,7 @@ export const PaymentsSchema = z.object({
 	payment_reference: z.string(),
 	external_transaction_id: z.string().optional(),
 	transaction_type: TransactionTypeEnum,
-	payment_method: PaymentMethodEnum,
+	payment_method: PaymentMethodCodeSchema,
 	payment_token_id: uuid.optional(),
 	amount: money,
 	currency: z.string().optional(),

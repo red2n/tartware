@@ -1,16 +1,11 @@
 import { Injectable } from "@angular/core";
+import type { ValidationIssue } from "@tartware/schemas";
 
 const API_BASE = "/v1";
 
-export interface ApiFieldError {
-	path: string;
-	message: string;
-	code?: string;
-}
-
 export class ApiValidationError extends Error {
-	readonly fieldErrors: ApiFieldError[];
-	constructor(message: string, fieldErrors: ApiFieldError[]) {
+	readonly fieldErrors: ValidationIssue[];
+	constructor(message: string, fieldErrors: ValidationIssue[]) {
 		super(message);
 		this.name = "ApiValidationError";
 		this.fieldErrors = fieldErrors;
@@ -101,7 +96,11 @@ export class ApiService {
 	private async handleError(response: Response): Promise<Error> {
 		let message = `HTTP ${response.status}`;
 		try {
-			const body = await response.json();
+			const body = (await response.json()) as {
+				detail?: string;
+				message?: string;
+				errors?: ValidationIssue[];
+			};
 			message = body.detail || body.message || message;
 			if (Array.isArray(body.errors) && body.errors.length > 0) {
 				return new ApiValidationError(message, body.errors);

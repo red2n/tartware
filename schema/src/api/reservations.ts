@@ -7,11 +7,75 @@
 
 import { z } from "zod";
 
+import { ReservationCommandLifecycleSchema } from "../schemas/03-bookings/reservation-command-lifecycle.js";
 import { uuid } from "../shared/base-schemas.js";
 
 // =====================================================
 // RESERVATION DETAIL (single reservation fetch)
 // =====================================================
+
+export const ReservationLifecycleParamsSchema = z.object({
+	reservationId: uuid,
+});
+export type ReservationLifecycleParams = z.infer<
+	typeof ReservationLifecycleParamsSchema
+>;
+
+export const ReservationLifecycleQuerySchema = z.object({
+	tenant_id: uuid,
+});
+export type ReservationLifecycleQuery = z.infer<
+	typeof ReservationLifecycleQuerySchema
+>;
+
+export const ReservationLifecycleResponseSchema = z.array(
+	ReservationCommandLifecycleSchema,
+);
+export type ReservationLifecycleResponse = z.infer<
+	typeof ReservationLifecycleResponseSchema
+>;
+
+export const ReservationReliabilityStatusEnum = z.enum([
+	"healthy",
+	"degraded",
+	"critical",
+]);
+export type ReservationReliabilityStatus = z.infer<
+	typeof ReservationReliabilityStatusEnum
+>;
+
+export const ReservationReliabilitySnapshotSchema = z.object({
+	status: ReservationReliabilityStatusEnum,
+	generatedAt: z.string(),
+	issues: z.array(z.string()),
+	outbox: z.object({
+		pending: z.number(),
+		warnThreshold: z.number(),
+		criticalThreshold: z.number(),
+	}),
+	consumer: z.object({
+		partitions: z.number(),
+		stalePartitions: z.number(),
+		maxSecondsSinceCommit: z.number().nullable(),
+		staleThresholdSeconds: z.number(),
+	}),
+	lifecycle: z.object({
+		stalledCommands: z.number(),
+		oldestStuckSeconds: z.number().nullable(),
+		dlqTotal: z.number(),
+		stalledThresholdSeconds: z.number(),
+	}),
+	dlq: z.object({
+		depth: z.number().nullable(),
+		warnThreshold: z.number(),
+		criticalThreshold: z.number(),
+		topic: z.string(),
+		error: z.string().nullable(),
+	}),
+});
+export type ReservationReliabilitySnapshot = z.infer<
+	typeof ReservationReliabilitySnapshotSchema
+>;
 
 /**
  * Nested folio summary for reservation detail responses.

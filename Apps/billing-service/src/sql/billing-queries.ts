@@ -45,7 +45,7 @@ export const BILLING_PAYMENT_LIST_SQL = `
     )
     AND (
       $6::text IS NULL
-      OR p.payment_method = UPPER($6::text)::payment_method
+      OR p.payment_method::text = UPPER($6::text)
     )
   ORDER BY p.processed_at DESC NULLS LAST, p.created_at DESC
   LIMIT $1

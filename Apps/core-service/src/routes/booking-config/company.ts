@@ -1,5 +1,5 @@
 import { buildRouteSchema, errorResponseSchema, schemaFromZod } from "@tartware/openapi";
-import { CompanyListItemSchema, CompanyTypeEnum, CreditStatusEnum } from "@tartware/schemas";
+import { CompanyListItemSchema, CompanyTypeCodeSchema, CreditStatusEnum } from "@tartware/schemas";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 
@@ -12,13 +12,7 @@ import { getCompanyById, listCompanies } from "../../services/booking-config/com
 export const registerCompanyRoutes = (app: FastifyInstance): void => {
   const CompanyListQuerySchema = z.object({
     tenant_id: z.string().uuid(),
-    company_type: z
-      .string()
-      .toLowerCase()
-      .optional()
-      .refine((val) => !val || CompanyTypeEnum.options.map((t) => t.toLowerCase()).includes(val), {
-        message: "Invalid company type",
-      }),
+    company_type: CompanyTypeCodeSchema.optional().transform((value) => value?.toLowerCase()),
     is_active: z.coerce.boolean().optional(),
     credit_status: z
       .string()

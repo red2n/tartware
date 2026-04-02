@@ -20,7 +20,7 @@
 import { z } from "zod";
 
 import { money, uuid } from "../../shared/base-schemas.js";
-import { RoomCategoryEnum } from "../../shared/enums.js";
+import { RoomCategoryCodeSchema } from "../../shared/reference-data-types.js";
 
 /**
  * Complete RoomTypes schema
@@ -33,7 +33,7 @@ export const RoomTypesSchema = z.object({
 	type_code: z.string(),
 	description: z.string().optional(),
 	short_description: z.string().optional(),
-	category: RoomCategoryEnum,
+	category: RoomCategoryCodeSchema,
 	base_occupancy: z.number().int(),
 	max_occupancy: z.number().int(),
 	max_adults: z.number().int(),
@@ -76,7 +76,7 @@ export const CreateRoomTypesSchema = RoomTypesSchema.omit({
 	deleted_by: true,
 	version: true,
 }).extend({
-	category: RoomCategoryEnum.optional().default("STANDARD"),
+	category: RoomCategoryCodeSchema.optional().default("STANDARD"),
 	base_occupancy: z.number().int().optional().default(2),
 	max_occupancy: z.number().int().optional().default(2),
 	max_adults: z.number().int().optional().default(2),

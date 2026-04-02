@@ -31,6 +31,7 @@ import { registerBuildingRoutes } from "./routes/buildings.js";
 import { registerHealthRoutes } from "./routes/health.js";
 import { registerRateCalendarRoutes } from "./routes/rate-calendar.js";
 import { registerRateRoutes as registerRoomsRateRoutes } from "./routes/rates.js";
+import { registerReferenceDataRoutes } from "./routes/reference-data.js";
 import { registerRoomTypeRoutes } from "./routes/room-types.js";
 import { registerRoomRoutes } from "./routes/rooms.js";
 
@@ -54,6 +55,7 @@ export const buildServer = (): FastifyInstance => {
     },
     registerRoutes: (app) => {
       registerHealthRoutes(app);
+      registerReferenceDataRoutes(app);
       registerRoomRoutes(app);
       registerRoomTypeRoutes(app);
       registerBuildingRoutes(app);

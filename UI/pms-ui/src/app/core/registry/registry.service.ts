@@ -1,29 +1,11 @@
 import { computed, Injectable, signal } from "@angular/core";
+import type {
+	ServiceRegistryInstance,
+	ServiceRegistryServicesResponse,
+	ServiceRegistrySummary,
+} from "@tartware/schemas";
 
 import { ApiService } from "../api/api.service";
-
-export interface ServiceInstance {
-	instanceId: string;
-	name: string;
-	version: string;
-	host: string;
-	port: number;
-	status: "UP" | "DOWN";
-	registeredAt: string;
-	lastHeartbeat: string;
-	metadata?: Record<string, unknown>;
-}
-
-export interface RegistrySummary {
-	total: number;
-	up: number;
-	down: number;
-}
-
-export interface RegistryResponse {
-	services: ServiceInstance[];
-	summary: RegistrySummary;
-}
 
 const POLL_INTERVAL_MS = 60_000;
 const STATUSBAR_STORAGE_KEY = "statusbar_visible";
@@ -32,8 +14,8 @@ const STATUSBAR_STORAGE_KEY = "statusbar_visible";
 export class RegistryService {
 	private pollTimer: ReturnType<typeof setInterval> | null = null;
 
-	private readonly _services = signal<ServiceInstance[]>([]);
-	private readonly _summary = signal<RegistrySummary>({ total: 0, up: 0, down: 0 });
+	private readonly _services = signal<ServiceRegistryInstance[]>([]);
+	private readonly _summary = signal<ServiceRegistrySummary>({ total: 0, up: 0, down: 0 });
 	private readonly _loading = signal(false);
 	private readonly _error = signal<string | null>(null);
 	private readonly _lastUpdated = signal<Date | null>(null);
@@ -54,7 +36,7 @@ export class RegistryService {
 		this._loading.set(true);
 		this._error.set(null);
 		try {
-			const res = await this.apiService.get<RegistryResponse>("/services");
+			const res = await this.apiService.get<ServiceRegistryServicesResponse>("/registry/services");
 			this._services.set(res.services);
 			this._summary.set(res.summary);
 			this._lastUpdated.set(new Date());

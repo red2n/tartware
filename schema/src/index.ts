@@ -34,6 +34,7 @@ export * from "./schemas/09-reference-data/index.js";
 export * from "./schemas/10-compliance/index.js";
 // Re-export base schemas and validators
 export * from "./shared/base-schemas.js";
+export * from "./shared/reference-data-types.js";
 
 // Re-export all ENUMs
 export * from "./shared/enums.js";

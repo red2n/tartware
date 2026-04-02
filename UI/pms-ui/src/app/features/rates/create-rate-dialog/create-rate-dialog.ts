@@ -3,17 +3,14 @@ import { FormsModule } from "@angular/forms";
 import { MatDialogModule, MatDialogRef } from "@angular/material/dialog";
 import { MatIconModule } from "@angular/material/icon";
 import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
+import type { RoomTypeItem } from "@tartware/schemas";
 
 import { ApiService, ApiValidationError } from "../../../core/api/api.service";
 import { AuthService } from "../../../core/auth/auth.service";
 import { TenantContextService } from "../../../core/context/tenant-context.service";
 import { ToastService } from "../../../shared/toast/toast.service";
 
-type RoomTypeOption = {
-	room_type_id: string;
-	type_name: string;
-	type_code: string;
-};
+type RoomTypeOption = Pick<RoomTypeItem, "room_type_id" | "type_name" | "type_code">;
 
 @Component({
 	selector: "app-create-rate-dialog",

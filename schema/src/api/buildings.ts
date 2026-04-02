@@ -13,6 +13,21 @@ import { uuid } from "../shared/base-schemas.js";
 // Building Schemas
 // -----------------------------------------------------------------------------
 
+export const BuildingTypeEnum = z.enum([
+	"MAIN",
+	"WING",
+	"TOWER",
+	"ANNEX",
+	"VILLA",
+	"COTTAGE",
+	"BUNGALOW",
+	"CONFERENCE",
+	"SPA",
+	"RECREATION",
+	"OTHER",
+]);
+export type BuildingType = z.infer<typeof BuildingTypeEnum>;
+
 /**
  * Building list item schema for API responses.
  * Uses snake_case to match current API output.
@@ -55,6 +70,7 @@ export type BuildingItem = z.infer<typeof BuildingItemSchema>;
  * Create building request body schema.
  */
 export const CreateBuildingBodySchema = z.object({
+	tenant_id: uuid,
 	property_id: uuid,
 	building_code: z
 		.string()
@@ -65,7 +81,18 @@ export const CreateBuildingBodySchema = z.object({
 		})
 		.transform((v) => v.toUpperCase()),
 	building_name: z.string().min(1).max(200),
-	building_type: z.string().max(50).optional(),
+	building_type: z
+		.string()
+		.toUpperCase()
+		.optional()
+		.refine(
+			(value) =>
+				!value ||
+				BuildingTypeEnum.options.includes(
+					value as (typeof BuildingTypeEnum.options)[number],
+				),
+			{ message: "Invalid building type" },
+		),
 	floor_count: z.number().int().positive().optional(),
 	basement_floors: z.number().int().min(0).optional(),
 	total_rooms: z.number().int().min(0).optional(),
@@ -93,7 +120,9 @@ export type CreateBuildingBody = z.infer<typeof CreateBuildingBodySchema>;
 /**
  * Update building request body schema.
  */
-export const UpdateBuildingBodySchema = CreateBuildingBodySchema.partial();
+export const UpdateBuildingBodySchema = CreateBuildingBodySchema.partial().extend({
+	tenant_id: uuid,
+});
 
 export type UpdateBuildingBody = z.infer<typeof UpdateBuildingBodySchema>;
 
@@ -104,7 +133,18 @@ export const BuildingListQuerySchema = z.object({
 	tenant_id: uuid,
 	property_id: uuid.optional(),
 	is_active: z.coerce.boolean().optional(),
-	building_type: z.string().max(50).optional(),
+	building_type: z
+		.string()
+		.toUpperCase()
+		.optional()
+		.refine(
+			(value) =>
+				!value ||
+				BuildingTypeEnum.options.includes(
+					value as (typeof BuildingTypeEnum.options)[number],
+				),
+			{ message: "Invalid building type" },
+		),
 	search: z.string().min(1).max(80).optional(),
 	limit: z.coerce.number().int().positive().max(500).default(200),
 	offset: z.coerce.number().int().min(0).default(0),
@@ -115,20 +155,23 @@ export type BuildingListQuery = z.infer<typeof BuildingListQuerySchema>;
 /**
  * Building list response schema.
  */
-export const BuildingListResponseSchema = z.object({
-	data: z.array(BuildingItemSchema),
-	meta: z.object({
-		count: z.number().int().nonnegative(),
-	}),
-});
+export const BuildingListResponseSchema = z.array(BuildingItemSchema);
 
 export type BuildingListResponse = z.infer<typeof BuildingListResponseSchema>;
 
 /**
  * Single building response schema.
  */
-export const BuildingResponseSchema = z.object({
-	data: BuildingItemSchema,
-});
+export const BuildingResponseSchema = BuildingItemSchema;
 
 export type BuildingResponse = z.infer<typeof BuildingResponseSchema>;
+
+export const BuildingParamsSchema = z.object({
+	buildingId: uuid,
+});
+export type BuildingParams = z.infer<typeof BuildingParamsSchema>;
+
+export const DeleteBuildingBodySchema = z.object({
+	tenant_id: uuid,
+});
+export type DeleteBuildingBody = z.infer<typeof DeleteBuildingBodySchema>;

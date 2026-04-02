@@ -75,8 +75,8 @@
             class="field-input"
             [(ngModel)]="category"
             [disabled]="saving()">
-            @for (cat of categories; track cat) {
-              <option [value]="cat">{{ cat }}</option>
+            @for (cat of categories(); track cat.category_id) {
+              <option [value]="cat.code">{{ cat.name }}</option>
             }
           </select>
         </div>

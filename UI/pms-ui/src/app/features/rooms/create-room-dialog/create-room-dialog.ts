@@ -4,14 +4,15 @@ import { MatButtonModule } from "@angular/material/button";
 import { MatDialogModule, MatDialogRef } from "@angular/material/dialog";
 import { MatIconModule } from "@angular/material/icon";
 import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
+import type { BuildingItem, RoomTypeItem } from "@tartware/schemas";
 
 import { ApiService, ApiValidationError } from "../../../core/api/api.service";
 import { AuthService } from "../../../core/auth/auth.service";
 import { TenantContextService } from "../../../core/context/tenant-context.service";
 import { ToastService } from "../../../shared/toast/toast.service";
 
-type RoomType = { room_type_id: string; type_name: string };
-type Building = { building_id: string; building_code: string; building_name: string };
+type RoomTypeOption = Pick<RoomTypeItem, "room_type_id" | "type_name">;
+type BuildingOption = Pick<BuildingItem, "building_id" | "building_code" | "building_name">;
 
 @Component({
 	selector: "app-create-room-dialog",
@@ -27,8 +28,8 @@ export class CreateRoomDialogComponent implements OnInit {
 	private readonly dialogRef = inject(MatDialogRef<CreateRoomDialogComponent>);
 	private readonly toast = inject(ToastService);
 
-	readonly roomTypes = signal<RoomType[]>([]);
-	readonly buildings = signal<Building[]>([]);
+	readonly roomTypes = signal<RoomTypeOption[]>([]);
+	readonly buildings = signal<BuildingOption[]>([]);
 	readonly saving = signal(false);
 
 	touched: Record<string, boolean> = {};
@@ -51,8 +52,8 @@ export class CreateRoomDialogComponent implements OnInit {
 
 		try {
 			const [roomTypes, buildings] = await Promise.all([
-				this.api.get<RoomType[]>("/room-types", { tenant_id: tenantId }),
-				this.api.get<Building[]>("/buildings", { tenant_id: tenantId }),
+				this.api.get<RoomTypeOption[]>("/room-types", { tenant_id: tenantId }),
+				this.api.get<BuildingOption[]>("/buildings", { tenant_id: tenantId }),
 			]);
 			this.roomTypes.set(roomTypes);
 			this.buildings.set(buildings);

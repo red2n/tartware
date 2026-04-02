@@ -3,7 +3,7 @@ import {
   BucketCheckResponseSchema,
   ChargePostingListItemSchema,
   FolioListItemSchema,
-  PaymentMethodEnum,
+  PaymentMethodCodeSchema,
   PaymentStatusEnum,
   PreAuditResponseSchema,
   TransactionTypeEnum,
@@ -50,13 +50,13 @@ const BillingListQuerySchema = z.object({
     ),
   payment_method: z
     .string()
-    .toLowerCase()
-    .optional()
-    .refine(
-      (value) =>
-        !value || PaymentMethodEnum.options.map((method) => method.toLowerCase()).includes(value),
-      { message: "Invalid payment method" },
-    ),
+    .trim()
+    .regex(/^[A-Za-z0-9_]{1,30}$/, {
+      message: "Invalid payment method",
+    })
+    .transform((value) => value.toUpperCase())
+    .pipe(PaymentMethodCodeSchema)
+    .optional(),
   limit: z.coerce.number().int().positive().max(200).default(100),
   offset: z.coerce.number().int().min(0).default(0),
 });
@@ -64,7 +64,25 @@ const BillingListQuerySchema = z.object({
 type BillingListQuery = z.infer<typeof BillingListQuerySchema>;
 
 const BillingListResponseSchema = z.array(BillingPaymentSchema);
-const BillingListQueryJsonSchema = schemaFromZod(BillingListQuerySchema, "BillingPaymentsQuery");
+const BillingListQueryWireSchema = z.object({
+  tenant_id: z.string().uuid(),
+  property_id: z.string().uuid().optional(),
+  status: z.string().optional(),
+  transaction_type: z.string().optional(),
+  payment_method: z
+    .string()
+    .trim()
+    .regex(/^[A-Za-z0-9_]{1,30}$/, {
+      message: "Invalid payment method",
+    })
+    .optional(),
+  limit: z.coerce.number().int().positive().max(200).default(100),
+  offset: z.coerce.number().int().min(0).default(0),
+});
+const BillingListQueryJsonSchema = schemaFromZod(
+  BillingListQueryWireSchema,
+  "BillingPaymentsQuery",
+);
 const BillingListResponseJsonSchema = schemaFromZod(
   BillingListResponseSchema,
   "BillingPaymentsResponse",

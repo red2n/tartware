@@ -6,10 +6,14 @@
  */
 
 /**
- * Zod ENUM definitions for Tartware PMS
- * Synchronized with PostgreSQL ENUMs in scripts/02-enum-types.sql
+ * Zod ENUM definitions for Tartware PMS.
+ * DB-backed invariant enums in this file are synchronized with
+ * PostgreSQL ENUMs in scripts/02-enum-types.sql.
  *
- * ⚠️ CRITICAL: Any change to database ENUMs must be reflected here
+ * Configurable business catalogs are exposed here only as compatibility aliases
+ * to lookup-table-backed code schemas. They are not part of SQL enum sync.
+ *
+ * ⚠️ CRITICAL: Any change to DB-owned invariant enums must be reflected here
  * See: docs/ZOD_SCHEMA_IMPLEMENTATION_PLAN.md#d-schema-synchronization-protocol
  *
  * Total ENUMs: 70 types
@@ -17,6 +21,14 @@
  */
 
 import { z } from "zod";
+
+import {
+	CompanyTypeCodeSchema,
+	GroupBookingTypeCodeSchema,
+	PaymentMethodCodeSchema,
+	RateTypeCodeSchema,
+	RoomCategoryCodeSchema,
+} from "./reference-data-types.js";
 
 // =====================================================
 // MULTI-TENANCY ENUMS
@@ -159,15 +171,10 @@ export type RoomStatus = z.infer<typeof RoomStatusEnum>;
 
 /**
  * Room Category - Room type classification
- * @database room_category
+ * @reference-data room_categories
+ * @deprecated Use RoomCategoryCodeSchema from shared/reference-data-types.ts.
  */
-export const RoomCategoryEnum = z.enum([
-	"STANDARD",
-	"DELUXE",
-	"SUITE",
-	"EXECUTIVE",
-	"PRESIDENTIAL",
-]);
+export const RoomCategoryEnum = RoomCategoryCodeSchema;
 export type RoomCategory = z.infer<typeof RoomCategoryEnum>;
 
 /**
@@ -220,26 +227,10 @@ export type VipLevel = z.infer<typeof VipLevelEnum>;
 
 /**
  * Rate Type - Rate classification for pricing priority
- * @database rate_type
+ * @reference-data rate_types
+ * @deprecated Use RateTypeCodeSchema from shared/reference-data-types.ts.
  */
-export const RateTypeEnum = z.enum([
-	"RACK", // Default/published rate (highest price, lowest priority)
-	"BAR", // Best Available Rate
-	"COMP", // Complimentary (free)
-	"HOUSE", // House use (internal)
-	"CORPORATE", // Corporate negotiated rate
-	"GOVERNMENT", // Government rate
-	"TRAVEL_AGENT", // Travel agent commission rate
-	"PROMO", // Promotional rate
-	"COUPON", // Coupon/discount code rate
-	"EARLYBIRD", // Early booking discount
-	"LASTMINUTE", // Last-minute deal
-	"NON_REFUNDABLE", // Non-refundable discounted rate
-	"FLEXIBLE", // Flexible cancellation rate
-	"LOS", // Length of stay rate
-	"DERIVED", // Derived from parent rate
-	"MANUAL_OVERRIDE", // Manual price override
-]);
+export const RateTypeEnum = RateTypeCodeSchema;
 export type RateType = z.infer<typeof RateTypeEnum>;
 
 /**
@@ -278,7 +269,6 @@ export const SeasonTypeEnum = z.enum([
 	"HIGH",
 	"PEAK",
 	"SPECIAL_EVENT",
-	"OFF",
 ]);
 export type SeasonType = z.infer<typeof SeasonTypeEnum>;
 
@@ -342,20 +332,10 @@ export type ReservationType = z.infer<typeof ReservationTypeEnum>;
 
 /**
  * Payment Method
- * @database payment_method
+ * @reference-data payment_methods
+ * @deprecated Use PaymentMethodCodeSchema from shared/reference-data-types.ts.
  */
-export const PaymentMethodEnum = z.enum([
-	"CASH",
-	"CREDIT_CARD",
-	"DEBIT_CARD",
-	"BANK_TRANSFER",
-	"CHECK",
-	"DIGITAL_WALLET",
-	"CRYPTOCURRENCY",
-	"DIRECT_BILL",
-	"LOYALTY_POINTS",
-	"GIFT_CARD",
-]);
+export const PaymentMethodEnum = PaymentMethodCodeSchema;
 export type PaymentMethod = z.infer<typeof PaymentMethodEnum>;
 
 /**
@@ -394,7 +374,7 @@ export type TransactionType = z.infer<typeof TransactionTypeEnum>;
 
 /**
  * Settings Scope Level - Determines where a setting is applied
- * @database settings_scope
+ * @app-only settings_scope
  */
 export const SettingsScopeEnum = z.enum([
 	"GLOBAL",
@@ -408,7 +388,7 @@ export type SettingsScope = z.infer<typeof SettingsScopeEnum>;
 
 /**
  * Settings Data Type - Underlying value type for a setting
- * @database settings_data_type
+ * @app-only settings_data_type
  */
 export const SettingsDataTypeEnum = z.enum([
 	"STRING",
@@ -430,7 +410,7 @@ export type SettingsDataType = z.infer<typeof SettingsDataTypeEnum>;
 
 /**
  * Settings Control Type - UI control used to edit a setting
- * @database settings_control_type
+ * @app-only settings_control_type
  */
 export const SettingsControlTypeEnum = z.enum([
 	"TOGGLE",
@@ -452,7 +432,7 @@ export type SettingsControlType = z.infer<typeof SettingsControlTypeEnum>;
 
 /**
  * Settings Sensitivity - Data classification for a setting
- * @database settings_sensitivity
+ * @app-only settings_sensitivity
  */
 export const SettingsSensitivityEnum = z.enum([
 	"PUBLIC",
@@ -553,20 +533,10 @@ export type InvoiceStatus = z.infer<typeof InvoiceStatusEnum>;
 
 /**
  * Company Type - Business partner classification
- * @database company_type
+ * @reference-data company_types
+ * @deprecated Use CompanyTypeCodeSchema from shared/reference-data-types.ts.
  */
-export const CompanyTypeEnum = z.enum([
-	"CORPORATE",
-	"TRAVEL_AGENCY",
-	"WHOLESALER",
-	"OTA",
-	"EVENT_PLANNER",
-	"AIRLINE",
-	"GOVERNMENT",
-	"EDUCATIONAL",
-	"CONSORTIUM",
-	"PARTNER",
-]);
+export const CompanyTypeEnum = CompanyTypeCodeSchema;
 export type CompanyType = z.infer<typeof CompanyTypeEnum>;
 
 /**
@@ -587,21 +557,10 @@ export type CreditStatus = z.infer<typeof CreditStatusEnum>;
 
 /**
  * Group Booking Type
- * @database group_booking_type
+ * @reference-data group_booking_types
+ * @deprecated Use GroupBookingTypeCodeSchema from shared/reference-data-types.ts.
  */
-export const GroupBookingTypeEnum = z.enum([
-	"CONFERENCE",
-	"WEDDING",
-	"CORPORATE",
-	"TOUR_GROUP",
-	"SPORTS_TEAM",
-	"REUNION",
-	"CONVENTION",
-	"GOVERNMENT",
-	"AIRLINE_CREW",
-	"EDUCATIONAL",
-	"OTHER",
-]);
+export const GroupBookingTypeEnum = GroupBookingTypeCodeSchema;
 export type GroupBookingType = z.infer<typeof GroupBookingTypeEnum>;
 
 /**

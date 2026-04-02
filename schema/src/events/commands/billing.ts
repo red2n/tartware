@@ -9,7 +9,7 @@
 
 import { z } from "zod";
 
-import { PaymentMethodEnum } from "../../shared/enums.js";
+import { PaymentMethodCodeSchema } from "../../shared/reference-data-types.js";
 
 export const BillingPaymentCaptureCommandSchema = z.object({
 	payment_reference: z.string().trim().min(3).max(100),
@@ -18,7 +18,7 @@ export const BillingPaymentCaptureCommandSchema = z.object({
 	guest_id: z.string().uuid(),
 	amount: z.coerce.number().positive(),
 	currency: z.string().length(3).optional(),
-	payment_method: PaymentMethodEnum,
+	payment_method: PaymentMethodCodeSchema,
 	gateway: z
 		.object({
 			name: z.string().max(100).optional(),
@@ -44,7 +44,7 @@ export const BillingPaymentRefundCommandSchema = z
 		currency: z.string().length(3).optional(),
 		reason: z.string().max(500).optional(),
 		refund_reference: z.string().trim().max(120).optional(),
-		payment_method: PaymentMethodEnum.optional(),
+		payment_method: PaymentMethodCodeSchema.optional(),
 	})
 	.refine(
 		(value) => Boolean(value.payment_id || value.payment_reference),
@@ -200,7 +200,7 @@ export const BillingPaymentAuthorizeCommandSchema = z.object({
 	guest_id: z.string().uuid(),
 	amount: z.coerce.number().positive(),
 	currency: z.string().length(3).optional(),
-	payment_method: PaymentMethodEnum,
+	payment_method: PaymentMethodCodeSchema,
 	gateway: z
 		.object({
 			name: z.string().max(100).optional(),

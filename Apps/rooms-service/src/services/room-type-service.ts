@@ -7,6 +7,7 @@ import {
   ROOM_TYPE_DELETE_SQL,
   ROOM_TYPE_LIST_SQL,
 } from "../sql/room-type-queries.js";
+import { resolveLegacyRoomCategoryValue } from "./reference-data-service.js";
 
 // Re-export schema for consumers that import from this module
 export { RoomTypeItemSchema };
@@ -123,6 +124,12 @@ export const listRoomTypes = async (options: {
  * Create a new room type.
  */
 export const createRoomType = async (input: CreateRoomTypeInput): Promise<RoomTypeItem> => {
+  const category = await resolveLegacyRoomCategoryValue({
+    tenantId: input.tenant_id,
+    propertyId: input.property_id,
+    category: input.category,
+  });
+
   const { rows } = await query<RoomTypeRow>(ROOM_TYPE_CREATE_SQL, [
     input.tenant_id,
     input.property_id,
@@ -130,7 +137,7 @@ export const createRoomType = async (input: CreateRoomTypeInput): Promise<RoomTy
     input.type_code,
     input.description ?? null,
     input.short_description ?? null,
-    input.category ?? null,
+    category ?? null,
     input.base_occupancy ?? null,
     input.max_occupancy ?? null,
     input.max_adults ?? null,
@@ -258,9 +265,18 @@ const ROOM_TYPE_SELECT_COLUMNS = [
  * former COALESCE($n, alias.column) approach.
  */
 export const updateRoomType = async (input: UpdateRoomTypeInput): Promise<RoomTypeItem | null> => {
+  const category =
+    input.category === undefined
+      ? undefined
+      : await resolveLegacyRoomCategoryValue({
+          tenantId: input.tenant_id,
+          propertyId: input.property_id,
+          category: input.category,
+        });
+
   const fields: UpdateField[] = [];
   for (const mapping of ROOM_TYPE_UPDATE_FIELDS) {
-    const value = input[mapping.key];
+    const value = mapping.key === "category" ? category : input[mapping.key];
     if (value !== undefined) {
       fields.push({
         column: mapping.column,

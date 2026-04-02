@@ -7,6 +7,7 @@
 
 import { buildRouteSchema, schemaFromZod } from "@tartware/openapi";
 import {
+  ProblemDetailSchema,
   type RateCalendarBulkUpsertBody,
   RateCalendarBulkUpsertBodySchema,
   type RateCalendarQuery,
@@ -16,7 +17,6 @@ import {
   RateCalendarResponseSchema,
 } from "@tartware/schemas";
 import type { FastifyInstance } from "fastify";
-import { z } from "zod";
 
 import {
   bulkUpsertRateCalendar,
@@ -36,10 +36,7 @@ const RangeFillBodyJsonSchema = schemaFromZod(
   RateCalendarRangeFillBodySchema,
   "RateCalendarRangeFillBody",
 );
-const ErrorResponseSchema = schemaFromZod(
-  z.object({ type: z.string(), title: z.string(), status: z.number(), detail: z.string() }),
-  "RateCalendarErrorResponse",
-);
+const ErrorResponseSchema = schemaFromZod(ProblemDetailSchema, "RateCalendarErrorResponse");
 
 export const registerRateCalendarRoutes = (app: FastifyInstance): void => {
   /**

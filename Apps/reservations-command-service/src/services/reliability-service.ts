@@ -1,3 +1,8 @@
+import type {
+  ReservationReliabilitySnapshot as ReliabilitySnapshot,
+  ReservationReliabilityStatus as ReliabilityStatus,
+} from "@tartware/schemas";
+
 import { kafkaConfig, reliabilityConfig } from "../config.js";
 import { kafka } from "../kafka/client.js";
 import { query } from "../lib/db.js";
@@ -20,35 +25,6 @@ type LifecycleStats = {
 type DlqStats = {
   depth: number | null;
   error?: string;
-};
-
-type ReliabilityStatus = "healthy" | "degraded" | "critical";
-
-/**
- * Reliability snapshot for reservation command pipeline.
- */
-export type ReliabilitySnapshot = {
-  status: ReliabilityStatus;
-  generatedAt: string;
-  issues: string[];
-  outbox: {
-    pending: number;
-    warnThreshold: number;
-    criticalThreshold: number;
-  };
-  consumer: ConsumerStats & {
-    staleThresholdSeconds: number;
-  };
-  lifecycle: LifecycleStats & {
-    stalledThresholdSeconds: number;
-  };
-  dlq: {
-    depth: number | null;
-    warnThreshold: number;
-    criticalThreshold: number;
-    topic: string;
-    error: string | null;
-  };
 };
 
 const STATUS_ORDER: ReliabilityStatus[] = ["healthy", "degraded", "critical"];

@@ -2,9 +2,15 @@ import type { RateLimitPluginOptions } from "@fastify/rate-limit";
 import rateLimit from "@fastify/rate-limit";
 import { buildFastifyServer, resolveServiceRegistryConfig } from "@tartware/fastify-server";
 import { buildRouteSchema, jsonObjectSchema, schemaFromZod } from "@tartware/openapi";
-import { ReservationCommandLifecycleSchema, SERVICE_REGISTRY_CATALOG } from "@tartware/schemas";
+import {
+  type ReservationReliabilitySnapshot as ReliabilitySnapshot,
+  ReservationLifecycleParamsSchema,
+  ReservationLifecycleQuerySchema,
+  ReservationLifecycleResponseSchema,
+  ReservationReliabilitySnapshotSchema,
+  SERVICE_REGISTRY_CATALOG,
+} from "@tartware/schemas";
 import type { FastifyInstance, FastifyPluginAsync } from "fastify";
-import { z } from "zod";
 
 import { checkGuardHealth } from "./clients/availability-guard-client.js";
 import { kafkaConfig, reliabilityConfig, serviceConfig } from "./config.js";
@@ -12,16 +18,8 @@ import { checkDatabaseHealth, checkKafkaHealth } from "./lib/health-checks.js";
 import { metricsRegistry } from "./lib/metrics.js";
 import { reservationsLogger } from "./logger.js";
 import swaggerPlugin from "./plugins/swagger.js";
-import type { ReliabilitySnapshot } from "./services/reliability-service.js";
 import { getReliabilitySnapshot } from "./services/reliability-service.js";
 import { listReservationLifecycle } from "./services/reservation-lifecycle-service.js";
-
-const ReservationLifecycleParamsSchema = z.object({
-  reservationId: z.string().uuid(),
-});
-const ReservationLifecycleQuerySchema = z.object({
-  tenant_id: z.string().uuid(),
-});
 
 const ReservationLifecycleParamsJsonSchema = schemaFromZod(
   ReservationLifecycleParamsSchema,
@@ -32,40 +30,11 @@ const ReservationLifecycleQueryJsonSchema = schemaFromZod(
   "ReservationLifecycleQuery",
 );
 const ReservationLifecycleResponseJsonSchema = schemaFromZod(
-  z.array(ReservationCommandLifecycleSchema),
+  ReservationLifecycleResponseSchema,
   "ReservationLifecycleResponse",
 );
-const ReliabilitySnapshotSchema = z.object({
-  status: z.enum(["healthy", "degraded", "critical"]),
-  generatedAt: z.string(),
-  issues: z.array(z.string()),
-  outbox: z.object({
-    pending: z.number(),
-    warnThreshold: z.number(),
-    criticalThreshold: z.number(),
-  }),
-  consumer: z.object({
-    partitions: z.number(),
-    stalePartitions: z.number(),
-    maxSecondsSinceCommit: z.number().nullable(),
-    staleThresholdSeconds: z.number(),
-  }),
-  lifecycle: z.object({
-    stalledCommands: z.number(),
-    oldestStuckSeconds: z.number().nullable(),
-    dlqTotal: z.number(),
-    stalledThresholdSeconds: z.number(),
-  }),
-  dlq: z.object({
-    depth: z.number().nullable(),
-    warnThreshold: z.number(),
-    criticalThreshold: z.number(),
-    topic: z.string(),
-    error: z.string().nullable(),
-  }),
-});
 const ReliabilitySnapshotJsonSchema = schemaFromZod(
-  ReliabilitySnapshotSchema,
+  ReservationReliabilitySnapshotSchema,
   "ReliabilitySnapshot",
 );
 const RELIABILITY_SNAPSHOT_REFRESH_MS = 30_000;

@@ -15,6 +15,7 @@ import {
   RATE_GET_BY_ID_SQL,
   RATE_LIST_SQL,
 } from "../sql/rate-queries.js";
+import { resolveLegacyRateTypeValue } from "./reference-data-service.js";
 
 // RateRow imported from @tartware/schemas
 
@@ -140,12 +141,19 @@ export const listRates = async (options: {
   limit?: number;
   offset?: number;
 }): Promise<RateItem[]> => {
+  const rateType = await resolveLegacyRateTypeValue({
+    tenantId: options.tenantId,
+    propertyId: options.propertyId,
+    rateType: options.rateType,
+    allowUnmapped: true,
+  });
+
   const { rows } = await query<RateRow>(RATE_LIST_SQL, [
     options.tenantId,
     options.propertyId ?? null,
     options.roomTypeId ?? null,
     options.status ?? null,
-    options.rateType ?? null,
+    rateType ?? null,
     options.search ? `%${options.search.trim()}%` : null,
     options.limit ?? 200,
     options.offset ?? 0,
@@ -174,6 +182,12 @@ export const getRateById = async (options: {
  * Create a new rate.
  */
 export const createRate = async (input: CreateRateInput): Promise<RateItem> => {
+  const rateType = await resolveLegacyRateTypeValue({
+    tenantId: input.tenant_id,
+    propertyId: input.property_id,
+    rateType: input.rate_type,
+  });
+
   const { rows } = await query<RateRow>(RATE_CREATE_SQL, [
     input.tenant_id,
     input.property_id,
@@ -181,7 +195,7 @@ export const createRate = async (input: CreateRateInput): Promise<RateItem> => {
     input.rate_name,
     input.rate_code,
     input.description ?? null,
-    input.rate_type ?? null,
+    rateType ?? null,
     input.strategy ?? null,
     input.priority ?? null,
     input.base_rate,
@@ -353,9 +367,18 @@ const RATE_SELECT_COLUMNS = [
  * former COALESCE($n, alias.column) approach.
  */
 export const updateRate = async (input: UpdateRateInput): Promise<RateItem | null> => {
+  const rateType =
+    input.rate_type === undefined
+      ? undefined
+      : await resolveLegacyRateTypeValue({
+          tenantId: input.tenant_id,
+          propertyId: input.property_id,
+          rateType: input.rate_type,
+        });
+
   const fields: UpdateField[] = [];
   for (const mapping of RATE_UPDATE_FIELDS) {
-    const value = input[mapping.key];
+    const value = mapping.key === "rate_type" ? rateType : input[mapping.key];
     if (value !== undefined) {
       fields.push({
         column: mapping.column,

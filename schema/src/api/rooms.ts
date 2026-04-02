@@ -9,6 +9,7 @@ import { z } from "zod";
 
 import { uuid } from "../shared/base-schemas.js";
 import { HousekeepingStatusEnum, RoomStatusEnum } from "../shared/enums.js";
+import { RoomCategoryCodeSchema } from "../shared/reference-data-types.js";
 
 // -----------------------------------------------------------------------------
 // Room Type Schemas
@@ -51,16 +52,65 @@ export const RoomTypeItemSchema = z.object({
 
 export type RoomTypeItem = z.infer<typeof RoomTypeItemSchema>;
 
+export const RoomCategoryReferenceItemSchema = z.object({
+	category_id: uuid,
+	code: RoomCategoryCodeSchema,
+	name: z.string(),
+	description: z.string().optional(),
+	legacy_enum_value: z.string().max(50).optional().nullable(),
+	display_order: z.number().int(),
+	is_system: z.boolean(),
+	is_active: z.boolean(),
+});
+
+export type RoomCategoryReferenceItem = z.infer<
+	typeof RoomCategoryReferenceItemSchema
+>;
+
+export const RoomCategoryListQuerySchema = z.object({
+	tenant_id: uuid,
+	property_id: uuid.optional(),
+	is_active: z.coerce.boolean().optional(),
+});
+
+export type RoomCategoryListQuery = z.infer<typeof RoomCategoryListQuerySchema>;
+
+export const RoomCategoryListResponseSchema = z.array(
+	RoomCategoryReferenceItemSchema,
+);
+
+export type RoomCategoryListResponse = z.infer<
+	typeof RoomCategoryListResponseSchema
+>;
+
+export const RoomTypeListQuerySchema = z.object({
+	tenant_id: uuid,
+	property_id: uuid.optional(),
+	is_active: z.coerce.boolean().optional(),
+	search: z.string().min(1).max(80).optional(),
+	limit: z.coerce.number().int().positive().max(500).default(200),
+	offset: z.coerce.number().int().min(0).default(0),
+});
+export type RoomTypeListQuery = z.infer<typeof RoomTypeListQuerySchema>;
+
 /**
  * Create room type request body schema.
  */
 export const CreateRoomTypeBodySchema = z.object({
+	tenant_id: uuid,
 	property_id: uuid,
 	type_name: z.string().min(1).max(160),
-	type_code: z.string().min(1).max(80),
+	type_code: z
+		.string()
+		.min(2)
+		.max(50)
+		.regex(/^[A-Za-z0-9_-]+$/, {
+			message: "Type code must be alphanumeric (with _ or -)",
+		})
+		.transform((value) => value.toUpperCase()),
 	description: z.string().max(2000).optional(),
 	short_description: z.string().max(500).optional(),
-	category: z.string().max(80).optional(),
+	category: RoomCategoryCodeSchema.optional(),
 	base_occupancy: z.number().int().min(1).optional(),
 	max_occupancy: z.number().int().min(1).optional(),
 	max_adults: z.number().int().min(1).optional(),
@@ -84,30 +134,36 @@ export type CreateRoomTypeBody = z.infer<typeof CreateRoomTypeBodySchema>;
 /**
  * Update room type request body schema.
  */
-export const UpdateRoomTypeBodySchema = CreateRoomTypeBodySchema.partial();
+export const UpdateRoomTypeBodySchema =
+	CreateRoomTypeBodySchema.partial().extend({
+		tenant_id: uuid,
+	});
 
 export type UpdateRoomTypeBody = z.infer<typeof UpdateRoomTypeBodySchema>;
 
 /**
  * Room type list response schema.
  */
-export const RoomTypeListResponseSchema = z.object({
-	data: z.array(RoomTypeItemSchema),
-	meta: z.object({
-		count: z.number().int().nonnegative(),
-	}),
-});
+export const RoomTypeListResponseSchema = z.array(RoomTypeItemSchema);
 
 export type RoomTypeListResponse = z.infer<typeof RoomTypeListResponseSchema>;
 
 /**
  * Single room type response schema.
  */
-export const RoomTypeResponseSchema = z.object({
-	data: RoomTypeItemSchema,
-});
+export const RoomTypeResponseSchema = RoomTypeItemSchema;
 
 export type RoomTypeResponse = z.infer<typeof RoomTypeResponseSchema>;
+
+export const RoomTypeParamsSchema = z.object({
+	roomTypeId: uuid,
+});
+export type RoomTypeParams = z.infer<typeof RoomTypeParamsSchema>;
+
+export const DeleteRoomTypeBodySchema = z.object({
+	tenant_id: uuid,
+});
+export type DeleteRoomTypeBody = z.infer<typeof DeleteRoomTypeBodySchema>;
 
 // -----------------------------------------------------------------------------
 // Room Schemas

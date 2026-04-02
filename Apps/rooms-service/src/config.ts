@@ -3,6 +3,7 @@ import {
   loadServiceConfig,
   parseNumberEnv,
   parseNumberList,
+  redisSchema,
   resolveKafkaConfig,
   validateProductionSecrets,
 } from "@tartware/config";
@@ -18,7 +19,7 @@ if (!process.env.AUTH_JWT_SECRET) {
 process.env.AUTH_JWT_ISSUER = process.env.AUTH_JWT_ISSUER ?? "tartware-core";
 process.env.AUTH_JWT_AUDIENCE = process.env.AUTH_JWT_AUDIENCE ?? "tartware";
 
-const configValues = loadServiceConfig(databaseSchema);
+const configValues = loadServiceConfig(databaseSchema.merge(redisSchema));
 validateProductionSecrets({
   ...configValues,
   NODE_ENV: process.env.NODE_ENV,
@@ -65,6 +66,18 @@ export const config = {
     max: configValues.DB_POOL_MAX,
     idleTimeoutMillis: configValues.DB_POOL_IDLE_TIMEOUT_MS,
     statementTimeoutMs: configValues.DB_STATEMENT_TIMEOUT_MS,
+  },
+  redis: {
+    host: configValues.REDIS_HOST,
+    port: configValues.REDIS_PORT,
+    password: configValues.REDIS_PASSWORD,
+    db: configValues.REDIS_DB,
+    keyPrefix: configValues.REDIS_KEY_PREFIX,
+    enabled: configValues.REDIS_ENABLED,
+    ttl: {
+      default: configValues.REDIS_TTL_DEFAULT,
+      tenant: configValues.REDIS_TTL_TENANT,
+    },
   },
   auth: {
     jwt: {

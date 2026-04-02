@@ -9,6 +9,7 @@ import {
 } from "./commands/command-center-consumer.js";
 import { config } from "./config.js";
 import { shutdownProducer } from "./kafka/producer.js";
+import { closeRedis, initRedis } from "./lib/redis.js";
 import { closePool as closeRecommendationPool } from "./modules/recommendation-service/lib/db.js";
 import { initializePipeline } from "./modules/recommendation-service/services/index.js";
 import { buildServer } from "./server.js";
@@ -33,6 +34,7 @@ const telemetry = await initTelemetry({
 const app = buildServer();
 const proc = process;
 const kafkaEnabled = process.env.DISABLE_KAFKA !== "true";
+const redis = initRedis();
 let isShuttingDown = false;
 let recommendationPoolClosed = false;
 
@@ -86,6 +88,12 @@ const start = async () => {
 
     initializePipeline();
 
+    if (redis) {
+      app.log.info("Redis caching enabled");
+    } else {
+      app.log.warn("Redis unavailable - running without cache");
+    }
+
     if (kafkaEnabled) {
       await startRoomsCommandCenterConsumer();
     } else {
@@ -103,6 +111,7 @@ const start = async () => {
   } catch (error) {
     app.log.error(error, `Failed to start ${config.service.name}`);
     await closeRecommendationPoolSafely();
+    await closeRedis();
     await app.close();
     await telemetry
       ?.shutdown()
@@ -125,6 +134,7 @@ const shutdown = async (signal: NodeJS.Signals) => {
       await shutdownProducer();
     }
     await closeRecommendationPoolSafely();
+    await closeRedis();
     await app.close();
     await telemetry
       ?.shutdown()

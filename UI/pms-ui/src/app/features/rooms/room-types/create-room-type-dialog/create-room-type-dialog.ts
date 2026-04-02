@@ -4,35 +4,15 @@ import { MatButtonModule } from "@angular/material/button";
 import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from "@angular/material/dialog";
 import { MatIconModule } from "@angular/material/icon";
 import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
-
-import type { RoomTypeItem } from "@tartware/schemas";
+import { RoomCategoryReferenceItemSchema, type RoomTypeItem } from "@tartware/schemas";
+import { z } from "zod";
 
 import { ApiService, ApiValidationError } from "../../../../core/api/api.service";
 import { AuthService } from "../../../../core/auth/auth.service";
 import { TenantContextService } from "../../../../core/context/tenant-context.service";
 import { ToastService } from "../../../../shared/toast/toast.service";
 
-const ROOM_CATEGORIES = [
-	"STANDARD",
-	"DELUXE",
-	"SUPERIOR",
-	"SUITE",
-	"JUNIOR_SUITE",
-	"PRESIDENTIAL",
-	"VILLA",
-	"APARTMENT",
-	"STUDIO",
-	"PENTHOUSE",
-	"BUNGALOW",
-	"COTTAGE",
-	"CABIN",
-	"ACCESSIBLE",
-	"CONNECTING",
-	"FAMILY",
-	"DORMITORY",
-	"CAPSULE",
-	"OTHER",
-];
+type RoomCategoryReferenceItem = z.infer<typeof RoomCategoryReferenceItemSchema>;
 
 @Component({
 	selector: "app-create-room-type-dialog",
@@ -49,8 +29,8 @@ export class CreateRoomTypeDialogComponent implements OnInit {
 	private readonly toast = inject(ToastService);
 	private readonly data = inject<RoomTypeItem | null>(MAT_DIALOG_DATA, { optional: true });
 
+	readonly categories = signal<RoomCategoryReferenceItem[]>([]);
 	readonly saving = signal(false);
-	readonly categories = ROOM_CATEGORIES;
 
 	touched: Record<string, boolean> = {};
 
@@ -78,6 +58,8 @@ export class CreateRoomTypeDialogComponent implements OnInit {
 	isActive = true;
 
 	ngOnInit(): void {
+		this.loadCategories();
+
 		if (this.data) {
 			this.typeName = this.data.type_name;
 			this.typeCode = this.data.type_code;
@@ -96,6 +78,45 @@ export class CreateRoomTypeDialogComponent implements OnInit {
 			this.currency = this.data.currency ?? "USD";
 			this.displayOrder = this.data.display_order ?? 0;
 			this.isActive = this.data.is_active;
+		}
+	}
+
+	async loadCategories(): Promise<void> {
+		const tenantId = this.auth.tenantId();
+		if (!tenantId) return;
+
+		try {
+			const params: Record<string, string> = { tenant_id: tenantId };
+			const propertyId = this.ctx.propertyId();
+			if (propertyId) {
+				params["property_id"] = propertyId;
+			}
+
+			const categories = await this.api.get<RoomCategoryReferenceItem[]>(
+				"/reference-data/room-categories",
+				params,
+			);
+			this.categories.set(categories);
+			if (this.data) {
+				const selectedCategory = categories.find(
+					(category) =>
+						category.code === this.data?.category ||
+						category.legacy_enum_value === this.data?.category,
+				);
+				if (selectedCategory) {
+					this.category = selectedCategory.code;
+				}
+			} else if (categories.length > 0) {
+				const hasCurrentCategory = categories.some(
+					(category) =>
+						category.code === this.category || category.legacy_enum_value === this.category,
+				);
+				if (!hasCurrentCategory) {
+					this.category = categories[0]?.code ?? "STANDARD";
+				}
+			}
+		} catch {
+			this.toast.error("Failed to load room categories");
 		}
 	}
 

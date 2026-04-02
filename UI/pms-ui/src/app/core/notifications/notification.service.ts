@@ -1,29 +1,11 @@
 import { computed, Injectable, inject, type OnDestroy, signal } from "@angular/core";
+import type {
+	NotificationItem,
+	NotificationListResponse,
+	UnreadCountPayload,
+} from "@tartware/schemas";
 import { ApiService } from "../api/api.service";
 import { AuthService } from "../auth/auth.service";
-
-export interface InAppNotification {
-	notification_id: string;
-	tenant_id: string;
-	property_id: string | null;
-	user_id: string | null;
-	title: string;
-	message: string;
-	category: string;
-	priority: string;
-	source_type: string | null;
-	source_id: string | null;
-	action_url: string | null;
-	is_read: boolean;
-	read_at: string | null;
-	metadata: Record<string, unknown> | null;
-	created_at: string;
-}
-
-interface NotificationListResponse {
-	data: InAppNotification[];
-	meta: { total: number; unread: number; limit: number; offset: number };
-}
 
 /** Category → Material icon mapping */
 const CATEGORY_ICONS: Record<string, string> = {
@@ -51,7 +33,7 @@ export class NotificationService implements OnDestroy {
 	private readonly MAX_RECONNECT_DELAY = 30_000;
 
 	/** All loaded notifications */
-	private readonly _notifications = signal<InAppNotification[]>([]);
+	private readonly _notifications = signal<NotificationItem[]>([]);
 	readonly notifications = this._notifications.asReadonly();
 
 	/** Unread count (updated via SSE + REST) */
@@ -189,7 +171,7 @@ export class NotificationService implements OnDestroy {
 
 		this.eventSource.addEventListener("notification", (event) => {
 			try {
-				const notification = JSON.parse(event.data) as InAppNotification;
+				const notification = JSON.parse(event.data) as NotificationItem;
 				// Prepend new notification to the list
 				this._notifications.update((list) => [notification, ...list]);
 				this._unreadCount.update((c) => c + 1);
@@ -200,7 +182,7 @@ export class NotificationService implements OnDestroy {
 
 		this.eventSource.addEventListener("unread_count", (event) => {
 			try {
-				const { unread } = JSON.parse(event.data) as { unread: number };
+				const { unread } = JSON.parse(event.data) as UnreadCountPayload;
 				this._unreadCount.set(unread);
 			} catch {
 				// Invalid data, ignore

@@ -4,6 +4,7 @@ import {
   IncidentSeverityEnum,
   IncidentStatusEnum,
   IncidentTypeEnum,
+  ProblemDetailSchema,
 } from "@tartware/schemas";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
@@ -86,10 +87,7 @@ const IncidentReportItemJsonSchema = schemaFromZod(
 );
 const IncidentParamsJsonSchema = schemaFromZod(IncidentParamsSchema, "IncidentParams");
 
-const ErrorResponseSchema = schemaFromZod(
-  z.object({ type: z.string(), title: z.string(), status: z.number(), detail: z.string() }),
-  "ErrorResponse",
-);
+const ErrorResponseSchema = schemaFromZod(ProblemDetailSchema, "IncidentErrorResponse");
 
 const INCIDENTS_TAG = "Incidents";
 

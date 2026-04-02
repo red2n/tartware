@@ -74,6 +74,18 @@ export type RoomTypeRow = {
 	version: bigint | null;
 };
 
+/** Raw row shape from room_categories reference data query. */
+export type RoomCategoryReferenceRow = {
+	category_id: string;
+	code: string;
+	name: string;
+	description: string | null;
+	legacy_enum_value: string | null;
+	display_order: number | null;
+	is_system: boolean | null;
+	is_active: boolean | null;
+};
+
 // =====================================================
 // BUILDING ROW
 // =====================================================
