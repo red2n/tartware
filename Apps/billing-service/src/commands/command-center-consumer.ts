@@ -6,6 +6,7 @@ import {
 import { buildDlqPayload } from "@tartware/command-consumer-utils/dlq";
 import { processWithRetry, RetryExhaustedError } from "@tartware/config/retry";
 import type { Consumer } from "kafkajs";
+
 import { config } from "../config.js";
 import { kafka } from "../kafka/client.js";
 import { publishDlqEvent } from "../kafka/producer.js";
@@ -22,13 +23,11 @@ import {
   applyPayment,
   approveCommission,
   authorizePayment,
-  bulkGeneratePricingRecommendations,
   calculateCommission,
   captureBillingPayment,
   closeCashierSession,
   closeFolio,
   createInvoice,
-  evaluatePricingRules,
   executeNightAudit,
   finalizeInvoice,
   incrementAuthorization,
@@ -263,18 +262,6 @@ const routeBillingCommand = async (
       return;
     case "billing.cashier.close":
       await closeCashierSession(envelope.payload, {
-        tenantId: metadata.tenantId,
-        initiatedBy: metadata.initiatedBy ?? null,
-      });
-      return;
-    case "billing.pricing.evaluate":
-      await evaluatePricingRules(envelope.payload, {
-        tenantId: metadata.tenantId,
-        initiatedBy: metadata.initiatedBy ?? null,
-      });
-      return;
-    case "billing.pricing.bulk_recommend":
-      await bulkGeneratePricingRecommendations(envelope.payload, {
         tenantId: metadata.tenantId,
         initiatedBy: metadata.initiatedBy ?? null,
       });
