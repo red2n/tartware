@@ -138,10 +138,14 @@ export const buildServer = (): FastifyInstance => {
     }
   };
 
-  app.addHook("onReady", async () => {
-    await refreshReliabilitySnapshot();
+  const refreshReliabilitySnapshotInBackground = () => {
+    void refreshReliabilitySnapshot();
+  };
+
+  app.addHook("onReady", () => {
+    setImmediate(refreshReliabilitySnapshotInBackground);
     reliabilitySnapshotRefreshTimer = setInterval(() => {
-      void refreshReliabilitySnapshot();
+      refreshReliabilitySnapshotInBackground();
     }, RELIABILITY_SNAPSHOT_REFRESH_MS);
     reliabilitySnapshotRefreshTimer.unref();
   });

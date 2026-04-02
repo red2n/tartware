@@ -73,34 +73,32 @@ const manualReleaseNotificationTestSchema = ManualReleaseNotificationTestSchema;
 
 export const locksRoutes = fastifyPlugin(
   (app: FastifyInstance, _opts: unknown, done: (err?: Error) => void): void => {
-    app.addHook("preHandler", async (request: FastifyRequest, reply: FastifyReply) => {
+    const ensureHttpAuthorizedPreHandler = async (request: FastifyRequest, reply: FastifyReply) => {
       if (!ensureHttpAuthorized(request, reply)) {
         return reply;
       }
+    };
+    const ensureAdminAuthorizedPreHandler = async (
+      request: FastifyRequest,
+      reply: FastifyReply,
+    ) => {
+      if (!ensureAdminAuthorized(request, reply)) {
+        return reply;
+      }
+    };
+    const writeRateLimitPreHandler = app.rateLimit({
+      max: config.rateLimit.writeMax,
+      timeWindow: config.rateLimit.writeTimeWindow,
     });
-
-    const writeRateLimitConfig = {
-      config: {
-        rateLimit: {
-          max: config.rateLimit.writeMax,
-          timeWindow: config.rateLimit.writeTimeWindow,
-        },
-      },
-    };
-
-    const adminRateLimitConfig = {
-      config: {
-        rateLimit: {
-          max: config.rateLimit.adminMax,
-          timeWindow: config.rateLimit.adminTimeWindow,
-        },
-      },
-    };
+    const adminRateLimitPreHandler = app.rateLimit({
+      max: config.rateLimit.adminMax,
+      timeWindow: config.rateLimit.adminTimeWindow,
+    });
 
     app.post(
       "/v1/locks",
       {
-        ...writeRateLimitConfig,
+        preHandler: [writeRateLimitPreHandler, ensureHttpAuthorizedPreHandler],
         schema: buildRouteSchema({
           tag: "Availability Guard",
           summary: "Create a lock",
@@ -128,7 +126,7 @@ export const locksRoutes = fastifyPlugin(
     app.delete(
       "/v1/locks/:lockId",
       {
-        ...writeRateLimitConfig,
+        preHandler: [writeRateLimitPreHandler, ensureHttpAuthorizedPreHandler],
         schema: buildRouteSchema({
           tag: "Availability Guard",
           summary: "Release a lock",
@@ -157,7 +155,7 @@ export const locksRoutes = fastifyPlugin(
     app.post(
       "/v1/locks/bulk-release",
       {
-        ...writeRateLimitConfig,
+        preHandler: [writeRateLimitPreHandler, ensureHttpAuthorizedPreHandler],
         schema: buildRouteSchema({
           tag: "Availability Guard",
           summary: "Bulk release locks",
@@ -177,7 +175,7 @@ export const locksRoutes = fastifyPlugin(
     app.post(
       "/v1/locks/:lockId/manual-release",
       {
-        ...adminRateLimitConfig,
+        preHandler: [adminRateLimitPreHandler, ensureAdminAuthorizedPreHandler],
         schema: buildRouteSchema({
           tag: "Availability Guard",
           summary: "Manually release a lock with audit logging and notifications",
@@ -195,10 +193,6 @@ export const locksRoutes = fastifyPlugin(
         if (!config.guard.manualRelease.enabled) {
           void reply.code(503);
           return { error: "manual_release_disabled" };
-        }
-
-        if (!ensureAdminAuthorized(request, reply)) {
-          return;
         }
 
         const params = z.object({ lockId: z.string().uuid() }).parse(request.params);
@@ -241,7 +235,7 @@ export const locksRoutes = fastifyPlugin(
     app.post(
       "/v1/notifications/manual-release/test",
       {
-        ...adminRateLimitConfig,
+        preHandler: [adminRateLimitPreHandler, ensureAdminAuthorizedPreHandler],
         schema: buildRouteSchema({
           tag: "Availability Guard",
           summary: "Dry-run manual release notification classification (no webhooks called)",
@@ -252,11 +246,7 @@ export const locksRoutes = fastifyPlugin(
           },
         }),
       },
-      async (request, reply) => {
-        if (!ensureAdminAuthorized(request, reply)) {
-          return;
-        }
-
+      async (request) => {
         const body = manualReleaseNotificationTestSchema.parse(request.body);
         const stayStartIso = body.stayStart.toISOString();
         const stayEndIso = body.stayEnd.toISOString();
@@ -312,7 +302,7 @@ export const locksRoutes = fastifyPlugin(
     app.get(
       "/v1/locks/:lockId/audit",
       {
-        ...adminRateLimitConfig,
+        preHandler: [adminRateLimitPreHandler, ensureAdminAuthorizedPreHandler],
         schema: buildRouteSchema({
           tag: "Availability Guard",
           summary: "List audit records for a specific lock",
@@ -329,11 +319,7 @@ export const locksRoutes = fastifyPlugin(
           },
         }),
       },
-      async (request, reply) => {
-        if (!ensureAdminAuthorized(request, reply)) {
-          return;
-        }
-
+      async (request) => {
         const params = z.object({ lockId: z.string().uuid() }).parse(request.params);
         const query = z
           .object({ limit: z.coerce.number().int().min(1).max(200).optional() })
@@ -354,7 +340,7 @@ export const locksRoutes = fastifyPlugin(
     app.get(
       "/v1/locks/audit",
       {
-        ...adminRateLimitConfig,
+        preHandler: [adminRateLimitPreHandler, ensureAdminAuthorizedPreHandler],
         schema: buildRouteSchema({
           tag: "Availability Guard",
           summary: "Search audit records (tenant-wide)",
@@ -365,11 +351,7 @@ export const locksRoutes = fastifyPlugin(
           },
         }),
       },
-      async (request, reply) => {
-        if (!ensureAdminAuthorized(request, reply)) {
-          return;
-        }
-
+      async (request) => {
         const query = AuditQuerySchema.parse(request.query);
         const records: LockAuditRecord[] = await listLockAuditRecords({
           lockId: query.lockId,
