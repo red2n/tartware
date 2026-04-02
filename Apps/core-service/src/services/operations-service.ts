@@ -162,7 +162,12 @@ export const getCashierSessionById = async (
     return null;
   }
 
-  return mapCashierSessionRow(rows[0]!);
+  const row = rows[0];
+  if (!row) {
+    return null;
+  }
+
+  return mapCashierSessionRow(row);
 };
 
 // =====================================================
@@ -276,7 +281,12 @@ export const getShiftHandoverById = async (
     return null;
   }
 
-  return mapShiftHandoverRow(rows[0]!);
+  const row = rows[0];
+  if (!row) {
+    return null;
+  }
+
+  return mapShiftHandoverRow(row);
 };
 
 // =====================================================
@@ -388,7 +398,12 @@ export const getLostFoundItemById = async (
     return null;
   }
 
-  return mapLostFoundRow(rows[0]!);
+  const row = rows[0];
+  if (!row) {
+    return null;
+  }
+
+  return mapLostFoundRow(row);
 };
 
 // =====================================================
@@ -512,7 +527,12 @@ export const getBanquetOrderById = async (
     return null;
   }
 
-  return mapBanquetOrderRow(rows[0]!);
+  const row = rows[0];
+  if (!row) {
+    return null;
+  }
+
+  return mapBanquetOrderRow(row);
 };
 
 // =====================================================
@@ -622,7 +642,12 @@ export const getGuestFeedbackById = async (
     return null;
   }
 
-  return mapGuestFeedbackRow(rows[0]!);
+  const row = rows[0];
+  if (!row) {
+    return null;
+  }
+
+  return mapGuestFeedbackRow(row);
 };
 
 // =====================================================
@@ -740,5 +765,10 @@ export const getPoliceReportById = async (
     return null;
   }
 
-  return mapPoliceReportRow(rows[0]!);
+  const row = rows[0];
+  if (!row) {
+    return null;
+  }
+
+  return mapPoliceReportRow(row);
 };

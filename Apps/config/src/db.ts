@@ -133,10 +133,7 @@ export function createDbPool(dbConfig: DbPoolConfig, logger: ParentLogger): DbPo
   const allowExitOnIdle =
     dbConfig.allowExitOnIdle ?? parseBooleanEnv(process.env.DB_POOL_ALLOW_EXIT_ON_IDLE, false);
   const normalizedPoolMax = normalizePoolSize(poolMax, 10, 1);
-  const normalizedPoolMin = Math.min(
-    normalizedPoolMax,
-    normalizePoolSize(poolMin, 0, 0),
-  );
+  const normalizedPoolMin = Math.min(normalizedPoolMax, normalizePoolSize(poolMin, 0, 0));
 
   const pool = new Pool({
     host: dbConfig.host,

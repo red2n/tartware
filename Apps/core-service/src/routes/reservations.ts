@@ -4,12 +4,12 @@ import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 
 import {
-  ReservationSummarySchema,
   getCheckInBrief,
   getReservationById,
   listReservations,
   ReservationDetailSchema,
   ReservationListItemSchema,
+  ReservationSummarySchema,
 } from "../services/reservation-service.js";
 
 const ReservationListQuerySchema = z.object({

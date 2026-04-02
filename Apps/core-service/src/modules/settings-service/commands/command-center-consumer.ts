@@ -7,6 +7,7 @@ import { buildDlqPayload } from "@tartware/command-consumer-utils/dlq";
 import { processWithRetry, RetryExhaustedError } from "@tartware/config/retry";
 import { createServiceLogger } from "@tartware/telemetry";
 import type { Consumer } from "kafkajs";
+
 import { config } from "../config.js";
 import { kafka } from "../kafka/client.js";
 import { publishDlqEvent } from "../kafka/producer.js";

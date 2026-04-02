@@ -1,8 +1,8 @@
 import {
-  type ReservationSummary,
-  ReservationSummarySchema,
   type ReservationDetail,
   ReservationDetailSchema,
+  type ReservationSummary,
+  ReservationSummarySchema,
   type ReservationListItem as SchemaReservationListItem,
   ReservationListItemSchema as SchemaReservationListItemSchema,
 } from "@tartware/schemas";
