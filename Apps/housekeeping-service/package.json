@@ -33,7 +33,7 @@
     "@tartware/schemas": "workspace:*",
     "@tartware/telemetry": "workspace:*",
     "@tartware/tenant-auth": "workspace:*",
-    "fastify": "^5.6.2",
+    "fastify": "^5.8.4",
     "kafkajs": "^2.2.4",
     "pg": "^8.11.3",
     "prom-client": "^15.1.3",
