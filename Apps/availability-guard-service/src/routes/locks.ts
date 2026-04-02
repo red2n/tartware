@@ -246,7 +246,7 @@ export const locksRoutes = fastifyPlugin(
           },
         }),
       },
-      async (request) => {
+      (request) => {
         const body = manualReleaseNotificationTestSchema.parse(request.body);
         const stayStartIso = body.stayStart.toISOString();
         const stayEndIso = body.stayEnd.toISOString();
