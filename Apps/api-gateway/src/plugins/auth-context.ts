@@ -1,9 +1,31 @@
+/**
+ * Auth Context Plugin — Identity extraction and tenant-scoped authorization.
+ *
+ * Architecture:
+ *   ┌─────────────────────────────────────────────────────────────────────┐
+ *   │ @fastify/rate-limit (server.ts) — global rate limit on ALL routes  │
+ *   │   └─► onRequest: identityExtractor — extracts JWT identity        │
+ *   │         └─► preHandler: withTenantScope() — enforces authz        │
+ *   └─────────────────────────────────────────────────────────────────────┘
+ *
+ * The onRequest hook only performs identity extraction (who is calling?).
+ * It never rejects requests — unauthenticated callers get an anonymous
+ * context. Authorization (can this caller do this?) happens exclusively
+ * in the withTenantScope preHandler, which routes opt into.
+ *
+ * Rate limiting is applied globally via @fastify/rate-limit registered
+ * before this plugin in server.ts. Auth routes additionally configure
+ * per-route stricter limits via route config.rateLimit overrides.
+ *
+ * @module auth-context
+ */
 import type { FastifyInstance, FastifyReply, FastifyRequest, preHandlerHookHandler } from "fastify";
 import fp from "fastify-plugin";
 
-import { gatewayConfig } from "../config.js";
 import { extractBearerToken, verifyAccessToken } from "../lib/jwt.js";
 import { getUserMemberships, type TenantMembership } from "../services/membership-service.js";
+
+// ─── Role hierarchy ────────────────────────────────────────────────────────────
 
 const ROLE_PRIORITY: Record<TenantMembership["role"], number> = {
   OWNER: 500,
@@ -12,6 +34,8 @@ const ROLE_PRIORITY: Record<TenantMembership["role"], number> = {
   STAFF: 200,
   VIEWER: 100,
 };
+
+// ─── Auth context type & factory ───────────────────────────────────────────────
 
 type AuthContext = {
   userId: string | null;
@@ -72,6 +96,10 @@ const createAuthContext = (
   return context;
 };
 
+const ANONYMOUS_CONTEXT = (): AuthContext => createAuthContext(null, []);
+
+// ─── Membership loader ─────────────────────────────────────────────────────────
+
 const loadMembershipsForRequest = async (
   request: FastifyRequest,
   userId: string,
@@ -88,6 +116,19 @@ export const ensureAuthMembershipsLoaded = async (request: FastifyRequest): Prom
   await request.auth.ensureMembershipsLoaded();
 };
 
+// ─── Tenant scope guard (preHandler — enforces authorization) ──────────────────
+
+type TenantScopeOptions = {
+  minRole?: TenantMembership["role"];
+  resolveTenantId?: (request: FastifyRequest) => string | undefined;
+  allowMissingTenantId?: boolean;
+  allowUnauthenticated?: boolean;
+  requireActiveMembership?: boolean;
+  requiredModules?: string | string[];
+};
+
+type TenantScopeDecorator = (options?: TenantScopeOptions) => preHandlerHookHandler;
+
 const buildTenantScopeGuard = (options: TenantScopeOptions = {}): preHandlerHookHandler => {
   const {
     minRole = "STAFF",
@@ -95,8 +136,13 @@ const buildTenantScopeGuard = (options: TenantScopeOptions = {}): preHandlerHook
     allowMissingTenantId = false,
     allowUnauthenticated = false,
     requireActiveMembership = true,
-    requiredModules,
   } = options;
+
+  const requiredModulesList = Array.isArray(options.requiredModules)
+    ? options.requiredModules
+    : options.requiredModules
+      ? [options.requiredModules]
+      : [];
 
   const resolver = resolveTenantId ?? (() => undefined);
 
@@ -133,15 +179,9 @@ const buildTenantScopeGuard = (options: TenantScopeOptions = {}): preHandlerHook
       return reply;
     }
 
-    const modules = Array.isArray(requiredModules)
-      ? requiredModules
-      : requiredModules
-        ? [requiredModules]
-        : [];
-
-    if (modules.length > 0) {
+    if (requiredModulesList.length > 0) {
       const enabledModules = new Set(membership.modules);
-      const missing = modules.filter((moduleId) => !enabledModules.has(moduleId));
+      const missing = requiredModulesList.filter((moduleId) => !enabledModules.has(moduleId));
       if (missing.length > 0) {
         reply.forbidden("TENANT_MODULE_NOT_ENABLED");
         return reply;
@@ -152,16 +192,7 @@ const buildTenantScopeGuard = (options: TenantScopeOptions = {}): preHandlerHook
   };
 };
 
-type TenantScopeOptions = {
-  minRole?: TenantMembership["role"];
-  resolveTenantId?: (request: FastifyRequest) => string | undefined;
-  allowMissingTenantId?: boolean;
-  allowUnauthenticated?: boolean;
-  requireActiveMembership?: boolean;
-  requiredModules?: string | string[];
-};
-
-type TenantScopeDecorator = (options?: TenantScopeOptions) => preHandlerHookHandler;
+// ─── Fastify augmentation ──────────────────────────────────────────────────────
 
 declare module "fastify" {
   interface FastifyRequest {
@@ -173,15 +204,24 @@ declare module "fastify" {
   }
 }
 
+// ─── Plugin registration ───────────────────────────────────────────────────────
+
+/**
+ * Fastify plugin that decorates every request with an `auth` context.
+ *
+ * Identity extraction (onRequest):
+ *   Reads the Authorization header, verifies the JWT, and populates
+ *   `request.auth` with the caller's identity. It never rejects — callers
+ *   without a valid token receive an anonymous context.
+ *
+ * Authorization enforcement (withTenantScope preHandler):
+ *   Routes that require auth call `app.withTenantScope(...)` as a preHandler.
+ *   That preHandler checks authentication, tenant membership, role, and module
+ *   access. This separation keeps the global hook free of authorization
+ *   decisions.
+ */
 const authContextPlugin = fp(async (fastify: FastifyInstance) => {
   const authContextKey = Symbol("authContext");
-  const checkTokenRateLimit = fastify.createRateLimit({
-    max: gatewayConfig.rateLimit.authMax,
-    timeWindow: gatewayConfig.rateLimit.authTimeWindow,
-    keyGenerator: (request) =>
-      (request.headers["x-api-key"] as string | undefined) ?? request.ip ?? "anonymous",
-    ban: 0,
-  });
 
   fastify.decorateRequest<AuthContext>("auth", {
     getter() {
@@ -192,14 +232,22 @@ const authContextPlugin = fp(async (fastify: FastifyInstance) => {
     },
   });
 
-  const tenantScopeDecorator: TenantScopeDecorator = (options?: TenantScopeOptions) =>
-    buildTenantScopeGuard(options);
+  fastify.decorate("withTenantScope", ((options?: TenantScopeOptions) =>
+    buildTenantScopeGuard(options)) as TenantScopeDecorator);
 
-  fastify.decorate("withTenantScope", tenantScopeDecorator);
+  // ── Identity extraction hook ─────────────────────────────────────────────
+  // This hook ONLY extracts caller identity from the JWT. It does NOT
+  // perform authorization — every request is allowed through. Authorization
+  // is enforced per-route via the withTenantScope preHandler.
+  //
+  // Rate limiting is handled globally by @fastify/rate-limit registered in
+  // server.ts before this plugin (Fastify processes hooks in registration
+  // order). Auth routes additionally override with stricter per-route limits.
 
-  fastify.addHook("onRequest", async (request, reply) => {
-    request.auth = createAuthContext(null, []);
+  fastify.addHook("onRequest", async (request) => {
+    request.auth = ANONYMOUS_CONTEXT();
 
+    // Public routes (health, self-service, auth) skip token extraction entirely.
     if (request.routeOptions?.config?.authContextPublic === true) {
       return;
     }
@@ -209,24 +257,16 @@ const authContextPlugin = fp(async (fastify: FastifyInstance) => {
       return;
     }
 
-    const tokenRateLimit = await checkTokenRateLimit(request);
-    if (!tokenRateLimit.isAllowed) {
-      void reply.code(429).send({
-        type: "about:blank",
-        title: "Too Many Requests",
-        status: 429,
-        detail: "Too many authentication attempts. Please try again later.",
-      });
+    // Decode the JWT to extract caller identity. Invalid/expired tokens
+    // result in an anonymous context — the withTenantScope preHandler will
+    // reject the request at the authorization layer if auth is required.
+    const identity = verifyAccessToken(token);
+    if (!identity?.sub) {
       return;
     }
 
-    const payload = verifyAccessToken(token);
-    if (!payload?.sub) {
-      return;
-    }
-
-    request.auth = createAuthContext(payload.sub, [], () =>
-      loadMembershipsForRequest(request, payload.sub),
+    request.auth = createAuthContext(identity.sub, [], () =>
+      loadMembershipsForRequest(request, identity.sub),
     );
   });
 });
