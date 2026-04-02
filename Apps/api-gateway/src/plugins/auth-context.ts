@@ -147,14 +147,6 @@ const authContextPlugin = fp(async (fastify: FastifyInstance) => {
 
   // Rate limiting is applied globally via @fastify/rate-limit in server.ts — this hook only decorates auth context.
   fastify.addHook("onRequest", async (request) => {
-    // Health and readiness endpoints should stay unauthenticated for infra probes.
-    // Use the registered route pattern (not request.url) to prevent query-string bypass.
-    const routePath = request.routeOptions?.url ?? request.url;
-    if (routePath === "/health" || routePath === "/ready") {
-      request.auth = createAuthContext(null, []);
-      return;
-    }
-
     const token = extractBearerToken(request.headers.authorization);
 
     if (!token) {

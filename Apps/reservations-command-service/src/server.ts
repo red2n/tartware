@@ -1,7 +1,9 @@
+import type { RateLimitPluginOptions } from "@fastify/rate-limit";
+import rateLimit from "@fastify/rate-limit";
 import { buildFastifyServer, resolveServiceRegistryConfig } from "@tartware/fastify-server";
 import { buildRouteSchema, jsonObjectSchema, schemaFromZod } from "@tartware/openapi";
 import { ReservationCommandLifecycleSchema, SERVICE_REGISTRY_CATALOG } from "@tartware/schemas";
-import type { FastifyInstance } from "fastify";
+import type { FastifyInstance, FastifyPluginAsync } from "fastify";
 import { z } from "zod";
 
 import { checkGuardHealth } from "./clients/availability-guard-client.js";
@@ -82,7 +84,33 @@ export const buildServer = (): FastifyInstance => {
     }),
   });
 
+  app.register(
+    rateLimit as unknown as FastifyPluginAsync,
+    {
+      max: serviceConfig.rateLimit.max,
+      timeWindow: serviceConfig.rateLimit.timeWindow,
+    } as RateLimitPluginOptions,
+  );
+
   app.register(swaggerPlugin);
+
+  const readRateLimitConfig = {
+    config: {
+      rateLimit: {
+        max: serviceConfig.rateLimit.readMax,
+        timeWindow: serviceConfig.rateLimit.readTimeWindow,
+      },
+    },
+  };
+
+  const metricsRateLimitConfig = {
+    config: {
+      rateLimit: {
+        max: serviceConfig.rateLimit.metricsMax,
+        timeWindow: serviceConfig.rateLimit.metricsTimeWindow,
+      },
+    },
+  };
 
   app.after(() => {
     app.get(
@@ -173,6 +201,7 @@ export const buildServer = (): FastifyInstance => {
     app.get(
       "/health/reliability",
       {
+        ...readRateLimitConfig,
         schema: buildRouteSchema({
           tag: "Health",
           summary: "Command pipeline reliability snapshot",
@@ -187,10 +216,10 @@ export const buildServer = (): FastifyInstance => {
       },
     );
 
-    // Internal monitoring endpoint — rate limiting handled by API gateway for external traffic.
     app.get(
       "/metrics",
       {
+        ...metricsRateLimitConfig,
         schema: buildRouteSchema({
           tag: "Metrics",
           summary: "Prometheus metrics endpoint",
@@ -211,6 +240,7 @@ export const buildServer = (): FastifyInstance => {
     app.get(
       "/v1/reservations/:reservationId/lifecycle",
       {
+        ...readRateLimitConfig,
         schema: buildRouteSchema({
           tag: "Reservation Lifecycle",
           summary: "Inspect lifecycle states for a reservation",

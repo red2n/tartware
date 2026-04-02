@@ -230,7 +230,7 @@ Authorization: Bearer {{authToken}}
 ###############################################################################
 # 5B. ROOMS - READ WITH RECOMMENDATIONS
 # When guest context is provided, rooms are ranked by recommendation score
-# Requires: recommendation-service running (npm run dev:recommendation)
+# Recommendation routes are hosted inside rooms-service in the current stack.
 ###############################################################################
 
 ### List rooms with personalized recommendations
@@ -264,6 +264,25 @@ Authorization: Bearer {{authToken}}
 ###
 # Get room by ID with guest context for personalized scoring
 GET {{baseUrl}}/v1/rooms/{{room102Id}}?tenant_id={{tenantId}}&guest_id={{guestId}}&check_in_date=2025-03-15&check_out_date=2025-03-18&adults=2&children=1
+Authorization: Bearer {{authToken}}
+
+###############################################################################
+# 5C. AVAILABILITY / ARI ENDPOINTS
+###############################################################################
+
+###
+# Availability search by property and stay window
+GET {{baseUrl}}/v1/availability?tenant_id={{tenantId}}&property_id={{propertyId}}&check_in_date=2026-03-15&check_out_date=2026-03-18&adults=2&children=0
+Authorization: Bearer {{authToken}}
+
+###
+# Availability calendar view by room type
+GET {{baseUrl}}/v1/availability/calendar?tenant_id={{tenantId}}&property_id={{propertyId}}&room_type_id={{roomTypeId}}&start_date=2026-03-01&end_date=2026-03-14
+Authorization: Bearer {{authToken}}
+
+###
+# Available room types with counts
+GET {{baseUrl}}/v1/availability/room-types?tenant_id={{tenantId}}&property_id={{propertyId}}&check_in_date=2026-03-15&check_out_date=2026-03-18&adults=2&children=0
 Authorization: Bearer {{authToken}}
 
 ###############################################################################

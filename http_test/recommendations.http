@@ -1,12 +1,13 @@
 ###############################################################################
 # RECOMMENDATION SERVICE - Room Recommendations
-# Routes via API Gateway (localhost:8080) -> recommendation-service (port 3040)
+# Routes via API Gateway (localhost:8080) -> recommendation routes hosted in
+# rooms-service (port 3015)
 #
 # Content: Room recommendations with personalized scoring
 #
 # Prerequisites:
-#   - Run: npm run dev (starts all services including recommendation-service)
-#   - Or run individual services: npm run dev:gateway && npm run dev:recommendation
+#   - Run: npm run dev
+#   - Or run individual services: npm run dev:gateway && npm run dev:rooms
 #
 # Related files:
 # - rooms.http - Room and Room Type queries
@@ -38,11 +39,12 @@ Content-Type: application/json
 @authToken = {{login.response.body.access_token}}
 
 ###############################################################################
-# 2. HEALTH CHECK
+# 2. GATEWAY HEALTH CHECK
 ###############################################################################
 
-### Health check (direct to service - no auth required)
-GET http://localhost:3040/health
+### Gateway health check for recommendation flows
+### See health.http for full gateway and aggregated health coverage.
+GET {{baseUrl}}/health
 
 ###############################################################################
 # 3. GET RECOMMENDATIONS

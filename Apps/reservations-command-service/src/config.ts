@@ -25,6 +25,14 @@ export const serviceConfig = {
   serviceId: process.env.RESERVATION_COMMAND_ID ?? "reservations-command-service",
   version: configValues.SERVICE_VERSION,
   requestLogging: parseBooleanEnv(process.env.RESERVATION_COMMAND_LOG_REQUESTS, false),
+  rateLimit: {
+    max: parseNumberEnv(process.env.RESERVATION_COMMAND_RATE_MAX, 120),
+    timeWindow: process.env.RESERVATION_COMMAND_RATE_WINDOW ?? "1 minute",
+    readMax: parseNumberEnv(process.env.RESERVATION_COMMAND_RATE_READ_MAX, 60),
+    readTimeWindow: process.env.RESERVATION_COMMAND_RATE_READ_WINDOW ?? "1 minute",
+    metricsMax: parseNumberEnv(process.env.RESERVATION_COMMAND_RATE_METRICS_MAX, 15),
+    metricsTimeWindow: process.env.RESERVATION_COMMAND_RATE_METRICS_WINDOW ?? "1 minute",
+  },
 };
 
 export const kafkaConfig = {

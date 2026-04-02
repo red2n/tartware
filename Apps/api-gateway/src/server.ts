@@ -47,7 +47,6 @@ export const buildServer = () => {
 
   app.register(swaggerPlugin);
   app.register(sseTokenPlugin);
-  app.register(authContextPlugin);
 
   const rateLimitOptions: RateLimitPluginOptions = {
     max: gatewayConfig.rateLimit.max,
@@ -97,6 +96,7 @@ export const buildServer = () => {
     rateLimit as unknown as FastifyPluginAsync,
     rateLimitOptions as unknown as RateLimitPluginOptions,
   );
+  app.register(authContextPlugin);
 
   app.after(() => {
     if (devToolsConfig.duploDashboard.enabled) {

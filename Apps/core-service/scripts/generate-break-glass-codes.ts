@@ -22,9 +22,9 @@ import { Client } from "pg";
 
 import { SYSTEM_ADMIN_BREAK_GLASS_INSERT_SQL } from "../src/sql/system-admin-queries.js";
 
-const log = (message: string) => console.log(`[break-glass] ${message}`);
+const log = (message: string) => process.stdout.write(`[break-glass] ${message}\n`);
 const fail = (message: string): never => {
-  console.error(`[break-glass][error] ${message}`);
+  process.stderr.write(`[break-glass][error] ${message}\n`);
   process.exit(1);
 };
 
@@ -123,8 +123,8 @@ const main = async () => {
     }
 
     log(`Issued ${codes.length} break-glass codes for ${settings.username}`);
-    console.log(
-      JSON.stringify(
+    process.stdout.write(
+      `${JSON.stringify(
         {
           username: settings.username,
           label: settings.label,
@@ -133,7 +133,7 @@ const main = async () => {
         },
         null,
         2,
-      ),
+      )}\n`,
     );
   } finally {
     await client.end();

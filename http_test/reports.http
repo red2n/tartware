@@ -131,3 +131,46 @@ Authorization: Bearer {{authToken}}
 # @name revenueForecastRange
 GET {{baseUrl}}/v1/reports/revenue-forecast?tenant_id={{tenantId}}&property_id={{propertyId}}&start_date=2026-03-01&end_date=2026-06-30
 Authorization: Bearer {{authToken}}
+
+###############################################################################
+# ADDITIONAL REPORTING ROUTES CURRENTLY REGISTERED ON THE GATEWAY
+###############################################################################
+
+### No-show report
+GET {{baseUrl}}/v1/reports/no-show?tenant_id={{tenantId}}&property_id={{propertyId}}&start_date=2026-02-12&end_date=2026-02-12
+Authorization: Bearer {{authToken}}
+
+###
+### Revenue summary
+GET {{baseUrl}}/v1/reports/revenue-summary?tenant_id={{tenantId}}&property_id={{propertyId}}&start_date=2026-02-01&end_date=2026-02-28
+Authorization: Bearer {{authToken}}
+
+###
+### Daily revenue breakdown
+GET {{baseUrl}}/v1/reports/daily-revenue?tenant_id={{tenantId}}&property_id={{propertyId}}&business_date=2026-02-12
+Authorization: Bearer {{authToken}}
+
+###
+### Forward-looking forecast
+GET {{baseUrl}}/v1/reports/forecast?tenant_id={{tenantId}}&property_id={{propertyId}}&start_date=2026-03-01&end_date=2026-03-31
+Authorization: Bearer {{authToken}}
+
+###
+### Manager flash report
+GET {{baseUrl}}/v1/reports/manager-flash?tenant_id={{tenantId}}&property_id={{propertyId}}&business_date=2026-02-12
+Authorization: Bearer {{authToken}}
+
+###
+### STR metrics
+GET {{baseUrl}}/v1/reports/str-metrics?tenant_id={{tenantId}}&property_id={{propertyId}}&start_date=2026-02-01&end_date=2026-02-29
+Authorization: Bearer {{authToken}}
+
+###
+### Housekeeping status matrix
+GET {{baseUrl}}/v1/reports/housekeeping-status?tenant_id={{tenantId}}&property_id={{propertyId}}&business_date=2026-02-12
+Authorization: Bearer {{authToken}}
+
+###
+### Night audit summary
+GET {{baseUrl}}/v1/reports/night-audit-summary?tenant_id={{tenantId}}&property_id={{propertyId}}&business_date=2026-02-12
+Authorization: Bearer {{authToken}}

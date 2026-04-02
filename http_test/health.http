@@ -3,6 +3,8 @@
 # Direct gateway routes (localhost:8080) - no auth required
 #
 # Content: Gateway liveness, readiness, aggregated backend health, CORS
+# Note: availability-guard lock routes remain service-local for now; see
+# availability-guard.http for that exception.
 #
 # Related files:
 # - core-service.http - Auth and tenant/property endpoints

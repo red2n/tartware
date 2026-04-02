@@ -73,16 +73,34 @@ const manualReleaseNotificationTestSchema = ManualReleaseNotificationTestSchema;
 
 export const locksRoutes = fastifyPlugin(
   (app: FastifyInstance, _opts: unknown, done: (err?: Error) => void): void => {
-    // Internal service — rate limiting handled by API gateway. All routes require bearer/admin token auth.
     app.addHook("preHandler", async (request: FastifyRequest, reply: FastifyReply) => {
       if (!ensureHttpAuthorized(request, reply)) {
         return reply;
       }
     });
 
+    const writeRateLimitConfig = {
+      config: {
+        rateLimit: {
+          max: config.rateLimit.writeMax,
+          timeWindow: config.rateLimit.writeTimeWindow,
+        },
+      },
+    };
+
+    const adminRateLimitConfig = {
+      config: {
+        rateLimit: {
+          max: config.rateLimit.adminMax,
+          timeWindow: config.rateLimit.adminTimeWindow,
+        },
+      },
+    };
+
     app.post(
       "/v1/locks",
       {
+        ...writeRateLimitConfig,
         schema: buildRouteSchema({
           tag: "Availability Guard",
           summary: "Create a lock",
@@ -110,6 +128,7 @@ export const locksRoutes = fastifyPlugin(
     app.delete(
       "/v1/locks/:lockId",
       {
+        ...writeRateLimitConfig,
         schema: buildRouteSchema({
           tag: "Availability Guard",
           summary: "Release a lock",
@@ -138,6 +157,7 @@ export const locksRoutes = fastifyPlugin(
     app.post(
       "/v1/locks/bulk-release",
       {
+        ...writeRateLimitConfig,
         schema: buildRouteSchema({
           tag: "Availability Guard",
           summary: "Bulk release locks",
@@ -157,6 +177,7 @@ export const locksRoutes = fastifyPlugin(
     app.post(
       "/v1/locks/:lockId/manual-release",
       {
+        ...adminRateLimitConfig,
         schema: buildRouteSchema({
           tag: "Availability Guard",
           summary: "Manually release a lock with audit logging and notifications",
@@ -220,6 +241,7 @@ export const locksRoutes = fastifyPlugin(
     app.post(
       "/v1/notifications/manual-release/test",
       {
+        ...adminRateLimitConfig,
         schema: buildRouteSchema({
           tag: "Availability Guard",
           summary: "Dry-run manual release notification classification (no webhooks called)",
@@ -290,6 +312,7 @@ export const locksRoutes = fastifyPlugin(
     app.get(
       "/v1/locks/:lockId/audit",
       {
+        ...adminRateLimitConfig,
         schema: buildRouteSchema({
           tag: "Availability Guard",
           summary: "List audit records for a specific lock",
@@ -331,6 +354,7 @@ export const locksRoutes = fastifyPlugin(
     app.get(
       "/v1/locks/audit",
       {
+        ...adminRateLimitConfig,
         schema: buildRouteSchema({
           tag: "Availability Guard",
           summary: "Search audit records (tenant-wide)",
@@ -358,6 +382,7 @@ export const locksRoutes = fastifyPlugin(
         };
       },
     );
+
     done();
   },
 );

@@ -1,6 +1,9 @@
+import type { RateLimitPluginOptions } from "@fastify/rate-limit";
+import rateLimit from "@fastify/rate-limit";
 import { buildFastifyServer, resolveServiceRegistryConfig } from "@tartware/fastify-server";
 import { buildRouteSchema, jsonObjectSchema } from "@tartware/openapi";
 import { SERVICE_REGISTRY_CATALOG } from "@tartware/schemas";
+import type { FastifyPluginAsync } from "fastify";
 
 import { config } from "./config.js";
 import { checkDatabaseHealth } from "./lib/health-checks.js";
@@ -38,6 +41,14 @@ export const buildServer = () => {
       pluginTimeout: 0,
     },
   });
+
+  void app.register(
+    rateLimit as unknown as FastifyPluginAsync,
+    {
+      max: config.rateLimit.max,
+      timeWindow: config.rateLimit.timeWindow,
+    } as RateLimitPluginOptions,
+  );
 
   const SHUTDOWN_STEP_TIMEOUT_MS = 5_000;
 

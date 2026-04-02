@@ -1,0 +1,149 @@
+###############################################################################
+# RATE LIMIT VERIFICATION
+#
+# Use temporary low thresholds before `npm run dev` so these requests can reach
+# `429` quickly without spamming default limits:
+#
+# API_GATEWAY_RATE_AUTH_MAX=2
+# API_GATEWAY_RATE_MAX=2
+# RESERVATION_COMMAND_RATE_READ_MAX=2
+# AVAILABILITY_GUARD_RATE_ADMIN_MAX=2
+#
+# Expected headers on rate-limited routes:
+#   x-ratelimit-limit
+#   x-ratelimit-remaining
+#   x-ratelimit-reset
+#
+# Run each section independently, or keep the per-section `x-api-key` values as
+# shown below so buckets do not interfere with one another at the gateway.
+###############################################################################
+
+# --- VARIABLES ---
+@baseUrl = http://localhost:8080
+@availabilityGuardUrl = http://localhost:3045
+@tenantId = 11111111-1111-1111-1111-111111111111
+@reservationId = 44444444-4444-4444-4444-444444444444
+@lockId = 66666666-6666-6666-6666-666666666666
+@guardAdminToken = replace-with-availability-guard-admin-token
+
+###############################################################################
+# 1. AUTH TIER (Gateway)
+# Set API_GATEWAY_RATE_AUTH_MAX=2, then the third login should return 429.
+###############################################################################
+
+### Login 1 - expect 200 with x-ratelimit-* headers
+POST {{baseUrl}}/v1/auth/login
+Content-Type: application/json
+x-api-key: rate-auth
+
+{
+  "username": "setup.admin",
+  "password": "TempPass123"
+}
+
+###
+### Login 2 - expect 200 with reduced x-ratelimit-remaining
+POST {{baseUrl}}/v1/auth/login
+Content-Type: application/json
+x-api-key: rate-auth
+
+{
+  "username": "setup.admin",
+  "password": "TempPass123"
+}
+
+###
+### Login 3 - expect 429 once auth tier max is exceeded
+POST {{baseUrl}}/v1/auth/login
+Content-Type: application/json
+x-api-key: rate-auth
+
+{
+  "username": "setup.admin",
+  "password": "TempPass123"
+}
+
+###############################################################################
+# 2. LOGIN FOR AUTHENTICATED RATE-LIMIT CHECKS
+###############################################################################
+
+# @name login
+POST {{baseUrl}}/v1/auth/login
+Content-Type: application/json
+x-api-key: rate-bootstrap
+
+{
+  "username": "setup.admin",
+  "password": "TempPass123"
+}
+
+### Extract token
+@authToken = {{login.response.body.access_token}}
+
+###############################################################################
+# 3. GATEWAY READ TIER - Registry
+# Set API_GATEWAY_RATE_MAX=2, then the third request should return 429.
+###############################################################################
+
+### Registry read 1 - expect 200 plus x-ratelimit-* headers
+GET {{baseUrl}}/v1/registry/services
+Authorization: Bearer {{authToken}}
+x-api-key: rate-registry
+
+###
+### Registry read 2 - expect 200 with reduced x-ratelimit-remaining
+GET {{baseUrl}}/v1/registry/services
+Authorization: Bearer {{authToken}}
+x-api-key: rate-registry
+
+###
+### Registry read 3 - expect 429 from the gateway default tier
+GET {{baseUrl}}/v1/registry/services
+Authorization: Bearer {{authToken}}
+x-api-key: rate-registry
+
+###############################################################################
+# 4. RESERVATION LIFECYCLE READ TIER
+# Set RESERVATION_COMMAND_RATE_READ_MAX=2, then the third request should
+# return 429 from reservations-command-service while still entering via gateway.
+###############################################################################
+
+### Lifecycle read 1 - expect 200 plus x-ratelimit-* headers
+GET {{baseUrl}}/v1/reservations/{{reservationId}}/lifecycle?tenant_id={{tenantId}}
+Authorization: Bearer {{authToken}}
+x-api-key: rate-lifecycle
+
+###
+### Lifecycle read 2 - expect 200 with reduced x-ratelimit-remaining
+GET {{baseUrl}}/v1/reservations/{{reservationId}}/lifecycle?tenant_id={{tenantId}}
+Authorization: Bearer {{authToken}}
+x-api-key: rate-lifecycle
+
+###
+### Lifecycle read 3 - expect 429 from the reservation read tier
+GET {{baseUrl}}/v1/reservations/{{reservationId}}/lifecycle?tenant_id={{tenantId}}
+Authorization: Bearer {{authToken}}
+x-api-key: rate-lifecycle
+
+###############################################################################
+# 5. AVAILABILITY-GUARD ADMIN TIER
+# Set AVAILABILITY_GUARD_RATE_ADMIN_MAX=2, then the third request should
+# return 429 from the service-local admin tier on port 3045.
+###############################################################################
+
+### Guard audit 1 - expect 200 plus x-ratelimit-* headers
+GET {{availabilityGuardUrl}}/v1/locks/{{lockId}}/audit?limit=5
+Authorization: Bearer {{authToken}}
+x-guard-admin-token: {{guardAdminToken}}
+
+###
+### Guard audit 2 - expect 200 with reduced x-ratelimit-remaining
+GET {{availabilityGuardUrl}}/v1/locks/{{lockId}}/audit?limit=5
+Authorization: Bearer {{authToken}}
+x-guard-admin-token: {{guardAdminToken}}
+
+###
+### Guard audit 3 - expect 429 from the admin tier
+GET {{availabilityGuardUrl}}/v1/locks/{{lockId}}/audit?limit=5
+Authorization: Bearer {{authToken}}
+x-guard-admin-token: {{guardAdminToken}}

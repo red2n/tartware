@@ -361,6 +361,55 @@ Authorization: Bearer {{authToken}}
 GET {{baseUrl}}/v1/billing/cashier-sessions/{{cashierSessionId}}?tenant_id={{tenantId}}
 Authorization: Bearer {{authToken}}
 
+###
+# Get cashier shift summary
+GET {{baseUrl}}/v1/billing/cashier-sessions/{{cashierSessionId}}/shift-summary?tenant_id={{tenantId}}
+Authorization: Bearer {{authToken}}
+
+###############################################################################
+# 7B. ACCOUNTS RECEIVABLE - READ
+###############################################################################
+
+###
+# List accounts receivable balances
+GET {{baseUrl}}/v1/billing/accounts-receivable?tenant_id={{tenantId}}&limit=50
+Authorization: Bearer {{authToken}}
+
+###
+# Accounts receivable aging summary
+GET {{baseUrl}}/v1/billing/accounts-receivable/aging-summary?tenant_id={{tenantId}}
+Authorization: Bearer {{authToken}}
+
+###
+# AR detail by ID
+@accountsReceivableId = dddddddd-dddd-dddd-dddd-dddddddddddd
+GET {{baseUrl}}/v1/billing/accounts-receivable/{{accountsReceivableId}}?tenant_id={{tenantId}}
+Authorization: Bearer {{authToken}}
+
+###############################################################################
+# 7C. FINANCE REPORTS - READ
+###############################################################################
+
+###
+# Trial balance report
+GET {{baseUrl}}/v1/billing/reports/trial-balance?tenant_id={{tenantId}}&property_id={{propertyId}}&start_date=2026-02-01&end_date=2026-02-29
+Authorization: Bearer {{authToken}}
+
+###
+# Departmental revenue report
+GET {{baseUrl}}/v1/billing/reports/departmental-revenue?tenant_id={{tenantId}}&property_id={{propertyId}}&start_date=2026-02-01&end_date=2026-02-29
+Authorization: Bearer {{authToken}}
+
+###
+# Tax summary report
+GET {{baseUrl}}/v1/billing/reports/tax-summary?tenant_id={{tenantId}}&property_id={{propertyId}}&start_date=2026-02-01&end_date=2026-02-29
+Authorization: Bearer {{authToken}}
+
+###
+# Commission report
+GET {{baseUrl}}/v1/billing/reports/commissions?tenant_id={{tenantId}}&property_id={{propertyId}}&start_date=2026-02-01&end_date=2026-02-29
+Authorization: Bearer {{authToken}}
+
 ###############################################################################
 # 8. REST-STYLE COMMAND DISPATCH
 # Alternative to /v1/commands/{name}/execute pattern

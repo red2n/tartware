@@ -1,8 +1,16 @@
-import { createCommandConsumerMetrics } from "@tartware/command-consumer-utils/metrics";
+import {
+  type CommandConsumerMetricsResult,
+  createCommandConsumerMetrics,
+} from "@tartware/command-consumer-utils/metrics";
+import type { Registry } from "prom-client";
 
-export const {
-  metricsRegistry,
-  recordCommandOutcome,
-  observeCommandDuration,
-  setCommandConsumerLag,
-} = createCommandConsumerMetrics("finance_admin");
+const commandConsumerMetrics: CommandConsumerMetricsResult =
+  createCommandConsumerMetrics("finance_admin");
+
+export const metricsRegistry: Registry = commandConsumerMetrics.metricsRegistry;
+export const recordCommandOutcome: CommandConsumerMetricsResult["recordCommandOutcome"] =
+  commandConsumerMetrics.recordCommandOutcome;
+export const observeCommandDuration: CommandConsumerMetricsResult["observeCommandDuration"] =
+  commandConsumerMetrics.observeCommandDuration;
+export const setCommandConsumerLag: CommandConsumerMetricsResult["setCommandConsumerLag"] =
+  commandConsumerMetrics.setCommandConsumerLag;
