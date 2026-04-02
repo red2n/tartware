@@ -17,6 +17,8 @@ const REGISTER_RETRY_INTERVAL_MS = 5_000;
 export interface RegistryConfig {
 	registryUrl: string;
 	serviceName: string;
+	description: string;
+	tag: string;
 	serviceVersion: string;
 	host: string;
 	port: number;
@@ -25,6 +27,8 @@ export interface RegistryConfig {
 interface ResolveRegistryConfigOptions {
 	registryUrl?: string;
 	serviceName: string;
+	description: string;
+	tag: string;
 	serviceVersion: string;
 	host: string;
 	port: number;
@@ -45,6 +49,8 @@ export function resolveServiceRegistryConfig(
 	return {
 		registryUrl,
 		serviceName: config.serviceName,
+		description: config.description,
+		tag: config.tag,
 		serviceVersion: config.serviceVersion,
 		host: config.host,
 		port: config.port,
@@ -76,13 +82,16 @@ export function startServiceRegistration(
 		warn: (...args: unknown[]) => void;
 	},
 ): { stop: () => Promise<void> } {
-	const { registryUrl, serviceName, serviceVersion, host, port } = config;
+	const { registryUrl, serviceName, description, tag, serviceVersion, host, port } = config;
 	let heartbeatTimer: NodeJS.Timeout | undefined;
 	let registerRetryTimer: NodeJS.Timeout | undefined;
 	let registryUnavailableLogged = false;
 
 	const registerPayload = {
-		name: serviceName,
+		name: tag,
+		display_name: serviceName,
+		description,
+		tag,
 		version: serviceVersion,
 		host: host === "0.0.0.0" ? "localhost" : host,
 		port,
@@ -117,7 +126,7 @@ export function startServiceRegistration(
 			clearRegisterRetry();
 			registryUnavailableLogged = false;
 			logger.info(
-				{ registryUrl, instanceId: `${serviceName}:${port}` },
+				{ registryUrl, instanceId: `${tag}:${port}`, serviceName },
 				"registered with service registry",
 			);
 			return;
@@ -140,7 +149,7 @@ export function startServiceRegistration(
 	// Send periodic heartbeats via the dedicated heartbeat endpoint
 	heartbeatTimer = setInterval(() => {
 		registryFetch(`${registryUrl}/v1/registry/heartbeat`, "PUT", {
-			name: serviceName,
+			name: tag,
 			port,
 		})
 			.then((ok) => {
@@ -162,7 +171,7 @@ export function startServiceRegistration(
 			}
 			clearRegisterRetry();
 			await registryFetch(`${registryUrl}/v1/registry/deregister`, "DELETE", {
-				name: serviceName,
+				name: tag,
 				port,
 			});
 		},

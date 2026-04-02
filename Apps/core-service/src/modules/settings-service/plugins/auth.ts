@@ -66,7 +66,14 @@ export const authPlugin = fp(async (app: FastifyInstance) => {
         request.log.warn({ tenantId, userId: payload.sub }, "Tenant membership inactive");
         return reply.forbidden("Tenant access inactive");
       }
-      request.authUser = { ...payload, tenantId };
+
+      // Derive scopes from membership role for hosted settings endpoints.
+      const scopes: string[] = ["settings:read"];
+      if (["OWNER", "ADMIN", "MANAGER"].includes(membership.role)) {
+        scopes.push("settings:write");
+      }
+
+      request.authUser = { ...payload, tenantId, scope: scopes };
       request.tenantMembership = membership;
     } catch (error) {
       request.log.warn({ err: error }, "Authentication failed");

@@ -1,6 +1,7 @@
 import type { RateLimitPluginOptions } from "@fastify/rate-limit";
 import rateLimit from "@fastify/rate-limit";
 import { buildFastifyServer, resolveServiceRegistryConfig } from "@tartware/fastify-server";
+import { SERVICE_REGISTRY_CATALOG } from "@tartware/schemas";
 import type { FastifyPluginAsync, FastifyReply, FastifyRequest } from "fastify";
 import { Redis } from "ioredis";
 
@@ -29,6 +30,7 @@ import { registerSelfServiceRoutes } from "./routes/self-service-routes.js";
 import { registerWebhookRoutes } from "./routes/webhook-routes.js";
 
 export const buildServer = () => {
+  const registryMetadata = SERVICE_REGISTRY_CATALOG["api-gateway"];
   const app = buildFastifyServer({
     logger: gatewayLogger,
     enableRequestLogging: gatewayConfig.logRequests,
@@ -36,7 +38,7 @@ export const buildServer = () => {
     enableMetricsEndpoint: true,
     metricsRegistry,
     serviceRegistry: resolveServiceRegistryConfig({
-      serviceName: "api-gateway",
+      ...registryMetadata,
       serviceVersion: gatewayConfig.version,
       host: gatewayConfig.host,
       port: gatewayConfig.port,

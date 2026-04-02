@@ -1,25 +1,15 @@
+import {
+  type ServiceRegistryHeartbeatRequest,
+  type ServiceRegistryInstance,
+  type ServiceRegistryRegisterRequest,
+  type ServiceRegistryServicesResponse,
+  ServiceRegistryServicesResponseSchema,
+} from "@tartware/schemas";
+
 import { config } from "../../../config.js";
 import { incrementRegistryAction, setRegistryServiceCount } from "../../../lib/metrics.js";
 
-interface ServiceInstance {
-  instanceId: string;
-  name: string;
-  version: string;
-  host: string;
-  port: number;
-  status: "UP" | "DOWN";
-  registeredAt: string;
-  lastHeartbeat: string;
-  metadata?: Record<string, unknown>;
-}
-
-interface RegistrySummary {
-  total: number;
-  up: number;
-  down: number;
-}
-
-const store = new Map<string, ServiceInstance>();
+const store = new Map<string, ServiceRegistryInstance>();
 let sweepTimer: NodeJS.Timeout | undefined;
 
 function buildInstanceId(name: string, port: number): string {
@@ -64,19 +54,25 @@ export function stopSweep(): void {
 }
 
 export function register(input: {
-  name: string;
-  version: string;
-  host: string;
-  port: number;
-  metadata?: Record<string, unknown>;
-}): ServiceInstance {
+  name: ServiceRegistryRegisterRequest["name"];
+  display_name: ServiceRegistryRegisterRequest["display_name"];
+  description: ServiceRegistryRegisterRequest["description"];
+  tag: ServiceRegistryRegisterRequest["tag"];
+  version: ServiceRegistryRegisterRequest["version"];
+  host: ServiceRegistryRegisterRequest["host"];
+  port: ServiceRegistryRegisterRequest["port"];
+  metadata?: ServiceRegistryRegisterRequest["metadata"];
+}): ServiceRegistryInstance {
   const instanceId = buildInstanceId(input.name, input.port);
   const now = new Date().toISOString();
 
   const existing = store.get(instanceId);
-  const instance: ServiceInstance = {
+  const instance: ServiceRegistryInstance = {
     instanceId,
     name: input.name,
+    display_name: input.display_name,
+    description: input.description,
+    tag: input.tag,
     version: input.version,
     host: input.host,
     port: input.port,
@@ -92,7 +88,10 @@ export function register(input: {
   return instance;
 }
 
-export function heartbeat(name: string, port: number): ServiceInstance | undefined {
+export function heartbeat(
+  name: ServiceRegistryHeartbeatRequest["name"],
+  port: ServiceRegistryHeartbeatRequest["port"],
+): ServiceRegistryInstance | undefined {
   const instanceId = buildInstanceId(name, port);
   const instance = store.get(instanceId);
   if (!instance) return undefined;
@@ -104,7 +103,10 @@ export function heartbeat(name: string, port: number): ServiceInstance | undefin
   return instance;
 }
 
-export function deregister(name: string, port: number): boolean {
+export function deregister(
+  name: ServiceRegistryHeartbeatRequest["name"],
+  port: ServiceRegistryHeartbeatRequest["port"],
+): boolean {
   const instanceId = buildInstanceId(name, port);
   const instance = store.get(instanceId);
   if (instance) {
@@ -116,16 +118,17 @@ export function deregister(name: string, port: number): boolean {
   return false;
 }
 
-export function getAllServices(): { services: ServiceInstance[]; summary: RegistrySummary } {
+export function getAllServices(): ServiceRegistryServicesResponse {
   const services = Array.from(store.values()).sort((a, b) => a.port - b.port);
   const up = services.filter((service) => service.status === "UP").length;
-  return {
+  const response = {
     services,
     summary: { total: services.length, up, down: services.length - up },
   };
+  return ServiceRegistryServicesResponseSchema.parse(response);
 }
 
-export function getServiceByName(name: string): ServiceInstance[] {
+export function getServiceByName(name: ServiceRegistryInstance["name"]): ServiceRegistryInstance[] {
   return Array.from(store.values())
     .filter((service) => service.name === name)
     .sort((a, b) => a.port - b.port);

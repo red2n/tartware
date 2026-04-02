@@ -1,6 +1,6 @@
 import { buildFastifyServer, resolveServiceRegistryConfig } from "@tartware/fastify-server";
 import { buildRouteSchema, jsonObjectSchema, schemaFromZod } from "@tartware/openapi";
-import { ReservationCommandLifecycleSchema } from "@tartware/schemas";
+import { ReservationCommandLifecycleSchema, SERVICE_REGISTRY_CATALOG } from "@tartware/schemas";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 
@@ -68,13 +68,14 @@ const ReliabilitySnapshotJsonSchema = schemaFromZod(
 );
 
 export const buildServer = (): FastifyInstance => {
+  const registryMetadata = SERVICE_REGISTRY_CATALOG["reservations-command-service"];
   const app = buildFastifyServer({
     logger: reservationsLogger,
     enableRequestLogging: serviceConfig.requestLogging,
     corsOrigin: false,
     enableMetricsEndpoint: false, // Custom metrics endpoint below
     serviceRegistry: resolveServiceRegistryConfig({
-      serviceName: serviceConfig.serviceId,
+      ...registryMetadata,
       serviceVersion: serviceConfig.version,
       host: serviceConfig.host,
       port: serviceConfig.port,

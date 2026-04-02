@@ -1,5 +1,6 @@
 import { buildFastifyServer, resolveServiceRegistryConfig } from "@tartware/fastify-server";
 import { buildRouteSchema, jsonObjectSchema } from "@tartware/openapi";
+import { SERVICE_REGISTRY_CATALOG } from "@tartware/schemas";
 
 import { config } from "./config.js";
 import { checkDatabaseHealth } from "./lib/health-checks.js";
@@ -19,6 +20,7 @@ import {
 } from "./workers/manual-release-notification-consumer.js";
 
 export const buildServer = () => {
+  const registryMetadata = SERVICE_REGISTRY_CATALOG["availability-guard-service"];
   const app = buildFastifyServer({
     logger: appLogger,
     enableRequestLogging: config.log.requestLogging,
@@ -26,7 +28,7 @@ export const buildServer = () => {
     enableMetricsEndpoint: true,
     metricsRegistry,
     serviceRegistry: resolveServiceRegistryConfig({
-      serviceName: "availability-guard-service",
+      ...registryMetadata,
       serviceVersion: config.service.version,
       host: config.host,
       port: config.port,

@@ -1,38 +1,40 @@
 import type { FastifyInstance } from "fastify";
+import {
+  type ServiceRegistryDeregisterRequest,
+  type ServiceRegistryHeartbeatRequest,
+  type ServiceRegistryRegisterRequest,
+  ServiceRegistryDeregisterRequestSchema,
+  ServiceRegistryHeartbeatRequestSchema,
+  ServiceRegistryRegisterRequestSchema,
+  ServiceRegistryServiceInstancesResponseSchema,
+  ServiceRegistryTagEnum,
+} from "@tartware/schemas";
 
 import * as registryStore from "../services/registry-store.js";
 
-interface RegisterBody {
-  name: string;
-  version: string;
-  host: string;
-  port: number;
-  metadata?: Record<string, unknown>;
-}
-
-interface HeartbeatBody {
-  name: string;
-  port: number;
-}
-
-interface DeregisterBody {
-  name: string;
-  port: number;
-}
-
 export const registerRegistryRoutes = (app: FastifyInstance): void => {
-  app.post<{ Body: RegisterBody }>("/v1/registry/register", async (request, reply) => {
-    const { name, version, host, port, metadata } = request.body;
+  app.post<{ Body: ServiceRegistryRegisterRequest }>("/v1/registry/register", async (request, reply) => {
+    const { name, display_name, description, tag, version, host, port, metadata } =
+      ServiceRegistryRegisterRequestSchema.parse(request.body);
     if (!name || !version || !host || !port) {
       return reply.badRequest("name, version, host, and port are required");
     }
-    const instance = registryStore.register({ name, version, host, port, metadata });
+    const instance = registryStore.register({
+      name,
+      display_name,
+      description,
+      tag,
+      version,
+      host,
+      port,
+      metadata,
+    });
     request.log.info({ instanceId: instance.instanceId }, "service registered");
     return reply.status(201).send(instance);
   });
 
-  app.put<{ Body: HeartbeatBody }>("/v1/registry/heartbeat", async (request, reply) => {
-    const { name, port } = request.body;
+  app.put<{ Body: ServiceRegistryHeartbeatRequest }>("/v1/registry/heartbeat", async (request, reply) => {
+    const { name, port } = ServiceRegistryHeartbeatRequestSchema.parse(request.body);
     if (!name || !port) {
       return reply.badRequest("name and port are required");
     }
@@ -43,8 +45,8 @@ export const registerRegistryRoutes = (app: FastifyInstance): void => {
     return reply.send(instance);
   });
 
-  app.delete<{ Body: DeregisterBody }>("/v1/registry/deregister", async (request, reply) => {
-    const { name, port } = request.body;
+  app.delete<{ Body: ServiceRegistryDeregisterRequest }>("/v1/registry/deregister", async (request, reply) => {
+    const { name, port } = ServiceRegistryDeregisterRequestSchema.parse(request.body);
     if (!name || !port) {
       return reply.badRequest("name and port are required");
     }
@@ -61,10 +63,16 @@ export const registerRegistryRoutes = (app: FastifyInstance): void => {
   });
 
   app.get<{ Params: { name: string } }>("/v1/registry/services/:name", async (request, reply) => {
-    const instances = registryStore.getServiceByName(request.params.name);
+    const serviceName = ServiceRegistryTagEnum.parse(request.params.name);
+    const instances = registryStore.getServiceByName(serviceName);
     if (instances.length === 0) {
-      return reply.notFound(`No instances found for service: ${request.params.name}`);
+      return reply.notFound(`No instances found for service: ${serviceName}`);
     }
-    return reply.send({ name: request.params.name, instances });
+    return reply.send(
+      ServiceRegistryServiceInstancesResponseSchema.parse({
+        name: serviceName,
+        instances,
+      }),
+    );
   });
 };

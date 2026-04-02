@@ -40,6 +40,7 @@ export * from "./properties.js";
 export * from "./rate-calendar.js";
 export * from "./rates.js";
 export * from "./recommendations.js";
+export * from "./registry.js";
 export * from "./reservations.js";
 export * from "./revenue.js";
 // eslint-disable-next-line import/export -- type-only re-exports not detected by plugin

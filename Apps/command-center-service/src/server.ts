@@ -3,6 +3,7 @@ import {
   type FastifyInstance,
   resolveServiceRegistryConfig,
 } from "@tartware/fastify-server";
+import { SERVICE_REGISTRY_CATALOG } from "@tartware/schemas";
 
 import { config } from "./config.js";
 import { appLogger } from "./lib/logger.js";
@@ -17,6 +18,7 @@ import { registerCommandRoutes } from "./routes/commands.js";
 import { registerHealthRoutes } from "./routes/health.js";
 
 export const buildServer = (): FastifyInstance => {
+  const registryMetadata = SERVICE_REGISTRY_CATALOG["command-center-service"];
   const app = buildFastifyServer({
     logger: appLogger,
     enableRequestLogging: config.log.requestLogging,
@@ -24,7 +26,7 @@ export const buildServer = (): FastifyInstance => {
     enableMetricsEndpoint: true,
     metricsRegistry,
     serviceRegistry: resolveServiceRegistryConfig({
-      serviceName: "command-center-service",
+      ...registryMetadata,
       serviceVersion: config.service.version,
       host: config.host,
       port: config.port,

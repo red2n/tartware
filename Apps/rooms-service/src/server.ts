@@ -3,6 +3,7 @@ import {
   type FastifyInstance,
   resolveServiceRegistryConfig,
 } from "@tartware/fastify-server";
+import { SERVICE_REGISTRY_CATALOG } from "@tartware/schemas";
 
 import { config } from "./config.js";
 import { appLogger } from "./lib/logger.js";
@@ -34,6 +35,7 @@ import { registerRoomTypeRoutes } from "./routes/room-types.js";
 import { registerRoomRoutes } from "./routes/rooms.js";
 
 export const buildServer = (): FastifyInstance => {
+  const registryMetadata = SERVICE_REGISTRY_CATALOG["rooms-service"];
   const app = buildFastifyServer({
     logger: appLogger,
     enableRequestLogging: config.log.requestLogging,
@@ -41,7 +43,7 @@ export const buildServer = (): FastifyInstance => {
     enableMetricsEndpoint: true,
     metricsRegistry,
     serviceRegistry: resolveServiceRegistryConfig({
-      serviceName: "rooms-service",
+      ...registryMetadata,
       serviceVersion: config.service.version,
       host: config.host,
       port: config.port,

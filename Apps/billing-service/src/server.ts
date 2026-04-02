@@ -3,6 +3,7 @@ import {
   type FastifyInstance,
   resolveServiceRegistryConfig,
 } from "@tartware/fastify-server";
+import { SERVICE_REGISTRY_CATALOG } from "@tartware/schemas";
 
 import { config } from "./config.js";
 import { ensureBillingEncryptionRequirementsMet } from "./lib/compliance-policies.js";
@@ -16,6 +17,7 @@ import { registerHealthRoutes } from "./routes/health.js";
 
 export const buildServer = (): FastifyInstance => {
   ensureBillingEncryptionRequirementsMet();
+  const registryMetadata = SERVICE_REGISTRY_CATALOG["billing-service"];
 
   const app = buildFastifyServer({
     logger: appLogger,
@@ -24,7 +26,7 @@ export const buildServer = (): FastifyInstance => {
     enableMetricsEndpoint: true,
     metricsRegistry,
     serviceRegistry: resolveServiceRegistryConfig({
-      serviceName: "billing-service",
+      ...registryMetadata,
       serviceVersion: config.service.version,
       host: config.host,
       port: config.port,

@@ -11,19 +11,19 @@
 \echo ''
 
 -- =====================================================
--- 4. CHECK TENANT ISOLATION & DOUBLE-BOOKING GUARDS
+-- 4. CHECK CONFIRMATION UNIQUENESS & DOUBLE-BOOKING GUARDS
 -- =====================================================
-\echo '4. Checking tenant-scoped uniqueness and overlap guards...'
+\echo '4. Checking confirmation uniqueness and overlap guards...'
 
 SELECT
-    'idx_uk_reservations_tenant_confirmation' AS artifact,
+    'idx_reservations_confirmation' AS artifact,
     CASE
         WHEN EXISTS (
             SELECT 1
             FROM pg_indexes
             WHERE schemaname = 'public'
               AND tablename = 'reservations'
-              AND indexname = 'idx_uk_reservations_tenant_confirmation'
+              AND indexname = 'idx_reservations_confirmation'
         ) THEN '✓ Present'
         ELSE '✗ Missing'
     END AS status

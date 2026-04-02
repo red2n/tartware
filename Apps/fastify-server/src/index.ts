@@ -116,6 +116,8 @@ export interface BuildFastifyServerOptions {
 	serviceRegistry?: {
 		registryUrl: string;
 		serviceName: string;
+		description: string;
+		tag: string;
 		serviceVersion: string;
 		host: string;
 		port: number;
@@ -413,7 +415,14 @@ export const buildFastifyServer = (
 		serviceRegistry ??
 		resolveServiceRegistryConfig({
 			registryUrl,
-			serviceName: process.env.SERVICE_NAME ?? "unknown",
+			serviceName:
+				process.env.SERVICE_DISPLAY_NAME ??
+				process.env.SERVICE_NAME ??
+				"Unknown Service",
+			description:
+				process.env.SERVICE_DESCRIPTION ??
+				"Tartware service instance registered for discovery and health tracking.",
+			tag: process.env.SERVICE_TAG ?? process.env.SERVICE_NAME ?? "unknown-service",
 			serviceVersion: process.env.SERVICE_VERSION ?? "0.0.0",
 			host: process.env.HOST ?? "localhost",
 			port: registryPort,
