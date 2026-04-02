@@ -98,7 +98,8 @@
       "js-yaml": "4.1.1",
       "@fastify/swagger": "^9.6.1",
       "@fastify/swagger-ui": "^5.2.3",
-      "esbuild": "0.27.2"
+      "esbuild": "0.27.2",
+      "bn.js": "4.12.3"
     }
   }
 }

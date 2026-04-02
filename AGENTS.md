@@ -100,6 +100,7 @@ Every entry in `pnpm.overrides` (root `package.json`) must have a documented rea
 - **@fastify/swagger ^9.6.1** — Align version across all Fastify services.
 - **@fastify/swagger-ui ^5.2.3** — Align version across all Fastify services.
 - **esbuild 0.27.2** — Pin for tsx; prevents unexpected binary re-downloads.
+- **bn.js 4.12.3** — Security fix for CVE-2026-2739 / SNYK-JS-BNJS-15274301 via `@fastify/jwt` -> `fast-jwt` -> `asn1.js`.
 
 ## Service Port Map
 Canonical dev port assignments (set via `PORT=` env var in root `package.json` dev scripts). After consolidation, 10 standalone services have been merged into host services (see `docs/SERVICE_CONSOLIDATION_TRACKER.md`).

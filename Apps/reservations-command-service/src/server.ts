@@ -163,6 +163,7 @@ export const buildServer = (): FastifyInstance => {
     app.get(
       "/health/readiness",
       {
+        ...readRateLimitConfig,
         schema: buildRouteSchema({
           tag: "Health",
           summary: "Readiness probe (DB + Kafka)",
