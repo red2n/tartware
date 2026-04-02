@@ -8,8 +8,8 @@ import {
   ReservationLifecycleQuerySchema,
   ReservationLifecycleResponseSchema,
   ReservationReliabilitySnapshotSchema,
-  SERVICE_REGISTRY_CATALOG,
-} from "@tartware/schemas";
+} from "@tartware/schemas/api/reservations";
+import { SERVICE_REGISTRY_CATALOG } from "@tartware/schemas/api/registry";
 import type { FastifyInstance, FastifyPluginAsync } from "fastify";
 
 import { checkGuardHealth } from "./clients/availability-guard-client.js";

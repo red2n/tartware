@@ -1,5 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+vi.mock("@tartware/schemas/api/registry", async () => import("../../../schema/dist/api/registry.js"));
+vi.mock(
+  "@tartware/schemas/api/reservations",
+  async () => import("../../../schema/dist/api/reservations.js"),
+);
+
 import { buildServer } from "../src/server.js";
 import { kafkaConfig } from "../src/config.js";
 import {
@@ -106,7 +112,6 @@ describe("reservations-command-service HTTP routes", () => {
   });
 
   it("exposes a reliability snapshot", async () => {
-    const app = await buildApp();
     const snapshot = {
       status: "healthy",
       generatedAt: new Date().toISOString(),
@@ -133,13 +138,17 @@ describe("reservations-command-service HTTP routes", () => {
       },
     } as const;
     vi.mocked(getReliabilitySnapshot).mockResolvedValueOnce(snapshot);
+    const app = await buildApp();
+
+    await vi.waitFor(() => {
+      expect(getReliabilitySnapshot).toHaveBeenCalledTimes(1);
+    });
 
     const response = await app.inject({
       method: "GET",
       url: "/health/reliability",
     });
 
-    expect(getReliabilitySnapshot).toHaveBeenCalledTimes(1);
     expect(response.statusCode).toBe(200);
     expect(response.json()).toEqual(snapshot);
 
