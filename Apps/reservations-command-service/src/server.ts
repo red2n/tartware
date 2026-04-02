@@ -7,7 +7,7 @@ import type { FastifyInstance, FastifyPluginAsync } from "fastify";
 import { z } from "zod";
 
 import { checkGuardHealth } from "./clients/availability-guard-client.js";
-import { kafkaConfig, serviceConfig } from "./config.js";
+import { kafkaConfig, reliabilityConfig, serviceConfig } from "./config.js";
 import { checkDatabaseHealth, checkKafkaHealth } from "./lib/health-checks.js";
 import { metricsRegistry } from "./lib/metrics.js";
 import { reservationsLogger } from "./logger.js";
@@ -68,9 +68,42 @@ const ReliabilitySnapshotJsonSchema = schemaFromZod(
   ReliabilitySnapshotSchema,
   "ReliabilitySnapshot",
 );
+const RELIABILITY_SNAPSHOT_REFRESH_MS = 30_000;
+
+const createUnavailableReliabilitySnapshot = (issue: string): ReliabilitySnapshot => ({
+  status: "degraded",
+  generatedAt: new Date().toISOString(),
+  issues: [issue],
+  outbox: {
+    pending: 0,
+    warnThreshold: reliabilityConfig.outboxWarnThreshold,
+    criticalThreshold: reliabilityConfig.outboxCriticalThreshold,
+  },
+  consumer: {
+    partitions: 0,
+    stalePartitions: 0,
+    maxSecondsSinceCommit: null,
+    staleThresholdSeconds: reliabilityConfig.consumerStaleSeconds,
+  },
+  lifecycle: {
+    stalledCommands: 0,
+    oldestStuckSeconds: null,
+    dlqTotal: 0,
+    stalledThresholdSeconds: reliabilityConfig.stalledThresholdSeconds,
+  },
+  dlq: {
+    depth: null,
+    warnThreshold: reliabilityConfig.dlqWarnThreshold,
+    criticalThreshold: reliabilityConfig.dlqCriticalThreshold,
+    topic: kafkaConfig.dlqTopic,
+    error: issue,
+  },
+});
 
 export const buildServer = (): FastifyInstance => {
   const registryMetadata = SERVICE_REGISTRY_CATALOG["reservations-command-service"];
+  let reliabilitySnapshot = createUnavailableReliabilitySnapshot("snapshot_pending");
+  let reliabilitySnapshotRefreshTimer: ReturnType<typeof setInterval> | null = null;
   const app = buildFastifyServer({
     logger: reservationsLogger,
     enableRequestLogging: serviceConfig.requestLogging,
@@ -93,6 +126,32 @@ export const buildServer = (): FastifyInstance => {
   );
 
   app.register(swaggerPlugin);
+
+  const refreshReliabilitySnapshot = async () => {
+    try {
+      reliabilitySnapshot = await getReliabilitySnapshot();
+    } catch (error) {
+      app.log.error(error, "Failed to refresh reliability snapshot");
+      reliabilitySnapshot = createUnavailableReliabilitySnapshot(
+        error instanceof Error ? error.message : "snapshot_refresh_failed",
+      );
+    }
+  };
+
+  app.addHook("onReady", async () => {
+    await refreshReliabilitySnapshot();
+    reliabilitySnapshotRefreshTimer = setInterval(() => {
+      void refreshReliabilitySnapshot();
+    }, RELIABILITY_SNAPSHOT_REFRESH_MS);
+    reliabilitySnapshotRefreshTimer.unref();
+  });
+
+  app.addHook("onClose", async () => {
+    if (reliabilitySnapshotRefreshTimer) {
+      clearInterval(reliabilitySnapshotRefreshTimer);
+      reliabilitySnapshotRefreshTimer = null;
+    }
+  });
 
   app.after(() => {
     app.get(
@@ -199,10 +258,7 @@ export const buildServer = (): FastifyInstance => {
           },
         }),
       },
-      async () => {
-        const snapshot: ReliabilitySnapshot = await getReliabilitySnapshot();
-        return snapshot;
-      },
+      async () => reliabilitySnapshot,
     );
 
     app.get(
