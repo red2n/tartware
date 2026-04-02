@@ -138,7 +138,7 @@ type TenantScopeDecorator = (options?: TenantScopeOptions) => preHandlerHookHand
  * Verify the bearer token stored on the request and populate request.auth.
  * Called once per request — subsequent calls are no-ops (idempotent).
  */
-const verifyRequestIdentity = (request: FastifyRequest): void => {
+export const verifyRequestIdentity = (request: FastifyRequest): void => {
   if (request.auth.isAuthenticated) {
     return;
   }

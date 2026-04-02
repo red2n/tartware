@@ -14,7 +14,7 @@ import { kafkaConfig } from "../config.js";
 import { publishRecord } from "../kafka/producer.js";
 import { commandsAcceptedTotal } from "../lib/metrics.js";
 import { gatewayLogger } from "../logger.js";
-import { ensureAuthMembershipsLoaded } from "../plugins/auth-context.js";
+import { ensureAuthMembershipsLoaded, verifyRequestIdentity } from "../plugins/auth-context.js";
 import type { TenantMembership } from "../services/membership-service.js";
 
 const logger = gatewayLogger.child({ module: "command-publisher" });
@@ -38,6 +38,8 @@ const ensureTenantAccess = async (
     requiredModules?: string | string[];
   } = {},
 ): Promise<TenantMembership | null> => {
+  verifyRequestIdentity(request);
+
   if (!request.auth.isAuthenticated) {
     reply.unauthorized("AUTHENTICATION_REQUIRED");
     return null;
