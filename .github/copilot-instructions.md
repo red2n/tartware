@@ -2,6 +2,8 @@
 
 **MANDATORY**: Before making ANY code changes, read and follow `/AGENTS.md`. It contains project-specific rules that override general coding practices.
 
+> **SCHEMA FIRST — ABSOLUTE RULE.** Before writing any `type X = {`, `interface X {`, or `z.object({})` anywhere in `Apps/`: open `schema/src/` and check whether the shape already exists. If it does, import it. If it does not, create it in `schema/` first, run `npx nx run @tartware/schemas:build --skip-nx-cache`, then import. There are NO exceptions beyond the explicit ALLOWED list in this file.
+
 ## Architecture Overview
 
 Tartware is a **command-driven Property Management System** (PMS) built as a pnpm/Nx TypeScript monorepo targeting 20K ops/sec.
@@ -42,7 +44,89 @@ Client → API Gateway (:8080) → Command Center → Kafka → Domain Services
 - **NEVER define sharable types inside `Apps/`** — this includes Zod schemas, TypeScript `interface` declarations, `type` aliases, input/output shapes, provider contracts, and options objects. ALL sharable data shapes MUST live in `schema/` and be imported from `@tartware/schemas`.
 - API response schemas → `schema/src/api/`; command schemas → `schema/src/events/commands/`; table schemas → `schema/src/schemas/`.
 - **Allowed locally in `Apps/`:** route-specific query/param schemas, `.pick()`/`.omit().extend()` derivations, env/config schemas, thin `z.array()` wrappers, and `export type { X }` re-exports.
-- After any schema change: `npx nx run @tartware/schemas:build`.
+- After any schema change: `npx nx run @tartware/schemas:build --skip-nx-cache` (always use `--skip-nx-cache` — NX caches stale build results and will silently return an outdated success).
+
+### What MUST go in `schema/` (FORBIDDEN locally in any service)
+
+| Forbidden local pattern | Where it belongs |
+|-------------------------|-----------------|
+| `interface CreateXInput { ... }` / `interface UpdateXInput { ... }` | `schema/src/schemas/<domain>.ts` |
+| `interface ListXInput { ... }` / `type GetXInput = { ... }` | `schema/src/schemas/<domain>.ts` |
+| `interface XServiceInput { ... }` / `type XOutputShape = { ... }` | `schema/src/api/<domain>.ts` |
+| `z.object({...})` domain/repository schemas | `schema/src/schemas/` or `schema/src/api/` |
+| Command payload types | `schema/src/events/commands/<domain>.ts` |
+| Event payload types | `schema/src/events/events/<domain>.ts` |
+| Provider contracts / service interfaces used cross-layer | `schema/src/api/<domain>.ts` |
+| Shared utility functions operating on domain data | `schema/src/api/<domain>.ts` |
+| DB row shapes used by >1 file | `schema/src/schemas/<domain>.ts` |
+
+### What MAY remain local (explicitly allowed)
+
+| Allowed local pattern | Rationale |
+|-----------------------|-----------|
+| `type X = z.infer<typeof LocalQuerySchema>` | Route param extraction; no new shape |
+| `.pick()` / `.omit().extend()` one-liner | Derivation only |
+| `z.object` for `process.env` / service config | Config only; never shared |
+| Fastify `.d.ts` decorator augmentation | Framework integration |
+| JWT / auth-context interfaces in `core-service` | Auth layer; never cross-service |
+| `BuildServerOptions` / plugin-local option types | Single-file infra only |
+| `type Row = ExistingSchemaRow` (re-alias an import) | Rename only; no new shape |
+| Single-file internal types never exported | Truly private; no shareability |
+
+### Known allowed exception files — do NOT migrate these
+These files are explicitly exempt from the schema-first rule. Do not move their types to `schema/`:
+
+| File | Why it is allowed |
+|------|------------------|
+| `core-service/src/types/auth.ts` | JWT / auth-context for auth layer only |
+| `core-service/src/types/system-admin.ts` | Fastify decorator augmentation for system admin scope |
+| `core-service/src/services/auth-service.ts` | Auth-layer internal shapes |
+| `core-service/src/lib/jwt.ts` | JWT payload types (`AccessTokenPayload`); auth layer only |
+| `core-service/src/lib/cache.ts` | Generic LRU cache infrastructure; single-file, never shared |
+| `core-service/src/lib/system-admin-rate-limiter.ts` | Rate limiter infra; single-file infrastructure only |
+| `core-service/src/lib/tenant-auth-throttle.ts` | Auth throttle; auth layer only |
+| `core-service/src/services/tenant-auth-security-service.ts` | Auth security profiles; auth layer, never cross-service |
+| `core-service/src/services/user-cache-service.ts` | User/membership cache; single-service only |
+| `core-service/src/services/membership-cache-hooks.ts` | Membership cache hooks; single-service internal |
+| `settings-service/src/types/auth.ts` | Auth-context extension, never cross-service |
+| `settings-service/src/services/membership-service.ts` | `Omit<>` derivation from schema type — ALLOWED pattern |
+| `availability-guard-service/src/grpc/server.ts` | gRPC framework bindings (protocol types) |
+| `reservations-command-service/src/clients/availability-guard-client.ts` | gRPC protocol client types |
+| `api-gateway/src/utils/circuit-breaker.ts` | Infrastructure-only, single-file |
+| `api-gateway/src/devtools/duplo-dashboard.ts` | Dev tooling, never production |
+| `api-gateway/src/plugins/auth-context.ts` | Fastify plugin-local option types |
+| `rooms-service/src/sql/dynamic-update-builder.ts` | SQL utility; single-file, never cross-service |
+| `roll-service/src/cli/roll-replay.ts` | CLI tooling, never shared |
+| Any `*.d.ts` file` | TypeScript ambient declarations |
+
+### Row type naming convention
+When a service needs a typed PostgreSQL query result row:
+- Create it in `schema/src/api/<domain>-rows.ts` (e.g., `guest-rows.ts`, `reservation-rows.ts`)
+- Name it `<Entity>Row` (e.g., `GuestRow`, `ReservationStayRow`)
+- Use `type` (not `interface`), no Zod — these are raw `pg` result shapes
+- Export from `schema/src/api/index.ts`; import as `import type { FooRow } from "@tartware/schemas"`
+- **Never define `type XxxRow = { ... }` locally in a service**
+
+### Compliance check — run before every commit
+```bash
+# Stage 1 — find candidate violations
+grep -rn \
+  "^type [A-Z]\|^interface [A-Z]\|^export type [A-Z]\|^export interface [A-Z]" \
+  Apps/*/src/**/*.ts 2>/dev/null \
+  | grep -v "\.d\.ts" \
+  | grep -v "= z\.\|z\.infer" \
+  | grep -v "export type { " \
+  | grep -v "= [A-Z].*Row$\|= [A-Z].*Input\|= [A-Z].*Output\|= [A-Z].*Schema" \
+  | grep -v "BuildServerOptions\|AuthContext\|TenantContext\|JwtPayload\|QueryRunner\|UpdateField"
+
+# Stage 2 — list by file with counts (shows which service needs the most work)
+grep -rn \
+  "^type [A-Z]\|^interface [A-Z]\|^export type [A-Z]\|^export interface [A-Z]" \
+  Apps/*/src/**/*.ts 2>/dev/null \
+  | grep -v "\.d\.ts\|= z\.\|z\.infer\|export type { \|BuildServerOptions\|AuthContext\|TenantContext\|JwtPayload" \
+  | awk -F: '{print $1}' | sort | uniq -c | sort -rn | head -20
+```
+Any result NOT matching the ALLOWED list or the known exception files above is a violation — move it to `schema/` before committing. See `AGENTS.md` for full rules and taxonomy.
 
 ## Schema-First Development
 
@@ -50,7 +134,7 @@ SQL and TypeScript schemas must stay in lockstep:
 1. Add/update SQL in `scripts/tables/<category>/<file>.sql` (never date-prefixed migration files).
 2. Add/update Zod schemas in `schema/src/`.
 3. Run the SQL: `psql -h localhost -U postgres -d tartware -f scripts/tables/<category>/<file>.sql`.
-4. Build schemas: `npx nx run @tartware/schemas:build`.
+4. Build schemas: `npx nx run @tartware/schemas:build --skip-nx-cache`.
 5. When enums change, update both `scripts/02-enum-types.sql` and the corresponding Zod enum.
 
 Use idempotent SQL patterns (`IF NOT EXISTS`, `ON CONFLICT DO NOTHING`). New tables must be added to `scripts/tables/00-create-all-tables.sql`. See SQL documentation standard in `AGENTS.md`.

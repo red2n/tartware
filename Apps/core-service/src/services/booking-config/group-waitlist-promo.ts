@@ -1,10 +1,20 @@
 import {
+  type GetGroupBookingInput,
+  type GetPromotionalCodeInput,
+  type GetWaitlistEntryInput,
   type GroupBookingListItem,
   GroupBookingListItemSchema,
+  type GroupBookingRow,
+  type ListGroupBookingsInput,
+  type ListPromotionalCodesInput,
+  type ListWaitlistEntriesInput,
   type PromotionalCodeListItem,
   PromotionalCodeListItemSchema,
+  type PromotionalCodeRow,
+  type ValidatePromoCodeInput,
   type WaitlistEntryListItem,
   WaitlistEntryListItemSchema,
+  type WaitlistEntryRow,
 } from "@tartware/schemas";
 
 import { query } from "../../lib/db.js";
@@ -23,37 +33,6 @@ import { formatDisplayLabel, toIsoString } from "./common.js";
 // =====================================================
 // WAITLIST ENTRY SERVICE
 // =====================================================
-
-type WaitlistEntryRow = {
-  waitlist_id: string;
-  tenant_id: string;
-  property_id: string;
-  property_name: string | null;
-  guest_id: string | null;
-  guest_name: string | null;
-  reservation_id: string | null;
-  requested_room_type_id: string | null;
-  room_type_name: string | null;
-  requested_rate_id: string | null;
-  arrival_date: string | Date;
-  departure_date: string | Date;
-  nights: number;
-  number_of_rooms: number;
-  number_of_adults: number;
-  number_of_children: number;
-  flexibility: string;
-  waitlist_status: string;
-  priority_score: number;
-  vip_flag: boolean;
-  last_notified_at: string | Date | null;
-  last_notified_via: string | null;
-  offer_expiration_at: string | Date | null;
-  offer_response: string | null;
-  offer_response_at: string | Date | null;
-  notes: string | null;
-  created_at: string | Date;
-  updated_at: string | Date | null;
-};
 
 const mapWaitlistEntryRow = (row: WaitlistEntryRow): WaitlistEntryListItem => {
   return WaitlistEntryListItemSchema.parse({
@@ -90,17 +69,6 @@ const mapWaitlistEntryRow = (row: WaitlistEntryRow): WaitlistEntryListItem => {
   });
 };
 
-export type ListWaitlistEntriesInput = {
-  limit?: number;
-  tenantId: string;
-  propertyId?: string;
-  waitlistStatus?: string;
-  arrivalDateFrom?: string;
-  arrivalDateTo?: string;
-  isVip?: boolean;
-  offset?: number;
-};
-
 export const listWaitlistEntries = async (
   options: ListWaitlistEntriesInput,
 ): Promise<WaitlistEntryListItem[]> => {
@@ -115,11 +83,6 @@ export const listWaitlistEntries = async (
     options.offset ?? 0,
   ]);
   return rows.map(mapWaitlistEntryRow);
-};
-
-export type GetWaitlistEntryInput = {
-  waitlistId: string;
-  tenantId: string;
 };
 
 export const getWaitlistEntryById = async (
@@ -139,50 +102,6 @@ export const getWaitlistEntryById = async (
 // =====================================================
 // GROUP BOOKING SERVICE
 // =====================================================
-
-type GroupBookingRow = {
-  group_booking_id: string;
-  tenant_id: string;
-  property_id: string;
-  property_name: string | null;
-  group_name: string;
-  group_code: string | null;
-  group_type: string;
-  block_status: string;
-  company_id: string | null;
-  company_name: string | null;
-  organization_name: string | null;
-  event_name: string | null;
-  event_type: string | null;
-  contact_name: string;
-  contact_email: string | null;
-  contact_phone: string | null;
-  arrival_date: string;
-  departure_date: string;
-  number_of_nights: number | null;
-  total_rooms_requested: number;
-  total_rooms_blocked: number | null;
-  total_rooms_picked: number | null;
-  total_rooms_confirmed: number | null;
-  cutoff_date: string;
-  cutoff_days_before_arrival: number | null;
-  release_unsold_rooms: boolean | null;
-  rooming_list_received: boolean | null;
-  rooming_list_deadline: string | null;
-  deposit_amount: string | null;
-  deposit_received: boolean | null;
-  negotiated_rate: string | null;
-  estimated_total_revenue: string | null;
-  actual_revenue: string | null;
-  contract_signed: boolean | null;
-  is_active: boolean;
-  booking_confidence: string | null;
-  account_manager_id: string | null;
-  account_manager_name: string | null;
-  sales_manager_id: string | null;
-  created_at: string;
-  updated_at: string | null;
-};
 
 const mapGroupBookingRow = (row: GroupBookingRow): GroupBookingListItem => {
   const totalBlocked = row.total_rooms_blocked ?? 0;
@@ -237,18 +156,6 @@ const mapGroupBookingRow = (row: GroupBookingRow): GroupBookingListItem => {
   });
 };
 
-export type ListGroupBookingsInput = {
-  tenantId: string;
-  propertyId?: string;
-  blockStatus?: string;
-  groupType?: string;
-  arrivalDateFrom?: string;
-  arrivalDateTo?: string;
-  isActive?: boolean;
-  limit?: number;
-  offset?: number;
-};
-
 export const listGroupBookings = async (
   options: ListGroupBookingsInput,
 ): Promise<GroupBookingListItem[]> => {
@@ -264,11 +171,6 @@ export const listGroupBookings = async (
     options.offset ?? 0,
   ]);
   return rows.map(mapGroupBookingRow);
-};
-
-export type GetGroupBookingInput = {
-  groupBookingId: string;
-  tenantId: string;
 };
 
 export const getGroupBookingById = async (
@@ -288,50 +190,6 @@ export const getGroupBookingById = async (
 // =====================================================
 // PROMOTIONAL CODE SERVICE
 // =====================================================
-
-type PromotionalCodeRow = {
-  promo_id: string;
-  tenant_id: string;
-  property_id: string | null;
-  property_name: string | null;
-  promo_code: string;
-  promo_name: string;
-  promo_description: string | null;
-  promo_type: string | null;
-  promo_status: string | null;
-  is_active: boolean | null;
-  is_public: boolean | null;
-  valid_from: string;
-  valid_to: string;
-  discount_type: string | null;
-  discount_percent: string | null;
-  discount_amount: string | null;
-  discount_currency: string | null;
-  max_discount_amount: string | null;
-  free_nights_count: number | null;
-  has_usage_limit: boolean | null;
-  total_usage_limit: number | null;
-  usage_count: number | null;
-  remaining_uses: number | null;
-  per_user_limit: number | null;
-  minimum_stay_nights: number | null;
-  maximum_stay_nights: number | null;
-  minimum_booking_amount: string | null;
-  times_viewed: number | null;
-  times_applied: number | null;
-  times_redeemed: number | null;
-  total_discount_given: string | null;
-  total_revenue_generated: string | null;
-  conversion_rate: string | null;
-  combinable_with_other_promos: boolean | null;
-  auto_apply: boolean | null;
-  display_on_website: boolean | null;
-  requires_approval: boolean | null;
-  campaign_id: string | null;
-  marketing_source: string | null;
-  created_at: string;
-  updated_at: string | null;
-};
 
 const mapPromotionalCodeRow = (row: PromotionalCodeRow): PromotionalCodeListItem => {
   return PromotionalCodeListItemSchema.parse({
@@ -381,17 +239,6 @@ const mapPromotionalCodeRow = (row: PromotionalCodeRow): PromotionalCodeListItem
   });
 };
 
-export type ListPromotionalCodesInput = {
-  tenantId: string;
-  propertyId?: string;
-  promoStatus?: string;
-  isActive?: boolean;
-  isPublic?: boolean;
-  search?: string;
-  limit?: number;
-  offset?: number;
-};
-
 export const listPromotionalCodes = async (
   options: ListPromotionalCodesInput,
 ): Promise<PromotionalCodeListItem[]> => {
@@ -408,11 +255,6 @@ export const listPromotionalCodes = async (
   return rows.map(mapPromotionalCodeRow);
 };
 
-export type GetPromotionalCodeInput = {
-  promoId: string;
-  tenantId: string;
-};
-
 export const getPromotionalCodeById = async (
   options: GetPromotionalCodeInput,
 ): Promise<PromotionalCodeListItem | null> => {
@@ -425,19 +267,6 @@ export const getPromotionalCodeById = async (
     return null;
   }
   return mapPromotionalCodeRow(row);
-};
-
-export type ValidatePromoCodeInput = {
-  promoCode: string;
-  tenantId: string;
-  propertyId?: string;
-  arrivalDate: string;
-  departureDate: string;
-  roomTypeId?: string;
-  rateCode?: string;
-  bookingAmount?: number;
-  guestId?: string;
-  channel?: string;
 };
 
 export const validatePromoCode = async (

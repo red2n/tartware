@@ -1,25 +1,13 @@
+import {
+  MODULE_IDS,
+  type ModuleDefinition,
+  type ModuleId,
+  type TenantModulesResponse,
+} from "@tartware/schemas";
 import { z } from "zod";
 
-export const MODULE_IDS = [
-  "core",
-  "finance-automation",
-  "tenant-owner-portal",
-  "facility-maintenance",
-  "analytics-bi",
-  "marketing-channel",
-  "enterprise-api",
-] as const;
-
-export type ModuleId = (typeof MODULE_IDS)[number];
-
-export interface ModuleDefinition {
-  id: ModuleId;
-  name: string;
-  description: string;
-  tier: "base" | "add-on" | "enterprise";
-  features: string[];
-  category: string;
-}
+export type { ModuleId, ModuleDefinition, TenantModulesResponse };
+export { MODULE_IDS };
 
 export const MODULE_DEFINITIONS: Record<ModuleId, ModuleDefinition> = {
   core: {

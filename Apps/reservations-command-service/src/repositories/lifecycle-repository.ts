@@ -1,3 +1,8 @@
+import type {
+  LifecycleInsertInput,
+  LifecycleUpdateInput,
+  ReservationCommandLifecycleState,
+} from "@tartware/schemas";
 import type { PoolClient } from "pg";
 
 import { serviceConfig } from "../config.js";
@@ -5,26 +10,7 @@ import { query } from "../lib/db.js";
 
 const ACTOR = serviceConfig.serviceId;
 
-export type ReservationCommandLifecycleState =
-  | "RECEIVED"
-  | "PERSISTED"
-  | "IN_PROGRESS"
-  | "PUBLISHED"
-  | "CONSUMED"
-  | "APPLIED"
-  | "FAILED"
-  | "DLQ";
-
-type LifecycleInsertInput = {
-  eventId: string;
-  tenantId: string;
-  reservationId?: string;
-  commandName: string;
-  correlationId?: string;
-  partitionKey?: string;
-  details?: Record<string, unknown>;
-  metadata?: Record<string, unknown>;
-};
+export type { ReservationCommandLifecycleState };
 
 const toJson = (value?: Record<string, unknown>): string => {
   return JSON.stringify(value ?? {});
@@ -113,13 +99,6 @@ export const recordLifecyclePersisted = async (
       }),
     ],
   );
-};
-
-type LifecycleUpdateInput = {
-  eventId: string;
-  state: ReservationCommandLifecycleState;
-  details?: Record<string, unknown>;
-  metadata?: Record<string, unknown>;
 };
 
 export const updateLifecycleState = async (input: LifecycleUpdateInput): Promise<void> => {

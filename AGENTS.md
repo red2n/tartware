@@ -15,9 +15,121 @@
 - **Naming**: file, variable, and method names must be human-readable and intent-revealing; avoid abbreviations unless domain-standard.
 - **Docs**: add TSDoc for public/critical methods (core workflows, command handlers, and complex utilities).
 
-## Schema-First Development
-- Always use the `schema/` package for data shapes and validation.
-- **Never define sharable types locally in App services** — this includes Zod schemas, TypeScript `interface` declarations, `type` aliases, input/output shapes, provider contracts, and options objects. Import from `@tartware/schemas` instead.
+## Schema-First Development — NON-NEGOTIABLE STANDARD
+
+> **STOP GATE — enforce before every edit.**
+> Before writing `type Foo = {`, `interface Foo {`, or any `z.object({})` in `Apps/`:
+> 1. Search `schema/src/` — does this type already exist?
+> 2. If not — create it in `schema/` FIRST, build, then import.
+> 3. If yes — import from `@tartware/schemas`. Never redefine it locally.
+> Skipping this gate is the #1 source of schema drift. There are no exceptions beyond the ALLOWED list below.
+
+`schema/` (package: `@tartware/schemas`) is the **single source of truth** for all domain types. This is a hard architectural rule, not a guideline.
+
+### FORBIDDEN in `Apps/` — MUST live in `schema/`
+Never write any of these locally in a service:
+
+| Forbidden pattern | Required location |
+|-------------------|-------------------|
+| `z.object({...})` / `z.string()` domain schemas | `schema/src/schemas/` or `schema/src/api/` |
+| `interface InputType { ... }` for repository params | `schema/src/schemas/<domain>.ts` |
+| `interface ServiceInput { ... }` for service-layer data | `schema/src/api/<domain>.ts` |
+| `type OutputShape = { ... }` for API or command outputs | `schema/src/api/<domain>.ts` |
+| Command payload types | `schema/src/events/commands/<domain>.ts` |
+| Event payload types | `schema/src/events/events/<domain>.ts` |
+| Cross-layer row shapes used by >1 file | `schema/src/schemas/<domain>.ts` |
+| Provider contracts / service interfaces | `schema/src/api/<domain>.ts` |
+| Shared utility functions on domain data | `schema/src/api/<domain>.ts` |
+
+### ALLOWED locally in `Apps/`
+These are the **only** patterns permitted as local types in service code:
+
+| Allowed pattern | Rationale |
+|-----------------|-----------|
+| `type X = z.infer<typeof LocalSchema>` | Route-local param extraction; not a new shape |
+| `.pick()` / `.omit().extend()` one-liner | Derivation from schema type; no new shape defined |
+| `env/config` schemas (`z.object` for process.env) | Config only, never shared |
+| Fastify decorator augmentation (`.d.ts` files) | Framework integration only |
+| JWT / auth-context interfaces in `core-service` | Auth layer, never cross-service |
+| `BuildServerOptions` / plugin-local option types | Single-file infrastructure only |
+| `type Row = ExistingSchemaRow` re-alias | Renaming an import, not defining a shape |
+| Single-file internal types never exported beyond the file | Truly internal; no shareability |
+
+### Known allowed exception files — do NOT attempt to migrate these
+These files contain types that are explicitly allowed locally by the rules above. Do not flag them as violations or move them to `schema/`:
+
+| File | Why it is allowed |
+|------|------------------|
+| `core-service/src/types/auth.ts` | JWT / auth-context for auth layer only |
+| `core-service/src/types/system-admin.ts` | Fastify decorator augmentation for system admin scope |
+| `core-service/src/services/auth-service.ts` | Auth-layer internal shapes |
+| `core-service/src/lib/jwt.ts` | JWT payload types (`AccessTokenPayload`); auth layer only |
+| `core-service/src/lib/cache.ts` | Generic LRU cache infrastructure; single-file, never shared |
+| `core-service/src/lib/system-admin-rate-limiter.ts` | Rate limiter infra; single-file infrastructure only |
+| `core-service/src/lib/tenant-auth-throttle.ts` | Auth throttle; auth layer only |
+| `core-service/src/services/tenant-auth-security-service.ts` | Auth security profiles; auth layer, never cross-service |
+| `core-service/src/services/user-cache-service.ts` | User/membership cache; single-service only |
+| `core-service/src/services/membership-cache-hooks.ts` | Membership cache hooks; single-service internal |
+| `settings-service/src/types/auth.ts` | Auth-context extension, never cross-service |
+| `settings-service/src/services/membership-service.ts` | `Omit<>` derivation from schema type — ALLOWED pattern |
+| `availability-guard-service/src/grpc/server.ts` | gRPC framework bindings (protocol types) |
+| `reservations-command-service/src/clients/availability-guard-client.ts` | gRPC protocol client types |
+| `api-gateway/src/utils/circuit-breaker.ts` | Infrastructure-only, single-file |
+| `api-gateway/src/devtools/duplo-dashboard.ts` | Dev tooling, never production |
+| `api-gateway/src/plugins/auth-context.ts` | Fastify plugin-local option types |
+| `rooms-service/src/sql/dynamic-update-builder.ts` | SQL utility; single-file, never cross-service |
+| `roll-service/src/cli/roll-replay.ts` | CLI tooling, never shared |
+| Any `*.d.ts` file | TypeScript ambient declarations |
+
+### Schema directory taxonomy
+```
+schema/src/
+  schemas/      ← Zod table schemas + DB row types (aligned with SQL tables)
+  api/          ← API request/response shapes, shared service logic, provider interfaces
+    *-rows.ts   ← Raw PostgreSQL query row shapes (type-only, no Zod — one per domain)
+  events/
+    commands/   ← Kafka command payloads (one file per domain)
+    events/     ← Kafka event payloads
+  types/        ← Re-exported TypeScript interfaces (non-Zod shared types)
+```
+
+**Row type naming convention** — when a service queries the DB and needs a typed row shape:
+- File: `schema/src/api/<domain>-rows.ts`
+- Exported name: `<Entity>Row` (e.g., `ReservationRow`, `GuestRow`, `AllotmentRow`)
+- Type-only (`type`, not `interface`, no Zod) — these are raw `pg` query result shapes
+- One file per domain group; import as `import type { FooRow } from "@tartware/schemas";`
+- **Never define `type XxxRow = { ... }` locally in a service** — always create it in `schema/src/api/*-rows.ts` first
+
+### Workflow — always schema first
+1. Define the shape in `schema/src/<path>/<domain>.ts` first.
+2. Export it from the appropriate `index.ts`.
+3. Build: `npx nx run @tartware/schemas:build --skip-nx-cache` (always use `--skip-nx-cache` after adding or removing exported types — NX caches stale results).
+4. Import from `@tartware/schemas` in `Apps/`.
+5. Add or update corresponding SQL in `scripts/tables/` in lockstep.
+
+### Schema compliance scan
+Run this before any commit to detect violations. The two-stage filter reduces false positives:
+```bash
+# Stage 1 — find candidate type definitions
+grep -rn \
+  "^type [A-Z]\|^interface [A-Z]\|^export type [A-Z]\|^export interface [A-Z]" \
+  Apps/*/src/**/*.ts 2>/dev/null \
+  | grep -v "\.d\.ts" \
+  | grep -v "= z\.\|z\.infer" \
+  | grep -v "export type { " \
+  | grep -v "= [A-Z].*Row$\|= [A-Z].*Input\|= [A-Z].*Output\|= [A-Z].*Schema" \
+  | grep -v "BuildServerOptions\|AuthContext\|TenantContext\|JwtPayload\|QueryRunner\|UpdateField"
+
+# Stage 2 — list by file with counts (shows which service needs the most work)
+grep -rn \
+  "^type [A-Z]\|^interface [A-Z]\|^export type [A-Z]\|^export interface [A-Z]" \
+  Apps/*/src/**/*.ts 2>/dev/null \
+  | grep -v "\.d\.ts\|= z\.\|z\.infer\|export type { \|BuildServerOptions\|AuthContext\|TenantContext\|JwtPayload" \
+  | awk -F: '{print $1}' | sort | uniq -c | sort -rn | head -20
+```
+Any result NOT matching the ALLOWED list or the known exception files above is a violation — move it to `schema/` before committing.
+
+### Other Schema-First rules
 - Add or update schemas in `schema/src/schemas/...` before wiring new command handlers.
 - Keep command payloads aligned with schema definitions and enums.
 - Keep schema changes and SQL migrations in lockstep; never change one without the other.

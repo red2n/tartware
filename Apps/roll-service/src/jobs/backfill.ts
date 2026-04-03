@@ -26,12 +26,14 @@ import {
 const tracer = trace.getTracer("roll-service");
 
 type LifecycleRowResult = LifecycleRow;
+/** Adapter type with index signature so `query<T extends QueryResultRow>` constraint is satisfied. */
+type LifecycleRowBatch = LifecycleRowResult & { [k: string]: unknown };
 
 const fetchLifecycleBatch = async (
   after: Date | null,
   limit: number,
 ): Promise<LifecycleRowResult[]> => {
-  const result = await query<LifecycleRowResult>(
+  const result = await query<LifecycleRowBatch>(
     `
       SELECT
         event_id,

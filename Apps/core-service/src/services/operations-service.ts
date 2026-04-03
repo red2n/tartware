@@ -7,16 +7,34 @@
 import {
   type BanquetOrderListItem,
   BanquetOrderListItemSchema,
+  type BanquetOrderRow,
   type CashierSessionListItem,
   CashierSessionListItemSchema,
+  type CashierSessionRow,
+  type GetBanquetOrderInput,
+  type GetCashierSessionInput,
+  type GetGuestFeedbackInput,
+  type GetLostFoundInput,
+  type GetPoliceReportInput,
+  type GetShiftHandoverInput,
   type GuestFeedbackListItem,
   GuestFeedbackListItemSchema,
+  type GuestFeedbackRow,
+  type ListBanquetOrdersInput,
+  type ListCashierSessionsInput,
+  type ListGuestFeedbackInput,
+  type ListLostFoundInput,
+  type ListPoliceReportsInput,
+  type ListShiftHandoversInput,
   type LostFoundListItem,
   LostFoundListItemSchema,
+  type LostFoundRow,
   type PoliceReportListItem,
   PoliceReportListItemSchema,
+  type PoliceReportRow,
   type ShiftHandoverListItem,
   ShiftHandoverListItemSchema,
+  type ShiftHandoverRow,
 } from "@tartware/schemas";
 
 import { query } from "../lib/db.js";
@@ -53,38 +71,6 @@ const toIsoString = (value: string | Date | null | undefined): string | undefine
 // CASHIER SESSIONS
 // =====================================================
 
-type CashierSessionRow = {
-  session_id: string;
-  tenant_id: string;
-  property_id: string;
-  property_name: string | null;
-  session_number: string;
-  session_name: string | null;
-  cashier_id: string;
-  cashier_name: string | null;
-  terminal_id: string | null;
-  terminal_name: string | null;
-  location: string | null;
-  session_status: string;
-  session_status_display: string;
-  opened_at: Date | string;
-  closed_at: Date | string | null;
-  business_date: Date | string;
-  shift_type: string | null;
-  opening_float_declared: string;
-  total_transactions: number | null;
-  total_revenue: string | null;
-  total_refunds: string | null;
-  net_revenue: string | null;
-  expected_cash_balance: string | null;
-  closing_cash_counted: string | null;
-  cash_variance: string | null;
-  has_variance: boolean | null;
-  reconciled: boolean | null;
-  approved: boolean | null;
-  created_at: Date | string | null;
-};
-
 const mapCashierSessionRow = (row: CashierSessionRow): CashierSessionListItem => {
   return CashierSessionListItemSchema.parse({
     session_id: row.session_id,
@@ -119,16 +105,6 @@ const mapCashierSessionRow = (row: CashierSessionRow): CashierSessionListItem =>
   });
 };
 
-export type ListCashierSessionsInput = {
-  tenantId: string;
-  propertyId?: string;
-  sessionStatus?: string;
-  businessDate?: string;
-  cashierId?: string;
-  limit?: number;
-  offset?: number;
-};
-
 export const listCashierSessions = async (
   options: ListCashierSessionsInput,
 ): Promise<CashierSessionListItem[]> => {
@@ -143,11 +119,6 @@ export const listCashierSessions = async (
   ]);
 
   return rows.map(mapCashierSessionRow);
-};
-
-export type GetCashierSessionInput = {
-  sessionId: string;
-  tenantId: string;
 };
 
 export const getCashierSessionById = async (
@@ -168,37 +139,6 @@ export const getCashierSessionById = async (
 // =====================================================
 // SHIFT HANDOVERS
 // =====================================================
-
-type ShiftHandoverRow = {
-  handover_id: string;
-  tenant_id: string;
-  property_id: string;
-  property_name: string | null;
-  handover_number: string | null;
-  handover_title: string | null;
-  shift_date: Date | string;
-  outgoing_shift: string;
-  outgoing_user_id: string;
-  outgoing_user_name: string | null;
-  incoming_shift: string;
-  incoming_user_id: string;
-  incoming_user_name: string | null;
-  department: string;
-  department_display: string;
-  handover_status: string;
-  handover_status_display: string;
-  handover_started_at: Date | string | null;
-  handover_completed_at: Date | string | null;
-  current_occupancy_percent: string | null;
-  expected_arrivals_count: number | null;
-  expected_departures_count: number | null;
-  tasks_pending: number | null;
-  tasks_urgent: number | null;
-  key_points: string;
-  requires_follow_up: boolean | null;
-  acknowledged: boolean | null;
-  created_at: Date | string | null;
-};
 
 const mapShiftHandoverRow = (row: ShiftHandoverRow): ShiftHandoverListItem => {
   return ShiftHandoverListItemSchema.parse({
@@ -233,16 +173,6 @@ const mapShiftHandoverRow = (row: ShiftHandoverRow): ShiftHandoverListItem => {
   });
 };
 
-export type ListShiftHandoversInput = {
-  tenantId: string;
-  propertyId?: string;
-  handoverStatus?: string;
-  shiftDate?: string;
-  department?: string;
-  limit?: number;
-  offset?: number;
-};
-
 export const listShiftHandovers = async (
   options: ListShiftHandoversInput,
 ): Promise<ShiftHandoverListItem[]> => {
@@ -257,11 +187,6 @@ export const listShiftHandovers = async (
   ]);
 
   return rows.map(mapShiftHandoverRow);
-};
-
-export type GetShiftHandoverInput = {
-  handoverId: string;
-  tenantId: string;
 };
 
 export const getShiftHandoverById = async (
@@ -282,36 +207,6 @@ export const getShiftHandoverById = async (
 // =====================================================
 // LOST AND FOUND
 // =====================================================
-
-type LostFoundRow = {
-  item_id: string;
-  tenant_id: string;
-  property_id: string;
-  property_name: string | null;
-  item_number: string | null;
-  item_name: string;
-  item_description: string;
-  item_category: string;
-  item_category_display: string;
-  color: string | null;
-  estimated_value: string | null;
-  is_valuable: boolean | null;
-  found_date: Date | string;
-  found_by_name: string | null;
-  found_location: string;
-  room_number: string | null;
-  guest_name: string | null;
-  item_status: string;
-  item_status_display: string;
-  storage_location: string | null;
-  days_in_storage: number | null;
-  claimed: boolean | null;
-  returned: boolean | null;
-  disposed: boolean | null;
-  hold_until_date: Date | string | null;
-  has_photos: boolean | null;
-  created_at: Date | string | null;
-};
 
 const mapLostFoundRow = (row: LostFoundRow): LostFoundListItem => {
   return LostFoundListItemSchema.parse({
@@ -345,16 +240,6 @@ const mapLostFoundRow = (row: LostFoundRow): LostFoundListItem => {
   });
 };
 
-export type ListLostFoundInput = {
-  tenantId: string;
-  propertyId?: string;
-  itemStatus?: string;
-  itemCategory?: string;
-  foundDateFrom?: string;
-  limit?: number;
-  offset?: number;
-};
-
 export const listLostFoundItems = async (
   options: ListLostFoundInput,
 ): Promise<LostFoundListItem[]> => {
@@ -369,11 +254,6 @@ export const listLostFoundItems = async (
   ]);
 
   return rows.map(mapLostFoundRow);
-};
-
-export type GetLostFoundInput = {
-  itemId: string;
-  tenantId: string;
 };
 
 export const getLostFoundItemById = async (
@@ -394,42 +274,6 @@ export const getLostFoundItemById = async (
 // =====================================================
 // BANQUET EVENT ORDERS
 // =====================================================
-
-type BanquetOrderRow = {
-  beo_id: string;
-  tenant_id: string;
-  property_id: string;
-  property_name: string | null;
-  event_booking_id: string;
-  beo_number: string;
-  beo_version: number | null;
-  beo_status: string;
-  beo_status_display: string;
-  event_date: Date | string;
-  event_start_time: string;
-  event_end_time: string;
-  meeting_room_id: string;
-  meeting_room_name: string | null;
-  room_setup: string;
-  room_setup_display: string;
-  guaranteed_count: number;
-  expected_count: number | null;
-  actual_count: number | null;
-  menu_type: string | null;
-  service_style: string | null;
-  bar_type: string | null;
-  food_subtotal: string | null;
-  beverage_subtotal: string | null;
-  total_estimated: string | null;
-  total_actual: string | null;
-  client_approved: boolean | null;
-  chef_approved: boolean | null;
-  manager_approved: boolean | null;
-  setup_completed: boolean | null;
-  event_started: boolean | null;
-  event_ended: boolean | null;
-  created_at: Date | string;
-};
 
 const mapBanquetOrderRow = (row: BanquetOrderRow): BanquetOrderListItem => {
   return BanquetOrderListItemSchema.parse({
@@ -469,16 +313,6 @@ const mapBanquetOrderRow = (row: BanquetOrderRow): BanquetOrderListItem => {
   });
 };
 
-export type ListBanquetOrdersInput = {
-  tenantId: string;
-  propertyId?: string;
-  beoStatus?: string;
-  eventDate?: string;
-  meetingRoomId?: string;
-  limit?: number;
-  offset?: number;
-};
-
 export const listBanquetOrders = async (
   options: ListBanquetOrdersInput,
 ): Promise<BanquetOrderListItem[]> => {
@@ -493,11 +327,6 @@ export const listBanquetOrders = async (
   ]);
 
   return rows.map(mapBanquetOrderRow);
-};
-
-export type GetBanquetOrderInput = {
-  beoId: string;
-  tenantId: string;
 };
 
 export const getBanquetOrderById = async (
@@ -518,35 +347,6 @@ export const getBanquetOrderById = async (
 // =====================================================
 // GUEST FEEDBACK
 // =====================================================
-
-type GuestFeedbackRow = {
-  id: string;
-  tenant_id: string;
-  property_id: string;
-  property_name: string | null;
-  guest_id: string;
-  guest_name: string | null;
-  reservation_id: string;
-  feedback_source: string | null;
-  feedback_source_display: string | null;
-  overall_rating: string | null;
-  rating_scale: number | null;
-  cleanliness_rating: string | null;
-  staff_rating: string | null;
-  location_rating: string | null;
-  value_rating: string | null;
-  review_title: string | null;
-  review_text: string | null;
-  would_recommend: boolean | null;
-  would_return: boolean | null;
-  sentiment_label: string | null;
-  is_verified: boolean | null;
-  is_public: boolean | null;
-  is_featured: boolean | null;
-  response_text: string | null;
-  responded_at: Date | string | null;
-  created_at: Date | string | null;
-};
 
 const mapGuestFeedbackRow = (row: GuestFeedbackRow): GuestFeedbackListItem => {
   return GuestFeedbackListItemSchema.parse({
@@ -579,16 +379,6 @@ const mapGuestFeedbackRow = (row: GuestFeedbackRow): GuestFeedbackListItem => {
   });
 };
 
-export type ListGuestFeedbackInput = {
-  tenantId: string;
-  propertyId?: string;
-  sentimentLabel?: string;
-  isPublic?: boolean;
-  hasResponse?: boolean;
-  limit?: number;
-  offset?: number;
-};
-
 export const listGuestFeedback = async (
   options: ListGuestFeedbackInput,
 ): Promise<GuestFeedbackListItem[]> => {
@@ -603,11 +393,6 @@ export const listGuestFeedback = async (
   ]);
 
   return rows.map(mapGuestFeedbackRow);
-};
-
-export type GetGuestFeedbackInput = {
-  feedbackId: string;
-  tenantId: string;
 };
 
 export const getGuestFeedbackById = async (
@@ -628,39 +413,6 @@ export const getGuestFeedbackById = async (
 // =====================================================
 // POLICE REPORTS
 // =====================================================
-
-type PoliceReportRow = {
-  report_id: string;
-  tenant_id: string;
-  property_id: string;
-  property_name: string | null;
-  report_number: string;
-  police_case_number: string | null;
-  incident_id: string | null;
-  incident_date: Date | string;
-  incident_time: string | null;
-  reported_date: Date | string;
-  incident_type: string | null;
-  incident_type_display: string | null;
-  incident_description: string;
-  incident_location: string | null;
-  room_number: string | null;
-  agency_name: string;
-  responding_officer_name: string | null;
-  report_status: string;
-  report_status_display: string;
-  suspect_count: number | null;
-  victim_count: number | null;
-  guest_involved: boolean | null;
-  staff_involved: boolean | null;
-  property_stolen: boolean | null;
-  total_loss_value: string | null;
-  arrests_made: boolean | null;
-  investigation_ongoing: boolean | null;
-  resolved: boolean | null;
-  confidential: boolean | null;
-  created_at: Date | string | null;
-};
 
 const mapPoliceReportRow = (row: PoliceReportRow): PoliceReportListItem => {
   return PoliceReportListItemSchema.parse({
@@ -697,16 +449,6 @@ const mapPoliceReportRow = (row: PoliceReportRow): PoliceReportListItem => {
   });
 };
 
-export type ListPoliceReportsInput = {
-  tenantId: string;
-  propertyId?: string;
-  reportStatus?: string;
-  incidentType?: string;
-  incidentDateFrom?: string;
-  limit?: number;
-  offset?: number;
-};
-
 export const listPoliceReports = async (
   options: ListPoliceReportsInput,
 ): Promise<PoliceReportListItem[]> => {
@@ -721,11 +463,6 @@ export const listPoliceReports = async (
   ]);
 
   return rows.map(mapPoliceReportRow);
-};
-
-export type GetPoliceReportInput = {
-  reportId: string;
-  tenantId: string;
 };
 
 export const getPoliceReportById = async (

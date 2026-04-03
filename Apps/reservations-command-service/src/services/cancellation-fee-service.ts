@@ -1,24 +1,9 @@
+import type { CancellationFeeResult } from "@tartware/schemas";
 import { reservationsLogger } from "../logger.js";
 import type {
   CancellationPolicy,
   ReservationCancellationInfo,
 } from "../repositories/reservation-repository.js";
-
-/**
- * Result of cancellation fee calculation.
- */
-type CancellationFeeResult = {
-  /** Calculated cancellation fee (0 if within free-cancel window or no policy). */
-  fee: number;
-  /** Whether the cancellation is within the penalty window. */
-  withinPenaltyWindow: boolean;
-  /** Policy type applied. */
-  policyType: string;
-  /** Hours remaining until check-in at time of calculation. */
-  hoursUntilCheckIn: number;
-  /** Policy deadline hours. */
-  policyDeadlineHours: number;
-};
 
 /**
  * Calculates the cancellation fee based on the rate's cancellation_policy

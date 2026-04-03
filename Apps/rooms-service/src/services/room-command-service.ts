@@ -1,5 +1,6 @@
 import crypto from "node:crypto";
 
+import type { CommandContext } from "@tartware/schemas";
 import { config } from "../config.js";
 import { publishEvent } from "../kafka/producer.js";
 import { query } from "../lib/db.js";
@@ -20,13 +21,6 @@ import {
 import { findArrivingReservation, publishNotificationCommand } from "./room-notification-helper.js";
 
 const logger = appLogger.child({ module: "room-command-service" });
-
-type CommandContext = {
-  tenantId: string;
-  initiatedBy?: {
-    userId?: string;
-  } | null;
-};
 
 class RoomCommandError extends Error {
   code: string;

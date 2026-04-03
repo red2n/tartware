@@ -1,3 +1,4 @@
+import type { SendNotificationParams } from "@tartware/schemas";
 import type { PinoLogger } from "@tartware/telemetry";
 
 import { config } from "../config.js";
@@ -37,30 +38,6 @@ const UPDATE_COMMUNICATION_STATUS_SQL = `
   WHERE tenant_id = $1::uuid AND id = $2::uuid
 `;
 
-type SendNotificationParams = {
-  tenantId: string;
-  propertyId: string;
-  guestId: string;
-  reservationId?: string | null;
-  templateCode: string;
-  recipientName: string;
-  recipientEmail?: string | null;
-  recipientPhone?: string | null;
-  context: Record<string, string | number | boolean | null | undefined>;
-  initiatedBy?: string | null;
-  idempotencyKey?: string | null;
-};
-
-/**
- * Send a notification to a guest using a template.
- *
- * 1. Renders the template with variable substitution
- * 2. Records the communication in `guest_communications`
- * 3. Dispatches via the configured provider
- * 4. Updates the communication status based on dispatch result
- *
- * @returns The communication record ID, or null if template was not found
- */
 export const sendNotification = async (
   params: SendNotificationParams,
 ): Promise<{ communicationId: string; dispatched: boolean } | null> => {

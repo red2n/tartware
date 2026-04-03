@@ -142,6 +142,7 @@ export const RoomItemSchema = z.object({
 	room_name: z.string().optional(),
 	floor: z.string().optional(),
 	building: z.string().optional(),
+	building_id: uuid.optional(),
 	wing: z.string().optional(),
 	status: z.string(),
 	status_display: z.string(),
@@ -177,6 +178,7 @@ export const CreateRoomBodySchema = z.object({
 	floor: z.string().max(20).optional(),
 	wing: z.string().max(50).optional(),
 	building: z.string().max(100).optional(),
+	building_id: uuid.optional(),
 	description: z.string().max(2000).optional(),
 	status: z.string().max(50).optional(),
 	amenities: z.unknown().optional(),
@@ -196,9 +198,138 @@ export const UpdateRoomBodySchema = CreateRoomBodySchema.partial();
 
 export type UpdateRoomBody = z.infer<typeof UpdateRoomBodySchema>;
 
-/**
- * Room list response schema.
- */
+// -----------------------------------------------------------------------------
+// Service-Layer Input Types (rooms-service internal contracts)
+// These types include auth-context fields (tenant_id, created_by, etc.)
+// that are not part of the public HTTP body but are required by the service.
+// -----------------------------------------------------------------------------
+
+/** Service-layer input for creating a room. */
+export const CreateRoomInputSchema = z.object({
+	tenant_id: uuid,
+	property_id: uuid,
+	room_type_id: uuid,
+	room_number: z.string().min(1).max(50),
+	room_name: z.string().max(200).optional(),
+	floor: z.string().max(20).optional(),
+	building: z.string().max(100).optional(),
+	building_id: uuid.optional(),
+	wing: z.string().max(50).optional(),
+	status: z.string().max(50).optional(),
+	housekeeping_status: z.string().max(50).optional(),
+	maintenance_status: z.string().max(50).optional(),
+	features: z.record(z.unknown()).optional(),
+	amenities: z.unknown().optional(),
+	is_blocked: z.boolean().optional(),
+	block_reason: z.string().optional(),
+	blocked_from: z.union([z.string(), z.date()]).optional(),
+	blocked_until: z.union([z.string(), z.date()]).optional(),
+	is_out_of_order: z.boolean().optional(),
+	out_of_order_reason: z.string().optional(),
+	out_of_order_since: z.union([z.string(), z.date()]).optional(),
+	expected_ready_date: z.union([z.string(), z.date()]).optional(),
+	notes: z.string().optional(),
+	housekeeping_notes: z.string().optional(),
+	metadata: z.record(z.unknown()).optional(),
+	created_by: z.string().optional(),
+});
+
+export type CreateRoomInput = z.infer<typeof CreateRoomInputSchema>;
+
+/** Service-layer input for updating a room. */
+export const UpdateRoomInputSchema = z.object({
+	tenant_id: uuid,
+	room_id: uuid,
+	property_id: uuid.optional(),
+	room_type_id: uuid.optional(),
+	room_number: z.string().min(1).max(50).optional(),
+	room_name: z.string().max(200).optional(),
+	floor: z.string().max(20).optional(),
+	building: z.string().max(100).optional(),
+	building_id: uuid.optional(),
+	wing: z.string().max(50).optional(),
+	status: z.string().max(50).optional(),
+	housekeeping_status: z.string().max(50).optional(),
+	maintenance_status: z.string().max(50).optional(),
+	features: z.record(z.unknown()).optional(),
+	amenities: z.unknown().optional(),
+	is_blocked: z.boolean().optional(),
+	block_reason: z.string().optional(),
+	blocked_from: z.union([z.string(), z.date()]).optional(),
+	blocked_until: z.union([z.string(), z.date()]).optional(),
+	is_out_of_order: z.boolean().optional(),
+	out_of_order_reason: z.string().optional(),
+	out_of_order_since: z.union([z.string(), z.date()]).optional(),
+	expected_ready_date: z.union([z.string(), z.date()]).optional(),
+	notes: z.string().optional(),
+	housekeeping_notes: z.string().optional(),
+	metadata: z.record(z.unknown()).optional(),
+	updated_by: z.string().optional(),
+});
+
+export type UpdateRoomInput = z.infer<typeof UpdateRoomInputSchema>;
+
+/** Service-layer input for creating a room type. */
+export const CreateRoomTypeInputSchema = z.object({
+	tenant_id: uuid,
+	property_id: uuid,
+	type_name: z.string().min(1).max(200),
+	type_code: z.string().min(1).max(50),
+	description: z.string().optional(),
+	short_description: z.string().optional(),
+	category: z.string().optional(),
+	base_occupancy: z.number().int().optional(),
+	max_occupancy: z.number().int().optional(),
+	max_adults: z.number().int().optional(),
+	max_children: z.number().int().optional(),
+	extra_bed_capacity: z.number().int().optional(),
+	size_sqm: z.number().optional(),
+	bed_type: z.string().optional(),
+	number_of_beds: z.number().int().optional(),
+	amenities: z.unknown().optional(),
+	features: z.unknown().optional(),
+	base_price: z.number(),
+	currency: z.string().optional(),
+	images: z.unknown().optional(),
+	display_order: z.number().int().optional(),
+	is_active: z.boolean().optional(),
+	metadata: z.unknown().optional(),
+	created_by: z.string().optional(),
+});
+
+export type CreateRoomTypeInput = z.infer<typeof CreateRoomTypeInputSchema>;
+
+/** Service-layer input for updating a room type. */
+export const UpdateRoomTypeInputSchema = z.object({
+	tenant_id: uuid,
+	room_type_id: uuid,
+	property_id: uuid.optional(),
+	type_name: z.string().min(1).max(200).optional(),
+	type_code: z.string().min(1).max(50).optional(),
+	description: z.string().optional(),
+	short_description: z.string().optional(),
+	category: z.string().optional(),
+	base_occupancy: z.number().int().optional(),
+	max_occupancy: z.number().int().optional(),
+	max_adults: z.number().int().optional(),
+	max_children: z.number().int().optional(),
+	extra_bed_capacity: z.number().int().optional(),
+	size_sqm: z.number().optional(),
+	bed_type: z.string().optional(),
+	number_of_beds: z.number().int().optional(),
+	amenities: z.unknown().optional(),
+	features: z.unknown().optional(),
+	base_price: z.number().optional(),
+	currency: z.string().optional(),
+	images: z.unknown().optional(),
+	display_order: z.number().int().optional(),
+	is_active: z.boolean().optional(),
+	metadata: z.unknown().optional(),
+	updated_by: z.string().optional(),
+});
+
+export type UpdateRoomTypeInput = z.infer<typeof UpdateRoomTypeInputSchema>;
+
 export const RoomListResponseSchema = z.object({
 	data: z.array(RoomItemSchema),
 	meta: z.object({
@@ -299,6 +430,7 @@ export const AvailabilityQuerySchema = z.object({
 		.string()
 		.regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be YYYY-MM-DD"),
 	room_type_id: uuid.optional(),
+	building_id: uuid.optional(),
 	adults: z.coerce.number().int().min(1).max(20).optional(),
 	limit: z.coerce.number().int().positive().max(200).default(50),
 	offset: z.coerce.number().int().min(0).default(0),
@@ -312,6 +444,8 @@ export const AvailableRoomSchema = z.object({
 	room_number: z.string(),
 	room_type_id: z.string(),
 	room_type_name: z.string(),
+	building_id: z.string().nullable(),
+	building_name: z.string().nullable(),
 	floor: z.string().nullable(),
 	status: z.string(),
 	housekeeping_status: z.string(),
@@ -337,3 +471,23 @@ export const AvailabilityResponseSchema = z.object({
 });
 
 export type AvailabilityResponse = z.infer<typeof AvailabilityResponseSchema>;
+
+// =====================================================
+// SERVICE-LAYER TYPES — room operations
+// =====================================================
+
+/**
+ * DB row shape for an arriving reservation looked up during room assignment.
+ * Returned by the rooms-service arriving-reservation query.
+ */
+export type ArrivingReservation = {
+	id: string;
+	guest_id: string;
+	property_id: string;
+	confirmation_number: string;
+	room_type_name: string;
+	guest_name: string;
+	guest_email: string | null;
+	check_in_date: string;
+	check_out_date: string;
+};

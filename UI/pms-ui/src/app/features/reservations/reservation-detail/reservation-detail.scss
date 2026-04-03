@@ -139,3 +139,29 @@
   padding: var(--space-2);
   margin: 0;
 }
+
+/* ── Building filter bar in check-in panel ── */
+.building-filter-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-1);
+}
+
+.building-filter-label {
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-fg-muted);
+  white-space: nowrap;
+}
+
+.building-filter-select {
+  font-size: var(--font-size-sm);
+  padding: 3px var(--space-2);
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-sm);
+  background: var(--color-canvas-default);
+  color: var(--color-fg-default);
+  cursor: pointer;
+  max-width: 220px;
+}

@@ -23,6 +23,7 @@ export type CashierSessionRow = {
 	terminal_name: string | null;
 	location: string | null;
 	session_status: string;
+	session_status_display?: string;
 	opened_at: string | Date;
 	closed_at: string | Date | null;
 	business_date: string | Date;

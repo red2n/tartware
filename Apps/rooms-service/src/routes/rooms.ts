@@ -630,6 +630,7 @@ export const registerRoomRoutes = (app: FastifyInstance): void => {
         checkInDate: q.check_in_date,
         checkOutDate: q.check_out_date,
         roomTypeId: q.room_type_id,
+        buildingId: q.building_id,
         adults: q.adults,
         limit: q.limit,
         offset: q.offset,

@@ -7,6 +7,7 @@
 
 import { z } from "zod";
 
+import { BillingPricingBulkRecommendCommandSchema } from "../events/commands/billing.js";
 import { uuid } from "../shared/base-schemas.js";
 
 /**
@@ -662,3 +663,392 @@ export const CommissionReportResponseSchema = z.object({
 export type CommissionReportResponse = z.infer<
 	typeof CommissionReportResponseSchema
 >;
+
+// -----------------------------------------------------------------------------
+// Pricing Rule Evaluation Utilities (shared by billing-service and finance-admin-service)
+// -----------------------------------------------------------------------------
+
+/**
+ * Pricing rule condition. Mirrors the JSONB `conditions` column
+ * on the pricing_rules table.
+ */
+export interface PricingCondition {
+	field: string;
+	operator: string;
+	value: unknown;
+}
+
+/**
+ * Row shape returned by pricing_rules SELECT queries used by the pricing engine.
+ * Distinct from the wider PricingRuleRow in revenue-rows which includes display fields.
+ */
+export interface PricingEngineRuleRow {
+	rule_id: string;
+	rule_name: string;
+	rule_type: string;
+	priority: number;
+	conditions: PricingCondition[] | null;
+	adjustment_type: string;
+	adjustment_value: number;
+	adjustment_cap_min: number | null;
+	adjustment_cap_max: number | null;
+	can_combine_with_other_rules: boolean;
+	conflict_resolution: string;
+}
+
+/**
+ * Evaluate a single pricing condition against the runtime evaluation context.
+ * Returns true when the condition is satisfied (or cannot be determined).
+ */
+export const evalPricingCondition = (
+	cond: PricingCondition,
+	ctx: Record<string, unknown>,
+): boolean => {
+	const actual = ctx[cond.field];
+	if (actual === undefined || actual === null) return false;
+	const numActual = Number(actual);
+	const numValue = Number(cond.value);
+	switch (cond.operator) {
+		case ">=":
+			return numActual >= numValue;
+		case "<=":
+			return numActual <= numValue;
+		case ">":
+			return numActual > numValue;
+		case "<":
+			return numActual < numValue;
+		case "=":
+		case "==":
+			return String(actual) === String(cond.value);
+		case "!=":
+			return String(actual) !== String(cond.value);
+		case "in":
+			return (
+				Array.isArray(cond.value) &&
+				(cond.value as unknown[]).map(String).includes(String(actual))
+			);
+		default:
+			return false;
+	}
+};
+
+/**
+ * Apply a pricing adjustment to a base rate, clamping to optional min/max
+ * caps and rounding to two decimal places. Returns 0 if the result is negative.
+ */
+export const applyPricingAdjustment = (
+	baseRate: number,
+	adjustmentType: string,
+	adjustmentValue: number,
+	capMin: number | null,
+	capMax: number | null,
+): number => {
+	let adjusted: number;
+	switch (adjustmentType) {
+		case "percentage_increase":
+			adjusted = baseRate * (1 + adjustmentValue / 100);
+			break;
+		case "percentage_decrease":
+			adjusted = baseRate * (1 - adjustmentValue / 100);
+			break;
+		case "fixed_amount_increase":
+			adjusted = baseRate + adjustmentValue;
+			break;
+		case "fixed_amount_decrease":
+			adjusted = baseRate - adjustmentValue;
+			break;
+		case "set_to_amount":
+			adjusted = adjustmentValue;
+			break;
+		default:
+			adjusted = baseRate;
+	}
+	if (capMin != null) adjusted = Math.max(adjusted, capMin);
+	if (capMax != null) adjusted = Math.min(adjusted, capMax);
+	return Math.max(0, Math.round(adjusted * 100) / 100);
+};
+
+/**
+ * Extended rule row used in bulk pricing queries that include per-row date
+ * range strings and room-type ID for pre-fetched filtering.
+ */
+export type BulkPricingRuleRow = PricingEngineRuleRow & {
+	room_type_id: string | null;
+	effective_from_str: string | null;
+	effective_to_str: string | null;
+};
+
+/** Input for computing a single room-type × date pricing cell. */
+export interface BulkPricingCellInput {
+	allRules: BulkPricingRuleRow[];
+	roomTypeId: string;
+	basePrice: number;
+	date: Date;
+	demand?: Record<string, unknown>;
+}
+
+/** Result of computing a single room-type × date pricing cell. */
+export interface BulkPricingCellResult {
+	adjustedRate: number;
+	matched: PricingEngineRuleRow[];
+	dateStr: string;
+}
+
+/**
+ * Compute the adjusted rate for one room-type × date combination from a
+ * pre-fetched set of pricing rules. Pure function — no side effects.
+ *
+ * Covers: rule scoping, condition evaluation, adjustment application with
+ * combinability logic.
+ */
+export const computeBulkPricingCell = (
+	input: BulkPricingCellInput,
+): BulkPricingCellResult => {
+	const { allRules, roomTypeId, basePrice, date, demand } = input;
+	const dateStr = date.toISOString().slice(0, 10);
+
+	const evalCtx: Record<string, unknown> = {
+		occupancy_percent: demand
+			? Number(demand.occupancy_percent ?? 0)
+			: undefined,
+		demand_level: demand?.demand_level
+			? String(demand.demand_level)
+			: undefined,
+		days_until_arrival: Math.max(
+			0,
+			Math.floor((date.getTime() - Date.now()) / 86400000),
+		),
+		day_of_week: date.getDay(),
+	};
+
+	const scopedRules = allRules.filter(
+		(r) =>
+			(r.room_type_id === null || r.room_type_id === roomTypeId) &&
+			(r.effective_from_str === null || r.effective_from_str <= dateStr) &&
+			(r.effective_to_str === null || r.effective_to_str >= dateStr),
+	);
+
+	const matched = scopedRules.filter((r) => {
+		if (
+			!r.conditions ||
+			!Array.isArray(r.conditions) ||
+			r.conditions.length === 0
+		)
+			return true;
+		return (r.conditions).every((c) =>
+			evalPricingCondition(c, evalCtx),
+		);
+	});
+
+	let adjustedRate = basePrice;
+	for (const rule of matched) {
+		if (!rule.can_combine_with_other_rules) {
+			adjustedRate = applyPricingAdjustment(
+				basePrice,
+				rule.adjustment_type,
+				rule.adjustment_value,
+				rule.adjustment_cap_min,
+				rule.adjustment_cap_max,
+			);
+			break;
+		}
+		adjustedRate = applyPricingAdjustment(
+			adjustedRate,
+			rule.adjustment_type,
+			rule.adjustment_value,
+			rule.adjustment_cap_min,
+			rule.adjustment_cap_max,
+		);
+	}
+
+	return { adjustedRate, matched, dateStr };
+};
+
+// -----------------------------------------------------------------------------
+// Shared bulk pricing recommendations implementation (dependency-injected DB)
+// -----------------------------------------------------------------------------
+
+/**
+ * Generic query function type compatible with both billing-service and
+ * finance-admin-service pg query wrappers.
+ * Uses `any[]` for `rows` to avoid friction with pg's `QueryResultRow` constraint.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export type PricingQueryFn = (
+	sql: string,
+	params?: unknown[],
+) => Promise<{ rows: any[] }>;
+
+/**
+ * Shared implementation for the `billing.pricing.bulk_recommend` command.
+ * Accepts an injected `queryFn` so both billing-service and finance-admin-service
+ * can share this logic without cross-service imports.
+ *
+ * @returns JSON string with `{ generated, room_types, dates }`.
+ */
+export const bulkGeneratePricingRecommendationsImpl = async (
+	payload: unknown,
+	tenantId: string,
+	actorId: string,
+	queryFn: PricingQueryFn,
+): Promise<string> => {
+	const command = BillingPricingBulkRecommendCommandSchema.parse(payload);
+
+	const roomTypeFilter = command.room_type_ids?.length
+		? `AND id = ANY($2::uuid[])`
+		: `AND ($2::uuid[] IS NULL OR TRUE)`;
+	const { rows: roomTypesRaw } = await queryFn(
+		`SELECT id, name, COALESCE(base_price, 0) AS base_price FROM room_types
+     WHERE tenant_id = $1 AND property_id = $3 AND is_deleted = false
+     ${roomTypeFilter}
+     ORDER BY name`,
+		[tenantId, command.room_type_ids ?? null, command.property_id],
+	);
+	const roomTypes = roomTypesRaw as Array<{
+		id: string;
+		name: string;
+		base_price: number;
+	}>;
+
+	const startDate = new Date(command.start_date);
+	const endDate = new Date(command.end_date);
+	const dates: Date[] = [];
+	for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
+		dates.push(new Date(d));
+	}
+
+	const { rows: demandRowsRaw } = await queryFn(
+		`SELECT calendar_date::text, occupancy_percent, demand_level
+     FROM demand_calendar
+     WHERE tenant_id = $1 AND property_id = $2
+       AND calendar_date >= $3::date AND calendar_date <= $4::date`,
+		[
+			tenantId,
+			command.property_id,
+			startDate.toISOString().slice(0, 10),
+			endDate.toISOString().slice(0, 10),
+		],
+	);
+	const demandRows = demandRowsRaw as Record<string, unknown>[];
+	const demandMap = new Map(
+		demandRows.map((r) => [String(r.calendar_date), r]),
+	);
+
+	const roomTypeIds = roomTypes.map((rt) => rt.id);
+	const { rows: allRulesRaw } = await queryFn(
+		`SELECT rule_id, rule_name, rule_type, priority,
+            room_type_id, effective_from::text AS effective_from_str, effective_to::text AS effective_to_str,
+            conditions, adjustment_type,
+            COALESCE(adjustment_value, 0) AS adjustment_value,
+            adjustment_cap_min, adjustment_cap_max,
+            COALESCE(can_combine_with_other_rules, true) AS can_combine_with_other_rules,
+            COALESCE(conflict_resolution, 'highest_priority') AS conflict_resolution
+     FROM pricing_rules
+     WHERE tenant_id = $1 AND property_id = $2
+       AND is_active = true AND is_deleted = false
+       AND (room_type_id IS NULL OR room_type_id = ANY($3::uuid[]))
+       AND (effective_from IS NULL OR effective_from <= $5::date)
+       AND (effective_to IS NULL OR effective_to >= $4::date)
+     ORDER BY priority ASC`,
+		[
+			tenantId,
+			command.property_id,
+			roomTypeIds,
+			startDate.toISOString().slice(0, 10),
+			endDate.toISOString().slice(0, 10),
+		],
+	);
+	const allRules = allRulesRaw as BulkPricingRuleRow[];
+
+	let generated = 0;
+
+	for (const roomType of roomTypes) {
+		for (const date of dates) {
+			const demand = demandMap.get(date.toISOString().slice(0, 10));
+			const { adjustedRate, matched, dateStr } = computeBulkPricingCell({
+				allRules,
+				roomTypeId: roomType.id,
+				basePrice: roomType.base_price,
+				date,
+				demand,
+			});
+
+			if (!command.dry_run) {
+				const recommendationId = crypto.randomUUID();
+				await queryFn(
+					`INSERT INTO rate_recommendations (
+             recommendation_id, tenant_id, property_id, room_type_id,
+             recommendation_date, current_rate, recommended_rate,
+             adjustment_amount, adjustment_percent,
+             recommendation_reason, recommendation_source,
+             confidence_score, review_status,
+             created_at, created_by
+           ) VALUES (
+             $1, $2, $3, $4,
+             $5::date, $6, $7,
+             $8, $9,
+             $10, 'pricing_engine',
+             $11, 'pending',
+             NOW(), $12
+           )
+           ON CONFLICT (property_id, room_type_id, recommendation_date)
+             WHERE review_status = 'pending'
+           DO UPDATE SET
+             recommended_rate = EXCLUDED.recommended_rate,
+             adjustment_amount = EXCLUDED.adjustment_amount,
+             adjustment_percent = EXCLUDED.adjustment_percent,
+             recommendation_reason = EXCLUDED.recommendation_reason,
+             confidence_score = EXCLUDED.confidence_score,
+             updated_at = NOW()`,
+					[
+						recommendationId,
+						tenantId,
+						command.property_id,
+						roomType.id,
+						dateStr,
+						roomType.base_price,
+						adjustedRate,
+						adjustedRate - roomType.base_price,
+						roomType.base_price > 0
+							? Math.round(
+									((adjustedRate - roomType.base_price) / roomType.base_price) *
+										10000,
+								) / 100
+							: 0,
+						`${matched.length} pricing rules applied (${matched.map((r) => r.rule_type).join(", ")})`,
+						matched.length > 0 ? 80 : 50,
+						actorId,
+					],
+				);
+				generated++;
+			}
+		}
+	}
+
+	return JSON.stringify({
+		generated,
+		room_types: roomTypes.length,
+		dates: dates.length,
+	});
+};
+
+// =====================================================
+// SERVICE-LAYER RESULT TYPES
+// =====================================================
+
+/**
+ * Result of cancellation fee calculation.
+ * Returned by `calculateCancellationFee()` in cancellation-fee-service.
+ */
+export type CancellationFeeResult = {
+	/** Calculated cancellation fee (0 if within free-cancel window or no policy). */
+	fee: number;
+	/** Whether the cancellation is within the penalty window. */
+	withinPenaltyWindow: boolean;
+	/** Policy type applied. */
+	policyType: string;
+	/** Hours remaining until check-in at time of calculation. */
+	hoursUntilCheckIn: number;
+	/** Policy deadline hours. */
+	policyDeadlineHours: number;
+};

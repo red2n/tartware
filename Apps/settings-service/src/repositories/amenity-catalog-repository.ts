@@ -1,4 +1,8 @@
 import {
+  type AmenityCreateInput,
+  type AmenityGetInput,
+  type AmenityListInput,
+  type AmenityUpdateInput,
   CreateRoomAmenitySchema,
   RoomAmenityCatalogSchema,
   UpdateRoomAmenitySchema,
@@ -55,15 +59,10 @@ const AMENITY_COLUMNS = `
 const parseRows = (rows: QueryResultRow[]): AmenityRecord[] =>
   z.array(amenityRowSchema).parse(rows);
 
-type ListAmenitiesInput = {
-  tenantId: string;
-  propertyId: string;
-};
-
 export const listAmenities = async ({
   tenantId,
   propertyId,
-}: ListAmenitiesInput): Promise<AmenityRecord[]> => {
+}: AmenityListInput): Promise<AmenityRecord[]> => {
   const result = await query(
     `
       SELECT ${AMENITY_COLUMNS}
@@ -76,15 +75,11 @@ export const listAmenities = async ({
   return parseRows(result.rows);
 };
 
-type GetAmenityInput = ListAmenitiesInput & {
-  amenityCode: string;
-};
-
 export const getAmenityByCode = async ({
   tenantId,
   propertyId,
   amenityCode,
-}: GetAmenityInput): Promise<AmenityRecord | null> => {
+}: AmenityGetInput): Promise<AmenityRecord | null> => {
   const result = await query(
     `
       SELECT ${AMENITY_COLUMNS}
@@ -100,29 +95,12 @@ export const getAmenityByCode = async ({
   return amenityRowSchema.parse(result.rows[0]);
 };
 
-type CreateAmenityInput = ListAmenitiesInput & {
-  createdBy: string;
-  payload: {
-    amenityCode: string;
-    displayName: string;
-    description?: string;
-    category?: string;
-    icon?: string;
-    tags?: string[];
-    sortOrder?: number;
-    isDefault?: boolean;
-    isActive?: boolean;
-    isRequired?: boolean;
-    metadata?: Record<string, unknown>;
-  };
-};
-
 export const createAmenity = async ({
   tenantId,
   propertyId,
   createdBy,
   payload,
-}: CreateAmenityInput): Promise<AmenityRecord> => {
+}: AmenityCreateInput): Promise<AmenityRecord> => {
   const parsed = CreateRoomAmenitySchema.parse({
     tenant_id: tenantId,
     property_id: propertyId,
@@ -187,28 +165,13 @@ export const createAmenity = async ({
   return amenityRowSchema.parse(result.rows[0]);
 };
 
-type UpdateAmenityInput = GetAmenityInput & {
-  updatedBy: string;
-  payload: {
-    displayName?: string;
-    description?: string | null;
-    category?: string;
-    icon?: string | null;
-    tags?: string[];
-    sortOrder?: number;
-    isActive?: boolean;
-    isRequired?: boolean;
-    metadata?: Record<string, unknown>;
-  };
-};
-
 export const updateAmenity = async ({
   tenantId,
   propertyId,
   amenityCode,
   updatedBy,
   payload,
-}: UpdateAmenityInput): Promise<AmenityRecord | null> => {
+}: AmenityUpdateInput): Promise<AmenityRecord | null> => {
   const parsed = UpdateRoomAmenitySchema.parse({
     display_name: payload.displayName,
     description: payload.description ?? undefined,

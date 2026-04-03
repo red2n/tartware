@@ -56,6 +56,8 @@ export class ReservationDetailComponent implements OnInit {
 	readonly useAutoAssign = signal(true);
 	readonly roomPage = signal(1);
 	readonly roomPageSize = 5;
+	readonly buildings = signal<{ building_id: string; building_name: string }[]>([]);
+	readonly buildingFilter = signal('');
 
 	statusClass = reservationStatusClass;
 
@@ -163,6 +165,9 @@ export class ReservationDetailComponent implements OnInit {
 		this.selectedRoomId.set(null);
 		this.useAutoAssign.set(true);
 		this.roomPage.set(1);
+		this.buildingFilter.set('');
+		this.buildings.set([]);
+		void this.loadBuildings();
 		this.loadAvailableRooms();
 	}
 
@@ -197,6 +202,7 @@ export class ReservationDetailComponent implements OnInit {
 				check_out_date: r.check_out_date.substring(0, 10),
 			};
 			if (r.room_type_id) params["room_type_id"] = r.room_type_id;
+			if (this.buildingFilter()) params["building_id"] = this.buildingFilter();
 
 			const res = await this.api.get<AvailabilityResponse>("/rooms/availability", params);
 			this.availableRooms.set(res.available_rooms ?? []);
@@ -205,6 +211,31 @@ export class ReservationDetailComponent implements OnInit {
 		} finally {
 			this.loadingRooms.set(false);
 		}
+	}
+
+	/** Load buildings list for the current property (used as filter in check-in panel). */
+	private async loadBuildings(): Promise<void> {
+		const tenantId = this.auth.tenantId();
+		const r = this.reservation();
+		if (!tenantId || !r) return;
+		try {
+			const data = await this.api.get<{ building_id: string; building_name: string }[]>(
+				'/buildings',
+				{ tenant_id: tenantId },
+			);
+			this.buildings.set(data ?? []);
+		} catch {
+			this.buildings.set([]);
+		}
+	}
+
+	/** Apply building filter and reload available rooms. */
+	filterByBuilding(buildingId: string): void {
+		this.buildingFilter.set(buildingId);
+		this.roomPage.set(1);
+		this.selectedRoomId.set(null);
+		this.useAutoAssign.set(true);
+		void this.loadAvailableRooms();
 	}
 
 	selectRoom(roomId: string): void {

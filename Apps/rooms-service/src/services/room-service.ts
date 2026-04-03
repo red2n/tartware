@@ -1,4 +1,12 @@
-import { type RoomItem, RoomItemSchema, type RoomListRow } from "@tartware/schemas";
+import {
+  type AmenityCatalogItem,
+  type AvailableRoom,
+  type CreateRoomInput,
+  type RoomItem,
+  RoomItemSchema,
+  type RoomListRow,
+  type UpdateRoomInput,
+} from "@tartware/schemas";
 
 import { query } from "../lib/db.js";
 import { ROOM_CREATE_SQL, ROOM_GET_BY_ID_SQL, ROOM_LIST_SQL } from "../sql/room-queries.js";
@@ -9,70 +17,8 @@ export const RoomListItemSchema = RoomItemSchema;
 // Internal type alias
 type RoomListItem = RoomItem;
 
-/** Amenity catalog item returned by listAmenityCatalog. */
-export type AmenityCatalogItem = {
-  amenity_code: string;
-  display_name: string;
-  category: string;
-  icon: string | null;
-};
-
-type CreateRoomInput = {
-  tenant_id: string;
-  property_id: string;
-  room_type_id: string;
-  room_number: string;
-  room_name?: string;
-  floor?: string;
-  building?: string;
-  wing?: string;
-  status?: string;
-  housekeeping_status?: string;
-  maintenance_status?: string;
-  features?: Record<string, unknown>;
-  amenities?: unknown;
-  is_blocked?: boolean;
-  block_reason?: string;
-  blocked_from?: string | Date;
-  blocked_until?: string | Date;
-  is_out_of_order?: boolean;
-  out_of_order_reason?: string;
-  out_of_order_since?: string | Date;
-  expected_ready_date?: string | Date;
-  notes?: string;
-  housekeeping_notes?: string;
-  metadata?: Record<string, unknown>;
-  created_by?: string;
-};
-
-type UpdateRoomInput = {
-  tenant_id: string;
-  room_id: string;
-  property_id?: string;
-  room_type_id?: string;
-  room_number?: string;
-  room_name?: string;
-  floor?: string;
-  building?: string;
-  wing?: string;
-  status?: string;
-  housekeeping_status?: string;
-  maintenance_status?: string;
-  features?: Record<string, unknown>;
-  amenities?: unknown;
-  is_blocked?: boolean;
-  block_reason?: string;
-  blocked_from?: string | Date;
-  blocked_until?: string | Date;
-  is_out_of_order?: boolean;
-  out_of_order_reason?: string;
-  out_of_order_since?: string | Date;
-  expected_ready_date?: string | Date;
-  notes?: string;
-  housekeeping_notes?: string;
-  metadata?: Record<string, unknown>;
-  updated_by?: string;
-};
+// Re-export service input types for route handlers
+export type { CreateRoomInput, UpdateRoomInput };
 
 // RoomListRow imported from @tartware/schemas
 
@@ -137,6 +83,7 @@ const mapRowToRoom = (row: RoomListRow): RoomItem => {
     room_name: row.room_name ?? undefined,
     floor: row.floor ?? undefined,
     building: row.building ?? undefined,
+    building_id: row.building_id ?? undefined,
     wing: row.wing ?? undefined,
     status,
     status_display: statusDisplay,
@@ -169,6 +116,7 @@ export const createRoom = async (input: CreateRoomInput): Promise<RoomListItem> 
     input.room_name ?? null,
     input.floor ?? null,
     input.building ?? null,
+    input.building_id ?? null,
     input.wing ?? null,
     input.status ? input.status.trim().toUpperCase() : null,
     input.housekeeping_status ? input.housekeeping_status.trim().toUpperCase() : null,
@@ -207,25 +155,26 @@ export const updateRoom = async (input: UpdateRoomInput): Promise<RoomListItem |
           room_name = COALESCE($6, r.room_name),
           floor = COALESCE($7, r.floor),
           building = COALESCE($8, r.building),
-          wing = COALESCE($9, r.wing),
-          status = COALESCE($10, r.status),
-          housekeeping_status = COALESCE($11, r.housekeeping_status),
-          maintenance_status = COALESCE($12, r.maintenance_status),
-          features = COALESCE($13, r.features),
-          amenities = COALESCE($14, r.amenities),
-          is_blocked = COALESCE($15, r.is_blocked),
-          block_reason = COALESCE($16, r.block_reason),
-          blocked_from = COALESCE($17, r.blocked_from),
-          blocked_until = COALESCE($18, r.blocked_until),
-          is_out_of_order = COALESCE($19, r.is_out_of_order),
-          out_of_order_reason = COALESCE($20, r.out_of_order_reason),
-          out_of_order_since = COALESCE($21, r.out_of_order_since),
-          expected_ready_date = COALESCE($22, r.expected_ready_date),
-          notes = COALESCE($23, r.notes),
-          housekeeping_notes = COALESCE($24, r.housekeeping_notes),
-          metadata = COALESCE($25, r.metadata),
+          building_id = COALESCE($9, r.building_id),
+          wing = COALESCE($10, r.wing),
+          status = COALESCE($11, r.status),
+          housekeeping_status = COALESCE($12, r.housekeeping_status),
+          maintenance_status = COALESCE($13, r.maintenance_status),
+          features = COALESCE($14, r.features),
+          amenities = COALESCE($15, r.amenities),
+          is_blocked = COALESCE($16, r.is_blocked),
+          block_reason = COALESCE($17, r.block_reason),
+          blocked_from = COALESCE($18, r.blocked_from),
+          blocked_until = COALESCE($19, r.blocked_until),
+          is_out_of_order = COALESCE($20, r.is_out_of_order),
+          out_of_order_reason = COALESCE($21, r.out_of_order_reason),
+          out_of_order_since = COALESCE($22, r.out_of_order_since),
+          expected_ready_date = COALESCE($23, r.expected_ready_date),
+          notes = COALESCE($24, r.notes),
+          housekeeping_notes = COALESCE($25, r.housekeeping_notes),
+          metadata = COALESCE($26, r.metadata),
           updated_at = CURRENT_TIMESTAMP,
-          updated_by = COALESCE($26, r.updated_by),
+          updated_by = COALESCE($27, r.updated_by),
           version = r.version + 1
         WHERE r.id = $1::uuid
           AND r.tenant_id = $2::uuid
@@ -245,6 +194,7 @@ export const updateRoom = async (input: UpdateRoomInput): Promise<RoomListItem |
         u.room_name,
         u.floor,
         u.building,
+        u.building_id,
         u.wing,
         u.status,
         u.housekeeping_status,
@@ -275,6 +225,7 @@ export const updateRoom = async (input: UpdateRoomInput): Promise<RoomListItem |
       input.room_name ?? null,
       input.floor ?? null,
       input.building ?? null,
+      input.building_id ?? null,
       input.wing ?? null,
       input.status ? input.status.trim().toUpperCase() : null,
       input.housekeeping_status ? input.housekeeping_status.trim().toUpperCase() : null,
@@ -387,22 +338,8 @@ export const listRooms = async (options: {
 /**
  * Available room item for availability search results.
  */
-type AvailableRoomItem = {
-  room_id: string;
-  room_number: string;
-  room_type_id: string;
-  room_type_name: string;
-  floor: string | null;
-  status: string;
-  housekeeping_status: string;
-  max_occupancy: number;
-  base_rate: number;
-  currency: string;
-  features: string[];
-  bed_type: string | null;
-  number_of_beds: number;
-  size_sqm: number | null;
-};
+// AvailableRoomItem is AvailableRoom from @tartware/schemas
+type AvailableRoomItem = AvailableRoom;
 
 /**
  * Search available rooms for a date range.
@@ -415,6 +352,7 @@ export const searchAvailableRooms = async (options: {
   checkInDate: string;
   checkOutDate: string;
   roomTypeId?: string;
+  buildingId?: string;
   adults?: number;
   limit?: number;
   offset?: number;
@@ -428,6 +366,8 @@ export const searchAvailableRooms = async (options: {
     room_type_id: string;
     type_name: string;
     floor: string | null;
+    building_id: string | null;
+    building_name: string | null;
     status: string;
     housekeeping_status: string;
     max_occupancy: number | string | null;
@@ -458,11 +398,14 @@ export const searchAvailableRooms = async (options: {
          COALESCE(rp.base_rate, rt.base_price, 0) AS base_rate,
          COALESCE(rp.currency, 'USD') AS currency,
          r.features,
+         r.building_id,
+         b.building_name,
          ROW_NUMBER() OVER (
            PARTITION BY r.room_type_id ORDER BY r.room_number
          ) AS rn
        FROM public.rooms r
        JOIN public.room_types rt ON r.room_type_id = rt.id AND rt.tenant_id = r.tenant_id
+       LEFT JOIN public.buildings b ON r.building_id = b.building_id
        LEFT JOIN LATERAL (
          SELECT rp2.base_rate, rp2.currency
          FROM public.rates rp2
@@ -482,6 +425,7 @@ export const searchAvailableRooms = async (options: {
          AND COALESCE(r.is_deleted, false) = false
          AND ($5::uuid IS NULL OR r.room_type_id = $5::uuid)
          AND ($6::int IS NULL OR rt.max_occupancy >= $6)
+         AND ($7::uuid IS NULL OR r.building_id = $7::uuid)
          -- Exclude rooms with overlapping inventory locks
          AND NOT EXISTS (
            SELECT 1 FROM public.inventory_locks_shadow ils
@@ -503,14 +447,15 @@ export const searchAvailableRooms = async (options: {
          )
      )
      SELECT room_id, room_number, room_type_id, type_name, floor,
+            building_id, building_name,
             status, housekeeping_status, max_occupancy, bed_type,
             number_of_beds, size_sqm, base_rate, currency, features
      FROM available_rooms ar
      LEFT JOIN unassigned_reservations ur ON ur.room_type_id = ar.room_type_id
      WHERE ar.rn > COALESCE(ur.unassigned_count, 0)
      ORDER BY type_name, room_number
-     LIMIT $7
-     OFFSET $8`,
+     LIMIT $8
+     OFFSET $9`,
     [
       options.tenantId,
       options.propertyId,
@@ -518,6 +463,7 @@ export const searchAvailableRooms = async (options: {
       options.checkOutDate,
       options.roomTypeId ?? null,
       options.adults ?? null,
+      options.buildingId ?? null,
       limit,
       offset,
     ],
@@ -529,6 +475,8 @@ export const searchAvailableRooms = async (options: {
     room_type_id: r.room_type_id,
     room_type_name: r.type_name,
     floor: r.floor,
+    building_id: r.building_id,
+    building_name: r.building_name,
     status: r.status,
     housekeeping_status: r.housekeeping_status,
     max_occupancy: Number(r.max_occupancy ?? 2),

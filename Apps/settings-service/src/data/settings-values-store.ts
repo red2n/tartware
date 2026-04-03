@@ -1,49 +1,15 @@
 import { randomUUID } from "node:crypto";
 
-import { SettingsScopeEnum, type SettingsValue, SettingsValuesSchema } from "@tartware/schemas";
+import {
+  type CreateSeedValueInput,
+  type SeedValueFilters,
+  SettingsScopeEnum,
+  type SettingsValue,
+  SettingsValuesSchema,
+  type UpdateSeedValueInput,
+} from "@tartware/schemas";
 
 import { settingsValues } from "./settings-values.js";
-
-type SeedValueFilters = {
-  tenantId?: string;
-  scopeLevel?: string;
-  settingId?: string;
-  propertyId?: string;
-  unitId?: string;
-  userId?: string;
-  activeOnly?: boolean;
-};
-
-type CreateSeedValueInput = {
-  tenantId: string;
-  settingId: string;
-  scopeLevel: string;
-  value?: unknown;
-  propertyId?: string | null;
-  unitId?: string | null;
-  userId?: string | null;
-  status?: "ACTIVE" | "PENDING" | "EXPIRED" | null;
-  notes?: string | null;
-  effectiveFrom?: Date | string | null;
-  effectiveTo?: Date | string | null;
-  context?: Record<string, unknown> | null;
-  metadata?: Record<string, unknown> | null;
-  createdBy?: string | null;
-};
-
-type UpdateSeedValueInput = {
-  valueId: string;
-  tenantId: string;
-  value?: unknown | null;
-  status?: "ACTIVE" | "PENDING" | "EXPIRED" | null;
-  notes?: string | null;
-  effectiveFrom?: Date | string | null;
-  effectiveTo?: Date | string | null;
-  lockedUntil?: Date | string | null;
-  context?: Record<string, unknown> | null;
-  metadata?: Record<string, unknown> | null;
-  updatedBy?: string | null;
-};
 
 const seedStore: SettingsValue[] = settingsValues.map((value) => SettingsValuesSchema.parse(value));
 

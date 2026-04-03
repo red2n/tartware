@@ -1,4 +1,5 @@
 import {
+  type SettingsCatalogFilters as CatalogFilters,
   SettingsCategoriesSchema,
   SettingsDefinitionsSchema,
   SettingsOptionsSchema,
@@ -15,13 +16,7 @@ const SettingsOptionArraySchema = z.array(SettingsOptionsSchema);
 
 const escapeLike = (value: string) => value.replace(/([\\%_])/g, "\\$1");
 
-export type CatalogFilters = {
-  activeOnly: boolean;
-  categoryId?: string;
-  sectionId?: string;
-  settingId?: string;
-  search?: string;
-};
+export type { CatalogFilters };
 
 export const listCategories = async (filters: CatalogFilters) => {
   const params: unknown[] = [];

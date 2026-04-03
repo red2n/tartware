@@ -1,4 +1,10 @@
-import { type CompanyListItem, CompanyListItemSchema } from "@tartware/schemas";
+import {
+  type CompanyListItem,
+  CompanyListItemSchema,
+  type CompanyRow,
+  type GetCompanyInput,
+  type ListCompaniesInput,
+} from "@tartware/schemas";
 
 import { query } from "../../lib/db.js";
 import { COMPANY_BY_ID_SQL, COMPANY_LIST_SQL } from "../../sql/booking-config/company.js";
@@ -8,50 +14,6 @@ import { formatDisplayLabel, toIsoString, toNumber } from "./common.js";
 // =====================================================
 // COMPANY SERVICE
 // =====================================================
-
-type CompanyRow = {
-  company_id: string;
-  tenant_id: string;
-  company_name: string;
-  legal_name: string | null;
-  company_code: string | null;
-  company_type: string;
-  primary_contact_name: string | null;
-  primary_contact_email: string | null;
-  primary_contact_phone: string | null;
-  billing_contact_name: string | null;
-  billing_contact_email: string | null;
-  city: string | null;
-  state_province: string | null;
-  country: string | null;
-  credit_limit: number | string;
-  current_balance: number | string;
-  payment_terms: number;
-  payment_terms_type: string;
-  credit_status: string;
-  commission_rate: number | string;
-  commission_type: string | null;
-  preferred_rate_code: string | null;
-  discount_percentage: number | string;
-  tax_id: string | null;
-  tax_exempt: boolean;
-  contract_number: string | null;
-  contract_start_date: string | Date | null;
-  contract_end_date: string | Date | null;
-  contract_status: string | null;
-  iata_number: string | null;
-  arc_number: string | null;
-  total_bookings: number;
-  total_revenue: number | string;
-  average_booking_value: number | string | null;
-  last_booking_date: string | Date | null;
-  is_active: boolean;
-  is_vip: boolean;
-  is_blacklisted: boolean;
-  requires_approval: boolean;
-  created_at: string | Date;
-  updated_at: string | Date | null;
-};
 
 const mapCompanyRow = (row: CompanyRow): CompanyListItem => {
   return CompanyListItemSchema.parse({
@@ -107,16 +69,6 @@ const mapCompanyRow = (row: CompanyRow): CompanyListItem => {
   });
 };
 
-export type ListCompaniesInput = {
-  limit?: number;
-  tenantId: string;
-  companyType?: string;
-  isActive?: boolean;
-  creditStatus?: string;
-  isBlacklisted?: boolean;
-  offset?: number;
-};
-
 export const listCompanies = async (options: ListCompaniesInput): Promise<CompanyListItem[]> => {
   const { rows } = await query<CompanyRow>(COMPANY_LIST_SQL, [
     options.limit ?? 200,
@@ -128,11 +80,6 @@ export const listCompanies = async (options: ListCompaniesInput): Promise<Compan
     options.offset ?? 0,
   ]);
   return rows.map(mapCompanyRow);
-};
-
-export type GetCompanyInput = {
-  companyId: string;
-  tenantId: string;
 };
 
 export const getCompanyById = async (options: GetCompanyInput): Promise<CompanyListItem | null> => {

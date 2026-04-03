@@ -10,7 +10,7 @@
       <span class="form-section-title">Identity</span>
 
       <div class="field-row">
-        <div class="field-group">
+        <div class="field-group" [class.field-error]="hasFieldError('title')">
           <label class="field-label" for="eg-title">Title</label>
           <select
             id="eg-title"
@@ -22,12 +22,15 @@
               <option [value]="t">{{ t }}</option>
             }
           </select>
+          @if (hasFieldError('title')) {
+            <span class="field-hint-error">{{ getFieldError('title') }}</span>
+          }
         </div>
         <div class="field-group">&nbsp;</div>
       </div>
 
       <div class="field-row">
-        <div class="field-group field-required" [class.field-error]="touched['firstName'] && !firstName.trim()">
+        <div class="field-group field-required" [class.field-error]="(touched['firstName'] && !firstName.trim()) || hasFieldError('first_name')">
           <label class="field-label" for="eg-first">First name</label>
           <input
             id="eg-first"
@@ -41,8 +44,11 @@
           @if (touched['firstName'] && !firstName.trim()) {
             <span class="field-hint-error">First name is required</span>
           }
+          @if (hasFieldError('first_name')) {
+            <span class="field-hint-error">{{ getFieldError('first_name') }}</span>
+          }
         </div>
-        <div class="field-group field-required" [class.field-error]="touched['lastName'] && !lastName.trim()">
+        <div class="field-group field-required" [class.field-error]="(touched['lastName'] && !lastName.trim()) || hasFieldError('last_name')">
           <label class="field-label" for="eg-last">Last name</label>
           <input
             id="eg-last"
@@ -56,11 +62,14 @@
           @if (touched['lastName'] && !lastName.trim()) {
             <span class="field-hint-error">Last name is required</span>
           }
+          @if (hasFieldError('last_name')) {
+            <span class="field-hint-error">{{ getFieldError('last_name') }}</span>
+          }
         </div>
       </div>
 
       <div class="field-row">
-        <div class="field-group">
+        <div class="field-group" [class.field-error]="hasFieldError('nationality')">
           <label class="field-label" for="eg-nationality">Nationality</label>
           <select
             id="eg-nationality"
@@ -72,8 +81,11 @@
               <option [value]="n.code">{{ n.label }}</option>
             }
           </select>
+          @if (hasFieldError('nationality')) {
+            <span class="field-hint-error">{{ getFieldError('nationality') }}</span>
+          }
         </div>
-        <div class="field-group">
+        <div class="field-group" [class.field-error]="hasFieldError('gender')">
           <label class="field-label" for="eg-gender">Gender</label>
           <select
             id="eg-gender"
@@ -86,11 +98,14 @@
             <option value="non-binary">Non-binary</option>
             <option value="prefer_not_to_say">Prefer not to say</option>
           </select>
+          @if (hasFieldError('gender')) {
+            <span class="field-hint-error">{{ getFieldError('gender') }}</span>
+          }
         </div>
       </div>
 
       <div class="field-row">
-        <div class="field-group">
+        <div class="field-group" [class.field-error]="hasFieldError('date_of_birth')">
           <label class="field-label" for="eg-dob">Date of birth</label>
           <input
             id="eg-dob"
@@ -98,6 +113,9 @@
             class="field-input"
             [(ngModel)]="dateOfBirth"
             [disabled]="saving()" />
+          @if (hasFieldError('date_of_birth')) {
+            <span class="field-hint-error">{{ getFieldError('date_of_birth') }}</span>
+          }
         </div>
         <div class="field-group">&nbsp;</div>
       </div>
@@ -152,7 +170,7 @@
     <section class="form-section">
       <span class="form-section-title">Company</span>
 
-      <div class="field-group">
+      <div class="field-group" [class.field-error]="hasFieldError('company_name')">
         <label class="field-label" for="eg-company">Company name</label>
         <input
           id="eg-company"
@@ -162,6 +180,9 @@
           maxlength="200"
           [(ngModel)]="companyName"
           [disabled]="saving()" />
+        @if (hasFieldError('company_name')) {
+          <span class="field-hint-error">{{ getFieldError('company_name') }}</span>
+        }
       </div>
     </section>
 
@@ -170,7 +191,7 @@
       <span class="form-section-title">Loyalty &amp; VIP</span>
 
       <div class="field-row">
-        <div class="field-group">
+        <div class="field-group" [class.field-error]="hasFieldError('vip_status')">
           <label class="field-label" for="eg-vip">VIP status</label>
           <select
             id="eg-vip"
@@ -182,8 +203,11 @@
               <option [value]="v">{{ v }}</option>
             }
           </select>
+          @if (hasFieldError('vip_status')) {
+            <span class="field-hint-error">{{ getFieldError('vip_status') }}</span>
+          }
         </div>
-        <div class="field-group">
+        <div class="field-group" [class.field-error]="hasFieldError('loyalty_tier')">
           <label class="field-label" for="eg-loyalty">Loyalty tier</label>
           <select
             id="eg-loyalty"
@@ -195,6 +219,9 @@
               <option [value]="tier">{{ tier }}</option>
             }
           </select>
+          @if (hasFieldError('loyalty_tier')) {
+            <span class="field-hint-error">{{ getFieldError('loyalty_tier') }}</span>
+          }
         </div>
       </div>
     </section>

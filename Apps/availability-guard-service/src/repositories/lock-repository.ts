@@ -1,21 +1,10 @@
+import type { InventoryLock } from "@tartware/schemas";
 import type { PoolClient } from "pg";
 
 import { query } from "../lib/db.js";
 import type { BulkReleaseInput, LockRoomInput, ReleaseLockInput } from "../types/lock-types.js";
 
-export type InventoryLock = {
-  id: string;
-  tenant_id: string;
-  reservation_id: string | null;
-  room_type_id: string;
-  room_id: string | null;
-  stay_start: Date;
-  stay_end: Date;
-  expires_at: Date | null;
-  status: "ACTIVE" | "RELEASED";
-  created_at: Date;
-  updated_at: Date;
-};
+export type { InventoryLock };
 
 const ACTIVE_STATUSES = ["ACTIVE"] as const;
 

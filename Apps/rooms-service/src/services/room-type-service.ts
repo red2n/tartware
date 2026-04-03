@@ -1,4 +1,10 @@
-import { type RoomTypeItem, RoomTypeItemSchema, type RoomTypeRow } from "@tartware/schemas";
+import {
+  type CreateRoomTypeInput,
+  type RoomTypeItem,
+  RoomTypeItemSchema,
+  type RoomTypeRow,
+  type UpdateRoomTypeInput,
+} from "@tartware/schemas";
 
 import { query } from "../lib/db.js";
 import { buildDynamicUpdate, type UpdateField } from "../sql/dynamic-update-builder.js";
@@ -10,6 +16,7 @@ import {
 
 // Re-export schema for consumers that import from this module
 export { RoomTypeItemSchema };
+export type { CreateRoomTypeInput, UpdateRoomTypeInput };
 
 // RoomTypeRow imported from @tartware/schemas
 
@@ -72,33 +79,6 @@ const toJson = (value: unknown): string | null => {
   return JSON.stringify(value);
 };
 
-type CreateRoomTypeInput = {
-  tenant_id: string;
-  property_id: string;
-  type_name: string;
-  type_code: string;
-  description?: string;
-  short_description?: string;
-  category?: string;
-  base_occupancy?: number;
-  max_occupancy?: number;
-  max_adults?: number;
-  max_children?: number;
-  extra_bed_capacity?: number;
-  size_sqm?: number;
-  bed_type?: string;
-  number_of_beds?: number;
-  amenities?: unknown;
-  features?: unknown;
-  base_price: number;
-  currency?: string;
-  images?: unknown;
-  display_order?: number;
-  is_active?: boolean;
-  metadata?: unknown;
-  created_by?: string;
-};
-
 export const listRoomTypes = async (options: {
   tenantId: string;
   propertyId?: string;
@@ -154,34 +134,6 @@ export const createRoomType = async (input: CreateRoomTypeInput): Promise<RoomTy
     throw new Error("Failed to create room type");
   }
   return mapRowToRoomType(rows[0]);
-};
-
-type UpdateRoomTypeInput = {
-  tenant_id: string;
-  room_type_id: string;
-  property_id?: string;
-  type_name?: string;
-  type_code?: string;
-  description?: string;
-  short_description?: string;
-  category?: string;
-  base_occupancy?: number;
-  max_occupancy?: number;
-  max_adults?: number;
-  max_children?: number;
-  extra_bed_capacity?: number;
-  size_sqm?: number;
-  bed_type?: string;
-  number_of_beds?: number;
-  amenities?: unknown;
-  features?: unknown;
-  base_price?: number;
-  currency?: string;
-  images?: unknown;
-  display_order?: number;
-  is_active?: boolean;
-  metadata?: unknown;
-  updated_by?: string;
 };
 
 /**

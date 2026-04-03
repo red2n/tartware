@@ -1,4 +1,7 @@
+import type { ReplayDriftStatus } from "@tartware/schemas";
 import { Counter, collectDefaultMetrics, Gauge, Histogram, Registry } from "prom-client";
+
+export type { ReplayDriftStatus };
 
 export const metricsRegistry = new Registry();
 
@@ -113,8 +116,6 @@ export const lifecycleBatchFailuresCounter = new Counter({
   help: "Count of Kafka batches that failed before all offsets were committed",
   registers: [metricsRegistry],
 });
-
-export type ReplayDriftStatus = "match" | "mismatch" | "missing";
 
 export const recordReplayDrift = (status: ReplayDriftStatus): void => {
   if (status === "match") {

@@ -1,36 +1,13 @@
 import { randomUUID } from "node:crypto";
 
-import type { KeyRow, KeyStatus, MobileKey } from "@tartware/schemas";
+import type { KeyRow, KeyStatus, KeyVendor, MobileKey } from "@tartware/schemas";
 
 import { query } from "../lib/db.js";
 import { appLogger } from "../lib/logger.js";
 
+export type { KeyStatus, KeyVendor, MobileKey };
+
 const logger = appLogger.child({ module: "key-service" });
-
-// ─── KeyVendor Interface ──────────────────────────────────────
-
-export type { MobileKey, KeyStatus };
-
-/**
- * Vendor interface for key card / mobile key operations.
- * Real implementations connect to ASSA ABLOY Vostio, Salto KS, Dormakaba, etc.
- */
-export interface KeyVendor {
-  /** Issue a new digital key for a room. */
-  issueKey(params: {
-    roomId: string;
-    guestId: string;
-    validFrom: Date;
-    validTo: Date;
-    keyType?: MobileKey["keyType"];
-  }): Promise<MobileKey>;
-
-  /** Revoke an existing key. */
-  revokeKey(keyId: string): Promise<void>;
-
-  /** Query the current status of a key. */
-  getKeyStatus(keyId: string): Promise<KeyStatus | null>;
-}
 
 // ─── ConsoleKeyVendor (dev/test stub) ──────────────────────────
 

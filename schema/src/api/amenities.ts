@@ -91,3 +91,52 @@ export const AmenityResponseSchema = z.object({
 });
 
 export type AmenityResponse = z.infer<typeof AmenityResponseSchema>;
+
+// =====================================================
+// REPOSITORY INPUT TYPES
+// =====================================================
+
+/** Input for listing amenities by tenant + property. */
+export type AmenityListInput = {
+	tenantId: string;
+	propertyId: string;
+};
+
+/** Input for fetching a single amenity by code. */
+export type AmenityGetInput = AmenityListInput & {
+	amenityCode: string;
+};
+
+/** Input for creating a new amenity. */
+export type AmenityCreateInput = AmenityListInput & {
+	createdBy: string;
+	payload: {
+		amenityCode: string;
+		displayName: string;
+		description?: string;
+		category?: string;
+		icon?: string;
+		tags?: string[];
+		sortOrder?: number;
+		isDefault?: boolean;
+		isActive?: boolean;
+		isRequired?: boolean;
+		metadata?: Record<string, unknown>;
+	};
+};
+
+/** Input for updating an existing amenity. */
+export type AmenityUpdateInput = AmenityGetInput & {
+	updatedBy: string;
+	payload: {
+		displayName?: string;
+		description?: string | null;
+		category?: string;
+		icon?: string | null;
+		tags?: string[];
+		sortOrder?: number;
+		isActive?: boolean;
+		isRequired?: boolean;
+		metadata?: Record<string, unknown>;
+	};
+};

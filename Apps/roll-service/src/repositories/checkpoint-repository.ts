@@ -1,8 +1,11 @@
+import type { BackfillCheckpoint, BackfillCheckpointInput, CheckpointRow } from "@tartware/schemas";
 import type { QueryResult, QueryResultRow } from "pg";
 
 import { query } from "../lib/db.js";
 
-export type QueryExecutor = {
+export type { BackfillCheckpoint };
+
+type QueryExecutor = {
   query: <TRow extends QueryResultRow = QueryResultRow>(
     text: string,
     params: unknown[],
@@ -22,17 +25,7 @@ const runQuery = async <TRow extends QueryResultRow = QueryResultRow>(
 
 export const GLOBAL_TENANT_SENTINEL = "00000000-0000-0000-0000-000000000000";
 
-export type BackfillCheckpoint = {
-  tenantId: string;
-  lastEventId: string | null;
-  lastEventCreatedAt: Date | null;
-};
-
-type CheckpointRow = {
-  tenant_id: string;
-  last_event_id: string | null;
-  last_event_created_at: Date | null;
-};
+export type { QueryExecutor };
 
 export const getBackfillCheckpoint = async (
   tenantId = GLOBAL_TENANT_SENTINEL,
@@ -57,12 +50,6 @@ export const getBackfillCheckpoint = async (
     lastEventId: row.last_event_id ?? null,
     lastEventCreatedAt: row.last_event_created_at ?? null,
   };
-};
-
-type BackfillCheckpointInput = {
-  tenantId: string;
-  lastEventId: string;
-  lastEventCreatedAt: Date;
 };
 
 export const upsertBackfillCheckpoint = async (

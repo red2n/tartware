@@ -112,3 +112,277 @@ export const BatchUpdateCommandFeaturesResponseSchema = z.object({
 export type BatchUpdateCommandFeaturesResponse = z.infer<
 	typeof BatchUpdateCommandFeaturesResponseSchema
 >;
+// =====================================================
+// COMMAND HANDLER CONTEXT (service-layer)
+// =====================================================
+
+// =====================================================
+// REPOSITORY ROW TYPES — command registry
+// =====================================================
+
+/** DB row shape for a command template record. */
+export type CommandTemplateRow = {
+	command_name: string;
+	version: string;
+	description: string | null;
+	default_target_service: string;
+	default_topic: string;
+	required_modules: string[] | null;
+	payload_schema: Record<string, unknown> | null;
+	sample_payload: Record<string, unknown> | null;
+	metadata: Record<string, unknown> | null;
+};
+
+/** DB row shape for a command route record. */
+export type CommandRouteRow = {
+	id: string;
+	command_name: string;
+	environment: string;
+	tenant_id: string | null;
+	service_id: string;
+	topic: string;
+	weight: number;
+	status: "active" | "disabled";
+	metadata: Record<string, unknown> | null;
+};
+
+/** DB row shape for a command feature record. */
+export type CommandFeatureRow = {
+	id: string;
+	command_name: string;
+	environment: string;
+	tenant_id: string | null;
+	status: "enabled" | "disabled" | "observation";
+	max_per_minute: number | null;
+	burst: number | null;
+	metadata: Record<string, unknown> | null;
+};
+
+/** DB row shape returned by the command features list JOIN query. */
+export type CommandFeatureListRow = {
+	command_name: string;
+	label: string;
+	description: string;
+	default_target_service: string;
+	required_modules: string[] | null;
+	version: string;
+	feature_id: string | null;
+	status: "enabled" | "disabled" | "observation";
+	max_per_minute: number | null;
+	burst: number | null;
+};
+
+/** DB row shape returned after updating a command feature status. */
+export type CommandFeatureUpdateRow = {
+	id: string;
+	command_name: string;
+	status: "enabled" | "disabled" | "observation";
+	updated_at: string;
+};
+
+/**
+ * Execution context passed to every command handler.
+ *
+ * Carries the tenant scope and caller identity resolved from the Kafka envelope metadata.
+ * `payload` and `correlationId` are optional — some handlers receive the raw command
+ * message bundled in the context object rather than as a separate parameter.
+ */
+export type CommandContext = {
+	/** Tenant ID the command is scoped to */
+	tenantId: string;
+	/** Identity that initiated the command (may be null for system-generated commands) */
+	initiatedBy?: { userId?: string } | null;
+	/** Raw command payload (present when the handler destructures context for the full envelope) */
+	payload?: unknown;
+	/** Correlation ID from the Kafka message (for distributed tracing) */
+	correlationId?: string;
+};
+
+// =============================================================================
+// COMMAND DISPATCH — shared repository + service types
+// (consumed by command-center-shared, api-gateway, command-center-service)
+// =============================================================================
+
+/** Generic DB query executor used across command dispatch repositories. */
+export type QueryExecutor = <T extends Record<string, unknown> = Record<string, unknown>>(
+	sql: string,
+	params?: unknown[],
+) => Promise<{ rows: T[] }>;
+
+/** Input shape for inserting a new command dispatch record. */
+export type InsertCommandDispatchInput = {
+	id: string;
+	commandName: string;
+	tenantId: string;
+	targetService: string;
+	targetTopic: string;
+	correlationId?: string;
+	requestId: string;
+	payloadHash: string;
+	outboxEventId: string;
+	routingMetadata: Record<string, unknown>;
+	initiatedBy?: Record<string, unknown> | null;
+	metadata?: Record<string, unknown>;
+};
+
+/** DB row returned by a command dispatch lookup query. */
+export type CommandDispatchLookup = {
+	id: string;
+	command_name: string;
+	tenant_id: string;
+	correlation_id: string | null;
+	request_id: string;
+	payload_hash: string;
+	target_service: string;
+	target_topic: string;
+	issued_at: string;
+	routing_metadata: Record<string, unknown> | null;
+	metadata: Record<string, unknown> | null;
+};
+
+/** In-memory snapshot of the command registry loaded from DB. */
+export type CommandRegistrySnapshot = {
+	templates: CommandTemplateRow[];
+	routes: CommandRouteRow[];
+	features: CommandFeatureRow[];
+};
+
+/** Identity of the user or system principal that initiated a command. */
+export type Initiator = {
+	userId: string;
+	role: string;
+} | null;
+
+/** Resolved route record for a command. */
+export type CommandRouteInfo = {
+	id: string;
+	command_name: string;
+	environment: string;
+	tenant_id: string | null;
+	service_id: string;
+	topic: string;
+	weight: number;
+	status: string;
+	metadata: Record<string, unknown>;
+	source: string;
+};
+
+/** Feature flag record for a command, controlling throttle and enable/disable. */
+export type CommandFeatureInfo = {
+	status: string;
+	tenant_id: string | null;
+	max_per_minute?: number | null;
+	burst?: number | null;
+	metadata: Record<string, unknown>;
+};
+
+/** Resolution outcome for a command lookup against the registry. */
+export type CommandResolution<Membership = unknown> =
+	| { status: "NOT_FOUND" }
+	| { status: "MODULES_MISSING"; missingModules: string[] }
+	| { status: "DISABLED"; reason: string }
+	| {
+			status: "RESOLVED";
+			route: CommandRouteInfo;
+			feature: CommandFeatureInfo | null;
+			template?: unknown;
+			membership?: Membership;
+	  };
+
+/** Input to the command acceptance pipeline. */
+export interface AcceptCommandInput<Membership = unknown> {
+	commandName: string;
+	tenantId: string;
+	payload: Record<string, unknown>;
+	correlationId?: string;
+	requestId: string;
+	initiatedBy: Initiator;
+	membership: Membership;
+}
+
+/** Outbox record written to the DB before Kafka publish (transactional outbox pattern). */
+export interface CommandOutboxRecord {
+	eventId: string;
+	tenantId: string;
+	aggregateId: string;
+	aggregateType: string;
+	eventType: string;
+	payload: Record<string, unknown>;
+	headers: Record<string, string>;
+	correlationId?: string;
+	partitionKey?: string;
+	metadata?: Record<string, unknown>;
+}
+
+/** Dependency injection contract for the command dispatch service factory. */
+export interface CommandDispatchDependencies<Membership = unknown> {
+	resolveCommandForTenant: (
+		args: Omit<AcceptCommandInput<Membership>, "payload" | "initiatedBy">,
+	) => CommandResolution<Membership>;
+	enqueueOutboxRecord: (record: CommandOutboxRecord) => Promise<void>;
+	insertCommandDispatch: (input: InsertCommandDispatchInput) => Promise<void>;
+	findCommandDispatchByRequest: (
+		tenantId: string,
+		commandName: string,
+		requestId: string,
+	) => Promise<CommandDispatchLookup | null>;
+	throttleCommand?: (input: {
+		commandName: string;
+		tenantId: string;
+		requestId: string;
+		feature: CommandFeatureInfo | null;
+	}) => Promise<boolean>;
+}
+
+/** Full result returned internally after successfully accepting a command. */
+export type CommandAcceptanceResult = {
+	status: "accepted";
+	commandId: string;
+	commandName: string;
+	tenantId: string;
+	correlationId?: string;
+	targetService: string;
+	targetTopic: string;
+	issuedAt: string;
+	headers: Record<string, string>;
+	eventPayload: {
+		metadata: Record<string, unknown>;
+		payload: Record<string, unknown>;
+	};
+	featureStatus: string;
+	route: {
+		id: string;
+		source: string;
+		tenantId: string | null;
+	};
+};
+
+/** Slim command acceptance response returned by the API gateway to callers. */
+export type AcceptedCommand = {
+	status: "accepted";
+	commandId: string;
+	commandName: string;
+	tenantId: string;
+	correlationId?: string;
+	targetService: string;
+	requestedAt: string;
+	outboxEventId: string;
+	envelope: {
+		metadata: Record<string, unknown>;
+		payload: Record<string, unknown>;
+		headers: Record<string, string>;
+		targetTopic: string;
+	};
+};
+
+/** Public view of a command definition for API/UI consumers. */
+export type CommandDefinitionView = {
+	name: string;
+	label: string;
+	description: string;
+	samplePayload: Record<string, unknown>;
+	requiredModules: string[];
+	defaultTargetService: string;
+	defaultTopic: string;
+	version: string;
+};

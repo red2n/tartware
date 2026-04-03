@@ -1,4 +1,15 @@
-import { PackageComponentListItemSchema, PackageListItemSchema } from "@tartware/schemas";
+import {
+  type CreatePackageComponentInput,
+  type CreatePackageInput,
+  type GetPackageComponentsInput,
+  type GetPackageInput,
+  type ListPackagesInput,
+  PackageComponentListItemSchema,
+  type PackageComponentRow,
+  PackageListItemSchema,
+  type PackageRow,
+  type UpdatePackageInput,
+} from "@tartware/schemas";
 import type { z } from "zod";
 
 import { query } from "../lib/db.js";
@@ -174,70 +185,6 @@ const PACKAGE_COMPONENTS_SQL = `
 `;
 
 // =====================================================
-// TYPES
-// =====================================================
-
-type PackageRow = {
-  package_id: string;
-  tenant_id: string;
-  property_id: string | null;
-  property_name: string | null;
-  package_name: string;
-  package_code: string;
-  package_type: string;
-  short_description: string | null;
-  valid_from: string | Date;
-  valid_to: string | Date;
-  is_currently_valid: boolean;
-  min_nights: number;
-  max_nights: number | null;
-  min_guests: number;
-  max_guests: number | null;
-  pricing_model: string;
-  base_price: number | string;
-  discount_percentage: number | string | null;
-  includes_breakfast: boolean;
-  includes_lunch: boolean;
-  includes_dinner: boolean;
-  includes_parking: boolean;
-  includes_wifi: boolean;
-  includes_airport_transfer: boolean;
-  refundable: boolean;
-  free_cancellation_days: number | null;
-  available_inventory: number | null;
-  total_inventory: number | null;
-  sold_count: number;
-  is_active: boolean;
-  is_published: boolean;
-  is_featured: boolean;
-  total_bookings: number;
-  total_revenue: number | string | null;
-  average_rating: number | string | null;
-  badge_text: string | null;
-  image_urls: string[] | null;
-  created_at: string | Date;
-  updated_at: string | Date | null;
-};
-
-type PackageComponentRow = {
-  component_id: string;
-  package_id: string;
-  component_type: string;
-  component_name: string;
-  component_description: string | null;
-  quantity: number;
-  pricing_type: string;
-  unit_price: number | string;
-  is_included: boolean;
-  is_optional: boolean;
-  is_mandatory: boolean;
-  delivery_timing: string | null;
-  delivery_location: string | null;
-  display_order: number;
-  is_active: boolean;
-};
-
-// =====================================================
 // HELPERS
 // =====================================================
 
@@ -345,17 +292,6 @@ const mapPackageComponentRow = (row: PackageComponentRow) => {
 export type PackageListItem = z.infer<typeof PackageListItemSchema>;
 export type PackageComponentListItem = z.infer<typeof PackageComponentListItemSchema>;
 
-type ListPackagesInput = {
-  limit?: number;
-  tenantId: string;
-  propertyId?: string;
-  packageType?: string;
-  isActive?: boolean;
-  isPublished?: boolean;
-  isFeatured?: boolean;
-  validOn?: string;
-};
-
 export const listPackages = async ({
   limit = 200,
   tenantId,
@@ -380,11 +316,6 @@ export const listPackages = async ({
   return result.rows.map(mapPackageRow);
 };
 
-type GetPackageInput = {
-  packageId: string;
-  tenantId: string;
-};
-
 export const getPackageById = async ({
   packageId,
   tenantId,
@@ -397,10 +328,6 @@ export const getPackageById = async ({
   }
 
   return mapPackageRow(row);
-};
-
-type GetPackageComponentsInput = {
-  packageId: string;
 };
 
 export const getPackageComponents = async ({
@@ -446,32 +373,7 @@ const CREATE_PACKAGE_SQL = `
   RETURNING package_id
 `;
 
-export type CreatePackageInput = {
-  tenantId: string;
-  propertyId?: string;
-  packageName: string;
-  packageCode: string;
-  packageType: string;
-  shortDescription?: string;
-  validFrom: string;
-  validTo: string;
-  minNights: number;
-  maxNights?: number;
-  minGuests: number;
-  maxGuests?: number;
-  pricingModel: string;
-  basePrice: number;
-  includesBreakfast: boolean;
-  includesLunch: boolean;
-  includesDinner: boolean;
-  includesParking: boolean;
-  includesWifi: boolean;
-  includesAirportTransfer: boolean;
-  refundable: boolean;
-  freeCancellationDays?: number;
-  totalInventory?: number;
-  createdBy?: string;
-};
+export type { CreatePackageInput };
 
 export const createPackage = async (input: CreatePackageInput): Promise<string> => {
   const result = await query<{ package_id: string }>(CREATE_PACKAGE_SQL, [
@@ -531,18 +433,7 @@ const UPDATE_PACKAGE_SQL = `
   RETURNING package_id
 `;
 
-export type UpdatePackageInput = {
-  packageId: string;
-  tenantId: string;
-  isActive?: boolean;
-  includesBreakfast?: boolean;
-  includesLunch?: boolean;
-  includesDinner?: boolean;
-  includesParking?: boolean;
-  includesWifi?: boolean;
-  includesAirportTransfer?: boolean;
-  updatedBy?: string;
-};
+export type { UpdatePackageInput };
 
 export const updatePackage = async (input: UpdatePackageInput): Promise<string | null> => {
   const result = await query<{ package_id: string }>(UPDATE_PACKAGE_SQL, [
@@ -588,22 +479,7 @@ const CREATE_PACKAGE_COMPONENT_SQL = `
   RETURNING component_id
 `;
 
-export type CreatePackageComponentInput = {
-  packageId: string;
-  componentType: string;
-  componentName: string;
-  componentDescription?: string;
-  quantity: number;
-  pricingType: string;
-  unitPrice: number;
-  isIncluded: boolean;
-  isOptional: boolean;
-  isMandatory: boolean;
-  deliveryTiming?: string;
-  deliveryLocation?: string;
-  displayOrder: number;
-  createdBy?: string;
-};
+export type { CreatePackageComponentInput };
 
 export const createPackageComponent = async (
   input: CreatePackageComponentInput,

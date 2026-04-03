@@ -1,39 +1,11 @@
-import type { CommandDispatchStatus } from "@tartware/schemas";
-import type { QueryResultRow } from "pg";
+import type {
+  CommandDispatchLookup,
+  CommandDispatchStatus,
+  InsertCommandDispatchInput,
+  QueryExecutor,
+} from "@tartware/schemas";
 
-export type QueryExecutor = <T extends QueryResultRow = QueryResultRow>(
-  sql: string,
-  params?: unknown[],
-) => Promise<{ rows: T[] }>;
-
-export type InsertCommandDispatchInput = {
-  id: string;
-  commandName: string;
-  tenantId: string;
-  targetService: string;
-  targetTopic: string;
-  correlationId?: string;
-  requestId: string;
-  payloadHash: string;
-  outboxEventId: string;
-  routingMetadata: Record<string, unknown>;
-  initiatedBy?: Record<string, unknown> | null;
-  metadata?: Record<string, unknown>;
-};
-
-export type CommandDispatchLookup = {
-  id: string;
-  command_name: string;
-  tenant_id: string;
-  correlation_id: string | null;
-  request_id: string;
-  payload_hash: string;
-  target_service: string;
-  target_topic: string;
-  issued_at: string;
-  routing_metadata: Record<string, unknown> | null;
-  metadata: Record<string, unknown> | null;
-};
+export type { QueryExecutor, InsertCommandDispatchInput, CommandDispatchLookup };
 
 const INSERT_COMMAND_DISPATCH_SQL = `
   INSERT INTO command_dispatches (

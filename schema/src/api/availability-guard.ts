@@ -133,3 +133,79 @@ export const ManualReleaseNotificationTestSchema = z.object({
 export type ManualReleaseNotificationTest = z.infer<
 	typeof ManualReleaseNotificationTestSchema
 >;
+// =====================================================
+// AVAILABILITY GUARD SERVICE DOMAIN TYPES
+// =====================================================
+
+/** Metadata stored per-reservation after a successful inventory lock, persisted in the DB. */
+export type ReservationGuardMetadata = {
+	lockId: string | null;
+	status: string;
+	metadata: Record<string, unknown>;
+	updatedAt: Date;
+};
+
+/** Metadata returned from the availability guard gRPC client after a lock/skip/conflict. */
+export type AvailabilityGuardMetadata = {
+	status: "SKIPPED" | "LOCKED" | "CONFLICT" | "ERROR";
+	lockId?: string;
+	message?: string;
+};
+
+/** DB row shape returned when reading guard metadata for a reservation. */
+export type GuardMetadataRow = {
+	lock_id: string | null;
+	status: string;
+	metadata: Record<string, unknown> | null;
+	updated_at: Date;
+};
+
+// =============================================================================
+// AVAILABILITY GUARD — notification and audit types
+// =============================================================================
+
+/** Classified recipient buckets for manual-release notifications. */
+export type RecipientBuckets = {
+	email: string[];
+	sms: string[];
+	slack: string[];
+};
+
+/** Rendered notification content for a manual-release event. */
+export type NotificationSummary = {
+	subject: string;
+	plainText: string;
+	htmlBody: string;
+	slackText: string;
+	smsText: string;
+	metadata: Record<string, unknown>;
+};
+
+/** DB row shape for a lock audit record. */
+export type LockAuditRecord = {
+	id: string;
+	lock_id: string;
+	tenant_id: string;
+	action: string;
+	performed_by_id: string;
+	performed_by_name: string;
+	performed_by_email: string | null;
+	reason: string | null;
+	metadata: Record<string, unknown> | null;
+	created_at: Date;
+};
+
+/** DB row shape for an inventory lock record. */
+export type InventoryLock = {
+	id: string;
+	tenant_id: string;
+	reservation_id: string | null;
+	room_type_id: string;
+	room_id: string | null;
+	stay_start: Date;
+	stay_end: Date;
+	expires_at: Date | null;
+	status: "ACTIVE" | "RELEASED";
+	created_at: Date;
+	updated_at: Date;
+};

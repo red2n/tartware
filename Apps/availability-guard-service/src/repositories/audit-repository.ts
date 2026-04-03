@@ -1,19 +1,9 @@
+import type { LockAuditRecord } from "@tartware/schemas";
 import type { PoolClient } from "pg";
 
 import { query } from "../lib/db.js";
 
-export type LockAuditRecord = {
-  id: string;
-  lock_id: string;
-  tenant_id: string;
-  action: string;
-  performed_by_id: string;
-  performed_by_name: string;
-  performed_by_email: string | null;
-  reason: string | null;
-  metadata: Record<string, unknown> | null;
-  created_at: Date;
-};
+export type { LockAuditRecord };
 
 type LockAuditInput = {
   lockId: string;

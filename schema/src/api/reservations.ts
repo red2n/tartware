@@ -8,6 +8,7 @@
 import { z } from "zod";
 
 import { uuid } from "../shared/base-schemas.js";
+import type { ReservationCommandLifecycleState } from "../shared/enums.js";
 
 // =====================================================
 // RESERVATION DETAIL (single reservation fetch)
@@ -562,3 +563,155 @@ export const ReservationListResponseSchema = z.object({
 export type ReservationListResponse = z.infer<
 	typeof ReservationListResponseSchema
 >;
+// =====================================================
+// RESERVATION COMMAND SERVICE DOMAIN TYPES
+// =====================================================
+
+/** Lightweight reservation stay snapshot for availability and command processing. */
+export type ReservationStaySnapshot = {
+	reservationId: string;
+	tenantId: string;
+	propertyId: string;
+	roomTypeId: string;
+	checkInDate: Date;
+	checkOutDate: Date;
+};
+
+/** Cancellation policy JSONB shape stored on the rates table. */
+export type CancellationPolicy = {
+	/** Policy type: "flexible", "moderate", "strict", "non_refundable" */
+	type: string;
+	/** Hours before check-in deadline */
+	hours: number;
+	/** Fee amount (currency-relative) */
+	penalty: number;
+};
+
+/** Reservation data needed for cancellation fee calculation. */
+export type ReservationCancellationInfo = {
+	reservationId: string;
+	tenantId: string;
+	propertyId: string;
+	roomTypeId: string;
+	rateId: string | null;
+	roomRate: number;
+	totalAmount: number;
+	checkInDate: Date;
+	checkOutDate: Date;
+	status: string;
+	cancellationPolicy: CancellationPolicy | null;
+};
+
+/** Rate plan resolution output including fallback metadata. */
+export type RatePlanResolution = {
+	appliedRateCode: string;
+	rateId?: string;
+	requestedRateCode?: string;
+	fallbackApplied: boolean;
+	reason?: string;
+	decidedAt: Date;
+};
+
+/** Result returned when a reservation command is accepted and enqueued. */
+export interface CreateReservationResult {
+	eventId: string;
+	correlationId?: string;
+	status: "accepted";
+}
+
+// =====================================================
+// REPOSITORY INPUT/ROW TYPES
+// =====================================================
+
+/** Input for inserting an initial lifecycle record when a command event arrives. */
+export type LifecycleInsertInput = {
+	eventId: string;
+	tenantId: string;
+	reservationId?: string;
+	commandName: string;
+	correlationId?: string;
+	partitionKey?: string;
+	details?: Record<string, unknown>;
+	metadata?: Record<string, unknown>;
+};
+
+/** Input for advancing an existing lifecycle record to a new state. */
+export type LifecycleUpdateInput = {
+	eventId: string;
+	state: ReservationCommandLifecycleState;
+	details?: Record<string, unknown>;
+	metadata?: Record<string, unknown>;
+};
+
+/** DB row shape for the minimal reservation data needed to compute cancellations. */
+export type ReservationStayRow = {
+	id: string;
+	tenant_id: string;
+	property_id: string;
+	room_type_id: string;
+	check_in_date: Date;
+	check_out_date: Date;
+};
+
+/** Result shape returned by reservation event handler functions. */
+export type ReservationEventHandlerResult = {
+	reservationId?: string;
+};
+
+/** Parameters for auto-creating a folio when a reservation is created. */
+export type CreateFolioParams = {
+	reservationId: string;
+	tenantId: string;
+	propertyId: string;
+	guestId: string;
+	guestName: string;
+	currency: string;
+};
+
+/** Input for upserting a processed event offset record. */
+export type UpsertReservationEventOffsetInput = {
+	tenantId: string;
+	consumerGroup: string;
+	topic: string;
+	partition: number;
+	offset: string;
+	eventId?: string;
+	reservationId?: string;
+	correlationId?: string;
+	metadata?: Record<string, unknown>;
+};
+
+// =============================================================================
+// RESERVATION COMMAND SERVICE — reliability types
+// =============================================================================
+
+/** Health snapshot for the reservation command pipeline (Kafka consumer + DLQ + outbox). */
+export type ReliabilitySnapshot = {
+	status: "healthy" | "degraded" | "critical";
+	generatedAt: string;
+	issues: string[];
+	outbox: {
+		pending: number;
+		warnThreshold: number;
+		criticalThreshold: number;
+	};
+	consumer: {
+		partitions: number;
+		stalePartitions: number;
+		maxSecondsSinceCommit: number | null;
+		staleThresholdSeconds: number;
+	};
+	lifecycle: {
+		stalledCommands: number;
+		oldestStuckSeconds: number | null;
+		dlqTotal: number;
+		stalledThresholdSeconds: number;
+	};
+	dlq: {
+		depth: number | null;
+		warnThreshold: number;
+		criticalThreshold: number;
+		topic: string;
+		error: string | null;
+	};
+};

@@ -1,13 +1,11 @@
-import type { ManualReleaseNotification } from "@tartware/schemas";
+import type {
+  ManualReleaseNotification,
+  NotificationSummary,
+  RecipientBuckets,
+} from "@tartware/schemas";
 
 // Re-export for consumers
-export type { ManualReleaseNotification };
-
-export type RecipientBuckets = {
-  email: string[];
-  sms: string[];
-  slack: string[];
-};
+export type { ManualReleaseNotification, NotificationSummary, RecipientBuckets };
 
 export const dedupeRecipients = (values: string[]): string[] => {
   const normalized = values.map((value) => value.trim()).filter((value) => value.length > 0);
@@ -65,15 +63,6 @@ const formatDate = (value: string): string => {
     return value;
   }
   return `${dateFormatter.format(date)} UTC`;
-};
-
-export type NotificationSummary = {
-  subject: string;
-  plainText: string;
-  htmlBody: string;
-  slackText: string;
-  smsText: string;
-  metadata: Record<string, unknown>;
 };
 
 export const buildNotificationSummary = (

@@ -1,3 +1,4 @@
+import type { CommandContext } from "@tartware/schemas";
 import { query } from "../lib/db.js";
 import {
   type OperationsScheduleCreateCommand,
@@ -5,13 +6,6 @@ import {
   type OperationsScheduleUpdateCommand,
   OperationsScheduleUpdateCommandSchema,
 } from "../schemas/schedule-commands.js";
-
-type CommandContext = {
-  tenantId: string;
-  initiatedBy?: {
-    userId?: string;
-  } | null;
-};
 
 class ScheduleCommandError extends Error {
   code: string;

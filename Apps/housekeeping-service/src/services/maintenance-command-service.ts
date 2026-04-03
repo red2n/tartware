@@ -1,3 +1,4 @@
+import type { CommandContext } from "@tartware/schemas";
 import {
   type OperationsMaintenanceAssignCommand,
   OperationsMaintenanceAssignCommandSchema,
@@ -10,11 +11,6 @@ import {
 } from "@tartware/schemas/events/commands/operations";
 
 import { query } from "../lib/db.js";
-
-type CommandContext = {
-  tenantId: string;
-  initiatedBy?: { userId?: string } | null;
-};
 
 class MaintenanceCommandError extends Error {
   code: string;

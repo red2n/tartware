@@ -600,3 +600,37 @@ export const KeyStatusSchema = z.object({
 });
 
 export type KeyStatus = z.infer<typeof KeyStatusSchema>;
+
+// =============================================================================
+// GUEST EXPERIENCE — provider contracts (DI interfaces)
+// =============================================================================
+
+/**
+ * Payment gateway abstraction.
+ * Real implementations connect to Stripe, Adyen, WIMO, etc.
+ */
+export interface PaymentGateway {
+	/** Pre-authorize a payment amount. */
+	authorize(amount: number, currency: string, token: string): Promise<AuthorizationResult>;
+	/** Capture a previously authorized payment. */
+	capture(authorizationId: string): Promise<CaptureResult>;
+	/** Refund a captured payment (full or partial). */
+	refund(paymentId: string, amount: number): Promise<RefundResult>;
+}
+
+/**
+ * Key card / mobile key vendor abstraction.
+ * Real implementations connect to ASSA ABLOY Vostio, Salto KS, Dormakaba, etc.
+ */
+export interface KeyVendor {
+	/** Issue a new digital key for a room. */
+	issueKey(params: {
+		roomId: string;
+		guestId: string;
+		validFrom: Date;
+		validTo: Date;
+		keyType?: MobileKey["keyType"];
+	}): Promise<MobileKey>;
+	/** Revoke an existing key. */
+	revokeKey(keyId: string): Promise<void>;
+}

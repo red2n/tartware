@@ -1,4 +1,10 @@
-import { type AllotmentListItem, AllotmentListItemSchema } from "@tartware/schemas";
+import {
+  type AllotmentListItem,
+  AllotmentListItemSchema,
+  type AllotmentRow,
+  type GetAllotmentInput,
+  type ListAllotmentsInput,
+} from "@tartware/schemas";
 
 import { query } from "../../lib/db.js";
 import { ALLOTMENT_BY_ID_SQL, ALLOTMENT_LIST_SQL } from "../../sql/booking-config/allotment.js";
@@ -8,45 +14,6 @@ import { formatDisplayLabel, toIsoString, toNumber } from "./common.js";
 // =====================================================
 // ALLOTMENT SERVICE
 // =====================================================
-
-type AllotmentRow = {
-  allotment_id: string;
-  tenant_id: string;
-  property_id: string;
-  property_name: string | null;
-  allotment_code: string;
-  allotment_name: string;
-  allotment_type: string;
-  allotment_status: string;
-  start_date: string | Date;
-  end_date: string | Date;
-  cutoff_date: string | Date | null;
-  room_type_id: string | null;
-  total_rooms_blocked: number;
-  total_room_nights: number | null;
-  rooms_per_night: number | null;
-  rooms_picked_up: number;
-  rooms_available: number | null;
-  pickup_percentage: number | string;
-  rate_type: string | null;
-  contracted_rate: number | string | null;
-  total_expected_revenue: number | string | null;
-  actual_revenue: number | string | null;
-  currency_code: string;
-  account_name: string | null;
-  account_type: string | null;
-  billing_type: string;
-  contact_name: string | null;
-  contact_email: string | null;
-  deposit_required: boolean;
-  attrition_clause: boolean;
-  attrition_percentage: number | string | null;
-  guaranteed_rooms: number | null;
-  is_vip: boolean;
-  priority_level: number;
-  created_at: string | Date;
-  updated_at: string | Date | null;
-};
 
 const mapAllotmentRow = (row: AllotmentRow): AllotmentListItem => {
   return AllotmentListItemSchema.parse({
@@ -91,17 +58,6 @@ const mapAllotmentRow = (row: AllotmentRow): AllotmentListItem => {
   });
 };
 
-export type ListAllotmentsInput = {
-  limit?: number;
-  tenantId: string;
-  propertyId?: string;
-  status?: string;
-  allotmentType?: string;
-  startDateFrom?: string;
-  endDateTo?: string;
-  offset?: number;
-};
-
 export const listAllotments = async (
   options: ListAllotmentsInput,
 ): Promise<AllotmentListItem[]> => {
@@ -116,11 +72,6 @@ export const listAllotments = async (
     options.offset ?? 0,
   ]);
   return rows.map(mapAllotmentRow);
-};
-
-export type GetAllotmentInput = {
-  allotmentId: string;
-  tenantId: string;
 };
 
 export const getAllotmentById = async (

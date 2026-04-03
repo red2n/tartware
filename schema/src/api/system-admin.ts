@@ -7,6 +7,7 @@
 
 import { z } from "zod";
 
+import type { PublicSystemAdministrator } from "../schemas/01-core/system-administrators.js";
 import { TenantWithRelationsSchema } from "../schemas/01-core/tenants.js";
 import { UserWithTenantsSchema } from "../schemas/01-core/users.js";
 import {
@@ -74,3 +75,112 @@ export const CreateTenantResponseSchema = z.object({
 	message: z.string(),
 });
 export type CreateTenantResponse = z.infer<typeof CreateTenantResponseSchema>;
+
+// =============================================================================
+// CORE SERVICE — system admin service-layer types
+// =============================================================================
+
+/** Structured payload for a system admin audit event. */
+export interface SystemAdminAuditEvent {
+	adminId: string;
+	action: string;
+	resourceType?: string;
+	resourceId?: string;
+	tenantId?: string;
+	requestMethod?: string;
+	requestPath?: string;
+	requestPayload?: Record<string, unknown> | null;
+	responseStatus?: number;
+	ipAddress?: string;
+	userAgent?: string;
+	sessionId?: string;
+	impersonatedUserId?: string;
+	ticketId?: string;
+}
+
+/** Failure reasons for standard system admin authentication. */
+export type SystemAdminAuthFailureReason =
+	| "INVALID_CREDENTIALS"
+	| "ACCOUNT_INACTIVE"
+	| "ACCOUNT_LOCKED"
+	| "IP_NOT_ALLOWED"
+	| "OUTSIDE_ALLOWED_HOURS"
+	| "DEVICE_NOT_TRUSTED"
+	| "MFA_REQUIRED"
+	| "MFA_INVALID"
+	| "MFA_MISCONFIGURED";
+
+/** Failure reasons for break-glass (emergency) authentication. */
+export type SystemAdminBreakGlassFailureReason =
+	| "ADMIN_NOT_FOUND"
+	| "ACCOUNT_INACTIVE"
+	| "BREAK_GLASS_UNAVAILABLE"
+	| "BREAK_GLASS_CODE_INVALID";
+
+/** Result discriminated union for system admin login. */
+export type SystemAdminAuthResult =
+	| {
+			ok: true;
+			data: {
+				admin: PublicSystemAdministrator;
+				token: string;
+				expiresIn: number;
+				sessionId: string;
+			};
+	  }
+	| {
+			ok: false;
+			reason: SystemAdminAuthFailureReason;
+			lockExpiresAt?: Date;
+	  };
+
+/** Result discriminated union for break-glass login. */
+export type SystemAdminBreakGlassAuthResult =
+	| {
+			ok: true;
+			data: {
+				admin: PublicSystemAdministrator;
+				token: string;
+				expiresIn: number;
+				sessionId: string;
+			};
+	  }
+	| {
+			ok: false;
+			reason: SystemAdminBreakGlassFailureReason;
+	  };
+
+/** Input for standard system admin credential login. */
+export interface SystemAdminLoginInput {
+	username: string;
+	password: string;
+	mfaCode?: string;
+	ipAddress?: string;
+	userAgent?: string;
+	deviceFingerprint?: string;
+}
+
+/** Input for break-glass (emergency) system admin login. */
+export interface SystemAdminBreakGlassLoginInput {
+	username: string;
+	code: string;
+	reason: string;
+	ticketId?: string;
+	ipAddress?: string;
+	userAgent?: string;
+	deviceFingerprint?: string;
+}
+
+/** Result discriminated union for tenant impersonation. */
+export type ImpersonationResult =
+	| {
+			ok: true;
+			data: {
+				accessToken: string;
+				expiresIn: number;
+			};
+	  }
+	| {
+			ok: false;
+			reason: "USER_NOT_FOUND" | "TENANT_ACCESS_DENIED" | "MEMBERSHIP_INACTIVE";
+	  };

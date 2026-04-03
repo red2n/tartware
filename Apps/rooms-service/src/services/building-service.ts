@@ -1,4 +1,10 @@
-import { type BuildingItem, BuildingItemSchema, type BuildingRow } from "@tartware/schemas";
+import {
+  type BuildingItem,
+  BuildingItemSchema,
+  type BuildingRow,
+  type CreateBuildingInput,
+  type UpdateBuildingInput,
+} from "@tartware/schemas";
 
 import { query } from "../lib/db.js";
 import {
@@ -10,6 +16,7 @@ import { buildDynamicUpdate, type UpdateField } from "../sql/dynamic-update-buil
 
 // Re-export schema for consumers that import from this module
 export { BuildingItemSchema };
+export type { CreateBuildingInput, UpdateBuildingInput };
 
 // BuildingRow imported from @tartware/schemas
 
@@ -56,35 +63,6 @@ const mapRowToBuilding = (row: BuildingRow): BuildingItem =>
     updated_at: toStringDate(row.updated_at),
     version: row.version ? row.version.toString() : "0",
   });
-
-type CreateBuildingInput = {
-  tenant_id: string;
-  property_id: string;
-  building_code: string;
-  building_name: string;
-  building_type?: string;
-  floor_count?: number;
-  basement_floors?: number;
-  total_rooms?: number;
-  wheelchair_accessible?: boolean;
-  elevator_count?: number;
-  has_lobby?: boolean;
-  has_pool?: boolean;
-  has_gym?: boolean;
-  has_spa?: boolean;
-  has_restaurant?: boolean;
-  has_parking?: boolean;
-  parking_spaces?: number;
-  year_built?: number;
-  last_renovation_year?: number;
-  is_active?: boolean;
-  building_status?: string;
-  photo_url?: string;
-  guest_description?: string;
-  internal_notes?: string;
-  metadata?: unknown;
-  created_by?: string;
-};
 
 /**
  * List buildings for a tenant, with optional filters.
@@ -148,36 +126,6 @@ export const createBuilding = async (input: CreateBuildingInput): Promise<Buildi
     throw new Error("Failed to create building");
   }
   return mapRowToBuilding(rows[0]);
-};
-
-type UpdateBuildingInput = {
-  tenant_id: string;
-  building_id: string;
-  property_id?: string;
-  building_code?: string;
-  building_name?: string;
-  building_type?: string;
-  floor_count?: number;
-  basement_floors?: number;
-  total_rooms?: number;
-  wheelchair_accessible?: boolean;
-  elevator_count?: number;
-  has_lobby?: boolean;
-  has_pool?: boolean;
-  has_gym?: boolean;
-  has_spa?: boolean;
-  has_restaurant?: boolean;
-  has_parking?: boolean;
-  parking_spaces?: number;
-  year_built?: number;
-  last_renovation_year?: number;
-  is_active?: boolean;
-  building_status?: string;
-  photo_url?: string;
-  guest_description?: string;
-  internal_notes?: string;
-  metadata?: unknown;
-  updated_by?: string;
 };
 
 /**
