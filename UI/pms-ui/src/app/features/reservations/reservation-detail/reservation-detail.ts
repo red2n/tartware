@@ -221,7 +221,7 @@ export class ReservationDetailComponent implements OnInit {
 		try {
 			const data = await this.api.get<{ building_id: string; building_name: string }[]>(
 				'/buildings',
-				{ tenant_id: tenantId },
+				{ tenant_id: tenantId, property_id: r.property_id },
 			);
 			this.buildings.set(data ?? []);
 		} catch {

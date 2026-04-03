@@ -30,7 +30,7 @@ room_name VARCHAR(255), -- Optional marketing name (e.g., Presidential Suite)
 -- Location
 floor VARCHAR(20), -- Floor indicator
 building VARCHAR(100), -- Building or tower display name (denormalised for queries)
-building_id UUID, -- FK buildings.building_id (nullable — rooms without a building entity)
+building_id UUID REFERENCES buildings(building_id) ON DELETE SET NULL, -- FK buildings.building_id (nullable — rooms without a building entity)
 wing VARCHAR(100), -- Wing or section within the property
 
 -- Status
@@ -138,8 +138,9 @@ COMMENT ON COLUMN rooms.deep_clean_interval_days IS 'Interval in days between sc
 
 -- Idempotent column additions for existing tables
 ALTER TABLE rooms ADD COLUMN IF NOT EXISTS phone_extension VARCHAR(20);
-ALTER TABLE rooms ADD COLUMN IF NOT EXISTS building_id UUID
-    REFERENCES buildings(building_id) ON DELETE SET NULL;
+ALTER TABLE rooms ADD COLUMN IF NOT EXISTS building_id UUID;
+ALTER TABLE rooms ADD CONSTRAINT IF NOT EXISTS rooms_building_id_fkey
+    FOREIGN KEY (building_id) REFERENCES buildings(building_id) ON DELETE SET NULL;
 
 COMMENT ON COLUMN rooms.building_id IS 'FK to buildings.building_id — links room to a physical building entity';
 

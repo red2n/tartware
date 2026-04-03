@@ -17,10 +17,10 @@ import {
 } from "../schemas/08-settings/index.js";
 import { uuid } from "../shared/base-schemas.js";
 import {
-	type SettingsControlTypeEnum,
-	type SettingsDataTypeEnum,
+	SettingsControlTypeEnum,
+	SettingsDataTypeEnum,
 	SettingsScopeEnum,
-	type SettingsSensitivityEnum,
+	SettingsSensitivityEnum,
 } from "../shared/enums.js";
 
 export const SettingsCatalogResponseSchema = z.object({

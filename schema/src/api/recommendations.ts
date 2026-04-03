@@ -7,7 +7,7 @@
 
 import { z } from "zod";
 
-import type {
+import {
 	GuestBookingHistorySchema,
 	RecommendationGuestPreferencesSchema,
 } from "../schemas/07-analytics/recommendations.js";

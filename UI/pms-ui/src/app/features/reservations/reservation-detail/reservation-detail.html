@@ -45,8 +45,8 @@
 
       @if (buildings().length > 0) {
         <div class="building-filter-bar">
-          <label class="building-filter-label">Filter by building</label>
-          <select class="building-filter-select" [value]="buildingFilter()" (change)="filterByBuilding($any($event.target).value)">
+          <label for="building-filter" class="building-filter-label">Filter by building</label>
+          <select id="building-filter" class="building-filter-select" [value]="buildingFilter()" (change)="filterByBuilding($any($event.target).value)">
             <option value="">All Buildings</option>
             @for (b of buildings(); track b.building_id) {
               <option [value]="b.building_id">{{ b.building_name }}</option>
