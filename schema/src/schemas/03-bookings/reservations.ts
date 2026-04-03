@@ -78,6 +78,7 @@ export const ReservationsSchema = z.object({
 			message: "eta must be a valid time in HH:MM or HH:MM:SS format",
 		})
 		.optional(),
+	share_unique_identifier: uuid.optional(),
 	company_id: uuid.optional(),
 	travel_agent_id: uuid.optional(),
 	quoted_at: z.coerce.date().optional(),
@@ -174,6 +175,7 @@ export const UpdateReservationsSchema = ReservationsSchema.pick({
 	guarantee_type: true,
 	credit_card_last4: true,
 	promo_code: true,
+	share_unique_identifier: true,
 	metadata: true,
 }).partial();
 

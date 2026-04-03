@@ -68,6 +68,7 @@ const ReservationCreatePayloadSchema = z.object({
 	total_amount: z.coerce.number().nonnegative(),
 	currency: ReservationsSchema.shape.currency.optional(),
 	notes: ReservationsSchema.shape.internal_notes.optional(),
+	share_unique_identifier: ReservationsSchema.shape.share_unique_identifier,
 });
 
 export const ReservationCreatedEventSchema = z.object({

@@ -21,6 +21,7 @@ describe("Reservation Service", () => {
           booking_date: null,
           actual_check_in: null,
           actual_check_out: null,
+          share_unique_identifier: "bb0e8400-e29b-41d4-a716-446655440099",
           room_number: null,
           number_of_adults: null,
           number_of_children: null,
@@ -56,5 +57,8 @@ describe("Reservation Service", () => {
     expect(results[0]?.status_display).toBe("Unknown");
     expect(results[0]?.source).toBeUndefined();
     expect(results[0]?.currency).toBe("USD");
+    expect(results[0]?.share_unique_identifier).toBe(
+      "bb0e8400-e29b-41d4-a716-446655440099",
+    );
   });
 });

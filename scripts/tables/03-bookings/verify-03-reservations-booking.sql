@@ -70,9 +70,31 @@ END $$;
 \echo ''
 
 -- =====================================================
--- 2. CHECK TABLE STRUCTURE SUMMARY
+-- 2. CHECK RESERVATIONS SHARE COLUMN
 -- =====================================================
-\echo '2. Table structure summary...'
+\echo '2. Checking reservations share_unique_identifier column...'
+
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1
+        FROM information_schema.columns
+        WHERE table_schema = 'public'
+          AND table_name = 'reservations'
+          AND column_name = 'share_unique_identifier'
+    ) THEN
+        RAISE NOTICE '  ✓ reservations.share_unique_identifier exists';
+    ELSE
+        RAISE EXCEPTION 'reservations.share_unique_identifier is missing';
+    END IF;
+END $$;
+
+\echo ''
+
+-- =====================================================
+-- 3. CHECK TABLE STRUCTURE SUMMARY
+-- =====================================================
+\echo '3. Table structure summary...'
 
 SELECT
     t.table_name,
